@@ -9,717 +9,362 @@ aliases: ['/docs/tidb-in-kubernetes/dev/deploy-on-gcp-gke/']
 <!-- markdownlint-disable MD029 -->
 <!-- markdownlint-disable MD037 -->
 
-This document describes how to deploy a TiDB cluster on GCP GKE with your laptop (Linux or macOS) for development or testing.
-
-> **Warning:**
->
-> The GKE support for multiple disks per node has [known issues](https://github.com/pingcap/tidb-operator/issues/684) that make it not ready for production usage. We are working to get GKE to resolve this issue.
+This document describes how to deploy a TiDB cluster on GCP Google Kubernetes Engine (GKE).
 
 ## Prerequisites
 
-First of all, make sure the following items are installed on your machine:
+Before deploying a TiDB cluster on GCP GKE, make sure the following requirements are satisfied:
 
-* [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
-* [Google Cloud SDK](https://cloud.google.com/sdk/install)
-* [Terraform](https://www.terraform.io/downloads.html) >= 0.12
-* [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) >= 1.12
-* [Helm](https://helm.sh/docs/using_helm/#installing-the-helm-client) >= 2.11.0 && < 3.0.0 && != [2.16.4](https://github.com/helm/helm/issues/7797)
-* [jq](https://stedolan.github.io/jq/download/)
+* Install [Helm](https://helm.sh/docs/intro/install/): used for deploying TiDB Operator.
+* Install [gcloud](https://cloud.google.com/sdk/gcloud): a command-line tool used for creating and managing GCP services.
+* Complete the operations in the **Before you begin** section of [GKE Quickstart](https://cloud.google.com/kubernetes-engine/docs/quickstart#before-you-begin).
 
-## Configure
+    This guide includes the following contents:
 
-To guarantee a smooth deployment, you need to do some configuration. Before configuring Google Cloud SDK, API, and Terraform, download the following resource:
+    * Enable Kubernetes APIs
+    * Configure enough quota
 
-{{< copyable "shell-regular" >}}
+## Deploy the cluster
 
-```bash
-git clone --depth=1 https://github.com/pingcap/tidb-operator && \
-cd tidb-operator/deploy/gcp
-```
+### Configure the GCP service
 
-### Configure Cloud SDK
-
-After installing Google Cloud SDK, run `gcloud init` to [perform initial setup tasks](https://cloud.google.com/sdk/docs/initializing).
-
-### Configure APIs
-
-If the GCP project that you use is a new one, make sure the following APIs are enabled:
+Configure your GCP project and default region:
 
 {{< copyable "shell-regular" >}}
 
 ```bash
-gcloud services enable cloudresourcemanager.googleapis.com \
-cloudbilling.googleapis.com iam.googleapis.com \
-compute.googleapis.com container.googleapis.com
+gcloud config set core/project <gcp-project>
+gcloud config set compute/region <gcp-region>
 ```
 
-### Configure Terraform
+### Create a GKE cluster
 
-To execute the Terraform script, you need to configure the following three variables. You can configure them as prompted by Terraform, or define them in a `.tfvars` file.
-
-* `GCP_CREDENTIALS_PATH`: Path to a valid GCP credentials file.
-
-    - It is recommended for you to create a separate service account to be used by Terraform. See [Creating and managing service accounts](https://cloud.google.com/iam/docs/creating-managing-service-accounts) for more information. `./create-service-account.sh` will create such a service account with minimal permissions.
-    - See [Creating and managing service account keys](https://cloud.google.com/iam/docs/creating-managing-service-account-keys) for information on creating service account keys. The steps in the script below detail how to do this using a script provided in the `deploy/gcp` directory, alternatively if creating the service account and key yourself, choose `JSON` key type during creation. The downloaded `JSON` file that contains the private key is the credentials file you need.
-
-* `GCP_REGION`: The Region in which to create the resources, for example: `us-west1`.
-* `GCP_PROJECT`: The GCP project in which everything will be created.
-
-To configure Terraform with the three variables above, perform the following steps:
-
-1. Replace the `GCP_REGION` with your GCP Region.
-
-    {{< copyable "shell-regular" >}}
-
-    ```bash
-    echo GCP_REGION=\"us-west1\" >> terraform.tfvars
-    ```
-
-2. Replace the `GCP_PROJECT` with your GCP project name. Make sure you are connected to the correct project.
-
-    {{< copyable "shell-regular" >}}
-
-    ```bash
-    echo "GCP_PROJECT=\"$(gcloud config get-value project)\"" >> terraform.tfvars
-    ```
-
-3. Initialize Terraform.
-
-    {{< copyable "shell-regular" >}}
-
-    ```bash
-    terraform init
-    ```
-
-4. Create a service account for Terraform with restricted permissions and set the credentials path.
-
-    {{< copyable "shell-regular" >}}
-
-    ```bash
-    ./create-service-account.sh
-    ```
-
-Terraform automatically loads and populates variables from the files matching `terraform.tfvars` or `*.auto.tfvars`. For more information, see the [Terraform documentation](https://learn.hashicorp.com/terraform/getting-started/variables.html). The steps above will populate `terraform.tfvars` with `GCP_REGION` and `GCP_PROJECT`, and `credentials.auto.tfvars` with `GCP_CREDENTIALS_PATH`.
-
-## Deploy a TiDB cluster
-
-This section describes how to deploy a TiDB cluster.
-
-1. Decide on instance types.
-
-    - If you just want to get a feel for a TiDB deployment and lower your cost, use the small settings:
-
-        {{< copyable "shell-regular" >}}
-
-        ```bash
-        cat small.tfvars >> terraform.tfvars
-        ```
-
-    - If you want to benchmark a production deployment, use the production settings:
-
-        {{< copyable "shell-regular" >}}
-
-        ```bash
-        cat prod.tfvars >> terraform.tfvars
-        ```
-
-        The `prod.tfvars` setup creates a new VPC, two subnetworks, and an f1-micro instance as a bastion machine. This setup is created with the following instance types as worker nodes:
-
-        * 3 n1-standard-4 instances for PD
-        * 3 n1-highmem-8 instances for TiKV
-        * 3 n1-standard-16 instances for TiDB
-        * 3 n1-standard-2 instances for monitor
-
-        The production setup, as listed above, requires at least 91 CPUs, which exceed the default CPU quota of a GCP project. To increase your project's quota, follow these [instructions](https://cloud.google.com/compute/quotas). You need more CPUs if you need to scale out.
-
-    > **Note:**
-    >
-    > * Check the `tidb_operator_version` in the `variables.tf` file for the default TiDB Operator version of the current scripts. If the default version is not your desired one, configure `tidb_operator_version` in `terraform.tfvars`.
-    > * The Regional cluster is created by default. In this scenario, the specified number of nodes are created in each one of the three Availability Zones (AZ). For example, if you configure `pd_count = 1`, three nodes are actually created for PD. You can specify the Availability Zones by configuring `node_locations`, or create the Zonal cluster by configuring `location`. See the example in `examples/` for details.
-    > * The number of worker nodes to create depends on the number of Availability Zones in the specified Region. Most Regions have three zones, but `us-central1` has four zones. See [Regions and Zones](https://cloud.google.com/compute/docs/regions-zones/) for more information. See the [Customize](#customize) section to learn how to customize node pools in a regional cluster.
-
-2. Execute the script to deploy the TiDB cluster.
-
-    {{< copyable "shell-regular" >}}
-
-    ```bash
-    terraform apply
-    ```
-
-    > **Note:**
-    >
-    > If you have not set the three variables above ahead of time, you might be prompted to set them when you run `terraform apply`. See [Configure Terraform](#configure-terraform) for details.
-
-    It might take 10 minutes or more to finish the process. A successful deployment gives the output like:
-
-    ```
-    Apply complete! Resources: 23 added, 0 changed, 0 destroyed.
-
-    Outputs:
-
-    how_to_ssh_to_bastion = gcloud compute ssh tidb-cluster-bastion --zone us-west1-b
-    kubeconfig_file = ./credentials/kubeconfig_tidb-cluster
-    ```
-
-### Deploy the TiDB cluster and the monitor
-
-1. Prepare the TidbCluster and TidbMonitor CR files:
+1. Create a GKE cluster and a default node pool:
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    cp manifests/{db,db-monitor}.yaml.example .
+    gcloud container clusters create tidb --machine-type n1-standard-4 --num-nodes=1
     ```
 
-    Replace all `CLUSTER_NAME` in the `db.yaml` and `db-monitor.yaml` files with `default_tidb_cluster_name` (`tidb-cluster` by default) configured in the deployment using GKE.
+    * The command above creates a regional cluster.
+    * The `--num-nodes=1` option indicates that one node is created in each zone. So if there are three zones in the region, there are three nodes in total, which ensures high availability.
+    * It is recommended to use regional clusters in production environments. For other types of clusters, refer to [Types of GKE clusters](https://cloud.google.com/kubernetes-engine/docs/concepts/types-of-clusters).
+    * The command above creates a cluster in the default network. If you want to specify a network, use the `--network/subnet` option. For more information, refer to [Creating a regional cluster](https://cloud.google.com/kubernetes-engine/docs/how-to/creating-a-regional-cluster).
 
-    ```
-    sed 's/CLUSTER_NAME/${cluster_name}/g' db.yaml.example > db.yaml
-    sed 's/CLUSTER_NAME/${cluster_name}/g' db-monitor.yaml.example > db-monitor.yaml
-    ```
+2. Create separate node pools for PD, TiKV, and TiDB:
 
-    To complete the CR file configuration, refer to [TiDB Operator API documentation](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.md) and [Configure Cluster using TidbCluster](configure-a-tidb-cluster.md).
+    {{< copyable "shell-regular" >}}
 
-    To deploy Enterprise Edition of TiDB/PD/TiKV, edit the `db.yaml` file to set `spec.<tidb/pd/tikv>.baseImage` to the enterprise image (`pingcap/<tidb/pd/tikv>-enterprise`).
-
-    For example:
-
-    ```yaml
-    spec:
-      ...
-      pd:
-        baseImage: pingcap/pd-enterprise
-      ...
-      tikv:
-        baseImage: pingcap/tikv-enterprise
+    ```shell
+    gcloud container node-pools create pd --cluster tidb --machine-type n1-standard-4 --num-nodes=1 \
+      --node-labels=dedicated=pd --node-taints=dedicated=pd:NoSchedule
+    gcloud container node-pools create tikv --cluster tidb --machine-type n1-highmem-8 --num-nodes=1 \
+      --node-labels=dedicated=tikv --node-taints=dedicated=tikv:NoSchedule
+    gcloud container node-pools create tidb --cluster tidb --machine-type n1-standard-8 --num-nodes=1 \
+      --node-labels=dedicated=tidb --node-taints=dedicated=tidb:NoSchedule
     ```
 
-    > **Note:**
-    >
-    > * Make sure the number of PD nodes, TiKV nodes, or TiDB nodes is the same as the value of the `replicas` field in `db.yaml`. Note that in the Regional cluster, the number of nodes to actually create is `pd_count` * `3`, `tikv_count` * `3`, or `tidb_count` * `3`.
-    > * Make sure `spec.initializer.version` in `db-monitor.yaml` is the same as `spec.version` in `db.yaml`. Otherwise, the monitor might not display correctly.
-    > * As the data on the local SSDs on the node [does not persist](https://cloud.google.com/kubernetes-engine/docs/how-to/persistent-volumes/local-ssd#limitations) during the GKE upgrade, it is not recommended to use local SSDs as TiKV storage in the production environment. It is recommended to use the SSD persistent disks. You can refer to [Kubernetes Documentation](https://kubernetes.io/docs/concepts/storage/storage-classes/#gce-pd) to create the `StorageClass` as needed and modify the `spec.tikv.storageClassName` in `db.yaml`.
+### Deploy TiDB Operator
+
+To deploy TiDB Operator in the Kubernetes cluster, refer to the [*Deploy TiDB Operator* section](get-started.md#deploy-tidb-operator).
+
+### Deploy a TiDB cluster and the monitoring component
+
+1. Prepare the `TidbCluster` and `TidbMonitor` CR files:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    curl -LO https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/gcp/tidb-cluster.yaml &&
+    curl -LO https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/gcp/tidb-monitor.yaml
+    ```
 
 2. Create `Namespace`:
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl --kubeconfig credentials/kubeconfig_${gke_name} create namespace ${namespace}
+    kubectl create namespace tidb-cluster
     ```
 
     > **Note:**
     >
-    > You can give the [`namespace`](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) a name that is easy to memorize, such as the same name as `default_tidb_cluster_name`.
+    > A [`namespace`](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) is a virtual cluster backed by the same physical cluster. This document takes `tidb-cluster` as an example. If you want to use other namespace, modify the corresponding arguments of `-n` or `--namespace`.
 
 3. Deploy the TiDB cluster:
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl --kubeconfig credentials/kubeconfig_${gke_name} create -f db.yaml -n ${namespace}
-    kubectl --kubeconfig credentials/kubeconfig_${gke_name} create -f db-monitor.yaml -n ${namespace}
+    kubectl create -f tidb-cluster.yaml -n tidb-cluster &&
+    kubectl create -f tidb-monitor.yaml -n tidb-cluster
+    ```
+
+4. View the startup status of the TiDB cluster:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl get pods -n tidb-cluster
+    ```
+
+    When all the Pods are in the `Running` or `Ready` state, the TiDB cluster is successfully started. For example:
+
+    ```
+    NAME                              READY   STATUS    RESTARTS   AGE
+    tidb-discovery-5cb8474d89-n8cxk   1/1     Running   0          47h
+    tidb-monitor-6fbcc68669-dsjlc     3/3     Running   0          47h
+    tidb-pd-0                         1/1     Running   0          47h
+    tidb-pd-1                         1/1     Running   0          46h
+    tidb-pd-2                         1/1     Running   0          46h
+    tidb-tidb-0                       2/2     Running   0          47h
+    tidb-tidb-1                       2/2     Running   0          46h
+    tidb-tikv-0                       1/1     Running   0          47h
+    tidb-tikv-1                       1/1     Running   0          47h
+    tidb-tikv-2                       1/1     Running   0          47h
+    ```
+
+## Access the TiDB database
+
+After you deploy a TiDB cluster, you can access the TiDB database via MySQL client.
+
+### Prepare a host that can access the cluster
+
+The LoadBalancer created for your TiDB cluster is an intranet LoadBalancer. You can create a [bastion host](https://cloud.google.com/solutions/connecting-securely#bastion) in the cluster VPC to access the database.
+
+{{< copyable "shell-regular" >}}
+
+```shell
+gcloud compute instances create bastion \
+  --machine-type=n1-standard-4 \
+  --image-project=centos-cloud \
+  --image-family=centos-7 \
+  --zone=<your-region>-a
+```
+
+> **Note:**
+>
+> `<your-region>-a` is the `a` zone in the region of the cluster, such as `us-central1-a`. You can also create the bastion host in other zones in the same region.
+
+### Install the MySQL client and connect
+
+After the bastion host is created, you can connect to the bastion host via SSH and access the TiDB cluster via the MySQL client.
+
+1. Connect to the bastion host via SSH:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    gcloud compute ssh tidb@bastion
+    ```
+
+2. Install the MySQL client:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    sudo yum install mysql -y
+    ```
+
+3. Connect the client to the TiDB cluster:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    mysql -h <tidb-nlb-dnsname> -P 4000 -u root
+    ```
+
+    `<tidb-nlb-dnsname>` is the LoadBalancer IP of the TiDB service. You can view the IP in the `EXTERNAL-IP` field of the `kubectl get svc basic-tidb -n tidb-cluster` execution result.
+
+    For example:
+
+    ```shell
+    $ mysql -h 10.128.15.243 -P 4000 -u root
+    Welcome to the MariaDB monitor.  Commands end with ; or \g.
+    Your MySQL connection id is 7823
+    Server version: 5.7.25-TiDB-v4.0.4 TiDB Server (Apache License 2.0) Community Edition, MySQL 5.7 compatible
+
+    Copyright (c) 2000, 2018, Oracle, MariaDB Corporation Ab and others.
+
+    Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+    MySQL [(none)]> show status;
+    +--------------------+--------------------------------------+
+    | Variable_name      | Value                                |
+    +--------------------+--------------------------------------+
+    | Ssl_cipher         |                                      |
+    | Ssl_cipher_list    |                                      |
+    | Ssl_verify_mode    | 0                                    |
+    | Ssl_version        |                                      |
+    | ddl_schema_version | 22                                   |
+    | server_id          | 717420dc-0eeb-4d4a-951d-0d393aff295a |
+    +--------------------+--------------------------------------+
+    6 rows in set (0.01 sec)
     ```
 
 > **Note:**
 >
 > By default, TiDB (starting from v4.0.2) periodically shares usage details with PingCAP to help understand how to improve the product. For details about what is shared and how to disable the sharing, see [Telemetry](https://docs.pingcap.com/tidb/stable/telemetry).
 
-## Access the TiDB database
+## Monitor
 
-After `terraform apply` is successfully executed, perform the following steps to access the TiDB cluster. Replace the `${}` section with the output of running `terraform apply` above.
-
-1. Get the IP address of the TiDB Internal LoadBalancer:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    kubectl --kubeconfig credentials/kubeconfig_${gke_name} get svc ${cluster_name}-tidb -n ${namespace}
-    ```
-
-    `EXTERNAL-IP` is the IP address of the Internal LoadBalancer.
-
-2. Connect to the bastion machine by using `ssh`.
-
-    {{< copyable "shell-regular" >}}
-
-    ```bash
-    gcloud compute ssh ${gke_cluster_name}-bastion --zone ${zone}
-    ```
-
-3. Access the TiDB cluster via a MySQL client.
-
-    {{< copyable "shell-regular" >}}
-
-    ```bash
-    mysql -h ${tidb_ilb_ip} -P 4000 -u root
-    ```
-
-    > **Note:**
-    >
-    > You need to install the MySQL client before you connect to TiDB via MySQL. If you use CentOS, install the client by executing `sudo yum install -y mysql`.
-    > `${tidb_ilb_ip}` is the IP address of the Internal LoadBalancer acquired in step 1.
-
-## Interact with the GKE cluster
-
-You can interact with the GKE cluster by using `kubectl` and `helm` with the `credentials/kubeconfig_${gke_cluster_name}` kubeconfig file in the following two ways.
-
-> **Note:**
->
-> The default `gke_cluster_name` is `tidb-cluster`, which can be modified by changing `gke_name` in the `variables.tf` file.
-
-- Specify the `--kubeconfig` option:
-
-    {{< copyable "shell-regular" >}}
-
-    ```bash
-    kubectl --kubeconfig credentials/kubeconfig_${gke_cluster_name} get po -n ${tidb_cluster_name}
-    ```
-
-    > **Note:**
-    >
-    > The `--kubeconfig` option used by the following command requires Helm 2.10.0 or later versions.
-
-    {{< copyable "shell-regular" >}}
-
-    ```bash
-    helm --kubeconfig credentials/kubeconfig_${gke_cluster_name} ls
-    ```
-
-- Set the `KUBECONFIG` environment variable:
-
-    {{< copyable "shell-regular" >}}
-
-    ```bash
-    export KUBECONFIG=$PWD/credentials/kubeconfig_${gke_cluster_name}
-    ```
-
-    {{< copyable "shell-regular" >}}
-
-    ```bash
-    kubectl get po -n ${tidb_cluster_name}
-    ```
-
-    {{< copyable "shell-regular" >}}
-
-    ```bash
-    helm ls
-    ```
-
-## Manage multiple TiDB clusters
-
-An instance of a `tidb-cluster` module corresponds to a TiDB cluster in the GKE cluster. To add a new TiDB cluster, perform the following steps:
-
-1. Edit the `tidbclusters.tf` file and add a `tidb-cluster` module.
-
-    For example:
-
-    {{< copyable "" >}}
-
-    ```hcl
-    module "example-tidb-cluster" {
-      providers = {
-          helm = "helm.gke"
-      }
-      source                     = "../modules/gcp/tidb-cluster"
-      cluster_id                 = module.tidb-operator.cluster_id
-      tidb_operator_id           = module.tidb-operator.tidb_operator_id
-      gcp_project                = var.GCP_PROJECT
-      gke_cluster_location       = local.location
-      gke_cluster_name           = ${gke_cluster_name}
-      cluster_name               = "example-tidb-cluster"
-      cluster_version            = "v4.0.4"
-      kubeconfig_path            = local.kubeconfig
-      tidb_cluster_chart_version = "v1.0.0"
-      pd_instance_type           = "n1-standard-1"
-      tikv_instance_type         = "n1-standard-4"
-      tidb_instance_type         = "n1-standard-2"
-      monitor_instance_type      = "n1-standard-1"
-      pd_node_count              = 1
-      tikv_node_count            = 2
-      tidb_node_count            = 1
-      monitor_node_count         = 1
-    }
-    ```
-
-    > **Note:**
-    >
-    > - `cluster_name` must be unique for each cluster.
-    > - The total number of nodes actually to create for each component = the number of nodes in the configuration file * the number of Availability Zones in the Region. The number of Regional clusters is `3` by default.
-
-2. After you finish modification, execute `terraform init` and `terraform apply` to create the cluster.
-
-## Scale the TiDB cluster
-
-To scale the TiDB cluster, perform the following steps:
-
-1. Increase the value of the `pd_count`, `tikv_count`, or `tidb_count` variable in the `.tfvars` file.
-2. Run `terraform apply`.
-
-> **Warning:**
->
-> Currently, scaling in is not supported because it cannot be determined which node will be removed. Scaling in by modifying `tikv_count` can lead to data loss.
-
-Scaling out needs a few minutes to complete, you can watch the scaling-out process by running the following command:
-
-```bash
-kubectl --kubeconfig credentials/kubeconfig_${gke_cluster_name} get po -n ${tidb_cluster_name} --watch
-```
-
-For example, to scale out the cluster, you can modify the number of TiDB instances (`tidb_count`) from 1 to 2:
-
-```hcl
-tidb_count = 2
-```
-
-> **Note:**
->
-> Incrementing the node count creates a node per GCP Availability Zone.
-
-## Customize
-
-While you can change the default values in the `variables.tf` file, such as the cluster name or image version, it is recommended that you specify values in `terraform.tfvars` or another file of your choice.
-
-### Customize GCP resources
-
-In GCP, you can attach a local SSD to any instance type that is `n1-standard-1` or greater, which provides good customizability.
-
-### Customize TiDB parameters
-
-The Terraform scripts provide proper default settings for the TiDB cluster in GKE. You can also specify `override_values` or `override_values_file` variables in the `tidbclusters.tf` file for each TiDB cluster. If both variables are configured, then `override_values` is enabled and overrides the default settings. For example:
-
-{{< copyable "" >}}
-
-```
-override_values = <<EOF
-discovery:
-  image: pingcap/tidb-operator:v1.0.1
-  imagePullPolicy: IfNotPresent
-  resources:
-    limits:
-      cpu: 250m
-      memory: 150Mi
-    requests:
-      cpu: 30m
-      memory: 30Mi
-EOF
-```
-
-{{< copyable "" >}}
-
-```
-override_values_file = "./test-cluster.yaml"
-```
-
-By default, the cluster uses `values/default.yaml` in the `deploy/modules/gcp/tidb-cluster` module as the overriding values file.
-
-In GKE, some configuration items are not customizable in `values.yaml`, such as the cluster version, the number of replicas, `NodeSelector`, and `Tolerations`. `NodeSelector` and `Tolerations` are controlled by Terraform to ensure consistency between the infrastructure and TiDB clusters.
-
-To customize the cluster version and the number of replicas, directly modify arguments of the `tidb-cluster` module in the `clusters.tf` file.
-
-> **Note:**
->
-> It is not recommended to include the following configurations (default configurations of the `tidb-cluster` module) in the customized `values.yaml`.
-
-```
-pd:
-  storageClassName: pd-ssd
-tikv:
-  stroageClassName: local-storage
- tidb:
-  service:
-    type: LoadBalancer
-    annotations:
-      cloud.google.com/load-balancer-type: "Internal"
-  separateSlowLog: true
-monitor:
-  storageClassName: pd-ssd
-  persistent: true
-  grafana:
-    config:
-      GF_AUTH_ANONYMOUS_ENABLED: "true"
-    service:
-      type: LoadBalancer
-```
-
-### Customize TiDB Operator
-
-You can customize TiDB Operator by specifying overriding values through the `operator_helm_values` variable or specifying an overriding values file through the `operator_helm_values_file` variable. If both variables are configured, then `operator_helm_values` will be enabled and its value will be passed into the `tidb-cluster` module.
-
-{{< copyable "" >}}
-
-```
-operator_helm_values = <<EOF
-controllerManager:
-  resources:
-    limits:
-      cpu: 250m
-      memory: 150Mi
-    requests:
-      cpu: 30m
-      memory: 30Mi
-EOF
-```
-
-{{< copyable "" >}}
-
-```
-operator_helm_values_file = "./test-operator.yaml"
-```
-
-### Customize logging
-
-GKE uses Fluentd as its default log collector, which then forwards logs to Stackdriver. The Fluentd process can be quite resource hungry and consume a non-trivial share of CPU and RAM.
-Fluent Bit is a more performant and less resource-intensive alternative. It is recommended to use Fluent Bit over Fluentd for a production set up. See [this repository](https://github.com/pingcap/k8s-fluent-bit-stackdriver) for an example of how to set up Fluent Bit on a GKE cluster.
-
-### Customize node pools
-
-The cluster is created as a regional, as opposed to a zonal cluster. This means that GKE replicates node pools to each Availability Zone. This is desired to maintain high availability, however, for the monitoring services, like Grafana, this is potentially unnecessary. It is possible to manually remove nodes if desired via `gcloud`.
-
-> **Note:**
->
-> GKE node pools are managed instance groups, so a node deleted by `gcloud compute instances delete` will be automatically recreated and added back to the cluster.
-
-Suppose that you need to delete a node from the monitor pool. You can perform the following steps:
-
-1. Get the managed instance group and the Available Zone.
-
-    {{< copyable "shell-regular" >}}
-
-    ```bash
-    gcloud compute instance-groups managed list | grep monitor
-    ```
-
-    The output is something like this:
-
-    ```
-    gke-tidb-monitor-pool-08578e18-grp  us-west1-b  zone   gke-tidb-monitor-pool-08578e18  0     0            gke-tidb-monitor-pool-08578e18  no
-    gke-tidb-monitor-pool-7e31100f-grp  us-west1-c  zone   gke-tidb-monitor-pool-7e31100f  1     1            gke-tidb-monitor-pool-7e31100f  no
-    gke-tidb-monitor-pool-78a961e5-grp  us-west1-a  zone   gke-tidb-monitor-pool-78a961e5  1     1            gke-tidb-monitor-pool-78a961e5  no
-    ```
-
-    The first column is the name of the managed instance group, and the second column is the Available Zone where it is created.
-
-2. Get the name of the instance in that instance group.
-
-    {{< copyable "shell-regular" >}}
-
-    ```bash
-    gcloud compute instance-groups managed list-instances ${instance_group} --zone ${zone}
-    ```
-
-    For example:
-
-    {{< copyable "shell-regular" >}}
-
-    ```bash
-    gcloud compute instance-groups managed list-instances gke-tidb-monitor-pool-08578e18-grp --zone us-west1-b
-    ```
-
-    The output is something like this:
-
-    ```
-    NAME                                       ZONE        STATUS   ACTION  INSTANCE_TEMPLATE                     VERSION_NAME  LAST_ERROR
-    gke-tidb-monitor-pool-08578e18-c7vd  us-west1-b  RUNNING  NONE    gke-tidb-monitor-pool-08578e18
-    ```
-
-3. Delete the instance by specifying the name of the managed instance group and the name of the instance.
-
-    For example,
-
-    {{< copyable "shell-regular" >}}
-
-    ```bash
-    gcloud compute instance-groups managed delete-instances gke-tidb-monitor-pool-08578e18-grp --instances=gke-tidb-monitor-pool-08578e18-c7vd --zone us-west1-b
-    ```
-
-## Destroy a TiDB cluster
-
-When you are done, the infrastructure can be torn down by running the following command:
-
-{{< copyable "shell-regular" >}}
-
-```bash
-terraform destroy
-```
-
-> **Note:**
->
-> When `terraform destroy` is running, an error with the following message might occur: `Error reading Container Cluster "tidb": Cluster "tidb" has status "RECONCILING" with message""`. This happens when GCP is upgrading the Kubernetes master node, which it does automatically at times. While this is happening, it is not possible to delete the cluster. When it is done, run `terraform destroy` again.
-
-### Delete disks after use
-
-If you no longer need the data and would like to delete the disks in use, you can choose one of the following two ways:
-
-- Manual deletion: do this either in Google Cloud Console or using the `gcloud` command-line tool.
-
-- Setting the Kubernetes persistent volume reclaiming policy to `Delete` prior to executing `terraform destroy`: Do this by running the following `kubectl` command before `terraform destroy`.
-
-    ```bash
-    kubectl --kubeconfig /path/to/kubeconfig/file get pvc -n namespace-of-tidb-cluster -o jsonpath='{.items[*].spec.volumeName}'|fmt -1 | xargs -I {} kubectl --kubeconfig /path/to/kubeconfig/file patch pv {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
-    ```
-
-    This command gets the persistent volume claims (PVCs) in the TiDB cluster namespace and sets the reclaiming policy of the persistent volumes to `Delete`. When the PVCs are deleted during `terraform destroy` execution, the disks are deleted as well.
-
-    The following `change-pv-reclaimpolicy.sh` script simplifies the above process in the `deploy/gcp` directory comparing to the root directory of the repository.
-
-    ```bash
-    ./change-pv-reclaimpolicy.sh /path/to/kubeconfig/file tidb-cluster-namespace
-    ```
-
-## Manage multiple Kubernetes clusters
-
-This section describes the best practices for managing multiple Kubernetes clusters, each with one or more TiDB clusters installed.
-
-The Terraform module in TiDB typically combines the following sub-modules:
-
-- `tidb-operator`: provisions the [Kubernetes Control Plane](https://kubernetes.io/docs/concepts/#kubernetes-control-plane) and TiDB Operator for TiDB clusters
-- `tidb-cluster`: creates the resource pool in the target Kubernetes cluster
-- A `vpc` module, a `bastion` module, and a `project-credentials` module: dedicated to TiDB clusters on GKE
-
-The best practices for managing multiple Kubernetes clusters are as follows:
-
-- Creating a new directory for each of your Kubernetes clusters.
-- Combining the above modules according to your needs via Terraform scripts.
-
-If you use the best practices, the Terraform states among clusters do not interfere with each other, and it is convenient to manage multiple Kubernetes clusters. Here's an example (assume you are in the project root directory):
+Obtain the LoadBalancer IP of Grafana:
 
 {{< copyable "shell-regular" >}}
 
 ```shell
-mkdir -p deploy/gcp-staging &&
-vim deploy/gccp-staging/main.tf
+kubectl -n tidb-cluster get svc basic-grafana
 ```
 
-The content of `deploy/gcp-staging/main.tf` could be:
+For example:
 
-```hcl
-provider "google" {
-  credentials = file(var.GCP_CREDENTIALS_PATH)
-  region      = var.GCP_REGION
-  project     = var.GCP_PROJECT
-}
-
-// required for taints on node pools
-provider "google-beta" {
-  credentials = file(var.GCP_CREDENTIALS_PATH)
-  region      = var.GCP_REGION
-  project     = var.GCP_PROJECT
-}
-
-locals {
-  gke_name        = "another-gke-name"
-  credential_path = "${path.cwd}/credentials"
-  kubeconfig      = "${local.credential_path}/kubeconfig_${var.gke_name}"
-}
-
-
-module "project-credentials" {
-  source = "../modules/gcp/project-credentials"
-
-  path = local.credential_path
-}
-
-module "vpc" {
-  source              = "../modules/gcp/vpc"
-  create_vpc          = true
-  gcp_project         = var.GCP_PROJECT
-  gcp_region          = var.GCP_REGION
-  vpc_name            = "${locals.gke_name}-vpc-network"
-  private_subnet_name = "${locals.gke_name}-private-subnet"
-  public_subnet_name  = "${locals.gke_name}-public-subnet"
-}
-
-module "tidb-operator" {
-  source                = "../modules/gcp/tidb-operator"
-  gke_name              = locals.gke_name
-  vpc_name              = module.vpc.vpc_name
-  subnetwork_name       = module.vpc.private_subnetwork_name
-  gcp_project           = var.GCP_PROJECT
-  gcp_region            = var.GCP_REGION
-  kubeconfig_path       = local.kubeconfig
-  tidb_operator_version = "v1.0.0"
-}
-
-module "bastion" {
-  source             = "../modules/gcp/bastion"
-  vpc_name           = module.vpc.vpc_name
-  public_subnet_name = module.vpc.public_subnetwork_name
-  gcp_project        = var.GCP_PROJECT
-  bastion_name       = "${locals.gke_name}-tidb-bastion"
-}
-
-# HACK: enforces Helm to depend on the GKE cluster
-data "local_file" "kubeconfig" {
-  depends_on = [module.tidb-operator.cluster_id]
-  filename   = module.tidb-operator.kubeconfig_path
-}
-resource "local_file" "kubeconfig" {
-  depends_on = [module.tidb-operator.cluster_id]
-  content    = data.local_file.kubeconfig.content
-  filename   = module.tidb-operator.kubeconfig_path
-}
-
-provider "helm" {
-  alias          = "gke"
-  insecure       = true
-  install_tiller = false
-  kubernetes {
-    config_path = local_file.kubeconfig.filename
-  }
-}
-module "tidb-cluster-a" {
-  providers = {
-    helm = "helm.gke"
-  }
-  source                     = "../modules/gcp/tidb-cluster"
-  gcp_project                = var.GCP_PROJECT
-  gke_cluster_location       = var.GCP_REGION
-  gke_cluster_name           = locals.gke_name
-  cluster_name               = "tidb-cluster-a"
-  cluster_version            = "v4.0.4"
-  kubeconfig_path            = module.tidb-operator.kubeconfig_path
-  tidb_cluster_chart_version = "v1.0.0"
-  pd_instance_type           = "n1-standard-1"
-  tikv_instance_type         = "n1-standard-4"
-  tidb_instance_type         = "n1-standard-2"
-  monitor_instance_type      = "n1-standard-1"
-}
-
-module "tidb-cluster-b" {
-  providers = {
-    helm = "helm.gke"
-  }
-  source                     = "../modules/gcp/tidb-cluster"
-  gcp_project                = var.GCP_PROJECT
-  gke_cluster_location       = var.GCP_REGION
-  gke_cluster_name           = locals.gke_name
-  cluster_name               = "tidb-cluster-b"
-  cluster_version            = "v4.0.4"
-  kubeconfig_path            = module.tidb-operator.kubeconfig_path
-  tidb_cluster_chart_version = "v1.0.0"
-  pd_instance_type           = "n1-standard-1"
-  tikv_instance_type         = "n1-standard-4"
-  tidb_instance_type         = "n1-standard-2"
-  monitor_instance_type      = "n1-standard-1"
-}
-
-output "how_to_ssh_to_bastion" {
-  value= module.bastion.how_to_ssh_to_bastion
-}
+```
+$ kubectl -n tidb-cluster get svc basic-grafana
+NAME                     TYPE           CLUSTER-IP      EXTERNAL-IP      PORT(S)               AGE
+basic-grafana            LoadBalancer   10.15.255.169   34.123.168.114   3000:30657/TCP        35m
 ```
 
-As shown in the code above, you can omit several parameters in each of the module calls because there are reasonable defaults, and it is easy to customize the configuration. For example, just delete the bastion module call if you do not need it.
+In the output above, the `EXTERNAL-IP` column is the LoadBalancer IP.
 
-To customize a field, use one of the following two methods:
+You can access the `<grafana-lb>:3000` address using your web browser to view monitoring metrics. Replace `<grafana-lb>` with the LoadBalancer IP.
 
-- Modify the parameter configuration of `module` in the `*.tf` file directly.
-- Refer to the `variables.tf` file of each module for all the modifiable parameters and set custom values in `terraform.tfvars`.
+The initial Grafana login credentials are:
+
+- User: admin
+- Password: admin
+
+## Upgrade
+
+To upgrade the TiDB cluster, edit the `spec.version` by executing `kubectl edit tc basic -n tidb-cluster`.
+
+The upgrade process does not finish immediately. You can watch the upgrade progress by executing `kubectl get pods -n tidb-cluster --watch`.
+
+## Scale out
+
+Before scaling out the cluster, you need to scale out the corresponding node pool so that the new instances have enough resources for operation.
+
+The following example shows how to scale out the `tikv` node pool of the `tidb` cluster to have 6 nodes:
+
+{{< copyable "shell-regular" >}}
+
+```shell
+gcloud container clusters resize tidb --node-pool tikv --num-nodes 2
+```
 
 > **Note:**
 >
-> * When creating a new directory, pay attention to its relative path to Terraform modules, which affects the `source` parameter during module calls.
-> * If you want to use these modules outside the tidb-operator project, make sure you copy the whole `modules` directory and keep the relative path of each module inside the directory unchanged.
-> * Due to limitation [hashicorp/terraform#2430](https://github.com/hashicorp/terraform/issues/2430#issuecomment-370685911) of Terraform, the `# HACK: enforces Helm to depend on the GKE cluster` section is added in the above example to deal with the Helm provider. If you write your own `tf` file, you need to include this section.
+> In the regional cluster, the nodes are created in 3 zones. Therefore, after scaling out, the number of nodes is `2 * 3 = 6`.
 
-If you are unwilling to write Terraform code, you can also copy the `deploy/gcp` directory to create new Kubernetes clusters. But note that do not copy a directory that you have already run `terraform apply` against. In this case, it is recommended that you re-clone the tidb-operator repository before copying the directory.
+After that, execute `kubectl edit tc basic -n tidb-cluster` and modify each component's `replicas` to the desired number of replicas. The scaling-out process is then completed.
+
+For more information on managing node pools, refer to [GKE Node pools](https://cloud.google.com/kubernetes-engine/docs/concepts/node-pools).
+
+## Deploy TiFlash and TiCDC
+
+### Create new node pools
+
+* Create a node pool for TiFlash:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    gcloud container node-pools create tiflash --cluster tidb --machine-type n1-highmem-8 --num-nodes=1 \
+        --node-labels dedicated=tiflash --node-taints dedicated=tiflash:NoSchedule
+    ```
+
+* Create a node pool for TiCDC:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    gcloud container node-pools create ticdc --cluster tidb --machine-type n1-standard-4 --num-nodes=1 \
+        --node-labels dedicated=ticdc --node-taints dedicated=ticdc:NoSchedule
+    ```
+
+### Configure and deploy
+
+* To deploy TiFlash, configure `spec.tiflash` in `tidb-cluster.yaml`. For example:
+
+    ```yaml
+    spec:
+      ...
+      tiflash:
+        baseImage: pingcap/tiflash
+        replicas: 1
+        storageClaims:
+        - resources:
+            requests:
+            storage: 100Gi
+        nodeSelector:
+          dedicated: tiflash
+        tolerations:
+        - effect: NoSchedule
+          key: dedicated
+          operator: Equal
+          value: tiflash
+    ```
+
+    > **Warning:**
+    >
+    > TiDB Operator automatically mounts PVs **in the order of the configuration** in the `storageClaims` list. Therefore, if you need to add disks for TiFlash, make sure that you add the disks **only to the end of the original configuration** in the list. In addition, you must **not** alter the order of the original configuration.
+
+* To deploy TiCDC, configure `spec.ticdc` in `tidb-cluster.yaml`. For example:
+
+    ```yaml
+    spec:
+      ...
+      ticdc:
+        baseImage: pingcap/ticdc
+        replicas: 1
+        nodeSelector:
+          dedicated: ticdc
+        tolerations:
+        - effect: NoSchedule
+          key: dedicated
+          operator: Equal
+          value: ticdc
+    ```
+
+    Modify `replicas` according to your needs.
+
+Finally, execute `kubectl -n tidb-cluster apply -f tidb-cluster.yaml` to update the TiDB cluster configuration.
+
+For detailed CR configuration, refer to [API references](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.md) and [Configure a TiDB Cluster](configure-a-tidb-cluster.md).
+
+## Use local storage
+
+Some GCP instance types provide additional [local store volumes](https://cloud.google.com/kubernetes-engine/docs/how-to/persistent-volumes/local-ssd). You can choose such instances for the TiKV node pool to achieve higher IOPS and lower latency.
+
+> **Note:**
+>
+> You cannot dynamically change the storage class of a running TiDB cluster. You can create a new cluster for testing.
+> 
+> During the GKE upgrade, data in the local storage will be [lost](https://cloud.google.com/kubernetes-engine/docs/how-to/persistent-volumes/local-ssd) due to the node reconstruction. When the node reconstruction occurs, you need to migrate data in TiKV. If you do not want to migrate data, it is recommended not to use the local disk in the production environment.
+
+1. Create a node pool with local storage for TiKV:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    gcloud container node-pools create tikv --cluster tidb --machine-type n1-standard-4 --num-nodes=1 --local-ssd-count 1 \
+      --node-labels dedicated=tikv --node-taints dedicated=tikv:NoSchedule
+    ```
+
+    If the TiKV node pool already exists, you can either delete the old pool and then create a new one, or change the pool name to avoid conflict.
+
+2. Deploy the local volume provisioner.
+
+    You need to use the [local-volume-provisioner](https://sigs.k8s.io/sig-storage-local-static-provisioner) to discover and manage the local storage. Executing the following command deploys and creates a `local-storage` storage class:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/gke/local-ssd-provision/local-ssd-provision.yaml
+    ```
+
+3. Use the local storage.
+
+    After the steps above, the local volume provisioner can discover all the local NVMe SSD disks in the cluster.
+
+    Modify `tikv.storageClassName` in the `tidb-cluster.yaml` file to `local-storage`.

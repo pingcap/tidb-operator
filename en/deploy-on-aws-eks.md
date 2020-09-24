@@ -85,7 +85,7 @@ eksctl create cluster -f cluster.yaml
 
 To deploy TiDB Operator in the Kubernetes cluster, refer to the [*Deploy TiDB Operator* section](get-started.md#deploy-tidb-operator) in Getting Started.
 
-### Deploy TiDB cluster and monitor
+### Deploy a TiDB cluster and the monitoring component
 
 1. Prepare the TidbCluster and TidbMonitor CR files:
 
@@ -386,6 +386,8 @@ Some AWS instance types provide additional [NVMe SSD local store volumes](https:
 
 > **Note:**
 >
+> You cannot dynamically change the storage class of a running TiDB cluster. You can create a new cluster for testing.
+> 
 > During the EKS upgrade, data in the local storage will be [lost](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html#instance-store-lifetime) due to the node reconstruction. When the node reconstruction occurs, you need to migrate data in TiKV. If you do not want to migrate data, it is recommended not to use the local disk in the production environment.
 
 For instance types that provide local volumes, see [AWS Instance Types](https://aws.amazon.com/ec2/instance-types/). Take `c5d.4xlarge` as an example:
@@ -429,5 +431,3 @@ For instance types that provide local volumes, see [AWS Instance Types](https://
     After the steps above, the local volume provisioner can discover all the local NVMe SSD disks in the cluster.
 
     Modify `tikv.storageClassName` in the `tidb-cluster.yaml` file to `local-storage`.
-
-    You cannot dynamically change the storage class of a running TiDB cluster. You can create a new cluster for testing.
