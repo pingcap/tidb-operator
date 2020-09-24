@@ -14,9 +14,11 @@
 package config
 
 import (
+	"strconv"
 	"testing"
 
 	. "github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/util/json"
 )
 
 type Simple struct {
@@ -24,10 +26,50 @@ type Simple struct {
 	B int
 }
 
+func TestGetSet(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	kv := map[string]int64{
+		"a.b.c1": 1,
+		"a.b.c2": 2,
+		"a.b1":   1,
+		"a.b2":   2,
+		"a1":     1,
+		"a2":     2,
+	}
+
+	c := New(map[string]interface{}{})
+
+	for k, v := range kv {
+		c.Set(k, v)
+		c.Set("f-"+k, float64(v))
+		c.Set("s-"+k, strconv.FormatInt(v, 10))
+	}
+
+	for k, v := range kv {
+		g.Expect(c.Get(k).MustInt()).Should(Equal(v))
+		g.Expect(c.Get("f-" + k).MustFloat()).Should(Equal(float64(v)))
+		g.Expect(c.Get("s-" + k).MustString()).Should(Equal(strconv.Itoa(int(v))))
+	}
+
+	// test overwrite the same key
+	k := "a.b1"
+	for v := int64(0); v < 100; v++ {
+		c.Set(k, v)
+		g.Expect(c.Get(k).MustInt()).Should(Equal(v))
+
+		c.Set("f-"+k, float64(v))
+		g.Expect(c.Get("f-" + k).MustFloat()).Should(Equal(float64(v)))
+
+		c.Set("s-"+k, strconv.FormatInt(v, 10))
+		g.Expect(c.Get("s-" + k).MustString()).Should(Equal(strconv.Itoa(int(v))))
+	}
+}
+
 func TestDeepCopyJsonObject(t *testing.T) {
 	g := NewGomegaWithT(t)
 
-	objects := []GenericConfig{
+	objects := []*GenericConfig{
 		New(nil),
 		New(map[string]interface{}{
 			"k1": true,
@@ -62,13 +104,83 @@ func TestDeepCopyJsonObject(t *testing.T) {
 
 	for _, obj := range objects {
 		copied := obj.DeepCopy()
-		g.Expect(copied).To(Equal(&obj))
+		g.Expect(copied).To(Equal(obj))
 
 		out := New(nil)
-		obj.DeepCopyInto(&out)
+		obj.DeepCopyInto(out)
 		g.Expect(out).To(Equal(obj))
 	}
 	copied := objects[1].DeepCopy()
-	copied.Config["k1"] = false
-	g.Expect(objects[1].Config["k1"]).To(Equal(true), "Mutation copy should net affect origin")
+	copied.mp["k1"] = false
+	g.Expect(objects[1].mp["k1"]).To(Equal(true), "Mutation copy should net affect origin")
+}
+
+func TestMarshalTOML(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	c := New(map[string]interface{}{
+		"int":   int64(1),
+		"float": 1.0,
+		"str":   "str",
+	})
+
+	data, err := c.MarshalTOML()
+	g.Expect(err).Should(BeNil())
+	t.Log("toml: ", string(data))
+
+	cback := New(nil)
+	err = cback.UnmarshalTOML(data)
+	g.Expect(err).Should(BeNil())
+	g.Expect(cback).Should(Equal(c))
+}
+
+func TestMarshlJSON(t *testing.T) {
+	type S struct {
+		Config *GenericConfig `json:"config,omitempty"`
+	}
+
+	g := NewGomegaWithT(t)
+
+	s := &S{
+		Config: New(map[string]interface{}{}),
+	}
+	s.Config.Set("sk", "v")
+	s.Config.Set("ik", int64(1))
+
+	data, err := json.Marshal(s)
+	g.Expect(err).Should(BeNil())
+
+	sback := new(S)
+	err = json.Unmarshal(data, sback)
+	g.Expect(err).Should(BeNil())
+	g.Expect(sback).Should(Equal(s))
+}
+
+func TestJsonOmitempty(t *testing.T) {
+	type S struct {
+		Config *GenericConfig `json:"config,omitempty"`
+	}
+
+	g := NewGomegaWithT(t)
+
+	// test Config should be nil
+	s := new(S)
+	err := json.Unmarshal([]byte("{}"), s)
+	g.Expect(err).Should(BeNil())
+	g.Expect(s.Config).Should(BeNil())
+	data, err := json.Marshal(s)
+	g.Expect(err).Should(BeNil())
+	g.Expect(s.Config).Should(BeNil())
+
+	// test Config should not be nil
+	s = new(S)
+	err = json.Unmarshal([]byte("{\"config\":\"a = 1\"}"), s)
+	g.Expect(err).Should(BeNil())
+	g.Expect(s.Config).ShouldNot(BeNil())
+	data, err = json.Marshal(s)
+	g.Expect(err).Should(BeNil())
+	s = new(S)
+	err = json.Unmarshal(data, s)
+	g.Expect(err).Should(BeNil())
+	g.Expect(s.Config).ShouldNot(BeNil())
 }
