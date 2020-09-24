@@ -227,6 +227,10 @@ type TidbClusterSpec struct {
 	// EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster
 	// +optional
 	EnableDynamicConfiguration *bool `json:"enableDynamicConfiguration,omitempty"`
+
+	// Cluster is the external cluster, if configured, the components in this TidbCluster will join to this configured cluster.
+	// +optional
+	Cluster *TidbClusterRef `json:"cluster,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.

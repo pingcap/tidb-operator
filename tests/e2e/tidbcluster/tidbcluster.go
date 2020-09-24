@@ -39,6 +39,7 @@ import (
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
+	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
@@ -723,7 +724,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		pvc, err = c.CoreV1().PersistentVolumeClaims(ns).Get("e2e-monitor-monitor", metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected fetch tidbmonitor pvc success")
 		pvName = pvc.Spec.VolumeName
-
 		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 			prometheusSvc, err := c.CoreV1().Services(ns).Get(fmt.Sprintf("%s-prometheus", tm.Name), metav1.GetOptions{})
 			if err != nil {
@@ -1160,6 +1160,71 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		err = f()
 		framework.ExpectEqual(err, wait.ErrWaitTimeout)
 		framework.Logf("nodePort tidbcluster tidb service NodePort haven't changed after update")
+	})
+
+	ginkgo.It("Add heterogeneous cluster into an existing cluster  ", func() {
+		// Create TidbCluster with NodePort to check whether node port would change
+		originTc := fixture.GetTidbCluster(ns, "origin", utilimage.TiDBV3Version)
+		originTc.Spec.PD.Replicas = 1
+		originTc.Spec.TiKV.Replicas = 1
+		originTc.Spec.TiDB.Replicas = 1
+		err := genericCli.Create(context.TODO(), originTc)
+		framework.ExpectNoError(err, "Expected TiDB cluster created")
+		err = oa.WaitForTidbClusterReady(originTc, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err, "Expected TiDB cluster ready")
+
+		heterogeneousTc := fixture.GetTidbCluster(ns, "heterogeneous", utilimage.TiDBV3Version)
+		heterogeneousTc.Spec.PD = nil
+		heterogeneousTc.Spec.TiKV.Replicas = 1
+		heterogeneousTc.Spec.TiDB.Replicas = 1
+		heterogeneousTc.Spec.Cluster = &v1alpha1.TidbClusterRef{
+			Name: originTc.Name,
+		}
+		err = genericCli.Create(context.TODO(), heterogeneousTc)
+		framework.ExpectNoError(err, "Expected Heterogeneous TiDB cluster created")
+		err = oa.WaitForTidbClusterReady(heterogeneousTc, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err, "Expected Heterogeneous TiDB cluster ready")
+		err = wait.PollImmediate(15*time.Second, 30*time.Minute, func() (bool, error) {
+			var tc *v1alpha1.TidbCluster
+			var err error
+			if tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(heterogeneousTc.Name, metav1.GetOptions{}); err != nil {
+				e2elog.Logf("failed to get tidbcluster: %s/%s, %v", ns, heterogeneousTc.Name, err)
+				return false, nil
+			}
+			if tc.Status.TiKV.StatefulSet == nil || tc.Status.TiKV.StatefulSet.ReadyReplicas != 1 {
+				if tc.Status.TiKV.StatefulSet == nil {
+					e2elog.Logf("failed to check TiKV statefulset status, (current: %d)", 0)
+				} else {
+					e2elog.Logf("failed to check TiKV statefulset status, (current: %d)", tc.Status.TiKV.StatefulSet.Replicas)
+				}
+
+				return false, nil
+			}
+			if tc.Status.TiDB.StatefulSet == nil || tc.Status.TiDB.StatefulSet.ReadyReplicas != 1 {
+				if tc.Status.TiDB.StatefulSet == nil {
+					e2elog.Logf("failed to check TiDB statefulset status, (current: %d)", 0)
+				} else {
+					e2elog.Logf("failed to check TiDB statefulset status, (current: %d)", tc.Status.TiDB.StatefulSet.Replicas)
+				}
+
+				return false, nil
+			}
+			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, originTc.Name, false)
+			framework.ExpectNoError(err, "create pdClient error")
+			defer cancel()
+			storeInfo, err := pdClient.GetStores()
+			if err != nil {
+				e2elog.Logf("failed to get stores, %v", err)
+			}
+			if storeInfo.Count != 2 {
+				e2elog.Logf("failed to check stores (current: %d)", storeInfo.Count)
+				return false, nil
+			}
+			e2elog.Logf("check heterogeneous tc successfully")
+			return true, nil
+		})
+		framework.ExpectNoError(err)
+
 	})
 
 	ginkgo.It("[Feature: CDC]", func() {
