@@ -20,8 +20,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 )
 
-// The TidbCluster for the external query will be "<original-tcname>-component-external"
 const (
+	// The TidbCluster for the external query will be "<original-tcname>-<component>-external"
 	externalTcNamePattern = "%s-%s-external"
 	specialUseLabelKey    = "specialUse"
 	specialUseHotRegion   = "hotRegion"
