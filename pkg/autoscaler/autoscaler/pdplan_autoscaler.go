@@ -226,6 +226,7 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 		case v1alpha1.TiDBMemberType.String():
 			autoTc.Spec.TiKV = nil
 
+			autoTc.Spec.TiDB.Replicas = int32(plan.Count)
 			autoTc.Spec.TiDB.ResourceRequirements = corev1.ResourceRequirements{
 				Limits:   limitsResourceList,
 				Requests: requestsResourceList,
