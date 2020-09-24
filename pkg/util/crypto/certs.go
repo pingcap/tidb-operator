@@ -111,7 +111,9 @@ func LoadTlsConfigFromSecret(secret *corev1.Secret) (*tls.Config, error) {
 	rootCAs := x509.NewCertPool()
 	var tlsCert tls.Certificate
 
-	rootCAs.AppendCertsFromPEM(secret.Data[corev1.ServiceAccountRootCAKey])
+	if !rootCAs.AppendCertsFromPEM(secret.Data[corev1.ServiceAccountRootCAKey]) {
+		return nil, fmt.Errorf("failed to append ca certs")
+	}
 
 	clientCert, certExists := secret.Data[corev1.TLSCertKey]
 	clientKey, keyExists := secret.Data[corev1.TLSPrivateKeyKey]
@@ -125,6 +127,7 @@ func LoadTlsConfigFromSecret(secret *corev1.Secret) (*tls.Config, error) {
 
 	return &tls.Config{
 		RootCAs:      rootCAs,
+		ClientCAs:    rootCAs,
 		Certificates: []tls.Certificate{tlsCert},
 	}, nil
 }
