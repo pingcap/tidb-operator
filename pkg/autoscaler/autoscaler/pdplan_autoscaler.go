@@ -224,7 +224,6 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 			errs = append(errs, err)
 			continue
 		}
-
 	}
 	return errorutils.NewAggregate(errs)
 }
