@@ -315,14 +315,7 @@ func genMetricsEndpoint(tac *v1alpha1.TidbClusterAutoScaler) (string, error) {
 }
 
 func autoscalerToStrategy(tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) *pdapi.Strategy {
-	var resources map[string]v1alpha1.AutoResource
-	switch component {
-	case v1alpha1.TiDBMemberType:
-		resources = tac.Spec.TiDB.Resources
-	case v1alpha1.TiKVMemberType:
-		resources = tac.Spec.TiKV.Resources
-	}
-
+	resources := getSpecResources(tac, component)
 	strategy := &pdapi.Strategy{
 		Resources: make([]*pdapi.Resource, 0, len(resources)),
 	}

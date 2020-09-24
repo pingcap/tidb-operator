@@ -416,6 +416,10 @@ func TestAutoscalerToStrategy(t *testing.T) {
 	tidbStrategy := autoscalerToStrategy(tac, v1alpha1.TiDBMemberType)
 	g.Expect(len(tidbStrategy.Resources)).Should(Equal(1))
 	g.Expect(len(tidbStrategy.Rules)).Should(Equal(1))
+
+	tikvStrategy := autoscalerToStrategy(tac, v1alpha1.TiKVMemberType)
+	g.Expect(len(tikvStrategy.Resources)).Should(Equal(1))
+	g.Expect(len(tikvStrategy.Rules)).Should(Equal(1))
 }
 
 func TestValidateTidbClusterAutoScaler(t *testing.T) {
