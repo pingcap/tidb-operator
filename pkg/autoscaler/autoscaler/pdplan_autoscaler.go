@@ -145,7 +145,12 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 			errs = append(errs, fmt.Errorf("unknown resource type %v for group %s tac[%s/%s]", plan.ResourceType, plan.Labels[groupLabelKey], tac.Namespace, tac.Name))
 			continue
 		}
-		resList := corev1.ResourceList{
+		requestsResourceList := corev1.ResourceList{
+			corev1.ResourceCPU:    resource.CPU,
+			corev1.ResourceMemory: resource.Memory,
+		}
+
+		limitsResourceList := corev1.ResourceList{
 			corev1.ResourceCPU:    resource.CPU,
 			corev1.ResourceMemory: resource.Memory,
 		}
@@ -175,23 +180,23 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 					Namespace: tac.Namespace,
 				},
 			},
-			Spec: v1alpha1.TidbClusterSpec{
-				Cluster: &v1alpha1.TidbClusterRef{
-					Name:      tc.Name,
-					Namespace: tc.Namespace,
-				},
-			},
+			Spec: *tc.Spec.DeepCopy(),
 		}
+
+		autoTc.Spec.TiCDC = nil
+		autoTc.Spec.TiFlash = nil
+		autoTc.Spec.PD = nil
+		autoTc.Spec.Pump = nil
 
 		switch component {
 		case v1alpha1.TiKVMemberType.String():
-			resList[corev1.ResourceStorage] = resource.Storage
+			requestsResourceList[corev1.ResourceStorage] = resource.Storage
+			autoTc.Spec.TiDB = nil
 
-			autoTc.Spec.TiKV = tc.Spec.TiKV.DeepCopy()
 			autoTc.Spec.TiKV.Replicas = int32(plan.Count)
 			autoTc.Spec.TiKV.ResourceRequirements = corev1.ResourceRequirements{
-				Limits:   resList,
-				Requests: resList,
+				Limits:   limitsResourceList,
+				Requests: requestsResourceList,
 			}
 
 			// Initialize Config
@@ -214,10 +219,11 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 				autoTc.Spec.TiKV.Config.Server.Labels[k] = v
 			}
 		case v1alpha1.TiDBMemberType.String():
-			autoTc.Spec.TiDB = tc.Spec.TiDB.DeepCopy()
+			autoTc.Spec.TiKV = nil
+
 			autoTc.Spec.TiDB.ResourceRequirements = corev1.ResourceRequirements{
-				Limits:   resList,
-				Requests: resList,
+				Limits:   limitsResourceList,
+				Requests: requestsResourceList,
 			}
 
 			// Initialize Config
