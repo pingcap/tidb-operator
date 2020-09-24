@@ -254,7 +254,7 @@ func setTiFlashCommonConfigDefault(config *v1alpha1.CommonConfig, externalCluste
 	if config.Flash == nil {
 		config.Flash = &v1alpha1.Flash{}
 	}
-	setTiFlashFlashConfigDefault(config.Flash, clusterName, ns)
+	setTiFlashFlashConfigDefault(config.Flash, externalClusterName, clusterName, ns)
 	if config.FlashLogger == nil {
 		config.FlashLogger = &v1alpha1.FlashLogger{}
 	}
@@ -291,9 +291,13 @@ func setTiFlashCommonConfigDefault(config *v1alpha1.CommonConfig, externalCluste
 	setTiFlashProfilesConfigDefault(config.FlashProfile)
 }
 
-func setTiFlashFlashConfigDefault(config *v1alpha1.Flash, clusterName, ns string) {
+func setTiFlashFlashConfigDefault(config *v1alpha1.Flash, externalClusterName string, clusterName, ns string) {
 	if config.TiDBStatusAddr == nil {
-		config.TiDBStatusAddr = pointer.StringPtr(fmt.Sprintf("%s.%s.svc:10080", controller.TiDBMemberName(clusterName), ns))
+		if len(externalClusterName) > 0 {
+			config.TiDBStatusAddr = pointer.StringPtr(fmt.Sprintf("%s.%s.svc:10080", controller.TiDBMemberName(externalClusterName), ns))
+		} else {
+			config.TiDBStatusAddr = pointer.StringPtr(fmt.Sprintf("%s.%s.svc:10080", controller.TiDBMemberName(clusterName), ns))
+		}
 	}
 	if config.ServiceAddr == nil {
 		config.ServiceAddr = pointer.StringPtr("0.0.0.0:3930")
