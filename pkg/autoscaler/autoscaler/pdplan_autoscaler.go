@@ -183,6 +183,11 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 			Spec: *tc.Spec.DeepCopy(),
 		}
 
+		autoTc.Spec.Cluster = &v1alpha1.TidbClusterRef{
+			Namespace: tc.Namespace,
+			Name:      tc.Name,
+		}
+
 		autoTc.Spec.TiCDC = nil
 		autoTc.Spec.TiFlash = nil
 		autoTc.Spec.PD = nil
