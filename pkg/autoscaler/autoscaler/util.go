@@ -397,12 +397,3 @@ func genAutoClusterName(tas *v1alpha1.TidbClusterAutoScaler, component string, l
 
 	return autoClusterPrefix + v1alpha1.HashContents(marshaled), nil
 }
-
-func patchAutoscalingLabels(autoTc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component, group string) {
-	if autoTc.Labels == nil {
-		autoTc.Labels = map[string]string{}
-	}
-	autoTc.Labels[label.AutoInstanceLabelKey] = tac.Name
-	autoTc.Labels[label.AutoComponentLabelKey] = component
-	autoTc.Labels[label.AutoScalingGroupLabelKey] = group
-}
