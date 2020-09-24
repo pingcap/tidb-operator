@@ -17,13 +17,15 @@ import (
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/controller"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // The TidbCluster for the external query will be "<original-tcname>-component-external"
-const externalTcNamePattern = "%s-%s-external"
+const (
+	externalTcNamePattern = "%s-%s-external"
+	specialUseLabelKey    = "specialUse"
+	specialUseHotRegion   = "hotRegion"
+)
 
 func (am *autoScalerManager) syncExternalResult(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType, targetReplicas int32) error {
 	externalTcName := fmt.Sprintf(externalTcNamePattern, tc.ClusterName, component.String())
@@ -44,35 +46,14 @@ func (am *autoScalerManager) syncExternalResult(tc *v1alpha1.TidbCluster, tac *v
 }
 
 func (am *autoScalerManager) createExternalAutoCluster(tc *v1alpha1.TidbCluster, externalTcName string, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType, targetReplicas int32) error {
-	autoTc := &v1alpha1.TidbCluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      externalTcName,
-			Namespace: tc.Namespace,
-			OwnerReferences: []metav1.OwnerReference{
-				controller.GetTiDBClusterAutoscalerOwnerRef(tac),
-			},
-		},
-		Status: v1alpha1.TidbClusterStatus{
-			AutoScaler: &v1alpha1.TidbClusterAutoScalerRef{
-				Name:      tac.Name,
-				Namespace: tac.Namespace,
-			},
-		},
-		Spec: v1alpha1.TidbClusterSpec{
-			Cluster: &v1alpha1.TidbClusterRef{
-				Name:      tc.Name,
-				Namespace: tc.Namespace,
-			},
-		},
-	}
+	autoTc := newAutoScalingCluster(tc, tac, externalTcName, component.String())
 
 	switch component {
 	case v1alpha1.TiDBMemberType:
-		autoTc.Spec.TiDB = tc.Spec.TiDB.DeepCopy()
 		autoTc.Spec.TiDB.Replicas = targetReplicas
 	case v1alpha1.TiKVMemberType:
-		autoTc.Spec.TiKV = tc.Spec.TiKV.DeepCopy()
 		autoTc.Spec.TiKV.Replicas = targetReplicas
+		autoTc.Spec.TiKV.Config.Server.Labels[specialUseLabelKey] = specialUseHotRegion
 	}
 
 	_, err := am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(autoTc)
