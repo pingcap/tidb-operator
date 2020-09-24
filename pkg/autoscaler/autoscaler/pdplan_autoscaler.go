@@ -174,7 +174,12 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 			errs = append(errs, fmt.Errorf("unknown resource type %v for group %s tac[%s/%s]", plan.ResourceType, plan.Labels[groupLabelKey], tac.Namespace, tac.Name))
 			continue
 		}
-		resList := corev1.ResourceList{
+		requestsResourceList := corev1.ResourceList{
+			corev1.ResourceCPU:    resource.CPU,
+			corev1.ResourceMemory: resource.Memory,
+		}
+
+		limitsResourceList := corev1.ResourceList{
 			corev1.ResourceCPU:    resource.CPU,
 			corev1.ResourceMemory: resource.Memory,
 		}
@@ -189,6 +194,11 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      autoTcName,
 				Namespace: tc.Namespace,
+				Labels: map[string]string{
+					label.AutoInstanceLabelKey:     tac.Name,
+					label.AutoComponentLabelKey:    component,
+					label.AutoScalingGroupLabelKey: group,
+				},
 				OwnerReferences: []metav1.OwnerReference{
 					controller.GetTiDBClusterAutoscalerOwnerRef(tac),
 				},
@@ -199,63 +209,72 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 					Namespace: tac.Namespace,
 				},
 			},
-			Spec: v1alpha1.TidbClusterSpec{
-				Cluster: &v1alpha1.TidbClusterRef{
-					Name:      tc.Name,
-					Namespace: tc.Namespace,
-				},
-			},
+			Spec: *tc.Spec.DeepCopy(),
 		}
+
+		autoTc.Spec.Cluster = &v1alpha1.TidbClusterRef{
+			Namespace: tc.Namespace,
+			Name:      tc.Name,
+		}
+
+		autoTc.Spec.TiCDC = nil
+		autoTc.Spec.TiFlash = nil
+		autoTc.Spec.PD = nil
+		autoTc.Spec.Pump = nil
 
 		switch component {
 		case v1alpha1.TiKVMemberType.String():
-			resList[corev1.ResourceStorage] = resource.Storage
+			requestsResourceList[corev1.ResourceStorage] = resource.Storage
+			autoTc.Spec.TiDB = nil
 
-			autoTc.Spec.TiKV = tc.Spec.TiKV.DeepCopy()
 			autoTc.Spec.TiKV.Replicas = int32(plan.Count)
 			autoTc.Spec.TiKV.ResourceRequirements = corev1.ResourceRequirements{
-				Limits:   resList,
-				Requests: resList,
+				Limits:   limitsResourceList,
+				Requests: requestsResourceList,
 			}
+
+			// Initialize Config
 			if autoTc.Spec.TiKV.Config == nil {
 				autoTc.Spec.TiKV.Config = &v1alpha1.TiKVConfig{
 					Server: &v1alpha1.TiKVServerConfig{
 						Labels: map[string]string{},
 					},
 				}
-			}
-			if autoTc.Spec.TiKV.Config.Server == nil {
+			} else if autoTc.Spec.TiKV.Config.Server == nil {
 				autoTc.Spec.TiKV.Config.Server = &v1alpha1.TiKVServerConfig{
 					Labels: map[string]string{},
 				}
-			}
-			if autoTc.Spec.TiKV.Config.Server.Labels == nil {
+			} else if autoTc.Spec.TiKV.Config.Server.Labels == nil {
 				autoTc.Spec.TiKV.Config.Server.Labels = map[string]string{}
 			}
+
+			// Assign Plan Labels
 			for k, v := range plan.Labels {
 				autoTc.Spec.TiKV.Config.Server.Labels[k] = v
 			}
 		case v1alpha1.TiDBMemberType.String():
-			autoTc.Spec.TiDB = tc.Spec.TiDB.DeepCopy()
+			autoTc.Spec.TiKV = nil
+
+			autoTc.Spec.TiDB.Replicas = int32(plan.Count)
 			autoTc.Spec.TiDB.ResourceRequirements = corev1.ResourceRequirements{
-				Limits:   resList,
-				Requests: resList,
+				Limits:   limitsResourceList,
+				Requests: requestsResourceList,
 			}
+
+			// Initialize Config
 			if autoTc.Spec.TiDB.Config == nil {
 				autoTc.Spec.TiDB.Config = &v1alpha1.TiDBConfig{
 					Labels: map[string]string{},
 				}
-			}
-			if autoTc.Spec.TiDB.Config.Labels == nil {
+			} else if autoTc.Spec.TiDB.Config.Labels == nil {
 				autoTc.Spec.TiDB.Config.Labels = map[string]string{}
 			}
+
+			// Assign Plan Labels
 			for k, v := range plan.Labels {
 				autoTc.Spec.TiDB.Config.Labels[k] = v
 			}
 		}
-
-		// Patch custom labels
-		patchAutoscalingLabels(autoTc, tac, component, group)
 
 		_, err = am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(autoTc)
 		if err != nil {

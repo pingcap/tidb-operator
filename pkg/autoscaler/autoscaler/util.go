@@ -20,12 +20,14 @@ import (
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 	"k8s.io/utils/pointer"
 )
@@ -398,11 +400,76 @@ func genAutoClusterName(tas *v1alpha1.TidbClusterAutoScaler, component string, l
 	return autoClusterPrefix + v1alpha1.HashContents(marshaled), nil
 }
 
-func patchAutoscalingLabels(autoTc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component, group string) {
-	if autoTc.Labels == nil {
-		autoTc.Labels = map[string]string{}
+func newAutoScalingCluster(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, name, component string) *v1alpha1.TidbCluster {
+	autoTc := &v1alpha1.TidbCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      autoTcName,
+			Namespace: tc.Namespace,
+			Labels: map[string]string{
+				label.AutoInstanceLabelKey:  tac.Name,
+				label.AutoComponentLabelKey: component,
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				controller.GetTiDBClusterAutoscalerOwnerRef(tac),
+			},
+		},
+		Status: v1alpha1.TidbClusterStatus{
+			AutoScaler: &v1alpha1.TidbClusterAutoScalerRef{
+				Name:      tac.Name,
+				Namespace: tac.Namespace,
+			},
+		},
+		Spec: *tc.Spec.DeepCopy(),
 	}
-	autoTc.Labels[label.AutoInstanceLabelKey] = tac.Name
-	autoTc.Labels[label.AutoComponentLabelKey] = component
-	autoTc.Labels[label.AutoScalingGroupLabelKey] = group
+
+	autoTc.Spec.Cluster = &v1alpha1.TidbClusterRef{
+		Namespace: tc.Namespace,
+		Name:      tc.Name,
+	}
+
+	autoTc.Spec.TiCDC = nil
+	autoTc.Spec.TiFlash = nil
+	autoTc.Spec.PD = nil
+	autoTc.Spec.Pump = nil
+
+	switch component {
+	case v1alpha1.TiDBMemberType.String():
+		autoTc.Spec.TiKV = nil
+		// Initialize Config
+		if autoTc.Spec.TiDB.Config == nil {
+			autoTc.Spec.TiDB.Config = &v1alpha1.TiDBConfig{
+				Labels: map[string]string{},
+			}
+		} else if autoTc.Spec.TiDB.Config.Labels == nil {
+			autoTc.Spec.TiDB.Config.Labels = map[string]string{}
+		}
+	case v1alpha1.TiKVMemberType.String():
+		autoTc.Spec.TiDB = nil
+		// Initialize Config
+		if autoTc.Spec.TiKV.Config == nil {
+			autoTc.Spec.TiKV.Config = &v1alpha1.TiKVConfig{
+				Server: &v1alpha1.TiKVServerConfig{
+					Labels: map[string]string{},
+				},
+			}
+		} else if autoTc.Spec.TiKV.Config.Server == nil {
+			autoTc.Spec.TiKV.Config.Server = &v1alpha1.TiKVServerConfig{
+				Labels: map[string]string{},
+			}
+		} else if autoTc.Spec.TiKV.Config.Server.Labels == nil {
+			autoTc.Spec.TiKV.Config.Server.Labels = map[string]string{}
+		}
+	}
+
+	return autoTc
+}
+
+func checkAutoscalingComponent(tas *v1alpha1.TidbClusterAutoScaler, component string) bool {
+	switch component {
+	case "tidb":
+		return tas.Spec.TiDB != nil
+	case "tikv":
+		return tas.Spec.TiKV != nil
+	}
+	return false
 }

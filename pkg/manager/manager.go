@@ -21,14 +21,6 @@ type Manager interface {
 	Sync(*v1alpha1.TidbCluster) error
 }
 
-type TiDBGroupManager interface {
-	Sync(*v1alpha1.TiDBGroup) error
-}
-
-type TiKVGroupManager interface {
-	SyncTiKVGroup(tg *v1alpha1.TiKVGroup, tc *v1alpha1.TidbCluster) error
-}
-
 type DMManager interface {
 	// Sync implements the logic for syncing dmcluster.
 	SyncDM(*v1alpha1.DMCluster) error

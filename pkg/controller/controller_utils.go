@@ -55,8 +55,8 @@ var (
 	// tidbMonitorControllerkind cotnains the schema.GroupVersionKind for TidbMonitor controller type.
 	tidbMonitorControllerkind = v1alpha1.SchemeGroupVersion.WithKind("TidbMonitor")
 
-	// tikvGroupControllerkind cotnains the schema.GroupVersionKind for TiKVGroup controller type.
-	tikvGroupControllerkind = v1alpha1.SchemeGroupVersion.WithKind("TiKVGroup")
+	// tidbClusterAutoScalerKind cotnains the schema.GroupVersionKind for TidbClusterAutoScaler controller type.
+	tidbClusterAutoScalerKind = v1alpha1.SchemeGroupVersion.WithKind("TidbClusterAutoScaler")
 
 	// TidbBackupManagerImage is the image of tidb backup manager tool
 	TidbBackupManagerImage string
@@ -203,8 +203,8 @@ func GetTiDBClusterAutoscalerOwnerRef(tac *v1alpha1.TidbClusterAutoScaler) metav
 	controller := true
 	blockOwnerDeletion := true
 	return metav1.OwnerReference{
-		APIVersion:         tidbMonitorControllerkind.GroupVersion().String(),
-		Kind:               tidbMonitorControllerkind.Kind,
+		APIVersion:         tidbClusterAutoScalerKind.GroupVersion().String(),
+		Kind:               tidbClusterAutoScalerKind.Kind,
 		Name:               tac.GetName(),
 		UID:                tac.GetUID(),
 		Controller:         &controller,
@@ -361,27 +361,6 @@ func AnnProm(port int32) map[string]string {
 func AnnAdditionalProm(name string, port int32) map[string]string {
 	return map[string]string{
 		fmt.Sprintf("%s.prometheus.io/port", name): fmt.Sprintf("%d", port),
-	}
-}
-
-func TiKVGroupMemberName(groupName string) string {
-	return fmt.Sprintf("%s-tikv-group", groupName)
-}
-
-func TiKVGroupPeerMemberName(groupName string) string {
-	return fmt.Sprintf("%s-tikv-group-peer", groupName)
-}
-
-func GetTiKVGroupOwnerRef(tg *v1alpha1.TiKVGroup) metav1.OwnerReference {
-	controller := true
-	blockOwnerDeletion := true
-	return metav1.OwnerReference{
-		APIVersion:         tikvGroupControllerkind.GroupVersion().String(),
-		Kind:               tikvGroupControllerkind.Kind,
-		Name:               tg.GetName(),
-		UID:                tg.GetUID(),
-		Controller:         &controller,
-		BlockOwnerDeletion: &blockOwnerDeletion,
 	}
 }
 
