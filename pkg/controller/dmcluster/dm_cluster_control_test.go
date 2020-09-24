@@ -255,7 +255,6 @@ func newFakeDMClusterControl() (
 	reclaimPolicyManager := meta.NewFakeReclaimPolicyManager()
 	orphanPodCleaner := mm.NewFakeOrphanPodsCleaner()
 	pvcCleaner := mm.NewFakePVCCleaner()
-	podRestarter := mm.NewFakePodRestarter()
 	pvcResizer := mm.NewFakePVCResizer()
 	control := NewDefaultDMClusterControl(
 		dcControl,
@@ -265,7 +264,6 @@ func newFakeDMClusterControl() (
 		orphanPodCleaner,
 		pvcCleaner,
 		pvcResizer,
-		podRestarter,
 		&dmClusterConditionUpdater{},
 		recorder,
 	)
