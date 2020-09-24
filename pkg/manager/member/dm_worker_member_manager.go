@@ -272,7 +272,7 @@ func (wmm *workerMemberManager) syncDMClusterStatus(dc *v1alpha1.DMCluster, set 
 
 	workersInfo, err := dmClient.GetWorkers()
 	if err != nil {
-		dc.Status.Master.Synced = false
+		dc.Status.Worker.Synced = false
 		return err
 	}
 
@@ -360,7 +360,10 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	dcName := dc.Name
 	baseWorkerSpec := dc.BaseWorkerSpec()
 	instanceName := dc.GetInstanceName()
-	workerConfigMap := cm.Name
+	workerConfigMap := ""
+	if cm != nil {
+		workerConfigMap = cm.Name
+	}
 
 	annMount, annVolume := annotationsMountVolume()
 	volMounts := []corev1.VolumeMount{
@@ -529,10 +532,9 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 }
 
 func getWorkerConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
-	// For backward compatibility, only sync dm configmap when .worker.config is non-nil
 	config := dc.Spec.Worker.Config
 	if config == nil {
-		return nil, nil
+		config = &v1alpha1.WorkerConfig{}
 	}
 
 	// override CA if tls enabled

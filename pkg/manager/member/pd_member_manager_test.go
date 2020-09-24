@@ -23,8 +23,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
@@ -740,16 +738,14 @@ func TestPDMemberManagerSyncPDSts(t *testing.T) {
 }
 
 func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetControl, *controller.FakeServiceControl, *pdapi.FakePDControl, cache.Indexer, cache.Indexer, *controller.FakePodControl) {
-	cli := fake.NewSimpleClientset()
 	kubeCli := kubefake.NewSimpleClientset()
 	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1().StatefulSets()
 	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
 	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
 	epsInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Endpoints()
 	pvcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().PersistentVolumeClaims()
-	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbClusters()
-	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
-	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer, tcInformer)
+	setControl := controller.NewFakeStatefulSetControl(setInformer)
+	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer)
 	podControl := controller.NewFakePodControl(podInformer)
 	pdControl := pdapi.NewFakePDControl(kubeCli)
 	pdScaler := NewFakePDScaler()
@@ -917,11 +913,11 @@ func testAnnotations(t *testing.T, annotations map[string]string) func(sts *apps
 	}
 }
 
-func testPDContainerEnv(t *testing.T, env []corev1.EnvVar) func(sts *apps.StatefulSet) {
+func testContainerEnv(t *testing.T, env []corev1.EnvVar, memberType v1alpha1.MemberType) func(sts *apps.StatefulSet) {
 	return func(sts *apps.StatefulSet) {
 		got := []corev1.EnvVar{}
 		for _, c := range sts.Spec.Template.Spec.Containers {
-			if c.Name == v1alpha1.PDMemberType.String() {
+			if c.Name == memberType.String() {
 				got = c.Env
 			}
 		}
@@ -1112,7 +1108,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 					TiDB: &v1alpha1.TiDBSpec{},
 				},
 			},
-			testSts: testPDContainerEnv(t, []corev1.EnvVar{
+			testSts: testContainerEnv(t, []corev1.EnvVar{
 				{
 					Name: "NAMESPACE",
 					ValueFrom: &corev1.EnvVarSource{
@@ -1147,7 +1143,9 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 						},
 					},
 				},
-			}),
+			},
+				v1alpha1.PDMemberType,
+			),
 		},
 		{
 			name: "tidb version v3.1.0, tidb client tls is enabled",

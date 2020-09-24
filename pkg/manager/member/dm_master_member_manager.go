@@ -236,16 +236,6 @@ func (mmm *masterMemberManager) syncMasterStatefulSetForDMCluster(dc *v1alpha1.D
 		return controller.RequeueErrorf("DMCluster: [%s/%s], waiting for dm-master cluster running", ns, dcName)
 	}
 
-	if !dc.Status.Master.Synced {
-		force := NeedForceUpgrade(dc.Annotations)
-		if force {
-			dc.Status.Master.Phase = v1alpha1.UpgradePhase
-			setUpgradePartition(newMasterSet, 0)
-			errSTS := updateStatefulSet(mmm.setControl, dc, newMasterSet, oldMasterSet)
-			return controller.RequeueErrorf("dmcluster: [%s/%s]'s dm-master needs force upgrade, %v", ns, dcName, errSTS)
-		}
-	}
-
 	// Scaling takes precedence over upgrading because:
 	// - if a dm-master fails in the upgrading, users may want to delete it or add
 	//   new replicas
@@ -265,6 +255,16 @@ func (mmm *masterMemberManager) syncMasterStatefulSetForDMCluster(dc *v1alpha1.D
 			if err := mmm.masterFailover.Failover(dc); err != nil {
 				return err
 			}
+		}
+	}
+
+	if !dc.Status.Master.Synced {
+		force := NeedForceUpgrade(dc.Annotations)
+		if force {
+			dc.Status.Master.Phase = v1alpha1.UpgradePhase
+			setUpgradePartition(newMasterSet, 0)
+			errSTS := updateStatefulSet(mmm.setControl, dc, newMasterSet, oldMasterSet)
+			return controller.RequeueErrorf("dmcluster: [%s/%s]'s dm-master needs force upgrade, %v", ns, dcName, errSTS)
 		}
 	}
 
@@ -461,6 +461,9 @@ func (mmm *masterMemberManager) getNewMasterServiceForDMCluster(dc *v1alpha1.DMC
 		if svcSpec.ClusterIP != nil {
 			masterSvc.Spec.ClusterIP = *svcSpec.ClusterIP
 		}
+		if svcSpec.PortName != nil {
+			masterSvc.Spec.Ports[0].Name = *svcSpec.PortName
+		}
 	}
 	return masterSvc
 }
@@ -539,7 +542,10 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	dcName := dc.Name
 	baseMasterSpec := dc.BaseMasterSpec()
 	instanceName := dc.GetInstanceName()
-	masterConfigMap := cm.Name
+	masterConfigMap := ""
+	if cm != nil {
+		masterConfigMap = cm.Name
+	}
 
 	annMount, annVolume := annotationsMountVolume()
 	volMounts := []corev1.VolumeMount{
@@ -716,10 +722,9 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 }
 
 func getMasterConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
-	// For backward compatibility, only sync dm configmap when .master.config is non-nil
 	config := dc.Spec.Master.Config
 	if config == nil {
-		return nil, nil
+		config = &v1alpha1.MasterConfig{}
 	}
 
 	// override CA if tls enabled
