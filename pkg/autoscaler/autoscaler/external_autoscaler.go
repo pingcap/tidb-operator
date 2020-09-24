@@ -30,11 +30,14 @@ const (
 func (am *autoScalerManager) syncExternalResult(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType, targetReplicas int32) error {
 	externalTcName := fmt.Sprintf(externalTcNamePattern, tc.ClusterName, component.String())
 	externalTc, err := am.tcLister.TidbClusters(tc.Namespace).Get(externalTcName)
-	if errors.IsNotFound(err) {
-		if targetReplicas > 0 {
+	if err != nil {
+		if errors.IsNotFound(err) {
+			if targetReplicas <= 0 {
+				return nil
+			}
 			return am.createExternalAutoCluster(tc, externalTcName, tac, component, targetReplicas)
 		}
-	} else {
+
 		return err
 	}
 

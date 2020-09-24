@@ -400,7 +400,7 @@ func genAutoClusterName(tas *v1alpha1.TidbClusterAutoScaler, component string, l
 	return autoClusterPrefix + v1alpha1.HashContents(marshaled), nil
 }
 
-func newAutoScalingCluster(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, name, component string) *v1alpha1.TidbCluster {
+func newAutoScalingCluster(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, autoTcName, component string) *v1alpha1.TidbCluster {
 	autoTc := &v1alpha1.TidbCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      autoTcName,
