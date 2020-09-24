@@ -64,6 +64,12 @@ const (
 
 	// AutoScalingGroupLabelKey describes the autoscaling group of the TiDB
 	AutoScalingGroupLabelKey = "tidb.pingcap.com/autoscaling-group"
+	// AutoInstanceLabelKey is label key used in autoscaling, it represents the autoscaler name
+	AutoInstanceLabelKey string = "tidb.pingcap.com/auto-instance"
+	// AutoComponentLabelKey is label key used in autoscaling, it represents which component is auto scaled
+	AutoComponentLabelKey string = "tidb.pingcap.com/auto-component"
+	// BaseTCLabelKey is label key used for heterogeneous clusters to refer to its base TidbCluster
+	BaseTCLabelKey string = "tidb.pingcap.com/base-tc"
 
 	// High availability is realized based on the topology
 	AnnHATopologyKey = "pingcap.com/ha-topology-key"
