@@ -3755,7 +3755,10 @@ func (in *PumpSpec) DeepCopyInto(out *PumpSpec) {
 		*out = new(string)
 		**out = **in
 	}
-	in.GenericConfig.DeepCopyInto(&out.GenericConfig)
+	if in.Config != nil {
+		in, out := &in.Config, &out.Config
+		*out = (*in).DeepCopy()
+	}
 	if in.SetTimeZone != nil {
 		in, out := &in.SetTimeZone, &out.SetTimeZone
 		*out = new(bool)

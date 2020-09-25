@@ -3448,8 +3448,7 @@ spec:
                   type: object
                 baseImage:
                   type: string
-                config:
-                  type: object
+                config: {}
                 configUpdateStrategy:
                   type: string
                 env:

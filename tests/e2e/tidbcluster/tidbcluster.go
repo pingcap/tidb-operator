@@ -461,7 +461,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 						corev1.ResourceStorage: resource.MustParse("10Gi"),
 					},
 				},
-				GenericConfig: tcconfig.New(map[string]interface{}{
+				Config: tcconfig.New(map[string]interface{}{
 					"addr":               "0.0.0.0:8250",
 					"gc":                 7,
 					"data-dir":           "/data",
@@ -954,7 +954,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				Replicas:             1,
 				BaseImage:            "pingcap/tidb-binlog",
 				ResourceRequirements: fixture.WithStorage(fixture.BurstbleSmall, "1Gi"),
-				GenericConfig: tcconfig.New(map[string]interface{}{
+				Config: tcconfig.New(map[string]interface{}{
 					"addr": "0.0.0.0:8250",
 				}),
 			}
@@ -1110,7 +1110,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				Replicas:             1,
 				BaseImage:            "pingcap/tidb-binlog",
 				ResourceRequirements: fixture.WithStorage(fixture.BurstbleSmall, "1Gi"),
-				GenericConfig: tcconfig.New(map[string]interface{}{
+				Config: tcconfig.New(map[string]interface{}{
 					"addr": "0.0.0.0:8250",
 				}),
 			}
