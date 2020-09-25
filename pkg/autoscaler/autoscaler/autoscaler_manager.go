@@ -119,6 +119,7 @@ func (am *autoScalerManager) syncExternal(tc *v1alpha1.TidbCluster, tac *v1alpha
 		updated := tc.DeepCopy()
 		updated.Spec.TiDB.Replicas = targetReplicas
 		if _, err = am.tcControl.UpdateTidbCluster(updated, &updated.Status, &tc.Status); err != nil {
+			klog.Errorf("tac[%s/%s] cannot update tc[%s/%s] for tidb when syncing external autoscaling query, err: %v", tac.Namespace, tac.Name, tc.Namespace, tc.Name, err)
 			return err
 		}
 	case v1alpha1.TiKVMemberType:
@@ -135,6 +136,7 @@ func (am *autoScalerManager) syncExternal(tc *v1alpha1.TidbCluster, tac *v1alpha
 		updated := tc.DeepCopy()
 		updated.Spec.TiKV.Replicas = targetReplicas
 		if _, err = am.tcControl.UpdateTidbCluster(updated, &updated.Status, &tc.Status); err != nil {
+			klog.Errorf("tac[%s/%s] cannot update tc[%s/%s] for tikv when syncing external autoscaling query, err: %v", tac.Namespace, tac.Name, tc.Namespace, tc.Name, err)
 			return err
 		}
 	}
@@ -147,13 +149,13 @@ func (am *autoScalerManager) syncPD(tc *v1alpha1.TidbCluster, tac *v1alpha1.Tidb
 	// Request PD for auto-scaling plans
 	plans, err := controller.GetPDClient(am.pdControl, tc).GetAutoscalingPlans(*strategy)
 	if err != nil {
-		klog.Errorf("cannot get auto-scaling plans for tac[%s/%s] err:%v", tac.Namespace, tac.Name, err)
+		klog.Errorf("tac[%s/%s] cannot get auto-scaling plans for component %v err:%v", component, tac.Namespace, tac.Name, err)
 		return err
 	}
 
 	// Apply auto-scaling plans
 	if err := am.syncPlans(tc, tac, plans, component); err != nil {
-		klog.Errorf("cannot apply autoscaling plans for tac[%s/%s] err:%v", tac.Namespace, tac.Name, err)
+		klog.Errorf("tac[%s/%s] cannot apply autoscaling plans for component %v err:%v", component, tac.Namespace, tac.Name, err)
 		return err
 	}
 	return nil
@@ -164,6 +166,7 @@ func (am *autoScalerManager) syncAutoScaling(tc *v1alpha1.TidbCluster, tac *v1al
 	if tac.Spec.TiDB != nil {
 		if tac.Spec.TiDB.External != nil {
 			if err := am.syncExternal(tc, tac, v1alpha1.TiDBMemberType); err != nil {
+				klog.Errorf("tac[%s/%s] cannot sync external autoscaling service for tidb, err: %v", err)
 				errs = append(errs, err)
 			}
 		} else {
@@ -176,6 +179,7 @@ func (am *autoScalerManager) syncAutoScaling(tc *v1alpha1.TidbCluster, tac *v1al
 	if tac.Spec.TiKV != nil {
 		if tac.Spec.TiKV.External != nil {
 			if err := am.syncExternal(tc, tac, v1alpha1.TiKVMemberType); err != nil {
+				klog.Errorf("tac[%s/%s] cannot sync external autoscaling service for tikv, err: %v", err)
 				errs = append(errs, err)
 			}
 		} else {
@@ -263,7 +267,7 @@ func (am *autoScalerManager) syncMonitor(tc *v1alpha1.TidbCluster, tac *v1alpha1
 
 			fullName := fmt.Sprintf("%s/%s", ns, tcRef.Name)
 			monitoredClusters.Insert(fullName)
-			tc, err := am.tcLister.TidbClusters(ns).Get(tcRef.Name)
+			_, err := am.tcLister.TidbClusters(ns).Get(tcRef.Name)
 			if err != nil {
 				if errors.IsNotFound(err) {
 					continue
@@ -271,12 +275,8 @@ func (am *autoScalerManager) syncMonitor(tc *v1alpha1.TidbCluster, tac *v1alpha1
 					return err
 				}
 			}
-			tacName, ok := tc.Labels[label.AutoInstanceLabelKey]
-			if !ok || tacName != tac.Name {
-				// Not controlled by this AutoScaler, keep it
-				newClusterRefs = append(newClusterRefs, tcRef)
-				continue
-			}
+
+			newClusterRefs = append(newClusterRefs, tcRef)
 		}
 
 		updatedTm := monitor.DeepCopy()
