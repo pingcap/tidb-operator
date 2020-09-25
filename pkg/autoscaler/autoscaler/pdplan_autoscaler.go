@@ -235,16 +235,12 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 
 			// Initialize Config
 			if autoTc.Spec.TiDB.Config == nil {
-				autoTc.Spec.TiDB.Config = &v1alpha1.TiDBConfig{
-					Labels: map[string]string{},
-				}
-			} else if autoTc.Spec.TiDB.Config.Labels == nil {
-				autoTc.Spec.TiDB.Config.Labels = map[string]string{}
+				autoTc.Spec.TiDB.Config = v1alpha1.NewTiDBConfig()
 			}
 
 			// Assign Plan Labels
 			for k, v := range plan.Labels {
-				autoTc.Spec.TiDB.Config.Labels[k] = v
+				autoTc.Spec.TiDB.Config.Set("labels."+k, v)
 			}
 		}
 

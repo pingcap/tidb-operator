@@ -161,8 +161,20 @@ func main() {
 		options = append(options, informers.WithNamespace(ns))
 		kubeoptions = append(kubeoptions, kubeinformers.WithNamespace(ns))
 	}
+
+	tweakListOptionsFunc := func(options *metav1.ListOptions) {
+		if len(options.LabelSelector) > 0 {
+			options.LabelSelector += ",app.kubernetes.io/managed-by=tidb-operator"
+		} else {
+			options.LabelSelector += "app.kubernetes.io/managed-by=tidb-operator"
+		}
+	}
+
+	labelKubeOptions := append(kubeoptions, kubeinformers.WithTweakListOptions(tweakListOptionsFunc))
+
 	informerFactory = informers.NewSharedInformerFactoryWithOptions(cli, controller.ResyncDuration, options...)
 	kubeInformerFactory = kubeinformers.NewSharedInformerFactoryWithOptions(kubeCli, controller.ResyncDuration, kubeoptions...)
+	labelFlterKubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(kubeCli, controller.ResyncDuration, labelKubeOptions...)
 
 	rl := resourcelock.EndpointsLock{
 		EndpointsMeta: metav1.ObjectMeta{
@@ -186,7 +198,7 @@ func main() {
 			klog.Fatalf("failed to upgrade: %v", err)
 		}
 
-		tcController := tidbcluster.NewController(kubeCli, cli, genericCli, informerFactory, kubeInformerFactory, autoFailover, pdFailoverPeriod, tikvFailoverPeriod, tidbFailoverPeriod, tiflashFailoverPeriod)
+		tcController := tidbcluster.NewController(kubeCli, cli, genericCli, informerFactory, kubeInformerFactory, labelFlterKubeInformerFactory, autoFailover, pdFailoverPeriod, tikvFailoverPeriod, tidbFailoverPeriod, tiflashFailoverPeriod)
 		dcController := dmcluster.NewController(kubeCli, cli, genericCli, informerFactory, kubeInformerFactory, autoFailover, masterFailoverPeriod, workerFailoverPeriod)
 		backupController := backup.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 		restoreController := restore.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
@@ -206,6 +218,7 @@ func main() {
 		// Start informer factories after all controller are initialized.
 		informerFactory.Start(ctx.Done())
 		kubeInformerFactory.Start(ctx.Done())
+		labelFlterKubeInformerFactory.Start(ctx.Done())
 
 		// Wait for all started informers' cache were synced.
 		for v, synced := range informerFactory.WaitForCacheSync(wait.NeverStop) {

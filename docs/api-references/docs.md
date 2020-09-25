@@ -11544,7 +11544,7 @@ Optional: Defaults to nil</p>
 <h3 id="tidbconfig">TiDBConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#tidbspec">TiDBSpec</a>)
+<a href="#tidbconfigwraper">TiDBConfigWraper</a>)
 </p>
 <p>
 <p>TiDBConfig is the configuration of tidb-server
@@ -12118,6 +12118,45 @@ map[string]string
 </tr>
 </tbody>
 </table>
+<h3 id="tidbconfigwraper">TiDBConfigWraper</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbspec">TiDBSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>Deprecated</code></br>
+<em>
+<a href="#tidbconfig">
+TiDBConfig
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>GenericConfig</code></br>
+<em>
+github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tidbfailuremember">TiDBFailureMember</h3>
 <p>
 (<em>Appears on:</em>
@@ -12542,8 +12581,8 @@ TiDBSlowLogTailerSpec
 <td>
 <code>config</code></br>
 <em>
-<a href="#tidbconfig">
-TiDBConfig
+<a href="#tidbconfigwraper">
+TiDBConfigWraper
 </a>
 </em>
 </td>
