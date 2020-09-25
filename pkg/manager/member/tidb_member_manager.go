@@ -394,7 +394,6 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 
 	plugins := tc.Spec.TiDB.Plugins
 	tidbStartScriptModel := &TidbStartScriptModel{
-		ClusterName:     tc.Name,
 		EnablePlugin:    len(plugins) > 0,
 		PluginDirectory: "/plugins",
 		PluginList:      strings.Join(plugins, ","),
