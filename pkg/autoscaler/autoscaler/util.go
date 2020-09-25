@@ -403,7 +403,7 @@ func newAutoScalingCluster(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAu
 				label.AutoComponentLabelKey: component,
 			},
 			OwnerReferences: []metav1.OwnerReference{
-				controller.GetTiDBClusterAutoscalerOwnerRef(tac),
+				controller.GetTiDBClusterAutoScalerOwnerRef(tac),
 			},
 		},
 		Status: v1alpha1.TidbClusterStatus{
