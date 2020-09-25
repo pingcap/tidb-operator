@@ -149,13 +149,13 @@ func (am *autoScalerManager) syncPD(tc *v1alpha1.TidbCluster, tac *v1alpha1.Tidb
 	// Request PD for auto-scaling plans
 	plans, err := controller.GetPDClient(am.pdControl, tc).GetAutoscalingPlans(*strategy)
 	if err != nil {
-		klog.Errorf("tac[%s/%s] cannot get auto-scaling plans for component %v err:%v", component, tac.Namespace, tac.Name, err)
+		klog.Errorf("tac[%s/%s] cannot get auto-scaling plans for component %v err:%v", tac.Namespace, tac.Name, component, err)
 		return err
 	}
 
 	// Apply auto-scaling plans
 	if err := am.syncPlans(tc, tac, plans, component); err != nil {
-		klog.Errorf("tac[%s/%s] cannot apply autoscaling plans for component %v err:%v", component, tac.Namespace, tac.Name, err)
+		klog.Errorf("tac[%s/%s] cannot apply autoscaling plans for component %v err:%v", tac.Namespace, tac.Name, component, err)
 		return err
 	}
 	return nil
@@ -166,7 +166,7 @@ func (am *autoScalerManager) syncAutoScaling(tc *v1alpha1.TidbCluster, tac *v1al
 	if tac.Spec.TiDB != nil {
 		if tac.Spec.TiDB.External != nil {
 			if err := am.syncExternal(tc, tac, v1alpha1.TiDBMemberType); err != nil {
-				klog.Errorf("tac[%s/%s] cannot sync external autoscaling service for tidb, err: %v", err)
+				klog.Errorf("tac[%s/%s] cannot sync external autoscaling service for tidb, err: %v", tac.Namespace, tac.Name, err)
 				errs = append(errs, err)
 			}
 		} else {
@@ -179,7 +179,7 @@ func (am *autoScalerManager) syncAutoScaling(tc *v1alpha1.TidbCluster, tac *v1al
 	if tac.Spec.TiKV != nil {
 		if tac.Spec.TiKV.External != nil {
 			if err := am.syncExternal(tc, tac, v1alpha1.TiKVMemberType); err != nil {
-				klog.Errorf("tac[%s/%s] cannot sync external autoscaling service for tikv, err: %v", err)
+				klog.Errorf("tac[%s/%s] cannot sync external autoscaling service for tikv, err: %v", tac.Namespace, tac.Name, err)
 				errs = append(errs, err)
 			}
 		} else {
