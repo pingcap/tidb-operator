@@ -26,7 +26,9 @@ import (
 )
 
 type GenericConfig struct {
-	mp map[string]interface{}
+	// Export this field to make "apiequality.Semantic.DeepEqual" happy now.
+	// User of GenericConfig should do not directly access this field.
+	MP map[string]interface{}
 }
 
 var _ stdjson.Marshaler = &GenericConfig{}
@@ -39,7 +41,7 @@ func (c *GenericConfig) MarshalTOML() ([]byte, error) {
 
 	buff := new(bytes.Buffer)
 	encoder := toml.NewEncoder(buff)
-	err := encoder.Encode(c.mp)
+	err := encoder.Encode(c.MP)
 	if err != nil {
 		return nil, errors.AddStack(err)
 	}
@@ -48,7 +50,7 @@ func (c *GenericConfig) MarshalTOML() ([]byte, error) {
 }
 
 func (c *GenericConfig) UnmarshalTOML(data []byte) error {
-	return toml.Unmarshal(data, &c.mp)
+	return toml.Unmarshal(data, &c.MP)
 }
 
 func (c *GenericConfig) MarshalJSON() ([]byte, error) {
@@ -69,7 +71,7 @@ func (c *GenericConfig) UnmarshalJSON(data []byte) error {
 
 	switch s := value.(type) {
 	case string:
-		err = toml.Unmarshal([]byte(s), &c.mp)
+		err = toml.Unmarshal([]byte(s), &c.MP)
 		if err != nil {
 			return errors.AddStack(err)
 		}
@@ -78,7 +80,7 @@ func (c *GenericConfig) UnmarshalJSON(data []byte) error {
 		// If v is a *map[string]interface{}, numbers are converted to int64 or float64
 		// using s directly all numbers are float type of go
 		// Keep the behavior Unmarshal *map[string]interface{} directly we unmarshal again here.
-		err = json.Unmarshal(data, &c.mp)
+		err = json.Unmarshal(data, &c.MP)
 		if err != nil {
 			return errors.AddStack(err)
 		}
@@ -93,19 +95,19 @@ func New(o map[string]interface{}) *GenericConfig {
 }
 
 func (c *GenericConfig) Inner() map[string]interface{} {
-	return c.mp
+	return c.MP
 }
 
 func (c *GenericConfig) DeepCopyJsonObject() *GenericConfig {
 	if c == nil {
 		return nil
 	}
-	if c.mp == nil {
+	if c.MP == nil {
 		return New(nil)
 	}
 
-	mp := deepcopy.Copy(c.mp).(map[string]interface{})
-	return New(mp)
+	MP := deepcopy.Copy(c.MP).(map[string]interface{})
+	return New(MP)
 }
 
 func (c *GenericConfig) DeepCopy() *GenericConfig {
@@ -114,11 +116,11 @@ func (c *GenericConfig) DeepCopy() *GenericConfig {
 
 func (c *GenericConfig) DeepCopyInto(out *GenericConfig) {
 	*out = *c
-	out.mp = c.DeepCopyJsonObject().mp
+	out.MP = c.DeepCopyJsonObject().MP
 }
 
 func (c *GenericConfig) Set(key string, value interface{}) {
-	set(c.mp, key, value)
+	set(c.MP, key, value)
 }
 
 func (c *GenericConfig) Get(key string) (value *Value) {
@@ -126,7 +128,7 @@ func (c *GenericConfig) Get(key string) (value *Value) {
 		return nil
 	}
 
-	v := get(c.mp, key)
+	v := get(c.MP, key)
 	if v == nil {
 		return nil
 	}

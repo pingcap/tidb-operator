@@ -111,8 +111,8 @@ func TestDeepCopyJsonObject(t *testing.T) {
 		g.Expect(out).To(Equal(obj))
 	}
 	copied := objects[1].DeepCopy()
-	copied.mp["k1"] = false
-	g.Expect(objects[1].mp["k1"]).To(Equal(true), "Mutation copy should net affect origin")
+	copied.Inner()["k1"] = false
+	g.Expect(objects[1].Inner()["k1"]).To(Equal(true), "Mutation copy should net affect origin")
 }
 
 func TestMarshalTOML(t *testing.T) {
