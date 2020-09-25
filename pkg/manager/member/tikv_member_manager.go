@@ -49,7 +49,7 @@ const (
 	tikvClusterCertPath = "/var/lib/tikv-tls"
 
 	//find a better way to manage store only managed by tikv in Operator
-	tikvStoreLimitPattern = `%s-tikv-\d+\.%s-tikv-peer\.%s\.svc\:\d+`
+	tikvStoreLimitPattern = `%s-tikv-\d+\.%s-tikv-peer\.%s\.svc%s\:\d+`
 )
 
 // tikvMemberManager implements manager.Manager.
@@ -676,7 +676,7 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 		return err
 	}
 
-	pattern, err := regexp.Compile(fmt.Sprintf(tikvStoreLimitPattern, tc.Name, tc.Name, tc.Namespace))
+	pattern, err := regexp.Compile(fmt.Sprintf(tikvStoreLimitPattern, tc.Name, tc.Name, tc.Namespace, regexp.QuoteMeta(controller.FormatClusterDomain(tc.Spec.ClusterDomain))))
 	if err != nil {
 		return err
 	}
@@ -775,7 +775,7 @@ func (tkmm *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (
 		return setCount, nil
 	}
 
-	pattern, err := regexp.Compile(fmt.Sprintf(tikvStoreLimitPattern, tc.Name, tc.Name, tc.Namespace))
+	pattern, err := regexp.Compile(fmt.Sprintf(tikvStoreLimitPattern, tc.Name, tc.Name, tc.Namespace, regexp.QuoteMeta(controller.FormatClusterDomain(tc.Spec.ClusterDomain))))
 	if err != nil {
 		return -1, err
 	}
