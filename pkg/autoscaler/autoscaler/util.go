@@ -136,9 +136,13 @@ func getBasicAutoScalerSpec(tac *v1alpha1.TidbClusterAutoScaler, component v1alp
 func getSpecResources(tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) map[string]v1alpha1.AutoResource {
 	switch component {
 	case v1alpha1.TiDBMemberType:
-		return tac.Spec.TiDB.Resources
+		if tac.Spec.TiDB != nil {
+			return tac.Spec.TiDB.Resources
+		}
 	case v1alpha1.TiKVMemberType:
-		return tac.Spec.TiKV.Resources
+		if tac.Spec.TiKV != nil {
+			return tac.Spec.TiKV.Resources
+		}
 	}
 	return nil
 }

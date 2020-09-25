@@ -155,14 +155,9 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 	for _, group := range groupsToCreate {
 		plan := groupPlanMap[group]
 		component := plan.Component
-		var resources map[string]v1alpha1.AutoResource
+		resources := getSpecResources(tac, v1alpha1.MemberType(component))
 
-		switch component {
-		case v1alpha1.TiKVMemberType.String():
-			resources = tac.Spec.TiKV.Resources
-		case v1alpha1.TiDBMemberType.String():
-			resources = tac.Spec.TiDB.Resources
-		default:
+		if resources == nil {
 			errs = append(errs, fmt.Errorf("unknown component %s for group %s tac[%s/%s]", component, group, tac.Namespace, tac.Name))
 			continue
 		}
