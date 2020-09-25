@@ -318,6 +318,7 @@ func (am *autoScalerManager) updateTidbMonitorClusters(tm *v1alpha1.TidbMonitor,
 			if err != nil {
 				return err
 			}
+			tm.Spec.Clusters = newClusterRefs
 		} else {
 			utilruntime.HandleError(fmt.Errorf("error getting updated TidbMonitor %s/%s from lister: %v", ns, tmName, err))
 		}
