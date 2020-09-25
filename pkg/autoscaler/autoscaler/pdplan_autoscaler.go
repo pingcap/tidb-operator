@@ -160,12 +160,12 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 			if tac.Spec.TiKV == nil {
 				continue
 			}
-			resources = getSpecResources(tac, v1alpha1.TiKVMemberType)
+			resources = tac.Spec.TiKV.Resources
 		case v1alpha1.TiDBMemberType.String():
 			if tac.Spec.TiDB == nil {
 				continue
 			}
-			resources = getSpecResources(tac, v1alpha1.TiDBMemberType)
+			resources = tac.Spec.TiDB.Resources
 		}
 
 		resource, ok := resources[plan.ResourceType]
