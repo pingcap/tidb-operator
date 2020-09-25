@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	"github.com/pingcap/tidb-operator/pkg/util/config"
 	apps "k8s.io/api/apps/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -256,21 +257,15 @@ func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 
 	if tc.IsTLSClusterEnabled() {
 		if spec.Config == nil {
-			spec.Config = make(map[string]interface{})
-		}
-		securityMap := spec.Config["security"]
-		security := map[string]interface{}{}
-		if securityMap != nil {
-			security = securityMap.(map[string]interface{})
+			spec.Config = config.New(map[string]interface{}{})
 		}
 
-		security["ssl-ca"] = path.Join(pumpCertPath, corev1.ServiceAccountRootCAKey)
-		security["ssl-cert"] = path.Join(pumpCertPath, corev1.TLSCertKey)
-		security["ssl-key"] = path.Join(pumpCertPath, corev1.TLSPrivateKeyKey)
-		spec.Config["security"] = security
+		spec.Config.Set("security.ssl-ca", path.Join(pumpCertPath, corev1.ServiceAccountRootCAKey))
+		spec.Config.Set("security.ssl-cert", path.Join(pumpCertPath, corev1.TLSCertKey))
+		spec.Config.Set("security.ssl-key", path.Join(pumpCertPath, corev1.TLSPrivateKeyKey))
 	}
 
-	confText, err := MarshalTOML(spec.Config)
+	confText, err := spec.Config.MarshalTOML()
 	if err != nil {
 		return nil, err
 	}
@@ -484,19 +479,19 @@ func getPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 }
 
 func getPumpLogLevel(tc *v1alpha1.TidbCluster) string {
-
 	config := tc.Spec.Pump.Config
 	if config == nil {
 		return defaultPumpLogLevel
 	}
 
-	raw, ok := config["log-level"]
-	if !ok {
+	v := config.Get("log-level")
+	if v == nil {
 		return defaultPumpLogLevel
 	}
 
-	logLevel, ok := raw.(string)
-	if !ok {
+	logLevel, err := v.AsString()
+	if err != nil {
+		klog.Warning("error log-level for pump: ", err)
 		return defaultPumpLogLevel
 	}
 

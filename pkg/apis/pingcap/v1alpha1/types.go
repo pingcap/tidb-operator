@@ -632,7 +632,7 @@ type PumpSpec struct {
 	// TODO: add schema
 	// The configuration of Pump cluster.
 	// +optional
-	config.GenericConfig `json:",inline"`
+	Config *config.GenericConfig `json:"config,omitempty"`
 
 	// +k8s:openapi-gen=false
 	// For backward compatibility with helm chart
