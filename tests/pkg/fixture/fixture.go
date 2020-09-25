@@ -527,7 +527,7 @@ func AddPumpForTidbCluster(tc *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
 				corev1.ResourceStorage: resource.MustParse("10Gi"),
 			},
 		},
-		GenericConfig: tcconfig.New(map[string]interface{}{
+		Config: tcconfig.New(map[string]interface{}{
 			"addr":               "0.0.0.0:8250",
 			"gc":                 7,
 			"data-dir":           "/data",

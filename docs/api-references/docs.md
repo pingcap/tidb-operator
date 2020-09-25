@@ -9445,7 +9445,11 @@ string
 </tr>
 <tr>
 <td>
+<<<<<<< HEAD
 <code>capacityStorage</code></br>
+=======
+<code>config</code></br>
+>>>>>>> cf85ab3b... Support pass raw toml config for pump as string (#3312)
 <em>
 string
 </em>
