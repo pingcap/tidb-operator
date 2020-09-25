@@ -244,65 +244,66 @@ func (am *autoScalerManager) syncMonitor(tc *v1alpha1.TidbCluster, tac *v1alpha1
 		if err != nil {
 			return err
 		}
-		clusters := sets.String{}
-		clusterMap := make(map[string]*v1alpha1.TidbCluster)
-		for _, autoTc := range autoTcList {
-			fullName := fmt.Sprintf("%s/%s", autoTc.Namespace, autoTc.Name)
-			clusters.Insert(fullName)
-			clusterMap[fullName] = autoTc
-		}
 
 		monitor, err := am.tmLister.TidbMonitors(monitorRef.Namespace).Get(monitorRef.Name)
 		if err != nil {
 			return err
 		}
 
-		monitoredClusters := sets.String{}
-		newClusterRefs := make([]v1alpha1.TidbClusterRef, 0)
-		for _, tcRef := range monitor.Spec.Clusters {
-			ns := tcRef.Namespace
-			if len(ns) == 0 {
-				ns = monitor.Namespace
-			}
-
-			fullName := fmt.Sprintf("%s/%s", ns, tcRef.Name)
-			monitoredClusters.Insert(fullName)
-			_, err := am.tcLister.TidbClusters(ns).Get(tcRef.Name)
-			if err != nil {
-				if errors.IsNotFound(err) {
-					continue
-				} else {
-					return err
-				}
-			}
-
-			newClusterRefs = append(newClusterRefs, tcRef)
-		}
-
-		updatedTm := monitor.DeepCopy()
-		toAdd := clusters.Difference(monitoredClusters)
-		for name := range toAdd {
-			cluster := clusterMap[name]
-			newClusterRefs = append(newClusterRefs,
-				v1alpha1.TidbClusterRef{Namespace: cluster.Namespace, Name: cluster.Name})
-		}
-		updatedTm.Spec.Clusters = newClusterRefs
-
-		err = am.updateTidbMonitor(updatedTm)
-		if err != nil {
-			return err
-		}
+		return am.updateTidbMonitorClusters(monitor.DeepCopy(), autoTcList)
 	}
 	return nil
 }
 
-func (am *autoScalerManager) updateTidbMonitor(tm *v1alpha1.TidbMonitor) error {
+func (am *autoScalerManager) diffMonitorClusters(tm *v1alpha1.TidbMonitor, autoTcList []*v1alpha1.TidbCluster) (newClusterRefs []v1alpha1.TidbClusterRef, err error) {
+	clusters := sets.String{}
+	clusterMap := make(map[string]*v1alpha1.TidbCluster)
+	for _, autoTc := range autoTcList {
+		fullName := fmt.Sprintf("%s/%s", autoTc.Namespace, autoTc.Name)
+		clusters.Insert(fullName)
+		clusterMap[fullName] = autoTc
+	}
+	monitoredClusters := sets.String{}
+	for _, tcRef := range tm.Spec.Clusters {
+		ns := tcRef.Namespace
+		if len(ns) == 0 {
+			ns = tm.Namespace
+		}
+
+		fullName := fmt.Sprintf("%s/%s", ns, tcRef.Name)
+		monitoredClusters.Insert(fullName)
+		_, err = am.tcLister.TidbClusters(ns).Get(tcRef.Name)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				continue
+			} else {
+				return
+			}
+		}
+
+		newClusterRefs = append(newClusterRefs, tcRef)
+	}
+
+	toAdd := clusters.Difference(monitoredClusters)
+	for name := range toAdd {
+		cluster := clusterMap[name]
+		newClusterRefs = append(newClusterRefs,
+			v1alpha1.TidbClusterRef{Namespace: cluster.Namespace, Name: cluster.Name})
+	}
+	return
+}
+
+func (am *autoScalerManager) updateTidbMonitorClusters(tm *v1alpha1.TidbMonitor, autoTcList []*v1alpha1.TidbCluster) error {
 	ns := tm.GetNamespace()
 	tmName := tm.GetName()
-	monitorSpec := tm.Spec.DeepCopy()
+	newClusterRefs, err := am.diffMonitorClusters(tm, autoTcList)
+	if err != nil {
+		return err
+	}
+	tm.Spec.Clusters = newClusterRefs
 
 	// don't wait due to limited number of clients, but backoff after the default number of steps
-	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		var updateErr error
 		_, updateErr = am.cli.PingcapV1alpha1().TidbMonitors(ns).Update(tm)
 		if updateErr == nil {
@@ -313,7 +314,10 @@ func (am *autoScalerManager) updateTidbMonitor(tm *v1alpha1.TidbMonitor) error {
 		if updated, err := am.tmLister.TidbMonitors(ns).Get(tmName); err == nil {
 			// make a copy so we don't mutate the shared cache
 			tm = updated.DeepCopy()
-			tm.Spec = *monitorSpec
+			newClusterRefs, err = am.diffMonitorClusters(tm, autoTcList)
+			if err != nil {
+				return err
+			}
 		} else {
 			utilruntime.HandleError(fmt.Errorf("error getting updated TidbMonitor %s/%s from lister: %v", ns, tmName, err))
 		}
