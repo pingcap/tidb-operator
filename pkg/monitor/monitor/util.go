@@ -614,12 +614,18 @@ func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor, tc
 	}
 	volumes = append(volumes, prometheusRules)
 	if tc.IsTLSClusterEnabled() {
+		var secretName string
+		if len(monitor.Spec.Clusters) > 1 {
+			secretName = monitor.Name
+		} else {
+			secretName = tc.Name
+		}
 		defaultMode := int32(420)
 		tlsPDClient := core.Volume{
 			Name: util.ClusterClientVolName,
 			VolumeSource: core.VolumeSource{
 				Secret: &core.SecretVolumeSource{
-					SecretName:  util.ClusterClientTLSSecretName(tc.Name),
+					SecretName:  util.ClusterClientTLSSecretName(secretName),
 					DefaultMode: &defaultMode,
 				},
 			},

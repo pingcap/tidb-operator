@@ -1,0 +1,18 @@
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: ns2-tidb-client-secret
+  namespace: ns2
+spec:
+  secretName: ns2-tidb-client-secret
+  duration: 8760h # 365d
+  renewBefore: 360h # 15d
+  organization:
+    - PingCAP
+  commonName: "TiDB Client"
+  usages:
+    - client auth
+  issuerRef:
+    name: tidb-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io

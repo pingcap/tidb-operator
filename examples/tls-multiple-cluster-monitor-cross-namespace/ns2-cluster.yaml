@@ -1,0 +1,47 @@
+# IT IS NOT SUITABLE FOR PRODUCTION USE.
+# This YAML describes a ns2 TiDB cluster with minimum resource requirements,
+# which should be able to run in any Kubernetes cluster with storage support.
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: ns2
+  namespace: ns2
+spec:
+  tlsCluster:
+    enabled: true
+  version: v4.0.4
+  timezone: UTC
+  pvReclaimPolicy: Delete
+  imagePullPolicy: IfNotPresent
+  discovery: {}
+  pd:
+    imagePullPolicy: IfNotPresent
+    baseImage: pingcap/pd
+    replicas: 1
+    # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
+    # storageClassName: local-storage
+    requests:
+      storage: "1Gi"
+    config: {}
+  tikv:
+    imagePullPolicy: IfNotPresent
+    baseImage: pingcap/tikv
+    replicas: 1
+    # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
+    # storageClassName: local-storage
+    requests:
+      storage: "1Gi"
+    config:
+      storage:
+        # In ns2 examples, we set this to avoid using too much storage.
+        reserve-space: "0MB"
+  tidb:
+    imagePullPolicy: IfNotPresent
+    baseImage: pingcap/tidb
+    replicas: 1
+    service:
+      type: ClusterIP
+    config: {}
+    tlsClient:
+      enabled: true
+
