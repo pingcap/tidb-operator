@@ -44,4 +44,3 @@ spec:
     config: {}
     tlsClient:
       enabled: true
-
