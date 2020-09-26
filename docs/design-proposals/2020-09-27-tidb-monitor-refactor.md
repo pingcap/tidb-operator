@@ -8,7 +8,7 @@ This document presents a design to refactor tidb monitor,solve some problems in 
 
 Currently, it is not friendly that tidbmonitor monitor multiple cluster under the same namespaces or different namespaces.In a multi-cluster TLS environment, the cert of tidbmonitor is bound to the first cluster of the cluster,we should eliminate this binding relationship.
 Secondly,tidbmonitor is also a statefulset application,we should switch to statefulset deploy from deployment crd,this process should smooth upgrade.
-Also, many users will integrate the company’s existing monitoring system, we should support thanos sidecar spec refer to the Prometheus operator, and optimize metric service and provide googe yaml exmaple like `ServiceMonitor` ,`thanos` etc.
+Also, many users will integrate the company’s existing monitoring system, we should support thanos sidecar spec refer to the Prometheus operator, and optimize metric service and provide googe yaml example like `ServiceMonitor` ,`thanos` etc.
 Others are some small optimization points,providing more field for `kubectl get tidbmonitor`  command, supporting multiple cluster grafana dashborad,optimizing pd dashboard address writing logic,fulling e2e and unit testing etc.
 
 ### Goals
@@ -21,7 +21,7 @@ Others are some small optimization points,providing more field for `kubectl get 
 ## Proposal
 
 
-* Check tidbmonitor monitor multiple clusters cross multiple ns in tls and non-tls envrionments.
+* Check tidbmonitor monitor multiple clusters cross multiple ns in tls and non-tls environments.
 * Support multiple cluster grafana dashboard.
 	
 * Smooth upgrade deployment to statefulset.
@@ -36,8 +36,8 @@ Others are some small optimization points,providing more field for `kubectl get 
 
 ### Test Plan
 
-* Deploy tidbmonitor monitor multiple clusters cross multiple ns in tls and non-tls envrionments.
-* Deploy tidbmonitor monitor multiple clusters cross same ns in tls and non-tls envrionments.
+* Deploy tidbmonitor monitor multiple clusters cross multiple ns in tls and non-tls environments.
+* Deploy tidbmonitor monitor multiple clusters cross same ns in tls and non-tls environments.
 * Deploy tidbmonitor monitor smoothly upgrade to statefulset.
 * Deploy tidbmointor with thanos sidecar,checking thanos metric data.
 * Use prometheus operator `ServiceMonitor` monitor tidb.
