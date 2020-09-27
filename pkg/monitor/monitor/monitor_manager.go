@@ -257,6 +257,7 @@ func (mm *MonitorManager) syncTidbMonitorSecret(monitor *v1alpha1.TidbMonitor) (
 
 func (mm *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) (*corev1.ConfigMap, error) {
 	if features.DefaultFeatureGate.Enabled(features.AutoScaling) {
+		// TODO: We need to update the status to tell users we are monitoring extra clusters
 		// Get all autoscaling clusters for TC, and add them to .Spec.Clusters to
 		// generate Prometheus config without modifying the original TidbMonitor
 		cloned := monitor.DeepCopy()
