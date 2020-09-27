@@ -156,15 +156,13 @@ func TestWorkerScalerScaleOut(t *testing.T) {
 func TestWorkerScalerScaleIn(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
-		name                string
-		hasPVC              bool
-		pvcUpdateErr        bool
-		deleteMemberErr     bool
-		statusSyncFailed    bool
-		err                 bool
-		changed             bool
-		isMemberStillRemain bool
-		isLeader            bool
+		name             string
+		hasPVC           bool
+		pvcUpdateErr     bool
+		statusSyncFailed bool
+		err              bool
+		changed          bool
+		isLeader         bool
 	}
 
 	testFn := func(test testcase, t *testing.T) {
@@ -204,44 +202,36 @@ func TestWorkerScalerScaleIn(t *testing.T) {
 
 	tests := []testcase{
 		{
-			name:                "normal",
-			hasPVC:              true,
-			pvcUpdateErr:        false,
-			deleteMemberErr:     false,
-			statusSyncFailed:    false,
-			err:                 false,
-			changed:             true,
-			isMemberStillRemain: false,
+			name:             "normal",
+			hasPVC:           true,
+			pvcUpdateErr:     false,
+			statusSyncFailed: false,
+			err:              false,
+			changed:          true,
 		},
 		{
-			name:                "cache don't have pvc",
-			hasPVC:              false,
-			pvcUpdateErr:        false,
-			deleteMemberErr:     false,
-			statusSyncFailed:    false,
-			err:                 true,
-			changed:             false,
-			isMemberStillRemain: false,
+			name:             "cache don't have pvc",
+			hasPVC:           false,
+			pvcUpdateErr:     false,
+			statusSyncFailed: false,
+			err:              true,
+			changed:          false,
 		},
 		{
-			name:                "error when update pvc",
-			hasPVC:              true,
-			pvcUpdateErr:        true,
-			deleteMemberErr:     false,
-			statusSyncFailed:    false,
-			err:                 true,
-			changed:             false,
-			isMemberStillRemain: false,
+			name:             "error when update pvc",
+			hasPVC:           true,
+			pvcUpdateErr:     true,
+			statusSyncFailed: false,
+			err:              true,
+			changed:          false,
 		},
 		{
-			name:                "dm-worker status sync failed",
-			hasPVC:              true,
-			pvcUpdateErr:        false,
-			deleteMemberErr:     false,
-			statusSyncFailed:    true,
-			err:                 true,
-			changed:             false,
-			isMemberStillRemain: false,
+			name:             "dm-worker status sync failed",
+			hasPVC:           true,
+			pvcUpdateErr:     false,
+			statusSyncFailed: true,
+			err:              true,
+			changed:          false,
 		},
 	}
 
