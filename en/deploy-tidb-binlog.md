@@ -377,13 +377,17 @@ The steps are as follows:
 
 ### Remove Pump nodes completely
 
-1. Refer to [Scale in Pump](#scale-in-pump) to scale in Pump to `0`.
+1. Before removing Pump nodes, execute `kubectl edit tc ${cluster_name} -n ${namespace}` and set `spec.tidb.binlogEnabled` to `false`. After the TiDB Pods are rolling updated, you can remove the Pump nodes.
 
-2. Execute `kubectl edit tc ${cluster_name} -n ${namespace}` and delete all configuration items of `spec.pump`.
+    If you directly remove Pump nodes, it might cause TiDB failure because TiDB has no Pump nodes to write into.
 
-3. Execute `kubectl delete sts ${cluster_name}-pump -n ${namespace}` to delete the StatefulSet resources of Pump.
+2. Refer to [Scale in Pump](#scale-in-pump) to scale in Pump to `0`.
 
-4. View PVCs used by the Pump cluster by executing `kubectl get pvc -n ${namespace} -l app.kubernetes.io/component=pump`. Then delete all the PVC resources of Pump by executing `kubectl delete pvc -l app.kubernetes.io/component=pump -n ${namespace}`.
+3. Execute `kubectl edit tc ${cluster_name} -n ${namespace}` and delete all configuration items of `spec.pump`.
+
+4. Execute `kubectl delete sts ${cluster_name}-pump -n ${namespace}` to delete the StatefulSet resources of Pump.
+
+5. View PVCs used by the Pump cluster by executing `kubectl get pvc -n ${namespace} -l app.kubernetes.io/component=pump`. Then delete all the PVC resources of Pump by executing `kubectl delete pvc -l app.kubernetes.io/component=pump -n ${namespace}`.
 
 ### Remove Drainer nodes
 
