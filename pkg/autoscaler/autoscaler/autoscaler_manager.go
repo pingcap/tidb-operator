@@ -28,7 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/sets"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	appslisters "k8s.io/client-go/listers/apps/v1"
@@ -189,10 +188,6 @@ func (am *autoScalerManager) syncAutoScaling(tc *v1alpha1.TidbCluster, tac *v1al
 		}
 	}
 
-	if err := am.syncMonitor(tc, tac); err != nil {
-		errs = append(errs, err)
-	}
-
 	klog.Infof("tc[%s/%s]'s tac[%s/%s] synced", tc.Namespace, tc.Name, tac.Namespace, tac.Name)
 	return errorutils.NewAggregate(errs)
 }
@@ -234,98 +229,6 @@ func (am *autoScalerManager) updateTidbClusterAutoScaler(tac *v1alpha1.TidbClust
 	})
 	if err != nil {
 		klog.Errorf("failed to update TidbClusterAutoScaler: [%s/%s], error: %v", ns, tacName, err)
-	}
-	return err
-}
-
-func (am *autoScalerManager) syncMonitor(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler) error {
-	if monitorRef := tc.Status.Monitor; monitorRef != nil {
-		autoTcList, err := am.getAutoScaledClusters(tac, []v1alpha1.MemberType{v1alpha1.TiDBMemberType, v1alpha1.TiKVMemberType})
-		if err != nil {
-			return err
-		}
-
-		monitor, err := am.tmLister.TidbMonitors(monitorRef.Namespace).Get(monitorRef.Name)
-		if err != nil {
-			return err
-		}
-
-		return am.updateTidbMonitorClusters(monitor.DeepCopy(), autoTcList)
-	}
-	return nil
-}
-
-func (am *autoScalerManager) diffMonitorClusters(tm *v1alpha1.TidbMonitor, autoTcList []*v1alpha1.TidbCluster) (newClusterRefs []v1alpha1.TidbClusterRef, err error) {
-	clusters := sets.String{}
-	clusterMap := make(map[string]*v1alpha1.TidbCluster)
-	for _, autoTc := range autoTcList {
-		fullName := fmt.Sprintf("%s/%s", autoTc.Namespace, autoTc.Name)
-		clusters.Insert(fullName)
-		clusterMap[fullName] = autoTc
-	}
-	monitoredClusters := sets.String{}
-	for _, tcRef := range tm.Spec.Clusters {
-		ns := tcRef.Namespace
-		if len(ns) == 0 {
-			ns = tm.Namespace
-		}
-
-		fullName := fmt.Sprintf("%s/%s", ns, tcRef.Name)
-		monitoredClusters.Insert(fullName)
-		_, err = am.tcLister.TidbClusters(ns).Get(tcRef.Name)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				continue
-			} else {
-				return
-			}
-		}
-
-		newClusterRefs = append(newClusterRefs, tcRef)
-	}
-
-	toAdd := clusters.Difference(monitoredClusters)
-	for name := range toAdd {
-		cluster := clusterMap[name]
-		newClusterRefs = append(newClusterRefs,
-			v1alpha1.TidbClusterRef{Namespace: cluster.Namespace, Name: cluster.Name})
-	}
-	return
-}
-
-func (am *autoScalerManager) updateTidbMonitorClusters(tm *v1alpha1.TidbMonitor, autoTcList []*v1alpha1.TidbCluster) error {
-	ns := tm.GetNamespace()
-	tmName := tm.GetName()
-	newClusterRefs, err := am.diffMonitorClusters(tm, autoTcList)
-	if err != nil {
-		return err
-	}
-	tm.Spec.Clusters = newClusterRefs
-
-	// don't wait due to limited number of clients, but backoff after the default number of steps
-	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		var updateErr error
-		_, updateErr = am.cli.PingcapV1alpha1().TidbMonitors(ns).Update(tm)
-		if updateErr == nil {
-			klog.Infof("TidbMonitor: [%s/%s] updated successfully", ns, tmName)
-			return nil
-		}
-		klog.V(4).Infof("failed to update TidbMonitor: [%s/%s], error: %v", ns, tmName, updateErr)
-		if updated, err := am.tmLister.TidbMonitors(ns).Get(tmName); err == nil {
-			// make a copy so we don't mutate the shared cache
-			tm = updated.DeepCopy()
-			newClusterRefs, err = am.diffMonitorClusters(tm, autoTcList)
-			if err != nil {
-				return err
-			}
-			tm.Spec.Clusters = newClusterRefs
-		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated TidbMonitor %s/%s from lister: %v", ns, tmName, err))
-		}
-		return updateErr
-	})
-	if err != nil {
-		klog.Errorf("failed to update TidbMonitor: [%s/%s], error: %v", ns, tmName, err)
 	}
 	return err
 }
