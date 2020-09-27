@@ -19,12 +19,10 @@ import (
 	"k8s.io/klog"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 )
 
@@ -34,24 +32,17 @@ type RestoreConditionUpdaterInterface interface {
 }
 
 type realRestoreConditionUpdater struct {
-	cli           versioned.Interface
-	restoreLister listers.RestoreLister
-	recorder      record.EventRecorder
+	deps *Dependencies
 }
 
 // returns a RestoreConditionUpdaterInterface that updates the Status of a Restore,
-func NewRealRestoreConditionUpdater(
-	cli versioned.Interface,
-	restoreLister listers.RestoreLister,
-	recorder record.EventRecorder) RestoreConditionUpdaterInterface {
+func NewRealRestoreConditionUpdater(deps *Dependencies) RestoreConditionUpdaterInterface {
 	return &realRestoreConditionUpdater{
-		cli,
-		restoreLister,
-		recorder,
+		deps: deps,
 	}
 }
 
-func (rcu *realRestoreConditionUpdater) Update(restore *v1alpha1.Restore, condition *v1alpha1.RestoreCondition) error {
+func (u *realRestoreConditionUpdater) Update(restore *v1alpha1.Restore, condition *v1alpha1.RestoreCondition) error {
 	ns := restore.GetNamespace()
 	restoreName := restore.GetName()
 	oldStatus := restore.Status.DeepCopy()
@@ -59,12 +50,12 @@ func (rcu *realRestoreConditionUpdater) Update(restore *v1alpha1.Restore, condit
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		isUpdate = v1alpha1.UpdateRestoreCondition(&restore.Status, condition)
 		if isUpdate {
-			_, updateErr := rcu.cli.PingcapV1alpha1().Restores(ns).Update(restore)
+			_, updateErr := u.deps.Clientset.PingcapV1alpha1().Restores(ns).Update(restore)
 			if updateErr == nil {
 				klog.Infof("Restore: [%s/%s] updated successfully", ns, restoreName)
 				return nil
 			}
-			if updated, err := rcu.restoreLister.Restores(ns).Get(restoreName); err == nil {
+			if updated, err := u.deps.RestoreLister.Restores(ns).Get(restoreName); err == nil {
 				// make a copy so we don't mutate the shared cache
 				restore = updated.DeepCopy()
 				restore.Status = *oldStatus
@@ -97,19 +88,19 @@ func NewFakeRestoreConditionUpdater(restoreInformer informers.RestoreInformer) *
 }
 
 // SetUpdateRestoreError sets the error attributes of updateRestoreTracker
-func (frc *FakeRestoreConditionUpdater) SetUpdateRestoreError(err error, after int) {
-	frc.updateRestoreTracker.SetError(err).SetAfter(after)
+func (u *FakeRestoreConditionUpdater) SetUpdateRestoreError(err error, after int) {
+	u.updateRestoreTracker.SetError(err).SetAfter(after)
 }
 
 // UpdateRestore updates the Restore
-func (frc *FakeRestoreConditionUpdater) Update(restore *v1alpha1.Restore, _ *v1alpha1.RestoreCondition) error {
-	defer frc.updateRestoreTracker.Inc()
-	if frc.updateRestoreTracker.ErrorReady() {
-		defer frc.updateRestoreTracker.Reset()
-		return frc.updateRestoreTracker.GetError()
+func (u *FakeRestoreConditionUpdater) Update(restore *v1alpha1.Restore, _ *v1alpha1.RestoreCondition) error {
+	defer u.updateRestoreTracker.Inc()
+	if u.updateRestoreTracker.ErrorReady() {
+		defer u.updateRestoreTracker.Reset()
+		return u.updateRestoreTracker.GetError()
 	}
 
-	return frc.RestoreIndexer.Update(restore)
+	return u.RestoreIndexer.Update(restore)
 }
 
 var _ RestoreConditionUpdaterInterface = &FakeRestoreConditionUpdater{}

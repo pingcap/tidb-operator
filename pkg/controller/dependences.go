@@ -137,6 +137,7 @@ type Dependencies struct {
 	TiDBClusterInformer  informeralphav1.TidbClusterInformer
 	DMClusterInformer    informeralphav1.DMClusterInformer
 	BackupInformer       informeralphav1.BackupInformer
+	RestoreInformer      informeralphav1.RestoreInformer
 
 	// Listers
 	ServiceLister               corelisterv1.ServiceLister
@@ -153,6 +154,7 @@ type Dependencies struct {
 	TiDBClusterAutoScalerLister listers.TidbClusterAutoScalerLister
 	DMClusterLister             listers.DMClusterLister
 	BackupLister                listers.BackupLister
+	RestoreLister               listers.RestoreLister
 
 	// Controls
 	TiDBClusterControl TidbClusterControlInterface
@@ -223,6 +225,7 @@ func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface
 		TiDBClusterInformer:  informerFactory.Pingcap().V1alpha1().TidbClusters(),
 		DMClusterInformer:    informerFactory.Pingcap().V1alpha1().DMClusters(),
 		BackupInformer:       informerFactory.Pingcap().V1alpha1().Backups(),
+		RestoreInformer:      informerFactory.Pingcap().V1alpha1().Restores(),
 
 		// Listers
 		ServiceLister:               serviceLister,
@@ -239,7 +242,7 @@ func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface
 		TiDBClusterAutoScalerLister: informerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers().Lister(),
 		DMClusterLister:             dmClusterLister,
 		BackupLister:                informerFactory.Pingcap().V1alpha1().Backups().Lister(),
-
+		RestoreLister:               informerFactory.Pingcap().V1alpha1().Restores().Lister(),
 
 		// Controls
 		TiDBClusterControl: NewRealTidbClusterControl(clientset, tidbClusterLister, recorder),

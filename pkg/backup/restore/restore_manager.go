@@ -20,8 +20,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/backup"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
-	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
-	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -30,58 +28,34 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	batchlisters "k8s.io/client-go/listers/batch/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/utils/pointer"
 )
 
 type restoreManager struct {
-	backupLister  listers.BackupLister
+	deps          *controller.Dependencies
 	statusUpdater controller.RestoreConditionUpdaterInterface
-	kubeCli       kubernetes.Interface
-	jobLister     batchlisters.JobLister
-	jobControl    controller.JobControlInterface
-	pvcLister     corelisters.PersistentVolumeClaimLister
-	tcLister      v1alpha1listers.TidbClusterLister
-	pvcControl    controller.GeneralPVCControlInterface
 }
 
 // NewRestoreManager return restoreManager
-func NewRestoreManager(
-	backupLister listers.BackupLister,
-	statusUpdater controller.RestoreConditionUpdaterInterface,
-	kubeCli kubernetes.Interface,
-	jobLister batchlisters.JobLister,
-	jobControl controller.JobControlInterface,
-	pvcLister corelisters.PersistentVolumeClaimLister,
-	tcLister v1alpha1listers.TidbClusterLister,
-	pvcControl controller.GeneralPVCControlInterface,
-) backup.RestoreManager {
+func NewRestoreManager(deps *controller.Dependencies, statusUpdater controller.RestoreConditionUpdaterInterface, ) backup.RestoreManager {
 	return &restoreManager{
-		backupLister,
-		statusUpdater,
-		kubeCli,
-		jobLister,
-		jobControl,
-		pvcLister,
-		tcLister,
-		pvcControl,
+		deps:          deps,
+		statusUpdater: statusUpdater,
 	}
 }
 
-func (rm *restoreManager) Sync(restore *v1alpha1.Restore) error {
-	return rm.syncRestoreJob(restore)
+func (m *restoreManager) Sync(restore *v1alpha1.Restore) error {
+	return m.syncRestoreJob(restore)
 }
 
-func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
+func (m *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	ns := restore.GetNamespace()
 	name := restore.GetName()
 	restoreJobName := restore.GetRestoreJobName()
 
 	err := backuputil.ValidateRestore(restore)
 	if err != nil {
-		rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+		m.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreInvalid,
 			Status:  corev1.ConditionTrue,
 			Reason:  "InvalidSpec",
@@ -91,7 +65,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		return controller.IgnoreErrorf("invalid restore spec %s/%s", ns, name)
 	}
 
-	_, err = rm.jobLister.Jobs(ns).Get(restoreJobName)
+	_, err = m.deps.JobLister.Jobs(ns).Get(restoreJobName)
 	if err == nil {
 		// already have a backup job running，return directly
 		return nil
@@ -106,9 +80,9 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		reason string
 	)
 	if restore.Spec.BR == nil {
-		job, reason, err = rm.makeImportJob(restore)
+		job, reason, err = m.makeImportJob(restore)
 		if err != nil {
-			rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+			m.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 				Type:    v1alpha1.RestoreRetryFailed,
 				Status:  corev1.ConditionTrue,
 				Reason:  reason,
@@ -117,9 +91,9 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 			return err
 		}
 
-		reason, err = rm.ensureRestorePVCExist(restore)
+		reason, err = m.ensureRestorePVCExist(restore)
 		if err != nil {
-			rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+			m.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 				Type:    v1alpha1.RestoreRetryFailed,
 				Status:  corev1.ConditionTrue,
 				Reason:  reason,
@@ -128,9 +102,9 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 			return err
 		}
 	} else {
-		job, reason, err = rm.makeRestoreJob(restore)
+		job, reason, err = m.makeRestoreJob(restore)
 		if err != nil {
-			rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+			m.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 				Type:    v1alpha1.RestoreRetryFailed,
 				Status:  corev1.ConditionTrue,
 				Reason:  reason,
@@ -140,9 +114,9 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		}
 	}
 
-	if err := rm.jobControl.CreateJob(restore, job); err != nil {
+	if err := m.deps.JobControl.CreateJob(restore, job); err != nil {
 		errMsg := fmt.Errorf("create restore %s/%s job %s failed, err: %v", ns, name, restoreJobName, err)
-		rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+		m.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreRetryFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "CreateRestoreJobFailed",
@@ -151,22 +125,22 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		return errMsg
 	}
 
-	return rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+	return m.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 		Type:   v1alpha1.RestoreScheduled,
 		Status: corev1.ConditionTrue,
 	})
 }
 
-func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job, string, error) {
+func (m *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job, string, error) {
 	ns := restore.GetNamespace()
 	name := restore.GetName()
 
-	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, restore.Spec.To.SecretName, restore.Spec.UseKMS, rm.kubeCli)
+	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, restore.Spec.To.SecretName, restore.Spec.UseKMS, m.deps.KubeClientset)
 	if err != nil {
 		return nil, reason, err
 	}
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, restore.Spec.UseKMS, restore.Spec.StorageProvider, rm.kubeCli)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, restore.Spec.UseKMS, restore.Spec.StorageProvider, m.deps.KubeClientset)
 	if err != nil {
 		return nil, reason, fmt.Errorf("restore %s/%s, %v", ns, name, err)
 	}
@@ -221,7 +195,7 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 			Containers: []corev1.Container{
 				{
 					Name:            label.RestoreJobLabelVal,
-					Image:           controller.TidbBackupManagerImage,
+					Image:           m.deps.CLIConfig.TiDBBackupManagerImage,
 					Args:            args,
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts: append([]corev1.VolumeMount{
@@ -268,24 +242,24 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 	return job, "", nil
 }
 
-func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Job, string, error) {
+func (m *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Job, string, error) {
 	ns := restore.GetNamespace()
 	name := restore.GetName()
 	restoreNamespace := ns
 	if restore.Spec.BR.ClusterNamespace != "" {
 		restoreNamespace = restore.Spec.BR.ClusterNamespace
 	}
-	tc, err := rm.tcLister.TidbClusters(restoreNamespace).Get(restore.Spec.BR.Cluster)
+	tc, err := m.deps.TiDBClusterLister.TidbClusters(restoreNamespace).Get(restore.Spec.BR.Cluster)
 	if err != nil {
 		return nil, fmt.Sprintf("failed to fetch tidbcluster %s/%s", restoreNamespace, restore.Spec.BR.Cluster), err
 	}
 
-	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, restore.Spec.To.SecretName, restore.Spec.UseKMS, rm.kubeCli)
+	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, restore.Spec.To.SecretName, restore.Spec.UseKMS, m.deps.KubeClientset)
 	if err != nil {
 		return nil, reason, err
 	}
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, restore.Spec.UseKMS, restore.Spec.StorageProvider, rm.kubeCli)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, restore.Spec.UseKMS, restore.Spec.StorageProvider, m.deps.KubeClientset)
 	if err != nil {
 		return nil, reason, fmt.Errorf("restore %s/%s, %v", ns, name, err)
 	}
@@ -362,7 +336,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 			Containers: []corev1.Container{
 				{
 					Name:            label.RestoreJobLabelVal,
-					Image:           controller.TidbBackupManagerImage,
+					Image:           m.deps.CLIConfig.TiDBBackupManagerImage,
 					Args:            args,
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts:    volumeMounts,
@@ -396,7 +370,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 	return job, "", nil
 }
 
-func (rm *restoreManager) ensureRestorePVCExist(restore *v1alpha1.Restore) (string, error) {
+func (m *restoreManager) ensureRestorePVCExist(restore *v1alpha1.Restore) (string, error) {
 	ns := restore.GetNamespace()
 	name := restore.GetName()
 
@@ -411,7 +385,7 @@ func (rm *restoreManager) ensureRestorePVCExist(restore *v1alpha1.Restore) (stri
 	}
 
 	restorePVCName := restore.GetRestorePVCName()
-	pvc, err := rm.pvcLister.PersistentVolumeClaims(ns).Get(restorePVCName)
+	pvc, err := m.deps.PVCLister.PersistentVolumeClaims(ns).Get(restorePVCName)
 	if err != nil {
 		// get the object from the local cache, the error can only be IsNotFound,
 		// so we need to create PVC for restore job
@@ -433,7 +407,7 @@ func (rm *restoreManager) ensureRestorePVCExist(restore *v1alpha1.Restore) (stri
 				StorageClassName: restore.Spec.StorageClassName,
 			},
 		}
-		if err := rm.pvcControl.CreatePVC(restore, pvc); err != nil {
+		if err := m.deps.GeneralPVCControl.CreatePVC(restore, pvc); err != nil {
 			errMsg := fmt.Errorf(" %s/%s create restore pvc %s failed, err: %v", ns, name, pvc.GetName(), err)
 			return "CreatePVCFailed", errMsg
 		}
@@ -453,12 +427,12 @@ func NewFakeRestoreManager() *FakeRestoreManager {
 	return &FakeRestoreManager{}
 }
 
-func (frm *FakeRestoreManager) SetSyncError(err error) {
-	frm.err = err
+func (m *FakeRestoreManager) SetSyncError(err error) {
+	m.err = err
 }
 
-func (frm *FakeRestoreManager) Sync(_ *v1alpha1.Restore) error {
-	return frm.err
+func (m *FakeRestoreManager) Sync(_ *v1alpha1.Restore) error {
+	return m.err
 }
 
 var _ backup.RestoreManager = &FakeRestoreManager{}
