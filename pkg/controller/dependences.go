@@ -131,13 +131,14 @@ type Dependencies struct {
 	Recorder            record.EventRecorder
 
 	// Informers
-	PVCInformer          coreinformers.PersistentVolumeClaimInformer
-	StatefulSetInformer  appsinformers.StatefulSetInformer
-	StorageClassInformer kubeinformersv1.StorageClassInformer
-	TiDBClusterInformer  informeralphav1.TidbClusterInformer
-	DMClusterInformer    informeralphav1.DMClusterInformer
-	BackupInformer       informeralphav1.BackupInformer
-	RestoreInformer      informeralphav1.RestoreInformer
+	PVCInformer            coreinformers.PersistentVolumeClaimInformer
+	StatefulSetInformer    appsinformers.StatefulSetInformer
+	StorageClassInformer   kubeinformersv1.StorageClassInformer
+	TiDBClusterInformer    informeralphav1.TidbClusterInformer
+	DMClusterInformer      informeralphav1.DMClusterInformer
+	BackupInformer         informeralphav1.BackupInformer
+	RestoreInformer        informeralphav1.RestoreInformer
+	BackupScheduleInformer informeralphav1.BackupScheduleInformer
 
 	// Listers
 	ServiceLister               corelisterv1.ServiceLister
@@ -155,15 +156,12 @@ type Dependencies struct {
 	DMClusterLister             listers.DMClusterLister
 	BackupLister                listers.BackupLister
 	RestoreLister               listers.RestoreLister
+	BackupScheduleLister        listers.BackupScheduleLister
 
 	// Controls
-	TiDBClusterControl TidbClusterControlInterface
-	DMClusterControl   DMClusterControlInterface
-	DMMasterControl    dmapi.MasterControlInterface
-	JobControl         JobControlInterface
-	PDControl          pdapi.PDControlInterface
-	CDCControl         TiCDCControlInterface
-	TiDBControl        TiDBControlInterface
+
+	JobControl JobControlInterface
+
 	ConfigMapControl   ConfigMapControlInterface
 	StatefulSetControl StatefulSetControlInterface
 	ServiceControl     ServiceControlInterface
@@ -172,6 +170,13 @@ type Dependencies struct {
 	PVControl          PVControlInterface
 	PodControl         PodControlInterface
 	TypedControl       TypedControlInterface
+	PDControl          pdapi.PDControlInterface
+	DMMasterControl    dmapi.MasterControlInterface
+	TiDBClusterControl TidbClusterControlInterface
+	DMClusterControl   DMClusterControlInterface
+	CDCControl         TiCDCControlInterface
+	TiDBControl        TiDBControlInterface
+	BackupControl      BackupControlInterface
 }
 
 // NewDependencies is used to construct the dependencies
@@ -219,13 +224,14 @@ func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface
 		Recorder:            recorder,
 
 		// Informers
-		PVCInformer:          kubeInformerFactory.Core().V1().PersistentVolumeClaims(),
-		StatefulSetInformer:  kubeInformerFactory.Apps().V1().StatefulSets(),
-		StorageClassInformer: kubeInformerFactory.Storage().V1().StorageClasses(),
-		TiDBClusterInformer:  informerFactory.Pingcap().V1alpha1().TidbClusters(),
-		DMClusterInformer:    informerFactory.Pingcap().V1alpha1().DMClusters(),
-		BackupInformer:       informerFactory.Pingcap().V1alpha1().Backups(),
-		RestoreInformer:      informerFactory.Pingcap().V1alpha1().Restores(),
+		PVCInformer:            kubeInformerFactory.Core().V1().PersistentVolumeClaims(),
+		StatefulSetInformer:    kubeInformerFactory.Apps().V1().StatefulSets(),
+		StorageClassInformer:   kubeInformerFactory.Storage().V1().StorageClasses(),
+		TiDBClusterInformer:    informerFactory.Pingcap().V1alpha1().TidbClusters(),
+		DMClusterInformer:      informerFactory.Pingcap().V1alpha1().DMClusters(),
+		BackupInformer:         informerFactory.Pingcap().V1alpha1().Backups(),
+		RestoreInformer:        informerFactory.Pingcap().V1alpha1().Restores(),
+		BackupScheduleInformer: informerFactory.Pingcap().V1alpha1().BackupSchedules(),
 
 		// Listers
 		ServiceLister:               serviceLister,
@@ -243,15 +249,11 @@ func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface
 		DMClusterLister:             dmClusterLister,
 		BackupLister:                informerFactory.Pingcap().V1alpha1().Backups().Lister(),
 		RestoreLister:               informerFactory.Pingcap().V1alpha1().Restores().Lister(),
+		BackupScheduleLister:        informerFactory.Pingcap().V1alpha1().BackupSchedules().Lister(),
 
 		// Controls
-		TiDBClusterControl: NewRealTidbClusterControl(clientset, tidbClusterLister, recorder),
-		DMClusterControl:   NewRealDMClusterControl(clientset, dmClusterLister, recorder),
-		DMMasterControl:    masterControl,
-		PDControl:          pdControl,
+
 		JobControl:         NewRealJobControl(kubeClientset, recorder),
-		CDCControl:         NewDefaultTiCDCControl(kubeClientset),
-		TiDBControl:        NewDefaultTiDBControl(kubeClientset),
 		ConfigMapControl:   NewRealConfigMapControl(kubeClientset, recorder),
 		StatefulSetControl: NewRealStatefuSetControl(kubeClientset, statefulSetLister, recorder),
 		ServiceControl:     NewRealServiceControl(kubeClientset, serviceLister, recorder),
@@ -260,5 +262,12 @@ func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface
 		GeneralPVCControl:  NewRealGeneralPVCControl(kubeClientset, recorder),
 		PodControl:         NewRealPodControl(kubeClientset, pdControl, podLister, recorder),
 		TypedControl:       NewTypedControl(NewRealGenericControl(genericCli, recorder)),
+		PDControl:          pdControl,
+		DMMasterControl:    masterControl,
+		TiDBClusterControl: NewRealTidbClusterControl(clientset, tidbClusterLister, recorder),
+		DMClusterControl:   NewRealDMClusterControl(clientset, dmClusterLister, recorder),
+		CDCControl:         NewDefaultTiCDCControl(kubeClientset),
+		TiDBControl:        NewDefaultTiDBControl(kubeClientset),
+		BackupControl:      NewRealBackupControl(clientset, recorder),
 	}
 }

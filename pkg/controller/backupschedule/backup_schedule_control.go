@@ -21,7 +21,6 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 )
 
 // ControlInterface implements the control logic for updating BackupSchedule
@@ -34,43 +33,38 @@ type ControlInterface interface {
 
 // NewDefaultBackupScheduleControl returns a new instance of the default implementation BackupScheduleControlInterface that
 // implements the documented semantics for BackupSchedule.
-func NewDefaultBackupScheduleControl(
-	statusUpdater controller.BackupScheduleStatusUpdaterInterface,
-	bsManager backup.BackupScheduleManager,
-	recorder record.EventRecorder) ControlInterface {
+func NewDefaultBackupScheduleControl(statusUpdater controller.BackupScheduleStatusUpdaterInterface, bsManager backup.BackupScheduleManager) ControlInterface {
 	return &defaultBackupScheduleControl{
-		statusUpdater,
-		bsManager,
-		recorder,
+		statusUpdater: statusUpdater,
+		bsManager:     bsManager,
 	}
 }
 
 type defaultBackupScheduleControl struct {
 	statusUpdater controller.BackupScheduleStatusUpdaterInterface
 	bsManager     backup.BackupScheduleManager
-	recorder      record.EventRecorder
 }
 
 // UpdateBackupSchedule executes the core logic loop for a BackupSchedule.
-func (bsc *defaultBackupScheduleControl) UpdateBackupSchedule(bs *v1alpha1.BackupSchedule) error {
+func (c *defaultBackupScheduleControl) UpdateBackupSchedule(bs *v1alpha1.BackupSchedule) error {
 	var errs []error
 	oldStatus := bs.Status.DeepCopy()
 
-	if err := bsc.updateBackupSchedule(bs); err != nil {
+	if err := c.updateBackupSchedule(bs); err != nil {
 		errs = append(errs, err)
 	}
 	if apiequality.Semantic.DeepEqual(&bs.Status, oldStatus) {
 		return errorutils.NewAggregate(errs)
 	}
-	if err := bsc.statusUpdater.UpdateBackupScheduleStatus(bs.DeepCopy(), &bs.Status, oldStatus); err != nil {
+	if err := c.statusUpdater.UpdateBackupScheduleStatus(bs.DeepCopy(), &bs.Status, oldStatus); err != nil {
 		errs = append(errs, err)
 	}
 
 	return errorutils.NewAggregate(errs)
 }
 
-func (bsc *defaultBackupScheduleControl) updateBackupSchedule(bs *v1alpha1.BackupSchedule) error {
-	return bsc.bsManager.Sync(bs)
+func (c *defaultBackupScheduleControl) updateBackupSchedule(bs *v1alpha1.BackupSchedule) error {
+	return c.bsManager.Sync(bs)
 }
 
 var _ ControlInterface = &defaultBackupScheduleControl{}
@@ -84,25 +78,24 @@ type FakeBackupScheduleControl struct {
 // NewFakeBackupScheduleControl returns a FakeBackupScheduleControl
 func NewFakeBackupScheduleControl(bsInformer informers.BackupScheduleInformer) *FakeBackupScheduleControl {
 	return &FakeBackupScheduleControl{
-		bsInformer.Informer().GetIndexer(),
-		controller.RequestTracker{},
+		bsIndexer: bsInformer.Informer().GetIndexer(),
 	}
 }
 
 // SetUpdateBackupScheduleError sets the error attributes of updateBackupScheduleTracker
-func (fbc *FakeBackupScheduleControl) SetUpdateBackupScheduleError(err error, after int) {
-	fbc.updateBsTracker.SetError(err).SetAfter(after)
+func (c *FakeBackupScheduleControl) SetUpdateBackupScheduleError(err error, after int) {
+	c.updateBsTracker.SetError(err).SetAfter(after)
 }
 
 // CreateBackup adds the backup to BackupIndexer
-func (fbc *FakeBackupScheduleControl) UpdateBackupSchedule(bs *v1alpha1.BackupSchedule) error {
-	defer fbc.updateBsTracker.Inc()
-	if fbc.updateBsTracker.ErrorReady() {
-		defer fbc.updateBsTracker.Reset()
-		return fbc.updateBsTracker.GetError()
+func (c *FakeBackupScheduleControl) UpdateBackupSchedule(bs *v1alpha1.BackupSchedule) error {
+	defer c.updateBsTracker.Inc()
+	if c.updateBsTracker.ErrorReady() {
+		defer c.updateBsTracker.Reset()
+		return c.updateBsTracker.GetError()
 	}
 
-	return fbc.bsIndexer.Add(bs)
+	return c.bsIndexer.Add(bs)
 }
 
 var _ ControlInterface = &FakeBackupScheduleControl{}
