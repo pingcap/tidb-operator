@@ -396,6 +396,18 @@ More `Backup` CR parameter description:
     - "!db.table"
     ```
 
+In the examples above, some parameters in `.spec.br` can be ignored, such as `logLevel`, `statusAddr`, `concurrency`, `rateLimit`, `checksum`, `timeAgo`, and `sendCredToTikv`.
+
+* `.spec.br.cluster`: The name of the cluster to be backed up.
+* `.spec.br.clusterNamespace`: The `namespace` of the cluster to be backed up.
+* `.spec.br.logLevel`: The log level (`info` by default).
+* `.spec.br.statusAddr`: The listening address through which BR provides statistics. If not specified, BR does not listen on any status address by default.
+* `.spec.br.concurrency`: The number of threads used by each TiKV process during backup. Defaults to `4` for backup and `128` for restore.
+* `.spec.br.rateLimit`: The speed limit, in MB/s. If set to `4`, the speed limit is 4 MB/s. The speed limit is not set by default.
+* `.spec.br.checksum`: Whether to verify the files after the backup is completed. Defaults to `true`.
+* `.spec.br.timeAgo`: Backs up the data before `timeAgo`. If the parameter value is not specified (empty by default), it means backing up the current data. It supports data formats such as "1.5h" and "2h45m". See [ParseDuration](https://golang.org/pkg/time/#ParseDuration) for more information.
+* `.spec.br.sendCredToTikv`: Whether the BR process passes its GCP privileges to the TiKV process. Defaults to `true`.
+
 #### Configure S3-compatible providers
 
 Supported S3-compatible `provider`s are as follows:
