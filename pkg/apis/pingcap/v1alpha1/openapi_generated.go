@@ -10366,8 +10366,15 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitor(ref common.ReferenceCallback) 
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbMonitorSpec"),
 						},
 					},
+					"ClusterScoped": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ClusterScoped controls whether monitor should manage kubernetes cluster wide TiDB clusters",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
-				Required: []string{"spec"},
+				Required: []string{"spec", "ClusterScoped"},
 			},
 		},
 		Dependencies: []string{

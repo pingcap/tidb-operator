@@ -2150,6 +2150,17 @@ TidbMonitorStatus
 <p>Most recently observed status of the TidbMonitor</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>ClusterScoped</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>ClusterScoped controls whether monitor should manage kubernetes cluster wide TiDB clusters</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="autoresource">AutoResource</h3>

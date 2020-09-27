@@ -34,6 +34,9 @@ type TidbMonitor struct {
 	// +k8s:openapi-gen=false
 	// Most recently observed status of the TidbMonitor
 	Status TidbMonitorStatus `json:"status"`
+
+	// ClusterScoped controls whether monitor should manage kubernetes cluster wide TiDB clusters
+	ClusterScoped bool
 }
 
 // +k8s:openapi-gen=true

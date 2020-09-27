@@ -17270,6 +17270,8 @@ spec:
   validation:
     openAPIV3Schema:
       properties:
+        ClusterScoped:
+          type: boolean
         apiVersion:
           type: string
         kind:
