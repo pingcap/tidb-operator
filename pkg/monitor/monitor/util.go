@@ -46,7 +46,6 @@ func buildTidbMonitorLabel(name string) map[string]string {
 
 // getMonitorConfigMap generate the Prometheus config and Grafana config for TidbMonitor,
 // If the namespace in ClusterRef is empty, we would set the TidbMonitor's namespace in the default
-// If the ClusterRef has auto-scaling clusters, we would add those in targets automatically
 func getMonitorConfigMap(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) (*core.ConfigMap, error) {
 
 	var releaseNamespaces []string
