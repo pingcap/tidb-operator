@@ -18,7 +18,6 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -36,45 +35,43 @@ type ControlInterface interface {
 
 // NewDefaultBackupControl returns a new instance of the default implementation BackupControlInterface that
 // implements the documented semantics for Backup.
-func NewDefaultBackupControl(
-	cli versioned.Interface,
-	backupManager backup.BackupManager) ControlInterface {
+func NewDefaultBackupControl(deps *controller.Dependencies, backupManager backup.BackupManager) ControlInterface {
 	return &defaultBackupControl{
-		cli,
-		backupManager,
+		deps:          deps,
+		backupManager: backupManager,
 	}
 }
 
 type defaultBackupControl struct {
-	cli           versioned.Interface
+	deps          *controller.Dependencies
 	backupManager backup.BackupManager
 }
 
 // UpdateBackup executes the core logic loop for a Backup.
-func (bc *defaultBackupControl) UpdateBackup(backup *v1alpha1.Backup) error {
+func (c *defaultBackupControl) UpdateBackup(backup *v1alpha1.Backup) error {
 	backup.SetGroupVersionKind(controller.BackupControllerKind)
-	if err := bc.addProtectionFinalizer(backup); err != nil {
+	if err := c.addProtectionFinalizer(backup); err != nil {
 		return err
 	}
 
-	if err := bc.removeProtectionFinalizer(backup); err != nil {
+	if err := c.removeProtectionFinalizer(backup); err != nil {
 		return err
 	}
 
-	return bc.updateBackup(backup)
+	return c.updateBackup(backup)
 }
 
-func (bc *defaultBackupControl) updateBackup(backup *v1alpha1.Backup) error {
-	return bc.backupManager.Sync(backup)
+func (c *defaultBackupControl) updateBackup(backup *v1alpha1.Backup) error {
+	return c.backupManager.Sync(backup)
 }
 
-func (bc *defaultBackupControl) addProtectionFinalizer(backup *v1alpha1.Backup) error {
+func (c *defaultBackupControl) addProtectionFinalizer(backup *v1alpha1.Backup) error {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 
 	if needToAddFinalizer(backup) {
 		backup.Finalizers = append(backup.Finalizers, label.BackupProtectionFinalizer)
-		_, err := bc.cli.PingcapV1alpha1().Backups(ns).Update(backup)
+		_, err := c.deps.Clientset.PingcapV1alpha1().Backups(ns).Update(backup)
 		if err != nil {
 			return fmt.Errorf("add backup %s/%s protection finalizers failed, err: %v", ns, name, err)
 		}
@@ -82,13 +79,13 @@ func (bc *defaultBackupControl) addProtectionFinalizer(backup *v1alpha1.Backup) 
 	return nil
 }
 
-func (bc *defaultBackupControl) removeProtectionFinalizer(backup *v1alpha1.Backup) error {
+func (c *defaultBackupControl) removeProtectionFinalizer(backup *v1alpha1.Backup) error {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 
 	if needToRemoveFinalizer(backup) {
 		backup.Finalizers = slice.RemoveString(backup.Finalizers, label.BackupProtectionFinalizer, nil)
-		_, err := bc.cli.PingcapV1alpha1().Backups(ns).Update(backup)
+		_, err := c.deps.Clientset.PingcapV1alpha1().Backups(ns).Update(backup)
 		if err != nil {
 			return fmt.Errorf("remove backup %s/%s protection finalizers failed, err: %v", ns, name, err)
 		}
@@ -127,19 +124,19 @@ func NewFakeBackupControl(backupInformer informers.BackupInformer) *FakeBackupCo
 }
 
 // SetUpdateBackupError sets the error attributes of updateBackupTracker
-func (fbc *FakeBackupControl) SetUpdateBackupError(err error, after int) {
-	fbc.updateBackupTracker.SetError(err).SetAfter(after)
+func (c *FakeBackupControl) SetUpdateBackupError(err error, after int) {
+	c.updateBackupTracker.SetError(err).SetAfter(after)
 }
 
 // UpdateBackup adds the backup to BackupIndexer
-func (fbc *FakeBackupControl) UpdateBackup(backup *v1alpha1.Backup) error {
-	defer fbc.updateBackupTracker.Inc()
-	if fbc.updateBackupTracker.ErrorReady() {
-		defer fbc.updateBackupTracker.Reset()
-		return fbc.updateBackupTracker.GetError()
+func (c *FakeBackupControl) UpdateBackup(backup *v1alpha1.Backup) error {
+	defer c.updateBackupTracker.Inc()
+	if c.updateBackupTracker.ErrorReady() {
+		defer c.updateBackupTracker.Reset()
+		return c.updateBackupTracker.GetError()
 	}
 
-	return fbc.backupIndexer.Add(backup)
+	return c.backupIndexer.Add(backup)
 }
 
 var _ ControlInterface = &FakeBackupControl{}

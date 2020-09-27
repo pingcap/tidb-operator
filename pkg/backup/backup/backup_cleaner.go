@@ -25,8 +25,6 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	batchlisters "k8s.io/client-go/listers/batch/v1"
 	"k8s.io/klog"
 	"k8s.io/utils/pointer"
 )
@@ -37,27 +35,19 @@ type BackupCleaner interface {
 }
 
 type backupCleaner struct {
+	deps          *controller.Dependencies
 	statusUpdater controller.BackupConditionUpdaterInterface
-	kubeCli       kubernetes.Interface
-	jobLister     batchlisters.JobLister
-	jobControl    controller.JobControlInterface
 }
 
 // NewBackupCleaner returns a BackupCleaner
-func NewBackupCleaner(
-	statusUpdater controller.BackupConditionUpdaterInterface,
-	kubeCli kubernetes.Interface,
-	jobLister batchlisters.JobLister,
-	jobControl controller.JobControlInterface) BackupCleaner {
+func NewBackupCleaner(deps *controller.Dependencies, statusUpdater controller.BackupConditionUpdaterInterface) BackupCleaner {
 	return &backupCleaner{
-		statusUpdater,
-		kubeCli,
-		jobLister,
-		jobControl,
+		deps:          deps,
+		statusUpdater: statusUpdater,
 	}
 }
 
-func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
+func (c *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 	if backup.DeletionTimestamp == nil || !v1alpha1.IsCleanCandidate(backup) || v1alpha1.NeedNotClean(backup) {
 		// The backup object has not been deleted or we need to retain backup data，do nothing
 		return nil
@@ -68,7 +58,7 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 	klog.Infof("start to clean backup %s/%s", ns, name)
 
 	cleanJobName := backup.GetCleanJobName()
-	_, err := bc.jobLister.Jobs(ns).Get(cleanJobName)
+	_, err := c.deps.JobLister.Jobs(ns).Get(cleanJobName)
 	if err == nil {
 		// already have a clean job running，return directly
 		return nil
@@ -76,16 +66,16 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 
 	if backup.Status.BackupPath == "" {
 		// the backup path is empty, so there is no need to clean up backup data
-		return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		return c.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:   v1alpha1.BackupClean,
 			Status: corev1.ConditionTrue,
 		})
 	}
 
 	// not found clean job, create it
-	job, reason, err := bc.makeCleanJob(backup)
+	job, reason, err := c.makeCleanJob(backup)
 	if err != nil {
-		bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		c.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupRetryFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  reason,
@@ -94,9 +84,9 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 		return err
 	}
 
-	if err := bc.jobControl.CreateJob(backup, job); err != nil {
+	if err := c.deps.JobControl.CreateJob(backup, job); err != nil {
 		errMsg := fmt.Errorf("create backup %s/%s job %s failed, err: %v", ns, name, cleanJobName, err)
-		bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		c.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupRetryFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "CreateCleanJobFailed",
@@ -105,17 +95,17 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 		return errMsg
 	}
 
-	return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+	return c.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Type:   v1alpha1.BackupClean,
 		Status: corev1.ConditionFalse,
 	})
 }
 
-func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
+func (c *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bc.kubeCli)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, c.deps.KubeClientset)
 	if err != nil {
 		return nil, reason, err
 	}
@@ -141,7 +131,7 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 			Containers: []corev1.Container{
 				{
 					Name:            label.BackupJobLabelVal,
-					Image:           controller.TidbBackupManagerImage,
+					Image:           c.deps.CLIConfig.TiDBBackupManagerImage,
 					Args:            args,
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					Env:             util.AppendEnvIfPresent(storageEnv, "TZ"),

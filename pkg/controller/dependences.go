@@ -15,7 +15,6 @@ package controller
 
 import (
 	"flag"
-	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -23,6 +22,7 @@ import (
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	informeralphav1 "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	corev1 "k8s.io/api/core/v1"
 	kubeinformers "k8s.io/client-go/informers"
@@ -32,6 +32,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	appslisters "k8s.io/client-go/listers/apps/v1"
+	batchlisters "k8s.io/client-go/listers/batch/v1"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	storagelister "k8s.io/client-go/listers/storage/v1"
 	"k8s.io/client-go/tools/record"
@@ -135,6 +136,7 @@ type Dependencies struct {
 	StorageClassInformer kubeinformersv1.StorageClassInformer
 	TiDBClusterInformer  informeralphav1.TidbClusterInformer
 	DMClusterInformer    informeralphav1.DMClusterInformer
+	BackupInformer       informeralphav1.BackupInformer
 
 	// Listers
 	ServiceLister               corelisterv1.ServiceLister
@@ -145,15 +147,18 @@ type Dependencies struct {
 	NodeLister                  corelisterv1.NodeLister
 	SecretLister                corelisterv1.SecretLister
 	StatefulSetLister           appslisters.StatefulSetLister
+	JobLister                   batchlisters.JobLister
 	StorageClassLister          storagelister.StorageClassLister
 	TiDBClusterLister           listers.TidbClusterLister
 	TiDBClusterAutoScalerLister listers.TidbClusterAutoScalerLister
 	DMClusterLister             listers.DMClusterLister
+	BackupLister                listers.BackupLister
 
 	// Controls
 	TiDBClusterControl TidbClusterControlInterface
 	DMClusterControl   DMClusterControlInterface
 	DMMasterControl    dmapi.MasterControlInterface
+	JobControl         JobControlInterface
 	PDControl          pdapi.PDControlInterface
 	CDCControl         TiCDCControlInterface
 	TiDBControl        TiDBControlInterface
@@ -161,6 +166,7 @@ type Dependencies struct {
 	StatefulSetControl StatefulSetControlInterface
 	ServiceControl     ServiceControlInterface
 	PVCControl         PVCControlInterface
+	GeneralPVCControl  GeneralPVCControlInterface
 	PVControl          PVControlInterface
 	PodControl         PodControlInterface
 	TypedControl       TypedControlInterface
@@ -215,6 +221,8 @@ func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface
 		StatefulSetInformer:  kubeInformerFactory.Apps().V1().StatefulSets(),
 		StorageClassInformer: kubeInformerFactory.Storage().V1().StorageClasses(),
 		TiDBClusterInformer:  informerFactory.Pingcap().V1alpha1().TidbClusters(),
+		DMClusterInformer:    informerFactory.Pingcap().V1alpha1().DMClusters(),
+		BackupInformer:       informerFactory.Pingcap().V1alpha1().Backups(),
 
 		// Listers
 		ServiceLister:               serviceLister,
@@ -226,15 +234,19 @@ func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface
 		SecretLister:                kubeInformerFactory.Core().V1().Secrets().Lister(),
 		StatefulSetLister:           statefulSetLister,
 		StorageClassLister:          kubeInformerFactory.Storage().V1().StorageClasses().Lister(),
+		JobLister:                   kubeInformerFactory.Batch().V1().Jobs().Lister(),
 		TiDBClusterLister:           tidbClusterLister,
 		TiDBClusterAutoScalerLister: informerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers().Lister(),
 		DMClusterLister:             dmClusterLister,
+		BackupLister:                informerFactory.Pingcap().V1alpha1().Backups().Lister(),
+
 
 		// Controls
 		TiDBClusterControl: NewRealTidbClusterControl(clientset, tidbClusterLister, recorder),
 		DMClusterControl:   NewRealDMClusterControl(clientset, dmClusterLister, recorder),
 		DMMasterControl:    masterControl,
 		PDControl:          pdControl,
+		JobControl:         NewRealJobControl(kubeClientset, recorder),
 		CDCControl:         NewDefaultTiCDCControl(kubeClientset),
 		TiDBControl:        NewDefaultTiDBControl(kubeClientset),
 		ConfigMapControl:   NewRealConfigMapControl(kubeClientset, recorder),
@@ -242,6 +254,7 @@ func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface
 		ServiceControl:     NewRealServiceControl(kubeClientset, serviceLister, recorder),
 		PVControl:          NewRealPVControl(kubeClientset, pvcLister, pvLister, recorder),
 		PVCControl:         NewRealPVCControl(kubeClientset, recorder, pvcLister),
+		GeneralPVCControl:  NewRealGeneralPVCControl(kubeClientset, recorder),
 		PodControl:         NewRealPodControl(kubeClientset, pdControl, podLister, recorder),
 		TypedControl:       NewTypedControl(NewRealGenericControl(genericCli, recorder)),
 	}
