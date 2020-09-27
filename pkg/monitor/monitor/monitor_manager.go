@@ -264,15 +264,18 @@ func (mm *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, monito
 			r1, err := labels.NewRequirement(label.AutoInstanceLabelKey, selection.Exists, nil)
 			if err != nil {
 				klog.Errorf("tm[%s/%s] gets tc[%s/%s]'s autoscaling clusters failed, err: %v", monitor.Namespace, monitor.Name, tcRef.Namespace, tcRef.Name, err)
+				continue
 			}
 			r2, err := labels.NewRequirement(label.BaseTCLabelKey, selection.Equals, []string{tcRef.Name})
 			if err != nil {
 				klog.Errorf("tm[%s/%s] gets tc[%s/%s]'s autoscaling clusters failed, err: %v", monitor.Namespace, monitor.Name, tcRef.Namespace, tcRef.Name, err)
+				continue
 			}
 			selector := labels.NewSelector().Add(*r1).Add(*r2)
 			tcList, err := mm.cli.PingcapV1alpha1().TidbClusters(tcRef.Namespace).List(metav1.ListOptions{LabelSelector: selector.String()})
 			if err != nil {
 				klog.Errorf("tm[%s/%s] gets tc[%s/%s]'s autoscaling clusters failed, err: %v", monitor.Namespace, monitor.Name, tcRef.Namespace, tcRef.Name, err)
+				continue
 			}
 			for _, autoTc := range tcList.Items {
 				cloned.Spec.Clusters = append(cloned.Spec.Clusters, v1alpha1.TidbClusterRef{
