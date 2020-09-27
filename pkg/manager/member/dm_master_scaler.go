@@ -177,3 +177,33 @@ func (msd *masterScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, n
 func (msd *masterScaler) SyncAutoScalerAnn(meta metav1.Object, oldSet *apps.StatefulSet) error {
 	return nil
 }
+
+type fakeMasterScaler struct{}
+
+// NewFakeMasterScaler returns a fake Scaler
+func NewFakeMasterScaler() Scaler {
+	return &fakeMasterScaler{}
+}
+
+func (fms *fakeMasterScaler) Scale(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	if *newSet.Spec.Replicas > *oldSet.Spec.Replicas {
+		return fms.ScaleOut(meta, oldSet, newSet)
+	} else if *newSet.Spec.Replicas < *oldSet.Spec.Replicas {
+		return fms.ScaleIn(meta, oldSet, newSet)
+	}
+	return nil
+}
+
+func (fms *fakeMasterScaler) ScaleOut(_ metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	setReplicasAndDeleteSlots(newSet, *oldSet.Spec.Replicas+1, nil)
+	return nil
+}
+
+func (fms *fakeMasterScaler) ScaleIn(_ metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	setReplicasAndDeleteSlots(newSet, *oldSet.Spec.Replicas-1, nil)
+	return nil
+}
+
+func (fms *fakeMasterScaler) SyncAutoScalerAnn(dc metav1.Object, actual *apps.StatefulSet) error {
+	return nil
+}

@@ -23,8 +23,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
@@ -1481,16 +1479,14 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 func newFakeTiKVMemberManager(tc *v1alpha1.TidbCluster) (
 	*tikvMemberManager, *controller.FakeStatefulSetControl,
 	*controller.FakeServiceControl, *pdapi.FakePDClient, cache.Indexer, cache.Indexer) {
-	cli := fake.NewSimpleClientset()
 	kubeCli := kubefake.NewSimpleClientset()
 	pdControl := pdapi.NewFakePDControl(kubeCli)
 	pdClient := controller.NewFakePDClient(pdControl, tc)
 	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1().StatefulSets()
 	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
 	epsInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Endpoints()
-	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbClusters()
-	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
-	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer, tcInformer)
+	setControl := controller.NewFakeStatefulSetControl(setInformer)
+	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer)
 	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
 	nodeInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Nodes()
 	tikvScaler := NewFakeTiKVScaler()

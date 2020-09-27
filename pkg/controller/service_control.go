@@ -17,8 +17,6 @@ import (
 	"fmt"
 	"strings"
 
-	tcinformers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
-	v1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -138,21 +136,17 @@ type FakeServiceControl struct {
 	SvcLister                corelisters.ServiceLister
 	SvcIndexer               cache.Indexer
 	EpsIndexer               cache.Indexer
-	TcLister                 v1listers.TidbClusterLister
-	TcIndexer                cache.Indexer
 	createServiceTracker     RequestTracker
 	updateServiceTracker     RequestTracker
 	deleteStatefulSetTracker RequestTracker
 }
 
 // NewFakeServiceControl returns a FakeServiceControl
-func NewFakeServiceControl(svcInformer coreinformers.ServiceInformer, epsInformer coreinformers.EndpointsInformer, tcInformer tcinformers.TidbClusterInformer) *FakeServiceControl {
+func NewFakeServiceControl(svcInformer coreinformers.ServiceInformer, epsInformer coreinformers.EndpointsInformer) *FakeServiceControl {
 	return &FakeServiceControl{
 		svcInformer.Lister(),
 		svcInformer.Informer().GetIndexer(),
 		epsInformer.Informer().GetIndexer(),
-		tcInformer.Lister(),
-		tcInformer.Informer().GetIndexer(),
 		RequestTracker{},
 		RequestTracker{},
 		RequestTracker{},

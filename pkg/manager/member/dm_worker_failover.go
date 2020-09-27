@@ -97,3 +97,20 @@ func (wf *workerFailover) RemoveUndesiredFailures(dc *v1alpha1.DMCluster) {
 		}
 	}
 }
+
+type fakeWorkerFailover struct{}
+
+// NewFakeMasterFailover returns a fake Failover
+func NewFakeWorkerFailover() DMFailover {
+	return &fakeWorkerFailover{}
+}
+
+func (fwf *fakeWorkerFailover) Failover(_ *v1alpha1.DMCluster) error {
+	return nil
+}
+
+func (fwf *fakeWorkerFailover) Recover(_ *v1alpha1.DMCluster) {
+}
+
+func (fwf *fakeWorkerFailover) RemoveUndesiredFailures(_ *v1alpha1.DMCluster) {
+}

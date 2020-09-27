@@ -259,3 +259,20 @@ func setDMMemberDeleted(dc *v1alpha1.DMCluster, podName string) {
 	dc.Status.Master.FailureMembers[podName] = failureMember
 	klog.Infof("dm-master failover: set dm-master member: %s/%s deleted", dc.GetName(), podName)
 }
+
+type fakeMasterFailover struct{}
+
+// NewFakeMasterFailover returns a fake Failover
+func NewFakeMasterFailover() DMFailover {
+	return &fakeMasterFailover{}
+}
+
+func (fmf *fakeMasterFailover) Failover(_ *v1alpha1.DMCluster) error {
+	return nil
+}
+
+func (fmf *fakeMasterFailover) Recover(_ *v1alpha1.DMCluster) {
+}
+
+func (fmf *fakeMasterFailover) RemoveUndesiredFailures(_ *v1alpha1.DMCluster) {
+}

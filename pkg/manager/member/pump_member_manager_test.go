@@ -444,8 +444,8 @@ func newFakePumpMemberManager() (*pumpMemberManager, *pumpFakeControls, *pumpFak
 	epsInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Endpoints()
 	cmInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().ConfigMaps()
 	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
-	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
-	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer, tcInformer)
+	setControl := controller.NewFakeStatefulSetControl(setInformer)
+	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer)
 	cmControl := controller.NewFakeConfigMapControl(cmInformer)
 	genericControl := controller.NewFakeGenericControl()
 	pmm := &pumpMemberManager{

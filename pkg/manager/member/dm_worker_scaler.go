@@ -132,3 +132,33 @@ func (wsd *workerScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, n
 func (wsd *workerScaler) SyncAutoScalerAnn(meta metav1.Object, oldSet *apps.StatefulSet) error {
 	return nil
 }
+
+type fakeWorkerScaler struct{}
+
+// NewFakeWorkerScaler returns a fake Scaler
+func NewFakeWorkerScaler() Scaler {
+	return &fakeWorkerScaler{}
+}
+
+func (fws *fakeWorkerScaler) Scale(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	if *newSet.Spec.Replicas > *oldSet.Spec.Replicas {
+		return fws.ScaleOut(meta, oldSet, newSet)
+	} else if *newSet.Spec.Replicas < *oldSet.Spec.Replicas {
+		return fws.ScaleIn(meta, oldSet, newSet)
+	}
+	return nil
+}
+
+func (fws *fakeWorkerScaler) ScaleOut(_ metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	setReplicasAndDeleteSlots(newSet, *oldSet.Spec.Replicas+1, nil)
+	return nil
+}
+
+func (fws *fakeWorkerScaler) ScaleIn(_ metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	setReplicasAndDeleteSlots(newSet, *oldSet.Spec.Replicas-1, nil)
+	return nil
+}
+
+func (fws *fakeWorkerScaler) SyncAutoScalerAnn(dc metav1.Object, actual *apps.StatefulSet) error {
+	return nil
+}
