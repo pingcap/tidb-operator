@@ -183,17 +183,16 @@ func TestWorkerMemberManagerSyncUpdate(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	type result struct {
-		sync   error
-		oldSvc *corev1.Service
-		svc    *corev1.Service
-		getSvc error
-		oldSet *appsv1.StatefulSet
-		set    *appsv1.StatefulSet
-		getSet error
-		oldCm  *corev1.ConfigMap
-		cm     *corev1.ConfigMap
-		getCm  error
-
+		sync                error
+		oldSvc              *corev1.Service
+		svc                 *corev1.Service
+		getSvc              error
+		oldSet              *appsv1.StatefulSet
+		set                 *appsv1.StatefulSet
+		getSet              error
+		oldCm               *corev1.ConfigMap
+		cm                  *corev1.ConfigMap
+		getCm               error
 		triggerDeleteWorker bool
 	}
 	type testcase struct {
@@ -869,8 +868,25 @@ func TestGetNewWorkerSetForDMCluster(t *testing.T) {
 		name    string
 		dc      v1alpha1.DMCluster
 		wantErr bool
+		nilCM   bool
 		testSts func(sts *appsv1.StatefulSet)
 	}{
+		{
+			name: "dm-worker config map is nil",
+			dc: v1alpha1.DMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "dc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.DMClusterSpec{
+					Master: v1alpha1.MasterSpec{},
+					Worker: &v1alpha1.WorkerSpec{},
+				},
+			},
+			wantErr: true,
+			nilCM:   true,
+			testSts: nil,
+		},
 		{
 			name: "dm-worker network is not host",
 			dc: v1alpha1.DMCluster{
@@ -1122,11 +1138,17 @@ func TestGetNewWorkerSetForDMCluster(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sts, err := getNewWorkerSetForDMCluster(&tt.dc, nil)
+			var cm *corev1.ConfigMap
+			if !tt.nilCM {
+				cm = &corev1.ConfigMap{}
+			}
+			sts, err := getNewWorkerSetForDMCluster(&tt.dc, cm)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("error %v, wantErr %v", err, tt.wantErr)
 			}
-			tt.testSts(sts)
+			if tt.testSts != nil {
+				tt.testSts(sts)
+			}
 		})
 	}
 }

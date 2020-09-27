@@ -345,9 +345,6 @@ func (wmm *workerMemberManager) workerStatefulSetIsUpgrading(set *apps.StatefulS
 
 // syncWorkerConfigMap syncs the configmap of dm-worker
 func (wmm *workerMemberManager) syncWorkerConfigMap(dc *v1alpha1.DMCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
-	if dc.Spec.Worker.Config == nil {
-		return nil, nil
-	}
 	newCm, err := getWorkerConfigMap(dc)
 	if err != nil {
 		return nil, err
@@ -360,10 +357,10 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	dcName := dc.Name
 	baseWorkerSpec := dc.BaseWorkerSpec()
 	instanceName := dc.GetInstanceName()
-	workerConfigMap := ""
-	if cm != nil {
-		workerConfigMap = cm.Name
+	if cm == nil {
+		return nil, fmt.Errorf("config map for dm-worker is not found, dmcluster %s/%s", dc.Namespace, dc.Name)
 	}
+	workerConfigMap := cm.Name
 
 	annMount, annVolume := annotationsMountVolume()
 	volMounts := []corev1.VolumeMount{
