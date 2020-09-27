@@ -890,8 +890,25 @@ func TestGetNewMasterSetForDMCluster(t *testing.T) {
 		name    string
 		dc      v1alpha1.DMCluster
 		wantErr bool
+		nilCM   bool
 		testSts func(sts *apps.StatefulSet)
 	}{
+		{
+			name: "dm-master config map is nil",
+			dc: v1alpha1.DMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "dc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.DMClusterSpec{
+					Master: v1alpha1.MasterSpec{},
+					Worker: &v1alpha1.WorkerSpec{},
+				},
+			},
+			wantErr: true,
+			nilCM:   true,
+			testSts: nil,
+		},
 		{
 			name: "dm-master network is not host",
 			dc: v1alpha1.DMCluster{
@@ -1173,11 +1190,17 @@ func TestGetNewMasterSetForDMCluster(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sts, err := getNewMasterSetForDMCluster(&tt.dc, &corev1.ConfigMap{})
+			var cm *corev1.ConfigMap
+			if !tt.nilCM {
+				cm = &corev1.ConfigMap{}
+			}
+			sts, err := getNewMasterSetForDMCluster(&tt.dc, cm)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("error %v, wantErr %v", err, tt.wantErr)
 			}
-			tt.testSts(sts)
+			if tt.testSts != nil {
+				tt.testSts(sts)
+			}
 		})
 	}
 }
