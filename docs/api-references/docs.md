@@ -8265,15 +8265,12 @@ Defaults to Kubernetes default storage class.</p>
 </tr>
 <tr>
 <td>
-<code>GenericConfig</code></br>
+<code>config</code></br>
 <em>
 github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
 </em>
 </td>
 <td>
-<p>
-(Members of <code>GenericConfig</code> are embedded into this type.)
-</p>
 <em>(Optional)</em>
 <p>TODO: add schema
 The configuration of Pump cluster.</p>
@@ -9445,11 +9442,7 @@ string
 </tr>
 <tr>
 <td>
-<<<<<<< HEAD
 <code>capacityStorage</code></br>
-=======
-<code>config</code></br>
->>>>>>> cf85ab3b... Support pass raw toml config for pump as string (#3312)
 <em>
 string
 </em>
