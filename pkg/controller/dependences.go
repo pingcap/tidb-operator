@@ -15,9 +15,9 @@ package controller
 
 import (
 	"flag"
+	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	"time"
 
-	storagelister "k8s.io/client-go/listers/storage/v1"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
@@ -33,6 +33,7 @@ import (
 	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	appslisters "k8s.io/client-go/listers/apps/v1"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
+	storagelister "k8s.io/client-go/listers/storage/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -133,6 +134,7 @@ type Dependencies struct {
 	StatefulSetInformer  appsinformers.StatefulSetInformer
 	StorageClassInformer kubeinformersv1.StorageClassInformer
 	TiDBClusterInformer  informeralphav1.TidbClusterInformer
+	DMClusterInformer    informeralphav1.DMClusterInformer
 
 	// Listers
 	ServiceLister               corelisterv1.ServiceLister
@@ -146,9 +148,12 @@ type Dependencies struct {
 	StorageClassLister          storagelister.StorageClassLister
 	TiDBClusterLister           listers.TidbClusterLister
 	TiDBClusterAutoScalerLister listers.TidbClusterAutoScalerLister
+	DMClusterLister             listers.DMClusterLister
 
 	// Controls
 	TiDBClusterControl TidbClusterControlInterface
+	DMClusterControl   DMClusterControlInterface
+	DMMasterControl    dmapi.MasterControlInterface
 	PDControl          pdapi.PDControlInterface
 	CDCControl         TiCDCControlInterface
 	TiDBControl        TiDBControlInterface
@@ -186,7 +191,9 @@ func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface
 	// Shared variables to construct `Dependencies` and some of its fields
 	var (
 		pdControl         = pdapi.NewDefaultPDControl(kubeClientset)
+		masterControl     = dmapi.NewDefaultMasterControl(kubeClientset)
 		tidbClusterLister = informerFactory.Pingcap().V1alpha1().TidbClusters().Lister()
+		dmClusterLister   = informerFactory.Pingcap().V1alpha1().DMClusters().Lister()
 		statefulSetLister = kubeInformerFactory.Apps().V1().StatefulSets().Lister()
 		serviceLister     = kubeInformerFactory.Core().V1().Services().Lister()
 		pvcLister         = kubeInformerFactory.Core().V1().PersistentVolumeClaims().Lister()
@@ -218,12 +225,15 @@ func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface
 		NodeLister:                  kubeInformerFactory.Core().V1().Nodes().Lister(),
 		SecretLister:                kubeInformerFactory.Core().V1().Secrets().Lister(),
 		StatefulSetLister:           statefulSetLister,
-		StorageClassLister:  kubeInformerFactory.Storage().V1().StorageClasses().Lister(),
+		StorageClassLister:          kubeInformerFactory.Storage().V1().StorageClasses().Lister(),
 		TiDBClusterLister:           tidbClusterLister,
 		TiDBClusterAutoScalerLister: informerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers().Lister(),
+		DMClusterLister:             dmClusterLister,
 
 		// Controls
 		TiDBClusterControl: NewRealTidbClusterControl(clientset, tidbClusterLister, recorder),
+		DMClusterControl:   NewRealDMClusterControl(clientset, dmClusterLister, recorder),
+		DMMasterControl:    masterControl,
 		PDControl:          pdControl,
 		CDCControl:         NewDefaultTiCDCControl(kubeClientset),
 		TiDBControl:        NewDefaultTiDBControl(kubeClientset),

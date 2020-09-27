@@ -16,29 +16,21 @@ package member
 import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
 type tiflashUpgrader struct {
-	pdControl  pdapi.PDControlInterface
-	podControl controller.PodControlInterface
-	podLister  corelisters.PodLister
+	deps *controller.Dependencies
 }
 
 // NewTiFlashUpgrader returns a tiflash Upgrader
-func NewTiFlashUpgrader(pdControl pdapi.PDControlInterface,
-	podControl controller.PodControlInterface,
-	podLister corelisters.PodLister) Upgrader {
+func NewTiFlashUpgrader(deps *controller.Dependencies) Upgrader {
 	return &tiflashUpgrader{
-		pdControl:  pdControl,
-		podControl: podControl,
-		podLister:  podLister,
+		deps: deps,
 	}
 }
 
-func (tku *tiflashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (u *tiflashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	//  Wait for PD, TiKV and TiDB to finish upgrade
 	if tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.Status.TiKV.Phase == v1alpha1.UpgradePhase ||
 		tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
@@ -59,6 +51,6 @@ func NewFakeTiFlashUpgrader() Upgrader {
 	return &fakeTiFlashUpgrader{}
 }
 
-func (tku *fakeTiFlashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, _ *apps.StatefulSet, _ *apps.StatefulSet) error {
+func (_ *fakeTiFlashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, _ *apps.StatefulSet, _ *apps.StatefulSet) error {
 	return nil
 }

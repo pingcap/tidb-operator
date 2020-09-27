@@ -19,32 +19,26 @@ import (
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/dmapi"
-
 	apps "k8s.io/api/apps/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 )
 
 type masterUpgrader struct {
-	masterControl dmapi.MasterControlInterface
-	podLister     corelisters.PodLister
+	deps *controller.Dependencies
 }
 
 // NewMasterUpgrader returns a masterUpgrader
-func NewMasterUpgrader(masterControl dmapi.MasterControlInterface,
-	podLister corelisters.PodLister) DMUpgrader {
+func NewMasterUpgrader(deps *controller.Dependencies) DMUpgrader {
 	return &masterUpgrader{
-		masterControl: masterControl,
-		podLister:     podLister,
+		deps: deps,
 	}
 }
 
-func (mu *masterUpgrader) Upgrade(dc *v1alpha1.DMCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	return mu.gracefulUpgrade(dc, oldSet, newSet)
+func (u *masterUpgrader) Upgrade(dc *v1alpha1.DMCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	return u.gracefulUpgrade(dc, oldSet, newSet)
 }
 
-func (mu *masterUpgrader) gracefulUpgrade(dc *v1alpha1.DMCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (u *masterUpgrader) gracefulUpgrade(dc *v1alpha1.DMCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	ns := dc.GetNamespace()
 	dcName := dc.GetName()
 	if !dc.Status.Master.Synced {
@@ -84,7 +78,7 @@ func (mu *masterUpgrader) gracefulUpgrade(dc *v1alpha1.DMCluster, oldSet *apps.S
 	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
 		i := podOrdinals[_i]
 		podName := DMMasterPodName(dcName, i)
-		pod, err := mu.podLister.Pods(ns).Get(podName)
+		pod, err := u.deps.PodLister.Pods(ns).Get(podName)
 		if err != nil {
 			return fmt.Errorf("gracefulUpgrade: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, dcName, err)
 		}
@@ -106,18 +100,18 @@ func (mu *masterUpgrader) gracefulUpgrade(dc *v1alpha1.DMCluster, oldSet *apps.S
 		//	return nil
 		//}
 
-		return mu.upgradeMasterPod(dc, i, newSet)
+		return u.upgradeMasterPod(dc, i, newSet)
 	}
 
 	return nil
 }
 
-func (mu *masterUpgrader) upgradeMasterPod(dc *v1alpha1.DMCluster, ordinal int32, newSet *apps.StatefulSet) error {
+func (u *masterUpgrader) upgradeMasterPod(dc *v1alpha1.DMCluster, ordinal int32, newSet *apps.StatefulSet) error {
 	ns := dc.GetNamespace()
 	dcName := dc.GetName()
 	upgradePodName := DMMasterPodName(dcName, ordinal)
 	if dc.Status.Master.Leader.Name == upgradePodName && dc.MasterStsActualReplicas() > 1 {
-		err := mu.evictMasterLeader(dc, upgradePodName)
+		err := u.evictMasterLeader(dc, upgradePodName)
 		if err != nil {
 			klog.Errorf("dm-master upgrader: failed to evict dm-master %s's leader: %v", upgradePodName, err)
 			return err
@@ -130,8 +124,8 @@ func (mu *masterUpgrader) upgradeMasterPod(dc *v1alpha1.DMCluster, ordinal int32
 	return nil
 }
 
-func (mu *masterUpgrader) evictMasterLeader(dc *v1alpha1.DMCluster, podName string) error {
-	return controller.GetMasterPeerClient(mu.masterControl, dc, podName).EvictLeader()
+func (u *masterUpgrader) evictMasterLeader(dc *v1alpha1.DMCluster, podName string) error {
+	return controller.GetMasterPeerClient(u.deps.DMMasterControl, dc, podName).EvictLeader()
 }
 
 type fakeMasterUpgrader struct{}
@@ -141,7 +135,7 @@ func NewFakeMasterUpgrader() DMUpgrader {
 	return &fakeMasterUpgrader{}
 }
 
-func (fmu *fakeMasterUpgrader) Upgrade(dc *v1alpha1.DMCluster, _ *apps.StatefulSet, _ *apps.StatefulSet) error {
+func (u *fakeMasterUpgrader) Upgrade(dc *v1alpha1.DMCluster, _ *apps.StatefulSet, _ *apps.StatefulSet) error {
 	if !dc.Status.Master.Synced {
 		return fmt.Errorf("dmcluster: dm-master status sync failed,can not to be upgraded")
 	}

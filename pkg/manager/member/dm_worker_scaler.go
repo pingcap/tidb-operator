@@ -23,7 +23,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	apps "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 )
 
@@ -32,27 +31,25 @@ type workerScaler struct {
 }
 
 // NewWorkerScaler returns a DMScaler
-func NewWorkerScaler(pvcLister corelisters.PersistentVolumeClaimLister,
-	pvcControl controller.PVCControlInterface) Scaler {
+func NewWorkerScaler(deps *controller.Dependencies) Scaler {
 	return &workerScaler{
 		generalScaler: generalScaler{
-			pvcLister:  pvcLister,
-			pvcControl: pvcControl,
+			deps: deps,
 		},
 	}
 }
 
-func (wsd *workerScaler) Scale(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (s *workerScaler) Scale(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	scaling, _, _, _ := scaleOne(oldSet, newSet)
 	if scaling > 0 {
-		return wsd.ScaleOut(meta, oldSet, newSet)
+		return s.ScaleOut(meta, oldSet, newSet)
 	} else if scaling < 0 {
-		return wsd.ScaleIn(meta, oldSet, newSet)
+		return s.ScaleIn(meta, oldSet, newSet)
 	}
-	return wsd.SyncAutoScalerAnn(meta, oldSet)
+	return s.SyncAutoScalerAnn(meta, oldSet)
 }
 
-func (wsd *workerScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (s *workerScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	dc, ok := meta.(*v1alpha1.DMCluster)
 	if !ok {
 		return nil
@@ -64,7 +61,7 @@ func (wsd *workerScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, 
 	dcName := dc.GetName()
 
 	klog.Infof("scaling out dm-worker statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
-	_, err := wsd.deleteDeferDeletingPVC(dc, oldSet.GetName(), v1alpha1.DMWorkerMemberType, ordinal)
+	_, err := s.deleteDeferDeletingPVC(dc, oldSet.GetName(), v1alpha1.DMWorkerMemberType, ordinal)
 	if err != nil {
 		return err
 	}
@@ -82,7 +79,7 @@ func (wsd *workerScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, 
 // when it's still alive. So we delete it later after its keepalive lease is outdated or revoked.
 // We can defer deleting dm-worker register info because dm-master will patch replication task through keepalive info.
 // only remove one member at a time when scale down
-func (wsd *workerScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (s *workerScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	dc, ok := meta.(*v1alpha1.DMCluster)
 	if !ok {
 		return nil
@@ -105,7 +102,7 @@ func (wsd *workerScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, n
 	//}
 
 	pvcName := ordinalPVCName(v1alpha1.DMWorkerMemberType, setName, ordinal)
-	pvc, err := wsd.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
+	pvc, err := s.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
 	if err != nil {
 		return fmt.Errorf("dm-worker.ScaleIn: failed to get pvc %s for cluster %s/%s, error: %s", pvcName, ns, dcName, err)
 	}
@@ -116,7 +113,7 @@ func (wsd *workerScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, n
 	now := time.Now().Format(time.RFC3339)
 	pvc.Annotations[label.AnnPVCDeferDeleting] = now
 
-	_, err = wsd.pvcControl.UpdatePVC(dc, pvc)
+	_, err = s.deps.PVCControl.UpdatePVC(dc, pvc)
 	if err != nil {
 		klog.Errorf("dm-worker scale in: failed to set pvc %s/%s annotation: %s to %s",
 			ns, pvcName, label.AnnPVCDeferDeleting, now)
@@ -129,6 +126,6 @@ func (wsd *workerScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, n
 	return nil
 }
 
-func (wsd *workerScaler) SyncAutoScalerAnn(meta metav1.Object, oldSet *apps.StatefulSet) error {
+func (s *workerScaler) SyncAutoScalerAnn(meta metav1.Object, oldSet *apps.StatefulSet) error {
 	return nil
 }

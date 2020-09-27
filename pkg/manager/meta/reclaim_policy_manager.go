@@ -31,7 +31,7 @@ type reclaimPolicyManager struct {
 }
 
 // NewReclaimPolicyManager returns a *reclaimPolicyManager
-func NewReclaimPolicyManager(deps *controller.Dependencies) manager.Manager {
+func NewReclaimPolicyManager(deps *controller.Dependencies) *reclaimPolicyManager {
 	return &reclaimPolicyManager{
 		deps: deps,
 	}

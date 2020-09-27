@@ -16,14 +16,12 @@ package member
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 )
 
@@ -34,44 +32,37 @@ const (
 )
 
 type TidbClusterStatusManager struct {
-	cli          versioned.Interface
-	pdControl    pdapi.PDControlInterface
-	scalerLister listers.TidbClusterAutoScalerLister
+	deps *controller.Dependencies
 }
 
-func NewTidbClusterStatusManager(
-	kubeCli kubernetes.Interface,
-	cli versioned.Interface,
-	scalerLister listers.TidbClusterAutoScalerLister) *TidbClusterStatusManager {
+func NewTidbClusterStatusManager(deps *controller.Dependencies) *TidbClusterStatusManager {
 	return &TidbClusterStatusManager{
-		cli:          cli,
-		pdControl:    pdapi.NewDefaultPDControl(kubeCli),
-		scalerLister: scalerLister,
+		deps: deps,
 	}
 }
 
-func (tcsm *TidbClusterStatusManager) Sync(tc *v1alpha1.TidbCluster) error {
-	return tcsm.syncTidbMonitorRefAndKey(tc)
+func (m *TidbClusterStatusManager) Sync(tc *v1alpha1.TidbCluster) error {
+	return m.syncTidbMonitorRefAndKey(tc)
 }
 
-func (tcsm *TidbClusterStatusManager) syncTidbMonitorRefAndKey(tc *v1alpha1.TidbCluster) error {
-	tm, err := tcsm.syncTidbMonitorRef(tc)
+func (m *TidbClusterStatusManager) syncTidbMonitorRefAndKey(tc *v1alpha1.TidbCluster) error {
+	tm, err := m.syncTidbMonitorRef(tc)
 	if err != nil {
 		return err
 	}
-	err = tcsm.syncDashboardMetricStorage(tc, tm)
+	err = m.syncDashboardMetricStorage(tc, tm)
 	if err != nil {
 		return err
 	}
-	return tcsm.syncAutoScalerRef(tc)
+	return m.syncAutoScalerRef(tc)
 }
 
-func (tcsm *TidbClusterStatusManager) syncTidbMonitorRef(tc *v1alpha1.TidbCluster) (*v1alpha1.TidbMonitor, error) {
+func (m *TidbClusterStatusManager) syncTidbMonitorRef(tc *v1alpha1.TidbCluster) (*v1alpha1.TidbMonitor, error) {
 	if tc.Status.Monitor == nil {
 		return nil, nil
 	}
 	tmRef := tc.Status.Monitor
-	tm, err := tcsm.cli.PingcapV1alpha1().TidbMonitors(tmRef.Namespace).Get(tmRef.Name, metav1.GetOptions{})
+	tm, err := m.deps.Clientset.PingcapV1alpha1().TidbMonitors(tmRef.Namespace).Get(tmRef.Name, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			tc.Status.Monitor = nil
@@ -99,11 +90,11 @@ func (tcsm *TidbClusterStatusManager) syncTidbMonitorRef(tc *v1alpha1.TidbCluste
 	return tm, nil
 }
 
-func (tcsm *TidbClusterStatusManager) syncDashboardMetricStorage(tc *v1alpha1.TidbCluster, tm *v1alpha1.TidbMonitor) error {
+func (m *TidbClusterStatusManager) syncDashboardMetricStorage(tc *v1alpha1.TidbCluster, tm *v1alpha1.TidbMonitor) error {
 	if tc.Spec.PD == nil {
 		return nil
 	}
-	pdEtcdClient, err := tcsm.pdControl.GetPDEtcdClient(pdapi.Namespace(tc.Namespace), tc.Name, tc.IsTLSClusterEnabled())
+	pdEtcdClient, err := m.deps.PDControl.GetPDEtcdClient(pdapi.Namespace(tc.Namespace), tc.Name, tc.IsTLSClusterEnabled())
 
 	if err != nil {
 		return err
@@ -135,14 +126,14 @@ func (tcsm *TidbClusterStatusManager) syncDashboardMetricStorage(tc *v1alpha1.Ti
 	return nil
 }
 
-func (tcsm *TidbClusterStatusManager) syncAutoScalerRef(tc *v1alpha1.TidbCluster) error {
+func (m *TidbClusterStatusManager) syncAutoScalerRef(tc *v1alpha1.TidbCluster) error {
 	if tc.Status.AutoScaler == nil {
 		klog.V(4).Infof("tc[%s/%s] autoscaler is empty", tc.Namespace, tc.Name)
 		return nil
 	}
 	tacNamespace := tc.Status.AutoScaler.Namespace
 	tacName := tc.Status.AutoScaler.Name
-	tac, err := tcsm.scalerLister.TidbClusterAutoScalers(tacNamespace).Get(tacName)
+	tac, err := m.deps.TiDBClusterAutoScalerLister.TidbClusterAutoScalers(tacNamespace).Get(tacName)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			klog.Infof("tc[%s/%s] failed to find tac[%s/%s]", tc.Namespace, tc.Name, tacNamespace, tacName)
