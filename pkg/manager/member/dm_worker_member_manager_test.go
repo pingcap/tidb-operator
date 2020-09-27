@@ -193,6 +193,8 @@ func TestWorkerMemberManagerSyncUpdate(t *testing.T) {
 		oldCm  *corev1.ConfigMap
 		cm     *corev1.ConfigMap
 		getCm  error
+
+		triggerDeleteWorker bool
 	}
 	type testcase struct {
 		name           string
@@ -210,12 +212,17 @@ func TestWorkerMemberManagerSyncUpdate(t *testing.T) {
 		dc := newDMClusterForWorker()
 		ns := dc.Namespace
 		dcName := dc.Name
+		triggerDeleteWorker := false
 
 		mmm, ctls, indexers, fakeMasterControl := newFakeWorkerMemberManager()
 
 		masterClient := controller.NewFakeMasterClient(fakeMasterControl, dc)
 		masterClient.AddReaction(dmapi.GetWorkersActionType, func(action *dmapi.Action) (interface{}, error) {
 			return test.workerInfos, nil
+		})
+		masterClient.AddReaction(dmapi.DeleteWorkerActionType, func(action *dmapi.Action) (interface{}, error) {
+			triggerDeleteWorker = true
+			return nil, nil
 		})
 
 		if test.errOnUpdateSet {
@@ -259,7 +266,7 @@ func TestWorkerMemberManagerSyncUpdate(t *testing.T) {
 		key, err := client.ObjectKeyFromObject(cm)
 		g.Expect(err).To(Succeed())
 		getCmErr := ctls.generic.FakeCli.Get(context.TODO(), key, cm)
-		result := result{syncErr, oldSvc, svc, getSvcErr, oldSet, set, getStsErr, oldCm, cm, getCmErr}
+		result := result{syncErr, oldSvc, svc, getSvcErr, oldSet, set, getStsErr, oldCm, cm, getCmErr, triggerDeleteWorker}
 		test.expectFn(g, &result)
 	}
 
@@ -281,6 +288,7 @@ func TestWorkerMemberManagerSyncUpdate(t *testing.T) {
 				g.Expect(r.svc.Spec.Ports[0].Port).NotTo(Equal(int32(8888)))
 				g.Expect(r.cm.Data["config-file"]).To(ContainSubstring("keepalive-ttl"))
 				g.Expect(*r.set.Spec.Replicas).To(Equal(int32(4)))
+				g.Expect(r.triggerDeleteWorker).To(BeFalse())
 			},
 			workerInfos: nil,
 		},
@@ -301,11 +309,12 @@ func TestWorkerMemberManagerSyncUpdate(t *testing.T) {
 				g.Expect(r.svc.Spec.Ports[0].Port).NotTo(Equal(int32(8888)))
 				g.Expect(r.cm.Data["config-file"]).NotTo(ContainSubstring("keepalive-ttl"))
 				g.Expect(*r.set.Spec.Replicas).To(Equal(int32(3)))
+				g.Expect(r.triggerDeleteWorker).To(BeFalse())
 			},
 			workerInfos: []*dmapi.WorkersInfo{
-				{Name: "worker1", Addr: "http://worker1:8262", Stage: v1alpha1.DMWorkerStateFree},
-				{Name: "worker2", Addr: "http://worker2:8262", Stage: v1alpha1.DMWorkerStateFree},
-				{Name: "worker3", Addr: "http://worker3:8262", Stage: v1alpha1.DMWorkerStateFree},
+				{Name: ordinalPodName(v1alpha1.DMWorkerMemberType, "test", 0), Addr: "http://worker0:8262", Stage: v1alpha1.DMWorkerStateFree},
+				{Name: ordinalPodName(v1alpha1.DMWorkerMemberType, "test", 1), Addr: "http://worker1:8262", Stage: v1alpha1.DMWorkerStateFree},
+				{Name: ordinalPodName(v1alpha1.DMWorkerMemberType, "test", 2), Addr: "http://worker2:8262", Stage: v1alpha1.DMWorkerStateFree},
 			},
 		},
 		{
@@ -325,11 +334,12 @@ func TestWorkerMemberManagerSyncUpdate(t *testing.T) {
 				g.Expect(r.svc.Spec.Ports[0].Port).To(Equal(int32(8888)))
 				g.Expect(r.cm.Data["config-file"]).NotTo(ContainSubstring("keepalive-ttl"))
 				g.Expect(*r.set.Spec.Replicas).To(Equal(int32(3)))
+				g.Expect(r.triggerDeleteWorker).To(BeFalse())
 			},
 			workerInfos: []*dmapi.WorkersInfo{
-				{Name: "worker1", Addr: "http://worker1:8262", Stage: v1alpha1.DMWorkerStateFree},
-				{Name: "worker2", Addr: "http://worker2:8262", Stage: v1alpha1.DMWorkerStateFree},
-				{Name: "worker3", Addr: "http://worker3:8262", Stage: v1alpha1.DMWorkerStateFree},
+				{Name: ordinalPodName(v1alpha1.DMWorkerMemberType, "test", 0), Addr: "http://worker0:8262", Stage: v1alpha1.DMWorkerStateFree},
+				{Name: ordinalPodName(v1alpha1.DMWorkerMemberType, "test", 1), Addr: "http://worker1:8262", Stage: v1alpha1.DMWorkerStateFree},
+				{Name: ordinalPodName(v1alpha1.DMWorkerMemberType, "test", 2), Addr: "http://worker2:8262", Stage: v1alpha1.DMWorkerStateFree},
 			},
 		},
 		{
@@ -349,11 +359,38 @@ func TestWorkerMemberManagerSyncUpdate(t *testing.T) {
 				g.Expect(r.svc.Spec.Ports[0].Port).NotTo(Equal(int32(8888)))
 				g.Expect(r.cm.Data["config-file"]).To(ContainSubstring("keepalive-ttl"))
 				g.Expect(*r.set.Spec.Replicas).To(Equal(int32(3)))
+				g.Expect(r.triggerDeleteWorker).To(BeFalse())
 			},
 			workerInfos: []*dmapi.WorkersInfo{
-				{Name: "worker1", Addr: "http://worker1:8262", Stage: v1alpha1.DMWorkerStateFree},
-				{Name: "worker2", Addr: "http://worker2:8262", Stage: v1alpha1.DMWorkerStateFree},
-				{Name: "worker3", Addr: "http://worker3:8262", Stage: v1alpha1.DMWorkerStateFree},
+				{Name: ordinalPodName(v1alpha1.DMWorkerMemberType, "test", 0), Addr: "http://worker0:8262", Stage: v1alpha1.DMWorkerStateFree},
+				{Name: ordinalPodName(v1alpha1.DMWorkerMemberType, "test", 1), Addr: "http://worker1:8262", Stage: v1alpha1.DMWorkerStateFree},
+				{Name: ordinalPodName(v1alpha1.DMWorkerMemberType, "test", 2), Addr: "http://worker2:8262", Stage: v1alpha1.DMWorkerStateFree},
+			},
+		},
+		{
+			name: "offline scaled dm-worker",
+			prepare: func(dc *v1alpha1.DMCluster, _ *workerFakeIndexers) {
+				dc.Spec.Worker.Config = &v1alpha1.WorkerConfig{
+					LogLevel:     pointer.StringPtr("info"),
+					KeepAliveTTL: pointer.Int64Ptr(25),
+				}
+				dc.Spec.Worker.Replicas = 3
+			},
+			errOnUpdateCm:  false,
+			errOnUpdateSvc: false,
+			errOnUpdateSet: true,
+			expectFn: func(g *GomegaWithT, r *result) {
+				g.Expect(r.sync).NotTo(Succeed())
+				g.Expect(r.svc.Spec.Ports[0].Port).NotTo(Equal(int32(8888)))
+				g.Expect(r.cm.Data["config-file"]).To(ContainSubstring("keepalive-ttl"))
+				g.Expect(*r.set.Spec.Replicas).To(Equal(int32(3)))
+				g.Expect(r.triggerDeleteWorker).To(BeTrue())
+			},
+			workerInfos: []*dmapi.WorkersInfo{
+				{Name: ordinalPodName(v1alpha1.DMWorkerMemberType, "test", 0), Addr: "http://worker0:8262", Stage: v1alpha1.DMWorkerStateFree},
+				{Name: ordinalPodName(v1alpha1.DMWorkerMemberType, "test", 1), Addr: "http://worker1:8262", Stage: v1alpha1.DMWorkerStateFree},
+				{Name: ordinalPodName(v1alpha1.DMWorkerMemberType, "test", 2), Addr: "http://worker2:8262", Stage: v1alpha1.DMWorkerStateFree},
+				{Name: ordinalPodName(v1alpha1.DMWorkerMemberType, "test", 3), Addr: "http://worker3:8262", Stage: v1alpha1.DMWorkerStateOffline},
 			},
 		},
 	}
