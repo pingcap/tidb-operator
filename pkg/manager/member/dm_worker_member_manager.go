@@ -345,9 +345,6 @@ func (wmm *workerMemberManager) workerStatefulSetIsUpgrading(set *apps.StatefulS
 
 // syncWorkerConfigMap syncs the configmap of dm-worker
 func (wmm *workerMemberManager) syncWorkerConfigMap(dc *v1alpha1.DMCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
-	if dc.Spec.Worker.Config == nil {
-		return nil, nil
-	}
 	newCm, err := getWorkerConfigMap(dc)
 	if err != nil {
 		return nil, err

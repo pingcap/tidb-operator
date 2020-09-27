@@ -401,9 +401,6 @@ func (mmm *masterMemberManager) syncDMClusterStatus(dc *v1alpha1.DMCluster, set 
 
 // syncMasterConfigMap syncs the configmap of dm-master
 func (mmm *masterMemberManager) syncMasterConfigMap(dc *v1alpha1.DMCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
-	if dc.Spec.Master.Config == nil {
-		return nil, nil
-	}
 	newCm, err := getMasterConfigMap(dc)
 	if err != nil {
 		return nil, err
