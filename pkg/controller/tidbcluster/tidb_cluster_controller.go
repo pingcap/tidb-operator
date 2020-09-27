@@ -19,17 +19,14 @@ import (
 
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	mm "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/manager/meta"
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	appslisters "k8s.io/client-go/listers/apps/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
@@ -41,45 +38,25 @@ type Controller struct {
 	// control returns an interface capable of syncing a tidb cluster.
 	// Abstracted out for testing.
 	control ControlInterface
-	// tcLister is able to list/get tidbclusters from a shared informer's store
-	tcLister listers.TidbClusterLister
-	// tcListerSynced returns true if the tidbcluster shared informer has synced at least once
-	tcListerSynced cache.InformerSynced
-	// setLister is able to list/get stateful sets from a shared informer's store
-	setLister appslisters.StatefulSetLister
-	// setListerSynced returns true if the statefulset shared informer has synced at least once
-	setListerSynced cache.InformerSynced
 	// tidbclusters that need to be synced.
 	queue workqueue.RateLimitingInterface
 }
 
 // NewController creates a tidbcluster controller.
 func NewController(deps *controller.Dependencies) *Controller {
-	pdScaler := mm.NewPDScaler(deps)
-	tikvScaler := mm.NewTiKVScaler(deps)
-	tiflashScaler := mm.NewTiFlashScaler(deps)
-	pdFailover := mm.NewPDFailover(deps)
-	tikvFailover := mm.NewTiKVFailover(deps)
-	tidbFailover := mm.NewTiDBFailover(deps)
-	tiflashFailover := mm.NewTiFlashFailover(deps)
-	pdUpgrader := mm.NewPDUpgrader(deps)
-	tikvUpgrader := mm.NewTiKVUpgrader(deps)
-	tiflashUpgrader := mm.NewTiFlashUpgrader(deps)
-	tidbUpgrader := mm.NewTiDBUpgrader(deps)
-
 	tcc := &Controller{
 		control: NewDefaultTidbClusterControl(
 			deps.TiDBClusterControl,
-			mm.NewPDMemberManager(deps, pdScaler, pdUpgrader, pdFailover),
-			mm.NewTiKVMemberManager(deps, tikvFailover, tikvScaler, tikvUpgrader),
-			mm.NewTiDBMemberManager(deps, tidbUpgrader, tidbFailover),
+			mm.NewPDMemberManager(deps, mm.NewPDScaler(deps), mm.NewPDUpgrader(deps), mm.NewPDFailover(deps)),
+			mm.NewTiKVMemberManager(deps, mm.NewTiKVFailover(deps), mm.NewTiKVScaler(deps), mm.NewTiKVUpgrader(deps)),
+			mm.NewTiDBMemberManager(deps, mm.NewTiDBUpgrader(deps), mm.NewTiDBFailover(deps)),
 			meta.NewReclaimPolicyManager(deps),
 			meta.NewMetaManager(deps),
 			mm.NewOrphanPodsCleaner(deps),
 			mm.NewRealPVCCleaner(deps),
 			mm.NewPVCResizer(deps),
 			mm.NewPumpMemberManager(deps),
-			mm.NewTiFlashMemberManager(deps, tiflashFailover, tiflashScaler, tiflashUpgrader),
+			mm.NewTiFlashMemberManager(deps, mm.NewTiFlashFailover(deps), mm.NewTiFlashScaler(deps), mm.NewTiFlashUpgrader(deps)),
 			mm.NewTiCDCMemberManager(deps),
 			mm.NewTidbDiscoveryManager(deps),
 			mm.NewTidbClusterStatusManager(deps),
@@ -89,25 +66,20 @@ func NewController(deps *controller.Dependencies) *Controller {
 		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "tidbcluster"),
 	}
 
-	tcInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	deps.TiDBClusterInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: tcc.enqueueTidbCluster,
 		UpdateFunc: func(old, cur interface{}) {
 			tcc.enqueueTidbCluster(cur)
 		},
 		DeleteFunc: tcc.enqueueTidbCluster,
 	})
-	tcc.tcLister = tcInformer.Lister()
-	tcc.tcListerSynced = tcInformer.Informer().HasSynced
-
-	setInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	deps.StatefulSetInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: tcc.addStatefulSet,
 		UpdateFunc: func(old, cur interface{}) {
 			tcc.updateStatefuSet(old, cur)
 		},
 		DeleteFunc: tcc.deleteStatefulSet,
 	})
-	tcc.setLister = setInformer.Lister()
-	tcc.setListerSynced = setInformer.Informer().HasSynced
 
 	return tcc
 }
@@ -165,7 +137,7 @@ func (tcc *Controller) sync(key string) error {
 	if err != nil {
 		return err
 	}
-	tc, err := tcc.tcLister.TidbClusters(ns).Get(name)
+	tc, err := tcc.deps.TiDBClusterLister.TidbClusters(ns).Get(name)
 	if errors.IsNotFound(err) {
 		klog.Infof("TidbCluster has been deleted %v", key)
 		return nil

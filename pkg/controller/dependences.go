@@ -17,15 +17,16 @@ import (
 	"flag"
 	"time"
 
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	coreinformers "k8s.io/client-go/informers/core/v1"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	informeralphav1 "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	corev1 "k8s.io/api/core/v1"
 	kubeinformers "k8s.io/client-go/informers"
+	appsinformers "k8s.io/client-go/informers/apps/v1"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 	kubeinformersv1 "k8s.io/client-go/informers/storage/v1"
 	"k8s.io/client-go/kubernetes"
 	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -128,6 +129,7 @@ type Dependencies struct {
 
 	// Informers
 	PVCInformer          coreinformers.PersistentVolumeClaimInformer
+	StatefulSetInformer  appsinformers.StatefulSetInformer
 	StorageClassInformer kubeinformersv1.StorageClassInformer
 	TiDBClusterInformer  informeralphav1.TidbClusterInformer
 
@@ -200,7 +202,8 @@ func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface
 		Recorder:            recorder,
 
 		// Informers
-		PVCInformer: kubeInformerFactory.Core().V1().PersistentVolumeClaims(),
+		PVCInformer:          kubeInformerFactory.Core().V1().PersistentVolumeClaims(),
+		StatefulSetInformer:  kubeInformerFactory.Apps().V1().StatefulSets(),
 		StorageClassInformer: kubeInformerFactory.Storage().V1().StorageClasses(),
 		TiDBClusterInformer:  informerFactory.Pingcap().V1alpha1().TidbClusters(),
 
