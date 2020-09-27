@@ -3448,8 +3448,7 @@ spec:
                   type: object
                 baseImage:
                   type: string
-                config:
-                  type: object
+                config: {}
                 configUpdateStrategy:
                   type: string
                 env:
@@ -14300,6 +14299,10 @@ spec:
               type: string
             timezone:
               type: string
+            tlsClientSecretNames:
+              items:
+                type: string
+              type: array
             tlsCluster: {}
             tolerations:
               items:

@@ -678,6 +678,19 @@ Optional: Defaults to nil</p>
 </tr>
 <tr>
 <td>
+<code>tlsClientSecretNames</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TLSClientSecretNames are the names of secrets which stores mysql/tidb server client certificates
+that used by dm-master and dm-worker.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>hostNetwork</code></br>
 <em>
 bool
@@ -4329,6 +4342,19 @@ TLSCluster
 <em>(Optional)</em>
 <p>Whether enable the TLS connection between DM server components
 Optional: Defaults to nil</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tlsClientSecretNames</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TLSClientSecretNames are the names of secrets which stores mysql/tidb server client certificates
+that used by dm-master and dm-worker.</p>
 </td>
 </tr>
 <tr>
@@ -9889,15 +9915,12 @@ Defaults to Kubernetes default storage class.</p>
 </tr>
 <tr>
 <td>
-<code>GenericConfig</code></br>
+<code>config</code></br>
 <em>
 github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
 </em>
 </td>
 <td>
-<p>
-(Members of <code>GenericConfig</code> are embedded into this type.)
-</p>
 <em>(Optional)</em>
 <p>TODO: add schema
 The configuration of Pump cluster.</p>
