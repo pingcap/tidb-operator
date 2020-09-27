@@ -18,8 +18,6 @@ import (
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/meta"
 	"github.com/pingcap/tidb-operator/pkg/monitor"
@@ -31,26 +29,13 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	discoverycachedmemory "k8s.io/client-go/discovery/cached/memory"
-	kubeinformers "k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes"
-	appslisters "k8s.io/client-go/listers/apps/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
-	extensionslister "k8s.io/client-go/listers/extensions/v1beta1"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 )
 
 type MonitorManager struct {
-	cli                versioned.Interface
+	deps               *controller.Dependencies
 	pvManager          monitor.MonitorManager
 	discoveryInterface discovery.CachedDiscoveryInterface
-	typedControl       controller.TypedControlInterface
-	deploymentLister   appslisters.DeploymentLister
-	pvLister           corelisters.PersistentVolumeLister
-	ingressLister      extensionslister.IngressLister
-	pvControl          controller.PVControlInterface
-	cmControl          controller.ConfigMapControlInterface
-	recorder           record.EventRecorder
 }
 
 const (
@@ -58,35 +43,15 @@ const (
 	SuccessSync = "SuccessSync"
 )
 
-func NewMonitorManager(
-	kubeCli kubernetes.Interface,
-	cli versioned.Interface,
-	informerFactory informers.SharedInformerFactory,
-	kubeInformerFactory kubeinformers.SharedInformerFactory,
-	typedControl controller.TypedControlInterface,
-	recorder record.EventRecorder) *MonitorManager {
-	pvcLister := kubeInformerFactory.Core().V1().PersistentVolumeClaims().Lister()
-	pvLister := kubeInformerFactory.Core().V1().PersistentVolumes().Lister()
-	pvControl := controller.NewRealPVControl(kubeCli, pvcLister, pvLister, recorder)
-	cmControl := controller.NewRealConfigMapControl(kubeCli, recorder)
+func NewMonitorManager(deps *controller.Dependencies) *MonitorManager {
 	return &MonitorManager{
-		cli: cli,
-		pvManager: meta.NewReclaimPolicyMonitorManager(
-			pvcLister,
-			pvLister,
-			pvControl),
-		discoveryInterface: discoverycachedmemory.NewMemCacheClient(kubeCli.Discovery()),
-		typedControl:       typedControl,
-		deploymentLister:   kubeInformerFactory.Apps().V1().Deployments().Lister(),
-		pvControl:          controller.NewRealPVControl(kubeCli, pvcLister, pvLister, recorder),
-		pvLister:           pvLister,
-		ingressLister:      kubeInformerFactory.Extensions().V1beta1().Ingresses().Lister(),
-		cmControl:          cmControl,
-		recorder:           recorder,
+		deps:               deps,
+		pvManager:          meta.NewReclaimPolicyManager(deps),
+		discoveryInterface: discoverycachedmemory.NewMemCacheClient(deps.KubeClientset.Discovery()),
 	}
 }
 
-func (mm *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
+func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	if monitor.DeletionTimestamp != nil {
 		return nil
 	}
@@ -99,7 +64,7 @@ func (mm *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	if len(tcRef.Namespace) < 1 {
 		tcRef.Namespace = monitor.Namespace
 	}
-	tc, err := mm.cli.PingcapV1alpha1().TidbClusters(tcRef.Namespace).Get(tcRef.Name, metav1.GetOptions{})
+	tc, err := m.deps.Clientset.PingcapV1alpha1().TidbClusters(tcRef.Namespace).Get(tcRef.Name, metav1.GetOptions{})
 	if err != nil {
 		rerr := fmt.Errorf("get tm[%s/%s]'s target tc[%s/%s] failed, err: %v", monitor.Namespace, monitor.Name, tcRef.Namespace, tcRef.Name, err)
 		return rerr
@@ -107,7 +72,7 @@ func (mm *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	if tc.Status.Monitor != nil {
 		if tc.Status.Monitor.Name != monitor.Name || tc.Status.Monitor.Namespace != monitor.Namespace {
 			err := fmt.Errorf("tm[%s/%s]'s target tc[%s/%s] already referenced by TidbMonitor [%s/%s]", monitor.Namespace, monitor.Name, tc.Namespace, tc.Name, tc.Status.Monitor.Namespace, tc.Status.Monitor.Name)
-			mm.recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, err.Error())
+			m.deps.Recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, err.Error())
 			return err
 		}
 	}
@@ -115,17 +80,17 @@ func (mm *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	// TODO: Support validating webhook that forbids the tidbmonitor to update the monitorRef for the tidbcluster whose monitorRef has already
 	// been set by another TidbMonitor.
 	// Patch tidbcluster status first to avoid multi tidbmonitor monitoring the same tidbcluster
-	if err := mm.patchTidbClusterStatus(&tcRef, monitor); err != nil {
+	if err := m.patchTidbClusterStatus(&tcRef, monitor); err != nil {
 		message := fmt.Sprintf("Sync TidbMonitorRef into targetCluster[%s/%s] status failed, err:%v", tc.Namespace, tc.Name, err)
 		klog.Error(message)
-		mm.recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, err.Error())
+		m.deps.Recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, err.Error())
 		return err
 	}
 
 	// Sync Service
-	if err := mm.syncTidbMonitorService(monitor); err != nil {
+	if err := m.syncTidbMonitorService(monitor); err != nil {
 		message := fmt.Sprintf("Sync TidbMonitor[%s/%s] Service failed, err: %v", monitor.Namespace, monitor.Name, err)
-		mm.recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
+		m.deps.Recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
 		return err
 	}
 	klog.V(4).Infof("tm[%s/%s]'s service synced", monitor.Namespace, monitor.Name)
@@ -133,40 +98,40 @@ func (mm *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	var pvc *corev1.PersistentVolumeClaim
 	if monitor.Spec.Persistent {
 		var err error
-		pvc, err = mm.syncTidbMonitorPVC(monitor)
+		pvc, err = m.syncTidbMonitorPVC(monitor)
 		if err != nil {
 			message := fmt.Sprintf("Sync TidbMonitor[%s/%s] PVC failed,err:%v", monitor.Namespace, monitor.Name, err)
-			mm.recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
+			m.deps.Recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
 			return err
 		}
 		klog.V(4).Infof("tm[%s/%s]'s pvc synced", monitor.Namespace, monitor.Name)
 
 		// syncing all PVs managed by this tidbmonitor
-		if err := mm.pvManager.SyncMonitor(monitor); err != nil {
+		if err := m.pvManager.SyncMonitor(monitor); err != nil {
 			return err
 		}
 		klog.V(4).Infof("tm[%s/%s]'s pv synced", monitor.Namespace, monitor.Name)
 	}
 
 	// Sync Deployment
-	if err := mm.syncTidbMonitorDeployment(tc, monitor); err != nil {
+	if err := m.syncTidbMonitorDeployment(tc, monitor); err != nil {
 		message := fmt.Sprintf("Sync TidbMonitor[%s/%s] Deployment failed,err:%v", monitor.Namespace, monitor.Name, err)
-		mm.recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
+		m.deps.Recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
 		return err
 	}
 
 	// After the pvc has consumer, we sync monitor pv's labels
 	if monitor.Spec.Persistent {
-		if err := mm.syncTidbMonitorPV(monitor, pvc); err != nil {
+		if err := m.syncTidbMonitorPV(monitor, pvc); err != nil {
 			return err
 		}
 	}
 	klog.V(4).Infof("tm[%s/%s]'s deployment synced", monitor.Namespace, monitor.Name)
 
 	// Sync Ingress
-	if err := mm.syncIngress(monitor); err != nil {
+	if err := m.syncIngress(monitor); err != nil {
 		message := fmt.Sprintf("Sync TidbMonitor[%s/%s] Ingress failed,err:%v", monitor.Namespace, monitor.Name, err)
-		mm.recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
+		m.deps.Recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
 		return err
 	}
 	klog.V(4).Infof("tm[%s/%s]'s ingress synced", monitor.Namespace, monitor.Name)
@@ -174,10 +139,10 @@ func (mm *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	return nil
 }
 
-func (mm *MonitorManager) syncTidbMonitorService(monitor *v1alpha1.TidbMonitor) error {
+func (m *MonitorManager) syncTidbMonitorService(monitor *v1alpha1.TidbMonitor) error {
 	services := getMonitorService(monitor)
 	for _, svc := range services {
-		_, err := mm.typedControl.CreateOrUpdateService(monitor, svc)
+		_, err := m.deps.TypedControl.CreateOrUpdateService(monitor, svc)
 		if err != nil {
 			klog.Errorf("tm[%s/%s]'s service[%s] failed to sync,err: %v", monitor.Namespace, monitor.Name, svc.Name, err)
 			return controller.RequeueErrorf("tm[%s/%s]'s service[%s] failed to sync,err: %v", monitor.Namespace, monitor.Name, svc.Name, err)
@@ -186,10 +151,10 @@ func (mm *MonitorManager) syncTidbMonitorService(monitor *v1alpha1.TidbMonitor) 
 	return nil
 }
 
-func (mm *MonitorManager) syncTidbMonitorPVC(monitor *v1alpha1.TidbMonitor) (*corev1.PersistentVolumeClaim, error) {
+func (m *MonitorManager) syncTidbMonitorPVC(monitor *v1alpha1.TidbMonitor) (*corev1.PersistentVolumeClaim, error) {
 
 	pvc := getMonitorPVC(monitor)
-	pvc, err := mm.typedControl.CreateOrUpdatePVC(monitor, pvc, false)
+	pvc, err := m.deps.TypedControl.CreateOrUpdatePVC(monitor, pvc, false)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s pvc failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return nil, err
@@ -197,33 +162,33 @@ func (mm *MonitorManager) syncTidbMonitorPVC(monitor *v1alpha1.TidbMonitor) (*co
 	return pvc, nil
 }
 
-func (mm *MonitorManager) syncTidbMonitorPV(monitor *v1alpha1.TidbMonitor, pvc *corev1.PersistentVolumeClaim) error {
+func (m *MonitorManager) syncTidbMonitorPV(monitor *v1alpha1.TidbMonitor, pvc *corev1.PersistentVolumeClaim) error {
 	// update meta info for pv
-	pv, err := mm.pvLister.Get(pvc.Spec.VolumeName)
+	pv, err := m.deps.PVLister.Get(pvc.Spec.VolumeName)
 	if err != nil {
 		return err
 	}
-	_, err = mm.pvControl.UpdateMetaInfo(monitor, pv)
+	_, err = m.deps.PVControl.UpdateMetaInfo(monitor, pv)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (mm *MonitorManager) syncTidbMonitorDeployment(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) error {
+func (m *MonitorManager) syncTidbMonitorDeployment(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) error {
 
-	cm, err := mm.syncTidbMonitorConfig(tc, monitor)
+	cm, err := m.syncTidbMonitorConfig(tc, monitor)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s configmap failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return err
 	}
-	secret, err := mm.syncTidbMonitorSecret(monitor)
+	secret, err := m.syncTidbMonitorSecret(monitor)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s secret failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return err
 	}
 
-	sa, err := mm.syncTidbMonitorRbac(monitor)
+	sa, err := m.syncTidbMonitorRbac(monitor)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s rbac failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return err
@@ -234,7 +199,7 @@ func (mm *MonitorManager) syncTidbMonitorDeployment(tc *v1alpha1.TidbCluster, mo
 		klog.Errorf("tm[%s/%s]'s deployment failed to generate,err: %v", monitor.Namespace, monitor.Name, err)
 		return err
 	}
-	_, err = mm.typedControl.CreateOrUpdateDeployment(monitor, deployment)
+	_, err = m.deps.TypedControl.CreateOrUpdateDeployment(monitor, deployment)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s deployment failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return err
@@ -243,15 +208,15 @@ func (mm *MonitorManager) syncTidbMonitorDeployment(tc *v1alpha1.TidbCluster, mo
 	return nil
 }
 
-func (mm *MonitorManager) syncTidbMonitorSecret(monitor *v1alpha1.TidbMonitor) (*corev1.Secret, error) {
+func (m *MonitorManager) syncTidbMonitorSecret(monitor *v1alpha1.TidbMonitor) (*corev1.Secret, error) {
 	if monitor.Spec.Grafana == nil {
 		return nil, nil
 	}
 	newSt := getMonitorSecret(monitor)
-	return mm.typedControl.CreateOrUpdateSecret(monitor, newSt)
+	return m.deps.TypedControl.CreateOrUpdateSecret(monitor, newSt)
 }
 
-func (mm *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) (*corev1.ConfigMap, error) {
+func (m *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) (*corev1.ConfigMap, error) {
 
 	newCM, err := getMonitorConfigMap(tc, monitor)
 	if err != nil {
@@ -263,7 +228,7 @@ func (mm *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, monito
 		if config.ConfigMapRef.Namespace != nil {
 			namespace = *config.ConfigMapRef.Namespace
 		}
-		externalCM, err := mm.cmControl.GetConfigMap(monitor, &corev1.ConfigMap{
+		externalCM, err := m.deps.ConfigMapControl.GetConfigMap(monitor, &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      config.ConfigMapRef.Name,
 				Namespace: namespace,
@@ -277,12 +242,12 @@ func (mm *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, monito
 			newCM.Data["prometheus-config"] = externalContent
 		}
 	}
-	return mm.typedControl.CreateOrUpdateConfigMap(monitor, newCM)
+	return m.deps.TypedControl.CreateOrUpdateConfigMap(monitor, newCM)
 }
 
-func (mm *MonitorManager) syncTidbMonitorRbac(monitor *v1alpha1.TidbMonitor) (*corev1.ServiceAccount, error) {
+func (m *MonitorManager) syncTidbMonitorRbac(monitor *v1alpha1.TidbMonitor) (*corev1.ServiceAccount, error) {
 	sa := getMonitorServiceAccount(monitor)
-	sa, err := mm.typedControl.CreateOrUpdateServiceAccount(monitor, sa)
+	sa, err := m.deps.TypedControl.CreateOrUpdateServiceAccount(monitor, sa)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s serviceaccount failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return nil, err
@@ -294,7 +259,7 @@ func (mm *MonitorManager) syncTidbMonitorRbac(monitor *v1alpha1.TidbMonitor) (*c
 			Verbs:     []string{"get", "list", "watch"},
 		},
 	}
-	if supported, err := utildiscovery.IsAPIGroupVersionSupported(mm.discoveryInterface, "security.openshift.io/v1"); err != nil {
+	if supported, err := utildiscovery.IsAPIGroupVersionSupported(m.discoveryInterface, "security.openshift.io/v1"); err != nil {
 		return nil, err
 	} else if supported {
 		// We must use 'anyuid' SecurityContextConstraint to run our container as root.
@@ -308,14 +273,14 @@ func (mm *MonitorManager) syncTidbMonitorRbac(monitor *v1alpha1.TidbMonitor) (*c
 	}
 
 	role := getMonitorRole(monitor, policyRules)
-	role, err = mm.typedControl.CreateOrUpdateRole(monitor, role)
+	role, err = m.deps.TypedControl.CreateOrUpdateRole(monitor, role)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s role failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return nil, err
 	}
 
 	rb := getMonitorRoleBinding(sa, role, monitor)
-	_, err = mm.typedControl.CreateOrUpdateRoleBinding(monitor, rb)
+	_, err = m.deps.TypedControl.CreateOrUpdateRoleBinding(monitor, rb)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s rolebinding failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return nil, err
@@ -324,47 +289,47 @@ func (mm *MonitorManager) syncTidbMonitorRbac(monitor *v1alpha1.TidbMonitor) (*c
 	return sa, nil
 }
 
-func (mm *MonitorManager) syncIngress(monitor *v1alpha1.TidbMonitor) error {
-	if err := mm.syncPrometheusIngress(monitor); err != nil {
+func (m *MonitorManager) syncIngress(monitor *v1alpha1.TidbMonitor) error {
+	if err := m.syncPrometheusIngress(monitor); err != nil {
 		return err
 	}
 
-	return mm.syncGrafanaIngress(monitor)
+	return m.syncGrafanaIngress(monitor)
 }
 
-func (mm *MonitorManager) syncPrometheusIngress(monitor *v1alpha1.TidbMonitor) error {
+func (m *MonitorManager) syncPrometheusIngress(monitor *v1alpha1.TidbMonitor) error {
 	if monitor.Spec.Prometheus.Ingress == nil {
-		return mm.removeIngressIfExist(monitor, prometheusName(monitor))
+		return m.removeIngressIfExist(monitor, prometheusName(monitor))
 	}
 
 	ingress := getPrometheusIngress(monitor)
-	_, err := mm.typedControl.CreateOrUpdateIngress(monitor, ingress)
+	_, err := m.deps.TypedControl.CreateOrUpdateIngress(monitor, ingress)
 	return err
 }
 
-func (mm *MonitorManager) syncGrafanaIngress(monitor *v1alpha1.TidbMonitor) error {
+func (m *MonitorManager) syncGrafanaIngress(monitor *v1alpha1.TidbMonitor) error {
 	if monitor.Spec.Grafana == nil || monitor.Spec.Grafana.Ingress == nil {
-		return mm.removeIngressIfExist(monitor, grafanaName(monitor))
+		return m.removeIngressIfExist(monitor, grafanaName(monitor))
 	}
 	ingress := getGrafanaIngress(monitor)
-	_, err := mm.typedControl.CreateOrUpdateIngress(monitor, ingress)
+	_, err := m.deps.TypedControl.CreateOrUpdateIngress(monitor, ingress)
 	return err
 }
 
 // removeIngressIfExist removes Ingress if it exists
-func (mm *MonitorManager) removeIngressIfExist(monitor *v1alpha1.TidbMonitor, name string) error {
-	ingress, err := mm.ingressLister.Ingresses(monitor.Namespace).Get(name)
+func (m *MonitorManager) removeIngressIfExist(monitor *v1alpha1.TidbMonitor, name string) error {
+	ingress, err := m.deps.IngressLister.Ingresses(monitor.Namespace).Get(name)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil
 		}
 		return err
 	}
-	return mm.typedControl.Delete(monitor, ingress)
+	return m.deps.TypedControl.Delete(monitor, ingress)
 }
 
-func (mm *MonitorManager) patchTidbClusterStatus(tcRef *v1alpha1.TidbClusterRef, monitor *v1alpha1.TidbMonitor) error {
-	tc, err := mm.cli.PingcapV1alpha1().TidbClusters(tcRef.Namespace).Get(tcRef.Name, metav1.GetOptions{})
+func (m *MonitorManager) patchTidbClusterStatus(tcRef *v1alpha1.TidbClusterRef, monitor *v1alpha1.TidbMonitor) error {
+	tc, err := m.deps.Clientset.PingcapV1alpha1().TidbClusters(tcRef.Namespace).Get(tcRef.Name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -393,6 +358,6 @@ func (mm *MonitorManager) patchTidbClusterStatus(tcRef *v1alpha1.TidbClusterRef,
 	if err != nil {
 		return err
 	}
-	_, err = mm.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Patch(tc.Name, types.MergePatchType, mergePatch)
+	_, err = m.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Patch(tc.Name, types.MergePatchType, mergePatch)
 	return err
 }

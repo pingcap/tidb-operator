@@ -17,6 +17,10 @@ import (
 	"flag"
 	"time"
 
+	extensionslister "k8s.io/client-go/listers/extensions/v1beta1"
+
+	batchinformers "k8s.io/client-go/informers/batch/v1"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
@@ -131,14 +135,19 @@ type Dependencies struct {
 	Recorder            record.EventRecorder
 
 	// Informers
-	PVCInformer            coreinformers.PersistentVolumeClaimInformer
-	StatefulSetInformer    appsinformers.StatefulSetInformer
-	StorageClassInformer   kubeinformersv1.StorageClassInformer
-	TiDBClusterInformer    informeralphav1.TidbClusterInformer
-	DMClusterInformer      informeralphav1.DMClusterInformer
-	BackupInformer         informeralphav1.BackupInformer
-	RestoreInformer        informeralphav1.RestoreInformer
-	BackupScheduleInformer informeralphav1.BackupScheduleInformer
+	JobInformer                   batchinformers.JobInformer
+	PVCInformer                   coreinformers.PersistentVolumeClaimInformer
+	StatefulSetInformer           appsinformers.StatefulSetInformer
+	DeploymentInformer            appsinformers.DeploymentInformer
+	StorageClassInformer          kubeinformersv1.StorageClassInformer
+	TiDBClusterInformer           informeralphav1.TidbClusterInformer
+	DMClusterInformer             informeralphav1.DMClusterInformer
+	BackupInformer                informeralphav1.BackupInformer
+	RestoreInformer               informeralphav1.RestoreInformer
+	BackupScheduleInformer        informeralphav1.BackupScheduleInformer
+	TiDBInitializerInformer       informeralphav1.TidbInitializerInformer
+	TiDBMonitorInformer           informeralphav1.TidbMonitorInformer
+	TiDBClusterAutoScalerInformer informeralphav1.TidbClusterAutoScalerInformer
 
 	// Listers
 	ServiceLister               corelisterv1.ServiceLister
@@ -149,7 +158,9 @@ type Dependencies struct {
 	NodeLister                  corelisterv1.NodeLister
 	SecretLister                corelisterv1.SecretLister
 	StatefulSetLister           appslisters.StatefulSetLister
+	DeploymentLister            appslisters.DeploymentLister
 	JobLister                   batchlisters.JobLister
+	IngressLister               extensionslister.IngressLister
 	StorageClassLister          storagelister.StorageClassLister
 	TiDBClusterLister           listers.TidbClusterLister
 	TiDBClusterAutoScalerLister listers.TidbClusterAutoScalerLister
@@ -157,11 +168,11 @@ type Dependencies struct {
 	BackupLister                listers.BackupLister
 	RestoreLister               listers.RestoreLister
 	BackupScheduleLister        listers.BackupScheduleLister
+	TiDBInitializerLister       listers.TidbInitializerLister
+	TiDBMonitorLister           listers.TidbMonitorLister
 
 	// Controls
-
-	JobControl JobControlInterface
-
+	JobControl         JobControlInterface
 	ConfigMapControl   ConfigMapControlInterface
 	StatefulSetControl StatefulSetControlInterface
 	ServiceControl     ServiceControlInterface
@@ -224,14 +235,19 @@ func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface
 		Recorder:            recorder,
 
 		// Informers
-		PVCInformer:            kubeInformerFactory.Core().V1().PersistentVolumeClaims(),
-		StatefulSetInformer:    kubeInformerFactory.Apps().V1().StatefulSets(),
-		StorageClassInformer:   kubeInformerFactory.Storage().V1().StorageClasses(),
-		TiDBClusterInformer:    informerFactory.Pingcap().V1alpha1().TidbClusters(),
-		DMClusterInformer:      informerFactory.Pingcap().V1alpha1().DMClusters(),
-		BackupInformer:         informerFactory.Pingcap().V1alpha1().Backups(),
-		RestoreInformer:        informerFactory.Pingcap().V1alpha1().Restores(),
-		BackupScheduleInformer: informerFactory.Pingcap().V1alpha1().BackupSchedules(),
+		JobInformer:                   kubeInformerFactory.Batch().V1().Jobs(),
+		PVCInformer:                   kubeInformerFactory.Core().V1().PersistentVolumeClaims(),
+		StatefulSetInformer:           kubeInformerFactory.Apps().V1().StatefulSets(),
+		DeploymentInformer:            kubeInformerFactory.Apps().V1().Deployments(),
+		StorageClassInformer:          kubeInformerFactory.Storage().V1().StorageClasses(),
+		TiDBClusterInformer:           informerFactory.Pingcap().V1alpha1().TidbClusters(),
+		DMClusterInformer:             informerFactory.Pingcap().V1alpha1().DMClusters(),
+		BackupInformer:                informerFactory.Pingcap().V1alpha1().Backups(),
+		RestoreInformer:               informerFactory.Pingcap().V1alpha1().Restores(),
+		BackupScheduleInformer:        informerFactory.Pingcap().V1alpha1().BackupSchedules(),
+		TiDBInitializerInformer:       informerFactory.Pingcap().V1alpha1().TidbInitializers(),
+		TiDBMonitorInformer:           informerFactory.Pingcap().V1alpha1().TidbMonitors(),
+		TiDBClusterAutoScalerInformer: informerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers(),
 
 		// Listers
 		ServiceLister:               serviceLister,
@@ -242,17 +258,20 @@ func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface
 		NodeLister:                  kubeInformerFactory.Core().V1().Nodes().Lister(),
 		SecretLister:                kubeInformerFactory.Core().V1().Secrets().Lister(),
 		StatefulSetLister:           statefulSetLister,
+		DeploymentLister:            kubeInformerFactory.Apps().V1().Deployments().Lister(),
 		StorageClassLister:          kubeInformerFactory.Storage().V1().StorageClasses().Lister(),
 		JobLister:                   kubeInformerFactory.Batch().V1().Jobs().Lister(),
+		IngressLister:               kubeInformerFactory.Extensions().V1beta1().Ingresses().Lister(),
 		TiDBClusterLister:           tidbClusterLister,
 		TiDBClusterAutoScalerLister: informerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers().Lister(),
 		DMClusterLister:             dmClusterLister,
 		BackupLister:                informerFactory.Pingcap().V1alpha1().Backups().Lister(),
 		RestoreLister:               informerFactory.Pingcap().V1alpha1().Restores().Lister(),
 		BackupScheduleLister:        informerFactory.Pingcap().V1alpha1().BackupSchedules().Lister(),
+		TiDBInitializerLister:       informerFactory.Pingcap().V1alpha1().TidbInitializers().Lister(),
+		TiDBMonitorLister:           informerFactory.Pingcap().V1alpha1().TidbMonitors().Lister(),
 
 		// Controls
-
 		JobControl:         NewRealJobControl(kubeClientset, recorder),
 		ConfigMapControl:   NewRealConfigMapControl(kubeClientset, recorder),
 		StatefulSetControl: NewRealStatefuSetControl(kubeClientset, statefulSetLister, recorder),
