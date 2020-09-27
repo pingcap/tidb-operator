@@ -542,10 +542,10 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	dcName := dc.Name
 	baseMasterSpec := dc.BaseMasterSpec()
 	instanceName := dc.GetInstanceName()
-	masterConfigMap := ""
-	if cm != nil {
-		masterConfigMap = cm.Name
+	if cm == nil {
+		return nil, fmt.Errorf("config map for dm-master is not found, dmcluster %s/%s", dc.Namespace, dc.Name)
 	}
+	masterConfigMap := cm.Name
 
 	annMount, annVolume := annotationsMountVolume()
 	volMounts := []corev1.VolumeMount{

@@ -360,10 +360,10 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	dcName := dc.Name
 	baseWorkerSpec := dc.BaseWorkerSpec()
 	instanceName := dc.GetInstanceName()
-	workerConfigMap := ""
-	if cm != nil {
-		workerConfigMap = cm.Name
+	if cm == nil {
+		return nil, fmt.Errorf("config map for dm-worker is not found, dmcluster %s/%s", dc.Namespace, dc.Name)
 	}
+	workerConfigMap := cm.Name
 
 	annMount, annVolume := annotationsMountVolume()
 	volMounts := []corev1.VolumeMount{
