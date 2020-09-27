@@ -53,7 +53,7 @@ func TestTidbClusterControllerEnqueueTidbClusterFailed(t *testing.T) {
 	g.Expect(tcc.queue.Len()).To(Equal(0))
 }
 
-func TestTidbClusterControllerAddStatefuSet(t *testing.T) {
+func TestTidbClusterControllerAddStatefulSet(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name                    string
@@ -82,7 +82,7 @@ func TestTidbClusterControllerAddStatefuSet(t *testing.T) {
 		{
 			name: "normal",
 			modifySet: func(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
-				return newStatefuSet(tc)
+				return newStatefulSet(tc)
 			},
 			addTidbClusterToIndexer: true,
 			expectedLen:             1,
@@ -90,7 +90,7 @@ func TestTidbClusterControllerAddStatefuSet(t *testing.T) {
 		{
 			name: "have deletionTimestamp",
 			modifySet: func(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
-				set := newStatefuSet(tc)
+				set := newStatefulSet(tc)
 				set.DeletionTimestamp = &metav1.Time{Time: time.Now().Add(30 * time.Second)}
 				return set
 			},
@@ -100,7 +100,7 @@ func TestTidbClusterControllerAddStatefuSet(t *testing.T) {
 		{
 			name: "without controllerRef",
 			modifySet: func(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
-				set := newStatefuSet(tc)
+				set := newStatefulSet(tc)
 				set.OwnerReferences = nil
 				return set
 			},
@@ -110,7 +110,7 @@ func TestTidbClusterControllerAddStatefuSet(t *testing.T) {
 		{
 			name: "without tidbcluster",
 			modifySet: func(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
-				return newStatefuSet(tc)
+				return newStatefulSet(tc)
 			},
 			addTidbClusterToIndexer: false,
 			expectedLen:             0,
@@ -122,7 +122,7 @@ func TestTidbClusterControllerAddStatefuSet(t *testing.T) {
 	}
 }
 
-func TestTidbClusterControllerUpdateStatefuSet(t *testing.T) {
+func TestTidbClusterControllerUpdateStatefulSet(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name                    string
@@ -135,7 +135,7 @@ func TestTidbClusterControllerUpdateStatefuSet(t *testing.T) {
 		t.Log("test: ", test.name)
 
 		tc := newTidbCluster()
-		set1 := newStatefuSet(tc)
+		set1 := newStatefulSet(tc)
 		set2 := test.updateSet(set1)
 
 		tcc, tcIndexer, _ := newFakeTidbClusterController()
@@ -144,7 +144,7 @@ func TestTidbClusterControllerUpdateStatefuSet(t *testing.T) {
 			err := tcIndexer.Add(tc)
 			g.Expect(err).NotTo(HaveOccurred())
 		}
-		tcc.updateStatefuSet(set1, set2)
+		tcc.updateStatefulSet(set1, set2)
 		g.Expect(tcc.queue.Len()).To(Equal(test.expectedLen))
 	}
 
@@ -336,14 +336,14 @@ func newTidbCluster() *v1alpha1.TidbCluster {
 	}
 }
 
-func newStatefuSet(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
+func newStatefulSet(tc *v1alpha1.TidbCluster) *apps.StatefulSet {
 	return &apps.StatefulSet{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "StatefulSet",
 			APIVersion: "apps/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-statefuset",
+			Name:      "test-statefulset",
 			Namespace: corev1.NamespaceDefault,
 			UID:       types.UID("test"),
 			OwnerReferences: []metav1.OwnerReference{
