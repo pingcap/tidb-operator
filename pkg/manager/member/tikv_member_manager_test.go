@@ -407,7 +407,7 @@ func TestTiKVMemberManagerTiKVStatefulSetIsUpgrading(t *testing.T) {
 			}
 			podIndexer.Add(pod)
 		}
-		b, err := pmm.tikvStatefulSetIsUpgradingFn(pmm.podLister, pmm.pdControl, set, tc)
+		b, err := pmm.statefulSetIsUpgradingFn(pmm.podLister, pmm.pdControl, set, tc)
 		if test.errExpectFn != nil {
 			test.errExpectFn(g, err)
 		}
@@ -816,7 +816,7 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 		pmm, _, _, pdClient, _, _ := newFakeTiKVMemberManager(tc)
 
 		if test.upgradingFn != nil {
-			pmm.tikvStatefulSetIsUpgradingFn = test.upgradingFn
+			pmm.statefulSetIsUpgradingFn = test.upgradingFn
 		}
 		if test.errWhenGetStores {
 			pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
@@ -1507,11 +1507,11 @@ func newFakeTiKVMemberManager(tc *v1alpha1.TidbCluster) (
 		typedControl: controller.NewTypedControl(genericControl),
 		setLister:    setInformer.Lister(),
 		svcLister:    svcInformer.Lister(),
-		tikvScaler:   tikvScaler,
-		tikvUpgrader: tikvUpgrader,
+		scaler:       tikvScaler,
+		upgrader:     tikvUpgrader,
 		recorder:     recorder,
 	}
-	tmm.tikvStatefulSetIsUpgradingFn = tikvStatefulSetIsUpgrading
+	tmm.statefulSetIsUpgradingFn = tikvStatefulSetIsUpgrading
 	return tmm, setControl, svcControl, pdClient, podInformer.Informer().GetIndexer(), nodeInformer.Informer().GetIndexer()
 }
 

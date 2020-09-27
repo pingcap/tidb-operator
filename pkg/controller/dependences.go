@@ -17,6 +17,7 @@ import (
 	"flag"
 	"time"
 
+	storagelister "k8s.io/client-go/listers/storage/v1"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
@@ -142,6 +143,7 @@ type Dependencies struct {
 	NodeLister                  corelisterv1.NodeLister
 	SecretLister                corelisterv1.SecretLister
 	StatefulSetLister           appslisters.StatefulSetLister
+	StorageClassLister          storagelister.StorageClassLister
 	TiDBClusterLister           listers.TidbClusterLister
 	TiDBClusterAutoScalerLister listers.TidbClusterAutoScalerLister
 
@@ -216,6 +218,7 @@ func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface
 		NodeLister:                  kubeInformerFactory.Core().V1().Nodes().Lister(),
 		SecretLister:                kubeInformerFactory.Core().V1().Secrets().Lister(),
 		StatefulSetLister:           statefulSetLister,
+		StorageClassLister:  kubeInformerFactory.Storage().V1().StorageClasses().Lister(),
 		TiDBClusterLister:           tidbClusterLister,
 		TiDBClusterAutoScalerLister: informerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers().Lister(),
 

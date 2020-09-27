@@ -49,8 +49,7 @@ type Scaler interface {
 }
 
 type generalScaler struct {
-	pvcLister  corelisters.PersistentVolumeClaimLister
-	pvcControl controller.PVCControlInterface
+	deps *controller.Dependencies
 }
 
 func (gs *generalScaler) deleteDeferDeletingPVC(controller runtime.Object,

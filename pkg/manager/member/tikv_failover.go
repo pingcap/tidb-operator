@@ -15,27 +15,26 @@ package member
 
 import (
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 )
 
 type tikvFailover struct {
-	tikvFailoverPeriod time.Duration
-	recorder           record.EventRecorder
+	deps *controller.Dependencies
 }
 
 // NewTiKVFailover returns a tikv Failover
-func NewTiKVFailover(tikvFailoverPeriod time.Duration, recorder record.EventRecorder) Failover {
-	return &tikvFailover{tikvFailoverPeriod, recorder}
+func NewTiKVFailover(deps *controller.Dependencies) Failover {
+	return &tikvFailover{deps: deps}
 }
 
-func (tf *tikvFailover) isPodDesired(tc *v1alpha1.TidbCluster, podName string) bool {
+func (f *tikvFailover) isPodDesired(tc *v1alpha1.TidbCluster, podName string) bool {
 	ordinals := tc.TiKVStsDesiredOrdinals(true)
 	ordinal, err := util.GetOrdinalFromPodName(podName)
 	if err != nil {
@@ -45,7 +44,7 @@ func (tf *tikvFailover) isPodDesired(tc *v1alpha1.TidbCluster, podName string) b
 	return ordinals.Has(ordinal)
 }
 
-func (tf *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
+func (f *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -54,13 +53,13 @@ func (tf *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
 		if store.LastTransitionTime.IsZero() {
 			continue
 		}
-		if !tf.isPodDesired(tc, podName) {
+		if !f.isPodDesired(tc, podName) {
 			// we should ignore the store record of deleted pod, otherwise the
 			// record of deleted pod may be added back to failure stores
 			// (before it enters into Offline/Tombstone state)
 			continue
 		}
-		deadline := store.LastTransitionTime.Add(tf.tikvFailoverPeriod)
+		deadline := store.LastTransitionTime.Add(f.deps.CLIConfig.TiKVFailoverPeriod)
 		exist := false
 		for _, failureStore := range tc.Status.TiKV.FailureStores {
 			if failureStore.PodName == podName {
@@ -84,7 +83,7 @@ func (tf *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
 					CreatedAt: metav1.Now(),
 				}
 				msg := fmt.Sprintf("store[%s] is Down", store.ID)
-				tf.recorder.Event(tc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "tikv", podName, msg))
+				f.deps.Recorder.Event(tc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "tikv", podName, msg))
 			}
 		}
 	}
@@ -92,9 +91,9 @@ func (tf *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	return nil
 }
 
-func (tf *tikvFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
+func (f *tikvFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
 	for key, failureStore := range tc.Status.TiKV.FailureStores {
-		if !tf.isPodDesired(tc, failureStore.PodName) {
+		if !f.isPodDesired(tc, failureStore.PodName) {
 			// If we delete the pods, e.g. by using advanced statefulset delete
 			// slots feature. We should remove the record of undesired pods,
 			// otherwise an extra replacement pod will be created.
@@ -103,7 +102,7 @@ func (tf *tikvFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
 	}
 }
 
-func (tf *tikvFailover) Recover(tc *v1alpha1.TidbCluster) {
+func (f *tikvFailover) Recover(tc *v1alpha1.TidbCluster) {
 	tc.Status.TiKV.FailureStores = nil
 	klog.Infof("TiKV recover: clear FailureStores, %s/%s", tc.GetNamespace(), tc.GetName())
 }
@@ -115,12 +114,12 @@ func NewFakeTiKVFailover() Failover {
 	return &fakeTiKVFailover{}
 }
 
-func (ftf *fakeTiKVFailover) Failover(_ *v1alpha1.TidbCluster) error {
+func (_ *fakeTiKVFailover) Failover(_ *v1alpha1.TidbCluster) error {
 	return nil
 }
 
-func (ftf *fakeTiKVFailover) Recover(_ *v1alpha1.TidbCluster) {
+func (_ *fakeTiKVFailover) Recover(_ *v1alpha1.TidbCluster) {
 }
 
-func (ftf *fakeTiKVFailover) RemoveUndesiredFailures(_ *v1alpha1.TidbCluster) {
+func (_ *fakeTiKVFailover) RemoveUndesiredFailures(_ *v1alpha1.TidbCluster) {
 }

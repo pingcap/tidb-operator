@@ -82,7 +82,7 @@ func TestTiFlashMemberManagerTiFlashStatefulSetIsUpgrading(t *testing.T) {
 			}
 			podIndexer.Add(pod)
 		}
-		b, err := pmm.tiflashStatefulSetIsUpgradingFn(pmm.podLister, pmm.pdControl, set, tc)
+		b, err := pmm.statefulSetIsUpgradingFn(pmm.podLister, pmm.pdControl, set, tc)
 		if test.errExpectFn != nil {
 			test.errExpectFn(g, err)
 		}
@@ -490,7 +490,7 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 		pmm, _, _, pdClient, _, _ := newFakeTiFlashMemberManager(tc)
 
 		if test.upgradingFn != nil {
-			pmm.tiflashStatefulSetIsUpgradingFn = test.upgradingFn
+			pmm.statefulSetIsUpgradingFn = test.upgradingFn
 		}
 		if test.errWhenGetStores {
 			pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
@@ -1144,18 +1144,18 @@ func newFakeTiFlashMemberManager(tc *v1alpha1.TidbCluster) (
 	genericControl := controller.NewFakeGenericControl()
 
 	tmm := &tiflashMemberManager{
-		pdControl:       pdControl,
-		podLister:       podInformer.Lister(),
-		nodeLister:      nodeInformer.Lister(),
-		setControl:      setControl,
-		svcControl:      svcControl,
-		typedControl:    controller.NewTypedControl(genericControl),
-		setLister:       setInformer.Lister(),
-		svcLister:       svcInformer.Lister(),
-		tiflashScaler:   tiflashScaler,
-		tiflashUpgrader: tiflashUpgrader,
+		pdControl:    pdControl,
+		podLister:    podInformer.Lister(),
+		nodeLister:   nodeInformer.Lister(),
+		setControl:   setControl,
+		svcControl:   svcControl,
+		typedControl: controller.NewTypedControl(genericControl),
+		setLister:    setInformer.Lister(),
+		svcLister:    svcInformer.Lister(),
+		scaler:       tiflashScaler,
+		upgrader:     tiflashUpgrader,
 	}
-	tmm.tiflashStatefulSetIsUpgradingFn = tiflashStatefulSetIsUpgrading
+	tmm.statefulSetIsUpgradingFn = tiflashStatefulSetIsUpgrading
 	return tmm, setControl, svcControl, pdClient, podInformer.Informer().GetIndexer(), nodeInformer.Informer().GetIndexer()
 }
 

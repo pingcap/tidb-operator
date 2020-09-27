@@ -44,7 +44,7 @@ type Controller struct {
 
 // NewController creates a tidbcluster controller.
 func NewController(deps *controller.Dependencies) *Controller {
-	tcc := &Controller{
+	c := &Controller{
 		control: NewDefaultTidbClusterControl(
 			deps.TiDBClusterControl,
 			mm.NewPDMemberManager(deps, mm.NewPDScaler(deps), mm.NewPDUpgrader(deps), mm.NewPDFailover(deps)),
@@ -67,21 +67,21 @@ func NewController(deps *controller.Dependencies) *Controller {
 	}
 
 	deps.TiDBClusterInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: tcc.enqueueTidbCluster,
+		AddFunc: c.enqueueTidbCluster,
 		UpdateFunc: func(old, cur interface{}) {
-			tcc.enqueueTidbCluster(cur)
+			c.enqueueTidbCluster(cur)
 		},
-		DeleteFunc: tcc.enqueueTidbCluster,
+		DeleteFunc: c.enqueueTidbCluster,
 	})
 	deps.StatefulSetInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: tcc.addStatefulSet,
+		AddFunc: c.addStatefulSet,
 		UpdateFunc: func(old, cur interface{}) {
-			tcc.updateStatefuSet(old, cur)
+			c.updateStatefuSet(old, cur)
 		},
-		DeleteFunc: tcc.deleteStatefulSet,
+		DeleteFunc: c.deleteStatefulSet,
 	})
 
-	return tcc
+	return c
 }
 
 // Run runs the tidbcluster controller.

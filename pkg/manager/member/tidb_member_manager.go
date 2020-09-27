@@ -32,7 +32,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/uuid"
-	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
@@ -54,50 +53,23 @@ const (
 )
 
 type tidbMemberManager struct {
-	setControl                   controller.StatefulSetControlInterface
-	svcControl                   controller.ServiceControlInterface
-	tidbControl                  controller.TiDBControlInterface
-	typedControl                 controller.TypedControlInterface
-	setLister                    v1.StatefulSetLister
-	svcLister                    corelisters.ServiceLister
-	podLister                    corelisters.PodLister
-	cmLister                     corelisters.ConfigMapLister
-	secretLister                 corelisters.SecretLister
+	deps                         *controller.Dependencies
 	tidbUpgrader                 Upgrader
-	autoFailover                 bool
 	tidbFailover                 Failover
 	tidbStatefulSetIsUpgradingFn func(corelisters.PodLister, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 }
 
 // NewTiDBMemberManager returns a *tidbMemberManager
-func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
-	svcControl controller.ServiceControlInterface,
-	tidbControl controller.TiDBControlInterface,
-	typedControl controller.TypedControlInterface,
-	setLister v1.StatefulSetLister,
-	svcLister corelisters.ServiceLister,
-	podLister corelisters.PodLister,
-	secretLister corelisters.SecretLister,
-	tidbUpgrader Upgrader,
-	autoFailover bool,
-	tidbFailover Failover) manager.Manager {
+func NewTiDBMemberManager(deps *controller.Dependencies, tidbUpgrader Upgrader, tidbFailover Failover) manager.Manager {
 	return &tidbMemberManager{
-		setControl:                   setControl,
-		svcControl:                   svcControl,
-		tidbControl:                  tidbControl,
-		typedControl:                 typedControl,
-		setLister:                    setLister,
-		svcLister:                    svcLister,
-		podLister:                    podLister,
-		secretLister:                 secretLister,
+		deps:                         deps,
 		tidbUpgrader:                 tidbUpgrader,
-		autoFailover:                 autoFailover,
 		tidbFailover:                 tidbFailover,
 		tidbStatefulSetIsUpgradingFn: tidbStatefulSetIsUpgrading,
 	}
 }
 
-func (tmm *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
+func (m *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	// If tikv is not specified return
 	if tc.Spec.TiDB == nil {
 		return nil
@@ -115,29 +87,29 @@ func (tmm *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		}
 	}
 	// Sync TiDB Headless Service
-	if err := tmm.syncTiDBHeadlessServiceForTidbCluster(tc); err != nil {
+	if err := m.syncTiDBHeadlessServiceForTidbCluster(tc); err != nil {
 		return err
 	}
 
 	// Sync TiDB Service before syncing TiDB StatefulSet
-	if err := tmm.syncTiDBService(tc); err != nil {
+	if err := m.syncTiDBService(tc); err != nil {
 		return err
 	}
 
 	if tc.Spec.TiDB.IsTLSClientEnabled() {
-		if err := tmm.checkTLSClientCert(tc); err != nil {
+		if err := m.checkTLSClientCert(tc); err != nil {
 			return err
 		}
 	}
 
 	// Sync TiDB StatefulSet
-	return tmm.syncTiDBStatefulSetForTidbCluster(tc)
+	return m.syncTiDBStatefulSetForTidbCluster(tc)
 }
 
-func (tmm *tidbMemberManager) checkTLSClientCert(tc *v1alpha1.TidbCluster) error {
+func (m *tidbMemberManager) checkTLSClientCert(tc *v1alpha1.TidbCluster) error {
 	ns := tc.Namespace
 	secretName := tlsClientSecretName(tc)
-	secret, err := tmm.secretLister.Secrets(ns).Get(secretName)
+	secret, err := m.deps.SecretLister.Secrets(ns).Get(secretName)
 	if err != nil {
 		return fmt.Errorf("unable to load certificates from secret %s/%s: %v", ns, secretName, err)
 	}
@@ -155,7 +127,7 @@ func (tmm *tidbMemberManager) checkTLSClientCert(tc *v1alpha1.TidbCluster) error
 	return nil
 }
 
-func (tmm *tidbMemberManager) syncTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) error {
+func (m *tidbMemberManager) syncTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) error {
 	if tc.Spec.Paused {
 		klog.V(4).Infof("tidb cluster %s/%s is paused, skip syncing for tidb headless service", tc.GetNamespace(), tc.GetName())
 		return nil
@@ -165,13 +137,13 @@ func (tmm *tidbMemberManager) syncTiDBHeadlessServiceForTidbCluster(tc *v1alpha1
 	tcName := tc.GetName()
 
 	newSvc := getNewTiDBHeadlessServiceForTidbCluster(tc)
-	oldSvcTmp, err := tmm.svcLister.Services(ns).Get(controller.TiDBPeerMemberName(tcName))
+	oldSvcTmp, err := m.deps.ServiceLister.Services(ns).Get(controller.TiDBPeerMemberName(tcName))
 	if errors.IsNotFound(err) {
 		err = controller.SetServiceLastAppliedConfigAnnotation(newSvc)
 		if err != nil {
 			return err
 		}
-		return tmm.svcControl.CreateService(tc, newSvc)
+		return m.deps.ServiceControl.CreateService(tc, newSvc)
 	}
 	if err != nil {
 		return fmt.Errorf("syncTiDBHeadlessServiceForTidbCluster: failed to get svc %s for cluster %s/%s, error: %s", controller.TiDBPeerMemberName(tcName), ns, tcName, err)
@@ -190,25 +162,25 @@ func (tmm *tidbMemberManager) syncTiDBHeadlessServiceForTidbCluster(tc *v1alpha1
 		if err != nil {
 			return err
 		}
-		_, err = tmm.svcControl.UpdateService(tc, &svc)
+		_, err = m.deps.ServiceControl.UpdateService(tc, &svc)
 		return err
 	}
 
 	return nil
 }
 
-func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbCluster) error {
+func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	oldTiDBSetTemp, err := tmm.setLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
+	oldTiDBSetTemp, err := m.deps.StatefulSetLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("syncTiDBStatefulSetForTidbCluster: failed to get sts %s for cluster %s/%s, error: %s", controller.TiDBMemberName(tcName), ns, tcName, err)
 	}
 	setNotExist := errors.IsNotFound(err)
 
 	oldTiDBSet := oldTiDBSetTemp.DeepCopy()
-	if err = tmm.syncTidbClusterStatus(tc, oldTiDBSet); err != nil {
+	if err = m.syncTidbClusterStatus(tc, oldTiDBSet); err != nil {
 		return err
 	}
 
@@ -217,7 +189,7 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		return nil
 	}
 
-	cm, err := tmm.syncTiDBConfigMap(tc, oldTiDBSet)
+	cm, err := m.syncTiDBConfigMap(tc, oldTiDBSet)
 	if err != nil {
 		return err
 	}
@@ -228,7 +200,7 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		if err != nil {
 			return err
 		}
-		err = tmm.setControl.CreateStatefulSet(tc, newTiDBSet)
+		err = m.deps.StatefulSetControl.CreateStatefulSet(tc, newTiDBSet)
 		if err != nil {
 			return err
 		}
@@ -236,26 +208,26 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		return nil
 	}
 
-	if tmm.autoFailover {
-		if tmm.shouldRecover(tc) {
-			tmm.tidbFailover.Recover(tc)
+	if m.deps.CLIConfig.AutoFailover {
+		if m.shouldRecover(tc) {
+			m.tidbFailover.Recover(tc)
 		} else if tc.TiDBAllPodsStarted() && !tc.TiDBAllMembersReady() {
-			if err := tmm.tidbFailover.Failover(tc); err != nil {
+			if err := m.tidbFailover.Failover(tc); err != nil {
 				return err
 			}
 		}
 	}
 
 	if !templateEqual(newTiDBSet, oldTiDBSet) || tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
-		if err := tmm.tidbUpgrader.Upgrade(tc, oldTiDBSet, newTiDBSet); err != nil {
+		if err := m.tidbUpgrader.Upgrade(tc, oldTiDBSet, newTiDBSet); err != nil {
 			return err
 		}
 	}
 
-	return updateStatefulSet(tmm.setControl, tc, newTiDBSet, oldTiDBSet)
+	return updateStatefulSet(m.deps.StatefulSetControl, tc, newTiDBSet, oldTiDBSet)
 }
 
-func (tmm *tidbMemberManager) shouldRecover(tc *v1alpha1.TidbCluster) bool {
+func (m *tidbMemberManager) shouldRecover(tc *v1alpha1.TidbCluster) bool {
 	if tc.Status.TiDB.FailureMembers == nil {
 		return false
 	}
@@ -265,7 +237,7 @@ func (tmm *tidbMemberManager) shouldRecover(tc *v1alpha1.TidbCluster) bool {
 	// about them because we're going to delete them.
 	for ordinal := range tc.TiDBStsDesiredOrdinals(true) {
 		name := fmt.Sprintf("%s-%d", controller.TiDBMemberName(tc.GetName()), ordinal)
-		pod, err := tmm.podLister.Pods(tc.Namespace).Get(name)
+		pod, err := m.deps.PodLister.Pods(tc.Namespace).Get(name)
 		if err != nil {
 			klog.Errorf("pod %s/%s does not exist: %v", tc.Namespace, name, err)
 			return false
@@ -281,7 +253,7 @@ func (tmm *tidbMemberManager) shouldRecover(tc *v1alpha1.TidbCluster) bool {
 	return true
 }
 
-func (tmm *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
+func (m *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
 	if tc.Spec.Paused {
 		klog.V(4).Infof("tidb cluster %s/%s is paused, skip syncing for tidb service", tc.GetNamespace(), tc.GetName())
 		return nil
@@ -295,13 +267,13 @@ func (tmm *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
 
 	ns := newSvc.Namespace
 
-	oldSvcTmp, err := tmm.svcLister.Services(ns).Get(newSvc.Name)
+	oldSvcTmp, err := m.deps.ServiceLister.Services(ns).Get(newSvc.Name)
 	if errors.IsNotFound(err) {
 		err = controller.SetServiceLastAppliedConfigAnnotation(newSvc)
 		if err != nil {
 			return err
 		}
-		return tmm.svcControl.CreateService(tc, newSvc)
+		return m.deps.ServiceControl.CreateService(tc, newSvc)
 	}
 	if err != nil {
 		return fmt.Errorf("syncTiDBService: failed to get svc %s for cluster %s/%s, error: %s", newSvc.Name, ns, tc.GetName(), err)
@@ -333,7 +305,7 @@ func (tmm *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
 			svc.OwnerReferences = newSvc.OwnerReferences
 			svc.Labels = newSvc.Labels
 		}
-		_, err = tmm.svcControl.UpdateService(tc, &svc)
+		_, err = m.deps.ServiceControl.UpdateService(tc, &svc)
 		return err
 	}
 
@@ -341,7 +313,7 @@ func (tmm *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
 }
 
 // syncTiDBConfigMap syncs the configmap of tidb
-func (tmm *tidbMemberManager) syncTiDBConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
+func (m *tidbMemberManager) syncTiDBConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
 
 	// For backward compatibility, only sync tidb configmap when .tidb.config is non-nil
 	if tc.Spec.TiDB.Config == nil {
@@ -360,7 +332,7 @@ func (tmm *tidbMemberManager) syncTiDBConfigMap(tc *v1alpha1.TidbCluster, set *a
 		}
 	}
 
-	return tmm.typedControl.CreateOrUpdateConfigMap(tc, newCm)
+	return m.deps.TypedControl.CreateOrUpdateConfigMap(tc, newCm)
 }
 
 func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
@@ -790,7 +762,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	return tidbSet
 }
 
-func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
+func (m *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
 	if set == nil {
 		// skip if not created yet
 		return nil
@@ -798,7 +770,7 @@ func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, se
 
 	tc.Status.TiDB.StatefulSet = &set.Status
 
-	upgrading, err := tmm.tidbStatefulSetIsUpgradingFn(tmm.podLister, set, tc)
+	upgrading, err := m.tidbStatefulSetIsUpgradingFn(m.deps.PodLister, set, tc)
 	if err != nil {
 		return err
 	}
@@ -814,7 +786,7 @@ func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, se
 	tidbStatus := map[string]v1alpha1.TiDBMember{}
 	for id := range helper.GetPodOrdinals(tc.Status.TiDB.StatefulSet.Replicas, set) {
 		name := fmt.Sprintf("%s-%d", controller.TiDBMemberName(tc.GetName()), id)
-		health, err := tmm.tidbControl.GetHealth(tc, int32(id))
+		health, err := m.deps.TiDBControl.GetHealth(tc, int32(id))
 		if err != nil {
 			return err
 		}
@@ -831,7 +803,7 @@ func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, se
 				newTidbMember.LastTransitionTime = oldTidbMember.LastTransitionTime
 			}
 		}
-		pod, err := tmm.podLister.Pods(tc.GetNamespace()).Get(name)
+		pod, err := m.deps.PodLister.Pods(tc.GetNamespace()).Get(name)
 		if err != nil && !errors.IsNotFound(err) {
 			return fmt.Errorf("syncTidbClusterStatus: failed to get pods %s for cluster %s/%s, error: %s", name, tc.GetNamespace(), tc.GetName(), err)
 		}
@@ -889,13 +861,13 @@ func NewFakeTiDBMemberManager() *FakeTiDBMemberManager {
 	return &FakeTiDBMemberManager{}
 }
 
-func (ftmm *FakeTiDBMemberManager) SetSyncError(err error) {
-	ftmm.err = err
+func (m *FakeTiDBMemberManager) SetSyncError(err error) {
+	m.err = err
 }
 
-func (ftmm *FakeTiDBMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
-	if ftmm.err != nil {
-		return ftmm.err
+func (m *FakeTiDBMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
+	if m.err != nil {
+		return m.err
 	}
 	if len(tc.Status.TiDB.Members) != 0 {
 		// simulate status update

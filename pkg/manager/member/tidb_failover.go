@@ -15,33 +15,28 @@ package member
 
 import (
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
 type tidbFailover struct {
-	tidbFailoverPeriod time.Duration
-	recorder           record.EventRecorder
-	podLister          corelisters.PodLister
+	deps *controller.Dependencies
 }
 
 // NewTiDBFailover returns a tidbFailover instance
-func NewTiDBFailover(failoverPeriod time.Duration, recorder record.EventRecorder, podLister corelisters.PodLister) Failover {
+func NewTiDBFailover(deps *controller.Dependencies) Failover {
 	return &tidbFailover{
-		tidbFailoverPeriod: failoverPeriod,
-		recorder:           recorder,
-		podLister:          podLister,
+		deps: deps,
 	}
 }
 
-func (tf *tidbFailover) Failover(tc *v1alpha1.TidbCluster) error {
+func (f *tidbFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	if tc.Status.TiDB.FailureMembers == nil {
 		tc.Status.TiDB.FailureMembers = map[string]v1alpha1.TiDBFailureMember{}
 	}
@@ -62,13 +57,13 @@ func (tf *tidbFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	maxFailoverCount := *tc.Spec.TiDB.MaxFailoverCount
 	for _, tidbMember := range tc.Status.TiDB.Members {
 		_, exist := tc.Status.TiDB.FailureMembers[tidbMember.Name]
-		deadline := tidbMember.LastTransitionTime.Add(tf.tidbFailoverPeriod)
+		deadline := tidbMember.LastTransitionTime.Add(f.deps.CLIConfig.TiDBFailoverPeriod)
 		if !tidbMember.Health && time.Now().After(deadline) && !exist {
 			if len(tc.Status.TiDB.FailureMembers) >= int(maxFailoverCount) {
 				klog.Warningf("the failover count reachs the limit (%d), no more failover pods will be created", maxFailoverCount)
 				break
 			}
-			pod, err := tf.podLister.Pods(tc.Namespace).Get(tidbMember.Name)
+			pod, err := f.deps.PodLister.Pods(tc.Namespace).Get(tidbMember.Name)
 			if err != nil {
 				return fmt.Errorf("tidbFailover.Failover: failed to get pods %s for cluster %s/%s, error: %s", tidbMember.Name, tc.GetNamespace(), tc.GetName(), err)
 			}
@@ -84,7 +79,7 @@ func (tf *tidbFailover) Failover(tc *v1alpha1.TidbCluster) error {
 				CreatedAt: metav1.Now(),
 			}
 			msg := fmt.Sprintf("tidb[%s] is unhealthy", tidbMember.Name)
-			tf.recorder.Event(tc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "tidb", tidbMember.Name, msg))
+			f.deps.Recorder.Event(tc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "tidb", tidbMember.Name, msg))
 			break
 		}
 	}
@@ -92,11 +87,11 @@ func (tf *tidbFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	return nil
 }
 
-func (tf *tidbFailover) Recover(tc *v1alpha1.TidbCluster) {
+func (f *tidbFailover) Recover(tc *v1alpha1.TidbCluster) {
 	tc.Status.TiDB.FailureMembers = nil
 }
 
-func (tf *tidbFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
+func (f *tidbFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
 }
 
 type fakeTiDBFailover struct {

@@ -24,8 +24,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes"
-	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 )
 
@@ -51,41 +49,25 @@ type PVCCleanerInterface interface {
 }
 
 type realPVCCleaner struct {
-	kubeCli    kubernetes.Interface
-	podLister  corelisters.PodLister
-	pvcControl controller.PVCControlInterface
-	pvcLister  corelisters.PersistentVolumeClaimLister
-	pvLister   corelisters.PersistentVolumeLister
-	pvControl  controller.PVControlInterface
+	deps *controller.Dependencies
 }
 
 // NewRealPVCCleaner returns a realPVCCleaner
-func NewRealPVCCleaner(
-	kubeCli kubernetes.Interface,
-	podLister corelisters.PodLister,
-	pvcControl controller.PVCControlInterface,
-	pvcLister corelisters.PersistentVolumeClaimLister,
-	pvLister corelisters.PersistentVolumeLister,
-	pvControl controller.PVControlInterface) PVCCleanerInterface {
+func NewRealPVCCleaner(deps *controller.Dependencies) PVCCleanerInterface {
 	return &realPVCCleaner{
-		kubeCli,
-		podLister,
-		pvcControl,
-		pvcLister,
-		pvLister,
-		pvControl,
+		deps: deps,
 	}
 }
 
-func (rpc *realPVCCleaner) Clean(meta metav1.Object) (map[string]string, error) {
-	if skipReason, err := rpc.cleanScheduleLock(meta); err != nil {
+func (c *realPVCCleaner) Clean(meta metav1.Object) (map[string]string, error) {
+	if skipReason, err := c.cleanScheduleLock(meta); err != nil {
 		return skipReason, err
 	}
-	return rpc.reclaimPV(meta)
+	return c.reclaimPV(meta)
 }
 
 // reclaimPV reclaims PV used by tidb cluster if necessary.
-func (rpc *realPVCCleaner) reclaimPV(meta metav1.Object) (map[string]string, error) {
+func (c *realPVCCleaner) reclaimPV(meta metav1.Object) (map[string]string, error) {
 	var clusterType string
 	switch meta := meta.(type) {
 	case *v1alpha1.TidbCluster:
@@ -104,7 +86,7 @@ func (rpc *realPVCCleaner) reclaimPV(meta metav1.Object) (map[string]string, err
 
 	skipReason := map[string]string{}
 
-	pvcs, err := rpc.listAllPVCs(meta)
+	pvcs, err := c.listAllPVCs(meta)
 	if err != nil {
 		return skipReason, err
 	}
@@ -144,7 +126,7 @@ func (rpc *realPVCCleaner) reclaimPV(meta metav1.Object) (map[string]string, err
 			continue
 		}
 
-		_, err := rpc.podLister.Pods(ns).Get(podName)
+		_, err := c.deps.PodLister.Pods(ns).Get(podName)
 		if err == nil {
 			// PVC is still referenced by this pod, can't reclaim PV
 			skipReason[pvcName] = skipReasonPVCCleanerPVCeferencedByPod
@@ -155,7 +137,7 @@ func (rpc *realPVCCleaner) reclaimPV(meta metav1.Object) (map[string]string, err
 		}
 
 		// if pod not found in cache, re-check from apiserver directly to make sure the pod really not exist
-		_, err = rpc.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+		_, err = c.deps.KubeClientset.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
 		if err == nil {
 			// PVC is still referenced by this pod, can't reclaim PV
 			skipReason[pvcName] = skipReasonPVCCleanerPVCeferencedByPod
@@ -167,7 +149,7 @@ func (rpc *realPVCCleaner) reclaimPV(meta metav1.Object) (map[string]string, err
 
 		// Without pod reference this defer delete PVC, start to reclaim PV
 		pvName := pvc.Spec.VolumeName
-		pv, err := rpc.pvLister.Get(pvName)
+		pv, err := c.deps.PVLister.Get(pvName)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				skipReason[pvcName] = skipReasonPVCCleanerNotFoundPV
@@ -177,14 +159,14 @@ func (rpc *realPVCCleaner) reclaimPV(meta metav1.Object) (map[string]string, err
 		}
 
 		if pv.Spec.PersistentVolumeReclaimPolicy != corev1.PersistentVolumeReclaimDelete {
-			err := rpc.pvControl.PatchPVReclaimPolicy(runtimeMeta, pv, corev1.PersistentVolumeReclaimDelete)
+			err := c.deps.PVControl.PatchPVReclaimPolicy(runtimeMeta, pv, corev1.PersistentVolumeReclaimDelete)
 			if err != nil {
 				return skipReason, fmt.Errorf("%s %s/%s patch pv %s to %s failed, err: %v", clusterType, ns, metaName, pvName, corev1.PersistentVolumeReclaimDelete, err)
 			}
 			klog.Infof("%s %s/%s patch pv %s to policy %s success", clusterType, ns, metaName, pvName, corev1.PersistentVolumeReclaimDelete)
 		}
 
-		apiPVC, err := rpc.kubeCli.CoreV1().PersistentVolumeClaims(ns).Get(pvcName, metav1.GetOptions{})
+		apiPVC, err := c.deps.KubeClientset.CoreV1().PersistentVolumeClaims(ns).Get(pvcName, metav1.GetOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {
 				skipReason[pvcName] = skipReasonPVCCleanerPVCNotFound
@@ -198,7 +180,7 @@ func (rpc *realPVCCleaner) reclaimPV(meta metav1.Object) (map[string]string, err
 			continue
 		}
 
-		if err := rpc.pvcControl.DeletePVC(runtimeMeta, pvc); err != nil {
+		if err := c.deps.PVCControl.DeletePVC(runtimeMeta, pvc); err != nil {
 			return skipReason, fmt.Errorf("%s %s/%s delete pvc %s failed, err: %v", clusterType, ns, metaName, pvcName, err)
 		}
 		klog.Infof("%s %s/%s reclaim pv %s success, pvc %s", clusterType, ns, metaName, pvName, pvcName)
@@ -207,7 +189,7 @@ func (rpc *realPVCCleaner) reclaimPV(meta metav1.Object) (map[string]string, err
 }
 
 // cleanScheduleLock cleans AnnPVCPodScheduling label if necessary.
-func (rpc *realPVCCleaner) cleanScheduleLock(meta metav1.Object) (map[string]string, error) {
+func (c *realPVCCleaner) cleanScheduleLock(meta metav1.Object) (map[string]string, error) {
 	ns := meta.GetNamespace()
 	metaName := meta.GetName()
 	skipReason := map[string]string{}
@@ -219,7 +201,7 @@ func (rpc *realPVCCleaner) cleanScheduleLock(meta metav1.Object) (map[string]str
 	case *v1alpha1.DMCluster:
 		clusterType = "dmcluster"
 	}
-	pvcs, err := rpc.listAllPVCs(meta)
+	pvcs, err := c.listAllPVCs(meta)
 	if err != nil {
 		return skipReason, err
 	}
@@ -242,7 +224,7 @@ func (rpc *realPVCCleaner) cleanScheduleLock(meta metav1.Object) (map[string]str
 			}
 			// The defer deleting PVC has pod scheduling annotation, so we need to delete the pod scheduling annotation
 			delete(pvc.Annotations, label.AnnPVCPodScheduling)
-			if _, err := rpc.pvcControl.UpdatePVC(runtimeMeta, pvc); err != nil {
+			if _, err := c.deps.PVCControl.UpdatePVC(runtimeMeta, pvc); err != nil {
 				return skipReason, fmt.Errorf("%s %s/%s remove pvc %s pod scheduling annotation faild, err: %v", clusterType, ns, metaName, pvcName, err)
 			}
 			continue
@@ -255,7 +237,7 @@ func (rpc *realPVCCleaner) cleanScheduleLock(meta metav1.Object) (map[string]str
 			continue
 		}
 
-		pod, err := rpc.podLister.Pods(ns).Get(podName)
+		pod, err := c.deps.PodLister.Pods(ns).Get(podName)
 		if err != nil {
 			if !errors.IsNotFound(err) {
 				return skipReason, fmt.Errorf("%s %s/%s get pvc %s pod %s failed, err: %v", clusterType, ns, metaName, pvcName, podName, err)
@@ -279,7 +261,7 @@ func (rpc *realPVCCleaner) cleanScheduleLock(meta metav1.Object) (map[string]str
 		}
 
 		delete(pvc.Annotations, label.AnnPVCPodScheduling)
-		if _, err := rpc.pvcControl.UpdatePVC(runtimeMeta, pvc); err != nil {
+		if _, err := c.deps.PVCControl.UpdatePVC(runtimeMeta, pvc); err != nil {
 			return skipReason, fmt.Errorf("%s %s/%s remove pvc %s pod scheduling annotation faild, err: %v", clusterType, ns, metaName, pvcName, err)
 		}
 		klog.Infof("%s %s/%s, clean pvc %s pod scheduling annotation successfully", clusterType, ns, metaName, pvcName)
@@ -289,7 +271,7 @@ func (rpc *realPVCCleaner) cleanScheduleLock(meta metav1.Object) (map[string]str
 }
 
 // listAllPVCs lists all PVCs used by the given tidb cluster.
-func (rpc *realPVCCleaner) listAllPVCs(meta metav1.Object) ([]*corev1.PersistentVolumeClaim, error) {
+func (c *realPVCCleaner) listAllPVCs(meta metav1.Object) ([]*corev1.PersistentVolumeClaim, error) {
 	ns := meta.GetNamespace()
 	metaName := meta.GetName()
 
@@ -309,7 +291,7 @@ func (rpc *realPVCCleaner) listAllPVCs(meta metav1.Object) ([]*corev1.Persistent
 		return nil, fmt.Errorf("cluster %s/%s assemble label selector failed, err: %v", ns, metaName, err)
 	}
 
-	pvcs, err := rpc.pvcLister.PersistentVolumeClaims(ns).List(selector)
+	pvcs, err := c.deps.PVCLister.PersistentVolumeClaims(ns).List(selector)
 	if err != nil {
 		return nil, fmt.Errorf("cluster %s/%s list pvc failed, selector: %s, err: %v", ns, metaName, selector, err)
 	}
@@ -327,12 +309,12 @@ func NewFakePVCCleaner() *FakePVCCleaner {
 	return &FakePVCCleaner{}
 }
 
-func (fpc *FakePVCCleaner) SetPVCCleanerError(err error) {
-	fpc.err = err
+func (c *FakePVCCleaner) SetPVCCleanerError(err error) {
+	c.err = err
 }
 
-func (fpc *FakePVCCleaner) Clean(_ metav1.Object) (map[string]string, error) {
-	return nil, fpc.err
+func (c *FakePVCCleaner) Clean(_ metav1.Object) (map[string]string, error) {
+	return nil, c.err
 }
 
 var _ PVCCleanerInterface = &FakePVCCleaner{}
