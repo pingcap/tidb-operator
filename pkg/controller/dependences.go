@@ -11,22 +11,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package deps
+package controller
 
 import (
 	"flag"
 	"time"
 
-	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
-	appslisters "k8s.io/client-go/listers/apps/v1"
-	"k8s.io/client-go/tools/cache"
-
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
-	kubeinformers "k8s.io/client-go/informers"
-
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	coreinformers "k8s.io/client-go/informers/core/v1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-
+	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
+	informeralphav1 "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
+	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
+	kubeinformers "k8s.io/client-go/informers"
+	kubeinformersv1 "k8s.io/client-go/informers/storage/v1"
 	"k8s.io/client-go/kubernetes"
+	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	appslisters "k8s.io/client-go/listers/apps/v1"
+	corelisterv1 "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/tools/record"
+	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -63,6 +69,7 @@ type CLIConfig struct {
 	PodWebhookEnabled bool
 }
 
+// DefaultCLIConfig returns the default command line configuration
 func DefaultCLIConfig() *CLIConfig {
 	return &CLIConfig{
 		Workers:                5,
@@ -114,34 +121,112 @@ type Dependencies struct {
 	Clientset versioned.Interface
 	// Kubernetes client interface
 	KubeClientset       kubernetes.Interface
+	GenericClient       client.Client
 	InformerFactory     informers.SharedInformerFactory
 	KubeInformerFactory kubeinformers.SharedInformerFactory
-	// TCLister is able to list/get tidbclusters from a shared informer's store
-	TCLister listers.TidbClusterLister
-	// tcListerSynced returns true if the tidbcluster shared informer has synced at least once
-	TCListerSynced cache.InformerSynced
-	// SetLister is able to list/get stateful sets from a shared informer's store
-	SetLister appslisters.StatefulSetLister
-	// setListerSynced returns true if the statefulset shared informer has synced at least once
-	SetListerSynced cache.InformerSynced
+	Recorder            record.EventRecorder
+
+	// Informers
+	PVCInformer          coreinformers.PersistentVolumeClaimInformer
+	StorageClassInformer kubeinformersv1.StorageClassInformer
+	TiDBClusterInformer  informeralphav1.TidbClusterInformer
+
+	// Listers
+	ServiceLister               corelisterv1.ServiceLister
+	EndpointLister              corelisterv1.EndpointsLister
+	PVCLister                   corelisterv1.PersistentVolumeClaimLister
+	PVLister                    corelisterv1.PersistentVolumeLister
+	PodLister                   corelisterv1.PodLister
+	NodeLister                  corelisterv1.NodeLister
+	SecretLister                corelisterv1.SecretLister
+	StatefulSetLister           appslisters.StatefulSetLister
+	TiDBClusterLister           listers.TidbClusterLister
+	TiDBClusterAutoScalerLister listers.TidbClusterAutoScalerLister
+
+	// Controls
+	TiDBClusterControl TidbClusterControlInterface
+	PDControl          pdapi.PDControlInterface
+	CDCControl         TiCDCControlInterface
+	TiDBControl        TiDBControlInterface
+	ConfigMapControl   ConfigMapControlInterface
+	StatefulSetControl StatefulSetControlInterface
+	ServiceControl     ServiceControlInterface
+	PVCControl         PVCControlInterface
+	PVControl          PVControlInterface
+	PodControl         PodControlInterface
+	TypedControl       TypedControlInterface
 }
 
 // NewDependencies is used to construct the dependencies
 func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface, kubeClientset kubernetes.Interface, genericCli client.Client) *Dependencies {
-	var options []informers.SharedInformerOption
-	var kubeoptions []kubeinformers.SharedInformerOption
+	var (
+		options     []informers.SharedInformerOption
+		kubeoptions []kubeinformers.SharedInformerOption
+	)
 	if !cliCfg.ClusterScoped {
 		options = append(options, informers.WithNamespace(ns))
 		kubeoptions = append(kubeoptions, kubeinformers.WithNamespace(ns))
 	}
+
+	// Initialize the informaer factories
 	informerFactory := informers.NewSharedInformerFactoryWithOptions(clientset, cliCfg.ResyncDuration, options...)
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(kubeClientset, cliCfg.ResyncDuration, kubeoptions...)
+
+	// Initialize the event recorder
+	eventBroadcaster := record.NewBroadcasterWithCorrelatorOptions(record.CorrelatorOptions{QPS: 1})
+	eventBroadcaster.StartLogging(klog.V(2).Infof)
+	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
+		Interface: eventv1.New(kubeClientset.CoreV1().RESTClient()).Events("")})
+	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tidb-controller-manager"})
+
+	// Shared variables to construct `Dependencies` and some of its fields
+	var (
+		pdControl         = pdapi.NewDefaultPDControl(kubeClientset)
+		tidbClusterLister = informerFactory.Pingcap().V1alpha1().TidbClusters().Lister()
+		statefulSetLister = kubeInformerFactory.Apps().V1().StatefulSets().Lister()
+		serviceLister     = kubeInformerFactory.Core().V1().Services().Lister()
+		pvcLister         = kubeInformerFactory.Core().V1().PersistentVolumeClaims().Lister()
+		pvLister          = kubeInformerFactory.Core().V1().PersistentVolumes().Lister()
+		podLister         = kubeInformerFactory.Core().V1().Pods().Lister()
+	)
 
 	return &Dependencies{
 		CLIConfig:           cliCfg,
 		InformerFactory:     informerFactory,
 		Clientset:           clientset,
 		KubeClientset:       kubeClientset,
+		GenericClient:       genericCli,
 		KubeInformerFactory: kubeInformerFactory,
+		Recorder:            recorder,
+
+		// Informers
+		PVCInformer: kubeInformerFactory.Core().V1().PersistentVolumeClaims(),
+		StorageClassInformer: kubeInformerFactory.Storage().V1().StorageClasses(),
+		TiDBClusterInformer:  informerFactory.Pingcap().V1alpha1().TidbClusters(),
+
+		// Listers
+		ServiceLister:               serviceLister,
+		EndpointLister:              kubeInformerFactory.Core().V1().Endpoints().Lister(),
+		PVCLister:                   pvcLister,
+		PVLister:                    pvLister,
+		PodLister:                   podLister,
+		NodeLister:                  kubeInformerFactory.Core().V1().Nodes().Lister(),
+		SecretLister:                kubeInformerFactory.Core().V1().Secrets().Lister(),
+		StatefulSetLister:           statefulSetLister,
+		TiDBClusterLister:           tidbClusterLister,
+		TiDBClusterAutoScalerLister: informerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers().Lister(),
+
+		// Controls
+		TiDBClusterControl: NewRealTidbClusterControl(clientset, tidbClusterLister, recorder),
+		PDControl:          pdControl,
+		CDCControl:         NewDefaultTiCDCControl(kubeClientset),
+		TiDBControl:        NewDefaultTiDBControl(kubeClientset),
+		ConfigMapControl:   NewRealConfigMapControl(kubeClientset, recorder),
+		StatefulSetControl: NewRealStatefuSetControl(kubeClientset, statefulSetLister, recorder),
+		ServiceControl:     NewRealServiceControl(kubeClientset, serviceLister, recorder),
+		PVControl:          NewRealPVControl(kubeClientset, pvcLister, pvLister, recorder),
+		PVCControl:         NewRealPVCControl(kubeClientset, recorder, pvcLister),
+		PodControl:         NewRealPodControl(kubeClientset, pdControl, podLister, recorder),
+		TypedControl:       NewTypedControl(NewRealGenericControl(genericCli, recorder)),
 	}
 }

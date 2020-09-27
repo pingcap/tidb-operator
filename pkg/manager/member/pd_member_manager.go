@@ -25,7 +25,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -33,8 +32,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/uuid"
-	v1 "k8s.io/client-go/listers/apps/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/utils/pointer"
@@ -50,52 +47,20 @@ const (
 )
 
 type pdMemberManager struct {
-	pdControl    pdapi.PDControlInterface
-	setControl   controller.StatefulSetControlInterface
-	svcControl   controller.ServiceControlInterface
-	podControl   controller.PodControlInterface
-	typedControl controller.TypedControlInterface
-	setLister    v1.StatefulSetLister
-	svcLister    corelisters.ServiceLister
-	podLister    corelisters.PodLister
-	epsLister    corelisters.EndpointsLister
-	pvcLister    corelisters.PersistentVolumeClaimLister
-	pdScaler     Scaler
-	pdUpgrader   Upgrader
-	autoFailover bool
-	pdFailover   Failover
+	deps       *controller.Dependencies
+	pdScaler   Scaler
+	pdUpgrader Upgrader
+	pdFailover Failover
 }
 
 // NewPDMemberManager returns a *pdMemberManager
-func NewPDMemberManager(pdControl pdapi.PDControlInterface,
-	setControl controller.StatefulSetControlInterface,
-	svcControl controller.ServiceControlInterface,
-	podControl controller.PodControlInterface,
-	typedControl controller.TypedControlInterface,
-	setLister v1.StatefulSetLister,
-	svcLister corelisters.ServiceLister,
-	podLister corelisters.PodLister,
-	epsLister corelisters.EndpointsLister,
-	pvcLister corelisters.PersistentVolumeClaimLister,
-	pdScaler Scaler,
-	pdUpgrader Upgrader,
-	autoFailover bool,
-	pdFailover Failover) manager.Manager {
+func NewPDMemberManager(dependencies *controller.Dependencies, pdScaler Scaler, pdUpgrader Upgrader, pdFailover Failover) manager.Manager {
 	return &pdMemberManager{
-		pdControl,
-		setControl,
-		svcControl,
-		podControl,
-		typedControl,
-		setLister,
-		svcLister,
-		podLister,
-		epsLister,
-		pvcLister,
-		pdScaler,
-		pdUpgrader,
-		autoFailover,
-		pdFailover}
+		deps:       dependencies,
+		pdScaler:   pdScaler,
+		pdUpgrader: pdUpgrader,
+		pdFailover: pdFailover,
+	}
 }
 
 func (pmm *pdMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
@@ -128,13 +93,13 @@ func (pmm *pdMemberManager) syncPDServiceForTidbCluster(tc *v1alpha1.TidbCluster
 	tcName := tc.GetName()
 
 	newSvc := pmm.getNewPDServiceForTidbCluster(tc)
-	oldSvcTmp, err := pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName))
+	oldSvcTmp, err := pmm.deps.ServiceLister.Services(ns).Get(controller.PDMemberName(tcName))
 	if errors.IsNotFound(err) {
 		err = controller.SetServiceLastAppliedConfigAnnotation(newSvc)
 		if err != nil {
 			return err
 		}
-		return pmm.svcControl.CreateService(tc, newSvc)
+		return pmm.deps.ServiceControl.CreateService(tc, newSvc)
 	}
 	if err != nil {
 		return fmt.Errorf("syncPDServiceForTidbCluster: failed to get svc %s for cluster %s/%s, error: %s", controller.PDMemberName(tcName), ns, tcName, err)
@@ -155,7 +120,7 @@ func (pmm *pdMemberManager) syncPDServiceForTidbCluster(tc *v1alpha1.TidbCluster
 			return err
 		}
 		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
-		_, err = pmm.svcControl.UpdateService(tc, &svc)
+		_, err = pmm.deps.ServiceControl.UpdateService(tc, &svc)
 		return err
 	}
 

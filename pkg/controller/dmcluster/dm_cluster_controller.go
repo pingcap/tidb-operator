@@ -21,7 +21,6 @@ import (
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
@@ -29,20 +28,15 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager/meta"
 
 	apps "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
-	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	appslisters "k8s.io/client-go/listers/apps/v1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Controller controls dmclusters.
@@ -67,33 +61,7 @@ type Controller struct {
 }
 
 // NewController creates a dm controller.
-func NewController(
-	kubeCli kubernetes.Interface,
-	cli versioned.Interface,
-	genericCli client.Client,
-	informerFactory informers.SharedInformerFactory,
-	kubeInformerFactory kubeinformers.SharedInformerFactory,
-	autoFailover bool,
-	masterFailoverPeriod time.Duration,
-	workerFailoverPeriod time.Duration,
-) *Controller {
-	eventBroadcaster := record.NewBroadcasterWithCorrelatorOptions(record.CorrelatorOptions{QPS: 1})
-	eventBroadcaster.StartLogging(klog.V(2).Infof)
-	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
-		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
-	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tidb-controller-manager"})
-
-	dcInformer := informerFactory.Pingcap().V1alpha1().DMClusters()
-	setInformer := kubeInformerFactory.Apps().V1().StatefulSets()
-	svcInformer := kubeInformerFactory.Core().V1().Services()
-	epsInformer := kubeInformerFactory.Core().V1().Endpoints()
-	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
-	pvInformer := kubeInformerFactory.Core().V1().PersistentVolumes()
-	podInformer := kubeInformerFactory.Core().V1().Pods()
-	scInformer := kubeInformerFactory.Storage().V1().StorageClasses()
-	//nodeInformer := kubeInformerFactory.Core().V1().Nodes()
-	//secretInformer := kubeInformerFactory.Core().V1().Secrets()
-
+func NewController(dependencies *controller.Dependencies) *Controller {
 	dcControl := controller.NewRealDMClusterControl(cli, dcInformer.Lister(), recorder)
 	masterControl := dmapi.NewDefaultMasterControl(kubeCli)
 	setControl := controller.NewRealStatefuSetControl(kubeCli, setInformer.Lister(), recorder)

@@ -24,16 +24,15 @@ package periodicity
 
 import (
 	"encoding/json"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"time"
 
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
-	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	appslisters "k8s.io/client-go/listers/apps/v1"
 	"k8s.io/klog"
@@ -45,10 +44,7 @@ type Controller struct {
 	tcLister  v1alpha1listers.TidbClusterLister
 }
 
-func NewController(
-	kubeCli kubernetes.Interface,
-	informerFactory informers.SharedInformerFactory,
-	kubeInformerFactory kubeinformers.SharedInformerFactory) *Controller {
+func NewController(dependencies *controller.Dependencies) *Controller {
 
 	stsLister := kubeInformerFactory.Apps().V1().StatefulSets().Lister()
 

@@ -16,6 +16,7 @@ package main
 import (
 	"context"
 	"flag"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -33,7 +34,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbcluster"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbinitializer"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbmonitor"
-	"github.com/pingcap/tidb-operator/pkg/deps"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/pkg/upgrader"
@@ -51,7 +51,7 @@ import (
 )
 
 func main() {
-	cliCfg := deps.DefaultCLIConfig()
+	cliCfg := controller.DefaultCLIConfig()
 	cliCfg.AddFlag(flag.CommandLine)
 	features.DefaultFeatureGate.AddFlag(flag.CommandLine)
 	flag.Parse()
@@ -117,7 +117,7 @@ func main() {
 		kubeCli = helper.NewHijackClient(kubeCli, asCli)
 	}
 
-	dependencies := deps.NewDependencies(ns, cliCfg, cli, kubeCli, genericCli)
+	deps := controller.NewDependencies(ns, cliCfg, cli, kubeCli, genericCli)
 	controllerCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -128,32 +128,37 @@ func main() {
 			klog.Fatalf("failed to upgrade: %v", err)
 		}
 
-		controllers := []interface{ Run(int, <-chan struct{}) }{
-			tidbcluster.NewController(dependencies),
-			dmcluster.NewController(dependencies),
-			backup.NewController(dependencies),
-			restore.NewController(dependencies),
-			backupschedule.NewController(dependencies),
-			tidbinitializer.NewController(dependencies),
-			tidbmonitor.NewController(dependencies),
+		// Define some nested types to simplify the codebase
+		type Controller interface {
+			Run(int, <-chan struct{})
 		}
-		if cliCfg.PodWebhookEnabled {
-			controllers = append(controllers, periodicity.NewController(dependencies))
-		}
-		if features.DefaultFeatureGate.Enabled(features.AutoScaling) {
-			controllers = append(controllers, autoscaler.NewController(dependencies))
-		}
-
-		// Start informer factories after all controller are initialized.
-		informerFactories := []interface {
+		type InformerFactory interface {
 			Start(stopCh <-chan struct{})
 			WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool
-		}{
-			dependencies.InformerFactory, dependencies.KubeInformerFactory,
 		}
-		for _, factory := range informerFactories {
-			factory.Start(ctx.Done())
-			for v, synced := range factory.WaitForCacheSync(wait.NeverStop) {
+
+		// Initialize all controllers
+		controllers := []Controller{
+			tidbcluster.NewController(deps),
+			dmcluster.NewController(deps),
+			backup.NewController(deps),
+			restore.NewController(deps),
+			backupschedule.NewController(deps),
+			tidbinitializer.NewController(deps),
+			tidbmonitor.NewController(deps),
+		}
+		if cliCfg.PodWebhookEnabled {
+			controllers = append(controllers, periodicity.NewController(deps))
+		}
+		if features.DefaultFeatureGate.Enabled(features.AutoScaling) {
+			controllers = append(controllers, autoscaler.NewController(deps))
+		}
+
+		// Start informer factories after all controllers are initialized.
+		informerFactories := []InformerFactory{deps.InformerFactory, deps.KubeInformerFactory}
+		for _, f := range informerFactories {
+			f.Start(ctx.Done())
+			for v, synced := range f.WaitForCacheSync(wait.NeverStop) {
 				if !synced {
 					klog.Fatalf("error syncing informer for %v", v)
 				}
@@ -161,8 +166,9 @@ func main() {
 		}
 		klog.Infof("cache of informer factories sync successfully")
 
-		for _, controller := range controllers {
-			go wait.Forever(func() { controller.Run(cliCfg.Workers, ctx.Done()) }, cliCfg.WaitDuration)
+		// Start syncLoop for all controllers
+		for _, c := range controllers {
+			go wait.Forever(func() { c.Run(cliCfg.Workers, ctx.Done()) }, cliCfg.WaitDuration)
 		}
 	}
 	onStopped := func() {

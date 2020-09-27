@@ -17,37 +17,27 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pingcap/tidb-operator/pkg/deps"
-
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	mm "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/manager/meta"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	kubeinformers "k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes"
-	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	appslisters "k8s.io/client-go/listers/apps/v1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Controller controls tidbclusters.
 type Controller struct {
-	deps *deps.Dependencies
+	deps *controller.Dependencies
 	// control returns an interface capable of syncing a tidb cluster.
 	// Abstracted out for testing.
 	control ControlInterface
@@ -64,167 +54,37 @@ type Controller struct {
 }
 
 // NewController creates a tidbcluster controller.
-func NewController(
-	kubeCli kubernetes.Interface,
-	cli versioned.Interface,
-	genericCli client.Client,
-	informerFactory informers.SharedInformerFactory,
-	kubeInformerFactory kubeinformers.SharedInformerFactory,
-) *Controller {
-	eventBroadcaster := record.NewBroadcasterWithCorrelatorOptions(record.CorrelatorOptions{QPS: 1})
-	eventBroadcaster.StartLogging(klog.V(2).Infof)
-	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
-		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
-	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tidb-controller-manager"})
-
-	tcInformer := informerFactory.Pingcap().V1alpha1().TidbClusters()
-	setInformer := kubeInformerFactory.Apps().V1().StatefulSets()
-	svcInformer := kubeInformerFactory.Core().V1().Services()
-	epsInformer := kubeInformerFactory.Core().V1().Endpoints()
-	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
-	pvInformer := kubeInformerFactory.Core().V1().PersistentVolumes()
-	scInformer := kubeInformerFactory.Storage().V1().StorageClasses()
-	podInformer := kubeInformerFactory.Core().V1().Pods()
-	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
-	secretInformer := kubeInformerFactory.Core().V1().Secrets()
-	scalerInformer := informerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers()
-
-	tcControl := controller.NewRealTidbClusterControl(cli, tcInformer.Lister(), recorder)
-	pdControl := pdapi.NewDefaultPDControl(kubeCli)
-	cdcControl := controller.NewDefaultTiCDCControl(kubeCli)
-	tidbControl := controller.NewDefaultTiDBControl(kubeCli)
-	cmControl := controller.NewRealConfigMapControl(kubeCli, recorder)
-	setControl := controller.NewRealStatefuSetControl(kubeCli, setInformer.Lister(), recorder)
-	svcControl := controller.NewRealServiceControl(kubeCli, svcInformer.Lister(), recorder)
-	pvControl := controller.NewRealPVControl(kubeCli, pvcInformer.Lister(), pvInformer.Lister(), recorder)
-	pvcControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
-	podControl := controller.NewRealPodControl(kubeCli, pdControl, podInformer.Lister(), recorder)
-	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
-	pdScaler := mm.NewPDScaler(pdControl, pvcInformer.Lister(), pvcControl)
-	tikvScaler := mm.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl, podInformer.Lister())
-	tiflashScaler := mm.NewTiFlashScaler(pdControl, pvcInformer.Lister(), pvcControl, podInformer.Lister())
-	pdFailover := mm.NewPDFailover(cli, pdControl, pdFailoverPeriod, podInformer.Lister(), podControl, pvcInformer.Lister(), pvcControl, pvInformer.Lister(), recorder)
-	tikvFailover := mm.NewTiKVFailover(tikvFailoverPeriod, recorder)
-	tidbFailover := mm.NewTiDBFailover(tidbFailoverPeriod, recorder, podInformer.Lister())
-	tiflashFailover := mm.NewTiFlashFailover(tiflashFailoverPeriod, recorder)
-	pdUpgrader := mm.NewPDUpgrader(pdControl, podControl, podInformer.Lister())
-	tikvUpgrader := mm.NewTiKVUpgrader(pdControl, podControl, podInformer.Lister())
-	tiflashUpgrader := mm.NewTiFlashUpgrader(pdControl, podControl, podInformer.Lister())
-	tidbUpgrader := mm.NewTiDBUpgrader(tidbControl, podInformer.Lister())
-	podRestarter := mm.NewPodRestarter(kubeCli, podInformer.Lister())
+func NewController(deps *controller.Dependencies) *Controller {
+	pdScaler := mm.NewPDScaler(deps)
+	tikvScaler := mm.NewTiKVScaler(deps)
+	tiflashScaler := mm.NewTiFlashScaler(deps)
+	pdFailover := mm.NewPDFailover(deps)
+	tikvFailover := mm.NewTiKVFailover(deps)
+	tidbFailover := mm.NewTiDBFailover(deps)
+	tiflashFailover := mm.NewTiFlashFailover(deps)
+	pdUpgrader := mm.NewPDUpgrader(deps)
+	tikvUpgrader := mm.NewTiKVUpgrader(deps)
+	tiflashUpgrader := mm.NewTiFlashUpgrader(deps)
+	tidbUpgrader := mm.NewTiDBUpgrader(deps)
+	podRestarter := mm.NewPodRestarter(deps)
 
 	tcc := &Controller{
 		control: NewDefaultTidbClusterControl(
-			tcControl,
-			mm.NewPDMemberManager(
-				pdControl,
-				setControl,
-				svcControl,
-				podControl,
-				typedControl,
-				setInformer.Lister(),
-				svcInformer.Lister(),
-				podInformer.Lister(),
-				epsInformer.Lister(),
-				pvcInformer.Lister(),
-				pdScaler,
-				pdUpgrader,
-				autoFailover,
-				pdFailover,
-			),
-			mm.NewTiKVMemberManager(
-				pdControl,
-				setControl,
-				svcControl,
-				typedControl,
-				setInformer.Lister(),
-				svcInformer.Lister(),
-				podInformer.Lister(),
-				nodeInformer.Lister(),
-				autoFailover,
-				tikvFailover,
-				tikvScaler,
-				tikvUpgrader,
-				recorder,
-			),
-			mm.NewTiDBMemberManager(
-				setControl,
-				svcControl,
-				tidbControl,
-				typedControl,
-				setInformer.Lister(),
-				svcInformer.Lister(),
-				podInformer.Lister(),
-				secretInformer.Lister(),
-				tidbUpgrader,
-				autoFailover,
-				tidbFailover,
-			),
-			meta.NewReclaimPolicyManager(
-				pvcInformer.Lister(),
-				pvInformer.Lister(),
-				pvControl,
-			),
-			meta.NewMetaManager(
-				pvcInformer.Lister(),
-				pvcControl,
-				pvInformer.Lister(),
-				pvControl,
-				podInformer.Lister(),
-				podControl,
-			),
-			mm.NewOrphanPodsCleaner(
-				podInformer.Lister(),
-				podControl,
-				pvcInformer.Lister(),
-				kubeCli,
-			),
-			mm.NewRealPVCCleaner(
-				kubeCli,
-				podInformer.Lister(),
-				pvcControl,
-				pvcInformer.Lister(),
-				pvInformer.Lister(),
-				pvControl,
-			),
-			mm.NewPVCResizer(
-				kubeCli,
-				pvcInformer,
-				scInformer,
-			),
-			mm.NewPumpMemberManager(
-				setControl,
-				svcControl,
-				typedControl,
-				cmControl,
-				setInformer.Lister(),
-				svcInformer.Lister(),
-				podInformer.Lister(),
-			),
-			mm.NewTiFlashMemberManager(
-				pdControl,
-				setControl,
-				svcControl,
-				typedControl,
-				setInformer.Lister(),
-				svcInformer.Lister(),
-				podInformer.Lister(),
-				nodeInformer.Lister(),
-				autoFailover,
-				tiflashFailover,
+			deps.TiDBClusterControl,
+			mm.NewPDMemberManager(deps, pdScaler, pdUpgrader, pdFailover),
+			mm.NewTiKVMemberManager(deps, tikvFailover, tikvScaler, tikvUpgrader),
+			mm.NewTiDBMemberManager(deps, tidbUpgrader, tidbFailover),
+			meta.NewReclaimPolicyManager(deps),
+			meta.NewMetaManager(deps),
+			mm.NewOrphanPodsCleaner(deps),
+			mm.NewRealPVCCleaner(deps),
+			mm.NewPVCResizer(deps			),
+			mm.NewPumpMemberManager(deps			),
+			mm.NewTiFlashMemberManager(deps,				tiflashFailover,
 				tiflashScaler,
 				tiflashUpgrader,
 			),
-			mm.NewTiCDCMemberManager(
-				pdControl,
-				cdcControl,
-				typedControl,
-				setInformer.Lister(),
-				svcInformer.Lister(),
-				podInformer.Lister(),
-				svcControl,
-				setControl,
-			),
+			mm.NewTiCDCMemberManager(deps,			),
 			mm.NewTidbDiscoveryManager(typedControl),
 			mm.NewTidbClusterStatusManager(kubeCli, cli, scalerInformer.Lister()),
 			podRestarter,
