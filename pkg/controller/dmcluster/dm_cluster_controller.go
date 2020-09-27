@@ -75,7 +75,6 @@ func NewController(dependencies *controller.Dependencies) *Controller {
 	workerFailover := mm.NewWorkerFailover(workerFailoverPeriod, recorder)
 	masterUpgrader := mm.NewMasterUpgrader(masterControl, podInformer.Lister())
 	workerScaler := mm.NewWorkerScaler(pvcInformer.Lister(), pvcControl)
-	podRestarter := mm.NewPodRestarter(kubeCli, podInformer.Lister())
 
 	dcc := &Controller{
 		kubeClient: kubeCli,
@@ -142,7 +141,6 @@ func NewController(dependencies *controller.Dependencies) *Controller {
 				scInformer,
 			),
 			//mm.NewDMClusterStatusManager(kubeCli, cli, scalerInformer.Lister()),
-			podRestarter,
 			&dmClusterConditionUpdater{},
 			recorder,
 		),

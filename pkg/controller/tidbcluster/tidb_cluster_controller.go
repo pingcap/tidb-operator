@@ -66,7 +66,6 @@ func NewController(deps *controller.Dependencies) *Controller {
 	tikvUpgrader := mm.NewTiKVUpgrader(deps)
 	tiflashUpgrader := mm.NewTiFlashUpgrader(deps)
 	tidbUpgrader := mm.NewTiDBUpgrader(deps)
-	podRestarter := mm.NewPodRestarter(deps)
 
 	tcc := &Controller{
 		control: NewDefaultTidbClusterControl(
@@ -78,23 +77,16 @@ func NewController(deps *controller.Dependencies) *Controller {
 			meta.NewMetaManager(deps),
 			mm.NewOrphanPodsCleaner(deps),
 			mm.NewRealPVCCleaner(deps),
-			mm.NewPVCResizer(deps			),
-			mm.NewPumpMemberManager(deps			),
-			mm.NewTiFlashMemberManager(deps,				tiflashFailover,
-				tiflashScaler,
-				tiflashUpgrader,
-			),
-			mm.NewTiCDCMemberManager(deps,			),
-			mm.NewTidbDiscoveryManager(typedControl),
-			mm.NewTidbClusterStatusManager(kubeCli, cli, scalerInformer.Lister()),
-			podRestarter,
+			mm.NewPVCResizer(deps),
+			mm.NewPumpMemberManager(deps),
+			mm.NewTiFlashMemberManager(deps, tiflashFailover, tiflashScaler, tiflashUpgrader),
+			mm.NewTiCDCMemberManager(deps),
+			mm.NewTidbDiscoveryManager(deps),
+			mm.NewTidbClusterStatusManager(deps),
 			&tidbClusterConditionUpdater{},
-			recorder,
+			deps.Recorder,
 		),
-		queue: workqueue.NewNamedRateLimitingQueue(
-			workqueue.DefaultControllerRateLimiter(),
-			"tidbcluster",
-		),
+		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "tidbcluster"),
 	}
 
 	tcInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{

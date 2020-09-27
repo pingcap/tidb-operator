@@ -402,7 +402,7 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	if tc.IsHeterogeneous() {
 		tidbStartScriptModel.Path = controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379"
 	} else {
-		tidbStartScriptModel.Path = controller.PDMemberName(tc.Name) + ":2379"
+		tidbStartScriptModel.Path = "${CLUSTER_NAME}-pd:2379"
 	}
 
 	startScript, err := RenderTiDBStartScript(tidbStartScriptModel)
@@ -622,6 +622,12 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 					SecurityContext: &corev1.SecurityContext{
 						Privileged: &privileged,
 					},
+					// Init container resourceRequirements should be equal to app container.
+					// Scheduling is done based on effective requests/limits,
+					// which means init containers can reserve resources for
+					// initialization that are not used during the life of the Pod.
+					// ref:https://kubernetes.io/docs/concepts/workloads/pods/init-containers/#resources
+					Resources: controller.ContainerResource(tc.Spec.TiDB.ResourceRequirements),
 				})
 			}
 		}
