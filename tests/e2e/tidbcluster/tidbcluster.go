@@ -34,7 +34,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	tcconfig "github.com/pingcap/tidb-operator/pkg/util/config"
 	"github.com/pingcap/tidb-operator/tests"
-	"github.com/pingcap/tidb-operator/tests/apiserver"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
@@ -300,15 +299,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.BackupRestoreOrDie(&clusterFrom, &clusterTo)
 	})
 
-	ginkgo.It("Test aggregated apiserver", func() {
-		ginkgo.By(fmt.Sprintf("Starting to test apiserver, test apiserver image: %s", cfg.E2EImage))
-		framework.Logf("config: %v", config)
-		aaCtx := apiserver.NewE2eContext(ns, config, cfg.E2EImage)
-		defer aaCtx.Clean()
-		aaCtx.Setup()
-		aaCtx.Do()
-	})
-
 	ginkgo.It("Service: Sync TiDB service", func() {
 		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "service-it", "admin", utilimage.TiDBV3Version)
 		cluster.Resources["pd.replicas"] = "1"
@@ -471,7 +461,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 						corev1.ResourceStorage: resource.MustParse("10Gi"),
 					},
 				},
-				GenericConfig: tcconfig.New(map[string]interface{}{
+				Config: tcconfig.New(map[string]interface{}{
 					"addr":               "0.0.0.0:8250",
 					"gc":                 7,
 					"data-dir":           "/data",
@@ -964,7 +954,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				Replicas:             1,
 				BaseImage:            "pingcap/tidb-binlog",
 				ResourceRequirements: fixture.WithStorage(fixture.BurstbleSmall, "1Gi"),
-				GenericConfig: tcconfig.New(map[string]interface{}{
+				Config: tcconfig.New(map[string]interface{}{
 					"addr": "0.0.0.0:8250",
 				}),
 			}
@@ -1120,7 +1110,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				Replicas:             1,
 				BaseImage:            "pingcap/tidb-binlog",
 				ResourceRequirements: fixture.WithStorage(fixture.BurstbleSmall, "1Gi"),
-				GenericConfig: tcconfig.New(map[string]interface{}{
+				Config: tcconfig.New(map[string]interface{}{
 					"addr": "0.0.0.0:8250",
 				}),
 			}
