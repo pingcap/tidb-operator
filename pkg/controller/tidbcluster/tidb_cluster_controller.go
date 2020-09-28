@@ -117,7 +117,6 @@ func NewController(
 	tikvUpgrader := mm.NewTiKVUpgrader(pdControl, podControl, podInformer.Lister())
 	tiflashUpgrader := mm.NewTiFlashUpgrader(pdControl, podControl, podInformer.Lister())
 	tidbUpgrader := mm.NewTiDBUpgrader(tidbControl, podInformer.Lister())
-	podRestarter := mm.NewPodRestarter(kubeCli, podInformer.Lister())
 
 	tcc := &Controller{
 		kubeClient: kubeCli,
@@ -235,7 +234,6 @@ func NewController(
 			),
 			mm.NewTidbDiscoveryManager(typedControl),
 			mm.NewTidbClusterStatusManager(kubeCli, cli, scalerInformer.Lister()),
-			podRestarter,
 			&tidbClusterConditionUpdater{},
 			recorder,
 		),
@@ -258,7 +256,7 @@ func NewController(
 	setInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: tcc.addStatefulSet,
 		UpdateFunc: func(old, cur interface{}) {
-			tcc.updateStatefuSet(old, cur)
+			tcc.updateStatefulSet(old, cur)
 		},
 		DeleteFunc: tcc.deleteStatefulSet,
 	})
@@ -369,8 +367,8 @@ func (tcc *Controller) addStatefulSet(obj interface{}) {
 	tcc.enqueueTidbCluster(tc)
 }
 
-// updateStatefuSet adds the tidbcluster for the current and old statefulsets to the sync queue.
-func (tcc *Controller) updateStatefuSet(old, cur interface{}) {
+// updateStatefulSet adds the tidbcluster for the current and old statefulsets to the sync queue.
+func (tcc *Controller) updateStatefulSet(old, cur interface{}) {
 	curSet := cur.(*apps.StatefulSet)
 	oldSet := old.(*apps.StatefulSet)
 	ns := curSet.GetNamespace()

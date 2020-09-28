@@ -32,10 +32,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
-	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	tcconfig "github.com/pingcap/tidb-operator/pkg/util/config"
 	"github.com/pingcap/tidb-operator/tests"
-	"github.com/pingcap/tidb-operator/tests/apiserver"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
@@ -53,7 +51,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	utilversion "k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
@@ -302,15 +299,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.BackupRestoreOrDie(&clusterFrom, &clusterTo)
 	})
 
-	ginkgo.It("Test aggregated apiserver", func() {
-		ginkgo.By(fmt.Sprintf("Starting to test apiserver, test apiserver image: %s", cfg.E2EImage))
-		framework.Logf("config: %v", config)
-		aaCtx := apiserver.NewE2eContext(ns, config, cfg.E2EImage)
-		defer aaCtx.Clean()
-		aaCtx.Setup()
-		aaCtx.Do()
-	})
-
 	ginkgo.It("Service: Sync TiDB service", func() {
 		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "service-it", "admin", utilimage.TiDBV3Version)
 		cluster.Resources["pd.replicas"] = "1"
@@ -473,7 +461,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 						corev1.ResourceStorage: resource.MustParse("10Gi"),
 					},
 				},
-				GenericConfig: tcconfig.New(map[string]interface{}{
+				Config: tcconfig.New(map[string]interface{}{
 					"addr":               "0.0.0.0:8250",
 					"gc":                 7,
 					"data-dir":           "/data",
@@ -649,68 +637,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		})
 
 		framework.ExpectNoError(err)
-	})
-
-	ginkgo.It("Restarter: Testing restarting by annotations", func() {
-		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "restarter", "admin", utilimage.TiDBV3Version)
-		cluster.Resources["pd.replicas"] = "1"
-		cluster.Resources["tikv.replicas"] = "1"
-		cluster.Resources["tidb.replicas"] = "1"
-		oa.DeployTidbClusterOrDie(&cluster)
-		oa.CheckTidbClusterStatusOrDie(&cluster)
-
-		tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
-		framework.ExpectNoError(err, "Expected get tidbcluster")
-		pd_0, err := c.CoreV1().Pods(ns).Get(operatorUtils.GetPodName(tc, v1alpha1.PDMemberType, 0), metav1.GetOptions{})
-		framework.ExpectNoError(err, "Expected get pd-0")
-		tikv_0, err := c.CoreV1().Pods(ns).Get(operatorUtils.GetPodName(tc, v1alpha1.TiKVMemberType, 0), metav1.GetOptions{})
-		framework.ExpectNoError(err, "Expected get tikv-0")
-		tidb_0, err := c.CoreV1().Pods(ns).Get(operatorUtils.GetPodName(tc, v1alpha1.TiDBMemberType, 0), metav1.GetOptions{})
-		framework.ExpectNoError(err, "Expected get tidb-0")
-		pd_0.Annotations[label.AnnPodDeferDeleting] = "true"
-		tikv_0.Annotations[label.AnnPodDeferDeleting] = "true"
-		tidb_0.Annotations[label.AnnPodDeferDeleting] = "true"
-		_, err = c.CoreV1().Pods(ns).Update(pd_0)
-		framework.ExpectNoError(err, "Expected update pd-0 restarting ann")
-		_, err = c.CoreV1().Pods(ns).Update(tikv_0)
-		framework.ExpectNoError(err, "Expected update tikv-0 restarting ann")
-		_, err = c.CoreV1().Pods(ns).Update(tidb_0)
-		framework.ExpectNoError(err, "Expected update tidb-0 restarting ann")
-
-		f := func(name, namespace string, uid types.UID) (bool, error) {
-			pod, err := c.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
-			if err != nil {
-				if errors.IsNotFound(err) {
-					// ignore not found error (pod is deleted and recreated again in restarting)
-					return false, nil
-				}
-				return false, err
-			}
-			if _, existed := pod.Annotations[label.AnnPodDeferDeleting]; existed {
-				return false, nil
-			}
-			if uid == pod.UID {
-				return false, nil
-			}
-			return true, nil
-		}
-
-		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-			isPdRestarted, err := f(pd_0.Name, ns, pd_0.UID)
-			if !(isPdRestarted && err == nil) {
-				return isPdRestarted, err
-			}
-			isTiKVRestarted, err := f(tikv_0.Name, ns, tikv_0.UID)
-			if !(isTiKVRestarted && err == nil) {
-				return isTiKVRestarted, err
-			}
-			isTiDBRestarted, err := f(tidb_0.Name, ns, tidb_0.UID)
-			if !(isTiDBRestarted && err == nil) {
-				return isTiDBRestarted, err
-			}
-			return true, nil
-		})
-		framework.ExpectNoError(err, "Expected tidbcluster pod restarted")
 	})
 
 	ginkgo.It("TidbMonitor: Deploying and checking monitor", func() {
@@ -1028,7 +954,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				Replicas:             1,
 				BaseImage:            "pingcap/tidb-binlog",
 				ResourceRequirements: fixture.WithStorage(fixture.BurstbleSmall, "1Gi"),
-				GenericConfig: tcconfig.New(map[string]interface{}{
+				Config: tcconfig.New(map[string]interface{}{
 					"addr": "0.0.0.0:8250",
 				}),
 			}
@@ -1184,7 +1110,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				Replicas:             1,
 				BaseImage:            "pingcap/tidb-binlog",
 				ResourceRequirements: fixture.WithStorage(fixture.BurstbleSmall, "1Gi"),
-				GenericConfig: tcconfig.New(map[string]interface{}{
+				Config: tcconfig.New(map[string]interface{}{
 					"addr": "0.0.0.0:8250",
 				}),
 			}

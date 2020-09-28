@@ -23,8 +23,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
@@ -1481,16 +1479,14 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 func newFakeTiKVMemberManager(tc *v1alpha1.TidbCluster) (
 	*tikvMemberManager, *controller.FakeStatefulSetControl,
 	*controller.FakeServiceControl, *pdapi.FakePDClient, cache.Indexer, cache.Indexer) {
-	cli := fake.NewSimpleClientset()
 	kubeCli := kubefake.NewSimpleClientset()
 	pdControl := pdapi.NewFakePDControl(kubeCli)
 	pdClient := controller.NewFakePDClient(pdControl, tc)
 	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1().StatefulSets()
 	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
 	epsInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Endpoints()
-	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbClusters()
-	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
-	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer, tcInformer)
+	setControl := controller.NewFakeStatefulSetControl(setInformer)
+	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer)
 	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
 	nodeInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Nodes()
 	tikvScaler := NewFakeTiKVScaler()
@@ -2064,6 +2060,74 @@ func TestTiKVInitContainers(t *testing.T) {
 			},
 			expectedInit:     nil,
 			expectedSecurity: nil,
+		},
+		{
+			name: "Specitfy init container resourceRequirements",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiKV: &v1alpha1.TiKVSpec{
+						ResourceRequirements: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU:     resource.MustParse("150m"),
+								corev1.ResourceMemory:  resource.MustParse("200Mi"),
+								corev1.ResourceStorage: resource.MustParse("20G"),
+							},
+							Limits: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("150m"),
+								corev1.ResourceMemory: resource.MustParse("200Mi"),
+							},
+						},
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Annotations: map[string]string{
+								"tidb.pingcap.com/sysctl-init": "true",
+							},
+							PodSecurityContext: &corev1.PodSecurityContext{
+								RunAsNonRoot: &asRoot,
+								Sysctls: []corev1.Sysctl{
+									{
+										Name:  "net.core.somaxconn",
+										Value: "32768",
+									},
+								},
+							},
+						},
+					},
+					PD:   &v1alpha1.PDSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
+				},
+			},
+			expectedInit: []corev1.Container{
+				{
+					Name:  "init",
+					Image: "busybox:1.26.2",
+					Command: []string{
+						"sh",
+						"-c",
+						"sysctl -w net.core.somaxconn=32768",
+					},
+					SecurityContext: &corev1.SecurityContext{
+						Privileged: &privileged,
+					},
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("150m"),
+							corev1.ResourceMemory: resource.MustParse("200Mi"),
+						},
+						Limits: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("150m"),
+							corev1.ResourceMemory: resource.MustParse("200Mi"),
+						},
+					},
+				},
+			},
+			expectedSecurity: &corev1.PodSecurityContext{
+				RunAsNonRoot: &asRoot,
+				Sysctls:      []corev1.Sysctl{},
+			},
 		},
 	}
 

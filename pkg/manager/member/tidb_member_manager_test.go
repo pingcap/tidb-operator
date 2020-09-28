@@ -802,8 +802,8 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
 	secretInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Secrets()
 	cmInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().ConfigMaps()
-	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
-	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer, tcInformer)
+	setControl := controller.NewFakeStatefulSetControl(setInformer)
+	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer)
 	genericControl := controller.NewFakeGenericControl()
 	tidbUpgrader := NewFakeTiDBUpgrader()
 	tidbFailover := NewFakeTiDBFailover()
@@ -1403,6 +1403,73 @@ func TestTiDBInitContainers(t *testing.T) {
 			},
 			expectedInit:     nil,
 			expectedSecurity: nil,
+		},
+		{
+			name: "Specitfy init container resourceRequirements",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: &v1alpha1.TiDBSpec{
+						ResourceRequirements: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("150m"),
+								corev1.ResourceMemory: resource.MustParse("200Mi"),
+							},
+							Limits: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("150m"),
+								corev1.ResourceMemory: resource.MustParse("200Mi"),
+							},
+						},
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Annotations: map[string]string{
+								"tidb.pingcap.com/sysctl-init": "true",
+							},
+							PodSecurityContext: &corev1.PodSecurityContext{
+								RunAsNonRoot: &asRoot,
+								Sysctls: []corev1.Sysctl{
+									{
+										Name:  "net.core.somaxconn",
+										Value: "32768",
+									},
+								},
+							},
+						},
+					},
+					PD:   &v1alpha1.PDSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
+				},
+			},
+			expectedInit: []corev1.Container{
+				{
+					Name:  "init",
+					Image: "busybox:1.26.2",
+					Command: []string{
+						"sh",
+						"-c",
+						"sysctl -w net.core.somaxconn=32768",
+					},
+					SecurityContext: &corev1.SecurityContext{
+						Privileged: &privileged,
+					},
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("150m"),
+							corev1.ResourceMemory: resource.MustParse("200Mi"),
+						},
+						Limits: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("150m"),
+							corev1.ResourceMemory: resource.MustParse("200Mi"),
+						},
+					},
+				},
+			},
+			expectedSecurity: &corev1.PodSecurityContext{
+				RunAsNonRoot: &asRoot,
+				Sysctls:      []corev1.Sysctl{},
+			},
 		},
 	}
 
