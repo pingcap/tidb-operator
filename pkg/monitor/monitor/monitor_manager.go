@@ -16,6 +16,8 @@ package monitor
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -261,6 +263,7 @@ func (mm *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, monito
 		// Get all autoscaling clusters for TC, and add them to .Spec.Clusters to
 		// generate Prometheus config without modifying the original TidbMonitor
 		cloned := monitor.DeepCopy()
+		autoTcRefs := []v1alpha1.TidbClusterRef{}
 		for _, tcRef := range monitor.Spec.Clusters {
 			r1, err := labels.NewRequirement(label.AutoInstanceLabelKey, selection.Exists, nil)
 			if err != nil {
@@ -279,12 +282,22 @@ func (mm *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, monito
 				continue
 			}
 			for _, autoTc := range tcList.Items {
-				cloned.Spec.Clusters = append(cloned.Spec.Clusters, v1alpha1.TidbClusterRef{
+				autoTcRefs = append(autoTcRefs, v1alpha1.TidbClusterRef{
 					Name:      autoTc.Name,
 					Namespace: autoTc.Namespace,
 				})
 			}
 		}
+		// Sort Autoscaling TC for stability
+		sort.Slice(autoTcRefs, func(i, j int) bool {
+			cmpNS := strings.Compare(autoTcRefs[i].Namespace, autoTcRefs[j].Namespace)
+			if cmpNS == 0 {
+				return strings.Compare(autoTcRefs[i].Name, autoTcRefs[j].Name) < 0
+			}
+			return cmpNS < 0
+		})
+
+		cloned.Spec.Clusters = append(cloned.Spec.Clusters, autoTcRefs...)
 		monitor = cloned
 	}
 
