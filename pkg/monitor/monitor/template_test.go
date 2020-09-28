@@ -18,6 +18,7 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/prometheus/config"
+	"gopkg.in/yaml.v2"
 )
 
 func TestRenderPrometheusConfig(t *testing.T) {
@@ -1051,4 +1052,19 @@ scrape_configs:
 	content, err := RenderPrometheusConfig(model)
 	g.Expect(err).NotTo(HaveOccurred())
 	g.Expect(content).Should(Equal(expectedContent))
+}
+
+func TestBuildAddressRelabelConfigByComponent(t *testing.T) {
+	g := NewGomegaWithT(t)
+	c := buildAddressRelabelConfigByComponent("non-exist-kind")
+	expectedContent := `source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+regex: ([^:]+)(?::\d+)?;(\d+)
+target_label: __address__
+replacement: $1:$2
+action: replace
+`
+
+	bs, err := yaml.Marshal(c)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(string(bs)).Should(Equal(expectedContent))
 }
