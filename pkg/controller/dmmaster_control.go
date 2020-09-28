@@ -34,3 +34,9 @@ func NewFakeMasterClient(dmControl *dmapi.FakeMasterControl, dc *v1alpha1.DMClus
 	dmControl.SetMasterClient(dc.GetNamespace(), dc.GetName(), masterClient)
 	return masterClient
 }
+
+func NewFakeMasterPeerClient(dmControl *dmapi.FakeMasterControl, dc *v1alpha1.DMCluster, podName string) *dmapi.FakeMasterClient {
+	masterClient := dmapi.NewFakeMasterClient()
+	dmControl.SetMasterPeerClient(dc.GetNamespace(), dc.GetName(), podName, masterClient)
+	return masterClient
+}

@@ -897,11 +897,11 @@ func testAnnotations(t *testing.T, annotations map[string]string) func(sts *apps
 	}
 }
 
-func testPDContainerEnv(t *testing.T, env []corev1.EnvVar) func(sts *apps.StatefulSet) {
+func testContainerEnv(t *testing.T, env []corev1.EnvVar, memberType v1alpha1.MemberType) func(sts *apps.StatefulSet) {
 	return func(sts *apps.StatefulSet) {
 		got := []corev1.EnvVar{}
 		for _, c := range sts.Spec.Template.Spec.Containers {
-			if c.Name == v1alpha1.PDMemberType.String() {
+			if c.Name == memberType.String() {
 				got = c.Env
 			}
 		}
@@ -1093,7 +1093,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 					TiDB: &v1alpha1.TiDBSpec{},
 				},
 			},
-			testSts: testPDContainerEnv(t, []corev1.EnvVar{
+			testSts: testContainerEnv(t, []corev1.EnvVar{
 				{
 					Name: "NAMESPACE",
 					ValueFrom: &corev1.EnvVarSource{
@@ -1128,7 +1128,9 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 						},
 					},
 				},
-			}),
+			},
+				v1alpha1.PDMemberType,
+			),
 		},
 		{
 			name: "tidb version v3.1.0, tidb client tls is enabled",

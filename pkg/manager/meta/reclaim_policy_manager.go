@@ -121,3 +121,7 @@ func (frpm *FakeReclaimPolicyManager) SetSyncError(err error) {
 func (frpm *FakeReclaimPolicyManager) Sync(_ *v1alpha1.TidbCluster) error {
 	return frpm.err
 }
+
+func (frpm *FakeReclaimPolicyManager) SyncDM(_ *v1alpha1.DMCluster) error {
+	return frpm.err
+}

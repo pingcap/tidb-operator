@@ -190,3 +190,26 @@ func (dcc *defaultDMClusterControl) updateDMCluster(dc *v1alpha1.DMCluster) erro
 	}
 	return errorutils.NewAggregate(errs)
 }
+
+var _ ControlInterface = &defaultDMClusterControl{}
+
+type FakeDMClusterControlInterface struct {
+	err error
+}
+
+func NewFakeDMClusterControlInterface() *FakeDMClusterControlInterface {
+	return &FakeDMClusterControlInterface{}
+}
+
+func (ftcc *FakeDMClusterControlInterface) SetUpdateDCError(err error) {
+	ftcc.err = err
+}
+
+func (ftcc *FakeDMClusterControlInterface) UpdateDMCluster(_ *v1alpha1.DMCluster) error {
+	if ftcc.err != nil {
+		return ftcc.err
+	}
+	return nil
+}
+
+var _ ControlInterface = &FakeDMClusterControlInterface{}

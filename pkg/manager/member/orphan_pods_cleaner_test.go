@@ -29,6 +29,7 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	tc := newTidbClusterForPD()
+	dc := newDMClusterForMaster()
 
 	tests := []struct {
 		name            string
@@ -36,6 +37,7 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 		apiPods         []*corev1.Pod
 		pvcs            []*corev1.PersistentVolumeClaim
 		deletePodFailed bool
+		testOnDM        bool
 		expectFn        func(*GomegaWithT, map[string]string, *orphanPodsCleaner, error)
 	}{
 		{
@@ -80,6 +82,50 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 				},
 			},
 			pvcs: nil,
+			expectFn: func(g *GomegaWithT, skipReason map[string]string, _ *orphanPodsCleaner, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(1))
+				g.Expect(skipReason["pod-1"]).To(Equal(skipReasonOrphanPodsCleanerPVCNameIsEmpty))
+			},
+		},
+		{
+			name: "has no spec.volumes for dm-master",
+			pods: []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pod-1",
+						Namespace: metav1.NamespaceDefault,
+						Labels:    label.NewDM().Instance(dc.GetInstanceName()).DMMaster().Labels(),
+					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodPending,
+					},
+				},
+			},
+			pvcs:     nil,
+			testOnDM: true,
+			expectFn: func(g *GomegaWithT, skipReason map[string]string, _ *orphanPodsCleaner, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(1))
+				g.Expect(skipReason["pod-1"]).To(Equal(skipReasonOrphanPodsCleanerPVCNameIsEmpty))
+			},
+		},
+		{
+			name: "has no spec.volumes for dm-worker",
+			pods: []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pod-1",
+						Namespace: metav1.NamespaceDefault,
+						Labels:    label.NewDM().Instance(dc.GetInstanceName()).DMWorker().Labels(),
+					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodPending,
+					},
+				},
+			},
+			pvcs:     nil,
+			testOnDM: true,
 			expectFn: func(g *GomegaWithT, skipReason map[string]string, _ *orphanPodsCleaner, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(skipReason)).To(Equal(1))
@@ -584,7 +630,14 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 				podControl.SetDeletePodError(fmt.Errorf("delete pod failed"), 0)
 			}
 
-			skipReason, err := opc.Clean(tc)
+			var skipReason map[string]string
+			var err error
+
+			if tt.testOnDM {
+				skipReason, err = opc.Clean(dc)
+			} else {
+				skipReason, err = opc.Clean(tc)
+			}
 			tt.expectFn(g, skipReason, opc, err)
 		})
 	}

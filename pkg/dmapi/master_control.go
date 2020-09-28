@@ -98,6 +98,10 @@ func masterClientKey(scheme, namespace, clusterName string) string {
 	return fmt.Sprintf("%s.%s.%s", scheme, clusterName, namespace)
 }
 
+func masterPeerClientKey(schema, namespace, clusterName, podName string) string {
+	return fmt.Sprintf("%s.%s.%s.%s", schema, clusterName, namespace, podName)
+}
+
 // MasterClientURL builds the url of master client
 func MasterClientURL(namespace, clusterName, scheme string) string {
 	return fmt.Sprintf("%s://%s-dm-master.%s:8261", scheme, clusterName, namespace)
@@ -111,14 +115,28 @@ func MasterPeerClientURL(namespace, clusterName, podName, scheme string) string 
 // FakeMasterControl implements a fake version of MasterControlInterface.
 type FakeMasterControl struct {
 	defaultMasterControl
+	masterPeerClients map[string]MasterClient
 }
 
 func NewFakeMasterControl(kubeCli kubernetes.Interface) *FakeMasterControl {
 	return &FakeMasterControl{
-		defaultMasterControl{kubeCli: kubeCli, masterClients: map[string]MasterClient{}},
+		defaultMasterControl: defaultMasterControl{kubeCli: kubeCli, masterClients: map[string]MasterClient{}},
+		masterPeerClients:    map[string]MasterClient{},
 	}
 }
 
-func (fmc *FakeMasterControl) SetMasterClient(namespace string, tcName string, masterClient MasterClient) {
-	fmc.defaultMasterControl.masterClients[masterClientKey("http", namespace, tcName)] = masterClient
+func (fmc *FakeMasterControl) SetMasterClient(namespace, dcName string, masterClient MasterClient) {
+	fmc.defaultMasterControl.masterClients[masterClientKey("http", namespace, dcName)] = masterClient
+}
+
+func (fmc *FakeMasterControl) SetMasterPeerClient(namespace, dcName, podName string, masterPeerClient MasterClient) {
+	fmc.masterPeerClients[masterPeerClientKey("http", namespace, dcName, podName)] = masterPeerClient
+}
+
+func (fmc *FakeMasterControl) GetMasterClient(namespace string, dcName string, tlsEnabled bool) MasterClient {
+	return fmc.defaultMasterControl.GetMasterClient(namespace, dcName, tlsEnabled)
+}
+
+func (fmc *FakeMasterControl) GetMasterPeerClient(namespace, dcName, podName string, tlsEnabled bool) MasterClient {
+	return fmc.masterPeerClients[masterPeerClientKey("http", namespace, dcName, podName)]
 }

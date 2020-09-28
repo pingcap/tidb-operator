@@ -76,7 +76,7 @@ func NewController(deps *controller.Dependencies) *Controller {
 	deps.StatefulSetInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: c.addStatefulSet,
 		UpdateFunc: func(old, cur interface{}) {
-			c.updateStatefuSet(old, cur)
+			c.updateStatefulSet(old, cur)
 		},
 		DeleteFunc: c.deleteStatefulSet,
 	})
@@ -185,8 +185,8 @@ func (tcc *Controller) addStatefulSet(obj interface{}) {
 	tcc.enqueueTidbCluster(tc)
 }
 
-// updateStatefuSet adds the tidbcluster for the current and old statefulsets to the sync queue.
-func (tcc *Controller) updateStatefuSet(old, cur interface{}) {
+// updateStatefulSet adds the tidbcluster for the current and old statefulsets to the sync queue.
+func (tcc *Controller) updateStatefulSet(old, cur interface{}) {
 	curSet := cur.(*apps.StatefulSet)
 	oldSet := old.(*apps.StatefulSet)
 	ns := curSet.GetNamespace()

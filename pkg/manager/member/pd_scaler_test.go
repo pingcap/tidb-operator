@@ -448,7 +448,13 @@ func newStatefulSetForPDScale() *apps.StatefulSet {
 
 func newPVCForStatefulSet(set *apps.StatefulSet, memberType v1alpha1.MemberType, name string) *corev1.PersistentVolumeClaim {
 	podName := ordinalPodName(memberType, name, *set.Spec.Replicas)
-	l := label.New().Instance(name)
+	var l label.Label
+	switch memberType {
+	case v1alpha1.DMMasterMemberType, v1alpha1.DMWorkerMemberType:
+		l = label.NewDM().Instance(name)
+	default:
+		l = label.New().Instance(name)
+	}
 	l[label.AnnPodNameKey] = podName
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
@@ -461,7 +467,13 @@ func newPVCForStatefulSet(set *apps.StatefulSet, memberType v1alpha1.MemberType,
 
 func newScaleInPVCForStatefulSet(set *apps.StatefulSet, memberType v1alpha1.MemberType, name string) *corev1.PersistentVolumeClaim {
 	podName := ordinalPodName(memberType, name, *set.Spec.Replicas-1)
-	l := label.New().Instance(name)
+	var l label.Label
+	switch memberType {
+	case v1alpha1.DMMasterMemberType, v1alpha1.DMWorkerMemberType:
+		l = label.NewDM().Instance(name)
+	default:
+		l = label.New().Instance(name)
+	}
 	l[label.AnnPodNameKey] = podName
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{

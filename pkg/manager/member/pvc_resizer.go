@@ -124,7 +124,7 @@ func (p *pvcResizer) Resize(tc *v1alpha1.TidbCluster) error {
 }
 
 func (p *pvcResizer) ResizeDM(dc *v1alpha1.DMCluster) error {
-	selector, err := label.New().Instance(dc.GetInstanceName()).Selector()
+	selector, err := label.NewDM().Instance(dc.GetInstanceName()).Selector()
 	if err != nil {
 		return err
 	}

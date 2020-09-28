@@ -93,7 +93,7 @@ func (opc *orphanPodsCleaner) Clean(meta metav1.Object) (map[string]string, erro
 	for _, pod := range pods {
 		podName := pod.GetName()
 		l := label.Label(pod.Labels)
-		if !(l.IsPD() || l.IsTiKV() || l.IsTiFlash() || l.IsDMMaster() || l.IsDMMaster()) {
+		if !(l.IsPD() || l.IsTiKV() || l.IsTiFlash() || l.IsDMMaster() || l.IsDMWorker()) {
 			skipReason[podName] = skipReasonOrphanPodsCleanerIsNotTarget
 			continue
 		}

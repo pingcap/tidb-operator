@@ -244,7 +244,7 @@ func (wmm *workerMemberManager) syncDMClusterStatus(dc *v1alpha1.DMCluster, set 
 
 	workersInfo, err := dmClient.GetWorkers()
 	if err != nil {
-		dc.Status.Master.Synced = false
+		dc.Status.Worker.Synced = false
 		return err
 	}
 
@@ -317,9 +317,6 @@ func (wmm *workerMemberManager) workerStatefulSetIsUpgrading(set *apps.StatefulS
 
 // syncWorkerConfigMap syncs the configmap of dm-worker
 func (wmm *workerMemberManager) syncWorkerConfigMap(dc *v1alpha1.DMCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
-	if dc.Spec.Worker.Config == nil {
-		return nil, nil
-	}
 	newCm, err := getWorkerConfigMap(dc)
 	if err != nil {
 		return nil, err
@@ -332,6 +329,9 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	dcName := dc.Name
 	baseWorkerSpec := dc.BaseWorkerSpec()
 	instanceName := dc.GetInstanceName()
+	if cm == nil {
+		return nil, fmt.Errorf("config map for dm-worker is not found, dmcluster %s/%s", dc.Namespace, dc.Name)
+	}
 	workerConfigMap := cm.Name
 
 	annMount, annVolume := annotationsMountVolume()
@@ -514,10 +514,9 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 }
 
 func getWorkerConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
-	// For backward compatibility, only sync dm configmap when .worker.config is non-nil
 	config := dc.Spec.Worker.Config
 	if config == nil {
-		return nil, nil
+		config = &v1alpha1.WorkerConfig{}
 	}
 
 	// override CA if tls enabled
@@ -568,4 +567,23 @@ func isWorkerPodDesired(dc *v1alpha1.DMCluster, podName string) bool {
 		return false
 	}
 	return ordinals.Has(ordinal)
+}
+
+type FakeWorkerMemberManager struct {
+	err error
+}
+
+func NewFakeWorkerMemberManager() *FakeWorkerMemberManager {
+	return &FakeWorkerMemberManager{}
+}
+
+func (ftmm *FakeWorkerMemberManager) SetSyncError(err error) {
+	ftmm.err = err
+}
+
+func (ftmm *FakeWorkerMemberManager) SyncDM(dc *v1alpha1.DMCluster) error {
+	if ftmm.err != nil {
+		return ftmm.err
+	}
+	return nil
 }
