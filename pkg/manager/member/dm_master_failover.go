@@ -93,7 +93,7 @@ func (mf *masterFailover) Failover(dc *v1alpha1.DMCluster) error {
 	}
 	inQuorum := healthCount > len(dc.Status.Master.Members)/2
 	if !inQuorum {
-		return fmt.Errorf("DMCluster: %s/%s's dm-master cluster is not health: %d/%d, "+
+		return fmt.Errorf("DMCluster: %s/%s's dm-master cluster is not healthy: %d/%d, "+
 			"replicas: %d, failureCount: %d, can't failover",
 			ns, dcName, healthCount, dc.MasterStsDesiredReplicas(), dc.Spec.Master.Replicas, len(dc.Status.Master.FailureMembers))
 	}
