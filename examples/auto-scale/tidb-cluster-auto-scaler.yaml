@@ -6,7 +6,6 @@ spec:
   cluster:
     name: auto-scaling-demo
   tidb:
-    maxReplicas: 100
     resources:
       small:
         cpu: 1000m
