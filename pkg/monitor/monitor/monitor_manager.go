@@ -307,7 +307,7 @@ func (mm *MonitorManager) syncTidbMonitorRbac(monitor *v1alpha1.TidbMonitor) (*c
 		})
 	}
 
-	if monitor.ClusterScoped {
+	if monitor.Spec.ClusterScoped {
 		role := getMonitorClusterRole(monitor, policyRules)
 		role, err = mm.typedControl.CreateOrUpdateClusterRole(monitor, role)
 		if err != nil {

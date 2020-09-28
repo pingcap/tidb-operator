@@ -17273,14 +17273,14 @@ spec:
   validation:
     openAPIV3Schema:
       properties:
-        ClusterScoped:
-          type: boolean
         apiVersion:
           type: string
         kind:
           type: string
         spec:
           properties:
+            ClusterScoped:
+              type: boolean
             additionalContainers:
               items:
                 properties:
@@ -17849,6 +17849,7 @@ spec:
           - prometheus
           - reloader
           - initializer
+          - ClusterScoped
           type: object
       type: object
   version: v1alpha1

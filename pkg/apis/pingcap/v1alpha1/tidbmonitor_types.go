@@ -34,9 +34,6 @@ type TidbMonitor struct {
 	// +k8s:openapi-gen=false
 	// Most recently observed status of the TidbMonitor
 	Status TidbMonitorStatus `json:"status"`
-
-	// ClusterScoped controls whether monitor should manage kubernetes cluster wide TiDB clusters
-	ClusterScoped bool
 }
 
 // +k8s:openapi-gen=true
@@ -86,6 +83,9 @@ type TidbMonitorSpec struct {
 
 	// +optional
 	AdditionalContainers []corev1.Container `json:"additionalContainers,omitempty"`
+
+	// ClusterScoped controls whether monitor should manage kubernetes cluster wide TiDB clusters
+	ClusterScoped bool
 }
 
 // PrometheusSpec is the desired state of prometheus
