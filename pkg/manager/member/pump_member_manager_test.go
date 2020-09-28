@@ -244,7 +244,7 @@ func TestPumpMemberManagerSyncUpdate(t *testing.T) {
 		{
 			name: "basic",
 			prepare: func(tc *v1alpha1.TidbCluster, _ *pumpFakeIndexers) {
-				tc.Spec.Pump.GenericConfig = config.New(map[string]interface{}{
+				tc.Spec.Pump.Config = config.New(map[string]interface{}{
 					"gc": 6,
 					"storage": map[string]interface{}{
 						"stop-write-at-available-space": "10Gi",
@@ -265,7 +265,7 @@ func TestPumpMemberManagerSyncUpdate(t *testing.T) {
 		{
 			name: "error on update configmap",
 			prepare: func(tc *v1alpha1.TidbCluster, _ *pumpFakeIndexers) {
-				tc.Spec.Pump.GenericConfig = config.New(map[string]interface{}{
+				tc.Spec.Pump.Config = config.New(map[string]interface{}{
 					"gc": 6,
 					"storage": map[string]interface{}{
 						"stop-write-at-available-space": "10Gi",
@@ -286,7 +286,7 @@ func TestPumpMemberManagerSyncUpdate(t *testing.T) {
 		{
 			name: "error on update service",
 			prepare: func(tc *v1alpha1.TidbCluster, _ *pumpFakeIndexers) {
-				tc.Spec.Pump.GenericConfig = config.New(map[string]interface{}{
+				tc.Spec.Pump.Config = config.New(map[string]interface{}{
 					"gc": 6,
 					"storage": map[string]interface{}{
 						"stop-write-at-available-space": "10Gi",
@@ -307,7 +307,7 @@ func TestPumpMemberManagerSyncUpdate(t *testing.T) {
 		{
 			name: "error on update statefulset",
 			prepare: func(tc *v1alpha1.TidbCluster, _ *pumpFakeIndexers) {
-				tc.Spec.Pump.GenericConfig = config.New(map[string]interface{}{
+				tc.Spec.Pump.Config = config.New(map[string]interface{}{
 					"gc": 6,
 					"storage": map[string]interface{}{
 						"stop-write-at-available-space": "10Gi",
@@ -389,7 +389,7 @@ func TestSyncConfigUpdate(t *testing.T) {
 		{
 			name: "basic",
 			prepare: func(tc *v1alpha1.TidbCluster, _ *pumpFakeIndexers) {
-				tc.Spec.Pump.GenericConfig = config.New(map[string]interface{}{
+				tc.Spec.Pump.Config = config.New(map[string]interface{}{
 					"gc": 6,
 					"storage": map[string]interface{}{
 						"stop-write-at-available-space": "10Gi",
@@ -444,8 +444,8 @@ func newFakePumpMemberManager() (*pumpMemberManager, *pumpFakeControls, *pumpFak
 	epsInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Endpoints()
 	cmInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().ConfigMaps()
 	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
-	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
-	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer, tcInformer)
+	setControl := controller.NewFakeStatefulSetControl(setInformer)
+	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer)
 	cmControl := controller.NewFakeConfigMapControl(cmInformer)
 	genericControl := controller.NewFakeGenericControl()
 	pmm := &pumpMemberManager{
@@ -508,7 +508,7 @@ func newTidbClusterForPump() *v1alpha1.TidbCluster {
 					Image:                "pump-test-image",
 					ConfigUpdateStrategy: &updateStrategy,
 				},
-				GenericConfig: config.New(map[string]interface{}{
+				Config: config.New(map[string]interface{}{
 					"gc": 7,
 				}),
 				Replicas: 3,
@@ -620,7 +620,7 @@ func TestGetNewPumpConfigMap(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							ConfigUpdateStrategy: &updateStrategy,
 						},
-						GenericConfig: config.New(nil),
+						Config: nil,
 					},
 				},
 			},
@@ -666,7 +666,7 @@ func TestGetNewPumpConfigMap(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							ConfigUpdateStrategy: &updateStrategy,
 						},
-						GenericConfig: config.New(map[string]interface{}{
+						Config: config.New(map[string]interface{}{
 							"gc": 7,
 							"storage": map[string]interface{}{
 								"sync-log": "true",

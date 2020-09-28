@@ -18,8 +18,10 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	tcinformers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
@@ -78,4 +80,36 @@ func (rdc *realDMClusterControl) UpdateDMCluster(dc *v1alpha1.DMCluster, newStat
 		klog.Errorf("failed to update DMCluster: [%s/%s], error: %v", ns, dcName, err)
 	}
 	return updateDC, err
+}
+
+// FakeDMClusterControl is a fake DMClusterControlInterface
+type FakeDMClusterControl struct {
+	DcLister               listers.DMClusterLister
+	DcIndexer              cache.Indexer
+	updateDMClusterTracker RequestTracker
+}
+
+// NewFakeDMClusterControl returns a FakeDMClusterControl
+func NewFakeDMClusterControl(dcInformer tcinformers.DMClusterInformer) *FakeDMClusterControl {
+	return &FakeDMClusterControl{
+		dcInformer.Lister(),
+		dcInformer.Informer().GetIndexer(),
+		RequestTracker{},
+	}
+}
+
+// SetUpdateDMClusterError sets the error attributes of updateDMClusterTracker
+func (ssc *FakeDMClusterControl) SetUpdateDMClusterError(err error, after int) {
+	ssc.updateDMClusterTracker.SetError(err).SetAfter(after)
+}
+
+// UpdateDMCluster updates the DMCluster
+func (ssc *FakeDMClusterControl) UpdateDMCluster(dc *v1alpha1.DMCluster, _ *v1alpha1.DMClusterStatus, _ *v1alpha1.DMClusterStatus) (*v1alpha1.DMCluster, error) {
+	defer ssc.updateDMClusterTracker.Inc()
+	if ssc.updateDMClusterTracker.ErrorReady() {
+		defer ssc.updateDMClusterTracker.Reset()
+		return dc, ssc.updateDMClusterTracker.GetError()
+	}
+
+	return dc, ssc.DcIndexer.Update(dc)
 }

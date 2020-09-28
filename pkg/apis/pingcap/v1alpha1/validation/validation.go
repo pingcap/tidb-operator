@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/Masterminds/semver"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
@@ -222,6 +223,15 @@ func validatePumpSpec(spec *v1alpha1.PumpSpec, fldPath *field.Path) field.ErrorL
 
 func validateDMClusterSpec(spec *v1alpha1.DMClusterSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
+	if spec.Version != "" {
+		clusterVersionLT2, _ := clusterVersionLessThan2(spec.Version)
+		if clusterVersionLT2 {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("version"), spec.Version, "dm cluster version can't set to v1.x.y"))
+		}
+	}
+	if spec.Discovery.Address == "" {
+		allErrs = append(allErrs, field.Required(fldPath.Child("discovery.address"), "discovery.address must not be empty"))
+	}
 	allErrs = append(allErrs, validateMasterSpec(&spec.Master, fldPath.Child("master"))...)
 	if spec.Worker != nil {
 		allErrs = append(allErrs, validateWorkerSpec(spec.Worker, fldPath.Child("worker"))...)
@@ -232,6 +242,10 @@ func validateDMClusterSpec(spec *v1alpha1.DMClusterSpec, fldPath *field.Path) fi
 func validateMasterSpec(spec *v1alpha1.MasterSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
+	// make sure that storageSize for dm-master is assigned
+	if spec.Replicas > 0 && spec.StorageSize == "" {
+		allErrs = append(allErrs, field.Required(fldPath.Child("storageSize"), "storageSize must not be empty"))
+	}
 	return allErrs
 }
 
@@ -509,4 +523,14 @@ func validatePathNoBacksteps(targetPath string, fldPath *field.Path) field.Error
 		}
 	}
 	return allErrs
+}
+
+// clusterVersionLessThan2 makes sure that deployed dm cluster version not to be v1.0.x
+func clusterVersionLessThan2(version string) (bool, error) {
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		return false, err
+	}
+
+	return v.Major() < 2, nil
 }
