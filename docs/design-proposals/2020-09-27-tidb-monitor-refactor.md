@@ -13,7 +13,10 @@ Others are some small optimization points,providing more field for `kubectl get 
 
 ### Goals
 
-* Make monitoring easier to use.
+* Make TidbMonitor able to monitor multiple TidbClusters at non-TLS environment.
+* Improve the monitor's Unit and E2E test.
+* Smooth upgrade deployment to statefulset.
+* Support thanos sidecar and more friendly integration of Prometheus operator.
 
 ### Non-Goals
 
