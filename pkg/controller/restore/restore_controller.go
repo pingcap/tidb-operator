@@ -43,7 +43,7 @@ type Controller struct {
 func NewController(deps *controller.Dependencies) *Controller {
 	c := &Controller{
 		deps:    deps,
-		control: NewDefaultRestoreControl(restore.NewRestoreManager(deps, controller.NewRealRestoreConditionUpdater(deps))),
+		control: NewDefaultRestoreControl(restore.NewRestoreManager(deps)),
 		queue: workqueue.NewNamedRateLimitingQueue(
 			workqueue.DefaultControllerRateLimiter(),
 			"restore",

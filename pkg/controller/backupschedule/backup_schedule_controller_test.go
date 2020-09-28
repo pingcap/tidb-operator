@@ -20,16 +20,13 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/util/workqueue"
 	"k8s.io/utils/pointer"
 )
 
@@ -136,22 +133,10 @@ func TestBackupScheduleControllerSync(t *testing.T) {
 func alreadySynced() bool { return true }
 
 func newFakeBackupScheduleController() (*Controller, cache.Indexer, *FakeBackupScheduleControl) {
-	cli := fake.NewSimpleClientset()
-	kubeCli := kubefake.NewSimpleClientset()
-	informerFactory := informers.NewSharedInformerFactory(cli, 0)
-
-	bsInformer := informerFactory.Pingcap().V1alpha1().BackupSchedules()
+	fakeDeps := controller.NewFakeDependencies()
+	bsc := NewController(fakeDeps)
+	bsInformer := fakeDeps.BackupScheduleInformer
 	backupScheduleControl := NewFakeBackupScheduleControl(bsInformer)
-
-	bsc := &Controller{
-		kubeClient: kubeCli,
-		cli:        cli,
-		control:    backupScheduleControl,
-		queue: workqueue.NewNamedRateLimitingQueue(
-			workqueue.DefaultControllerRateLimiter(),
-			"backupSchedule",
-		),
-	}
 
 	bsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: bsc.enqueueBackupSchedule,
@@ -160,8 +145,6 @@ func newFakeBackupScheduleController() (*Controller, cache.Indexer, *FakeBackupS
 		},
 		DeleteFunc: bsc.enqueueBackupSchedule,
 	})
-	bsc.bsLister = bsInformer.Lister()
-	bsc.bsListerSynced = alreadySynced
 
 	return bsc, bsInformer.Informer().GetIndexer(), backupScheduleControl
 }

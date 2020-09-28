@@ -16,19 +16,15 @@ package member
 import (
 	"context"
 	"testing"
-	"time"
 
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/types"
-	kubeinformers "k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/pointer"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/fake"
 )
 
 func TestTiDBFailoverFailover(t *testing.T) {
@@ -315,11 +311,15 @@ func TestTiDBFailoverFailover(t *testing.T) {
 			g := NewGomegaWithT(t)
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			fakeClient := fake.NewSimpleClientset()
+
+			fakeDeps := controller.NewFakeDependencies()
+			fakeDeps.KubeInformerFactory.Start(ctx.Done())
+			fakeDeps.KubeInformerFactory.WaitForCacheSync(ctx.Done())
+
 			for _, pod := range test.pods {
-				fakeClient.CoreV1().Pods(pod.Namespace).Create(pod)
+				fakeDeps.KubeClientset.CoreV1().Pods(pod.Namespace).Create(pod)
 			}
-			tidbFailover := newTiDBFailover(ctx, fakeClient)
+			tidbFailover := NewTiDBFailover(fakeDeps)
 			tc := newTidbClusterForTiDBFailover()
 			test.update(tc)
 			err := tidbFailover.Failover(tc)
@@ -486,23 +486,16 @@ func TestTiDBFailoverRecover(t *testing.T) {
 			g := NewGomegaWithT(t)
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			fakeClient := fake.NewSimpleClientset()
-			tidbFailover := newTiDBFailover(ctx, fakeClient)
+			fakeDeps := controller.NewFakeDependencies()
+			fakeDeps.KubeInformerFactory.Start(ctx.Done())
+			fakeDeps.KubeInformerFactory.WaitForCacheSync(ctx.Done())
+			tidbFailover := NewTiDBFailover(fakeDeps)
 			tc := newTidbClusterForTiDBFailover()
 			test.update(tc)
 			tidbFailover.Recover(tc)
 			test.expectFn(g, tc)
 		})
 	}
-}
-
-func newTiDBFailover(ctx context.Context, client kubernetes.Interface) Failover {
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(client, 0)
-	podLister := kubeInformerFactory.Core().V1().Pods().Lister()
-	kubeInformerFactory.Start(ctx.Done())
-	kubeInformerFactory.WaitForCacheSync(ctx.Done())
-	recorder := record.NewFakeRecorder(100)
-	return NewTiDBFailover(time.Duration(5*time.Minute), recorder, podLister)
 }
 
 func newTidbClusterForTiDBFailover() *v1alpha1.TidbCluster {

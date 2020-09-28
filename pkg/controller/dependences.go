@@ -17,31 +17,33 @@ import (
 	"flag"
 	"time"
 
-	extensionslister "k8s.io/client-go/listers/extensions/v1beta1"
-
-	batchinformers "k8s.io/client-go/informers/batch/v1"
-
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	informeralphav1 "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/pkg/scheme"
 	corev1 "k8s.io/api/core/v1"
 	kubeinformers "k8s.io/client-go/informers"
 	appsinformers "k8s.io/client-go/informers/apps/v1"
+	batchinformers "k8s.io/client-go/informers/batch/v1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	kubeinformersv1 "k8s.io/client-go/informers/storage/v1"
 	"k8s.io/client-go/kubernetes"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	appslisters "k8s.io/client-go/listers/apps/v1"
 	batchlisters "k8s.io/client-go/listers/batch/v1"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
+	extensionslister "k8s.io/client-go/listers/extensions/v1beta1"
 	storagelister "k8s.io/client-go/listers/storage/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	controllerfake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 // CLIConfig is used save all configuration read from command line parameters
@@ -120,6 +122,25 @@ func (c *CLIConfig) AddFlag(_ *flag.FlagSet) {
 	flag.BoolVar(&c.PodWebhookEnabled, "pod-webhook-enabled", false, "Whether Pod admission webhook is enabled")
 }
 
+type Controls struct {
+	JobControl         JobControlInterface
+	ConfigMapControl   ConfigMapControlInterface
+	StatefulSetControl StatefulSetControlInterface
+	ServiceControl     ServiceControlInterface
+	PVCControl         PVCControlInterface
+	GeneralPVCControl  GeneralPVCControlInterface
+	PVControl          PVControlInterface
+	PodControl         PodControlInterface
+	TypedControl       TypedControlInterface
+	PDControl          pdapi.PDControlInterface
+	DMMasterControl    dmapi.MasterControlInterface
+	TiDBClusterControl TidbClusterControlInterface
+	DMClusterControl   DMClusterControlInterface
+	CDCControl         TiCDCControlInterface
+	TiDBControl        TiDBControlInterface
+	BackupControl      BackupControlInterface
+}
+
 // Dependencies is used to store all shared dependent resources to avoid
 // pass parameters everywhere.
 type Dependencies struct {
@@ -172,22 +193,46 @@ type Dependencies struct {
 	TiDBMonitorLister           listers.TidbMonitorLister
 
 	// Controls
-	JobControl         JobControlInterface
-	ConfigMapControl   ConfigMapControlInterface
-	StatefulSetControl StatefulSetControlInterface
-	ServiceControl     ServiceControlInterface
-	PVCControl         PVCControlInterface
-	GeneralPVCControl  GeneralPVCControlInterface
-	PVControl          PVControlInterface
-	PodControl         PodControlInterface
-	TypedControl       TypedControlInterface
-	PDControl          pdapi.PDControlInterface
-	DMMasterControl    dmapi.MasterControlInterface
-	TiDBClusterControl TidbClusterControlInterface
-	DMClusterControl   DMClusterControlInterface
-	CDCControl         TiCDCControlInterface
-	TiDBControl        TiDBControlInterface
-	BackupControl      BackupControlInterface
+	Controls
+}
+
+func newRealControls(
+	clientset versioned.Interface,
+	kubeClientset kubernetes.Interface,
+	genericCli client.Client,
+	informerFactory informers.SharedInformerFactory,
+	kubeInformerFactory kubeinformers.SharedInformerFactory,
+	recorder record.EventRecorder) Controls {
+	// Shared variables to construct `Dependencies` and some of its fields
+	var (
+		pdControl         = pdapi.NewDefaultPDControl(kubeClientset)
+		masterControl     = dmapi.NewDefaultMasterControl(kubeClientset)
+		tidbClusterLister = informerFactory.Pingcap().V1alpha1().TidbClusters().Lister()
+		dmClusterLister   = informerFactory.Pingcap().V1alpha1().DMClusters().Lister()
+		statefulSetLister = kubeInformerFactory.Apps().V1().StatefulSets().Lister()
+		serviceLister     = kubeInformerFactory.Core().V1().Services().Lister()
+		pvcLister         = kubeInformerFactory.Core().V1().PersistentVolumeClaims().Lister()
+		pvLister          = kubeInformerFactory.Core().V1().PersistentVolumes().Lister()
+		podLister         = kubeInformerFactory.Core().V1().Pods().Lister()
+	)
+	return Controls{
+		JobControl:         NewRealJobControl(kubeClientset, recorder),
+		ConfigMapControl:   NewRealConfigMapControl(kubeClientset, recorder),
+		StatefulSetControl: NewRealStatefuSetControl(kubeClientset, statefulSetLister, recorder),
+		ServiceControl:     NewRealServiceControl(kubeClientset, serviceLister, recorder),
+		PVControl:          NewRealPVControl(kubeClientset, pvcLister, pvLister, recorder),
+		PVCControl:         NewRealPVCControl(kubeClientset, recorder, pvcLister),
+		GeneralPVCControl:  NewRealGeneralPVCControl(kubeClientset, recorder),
+		PodControl:         NewRealPodControl(kubeClientset, pdControl, podLister, recorder),
+		TypedControl:       NewTypedControl(NewRealGenericControl(genericCli, recorder)),
+		PDControl:          pdControl,
+		DMMasterControl:    masterControl,
+		TiDBClusterControl: NewRealTidbClusterControl(clientset, tidbClusterLister, recorder),
+		DMClusterControl:   NewRealDMClusterControl(clientset, dmClusterLister, recorder),
+		CDCControl:         NewDefaultTiCDCControl(kubeClientset),
+		TiDBControl:        NewDefaultTiDBControl(kubeClientset),
+		BackupControl:      NewRealBackupControl(clientset, recorder),
+	}
 }
 
 // NewDependencies is used to construct the dependencies
@@ -211,19 +256,6 @@ func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface
 	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
 		Interface: eventv1.New(kubeClientset.CoreV1().RESTClient()).Events("")})
 	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tidb-controller-manager"})
-
-	// Shared variables to construct `Dependencies` and some of its fields
-	var (
-		pdControl         = pdapi.NewDefaultPDControl(kubeClientset)
-		masterControl     = dmapi.NewDefaultMasterControl(kubeClientset)
-		tidbClusterLister = informerFactory.Pingcap().V1alpha1().TidbClusters().Lister()
-		dmClusterLister   = informerFactory.Pingcap().V1alpha1().DMClusters().Lister()
-		statefulSetLister = kubeInformerFactory.Apps().V1().StatefulSets().Lister()
-		serviceLister     = kubeInformerFactory.Core().V1().Services().Lister()
-		pvcLister         = kubeInformerFactory.Core().V1().PersistentVolumeClaims().Lister()
-		pvLister          = kubeInformerFactory.Core().V1().PersistentVolumes().Lister()
-		podLister         = kubeInformerFactory.Core().V1().Pods().Lister()
-	)
 
 	return &Dependencies{
 		CLIConfig:           cliCfg,
@@ -250,21 +282,21 @@ func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface
 		TiDBClusterAutoScalerInformer: informerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers(),
 
 		// Listers
-		ServiceLister:               serviceLister,
+		ServiceLister:               kubeInformerFactory.Core().V1().Services().Lister(),
 		EndpointLister:              kubeInformerFactory.Core().V1().Endpoints().Lister(),
-		PVCLister:                   pvcLister,
-		PVLister:                    pvLister,
-		PodLister:                   podLister,
+		PVCLister:                   kubeInformerFactory.Core().V1().PersistentVolumeClaims().Lister(),
+		PVLister:                    kubeInformerFactory.Core().V1().PersistentVolumes().Lister(),
+		PodLister:                   kubeInformerFactory.Core().V1().Pods().Lister(),
 		NodeLister:                  kubeInformerFactory.Core().V1().Nodes().Lister(),
 		SecretLister:                kubeInformerFactory.Core().V1().Secrets().Lister(),
-		StatefulSetLister:           statefulSetLister,
+		StatefulSetLister:           kubeInformerFactory.Apps().V1().StatefulSets().Lister(),
 		DeploymentLister:            kubeInformerFactory.Apps().V1().Deployments().Lister(),
 		StorageClassLister:          kubeInformerFactory.Storage().V1().StorageClasses().Lister(),
 		JobLister:                   kubeInformerFactory.Batch().V1().Jobs().Lister(),
 		IngressLister:               kubeInformerFactory.Extensions().V1beta1().Ingresses().Lister(),
-		TiDBClusterLister:           tidbClusterLister,
+		TiDBClusterLister:           informerFactory.Pingcap().V1alpha1().TidbClusters().Lister(),
 		TiDBClusterAutoScalerLister: informerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers().Lister(),
-		DMClusterLister:             dmClusterLister,
+		DMClusterLister:             informerFactory.Pingcap().V1alpha1().DMClusters().Lister(),
 		BackupLister:                informerFactory.Pingcap().V1alpha1().Backups().Lister(),
 		RestoreLister:               informerFactory.Pingcap().V1alpha1().Restores().Lister(),
 		BackupScheduleLister:        informerFactory.Pingcap().V1alpha1().BackupSchedules().Lister(),
@@ -272,21 +304,39 @@ func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface
 		TiDBMonitorLister:           informerFactory.Pingcap().V1alpha1().TidbMonitors().Lister(),
 
 		// Controls
-		JobControl:         NewRealJobControl(kubeClientset, recorder),
-		ConfigMapControl:   NewRealConfigMapControl(kubeClientset, recorder),
-		StatefulSetControl: NewRealStatefuSetControl(kubeClientset, statefulSetLister, recorder),
-		ServiceControl:     NewRealServiceControl(kubeClientset, serviceLister, recorder),
-		PVControl:          NewRealPVControl(kubeClientset, pvcLister, pvLister, recorder),
-		PVCControl:         NewRealPVCControl(kubeClientset, recorder, pvcLister),
-		GeneralPVCControl:  NewRealGeneralPVCControl(kubeClientset, recorder),
-		PodControl:         NewRealPodControl(kubeClientset, pdControl, podLister, recorder),
-		TypedControl:       NewTypedControl(NewRealGenericControl(genericCli, recorder)),
-		PDControl:          pdControl,
-		DMMasterControl:    masterControl,
-		TiDBClusterControl: NewRealTidbClusterControl(clientset, tidbClusterLister, recorder),
-		DMClusterControl:   NewRealDMClusterControl(clientset, dmClusterLister, recorder),
+		Controls: newRealControls(clientset, kubeClientset, genericCli, informerFactory, kubeInformerFactory, recorder),
+	}
+}
+
+func newFakeControl(kubeClientset kubernetes.Interface, informerFactory informers.SharedInformerFactory, kubeInformerFactory kubeinformers.SharedInformerFactory) Controls {
+	// Shared variables to construct `Dependencies` and some of its fields
+	return Controls{
+		ConfigMapControl:   NewFakeConfigMapControl(kubeInformerFactory.Core().V1().ConfigMaps()),
+		StatefulSetControl: NewFakeStatefulSetControl(kubeInformerFactory.Apps().V1().StatefulSets(), informerFactory.Pingcap().V1alpha1().TidbClusters()),
+		ServiceControl:     NewFakeServiceControl(kubeInformerFactory.Core().V1().Services(), kubeInformerFactory.Core().V1().Endpoints(), informerFactory.Pingcap().V1alpha1().TidbClusters()),
+		PVControl:          NewFakePVControl(kubeInformerFactory.Core().V1().PersistentVolumes(), kubeInformerFactory.Core().V1().PersistentVolumeClaims()),
+		PVCControl:         NewFakePVCControl(kubeInformerFactory.Core().V1().PersistentVolumeClaims()),
+		GeneralPVCControl:  NewFakeGeneralPVCControl(kubeInformerFactory.Core().V1().PersistentVolumeClaims()),
+		PodControl:         NewFakePodControl(kubeInformerFactory.Core().V1().Pods()),
+		TypedControl:       NewTypedControl(NewFakeGenericControl()),
+		PDControl:          pdapi.NewDefaultPDControl(kubeClientset),
+		DMMasterControl:    dmapi.NewDefaultMasterControl(kubeClientset),
+		TiDBClusterControl: NewFakeTidbClusterControl(informerFactory.Pingcap().V1alpha1().TidbClusters()),
 		CDCControl:         NewDefaultTiCDCControl(kubeClientset),
 		TiDBControl:        NewDefaultTiDBControl(kubeClientset),
-		BackupControl:      NewRealBackupControl(clientset, recorder),
+		BackupControl:      NewFakeBackupControl(informerFactory.Pingcap().V1alpha1().Backups()),
 	}
+}
+
+// NewFakeDependencies returns a fake dependencies for testing
+func NewFakeDependencies() *Dependencies {
+	cli := fake.NewSimpleClientset()
+	kubeCli := kubefake.NewSimpleClientset()
+	genCli := controllerfake.NewFakeClientWithScheme(scheme.Scheme)
+	cliCfg := DefaultCLIConfig()
+	d := NewDependencies("", cliCfg, cli, kubeCli, genCli)
+	informerFactory := informers.NewSharedInformerFactory(cli, 0)
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
+	d.Controls = newFakeControl(kubeCli, informerFactory, kubeInformerFactory)
+	return d
 }

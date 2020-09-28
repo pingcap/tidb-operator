@@ -20,14 +20,13 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	v1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/utils/pointer"
 )
 
@@ -285,17 +284,17 @@ func TestPVCResizer(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			kubeCli := fake.NewSimpleClientset()
+			fakeDeps := controller.NewFakeDependencies()
 			for _, pvc := range tt.pvcs {
-				kubeCli.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(pvc)
+				fakeDeps.KubeClientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(pvc)
 			}
 			if tt.sc != nil {
-				kubeCli.StorageV1().StorageClasses().Create(tt.sc)
+				fakeDeps.KubeClientset.StorageV1().StorageClasses().Create(tt.sc)
 			}
 
-			informerFactory := informers.NewSharedInformerFactory(kubeCli, 0)
-			resizer := NewPVCResizer(kubeCli, informerFactory.Core().V1().PersistentVolumeClaims(), informerFactory.Storage().V1().StorageClasses())
+			resizer := NewPVCResizer(fakeDeps)
 
+			informerFactory := fakeDeps.KubeInformerFactory
 			informerFactory.Start(ctx.Done())
 			informerFactory.WaitForCacheSync(ctx.Done())
 
@@ -306,7 +305,7 @@ func TestPVCResizer(t *testing.T) {
 
 			for i, pvc := range tt.pvcs {
 				wantPVC := tt.wantPVCs[i]
-				got, err := kubeCli.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(pvc.Name, metav1.GetOptions{})
+				got, err := fakeDeps.KubeClientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(pvc.Name, metav1.GetOptions{})
 				if err != nil {
 					t.Fatal(err)
 				}

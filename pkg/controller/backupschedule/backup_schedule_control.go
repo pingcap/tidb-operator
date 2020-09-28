@@ -87,7 +87,7 @@ func (c *FakeBackupScheduleControl) SetUpdateBackupScheduleError(err error, afte
 	c.updateBsTracker.SetError(err).SetAfter(after)
 }
 
-// CreateBackup adds the backup to BackupIndexer
+// UpdateBackupSchedule updates the backup to BackupIndexer
 func (c *FakeBackupScheduleControl) UpdateBackupSchedule(bs *v1alpha1.BackupSchedule) error {
 	defer c.updateBsTracker.Inc()
 	if c.updateBsTracker.ErrorReady() {

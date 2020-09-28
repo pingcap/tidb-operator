@@ -21,34 +21,26 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/scheme"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	kubeinformers "k8s.io/client-go/informers"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
-	controllerfake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestTidbClusterControllerEnqueueTidbCluster(t *testing.T) {
 	g := NewGomegaWithT(t)
 	tc := newTidbCluster()
-	tcc, _, _ := newFakeTidbClusterController()
-
+	tcc := NewController(controller.NewFakeDependencies())
 	tcc.enqueueTidbCluster(tc)
 	g.Expect(tcc.queue.Len()).To(Equal(1))
 }
 
 func TestTidbClusterControllerEnqueueTidbClusterFailed(t *testing.T) {
 	g := NewGomegaWithT(t)
-	tcc, _, _ := newFakeTidbClusterController()
-
+	tcc := NewController(controller.NewFakeDependencies())
 	tcc.enqueueTidbCluster(struct{}{})
 	g.Expect(tcc.queue.Len()).To(Equal(0))
 }
@@ -68,8 +60,9 @@ func TestTidbClusterControllerAddStatefuSet(t *testing.T) {
 		tc := newTidbCluster()
 		set := test.modifySet(tc)
 
-		tcc, tcIndexer, _ := newFakeTidbClusterController()
-
+		fakeDeps := controller.NewFakeDependencies()
+		tcc := NewController(fakeDeps)
+		tcIndexer := fakeDeps.TiDBClusterInformer.Informer().GetIndexer()
 		if test.addTidbClusterToIndexer {
 			err := tcIndexer.Add(tc)
 			g.Expect(err).NotTo(HaveOccurred())
@@ -138,8 +131,9 @@ func TestTidbClusterControllerUpdateStatefuSet(t *testing.T) {
 		set1 := newStatefuSet(tc)
 		set2 := test.updateSet(set1)
 
-		tcc, tcIndexer, _ := newFakeTidbClusterController()
-
+		fakeDeps := controller.NewFakeDependencies()
+		tcc := NewController(fakeDeps)
+		tcIndexer := fakeDeps.TiDBClusterInformer.Informer().GetIndexer()
 		if test.addTidbClusterToIndexer {
 			err := tcIndexer.Add(tc)
 			g.Expect(err).NotTo(HaveOccurred())
@@ -209,8 +203,10 @@ func TestTidbClusterControllerSync(t *testing.T) {
 		t.Log(test.name)
 
 		tc := newTidbCluster()
-		tcc, tcIndexer, tcControl := newFakeTidbClusterController()
-
+		fakeDeps := controller.NewFakeDependencies()
+		tcc := NewController(fakeDeps)
+		tcIndexer := fakeDeps.TiDBClusterInformer.Informer().GetIndexer()
+		tcControl := NewFakeTidbClusterControlInterface()
 		if test.addTcToIndexer {
 			err := tcIndexer.Add(tc)
 			g.Expect(err).NotTo(HaveOccurred())
@@ -261,38 +257,6 @@ func TestTidbClusterControllerSync(t *testing.T) {
 		testFn(&tests[i], t)
 	}
 
-}
-
-func alwaysReady() bool { return true }
-
-func newFakeTidbClusterController() (*Controller, cache.Indexer, *FakeTidbClusterControlInterface) {
-	cli := fake.NewSimpleClientset()
-	kubeCli := kubefake.NewSimpleClientset()
-	genericCli := controllerfake.NewFakeClientWithScheme(scheme.Scheme)
-	informerFactory := informers.NewSharedInformerFactory(cli, 0)
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
-
-	tcInformer := informerFactory.Pingcap().V1alpha1().TidbClusters()
-	autoFailover := true
-	tcControl := NewFakeTidbClusterControlInterface()
-
-	tcc := NewController(
-		kubeCli,
-		cli,
-		genericCli,
-		informerFactory,
-		kubeInformerFactory,
-		autoFailover,
-		5*time.Minute,
-		5*time.Minute,
-		5*time.Minute,
-		5*time.Minute,
-	)
-	tcc.tcListerSynced = alwaysReady
-	tcc.setListerSynced = alwaysReady
-
-	tcc.control = tcControl
-	return tcc, tcInformer.Informer().GetIndexer(), tcControl
 }
 
 func newTidbCluster() *v1alpha1.TidbCluster {

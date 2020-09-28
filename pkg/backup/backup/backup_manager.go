@@ -38,12 +38,11 @@ type backupManager struct {
 }
 
 // NewBackupManager return backupManager
-func NewBackupManager(deps *controller.Dependencies, backupCleaner BackupCleaner, statusUpdater controller.BackupConditionUpdaterInterface,
-
-) backup.BackupManager {
+func NewBackupManager(deps *controller.Dependencies) backup.BackupManager {
+	statusUpdater := controller.NewRealBackupConditionUpdater(deps.Clientset, deps.BackupLister, deps.Recorder)
 	return &backupManager{
 		deps:          deps,
-		backupCleaner: backupCleaner,
+		backupCleaner: NewBackupCleaner(deps, statusUpdater),
 		statusUpdater: statusUpdater,
 	}
 }

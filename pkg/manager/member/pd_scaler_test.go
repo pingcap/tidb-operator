@@ -28,8 +28,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	kubeinformers "k8s.io/client-go/informers"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/pointer"
 )
@@ -427,15 +425,12 @@ func TestPDScalerScaleIn(t *testing.T) {
 }
 
 func newFakePDScaler() (*pdScaler, *pdapi.FakePDControl, cache.Indexer, *controller.FakePVCControl) {
-	kubeCli := kubefake.NewSimpleClientset()
-
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
-	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
-	pdControl := pdapi.NewFakePDControl(kubeCli)
-	pvcControl := controller.NewFakePVCControl(pvcInformer)
-
-	return &pdScaler{generalScaler{pvcInformer.Lister(), pvcControl}, pdControl},
-		pdControl, pvcInformer.Informer().GetIndexer(), pvcControl
+	fakeDeps := controller.NewFakeDependencies()
+	pdScaler := &pdScaler{generalScaler: generalScaler{deps: fakeDeps}}
+	pdControl := fakeDeps.PDControl.(*pdapi.FakePDControl)
+	pvcIndexer := fakeDeps.PVCInformer.Informer().GetIndexer()
+	pvcControl := fakeDeps.PVCControl.(*controller.FakePVCControl)
+	return pdScaler, pdControl, pvcIndexer, pvcControl
 }
 
 func newStatefulSetForPDScale() *apps.StatefulSet {

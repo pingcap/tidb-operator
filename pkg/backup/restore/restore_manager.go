@@ -37,10 +37,10 @@ type restoreManager struct {
 }
 
 // NewRestoreManager return restoreManager
-func NewRestoreManager(deps *controller.Dependencies, statusUpdater controller.RestoreConditionUpdaterInterface, ) backup.RestoreManager {
+func NewRestoreManager(deps *controller.Dependencies) backup.RestoreManager {
 	return &restoreManager{
 		deps:          deps,
-		statusUpdater: statusUpdater,
+		statusUpdater: controller.NewRealRestoreConditionUpdater(deps.Clientset, deps.RestoreLister, deps.Recorder),
 	}
 }
 

@@ -27,7 +27,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	core "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
@@ -759,7 +758,7 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 			expectFn: func(g *GomegaWithT, skipReason map[string]string, pcc *realPVCCleaner, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(len(skipReason)).To(Equal(0))
-				pv, pvGetErr := pcc.pvLister.Get("pd-local-pv-0")
+				pv, pvGetErr := pcc.deps.PVLister.Get("pd-local-pv-0")
 				g.Expect(pvGetErr).NotTo(HaveOccurred())
 				g.Expect(pv.Spec.PersistentVolumeReclaimPolicy).To(Equal(corev1.PersistentVolumeReclaimDelete))
 				g.Expect(strings.Contains(err.Error(), "delete pvc failed")).To(BeTrue())
@@ -832,9 +831,9 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 			expectFn: func(g *GomegaWithT, skipReason map[string]string, pcc *realPVCCleaner, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(skipReason)).To(Equal(0))
-				pv, pvGetErr := pcc.pvLister.Get("pd-local-pv-0")
+				pv, pvGetErr := pcc.deps.PVLister.Get("pd-local-pv-0")
 				g.Expect(pvGetErr).NotTo(HaveOccurred())
-				_, pvcGetErr := pcc.pvcLister.PersistentVolumeClaims(metav1.NamespaceAll).Get("pd-test-pd-0")
+				_, pvcGetErr := pcc.deps.PVCLister.PersistentVolumeClaims(metav1.NamespaceAll).Get("pd-test-pd-0")
 				g.Expect(errors.IsNotFound(pvcGetErr)).To(BeTrue())
 				g.Expect(pv.Spec.PersistentVolumeReclaimPolicy).To(Equal(corev1.PersistentVolumeReclaimDelete))
 			},
@@ -973,7 +972,7 @@ func TestPVCCleanerCleanScheduleLock(t *testing.T) {
 			expectFn: func(g *GomegaWithT, skipReason map[string]string, pcc *realPVCCleaner, err error) {
 				g.Expect(len(skipReason)).To(Equal(0))
 				g.Expect(err).NotTo(HaveOccurred())
-				pvc, err := pcc.pvcLister.PersistentVolumeClaims(metav1.NamespaceDefault).Get("pd-test-pd-0")
+				pvc, err := pcc.deps.PVCLister.PersistentVolumeClaims(metav1.NamespaceDefault).Get("pd-test-pd-0")
 				g.Expect(err).NotTo(HaveOccurred())
 				_, exist := pvc.Labels[label.AnnPVCPodScheduling]
 				g.Expect(exist).To(BeFalse())
@@ -1155,7 +1154,7 @@ func TestPVCCleanerCleanScheduleLock(t *testing.T) {
 			expectFn: func(g *GomegaWithT, skipReason map[string]string, pcc *realPVCCleaner, err error) {
 				g.Expect(len(skipReason)).To(Equal(0))
 				g.Expect(err).NotTo(HaveOccurred())
-				pvc, err := pcc.pvcLister.PersistentVolumeClaims(metav1.NamespaceDefault).Get("pd-test-pd-0")
+				pvc, err := pcc.deps.PVCLister.PersistentVolumeClaims(metav1.NamespaceDefault).Get("pd-test-pd-0")
 				g.Expect(err).NotTo(HaveOccurred())
 				_, exist := pvc.Labels[label.AnnPVCPodScheduling]
 				g.Expect(exist).To(BeFalse())
@@ -1170,21 +1169,14 @@ func TestPVCCleanerCleanScheduleLock(t *testing.T) {
 }
 
 func newFakePVCCleaner() (*realPVCCleaner, *kubefake.Clientset, cache.Indexer, cache.Indexer, *controller.FakePVCControl, cache.Indexer, *controller.FakePVControl) {
-	kubeCli := kubefake.NewSimpleClientset()
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
-	podInformer := kubeInformerFactory.Core().V1().Pods()
-	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
-	pvcControl := controller.NewFakePVCControl(pvcInformer)
-	pvInformer := kubeInformerFactory.Core().V1().PersistentVolumes()
-	pvControl := controller.NewFakePVControl(pvInformer, pvcInformer)
-
-	rpc := &realPVCCleaner{
-		kubeCli,
-		podInformer.Lister(),
-		pvcControl,
-		pvcInformer.Lister(),
-		pvInformer.Lister(),
-		pvControl,
-	}
-	return rpc, kubeCli, podInformer.Informer().GetIndexer(), pvcInformer.Informer().GetIndexer(), pvcControl, pvInformer.Informer().GetIndexer(), pvControl
+	fakeDeps := controller.NewFakeDependencies()
+	rpc := &realPVCCleaner{deps: fakeDeps}
+	kubeCli := fakeDeps.KubeClientset.(*kubefake.Clientset)
+	podIndexer := fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer()
+	pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
+	pvcControl := controller.NewFakePVCControl(fakeDeps.PVCInformer)
+	pvInformer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumes()
+	pvIndexer := pvInformer.Informer().GetIndexer()
+	pvControl := controller.NewFakePVControl(pvInformer, fakeDeps.PVCInformer)
+	return rpc, kubeCli, podIndexer, pvcIndexer, pvcControl, pvIndexer, pvControl
 }
