@@ -5,15 +5,27 @@ metadata:
 spec:
   cluster:
     name: auto-scaling-demo
-  tidb:
+  tikv:
     resources:
-      small:
+      storage_small:
         cpu: 1000m
         memory: 2Gi
-        count: 100
+        count: 3
     rules:
       cpu:
         max_threshold: 0.8
         min_threshold: 0.2
         resource_types:
-          - small
+          - storage_small
+  tidb:
+    resources:
+      compute_small:
+        cpu: 1000m
+        memory: 2Gi
+        count: 3
+    rules:
+      cpu:
+        max_threshold: 0.8
+        min_threshold: 0.2
+        resource_types:
+          - compute_small
