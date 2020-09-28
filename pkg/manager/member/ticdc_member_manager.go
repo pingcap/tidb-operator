@@ -321,17 +321,17 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error)
 		podSpec.Volumes = []corev1.Volume{
 			{
 				Name: ticdcCertVolumeMount, VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: util.ClusterTLSSecretName(tc.Name, label.TiCDCLabelVal),
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: util.ClusterTLSSecretName(tc.Name, label.TiCDCLabelVal),
+					},
 				},
-			},
 			},
 			{
 				Name: util.ClusterClientVolName, VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: util.ClusterClientTLSSecretName(tc.Name),
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: util.ClusterClientTLSSecretName(tc.Name),
+					},
 				},
-			},
 			},
 		}
 	}

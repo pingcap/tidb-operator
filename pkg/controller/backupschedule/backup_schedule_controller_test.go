@@ -130,8 +130,6 @@ func TestBackupScheduleControllerSync(t *testing.T) {
 
 }
 
-func alreadySynced() bool { return true }
-
 func newFakeBackupScheduleController() (*Controller, cache.Indexer, *FakeBackupScheduleControl) {
 	fakeDeps := controller.NewFakeDependencies()
 	bsc := NewController(fakeDeps)

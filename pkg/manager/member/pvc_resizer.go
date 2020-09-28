@@ -16,10 +16,10 @@ package member
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/controller"
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"

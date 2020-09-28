@@ -16,7 +16,6 @@ package main
 import (
 	"context"
 	"flag"
-	"github.com/pingcap/tidb-operator/pkg/controller"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -25,6 +24,7 @@ import (
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/controller/autoscaler"
 	"github.com/pingcap/tidb-operator/pkg/controller/backup"
 	"github.com/pingcap/tidb-operator/pkg/controller/backupschedule"
