@@ -13,7 +13,7 @@ Others are some small optimization points,providing more field for `kubectl get 
 
 After discussion, we will not support monitor multiple clusters in tls environments because users must ensure that all monitored clusters use the same CA certificate,but autos-scale cluster or heterogeneous cluster need to use origin cluster certificate.
 We want to split the client secret of the monitor and the client secret of the cluster,eliminate this binding relationship that tidbmonitor secret bound to the firsrt cluster of the `cluster` Spec in mutiple clusters.But the user must rely on himself to ensure that the monitor's certificate is correct.
-We think it is unreliable rely on user himself,so we just support monitor multiple clusters in non-tls enviromnet.
+We think it is unreliable rely on user himself,so we just support monitor multiple clusters in non-tls environment and providing other methods to solve the monitoring of tls environment,for example thanos query. 
 
 ### Goals
 
