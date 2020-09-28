@@ -165,7 +165,7 @@ func TestReclaimPolicyManagerSync(t *testing.T) {
 
 func newFakeReclaimPolicyManager() (*reclaimPolicyManager, *controller.FakePVControl, cache.Indexer, cache.Indexer) {
 	fakeDeps := controller.NewFakeDependencies()
-	pvcIndexer := fakeDeps.PVCInformer.Informer().GetIndexer()
+	pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
 	pvIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumes().Informer().GetIndexer()
 	pvControl := fakeDeps.PVControl.(*controller.FakePVControl)
 	return &reclaimPolicyManager{deps: fakeDeps}, pvControl, pvcIndexer, pvIndexer

@@ -434,7 +434,7 @@ func newFakeTiKVScaler(resyncDuration ...time.Duration) (*tikvScaler, *pdapi.Fak
 	if len(resyncDuration) > 0 {
 		fakeDeps.CLIConfig.ResyncDuration = resyncDuration[0]
 	}
-	pvcIndexer := fakeDeps.PVCInformer.Informer().GetIndexer()
+	pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
 	podIndexer := fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer()
 	pdControl := fakeDeps.PDControl.(*pdapi.FakePDControl)
 	pvcControl := fakeDeps.PVCControl.(*controller.FakePVCControl)

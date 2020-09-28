@@ -21,17 +21,12 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
-	informeralphav1 "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	corev1 "k8s.io/api/core/v1"
 	kubeinformers "k8s.io/client-go/informers"
-	appsinformers "k8s.io/client-go/informers/apps/v1"
-	batchinformers "k8s.io/client-go/informers/batch/v1"
-	coreinformers "k8s.io/client-go/informers/core/v1"
-	kubeinformersv1 "k8s.io/client-go/informers/storage/v1"
 	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -155,21 +150,6 @@ type Dependencies struct {
 	KubeInformerFactory kubeinformers.SharedInformerFactory
 	Recorder            record.EventRecorder
 
-	// Informers
-	JobInformer                   batchinformers.JobInformer
-	PVCInformer                   coreinformers.PersistentVolumeClaimInformer
-	StatefulSetInformer           appsinformers.StatefulSetInformer
-	DeploymentInformer            appsinformers.DeploymentInformer
-	StorageClassInformer          kubeinformersv1.StorageClassInformer
-	TiDBClusterInformer           informeralphav1.TidbClusterInformer
-	DMClusterInformer             informeralphav1.DMClusterInformer
-	BackupInformer                informeralphav1.BackupInformer
-	RestoreInformer               informeralphav1.RestoreInformer
-	BackupScheduleInformer        informeralphav1.BackupScheduleInformer
-	TiDBInitializerInformer       informeralphav1.TidbInitializerInformer
-	TiDBMonitorInformer           informeralphav1.TidbMonitorInformer
-	TiDBClusterAutoScalerInformer informeralphav1.TidbClusterAutoScalerInformer
-
 	// Listers
 	ServiceLister               corelisterv1.ServiceLister
 	EndpointLister              corelisterv1.EndpointsLister
@@ -265,21 +245,6 @@ func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface
 		GenericClient:       genericCli,
 		KubeInformerFactory: kubeInformerFactory,
 		Recorder:            recorder,
-
-		// Informers
-		JobInformer:                   kubeInformerFactory.Batch().V1().Jobs(),
-		PVCInformer:                   kubeInformerFactory.Core().V1().PersistentVolumeClaims(),
-		StatefulSetInformer:           kubeInformerFactory.Apps().V1().StatefulSets(),
-		DeploymentInformer:            kubeInformerFactory.Apps().V1().Deployments(),
-		StorageClassInformer:          kubeInformerFactory.Storage().V1().StorageClasses(),
-		TiDBClusterInformer:           informerFactory.Pingcap().V1alpha1().TidbClusters(),
-		DMClusterInformer:             informerFactory.Pingcap().V1alpha1().DMClusters(),
-		BackupInformer:                informerFactory.Pingcap().V1alpha1().Backups(),
-		RestoreInformer:               informerFactory.Pingcap().V1alpha1().Restores(),
-		BackupScheduleInformer:        informerFactory.Pingcap().V1alpha1().BackupSchedules(),
-		TiDBInitializerInformer:       informerFactory.Pingcap().V1alpha1().TidbInitializers(),
-		TiDBMonitorInformer:           informerFactory.Pingcap().V1alpha1().TidbMonitors(),
-		TiDBClusterAutoScalerInformer: informerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers(),
 
 		// Listers
 		ServiceLister:               kubeInformerFactory.Core().V1().Services().Lister(),

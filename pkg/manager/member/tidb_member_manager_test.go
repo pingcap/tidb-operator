@@ -798,11 +798,11 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 	}
 	indexers := &fakeIndexers{
 		pod:    fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer(),
-		tc:     fakeDeps.TiDBClusterInformer.Informer().GetIndexer(),
+		tc:     fakeDeps.InformerFactory.Pingcap().V1alpha1().TidbClusters().Informer().GetIndexer(),
 		svc:    fakeDeps.KubeInformerFactory.Core().V1().Services().Informer().GetIndexer(),
 		eps:    fakeDeps.KubeInformerFactory.Core().V1().Endpoints().Informer().GetIndexer(),
 		secret: fakeDeps.KubeInformerFactory.Core().V1().Secrets().Informer().GetIndexer(),
-		set:    fakeDeps.StatefulSetInformer.Informer().GetIndexer(),
+		set:    fakeDeps.KubeInformerFactory.Apps().V1().StatefulSets().Informer().GetIndexer(),
 	}
 	setControl := fakeDeps.StatefulSetControl.(*controller.FakeStatefulSetControl)
 	tidbControl := fakeDeps.TiDBControl.(*controller.FakeTiDBControl)

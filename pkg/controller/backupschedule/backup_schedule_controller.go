@@ -50,7 +50,8 @@ func NewController(deps *controller.Dependencies) *Controller {
 		),
 	}
 
-	deps.BackupScheduleInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	backupScheduleInformer := deps.InformerFactory.Pingcap().V1alpha1().BackupSchedules()
+	backupScheduleInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: c.enqueueBackupSchedule,
 		UpdateFunc: func(old, cur interface{}) {
 			c.enqueueBackupSchedule(cur)

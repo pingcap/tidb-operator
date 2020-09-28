@@ -62,14 +62,17 @@ func NewController(deps *controller.Dependencies) *Controller {
 			"dmcluster",
 		),
 	}
-	deps.DMClusterInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+
+	dmClusterInformer := deps.InformerFactory.Pingcap().V1alpha1().DMClusters()
+	statefulsetInformer := deps.KubeInformerFactory.Apps().V1().StatefulSets()
+	dmClusterInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: c.enqueueDMCluster,
 		UpdateFunc: func(old, cur interface{}) {
 			c.enqueueDMCluster(cur)
 		},
 		DeleteFunc: c.enqueueDMCluster,
 	})
-	deps.StatefulSetInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	statefulsetInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: c.addStatefulSet,
 		UpdateFunc: func(old, cur interface{}) {
 			c.updateStatefulSet(old, cur)

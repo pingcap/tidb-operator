@@ -1174,9 +1174,8 @@ func newFakePVCCleaner() (*realPVCCleaner, *kubefake.Clientset, cache.Indexer, c
 	kubeCli := fakeDeps.KubeClientset.(*kubefake.Clientset)
 	podIndexer := fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer()
 	pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
-	pvcControl := controller.NewFakePVCControl(fakeDeps.PVCInformer)
-	pvInformer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumes()
-	pvIndexer := pvInformer.Informer().GetIndexer()
-	pvControl := controller.NewFakePVControl(pvInformer, fakeDeps.PVCInformer)
+	pvcControl := fakeDeps.PVCControl.(*controller.FakePVCControl)
+	pvIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumes().Informer().GetIndexer()
+	pvControl := fakeDeps.PVControl.(*controller.FakePVControl)
 	return rpc, kubeCli, podIndexer, pvcIndexer, pvcControl, pvIndexer, pvControl
 }

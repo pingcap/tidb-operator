@@ -66,14 +66,16 @@ func NewController(deps *controller.Dependencies) *Controller {
 		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "tidbcluster"),
 	}
 
-	deps.TiDBClusterInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	tidbClusterInformer := deps.InformerFactory.Pingcap().V1alpha1().TidbClusters()
+	statefulsetInformer := deps.KubeInformerFactory.Apps().V1().StatefulSets()
+	tidbClusterInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: c.enqueueTidbCluster,
 		UpdateFunc: func(old, cur interface{}) {
 			c.enqueueTidbCluster(cur)
 		},
 		DeleteFunc: c.enqueueTidbCluster,
 	})
-	deps.StatefulSetInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	statefulsetInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: c.addStatefulSet,
 		UpdateFunc: func(old, cur interface{}) {
 			c.updateStatefulSet(old, cur)

@@ -428,7 +428,7 @@ func newFakePDScaler() (*pdScaler, *pdapi.FakePDControl, cache.Indexer, *control
 	fakeDeps := controller.NewFakeDependencies()
 	pdScaler := &pdScaler{generalScaler: generalScaler{deps: fakeDeps}}
 	pdControl := fakeDeps.PDControl.(*pdapi.FakePDControl)
-	pvcIndexer := fakeDeps.PVCInformer.Informer().GetIndexer()
+	pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
 	pvcControl := fakeDeps.PVCControl.(*controller.FakePVCControl)
 	return pdScaler, pdControl, pvcIndexer, pvcControl
 }

@@ -45,8 +45,10 @@ func NewController(deps *controller.Dependencies) *Controller {
 		queue:   workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "tidbmonitor"),
 	}
 
-	controller.WatchForObject(deps.TiDBMonitorInformer.Informer(), c.queue)
-	controller.WatchForController(deps.DeploymentInformer.Informer(), c.queue, func(ns, name string) (runtime.Object, error) {
+	tidbMonitorInformer := deps.InformerFactory.Pingcap().V1alpha1().TidbMonitors()
+	deploymentInformer := deps.KubeInformerFactory.Apps().V1().Deployments()
+	controller.WatchForObject(tidbMonitorInformer.Informer(), c.queue)
+	controller.WatchForController(deploymentInformer.Informer(), c.queue, func(ns, name string) (runtime.Object, error) {
 		return c.deps.TiDBMonitorLister.TidbMonitors(ns).Get(name)
 	}, nil)
 

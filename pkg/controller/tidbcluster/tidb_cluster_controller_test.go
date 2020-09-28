@@ -62,7 +62,7 @@ func TestTidbClusterControllerAddStatefulSet(t *testing.T) {
 
 		fakeDeps := controller.NewFakeDependencies()
 		tcc := NewController(fakeDeps)
-		tcIndexer := fakeDeps.TiDBClusterInformer.Informer().GetIndexer()
+		tcIndexer := fakeDeps.InformerFactory.Pingcap().V1alpha1().TidbClusters().Informer().GetIndexer()
 		if test.addTidbClusterToIndexer {
 			err := tcIndexer.Add(tc)
 			g.Expect(err).NotTo(HaveOccurred())
@@ -133,7 +133,7 @@ func TestTidbClusterControllerUpdateStatefulSet(t *testing.T) {
 
 		fakeDeps := controller.NewFakeDependencies()
 		tcc := NewController(fakeDeps)
-		tcIndexer := fakeDeps.TiDBClusterInformer.Informer().GetIndexer()
+		tcIndexer := fakeDeps.InformerFactory.Pingcap().V1alpha1().TidbClusters().Informer().GetIndexer()
 		if test.addTidbClusterToIndexer {
 			err := tcIndexer.Add(tc)
 			g.Expect(err).NotTo(HaveOccurred())
@@ -205,7 +205,7 @@ func TestTidbClusterControllerSync(t *testing.T) {
 		tc := newTidbCluster()
 		fakeDeps := controller.NewFakeDependencies()
 		tcc := NewController(fakeDeps)
-		tcIndexer := fakeDeps.TiDBClusterInformer.Informer().GetIndexer()
+		tcIndexer := fakeDeps.InformerFactory.Pingcap().V1alpha1().TidbClusters().Informer().GetIndexer()
 		tcControl := NewFakeTidbClusterControlInterface()
 		if test.addTcToIndexer {
 			err := tcIndexer.Add(tc)

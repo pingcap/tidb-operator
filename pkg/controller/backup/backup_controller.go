@@ -49,7 +49,8 @@ func NewController(deps *controller.Dependencies) *Controller {
 		),
 	}
 
-	deps.BackupInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	backupInformer := deps.InformerFactory.Pingcap().V1alpha1().Backups()
+	backupInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: c.updateBackup,
 		UpdateFunc: func(old, cur interface{}) {
 			c.updateBackup(cur)

@@ -46,10 +46,12 @@ func NewController(deps *controller.Dependencies) *Controller {
 		queue:   workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "tidbinitializer"),
 	}
 
-	controller.WatchForObject(deps.TiDBInitializerInformer.Informer(), c.queue)
+	tidbInitializerInformer := deps.InformerFactory.Pingcap().V1alpha1().TidbInitializers()
+	jobInformer := deps.KubeInformerFactory.Batch().V1().Jobs()
+	controller.WatchForObject(tidbInitializerInformer.Informer(), c.queue)
 	m := make(map[string]string)
 	m[label.ComponentLabelKey] = label.InitJobLabelVal
-	controller.WatchForController(deps.JobInformer.Informer(), c.queue, func(ns, name string) (runtime.Object, error) {
+	controller.WatchForController(jobInformer.Informer(), c.queue, func(ns, name string) (runtime.Object, error) {
 		return c.deps.TiDBInitializerLister.TidbInitializers(ns).Get(name)
 	}, m)
 

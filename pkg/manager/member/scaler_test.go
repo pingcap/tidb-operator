@@ -165,7 +165,7 @@ func TestGeneralScalerDeleteAllDeferDeletingPVC(t *testing.T) {
 
 func newFakeGeneralScaler() (*generalScaler, cache.Indexer, *controller.FakePVCControl) {
 	fakeDeps := controller.NewFakeDependencies()
-	pvcIndexer := fakeDeps.PVCInformer.Informer().GetIndexer()
+	pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
 	pvcControl := fakeDeps.PVCControl.(*controller.FakePVCControl)
 	return &generalScaler{deps: fakeDeps}, pvcIndexer, pvcControl
 }

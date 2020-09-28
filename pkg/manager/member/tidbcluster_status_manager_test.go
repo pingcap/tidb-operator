@@ -101,7 +101,7 @@ func TestSyncAutoScalerRef(t *testing.T) {
 
 func newFakeTidbClusterStatusManager() (*TidbClusterStatusManager, kubernetes.Interface, *fake.Clientset, cache.Indexer) {
 	fakeDeps := controller.NewFakeDependencies()
-	scalerInformer := fakeDeps.TiDBClusterAutoScalerInformer
+	scalerInformer := fakeDeps.InformerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers()
 	scalerInder := scalerInformer.Informer().GetIndexer()
 	cli := fakeDeps.Clientset.(*fake.Clientset)
 	return NewTidbClusterStatusManager(fakeDeps), fakeDeps.KubeClientset, cli, scalerInder

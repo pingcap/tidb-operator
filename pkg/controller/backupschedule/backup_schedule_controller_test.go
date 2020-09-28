@@ -133,7 +133,7 @@ func TestBackupScheduleControllerSync(t *testing.T) {
 func newFakeBackupScheduleController() (*Controller, cache.Indexer, *FakeBackupScheduleControl) {
 	fakeDeps := controller.NewFakeDependencies()
 	bsc := NewController(fakeDeps)
-	bsInformer := fakeDeps.BackupScheduleInformer
+	bsInformer := fakeDeps.InformerFactory.Pingcap().V1alpha1().BackupSchedules()
 	backupScheduleControl := NewFakeBackupScheduleControl(bsInformer)
 
 	bsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{

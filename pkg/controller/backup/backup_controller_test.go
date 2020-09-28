@@ -245,7 +245,7 @@ func TestBackupControllerSync(t *testing.T) {
 func newFakeBackupController() (*Controller, cache.Indexer, *FakeBackupControl) {
 	fakeDeps := controller.NewFakeDependencies()
 	bkc := NewController(fakeDeps)
-	backupInformer := fakeDeps.BackupInformer
+	backupInformer := fakeDeps.InformerFactory.Pingcap().V1alpha1().Backups()
 	backupControl := NewFakeBackupControl(backupInformer)
 	return bkc, backupInformer.Informer().GetIndexer(), backupControl
 }

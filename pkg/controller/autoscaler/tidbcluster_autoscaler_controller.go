@@ -40,7 +40,8 @@ func NewController(deps *controller.Dependencies) *Controller {
 		control: NewDefaultAutoScalerControl(autoscaler.NewAutoScalerManager(deps)),
 		queue:   workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "tidbclusterautoscaler"),
 	}
-	controller.WatchForObject(deps.TiDBClusterAutoScalerInformer.Informer(), t.queue)
+	tidbAutoScalerInformer := deps.InformerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers()
+	controller.WatchForObject(tidbAutoScalerInformer.Informer(), t.queue)
 	return t
 }
 

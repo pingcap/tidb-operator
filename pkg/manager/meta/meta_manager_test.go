@@ -735,7 +735,7 @@ func newFakeMetaManager() (
 	pvcControl := fakeDeps.PVCControl.(*controller.FakePVCControl)
 	pvControl := fakeDeps.PVControl.(*controller.FakePVControl)
 	podIndexer := fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer()
-	pvcIndexer := fakeDeps.PVCInformer.Informer().GetIndexer()
+	pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
 	pvIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumes().Informer().GetIndexer()
 	return &metaManager{deps: fakeDeps}, podControl, pvcControl, pvControl, podIndexer, pvcIndexer, pvIndexer
 }

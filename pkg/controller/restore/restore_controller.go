@@ -50,14 +50,14 @@ func NewController(deps *controller.Dependencies) *Controller {
 		),
 	}
 
-	deps.RestoreInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	restoreInformer := deps.InformerFactory.Pingcap().V1alpha1().Restores()
+	restoreInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: c.updateRestore,
 		UpdateFunc: func(old, cur interface{}) {
 			c.updateRestore(cur)
 		},
 		DeleteFunc: c.enqueueRestore,
 	})
-
 	return c
 }
 

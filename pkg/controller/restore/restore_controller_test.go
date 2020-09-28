@@ -213,7 +213,7 @@ func TestRestoreControllerSync(t *testing.T) {
 func newFakeRestoreController() (*Controller, cache.Indexer, *FakeRestoreControl) {
 	fakeDeps := controller.NewFakeDependencies()
 	rtc := NewController(fakeDeps)
-	restoreInformer := fakeDeps.RestoreInformer
+	restoreInformer := fakeDeps.InformerFactory.Pingcap().V1alpha1().Restores()
 	restoreControl := NewFakeRestoreControl(restoreInformer)
 	return rtc, restoreInformer.Informer().GetIndexer(), restoreControl
 }
