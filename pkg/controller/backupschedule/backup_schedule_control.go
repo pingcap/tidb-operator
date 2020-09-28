@@ -46,25 +46,25 @@ type defaultBackupScheduleControl struct {
 }
 
 // UpdateBackupSchedule executes the core logic loop for a BackupSchedule.
-func (c *defaultBackupScheduleControl) UpdateBackupSchedule(bs *v1alpha1.BackupSchedule) error {
+func (bsc *defaultBackupScheduleControl) UpdateBackupSchedule(bs *v1alpha1.BackupSchedule) error {
 	var errs []error
 	oldStatus := bs.Status.DeepCopy()
 
-	if err := c.updateBackupSchedule(bs); err != nil {
+	if err := bsc.updateBackupSchedule(bs); err != nil {
 		errs = append(errs, err)
 	}
 	if apiequality.Semantic.DeepEqual(&bs.Status, oldStatus) {
 		return errorutils.NewAggregate(errs)
 	}
-	if err := c.statusUpdater.UpdateBackupScheduleStatus(bs.DeepCopy(), &bs.Status, oldStatus); err != nil {
+	if err := bsc.statusUpdater.UpdateBackupScheduleStatus(bs.DeepCopy(), &bs.Status, oldStatus); err != nil {
 		errs = append(errs, err)
 	}
 
 	return errorutils.NewAggregate(errs)
 }
 
-func (c *defaultBackupScheduleControl) updateBackupSchedule(bs *v1alpha1.BackupSchedule) error {
-	return c.bsManager.Sync(bs)
+func (bsc *defaultBackupScheduleControl) updateBackupSchedule(bs *v1alpha1.BackupSchedule) error {
+	return bsc.bsManager.Sync(bs)
 }
 
 var _ ControlInterface = &defaultBackupScheduleControl{}
@@ -83,19 +83,19 @@ func NewFakeBackupScheduleControl(bsInformer informers.BackupScheduleInformer) *
 }
 
 // SetUpdateBackupScheduleError sets the error attributes of updateBackupScheduleTracker
-func (c *FakeBackupScheduleControl) SetUpdateBackupScheduleError(err error, after int) {
-	c.updateBsTracker.SetError(err).SetAfter(after)
+func (fbc *FakeBackupScheduleControl) SetUpdateBackupScheduleError(err error, after int) {
+	fbc.updateBsTracker.SetError(err).SetAfter(after)
 }
 
 // UpdateBackupSchedule updates the backup to BackupIndexer
-func (c *FakeBackupScheduleControl) UpdateBackupSchedule(bs *v1alpha1.BackupSchedule) error {
-	defer c.updateBsTracker.Inc()
-	if c.updateBsTracker.ErrorReady() {
-		defer c.updateBsTracker.Reset()
-		return c.updateBsTracker.GetError()
+func (fbc *FakeBackupScheduleControl) UpdateBackupSchedule(bs *v1alpha1.BackupSchedule) error {
+	defer fbc.updateBsTracker.Inc()
+	if fbc.updateBsTracker.ErrorReady() {
+		defer fbc.updateBsTracker.Reset()
+		return fbc.updateBsTracker.GetError()
 	}
 
-	return c.bsIndexer.Add(bs)
+	return fbc.bsIndexer.Add(bs)
 }
 
 var _ ControlInterface = &FakeBackupScheduleControl{}

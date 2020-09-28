@@ -35,7 +35,7 @@ func NewTiFlashFailover(deps *controller.Dependencies) Failover {
 	return &tiflashFailover{deps: deps}
 }
 
-func (f *tiflashFailover) isPodDesired(tc *v1alpha1.TidbCluster, podName string) bool {
+func (tff *tiflashFailover) isPodDesired(tc *v1alpha1.TidbCluster, podName string) bool {
 	ordinals := tc.TiFlashStsDesiredOrdinals(true)
 	ordinal, err := util.GetOrdinalFromPodName(podName)
 	if err != nil {
@@ -45,7 +45,7 @@ func (f *tiflashFailover) isPodDesired(tc *v1alpha1.TidbCluster, podName string)
 	return ordinals.Has(ordinal)
 }
 
-func (f *tiflashFailover) Failover(tc *v1alpha1.TidbCluster) error {
+func (tff *tiflashFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -54,13 +54,13 @@ func (f *tiflashFailover) Failover(tc *v1alpha1.TidbCluster) error {
 		if store.LastTransitionTime.IsZero() {
 			continue
 		}
-		if !f.isPodDesired(tc, podName) {
+		if !tff.isPodDesired(tc, podName) {
 			// we should ignore the store record of deleted pod, otherwise the
 			// record of deleted pod may be added back to failure stores
 			// (before it enters into Offline/Tombstone state)
 			continue
 		}
-		deadline := store.LastTransitionTime.Add(f.deps.CLIConfig.TiFlashFailoverPeriod)
+		deadline := store.LastTransitionTime.Add(tff.deps.CLIConfig.TiFlashFailoverPeriod)
 		exist := false
 		for _, failureStore := range tc.Status.TiFlash.FailureStores {
 			if failureStore.PodName == podName {
@@ -84,16 +84,16 @@ func (f *tiflashFailover) Failover(tc *v1alpha1.TidbCluster) error {
 					CreatedAt: metav1.Now(),
 				}
 				msg := fmt.Sprintf("store [%s] is Down", store.ID)
-				f.deps.Recorder.Event(tc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "tiflash", podName, msg))
+				tff.deps.Recorder.Event(tc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "tiflash", podName, msg))
 			}
 		}
 	}
 	return nil
 }
 
-func (f *tiflashFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
+func (tff *tiflashFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
 	for key, failureStore := range tc.Status.TiFlash.FailureStores {
-		if !f.isPodDesired(tc, failureStore.PodName) {
+		if !tff.isPodDesired(tc, failureStore.PodName) {
 			// If we delete the pods, e.g. by using advanced statefulset delete
 			// slots feature. We should remove the record of undesired pods,
 			// otherwise an extra replacement pod will be created.
@@ -102,7 +102,7 @@ func (f *tiflashFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
 	}
 }
 
-func (f *tiflashFailover) Recover(tc *v1alpha1.TidbCluster) {
+func (tff *tiflashFailover) Recover(tc *v1alpha1.TidbCluster) {
 	tc.Status.TiFlash.FailureStores = nil
 	klog.Infof("TiFlash recover: clear FailureStores, %s/%s", tc.GetNamespace(), tc.GetName())
 }

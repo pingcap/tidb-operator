@@ -33,16 +33,16 @@ type defaultAutoScalerControl struct {
 	autoScalerManager autoscaler.AutoScalerManager
 }
 
-func (c *defaultAutoScalerControl) ResconcileAutoScaler(ta *v1alpha1.TidbClusterAutoScaler) error {
+func (tac *defaultAutoScalerControl) ResconcileAutoScaler(ta *v1alpha1.TidbClusterAutoScaler) error {
 	var errs []error
-	if err := c.reconcileAutoScaler(ta); err != nil {
+	if err := tac.reconcileAutoScaler(ta); err != nil {
 		errs = append(errs, err)
 	}
 	return errors.NewAggregate(errs)
 }
 
-func (c *defaultAutoScalerControl) reconcileAutoScaler(ta *v1alpha1.TidbClusterAutoScaler) error {
-	return c.autoScalerManager.Sync(ta)
+func (tac *defaultAutoScalerControl) reconcileAutoScaler(ta *v1alpha1.TidbClusterAutoScaler) error {
+	return tac.autoScalerManager.Sync(ta)
 }
 
 var _ ControlInterface = &defaultAutoScalerControl{}
@@ -55,13 +55,13 @@ func NewFakeAutoScalerControl() *FakeAutoScalerControl {
 	return &FakeAutoScalerControl{}
 }
 
-func (c *FakeAutoScalerControl) SetReconcileAutoScalerError(err error) {
-	c.err = err
+func (tac *FakeAutoScalerControl) SetReconcileAutoScalerError(err error) {
+	tac.err = err
 }
 
-func (c *FakeAutoScalerControl) ResconcileAutoScaler(ta *v1alpha1.TidbClusterAutoScaler) error {
-	if c.err != nil {
-		return c.err
+func (tac *FakeAutoScalerControl) ResconcileAutoScaler(ta *v1alpha1.TidbClusterAutoScaler) error {
+	if tac.err != nil {
+		return tac.err
 	}
 	return nil
 }

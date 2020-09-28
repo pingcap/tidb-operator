@@ -33,7 +33,7 @@ func NewWorkerFailover(deps *controller.Dependencies) DMFailover {
 	return &workerFailover{deps: deps}
 }
 
-func (f *workerFailover) Failover(dc *v1alpha1.DMCluster) error {
+func (wf *workerFailover) Failover(dc *v1alpha1.DMCluster) error {
 	ns := dc.GetNamespace()
 	dcName := dc.GetName()
 
@@ -47,7 +47,7 @@ func (f *workerFailover) Failover(dc *v1alpha1.DMCluster) error {
 			// (before it enters into Offline/Tombstone state)
 			continue
 		}
-		deadline := worker.LastTransitionTime.Add(f.deps.CLIConfig.WorkerFailoverPeriod)
+		deadline := worker.LastTransitionTime.Add(wf.deps.CLIConfig.WorkerFailoverPeriod)
 		exist := false
 		for _, failureWorker := range dc.Status.Worker.FailureMembers {
 			if failureWorker.PodName == podName {
@@ -70,7 +70,7 @@ func (f *workerFailover) Failover(dc *v1alpha1.DMCluster) error {
 					CreatedAt: metav1.Now(),
 				}
 				msg := fmt.Sprintf("worker[%s/%s] is Offline", ns, worker.Name)
-				f.deps.Recorder.Event(dc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "worker", podName, msg))
+				wf.deps.Recorder.Event(dc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "worker", podName, msg))
 			}
 		}
 	}
@@ -78,12 +78,12 @@ func (f *workerFailover) Failover(dc *v1alpha1.DMCluster) error {
 	return nil
 }
 
-func (f *workerFailover) Recover(dc *v1alpha1.DMCluster) {
+func (wf *workerFailover) Recover(dc *v1alpha1.DMCluster) {
 	dc.Status.Worker.FailureMembers = nil
 	klog.Infof("dm-worker recover: clear FailureWorkers, %s/%s", dc.GetNamespace(), dc.GetName())
 }
 
-func (f *workerFailover) RemoveUndesiredFailures(dc *v1alpha1.DMCluster) {
+func (wf *workerFailover) RemoveUndesiredFailures(dc *v1alpha1.DMCluster) {
 	for key, failureWorker := range dc.Status.Worker.FailureMembers {
 		if !isWorkerPodDesired(dc, failureWorker.PodName) {
 			// If we delete the pods, e.g. by using advanced statefulset delete

@@ -38,7 +38,7 @@ func NewMetaManager(deps *controller.Dependencies) manager.Manager {
 	}
 }
 
-func (m *metaManager) Sync(tc *v1alpha1.TidbCluster) error {
+func (pmm *metaManager) Sync(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	instanceName := tc.GetInstanceName()
 
@@ -46,14 +46,14 @@ func (m *metaManager) Sync(tc *v1alpha1.TidbCluster) error {
 	if err != nil {
 		return err
 	}
-	pods, err := m.deps.PodLister.Pods(ns).List(l)
+	pods, err := pmm.deps.PodLister.Pods(ns).List(l)
 	if err != nil {
 		return fmt.Errorf("metaManager.Sync: failed to list pods for cluster %s/%s, selector: %s, error: %v", ns, instanceName, l, err)
 	}
 
 	for _, pod := range pods {
 		// update meta info for pod
-		_, err := m.deps.PodControl.UpdateMetaInfo(tc, pod)
+		_, err := pmm.deps.PodControl.UpdateMetaInfo(tc, pod)
 		if err != nil {
 			return err
 		}
@@ -64,12 +64,12 @@ func (m *metaManager) Sync(tc *v1alpha1.TidbCluster) error {
 			continue
 		}
 		// update meta info for pvc
-		pvcs, err := m.resolvePVCFromPod(pod)
+		pvcs, err := pmm.resolvePVCFromPod(pod)
 		if err != nil {
 			return err
 		}
 		for _, pvc := range pvcs {
-			_, err = m.deps.PVCControl.UpdateMetaInfo(tc, pvc, pod)
+			_, err = pmm.deps.PVCControl.UpdateMetaInfo(tc, pvc, pod)
 			if err != nil {
 				return err
 			}
@@ -77,12 +77,12 @@ func (m *metaManager) Sync(tc *v1alpha1.TidbCluster) error {
 				continue
 			}
 			// update meta info for pv
-			pv, err := m.deps.PVLister.Get(pvc.Spec.VolumeName)
+			pv, err := pmm.deps.PVLister.Get(pvc.Spec.VolumeName)
 			if err != nil {
 				klog.Errorf("Get PV %s error: %v", pvc.Spec.VolumeName, err)
 				return err
 			}
-			_, err = m.deps.PVControl.UpdateMetaInfo(tc, pv)
+			_, err = pmm.deps.PVControl.UpdateMetaInfo(tc, pv)
 			if err != nil {
 				return err
 			}
@@ -92,7 +92,7 @@ func (m *metaManager) Sync(tc *v1alpha1.TidbCluster) error {
 	return nil
 }
 
-func (m *metaManager) resolvePVCFromPod(pod *corev1.Pod) ([]*corev1.PersistentVolumeClaim, error) {
+func (pmm *metaManager) resolvePVCFromPod(pod *corev1.Pod) ([]*corev1.PersistentVolumeClaim, error) {
 	var pvcs []*corev1.PersistentVolumeClaim
 	var pvcName string
 	for _, vol := range pod.Spec.Volumes {
@@ -101,7 +101,7 @@ func (m *metaManager) resolvePVCFromPod(pod *corev1.Pod) ([]*corev1.PersistentVo
 			if len(pvcName) == 0 {
 				continue
 			}
-			pvc, err := m.deps.PVCLister.PersistentVolumeClaims(pod.Namespace).Get(pvcName)
+			pvc, err := pmm.deps.PVCLister.PersistentVolumeClaims(pod.Namespace).Get(pvcName)
 			if err != nil {
 				klog.Errorf("Get PVC %s/%s error: %v", pod.Namespace, pvcName, err)
 				continue

@@ -81,49 +81,49 @@ func NewController(deps *controller.Dependencies) *Controller {
 }
 
 // Run runs the dmcluster controller.
-func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
+func (dcc *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
-	defer c.queue.ShutDown()
+	defer dcc.queue.ShutDown()
 
 	klog.Info("Starting dmcluster controller")
 	defer klog.Info("Shutting down dmcluster controller")
 
 	for i := 0; i < workers; i++ {
-		go wait.Until(c.worker, time.Second, stopCh)
+		go wait.Until(dcc.worker, time.Second, stopCh)
 	}
 
 	<-stopCh
 }
 
 // worker runs a worker goroutine that invokes processNextWorkItem until the the controller's queue is closed
-func (c *Controller) worker() {
-	for c.processNextWorkItem() {
+func (dcc *Controller) worker() {
+	for dcc.processNextWorkItem() {
 	}
 }
 
 // processNextWorkItem dequeues items, processes them, and marks them done. It enforces that the syncHandler is never
 // invoked concurrently with the same key.
-func (c *Controller) processNextWorkItem() bool {
-	key, quit := c.queue.Get()
+func (dcc *Controller) processNextWorkItem() bool {
+	key, quit := dcc.queue.Get()
 	if quit {
 		return false
 	}
-	defer c.queue.Done(key)
-	if err := c.sync(key.(string)); err != nil {
+	defer dcc.queue.Done(key)
+	if err := dcc.sync(key.(string)); err != nil {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
 			klog.Infof("DMCluster: %v, still need sync: %v, requeuing", key.(string), err)
 		} else {
 			utilruntime.HandleError(fmt.Errorf("DMCluster: %v, sync failed %v, requeuing", key.(string), err))
 		}
-		c.queue.AddRateLimited(key)
+		dcc.queue.AddRateLimited(key)
 	} else {
-		c.queue.Forget(key)
+		dcc.queue.Forget(key)
 	}
 	return true
 }
 
 // sync syncs the given dmcluster.
-func (c *Controller) sync(key string) error {
+func (dcc *Controller) sync(key string) error {
 	startTime := time.Now()
 	defer func() {
 		klog.V(4).Infof("Finished syncing DMCluster %q (%v)", key, time.Since(startTime))
@@ -133,7 +133,7 @@ func (c *Controller) sync(key string) error {
 	if err != nil {
 		return err
 	}
-	dc, err := c.deps.DMClusterLister.DMClusters(ns).Get(name)
+	dc, err := dcc.deps.DMClusterLister.DMClusters(ns).Get(name)
 	if errors.IsNotFound(err) {
 		klog.Infof("DMCluster has been deleted %v", key)
 		return nil
@@ -149,25 +149,25 @@ func (c *Controller) sync(key string) error {
 		return nil
 	}
 
-	return c.syncDMCluster(dc.DeepCopy())
+	return dcc.syncDMCluster(dc.DeepCopy())
 }
 
-func (c *Controller) syncDMCluster(dc *v1alpha1.DMCluster) error {
-	return c.control.UpdateDMCluster(dc)
+func (dcc *Controller) syncDMCluster(dc *v1alpha1.DMCluster) error {
+	return dcc.control.UpdateDMCluster(dc)
 }
 
 // enqueueDMCluster enqueues the given dmcluster in the work queue.
-func (c *Controller) enqueueDMCluster(obj interface{}) {
+func (dcc *Controller) enqueueDMCluster(obj interface{}) {
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("Cound't get key for object %+v: %v", obj, err))
 		return
 	}
-	c.queue.Add(key)
+	dcc.queue.Add(key)
 }
 
 // addStatefulSet adds the dmcluster for the statefulset to the sync queue
-func (c *Controller) addStatefulSet(obj interface{}) {
+func (dcc *Controller) addStatefulSet(obj interface{}) {
 	set := obj.(*apps.StatefulSet)
 	ns := set.GetNamespace()
 	setName := set.GetName()
@@ -175,21 +175,21 @@ func (c *Controller) addStatefulSet(obj interface{}) {
 	if set.DeletionTimestamp != nil {
 		// on a restart of the controller manager, it's possible a new statefulset shows up in a state that
 		// is already pending deletion. Prevent the statefulset from being a creation observation.
-		c.deleteStatefulSet(set)
+		dcc.deleteStatefulSet(set)
 		return
 	}
 
 	// If it has a ControllerRef, that's all that matters.
-	dc := c.resolveDMClusterFromSet(ns, set)
+	dc := dcc.resolveDMClusterFromSet(ns, set)
 	if dc == nil {
 		return
 	}
 	klog.V(4).Infof("StatefulSet %s/%s created, DMCluster: %s/%s", ns, setName, ns, dc.Name)
-	c.enqueueDMCluster(dc)
+	dcc.enqueueDMCluster(dc)
 }
 
 // updateStatefuSet adds the dmcluster for the current and old statefulsets to the sync queue.
-func (c *Controller) updateStatefuSet(old, cur interface{}) {
+func (dcc *Controller) updateStatefuSet(old, cur interface{}) {
 	curSet := cur.(*apps.StatefulSet)
 	oldSet := old.(*apps.StatefulSet)
 	ns := curSet.GetNamespace()
@@ -201,16 +201,16 @@ func (c *Controller) updateStatefuSet(old, cur interface{}) {
 	}
 
 	// If it has a ControllerRef, that's all that matters.
-	dc := c.resolveDMClusterFromSet(ns, curSet)
+	dc := dcc.resolveDMClusterFromSet(ns, curSet)
 	if dc == nil {
 		return
 	}
 	klog.V(4).Infof("StatefulSet %s/%s updated, DMCluster: %s/%s", ns, setName, ns, dc.Name)
-	c.enqueueDMCluster(dc)
+	dcc.enqueueDMCluster(dc)
 }
 
 // deleteStatefulSet enqueues the dmcluster for the statefulset accounting for deletion tombstones.
-func (c *Controller) deleteStatefulSet(obj interface{}) {
+func (dcc *Controller) deleteStatefulSet(obj interface{}) {
 	set, ok := obj.(*apps.StatefulSet)
 	ns := set.GetNamespace()
 	setName := set.GetName()
@@ -232,18 +232,18 @@ func (c *Controller) deleteStatefulSet(obj interface{}) {
 	}
 
 	// If it has a DMCluster, that's all that matters.
-	dc := c.resolveDMClusterFromSet(ns, set)
+	dc := dcc.resolveDMClusterFromSet(ns, set)
 	if dc == nil {
 		return
 	}
 	klog.V(4).Infof("StatefulSet %s/%s deleted through %v.", ns, setName, utilruntime.GetCaller())
-	c.enqueueDMCluster(dc)
+	dcc.enqueueDMCluster(dc)
 }
 
 // resolveDMClusterFromSet returns the DMCluster by a StatefulSet,
 // or nil if the StatefulSet could not be resolved to a matching DMCluster
 // of the correct Kind.
-func (c *Controller) resolveDMClusterFromSet(namespace string, set *apps.StatefulSet) *v1alpha1.DMCluster {
+func (dcc *Controller) resolveDMClusterFromSet(namespace string, set *apps.StatefulSet) *v1alpha1.DMCluster {
 	controllerRef := metav1.GetControllerOf(set)
 	if controllerRef == nil {
 		return nil
@@ -254,7 +254,7 @@ func (c *Controller) resolveDMClusterFromSet(namespace string, set *apps.Statefu
 	if controllerRef.Kind != controller.DMControllerKind.Kind {
 		return nil
 	}
-	dc, err := c.deps.DMClusterLister.DMClusters(namespace).Get(controllerRef.Name)
+	dc, err := dcc.deps.DMClusterLister.DMClusters(namespace).Get(controllerRef.Name)
 	if err != nil {
 		return nil
 	}

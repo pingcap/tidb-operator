@@ -30,7 +30,7 @@ func NewTiFlashUpgrader(deps *controller.Dependencies) Upgrader {
 	}
 }
 
-func (u *tiflashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (tku *tiflashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	//  Wait for PD, TiKV and TiDB to finish upgrade
 	if tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.Status.TiKV.Phase == v1alpha1.UpgradePhase ||
 		tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
@@ -51,6 +51,6 @@ func NewFakeTiFlashUpgrader() Upgrader {
 	return &fakeTiFlashUpgrader{}
 }
 
-func (_ *fakeTiFlashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, _ *apps.StatefulSet, _ *apps.StatefulSet) error {
+func (tku *fakeTiFlashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, _ *apps.StatefulSet, _ *apps.StatefulSet) error {
 	return nil
 }

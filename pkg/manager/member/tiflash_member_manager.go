@@ -66,7 +66,7 @@ func NewTiFlashMemberManager(deps *controller.Dependencies, tiflashFailover Fail
 }
 
 // Sync fulfills the manager.Manager interface
-func (m *tiflashMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
+func (tfmm *tiflashMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	if tc.Spec.TiFlash == nil {
 		return nil
 	}
@@ -78,21 +78,21 @@ func (m *tiflashMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PD cluster running", ns, tcName)
 	}
 
-	err := m.enablePlacementRules(tc)
+	err := tfmm.enablePlacementRules(tc)
 	if err != nil {
 		klog.Errorf("Enable placement rules failed, error: %v", err)
 		// No need to return err here, just continue to sync tiflash
 	}
 	// Sync TiFlash Headless Service
-	if err = m.syncHeadlessService(tc); err != nil {
+	if err = tfmm.syncHeadlessService(tc); err != nil {
 		return err
 	}
 
-	return m.syncStatefulSet(tc)
+	return tfmm.syncStatefulSet(tc)
 }
 
-func (m *tiflashMemberManager) enablePlacementRules(tc *v1alpha1.TidbCluster) error {
-	pdCli := controller.GetPDClient(m.deps.PDControl, tc)
+func (tfmm *tiflashMemberManager) enablePlacementRules(tc *v1alpha1.TidbCluster) error {
+	pdCli := controller.GetPDClient(tfmm.deps.PDControl, tc)
 	config, err := pdCli.GetConfig()
 	if err != nil {
 		return err
@@ -108,7 +108,7 @@ func (m *tiflashMemberManager) enablePlacementRules(tc *v1alpha1.TidbCluster) er
 	return nil
 }
 
-func (m *tiflashMemberManager) syncHeadlessService(tc *v1alpha1.TidbCluster) error {
+func (tfmm *tiflashMemberManager) syncHeadlessService(tc *v1alpha1.TidbCluster) error {
 	if tc.Spec.Paused {
 		klog.V(4).Infof("tiflash cluster %s/%s is paused, skip syncing for tiflash service", tc.GetNamespace(), tc.GetName())
 		return nil
@@ -118,13 +118,13 @@ func (m *tiflashMemberManager) syncHeadlessService(tc *v1alpha1.TidbCluster) err
 	tcName := tc.GetName()
 
 	newSvc := getNewHeadlessService(tc)
-	oldSvcTmp, err := m.deps.ServiceLister.Services(ns).Get(controller.TiFlashPeerMemberName(tcName))
+	oldSvcTmp, err := tfmm.deps.ServiceLister.Services(ns).Get(controller.TiFlashPeerMemberName(tcName))
 	if errors.IsNotFound(err) {
 		err = controller.SetServiceLastAppliedConfigAnnotation(newSvc)
 		if err != nil {
 			return err
 		}
-		return m.deps.ServiceControl.CreateService(tc, newSvc)
+		return tfmm.deps.ServiceControl.CreateService(tc, newSvc)
 	}
 	if err != nil {
 		return fmt.Errorf("syncHeadlessService: failed to get svc %s for cluster %s/%s, error: %s", controller.TiFlashPeerMemberName(tcName), ns, tcName, err)
@@ -143,18 +143,18 @@ func (m *tiflashMemberManager) syncHeadlessService(tc *v1alpha1.TidbCluster) err
 		if err != nil {
 			return err
 		}
-		_, err = m.deps.ServiceControl.UpdateService(tc, &svc)
+		_, err = tfmm.deps.ServiceControl.UpdateService(tc, &svc)
 		return err
 	}
 
 	return nil
 }
 
-func (m *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
+func (tfmm *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	oldSetTmp, err := m.deps.StatefulSetLister.StatefulSets(ns).Get(controller.TiFlashMemberName(tcName))
+	oldSetTmp, err := tfmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.TiFlashMemberName(tcName))
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("syncStatefulSet: fail to get sts %s for cluster %s/%s, error: %s", controller.TiFlashMemberName(tcName), ns, tcName, err)
 	}
@@ -162,7 +162,7 @@ func (m *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 
 	oldSet := oldSetTmp.DeepCopy()
 
-	if err := m.syncTidbClusterStatus(tc, oldSet); err != nil {
+	if err := tfmm.syncTidbClusterStatus(tc, oldSet); err != nil {
 		return err
 	}
 
@@ -171,19 +171,19 @@ func (m *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
-	cm, err := m.syncConfigMap(tc, oldSet)
+	cm, err := tfmm.syncConfigMap(tc, oldSet)
 	if err != nil {
 		return err
 	}
 
 	// Recover failed stores if any before generating desired statefulset
 	if len(tc.Status.TiFlash.FailureStores) > 0 {
-		m.failover.RemoveUndesiredFailures(tc)
+		tfmm.failover.RemoveUndesiredFailures(tc)
 	}
 	if len(tc.Status.TiFlash.FailureStores) > 0 &&
 		tc.Spec.TiFlash.RecoverFailover &&
-		shouldRecover(tc, label.TiFlashLabelVal, m.deps.PodLister) {
-		m.failover.Recover(tc)
+		shouldRecover(tc, label.TiFlashLabelVal, tfmm.deps.PodLister) {
+		tfmm.failover.Recover(tc)
 	}
 
 	newSet, err := getNewStatefulSet(tc, cm)
@@ -195,7 +195,7 @@ func (m *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 		if err != nil {
 			return err
 		}
-		err = m.deps.StatefulSetControl.CreateStatefulSet(tc, newSet)
+		err = tfmm.deps.StatefulSetControl.CreateStatefulSet(tc, newSet)
 		if err != nil {
 			return err
 		}
@@ -203,7 +203,7 @@ func (m *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
-	if _, err := m.setStoreLabelsForTiFlash(tc); err != nil {
+	if _, err := tfmm.setStoreLabelsForTiFlash(tc); err != nil {
 		return err
 	}
 
@@ -212,28 +212,28 @@ func (m *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 	//   new replicas
 	// - it's ok to scale in the middle of upgrading (in statefulset controller
 	//   scaling takes precedence over upgrading too)
-	if err := m.scaler.Scale(tc, oldSet, newSet); err != nil {
+	if err := tfmm.scaler.Scale(tc, oldSet, newSet); err != nil {
 		return err
 	}
 
-	if m.deps.CLIConfig.AutoFailover && tc.Spec.TiFlash.MaxFailoverCount != nil {
+	if tfmm.deps.CLIConfig.AutoFailover && tc.Spec.TiFlash.MaxFailoverCount != nil {
 		if tc.TiFlashAllPodsStarted() && !tc.TiFlashAllStoresReady() {
-			if err := m.failover.Failover(tc); err != nil {
+			if err := tfmm.failover.Failover(tc); err != nil {
 				return err
 			}
 		}
 	}
 
 	if !templateEqual(newSet, oldSet) {
-		if err := m.upgrader.Upgrade(tc, oldSet, newSet); err != nil {
+		if err := tfmm.upgrader.Upgrade(tc, oldSet, newSet); err != nil {
 			return err
 		}
 	}
 
-	return updateStatefulSet(m.deps.StatefulSetControl, tc, newSet, oldSet)
+	return updateStatefulSet(tfmm.deps.StatefulSetControl, tc, newSet, oldSet)
 }
 
-func (m *tiflashMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
+func (tfmm *tiflashMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
 	newCm, err := getTiFlashConfigMap(tc)
 	if err != nil {
 		return nil, err
@@ -247,7 +247,7 @@ func (m *tiflashMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *apps
 		}
 	}
 
-	return m.deps.TypedControl.CreateOrUpdateConfigMap(tc, newCm)
+	return tfmm.deps.TypedControl.CreateOrUpdateConfigMap(tc, newCm)
 }
 
 func getNewHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {
@@ -599,13 +599,13 @@ func labelTiFlash(tc *v1alpha1.TidbCluster) label.Label {
 	return label.New().Instance(instanceName).TiFlash()
 }
 
-func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
+func (tfmm *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
 	if set == nil {
 		// skip if not created yet
 		return nil
 	}
 	tc.Status.TiFlash.StatefulSet = &set.Status
-	upgrading, err := m.statefulSetIsUpgradingFn(m.deps.PodLister, m.deps.PDControl, set, tc)
+	upgrading, err := tfmm.statefulSetIsUpgradingFn(tfmm.deps.PodLister, tfmm.deps.PDControl, set, tc)
 	if err != nil {
 		return err
 	}
@@ -621,7 +621,7 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	stores := map[string]v1alpha1.TiKVStore{}
 	tombstoneStores := map[string]v1alpha1.TiKVStore{}
 
-	pdCli := controller.GetPDClient(m.deps.PDControl, tc)
+	pdCli := controller.GetPDClient(tfmm.deps.PDControl, tc)
 	// This only returns Up/Down/Offline stores
 	storesInfo, err := pdCli.GetStores()
 	if err != nil {
@@ -639,7 +639,7 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
 			continue
 		}
-		status := m.getTiFlashStore(store)
+		status := tfmm.getTiFlashStore(store)
 		if status == nil {
 			continue
 		}
@@ -671,7 +671,7 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
 			continue
 		}
-		status := m.getTiFlashStore(store)
+		status := tfmm.getTiFlashStore(store)
 		if status == nil {
 			continue
 		}
@@ -689,7 +689,7 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	return nil
 }
 
-func (m *tiflashMemberManager) getTiFlashStore(store *pdapi.StoreInfo) *v1alpha1.TiKVStore {
+func (tfmm *tiflashMemberManager) getTiFlashStore(store *pdapi.StoreInfo) *v1alpha1.TiKVStore {
 	if store.Store == nil || store.Status == nil {
 		return nil
 	}
@@ -707,12 +707,12 @@ func (m *tiflashMemberManager) getTiFlashStore(store *pdapi.StoreInfo) *v1alpha1
 	}
 }
 
-func (m *tiflashMemberManager) setStoreLabelsForTiFlash(tc *v1alpha1.TidbCluster) (int, error) {
+func (tfmm *tiflashMemberManager) setStoreLabelsForTiFlash(tc *v1alpha1.TidbCluster) (int, error) {
 	ns := tc.GetNamespace()
 	// for unit test
 	setCount := 0
 
-	pdCli := controller.GetPDClient(m.deps.PDControl, tc)
+	pdCli := controller.GetPDClient(tfmm.deps.PDControl, tc)
 	storesInfo, err := pdCli.GetStores()
 	if err != nil {
 		return setCount, err
@@ -738,25 +738,25 @@ func (m *tiflashMemberManager) setStoreLabelsForTiFlash(tc *v1alpha1.TidbCluster
 		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
 			continue
 		}
-		status := m.getTiFlashStore(store)
+		status := tfmm.getTiFlashStore(store)
 		if status == nil {
 			continue
 		}
 		podName := status.PodName
 
-		pod, err := m.deps.PodLister.Pods(ns).Get(podName)
+		pod, err := tfmm.deps.PodLister.Pods(ns).Get(podName)
 		if err != nil {
 			return setCount, fmt.Errorf("setStoreLabelsForTiFlash: failed to get pods %s for store %s, error: %v", podName, status.ID, err)
 		}
 
 		nodeName := pod.Spec.NodeName
-		ls, err := m.getNodeLabels(nodeName, locationLabels)
+		ls, err := tfmm.getNodeLabels(nodeName, locationLabels)
 		if err != nil || len(ls) == 0 {
 			klog.Warningf("node: [%s] has no node labels, skipping set store labels for Pod: [%s/%s]", nodeName, ns, podName)
 			continue
 		}
 
-		if !m.storeLabelsEqualNodeLabels(store.Store.Labels, ls) {
+		if !tfmm.storeLabelsEqualNodeLabels(store.Store.Labels, ls) {
 			set, err := pdCli.SetStoreLabels(store.Store.Id, ls)
 			if err != nil {
 				klog.Warningf("failed to set pod: [%s/%s]'s store labels: %v", ns, podName, ls)
@@ -772,8 +772,8 @@ func (m *tiflashMemberManager) setStoreLabelsForTiFlash(tc *v1alpha1.TidbCluster
 	return setCount, nil
 }
 
-func (m *tiflashMemberManager) getNodeLabels(nodeName string, storeLabels []string) (map[string]string, error) {
-	node, err := m.deps.NodeLister.Get(nodeName)
+func (tfmm *tiflashMemberManager) getNodeLabels(nodeName string, storeLabels []string) (map[string]string, error) {
+	node, err := tfmm.deps.NodeLister.Get(nodeName)
 	if err != nil {
 		return nil, err
 	}
@@ -798,7 +798,7 @@ func (m *tiflashMemberManager) getNodeLabels(nodeName string, storeLabels []stri
 
 // storeLabelsEqualNodeLabels compares store labels with node labels
 // for historic reasons, PD stores TiFlash labels as []*StoreLabel which is a key-value pair slice
-func (m *tiflashMemberManager) storeLabelsEqualNodeLabels(storeLabels []*metapb.StoreLabel, nodeLabels map[string]string) bool {
+func (tfmm *tiflashMemberManager) storeLabelsEqualNodeLabels(storeLabels []*metapb.StoreLabel, nodeLabels map[string]string) bool {
 	ls := map[string]string{}
 	for _, label := range storeLabels {
 		key := label.GetKey()
@@ -844,13 +844,13 @@ func NewFakeTiFlashMemberManager() *FakeTiFlashMemberManager {
 	return &FakeTiFlashMemberManager{}
 }
 
-func (m *FakeTiFlashMemberManager) SetSyncError(err error) {
-	m.err = err
+func (ftmm *FakeTiFlashMemberManager) SetSyncError(err error) {
+	ftmm.err = err
 }
 
-func (m *FakeTiFlashMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
-	if m.err != nil {
-		return m.err
+func (ftmm *FakeTiFlashMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
+	if ftmm.err != nil {
+		return ftmm.err
 	}
 	if len(tc.Status.TiFlash.Stores) != 0 {
 		// simulate status update

@@ -62,22 +62,22 @@ func NewTiDBInitManager(deps *controller.Dependencies) InitManager {
 	return &tidbInitManager{deps: deps}
 }
 
-func (m *tidbInitManager) Sync(ti *v1alpha1.TidbInitializer) error {
-	err := m.syncTiDBInitConfigMap(ti)
+func (tm *tidbInitManager) Sync(ti *v1alpha1.TidbInitializer) error {
+	err := tm.syncTiDBInitConfigMap(ti)
 	if err != nil {
 		return err
 	}
-	err = m.syncTiDBInitJob(ti)
+	err = tm.syncTiDBInitJob(ti)
 	if err != nil {
 		return err
 	}
-	return m.updateStatus(ti.DeepCopy())
+	return tm.updateStatus(ti.DeepCopy())
 }
 
-func (m *tidbInitManager) updateStatus(ti *v1alpha1.TidbInitializer) error {
+func (tm *tidbInitManager) updateStatus(ti *v1alpha1.TidbInitializer) error {
 	name := controller.TiDBInitializerMemberName(ti.Spec.Clusters.Name)
 	ns := ti.Namespace
-	job, err := m.deps.JobLister.Jobs(ns).Get(name)
+	job, err := tm.deps.JobLister.Jobs(ns).Get(name)
 	if err != nil {
 		return fmt.Errorf("updateStatus: failed to get job %s for TidbInitializer %s/%s, error: %s", name, ns, ti.Name, err)
 	}
@@ -107,7 +107,7 @@ func (m *tidbInitManager) updateStatus(ti *v1alpha1.TidbInitializer) error {
 	}
 	if update {
 		status := ti.Status.DeepCopy()
-		return controller.GuaranteedUpdate(m.deps.GenericClient, ti, func() error {
+		return controller.GuaranteedUpdate(tm.deps.GenericClient, ti, func() error {
 			ti.Status = *status
 			return nil
 		})
@@ -115,13 +115,13 @@ func (m *tidbInitManager) updateStatus(ti *v1alpha1.TidbInitializer) error {
 	return nil
 }
 
-func (m *tidbInitManager) syncTiDBInitConfigMap(ti *v1alpha1.TidbInitializer) error {
+func (tm *tidbInitManager) syncTiDBInitConfigMap(ti *v1alpha1.TidbInitializer) error {
 	name := controller.TiDBInitializerMemberName(ti.Spec.Clusters.Name)
 	ns := ti.Namespace
 	cm := &corev1.ConfigMap{}
 	tcName := ti.Spec.Clusters.Name
 
-	exist, err := m.deps.TypedControl.Exist(client.ObjectKey{
+	exist, err := tm.deps.TypedControl.Exist(client.ObjectKey{
 		Namespace: ns,
 		Name:      name,
 	}, cm)
@@ -132,7 +132,7 @@ func (m *tidbInitManager) syncTiDBInitConfigMap(ti *v1alpha1.TidbInitializer) er
 		return nil
 	}
 
-	tc, err := m.deps.TiDBClusterLister.TidbClusters(ns).Get(tcName)
+	tc, err := tm.deps.TiDBClusterLister.TidbClusters(ns).Get(tcName)
 	if err != nil {
 		return fmt.Errorf("syncTiDBInitConfigMap: failed to get tidbcluster %s for TidbInitializer %s/%s, error: %s", tcName, ns, ti.Name, err)
 	}
@@ -142,7 +142,7 @@ func (m *tidbInitManager) syncTiDBInitConfigMap(ti *v1alpha1.TidbInitializer) er
 		return err
 	}
 
-	err = m.deps.TypedControl.Create(ti, newCm)
+	err = tm.deps.TypedControl.Create(ti, newCm)
 	if errors.IsAlreadyExists(err) {
 		klog.Infof("Configmap %s/%s already exists", newCm.Namespace, newCm.Name)
 		return nil
@@ -150,12 +150,12 @@ func (m *tidbInitManager) syncTiDBInitConfigMap(ti *v1alpha1.TidbInitializer) er
 	return err
 }
 
-func (m *tidbInitManager) syncTiDBInitJob(ti *v1alpha1.TidbInitializer) error {
+func (tm *tidbInitManager) syncTiDBInitJob(ti *v1alpha1.TidbInitializer) error {
 	ns := ti.GetNamespace()
 	name := ti.GetName()
 	jobName := controller.TiDBInitializerMemberName(ti.Spec.Clusters.Name)
 
-	_, err := m.deps.JobLister.Jobs(ns).Get(jobName)
+	_, err := tm.deps.JobLister.Jobs(ns).Get(jobName)
 	if err == nil {
 		return nil
 	}
@@ -164,12 +164,12 @@ func (m *tidbInitManager) syncTiDBInitJob(ti *v1alpha1.TidbInitializer) error {
 		return fmt.Errorf("TiDBInitializer %s/%s get job %s failed, err: %v", ns, ti.Name, name, err)
 	}
 
-	job, err := m.makeTiDBInitJob(ti)
+	job, err := tm.makeTiDBInitJob(ti)
 	if err != nil {
 		return err
 	}
 
-	err = m.deps.TypedControl.Create(ti, job)
+	err = tm.deps.TypedControl.Create(ti, job)
 	if errors.IsAlreadyExists(err) {
 		klog.Infof("Job %s/%s already exists", job.Namespace, job.Name)
 		return nil
@@ -177,12 +177,12 @@ func (m *tidbInitManager) syncTiDBInitJob(ti *v1alpha1.TidbInitializer) error {
 	return err
 }
 
-func (m *tidbInitManager) makeTiDBInitJob(ti *v1alpha1.TidbInitializer) (*batchv1.Job, error) {
+func (tm *tidbInitManager) makeTiDBInitJob(ti *v1alpha1.TidbInitializer) (*batchv1.Job, error) {
 	jobName := controller.TiDBInitializerMemberName(ti.Spec.Clusters.Name)
 	ns := ti.Namespace
 	tcName := ti.Spec.Clusters.Name
 
-	tc, err := m.deps.TiDBClusterLister.TidbClusters(ns).Get(tcName)
+	tc, err := tm.deps.TiDBClusterLister.TidbClusters(ns).Get(tcName)
 	if err != nil {
 		return nil, fmt.Errorf("makeTiDBInitJob: failed to get tidbcluster %s for TidbInitializer %s/%s, error: %s", tcName, ns, ti.Name, err)
 	}

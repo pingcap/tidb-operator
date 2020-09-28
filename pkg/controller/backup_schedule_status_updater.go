@@ -45,7 +45,7 @@ type realBackupScheduleStatusUpdater struct {
 	deps *Dependencies
 }
 
-func (u *realBackupScheduleStatusUpdater) UpdateBackupScheduleStatus(
+func (bss *realBackupScheduleStatusUpdater) UpdateBackupScheduleStatus(
 	bs *v1alpha1.BackupSchedule,
 	newStatus *v1alpha1.BackupScheduleStatus,
 	oldStatus *v1alpha1.BackupScheduleStatus) error {
@@ -54,12 +54,12 @@ func (u *realBackupScheduleStatusUpdater) UpdateBackupScheduleStatus(
 	bsName := bs.GetName()
 	// don't wait due to limited number of clients, but backoff after the default number of steps
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		_, updateErr := u.deps.Clientset.PingcapV1alpha1().BackupSchedules(ns).Update(bs)
+		_, updateErr := bss.deps.Clientset.PingcapV1alpha1().BackupSchedules(ns).Update(bs)
 		if updateErr == nil {
 			klog.Infof("BackupSchedule: [%s/%s] updated successfully", ns, bsName)
 			return nil
 		}
-		if updated, err := u.deps.BackupScheduleLister.BackupSchedules(ns).Get(bsName); err == nil {
+		if updated, err := bss.deps.BackupScheduleLister.BackupSchedules(ns).Get(bsName); err == nil {
 			// make a copy so we don't mutate the shared cache
 			bs = updated.DeepCopy()
 			bs.Status = *newStatus
@@ -91,21 +91,21 @@ func NewFakeBackupScheduleStatusUpdater(bsInformer informers.BackupScheduleInfor
 }
 
 // SetUpdateBackupError sets the error attributes of updateBackupScheduleTracker
-func (u *FakeBackupScheduleStatusUpdater) SetUpdateBackupScheduleError(err error, after int) {
-	u.updateBsTracker.err = err
-	u.updateBsTracker.after = after
-	u.updateBsTracker.SetError(err).SetAfter(after)
+func (fbs *FakeBackupScheduleStatusUpdater) SetUpdateBackupScheduleError(err error, after int) {
+	fbs.updateBsTracker.err = err
+	fbs.updateBsTracker.after = after
+	fbs.updateBsTracker.SetError(err).SetAfter(after)
 }
 
 // UpdateBackupSchedule updates the BackupSchedule
-func (u *FakeBackupScheduleStatusUpdater) UpdateBackupScheduleStatus(bs *v1alpha1.BackupSchedule, _ *v1alpha1.BackupScheduleStatus, _ *v1alpha1.BackupScheduleStatus) error {
-	defer u.updateBsTracker.Inc()
-	if u.updateBsTracker.ErrorReady() {
-		defer u.updateBsTracker.Reset()
-		return u.updateBsTracker.GetError()
+func (fbs *FakeBackupScheduleStatusUpdater) UpdateBackupScheduleStatus(bs *v1alpha1.BackupSchedule, _ *v1alpha1.BackupScheduleStatus, _ *v1alpha1.BackupScheduleStatus) error {
+	defer fbs.updateBsTracker.Inc()
+	if fbs.updateBsTracker.ErrorReady() {
+		defer fbs.updateBsTracker.Reset()
+		return fbs.updateBsTracker.GetError()
 	}
 
-	return u.BsIndexer.Update(bs)
+	return fbs.BsIndexer.Update(bs)
 }
 
 var _ BackupScheduleStatusUpdaterInterface = &FakeBackupScheduleStatusUpdater{}

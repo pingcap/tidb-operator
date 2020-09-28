@@ -36,7 +36,7 @@ func NewTiDBFailover(deps *controller.Dependencies) Failover {
 	}
 }
 
-func (f *tidbFailover) Failover(tc *v1alpha1.TidbCluster) error {
+func (tf *tidbFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	if tc.Status.TiDB.FailureMembers == nil {
 		tc.Status.TiDB.FailureMembers = map[string]v1alpha1.TiDBFailureMember{}
 	}
@@ -57,13 +57,13 @@ func (f *tidbFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	maxFailoverCount := *tc.Spec.TiDB.MaxFailoverCount
 	for _, tidbMember := range tc.Status.TiDB.Members {
 		_, exist := tc.Status.TiDB.FailureMembers[tidbMember.Name]
-		deadline := tidbMember.LastTransitionTime.Add(f.deps.CLIConfig.TiDBFailoverPeriod)
+		deadline := tidbMember.LastTransitionTime.Add(tf.deps.CLIConfig.TiDBFailoverPeriod)
 		if !tidbMember.Health && time.Now().After(deadline) && !exist {
 			if len(tc.Status.TiDB.FailureMembers) >= int(maxFailoverCount) {
 				klog.Warningf("the failover count reachs the limit (%d), no more failover pods will be created", maxFailoverCount)
 				break
 			}
-			pod, err := f.deps.PodLister.Pods(tc.Namespace).Get(tidbMember.Name)
+			pod, err := tf.deps.PodLister.Pods(tc.Namespace).Get(tidbMember.Name)
 			if err != nil {
 				return fmt.Errorf("tidbFailover.Failover: failed to get pods %s for cluster %s/%s, error: %s", tidbMember.Name, tc.GetNamespace(), tc.GetName(), err)
 			}
@@ -79,7 +79,7 @@ func (f *tidbFailover) Failover(tc *v1alpha1.TidbCluster) error {
 				CreatedAt: metav1.Now(),
 			}
 			msg := fmt.Sprintf("tidb[%s] is unhealthy", tidbMember.Name)
-			f.deps.Recorder.Event(tc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "tidb", tidbMember.Name, msg))
+			tf.deps.Recorder.Event(tc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "tidb", tidbMember.Name, msg))
 			break
 		}
 	}
@@ -87,11 +87,11 @@ func (f *tidbFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	return nil
 }
 
-func (f *tidbFailover) Recover(tc *v1alpha1.TidbCluster) {
+func (tf *tidbFailover) Recover(tc *v1alpha1.TidbCluster) {
 	tc.Status.TiDB.FailureMembers = nil
 }
 
-func (f *tidbFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
+func (tf *tidbFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
 }
 
 type fakeTiDBFailover struct {

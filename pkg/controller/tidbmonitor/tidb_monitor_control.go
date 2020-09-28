@@ -34,16 +34,16 @@ type defaultTidbMonitorControl struct {
 	monitorManager monitor.MonitorManager
 }
 
-func (c *defaultTidbMonitorControl) ReconcileTidbMonitor(tm *v1alpha1.TidbMonitor) error {
+func (tmc *defaultTidbMonitorControl) ReconcileTidbMonitor(tm *v1alpha1.TidbMonitor) error {
 	var errs []error
-	if err := c.reconcileTidbMonitor(tm); err != nil {
+	if err := tmc.reconcileTidbMonitor(tm); err != nil {
 		errs = append(errs, err)
 	}
 	return errors.NewAggregate(errs)
 }
 
-func (c *defaultTidbMonitorControl) reconcileTidbMonitor(tm *v1alpha1.TidbMonitor) error {
-	return c.monitorManager.SyncMonitor(tm)
+func (tmc *defaultTidbMonitorControl) reconcileTidbMonitor(tm *v1alpha1.TidbMonitor) error {
+	return tmc.monitorManager.SyncMonitor(tm)
 }
 
 var _ ControlInterface = &defaultTidbMonitorControl{}

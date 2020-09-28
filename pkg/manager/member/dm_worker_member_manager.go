@@ -56,7 +56,7 @@ func NewWorkerMemberManager(deps *controller.Dependencies, scaler Scaler, failov
 	}
 }
 
-func (m *workerMemberManager) SyncDM(dc *v1alpha1.DMCluster) error {
+func (wmm *workerMemberManager) SyncDM(dc *v1alpha1.DMCluster) error {
 	ns := dc.GetNamespace()
 	dcName := dc.GetName()
 
@@ -72,26 +72,26 @@ func (m *workerMemberManager) SyncDM(dc *v1alpha1.DMCluster) error {
 	}
 
 	// Sync dm-worker Headless Service
-	if err := m.syncWorkerHeadlessServiceForDMCluster(dc); err != nil {
+	if err := wmm.syncWorkerHeadlessServiceForDMCluster(dc); err != nil {
 		return err
 	}
 
 	// Sync dm-worker StatefulSet
-	return m.syncWorkerStatefulSetForDMCluster(dc)
+	return wmm.syncWorkerStatefulSetForDMCluster(dc)
 }
 
-func (m *workerMemberManager) syncWorkerHeadlessServiceForDMCluster(dc *v1alpha1.DMCluster) error {
+func (wmm *workerMemberManager) syncWorkerHeadlessServiceForDMCluster(dc *v1alpha1.DMCluster) error {
 	ns := dc.GetNamespace()
 	dcName := dc.GetName()
 
 	newSvc := getNewWorkerHeadlessServiceForDMCluster(dc)
-	oldSvcTmp, err := m.deps.ServiceLister.Services(ns).Get(controller.DMWorkerPeerMemberName(dcName))
+	oldSvcTmp, err := wmm.deps.ServiceLister.Services(ns).Get(controller.DMWorkerPeerMemberName(dcName))
 	if errors.IsNotFound(err) {
 		err = controller.SetServiceLastAppliedConfigAnnotation(newSvc)
 		if err != nil {
 			return err
 		}
-		return m.deps.ServiceControl.CreateService(dc, newSvc)
+		return wmm.deps.ServiceControl.CreateService(dc, newSvc)
 	}
 	if err != nil {
 		return fmt.Errorf("syncWorkerHeadlessServiceForDMCluster: failed to get svc %s for cluster %s/%s, error: %s", controller.DMWorkerPeerMemberName(dcName), ns, dcName, err)
@@ -110,7 +110,7 @@ func (m *workerMemberManager) syncWorkerHeadlessServiceForDMCluster(dc *v1alpha1
 		if err != nil {
 			return err
 		}
-		_, err = m.deps.ServiceControl.UpdateService(dc, &svc)
+		_, err = wmm.deps.ServiceControl.UpdateService(dc, &svc)
 		return err
 	}
 
@@ -148,11 +148,11 @@ func getNewWorkerHeadlessServiceForDMCluster(dc *v1alpha1.DMCluster) *corev1.Ser
 	return &svc
 }
 
-func (m *workerMemberManager) syncWorkerStatefulSetForDMCluster(dc *v1alpha1.DMCluster) error {
+func (wmm *workerMemberManager) syncWorkerStatefulSetForDMCluster(dc *v1alpha1.DMCluster) error {
 	ns := dc.GetNamespace()
 	dcName := dc.GetName()
 
-	oldStsTmp, err := m.deps.StatefulSetLister.StatefulSets(ns).Get(controller.DMWorkerMemberName(dcName))
+	oldStsTmp, err := wmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.DMWorkerMemberName(dcName))
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("syncWorkerStatefulSetForDMCluster: failed to get sts %s for cluster %s/%s, error: %s", controller.DMWorkerMemberName(dcName), ns, dcName, err)
 	}
@@ -161,7 +161,7 @@ func (m *workerMemberManager) syncWorkerStatefulSetForDMCluster(dc *v1alpha1.DMC
 	oldSts := oldStsTmp.DeepCopy()
 
 	// failed to sync dm-worker status will not affect subsequent logic, just print the errors.
-	if err := m.syncDMClusterStatus(dc, oldSts); err != nil {
+	if err := wmm.syncDMClusterStatus(dc, oldSts); err != nil {
 		klog.Errorf("failed to sync DMCluster: [%s/%s]'s dm-worker status, error: %v", ns, dcName, err)
 	}
 
@@ -170,19 +170,19 @@ func (m *workerMemberManager) syncWorkerStatefulSetForDMCluster(dc *v1alpha1.DMC
 		return nil
 	}
 
-	cm, err := m.syncWorkerConfigMap(dc, oldSts)
+	cm, err := wmm.syncWorkerConfigMap(dc, oldSts)
 	if err != nil {
 		return err
 	}
 
 	// Recover failed workers if any before generating desired statefulset
 	if len(dc.Status.Worker.FailureMembers) > 0 {
-		m.failover.RemoveUndesiredFailures(dc)
+		wmm.failover.RemoveUndesiredFailures(dc)
 	}
 	if len(dc.Status.Worker.FailureMembers) > 0 &&
 		dc.Spec.Worker.RecoverFailover &&
-		shouldRecoverDM(dc, label.DMWorkerLabelVal, m.deps.PodLister) {
-		m.failover.Recover(dc)
+		shouldRecoverDM(dc, label.DMWorkerLabelVal, wmm.deps.PodLister) {
+		wmm.failover.Recover(dc)
 	}
 
 	newSts, err := getNewWorkerSetForDMCluster(dc, cm)
@@ -195,32 +195,32 @@ func (m *workerMemberManager) syncWorkerStatefulSetForDMCluster(dc *v1alpha1.DMC
 		if err != nil {
 			return err
 		}
-		err = m.deps.StatefulSetControl.CreateStatefulSet(dc, newSts)
+		err = wmm.deps.StatefulSetControl.CreateStatefulSet(dc, newSts)
 		if err != nil {
 			return err
 		}
 		return nil
 	}
 
-	if err := m.scaler.Scale(dc, oldSts, newSts); err != nil {
+	if err := wmm.scaler.Scale(dc, oldSts, newSts); err != nil {
 		return err
 	}
 
 	// Perform failover logic if necessary. Note that this will only update
 	// DMCluster status. The actual scaling performs in next sync loop (if a
 	// new replica needs to be added).
-	if m.deps.CLIConfig.AutoFailover && dc.Spec.Worker.MaxFailoverCount != nil {
+	if wmm.deps.CLIConfig.AutoFailover && dc.Spec.Worker.MaxFailoverCount != nil {
 		if dc.WorkerAllPodsStarted() && !dc.WorkerAllMembersReady() {
-			if err := m.failover.Failover(dc); err != nil {
+			if err := wmm.failover.Failover(dc); err != nil {
 				return err
 			}
 		}
 	}
 
-	return updateStatefulSet(m.deps.StatefulSetControl, dc, newSts, oldSts)
+	return updateStatefulSet(wmm.deps.StatefulSetControl, dc, newSts, oldSts)
 }
 
-func (m *workerMemberManager) syncDMClusterStatus(dc *v1alpha1.DMCluster, set *apps.StatefulSet) error {
+func (wmm *workerMemberManager) syncDMClusterStatus(dc *v1alpha1.DMCluster, set *apps.StatefulSet) error {
 	if set == nil {
 		// skip if not created yet
 		return nil
@@ -228,7 +228,7 @@ func (m *workerMemberManager) syncDMClusterStatus(dc *v1alpha1.DMCluster, set *a
 
 	dc.Status.Worker.StatefulSet = &set.Status
 
-	upgrading, err := m.workerStatefulSetIsUpgrading(set, dc)
+	upgrading, err := wmm.workerStatefulSetIsUpgrading(set, dc)
 	if err != nil {
 		return err
 	}
@@ -240,7 +240,7 @@ func (m *workerMemberManager) syncDMClusterStatus(dc *v1alpha1.DMCluster, set *a
 		dc.Status.Worker.Phase = v1alpha1.NormalPhase
 	}
 
-	dmClient := controller.GetMasterClient(m.deps.DMMasterControl, dc)
+	dmClient := controller.GetMasterClient(wmm.deps.DMMasterControl, dc)
 
 	workersInfo, err := dmClient.GetWorkers()
 	if err != nil {
@@ -287,7 +287,7 @@ func (m *workerMemberManager) syncDMClusterStatus(dc *v1alpha1.DMCluster, set *a
 	return nil
 }
 
-func (m *workerMemberManager) workerStatefulSetIsUpgrading(set *apps.StatefulSet, dc *v1alpha1.DMCluster) (bool, error) {
+func (wmm *workerMemberManager) workerStatefulSetIsUpgrading(set *apps.StatefulSet, dc *v1alpha1.DMCluster) (bool, error) {
 	if statefulSetIsUpgrading(set) {
 		return true, nil
 	}
@@ -299,7 +299,7 @@ func (m *workerMemberManager) workerStatefulSetIsUpgrading(set *apps.StatefulSet
 	if err != nil {
 		return false, err
 	}
-	workerPods, err := m.deps.PodLister.Pods(dc.GetNamespace()).List(selector)
+	workerPods, err := wmm.deps.PodLister.Pods(dc.GetNamespace()).List(selector)
 	if err != nil {
 		return false, fmt.Errorf("workerStatefulSetIsUpgrading: failed to list pods for cluster %s/%s, selector %s, error: %v", dc.GetNamespace(), instanceName, selector, err)
 	}
@@ -316,7 +316,7 @@ func (m *workerMemberManager) workerStatefulSetIsUpgrading(set *apps.StatefulSet
 }
 
 // syncWorkerConfigMap syncs the configmap of dm-worker
-func (m *workerMemberManager) syncWorkerConfigMap(dc *v1alpha1.DMCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
+func (wmm *workerMemberManager) syncWorkerConfigMap(dc *v1alpha1.DMCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
 	if dc.Spec.Worker.Config == nil {
 		return nil, nil
 	}
@@ -324,7 +324,7 @@ func (m *workerMemberManager) syncWorkerConfigMap(dc *v1alpha1.DMCluster, set *a
 	if err != nil {
 		return nil, err
 	}
-	return m.deps.TypedControl.CreateOrUpdateConfigMap(dc, newCm)
+	return wmm.deps.TypedControl.CreateOrUpdateConfigMap(dc, newCm)
 }
 
 func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {

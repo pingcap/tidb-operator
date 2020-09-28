@@ -62,52 +62,52 @@ func NewController(deps *controller.Dependencies) *Controller {
 }
 
 // Run runs the backup schedule controller.
-func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
+func (bsc *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
-	defer c.queue.ShutDown()
+	defer bsc.queue.ShutDown()
 
 	klog.Info("Starting backup schedule controller")
 	defer klog.Info("Shutting down backup schedule controller")
 
 	for i := 0; i < workers; i++ {
-		go wait.Until(c.worker, time.Second, stopCh)
+		go wait.Until(bsc.worker, time.Second, stopCh)
 	}
 
 	<-stopCh
 }
 
 // worker runs a worker goroutine that invokes processNextWorkItem until the the controller's queue is closed
-func (c *Controller) worker() {
-	for c.processNextWorkItem() {
+func (bsc *Controller) worker() {
+	for bsc.processNextWorkItem() {
 	}
 }
 
 // processNextWorkItem dequeues items, processes them, and marks them done. It enforces that the syncHandler is never
 // invoked concurrently with the same key.
-func (c *Controller) processNextWorkItem() bool {
-	key, quit := c.queue.Get()
+func (bsc *Controller) processNextWorkItem() bool {
+	key, quit := bsc.queue.Get()
 	if quit {
 		return false
 	}
-	defer c.queue.Done(key)
-	if err := c.sync(key.(string)); err != nil {
+	defer bsc.queue.Done(key)
+	if err := bsc.sync(key.(string)); err != nil {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
 			klog.Infof("BackupSchedule: %v, still need sync: %v, requeuing", key.(string), err)
-			c.queue.AddRateLimited(key)
+			bsc.queue.AddRateLimited(key)
 		} else if perrors.Find(err, controller.IsIgnoreError) != nil {
 			klog.V(4).Infof("BackupSchedule: %v, ignore err: %v, waiting for the next sync", key.(string), err)
 		} else {
 			utilruntime.HandleError(fmt.Errorf("BackupSchedule: %v, sync failed, err: %v, requeuing", key.(string), err))
-			c.queue.AddRateLimited(key)
+			bsc.queue.AddRateLimited(key)
 		}
 	} else {
-		c.queue.Forget(key)
+		bsc.queue.Forget(key)
 	}
 	return true
 }
 
 // sync syncs the given backupSchedule.
-func (c *Controller) sync(key string) error {
+func (bsc *Controller) sync(key string) error {
 	startTime := time.Now()
 	defer func() {
 		klog.V(4).Infof("Finished syncing BackupSchedule %q (%v)", key, time.Since(startTime))
@@ -117,7 +117,7 @@ func (c *Controller) sync(key string) error {
 	if err != nil {
 		return err
 	}
-	bs, err := c.deps.BackupScheduleLister.BackupSchedules(ns).Get(name)
+	bs, err := bsc.deps.BackupScheduleLister.BackupSchedules(ns).Get(name)
 	if errors.IsNotFound(err) {
 		klog.Infof("BackupSchedule has been deleted %v", key)
 		return nil
@@ -126,19 +126,19 @@ func (c *Controller) sync(key string) error {
 		return err
 	}
 
-	return c.syncBackupSchedule(bs.DeepCopy())
+	return bsc.syncBackupSchedule(bs.DeepCopy())
 }
 
-func (c *Controller) syncBackupSchedule(bs *v1alpha1.BackupSchedule) error {
-	return c.control.UpdateBackupSchedule(bs)
+func (bsc *Controller) syncBackupSchedule(bs *v1alpha1.BackupSchedule) error {
+	return bsc.control.UpdateBackupSchedule(bs)
 }
 
 // enqueueBackupSchedule enqueues the given restore in the work queue.
-func (c *Controller) enqueueBackupSchedule(obj interface{}) {
+func (bsc *Controller) enqueueBackupSchedule(obj interface{}) {
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("cound't get key for object %+v: %v", obj, err))
 		return
 	}
-	c.queue.Add(key)
+	bsc.queue.Add(key)
 }

@@ -85,49 +85,49 @@ func NewController(deps *controller.Dependencies) *Controller {
 }
 
 // Run runs the tidbcluster controller.
-func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
+func (tcc *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
-	defer c.queue.ShutDown()
+	defer tcc.queue.ShutDown()
 
 	klog.Info("Starting tidbcluster controller")
 	defer klog.Info("Shutting down tidbcluster controller")
 
 	for i := 0; i < workers; i++ {
-		go wait.Until(c.worker, time.Second, stopCh)
+		go wait.Until(tcc.worker, time.Second, stopCh)
 	}
 
 	<-stopCh
 }
 
 // worker runs a worker goroutine that invokes processNextWorkItem until the the controller's queue is closed
-func (c *Controller) worker() {
-	for c.processNextWorkItem() {
+func (tcc *Controller) worker() {
+	for tcc.processNextWorkItem() {
 	}
 }
 
 // processNextWorkItem dequeues items, processes them, and marks them done. It enforces that the syncHandler is never
 // invoked concurrently with the same key.
-func (c *Controller) processNextWorkItem() bool {
-	key, quit := c.queue.Get()
+func (tcc *Controller) processNextWorkItem() bool {
+	key, quit := tcc.queue.Get()
 	if quit {
 		return false
 	}
-	defer c.queue.Done(key)
-	if err := c.sync(key.(string)); err != nil {
+	defer tcc.queue.Done(key)
+	if err := tcc.sync(key.(string)); err != nil {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
 			klog.Infof("TidbCluster: %v, still need sync: %v, requeuing", key.(string), err)
 		} else {
 			utilruntime.HandleError(fmt.Errorf("TidbCluster: %v, sync failed %v, requeuing", key.(string), err))
 		}
-		c.queue.AddRateLimited(key)
+		tcc.queue.AddRateLimited(key)
 	} else {
-		c.queue.Forget(key)
+		tcc.queue.Forget(key)
 	}
 	return true
 }
 
 // sync syncs the given tidbcluster.
-func (c *Controller) sync(key string) error {
+func (tcc *Controller) sync(key string) error {
 	startTime := time.Now()
 	defer func() {
 		klog.V(4).Infof("Finished syncing TidbCluster %q (%v)", key, time.Since(startTime))
@@ -137,7 +137,7 @@ func (c *Controller) sync(key string) error {
 	if err != nil {
 		return err
 	}
-	tc, err := c.deps.TiDBClusterLister.TidbClusters(ns).Get(name)
+	tc, err := tcc.deps.TiDBClusterLister.TidbClusters(ns).Get(name)
 	if errors.IsNotFound(err) {
 		klog.Infof("TidbCluster has been deleted %v", key)
 		return nil
@@ -146,25 +146,25 @@ func (c *Controller) sync(key string) error {
 		return err
 	}
 
-	return c.syncTidbCluster(tc.DeepCopy())
+	return tcc.syncTidbCluster(tc.DeepCopy())
 }
 
-func (c *Controller) syncTidbCluster(tc *v1alpha1.TidbCluster) error {
-	return c.control.UpdateTidbCluster(tc)
+func (tcc *Controller) syncTidbCluster(tc *v1alpha1.TidbCluster) error {
+	return tcc.control.UpdateTidbCluster(tc)
 }
 
 // enqueueTidbCluster enqueues the given tidbcluster in the work queue.
-func (c *Controller) enqueueTidbCluster(obj interface{}) {
+func (tcc *Controller) enqueueTidbCluster(obj interface{}) {
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("Cound't get key for object %+v: %v", obj, err))
 		return
 	}
-	c.queue.Add(key)
+	tcc.queue.Add(key)
 }
 
 // addStatefulSet adds the tidbcluster for the statefulset to the sync queue
-func (c *Controller) addStatefulSet(obj interface{}) {
+func (tcc *Controller) addStatefulSet(obj interface{}) {
 	set := obj.(*apps.StatefulSet)
 	ns := set.GetNamespace()
 	setName := set.GetName()
@@ -172,21 +172,21 @@ func (c *Controller) addStatefulSet(obj interface{}) {
 	if set.DeletionTimestamp != nil {
 		// on a restart of the controller manager, it's possible a new statefulset shows up in a state that
 		// is already pending deletion. Prevent the statefulset from being a creation observation.
-		c.deleteStatefulSet(set)
+		tcc.deleteStatefulSet(set)
 		return
 	}
 
 	// If it has a ControllerRef, that's all that matters.
-	tc := c.resolveTidbClusterFromSet(ns, set)
+	tc := tcc.resolveTidbClusterFromSet(ns, set)
 	if tc == nil {
 		return
 	}
 	klog.V(4).Infof("StatefulSet %s/%s created, TidbCluster: %s/%s", ns, setName, ns, tc.Name)
-	c.enqueueTidbCluster(tc)
+	tcc.enqueueTidbCluster(tc)
 }
 
 // updateStatefuSet adds the tidbcluster for the current and old statefulsets to the sync queue.
-func (c *Controller) updateStatefuSet(old, cur interface{}) {
+func (tcc *Controller) updateStatefuSet(old, cur interface{}) {
 	curSet := cur.(*apps.StatefulSet)
 	oldSet := old.(*apps.StatefulSet)
 	ns := curSet.GetNamespace()
@@ -198,16 +198,16 @@ func (c *Controller) updateStatefuSet(old, cur interface{}) {
 	}
 
 	// If it has a ControllerRef, that's all that matters.
-	tc := c.resolveTidbClusterFromSet(ns, curSet)
+	tc := tcc.resolveTidbClusterFromSet(ns, curSet)
 	if tc == nil {
 		return
 	}
 	klog.V(4).Infof("StatefulSet %s/%s updated, TidbCluster: %s/%s", ns, setName, ns, tc.Name)
-	c.enqueueTidbCluster(tc)
+	tcc.enqueueTidbCluster(tc)
 }
 
 // deleteStatefulSet enqueues the tidbcluster for the statefulset accounting for deletion tombstones.
-func (c *Controller) deleteStatefulSet(obj interface{}) {
+func (tcc *Controller) deleteStatefulSet(obj interface{}) {
 	set, ok := obj.(*apps.StatefulSet)
 	ns := set.GetNamespace()
 	setName := set.GetName()
@@ -229,18 +229,18 @@ func (c *Controller) deleteStatefulSet(obj interface{}) {
 	}
 
 	// If it has a TidbCluster, that's all that matters.
-	tc := c.resolveTidbClusterFromSet(ns, set)
+	tc := tcc.resolveTidbClusterFromSet(ns, set)
 	if tc == nil {
 		return
 	}
 	klog.V(4).Infof("StatefulSet %s/%s deleted through %v.", ns, setName, utilruntime.GetCaller())
-	c.enqueueTidbCluster(tc)
+	tcc.enqueueTidbCluster(tc)
 }
 
 // resolveTidbClusterFromSet returns the TidbCluster by a StatefulSet,
 // or nil if the StatefulSet could not be resolved to a matching TidbCluster
 // of the correct Kind.
-func (c *Controller) resolveTidbClusterFromSet(namespace string, set *apps.StatefulSet) *v1alpha1.TidbCluster {
+func (tcc *Controller) resolveTidbClusterFromSet(namespace string, set *apps.StatefulSet) *v1alpha1.TidbCluster {
 	controllerRef := metav1.GetControllerOf(set)
 	if controllerRef == nil {
 		return nil
@@ -251,7 +251,7 @@ func (c *Controller) resolveTidbClusterFromSet(namespace string, set *apps.State
 	if controllerRef.Kind != controller.ControllerKind.Kind {
 		return nil
 	}
-	tc, err := c.deps.TiDBClusterLister.TidbClusters(namespace).Get(controllerRef.Name)
+	tc, err := tcc.deps.TiDBClusterLister.TidbClusters(namespace).Get(controllerRef.Name)
 	if err != nil {
 		return nil
 	}

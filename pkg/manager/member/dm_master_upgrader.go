@@ -34,11 +34,11 @@ func NewMasterUpgrader(deps *controller.Dependencies) DMUpgrader {
 	}
 }
 
-func (u *masterUpgrader) Upgrade(dc *v1alpha1.DMCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	return u.gracefulUpgrade(dc, oldSet, newSet)
+func (mu *masterUpgrader) Upgrade(dc *v1alpha1.DMCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	return mu.gracefulUpgrade(dc, oldSet, newSet)
 }
 
-func (u *masterUpgrader) gracefulUpgrade(dc *v1alpha1.DMCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (mu *masterUpgrader) gracefulUpgrade(dc *v1alpha1.DMCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	ns := dc.GetNamespace()
 	dcName := dc.GetName()
 	if !dc.Status.Master.Synced {
@@ -78,7 +78,7 @@ func (u *masterUpgrader) gracefulUpgrade(dc *v1alpha1.DMCluster, oldSet *apps.St
 	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
 		i := podOrdinals[_i]
 		podName := DMMasterPodName(dcName, i)
-		pod, err := u.deps.PodLister.Pods(ns).Get(podName)
+		pod, err := mu.deps.PodLister.Pods(ns).Get(podName)
 		if err != nil {
 			return fmt.Errorf("gracefulUpgrade: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, dcName, err)
 		}
@@ -100,18 +100,18 @@ func (u *masterUpgrader) gracefulUpgrade(dc *v1alpha1.DMCluster, oldSet *apps.St
 		//	return nil
 		//}
 
-		return u.upgradeMasterPod(dc, i, newSet)
+		return mu.upgradeMasterPod(dc, i, newSet)
 	}
 
 	return nil
 }
 
-func (u *masterUpgrader) upgradeMasterPod(dc *v1alpha1.DMCluster, ordinal int32, newSet *apps.StatefulSet) error {
+func (mu *masterUpgrader) upgradeMasterPod(dc *v1alpha1.DMCluster, ordinal int32, newSet *apps.StatefulSet) error {
 	ns := dc.GetNamespace()
 	dcName := dc.GetName()
 	upgradePodName := DMMasterPodName(dcName, ordinal)
 	if dc.Status.Master.Leader.Name == upgradePodName && dc.MasterStsActualReplicas() > 1 {
-		err := u.evictMasterLeader(dc, upgradePodName)
+		err := mu.evictMasterLeader(dc, upgradePodName)
 		if err != nil {
 			klog.Errorf("dm-master upgrader: failed to evict dm-master %s's leader: %v", upgradePodName, err)
 			return err
@@ -124,8 +124,8 @@ func (u *masterUpgrader) upgradeMasterPod(dc *v1alpha1.DMCluster, ordinal int32,
 	return nil
 }
 
-func (u *masterUpgrader) evictMasterLeader(dc *v1alpha1.DMCluster, podName string) error {
-	return controller.GetMasterPeerClient(u.deps.DMMasterControl, dc, podName).EvictLeader()
+func (mu *masterUpgrader) evictMasterLeader(dc *v1alpha1.DMCluster, podName string) error {
+	return controller.GetMasterPeerClient(mu.deps.DMMasterControl, dc, podName).EvictLeader()
 }
 
 type fakeMasterUpgrader struct{}
@@ -135,7 +135,7 @@ func NewFakeMasterUpgrader() DMUpgrader {
 	return &fakeMasterUpgrader{}
 }
 
-func (u *fakeMasterUpgrader) Upgrade(dc *v1alpha1.DMCluster, _ *apps.StatefulSet, _ *apps.StatefulSet) error {
+func (fmu *fakeMasterUpgrader) Upgrade(dc *v1alpha1.DMCluster, _ *apps.StatefulSet, _ *apps.StatefulSet) error {
 	if !dc.Status.Master.Synced {
 		return fmt.Errorf("dmcluster: dm-master status sync failed,can not to be upgraded")
 	}

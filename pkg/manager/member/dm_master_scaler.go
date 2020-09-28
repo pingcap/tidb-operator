@@ -39,17 +39,17 @@ func NewMasterScaler(deps *controller.Dependencies) Scaler {
 	}
 }
 
-func (s *masterScaler) Scale(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (msd *masterScaler) Scale(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	scaling, _, _, _ := scaleOne(oldSet, newSet)
 	if scaling > 0 {
-		return s.ScaleOut(meta, oldSet, newSet)
+		return msd.ScaleOut(meta, oldSet, newSet)
 	} else if scaling < 0 {
-		return s.ScaleIn(meta, oldSet, newSet)
+		return msd.ScaleIn(meta, oldSet, newSet)
 	}
-	return s.SyncAutoScalerAnn(meta, oldSet)
+	return msd.SyncAutoScalerAnn(meta, oldSet)
 }
 
-func (s *masterScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (msd *masterScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	dc, ok := meta.(*v1alpha1.DMCluster)
 	if !ok {
 		return nil
@@ -61,7 +61,7 @@ func (s *masterScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, ne
 	dcName := dc.GetName()
 
 	klog.Infof("scaling out dm-master statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
-	_, err := s.deleteDeferDeletingPVC(dc, oldSet.GetName(), v1alpha1.DMMasterMemberType, ordinal)
+	_, err := msd.deleteDeferDeletingPVC(dc, oldSet.GetName(), v1alpha1.DMMasterMemberType, ordinal)
 	if err != nil {
 		return err
 	}
@@ -76,7 +76,7 @@ func (s *masterScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, ne
 
 // We need remove member from cluster before reducing statefulset replicas
 // only remove one member at a time when scale down
-func (s *masterScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (msd *masterScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	dc, ok := meta.(*v1alpha1.DMCluster)
 	if !ok {
 		return nil
@@ -105,7 +105,7 @@ func (s *masterScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, new
 	// we would directly deleted the dm-master-0 without dm-master leader evict
 	if ordinal > 0 {
 		if dc.Status.Master.Leader.Name == memberName {
-			masterPeerClient := controller.GetMasterPeerClient(s.deps.DMMasterControl, dc, memberName)
+			masterPeerClient := controller.GetMasterPeerClient(msd.deps.DMMasterControl, dc, memberName)
 			err := masterPeerClient.EvictLeader()
 			if err != nil {
 				return err
@@ -114,7 +114,7 @@ func (s *masterScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, new
 		}
 	}
 
-	masterClient := controller.GetMasterClient(s.deps.DMMasterControl, dc)
+	masterClient := controller.GetMasterClient(msd.deps.DMMasterControl, dc)
 	err := masterClient.DeleteMaster(memberName)
 	if err != nil {
 		klog.Errorf("dm-master scale in: failed to delete member %s, %v", memberName, err)
@@ -143,7 +143,7 @@ func (s *masterScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, new
 	}
 
 	pvcName := ordinalPVCName(v1alpha1.DMMasterMemberType, setName, ordinal)
-	pvc, err := s.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
+	pvc, err := msd.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
 	if err != nil {
 		return fmt.Errorf("dm-master.ScaleIn: failed to get pvc %s for cluster %s/%s, error: %s", pvcName, ns, dcName, err)
 	}
@@ -154,7 +154,7 @@ func (s *masterScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, new
 	now := time.Now().Format(time.RFC3339)
 	pvc.Annotations[label.AnnPVCDeferDeleting] = now
 
-	_, err = s.deps.PVCControl.UpdatePVC(dc, pvc)
+	_, err = msd.deps.PVCControl.UpdatePVC(dc, pvc)
 	if err != nil {
 		klog.Errorf("dm-master scale in: failed to set pvc %s/%s annotation: %s to %s",
 			ns, pvcName, label.AnnPVCDeferDeleting, now)
@@ -167,6 +167,6 @@ func (s *masterScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, new
 	return nil
 }
 
-func (s *masterScaler) SyncAutoScalerAnn(meta metav1.Object, oldSet *apps.StatefulSet) error {
+func (msd *masterScaler) SyncAutoScalerAnn(meta metav1.Object, oldSet *apps.StatefulSet) error {
 	return nil
 }

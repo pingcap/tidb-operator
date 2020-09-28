@@ -31,7 +31,7 @@ import (
 
 const groupLabelKey = "group"
 
-func (m *autoScalerManager) syncPlans(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, plans []pdapi.Plan) error {
+func (am *autoScalerManager) syncPlans(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, plans []pdapi.Plan) error {
 	planGroups := sets.String{}
 	groupPlanMap := make(map[string]pdapi.Plan)
 	for _, plan := range plans {
@@ -46,7 +46,7 @@ func (m *autoScalerManager) syncPlans(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 		return err
 	}
 	selector := labels.NewSelector().Add(*requirement)
-	tcList, err := m.deps.TiDBClusterLister.TidbClusters(tc.Namespace).List(selector)
+	tcList, err := am.deps.TiDBClusterLister.TidbClusters(tc.Namespace).List(selector)
 	if err != nil {
 		return err
 	}
@@ -65,19 +65,19 @@ func (m *autoScalerManager) syncPlans(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 
 	// Calculate difference then update, delete or create
 	toDelete := existedGroups.Difference(planGroups)
-	err = m.deleteAutoscalingClusters(tc, toDelete.UnsortedList(), groupTcMap)
+	err = am.deleteAutoscalingClusters(tc, toDelete.UnsortedList(), groupTcMap)
 	if err != nil {
 		return err
 	}
 
 	toUpdate := planGroups.Intersection(existedGroups)
-	err = m.updateAutoscalingClusters(tac, toUpdate.UnsortedList(), groupTcMap, groupPlanMap)
+	err = am.updateAutoscalingClusters(tac, toUpdate.UnsortedList(), groupTcMap, groupPlanMap)
 	if err != nil {
 		return err
 	}
 
 	toCreate := planGroups.Difference(existedGroups)
-	err = m.createAutoscalingClusters(tc, tac, toCreate.UnsortedList(), groupPlanMap)
+	err = am.createAutoscalingClusters(tc, tac, toCreate.UnsortedList(), groupPlanMap)
 	if err != nil {
 		return err
 	}
@@ -85,13 +85,13 @@ func (m *autoScalerManager) syncPlans(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 	return nil
 }
 
-func (m *autoScalerManager) deleteAutoscalingClusters(tc *v1alpha1.TidbCluster, groupsToDelete []string, groupTcMap map[string]*v1alpha1.TidbCluster) error {
+func (am *autoScalerManager) deleteAutoscalingClusters(tc *v1alpha1.TidbCluster, groupsToDelete []string, groupTcMap map[string]*v1alpha1.TidbCluster) error {
 	var errs []error
 	for _, group := range groupsToDelete {
 		deleteTc := groupTcMap[group]
 
 		// Remove cluster
-		err := m.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Delete(deleteTc.Name, nil)
+		err := am.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Delete(deleteTc.Name, nil)
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -100,7 +100,7 @@ func (m *autoScalerManager) deleteAutoscalingClusters(tc *v1alpha1.TidbCluster, 
 	return errorutils.NewAggregate(errs)
 }
 
-func (m *autoScalerManager) updateAutoscalingClusters(tac *v1alpha1.TidbClusterAutoScaler, groupsToUpdate []string, groupTcMap map[string]*v1alpha1.TidbCluster, groupPlanMap map[string]pdapi.Plan) error {
+func (am *autoScalerManager) updateAutoscalingClusters(tac *v1alpha1.TidbClusterAutoScaler, groupsToUpdate []string, groupTcMap map[string]*v1alpha1.TidbCluster, groupPlanMap map[string]pdapi.Plan) error {
 	var errs []error
 	for _, group := range groupsToUpdate {
 		actual, oldTc, plan := groupTcMap[group].DeepCopy(), groupTcMap[group], groupPlanMap[group]
@@ -121,7 +121,7 @@ func (m *autoScalerManager) updateAutoscalingClusters(tac *v1alpha1.TidbClusterA
 			continue
 		}
 
-		_, err := m.deps.TiDBClusterControl.UpdateTidbCluster(actual, &actual.Status, &oldTc.Status)
+		_, err := am.deps.TiDBClusterControl.UpdateTidbCluster(actual, &actual.Status, &oldTc.Status)
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -130,7 +130,7 @@ func (m *autoScalerManager) updateAutoscalingClusters(tac *v1alpha1.TidbClusterA
 	return errorutils.NewAggregate(errs)
 }
 
-func (m *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, groupsToCreate []string, groupPlanMap map[string]pdapi.Plan) error {
+func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, groupsToCreate []string, groupPlanMap map[string]pdapi.Plan) error {
 	var errs []error
 	for _, group := range groupsToCreate {
 		plan := groupPlanMap[group]
@@ -248,7 +248,7 @@ func (m *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster, 
 			}
 		}
 
-		_, err = m.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(autoTc)
+		_, err = am.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(autoTc)
 		if err != nil {
 			errs = append(errs, err)
 			continue

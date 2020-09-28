@@ -40,18 +40,18 @@ func NewTiKVScaler(deps *controller.Dependencies) *tikvScaler {
 	return &tikvScaler{generalScaler: generalScaler{deps: deps}}
 }
 
-func (s *tikvScaler) Scale(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (tsd *tikvScaler) Scale(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	scaling, _, _, _ := scaleOne(oldSet, newSet)
 	if scaling > 0 {
-		return s.ScaleOut(meta, oldSet, newSet)
+		return tsd.ScaleOut(meta, oldSet, newSet)
 	} else if scaling < 0 {
-		return s.ScaleIn(meta, oldSet, newSet)
+		return tsd.ScaleIn(meta, oldSet, newSet)
 	}
 	// we only sync auto scaler annotations when we are finishing syncing scaling
-	return s.SyncAutoScalerAnn(meta, oldSet)
+	return tsd.SyncAutoScalerAnn(meta, oldSet)
 }
 
-func (s *tikvScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (tsd *tikvScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
 	resetReplicas(newSet, oldSet)
 	obj, ok := meta.(runtime.Object)
@@ -66,9 +66,9 @@ func (s *tikvScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newS
 	default:
 		return fmt.Errorf("tikv.ScaleOut, failed to convert cluster %s/%s", meta.GetNamespace(), meta.GetName())
 	}
-	_, err := s.deps.PVCLister.PersistentVolumeClaims(meta.GetNamespace()).Get(pvcName)
+	_, err := tsd.deps.PVCLister.PersistentVolumeClaims(meta.GetNamespace()).Get(pvcName)
 	if err == nil {
-		_, err = s.deleteDeferDeletingPVC(obj, oldSet.GetName(), v1alpha1.TiKVMemberType, ordinal)
+		_, err = tsd.deleteDeferDeletingPVC(obj, oldSet.GetName(), v1alpha1.TiKVMemberType, ordinal)
 		if err != nil {
 			return err
 		}
@@ -80,7 +80,7 @@ func (s *tikvScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newS
 	return nil
 }
 
-func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (tsd *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	ns := meta.GetNamespace()
 	tcName := meta.GetName()
 	// we can only remove one member at a time when scaling in
@@ -98,12 +98,12 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 	default:
 		return fmt.Errorf("tikvScaler.ScaleIn: failed to convert cluster %s/%s", meta.GetNamespace(), meta.GetName())
 	}
-	pod, err := s.deps.PodLister.Pods(ns).Get(podName)
+	pod, err := tsd.deps.PodLister.Pods(ns).Get(podName)
 	if err != nil {
 		return fmt.Errorf("tikvScaler.ScaleIn: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
 	}
 
-	if s.deps.CLIConfig.PodWebhookEnabled {
+	if tsd.deps.CLIConfig.PodWebhookEnabled {
 		setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 		return nil
 	}
@@ -121,7 +121,7 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 				return err
 			}
 			if state != v1alpha1.TiKVStateOffline {
-				if err := controller.GetPDClient(s.deps.PDControl, tc).DeleteStore(id); err != nil {
+				if err := controller.GetPDClient(tsd.deps.PDControl, tc).DeleteStore(id); err != nil {
 					klog.Errorf("tikv scale in: failed to delete store %d, %v", id, err)
 					return err
 				}
@@ -141,7 +141,7 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 			klog.Infof("TiKV %s/%s store %d becomes tombstone", ns, podName, id)
 
 			pvcName := ordinalPVCName(v1alpha1.TiKVMemberType, setName, ordinal)
-			pvc, err := s.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
+			pvc, err := tsd.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
 			if err != nil {
 				return fmt.Errorf("tikvScaler.ScaleIn: failed to get pvc %s for cluster %s/%s, error: %s", pvcName, ns, tcName, err)
 			}
@@ -150,7 +150,7 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 			}
 			now := time.Now().Format(time.RFC3339)
 			pvc.Annotations[label.AnnPVCDeferDeleting] = now
-			_, err = s.deps.PVCControl.UpdatePVC(tc, pvc)
+			_, err = tsd.deps.PVCControl.UpdatePVC(tc, pvc)
 			if err != nil {
 				klog.Errorf("tikv scale in: failed to set pvc %s/%s annotation: %s to %s",
 					ns, pvcName, label.AnnPVCDeferDeleting, now)
@@ -172,11 +172,11 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 	//    In this situation we should delete this TiKV pod immediately to avoid blocking the subsequent operations.
 	if !podutil.IsPodReady(pod) {
 		pvcName := ordinalPVCName(v1alpha1.TiKVMemberType, setName, ordinal)
-		pvc, err := s.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
+		pvc, err := tsd.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
 		if err != nil {
 			return fmt.Errorf("tikvScaler.ScaleIn: failed to get pvc %s for cluster %s/%s, error: %s", pvcName, ns, tcName, err)
 		}
-		safeTimeDeadline := pod.CreationTimestamp.Add(5 * s.deps.CLIConfig.ResyncDuration)
+		safeTimeDeadline := pod.CreationTimestamp.Add(5 * tsd.deps.CLIConfig.ResyncDuration)
 		if time.Now().Before(safeTimeDeadline) {
 			// Wait for 5 resync periods to ensure that the following situation does not occur:
 			//
@@ -193,7 +193,7 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 		}
 		now := time.Now().Format(time.RFC3339)
 		pvc.Annotations[label.AnnPVCDeferDeleting] = now
-		_, err = s.deps.PVCControl.UpdatePVC(tc, pvc)
+		_, err = tsd.deps.PVCControl.UpdatePVC(tc, pvc)
 		if err != nil {
 			klog.Errorf("pod %s not ready, tikv scale in: failed to set pvc %s/%s annotation: %s to %s",
 				podName, ns, pvcName, label.AnnPVCDeferDeleting, now)
@@ -208,7 +208,7 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 }
 
 // SyncAutoScalerAnn would reclaim the auto-scaling out slots if the target pod is no longer existed
-func (s *tikvScaler) SyncAutoScalerAnn(meta metav1.Object, actual *apps.StatefulSet) error {
+func (tsd *tikvScaler) SyncAutoScalerAnn(meta metav1.Object, actual *apps.StatefulSet) error {
 	tc, ok := meta.(*v1alpha1.TidbCluster)
 	if !ok {
 		return nil

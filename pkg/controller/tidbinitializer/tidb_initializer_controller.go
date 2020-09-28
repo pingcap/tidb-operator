@@ -57,48 +57,48 @@ func NewController(deps *controller.Dependencies) *Controller {
 }
 
 // Run run workers
-func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
+func (tic *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
-	defer c.queue.ShutDown()
+	defer tic.queue.ShutDown()
 
 	klog.Info("Starting tidbinitializer controller")
 	defer klog.Info("Shutting down tidbinitializer controller")
 
 	for i := 0; i < workers; i++ {
-		go wait.Until(c.worker, time.Second, stopCh)
+		go wait.Until(tic.worker, time.Second, stopCh)
 	}
 
 	<-stopCh
 }
 
-func (c *Controller) worker() {
-	for c.processNextWorkItem() {
+func (tic *Controller) worker() {
+	for tic.processNextWorkItem() {
 	}
 }
 
 // processNextWorkItem dequeues items, processes them, and marks them done.
 // It enforces that the syncHandler is never
 // invoked concurrently with the same key.
-func (c *Controller) processNextWorkItem() bool {
-	key, quit := c.queue.Get()
+func (tic *Controller) processNextWorkItem() bool {
+	key, quit := tic.queue.Get()
 	if quit {
 		return false
 	}
-	defer c.queue.Done(key)
-	if err := c.sync(key.(string)); err != nil {
+	defer tic.queue.Done(key)
+	if err := tic.sync(key.(string)); err != nil {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
 			klog.Infof("TiDBInitializer: %v, still need sync: %v, requeuing", key.(string), err)
 		} else {
 			utilruntime.HandleError(fmt.Errorf("TiDBInitializer: %v, sync failed, err: %v, requeuing", key.(string), err))
 		}
-		c.queue.AddRateLimited(key)
+		tic.queue.AddRateLimited(key)
 	} else {
-		c.queue.Forget(key)
+		tic.queue.Forget(key)
 	}
 	return true
 }
 
-func (c *Controller) sync(key string) error {
+func (tic *Controller) sync(key string) error {
 	startTime := time.Now()
 	defer func() {
 		klog.V(4).Infof("Finished syncing TiDBInitializer %q (%v)", key, time.Since(startTime))
@@ -108,7 +108,7 @@ func (c *Controller) sync(key string) error {
 	if err != nil {
 		return err
 	}
-	ti, err := c.deps.TiDBInitializerLister.TidbInitializers(ns).Get(name)
+	ti, err := tic.deps.TiDBInitializerLister.TidbInitializers(ns).Get(name)
 	if errors.IsNotFound(err) {
 		klog.Infof("TiDBInitializer %v has been deleted", key)
 		return nil
@@ -119,5 +119,5 @@ func (c *Controller) sync(key string) error {
 	if ti.DeletionTimestamp != nil {
 		return nil
 	}
-	return c.control.ReconcileTidbInitializer(ti)
+	return tic.control.ReconcileTidbInitializer(ti)
 }

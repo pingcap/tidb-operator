@@ -34,7 +34,7 @@ func NewTiKVFailover(deps *controller.Dependencies) Failover {
 	return &tikvFailover{deps: deps}
 }
 
-func (f *tikvFailover) isPodDesired(tc *v1alpha1.TidbCluster, podName string) bool {
+func (tf *tikvFailover) isPodDesired(tc *v1alpha1.TidbCluster, podName string) bool {
 	ordinals := tc.TiKVStsDesiredOrdinals(true)
 	ordinal, err := util.GetOrdinalFromPodName(podName)
 	if err != nil {
@@ -44,7 +44,7 @@ func (f *tikvFailover) isPodDesired(tc *v1alpha1.TidbCluster, podName string) bo
 	return ordinals.Has(ordinal)
 }
 
-func (f *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
+func (tf *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -53,13 +53,13 @@ func (f *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
 		if store.LastTransitionTime.IsZero() {
 			continue
 		}
-		if !f.isPodDesired(tc, podName) {
+		if !tf.isPodDesired(tc, podName) {
 			// we should ignore the store record of deleted pod, otherwise the
 			// record of deleted pod may be added back to failure stores
 			// (before it enters into Offline/Tombstone state)
 			continue
 		}
-		deadline := store.LastTransitionTime.Add(f.deps.CLIConfig.TiKVFailoverPeriod)
+		deadline := store.LastTransitionTime.Add(tf.deps.CLIConfig.TiKVFailoverPeriod)
 		exist := false
 		for _, failureStore := range tc.Status.TiKV.FailureStores {
 			if failureStore.PodName == podName {
@@ -83,7 +83,7 @@ func (f *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
 					CreatedAt: metav1.Now(),
 				}
 				msg := fmt.Sprintf("store[%s] is Down", store.ID)
-				f.deps.Recorder.Event(tc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "tikv", podName, msg))
+				tf.deps.Recorder.Event(tc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "tikv", podName, msg))
 			}
 		}
 	}
@@ -91,9 +91,9 @@ func (f *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	return nil
 }
 
-func (f *tikvFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
+func (tf *tikvFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
 	for key, failureStore := range tc.Status.TiKV.FailureStores {
-		if !f.isPodDesired(tc, failureStore.PodName) {
+		if !tf.isPodDesired(tc, failureStore.PodName) {
 			// If we delete the pods, e.g. by using advanced statefulset delete
 			// slots feature. We should remove the record of undesired pods,
 			// otherwise an extra replacement pod will be created.
@@ -102,7 +102,7 @@ func (f *tikvFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
 	}
 }
 
-func (f *tikvFailover) Recover(tc *v1alpha1.TidbCluster) {
+func (tf *tikvFailover) Recover(tc *v1alpha1.TidbCluster) {
 	tc.Status.TiKV.FailureStores = nil
 	klog.Infof("TiKV recover: clear FailureStores, %s/%s", tc.GetNamespace(), tc.GetName())
 }
@@ -114,12 +114,12 @@ func NewFakeTiKVFailover() Failover {
 	return &fakeTiKVFailover{}
 }
 
-func (_ *fakeTiKVFailover) Failover(_ *v1alpha1.TidbCluster) error {
+func (ftf *fakeTiKVFailover) Failover(_ *v1alpha1.TidbCluster) error {
 	return nil
 }
 
-func (_ *fakeTiKVFailover) Recover(_ *v1alpha1.TidbCluster) {
+func (ftf *fakeTiKVFailover) Recover(_ *v1alpha1.TidbCluster) {
 }
 
-func (_ *fakeTiKVFailover) RemoveUndesiredFailures(_ *v1alpha1.TidbCluster) {
+func (ftf *fakeTiKVFailover) RemoveUndesiredFailures(_ *v1alpha1.TidbCluster) {
 }

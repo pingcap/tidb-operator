@@ -34,7 +34,7 @@ func NewTiDBUpgrader(deps *controller.Dependencies) Upgrader {
 	}
 }
 
-func (u *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (tu *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 
 	// when scale replica to 0 , all nodes crash and tidb is in upgrade phase, this method will throw error about pod is upgrade.
 	// so  directly return nil when scale replica to 0.
@@ -82,7 +82,7 @@ func (u *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
 		i := podOrdinals[_i]
 		podName := tidbPodName(tcName, i)
-		pod, err := u.deps.PodLister.Pods(ns).Get(podName)
+		pod, err := tu.deps.PodLister.Pods(ns).Get(podName)
 		if err != nil {
 			return fmt.Errorf("tidbUpgrader.Upgrade: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
 		}
@@ -97,13 +97,13 @@ func (u *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 			}
 			continue
 		}
-		return u.upgradeTiDBPod(tc, i, newSet)
+		return tu.upgradeTiDBPod(tc, i, newSet)
 	}
 
 	return nil
 }
 
-func (u *tidbUpgrader) upgradeTiDBPod(tc *v1alpha1.TidbCluster, ordinal int32, newSet *apps.StatefulSet) error {
+func (tu *tidbUpgrader) upgradeTiDBPod(tc *v1alpha1.TidbCluster, ordinal int32, newSet *apps.StatefulSet) error {
 	setUpgradePartition(newSet, ordinal)
 	return nil
 }
