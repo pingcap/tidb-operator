@@ -158,3 +158,13 @@ spec:
   pd:
     enableDashboardInternalProxy: true
 ```
+
+## TiDB Operator 中不支持的 Dashboard 功能
+
+TiDB Dashboard 中的部分功能会因为 kubernetes 的特殊环境而无法使用，包括以下功能：
+
+1. **概况** -> **监控和告警** -> **查看监控项**的链接无法正确跳转到 Grafana 监控页。如果需要访问 Grafana 监控，可以参考 [查看监控面板](monitor-a-tidb-cluster.md#查看监控面板)。
+
+2. 日志搜索功能无法使用。如果需要查看对应组件的日志，可以使用 `kubectl logs ${pod_name} -n {namespace}` 查看对应组件的日志或者通过 Kubernetes 集群的日志服务查看。
+
+3. **集群信息** -> **主机** 的磁盘容量，磁盘使用率无法正确显示。可以通过 [TidbMonitor 监控面板](monitor-a-tidb-cluster.md#查看监控面板) 的各组件 dashboards 查看各个组件的磁盘使用或者部署 [Kubernetes 宿主机 Grafana 监控](monitor-a-tidb-cluster.md#kubernetes-组件监控) 查看 Kubernetes 节点的磁盘使用情况。
