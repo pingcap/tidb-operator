@@ -26,8 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	kubeinformers "k8s.io/client-go/informers"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -104,15 +102,15 @@ func TestMetaManagerSync(t *testing.T) {
 		if test.podUpdateErr || test.getClusterErr || test.getMemberErr || test.getStoreErr {
 			g.Expect(err).To(HaveOccurred())
 
-			pod, err := nmm.podLister.Pods(ns).Get(pod1.Name)
+			pod, err := nmm.deps.PodLister.Pods(ns).Get(pod1.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(podMetaInfoMatchDesire(pod)).To(Equal(false))
 
-			pvc, err := nmm.pvcLister.PersistentVolumeClaims(ns).Get(pvc1.Name)
+			pvc, err := nmm.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvc1.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pvcMetaInfoMatchDesire(pvc)).To(Equal(false))
 
-			pv, err := nmm.pvLister.Get(pv1.Name)
+			pv, err := nmm.deps.PVLister.Get(pv1.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pvMetaInfoMatchDesire(ns, pv)).To(Equal(false))
 		}
@@ -120,11 +118,11 @@ func TestMetaManagerSync(t *testing.T) {
 		if test.pvcUpdateErr {
 			g.Expect(err).To(HaveOccurred())
 
-			pvc, err := nmm.pvcLister.PersistentVolumeClaims(ns).Get(pvc1.Name)
+			pvc, err := nmm.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvc1.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pvcMetaInfoMatchDesire(pvc)).To(Equal(false))
 
-			pv, err := nmm.pvLister.Get(pv1.Name)
+			pv, err := nmm.deps.PVLister.Get(pv1.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pvMetaInfoMatchDesire(ns, pv)).To(Equal(false))
 		}
@@ -132,38 +130,38 @@ func TestMetaManagerSync(t *testing.T) {
 		if test.pvUpdateErr {
 			g.Expect(err).To(HaveOccurred())
 
-			pv, err := nmm.pvLister.Get(pv1.Name)
+			pv, err := nmm.deps.PVLister.Get(pv1.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pvMetaInfoMatchDesire(ns, pv)).To(Equal(false))
 		}
 
 		if test.podChanged {
-			pod, err := nmm.podLister.Pods(ns).Get(pod1.Name)
+			pod, err := nmm.deps.PodLister.Pods(ns).Get(pod1.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(podMetaInfoMatchDesire(pod)).To(Equal(true))
 		} else {
-			pod, err := nmm.podLister.Pods(ns).Get(pod1.Name)
+			pod, err := nmm.deps.PodLister.Pods(ns).Get(pod1.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(podMetaInfoMatchDesire(pod)).To(Equal(false))
 		}
 
 		if test.pvcChanged {
-			pvc, err := nmm.pvcLister.PersistentVolumeClaims(ns).Get(pvc1.Name)
+			pvc, err := nmm.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvc1.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pvcMetaInfoMatchDesire(pvc)).To(Equal(true))
 		} else {
-			pvc, err := nmm.pvcLister.PersistentVolumeClaims(ns).Get(pvc1.Name)
+			pvc, err := nmm.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvc1.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pvcMetaInfoMatchDesire(pvc)).To(Equal(false))
 		}
 
 		if test.pvChanged {
 			g.Expect(err).NotTo(HaveOccurred())
-			pv, err := nmm.pvLister.Get(pv1.Name)
+			pv, err := nmm.deps.PVLister.Get(pv1.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pvMetaInfoMatchDesire(ns, pv)).To(Equal(true))
 		} else {
-			pv, err := nmm.pvLister.Get(pv1.Name)
+			pv, err := nmm.deps.PVLister.Get(pv1.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pvMetaInfoMatchDesire(ns, pv)).To(Equal(false))
 		}
@@ -433,21 +431,21 @@ func TestMetaManagerSyncMultiPVC(t *testing.T) {
 		if test.podUpdateErr || test.getClusterErr || test.getMemberErr || test.getStoreErr {
 			g.Expect(err).To(HaveOccurred())
 
-			pod, err := nmm.podLister.Pods(ns).Get(pod1.Name)
+			pod, err := nmm.deps.PodLister.Pods(ns).Get(pod1.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(podMetaInfoMatchDesire(pod)).To(Equal(false))
 
-			pvc, err := nmm.pvcLister.PersistentVolumeClaims(ns).Get(pvc0.Name)
+			pvc, err := nmm.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvc0.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pvcMetaInfoMatchDesire(pvc)).To(Equal(false))
-			pvc, err = nmm.pvcLister.PersistentVolumeClaims(ns).Get(pvc0.Name)
+			pvc, err = nmm.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvc0.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pvcMetaInfoMatchDesire(pvc)).To(Equal(false))
 
-			pv, err := nmm.pvLister.Get(pv0.Name)
+			pv, err := nmm.deps.PVLister.Get(pv0.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pvMetaInfoMatchDesire(ns, pv)).To(Equal(false))
-			pv, err = nmm.pvLister.Get(pv1.Name)
+			pv, err = nmm.deps.PVLister.Get(pv1.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pvMetaInfoMatchDesire(ns, pv)).To(Equal(false))
 		}
@@ -455,17 +453,17 @@ func TestMetaManagerSyncMultiPVC(t *testing.T) {
 		if test.pvcUpdateErr {
 			g.Expect(err).To(HaveOccurred())
 
-			pvc, err := nmm.pvcLister.PersistentVolumeClaims(ns).Get(pvc0.Name)
+			pvc, err := nmm.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvc0.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pvcMetaInfoMatchDesire(pvc)).To(Equal(false))
-			pvc, err = nmm.pvcLister.PersistentVolumeClaims(ns).Get(pvc0.Name)
+			pvc, err = nmm.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvc0.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pvcMetaInfoMatchDesire(pvc)).To(Equal(false))
 
-			pv, err := nmm.pvLister.Get(pv0.Name)
+			pv, err := nmm.deps.PVLister.Get(pv0.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pvMetaInfoMatchDesire(ns, pv)).To(Equal(false))
-			pv, err = nmm.pvLister.Get(pv1.Name)
+			pv, err = nmm.deps.PVLister.Get(pv1.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pvMetaInfoMatchDesire(ns, pv)).To(Equal(false))
 		}
@@ -473,67 +471,67 @@ func TestMetaManagerSyncMultiPVC(t *testing.T) {
 		if test.pvUpdateErr {
 			g.Expect(err).To(HaveOccurred())
 
-			pv, err := nmm.pvLister.Get(pv0.Name)
+			pv, err := nmm.deps.PVLister.Get(pv0.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pvMetaInfoMatchDesire(ns, pv)).To(Equal(false))
-			pv, err = nmm.pvLister.Get(pv1.Name)
+			pv, err = nmm.deps.PVLister.Get(pv1.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pvMetaInfoMatchDesire(ns, pv)).To(Equal(false))
 		}
 
 		if test.podChanged {
-			pod, err := nmm.podLister.Pods(ns).Get(pod1.Name)
+			pod, err := nmm.deps.PodLister.Pods(ns).Get(pod1.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(podMetaInfoMatchDesire(pod)).To(Equal(true))
 		} else {
-			pod, err := nmm.podLister.Pods(ns).Get(pod1.Name)
+			pod, err := nmm.deps.PodLister.Pods(ns).Get(pod1.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(podMetaInfoMatchDesire(pod)).To(Equal(false))
 		}
 
 		if test.pvcChanged {
 			if test.pvUpdateErr {
-				pvc, err := nmm.pvcLister.PersistentVolumeClaims(ns).Get(pvc0.Name)
+				pvc, err := nmm.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvc0.Name)
 				g.Expect(err).NotTo(HaveOccurred())
 				if pvcMetaInfoMatchDesire(pvc) {
-					pvc, err := nmm.pvcLister.PersistentVolumeClaims(ns).Get(pvc1.Name)
+					pvc, err := nmm.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvc1.Name)
 					g.Expect(err).NotTo(HaveOccurred())
 					g.Expect(pvcMetaInfoMatchDesire(pvc)).To(Equal(false))
 				} else {
-					pvc, err := nmm.pvcLister.PersistentVolumeClaims(ns).Get(pvc1.Name)
+					pvc, err := nmm.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvc1.Name)
 					g.Expect(err).NotTo(HaveOccurred())
 					g.Expect(pvcMetaInfoMatchDesire(pvc)).To(Equal(true))
 				}
 			} else {
-				pvc, err := nmm.pvcLister.PersistentVolumeClaims(ns).Get(pvc0.Name)
+				pvc, err := nmm.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvc0.Name)
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(pvcMetaInfoMatchDesire(pvc)).To(Equal(true))
-				pvc, err = nmm.pvcLister.PersistentVolumeClaims(ns).Get(pvc1.Name)
+				pvc, err = nmm.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvc1.Name)
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(pvcMetaInfoMatchDesire(pvc)).To(Equal(true))
 			}
 		} else {
-			pvc, err := nmm.pvcLister.PersistentVolumeClaims(ns).Get(pvc0.Name)
+			pvc, err := nmm.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvc0.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pvcMetaInfoMatchDesire(pvc)).To(Equal(false))
-			pvc, err = nmm.pvcLister.PersistentVolumeClaims(ns).Get(pvc1.Name)
+			pvc, err = nmm.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvc1.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pvcMetaInfoMatchDesire(pvc)).To(Equal(false))
 		}
 
 		if test.pvChanged {
 			g.Expect(err).NotTo(HaveOccurred())
-			pv, err := nmm.pvLister.Get(pv0.Name)
+			pv, err := nmm.deps.PVLister.Get(pv0.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pvMetaInfoMatchDesire(ns, pv)).To(Equal(true))
-			pv, err = nmm.pvLister.Get(pv1.Name)
+			pv, err = nmm.deps.PVLister.Get(pv1.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pvMetaInfoMatchDesire(ns, pv)).To(Equal(true))
 		} else {
-			pv, err := nmm.pvLister.Get(pv0.Name)
+			pv, err := nmm.deps.PVLister.Get(pv0.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pvMetaInfoMatchDesire(ns, pv)).To(Equal(false))
-			pv, err = nmm.pvLister.Get(pv1.Name)
+			pv, err = nmm.deps.PVLister.Get(pv1.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pvMetaInfoMatchDesire(ns, pv)).To(Equal(false))
 		}
@@ -732,25 +730,14 @@ func newFakeMetaManager() (
 	cache.Indexer,
 	cache.Indexer,
 ) {
-	kubeCli := kubefake.NewSimpleClientset()
-
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
-	podInformer := kubeInformerFactory.Core().V1().Pods()
-	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
-	pvInformer := kubeInformerFactory.Core().V1().PersistentVolumes()
-
-	podControl := controller.NewFakePodControl(podInformer)
-	pvcControl := controller.NewFakePVCControl(pvcInformer)
-	pvControl := controller.NewFakePVControl(pvInformer, pvcInformer)
-
-	return &metaManager{
-		pvcInformer.Lister(),
-		pvcControl,
-		pvInformer.Lister(),
-		pvControl,
-		podInformer.Lister(),
-		podControl,
-	}, podControl, pvcControl, pvControl, podInformer.Informer().GetIndexer(), pvcInformer.Informer().GetIndexer(), pvInformer.Informer().GetIndexer()
+	fakeDeps := controller.NewFakeDependencies()
+	podControl := fakeDeps.PodControl.(*controller.FakePodControl)
+	pvcControl := fakeDeps.PVCControl.(*controller.FakePVCControl)
+	pvControl := fakeDeps.PVControl.(*controller.FakePVControl)
+	podIndexer := fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer()
+	pvcIndexer := fakeDeps.PVCInformer.Informer().GetIndexer()
+	pvIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumes().Informer().GetIndexer()
+	return &metaManager{deps: fakeDeps}, podControl, pvcControl, pvControl, podIndexer, pvcIndexer, pvIndexer
 }
 
 func podMetaInfoMatchDesire(pod *corev1.Pod) bool {

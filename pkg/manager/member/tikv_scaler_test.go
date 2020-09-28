@@ -26,8 +26,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	kubeinformers "k8s.io/client-go/informers"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/pointer"
 )
@@ -161,7 +159,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 		changed       bool
 	}
 
-	controller.ResyncDuration = 0
+	resyncDuration := time.Duration(0)
 
 	testFn := func(test testcase, t *testing.T) {
 		tc := newTidbClusterForPD()
@@ -193,7 +191,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			pod.CreationTimestamp = metav1.Time{Time: time.Now().Add(1 * time.Hour)}
 		}
 
-		scaler, pdControl, pvcIndexer, podIndexer, pvcControl := newFakeTiKVScaler()
+		scaler, pdControl, pvcIndexer, podIndexer, pvcControl := newFakeTiKVScaler(resyncDuration)
 
 		if test.hasPVC {
 			pvc := newScaleInPVCForStatefulSet(oldSet, v1alpha1.TiKVMemberType, tc.Name)
@@ -431,17 +429,16 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 	}
 }
 
-func newFakeTiKVScaler() (*tikvScaler, *pdapi.FakePDControl, cache.Indexer, cache.Indexer, *controller.FakePVCControl) {
-	kubeCli := kubefake.NewSimpleClientset()
-
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
-	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
-	podInformer := kubeInformerFactory.Core().V1().Pods()
-	pdControl := pdapi.NewFakePDControl(kubeCli)
-	pvcControl := controller.NewFakePVCControl(pvcInformer)
-
-	return &tikvScaler{generalScaler{pvcInformer.Lister(), pvcControl}, pdControl, podInformer.Lister()},
-		pdControl, pvcInformer.Informer().GetIndexer(), podInformer.Informer().GetIndexer(), pvcControl
+func newFakeTiKVScaler(resyncDuration ...time.Duration) (*tikvScaler, *pdapi.FakePDControl, cache.Indexer, cache.Indexer, *controller.FakePVCControl) {
+	fakeDeps := controller.NewFakeDependencies()
+	if len(resyncDuration) > 0 {
+		fakeDeps.CLIConfig.ResyncDuration = resyncDuration[0]
+	}
+	pvcIndexer := fakeDeps.PVCInformer.Informer().GetIndexer()
+	podIndexer := fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer()
+	pdControl := fakeDeps.PDControl.(*pdapi.FakePDControl)
+	pvcControl := fakeDeps.PVCControl.(*controller.FakePVCControl)
+	return &tikvScaler{generalScaler{deps: fakeDeps}}, pdControl, pvcIndexer, podIndexer, pvcControl
 }
 
 func normalStoreFun(tc *v1alpha1.TidbCluster) {
