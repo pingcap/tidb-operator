@@ -10,6 +10,7 @@ spec:
       storage_small:
         cpu: 1000m
         memory: 2Gi
+        storage: 10Gi
         count: 3
     rules:
       cpu:
