@@ -221,16 +221,16 @@ func (am *autoScalerManager) gracefullyDeleteTidbCluster(deleteTc *v1alpha1.Tidb
 			cloned := deleteTc.DeepCopy()
 			cloned.Spec.TiKV.Replicas = 0
 			_, err := am.tcControl.UpdateTidbCluster(cloned, &cloned.Status, &deleteTc.Status)
-			if err != nil {
-				return err
-			}
-		} else {
-			// The TC is shutting down, check for its status if all pods have been deleted
-			if deleteTc.Status.TiKV.StatefulSet.Replicas != 0 {
-				// Still shutting down, do nothing
-				return nil
-			}
+			return err
 		}
+
+		// The TC is shutting down, check for its status if all pods have been deleted
+		if deleteTc.Status.TiKV.StatefulSet.Replicas != 0 {
+			// Still shutting down, do nothing
+			return nil
+		}
+
+		// The TC has scaled in, fall through the code to delete it
 	}
 
 	return am.cli.PingcapV1alpha1().TidbClusters(deleteTc.Namespace).Delete(deleteTc.Name, nil)
