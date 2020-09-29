@@ -11,7 +11,9 @@ spec:
     replicas: 3
     requests:
       storage: "1Gi"
-    config: {}
+    config: 
+      pd-server:
+        metric-storage: "http://auto-scaling-demo-prometheus:9090/"
   tikv:
     baseImage: pingcap/tikv
     replicas: 3

@@ -16,11 +16,15 @@ package monitor
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/features"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager/meta"
 	"github.com/pingcap/tidb-operator/pkg/monitor"
 	utildiscovery "github.com/pingcap/tidb-operator/pkg/util/discovery"
@@ -28,6 +32,8 @@ import (
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	discoverycachedmemory "k8s.io/client-go/discovery/cached/memory"
@@ -252,6 +258,48 @@ func (mm *MonitorManager) syncTidbMonitorSecret(monitor *v1alpha1.TidbMonitor) (
 }
 
 func (mm *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) (*corev1.ConfigMap, error) {
+	if features.DefaultFeatureGate.Enabled(features.AutoScaling) {
+		// TODO: We need to update the status to tell users we are monitoring extra clusters
+		// Get all autoscaling clusters for TC, and add them to .Spec.Clusters to
+		// generate Prometheus config without modifying the original TidbMonitor
+		cloned := monitor.DeepCopy()
+		autoTcRefs := []v1alpha1.TidbClusterRef{}
+		for _, tcRef := range monitor.Spec.Clusters {
+			r1, err := labels.NewRequirement(label.AutoInstanceLabelKey, selection.Exists, nil)
+			if err != nil {
+				klog.Errorf("tm[%s/%s] gets tc[%s/%s]'s autoscaling clusters failed, err: %v", monitor.Namespace, monitor.Name, tcRef.Namespace, tcRef.Name, err)
+				continue
+			}
+			r2, err := labels.NewRequirement(label.BaseTCLabelKey, selection.Equals, []string{tcRef.Name})
+			if err != nil {
+				klog.Errorf("tm[%s/%s] gets tc[%s/%s]'s autoscaling clusters failed, err: %v", monitor.Namespace, monitor.Name, tcRef.Namespace, tcRef.Name, err)
+				continue
+			}
+			selector := labels.NewSelector().Add(*r1).Add(*r2)
+			tcList, err := mm.cli.PingcapV1alpha1().TidbClusters(tcRef.Namespace).List(metav1.ListOptions{LabelSelector: selector.String()})
+			if err != nil {
+				klog.Errorf("tm[%s/%s] gets tc[%s/%s]'s autoscaling clusters failed, err: %v", monitor.Namespace, monitor.Name, tcRef.Namespace, tcRef.Name, err)
+				continue
+			}
+			for _, autoTc := range tcList.Items {
+				autoTcRefs = append(autoTcRefs, v1alpha1.TidbClusterRef{
+					Name:      autoTc.Name,
+					Namespace: autoTc.Namespace,
+				})
+			}
+		}
+		// Sort Autoscaling TC for stability
+		sort.Slice(autoTcRefs, func(i, j int) bool {
+			cmpNS := strings.Compare(autoTcRefs[i].Namespace, autoTcRefs[j].Namespace)
+			if cmpNS == 0 {
+				return strings.Compare(autoTcRefs[i].Name, autoTcRefs[j].Name) < 0
+			}
+			return cmpNS < 0
+		})
+
+		cloned.Spec.Clusters = append(cloned.Spec.Clusters, autoTcRefs...)
+		monitor = cloned
+	}
 
 	newCM, err := getMonitorConfigMap(tc, monitor)
 	if err != nil {

@@ -1052,12 +1052,25 @@ func schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerSpec(ref common.ReferenceCa
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"),
 						},
 					},
+					"resources": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Resources represent the resource type definitions that can be used for TiDB/TiKV The key is resource_type name of the resource",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoResource"),
+									},
+								},
+							},
+						},
+					},
 				},
-				Required: []string{"maxReplicas"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoRule", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CustomMetric", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoResource", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoRule", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CustomMetric", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"},
 	}
 }
 
@@ -9520,12 +9533,25 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbAutoScalerSpec(ref common.ReferenceCal
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"),
 						},
 					},
+					"resources": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Resources represent the resource type definitions that can be used for TiDB/TiKV The key is resource_type name of the resource",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoResource"),
+									},
+								},
+							},
+						},
+					},
 				},
-				Required: []string{"maxReplicas"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoRule", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CustomMetric", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoResource", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoRule", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CustomMetric", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"},
 	}
 }
 
@@ -9762,26 +9788,12 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScalerSpec(ref common.Refer
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbAutoScalerSpec"),
 						},
 					},
-					"resources": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Resources represent the resource type definitions that can be used for TiDB/TiKV The key is resource_type name of the resource",
-							Type:        []string{"object"},
-							AdditionalProperties: &spec.SchemaOrBool{
-								Allows: true,
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoResource"),
-									},
-								},
-							},
-						},
-					},
 				},
 				Required: []string{"cluster"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoResource", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbAutoScalerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterRef", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbMonitorRef", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TikvAutoScalerSpec"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbAutoScalerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterRef", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbMonitorRef", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TikvAutoScalerSpec"},
 	}
 }
 
@@ -10698,12 +10710,25 @@ func schema_pkg_apis_pingcap_v1alpha1_TikvAutoScalerSpec(ref common.ReferenceCal
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"),
 						},
 					},
+					"resources": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Resources represent the resource type definitions that can be used for TiDB/TiKV The key is resource_type name of the resource",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoResource"),
+									},
+								},
+							},
+						},
+					},
 				},
-				Required: []string{"maxReplicas"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoRule", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CustomMetric", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoResource", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoRule", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CustomMetric", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"},
 	}
 }
 
