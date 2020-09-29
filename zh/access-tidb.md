@@ -23,6 +23,10 @@ spec:
       #   cloud.google.com/load-balancer-type: Internal
 ```
 
+> **注意：**
+>
+> [MySQL 8.0 默认认证插件](https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_default_authentication_plugin)从 `mysql_native_password` 更新为 `caching_sha2_password`，因此如果使用 MySQL 8.0 客户端访问 TiDB 服务（TiDB 版本 < v4.0.7），并且用户账户有配置密码，需要显示指定 `--default-auth=mysql_native_password` 参数。
+
 ## NodePort
 
 在没有 LoadBalancer 时，可选择通过 NodePort 暴露。NodePort 有两种模式：

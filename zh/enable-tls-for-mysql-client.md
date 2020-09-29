@@ -639,4 +639,8 @@ kubectl get secret -n ${namespace} ${cluster_name}-tidb-client-secret  -ojsonpat
 mysql -uroot -p -P 4000 -h ${tidb_host} --ssl-cert=client-tls.crt --ssl-key=client-tls.key --ssl-ca=client-ca.crt
 ```
 
+> **注意：**
+>
+> [MySQL 8.0 默认认证插件](https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_default_authentication_plugin)从 `mysql_native_password` 更新为 `caching_sha2_password`，因此如果使用 MySQL 8.0 客户端访问 TiDB 服务（TiDB 版本 < v4.0.7），并且用户账户有配置密码，需要显示指定 `--default-auth=mysql_native_password` 参数。
+
 最后请参考 [官网文档](https://pingcap.com/docs-cn/stable/enable-tls-between-clients-and-servers/#检查当前连接是否是加密连接) 来验证是否正确开启了 TLS。

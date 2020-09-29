@@ -520,10 +520,6 @@ minikube delete
 
     要连接到 TiDB，您需要在使用 `kubectl` 的主机上安装与 MySQL 兼容的命令行客户端。可以安装 MySQL Server，MariaDB Server，Percona Server 的 mysql 可执行文件，也可以从操作系统软件仓库中安装。
 
-    > **注意：**
-    >
-    > + 当使用 MySQL Client 8.0 时，如果用户账户有配置密码，必须显示指定 `--default-auth=mysql_native_password` 参数，因为 `mysql_native_password` [不再是默认的插件](https://dev.mysql.com/doc/refman/8.0/en/upgrading-from-previous-series.html#upgrade-caching-sha2-password)。
-
 2. 转发 4000 端口
 
     首先，将端口从本地主机转发到 Kubernetes 中的 TiDB **Servcie**。 我们先获取 tidb-cluster 命名空间中的服务列表：
@@ -560,6 +556,10 @@ minikube delete
     命令会运行在后台，并将输出转发到文件 `pf4000.out` 。所以我们可以继续在当前 shell 会话中继续执行命令。
 
 3. 连接 TiDB
+
+    > **注意：**
+    >
+    > + 当使用 MySQL Client 8.0 访问 TiDB 服务（TiDB 版本 < v4.0.7）时，如果用户账户有配置密码，必须显示指定 `--default-auth=mysql_native_password` 参数，因为 `mysql_native_password` [不再是默认的插件](https://dev.mysql.com/doc/refman/8.0/en/upgrading-from-previous-series.html#upgrade-caching-sha2-password)。
 
     {{< copyable "shell-regular" >}}
 
