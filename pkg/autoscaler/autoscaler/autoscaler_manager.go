@@ -225,7 +225,7 @@ func (am *autoScalerManager) gracefullyDeleteTidbCluster(deleteTc *v1alpha1.Tidb
 		}
 
 		// The TC is shutting down, check for its status if all pods have been deleted
-		if deleteTc.Status.TiKV.StatefulSet.Replicas != 0 {
+		if deleteTc.Status.TiKV != nil && deleteTc.Status.TiKV.StatefulSet != nil && deleteTc.Status.TiKV.StatefulSet.Replicas != 0 {
 			// Still shutting down, do nothing
 			return nil
 		}
