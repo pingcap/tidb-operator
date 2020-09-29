@@ -117,11 +117,11 @@ fault-trigger:
 ifeq ($(GO_COVER),y)
 test:
 	@echo "Run unit tests"
-	@go test -cover ./cmd/backup-manager/app/... ./pkg/... -coverpkg=$$($(TEST_COVER_PACKAGES)) -coverprofile=coverage.txt -covermode=atomic && echo "\nUnit tests run successfully!"
+	@go test -cover ./cmd/backup-manager/app/... ./pkg/... -coverpkg=$$($(TEST_COVER_PACKAGES)) -coverprofile=coverage.txt -covermode=atomic && echo -e "\nUnit tests run successfully!"
 else
 test:
 	@echo "Run unit tests"
-	@go test ./cmd/backup-manager/app/... ./pkg/... && echo "\nUnit tests run successfully!"
+	@go test ./cmd/backup-manager/app/... ./pkg/... && echo -e "\nUnit tests run successfully!"
 endif
 
 ALL_CHECKS = EOF codegen terraform boilerplate openapi-spec crd-groups spelling
