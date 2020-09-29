@@ -664,7 +664,7 @@ fi
 done
 
 ARGS="--data-dir=/var/lib/pd/data \
---name=${POD_NAME} \
+--name=${domain} \
 --peer-urls=://0.0.0.0:2380 \
 --advertise-peer-urls=://${domain}:2380 \
 --client-urls=://0.0.0.0:2379 \
