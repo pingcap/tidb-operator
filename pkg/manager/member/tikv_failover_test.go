@@ -287,7 +287,10 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			tc.Spec.TiKV.Replicas = 6
 			tc.Spec.TiKV.MaxFailoverCount = pointer.Int32Ptr(3)
 			tt.update(tc)
-			tikvFailover := newFakeTiKVFailover()
+
+			fakeDeps := controller.NewFakeDependencies()
+			fakeDeps.CLIConfig.TiKVFailoverPeriod = 1 * time.Hour
+			tikvFailover := &tikvFailover{deps: fakeDeps}
 
 			err := tikvFailover.Failover(tc)
 			if tt.err {
@@ -298,8 +301,4 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			tt.expectFn(t, tc)
 		})
 	}
-}
-
-func newFakeTiKVFailover() *tikvFailover {
-	return &tikvFailover{deps: controller.NewFakeDependencies()}
 }

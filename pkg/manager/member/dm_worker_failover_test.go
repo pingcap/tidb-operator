@@ -276,7 +276,10 @@ func TestWorkerFailoverFailover(t *testing.T) {
 			dc.Spec.Worker.Replicas = 6
 			dc.Spec.Worker.MaxFailoverCount = pointer.Int32Ptr(3)
 			tt.update(dc)
-			workerFailover := &workerFailover{deps: controller.NewFakeDependencies()}
+
+			fakeDeps := controller.NewFakeDependencies()
+			fakeDeps.CLIConfig.WorkerFailoverPeriod = 1 * time.Hour
+			workerFailover := &workerFailover{deps: fakeDeps}
 
 			err := workerFailover.Failover(dc)
 			if tt.err {

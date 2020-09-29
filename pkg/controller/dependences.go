@@ -124,6 +124,7 @@ type Controls struct {
 	ServiceControl     ServiceControlInterface
 	PVCControl         PVCControlInterface
 	GeneralPVCControl  GeneralPVCControlInterface
+	GenericControl     GenericControlInterface
 	PVControl          PVControlInterface
 	PodControl         PodControlInterface
 	TypedControl       TypedControlInterface
@@ -187,6 +188,7 @@ func newRealControls(
 	var (
 		pdControl         = pdapi.NewDefaultPDControl(kubeClientset)
 		masterControl     = dmapi.NewDefaultMasterControl(kubeClientset)
+		genericCtrl       = NewRealGenericControl(genericCli, recorder)
 		tidbClusterLister = informerFactory.Pingcap().V1alpha1().TidbClusters().Lister()
 		dmClusterLister   = informerFactory.Pingcap().V1alpha1().DMClusters().Lister()
 		statefulSetLister = kubeInformerFactory.Apps().V1().StatefulSets().Lister()
@@ -203,8 +205,9 @@ func newRealControls(
 		PVControl:          NewRealPVControl(kubeClientset, pvcLister, pvLister, recorder),
 		PVCControl:         NewRealPVCControl(kubeClientset, recorder, pvcLister),
 		GeneralPVCControl:  NewRealGeneralPVCControl(kubeClientset, recorder),
+		GenericControl:     genericCtrl,
 		PodControl:         NewRealPodControl(kubeClientset, pdControl, podLister, recorder),
-		TypedControl:       NewTypedControl(NewRealGenericControl(genericCli, recorder)),
+		TypedControl:       NewTypedControl(genericCtrl),
 		PDControl:          pdControl,
 		DMMasterControl:    masterControl,
 		TiDBClusterControl: NewRealTidbClusterControl(clientset, tidbClusterLister, recorder),
@@ -215,28 +218,8 @@ func newRealControls(
 	}
 }
 
-// NewDependencies is used to construct the dependencies
-func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface, kubeClientset kubernetes.Interface, genericCli client.Client) *Dependencies {
-	var (
-		options     []informers.SharedInformerOption
-		kubeoptions []kubeinformers.SharedInformerOption
-	)
-	if !cliCfg.ClusterScoped {
-		options = append(options, informers.WithNamespace(ns))
-		kubeoptions = append(kubeoptions, kubeinformers.WithNamespace(ns))
-	}
-
-	// Initialize the informaer factories
-	informerFactory := informers.NewSharedInformerFactoryWithOptions(clientset, cliCfg.ResyncDuration, options...)
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(kubeClientset, cliCfg.ResyncDuration, kubeoptions...)
-
-	// Initialize the event recorder
-	eventBroadcaster := record.NewBroadcasterWithCorrelatorOptions(record.CorrelatorOptions{QPS: 1})
-	eventBroadcaster.StartLogging(klog.V(2).Infof)
-	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
-		Interface: eventv1.New(kubeClientset.CoreV1().RESTClient()).Events("")})
-	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tidb-controller-manager"})
-
+func newDependencies(cliCfg *CLIConfig, clientset versioned.Interface, kubeClientset kubernetes.Interface, genericCli client.Client,
+	informerFactory informers.SharedInformerFactory, kubeInformerFactory kubeinformers.SharedInformerFactory, recorder record.EventRecorder) *Dependencies {
 	return &Dependencies{
 		CLIConfig:           cliCfg,
 		InformerFactory:     informerFactory,
@@ -267,13 +250,37 @@ func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface
 		BackupScheduleLister:        informerFactory.Pingcap().V1alpha1().BackupSchedules().Lister(),
 		TiDBInitializerLister:       informerFactory.Pingcap().V1alpha1().TidbInitializers().Lister(),
 		TiDBMonitorLister:           informerFactory.Pingcap().V1alpha1().TidbMonitors().Lister(),
-
-		// Controls
-		Controls: newRealControls(clientset, kubeClientset, genericCli, informerFactory, kubeInformerFactory, recorder),
 	}
 }
 
+// NewDependencies is used to construct the dependencies
+func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface, kubeClientset kubernetes.Interface, genericCli client.Client) *Dependencies {
+	var (
+		options     []informers.SharedInformerOption
+		kubeoptions []kubeinformers.SharedInformerOption
+	)
+	if !cliCfg.ClusterScoped {
+		options = append(options, informers.WithNamespace(ns))
+		kubeoptions = append(kubeoptions, kubeinformers.WithNamespace(ns))
+	}
+
+	// Initialize the informaer factories
+	informerFactory := informers.NewSharedInformerFactoryWithOptions(clientset, cliCfg.ResyncDuration, options...)
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(kubeClientset, cliCfg.ResyncDuration, kubeoptions...)
+
+	// Initialize the event recorder
+	eventBroadcaster := record.NewBroadcasterWithCorrelatorOptions(record.CorrelatorOptions{QPS: 1})
+	eventBroadcaster.StartLogging(klog.V(2).Infof)
+	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
+		Interface: eventv1.New(kubeClientset.CoreV1().RESTClient()).Events("")})
+	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tidb-controller-manager"})
+	deps := newDependencies(cliCfg, clientset, kubeClientset, genericCli, informerFactory, kubeInformerFactory, recorder)
+	deps.Controls = newRealControls(clientset, kubeClientset, genericCli, informerFactory, kubeInformerFactory, recorder)
+	return deps
+}
+
 func newFakeControl(kubeClientset kubernetes.Interface, informerFactory informers.SharedInformerFactory, kubeInformerFactory kubeinformers.SharedInformerFactory) Controls {
+	genericCtrl := NewFakeGenericControl()
 	// Shared variables to construct `Dependencies` and some of its fields
 	return Controls{
 		ConfigMapControl:   NewFakeConfigMapControl(kubeInformerFactory.Core().V1().ConfigMaps()),
@@ -282,8 +289,9 @@ func newFakeControl(kubeClientset kubernetes.Interface, informerFactory informer
 		PVControl:          NewFakePVControl(kubeInformerFactory.Core().V1().PersistentVolumes(), kubeInformerFactory.Core().V1().PersistentVolumeClaims()),
 		PVCControl:         NewFakePVCControl(kubeInformerFactory.Core().V1().PersistentVolumeClaims()),
 		GeneralPVCControl:  NewFakeGeneralPVCControl(kubeInformerFactory.Core().V1().PersistentVolumeClaims()),
+		GenericControl:     genericCtrl,
 		PodControl:         NewFakePodControl(kubeInformerFactory.Core().V1().Pods()),
-		TypedControl:       NewTypedControl(NewFakeGenericControl()),
+		TypedControl:       NewTypedControl(genericCtrl),
 		PDControl:          pdapi.NewFakePDControl(kubeClientset),
 		DMMasterControl:    dmapi.NewFakeMasterControl(kubeClientset),
 		TiDBClusterControl: NewFakeTidbClusterControl(informerFactory.Pingcap().V1alpha1().TidbClusters()),
@@ -299,9 +307,10 @@ func NewFakeDependencies() *Dependencies {
 	kubeCli := kubefake.NewSimpleClientset()
 	genCli := controllerfake.NewFakeClientWithScheme(scheme.Scheme)
 	cliCfg := DefaultCLIConfig()
-	d := NewDependencies("", cliCfg, cli, kubeCli, genCli)
 	informerFactory := informers.NewSharedInformerFactory(cli, 0)
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
-	d.Controls = newFakeControl(kubeCli, informerFactory, kubeInformerFactory)
-	return d
+	recorder := record.NewFakeRecorder(100)
+	deps := newDependencies(cliCfg, cli, kubeCli, genCli, informerFactory, kubeInformerFactory, recorder)
+	deps.Controls = newFakeControl(kubeCli, informerFactory, kubeInformerFactory)
+	return deps
 }

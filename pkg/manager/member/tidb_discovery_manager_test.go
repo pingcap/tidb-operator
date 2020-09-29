@@ -111,6 +111,7 @@ func TestTidbDiscoveryManager_Reconcile(t *testing.T) {
 }
 
 func newFakeTidbDiscoveryManager() (*realTidbDiscoveryManager, *controller.FakeGenericControl) {
-	ctrl := controller.NewFakeGenericControl()
-	return &realTidbDiscoveryManager{deps: controller.NewFakeDependencies()}, ctrl
+	fakeDeps := controller.NewFakeDependencies()
+	ctrl := fakeDeps.GenericControl.(*controller.FakeGenericControl)
+	return &realTidbDiscoveryManager{deps: fakeDeps}, ctrl
 }

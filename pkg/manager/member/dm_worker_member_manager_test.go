@@ -707,7 +707,7 @@ func newFakeWorkerMemberManager() (*workerMemberManager, *workerFakeControls, *w
 	controls := &workerFakeControls{
 		svc:     fakeDeps.ServiceControl.(*controller.FakeServiceControl),
 		set:     fakeDeps.StatefulSetControl.(*controller.FakeStatefulSetControl),
-		generic: controller.NewFakeGenericControl(),
+		generic: fakeDeps.GenericControl.(*controller.FakeGenericControl),
 	}
 	indexers := &workerFakeIndexers{
 		svc: fakeDeps.KubeInformerFactory.Core().V1().Services().Informer().GetIndexer(),

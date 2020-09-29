@@ -313,13 +313,12 @@ func TestTiDBFailoverFailover(t *testing.T) {
 			defer cancel()
 
 			fakeDeps := controller.NewFakeDependencies()
-			fakeDeps.KubeInformerFactory.Start(ctx.Done())
-			fakeDeps.KubeInformerFactory.WaitForCacheSync(ctx.Done())
-
 			for _, pod := range test.pods {
 				fakeDeps.KubeClientset.CoreV1().Pods(pod.Namespace).Create(pod)
 			}
 			tidbFailover := NewTiDBFailover(fakeDeps)
+			fakeDeps.KubeInformerFactory.Start(ctx.Done())
+			fakeDeps.KubeInformerFactory.WaitForCacheSync(ctx.Done())
 			tc := newTidbClusterForTiDBFailover()
 			test.update(tc)
 			err := tidbFailover.Failover(tc)
@@ -487,9 +486,9 @@ func TestTiDBFailoverRecover(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			fakeDeps := controller.NewFakeDependencies()
+			tidbFailover := NewTiDBFailover(fakeDeps)
 			fakeDeps.KubeInformerFactory.Start(ctx.Done())
 			fakeDeps.KubeInformerFactory.WaitForCacheSync(ctx.Done())
-			tidbFailover := NewTiDBFailover(fakeDeps)
 			tc := newTidbClusterForTiDBFailover()
 			test.update(tc)
 			tidbFailover.Recover(tc)

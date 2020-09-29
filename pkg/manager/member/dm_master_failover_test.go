@@ -440,6 +440,7 @@ func TestMasterFailoverFailover(t *testing.T) {
 			test.update(dc)
 
 			masterFailover, pvcIndexer, podIndexer, fakeMasterControl, fakePodControl, fakePVCControl := newFakeMasterFailover()
+			masterFailover.deps.Recorder = recorder
 			masterClient := controller.NewFakeMasterClient(fakeMasterControl, dc)
 
 			masterClient.AddReaction(dmapi.DeleteMasterActionType, func(action *dmapi.Action) (interface{}, error) {
@@ -585,11 +586,11 @@ func newFakeMasterFailover() (*masterFailover, cache.Indexer, cache.Indexer, *dm
 	fakeDeps := controller.NewFakeDependencies()
 	failover := &masterFailover{deps: fakeDeps}
 	pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
-	pvIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumes().Informer().GetIndexer()
+	podIndexer := fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer()
 	masterControl := fakeDeps.DMMasterControl.(*dmapi.FakeMasterControl)
 	podControl := fakeDeps.PodControl.(*controller.FakePodControl)
 	pvcControl := fakeDeps.PVCControl.(*controller.FakePVCControl)
-	return failover, pvcIndexer, pvIndexer, masterControl, podControl, pvcControl
+	return failover, pvcIndexer, podIndexer, masterControl, podControl, pvcControl
 }
 
 func oneFailureMasterMember(dc *v1alpha1.DMCluster) {

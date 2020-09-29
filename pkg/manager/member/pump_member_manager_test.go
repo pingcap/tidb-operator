@@ -437,7 +437,7 @@ func newFakePumpMemberManager() (*pumpMemberManager, *pumpFakeControls, *pumpFak
 	controls := &pumpFakeControls{
 		svc:     fakeDeps.ServiceControl.(*controller.FakeServiceControl),
 		set:     fakeDeps.StatefulSetControl.(*controller.FakeStatefulSetControl),
-		generic: controller.NewFakeGenericControl(),
+		generic: fakeDeps.GenericControl.(*controller.FakeGenericControl),
 	}
 	indexers := &pumpFakeIndexers{
 		tc:  fakeDeps.InformerFactory.Pingcap().V1alpha1().TidbClusters().Informer().GetIndexer(),

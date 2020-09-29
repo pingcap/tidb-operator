@@ -469,6 +469,7 @@ func TestPDFailoverFailover(t *testing.T) {
 			test.update(tc)
 
 			pdFailover, pvcIndexer, podIndexer, fakePDControl, fakePodControl, fakePVCControl := newFakePDFailover()
+			pdFailover.deps.Recorder = recorder
 			pdClient := controller.NewFakePDClient(fakePDControl, tc)
 
 			pdClient.AddReaction(pdapi.DeleteMemberByIDActionType, func(action *pdapi.Action) (interface{}, error) {
