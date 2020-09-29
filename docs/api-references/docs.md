@@ -2134,13 +2134,13 @@ default to current tidb cluster version, for example: v3.0.15</p>
 </tr>
 <tr>
 <td>
-<code>ClusterScoped</code></br>
+<code>clusterScoped</code></br>
 <em>
 bool
 </em>
 </td>
 <td>
-<p>ClusterScoped controls whether monitor should manage kubernetes cluster wide TiDB clusters</p>
+<p>ClusterScoped indicates whether this monitor should manage Kubernetes cluster-wide TiDB clusters</p>
 </td>
 </tr>
 </table>
@@ -18936,13 +18936,13 @@ default to current tidb cluster version, for example: v3.0.15</p>
 </tr>
 <tr>
 <td>
-<code>ClusterScoped</code></br>
+<code>clusterScoped</code></br>
 <em>
 bool
 </em>
 </td>
 <td>
-<p>ClusterScoped controls whether monitor should manage kubernetes cluster wide TiDB clusters</p>
+<p>ClusterScoped indicates whether this monitor should manage Kubernetes cluster-wide TiDB clusters</p>
 </td>
 </tr>
 </tbody>
