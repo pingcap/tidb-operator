@@ -31,7 +31,29 @@ import (
 
 const groupLabelKey = "group"
 
-func (am *autoScalerManager) syncPlans(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, plans []pdapi.Plan) error {
+func (am *autoScalerManager) getAutoScaledClusters(tac *v1alpha1.TidbClusterAutoScaler, components []v1alpha1.MemberType) (tcList []*v1alpha1.TidbCluster, err error) {
+	componentStrings := make([]string, len(components))
+	for _, component := range components {
+		componentStrings = append(componentStrings, component.String())
+	}
+
+	// Filter all autoscaled TidbClusters
+	requirement, err := labels.NewRequirement(label.AutoInstanceLabelKey, selection.Equals, []string{tac.Name})
+	if err != nil {
+		return
+	}
+
+	componentRequirement, err := labels.NewRequirement(label.AutoComponentLabelKey, selection.In, componentStrings)
+	if err != nil {
+		return
+	}
+
+	selector := labels.NewSelector().Add(*requirement).Add(*componentRequirement)
+	tcList, err = am.deps.TiDBClusterLister.TidbClusters(tac.Spec.Cluster.Namespace).List(selector)
+	return
+}
+
+func (am *autoScalerManager) syncPlans(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, plans []pdapi.Plan, component v1alpha1.MemberType) error {
 	planGroups := sets.String{}
 	groupPlanMap := make(map[string]pdapi.Plan)
 	for _, plan := range plans {
@@ -40,13 +62,7 @@ func (am *autoScalerManager) syncPlans(tc *v1alpha1.TidbCluster, tac *v1alpha1.T
 		groupPlanMap[groupName] = plan
 	}
 
-	// Filter all autoscaled TidbClusters
-	requirement, err := labels.NewRequirement(label.AutoScalingGroupLabelKey, selection.Exists, nil)
-	if err != nil {
-		return err
-	}
-	selector := labels.NewSelector().Add(*requirement)
-	tcList, err := am.deps.TiDBClusterLister.TidbClusters(tc.Namespace).List(selector)
+	tcList, err := am.getAutoScaledClusters(tac, []v1alpha1.MemberType{component})
 	if err != nil {
 		return err
 	}
@@ -54,7 +70,11 @@ func (am *autoScalerManager) syncPlans(tc *v1alpha1.TidbCluster, tac *v1alpha1.T
 	existedGroups := sets.String{}
 	groupTcMap := make(map[string]*v1alpha1.TidbCluster)
 	for _, tc := range tcList {
-		groupName := tc.Labels[label.AutoScalingGroupLabelKey]
+		groupName, ok := tc.Labels[label.AutoScalingGroupLabelKey]
+		if !ok {
+			// External Autoscaling Clusters do not have group
+			continue
+		}
 		if len(groupName) == 0 {
 			klog.Errorf("unexpected: tidbcluster [%s/%s] has empty value for label %s", tc.Namespace, tc.Name, label.AutoScalingGroupLabelKey)
 			continue
@@ -135,12 +155,14 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 	for _, group := range groupsToCreate {
 		plan := groupPlanMap[group]
 		component := plan.Component
+		resources := getSpecResources(tac, v1alpha1.MemberType(component))
 
-		if !checkAutoscalingComponent(tac, component) {
+		if resources == nil {
+			errs = append(errs, fmt.Errorf("unknown component %s for group %s tac[%s/%s]", component, group, tac.Namespace, tac.Name))
 			continue
 		}
 
-		resource, ok := tac.Spec.Resources[plan.ResourceType]
+		resource, ok := resources[plan.ResourceType]
 		if !ok {
 			errs = append(errs, fmt.Errorf("unknown resource type %v for group %s tac[%s/%s]", plan.ResourceType, plan.Labels[groupLabelKey], tac.Namespace, tac.Name))
 			continue
