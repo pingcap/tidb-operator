@@ -1067,7 +1067,6 @@ func schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerSpec(ref common.ReferenceCa
 						},
 					},
 				},
-				Required: []string{"maxReplicas"},
 			},
 		},
 		Dependencies: []string{
@@ -9549,7 +9548,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbAutoScalerSpec(ref common.ReferenceCal
 						},
 					},
 				},
-				Required: []string{"maxReplicas"},
 			},
 		},
 		Dependencies: []string{
@@ -10727,7 +10725,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TikvAutoScalerSpec(ref common.ReferenceCal
 						},
 					},
 				},
-				Required: []string{"maxReplicas"},
 			},
 		},
 		Dependencies: []string{

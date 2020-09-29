@@ -18047,8 +18047,6 @@ spec:
                 scaleOutIntervalSeconds:
                   format: int32
                   type: integer
-              required:
-              - maxReplicas
               type: object
             tikv:
               properties:
@@ -18105,8 +18103,6 @@ spec:
                 scaleOutIntervalSeconds:
                   format: int32
                   type: integer
-              required:
-              - maxReplicas
               type: object
           required:
           - cluster

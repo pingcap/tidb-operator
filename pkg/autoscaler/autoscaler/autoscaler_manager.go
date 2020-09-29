@@ -167,10 +167,6 @@ func (am *autoScalerManager) syncAutoScaling(tc *v1alpha1.TidbCluster, tac *v1al
 		}
 	}
 
-	if err := am.syncMonitor(tc, tac); err != nil {
-		errs = append(errs, err)
-	}
-
 	klog.Infof("tc[%s/%s]'s tac[%s/%s] synced", tc.Namespace, tc.Name, tac.Namespace, tac.Name)
 	return errorutils.NewAggregate(errs)
 }

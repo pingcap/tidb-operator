@@ -126,6 +126,7 @@ type BasicAutoScalerSpec struct {
 	// maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out.
 	// It cannot be less than minReplicas.
 	// Deprecated
+	// +optional
 	MaxReplicas int32 `json:"maxReplicas"`
 
 	// minReplicas is the lower limit for the number of replicas to which the autoscaler
