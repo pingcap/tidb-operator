@@ -403,6 +403,7 @@ func newAutoScalingCluster(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAu
 			Name:      autoTcName,
 			Namespace: tc.Namespace,
 			Labels: map[string]string{
+				label.BaseTCLabelKey:        tc.Name,
 				label.AutoInstanceLabelKey:  tac.Name,
 				label.AutoComponentLabelKey: component,
 			},
