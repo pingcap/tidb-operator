@@ -146,115 +146,6 @@ func TestCheckStsAutoScalingPrerequisites(t *testing.T) {
 
 }
 
-func TestLimitTargetReplicas(t *testing.T) {
-	g := NewGomegaWithT(t)
-	tests := []struct {
-		name             string
-		targetReplicas   int32
-		minReplicas      int32
-		maxReplicas      int32
-		memberType       v1alpha1.MemberType
-		expectedReplicas int32
-	}{
-		{
-			name:             "tikv,smaller than min",
-			targetReplicas:   1,
-			minReplicas:      2,
-			maxReplicas:      4,
-			memberType:       v1alpha1.TiKVMemberType,
-			expectedReplicas: 2,
-		},
-		{
-			name:             "tikv,equal min",
-			targetReplicas:   2,
-			minReplicas:      2,
-			maxReplicas:      4,
-			memberType:       v1alpha1.TiKVMemberType,
-			expectedReplicas: 2,
-		},
-		{
-			name:             "tikv,bigger than min, smaller than max",
-			targetReplicas:   3,
-			minReplicas:      2,
-			maxReplicas:      4,
-			memberType:       v1alpha1.TiKVMemberType,
-			expectedReplicas: 3,
-		},
-		{
-			name:             "tikv,equal max",
-			targetReplicas:   4,
-			minReplicas:      2,
-			maxReplicas:      4,
-			memberType:       v1alpha1.TiKVMemberType,
-			expectedReplicas: 4,
-		},
-		{
-			name:             "tikv,greater than max",
-			targetReplicas:   5,
-			minReplicas:      2,
-			maxReplicas:      4,
-			memberType:       v1alpha1.TiKVMemberType,
-			expectedReplicas: 4,
-		},
-		//tidb
-		{
-			name:             "tidb,smaller than min",
-			targetReplicas:   1,
-			minReplicas:      2,
-			maxReplicas:      4,
-			memberType:       v1alpha1.TiDBMemberType,
-			expectedReplicas: 2,
-		},
-		{
-			name:             "tidb,equal min",
-			targetReplicas:   2,
-			minReplicas:      2,
-			maxReplicas:      4,
-			memberType:       v1alpha1.TiDBMemberType,
-			expectedReplicas: 2,
-		},
-		{
-			name:             "tidb,bigger than min, smaller than max",
-			targetReplicas:   3,
-			minReplicas:      2,
-			maxReplicas:      4,
-			memberType:       v1alpha1.TiDBMemberType,
-			expectedReplicas: 3,
-		},
-		{
-			name:             "tidb,equal max",
-			targetReplicas:   4,
-			minReplicas:      2,
-			maxReplicas:      4,
-			memberType:       v1alpha1.TiDBMemberType,
-			expectedReplicas: 4,
-		},
-		{
-			name:             "tidb,greater than max",
-			targetReplicas:   5,
-			minReplicas:      2,
-			maxReplicas:      4,
-			memberType:       v1alpha1.TiDBMemberType,
-			expectedReplicas: 4,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tac := newTidbClusterAutoScaler()
-			if tt.memberType == v1alpha1.TiKVMemberType {
-				tac.Spec.TiKV.MinReplicas = pointer.Int32Ptr(tt.minReplicas)
-				tac.Spec.TiKV.MaxReplicas = tt.maxReplicas
-			} else if tt.memberType == v1alpha1.TiDBMemberType {
-				tac.Spec.TiDB.MinReplicas = pointer.Int32Ptr(tt.minReplicas)
-				tac.Spec.TiDB.MaxReplicas = tt.maxReplicas
-			}
-			r := limitTargetReplicas(tt.targetReplicas, tac, tt.memberType)
-			g.Expect(tt.expectedReplicas).Should(Equal(r))
-		})
-	}
-}
-
 func TestDefaultTac(t *testing.T) {
 	g := NewGomegaWithT(t)
 	tc := newTidbCluster()
@@ -275,7 +166,7 @@ func TestDefaultTac(t *testing.T) {
 	g.Expect(*tac.Spec.TiKV.MetricsTimeDuration).Should(Equal("3m"))
 	g.Expect(*tac.Spec.TiKV.ScaleOutIntervalSeconds).Should(Equal(int32(300)))
 	g.Expect(*tac.Spec.TiKV.ScaleInIntervalSeconds).Should(Equal(int32(500)))
-	g.Expect(tac.Spec.Resources).Should(Equal(map[string]v1alpha1.AutoResource{
+	g.Expect(tac.Spec.TiKV.Resources).Should(Equal(map[string]v1alpha1.AutoResource{
 		"default_tikv": {
 			CPU:     tc.Spec.TiKV.Requests.Cpu().DeepCopy(),
 			Memory:  tc.Spec.TiKV.Requests.Memory().DeepCopy(),
@@ -302,7 +193,7 @@ func TestDefaultTac(t *testing.T) {
 	g.Expect(*tac.Spec.TiDB.MetricsTimeDuration).Should(Equal("3m"))
 	g.Expect(*tac.Spec.TiDB.ScaleOutIntervalSeconds).Should(Equal(int32(300)))
 	g.Expect(*tac.Spec.TiDB.ScaleInIntervalSeconds).Should(Equal(int32(500)))
-	g.Expect(tac.Spec.Resources).Should(Equal(map[string]v1alpha1.AutoResource{
+	g.Expect(tac.Spec.TiDB.Resources).Should(Equal(map[string]v1alpha1.AutoResource{
 		"default_tidb": {
 			CPU:     tc.Spec.TiDB.Requests.Cpu().DeepCopy(),
 			Memory:  tc.Spec.TiDB.Requests.Memory().DeepCopy(),
@@ -324,11 +215,7 @@ func TestDefaultTac(t *testing.T) {
 			MaxThreshold: 0.8,
 		},
 	}
-	tac.Spec.Resources = map[string]v1alpha1.AutoResource{
-		"compute": {
-			CPU:    resource.MustParse("1000m"),
-			Memory: resource.MustParse("2Gi"),
-		},
+	tac.Spec.TiKV.Resources = map[string]v1alpha1.AutoResource{
 		"storage": {
 			CPU:     resource.MustParse("1000m"),
 			Memory:  resource.MustParse("2Gi"),
@@ -361,7 +248,7 @@ func TestDefaultTac(t *testing.T) {
 	}
 	defaultTAC(tac, tc)
 	g.Expect(tac.Spec.TiKV.Rules[corev1.ResourceStorage].ResourceTypes).Should(ConsistOf([]string{"default_tikv"}))
-	g.Expect(tac.Spec.TiDB.Rules[corev1.ResourceCPU].ResourceTypes).Should(ConsistOf([]string{"default_tidb", "default_tikv"}))
+	g.Expect(tac.Spec.TiDB.Rules[corev1.ResourceCPU].ResourceTypes).Should(ConsistOf([]string{"default_tidb"}))
 }
 
 func TestGenMetricsEndpoint(t *testing.T) {
@@ -391,22 +278,18 @@ func TestGenMetricsEndpoint(t *testing.T) {
 func TestAutoscalerToStrategy(t *testing.T) {
 	g := NewGomegaWithT(t)
 	tac := newTidbClusterAutoScaler()
-	tac.Spec.Resources = map[string]v1alpha1.AutoResource{
-		"resource_a": {
-			CPU:     resource.MustParse("1000m"),
-			Memory:  resource.MustParse("8Gi"),
-			Storage: resource.MustParse("1000Gi"),
-			Count:   pointer.Int32Ptr(2),
+	tac.Spec.TiDB.Resources = map[string]v1alpha1.AutoResource{
+		"compute": {
+			CPU:    resource.MustParse("8000m"),
+			Memory: resource.MustParse("16Gi"),
 		},
-		"resource_b": {
+	}
+	tac.Spec.TiKV.Resources = map[string]v1alpha1.AutoResource{
+		"storage": {
 			CPU:     resource.MustParse("2000m"),
 			Memory:  resource.MustParse("4Gi"),
 			Storage: resource.MustParse("2000Gi"),
 			Count:   pointer.Int32Ptr(4),
-		},
-		"compute": {
-			CPU:    resource.MustParse("8000m"),
-			Memory: resource.MustParse("16Gi"),
 		},
 	}
 	tac.Spec.TiDB.Rules = make(map[corev1.ResourceName]v1alpha1.AutoRule)
@@ -421,13 +304,13 @@ func TestAutoscalerToStrategy(t *testing.T) {
 		MinThreshold:  pointer.Float64Ptr(0.2),
 		ResourceTypes: []string{"resource_a", "resource_b"},
 	}
-	tac.Spec.TiKV.Rules[corev1.ResourceStorage] = v1alpha1.AutoRule{
-		MaxThreshold:  0.8,
-		ResourceTypes: []string{"resource_a"},
-	}
-	strategy := autoscalerToStrategy(tac)
-	g.Expect(len(strategy.Resources)).Should(Equal(3))
-	g.Expect(len(strategy.Rules)).Should(Equal(2))
+	tidbStrategy := autoscalerToStrategy(tac, v1alpha1.TiDBMemberType)
+	g.Expect(len(tidbStrategy.Resources)).Should(Equal(1))
+	g.Expect(len(tidbStrategy.Rules)).Should(Equal(1))
+
+	tikvStrategy := autoscalerToStrategy(tac, v1alpha1.TiKVMemberType)
+	g.Expect(len(tikvStrategy.Resources)).Should(Equal(1))
+	g.Expect(len(tikvStrategy.Rules)).Should(Equal(1))
 }
 
 func TestValidateTidbClusterAutoScaler(t *testing.T) {
@@ -437,7 +320,7 @@ func TestValidateTidbClusterAutoScaler(t *testing.T) {
 
 	tac := newTidbClusterAutoScaler()
 	tac.Spec.TiKV = nil
-	tac.Spec.Resources = map[string]v1alpha1.AutoResource{
+	tac.Spec.TiDB.Resources = map[string]v1alpha1.AutoResource{
 		"compute": {
 			Memory: resource.MustParse("2Gi"),
 			CPU:    resource.MustParse("1000m"),
@@ -498,42 +381,30 @@ func TestValidateTidbClusterAutoScaler(t *testing.T) {
 	err = validateTAC(tac)
 	g.Expect(err).Should(MatchError(fmt.Errorf("min_threshold (%v) > max_threshold (%v) for cpu rule of tidb in %s/%s", minThreshold, 0.05, tac.Namespace, tac.Name)))
 
-	// Case 6: Resource does not have storage for storage rule
+	// Case 6: Resource does not have storage for tikv
 	tac.Spec.TiDB = nil
 	tac.Spec.TiKV = &v1alpha1.TikvAutoScalerSpec{
 		BasicAutoScalerSpec: v1alpha1.BasicAutoScalerSpec{
 			Rules: map[corev1.ResourceName]v1alpha1.AutoRule{
-				corev1.ResourceStorage: {
+				corev1.ResourceCPU: {
 					MaxThreshold:  0.8,
 					ResourceTypes: []string{"compute"},
 				},
 			},
 		},
 	}
-	err = validateTAC(tac)
-	g.Expect(err).Should(MatchError(fmt.Errorf("resource compute specified for storage rule for tikv in %s/%s does not have storage", tac.Namespace, tac.Name)))
-
-	// Case 7: No storage resources provided and no resources specified for TiKV, no resources after defaulting
-	tac.Spec.TiKV.BasicAutoScalerSpec.Rules[corev1.ResourceStorage] = v1alpha1.AutoRule{
-		MaxThreshold: 0.8,
-	}
-	defaultTAC(tac, newTidbCluster())
-	err = validateTAC(tac)
-	g.Expect(err).Should(MatchError(fmt.Errorf("no resources provided for rule storage of tikv in %s/%s", tac.Namespace, tac.Name)))
-
-	// Case 8: Valid spec
-	tac = newTidbClusterAutoScaler()
-	tac.Spec.Resources = map[string]v1alpha1.AutoResource{
+	tac.Spec.TiKV.Resources = map[string]v1alpha1.AutoResource{
 		"compute": {
 			Memory: resource.MustParse("2Gi"),
 			CPU:    resource.MustParse("1000m"),
 		},
-		"storage": {
-			Memory:  resource.MustParse("2Gi"),
-			CPU:     resource.MustParse("1000m"),
-			Storage: resource.MustParse("1000Gi"),
-		},
 	}
+	err = validateTAC(tac)
+	g.Expect(err).Should(MatchError(fmt.Errorf("resource compute defined for tikv does not have storage in %s/%s", tac.Namespace, tac.Name)))
+
+	// Case 7: Valid spec
+	tac = newTidbClusterAutoScaler()
+
 	tac.Spec.TiDB.BasicAutoScalerSpec = v1alpha1.BasicAutoScalerSpec{
 		Rules: map[corev1.ResourceName]v1alpha1.AutoRule{
 			corev1.ResourceCPU: {
@@ -548,12 +419,21 @@ func TestValidateTidbClusterAutoScaler(t *testing.T) {
 			corev1.ResourceCPU: {
 				MaxThreshold:  0.8,
 				MinThreshold:  &minThreshold,
-				ResourceTypes: []string{"compute"},
-			},
-			corev1.ResourceStorage: {
-				MaxThreshold:  0.8,
 				ResourceTypes: []string{"storage"},
 			},
+		},
+	}
+	tac.Spec.TiDB.Resources = map[string]v1alpha1.AutoResource{
+		"compute": {
+			Memory: resource.MustParse("2Gi"),
+			CPU:    resource.MustParse("1000m"),
+		},
+	}
+	tac.Spec.TiKV.Resources = map[string]v1alpha1.AutoResource{
+		"storage": {
+			Memory:  resource.MustParse("2Gi"),
+			CPU:     resource.MustParse("1000m"),
+			Storage: resource.MustParse("1000Gi"),
 		},
 	}
 	err = validateTAC(tac)
