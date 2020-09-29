@@ -126,13 +126,13 @@ func (am *autoScalerManager) syncPD(tc *v1alpha1.TidbCluster, tac *v1alpha1.Tidb
 	// Request PD for auto-scaling plans
 	plans, err := controller.GetPDClient(am.pdControl, tc).GetAutoscalingPlans(*strategy)
 	if err != nil {
-		klog.Errorf("cannot get auto-scaling plans for tac[%s/%s] err:%v", tac.Namespace, tac.Name, err)
+		klog.Errorf("tac[%s/%s] cannot get auto-scaling plans for component %v err:%v", tac.Namespace, tac.Name, component, err)
 		return err
 	}
 
 	// Apply auto-scaling plans
 	if err := am.syncPlans(tc, tac, plans, component); err != nil {
-		klog.Errorf("cannot apply autoscaling plans for tac[%s/%s] err:%v", tac.Namespace, tac.Name, err)
+		klog.Errorf("tac[%s/%s] cannot apply autoscaling plans for component %v err:%v", tac.Namespace, tac.Name, component, err)
 		return err
 	}
 	return nil
