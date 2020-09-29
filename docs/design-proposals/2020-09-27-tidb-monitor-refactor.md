@@ -1,56 +1,35 @@
 # TiDB Monitor Refactor
-
 ## Summary
-
-This document presents a design to refactor tidb monitor,solve some problems in monitoring uniformly.
-
+This document presents a design to refactor TiDB Monitor architecture to solve some issues in monitoring and do some improvements.
 ## Motivation
-
-Currently, it is not friendly that tidbmonitor monitor multiple cluster under the same namespaces or different namespaces.In a multi-cluster TLS environment, the cert of tidbmonitor is bound to the first cluster of the `cluster` Spec ,we should eliminate this binding relationship.
-Secondly,tidbmonitor is also a statefulset application,we should switch to statefulset deploy from deployment crd,this process should smooth upgrade.
-Also, many users will integrate the company’s existing monitoring system, we should support thanos sidecar spec refer to the Prometheus operator, and optimize metric service and provide googe yaml example like `ServiceMonitor` ,`thanos` etc.
-Others are some small optimization points,providing more field for `kubectl get tidbmonitor`  command, supporting multiple cluster grafana dashborad,optimizing pd dashboard address writing logic,fulling e2e and unit testing etc.
-
-After discussion, we will not support monitor multiple clusters in tls environments because users must ensure that all monitored clusters use the same CA certificate,but autos-scale cluster or heterogeneous cluster need to use origin cluster certificate.
-We want to split the client secret of the monitor and the client secret of the cluster,eliminate this binding relationship that tidbmonitor secret bound to the firsrt cluster of the `cluster` Spec in mutiple clusters.But the user must rely on himself to ensure that the monitor's certificate is correct.
-We think it is unreliable rely on user himself,so we just support monitor multiple clusters in non-tls environment and providing other methods to solve the monitoring of tls environment,for example thanos query. 
-
+Fix the issues mentioned in https://github.com/pingcap/tidb-operator/issues/3292#issue-705145308.
 ### Goals
-
-* Make TidbMonitor able to monitor multiple TidbClusters at non-TLS environment.
+* Make TidbMonitor able to monitor multiple TidbClusters in non-TLS environment.
 * Improve the monitor's Unit and E2E test.
-* Smooth upgrade deployment to statefulset.
-* Support thanos sidecar and more friendly integration of Prometheus operator.
-
+* Smooth upgrade from deployment to StatefulSet.
+* Support Thanos sidecar and more friendly integration of Prometheus operator.
 ### Non-Goals
-
-
+* Improve the robustness of tidbmonitor,for example multiple cluster,code level.
+* Meet most of the needs of users and make monitoring easier to use.
 ## Proposal
-
-
-* Check tidbmonitor monitor multiple clusters cross multiple ns in non-tls environments.
-* Support multiple cluster grafana dashboard.
-	
-* Smooth upgrade deployment to statefulset.
-* Support thanos spec and optimize thanos example.
-* Optimze tidb service,more friendly support prometheus operator `ServiceMonitor`.
-* Refactor for pd dashboard address writing.
-
-
-* Fix combination of Kubernetes monitoring and TiDB cluster monitoring.
-* Add more external field for  `kubectl get tm` command.
-
-
+- Tidbmonitor monitors multiple clusters across multiple ns in non-TLS environments.
+- Support generating the Grafana dashboard of multiple clusters.
+- Smooth upgrade from deployment to StatefulSet.
+- Support Thanos spec and optimize Thanos example.
+- Optimize TiDB service, more friendly support with Prometheus operator `ServiceMonitor`.
+- Refactor for PD dashboard address writing.
+- Fix the combination of Kubernetes monitoring and TiDB cluster monitoring.
+- Add more external fields for `kubectl get tm` command.
 ### Test Plan
-
-* Deploy tidbmonitor monitor multiple clusters cross multiple ns in tls and non-tls environments.
-* Deploy tidbmonitor monitor multiple clusters cross same ns in tls and non-tls environments.
-* Deploy tidbmonitor monitor smoothly upgrade to statefulset.
-* Deploy tidbmointor with thanos sidecar,checking thanos metric data.
-* Use prometheus operator `ServiceMonitor` monitor tidb.
-
+* Deploy Tidbmonitor to monitor a TiDB cluster, StatefulSet and PVC are automatically created and monitoring works as expected.
+* Deploy Tidbmonitor to monitor a TiDB cluster with old version TiDB Operator, after upgrading to the new version, StatefulSet is created, Pod is bound to the old PVC and monitoring works as expected, the old monitoring data can also be retrieved.
+* Be able to monitor multiple TiDB Clusters with one TidbMonitor with TLS disabled
+* Be able to monitor multiple TiDB Clusters with users own Prometheus
+* Be able to aggregate the monitoring data of multiple TiDB Clusters with TLS disabled
+* Be able to aggregate the monitoring data of multiple TiDB Clusters with TLS enabled
+* All of the dashboards of TidbMonitor can show correctly by default especially the ones from Kubernetes monitoring
+* Show reasonable and useful fields for `kubectl get tm` command
+* The TiDB dashboard works as expected except for the non-supported functions in the official doc
+* Grafana dashboards are shown clearly for different clusters
 ## Drawbacks
-
-* Make monitoring easier to use.
-
 ## Alternatives
