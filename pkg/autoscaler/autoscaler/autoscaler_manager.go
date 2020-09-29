@@ -104,21 +104,18 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 }
 
 func (am *autoScalerManager) syncExternal(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) error {
-	var targetReplicas int32
-	var err error
+	var endpoint *v1alpha1.ExternalEndpoint
 	switch component {
 	case v1alpha1.TiDBMemberType:
-		targetReplicas, err = query.ExternalService(tc, v1alpha1.TiDBMemberType, tac.Spec.TiDB.External.Endpoint, am.kubecli)
-		if err != nil {
-			klog.Errorf("tac[%s/%s] 's query to the external endpoint got error: %v", tac.Namespace, tac.Name, err)
-			return err
-		}
+		endpoint = &tac.Spec.TiDB.External.Endpoint
 	case v1alpha1.TiKVMemberType:
-		targetReplicas, err = query.ExternalService(tc, v1alpha1.TiKVMemberType, tac.Spec.TiKV.External.Endpoint, am.kubecli)
-		if err != nil {
-			klog.Errorf("tac[%s/%s] 's query to the external endpoint got error: %v", tac.Namespace, tac.Name, err)
-			return err
-		}
+		endpoint = &tac.Spec.TiKV.External.Endpoint
+	}
+
+	targetReplicas, err := query.ExternalService(tc, component, *endpoint, am.kubecli)
+	if err != nil {
+		klog.Errorf("tac[%s/%s]'s query to the external endpoint for component %s got error: %v", tac.Namespace, tac.Name, component.String(), err)
+		return err
 	}
 
 	return am.syncExternalResult(tc, tac, component, targetReplicas)
