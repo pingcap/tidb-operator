@@ -211,3 +211,27 @@ func (am *autoScalerManager) updateTidbClusterAutoScaler(tac *v1alpha1.TidbClust
 	}
 	return err
 }
+
+func (am *autoScalerManager) gracefullyDeleteTidbCluster(deleteTc *v1alpha1.TidbCluster) error {
+	// Remove cluster
+	// If there are TiKV pods, delete the cluster gracefully because we need to transfer data
+	if deleteTc.Spec.TiKV != nil {
+		// The TC is not shutting down, set replicas to 0 to trigger data transfer
+		if deleteTc.Spec.TiKV.Replicas != 0 {
+			cloned := deleteTc.DeepCopy()
+			cloned.Spec.TiKV.Replicas = 0
+			_, err := am.tcControl.UpdateTidbCluster(cloned, &cloned.Status, &deleteTc.Status)
+			if err != nil {
+				return err
+			}
+		} else {
+			// The TC is shutting down, check for its status if all pods have been deleted
+			if deleteTc.Status.TiKV.StatefulSet.Replicas != 0 {
+				// Still shutting down, do nothing
+				return nil
+			}
+		}
+	}
+
+	return am.cli.PingcapV1alpha1().TidbClusters(deleteTc.Namespace).Delete(deleteTc.Name, nil)
+}

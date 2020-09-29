@@ -44,7 +44,7 @@ func (am *autoScalerManager) syncExternalResult(tc *v1alpha1.TidbCluster, tac *v
 	}
 
 	if targetReplicas <= 0 {
-		err := am.cli.PingcapV1alpha1().TidbClusters(externalTc.Namespace).Delete(externalTc.Name, nil)
+		err := am.gracefullyDeleteTidbCluster(externalTc)
 		if err != nil {
 			klog.Errorf("tac[%s/%s] failed to delete external tc[%s/%s], err: %v", tac.Namespace, tac.Name, tc.Namespace, externalTcName, err)
 		}

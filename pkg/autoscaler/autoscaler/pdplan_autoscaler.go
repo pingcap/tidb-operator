@@ -108,8 +108,7 @@ func (am *autoScalerManager) deleteAutoscalingClusters(tc *v1alpha1.TidbCluster,
 	for _, group := range groupsToDelete {
 		deleteTc := groupTcMap[group]
 
-		// Remove cluster
-		err := am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Delete(deleteTc.Name, nil)
+		err := am.gracefullyDeleteTidbCluster(deleteTc)
 		if err != nil {
 			errs = append(errs, err)
 			continue
