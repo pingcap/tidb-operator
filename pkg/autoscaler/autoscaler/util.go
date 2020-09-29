@@ -59,26 +59,6 @@ func checkStsAutoScalingInterval(tac *v1alpha1.TidbClusterAutoScaler, intervalSe
 	return true, nil
 }
 
-// limitTargetReplicas would limit the calculated target replicas to ensure the min/max Replicas
-func limitTargetReplicas(targetReplicas int32, tac *v1alpha1.TidbClusterAutoScaler, memberType v1alpha1.MemberType) int32 {
-	var min, max int32
-	switch memberType {
-	case v1alpha1.TiKVMemberType:
-		min, max = *tac.Spec.TiKV.MinReplicas, tac.Spec.TiKV.MaxReplicas
-	case v1alpha1.TiDBMemberType:
-		min, max = *tac.Spec.TiDB.MinReplicas, tac.Spec.TiDB.MaxReplicas
-	default:
-		return targetReplicas
-	}
-	if targetReplicas > max {
-		return max
-	}
-	if targetReplicas < min {
-		return min
-	}
-	return targetReplicas
-}
-
 func defaultResources(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) {
 	typ := fmt.Sprintf("default_%s", component.String())
 	resource := v1alpha1.AutoResource{}
@@ -409,12 +389,6 @@ func newAutoScalingCluster(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAu
 			},
 			OwnerReferences: []metav1.OwnerReference{
 				controller.GetTiDBClusterAutoScalerOwnerRef(tac),
-			},
-		},
-		Status: v1alpha1.TidbClusterStatus{
-			AutoScaler: &v1alpha1.TidbClusterAutoScalerRef{
-				Name:      tac.Name,
-				Namespace: tac.Namespace,
 			},
 		},
 		Spec: *tc.Spec.DeepCopy(),

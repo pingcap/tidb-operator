@@ -103,18 +103,22 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 }
 
 func (am *autoScalerManager) syncExternal(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) error {
-	var endpoint *v1alpha1.ExternalEndpoint
+	var cfg *v1alpha1.ExternalConfig
 	switch component {
 	case v1alpha1.TiDBMemberType:
-		endpoint = &tac.Spec.TiDB.External.Endpoint
+		cfg = tac.Spec.TiDB.External
 	case v1alpha1.TiKVMemberType:
-		endpoint = &tac.Spec.TiKV.External.Endpoint
+		cfg = tac.Spec.TiKV.External
 	}
 
-	targetReplicas, err := query.ExternalService(tc, component, *endpoint, am.kubecli)
+	targetReplicas, err := query.ExternalService(tc, component, cfg.Endpoint, am.kubecli)
 	if err != nil {
 		klog.Errorf("tac[%s/%s]'s query to the external endpoint for component %s got error: %v", tac.Namespace, tac.Name, component.String(), err)
 		return err
+	}
+
+	if targetReplicas > cfg.MaxReplicas {
+		targetReplicas = cfg.MaxReplicas
 	}
 
 	return am.syncExternalResult(tc, tac, component, targetReplicas)
