@@ -18,6 +18,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/klog"
 )
 
 const (
@@ -38,14 +39,19 @@ func (am *autoScalerManager) syncExternalResult(tc *v1alpha1.TidbCluster, tac *v
 			return am.createExternalAutoCluster(tc, externalTcName, tac, component, targetReplicas)
 		}
 
+		klog.Errorf("tac[%s/%s] failed to get external tc[%s/%s], err: %v", tac.Namespace, tac.Name, tc.Namespace, externalTcName, err)
 		return err
 	}
 
 	if targetReplicas <= 0 {
-		return am.cli.PingcapV1alpha1().TidbClusters(externalTc.Namespace).Delete(externalTc.Name, nil)
+		err := am.cli.PingcapV1alpha1().TidbClusters(externalTc.Namespace).Delete(externalTc.Name, nil)
+		if err != nil {
+			klog.Errorf("tac[%s/%s] failed to delete external tc[%s/%s], err: %v", tac.Namespace, tac.Name, tc.Namespace, externalTcName, err)
+		}
+		return err
 	}
 
-	return am.updateExternalAutoCluster(externalTc, component, targetReplicas)
+	return am.updateExternalAutoCluster(externalTc, tac, component, targetReplicas)
 }
 
 func (am *autoScalerManager) createExternalAutoCluster(tc *v1alpha1.TidbCluster, externalTcName string, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType, targetReplicas int32) error {
@@ -60,10 +66,13 @@ func (am *autoScalerManager) createExternalAutoCluster(tc *v1alpha1.TidbCluster,
 	}
 
 	_, err := am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(autoTc)
+	if err != nil {
+		klog.Errorf("tac[%s/%s] failed to create external tc[%s/%s], err: %v", tac.Namespace, tac.Name, tc.Namespace, externalTcName, err)
+	}
 	return err
 }
 
-func (am *autoScalerManager) updateExternalAutoCluster(externalTc *v1alpha1.TidbCluster, component v1alpha1.MemberType, targetReplicas int32) error {
+func (am *autoScalerManager) updateExternalAutoCluster(externalTc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType, targetReplicas int32) error {
 	updated := externalTc.DeepCopy()
 	switch component {
 	case v1alpha1.TiDBMemberType:
@@ -79,5 +88,8 @@ func (am *autoScalerManager) updateExternalAutoCluster(externalTc *v1alpha1.Tidb
 	}
 
 	_, err := am.tcControl.UpdateTidbCluster(updated, &updated.Status, &externalTc.Status)
+	if err != nil {
+		klog.Errorf("tac[%s/%s] failed to update external tc[%s/%s], err: %v", tac.Namespace, tac.Name, externalTc.Namespace, externalTc.Name, err)
+	}
 	return err
 }
