@@ -727,6 +727,7 @@ func TestPDMemberManagerSyncPDSts(t *testing.T) {
 			},
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.ScalePhase))
+				g.Expect(len(tc.Status.PD.Members)).To(Equal(int32(3)))
 			},
 		},
 	}
@@ -2164,13 +2165,14 @@ func TestPDMemberManagerSyncPDStsWhenPdNotJoinCluster(t *testing.T) {
 
 			},
 			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
-				{Name: "test-pd-0", MemberID: uint64(1), ClientUrls: []string{"http://test-pd-0:2379"}, Health: false},
-				{Name: "test-pd-1", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-1:2379"}, Health: false},
-				{Name: "test-pd-2", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-2:2379"}, Health: false},
+				{Name: "test-pd-0", MemberID: uint64(1), ClientUrls: []string{"http://test-pd-0.test-pd-peer.default.svc:2379"}, Health: false},
+				{Name: "test-pd-1", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-1.test-pd-peer.default.svc:2379"}, Health: false},
+				{Name: "test-pd-2", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-2.test-pd-peer.default.svc:2379"}, Health: false},
 			}},
 			err: false,
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(tc.Status.PD.UnjoinedMembers).To(BeEmpty())
+				g.Expect(len(tc.Status.PD.Members)).To(Equal(3))
 			},
 		},
 	}

@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -47,6 +48,9 @@ const (
 	// pdClusterCertPath is where the cert for inter-cluster communication stored (if any)
 	pdClusterCertPath  = "/var/lib/pd-tls"
 	tidbClientCertPath = "/var/lib/tidb-client-tls"
+
+	//find a better way to manage store only managed by pd in Operator
+	pdMemberLimitPattern = `%s-pd-\d+\.%s-pd-peer\.%s\.svc%s\:\d+`
 )
 
 type pdMemberManager struct {
@@ -361,8 +365,16 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 		tc.Status.PD.Synced = false
 		return err
 	}
+
+	pattern, err := regexp.Compile(fmt.Sprintf(pdMemberLimitPattern, tc.Name, tc.Name, tc.Namespace, regexp.QuoteMeta(controller.FormatClusterDomain(tc.Spec.ClusterDomain))))
+	if err != nil {
+		return err
+	}
 	pdStatus := map[string]v1alpha1.PDMember{}
 	for _, memberHealth := range healthInfo.Healths {
+		if !pattern.Match([]byte(memberHealth.ClientUrls[0])) {
+			continue
+		}
 		id := memberHealth.MemberID
 		memberID := fmt.Sprintf("%d", id)
 		var clientURL string
