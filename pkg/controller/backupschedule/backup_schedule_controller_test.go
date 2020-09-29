@@ -135,7 +135,6 @@ func newFakeBackupScheduleController() (*Controller, cache.Indexer, *FakeBackupS
 	bsc := NewController(fakeDeps)
 	bsInformer := fakeDeps.InformerFactory.Pingcap().V1alpha1().BackupSchedules()
 	backupScheduleControl := NewFakeBackupScheduleControl(bsInformer)
-
 	bsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: bsc.enqueueBackupSchedule,
 		UpdateFunc: func(old, cur interface{}) {
@@ -143,7 +142,7 @@ func newFakeBackupScheduleController() (*Controller, cache.Indexer, *FakeBackupS
 		},
 		DeleteFunc: bsc.enqueueBackupSchedule,
 	})
-
+	bsc.control = backupScheduleControl
 	return bsc, bsInformer.Informer().GetIndexer(), backupScheduleControl
 }
 

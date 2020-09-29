@@ -45,6 +45,7 @@ type Controller struct {
 // NewController creates a tidbcluster controller.
 func NewController(deps *controller.Dependencies) *Controller {
 	c := &Controller{
+		deps: deps,
 		control: NewDefaultTidbClusterControl(
 			deps.TiDBClusterControl,
 			mm.NewPDMemberManager(deps, mm.NewPDScaler(deps), mm.NewPDUpgrader(deps), mm.NewPDFailover(deps)),

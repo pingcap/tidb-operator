@@ -247,6 +247,7 @@ func newFakeBackupController() (*Controller, cache.Indexer, *FakeBackupControl) 
 	bkc := NewController(fakeDeps)
 	backupInformer := fakeDeps.InformerFactory.Pingcap().V1alpha1().Backups()
 	backupControl := NewFakeBackupControl(backupInformer)
+	bkc.control = backupControl
 	return bkc, backupInformer.Informer().GetIndexer(), backupControl
 }
 

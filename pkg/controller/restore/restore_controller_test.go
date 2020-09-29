@@ -215,6 +215,7 @@ func newFakeRestoreController() (*Controller, cache.Indexer, *FakeRestoreControl
 	rtc := NewController(fakeDeps)
 	restoreInformer := fakeDeps.InformerFactory.Pingcap().V1alpha1().Restores()
 	restoreControl := NewFakeRestoreControl(restoreInformer)
+	rtc.control = restoreControl
 	return rtc, restoreInformer.Informer().GetIndexer(), restoreControl
 }
 

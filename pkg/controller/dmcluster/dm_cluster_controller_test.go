@@ -261,7 +261,9 @@ func newFakeDMClusterController() (*Controller, cache.Indexer, *FakeDMClusterCon
 	fakeDeps.CLIConfig.AutoFailover = true
 	dcc := NewController(fakeDeps)
 	dcIndexer := fakeDeps.InformerFactory.Pingcap().V1alpha1().DMClusters().Informer().GetIndexer()
-	return dcc, dcIndexer, NewFakeDMClusterControlInterface()
+	dcControl := NewFakeDMClusterControlInterface()
+	dcc.control = dcControl
+	return dcc, dcIndexer, dcControl
 }
 
 func newDMCluster() *v1alpha1.DMCluster {

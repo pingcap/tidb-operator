@@ -42,6 +42,7 @@ type Controller struct {
 // NewController creates a backup controller.
 func NewController(deps *controller.Dependencies) *Controller {
 	c := &Controller{
+		deps:    deps,
 		control: NewDefaultBackupControl(deps.Clientset, backup.NewBackupManager(deps)),
 		queue: workqueue.NewNamedRateLimitingQueue(
 			workqueue.DefaultControllerRateLimiter(),

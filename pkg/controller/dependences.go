@@ -284,11 +284,11 @@ func newFakeControl(kubeClientset kubernetes.Interface, informerFactory informer
 		GeneralPVCControl:  NewFakeGeneralPVCControl(kubeInformerFactory.Core().V1().PersistentVolumeClaims()),
 		PodControl:         NewFakePodControl(kubeInformerFactory.Core().V1().Pods()),
 		TypedControl:       NewTypedControl(NewFakeGenericControl()),
-		PDControl:          pdapi.NewDefaultPDControl(kubeClientset),
-		DMMasterControl:    dmapi.NewDefaultMasterControl(kubeClientset),
+		PDControl:          pdapi.NewFakePDControl(kubeClientset),
+		DMMasterControl:    dmapi.NewFakeMasterControl(kubeClientset),
 		TiDBClusterControl: NewFakeTidbClusterControl(informerFactory.Pingcap().V1alpha1().TidbClusters()),
-		CDCControl:         NewDefaultTiCDCControl(kubeClientset),
-		TiDBControl:        NewDefaultTiDBControl(kubeClientset),
+		CDCControl:         NewDefaultTiCDCControl(kubeClientset), // TODO: no fake control?
+		TiDBControl:        NewFakeTiDBControl(),
 		BackupControl:      NewFakeBackupControl(informerFactory.Pingcap().V1alpha1().Backups()),
 	}
 }

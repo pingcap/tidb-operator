@@ -34,6 +34,7 @@ func TestTidbClusterControllerEnqueueTidbCluster(t *testing.T) {
 	g := NewGomegaWithT(t)
 	tc := newTidbCluster()
 	tcc := NewController(controller.NewFakeDependencies())
+	tcc.control = NewFakeTidbClusterControlInterface()
 	tcc.enqueueTidbCluster(tc)
 	g.Expect(tcc.queue.Len()).To(Equal(1))
 }
@@ -41,6 +42,7 @@ func TestTidbClusterControllerEnqueueTidbCluster(t *testing.T) {
 func TestTidbClusterControllerEnqueueTidbClusterFailed(t *testing.T) {
 	g := NewGomegaWithT(t)
 	tcc := NewController(controller.NewFakeDependencies())
+	tcc.control = NewFakeTidbClusterControlInterface()
 	tcc.enqueueTidbCluster(struct{}{})
 	g.Expect(tcc.queue.Len()).To(Equal(0))
 }
@@ -62,6 +64,7 @@ func TestTidbClusterControllerAddStatefulSet(t *testing.T) {
 
 		fakeDeps := controller.NewFakeDependencies()
 		tcc := NewController(fakeDeps)
+		tcc.control = NewFakeTidbClusterControlInterface()
 		tcIndexer := fakeDeps.InformerFactory.Pingcap().V1alpha1().TidbClusters().Informer().GetIndexer()
 		if test.addTidbClusterToIndexer {
 			err := tcIndexer.Add(tc)
@@ -133,6 +136,7 @@ func TestTidbClusterControllerUpdateStatefulSet(t *testing.T) {
 
 		fakeDeps := controller.NewFakeDependencies()
 		tcc := NewController(fakeDeps)
+		tcc.control = NewFakeTidbClusterControlInterface()
 		tcIndexer := fakeDeps.InformerFactory.Pingcap().V1alpha1().TidbClusters().Informer().GetIndexer()
 		if test.addTidbClusterToIndexer {
 			err := tcIndexer.Add(tc)
@@ -207,6 +211,7 @@ func TestTidbClusterControllerSync(t *testing.T) {
 		tcc := NewController(fakeDeps)
 		tcIndexer := fakeDeps.InformerFactory.Pingcap().V1alpha1().TidbClusters().Informer().GetIndexer()
 		tcControl := NewFakeTidbClusterControlInterface()
+		tcc.control = tcControl
 		if test.addTcToIndexer {
 			err := tcIndexer.Add(tc)
 			g.Expect(err).NotTo(HaveOccurred())
