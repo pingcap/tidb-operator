@@ -20,12 +20,14 @@ import (
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 	"k8s.io/utils/pointer"
 )
@@ -55,26 +57,6 @@ func checkStsAutoScalingInterval(tac *v1alpha1.TidbClusterAutoScaler, intervalSe
 		return false, nil
 	}
 	return true, nil
-}
-
-// limitTargetReplicas would limit the calculated target replicas to ensure the min/max Replicas
-func limitTargetReplicas(targetReplicas int32, tac *v1alpha1.TidbClusterAutoScaler, memberType v1alpha1.MemberType) int32 {
-	var min, max int32
-	switch memberType {
-	case v1alpha1.TiKVMemberType:
-		min, max = *tac.Spec.TiKV.MinReplicas, tac.Spec.TiKV.MaxReplicas
-	case v1alpha1.TiDBMemberType:
-		min, max = *tac.Spec.TiDB.MinReplicas, tac.Spec.TiDB.MaxReplicas
-	default:
-		return targetReplicas
-	}
-	if targetReplicas > max {
-		return max
-	}
-	if targetReplicas < min {
-		return min
-	}
-	return targetReplicas
 }
 
 func defaultResources(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) {
@@ -393,4 +375,63 @@ func genAutoClusterName(tas *v1alpha1.TidbClusterAutoScaler, component string, l
 	}
 
 	return autoClusterPrefix + v1alpha1.HashContents(marshaled), nil
+}
+
+func newAutoScalingCluster(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, autoTcName, component string) *v1alpha1.TidbCluster {
+	autoTc := &v1alpha1.TidbCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      autoTcName,
+			Namespace: tc.Namespace,
+			Labels: map[string]string{
+				label.BaseTCLabelKey:        tc.Name,
+				label.AutoInstanceLabelKey:  tac.Name,
+				label.AutoComponentLabelKey: component,
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				controller.GetTiDBClusterAutoScalerOwnerRef(tac),
+			},
+		},
+		Spec: *tc.Spec.DeepCopy(),
+	}
+
+	autoTc.Spec.Cluster = &v1alpha1.TidbClusterRef{
+		Namespace: tc.Namespace,
+		Name:      tc.Name,
+	}
+
+	autoTc.Spec.TiCDC = nil
+	autoTc.Spec.TiFlash = nil
+	autoTc.Spec.PD = nil
+	autoTc.Spec.Pump = nil
+
+	switch component {
+	case v1alpha1.TiDBMemberType.String():
+		autoTc.Spec.TiKV = nil
+		// Initialize Config
+		if autoTc.Spec.TiDB.Config == nil {
+			autoTc.Spec.TiDB.Config = &v1alpha1.TiDBConfig{
+				Labels: map[string]string{},
+			}
+		} else if autoTc.Spec.TiDB.Config.Labels == nil {
+			autoTc.Spec.TiDB.Config.Labels = map[string]string{}
+		}
+	case v1alpha1.TiKVMemberType.String():
+		autoTc.Spec.TiDB = nil
+		// Initialize Config
+		if autoTc.Spec.TiKV.Config == nil {
+			autoTc.Spec.TiKV.Config = &v1alpha1.TiKVConfig{
+				Server: &v1alpha1.TiKVServerConfig{
+					Labels: map[string]string{},
+				},
+			}
+		} else if autoTc.Spec.TiKV.Config.Server == nil {
+			autoTc.Spec.TiKV.Config.Server = &v1alpha1.TiKVServerConfig{
+				Labels: map[string]string{},
+			}
+		} else if autoTc.Spec.TiKV.Config.Server.Labels == nil {
+			autoTc.Spec.TiKV.Config.Server.Labels = map[string]string{}
+		}
+	}
+
+	return autoTc
 }

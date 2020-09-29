@@ -103,44 +103,25 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 }
 
 func (am *autoScalerManager) syncExternal(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) error {
+	var cfg *v1alpha1.ExternalConfig
 	switch component {
 	case v1alpha1.TiDBMemberType:
-		targetReplicas, err := query.ExternalService(tc, v1alpha1.TiDBMemberType, tac.Spec.TiDB.External.Endpoint, am.kubecli)
-		if err != nil {
-			klog.Errorf("tac[%s/%s] 's query to the external endpoint got error: %v", tac.Namespace, tac.Name, err)
-			return err
-		}
-
-		if tc.Spec.TiDB.Replicas == targetReplicas {
-			return nil
-		}
-
-		updated := tc.DeepCopy()
-		updated.Spec.TiDB.Replicas = targetReplicas
-		if _, err = am.tcControl.UpdateTidbCluster(updated, &updated.Status, &tc.Status); err != nil {
-			klog.Errorf("tac[%s/%s] cannot update tc[%s/%s] for tidb when syncing external autoscaling query, err: %v", tac.Namespace, tac.Name, tc.Namespace, tc.Name, err)
-			return err
-		}
+		cfg = tac.Spec.TiDB.External
 	case v1alpha1.TiKVMemberType:
-		targetReplicas, err := query.ExternalService(tc, v1alpha1.TiKVMemberType, tac.Spec.TiKV.External.Endpoint, am.kubecli)
-		if err != nil {
-			klog.Errorf("tac[%s/%s] 's query to the external endpoint got error: %v", tac.Namespace, tac.Name, err)
-			return err
-		}
-
-		if tc.Spec.TiKV.Replicas == targetReplicas {
-			return nil
-		}
-
-		updated := tc.DeepCopy()
-		updated.Spec.TiKV.Replicas = targetReplicas
-		if _, err = am.tcControl.UpdateTidbCluster(updated, &updated.Status, &tc.Status); err != nil {
-			klog.Errorf("tac[%s/%s] cannot update tc[%s/%s] for tikv when syncing external autoscaling query, err: %v", tac.Namespace, tac.Name, tc.Namespace, tc.Name, err)
-			return err
-		}
+		cfg = tac.Spec.TiKV.External
 	}
 
-	return nil
+	targetReplicas, err := query.ExternalService(tc, component, cfg.Endpoint, am.kubecli)
+	if err != nil {
+		klog.Errorf("tac[%s/%s]'s query to the external endpoint for component %s got error: %v", tac.Namespace, tac.Name, component.String(), err)
+		return err
+	}
+
+	if targetReplicas > cfg.MaxReplicas {
+		targetReplicas = cfg.MaxReplicas
+	}
+
+	return am.syncExternalResult(tc, tac, component, targetReplicas)
 }
 
 func (am *autoScalerManager) syncPD(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) error {
@@ -165,7 +146,6 @@ func (am *autoScalerManager) syncAutoScaling(tc *v1alpha1.TidbCluster, tac *v1al
 	if tac.Spec.TiDB != nil {
 		if tac.Spec.TiDB.External != nil {
 			if err := am.syncExternal(tc, tac, v1alpha1.TiDBMemberType); err != nil {
-				klog.Errorf("tac[%s/%s] cannot sync external autoscaling service for tidb, err: %v", tac.Namespace, tac.Name, err)
 				errs = append(errs, err)
 			}
 		} else {
@@ -178,7 +158,6 @@ func (am *autoScalerManager) syncAutoScaling(tc *v1alpha1.TidbCluster, tac *v1al
 	if tac.Spec.TiKV != nil {
 		if tac.Spec.TiKV.External != nil {
 			if err := am.syncExternal(tc, tac, v1alpha1.TiKVMemberType); err != nil {
-				klog.Errorf("tac[%s/%s] cannot sync external autoscaling service for tikv, err: %v", tac.Namespace, tac.Name, err)
 				errs = append(errs, err)
 			}
 		} else {
@@ -231,4 +210,28 @@ func (am *autoScalerManager) updateTidbClusterAutoScaler(tac *v1alpha1.TidbClust
 		klog.Errorf("failed to update TidbClusterAutoScaler: [%s/%s], error: %v", ns, tacName, err)
 	}
 	return err
+}
+
+func (am *autoScalerManager) gracefullyDeleteTidbCluster(deleteTc *v1alpha1.TidbCluster) error {
+	// Remove cluster
+	// If there are TiKV pods, delete the cluster gracefully because we need to transfer data
+	if deleteTc.Spec.TiKV != nil {
+		// The TC is not shutting down, set replicas to 0 to trigger data transfer
+		if deleteTc.Spec.TiKV.Replicas != 0 {
+			cloned := deleteTc.DeepCopy()
+			cloned.Spec.TiKV.Replicas = 0
+			_, err := am.tcControl.UpdateTidbCluster(cloned, &cloned.Status, &deleteTc.Status)
+			return err
+		}
+
+		// The TC is shutting down, check for its status if all pods have been deleted
+		if deleteTc.Status.TiKV.StatefulSet != nil && deleteTc.Status.TiKV.StatefulSet.Replicas != 0 {
+			// Still shutting down, do nothing
+			return nil
+		}
+
+		// The TC has scaled in, fall through the code to delete it
+	}
+
+	return am.cli.PingcapV1alpha1().TidbClusters(deleteTc.Namespace).Delete(deleteTc.Name, nil)
 }
