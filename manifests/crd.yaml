@@ -18002,8 +18002,6 @@ spec:
               required:
               - name
               type: object
-            resources:
-              type: object
             tidb:
               properties:
                 external:
@@ -18049,6 +18047,8 @@ spec:
                 minReplicas:
                   format: int32
                   type: integer
+                resources:
+                  type: object
                 rules:
                   type: object
                 scaleInIntervalSeconds:
@@ -18057,8 +18057,6 @@ spec:
                 scaleOutIntervalSeconds:
                   format: int32
                   type: integer
-              required:
-              - maxReplicas
               type: object
             tikv:
               properties:
@@ -18105,6 +18103,8 @@ spec:
                 minReplicas:
                   format: int32
                   type: integer
+                resources:
+                  type: object
                 rules:
                   type: object
                 scaleInIntervalSeconds:
@@ -18113,8 +18113,6 @@ spec:
                 scaleOutIntervalSeconds:
                   format: int32
                   type: integer
-              required:
-              - maxReplicas
               type: object
           required:
           - cluster
