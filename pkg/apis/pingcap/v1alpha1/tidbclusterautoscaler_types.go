@@ -127,7 +127,7 @@ type BasicAutoScalerSpec struct {
 	// It cannot be less than minReplicas.
 	// Deprecated
 	// +optional
-	MaxReplicas int32 `json:"maxReplicas"`
+	MaxReplicas *int32 `json:"maxReplicas,omitempty"`
 
 	// minReplicas is the lower limit for the number of replicas to which the autoscaler
 	// can scale down.  It defaults to 1 pod. Scaling is active as long as at least one metric value is
