@@ -7,7 +7,7 @@ metadata:
   name: ns2
   namespace: ns2
 spec:
-  version: v4.0.4
+  version: v4.0.6
   timezone: UTC
   pvReclaimPolicy: Delete
   imagePullPolicy: IfNotPresent
