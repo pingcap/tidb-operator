@@ -83,6 +83,9 @@ type TidbMonitorSpec struct {
 
 	// +optional
 	AdditionalContainers []corev1.Container `json:"additionalContainers,omitempty"`
+
+	// ClusterScoped indicates whether this monitor should manage Kubernetes cluster-wide TiDB clusters
+	ClusterScoped bool `json:"clusterScoped,omitempty"`
 }
 
 // PrometheusSpec is the desired state of prometheus

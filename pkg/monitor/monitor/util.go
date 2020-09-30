@@ -40,6 +40,10 @@ func GetMonitorObjectName(monitor *v1alpha1.TidbMonitor) string {
 	return fmt.Sprintf("%s-monitor", monitor.Name)
 }
 
+func GetMonitorObjectNameCrossNamespace(monitor *v1alpha1.TidbMonitor) string {
+	return fmt.Sprintf("%s-%s-monitor", monitor.Namespace, monitor.Name)
+}
+
 func buildTidbMonitorLabel(name string) map[string]string {
 	return label.NewMonitor().Instance(name).Monitor().Labels()
 }
@@ -133,6 +137,42 @@ func getMonitorRole(monitor *v1alpha1.TidbMonitor, policyRules []rbac.PolicyRule
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 		},
 		Rules: policyRules,
+	}
+}
+
+func getMonitorClusterRole(monitor *v1alpha1.TidbMonitor, policyRules []rbac.PolicyRule) *rbac.ClusterRole {
+	return &rbac.ClusterRole{
+		ObjectMeta: meta.ObjectMeta{
+			Name:            GetMonitorObjectNameCrossNamespace(monitor),
+			Namespace:       monitor.Namespace,
+			Labels:          buildTidbMonitorLabel(monitor.Name),
+			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
+		},
+		Rules: policyRules,
+	}
+}
+
+func getMonitorClusterRoleBinding(sa *core.ServiceAccount, role *rbac.ClusterRole, monitor *v1alpha1.TidbMonitor) *rbac.ClusterRoleBinding {
+	return &rbac.ClusterRoleBinding{
+		ObjectMeta: meta.ObjectMeta{
+			Name:            GetMonitorObjectNameCrossNamespace(monitor),
+			Namespace:       monitor.Namespace,
+			Labels:          buildTidbMonitorLabel(monitor.Name),
+			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
+		},
+		Subjects: []rbac.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      sa.Name,
+				Namespace: sa.Namespace,
+				APIGroup:  "",
+			},
+		},
+		RoleRef: rbac.RoleRef{
+			Kind:     "ClusterRole",
+			Name:     role.Name,
+			APIGroup: "rbac.authorization.k8s.io",
+		},
 	}
 }
 
