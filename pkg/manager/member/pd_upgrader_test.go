@@ -354,6 +354,11 @@ func newTidbClusterForPDUpgrader() *v1alpha1.TidbCluster {
 					podName1: {Name: podName1, Health: true},
 					podName2: {Name: podName2, Health: true},
 				},
+				PeerMembers: map[string]v1alpha1.PDMember{
+					podName0: {Name: podName0, Health: true},
+					podName1: {Name: podName1, Health: true},
+					podName2: {Name: podName2, Health: true},
+				},
 				Leader: v1alpha1.PDMember{Name: podName2, Health: true},
 			},
 		},

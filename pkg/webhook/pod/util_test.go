@@ -86,7 +86,7 @@ func TestCheckPDFormerPodStatus(t *testing.T) {
 			healthInfo := &pdapi.HealthInfo{}
 			for i := range helper.GetPodOrdinals(test.stsReplicas, sts) {
 				healthInfo.Healths = append(healthInfo.Healths, pdapi.MemberHealth{
-					Name:   memberUtils.PdPodName(tc.Name, i),
+					Name:   memberUtils.PdName(tc.Name, i, tc.Namespace, tc.Spec.ClusterDomain),
 					Health: true,
 				})
 				pod := buildPod(tc, v1alpha1.PDMemberType, i)

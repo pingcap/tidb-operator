@@ -90,7 +90,7 @@ func checkFormerPDPodStatus(kubeCli kubernetes.Interface, pdClient pdapi.PDClien
 			return fmt.Errorf("tidbcluster: [%s/%s]'s pd pod: [%s] has no label: %s", namespace, tcName, podName, apps.ControllerRevisionHashLabelKey)
 		}
 
-		healthy, existed := membersHealthMap[podName]
+		healthy, existed := membersHealthMap[memberUtil.PdName(tcName, i, tc.Namespace, tc.Spec.ClusterDomain)]
 		if revision != tc.Status.PD.StatefulSet.UpdateRevision || !existed || !healthy {
 			return fmt.Errorf("tidbcluster: [%s/%s]'s pd upgraded pod: [%s] is not ready", namespace, tcName, podName)
 		}

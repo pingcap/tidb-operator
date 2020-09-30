@@ -251,9 +251,9 @@ func newTidbClusterForPodAdmissionControl(pdReplicas int32, tikvReplicas int32) 
 		}
 	}
 	for i := 0; int32(i) < pdReplicas; i++ {
-		tc.Status.PD.Members[member.PdPodName(tcName, int32(i))] = v1alpha1.PDMember{
+		tc.Status.PD.Members[member.PdName(tcName, int32(i), tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{
 			Health: true,
-			Name:   member.PdPodName(tcName, int32(i)),
+			Name:   member.PdName(tcName, int32(i), tc.Namespace, tc.Spec.ClusterDomain),
 		}
 	}
 	return tc

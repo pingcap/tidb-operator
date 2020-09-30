@@ -371,10 +371,8 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 		return err
 	}
 	pdStatus := map[string]v1alpha1.PDMember{}
+	peerPDStatus := map[string]v1alpha1.PDMember{}
 	for _, memberHealth := range healthInfo.Healths {
-		if !pattern.Match([]byte(memberHealth.ClientUrls[0])) {
-			continue
-		}
 		id := memberHealth.MemberID
 		memberID := fmt.Sprintf("%d", id)
 		var clientURL string
@@ -395,19 +393,22 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 			Health:    memberHealth.Health,
 		}
 
-		oldPDMember, exist := tc.Status.PD.Members[name]
+		oldPDMember, exist := tc.Status.PD.PeerMembers[name]
 
 		status.LastTransitionTime = metav1.Now()
 		if exist && status.Health == oldPDMember.Health {
 			status.LastTransitionTime = oldPDMember.LastTransitionTime
 		}
-
-		pdStatus[name] = status
+		peerPDStatus[name] = status
+		if pattern.Match([]byte(clientURL)) {
+			pdStatus[name] = status
+		}
 	}
 
 	tc.Status.PD.Synced = true
 	tc.Status.PD.Members = pdStatus
-	tc.Status.PD.Leader = tc.Status.PD.Members[leader.GetName()]
+	tc.Status.PD.PeerMembers = peerPDStatus
+	tc.Status.PD.Leader = tc.Status.PD.PeerMembers[leader.GetName()]
 	tc.Status.PD.Image = ""
 	c := filterContainer(set, "pd")
 	if c != nil {

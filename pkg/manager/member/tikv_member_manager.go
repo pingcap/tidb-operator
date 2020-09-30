@@ -666,6 +666,7 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 
 	previousStores := tc.Status.TiKV.Stores
 	stores := map[string]v1alpha1.TiKVStore{}
+	peerStores := map[string]v1alpha1.TiKVStore{}
 	tombstoneStores := map[string]v1alpha1.TiKVStore{}
 
 	pdCli := controller.GetPDClient(tkmm.pdControl, tc)
@@ -681,11 +682,6 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 		return err
 	}
 	for _, store := range storesInfo.Stores {
-		// In theory, the external tikv can join the cluster, and the operator would only manage the internal tikv.
-		// So we check the store owner to make sure it.
-		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
-			continue
-		}
 		status := getTiKVStore(store)
 		if status == nil {
 			continue
@@ -705,7 +701,12 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 			status.LastTransitionTime = oldStore.LastTransitionTime
 		}
 
-		stores[status.ID] = *status
+		// In theory, the external tikv can join the cluster, and the operator would only manage the internal tikv.
+		// So we check the store owner to make sure it.
+		if store.Store != nil && pattern.Match([]byte(store.Store.Address)) {
+			stores[status.ID] = *status
+		}
+		peerStores[status.ID] = *status
 	}
 
 	//this returns all tombstone stores
@@ -727,6 +728,7 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 
 	tc.Status.TiKV.Synced = true
 	tc.Status.TiKV.Stores = stores
+	tc.Status.TiKV.PeerStores = peerStores
 	tc.Status.TiKV.TombstoneStores = tombstoneStores
 	tc.Status.TiKV.Image = ""
 	c := filterContainer(set, "tikv")

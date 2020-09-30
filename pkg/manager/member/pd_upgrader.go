@@ -98,7 +98,7 @@ func (pu *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Sta
 		}
 
 		if revision == tc.Status.PD.StatefulSet.UpdateRevision {
-			if member, exist := tc.Status.PD.Members[podName]; !exist || !member.Health {
+			if member, exist := tc.Status.PD.Members[PdName(tc.Name, i, tc.Namespace, tc.Spec.ClusterDomain)]; !exist || !member.Health {
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd upgraded pod: [%s] is not ready", ns, tcName, podName)
 			}
 			continue
@@ -118,14 +118,26 @@ func (pu *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Sta
 func (pu *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newSet *apps.StatefulSet) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-	upgradePodName := PdPodName(tcName, ordinal)
-	if tc.Status.PD.Leader.Name == upgradePodName && tc.PDStsActualReplicas() > 1 {
-		lastOrdinal := tc.PDStsActualReplicas() - 1
+	upgradePdName := PdName(tcName, ordinal, tc.Namespace, tc.Spec.ClusterDomain)
+	if tc.Status.PD.Leader.Name == upgradePdName && len(tc.Status.PD.PeerMembers) > 1 {
 		var targetName string
-		if ordinal == lastOrdinal {
-			targetName = PdPodName(tcName, 0)
+		if tc.PDStsActualReplicas() > 1 {
+			targetOrdinal := tc.PDStsActualReplicas() - 1
+			if ordinal == targetOrdinal {
+				targetOrdinal = 0
+			}
+			if _, exist := tc.Status.PD.PeerMembers[targetName]; !exist{
+				targetName = PdName(tcName, targetOrdinal, tc.Namespace, tc.Spec.ClusterDomain)
+			} else {
+				targetName = PdName(tcName, targetOrdinal, tc.Namespace, tc.Spec.ClusterDomain)
+			}
 		} else {
-			targetName = PdPodName(tcName, lastOrdinal)
+			for _, member := range tc.Status.PD.PeerMembers {
+				if member.Name != upgradePdName && member.Health {
+					targetName = member.Name
+					break
+				}
+			}
 		}
 		err := pu.transferPDLeaderTo(tc, targetName)
 		if err != nil {
@@ -133,9 +145,8 @@ func (pu *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newS
 			return err
 		}
 		klog.Infof("pd upgrader: transfer pd leader to: %s successfully", targetName)
-		return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd member: [%s] is transferring leader to pd member: [%s]", ns, tcName, upgradePodName, targetName)
+		return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd member: [%s] is transferring leader to pd member: [%s]", ns, tcName, upgradePdName, targetName)
 	}
-
 	setUpgradePartition(newSet, ordinal)
 	return nil
 }

@@ -8889,6 +8889,18 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDMember
 </tr>
 <tr>
 <td>
+<code>peerMembers</code></br>
+<em>
+<a href="#pdmember">
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDMember
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
 <code>leader</code></br>
 <em>
 <a href="#pdmember">
@@ -16896,6 +16908,18 @@ Kubernetes apps/v1.StatefulSetStatus
 <tr>
 <td>
 <code>stores</code></br>
+<em>
+<a href="#tikvstore">
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVStore
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>peerStores</code></br>
 <em>
 <a href="#tikvstore">
 map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVStore

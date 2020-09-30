@@ -207,9 +207,9 @@ func (pc *PodAdmissionControl) transferPDLeader(payload *admitPayload) *admissio
 
 	lastOrdinal := helper.GetMaxPodOrdinal(*payload.ownerStatefulSet.Spec.Replicas, payload.ownerStatefulSet)
 	if ordinal == lastOrdinal {
-		targetName = pdutil.PdPodName(tcName, helper.GetMinPodOrdinal(*payload.ownerStatefulSet.Spec.Replicas, payload.ownerStatefulSet))
+		targetName = pdutil.PdName(tcName, helper.GetMinPodOrdinal(*payload.ownerStatefulSet.Spec.Replicas, payload.ownerStatefulSet), tc.Namespace, tc.Spec.ClusterDomain)
 	} else {
-		targetName = pdutil.PdPodName(tcName, lastOrdinal)
+		targetName = pdutil.PdName(tcName, lastOrdinal, tc.Namespace, tc.Spec.ClusterDomain)
 	}
 
 	err = payload.pdClient.TransferPDLeader(targetName)

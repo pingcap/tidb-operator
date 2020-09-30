@@ -648,6 +648,7 @@ func (tfmm *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster
 
 	previousStores := tc.Status.TiFlash.Stores
 	stores := map[string]v1alpha1.TiKVStore{}
+	peerStores := map[string]v1alpha1.TiKVStore{}
 	tombstoneStores := map[string]v1alpha1.TiKVStore{}
 
 	pdCli := controller.GetPDClient(tfmm.pdControl, tc)
@@ -663,11 +664,6 @@ func (tfmm *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster
 		return err
 	}
 	for _, store := range storesInfo.Stores {
-		// In theory, the external tiflash can join the cluster, and the operator would only manage the internal tiflash.
-		// So we check the store owner to make sure it.
-		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
-			continue
-		}
 		status := tfmm.getTiFlashStore(store)
 		if status == nil {
 			continue
@@ -687,7 +683,12 @@ func (tfmm *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster
 			status.LastTransitionTime = oldStore.LastTransitionTime
 		}
 
-		stores[status.ID] = *status
+		// In theory, the external tiflash can join the cluster, and the operator would only manage the internal tiflash.
+		// So we check the store owner to make sure it.
+		if store.Store != nil && pattern.Match([]byte(store.Store.Address)) {
+			stores[status.ID] = *status
+		}
+		peerStores[status.ID] = *status
 	}
 
 	//this returns all tombstone stores
@@ -709,6 +710,7 @@ func (tfmm *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster
 
 	tc.Status.TiFlash.Synced = true
 	tc.Status.TiFlash.Stores = stores
+	tc.Status.TiFlash.PeerStores = peerStores
 	tc.Status.TiFlash.TombstoneStores = tombstoneStores
 	tc.Status.TiFlash.Image = ""
 	c := filterContainer(set, "tiflash")

@@ -845,6 +845,7 @@ type PDStatus struct {
 	Phase           MemberPhase                `json:"phase,omitempty"`
 	StatefulSet     *apps.StatefulSetStatus    `json:"statefulSet,omitempty"`
 	Members         map[string]PDMember        `json:"members,omitempty"`
+	PeerMembers     map[string]PDMember        `json:"peerMembers,omitempty"`
 	Leader          PDMember                   `json:"leader,omitempty"`
 	FailureMembers  map[string]PDFailureMember `json:"failureMembers,omitempty"`
 	UnjoinedMembers map[string]UnjoinedMember  `json:"unjoinedMembers,omitempty"`
@@ -911,6 +912,7 @@ type TiKVStatus struct {
 	Phase           MemberPhase                 `json:"phase,omitempty"`
 	StatefulSet     *apps.StatefulSetStatus     `json:"statefulSet,omitempty"`
 	Stores          map[string]TiKVStore        `json:"stores,omitempty"`
+	PeerStores      map[string]TiKVStore        `json:"peerStores,omitempty"`
 	TombstoneStores map[string]TiKVStore        `json:"tombstoneStores,omitempty"`
 	FailureStores   map[string]TiKVFailureStore `json:"failureStores,omitempty"`
 	Image           string                      `json:"image,omitempty"`
@@ -922,6 +924,7 @@ type TiFlashStatus struct {
 	Phase           MemberPhase                 `json:"phase,omitempty"`
 	StatefulSet     *apps.StatefulSetStatus     `json:"statefulSet,omitempty"`
 	Stores          map[string]TiKVStore        `json:"stores,omitempty"`
+	PeerStores      map[string]TiKVStore        `json:"peerStores,omitempty"`
 	TombstoneStores map[string]TiKVStore        `json:"tombstoneStores,omitempty"`
 	FailureStores   map[string]TiKVFailureStore `json:"failureStores,omitempty"`
 	Image           string                      `json:"image,omitempty"`
