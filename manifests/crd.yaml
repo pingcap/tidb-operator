@@ -17790,6 +17790,8 @@ spec:
               type: string
             annotations:
               type: object
+            clusterScoped:
+              type: boolean
             clusters:
               items:
                 properties:
