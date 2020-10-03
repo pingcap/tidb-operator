@@ -58,34 +58,31 @@ func (c *TiDBConfigWraper) UnmarshalJSON(data []byte) error {
 		return errors.AddStack(err)
 	}
 
+	var tomlData []byte
 	switch s := value.(type) {
 	case string:
-		c.GenericConfig = config.New(nil)
-		err = c.GenericConfig.UnmarshalTOML([]byte(s))
-		if err != nil {
-			return errors.AddStack(err)
-		}
-		return nil
+		tomlData = []byte(s)
 	case map[string]interface{}:
 		err = json.Unmarshal(data, &c.Deprecated)
 		if err != nil {
 			return errors.AddStack(err)
 		}
 
-		tomlData, err := toml.Marshal(c.Deprecated)
+		tomlData, err = toml.Marshal(c.Deprecated)
 		if err != nil {
 			return errors.AddStack(err)
 		}
 
-		c.GenericConfig = config.New(nil)
-		err = c.GenericConfig.UnmarshalTOML(tomlData)
-		if err != nil {
-			return errors.AddStack(err)
-		}
-		return nil
 	default:
 		return errors.Errorf("unknown type: %v", reflect.TypeOf(value))
 	}
+
+	c.GenericConfig = config.New(nil)
+	err = c.GenericConfig.UnmarshalTOML(tomlData)
+	if err != nil {
+		return errors.AddStack(err)
+	}
+	return nil
 }
 
 func (c *TiDBConfigWraper) MarshalTOML() ([]byte, error) {

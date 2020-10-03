@@ -36,10 +36,10 @@ func updateConfigMap(old, new *corev1.ConfigMap) error {
 
 		equal, err := toml.Equal([]byte(oldData), []byte(newData))
 		if err != nil {
-			return perrors.Annotatef(err, "compare %s and %s failed", oldData, newData)
+			return perrors.Annotatef(err, "compare %s/%s %s and %s failed", old.Namespace, old.Name, oldData, newData)
 		}
 
-		klog.V(3).Infof("compare %s and %s %v", oldData, newData, equal)
+		klog.V(3).Infof("compare %s/%s \n%s\n --and-- \n%s\n%v", old.Namespace, old.Name, oldData, newData, equal)
 
 		if equal {
 			new.Data[k] = oldData
@@ -56,14 +56,14 @@ func updateConfigMapIfNeed(
 	inUseName string,
 	desired *corev1.ConfigMap,
 ) error {
-	if configUpdateStrategy == v1alpha1.ConfigUpdateStrategyInPlace {
+
+	switch configUpdateStrategy {
+	case v1alpha1.ConfigUpdateStrategyInPlace:
 		if inUseName != "" {
 			desired.Name = inUseName
 		}
 		return nil
-	}
-
-	if configUpdateStrategy == v1alpha1.ConfigUpdateStrategyRollingUpdate {
+	case v1alpha1.ConfigUpdateStrategyRollingUpdate:
 		existing, err := cmLister.ConfigMaps(desired.Namespace).Get(inUseName)
 		if err != nil {
 			if errors.IsNotFound(err) {
@@ -85,7 +85,8 @@ func updateConfigMapIfNeed(
 
 		klog.V(3).Infof("old: %+v, new: %+v", existing, desired)
 		return nil
-	}
+	default:
+		return perrors.Errorf("unknown config update strategy: %v", configUpdateStrategy)
 
-	return perrors.Errorf("unknown config update strategy: %v", configUpdateStrategy)
+	}
 }

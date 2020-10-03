@@ -166,7 +166,7 @@ func main() {
 		if len(options.LabelSelector) > 0 {
 			options.LabelSelector += ",app.kubernetes.io/managed-by=tidb-operator"
 		} else {
-			options.LabelSelector += "app.kubernetes.io/managed-by=tidb-operator"
+			options.LabelSelector = "app.kubernetes.io/managed-by=tidb-operator"
 		}
 	}
 
