@@ -370,7 +370,7 @@ func newTidbClusterForTidbClusterControl() *v1alpha1.TidbCluster {
 			TiKV: &v1alpha1.TiKVSpec{
 				Replicas:  3,
 				BaseImage: "pingcap/tikv",
-				Config:    &v1alpha1.TiKVConfig{},
+				Config:    v1alpha1.NewTiKVConfig(),
 				ResourceRequirements: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceStorage: resource.MustParse("10G"),

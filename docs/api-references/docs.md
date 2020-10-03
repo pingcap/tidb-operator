@@ -13645,10 +13645,6 @@ CoprocessorCache
 </table>
 <h3 id="tikvconfig">TiKVConfig</h3>
 <p>
-(<em>Appears on:</em>
-<a href="#tikvspec">TiKVSpec</a>)
-</p>
-<p>
 <p>TiKVConfig is the configuration of TiKV.</p>
 </p>
 <table>
@@ -13927,6 +13923,33 @@ TiKVBackupConfig
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tikvconfigwraper">TiKVConfigWraper</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tikvspec">TiKVSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>GenericConfig</code></br>
+<em>
+github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>
@@ -16828,8 +16851,8 @@ Defaults to &ldquo;&rdquo; (volume&rsquo;s root).</p>
 <td>
 <code>config</code></br>
 <em>
-<a href="#tikvconfig">
-TiKVConfig
+<a href="#tikvconfigwraper">
+TiKVConfigWraper
 </a>
 </em>
 </td>

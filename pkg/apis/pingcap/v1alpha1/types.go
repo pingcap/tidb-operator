@@ -412,7 +412,7 @@ type TiKVSpec struct {
 
 	// Config is the Configuration of tikv-servers
 	// +optional
-	Config *TiKVConfig `json:"config,omitempty"`
+	Config *TiKVConfigWraper `json:"config,omitempty"`
 
 	// RecoverFailover indicates that Operator can recover the failover Pods
 	// +optional
