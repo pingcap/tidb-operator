@@ -33,7 +33,6 @@ func NewTiDBConfig() *TiDBConfigWraper {
 }
 
 type TiDBConfigWraper struct {
-	Deprecated *TiDBConfig
 	*config.GenericConfig
 }
 
@@ -63,12 +62,13 @@ func (c *TiDBConfigWraper) UnmarshalJSON(data []byte) error {
 	case string:
 		tomlData = []byte(s)
 	case map[string]interface{}:
-		err = json.Unmarshal(data, &c.Deprecated)
+		var deprecated *TiDBConfig
+		err = json.Unmarshal(data, &deprecated)
 		if err != nil {
 			return errors.AddStack(err)
 		}
 
-		tomlData, err = toml.Marshal(c.Deprecated)
+		tomlData, err = toml.Marshal(deprecated)
 		if err != nil {
 			return errors.AddStack(err)
 		}
