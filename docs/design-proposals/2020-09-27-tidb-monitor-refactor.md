@@ -9,17 +9,23 @@ Fix the issues mentioned in https://github.com/pingcap/tidb-operator/issues/3292
 * Smooth upgrade from deployment to StatefulSet.
 * Support Thanos sidecar and more friendly integration of Prometheus operator.
 ### Non-Goals
-* Improve the robustness of tidbmonitor,for example multiple cluster,code level.
-* Meet most of the needs of users and make monitoring easier to use.
 ## Proposal
-- Tidbmonitor monitors multiple clusters across multiple ns in non-TLS environments.
+- Tidbmonitor monitors multiple clusters across multiple namespaces in non-TLS environments.
+    - Support `ClusterScoped` field in spec,it will use clusterRole and clusterRoleBinding.
 - Support generating the Grafana dashboard of multiple clusters.
+    - Repaint the multi-clusters dashboard,users can select the dashboard of the specified cluster.
 - Smooth upgrade from deployment to StatefulSet.
+    - If user create a new cluster,use statefulset deploy directly.If user upgrade operator with existing cluster exist,we need to delete deployment firstly,then change pv binding to new statefulset pvc and start statefulset.
 - Support Thanos spec and optimize Thanos example.
+    - Support thanos definition contain `version` and `baseImage` field.
 - Optimize TiDB service, more friendly support with Prometheus operator `ServiceMonitor`.
+    - User can easier create `ServiceMonitor` easier to scrape tidb metrics data.Due to `ServiceMonitor` select service endpoints,so we need to optimize tidb services.
 - Refactor for PD dashboard address writing.
+    - The PD Dashboard monitor address is currently TidbCluster controller updated, it should be updated by tidbmonitor controller. And PD dashboard doesn't support multiple clusters.
 - Fix the combination of Kubernetes monitoring and TiDB cluster monitoring.
+    - https://github.com/pingcap/tidb-operator/issues/3099
 - Add more external fields for `kubectl get tm` command.
+    - https://github.com/pingcap/tidb-operator/issues/2169
 ### Test Plan
 * Deploy Tidbmonitor to monitor a TiDB cluster, StatefulSet and PVC are automatically created and monitoring works as expected.
 * Deploy Tidbmonitor to monitor a TiDB cluster with old version TiDB Operator, after upgrading to the new version, StatefulSet is created, Pod is bound to the old PVC and monitoring works as expected, the old monitoring data can also be retrieved.
