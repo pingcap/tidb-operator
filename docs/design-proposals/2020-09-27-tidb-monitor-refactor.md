@@ -11,15 +11,15 @@ Fix the issues mentioned in https://github.com/pingcap/tidb-operator/issues/3292
 ### Non-Goals
 ## Proposal
 - Tidbmonitor monitors multiple clusters across multiple namespaces in non-TLS environments.
-    - Support `ClusterScoped` field in spec,it will use clusterRole and clusterRoleBinding.
+    - Support `ClusterScoped` field in spec,it will use clusterRole and clusterRoleBinding to scrape cluster metrics data.
 - Support generating the Grafana dashboard of multiple clusters.
     - Repaint the multi-clusters dashboard,users can select the dashboard of the specified cluster.
 - Smooth upgrade from deployment to StatefulSet.
-    - If user create a new cluster,use statefulset deploy directly.If user upgrade operator with existing cluster exist,we need to delete deployment firstly,then change pv binding to new statefulset pvc and start statefulset.
+    - If user create a new cluster,use statefulset deploy directly.If user upgrade operator with existing cluster exist,we need to delete deployment firstly,then change pv binding to new statefulset pvc and deploying new statefulset.
 - Support Thanos spec and optimize Thanos example.
     - Support thanos definition contain `version` and `baseImage` field.
 - Optimize TiDB service, more friendly support with Prometheus operator `ServiceMonitor`.
-    - User can easier create `ServiceMonitor` easier to scrape tidb metrics data.Due to `ServiceMonitor` select service endpoints,so we need to optimize tidb services.
+    - Optimizing tidb services to help `ServiceMonitor` create.
 - Refactor for PD dashboard address writing.
     - The PD Dashboard monitor address is currently TidbCluster controller updated, it should be updated by tidbmonitor controller. And PD dashboard doesn't support multiple clusters.
 - Fix the combination of Kubernetes monitoring and TiDB cluster monitoring.
