@@ -3259,6 +3259,13 @@ func (in *PDStatus) DeepCopyInto(out *PDStatus) {
 			(*out)[key] = *val.DeepCopy()
 		}
 	}
+	if in.PeerMembers != nil {
+		in, out := &in.PeerMembers, &out.PeerMembers
+		*out = make(map[string]PDMember, len(*in))
+		for key, val := range *in {
+			(*out)[key] = *val.DeepCopy()
+		}
+	}
 	in.Leader.DeepCopyInto(&out.Leader)
 	if in.FailureMembers != nil {
 		in, out := &in.FailureMembers, &out.FailureMembers
@@ -5006,6 +5013,13 @@ func (in *TiFlashStatus) DeepCopyInto(out *TiFlashStatus) {
 	}
 	if in.Stores != nil {
 		in, out := &in.Stores, &out.Stores
+		*out = make(map[string]TiKVStore, len(*in))
+		for key, val := range *in {
+			(*out)[key] = *val.DeepCopy()
+		}
+	}
+	if in.PeerStores != nil {
+		in, out := &in.PeerStores, &out.PeerStores
 		*out = make(map[string]TiKVStore, len(*in))
 		for key, val := range *in {
 			(*out)[key] = *val.DeepCopy()
@@ -6798,6 +6812,13 @@ func (in *TiKVStatus) DeepCopyInto(out *TiKVStatus) {
 	}
 	if in.Stores != nil {
 		in, out := &in.Stores, &out.Stores
+		*out = make(map[string]TiKVStore, len(*in))
+		for key, val := range *in {
+			(*out)[key] = *val.DeepCopy()
+		}
+	}
+	if in.PeerStores != nil {
+		in, out := &in.PeerStores, &out.PeerStores
 		*out = make(map[string]TiKVStore, len(*in))
 		for key, val := range *in {
 			(*out)[key] = *val.DeepCopy()
