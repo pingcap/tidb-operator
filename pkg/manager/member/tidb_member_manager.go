@@ -77,6 +77,7 @@ func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
+	cmLister corelisters.ConfigMapLister,
 	secretLister corelisters.SecretLister,
 	tidbUpgrader Upgrader,
 	autoFailover bool,
@@ -89,6 +90,7 @@ func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 		setLister:                    setLister,
 		svcLister:                    svcLister,
 		podLister:                    podLister,
+		cmLister:                     cmLister,
 		secretLister:                 secretLister,
 		tidbUpgrader:                 tidbUpgrader,
 		autoFailover:                 autoFailover,
@@ -351,20 +353,21 @@ func (tmm *tidbMemberManager) syncTiDBConfigMap(tc *v1alpha1.TidbCluster, set *a
 	if err != nil {
 		return nil, err
 	}
-	if set != nil && tc.BaseTiDBSpec().ConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyInPlace {
-		inUseName := FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
+
+	var inUseName string
+	if set != nil {
+		inUseName = FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
 			return strings.HasPrefix(name, controller.TiDBMemberName(tc.Name))
 		})
-		if inUseName != "" {
-			newCm.Name = inUseName
-		}
 	}
 
+	klog.V(3).Info("get tidb in use config map name: ", inUseName)
+
+	updateConfigMapIfNeed(tmm.cmLister, tc.BaseTiDBSpec().ConfigUpdateStrategy(), inUseName, newCm)
 	return tmm.typedControl.CreateOrUpdateConfigMap(tc, newCm)
 }
 
 func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
-
 	config := tc.Spec.TiDB.Config
 	if config == nil {
 		return nil, nil
@@ -372,22 +375,16 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 
 	// override CA if tls enabled
 	if tc.IsTLSClusterEnabled() {
-		if config.Security == nil {
-			config.Security = &v1alpha1.Security{}
-		}
-		config.Security.ClusterSSLCA = pointer.StringPtr(path.Join(clusterCertPath, tlsSecretRootCAKey))
-		config.Security.ClusterSSLCert = pointer.StringPtr(path.Join(clusterCertPath, corev1.TLSCertKey))
-		config.Security.ClusterSSLKey = pointer.StringPtr(path.Join(clusterCertPath, corev1.TLSPrivateKeyKey))
+		config.Set("security.cluster-ssl-ca", path.Join(clusterCertPath, tlsSecretRootCAKey))
+		config.Set("security.cluster-ssl-cert", path.Join(clusterCertPath, corev1.TLSCertKey))
+		config.Set("security.cluster-ssl-key", path.Join(clusterCertPath, corev1.TLSPrivateKeyKey))
 	}
 	if tc.Spec.TiDB.IsTLSClientEnabled() {
-		if config.Security == nil {
-			config.Security = &v1alpha1.Security{}
-		}
-		config.Security.SSLCA = pointer.StringPtr(path.Join(serverCertPath, tlsSecretRootCAKey))
-		config.Security.SSLCert = pointer.StringPtr(path.Join(serverCertPath, corev1.TLSCertKey))
-		config.Security.SSLKey = pointer.StringPtr(path.Join(serverCertPath, corev1.TLSPrivateKeyKey))
+		config.Set("security.ssl-ca", path.Join(serverCertPath, tlsSecretRootCAKey))
+		config.Set("security.ssl-cert", path.Join(serverCertPath, corev1.TLSCertKey))
+		config.Set("security.ssl-key", path.Join(serverCertPath, corev1.TLSPrivateKeyKey))
 	}
-	confText, err := MarshalTOML(config)
+	confText, err := config.MarshalTOML()
 	if err != nil {
 		return nil, err
 	}
@@ -426,12 +423,6 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Data: data,
-	}
-
-	if tc.BaseTiDBSpec().ConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyRollingUpdate {
-		if err := AddConfigMapDigestSuffix(cm); err != nil {
-			return nil, err
-		}
 	}
 
 	return cm, nil
