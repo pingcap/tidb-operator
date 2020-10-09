@@ -50,7 +50,6 @@ var (
 					AdvertiseAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:20170"),
 					Config:        pointer.StringPtr("/data0/proxy.toml"),
 					DataDir:       pointer.StringPtr("/data0/proxy"),
-					LogFile:       pointer.StringPtr("/data0/logs/proxy.log"),
 				},
 				ServiceAddr:    pointer.StringPtr("0.0.0.0:3930"),
 				TiDBStatusAddr: pointer.StringPtr("test-tidb.test.svc:10080"),
@@ -151,7 +150,6 @@ var (
 					AdvertiseAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:20170"),
 					Config:        pointer.StringPtr("/data0/proxy.toml"),
 					DataDir:       pointer.StringPtr("/data0/proxy"),
-					LogFile:       pointer.StringPtr("/data0/logs/proxy.log"),
 				},
 				ServiceAddr:    pointer.StringPtr("0.0.0.0:3930"),
 				TiDBStatusAddr: pointer.StringPtr("test-tidb.test.svc:10080"),
@@ -250,7 +248,6 @@ var (
 					AdvertiseAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:20170"),
 					Config:        pointer.StringPtr("/data0/proxy.toml"),
 					DataDir:       pointer.StringPtr("/data0/proxy"),
-					LogFile:       pointer.StringPtr("/data0/logs/proxy.log"),
 				},
 				ServiceAddr:    pointer.StringPtr("0.0.0.0:3930"),
 				TiDBStatusAddr: pointer.StringPtr("test-tidb.test.svc:10080"),
@@ -359,7 +356,6 @@ var (
 					AdvertiseAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:20171"),
 					Config:        pointer.StringPtr("/data0/proxy1.toml"),
 					DataDir:       pointer.StringPtr("/data0/proxy1"),
-					LogFile:       pointer.StringPtr("/data0/logs/proxy1.log"),
 				},
 				ServiceAddr:    pointer.StringPtr("0.0.0.0:3930"),
 				TiDBStatusAddr: pointer.StringPtr("test-tidb.test.svc:10081"),
@@ -442,9 +438,7 @@ var (
 				FlashCluster: &v1alpha1.FlashCluster{
 					ClusterLog: pointer.StringPtr("/data0/logs/flash_cluster_manager.log"),
 				},
-				FlashProxy: &v1alpha1.FlashProxy{
-					LogFile: pointer.StringPtr("/data0/logs/proxy.log"),
-				},
+				FlashProxy: &v1alpha1.FlashProxy{},
 			},
 			FlashLogger: &v1alpha1.FlashLogger{
 				ErrorLog:  pointer.StringPtr("/data0/logs/error.log"),
@@ -458,9 +452,7 @@ var (
 				FlashCluster: &v1alpha1.FlashCluster{
 					ClusterLog: pointer.StringPtr("/data1/logs/flash_cluster_manager.log"),
 				},
-				FlashProxy: &v1alpha1.FlashProxy{
-					LogFile: pointer.StringPtr("/data1/logs/proxy.log"),
-				},
+				FlashProxy: &v1alpha1.FlashProxy{},
 			},
 			FlashLogger: &v1alpha1.FlashLogger{
 				ErrorLog:  pointer.StringPtr("/data1/logs/error.log"),
