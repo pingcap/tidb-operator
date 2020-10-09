@@ -282,6 +282,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, *FakeTidbCluste
 		genericCli,
 		informerFactory,
 		kubeInformerFactory,
+		kubeInformerFactory,
 		autoFailover,
 		5*time.Minute,
 		5*time.Minute,

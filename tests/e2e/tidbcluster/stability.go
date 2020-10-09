@@ -512,9 +512,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			ginkgo.By("Update tidb configuration")
 			updateStrategy := v1alpha1.ConfigUpdateStrategyRollingUpdate
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-				tc.Spec.TiDB.Config.TokenLimit = func(i uint) *uint {
-					return &i
-				}(2000)
+				tc.Spec.TiDB.Config.Set("token-limit", 2000)
 				tc.Spec.TiDB.ConfigUpdateStrategy = &updateStrategy
 				return nil
 			})
