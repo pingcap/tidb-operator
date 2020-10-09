@@ -585,7 +585,7 @@ type TiDBSpec struct {
 
 	// Config is the Configuration of tidb-servers
 	// +optional
-	Config *TiDBConfig `json:"config,omitempty"`
+	Config *TiDBConfigWraper `json:"config,omitempty"`
 
 	// Lifecycle describes actions that the management system should take in response to container lifecycle
 	// events. For the PostStart and PreStop lifecycle handlers, management of the container blocks
