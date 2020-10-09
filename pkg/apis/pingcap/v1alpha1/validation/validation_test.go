@@ -45,7 +45,7 @@ func TestValidateAnnotations(t *testing.T) {
 					Version: "v3.0.8",
 					PD: &v1alpha1.PDSpec{
 						BaseImage: "pingcap/pd",
-						Config:    &v1alpha1.PDConfig{},
+						Config:    v1alpha1.NewPDConfig(),
 					},
 					TiKV: &v1alpha1.TiKVSpec{
 						BaseImage: "pingcap/tikv",
@@ -69,7 +69,7 @@ func TestValidateAnnotations(t *testing.T) {
 					Version: "v3.0.8",
 					PD: &v1alpha1.PDSpec{
 						BaseImage: "pingcap/pd",
-						Config:    &v1alpha1.PDConfig{},
+						Config:    v1alpha1.NewPDConfig(),
 					},
 					TiKV: &v1alpha1.TiKVSpec{
 						BaseImage: "pingcap/tikv",
@@ -110,7 +110,7 @@ func TestValidateAnnotations(t *testing.T) {
 					Version: "v3.0.8",
 					PD: &v1alpha1.PDSpec{
 						BaseImage: "pingcap/pd",
-						Config:    &v1alpha1.PDConfig{},
+						Config:    v1alpha1.NewPDConfig(),
 					},
 					TiKV: &v1alpha1.TiKVSpec{
 						BaseImage: "pingcap/tikv",
@@ -146,7 +146,7 @@ func TestValidateAnnotations(t *testing.T) {
 					Version: "v3.0.8",
 					PD: &v1alpha1.PDSpec{
 						BaseImage: "pingcap/pd",
-						Config:    &v1alpha1.PDConfig{},
+						Config:    v1alpha1.NewPDConfig(),
 					},
 					TiKV: &v1alpha1.TiKVSpec{
 						BaseImage: "pingcap/tikv",

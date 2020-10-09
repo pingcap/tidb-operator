@@ -360,7 +360,7 @@ func newTidbClusterForTidbClusterControl() *v1alpha1.TidbCluster {
 			PD: &v1alpha1.PDSpec{
 				Replicas:  3,
 				BaseImage: "pingcap/pd",
-				Config:    &v1alpha1.PDConfig{},
+				Config:    v1alpha1.NewPDConfig(),
 				ResourceRequirements: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceStorage: resource.MustParse("10G"),
