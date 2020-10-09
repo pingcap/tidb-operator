@@ -26,13 +26,14 @@ import (
 )
 
 type MonitorParams struct {
-	Name         string   `json:"name"`
-	MemberType   string   `json:"memberType"`
-	Duration     string   `json:"duration"`
-	Value        string   `json:"value"`
-	InstancesPod []string `json:"instances"`
-	QueryType    string   `json:"queryType"`
-	StorageType  string   `json:"storageType"`
+	KubernetesNamespace string   `json:"kubernetesNamespace"`
+	Name                string   `json:"name"`
+	MemberType          string   `json:"memberType"`
+	Duration            string   `json:"duration"`
+	Value               string   `json:"value"`
+	InstancesPod        []string `json:"instances"`
+	QueryType           string   `json:"queryType"`
+	StorageType         string   `json:"storageType"`
 }
 
 type MonitorTargets struct {
@@ -103,7 +104,7 @@ func buildPrometheusResponse(mp *MonitorParams) *calculate.Response {
 					Instance:            instance,
 					Cluster:             cluster,
 					Job:                 "foo",
-					KubernetesNamespace: "foo",
+					KubernetesNamespace: mp.KubernetesNamespace,
 					KubernetesNode:      "foo",
 					KubernetesPodIp:     "foo",
 				},
@@ -114,23 +115,6 @@ func buildPrometheusResponse(mp *MonitorParams) *calculate.Response {
 			}
 			resp.Data.Result = append(resp.Data.Result, r)
 		}
-	} else if mp.QueryType == "storage" {
-		value := mp.Value
-		r := calculate.Result{
-			Metric: calculate.Metric{
-				Cluster:             cluster,
-				Job:                 "foo",
-				KubernetesNamespace: "foo",
-				KubernetesNode:      "foo",
-				KubernetesPodIp:     "foo",
-			},
-			Value: []interface{}{
-				value,
-				value,
-			},
-		}
-		resp.Data.Result = append(resp.Data.Result, r)
-		resp.Data.Result = append(resp.Data.Result, r)
 	}
 	resp.Data.ResultType = "foo"
 	return resp

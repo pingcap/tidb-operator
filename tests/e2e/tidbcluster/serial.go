@@ -17,6 +17,7 @@ import (
 	"context"
 	"fmt"
 	_ "net/http/pprof"
+	"strings"
 	"time"
 
 	"github.com/onsi/ginkgo"
@@ -34,6 +35,7 @@ import (
 	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
+	"github.com/pingcap/tidb-operator/tests/pkg/mock"
 	v1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -567,6 +569,135 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			err = utilpod.WaitForPodsAreChanged(c, podList.Items, time.Minute*5)
 			framework.ExpectEqual(err, wait.ErrWaitTimeout)
 		})
+	})
+
+	ginkgo.Context("[Feature: AutoScaling]", func() {
+		var ocfg *tests.OperatorConfig
+		var oa tests.OperatorActions
+
+		ginkgo.BeforeEach(func() {
+			ocfg = &tests.OperatorConfig{
+				Namespace:         ns,
+				ReleaseName:       "operator",
+				Image:             cfg.OperatorImage,
+				Tag:               cfg.OperatorTag,
+				LogLevel:          "4",
+				TestMode:          true,
+				WebhookEnabled:    true,
+				PodWebhookEnabled: true,
+				Features: []string{
+					"AutoScaling=true",
+				},
+			}
+			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+			ginkgo.By("Installing CRDs")
+			oa.CleanCRDOrDie()
+			oa.InstallCRDOrDie(ocfg)
+			ginkgo.By("Installing tidb-operator")
+			oa.CleanOperatorOrDie(ocfg)
+			oa.DeployOperatorOrDie(ocfg)
+		})
+
+		ginkgo.AfterEach(func() {
+			ginkgo.By("Uninstall tidb-operator")
+			oa.CleanOperatorOrDie(ocfg)
+			ginkgo.By("Uninstalling CRDs")
+			oa.CleanCRDOrDie()
+		})
+
+		ginkgo.Skip("auto-scaling TidbCluster")
+		clusterName := "auto-scaling"
+		tc := fixture.GetTidbCluster(ns, clusterName, "nightly")
+		tc.Spec.PD.Replicas = 1
+		tc.Spec.TiKV.Replicas = 3
+		tc.Spec.TiDB.Replicas = 2
+		tc.Spec.PD.Config.PDServerCfg.MetricStorage = pointer.StringPtr("http://monitor-prometheus:9090")
+
+		_, err := cli.PingcapV1alpha1().TidbClusters(ns).Create(tc)
+		framework.ExpectNoError(err, "Create TidbCluster error")
+		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err, "Check TidbCluster error")
+		monitor := fixture.NewTidbMonitor("monitor", ns, tc, false, false)
+
+		// Replace Prometheus into Mock Prometheus
+		a := e2econfig.TestConfig.E2EImage
+		colonIdx := strings.LastIndexByte(a, ':')
+		image := a[:colonIdx]
+		tag := a[colonIdx+1:]
+		monitor.Spec.Prometheus.BaseImage = image
+		monitor.Spec.Prometheus.Version = tag
+
+		_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(monitor)
+		framework.ExpectNoError(err, "Create TidbMonitor error")
+		err = tests.CheckTidbMonitor(monitor, cli, c, fw)
+		framework.ExpectNoError(err, "Check TidbMonitor error")
+		tac := fixture.GetTidbClusterAutoScaler("auto-scaler", ns, tc, monitor)
+
+		duration := "60s"
+		mp := &mock.MonitorParams{
+			Name:       tc.Name,
+			MemberType: v1alpha1.TiKVMemberType.String(),
+			Duration:   duration,
+			// The CPU of TiKV is guaranteed 1000m
+			// To reach 50% utilization, the sum of cpu usage time should be at least 60 * 3 * 0.5 = 90
+			Value:        "35.0",
+			QueryType:    "cpu_usage",
+			InstancesPod: []string{"auto-scaling-tikv-0", "auto-scaling-tikv-1", "auto-scaling-tikv-2"},
+		}
+		err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
+		framework.ExpectNoError(err, "set tikv cpu usage mock metrics error")
+
+		mp = &mock.MonitorParams{
+			Name:       tc.Name,
+			MemberType: v1alpha1.TiKVMemberType.String(),
+			Duration:   duration,
+			// The CPU of TiKV is guaranteed 1000m
+			Value:        "1.0",
+			QueryType:    "cpu_quota",
+			InstancesPod: []string{"auto-scaling-tikv-0", "auto-scaling-tikv-1", "auto-scaling-tikv-2"},
+		}
+		err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
+		framework.ExpectNoError(err, "set tikv cpu quota mock metrics error")
+
+		tac.Spec.TiKV = &v1alpha1.TikvAutoScalerSpec{}
+		tac.Spec.TiKV.Rules = map[v1.ResourceName]v1alpha1.AutoRule{
+			v1.ResourceCPU: {
+				MaxThreshold: 0.5,
+				MinThreshold: func() *float64 {
+					v := 0.2
+					return &v
+				}(),
+			},
+		}
+
+		_, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Create(tac)
+		framework.ExpectNoError(err, "Create TidbClusterAutoScaler error")
+
+		// A new cluster should be created and there is one TiKV replica
+		err = wait.Poll(10*time.Second, 10*time.Minute, func() (done bool, err error) {
+			tcList, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).List(metav1.ListOptions{
+				LabelSelector: fmt.Sprintf("%s=%s,%s=%s", label.AutoInstanceLabelKey, "auto-scaler", label.BaseTCLabelKey, tc.Name),
+			})
+
+			if err != nil {
+				return false, err
+			}
+
+			if len(tcList.Items) < 1 {
+				framework.Logf("autoscaling tikv cluster is not created")
+				return false, nil
+			}
+
+			autoTc := tcList.Items[0]
+			framework.Logf("autoscaling tikv cluster tc[%s/%s] created", autoTc.Namespace, autoTc.Name)
+			return false, nil
+		})
+		framework.ExpectNoError(err, "check create autoscaling tikv cluster error")
+		framework.Logf("success to check create autoscaling tikv cluster")
+
+		// Clean scaler
+		err = cli.PingcapV1alpha1().TidbClusterAutoScalers(tac.Namespace).Delete(tac.Name, &metav1.DeleteOptions{})
+		framework.ExpectNoError(err, "failed to delete auto-scaler")
 	})
 })
 
