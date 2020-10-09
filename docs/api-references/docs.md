@@ -1803,6 +1803,17 @@ default to current tidb cluster version, for example: v3.0.15</p>
 <em>(Optional)</em>
 </td>
 </tr>
+<tr>
+<td>
+<code>clusterScoped</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>ClusterScoped indicates whether this monitor should manage Kubernetes cluster-wide TiDB clusters</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -17277,6 +17288,17 @@ default to current tidb cluster version, for example: v3.0.15</p>
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>clusterScoped</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>ClusterScoped indicates whether this monitor should manage Kubernetes cluster-wide TiDB clusters</p>
 </td>
 </tr>
 </tbody>
