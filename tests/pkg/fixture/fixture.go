@@ -92,6 +92,10 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 		tikvConfig.Storage = nil
 	}
 	deletePVP := corev1.PersistentVolumeReclaimDelete
+
+	tidbConfig := v1alpha1.NewTiDBConfig()
+	tidbConfig.Set("log.level", "info")
+
 	return &v1alpha1.TidbCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -144,11 +148,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				},
 				SeparateSlowLog:  pointer.BoolPtr(true),
 				MaxFailoverCount: pointer.Int32Ptr(3),
-				Config: &v1alpha1.TiDBConfig{
-					Log: &v1alpha1.Log{
-						Level: pointer.StringPtr("info"),
-					},
-				},
+				Config:           tidbConfig,
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Affinity: buildAffinity(name, ns, v1alpha1.TiDBMemberType),
 				},
