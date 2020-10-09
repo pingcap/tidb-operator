@@ -126,7 +126,7 @@ func (pu *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newS
 			if ordinal == targetOrdinal {
 				targetOrdinal = 0
 			}
-			if _, exist := tc.Status.PD.PeerMembers[targetName]; !exist{
+			if _, exist := tc.Status.PD.PeerMembers[targetName]; !exist {
 				targetName = PdName(tcName, targetOrdinal, tc.Namespace, tc.Spec.ClusterDomain)
 			} else {
 				targetName = PdName(tcName, targetOrdinal, tc.Namespace, tc.Spec.ClusterDomain)
