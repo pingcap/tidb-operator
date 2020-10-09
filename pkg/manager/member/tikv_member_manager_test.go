@@ -2253,8 +2253,8 @@ func TestGetTiKVConfigMap(t *testing.T) {
 			// startup-script is better to be tested in e2e
 			cm.Data["startup-script"] = ""
 
-			got, _ := cm.Data["config-file"]
-			want, _ := tt.expected.Data["config-file"]
+			got := cm.Data["config-file"]
+			want := tt.expected.Data["config-file"]
 			g.Expect(toml.Equal([]byte(got), []byte(want))).To(BeTrue())
 			delete(cm.Data, "config-file")
 			delete(tt.expected.Data, "config-file")

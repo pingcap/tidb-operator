@@ -54,7 +54,7 @@ func TestStringSlice(t *testing.T) {
 	v = c.Get("not_slice")
 	g.Expect(v).ShouldNot(BeNil())
 	_, err = v.AsStringSlice()
-	g.Expect(v).ShouldNot(BeNil())
+	g.Expect(err).ShouldNot(BeNil())
 }
 
 func TestGetSet(t *testing.T) {
