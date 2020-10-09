@@ -532,7 +532,7 @@ func validateTimeDurationStr(timeStr *string, fldPath *field.Path) field.ErrorLi
 	if timeStr != nil {
 		d, err := time.ParseDuration(*timeStr)
 		if err != nil {
-			allErrs = append(allErrs, field.Invalid(fldPath, timeStr, "mush be a valid Go time duration string"))
+			allErrs = append(allErrs, field.Invalid(fldPath, timeStr, "mush be a valid Go time duration string, e.g. 3m"))
 		} else if d <= 0 {
 			allErrs = append(allErrs, field.Invalid(fldPath, timeStr, "must be a positive Go time duration"))
 		}

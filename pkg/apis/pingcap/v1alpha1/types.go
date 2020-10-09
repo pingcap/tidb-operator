@@ -422,7 +422,7 @@ type TiKVSpec struct {
 	// +optional
 	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
 
-	// EvictLeaderTimeout indicates the timeout to evict tikv leader
+	// EvictLeaderTimeout indicates the timeout to evict tikv leader, in the format of Go Duration.
 	// Defaults to 3m
 	// +optional
 	EvictLeaderTimeout *string `json:"evictLeaderTimeout,omitempty"`
