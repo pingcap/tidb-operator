@@ -728,24 +728,98 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectNoError(err, "set tikv cpu quota mock metrics error")
 
 			err = wait.Poll(10*time.Second, 10*time.Minute, func() (done bool, err error) {
-				tc, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
+				tc, err = cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
 
 				if err != nil {
 					return false, err
 				}
 
+				autoTc = *tc
+
 				if tc.Spec.TiKV.Replicas < 2 {
-					framework.Logf("autoscaling tikv cluster is not scaled")
+					framework.Logf("autoscaling tikv cluster is not scaled out")
 					return false, nil
 				}
 
 				if tc.Spec.TiKV.Replicas >= 2 {
-					framework.Logf("autoscaling tikv cluster tc[%s/%s] scaled", autoTc.Namespace, autoTc.Name)
+					framework.Logf("autoscaling tikv cluster tc[%s/%s] scaled out", autoTc.Namespace, autoTc.Name)
 					return true, nil
 				}
 
 				return false, nil
 			})
+			framework.ExpectNoError(err, "check scale out existing autoscaling tikv cluster error")
+			framework.Logf("success to check scale out existing autoscaling tikv cluster")
+
+			pods := []string{"auto-scaling-tikv-0", "auto-scaling-tikv-1", "auto-scaling-tikv-2"}
+			for i := int32(0); i < autoTc.Spec.TiKV.Replicas; i++ {
+				pods = append(pods, fmt.Sprintf("%s-tikv-%d", autoTc.Name, i))
+			}
+
+			mp = &mock.MonitorParams{
+				Name:         tc.Name,
+				MemberType:   v1alpha1.TiKVMemberType.String(),
+				Duration:     duration,
+				Value:        "0.0",
+				QueryType:    "cpu_usage",
+				InstancesPod: pods,
+			}
+			err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
+			framework.ExpectNoError(err, "set tikv cpu usage mock metrics error")
+
+			mp = &mock.MonitorParams{
+				Name:       tc.Name,
+				MemberType: v1alpha1.TiKVMemberType.String(),
+				Duration:   duration,
+				// The CPU of TiKV is guaranteed 1000m
+				Value:        "1.0",
+				QueryType:    "cpu_quota",
+				InstancesPod: pods,
+			}
+			err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
+			framework.ExpectNoError(err, "set tikv cpu quota mock metrics error")
+
+			err = wait.Poll(10*time.Second, 10*time.Minute, func() (done bool, err error) {
+				tc, err = cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
+
+				if err != nil {
+					return false, err
+				}
+
+				autoTc = *tc
+
+				if tc.Spec.TiKV.Replicas > 0 {
+					framework.Logf("autoscaling tikv cluster is not gracefully shutting down")
+					return false, nil
+				}
+
+				if tc.Spec.TiKV.Replicas <= 0 {
+					framework.Logf("autoscaling tikv cluster tc[%s/%s] is shutting down", autoTc.Namespace, autoTc.Name)
+					return true, nil
+				}
+
+				return false, nil
+			})
+
+			err = wait.Poll(10*time.Second, 10*time.Minute, func() (done bool, err error) {
+				tcList, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).List(metav1.ListOptions{
+					LabelSelector: fmt.Sprintf("%s=%s,%s=%s", label.AutoInstanceLabelKey, "auto-scaler", label.BaseTCLabelKey, tc.Name),
+				})
+
+				if err != nil {
+					return false, err
+				}
+
+				if len(tcList.Items) > 0 {
+					framework.Logf("autoscaling tikv cluster is not deleted")
+					return false, nil
+				}
+
+				framework.Logf("autoscaling tikv cluster deleted")
+				return true, nil
+			})
+			framework.ExpectNoError(err, "check delete autoscaling tikv cluster error")
+			framework.Logf("success to check delete autoscaling tikv cluster")
 
 			// Clean autoscaler
 			err = cli.PingcapV1alpha1().TidbClusterAutoScalers(tac.Namespace).Delete(tac.Name, &metav1.DeleteOptions{})
