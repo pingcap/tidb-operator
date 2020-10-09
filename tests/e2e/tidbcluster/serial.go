@@ -38,6 +38,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/mock"
 	v1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -783,6 +784,9 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				tc, err = cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
 
 				if err != nil {
+					if errors.IsNotFound(err) {
+						return true, nil
+					}
 					return false, err
 				}
 
@@ -800,6 +804,9 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 				return false, nil
 			})
+
+			framework.ExpectNoError(err, "failed to check shut down autoscaling tikv cluster")
+			framework.Logf("success to check shut down autoscaling tikv cluster")
 
 			err = wait.Poll(10*time.Second, 10*time.Minute, func() (done bool, err error) {
 				tcList, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).List(metav1.ListOptions{
