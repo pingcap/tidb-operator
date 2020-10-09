@@ -612,7 +612,9 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			tc.Spec.PD.Replicas = 1
 			tc.Spec.TiKV.Replicas = 3
 			tc.Spec.TiDB.Replicas = 2
-			tc.Spec.PD.Config.PDServerCfg.MetricStorage = pointer.StringPtr("http://monitor-prometheus:9090")
+			tc.Spec.PD.Config.PDServerCfg = &v1alpha1.PDServerConfig{
+				MetricStorage: pointer.StringPtr("http://monitor-prometheus:9090"),
+			}
 
 			_, err := cli.PingcapV1alpha1().TidbClusters(ns).Create(tc)
 			framework.ExpectNoError(err, "Create TidbCluster error")
