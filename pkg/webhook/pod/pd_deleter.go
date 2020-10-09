@@ -203,13 +203,15 @@ func (pc *PodAdmissionControl) transferPDLeader(payload *admitPayload) *admissio
 		return util.ARSuccess()
 	}
 	tcName := tc.Name
-	var targetName string
 
 	lastOrdinal := helper.GetMaxPodOrdinal(*payload.ownerStatefulSet.Spec.Replicas, payload.ownerStatefulSet)
+	targetOrdinal := lastOrdinal
 	if ordinal == lastOrdinal {
-		targetName = pdutil.PdName(tcName, helper.GetMinPodOrdinal(*payload.ownerStatefulSet.Spec.Replicas, payload.ownerStatefulSet), tc.Namespace, tc.Spec.ClusterDomain)
-	} else {
-		targetName = pdutil.PdName(tcName, lastOrdinal, tc.Namespace, tc.Spec.ClusterDomain)
+		helper.GetMinPodOrdinal(*payload.ownerStatefulSet.Spec.Replicas, payload.ownerStatefulSet)
+	}
+	targetName := pdutil.PdName(tcName, targetOrdinal, namespace, tc.Spec.ClusterDomain)
+	if _, exist := tc.Status.PD.Members[targetName]; !exist{
+		targetName = pdutil.PdPodName(tcName, targetOrdinal)
 	}
 	if tc.PDStsActualReplicas() <= 1 && len(tc.Status.PD.PeerMembers) > 0 {
 		for _, member := range tc.Status.PD.PeerMembers {

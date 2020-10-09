@@ -109,6 +109,7 @@ func (psd *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
 	resetReplicas(newSet, oldSet)
 	memberName := PdName(tcName, ordinal, tc.Namespace, tc.Spec.ClusterDomain)
+	pdPodName := PdPodName(tcName, ordinal)
 	setName := oldSet.GetName()
 
 	if !tc.Status.PD.Synced {
@@ -130,9 +131,14 @@ func (psd *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 	// If the pd pod was pd leader during scale-in, we would transfer pd leader to pd-0 directly
 	// If the pd statefulSet would be scale-in to zero and the pd-0 was going to be deleted,
 	// we would directly deleted the pd-0 without pd leader transferring
-	if leader.Name == memberName {
+	if leader.Name == memberName || leader.Name == pdPodName {
 		if ordinal > 0 {
-			err = pdClient.TransferPDLeader(PdName(tcName, 0, tc.Namespace, tc.Spec.ClusterDomain))
+			targetPdName := PdName(tcName, 0, tc.Namespace, tc.Spec.ClusterDomain)
+			if _, exist := tc.Status.PD.Members[targetPdName]; exist{
+				err = pdClient.TransferPDLeader(targetPdName)
+			} else {
+				err = pdClient.TransferPDLeader(PdPodName(tcName, 0))
+			}
 			if err != nil {
 				return err
 			}

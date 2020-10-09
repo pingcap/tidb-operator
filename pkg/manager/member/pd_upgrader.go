@@ -119,7 +119,8 @@ func (pu *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newS
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	upgradePdName := PdName(tcName, ordinal, tc.Namespace, tc.Spec.ClusterDomain)
-	if tc.Status.PD.Leader.Name == upgradePdName {
+	upgradePodName := PdPodName(tcName, ordinal)
+	if tc.Status.PD.Leader.Name == upgradePdName || tc.Status.PD.Leader.Name == upgradePodName {
 		var targetName string
 		if tc.PDStsActualReplicas() > 1 {
 			targetOrdinal := tc.PDStsActualReplicas() - 1
@@ -127,7 +128,7 @@ func (pu *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newS
 				targetOrdinal = 0
 			}
 			targetName = PdName(tcName, targetOrdinal, tc.Namespace, tc.Spec.ClusterDomain)
-			if _, exist := tc.Status.PD.Members[upgradePdName]; !exist {
+			if _, exist := tc.Status.PD.Members[targetName]; !exist {
 				targetName = PdPodName(tcName, targetOrdinal)
 			}
 		} else {
