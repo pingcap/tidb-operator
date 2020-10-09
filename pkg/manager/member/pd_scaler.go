@@ -134,7 +134,7 @@ func (psd *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 	if leader.Name == memberName || leader.Name == pdPodName {
 		if ordinal > 0 {
 			targetPdName := PdName(tcName, 0, tc.Namespace, tc.Spec.ClusterDomain)
-			if _, exist := tc.Status.PD.Members[targetPdName]; exist{
+			if _, exist := tc.Status.PD.Members[targetPdName]; exist {
 				err = pdClient.TransferPDLeader(targetPdName)
 			} else {
 				err = pdClient.TransferPDLeader(PdPodName(tcName, 0))
