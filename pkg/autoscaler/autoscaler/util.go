@@ -20,12 +20,14 @@ import (
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 	"k8s.io/utils/pointer"
 )
@@ -57,39 +59,18 @@ func checkStsAutoScalingInterval(tac *v1alpha1.TidbClusterAutoScaler, intervalSe
 	return true, nil
 }
 
-// limitTargetReplicas would limit the calculated target replicas to ensure the min/max Replicas
-func limitTargetReplicas(targetReplicas int32, tac *v1alpha1.TidbClusterAutoScaler, memberType v1alpha1.MemberType) int32 {
-	var min, max int32
-	switch memberType {
-	case v1alpha1.TiKVMemberType:
-		min, max = *tac.Spec.TiKV.MinReplicas, tac.Spec.TiKV.MaxReplicas
-	case v1alpha1.TiDBMemberType:
-		min, max = *tac.Spec.TiDB.MinReplicas, tac.Spec.TiDB.MaxReplicas
-	default:
-		return targetReplicas
-	}
-	if targetReplicas > max {
-		return max
-	}
-	if targetReplicas < min {
-		return min
-	}
-	return targetReplicas
-}
-
 func defaultResources(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) {
-	if tac.Spec.Resources == nil {
-		tac.Spec.Resources = map[string]v1alpha1.AutoResource{}
-	}
 	typ := fmt.Sprintf("default_%s", component.String())
 	resource := v1alpha1.AutoResource{}
 	var requests corev1.ResourceList
+
 	switch component {
 	case v1alpha1.TiDBMemberType:
 		requests = tc.Spec.TiDB.Requests
 	case v1alpha1.TiKVMemberType:
 		requests = tc.Spec.TiKV.Requests
 	}
+
 	for res, v := range requests {
 		switch res {
 		case corev1.ResourceCPU:
@@ -100,19 +81,26 @@ func defaultResources(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoSca
 			resource.Storage = v
 		}
 	}
-	tac.Spec.Resources[typ] = resource
+
+	switch component {
+	case v1alpha1.TiDBMemberType:
+		if tac.Spec.TiDB.Resources == nil {
+			tac.Spec.TiDB.Resources = make(map[string]v1alpha1.AutoResource)
+		}
+		tac.Spec.TiDB.Resources[typ] = resource
+	case v1alpha1.TiKVMemberType:
+		if tac.Spec.TiKV.Resources == nil {
+			tac.Spec.TiKV.Resources = make(map[string]v1alpha1.AutoResource)
+		}
+		tac.Spec.TiKV.Resources[typ] = resource
+	}
 }
 
 func defaultResourceTypes(tac *v1alpha1.TidbClusterAutoScaler, rule *v1alpha1.AutoRule, component v1alpha1.MemberType) {
+	resources := getSpecResources(tac, component)
 	if len(rule.ResourceTypes) == 0 {
-		for typ, res := range tac.Spec.Resources {
-			if component == v1alpha1.TiKVMemberType {
-				// The resource has no storage for TiKV
-				if res.Storage.Cmp(zeroQuantity) == 0 {
-					continue
-				}
-			}
-			rule.ResourceTypes = append(rule.ResourceTypes, typ)
+		for name := range resources {
+			rule.ResourceTypes = append(rule.ResourceTypes, name)
 		}
 	}
 }
@@ -123,6 +111,20 @@ func getBasicAutoScalerSpec(tac *v1alpha1.TidbClusterAutoScaler, component v1alp
 		return &tac.Spec.TiDB.BasicAutoScalerSpec
 	case v1alpha1.TiKVMemberType:
 		return &tac.Spec.TiKV.BasicAutoScalerSpec
+	}
+	return nil
+}
+
+func getSpecResources(tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) map[string]v1alpha1.AutoResource {
+	switch component {
+	case v1alpha1.TiDBMemberType:
+		if tac.Spec.TiDB != nil {
+			return tac.Spec.TiDB.Resources
+		}
+	case v1alpha1.TiKVMemberType:
+		if tac.Spec.TiKV != nil {
+			return tac.Spec.TiKV.Resources
+		}
 	}
 	return nil
 }
@@ -167,15 +169,13 @@ func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.TidbCluster) {
 		tac.Annotations = map[string]string{}
 	}
 
-	if len(tac.Spec.Resources) == 0 {
-		// Construct default resource
-		if tac.Spec.TiKV != nil && tac.Spec.TiKV.External == nil {
-			defaultResources(tc, tac, v1alpha1.TiKVMemberType)
-		}
+	// Construct default resource
+	if tac.Spec.TiKV != nil && tac.Spec.TiKV.External == nil && len(tac.Spec.TiKV.Resources) == 0 {
+		defaultResources(tc, tac, v1alpha1.TiKVMemberType)
+	}
 
-		if tac.Spec.TiDB != nil && tac.Spec.TiDB.External == nil {
-			defaultResources(tc, tac, v1alpha1.TiDBMemberType)
-		}
+	if tac.Spec.TiDB != nil && tac.Spec.TiDB.External == nil && len(tac.Spec.TiDB.Resources) == 0 {
+		defaultResources(tc, tac, v1alpha1.TiDBMemberType)
 	}
 
 	if tidb := tac.Spec.TiDB; tidb != nil {
@@ -213,10 +213,18 @@ func validateBasicAutoScalerSpec(tac *v1alpha1.TidbClusterAutoScaler, component 
 	if len(spec.Rules) == 0 {
 		return fmt.Errorf("no rules defined for component %s in %s/%s", component.String(), tac.Namespace, tac.Name)
 	}
+	resources := getSpecResources(tac, component)
+
+	if component == v1alpha1.TiKVMemberType {
+		for name, res := range resources {
+			if res.Storage.Cmp(zeroQuantity) == 0 {
+				return fmt.Errorf("resource %s defined for tikv does not have storage in %s/%s", name, tac.Namespace, tac.Name)
+			}
+		}
+	}
 
 	acceptableResources := map[corev1.ResourceName]struct{}{
-		corev1.ResourceCPU:     {},
-		corev1.ResourceStorage: {},
+		corev1.ResourceCPU: {},
 	}
 
 	checkCommon := func(res corev1.ResourceName, rule v1alpha1.AutoRule) error {
@@ -230,7 +238,7 @@ func validateBasicAutoScalerSpec(tac *v1alpha1.TidbClusterAutoScaler, component 
 			return fmt.Errorf("no resources provided for rule %s of %s in %s/%s", res, component.String(), tac.Namespace, tac.Name)
 		}
 		for _, resType := range rule.ResourceTypes {
-			if _, ok := tac.Spec.Resources[resType]; !ok {
+			if _, ok := resources[resType]; !ok {
 				return fmt.Errorf("unknown resource %s for %s in %s/%s", resType, component.String(), tac.Namespace, tac.Name)
 			}
 		}
@@ -250,14 +258,6 @@ func validateBasicAutoScalerSpec(tac *v1alpha1.TidbClusterAutoScaler, component 
 			if *rule.MinThreshold > rule.MaxThreshold {
 				return fmt.Errorf("min_threshold (%v) > max_threshold (%v) for cpu rule of %s in %s/%s", *rule.MinThreshold, rule.MaxThreshold, component.String(), tac.Namespace, tac.Name)
 			}
-		case corev1.ResourceStorage:
-			for _, resType := range rule.ResourceTypes {
-				if res, ok := tac.Spec.Resources[resType]; ok {
-					if res.Storage.Cmp(zeroQuantity) == 0 {
-						return fmt.Errorf("resource %s specified for storage rule for %s in %s/%s does not have storage", resType, component.String(), tac.Namespace, tac.Name)
-					}
-				}
-			}
 		}
 	}
 
@@ -265,18 +265,12 @@ func validateBasicAutoScalerSpec(tac *v1alpha1.TidbClusterAutoScaler, component 
 }
 
 func validateTAC(tac *v1alpha1.TidbClusterAutoScaler) error {
-	if len(tac.Spec.Resources) == 0 {
-		invalid := false
-		// If one of the spec has no external query, this is invalid
-		if tac.Spec.TiDB != nil && tac.Spec.TiDB.External == nil {
-			invalid = true
-		}
-		if tac.Spec.TiKV != nil && tac.Spec.TiKV.External == nil {
-			invalid = true
-		}
-		if invalid {
-			return fmt.Errorf("no resources provided for %s/%s", tac.Namespace, tac.Name)
-		}
+	if tac.Spec.TiDB != nil && tac.Spec.TiDB.External == nil && len(tac.Spec.TiDB.Resources) == 0 {
+		return fmt.Errorf("no resources provided for tidb in %s/%s", tac.Namespace, tac.Name)
+	}
+
+	if tac.Spec.TiKV != nil && tac.Spec.TiKV.External == nil && len(tac.Spec.TiKV.Resources) == 0 {
+		return fmt.Errorf("no resources provided for tikv in %s/%s", tac.Namespace, tac.Name)
 	}
 
 	if tidb := tac.Spec.TiDB; tidb != nil {
@@ -306,12 +300,13 @@ func genMetricsEndpoint(tac *v1alpha1.TidbClusterAutoScaler) (string, error) {
 	return fmt.Sprintf("http://%s-prometheus.%s.svc:9090", tac.Spec.Monitor.Name, tac.Spec.Monitor.Namespace), nil
 }
 
-func autoscalerToStrategy(tac *v1alpha1.TidbClusterAutoScaler) *pdapi.Strategy {
+func autoscalerToStrategy(tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) *pdapi.Strategy {
+	resources := getSpecResources(tac, component)
 	strategy := &pdapi.Strategy{
-		Resources: make([]*pdapi.Resource, 0, len(tac.Spec.Resources)),
+		Resources: make([]*pdapi.Resource, 0, len(resources)),
 	}
 
-	for typ, res := range tac.Spec.Resources {
+	for typ, res := range resources {
 		resource := &pdapi.Resource{
 			CPU:          res.CPU.AsDec().UnscaledBig().Uint64(),
 			Memory:       res.Memory.AsDec().UnscaledBig().Uint64(),
@@ -325,12 +320,11 @@ func autoscalerToStrategy(tac *v1alpha1.TidbClusterAutoScaler) *pdapi.Strategy {
 		strategy.Resources = append(strategy.Resources, resource)
 	}
 
-	if tac.Spec.TiDB != nil && tac.Spec.TiDB.External == nil {
-		strategy.Rules = append(strategy.Rules, autoRulesToStrategyRule(v1alpha1.TiDBMemberType.String(), tac.Spec.TiDB.Rules))
-	}
-
-	if tac.Spec.TiKV != nil && tac.Spec.TiKV.External == nil {
-		strategy.Rules = append(strategy.Rules, autoRulesToStrategyRule(v1alpha1.TiKVMemberType.String(), tac.Spec.TiKV.Rules))
+	switch component {
+	case v1alpha1.TiDBMemberType:
+		strategy.Rules = []*pdapi.Rule{autoRulesToStrategyRule(component.String(), tac.Spec.TiDB.Rules)}
+	case v1alpha1.TiKVMemberType:
+		strategy.Rules = []*pdapi.Rule{autoRulesToStrategyRule(component.String(), tac.Spec.TiKV.Rules)}
 	}
 
 	return strategy
@@ -383,12 +377,57 @@ func genAutoClusterName(tas *v1alpha1.TidbClusterAutoScaler, component string, l
 	return autoClusterPrefix + v1alpha1.HashContents(marshaled), nil
 }
 
-func checkAutoscalingComponent(tas *v1alpha1.TidbClusterAutoScaler, component string) bool {
-	switch component {
-	case "tidb":
-		return tas.Spec.TiDB != nil
-	case "tikv":
-		return tas.Spec.TiKV != nil
+func newAutoScalingCluster(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, autoTcName, component string) *v1alpha1.TidbCluster {
+	autoTc := &v1alpha1.TidbCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      autoTcName,
+			Namespace: tc.Namespace,
+			Labels: map[string]string{
+				label.BaseTCLabelKey:        tc.Name,
+				label.AutoInstanceLabelKey:  tac.Name,
+				label.AutoComponentLabelKey: component,
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				controller.GetTiDBClusterAutoScalerOwnerRef(tac),
+			},
+		},
+		Spec: *tc.Spec.DeepCopy(),
 	}
-	return false
+
+	autoTc.Spec.Cluster = &v1alpha1.TidbClusterRef{
+		Namespace: tc.Namespace,
+		Name:      tc.Name,
+	}
+
+	autoTc.Spec.TiCDC = nil
+	autoTc.Spec.TiFlash = nil
+	autoTc.Spec.PD = nil
+	autoTc.Spec.Pump = nil
+
+	switch component {
+	case v1alpha1.TiDBMemberType.String():
+		autoTc.Spec.TiKV = nil
+		// Initialize Config
+		if autoTc.Spec.TiDB.Config == nil {
+			autoTc.Spec.TiDB.Config = v1alpha1.NewTiDBConfig()
+		}
+	case v1alpha1.TiKVMemberType.String():
+		autoTc.Spec.TiDB = nil
+		// Initialize Config
+		if autoTc.Spec.TiKV.Config == nil {
+			autoTc.Spec.TiKV.Config = &v1alpha1.TiKVConfig{
+				Server: &v1alpha1.TiKVServerConfig{
+					Labels: map[string]string{},
+				},
+			}
+		} else if autoTc.Spec.TiKV.Config.Server == nil {
+			autoTc.Spec.TiKV.Config.Server = &v1alpha1.TiKVServerConfig{
+				Labels: map[string]string{},
+			}
+		} else if autoTc.Spec.TiKV.Config.Server.Labels == nil {
+			autoTc.Spec.TiKV.Config.Server.Labels = map[string]string{}
+		}
+	}
+
+	return autoTc
 }
