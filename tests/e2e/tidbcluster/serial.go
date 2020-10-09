@@ -606,7 +606,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 
 		ginkgo.It("auto-scaling TidbCluster", func() {
-			ginkgo.Skip("auto-scaling TidbCluster")
 			clusterName := "auto-scaling"
 			tc := fixture.GetTidbCluster(ns, clusterName, "nightly")
 			tc.Spec.PD.Replicas = 1
@@ -700,6 +699,53 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			})
 			framework.ExpectNoError(err, "check create autoscaling tikv cluster error")
 			framework.Logf("success to check create autoscaling tikv cluster")
+
+			autoTiKV := fmt.Sprintf("%s-tikv-0", tc.Name)
+
+			mp = &mock.MonitorParams{
+				Name:       tc.Name,
+				MemberType: v1alpha1.TiKVMemberType.String(),
+				Duration:   duration,
+				// The CPU of TiKV is guaranteed 1000m
+				// To reach 50% utilization, the sum of cpu usage time should be at least 60 * 3 * 0.5 = 90
+				Value:        "35.0",
+				QueryType:    "cpu_usage",
+				InstancesPod: []string{"auto-scaling-tikv-0", "auto-scaling-tikv-1", "auto-scaling-tikv-2", autoTiKV},
+			}
+			err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
+			framework.ExpectNoError(err, "set tikv cpu usage mock metrics error")
+
+			mp = &mock.MonitorParams{
+				Name:       tc.Name,
+				MemberType: v1alpha1.TiKVMemberType.String(),
+				Duration:   duration,
+				// The CPU of TiKV is guaranteed 1000m
+				Value:        "1.0",
+				QueryType:    "cpu_quota",
+				InstancesPod: []string{"auto-scaling-tikv-0", "auto-scaling-tikv-1", "auto-scaling-tikv-2", autoTiKV},
+			}
+			err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
+			framework.ExpectNoError(err, "set tikv cpu quota mock metrics error")
+
+			err = wait.Poll(10*time.Second, 10*time.Minute, func() (done bool, err error) {
+				tc, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
+
+				if err != nil {
+					return false, err
+				}
+
+				if tc.Spec.TiKV.Replicas < 2 {
+					framework.Logf("autoscaling tikv cluster is not scaled")
+					return false, nil
+				}
+
+				if tc.Spec.TiKV.Replicas >= 2 {
+					framework.Logf("autoscaling tikv cluster tc[%s/%s] scaled", autoTc.Namespace, autoTc.Name)
+					return true, nil
+				}
+
+				return false, nil
+			})
 
 			// Clean autoscaler
 			err = cli.PingcapV1alpha1().TidbClusterAutoScalers(tac.Namespace).Delete(tac.Name, &metav1.DeleteOptions{})
