@@ -155,7 +155,11 @@ func main() {
 		}
 
 		// Start informer factories after all controllers are initialized.
-		informerFactories := []InformerFactory{deps.InformerFactory, deps.KubeInformerFactory}
+		informerFactories := []InformerFactory{
+			deps.InformerFactory,
+			deps.KubeInformerFactory,
+			deps.LabelFilterKubeInformerFactory,
+		}
 		for _, f := range informerFactories {
 			f.Start(ctx.Done())
 			for v, synced := range f.WaitForCacheSync(wait.NeverStop) {

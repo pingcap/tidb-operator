@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
@@ -145,11 +146,12 @@ type Dependencies struct {
 	// Operator client interface
 	Clientset versioned.Interface
 	// Kubernetes client interface
-	KubeClientset       kubernetes.Interface
-	GenericClient       client.Client
-	InformerFactory     informers.SharedInformerFactory
-	KubeInformerFactory kubeinformers.SharedInformerFactory
-	Recorder            record.EventRecorder
+	KubeClientset                  kubernetes.Interface
+	GenericClient                  client.Client
+	InformerFactory                informers.SharedInformerFactory
+	KubeInformerFactory            kubeinformers.SharedInformerFactory
+	LabelFilterKubeInformerFactory kubeinformers.SharedInformerFactory
+	Recorder                       record.EventRecorder
 
 	// Listers
 	ServiceLister               corelisterv1.ServiceLister
@@ -159,6 +161,7 @@ type Dependencies struct {
 	PodLister                   corelisterv1.PodLister
 	NodeLister                  corelisterv1.NodeLister
 	SecretLister                corelisterv1.SecretLister
+	ConfigMapLister             corelisterv1.ConfigMapLister
 	StatefulSetLister           appslisters.StatefulSetLister
 	DeploymentLister            appslisters.DeploymentLister
 	JobLister                   batchlisters.JobLister
@@ -218,16 +221,24 @@ func newRealControls(
 	}
 }
 
-func newDependencies(cliCfg *CLIConfig, clientset versioned.Interface, kubeClientset kubernetes.Interface, genericCli client.Client,
-	informerFactory informers.SharedInformerFactory, kubeInformerFactory kubeinformers.SharedInformerFactory, recorder record.EventRecorder) *Dependencies {
+func newDependencies(
+	cliCfg *CLIConfig,
+	clientset versioned.Interface,
+	kubeClientset kubernetes.Interface,
+	genericCli client.Client,
+	informerFactory informers.SharedInformerFactory,
+	kubeInformerFactory kubeinformers.SharedInformerFactory,
+	labelFilterKubeInformerFactory kubeinformers.SharedInformerFactory,
+	recorder record.EventRecorder) *Dependencies {
 	return &Dependencies{
-		CLIConfig:           cliCfg,
-		InformerFactory:     informerFactory,
-		Clientset:           clientset,
-		KubeClientset:       kubeClientset,
-		GenericClient:       genericCli,
-		KubeInformerFactory: kubeInformerFactory,
-		Recorder:            recorder,
+		CLIConfig:                      cliCfg,
+		InformerFactory:                informerFactory,
+		Clientset:                      clientset,
+		KubeClientset:                  kubeClientset,
+		GenericClient:                  genericCli,
+		KubeInformerFactory:            kubeInformerFactory,
+		LabelFilterKubeInformerFactory: labelFilterKubeInformerFactory,
+		Recorder:                       recorder,
 
 		// Listers
 		ServiceLister:               kubeInformerFactory.Core().V1().Services().Lister(),
@@ -237,6 +248,7 @@ func newDependencies(cliCfg *CLIConfig, clientset versioned.Interface, kubeClien
 		PodLister:                   kubeInformerFactory.Core().V1().Pods().Lister(),
 		NodeLister:                  kubeInformerFactory.Core().V1().Nodes().Lister(),
 		SecretLister:                kubeInformerFactory.Core().V1().Secrets().Lister(),
+		ConfigMapLister:             labelFilterKubeInformerFactory.Core().V1().ConfigMaps().Lister(),
 		StatefulSetLister:           kubeInformerFactory.Apps().V1().StatefulSets().Lister(),
 		DeploymentLister:            kubeInformerFactory.Apps().V1().Deployments().Lister(),
 		StorageClassLister:          kubeInformerFactory.Storage().V1().StorageClasses().Lister(),
@@ -263,10 +275,19 @@ func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface
 		options = append(options, informers.WithNamespace(ns))
 		kubeoptions = append(kubeoptions, kubeinformers.WithNamespace(ns))
 	}
+	tweakListOptionsFunc := func(options *metav1.ListOptions) {
+		if len(options.LabelSelector) > 0 {
+			options.LabelSelector += ",app.kubernetes.io/managed-by=tidb-operator"
+		} else {
+			options.LabelSelector = "app.kubernetes.io/managed-by=tidb-operator"
+		}
+	}
+	labelKubeOptions := append(kubeoptions, kubeinformers.WithTweakListOptions(tweakListOptionsFunc))
 
 	// Initialize the informaer factories
 	informerFactory := informers.NewSharedInformerFactoryWithOptions(clientset, cliCfg.ResyncDuration, options...)
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(kubeClientset, cliCfg.ResyncDuration, kubeoptions...)
+	labelFliterKubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(kubeClientset, cliCfg.ResyncDuration, labelKubeOptions...)
 
 	// Initialize the event recorder
 	eventBroadcaster := record.NewBroadcasterWithCorrelatorOptions(record.CorrelatorOptions{QPS: 1})
@@ -274,7 +295,7 @@ func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface
 	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
 		Interface: eventv1.New(kubeClientset.CoreV1().RESTClient()).Events("")})
 	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tidb-controller-manager"})
-	deps := newDependencies(cliCfg, clientset, kubeClientset, genericCli, informerFactory, kubeInformerFactory, recorder)
+	deps := newDependencies(cliCfg, clientset, kubeClientset, genericCli, informerFactory, kubeInformerFactory, labelFliterKubeInformerFactory, recorder)
 	deps.Controls = newRealControls(clientset, kubeClientset, genericCli, informerFactory, kubeInformerFactory, recorder)
 	return deps
 }
@@ -309,8 +330,9 @@ func NewFakeDependencies() *Dependencies {
 	cliCfg := DefaultCLIConfig()
 	informerFactory := informers.NewSharedInformerFactory(cli, 0)
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
+	labelFilterKubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
 	recorder := record.NewFakeRecorder(100)
-	deps := newDependencies(cliCfg, cli, kubeCli, genCli, informerFactory, kubeInformerFactory, recorder)
+	deps := newDependencies(cliCfg, cli, kubeCli, genCli, informerFactory, kubeInformerFactory, labelFilterKubeInformerFactory, recorder)
 	deps.Controls = newFakeControl(kubeCli, informerFactory, kubeInformerFactory)
 	return deps
 }
