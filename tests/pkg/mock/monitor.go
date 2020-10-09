@@ -50,16 +50,13 @@ func NewMockPrometheus() MonitorInterface {
 }
 
 func (m *mockPrometheus) ServeQuery(w http.ResponseWriter, r *http.Request) {
-	params := r.URL.Query()
-	key := ""
-	for k, v := range params {
-		if k == "query" && len(v) == 1 {
-			key = v[0]
-			break
-		}
+	err := r.ParseForm()
+	if err != nil {
+		writeResponse(w, "parse query form failed")
+		return
 	}
+	key := r.Form.Get("query")
 	if len(key) < 1 {
-		klog.Info()
 		writeResponse(w, "no query param")
 		return
 	}
