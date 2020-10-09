@@ -399,16 +399,19 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 		if exist && status.Health == oldPDMember.Health {
 			status.LastTransitionTime = oldPDMember.LastTransitionTime
 		}
-		peerPDStatus[name] = status
 		if pattern.Match([]byte(clientURL)) {
 			pdStatus[name] = status
+		} else {
+			peerPDStatus[name] = status
+		}
+		if name == leader.GetName() {
+			tc.Status.PD.Leader = status
 		}
 	}
 
 	tc.Status.PD.Synced = true
 	tc.Status.PD.Members = pdStatus
 	tc.Status.PD.PeerMembers = peerPDStatus
-	tc.Status.PD.Leader = tc.Status.PD.PeerMembers[leader.GetName()]
 	tc.Status.PD.Image = ""
 	c := filterContainer(set, "pd")
 	if c != nil {

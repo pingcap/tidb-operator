@@ -687,8 +687,9 @@ func (tfmm *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster
 		// So we check the store owner to make sure it.
 		if store.Store != nil && pattern.Match([]byte(store.Store.Address)) {
 			stores[status.ID] = *status
+		} else {
+			peerStores[status.ID] = *status
 		}
-		peerStores[status.ID] = *status
 	}
 
 	//this returns all tombstone stores
