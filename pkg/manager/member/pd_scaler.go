@@ -108,7 +108,7 @@ func (psd *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 	tcName := tc.GetName()
 	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
 	resetReplicas(newSet, oldSet)
-	memberName := fmt.Sprintf("%s-pd-%d", tc.GetName(), ordinal)
+	memberName := PdName(tcName, ordinal, tc.Namespace, tc.Spec.ClusterDomain)
 	setName := oldSet.GetName()
 
 	if !tc.Status.PD.Synced {
@@ -123,24 +123,33 @@ func (psd *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 	}
 
 	pdClient := controller.GetPDClient(psd.pdControl, tc)
+	leader, err := pdClient.GetPDLeader()
+	if err != nil {
+		return err
+	}
 	// If the pd pod was pd leader during scale-in, we would transfer pd leader to pd-0 directly
 	// If the pd statefulSet would be scale-in to zero and the pd-0 was going to be deleted,
 	// we would directly deleted the pd-0 without pd leader transferring
-	if ordinal > 0 {
-		leader, err := pdClient.GetPDLeader()
-		if err != nil {
-			return err
-		}
-		if leader.Name == memberName {
-			err = pdClient.TransferPDLeader(fmt.Sprintf("%s-pd-%d", tc.GetName(), 0))
+	if leader.Name == memberName {
+		if ordinal > 0 {
+			err = pdClient.TransferPDLeader(PdName(tcName, 0, tc.Namespace, tc.Spec.ClusterDomain))
 			if err != nil {
 				return err
 			}
 			return controller.RequeueErrorf("tc[%s/%s]'s pd pod[%s/%s] is transferring pd leader,can't scale-in now", ns, tcName, ns, memberName)
 		}
+		for _, member := range tc.Status.PD.PeerMembers {
+			if member.Health && member.Name != memberName {
+				err = pdClient.TransferPDLeader(member.Name)
+				if err != nil {
+					return err
+				}
+				return controller.RequeueErrorf("tc[%s/%s]'s pd pod[%s/%s] is transferring pd leader,can't scale-in now", ns, tcName, ns, memberName)
+			}
+		}
 	}
 
-	err := pdClient.DeleteMember(memberName)
+	err = pdClient.DeleteMember(memberName)
 	if err != nil {
 		klog.Errorf("pd scale in: failed to delete member %s, %v", memberName, err)
 		return err

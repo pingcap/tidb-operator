@@ -119,17 +119,16 @@ func (pu *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newS
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	upgradePdName := PdName(tcName, ordinal, tc.Namespace, tc.Spec.ClusterDomain)
-	if tc.Status.PD.Leader.Name == upgradePdName && len(tc.Status.PD.PeerMembers) > 1 {
+	if tc.Status.PD.Leader.Name == upgradePdName {
 		var targetName string
 		if tc.PDStsActualReplicas() > 1 {
 			targetOrdinal := tc.PDStsActualReplicas() - 1
 			if ordinal == targetOrdinal {
 				targetOrdinal = 0
 			}
-			if _, exist := tc.Status.PD.PeerMembers[targetName]; !exist {
-				targetName = PdName(tcName, targetOrdinal, tc.Namespace, tc.Spec.ClusterDomain)
-			} else {
-				targetName = PdName(tcName, targetOrdinal, tc.Namespace, tc.Spec.ClusterDomain)
+			targetName = PdName(tcName, targetOrdinal, tc.Namespace, tc.Spec.ClusterDomain)
+			if _, exist := tc.Status.PD.Members[upgradePdName]; !exist {
+				targetName = PdPodName(tcName, targetOrdinal)
 			}
 		} else {
 			for _, member := range tc.Status.PD.PeerMembers {
@@ -139,13 +138,15 @@ func (pu *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newS
 				}
 			}
 		}
-		err := pu.transferPDLeaderTo(tc, targetName)
-		if err != nil {
-			klog.Errorf("pd upgrader: failed to transfer pd leader to: %s, %v", targetName, err)
-			return err
+		if len(targetName) > 0 {
+			err := pu.transferPDLeaderTo(tc, targetName)
+			if err != nil {
+				klog.Errorf("pd upgrader: failed to transfer pd leader to: %s, %v", targetName, err)
+				return err
+			}
+			klog.Infof("pd upgrader: transfer pd leader to: %s successfully", targetName)
+			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd member: [%s] is transferring leader to pd member: [%s]", ns, tcName, upgradePdName, targetName)
 		}
-		klog.Infof("pd upgrader: transfer pd leader to: %s successfully", targetName)
-		return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd member: [%s] is transferring leader to pd member: [%s]", ns, tcName, upgradePdName, targetName)
 	}
 	setUpgradePartition(newSet, ordinal)
 	return nil

@@ -881,8 +881,12 @@ func (pmm *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set
 	}
 	for _, pod := range pods {
 		var joined = false
-		for podName := range pdStatus {
-			if strings.EqualFold(pod.Name, podName) {
+		for pdName := range pdStatus {
+			ordinal, err := util.GetOrdinalFromPodName(pod.Name)
+			if err != nil {
+				return fmt.Errorf("unexpected pod name %q: %v", pod.Name, err)
+			}
+			if strings.EqualFold(PdName(tc.Name, ordinal, tc.Namespace, tc.Spec.ClusterDomain), pdName) {
 				joined = true
 				break
 			}

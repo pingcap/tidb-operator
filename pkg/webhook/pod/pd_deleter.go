@@ -211,7 +211,14 @@ func (pc *PodAdmissionControl) transferPDLeader(payload *admitPayload) *admissio
 	} else {
 		targetName = pdutil.PdName(tcName, lastOrdinal, tc.Namespace, tc.Spec.ClusterDomain)
 	}
-
+	if tc.PDStsActualReplicas() <= 1 && len(tc.Status.PD.PeerMembers) > 0 {
+		for _, member := range tc.Status.PD.PeerMembers {
+			if member.Name != pdutil.PdName(tcName, lastOrdinal, tc.Namespace, tc.Spec.ClusterDomain) && member.Health {
+				targetName = member.Name
+				break
+			}
+		}
+	}
 	err = payload.pdClient.TransferPDLeader(targetName)
 	if err != nil {
 		klog.Errorf("tc[%s/%s] failed to transfer pd leader to pod[%s/%s],%v", namespace, tcName, namespace, name, err)
