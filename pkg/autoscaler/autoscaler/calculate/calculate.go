@@ -14,10 +14,11 @@
 package calculate
 
 const (
-	TikvSumStorageMetricsPattern = `sum(tikv_store_size_bytes{cluster="%s", type="%s"}) by (cluster)`
-	TikvSumCpuMetricsPattern     = `sum(increase(tikv_thread_cpu_seconds_total{cluster="%s"}[%s])) by (instance)`
-	TidbSumCpuMetricsPattern     = `sum(increase(process_cpu_seconds_total{cluster="%s",job="tidb"}[%s])) by (instance)`
-	InvalidTacMetricConfigureMsg = "tac[%s/%s] metric configuration invalid"
+	TikvSumCPUUsageMetricsPattern = `sum(increase(tikv_thread_cpu_seconds_total[%s])) by (instance, kubernetes_namespace)`
+	TidbSumCPUUsageMetricsPattern = `sum(increase(process_cpu_seconds_total{job="tidb"}[%s])) by (instance, kubernetes_namespace)`
+	TikvCPUQuotaMetricsPattern    = `tikv_server_cpu_cores_quota`
+	TidbCPUQuotaMetricsPattern    = `tidb_server_maxprocs`
+	InvalidTacMetricConfigureMsg  = "tac[%s/%s] metric configuration invalid"
 )
 
 type SingleQuery struct {
