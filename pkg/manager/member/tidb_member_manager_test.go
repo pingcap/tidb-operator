@@ -1036,7 +1036,7 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							ConfigUpdateStrategy: &updateStrategy,
 						},
-						Config: &v1alpha1.TiDBConfig{},
+						Config: v1alpha1.NewTiDBConfig(),
 					},
 					PD:   &v1alpha1.PDSpec{},
 					TiKV: &v1alpha1.TiKVSpec{},
@@ -1782,9 +1782,9 @@ func TestGetTiDBConfigMap(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							ConfigUpdateStrategy: &updateStrategy,
 						},
-						Config: &v1alpha1.TiDBConfig{
+						Config: mustConfig(&v1alpha1.TiDBConfig{
 							Lease: pointer.StringPtr("45s"),
-						},
+						}),
 					},
 					PD:   &v1alpha1.PDSpec{},
 					TiKV: &v1alpha1.TiKVSpec{},
@@ -1836,7 +1836,7 @@ func TestGetTiDBConfigMap(t *testing.T) {
 							ConfigUpdateStrategy: &updateStrategy,
 						},
 						TLSClient: &v1alpha1.TiDBTLSClient{Enabled: true},
-						Config:    &v1alpha1.TiDBConfig{},
+						Config:    v1alpha1.NewTiDBConfig(),
 					},
 					PD:   &v1alpha1.PDSpec{},
 					TiKV: &v1alpha1.TiKVSpec{},
@@ -1870,12 +1870,12 @@ func TestGetTiDBConfigMap(t *testing.T) {
 				Data: map[string]string{
 					"startup-script": "",
 					"config-file": `[security]
-  ssl-ca = "/var/lib/tidb-server-tls/ca.crt"
-  ssl-cert = "/var/lib/tidb-server-tls/tls.crt"
-  ssl-key = "/var/lib/tidb-server-tls/tls.key"
   cluster-ssl-ca = "/var/lib/tidb-tls/ca.crt"
   cluster-ssl-cert = "/var/lib/tidb-tls/tls.crt"
   cluster-ssl-key = "/var/lib/tidb-tls/tls.key"
+  ssl-ca = "/var/lib/tidb-server-tls/ca.crt"
+  ssl-cert = "/var/lib/tidb-server-tls/tls.crt"
+  ssl-key = "/var/lib/tidb-server-tls/tls.key"
 `,
 				},
 			},
@@ -2198,4 +2198,16 @@ func TestTiDBShouldRecover(t *testing.T) {
 			}
 		})
 	}
+}
+
+func mustConfig(x interface{}) *v1alpha1.TiDBConfigWraper {
+	data, err := MarshalTOML(x)
+	if err != nil {
+		panic(err)
+	}
+
+	c := v1alpha1.NewTiDBConfig()
+	c.UnmarshalTOML(data)
+
+	return c
 }
