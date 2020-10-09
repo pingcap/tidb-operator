@@ -9160,7 +9160,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 					},
 					"evictLeaderTimeout": {
 						SchemaProps: spec.SchemaProps{
-							Description: "EvictLeaderTimeout indicates the timeout to evict tikv leader Defaults to 3m",
+							Description: "EvictLeaderTimeout indicates the timeout to evict tikv leader, in the format of Go Duration. Defaults to 3m",
 							Type:        []string{"string"},
 							Format:      "",
 						},
