@@ -51,7 +51,7 @@ func NewRealTidbClusterControl(cli versioned.Interface,
 	}
 }
 
-func (rtc *realTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, newStatus *v1alpha1.TidbClusterStatus, oldStatus *v1alpha1.TidbClusterStatus) (*v1alpha1.TidbCluster, error) {
+func (c *realTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, newStatus *v1alpha1.TidbClusterStatus, oldStatus *v1alpha1.TidbClusterStatus) (*v1alpha1.TidbCluster, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -61,14 +61,14 @@ func (rtc *realTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, n
 	// don't wait due to limited number of clients, but backoff after the default number of steps
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		var updateErr error
-		updateTC, updateErr = rtc.cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
+		updateTC, updateErr = c.cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
 		if updateErr == nil {
 			klog.Infof("TidbCluster: [%s/%s] updated successfully", ns, tcName)
 			return nil
 		}
 		klog.V(4).Infof("failed to update TidbCluster: [%s/%s], error: %v", ns, tcName, updateErr)
 
-		if updated, err := rtc.tcLister.TidbClusters(ns).Get(tcName); err == nil {
+		if updated, err := c.tcLister.TidbClusters(ns).Get(tcName); err == nil {
 			// make a copy so we don't mutate the shared cache
 			tc = updated.DeepCopy()
 			tc.Status = *status
@@ -117,17 +117,17 @@ func NewFakeTidbClusterControl(tcInformer tcinformers.TidbClusterInformer) *Fake
 }
 
 // SetUpdateTidbClusterError sets the error attributes of updateTidbClusterTracker
-func (ssc *FakeTidbClusterControl) SetUpdateTidbClusterError(err error, after int) {
-	ssc.updateTidbClusterTracker.SetError(err).SetAfter(after)
+func (c *FakeTidbClusterControl) SetUpdateTidbClusterError(err error, after int) {
+	c.updateTidbClusterTracker.SetError(err).SetAfter(after)
 }
 
 // UpdateTidbCluster updates the TidbCluster
-func (ssc *FakeTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, _ *v1alpha1.TidbClusterStatus, _ *v1alpha1.TidbClusterStatus) (*v1alpha1.TidbCluster, error) {
-	defer ssc.updateTidbClusterTracker.Inc()
-	if ssc.updateTidbClusterTracker.ErrorReady() {
-		defer ssc.updateTidbClusterTracker.Reset()
-		return tc, ssc.updateTidbClusterTracker.GetError()
+func (c *FakeTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, _ *v1alpha1.TidbClusterStatus, _ *v1alpha1.TidbClusterStatus) (*v1alpha1.TidbCluster, error) {
+	defer c.updateTidbClusterTracker.Inc()
+	if c.updateTidbClusterTracker.ErrorReady() {
+		defer c.updateTidbClusterTracker.Reset()
+		return tc, c.updateTidbClusterTracker.GetError()
 	}
 
-	return tc, ssc.TcIndexer.Update(tc)
+	return tc, c.TcIndexer.Update(tc)
 }

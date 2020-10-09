@@ -61,7 +61,7 @@ func NewRealPVControl(
 	}
 }
 
-func (rpc *realPVControl) PatchPVReclaimPolicy(obj runtime.Object, pv *corev1.PersistentVolume, reclaimPolicy corev1.PersistentVolumeReclaimPolicy) error {
+func (c *realPVControl) PatchPVReclaimPolicy(obj runtime.Object, pv *corev1.PersistentVolume, reclaimPolicy corev1.PersistentVolumeReclaimPolicy) error {
 	metaObj, ok := obj.(metav1.Object)
 	if !ok {
 		return fmt.Errorf("%+v is not a runtime.Object, cannot get controller from it", obj)
@@ -72,14 +72,14 @@ func (rpc *realPVControl) PatchPVReclaimPolicy(obj runtime.Object, pv *corev1.Pe
 	patchBytes := []byte(fmt.Sprintf(`{"spec":{"persistentVolumeReclaimPolicy":"%s"}}`, reclaimPolicy))
 
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		_, err := rpc.kubeCli.CoreV1().PersistentVolumes().Patch(pvName, types.StrategicMergePatchType, patchBytes)
+		_, err := c.kubeCli.CoreV1().PersistentVolumes().Patch(pvName, types.StrategicMergePatchType, patchBytes)
 		return err
 	})
-	rpc.recordPVEvent("patch", obj, name, pvName, err)
+	c.recordPVEvent("patch", obj, name, pvName, err)
 	return err
 }
 
-func (rpc *realPVControl) UpdateMetaInfo(obj runtime.Object, pv *corev1.PersistentVolume) (*corev1.PersistentVolume, error) {
+func (c *realPVControl) UpdateMetaInfo(obj runtime.Object, pv *corev1.PersistentVolume) (*corev1.PersistentVolume, error) {
 	metaObj, ok := obj.(metav1.Object)
 	if !ok {
 		return nil, fmt.Errorf("%+v is not a runtime.Object, cannot get controller from it", obj)
@@ -103,7 +103,7 @@ func (rpc *realPVControl) UpdateMetaInfo(obj runtime.Object, pv *corev1.Persiste
 	}
 
 	pvcName := pvcRef.Name
-	pvc, err := rpc.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
+	pvc, err := c.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
 	if err != nil {
 		if !apierrs.IsNotFound(err) {
 			return pv, err
@@ -148,14 +148,14 @@ func (rpc *realPVControl) UpdateMetaInfo(obj runtime.Object, pv *corev1.Persiste
 	var updatePV *corev1.PersistentVolume
 	err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		var updateErr error
-		updatePV, updateErr = rpc.kubeCli.CoreV1().PersistentVolumes().Update(pv)
+		updatePV, updateErr = c.kubeCli.CoreV1().PersistentVolumes().Update(pv)
 		if updateErr == nil {
 			klog.Infof("PV: [%s] updated successfully, %s: %s/%s", pvName, kind, ns, name)
 			return nil
 		}
 		klog.Errorf("failed to update PV: [%s], %s %s/%s, error: %v", pvName, kind, ns, name, err)
 
-		if updated, err := rpc.pvLister.Get(pvName); err == nil {
+		if updated, err := c.pvLister.Get(pvName); err == nil {
 			// make a copy so we don't mutate the shared cache
 			pv = updated.DeepCopy()
 			pv.Labels = labels
@@ -169,17 +169,17 @@ func (rpc *realPVControl) UpdateMetaInfo(obj runtime.Object, pv *corev1.Persiste
 	return updatePV, err
 }
 
-func (rpc *realPVControl) recordPVEvent(verb string, obj runtime.Object, objName, pvName string, err error) {
+func (c *realPVControl) recordPVEvent(verb string, obj runtime.Object, objName, pvName string, err error) {
 	if err == nil {
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
 		msg := fmt.Sprintf("%s PV %s in TidbCluster %s successful",
 			strings.ToLower(verb), pvName, objName)
-		rpc.recorder.Event(obj, corev1.EventTypeNormal, reason, msg)
+		c.recorder.Event(obj, corev1.EventTypeNormal, reason, msg)
 	} else {
 		reason := fmt.Sprintf("Failed%s", strings.Title(verb))
 		msg := fmt.Sprintf("%s PV %s in TidbCluster %s failed error: %s",
 			strings.ToLower(verb), pvName, objName, err)
-		rpc.recorder.Event(obj, corev1.EventTypeWarning, reason, msg)
+		c.recorder.Event(obj, corev1.EventTypeWarning, reason, msg)
 	}
 }
 
@@ -202,37 +202,37 @@ func NewFakePVControl(pvInformer coreinformers.PersistentVolumeInformer, pvcInfo
 }
 
 // SetUpdatePVError sets the error attributes of updatePVTracker
-func (fpc *FakePVControl) SetUpdatePVError(err error, after int) {
-	fpc.updatePVTracker.SetError(err).SetAfter(after)
+func (c *FakePVControl) SetUpdatePVError(err error, after int) {
+	c.updatePVTracker.SetError(err).SetAfter(after)
 }
 
 // PatchPVReclaimPolicy patchs the reclaim policy of PV
-func (fpc *FakePVControl) PatchPVReclaimPolicy(_ runtime.Object, pv *corev1.PersistentVolume, reclaimPolicy corev1.PersistentVolumeReclaimPolicy) error {
-	defer fpc.updatePVTracker.Inc()
-	if fpc.updatePVTracker.ErrorReady() {
-		defer fpc.updatePVTracker.Reset()
-		return fpc.updatePVTracker.GetError()
+func (c *FakePVControl) PatchPVReclaimPolicy(_ runtime.Object, pv *corev1.PersistentVolume, reclaimPolicy corev1.PersistentVolumeReclaimPolicy) error {
+	defer c.updatePVTracker.Inc()
+	if c.updatePVTracker.ErrorReady() {
+		defer c.updatePVTracker.Reset()
+		return c.updatePVTracker.GetError()
 	}
 	pv.Spec.PersistentVolumeReclaimPolicy = reclaimPolicy
 
-	return fpc.PVIndexer.Update(pv)
+	return c.PVIndexer.Update(pv)
 }
 
 // UpdateMetaInfo update the meta info of pv
-func (fpc *FakePVControl) UpdateMetaInfo(obj runtime.Object, pv *corev1.PersistentVolume) (*corev1.PersistentVolume, error) {
-	defer fpc.updatePVTracker.Inc()
+func (c *FakePVControl) UpdateMetaInfo(obj runtime.Object, pv *corev1.PersistentVolume) (*corev1.PersistentVolume, error) {
+	defer c.updatePVTracker.Inc()
 
 	metaObj, ok := obj.(metav1.Object)
 	if !ok {
 		return nil, fmt.Errorf("%+v is not a runtime.Object, cannot get controller from it", obj)
 	}
 	ns := metaObj.GetNamespace()
-	if fpc.updatePVTracker.ErrorReady() {
-		defer fpc.updatePVTracker.Reset()
-		return nil, fpc.updatePVTracker.GetError()
+	if c.updatePVTracker.ErrorReady() {
+		defer c.updatePVTracker.Reset()
+		return nil, c.updatePVTracker.GetError()
 	}
 	pvcName := pv.Spec.ClaimRef.Name
-	pvc, err := fpc.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
+	pvc, err := c.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
 	if err != nil {
 		return nil, err
 	}
@@ -252,7 +252,7 @@ func (fpc *FakePVControl) UpdateMetaInfo(obj runtime.Object, pv *corev1.Persiste
 	setIfNotEmpty(pv.Labels, label.MemberIDLabelKey, pvc.Labels[label.MemberIDLabelKey])
 	setIfNotEmpty(pv.Labels, label.StoreIDLabelKey, pvc.Labels[label.StoreIDLabelKey])
 	setIfNotEmpty(pv.Annotations, label.AnnPodNameKey, pvc.Annotations[label.AnnPodNameKey])
-	return pv, fpc.PVIndexer.Update(pv)
+	return pv, c.PVIndexer.Update(pv)
 }
 
 var _ PVControlInterface = &FakePVControl{}
