@@ -802,8 +802,8 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
 	secretInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Secrets()
 	cmInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().ConfigMaps()
-	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
-	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer, tcInformer)
+	setControl := controller.NewFakeStatefulSetControl(setInformer)
+	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer)
 	genericControl := controller.NewFakeGenericControl()
 	tidbUpgrader := NewFakeTiDBUpgrader()
 	tidbFailover := NewFakeTiDBFailover()
@@ -1036,7 +1036,7 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							ConfigUpdateStrategy: &updateStrategy,
 						},
-						Config: &v1alpha1.TiDBConfig{},
+						Config: v1alpha1.NewTiDBConfig(),
 					},
 					PD:   &v1alpha1.PDSpec{},
 					TiKV: &v1alpha1.TiKVSpec{},
@@ -1404,6 +1404,73 @@ func TestTiDBInitContainers(t *testing.T) {
 			expectedInit:     nil,
 			expectedSecurity: nil,
 		},
+		{
+			name: "Specitfy init container resourceRequirements",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: &v1alpha1.TiDBSpec{
+						ResourceRequirements: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("150m"),
+								corev1.ResourceMemory: resource.MustParse("200Mi"),
+							},
+							Limits: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("150m"),
+								corev1.ResourceMemory: resource.MustParse("200Mi"),
+							},
+						},
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Annotations: map[string]string{
+								"tidb.pingcap.com/sysctl-init": "true",
+							},
+							PodSecurityContext: &corev1.PodSecurityContext{
+								RunAsNonRoot: &asRoot,
+								Sysctls: []corev1.Sysctl{
+									{
+										Name:  "net.core.somaxconn",
+										Value: "32768",
+									},
+								},
+							},
+						},
+					},
+					PD:   &v1alpha1.PDSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
+				},
+			},
+			expectedInit: []corev1.Container{
+				{
+					Name:  "init",
+					Image: "busybox:1.26.2",
+					Command: []string{
+						"sh",
+						"-c",
+						"sysctl -w net.core.somaxconn=32768",
+					},
+					SecurityContext: &corev1.SecurityContext{
+						Privileged: &privileged,
+					},
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("150m"),
+							corev1.ResourceMemory: resource.MustParse("200Mi"),
+						},
+						Limits: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("150m"),
+							corev1.ResourceMemory: resource.MustParse("200Mi"),
+						},
+					},
+				},
+			},
+			expectedSecurity: &corev1.PodSecurityContext{
+				RunAsNonRoot: &asRoot,
+				Sysctls:      []corev1.Sysctl{},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -1715,9 +1782,9 @@ func TestGetTiDBConfigMap(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							ConfigUpdateStrategy: &updateStrategy,
 						},
-						Config: &v1alpha1.TiDBConfig{
+						Config: mustConfig(&v1alpha1.TiDBConfig{
 							Lease: pointer.StringPtr("45s"),
-						},
+						}),
 					},
 					PD:   &v1alpha1.PDSpec{},
 					TiKV: &v1alpha1.TiKVSpec{},
@@ -1769,7 +1836,7 @@ func TestGetTiDBConfigMap(t *testing.T) {
 							ConfigUpdateStrategy: &updateStrategy,
 						},
 						TLSClient: &v1alpha1.TiDBTLSClient{Enabled: true},
-						Config:    &v1alpha1.TiDBConfig{},
+						Config:    v1alpha1.NewTiDBConfig(),
 					},
 					PD:   &v1alpha1.PDSpec{},
 					TiKV: &v1alpha1.TiKVSpec{},
@@ -1803,12 +1870,12 @@ func TestGetTiDBConfigMap(t *testing.T) {
 				Data: map[string]string{
 					"startup-script": "",
 					"config-file": `[security]
-  ssl-ca = "/var/lib/tidb-server-tls/ca.crt"
-  ssl-cert = "/var/lib/tidb-server-tls/tls.crt"
-  ssl-key = "/var/lib/tidb-server-tls/tls.key"
   cluster-ssl-ca = "/var/lib/tidb-tls/ca.crt"
   cluster-ssl-cert = "/var/lib/tidb-tls/tls.crt"
   cluster-ssl-key = "/var/lib/tidb-tls/tls.key"
+  ssl-ca = "/var/lib/tidb-server-tls/ca.crt"
+  ssl-cert = "/var/lib/tidb-server-tls/tls.crt"
+  ssl-key = "/var/lib/tidb-server-tls/tls.key"
 `,
 				},
 			},
@@ -2131,4 +2198,16 @@ func TestTiDBShouldRecover(t *testing.T) {
 			}
 		})
 	}
+}
+
+func mustConfig(x interface{}) *v1alpha1.TiDBConfigWraper {
+	data, err := MarshalTOML(x)
+	if err != nil {
+		panic(err)
+	}
+
+	c := v1alpha1.NewTiDBConfig()
+	c.UnmarshalTOML(data)
+
+	return c
 }

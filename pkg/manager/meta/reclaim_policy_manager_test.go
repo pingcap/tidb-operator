@@ -44,11 +44,17 @@ func TestReclaimPolicyManagerSync(t *testing.T) {
 		hasDeferDeleteAnn bool
 	}
 
-	testFn := func(test *testcase, t *testing.T) {
-		t.Log(test.name)
-		tc := newTidbClusterForMeta()
+	testFn := func(test *testcase, t *testing.T, kind string) {
+		t.Log(test.name + ": " + kind)
+		var obj metav1.Object
+		switch kind {
+		case v1alpha1.TiDBClusterKind:
+			obj = newTidbClusterForMeta()
+		case v1alpha1.DMClusterKind:
+			obj = newDMClusterForMeta()
+		}
 		pv1 := newPV("1")
-		pvc1 := newPVC(tc, "1")
+		pvc1 := newPVC(obj, "1")
 
 		if !test.pvcHasLabels {
 			pvc1.Labels = nil
@@ -56,7 +62,12 @@ func TestReclaimPolicyManagerSync(t *testing.T) {
 		if !test.pvcHasVolumeName {
 			pvc1.Spec.VolumeName = ""
 		}
-		tc.Spec.EnablePVReclaim = &test.enablePVRecalim
+		switch kind {
+		case v1alpha1.TiDBClusterKind:
+			obj.(*v1alpha1.TidbCluster).Spec.EnablePVReclaim = &test.enablePVRecalim
+		case v1alpha1.DMClusterKind:
+			obj.(*v1alpha1.DMCluster).Spec.EnablePVReclaim = &test.enablePVRecalim
+		}
 		if test.hasDeferDeleteAnn {
 			pvc1.Annotations = map[string]string{label.AnnPVCDeferDeleting: time.Now().String()}
 		}
@@ -71,7 +82,12 @@ func TestReclaimPolicyManagerSync(t *testing.T) {
 			fakePVControl.SetUpdatePVError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 
-		err = rpm.Sync(tc)
+		switch kind {
+		case v1alpha1.TiDBClusterKind:
+			err = rpm.Sync(obj.(*v1alpha1.TidbCluster))
+		case v1alpha1.DMClusterKind:
+			err = rpm.SyncDM(obj.(*v1alpha1.DMCluster))
+		}
 		if test.err {
 			g.Expect(err).To(HaveOccurred())
 			pv, err := rpm.pvLister.Get(pv1.Name)
@@ -144,7 +160,8 @@ func TestReclaimPolicyManagerSync(t *testing.T) {
 	}
 
 	for i := range tests {
-		testFn(&tests[i], t)
+		testFn(&tests[i], t, v1alpha1.TiDBClusterKind)
+		testFn(&tests[i], t, v1alpha1.DMClusterKind)
 	}
 }
 
@@ -183,6 +200,25 @@ func newTidbClusterForMeta() *v1alpha1.TidbCluster {
 	}
 }
 
+func newDMClusterForMeta() *v1alpha1.DMCluster {
+	pvp := corev1.PersistentVolumeReclaimRetain
+	return &v1alpha1.DMCluster{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "DMCluster",
+			APIVersion: "pingcap.com/v1alpha1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      controller.TestClusterName,
+			Namespace: corev1.NamespaceDefault,
+			UID:       types.UID("test"),
+			Labels:    label.NewDM().Instance(controller.TestClusterName),
+		},
+		Spec: v1alpha1.DMClusterSpec{
+			PVReclaimPolicy: &pvp,
+		},
+	}
+}
+
 func newPV(index string) *corev1.PersistentVolume {
 	return &corev1.PersistentVolume{
 		TypeMeta: metav1.TypeMeta{
@@ -207,7 +243,14 @@ func newPV(index string) *corev1.PersistentVolume {
 	}
 }
 
-func newPVC(tc *v1alpha1.TidbCluster, index string) *corev1.PersistentVolumeClaim {
+func newPVC(obj metav1.Object, index string) *corev1.PersistentVolumeClaim {
+	nameLabel := controller.TestName
+	componentLabel := controller.TestComponentName
+	if _, ok := obj.(*v1alpha1.DMCluster); ok {
+		nameLabel = "dm-cluster"
+		componentLabel = "dm-master"
+	}
+
 	return &corev1.PersistentVolumeClaim{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "PersistentVolumeClaim",
@@ -218,10 +261,10 @@ func newPVC(tc *v1alpha1.TidbCluster, index string) *corev1.PersistentVolumeClai
 			Namespace: corev1.NamespaceDefault,
 			UID:       types.UID("pvc" + index),
 			Labels: map[string]string{
-				label.NameLabelKey:      controller.TestName,
-				label.ComponentLabelKey: controller.TestComponentName,
+				label.NameLabelKey:      nameLabel,
+				label.ComponentLabelKey: componentLabel,
 				label.ManagedByLabelKey: controller.TestManagedByName,
-				label.InstanceLabelKey:  tc.GetName(),
+				label.InstanceLabelKey:  obj.GetName(),
 			},
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{

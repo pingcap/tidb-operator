@@ -236,16 +236,6 @@ func (mmm *masterMemberManager) syncMasterStatefulSetForDMCluster(dc *v1alpha1.D
 		return controller.RequeueErrorf("DMCluster: [%s/%s], waiting for dm-master cluster running", ns, dcName)
 	}
 
-	if !dc.Status.Master.Synced {
-		force := NeedForceUpgrade(dc.Annotations)
-		if force {
-			dc.Status.Master.Phase = v1alpha1.UpgradePhase
-			setUpgradePartition(newMasterSet, 0)
-			errSTS := updateStatefulSet(mmm.setControl, dc, newMasterSet, oldMasterSet)
-			return controller.RequeueErrorf("dmcluster: [%s/%s]'s dm-master needs force upgrade, %v", ns, dcName, errSTS)
-		}
-	}
-
 	// Scaling takes precedence over upgrading because:
 	// - if a dm-master fails in the upgrading, users may want to delete it or add
 	//   new replicas
@@ -265,6 +255,16 @@ func (mmm *masterMemberManager) syncMasterStatefulSetForDMCluster(dc *v1alpha1.D
 			if err := mmm.masterFailover.Failover(dc); err != nil {
 				return err
 			}
+		}
+	}
+
+	if !dc.Status.Master.Synced {
+		force := NeedForceUpgrade(dc.Annotations)
+		if force {
+			dc.Status.Master.Phase = v1alpha1.UpgradePhase
+			setUpgradePartition(newMasterSet, 0)
+			errSTS := updateStatefulSet(mmm.setControl, dc, newMasterSet, oldMasterSet)
+			return controller.RequeueErrorf("dmcluster: [%s/%s]'s dm-master needs force upgrade, %v", ns, dcName, errSTS)
 		}
 	}
 
@@ -401,9 +401,6 @@ func (mmm *masterMemberManager) syncDMClusterStatus(dc *v1alpha1.DMCluster, set 
 
 // syncMasterConfigMap syncs the configmap of dm-master
 func (mmm *masterMemberManager) syncMasterConfigMap(dc *v1alpha1.DMCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
-	if dc.Spec.Master.Config == nil {
-		return nil, nil
-	}
 	newCm, err := getMasterConfigMap(dc)
 	if err != nil {
 		return nil, err
@@ -460,6 +457,9 @@ func (mmm *masterMemberManager) getNewMasterServiceForDMCluster(dc *v1alpha1.DMC
 		}
 		if svcSpec.ClusterIP != nil {
 			masterSvc.Spec.ClusterIP = *svcSpec.ClusterIP
+		}
+		if svcSpec.PortName != nil {
+			masterSvc.Spec.Ports[0].Name = *svcSpec.PortName
 		}
 	}
 	return masterSvc
@@ -539,6 +539,9 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	dcName := dc.Name
 	baseMasterSpec := dc.BaseMasterSpec()
 	instanceName := dc.GetInstanceName()
+	if cm == nil {
+		return nil, fmt.Errorf("config map for dm-master is not found, dmcluster %s/%s", dc.Namespace, dc.Name)
+	}
 	masterConfigMap := cm.Name
 
 	annMount, annVolume := annotationsMountVolume()
@@ -582,6 +585,19 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 			Name: "dm-master-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: util.ClusterTLSSecretName(dc.Name, label.DMMasterLabelVal),
+				},
+			},
+		})
+	}
+
+	for _, tlsClientSecretName := range dc.Spec.TLSClientSecretNames {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: tlsClientSecretName, ReadOnly: true, MountPath: fmt.Sprintf("/var/lib/source-tls/%s", tlsClientSecretName),
+		})
+		vols = append(vols, corev1.Volume{
+			Name: tlsClientSecretName, VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: tlsClientSecretName,
 				},
 			},
 		})
@@ -716,10 +732,9 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 }
 
 func getMasterConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
-	// For backward compatibility, only sync dm configmap when .master.config is non-nil
 	config := dc.Spec.Master.Config
 	if config == nil {
-		return nil, nil
+		config = &v1alpha1.MasterConfig{}
 	}
 
 	// override CA if tls enabled
@@ -804,6 +819,25 @@ func (mmm *masterMemberManager) collectUnjoinedMembers(dc *v1alpha1.DMCluster, s
 				delete(dc.Status.Master.UnjoinedMembers, pod.Name)
 			}
 		}
+	}
+	return nil
+}
+
+type FakeMasterMemberManager struct {
+	err error
+}
+
+func NewFakeMasterMemberManager() *FakeMasterMemberManager {
+	return &FakeMasterMemberManager{}
+}
+
+func (fpmm *FakeMasterMemberManager) SetSyncError(err error) {
+	fpmm.err = err
+}
+
+func (fpmm *FakeMasterMemberManager) SyncDM(dc *v1alpha1.DMCluster) error {
+	if fpmm.err != nil {
+		return fpmm.err
 	}
 	return nil
 }

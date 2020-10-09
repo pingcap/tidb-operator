@@ -678,6 +678,19 @@ Optional: Defaults to nil</p>
 </tr>
 <tr>
 <td>
+<code>tlsClientSecretNames</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TLSClientSecretNames are the names of secrets which stores mysql/tidb server client certificates
+that used by dm-master and dm-worker.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>hostNetwork</code></br>
 <em>
 bool
@@ -1615,21 +1628,6 @@ TidbAutoScalerSpec
 <p>TiDB represents the auto-scaling spec for tidb</p>
 </td>
 </tr>
-<tr>
-<td>
-<code>resources</code></br>
-<em>
-<a href="#autoresource">
-map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoResource
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Resources represent the resource type definitions that can be used for TiDB/TiKV
-The key is resource_type name of the resource</p>
-</td>
-</tr>
 </table>
 </td>
 </tr>
@@ -2134,6 +2132,17 @@ default to current tidb cluster version, for example: v3.0.15</p>
 <em>(Optional)</em>
 </td>
 </tr>
+<tr>
+<td>
+<code>clusterScoped</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>ClusterScoped indicates whether this monitor should manage Kubernetes cluster-wide TiDB clusters</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -2155,7 +2164,7 @@ TidbMonitorStatus
 <h3 id="autoresource">AutoResource</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#tidbclusterautoscalerspec">TidbClusterAutoScalerSpec</a>)
+<a href="#basicautoscalerspec">BasicAutoScalerSpec</a>)
 </p>
 <p>
 <p>AutoResource describes the resource type definitions</p>
@@ -3033,6 +3042,7 @@ int32
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out.
 It cannot be less than minReplicas.
 Deprecated</p>
@@ -3132,6 +3142,21 @@ ExternalConfig
 <em>(Optional)</em>
 <p>External makes the auto-scaler controller able to query the external service
 to fetch the recommended replicas for TiKV/TiDB</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resources</code></br>
+<em>
+<a href="#autoresource">
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoResource
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Resources represent the resource type definitions that can be used for TiDB/TiKV
+The key is resource_type name of the resource</p>
 </td>
 </tr>
 </tbody>
@@ -4318,6 +4343,19 @@ TLSCluster
 <em>(Optional)</em>
 <p>Whether enable the TLS connection between DM server components
 Optional: Defaults to nil</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tlsClientSecretNames</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TLSClientSecretNames are the names of secrets which stores mysql/tidb server client certificates
+that used by dm-master and dm-worker.</p>
 </td>
 </tr>
 <tr>
@@ -9878,15 +9916,12 @@ Defaults to Kubernetes default storage class.</p>
 </tr>
 <tr>
 <td>
-<code>GenericConfig</code></br>
+<code>config</code></br>
 <em>
 github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
 </em>
 </td>
 <td>
-<p>
-(Members of <code>GenericConfig</code> are embedded into this type.)
-</p>
 <em>(Optional)</em>
 <p>TODO: add schema
 The configuration of Pump cluster.</p>
@@ -11520,10 +11555,6 @@ Optional: Defaults to nil</p>
 </table>
 <h3 id="tidbconfig">TiDBConfig</h3>
 <p>
-(<em>Appears on:</em>
-<a href="#tidbspec">TiDBSpec</a>)
-</p>
-<p>
 <p>TiDBConfig is the configuration of tidb-server
 For more detail, refer to <a href="https://pingcap.com/docs/stable/reference/configuration/tidb-server/configuration/">https://pingcap.com/docs/stable/reference/configuration/tidb-server/configuration/</a></p>
 </p>
@@ -12095,6 +12126,33 @@ map[string]string
 </tr>
 </tbody>
 </table>
+<h3 id="tidbconfigwraper">TiDBConfigWraper</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbspec">TiDBSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>GenericConfig</code></br>
+<em>
+github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tidbfailuremember">TiDBFailureMember</h3>
 <p>
 (<em>Appears on:</em>
@@ -12519,8 +12577,8 @@ TiDBSlowLogTailerSpec
 <td>
 <code>config</code></br>
 <em>
-<a href="#tidbconfig">
-TiDBConfig
+<a href="#tidbconfigwraper">
+TiDBConfigWraper
 </a>
 </em>
 </td>
@@ -17684,21 +17742,6 @@ TidbAutoScalerSpec
 <p>TiDB represents the auto-scaling spec for tidb</p>
 </td>
 </tr>
-<tr>
-<td>
-<code>resources</code></br>
-<em>
-<a href="#autoresource">
-map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoResource
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Resources represent the resource type definitions that can be used for TiDB/TiKV
-The key is resource_type name of the resource</p>
-</td>
-</tr>
 </tbody>
 </table>
 <h3 id="tidbclusterautosclaerstatus">TidbClusterAutoSclaerStatus</h3>
@@ -18912,6 +18955,17 @@ default to current tidb cluster version, for example: v3.0.15</p>
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>clusterScoped</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>ClusterScoped indicates whether this monitor should manage Kubernetes cluster-wide TiDB clusters</p>
 </td>
 </tr>
 </tbody>

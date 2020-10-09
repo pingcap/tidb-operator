@@ -320,7 +320,6 @@ func newFakeTidbClusterControl() (
 	tiflashMemberManager := mm.NewFakeTiFlashMemberManager()
 	ticdcMemberManager := mm.NewFakeTiCDCMemberManager()
 	discoveryManager := mm.NewFakeDiscoveryManger()
-	podRestarter := mm.NewFakePodRestarter()
 	statusManager := mm.NewFakeTidbClusterStatusManager()
 	pvcResizer := mm.NewFakePVCResizer()
 	control := NewDefaultTidbClusterControl(
@@ -338,7 +337,6 @@ func newFakeTidbClusterControl() (
 		ticdcMemberManager,
 		discoveryManager,
 		statusManager,
-		podRestarter,
 		&tidbClusterConditionUpdater{},
 		recorder,
 	)
@@ -382,7 +380,7 @@ func newTidbClusterForTidbClusterControl() *v1alpha1.TidbCluster {
 			TiDB: &v1alpha1.TiDBSpec{
 				Replicas:  2,
 				BaseImage: "pingcap/tidb",
-				Config:    &v1alpha1.TiDBConfig{},
+				Config:    v1alpha1.NewTiDBConfig(),
 			},
 		},
 	}
