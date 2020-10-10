@@ -702,7 +702,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				return false, nil
 			})
 			framework.RunKubectl("logs", "-n", ns, "auto-scaling-pd-0")
-			framework.RunKubectl("logs", "-n", ns, "-l", "app.kubernetes.io/component=monitor", "-c", "promehtehus")
+			framework.RunKubectl("logs", "-n", ns, "-l", "app.kubernetes.io/component=monitor", "-c", "prometheus")
 			framework.ExpectNoError(err, "check create autoscaling tikv cluster error")
 			framework.Logf("success to check create autoscaling tikv cluster")
 
