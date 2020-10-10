@@ -638,9 +638,10 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 			duration := "60s"
 			mp := &mock.MonitorParams{
-				Name:       tc.Name,
-				MemberType: v1alpha1.TiKVMemberType.String(),
-				Duration:   duration,
+				Name:                tc.Name,
+				KubernetesNamespace: tc.Namespace,
+				MemberType:          v1alpha1.TiKVMemberType.String(),
+				Duration:            duration,
 				// The CPU of TiKV is guaranteed 1000m
 				// To reach 50% utilization, the sum of cpu usage time should be at least 60 * 3 * 0.5 = 90
 				Value:        "35.0",
@@ -651,9 +652,10 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectNoError(err, "set tikv cpu usage mock metrics error")
 
 			mp = &mock.MonitorParams{
-				Name:       tc.Name,
-				MemberType: v1alpha1.TiKVMemberType.String(),
-				Duration:   duration,
+				Name:                tc.Name,
+				KubernetesNamespace: tc.Namespace,
+				MemberType:          v1alpha1.TiKVMemberType.String(),
+				Duration:            duration,
 				// The CPU of TiKV is guaranteed 1000m
 				Value:        "1.0",
 				QueryType:    "cpu_quota",
@@ -693,7 +695,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				}
 
 				autoTc = tcList.Items[0]
-				if autoTc.Spec.TiKV.Replicas == 1 {
+				if autoTc.Spec.TiKV.Replicas >= 1 {
 					framework.Logf("autoscaling tikv cluster tc[%s/%s] created", autoTc.Namespace, autoTc.Name)
 					return true, nil
 				}

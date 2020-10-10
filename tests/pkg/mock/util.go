@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler/calculate"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
@@ -93,7 +94,7 @@ func buildPrometheusResponse(mp *MonitorParams) *calculate.Response {
 	resp.Data = calculate.Data{}
 	cluster := mp.Name
 	value := mp.Value
-	if mp.QueryType == "cpu" {
+	if mp.QueryType == "cpu_usage" || mp.QueryType == "cpu_quota" {
 		instances := mp.InstancesPod
 		if instances == nil {
 			return resp
@@ -103,19 +104,19 @@ func buildPrometheusResponse(mp *MonitorParams) *calculate.Response {
 				Metric: calculate.Metric{
 					Instance:            instance,
 					Cluster:             cluster,
-					Job:                 "foo",
+					Job:                 mp.MemberType,
 					KubernetesNamespace: mp.KubernetesNamespace,
 					KubernetesNode:      "foo",
 					KubernetesPodIp:     "foo",
 				},
 				Value: []interface{}{
-					value,
+					time.Now().UnixNano(),
 					value,
 				},
 			}
 			resp.Data.Result = append(resp.Data.Result, r)
 		}
 	}
-	resp.Data.ResultType = "foo"
+	resp.Data.ResultType = "vector"
 	return resp
 }

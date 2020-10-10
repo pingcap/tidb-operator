@@ -57,8 +57,11 @@ func (m *mockPrometheus) ServeQuery(w http.ResponseWriter, r *http.Request) {
 	}
 	key := r.Form.Get("query")
 	if len(key) < 1 {
-		writeResponse(w, "no query param")
-		return
+		key = r.URL.Query().Get("query")
+		if len(key) < 1 {
+			writeResponse(w, "no query param")
+			return
+		}
 	}
 	klog.Infof("receive query, key: %s", key)
 	v, ok := m.responses[key]
