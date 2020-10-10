@@ -679,7 +679,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 			var autoTc v1alpha1.TidbCluster
 			// A new cluster should be created and there is one TiKV replica
-			err = wait.Poll(10*time.Second, 10*time.Minute, func() (done bool, err error) {
+			err = wait.Poll(10*time.Second, 5*time.Minute, func() (done bool, err error) {
 				tcList, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).List(metav1.ListOptions{
 					LabelSelector: fmt.Sprintf("%s=%s,%s=%s", label.AutoInstanceLabelKey, "auto-scaler", label.BaseTCLabelKey, tc.Name),
 				})
@@ -703,6 +703,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			})
 			framework.RunKubectl("logs", "-n", ns, "auto-scaling-pd-0")
 			framework.RunKubectl("logs", "-n", ns, "-l", "app.kubernetes.io/component=monitor", "-c", "prometheus")
+			framework.RunKubectl("logs", "-n", ns, "-l", "app.kubernetes.io/component=controller-manager")
 			framework.ExpectNoError(err, "check create autoscaling tikv cluster error")
 			framework.Logf("success to check create autoscaling tikv cluster")
 
