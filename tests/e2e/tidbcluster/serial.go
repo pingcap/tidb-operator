@@ -715,7 +715,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectNoError(err, "check create autoscaling tikv cluster error")
 			framework.Logf("success to check create autoscaling tikv cluster")
 
-			autoTiKV := fmt.Sprintf("%s-tikv-0", tc.Name)
+			autoTiKV := fmt.Sprintf("%s-tikv-0", autoTc.Name)
 
 			mp = &mock.MonitorParams{
 				Name:                tc.Name,
@@ -745,20 +745,20 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectNoError(err, "set tikv cpu quota mock metrics error")
 
 			err = wait.Poll(10*time.Second, 10*time.Minute, func() (done bool, err error) {
-				tc, err = cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
+				tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
 
 				if err != nil {
 					return false, err
 				}
 
-				autoTc = *tc
+				autoTc = *tcPtr
 
-				if tc.Spec.TiKV.Replicas < 2 {
+				if autoTc.Spec.TiKV.Replicas < 2 {
 					framework.Logf("autoscaling tikv cluster is not scaled out")
 					return false, nil
 				}
 
-				if tc.Spec.TiKV.Replicas >= 2 {
+				if autoTc.Spec.TiKV.Replicas >= 2 {
 					framework.Logf("autoscaling tikv cluster tc[%s/%s] scaled out", autoTc.Namespace, autoTc.Name)
 					return true, nil
 				}
@@ -799,7 +799,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectNoError(err, "set tikv cpu quota mock metrics error")
 
 			err = wait.Poll(10*time.Second, 10*time.Minute, func() (done bool, err error) {
-				tc, err = cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
+				tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
 
 				if err != nil {
 					if errors.IsNotFound(err) {
@@ -808,14 +808,14 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					return false, err
 				}
 
-				autoTc = *tc
+				autoTc = *tcPtr
 
-				if tc.Spec.TiKV.Replicas > 0 {
+				if autoTc.Spec.TiKV.Replicas > 0 {
 					framework.Logf("autoscaling tikv cluster is not gracefully shutting down")
 					return false, nil
 				}
 
-				if tc.Spec.TiKV.Replicas <= 0 {
+				if autoTc.Spec.TiKV.Replicas <= 0 {
 					framework.Logf("autoscaling tikv cluster tc[%s/%s] is shutting down", autoTc.Namespace, autoTc.Name)
 					return true, nil
 				}
