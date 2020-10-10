@@ -128,7 +128,6 @@ func newAdmissionRequest() *admission.AdmissionRequest {
 	return &request
 }
 
-<<<<<<< HEAD
 func newPodAdmissionControl(kubeCli kubernetes.Interface) *PodAdmissionControl {
 	operatorCli := operatorClifake.NewSimpleClientset()
 	pdControl := pdapi.NewFakePDControl(kubeCli)
@@ -139,12 +138,6 @@ func newPodAdmissionControl(kubeCli kubernetes.Interface) *PodAdmissionControl {
 		pdControl:   pdControl,
 		recorder:    recorder,
 	}
-=======
-func newPodAdmissionControl(serviceAccount []string, kubeCli kubernetes.Interface, cli versioned.Interface) *PodAdmissionControl {
-	ah := NewPodAdmissionControl(serviceAccount, time.Minute)
-	ah.initialize(cli, kubeCli, pdapi.NewFakePDControl(kubeCli), record.NewFakeRecorder(10), wait.NeverStop)
-	return ah
->>>>>>> cf16e7a4... make tikv evict leader timeout configurable (#3344)
 }
 
 func newTidbClusterForPodAdmissionControl(pdReplicas int32, tikvReplicas int32) *v1alpha1.TidbCluster {

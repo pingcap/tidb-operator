@@ -17,7 +17,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/openshift/generic-admission-server/pkg/cmd"
 	"github.com/pingcap/tidb-operator/pkg/features"
@@ -29,26 +28,14 @@ import (
 )
 
 var (
-<<<<<<< HEAD
-	printVersion             bool
-	extraServiceAccounts     string
-	evictRegionLeaderTimeout time.Duration
-=======
 	printVersion         bool
 	extraServiceAccounts string
-	minResyncDuration    time.Duration
->>>>>>> cf16e7a4... make tikv evict leader timeout configurable (#3344)
 )
 
 func init() {
 	flag.BoolVar(&printVersion, "V", false, "Show version and quit")
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
 	flag.StringVar(&extraServiceAccounts, "extraServiceAccounts", "", "comma-separated, extra Service Accounts the Webhook should control. The full pattern for each common service account is system:serviceaccount:<namespace>:<serviceaccount-name>")
-<<<<<<< HEAD
-	flag.DurationVar(&evictRegionLeaderTimeout, "evictRegionLeaderTimeout", 3*time.Minute, "TiKV evict region leader timeout period, default 3 min")
-=======
-	flag.DurationVar(&minResyncDuration, "min-resync-duration", 12*time.Hour, "The resync period in reflectors will be random between MinResyncPeriod and 2*MinResyncPeriod.")
->>>>>>> cf16e7a4... make tikv evict leader timeout configurable (#3344)
 	features.DefaultFeatureGate.AddFlag(flag.CommandLine)
 }
 
@@ -68,8 +55,7 @@ func main() {
 	})
 
 	ah := &webhook.AdmissionHook{
-		ExtraServiceAccounts:     extraServiceAccounts,
-		EvictRegionLeaderTimeout: evictRegionLeaderTimeout,
+		ExtraServiceAccounts: extraServiceAccounts,
 	}
 	ns := os.Getenv("NAMESPACE")
 	if len(ns) < 1 {
@@ -77,13 +63,5 @@ func main() {
 	}
 	pod.AstsControllerServiceAccounts = fmt.Sprintf("system:serviceaccount:%s:advanced-statefulset-controller", ns)
 
-<<<<<<< HEAD
 	cmd.RunAdmissionServer(ah)
-=======
-	podAdmissionHook := pod.NewPodAdmissionControl(strings.Split(extraServiceAccounts, ","), resyncDuration)
-	statefulSetAdmissionHook := statefulset.NewStatefulSetAdmissionControl()
-	strategyAdmissionHook := strategy.NewStrategyAdmissionHook(&strategy.Registry)
-
-	cmd.RunAdmissionServer(podAdmissionHook, statefulSetAdmissionHook, strategyAdmissionHook)
->>>>>>> cf16e7a4... make tikv evict leader timeout configurable (#3344)
 }

@@ -7878,13 +7878,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVRaftstoreConfig(ref common.ReferenceCa
 							Format:      "",
 						},
 					},
-					"evictLeaderTimeout": {
-						SchemaProps: spec.SchemaProps{
-							Description: "EvictLeaderTimeout indicates the timeout to evict tikv leader, in the format of Go Duration. Defaults to 3m",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
 				},
 			},
 		},
@@ -8424,6 +8417,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 						SchemaProps: spec.SchemaProps{
 							Description: "MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod",
 							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"evictLeaderTimeout": {
+						SchemaProps: spec.SchemaProps{
+							Description: "EvictLeaderTimeout indicates the timeout to evict tikv leader, in the format of Go Duration. Defaults to 3m",
+							Type:        []string{"string"},
 							Format:      "",
 						},
 					},

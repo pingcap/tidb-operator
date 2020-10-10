@@ -16,7 +16,6 @@ package pod
 import (
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -62,12 +61,7 @@ var (
 	AstsControllerServiceAccounts string
 )
 
-<<<<<<< HEAD
-func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.Interface, PdControl pdapi.PDControlInterface, extraServiceAccounts []string, evictRegionLeaderTimeout time.Duration, recorder record.EventRecorder) *PodAdmissionControl {
-
-=======
-func NewPodAdmissionControl(extraServiceAccounts []string, resyncDuration time.Duration) *PodAdmissionControl {
->>>>>>> cf16e7a4... make tikv evict leader timeout configurable (#3344)
+func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.Interface, PdControl pdapi.PDControlInterface, extraServiceAccounts []string, recorder record.EventRecorder) *PodAdmissionControl {
 	serviceAccounts := sets.NewString(stsControllerServiceAccounts)
 	for _, sa := range extraServiceAccounts {
 		serviceAccounts.Insert(sa)

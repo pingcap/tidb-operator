@@ -15,12 +15,8 @@ package pod
 
 import (
 	"fmt"
-<<<<<<< HEAD
 	"strconv"
 	"strings"
-	"time"
-=======
->>>>>>> cf16e7a4... make tikv evict leader timeout configurable (#3344)
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -178,17 +174,7 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPodDuringUpgrading(payload *admi
 
 	name := payload.pod.Name
 	namespace := payload.pod.Namespace
-<<<<<<< HEAD
 	tcName := payload.tc.Name
-=======
-	tc, ok := payload.controller.(*v1alpha1.TidbCluster)
-	if !ok {
-		err := fmt.Errorf("tikv pod[%s/%s]'s controller is not a tidbcluster", namespace, name)
-		return util.ARFail(err)
-	}
-	controllerName := tc.GetName()
-	controllerKind := payload.controller.GetObjectKind().GroupVersionKind().Kind
->>>>>>> cf16e7a4... make tikv evict leader timeout configurable (#3344)
 
 	_, evicting := payload.pod.Annotations[EvictLeaderBeginTime]
 	if !evicting {
@@ -202,7 +188,7 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPodDuringUpgrading(payload *admi
 		}
 	}
 
-	if !isTiKVReadyToUpgrade(payload.pod, store, tc.TiKVEvictLeaderTimeout()) {
+	if !isTiKVReadyToUpgrade(payload.pod, store, payload.tc.TiKVEvictLeaderTimeout()) {
 		return &admission.AdmissionResponse{
 			Allowed: false,
 		}

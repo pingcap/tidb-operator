@@ -469,8 +469,6 @@ func validatePathNoBacksteps(targetPath string, fldPath *field.Path) field.Error
 	}
 	return allErrs
 }
-<<<<<<< HEAD
-=======
 
 func validateTimeDurationStr(timeStr *string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
@@ -484,14 +482,3 @@ func validateTimeDurationStr(timeStr *string, fldPath *field.Path) field.ErrorLi
 	}
 	return allErrs
 }
-
-// clusterVersionLessThan2 makes sure that deployed dm cluster version not to be v1.0.x
-func clusterVersionLessThan2(version string) (bool, error) {
-	v, err := semver.NewVersion(version)
-	if err != nil {
-		return false, err
-	}
-
-	return v.Major() < 2, nil
-}
->>>>>>> cf16e7a4... make tikv evict leader timeout configurable (#3344)
