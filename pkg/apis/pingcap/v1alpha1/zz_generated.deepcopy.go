@@ -6795,6 +6795,11 @@ func (in *TiKVSpec) DeepCopyInto(out *TiKVSpec) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.EvictLeaderTimeout != nil {
+		in, out := &in.EvictLeaderTimeout, &out.EvictLeaderTimeout
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 
