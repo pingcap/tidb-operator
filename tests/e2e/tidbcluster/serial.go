@@ -666,6 +666,14 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectNoError(err, "set tikv cpu quota mock metrics error")
 
 			tac.Spec.TiKV = &v1alpha1.TikvAutoScalerSpec{}
+			tac.Spec.TiKV.Resources = map[string]v1alpha1.AutoResource{
+				"resource_a": {
+					CPU:     resource.MustParse("1000m"),
+					Memory:  tc.Spec.TiKV.Requests.Memory().DeepCopy(),
+					Storage: resource.MustParse("10Gi"),
+					Count:   pointer.Int32Ptr(3),
+				},
+			}
 			tac.Spec.TiKV.Rules = map[v1.ResourceName]v1alpha1.AutoRule{
 				v1.ResourceCPU: {
 					MaxThreshold: 0.5,
@@ -673,6 +681,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 						v := 0.2
 						return &v
 					}(),
+					ResourceTypes: []string{"resource_a"},
 				},
 			}
 
