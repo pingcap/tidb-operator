@@ -110,7 +110,7 @@ func buildPrometheusResponse(mp *MonitorParams) *calculate.Response {
 					KubernetesPodIp:     "foo",
 				},
 				Value: []interface{}{
-					time.Now().UnixNano(),
+					time.Now().Unix(),
 					value,
 				},
 			}

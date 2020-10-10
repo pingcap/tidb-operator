@@ -656,10 +656,9 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				KubernetesNamespace: tc.Namespace,
 				MemberType:          v1alpha1.TiKVMemberType.String(),
 				Duration:            duration,
-				// The CPU of TiKV is guaranteed 1000m
-				Value:        "1.0",
-				QueryType:    "cpu_quota",
-				InstancesPod: []string{"auto-scaling-tikv-0", "auto-scaling-tikv-1", "auto-scaling-tikv-2"},
+				Value:               "1.0",
+				QueryType:           "cpu_quota",
+				InstancesPod:        []string{"auto-scaling-tikv-0", "auto-scaling-tikv-1", "auto-scaling-tikv-2"},
 			}
 			err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
 			framework.ExpectNoError(err, "set tikv cpu quota mock metrics error")
