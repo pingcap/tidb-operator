@@ -62,8 +62,12 @@ var (
 	AstsControllerServiceAccounts string
 )
 
+<<<<<<< HEAD
 func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.Interface, PdControl pdapi.PDControlInterface, extraServiceAccounts []string, evictRegionLeaderTimeout time.Duration, recorder record.EventRecorder) *PodAdmissionControl {
 
+=======
+func NewPodAdmissionControl(extraServiceAccounts []string, resyncDuration time.Duration) *PodAdmissionControl {
+>>>>>>> cf16e7a4... make tikv evict leader timeout configurable (#3344)
 	serviceAccounts := sets.NewString(stsControllerServiceAccounts)
 	for _, sa := range extraServiceAccounts {
 		serviceAccounts.Insert(sa)
@@ -71,7 +75,6 @@ func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.
 	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
 		serviceAccounts.Insert(AstsControllerServiceAccounts)
 	}
-	EvictLeaderTimeout = evictRegionLeaderTimeout
 	return &PodAdmissionControl{
 		kubeCli:         kubeCli,
 		operatorCli:     operatorCli,

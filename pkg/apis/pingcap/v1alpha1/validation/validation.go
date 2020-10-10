@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -101,6 +102,7 @@ func validateTiKVSpec(spec *v1alpha1.TiKVSpec, fldPath *field.Path) field.ErrorL
 	if len(spec.DataSubDir) > 0 {
 		allErrs = append(allErrs, validateLocalDescendingPath(spec.DataSubDir, fldPath.Child("dataSubDir"))...)
 	}
+	allErrs = append(allErrs, validateTimeDurationStr(spec.EvictLeaderTimeout, fldPath.Child("evictLeaderTimeout"))...)
 	return allErrs
 }
 
@@ -467,3 +469,29 @@ func validatePathNoBacksteps(targetPath string, fldPath *field.Path) field.Error
 	}
 	return allErrs
 }
+<<<<<<< HEAD
+=======
+
+func validateTimeDurationStr(timeStr *string, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if timeStr != nil {
+		d, err := time.ParseDuration(*timeStr)
+		if err != nil {
+			allErrs = append(allErrs, field.Invalid(fldPath, timeStr, "mush be a valid Go time duration string, e.g. 3m"))
+		} else if d <= 0 {
+			allErrs = append(allErrs, field.Invalid(fldPath, timeStr, "must be a positive Go time duration"))
+		}
+	}
+	return allErrs
+}
+
+// clusterVersionLessThan2 makes sure that deployed dm cluster version not to be v1.0.x
+func clusterVersionLessThan2(version string) (bool, error) {
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		return false, err
+	}
+
+	return v.Major() < 2, nil
+}
+>>>>>>> cf16e7a4... make tikv evict leader timeout configurable (#3344)
