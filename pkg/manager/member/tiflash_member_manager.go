@@ -238,15 +238,15 @@ func (tfmm *tiflashMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *a
 	if err != nil {
 		return nil, err
 	}
+
+	var inUseName string
 	if set != nil && tc.BaseTiFlashSpec().ConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyInPlace {
-		inUseName := FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
+		inUseName = FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
 			return strings.HasPrefix(name, controller.TiFlashMemberName(tc.Name))
 		})
-		if inUseName != "" {
-			newCm.Name = inUseName
-		}
 	}
 
+	updateConfigMapIfNeed(tfmm.deps.ConfigMapLister, tc.BaseTiDBSpec().ConfigUpdateStrategy(), inUseName, newCm)
 	return tfmm.deps.TypedControl.CreateOrUpdateConfigMap(tc, newCm)
 }
 
@@ -501,7 +501,11 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 	podSpec.Volumes = append(vols, baseTiFlashSpec.AdditionalVolumes()...)
 	podSpec.SecurityContext = podSecurityContext
 	podSpec.InitContainers = initContainers
-	podSpec.Containers = append([]corev1.Container{tiflashContainer}, buildTiFlashSidecarContainers(tc)...)
+	containers, err := buildTiFlashSidecarContainers(tc)
+	if err != nil {
+		return nil, err
+	}
+	podSpec.Containers = append([]corev1.Container{tiflashContainer}, containers...)
 	podSpec.Containers = append(podSpec.Containers, baseTiFlashSpec.AdditionalContainers()...)
 	podSpec.ServiceAccountName = tc.Spec.TiFlash.ServiceAccount
 	if podSpec.ServiceAccountName == "" {
@@ -561,11 +565,11 @@ func flashVolumeClaimTemplate(storageClaims []v1alpha1.StorageClaim) ([]corev1.P
 func getTiFlashConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	config := getTiFlashConfig(tc)
 
-	configText, err := MarshalTOML(config.CommonConfig)
+	configText, err := config.Common.MarshalTOML()
 	if err != nil {
 		return nil, err
 	}
-	proxyText, err := MarshalTOML(config.ProxyConfig)
+	proxyText, err := config.Proxy.MarshalTOML()
 	if err != nil {
 		return nil, err
 	}

@@ -146,65 +146,70 @@ func validateTiCDCSpec(spec *v1alpha1.TiCDCSpec, fldPath *field.Path) field.Erro
 	return allErrs
 }
 
-func validateTiFlashConfig(config *v1alpha1.TiFlashConfig, path *field.Path) field.ErrorList {
+func validateTiFlashConfig(config *v1alpha1.TiFlashConfigWraper, path *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	if config == nil {
 		return allErrs
 	}
 
-	if config.CommonConfig != nil {
-		if config.CommonConfig.Flash != nil {
-			if config.CommonConfig.Flash.OverlapThreshold != nil {
-				if *config.CommonConfig.Flash.OverlapThreshold < 0 || *config.CommonConfig.Flash.OverlapThreshold > 1 {
+	if config.Common != nil {
+		if v := config.Common.Get("flash.overlap_threshold"); v != nil {
+			if value, err := v.AsFloat(); err == nil {
+				if value < 0 || value > 1 {
 					allErrs = append(allErrs, field.Invalid(path.Child("config.config.flash.overlap_threshold"),
-						config.CommonConfig.Flash.OverlapThreshold,
+						value,
 						"overlap_threshold must be in the range of [0,1]."))
 				}
 			}
-			if config.CommonConfig.Flash.FlashCluster != nil {
-				if config.CommonConfig.Flash.FlashCluster.ClusterLog != nil {
-					splitPath := strings.Split(*config.CommonConfig.Flash.FlashCluster.ClusterLog, string(os.PathSeparator))
-					// The log path should be at least /dir/base.log
-					if len(splitPath) < 3 {
-						allErrs = append(allErrs, field.Invalid(path.Child("config.config.flash.flash_cluster.log"),
-							config.CommonConfig.Flash.FlashCluster.ClusterLog,
-							"log path should include at least one level dir."))
-					}
-				}
-			}
-			if config.CommonConfig.Flash.FlashProxy != nil {
-				if config.CommonConfig.Flash.FlashProxy.LogFile != nil {
-					splitPath := strings.Split(*config.CommonConfig.Flash.FlashProxy.LogFile, string(os.PathSeparator))
-					// The log path should be at least /dir/base.log
-					if len(splitPath) < 3 {
-						allErrs = append(allErrs, field.Invalid(path.Child("config.config.flash.flash_proxy.log-file"),
-							config.CommonConfig.Flash.FlashProxy.LogFile,
-							"log path should include at least one level dir."))
-					}
-				}
-			}
 		}
-		if config.CommonConfig.FlashLogger != nil {
-			if config.CommonConfig.FlashLogger.ServerLog != nil {
-				splitPath := strings.Split(*config.CommonConfig.FlashLogger.ServerLog, string(os.PathSeparator))
+
+		if v := config.Common.Get("flash.flash_cluster.log"); v != nil {
+			if value, err := v.AsString(); err == nil {
+				splitPath := strings.Split(value, string(os.PathSeparator))
 				// The log path should be at least /dir/base.log
 				if len(splitPath) < 3 {
-					allErrs = append(allErrs, field.Invalid(path.Child("config.config.logger.log"),
-						config.CommonConfig.FlashLogger.ServerLog,
+					allErrs = append(allErrs, field.Invalid(path.Child("config.config.flash.flash_cluster.log"),
+						value,
 						"log path should include at least one level dir."))
 				}
 			}
-			if config.CommonConfig.FlashLogger.ErrorLog != nil {
-				splitPath := strings.Split(*config.CommonConfig.FlashLogger.ErrorLog, string(os.PathSeparator))
+		}
+
+		if v := config.Common.Get("flash.proxy.log-file"); v != nil {
+			if value, err := v.AsString(); err == nil {
+				splitPath := strings.Split(value, string(os.PathSeparator))
+				// The log path should be at least /dir/base.log
+				if len(splitPath) < 3 {
+					allErrs = append(allErrs, field.Invalid(path.Child("config.config.flash.proxy.log-file"),
+						value,
+						"log path should include at least one level dir."))
+				}
+			}
+		}
+		if v := config.Common.Get("logger.log"); v != nil {
+			if value, err := v.AsString(); err == nil {
+				splitPath := strings.Split(value, string(os.PathSeparator))
+				// The log path should be at least /dir/base.log
+				if len(splitPath) < 3 {
+					allErrs = append(allErrs, field.Invalid(path.Child("config.config.logger.log"),
+						value,
+						"log path should include at least one level dir."))
+				}
+			}
+		}
+		if v := config.Common.Get("logger.errorlog"); v != nil {
+			if value, err := v.AsString(); err == nil {
+				splitPath := strings.Split(value, string(os.PathSeparator))
 				// The log path should be at least /dir/base.log
 				if len(splitPath) < 3 {
 					allErrs = append(allErrs, field.Invalid(path.Child("config.config.logger.errorlog"),
-						config.CommonConfig.FlashLogger.ErrorLog,
+						value,
 						"log path should include at least one level dir."))
 				}
 			}
 		}
 	}
+
 	return allErrs
 }
 
