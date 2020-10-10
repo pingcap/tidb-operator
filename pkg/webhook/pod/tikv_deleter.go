@@ -15,7 +15,6 @@ package pod
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -32,11 +31,6 @@ import (
 const (
 	// EvictLeaderBeginTime is the key of evict Leader begin time
 	EvictLeaderBeginTime = label.AnnEvictLeaderBeginTime
-)
-
-var (
-	// EvictLeaderTimeout is the timeout limit of evict leader
-	EvictLeaderTimeout time.Duration
 )
 
 func (pc *PodAdmissionControl) admitDeleteTiKVPods(payload *admitPayload) *admission.AdmissionResponse {
@@ -192,12 +186,12 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPodDuringUpgrading(payload *admi
 
 	name := payload.pod.Name
 	namespace := payload.pod.Namespace
-	metaController, ok := payload.controller.(meta.Object)
+	tc, ok := payload.controller.(*v1alpha1.TidbCluster)
 	if !ok {
-		err := fmt.Errorf("tikv pod[%s/%s]'s controller is not a metav1.Object", namespace, name)
+		err := fmt.Errorf("tikv pod[%s/%s]'s controller is not a tidbcluster", namespace, name)
 		return util.ARFail(err)
 	}
-	controllerName := metaController.GetName()
+	controllerName := tc.GetName()
 	controllerKind := payload.controller.GetObjectKind().GroupVersionKind().Kind
 
 	_, evicting := payload.pod.Annotations[EvictLeaderBeginTime]
@@ -212,7 +206,7 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPodDuringUpgrading(payload *admi
 		}
 	}
 
-	if !isTiKVReadyToUpgrade(payload.pod, store) {
+	if !isTiKVReadyToUpgrade(payload.pod, store, tc.TiKVEvictLeaderTimeout()) {
 		return &admission.AdmissionResponse{
 			Allowed: false,
 		}

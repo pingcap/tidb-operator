@@ -81,7 +81,7 @@ var (
 	AstsControllerServiceAccounts string
 )
 
-func NewPodAdmissionControl(extraServiceAccounts []string, evictRegionLeaderTimeout time.Duration, resyncDuration time.Duration) *PodAdmissionControl {
+func NewPodAdmissionControl(extraServiceAccounts []string, resyncDuration time.Duration) *PodAdmissionControl {
 	serviceAccounts := sets.NewString(stsControllerServiceAccounts)
 	for _, sa := range extraServiceAccounts {
 		serviceAccounts.Insert(sa)
@@ -89,7 +89,6 @@ func NewPodAdmissionControl(extraServiceAccounts []string, evictRegionLeaderTime
 	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
 		serviceAccounts.Insert(AstsControllerServiceAccounts)
 	}
-	EvictLeaderTimeout = evictRegionLeaderTimeout
 	return &PodAdmissionControl{
 		serviceAccounts: serviceAccounts,
 		resyncDuration:  resyncDuration,

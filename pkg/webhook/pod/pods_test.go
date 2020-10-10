@@ -197,7 +197,7 @@ func TestAdmitPod(t *testing.T) {
 }
 
 func newPodAdmissionControl(serviceAccount []string, kubeCli kubernetes.Interface, cli versioned.Interface) *PodAdmissionControl {
-	ah := NewPodAdmissionControl(serviceAccount, time.Minute, time.Minute)
+	ah := NewPodAdmissionControl(serviceAccount, time.Minute)
 	ah.initialize(cli, kubeCli, pdapi.NewFakePDControl(kubeCli), record.NewFakeRecorder(10), wait.NeverStop)
 	return ah
 }
