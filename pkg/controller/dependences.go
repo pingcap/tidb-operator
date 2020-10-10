@@ -89,7 +89,7 @@ func DefaultCLIConfig() *CLIConfig {
 		WorkerFailoverPeriod:   5 * time.Minute,
 		LeaseDuration:          15 * time.Second,
 		RenewDuration:          5 * time.Second,
-		RetryPeriod:            5 * time.Second,
+		RetryPeriod:            3 * time.Second,
 		WaitDuration:           5 * time.Second,
 		ResyncDuration:         5 * time.Minute,
 		TiDBBackupManagerImage: "pingcap/tidb-backup-manager:latest",
