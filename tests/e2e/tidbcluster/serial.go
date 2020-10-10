@@ -712,18 +712,16 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 				return false, nil
 			})
-			framework.RunKubectl("logs", "-n", ns, "auto-scaling-pd-0")
-			framework.RunKubectl("logs", "-n", ns, "-l", "app.kubernetes.io/component=monitor", "-c", "prometheus")
-			framework.RunKubectl("logs", "-n", ns, "-l", "app.kubernetes.io/component=controller-manager")
 			framework.ExpectNoError(err, "check create autoscaling tikv cluster error")
 			framework.Logf("success to check create autoscaling tikv cluster")
 
 			autoTiKV := fmt.Sprintf("%s-tikv-0", tc.Name)
 
 			mp = &mock.MonitorParams{
-				Name:       tc.Name,
-				MemberType: v1alpha1.TiKVMemberType.String(),
-				Duration:   duration,
+				Name:                tc.Name,
+				MemberType:          v1alpha1.TiKVMemberType.String(),
+				KubernetesNamespace: tc.Namespace,
+				Duration:            duration,
 				// The CPU of TiKV is guaranteed 1000m
 				// To reach 50% utilization, the sum of cpu usage time should be at least 60 * 3 * 0.5 = 90
 				Value:        "35.0",
@@ -734,9 +732,10 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectNoError(err, "set tikv cpu usage mock metrics error")
 
 			mp = &mock.MonitorParams{
-				Name:       tc.Name,
-				MemberType: v1alpha1.TiKVMemberType.String(),
-				Duration:   duration,
+				Name:                tc.Name,
+				KubernetesNamespace: tc.Namespace,
+				MemberType:          v1alpha1.TiKVMemberType.String(),
+				Duration:            duration,
 				// The CPU of TiKV is guaranteed 1000m
 				Value:        "1.0",
 				QueryType:    "cpu_quota",
@@ -775,20 +774,22 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			}
 
 			mp = &mock.MonitorParams{
-				Name:         tc.Name,
-				MemberType:   v1alpha1.TiKVMemberType.String(),
-				Duration:     duration,
-				Value:        "0.0",
-				QueryType:    "cpu_usage",
-				InstancesPod: pods,
+				Name:                tc.Name,
+				MemberType:          v1alpha1.TiKVMemberType.String(),
+				KubernetesNamespace: tc.Namespace,
+				Duration:            duration,
+				Value:               "0.0",
+				QueryType:           "cpu_usage",
+				InstancesPod:        pods,
 			}
 			err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
 			framework.ExpectNoError(err, "set tikv cpu usage mock metrics error")
 
 			mp = &mock.MonitorParams{
-				Name:       tc.Name,
-				MemberType: v1alpha1.TiKVMemberType.String(),
-				Duration:   duration,
+				Name:                tc.Name,
+				KubernetesNamespace: tc.Namespace,
+				MemberType:          v1alpha1.TiKVMemberType.String(),
+				Duration:            duration,
 				// The CPU of TiKV is guaranteed 1000m
 				Value:        "1.0",
 				QueryType:    "cpu_quota",
