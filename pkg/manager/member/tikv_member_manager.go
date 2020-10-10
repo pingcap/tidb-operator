@@ -585,6 +585,8 @@ func transformTiKVConfigMap(srcStr string, tc *v1alpha1.TidbCluster) string {
 				newString := fmt.Sprintf(`%s = %s`, waitForLockTimeOutKey, str)
 				srcStr = strings.ReplaceAll(srcStr, old, newString)
 			}
+		} else {
+			klog.Warningf("pessimistic-txn.wait-for-lock-timeout is not string type: %v", err)
 		}
 	}
 
@@ -597,6 +599,8 @@ func transformTiKVConfigMap(srcStr string, tc *v1alpha1.TidbCluster) string {
 				newString := fmt.Sprintf(`%s = %s`, wakeUpDelayDuration, str)
 				srcStr = strings.ReplaceAll(srcStr, old, newString)
 			}
+		} else {
+			klog.Warningf("pessimistic-txn.wake-up-delay-duration is not string type: %v", err)
 		}
 	}
 

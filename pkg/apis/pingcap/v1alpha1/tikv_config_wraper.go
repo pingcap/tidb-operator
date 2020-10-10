@@ -15,11 +15,9 @@ package v1alpha1
 
 import (
 	stdjson "encoding/json"
-	"reflect"
 
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/util/config"
-	"github.com/pingcap/tidb-operator/pkg/util/toml"
 	"k8s.io/apimachinery/pkg/util/json"
 )
 
@@ -51,36 +49,10 @@ func (c *TiKVConfigWraper) MarshalJSON() ([]byte, error) {
 // for compatibility, if we use a map[string]interface{} to Unmarshal directly,
 // we can not distinct the type between integer and float for toml.
 func (c *TiKVConfigWraper) UnmarshalJSON(data []byte) error {
-	var value interface{}
-	err := json.Unmarshal(data, &value)
-	if err != nil {
-		return errors.AddStack(err)
-	}
-
-	var tomlData []byte
-	switch s := value.(type) {
-	case string:
-		tomlData = []byte(s)
-	case map[string]interface{}:
-		var deprecated *TiKVConfig
-		err = json.Unmarshal(data, &deprecated)
-		if err != nil {
-			return errors.AddStack(err)
-		}
-
-		tomlData, err = toml.Marshal(deprecated)
-		if err != nil {
-			return errors.AddStack(err)
-		}
-	default:
-		return errors.Errorf("unknown type: %v", reflect.TypeOf(value))
-	}
-	c.GenericConfig = config.New(nil)
-	err = c.GenericConfig.UnmarshalTOML(tomlData)
-	if err != nil {
-		return errors.AddStack(err)
-	}
-	return nil
+	var deprecated *TiKVCfConfig
+	var err error
+	c.GenericConfig, err = unmarshalJSON(data, deprecated)
+	return err
 }
 
 func (c *TiKVConfigWraper) MarshalTOML() ([]byte, error) {
