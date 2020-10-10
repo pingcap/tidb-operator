@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/semver"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -124,6 +125,7 @@ func validateTiKVSpec(spec *v1alpha1.TiKVSpec, fldPath *field.Path) field.ErrorL
 	if len(spec.DataSubDir) > 0 {
 		allErrs = append(allErrs, validateLocalDescendingPath(spec.DataSubDir, fldPath.Child("dataSubDir"))...)
 	}
+	allErrs = append(allErrs, validateTimeDurationStr(spec.EvictLeaderTimeout, fldPath.Child("evictLeaderTimeout"))...)
 	return allErrs
 }
 
@@ -530,6 +532,19 @@ func validatePathNoBacksteps(targetPath string, fldPath *field.Path) field.Error
 		if item == ".." {
 			allErrs = append(allErrs, field.Invalid(fldPath, targetPath, "must not contain '..'"))
 			break // even for `../../..`, one error is sufficient to make the point
+		}
+	}
+	return allErrs
+}
+
+func validateTimeDurationStr(timeStr *string, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if timeStr != nil {
+		d, err := time.ParseDuration(*timeStr)
+		if err != nil {
+			allErrs = append(allErrs, field.Invalid(fldPath, timeStr, "mush be a valid Go time duration string, e.g. 3m"))
+		} else if d <= 0 {
+			allErrs = append(allErrs, field.Invalid(fldPath, timeStr, "must be a positive Go time duration"))
 		}
 	}
 	return allErrs
