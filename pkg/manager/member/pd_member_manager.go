@@ -392,20 +392,20 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 			ClientURL: clientURL,
 			Health:    memberHealth.Health,
 		}
+		status.LastTransitionTime = metav1.Now()
 
-		var exist bool
-		var oldPDMember v1alpha1.PDMember
 		if pattern.Match([]byte(clientURL)) {
-			oldPDMember, exist = tc.Status.PD.Members[name]
+			oldPDMember, exist := tc.Status.PD.Members[name]
+			if exist && status.Health == oldPDMember.Health {
+				status.LastTransitionTime = oldPDMember.LastTransitionTime
+			}
 			pdStatus[name] = status
 		} else {
-			oldPDMember, exist = tc.Status.PD.PeerMembers[name]
+			oldPDMember, exist := tc.Status.PD.PeerMembers[name]
+			if exist && status.Health == oldPDMember.Health {
+				status.LastTransitionTime = oldPDMember.LastTransitionTime
+			}
 			peerPDStatus[name] = status
-		}
-
-		status.LastTransitionTime = metav1.Now()
-		if exist && status.Health == oldPDMember.Health {
-			status.LastTransitionTime = oldPDMember.LastTransitionTime
 		}
 
 		if name == leader.GetName() {
