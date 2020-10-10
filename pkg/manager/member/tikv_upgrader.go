@@ -31,8 +31,6 @@ import (
 const (
 	// EvictLeaderBeginTime is the key of evict Leader begin time
 	EvictLeaderBeginTime = "evictLeaderBeginTime"
-	// EvictLeaderTimeout is the timeout limit of evict leader
-	EvictLeaderTimeout = 3 * time.Minute
 )
 
 type tikvUpgrader struct {
@@ -151,7 +149,7 @@ func (tku *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32,
 				return tku.beginEvictLeader(tc, storeID, upgradePod)
 			}
 
-			if tku.readyToUpgrade(upgradePod, store) {
+			if tku.readyToUpgrade(upgradePod, store, tc.TiKVEvictLeaderTimeout()) {
 				err := tku.endEvictLeader(tc, ordinal)
 				if err != nil {
 					return err
@@ -167,7 +165,7 @@ func (tku *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32,
 	return controller.RequeueErrorf("tidbcluster: [%s/%s] no store status found for tikv pod: [%s]", ns, tcName, upgradePodName)
 }
 
-func (tku *tikvUpgrader) readyToUpgrade(upgradePod *corev1.Pod, store v1alpha1.TiKVStore) bool {
+func (tku *tikvUpgrader) readyToUpgrade(upgradePod *corev1.Pod, store v1alpha1.TiKVStore, evictLeaderTimeout time.Duration) bool {
 	if store.LeaderCount == 0 {
 		return true
 	}
@@ -177,7 +175,7 @@ func (tku *tikvUpgrader) readyToUpgrade(upgradePod *corev1.Pod, store v1alpha1.T
 			klog.Errorf("parse annotation:[%s] to time failed.", EvictLeaderBeginTime)
 			return false
 		}
-		if time.Now().After(evictLeaderBeginTime.Add(EvictLeaderTimeout)) {
+		if time.Now().After(evictLeaderBeginTime.Add(evictLeaderTimeout)) {
 			return true
 		}
 	}

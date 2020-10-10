@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -36,11 +35,6 @@ const (
 	EvictLeaderBeginTime = label.AnnEvictLeaderBeginTime
 
 	tikvStoreNotFoundPattern = `"invalid store ID %d, not found"`
-)
-
-var (
-	// EvictLeaderTimeout is the timeout limit of evict leader
-	EvictLeaderTimeout time.Duration
 )
 
 func (pc *PodAdmissionControl) admitDeleteTiKVPods(payload *admitPayload) *admission.AdmissionResponse {
@@ -194,7 +188,7 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPodDuringUpgrading(payload *admi
 		}
 	}
 
-	if !isTiKVReadyToUpgrade(payload.pod, store) {
+	if !isTiKVReadyToUpgrade(payload.pod, store, payload.tc.TiKVEvictLeaderTimeout()) {
 		return &admission.AdmissionResponse{
 			Allowed: false,
 		}

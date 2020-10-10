@@ -16,7 +16,6 @@ package webhook
 import (
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -41,13 +40,12 @@ import (
 )
 
 type AdmissionHook struct {
-	lock                     sync.RWMutex
-	initialized              bool
-	podAC                    *pod.PodAdmissionControl
-	stsAC                    *statefulset.StatefulSetAdmissionControl
-	strategyAC               *strategy.AdmissionWebhook
-	ExtraServiceAccounts     string
-	EvictRegionLeaderTimeout time.Duration
+	lock                 sync.RWMutex
+	initialized          bool
+	podAC                *pod.PodAdmissionControl
+	stsAC                *statefulset.StatefulSetAdmissionControl
+	strategyAC           *strategy.AdmissionWebhook
+	ExtraServiceAccounts string
 }
 
 func (a *AdmissionHook) ValidatingResource() (plural schema.GroupVersionResource, singular string) {
@@ -160,7 +158,7 @@ func (a *AdmissionHook) Initialize(cfg *rest.Config, stopCh <-chan struct{}) err
 		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
 	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tidb-admission-controller"})
 
-	pc := pod.NewPodAdmissionControl(kubeCli, cli, pdControl, strings.Split(a.ExtraServiceAccounts, ","), a.EvictRegionLeaderTimeout, recorder)
+	pc := pod.NewPodAdmissionControl(kubeCli, cli, pdControl, strings.Split(a.ExtraServiceAccounts, ","), recorder)
 	a.podAC = pc
 	klog.Info("pod admission webhook initialized successfully")
 	a.stsAC = statefulset.NewStatefulSetAdmissionControl(cli)

@@ -12287,6 +12287,8 @@ spec:
                     - name
                     type: object
                   type: array
+                evictLeaderTimeout:
+                  type: string
                 hostNetwork:
                   type: boolean
                 imagePullPolicy:

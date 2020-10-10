@@ -17,7 +17,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/openshift/generic-admission-server/pkg/cmd"
 	"github.com/pingcap/tidb-operator/pkg/features"
@@ -29,16 +28,14 @@ import (
 )
 
 var (
-	printVersion             bool
-	extraServiceAccounts     string
-	evictRegionLeaderTimeout time.Duration
+	printVersion         bool
+	extraServiceAccounts string
 )
 
 func init() {
 	flag.BoolVar(&printVersion, "V", false, "Show version and quit")
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
 	flag.StringVar(&extraServiceAccounts, "extraServiceAccounts", "", "comma-separated, extra Service Accounts the Webhook should control. The full pattern for each common service account is system:serviceaccount:<namespace>:<serviceaccount-name>")
-	flag.DurationVar(&evictRegionLeaderTimeout, "evictRegionLeaderTimeout", 3*time.Minute, "TiKV evict region leader timeout period, default 3 min")
 	features.DefaultFeatureGate.AddFlag(flag.CommandLine)
 }
 
@@ -58,8 +55,7 @@ func main() {
 	})
 
 	ah := &webhook.AdmissionHook{
-		ExtraServiceAccounts:     extraServiceAccounts,
-		EvictRegionLeaderTimeout: evictRegionLeaderTimeout,
+		ExtraServiceAccounts: extraServiceAccounts,
 	}
 	ns := os.Getenv("NAMESPACE")
 	if len(ns) < 1 {
