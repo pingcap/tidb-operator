@@ -583,9 +583,9 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 			tc.Spec.TiDB.Config = v1alpha1.NewTiDBConfig()
 			tc.Spec.TiDB.ConfigUpdateStrategy = &updateStrategy
-			tc.Spec.TiKV.Config = &v1alpha1.TiKVConfig{}
+			tc.Spec.TiKV.Config = v1alpha1.NewTiKVConfig()
 			tc.Spec.TiKV.ConfigUpdateStrategy = &updateStrategy
-			tc.Spec.PD.Config = &v1alpha1.PDConfig{}
+			tc.Spec.PD.Config = v1alpha1.NewPDConfig()
 			tc.Spec.PD.ConfigUpdateStrategy = &updateStrategy
 			return nil
 		})

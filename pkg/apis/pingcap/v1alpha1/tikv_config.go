@@ -968,7 +968,7 @@ type MasterKeyKMSConfig struct {
 
 	// SecretKey of AWS user, leave empty if using other authrization method
 	// optional
-	SecretKey *string `json:"secret-access-key,omitempty" toml:"access-key,omitempty"`
+	SecretKey *string `json:"secret-access-key,omitempty" toml:"secret-access-key,omitempty"`
 
 	// Region of this KMS key
 	// Optional: Default to us-east-1
