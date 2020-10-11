@@ -51,38 +51,10 @@ func (c *TiDBConfigWraper) MarshalJSON() ([]byte, error) {
 // for compatibility, if we use a map[string]interface{} to Unmarshal directly,
 // we can not distinct the type between integer and float for toml.
 func (c *TiDBConfigWraper) UnmarshalJSON(data []byte) error {
-	var value interface{}
-	err := json.Unmarshal(data, &value)
-	if err != nil {
-		return errors.AddStack(err)
-	}
-
-	var tomlData []byte
-	switch s := value.(type) {
-	case string:
-		tomlData = []byte(s)
-	case map[string]interface{}:
-		var deprecated *TiDBConfig
-		err = json.Unmarshal(data, &deprecated)
-		if err != nil {
-			return errors.AddStack(err)
-		}
-
-		tomlData, err = toml.Marshal(deprecated)
-		if err != nil {
-			return errors.AddStack(err)
-		}
-
-	default:
-		return errors.Errorf("unknown type: %v", reflect.TypeOf(value))
-	}
-
-	c.GenericConfig = config.New(nil)
-	err = c.GenericConfig.UnmarshalTOML(tomlData)
-	if err != nil {
-		return errors.AddStack(err)
-	}
-	return nil
+	var deprecated *TiDBConfig
+	var err error
+	c.GenericConfig, err = unmarshalJSON(data, deprecated)
+	return err
 }
 
 func (c *TiDBConfigWraper) MarshalTOML() ([]byte, error) {
@@ -91,4 +63,39 @@ func (c *TiDBConfigWraper) MarshalTOML() ([]byte, error) {
 	}
 
 	return c.GenericConfig.MarshalTOML()
+}
+
+// If the data is a object, we use x to Unmarshal(json) first and Marshal(toml) again to get toml data
+func unmarshalJSON(data []byte, x interface{}) (g *config.GenericConfig, err error) {
+	var value interface{}
+	err = json.Unmarshal(data, &value)
+	if err != nil {
+		return nil, errors.AddStack(err)
+	}
+
+	var tomlData []byte
+	switch s := value.(type) {
+	case string:
+		tomlData = []byte(s)
+	case map[string]interface{}:
+		err = json.Unmarshal(data, &x)
+		if err != nil {
+			return nil, errors.AddStack(err)
+		}
+
+		tomlData, err = toml.Marshal(x)
+		if err != nil {
+			return nil, errors.AddStack(err)
+		}
+
+	default:
+		return nil, errors.Errorf("unknown type: %v", reflect.TypeOf(value))
+	}
+
+	g = config.New(nil)
+	err = g.UnmarshalTOML(tomlData)
+	if err != nil {
+		return nil, errors.AddStack(err)
+	}
+	return g, nil
 }

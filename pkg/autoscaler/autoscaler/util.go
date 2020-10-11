@@ -415,17 +415,7 @@ func newAutoScalingCluster(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAu
 		autoTc.Spec.TiDB = nil
 		// Initialize Config
 		if autoTc.Spec.TiKV.Config == nil {
-			autoTc.Spec.TiKV.Config = &v1alpha1.TiKVConfig{
-				Server: &v1alpha1.TiKVServerConfig{
-					Labels: map[string]string{},
-				},
-			}
-		} else if autoTc.Spec.TiKV.Config.Server == nil {
-			autoTc.Spec.TiKV.Config.Server = &v1alpha1.TiKVServerConfig{
-				Labels: map[string]string{},
-			}
-		} else if autoTc.Spec.TiKV.Config.Server.Labels == nil {
-			autoTc.Spec.TiKV.Config.Server.Labels = map[string]string{}
+			autoTc.Spec.TiKV.Config = v1alpha1.NewTiKVConfig()
 		}
 	}
 
