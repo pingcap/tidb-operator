@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/pkg/util/toml"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -742,6 +743,7 @@ func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetCont
 	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1().StatefulSets()
 	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
 	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
+	cmInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().ConfigMaps()
 	epsInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Endpoints()
 	pvcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().PersistentVolumeClaims()
 	setControl := controller.NewFakeStatefulSetControl(setInformer)
@@ -763,6 +765,7 @@ func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetCont
 		setInformer.Lister(),
 		svcInformer.Lister(),
 		podInformer.Lister(),
+		cmInformer.Lister(),
 		epsInformer.Lister(),
 		pvcInformer.Lister(),
 		pdScaler,
@@ -1442,7 +1445,7 @@ func TestGetPDConfigMap(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							ConfigUpdateStrategy: &updateStrategy,
 						},
-						Config: &v1alpha1.PDConfig{
+						Config: mustPDConfig(&v1alpha1.PDConfig{
 							Schedule: &v1alpha1.PDScheduleConfig{
 								MaxStoreDownTime:         pointer.StringPtr("5m"),
 								DisableRemoveDownReplica: pointer.BoolPtr(true),
@@ -1451,7 +1454,7 @@ func TestGetPDConfigMap(t *testing.T) {
 								MaxReplicas:    func() *uint64 { i := uint64(5); return &i }(),
 								LocationLabels: []string{"node", "rack"},
 							},
-						},
+						}),
 					},
 					TiKV: &v1alpha1.TiKVSpec{},
 					TiDB: &v1alpha1.TiDBSpec{},
@@ -1484,13 +1487,13 @@ func TestGetPDConfigMap(t *testing.T) {
 				},
 				Data: map[string]string{
 					"startup-script": "",
-					"config-file": `[schedule]
-  max-store-down-time = "5m"
-  disable-remove-down-replica = true
-
-[replication]
-  max-replicas = 5
+					"config-file": `[replication]
   location-labels = ["node", "rack"]
+  max-replicas = 5
+
+[schedule]
+  disable-remove-down-replica = true
+  max-store-down-time = "5m"
 `,
 				},
 			},
@@ -1507,7 +1510,7 @@ func TestGetPDConfigMap(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: "pingcap/pd:v3.1.0",
 						},
-						Config: &v1alpha1.PDConfig{},
+						Config: v1alpha1.NewPDConfig(),
 					},
 					TiDB: &v1alpha1.TiDBSpec{
 						TLSClient: &v1alpha1.TiDBTLSClient{
@@ -1560,7 +1563,7 @@ func TestGetPDConfigMap(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: "pingcap/pd:v4.0.0-rc.1",
 						},
-						Config: &v1alpha1.PDConfig{},
+						Config: v1alpha1.NewPDConfig(),
 					},
 					TiDB: &v1alpha1.TiDBSpec{
 						TLSClient: &v1alpha1.TiDBTLSClient{
@@ -1617,7 +1620,7 @@ func TestGetPDConfigMap(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: "pingcap/pd:nightly",
 						},
-						Config: &v1alpha1.PDConfig{},
+						Config: v1alpha1.NewPDConfig(),
 					},
 					TiDB: &v1alpha1.TiDBSpec{
 						TLSClient: &v1alpha1.TiDBTLSClient{
@@ -2396,4 +2399,16 @@ func hasTLSVolMount(sts *apps.StatefulSet) bool {
 		}
 	}
 	return false
+}
+
+func mustPDConfig(x interface{}) *v1alpha1.PDConfigWraper {
+	data, err := toml.Marshal(x)
+	if err != nil {
+		panic(err)
+	}
+
+	c := v1alpha1.NewPDConfig()
+	c.UnmarshalTOML(data)
+
+	return c
 }
