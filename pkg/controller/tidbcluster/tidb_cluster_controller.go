@@ -134,6 +134,7 @@ func NewController(
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				podInformer.Lister(),
+				cmInformer.Lister(),
 				epsInformer.Lister(),
 				pvcInformer.Lister(),
 				pdScaler,
