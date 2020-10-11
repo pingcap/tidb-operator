@@ -192,10 +192,9 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 				Limits:   limitsResourceList,
 				Requests: requestsResourceList,
 			}
-
 			// Assign Plan Labels
 			for k, v := range plan.Labels {
-				autoTc.Spec.TiKV.Config.Server.Labels[k] = v
+				autoTc.Spec.TiKV.Config.Set("server.labels."+k, v)
 			}
 		case v1alpha1.TiDBMemberType.String():
 			autoTc.Spec.TiDB.Replicas = int32(plan.Count)

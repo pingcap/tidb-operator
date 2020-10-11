@@ -62,7 +62,7 @@ func (am *autoScalerManager) createExternalAutoCluster(tc *v1alpha1.TidbCluster,
 		autoTc.Spec.TiDB.Replicas = targetReplicas
 	case v1alpha1.TiKVMemberType:
 		autoTc.Spec.TiKV.Replicas = targetReplicas
-		autoTc.Spec.TiKV.Config.Server.Labels[specialUseLabelKey] = specialUseHotRegion
+		autoTc.Spec.TiKV.Config.Set("server.labels."+specialUseLabelKey, specialUseHotRegion)
 	}
 
 	_, err := am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(autoTc)

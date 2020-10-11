@@ -347,7 +347,7 @@ type PDSpec struct {
 
 	// Config is the Configuration of pd-servers
 	// +optional
-	Config *PDConfig `json:"config,omitempty"`
+	Config *PDConfigWraper `json:"config,omitempty"`
 
 	// TLSClientSecretName is the name of secret which stores tidb server client certificate
 	// which used by Dashboard.
@@ -412,7 +412,7 @@ type TiKVSpec struct {
 
 	// Config is the Configuration of tikv-servers
 	// +optional
-	Config *TiKVConfig `json:"config,omitempty"`
+	Config *TiKVConfigWraper `json:"config,omitempty"`
 
 	// RecoverFailover indicates that Operator can recover the failover Pods
 	// +optional

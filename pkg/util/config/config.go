@@ -141,6 +141,9 @@ type Value struct {
 }
 
 func (v *Value) Interface() interface{} {
+	if v == nil {
+		return nil
+	}
 	return v.inner
 }
 
@@ -162,6 +165,33 @@ func (v *Value) AsString() (string, error) {
 
 func (v *Value) MustInt() int64 {
 	value, err := v.AsInt()
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
+
+func (v *Value) AsStringSlice() ([]string, error) {
+	switch s := v.inner.(type) {
+	case []string:
+		return s, nil
+	case []interface{}:
+		var slice []string
+		for _, item := range s {
+			str, ok := item.(string)
+			if !ok {
+				return nil, errors.Errorf("can not be string slice: %v", v.inner)
+			}
+			slice = append(slice, str)
+		}
+		return slice, nil
+	default:
+		return nil, errors.Errorf("invalid type: %v", reflect.TypeOf(v.inner))
+	}
+}
+
+func (v *Value) MustStringSlice() []string {
+	value, err := v.AsStringSlice()
 	if err != nil {
 		panic(err)
 	}

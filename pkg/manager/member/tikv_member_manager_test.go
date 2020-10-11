@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/pkg/util/toml"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -2188,7 +2189,7 @@ func TestGetTiKVConfigMap(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							ConfigUpdateStrategy: &updateStrategy,
 						},
-						Config: &v1alpha1.TiKVConfig{
+						Config: mustTiKVConfig(&v1alpha1.TiKVConfig{
 							Raftstore: &v1alpha1.TiKVRaftstoreConfig{
 								SyncLog:              pointer.BoolPtr(false),
 								RaftBaseTickInterval: pointer.StringPtr("1s"),
@@ -2196,7 +2197,7 @@ func TestGetTiKVConfigMap(t *testing.T) {
 							Server: &v1alpha1.TiKVServerConfig{
 								GrpcKeepaliveTimeout: pointer.StringPtr("30s"),
 							},
-						},
+						}),
 					},
 					PD:   &v1alpha1.PDSpec{},
 					TiDB: &v1alpha1.TiDBSpec{},
@@ -2251,6 +2252,13 @@ func TestGetTiKVConfigMap(t *testing.T) {
 			}
 			// startup-script is better to be tested in e2e
 			cm.Data["startup-script"] = ""
+
+			got := cm.Data["config-file"]
+			want := tt.expected.Data["config-file"]
+			g.Expect(toml.Equal([]byte(got), []byte(want))).To(BeTrue())
+			delete(cm.Data, "config-file")
+			delete(tt.expected.Data, "config-file")
+
 			if diff := cmp.Diff(*tt.expected, *cm); diff != "" {
 				t.Errorf("unexpected plugin configuration (-want, +got): %s", diff)
 			}
@@ -2290,11 +2298,9 @@ func TestTransformTiKVConfigMap(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			tc := newTidbClusterForTiKV()
-			tc.Spec.TiKV.Config.TiKVPessimisticTxn = &v1alpha1.TiKVPessimisticTxn{
-				WaitForLockTimeout:  pointer.StringPtr(test.waitForLockTimeout),
-				WakeUpDelayDuration: pointer.StringPtr(test.wakeUpDelayDuration),
-			}
-			confText, err := MarshalTOML(tc.Spec.TiKV.Config)
+			tc.Spec.TiKV.Config.Set("pessimistic-txn.wait-for-lock-timeout", test.waitForLockTimeout)
+			tc.Spec.TiKV.Config.Set("pessimistic-txn.wake-up-delay-duration", test.wakeUpDelayDuration)
+			confText, err := tc.Spec.TiKV.Config.MarshalTOML()
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(test.result).Should(Equal(transformTiKVConfigMap(string(confText), tc)))
 		})
@@ -2321,10 +2327,8 @@ func TestTiKVBackupConfig(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			tc := newTidbClusterForTiKV()
-			tc.Spec.TiKV.Config.Backup = &v1alpha1.TiKVBackupConfig{
-				NumThreads: pointer.Int64Ptr(test.numThreads),
-			}
-			confText, err := MarshalTOML(tc.Spec.TiKV.Config)
+			tc.Spec.TiKV.Config.Set("backup.num-threads", test.numThreads)
+			confText, err := tc.Spec.TiKV.Config.MarshalTOML()
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(test.result).Should(Equal(string(confText)))
 		})
@@ -2351,10 +2355,22 @@ func newTidbClusterForTiKV() *v1alpha1.TidbCluster {
 				},
 				Replicas:         3,
 				StorageClassName: pointer.StringPtr("my-storage-class"),
-				Config:           &v1alpha1.TiKVConfig{},
+				Config:           v1alpha1.NewTiKVConfig(),
 			},
 			PD:   &v1alpha1.PDSpec{},
 			TiDB: &v1alpha1.TiDBSpec{},
 		},
 	}
+}
+
+func mustTiKVConfig(x interface{}) *v1alpha1.TiKVConfigWraper {
+	data, err := toml.Marshal(x)
+	if err != nil {
+		panic(err)
+	}
+
+	c := v1alpha1.NewTiKVConfig()
+	c.UnmarshalTOML(data)
+
+	return c
 }

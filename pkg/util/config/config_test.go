@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/util/json"
 )
@@ -24,6 +25,36 @@ import (
 type Simple struct {
 	A string
 	B int
+}
+
+func TestStringSlice(t *testing.T) {
+	g := NewGomegaWithT(t)
+	data := `slice = ["s1", "s2"]
+	not_slice = "ok"`
+
+	c := New(map[string]interface{}{})
+	err := c.UnmarshalTOML([]byte(data))
+	g.Expect(err).Should(BeNil())
+
+	v := c.Get("slice") // unmarshal from toml will be []interface{}
+	g.Expect(v).ShouldNot(BeNil())
+	slice, err := v.AsStringSlice()
+	g.Expect(err).Should(BeNil())
+	g.Expect(slice).Should(Equal([]string{"s1", "s2"}))
+
+	// test by set as []string
+	c.Set("slice", []string{"s1"})
+	v = c.Get("slice")
+	g.Expect(v).ShouldNot(BeNil())
+	slice, err = v.AsStringSlice()
+	g.Expect(err).Should(BeNil())
+	g.Expect(slice).Should(Equal([]string{"s1"}))
+
+	// test negative
+	v = c.Get("not_slice")
+	g.Expect(v).ShouldNot(BeNil())
+	_, err = v.AsStringSlice()
+	g.Expect(err).ShouldNot(BeNil())
 }
 
 func TestGetSet(t *testing.T) {
@@ -119,9 +150,10 @@ func TestMarshalTOML(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	c := New(map[string]interface{}{
-		"int":   int64(1),
-		"float": 1.0,
-		"str":   "str",
+		"int":       int64(1),
+		"float":     1.0,
+		"str":       "str",
+		"str_slice": []interface{}{"s1", "s2"},
 	})
 
 	data, err := c.MarshalTOML()
@@ -131,7 +163,9 @@ func TestMarshalTOML(t *testing.T) {
 	cback := New(nil)
 	err = cback.UnmarshalTOML(data)
 	g.Expect(err).Should(BeNil())
-	g.Expect(cback).Should(Equal(c))
+	if diff := cmp.Diff(c, cback); diff != "" {
+		t.Errorf("(-want,+got): %s\n", diff)
+	}
 }
 
 func TestMarshlJSON(t *testing.T) {
