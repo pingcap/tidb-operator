@@ -421,6 +421,11 @@ type TiKVSpec struct {
 	// MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod
 	// +optional
 	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
+
+	// EvictLeaderTimeout indicates the timeout to evict tikv leader, in the format of Go Duration.
+	// Defaults to 3m
+	// +optional
+	EvictLeaderTimeout *string `json:"evictLeaderTimeout,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members
@@ -591,7 +596,7 @@ type TiDBSpec struct {
 
 	// Config is the Configuration of tidb-servers
 	// +optional
-	Config *TiDBConfig `json:"config,omitempty"`
+	Config *TiDBConfigWraper `json:"config,omitempty"`
 
 	// Lifecycle describes actions that the management system should take in response to container lifecycle
 	// events. For the PostStart and PreStop lifecycle handlers, management of the container blocks

@@ -380,7 +380,7 @@ func newTidbClusterForTidbClusterControl() *v1alpha1.TidbCluster {
 			TiDB: &v1alpha1.TiDBSpec{
 				Replicas:  2,
 				BaseImage: "pingcap/tidb",
-				Config:    &v1alpha1.TiDBConfig{},
+				Config:    v1alpha1.NewTiDBConfig(),
 			},
 		},
 	}
