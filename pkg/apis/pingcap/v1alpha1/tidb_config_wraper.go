@@ -51,7 +51,7 @@ func (c *TiDBConfigWraper) MarshalJSON() ([]byte, error) {
 // for compatibility, if we use a map[string]interface{} to Unmarshal directly,
 // we can not distinct the type between integer and float for toml.
 func (c *TiDBConfigWraper) UnmarshalJSON(data []byte) error {
-	var deprecated *TiDBConfig
+	deprecated := new(TiDBConfig)
 	var err error
 	c.GenericConfig, err = unmarshalJSON(data, deprecated)
 	return err
@@ -78,7 +78,11 @@ func unmarshalJSON(data []byte, x interface{}) (g *config.GenericConfig, err err
 	case string:
 		tomlData = []byte(s)
 	case map[string]interface{}:
-		err = json.Unmarshal(data, &x)
+		if x == nil {
+			panic("x should not be nil")
+		}
+
+		err = json.Unmarshal(data, x)
 		if err != nil {
 			return nil, errors.AddStack(err)
 		}
