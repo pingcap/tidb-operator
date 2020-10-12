@@ -30,7 +30,7 @@ const (
 
 func (am *autoScalerManager) syncExternalResult(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType, targetReplicas int32) error {
 	externalTcName := fmt.Sprintf(externalTcNamePattern, tc.ClusterName, component.String())
-	externalTc, err := am.tcLister.TidbClusters(tc.Namespace).Get(externalTcName)
+	externalTc, err := am.deps.TiDBClusterLister.TidbClusters(tc.Namespace).Get(externalTcName)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			if targetReplicas <= 0 {
@@ -65,7 +65,7 @@ func (am *autoScalerManager) createExternalAutoCluster(tc *v1alpha1.TidbCluster,
 		autoTc.Spec.TiKV.Config.Set("server.labels."+specialUseLabelKey, specialUseHotRegion)
 	}
 
-	_, err := am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(autoTc)
+	_, err := am.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(autoTc)
 	if err != nil {
 		klog.Errorf("tac[%s/%s] failed to create external tc[%s/%s], err: %v", tac.Namespace, tac.Name, tc.Namespace, externalTcName, err)
 	}
@@ -87,7 +87,7 @@ func (am *autoScalerManager) updateExternalAutoCluster(externalTc *v1alpha1.Tidb
 		updated.Spec.TiKV.Replicas = targetReplicas
 	}
 
-	_, err := am.tcControl.UpdateTidbCluster(updated, &updated.Status, &externalTc.Status)
+	_, err := am.deps.TiDBClusterControl.UpdateTidbCluster(updated, &updated.Status, &externalTc.Status)
 	if err != nil {
 		klog.Errorf("tac[%s/%s] failed to update external tc[%s/%s], err: %v", tac.Namespace, tac.Name, externalTc.Namespace, externalTc.Name, err)
 	}

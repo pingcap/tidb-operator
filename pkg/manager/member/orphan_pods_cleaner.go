@@ -23,8 +23,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes"
-	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 )
 
@@ -55,18 +53,14 @@ type OrphanPodsCleaner interface {
 }
 
 type orphanPodsCleaner struct {
-	podLister  corelisters.PodLister
-	podControl controller.PodControlInterface
-	pvcLister  corelisters.PersistentVolumeClaimLister
-	kubeCli    kubernetes.Interface
+	deps *controller.Dependencies
 }
 
 // NewOrphanPodsCleaner returns a OrphanPodsCleaner
-func NewOrphanPodsCleaner(podLister corelisters.PodLister,
-	podControl controller.PodControlInterface,
-	pvcLister corelisters.PersistentVolumeClaimLister,
-	kubeCli kubernetes.Interface) OrphanPodsCleaner {
-	return &orphanPodsCleaner{podLister, podControl, pvcLister, kubeCli}
+func NewOrphanPodsCleaner(deps *controller.Dependencies) OrphanPodsCleaner {
+	return &orphanPodsCleaner{
+		deps: deps,
+	}
 }
 
 func (opc *orphanPodsCleaner) Clean(meta metav1.Object) (map[string]string, error) {
@@ -91,7 +85,7 @@ func (opc *orphanPodsCleaner) Clean(meta metav1.Object) (map[string]string, erro
 	if err != nil {
 		return skipReason, err
 	}
-	pods, err := opc.podLister.Pods(ns).List(selector)
+	pods, err := opc.deps.PodLister.Pods(ns).List(selector)
 	if err != nil {
 		return skipReason, fmt.Errorf("clean: failed to get pods list for cluster %s/%s, selector %s, error: %s", ns, meta.GetName(), selector, err)
 	}
@@ -126,7 +120,7 @@ func (opc *orphanPodsCleaner) Clean(meta metav1.Object) (map[string]string, erro
 		var pvcNotFound bool
 		for _, p := range pvcNames {
 			// check informer cache
-			_, err = opc.pvcLister.PersistentVolumeClaims(ns).Get(p)
+			_, err = opc.deps.PVCLister.PersistentVolumeClaims(ns).Get(p)
 			if err == nil {
 				continue
 			}
@@ -134,7 +128,7 @@ func (opc *orphanPodsCleaner) Clean(meta metav1.Object) (map[string]string, erro
 				return skipReason, fmt.Errorf("clean: failed to get pvc %s for cluster %s/%s, error: %s", p, ns, meta.GetName(), err)
 			}
 			// if PVC not found in cache, re-check from apiserver directly to make sure the PVC really not exist
-			_, err = opc.kubeCli.CoreV1().PersistentVolumeClaims(ns).Get(p, metav1.GetOptions{})
+			_, err = opc.deps.KubeClientset.CoreV1().PersistentVolumeClaims(ns).Get(p, metav1.GetOptions{})
 			if err == nil {
 				continue
 			}
@@ -153,7 +147,7 @@ func (opc *orphanPodsCleaner) Clean(meta metav1.Object) (map[string]string, erro
 		// if the PVC is not found in apiserver (also informer cache) and the
 		// pod has not been scheduled, delete it and let the stateful
 		// controller to create the pod and its PVC(s) again
-		apiPod, err := opc.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+		apiPod, err := opc.deps.KubeClientset.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
 		if errors.IsNotFound(err) {
 			skipReason[podName] = skipReasonOrphanPodsCleanerPodIsNotFound
 			continue
@@ -178,7 +172,7 @@ func (opc *orphanPodsCleaner) Clean(meta metav1.Object) (map[string]string, erro
 		// As the pod may be updated by kube-scheduler or other components
 		// frequently, we should use the latest object here to avoid API
 		// conflict.
-		err = opc.podControl.DeletePod(podMeta, apiPod)
+		err = opc.deps.PodControl.DeletePod(podMeta, apiPod)
 		if err != nil {
 			klog.Errorf("orphan pods cleaner: failed to clean orphan pod: %s/%s, %v", ns, podName, err)
 			return skipReason, err

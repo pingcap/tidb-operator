@@ -19,24 +19,18 @@ import (
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/dmapi"
-
 	apps "k8s.io/api/apps/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 )
 
 type masterUpgrader struct {
-	masterControl dmapi.MasterControlInterface
-	podLister     corelisters.PodLister
+	deps *controller.Dependencies
 }
 
 // NewMasterUpgrader returns a masterUpgrader
-func NewMasterUpgrader(masterControl dmapi.MasterControlInterface,
-	podLister corelisters.PodLister) DMUpgrader {
+func NewMasterUpgrader(deps *controller.Dependencies) DMUpgrader {
 	return &masterUpgrader{
-		masterControl: masterControl,
-		podLister:     podLister,
+		deps: deps,
 	}
 }
 
@@ -84,7 +78,7 @@ func (mu *masterUpgrader) gracefulUpgrade(dc *v1alpha1.DMCluster, oldSet *apps.S
 	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
 		i := podOrdinals[_i]
 		podName := DMMasterPodName(dcName, i)
-		pod, err := mu.podLister.Pods(ns).Get(podName)
+		pod, err := mu.deps.PodLister.Pods(ns).Get(podName)
 		if err != nil {
 			return fmt.Errorf("gracefulUpgrade: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, dcName, err)
 		}
@@ -131,7 +125,7 @@ func (mu *masterUpgrader) upgradeMasterPod(dc *v1alpha1.DMCluster, ordinal int32
 }
 
 func (mu *masterUpgrader) evictMasterLeader(dc *v1alpha1.DMCluster, podName string) error {
-	return controller.GetMasterPeerClient(mu.masterControl, dc, podName).EvictLeader()
+	return controller.GetMasterPeerClient(mu.deps.DMMasterControl, dc, podName).EvictLeader()
 }
 
 type fakeMasterUpgrader struct{}

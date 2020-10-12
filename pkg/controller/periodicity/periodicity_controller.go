@@ -26,41 +26,26 @@ import (
 	"encoding/json"
 	"time"
 
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
-	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
-	kubeinformers "k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes"
-	appslisters "k8s.io/client-go/listers/apps/v1"
 	"k8s.io/klog"
 )
 
 type Controller struct {
-	kubeCli   kubernetes.Interface
-	stsLister appslisters.StatefulSetLister
-	tcLister  v1alpha1listers.TidbClusterLister
+	deps *controller.Dependencies
 }
 
-func NewController(
-	kubeCli kubernetes.Interface,
-	informerFactory informers.SharedInformerFactory,
-	kubeInformerFactory kubeinformers.SharedInformerFactory) *Controller {
-
-	stsLister := kubeInformerFactory.Apps().V1().StatefulSets().Lister()
-
+func NewController(deps *controller.Dependencies) *Controller {
 	return &Controller{
-		kubeCli:   kubeCli,
-		tcLister:  informerFactory.Pingcap().V1alpha1().TidbClusters().Lister(),
-		stsLister: stsLister,
+		deps: deps,
 	}
-
 }
 
-func (c *Controller) Run(stopCh <-chan struct{}) {
+func (c *Controller) Run(_ int, stopCh <-chan struct{}) {
 	klog.Infof("Staring periodicity controller")
 	defer klog.Infof("Shutting down periodicity controller")
 	wait.Until(c.run, time.Minute, stopCh)
@@ -82,7 +67,7 @@ func (c *Controller) syncStatefulSetTimeStamp() error {
 	if err != nil {
 		return err
 	}
-	stsList, err := c.stsLister.List(selector)
+	stsList, err := c.deps.StatefulSetLister.List(selector)
 	if err != nil {
 		return err
 	}
@@ -95,7 +80,7 @@ func (c *Controller) syncStatefulSetTimeStamp() error {
 		if !ok {
 			continue
 		}
-		_, err := c.tcLister.TidbClusters(sts.Namespace).Get(tcRef.Name)
+		_, err := c.deps.TiDBClusterLister.TidbClusters(sts.Namespace).Get(tcRef.Name)
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -112,7 +97,7 @@ func (c *Controller) syncStatefulSetTimeStamp() error {
 			errs = append(errs, err)
 			continue
 		}
-		_, err = c.kubeCli.AppsV1().StatefulSets(sts.Namespace).Patch(sts.Name, types.MergePatchType, mergePatch)
+		_, err = c.deps.KubeClientset.AppsV1().StatefulSets(sts.Namespace).Patch(sts.Name, types.MergePatchType, mergePatch)
 		if err != nil {
 			klog.Errorf("sts[%s/%s] patch timestamp failed, error: %v", sts.Namespace, sts.Name, err.Error())
 			errs = append(errs, err)

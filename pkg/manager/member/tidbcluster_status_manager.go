@@ -18,12 +18,10 @@ import (
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 )
 
@@ -34,19 +32,12 @@ const (
 )
 
 type TidbClusterStatusManager struct {
-	cli          versioned.Interface
-	pdControl    pdapi.PDControlInterface
-	scalerLister listers.TidbClusterAutoScalerLister
+	deps *controller.Dependencies
 }
 
-func NewTidbClusterStatusManager(
-	kubeCli kubernetes.Interface,
-	cli versioned.Interface,
-	scalerLister listers.TidbClusterAutoScalerLister) *TidbClusterStatusManager {
+func NewTidbClusterStatusManager(deps *controller.Dependencies) *TidbClusterStatusManager {
 	return &TidbClusterStatusManager{
-		cli:          cli,
-		pdControl:    pdapi.NewDefaultPDControl(kubeCli),
-		scalerLister: scalerLister,
+		deps: deps,
 	}
 }
 
@@ -71,7 +62,7 @@ func (tcsm *TidbClusterStatusManager) syncTidbMonitorRef(tc *v1alpha1.TidbCluste
 		return nil, nil
 	}
 	tmRef := tc.Status.Monitor
-	tm, err := tcsm.cli.PingcapV1alpha1().TidbMonitors(tmRef.Namespace).Get(tmRef.Name, metav1.GetOptions{})
+	tm, err := tcsm.deps.Clientset.PingcapV1alpha1().TidbMonitors(tmRef.Namespace).Get(tmRef.Name, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			tc.Status.Monitor = nil
@@ -103,7 +94,7 @@ func (tcsm *TidbClusterStatusManager) syncDashboardMetricStorage(tc *v1alpha1.Ti
 	if tc.Spec.PD == nil {
 		return nil
 	}
-	pdEtcdClient, err := tcsm.pdControl.GetPDEtcdClient(pdapi.Namespace(tc.Namespace), tc.Name, tc.IsTLSClusterEnabled())
+	pdEtcdClient, err := tcsm.deps.PDControl.GetPDEtcdClient(pdapi.Namespace(tc.Namespace), tc.Name, tc.IsTLSClusterEnabled())
 
 	if err != nil {
 		return err
@@ -142,7 +133,7 @@ func (tcsm *TidbClusterStatusManager) syncAutoScalerRef(tc *v1alpha1.TidbCluster
 	}
 	tacNamespace := tc.Status.AutoScaler.Namespace
 	tacName := tc.Status.AutoScaler.Name
-	tac, err := tcsm.scalerLister.TidbClusterAutoScalers(tacNamespace).Get(tacName)
+	tac, err := tcsm.deps.TiDBClusterAutoScalerLister.TidbClusterAutoScalers(tacNamespace).Get(tacName)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			klog.Infof("tc[%s/%s] failed to find tac[%s/%s]", tc.Namespace, tc.Name, tacNamespace, tacName)

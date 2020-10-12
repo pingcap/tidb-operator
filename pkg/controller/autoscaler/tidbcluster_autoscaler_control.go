@@ -17,22 +17,19 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/autoscaler"
 	"k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/client-go/tools/record"
 )
 
 type ControlInterface interface {
 	ResconcileAutoScaler(ta *v1alpha1.TidbClusterAutoScaler) error
 }
 
-func NewDefaultAutoScalerControl(recorder record.EventRecorder, asm autoscaler.AutoScalerManager) ControlInterface {
+func NewDefaultAutoScalerControl(asm autoscaler.AutoScalerManager) ControlInterface {
 	return &defaultAutoScalerControl{
-		recoder:           recorder,
 		autoScalerManager: asm,
 	}
 }
 
 type defaultAutoScalerControl struct {
-	recoder           record.EventRecorder
 	autoScalerManager autoscaler.AutoScalerManager
 }
 

@@ -23,7 +23,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	apps "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 )
 
@@ -32,12 +31,10 @@ type workerScaler struct {
 }
 
 // NewWorkerScaler returns a DMScaler
-func NewWorkerScaler(pvcLister corelisters.PersistentVolumeClaimLister,
-	pvcControl controller.PVCControlInterface) Scaler {
+func NewWorkerScaler(deps *controller.Dependencies) Scaler {
 	return &workerScaler{
 		generalScaler: generalScaler{
-			pvcLister:  pvcLister,
-			pvcControl: pvcControl,
+			deps: deps,
 		},
 	}
 }
@@ -105,7 +102,7 @@ func (wsd *workerScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, n
 	//}
 
 	pvcName := ordinalPVCName(v1alpha1.DMWorkerMemberType, setName, ordinal)
-	pvc, err := wsd.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
+	pvc, err := wsd.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
 	if err != nil {
 		return fmt.Errorf("dm-worker.ScaleIn: failed to get pvc %s for cluster %s/%s, error: %s", pvcName, ns, dcName, err)
 	}
@@ -116,7 +113,7 @@ func (wsd *workerScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, n
 	now := time.Now().Format(time.RFC3339)
 	pvc.Annotations[label.AnnPVCDeferDeleting] = now
 
-	_, err = wsd.pvcControl.UpdatePVC(dc, pvc)
+	_, err = wsd.deps.PVCControl.UpdatePVC(dc, pvc)
 	if err != nil {
 		klog.Errorf("dm-worker scale in: failed to set pvc %s/%s annotation: %s to %s",
 			ns, pvcName, label.AnnPVCDeferDeleting, now)

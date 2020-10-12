@@ -23,8 +23,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	apps "k8s.io/api/apps/v1"
@@ -35,8 +33,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	kubeinformers "k8s.io/client-go/informers"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/pointer"
@@ -68,7 +64,7 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 			test.prepare(tc)
 		}
 
-		tmm, fakeSetControl, _, _, _ := newFakeTiDBMemberManager()
+		tmm, fakeSetControl, _, _ := newFakeTiDBMemberManager()
 
 		if test.errWhenCreateStatefulSet {
 			fakeSetControl.SetCreateStatefulSetError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
@@ -83,7 +79,7 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 
 		g.Expect(tc.Spec).To(Equal(oldSpec))
 
-		tc1, err := tmm.setLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
+		tc1, err := tmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
 		if test.setCreated {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(tc1).NotTo(Equal(nil))
@@ -146,7 +142,7 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 		ns := tc.GetNamespace()
 		tcName := tc.GetName()
 
-		tmm, fakeSetControl, _, _, _ := newFakeTiDBMemberManager()
+		tmm, fakeSetControl, _, _ := newFakeTiDBMemberManager()
 
 		if test.statusChange == nil {
 			fakeSetControl.SetStatusChange(func(set *apps.StatefulSet) {
@@ -164,7 +160,7 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 		g.Expect(err).NotTo(HaveOccurred())
 
 		g.Expect(err).NotTo(HaveOccurred())
-		_, err = tmm.setLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
+		_, err = tmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
 
 		tc1 := tc.DeepCopy()
@@ -182,7 +178,7 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 		}
 
 		if test.expectStatefulSetFn != nil {
-			set, err := tmm.setLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
+			set, err := tmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
 			test.expectStatefulSetFn(g, set, err)
 		}
 	}
@@ -245,7 +241,7 @@ func TestTiDBMemberManagerTiDBStatefulSetIsUpgrading(t *testing.T) {
 		expectUpgrading bool
 	}
 	testFn := func(test *testcase, t *testing.T) {
-		pmm, _, podIndexer, _, _ := newFakeTiDBMemberManager()
+		pmm, _, _, indexers := newFakeTiDBMemberManager()
 		tc := newTidbClusterForTiDB()
 		tc.Status.TiDB.StatefulSet = &apps.StatefulSetStatus{
 			UpdateRevision: "v3",
@@ -273,9 +269,9 @@ func TestTiDBMemberManagerTiDBStatefulSetIsUpgrading(t *testing.T) {
 			if test.updatePod != nil {
 				test.updatePod(pod)
 			}
-			podIndexer.Add(pod)
+			indexers.pod.Add(pod)
 		}
-		b, err := pmm.tidbStatefulSetIsUpgradingFn(pmm.podLister, set, tc)
+		b, err := pmm.tidbStatefulSetIsUpgradingFn(pmm.deps.PodLister, set, tc)
 		if test.errExpectFn != nil {
 			test.errExpectFn(g, err)
 		}
@@ -368,7 +364,7 @@ func TestTiDBMemberManagerSyncTidbClusterStatus(t *testing.T) {
 		if test.updateSts != nil {
 			test.updateSts(set)
 		}
-		pmm, _, _, tidbControl, _ := newFakeTiDBMemberManager()
+		pmm, _, tidbControl, _ := newFakeTiDBMemberManager()
 
 		if test.upgradingFn != nil {
 			pmm.tidbStatefulSetIsUpgradingFn = test.upgradingFn
@@ -561,20 +557,20 @@ func TestTiDBMemberManagerSyncTidbService(t *testing.T) {
 		}
 		tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 1}
 
-		tmm, _, _, _, indexers := newFakeTiDBMemberManager()
+		tmm, _, _, indexers := newFakeTiDBMemberManager()
 		if test.prepare != nil {
 			test.prepare(tc, indexers)
 		}
 
 		if test.errOnCreate {
-			tmm.svcControl.(*controller.FakeServiceControl).SetCreateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
+			tmm.deps.ServiceControl.(*controller.FakeServiceControl).SetCreateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 		if test.errOnUpdate {
-			tmm.svcControl.(*controller.FakeServiceControl).SetUpdateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
+			tmm.deps.ServiceControl.(*controller.FakeServiceControl).SetUpdateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 
 		syncErr := tmm.syncTiDBService(tc)
-		svc, err := tmm.svcLister.Services(tc.Namespace).Get(controller.TiDBMemberName(tc.Name))
+		svc, err := tmm.deps.ServiceLister.Services(tc.Namespace).Get(controller.TiDBMemberName(tc.Name))
 		if test.expectSvcAbsent {
 			g.Expect(err).To(WithTransform(errors.IsNotFound, BeTrue()))
 		} else {
@@ -792,47 +788,25 @@ type fakeIndexers struct {
 	set    cache.Indexer
 }
 
-func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSetControl, cache.Indexer, *controller.FakeTiDBControl, *fakeIndexers) {
-	cli := fake.NewSimpleClientset()
-	kubeCli := kubefake.NewSimpleClientset()
-	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1().StatefulSets()
-	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbClusters()
-	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
-	epsInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Endpoints()
-	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
-	secretInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Secrets()
-	cmInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().ConfigMaps()
-	setControl := controller.NewFakeStatefulSetControl(setInformer)
-	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer)
-	genericControl := controller.NewFakeGenericControl()
-	tidbUpgrader := NewFakeTiDBUpgrader()
-	tidbFailover := NewFakeTiDBFailover()
-	tidbControl := controller.NewFakeTiDBControl()
-
+func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSetControl, *controller.FakeTiDBControl, *fakeIndexers) {
+	fakeDeps := controller.NewFakeDependencies()
 	tmm := &tidbMemberManager{
-		setControl,
-		svcControl,
-		tidbControl,
-		controller.NewTypedControl(genericControl),
-		setInformer.Lister(),
-		svcInformer.Lister(),
-		podInformer.Lister(),
-		cmInformer.Lister(),
-		secretInformer.Lister(),
-		tidbUpgrader,
-		true,
-		tidbFailover,
-		tidbStatefulSetIsUpgrading,
+		deps:                         fakeDeps,
+		tidbUpgrader:                 NewFakeTiDBUpgrader(),
+		tidbFailover:                 NewFakeTiDBFailover(),
+		tidbStatefulSetIsUpgradingFn: tidbStatefulSetIsUpgrading,
 	}
 	indexers := &fakeIndexers{
-		pod:    podInformer.Informer().GetIndexer(),
-		tc:     tcInformer.Informer().GetIndexer(),
-		svc:    svcInformer.Informer().GetIndexer(),
-		eps:    epsInformer.Informer().GetIndexer(),
-		secret: secretInformer.Informer().GetIndexer(),
-		set:    setInformer.Informer().GetIndexer(),
+		pod:    fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer(),
+		tc:     fakeDeps.InformerFactory.Pingcap().V1alpha1().TidbClusters().Informer().GetIndexer(),
+		svc:    fakeDeps.KubeInformerFactory.Core().V1().Services().Informer().GetIndexer(),
+		eps:    fakeDeps.KubeInformerFactory.Core().V1().Endpoints().Informer().GetIndexer(),
+		secret: fakeDeps.KubeInformerFactory.Core().V1().Secrets().Informer().GetIndexer(),
+		set:    fakeDeps.KubeInformerFactory.Apps().V1().StatefulSets().Informer().GetIndexer(),
 	}
-	return tmm, setControl, podInformer.Informer().GetIndexer(), tidbControl, indexers
+	setControl := fakeDeps.StatefulSetControl.(*controller.FakeStatefulSetControl)
+	tidbControl := fakeDeps.TiDBControl.(*controller.FakeTiDBControl)
+	return tmm, setControl, tidbControl, indexers
 }
 
 func newTidbClusterForTiDB() *v1alpha1.TidbCluster {
@@ -1936,13 +1910,13 @@ func TestTiDBMemberManagerScaleToZeroReplica(t *testing.T) {
 		ns := tc.GetNamespace()
 		tcName := tc.GetName()
 
-		tmm, fakeSetControl, _, _, _ := newFakeTiDBMemberManager()
+		tmm, fakeSetControl, _, _ := newFakeTiDBMemberManager()
 
 		err := tmm.Sync(tc)
 		g.Expect(err).NotTo(HaveOccurred())
 
 		g.Expect(err).NotTo(HaveOccurred())
-		_, err = tmm.setLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
+		_, err = tmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
 
 		tc1 := tc.DeepCopy()
@@ -1956,7 +1930,7 @@ func TestTiDBMemberManagerScaleToZeroReplica(t *testing.T) {
 		syncTiDBCluster(tmm, tc1, test)
 
 		if test.expectStatefulSetFn != nil {
-			set, err := tmm.setLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
+			set, err := tmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
 			test.expectStatefulSetFn(g, set, tc1, err)
 		}
 
@@ -2183,15 +2157,14 @@ func TestTiDBShouldRecover(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			client := kubefake.NewSimpleClientset()
+			fakeDeps := controller.NewFakeDependencies()
 			for _, pod := range tt.pods {
-				client.CoreV1().Pods(pod.Namespace).Create(pod)
+				fakeDeps.KubeClientset.CoreV1().Pods(pod.Namespace).Create(pod)
 			}
-			kubeInformerFactory := kubeinformers.NewSharedInformerFactory(client, 0)
-			podLister := kubeInformerFactory.Core().V1().Pods().Lister()
+			kubeInformerFactory := fakeDeps.KubeInformerFactory
 			kubeInformerFactory.Start(ctx.Done())
 			kubeInformerFactory.WaitForCacheSync(ctx.Done())
-			tidbMemberManager := &tidbMemberManager{podLister: podLister}
+			tidbMemberManager := &tidbMemberManager{deps: fakeDeps}
 			got := tidbMemberManager.shouldRecover(tt.tc)
 			if got != tt.want {
 				t.Fatalf("wants %v, got %v", tt.want, got)

@@ -33,8 +33,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	kubeinformers "k8s.io/client-go/informers"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/pointer"
 )
@@ -79,8 +77,8 @@ func TestMasterMemberManagerSyncCreate(t *testing.T) {
 		test.errExpectFn(g, err)
 		g.Expect(dc.Spec).To(Equal(oldSpec))
 
-		svc1, err := mmm.svcLister.Services(ns).Get(controller.DMMasterMemberName(dcName))
-		eps1, eperr := mmm.epsLister.Endpoints(ns).Get(controller.DMMasterMemberName(dcName))
+		svc1, err := mmm.deps.ServiceLister.Services(ns).Get(controller.DMMasterMemberName(dcName))
+		eps1, eperr := mmm.deps.EndpointLister.Endpoints(ns).Get(controller.DMMasterMemberName(dcName))
 		if test.masterSvcCreated {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(svc1).NotTo(Equal(nil))
@@ -91,8 +89,8 @@ func TestMasterMemberManagerSyncCreate(t *testing.T) {
 			expectErrIsNotFound(g, eperr)
 		}
 
-		svc2, err := mmm.svcLister.Services(ns).Get(controller.DMMasterPeerMemberName(dcName))
-		eps2, eperr := mmm.epsLister.Endpoints(ns).Get(controller.DMMasterPeerMemberName(dcName))
+		svc2, err := mmm.deps.ServiceLister.Services(ns).Get(controller.DMMasterPeerMemberName(dcName))
+		eps2, eperr := mmm.deps.EndpointLister.Endpoints(ns).Get(controller.DMMasterPeerMemberName(dcName))
 		if test.masterPeerSvcCreated {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(svc2).NotTo(Equal(nil))
@@ -103,7 +101,7 @@ func TestMasterMemberManagerSyncCreate(t *testing.T) {
 			expectErrIsNotFound(g, eperr)
 		}
 
-		dc1, err := mmm.setLister.StatefulSets(ns).Get(controller.DMMasterMemberName(dcName))
+		dc1, err := mmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.DMMasterMemberName(dcName))
 		if test.setCreated {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(dc1).NotTo(Equal(nil))
@@ -233,17 +231,17 @@ func TestMasterMemberManagerSyncUpdate(t *testing.T) {
 		err := mmm.SyncDM(dc)
 		g.Expect(controller.IsRequeueError(err)).To(BeTrue())
 
-		_, err = mmm.svcLister.Services(ns).Get(controller.DMMasterMemberName(dcName))
+		_, err = mmm.deps.ServiceLister.Services(ns).Get(controller.DMMasterMemberName(dcName))
 		g.Expect(err).NotTo(HaveOccurred())
-		_, err = mmm.epsLister.Endpoints(ns).Get(controller.DMMasterMemberName(dcName))
-		g.Expect(err).NotTo(HaveOccurred())
-
-		_, err = mmm.svcLister.Services(ns).Get(controller.DMMasterPeerMemberName(dcName))
-		g.Expect(err).NotTo(HaveOccurred())
-		_, err = mmm.epsLister.Endpoints(ns).Get(controller.DMMasterPeerMemberName(dcName))
+		_, err = mmm.deps.EndpointLister.Endpoints(ns).Get(controller.DMMasterMemberName(dcName))
 		g.Expect(err).NotTo(HaveOccurred())
 
-		_, err = mmm.setLister.StatefulSets(ns).Get(controller.DMMasterMemberName(dcName))
+		_, err = mmm.deps.ServiceLister.Services(ns).Get(controller.DMMasterPeerMemberName(dcName))
+		g.Expect(err).NotTo(HaveOccurred())
+		_, err = mmm.deps.EndpointLister.Endpoints(ns).Get(controller.DMMasterPeerMemberName(dcName))
+		g.Expect(err).NotTo(HaveOccurred())
+
+		_, err = mmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.DMMasterMemberName(dcName))
 		g.Expect(err).NotTo(HaveOccurred())
 
 		dc1 := dc.DeepCopy()
@@ -264,15 +262,15 @@ func TestMasterMemberManagerSyncUpdate(t *testing.T) {
 		}
 
 		if test.expectMasterServiceFn != nil {
-			svc, err := mmm.svcLister.Services(ns).Get(controller.DMMasterMemberName(dcName))
+			svc, err := mmm.deps.ServiceLister.Services(ns).Get(controller.DMMasterMemberName(dcName))
 			test.expectMasterServiceFn(g, svc, err)
 		}
 		if test.expectMasterPeerServiceFn != nil {
-			svc, err := mmm.svcLister.Services(ns).Get(controller.DMMasterPeerMemberName(dcName))
+			svc, err := mmm.deps.ServiceLister.Services(ns).Get(controller.DMMasterPeerMemberName(dcName))
 			test.expectMasterPeerServiceFn(g, svc, err)
 		}
 		if test.expectStatefulSetFn != nil {
-			set, err := mmm.setLister.StatefulSets(ns).Get(controller.DMMasterMemberName(dcName))
+			set, err := mmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.DMMasterMemberName(dcName))
 			test.expectStatefulSetFn(g, set, err)
 		}
 		if test.expectDMClusterFn != nil {
@@ -544,11 +542,11 @@ func TestMasterMemberManagerUpgrade(t *testing.T) {
 		err := mmm.SyncDM(dc)
 		g.Expect(controller.IsRequeueError(err)).To(BeTrue())
 
-		_, err = mmm.svcLister.Services(ns).Get(controller.DMMasterMemberName(dcName))
+		_, err = mmm.deps.ServiceLister.Services(ns).Get(controller.DMMasterMemberName(dcName))
 		g.Expect(err).NotTo(HaveOccurred())
-		_, err = mmm.svcLister.Services(ns).Get(controller.DMMasterPeerMemberName(dcName))
+		_, err = mmm.deps.ServiceLister.Services(ns).Get(controller.DMMasterPeerMemberName(dcName))
 		g.Expect(err).NotTo(HaveOccurred())
-		_, err = mmm.setLister.StatefulSets(ns).Get(controller.DMMasterMemberName(dcName))
+		_, err = mmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.DMMasterMemberName(dcName))
 		g.Expect(err).NotTo(HaveOccurred())
 
 		dc1 := dc.DeepCopy()
@@ -562,7 +560,7 @@ func TestMasterMemberManagerUpgrade(t *testing.T) {
 		}
 
 		if test.expectStatefulSetFn != nil {
-			set, err := mmm.setLister.StatefulSets(ns).Get(controller.DMMasterMemberName(dcName))
+			set, err := mmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.DMMasterMemberName(dcName))
 			test.expectStatefulSetFn(g, set, err)
 		}
 		if test.expectDMClusterFn != nil {
@@ -644,11 +642,11 @@ func TestMasterMemberManagerSyncMasterSts(t *testing.T) {
 		err := mmm.SyncDM(dc)
 		g.Expect(controller.IsRequeueError(err)).To(BeTrue())
 
-		_, err = mmm.svcLister.Services(ns).Get(controller.DMMasterMemberName(dcName))
+		_, err = mmm.deps.ServiceLister.Services(ns).Get(controller.DMMasterMemberName(dcName))
 		g.Expect(err).NotTo(HaveOccurred())
-		_, err = mmm.svcLister.Services(ns).Get(controller.DMMasterPeerMemberName(dcName))
+		_, err = mmm.deps.ServiceLister.Services(ns).Get(controller.DMMasterPeerMemberName(dcName))
 		g.Expect(err).NotTo(HaveOccurred())
-		_, err = mmm.setLister.StatefulSets(ns).Get(controller.DMMasterMemberName(dcName))
+		_, err = mmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.DMMasterMemberName(dcName))
 		g.Expect(err).NotTo(HaveOccurred())
 
 		test.modify(dc)
@@ -663,7 +661,7 @@ func TestMasterMemberManagerSyncMasterSts(t *testing.T) {
 		}
 
 		if test.expectStatefulSetFn != nil {
-			set, err := mmm.setLister.StatefulSets(ns).Get(controller.DMMasterMemberName(dcName))
+			set, err := mmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.DMMasterMemberName(dcName))
 			test.expectStatefulSetFn(g, set, err)
 		}
 		if test.expectDMClusterFn != nil {
@@ -749,37 +747,21 @@ func TestMasterMemberManagerSyncMasterSts(t *testing.T) {
 }
 
 func newFakeMasterMemberManager() (*masterMemberManager, *controller.FakeStatefulSetControl, *controller.FakeServiceControl, *dmapi.FakeMasterControl, cache.Indexer, cache.Indexer, *controller.FakePodControl) {
-	kubeCli := kubefake.NewSimpleClientset()
-	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1().StatefulSets()
-	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
-	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
-	epsInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Endpoints()
-	pvcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().PersistentVolumeClaims()
-	setControl := controller.NewFakeStatefulSetControl(setInformer)
-	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer)
-	podControl := controller.NewFakePodControl(podInformer)
-	masterControl := dmapi.NewFakeMasterControl(kubeCli)
-	masterScaler := NewFakeMasterScaler()
-	autoFailover := true
-	masterFailover := NewFakeMasterFailover()
-	masterUpgrader := NewFakeMasterUpgrader()
-	genericControll := controller.NewFakeGenericControl()
-
-	return &masterMemberManager{
-		masterControl,
-		setControl,
-		svcControl,
-		controller.NewTypedControl(genericControll),
-		setInformer.Lister(),
-		svcInformer.Lister(),
-		podInformer.Lister(),
-		epsInformer.Lister(),
-		pvcInformer.Lister(),
-		masterScaler,
-		masterUpgrader,
-		autoFailover,
-		masterFailover,
-	}, setControl, svcControl, masterControl, podInformer.Informer().GetIndexer(), pvcInformer.Informer().GetIndexer(), podControl
+	fakeDeps := controller.NewFakeDependencies()
+	fakeDeps.CLIConfig.AutoFailover = true
+	masterManager := &masterMemberManager{
+		fakeDeps,
+		NewFakeMasterScaler(),
+		NewFakeMasterUpgrader(),
+		NewFakeMasterFailover(),
+	}
+	podIndexer := fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer()
+	pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
+	setControl := fakeDeps.StatefulSetControl.(*controller.FakeStatefulSetControl)
+	svcControl := fakeDeps.ServiceControl.(*controller.FakeServiceControl)
+	podControl := fakeDeps.PodControl.(*controller.FakePodControl)
+	masterControl := fakeDeps.DMMasterControl.(*dmapi.FakeMasterControl)
+	return masterManager, setControl, svcControl, masterControl, podIndexer, pvcIndexer, podControl
 }
 
 func newDMClusterForMaster() *v1alpha1.DMCluster {
@@ -1735,11 +1717,11 @@ func TestMasterMemberManagerSyncMasterStsWhenMasterNotJoinCluster(t *testing.T) 
 
 		err := mmm.SyncDM(dc)
 		g.Expect(controller.IsRequeueError(err)).To(BeTrue())
-		_, err = mmm.svcLister.Services(ns).Get(controller.DMMasterMemberName(dcName))
+		_, err = mmm.deps.ServiceLister.Services(ns).Get(controller.DMMasterMemberName(dcName))
 		g.Expect(err).NotTo(HaveOccurred())
-		_, err = mmm.svcLister.Services(ns).Get(controller.DMMasterPeerMemberName(dcName))
+		_, err = mmm.deps.ServiceLister.Services(ns).Get(controller.DMMasterPeerMemberName(dcName))
 		g.Expect(err).NotTo(HaveOccurred())
-		_, err = mmm.setLister.StatefulSets(ns).Get(controller.DMMasterMemberName(dcName))
+		_, err = mmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.DMMasterMemberName(dcName))
 		g.Expect(err).NotTo(HaveOccurred())
 		if test.dcStatusChange != nil {
 			test.dcStatusChange(dc)
@@ -2030,15 +2012,14 @@ func TestMasterShouldRecover(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			client := kubefake.NewSimpleClientset()
+			fakeDeps := controller.NewFakeDependencies()
 			for _, pod := range tt.pods {
-				client.CoreV1().Pods(pod.Namespace).Create(pod)
+				fakeDeps.KubeClientset.CoreV1().Pods(pod.Namespace).Create(pod)
 			}
-			kubeInformerFactory := kubeinformers.NewSharedInformerFactory(client, 0)
-			podLister := kubeInformerFactory.Core().V1().Pods().Lister()
+			kubeInformerFactory := fakeDeps.KubeInformerFactory
 			kubeInformerFactory.Start(ctx.Done())
 			kubeInformerFactory.WaitForCacheSync(ctx.Done())
-			masterMemberManager := &masterMemberManager{podLister: podLister}
+			masterMemberManager := &masterMemberManager{deps: fakeDeps}
 			got := masterMemberManager.shouldRecover(tt.dc)
 			if got != tt.want {
 				t.Fatalf("wants %v, got %v", tt.want, got)
