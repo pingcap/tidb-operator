@@ -151,21 +151,12 @@ func TestDefaultTac(t *testing.T) {
 	tc := newTidbCluster()
 	tac := newTidbClusterAutoScaler()
 	tac.Spec.TiDB = nil
-	tac.Spec.TiKV.MinReplicas = nil
-	tac.Spec.TiKV.Metrics = []v1alpha1.CustomMetric{}
-	tac.Spec.TiKV.MetricsTimeDuration = nil
-	tac.Spec.TiKV.ScaleOutIntervalSeconds = nil
-	tac.Spec.TiKV.ScaleInIntervalSeconds = nil
 	tac.Spec.TiKV.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
 		corev1.ResourceCPU: {
 			MaxThreshold: 0.8,
 		},
 	}
 	defaultTAC(tac, tc)
-	g.Expect(*tac.Spec.TiKV.MinReplicas).Should(Equal(int32(1)))
-	g.Expect(*tac.Spec.TiKV.MetricsTimeDuration).Should(Equal("3m"))
-	g.Expect(*tac.Spec.TiKV.ScaleOutIntervalSeconds).Should(Equal(int32(300)))
-	g.Expect(*tac.Spec.TiKV.ScaleInIntervalSeconds).Should(Equal(int32(500)))
 	g.Expect(tac.Spec.TiKV.Resources).Should(Equal(map[string]v1alpha1.AutoResource{
 		"default_tikv": {
 			CPU:     tc.Spec.TiKV.Requests.Cpu().DeepCopy(),
@@ -178,21 +169,12 @@ func TestDefaultTac(t *testing.T) {
 
 	tac = newTidbClusterAutoScaler()
 	tac.Spec.TiKV = nil
-	tac.Spec.TiDB.MinReplicas = nil
-	tac.Spec.TiDB.Metrics = []v1alpha1.CustomMetric{}
-	tac.Spec.TiDB.MetricsTimeDuration = nil
-	tac.Spec.TiDB.ScaleOutIntervalSeconds = nil
-	tac.Spec.TiDB.ScaleInIntervalSeconds = nil
 	tac.Spec.TiDB.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
 		corev1.ResourceCPU: {
 			MaxThreshold: 0.8,
 		},
 	}
 	defaultTAC(tac, tc)
-	g.Expect(*tac.Spec.TiDB.MinReplicas).Should(Equal(int32(1)))
-	g.Expect(*tac.Spec.TiDB.MetricsTimeDuration).Should(Equal("3m"))
-	g.Expect(*tac.Spec.TiDB.ScaleOutIntervalSeconds).Should(Equal(int32(300)))
-	g.Expect(*tac.Spec.TiDB.ScaleInIntervalSeconds).Should(Equal(int32(500)))
 	g.Expect(tac.Spec.TiDB.Resources).Should(Equal(map[string]v1alpha1.AutoResource{
 		"default_tidb": {
 			CPU:     tc.Spec.TiDB.Requests.Cpu().DeepCopy(),
@@ -205,11 +187,6 @@ func TestDefaultTac(t *testing.T) {
 
 	tac = newTidbClusterAutoScaler()
 	tac.Spec.TiDB = nil
-	tac.Spec.TiKV.MinReplicas = nil
-	tac.Spec.TiKV.Metrics = []v1alpha1.CustomMetric{}
-	tac.Spec.TiKV.MetricsTimeDuration = nil
-	tac.Spec.TiKV.ScaleOutIntervalSeconds = nil
-	tac.Spec.TiKV.ScaleInIntervalSeconds = nil
 	tac.Spec.TiKV.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
 		corev1.ResourceStorage: {
 			MaxThreshold: 0.8,
@@ -226,16 +203,6 @@ func TestDefaultTac(t *testing.T) {
 	g.Expect(tac.Spec.TiKV.Rules[corev1.ResourceStorage].ResourceTypes).Should(ConsistOf([]string{"storage"}))
 
 	tac = newTidbClusterAutoScaler()
-	tac.Spec.TiDB.MinReplicas = nil
-	tac.Spec.TiDB.Metrics = []v1alpha1.CustomMetric{}
-	tac.Spec.TiDB.MetricsTimeDuration = nil
-	tac.Spec.TiDB.ScaleOutIntervalSeconds = nil
-	tac.Spec.TiDB.ScaleInIntervalSeconds = nil
-	tac.Spec.TiKV.MinReplicas = nil
-	tac.Spec.TiKV.Metrics = []v1alpha1.CustomMetric{}
-	tac.Spec.TiKV.MetricsTimeDuration = nil
-	tac.Spec.TiKV.ScaleOutIntervalSeconds = nil
-	tac.Spec.TiKV.ScaleInIntervalSeconds = nil
 	tac.Spec.TiDB.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
 		corev1.ResourceCPU: {
 			MaxThreshold: 0.8,
@@ -249,30 +216,6 @@ func TestDefaultTac(t *testing.T) {
 	defaultTAC(tac, tc)
 	g.Expect(tac.Spec.TiKV.Rules[corev1.ResourceStorage].ResourceTypes).Should(ConsistOf([]string{"default_tikv"}))
 	g.Expect(tac.Spec.TiDB.Rules[corev1.ResourceCPU].ResourceTypes).Should(ConsistOf([]string{"default_tidb"}))
-}
-
-func TestGenMetricsEndpoint(t *testing.T) {
-	g := NewGomegaWithT(t)
-	tac := newTidbClusterAutoScaler()
-	tac.Spec.Monitor = nil
-	r, err := genMetricsEndpoint(tac)
-	g.Expect(err).ShouldNot(BeNil())
-	g.Expect(err.Error()).Should(Equal(fmt.Sprintf("tac[%s/%s] metrics url or monitor should be defined explicitly", tac.Namespace, tac.Name)))
-	g.Expect(r).Should(Equal(""))
-
-	tac.Spec.Monitor = &v1alpha1.TidbMonitorRef{
-		Name:      "monitor",
-		Namespace: "default",
-	}
-	r, err = genMetricsEndpoint(tac)
-	g.Expect(err).Should(BeNil())
-	g.Expect(r).Should(Equal(fmt.Sprintf("http://%s-prometheus.%s.svc:9090", tac.Spec.Monitor.Name, tac.Spec.Monitor.Namespace)))
-
-	u := "metrics-url"
-	tac.Spec.MetricsUrl = &u
-	r, err = genMetricsEndpoint(tac)
-	g.Expect(err).Should(BeNil())
-	g.Expect(r).Should(Equal(u))
 }
 
 func TestAutoscalerToStrategy(t *testing.T) {
@@ -448,10 +391,6 @@ func newTidbClusterAutoScaler() *v1alpha1.TidbClusterAutoScaler {
 	tac.Spec.Cluster = v1alpha1.TidbClusterRef{
 		Name:      "tc",
 		Namespace: "default",
-	}
-	tac.Spec.Monitor = &v1alpha1.TidbMonitorRef{
-		Namespace: "monitor",
-		Name:      "default",
 	}
 	tac.Spec.TiKV = &v1alpha1.TikvAutoScalerSpec{}
 	tac.Spec.TiDB = &v1alpha1.TidbAutoScalerSpec{}
