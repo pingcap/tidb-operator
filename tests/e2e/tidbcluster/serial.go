@@ -811,12 +811,12 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				autoTc = *tcPtr
 
 				if autoTc.Spec.TiKV.Replicas > 0 {
-					framework.Logf("autoscaling tikv cluster is not gracefully shutting down")
+					framework.Logf("autoscaling tikv cluster is not scaled in, replicas=%d", autoTc.Spec.TiKV.Replicas)
 					return false, nil
 				}
 
 				if autoTc.Spec.TiKV.Replicas <= 0 {
-					framework.Logf("autoscaling tikv cluster tc[%s/%s] is shutting down", autoTc.Namespace, autoTc.Name)
+					framework.Logf("autoscaling tikv cluster tc[%s/%s] is scaled in", autoTc.Namespace, autoTc.Name)
 					return true, nil
 				}
 
