@@ -171,7 +171,8 @@ func main() {
 		klog.Infof("cache of informer factories sync successfully")
 
 		// Start syncLoop for all controllers
-		for _, c := range controllers {
+		for _, controller := range controllers {
+			c := controller
 			go wait.Forever(func() { c.Run(cliCfg.Workers, ctx.Done()) }, cliCfg.WaitDuration)
 		}
 	}
