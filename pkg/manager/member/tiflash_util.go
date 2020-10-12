@@ -27,7 +27,6 @@ import (
 
 const (
 	defaultClusterLog = "/data0/logs/flash_cluster_manager.log"
-	defaultProxyLog   = "/data0/logs/proxy.log"
 	defaultErrorLog   = "/data0/logs/error.log"
 	defaultServerLog  = "/data0/logs/server.log"
 )
@@ -48,7 +47,6 @@ func buildTiFlashSidecarContainers(tc *v1alpha1.TidbCluster) []corev1.Container 
 	setTiFlashLogConfigDefault(config)
 	containers = append(containers, buildSidecarContainer("serverlog", *config.CommonConfig.FlashLogger.ServerLog, image, pullPolicy, resource))
 	containers = append(containers, buildSidecarContainer("errorlog", *config.CommonConfig.FlashLogger.ErrorLog, image, pullPolicy, resource))
-	containers = append(containers, buildSidecarContainer("proxylog", *config.CommonConfig.Flash.FlashProxy.LogFile, image, pullPolicy, resource))
 	containers = append(containers, buildSidecarContainer("clusterlog", *config.CommonConfig.Flash.FlashCluster.ClusterLog, image, pullPolicy, resource))
 	return containers
 }
@@ -157,9 +155,6 @@ func setTiFlashLogConfigDefault(config *v1alpha1.TiFlashConfig) {
 	}
 	if config.CommonConfig.Flash.FlashProxy == nil {
 		config.CommonConfig.Flash.FlashProxy = &v1alpha1.FlashProxy{}
-	}
-	if config.CommonConfig.Flash.FlashProxy.LogFile == nil {
-		config.CommonConfig.Flash.FlashProxy.LogFile = pointer.StringPtr(defaultProxyLog)
 	}
 
 	if config.CommonConfig.FlashLogger == nil {
@@ -332,9 +327,6 @@ func setTiFlashFlashProxyConfigDefault(config *v1alpha1.FlashProxy, clusterName,
 	}
 	if config.Config == nil {
 		config.Config = pointer.StringPtr("/data0/proxy.toml")
-	}
-	if config.LogFile == nil {
-		config.LogFile = pointer.StringPtr(defaultProxyLog)
 	}
 }
 
