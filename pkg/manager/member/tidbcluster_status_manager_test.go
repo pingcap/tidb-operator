@@ -19,9 +19,8 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"k8s.io/client-go/kubernetes"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -101,12 +100,11 @@ func TestSyncAutoScalerRef(t *testing.T) {
 }
 
 func newFakeTidbClusterStatusManager() (*TidbClusterStatusManager, kubernetes.Interface, *fake.Clientset, cache.Indexer) {
-	cli := fake.NewSimpleClientset()
-	kubeCli := kubefake.NewSimpleClientset()
-	informerFactory := informers.NewSharedInformerFactoryWithOptions(cli, 0)
-	scalerInformer := informerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers()
+	fakeDeps := controller.NewFakeDependencies()
+	scalerInformer := fakeDeps.InformerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers()
 	scalerInder := scalerInformer.Informer().GetIndexer()
-	return NewTidbClusterStatusManager(kubeCli, cli, scalerInformer.Lister()), kubeCli, cli, scalerInder
+	cli := fakeDeps.Clientset.(*fake.Clientset)
+	return NewTidbClusterStatusManager(fakeDeps), fakeDeps.KubeClientset, cli, scalerInder
 }
 
 func newTidbClusterAutoScaler(tc *v1alpha1.TidbCluster) *v1alpha1.TidbClusterAutoScaler {
