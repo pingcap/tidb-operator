@@ -910,7 +910,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			ginkgo.By("Installing cert-manager")
 			installCertManager(f.ClientSet)
 		})
-
 		ginkgo.It("TLS for MySQL Client and TLS between TiDB components", func() {
 			tcName := "tls"
 
