@@ -58,6 +58,7 @@ type pdMemberManager struct {
 	setLister    v1.StatefulSetLister
 	svcLister    corelisters.ServiceLister
 	podLister    corelisters.PodLister
+	cmLister     corelisters.ConfigMapLister
 	epsLister    corelisters.EndpointsLister
 	pvcLister    corelisters.PersistentVolumeClaimLister
 	pdScaler     Scaler
@@ -75,6 +76,7 @@ func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
+	cmLister corelisters.ConfigMapLister,
 	epsLister corelisters.EndpointsLister,
 	pvcLister corelisters.PersistentVolumeClaimLister,
 	pdScaler Scaler,
@@ -90,6 +92,7 @@ func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 		setLister,
 		svcLister,
 		podLister,
+		cmLister,
 		epsLister,
 		pvcLister,
 		pdScaler,
@@ -421,15 +424,15 @@ func (pmm *pdMemberManager) syncPDConfigMap(tc *v1alpha1.TidbCluster, set *apps.
 	if err != nil {
 		return nil, err
 	}
-	if set != nil && tc.BasePDSpec().ConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyInPlace {
-		inUseName := FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
+
+	var inUseName string
+	if set != nil {
+		inUseName = FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
 			return strings.HasPrefix(name, controller.PDMemberName(tc.Name))
 		})
-		if inUseName != "" {
-			newCm.Name = inUseName
-		}
 	}
 
+	updateConfigMapIfNeed(pmm.cmLister, tc.BaseTiDBSpec().ConfigUpdateStrategy(), inUseName, newCm)
 	return pmm.typedControl.CreateOrUpdateConfigMap(tc, newCm)
 }
 
@@ -821,35 +824,22 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 
 	// override CA if tls enabled
 	if tc.IsTLSClusterEnabled() {
-		if config.Security == nil {
-			config.Security = &v1alpha1.PDSecurityConfig{}
-		}
-		config.Security.CAPath = pointer.StringPtr(path.Join(pdClusterCertPath, tlsSecretRootCAKey))
-		config.Security.CertPath = pointer.StringPtr(path.Join(pdClusterCertPath, corev1.TLSCertKey))
-		config.Security.KeyPath = pointer.StringPtr(path.Join(pdClusterCertPath, corev1.TLSPrivateKeyKey))
+		config.Set("security.cacert-path", path.Join(pdClusterCertPath, tlsSecretRootCAKey))
+		config.Set("security.cert-path", path.Join(pdClusterCertPath, corev1.TLSCertKey))
+		config.Set("security.key-path", path.Join(pdClusterCertPath, corev1.TLSPrivateKeyKey))
 	}
 	// Versions below v4.0 do not support Dashboard
 	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
-		if config.Dashboard == nil {
-			config.Dashboard = &v1alpha1.DashboardConfig{}
-		}
-		config.Dashboard.TiDBCAPath = pointer.StringPtr(path.Join(tidbClientCertPath, tlsSecretRootCAKey))
-		config.Dashboard.TiDBCertPath = pointer.StringPtr(path.Join(tidbClientCertPath, corev1.TLSCertKey))
-		config.Dashboard.TiDBKeyPath = pointer.StringPtr(path.Join(tidbClientCertPath, corev1.TLSPrivateKeyKey))
+		config.Set("dashboard.tidb-cacert-path", path.Join(tidbClientCertPath, tlsSecretRootCAKey))
+		config.Set("dashboard.tidb-cert-path", path.Join(tidbClientCertPath, corev1.TLSCertKey))
+		config.Set("dashboard.tidb-key-path", path.Join(tidbClientCertPath, corev1.TLSPrivateKeyKey))
 	}
 
 	if tc.Spec.PD.EnableDashboardInternalProxy != nil {
-		if config.Dashboard != nil {
-			// EnableDashboardInternalProxy has a higher priority to cover the configuration in Dashboard
-			config.Dashboard.InternalProxy = pointer.BoolPtr(*tc.Spec.PD.EnableDashboardInternalProxy)
-		} else {
-			config.Dashboard = &v1alpha1.DashboardConfig{
-				InternalProxy: pointer.BoolPtr(*tc.Spec.PD.EnableDashboardInternalProxy),
-			}
-		}
+		config.Set("dashboard.internal-proxy", *tc.Spec.PD.EnableDashboardInternalProxy)
 	}
 
-	confText, err := MarshalTOML(config)
+	confText, err := config.MarshalTOML()
 	if err != nil {
 		return nil, err
 	}
@@ -874,11 +864,6 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 			"config-file":    string(confText),
 			"startup-script": startScript,
 		},
-	}
-	if tc.BasePDSpec().ConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyRollingUpdate {
-		if err := AddConfigMapDigestSuffix(cm); err != nil {
-			return nil, err
-		}
 	}
 	return cm, nil
 }

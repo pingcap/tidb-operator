@@ -446,24 +446,34 @@ func disallowUsingLegacyAPIInNewCluster(old, tc *v1alpha1.TidbCluster) field.Err
 	return allErrs
 }
 
-func validateUpdatePDConfig(old, conf *v1alpha1.PDConfig, path *field.Path) field.ErrorList {
+func validateUpdatePDConfig(old, conf *v1alpha1.PDConfigWraper, path *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	// for newly created cluster, both old and new are non-nil, guaranteed by validation
 	if old == nil || conf == nil {
 		return allErrs
 	}
 
-	if conf.Security != nil && len(conf.Security.CertAllowedCN) > 1 {
-		allErrs = append(allErrs, field.Invalid(path.Child("security.cert-allowed-cn"), conf.Security.CertAllowedCN,
-			"Only one CN is currently supported"))
+	if v := conf.Get("security.cert-allowed-cn"); v != nil {
+		cn, err := v.AsStringSlice()
+		if err != nil {
+			allErrs = append(allErrs, field.Invalid(path.Child("security.cert-allowed-cn"), v.Interface(), err.Error()))
+		} else if len(cn) > 1 {
+			allErrs = append(allErrs, field.Invalid(path.Child("security.cert-allowed-cn"), v.Interface(),
+				"Only one CN is currently supported"))
+		}
 	}
 
-	if !reflect.DeepEqual(old.Schedule, conf.Schedule) {
-		allErrs = append(allErrs, field.Invalid(path.Child("schedule"), conf.Schedule,
+	oldSche := old.Get("schedule")
+	newSche := conf.Get("schedule")
+	if !reflect.DeepEqual(oldSche.Interface(), newSche.Interface()) {
+		allErrs = append(allErrs, field.Invalid(path.Child("schedule"), newSche.Interface(),
 			"PD Schedule Config is immutable through CRD, please modify with pd-ctl instead."))
 	}
-	if !reflect.DeepEqual(old.Replication, conf.Replication) {
-		allErrs = append(allErrs, field.Invalid(path.Child("replication"), conf.Replication,
+
+	oldRepl := old.Get("replication")
+	newRepl := conf.Get("replication")
+	if !reflect.DeepEqual(oldRepl, newRepl) {
+		allErrs = append(allErrs, field.Invalid(path.Child("replication"), newRepl.Interface(),
 			"PD Replication Config is immutable through CRD, please modify with pd-ctl instead."))
 	}
 	return allErrs
