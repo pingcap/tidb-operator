@@ -2,6 +2,12 @@
 timezone: UTC
 
 pd:
+  annotations:
+    tidb.pingcap.com/sysctl-init: "true"
+  podSecurityContext:
+    sysctls:
+    - name: net.core.somaxconn
+      value: "32768"
   logLevel: info
   resources:
     requests:
