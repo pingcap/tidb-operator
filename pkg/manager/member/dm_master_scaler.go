@@ -19,30 +19,23 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	"github.com/pingcap/tidb-operator/pkg/label"
 
 	apps "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 )
 
 type masterScaler struct {
 	generalScaler
-	masterControl dmapi.MasterControlInterface
 }
 
 // NewMasterScaler returns a DMScaler
-func NewMasterScaler(masterControl dmapi.MasterControlInterface,
-	pvcLister corelisters.PersistentVolumeClaimLister,
-	pvcControl controller.PVCControlInterface) Scaler {
+func NewMasterScaler(deps *controller.Dependencies) Scaler {
 	return &masterScaler{
 		generalScaler: generalScaler{
-			pvcLister:  pvcLister,
-			pvcControl: pvcControl,
+			deps: deps,
 		},
-		masterControl: masterControl,
 	}
 }
 
@@ -112,7 +105,7 @@ func (msd *masterScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, n
 	// we would directly deleted the dm-master-0 without dm-master leader evict
 	if ordinal > 0 {
 		if dc.Status.Master.Leader.Name == memberName {
-			masterPeerClient := controller.GetMasterPeerClient(msd.masterControl, dc, memberName)
+			masterPeerClient := controller.GetMasterPeerClient(msd.deps.DMMasterControl, dc, memberName)
 			err := masterPeerClient.EvictLeader()
 			if err != nil {
 				return err
@@ -121,7 +114,7 @@ func (msd *masterScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, n
 		}
 	}
 
-	masterClient := controller.GetMasterClient(msd.masterControl, dc)
+	masterClient := controller.GetMasterClient(msd.deps.DMMasterControl, dc)
 	err := masterClient.DeleteMaster(memberName)
 	if err != nil {
 		klog.Errorf("dm-master scale in: failed to delete member %s, %v", memberName, err)
@@ -150,7 +143,7 @@ func (msd *masterScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, n
 	}
 
 	pvcName := ordinalPVCName(v1alpha1.DMMasterMemberType, setName, ordinal)
-	pvc, err := msd.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
+	pvc, err := msd.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
 	if err != nil {
 		return fmt.Errorf("dm-master.ScaleIn: failed to get pvc %s for cluster %s/%s, error: %s", pvcName, ns, dcName, err)
 	}
@@ -161,7 +154,7 @@ func (msd *masterScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, n
 	now := time.Now().Format(time.RFC3339)
 	pvc.Annotations[label.AnnPVCDeferDeleting] = now
 
-	_, err = msd.pvcControl.UpdatePVC(dc, pvc)
+	_, err = msd.deps.PVCControl.UpdatePVC(dc, pvc)
 	if err != nil {
 		klog.Errorf("dm-master scale in: failed to set pvc %s/%s annotation: %s to %s",
 			ns, pvcName, label.AnnPVCDeferDeleting, now)

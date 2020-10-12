@@ -32,8 +32,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	kubeinformers "k8s.io/client-go/informers"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/pointer"
@@ -80,7 +78,7 @@ func TestTiFlashMemberManagerTiFlashStatefulSetIsUpgrading(t *testing.T) {
 			}
 			podIndexer.Add(pod)
 		}
-		b, err := pmm.tiflashStatefulSetIsUpgradingFn(pmm.podLister, pmm.pdControl, set, tc)
+		b, err := pmm.statefulSetIsUpgradingFn(pmm.deps.PodLister, pmm.deps.PDControl, set, tc)
 		if test.errExpectFn != nil {
 			test.errExpectFn(g, err)
 		}
@@ -488,7 +486,7 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 		pmm, _, _, pdClient, _, _ := newFakeTiFlashMemberManager(tc)
 
 		if test.upgradingFn != nil {
-			pmm.tiflashStatefulSetIsUpgradingFn = test.upgradingFn
+			pmm.statefulSetIsUpgradingFn = test.upgradingFn
 		}
 		if test.errWhenGetStores {
 			pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
@@ -1125,34 +1123,19 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 func newFakeTiFlashMemberManager(tc *v1alpha1.TidbCluster) (
 	*tiflashMemberManager, *controller.FakeStatefulSetControl,
 	*controller.FakeServiceControl, *pdapi.FakePDClient, cache.Indexer, cache.Indexer) {
-	kubeCli := kubefake.NewSimpleClientset()
-	pdControl := pdapi.NewFakePDControl(kubeCli)
-	pdClient := controller.NewFakePDClient(pdControl, tc)
-	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1().StatefulSets()
-	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
-	epsInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Endpoints()
-	setControl := controller.NewFakeStatefulSetControl(setInformer)
-	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer)
-	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
-	nodeInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Nodes()
-	tiflashScaler := NewFakeTiFlashScaler()
-	tiflashUpgrader := NewFakeTiFlashUpgrader()
-	genericControl := controller.NewFakeGenericControl()
-
+	fakeDeps := controller.NewFakeDependencies()
 	tmm := &tiflashMemberManager{
-		pdControl:       pdControl,
-		podLister:       podInformer.Lister(),
-		nodeLister:      nodeInformer.Lister(),
-		setControl:      setControl,
-		svcControl:      svcControl,
-		typedControl:    controller.NewTypedControl(genericControl),
-		setLister:       setInformer.Lister(),
-		svcLister:       svcInformer.Lister(),
-		tiflashScaler:   tiflashScaler,
-		tiflashUpgrader: tiflashUpgrader,
+		deps:                     fakeDeps,
+		scaler:                   NewFakeTiFlashScaler(),
+		upgrader:                 NewFakeTiFlashUpgrader(),
+		statefulSetIsUpgradingFn: tiflashStatefulSetIsUpgrading,
 	}
-	tmm.tiflashStatefulSetIsUpgradingFn = tiflashStatefulSetIsUpgrading
-	return tmm, setControl, svcControl, pdClient, podInformer.Informer().GetIndexer(), nodeInformer.Informer().GetIndexer()
+	pdClient := controller.NewFakePDClient(fakeDeps.PDControl.(*pdapi.FakePDControl), tc)
+	setControl := fakeDeps.StatefulSetControl.(*controller.FakeStatefulSetControl)
+	svcControl := fakeDeps.ServiceControl.(*controller.FakeServiceControl)
+	podIndexer := fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer()
+	nodeIndexer := fakeDeps.KubeInformerFactory.Core().V1().Nodes().Informer().GetIndexer()
+	return tmm, setControl, svcControl, pdClient, podIndexer, nodeIndexer
 }
 
 func TestGetNewServiceForTidbCluster(t *testing.T) {
