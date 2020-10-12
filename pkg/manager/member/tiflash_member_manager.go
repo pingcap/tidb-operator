@@ -240,13 +240,16 @@ func (tfmm *tiflashMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *a
 	}
 
 	var inUseName string
-	if set != nil && tc.BaseTiFlashSpec().ConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyInPlace {
+	if set != nil {
 		inUseName = FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
 			return strings.HasPrefix(name, controller.TiFlashMemberName(tc.Name))
 		})
 	}
 
-	updateConfigMapIfNeed(tfmm.deps.ConfigMapLister, tc.BaseTiDBSpec().ConfigUpdateStrategy(), inUseName, newCm)
+	err = updateConfigMapIfNeed(tfmm.deps.ConfigMapLister, tc.BaseTiDBSpec().ConfigUpdateStrategy(), inUseName, newCm)
+	if err != nil {
+		return nil, err
+	}
 	return tfmm.deps.TypedControl.CreateOrUpdateConfigMap(tc, newCm)
 }
 
@@ -587,12 +590,6 @@ func getTiFlashConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 			"config_templ.toml": string(configText),
 			"proxy_templ.toml":  string(proxyText),
 		},
-	}
-
-	if tc.BaseTiFlashSpec().ConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyRollingUpdate {
-		if err := AddConfigMapDigestSuffix(cm); err != nil {
-			return nil, err
-		}
 	}
 
 	return cm, nil
