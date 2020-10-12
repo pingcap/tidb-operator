@@ -50,7 +50,6 @@ var (
 					AdvertiseAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:20170"),
 					Config:        pointer.StringPtr("/data0/proxy.toml"),
 					DataDir:       pointer.StringPtr("/data0/proxy"),
-					LogFile:       pointer.StringPtr("/data0/logs/proxy.log"),
 				},
 				ServiceAddr:    pointer.StringPtr("0.0.0.0:3930"),
 				TiDBStatusAddr: pointer.StringPtr("test-tidb.test.svc:10080"),
@@ -151,7 +150,6 @@ var (
 					AdvertiseAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:20170"),
 					Config:        pointer.StringPtr("/data0/proxy.toml"),
 					DataDir:       pointer.StringPtr("/data0/proxy"),
-					LogFile:       pointer.StringPtr("/data0/logs/proxy.log"),
 				},
 				ServiceAddr:    pointer.StringPtr("0.0.0.0:3930"),
 				TiDBStatusAddr: pointer.StringPtr("test-tidb.test.svc:10080"),
@@ -250,7 +248,6 @@ var (
 					AdvertiseAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:20170"),
 					Config:        pointer.StringPtr("/data0/proxy.toml"),
 					DataDir:       pointer.StringPtr("/data0/proxy"),
-					LogFile:       pointer.StringPtr("/data0/logs/proxy.log"),
 				},
 				ServiceAddr:    pointer.StringPtr("0.0.0.0:3930"),
 				TiDBStatusAddr: pointer.StringPtr("test-tidb.test.svc:10080"),
@@ -359,7 +356,6 @@ var (
 					AdvertiseAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:20171"),
 					Config:        pointer.StringPtr("/data0/proxy1.toml"),
 					DataDir:       pointer.StringPtr("/data0/proxy1"),
-					LogFile:       pointer.StringPtr("/data0/logs/proxy1.log"),
 				},
 				ServiceAddr:    pointer.StringPtr("0.0.0.0:3930"),
 				TiDBStatusAddr: pointer.StringPtr("test-tidb.test.svc:10081"),
@@ -442,9 +438,7 @@ var (
 				FlashCluster: &v1alpha1.FlashCluster{
 					ClusterLog: pointer.StringPtr("/data0/logs/flash_cluster_manager.log"),
 				},
-				FlashProxy: &v1alpha1.FlashProxy{
-					LogFile: pointer.StringPtr("/data0/logs/proxy.log"),
-				},
+				FlashProxy: &v1alpha1.FlashProxy{},
 			},
 			FlashLogger: &v1alpha1.FlashLogger{
 				ErrorLog:  pointer.StringPtr("/data0/logs/error.log"),
@@ -458,9 +452,7 @@ var (
 				FlashCluster: &v1alpha1.FlashCluster{
 					ClusterLog: pointer.StringPtr("/data1/logs/flash_cluster_manager.log"),
 				},
-				FlashProxy: &v1alpha1.FlashProxy{
-					LogFile: pointer.StringPtr("/data1/logs/proxy.log"),
-				},
+				FlashProxy: &v1alpha1.FlashProxy{},
 			},
 			FlashLogger: &v1alpha1.FlashLogger{
 				ErrorLog:  pointer.StringPtr("/data1/logs/error.log"),
@@ -492,20 +484,6 @@ var (
 				"sh",
 				"-c",
 				"touch /data0/logs/error.log; tail -n0 -F /data0/logs/error.log;",
-			},
-			VolumeMounts: []corev1.VolumeMount{
-				{Name: "data0", MountPath: "/data0"},
-			},
-		},
-		{
-			Name:            "proxylog",
-			Image:           "busybox:1.26.2",
-			ImagePullPolicy: "",
-			Resources:       corev1.ResourceRequirements{},
-			Command: []string{
-				"sh",
-				"-c",
-				"touch /data0/logs/proxy.log; tail -n0 -F /data0/logs/proxy.log;",
 			},
 			VolumeMounts: []corev1.VolumeMount{
 				{Name: "data0", MountPath: "/data0"},
@@ -550,20 +528,6 @@ var (
 				"sh",
 				"-c",
 				"touch /data1/logs/error.log; tail -n0 -F /data1/logs/error.log;",
-			},
-			VolumeMounts: []corev1.VolumeMount{
-				{Name: "data1", MountPath: "/data1"},
-			},
-		},
-		{
-			Name:            "proxylog",
-			Image:           "busybox:1.26.2",
-			ImagePullPolicy: "",
-			Resources:       corev1.ResourceRequirements{},
-			Command: []string{
-				"sh",
-				"-c",
-				"touch /data1/logs/proxy.log; tail -n0 -F /data1/logs/proxy.log;",
 			},
 			VolumeMounts: []corev1.VolumeMount{
 				{Name: "data1", MountPath: "/data1"},
@@ -618,25 +582,6 @@ var (
 				"sh",
 				"-c",
 				"touch /data1/logs/error.log; tail -n0 -F /data1/logs/error.log;",
-			},
-			VolumeMounts: []corev1.VolumeMount{
-				{Name: "data1", MountPath: "/data1"},
-			},
-		},
-		{
-			Name:            "proxylog",
-			Image:           "busybox:1.26.2",
-			ImagePullPolicy: "",
-			Resources: corev1.ResourceRequirements{
-				Requests: corev1.ResourceList{
-					corev1.ResourceCPU:    resource.MustParse("1"),
-					corev1.ResourceMemory: resource.MustParse("2Gi"),
-				},
-			},
-			Command: []string{
-				"sh",
-				"-c",
-				"touch /data1/logs/proxy.log; tail -n0 -F /data1/logs/proxy.log;",
 			},
 			VolumeMounts: []corev1.VolumeMount{
 				{Name: "data1", MountPath: "/data1"},
