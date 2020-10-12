@@ -82,8 +82,6 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 		return "", err
 	}
 	keyName := fmt.Sprintf("%s/%s", ns, tcName)
-	// TODO: the replicas should be the total replicas of pd sets.
-	replicas := tc.Spec.PD.Replicas
 
 	currentCluster := td.clusters[keyName]
 	if currentCluster == nil || currentCluster.resourceVersion != tc.ResourceVersion {
@@ -95,7 +93,8 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	currentCluster = td.clusters[keyName]
 	currentCluster.peers[podName] = struct{}{}
 
-	if len(currentCluster.peers) == int(replicas) {
+	// Should take failover replicas into consideration
+	if len(currentCluster.peers) == int(tc.PDStsDesiredReplicas()) {
 		delete(currentCluster.peers, podName)
 		return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, tc.Scheme(), advertisePeerUrl), nil
 	}
@@ -114,6 +113,12 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 
 	membersArr := make([]string, 0)
 	for _, member := range membersInfo.Members {
+		// In some failure situations, for example, delete the dm-master's data directory, dm-master will try to restart
+		// and get join info from discovery service. But dm-master embed etcd may still have the registered member info,
+		// which will return the argument to join dm-master itself, which is not allowed in dm-master.
+		if member.Name == podName {
+			continue
+		}
 		memberURL := strings.ReplaceAll(member.PeerUrls[0], ":2380", ":2379")
 		membersArr = append(membersArr, memberURL)
 	}
@@ -148,8 +153,6 @@ func (td *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
 		return "", err
 	}
 	keyName := fmt.Sprintf("%s/%s", ns, dcName)
-	// TODO: the replicas should be the total replicas of dm master sets.
-	replicas := dc.Spec.Master.Replicas
 
 	currentCluster := td.dmClusters[keyName]
 	if currentCluster == nil || currentCluster.resourceVersion != dc.ResourceVersion {
@@ -161,7 +164,7 @@ func (td *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
 	currentCluster = td.dmClusters[keyName]
 	currentCluster.peers[podName] = struct{}{}
 
-	if len(currentCluster.peers) == int(replicas) {
+	if len(currentCluster.peers) == int(dc.MasterStsDesiredReplicas()) {
 		delete(currentCluster.peers, podName)
 		return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, dc.Scheme(), advertisePeerUrl), nil
 	}
