@@ -132,20 +132,6 @@ func getSpecResources(tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.Me
 func defaultBasicAutoScaler(tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) {
 	spec := getBasicAutoScalerSpec(tac, component)
 
-	if spec.MinReplicas == nil {
-		spec.MinReplicas = pointer.Int32Ptr(1)
-	}
-	if spec.ScaleOutIntervalSeconds == nil {
-		spec.ScaleOutIntervalSeconds = pointer.Int32Ptr(300)
-	}
-	if spec.ScaleInIntervalSeconds == nil {
-		spec.ScaleInIntervalSeconds = pointer.Int32Ptr(500)
-	}
-	// If ExternalEndpoint is not provided, we would set default metrics
-	if spec.External == nil && spec.MetricsTimeDuration == nil {
-		spec.MetricsTimeDuration = pointer.StringPtr("3m")
-	}
-
 	if spec.External != nil {
 		return
 	}
@@ -184,23 +170,8 @@ func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.TidbCluster) {
 
 	if tikv := tac.Spec.TiKV; tikv != nil {
 		defaultBasicAutoScaler(tac, v1alpha1.TiKVMemberType)
-		for id, m := range tikv.Metrics {
-			if m.Resource == nil || m.Resource.Name != corev1.ResourceStorage {
-				continue
-			}
-			if m.LeastStoragePressurePeriodSeconds == nil {
-				m.LeastStoragePressurePeriodSeconds = pointer.Int64Ptr(300)
-			}
-			if m.LeastRemainAvailableStoragePercent == nil {
-				m.LeastRemainAvailableStoragePercent = pointer.Int64Ptr(10)
-			}
-			tikv.Metrics[id] = m
-		}
 	}
 
-	if monitor := tac.Spec.Monitor; monitor != nil && len(monitor.Namespace) < 1 {
-		monitor.Namespace = tac.Namespace
-	}
 }
 
 func validateBasicAutoScalerSpec(tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) error {
@@ -288,16 +259,6 @@ func validateTAC(tac *v1alpha1.TidbClusterAutoScaler) error {
 	}
 
 	return nil
-}
-
-func genMetricsEndpoint(tac *v1alpha1.TidbClusterAutoScaler) (string, error) {
-	if tac.Spec.MetricsUrl == nil && tac.Spec.Monitor == nil {
-		return "", fmt.Errorf("tac[%s/%s] metrics url or monitor should be defined explicitly", tac.Namespace, tac.Name)
-	}
-	if tac.Spec.MetricsUrl != nil {
-		return *tac.Spec.MetricsUrl, nil
-	}
-	return fmt.Sprintf("http://%s-prometheus.%s.svc:9090", tac.Spec.Monitor.Name, tac.Spec.Monitor.Namespace), nil
 }
 
 func autoscalerToStrategy(tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) *pdapi.Strategy {

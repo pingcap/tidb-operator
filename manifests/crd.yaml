@@ -16321,19 +16321,6 @@ spec:
               required:
               - name
               type: object
-            metricsUrl:
-              type: string
-            monitor:
-              properties:
-                grafanaEnabled:
-                  type: boolean
-                name:
-                  type: string
-                namespace:
-                  type: string
-              required:
-              - name
-              type: object
             tidb:
               properties:
                 external:
@@ -16368,27 +16355,10 @@ spec:
                   required:
                   - maxReplicas
                   type: object
-                maxReplicas:
-                  format: int32
-                  type: integer
-                metrics:
-                  items: {}
-                  type: array
-                metricsTimeDuration:
-                  type: string
-                minReplicas:
-                  format: int32
-                  type: integer
                 resources:
                   type: object
                 rules:
                   type: object
-                scaleInIntervalSeconds:
-                  format: int32
-                  type: integer
-                scaleOutIntervalSeconds:
-                  format: int32
-                  type: integer
               type: object
             tikv:
               properties:
@@ -16424,27 +16394,10 @@ spec:
                   required:
                   - maxReplicas
                   type: object
-                maxReplicas:
-                  format: int32
-                  type: integer
-                metrics:
-                  items: {}
-                  type: array
-                metricsTimeDuration:
-                  type: string
-                minReplicas:
-                  format: int32
-                  type: integer
                 resources:
                   type: object
                 rules:
                   type: object
-                scaleInIntervalSeconds:
-                  format: int32
-                  type: integer
-                scaleOutIntervalSeconds:
-                  format: int32
-                  type: integer
               type: object
           required:
           - cluster

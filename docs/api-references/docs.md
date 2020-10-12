@@ -1572,36 +1572,6 @@ TidbClusterRef
 </tr>
 <tr>
 <td>
-<code>metricsUrl</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>We used prometheus to fetch the metrics resources until the pd could provide it.
-MetricsUrl represents the url to fetch the metrics info
-Deprecated</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>monitor</code></br>
-<em>
-<a href="#tidbmonitorref">
-TidbMonitorRef
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>TidbMonitorRef describe the target TidbMonitor, when MetricsUrl and Monitor are both set,
-Operator will use MetricsUrl
-Deprecated</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>tikv</code></br>
 <em>
 <a href="#tikvautoscalerspec">
@@ -3036,35 +3006,6 @@ string
 <tbody>
 <tr>
 <td>
-<code>maxReplicas</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out.
-It cannot be less than minReplicas.
-Deprecated</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>minReplicas</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>minReplicas is the lower limit for the number of replicas to which the autoscaler
-can scale down.  It defaults to 1 pod. Scaling is active as long as at least one metric value is
-available.
-Deprecated</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>rules</code></br>
 <em>
 <a href="#autorule">
@@ -3074,59 +3015,6 @@ map[k8s.io/api/core/v1.ResourceName]github.com/pingcap/tidb-operator/pkg/apis/pi
 </td>
 <td>
 <p>Rules defines the rules for auto-scaling with PD API</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>scaleInIntervalSeconds</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>ScaleInIntervalSeconds represents the duration seconds between each auto-scaling-in
-If not set, the default ScaleInIntervalSeconds will be set to 500</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>scaleOutIntervalSeconds</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>ScaleOutIntervalSeconds represents the duration seconds between each auto-scaling-out
-If not set, the default ScaleOutIntervalSeconds will be set to 300</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>metrics</code></br>
-<em>
-<a href="#custommetric">
-[]CustomMetric
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Deprecated</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>metricsTimeDuration</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>MetricsTimeDuration describes the Time duration to be queried in the Prometheus
-Deprecated</p>
 </td>
 </tr>
 <tr>
@@ -4009,10 +3897,6 @@ CrdKind
 </tbody>
 </table>
 <h3 id="custommetric">CustomMetric</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#basicautoscalerspec">BasicAutoScalerSpec</a>)
-</p>
 <p>
 <p>Deprecated</p>
 </p>
@@ -17745,36 +17629,6 @@ TidbClusterRef
 </tr>
 <tr>
 <td>
-<code>metricsUrl</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>We used prometheus to fetch the metrics resources until the pd could provide it.
-MetricsUrl represents the url to fetch the metrics info
-Deprecated</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>monitor</code></br>
-<em>
-<a href="#tidbmonitorref">
-TidbMonitorRef
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>TidbMonitorRef describe the target TidbMonitor, when MetricsUrl and Monitor are both set,
-Operator will use MetricsUrl
-Deprecated</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>tikv</code></br>
 <em>
 <a href="#tikvautoscalerspec">
@@ -18728,7 +18582,6 @@ InitializePhase
 <h3 id="tidbmonitorref">TidbMonitorRef</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#tidbclusterautoscalerspec">TidbClusterAutoScalerSpec</a>, 
 <a href="#tidbclusterstatus">TidbClusterStatus</a>)
 </p>
 <p>

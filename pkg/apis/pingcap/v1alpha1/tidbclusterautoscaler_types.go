@@ -63,18 +63,6 @@ type TidbClusterAutoScalerSpec struct {
 	// TidbClusterRef describe the target TidbCluster
 	Cluster TidbClusterRef `json:"cluster"`
 
-	// We used prometheus to fetch the metrics resources until the pd could provide it.
-	// MetricsUrl represents the url to fetch the metrics info
-	// Deprecated
-	// +optional
-	MetricsUrl *string `json:"metricsUrl,omitempty"`
-
-	// TidbMonitorRef describe the target TidbMonitor, when MetricsUrl and Monitor are both set,
-	// Operator will use MetricsUrl
-	// Deprecated
-	// +optional
-	Monitor *TidbMonitorRef `json:"monitor,omitempty"`
-
 	// TiKV represents the auto-scaling spec for tikv
 	// +optional
 	TiKV *TikvAutoScalerSpec `json:"tikv,omitempty"`
@@ -123,40 +111,9 @@ type TidbAutoScalerSpec struct {
 // +k8s:openapi-gen=true
 // BasicAutoScalerSpec describes the basic spec for auto-scaling
 type BasicAutoScalerSpec struct {
-	// maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out.
-	// It cannot be less than minReplicas.
-	// Deprecated
-	// +optional
-	MaxReplicas *int32 `json:"maxReplicas,omitempty"`
-
-	// minReplicas is the lower limit for the number of replicas to which the autoscaler
-	// can scale down.  It defaults to 1 pod. Scaling is active as long as at least one metric value is
-	// available.
-	// Deprecated
-	// +optional
-	MinReplicas *int32 `json:"minReplicas,omitempty"`
-
 	// Rules defines the rules for auto-scaling with PD API
 	Rules map[corev1.ResourceName]AutoRule `json:"rules,omitempty"`
 
-	// ScaleInIntervalSeconds represents the duration seconds between each auto-scaling-in
-	// If not set, the default ScaleInIntervalSeconds will be set to 500
-	// +optional
-	ScaleInIntervalSeconds *int32 `json:"scaleInIntervalSeconds,omitempty"`
-
-	// ScaleOutIntervalSeconds represents the duration seconds between each auto-scaling-out
-	// If not set, the default ScaleOutIntervalSeconds will be set to 300
-	// +optional
-	ScaleOutIntervalSeconds *int32 `json:"scaleOutIntervalSeconds,omitempty"`
-
-	// Deprecated
-	// +optional
-	Metrics []CustomMetric `json:"metrics,omitempty"`
-
-	// MetricsTimeDuration describes the Time duration to be queried in the Prometheus
-	// Deprecated
-	// +optional
-	MetricsTimeDuration *string `json:"metricsTimeDuration,omitempty"`
 	// External makes the auto-scaler controller able to query the external service
 	// to fetch the recommended replicas for TiKV/TiDB
 	// +optional
