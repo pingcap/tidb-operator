@@ -1129,12 +1129,14 @@ type BackupType string
 const (
 	// BackupTypeFull represents the full backup of tidb cluster.
 	BackupTypeFull BackupType = "full"
-	// BackupTypeInc represents the incremental backup of tidb cluster.
-	BackupTypeInc BackupType = "incremental"
+	// BackupTypeRaw represents the raw backup of tidb cluster.
+	BackupTypeRaw BackupType = "raw"
 	// BackupTypeDB represents the backup of one DB for the tidb cluster.
 	BackupTypeDB BackupType = "db"
 	// BackupTypeTable represents the backup of one table for the tidb cluster.
 	BackupTypeTable BackupType = "table"
+	// BackupTypeTiFlashReplica represents restoring the tiflash replica removed by a failed restore of the older version BR
+	BackupTypeTiFlashReplica BackupType = "tiflash-replica"
 )
 
 // +k8s:openapi-gen=true
@@ -1246,6 +1248,8 @@ type BRConfig struct {
 	SendCredToTikv *bool `json:"sendCredToTikv,omitempty"`
 	// OnLine specifies whether online during restore
 	OnLine *bool `json:"onLine,omitempty"`
+	// Options means options for backup data to remote storage with BR. These options has highest priority.
+	Options []string `json:"options,omitempty"`
 }
 
 // BackupConditionType represents a valid condition of a Backup.
