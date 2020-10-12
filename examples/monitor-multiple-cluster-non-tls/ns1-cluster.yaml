@@ -9,7 +9,9 @@ metadata:
 spec:
   version: v4.0.6
   timezone: UTC
-  pvReclaimPolicy: Delete
+  pvReclaimPolicy: Retain
+  enableDynamicConfiguration: true
+  configUpdateStrategy: RollingUpdate
   imagePullPolicy: IfNotPresent
   discovery: {}
   pd:
@@ -18,6 +20,7 @@ spec:
     replicas: 1
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
     # storageClassName: local-storage
+    mountClusterClientSecret: true
     requests:
       storage: "1Gi"
     config: {}
@@ -27,6 +30,7 @@ spec:
     replicas: 1
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
     # storageClassName: local-storage
+    mountClusterClientSecret: true
     requests:
       storage: "1Gi"
     config:

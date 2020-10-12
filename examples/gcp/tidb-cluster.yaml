@@ -13,6 +13,7 @@ spec:
     replicas: 3
     requests:
       storage: "10Gi"
+    mountClusterClientSecret: true
     config:
       log:
         level: info
@@ -32,6 +33,7 @@ spec:
     replicas: 3
     requests:
       storage: "100Gi"
+    mountClusterClientSecret: true
     annotations:
       tidb.pingcap.com/sysctl-init: "true"
     podSecurityContext:

@@ -5,18 +5,22 @@ metadata:
 spec:
   version: v4.0.6
   timezone: UTC
-  pvReclaimPolicy: Delete
+  pvReclaimPolicy: Retain
+  enableDynamicConfiguration: true
+  configUpdateStrategy: RollingUpdate
   pd:
     baseImage: pingcap/pd
     replicas: 1
     requests:
       storage: "1Gi"
+    mountClusterClientSecret: true
     config: {}
   tikv:
     baseImage: pingcap/tikv
     replicas: 1
     requests:
       storage: "1Gi"
+    mountClusterClientSecret: true
     config: {}
   tidb:
     baseImage: pingcap/tidb

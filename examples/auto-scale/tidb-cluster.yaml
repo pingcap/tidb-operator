@@ -5,18 +5,22 @@ metadata:
 spec:
   version: v4.0.6
   timezone: UTC
-  pvReclaimPolicy: Delete
+  pvReclaimPolicy: Retain
+  enableDynamicConfiguration: true
+  configUpdateStrategy: RollingUpdate
   pd:
     baseImage: pingcap/pd
     replicas: 3
     requests:
       storage: "1Gi"
+    mountClusterClientSecret: true
     config: 
       pd-server:
         metric-storage: "http://auto-scaling-demo-prometheus:9090/"
   tikv:
     baseImage: pingcap/tikv
     replicas: 3
+    mountClusterClientSecret: true
     requests:
       cpu: "1"
       storage: "1Gi"

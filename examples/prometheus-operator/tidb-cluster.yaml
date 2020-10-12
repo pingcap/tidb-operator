@@ -5,7 +5,7 @@ metadata:
 spec:
   version: v3.0.8
   timezone: UTC
-  pvReclaimPolicy: Delete
+  pvReclaimPolicy: Retain
   pd:
     baseImage: pingcap/pd
     replicas: 3

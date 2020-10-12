@@ -4,10 +4,12 @@ metadata:
   name: demo
 spec:
   configUpdateStrategy: RollingUpdate
+  enableDynamicConfiguration: true
   enablePVReclaim: false
   imagePullPolicy: IfNotPresent
   pd:
     baseImage: pingcap/pd
+    mountClusterClientSecret: true
     config:
       log:
         level: info
@@ -23,7 +25,7 @@ spec:
     requests:
       storage: 10Gi
     storageClassName: local-storage
-  pvReclaimPolicy: Delete
+  pvReclaimPolicy: Retain
   schedulerName: tidb-scheduler
   services:
   - name: pd
@@ -64,6 +66,7 @@ spec:
     config:
       log-level: info
     imagePullPolicy: IfNotPresent
+    mountClusterClientSecret: true
     maxFailoverCount: 3
     replicas: 3
     requests:

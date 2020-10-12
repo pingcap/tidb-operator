@@ -8,7 +8,9 @@ metadata:
 spec:
   version: v4.0.6
   timezone: UTC
-  pvReclaimPolicy: Delete
+  pvReclaimPolicy: Retain
+  enableDynamicConfiguration: true
+  configUpdateStrategy: RollingUpdate
   discovery: {}
   pd:
     baseImage: pingcap/pd
@@ -18,6 +20,7 @@ spec:
     requests:
       storage: "1Gi"
     config: {}
+    mountClusterClientSecret: true
   tikv:
     baseImage: pingcap/tikv
     replicas: 1
@@ -29,6 +32,7 @@ spec:
       storage:
         # In basic examples, we set this to avoid using too much storage.
         reserve-space: "0MB"
+    mountClusterClientSecret: true
   tidb:
     baseImage: pingcap/tidb
     replicas: 1
