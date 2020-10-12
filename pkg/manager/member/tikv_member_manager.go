@@ -542,26 +542,35 @@ func transformTiKVConfigMap(srcStr string, tc *v1alpha1.TidbCluster) string {
 	if config == nil {
 		return srcStr
 	}
-	if config.TiKVPessimisticTxn != nil {
-		if config.TiKVPessimisticTxn.WaitForLockTimeout != nil {
-			_, err := strconv.ParseInt(*config.TiKVPessimisticTxn.WaitForLockTimeout, 10, 64)
+
+	if v := config.Get("pessimistic-txn.wait-for-lock-timeout"); v != nil {
+		if str, err := v.AsString(); err == nil {
+			_, err := strconv.ParseInt(str, 10, 64)
 			if err == nil {
 				waitForLockTimeOutKey := "wait-for-lock-timeout"
-				old := fmt.Sprintf(`%s = "%s"`, waitForLockTimeOutKey, *config.TiKVPessimisticTxn.WaitForLockTimeout)
-				newString := fmt.Sprintf(`%s = %s`, waitForLockTimeOutKey, *config.TiKVPessimisticTxn.WaitForLockTimeout)
+				old := fmt.Sprintf(`%s = "%s"`, waitForLockTimeOutKey, str)
+				newString := fmt.Sprintf(`%s = %s`, waitForLockTimeOutKey, str)
 				srcStr = strings.ReplaceAll(srcStr, old, newString)
 			}
-		}
-		if config.TiKVPessimisticTxn.WakeUpDelayDuration != nil {
-			_, err := strconv.ParseInt(*config.TiKVPessimisticTxn.WakeUpDelayDuration, 10, 64)
-			if err == nil {
-				wakeUpDelayDuration := "wake-up-delay-duration"
-				old := fmt.Sprintf(`%s = "%s"`, wakeUpDelayDuration, *config.TiKVPessimisticTxn.WakeUpDelayDuration)
-				newString := fmt.Sprintf(`%s = %s`, wakeUpDelayDuration, *config.TiKVPessimisticTxn.WakeUpDelayDuration)
-				srcStr = strings.ReplaceAll(srcStr, old, newString)
-			}
+		} else {
+			klog.Warningf("pessimistic-txn.wait-for-lock-timeout is not string type: %v", err)
 		}
 	}
+
+	if v := config.Get("pessimistic-txn.wake-up-delay-duration"); v != nil {
+		if str, err := v.AsString(); err == nil {
+			_, err := strconv.ParseInt(str, 10, 64)
+			if err == nil {
+				wakeUpDelayDuration := "wake-up-delay-duration"
+				old := fmt.Sprintf(`%s = "%s"`, wakeUpDelayDuration, str)
+				newString := fmt.Sprintf(`%s = %s`, wakeUpDelayDuration, str)
+				srcStr = strings.ReplaceAll(srcStr, old, newString)
+			}
+		} else {
+			klog.Warningf("pessimistic-txn.wake-up-delay-duration is not string type: %v", err)
+		}
+	}
+
 	return srcStr
 }
 
