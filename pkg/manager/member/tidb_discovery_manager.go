@@ -38,11 +38,11 @@ type TidbDiscoveryManager interface {
 }
 
 type realTidbDiscoveryManager struct {
-	ctrl controller.TypedControlInterface
+	deps *controller.Dependencies
 }
 
-func NewTidbDiscoveryManager(typedControl controller.TypedControlInterface) TidbDiscoveryManager {
-	return &realTidbDiscoveryManager{typedControl}
+func NewTidbDiscoveryManager(deps *controller.Dependencies) TidbDiscoveryManager {
+	return &realTidbDiscoveryManager{deps: deps}
 }
 
 func (m *realTidbDiscoveryManager) Reconcile(tc *v1alpha1.TidbCluster) error {
@@ -54,7 +54,7 @@ func (m *realTidbDiscoveryManager) Reconcile(tc *v1alpha1.TidbCluster) error {
 	meta, _ := getDiscoveryMeta(tc, controller.DiscoveryMemberName)
 
 	// Ensure RBAC
-	_, err := m.ctrl.CreateOrUpdateRole(tc, &rbacv1.Role{
+	_, err := m.deps.TypedControl.CreateOrUpdateRole(tc, &rbacv1.Role{
 		ObjectMeta: meta,
 		Rules: []rbacv1.PolicyRule{
 			{
@@ -78,13 +78,13 @@ func (m *realTidbDiscoveryManager) Reconcile(tc *v1alpha1.TidbCluster) error {
 	if err != nil {
 		return controller.RequeueErrorf("error creating or updating discovery role: %v", err)
 	}
-	_, err = m.ctrl.CreateOrUpdateServiceAccount(tc, &corev1.ServiceAccount{
+	_, err = m.deps.TypedControl.CreateOrUpdateServiceAccount(tc, &corev1.ServiceAccount{
 		ObjectMeta: meta,
 	})
 	if err != nil {
 		return controller.RequeueErrorf("error creating or updating discovery serviceaccount: %v", err)
 	}
-	_, err = m.ctrl.CreateOrUpdateRoleBinding(tc, &rbacv1.RoleBinding{
+	_, err = m.deps.TypedControl.CreateOrUpdateRoleBinding(tc, &rbacv1.RoleBinding{
 		ObjectMeta: meta,
 		Subjects: []rbacv1.Subject{{
 			Kind: rbacv1.ServiceAccountKind,
@@ -99,16 +99,16 @@ func (m *realTidbDiscoveryManager) Reconcile(tc *v1alpha1.TidbCluster) error {
 	if err != nil {
 		return controller.RequeueErrorf("error creating or updating discovery rolebinding: %v", err)
 	}
-	d, err := getTidbDiscoveryDeployment(tc)
+	d, err := m.getTidbDiscoveryDeployment(tc)
 	if err != nil {
 		return controller.RequeueErrorf("error generating discovery deployment: %v", err)
 	}
-	deploy, err := m.ctrl.CreateOrUpdateDeployment(tc, d)
+	deploy, err := m.deps.TypedControl.CreateOrUpdateDeployment(tc, d)
 	if err != nil {
 		return controller.RequeueErrorf("error creating or updating discovery service: %v", err)
 	}
 	// RBAC ensured, reconcile
-	_, err = m.ctrl.CreateOrUpdateService(tc, getTidbDiscoveryService(tc, deploy))
+	_, err = m.deps.TypedControl.CreateOrUpdateService(tc, getTidbDiscoveryService(tc, deploy))
 	if err != nil {
 		return controller.RequeueErrorf("error creating or updating discovery service: %v", err)
 	}
@@ -140,7 +140,7 @@ func getTidbDiscoveryService(tc *v1alpha1.TidbCluster, deploy *appsv1.Deployment
 	}
 }
 
-func getTidbDiscoveryDeployment(tc *v1alpha1.TidbCluster) (*appsv1.Deployment, error) {
+func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(tc *v1alpha1.TidbCluster) (*appsv1.Deployment, error) {
 	meta, l := getDiscoveryMeta(tc, controller.DiscoveryMemberName)
 	d := &appsv1.Deployment{
 		ObjectMeta: meta,
@@ -160,7 +160,7 @@ func getTidbDiscoveryDeployment(tc *v1alpha1.TidbCluster) (*appsv1.Deployment, e
 						Command: []string{
 							"/usr/local/bin/tidb-discovery",
 						},
-						Image:           controller.TidbDiscoveryImage,
+						Image:           m.deps.CLIConfig.TiDBDiscoveryImage,
 						ImagePullPolicy: corev1.PullIfNotPresent,
 						Env: []corev1.EnvVar{
 							{

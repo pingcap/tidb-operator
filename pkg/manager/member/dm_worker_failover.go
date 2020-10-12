@@ -18,23 +18,19 @@ import (
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 )
 
 type workerFailover struct {
-	workerFailoverPeriod time.Duration
-	recorder             record.EventRecorder
+	deps *controller.Dependencies
 }
 
 // NewWorkerFailover returns a worker Failover
-func NewWorkerFailover(workerFailoverPeriod time.Duration,
-	recorder record.EventRecorder) DMFailover {
-	return &workerFailover{
-		workerFailoverPeriod,
-		recorder}
+func NewWorkerFailover(deps *controller.Dependencies) DMFailover {
+	return &workerFailover{deps: deps}
 }
 
 func (wf *workerFailover) Failover(dc *v1alpha1.DMCluster) error {
@@ -51,7 +47,7 @@ func (wf *workerFailover) Failover(dc *v1alpha1.DMCluster) error {
 			// (before it enters into Offline/Tombstone state)
 			continue
 		}
-		deadline := worker.LastTransitionTime.Add(wf.workerFailoverPeriod)
+		deadline := worker.LastTransitionTime.Add(wf.deps.CLIConfig.WorkerFailoverPeriod)
 		exist := false
 		for _, failureWorker := range dc.Status.Worker.FailureMembers {
 			if failureWorker.PodName == podName {
@@ -74,7 +70,7 @@ func (wf *workerFailover) Failover(dc *v1alpha1.DMCluster) error {
 					CreatedAt: metav1.Now(),
 				}
 				msg := fmt.Sprintf("worker[%s/%s] is Offline", ns, worker.Name)
-				wf.recorder.Event(dc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "worker", podName, msg))
+				wf.deps.Recorder.Event(dc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "worker", podName, msg))
 			}
 		}
 	}

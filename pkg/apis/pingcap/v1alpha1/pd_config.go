@@ -115,7 +115,7 @@ type PDConfig struct {
 	Security *PDSecurityConfig `toml:"security,omitempty" json:"security,omitempty"`
 
 	// +optional
-	LabelProperty *PDLabelPropertyConfig `toml:"label-property,omitempty" json:"label-property,omitempty"`
+	LabelProperty PDLabelPropertyConfig `toml:"label-property,omitempty" json:"label-property,omitempty"`
 
 	// Deprecated in v4.0.0
 	// NamespaceClassifier is for classifying stores/regions into different
@@ -215,11 +215,11 @@ type PDReplicationConfig struct {
 	// Immutable, change should be made through pd-ctl after cluster creation.
 	// Imported from v3.1.0
 	// +optional
-	StrictlyMatchLabel *bool `toml:"strictly-match-label,omitempty" json:"strictly-match-label,string,omitempty"`
+	StrictlyMatchLabel *bool `toml:"strictly-match-label,omitempty" json:"strictly-match-label,omitempty"`
 
 	// When PlacementRules feature is enabled. MaxReplicas and LocationLabels are not used anymore.
 	// +optional
-	EnablePlacementRules *bool `toml:"enable-placement-rules" json:"enable-placement-rules,string,omitempty"`
+	EnablePlacementRules *bool `toml:"enable-placement-rules" json:"enable-placement-rules,omitempty"`
 }
 
 // PDNamespaceConfig is to overwrite the global setting for specific namespace
@@ -340,43 +340,43 @@ type PDScheduleConfig struct {
 	// DisableLearner is the option to disable using AddLearnerNode instead of AddNode
 	// Immutable, change should be made through pd-ctl after cluster creation
 	// +optional
-	DisableLearner *bool `toml:"disable-raft-learner,omitempty" json:"disable-raft-learner,string,omitempty"`
+	DisableLearner *bool `toml:"disable-raft-learner,omitempty" json:"disable-raft-learner,omitempty"`
 
 	// DisableRemoveDownReplica is the option to prevent replica checker from
 	// removing down replicas.
 	// Immutable, change should be made through pd-ctl after cluster creation
 	// +optional
-	DisableRemoveDownReplica *bool `toml:"disable-remove-down-replica,omitempty" json:"disable-remove-down-replica,string,omitempty"`
+	DisableRemoveDownReplica *bool `toml:"disable-remove-down-replica,omitempty" json:"disable-remove-down-replica,omitempty"`
 	// DisableReplaceOfflineReplica is the option to prevent replica checker from
 	// repalcing offline replicas.
 	// Immutable, change should be made through pd-ctl after cluster creation
 	// +optional
-	DisableReplaceOfflineReplica *bool `toml:"disable-replace-offline-replica,omitempty" json:"disable-replace-offline-replica,string,omitempty"`
+	DisableReplaceOfflineReplica *bool `toml:"disable-replace-offline-replica,omitempty" json:"disable-replace-offline-replica,omitempty"`
 	// DisableMakeUpReplica is the option to prevent replica checker from making up
 	// replicas when replica count is less than expected.
 	// Immutable, change should be made through pd-ctl after cluster creation
 	// +optional
-	DisableMakeUpReplica *bool `toml:"disable-make-up-replica,omitempty" json:"disable-make-up-replica,string,omitempty"`
+	DisableMakeUpReplica *bool `toml:"disable-make-up-replica,omitempty" json:"disable-make-up-replica,omitempty"`
 	// DisableRemoveExtraReplica is the option to prevent replica checker from
 	// removing extra replicas.
 	// Immutable, change should be made through pd-ctl after cluster creation
 	// +optional
-	DisableRemoveExtraReplica *bool `toml:"disable-remove-extra-replica,omitempty" json:"disable-remove-extra-replica,string,omitempty"`
+	DisableRemoveExtraReplica *bool `toml:"disable-remove-extra-replica,omitempty" json:"disable-remove-extra-replica,omitempty"`
 	// DisableLocationReplacement is the option to prevent replica checker from
 	// moving replica to a better location.
 	// Immutable, change should be made through pd-ctl after cluster creation
 	// +optional
-	DisableLocationReplacement *bool `toml:"disable-location-replacement,omitempty" json:"disable-location-replacement,string,omitempty"`
+	DisableLocationReplacement *bool `toml:"disable-location-replacement,omitempty" json:"disable-location-replacement,omitempty"`
 	// DisableNamespaceRelocation is the option to prevent namespace checker
 	// from moving replica to the target namespace.
 	// Immutable, change should be made through pd-ctl after cluster creation
 	// +optional
-	DisableNamespaceRelocation *bool `toml:"disable-namespace-relocation,omitempty" json:"disable-namespace-relocation,string,omitempty"`
+	DisableNamespaceRelocation *bool `toml:"disable-namespace-relocation,omitempty" json:"disable-namespace-relocation,omitempty"`
 
 	// Schedulers support for loding customized schedulers
 	// Immutable, change should be made through pd-ctl after cluster creation
 	// +optional
-	Schedulers *PDSchedulerConfigs `toml:"schedulers,omitempty" json:"schedulers-v2,omitempty"` // json v2 is for the sake of compatible upgrade
+	Schedulers PDSchedulerConfigs `toml:"schedulers,omitempty" json:"schedulers-v2,omitempty"` // json v2 is for the sake of compatible upgrade
 
 	// Only used to display
 	// +optional
@@ -385,12 +385,12 @@ type PDScheduleConfig struct {
 	// EnableOneWayMerge is the option to enable one way merge. This means a Region can only be merged into the next region of it.
 	// Imported from v3.1.0
 	// +optional
-	EnableOneWayMerge *bool `toml:"enable-one-way-merge,omitempty" json:"enable-one-way-merge,string,omitempty"`
+	EnableOneWayMerge *bool `toml:"enable-one-way-merge,omitempty" json:"enable-one-way-merge,omitempty"`
 	// EnableCrossTableMerge is the option to enable cross table merge. This means two Regions can be merged with different table IDs.
 	// This option only works when key type is "table".
 	// Imported from v3.1.0
 	// +optional
-	EnableCrossTableMerge *bool `toml:"enable-cross-table-merge,omitempty" json:"enable-cross-table-merge,string,omitempty"`
+	EnableCrossTableMerge *bool `toml:"enable-cross-table-merge,omitempty" json:"enable-cross-table-merge,omitempty"`
 }
 
 type PDSchedulerConfigs []PDSchedulerConfig
@@ -445,7 +445,7 @@ type PDSecurityConfig struct {
 type PDServerConfig struct {
 	// UseRegionStorage enables the independent region storage.
 	// +optional
-	UseRegionStorage *bool `toml:"use-region-storage,omitempty" json:"use-region-storage,string,omitempty"`
+	UseRegionStorage *bool `toml:"use-region-storage,omitempty" json:"use-region-storage,omitempty"`
 	// MetricStorage is the cluster metric storage.
 	// Currently we use prometheus as metric storage, we may use PD/TiKV as metric storage later.
 	// Imported from v3.1.0
