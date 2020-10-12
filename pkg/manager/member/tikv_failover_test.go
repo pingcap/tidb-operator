@@ -19,8 +19,8 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/pointer"
 )
 
@@ -287,7 +287,10 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			tc.Spec.TiKV.Replicas = 6
 			tc.Spec.TiKV.MaxFailoverCount = pointer.Int32Ptr(3)
 			tt.update(tc)
-			tikvFailover := newFakeTiKVFailover()
+
+			fakeDeps := controller.NewFakeDependencies()
+			fakeDeps.CLIConfig.TiKVFailoverPeriod = 1 * time.Hour
+			tikvFailover := &tikvFailover{deps: fakeDeps}
 
 			err := tikvFailover.Failover(tc)
 			if tt.err {
@@ -298,9 +301,4 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			tt.expectFn(t, tc)
 		})
 	}
-}
-
-func newFakeTiKVFailover() *tikvFailover {
-	recorder := record.NewFakeRecorder(100)
-	return &tikvFailover{1 * time.Hour, recorder}
 }

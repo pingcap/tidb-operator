@@ -14,8 +14,6 @@
 package tidbinitializer
 
 import (
-	"k8s.io/client-go/tools/record"
-
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
 )
@@ -27,12 +25,11 @@ type ControlInterface interface {
 }
 
 // NewDefaultTidbInitializerControl returns a new instance of the default TidbInitializer ControlInterface
-func NewDefaultTidbInitializerControl(recorder record.EventRecorder, manager member.InitManager) ControlInterface {
-	return &defaultTidbInitializerControl{recorder, manager}
+func NewDefaultTidbInitializerControl(manager member.InitManager) ControlInterface {
+	return &defaultTidbInitializerControl{manager}
 }
 
 type defaultTidbInitializerControl struct {
-	recorder       record.EventRecorder
 	tidbInitManger member.InitManager
 }
 

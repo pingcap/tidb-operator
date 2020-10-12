@@ -21,18 +21,12 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/scheme"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	kubeinformers "k8s.io/client-go/informers"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
-	controllerfake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestDMClusterControllerEnqueueDMCluster(t *testing.T) {
@@ -262,34 +256,14 @@ func TestDMClusterControllerSync(t *testing.T) {
 
 }
 
-func alwaysReady() bool { return true }
-
 func newFakeDMClusterController() (*Controller, cache.Indexer, *FakeDMClusterControlInterface) {
-	cli := fake.NewSimpleClientset()
-	kubeCli := kubefake.NewSimpleClientset()
-	genericCli := controllerfake.NewFakeClientWithScheme(scheme.Scheme)
-	informerFactory := informers.NewSharedInformerFactory(cli, 0)
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
-
-	dcInformer := informerFactory.Pingcap().V1alpha1().DMClusters()
-	autoFailover := true
+	fakeDeps := controller.NewFakeDependencies()
+	fakeDeps.CLIConfig.AutoFailover = true
+	dcc := NewController(fakeDeps)
+	dcIndexer := fakeDeps.InformerFactory.Pingcap().V1alpha1().DMClusters().Informer().GetIndexer()
 	dcControl := NewFakeDMClusterControlInterface()
-
-	dcc := NewController(
-		kubeCli,
-		cli,
-		genericCli,
-		informerFactory,
-		kubeInformerFactory,
-		autoFailover,
-		5*time.Minute,
-		5*time.Minute,
-	)
-	dcc.dcListerSynced = alwaysReady
-	dcc.setListerSynced = alwaysReady
-
 	dcc.control = dcControl
-	return dcc, dcInformer.Informer().GetIndexer(), dcControl
+	return dcc, dcIndexer, dcControl
 }
 
 func newDMCluster() *v1alpha1.DMCluster {

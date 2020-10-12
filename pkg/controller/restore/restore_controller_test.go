@@ -21,12 +21,9 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	kubeinformers "k8s.io/client-go/informers"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/pointer"
 )
@@ -214,17 +211,11 @@ func TestRestoreControllerSync(t *testing.T) {
 }
 
 func newFakeRestoreController() (*Controller, cache.Indexer, *FakeRestoreControl) {
-	cli := fake.NewSimpleClientset()
-	kubeCli := kubefake.NewSimpleClientset()
-	informerFactory := informers.NewSharedInformerFactory(cli, 0)
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
-
-	restoreInformer := informerFactory.Pingcap().V1alpha1().Restores()
+	fakeDeps := controller.NewFakeDependencies()
+	rtc := NewController(fakeDeps)
+	restoreInformer := fakeDeps.InformerFactory.Pingcap().V1alpha1().Restores()
 	restoreControl := NewFakeRestoreControl(restoreInformer)
-
-	rtc := NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 	rtc.control = restoreControl
-
 	return rtc, restoreInformer.Informer().GetIndexer(), restoreControl
 }
 
