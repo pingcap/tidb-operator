@@ -21,7 +21,6 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 )
 
 // ControlInterface implements the control logic for updating BackupSchedule
@@ -34,21 +33,16 @@ type ControlInterface interface {
 
 // NewDefaultBackupScheduleControl returns a new instance of the default implementation BackupScheduleControlInterface that
 // implements the documented semantics for BackupSchedule.
-func NewDefaultBackupScheduleControl(
-	statusUpdater controller.BackupScheduleStatusUpdaterInterface,
-	bsManager backup.BackupScheduleManager,
-	recorder record.EventRecorder) ControlInterface {
+func NewDefaultBackupScheduleControl(statusUpdater controller.BackupScheduleStatusUpdaterInterface, bsManager backup.BackupScheduleManager) ControlInterface {
 	return &defaultBackupScheduleControl{
-		statusUpdater,
-		bsManager,
-		recorder,
+		statusUpdater: statusUpdater,
+		bsManager:     bsManager,
 	}
 }
 
 type defaultBackupScheduleControl struct {
 	statusUpdater controller.BackupScheduleStatusUpdaterInterface
 	bsManager     backup.BackupScheduleManager
-	recorder      record.EventRecorder
 }
 
 // UpdateBackupSchedule executes the core logic loop for a BackupSchedule.
@@ -84,8 +78,7 @@ type FakeBackupScheduleControl struct {
 // NewFakeBackupScheduleControl returns a FakeBackupScheduleControl
 func NewFakeBackupScheduleControl(bsInformer informers.BackupScheduleInformer) *FakeBackupScheduleControl {
 	return &FakeBackupScheduleControl{
-		bsInformer.Informer().GetIndexer(),
-		controller.RequestTracker{},
+		bsIndexer: bsInformer.Informer().GetIndexer(),
 	}
 }
 
@@ -94,7 +87,7 @@ func (fbc *FakeBackupScheduleControl) SetUpdateBackupScheduleError(err error, af
 	fbc.updateBsTracker.SetError(err).SetAfter(after)
 }
 
-// CreateBackup adds the backup to BackupIndexer
+// UpdateBackupSchedule updates the backup to BackupIndexer
 func (fbc *FakeBackupScheduleControl) UpdateBackupSchedule(bs *v1alpha1.BackupSchedule) error {
 	defer fbc.updateBsTracker.Inc()
 	if fbc.updateBsTracker.ErrorReady() {

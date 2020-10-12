@@ -22,9 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
-	kubeinformers "k8s.io/client-go/informers"
 	podinformers "k8s.io/client-go/informers/core/v1"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -272,14 +270,12 @@ func TestMasterUpgraderUpgrade(t *testing.T) {
 }
 
 func newMasterUpgrader() (DMUpgrader, *dmapi.FakeMasterControl, *controller.FakePodControl, podinformers.PodInformer) {
-	kubeCli := kubefake.NewSimpleClientset()
-	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
-	masterControl := dmapi.NewFakeMasterControl(kubeCli)
-	podControl := controller.NewFakePodControl(podInformer)
-	return &masterUpgrader{
-			masterControl: masterControl,
-			podLister:     podInformer.Lister()},
-		masterControl, podControl, podInformer
+	fakeDeps := controller.NewFakeDependencies()
+	upgrader := &masterUpgrader{deps: fakeDeps}
+	masterControl := fakeDeps.DMMasterControl.(*dmapi.FakeMasterControl)
+	podControl := fakeDeps.PodControl.(*controller.FakePodControl)
+	podInformer := fakeDeps.KubeInformerFactory.Core().V1().Pods()
+	return upgrader, masterControl, podControl, podInformer
 }
 
 func newStatefulSetForMasterUpgrader() *apps.StatefulSet {

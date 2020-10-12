@@ -25,7 +25,6 @@ import (
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 )
 
@@ -39,19 +38,13 @@ type TiKVUpgrader interface {
 }
 
 type tikvUpgrader struct {
-	pdControl  pdapi.PDControlInterface
-	podControl controller.PodControlInterface
-	podLister  corelisters.PodLister
+	deps *controller.Dependencies
 }
 
 // NewTiKVUpgrader returns a tikv Upgrader
-func NewTiKVUpgrader(pdControl pdapi.PDControlInterface,
-	podControl controller.PodControlInterface,
-	podLister corelisters.PodLister) TiKVUpgrader {
+func NewTiKVUpgrader(deps *controller.Dependencies) TiKVUpgrader {
 	return &tikvUpgrader{
-		pdControl:  pdControl,
-		podControl: podControl,
-		podLister:  podLister,
+		deps: deps,
 	}
 }
 
@@ -109,7 +102,7 @@ func (tku *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, n
 			continue
 		}
 		podName := TikvPodName(tcName, i)
-		pod, err := tku.podLister.Pods(ns).Get(podName)
+		pod, err := tku.deps.PodLister.Pods(ns).Get(podName)
 		if err != nil {
 			return fmt.Errorf("tikvUpgrader.Upgrade: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
 		}
@@ -130,7 +123,7 @@ func (tku *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, n
 			continue
 		}
 
-		if controller.PodWebhookEnabled {
+		if tku.deps.CLIConfig.PodWebhookEnabled {
 			setUpgradePartition(newSet, i)
 			return nil
 		}
@@ -148,7 +141,7 @@ func (tku *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32,
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	upgradePodName := TikvPodName(tcName, ordinal)
-	upgradePod, err := tku.podLister.Pods(ns).Get(upgradePodName)
+	upgradePod, err := tku.deps.PodLister.Pods(ns).Get(upgradePodName)
 	if err != nil {
 		return fmt.Errorf("upgradeTiKVPod: failed to get pods %s for cluster %s/%s, error: %s", upgradePodName, ns, tcName, err)
 	}
@@ -200,7 +193,7 @@ func (tku *tikvUpgrader) readyToUpgrade(upgradePod *corev1.Pod, store v1alpha1.T
 func (tku *tikvUpgrader) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64, pod *corev1.Pod) error {
 	ns := tc.GetNamespace()
 	podName := pod.GetName()
-	err := controller.GetPDClient(tku.pdControl, tc).BeginEvictLeader(storeID)
+	err := controller.GetPDClient(tku.deps.PDControl, tc).BeginEvictLeader(storeID)
 	if err != nil {
 		klog.Errorf("tikv upgrader: failed to begin evict leader: %d, %s/%s, %v",
 			storeID, ns, podName, err)
@@ -212,7 +205,7 @@ func (tku *tikvUpgrader) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint
 	}
 	now := time.Now().Format(time.RFC3339)
 	pod.Annotations[EvictLeaderBeginTime] = now
-	_, err = tku.podControl.UpdatePod(tc, pod)
+	_, err = tku.deps.PodControl.UpdatePod(tc, pod)
 	if err != nil {
 		klog.Errorf("tikv upgrader: failed to set pod %s/%s annotation %s to %s, %v",
 			ns, podName, EvictLeaderBeginTime, now, err)
@@ -225,7 +218,7 @@ func (tku *tikvUpgrader) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint
 
 func (tku *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32) error {
 	// wait 5 second before delete evict scheduler，it is for auto test can catch these info
-	if controller.TestMode {
+	if tku.deps.CLIConfig.TestMode {
 		time.Sleep(5 * time.Second)
 	}
 	store := tku.getStoreByOrdinal(tc.GetName(), tc.Status.TiKV, ordinal)
@@ -235,9 +228,9 @@ func (tku *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32)
 	}
 
 	if tc.IsHeterogeneous() {
-		err = tku.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled()).EndEvictLeader(storeID)
+		err = tku.deps.PDControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled()).EndEvictLeader(storeID)
 	} else {
-		err = tku.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()).EndEvictLeader(storeID)
+		err = tku.deps.PDControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()).EndEvictLeader(storeID)
 	}
 
 	if err != nil {
