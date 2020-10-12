@@ -19,12 +19,11 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
-	"time"
+	"reflect"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/controller/autoscaler"
 	"github.com/pingcap/tidb-operator/pkg/controller/backup"
@@ -40,7 +39,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/leaderelection"
@@ -51,52 +49,22 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var (
-	printVersion          bool
-	workers               int
-	autoFailover          bool
-	pdFailoverPeriod      time.Duration
-	tikvFailoverPeriod    time.Duration
-	tidbFailoverPeriod    time.Duration
-	tiflashFailoverPeriod time.Duration
-	leaseDuration         = 15 * time.Second
-	renewDuration         = 5 * time.Second
-	retryPeriod           = 3 * time.Second
-	waitDuration          = 5 * time.Second
-)
-
-func init() {
-	flag.BoolVar(&printVersion, "V", false, "Show version and quit")
-	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
-	flag.IntVar(&workers, "workers", 5, "The number of workers that are allowed to sync concurrently. Larger number = more responsive management, but more CPU (and network) load")
-	flag.BoolVar(&controller.ClusterScoped, "cluster-scoped", true, "Whether tidb-operator should manage kubernetes cluster wide TiDB Clusters")
-	flag.BoolVar(&autoFailover, "auto-failover", true, "Auto failover")
-	flag.DurationVar(&pdFailoverPeriod, "pd-failover-period", time.Duration(5*time.Minute), "PD failover period default(5m)")
-	flag.DurationVar(&tikvFailoverPeriod, "tikv-failover-period", time.Duration(5*time.Minute), "TiKV failover period default(5m)")
-	flag.DurationVar(&tiflashFailoverPeriod, "tiflash-failover-period", time.Duration(5*time.Minute), "TiFlash failover period default(5m)")
-	flag.DurationVar(&tidbFailoverPeriod, "tidb-failover-period", time.Duration(5*time.Minute), "TiDB failover period")
-	flag.DurationVar(&controller.ResyncDuration, "resync-duration", time.Duration(30*time.Second), "Resync time of informer")
-	flag.BoolVar(&controller.TestMode, "test-mode", false, "whether tidb-operator run in test mode")
-	flag.StringVar(&controller.TidbBackupManagerImage, "tidb-backup-manager-image", "pingcap/tidb-backup-manager:latest", "The image of backup manager tool")
-	// TODO: actually we just want to use the same image with tidb-controller-manager, but DownwardAPI cannot get image ID, see if there is any better solution
-	flag.StringVar(&controller.TidbDiscoveryImage, "tidb-discovery-image", "pingcap/tidb-operator:latest", "The image of the tidb discovery service")
-	flag.BoolVar(&controller.PodWebhookEnabled, "pod-webhook-enabled", false, "Whether Pod admission webhook is enabled")
-	features.DefaultFeatureGate.AddFlag(flag.CommandLine)
-
-	flag.Parse()
-}
-
 func main() {
-	if printVersion {
+	cliCfg := controller.DefaultCLIConfig()
+	cliCfg.AddFlag(flag.CommandLine)
+	features.DefaultFeatureGate.AddFlag(flag.CommandLine)
+	flag.Parse()
+
+	if cliCfg.PrintVersion {
 		version.PrintVersionInfo()
 		os.Exit(0)
 	}
-	version.LogVersionInfo()
 
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	flag.CommandLine.VisitAll(func(flag *flag.Flag) {
+	version.LogVersionInfo()
+	flag.VisitAll(func(flag *flag.Flag) {
 		klog.V(1).Infof("FLAG: --%s=%q", flag.Name, flag.Value)
 	})
 
@@ -136,7 +104,7 @@ func main() {
 
 	// note that kubeCli here must not be the hijacked one
 	var operatorUpgrader upgrader.Interface
-	if controller.ClusterScoped {
+	if cliCfg.ClusterScoped {
 		operatorUpgrader = upgrader.NewUpgrader(kubeCli, cli, asCli, metav1.NamespaceAll)
 	} else {
 		operatorUpgrader = upgrader.NewUpgrader(kubeCli, cli, asCli, ns)
@@ -148,29 +116,7 @@ func main() {
 		kubeCli = helper.NewHijackClient(kubeCli, asCli)
 	}
 
-	var informerFactory informers.SharedInformerFactory
-	var kubeInformerFactory kubeinformers.SharedInformerFactory
-	var options []informers.SharedInformerOption
-	var kubeoptions []kubeinformers.SharedInformerOption
-	if !controller.ClusterScoped {
-		options = append(options, informers.WithNamespace(ns))
-		kubeoptions = append(kubeoptions, kubeinformers.WithNamespace(ns))
-	}
-	informerFactory = informers.NewSharedInformerFactoryWithOptions(cli, controller.ResyncDuration, options...)
-	kubeInformerFactory = kubeinformers.NewSharedInformerFactoryWithOptions(kubeCli, controller.ResyncDuration, kubeoptions...)
-
-	rl := resourcelock.EndpointsLock{
-		EndpointsMeta: metav1.ObjectMeta{
-			Namespace: ns,
-			Name:      "tidb-controller-manager",
-		},
-		Client: kubeCli.CoreV1(),
-		LockConfig: resourcelock.ResourceLockConfig{
-			Identity:      hostName,
-			EventRecorder: &record.FakeRecorder{},
-		},
-	}
-
+	deps := controller.NewDependencies(ns, cliCfg, cli, kubeCli, genericCli)
 	controllerCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -181,51 +127,52 @@ func main() {
 			klog.Fatalf("failed to upgrade: %v", err)
 		}
 
-		tcController := tidbcluster.NewController(kubeCli, cli, genericCli, informerFactory, kubeInformerFactory, autoFailover, pdFailoverPeriod, tikvFailoverPeriod, tidbFailoverPeriod, tiflashFailoverPeriod)
-		backupController := backup.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
-		restoreController := restore.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
-		bsController := backupschedule.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
-		tidbInitController := tidbinitializer.NewController(kubeCli, cli, genericCli, informerFactory, kubeInformerFactory)
-		tidbMonitorController := tidbmonitor.NewController(kubeCli, genericCli, cli, informerFactory, kubeInformerFactory)
-
-		var periodicityController *periodicity.Controller
-		if controller.PodWebhookEnabled {
-			periodicityController = periodicity.NewController(kubeCli, informerFactory, kubeInformerFactory)
+		// Define some nested types to simplify the codebase
+		type Controller interface {
+			Run(int, <-chan struct{})
+		}
+		type InformerFactory interface {
+			Start(stopCh <-chan struct{})
+			WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool
 		}
 
-		var autoScalerController *autoscaler.Controller
+		// Initialize all controllers
+		controllers := []Controller{
+			tidbcluster.NewController(deps),
+			backup.NewController(deps),
+			restore.NewController(deps),
+			backupschedule.NewController(deps),
+			tidbinitializer.NewController(deps),
+			tidbmonitor.NewController(deps),
+		}
+		if cliCfg.PodWebhookEnabled {
+			controllers = append(controllers, periodicity.NewController(deps))
+		}
 		if features.DefaultFeatureGate.Enabled(features.AutoScaling) {
-			autoScalerController = autoscaler.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
+			controllers = append(controllers, autoscaler.NewController(deps))
 		}
-		// Start informer factories after all controller are initialized.
-		informerFactory.Start(ctx.Done())
-		kubeInformerFactory.Start(ctx.Done())
 
-		// Wait for all started informers' cache were synced.
-		for v, synced := range informerFactory.WaitForCacheSync(wait.NeverStop) {
-			if !synced {
-				klog.Fatalf("error syncing informer for %v", v)
-			}
+		// Start informer factories after all controllers are initialized.
+		informerFactories := []InformerFactory{
+			deps.InformerFactory,
+			deps.KubeInformerFactory,
+			deps.LabelFilterKubeInformerFactory,
 		}
-		for v, synced := range kubeInformerFactory.WaitForCacheSync(wait.NeverStop) {
-			if !synced {
-				klog.Fatalf("error syncing informer for %v", v)
+		for _, f := range informerFactories {
+			f.Start(ctx.Done())
+			for v, synced := range f.WaitForCacheSync(wait.NeverStop) {
+				if !synced {
+					klog.Fatalf("error syncing informer for %v", v)
+				}
 			}
 		}
 		klog.Infof("cache of informer factories sync successfully")
 
-		go wait.Forever(func() { backupController.Run(workers, ctx.Done()) }, waitDuration)
-		go wait.Forever(func() { restoreController.Run(workers, ctx.Done()) }, waitDuration)
-		go wait.Forever(func() { bsController.Run(workers, ctx.Done()) }, waitDuration)
-		go wait.Forever(func() { tidbInitController.Run(workers, ctx.Done()) }, waitDuration)
-		go wait.Forever(func() { tidbMonitorController.Run(workers, ctx.Done()) }, waitDuration)
-		if controller.PodWebhookEnabled {
-			go wait.Forever(func() { periodicityController.Run(ctx.Done()) }, waitDuration)
+		// Start syncLoop for all controllers
+		for _, controller := range controllers {
+			c := controller
+			go wait.Forever(func() { c.Run(cliCfg.Workers, ctx.Done()) }, cliCfg.WaitDuration)
 		}
-		if features.DefaultFeatureGate.Enabled(features.AutoScaling) {
-			go wait.Forever(func() { autoScalerController.Run(workers, ctx.Done()) }, waitDuration)
-		}
-		wait.Forever(func() { tcController.Run(workers, ctx.Done()) }, waitDuration)
 	}
 	onStopped := func() {
 		klog.Fatalf("leader election lost")
@@ -234,16 +181,26 @@ func main() {
 	// leader election for multiple tidb-controller-manager instances
 	go wait.Forever(func() {
 		leaderelection.RunOrDie(controllerCtx, leaderelection.LeaderElectionConfig{
-			Lock:          &rl,
-			LeaseDuration: leaseDuration,
-			RenewDeadline: renewDuration,
-			RetryPeriod:   retryPeriod,
+			Lock: &resourcelock.EndpointsLock{
+				EndpointsMeta: metav1.ObjectMeta{
+					Namespace: ns,
+					Name:      "tidb-controller-manager",
+				},
+				Client: kubeCli.CoreV1(),
+				LockConfig: resourcelock.ResourceLockConfig{
+					Identity:      hostName,
+					EventRecorder: &record.FakeRecorder{},
+				},
+			},
+			LeaseDuration: cliCfg.LeaseDuration,
+			RenewDeadline: cliCfg.RenewDuration,
+			RetryPeriod:   cliCfg.RetryPeriod,
 			Callbacks: leaderelection.LeaderCallbacks{
 				OnStartedLeading: onStarted,
 				OnStoppedLeading: onStopped,
 			},
 		})
-	}, waitDuration)
+	}, cliCfg.WaitDuration)
 
 	klog.Fatal(http.ListenAndServe(":6060", nil))
 }

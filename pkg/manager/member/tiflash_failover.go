@@ -18,22 +18,21 @@ import (
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 )
 
 // TODO reuse tikvFailover since we share the same logic
 type tiflashFailover struct {
-	tiflashFailoverPeriod time.Duration
-	recorder              record.EventRecorder
+	deps *controller.Dependencies
 }
 
 // NewTiFlashFailover returns a tiflash Failover
-func NewTiFlashFailover(tiflashFailoverPeriod time.Duration, recorder record.EventRecorder) Failover {
-	return &tiflashFailover{tiflashFailoverPeriod, recorder}
+func NewTiFlashFailover(deps *controller.Dependencies) Failover {
+	return &tiflashFailover{deps: deps}
 }
 
 func (tff *tiflashFailover) isPodDesired(tc *v1alpha1.TidbCluster, podName string) bool {
@@ -61,7 +60,7 @@ func (tff *tiflashFailover) Failover(tc *v1alpha1.TidbCluster) error {
 			// (before it enters into Offline/Tombstone state)
 			continue
 		}
-		deadline := store.LastTransitionTime.Add(tff.tiflashFailoverPeriod)
+		deadline := store.LastTransitionTime.Add(tff.deps.CLIConfig.TiFlashFailoverPeriod)
 		exist := false
 		for _, failureStore := range tc.Status.TiFlash.FailureStores {
 			if failureStore.PodName == podName {
@@ -85,7 +84,7 @@ func (tff *tiflashFailover) Failover(tc *v1alpha1.TidbCluster) error {
 					CreatedAt: metav1.Now(),
 				}
 				msg := fmt.Sprintf("store [%s] is Down", store.ID)
-				tff.recorder.Event(tc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "tiflash", podName, msg))
+				tff.deps.Recorder.Event(tc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "tiflash", podName, msg))
 			}
 		}
 	}
@@ -115,7 +114,7 @@ func NewFakeTiFlashFailover() Failover {
 	return &fakeTiFlashFailover{}
 }
 
-func (ftff *fakeTiFlashFailover) Failover(_ *v1alpha1.TidbCluster) error {
+func (_ *fakeTiFlashFailover) Failover(_ *v1alpha1.TidbCluster) error {
 	return nil
 }
 
