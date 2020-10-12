@@ -611,6 +611,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			tc := fixture.GetTidbCluster(ns, clusterName, "nightly")
 			tc.Spec.PD.Replicas = 1
 			tc.Spec.TiKV.Replicas = 3
+			tc.Spec.TiKV.Version = pointer.StringPtr("v4.0.6")
 			tc.Spec.TiDB.Replicas = 2
 			tc.Spec.PD.Config.PDServerCfg = &v1alpha1.PDServerConfig{
 				MetricStorage: pointer.StringPtr("http://monitor-prometheus:9090"),
