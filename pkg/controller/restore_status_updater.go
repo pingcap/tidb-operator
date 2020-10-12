@@ -45,9 +45,9 @@ func NewRealRestoreConditionUpdater(
 	restoreLister listers.RestoreLister,
 	recorder record.EventRecorder) RestoreConditionUpdaterInterface {
 	return &realRestoreConditionUpdater{
-		cli,
-		restoreLister,
-		recorder,
+		cli:           cli,
+		restoreLister: restoreLister,
+		recorder:      recorder,
 	}
 }
 

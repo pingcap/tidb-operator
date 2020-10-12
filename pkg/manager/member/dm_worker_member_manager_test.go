@@ -35,8 +35,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	kubeinformers "k8s.io/client-go/informers"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -86,8 +84,8 @@ func TestWorkerMemberManagerSyncCreate(t *testing.T) {
 		}
 
 		syncErr := wmm.SyncDM(dc)
-		svc, getSvcErr := wmm.svcLister.Services(ns).Get(controller.DMWorkerPeerMemberName(dcName))
-		set, getStsErr := wmm.setLister.StatefulSets(ns).Get(controller.DMWorkerMemberName(dcName))
+		svc, getSvcErr := wmm.deps.ServiceLister.Services(ns).Get(controller.DMWorkerPeerMemberName(dcName))
+		set, getStsErr := wmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.DMWorkerMemberName(dcName))
 
 		cmName := controller.DMWorkerMemberName(dcName)
 		if dc.Spec.Worker != nil {
@@ -251,8 +249,8 @@ func TestWorkerMemberManagerSyncUpdate(t *testing.T) {
 		}
 
 		syncErr := mmm.SyncDM(dc)
-		svc, getSvcErr := mmm.svcLister.Services(ns).Get(controller.DMWorkerPeerMemberName(dcName))
-		set, getStsErr := mmm.setLister.StatefulSets(ns).Get(controller.DMWorkerMemberName(dcName))
+		svc, getSvcErr := mmm.deps.ServiceLister.Services(ns).Get(controller.DMWorkerPeerMemberName(dcName))
+		set, getStsErr := mmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.DMWorkerMemberName(dcName))
 
 		cmName := controller.DMWorkerMemberName(dcName)
 		if dc.Spec.Worker != nil {
@@ -527,9 +525,9 @@ func TestWorkerMemberManagerUpgrade(t *testing.T) {
 		err := wmm.SyncDM(dc)
 		g.Expect(err).To(Succeed())
 
-		_, err = wmm.svcLister.Services(ns).Get(controller.DMWorkerPeerMemberName(dcName))
+		_, err = wmm.deps.ServiceLister.Services(ns).Get(controller.DMWorkerPeerMemberName(dcName))
 		g.Expect(err).NotTo(HaveOccurred())
-		_, err = wmm.setLister.StatefulSets(ns).Get(controller.DMWorkerMemberName(dcName))
+		_, err = wmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.DMWorkerMemberName(dcName))
 		g.Expect(err).NotTo(HaveOccurred())
 
 		dc1 := dc.DeepCopy()
@@ -543,7 +541,7 @@ func TestWorkerMemberManagerUpgrade(t *testing.T) {
 		}
 
 		if test.expectStatefulSetFn != nil {
-			set, err := wmm.setLister.StatefulSets(ns).Get(controller.DMWorkerMemberName(dcName))
+			set, err := wmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.DMWorkerMemberName(dcName))
 			test.expectStatefulSetFn(g, set, err)
 		}
 		if test.expectDMClusterFn != nil {
@@ -636,7 +634,7 @@ func TestWorkerSyncConfigUpdate(t *testing.T) {
 		}
 
 		syncErr := mmm.SyncDM(dc)
-		set, getStsErr := mmm.setLister.StatefulSets(ns).Get(controller.DMWorkerMemberName(dcName))
+		set, getStsErr := mmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.DMWorkerMemberName(dcName))
 		cmList := &corev1.ConfigMapList{}
 		g.Expect(err).To(Succeed())
 		listCmErr := controls.generic.FakeCli.List(context.TODO(), cmList)
@@ -698,43 +696,24 @@ type workerFakeControls struct {
 }
 
 func newFakeWorkerMemberManager() (*workerMemberManager, *workerFakeControls, *workerFakeIndexers, *dmapi.FakeMasterControl) {
-	// cli := fake.NewSimpleClientset()
-	kubeCli := kubefake.NewSimpleClientset()
-	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1().StatefulSets()
-	// dcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().DMClusters()
-	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
-	epsInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Endpoints()
-	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
-	setControl := controller.NewFakeStatefulSetControl(setInformer)
-	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer)
-	genericControl := controller.NewFakeGenericControl()
-	masterControl := dmapi.NewFakeMasterControl(kubeCli)
-	workerScaler := NewFakeWorkerScaler()
-	autoFailover := true
-	workerFailover := NewFakeWorkerFailover()
+	fakeDeps := controller.NewFakeDependencies()
+	fakeDeps.CLIConfig.AutoFailover = true
+	masterControl := fakeDeps.DMMasterControl.(*dmapi.FakeMasterControl)
 	pmm := &workerMemberManager{
-		masterControl,
-		setControl,
-		svcControl,
-		controller.NewTypedControl(genericControl),
-		setInformer.Lister(),
-		svcInformer.Lister(),
-		podInformer.Lister(),
-		workerScaler,
-		autoFailover,
-		workerFailover,
+		deps:     fakeDeps,
+		scaler:   NewFakeWorkerScaler(),
+		failover: NewFakeWorkerFailover(),
 	}
 	controls := &workerFakeControls{
-		svc:     svcControl,
-		set:     setControl,
-		generic: genericControl,
+		svc:     fakeDeps.ServiceControl.(*controller.FakeServiceControl),
+		set:     fakeDeps.StatefulSetControl.(*controller.FakeStatefulSetControl),
+		generic: fakeDeps.GenericControl.(*controller.FakeGenericControl),
 	}
 	indexers := &workerFakeIndexers{
-		svc: svcInformer.Informer().GetIndexer(),
-		set: setInformer.Informer().GetIndexer(),
-		pod: podInformer.Informer().GetIndexer(),
+		svc: fakeDeps.KubeInformerFactory.Core().V1().Services().Informer().GetIndexer(),
+		set: fakeDeps.KubeInformerFactory.Apps().V1().StatefulSets().Informer().GetIndexer(),
+		pod: fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer(),
 	}
-
 	return pmm, controls, indexers, masterControl
 }
 
