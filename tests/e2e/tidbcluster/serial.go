@@ -810,21 +810,21 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 				autoTc = *tcPtr
 
-				if autoTc.Spec.TiKV.Replicas > 0 {
+				if autoTc.Spec.TiKV.Replicas > 1 {
 					framework.Logf("autoscaling tikv cluster is not scaled in, replicas=%d", autoTc.Spec.TiKV.Replicas)
 					return false, nil
 				}
 
-				if autoTc.Spec.TiKV.Replicas <= 0 {
+				if autoTc.Spec.TiKV.Replicas <= 1 {
 					framework.Logf("autoscaling tikv cluster tc[%s/%s] is scaled in", autoTc.Namespace, autoTc.Name)
 					return true, nil
 				}
 
 				return false, nil
 			})
-
-			framework.ExpectNoError(err, "failed to check shut down autoscaling tikv cluster")
-			framework.Logf("success to check shut down autoscaling tikv cluster")
+			framework.RunKubectl("logs", "-n", ns, "auto-scaling-pd-0")
+			framework.ExpectNoError(err, "failed to check scale in autoscaling tikv cluster")
+			framework.Logf("success to check scale in autoscaling tikv cluster")
 
 			err = wait.Poll(10*time.Second, 10*time.Minute, func() (done bool, err error) {
 				tcList, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).List(metav1.ListOptions{
