@@ -168,69 +168,28 @@ func validateTiFlashConfig(config *v1alpha1.TiFlashConfigWraper, path *field.Pat
 			}
 		}
 
-		if v := config.Common.Get("flash.flash_cluster.log"); v != nil {
-			if value, err := v.AsString(); err == nil {
-				splitPath := strings.Split(value, string(os.PathSeparator))
-				// The log path should be at least /dir/base.log
-				if len(splitPath) < 3 {
-					allErrs = append(allErrs, field.Invalid(path.Child("config.config.flash.flash_cluster.log"),
-						value,
-						"log path should include at least one level dir."))
-				}
-			} else {
-				allErrs = append(allErrs, field.Invalid(path.Child("config.config.flash.flash_cluster.log"),
-					v.Interface(),
-					fmt.Sprintf("should be string type, but is: %v", reflect.TypeOf(v.Interface())),
-				))
-			}
+		var fields = []string{
+			"flash.flash_cluster.log",
+			"flash.proxy.log-file",
+			"logger.log",
+			"logger.errorlog",
 		}
-
-		if v := config.Common.Get("flash.proxy.log-file"); v != nil {
-			if value, err := v.AsString(); err == nil {
-				splitPath := strings.Split(value, string(os.PathSeparator))
-				// The log path should be at least /dir/base.log
-				if len(splitPath) < 3 {
-					allErrs = append(allErrs, field.Invalid(path.Child("config.config.flash.proxy.log-file"),
-						value,
-						"log path should include at least one level dir."))
+		for _, pathField := range fields {
+			if v := config.Common.Get("flash.flash_cluster.log"); v != nil {
+				if value, err := v.AsString(); err == nil {
+					splitPath := strings.Split(value, string(os.PathSeparator))
+					// The log path should be at least /dir/base.log
+					if len(splitPath) < 3 {
+						allErrs = append(allErrs, field.Invalid(path.Child("config.config."+pathField),
+							value,
+							"log path should include at least one level dir."))
+					}
+				} else {
+					allErrs = append(allErrs, field.Invalid(path.Child("config.config", pathField),
+						v.Interface(),
+						fmt.Sprintf("should be string type, but is: %v", reflect.TypeOf(v.Interface())),
+					))
 				}
-			} else {
-				allErrs = append(allErrs, field.Invalid(path.Child("config.config.flash.proxy.log-file"),
-					v.Interface(),
-					fmt.Sprintf("should be string type, but is: %v", reflect.TypeOf(v.Interface())),
-				))
-			}
-		}
-		if v := config.Common.Get("logger.log"); v != nil {
-			if value, err := v.AsString(); err == nil {
-				splitPath := strings.Split(value, string(os.PathSeparator))
-				// The log path should be at least /dir/base.log
-				if len(splitPath) < 3 {
-					allErrs = append(allErrs, field.Invalid(path.Child("config.config.logger.log"),
-						value,
-						"log path should include at least one level dir."))
-				}
-			} else {
-				allErrs = append(allErrs, field.Invalid(path.Child("config.config.logger.log"),
-					v.Interface(),
-					fmt.Sprintf("should be string type, but is: %v", reflect.TypeOf(v.Interface())),
-				))
-			}
-		}
-		if v := config.Common.Get("logger.errorlog"); v != nil {
-			if value, err := v.AsString(); err == nil {
-				splitPath := strings.Split(value, string(os.PathSeparator))
-				// The log path should be at least /dir/base.log
-				if len(splitPath) < 3 {
-					allErrs = append(allErrs, field.Invalid(path.Child("config.config.logger.errorlog"),
-						value,
-						"log path should include at least one level dir."))
-				}
-			} else {
-				allErrs = append(allErrs, field.Invalid(path.Child("config.config.logger.errorlog"),
-					v.Interface(),
-					fmt.Sprintf("should be string type, but is: %v", reflect.TypeOf(v.Interface())),
-				))
 			}
 		}
 	}
