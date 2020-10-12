@@ -54,7 +54,7 @@ func TestValidateAnnotations(t *testing.T) {
 					},
 					TiDB: &v1alpha1.TiDBSpec{
 						BaseImage: "pingcap/tidb",
-						Config:    &v1alpha1.TiDBConfig{},
+						Config:    v1alpha1.NewTiDBConfig(),
 					},
 				},
 			},
@@ -78,7 +78,7 @@ func TestValidateAnnotations(t *testing.T) {
 					},
 					TiDB: &v1alpha1.TiDBSpec{
 						BaseImage: "pingcap/tidb",
-						Config:    &v1alpha1.TiDBConfig{},
+						Config:    v1alpha1.NewTiDBConfig(),
 					},
 				},
 			},
@@ -119,7 +119,7 @@ func TestValidateAnnotations(t *testing.T) {
 					},
 					TiDB: &v1alpha1.TiDBSpec{
 						BaseImage: "pingcap/tidb",
-						Config:    &v1alpha1.TiDBConfig{},
+						Config:    v1alpha1.NewTiDBConfig(),
 					},
 				},
 			},
@@ -155,7 +155,7 @@ func TestValidateAnnotations(t *testing.T) {
 					},
 					TiDB: &v1alpha1.TiDBSpec{
 						BaseImage: "pingcap/tidb",
-						Config:    &v1alpha1.TiDBConfig{},
+						Config:    v1alpha1.NewTiDBConfig(),
 					},
 				},
 			},

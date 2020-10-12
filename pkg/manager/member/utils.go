@@ -14,17 +14,16 @@
 package member
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 
-	"github.com/BurntSushi/toml"
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	"github.com/pingcap/tidb-operator/pkg/util/toml"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -203,14 +202,7 @@ func FindConfigMapVolume(podSpec *corev1.PodSpec, pred func(string) bool) string
 
 // MarshalTOML is a template function that try to marshal a go value to toml
 func MarshalTOML(v interface{}) ([]byte, error) {
-	buff := new(bytes.Buffer)
-	encoder := toml.NewEncoder(buff)
-	err := encoder.Encode(v)
-	if err != nil {
-		return nil, err
-	}
-	data := buff.Bytes()
-	return data, nil
+	return toml.Marshal(v)
 }
 
 func UnmarshalTOML(b []byte, obj interface{}) error {
