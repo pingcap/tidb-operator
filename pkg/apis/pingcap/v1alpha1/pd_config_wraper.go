@@ -49,7 +49,7 @@ func (c *PDConfigWraper) MarshalJSON() ([]byte, error) {
 // for compatibility, if we use a map[string]interface{} to Unmarshal directly,
 // we can not distinct the type between integer and float for toml.
 func (c *PDConfigWraper) UnmarshalJSON(data []byte) error {
-	var deprecated *PDConfig
+	deprecated := new(PDConfig)
 	var err error
 	c.GenericConfig, err = unmarshalJSON(data, deprecated)
 	return err
