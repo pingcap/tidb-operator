@@ -49,7 +49,7 @@ func (c *TiKVConfigWraper) MarshalJSON() ([]byte, error) {
 // for compatibility, if we use a map[string]interface{} to Unmarshal directly,
 // we can not distinct the type between integer and float for toml.
 func (c *TiKVConfigWraper) UnmarshalJSON(data []byte) error {
-	var deprecated *TiKVCfConfig
+	deprecated := new(TiKVConfig)
 	var err error
 	c.GenericConfig, err = unmarshalJSON(data, deprecated)
 	return err
