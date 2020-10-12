@@ -16406,79 +16406,15 @@ spec:
           properties:
             tidb:
               properties:
-                currentReplicas:
-                  format: int32
-                  type: integer
                 lastAutoScalingTimestamp:
                   format: date-time
                   type: string
-                metrics:
-                  items:
-                    properties:
-                      availableStorage:
-                        type: string
-                      baselineAvailableStorage:
-                        type: string
-                      capacityStorage:
-                        type: string
-                      currentValue:
-                        type: string
-                      name:
-                        type: string
-                      storagePressure:
-                        type: boolean
-                      storagePressureStartTime:
-                        format: date-time
-                        type: string
-                      thresholdValue:
-                        type: string
-                    required:
-                    - name
-                    type: object
-                  type: array
-                recommendedReplicas:
-                  format: int32
-                  type: integer
-              required:
-              - currentReplicas
               type: object
             tikv:
               properties:
-                currentReplicas:
-                  format: int32
-                  type: integer
                 lastAutoScalingTimestamp:
                   format: date-time
                   type: string
-                metrics:
-                  items:
-                    properties:
-                      availableStorage:
-                        type: string
-                      baselineAvailableStorage:
-                        type: string
-                      capacityStorage:
-                        type: string
-                      currentValue:
-                        type: string
-                      name:
-                        type: string
-                      storagePressure:
-                        type: boolean
-                      storagePressureStartTime:
-                        format: date-time
-                        type: string
-                      thresholdValue:
-                        type: string
-                    required:
-                    - name
-                    type: object
-                  type: array
-                recommendedReplicas:
-                  format: int32
-                  type: integer
-              required:
-              - currentReplicas
               type: object
           type: object
       type: object
