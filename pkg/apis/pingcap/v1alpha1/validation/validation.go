@@ -160,6 +160,11 @@ func validateTiFlashConfig(config *v1alpha1.TiFlashConfigWraper, path *field.Pat
 						value,
 						"overlap_threshold must be in the range of [0,1]."))
 				}
+			} else {
+				allErrs = append(allErrs, field.Invalid(path.Child("config.config.flash.overlap_threshold"),
+					v.Interface(),
+					fmt.Sprintf("should be float type, but is: %v", reflect.TypeOf(v.Interface())),
+				))
 			}
 		}
 
@@ -172,6 +177,11 @@ func validateTiFlashConfig(config *v1alpha1.TiFlashConfigWraper, path *field.Pat
 						value,
 						"log path should include at least one level dir."))
 				}
+			} else {
+				allErrs = append(allErrs, field.Invalid(path.Child("config.config.flash.flash_cluster.log"),
+					v.Interface(),
+					fmt.Sprintf("should be string type, but is: %v", reflect.TypeOf(v.Interface())),
+				))
 			}
 		}
 
@@ -184,6 +194,11 @@ func validateTiFlashConfig(config *v1alpha1.TiFlashConfigWraper, path *field.Pat
 						value,
 						"log path should include at least one level dir."))
 				}
+			} else {
+				allErrs = append(allErrs, field.Invalid(path.Child("config.config.flash.proxy.log-file"),
+					v.Interface(),
+					fmt.Sprintf("should be string type, but is: %v", reflect.TypeOf(v.Interface())),
+				))
 			}
 		}
 		if v := config.Common.Get("logger.log"); v != nil {
@@ -195,6 +210,11 @@ func validateTiFlashConfig(config *v1alpha1.TiFlashConfigWraper, path *field.Pat
 						value,
 						"log path should include at least one level dir."))
 				}
+			} else {
+				allErrs = append(allErrs, field.Invalid(path.Child("config.config.logger.log"),
+					v.Interface(),
+					fmt.Sprintf("should be string type, but is: %v", reflect.TypeOf(v.Interface())),
+				))
 			}
 		}
 		if v := config.Common.Get("logger.errorlog"); v != nil {
@@ -206,6 +226,11 @@ func validateTiFlashConfig(config *v1alpha1.TiFlashConfigWraper, path *field.Pat
 						value,
 						"log path should include at least one level dir."))
 				}
+			} else {
+				allErrs = append(allErrs, field.Invalid(path.Child("config.config.logger.errorlog"),
+					v.Interface(),
+					fmt.Sprintf("should be string type, but is: %v", reflect.TypeOf(v.Interface())),
+				))
 			}
 		}
 	}
