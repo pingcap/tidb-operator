@@ -119,18 +119,17 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		}
 		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 		crdUtil = tests.NewCrdTestUtil(cli, c, asCli, stsGetter)
+
+		ginkgo.By("Installing cert-manager")
+		err = installCertManager(f.ClientSet)
+		framework.ExpectNoError(err, "failed to install cert-manager")
+
 	})
 
 	ginkgo.AfterEach(func() {
 		if fwCancel != nil {
 			fwCancel()
 		}
-	})
-
-	ginkgo.BeforeSuite(func() {
-		ginkgo.By("Installing cert-manager")
-		err := installCertManager(f.ClientSet)
-		framework.ExpectNoError(err, "failed to install cert-manager")
 	})
 
 	ginkgo.Context("Basic: Deploying, Scaling, Update Configuration", func() {
