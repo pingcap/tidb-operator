@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/semver"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -124,6 +125,7 @@ func validateTiKVSpec(spec *v1alpha1.TiKVSpec, fldPath *field.Path) field.ErrorL
 	if len(spec.DataSubDir) > 0 {
 		allErrs = append(allErrs, validateLocalDescendingPath(spec.DataSubDir, fldPath.Child("dataSubDir"))...)
 	}
+	allErrs = append(allErrs, validateTimeDurationStr(spec.EvictLeaderTimeout, fldPath.Child("evictLeaderTimeout"))...)
 	return allErrs
 }
 
@@ -444,24 +446,34 @@ func disallowUsingLegacyAPIInNewCluster(old, tc *v1alpha1.TidbCluster) field.Err
 	return allErrs
 }
 
-func validateUpdatePDConfig(old, conf *v1alpha1.PDConfig, path *field.Path) field.ErrorList {
+func validateUpdatePDConfig(old, conf *v1alpha1.PDConfigWraper, path *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	// for newly created cluster, both old and new are non-nil, guaranteed by validation
 	if old == nil || conf == nil {
 		return allErrs
 	}
 
-	if conf.Security != nil && len(conf.Security.CertAllowedCN) > 1 {
-		allErrs = append(allErrs, field.Invalid(path.Child("security.cert-allowed-cn"), conf.Security.CertAllowedCN,
-			"Only one CN is currently supported"))
+	if v := conf.Get("security.cert-allowed-cn"); v != nil {
+		cn, err := v.AsStringSlice()
+		if err != nil {
+			allErrs = append(allErrs, field.Invalid(path.Child("security.cert-allowed-cn"), v.Interface(), err.Error()))
+		} else if len(cn) > 1 {
+			allErrs = append(allErrs, field.Invalid(path.Child("security.cert-allowed-cn"), v.Interface(),
+				"Only one CN is currently supported"))
+		}
 	}
 
-	if !reflect.DeepEqual(old.Schedule, conf.Schedule) {
-		allErrs = append(allErrs, field.Invalid(path.Child("schedule"), conf.Schedule,
+	oldSche := old.Get("schedule")
+	newSche := conf.Get("schedule")
+	if !reflect.DeepEqual(oldSche.Interface(), newSche.Interface()) {
+		allErrs = append(allErrs, field.Invalid(path.Child("schedule"), newSche.Interface(),
 			"PD Schedule Config is immutable through CRD, please modify with pd-ctl instead."))
 	}
-	if !reflect.DeepEqual(old.Replication, conf.Replication) {
-		allErrs = append(allErrs, field.Invalid(path.Child("replication"), conf.Replication,
+
+	oldRepl := old.Get("replication")
+	newRepl := conf.Get("replication")
+	if !reflect.DeepEqual(oldRepl, newRepl) {
+		allErrs = append(allErrs, field.Invalid(path.Child("replication"), newRepl.Interface(),
 			"PD Replication Config is immutable through CRD, please modify with pd-ctl instead."))
 	}
 	return allErrs
@@ -520,6 +532,19 @@ func validatePathNoBacksteps(targetPath string, fldPath *field.Path) field.Error
 		if item == ".." {
 			allErrs = append(allErrs, field.Invalid(fldPath, targetPath, "must not contain '..'"))
 			break // even for `../../..`, one error is sufficient to make the point
+		}
+	}
+	return allErrs
+}
+
+func validateTimeDurationStr(timeStr *string, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if timeStr != nil {
+		d, err := time.ParseDuration(*timeStr)
+		if err != nil {
+			allErrs = append(allErrs, field.Invalid(fldPath, timeStr, "mush be a valid Go time duration string, e.g. 3m"))
+		} else if d <= 0 {
+			allErrs = append(allErrs, field.Invalid(fldPath, timeStr, "must be a positive Go time duration"))
 		}
 	}
 	return allErrs

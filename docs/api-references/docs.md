@@ -7244,10 +7244,6 @@ time.Duration
 </table>
 <h3 id="pdconfig">PDConfig</h3>
 <p>
-(<em>Appears on:</em>
-<a href="#pdspec">PDSpec</a>)
-</p>
-<p>
 <p>PDConfig is the configuration of pd-server</p>
 </p>
 <table>
@@ -7571,6 +7567,33 @@ DashboardConfig
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pdconfigwraper">PDConfigWraper</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pdspec">PDSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>GenericConfig</code></br>
+<em>
+github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>
@@ -8035,7 +8058,7 @@ Immutable, change should be made through pd-ctl after cluster creation</p>
 </tr>
 <tr>
 <td>
-<code>strictly-match-label,string</code></br>
+<code>strictly-match-label</code></br>
 <em>
 bool
 </em>
@@ -8049,7 +8072,7 @@ Imported from v3.1.0</p>
 </tr>
 <tr>
 <td>
-<code>enable-placement-rules,string</code></br>
+<code>enable-placement-rules</code></br>
 <em>
 bool
 </em>
@@ -8311,7 +8334,7 @@ Immutable, change should be made through pd-ctl after cluster creation</p>
 </tr>
 <tr>
 <td>
-<code>disable-raft-learner,string</code></br>
+<code>disable-raft-learner</code></br>
 <em>
 bool
 </em>
@@ -8324,7 +8347,7 @@ Immutable, change should be made through pd-ctl after cluster creation</p>
 </tr>
 <tr>
 <td>
-<code>disable-remove-down-replica,string</code></br>
+<code>disable-remove-down-replica</code></br>
 <em>
 bool
 </em>
@@ -8338,7 +8361,7 @@ Immutable, change should be made through pd-ctl after cluster creation</p>
 </tr>
 <tr>
 <td>
-<code>disable-replace-offline-replica,string</code></br>
+<code>disable-replace-offline-replica</code></br>
 <em>
 bool
 </em>
@@ -8352,7 +8375,7 @@ Immutable, change should be made through pd-ctl after cluster creation</p>
 </tr>
 <tr>
 <td>
-<code>disable-make-up-replica,string</code></br>
+<code>disable-make-up-replica</code></br>
 <em>
 bool
 </em>
@@ -8366,7 +8389,7 @@ Immutable, change should be made through pd-ctl after cluster creation</p>
 </tr>
 <tr>
 <td>
-<code>disable-remove-extra-replica,string</code></br>
+<code>disable-remove-extra-replica</code></br>
 <em>
 bool
 </em>
@@ -8380,7 +8403,7 @@ Immutable, change should be made through pd-ctl after cluster creation</p>
 </tr>
 <tr>
 <td>
-<code>disable-location-replacement,string</code></br>
+<code>disable-location-replacement</code></br>
 <em>
 bool
 </em>
@@ -8394,7 +8417,7 @@ Immutable, change should be made through pd-ctl after cluster creation</p>
 </tr>
 <tr>
 <td>
-<code>disable-namespace-relocation,string</code></br>
+<code>disable-namespace-relocation</code></br>
 <em>
 bool
 </em>
@@ -8435,7 +8458,7 @@ map[string]string
 </tr>
 <tr>
 <td>
-<code>enable-one-way-merge,string</code></br>
+<code>enable-one-way-merge</code></br>
 <em>
 bool
 </em>
@@ -8448,7 +8471,7 @@ Imported from v3.1.0</p>
 </tr>
 <tr>
 <td>
-<code>enable-cross-table-merge,string</code></br>
+<code>enable-cross-table-merge</code></br>
 <em>
 bool
 </em>
@@ -8603,7 +8626,7 @@ string
 <tbody>
 <tr>
 <td>
-<code>use-region-storage,string</code></br>
+<code>use-region-storage</code></br>
 <em>
 bool
 </em>
@@ -8774,8 +8797,8 @@ Defaults to &ldquo;&rdquo; (volume&rsquo;s root).</p>
 <td>
 <code>config</code></br>
 <em>
-<a href="#pdconfig">
-PDConfig
+<a href="#pdconfigwraper">
+PDConfigWraper
 </a>
 </em>
 </td>
@@ -13645,10 +13668,6 @@ CoprocessorCache
 </table>
 <h3 id="tikvconfig">TiKVConfig</h3>
 <p>
-(<em>Appears on:</em>
-<a href="#tikvspec">TiKVSpec</a>)
-</p>
-<p>
 <p>TiKVConfig is the configuration of TiKV.</p>
 </p>
 <table>
@@ -13927,6 +13946,33 @@ TiKVBackupConfig
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tikvconfigwraper">TiKVConfigWraper</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tikvspec">TiKVSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>GenericConfig</code></br>
+<em>
+github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>
@@ -16828,8 +16874,8 @@ Defaults to &ldquo;&rdquo; (volume&rsquo;s root).</p>
 <td>
 <code>config</code></br>
 <em>
-<a href="#tikvconfig">
-TiKVConfig
+<a href="#tikvconfigwraper">
+TiKVConfigWraper
 </a>
 </em>
 </td>
@@ -16860,6 +16906,19 @@ bool
 <td>
 <em>(Optional)</em>
 <p>MountClusterClientSecret indicates whether to mount <code>cluster-client-secret</code> to the Pod</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>evictLeaderTimeout</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EvictLeaderTimeout indicates the timeout to evict tikv leader, in the format of Go Duration.
+Defaults to 3m</p>
 </td>
 </tr>
 </tbody>
