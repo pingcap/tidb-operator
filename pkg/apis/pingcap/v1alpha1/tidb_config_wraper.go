@@ -78,10 +78,6 @@ func unmarshalJSON(data []byte, x interface{}) (g *config.GenericConfig, err err
 	case string:
 		tomlData = []byte(s)
 	case map[string]interface{}:
-		if x == nil {
-			panic("x should not be nil")
-		}
-
 		err = json.Unmarshal(data, x)
 		if err != nil {
 			return nil, errors.AddStack(err)
