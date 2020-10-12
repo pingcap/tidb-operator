@@ -620,7 +620,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 			_, err := cli.PingcapV1alpha1().TidbClusters(ns).Create(tc)
 			framework.ExpectNoError(err, "Create TidbCluster error")
-			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err, "Check TidbCluster error")
 			monitor := fixture.NewTidbMonitor("monitor", ns, tc, false, false)
 
