@@ -7,6 +7,7 @@ spec:
   timezone: UTC
   configUpdateStrategy: RollingUpdate
   pvReclaimPolicy: Retain
+  enableDynamicConfiguration: true
   schedulerName: tidb-scheduler
   pd:
     baseImage: pingcap/pd

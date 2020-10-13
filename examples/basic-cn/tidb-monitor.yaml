@@ -3,9 +3,6 @@ kind: TidbMonitor
 metadata:
   name: basic
 spec:
-  pvReclaimPolicy: Retain
-  enableDynamicConfiguration: true
-  configUpdateStrategy: RollingUpdate
   clusters:
   - name: basic
   prometheus:

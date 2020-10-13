@@ -6,21 +6,26 @@ spec:
   version: v3.0.8
   timezone: UTC
   pvReclaimPolicy: Retain
+  enableDynamicConfiguration: true
+  configUpdateStrategy: RollingUpdate
   pd:
     baseImage: pingcap/pd
     replicas: 3
     requests:
       storage: "1Gi"
+    mountClusterClientSecret: true
     config: {}
   tikv:
     baseImage: pingcap/tikv
     replicas: 3
     requests:
       storage: "1Gi"
+    mountClusterClientSecret: true
     config: {}
   tidb:
     baseImage: pingcap/tidb
     replicas: 2
     service:
       type: ClusterIP
+    mountClusterClientSecret: true
     config: {}
