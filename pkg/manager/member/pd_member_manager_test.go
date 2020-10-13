@@ -51,11 +51,12 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 		pdSvcCreated               bool
 		pdPeerSvcCreated           bool
 		setCreated                 bool
+		tls                        bool
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
-		tc := newTidbClusterForPD()
+		tc := newTidbClusterForPD(test.tls)
 		ns := tc.Namespace
 		tcName := tc.Name
 		oldSpec := tc.Spec
@@ -126,6 +127,18 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 			setCreated:                 true,
 		},
 		{
+			name:                       "normal with tls",
+			prepare:                    nil,
+			errWhenCreateStatefulSet:   false,
+			errWhenCreatePDService:     false,
+			errWhenCreatePDPeerService: false,
+			errExpectFn:                errExpectRequeue,
+			pdSvcCreated:               true,
+			pdPeerSvcCreated:           true,
+			setCreated:                 true,
+			tls:                        true,
+		},
+		{
 			name:                       "error when create statefulset",
 			prepare:                    nil,
 			errWhenCreateStatefulSet:   true,
@@ -194,7 +207,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
-		tc := newTidbClusterForPD()
+		tc := newTidbClusterForPD(false)
 		ns := tc.Namespace
 		tcName := tc.Name
 
@@ -428,7 +441,7 @@ func TestPDMemberManagerPdStatefulSetIsUpgrading(t *testing.T) {
 	}
 	testFn := func(test *testcase, t *testing.T) {
 		pmm, podIndexer, _ := newFakePDMemberManager()
-		tc := newTidbClusterForPD()
+		tc := newTidbClusterForPD(false)
 		tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{
 			UpdateRevision: "v3",
 		}
@@ -529,7 +542,7 @@ func TestPDMemberManagerUpgrade(t *testing.T) {
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
-		tc := newTidbClusterForPD()
+		tc := newTidbClusterForPD(false)
 		ns := tc.Namespace
 		tcName := tc.Name
 
@@ -627,7 +640,7 @@ func TestPDMemberManagerSyncPDSts(t *testing.T) {
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
-		tc := newTidbClusterForPD()
+		tc := newTidbClusterForPD(false)
 		ns := tc.Namespace
 		tcName := tc.Name
 
@@ -756,7 +769,7 @@ func newFakePDMemberManager() (*pdMemberManager, cache.Indexer, cache.Indexer) {
 	return pdManager, podIndexer, pvcIndexer
 }
 
-func newTidbClusterForPD() *v1alpha1.TidbCluster {
+func newTidbClusterForPD(tls bool) *v1alpha1.TidbCluster {
 	return &v1alpha1.TidbCluster{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "TidbCluster",
@@ -768,6 +781,7 @@ func newTidbClusterForPD() *v1alpha1.TidbCluster {
 			UID:       types.UID("test"),
 		},
 		Spec: v1alpha1.TidbClusterSpec{
+			TLSCluster: &v1alpha1.TLSCluster{Enabled: tls},
 			PD: &v1alpha1.PDSpec{
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "pd-test-image",
@@ -2327,7 +2341,7 @@ func TestPDMemberManagerSyncPDStsWhenPdNotJoinCluster(t *testing.T) {
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
-		tc := newTidbClusterForPD()
+		tc := newTidbClusterForPD(false)
 		ns := tc.Namespace
 		tcName := tc.Name
 

@@ -48,7 +48,7 @@ func TestTiFlashMemberManagerTiFlashStatefulSetIsUpgrading(t *testing.T) {
 		expectUpgrading bool
 	}
 	testFn := func(test *testcase, t *testing.T) {
-		tc := newTidbClusterForPD()
+		tc := newTidbClusterForPD(false)
 		pmm, _, _, _, podIndexer, _ := newFakeTiFlashMemberManager(tc)
 		tc.Status.TiFlash.StatefulSet = &apps.StatefulSetStatus{
 			UpdateRevision: "v3",
@@ -150,7 +150,7 @@ func TestTiFlashMemberManagerSetStoreLabelsForTiFlash(t *testing.T) {
 		labelSetFailed   bool
 	}
 	testFn := func(test *testcase, t *testing.T) {
-		tc := newTidbClusterForPD()
+		tc := newTidbClusterForPD(false)
 		pmm, _, _, pdClient, podIndexer, nodeIndexer := newFakeTiFlashMemberManager(tc)
 		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
 			return &pdapi.PDConfigFromAPI{
@@ -472,7 +472,7 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 	}
 	now := metav1.Time{Time: time.Now()}
 	testFn := func(test *testcase, t *testing.T) {
-		tc := newTidbClusterForPD()
+		tc := newTidbClusterForPD(false)
 		tc.Status.PD.Phase = v1alpha1.NormalPhase
 		set := &apps.StatefulSet{
 			Spec: apps.StatefulSetSpec{

@@ -36,7 +36,7 @@ import (
 func TestPVCCleanerReclaimPV(t *testing.T) {
 	g := NewGomegaWithT(t)
 
-	tc := newTidbClusterForPD()
+	tc := newTidbClusterForPD(false)
 	type testcase struct {
 		name             string
 		pvReclaimEnabled bool
@@ -850,7 +850,7 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 func TestPVCCleanerCleanScheduleLock(t *testing.T) {
 	g := NewGomegaWithT(t)
 
-	tc := newTidbClusterForPD()
+	tc := newTidbClusterForPD(false)
 	type testcase struct {
 		name            string
 		pods            []*corev1.Pod

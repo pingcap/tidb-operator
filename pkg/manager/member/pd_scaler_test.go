@@ -48,7 +48,7 @@ func TestPDScalerScaleOut(t *testing.T) {
 	}
 
 	testFn := func(test testcase, t *testing.T) {
-		tc := newTidbClusterForPD()
+		tc := newTidbClusterForPD(false)
 		test.update(tc)
 
 		if test.pdUpgrading {
@@ -246,7 +246,7 @@ func TestPDScalerScaleIn(t *testing.T) {
 	}
 
 	testFn := func(test testcase, t *testing.T) {
-		tc := newTidbClusterForPD()
+		tc := newTidbClusterForPD(false)
 
 		if test.pdUpgrading {
 			tc.Status.PD.Phase = v1alpha1.UpgradePhase

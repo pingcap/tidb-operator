@@ -46,12 +46,13 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 		errWhenCreateStatefulSet bool
 		err                      bool
 		setCreated               bool
+		tls                      bool
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 
-		tc := newTidbClusterForTiDB()
+		tc := newTidbClusterForTiDB(test.tls)
 		tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
 			"tikv-0": {PodName: "tikv-0", State: v1alpha1.TiKVStateUp},
 		}
@@ -97,6 +98,14 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 			setCreated:               true,
 		},
 		{
+			name:                     "normal with tls",
+			prepare:                  nil,
+			errWhenCreateStatefulSet: false,
+			err:                      false,
+			setCreated:               true,
+			tls:                      true,
+		},
+		{
 			name: "tikv is not available",
 			prepare: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{}
@@ -133,7 +142,7 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 
-		tc := newTidbClusterForTiDB()
+		tc := newTidbClusterForTiDB(false)
 		tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
 			"tikv-0": {PodName: "tikv-0", State: v1alpha1.TiKVStateUp},
 		}
@@ -242,7 +251,7 @@ func TestTiDBMemberManagerTiDBStatefulSetIsUpgrading(t *testing.T) {
 	}
 	testFn := func(test *testcase, t *testing.T) {
 		pmm, _, _, indexers := newFakeTiDBMemberManager()
-		tc := newTidbClusterForTiDB()
+		tc := newTidbClusterForTiDB(false)
 		tc.Status.TiDB.StatefulSet = &apps.StatefulSetStatus{
 			UpdateRevision: "v3",
 		}
@@ -349,7 +358,7 @@ func TestTiDBMemberManagerSyncTidbClusterStatus(t *testing.T) {
 	}
 	now := metav1.Time{Time: time.Now()}
 	testFn := func(test *testcase, t *testing.T) {
-		tc := newTidbClusterForPD()
+		tc := newTidbClusterForPD(false)
 		tc.Spec.TiDB.Replicas = int32(3)
 		tc.Status.PD.Phase = v1alpha1.NormalPhase
 		tc.Status.TiKV.Phase = v1alpha1.NormalPhase
@@ -551,7 +560,7 @@ func TestTiDBMemberManagerSyncTidbService(t *testing.T) {
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 
-		tc := newTidbClusterForTiDB()
+		tc := newTidbClusterForTiDB(false)
 		tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
 			"tikv-0": {PodName: "tikv-0", State: v1alpha1.TiKVStateUp},
 		}
@@ -809,7 +818,7 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 	return tmm, setControl, tidbControl, indexers
 }
 
-func newTidbClusterForTiDB() *v1alpha1.TidbCluster {
+func newTidbClusterForTiDB(tls bool) *v1alpha1.TidbCluster {
 	return &v1alpha1.TidbCluster{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "TidbCluster",
@@ -821,6 +830,7 @@ func newTidbClusterForTiDB() *v1alpha1.TidbCluster {
 			UID:       types.UID("test"),
 		},
 		Spec: v1alpha1.TidbClusterSpec{
+			TLSCluster: &v1alpha1.TLSCluster{Enabled: tls},
 			TiDB: &v1alpha1.TiDBSpec{
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: v1alpha1.TiDBMemberType.String(),
@@ -1895,7 +1905,7 @@ func TestTiDBMemberManagerScaleToZeroReplica(t *testing.T) {
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 
-		tc := newTidbClusterForTiDB()
+		tc := newTidbClusterForTiDB(false)
 		tc.Spec.TiDB.MaxFailoverCount = pointer.Int32Ptr(3)
 		tc.Spec.TiKV.MaxFailoverCount = pointer.Int32Ptr(3)
 		tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
