@@ -46,8 +46,8 @@ func NewController(deps *controller.Dependencies) *Controller {
 }
 
 func (c *Controller) Run(_ int, stopCh <-chan struct{}) {
-	klog.Infof("Staring periodicity controller")
-	defer klog.Infof("Shutting down periodicity controller")
+	klog.Info("Staring periodicity controller")
+	defer klog.Info("Shutting down periodicity controller")
 	wait.Until(c.run, time.Minute, stopCh)
 }
 
