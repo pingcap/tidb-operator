@@ -17,7 +17,6 @@ import (
 	"context"
 	nerrors "errors"
 	"fmt"
-	e2e "github.com/pingcap/tidb-operator/tests/e2e"
 	_ "net/http/pprof"
 	"time"
 
