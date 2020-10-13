@@ -225,7 +225,7 @@ func main() {
 				klog.Fatalf("error syncing informer for %v", v)
 			}
 		}
-		klog.Infof("cache of informer factories sync successfully")
+		klog.Info("cache of informer factories sync successfully")
 
 		go wait.Forever(func() { backupController.Run(workers, ctx.Done()) }, waitDuration)
 		go wait.Forever(func() { restoreController.Run(workers, ctx.Done()) }, waitDuration)
