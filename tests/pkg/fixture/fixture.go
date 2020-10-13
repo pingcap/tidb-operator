@@ -30,6 +30,17 @@ import (
 )
 
 var (
+	tikvConfig = func() *v1alpha1.TiKVConfigWraper {
+		c := v1alpha1.NewTiKVConfig()
+		c.Set("log-level", "info")
+		// Don't reserve space in e2e tests, see
+		// https://github.com/pingcap/tidb-operator/issues/2509.
+		c.Set("storage.reserve-space", "0MB")
+		return c
+	}()
+)
+
+var (
 	BestEffort    = corev1.ResourceRequirements{}
 	BurstbleSmall = corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
@@ -74,15 +85,10 @@ var (
 
 // GetTidbCluster returns a TidbCluster resource configured for testing
 func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
-	tikvStorageConfig := &v1alpha1.TiKVStorageConfig{
-		// Don't reserve space in e2e tests, see
-		// https://github.com/pingcap/tidb-operator/issues/2509.
-		ReserveSpace: pointer.StringPtr("0MB"),
-	}
 	// We assume all unparsable versions are greater or equal to v4.0.0-beta,
 	// e.g. nightly.
 	if v, err := semver.NewVersion(version); err == nil && v.LessThan(tikvV4Beta) {
-		tikvStorageConfig = nil
+		tikvConfig.Set("storage", nil)
 	}
 	deletePVP := corev1.PersistentVolumeReclaimDelete
 
@@ -104,15 +110,12 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				Replicas:             3,
 				BaseImage:            "pingcap/pd",
 				ResourceRequirements: WithStorage(BurstbleSmall, "1Gi"),
-				Config: &v1alpha1.PDConfig{
-					Log: &v1alpha1.PDLogConfig{
-						Level: pointer.StringPtr("info"),
-					},
-					// accelerate failover
-					Schedule: &v1alpha1.PDScheduleConfig{
-						MaxStoreDownTime: pointer.StringPtr("5m"),
-					},
-				},
+				Config: func() *v1alpha1.PDConfigWraper {
+					c := v1alpha1.NewPDConfig()
+					c.Set("log.level", "info")
+					c.Set("schedule.max-store-down-time", "5m")
+					return c
+				}(),
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Affinity: buildAffinity(name, ns, v1alpha1.PDMemberType),
 				},
@@ -123,11 +126,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				BaseImage:            "pingcap/tikv",
 				ResourceRequirements: WithStorage(BurstbleMedium, "10Gi"),
 				MaxFailoverCount:     pointer.Int32Ptr(3),
-				Config: &v1alpha1.TiKVConfig{
-					LogLevel: pointer.StringPtr("info"),
-					Server:   &v1alpha1.TiKVServerConfig{},
-					Storage:  tikvStorageConfig,
-				},
+				Config:               tikvConfig,
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Affinity: buildAffinity(name, ns, v1alpha1.TiKVMemberType),
 				},

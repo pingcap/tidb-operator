@@ -15,7 +15,6 @@ package member
 
 import (
 	"fmt"
-	"path"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -543,49 +542,42 @@ func transformTiKVConfigMap(srcStr string, tc *v1alpha1.TidbCluster) string {
 	if config == nil {
 		return srcStr
 	}
-	if config.TiKVPessimisticTxn != nil {
-		if config.TiKVPessimisticTxn.WaitForLockTimeout != nil {
-			_, err := strconv.ParseInt(*config.TiKVPessimisticTxn.WaitForLockTimeout, 10, 64)
+
+	if v := config.Get("pessimistic-txn.wait-for-lock-timeout"); v != nil {
+		if str, err := v.AsString(); err == nil {
+			_, err := strconv.ParseInt(str, 10, 64)
 			if err == nil {
 				waitForLockTimeOutKey := "wait-for-lock-timeout"
-				old := fmt.Sprintf(`%s = "%s"`, waitForLockTimeOutKey, *config.TiKVPessimisticTxn.WaitForLockTimeout)
-				newString := fmt.Sprintf(`%s = %s`, waitForLockTimeOutKey, *config.TiKVPessimisticTxn.WaitForLockTimeout)
+				old := fmt.Sprintf(`%s = "%s"`, waitForLockTimeOutKey, str)
+				newString := fmt.Sprintf(`%s = %s`, waitForLockTimeOutKey, str)
 				srcStr = strings.ReplaceAll(srcStr, old, newString)
 			}
-		}
-		if config.TiKVPessimisticTxn.WakeUpDelayDuration != nil {
-			_, err := strconv.ParseInt(*config.TiKVPessimisticTxn.WakeUpDelayDuration, 10, 64)
-			if err == nil {
-				wakeUpDelayDuration := "wake-up-delay-duration"
-				old := fmt.Sprintf(`%s = "%s"`, wakeUpDelayDuration, *config.TiKVPessimisticTxn.WakeUpDelayDuration)
-				newString := fmt.Sprintf(`%s = %s`, wakeUpDelayDuration, *config.TiKVPessimisticTxn.WakeUpDelayDuration)
-				srcStr = strings.ReplaceAll(srcStr, old, newString)
-			}
+		} else {
+			klog.Warningf("pessimistic-txn.wait-for-lock-timeout is not string type: %v", err)
 		}
 	}
+
+	if v := config.Get("pessimistic-txn.wake-up-delay-duration"); v != nil {
+		if str, err := v.AsString(); err == nil {
+			_, err := strconv.ParseInt(str, 10, 64)
+			if err == nil {
+				wakeUpDelayDuration := "wake-up-delay-duration"
+				old := fmt.Sprintf(`%s = "%s"`, wakeUpDelayDuration, str)
+				newString := fmt.Sprintf(`%s = %s`, wakeUpDelayDuration, str)
+				srcStr = strings.ReplaceAll(srcStr, old, newString)
+			}
+		} else {
+			klog.Warningf("pessimistic-txn.wake-up-delay-duration is not string type: %v", err)
+		}
+	}
+
 	return srcStr
 }
 
 func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
-
 	config := tc.Spec.TiKV.Config
 	if config == nil {
 		return nil, nil
-	}
-
-	// override CA if tls enabled
-	if tc.IsTLSClusterEnabled() {
-		if config.Security == nil {
-			config.Security = &v1alpha1.TiKVSecurityConfig{}
-		}
-		config.Security.CAPath = pointer.StringPtr(path.Join(tikvClusterCertPath, tlsSecretRootCAKey))
-		config.Security.CertPath = pointer.StringPtr(path.Join(tikvClusterCertPath, corev1.TLSCertKey))
-		config.Security.KeyPath = pointer.StringPtr(path.Join(tikvClusterCertPath, corev1.TLSPrivateKeyKey))
-	}
-
-	confText, err := MarshalTOML(config)
-	if err != nil {
-		return nil, err
 	}
 
 	scriptModel := &TiKVStartScriptModel{
@@ -596,28 +588,23 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		scriptModel.AdvertiseStatusAddr = "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc"
 		scriptModel.EnableAdvertiseStatusAddr = true
 	}
+
 	if tc.IsHeterogeneous() {
 		scriptModel.PDAddress = tc.Scheme() + "://" + controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379"
 	} else {
 		scriptModel.PDAddress = tc.Scheme() + "://${CLUSTER_NAME}-pd:2379"
 	}
-	startScript, err := RenderTiKVStartScript(scriptModel)
+	cm, err := getTikVConfigMapForTiKVSpec(tc.Spec.TiKV, tc, scriptModel)
 	if err != nil {
 		return nil, err
 	}
 	instanceName := tc.GetInstanceName()
 	tikvLabel := label.New().Instance(instanceName).TiKV().Labels()
-	cm := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            controller.TiKVMemberName(tc.Name),
-			Namespace:       tc.Namespace,
-			Labels:          tikvLabel,
-			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
-		},
-		Data: map[string]string{
-			"config-file":    transformTiKVConfigMap(string(confText), tc),
-			"startup-script": startScript,
-		},
+	cm.ObjectMeta = metav1.ObjectMeta{
+		Name:            controller.TiKVMemberName(tc.Name),
+		Namespace:       tc.Namespace,
+		Labels:          tikvLabel,
+		OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 	}
 
 	if tc.BaseTiKVSpec().ConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyRollingUpdate {
@@ -625,7 +612,6 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 			return nil, err
 		}
 	}
-
 	return cm, nil
 }
 

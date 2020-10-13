@@ -18,12 +18,13 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	fuzz "github.com/google/gofuzz"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/util/toml"
 )
 
-func TestTiDBConfigWraper(t *testing.T) {
+func TestPDConfigWraper(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	f := fuzz.New().Funcs(
@@ -40,42 +41,40 @@ func TestTiDBConfigWraper(t *testing.T) {
 		func(e *string, c fuzz.Continue) {
 			*e = "s" + strconv.Itoa(c.Intn(100))
 		},
+
+		func(e *PDLabelPropertyConfig, c fuzz.Continue) {
+			// do not generate nil value
+			// when marshal will omit the kv, and unmarshal back will not equal like before without this kv.
+			c.Fuzz(e)
+			for k, v := range *e {
+				if v == nil {
+					delete(*e, k)
+				}
+			}
+		},
 	)
 	for i := 0; i < 100; i++ {
-		var tidbConfig TiDBConfig
-		f.Fuzz(&tidbConfig)
+		var pdConfig PDConfig
+		f.Fuzz(&pdConfig)
 
-		jsonData, err := json.Marshal(&tidbConfig)
+		jsonData, err := json.Marshal(&pdConfig)
+		t.Logf("case %d json:\n%s", i, string(jsonData))
 		g.Expect(err).Should(BeNil())
 
-		tidbConfigWraper := NewTiDBConfig()
-		err = json.Unmarshal(jsonData, tidbConfigWraper)
+		pdConfigWraper := NewPDConfig()
+		err = json.Unmarshal(jsonData, pdConfigWraper)
 		g.Expect(err).Should(BeNil())
 
-		tomlDataBack, err := tidbConfigWraper.MarshalTOML()
+		tomlDataBack, err := pdConfigWraper.MarshalTOML()
+		t.Logf("case %d toml back:\n%s", i, string(tomlDataBack))
 		g.Expect(err).Should(BeNil())
 
-		var tidbConfigBack TiDBConfig
-		err = toml.Unmarshal(tomlDataBack, &tidbConfigBack)
+		var pdConfigBack PDConfig
+		err = toml.Unmarshal(tomlDataBack, &pdConfigBack)
 		g.Expect(err).Should(BeNil())
-		g.Expect(tidbConfigBack).Should(Equal(tidbConfig))
+		if diff := cmp.Diff(pdConfig, pdConfigBack); diff != "" {
+			t.Errorf("unexpected plugin configuration (-want, +got): %s", diff)
+			t.FailNow()
+		}
 	}
-}
-
-func TestUnmarshlJSON(t *testing.T) {
-	g := NewGomegaWithT(t)
-
-	type Tmp struct {
-		Float float64 `toml:"float"`
-		Int   int     `toml:"int"`
-	}
-
-	data := `{"float": 1, "int": 1}`
-
-	tmp := new(Tmp)
-	config, err := unmarshalJSON([]byte(data), tmp)
-	g.Expect(err).Should(BeNil())
-
-	g.Expect(config.Get("float").MustFloat()).Should(Equal(1.0))
-	g.Expect(config.Get("int").MustInt()).Should(Equal(int64(1)))
 }

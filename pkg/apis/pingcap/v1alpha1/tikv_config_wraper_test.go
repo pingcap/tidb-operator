@@ -23,7 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/util/toml"
 )
 
-func TestTiDBConfigWraper(t *testing.T) {
+func TestTiKVConfigWraper(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	f := fuzz.New().Funcs(
@@ -42,40 +42,22 @@ func TestTiDBConfigWraper(t *testing.T) {
 		},
 	)
 	for i := 0; i < 100; i++ {
-		var tidbConfig TiDBConfig
-		f.Fuzz(&tidbConfig)
+		var tikvConfig TiKVConfig
+		f.Fuzz(&tikvConfig)
 
-		jsonData, err := json.Marshal(&tidbConfig)
+		jsonData, err := json.Marshal(&tikvConfig)
 		g.Expect(err).Should(BeNil())
 
-		tidbConfigWraper := NewTiDBConfig()
-		err = json.Unmarshal(jsonData, tidbConfigWraper)
+		tikvConfigWraper := NewTiKVConfig()
+		err = json.Unmarshal(jsonData, tikvConfigWraper)
 		g.Expect(err).Should(BeNil())
 
-		tomlDataBack, err := tidbConfigWraper.MarshalTOML()
+		tomlDataBack, err := tikvConfigWraper.MarshalTOML()
 		g.Expect(err).Should(BeNil())
 
-		var tidbConfigBack TiDBConfig
-		err = toml.Unmarshal(tomlDataBack, &tidbConfigBack)
+		var tikvConfigBack TiKVConfig
+		err = toml.Unmarshal(tomlDataBack, &tikvConfigBack)
 		g.Expect(err).Should(BeNil())
-		g.Expect(tidbConfigBack).Should(Equal(tidbConfig))
+		g.Expect(tikvConfigBack).Should(Equal(tikvConfig))
 	}
-}
-
-func TestUnmarshlJSON(t *testing.T) {
-	g := NewGomegaWithT(t)
-
-	type Tmp struct {
-		Float float64 `toml:"float"`
-		Int   int     `toml:"int"`
-	}
-
-	data := `{"float": 1, "int": 1}`
-
-	tmp := new(Tmp)
-	config, err := unmarshalJSON([]byte(data), tmp)
-	g.Expect(err).Should(BeNil())
-
-	g.Expect(config.Get("float").MustFloat()).Should(Equal(1.0))
-	g.Expect(config.Get("int").MustInt()).Should(Equal(int64(1)))
 }
