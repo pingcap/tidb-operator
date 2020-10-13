@@ -14,6 +14,7 @@
 package v1alpha1
 
 import (
+	"encoding/json"
 	"strconv"
 	"testing"
 
@@ -44,11 +45,11 @@ func TestTiKVConfigWraper(t *testing.T) {
 		var tikvConfig TiKVConfig
 		f.Fuzz(&tikvConfig)
 
-		tomlData, err := toml.Marshal(&tikvConfig)
+		jsonData, err := json.Marshal(&tikvConfig)
 		g.Expect(err).Should(BeNil())
 
 		tikvConfigWraper := NewTiKVConfig()
-		err = tikvConfigWraper.UnmarshalTOML(tomlData)
+		err = json.Unmarshal(jsonData, tikvConfigWraper)
 		g.Expect(err).Should(BeNil())
 
 		tomlDataBack, err := tikvConfigWraper.MarshalTOML()
