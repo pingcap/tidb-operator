@@ -327,7 +327,7 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 	if operatorKillerStopCh != nil {
 		close(operatorKillerStopCh)
 	}
-	config, err := framework.LoadConfig()
+	config, _ := framework.LoadConfig()
 	config.QPS = 20
 	config.Burst = 50
 	kubeCli, err := kubernetes.NewForConfig(config)
