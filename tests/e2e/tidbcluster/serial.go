@@ -608,11 +608,11 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 		ginkgo.It("auto-scaling TidbCluster", func() {
 			clusterName := "auto-scaling"
-			tc := fixture.GetTidbCluster(ns, clusterName, "nightly")
+			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4UpgradeVersion)
 			tc.Spec.PD.Replicas = 1
 			tc.Spec.TiKV.Replicas = 3
-			tc.Spec.TiKV.Version = pointer.StringPtr("v4.0.6")
 			tc.Spec.TiDB.Replicas = 2
+
 			tc.Spec.PD.Config.Set("pd-server.metric-storage", "http://monitor-prometheus:9090")
 			tc.Spec.PD.BaseImage = "hub.pingcap.net/lhh/pd"
 			tc.Spec.PD.Version = pointer.StringPtr("debug")
@@ -842,7 +842,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				framework.Logf("autoscaling tikv cluster deleted")
 				return true, nil
 			})
-			framework.RunKubectl("logs", "-n", ns, "auto-scaling-pd-0")
 			framework.ExpectNoError(err, "check delete autoscaling tikv cluster error")
 			framework.Logf("success to check delete autoscaling tikv cluster")
 
