@@ -14,6 +14,7 @@
 package v1alpha1
 
 import (
+	"encoding/json"
 	"strconv"
 	"testing"
 
@@ -56,12 +57,12 @@ func TestPDConfigWraper(t *testing.T) {
 		var pdConfig PDConfig
 		f.Fuzz(&pdConfig)
 
-		tomlData, err := toml.Marshal(&pdConfig)
-		t.Logf("case %d toml:\n%s", i, string(tomlData))
+		jsonData, err := json.Marshal(&pdConfig)
+		t.Logf("case %d json:\n%s", i, string(jsonData))
 		g.Expect(err).Should(BeNil())
 
 		pdConfigWraper := NewPDConfig()
-		err = pdConfigWraper.UnmarshalTOML(tomlData)
+		err = json.Unmarshal(jsonData, pdConfigWraper)
 		g.Expect(err).Should(BeNil())
 
 		tomlDataBack, err := pdConfigWraper.MarshalTOML()

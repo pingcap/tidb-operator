@@ -47,7 +47,7 @@ func (am *autoScalerManager) getAutoScaledClusters(tac *v1alpha1.TidbClusterAuto
 	}
 
 	selector := labels.NewSelector().Add(*requirement).Add(*componentRequirement)
-	tcList, err = am.tcLister.TidbClusters(tac.Spec.Cluster.Namespace).List(selector)
+	tcList, err = am.deps.TiDBClusterLister.TidbClusters(tac.Spec.Cluster.Namespace).List(selector)
 	return
 }
 
@@ -138,7 +138,7 @@ func (am *autoScalerManager) updateAutoscalingClusters(tac *v1alpha1.TidbCluster
 			continue
 		}
 
-		_, err := am.tcControl.UpdateTidbCluster(actual, &actual.Status, &oldTc.Status)
+		_, err := am.deps.TiDBClusterControl.UpdateTidbCluster(actual, &actual.Status, &oldTc.Status)
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -209,7 +209,7 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 			}
 		}
 
-		_, err = am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(autoTc)
+		_, err = am.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(autoTc)
 		if err != nil {
 			errs = append(errs, err)
 			continue

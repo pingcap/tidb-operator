@@ -28,9 +28,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	kubeinformers "k8s.io/client-go/informers"
 	podinformers "k8s.io/client-go/informers/core/v1"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/utils/pointer"
 )
 
@@ -554,15 +552,11 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 }
 
 func newTiKVUpgrader() (TiKVUpgrader, *pdapi.FakePDControl, *controller.FakePodControl, podinformers.PodInformer) {
-	kubeCli := kubefake.NewSimpleClientset()
-	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
-	podControl := controller.NewFakePodControl(podInformer)
-	pdControl := pdapi.NewFakePDControl(kubeCli)
-	return &tikvUpgrader{
-		pdControl:  pdControl,
-		podControl: podControl,
-		podLister:  podInformer.Lister(),
-	}, pdControl, podControl, podInformer
+	fakeDeps := controller.NewFakeDependencies()
+	pdControl := fakeDeps.PDControl.(*pdapi.FakePDControl)
+	podControl := fakeDeps.PodControl.(*controller.FakePodControl)
+	podInformer := fakeDeps.KubeInformerFactory.Core().V1().Pods()
+	return &tikvUpgrader{deps: fakeDeps}, pdControl, podControl, podInformer
 }
 
 func newStatefulSetForTiKVUpgrader() *apps.StatefulSet {

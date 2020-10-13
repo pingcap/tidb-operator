@@ -19,26 +19,18 @@ import (
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 )
 
 type pdUpgrader struct {
-	pdControl  pdapi.PDControlInterface
-	podControl controller.PodControlInterface
-	podLister  corelisters.PodLister
+	deps *controller.Dependencies
 }
 
 // NewPDUpgrader returns a pdUpgrader
-func NewPDUpgrader(pdControl pdapi.PDControlInterface,
-	podControl controller.PodControlInterface,
-	podLister corelisters.PodLister) Upgrader {
+func NewPDUpgrader(deps *controller.Dependencies) Upgrader {
 	return &pdUpgrader{
-		pdControl:  pdControl,
-		podControl: podControl,
-		podLister:  podLister,
+		deps: deps,
 	}
 }
 
@@ -87,7 +79,7 @@ func (pu *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Sta
 	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
 		i := podOrdinals[_i]
 		podName := PdPodName(tcName, i)
-		pod, err := pu.podLister.Pods(ns).Get(podName)
+		pod, err := pu.deps.PodLister.Pods(ns).Get(podName)
 		if err != nil {
 			return fmt.Errorf("gracefulUpgrade: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
 		}
@@ -104,7 +96,7 @@ func (pu *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Sta
 			continue
 		}
 
-		if controller.PodWebhookEnabled {
+		if pu.deps.CLIConfig.PodWebhookEnabled {
 			setUpgradePartition(newSet, i)
 			return nil
 		}
@@ -141,7 +133,7 @@ func (pu *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newS
 }
 
 func (pu *pdUpgrader) transferPDLeaderTo(tc *v1alpha1.TidbCluster, targetName string) error {
-	return controller.GetPDClient(pu.pdControl, tc).TransferPDLeader(targetName)
+	return controller.GetPDClient(pu.deps.PDControl, tc).TransferPDLeader(targetName)
 }
 
 type fakePDUpgrader struct{}

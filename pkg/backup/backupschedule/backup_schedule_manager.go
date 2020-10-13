@@ -23,35 +23,22 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
-	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/robfig/cron"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	batchlisters "k8s.io/client-go/listers/batch/v1"
 	"k8s.io/klog"
 )
 
 type backupScheduleManager struct {
-	backupLister  listers.BackupLister
-	backupControl controller.BackupControlInterface
-	jobLister     batchlisters.JobLister
-	jobControl    controller.JobControlInterface
+	deps *controller.Dependencies
 }
 
 // NewBackupScheduleManager return a *backupScheduleManager
-func NewBackupScheduleManager(
-	backupLister listers.BackupLister,
-	backupControl controller.BackupControlInterface,
-	jobLister batchlisters.JobLister,
-	jobControl controller.JobControlInterface,
-) backup.BackupScheduleManager {
+func NewBackupScheduleManager(deps *controller.Dependencies) backup.BackupScheduleManager {
 	return &backupScheduleManager{
-		backupLister,
-		backupControl,
-		jobLister,
-		jobControl,
+		deps: deps,
 	}
 }
 
@@ -91,7 +78,7 @@ func (bm *backupScheduleManager) deleteLastBackupJob(bs *v1alpha1.BackupSchedule
 	ns := bs.GetNamespace()
 	bsName := bs.GetName()
 
-	backup, err := bm.backupLister.Backups(ns).Get(bs.Status.LastBackup)
+	backup, err := bm.deps.BackupLister.Backups(ns).Get(bs.Status.LastBackup)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil
@@ -100,7 +87,7 @@ func (bm *backupScheduleManager) deleteLastBackupJob(bs *v1alpha1.BackupSchedule
 	}
 
 	jobName := backup.GetBackupJobName()
-	job, err := bm.jobLister.Jobs(ns).Get(jobName)
+	job, err := bm.deps.JobLister.Jobs(ns).Get(jobName)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil
@@ -109,14 +96,14 @@ func (bm *backupScheduleManager) deleteLastBackupJob(bs *v1alpha1.BackupSchedule
 	}
 
 	backup.SetGroupVersionKind(controller.BackupControllerKind)
-	return bm.jobControl.DeleteJob(backup, job)
+	return bm.deps.JobControl.DeleteJob(backup, job)
 }
 
 func (bm *backupScheduleManager) canPerformNextBackup(bs *v1alpha1.BackupSchedule) error {
 	ns := bs.GetNamespace()
 	bsName := bs.GetName()
 
-	backup, err := bm.backupLister.Backups(ns).Get(bs.Status.LastBackup)
+	backup, err := bm.deps.BackupLister.Backups(ns).Get(bs.Status.LastBackup)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil
@@ -184,7 +171,7 @@ func getLastScheduledTime(bs *v1alpha1.BackupSchedule) (*time.Time, error) {
 				bs.Status.AllBackupCleanTime = &metav1.Time{Time: time.Now()}
 				return nil, controller.RequeueErrorf("recovery backup schedule %s/%s from pause status, refresh AllBackupCleanTime.", ns, bsName)
 			}
-			klog.Errorf("Too many missed start backup schedule time (> 100). Check the clock.")
+			klog.Error("Too many missed start backup schedule time (> 100). Check the clock.")
 			return nil, nil
 		}
 	}
@@ -250,7 +237,7 @@ func (bm *backupScheduleManager) createBackup(bs *v1alpha1.BackupSchedule, times
 		},
 	}
 
-	return bm.backupControl.CreateBackup(backup)
+	return bm.deps.BackupControl.CreateBackup(backup)
 }
 
 func (bm *backupScheduleManager) backupGC(bs *v1alpha1.BackupSchedule) {
@@ -293,7 +280,7 @@ func (bm *backupScheduleManager) backupGCByMaxReservedTime(bs *v1alpha1.BackupSc
 			continue
 		}
 		// delete the expired backup
-		if err := bm.backupControl.DeleteBackup(backup); err != nil {
+		if err := bm.deps.BackupControl.DeleteBackup(backup); err != nil {
 			klog.Errorf("backup schedule %s/%s gc backup %s failed, err %v", ns, bsName, backup.GetName(), err)
 			return
 		}
@@ -325,7 +312,7 @@ func (bm *backupScheduleManager) backupGCByMaxBackups(bs *v1alpha1.BackupSchedul
 			continue
 		}
 		// delete the backup
-		if err := bm.backupControl.DeleteBackup(backup); err != nil {
+		if err := bm.deps.BackupControl.DeleteBackup(backup); err != nil {
 			klog.Errorf("backup schedule %s/%s gc backup %s failed, err %v", ns, bsName, backup.GetName(), err)
 			return
 		}
@@ -350,7 +337,7 @@ func (bm *backupScheduleManager) getBackupList(bs *v1alpha1.BackupSchedule, need
 	if err != nil {
 		return nil, fmt.Errorf("generate backup schedule %s/%s label selector failed, err: %v", ns, bsName, err)
 	}
-	backupsList, err := bm.backupLister.Backups(ns).List(selector)
+	backupsList, err := bm.deps.BackupLister.Backups(ns).List(selector)
 	if err != nil {
 		return nil, fmt.Errorf("get backup schedule %s/%s backup list failed, selector: %s, err: %v", ns, bsName, selector, err)
 	}
@@ -380,13 +367,13 @@ func NewFakeBackupScheduleManager() *FakeBackupScheduleManager {
 	return &FakeBackupScheduleManager{}
 }
 
-func (fbsm *FakeBackupScheduleManager) SetSyncError(err error) {
-	fbsm.err = err
+func (m *FakeBackupScheduleManager) SetSyncError(err error) {
+	m.err = err
 }
 
-func (fbsm *FakeBackupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
-	if fbsm.err != nil {
-		return fbsm.err
+func (m *FakeBackupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
+	if m.err != nil {
+		return m.err
 	}
 
 	if bs.Status.LastBackupTime != nil {
