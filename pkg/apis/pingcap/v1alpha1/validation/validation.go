@@ -185,7 +185,7 @@ func validateTiFlashConfig(config *v1alpha1.TiFlashConfigWraper, path *field.Pat
 							"log path should include at least one level dir."))
 					}
 				} else {
-					allErrs = append(allErrs, field.Invalid(path.Child("config.config", pathField),
+					allErrs = append(allErrs, field.Invalid(path.Child("config.config"+pathField),
 						v.Interface(),
 						fmt.Sprintf("should be string type, but is: %v", reflect.TypeOf(v.Interface())),
 					))
