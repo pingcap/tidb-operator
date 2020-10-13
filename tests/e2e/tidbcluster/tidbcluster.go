@@ -119,11 +119,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		}
 		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 		crdUtil = tests.NewCrdTestUtil(cli, c, asCli, stsGetter)
-
-		ginkgo.By("Installing cert-manager")
-		err = installCertManager(f.ClientSet)
-		framework.ExpectNoError(err, "failed to install cert-manager")
-
 	})
 
 	ginkgo.AfterEach(func() {
@@ -911,6 +906,18 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	})
 
 	ginkgo.Context("[Feature: TLS]", func() {
+		ginkgo.BeforeSuite(func() {
+			ginkgo.By("Installing cert-manager")
+			err := installCertManager(f.ClientSet)
+			framework.ExpectNoError(err, "failed to install cert-manager")
+		})
+
+		ginkgo.AfterSuite(func() {
+			ginkgo.By("Deleting cert-manager")
+			err := deleteCertManager(f.ClientSet)
+			framework.ExpectNoError(err, "failed to delete cert-manager")
+		})
+
 		ginkgo.It("TLS for MySQL Client and TLS between TiDB components", func() {
 			tcName := "tls"
 
