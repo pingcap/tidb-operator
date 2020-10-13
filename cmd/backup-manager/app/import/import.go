@@ -66,11 +66,11 @@ func (ro *Options) downloadBackupData(localPath string, opts []string) error {
 	var errMsg string
 	tmpOut, _ := ioutil.ReadAll(stdOut)
 	if len(tmpOut) > 0 {
-		klog.Infof(string(tmpOut))
+		klog.Info(string(tmpOut))
 	}
 	tmpErr, _ := ioutil.ReadAll(stdErr)
 	if len(tmpErr) > 0 {
-		klog.Infof(string(tmpErr))
+		klog.Info(string(tmpErr))
 		errMsg = string(tmpErr)
 	}
 

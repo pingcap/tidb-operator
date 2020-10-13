@@ -83,7 +83,7 @@ func (s *generalScaler) deleteDeferDeletingPVC(controller runtime.Object,
 	pvcs, err := s.deps.PVCLister.PersistentVolumeClaims(ns).List(selector)
 	if err != nil {
 		msg := fmt.Sprintf("%s %s/%s list pvc failed, selector: %s, err: %v", kind, ns, meta.GetName(), selector, err)
-		klog.Errorf(msg)
+		klog.Error(msg)
 		return skipReason, fmt.Errorf(msg)
 	}
 	if len(pvcs) == 0 {
@@ -128,12 +128,12 @@ func (s *generalScaler) updateDeferDeletingPVC(tc *v1alpha1.TidbCluster,
 	pvcs, err := s.deps.PVCLister.PersistentVolumeClaims(ns).List(selector)
 	if err != nil {
 		msg := fmt.Sprintf("Cluster %s/%s list pvc failed, selector: %s, err: %v", ns, tc.Name, selector, err)
-		klog.Errorf(msg)
+		klog.Error(msg)
 		return fmt.Errorf(msg)
 	}
 	if len(pvcs) == 0 {
 		msg := fmt.Sprintf("Cluster %s/%s list pvc not found, selector: %s", ns, tc.Name, selector)
-		klog.Errorf(msg)
+		klog.Error(msg)
 		return fmt.Errorf(msg)
 	}
 

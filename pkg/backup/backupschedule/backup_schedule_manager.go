@@ -171,7 +171,7 @@ func getLastScheduledTime(bs *v1alpha1.BackupSchedule) (*time.Time, error) {
 				bs.Status.AllBackupCleanTime = &metav1.Time{Time: time.Now()}
 				return nil, controller.RequeueErrorf("recovery backup schedule %s/%s from pause status, refresh AllBackupCleanTime.", ns, bsName)
 			}
-			klog.Errorf("Too many missed start backup schedule time (> 100). Check the clock.")
+			klog.Error("Too many missed start backup schedule time (> 100). Check the clock.")
 			return nil, nil
 		}
 	}
