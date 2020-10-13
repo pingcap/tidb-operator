@@ -667,7 +667,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			tac.Spec.TiKV = &v1alpha1.TikvAutoScalerSpec{}
 			tac.Spec.TiKV.Resources = map[string]v1alpha1.AutoResource{
 				"resource_a": {
-					CPU:     resource.MustParse("1000m"),
+					CPU:     tc.Spec.TiKV.Requests.Cpu().DeepCopy(),
 					Memory:  tc.Spec.TiKV.Requests.Memory().DeepCopy(),
 					Storage: resource.MustParse("10Gi"),
 					Count:   pointer.Int32Ptr(3),
@@ -764,6 +764,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 				return false, nil
 			})
+			framework.RunKubectl("logs", "-n", ns, autoTiKV)
 			framework.ExpectNoError(err, "check scale out existing autoscaling tikv cluster error")
 			framework.Logf("success to check scale out existing autoscaling tikv cluster")
 
