@@ -168,7 +168,7 @@ func main() {
 				}
 			}
 		}
-		klog.Infof("cache of informer factories sync successfully")
+		klog.Info("cache of informer factories sync successfully")
 
 		// Start syncLoop for all controllers
 		for _, controller := range controllers {
