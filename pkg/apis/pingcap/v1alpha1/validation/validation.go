@@ -175,7 +175,7 @@ func validateTiFlashConfig(config *v1alpha1.TiFlashConfigWraper, path *field.Pat
 			"logger.errorlog",
 		}
 		for _, pathField := range fields {
-			if v := config.Common.Get("flash.flash_cluster.log"); v != nil {
+			if v := config.Common.Get(pathField); v != nil {
 				if value, err := v.AsString(); err == nil {
 					splitPath := strings.Split(value, string(os.PathSeparator))
 					// The log path should be at least /dir/base.log
