@@ -23,7 +23,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
@@ -36,9 +35,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/informers"
-	kubeinformers "k8s.io/client-go/informers"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/pointer"
 )
@@ -748,43 +744,17 @@ func TestPDMemberManagerSyncPDSts(t *testing.T) {
 	}
 }
 
-func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetControl, *controller.FakeServiceControl, *pdapi.FakePDControl, cache.Indexer, cache.Indexer, *controller.FakePodControl) {
-	cli := fake.NewSimpleClientset()
-	kubeCli := kubefake.NewSimpleClientset()
-	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1().StatefulSets()
-	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
-	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
-	cmInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().ConfigMaps()
-	epsInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Endpoints()
-	pvcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().PersistentVolumeClaims()
-	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbClusters()
-	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
-	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer, tcInformer)
-	podControl := controller.NewFakePodControl(podInformer)
-	pdControl := pdapi.NewFakePDControl(kubeCli)
-	pdScaler := NewFakePDScaler()
-	autoFailover := true
-	pdFailover := NewFakePDFailover()
-	pdUpgrader := NewFakePDUpgrader()
-	genericControll := controller.NewFakeGenericControl()
-
-	return &pdMemberManager{
-		pdControl,
-		setControl,
-		svcControl,
-		podControl,
-		controller.NewTypedControl(genericControll),
-		setInformer.Lister(),
-		svcInformer.Lister(),
-		podInformer.Lister(),
-		cmInformer.Lister(),
-		epsInformer.Lister(),
-		pvcInformer.Lister(),
-		pdScaler,
-		pdUpgrader,
-		autoFailover,
-		pdFailover,
-	}, setControl, svcControl, pdControl, podInformer.Informer().GetIndexer(), pvcInformer.Informer().GetIndexer(), podControl
+func newFakePDMemberManager() (*pdMemberManager, cache.Indexer, cache.Indexer) {
+	fakeDeps := controller.NewFakeDependencies()
+	podIndexer := fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer()
+	pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
+	pdManager := &pdMemberManager{
+		deps:     fakeDeps,
+		scaler:   NewFakePDScaler(),
+		upgrader: NewFakePDUpgrader(),
+		failover: NewFakePDFailover(),
+	}
+	return pdManager, podIndexer, pvcIndexer
 }
 
 func newTidbClusterForPD() *v1alpha1.TidbCluster {

@@ -175,5 +175,5 @@ func NotifyAndCompletedf(format string, args ...interface{}) {
 	if sendErr != nil {
 		klog.Warningf("failed to notify slack[%s] the massage: %s,error: %v", WebhookURL, msg, sendErr)
 	}
-	klog.Infof(msg)
+	klog.Info(msg)
 }
