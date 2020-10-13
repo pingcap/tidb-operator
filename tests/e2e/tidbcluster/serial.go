@@ -608,10 +608,13 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 		ginkgo.It("auto-scaling TidbCluster", func() {
 			clusterName := "auto-scaling"
-			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4UpgradeVersion)
+			tc := fixture.GetTidbCluster(ns, clusterName, "nightly")
 			tc.Spec.PD.Replicas = 1
 			tc.Spec.TiKV.Replicas = 3
 			tc.Spec.TiDB.Replicas = 2
+
+			tc.Spec.TiKV.BaseImage = "hub.pingcap.net/csn/tikv"
+			tc.Spec.TiKV.Version = pointer.StringPtr("master-f94ed51")
 
 			tc.Spec.PD.Config.Set("pd-server.metric-storage", "http://monitor-prometheus:9090")
 			tc.Spec.PD.BaseImage = "hub.pingcap.net/lhh/pd"
@@ -667,7 +670,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			tac.Spec.TiKV = &v1alpha1.TikvAutoScalerSpec{}
 			tac.Spec.TiKV.Resources = map[string]v1alpha1.AutoResource{
 				"resource_a": {
-					CPU:     tc.Spec.TiKV.Requests.Cpu().DeepCopy(),
+					CPU:     resource.MustParse("1024m"),
 					Memory:  tc.Spec.TiKV.Requests.Memory().DeepCopy(),
 					Storage: resource.MustParse("10Gi"),
 					Count:   pointer.Int32Ptr(3),
@@ -764,7 +767,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 				return false, nil
 			})
-			framework.RunKubectl("logs", "-n", ns, autoTiKV)
 			framework.ExpectNoError(err, "check scale out existing autoscaling tikv cluster error")
 			framework.Logf("success to check scale out existing autoscaling tikv cluster")
 
