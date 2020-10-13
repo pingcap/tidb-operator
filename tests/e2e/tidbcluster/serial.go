@@ -598,6 +598,8 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 
 		ginkgo.AfterEach(func() {
+			framework.RunKubectl("logs", "-n", ns, "auto-scaling-pd-0")
+			framework.RunKubectl("logs", "-n", ns, "-l", "app.kubernetes.io/component=monitor", "-c", "prometheus")
 			ginkgo.By("Uninstall tidb-operator")
 			oa.CleanOperatorOrDie(ocfg)
 			ginkgo.By("Uninstalling CRDs")
@@ -609,7 +611,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			tc := fixture.GetTidbCluster(ns, clusterName, "nightly")
 			tc.Spec.PD.Replicas = 1
 			tc.Spec.TiKV.Replicas = 3
-			tc.Spec.TiKV.Version = pointer.StringPtr("v4.0.6")
 			tc.Spec.TiDB.Replicas = 2
 			tc.Spec.PD.Config.Set("pd-server.metric-storage", "http://monitor-prometheus:9090")
 			tc.Spec.PD.BaseImage = "hub.pingcap.net/lhh/pd"
@@ -819,7 +820,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 				return false, nil
 			})
-			framework.RunKubectl("logs", "-n", ns, "auto-scaling-pd-0")
+
 			framework.ExpectNoError(err, "failed to check scale in autoscaling tikv cluster")
 			framework.Logf("success to check scale in autoscaling tikv cluster")
 
@@ -840,6 +841,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				framework.Logf("autoscaling tikv cluster deleted")
 				return true, nil
 			})
+			framework.RunKubectl("logs", "-n", ns, "auto-scaling-pd-0")
 			framework.ExpectNoError(err, "check delete autoscaling tikv cluster error")
 			framework.Logf("success to check delete autoscaling tikv cluster")
 
