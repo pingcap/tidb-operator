@@ -17,7 +17,6 @@ package e2e
 
 import (
 	"fmt"
-	"github.com/pingcap/tidb-operator/tests/e2e/tidbcluster"
 	_ "net/http/pprof"
 	"os"
 	"os/exec"
@@ -34,6 +33,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/version"
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
+	"github.com/pingcap/tidb-operator/tests/e2e/tidbcluster"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	utilnode "github.com/pingcap/tidb-operator/tests/e2e/util/node"
 	utiloperator "github.com/pingcap/tidb-operator/tests/e2e/util/operator"
