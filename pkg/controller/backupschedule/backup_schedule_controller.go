@@ -20,90 +20,46 @@ import (
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/backupschedule"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
-	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	kubeinformers "k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes"
-	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
 )
 
 // Controller controls restore.
 type Controller struct {
-	// kubernetes client interface
-	kubeClient kubernetes.Interface
-	// operator client interface
-	cli versioned.Interface
+	deps *controller.Dependencies
 	// control returns an interface capable of syncing a restore.
 	// Abstracted out for testing.
 	control ControlInterface
-	// bsLister is able to list/get restore from a shared informer's store
-	bsLister listers.BackupScheduleLister
-	// bsListerSynced returns true if the restore shared informer has synced at least once
-	bsListerSynced cache.InformerSynced
 	// backupSchedules that need to be synced.
 	queue workqueue.RateLimitingInterface
 }
 
 // NewController creates a backup schedule controller.
-func NewController(
-	kubeCli kubernetes.Interface,
-	cli versioned.Interface,
-	informerFactory informers.SharedInformerFactory,
-	kubeInformerFactory kubeinformers.SharedInformerFactory,
-) *Controller {
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(klog.Infof)
-	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
-		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
-	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "backupSchedule"})
-
-	bsInformer := informerFactory.Pingcap().V1alpha1().BackupSchedules()
-	backupInformer := informerFactory.Pingcap().V1alpha1().Backups()
-	jobInformer := kubeInformerFactory.Batch().V1().Jobs()
-	backupControl := controller.NewRealBackupControl(cli, recorder)
-	statusUpdater := controller.NewRealBackupScheduleStatusUpdater(cli, bsInformer.Lister(), recorder)
-	jobControl := controller.NewRealJobControl(kubeCli, recorder)
-
-	bsc := &Controller{
-		kubeClient: kubeCli,
-		cli:        cli,
-		control: NewDefaultBackupScheduleControl(
-			statusUpdater,
-			backupschedule.NewBackupScheduleManager(
-				backupInformer.Lister(),
-				backupControl,
-				jobInformer.Lister(),
-				jobControl,
-			),
-			recorder,
-		),
+func NewController(deps *controller.Dependencies) *Controller {
+	c := &Controller{
+		deps:    deps,
+		control: NewDefaultBackupScheduleControl(controller.NewRealBackupScheduleStatusUpdater(deps), backupschedule.NewBackupScheduleManager(deps)),
 		queue: workqueue.NewNamedRateLimitingQueue(
 			workqueue.DefaultControllerRateLimiter(),
 			"backupSchedule",
 		),
 	}
 
-	bsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: bsc.enqueueBackupSchedule,
+	backupScheduleInformer := deps.InformerFactory.Pingcap().V1alpha1().BackupSchedules()
+	backupScheduleInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: c.enqueueBackupSchedule,
 		UpdateFunc: func(old, cur interface{}) {
-			bsc.enqueueBackupSchedule(cur)
+			c.enqueueBackupSchedule(cur)
 		},
-		DeleteFunc: bsc.enqueueBackupSchedule,
+		DeleteFunc: c.enqueueBackupSchedule,
 	})
-	bsc.bsLister = bsInformer.Lister()
-	bsc.bsListerSynced = bsInformer.Informer().HasSynced
 
-	return bsc
+	return c
 }
 
 // Run runs the backup schedule controller.
@@ -162,7 +118,7 @@ func (bsc *Controller) sync(key string) error {
 	if err != nil {
 		return err
 	}
-	bs, err := bsc.bsLister.BackupSchedules(ns).Get(name)
+	bs, err := bsc.deps.BackupScheduleLister.BackupSchedules(ns).Get(name)
 	if errors.IsNotFound(err) {
 		klog.Infof("BackupSchedule has been deleted %v", key)
 		return nil

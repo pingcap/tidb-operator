@@ -25,13 +25,10 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
 
-	kubeinformers "k8s.io/client-go/informers"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -392,9 +389,9 @@ func TestMasterFailoverFailover(t *testing.T) {
 				master1, ok := dc.Status.Master.FailureMembers[master1Name]
 				g.Expect(ok).To(Equal(true))
 				g.Expect(master1.MemberDeleted).To(Equal(true))
-				_, err := mf.podLister.Pods(metav1.NamespaceDefault).Get(master1Name)
+				_, err := mf.deps.PodLister.Pods(metav1.NamespaceDefault).Get(master1Name)
 				g.Expect(err).NotTo(HaveOccurred())
-				_, err = mf.pvcLister.PersistentVolumeClaims(metav1.NamespaceDefault).Get(pvcName)
+				_, err = mf.deps.PVCLister.PersistentVolumeClaims(metav1.NamespaceDefault).Get(pvcName)
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(errors.IsNotFound(err)).To(BeTrue())
 				events := collectEvents(recorder.Events)
@@ -423,10 +420,10 @@ func TestMasterFailoverFailover(t *testing.T) {
 				master1, ok := dc.Status.Master.FailureMembers[master1Name]
 				g.Expect(ok).To(Equal(true))
 				g.Expect(master1.MemberDeleted).To(Equal(true))
-				_, err := mf.podLister.Pods(metav1.NamespaceDefault).Get(master1Name)
+				_, err := mf.deps.PodLister.Pods(metav1.NamespaceDefault).Get(master1Name)
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(errors.IsNotFound(err)).To(BeTrue())
-				_, err = mf.pvcLister.PersistentVolumeClaims(metav1.NamespaceDefault).Get(pvcName)
+				_, err = mf.deps.PVCLister.PersistentVolumeClaims(metav1.NamespaceDefault).Get(pvcName)
 				g.Expect(err).NotTo(HaveOccurred())
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(2))
@@ -443,8 +440,8 @@ func TestMasterFailoverFailover(t *testing.T) {
 			test.update(dc)
 
 			masterFailover, pvcIndexer, podIndexer, fakeMasterControl, fakePodControl, fakePVCControl := newFakeMasterFailover()
+			masterFailover.deps.Recorder = recorder
 			masterClient := controller.NewFakeMasterClient(fakeMasterControl, dc)
-			masterFailover.recorder = recorder
 
 			masterClient.AddReaction(dmapi.DeleteMasterActionType, func(action *dmapi.Action) (interface{}, error) {
 				if test.delMemberFailed {
@@ -586,29 +583,14 @@ func TestMasterFailoverRecovery(t *testing.T) {
 }
 
 func newFakeMasterFailover() (*masterFailover, cache.Indexer, cache.Indexer, *dmapi.FakeMasterControl, *controller.FakePodControl, *controller.FakePVCControl) {
-	cli := fake.NewSimpleClientset()
-	kubeCli := kubefake.NewSimpleClientset()
-	masterControl := dmapi.NewFakeMasterControl(kubeCli)
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
-	podInformer := kubeInformerFactory.Core().V1().Pods()
-	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
-	pvInformer := kubeInformerFactory.Core().V1().PersistentVolumes()
-	podControl := controller.NewFakePodControl(podInformer)
-	pvcControl := controller.NewFakePVCControl(pvcInformer)
-
-	return &masterFailover{
-			cli,
-			masterControl,
-			5 * time.Minute,
-			podInformer.Lister(),
-			podControl,
-			pvcInformer.Lister(),
-			pvcControl,
-			pvInformer.Lister(),
-			nil},
-		pvcInformer.Informer().GetIndexer(),
-		podInformer.Informer().GetIndexer(),
-		masterControl, podControl, pvcControl
+	fakeDeps := controller.NewFakeDependencies()
+	failover := &masterFailover{deps: fakeDeps}
+	pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
+	podIndexer := fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer()
+	masterControl := fakeDeps.DMMasterControl.(*dmapi.FakeMasterControl)
+	podControl := fakeDeps.PodControl.(*controller.FakePodControl)
+	pvcControl := fakeDeps.PVCControl.(*controller.FakePVCControl)
+	return failover, pvcIndexer, podIndexer, masterControl, podControl, pvcControl
 }
 
 func oneFailureMasterMember(dc *v1alpha1.DMCluster) {
