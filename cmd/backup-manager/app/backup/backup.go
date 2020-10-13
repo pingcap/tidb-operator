@@ -88,14 +88,14 @@ func (bo *Options) backupData(backup *v1alpha1.Backup) error {
 			errMsg += line
 		}
 
-		klog.Infof(strings.Replace(line, "\n", "", -1))
+		klog.Info(strings.Replace(line, "\n", "", -1))
 		if err != nil || io.EOF == err {
 			break
 		}
 	}
 	tmpErr, _ := ioutil.ReadAll(stdErr)
 	if len(tmpErr) > 0 {
-		klog.Infof(string(tmpErr))
+		klog.Info(string(tmpErr))
 		errMsg += string(tmpErr)
 	}
 	err = cmd.Wait()
