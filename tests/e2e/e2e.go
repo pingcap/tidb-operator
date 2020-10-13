@@ -330,9 +330,9 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 	config, _ := framework.LoadConfig()
 	config.QPS = 20
 	config.Burst = 50
-	kubeCli, err := kubernetes.NewForConfig(config)
+	kubeCli, _ := kubernetes.NewForConfig(config)
 	ginkgo.By("Deleting cert-manager")
-	err = deleteCertManager(kubeCli)
+	err := deleteCertManager(kubeCli)
 	framework.ExpectNoError(err, "failed to delete cert-manager")
 })
 
