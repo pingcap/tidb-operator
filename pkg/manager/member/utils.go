@@ -17,6 +17,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"path"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -325,6 +326,30 @@ func copyAnnotations(src map[string]string) map[string]string {
 		dst[k] = v
 	}
 	return dst
+}
+
+func getTikVConfigMapForTiKVSpec(tikvSpec *v1alpha1.TiKVSpec, tc *v1alpha1.TidbCluster, scriptModel *TiKVStartScriptModel) (*corev1.ConfigMap, error) {
+	config := tikvSpec.Config
+	if tc.IsTLSClusterEnabled() {
+		config.Set("security.ca-path", path.Join(tikvClusterCertPath, tlsSecretRootCAKey))
+		config.Set("security.cert-path", path.Join(tikvClusterCertPath, corev1.TLSCertKey))
+		config.Set("security.key-path", path.Join(tikvClusterCertPath, corev1.TLSPrivateKeyKey))
+	}
+	confText, err := config.MarshalTOML()
+	if err != nil {
+		return nil, err
+	}
+	startScript, err := RenderTiKVStartScript(scriptModel)
+	if err != nil {
+		return nil, err
+	}
+	cm := &corev1.ConfigMap{
+		Data: map[string]string{
+			"config-file":    transformTiKVConfigMap(string(confText), tc),
+			"startup-script": startScript,
+		},
+	}
+	return cm, nil
 }
 
 // shouldRecover checks whether we should perform recovery operation.
