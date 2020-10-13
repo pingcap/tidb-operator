@@ -60,15 +60,9 @@ func NewController(
 
 }
 
-<<<<<<< HEAD
 func (c *Controller) Run(stopCh <-chan struct{}) {
-	klog.Infof("Staring periodicity controller")
-	defer klog.Infof("Shutting down periodicity controller")
-=======
-func (c *Controller) Run(_ int, stopCh <-chan struct{}) {
 	klog.Info("Staring periodicity controller")
 	defer klog.Info("Shutting down periodicity controller")
->>>>>>> d813569b... replace Errorf with Error and Infof with Info (#3363)
 	wait.Until(c.run, time.Minute, stopCh)
 }
 
