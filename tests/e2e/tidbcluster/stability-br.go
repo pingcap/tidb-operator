@@ -17,6 +17,7 @@ import (
 	"context"
 	nerrors "errors"
 	"fmt"
+	e2e "github.com/pingcap/tidb-operator/tests/e2e"
 	_ "net/http/pprof"
 	"time"
 
@@ -122,12 +123,12 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			}
 
 			ginkgo.By("Installing cert-manager")
-			err := installCertManager(f.ClientSet)
+			err := InstallCertManager(f.ClientSet)
 			framework.ExpectNoError(err, "failed to install cert-manager")
 
 			testBR(provider, ns, fw, c, genericCli, oa, cli, true, fixture.BRType)
 			ginkgo.By("Deleting cert-manager")
-			err = deleteCertManager(f.ClientSet)
+			err = DeleteCertManager(f.ClientSet)
 			framework.ExpectNoError(err, "failed to delete cert-manager")
 		})
 	})

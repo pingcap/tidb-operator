@@ -17,6 +17,7 @@ package e2e
 
 import (
 	"fmt"
+	"github.com/pingcap/tidb-operator/tests/e2e/tidbcluster"
 	_ "net/http/pprof"
 	"os"
 	"os/exec"
@@ -44,6 +45,7 @@ import (
 	runtimeutils "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/component-base/logs"
 	"k8s.io/klog"
 	aggregatorclientset "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
@@ -311,7 +313,7 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	}
 
 	ginkgo.By("Installing cert-manager")
-	err = installCertManager(kubeCli)
+	err = tidbcluster.InstallCertManager(kubeCli)
 	framework.ExpectNoError(err, "failed to install cert-manager")
 	return nil
 }, func(data []byte) {
@@ -332,7 +334,7 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 	config.Burst = 50
 	kubeCli, _ := kubernetes.NewForConfig(config)
 	ginkgo.By("Deleting cert-manager")
-	err := deleteCertManager(kubeCli)
+	err := tidbcluster.DeleteCertManager(kubeCli)
 	framework.ExpectNoError(err, "failed to delete cert-manager")
 })
 
