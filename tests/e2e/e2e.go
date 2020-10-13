@@ -309,6 +309,10 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	} else {
 		ginkgo.By("Skip installing tidb-operator")
 	}
+
+	ginkgo.By("Installing cert-manager")
+	err = installCertManager(kubeCli)
+	framework.ExpectNoError(err, "failed to install cert-manager")
 	return nil
 }, func(data []byte) {
 	// Run on all Ginkgo nodes
@@ -317,11 +321,19 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 
 var _ = ginkgo.SynchronizedAfterSuite(func() {
 	framework.CleanupSuite()
+
 }, func() {
 	framework.AfterSuiteActions()
 	if operatorKillerStopCh != nil {
 		close(operatorKillerStopCh)
 	}
+	config, err := framework.LoadConfig()
+	config.QPS = 20
+	config.Burst = 50
+	kubeCli, err := kubernetes.NewForConfig(config)
+	ginkgo.By("Deleting cert-manager")
+	err = deleteCertManager(kubeCli)
+	framework.ExpectNoError(err, "failed to delete cert-manager")
 })
 
 // RunE2ETests checks configuration parameters (specified through flags) and then runs
