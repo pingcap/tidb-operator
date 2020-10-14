@@ -113,9 +113,9 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 
 	membersArr := make([]string, 0)
 	for _, member := range membersInfo.Members {
-		// In some failure situations, for example, delete the dm-master's data directory, dm-master will try to restart
-		// and get join info from discovery service. But dm-master embed etcd may still have the registered member info,
-		// which will return the argument to join dm-master itself, which is not allowed in dm-master.
+		// In some failure situations, for example, delete the pd's data directory, pd will try to restart
+		// and get join info from discovery service. But pd embed etcd may still have the registered member info,
+		// which will return the argument to join pd itself, which is not suggested in pd.
 		if member.Name == podName {
 			continue
 		}
