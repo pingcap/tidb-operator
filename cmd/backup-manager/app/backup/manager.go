@@ -291,6 +291,8 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 	klog.Infof("Get br metadata for backup files in %s of cluster %s success", backupFullPath, bm)
 	size := util.GetBRArchiveSize(backupMeta)
 	commitTs := backupMeta.EndVersion
+	klog.Infof("Get size %d for backup files in %s of cluster %s success", size, backupFullPath, bm)
+	klog.Infof("Get cluster %s commitTs %d success", bm, commitTs)
 	finish := time.Now()
 
 	backup.Status.TimeStarted = metav1.Time{Time: started}
