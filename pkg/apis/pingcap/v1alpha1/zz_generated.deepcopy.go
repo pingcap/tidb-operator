@@ -105,6 +105,11 @@ func (in *BRConfig) DeepCopyInto(out *BRConfig) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.Options != nil {
+		in, out := &in.Options, &out.Options
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 
