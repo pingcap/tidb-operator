@@ -414,11 +414,6 @@ func (in *BasicAutoScalerSpec) DeepCopyInto(out *BasicAutoScalerSpec) {
 			(*out)[key] = *val.DeepCopy()
 		}
 	}
-	if in.External != nil {
-		in, out := &in.External, &out.External
-		*out = new(ExternalConfig)
-		(*in).DeepCopyInto(*out)
-	}
 	if in.ScaleInIntervalSeconds != nil {
 		in, out := &in.ScaleInIntervalSeconds, &out.ScaleInIntervalSeconds
 		*out = new(int32)
@@ -428,6 +423,11 @@ func (in *BasicAutoScalerSpec) DeepCopyInto(out *BasicAutoScalerSpec) {
 		in, out := &in.ScaleOutIntervalSeconds, &out.ScaleOutIntervalSeconds
 		*out = new(int32)
 		**out = **in
+	}
+	if in.External != nil {
+		in, out := &in.External, &out.External
+		*out = new(ExternalConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Resources != nil {
 		in, out := &in.Resources, &out.Resources

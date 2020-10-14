@@ -159,6 +159,8 @@ func TestDefaultTac(t *testing.T) {
 		},
 	}
 	defaultTAC(tac, tc)
+	g.Expect(*tac.Spec.TiKV.ScaleOutIntervalSeconds).Should(Equal(int32(300)))
+	g.Expect(*tac.Spec.TiKV.ScaleInIntervalSeconds).Should(Equal(int32(500)))
 	g.Expect(tac.Spec.TiKV.Resources).Should(Equal(map[string]v1alpha1.AutoResource{
 		"default_tikv": {
 			CPU:     tc.Spec.TiKV.Requests.Cpu().DeepCopy(),
@@ -166,8 +168,6 @@ func TestDefaultTac(t *testing.T) {
 			Storage: tc.Spec.TiKV.Requests[corev1.ResourceStorage].DeepCopy(),
 		},
 	}))
-	g.Expect(*tac.Spec.TiKV.ScaleOutIntervalSeconds).Should(Equal(int32(300)))
-	g.Expect(*tac.Spec.TiKV.ScaleInIntervalSeconds).Should(Equal(int32(500)))
 	g.Expect(*tac.Spec.TiKV.Rules[corev1.ResourceCPU].MinThreshold).Should(BeNumerically("==", 0.1))
 	g.Expect(tac.Spec.TiKV.Rules[corev1.ResourceCPU].ResourceTypes).Should(ConsistOf([]string{"default_tikv"}))
 
@@ -175,7 +175,6 @@ func TestDefaultTac(t *testing.T) {
 	tac.Spec.TiKV = nil
 	tac.Spec.TiDB.ScaleOutIntervalSeconds = nil
 	tac.Spec.TiDB.ScaleInIntervalSeconds = nil
-
 	tac.Spec.TiDB.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
 		corev1.ResourceCPU: {
 			MaxThreshold: 0.8,

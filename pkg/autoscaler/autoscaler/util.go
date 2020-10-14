@@ -135,7 +135,6 @@ func defaultBasicAutoScaler(tac *v1alpha1.TidbClusterAutoScaler, component v1alp
 	if spec.ScaleOutIntervalSeconds == nil {
 		spec.ScaleOutIntervalSeconds = pointer.Int32Ptr(300)
 	}
-
 	if spec.ScaleInIntervalSeconds == nil {
 		spec.ScaleInIntervalSeconds = pointer.Int32Ptr(500)
 	}

@@ -996,12 +996,6 @@ func schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerSpec(ref common.ReferenceCa
 							},
 						},
 					},
-					"external": {
-						SchemaProps: spec.SchemaProps{
-							Description: "External makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"),
-						},
-					},
 					"scaleInIntervalSeconds": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ScaleInIntervalSeconds represents the duration seconds between each auto-scaling-in If not set, the default ScaleInIntervalSeconds will be set to 500",
@@ -1014,6 +1008,12 @@ func schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerSpec(ref common.ReferenceCa
 							Description: "ScaleOutIntervalSeconds represents the duration seconds between each auto-scaling-out If not set, the default ScaleOutIntervalSeconds will be set to 300",
 							Type:        []string{"integer"},
 							Format:      "int32",
+						},
+					},
+					"external": {
+						SchemaProps: spec.SchemaProps{
+							Description: "External makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"),
 						},
 					},
 					"resources": {
@@ -9306,12 +9306,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbAutoScalerSpec(ref common.ReferenceCal
 							},
 						},
 					},
-					"external": {
-						SchemaProps: spec.SchemaProps{
-							Description: "External makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"),
-						},
-					},
 					"scaleInIntervalSeconds": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ScaleInIntervalSeconds represents the duration seconds between each auto-scaling-in If not set, the default ScaleInIntervalSeconds will be set to 500",
@@ -9324,6 +9318,12 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbAutoScalerSpec(ref common.ReferenceCal
 							Description: "ScaleOutIntervalSeconds represents the duration seconds between each auto-scaling-out If not set, the default ScaleOutIntervalSeconds will be set to 300",
 							Type:        []string{"integer"},
 							Format:      "int32",
+						},
+					},
+					"external": {
+						SchemaProps: spec.SchemaProps{
+							Description: "External makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"),
 						},
 					},
 					"resources": {
@@ -10415,12 +10415,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TikvAutoScalerSpec(ref common.ReferenceCal
 							},
 						},
 					},
-					"external": {
-						SchemaProps: spec.SchemaProps{
-							Description: "External makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"),
-						},
-					},
 					"scaleInIntervalSeconds": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ScaleInIntervalSeconds represents the duration seconds between each auto-scaling-in If not set, the default ScaleInIntervalSeconds will be set to 500",
@@ -10433,6 +10427,12 @@ func schema_pkg_apis_pingcap_v1alpha1_TikvAutoScalerSpec(ref common.ReferenceCal
 							Description: "ScaleOutIntervalSeconds represents the duration seconds between each auto-scaling-out If not set, the default ScaleOutIntervalSeconds will be set to 300",
 							Type:        []string{"integer"},
 							Format:      "int32",
+						},
+					},
+					"external": {
+						SchemaProps: spec.SchemaProps{
+							Description: "External makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"),
 						},
 					},
 					"resources": {

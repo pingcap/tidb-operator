@@ -105,11 +105,6 @@ type BasicAutoScalerSpec struct {
 	// Rules defines the rules for auto-scaling with PD API
 	Rules map[corev1.ResourceName]AutoRule `json:"rules,omitempty"`
 
-	// External makes the auto-scaler controller able to query the external service
-	// to fetch the recommended replicas for TiKV/TiDB
-	// +optional
-	External *ExternalConfig `json:"external,omitempty"`
-
 	// ScaleInIntervalSeconds represents the duration seconds between each auto-scaling-in
 	// If not set, the default ScaleInIntervalSeconds will be set to 500
 	// +optional
@@ -119,6 +114,11 @@ type BasicAutoScalerSpec struct {
 	// If not set, the default ScaleOutIntervalSeconds will be set to 300
 	// +optional
 	ScaleOutIntervalSeconds *int32 `json:"scaleOutIntervalSeconds,omitempty"`
+
+	// External makes the auto-scaler controller able to query the external service
+	// to fetch the recommended replicas for TiKV/TiDB
+	// +optional
+	External *ExternalConfig `json:"external,omitempty"`
 
 	// Resources represent the resource type definitions that can be used for TiDB/TiKV
 	// The key is resource_type name of the resource

@@ -3016,21 +3016,6 @@ map[k8s.io/api/core/v1.ResourceName]github.com/pingcap/tidb-operator/pkg/apis/pi
 </tr>
 <tr>
 <td>
-<code>external</code></br>
-<em>
-<a href="#externalconfig">
-ExternalConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>External makes the auto-scaler controller able to query the external service
-to fetch the recommended replicas for TiKV/TiDB</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>scaleInIntervalSeconds</code></br>
 <em>
 int32
@@ -3053,6 +3038,21 @@ int32
 <em>(Optional)</em>
 <p>ScaleOutIntervalSeconds represents the duration seconds between each auto-scaling-out
 If not set, the default ScaleOutIntervalSeconds will be set to 300</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>external</code></br>
+<em>
+<a href="#externalconfig">
+ExternalConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>External makes the auto-scaler controller able to query the external service
+to fetch the recommended replicas for TiKV/TiDB</p>
 </td>
 </tr>
 <tr>
