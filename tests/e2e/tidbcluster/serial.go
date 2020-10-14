@@ -146,6 +146,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 
 		ginkgo.It("[PodAdmissionWebhook] able to upgrade TiDB Cluster with pod admission webhook", func() {
+			framework.Skipf("temp")
 			klog.Info("start to upgrade tidbcluster with pod admission webhook")
 			// deploy new cluster and test upgrade and scale-in/out with pod admission webhook
 			tc := fixture.GetTidbCluster(ns, "admission", utilimage.TiDBV3Version)
@@ -244,7 +245,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 
 		ginkgo.It("should perform defaulting and validating properly", func() {
-
+			framework.Skipf("temp")
 			ginkgo.By("Resources created before webhook enabled could be operated normally")
 			legacyTc := &v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
@@ -436,6 +437,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 
 		ginkgo.It("Deploy TidbCluster and Upgrade Operator", func() {
+			framework.Skipf("temp")
 			tcName := "tidbcluster"
 			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "", utilimage.TiDBV3Version)
 			cluster.Resources["pd.replicas"] = "3"
@@ -730,6 +732,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					framework.Logf("autoscaling tikv cluster is not scaled out")
 					framework.RunKubectl("get", "-n", ns, "tidbcluster", autoTc.Name, "-o", "yaml")
 					framework.RunKubectl("get", "-n", ns, "pods")
+					framework.RunKubectl("logs", "-n", ns, "-l", "app.kubernetes.io/component=controller-manager")
 					return false, nil
 				}
 
