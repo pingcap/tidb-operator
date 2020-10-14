@@ -271,6 +271,44 @@ data:
 type: kubernetes.io/tls
  ```
 
+## 监控多集群
+
+TidbMonitor 支持监控多个非 TLS 集群。对于 TLS 集群，建议每个集群使用一个单独的 TidbMonitor 来监控，推荐使用 [`Thanos`](https://thanos.io/tip/thanos/getting-started.md/) 方案统一查询监控数据。
+
+监控多个非 TLS 集群示例：
+
+```yaml
+apiVersion: pingcap.com/v1alpha1
+kind: TidbMonitor
+metadata:
+  name: basic
+spec:
+  clusters:
+    - name: ns1
+      namespace: ns1
+    - name: ns2
+      namespace: ns2
+  kubePrometheusURL: "your-kube-prometheus-url"
+  alertmanagerURL: "your-alert-manager-url"
+  prometheus:
+    baseImage: prom/prometheus
+    version: v2.11.1
+    service:
+      type: NodePort
+  grafana:
+    baseImage: grafana/grafana
+    version: 6.0.1
+    service:
+      type: NodePort
+  initializer:
+    baseImage: pingcap/tidb-monitor-initializer
+    version: v4.0.6
+  reloader:
+    baseImage: pingcap/tidb-monitor-reloader
+    version: v1.0.1
+  imagePullPolicy: IfNotPresent
+```
+
 ## 参考
 
 了解 TidbMonitor 更为详细的 API 设置，可以参考 [API 文档](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.md)。
