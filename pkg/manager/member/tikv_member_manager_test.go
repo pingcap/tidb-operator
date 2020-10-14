@@ -23,8 +23,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
@@ -36,11 +34,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	kubeinformers "k8s.io/client-go/informers"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/pointer"
 )
 
@@ -117,7 +112,7 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 
 		g.Expect(tc.Spec).To(Equal(oldSpec))
 
-		svc, err := tkmm.svcLister.Services(ns).Get(controller.TiKVPeerMemberName(tcName))
+		svc, err := tkmm.deps.ServiceLister.Services(ns).Get(controller.TiKVPeerMemberName(tcName))
 		if test.tikvPeerSvcCreated {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(svc).NotTo(Equal(nil))
@@ -125,7 +120,7 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 			expectErrIsNotFound(g, err)
 		}
 
-		tc1, err := tkmm.setLister.StatefulSets(ns).Get(controller.TiKVMemberName(tcName))
+		tc1, err := tkmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.TiKVMemberName(tcName))
 		if test.setCreated {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(tc1).NotTo(Equal(nil))
@@ -258,9 +253,9 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 		err := tkmm.Sync(tc)
 		g.Expect(err).NotTo(HaveOccurred())
 
-		_, err = tkmm.svcLister.Services(ns).Get(controller.TiKVPeerMemberName(tcName))
+		_, err = tkmm.deps.ServiceLister.Services(ns).Get(controller.TiKVPeerMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
-		_, err = tkmm.setLister.StatefulSets(ns).Get(controller.TiKVMemberName(tcName))
+		_, err = tkmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.TiKVMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
 
 		tc1 := tc.DeepCopy()
@@ -281,11 +276,11 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 		}
 
 		if test.expectTiKVPeerServiceFn != nil {
-			svc, err := tkmm.svcLister.Services(ns).Get(controller.TiKVPeerMemberName(tcName))
+			svc, err := tkmm.deps.ServiceLister.Services(ns).Get(controller.TiKVPeerMemberName(tcName))
 			test.expectTiKVPeerServiceFn(g, svc, err)
 		}
 		if test.expectStatefulSetFn != nil {
-			set, err := tkmm.setLister.StatefulSets(ns).Get(controller.TiKVMemberName(tcName))
+			set, err := tkmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.TiKVMemberName(tcName))
 			test.expectStatefulSetFn(g, set, err)
 		}
 		if test.expectTidbClusterFn != nil {
@@ -408,7 +403,7 @@ func TestTiKVMemberManagerTiKVStatefulSetIsUpgrading(t *testing.T) {
 			}
 			podIndexer.Add(pod)
 		}
-		b, err := pmm.tikvStatefulSetIsUpgradingFn(pmm.podLister, pmm.pdControl, set, tc)
+		b, err := pmm.statefulSetIsUpgradingFn(pmm.deps.PodLister, pmm.deps.PDControl, set, tc)
 		if test.errExpectFn != nil {
 			test.errExpectFn(g, err)
 		}
@@ -817,7 +812,7 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 		pmm, _, _, pdClient, _, _ := newFakeTiKVMemberManager(tc)
 
 		if test.upgradingFn != nil {
-			pmm.tikvStatefulSetIsUpgradingFn = test.upgradingFn
+			pmm.statefulSetIsUpgradingFn = test.upgradingFn
 		}
 		if test.errWhenGetStores {
 			pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
@@ -1482,38 +1477,20 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 func newFakeTiKVMemberManager(tc *v1alpha1.TidbCluster) (
 	*tikvMemberManager, *controller.FakeStatefulSetControl,
 	*controller.FakeServiceControl, *pdapi.FakePDClient, cache.Indexer, cache.Indexer) {
-	cli := fake.NewSimpleClientset()
-	kubeCli := kubefake.NewSimpleClientset()
-	pdControl := pdapi.NewFakePDControl(kubeCli)
-	pdClient := controller.NewFakePDClient(pdControl, tc)
-	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1().StatefulSets()
-	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
-	epsInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Endpoints()
-	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbClusters()
-	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
-	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer, tcInformer)
-	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
-	nodeInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Nodes()
-	tikvScaler := NewFakeTiKVScaler()
-	tikvUpgrader := NewFakeTiKVUpgrader()
-	recorder := record.NewFakeRecorder(10)
-	genericControl := controller.NewFakeGenericControl()
-
+	fakeDeps := controller.NewFakeDependencies()
 	tmm := &tikvMemberManager{
-		pdControl:    pdControl,
-		podLister:    podInformer.Lister(),
-		nodeLister:   nodeInformer.Lister(),
-		setControl:   setControl,
-		svcControl:   svcControl,
-		typedControl: controller.NewTypedControl(genericControl),
-		setLister:    setInformer.Lister(),
-		svcLister:    svcInformer.Lister(),
-		tikvScaler:   tikvScaler,
-		tikvUpgrader: tikvUpgrader,
-		recorder:     recorder,
+		deps:                     fakeDeps,
+		scaler:                   NewFakeTiKVScaler(),
+		upgrader:                 NewFakeTiKVUpgrader(),
+		statefulSetIsUpgradingFn: tikvStatefulSetIsUpgrading,
 	}
-	tmm.tikvStatefulSetIsUpgradingFn = tikvStatefulSetIsUpgrading
-	return tmm, setControl, svcControl, pdClient, podInformer.Informer().GetIndexer(), nodeInformer.Informer().GetIndexer()
+	setControl := fakeDeps.StatefulSetControl.(*controller.FakeStatefulSetControl)
+	svcControl := fakeDeps.ServiceControl.(*controller.FakeServiceControl)
+	pdControl := fakeDeps.PDControl.(*pdapi.FakePDControl)
+	pdClient := controller.NewFakePDClient(pdControl, tc)
+	podIndexer := fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer()
+	nodeIndexer := fakeDeps.KubeInformerFactory.Core().V1().Nodes().Informer().GetIndexer()
+	return tmm, setControl, svcControl, pdClient, podIndexer, nodeIndexer
 }
 
 func TestGetNewTiFlashServiceForTidbCluster(t *testing.T) {

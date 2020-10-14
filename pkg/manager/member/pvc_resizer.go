@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
@@ -26,11 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
-	coreinformers "k8s.io/client-go/informers/core/v1"
-	storageinformers "k8s.io/client-go/informers/storage/v1"
-	"k8s.io/client-go/kubernetes"
-	corelisters "k8s.io/client-go/listers/core/v1"
-	storagelisters "k8s.io/client-go/listers/storage/v1"
 	"k8s.io/klog"
 )
 
@@ -73,9 +69,7 @@ var (
 )
 
 type pvcResizer struct {
-	kubeCli   kubernetes.Interface
-	pvcLister corelisters.PersistentVolumeClaimLister
-	scLister  storagelisters.StorageClassLister
+	deps *controller.Dependencies
 }
 
 func (p *pvcResizer) Resize(tc *v1alpha1.TidbCluster) error {
@@ -129,7 +123,7 @@ func (p *pvcResizer) Resize(tc *v1alpha1.TidbCluster) error {
 }
 
 func (p *pvcResizer) isVolumeExpansionSupported(storageClassName string) (bool, error) {
-	sc, err := p.scLister.Get(storageClassName)
+	sc, err := p.deps.StorageClassLister.Get(storageClassName)
 	if err != nil {
 		return false, err
 	}
@@ -141,7 +135,7 @@ func (p *pvcResizer) isVolumeExpansionSupported(storageClassName string) (bool, 
 
 // patchPVCs patches PVCs filtered by selector and prefix.
 func (p *pvcResizer) patchPVCs(ns string, selector labels.Selector, storageRequest resource.Quantity, prefix string) error {
-	pvcs, err := p.pvcLister.PersistentVolumeClaims(ns).List(selector)
+	pvcs, err := p.deps.PVCLister.PersistentVolumeClaims(ns).List(selector)
 	if err != nil {
 		return err
 	}
@@ -175,7 +169,7 @@ func (p *pvcResizer) patchPVCs(ns string, selector labels.Selector, storageReque
 				klog.Warningf("Storage Class %q used by PVC %s/%s does not support volume expansion, skipped", *pvc.Spec.StorageClassName, pvc.Namespace, pvc.Name)
 				continue
 			}
-			_, err = p.kubeCli.CoreV1().PersistentVolumeClaims(pvc.Namespace).Patch(pvc.Name, types.MergePatchType, mergePatch)
+			_, err = p.deps.KubeClientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Patch(pvc.Name, types.MergePatchType, mergePatch)
 			if err != nil {
 				return err
 			}
@@ -189,11 +183,9 @@ func (p *pvcResizer) patchPVCs(ns string, selector labels.Selector, storageReque
 	return nil
 }
 
-func NewPVCResizer(kubeCli kubernetes.Interface, pvcInformer coreinformers.PersistentVolumeClaimInformer, storageClassInformer storageinformers.StorageClassInformer) PVCResizerInterface {
+func NewPVCResizer(deps *controller.Dependencies) PVCResizerInterface {
 	return &pvcResizer{
-		kubeCli:   kubeCli,
-		pvcLister: pvcInformer.Lister(),
-		scLister:  storageClassInformer.Lister(),
+		deps: deps,
 	}
 }
 
