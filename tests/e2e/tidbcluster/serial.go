@@ -690,7 +690,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 			var autoTc v1alpha1.TidbCluster
 			// A new cluster should be created and there is one TiKV replica
-			err = wait.Poll(10*time.Second, 5*time.Minute, func() (done bool, err error) {
+			err = wait.Poll(10*time.Second, 30*time.Minute, func() (done bool, err error) {
 				tcList, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).List(metav1.ListOptions{
 					LabelSelector: fmt.Sprintf("%s=%s,%s=%s", label.AutoInstanceLabelKey, "auto-scaler", label.BaseTCLabelKey, tc.Name),
 				})
@@ -718,7 +718,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			autoTiKV := fmt.Sprintf("%s-tikv-0", autoTc.Name)
 			setCPUUsageAndQuota("35.0", "1.0", v1alpha1.TiKVMemberType.String(), []string{"auto-scaling-tikv-0", "auto-scaling-tikv-1", "auto-scaling-tikv-2", autoTiKV})
 
-			err = wait.Poll(30*time.Second, 5*time.Minute, func() (done bool, err error) {
+			err = wait.Poll(30*time.Second, 30*time.Minute, func() (done bool, err error) {
 				tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
 
 				if err != nil {
@@ -777,7 +777,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			// framework.ExpectNoError(err, "failed to check scale in autoscaling tikv cluster")
 			// framework.Logf("success to check scale in autoscaling tikv cluster")
 
-			err = wait.Poll(10*time.Second, 10*time.Minute, func() (done bool, err error) {
+			err = wait.Poll(30*time.Second, 30*time.Minute, func() (done bool, err error) {
 				tcList, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).List(metav1.ListOptions{
 					LabelSelector: fmt.Sprintf("%s=%s,%s=%s", label.AutoInstanceLabelKey, "auto-scaler", label.BaseTCLabelKey, tc.Name),
 				})
