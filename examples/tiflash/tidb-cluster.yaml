@@ -9,7 +9,6 @@ spec:
   imagePullPolicy: IfNotPresent
   pd:
     baseImage: pingcap/pd
-    mountClusterClientSecret: true
     config:
       log:
         level: info
@@ -66,7 +65,6 @@ spec:
     config:
       log-level: info
     imagePullPolicy: IfNotPresent
-    mountClusterClientSecret: true
     maxFailoverCount: 3
     replicas: 3
     requests:

@@ -20,7 +20,6 @@ spec:
     requests:
       storage: "1Gi"
     config: {}
-    mountClusterClientSecret: true
   tikv:
     baseImage: pingcap/tikv
     replicas: 1
@@ -32,7 +31,6 @@ spec:
       storage:
         # In basic examples, we set this to avoid using too much storage.
         reserve-space: "0MB"
-    mountClusterClientSecret: true
   tidb:
     baseImage: pingcap/tidb
     replicas: 1

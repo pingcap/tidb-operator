@@ -13,14 +13,12 @@ spec:
   pd:
     baseImage: pingcap/pd
     replicas: 3
-    mountClusterClientSecret: true
     requests:
       storage: "1Gi"
     config: {}
   tikv:
     baseImage: pingcap/tikv
     replicas: 3
-    mountClusterClientSecret: true
     requests:
       storage: "1Gi"
     config: {}

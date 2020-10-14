@@ -14,7 +14,6 @@ spec:
     replicas: 3
     requests:
       storage: "10Gi"
-    mountClusterClientSecret: true
     config:
       log:
         level: info
@@ -34,7 +33,6 @@ spec:
     replicas: 3
     requests:
       storage: "100Gi"
-    mountClusterClientSecret: true
     config: {}
     nodeSelector:
       dedicated: tikv

@@ -16,7 +16,6 @@ spec:
   pd:
     imagePullPolicy: IfNotPresent
     baseImage: pingcap/pd
-    mountClusterClientSecret: true
     replicas: 1
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
     # storageClassName: local-storage
@@ -26,7 +25,6 @@ spec:
   tikv:
     imagePullPolicy: IfNotPresent
     baseImage: pingcap/tikv
-    mountClusterClientSecret: true
     replicas: 1
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
     # storageClassName: local-storage

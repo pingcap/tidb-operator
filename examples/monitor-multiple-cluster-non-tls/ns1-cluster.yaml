@@ -20,7 +20,6 @@ spec:
     replicas: 1
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
     # storageClassName: local-storage
-    mountClusterClientSecret: true
     requests:
       storage: "1Gi"
     config: {}
@@ -30,7 +29,6 @@ spec:
     replicas: 1
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
     # storageClassName: local-storage
-    mountClusterClientSecret: true
     requests:
       storage: "1Gi"
     config:

@@ -51,9 +51,9 @@ spec:
       storage: 1Gi
 
     # TiDB Operator will automatically mount the certificates
-    # Defaults to "true"
+    # Defaults to "false"
     # Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/configure-a-tidb-cluster#mountclusterclientsecret
-    mountClusterClientSecret: true
+    mountClusterClientSecret: false
     
     ## The storageClassName of the persistent volume for PD data storage.
     ## Defaults to Kubernetes default storage class.
@@ -173,9 +173,9 @@ spec:
       storage: 1Gi
 
     # TiDB Operator will automatically mount the certificates
-    # Defaults to "true"
+    # Defaults to "false"
     # Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/configure-a-tidb-cluster#mountclusterclientsecret
-    mountClusterClientSecret: true
+    mountClusterClientSecret: false
     
     ## The storageClassName of the persistent volume for TiKV data storage.
     ## Defaults to Kubernetes default storage class.

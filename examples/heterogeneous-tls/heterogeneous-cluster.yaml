@@ -9,6 +9,7 @@ spec:
   tlsCluster:
     enabled: true
   configUpdateStrategy: RollingUpdate
+  enableDynamicConfiguration: true
   version: v4.0.6
   timezone: UTC
   pvReclaimPolicy: Retain
