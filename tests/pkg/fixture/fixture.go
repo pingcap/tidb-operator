@@ -88,7 +88,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 	// We assume all unparsable versions are greater or equal to v4.0.0-beta,
 	// e.g. nightly.
 	if v, err := semver.NewVersion(version); err == nil && v.LessThan(tikvV4Beta) {
-		tikvConfig.Set("storage", nil)
+		tikvConfig.Del("storage")
 	}
 	deletePVP := corev1.PersistentVolumeReclaimDelete
 

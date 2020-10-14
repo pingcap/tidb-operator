@@ -333,7 +333,10 @@ func (tmm *tidbMemberManager) syncTiDBConfigMap(tc *v1alpha1.TidbCluster, set *a
 
 	klog.V(3).Info("get tidb in use config map name: ", inUseName)
 
-	updateConfigMapIfNeed(tmm.deps.ConfigMapLister, tc.BaseTiDBSpec().ConfigUpdateStrategy(), inUseName, newCm)
+	err = updateConfigMapIfNeed(tmm.deps.ConfigMapLister, tc.BaseTiDBSpec().ConfigUpdateStrategy(), inUseName, newCm)
+	if err != nil {
+		return nil, err
+	}
 	return tmm.deps.TypedControl.CreateOrUpdateConfigMap(tc, newCm)
 }
 

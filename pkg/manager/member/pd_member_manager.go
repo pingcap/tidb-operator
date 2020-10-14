@@ -394,7 +394,10 @@ func (pmm *pdMemberManager) syncPDConfigMap(tc *v1alpha1.TidbCluster, set *apps.
 		})
 	}
 
-	updateConfigMapIfNeed(pmm.deps.ConfigMapLister, tc.BaseTiDBSpec().ConfigUpdateStrategy(), inUseName, newCm)
+	err = updateConfigMapIfNeed(pmm.deps.ConfigMapLister, tc.BaseTiDBSpec().ConfigUpdateStrategy(), inUseName, newCm)
+	if err != nil {
+		return nil, err
+	}
 	return pmm.deps.TypedControl.CreateOrUpdateConfigMap(tc, newCm)
 }
 

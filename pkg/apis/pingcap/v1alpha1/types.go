@@ -464,7 +464,7 @@ type TiFlashSpec struct {
 
 	// Config is the Configuration of TiFlash
 	// +optional
-	Config *TiFlashConfig `json:"config,omitempty"`
+	Config *TiFlashConfigWraper `json:"config,omitempty"`
 
 	// LogTailer is the configurations of the log tailers for TiFlash
 	// +optional

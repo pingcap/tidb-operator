@@ -97,6 +97,52 @@ func TestGetSet(t *testing.T) {
 	}
 }
 
+func TestDel(t *testing.T) {
+	g := NewGomegaWithT(t)
+	kv := map[string]int64{
+		"a.b.c1": 1,
+		"a.b.c2": 2,
+		"a.b1":   1,
+		"a.b2":   2,
+		"a1":     1,
+		"a2":     2,
+	}
+
+	c := New(map[string]interface{}{})
+
+	for k, v := range kv {
+		c.Set(k, v)
+	}
+	for k, v := range kv {
+		g.Expect(c.Get(k).MustInt()).Should(Equal(v))
+	}
+
+	// delete bottom level item
+	c.Del("a.b.c1")
+	delete(kv, "a.b.c1")
+	c.Del("a.b1")
+	delete(kv, "a.b1")
+	c.Del("a1")
+	delete(kv, "a1")
+	for k, v := range kv {
+		g.Expect(c.Get(k).MustInt()).Should(Equal(v))
+	}
+
+	// delete non-bottom level item
+	c.Del("a")
+	delete(kv, "a.b.c2")
+	delete(kv, "a.b2")
+	for k, v := range kv {
+		g.Expect(c.Get(k).MustInt()).Should(Equal(v))
+	}
+
+	// delete non-exist item
+	c.Del("what")
+	for k, v := range kv {
+		g.Expect(c.Get(k).MustInt()).Should(Equal(v))
+	}
+}
+
 func TestDeepCopyJsonObject(t *testing.T) {
 	g := NewGomegaWithT(t)
 

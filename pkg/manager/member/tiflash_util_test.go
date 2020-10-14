@@ -14,12 +14,14 @@
 package member
 
 import (
+	"encoding/json"
 	"path"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/util/toml"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -361,6 +363,7 @@ var (
 				TiDBStatusAddr: pointer.StringPtr("test-tidb.test.svc:10081"),
 			},
 			HTTPPort:               pointer.Int32Ptr(8121),
+			HTTPSPort:              pointer.Int32Ptr(9999),
 			InternalServerHTTPPort: pointer.Int32Ptr(9001),
 			ListenHost:             pointer.StringPtr("0.0.0.1"),
 			FlashLogger: &v1alpha1.FlashLogger{
@@ -404,8 +407,9 @@ var (
 			FlashStatus: &v1alpha1.FlashStatus{
 				MetricsPort: pointer.Int32Ptr(8235),
 			},
-			TCPPort: pointer.Int32Ptr(9001),
-			TmpPath: pointer.StringPtr("/data1/tmp"),
+			TCPPort:       pointer.Int32Ptr(9001),
+			TCPPortSecure: pointer.Int32Ptr(9002),
+			TmpPath:       pointer.StringPtr("/data1/tmp"),
 			FlashUser: &v1alpha1.FlashUser{
 				Default: &v1alpha1.User{
 					Networks: &v1alpha1.Networks{
@@ -429,20 +433,6 @@ var (
 				EngineAddr:          pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3930"),
 				StatusAddr:          pointer.StringPtr("0.0.0.0:20292"),
 				AdvertiseStatusAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:20292"),
-			},
-		},
-	}
-	defaultTiFlashLogConfig = v1alpha1.TiFlashConfig{
-		CommonConfig: &v1alpha1.CommonConfig{
-			Flash: &v1alpha1.Flash{
-				FlashCluster: &v1alpha1.FlashCluster{
-					ClusterLog: pointer.StringPtr("/data0/logs/flash_cluster_manager.log"),
-				},
-				FlashProxy: &v1alpha1.FlashProxy{},
-			},
-			FlashLogger: &v1alpha1.FlashLogger{
-				ErrorLog:  pointer.StringPtr("/data0/logs/error.log"),
-				ServerLog: pointer.StringPtr("/data0/logs/server.log"),
 			},
 		},
 	}
@@ -643,11 +633,9 @@ func newTidbCluster() *v1alpha1.TidbCluster {
 }
 
 func TestBuildTiFlashSidecarContainers(t *testing.T) {
-	g := NewGomegaWithT(t)
-
 	type testcase struct {
 		name        string
-		flashConfig *v1alpha1.TiFlashConfig
+		flashConfig *v1alpha1.TiFlashConfigWraper
 		expect      []corev1.Container
 		resource    bool
 	}
@@ -660,17 +648,17 @@ func TestBuildTiFlashSidecarContainers(t *testing.T) {
 		},
 		{
 			name:        "empty config",
-			flashConfig: &v1alpha1.TiFlashConfig{},
+			flashConfig: v1alpha1.NewTiFlashConfig(),
 			expect:      defaultSideCarContainers,
 		},
 		{
 			name:        "custom config",
-			flashConfig: &customTiFlashLogConfig,
+			flashConfig: mustFromOldConfig(&customTiFlashLogConfig),
 			expect:      customSideCarContainers,
 		},
 		{
 			name:        "custom resource config",
-			flashConfig: &customTiFlashLogConfig,
+			flashConfig: mustFromOldConfig(&customTiFlashLogConfig),
 			expect:      customResourceSideCarContainers,
 			resource:    true,
 		},
@@ -690,67 +678,45 @@ func TestBuildTiFlashSidecarContainers(t *testing.T) {
 					},
 				}
 			}
-			cs := buildTiFlashSidecarContainers(tc)
-			g.Expect(cs).To(Equal(test.expect))
+			cs, err := buildTiFlashSidecarContainers(tc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if diff := cmp.Diff(test.expect, cs); diff != "" {
+				t.Fatalf("test %s unexpected configuration (-want, +got): %s", test.name, diff)
+			}
 		})
 	}
 }
+
 func TestSetTiFlashConfigDefault(t *testing.T) {
-	g := NewGomegaWithT(t)
-
 	type testcase struct {
 		name   string
-		config v1alpha1.TiFlashConfig
-		expect v1alpha1.TiFlashConfig
+		config *v1alpha1.TiFlashConfigWraper
+		expect *v1alpha1.TiFlashConfigWraper
 	}
 
 	tests := []*testcase{
 		{
 			name:   "nil config",
-			config: v1alpha1.TiFlashConfig{},
-			expect: defaultTiFlashConfig,
+			config: v1alpha1.NewTiFlashConfig(),
+			expect: mustFromOldConfig(&defaultTiFlashConfig),
 		},
 		{
 			name:   "custom config",
-			config: customTiFlashConfig,
-			expect: customTiFlashConfig,
+			config: mustFromOldConfig(&customTiFlashConfig),
+			expect: mustFromOldConfig(&customTiFlashConfig),
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			setTiFlashConfigDefault(&test.config, "", "test", "test")
-			g.Expect(test.config).To(Equal(test.expect))
-		})
-	}
-}
-
-func TestSetTiFlashLogConfigDefault(t *testing.T) {
-	g := NewGomegaWithT(t)
-
-	type testcase struct {
-		name   string
-		config v1alpha1.TiFlashConfig
-		expect v1alpha1.TiFlashConfig
-	}
-
-	tests := []*testcase{
-		{
-			name:   "nil config",
-			config: v1alpha1.TiFlashConfig{},
-			expect: defaultTiFlashLogConfig,
-		},
-		{
-			name:   "custom config",
-			config: customTiFlashLogConfig,
-			expect: customTiFlashLogConfig,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			setTiFlashLogConfigDefault(&test.config)
-			g.Expect(test.config).To(Equal(test.expect))
+			// g := NewGomegaWithT(t)
+			setTiFlashConfigDefault(test.config, "", "test", "test")
+			// g.Expect(test.config).To(Equal(test.expect))
+			if diff := cmp.Diff(*test.expect, *test.config); diff != "" {
+				t.Fatalf("unexpected configuration (-want, +got): %s", diff)
+			}
 		})
 	}
 }
@@ -789,7 +755,7 @@ func TestGetTiFlashConfig(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiFlash: &v1alpha1.TiFlashSpec{
-						Config: &v1alpha1.TiFlashConfig{
+						Config: mustFromOldConfig(&v1alpha1.TiFlashConfig{
 							CommonConfig: &v1alpha1.CommonConfig{
 								Security: &v1alpha1.FlashSecurity{
 									CertAllowedCN: []string{
@@ -797,7 +763,7 @@ func TestGetTiFlashConfig(t *testing.T) {
 									},
 								},
 							},
-						},
+						}),
 					},
 					TLSCluster: &v1alpha1.TLSCluster{
 						Enabled: true,
@@ -842,10 +808,42 @@ func TestGetTiFlashConfig(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
+			g := NewGomegaWithT(t)
 			config := getTiFlashConfig(&tt.tc)
-			if diff := cmp.Diff(*tt.expected, *config); diff != "" {
+			flashConfig := &v1alpha1.TiFlashConfig{
+				CommonConfig: new(v1alpha1.CommonConfig),
+				ProxyConfig:  new(v1alpha1.ProxyConfig),
+			}
+
+			data, err := config.Common.MarshalTOML()
+			g.Expect(err).Should(BeNil())
+			err = toml.Unmarshal(data, flashConfig.CommonConfig)
+			g.Expect(err).Should(BeNil())
+
+			data, err = config.Proxy.MarshalTOML()
+			g.Expect(err).Should(BeNil())
+			err = toml.Unmarshal(data, flashConfig.ProxyConfig)
+			g.Expect(err).Should(BeNil())
+
+			if diff := cmp.Diff(*tt.expected, *flashConfig); diff != "" {
 				t.Fatalf("unexpected configuration (-want, +got): %s", diff)
 			}
 		})
 	}
+}
+
+func mustFromOldConfig(old *v1alpha1.TiFlashConfig) *v1alpha1.TiFlashConfigWraper {
+	config := v1alpha1.NewTiFlashConfig()
+
+	data, err := json.Marshal(old)
+	if err != nil {
+		panic(err)
+	}
+
+	err = json.Unmarshal(data, config)
+	if err != nil {
+		panic(err)
+	}
+
+	return config
 }
