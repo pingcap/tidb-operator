@@ -600,7 +600,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 		ginkgo.AfterEach(func() {
 			framework.RunKubectl("logs", "-n", ns, "auto-scaling-pd-0")
-			framework.RunKubectl("logs", "-n", ns, "-l", "app.kubernetes.io/component=monitor", "-c", "prometheus")
 			ginkgo.By("Uninstall tidb-operator")
 			oa.CleanOperatorOrDie(ocfg)
 			ginkgo.By("Uninstalling CRDs")
@@ -719,7 +718,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			autoTiKV := fmt.Sprintf("%s-tikv-0", autoTc.Name)
 			setCPUUsageAndQuota("35.0", "1.0", v1alpha1.TiKVMemberType.String(), []string{"auto-scaling-tikv-0", "auto-scaling-tikv-1", "auto-scaling-tikv-2", autoTiKV})
 
-			err = wait.Poll(10*time.Second, 5*time.Minute, func() (done bool, err error) {
+			err = wait.Poll(30*time.Second, 5*time.Minute, func() (done bool, err error) {
 				tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
 
 				if err != nil {
@@ -730,9 +729,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 				if autoTc.Spec.TiKV.Replicas < 2 {
 					framework.Logf("autoscaling tikv cluster is not scaled out")
-					framework.RunKubectl("get", "-n", ns, "tidbcluster", autoTc.Name, "-o", "yaml")
-					framework.RunKubectl("get", "-n", ns, "pods")
-					framework.RunKubectl("logs", "-n", ns, "-l", "app.kubernetes.io/component=controller-manager")
 					return false, nil
 				}
 
