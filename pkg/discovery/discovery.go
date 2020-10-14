@@ -76,8 +76,6 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 		return "", err
 	}
 	keyName := fmt.Sprintf("%s/%s", ns, tcName)
-	// TODO: the replicas should be the total replicas of pd sets.
-	replicas := tc.Spec.PD.Replicas
 
 	currentCluster := td.clusters[keyName]
 	if currentCluster == nil || currentCluster.resourceVersion != tc.ResourceVersion {
@@ -89,7 +87,8 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	currentCluster = td.clusters[keyName]
 	currentCluster.peers[podName] = struct{}{}
 
-	if len(currentCluster.peers) == int(replicas) {
+	// Should take failover replicas into consideration
+	if len(currentCluster.peers) == int(tc.PDStsDesiredReplicas()) {
 		delete(currentCluster.peers, podName)
 		return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, tc.Scheme(), advertisePeerUrl), nil
 	}
@@ -108,9 +107,82 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 
 	membersArr := make([]string, 0)
 	for _, member := range membersInfo.Members {
+		// In some failure situations, for example, delete the pd's data directory, pd will try to restart
+		// and get join info from discovery service. But pd embed etcd may still have the registered member info,
+		// which will return the argument to join pd itself, which is not suggested in pd.
+		if member.Name == podName {
+			continue
+		}
 		memberURL := strings.ReplaceAll(member.PeerUrls[0], ":2380", ":2379")
 		membersArr = append(membersArr, memberURL)
 	}
 	delete(currentCluster.peers, podName)
 	return fmt.Sprintf("--join=%s", strings.Join(membersArr, ",")), nil
 }
+<<<<<<< HEAD
+=======
+
+func (td *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
+	td.lock.Lock()
+	defer td.lock.Unlock()
+
+	if advertisePeerUrl == "" {
+		return "", fmt.Errorf("dm advertisePeerUrl is empty")
+	}
+	klog.Infof("dm advertisePeerUrl is: %s", advertisePeerUrl)
+	strArr := strings.Split(advertisePeerUrl, ".")
+	if len(strArr) != 2 {
+		return "", fmt.Errorf("dm advertisePeerUrl format is wrong: %s", advertisePeerUrl)
+	}
+
+	podName, peerServiceNameWithPort := strArr[0], strArr[1]
+	strArr = strings.Split(peerServiceNameWithPort, ":")
+	if len(strArr) != 2 {
+		return "", fmt.Errorf("dm advertisePeerUrl format is wrong: %s", advertisePeerUrl)
+	}
+	peerServiceName := strArr[0]
+	dcName := strings.TrimSuffix(peerServiceName, "-dm-master-peer")
+	ns := os.Getenv("MY_POD_NAMESPACE")
+
+	dc, err := td.cli.PingcapV1alpha1().DMClusters(ns).Get(dcName, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	keyName := fmt.Sprintf("%s/%s", ns, dcName)
+
+	currentCluster := td.dmClusters[keyName]
+	if currentCluster == nil || currentCluster.resourceVersion != dc.ResourceVersion {
+		td.dmClusters[keyName] = &clusterInfo{
+			resourceVersion: dc.ResourceVersion,
+			peers:           map[string]struct{}{},
+		}
+	}
+	currentCluster = td.dmClusters[keyName]
+	currentCluster.peers[podName] = struct{}{}
+
+	if len(currentCluster.peers) == int(dc.MasterStsDesiredReplicas()) {
+		delete(currentCluster.peers, podName)
+		return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, dc.Scheme(), advertisePeerUrl), nil
+	}
+
+	masterClient := td.masterControl.GetMasterClient(dc.GetNamespace(), dc.GetName(), dc.IsTLSClusterEnabled())
+	mastersInfos, err := masterClient.GetMasters()
+	if err != nil {
+		return "", err
+	}
+
+	mastersArr := make([]string, 0)
+	for _, master := range mastersInfos {
+		// In some failure situations, for example, delete the dm-master's data directory, dm-master will try to restart
+		// and get join info from discovery service. But dm-master embed etcd may still have the registered member info,
+		// which will return the argument to join dm-master itself, which is not allowed in dm-master.
+		if master.Name == podName {
+			continue
+		}
+		memberURL := strings.ReplaceAll(master.PeerURLs[0], ":8291", ":8261")
+		mastersArr = append(mastersArr, memberURL)
+	}
+	delete(currentCluster.peers, podName)
+	return fmt.Sprintf("--join=%s", strings.Join(mastersArr, ",")), nil
+}
+>>>>>>> 25948ce9... discovery: fix problem when restart with failover pods (#3365)
