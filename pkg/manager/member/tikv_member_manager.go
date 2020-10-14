@@ -250,15 +250,18 @@ func (tkmm *tikvMemberManager) syncTiKVConfigMap(tc *v1alpha1.TidbCluster, set *
 	if err != nil {
 		return nil, err
 	}
-	if set != nil && tc.BaseTiKVSpec().ConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyInPlace {
-		inUseName := FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
+
+	var inUseName string
+	if set != nil {
+		inUseName = FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
 			return strings.HasPrefix(name, controller.TiKVMemberName(tc.Name))
 		})
-		if inUseName != "" {
-			newCm.Name = inUseName
-		}
 	}
 
+	err = updateConfigMapIfNeed(tkmm.deps.ConfigMapLister, tc.BaseTiDBSpec().ConfigUpdateStrategy(), inUseName, newCm)
+	if err != nil {
+		return nil, err
+	}
 	return tkmm.deps.TypedControl.CreateOrUpdateConfigMap(tc, newCm)
 }
 
@@ -607,11 +610,6 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 	}
 
-	if tc.BaseTiKVSpec().ConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyRollingUpdate {
-		if err := AddConfigMapDigestSuffix(cm); err != nil {
-			return nil, err
-		}
-	}
 	return cm, nil
 }
 
