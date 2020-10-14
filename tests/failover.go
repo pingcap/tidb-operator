@@ -86,7 +86,7 @@ func (oa *operatorActions) DeletePDDataThenCheckFailover(info *TidbClusterConfig
 			return false, nil
 		}
 		if string(oldPD.UID) == string(newPd.UID) {
-			klog.Infof("oldPD should be deleted and newPD should be created")
+			klog.Info("oldPD should be deleted and newPD should be created")
 			return false, nil
 		}
 
@@ -133,7 +133,7 @@ func (oa *operatorActions) DeletePDDataThenCheckFailover(info *TidbClusterConfig
 	if err != nil {
 		return fmt.Errorf("check pd cluster %s/%s recovery failed after failover", ns, tcName)
 	}
-	klog.Infof("pd cluster have been recovered")
+	klog.Info("pd cluster have been recovered")
 
 	err = oa.CheckTidbClusterStatus(info)
 	if err != nil {
@@ -193,7 +193,7 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 		break
 	}
 	if len(store.ID) == 0 {
-		klog.Errorf("failed to find an up store")
+		klog.Error("failed to find an up store")
 		return errors.New("no up store for truncating sst file")
 	}
 	klog.Infof("truncate sst file target store: id=%s pod=%s", store.ID, store.PodName)
@@ -356,7 +356,7 @@ func (oa *operatorActions) CheckFailoverPending(info *TidbClusterConfig, node st
 			for _, failureMember := range tc.Status.PD.FailureMembers {
 				if _, exist := affectedPods[failureMember.PodName]; exist {
 					err := fmt.Errorf("cluster: [%s] the pd member[%s] should be mark failure after %s", info.FullName(), failureMember.PodName, deadline.Format(time.RFC3339))
-					klog.Errorf(err.Error())
+					klog.Error(err.Error())
 					return false, err
 				}
 			}
@@ -365,7 +365,7 @@ func (oa *operatorActions) CheckFailoverPending(info *TidbClusterConfig, node st
 			for _, failureStore := range tc.Status.TiKV.FailureStores {
 				if _, exist := affectedPods[failureStore.PodName]; exist {
 					err := fmt.Errorf("cluster: [%s] the tikv store[%s] should be mark failure after %s", info.FullName(), failureStore.PodName, deadline.Format(time.RFC3339))
-					klog.Errorf(err.Error())
+					klog.Error(err.Error())
 					// There may have been a failover before
 					return false, nil
 				}
@@ -376,7 +376,7 @@ func (oa *operatorActions) CheckFailoverPending(info *TidbClusterConfig, node st
 			for _, failureMember := range tc.Status.TiDB.FailureMembers {
 				if _, exist := affectedPods[failureMember.PodName]; exist {
 					err := fmt.Errorf("cluster: [%s] the tidb member[%s] should be mark failure after %s", info.FullName(), failureMember.PodName, deadline.Format(time.RFC3339))
-					klog.Errorf(err.Error())
+					klog.Error(err.Error())
 					return false, err
 				}
 			}
@@ -717,30 +717,30 @@ func (oa *operatorActions) GetNodeMap(info *TidbClusterConfig, component string)
 }
 
 func (oa *operatorActions) CheckKubeletDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string) {
-	klog.Infof("check k8s/operator/tidbCluster status when kubelet down")
+	klog.Info("check k8s/operator/tidbCluster status when kubelet down")
 	time.Sleep(10 * time.Minute)
 	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
 		err := oa.CheckK8sAvailable(nil, nil)
 		if err != nil {
 			return err
 		}
-		klog.V(4).Infof("k8s cluster is available.")
+		klog.V(4).Info("k8s cluster is available.")
 		err = oa.CheckOperatorAvailable(operatorConfig)
 		if err != nil {
 			return err
 		}
-		klog.V(4).Infof("tidb operator is available.")
+		klog.V(4).Info("tidb operator is available.")
 		err = oa.CheckTidbClustersAvailable(clusters)
 		if err != nil {
 			return err
 		}
-		klog.V(4).Infof("all clusters are available")
+		klog.V(4).Info("all clusters are available")
 		return nil
 	})
 }
 
 func (oa *operatorActions) CheckEtcdDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string) {
-	klog.Infof("check k8s/operator/tidbCluster status when etcd down")
+	klog.Info("check k8s/operator/tidbCluster status when etcd down")
 	// kube-apiserver may block 15 min
 	time.Sleep(20 * time.Minute)
 	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
@@ -764,7 +764,7 @@ func (oa *operatorActions) CheckEtcdDownOrDie(operatorConfig *OperatorConfig, cl
 }
 
 func (oa *operatorActions) CheckKubeProxyDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig) {
-	klog.Infof("checking k8s/tidbCluster status when kube-proxy down")
+	klog.Info("checking k8s/tidbCluster status when kube-proxy down")
 
 	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
 		err := oa.CheckK8sAvailable(nil, nil)
@@ -790,7 +790,7 @@ func (oa *operatorActions) CheckKubeProxyDownOrDie(operatorConfig *OperatorConfi
 }
 
 func (oa *operatorActions) CheckKubeSchedulerDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig) {
-	klog.Infof("verify kube-scheduler is not avaiavble")
+	klog.Info("verify kube-scheduler is not avaiavble")
 
 	if err := waitForComponentStatus(oa.kubeCli, "scheduler", corev1.ComponentHealthy, corev1.ConditionFalse); err != nil {
 		slack.NotifyAndPanic(fmt.Errorf("failed to stop kube-scheduler: %v", err))
@@ -815,7 +815,7 @@ func (oa *operatorActions) CheckKubeSchedulerDownOrDie(operatorConfig *OperatorC
 }
 
 func (oa *operatorActions) CheckKubeControllerManagerDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig) {
-	klog.Infof("verify kube-controller-manager is not avaiavble")
+	klog.Info("verify kube-controller-manager is not avaiavble")
 
 	if err := waitForComponentStatus(oa.kubeCli, "controller-manager", corev1.ComponentHealthy, corev1.ConditionFalse); err != nil {
 		slack.NotifyAndPanic(fmt.Errorf("failed to stop kube-controller-manager: %v", err))
@@ -840,7 +840,7 @@ func (oa *operatorActions) CheckKubeControllerManagerDownOrDie(operatorConfig *O
 }
 
 func (oa *operatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string) {
-	klog.Infof("check k8s/operator/tidbCluster status when one apiserver down")
+	klog.Info("check k8s/operator/tidbCluster status when one apiserver down")
 	affectedPods := map[string]*corev1.Pod{}
 	apiserverPod, err := GetKubeApiserverPod(oa.kubeCli, faultNode)
 	if err != nil {
@@ -887,19 +887,19 @@ func (oa *operatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorCo
 			klog.Errorf("CheckK8sAvailable Failed, err: %v", err)
 			return err
 		}
-		klog.V(4).Infof("k8s cluster is available.")
+		klog.V(4).Info("k8s cluster is available.")
 		err = oa.CheckOperatorAvailable(operatorConfig)
 		if err != nil {
 			klog.Errorf("CheckOperatorAvailable Failed, err: %v", err)
 			return err
 		}
-		klog.V(4).Infof("tidb operator is available.")
+		klog.V(4).Info("tidb operator is available.")
 		err = oa.CheckTidbClustersAvailable(clusters)
 		if err != nil {
 			klog.Errorf("CheckTidbClustersAvailable Failed, err: %v", err)
 			return err
 		}
-		klog.V(4).Infof("all clusters is available")
+		klog.V(4).Info("all clusters is available")
 		return nil
 	})
 }
@@ -910,13 +910,13 @@ func (oa *operatorActions) CheckAllApiserverDownOrDie(operatorConfig *OperatorCo
 		if err != nil {
 			return err
 		}
-		klog.V(4).Infof("all clusters is available")
+		klog.V(4).Info("all clusters is available")
 		return nil
 	})
 }
 
 func (oa *operatorActions) CheckOperatorDownOrDie(clusters []*TidbClusterConfig) {
-	klog.Infof("checking k8s/tidbCluster status when operator down")
+	klog.Info("checking k8s/tidbCluster status when operator down")
 
 	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
 		err := oa.CheckK8sAvailable(nil, nil)

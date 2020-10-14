@@ -86,14 +86,14 @@ func (ro *Options) restoreData(restore *v1alpha1.Restore) error {
 		if strings.Contains(line, "[ERROR]") {
 			errMsg += line
 		}
-		klog.Infof(strings.Replace(line, "\n", "", -1))
+		klog.Info(strings.Replace(line, "\n", "", -1))
 		if err != nil || io.EOF == err {
 			break
 		}
 	}
 	tmpErr, _ := ioutil.ReadAll(stdErr)
 	if len(tmpErr) > 0 {
-		klog.Infof(string(tmpErr))
+		klog.Info(string(tmpErr))
 		errMsg += string(tmpErr)
 	}
 
