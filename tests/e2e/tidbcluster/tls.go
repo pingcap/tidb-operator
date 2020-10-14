@@ -359,7 +359,7 @@ type tcCliTmplMeta struct {
 	Component string
 }
 
-func installCertManager(cli clientset.Interface) error {
+func InstallCertManager(cli clientset.Interface) error {
 	cmd := "kubectl apply -f /cert-manager.yaml --validate=false"
 	if data, err := exec.Command("sh", "-c", cmd).CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to install cert-manager %s %v", string(data), err)
@@ -375,7 +375,7 @@ func installCertManager(cli clientset.Interface) error {
 	return nil
 }
 
-func deleteCertManager(cli clientset.Interface) error {
+func DeleteCertManager(cli clientset.Interface) error {
 	cmd := "kubectl delete -f /cert-manager.yaml --ignore-not-found"
 	if data, err := exec.Command("sh", "-c", cmd).CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to delete cert-manager %s %v", string(data), err)
