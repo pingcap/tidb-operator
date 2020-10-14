@@ -729,7 +729,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				if autoTc.Spec.TiKV.Replicas < 2 {
 					framework.Logf("autoscaling tikv cluster is not scaled out")
 					framework.RunKubectl("get", "-n", ns, "tidbcluster", autoTc.Name, "-o", "yaml")
-					framework.RunKubectl("describe", "-n", ns, "pod", autoTiKV)
+					framework.RunKubectl("get", "-n", ns, "pods")
 					return false, nil
 				}
 
