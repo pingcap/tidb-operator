@@ -21,24 +21,18 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
 type tiflashScaler struct {
 	generalScaler
-	podLister corelisters.PodLister
 }
 
 // NewTiFlashScaler returns a tiflash Scaler
-func NewTiFlashScaler(pdControl pdapi.PDControlInterface,
-	pvcLister corelisters.PersistentVolumeClaimLister,
-	pvcControl controller.PVCControlInterface,
-	podLister corelisters.PodLister) Scaler {
-	return &tiflashScaler{generalScaler{pdControl, pvcLister, pvcControl}, podLister}
+func NewTiFlashScaler(deps *controller.Dependencies) Scaler {
+	return &tiflashScaler{generalScaler: generalScaler{deps: deps}}
 }
 
 func (tfs *tiflashScaler) Scale(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
@@ -76,7 +70,7 @@ func (tfs *tiflashScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 	klog.Infof("scaling in tiflash statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
 	// We need delete store from cluster before decreasing the statefulset replicas
 	podName := ordinalPodName(v1alpha1.TiFlashMemberType, tcName, ordinal)
-	pod, err := tfs.podLister.Pods(ns).Get(podName)
+	pod, err := tfs.deps.PodLister.Pods(ns).Get(podName)
 	if err != nil {
 		return fmt.Errorf("tiflashScaler.ScaleIn: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
 	}
@@ -95,7 +89,7 @@ func (tfs *tiflashScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 				return err
 			}
 			if state != v1alpha1.TiKVStateOffline {
-				if err := controller.GetPDClient(tfs.pdControl, tc).DeleteStore(id); err != nil {
+				if err := controller.GetPDClient(tfs.deps.PDControl, tc).DeleteStore(id); err != nil {
 					klog.Errorf("tiflash scale in: failed to delete store %d, %v", id, err)
 					return err
 				}
@@ -130,7 +124,7 @@ func (tfs *tiflashScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 	// 2. This can happen when TiFlash pod has not been successfully registered in the cluster, such as always pending.
 	//    In this situation we should delete this TiFlash pod immediately to avoid blocking the subsequent operations.
 	if !podutil.IsPodReady(pod) {
-		safeTimeDeadline := pod.CreationTimestamp.Add(5 * controller.ResyncDuration)
+		safeTimeDeadline := pod.CreationTimestamp.Add(5 * tfs.deps.CLIConfig.ResyncDuration)
 		if time.Now().Before(safeTimeDeadline) {
 			// Wait for 5 resync periods to ensure that the following situation does not occur:
 			//
@@ -143,7 +137,7 @@ func (tfs *tiflashScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 			return fmt.Errorf("TiFlash %s/%s is not ready, wait for some resync periods to synced its status", ns, podName)
 		}
 		klog.Infof("Pod %s/%s not ready for more than %v and no store for it, scale in it",
-			ns, podName, 5*controller.ResyncDuration)
+			ns, podName, 5*tfs.deps.CLIConfig.ResyncDuration)
 		err = tfs.updateDeferDeletingPVC(tc, v1alpha1.TiFlashMemberType, ordinal)
 		if err != nil {
 			return err

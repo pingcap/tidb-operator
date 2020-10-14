@@ -20,7 +20,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/backup"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
-	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -29,43 +28,22 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	batchlisters "k8s.io/client-go/listers/batch/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/utils/pointer"
 )
 
 type backupManager struct {
+	deps          *controller.Dependencies
 	backupCleaner BackupCleaner
 	statusUpdater controller.BackupConditionUpdaterInterface
-	kubeCli       kubernetes.Interface
-	jobLister     batchlisters.JobLister
-	jobControl    controller.JobControlInterface
-	pvcLister     corelisters.PersistentVolumeClaimLister
-	tcLister      v1alpha1listers.TidbClusterLister
-	pvcControl    controller.GeneralPVCControlInterface
 }
 
 // NewBackupManager return backupManager
-func NewBackupManager(
-	backupCleaner BackupCleaner,
-	statusUpdater controller.BackupConditionUpdaterInterface,
-	kubeCli kubernetes.Interface,
-	jobLister batchlisters.JobLister,
-	jobControl controller.JobControlInterface,
-	pvcLister corelisters.PersistentVolumeClaimLister,
-	tcLister v1alpha1listers.TidbClusterLister,
-	pvcControl controller.GeneralPVCControlInterface,
-) backup.BackupManager {
+func NewBackupManager(deps *controller.Dependencies) backup.BackupManager {
+	statusUpdater := controller.NewRealBackupConditionUpdater(deps.Clientset, deps.BackupLister, deps.Recorder)
 	return &backupManager{
-		backupCleaner,
-		statusUpdater,
-		kubeCli,
-		jobLister,
-		jobControl,
-		pvcLister,
-		tcLister,
-		pvcControl,
+		deps:          deps,
+		backupCleaner: NewBackupCleaner(deps, statusUpdater),
+		statusUpdater: statusUpdater,
 	}
 }
 
@@ -99,7 +77,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 		return controller.IgnoreErrorf("invalid backup spec %s/%s", ns, name)
 	}
 
-	_, err = bm.jobLister.Jobs(ns).Get(backupJobName)
+	_, err = bm.deps.JobLister.Jobs(ns).Get(backupJobName)
 	if err == nil {
 		// already have a backup job running，return directly
 		return nil
@@ -149,7 +127,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 		}
 	}
 
-	if err := bm.jobControl.CreateJob(backup, job); err != nil {
+	if err := bm.deps.JobControl.CreateJob(backup, job); err != nil {
 		errMsg := fmt.Errorf("create backup %s/%s job %s failed, err: %v", ns, name, backupJobName, err)
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupRetryFailed,
@@ -170,12 +148,12 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 
-	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, backup.Spec.UseKMS, bm.kubeCli)
+	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, backup.Spec.UseKMS, bm.deps.KubeClientset)
 	if err != nil {
 		return nil, reason, err
 	}
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bm.kubeCli)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bm.deps.KubeClientset)
 	if err != nil {
 		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
 	}
@@ -235,7 +213,7 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 			Containers: []corev1.Container{
 				{
 					Name:            label.BackupJobLabelVal,
-					Image:           controller.TidbBackupManagerImage,
+					Image:           bm.deps.CLIConfig.TiDBBackupManagerImage,
 					Args:            args,
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts: append([]corev1.VolumeMount{
@@ -290,17 +268,17 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	if backup.Spec.BR.ClusterNamespace != "" {
 		backupNamespace = backup.Spec.BR.ClusterNamespace
 	}
-	tc, err := bm.tcLister.TidbClusters(backupNamespace).Get(backup.Spec.BR.Cluster)
+	tc, err := bm.deps.TiDBClusterLister.TidbClusters(backupNamespace).Get(backup.Spec.BR.Cluster)
 	if err != nil {
 		return nil, fmt.Sprintf("failed to fetch tidbcluster %s/%s", backupNamespace, backup.Spec.BR.Cluster), err
 	}
 
-	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, backup.Spec.UseKMS, bm.kubeCli)
+	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, backup.Spec.UseKMS, bm.deps.KubeClientset)
 	if err != nil {
 		return nil, reason, err
 	}
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bm.kubeCli)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bm.deps.KubeClientset)
 	if err != nil {
 		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
 	}
@@ -308,7 +286,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	envVars = append(envVars, storageEnv...)
 	envVars = append(envVars, corev1.EnvVar{
 		Name:  "BR_LOG_TO_TERM",
-		Value: string(1),
+		Value: fmt.Sprint(1),
 	})
 
 	args := []string{
@@ -376,7 +354,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 			Containers: []corev1.Container{
 				{
 					Name:            label.BackupJobLabelVal,
-					Image:           controller.TidbBackupManagerImage,
+					Image:           bm.deps.CLIConfig.TiDBBackupManagerImage,
 					Args:            args,
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts:    volumeMounts,
@@ -427,7 +405,7 @@ func (bm *backupManager) ensureBackupPVCExist(backup *v1alpha1.Backup) (string, 
 		return "ParseStorageSizeFailed", errMsg
 	}
 	backupPVCName := backup.GetBackupPVCName()
-	pvc, err := bm.pvcLister.PersistentVolumeClaims(ns).Get(backupPVCName)
+	pvc, err := bm.deps.PVCLister.PersistentVolumeClaims(ns).Get(backupPVCName)
 
 	if err == nil {
 		if pvcRs := pvc.Spec.Resources.Requests[corev1.ResourceStorage]; pvcRs.Cmp(rs) == -1 {
@@ -460,7 +438,7 @@ func (bm *backupManager) ensureBackupPVCExist(backup *v1alpha1.Backup) (string, 
 		},
 	}
 
-	if err := bm.pvcControl.CreatePVC(backup, pvc); err != nil {
+	if err := bm.deps.GeneralPVCControl.CreatePVC(backup, pvc); err != nil {
 		errMsg := fmt.Errorf("backup %s/%s create backup pvc %s failed, err: %v", ns, name, pvc.GetName(), err)
 		return "CreatePVCFailed", errMsg
 	}
@@ -477,12 +455,12 @@ func NewFakeBackupManager() *FakeBackupManager {
 	return &FakeBackupManager{}
 }
 
-func (fbm *FakeBackupManager) SetSyncError(err error) {
-	fbm.err = err
+func (m *FakeBackupManager) SetSyncError(err error) {
+	m.err = err
 }
 
-func (fbm *FakeBackupManager) Sync(_ *v1alpha1.Backup) error {
-	return fbm.err
+func (m *FakeBackupManager) Sync(_ *v1alpha1.Backup) error {
+	return m.err
 }
 
 var _ backup.BackupManager = &FakeBackupManager{}

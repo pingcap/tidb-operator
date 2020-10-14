@@ -18,21 +18,20 @@ import (
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 )
 
 type tikvFailover struct {
-	tikvFailoverPeriod time.Duration
-	recorder           record.EventRecorder
+	deps *controller.Dependencies
 }
 
 // NewTiKVFailover returns a tikv Failover
-func NewTiKVFailover(tikvFailoverPeriod time.Duration, recorder record.EventRecorder) Failover {
-	return &tikvFailover{tikvFailoverPeriod, recorder}
+func NewTiKVFailover(deps *controller.Dependencies) Failover {
+	return &tikvFailover{deps: deps}
 }
 
 func (tf *tikvFailover) isPodDesired(tc *v1alpha1.TidbCluster, podName string) bool {
@@ -60,7 +59,7 @@ func (tf *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
 			// (before it enters into Offline/Tombstone state)
 			continue
 		}
-		deadline := store.LastTransitionTime.Add(tf.tikvFailoverPeriod)
+		deadline := store.LastTransitionTime.Add(tf.deps.CLIConfig.TiKVFailoverPeriod)
 		exist := false
 		for _, failureStore := range tc.Status.TiKV.FailureStores {
 			if failureStore.PodName == podName {
@@ -84,7 +83,7 @@ func (tf *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
 					CreatedAt: metav1.Now(),
 				}
 				msg := fmt.Sprintf("store[%s] is Down", store.ID)
-				tf.recorder.Event(tc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "tikv", podName, msg))
+				tf.deps.Recorder.Event(tc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "tikv", podName, msg))
 			}
 		}
 	}

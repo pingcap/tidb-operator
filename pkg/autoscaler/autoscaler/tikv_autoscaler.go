@@ -21,7 +21,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler/calculate"
 	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler/query"
-	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	promClient "github.com/prometheus/client_golang/api"
@@ -38,7 +37,7 @@ func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 	if tac.Status.TiKV == nil {
 		tac.Status.TiKV = &v1alpha1.TikvAutoScalerStatus{}
 	}
-	sts, err := am.stsLister.StatefulSets(tc.Namespace).Get(operatorUtils.GetStatefulSetName(tc, v1alpha1.TiKVMemberType))
+	sts, err := am.deps.StatefulSetLister.StatefulSets(tc.Namespace).Get(operatorUtils.GetStatefulSetName(tc, v1alpha1.TiKVMemberType))
 	if err != nil {
 		return err
 	}
@@ -46,7 +45,7 @@ func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 		return nil
 	}
 	instances := filterTiKVInstances(tc)
-	return calculateTiKVMetrics(tac, tc, sts, instances, am.kubecli)
+	return am.calculateTiKVMetrics(tac, tc, sts, instances, am.deps.KubeClientset)
 }
 
 //TODO: fetch tikv instances info from pdapi in future
@@ -60,7 +59,7 @@ func filterTiKVInstances(tc *v1alpha1.TidbCluster) []string {
 	return instances
 }
 
-func calculateTiKVMetrics(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.TidbCluster, sts *appsv1.StatefulSet, instances []string, kubecli kubernetes.Interface) error {
+func (am *autoScalerManager) calculateTiKVMetrics(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.TidbCluster, sts *appsv1.StatefulSet, instances []string, kubecli kubernetes.Interface) error {
 	ep, err := genMetricsEndpoint(tac)
 	if err != nil {
 		return err
@@ -111,7 +110,7 @@ func calculateTiKVMetrics(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.Tidb
 			Instances: instances,
 			Query:     fmt.Sprintf(calculate.TikvSumStorageMetricsPattern, tac.Spec.Cluster.Name, "available"),
 		}
-		return calculateTiKVStorageMetrics(tac, tc, capacitySq, availableSq, client, metrics[0])
+		return am.calculateTiKVStorageMetrics(tac, tc, capacitySq, availableSq, client, metrics[0])
 	}
 
 	// none metrics selected, end auto-scaling
@@ -147,7 +146,7 @@ func calculateTiKVExternalService(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbCl
 	return addAnnotationMarkIfScaleOutDueToCPUMetrics(tc, currentReplicas, targetReplicas, sts)
 }
 
-func calculateTiKVStorageMetrics(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.TidbCluster,
+func (am *autoScalerManager) calculateTiKVStorageMetrics(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.TidbCluster,
 	capSq, avaSq *calculate.SingleQuery, client promClient.Client, metric v1alpha1.CustomMetric) error {
 	if tc.Spec.TiKV.Replicas >= tac.Spec.TiKV.MaxReplicas {
 		klog.V(4).Infof("tac[%s/%s]'s tikv won't scale out by storage pressure due to maxReplicas", tac.Namespace, tac.Name)
@@ -169,7 +168,7 @@ func calculateTiKVStorageMetrics(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alph
 	if !storagePressure {
 		return nil
 	}
-	ableToScale, err = checkWhetherAbleToScaleDueToStorage(tac, metric, time.Now(), controller.ResyncDuration)
+	ableToScale, err = checkWhetherAbleToScaleDueToStorage(tac, metric, time.Now(), am.deps.CLIConfig.ResyncDuration)
 	if err != nil {
 		return err
 	}
