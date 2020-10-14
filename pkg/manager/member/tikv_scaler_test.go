@@ -282,9 +282,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 		{
 			name:          "tikv pod is not ready now, not sure if the status has been synced",
 			tikvUpgrading: false,
-			storeFun: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{}
-			},
+			storeFun:      notReadyStoreFun,
 			delStoreErr:   false,
 			hasPVC:        true,
 			storeIDSynced: true,
@@ -297,9 +295,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 		{
 			name:          "tikv pod is not ready now, make sure the status has been synced",
 			tikvUpgrading: false,
-			storeFun: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{}
-			},
+			storeFun:      notReadyStoreFun,
 			delStoreErr:   false,
 			hasPVC:        true,
 			storeIDSynced: true,
@@ -441,11 +437,56 @@ func newFakeTiKVScaler(resyncDuration ...time.Duration) (*tikvScaler, *pdapi.Fak
 	return &tikvScaler{generalScaler{deps: fakeDeps}}, pdControl, pvcIndexer, podIndexer, pvcControl
 }
 
+func notReadyStoreFun(tc *v1alpha1.TidbCluster) {
+	tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
+		"10": {
+			ID:      "10",
+			PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 0),
+			State:   v1alpha1.TiKVStateUp,
+		},
+		"11": {
+			ID:      "11",
+			PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 1),
+			State:   v1alpha1.TiKVStateUp,
+		},
+		"12": {
+			ID:      "12",
+			PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 2),
+			State:   v1alpha1.TiKVStateUp,
+		},
+		"13": {
+			ID:      "13",
+			PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 3),
+			State:   v1alpha1.TiKVStateUp,
+		},
+	}
+}
+
 func normalStoreFun(tc *v1alpha1.TidbCluster) {
 	tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
 		"1": {
 			ID:      "1",
 			PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 4),
+			State:   v1alpha1.TiKVStateUp,
+		},
+		"10": {
+			ID:      "10",
+			PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 0),
+			State:   v1alpha1.TiKVStateUp,
+		},
+		"11": {
+			ID:      "11",
+			PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 1),
+			State:   v1alpha1.TiKVStateUp,
+		},
+		"12": {
+			ID:      "12",
+			PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 2),
+			State:   v1alpha1.TiKVStateUp,
+		},
+		"13": {
+			ID:      "13",
+			PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 3),
 			State:   v1alpha1.TiKVStateUp,
 		},
 	}
@@ -457,6 +498,28 @@ func tombstoneStoreFun(tc *v1alpha1.TidbCluster) {
 			ID:      "1",
 			PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 4),
 			State:   v1alpha1.TiKVStateTombstone,
+		},
+	}
+	tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
+		"10": {
+			ID:      "10",
+			PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 0),
+			State:   v1alpha1.TiKVStateUp,
+		},
+		"11": {
+			ID:      "11",
+			PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 1),
+			State:   v1alpha1.TiKVStateUp,
+		},
+		"12": {
+			ID:      "12",
+			PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 2),
+			State:   v1alpha1.TiKVStateUp,
+		},
+		"13": {
+			ID:      "13",
+			PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 3),
+			State:   v1alpha1.TiKVStateUp,
 		},
 	}
 }

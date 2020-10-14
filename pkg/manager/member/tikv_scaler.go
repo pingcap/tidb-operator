@@ -92,29 +92,9 @@ func (tsd *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, new
 	// We need remove member from cluster before reducing statefulset replicas
 	var podName string
 
-	switch meta := meta.(type) {
+	switch meta.(type) {
 	case *v1alpha1.TidbCluster:
 		podName = ordinalPodName(v1alpha1.TiKVMemberType, tcName, ordinal)
-
-		upNumber := 0
-		storeState := ""
-		for _, store := range meta.Status.TiKV.Stores {
-			if store.State == v1alpha1.TiKVStateUp {
-				upNumber++
-			}
-			if store.PodName == podName {
-				storeState = store.State
-			}
-		}
-		if upNumber < 3 {
-			klog.Errorf("the number of stores in Up state of TidbCluster [%s/%s] is %d, less than 3, can't scale in TiKV, podname %s ", meta.GetNamespace(), meta.GetName(), upNumber, podName)
-			return nil
-		} else if upNumber == 3 {
-			if storeState == v1alpha1.TiKVStateUp {
-				klog.Errorf("can't scale in TiKV of TidbCluster [%s/%s], cause the number of up stores is 3, and the store in Pod %s which is going to be deleted is up too", meta.GetNamespace(), meta.GetName(), podName)
-				return nil
-			}
-		}
 	default:
 		return fmt.Errorf("tikvScaler.ScaleIn: failed to convert cluster %s/%s", meta.GetNamespace(), meta.GetName())
 	}
@@ -123,14 +103,28 @@ func (tsd *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, new
 		return fmt.Errorf("tikvScaler.ScaleIn: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
 	}
 
+	tc, _ := meta.(*v1alpha1.TidbCluster)
+	upNumber := 0
+	storeState := ""
+	for _, store := range tc.Status.TiKV.Stores {
+		if store.State == v1alpha1.TiKVStateUp {
+			upNumber++
+		}
+		if store.PodName == podName {
+			storeState = store.State
+		}
+	}
+	if upNumber < 3 {
+		return fmt.Errorf("the number of stores in Up state of TidbCluster [%s/%s] is %d, less than 3, can't scale in TiKV, podname %s ", meta.GetNamespace(), meta.GetName(), upNumber, podName)
+	} else if upNumber == 3 {
+		if storeState == v1alpha1.TiKVStateUp {
+			return fmt.Errorf("can't scale in TiKV of TidbCluster [%s/%s], cause the number of up stores is 3, and the store in Pod %s which is going to be deleted is up too", meta.GetNamespace(), meta.GetName(), podName)
+		}
+	}
+
 	if tsd.deps.CLIConfig.PodWebhookEnabled {
 		setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 		return nil
-	}
-
-	tc, ok := meta.(*v1alpha1.TidbCluster)
-	if !ok {
-		return fmt.Errorf("cluster tikv [%s/%s] scaling should enabled webhook", meta.GetNamespace(), meta.GetName())
 	}
 
 	for _, store := range tc.Status.TiKV.Stores {
