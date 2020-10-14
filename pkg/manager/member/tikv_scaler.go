@@ -107,7 +107,7 @@ func (tsd *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, new
 			}
 		}
 		if upNumber < 3 {
-			klog.Errorf("the number of stores in Up state of TidbCluster [%s/%s] is %d, less than 3, can't scale in TiKV", meta.GetNamespace(), meta.GetName(), upNumber)
+			klog.Errorf("the number of stores in Up state of TidbCluster [%s/%s] is %d, less than 3, can't scale in TiKV, podname %s ", meta.GetNamespace(), meta.GetName(), upNumber, podName)
 			return nil
 		} else if upNumber == 3 {
 			if storeState == v1alpha1.TiKVStateUp {
