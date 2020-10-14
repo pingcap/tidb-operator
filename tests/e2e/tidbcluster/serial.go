@@ -714,32 +714,33 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectNoError(err, "check create autoscaling tikv cluster error")
 			framework.Logf("success to check create autoscaling tikv cluster")
 
-			// autoTiKV := fmt.Sprintf("%s-tikv-0", autoTc.Name)
-			// setCPUUsageAndQuota("35.0", "1.0", v1alpha1.TiKVMemberType.String(), []string{"auto-scaling-tikv-0", "auto-scaling-tikv-1", "auto-scaling-tikv-2", autoTiKV})
+			autoTiKV := fmt.Sprintf("%s-tikv-0", autoTc.Name)
+			setCPUUsageAndQuota("35.0", "1.0", v1alpha1.TiKVMemberType.String(), []string{"auto-scaling-tikv-0", "auto-scaling-tikv-1", "auto-scaling-tikv-2", autoTiKV})
 
-			// err = wait.Poll(10*time.Second, 10*time.Minute, func() (done bool, err error) {
-			// 	tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
+			err = wait.Poll(10*time.Second, 5*time.Minute, func() (done bool, err error) {
+				tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
 
-			// 	if err != nil {
-			// 		return false, err
-			// 	}
+				if err != nil {
+					return false, err
+				}
 
-			// 	autoTc = *tcPtr
+				autoTc = *tcPtr
 
-			// 	if autoTc.Spec.TiKV.Replicas < 2 {
-			// 		framework.Logf("autoscaling tikv cluster is not scaled out")
-			// 		return false, nil
-			// 	}
+				if autoTc.Spec.TiKV.Replicas < 2 {
+					framework.Logf("autoscaling tikv cluster is not scaled out")
+					framework.RunKubectl("get", "-n", ns, "tidbcluster", autoTc.Name, "-o", "yaml")
+					return false, nil
+				}
 
-			// 	if autoTc.Spec.TiKV.Replicas >= 2 {
-			// 		framework.Logf("autoscaling tikv cluster tc[%s/%s] scaled out", autoTc.Namespace, autoTc.Name)
-			// 		return true, nil
-			// 	}
+				if autoTc.Spec.TiKV.Replicas >= 2 {
+					framework.Logf("autoscaling tikv cluster tc[%s/%s] scaled out", autoTc.Namespace, autoTc.Name)
+					return true, nil
+				}
 
-			// 	return false, nil
-			// })
-			// framework.ExpectNoError(err, "check scale out existing autoscaling tikv cluster error")
-			// framework.Logf("success to check scale out existing autoscaling tikv cluster")
+				return false, nil
+			})
+			framework.ExpectNoError(err, "check scale out existing autoscaling tikv cluster error")
+			framework.Logf("success to check scale out existing autoscaling tikv cluster")
 
 			pods := []string{"auto-scaling-tikv-0", "auto-scaling-tikv-1", "auto-scaling-tikv-2"}
 			for i := int32(0); i < autoTc.Spec.TiKV.Replicas; i++ {
