@@ -27,13 +27,13 @@ require (
 	github.com/emicklei/go-restful v2.9.5+incompatible
 	github.com/fatih/color v1.7.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
-	github.com/go-openapi/loads v0.19.4
 	github.com/go-openapi/spec v0.19.3
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/groupcache v0.0.0-20181024230925-c65c006176ff // indirect
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/google/go-cmp v0.3.1
+	github.com/google/gofuzz v1.0.0
 	github.com/gophercloud/gophercloud v0.3.0 // indirect
 	github.com/gregjones/httpcache v0.0.0-20190212212710-3befbb6ad0cc // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.1-0.20190118093823-f849b5445de4 // indirect
@@ -69,7 +69,6 @@ require (
 	github.com/uber-go/atomic v0.0.0-00010101000000-000000000000 // indirect
 	github.com/uber/jaeger-client-go v2.19.0+incompatible // indirect
 	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect
-	github.com/ugorji/go/codec v0.0.0-20190204201341-e444a5086c43
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2 // indirect
 	github.com/yisaer/crd-validation v0.0.3
@@ -92,9 +91,9 @@ require (
 	k8s.io/kubectl v0.0.0
 	k8s.io/kubernetes v1.16.0
 	k8s.io/utils v0.0.0-20190801114015-581e00157fb1
-	sigs.k8s.io/apiserver-builder-alpha v0.0.0-20191113095113-4493943d2568
 	sigs.k8s.io/apiserver-builder-alpha/cmd v0.0.0-20191113095113-4493943d2568
 	sigs.k8s.io/controller-runtime v0.4.0
+	sigs.k8s.io/yaml v1.1.0
 )
 
 replace github.com/renstrom/dedent => github.com/lithammer/dedent v1.1.0

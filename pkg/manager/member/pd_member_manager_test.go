@@ -23,11 +23,10 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/pkg/util/toml"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -36,8 +35,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	kubeinformers "k8s.io/client-go/informers"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/pointer"
 )
@@ -66,8 +63,9 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 			test.prepare(tc)
 		}
 
-		pmm, fakeSetControl, fakeSvcControl, _, _, _, _ := newFakePDMemberManager()
-
+		pmm, _, _ := newFakePDMemberManager()
+		fakeSetControl := pmm.deps.StatefulSetControl.(*controller.FakeStatefulSetControl)
+		fakeSvcControl := pmm.deps.ServiceControl.(*controller.FakeServiceControl)
 		if test.errWhenCreateStatefulSet {
 			fakeSetControl.SetCreateStatefulSetError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
@@ -82,8 +80,8 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 		test.errExpectFn(g, err)
 		g.Expect(tc.Spec).To(Equal(oldSpec))
 
-		svc1, err := pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName))
-		eps1, eperr := pmm.epsLister.Endpoints(ns).Get(controller.PDMemberName(tcName))
+		svc1, err := pmm.deps.ServiceLister.Services(ns).Get(controller.PDMemberName(tcName))
+		eps1, eperr := pmm.deps.EndpointLister.Endpoints(ns).Get(controller.PDMemberName(tcName))
 		if test.pdSvcCreated {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(svc1).NotTo(Equal(nil))
@@ -94,8 +92,8 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 			expectErrIsNotFound(g, eperr)
 		}
 
-		svc2, err := pmm.svcLister.Services(ns).Get(controller.PDPeerMemberName(tcName))
-		eps2, eperr := pmm.epsLister.Endpoints(ns).Get(controller.PDPeerMemberName(tcName))
+		svc2, err := pmm.deps.ServiceLister.Services(ns).Get(controller.PDPeerMemberName(tcName))
+		eps2, eperr := pmm.deps.EndpointLister.Endpoints(ns).Get(controller.PDPeerMemberName(tcName))
 		if test.pdPeerSvcCreated {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(svc2).NotTo(Equal(nil))
@@ -106,7 +104,7 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 			expectErrIsNotFound(g, eperr)
 		}
 
-		tc1, err := pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
+		tc1, err := pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
 		if test.setCreated {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(tc1).NotTo(Equal(nil))
@@ -200,7 +198,10 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 		ns := tc.Namespace
 		tcName := tc.Name
 
-		pmm, fakeSetControl, fakeSvcControl, fakePDControl, _, _, _ := newFakePDMemberManager()
+		pmm, _, _ := newFakePDMemberManager()
+		fakePDControl := pmm.deps.PDControl.(*pdapi.FakePDControl)
+		fakeSetControl := pmm.deps.StatefulSetControl.(*controller.FakeStatefulSetControl)
+		fakeSvcControl := pmm.deps.ServiceControl.(*controller.FakeServiceControl)
 		pdClient := controller.NewFakePDClient(fakePDControl, tc)
 		if test.errWhenGetPDHealth {
 			pdClient.AddReaction(pdapi.GetHealthActionType, func(action *pdapi.Action) (interface{}, error) {
@@ -237,17 +238,17 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 		err := pmm.Sync(tc)
 		g.Expect(controller.IsRequeueError(err)).To(BeTrue())
 
-		_, err = pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName))
+		_, err = pmm.deps.ServiceLister.Services(ns).Get(controller.PDMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
-		_, err = pmm.epsLister.Endpoints(ns).Get(controller.PDMemberName(tcName))
-		g.Expect(err).NotTo(HaveOccurred())
-
-		_, err = pmm.svcLister.Services(ns).Get(controller.PDPeerMemberName(tcName))
-		g.Expect(err).NotTo(HaveOccurred())
-		_, err = pmm.epsLister.Endpoints(ns).Get(controller.PDPeerMemberName(tcName))
+		_, err = pmm.deps.EndpointLister.Endpoints(ns).Get(controller.PDMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
 
-		_, err = pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
+		_, err = pmm.deps.ServiceLister.Services(ns).Get(controller.PDPeerMemberName(tcName))
+		g.Expect(err).NotTo(HaveOccurred())
+		_, err = pmm.deps.EndpointLister.Endpoints(ns).Get(controller.PDPeerMemberName(tcName))
+		g.Expect(err).NotTo(HaveOccurred())
+
+		_, err = pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
 
 		tc1 := tc.DeepCopy()
@@ -271,15 +272,15 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 		}
 
 		if test.expectPDServiceFn != nil {
-			svc, err := pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName))
+			svc, err := pmm.deps.ServiceLister.Services(ns).Get(controller.PDMemberName(tcName))
 			test.expectPDServiceFn(g, svc, err)
 		}
 		if test.expectPDPeerServiceFn != nil {
-			svc, err := pmm.svcLister.Services(ns).Get(controller.PDPeerMemberName(tcName))
+			svc, err := pmm.deps.ServiceLister.Services(ns).Get(controller.PDPeerMemberName(tcName))
 			test.expectPDPeerServiceFn(g, svc, err)
 		}
 		if test.expectStatefulSetFn != nil {
-			set, err := pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
+			set, err := pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
 			test.expectStatefulSetFn(g, set, err)
 		}
 		if test.expectTidbClusterFn != nil {
@@ -426,7 +427,7 @@ func TestPDMemberManagerPdStatefulSetIsUpgrading(t *testing.T) {
 		expectUpgrading bool
 	}
 	testFn := func(test *testcase, t *testing.T) {
-		pmm, _, _, _, podIndexer, _, _ := newFakePDMemberManager()
+		pmm, podIndexer, _ := newFakePDMemberManager()
 		tc := newTidbClusterForPD()
 		tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{
 			UpdateRevision: "v3",
@@ -532,7 +533,9 @@ func TestPDMemberManagerUpgrade(t *testing.T) {
 		ns := tc.Namespace
 		tcName := tc.Name
 
-		pmm, fakeSetControl, _, fakePDControl, _, _, _ := newFakePDMemberManager()
+		pmm, _, _ := newFakePDMemberManager()
+		fakePDControl := pmm.deps.PDControl.(*pdapi.FakePDControl)
+		fakeSetControl := pmm.deps.StatefulSetControl.(*controller.FakeStatefulSetControl)
 		pdClient := controller.NewFakePDClient(fakePDControl, tc)
 
 		pdClient.AddReaction(pdapi.GetHealthActionType, func(action *pdapi.Action) (interface{}, error) {
@@ -547,11 +550,11 @@ func TestPDMemberManagerUpgrade(t *testing.T) {
 		err := pmm.Sync(tc)
 		g.Expect(controller.IsRequeueError(err)).To(BeTrue())
 
-		_, err = pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName))
+		_, err = pmm.deps.ServiceLister.Services(ns).Get(controller.PDMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
-		_, err = pmm.svcLister.Services(ns).Get(controller.PDPeerMemberName(tcName))
+		_, err = pmm.deps.ServiceLister.Services(ns).Get(controller.PDPeerMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
-		_, err = pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
+		_, err = pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
 
 		tc1 := tc.DeepCopy()
@@ -565,7 +568,7 @@ func TestPDMemberManagerUpgrade(t *testing.T) {
 		}
 
 		if test.expectStatefulSetFn != nil {
-			set, err := pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
+			set, err := pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
 			test.expectStatefulSetFn(g, set, err)
 		}
 		if test.expectTidbClusterFn != nil {
@@ -628,7 +631,9 @@ func TestPDMemberManagerSyncPDSts(t *testing.T) {
 		ns := tc.Namespace
 		tcName := tc.Name
 
-		pmm, fakeSetControl, _, fakePDControl, _, _, _ := newFakePDMemberManager()
+		pmm, _, _ := newFakePDMemberManager()
+		fakePDControl := pmm.deps.PDControl.(*pdapi.FakePDControl)
+		fakeSetControl := pmm.deps.StatefulSetControl.(*controller.FakeStatefulSetControl)
 		pdClient := controller.NewFakePDClient(fakePDControl, tc)
 
 		pdClient.AddReaction(pdapi.GetHealthActionType, func(action *pdapi.Action) (interface{}, error) {
@@ -643,11 +648,11 @@ func TestPDMemberManagerSyncPDSts(t *testing.T) {
 		err := pmm.Sync(tc)
 		g.Expect(controller.IsRequeueError(err)).To(BeTrue())
 
-		_, err = pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName))
+		_, err = pmm.deps.ServiceLister.Services(ns).Get(controller.PDMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
-		_, err = pmm.svcLister.Services(ns).Get(controller.PDPeerMemberName(tcName))
+		_, err = pmm.deps.ServiceLister.Services(ns).Get(controller.PDPeerMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
-		_, err = pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
+		_, err = pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
 
 		test.modify(tc)
@@ -662,7 +667,7 @@ func TestPDMemberManagerSyncPDSts(t *testing.T) {
 		}
 
 		if test.expectStatefulSetFn != nil {
-			set, err := pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
+			set, err := pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
 			test.expectStatefulSetFn(g, set, err)
 		}
 		if test.expectTidbClusterFn != nil {
@@ -739,41 +744,17 @@ func TestPDMemberManagerSyncPDSts(t *testing.T) {
 	}
 }
 
-func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetControl, *controller.FakeServiceControl, *pdapi.FakePDControl, cache.Indexer, cache.Indexer, *controller.FakePodControl) {
-	cli := fake.NewSimpleClientset()
-	kubeCli := kubefake.NewSimpleClientset()
-	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1().StatefulSets()
-	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
-	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
-	epsInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Endpoints()
-	pvcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().PersistentVolumeClaims()
-	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbClusters()
-	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
-	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer, tcInformer)
-	podControl := controller.NewFakePodControl(podInformer)
-	pdControl := pdapi.NewFakePDControl(kubeCli)
-	pdScaler := NewFakePDScaler()
-	autoFailover := true
-	pdFailover := NewFakePDFailover()
-	pdUpgrader := NewFakePDUpgrader()
-	genericControll := controller.NewFakeGenericControl()
-
-	return &pdMemberManager{
-		pdControl,
-		setControl,
-		svcControl,
-		podControl,
-		controller.NewTypedControl(genericControll),
-		setInformer.Lister(),
-		svcInformer.Lister(),
-		podInformer.Lister(),
-		epsInformer.Lister(),
-		pvcInformer.Lister(),
-		pdScaler,
-		pdUpgrader,
-		autoFailover,
-		pdFailover,
-	}, setControl, svcControl, pdControl, podInformer.Informer().GetIndexer(), pvcInformer.Informer().GetIndexer(), podControl
+func newFakePDMemberManager() (*pdMemberManager, cache.Indexer, cache.Indexer) {
+	fakeDeps := controller.NewFakeDependencies()
+	podIndexer := fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer()
+	pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
+	pdManager := &pdMemberManager{
+		deps:     fakeDeps,
+		scaler:   NewFakePDScaler(),
+		upgrader: NewFakePDUpgrader(),
+		failover: NewFakePDFailover(),
+	}
+	return pdManager, podIndexer, pvcIndexer
 }
 
 func newTidbClusterForPD() *v1alpha1.TidbCluster {
@@ -917,11 +898,11 @@ func testAnnotations(t *testing.T, annotations map[string]string) func(sts *apps
 	}
 }
 
-func testPDContainerEnv(t *testing.T, env []corev1.EnvVar) func(sts *apps.StatefulSet) {
+func testContainerEnv(t *testing.T, env []corev1.EnvVar, memberType v1alpha1.MemberType) func(sts *apps.StatefulSet) {
 	return func(sts *apps.StatefulSet) {
 		got := []corev1.EnvVar{}
 		for _, c := range sts.Spec.Template.Spec.Containers {
-			if c.Name == v1alpha1.PDMemberType.String() {
+			if c.Name == memberType.String() {
 				got = c.Env
 			}
 		}
@@ -951,6 +932,8 @@ func testAdditionalVolumes(t *testing.T, additionalVolumes []corev1.Volume) func
 
 func TestGetNewPDSetForTidbCluster(t *testing.T) {
 	enable := true
+	asNonRoot := true
+	privileged := true
 	tests := []struct {
 		name    string
 		tc      v1alpha1.TidbCluster
@@ -1112,7 +1095,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 					TiDB: &v1alpha1.TiDBSpec{},
 				},
 			},
-			testSts: testPDContainerEnv(t, []corev1.EnvVar{
+			testSts: testContainerEnv(t, []corev1.EnvVar{
 				{
 					Name: "NAMESPACE",
 					ValueFrom: &corev1.EnvVarSource{
@@ -1147,7 +1130,9 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 						},
 					},
 				},
-			}),
+			},
+				v1alpha1.PDMemberType,
+			),
 		},
 		{
 			name: "tidb version v3.1.0, tidb client tls is enabled",
@@ -1332,6 +1317,355 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 			},
 			testSts: testAdditionalVolumes(t, []corev1.Volume{{Name: "test", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}}}),
 		},
+		{
+			name: "sysctl with no init container",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: &v1alpha1.PDSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							PodSecurityContext: &corev1.PodSecurityContext{
+								RunAsNonRoot: &asNonRoot,
+								Sysctls: []corev1.Sysctl{
+									{
+										Name:  "net.core.somaxconn",
+										Value: "32768",
+									},
+									{
+										Name:  "net.ipv4.tcp_syncookies",
+										Value: "0",
+									},
+									{
+										Name:  "net.ipv4.tcp_keepalive_time",
+										Value: "300",
+									},
+									{
+										Name:  "net.ipv4.tcp_keepalive_intvl",
+										Value: "75",
+									},
+								},
+							},
+						},
+					},
+					TiDB: &v1alpha1.TiDBSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				g.Expect(sts.Spec.Template.Spec.InitContainers).Should(BeEmpty())
+				g.Expect(sts.Spec.Template.Spec.SecurityContext).To(Equal(&corev1.PodSecurityContext{
+					RunAsNonRoot: &asNonRoot,
+					Sysctls: []corev1.Sysctl{
+						{
+							Name:  "net.core.somaxconn",
+							Value: "32768",
+						},
+						{
+							Name:  "net.ipv4.tcp_syncookies",
+							Value: "0",
+						},
+						{
+							Name:  "net.ipv4.tcp_keepalive_time",
+							Value: "300",
+						},
+						{
+							Name:  "net.ipv4.tcp_keepalive_intvl",
+							Value: "75",
+						},
+					},
+				}))
+			},
+		},
+		{
+			name: "sysctl with init container",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: &v1alpha1.PDSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Annotations: map[string]string{
+								"tidb.pingcap.com/sysctl-init": "true",
+							},
+							PodSecurityContext: &corev1.PodSecurityContext{
+								RunAsNonRoot: &asNonRoot,
+							},
+						},
+					},
+					TiDB: &v1alpha1.TiDBSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				g.Expect(sts.Spec.Template.Spec.InitContainers).Should(BeEmpty())
+				g.Expect(sts.Spec.Template.Spec.SecurityContext).To(Equal(&corev1.PodSecurityContext{
+					RunAsNonRoot: &asNonRoot,
+				}))
+			},
+		},
+		{
+			name: "sysctl with init container",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: &v1alpha1.PDSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Annotations: map[string]string{
+								"tidb.pingcap.com/sysctl-init": "true",
+							},
+							PodSecurityContext: nil,
+						},
+					},
+					TiDB: &v1alpha1.TiDBSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				g.Expect(sts.Spec.Template.Spec.InitContainers).Should(BeEmpty())
+				g.Expect(sts.Spec.Template.Spec.SecurityContext).To(BeNil())
+			},
+		},
+		{
+			name: "sysctl with init container",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: &v1alpha1.PDSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Annotations: map[string]string{
+								"tidb.pingcap.com/sysctl-init": "true",
+							},
+							PodSecurityContext: &corev1.PodSecurityContext{
+								RunAsNonRoot: &asNonRoot,
+								Sysctls: []corev1.Sysctl{
+									{
+										Name:  "net.core.somaxconn",
+										Value: "32768",
+									},
+									{
+										Name:  "net.ipv4.tcp_syncookies",
+										Value: "0",
+									},
+									{
+										Name:  "net.ipv4.tcp_keepalive_time",
+										Value: "300",
+									},
+									{
+										Name:  "net.ipv4.tcp_keepalive_intvl",
+										Value: "75",
+									},
+								},
+							},
+						},
+					},
+					TiDB: &v1alpha1.TiDBSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				g.Expect(sts.Spec.Template.Spec.InitContainers).To(Equal([]corev1.Container{
+					{
+						Name:  "init",
+						Image: "busybox:1.26.2",
+						Command: []string{
+							"sh",
+							"-c",
+							"sysctl -w net.core.somaxconn=32768 net.ipv4.tcp_syncookies=0 net.ipv4.tcp_keepalive_time=300 net.ipv4.tcp_keepalive_intvl=75",
+						},
+						SecurityContext: &corev1.SecurityContext{
+							Privileged: &privileged,
+						},
+					},
+				}))
+				g.Expect(sts.Spec.Template.Spec.SecurityContext).To(Equal(&corev1.PodSecurityContext{
+					RunAsNonRoot: &asNonRoot,
+					Sysctls:      []corev1.Sysctl{},
+				}))
+			},
+		},
+		{
+			name: "Specitfy init container resourceRequirements",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: &v1alpha1.PDSpec{
+						ResourceRequirements: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU:     resource.MustParse("150m"),
+								corev1.ResourceMemory:  resource.MustParse("200Mi"),
+								corev1.ResourceStorage: resource.MustParse("20G"),
+							},
+							Limits: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("150m"),
+								corev1.ResourceMemory: resource.MustParse("200Mi"),
+							},
+						},
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Annotations: map[string]string{
+								"tidb.pingcap.com/sysctl-init": "true",
+							},
+							PodSecurityContext: &corev1.PodSecurityContext{
+								RunAsNonRoot: &asNonRoot,
+								Sysctls: []corev1.Sysctl{
+									{
+										Name:  "net.core.somaxconn",
+										Value: "32768",
+									},
+									{
+										Name:  "net.ipv4.tcp_syncookies",
+										Value: "0",
+									},
+									{
+										Name:  "net.ipv4.tcp_keepalive_time",
+										Value: "300",
+									},
+									{
+										Name:  "net.ipv4.tcp_keepalive_intvl",
+										Value: "75",
+									},
+								},
+							},
+						},
+					},
+					TiDB: &v1alpha1.TiDBSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				g.Expect(sts.Spec.Template.Spec.InitContainers).To(Equal([]corev1.Container{
+					{
+						Name:  "init",
+						Image: "busybox:1.26.2",
+						Command: []string{
+							"sh",
+							"-c",
+							"sysctl -w net.core.somaxconn=32768 net.ipv4.tcp_syncookies=0 net.ipv4.tcp_keepalive_time=300 net.ipv4.tcp_keepalive_intvl=75",
+						},
+						SecurityContext: &corev1.SecurityContext{
+							Privileged: &privileged,
+						},
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("150m"),
+								corev1.ResourceMemory: resource.MustParse("200Mi"),
+							},
+							Limits: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("150m"),
+								corev1.ResourceMemory: resource.MustParse("200Mi"),
+							},
+						},
+					},
+				}))
+				g.Expect(sts.Spec.Template.Spec.SecurityContext).To(Equal(&corev1.PodSecurityContext{
+					RunAsNonRoot: &asNonRoot,
+					Sysctls:      []corev1.Sysctl{},
+				}))
+			},
+		},
+		{
+			name: "sysctl without init container due to invalid annotation",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: &v1alpha1.PDSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Annotations: map[string]string{
+								"tidb.pingcap.com/sysctl-init": "false",
+							},
+							PodSecurityContext: &corev1.PodSecurityContext{
+								RunAsNonRoot: &asNonRoot,
+								Sysctls: []corev1.Sysctl{
+									{
+										Name:  "net.core.somaxconn",
+										Value: "32768",
+									},
+									{
+										Name:  "net.ipv4.tcp_syncookies",
+										Value: "0",
+									},
+									{
+										Name:  "net.ipv4.tcp_keepalive_time",
+										Value: "300",
+									},
+									{
+										Name:  "net.ipv4.tcp_keepalive_intvl",
+										Value: "75",
+									},
+								},
+							},
+						},
+					},
+					TiDB: &v1alpha1.TiDBSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				g.Expect(sts.Spec.Template.Spec.InitContainers).Should(BeEmpty())
+				g.Expect(sts.Spec.Template.Spec.SecurityContext).To(Equal(&corev1.PodSecurityContext{
+					RunAsNonRoot: &asNonRoot,
+					Sysctls: []corev1.Sysctl{
+						{
+							Name:  "net.core.somaxconn",
+							Value: "32768",
+						},
+						{
+							Name:  "net.ipv4.tcp_syncookies",
+							Value: "0",
+						},
+						{
+							Name:  "net.ipv4.tcp_keepalive_time",
+							Value: "300",
+						},
+						{
+							Name:  "net.ipv4.tcp_keepalive_intvl",
+							Value: "75",
+						},
+					},
+				}))
+			},
+		},
+		{
+			name: "no init container no securityContext",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD:   &v1alpha1.PDSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				g.Expect(sts.Spec.Template.Spec.InitContainers).Should(BeEmpty())
+				g.Expect(sts.Spec.Template.Spec.SecurityContext).To(BeNil())
+			},
+		},
 		// TODO add more tests
 	}
 
@@ -1381,7 +1715,7 @@ func TestGetPDConfigMap(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							ConfigUpdateStrategy: &updateStrategy,
 						},
-						Config: &v1alpha1.PDConfig{
+						Config: mustPDConfig(&v1alpha1.PDConfig{
 							Schedule: &v1alpha1.PDScheduleConfig{
 								MaxStoreDownTime:         pointer.StringPtr("5m"),
 								DisableRemoveDownReplica: pointer.BoolPtr(true),
@@ -1390,7 +1724,7 @@ func TestGetPDConfigMap(t *testing.T) {
 								MaxReplicas:    func() *uint64 { i := uint64(5); return &i }(),
 								LocationLabels: []string{"node", "rack"},
 							},
-						},
+						}),
 					},
 					TiKV: &v1alpha1.TiKVSpec{},
 					TiDB: &v1alpha1.TiDBSpec{},
@@ -1423,13 +1757,13 @@ func TestGetPDConfigMap(t *testing.T) {
 				},
 				Data: map[string]string{
 					"startup-script": "",
-					"config-file": `[schedule]
-  max-store-down-time = "5m"
-  disable-remove-down-replica = true
-
-[replication]
-  max-replicas = 5
+					"config-file": `[replication]
   location-labels = ["node", "rack"]
+  max-replicas = 5
+
+[schedule]
+  disable-remove-down-replica = true
+  max-store-down-time = "5m"
 `,
 				},
 			},
@@ -1446,7 +1780,7 @@ func TestGetPDConfigMap(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: "pingcap/pd:v3.1.0",
 						},
-						Config: &v1alpha1.PDConfig{},
+						Config: v1alpha1.NewPDConfig(),
 					},
 					TiDB: &v1alpha1.TiDBSpec{
 						TLSClient: &v1alpha1.TiDBTLSClient{
@@ -1499,7 +1833,7 @@ func TestGetPDConfigMap(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: "pingcap/pd:v4.0.0-rc.1",
 						},
-						Config: &v1alpha1.PDConfig{},
+						Config: v1alpha1.NewPDConfig(),
 					},
 					TiDB: &v1alpha1.TiDBSpec{
 						TLSClient: &v1alpha1.TiDBTLSClient{
@@ -1556,7 +1890,7 @@ func TestGetPDConfigMap(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: "pingcap/pd:nightly",
 						},
-						Config: &v1alpha1.PDConfig{},
+						Config: v1alpha1.NewPDConfig(),
 					},
 					TiDB: &v1alpha1.TiDBSpec{
 						TLSClient: &v1alpha1.TiDBTLSClient{
@@ -1973,7 +2307,7 @@ func TestGetNewPdServiceForTidbCluster(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pmm, _, _, _, _, _, _ := newFakePDMemberManager()
+			pmm, _, _ := newFakePDMemberManager()
 			svc := pmm.getNewPDServiceForTidbCluster(&tt.tc)
 			if diff := cmp.Diff(tt.expected, *svc); diff != "" {
 				t.Errorf("unexpected Service (-want, +got): %s", diff)
@@ -1998,7 +2332,8 @@ func TestPDMemberManagerSyncPDStsWhenPdNotJoinCluster(t *testing.T) {
 		ns := tc.Namespace
 		tcName := tc.Name
 
-		pmm, _, _, fakePDControl, podIndexer, pvcIndexer, _ := newFakePDMemberManager()
+		pmm, podIndexer, pvcIndexer := newFakePDMemberManager()
+		fakePDControl := pmm.deps.PDControl.(*pdapi.FakePDControl)
 		pdClient := controller.NewFakePDClient(fakePDControl, tc)
 
 		pdClient.AddReaction(pdapi.GetHealthActionType, func(action *pdapi.Action) (interface{}, error) {
@@ -2010,11 +2345,11 @@ func TestPDMemberManagerSyncPDStsWhenPdNotJoinCluster(t *testing.T) {
 
 		err := pmm.Sync(tc)
 		g.Expect(controller.IsRequeueError(err)).To(BeTrue())
-		_, err = pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName))
+		_, err = pmm.deps.ServiceLister.Services(ns).Get(controller.PDMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
-		_, err = pmm.svcLister.Services(ns).Get(controller.PDPeerMemberName(tcName))
+		_, err = pmm.deps.ServiceLister.Services(ns).Get(controller.PDPeerMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
-		_, err = pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
+		_, err = pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
 		g.Expect(err).NotTo(HaveOccurred())
 		if test.tcStatusChange != nil {
 			test.tcStatusChange(tc)
@@ -2298,15 +2633,14 @@ func TestPDShouldRecover(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			client := kubefake.NewSimpleClientset()
+			fakeDeps := controller.NewFakeDependencies()
 			for _, pod := range tt.pods {
-				client.CoreV1().Pods(pod.Namespace).Create(pod)
+				fakeDeps.KubeClientset.CoreV1().Pods(pod.Namespace).Create(pod)
 			}
-			kubeInformerFactory := kubeinformers.NewSharedInformerFactory(client, 0)
-			podLister := kubeInformerFactory.Core().V1().Pods().Lister()
+			kubeInformerFactory := fakeDeps.KubeInformerFactory
 			kubeInformerFactory.Start(ctx.Done())
 			kubeInformerFactory.WaitForCacheSync(ctx.Done())
-			pdMemberManager := &pdMemberManager{podLister: podLister}
+			pdMemberManager := &pdMemberManager{deps: fakeDeps}
 			got := pdMemberManager.shouldRecover(tt.tc)
 			if got != tt.want {
 				t.Fatalf("wants %v, got %v", tt.want, got)
@@ -2335,4 +2669,16 @@ func hasTLSVolMount(sts *apps.StatefulSet) bool {
 		}
 	}
 	return false
+}
+
+func mustPDConfig(x interface{}) *v1alpha1.PDConfigWraper {
+	data, err := toml.Marshal(x)
+	if err != nil {
+		panic(err)
+	}
+
+	c := v1alpha1.NewPDConfig()
+	c.UnmarshalTOML(data)
+
+	return c
 }

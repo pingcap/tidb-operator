@@ -258,14 +258,6 @@ type TidbClusterStatus struct {
 	// Represents the latest available observations of a tidb cluster's state.
 	// +optional
 	Conditions []TidbClusterCondition `json:"conditions,omitempty"`
-	// +optional
-	TiKVGroups []GroupRef `json:"tikv-groups,omitempty"`
-	// +optional
-	TiDBGroups []GroupRef `json:"tidb-groups,omitempty"`
-}
-
-type GroupRef struct {
-	Reference corev1.LocalObjectReference `json:",inline"`
 }
 
 // TidbClusterCondition describes the state of a tidb cluster at a certain point.
@@ -355,7 +347,7 @@ type PDSpec struct {
 
 	// Config is the Configuration of pd-servers
 	// +optional
-	Config *PDConfig `json:"config,omitempty"`
+	Config *PDConfigWraper `json:"config,omitempty"`
 
 	// TLSClientSecretName is the name of secret which stores tidb server client certificate
 	// which used by Dashboard.
@@ -365,6 +357,10 @@ type PDSpec struct {
 	// EnableDashboardInternalProxy would directly set `internal-proxy` in the `PdConfig`
 	// +optional
 	EnableDashboardInternalProxy *bool `json:"enableDashboardInternalProxy,omitempty"`
+
+	// MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod
+	// +optional
+	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -416,11 +412,20 @@ type TiKVSpec struct {
 
 	// Config is the Configuration of tikv-servers
 	// +optional
-	Config *TiKVConfig `json:"config,omitempty"`
+	Config *TiKVConfigWraper `json:"config,omitempty"`
 
 	// RecoverFailover indicates that Operator can recover the failover Pods
 	// +optional
 	RecoverFailover bool `json:"recoverFailover,omitempty"`
+
+	// MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod
+	// +optional
+	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
+
+	// EvictLeaderTimeout indicates the timeout to evict tikv leader, in the format of Go Duration.
+	// Defaults to 3m
+	// +optional
+	EvictLeaderTimeout *string `json:"evictLeaderTimeout,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members
@@ -459,7 +464,7 @@ type TiFlashSpec struct {
 
 	// Config is the Configuration of TiFlash
 	// +optional
-	Config *TiFlashConfig `json:"config,omitempty"`
+	Config *TiFlashConfigWraper `json:"config,omitempty"`
 
 	// LogTailer is the configurations of the log tailers for TiFlash
 	// +optional
@@ -591,7 +596,7 @@ type TiDBSpec struct {
 
 	// Config is the Configuration of tidb-servers
 	// +optional
-	Config *TiDBConfig `json:"config,omitempty"`
+	Config *TiDBConfigWraper `json:"config,omitempty"`
 
 	// Lifecycle describes actions that the management system should take in response to container lifecycle
 	// events. For the PostStart and PreStop lifecycle handlers, management of the container blocks
@@ -627,7 +632,7 @@ type PumpSpec struct {
 	// TODO: add schema
 	// The configuration of Pump cluster.
 	// +optional
-	config.GenericConfig `json:",inline"`
+	Config *config.GenericConfig `json:"config,omitempty"`
 
 	// +k8s:openapi-gen=false
 	// For backward compatibility with helm chart
@@ -1124,12 +1129,14 @@ type BackupType string
 const (
 	// BackupTypeFull represents the full backup of tidb cluster.
 	BackupTypeFull BackupType = "full"
-	// BackupTypeInc represents the incremental backup of tidb cluster.
-	BackupTypeInc BackupType = "incremental"
+	// BackupTypeRaw represents the raw backup of tidb cluster.
+	BackupTypeRaw BackupType = "raw"
 	// BackupTypeDB represents the backup of one DB for the tidb cluster.
 	BackupTypeDB BackupType = "db"
 	// BackupTypeTable represents the backup of one table for the tidb cluster.
 	BackupTypeTable BackupType = "table"
+	// BackupTypeTiFlashReplica represents restoring the tiflash replica removed by a failed restore of the older version BR
+	BackupTypeTiFlashReplica BackupType = "tiflash-replica"
 )
 
 // +k8s:openapi-gen=true
@@ -1241,6 +1248,8 @@ type BRConfig struct {
 	SendCredToTikv *bool `json:"sendCredToTikv,omitempty"`
 	// OnLine specifies whether online during restore
 	OnLine *bool `json:"onLine,omitempty"`
+	// Options means options for backup data to remote storage with BR. These options has highest priority.
+	Options []string `json:"options,omitempty"`
 }
 
 // BackupConditionType represents a valid condition of a Backup.
@@ -1563,6 +1572,11 @@ type DMClusterSpec struct {
 	// Optional: Defaults to nil
 	// +optional
 	TLSCluster *TLSCluster `json:"tlsCluster,omitempty"`
+
+	// TLSClientSecretNames are the names of secrets which stores mysql/tidb server client certificates
+	// that used by dm-master and dm-worker.
+	// +optional
+	TLSClientSecretNames []string `json:"tlsClientSecretNames,omitempty"`
 
 	// Whether Hostnetwork is enabled for DM cluster Pods
 	// Optional: Defaults to false

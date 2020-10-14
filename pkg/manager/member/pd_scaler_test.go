@@ -28,8 +28,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	kubeinformers "k8s.io/client-go/informers"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/pointer"
 )
@@ -427,15 +425,12 @@ func TestPDScalerScaleIn(t *testing.T) {
 }
 
 func newFakePDScaler() (*pdScaler, *pdapi.FakePDControl, cache.Indexer, *controller.FakePVCControl) {
-	kubeCli := kubefake.NewSimpleClientset()
-
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
-	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
-	pdControl := pdapi.NewFakePDControl(kubeCli)
-	pvcControl := controller.NewFakePVCControl(pvcInformer)
-
-	return &pdScaler{generalScaler{pvcInformer.Lister(), pvcControl}, pdControl},
-		pdControl, pvcInformer.Informer().GetIndexer(), pvcControl
+	fakeDeps := controller.NewFakeDependencies()
+	pdScaler := &pdScaler{generalScaler: generalScaler{deps: fakeDeps}}
+	pdControl := fakeDeps.PDControl.(*pdapi.FakePDControl)
+	pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
+	pvcControl := fakeDeps.PVCControl.(*controller.FakePVCControl)
+	return pdScaler, pdControl, pvcIndexer, pvcControl
 }
 
 func newStatefulSetForPDScale() *apps.StatefulSet {
@@ -453,7 +448,13 @@ func newStatefulSetForPDScale() *apps.StatefulSet {
 
 func newPVCForStatefulSet(set *apps.StatefulSet, memberType v1alpha1.MemberType, name string) *corev1.PersistentVolumeClaim {
 	podName := ordinalPodName(memberType, name, *set.Spec.Replicas)
-	l := label.New().Instance(name)
+	var l label.Label
+	switch memberType {
+	case v1alpha1.DMMasterMemberType, v1alpha1.DMWorkerMemberType:
+		l = label.NewDM().Instance(name)
+	default:
+		l = label.New().Instance(name)
+	}
 	l[label.AnnPodNameKey] = podName
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
@@ -466,7 +467,13 @@ func newPVCForStatefulSet(set *apps.StatefulSet, memberType v1alpha1.MemberType,
 
 func newScaleInPVCForStatefulSet(set *apps.StatefulSet, memberType v1alpha1.MemberType, name string) *corev1.PersistentVolumeClaim {
 	podName := ordinalPodName(memberType, name, *set.Spec.Replicas-1)
-	l := label.New().Instance(name)
+	var l label.Label
+	switch memberType {
+	case v1alpha1.DMMasterMemberType, v1alpha1.DMWorkerMemberType:
+		l = label.NewDM().Instance(name)
+	default:
+		l = label.New().Instance(name)
+	}
 	l[label.AnnPodNameKey] = podName
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{

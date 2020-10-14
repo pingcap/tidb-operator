@@ -15,7 +15,6 @@ package pod
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -34,35 +33,13 @@ const (
 	EvictLeaderBeginTime = label.AnnEvictLeaderBeginTime
 )
 
-var (
-	// EvictLeaderTimeout is the timeout limit of evict leader
-	EvictLeaderTimeout time.Duration
-)
-
 func (pc *PodAdmissionControl) admitDeleteTiKVPods(payload *admitPayload) *admission.AdmissionResponse {
 	pod := payload.pod
 	pdClient := payload.pdClient
 	name := pod.Name
 	namespace := pod.Namespace
-	ordinal, err := operatorUtils.GetOrdinalFromPodName(name)
-	if err != nil {
-		return util.ARFail(err)
-	}
 	controllerName := payload.controllerDesc.name
 	controllerKind := payload.controllerDesc.kind
-
-	// If the tikv pod is deleted by restarter, it is necessary to check former tikv restart status
-	if _, exist := payload.pod.Annotations[label.AnnPodDeferDeleting]; exist {
-		existed, err := checkFormerPodRestartStatus(pc.kubeCli, v1alpha1.TiKVMemberType, payload, ordinal)
-		if err != nil {
-			return util.ARFail(err)
-		}
-		if existed {
-			return &admission.AdmissionResponse{
-				Allowed: false,
-			}
-		}
-	}
 
 	storesInfo, err := pdClient.GetStores()
 	if err != nil {
@@ -75,8 +52,6 @@ func (pc *PodAdmissionControl) admitDeleteTiKVPods(payload *admitPayload) *admis
 	switch controllerKind {
 	case v1alpha1.TiDBClusterKind:
 		expectedAddress = fmt.Sprintf("%s.%s-tikv-peer.%s.svc:20160", name, controllerName, namespace)
-	case v1alpha1.TiKVGroupKind:
-		expectedAddress = fmt.Sprintf("%s.%s-tikv-group-peer.%s.svc:20160", name, controllerName, namespace)
 	default:
 		// unreachable
 		klog.V(4).Infof("tikv pod[%s/%s] controlled by unknown controllerKind[%s], admite to delete", namespace, name, controllerKind)
@@ -189,13 +164,6 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPod(payload *admitPayload, store
 			return util.ARFail(err)
 		}
 		specReplicas = tc.Spec.TiKV.Replicas
-	} else if controllerKind == v1alpha1.TiKVGroupKind {
-		tg, ok := payload.controller.(*v1alpha1.TiKVGroup)
-		if !ok {
-			err := fmt.Errorf("tikv pod[%s/%s]'s controller is not tikvgroup,forbid to be deleted", namespace, name)
-			return util.ARFail(err)
-		}
-		specReplicas = tg.Spec.Replicas
 	} else {
 		// unreachable
 		klog.V(4).Infof("tikv pod[%s/%s] has unknown controller[%s], admit to be deleted", namespace, name, controllerKind)
@@ -218,12 +186,12 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPodDuringUpgrading(payload *admi
 
 	name := payload.pod.Name
 	namespace := payload.pod.Namespace
-	metaController, ok := payload.controller.(meta.Object)
+	tc, ok := payload.controller.(*v1alpha1.TidbCluster)
 	if !ok {
-		err := fmt.Errorf("tikv pod[%s/%s]'s controller is not a metav1.Object", namespace, name)
+		err := fmt.Errorf("tikv pod[%s/%s]'s controller is not a tidbcluster", namespace, name)
 		return util.ARFail(err)
 	}
-	controllerName := metaController.GetName()
+	controllerName := tc.GetName()
 	controllerKind := payload.controller.GetObjectKind().GroupVersionKind().Kind
 
 	_, evicting := payload.pod.Annotations[EvictLeaderBeginTime]
@@ -238,7 +206,7 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPodDuringUpgrading(payload *admi
 		}
 	}
 
-	if !isTiKVReadyToUpgrade(payload.pod, store) {
+	if !isTiKVReadyToUpgrade(payload.pod, store, tc.TiKVEvictLeaderTimeout()) {
 		return &admission.AdmissionResponse{
 			Allowed: false,
 		}

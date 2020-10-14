@@ -26,7 +26,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
-	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 )
 
@@ -49,11 +48,10 @@ type Scaler interface {
 }
 
 type generalScaler struct {
-	pvcLister  corelisters.PersistentVolumeClaimLister
-	pvcControl controller.PVCControlInterface
+	deps *controller.Dependencies
 }
 
-func (gs *generalScaler) deleteDeferDeletingPVC(controller runtime.Object,
+func (s *generalScaler) deleteDeferDeletingPVC(controller runtime.Object,
 	setName string, memberType v1alpha1.MemberType, ordinal int32) (map[string]string, error) {
 	meta := controller.(metav1.Object)
 	ns := meta.GetNamespace()
@@ -67,11 +65,6 @@ func (gs *generalScaler) deleteDeferDeletingPVC(controller runtime.Object,
 		l = label.New().Instance(meta.GetName())
 		l[label.AnnPodNameKey] = podName
 		kind = v1alpha1.TiDBClusterKind
-	case *v1alpha1.TiKVGroup:
-		podName = fmt.Sprintf("%s-%s-group-%d", meta.GetName(), memberType, ordinal)
-		l = label.NewGroup().Instance(meta.GetName())
-		// TODO: support sync meta info into TiKVGroup resources (pod/pvc)
-		kind = v1alpha1.TiKVGroupKind
 	case *v1alpha1.DMCluster:
 		podName = ordinalPodName(memberType, meta.GetName(), ordinal)
 		l = label.NewDM().Instance(meta.GetName())
@@ -87,10 +80,10 @@ func (gs *generalScaler) deleteDeferDeletingPVC(controller runtime.Object,
 		return skipReason, fmt.Errorf("%s %s/%s assemble label selector failed, err: %v", kind, ns, meta.GetName(), err)
 	}
 
-	pvcs, err := gs.pvcLister.PersistentVolumeClaims(ns).List(selector)
+	pvcs, err := s.deps.PVCLister.PersistentVolumeClaims(ns).List(selector)
 	if err != nil {
 		msg := fmt.Sprintf("%s %s/%s list pvc failed, selector: %s, err: %v", kind, ns, meta.GetName(), selector, err)
-		klog.Errorf(msg)
+		klog.Error(msg)
 		return skipReason, fmt.Errorf(msg)
 	}
 	if len(pvcs) == 0 {
@@ -110,7 +103,7 @@ func (gs *generalScaler) deleteDeferDeletingPVC(controller runtime.Object,
 			continue
 		}
 
-		err = gs.pvcControl.DeletePVC(controller, pvc)
+		err = s.deps.PVCControl.DeletePVC(controller, pvc)
 		if err != nil {
 			klog.Errorf("Scale out: failed to delete pvc %s/%s, %v", ns, pvcName, err)
 			return skipReason, err
@@ -120,7 +113,7 @@ func (gs *generalScaler) deleteDeferDeletingPVC(controller runtime.Object,
 	return skipReason, nil
 }
 
-func (gs *generalScaler) updateDeferDeletingPVC(tc *v1alpha1.TidbCluster,
+func (s *generalScaler) updateDeferDeletingPVC(tc *v1alpha1.TidbCluster,
 	memberType v1alpha1.MemberType, ordinal int32) error {
 	ns := tc.GetNamespace()
 	podName := ordinalPodName(memberType, tc.Name, ordinal)
@@ -132,15 +125,15 @@ func (gs *generalScaler) updateDeferDeletingPVC(tc *v1alpha1.TidbCluster,
 		return fmt.Errorf("cluster %s/%s assemble label selector failed, err: %v", ns, tc.Name, err)
 	}
 
-	pvcs, err := gs.pvcLister.PersistentVolumeClaims(ns).List(selector)
+	pvcs, err := s.deps.PVCLister.PersistentVolumeClaims(ns).List(selector)
 	if err != nil {
 		msg := fmt.Sprintf("Cluster %s/%s list pvc failed, selector: %s, err: %v", ns, tc.Name, selector, err)
-		klog.Errorf(msg)
+		klog.Error(msg)
 		return fmt.Errorf(msg)
 	}
 	if len(pvcs) == 0 {
 		msg := fmt.Sprintf("Cluster %s/%s list pvc not found, selector: %s", ns, tc.Name, selector)
-		klog.Errorf(msg)
+		klog.Error(msg)
 		return fmt.Errorf(msg)
 	}
 
@@ -151,7 +144,7 @@ func (gs *generalScaler) updateDeferDeletingPVC(tc *v1alpha1.TidbCluster,
 		}
 		now := time.Now().Format(time.RFC3339)
 		pvc.Annotations[label.AnnPVCDeferDeleting] = now
-		_, err = gs.pvcControl.UpdatePVC(tc, pvc)
+		_, err = s.deps.PVCControl.UpdatePVC(tc, pvc)
 		if err != nil {
 			klog.Errorf("Scale in: failed to set pvc %s/%s annotation: %s to %s, error: %v",
 				ns, pvcName, label.AnnPVCDeferDeleting, now, err)

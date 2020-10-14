@@ -62,6 +62,15 @@ const (
 	// BackupProtectionFinalizer is the name of finalizer on backups
 	BackupProtectionFinalizer string = "tidb.pingcap.com/backup-protection"
 
+	// AutoScalingGroupLabelKey describes the autoscaling group of the TiDB
+	AutoScalingGroupLabelKey = "tidb.pingcap.com/autoscaling-group"
+	// AutoInstanceLabelKey is label key used in autoscaling, it represents the autoscaler name
+	AutoInstanceLabelKey string = "tidb.pingcap.com/auto-instance"
+	// AutoComponentLabelKey is label key used in autoscaling, it represents which component is auto scaled
+	AutoComponentLabelKey string = "tidb.pingcap.com/auto-component"
+	// BaseTCLabelKey is label key used for heterogeneous clusters to refer to its base TidbCluster
+	BaseTCLabelKey string = "tidb.pingcap.com/base-tc"
+
 	// High availability is realized based on the topology
 	AnnHATopologyKey = "pingcap.com/ha-topology-key"
 
@@ -86,8 +95,6 @@ const (
 	AnnSysctlInit = "tidb.pingcap.com/sysctl-init"
 	// AnnEvictLeaderBeginTime is pod annotation key to indicate the begin time for evicting region leader
 	AnnEvictLeaderBeginTime = "tidb.pingcap.com/evictLeaderBeginTime"
-	// AnnPodDeferDeleting is pod annotation key to indicate the pod which need to be restarted
-	AnnPodDeferDeleting = "tidb.pingcap.com/pod-defer-deleting"
 	// AnnStsSyncTimestamp is sts annotation key to indicate the last timestamp the operator sync the sts
 	AnnStsLastSyncTimestamp = "tidb.pingcap.com/sync-timestamp"
 
@@ -455,8 +462,4 @@ func (l Label) IsManagedByTiDBOperator() bool {
 
 func (l Label) IsTidbClusterPod() bool {
 	return l[NameLabelKey] == "tidb-cluster"
-}
-
-func (l Label) IsGroupPod() bool {
-	return l[NameLabelKey] == "tidb-cluster-group"
 }

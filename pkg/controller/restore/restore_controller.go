@@ -20,94 +20,45 @@ import (
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/restore"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
-	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	kubeinformers "k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes"
-	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
 )
 
 // Controller controls restore.
 type Controller struct {
-	// kubernetes client interface
-	kubeClient kubernetes.Interface
-	// operator client interface
-	cli versioned.Interface
+	deps *controller.Dependencies
 	// control returns an interface capable of syncing a restore.
 	// Abstracted out for testing.
 	control ControlInterface
-	// restoreLister is able to list/get restore from a shared informer's store
-	restoreLister listers.RestoreLister
-	// restoreListerSynced returns true if the restore shared informer has synced at least once
-	restoreListerSynced cache.InformerSynced
 	// restores that need to be synced.
 	queue workqueue.RateLimitingInterface
 }
 
 // NewController creates a restore controller.
-func NewController(
-	kubeCli kubernetes.Interface,
-	cli versioned.Interface,
-	informerFactory informers.SharedInformerFactory,
-	kubeInformerFactory kubeinformers.SharedInformerFactory,
-) *Controller {
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(klog.Infof)
-	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
-		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
-	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "restore"})
-
-	restoreInformer := informerFactory.Pingcap().V1alpha1().Restores()
-	tcInformer := informerFactory.Pingcap().V1alpha1().TidbClusters()
-	backupInformer := informerFactory.Pingcap().V1alpha1().Backups()
-	jobInformer := kubeInformerFactory.Batch().V1().Jobs()
-	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
-	statusUpdater := controller.NewRealRestoreConditionUpdater(cli, restoreInformer.Lister(), recorder)
-	jobControl := controller.NewRealJobControl(kubeCli, recorder)
-	pvcControl := controller.NewRealGeneralPVCControl(kubeCli, recorder)
-
-	rsc := &Controller{
-		kubeClient: kubeCli,
-		cli:        cli,
-		control: NewDefaultRestoreControl(
-			restore.NewRestoreManager(
-				backupInformer.Lister(),
-				statusUpdater,
-				kubeCli,
-				jobInformer.Lister(),
-				jobControl,
-				pvcInformer.Lister(),
-				tcInformer.Lister(),
-				pvcControl,
-			),
-		),
+func NewController(deps *controller.Dependencies) *Controller {
+	c := &Controller{
+		deps:    deps,
+		control: NewDefaultRestoreControl(restore.NewRestoreManager(deps)),
 		queue: workqueue.NewNamedRateLimitingQueue(
 			workqueue.DefaultControllerRateLimiter(),
 			"restore",
 		),
 	}
 
+	restoreInformer := deps.InformerFactory.Pingcap().V1alpha1().Restores()
 	restoreInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: rsc.updateRestore,
+		AddFunc: c.updateRestore,
 		UpdateFunc: func(old, cur interface{}) {
-			rsc.updateRestore(cur)
+			c.updateRestore(cur)
 		},
-		DeleteFunc: rsc.enqueueRestore,
+		DeleteFunc: c.enqueueRestore,
 	})
-	rsc.restoreLister = restoreInformer.Lister()
-	rsc.restoreListerSynced = restoreInformer.Informer().HasSynced
-
-	return rsc
+	return c
 }
 
 // Run runs the restore controller.
@@ -166,7 +117,7 @@ func (rsc *Controller) sync(key string) error {
 	if err != nil {
 		return err
 	}
-	restore, err := rsc.restoreLister.Restores(ns).Get(name)
+	restore, err := rsc.deps.RestoreLister.Restores(ns).Get(name)
 	if errors.IsNotFound(err) {
 		klog.Infof("Restore has been deleted %v", key)
 		return nil

@@ -1,0 +1,24 @@
+apiVersion: pingcap.com/v1alpha1
+kind: TidbMonitor
+metadata:
+  name: monitor
+spec:
+  clusterScoped: true
+  clusters:
+    - name: ns1
+      namespace: ns1
+    - name: ns2
+      namespace: ns2
+  prometheus:
+    baseImage: prom/prometheus
+    version: v2.11.1
+  grafana:
+    baseImage: grafana/grafana
+    version: 6.1.6
+  initializer:
+    baseImage: pingcap/tidb-monitor-initializer
+    version: v4.0.6
+  reloader:
+    baseImage: pingcap/tidb-monitor-reloader
+    version: v1.0.1
+  imagePullPolicy: IfNotPresent

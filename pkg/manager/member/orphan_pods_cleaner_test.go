@@ -23,16 +23,13 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	kubeinformers "k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes"
-	kubefake "k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/tools/cache"
 )
 
 func TestOrphanPodsCleanerClean(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	tc := newTidbClusterForPD()
+	dc := newDMClusterForMaster()
 
 	tests := []struct {
 		name            string
@@ -40,6 +37,7 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 		apiPods         []*corev1.Pod
 		pvcs            []*corev1.PersistentVolumeClaim
 		deletePodFailed bool
+		testOnDM        bool
 		expectFn        func(*GomegaWithT, map[string]string, *orphanPodsCleaner, error)
 	}{
 		{
@@ -84,6 +82,50 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 				},
 			},
 			pvcs: nil,
+			expectFn: func(g *GomegaWithT, skipReason map[string]string, _ *orphanPodsCleaner, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(1))
+				g.Expect(skipReason["pod-1"]).To(Equal(skipReasonOrphanPodsCleanerPVCNameIsEmpty))
+			},
+		},
+		{
+			name: "has no spec.volumes for dm-master",
+			pods: []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pod-1",
+						Namespace: metav1.NamespaceDefault,
+						Labels:    label.NewDM().Instance(dc.GetInstanceName()).DMMaster().Labels(),
+					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodPending,
+					},
+				},
+			},
+			pvcs:     nil,
+			testOnDM: true,
+			expectFn: func(g *GomegaWithT, skipReason map[string]string, _ *orphanPodsCleaner, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(1))
+				g.Expect(skipReason["pod-1"]).To(Equal(skipReasonOrphanPodsCleanerPVCNameIsEmpty))
+			},
+		},
+		{
+			name: "has no spec.volumes for dm-worker",
+			pods: []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pod-1",
+						Namespace: metav1.NamespaceDefault,
+						Labels:    label.NewDM().Instance(dc.GetInstanceName()).DMWorker().Labels(),
+					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodPending,
+					},
+				},
+			},
+			pvcs:     nil,
+			testOnDM: true,
 			expectFn: func(g *GomegaWithT, skipReason map[string]string, _ *orphanPodsCleaner, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(skipReason)).To(Equal(1))
@@ -193,7 +235,7 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 			expectFn: func(g *GomegaWithT, skipReason map[string]string, opc *orphanPodsCleaner, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(skipReason)).To(Equal(0))
-				_, err = opc.podLister.Pods("default").Get("pod-1")
+				_, err = opc.deps.PodLister.Pods("default").Get("pod-1")
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "not found")).To(BeTrue())
 			},
@@ -243,7 +285,7 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 			expectFn: func(g *GomegaWithT, skipReason map[string]string, opc *orphanPodsCleaner, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(skipReason)).To(Equal(0))
-				_, err = opc.podLister.Pods("default").Get("pod-1")
+				_, err = opc.deps.PodLister.Pods("default").Get("pod-1")
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "not found")).To(BeTrue())
 			},
@@ -553,7 +595,7 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 				g.Expect(skipReason["pod-3"]).To(Equal(skipReasonOrphanPodsCleanerPVCIsFound))
 				g.Expect(skipReason["pod-4"]).To(Equal(skipReasonOrphanPodsCleanerIsNotTarget))
 				g.Expect(err).NotTo(HaveOccurred())
-				_, err = opc.podLister.Pods("default").Get("pod-1")
+				_, err = opc.deps.PodLister.Pods("default").Get("pod-1")
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "not found")).To(BeTrue())
 			},
@@ -561,7 +603,12 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			opc, podIndexer, pvcIndexer, client, podControl := newFakeOrphanPodsCleaner()
+			fakeDeps := controller.NewFakeDependencies()
+			opc := &orphanPodsCleaner{deps: fakeDeps}
+			podIndexer := fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer()
+			pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
+			client := fakeDeps.KubeClientset
+			podControl := fakeDeps.PodControl.(*controller.FakePodControl)
 			if tt.pods != nil {
 				for _, pod := range tt.pods {
 					client.CoreV1().Pods(pod.Namespace).Create(pod)
@@ -583,19 +630,15 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 				podControl.SetDeletePodError(fmt.Errorf("delete pod failed"), 0)
 			}
 
-			skipReason, err := opc.Clean(tc)
+			var skipReason map[string]string
+			var err error
+
+			if tt.testOnDM {
+				skipReason, err = opc.Clean(dc)
+			} else {
+				skipReason, err = opc.Clean(tc)
+			}
 			tt.expectFn(g, skipReason, opc, err)
 		})
 	}
-}
-
-func newFakeOrphanPodsCleaner() (*orphanPodsCleaner, cache.Indexer, cache.Indexer, kubernetes.Interface, *controller.FakePodControl) {
-	kubeCli := kubefake.NewSimpleClientset()
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
-	podInformer := kubeInformerFactory.Core().V1().Pods()
-	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
-	podControl := controller.NewFakePodControl(podInformer)
-
-	return &orphanPodsCleaner{podInformer.Lister(), podControl, pvcInformer.Lister(), kubeCli},
-		podInformer.Informer().GetIndexer(), pvcInformer.Informer().GetIndexer(), kubeCli, podControl
 }
