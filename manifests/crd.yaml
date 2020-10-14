@@ -13370,6 +13370,10 @@ spec:
                   type: string
                 onLine:
                   type: boolean
+                options:
+                  items:
+                    type: string
+                  type: array
                 rateLimit:
                   format: int32
                   type: integer
@@ -13828,6 +13832,10 @@ spec:
                   type: string
                 onLine:
                   type: boolean
+                options:
+                  items:
+                    type: string
+                  type: array
                 rateLimit:
                   format: int32
                   type: integer
@@ -14279,6 +14287,10 @@ spec:
                       type: string
                     onLine:
                       type: boolean
+                    options:
+                      items:
+                        type: string
+                      type: array
                     rateLimit:
                       format: int32
                       type: integer
