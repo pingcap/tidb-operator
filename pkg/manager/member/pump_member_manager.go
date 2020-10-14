@@ -183,19 +183,18 @@ func (pmm *pumpMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *appsv
 	if err != nil {
 		return nil, err
 	}
-	// In-place update should pick the name of currently in-use configmap if exists to avoid rolling-update if:
-	//   - user switch strategy from RollingUpdate to In-place
-	//   - the statefulset and configmap is created by other clients (e.g. helm)
-	if set != nil && basePumpSpec.ConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyInPlace {
-		inUseName := FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
+
+	var inUseName string
+	if set != nil {
+		inUseName = FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
 			return strings.HasPrefix(name, controller.PumpMemberName(tc.Name))
 		})
-		// find an in-use configmap, will update it in-place
-		if inUseName != "" {
-			newCm.Name = inUseName
-		}
 	}
 
+	err = updateConfigMapIfNeed(pmm.deps.ConfigMapLister, basePumpSpec.ConfigUpdateStrategy(), inUseName, newCm)
+	if err != nil {
+		return nil, err
+	}
 	return pmm.deps.TypedControl.CreateOrUpdateConfigMap(tc, newCm)
 }
 
@@ -227,7 +226,7 @@ func getNewPumpHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {
 // getNewPumpConfigMap returns a configMap for pump
 func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 
-	basePumpSpec, createPump := tc.BasePumpSpec()
+	_, createPump := tc.BasePumpSpec()
 	if !createPump {
 		return nil, nil
 	}
@@ -256,14 +255,6 @@ func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		"pump-config": confTextStr,
 	}
 
-	if basePumpSpec.ConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyRollingUpdate {
-		sum, err := Sha256Sum(data)
-		if err != nil {
-			return nil, err
-		}
-		suffix := fmt.Sprintf("%x", sum)[0:7]
-		name = fmt.Sprintf("%s-%s", name, suffix)
-	}
 	objMeta.Name = name
 
 	return &corev1.ConfigMap{
