@@ -612,10 +612,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			tc.Spec.PD.Replicas = 1
 			tc.Spec.TiKV.Replicas = 3
 			tc.Spec.TiDB.Replicas = 2
-
-			tc.Spec.TiKV.BaseImage = "hub.pingcap.net/csn/tikv"
-			tc.Spec.TiKV.Version = pointer.StringPtr("master-f94ed51")
-
 			tc.Spec.PD.Config.Set("pd-server.metric-storage", "http://monitor-prometheus:9090")
 			tc.Spec.PD.BaseImage = "hub.pingcap.net/lhh/pd"
 			tc.Spec.PD.Version = pointer.StringPtr("debug")
@@ -641,31 +637,33 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			tac := fixture.GetTidbClusterAutoScaler("auto-scaler", ns, tc, monitor)
 
 			duration := "60s"
-			mp := &mock.MonitorParams{
-				Name:                tc.Name,
-				KubernetesNamespace: tc.Namespace,
-				MemberType:          v1alpha1.TiKVMemberType.String(),
-				Duration:            duration,
-				// The CPU of TiKV is guaranteed 1000m
-				// To reach 50% utilization, the sum of cpu usage time should be at least 60 * 3 * 0.5 = 90
-				Value:        "35.0",
-				QueryType:    "cpu_usage",
-				InstancesPod: []string{"auto-scaling-tikv-0", "auto-scaling-tikv-1", "auto-scaling-tikv-2"},
-			}
-			err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
-			framework.ExpectNoError(err, "set tikv cpu usage mock metrics error")
+			setCPUUsageAndQuota := func(usage, quota, memberType string, insts []string) {
+				mp := &mock.MonitorParams{
+					Name:                tc.Name,
+					KubernetesNamespace: tc.Namespace,
+					MemberType:          memberType,
+					Duration:            duration,
+					Value:               usage,
+					QueryType:           "cpu_usage",
+					InstancesPod:        insts,
+				}
+				err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
+				framework.ExpectNoError(err, "set %s cpu usage mock metrics error", memberType)
 
-			mp = &mock.MonitorParams{
-				Name:                tc.Name,
-				KubernetesNamespace: tc.Namespace,
-				MemberType:          v1alpha1.TiKVMemberType.String(),
-				Duration:            duration,
-				Value:               "1.0",
-				QueryType:           "cpu_quota",
-				InstancesPod:        []string{"auto-scaling-tikv-0", "auto-scaling-tikv-1", "auto-scaling-tikv-2"},
+				mp = &mock.MonitorParams{
+					Name:                tc.Name,
+					KubernetesNamespace: tc.Namespace,
+					MemberType:          memberType,
+					Duration:            duration,
+					Value:               quota,
+					QueryType:           "cpu_quota",
+					InstancesPod:        insts,
+				}
+				err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
+				framework.ExpectNoError(err, "set %s cpu quota mock metrics error", memberType)
 			}
-			err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
-			framework.ExpectNoError(err, "set tikv cpu quota mock metrics error")
+
+			setCPUUsageAndQuota("35.0", "1.0", v1alpha1.TiKVMemberType.String(), []string{"auto-scaling-tikv-0", "auto-scaling-tikv-1", "auto-scaling-tikv-2"})
 
 			tac.Spec.TiKV = &v1alpha1.TikvAutoScalerSpec{}
 			tac.Spec.TiKV.Resources = map[string]v1alpha1.AutoResource{
@@ -718,33 +716,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.Logf("success to check create autoscaling tikv cluster")
 
 			autoTiKV := fmt.Sprintf("%s-tikv-0", autoTc.Name)
-
-			mp = &mock.MonitorParams{
-				Name:                tc.Name,
-				MemberType:          v1alpha1.TiKVMemberType.String(),
-				KubernetesNamespace: tc.Namespace,
-				Duration:            duration,
-				// The CPU of TiKV is guaranteed 1000m
-				// To reach 50% utilization, the sum of cpu usage time should be at least 60 * 3 * 0.5 = 90
-				Value:        "35.0",
-				QueryType:    "cpu_usage",
-				InstancesPod: []string{"auto-scaling-tikv-0", "auto-scaling-tikv-1", "auto-scaling-tikv-2", autoTiKV},
-			}
-			err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
-			framework.ExpectNoError(err, "set tikv cpu usage mock metrics error")
-
-			mp = &mock.MonitorParams{
-				Name:                tc.Name,
-				KubernetesNamespace: tc.Namespace,
-				MemberType:          v1alpha1.TiKVMemberType.String(),
-				Duration:            duration,
-				// The CPU of TiKV is guaranteed 1000m
-				Value:        "1.0",
-				QueryType:    "cpu_quota",
-				InstancesPod: []string{"auto-scaling-tikv-0", "auto-scaling-tikv-1", "auto-scaling-tikv-2", autoTiKV},
-			}
-			err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
-			framework.ExpectNoError(err, "set tikv cpu quota mock metrics error")
+			setCPUUsageAndQuota("35.0", "1.0", v1alpha1.TiKVMemberType.String(), []string{"auto-scaling-tikv-0", "auto-scaling-tikv-1", "auto-scaling-tikv-2", autoTiKV})
 
 			err = wait.Poll(10*time.Second, 10*time.Minute, func() (done bool, err error) {
 				tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
@@ -775,30 +747,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				pods = append(pods, fmt.Sprintf("%s-tikv-%d", autoTc.Name, i))
 			}
 
-			mp = &mock.MonitorParams{
-				Name:                tc.Name,
-				MemberType:          v1alpha1.TiKVMemberType.String(),
-				KubernetesNamespace: tc.Namespace,
-				Duration:            duration,
-				Value:               "0.0",
-				QueryType:           "cpu_usage",
-				InstancesPod:        pods,
-			}
-			err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
-			framework.ExpectNoError(err, "set tikv cpu usage mock metrics error")
-
-			mp = &mock.MonitorParams{
-				Name:                tc.Name,
-				KubernetesNamespace: tc.Namespace,
-				MemberType:          v1alpha1.TiKVMemberType.String(),
-				Duration:            duration,
-				// The CPU of TiKV is guaranteed 1000m
-				Value:        "1.0",
-				QueryType:    "cpu_quota",
-				InstancesPod: pods,
-			}
-			err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
-			framework.ExpectNoError(err, "set tikv cpu quota mock metrics error")
+			setCPUUsageAndQuota("0.0", "1.0", v1alpha1.TiKVMemberType.String(), pods)
 
 			err = wait.Poll(10*time.Second, 10*time.Minute, func() (done bool, err error) {
 				tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
