@@ -94,15 +94,28 @@ func (tsd *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, new
 
 	switch meta.(type) {
 	case *v1alpha1.TidbCluster:
-		tc ,_ := meta.(*v1alpha1.TidbCluster)
-		storesInfo, err := controller.GetPDClient(tsd.pdControl, tc).GetStores()
-		if err != nil {
-			return fmt.Errorf("failed to get stores info when scaling in TiKV")
-		}
-		if storesInfo.Count <= 3 {
-			return fmt.Errorf("it is not allowed to scale in TiKV when stores number(%d) <= 3", storesInfo.Count)
-		}
 		podName = ordinalPodName(v1alpha1.TiKVMemberType, tcName, ordinal)
+
+		tc, _ := meta.(*v1alpha1.TidbCluster)
+		upNumber := 0
+		storeState := ""
+		for _, store := range tc.Status.TiKV.Stores {
+			if store.State == v1alpha1.TiKVStateUp {
+				upNumber++
+			}
+			if store.PodName == podName {
+				storeState = store.State
+			}
+		}
+		if upNumber < 3 {
+			klog.Errorf("the number of stores in Up state of TidbCluster [%s/%s] is %d, less than 3, can't scale in TiKV", meta.GetNamespace(), meta.GetName(), upNumber)
+			return nil
+		} else if upNumber == 3 {
+			if storeState == v1alpha1.TiKVStateUp {
+				klog.Errorf("can't scale in TiKV of TidbCluster [%s/%s], cause the number of up stores is 3, and the store in Pod %s which is going to be deleted is up too", meta.GetNamespace(), meta.GetName(), podName)
+				return nil
+			}
+		}
 	default:
 		return fmt.Errorf("tikvScaler.ScaleIn: failed to convert cluster %s/%s", meta.GetNamespace(), meta.GetName())
 	}
