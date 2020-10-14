@@ -347,31 +347,48 @@ func GetCommitTsFromMetadata(backupPath string) (string, error) {
 	return commitTs, nil
 }
 
-// GetCommitTsFromBRMetaData get backup position from `EndVersion` in BR backup meta
-func GetCommitTsFromBRMetaData(provider v1alpha1.StorageProvider) (uint64, error) {
-	var commitTs uint64
+// GetBRArchiveSize returns the total size of the backup archive.
+func GetBRArchiveSize(meta *kvbackup.BackupMeta) uint64 {
+	total := uint64(meta.Size())
+	for _, file := range meta.Files {
+		total += file.Size_
+	}
+	return total
+}
+
+// GetBRMetaData get backup metadata from cloud storage
+func GetBRMetaData(provider v1alpha1.StorageProvider) (*kvbackup.BackupMeta, error) {
 	s, err := NewRemoteStorage(provider)
 	if err != nil {
-		return commitTs, err
+		return nil, err
 	}
 	defer s.Close()
 	ctx := context.Background()
 	exist, err := s.Exists(ctx, constants.MetaFile)
 	if err != nil {
-		return commitTs, err
+		return nil, err
 	}
 	if !exist {
-		return commitTs, fmt.Errorf("%s not exist", constants.MetaFile)
+		return nil, fmt.Errorf("%s not exist", constants.MetaFile)
 
 	}
 	metaData, err := s.ReadAll(ctx, constants.MetaFile)
 	if err != nil {
-		return commitTs, err
+		return nil, err
 	}
 	backupMeta := &kvbackup.BackupMeta{}
 	err = proto.Unmarshal(metaData, backupMeta)
 	if err != nil {
-		return commitTs, err
+		return nil, err
+	}
+	return backupMeta, nil
+}
+
+// GetCommitTsFromBRMetaData get backup position from `EndVersion` in BR backup meta
+func GetCommitTsFromBRMetaData(provider v1alpha1.StorageProvider) (uint64, error) {
+	backupMeta, err := GetBRMetaData(provider)
+	if err != nil {
+		return 0, err
 	}
 	return backupMeta.EndVersion, nil
 }

@@ -275,43 +275,27 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 	}
 	klog.Infof("backup cluster %s data to %s success", bm, backupFullPath)
 
-	// Note: The size get from remote may be incorrect because the blobs
-	// are eventually consistent.
-	size, err := getBackupSize(backup)
+	backupMeta, err := util.GetBRMetaData(backup.Spec.StorageProvider)
 	if err != nil {
 		errs = append(errs, err)
-		klog.Errorf("Get size for backup files in %s of cluster %s failed, err: %s", backupFullPath, bm, err)
+		klog.Errorf("Get backup metadata for backup files in %s of cluster %s failed, err: %s", backupFullPath, bm, err)
 		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
-			Reason:  "GetBackupSizeFailed",
+			Reason:  "GetBackupMetadataFailed",
 			Message: err.Error(),
 		})
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
-	klog.Infof("Get size %d for backup files in %s of cluster %s success", size, backupFullPath, bm)
-
-	commitTs, err := util.GetCommitTsFromBRMetaData(backup.Spec.StorageProvider)
-	if err != nil {
-		errs = append(errs, err)
-		klog.Errorf("get cluster %s commitTs failed, err: %s", bm, err)
-		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "GetCommitTsFailed",
-			Message: err.Error(),
-		})
-		errs = append(errs, uerr)
-		return errorutils.NewAggregate(errs)
-	}
-	klog.Infof("get cluster %s commitTs %d success", bm, commitTs)
-
+	klog.Infof("Get br metadata for backup files in %s of cluster %s success", backupFullPath, bm)
+	size := util.GetBRArchiveSize(backupMeta)
+	commitTs := backupMeta.EndVersion
 	finish := time.Now()
 
 	backup.Status.TimeStarted = metav1.Time{Time: started}
 	backup.Status.TimeCompleted = metav1.Time{Time: finish}
-	backup.Status.BackupSize = size
+	backup.Status.BackupSize = int64(size)
 	backup.Status.BackupSizeReadable = humanize.Bytes(uint64(size))
 	backup.Status.CommitTs = strconv.FormatUint(commitTs, 10)
 
