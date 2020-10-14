@@ -1341,6 +1341,32 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.Logf("CDC works as expected")
 	})
 
+	ginkgo.Context("when stores number is equal to or less than 3", func() {
+		ginkgo.It("forbid to scale in TiKV and the state of all stores are up", func() {
+			tc := fixture.GetTidbCluster(ns, "scale-in-tikv-test", utilimage.TiDBV4Version)
+			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
+			framework.ExpectNoError(err, "Expected create tidbcluster")
+			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
+			framework.ExpectNoError(err, "Expected get tidbcluster")
+
+			// scale in tikv
+			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Spec.TiKV.Replicas = 2
+				return nil
+			})
+			framework.ExpectNoError(err)
+
+			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, tc.Name, false)
+			framework.ExpectNoError(err, "create pdClient error")
+			defer cancel()
+			storesInfo, err := pdClient.GetStores()
+			framework.ExpectNoError(err, "get stores info error")
+			framework.ExpectEqual(storesInfo.Count, 3 , "Expect number of stores is 3")
+			for _,store := range storesInfo.Stores {
+				framework.ExpectEqual(store.Store.StateName, "Up" , "Expect state of stores are Up")
+			}
+		})
+	})
 })
 
 func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVersion string) tests.TidbClusterConfig {
