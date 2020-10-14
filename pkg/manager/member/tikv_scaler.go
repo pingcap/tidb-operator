@@ -92,14 +92,13 @@ func (tsd *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, new
 	// We need remove member from cluster before reducing statefulset replicas
 	var podName string
 
-	switch meta.(type) {
+	switch meta := meta.(type) {
 	case *v1alpha1.TidbCluster:
 		podName = ordinalPodName(v1alpha1.TiKVMemberType, tcName, ordinal)
 
-		tc, _ := meta.(*v1alpha1.TidbCluster)
 		upNumber := 0
 		storeState := ""
-		for _, store := range tc.Status.TiKV.Stores {
+		for _, store := range meta.Status.TiKV.Stores {
 			if store.State == v1alpha1.TiKVStateUp {
 				upNumber++
 			}
