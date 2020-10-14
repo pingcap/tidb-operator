@@ -23,6 +23,7 @@ import (
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
+	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -146,7 +147,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 
 		ginkgo.It("[PodAdmissionWebhook] able to upgrade TiDB Cluster with pod admission webhook", func() {
-			framework.Skipf("temp")
 			klog.Info("start to upgrade tidbcluster with pod admission webhook")
 			// deploy new cluster and test upgrade and scale-in/out with pod admission webhook
 			tc := fixture.GetTidbCluster(ns, "admission", utilimage.TiDBV3Version)
@@ -245,7 +245,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 
 		ginkgo.It("should perform defaulting and validating properly", func() {
-			framework.Skipf("temp")
 			ginkgo.By("Resources created before webhook enabled could be operated normally")
 			legacyTc := &v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
@@ -437,7 +436,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 
 		ginkgo.It("Deploy TidbCluster and Upgrade Operator", func() {
-			framework.Skipf("temp")
 			tcName := "tidbcluster"
 			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "", utilimage.TiDBV3Version)
 			cluster.Resources["pd.replicas"] = "3"
@@ -599,7 +597,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 
 		ginkgo.AfterEach(func() {
-			framework.RunKubectl("logs", "-n", ns, "auto-scaling-pd-0")
 			ginkgo.By("Uninstall tidb-operator")
 			oa.CleanOperatorOrDie(ocfg)
 			ginkgo.By("Uninstalling CRDs")
@@ -613,8 +610,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			tc.Spec.TiKV.Replicas = 3
 			tc.Spec.TiDB.Replicas = 2
 			tc.Spec.PD.Config.Set("pd-server.metric-storage", "http://monitor-prometheus:9090")
-			tc.Spec.PD.BaseImage = "hub.pingcap.net/lhh/pd"
-			tc.Spec.PD.Version = pointer.StringPtr("debug")
 
 			_, err := cli.PingcapV1alpha1().TidbClusters(ns).Create(tc)
 			framework.ExpectNoError(err, "Create TidbCluster error")
@@ -667,7 +662,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 			tac.Spec.TiKV = &v1alpha1.TikvAutoScalerSpec{}
 			tac.Spec.TiKV.Resources = map[string]v1alpha1.AutoResource{
-				"resource_a": {
+				"storage": {
 					CPU:     resource.MustParse("1024m"),
 					Memory:  resource.MustParse("2Gi"),
 					Storage: resource.MustParse("10Gi"),
@@ -681,14 +676,33 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 						v := 0.2
 						return &v
 					}(),
-					ResourceTypes: []string{"resource_a"},
+					ResourceTypes: []string{"storage"},
 				},
 			}
 
+			tac.Spec.TiDB = &v1alpha1.TidbAutoScalerSpec{}
+			tac.Spec.TiDB.Resources = map[string]v1alpha1.AutoResource{
+				"compute": {
+					CPU:    resource.MustParse("1024m"),
+					Memory: resource.MustParse("2Gi"),
+					Count:  pointer.Int32Ptr(3),
+				},
+			}
+			tac.Spec.TiDB.Rules = map[v1.ResourceName]v1alpha1.AutoRule{
+				v1.ResourceCPU: {
+					MaxThreshold: 0.5,
+					MinThreshold: func() *float64 {
+						v := 0.2
+						return &v
+					}(),
+					ResourceTypes: []string{"compute"},
+				},
+			}
 			_, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Create(tac)
 			framework.ExpectNoError(err, "Create TidbClusterAutoScaler error")
 
 			var autoTc v1alpha1.TidbCluster
+			// TiKV autoscaling
 			// A new cluster should be created and there is one TiKV replica
 			err = wait.Poll(10*time.Second, 30*time.Minute, func() (done bool, err error) {
 				tcList, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).List(metav1.ListOptions{
@@ -749,33 +763,33 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 			setCPUUsageAndQuota("0.0", "1.0", v1alpha1.TiKVMemberType.String(), pods)
 
-			// err = wait.Poll(10*time.Second, 10*time.Minute, func() (done bool, err error) {
-			// 	tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
+			err = wait.Poll(30*time.Second, 30*time.Minute, func() (done bool, err error) {
+				tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
 
-			// 	if err != nil {
-			// 		if errors.IsNotFound(err) {
-			// 			return true, nil
-			// 		}
-			// 		return false, err
-			// 	}
+				if err != nil {
+					if errors.IsNotFound(err) {
+						return true, nil
+					}
+					return false, err
+				}
 
-			// 	autoTc = *tcPtr
+				autoTc = *tcPtr
 
-			// 	if autoTc.Spec.TiKV.Replicas > 1 {
-			// 		framework.Logf("autoscaling tikv cluster is not scaled in, replicas=%d", autoTc.Spec.TiKV.Replicas)
-			// 		return false, nil
-			// 	}
+				if autoTc.Spec.TiKV.Replicas > 1 {
+					framework.Logf("autoscaling tikv cluster is not scaled in, replicas=%d", autoTc.Spec.TiKV.Replicas)
+					return false, nil
+				}
 
-			// 	if autoTc.Spec.TiKV.Replicas <= 1 {
-			// 		framework.Logf("autoscaling tikv cluster tc[%s/%s] is scaled in", autoTc.Namespace, autoTc.Name)
-			// 		return true, nil
-			// 	}
+				if autoTc.Spec.TiKV.Replicas <= 1 {
+					framework.Logf("autoscaling tikv cluster tc[%s/%s] is scaled in", autoTc.Namespace, autoTc.Name)
+					return true, nil
+				}
 
-			// 	return false, nil
-			// })
+				return false, nil
+			})
 
-			// framework.ExpectNoError(err, "failed to check scale in autoscaling tikv cluster")
-			// framework.Logf("success to check scale in autoscaling tikv cluster")
+			framework.ExpectNoError(err, "failed to check scale in autoscaling tikv cluster")
+			framework.Logf("success to check scale in autoscaling tikv cluster")
 
 			err = wait.Poll(30*time.Second, 30*time.Minute, func() (done bool, err error) {
 				tcList, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).List(metav1.ListOptions{
