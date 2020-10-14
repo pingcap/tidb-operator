@@ -419,6 +419,16 @@ func (in *BasicAutoScalerSpec) DeepCopyInto(out *BasicAutoScalerSpec) {
 		*out = new(ExternalConfig)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.ScaleInIntervalSeconds != nil {
+		in, out := &in.ScaleInIntervalSeconds, &out.ScaleInIntervalSeconds
+		*out = new(int32)
+		**out = **in
+	}
+	if in.ScaleOutIntervalSeconds != nil {
+		in, out := &in.ScaleOutIntervalSeconds, &out.ScaleOutIntervalSeconds
+		*out = new(int32)
+		**out = **in
+	}
 	if in.Resources != nil {
 		in, out := &in.Resources, &out.Resources
 		*out = make(map[string]AutoResource, len(*in))

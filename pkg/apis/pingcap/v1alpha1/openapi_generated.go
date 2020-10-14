@@ -1002,6 +1002,20 @@ func schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerSpec(ref common.ReferenceCa
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"),
 						},
 					},
+					"scaleInIntervalSeconds": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ScaleInIntervalSeconds represents the duration seconds between each auto-scaling-in If not set, the default ScaleInIntervalSeconds will be set to 500",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"scaleOutIntervalSeconds": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ScaleOutIntervalSeconds represents the duration seconds between each auto-scaling-out If not set, the default ScaleOutIntervalSeconds will be set to 300",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 					"resources": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Resources represent the resource type definitions that can be used for TiDB/TiKV The key is resource_type name of the resource",
@@ -9298,6 +9312,20 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbAutoScalerSpec(ref common.ReferenceCal
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"),
 						},
 					},
+					"scaleInIntervalSeconds": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ScaleInIntervalSeconds represents the duration seconds between each auto-scaling-in If not set, the default ScaleInIntervalSeconds will be set to 500",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"scaleOutIntervalSeconds": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ScaleOutIntervalSeconds represents the duration seconds between each auto-scaling-out If not set, the default ScaleOutIntervalSeconds will be set to 300",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 					"resources": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Resources represent the resource type definitions that can be used for TiDB/TiKV The key is resource_type name of the resource",
@@ -10391,6 +10419,20 @@ func schema_pkg_apis_pingcap_v1alpha1_TikvAutoScalerSpec(ref common.ReferenceCal
 						SchemaProps: spec.SchemaProps{
 							Description: "External makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"),
+						},
+					},
+					"scaleInIntervalSeconds": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ScaleInIntervalSeconds represents the duration seconds between each auto-scaling-in If not set, the default ScaleInIntervalSeconds will be set to 500",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"scaleOutIntervalSeconds": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ScaleOutIntervalSeconds represents the duration seconds between each auto-scaling-out If not set, the default ScaleOutIntervalSeconds will be set to 300",
+							Type:        []string{"integer"},
+							Format:      "int32",
 						},
 					},
 					"resources": {

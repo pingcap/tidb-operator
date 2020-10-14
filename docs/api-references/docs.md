@@ -3031,6 +3031,32 @@ to fetch the recommended replicas for TiKV/TiDB</p>
 </tr>
 <tr>
 <td>
+<code>scaleInIntervalSeconds</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ScaleInIntervalSeconds represents the duration seconds between each auto-scaling-in
+If not set, the default ScaleInIntervalSeconds will be set to 500</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>scaleOutIntervalSeconds</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ScaleOutIntervalSeconds represents the duration seconds between each auto-scaling-out
+If not set, the default ScaleOutIntervalSeconds will be set to 300</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>resources</code></br>
 <em>
 <a href="#autoresource">

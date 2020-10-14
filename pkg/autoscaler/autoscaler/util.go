@@ -132,6 +132,14 @@ func getSpecResources(tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.Me
 func defaultBasicAutoScaler(tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) {
 	spec := getBasicAutoScalerSpec(tac, component)
 
+	if spec.ScaleOutIntervalSeconds == nil {
+		spec.ScaleOutIntervalSeconds = pointer.Int32Ptr(300)
+	}
+
+	if spec.ScaleInIntervalSeconds == nil {
+		spec.ScaleInIntervalSeconds = pointer.Int32Ptr(500)
+	}
+
 	if spec.External != nil {
 		return
 	}

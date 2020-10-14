@@ -151,6 +151,8 @@ func TestDefaultTac(t *testing.T) {
 	tc := newTidbCluster()
 	tac := newTidbClusterAutoScaler()
 	tac.Spec.TiDB = nil
+	tac.Spec.TiKV.ScaleOutIntervalSeconds = nil
+	tac.Spec.TiKV.ScaleInIntervalSeconds = nil
 	tac.Spec.TiKV.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
 		corev1.ResourceCPU: {
 			MaxThreshold: 0.8,
@@ -164,17 +166,24 @@ func TestDefaultTac(t *testing.T) {
 			Storage: tc.Spec.TiKV.Requests[corev1.ResourceStorage].DeepCopy(),
 		},
 	}))
+	g.Expect(*tac.Spec.TiKV.ScaleOutIntervalSeconds).Should(Equal(int32(300)))
+	g.Expect(*tac.Spec.TiKV.ScaleInIntervalSeconds).Should(Equal(int32(500)))
 	g.Expect(*tac.Spec.TiKV.Rules[corev1.ResourceCPU].MinThreshold).Should(BeNumerically("==", 0.1))
 	g.Expect(tac.Spec.TiKV.Rules[corev1.ResourceCPU].ResourceTypes).Should(ConsistOf([]string{"default_tikv"}))
 
 	tac = newTidbClusterAutoScaler()
 	tac.Spec.TiKV = nil
+	tac.Spec.TiDB.ScaleOutIntervalSeconds = nil
+	tac.Spec.TiDB.ScaleInIntervalSeconds = nil
+
 	tac.Spec.TiDB.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
 		corev1.ResourceCPU: {
 			MaxThreshold: 0.8,
 		},
 	}
 	defaultTAC(tac, tc)
+	g.Expect(*tac.Spec.TiDB.ScaleOutIntervalSeconds).Should(Equal(int32(300)))
+	g.Expect(*tac.Spec.TiDB.ScaleInIntervalSeconds).Should(Equal(int32(500)))
 	g.Expect(tac.Spec.TiDB.Resources).Should(Equal(map[string]v1alpha1.AutoResource{
 		"default_tidb": {
 			CPU:     tc.Spec.TiDB.Requests.Cpu().DeepCopy(),
@@ -187,6 +196,8 @@ func TestDefaultTac(t *testing.T) {
 
 	tac = newTidbClusterAutoScaler()
 	tac.Spec.TiDB = nil
+	tac.Spec.TiKV.ScaleOutIntervalSeconds = nil
+	tac.Spec.TiKV.ScaleInIntervalSeconds = nil
 	tac.Spec.TiKV.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
 		corev1.ResourceStorage: {
 			MaxThreshold: 0.8,
@@ -203,6 +214,10 @@ func TestDefaultTac(t *testing.T) {
 	g.Expect(tac.Spec.TiKV.Rules[corev1.ResourceStorage].ResourceTypes).Should(ConsistOf([]string{"storage"}))
 
 	tac = newTidbClusterAutoScaler()
+	tac.Spec.TiDB.ScaleOutIntervalSeconds = nil
+	tac.Spec.TiDB.ScaleInIntervalSeconds = nil
+	tac.Spec.TiKV.ScaleOutIntervalSeconds = nil
+	tac.Spec.TiKV.ScaleInIntervalSeconds = nil
 	tac.Spec.TiDB.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
 		corev1.ResourceCPU: {
 			MaxThreshold: 0.8,

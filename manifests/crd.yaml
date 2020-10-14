@@ -16359,6 +16359,12 @@ spec:
                   type: object
                 rules:
                   type: object
+                scaleInIntervalSeconds:
+                  format: int32
+                  type: integer
+                scaleOutIntervalSeconds:
+                  format: int32
+                  type: integer
               type: object
             tikv:
               properties:
@@ -16398,6 +16404,12 @@ spec:
                   type: object
                 rules:
                   type: object
+                scaleInIntervalSeconds:
+                  format: int32
+                  type: integer
+                scaleOutIntervalSeconds:
+                  format: int32
+                  type: integer
               type: object
           required:
           - cluster

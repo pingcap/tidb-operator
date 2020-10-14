@@ -110,6 +110,16 @@ type BasicAutoScalerSpec struct {
 	// +optional
 	External *ExternalConfig `json:"external,omitempty"`
 
+	// ScaleInIntervalSeconds represents the duration seconds between each auto-scaling-in
+	// If not set, the default ScaleInIntervalSeconds will be set to 500
+	// +optional
+	ScaleInIntervalSeconds *int32 `json:"scaleInIntervalSeconds,omitempty"`
+
+	// ScaleOutIntervalSeconds represents the duration seconds between each auto-scaling-out
+	// If not set, the default ScaleOutIntervalSeconds will be set to 300
+	// +optional
+	ScaleOutIntervalSeconds *int32 `json:"scaleOutIntervalSeconds,omitempty"`
+
 	// Resources represent the resource type definitions that can be used for TiDB/TiKV
 	// The key is resource_type name of the resource
 	// +optional
