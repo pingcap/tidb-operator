@@ -583,9 +583,9 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 			tc.Spec.TiDB.Config = v1alpha1.NewTiDBConfig()
 			tc.Spec.TiDB.ConfigUpdateStrategy = &updateStrategy
-			tc.Spec.TiKV.Config = &v1alpha1.TiKVConfig{}
+			tc.Spec.TiKV.Config = v1alpha1.NewTiKVConfig()
 			tc.Spec.TiKV.ConfigUpdateStrategy = &updateStrategy
-			tc.Spec.PD.Config = &v1alpha1.PDConfig{}
+			tc.Spec.PD.Config = v1alpha1.NewPDConfig()
 			tc.Spec.PD.ConfigUpdateStrategy = &updateStrategy
 			return nil
 		})
@@ -906,18 +906,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	})
 
 	ginkgo.Context("[Feature: TLS]", func() {
-		ginkgo.BeforeEach(func() {
-			ginkgo.By("Installing cert-manager")
-			err := installCertManager(f.ClientSet)
-			framework.ExpectNoError(err, "failed to install cert-manager")
-		})
-
-		ginkgo.AfterEach(func() {
-			ginkgo.By("Deleting cert-manager")
-			err := deleteCertManager(f.ClientSet)
-			framework.ExpectNoError(err, "failed to delete cert-manager")
-		})
-
 		ginkgo.It("TLS for MySQL Client and TLS between TiDB components", func() {
 			tcName := "tls"
 

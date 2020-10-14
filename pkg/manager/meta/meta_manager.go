@@ -22,37 +22,19 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	corev1 "k8s.io/api/core/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 )
 
 var errPVCNotFound = errors.New("PVC is not found")
 
 type metaManager struct {
-	pvcLister  corelisters.PersistentVolumeClaimLister
-	pvcControl controller.PVCControlInterface
-	pvLister   corelisters.PersistentVolumeLister
-	pvControl  controller.PVControlInterface
-	podLister  corelisters.PodLister
-	podControl controller.PodControlInterface
+	deps *controller.Dependencies
 }
 
 // NewMetaManager returns a *metaManager
-func NewMetaManager(
-	pvcLister corelisters.PersistentVolumeClaimLister,
-	pvcControl controller.PVCControlInterface,
-	pvLister corelisters.PersistentVolumeLister,
-	pvControl controller.PVControlInterface,
-	podLister corelisters.PodLister,
-	podControl controller.PodControlInterface,
-) manager.Manager {
+func NewMetaManager(deps *controller.Dependencies) manager.Manager {
 	return &metaManager{
-		pvcLister:  pvcLister,
-		pvcControl: pvcControl,
-		pvLister:   pvLister,
-		pvControl:  pvControl,
-		podLister:  podLister,
-		podControl: podControl,
+		deps: deps,
 	}
 }
 
@@ -64,14 +46,14 @@ func (pmm *metaManager) Sync(tc *v1alpha1.TidbCluster) error {
 	if err != nil {
 		return err
 	}
-	pods, err := pmm.podLister.Pods(ns).List(l)
+	pods, err := pmm.deps.PodLister.Pods(ns).List(l)
 	if err != nil {
 		return fmt.Errorf("metaManager.Sync: failed to list pods for cluster %s/%s, selector: %s, error: %v", ns, instanceName, l, err)
 	}
 
 	for _, pod := range pods {
 		// update meta info for pod
-		_, err := pmm.podControl.UpdateMetaInfo(tc, pod)
+		_, err := pmm.deps.PodControl.UpdateMetaInfo(tc, pod)
 		if err != nil {
 			return err
 		}
@@ -87,7 +69,7 @@ func (pmm *metaManager) Sync(tc *v1alpha1.TidbCluster) error {
 			return err
 		}
 		for _, pvc := range pvcs {
-			_, err = pmm.pvcControl.UpdateMetaInfo(tc, pvc, pod)
+			_, err = pmm.deps.PVCControl.UpdateMetaInfo(tc, pvc, pod)
 			if err != nil {
 				return err
 			}
@@ -95,12 +77,12 @@ func (pmm *metaManager) Sync(tc *v1alpha1.TidbCluster) error {
 				continue
 			}
 			// update meta info for pv
-			pv, err := pmm.pvLister.Get(pvc.Spec.VolumeName)
+			pv, err := pmm.deps.PVLister.Get(pvc.Spec.VolumeName)
 			if err != nil {
 				klog.Errorf("Get PV %s error: %v", pvc.Spec.VolumeName, err)
 				return err
 			}
-			_, err = pmm.pvControl.UpdateMetaInfo(tc, pv)
+			_, err = pmm.deps.PVControl.UpdateMetaInfo(tc, pv)
 			if err != nil {
 				return err
 			}
@@ -119,7 +101,7 @@ func (pmm *metaManager) resolvePVCFromPod(pod *corev1.Pod) ([]*corev1.Persistent
 			if len(pvcName) == 0 {
 				continue
 			}
-			pvc, err := pmm.pvcLister.PersistentVolumeClaims(pod.Namespace).Get(pvcName)
+			pvc, err := pmm.deps.PVCLister.PersistentVolumeClaims(pod.Namespace).Get(pvcName)
 			if err != nil {
 				klog.Errorf("Get PVC %s/%s error: %v", pod.Namespace, pvcName, err)
 				continue

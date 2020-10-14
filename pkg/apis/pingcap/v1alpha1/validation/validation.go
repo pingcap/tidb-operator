@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/semver"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -143,6 +144,7 @@ func validateTiKVSpec(spec *v1alpha1.TiKVSpec, fldPath *field.Path) field.ErrorL
 	if len(spec.DataSubDir) > 0 {
 		allErrs = append(allErrs, validateLocalDescendingPath(spec.DataSubDir, fldPath.Child("dataSubDir"))...)
 	}
+	allErrs = append(allErrs, validateTimeDurationStr(spec.EvictLeaderTimeout, fldPath.Child("evictLeaderTimeout"))...)
 	return allErrs
 }
 
@@ -163,65 +165,54 @@ func validateTiCDCSpec(spec *v1alpha1.TiCDCSpec, fldPath *field.Path) field.Erro
 	return allErrs
 }
 
-func validateTiFlashConfig(config *v1alpha1.TiFlashConfig, path *field.Path) field.ErrorList {
+func validateTiFlashConfig(config *v1alpha1.TiFlashConfigWraper, path *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	if config == nil {
 		return allErrs
 	}
 
-	if config.CommonConfig != nil {
-		if config.CommonConfig.Flash != nil {
-			if config.CommonConfig.Flash.OverlapThreshold != nil {
-				if *config.CommonConfig.Flash.OverlapThreshold < 0 || *config.CommonConfig.Flash.OverlapThreshold > 1 {
+	if config.Common != nil {
+		if v := config.Common.Get("flash.overlap_threshold"); v != nil {
+			if value, err := v.AsFloat(); err == nil {
+				if value < 0 || value > 1 {
 					allErrs = append(allErrs, field.Invalid(path.Child("config.config.flash.overlap_threshold"),
-						config.CommonConfig.Flash.OverlapThreshold,
+						value,
 						"overlap_threshold must be in the range of [0,1]."))
 				}
-			}
-			if config.CommonConfig.Flash.FlashCluster != nil {
-				if config.CommonConfig.Flash.FlashCluster.ClusterLog != nil {
-					splitPath := strings.Split(*config.CommonConfig.Flash.FlashCluster.ClusterLog, string(os.PathSeparator))
-					// The log path should be at least /dir/base.log
-					if len(splitPath) < 3 {
-						allErrs = append(allErrs, field.Invalid(path.Child("config.config.flash.flash_cluster.log"),
-							config.CommonConfig.Flash.FlashCluster.ClusterLog,
-							"log path should include at least one level dir."))
-					}
-				}
-			}
-			if config.CommonConfig.Flash.FlashProxy != nil {
-				if config.CommonConfig.Flash.FlashProxy.LogFile != nil {
-					splitPath := strings.Split(*config.CommonConfig.Flash.FlashProxy.LogFile, string(os.PathSeparator))
-					// The log path should be at least /dir/base.log
-					if len(splitPath) < 3 {
-						allErrs = append(allErrs, field.Invalid(path.Child("config.config.flash.flash_proxy.log-file"),
-							config.CommonConfig.Flash.FlashProxy.LogFile,
-							"log path should include at least one level dir."))
-					}
-				}
+			} else {
+				allErrs = append(allErrs, field.Invalid(path.Child("config.config.flash.overlap_threshold"),
+					v.Interface(),
+					fmt.Sprintf("should be float type, but is: %v", reflect.TypeOf(v.Interface())),
+				))
 			}
 		}
-		if config.CommonConfig.FlashLogger != nil {
-			if config.CommonConfig.FlashLogger.ServerLog != nil {
-				splitPath := strings.Split(*config.CommonConfig.FlashLogger.ServerLog, string(os.PathSeparator))
-				// The log path should be at least /dir/base.log
-				if len(splitPath) < 3 {
-					allErrs = append(allErrs, field.Invalid(path.Child("config.config.logger.log"),
-						config.CommonConfig.FlashLogger.ServerLog,
-						"log path should include at least one level dir."))
-				}
-			}
-			if config.CommonConfig.FlashLogger.ErrorLog != nil {
-				splitPath := strings.Split(*config.CommonConfig.FlashLogger.ErrorLog, string(os.PathSeparator))
-				// The log path should be at least /dir/base.log
-				if len(splitPath) < 3 {
-					allErrs = append(allErrs, field.Invalid(path.Child("config.config.logger.errorlog"),
-						config.CommonConfig.FlashLogger.ErrorLog,
-						"log path should include at least one level dir."))
+
+		var fields = []string{
+			"flash.flash_cluster.log",
+			"flash.proxy.log-file",
+			"logger.log",
+			"logger.errorlog",
+		}
+		for _, pathField := range fields {
+			if v := config.Common.Get(pathField); v != nil {
+				if value, err := v.AsString(); err == nil {
+					splitPath := strings.Split(value, string(os.PathSeparator))
+					// The log path should be at least /dir/base.log
+					if len(splitPath) < 3 {
+						allErrs = append(allErrs, field.Invalid(path.Child("config.config."+pathField),
+							value,
+							"log path should include at least one level dir."))
+					}
+				} else {
+					allErrs = append(allErrs, field.Invalid(path.Child("config.config"+pathField),
+						v.Interface(),
+						fmt.Sprintf("should be string type, but is: %v", reflect.TypeOf(v.Interface())),
+					))
 				}
 			}
 		}
 	}
+
 	return allErrs
 }
 
@@ -463,24 +454,34 @@ func disallowUsingLegacyAPIInNewCluster(old, tc *v1alpha1.TidbCluster) field.Err
 	return allErrs
 }
 
-func validateUpdatePDConfig(old, conf *v1alpha1.PDConfig, path *field.Path) field.ErrorList {
+func validateUpdatePDConfig(old, conf *v1alpha1.PDConfigWraper, path *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	// for newly created cluster, both old and new are non-nil, guaranteed by validation
 	if old == nil || conf == nil {
 		return allErrs
 	}
 
-	if conf.Security != nil && len(conf.Security.CertAllowedCN) > 1 {
-		allErrs = append(allErrs, field.Invalid(path.Child("security.cert-allowed-cn"), conf.Security.CertAllowedCN,
-			"Only one CN is currently supported"))
+	if v := conf.Get("security.cert-allowed-cn"); v != nil {
+		cn, err := v.AsStringSlice()
+		if err != nil {
+			allErrs = append(allErrs, field.Invalid(path.Child("security.cert-allowed-cn"), v.Interface(), err.Error()))
+		} else if len(cn) > 1 {
+			allErrs = append(allErrs, field.Invalid(path.Child("security.cert-allowed-cn"), v.Interface(),
+				"Only one CN is currently supported"))
+		}
 	}
 
-	if !reflect.DeepEqual(old.Schedule, conf.Schedule) {
-		allErrs = append(allErrs, field.Invalid(path.Child("schedule"), conf.Schedule,
+	oldSche := old.Get("schedule")
+	newSche := conf.Get("schedule")
+	if !reflect.DeepEqual(oldSche.Interface(), newSche.Interface()) {
+		allErrs = append(allErrs, field.Invalid(path.Child("schedule"), newSche.Interface(),
 			"PD Schedule Config is immutable through CRD, please modify with pd-ctl instead."))
 	}
-	if !reflect.DeepEqual(old.Replication, conf.Replication) {
-		allErrs = append(allErrs, field.Invalid(path.Child("replication"), conf.Replication,
+
+	oldRepl := old.Get("replication")
+	newRepl := conf.Get("replication")
+	if !reflect.DeepEqual(oldRepl, newRepl) {
+		allErrs = append(allErrs, field.Invalid(path.Child("replication"), newRepl.Interface(),
 			"PD Replication Config is immutable through CRD, please modify with pd-ctl instead."))
 	}
 	return allErrs
@@ -539,6 +540,19 @@ func validatePathNoBacksteps(targetPath string, fldPath *field.Path) field.Error
 		if item == ".." {
 			allErrs = append(allErrs, field.Invalid(fldPath, targetPath, "must not contain '..'"))
 			break // even for `../../..`, one error is sufficient to make the point
+		}
+	}
+	return allErrs
+}
+
+func validateTimeDurationStr(timeStr *string, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if timeStr != nil {
+		d, err := time.ParseDuration(*timeStr)
+		if err != nil {
+			allErrs = append(allErrs, field.Invalid(fldPath, timeStr, "mush be a valid Go time duration string, e.g. 3m"))
+		} else if d <= 0 {
+			allErrs = append(allErrs, field.Invalid(fldPath, timeStr, "must be a positive Go time duration"))
 		}
 	}
 	return allErrs

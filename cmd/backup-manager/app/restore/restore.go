@@ -38,16 +38,19 @@ func (ro *Options) restoreData(restore *v1alpha1.Restore) error {
 	if restore.Spec.BR.ClusterNamespace == "" {
 		clusterNamespace = restore.Namespace
 	}
-	args, err := constructBROptions(restore)
-	if err != nil {
-		return err
-	}
+	args := make([]string, 0)
 	args = append(args, fmt.Sprintf("--pd=%s-pd.%s:2379", restore.Spec.BR.Cluster, clusterNamespace))
 	if ro.TLSCluster {
 		args = append(args, fmt.Sprintf("--ca=%s", path.Join(util.ClusterClientTLSPath, corev1.ServiceAccountRootCAKey)))
 		args = append(args, fmt.Sprintf("--cert=%s", path.Join(util.ClusterClientTLSPath, corev1.TLSCertKey)))
 		args = append(args, fmt.Sprintf("--key=%s", path.Join(util.ClusterClientTLSPath, corev1.TLSPrivateKeyKey)))
 	}
+	// `options` in spec are put to the last because we want them to have higher priority than generated arguments
+	newArgs, err := constructBROptions(restore)
+	if err != nil {
+		return err
+	}
+	args = append(args, newArgs...)
 
 	var restoreType string
 	if restore.Spec.Type == "" {
@@ -83,14 +86,14 @@ func (ro *Options) restoreData(restore *v1alpha1.Restore) error {
 		if strings.Contains(line, "[ERROR]") {
 			errMsg += line
 		}
-		klog.Infof(strings.Replace(line, "\n", "", -1))
+		klog.Info(strings.Replace(line, "\n", "", -1))
 		if err != nil || io.EOF == err {
 			break
 		}
 	}
 	tmpErr, _ := ioutil.ReadAll(stdErr)
 	if len(tmpErr) > 0 {
-		klog.Infof(string(tmpErr))
+		klog.Info(string(tmpErr))
 		errMsg += string(tmpErr)
 	}
 
@@ -120,5 +123,6 @@ func constructBROptions(restore *v1alpha1.Restore) ([]string, error) {
 	if config.OnLine != nil {
 		args = append(args, fmt.Sprintf("--online=%t", *config.OnLine))
 	}
+	args = append(args, config.Options...)
 	return args, nil
 }

@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/utils/pointer"
 )
 
 func TestValidateAnnotations(t *testing.T) {
@@ -45,11 +46,11 @@ func TestValidateAnnotations(t *testing.T) {
 					Version: "v3.0.8",
 					PD: &v1alpha1.PDSpec{
 						BaseImage: "pingcap/pd",
-						Config:    &v1alpha1.PDConfig{},
+						Config:    v1alpha1.NewPDConfig(),
 					},
 					TiKV: &v1alpha1.TiKVSpec{
 						BaseImage: "pingcap/tikv",
-						Config:    &v1alpha1.TiKVConfig{},
+						Config:    v1alpha1.NewTiKVConfig(),
 					},
 					TiDB: &v1alpha1.TiDBSpec{
 						BaseImage: "pingcap/tidb",
@@ -69,11 +70,11 @@ func TestValidateAnnotations(t *testing.T) {
 					Version: "v3.0.8",
 					PD: &v1alpha1.PDSpec{
 						BaseImage: "pingcap/pd",
-						Config:    &v1alpha1.PDConfig{},
+						Config:    v1alpha1.NewPDConfig(),
 					},
 					TiKV: &v1alpha1.TiKVSpec{
 						BaseImage: "pingcap/tikv",
-						Config:    &v1alpha1.TiKVConfig{},
+						Config:    v1alpha1.NewTiKVConfig(),
 					},
 					TiDB: &v1alpha1.TiDBSpec{
 						BaseImage: "pingcap/tidb",
@@ -110,11 +111,11 @@ func TestValidateAnnotations(t *testing.T) {
 					Version: "v3.0.8",
 					PD: &v1alpha1.PDSpec{
 						BaseImage: "pingcap/pd",
-						Config:    &v1alpha1.PDConfig{},
+						Config:    v1alpha1.NewPDConfig(),
 					},
 					TiKV: &v1alpha1.TiKVSpec{
 						BaseImage: "pingcap/tikv",
-						Config:    &v1alpha1.TiKVConfig{},
+						Config:    v1alpha1.NewTiKVConfig(),
 					},
 					TiDB: &v1alpha1.TiDBSpec{
 						BaseImage: "pingcap/tidb",
@@ -146,11 +147,11 @@ func TestValidateAnnotations(t *testing.T) {
 					Version: "v3.0.8",
 					PD: &v1alpha1.PDSpec{
 						BaseImage: "pingcap/pd",
-						Config:    &v1alpha1.PDConfig{},
+						Config:    v1alpha1.NewPDConfig(),
 					},
 					TiKV: &v1alpha1.TiKVSpec{
 						BaseImage: "pingcap/tikv",
-						Config:    &v1alpha1.TiKVConfig{},
+						Config:    v1alpha1.NewTiKVConfig(),
 					},
 					TiDB: &v1alpha1.TiDBSpec{
 						BaseImage: "pingcap/tidb",
@@ -564,6 +565,33 @@ func TestValidateLocalDescendingPath(t *testing.T) {
 		errs := validateLocalDescendingPath(c, field.NewPath("dataSubDir"))
 		if len(errs) == 0 {
 			t.Errorf("expected failure for %s", c)
+		}
+	}
+}
+
+func TestValidateEvictLeaderTimeout(t *testing.T) {
+	successCases := []*string{
+		nil,
+		pointer.StringPtr("3h"),
+		pointer.StringPtr("5m30s"),
+	}
+
+	for _, c := range successCases {
+		errs := validateTimeDurationStr(c, field.NewPath("evictLeaderTimeout"))
+		if len(errs) > 0 {
+			t.Errorf("expected success: %v", errs)
+		}
+	}
+
+	errorCases := []*string{
+		pointer.StringPtr("evict"),
+		pointer.StringPtr("-5m30s"),
+	}
+
+	for _, c := range errorCases {
+		errs := validateTimeDurationStr(c, field.NewPath("evictLeaderTimeout"))
+		if len(errs) == 0 {
+			t.Errorf("expected failure for %s", *c)
 		}
 	}
 }

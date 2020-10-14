@@ -42,7 +42,6 @@ func NewDefaultDMClusterControl(
 	masterMemberManager manager.DMManager,
 	workerMemberManager manager.DMManager,
 	reclaimPolicyManager manager.DMManager,
-	//metaManager manager.DMManager,
 	orphanPodsCleaner member.OrphanPodsCleaner,
 	pvcCleaner member.PVCCleanerInterface,
 	pvcResizer member.PVCResizerInterface,
