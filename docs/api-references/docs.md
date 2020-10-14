@@ -12768,11 +12768,34 @@ kubectl create secret generic <clusterName>-tidb-client-secret &ndash;namespace=
 </tr>
 </tbody>
 </table>
-<h3 id="tiflashconfig">TiFlashConfig</h3>
+<h3 id="tiflashcommonconfigwraper">TiFlashCommonConfigWraper</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#tiflashspec">TiFlashSpec</a>)
+<a href="#tiflashconfigwraper">TiFlashConfigWraper</a>)
 </p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>GenericConfig</code></br>
+<em>
+github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tiflashconfig">TiFlashConfig</h3>
 <p>
 <p>TiFlashConfig is the configuration of TiFlash.</p>
 </p>
@@ -12810,6 +12833,74 @@ ProxyConfig
 <td>
 <em>(Optional)</em>
 <p>proxyConfig is the Configuration of proxy process</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tiflashconfigwraper">TiFlashConfigWraper</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tiflashspec">TiFlashSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>config</code></br>
+<em>
+<a href="#tiflashcommonconfigwraper">
+TiFlashCommonConfigWraper
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>proxy</code></br>
+<em>
+<a href="#tiflashproxyconfigwraper">
+TiFlashProxyConfigWraper
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tiflashproxyconfigwraper">TiFlashProxyConfigWraper</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tiflashconfigwraper">TiFlashConfigWraper</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>GenericConfig</code></br>
+<em>
+github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>
@@ -12939,8 +13030,8 @@ TiFlash supports multiple disks.</p>
 <td>
 <code>config</code></br>
 <em>
-<a href="#tiflashconfig">
-TiFlashConfig
+<a href="#tiflashconfigwraper">
+TiFlashConfigWraper
 </a>
 </em>
 </td>

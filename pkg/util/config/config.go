@@ -123,6 +123,18 @@ func (c *GenericConfig) Set(key string, value interface{}) {
 	set(c.MP, key, value)
 }
 
+func (c *GenericConfig) Del(key string) {
+	del(c.MP, key)
+}
+
+func (c *GenericConfig) SetIfNil(key string, value interface{}) {
+	v := c.Get(key)
+	if v != nil {
+		return
+	}
+	set(c.MP, key, value)
+}
+
 func (c *GenericConfig) Get(key string) (value *Value) {
 	if c == nil {
 		return nil
@@ -244,6 +256,26 @@ func (v *Value) AsFloat() (float64, error) {
 	default:
 		return 0, errors.Errorf("type is %v not float", reflect.TypeOf(v.inner))
 	}
+}
+
+func del(ms map[string]interface{}, key string) {
+	ks := strings.SplitN(key, ".", 2)
+	if len(ks) == 1 {
+		delete(ms, key)
+		return
+	}
+
+	v := strKeyMap(ms[ks[0]])
+	if v == nil {
+		return
+	}
+
+	vMap, ok := v.(map[string]interface{})
+	if !ok {
+		panic(v)
+	}
+
+	del(vMap, ks[1])
 }
 
 func set(ms map[string]interface{}, key string, value interface{}) {
