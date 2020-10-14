@@ -8,6 +8,7 @@ spec:
   configUpdateStrategy: RollingUpdate
   pvReclaimPolicy: Retain
   schedulerName: tidb-scheduler
+  enableDynamicConfiguration: true
   pd:
     baseImage: pingcap/pd
     replicas: 3

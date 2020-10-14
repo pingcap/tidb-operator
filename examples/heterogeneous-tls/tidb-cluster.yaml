@@ -10,12 +10,15 @@ spec:
     enabled: true
   version: v4.0.6
   timezone: UTC
-  pvReclaimPolicy: Delete
+  pvReclaimPolicy: Retain
+  enableDynamicConfiguration: true
+  configUpdateStrategy: RollingUpdate
   imagePullPolicy: IfNotPresent
   discovery: {}
   pd:
     imagePullPolicy: IfNotPresent
     baseImage: pingcap/pd
+    mountClusterClientSecret: true
     replicas: 1
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
     # storageClassName: local-storage
@@ -25,6 +28,7 @@ spec:
   tikv:
     imagePullPolicy: IfNotPresent
     baseImage: pingcap/tikv
+    mountClusterClientSecret: true
     replicas: 1
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
     # storageClassName: local-storage

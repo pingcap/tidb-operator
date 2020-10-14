@@ -1,0 +1,26 @@
+apiVersion: pingcap.com/v1alpha1
+kind: DMCluster
+metadata:
+  name: basic
+  namespace: demo
+spec:
+  version: v2.0.0-beta.2
+  pvReclaimPolicy: Retain
+  discovery:
+    address: "http://basic-discovery.demo:10261"
+  master:
+    baseImage: pingcap/dm
+    replicas: 1
+    # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
+    # storageClassName: local-storage
+    storageSize: "1Gi"
+    requests: {}
+    config: {}
+  worker:
+    baseImage: pingcap/dm
+    replicas: 1
+    # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
+    # storageClassName: local-storage
+    storageSize: "1Gi"
+    requests: {}
+    config: {}
