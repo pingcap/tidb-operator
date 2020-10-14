@@ -1449,9 +1449,9 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			defer cancel()
 			storesInfo, err := pdClient.GetStores()
 			framework.ExpectNoError(err, "get stores info error")
-			framework.ExpectEqual(storesInfo.Count, 3 , "Expect number of stores is 3")
-			for _,store := range storesInfo.Stores {
-				framework.ExpectEqual(store.Store.StateName, "Up" , "Expect state of stores are Up")
+			framework.ExpectEqual(storesInfo.Count, 3, "Expect number of stores is 3")
+			for _, store := range storesInfo.Stores {
+				framework.ExpectEqual(store.Store.StateName, "Up", "Expect state of stores are Up")
 			}
 		})
 	})
