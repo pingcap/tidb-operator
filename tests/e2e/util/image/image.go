@@ -48,6 +48,7 @@ func ListImages() []string {
 	versions = append(versions, TiDBV3UpgradeVersion)
 	versions = append(versions, TiDBV4Version)
 	versions = append(versions, TiDBV4UpgradeVersion)
+	versions = append(versions, "nightly")
 	for _, v := range versions {
 		images = append(images, fmt.Sprintf("pingcap/pd:%s", v))
 		images = append(images, fmt.Sprintf("pingcap/tidb:%s", v))
