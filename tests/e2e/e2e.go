@@ -33,6 +33,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/version"
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
+	"github.com/pingcap/tidb-operator/tests/e2e/tidbcluster"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	utilnode "github.com/pingcap/tidb-operator/tests/e2e/util/node"
 	utiloperator "github.com/pingcap/tidb-operator/tests/e2e/util/operator"
@@ -299,6 +300,10 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	} else {
 		ginkgo.By("Skip installing tidb-operator")
 	}
+
+	ginkgo.By("Installing cert-manager")
+	err = tidbcluster.InstallCertManager(kubeCli)
+	framework.ExpectNoError(err, "failed to install cert-manager")
 	return nil
 }, func(data []byte) {
 	// Run on all Ginkgo nodes
@@ -307,11 +312,19 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 
 var _ = ginkgo.SynchronizedAfterSuite(func() {
 	framework.CleanupSuite()
+
 }, func() {
 	framework.AfterSuiteActions()
 	if operatorKillerStopCh != nil {
 		close(operatorKillerStopCh)
 	}
+	config, _ := framework.LoadConfig()
+	config.QPS = 20
+	config.Burst = 50
+	kubeCli, _ := kubernetes.NewForConfig(config)
+	ginkgo.By("Deleting cert-manager")
+	err := tidbcluster.DeleteCertManager(kubeCli)
+	framework.ExpectNoError(err, "failed to delete cert-manager")
 })
 
 // RunE2ETests checks configuration parameters (specified through flags) and then runs
