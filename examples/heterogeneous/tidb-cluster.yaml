@@ -8,7 +8,9 @@ metadata:
 spec:
   version: v4.0.6
   timezone: UTC
-  pvReclaimPolicy: Delete
+  pvReclaimPolicy: Retain
+  enableDynamicConfiguration: true
+  configUpdateStrategy: RollingUpdate
   imagePullPolicy: IfNotPresent
   discovery: {}
   pd:
