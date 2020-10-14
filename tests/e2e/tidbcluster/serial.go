@@ -669,7 +669,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			tac.Spec.TiKV.Resources = map[string]v1alpha1.AutoResource{
 				"resource_a": {
 					CPU:     resource.MustParse("1024m"),
-					Memory:  tc.Spec.TiKV.Requests.Memory().DeepCopy(),
+					Memory:  resource.MustParse("2Gi"),
 					Storage: resource.MustParse("10Gi"),
 					Count:   pointer.Int32Ptr(3),
 				},
