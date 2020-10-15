@@ -394,10 +394,6 @@ func GetTidbClusterAutoScaler(name, ns string, tc *v1alpha1.TidbCluster, tm *v1a
 				Name:      tc.Name,
 				Namespace: tc.Namespace,
 			},
-			Monitor: &v1alpha1.TidbMonitorRef{
-				Name:      tm.Name,
-				Namespace: tm.Namespace,
-			},
 			TiKV: nil,
 			TiDB: nil,
 		},
