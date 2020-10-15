@@ -8850,6 +8850,20 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbAutoScalerStatus(ref common.ReferenceC
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
+					"pdAddresses": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PDAddresses are the external PD addresses, if configured, the PDs in this TidbCluster will join to the configured PD cluster.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
+						},
+					},
 				},
 				Required: []string{"currentReplicas"},
 			},
