@@ -108,16 +108,16 @@ spec
 
 ## 其他由 chart 管理的组件或者功能切换到 v1.1 支持的方式
 
-### Ad-hoc 全量备份
+### Ad-hoc 备份
 
-升级到 TiDB Operator v1.1 之后，可以通过 Backup CR 进行全量备份：
+升级到 TiDB Operator v1.1 之后，可以通过 Backup CR 进行备份。Dumpling 方式只支持全量备份，BR 方式支持全量备份与增量备份：
 
 - 如果 TiDB 集群版本 < v3.1，可以参考 [Dumpling Ad-hoc 全量备份](backup-to-s3.md#ad-hoc-全量备份)
-- 如果 TiDB 集群版本 >= v3.1，可以参考 [BR Ad-hoc 全量备份](backup-to-aws-s3-using-br.md#ad-hoc-全量备份)
+- 如果 TiDB 集群版本 >= v3.1，可以参考 [BR Ad-hoc 备份](backup-to-aws-s3-using-br.md#ad-hoc-备份)
 
 > **注意：**
 >
-> Backup CR Dumpling 方式目前只支持备份到 S3、GCS，BR 方式只支持备份到 S3。如果升级之前的 Ad-hoc 全量备份是备份到本地 PVC，则不能切换到 CR 方式管理。
+> Backup CR Dumpling 方式和 BR 方式目前只支持备份到 S3、GCS。如果升级之前的 Ad-hoc 全量备份是备份到本地 PVC，则不能切换到 CR 方式管理。
 
 ### 备份恢复
 
@@ -128,4 +128,4 @@ spec
 
 > **注意：**
 >
-> Restore CR Lightning 方式目前只支持从 S3、GCS 获取备份数据进行恢复，BR 方式只支持从 S3 获取备份数据进行恢复。如果需要从本地 PVC 获取备份数据进行恢复，则不能切换到 CR 方式管理。
+> Restore CR Lightning 方式和 BR 方式 目前只支持从 S3、GCS 获取备份数据进行恢复。如果需要从本地 PVC 获取备份数据进行恢复，则不能切换到 CR 方式管理。

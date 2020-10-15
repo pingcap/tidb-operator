@@ -115,16 +115,16 @@ After TiDB Operator is upgraded to v1.1, you can configure the scheduled full ba
 
 This section describes how to switch other components and features managed by the chart to services in TiBD Operator v1.1.
 
-## Ad-hoc full backup
+## Ad-hoc backup
 
-After TiDB Operator is upgraded to v1.1, you can perform full backup using the Backup CR.
+After TiDB Operator is upgraded to v1.1, you can perform backup using the Backup CR. Backup with Dumpling supports full backup, and backup with BR supports both full backup and incremental backup.
 
 - If the TiDB cluster version < v3.1, refer to [Ad-hoc full backup using Dumpling](backup-to-s3.md#ad-hoc-full-backup-to-s3-compatible-storage).
-- If the TiDB cluster version >= v3.1, refer to [Ad-hoc full backup using BR](backup-to-aws-s3-using-br.md#ad-hoc-full-backup).
+- If the TiDB cluster version >= v3.1, refer to [Ad-hoc backup using BR](backup-to-aws-s3-using-br.md#ad-hoc-backup).
 
 > **Note:**
 >
-> Currently, with Backup CR, you can back up data only to S3 and GCS using Dumpling, and back up data to S3 using BR. If you perform the scheduled full backup and send data to local Persistent Volume Claim (PVC) before the upgrade, you cannot switch to the CR management after the upgrade.
+> Currently, with Backup CR, you can back up data only to S3 and GCS using Dumpling or BR. If you perform the scheduled full backup and send data to local Persistent Volume Claim (PVC) before the upgrade, you cannot switch to the CR management after the upgrade.
 
 ## Restoration
 
@@ -135,4 +135,4 @@ After the TiDB Operator is upgraded to v1.1, you can restore data using the Rest
 
 > **Note:**
 >
-> Currently, with Restore CR, you can use TiDB Lightning to restore data from S3 and GCS, and use BR to restore data only from S3. If you need to restore the backup data from local Persistent Volume Claim (PVC), you cannot switch to the CR management.
+> Currently, with Restore CR, you can use TiDB Lightning or BR to restore data from S3 and GCS. If you need to restore the backup data from local Persistent Volume Claim (PVC), you cannot switch to the CR management.

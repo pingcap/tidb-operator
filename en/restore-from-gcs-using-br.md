@@ -96,7 +96,7 @@ This document shows an example in which the backup data stored in the specified 
     kubectl get rt -n test2 -owide
     ```
 
-This example restores the backup data stored in the `spec.gcs.prefix` folder of the `spec.gcs.bucket` bucket on GCS to the TiDB cluster `spec.to.host`. For more information on the configuration items of BR and GCS, refer to [`backup-gcs.yaml`](backup-to-gcs-using-br.md#process-of-ad-hoc-full-backup).
+This example restores the backup data stored in the `spec.gcs.prefix` folder of the `spec.gcs.bucket` bucket on GCS to the TiDB cluster `spec.to.host`. For more information on the configuration items of BR and GCS, refer to [`backup-gcs.yaml`](backup-to-gcs-using-br.md#process-of-ad-hoc-backup).
 
 More descriptions of fields in the `Restore` CR are as follows:
 

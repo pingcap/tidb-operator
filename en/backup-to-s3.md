@@ -21,9 +21,9 @@ For the current S3-compatible storage types, Ceph and Amazon S3 work normally as
 - If you use Amazon S3 to back up and restore the cluster, you have three methods to grant permissions. For details, refer to [Back up TiDB Cluster Data to AWS Using BR](backup-to-aws-s3-using-br.md#three-methods-to-grant-aws-account-permissions).
 - If Ceph is used as backend storage in backup and restore test, the permission is granted by importing AccessKey and SecretKey.
 
-### Prerequisites for ad-hoc backup
+### Prerequisites for ad-hoc full backup
 
-Refer to [Ad-hoc full backup prerequisites](backup-to-aws-s3-using-br.md#prerequisites-for-ad-hoc-full-backup).
+Refer to [Ad-hoc backup prerequisites](backup-to-aws-s3-using-br.md#prerequisites-for-ad-hoc-backup).
 
 ### Required database account privileges
 
@@ -344,7 +344,7 @@ You can set a backup policy to perform scheduled backups of the TiDB cluster, an
 
 ### Prerequisites for scheduled backup
 
-The prerequisites for the scheduled backup is the same as the [prerequisites for ad-hoc backup](#prerequisites-for-ad-hoc-backup).
+The prerequisites for the scheduled backup is the same as the [prerequisites for ad-hoc full backup](#prerequisites-for-ad-hoc-full-backup).
 
 ### Scheduled backup process
 

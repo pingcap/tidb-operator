@@ -95,7 +95,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/restore-from-gcs-using-br/']
      kubectl get rt -n test2 -owide
      ```
 
-以上示例将存储在 GCS 上指定路径 `spec.gcs.bucket` 存储桶中 `spec.gcs.prefix`文件夹下的备份数据恢复到 TiDB 集群 `spec.to.host`。关于 BR、GCS 的配置项可以参考 [backup-gcs.yaml](backup-to-gcs-using-br.md#ad-hoc-全量备份过程) 中的配置。
+以上示例将存储在 GCS 上指定路径 `spec.gcs.bucket` 存储桶中 `spec.gcs.prefix`文件夹下的备份数据恢复到 TiDB 集群 `spec.to.host`。关于 BR、GCS 的配置项可以参考 [backup-gcs.yaml](backup-to-gcs-using-br.md#ad-hoc-备份过程) 中的配置。
 
 更多 `Restore` CR 字段的详细解释如下：
 
