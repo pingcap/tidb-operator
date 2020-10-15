@@ -31,6 +31,11 @@ import (
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
+const (
+	// MinimalUpStateOfStores is the minimal value of stores in up state for Scaling in TiKV
+	MinimalUpStateOfStores = 3
+)
+
 type tikvScaler struct {
 	generalScaler
 }
@@ -114,11 +119,11 @@ func (tsd *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, new
 			storeState = store.State
 		}
 	}
-	if upNumber < 3 {
-		return fmt.Errorf("the number of stores in Up state of TidbCluster [%s/%s] is %d, less than 3, can't scale in TiKV, podname %s", meta.GetNamespace(), meta.GetName(), upNumber, podName)
-	} else if upNumber == 3 {
+	if upNumber < MinimalUpStateOfStores {
+		return fmt.Errorf("the number of stores in Up state of TidbCluster [%s/%s] is %d, less than %d, can't scale in TiKV, podname %s ", meta.GetNamespace(), meta.GetName(), upNumber, MinimalUpStateOfStores, podName)
+	} else if upNumber == MinimalUpStateOfStores {
 		if storeState == v1alpha1.TiKVStateUp {
-			return fmt.Errorf("can't scale in TiKV of TidbCluster [%s/%s], cause the number of up stores is 3, and the store in Pod %s which is going to be deleted is up too", meta.GetNamespace(), meta.GetName(), podName)
+			return fmt.Errorf("can't scale in TiKV of TidbCluster [%s/%s], cause the number of up stores is %d, and the store in Pod %s which is going to be deleted is up too", meta.GetNamespace(), meta.GetName(), MinimalUpStateOfStores, podName)
 		}
 	}
 
