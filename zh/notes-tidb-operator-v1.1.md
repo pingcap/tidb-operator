@@ -9,7 +9,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/notes-tidb-operator-v1.1/']
 
 ## PingCAP 不再继续更新维护 tidb-cluster chart
 
-从 TiDB Operator v1.1.0 开始，PingCAP 不再继续更新维护 tidb-cluster chart，原来由 tidb-cluster chart 负责管理的组件或者功能在 v1.1 中的变更如下：
+从 TiDB Operator v1.1.0 开始，PingCAP 不再继续更新 tidb-cluster chart，原来由 tidb-cluster chart 负责管理的组件或者功能在 v1.1 中的变更如下：
 
 | 组件、功能 | v1.1 |
 | :--- | :--- |
@@ -21,7 +21,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/notes-tidb-operator-v1.1/']
 | Drainer | [tidb-drainer chart](https://github.com/pingcap/tidb-operator/tree/master/charts/tidb-drainer) |
 | Importer | [tikv-importer chart](https://github.com/pingcap/tidb-operator/tree/master/charts/tikv-importer) |
 
-- tidb-cluster chart 仍然会继续发布，但是不再添加新功能，比如组件 TLS（目前只是部分支持）、TiKV 和 TiDB 自动伸缩等功能。
+- tidb-cluster chart 会继续发布，但是 PingCAP 不再添加新功能，社区贡献者仍然可以为 tidb-cluster chart 添加新功能。
 - 通过 v1.0.x TiDB Operator 部署的 TiDB 集群，在 TiDB Operator 升级到 v1.1 之后，仍然可以通过 v1.1 版本的 tidb-cluster chart 升级和管理 TiDB 集群。
 
 ## tidb-cluster chart 管理的组件或者功能切换到 v1.1 完整支持的方式

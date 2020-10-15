@@ -10,7 +10,7 @@ This document introduces important notes for TiDB Operator v1.1.
 
 ## PingCAP no longer updates or maintains tidb-cluster chart
 
-Since TiDB Operator v1.1.0, PingCAP no longer updates or maintains the tidb-cluster chart. The components and features that have been managed using the tidb-cluster chart will be managed in new ways in v1.1. See the following table for details:
+Since TiDB Operator v1.1.0, PingCAP no longer updates the tidb-cluster chart. The components and features that have been managed using the tidb-cluster chart will be managed in new ways in v1.1. See the following table for details:
 
 | Components/Features | Managements in TiDB Operator v1.1 |
 | :--- | :--- |
@@ -22,7 +22,7 @@ Since TiDB Operator v1.1.0, PingCAP no longer updates or maintains the tidb-clus
 | Drainer | [tidb-drainer chart](https://github.com/pingcap/tidb-operator/tree/master/charts/tidb-drainer) |
 | Importer | [tikv-importer chart](https://github.com/pingcap/tidb-operator/tree/master/charts/tikv-importer) |
 
-- PingCAP will continue releasing new versions of the tidb-cluster chart but will not add new features to it such as the component TLS (now partially supported), auto-scaling of TiKV and TiDB.
+- PingCAP will continue releasing new versions of the tidb-cluster chart but will not add new features to it. However, community members can still add new features to it.
 
 - If you have deployed your TiDB cluster by TiDB Operator (v1.0.0 <= version < v1.1), after TiDB Operator is upgraded to v1.1, you can still upgrade and manage your TiDB cluster using the tidb-cluster chart v1.1.
 
