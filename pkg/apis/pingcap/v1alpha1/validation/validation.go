@@ -245,6 +245,7 @@ func validateComponentSpec(spec *v1alpha1.ComponentSpec, fldPath *field.Path) fi
 	allErrs := field.ErrorList{}
 	// TODO validate other fields
 	allErrs = append(allErrs, validateEnv(spec.Env, fldPath.Child("env"))...)
+	allErrs = append(allErrs, validateAdditionalContainers(spec.AdditionalContainers, fldPath.Child("additionalContainers"))...)
 	return allErrs
 }
 
@@ -508,5 +509,18 @@ func validatePathNoBacksteps(targetPath string, fldPath *field.Path) field.Error
 			break // even for `../../..`, one error is sufficient to make the point
 		}
 	}
+	return allErrs
+}
+
+func validateAdditionalContainers(containers []corev1.Container, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	for i, container := range containers {
+		idxPath := fldPath.Index(i)
+		if len(container.Image) == 0 {
+			allErrs = append(allErrs, field.Required(idxPath.Child("image"), ""))
+		}
+	}
+
 	return allErrs
 }
