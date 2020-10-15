@@ -17,166 +17,45 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Masterminds/semver"
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
-	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	mm "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/manager/meta"
 
 	apps "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	kubeinformers "k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes"
-	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	appslisters "k8s.io/client-go/listers/apps/v1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Controller controls dmclusters.
 type Controller struct {
-	// kubernetes client interface
-	kubeClient kubernetes.Interface
-	// operator client interface
-	cli versioned.Interface
-	// control returns an interface capable of syncing a dm cluster.
+	deps *controller.Dependencies
 	// Abstracted out for testing.
 	control ControlInterface
-	// dcLister is able to list/get dmclusters from a shared informer's store
-	dcLister listers.DMClusterLister
-	// dcListerSynced returns true if the dmclusters shared informer has synced at least once
-	dcListerSynced cache.InformerSynced
-	// setLister is able to list/get stateful sets from a shared informer's store
-	setLister appslisters.StatefulSetLister
-	// setListerSynced returns true if the statefulset shared informer has synced at least once
-	setListerSynced cache.InformerSynced
 	// dmclusters that need to be synced.
 	queue workqueue.RateLimitingInterface
 }
 
 // NewController creates a dm controller.
-func NewController(
-	kubeCli kubernetes.Interface,
-	cli versioned.Interface,
-	genericCli client.Client,
-	informerFactory informers.SharedInformerFactory,
-	kubeInformerFactory kubeinformers.SharedInformerFactory,
-	autoFailover bool,
-	masterFailoverPeriod time.Duration,
-	workerFailoverPeriod time.Duration,
-) *Controller {
-	eventBroadcaster := record.NewBroadcasterWithCorrelatorOptions(record.CorrelatorOptions{QPS: 1})
-	eventBroadcaster.StartLogging(klog.V(2).Infof)
-	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
-		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
-	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tidb-controller-manager"})
-
-	dcInformer := informerFactory.Pingcap().V1alpha1().DMClusters()
-	setInformer := kubeInformerFactory.Apps().V1().StatefulSets()
-	svcInformer := kubeInformerFactory.Core().V1().Services()
-	epsInformer := kubeInformerFactory.Core().V1().Endpoints()
-	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
-	pvInformer := kubeInformerFactory.Core().V1().PersistentVolumes()
-	podInformer := kubeInformerFactory.Core().V1().Pods()
-	scInformer := kubeInformerFactory.Storage().V1().StorageClasses()
-	//nodeInformer := kubeInformerFactory.Core().V1().Nodes()
-	//secretInformer := kubeInformerFactory.Core().V1().Secrets()
-
-	dcControl := controller.NewRealDMClusterControl(cli, dcInformer.Lister(), recorder)
-	masterControl := dmapi.NewDefaultMasterControl(kubeCli)
-	setControl := controller.NewRealStatefuSetControl(kubeCli, setInformer.Lister(), recorder)
-	svcControl := controller.NewRealServiceControl(kubeCli, svcInformer.Lister(), recorder)
-	pvControl := controller.NewRealPVControl(kubeCli, pvcInformer.Lister(), pvInformer.Lister(), recorder)
-	pvcControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
-	podControl := controller.NewRealPodControl(kubeCli, nil, podInformer.Lister(), recorder)
-	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
-	masterScaler := mm.NewMasterScaler(masterControl, pvcInformer.Lister(), pvcControl)
-	masterFailover := mm.NewMasterFailover(cli, masterControl, masterFailoverPeriod, podInformer.Lister(), podControl, pvcInformer.Lister(), pvcControl, pvInformer.Lister(), recorder)
-	workerFailover := mm.NewWorkerFailover(workerFailoverPeriod, recorder)
-	masterUpgrader := mm.NewMasterUpgrader(masterControl, podInformer.Lister())
-	workerScaler := mm.NewWorkerScaler(pvcInformer.Lister(), pvcControl)
-	podRestarter := mm.NewPodRestarter(kubeCli, podInformer.Lister())
-
-	dcc := &Controller{
-		kubeClient: kubeCli,
-		cli:        cli,
+func NewController(deps *controller.Dependencies) *Controller {
+	c := &Controller{
+		deps: deps,
 		control: NewDefaultDMClusterControl(
-			dcControl,
-			mm.NewMasterMemberManager(
-				masterControl,
-				setControl,
-				svcControl,
-				typedControl,
-				setInformer.Lister(),
-				svcInformer.Lister(),
-				podInformer.Lister(),
-				epsInformer.Lister(),
-				pvcInformer.Lister(),
-				masterScaler,
-				masterUpgrader,
-				autoFailover,
-				masterFailover,
-			),
-			mm.NewWorkerMemberManager(
-				masterControl,
-				setControl,
-				svcControl,
-				typedControl,
-				setInformer.Lister(),
-				svcInformer.Lister(),
-				podInformer.Lister(),
-				workerScaler,
-				autoFailover,
-				workerFailover,
-			),
-			meta.NewReclaimPolicyDMManager(
-				pvcInformer.Lister(),
-				pvInformer.Lister(),
-				pvControl,
-			),
-			//meta.NewMetaManager(
-			//	pvcInformer.Lister(),
-			//	pvcControl,
-			//	pvInformer.Lister(),
-			//	pvControl,
-			//	podInformer.Lister(),
-			//	podControl,
-			//),
-			mm.NewOrphanPodsCleaner(
-				podInformer.Lister(),
-				podControl,
-				pvcInformer.Lister(),
-				kubeCli,
-			),
-			mm.NewRealPVCCleaner(
-				kubeCli,
-				podInformer.Lister(),
-				pvcControl,
-				pvcInformer.Lister(),
-				pvInformer.Lister(),
-				pvControl,
-			),
-			mm.NewPVCResizer(
-				kubeCli,
-				pvcInformer,
-				scInformer,
-			),
-			//mm.NewDMClusterStatusManager(kubeCli, cli, scalerInformer.Lister(), tikvGroupInformer.Lister()),
-			podRestarter,
+			deps.DMClusterControl,
+			mm.NewMasterMemberManager(deps, mm.NewMasterScaler(deps), mm.NewMasterUpgrader(deps), mm.NewMasterFailover(deps)),
+			mm.NewWorkerMemberManager(deps, mm.NewWorkerScaler(deps), mm.NewWorkerFailover(deps)),
+			meta.NewReclaimPolicyManager(deps),
+			mm.NewOrphanPodsCleaner(deps),
+			mm.NewRealPVCCleaner(deps),
+			mm.NewPVCResizer(deps),
 			&dmClusterConditionUpdater{},
-			recorder,
+			deps.Recorder,
 		),
 		queue: workqueue.NewNamedRateLimitingQueue(
 			workqueue.DefaultControllerRateLimiter(),
@@ -184,27 +63,23 @@ func NewController(
 		),
 	}
 
-	dcInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: dcc.enqueueDMCluster,
+	dmClusterInformer := deps.InformerFactory.Pingcap().V1alpha1().DMClusters()
+	statefulsetInformer := deps.KubeInformerFactory.Apps().V1().StatefulSets()
+	dmClusterInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: c.enqueueDMCluster,
 		UpdateFunc: func(old, cur interface{}) {
-			dcc.enqueueDMCluster(cur)
+			c.enqueueDMCluster(cur)
 		},
-		DeleteFunc: dcc.enqueueDMCluster,
+		DeleteFunc: c.enqueueDMCluster,
 	})
-	dcc.dcLister = dcInformer.Lister()
-	dcc.dcListerSynced = dcInformer.Informer().HasSynced
-
-	setInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: dcc.addStatefulSet,
+	statefulsetInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: c.addStatefulSet,
 		UpdateFunc: func(old, cur interface{}) {
-			dcc.updateStatefuSet(old, cur)
+			c.updateStatefulSet(old, cur)
 		},
-		DeleteFunc: dcc.deleteStatefulSet,
+		DeleteFunc: c.deleteStatefulSet,
 	})
-	dcc.setLister = setInformer.Lister()
-	dcc.setListerSynced = setInformer.Informer().HasSynced
-
-	return dcc
+	return c
 }
 
 // Run runs the dmcluster controller.
@@ -260,20 +135,13 @@ func (dcc *Controller) sync(key string) error {
 	if err != nil {
 		return err
 	}
-	dc, err := dcc.dcLister.DMClusters(ns).Get(name)
+	dc, err := dcc.deps.DMClusterLister.DMClusters(ns).Get(name)
 	if errors.IsNotFound(err) {
 		klog.Infof("DMCluster has been deleted %v", key)
 		return nil
 	}
 	if err != nil {
 		return err
-	}
-	clusterVersionLT2, err := clusterVersionLessThan2(dc.MasterVersion())
-	if err != nil {
-		klog.V(4).Infof("cluster version: %s is not semantic versioning compatible", dc.MasterVersion())
-	} else if clusterVersionLT2 {
-		klog.Errorf("dm version %s not supported, only support to deploy dm from v2.0", dc.MasterVersion())
-		return nil
 	}
 
 	return dcc.syncDMCluster(dc.DeepCopy())
@@ -315,8 +183,8 @@ func (dcc *Controller) addStatefulSet(obj interface{}) {
 	dcc.enqueueDMCluster(dc)
 }
 
-// updateStatefuSet adds the dmcluster for the current and old statefulsets to the sync queue.
-func (dcc *Controller) updateStatefuSet(old, cur interface{}) {
+// updateStatefulSet adds the dmcluster for the current and old statefulsets to the sync queue.
+func (dcc *Controller) updateStatefulSet(old, cur interface{}) {
 	curSet := cur.(*apps.StatefulSet)
 	oldSet := old.(*apps.StatefulSet)
 	ns := curSet.GetNamespace()
@@ -381,7 +249,7 @@ func (dcc *Controller) resolveDMClusterFromSet(namespace string, set *apps.State
 	if controllerRef.Kind != controller.DMControllerKind.Kind {
 		return nil
 	}
-	dc, err := dcc.dcLister.DMClusters(namespace).Get(controllerRef.Name)
+	dc, err := dcc.deps.DMClusterLister.DMClusters(namespace).Get(controllerRef.Name)
 	if err != nil {
 		return nil
 	}
@@ -391,13 +259,4 @@ func (dcc *Controller) resolveDMClusterFromSet(namespace string, set *apps.State
 		return nil
 	}
 	return dc
-}
-
-func clusterVersionLessThan2(version string) (bool, error) {
-	v, err := semver.NewVersion(version)
-	if err != nil {
-		return true, err
-	}
-
-	return v.Major() < 2, nil
 }

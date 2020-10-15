@@ -9,7 +9,7 @@ variable "tidb_operator_id" {
 variable "cluster_name" {}
 variable "cluster_version" {
   description = "The TiDB cluster version"
-  default     = "v4.0.4"
+  default     = "v4.0.6"
 }
 variable "tidb_cluster_chart_version" {
   description = "The TiDB cluster chart version"

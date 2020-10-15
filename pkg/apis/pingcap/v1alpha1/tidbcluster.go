@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -31,6 +32,8 @@ const (
 	defaultExposeStatus    = true
 	defaultSeparateSlowLog = true
 	defaultEnablePVReclaim = false
+	// defaultEvictLeaderTimeout is the timeout limit of evict leader
+	defaultEvictLeaderTimeout = 3 * time.Minute
 )
 
 var (
@@ -102,6 +105,16 @@ func (tc *TidbCluster) TiKVContainerPrivilege() *bool {
 		return &pri
 	}
 	return tc.Spec.TiKV.Privileged
+}
+
+func (tc *TidbCluster) TiKVEvictLeaderTimeout() time.Duration {
+	if tc.Spec.TiKV.EvictLeaderTimeout != nil {
+		d, err := time.ParseDuration(*tc.Spec.TiKV.EvictLeaderTimeout)
+		if err == nil {
+			return d
+		}
+	}
+	return defaultEvictLeaderTimeout
 }
 
 func (tc *TidbCluster) TiFlashImage() string {

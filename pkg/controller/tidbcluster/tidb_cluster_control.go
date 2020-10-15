@@ -52,27 +52,25 @@ func NewDefaultTidbClusterControl(
 	ticdcMemberManager manager.Manager,
 	discoveryManager member.TidbDiscoveryManager,
 	tidbClusterStatusManager manager.Manager,
-	podRestarter member.PodRestarter,
 	conditionUpdater TidbClusterConditionUpdater,
 	recorder record.EventRecorder) ControlInterface {
 	return &defaultTidbClusterControl{
-		tcControl,
-		pdMemberManager,
-		tikvMemberManager,
-		tidbMemberManager,
-		reclaimPolicyManager,
-		metaManager,
-		orphanPodsCleaner,
-		pvcCleaner,
-		pvcResizer,
-		pumpMemberManager,
-		tiflashMemberManager,
-		ticdcMemberManager,
-		discoveryManager,
-		tidbClusterStatusManager,
-		podRestarter,
-		conditionUpdater,
-		recorder,
+		tcControl:                tcControl,
+		pdMemberManager:          pdMemberManager,
+		tikvMemberManager:        tikvMemberManager,
+		tidbMemberManager:        tidbMemberManager,
+		reclaimPolicyManager:     reclaimPolicyManager,
+		metaManager:              metaManager,
+		orphanPodsCleaner:        orphanPodsCleaner,
+		pvcCleaner:               pvcCleaner,
+		pvcResizer:               pvcResizer,
+		pumpMemberManager:        pumpMemberManager,
+		tiflashMemberManager:     tiflashMemberManager,
+		ticdcMemberManager:       ticdcMemberManager,
+		discoveryManager:         discoveryManager,
+		tidbClusterStatusManager: tidbClusterStatusManager,
+		conditionUpdater:         conditionUpdater,
+		recorder:                 recorder,
 	}
 }
 
@@ -91,7 +89,6 @@ type defaultTidbClusterControl struct {
 	ticdcMemberManager       manager.Manager
 	discoveryManager         member.TidbDiscoveryManager
 	tidbClusterStatusManager manager.Manager
-	podRestarter             member.PodRestarter
 	conditionUpdater         TidbClusterConditionUpdater
 	recorder                 record.EventRecorder
 }
@@ -158,11 +155,6 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 
 	// reconcile TiDB discovery service
 	if err := tcc.discoveryManager.Reconcile(tc); err != nil {
-		return err
-	}
-
-	// sync all the pods which need to be restarted
-	if err := tcc.podRestarter.Sync(tc); err != nil {
 		return err
 	}
 

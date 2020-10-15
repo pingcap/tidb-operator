@@ -16,25 +16,17 @@ package member
 import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
 type tiflashUpgrader struct {
-	pdControl  pdapi.PDControlInterface
-	podControl controller.PodControlInterface
-	podLister  corelisters.PodLister
+	deps *controller.Dependencies
 }
 
 // NewTiFlashUpgrader returns a tiflash Upgrader
-func NewTiFlashUpgrader(pdControl pdapi.PDControlInterface,
-	podControl controller.PodControlInterface,
-	podLister corelisters.PodLister) Upgrader {
+func NewTiFlashUpgrader(deps *controller.Dependencies) Upgrader {
 	return &tiflashUpgrader{
-		pdControl:  pdControl,
-		podControl: podControl,
-		podLister:  podLister,
+		deps: deps,
 	}
 }
 

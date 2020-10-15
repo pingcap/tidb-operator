@@ -22,13 +22,10 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	kubeinformers "k8s.io/client-go/informers"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/pointer"
 )
@@ -246,17 +243,11 @@ func TestBackupControllerSync(t *testing.T) {
 }
 
 func newFakeBackupController() (*Controller, cache.Indexer, *FakeBackupControl) {
-	cli := fake.NewSimpleClientset()
-	kubeCli := kubefake.NewSimpleClientset()
-	informerFactory := informers.NewSharedInformerFactory(cli, 0)
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
-
-	backupInformer := informerFactory.Pingcap().V1alpha1().Backups()
+	fakeDeps := controller.NewFakeDependencies()
+	bkc := NewController(fakeDeps)
+	backupInformer := fakeDeps.InformerFactory.Pingcap().V1alpha1().Backups()
 	backupControl := NewFakeBackupControl(backupInformer)
-
-	bkc := NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 	bkc.control = backupControl
-
 	return bkc, backupInformer.Informer().GetIndexer(), backupControl
 }
 

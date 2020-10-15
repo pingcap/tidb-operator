@@ -109,4 +109,4 @@ spec:
   timezone: UTC
   tlsCluster:
     enabled: false
-  version: v4.0.4
+  version: v4.0.6

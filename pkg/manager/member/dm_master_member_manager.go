@@ -21,7 +21,6 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -31,8 +30,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	v1 "k8s.io/client-go/listers/apps/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/utils/pointer"
@@ -48,49 +45,19 @@ const (
 )
 
 type masterMemberManager struct {
-	masterControl  dmapi.MasterControlInterface
-	setControl     controller.StatefulSetControlInterface
-	svcControl     controller.ServiceControlInterface
-	typedControl   controller.TypedControlInterface
-	setLister      v1.StatefulSetLister
-	svcLister      corelisters.ServiceLister
-	podLister      corelisters.PodLister
-	epsLister      corelisters.EndpointsLister
-	pvcLister      corelisters.PersistentVolumeClaimLister
-	masterScaler   Scaler
-	masterUpgrader DMUpgrader
-	autoFailover   bool
-	masterFailover DMFailover
+	deps     *controller.Dependencies
+	scaler   Scaler
+	upgrader DMUpgrader
+	failover DMFailover
 }
 
 // NewMasterMemberManager returns a *masterMemberManager
-func NewMasterMemberManager(masterControl dmapi.MasterControlInterface,
-	setControl controller.StatefulSetControlInterface,
-	svcControl controller.ServiceControlInterface,
-	typedControl controller.TypedControlInterface,
-	setLister v1.StatefulSetLister,
-	svcLister corelisters.ServiceLister,
-	podLister corelisters.PodLister,
-	epsLister corelisters.EndpointsLister,
-	pvcLister corelisters.PersistentVolumeClaimLister,
-	masterScaler Scaler,
-	masterUpgrader DMUpgrader,
-	autoFailover bool,
-	masterFailover DMFailover) manager.DMManager {
+func NewMasterMemberManager(deps *controller.Dependencies, masterScaler Scaler, masterUpgrader DMUpgrader, masterFailover DMFailover) manager.DMManager {
 	return &masterMemberManager{
-		masterControl,
-		setControl,
-		svcControl,
-		typedControl,
-		setLister,
-		svcLister,
-		podLister,
-		epsLister,
-		pvcLister,
-		masterScaler,
-		masterUpgrader,
-		autoFailover,
-		masterFailover}
+		deps:     deps,
+		scaler:   masterScaler,
+		upgrader: masterUpgrader,
+		failover: masterFailover}
 }
 
 func (mmm *masterMemberManager) SyncDM(dc *v1alpha1.DMCluster) error {
@@ -118,13 +85,13 @@ func (mmm *masterMemberManager) syncMasterServiceForDMCluster(dc *v1alpha1.DMClu
 	dcName := dc.GetName()
 
 	newSvc := mmm.getNewMasterServiceForDMCluster(dc)
-	oldSvcTmp, err := mmm.svcLister.Services(ns).Get(controller.DMMasterMemberName(dcName))
+	oldSvcTmp, err := mmm.deps.ServiceLister.Services(ns).Get(controller.DMMasterMemberName(dcName))
 	if errors.IsNotFound(err) {
 		err = controller.SetServiceLastAppliedConfigAnnotation(newSvc)
 		if err != nil {
 			return err
 		}
-		return mmm.svcControl.CreateService(dc, newSvc)
+		return mmm.deps.ServiceControl.CreateService(dc, newSvc)
 	}
 	if err != nil {
 		return fmt.Errorf("syncMasterServiceForDMCluster: failed to get svc %s for cluster %s/%s, error: %s", controller.DMMasterMemberName(dcName), ns, dcName, err)
@@ -148,7 +115,7 @@ func (mmm *masterMemberManager) syncMasterServiceForDMCluster(dc *v1alpha1.DMClu
 		for k, v := range newSvc.Annotations {
 			svc.Annotations[k] = v
 		}
-		_, err = mmm.svcControl.UpdateService(dc, &svc)
+		_, err = mmm.deps.ServiceControl.UpdateService(dc, &svc)
 		return err
 	}
 
@@ -165,13 +132,13 @@ func (mmm *masterMemberManager) syncMasterHeadlessServiceForDMCluster(dc *v1alph
 	dcName := dc.GetName()
 
 	newSvc := getNewMasterHeadlessServiceForDMCluster(dc)
-	oldSvc, err := mmm.svcLister.Services(ns).Get(controller.DMMasterPeerMemberName(dcName))
+	oldSvc, err := mmm.deps.ServiceLister.Services(ns).Get(controller.DMMasterPeerMemberName(dcName))
 	if errors.IsNotFound(err) {
 		err = controller.SetServiceLastAppliedConfigAnnotation(newSvc)
 		if err != nil {
 			return err
 		}
-		return mmm.svcControl.CreateService(dc, newSvc)
+		return mmm.deps.ServiceControl.CreateService(dc, newSvc)
 	}
 	if err != nil {
 		return fmt.Errorf("syncMasterHeadlessServiceForDMCluster: failed to get svc %s for cluster %s/%s, error: %s", controller.DMMasterPeerMemberName(dcName), ns, dcName, err)
@@ -188,7 +155,7 @@ func (mmm *masterMemberManager) syncMasterHeadlessServiceForDMCluster(dc *v1alph
 		if err != nil {
 			return err
 		}
-		_, err = mmm.svcControl.UpdateService(dc, &svc)
+		_, err = mmm.deps.ServiceControl.UpdateService(dc, &svc)
 		return err
 	}
 
@@ -199,7 +166,7 @@ func (mmm *masterMemberManager) syncMasterStatefulSetForDMCluster(dc *v1alpha1.D
 	ns := dc.GetNamespace()
 	dcName := dc.GetName()
 
-	oldMasterSetTmp, err := mmm.setLister.StatefulSets(ns).Get(controller.DMMasterMemberName(dcName))
+	oldMasterSetTmp, err := mmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.DMMasterMemberName(dcName))
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("syncMasterStatefulSetForDMCluster: fail to get sts %s for cluster %s/%s, error: %s", controller.DMMasterMemberName(dcName), ns, dcName, err)
 	}
@@ -229,21 +196,11 @@ func (mmm *masterMemberManager) syncMasterStatefulSetForDMCluster(dc *v1alpha1.D
 		if err != nil {
 			return err
 		}
-		if err := mmm.setControl.CreateStatefulSet(dc, newMasterSet); err != nil {
+		if err := mmm.deps.StatefulSetControl.CreateStatefulSet(dc, newMasterSet); err != nil {
 			return err
 		}
 		dc.Status.Master.StatefulSet = &apps.StatefulSetStatus{}
 		return controller.RequeueErrorf("DMCluster: [%s/%s], waiting for dm-master cluster running", ns, dcName)
-	}
-
-	if !dc.Status.Master.Synced {
-		force := NeedForceUpgrade(dc.Annotations)
-		if force {
-			dc.Status.Master.Phase = v1alpha1.UpgradePhase
-			setUpgradePartition(newMasterSet, 0)
-			errSTS := updateStatefulSet(mmm.setControl, dc, newMasterSet, oldMasterSet)
-			return controller.RequeueErrorf("dmcluster: [%s/%s]'s dm-master needs force upgrade, %v", ns, dcName, errSTS)
-		}
 	}
 
 	// Scaling takes precedence over upgrading because:
@@ -251,30 +208,40 @@ func (mmm *masterMemberManager) syncMasterStatefulSetForDMCluster(dc *v1alpha1.D
 	//   new replicas
 	// - it's ok to scale in the middle of upgrading (in statefulset controller
 	//   scaling takes precedence over upgrading too)
-	if err := mmm.masterScaler.Scale(dc, oldMasterSet, newMasterSet); err != nil {
+	if err := mmm.scaler.Scale(dc, oldMasterSet, newMasterSet); err != nil {
 		return err
 	}
 
 	// Perform failover logic if necessary. Note that this will only update
 	// DMCluster status. The actual scaling performs in next sync loop (if a
 	// new replica needs to be added).
-	if mmm.autoFailover {
+	if mmm.deps.CLIConfig.AutoFailover {
 		if mmm.shouldRecover(dc) {
-			mmm.masterFailover.Recover(dc)
+			mmm.failover.Recover(dc)
 		} else if dc.MasterAllPodsStarted() && !dc.MasterAllMembersReady() || dc.MasterAutoFailovering() {
-			if err := mmm.masterFailover.Failover(dc); err != nil {
+			if err := mmm.failover.Failover(dc); err != nil {
 				return err
 			}
 		}
 	}
 
+	if !dc.Status.Master.Synced {
+		force := NeedForceUpgrade(dc.Annotations)
+		if force {
+			dc.Status.Master.Phase = v1alpha1.UpgradePhase
+			setUpgradePartition(newMasterSet, 0)
+			errSTS := updateStatefulSet(mmm.deps.StatefulSetControl, dc, newMasterSet, oldMasterSet)
+			return controller.RequeueErrorf("dmcluster: [%s/%s]'s dm-master needs force upgrade, %v", ns, dcName, errSTS)
+		}
+	}
+
 	if !templateEqual(newMasterSet, oldMasterSet) || dc.Status.Master.Phase == v1alpha1.UpgradePhase {
-		if err := mmm.masterUpgrader.Upgrade(dc, oldMasterSet, newMasterSet); err != nil {
+		if err := mmm.upgrader.Upgrade(dc, oldMasterSet, newMasterSet); err != nil {
 			return err
 		}
 	}
 
-	return updateStatefulSet(mmm.setControl, dc, newMasterSet, oldMasterSet)
+	return updateStatefulSet(mmm.deps.StatefulSetControl, dc, newMasterSet, oldMasterSet)
 }
 
 // shouldRecover checks whether we should perform recovery operation.
@@ -288,7 +255,7 @@ func (mmm *masterMemberManager) shouldRecover(dc *v1alpha1.DMCluster) bool {
 	// about them because we're going to delete them.
 	for ordinal := range dc.MasterStsDesiredOrdinals(true) {
 		name := fmt.Sprintf("%s-%d", controller.DMMasterMemberName(dc.GetName()), ordinal)
-		pod, err := mmm.podLister.Pods(dc.Namespace).Get(name)
+		pod, err := mmm.deps.PodLister.Pods(dc.Namespace).Get(name)
 		if err != nil {
 			klog.Errorf("pod %s/%s does not exist: %v", dc.Namespace, name, err)
 			return false
@@ -329,13 +296,13 @@ func (mmm *masterMemberManager) syncDMClusterStatus(dc *v1alpha1.DMCluster, set 
 		dc.Status.Master.Phase = v1alpha1.NormalPhase
 	}
 
-	dmClient := controller.GetMasterClient(mmm.masterControl, dc)
+	dmClient := controller.GetMasterClient(mmm.deps.DMMasterControl, dc)
 
 	mastersInfo, err := dmClient.GetMasters()
 	if err != nil {
 		dc.Status.Master.Synced = false
 		// get endpoints info
-		eps, epErr := mmm.epsLister.Endpoints(ns).Get(controller.DMMasterMemberName(dcName))
+		eps, epErr := mmm.deps.EndpointLister.Endpoints(ns).Get(controller.DMMasterMemberName(dcName))
 		if epErr != nil {
 			return fmt.Errorf("syncDMClusterStatus: failed to get endpoints %s for cluster %s/%s, err: %s, epErr %s", controller.DMMasterMemberName(dcName), ns, dcName, err, epErr)
 		}
@@ -401,14 +368,11 @@ func (mmm *masterMemberManager) syncDMClusterStatus(dc *v1alpha1.DMCluster, set 
 
 // syncMasterConfigMap syncs the configmap of dm-master
 func (mmm *masterMemberManager) syncMasterConfigMap(dc *v1alpha1.DMCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
-	if dc.Spec.Master.Config == nil {
-		return nil, nil
-	}
 	newCm, err := getMasterConfigMap(dc)
 	if err != nil {
 		return nil, err
 	}
-	return mmm.typedControl.CreateOrUpdateConfigMap(dc, newCm)
+	return mmm.deps.TypedControl.CreateOrUpdateConfigMap(dc, newCm)
 }
 
 func (mmm *masterMemberManager) getNewMasterServiceForDMCluster(dc *v1alpha1.DMCluster) *corev1.Service {
@@ -461,6 +425,9 @@ func (mmm *masterMemberManager) getNewMasterServiceForDMCluster(dc *v1alpha1.DMC
 		if svcSpec.ClusterIP != nil {
 			masterSvc.Spec.ClusterIP = *svcSpec.ClusterIP
 		}
+		if svcSpec.PortName != nil {
+			masterSvc.Spec.Ports[0].Name = *svcSpec.PortName
+		}
 	}
 	return masterSvc
 }
@@ -508,7 +475,7 @@ func (mmm *masterMemberManager) masterStatefulSetIsUpgrading(set *apps.StatefulS
 	if err != nil {
 		return false, err
 	}
-	masterPods, err := mmm.podLister.Pods(dc.GetNamespace()).List(selector)
+	masterPods, err := mmm.deps.PodLister.Pods(dc.GetNamespace()).List(selector)
 	if err != nil {
 		return false, fmt.Errorf("masterStatefulSetIsUpgrading: failed to list pods for cluster %s/%s, selector %s, error: %v", dc.GetNamespace(), instanceName, selector, err)
 	}
@@ -539,6 +506,9 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	dcName := dc.Name
 	baseMasterSpec := dc.BaseMasterSpec()
 	instanceName := dc.GetInstanceName()
+	if cm == nil {
+		return nil, fmt.Errorf("config map for dm-master is not found, dmcluster %s/%s", dc.Namespace, dc.Name)
+	}
 	masterConfigMap := cm.Name
 
 	annMount, annVolume := annotationsMountVolume()
@@ -582,6 +552,19 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 			Name: "dm-master-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: util.ClusterTLSSecretName(dc.Name, label.DMMasterLabelVal),
+				},
+			},
+		})
+	}
+
+	for _, tlsClientSecretName := range dc.Spec.TLSClientSecretNames {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: tlsClientSecretName, ReadOnly: true, MountPath: fmt.Sprintf("/var/lib/source-tls/%s", tlsClientSecretName),
+		})
+		vols = append(vols, corev1.Volume{
+			Name: tlsClientSecretName, VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: tlsClientSecretName,
 				},
 			},
 		})
@@ -716,10 +699,9 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 }
 
 func getMasterConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
-	// For backward compatibility, only sync dm configmap when .master.config is non-nil
 	config := dc.Spec.Master.Config
 	if config == nil {
-		return nil, nil
+		config = &v1alpha1.MasterConfig{}
 	}
 
 	// override CA if tls enabled
@@ -769,7 +751,7 @@ func (mmm *masterMemberManager) collectUnjoinedMembers(dc *v1alpha1.DMCluster, s
 	if podSelectErr != nil {
 		return podSelectErr
 	}
-	pods, podErr := mmm.podLister.Pods(dc.Namespace).List(podSelector)
+	pods, podErr := mmm.deps.PodLister.Pods(dc.Namespace).List(podSelector)
 	if podErr != nil {
 		return fmt.Errorf("collectUnjoinedMembers: failed to list pods for cluster %s/%s, selector %s, error %v", dc.GetNamespace(), dc.GetName(), set.Spec.Selector, podErr)
 	}
@@ -790,7 +772,7 @@ func (mmm *masterMemberManager) collectUnjoinedMembers(dc *v1alpha1.DMCluster, s
 				return err
 			}
 			pvcName := ordinalPVCName(v1alpha1.DMMasterMemberType, controller.DMMasterMemberName(dc.Name), ordinal)
-			pvc, err := mmm.pvcLister.PersistentVolumeClaims(dc.Namespace).Get(pvcName)
+			pvc, err := mmm.deps.PVCLister.PersistentVolumeClaims(dc.Namespace).Get(pvcName)
 			if err != nil {
 				return fmt.Errorf("collectUnjoinedMembers: failed to get pvc %s of cluster %s/%s, error %v", pvcName, dc.GetNamespace(), dc.GetName(), err)
 			}
@@ -804,6 +786,25 @@ func (mmm *masterMemberManager) collectUnjoinedMembers(dc *v1alpha1.DMCluster, s
 				delete(dc.Status.Master.UnjoinedMembers, pod.Name)
 			}
 		}
+	}
+	return nil
+}
+
+type FakeMasterMemberManager struct {
+	err error
+}
+
+func NewFakeMasterMemberManager() *FakeMasterMemberManager {
+	return &FakeMasterMemberManager{}
+}
+
+func (fpmm *FakeMasterMemberManager) SetSyncError(err error) {
+	fpmm.err = err
+}
+
+func (fpmm *FakeMasterMemberManager) SyncDM(dc *v1alpha1.DMCluster) error {
+	if fpmm.err != nil {
+		return fpmm.err
 	}
 	return nil
 }

@@ -51,8 +51,6 @@ func checkFormerTiKVPodStatus(kubeCli kubernetes.Interface, controllerDesc contr
 		switch controllerKind {
 		case v1alpha1.TiDBClusterKind:
 			podName = memberUtil.TikvPodName(controllerName, i)
-		case v1alpha1.TiKVGroupKind:
-			podName = memberUtil.TiKVGroupPodName(controllerName, i)
 		default:
 			// unreachable
 			return fmt.Errorf("unknown controller[%s]", controllerKind)
@@ -101,7 +99,7 @@ func addEvictLeaderAnnotation(kubeCli kubernetes.Interface, pod *core.Pod) error
 	return nil
 }
 
-func isTiKVReadyToUpgrade(upgradePod *core.Pod, store *pdapi.StoreInfo) bool {
+func isTiKVReadyToUpgrade(upgradePod *core.Pod, store *pdapi.StoreInfo, evictLeaderTimeout time.Duration) bool {
 
 	if store.Status.LeaderCount == 0 {
 		klog.Infof("pod[%s/%s] has no region leader in store[%d]", upgradePod.Namespace, upgradePod.Name, store.Store.Id)
@@ -114,7 +112,7 @@ func isTiKVReadyToUpgrade(upgradePod *core.Pod, store *pdapi.StoreInfo) bool {
 			klog.Errorf("parse annotation:[%s] to time failed.", EvictLeaderBeginTime)
 			return false
 		}
-		if time.Now().After(evictLeaderBeginTime.Add(EvictLeaderTimeout)) {
+		if time.Now().After(evictLeaderBeginTime.Add(evictLeaderTimeout)) {
 			return true
 		}
 	}

@@ -23,7 +23,6 @@ import (
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/typed/pingcap/v1alpha1"
-	exampleagg "github.com/pingcap/tidb-operator/tests/pkg/apiserver/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/tests/slack"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/kubernetes"
@@ -52,20 +51,6 @@ func NewCliOrDie() (versioned.Interface, kubernetes.Interface, asclientset.Inter
 	}
 
 	return buildClientsOrDie(cfg)
-}
-
-// NewExampleAggCliOrDie create new client of the example.pingcap.com resource group hosted by our test apiserver
-func NewExampleAggCliOrDie() *exampleagg.Clientset {
-
-	cfg, err := GetConfig()
-	if err != nil {
-		slack.NotifyAndPanic(fmt.Errorf("Error get client rest config, %v", err))
-	}
-	cli, err := exampleagg.NewForConfig(cfg)
-	if err != nil {
-		slack.NotifyAndPanic(fmt.Errorf("Error create client of example.pingcap.com group, %v", err))
-	}
-	return cli
 }
 
 func GetConfig() (*rest.Config, error) {

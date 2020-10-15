@@ -17,8 +17,6 @@ import (
 	"fmt"
 	"strings"
 
-	tcinformers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
-	v1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -144,8 +142,6 @@ var _ StatefulSetControlInterface = &realStatefulSetControl{}
 type FakeStatefulSetControl struct {
 	SetLister                appslisters.StatefulSetLister
 	SetIndexer               cache.Indexer
-	TcLister                 v1listers.TidbClusterLister
-	TcIndexer                cache.Indexer
 	createStatefulSetTracker RequestTracker
 	updateStatefulSetTracker RequestTracker
 	deleteStatefulSetTracker RequestTracker
@@ -153,12 +149,10 @@ type FakeStatefulSetControl struct {
 }
 
 // NewFakeStatefulSetControl returns a FakeStatefulSetControl
-func NewFakeStatefulSetControl(setInformer appsinformers.StatefulSetInformer, tcInformer tcinformers.TidbClusterInformer) *FakeStatefulSetControl {
+func NewFakeStatefulSetControl(setInformer appsinformers.StatefulSetInformer) *FakeStatefulSetControl {
 	return &FakeStatefulSetControl{
 		setInformer.Lister(),
 		setInformer.Informer().GetIndexer(),
-		tcInformer.Lister(),
-		tcInformer.Informer().GetIndexer(),
 		RequestTracker{},
 		RequestTracker{},
 		RequestTracker{},

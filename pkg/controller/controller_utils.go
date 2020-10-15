@@ -16,7 +16,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -55,25 +54,8 @@ var (
 	// tidbMonitorControllerkind cotnains the schema.GroupVersionKind for TidbMonitor controller type.
 	tidbMonitorControllerkind = v1alpha1.SchemeGroupVersion.WithKind("TidbMonitor")
 
-	// tikvGroupControllerkind cotnains the schema.GroupVersionKind for TiKVGroup controller type.
-	tikvGroupControllerkind = v1alpha1.SchemeGroupVersion.WithKind("TiKVGroup")
-
-	// TidbBackupManagerImage is the image of tidb backup manager tool
-	TidbBackupManagerImage string
-
-	// ClusterScoped controls whether operator should manage kubernetes cluster wide TiDB clusters
-	ClusterScoped bool
-
-	// TestMode defines whether tidb operator run in test mode, test mode is only open when test
-	TestMode bool
-	// ResyncDuration is the resync time of informer
-	ResyncDuration time.Duration
-
-	// TidbDiscoveryImage is the image of tidb discovery service
-	TidbDiscoveryImage string
-
-	// PodWebhookEnabled is the key to indicate whether pod admission webhook is set up.
-	PodWebhookEnabled bool
+	// tidbClusterAutoScalerKind cotnains the schema.GroupVersionKind for TidbClusterAutoScaler controller type.
+	tidbClusterAutoScalerKind = v1alpha1.SchemeGroupVersion.WithKind("TidbClusterAutoScaler")
 )
 
 // RequeueError is used to requeue the item, this error type should't be considered as a real error
@@ -194,6 +176,19 @@ func GetTiDBMonitorOwnerRef(monitor *v1alpha1.TidbMonitor) metav1.OwnerReference
 		Kind:               tidbMonitorControllerkind.Kind,
 		Name:               monitor.GetName(),
 		UID:                monitor.GetUID(),
+		Controller:         &controller,
+		BlockOwnerDeletion: &blockOwnerDeletion,
+	}
+}
+
+func GetTiDBClusterAutoScalerOwnerRef(tac *v1alpha1.TidbClusterAutoScaler) metav1.OwnerReference {
+	controller := true
+	blockOwnerDeletion := true
+	return metav1.OwnerReference{
+		APIVersion:         tidbClusterAutoScalerKind.GroupVersion().String(),
+		Kind:               tidbClusterAutoScalerKind.Kind,
+		Name:               tac.GetName(),
+		UID:                tac.GetUID(),
 		Controller:         &controller,
 		BlockOwnerDeletion: &blockOwnerDeletion,
 	}
@@ -348,27 +343,6 @@ func AnnProm(port int32) map[string]string {
 func AnnAdditionalProm(name string, port int32) map[string]string {
 	return map[string]string{
 		fmt.Sprintf("%s.prometheus.io/port", name): fmt.Sprintf("%d", port),
-	}
-}
-
-func TiKVGroupMemberName(groupName string) string {
-	return fmt.Sprintf("%s-tikv-group", groupName)
-}
-
-func TiKVGroupPeerMemberName(groupName string) string {
-	return fmt.Sprintf("%s-tikv-group-peer", groupName)
-}
-
-func GetTiKVGroupOwnerRef(tg *v1alpha1.TiKVGroup) metav1.OwnerReference {
-	controller := true
-	blockOwnerDeletion := true
-	return metav1.OwnerReference{
-		APIVersion:         tikvGroupControllerkind.GroupVersion().String(),
-		Kind:               tikvGroupControllerkind.Kind,
-		Name:               tg.GetName(),
-		UID:                tg.GetUID(),
-		Controller:         &controller,
-		BlockOwnerDeletion: &blockOwnerDeletion,
 	}
 }
 

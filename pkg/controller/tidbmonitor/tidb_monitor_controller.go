@@ -18,71 +18,41 @@ import (
 	"time"
 
 	perrors "github.com/pingcap/errors"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
-	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/monitor/monitor"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	kubeinformers "k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes"
-	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Controller syncs TidbMonitor
 type Controller struct {
-	cli      client.Client
-	control  ControlInterface
-	tmLister listers.TidbMonitorLister
+	deps    *controller.Dependencies
+	control ControlInterface
 	// tidbMonitor that need to be synced.
 	queue workqueue.RateLimitingInterface
 }
 
 // NewController creates a backup controller.
-func NewController(
-	kubeCli kubernetes.Interface,
-	genericCli client.Client,
-	cli versioned.Interface,
-	informerFactory informers.SharedInformerFactory,
-	kubeInformerFactory kubeinformers.SharedInformerFactory,
-) *Controller {
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(klog.Infof)
-	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
-		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
-	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tidbmonitor"})
-
-	tidbMonitorInformer := informerFactory.Pingcap().V1alpha1().TidbMonitors()
-	deploymentInformer := kubeInformerFactory.Apps().V1().Deployments()
-	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
-	monitorManager := monitor.NewMonitorManager(kubeCli, cli, informerFactory, kubeInformerFactory, typedControl, recorder)
-
-	tmc := &Controller{
-		cli:      genericCli,
-		control:  NewDefaultTidbMonitorControl(recorder, typedControl, monitorManager),
-		tmLister: tidbMonitorInformer.Lister(),
-		queue: workqueue.NewNamedRateLimitingQueue(
-			workqueue.DefaultControllerRateLimiter(),
-			"tidbmonitor",
-		),
+func NewController(deps *controller.Dependencies) *Controller {
+	c := &Controller{
+		deps:    deps,
+		control: NewDefaultTidbMonitorControl(monitor.NewMonitorManager(deps)),
+		queue:   workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "tidbmonitor"),
 	}
 
-	controller.WatchForObject(tidbMonitorInformer.Informer(), tmc.queue)
-	controller.WatchForController(deploymentInformer.Informer(), tmc.queue, func(ns, name string) (runtime.Object, error) {
-		return tmc.tmLister.TidbMonitors(ns).Get(name)
+	tidbMonitorInformer := deps.InformerFactory.Pingcap().V1alpha1().TidbMonitors()
+	deploymentInformer := deps.KubeInformerFactory.Apps().V1().Deployments()
+	controller.WatchForObject(tidbMonitorInformer.Informer(), c.queue)
+	controller.WatchForController(deploymentInformer.Informer(), c.queue, func(ns, name string) (runtime.Object, error) {
+		return c.deps.TiDBMonitorLister.TidbMonitors(ns).Get(name)
 	}, nil)
 
-	return tmc
+	return c
 }
 
 func (tmc *Controller) Run(workers int, stopCh <-chan struct{}) {
@@ -135,7 +105,7 @@ func (tmc *Controller) sync(key string) error {
 	if err != nil {
 		return err
 	}
-	tm, err := tmc.tmLister.TidbMonitors(ns).Get(name)
+	tm, err := tmc.deps.TiDBMonitorLister.TidbMonitors(ns).Get(name)
 	if errors.IsNotFound(err) {
 		klog.Infof("TidbMonitor has been deleted %v", key)
 		return nil

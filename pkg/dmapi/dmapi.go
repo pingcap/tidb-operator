@@ -203,13 +203,13 @@ func (mc *masterClient) deleteMember(query string) error {
 	if err != nil {
 		return err
 	}
-	deleteMemeberResp := &RespHeader{}
-	err = json.Unmarshal(body, deleteMemeberResp)
+	deleteMemberResp := &RespHeader{}
+	err = json.Unmarshal(body, deleteMemberResp)
 	if err != nil {
 		return fmt.Errorf("unable to unmarshal delete member resp: %s, query: %s, err: %s", body, query, err)
 	}
-	if !deleteMemeberResp.Result {
-		return fmt.Errorf("unable to delete member, query: %s, err: %s", query, deleteMemeberResp.Msg)
+	if !deleteMemberResp.Result {
+		return fmt.Errorf("unable to delete member, query: %s, err: %s", query, deleteMemberResp.Msg)
 	}
 
 	return nil

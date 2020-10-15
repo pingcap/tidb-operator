@@ -82,21 +82,15 @@ type TidbClusterAutoScalerSpec struct {
 	// TiDB represents the auto-scaling spec for tidb
 	// +optional
 	TiDB *TidbAutoScalerSpec `json:"tidb,omitempty"`
-
-	// Resources represent the resource type definitions that can be used for TiDB/TiKV
-	// +optional
-	Resources []AutoResource `json:"resources,omitempty"`
 }
 
 // +k8s:openapi-gen=true
 // AutoResource describes the resource type definitions
 type AutoResource struct {
-	// ResourceType identifies a specific resource type
-	ResourceType string `json:"resource_type,omitempty"`
 	// CPU defines the CPU of this resource type
-	CPU resource.Quantity `json:"cpu,omitempty"`
+	CPU resource.Quantity `json:"cpu"`
 	// Memory defines the memory of this resource type
-	Memory resource.Quantity `json:"memory,omitempty"`
+	Memory resource.Quantity `json:"memory"`
 	// Storage defines the storage of this resource type
 	Storage resource.Quantity `json:"storage,omitempty"`
 	// Count defines the max availabel count of this resource type
@@ -132,7 +126,8 @@ type BasicAutoScalerSpec struct {
 	// maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out.
 	// It cannot be less than minReplicas.
 	// Deprecated
-	MaxReplicas int32 `json:"maxReplicas"`
+	// +optional
+	MaxReplicas *int32 `json:"maxReplicas,omitempty"`
 
 	// minReplicas is the lower limit for the number of replicas to which the autoscaler
 	// can scale down.  It defaults to 1 pod. Scaling is active as long as at least one metric value is
@@ -166,6 +161,11 @@ type BasicAutoScalerSpec struct {
 	// to fetch the recommended replicas for TiKV/TiDB
 	// +optional
 	External *ExternalConfig `json:"external,omitempty"`
+
+	// Resources represent the resource type definitions that can be used for TiDB/TiKV
+	// The key is resource_type name of the resource
+	// +optional
+	Resources map[string]AutoResource `json:"resources,omitempty"`
 }
 
 // +k8s:openapi-gen=true

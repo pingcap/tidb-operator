@@ -294,11 +294,9 @@ func (ctu *CrdTestUtil) tikvMembersReadyFn(obj runtime.Object) (bool, error) {
 	var tikvSetName string
 	if tc, ok := obj.(*v1alpha1.TidbCluster); ok {
 		tikvSetName = controller.TiKVMemberName(tc.Name)
-	} else if tg, ok := obj.(*v1alpha1.TiKVGroup); ok {
-		tikvSetName = controller.TiKVGroupMemberName(tg.Name)
 	}
 	if len(tikvSetName) < 1 {
-		return false, fmt.Errorf("failed to parse obj to TikvGroup or TidbCluster")
+		return false, fmt.Errorf("failed to parse obj to TidbCluster")
 	}
 
 	tikvSet, err := ctu.tcStsGetter.StatefulSets(ns).Get(tikvSetName, metav1.GetOptions{})
@@ -327,13 +325,6 @@ func (ctu *CrdTestUtil) tikvMembersReadyFn(obj runtime.Object) (bool, error) {
 		image = tc.TiKVImage()
 		stores = tc.Status.TiKV.Stores
 		tikvPeerServiceName = controller.TiKVPeerMemberName(tc.GetName())
-	} else if tg, ok := obj.(*v1alpha1.TiKVGroup); ok {
-		tikvStatus = tg.Status.TiKVStatus
-		replicas = tg.Spec.TiKVSpec.Replicas
-		storeCounts = int32(len(tg.Status.Stores))
-		image = tg.Spec.Image
-		stores = tg.Status.TiKVStatus.Stores
-		tikvPeerServiceName = controller.TiKVGroupPeerMemberName(tg.Name)
 	}
 
 	if tikvStatus.StatefulSet == nil {
@@ -636,23 +627,4 @@ func (ctu *CrdTestUtil) CreateSecretOrDie(secret *corev1.Secret) {
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
-}
-
-func (ctu *CrdTestUtil) WaitForTiKVGroupReady(tg *v1alpha1.TiKVGroup, timeout, pollInterval time.Duration) error {
-	if tg == nil {
-		return fmt.Errorf("tikvgroup is nil, cannot call WaitForTiKVGroupReady")
-	}
-	err := wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
-		var local *v1alpha1.TiKVGroup
-		var err error
-		if local, err = ctu.cli.PingcapV1alpha1().TiKVGroups(tg.Namespace).Get(tg.Name, metav1.GetOptions{}); err != nil {
-			klog.Errorf("failed to get tikvgroup: %s/%s, %v", tg.Namespace, tg.Name, err)
-			return false, nil
-		}
-		if b, err := ctu.tikvMembersReadyFn(local); !b && err == nil {
-			return false, nil
-		}
-		return true, nil
-	})
-	return err
 }

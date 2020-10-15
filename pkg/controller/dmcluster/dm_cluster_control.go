@@ -42,11 +42,9 @@ func NewDefaultDMClusterControl(
 	masterMemberManager manager.DMManager,
 	workerMemberManager manager.DMManager,
 	reclaimPolicyManager manager.DMManager,
-	//metaManager manager.DMManager,
 	orphanPodsCleaner member.OrphanPodsCleaner,
 	pvcCleaner member.PVCCleanerInterface,
 	pvcResizer member.PVCResizerInterface,
-	podRestarter member.PodRestarter,
 	conditionUpdater DMClusterConditionUpdater,
 	recorder record.EventRecorder) ControlInterface {
 	return &defaultDMClusterControl{
@@ -57,7 +55,6 @@ func NewDefaultDMClusterControl(
 		//metaManager,
 		orphanPodsCleaner,
 		pvcCleaner,
-		podRestarter,
 		pvcResizer,
 		conditionUpdater,
 		recorder,
@@ -72,7 +69,6 @@ type defaultDMClusterControl struct {
 	//metaManager       manager.DMManager
 	orphanPodsCleaner member.OrphanPodsCleaner
 	pvcCleaner        member.PVCCleanerInterface
-	podRestarter      member.PodRestarter
 	pvcResizer        member.PVCResizerInterface
 	conditionUpdater  DMClusterConditionUpdater
 	recorder          record.EventRecorder
@@ -138,11 +134,6 @@ func (dcc *defaultDMClusterControl) updateDMCluster(dc *v1alpha1.DMCluster) erro
 		}
 	}
 
-	// sync all the pods which need to be restarted
-	if err := dcc.podRestarter.Sync(dc); err != nil {
-		return err
-	}
-
 	// works that should do to making the dm-master cluster current state match the desired state:
 	//   - create or update the dm-master service
 	//   - create or update the dm-master headless service
@@ -199,3 +190,26 @@ func (dcc *defaultDMClusterControl) updateDMCluster(dc *v1alpha1.DMCluster) erro
 	}
 	return errorutils.NewAggregate(errs)
 }
+
+var _ ControlInterface = &defaultDMClusterControl{}
+
+type FakeDMClusterControlInterface struct {
+	err error
+}
+
+func NewFakeDMClusterControlInterface() *FakeDMClusterControlInterface {
+	return &FakeDMClusterControlInterface{}
+}
+
+func (ftcc *FakeDMClusterControlInterface) SetUpdateDCError(err error) {
+	ftcc.err = err
+}
+
+func (ftcc *FakeDMClusterControlInterface) UpdateDMCluster(_ *v1alpha1.DMCluster) error {
+	if ftcc.err != nil {
+		return ftcc.err
+	}
+	return nil
+}
+
+var _ ControlInterface = &FakeDMClusterControlInterface{}

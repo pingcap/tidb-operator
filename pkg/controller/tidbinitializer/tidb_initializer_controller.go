@@ -17,25 +17,15 @@ import (
 	"fmt"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	kubeinformers "k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes"
-	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	perrors "github.com/pingcap/errors"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
-	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
@@ -43,58 +33,29 @@ import (
 
 // Controller syncs TidbInitializer
 type Controller struct {
-	cli      versioned.Interface
-	control  ControlInterface
-	tiLister listers.TidbInitializerLister
-	queue    workqueue.RateLimitingInterface
+	deps    *controller.Dependencies
+	control ControlInterface
+	queue   workqueue.RateLimitingInterface
 }
 
 // NewController creates a backup controller.
-func NewController(
-	kubeCli kubernetes.Interface,
-	cli versioned.Interface,
-	genericCli client.Client,
-	informerFactory informers.SharedInformerFactory,
-	kubeInformerFactory kubeinformers.SharedInformerFactory,
-) *Controller {
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(klog.Infof)
-	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
-		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
-	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tidbinitializer"})
-
-	tidbInitializerInformer := informerFactory.Pingcap().V1alpha1().TidbInitializers()
-	tidbClusterInformer := informerFactory.Pingcap().V1alpha1().TidbClusters()
-	jobInformer := kubeInformerFactory.Batch().V1().Jobs()
-	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
-
-	tic := &Controller{
-		cli: cli,
-		control: NewDefaultTidbInitializerControl(
-			recorder,
-			member.NewTiDBInitManager(
-				jobInformer.Lister(),
-				genericCli,
-				tidbInitializerInformer.Lister(),
-				tidbClusterInformer.Lister(),
-				typedControl,
-			),
-		),
-		tiLister: tidbInitializerInformer.Lister(),
-		queue: workqueue.NewNamedRateLimitingQueue(
-			workqueue.DefaultControllerRateLimiter(),
-			"tidbinitializer",
-		),
+func NewController(deps *controller.Dependencies) *Controller {
+	c := &Controller{
+		deps:    deps,
+		control: NewDefaultTidbInitializerControl(member.NewTiDBInitManager(deps)),
+		queue:   workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "tidbinitializer"),
 	}
 
-	controller.WatchForObject(tidbInitializerInformer.Informer(), tic.queue)
+	tidbInitializerInformer := deps.InformerFactory.Pingcap().V1alpha1().TidbInitializers()
+	jobInformer := deps.KubeInformerFactory.Batch().V1().Jobs()
+	controller.WatchForObject(tidbInitializerInformer.Informer(), c.queue)
 	m := make(map[string]string)
 	m[label.ComponentLabelKey] = label.InitJobLabelVal
-	controller.WatchForController(jobInformer.Informer(), tic.queue, func(ns, name string) (runtime.Object, error) {
-		return tic.tiLister.TidbInitializers(ns).Get(name)
+	controller.WatchForController(jobInformer.Informer(), c.queue, func(ns, name string) (runtime.Object, error) {
+		return c.deps.TiDBInitializerLister.TidbInitializers(ns).Get(name)
 	}, m)
 
-	return tic
+	return c
 }
 
 // Run run workers
@@ -149,7 +110,7 @@ func (tic *Controller) sync(key string) error {
 	if err != nil {
 		return err
 	}
-	ti, err := tic.tiLister.TidbInitializers(ns).Get(name)
+	ti, err := tic.deps.TiDBInitializerLister.TidbInitializers(ns).Get(name)
 	if errors.IsNotFound(err) {
 		klog.Infof("TiDBInitializer %v has been deleted", key)
 		return nil

@@ -15,10 +15,8 @@ package tidbmonitor
 
 import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/monitor"
 	"k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/client-go/tools/record"
 )
 
 // ControlInterface reconciles TidbMonitor
@@ -28,13 +26,11 @@ type ControlInterface interface {
 }
 
 // NewDefaultTidbMonitorControl returns a new instance of the default TidbMonitor ControlInterface
-func NewDefaultTidbMonitorControl(recorder record.EventRecorder, ctrl controller.TypedControlInterface, monitorManager monitor.MonitorManager) ControlInterface {
-	return &defaultTidbMonitorControl{recorder, ctrl, monitorManager}
+func NewDefaultTidbMonitorControl(monitorManager monitor.MonitorManager) ControlInterface {
+	return &defaultTidbMonitorControl{monitorManager: monitorManager}
 }
 
 type defaultTidbMonitorControl struct {
-	recorder       record.EventRecorder
-	typedControl   controller.TypedControlInterface
 	monitorManager monitor.MonitorManager
 }
 
@@ -47,7 +43,6 @@ func (tmc *defaultTidbMonitorControl) ReconcileTidbMonitor(tm *v1alpha1.TidbMoni
 }
 
 func (tmc *defaultTidbMonitorControl) reconcileTidbMonitor(tm *v1alpha1.TidbMonitor) error {
-
 	return tmc.monitorManager.SyncMonitor(tm)
 }
 

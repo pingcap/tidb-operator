@@ -20,95 +20,46 @@ import (
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/backup"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
-	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	kubeinformers "k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes"
-	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
 )
 
 // Controller controls backup.
 type Controller struct {
-	// kubernetes client interface
-	kubeClient kubernetes.Interface
-	// operator client interface
-	cli versioned.Interface
+	deps *controller.Dependencies
 	// control returns an interface capable of syncing a backup.
 	// Abstracted out for testing.
 	control ControlInterface
-	// backupLister is able to list/get backup from a shared informer's store
-	backupLister listers.BackupLister
-	// backupListerSynced returns true if the backup shared informer has synced at least once
-	backupListerSynced cache.InformerSynced
 	// backups that need to be synced.
 	queue workqueue.RateLimitingInterface
 }
 
 // NewController creates a backup controller.
-func NewController(
-	kubeCli kubernetes.Interface,
-	cli versioned.Interface,
-	informerFactory informers.SharedInformerFactory,
-	kubeInformerFactory kubeinformers.SharedInformerFactory,
-) *Controller {
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(klog.Infof)
-	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
-		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
-	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "backup"})
-
-	backupInformer := informerFactory.Pingcap().V1alpha1().Backups()
-	tcInformer := informerFactory.Pingcap().V1alpha1().TidbClusters()
-	jobInformer := kubeInformerFactory.Batch().V1().Jobs()
-	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
-	statusUpdater := controller.NewRealBackupConditionUpdater(cli, backupInformer.Lister(), recorder)
-	jobControl := controller.NewRealJobControl(kubeCli, recorder)
-	pvcControl := controller.NewRealGeneralPVCControl(kubeCli, recorder)
-	backupCleaner := backup.NewBackupCleaner(statusUpdater, kubeCli, jobInformer.Lister(), jobControl)
-
-	bkc := &Controller{
-		kubeClient: kubeCli,
-		cli:        cli,
-		control: NewDefaultBackupControl(
-			cli,
-			backup.NewBackupManager(
-				backupCleaner,
-				statusUpdater,
-				kubeCli,
-				jobInformer.Lister(),
-				jobControl,
-				pvcInformer.Lister(),
-				tcInformer.Lister(),
-				pvcControl,
-			),
-		),
+func NewController(deps *controller.Dependencies) *Controller {
+	c := &Controller{
+		deps:    deps,
+		control: NewDefaultBackupControl(deps.Clientset, backup.NewBackupManager(deps)),
 		queue: workqueue.NewNamedRateLimitingQueue(
 			workqueue.DefaultControllerRateLimiter(),
 			"backup",
 		),
 	}
 
+	backupInformer := deps.InformerFactory.Pingcap().V1alpha1().Backups()
 	backupInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: bkc.updateBackup,
+		AddFunc: c.updateBackup,
 		UpdateFunc: func(old, cur interface{}) {
-			bkc.updateBackup(cur)
+			c.updateBackup(cur)
 		},
-		DeleteFunc: bkc.updateBackup,
+		DeleteFunc: c.updateBackup,
 	})
-	bkc.backupLister = backupInformer.Lister()
-	bkc.backupListerSynced = backupInformer.Informer().HasSynced
 
-	return bkc
+	return c
 }
 
 // Run runs the backup controller.
@@ -167,7 +118,7 @@ func (bkc *Controller) sync(key string) error {
 	if err != nil {
 		return err
 	}
-	backup, err := bkc.backupLister.Backups(ns).Get(name)
+	backup, err := bkc.deps.BackupLister.Backups(ns).Get(name)
 	if errors.IsNotFound(err) {
 		klog.Infof("Backup has been deleted %v", key)
 		return nil

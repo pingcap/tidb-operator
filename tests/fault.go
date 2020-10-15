@@ -295,7 +295,7 @@ func (fa *faultTriggerActions) StopKubeProxyOrDie() {
 
 // StartKubeProxy starts the kube-proxy service.
 func (fa *faultTriggerActions) StartKubeProxy() error {
-	klog.Infof("starting all kube-proxy pods")
+	klog.Info("starting all kube-proxy pods")
 	nodes := getAllK8sNodes(fa.cfg)
 	ds, err := fa.kubeCli.AppsV1().DaemonSets(metav1.NamespaceSystem).Get("kube-proxy", metav1.GetOptions{})
 	if err != nil {
