@@ -276,7 +276,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			isPodReady:    true,
 			hasSynced:     true,
 			pvcUpdateErr:  false,
-			errExpectFn:   errExpectNotNil,
+			errExpectFn:   errExpectNil,
 			changed:       false,
 		},
 		{
