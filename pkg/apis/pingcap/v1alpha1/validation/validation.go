@@ -518,7 +518,7 @@ func validateAdditionalContainers(containers []corev1.Container, fldPath *field.
 	for i, container := range containers {
 		idxPath := fldPath.Index(i)
 		if len(container.Image) == 0 {
-			allErrs = append(allErrs, field.Required(idxPath.Child("image"), ""))
+			allErrs = append(allErrs, field.Required(idxPath.Child("image"), "empty image"))
 		}
 	}
 
