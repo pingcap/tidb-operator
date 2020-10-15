@@ -302,6 +302,8 @@ spec:
       value: tiflash
 ```
 
+其他参数可以参考[集群配置文档](configure-a-tidb-cluster.md)进行配置。
+
 > **警告：**
 >
 > 由于 TiDB Operator 会按照 `storageClaims` 列表中的配置**按顺序**自动挂载 PV，如果需要为 TiFlash 增加磁盘，请确保只在列表原有配置**末尾添加**，并且**不能**修改列表中原有配置的顺序。

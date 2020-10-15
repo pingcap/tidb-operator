@@ -41,6 +41,8 @@ spec:
       storageClassName: local-storage
 ```
 
+其他参数可以参考[集群配置文档](configure-a-tidb-cluster.md)进行配置。
+
 值得注意的是，如果需要部署企业版的 TiFlash，需要将 db.yaml 中 `spec.tiflash.baseImage` 配置为企业版镜像，格式为 `pingcap/tiflash-enterprise`。
 
 例如:

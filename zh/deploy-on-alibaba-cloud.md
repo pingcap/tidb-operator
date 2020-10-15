@@ -189,6 +189,8 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-on-alibaba-cloud/']
           value: TIDB_CLUSTER_NAME-tiflash
     ```
 
+    其他参数可以参考[集群配置文档](configure-a-tidb-cluster.md)进行配置。
+
     根据实际情况修改 `replicas`、`storageClaims[].resources.requests.storage`、`storageClassName`。
 
     > **警告：**
