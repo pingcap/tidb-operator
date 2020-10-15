@@ -188,6 +188,28 @@ spec:
       cpu: 1
 ```
 
+自 v1.1.6 版本起支持透传 TOML 配置给组件:
+
+```yaml
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: basic
+spec:
+....
+  tidb:
+    image: pingcap/tidb:v4.0.6
+    imagePullPolicy: IfNotPresent
+    replicas: 1
+    service:
+      type: ClusterIP
+    config: |
+      split-table = true
+      oom-action = "log"
+    requests:
+      cpu: 1
+```
+
 获取所有可以配置的 TiDB 配置参数，请参考 [TiDB 配置文档](https://pingcap.com/docs-cn/stable/tidb-configuration-file/)。
 
 > **注意：**
@@ -208,6 +230,25 @@ spec:
   tikv:
     image: pingcap/tikv:v4.0.6
     config: {}
+    replicas: 1
+    requests:
+      cpu: 2
+```
+
+自 v1.1.6 版本起支持透传 TOML 配置给组件:
+
+```yaml
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: basic
+spec:
+....
+  tikv:
+    image: pingcap/tikv:v4.0.6
+    config: |
+      #  [storage]
+      #    reserve-space = "2MB"
     replicas: 1
     requests:
       cpu: 2
@@ -235,6 +276,22 @@ spec:
     config:
       lease: 3
       enable-prevote: true
+```
+
+自 v1.1.6 版本起支持透传 TOML 配置给组件:
+
+```yaml
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: basic
+spec:
+.....
+  pd:
+    image: pingcap/pd:v4.0.6
+    config: |
+      lease = 3
+      enable-prevote = true
 ```
 
 获取所有可以配置的 PD 配置参数，请参考 [PD 配置文档](https://pingcap.com/docs-cn/stable/pd-configuration-file/)
@@ -265,6 +322,28 @@ spec:
           level: information
           errorlog: "/data0/logs/error.log"
           log: "/data0/logs/server.log"
+```
+
+自 v1.1.6 版本起支持透传 TOML 配置给组件:
+
+```yaml
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: basic
+spec:
+  ...
+  tiflash:
+    config:
+      config: |
+        [flash]
+          [flash.flash_cluster]
+            log = "/data0/logs/flash_cluster_manager.log"
+        [logger]
+          count = 10
+          level = "information"
+          errorlog = "/data0/logs/error.log"
+          log = "/data0/logs/server.log"
 ```
 
 获取所有可以配置的 TiFlash 配置参数，请参考 [TiFlash 配置文档](https://pingcap.com/docs-cn/stable/tiflash/tiflash-configuration/)

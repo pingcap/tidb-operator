@@ -196,6 +196,28 @@ spec:
       cpu: 1
 ```
 
+Since v1.1.6, TiDB Operator supports passing raw TOML configuration to the component:
+
+```yaml
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: basic
+spec:
+....
+  tidb:
+    image: pingcap/tidb:v4.0.6
+    imagePullPolicy: IfNotPresent
+    replicas: 1
+    service:
+      type: ClusterIP
+    config: |
+      split-table = true
+      oom-action = "log"
+    requests:
+      cpu: 1
+```
+
 For all the configurable parameters of TiDB, refer to [TiDB Configuration File](https://pingcap.com/docs/stable/reference/configuration/tidb-server/configuration-file/).
 
 > **Note:**
@@ -220,6 +242,25 @@ spec:
     config:
       log-level: "info"
       slow-log-threshold: "1s"
+    replicas: 1
+    requests:
+      cpu: 2
+```
+
+Since v1.1.6, TiDB Operator supports passing raw TOML configuration to the component:
+
+```yaml
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: basic
+spec:
+....
+  tikv:
+    image: pingcap/tikv:v4.0.6
+    config: |
+      #  [storage]
+      #    reserve-space = "2MB"
     replicas: 1
     requests:
       cpu: 2
@@ -251,6 +292,22 @@ spec:
       enable-prevote: true
 ```
 
+Since v1.1.6, TiDB Operator supports passing raw TOML configuration to the component:
+
+```yaml
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: basic
+spec:
+.....
+  pd:
+    image: pingcap/pd:v4.0.6
+    config: |
+      lease = 3
+      enable-prevote = true
+```
+
 For all the configurable parameters of PD, refer to [PD Configuration File](https://pingcap.com/docs/stable/reference/configuration/pd-server/configuration-file/).
 
 > **Note:**
@@ -276,6 +333,28 @@ spec:
         logger:
           count: 5
           level: information
+```
+
+Since v1.1.6, TiDB Operator supports passing raw TOML configuration to the component:
+
+```yaml
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: basic
+spec:
+  ...
+  tiflash:
+    config:
+      config: |
+        [flash]
+          [flash.flash_cluster]
+            log = "/data0/logs/flash_cluster_manager.log"
+        [logger]
+          count = 10
+          level = "information"
+          errorlog = "/data0/logs/error.log"
+          log = "/data0/logs/server.log"
 ```
 
 For all the configurable parameters of TiFlash, refer to [TiFlash Configuration File](https://pingcap.com/docs/stable/tiflash/tiflash-configuration/).

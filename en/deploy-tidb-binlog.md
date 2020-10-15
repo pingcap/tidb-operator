@@ -40,6 +40,25 @@ TiDB Binlog is disabled in the TiDB cluster by default. To create a TiDB cluster
           heartbeat-interval: 2
     ```
 
+    Since v1.1.6, TiDB Operator supports passing raw TOML configuration to the component:
+
+    ```yaml
+    spec:
+      ...
+      pump:
+        baseImage: pingcap/tidb-binlog
+        version: v4.0.6
+        replicas: 1
+        storageClassName: local-storage
+        requests:
+          storage: 30Gi
+        schedulerName: default-scheduler
+        config: |
+          addr = "0.0.0.0:8250"
+          gc = 7
+          heartbeat-interval = 2
+    ```
+
     Edit `version`, `replicas`, `storageClassName`, and `requests.storage` according to your cluster.
 
     To deploy Enterprise Edition of Pump, edit the YAML file above to set `spec.pump.baseImage` to the enterprise image (`pingcap/tidb-binlog-enterprise`).

@@ -38,6 +38,25 @@ spec
       heartbeat-interval: 2
 ```
 
+自 v1.1.6 版本起支持透传 TOML 配置给组件:
+
+```yaml
+spec
+  ...
+  pump:
+    baseImage: pingcap/tidb-binlog
+    version: v4.0.6
+    replicas: 1
+    storageClassName: local-storage
+    requests:
+      storage: 30Gi
+    schedulerName: default-scheduler
+    config: |
+      addr = "0.0.0.0:8250"
+      gc = 7
+      heartbeat-interval = 2
+```
+
 按照集群实际情况修改 `version`、`replicas`、`storageClassName`、`requests.storage` 等配置。
 
 值得注意的是，如果需要部署企业版的 Pump，需要将 上述 yaml 中 `spec.pump.baseImage` 配置为企业版镜像，格式为 `pingcap/tidb-binlog-enterprise`。
@@ -215,7 +234,7 @@ spec:
     ```shell
     helm install pingcap/tidb-drainer --name=${release_name} --namespace=${namespace} --version=${chart_version} -f values.yaml
     ```
- 
+
     如果服务器没有外网，请参考 [部署 TiDB 集群](deploy-on-general-kubernetes.md#部署-tidb-集群) 在有外网的机器上将用到的 Docker 镜像下载下来并上传到服务器上。
 
     > **注意：**
@@ -410,7 +429,7 @@ spec:
     如果不再使用 Drainer，使用 `kubectl delete pvc data-${drainer_node_id} -n ${namespace}` 指令删除该 Drainer 的 PVC 资源。
 
 3. (可选项) 强制下线 Drainer
-    
+
     如果在下线 Drainer 节点时遇到下线失败的情况，即执行下线操作后仍未看到 Drainer pod 输出可以删除 pod 的日志，可以先进行步骤 2 删除 Drainer Pod 后，再运行下述指令标注 Drainer 状态为 offline：
     
     没有开启 TLS 时，使用下述指令标注状态为 offline。
