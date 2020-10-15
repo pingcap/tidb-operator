@@ -30,8 +30,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	v1 "k8s.io/client-go/listers/apps/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 )
 
@@ -42,32 +40,13 @@ const (
 )
 
 type pumpMemberManager struct {
-	setControl   controller.StatefulSetControlInterface
-	svcControl   controller.ServiceControlInterface
-	typedControl controller.TypedControlInterface
-	cmControl    controller.ConfigMapControlInterface
-	setLister    v1.StatefulSetLister
-	svcLister    corelisters.ServiceLister
-	podLister    corelisters.PodLister
+	deps *controller.Dependencies
 }
 
 // NewPumpMemberManager returns a controller to reconcile pump clusters
-func NewPumpMemberManager(
-	setControl controller.StatefulSetControlInterface,
-	svcControl controller.ServiceControlInterface,
-	typedControl controller.TypedControlInterface,
-	cmControl controller.ConfigMapControlInterface,
-	setLister v1.StatefulSetLister,
-	svcLister corelisters.ServiceLister,
-	podLister corelisters.PodLister) manager.Manager {
+func NewPumpMemberManager(deps *controller.Dependencies) manager.Manager {
 	return &pumpMemberManager{
-		setControl,
-		svcControl,
-		typedControl,
-		cmControl,
-		setLister,
-		svcLister,
-		podLister,
+		deps: deps,
 	}
 }
 
@@ -83,7 +62,7 @@ func (pmm *pumpMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 
 //syncPumpStatefulSetForTidbCluster sync statefulset status of pump to tidbcluster
 func (pmm *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.TidbCluster) error {
-	oldPumpSetTemp, err := pmm.setLister.StatefulSets(tc.Namespace).Get(controller.PumpMemberName(tc.Name))
+	oldPumpSetTemp, err := pmm.deps.StatefulSetLister.StatefulSets(tc.Namespace).Get(controller.PumpMemberName(tc.Name))
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("syncPumpStatefulSetForTidbCluster: failed to get sts %s for cluster %s/%s, error: %s", controller.PumpMemberName(tc.Name), tc.GetNamespace(), tc.GetName(), err)
 	}
@@ -114,7 +93,7 @@ func (pmm *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		if err != nil {
 			return err
 		}
-		return pmm.setControl.CreateStatefulSet(tc, newPumpSet)
+		return pmm.deps.StatefulSetControl.CreateStatefulSet(tc, newPumpSet)
 	}
 
 	// Wait for PD & TiKV upgrading done
@@ -122,7 +101,7 @@ func (pmm *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		return nil
 	}
 
-	return updateStatefulSet(pmm.setControl, tc, newPumpSet, oldPumpSet)
+	return updateStatefulSet(pmm.deps.StatefulSetControl, tc, newPumpSet, oldPumpSet)
 }
 
 func (pmm *pumpMemberManager) syncTiDBClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
@@ -157,13 +136,13 @@ func (pmm *pumpMemberManager) syncHeadlessService(tc *v1alpha1.TidbCluster) erro
 	}
 
 	newSvc := getNewPumpHeadlessService(tc)
-	oldSvc, err := pmm.svcLister.Services(newSvc.Namespace).Get(newSvc.Name)
+	oldSvc, err := pmm.deps.ServiceLister.Services(newSvc.Namespace).Get(newSvc.Name)
 	if errors.IsNotFound(err) {
 		err = controller.SetServiceLastAppliedConfigAnnotation(newSvc)
 		if err != nil {
 			return err
 		}
-		return pmm.svcControl.CreateService(tc, newSvc)
+		return pmm.deps.ServiceControl.CreateService(tc, newSvc)
 	}
 	if err != nil {
 		return fmt.Errorf("syncHeadlessService: failed to get svc %s/%s for cluster %s/%s, error %s", newSvc.Namespace, newSvc.Name, tc.GetNamespace(), tc.GetName(), err)
@@ -187,7 +166,7 @@ func (pmm *pumpMemberManager) syncHeadlessService(tc *v1alpha1.TidbCluster) erro
 			svc.OwnerReferences = newSvc.OwnerReferences
 			svc.Labels = newSvc.Labels
 		}
-		_, err = pmm.svcControl.UpdateService(tc, &svc)
+		_, err = pmm.deps.ServiceControl.UpdateService(tc, &svc)
 		return err
 	}
 	return nil
@@ -204,20 +183,19 @@ func (pmm *pumpMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *appsv
 	if err != nil {
 		return nil, err
 	}
-	// In-place update should pick the name of currently in-use configmap if exists to avoid rolling-update if:
-	//   - user switch strategy from RollingUpdate to In-place
-	//   - the statefulset and configmap is created by other clients (e.g. helm)
-	if set != nil && basePumpSpec.ConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyInPlace {
-		inUseName := FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
+
+	var inUseName string
+	if set != nil {
+		inUseName = FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
 			return strings.HasPrefix(name, controller.PumpMemberName(tc.Name))
 		})
-		// find an in-use configmap, will update it in-place
-		if inUseName != "" {
-			newCm.Name = inUseName
-		}
 	}
 
-	return pmm.typedControl.CreateOrUpdateConfigMap(tc, newCm)
+	err = updateConfigMapIfNeed(pmm.deps.ConfigMapLister, basePumpSpec.ConfigUpdateStrategy(), inUseName, newCm)
+	if err != nil {
+		return nil, err
+	}
+	return pmm.deps.TypedControl.CreateOrUpdateConfigMap(tc, newCm)
 }
 
 func getNewPumpHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {
@@ -248,7 +226,7 @@ func getNewPumpHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {
 // getNewPumpConfigMap returns a configMap for pump
 func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 
-	basePumpSpec, createPump := tc.BasePumpSpec()
+	_, createPump := tc.BasePumpSpec()
 	if !createPump {
 		return nil, nil
 	}
@@ -277,14 +255,6 @@ func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		"pump-config": confTextStr,
 	}
 
-	if basePumpSpec.ConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyRollingUpdate {
-		sum, err := Sha256Sum(data)
-		if err != nil {
-			return nil, err
-		}
-		suffix := fmt.Sprintf("%x", sum)[0:7]
-		name = fmt.Sprintf("%s-%s", name, suffix)
-	}
 	objMeta.Name = name
 
 	return &corev1.ConfigMap{
@@ -506,7 +476,7 @@ func (pmm *pumpMemberManager) pumpStatefulSetIsUpgrading(set *apps.StatefulSet, 
 	if err != nil {
 		return false, err
 	}
-	pumpPods, err := pmm.podLister.Pods(tc.GetNamespace()).List(selector)
+	pumpPods, err := pmm.deps.PodLister.Pods(tc.GetNamespace()).List(selector)
 	if err != nil {
 		return false, fmt.Errorf("pumpStatefulSetIsUpgrading: failed to list pods for cluster %s/%s, selector %s, error: %s", tc.GetNamespace(), tc.GetName(), selector, err)
 	}
@@ -530,13 +500,13 @@ func NewFakePumpMemberManager() *FakePumpMemberManager {
 	return &FakePumpMemberManager{}
 }
 
-func (ftmm *FakePumpMemberManager) SetSyncError(err error) {
-	ftmm.err = err
+func (m *FakePumpMemberManager) SetSyncError(err error) {
+	m.err = err
 }
 
-func (ftmm *FakePumpMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
-	if ftmm.err != nil {
-		return ftmm.err
+func (m *FakePumpMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
+	if m.err != nil {
+		return m.err
 	}
 	return nil
 }

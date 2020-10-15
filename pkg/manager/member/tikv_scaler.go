@@ -22,25 +22,19 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
 type tikvScaler struct {
 	generalScaler
-	podLister corelisters.PodLister
 }
 
 // NewTiKVScaler returns a tikv Scaler
-func NewTiKVScaler(pdControl pdapi.PDControlInterface,
-	pvcLister corelisters.PersistentVolumeClaimLister,
-	pvcControl controller.PVCControlInterface,
-	podLister corelisters.PodLister) Scaler {
-	return &tikvScaler{generalScaler{pdControl, pvcLister, pvcControl}, podLister}
+func NewTiKVScaler(deps *controller.Dependencies) Scaler {
+	return &tikvScaler{generalScaler: generalScaler{deps: deps}}
 }
 
 func (tsd *tikvScaler) Scale(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
@@ -79,12 +73,12 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 	klog.Infof("scaling in tikv statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
 	// We need remove member from cluster before reducing statefulset replicas
 	podName := ordinalPodName(v1alpha1.TiKVMemberType, tcName, ordinal)
-	pod, err := tsd.podLister.Pods(ns).Get(podName)
+	pod, err := tsd.deps.PodLister.Pods(ns).Get(podName)
 	if err != nil {
 		return fmt.Errorf("tikvScaler.ScaleIn: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
 	}
 
-	if controller.PodWebhookEnabled {
+	if tsd.deps.CLIConfig.PodWebhookEnabled {
 		setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 		return nil
 	}
@@ -97,7 +91,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 				return err
 			}
 			if state != v1alpha1.TiKVStateOffline {
-				if err := controller.GetPDClient(tsd.pdControl, tc).DeleteStore(id); err != nil {
+				if err := controller.GetPDClient(tsd.deps.PDControl, tc).DeleteStore(id); err != nil {
 					klog.Errorf("tikv scale in: failed to delete store %d, %v", id, err)
 					return err
 				}
@@ -117,7 +111,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 			klog.Infof("TiKV %s/%s store %d becomes tombstone", ns, podName, id)
 
 			pvcName := ordinalPVCName(v1alpha1.TiKVMemberType, setName, ordinal)
-			pvc, err := tsd.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
+			pvc, err := tsd.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
 			if err != nil {
 				return fmt.Errorf("tikvScaler.ScaleIn: failed to get pvc %s for cluster %s/%s, error: %s", pvcName, ns, tcName, err)
 			}
@@ -126,7 +120,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 			}
 			now := time.Now().Format(time.RFC3339)
 			pvc.Annotations[label.AnnPVCDeferDeleting] = now
-			_, err = tsd.pvcControl.UpdatePVC(tc, pvc)
+			_, err = tsd.deps.PVCControl.UpdatePVC(tc, pvc)
 			if err != nil {
 				klog.Errorf("tikv scale in: failed to set pvc %s/%s annotation: %s to %s",
 					ns, pvcName, label.AnnPVCDeferDeleting, now)
@@ -148,11 +142,11 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 	//    In this situation we should delete this TiKV pod immediately to avoid blocking the subsequent operations.
 	if !podutil.IsPodReady(pod) {
 		pvcName := ordinalPVCName(v1alpha1.TiKVMemberType, setName, ordinal)
-		pvc, err := tsd.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
+		pvc, err := tsd.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
 		if err != nil {
 			return fmt.Errorf("tikvScaler.ScaleIn: failed to get pvc %s for cluster %s/%s, error: %s", pvcName, ns, tcName, err)
 		}
-		safeTimeDeadline := pod.CreationTimestamp.Add(5 * controller.ResyncDuration)
+		safeTimeDeadline := pod.CreationTimestamp.Add(5 * tsd.deps.CLIConfig.ResyncDuration)
 		if time.Now().Before(safeTimeDeadline) {
 			// Wait for 5 resync periods to ensure that the following situation does not occur:
 			//
@@ -169,7 +163,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 		}
 		now := time.Now().Format(time.RFC3339)
 		pvc.Annotations[label.AnnPVCDeferDeleting] = now
-		_, err = tsd.pvcControl.UpdatePVC(tc, pvc)
+		_, err = tsd.deps.PVCControl.UpdatePVC(tc, pvc)
 		if err != nil {
 			klog.Errorf("pod %s not ready, tikv scale in: failed to set pvc %s/%s annotation: %s to %s",
 				podName, ns, pvcName, label.AnnPVCDeferDeleting, now)

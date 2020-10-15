@@ -16,7 +16,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -51,23 +50,6 @@ var (
 
 	// tidbMonitorControllerkind cotnains the schema.GroupVersionKind for TidbMonitor controller type.
 	tidbMonitorControllerkind = v1alpha1.SchemeGroupVersion.WithKind("TidbMonitor")
-
-	// TidbBackupManagerImage is the image of tidb backup manager tool
-	TidbBackupManagerImage string
-
-	// ClusterScoped controls whether operator should manage kubernetes cluster wide TiDB clusters
-	ClusterScoped bool
-
-	// TestMode defines whether tidb operator run in test mode, test mode is only open when test
-	TestMode bool
-	// ResyncDuration is the resync time of informer
-	ResyncDuration time.Duration
-
-	// TidbDiscoveryImage is the image of tidb discovery service
-	TidbDiscoveryImage string
-
-	// PodWebhookEnabled is the key to indicate whether pod admission webhook is set up.
-	PodWebhookEnabled bool
 )
 
 // RequeueError is used to requeue the item, this error type should't be considered as a real error

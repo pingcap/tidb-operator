@@ -399,11 +399,9 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectError(err, "Could not set instance label with value other than cluster name")
 
 			err = controller.GuaranteedUpdate(genericCli, newTC, func() error {
-				newTC.Spec.PD.Config = &v1alpha1.PDConfig{
-					Replication: &v1alpha1.PDReplicationConfig{
-						MaxReplicas: func() *uint64 { i := uint64(5); return &i }(),
-					},
-				}
+				c := v1alpha1.NewPDConfig()
+				c.Set("replication.max-replicas", 5)
+				newTC.Spec.PD.Config = c
 				return nil
 			})
 			framework.ExpectError(err, "PD replication config is immutable through CR")

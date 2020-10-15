@@ -35,7 +35,7 @@ func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 	if tac.Status.TiDB == nil {
 		tac.Status.TiDB = &v1alpha1.TidbAutoScalerStatus{}
 	}
-	sts, err := am.stsLister.StatefulSets(tc.Namespace).Get(operatorUtils.GetStatefulSetName(tc, v1alpha1.TiDBMemberType))
+	sts, err := am.deps.StatefulSetLister.StatefulSets(tc.Namespace).Get(operatorUtils.GetStatefulSetName(tc, v1alpha1.TiDBMemberType))
 	if err != nil {
 		return err
 	}
@@ -50,7 +50,7 @@ func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 			return err
 		}
 	} else {
-		targetReplicas, err = query.ExternalService(tc, v1alpha1.TiDBMemberType, tac.Spec.TiDB.ExternalEndpoint, am.kubecli)
+		targetReplicas, err = query.ExternalService(tc, v1alpha1.TiDBMemberType, tac.Spec.TiDB.ExternalEndpoint, am.deps.KubeClientset)
 		if err != nil {
 			klog.Errorf("tac[%s/%s] 's query to the external endpoint got error: %v", tac.Namespace, tac.Name, err)
 			return err
