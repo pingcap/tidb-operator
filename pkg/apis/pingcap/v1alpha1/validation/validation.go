@@ -193,6 +193,7 @@ func validateComponentSpec(spec *v1alpha1.ComponentSpec, fldPath *field.Path) fi
 	allErrs := field.ErrorList{}
 	// TODO validate other fields
 	allErrs = append(allErrs, validateEnv(spec.Env, fldPath.Child("env"))...)
+	allErrs = append(allErrs, validateAdditionalContainers(spec.AdditionalContainers, fldPath.Child("additionalContainers"))...)
 	return allErrs
 }
 
@@ -481,3 +482,29 @@ func validateTimeDurationStr(timeStr *string, fldPath *field.Path) field.ErrorLi
 	}
 	return allErrs
 }
+<<<<<<< HEAD
+=======
+
+// clusterVersionLessThan2 makes sure that deployed dm cluster version not to be v1.0.x
+func clusterVersionLessThan2(version string) (bool, error) {
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		return false, err
+	}
+
+	return v.Major() < 2, nil
+}
+
+func validateAdditionalContainers(containers []corev1.Container, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	for i, container := range containers {
+		idxPath := fldPath.Index(i)
+		if len(container.Image) == 0 {
+			allErrs = append(allErrs, field.Required(idxPath.Child("image"), "empty image"))
+		}
+	}
+
+	return allErrs
+}
+>>>>>>> af958526... validate additionalContainers.image to make sure it is not empty (#3378)
