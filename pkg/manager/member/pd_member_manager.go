@@ -759,12 +759,9 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	if podSpec.ServiceAccountName == "" {
 		podSpec.ServiceAccountName = tc.Spec.ServiceAccount
 	}
-<<<<<<< HEAD
-
-=======
+	
 	podSpec.SecurityContext = podSecurityContext
 	podSpec.InitContainers = initContainers
->>>>>>> 866957b0... add sysctl init container for pd (#3347)
 	pdSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            setName,
