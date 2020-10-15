@@ -246,7 +246,7 @@ func (tfmm *tiflashMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *a
 		})
 	}
 
-	err = updateConfigMapIfNeed(tfmm.deps.ConfigMapLister, tc.BaseTiDBSpec().ConfigUpdateStrategy(), inUseName, newCm)
+	err = updateConfigMapIfNeed(tfmm.deps.ConfigMapLister, tc.BaseTiFlashSpec().ConfigUpdateStrategy(), inUseName, newCm)
 	if err != nil {
 		return nil, err
 	}
