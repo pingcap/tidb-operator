@@ -54,7 +54,7 @@ require (
 	github.com/pingcap/advanced-statefulset/client v1.16.0
 	github.com/pingcap/check v0.0.0-20190102082844-67f458068fc8 // indirect
 	github.com/pingcap/errors v0.11.0
-	github.com/pingcap/kvproto v0.0.0-20191217072959-393e6c0fd4b7
+	github.com/pingcap/kvproto v0.0.0-20200927054727-1290113160f0
 	github.com/pingcap/tidb v2.1.0-beta+incompatible
 	github.com/prometheus/client_golang v0.9.2
 	github.com/prometheus/common v0.0.0-20181126121408-4724e9255275
