@@ -120,10 +120,12 @@ func (tsd *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, new
 		}
 	}
 	if upNumber < MinimalUpStateOfStores {
-		return fmt.Errorf("the number of stores in Up state of TidbCluster [%s/%s] is %d, less than %d, can't scale in TiKV, podname %s ", meta.GetNamespace(), meta.GetName(), upNumber, MinimalUpStateOfStores, podName)
+		klog.Errorf("the number of stores in Up state of TidbCluster [%s/%s] is %d, less than %d, can't scale in TiKV, podname %s ", meta.GetNamespace(), meta.GetName(), upNumber, MinimalUpStateOfStores, podName)
+		return nil
 	} else if upNumber == MinimalUpStateOfStores {
 		if storeState == v1alpha1.TiKVStateUp {
-			return fmt.Errorf("can't scale in TiKV of TidbCluster [%s/%s], cause the number of up stores is %d, and the store in Pod %s which is going to be deleted is up too", meta.GetNamespace(), meta.GetName(), MinimalUpStateOfStores, podName)
+			klog.Errorf("can't scale in TiKV of TidbCluster [%s/%s], cause the number of up stores is %d, and the store in Pod %s which is going to be deleted is up too", meta.GetNamespace(), meta.GetName(), MinimalUpStateOfStores, podName)
+			return nil
 		}
 	}
 
