@@ -1904,6 +1904,10 @@ spec:
               required:
               - replicas
               type: object
+            pdAddresses:
+              items:
+                type: string
+              type: array
             priorityClassName:
               type: string
             pump:
