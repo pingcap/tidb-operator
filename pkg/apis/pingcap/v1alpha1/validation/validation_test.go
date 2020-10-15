@@ -595,3 +595,40 @@ func TestValidateEvictLeaderTimeout(t *testing.T) {
 		}
 	}
 }
+
+func TestValidatePDAddresses(t *testing.T) {
+	successCases := [][]string{
+		{
+			"http://1.2.3.4:2379",
+			"http://test-pd-0.test-pd-peer.default.svc:2380",
+			"http://test:2379",
+		},
+	}
+
+	for _, c := range successCases {
+		errs := validatePDAddresses(c, field.NewPath("pdAddresses"))
+		if len(errs) > 0 {
+			t.Errorf("expected success: %v", errs)
+		}
+	}
+
+	errorCases := [][]string{
+		{
+			"https://1.2.3.4:2379",
+		},
+		{
+			"http://1.2.3.4:2380",
+			"https://1.2.3.4:2379",
+		},
+		{
+			"test-pd-0.test-pd-peer.default.svc:2380",
+		},
+	}
+
+	for _, c := range errorCases {
+		errs := validatePDAddresses(c, field.NewPath("pdAddresses"))
+		if len(errs) == 0 {
+			t.Errorf("expected failure for %s", c)
+		}
+	}
+}
