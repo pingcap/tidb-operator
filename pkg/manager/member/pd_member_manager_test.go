@@ -951,11 +951,8 @@ func testAdditionalVolumes(t *testing.T, additionalVolumes []corev1.Volume) func
 
 func TestGetNewPDSetForTidbCluster(t *testing.T) {
 	enable := true
-<<<<<<< HEAD
-=======
 	asNonRoot := true
 	privileged := true
->>>>>>> 866957b0... add sysctl init container for pd (#3347)
 	tests := []struct {
 		name    string
 		tc      v1alpha1.TidbCluster
@@ -1337,8 +1334,6 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 			},
 			testSts: testAdditionalVolumes(t, []corev1.Volume{{Name: "test", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}}}),
 		},
-<<<<<<< HEAD
-=======
 		{
 			name: "sysctl with no init container",
 			tc: v1alpha1.TidbCluster{
@@ -1688,7 +1683,6 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				g.Expect(sts.Spec.Template.Spec.SecurityContext).To(BeNil())
 			},
 		},
->>>>>>> 866957b0... add sysctl init container for pd (#3347)
 		// TODO add more tests
 	}
 
