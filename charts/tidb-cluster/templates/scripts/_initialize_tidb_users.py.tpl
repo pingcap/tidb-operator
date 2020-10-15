@@ -1,7 +1,22 @@
-import os, MySQLdb
+import os, sys, MySQLdb
 host = '{{ template "cluster.name" . }}-tidb'
 permit_host = {{ .Values.tidb.permitHost | default "%" | quote }}
 port = 4000
+{{- if .Values.tidb.passwordSecretName }}
+# We make the assumption if we can connect as the root user w/ the password,
+# that we have been run already. If so, exit
+with open(os.path.join("/etc/tidb/password", "root"), 'r') as f:
+    setup_complete = False
+    password = f.read()
+    try:
+        conn = MySQLdb.connect(host=host, port=port, user='root', password=password, auth_plugin='mysql_native_password', connect_timeout=5)
+        setup_complete = True
+    except:
+        pass
+    if setup_complete:
+        print("Init job completed successfully on previous run, exiting")
+        sys.exit(0)
+{{- end }}
 conn = MySQLdb.connect(host=host, port=port, user='root', connect_timeout=5)
 {{- if .Values.tidb.passwordSecretName }}
 password_dir = '/etc/tidb/password'
