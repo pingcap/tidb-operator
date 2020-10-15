@@ -482,18 +482,6 @@ func validateTimeDurationStr(timeStr *string, fldPath *field.Path) field.ErrorLi
 	}
 	return allErrs
 }
-<<<<<<< HEAD
-=======
-
-// clusterVersionLessThan2 makes sure that deployed dm cluster version not to be v1.0.x
-func clusterVersionLessThan2(version string) (bool, error) {
-	v, err := semver.NewVersion(version)
-	if err != nil {
-		return false, err
-	}
-
-	return v.Major() < 2, nil
-}
 
 func validateAdditionalContainers(containers []corev1.Container, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
@@ -507,4 +495,3 @@ func validateAdditionalContainers(containers []corev1.Container, fldPath *field.
 
 	return allErrs
 }
->>>>>>> af958526... validate additionalContainers.image to make sure it is not empty (#3378)
