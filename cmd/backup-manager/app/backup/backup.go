@@ -15,7 +15,6 @@ package backup
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -129,27 +128,4 @@ func constructOptions(backup *v1alpha1.Backup) ([]string, error) {
 	}
 	args = append(args, config.Options...)
 	return args, nil
-}
-
-// getBackupSize get the backup data size from remote
-func getBackupSize(backup *v1alpha1.Backup) (int64, error) {
-	var size int64
-	s, err := backupUtil.NewRemoteStorage(backup.Spec.StorageProvider)
-	if err != nil {
-		return size, err
-	}
-	defer s.Close()
-	ctx := context.Background()
-	iter := s.List(nil)
-	for {
-		obj, err := iter.Next(ctx)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return size, err
-		}
-		size += obj.Size
-	}
-	return size, nil
 }
