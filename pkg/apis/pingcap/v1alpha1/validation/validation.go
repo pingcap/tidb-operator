@@ -193,6 +193,7 @@ func validateComponentSpec(spec *v1alpha1.ComponentSpec, fldPath *field.Path) fi
 	allErrs := field.ErrorList{}
 	// TODO validate other fields
 	allErrs = append(allErrs, validateEnv(spec.Env, fldPath.Child("env"))...)
+	allErrs = append(allErrs, validateAdditionalContainers(spec.AdditionalContainers, fldPath.Child("additionalContainers"))...)
 	return allErrs
 }
 
@@ -479,5 +480,18 @@ func validateTimeDurationStr(timeStr *string, fldPath *field.Path) field.ErrorLi
 			allErrs = append(allErrs, field.Invalid(fldPath, timeStr, "must be a positive Go time duration"))
 		}
 	}
+	return allErrs
+}
+
+func validateAdditionalContainers(containers []corev1.Container, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	for i, container := range containers {
+		idxPath := fldPath.Index(i)
+		if len(container.Image) == 0 {
+			allErrs = append(allErrs, field.Required(idxPath.Child("image"), "empty image"))
+		}
+	}
+
 	return allErrs
 }
