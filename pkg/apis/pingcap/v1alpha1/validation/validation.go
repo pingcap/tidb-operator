@@ -16,6 +16,7 @@ package validation
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -108,6 +109,9 @@ func validateTiDBClusterSpec(spec *v1alpha1.TidbClusterSpec, fldPath *field.Path
 	if spec.TiCDC != nil {
 		allErrs = append(allErrs, validateTiCDCSpec(spec.TiCDC, fldPath.Child("ticdc"))...)
 	}
+	if spec.PDAddresses != nil {
+		allErrs = append(allErrs, validatePDAddresses(spec.PDAddresses, fldPath.Child("pdAddresses"))...)
+	}
 	return allErrs
 }
 
@@ -115,6 +119,21 @@ func validatePDSpec(spec *v1alpha1.PDSpec, fldPath *field.Path) field.ErrorList 
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
 	allErrs = append(allErrs, validateRequestsStorage(spec.ResourceRequirements.Requests, fldPath)...)
+	return allErrs
+}
+
+func validatePDAddresses(arrayOfAddresses []string, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	for i, address := range arrayOfAddresses {
+		idxPath := fldPath.Index(i)
+		u, err := url.Parse(address)
+		example := " PD address format example: http://{ADDRESS}:{PORT}"
+		if err != nil {
+			allErrs = append(allErrs, field.Invalid(idxPath, address, err.Error()+example))
+		} else if u.Scheme != "http" {
+			allErrs = append(allErrs, field.Invalid(idxPath, address, "Support 'http' scheme only."+example))
+		}
+	}
 	return allErrs
 }
 
