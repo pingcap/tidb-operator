@@ -1429,7 +1429,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.Logf("CDC works as expected")
 	})
 
-	ginkgo.Context("when stores number is equal to or less than 3", func() {
+	ginkgo.Context("when stores number is equal to 3", func() {
 		ginkgo.It("forbid to scale in TiKV and the state of all stores are up", func() {
 			tc := fixture.GetTidbCluster(ns, "scale-in-tikv-test", utilimage.TiDBV4Version)
 			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
@@ -1449,10 +1449,14 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			defer cancel()
 			storesInfo, err := pdClient.GetStores()
 			framework.ExpectNoError(err, "get stores info error")
-			framework.ExpectEqual(storesInfo.Count, 3, "Expect number of stores is 3")
-			for _, store := range storesInfo.Stores {
-				framework.ExpectEqual(store.Store.StateName, "Up", "Expect state of stores are Up")
-			}
+
+			_ = wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
+				framework.ExpectEqual(storesInfo.Count, 3, "Expect number of stores is 3")
+				for _, store := range storesInfo.Stores {
+					framework.ExpectEqual(store.Store.StateName, "Up", "Expect state of stores are Up")
+				}
+				return false, nil
+			})
 		})
 	})
 })
