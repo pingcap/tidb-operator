@@ -26,7 +26,7 @@ If you find that the memory leak occurs in a Pod during use, you need to restart
     metadata:
       name: basic
     spec:
-      version: v4.0.6
+      version: v4.0.7
       timezone: UTC
       pvReclaimPolicy: Delete
       pd:
