@@ -108,6 +108,7 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 			return nil, err
 		}
 		if pvc.Status.Phase == apiv1.ClaimBound {
+			klog.Infof("pod %s has pvc %s bound, return node %s", podName, pvcName, nodes[0].GetName())
 			return nodes, nil
 		}
 	}
@@ -146,11 +147,6 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 
 	scheduledNodes := make([]*apiv1.Node, 0)
 	for _, pod := range podList.Items {
-		if podInDeleteSlots(&pod, deleteSlots) {
-			klog.Infof("pod %s is contained in deleteSlots %v, skip", pod.GetName(), deleteSlots.List())
-			continue
-		}
-
 		nodeName := pod.Spec.NodeName
 		if nodeName == "" {
 			continue
@@ -166,12 +162,19 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 		scheduledNodes = append(scheduledNodes, scheduledNode)
 	}
 
+	actualRplicasNumber := 0
 	for _, pod := range podList.Items {
+		pName := pod.GetName()
 		if podInDeleteSlots(&pod, deleteSlots) {
+			klog.Infof("pod %s is contained in deleteSlots %v, will be deleted, do not count topology", pName, deleteSlots.List())
+			continue
+		}
+		actualRplicasNumber++
+		if actualRplicasNumber >= int(replicas) {
+			klog.Infof("pod %s is out of range of desired replicas(%d), will be deleted, do not count topology", pName, replicas)
 			continue
 		}
 
-		pName := pod.GetName()
 		nodeName := pod.Spec.NodeName
 
 		topology := getTopologyFromNode(topologyKey, nodeName, nodes, scheduledNodes)
@@ -262,33 +265,17 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 	}
 
 	if len(minTopologies) == 0 {
-		actualReplicas := len(podList.Items)
-		if int(replicas) < actualReplicas {
-			podToScaleIn := podList.Items[replicas]
-			klog.Infof("desired replicas(%d) < actual replicas(%d), the Pod(%s) will be scaled in, return the topology of it",replicas, actualReplicas, podToScaleIn.GetName())
-			nodeName := podToScaleIn.Spec.NodeName
-			klog.Infof("Pod (%s) is in Node (%s)", podToScaleIn.GetName(), nodeName)
-			node, err := h.scheduledNodeGetFn(nodeName)
-			if err != nil {
-				klog.Errorf("failed to get node by name, nodeName: %s, error: %v", nodeName, err)
-				return nil, err
-			}
-			topology := node.Labels[topologyKey]
-			klog.Infof("topology of node (%s) is %s", nodeName, topology)
-			minTopologies = append(minTopologies, topology)
-		} else {
-			topologyStrArr := []string{}
-			for topology, podNames := range topologyMap {
-				s := fmt.Sprintf("%s (%d %s pods)", topology, podNames.Len(), strings.ToLower(component))
-				topologyStrArr = append(topologyStrArr, s)
-			}
-			sort.Strings(topologyStrArr)
-
-			// example: unable to schedule to topologies: kube-node-1 (1 pd pods), kube-node-2 (1 pd pods), max pods per topology: 1
-			errMsg := fmt.Sprintf("unable to schedule to topology: %s, max pods per topology: %d",
-				strings.Join(topologyStrArr, ", "), maxPodsPerTopology)
-			return nil, errors.New(errMsg)
+		topologyStrArr := []string{}
+		for topology, podNames := range topologyMap {
+			s := fmt.Sprintf("%s (%d %s pods)", topology, podNames.Len(), strings.ToLower(component))
+			topologyStrArr = append(topologyStrArr, s)
 		}
+		sort.Strings(topologyStrArr)
+
+		// example: unable to schedule to topologies: kube-node-1 (1 pd pods), kube-node-2 (1 pd pods), max pods per topology: 1
+		errMsg := fmt.Sprintf("unable to schedule to topology: %s, max pods per topology: %d",
+			strings.Join(topologyStrArr, ", "), maxPodsPerTopology)
+		return nil, errors.New(errMsg)
 	}
 
 	return getNodeFromTopologies(nodes, topologyKey, minTopologies), nil
