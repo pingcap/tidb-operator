@@ -423,7 +423,7 @@ func getTCNameFromPod(pod *apiv1.Pod, component string) string {
 	return strings.TrimSuffix(pod.GenerateName, fmt.Sprintf("-%s-", component))
 }
 
-func getPodOrdinal(pod *apiv1.Pod) (int,error) {
+func getPodOrdinal(pod *apiv1.Pod) (int, error) {
 	ordinalStr := strings.TrimPrefix(pod.GetName(), pod.GetGenerateName())
 	return strconv.Atoi(ordinalStr)
 }
@@ -470,11 +470,8 @@ func getTopologyFromNode(topologyKey string, nodeName string, nodes []apiv1.Node
 	return ""
 }
 
-func podInDeleteSlots(pod *apiv1.Pod, deleteSlots sets.Int32) bool{
+func podInDeleteSlots(pod *apiv1.Pod, deleteSlots sets.Int32) bool {
 	ordinal, _ := getPodOrdinal(pod)
 
-	if deleteSlots.Has(int32(ordinal)) {
-		return true
-	}
-	return false
+	return deleteSlots.Has(int32(ordinal))
 }
