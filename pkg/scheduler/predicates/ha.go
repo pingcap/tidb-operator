@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -77,7 +78,7 @@ func (h *ha) Name() string {
 //  b) for TiKV (multiple raft groups, in each raft group, copies of data is hard-coded to 3)
 //     when replicas is less than 3, no HA is forced because HA is impossible
 //     when replicas is equal or greater than 3, we require TiKV pods are running on more than 3 nodes and no more than ceil(replicas / 3) per node
-//  for PD/TiKV, we both try to balance the number of pods acorss the nodes
+//  for PD/TiKV, we both try to balance the number of pods across the nodes
 // 3. let kube-scheduler to make the final decision
 func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]apiv1.Node, error) {
 	h.lock.Lock()
@@ -140,8 +141,14 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 		topologyMap[node.Labels[topologyKey]] = make(sets.String)
 	}
 
+	podOrdinals := getPodOrdinalsExcludeDeleteSlots(tc, component)
+
 	scheduledNodes := make([]*apiv1.Node, 0)
 	for _, pod := range podList.Items {
+		if !podInOrdinals(&pod, podOrdinals) {
+			continue
+		}
+
 		nodeName := pod.Spec.NodeName
 		if nodeName == "" {
 			continue
@@ -158,6 +165,10 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 	}
 
 	for _, pod := range podList.Items {
+		if !podInOrdinals(&pod, podOrdinals) {
+			continue
+		}
+
 		pName := pod.GetName()
 		nodeName := pod.Spec.NodeName
 
@@ -226,7 +237,7 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 			continue
 		}
 
-		if podsCount+1 > maxPodsPerTopology {
+		if podsCount >= maxPodsPerTopology {
 			// pods on this topology exceeds the limit, skip
 			klog.Infof("topology %s has %d instances of component %s, max allowed is %d, skipping",
 				topology, podsCount, component, maxPodsPerTopology)
@@ -407,12 +418,24 @@ func getTCNameFromPod(pod *apiv1.Pod, component string) string {
 	return strings.TrimSuffix(pod.GenerateName, fmt.Sprintf("-%s-", component))
 }
 
+func getPodOrdinal(pod *apiv1.Pod) (int,error) {
+	ordinalStr := strings.TrimPrefix(pod.GetName(), pod.GetGenerateName())
+	return strconv.Atoi(ordinalStr)
+}
+
 func getReplicasFrom(tc *v1alpha1.TidbCluster, component string) int32 {
 	if component == v1alpha1.PDMemberType.String() {
 		return tc.PDStsDesiredReplicas()
 	}
 
 	return tc.TiKVStsDesiredReplicas()
+}
+
+func getPodOrdinalsExcludeDeleteSlots(tc *v1alpha1.TidbCluster, component string) sets.Int32{
+	if component == v1alpha1.PDMemberType.String() {
+		return tc.PDStsDesiredOrdinals(false)
+	}
+	return tc.TiKVStsDesiredOrdinals(false)
 }
 
 func pvcName(component, podName string) string {
@@ -447,4 +470,13 @@ func getTopologyFromNode(topologyKey string, nodeName string, nodes []apiv1.Node
 		}
 	}
 	return ""
+}
+
+func podInOrdinals(pod *apiv1.Pod, podOrdinals sets.Int32) bool{
+	ordinal, _ := getPodOrdinal(pod)
+
+	if podOrdinals.Has(int32(ordinal)) {
+		return true
+	}
+	return false
 }
