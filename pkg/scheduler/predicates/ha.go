@@ -264,17 +264,17 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 	if len(minTopologies) == 0 {
 		actualReplicas := len(podList.Items)
 		if int(replicas) < actualReplicas {
-			lastPod := podList.Items[actualReplicas-1]
-			klog.Infof("desired replicas(%d) < actual replicas(%d), the last Pod will be scaled in, return the topology of the last Pod(%s)",replicas, actualReplicas, lastPod.GetName())
-			lastPodNodeName := lastPod.Spec.NodeName
-			klog.Infof("last Pod (%s) is in Node (%s)", lastPod.GetName(), lastPodNodeName)
-			node, err := h.scheduledNodeGetFn(lastPodNodeName)
+			podToScaleIn := podList.Items[replicas]
+			klog.Infof("desired replicas(%d) < actual replicas(%d), the Pod(%s) will be scaled in, return the topology of it",replicas, actualReplicas, podToScaleIn.GetName())
+			nodeName := podToScaleIn.Spec.NodeName
+			klog.Infof("Pod (%s) is in Node (%s)", podToScaleIn.GetName(), nodeName)
+			node, err := h.scheduledNodeGetFn(nodeName)
 			if err != nil {
-				klog.Errorf("failed to get node by name, nodeName: %s, error: %v", lastPodNodeName, err)
+				klog.Errorf("failed to get node by name, nodeName: %s, error: %v", nodeName, err)
 				return nil, err
 			}
 			topology := node.Labels[topologyKey]
-			klog.Infof("topology of node (%s) is %s", lastPodNodeName, topology)
+			klog.Infof("topology of node (%s) is %s", nodeName, topology)
 			minTopologies = append(minTopologies, topology)
 		} else {
 			topologyStrArr := []string{}
