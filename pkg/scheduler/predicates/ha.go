@@ -141,12 +141,13 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 		topologyMap[node.Labels[topologyKey]] = make(sets.String)
 	}
 
-	podOrdinals := getPodOrdinalsExcludeDeleteSlots(tc, component)
-	klog.Infof("pod ordinals exclude delete slots is %v", podOrdinals.List())
+	deleteSlots := tc.GetDeleteSlots(component)
+	klog.Infof("tidbcluster %s/%s deleteSlots is %v", ns, tcName, deleteSlots.List())
 
 	scheduledNodes := make([]*apiv1.Node, 0)
 	for _, pod := range podList.Items {
-		if !podInOrdinals(&pod, podOrdinals) {
+		if podInDeleteSlots(&pod, deleteSlots) {
+			klog.Infof("pod %s is contained in deleteSlots %v, skip", pod.GetName(), deleteSlots.List())
 			continue
 		}
 
@@ -166,8 +167,7 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 	}
 
 	for _, pod := range podList.Items {
-		if !podInOrdinals(&pod, podOrdinals) {
-			klog.Infof("pod %s is not contained in pod ordinals %v", pod.GetName(), podOrdinals.List())
+		if podInDeleteSlots(&pod, deleteSlots) {
 			continue
 		}
 
@@ -433,13 +433,6 @@ func getReplicasFrom(tc *v1alpha1.TidbCluster, component string) int32 {
 	return tc.TiKVStsDesiredReplicas()
 }
 
-func getPodOrdinalsExcludeDeleteSlots(tc *v1alpha1.TidbCluster, component string) sets.Int32{
-	if component == v1alpha1.PDMemberType.String() {
-		return tc.PDStsDesiredOrdinals(false)
-	}
-	return tc.TiKVStsDesiredOrdinals(false)
-}
-
 func pvcName(component, podName string) string {
 	return fmt.Sprintf("%s-%s", component, podName)
 }
@@ -474,10 +467,10 @@ func getTopologyFromNode(topologyKey string, nodeName string, nodes []apiv1.Node
 	return ""
 }
 
-func podInOrdinals(pod *apiv1.Pod, podOrdinals sets.Int32) bool{
+func podInDeleteSlots(pod *apiv1.Pod, deleteSlots sets.Int32) bool{
 	ordinal, _ := getPodOrdinal(pod)
 
-	if podOrdinals.Has(int32(ordinal)) {
+	if deleteSlots.Has(int32(ordinal)) {
 		return true
 	}
 	return false
