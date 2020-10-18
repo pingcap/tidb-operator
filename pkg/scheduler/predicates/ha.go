@@ -162,15 +162,15 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 		scheduledNodes = append(scheduledNodes, scheduledNode)
 	}
 
-	actualRplicasNumber := 0
+	actualReplicasNumber := 0
 	for _, pod := range podList.Items {
 		pName := pod.GetName()
 		if podInDeleteSlots(&pod, deleteSlots) {
 			klog.Infof("pod %s is contained in deleteSlots %v, will be deleted, do not count topology", pName, deleteSlots.List())
 			continue
 		}
-		actualRplicasNumber++
-		if actualRplicasNumber >= int(replicas) {
+		actualReplicasNumber++
+		if actualReplicasNumber > int(replicas) {
 			klog.Infof("pod %s is out of range of desired replicas(%d), will be deleted, do not count topology", pName, replicas)
 			continue
 		}
