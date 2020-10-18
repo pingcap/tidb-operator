@@ -142,6 +142,7 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 	}
 
 	podOrdinals := getPodOrdinalsExcludeDeleteSlots(tc, component)
+	klog.Infof("pod ordinals exclude delete slots is %v", podOrdinals.List())
 
 	scheduledNodes := make([]*apiv1.Node, 0)
 	for _, pod := range podList.Items {
@@ -166,6 +167,7 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 
 	for _, pod := range podList.Items {
 		if !podInOrdinals(&pod, podOrdinals) {
+			klog.Infof("pod %s is not contained in pod ordinals %v", pod.GetName(), podOrdinals.List())
 			continue
 		}
 
