@@ -262,17 +262,33 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 	}
 
 	if len(minTopologies) == 0 {
-		topologyStrArr := []string{}
-		for topology, podNames := range topologyMap {
-			s := fmt.Sprintf("%s (%d %s pods)", topology, podNames.Len(), strings.ToLower(component))
-			topologyStrArr = append(topologyStrArr, s)
-		}
-		sort.Strings(topologyStrArr)
+		actualReplicas := len(podList.Items)
+		if int(replicas) < actualReplicas {
+			lastPod := podList.Items[actualReplicas-1]
+			klog.Infof("desired replicas(%d) < actual replicas(%d), the last Pod will be scaled in, return the topology of the last Pod(%s)",replicas, actualReplicas, lastPod.GetName())
+			lastPodNodeName := lastPod.Spec.NodeName
+			klog.Infof("last Pod (%s) is in Node (%s)", lastPod.GetName(), lastPodNodeName)
+			node, err := h.scheduledNodeGetFn(lastPodNodeName)
+			if err != nil {
+				klog.Errorf("failed to get node by name, nodeName: %s, error: %v", lastPodNodeName, err)
+				return nil, err
+			}
+			topology := node.Labels[topologyKey]
+			klog.Infof("topology of node (%s) is %s", lastPodNodeName, topology)
+			minTopologies = append(minTopologies, topology)
+		} else {
+			topologyStrArr := []string{}
+			for topology, podNames := range topologyMap {
+				s := fmt.Sprintf("%s (%d %s pods)", topology, podNames.Len(), strings.ToLower(component))
+				topologyStrArr = append(topologyStrArr, s)
+			}
+			sort.Strings(topologyStrArr)
 
-		// example: unable to schedule to topologies: kube-node-1 (1 pd pods), kube-node-2 (1 pd pods), max pods per topology: 1
-		errMsg := fmt.Sprintf("unable to schedule to topology: %s, max pods per topology: %d",
-			strings.Join(topologyStrArr, ", "), maxPodsPerTopology)
-		return nil, errors.New(errMsg)
+			// example: unable to schedule to topologies: kube-node-1 (1 pd pods), kube-node-2 (1 pd pods), max pods per topology: 1
+			errMsg := fmt.Sprintf("unable to schedule to topology: %s, max pods per topology: %d",
+				strings.Join(topologyStrArr, ", "), maxPodsPerTopology)
+			return nil, errors.New(errMsg)
+		}
 	}
 
 	return getNodeFromTopologies(nodes, topologyKey, minTopologies), nil
