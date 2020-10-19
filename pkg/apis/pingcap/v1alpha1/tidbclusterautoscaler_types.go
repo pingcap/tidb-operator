@@ -179,11 +179,6 @@ type TikvAutoScalerStatus struct {
 // +k8s:openapi-gen=true
 // BasicAutoScalerStatus describe the basic auto-scaling status
 type BasicAutoScalerStatus struct {
-	// CurrentReplicas describes the current replicas for the component(tidb/tikv)
-	CurrentReplicas int32 `json:"currentReplicas"`
-	// RecommendedReplicas describes the calculated replicas in the last auto-scaling reconciliation for the component(tidb/tikv)
-	// +optional
-	RecommendedReplicas int32 `json:"recommendedReplicas,omitempty"`
 	// LastAutoScalingTimestamp describes the last auto-scaling timestamp for the component(tidb/tikv)
 	// +optional
 	LastAutoScalingTimestamp *metav1.Time `json:"lastAutoScalingTimestamp,omitempty"`

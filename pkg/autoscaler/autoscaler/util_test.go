@@ -23,7 +23,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 )
 
@@ -83,7 +83,7 @@ func TestCheckStsAutoScalingInterval(t *testing.T) {
 					d := time.Duration(tt.LastScaleIntervalSec) * time.Second
 					tac.Status.TiKV[tt.group] = v1alpha1.TikvAutoScalerStatus{
 						BasicAutoScalerStatus: v1alpha1.BasicAutoScalerStatus{
-							LastAutoScalingTimestamp: &v1.Time{
+							LastAutoScalingTimestamp: &metav1.Time{
 								Time: time.Now().Truncate(d),
 							},
 						},
@@ -94,71 +94,18 @@ func TestCheckStsAutoScalingInterval(t *testing.T) {
 					d := time.Duration(tt.LastScaleIntervalSec) * time.Second
 					tac.Status.TiDB[tt.group] = v1alpha1.TidbAutoScalerStatus{
 						BasicAutoScalerStatus: v1alpha1.BasicAutoScalerStatus{
-							LastAutoScalingTimestamp: &v1.Time{
+							LastAutoScalingTimestamp: &metav1.Time{
 								Time: time.Now().Truncate(d),
 							},
 						},
 					}
 				}
 			}
-			r, err := checkAutoScalingInterval(tac, intervalSec, tt.memberType, tt.group)
-			g.Expect(err).Should(BeNil())
+			r := checkAutoScalingInterval(tac, intervalSec, tt.memberType, tt.group)
 			g.Expect(r).Should(Equal(tt.expectedPermitScaling))
 		})
 
 	}
-}
-
-func TestCheckStsAutoScalingPrerequisites(t *testing.T) {
-	g := NewGomegaWithT(t)
-	tests := []struct {
-		name                string
-		stsUpdating         bool
-		stsScaling          bool
-		expectedCheckResult bool
-	}{
-		{
-			name:                "upgrading",
-			stsUpdating:         true,
-			stsScaling:          false,
-			expectedCheckResult: false,
-		},
-		{
-			name:                "scaling",
-			stsUpdating:         false,
-			stsScaling:          true,
-			expectedCheckResult: false,
-		},
-		{
-			name:                "no upgrading, no scaling",
-			stsUpdating:         false,
-			stsScaling:          false,
-			expectedCheckResult: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			sts := newSts()
-			if tt.stsUpdating {
-				sts.Status.UpdateRevision = "1"
-				sts.Status.CurrentRevision = "2"
-			} else {
-				sts.Status.UpdateRevision = "1"
-				sts.Status.CurrentRevision = "1"
-			}
-			if tt.stsScaling {
-				sts.Spec.Replicas = pointer.Int32Ptr(1)
-				sts.Status.Replicas = 2
-			} else {
-				sts.Spec.Replicas = pointer.Int32Ptr(1)
-				sts.Status.Replicas = 1
-			}
-			r := checkStsAutoScalingPrerequisites(sts)
-			g.Expect(r).Should(Equal(tt.expectedCheckResult))
-		})
-	}
-
 }
 
 func TestDefaultTac(t *testing.T) {

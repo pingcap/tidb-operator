@@ -15,11 +15,14 @@ package autoscaler
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
@@ -83,7 +86,7 @@ func (am *autoScalerManager) syncPlans(tc *v1alpha1.TidbCluster, tac *v1alpha1.T
 
 	// Calculate difference then update, delete or create
 	toDelete := existedGroups.Difference(planGroups)
-	err = am.deleteAutoscalingClusters(tc, toDelete.UnsortedList(), groupTcMap)
+	err = am.deleteAutoscalingClusters(tac, tc, toDelete.UnsortedList(), groupTcMap)
 	if err != nil {
 		return err
 	}
@@ -103,7 +106,7 @@ func (am *autoScalerManager) syncPlans(tc *v1alpha1.TidbCluster, tac *v1alpha1.T
 	return nil
 }
 
-func (am *autoScalerManager) deleteAutoscalingClusters(tc *v1alpha1.TidbCluster, groupsToDelete []string, groupTcMap map[string]*v1alpha1.TidbCluster) error {
+func (am *autoScalerManager) deleteAutoscalingClusters(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.TidbCluster, groupsToDelete []string, groupTcMap map[string]*v1alpha1.TidbCluster) error {
 	var errs []error
 	for _, group := range groupsToDelete {
 		deleteTc := groupTcMap[group]
@@ -112,6 +115,9 @@ func (am *autoScalerManager) deleteAutoscalingClusters(tc *v1alpha1.TidbCluster,
 		if err != nil {
 			errs = append(errs, err)
 			continue
+		}
+		if deleteTc.Spec.TiDB != nil {
+			am.patchAutoscalingGroupStatus(tac, v1alpha1.TiDBMemberType.String(), group, nil)
 		}
 	}
 	return errorutils.NewAggregate(errs)
@@ -127,28 +133,16 @@ func (am *autoScalerManager) updateAutoscalingClusters(tac *v1alpha1.TidbCluster
 			if tac.Spec.TiKV == nil || actual.Spec.TiKV.Replicas == int32(plan.Count) {
 				continue
 			}
-			if int32(plan.Count) < actual.Spec.TiKV.Replicas {
-				if ok, _ := checkAutoScalingInterval(tac, *tac.Spec.TiKV.ScaleInIntervalSeconds, v1alpha1.TiKVMemberType, group); !ok {
-					continue
-				}
-			} else if int32(plan.Count) > actual.Spec.TiKV.Replicas {
-				if ok, _ := checkAutoScalingInterval(tac, *tac.Spec.TiKV.ScaleOutIntervalSeconds, v1alpha1.TiKVMemberType, group); !ok {
-					continue
-				}
+			if !checkAutoScaling(tac, v1alpha1.TiKVMemberType, group, actual.Spec.TiKV.Replicas, int32(plan.Count)) {
+				continue
 			}
 			actual.Spec.TiKV.Replicas = int32(plan.Count)
 		case v1alpha1.TiDBMemberType.String():
 			if tac.Spec.TiDB == nil || actual.Spec.TiDB.Replicas == int32(plan.Count) {
 				continue
 			}
-			if int32(plan.Count) < actual.Spec.TiDB.Replicas {
-				if ok, _ := checkAutoScalingInterval(tac, *tac.Spec.TiDB.ScaleInIntervalSeconds, v1alpha1.TiDBMemberType, group); !ok {
-					continue
-				}
-			} else if int32(plan.Count) > actual.Spec.TiDB.Replicas {
-				if ok, _ := checkAutoScalingInterval(tac, *tac.Spec.TiDB.ScaleOutIntervalSeconds, v1alpha1.TiDBMemberType, group); !ok {
-					continue
-				}
+			if !checkAutoScaling(tac, v1alpha1.TiDBMemberType, group, actual.Spec.TiDB.Replicas, int32(plan.Count)) {
+				continue
 			}
 			actual.Spec.TiDB.Replicas = int32(plan.Count)
 		default:
@@ -157,6 +151,15 @@ func (am *autoScalerManager) updateAutoscalingClusters(tac *v1alpha1.TidbCluster
 		}
 
 		_, err := am.deps.TiDBClusterControl.UpdateTidbCluster(actual, &actual.Status, &oldTc.Status)
+		if err != nil {
+			klog.Errorf("tac[%s/%s] failed to update tc[%s/%s] for group %s, err: %v", tac.Namespace, tac.Name, actual.Namespace, actual.Name, group, err)
+			errs = append(errs, err)
+			continue
+		}
+
+		err = am.patchAutoscalingGroupStatus(tac, plan.Component, group, &v1alpha1.BasicAutoScalerStatus{
+			LastAutoScalingTimestamp: &v1.Time{Time: time.Now()},
+		})
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -228,6 +231,15 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 		}
 
 		_, err = am.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(autoTc)
+		if err != nil {
+			klog.Errorf("tac[%s/%s] failed to create autoscaling tc for group %s, err: %v", tac.Namespace, tac.Name, group, err)
+			errs = append(errs, err)
+			continue
+		}
+
+		err = am.patchAutoscalingGroupStatus(tac, component, group, &v1alpha1.BasicAutoScalerStatus{
+			LastAutoScalingTimestamp: &metav1.Time{Time: time.Now()},
+		})
 		if err != nil {
 			errs = append(errs, err)
 			continue

@@ -14,6 +14,7 @@
 package autoscaler
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -22,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/util/retry"
@@ -204,4 +206,24 @@ func (am *autoScalerManager) gracefullyDeleteTidbCluster(deleteTc *v1alpha1.Tidb
 	}
 
 	return am.deps.Clientset.PingcapV1alpha1().TidbClusters(deleteTc.Namespace).Delete(deleteTc.Name, nil)
+}
+
+func (am *autoScalerManager) patchAutoscalingGroupStatus(tac *v1alpha1.TidbClusterAutoScaler, memberType string, group string, newStatus *v1alpha1.BasicAutoScalerStatus) error {
+	mergePatch, err := json.Marshal(map[string]interface{}{
+		"status": map[string]interface{}{
+			memberType: map[string]interface{}{
+				group: newStatus,
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	_, err = am.deps.Clientset.PingcapV1alpha1().TidbClusterAutoScalers(tac.Namespace).Patch(tac.Name, types.MergePatchType, mergePatch)
+	if err != nil {
+		klog.Errorf("failed to update tac[%s/%s]'s status for %s group %s, err: %v", tac.Namespace, tac.Name, memberType, group, err)
+	}
+
+	return err
 }

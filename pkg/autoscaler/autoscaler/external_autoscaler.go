@@ -15,15 +15,18 @@ package autoscaler
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 )
 
 const (
 	// The TidbCluster for the external query will be "<original-tcname>-<component>-external"
 	externalTcNamePattern = "%s-%s-external"
+	externalStatusKey     = "external"
 	specialUseLabelKey    = "specialUse"
 	specialUseHotRegion   = "hotRegion"
 )
@@ -68,7 +71,14 @@ func (am *autoScalerManager) createExternalAutoCluster(tc *v1alpha1.TidbCluster,
 	_, err := am.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(autoTc)
 	if err != nil {
 		klog.Errorf("tac[%s/%s] failed to create external tc[%s/%s], err: %v", tac.Namespace, tac.Name, tc.Namespace, externalTcName, err)
+		return err
 	}
+
+	err = am.patchAutoscalingGroupStatus(tac, component.String(), externalStatusKey, &v1alpha1.BasicAutoScalerStatus{
+		LastAutoScalingTimestamp: &metav1.Time{
+			Time: time.Now(),
+		},
+	})
 	return err
 }
 
@@ -79,9 +89,17 @@ func (am *autoScalerManager) updateExternalAutoCluster(externalTc *v1alpha1.Tidb
 		if updated.Spec.TiDB.Replicas == targetReplicas {
 			return nil
 		}
+
+		if !checkAutoScaling(tac, component, externalStatusKey, updated.Spec.TiKV.Replicas, targetReplicas) {
+			return nil
+		}
 		updated.Spec.TiDB.Replicas = targetReplicas
 	case v1alpha1.TiKVMemberType:
 		if updated.Spec.TiKV.Replicas == targetReplicas {
+			return nil
+		}
+
+		if !checkAutoScaling(tac, component, externalStatusKey, updated.Spec.TiDB.Replicas, targetReplicas) {
 			return nil
 		}
 		updated.Spec.TiKV.Replicas = targetReplicas
@@ -90,6 +108,13 @@ func (am *autoScalerManager) updateExternalAutoCluster(externalTc *v1alpha1.Tidb
 	_, err := am.deps.TiDBClusterControl.UpdateTidbCluster(updated, &updated.Status, &externalTc.Status)
 	if err != nil {
 		klog.Errorf("tac[%s/%s] failed to update external tc[%s/%s], err: %v", tac.Namespace, tac.Name, externalTc.Namespace, externalTc.Name, err)
+		return err
 	}
+
+	err = am.patchAutoscalingGroupStatus(tac, component.String(), externalStatusKey, &v1alpha1.BasicAutoScalerStatus{
+		LastAutoScalingTimestamp: &metav1.Time{
+			Time: time.Now(),
+		},
+	})
 	return err
 }
