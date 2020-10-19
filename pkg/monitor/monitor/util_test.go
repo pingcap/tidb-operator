@@ -812,6 +812,11 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 							BaseImage: "hub.pingcap.net",
 							Version:   "latest",
 						},
+						Config: &v1alpha1.PrometheusConfiguration{
+							CommandOptions: []string{
+								"--web.external-url=https://www.example.com/prometheus/",
+							},
+						},
 					},
 				},
 			},
@@ -825,6 +830,7 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 					"--config.file=/etc/prometheus/prometheus.yml",
 					"--storage.tsdb.path=/data/prometheus",
 					"--storage.tsdb.retention=0d",
+					"--web.external-url=https://www.example.com/prometheus/",
 				},
 				Ports: []corev1.ContainerPort{
 					corev1.ContainerPort{
