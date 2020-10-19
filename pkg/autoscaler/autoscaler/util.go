@@ -16,7 +16,6 @@ package autoscaler
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -40,20 +39,26 @@ func checkStsAutoScalingPrerequisites(set *appsv1.StatefulSet) bool {
 	return !operatorUtils.IsStatefulSetUpgrading(set) && !operatorUtils.IsStatefulSetScaling(set)
 }
 
-// checkStsAutoScalingInterval would check whether there is enough interval duration between every two auto-scaling
-func checkStsAutoScalingInterval(tac *v1alpha1.TidbClusterAutoScaler, intervalSeconds int32, memberType v1alpha1.MemberType) (bool, error) {
-	lastAutoScalingTimestamp, existed := tac.Annotations[label.AnnTiDBLastAutoScalingTimestamp]
+// checkAutoScalingInterval would check whether there is enough interval duration between every two auto-scaling
+func checkAutoScalingInterval(tac *v1alpha1.TidbClusterAutoScaler, intervalSeconds int32, memberType v1alpha1.MemberType, group string) (bool, error) {
+	var lastAutoScalingTimestamp *metav1.Time
 	if memberType == v1alpha1.TiKVMemberType {
-		lastAutoScalingTimestamp, existed = tac.Annotations[label.AnnTiKVLastAutoScalingTimestamp]
+		status, existed := tac.Status.TiKV[group]
+		if !existed {
+			return true, nil
+		}
+		lastAutoScalingTimestamp = status.LastAutoScalingTimestamp
+	} else if memberType == v1alpha1.TiDBMemberType {
+		status, existed := tac.Status.TiDB[group]
+		if !existed {
+			return true, nil
+		}
+		lastAutoScalingTimestamp = status.LastAutoScalingTimestamp
 	}
-	if !existed {
+	if lastAutoScalingTimestamp == nil {
 		return true, nil
 	}
-	t, err := strconv.ParseInt(lastAutoScalingTimestamp, 10, 64)
-	if err != nil {
-		return false, fmt.Errorf("tac[%s/%s] parse last auto-scaling timestamp failed,err:%v", tac.Namespace, tac.Name, err)
-	}
-	if intervalSeconds > int32(time.Since(time.Unix(t, 0)).Seconds()) {
+	if intervalSeconds > int32(time.Since(lastAutoScalingTimestamp.Time).Seconds()) {
 		return false, nil
 	}
 	return true, nil

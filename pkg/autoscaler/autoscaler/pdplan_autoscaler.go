@@ -127,10 +127,28 @@ func (am *autoScalerManager) updateAutoscalingClusters(tac *v1alpha1.TidbCluster
 			if tac.Spec.TiKV == nil || actual.Spec.TiKV.Replicas == int32(plan.Count) {
 				continue
 			}
+			if int32(plan.Count) < actual.Spec.TiKV.Replicas {
+				if ok, _ := checkAutoScalingInterval(tac, *tac.Spec.TiKV.ScaleInIntervalSeconds, v1alpha1.TiKVMemberType, group); !ok {
+					continue
+				}
+			} else if int32(plan.Count) > actual.Spec.TiKV.Replicas {
+				if ok, _ := checkAutoScalingInterval(tac, *tac.Spec.TiKV.ScaleOutIntervalSeconds, v1alpha1.TiKVMemberType, group); !ok {
+					continue
+				}
+			}
 			actual.Spec.TiKV.Replicas = int32(plan.Count)
 		case v1alpha1.TiDBMemberType.String():
 			if tac.Spec.TiDB == nil || actual.Spec.TiDB.Replicas == int32(plan.Count) {
 				continue
+			}
+			if int32(plan.Count) < actual.Spec.TiDB.Replicas {
+				if ok, _ := checkAutoScalingInterval(tac, *tac.Spec.TiDB.ScaleInIntervalSeconds, v1alpha1.TiDBMemberType, group); !ok {
+					continue
+				}
+			} else if int32(plan.Count) > actual.Spec.TiDB.Replicas {
+				if ok, _ := checkAutoScalingInterval(tac, *tac.Spec.TiDB.ScaleOutIntervalSeconds, v1alpha1.TiDBMemberType, group); !ok {
+					continue
+				}
 			}
 			actual.Spec.TiDB.Replicas = int32(plan.Count)
 		default:

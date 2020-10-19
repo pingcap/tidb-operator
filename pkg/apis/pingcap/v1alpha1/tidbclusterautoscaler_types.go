@@ -33,7 +33,7 @@ type TidbClusterAutoScaler struct {
 	Spec TidbClusterAutoScalerSpec `json:"spec"`
 
 	// Status describe the status of the TidbClusterAutoScaler
-	Status TidbClusterAutoSclaerStatus `json:"status"`
+	Status TidbClusterAutoScalerStatus `json:"status"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -155,13 +155,13 @@ type TidbMonitorRef struct {
 
 // +k8s:openapi-gen=true
 // TidbClusterAutoSclaerStatus describe the whole status
-type TidbClusterAutoSclaerStatus struct {
-	// Tikv describes the status for the tikv in the last auto-scaling reconciliation
+type TidbClusterAutoScalerStatus struct {
+	// Tikv describes the status of each group for the tikv in the last auto-scaling reconciliation
 	// +optional
-	TiKV *TikvAutoScalerStatus `json:"tikv,omitempty"`
-	// Tidb describes the status for the tidb in the last auto-scaling reconciliation
+	TiKV map[string]TikvAutoScalerStatus `json:"tikv,omitempty"`
+	// Tidb describes the status of each group for the tidb in the last auto-scaling reconciliation
 	// +optional
-	TiDB *TidbAutoScalerStatus `json:"tidb,omitempty"`
+	TiDB map[string]TidbAutoScalerStatus `json:"tidb,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -179,6 +179,11 @@ type TikvAutoScalerStatus struct {
 // +k8s:openapi-gen=true
 // BasicAutoScalerStatus describe the basic auto-scaling status
 type BasicAutoScalerStatus struct {
+	// CurrentReplicas describes the current replicas for the component(tidb/tikv)
+	CurrentReplicas int32 `json:"currentReplicas"`
+	// RecommendedReplicas describes the calculated replicas in the last auto-scaling reconciliation for the component(tidb/tikv)
+	// +optional
+	RecommendedReplicas int32 `json:"recommendedReplicas,omitempty"`
 	// LastAutoScalingTimestamp describes the last auto-scaling timestamp for the component(tidb/tikv)
 	// +optional
 	LastAutoScalingTimestamp *metav1.Time `json:"lastAutoScalingTimestamp,omitempty"`

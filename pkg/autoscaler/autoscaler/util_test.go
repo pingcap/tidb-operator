@@ -20,10 +20,10 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 )
 
@@ -31,6 +31,7 @@ func TestCheckStsAutoScalingInterval(t *testing.T) {
 	g := NewGomegaWithT(t)
 	tests := []struct {
 		name                  string
+		group                 string
 		memberType            v1alpha1.MemberType
 		HaveScaled            bool
 		LastScaleIntervalSec  int
@@ -38,6 +39,7 @@ func TestCheckStsAutoScalingInterval(t *testing.T) {
 	}{
 		{
 			name:                  "tikv, first scaling",
+			group:                 "group",
 			memberType:            v1alpha1.TiKVMemberType,
 			HaveScaled:            false,
 			LastScaleIntervalSec:  0,
@@ -45,6 +47,7 @@ func TestCheckStsAutoScalingInterval(t *testing.T) {
 		},
 		{
 			name:                  "tikv, scaling 60 secs ago",
+			group:                 "group",
 			memberType:            v1alpha1.TiKVMemberType,
 			HaveScaled:            true,
 			LastScaleIntervalSec:  60,
@@ -52,6 +55,7 @@ func TestCheckStsAutoScalingInterval(t *testing.T) {
 		},
 		{
 			name:                  "tidb, first scaling",
+			group:                 "group",
 			memberType:            v1alpha1.TiDBMemberType,
 			HaveScaled:            false,
 			LastScaleIntervalSec:  0,
@@ -59,6 +63,7 @@ func TestCheckStsAutoScalingInterval(t *testing.T) {
 		},
 		{
 			name:                  "tidb, scaling 60 secs ago",
+			group:                 "group",
 			memberType:            v1alpha1.TiDBMemberType,
 			HaveScaled:            true,
 			LastScaleIntervalSec:  60,
@@ -70,23 +75,33 @@ func TestCheckStsAutoScalingInterval(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			tac := newTidbClusterAutoScaler()
+			tac.Status.TiKV = map[string]v1alpha1.TikvAutoScalerStatus{}
+			tac.Status.TiDB = map[string]v1alpha1.TidbAutoScalerStatus{}
 			intervalSec := int32(100)
 			if tt.memberType == v1alpha1.TiKVMemberType {
-				if !tt.HaveScaled {
-					tac.Annotations = map[string]string{}
-				} else {
+				if tt.HaveScaled {
 					d := time.Duration(tt.LastScaleIntervalSec) * time.Second
-					tac.Annotations[label.AnnTiKVLastAutoScalingTimestamp] = fmt.Sprintf("%d", time.Now().Truncate(d).Unix())
+					tac.Status.TiKV[tt.group] = v1alpha1.TikvAutoScalerStatus{
+						BasicAutoScalerStatus: v1alpha1.BasicAutoScalerStatus{
+							LastAutoScalingTimestamp: &v1.Time{
+								Time: time.Now().Truncate(d),
+							},
+						},
+					}
 				}
 			} else if tt.memberType == v1alpha1.TiDBMemberType {
-				if !tt.HaveScaled {
-					tac.Annotations = map[string]string{}
-				} else {
+				if tt.HaveScaled {
 					d := time.Duration(tt.LastScaleIntervalSec) * time.Second
-					tac.Annotations[label.AnnTiDBLastAutoScalingTimestamp] = fmt.Sprintf("%d", time.Now().Truncate(d).Unix())
+					tac.Status.TiDB[tt.group] = v1alpha1.TidbAutoScalerStatus{
+						BasicAutoScalerStatus: v1alpha1.BasicAutoScalerStatus{
+							LastAutoScalingTimestamp: &v1.Time{
+								Time: time.Now().Truncate(d),
+							},
+						},
+					}
 				}
 			}
-			r, err := checkStsAutoScalingInterval(tac, intervalSec, tt.memberType)
+			r, err := checkAutoScalingInterval(tac, intervalSec, tt.memberType, tt.group)
 			g.Expect(err).Should(BeNil())
 			g.Expect(r).Should(Equal(tt.expectedPermitScaling))
 		})
