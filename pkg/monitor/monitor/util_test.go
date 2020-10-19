@@ -405,6 +405,359 @@ func TestGetMonitorService(t *testing.T) {
 				return
 			}
 			if diff := cmp.Diff(&tt.expected, &svc); diff != "" {
+<<<<<<< HEAD
+=======
+				t.Errorf("unexpected service configuration (-want, +got): %s", diff)
+			}
+		})
+	}
+}
+
+func TestGetMonitorVolumes(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	testCases := []struct {
+		name     string
+		cluster  v1alpha1.TidbCluster
+		monitor  v1alpha1.TidbMonitor
+		expected []corev1.Volume
+	}{
+		{
+			name: "basic",
+			cluster: v1alpha1.TidbCluster{
+				Spec: v1alpha1.TidbClusterSpec{
+					TLSCluster: &v1alpha1.TLSCluster{Enabled: false},
+				},
+			},
+			monitor: v1alpha1.TidbMonitor{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+			},
+			expected: []corev1.Volume{
+				corev1.Volume{
+					Name: "monitor-data",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				},
+				corev1.Volume{
+					Name: "prometheus-config",
+					VolumeSource: corev1.VolumeSource{
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "foo-monitor",
+							},
+							Items: []corev1.KeyToPath{
+								corev1.KeyToPath{
+									Key:  "prometheus-config",
+									Path: "prometheus.yml",
+								},
+							},
+						},
+					},
+				},
+				corev1.Volume{
+					Name: "prometheus-rules",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				},
+			},
+		},
+		{
+			name: "tls and persistent",
+			cluster: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
+				},
+			},
+			monitor: v1alpha1.TidbMonitor{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbMonitorSpec{
+					Persistent: true,
+				},
+			},
+			expected: []corev1.Volume{
+				corev1.Volume{
+					Name: "monitor-data",
+					VolumeSource: corev1.VolumeSource{
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+							ClaimName: "foo-monitor",
+							ReadOnly:  false,
+						},
+					},
+				},
+				corev1.Volume{
+					Name: "prometheus-config",
+					VolumeSource: corev1.VolumeSource{
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "foo-monitor",
+							},
+							Items: []corev1.KeyToPath{
+								corev1.KeyToPath{
+									Key:  "prometheus-config",
+									Path: "prometheus.yml",
+								},
+							},
+						},
+					},
+				},
+				corev1.Volume{
+					Name: "prometheus-rules",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				},
+				corev1.Volume{
+					Name: "cluster-client-tls",
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName:  "foo-cluster-client-secret",
+							DefaultMode: pointer.Int32Ptr(420),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			cm, err := getMonitorConfigMap(&tt.cluster, &tt.monitor)
+			g.Expect(err).NotTo(HaveOccurred())
+			sa := getMonitorVolumes(cm, &tt.monitor, &tt.cluster)
+			if tt.expected == nil {
+				g.Expect(sa).To(BeNil())
+				return
+			}
+			if diff := cmp.Diff(&tt.expected, &sa); diff != "" {
+				t.Errorf("unexpected volume configuration (-want, +got): %s", diff)
+			}
+		})
+	}
+}
+
+func TestGetMonitorPrometheusContainer(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	testCases := []struct {
+		name     string
+		cluster  v1alpha1.TidbCluster
+		monitor  v1alpha1.TidbMonitor
+		expected *corev1.Container
+	}{
+		{
+			name: "basic",
+			cluster: v1alpha1.TidbCluster{
+				Spec: v1alpha1.TidbClusterSpec{
+					TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
+				},
+			},
+			monitor: v1alpha1.TidbMonitor{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbMonitorSpec{
+					Prometheus: v1alpha1.PrometheusSpec{
+						MonitorContainer: v1alpha1.MonitorContainer{
+							BaseImage: "hub.pingcap.net",
+							Version:   "latest",
+						},
+						Config: &v1alpha1.PrometheusConfiguration{
+							CommandOptions: []string{
+								"--web.external-url=https://www.example.com/prometheus/",
+							},
+						},
+					},
+				},
+			},
+			expected: &corev1.Container{
+				Name:  "prometheus",
+				Image: "hub.pingcap.net:latest",
+				Command: []string{
+					"/bin/prometheus",
+					"--web.enable-admin-api",
+					"--web.enable-lifecycle",
+					"--config.file=/etc/prometheus/prometheus.yml",
+					"--storage.tsdb.path=/data/prometheus",
+					"--storage.tsdb.retention=0d",
+					"--web.external-url=https://www.example.com/prometheus/",
+				},
+				Ports: []corev1.ContainerPort{
+					corev1.ContainerPort{
+						Name:          "prometheus",
+						ContainerPort: 9090,
+						Protocol:      "TCP",
+					},
+				},
+				Env: []corev1.EnvVar{
+					corev1.EnvVar{
+						Name: "TZ",
+					},
+				},
+				Resources: corev1.ResourceRequirements{},
+				VolumeMounts: []corev1.VolumeMount{
+					corev1.VolumeMount{
+						Name:      "prometheus-config",
+						ReadOnly:  true,
+						MountPath: "/etc/prometheus",
+					},
+					corev1.VolumeMount{
+						Name:      "monitor-data",
+						ReadOnly:  false,
+						MountPath: "/data",
+					},
+					corev1.VolumeMount{
+						Name:      "prometheus-rules",
+						ReadOnly:  false,
+						MountPath: "/prometheus-rules",
+					},
+					{
+						Name:      "cluster-client-tls",
+						ReadOnly:  true,
+						MountPath: "/var/lib/cluster-client-tls",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			sa := getMonitorPrometheusContainer(&tt.monitor, &tt.cluster)
+			if tt.expected == nil {
+				g.Expect(sa).To(BeNil())
+				return
+			}
+			if diff := cmp.Diff(tt.expected, &sa); diff != "" {
+				t.Errorf("unexpected plugin configuration (-want, +got): %s", diff)
+			}
+		})
+	}
+}
+
+func TestGetMonitorGrafanaContainer(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	testCases := []struct {
+		name     string
+		secret   corev1.Secret
+		cluster  v1alpha1.TidbCluster
+		monitor  v1alpha1.TidbMonitor
+		expected *corev1.Container
+	}{
+		{
+			name: "basic",
+			secret: corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+			},
+			cluster: v1alpha1.TidbCluster{
+				Spec: v1alpha1.TidbClusterSpec{
+					TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
+				},
+			},
+			monitor: v1alpha1.TidbMonitor{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbMonitorSpec{
+					Grafana: &v1alpha1.GrafanaSpec{
+						MonitorContainer: v1alpha1.MonitorContainer{
+							BaseImage: "hub.pingcap.net",
+							Version:   "latest",
+						},
+					},
+				},
+			},
+			expected: &corev1.Container{
+				Name:  "grafana",
+				Image: "hub.pingcap.net:latest",
+				Ports: []corev1.ContainerPort{
+					corev1.ContainerPort{
+						Name:          "grafana",
+						ContainerPort: 3000,
+						Protocol:      "TCP",
+					},
+				},
+				Env: []corev1.EnvVar{
+					corev1.EnvVar{
+						Name:  "GF_PATHS_DATA",
+						Value: "/data/grafana",
+					},
+					corev1.EnvVar{
+						Name: "GF_SECURITY_ADMIN_PASSWORD",
+						ValueFrom: &corev1.EnvVarSource{
+							SecretKeyRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "foo",
+								},
+								Key: "password",
+							},
+						},
+					},
+					corev1.EnvVar{
+						Name: "GF_SECURITY_ADMIN_USER",
+						ValueFrom: &corev1.EnvVarSource{
+							SecretKeyRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "foo",
+								},
+								Key: "username",
+							},
+						},
+					},
+					corev1.EnvVar{Name: "TZ", Value: "UTC"},
+				},
+				Resources: corev1.ResourceRequirements{},
+				VolumeMounts: []corev1.VolumeMount{
+					corev1.VolumeMount{
+						Name:      "monitor-data",
+						ReadOnly:  false,
+						MountPath: "/data",
+					},
+					corev1.VolumeMount{
+						Name:      "datasource",
+						ReadOnly:  false,
+						MountPath: "/etc/grafana/provisioning/datasources",
+					},
+					corev1.VolumeMount{
+						Name:      "dashboards-provisioning",
+						ReadOnly:  false,
+						MountPath: "/etc/grafana/provisioning/dashboards",
+					},
+					corev1.VolumeMount{
+						Name:      "grafana-dashboard",
+						MountPath: "/grafana-dashboard-definitions/tidb",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			sa := getMonitorGrafanaContainer(&tt.secret, &tt.monitor, &tt.cluster)
+			if tt.expected == nil {
+				g.Expect(sa).To(BeNil())
+				return
+			}
+			if diff := cmp.Diff(tt.expected, &sa); diff != "" {
+>>>>>>> 7ec9a05b... monitor: fix surprising prometheus commandOptions behavior (#3390)
 				t.Errorf("unexpected plugin configuration (-want, +got): %s", diff)
 			}
 		})
