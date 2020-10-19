@@ -127,7 +127,15 @@ func (psd *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 			return err
 		}
 		if leader.Name == memberName {
-			err = pdClient.TransferPDLeader(fmt.Sprintf("%s-pd-%d", tc.GetName(), 0))
+			var targetName string
+			lastOrdinal := helper.GetMaxPodOrdinal(*newSet.Spec.Replicas, newSet)
+			if ordinal == lastOrdinal {
+				targetName = PdPodName(tcName, helper.GetMinPodOrdinal(*newSet.Spec.Replicas, newSet))
+			} else {
+				targetName = PdPodName(tcName, lastOrdinal)
+			}
+
+			err = pdClient.TransferPDLeader(targetName)
 			if err != nil {
 				return err
 			}
