@@ -14,6 +14,7 @@ TiDB Operator version: 1.1.6
 - Add `spec.tikv.evictLeaderTimeout` to TidbCluster CR to make TiKV evict leader timeout configurable ([#3344](https://github.com/pingcap/tidb-operator/pull/3344), [@lichunzhu](https://github.com/lichunzhu))
 - Support monitoring multiple TiDB clusters with one TidbMonitor CR when TLS is disabled. `spec.clusterScoped` is added to the TidbMonitor CR and needs to be set to `true` to monitor multiple clusters ([#3308](https://github.com/pingcap/tidb-operator/pull/3308), [@mikechengwei](https://github.com/mikechengwei))
 - Support specifying resources for all initcontainers ([#3305](https://github.com/pingcap/tidb-operator/pull/3305), [@shonge](https://github.com/shonge))
+- Support deploying heterogeneous TiDB clusters ([#3003](https://github.com/pingcap/tidb-operator/pull/3003) [#3009](https://github.com/pingcap/tidb-operator/pull/3009) [#3113](https://github.com/pingcap/tidb-operator/pull/3113) [#3155](https://github.com/pingcap/tidb-operator/pull/3155) [#3253](https://github.com/pingcap/tidb-operator/pull/3253), [@mikechengwei](https://github.com/mikechengwei))
 
 ## Improvements
 

@@ -14,6 +14,7 @@ TiDB Operator 版本：1.1.6
 - 添加 `spec.tikv.evictLeaderTimeout` 支持配置 TiKV evict leader 超时时间 ([#3344](https://github.com/pingcap/tidb-operator/pull/3344), [@lichunzhu](https://github.com/lichunzhu))
 - 支持使用一个 TidbMonitor 监控多个未开启 TLS 的 TiDB 集群。TidbMonitor CR 添加 `spec.clusterScoped` 配置项，监控多个集群时需要设置为 `true` ([#3308](https://github.com/pingcap/tidb-operator/pull/3308), [@mikechengwei](https://github.com/mikechengwei))
 - 所有 initcontainers 支持配置资源 ([#3305](https://github.com/pingcap/tidb-operator/pull/3305), [@shonge](https://github.com/shonge))
+- 支持部署异构 TiDB 集群 ([#3003](https://github.com/pingcap/tidb-operator/pull/3003) [#3009](https://github.com/pingcap/tidb-operator/pull/3009) [#3113](https://github.com/pingcap/tidb-operator/pull/3113) [#3155](https://github.com/pingcap/tidb-operator/pull/3155) [#3253](https://github.com/pingcap/tidb-operator/pull/3253), [@mikechengwei](https://github.com/mikechengwei))
 
 ## 优化提升
 
