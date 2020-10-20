@@ -32,7 +32,6 @@ import (
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
-
 type tikvScaler struct {
 	generalScaler
 }
