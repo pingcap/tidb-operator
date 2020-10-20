@@ -463,7 +463,6 @@ func isPodDesired(tc *v1alpha1.TidbCluster, component, podName string) bool {
 	if component == v1alpha1.PDMemberType.String() {
 		ordinals = tc.PDStsDesiredOrdinals(false)
 	}
-	klog.Infof("%s desired ordinals are %v", component, ordinals)
 	ordinal, err := util.GetOrdinalFromPodName(podName)
 	if err != nil {
 		klog.Errorf("unexpected pod name %q: %v", podName, err)
