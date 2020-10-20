@@ -206,6 +206,15 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 
 		pdClient := controller.NewFakePDClient(pdControl, tc)
 
+		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
+			var replicas uint64 = 3
+			return &pdapi.PDConfigFromAPI{
+				Replication: &pdapi.PDReplicationConfig{
+					MaxReplicas: &replicas,
+				},
+			}, nil
+		})
+
 		if test.delStoreErr {
 			pdClient.AddReaction(pdapi.DeleteStoreActionType, func(action *pdapi.Action) (interface{}, error) {
 				return nil, fmt.Errorf("delete store error")
