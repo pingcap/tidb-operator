@@ -1302,8 +1302,10 @@ type BackupStatus struct {
 	// BackupSize is the data size of the backup.
 	BackupSize int64 `json:"backupSize"`
 	// CommitTs is the snapshot time point of tidb cluster.
-	CommitTs   string            `json:"commitTs"`
-	Conditions []BackupCondition `json:"conditions"`
+	CommitTs string `json:"commitTs"`
+	// Phase is a user readable state inferred from the underlying Backup conditions
+	Phase      BackupConditionType `json:"phase"`
+	Conditions []BackupCondition   `json:"conditions"`
 }
 
 // +genclient
@@ -1468,8 +1470,10 @@ type RestoreStatus struct {
 	// TimeCompleted is the time at which the restore was completed.
 	TimeCompleted metav1.Time `json:"timeCompleted"`
 	// CommitTs is the snapshot time point of tidb cluster.
-	CommitTs   string             `json:"commitTs"`
-	Conditions []RestoreCondition `json:"conditions"`
+	CommitTs string `json:"commitTs"`
+	// Phase is a user readable state inferred from the underlying Restore conditions
+	Phase      RestoreConditionType `json:"phase"`
+	Conditions []RestoreCondition   `json:"conditions"`
 }
 
 // +k8s:openapi-gen=true
