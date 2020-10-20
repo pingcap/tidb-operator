@@ -24,13 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
-<<<<<<< HEAD
-=======
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
->>>>>>> c525860c... forbid to scale in tikv when number of stores is equal to or less than 3 (#3367)
 	"k8s.io/klog"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
@@ -85,7 +79,6 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 		return fmt.Errorf("tikvScaler.ScaleIn: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
 	}
 
-	tc, _ := meta.(*v1alpha1.TidbCluster)
 	upNumber := 0
 	storeState := ""
 	for _, store := range tc.Status.TiKV.Stores {
@@ -102,27 +95,24 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 	}
 	maxReplicas := *(config.Replication.MaxReplicas)
 	if upNumber < int(maxReplicas) {
-		errMsg := fmt.Sprintf("the number of stores in Up state of TidbCluster [%s/%s] is %d, less than MaxReplicas in PD configuration(%d), can't scale in TiKV, podname %s ", meta.GetNamespace(), meta.GetName(), upNumber, maxReplicas, podName)
+		errMsg := fmt.Sprintf("the number of stores in Up state of TidbCluster [%s/%s] is %d, less than MaxReplicas in PD configuration(%d), can't scale in TiKV, podname %s ", tc.GetNamespace(), tc.GetName(), upNumber, maxReplicas, podName)
 		klog.Error(errMsg)
 		tsd.deps.Recorder.Event(tc, v1.EventTypeWarning, "FailedScaleIn", errMsg)
 		return nil
 	} else if upNumber == int(maxReplicas) {
 		if storeState == v1alpha1.TiKVStateUp {
-			errMsg := fmt.Sprintf("can't scale in TiKV of TidbCluster [%s/%s], cause the number of up stores is equal to MaxReplicas in PD configuration(%d), and the store in Pod %s which is going to be deleted is up too", meta.GetNamespace(), meta.GetName(), maxReplicas, podName)
+			errMsg := fmt.Sprintf("can't scale in TiKV of TidbCluster [%s/%s], cause the number of up stores is equal to MaxReplicas in PD configuration(%d), and the store in Pod %s which is going to be deleted is up too", tc.GetNamespace(), tc.GetName(), maxReplicas, podName)
 			klog.Error(errMsg)
 			tsd.deps.Recorder.Event(tc, v1.EventTypeWarning, "FailedScaleIn", errMsg)
 			return nil
 		}
 	}
 
-<<<<<<< HEAD
-=======
 	if tsd.deps.CLIConfig.PodWebhookEnabled {
 		setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 		return nil
 	}
 
->>>>>>> c525860c... forbid to scale in tikv when number of stores is equal to or less than 3 (#3367)
 	for _, store := range tc.Status.TiKV.Stores {
 		if store.PodName == podName {
 			state := store.State
