@@ -263,7 +263,7 @@ func (tc *TidbCluster) TiFlashUpgrading() bool {
 	return tc.Status.TiFlash.Phase == UpgradePhase
 }
 
-func (tc *TidbCluster) GetDeleteSlots(component string) (deleteSlots sets.Int32) {
+func (tc *TidbCluster) getDeleteSlots(component string) (deleteSlots sets.Int32) {
 	deleteSlots = sets.NewInt32()
 	annotations := tc.GetAnnotations()
 	if annotations == nil {
@@ -341,7 +341,7 @@ func (tc *TidbCluster) PDStsDesiredOrdinals(excludeFailover bool) sets.Int32 {
 	if !excludeFailover {
 		replicas = tc.PDStsDesiredReplicas()
 	}
-	return helper.GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, tc.GetDeleteSlots(label.PDLabelVal))
+	return helper.GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, tc.getDeleteSlots(label.PDLabelVal))
 }
 
 func (tc *TidbCluster) TiKVAllPodsStarted() bool {
@@ -379,7 +379,7 @@ func (tc *TidbCluster) TiKVStsDesiredOrdinals(excludeFailover bool) sets.Int32 {
 	if !excludeFailover {
 		replicas = tc.TiKVStsDesiredReplicas()
 	}
-	return helper.GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, tc.GetDeleteSlots(label.TiKVLabelVal))
+	return helper.GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, tc.getDeleteSlots(label.TiKVLabelVal))
 }
 
 func (tc *TidbCluster) TiFlashAllPodsStarted() bool {
@@ -431,7 +431,7 @@ func (tc *TidbCluster) TiFlashStsDesiredOrdinals(excludeFailover bool) sets.Int3
 	if !excludeFailover {
 		replicas = tc.TiFlashStsDesiredReplicas()
 	}
-	return helper.GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, tc.GetDeleteSlots(label.TiFlashLabelVal))
+	return helper.GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, tc.getDeleteSlots(label.TiFlashLabelVal))
 }
 
 func (tc *TidbCluster) TiDBAllPodsStarted() bool {
@@ -469,7 +469,7 @@ func (tc *TidbCluster) TiDBStsDesiredOrdinals(excludeFailover bool) sets.Int32 {
 	if !excludeFailover {
 		replicas = tc.TiDBStsDesiredReplicas()
 	}
-	return helper.GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, tc.GetDeleteSlots(label.TiDBLabelVal))
+	return helper.GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, tc.getDeleteSlots(label.TiDBLabelVal))
 }
 
 func (tc *TidbCluster) PDIsAvailable() bool {

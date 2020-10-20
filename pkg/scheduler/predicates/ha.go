@@ -16,9 +16,9 @@ package predicates
 import (
 	"errors"
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	"math"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -142,9 +142,6 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 		topologyMap[node.Labels[topologyKey]] = make(sets.String)
 	}
 
-	deleteSlots := tc.GetDeleteSlots(component)
-	klog.Infof("tidbcluster %s/%s deleteSlots is %v", ns, tcName, deleteSlots.List())
-
 	scheduledNodes := make([]*apiv1.Node, 0)
 	for _, pod := range podList.Items {
 		nodeName := pod.Spec.NodeName
@@ -162,16 +159,11 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 		scheduledNodes = append(scheduledNodes, scheduledNode)
 	}
 
-	actualReplicasNumber := 0
 	for _, pod := range podList.Items {
 		pName := pod.GetName()
-		if podInDeleteSlots(&pod, deleteSlots) {
-			klog.Infof("pod %s is contained in deleteSlots %v, will be deleted, do not count topology", pName, deleteSlots.List())
-			continue
-		}
-		actualReplicasNumber++
-		if actualReplicasNumber > int(replicas) {
-			klog.Infof("pod %s is out of range of desired replicas(%d), will be deleted, do not count topology", pName, replicas)
+
+		if !isPodDesired(tc, component, pName) {
+			klog.Infof("pod %s is not in desired ordinals, do not count its topology", pName)
 			continue
 		}
 
@@ -423,11 +415,6 @@ func getTCNameFromPod(pod *apiv1.Pod, component string) string {
 	return strings.TrimSuffix(pod.GenerateName, fmt.Sprintf("-%s-", component))
 }
 
-func getPodOrdinal(pod *apiv1.Pod) (int, error) {
-	ordinalStr := strings.TrimPrefix(pod.GetName(), pod.GetGenerateName())
-	return strconv.Atoi(ordinalStr)
-}
-
 func getReplicasFrom(tc *v1alpha1.TidbCluster, component string) int32 {
 	if component == v1alpha1.PDMemberType.String() {
 		return tc.PDStsDesiredReplicas()
@@ -470,8 +457,16 @@ func getTopologyFromNode(topologyKey string, nodeName string, nodes []apiv1.Node
 	return ""
 }
 
-func podInDeleteSlots(pod *apiv1.Pod, deleteSlots sets.Int32) bool {
-	ordinal, _ := getPodOrdinal(pod)
-
-	return deleteSlots.Has(int32(ordinal))
+func isPodDesired(tc *v1alpha1.TidbCluster, component, podName string) bool {
+	ordinals := tc.TiKVStsDesiredOrdinals(false)
+	if component == v1alpha1.PDMemberType.String() {
+		ordinals = tc.PDStsDesiredOrdinals(false)
+	}
+	klog.Infof("%s desired ordinals are %v", component, ordinals)
+	ordinal, err := util.GetOrdinalFromPodName(podName)
+	if err != nil {
+		klog.Errorf("unexpected pod name %q: %v", podName, err)
+		return false
+	}
+	return ordinals.Has(ordinal)
 }
