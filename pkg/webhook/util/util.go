@@ -14,7 +14,6 @@
 package util
 
 import (
-	"crypto/tls"
 	"encoding/json"
 
 	"gomodules.xyz/jsonpatch/v2"
@@ -49,17 +48,6 @@ func ARPatch(patch []byte) *admission.AdmissionResponse {
 		Patch:     patch,
 		PatchType: func() *admission.PatchType { p := admission.PatchTypeJSONPatch; return &p }(),
 	}
-}
-
-// config tls cert for server
-func ConfigTLS(certFile string, keyFile string) (*tls.Config, error) {
-	sCert, err := tls.LoadX509KeyPair(certFile, keyFile)
-	if err != nil {
-		return nil, err
-	}
-	return &tls.Config{
-		Certificates: []tls.Certificate{sCert},
-	}, nil
 }
 
 func CreateJsonPatch(original, current runtime.Object) ([]byte, error) {
