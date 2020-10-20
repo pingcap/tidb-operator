@@ -15,9 +15,10 @@ package member
 
 import (
 	"fmt"
-	v1 "k8s.io/api/core/v1"
 	"strconv"
 	"time"
+
+	v1 "k8s.io/api/core/v1"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
