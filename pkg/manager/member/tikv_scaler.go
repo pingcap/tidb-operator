@@ -116,8 +116,7 @@ func (tsd *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, new
 			storeState = store.State
 		}
 	}
-	pdCli := controller.GetPDClient(tsd.deps.PDControl, tc)
-	config, err := pdCli.GetConfig()
+	config, err := controller.GetPDClient(tsd.deps.PDControl, tc).GetConfig()
 	if err != nil {
 		return err
 	}
