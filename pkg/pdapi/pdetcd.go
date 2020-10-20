@@ -51,21 +51,21 @@ func NewPdEtcdClient(url string, timeout time.Duration, tlsConfig *tls.Config) (
 	}, nil
 }
 
-func (pec *pdEtcdClient) Close() error {
-	return pec.etcdClient.Close()
+func (c *pdEtcdClient) Close() error {
+	return c.etcdClient.Close()
 }
 
-func (pec *pdEtcdClient) PutKey(key, value string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), pec.timeout)
+func (c *pdEtcdClient) PutKey(key, value string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
-	_, err := pec.etcdClient.Put(ctx, key, value)
+	_, err := c.etcdClient.Put(ctx, key, value)
 	return err
 }
 
-func (pec *pdEtcdClient) DeleteKey(key string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), pec.timeout)
+func (c *pdEtcdClient) DeleteKey(key string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
-	kvc := etcdclientv3.NewKV(pec.etcdClient)
+	kvc := etcdclientv3.NewKV(c.etcdClient)
 
 	// perform a delete only if key already exists
 	_, err := kvc.Txn(ctx).

@@ -75,56 +75,56 @@ type defaultDMClusterControl struct {
 }
 
 // UpdateStatefulSet executes the core logic loop for a dmcluster.
-func (dcc *defaultDMClusterControl) UpdateDMCluster(dc *v1alpha1.DMCluster) error {
-	dcc.defaulting(dc)
-	if !dcc.validate(dc) {
+func (c *defaultDMClusterControl) UpdateDMCluster(dc *v1alpha1.DMCluster) error {
+	c.defaulting(dc)
+	if !c.validate(dc) {
 		return nil // fatal error, no need to retry on invalid object
 	}
 
 	var errs []error
 	oldStatus := dc.Status.DeepCopy()
 
-	if err := dcc.updateDMCluster(dc); err != nil {
+	if err := c.updateDMCluster(dc); err != nil {
 		errs = append(errs, err)
 	}
 
-	if err := dcc.conditionUpdater.Update(dc); err != nil {
+	if err := c.conditionUpdater.Update(dc); err != nil {
 		errs = append(errs, err)
 	}
 
 	if apiequality.Semantic.DeepEqual(&dc.Status, oldStatus) {
 		return errorutils.NewAggregate(errs)
 	}
-	if _, err := dcc.dcControl.UpdateDMCluster(dc.DeepCopy(), &dc.Status, oldStatus); err != nil {
+	if _, err := c.dcControl.UpdateDMCluster(dc.DeepCopy(), &dc.Status, oldStatus); err != nil {
 		errs = append(errs, err)
 	}
 
 	return errorutils.NewAggregate(errs)
 }
 
-func (dcc *defaultDMClusterControl) defaulting(dc *v1alpha1.DMCluster) {
+func (c *defaultDMClusterControl) defaulting(dc *v1alpha1.DMCluster) {
 	defaulting.SetDMClusterDefault(dc)
 }
 
-func (dcc *defaultDMClusterControl) validate(dc *v1alpha1.DMCluster) bool {
+func (c *defaultDMClusterControl) validate(dc *v1alpha1.DMCluster) bool {
 	errs := v1alpha1validation.ValidateDMCluster(dc)
 	if len(errs) > 0 {
 		aggregatedErr := errs.ToAggregate()
 		klog.Errorf("dm cluster %s/%s is not valid and must be fixed first, aggregated error: %v", dc.GetNamespace(), dc.GetName(), aggregatedErr)
-		dcc.recorder.Event(dc, v1.EventTypeWarning, "FailedValidation", aggregatedErr.Error())
+		c.recorder.Event(dc, v1.EventTypeWarning, "FailedValidation", aggregatedErr.Error())
 		return false
 	}
 	return true
 }
 
-func (dcc *defaultDMClusterControl) updateDMCluster(dc *v1alpha1.DMCluster) error {
+func (c *defaultDMClusterControl) updateDMCluster(dc *v1alpha1.DMCluster) error {
 	var errs []error
-	if err := dcc.reclaimPolicyManager.SyncDM(dc); err != nil {
+	if err := c.reclaimPolicyManager.SyncDM(dc); err != nil {
 		return err
 	}
 
 	// cleaning all orphan pods(dm-master or dm-worker which don't have a related PVC) managed by operator
-	skipReasons, err := dcc.orphanPodsCleaner.Clean(dc)
+	skipReasons, err := c.orphanPodsCleaner.Clean(dc)
 	if err != nil {
 		return err
 	}
@@ -145,7 +145,7 @@ func (dcc *defaultDMClusterControl) updateDMCluster(dc *v1alpha1.DMCluster) erro
 	//   - upgrade the dm-master cluster
 	//   - scale out/in the dm-master cluster
 	//   - failover the dm-master cluster
-	if err := dcc.masterMemberManager.SyncDM(dc); err != nil {
+	if err := c.masterMemberManager.SyncDM(dc); err != nil {
 		errs = append(errs, err)
 	}
 
@@ -157,7 +157,7 @@ func (dcc *defaultDMClusterControl) updateDMCluster(dc *v1alpha1.DMCluster) erro
 	//   - upgrade the dm-worker cluster
 	//   - scale out/in the dm-worker cluster
 	//   - failover the dm-worker cluster
-	if err := dcc.workerMemberManager.SyncDM(dc); err != nil {
+	if err := c.workerMemberManager.SyncDM(dc); err != nil {
 		errs = append(errs, err)
 	}
 
@@ -165,11 +165,11 @@ func (dcc *defaultDMClusterControl) updateDMCluster(dc *v1alpha1.DMCluster) erro
 	//   - label.StoreIDLabelKey
 	//   - label.MemberIDLabelKey
 	//   - label.NamespaceLabelKey
-	// if err := dcc.metaManager.Sync(dc); err != nil {
+	// if err := c.metaManager.Sync(dc); err != nil {
 	// 	return err
 	// }
 
-	pvcSkipReasons, err := dcc.pvcCleaner.Clean(dc)
+	pvcSkipReasons, err := c.pvcCleaner.Clean(dc)
 	if err != nil {
 		return err
 	}
@@ -182,10 +182,10 @@ func (dcc *defaultDMClusterControl) updateDMCluster(dc *v1alpha1.DMCluster) erro
 	// TODO: sync dm cluster attributes
 	// syncing the some tidbcluster status attributes
 	// 	- sync tidbmonitor reference
-	// return dcc.tidbClusterStatusManager.Sync(dc)
+	// return c.tidbClusterStatusManager.Sync(dc)
 
 	// resize PVC if necessary
-	if err := dcc.pvcResizer.ResizeDM(dc); err != nil {
+	if err := c.pvcResizer.ResizeDM(dc); err != nil {
 		errs = append(errs, err)
 	}
 	return errorutils.NewAggregate(errs)

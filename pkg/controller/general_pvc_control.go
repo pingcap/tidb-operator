@@ -49,23 +49,23 @@ func NewRealGeneralPVCControl(
 	}
 }
 
-func (gpc *realGeneralPVCControl) CreatePVC(object runtime.Object, pvc *corev1.PersistentVolumeClaim) error {
+func (c *realGeneralPVCControl) CreatePVC(object runtime.Object, pvc *corev1.PersistentVolumeClaim) error {
 	ns := pvc.GetNamespace()
 	pvcName := pvc.GetName()
 	instanceName := pvc.GetLabels()[label.InstanceLabelKey]
 	kind := object.GetObjectKind().GroupVersionKind().Kind
 
-	_, err := gpc.kubeCli.CoreV1().PersistentVolumeClaims(ns).Create(pvc)
+	_, err := c.kubeCli.CoreV1().PersistentVolumeClaims(ns).Create(pvc)
 	if err != nil {
 		klog.Errorf("failed to create pvc: [%s/%s], %s: %s, %v", ns, pvcName, kind, instanceName, err)
 	} else {
 		klog.V(4).Infof("create pvc: [%s/%s] successfully, %s: %s", ns, pvcName, kind, instanceName)
 	}
-	gpc.recordPVCEvent("create", object, pvc, err)
+	c.recordPVCEvent("create", object, pvc, err)
 	return err
 }
 
-func (gpc *realGeneralPVCControl) recordPVCEvent(verb string, obj runtime.Object, pvc *corev1.PersistentVolumeClaim, err error) {
+func (c *realGeneralPVCControl) recordPVCEvent(verb string, obj runtime.Object, pvc *corev1.PersistentVolumeClaim, err error) {
 	pvcName := pvc.GetName()
 	ns := pvc.GetNamespace()
 	instanceName := pvc.GetLabels()[label.InstanceLabelKey]
@@ -74,12 +74,12 @@ func (gpc *realGeneralPVCControl) recordPVCEvent(verb string, obj runtime.Object
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
 		msg := fmt.Sprintf("%s PVC %s/%s for %s/%s successful",
 			strings.ToLower(verb), ns, pvcName, kind, instanceName)
-		gpc.recorder.Event(obj, corev1.EventTypeNormal, reason, msg)
+		c.recorder.Event(obj, corev1.EventTypeNormal, reason, msg)
 	} else {
 		reason := fmt.Sprintf("Failed%s", strings.Title(verb))
 		msg := fmt.Sprintf("%s PVC %s/%s for %s/%s failed error: %s",
 			strings.ToLower(verb), ns, pvcName, kind, instanceName, err)
-		gpc.recorder.Event(obj, corev1.EventTypeWarning, reason, msg)
+		c.recorder.Event(obj, corev1.EventTypeWarning, reason, msg)
 	}
 }
 
@@ -102,19 +102,19 @@ func NewFakeGeneralPVCControl(pvcInformer coreinformers.PersistentVolumeClaimInf
 }
 
 // SetCreatePVCError sets the error attributes of createPVCTracker
-func (fjc *FakeGeneralPVCControl) SetCreatePVCError(err error, after int) {
-	fjc.createPVCTracker.SetError(err).SetAfter(after)
+func (c *FakeGeneralPVCControl) SetCreatePVCError(err error, after int) {
+	c.createPVCTracker.SetError(err).SetAfter(after)
 }
 
 // CreatePVC adds the pvc to PVCIndexer
-func (fjc *FakeGeneralPVCControl) CreatePVC(_ runtime.Object, pvc *corev1.PersistentVolumeClaim) error {
-	defer fjc.createPVCTracker.Inc()
-	if fjc.createPVCTracker.ErrorReady() {
-		defer fjc.createPVCTracker.Reset()
-		return fjc.createPVCTracker.GetError()
+func (c *FakeGeneralPVCControl) CreatePVC(_ runtime.Object, pvc *corev1.PersistentVolumeClaim) error {
+	defer c.createPVCTracker.Inc()
+	if c.createPVCTracker.ErrorReady() {
+		defer c.createPVCTracker.Reset()
+		return c.createPVCTracker.GetError()
 	}
 
-	return fjc.PVCIndexer.Add(pvc)
+	return c.PVCIndexer.Add(pvc)
 }
 
 var _ GeneralPVCControlInterface = &FakeGeneralPVCControl{}

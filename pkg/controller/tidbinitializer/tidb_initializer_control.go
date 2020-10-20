@@ -33,8 +33,8 @@ type defaultTidbInitializerControl struct {
 	tidbInitManger member.InitManager
 }
 
-func (tic *defaultTidbInitializerControl) ReconcileTidbInitializer(ti *v1alpha1.TidbInitializer) error {
-	return tic.tidbInitManger.Sync(ti)
+func (c *defaultTidbInitializerControl) ReconcileTidbInitializer(ti *v1alpha1.TidbInitializer) error {
+	return c.tidbInitManger.Sync(ti)
 }
 
 var _ ControlInterface = &defaultTidbInitializerControl{}
