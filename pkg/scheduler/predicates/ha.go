@@ -16,12 +16,13 @@ package predicates
 import (
 	"errors"
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	"math"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/pingcap/tidb-operator/pkg/util"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
