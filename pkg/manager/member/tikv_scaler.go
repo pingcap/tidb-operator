@@ -15,6 +15,7 @@ package member
 
 import (
 	"fmt"
+	v1 "k8s.io/api/core/v1"
 	"strconv"
 	"time"
 
@@ -31,10 +32,6 @@ import (
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
-const (
-	// MinimalUpStateOfStores is the minimal value of stores in up state for Scaling in TiKV
-	MinimalUpStateOfStores = 3
-)
 
 type tikvScaler struct {
 	generalScaler
@@ -119,12 +116,22 @@ func (tsd *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, new
 			storeState = store.State
 		}
 	}
-	if upNumber < MinimalUpStateOfStores {
-		klog.Errorf("the number of stores in Up state of TidbCluster [%s/%s] is %d, less than %d, can't scale in TiKV, podname %s ", meta.GetNamespace(), meta.GetName(), upNumber, MinimalUpStateOfStores, podName)
+	pdCli := controller.GetPDClient(tsd.deps.PDControl, tc)
+	config, err := pdCli.GetConfig()
+	if err != nil {
+		return err
+	}
+	maxReplicas := *(config.Replication.MaxReplicas)
+	if upNumber < int(maxReplicas) {
+		errMsg := fmt.Sprintf("the number of stores in Up state of TidbCluster [%s/%s] is %d, less than MaxReplicas in PD configuration(%d), can't scale in TiKV, podname %s ", meta.GetNamespace(), meta.GetName(), upNumber, maxReplicas, podName)
+		klog.Error(errMsg)
+		tsd.deps.Recorder.Event(tc, v1.EventTypeWarning, "FailedScaleIn", errMsg)
 		return nil
-	} else if upNumber == MinimalUpStateOfStores {
+	} else if upNumber == int(maxReplicas) {
 		if storeState == v1alpha1.TiKVStateUp {
-			klog.Errorf("can't scale in TiKV of TidbCluster [%s/%s], cause the number of up stores is %d, and the store in Pod %s which is going to be deleted is up too", meta.GetNamespace(), meta.GetName(), MinimalUpStateOfStores, podName)
+			errMsg := fmt.Sprintf("can't scale in TiKV of TidbCluster [%s/%s], cause the number of up stores is equal to MaxReplicas in PD configuration(%d), and the store in Pod %s which is going to be deleted is up too", meta.GetNamespace(), meta.GetName(), maxReplicas, podName)
+			klog.Error(errMsg)
+			tsd.deps.Recorder.Event(tc, v1.EventTypeWarning, "FailedScaleIn", errMsg)
 			return nil
 		}
 	}
