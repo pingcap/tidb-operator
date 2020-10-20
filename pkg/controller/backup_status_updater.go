@@ -51,7 +51,7 @@ func NewRealBackupConditionUpdater(
 	}
 }
 
-func (bcu *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition) error {
+func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition) error {
 	ns := backup.GetNamespace()
 	backupName := backup.GetName()
 	oldStatus := backup.Status.DeepCopy()
@@ -59,12 +59,12 @@ func (bcu *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		isUpdate = v1alpha1.UpdateBackupCondition(&backup.Status, condition)
 		if isUpdate {
-			_, updateErr := bcu.cli.PingcapV1alpha1().Backups(ns).Update(backup)
+			_, updateErr := u.cli.PingcapV1alpha1().Backups(ns).Update(backup)
 			if updateErr == nil {
 				klog.Infof("Backup: [%s/%s] updated successfully", ns, backupName)
 				return nil
 			}
-			if updated, err := bcu.backupLister.Backups(ns).Get(backupName); err == nil {
+			if updated, err := u.backupLister.Backups(ns).Get(backupName); err == nil {
 				// make a copy so we don't mutate the shared cache
 				backup = updated.DeepCopy()
 				backup.Status = *oldStatus
@@ -97,19 +97,19 @@ func NewFakeBackupConditionUpdater(backupInformer informers.BackupInformer) *Fak
 }
 
 // SetUpdateBackupError sets the error attributes of updateBackupTracker
-func (fbc *FakeBackupConditionUpdater) SetUpdateBackupError(err error, after int) {
-	fbc.updateBackupTracker.SetError(err).SetAfter(after)
+func (c *FakeBackupConditionUpdater) SetUpdateBackupError(err error, after int) {
+	c.updateBackupTracker.SetError(err).SetAfter(after)
 }
 
 // UpdateBackup updates the Backup
-func (fbc *FakeBackupConditionUpdater) Update(backup *v1alpha1.Backup, _ *v1alpha1.BackupCondition) error {
-	defer fbc.updateBackupTracker.Inc()
-	if fbc.updateBackupTracker.ErrorReady() {
-		defer fbc.updateBackupTracker.Reset()
-		return fbc.updateBackupTracker.GetError()
+func (c *FakeBackupConditionUpdater) Update(backup *v1alpha1.Backup, _ *v1alpha1.BackupCondition) error {
+	defer c.updateBackupTracker.Inc()
+	if c.updateBackupTracker.ErrorReady() {
+		defer c.updateBackupTracker.Reset()
+		return c.updateBackupTracker.GetError()
 	}
 
-	return fbc.BackupIndexer.Update(backup)
+	return c.BackupIndexer.Update(backup)
 }
 
 var _ BackupConditionUpdaterInterface = &FakeBackupConditionUpdater{}

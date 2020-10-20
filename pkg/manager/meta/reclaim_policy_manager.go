@@ -37,19 +37,19 @@ func NewReclaimPolicyManager(deps *controller.Dependencies) *reclaimPolicyManage
 	}
 }
 
-func (rpm *reclaimPolicyManager) Sync(tc *v1alpha1.TidbCluster) error {
-	return rpm.sync(v1alpha1.TiDBClusterKind, tc, tc.IsPVReclaimEnabled(), *tc.Spec.PVReclaimPolicy)
+func (m *reclaimPolicyManager) Sync(tc *v1alpha1.TidbCluster) error {
+	return m.sync(v1alpha1.TiDBClusterKind, tc, tc.IsPVReclaimEnabled(), *tc.Spec.PVReclaimPolicy)
 }
 
-func (rpm *reclaimPolicyManager) SyncMonitor(tm *v1alpha1.TidbMonitor) error {
-	return rpm.sync(v1alpha1.TiDBMonitorKind, tm, false, *tm.Spec.PVReclaimPolicy)
+func (m *reclaimPolicyManager) SyncMonitor(tm *v1alpha1.TidbMonitor) error {
+	return m.sync(v1alpha1.TiDBMonitorKind, tm, false, *tm.Spec.PVReclaimPolicy)
 }
 
-func (rpm *reclaimPolicyManager) SyncDM(dc *v1alpha1.DMCluster) error {
-	return rpm.sync(v1alpha1.DMClusterKind, dc, dc.IsPVReclaimEnabled(), *dc.Spec.PVReclaimPolicy)
+func (m *reclaimPolicyManager) SyncDM(dc *v1alpha1.DMCluster) error {
+	return m.sync(v1alpha1.DMClusterKind, dc, dc.IsPVReclaimEnabled(), *dc.Spec.PVReclaimPolicy)
 }
 
-func (rpm *reclaimPolicyManager) sync(kind string, obj runtime.Object, isPVReclaimEnabled bool, policy corev1.PersistentVolumeReclaimPolicy) error {
+func (m *reclaimPolicyManager) sync(kind string, obj runtime.Object, isPVReclaimEnabled bool, policy corev1.PersistentVolumeReclaimPolicy) error {
 	var (
 		meta         = obj.(metav1.ObjectMetaAccessor).GetObjectMeta()
 		ns           = meta.GetNamespace()
@@ -72,7 +72,7 @@ func (rpm *reclaimPolicyManager) sync(kind string, obj runtime.Object, isPVRecla
 		return err
 	}
 
-	pvcs, err := rpm.deps.PVCLister.PersistentVolumeClaims(ns).List(selector)
+	pvcs, err := m.deps.PVCLister.PersistentVolumeClaims(ns).List(selector)
 	if err != nil {
 		return fmt.Errorf("reclaimPolicyManager.sync: failed to list pvc for %s %s/%s, selector %s, error: %s", kind, ns, instanceName, selector, err)
 	}
@@ -87,7 +87,7 @@ func (rpm *reclaimPolicyManager) sync(kind string, obj runtime.Object, isPVRecla
 		if l := label.Label(pvc.Labels); kind == v1alpha1.TiDBClusterKind && (!l.IsPD() && !l.IsTiDB() && !l.IsTiKV() && !l.IsTiFlash() && !l.IsPump()) {
 			continue
 		}
-		pv, err := rpm.deps.PVLister.Get(pvc.Spec.VolumeName)
+		pv, err := m.deps.PVLister.Get(pvc.Spec.VolumeName)
 		if err != nil {
 			return fmt.Errorf("reclaimPolicyManager.sync: failed to get pvc %s for %s %s/%s, error: %s", pvc.Spec.VolumeName, kind, ns, instanceName, err)
 		}
@@ -95,7 +95,7 @@ func (rpm *reclaimPolicyManager) sync(kind string, obj runtime.Object, isPVRecla
 		if pv.Spec.PersistentVolumeReclaimPolicy == policy {
 			continue
 		}
-		err = rpm.deps.PVControl.PatchPVReclaimPolicy(obj, pv, policy)
+		err = m.deps.PVControl.PatchPVReclaimPolicy(obj, pv, policy)
 		if err != nil {
 			return err
 		}
@@ -114,14 +114,14 @@ func NewFakeReclaimPolicyManager() *FakeReclaimPolicyManager {
 	return &FakeReclaimPolicyManager{}
 }
 
-func (frpm *FakeReclaimPolicyManager) SetSyncError(err error) {
-	frpm.err = err
+func (m *FakeReclaimPolicyManager) SetSyncError(err error) {
+	m.err = err
 }
 
-func (frpm *FakeReclaimPolicyManager) Sync(_ *v1alpha1.TidbCluster) error {
-	return frpm.err
+func (m *FakeReclaimPolicyManager) Sync(_ *v1alpha1.TidbCluster) error {
+	return m.err
 }
 
-func (frpm *FakeReclaimPolicyManager) SyncDM(_ *v1alpha1.DMCluster) error {
-	return frpm.err
+func (m *FakeReclaimPolicyManager) SyncDM(_ *v1alpha1.DMCluster) error {
+	return m.err
 }

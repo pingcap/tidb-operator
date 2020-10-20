@@ -55,47 +55,47 @@ func NewController(deps *controller.Dependencies) *Controller {
 	return c
 }
 
-func (tmc *Controller) Run(workers int, stopCh <-chan struct{}) {
+func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
-	defer tmc.queue.ShutDown()
+	defer c.queue.ShutDown()
 
 	klog.Info("Starting tidbmonitor controller")
 	defer klog.Info("Shutting down tidbmonitor controller")
 
 	for i := 0; i < workers; i++ {
-		go wait.Until(tmc.worker, time.Second, stopCh)
+		go wait.Until(c.worker, time.Second, stopCh)
 	}
 
 	<-stopCh
 }
 
-func (tmc *Controller) worker() {
-	for tmc.processNextWorkItem() {
+func (c *Controller) worker() {
+	for c.processNextWorkItem() {
 	}
 }
 
 // processNextWorkItem dequeues items, processes them, and marks them done. It enforces that the syncHandler is never
 // invoked concurrently with the same key.
-func (tmc *Controller) processNextWorkItem() bool {
-	key, quit := tmc.queue.Get()
+func (c *Controller) processNextWorkItem() bool {
+	key, quit := c.queue.Get()
 	if quit {
 		return false
 	}
-	defer tmc.queue.Done(key)
-	if err := tmc.sync(key.(string)); err != nil {
+	defer c.queue.Done(key)
+	if err := c.sync(key.(string)); err != nil {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
 			klog.Infof("TidbMonitor: %v, still need sync: %v, requeuing", key.(string), err)
 		} else {
 			utilruntime.HandleError(fmt.Errorf("TidbMonitor: %v, sync failed, err: %v", key.(string), err))
 		}
-		tmc.queue.AddRateLimited(key)
+		c.queue.AddRateLimited(key)
 	} else {
-		tmc.queue.Forget(key)
+		c.queue.Forget(key)
 	}
 	return true
 }
 
-func (tmc *Controller) sync(key string) error {
+func (c *Controller) sync(key string) error {
 	startTime := time.Now()
 	defer func() {
 		klog.V(4).Infof("Finished syncing TidbMonitor %q (%v)", key, time.Since(startTime))
@@ -105,7 +105,7 @@ func (tmc *Controller) sync(key string) error {
 	if err != nil {
 		return err
 	}
-	tm, err := tmc.deps.TiDBMonitorLister.TidbMonitors(ns).Get(name)
+	tm, err := c.deps.TiDBMonitorLister.TidbMonitors(ns).Get(name)
 	if errors.IsNotFound(err) {
 		klog.Infof("TidbMonitor has been deleted %v", key)
 		return nil
@@ -114,5 +114,5 @@ func (tmc *Controller) sync(key string) error {
 		return err
 	}
 
-	return tmc.control.ReconcileTidbMonitor(tm)
+	return c.control.ReconcileTidbMonitor(tm)
 }

@@ -37,17 +37,17 @@ func NewPDScaler(deps *controller.Dependencies) Scaler {
 	return &pdScaler{generalScaler: generalScaler{deps: deps}}
 }
 
-func (psd *pdScaler) Scale(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (s *pdScaler) Scale(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	scaling, _, _, _ := scaleOne(oldSet, newSet)
 	if scaling > 0 {
-		return psd.ScaleOut(meta, oldSet, newSet)
+		return s.ScaleOut(meta, oldSet, newSet)
 	} else if scaling < 0 {
-		return psd.ScaleIn(meta, oldSet, newSet)
+		return s.ScaleIn(meta, oldSet, newSet)
 	}
-	return psd.SyncAutoScalerAnn(meta, oldSet)
+	return s.SyncAutoScalerAnn(meta, oldSet)
 }
 
-func (psd *pdScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (s *pdScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	tc, ok := meta.(*v1alpha1.TidbCluster)
 	if !ok {
 		return nil
@@ -59,7 +59,7 @@ func (psd *pdScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newS
 	tcName := tc.GetName()
 
 	klog.Infof("scaling out pd statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
-	_, err := psd.deleteDeferDeletingPVC(tc, oldSet.GetName(), v1alpha1.PDMemberType, ordinal)
+	_, err := s.deleteDeferDeletingPVC(tc, oldSet.GetName(), v1alpha1.PDMemberType, ordinal)
 	if err != nil {
 		return err
 	}
@@ -93,7 +93,7 @@ func (psd *pdScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newS
 
 // We need remove member from cluster before reducing statefulset replicas
 // only remove one member at a time when scale down
-func (psd *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (s *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	tc, ok := meta.(*v1alpha1.TidbCluster)
 	if !ok {
 		return nil
@@ -112,12 +112,12 @@ func (psd *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 
 	klog.Infof("scaling in pd statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
 
-	if psd.deps.CLIConfig.PodWebhookEnabled {
+	if s.deps.CLIConfig.PodWebhookEnabled {
 		setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 		return nil
 	}
 
-	pdClient := controller.GetPDClient(psd.deps.PDControl, tc)
+	pdClient := controller.GetPDClient(s.deps.PDControl, tc)
 	// If the pd pod was pd leader during scale-in, we would transfer pd leader to pd-0 directly
 	// If the pd statefulSet would be scale-in to zero and the pd-0 was going to be deleted,
 	// we would directly deleted the pd-0 without pd leader transferring
@@ -165,7 +165,7 @@ func (psd *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 	}
 
 	pvcName := ordinalPVCName(v1alpha1.PDMemberType, setName, ordinal)
-	pvc, err := psd.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
+	pvc, err := s.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
 	if err != nil {
 		return fmt.Errorf("pdScaler.ScaleIn: failed to get pvc %s for cluster %s/%s, error: %s", pvcName, ns, tcName, err)
 	}
@@ -176,7 +176,7 @@ func (psd *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 	now := time.Now().Format(time.RFC3339)
 	pvc.Annotations[label.AnnPVCDeferDeleting] = now
 
-	_, err = psd.deps.PVCControl.UpdatePVC(tc, pvc)
+	_, err = s.deps.PVCControl.UpdatePVC(tc, pvc)
 	if err != nil {
 		klog.Errorf("pd scale in: failed to set pvc %s/%s annotation: %s to %s",
 			ns, pvcName, label.AnnPVCDeferDeleting, now)
@@ -189,7 +189,7 @@ func (psd *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 	return nil
 }
 
-func (psd *pdScaler) SyncAutoScalerAnn(meta metav1.Object, actual *apps.StatefulSet) error {
+func (s *pdScaler) SyncAutoScalerAnn(meta metav1.Object, actual *apps.StatefulSet) error {
 	return nil
 }
 
@@ -200,25 +200,25 @@ func NewFakePDScaler() Scaler {
 	return &fakePDScaler{}
 }
 
-func (fsd *fakePDScaler) Scale(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (s *fakePDScaler) Scale(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	if *newSet.Spec.Replicas > *oldSet.Spec.Replicas {
-		return fsd.ScaleOut(meta, oldSet, newSet)
+		return s.ScaleOut(meta, oldSet, newSet)
 	} else if *newSet.Spec.Replicas < *oldSet.Spec.Replicas {
-		return fsd.ScaleIn(meta, oldSet, newSet)
+		return s.ScaleIn(meta, oldSet, newSet)
 	}
 	return nil
 }
 
-func (fsd *fakePDScaler) ScaleOut(_ metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (s *fakePDScaler) ScaleOut(_ metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	setReplicasAndDeleteSlots(newSet, *oldSet.Spec.Replicas+1, nil)
 	return nil
 }
 
-func (fsd *fakePDScaler) ScaleIn(_ metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (s *fakePDScaler) ScaleIn(_ metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	setReplicasAndDeleteSlots(newSet, *oldSet.Spec.Replicas-1, nil)
 	return nil
 }
 
-func (fsd *fakePDScaler) SyncAutoScalerAnn(tc metav1.Object, actual *apps.StatefulSet) error {
+func (s *fakePDScaler) SyncAutoScalerAnn(tc metav1.Object, actual *apps.StatefulSet) error {
 	return nil
 }
