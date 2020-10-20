@@ -67,6 +67,8 @@ func UpdateRestoreCondition(status *RestoreStatus, condition *RestoreCondition) 
 	// Try to find this Restore condition.
 	conditionIndex, oldCondition := GetRestoreCondition(status, condition.Type)
 
+	status.Phase = condition.Type
+
 	if oldCondition == nil {
 		// We are adding new Restore condition.
 		status.Conditions = append(status.Conditions, *condition)
