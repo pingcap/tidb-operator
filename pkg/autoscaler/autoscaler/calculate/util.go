@@ -13,25 +13,6 @@
 
 package calculate
 
-import (
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
-	corev1 "k8s.io/api/core/v1"
-)
-
-// currently, we only choose one metrics to be computed.
-// If there exists several metrics, we tend to choose ResourceMetricSourceType metric
-func FilterMetrics(metrics []v1alpha1.CustomMetric, name corev1.ResourceName) []v1alpha1.CustomMetric {
-	var list []v1alpha1.CustomMetric
-	for _, m := range metrics {
-		if m.Type == autoscalingv2beta2.ResourceMetricSourceType && m.Resource != nil && m.Resource.Name == name {
-			list = append(list, m)
-			break
-		}
-	}
-	return list
-}
-
 // Response is used to marshal the data queried from Prometheus
 type Response struct {
 	Status string `json:"status"`

@@ -154,9 +154,6 @@ func GetAutoScalingOutSlots(tc *v1alpha1.TidbCluster, memberType v1alpha1.Member
 	default:
 		return s
 	}
-	if tc.Annotations == nil {
-		return s
-	}
 	v, existed := tc.Annotations[l]
 	if !existed {
 		return s
