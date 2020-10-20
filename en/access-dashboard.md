@@ -170,3 +170,13 @@ spec:
   pd:
     enableDashboardInternalProxy: true
 ```
+
+## Unsupported TiDB Dashboard features
+
+Due to the special environment of Kubernetes, some features of TiDB Dashboard are not supported in TiDB Operator, including:
+
+- In **Overview** -> **Monitor & Alert** -> **View Metrics**, the link does not direct to the Grafana monitoring dashboard. If you need to access Grafana, refer to [View the monitoring dashboard](monitor-a-tidb-cluster.md#view-the-monitoring-dashboard).
+
+- The log search feature is unavailable. If you need to view the log of a component, execute `kubectl logs ${pod_name} -n {namespace}`. You can also view logs using the log service of the Kubernetes cluster.
+
+- In **Cluster Info** -> **Hosts**, the **Disk Usage** cannot display correctly. You can view the disk usage of each component by viewing the component dashboards in [the TidbMonitor dashboard](monitor-a-tidb-cluster.md#view-the-monitoring-dashboard). You can also view the disk usage of Kubernetes nodes by deploying a [Kubernetes host monitoring system](monitor-a-tidb-cluster.md#monitor-kubernetes-components).
