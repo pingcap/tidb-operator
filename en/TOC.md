@@ -36,6 +36,7 @@
   - [Enable TLS for the MySQL Client](enable-tls-for-mysql-client.md)
   - [Enable TLS between TiDB Components](enable-tls-between-components.md)
 + Operate
+  - [Migrate TiDB to Kubernetes](migrate-tidb-to-kubernetes.md)
   - [Upgrade TiDB Cluster](upgrade-a-tidb-cluster.md)
   - [Upgrade TiDB Operator](upgrade-tidb-operator.md)
   + Scale TiDB Cluster
