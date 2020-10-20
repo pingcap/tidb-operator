@@ -38,23 +38,23 @@ func NewTiKVScaler(deps *controller.Dependencies) Scaler {
 	return &tikvScaler{generalScaler: generalScaler{deps: deps}}
 }
 
-func (tsd *tikvScaler) Scale(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (s *tikvScaler) Scale(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	scaling, _, _, _ := scaleOne(oldSet, newSet)
 	if scaling > 0 {
-		return tsd.ScaleOut(tc, oldSet, newSet)
+		return s.ScaleOut(tc, oldSet, newSet)
 	} else if scaling < 0 {
-		return tsd.ScaleIn(tc, oldSet, newSet)
+		return s.ScaleIn(tc, oldSet, newSet)
 	}
 	// we only sync auto scaler annotations when we are finishing syncing scaling
-	return tsd.SyncAutoScalerAnn(tc, oldSet)
+	return s.SyncAutoScalerAnn(tc, oldSet)
 }
 
-func (tsd *tikvScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (s *tikvScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
 	resetReplicas(newSet, oldSet)
 
 	klog.Infof("scaling out tikv statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
-	_, err := tsd.deleteDeferDeletingPVC(tc, oldSet.GetName(), v1alpha1.TiKVMemberType, ordinal)
+	_, err := s.deleteDeferDeletingPVC(tc, oldSet.GetName(), v1alpha1.TiKVMemberType, ordinal)
 	if err != nil {
 		return err
 	}
@@ -63,7 +63,7 @@ func (tsd *tikvScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulS
 	return nil
 }
 
-func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (s *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	// we can only remove one member at a time when scaling in
@@ -74,7 +74,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 	klog.Infof("scaling in tikv statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
 	// We need remove member from cluster before reducing statefulset replicas
 	podName := ordinalPodName(v1alpha1.TiKVMemberType, tcName, ordinal)
-	pod, err := tsd.deps.PodLister.Pods(ns).Get(podName)
+	pod, err := s.deps.PodLister.Pods(ns).Get(podName)
 	if err != nil {
 		return fmt.Errorf("tikvScaler.ScaleIn: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
 	}
@@ -89,7 +89,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 			storeState = store.State
 		}
 	}
-	config, err := controller.GetPDClient(tsd.deps.PDControl, tc).GetConfig()
+	config, err := controller.GetPDClient(s.deps.PDControl, tc).GetConfig()
 	if err != nil {
 		return err
 	}
@@ -97,18 +97,18 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 	if upNumber < int(maxReplicas) {
 		errMsg := fmt.Sprintf("the number of stores in Up state of TidbCluster [%s/%s] is %d, less than MaxReplicas in PD configuration(%d), can't scale in TiKV, podname %s ", tc.GetNamespace(), tc.GetName(), upNumber, maxReplicas, podName)
 		klog.Error(errMsg)
-		tsd.deps.Recorder.Event(tc, v1.EventTypeWarning, "FailedScaleIn", errMsg)
+		s.deps.Recorder.Event(tc, v1.EventTypeWarning, "FailedScaleIn", errMsg)
 		return nil
 	} else if upNumber == int(maxReplicas) {
 		if storeState == v1alpha1.TiKVStateUp {
 			errMsg := fmt.Sprintf("can't scale in TiKV of TidbCluster [%s/%s], cause the number of up stores is equal to MaxReplicas in PD configuration(%d), and the store in Pod %s which is going to be deleted is up too", tc.GetNamespace(), tc.GetName(), maxReplicas, podName)
 			klog.Error(errMsg)
-			tsd.deps.Recorder.Event(tc, v1.EventTypeWarning, "FailedScaleIn", errMsg)
+			s.deps.Recorder.Event(tc, v1.EventTypeWarning, "FailedScaleIn", errMsg)
 			return nil
 		}
 	}
 
-	if tsd.deps.CLIConfig.PodWebhookEnabled {
+	if s.deps.CLIConfig.PodWebhookEnabled {
 		setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 		return nil
 	}
@@ -121,7 +121,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 				return err
 			}
 			if state != v1alpha1.TiKVStateOffline {
-				if err := controller.GetPDClient(tsd.deps.PDControl, tc).DeleteStore(id); err != nil {
+				if err := controller.GetPDClient(s.deps.PDControl, tc).DeleteStore(id); err != nil {
 					klog.Errorf("tikv scale in: failed to delete store %d, %v", id, err)
 					return err
 				}
@@ -141,7 +141,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 			klog.Infof("TiKV %s/%s store %d becomes tombstone", ns, podName, id)
 
 			pvcName := ordinalPVCName(v1alpha1.TiKVMemberType, setName, ordinal)
-			pvc, err := tsd.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
+			pvc, err := s.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
 			if err != nil {
 				return fmt.Errorf("tikvScaler.ScaleIn: failed to get pvc %s for cluster %s/%s, error: %s", pvcName, ns, tcName, err)
 			}
@@ -150,7 +150,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 			}
 			now := time.Now().Format(time.RFC3339)
 			pvc.Annotations[label.AnnPVCDeferDeleting] = now
-			_, err = tsd.deps.PVCControl.UpdatePVC(tc, pvc)
+			_, err = s.deps.PVCControl.UpdatePVC(tc, pvc)
 			if err != nil {
 				klog.Errorf("tikv scale in: failed to set pvc %s/%s annotation: %s to %s",
 					ns, pvcName, label.AnnPVCDeferDeleting, now)
@@ -172,11 +172,11 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 	//    In this situation we should delete this TiKV pod immediately to avoid blocking the subsequent operations.
 	if !podutil.IsPodReady(pod) {
 		pvcName := ordinalPVCName(v1alpha1.TiKVMemberType, setName, ordinal)
-		pvc, err := tsd.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
+		pvc, err := s.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
 		if err != nil {
 			return fmt.Errorf("tikvScaler.ScaleIn: failed to get pvc %s for cluster %s/%s, error: %s", pvcName, ns, tcName, err)
 		}
-		safeTimeDeadline := pod.CreationTimestamp.Add(5 * tsd.deps.CLIConfig.ResyncDuration)
+		safeTimeDeadline := pod.CreationTimestamp.Add(5 * s.deps.CLIConfig.ResyncDuration)
 		if time.Now().Before(safeTimeDeadline) {
 			// Wait for 5 resync periods to ensure that the following situation does not occur:
 			//
@@ -193,7 +193,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 		}
 		now := time.Now().Format(time.RFC3339)
 		pvc.Annotations[label.AnnPVCDeferDeleting] = now
-		_, err = tsd.deps.PVCControl.UpdatePVC(tc, pvc)
+		_, err = s.deps.PVCControl.UpdatePVC(tc, pvc)
 		if err != nil {
 			klog.Errorf("pod %s not ready, tikv scale in: failed to set pvc %s/%s annotation: %s to %s",
 				podName, ns, pvcName, label.AnnPVCDeferDeleting, now)
@@ -208,7 +208,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 }
 
 // SyncAutoScalerAnn would reclaim the auto-scaling out slots if the target pod is no longer existed
-func (tsd *tikvScaler) SyncAutoScalerAnn(tc *v1alpha1.TidbCluster, actual *apps.StatefulSet) error {
+func (s *tikvScaler) SyncAutoScalerAnn(tc *v1alpha1.TidbCluster, actual *apps.StatefulSet) error {
 	currentScalingSlots := util.GetAutoScalingOutSlots(tc, v1alpha1.TiKVMemberType)
 	if currentScalingSlots.Len() < 1 {
 		return nil
@@ -240,25 +240,25 @@ func NewFakeTiKVScaler() Scaler {
 	return &fakeTiKVScaler{}
 }
 
-func (fsd *fakeTiKVScaler) Scale(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (s *fakeTiKVScaler) Scale(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	if *newSet.Spec.Replicas > *oldSet.Spec.Replicas {
-		return fsd.ScaleOut(tc, oldSet, newSet)
+		return s.ScaleOut(tc, oldSet, newSet)
 	} else if *newSet.Spec.Replicas < *oldSet.Spec.Replicas {
-		return fsd.ScaleIn(tc, oldSet, newSet)
+		return s.ScaleIn(tc, oldSet, newSet)
 	}
 	return nil
 }
 
-func (fsd *fakeTiKVScaler) ScaleOut(_ *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (s *fakeTiKVScaler) ScaleOut(_ *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	setReplicasAndDeleteSlots(newSet, *oldSet.Spec.Replicas+1, nil)
 	return nil
 }
 
-func (fsd *fakeTiKVScaler) ScaleIn(_ *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (s *fakeTiKVScaler) ScaleIn(_ *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	setReplicasAndDeleteSlots(newSet, *oldSet.Spec.Replicas-1, nil)
 	return nil
 }
 
-func (fsd *fakeTiKVScaler) SyncAutoScalerAnn(tc *v1alpha1.TidbCluster, actual *apps.StatefulSet) error {
+func (s *fakeTiKVScaler) SyncAutoScalerAnn(tc *v1alpha1.TidbCluster, actual *apps.StatefulSet) error {
 	return nil
 }

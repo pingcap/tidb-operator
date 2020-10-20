@@ -52,9 +52,9 @@ func NewTiDBDiscovery(pdControl pdapi.PDControlInterface, cli versioned.Interfac
 	}
 }
 
-func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
-	td.lock.Lock()
-	defer td.lock.Unlock()
+func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
 
 	if advertisePeerUrl == "" {
 		return "", fmt.Errorf("advertisePeerUrl is empty")
@@ -71,20 +71,20 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	if ns != podNamespace {
 		return "", fmt.Errorf("the peer's namespace: %s is not equal to discovery namespace: %s", ns, podNamespace)
 	}
-	tc, err := td.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+	tc, err := d.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
 	keyName := fmt.Sprintf("%s/%s", ns, tcName)
 
-	currentCluster := td.clusters[keyName]
+	currentCluster := d.clusters[keyName]
 	if currentCluster == nil || currentCluster.resourceVersion != tc.ResourceVersion {
-		td.clusters[keyName] = &clusterInfo{
+		d.clusters[keyName] = &clusterInfo{
 			resourceVersion: tc.ResourceVersion,
 			peers:           map[string]struct{}{},
 		}
 	}
-	currentCluster = td.clusters[keyName]
+	currentCluster = d.clusters[keyName]
 	currentCluster.peers[podName] = struct{}{}
 
 	// Should take failover replicas into consideration
@@ -95,9 +95,9 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 
 	var pdClient pdapi.PDClient
 	if tc.IsHeterogeneous() {
-		pdClient = td.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
+		pdClient = d.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
 	} else {
-		pdClient = td.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled())
+		pdClient = d.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled())
 	}
 
 	membersInfo, err := pdClient.GetMembers()

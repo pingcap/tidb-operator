@@ -554,78 +554,78 @@ func NewFakeGenericControl(initObjects ...runtime.Object) *FakeGenericControl {
 		RequestTracker{},
 	}
 }
-func (gc *FakeGenericControl) Create(controller, obj runtime.Object, setOwnerFlag bool) error {
-	defer gc.createTracker.Inc()
-	if gc.createTracker.ErrorReady() {
-		defer gc.createTracker.Reset()
-		return gc.createTracker.GetError()
+func (c *FakeGenericControl) Create(controller, obj runtime.Object, setOwnerFlag bool) error {
+	defer c.createTracker.Inc()
+	if c.createTracker.ErrorReady() {
+		defer c.createTracker.Reset()
+		return c.createTracker.GetError()
 	}
 
-	return gc.control.Create(controller, obj, setOwnerFlag)
+	return c.control.Create(controller, obj, setOwnerFlag)
 }
 
-func (gc *FakeGenericControl) Exist(key client.ObjectKey, obj runtime.Object) (bool, error) {
-	defer gc.existTracker.Inc()
-	if gc.existTracker.ErrorReady() {
-		defer gc.existTracker.Reset()
-		return true, gc.existTracker.GetError()
+func (c *FakeGenericControl) Exist(key client.ObjectKey, obj runtime.Object) (bool, error) {
+	defer c.existTracker.Inc()
+	if c.existTracker.ErrorReady() {
+		defer c.existTracker.Reset()
+		return true, c.existTracker.GetError()
 	}
 
-	return gc.control.Exist(key, obj)
+	return c.control.Exist(key, obj)
 }
 
-func (gc *FakeGenericControl) SetCreateError(err error, after int) {
-	gc.createTracker.SetError(err).SetAfter(after)
+func (c *FakeGenericControl) SetCreateError(err error, after int) {
+	c.createTracker.SetError(err).SetAfter(after)
 }
-func (gc *FakeGenericControl) SetExistError(err error, after int) {
-	gc.existTracker.SetError(err).SetAfter(after)
+func (c *FakeGenericControl) SetExistError(err error, after int) {
+	c.existTracker.SetError(err).SetAfter(after)
 }
-func (gc *FakeGenericControl) SetUpdateStatusError(err error, after int) {
-	gc.updateStatusTracker.SetError(err).SetAfter(after)
-}
-
-func (gc *FakeGenericControl) SetCreateOrUpdateError(err error, after int) {
-	gc.createOrUpdateTracker.SetError(err).SetAfter(after)
+func (c *FakeGenericControl) SetUpdateStatusError(err error, after int) {
+	c.updateStatusTracker.SetError(err).SetAfter(after)
 }
 
-func (gc *FakeGenericControl) SetDeleteError(err error, after int) {
-	gc.deleteTracker.SetError(err).SetAfter(after)
+func (c *FakeGenericControl) SetCreateOrUpdateError(err error, after int) {
+	c.createOrUpdateTracker.SetError(err).SetAfter(after)
+}
+
+func (c *FakeGenericControl) SetDeleteError(err error, after int) {
+	c.deleteTracker.SetError(err).SetAfter(after)
 }
 
 // AddObject is used to prepare the indexer for fakeGenericControl
-func (gc *FakeGenericControl) AddObject(object runtime.Object) error {
-	return gc.FakeCli.Create(context.TODO(), object.DeepCopyObject())
+func (c *FakeGenericControl) AddObject(object runtime.Object) error {
+	return c.FakeCli.Create(context.TODO(), object.DeepCopyObject())
 }
 
 // UpdateStatus update the /status subresource of object
-func (gc *FakeGenericControl) UpdateStatus(obj runtime.Object) error {
-	defer gc.updateStatusTracker.Inc()
-	if gc.updateStatusTracker.ErrorReady() {
-		defer gc.updateStatusTracker.Reset()
-		return gc.updateStatusTracker.GetError()
+func (c *FakeGenericControl) UpdateStatus(obj runtime.Object) error {
+	defer c.updateStatusTracker.Inc()
+	if c.updateStatusTracker.ErrorReady() {
+		defer c.updateStatusTracker.Reset()
+		return c.updateStatusTracker.GetError()
 	}
 
-	return gc.FakeCli.Status().Update(context.TODO(), obj)
+	return c.FakeCli.Status().Update(context.TODO(), obj)
 }
 
-func (gc *FakeGenericControl) CreateOrUpdate(controller, obj runtime.Object, fn MergeFn, setOwnerFlag bool) (runtime.Object, error) {
-	defer gc.createOrUpdateTracker.Inc()
-	if gc.createOrUpdateTracker.ErrorReady() {
-		defer gc.createOrUpdateTracker.Reset()
-		return nil, gc.createOrUpdateTracker.GetError()
+func (c *FakeGenericControl) CreateOrUpdate(controller, obj runtime.Object, fn MergeFn, setOwnerFlag bool) (runtime.Object, error) {
+	defer c.createOrUpdateTracker.Inc()
+	if c.createOrUpdateTracker.ErrorReady() {
+		defer c.createOrUpdateTracker.Reset()
+		return nil, c.createOrUpdateTracker.GetError()
 	}
 
-	return gc.control.CreateOrUpdate(controller, obj, fn, setOwnerFlag)
+	return c.control.CreateOrUpdate(controller, obj, fn, setOwnerFlag)
 }
 
-func (gc *FakeGenericControl) Delete(controller, obj runtime.Object) error {
-	defer gc.deleteTracker.Inc()
-	if gc.deleteTracker.ErrorReady() {
-		defer gc.deleteTracker.Reset()
-		return gc.deleteTracker.GetError()
+func (c *FakeGenericControl) Delete(controller, obj runtime.Object) error {
+	defer c.deleteTracker.Inc()
+	if c.deleteTracker.ErrorReady() {
+		defer c.deleteTracker.Reset()
+		return c.deleteTracker.GetError()
 	}
 
-	return gc.control.Delete(controller, obj)
+	return c.control.Delete(controller, obj)
 }
 
 var _ GenericControlInterface = &FakeGenericControl{}

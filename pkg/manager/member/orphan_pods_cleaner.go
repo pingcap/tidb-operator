@@ -61,7 +61,7 @@ func NewOrphanPodsCleaner(deps *controller.Dependencies) OrphanPodsCleaner {
 	}
 }
 
-func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string, error) {
+func (c *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string, error) {
 	ns := tc.GetNamespace()
 	skipReason := map[string]string{}
 
@@ -69,7 +69,7 @@ func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string
 	if err != nil {
 		return skipReason, err
 	}
-	pods, err := opc.deps.PodLister.Pods(ns).List(selector)
+	pods, err := c.deps.PodLister.Pods(ns).List(selector)
 	if err != nil {
 		return skipReason, fmt.Errorf("clean: failed to get pods list for cluster %s/%s, selector %s, error: %s", ns, tc.GetName(), selector, err)
 	}
@@ -104,7 +104,7 @@ func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string
 		var pvcNotFound bool
 		for _, p := range pvcNames {
 			// check informer cache
-			_, err = opc.deps.PVCLister.PersistentVolumeClaims(ns).Get(p)
+			_, err = c.deps.PVCLister.PersistentVolumeClaims(ns).Get(p)
 			if err == nil {
 				continue
 			}
@@ -112,7 +112,7 @@ func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string
 				return skipReason, fmt.Errorf("clean: failed to get pvc %s for cluster %s/%s, error: %s", p, ns, tc.GetName(), err)
 			}
 			// if PVC not found in cache, re-check from apiserver directly to make sure the PVC really not exist
-			_, err = opc.deps.KubeClientset.CoreV1().PersistentVolumeClaims(ns).Get(p, metav1.GetOptions{})
+			_, err = c.deps.KubeClientset.CoreV1().PersistentVolumeClaims(ns).Get(p, metav1.GetOptions{})
 			if err == nil {
 				continue
 			}
@@ -131,7 +131,7 @@ func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string
 		// if the PVC is not found in apiserver (also informer cache) and the
 		// pod has not been scheduled, delete it and let the stateful
 		// controller to create the pod and its PVC(s) again
-		apiPod, err := opc.deps.KubeClientset.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+		apiPod, err := c.deps.KubeClientset.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
 		if errors.IsNotFound(err) {
 			skipReason[podName] = skipReasonOrphanPodsCleanerPodIsNotFound
 			continue
@@ -156,7 +156,7 @@ func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string
 		// As the pod may be updated by kube-scheduler or other components
 		// frequently, we should use the latest object here to avoid API
 		// conflict.
-		err = opc.deps.PodControl.DeletePod(tc, apiPod)
+		err = c.deps.PodControl.DeletePod(tc, apiPod)
 		if err != nil {
 			klog.Errorf("orphan pods cleaner: failed to clean orphan pod: %s/%s, %v", ns, podName, err)
 			return skipReason, err
@@ -176,12 +176,12 @@ func NewFakeOrphanPodsCleaner() *FakeOrphanPodsCleaner {
 	return &FakeOrphanPodsCleaner{}
 }
 
-func (fpc *FakeOrphanPodsCleaner) SetnOrphanPodCleanerError(err error) {
-	fpc.err = err
+func (c *FakeOrphanPodsCleaner) SetnOrphanPodCleanerError(err error) {
+	c.err = err
 }
 
-func (fpc *FakeOrphanPodsCleaner) Clean(_ *v1alpha1.TidbCluster) (map[string]string, error) {
-	return nil, fpc.err
+func (c *FakeOrphanPodsCleaner) Clean(_ *v1alpha1.TidbCluster) (map[string]string, error) {
+	return nil, c.err
 }
 
 var _ OrphanPodsCleaner = &FakeOrphanPodsCleaner{}

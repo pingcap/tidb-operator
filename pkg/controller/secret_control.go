@@ -45,8 +45,8 @@ func NewRealSecretControl(
 }
 
 // Load loads cert and key from Secret matching the name
-func (rsc *realSecretControl) Load(ns string, secretName string) ([]byte, []byte, error) {
-	secret, err := rsc.kubeCli.CoreV1().Secrets(ns).Get(secretName, metav1.GetOptions{})
+func (c *realSecretControl) Load(ns string, secretName string) ([]byte, []byte, error) {
+	secret, err := c.kubeCli.CoreV1().Secrets(ns).Get(secretName, metav1.GetOptions{})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -55,8 +55,8 @@ func (rsc *realSecretControl) Load(ns string, secretName string) ([]byte, []byte
 }
 
 // Check returns true if the secret already exist
-func (rsc *realSecretControl) Check(ns string, secretName string) bool {
-	certBytes, keyBytes, err := rsc.Load(ns, secretName)
+func (c *realSecretControl) Check(ns string, secretName string) bool {
+	certBytes, keyBytes, err := c.Load(ns, secretName)
 	if err != nil {
 		klog.Errorf("certificate validation failed for [%s/%s], error loading cert from secret, %v", ns, secretName, err)
 		return false
