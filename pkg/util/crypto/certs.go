@@ -85,7 +85,7 @@ func NewCSR(commonName string, hostList []string, IPList []string) ([]byte, []by
 	return csr, convertKeyToPEM("RSA PRIVATE KEY", privKey), nil
 }
 
-func ReadCACerts() (*x509.CertPool, error) {
+func readCACerts(tryAppendCAFile string) (*x509.CertPool, error) {
 	// try to load system CA certs
 	rootCAs, err := x509.SystemCertPool()
 	if err != nil {
@@ -95,16 +95,20 @@ func ReadCACerts() (*x509.CertPool, error) {
 		rootCAs = x509.NewCertPool()
 	}
 
-	// load k8s CA cert
-	caCert, err := ioutil.ReadFile(k8sCAFile)
+	caCert, err := ioutil.ReadFile(tryAppendCAFile)
 	if err != nil {
-		klog.Errorf("fail to read CA file %s, error: %v", k8sCAFile, err)
+		klog.Errorf("fail to read CA file %s, error: %v", tryAppendCAFile, err)
 		return nil, err
 	}
 	if ok := rootCAs.AppendCertsFromPEM(caCert); !ok {
 		klog.Warningf("fail to append CA file to pool, using system CAs only")
 	}
 	return rootCAs, nil
+}
+
+func ReadCACerts() (*x509.CertPool, error) {
+	// load k8s CA cert
+	return readCACerts(k8sCAFile)
 }
 
 func LoadTlsConfigFromSecret(secret *corev1.Secret) (*tls.Config, error) {
