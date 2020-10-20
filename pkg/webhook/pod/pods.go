@@ -364,7 +364,7 @@ func (pc *PodAdmissionControl) admintCreatePods(ar *admission.AdmissionRequest) 
 		} else {
 			pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), ownerTc.Name, ownerTc.IsTLSClusterEnabled())
 		}
-		return pc.admitCreateTiKVPod(pod, pdClient)
+		return admitCreateTiKVPod(pod, pdClient)
 	}
 
 	return util.ARSuccess()
