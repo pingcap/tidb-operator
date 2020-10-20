@@ -163,11 +163,11 @@ func (am *autoScalerManager) gracefullyDeleteTidbCluster(deleteTc *v1alpha1.Tidb
 	return am.deps.Clientset.PingcapV1alpha1().TidbClusters(deleteTc.Namespace).Delete(deleteTc.Name, nil)
 }
 
-func (am *autoScalerManager) patchAutoscalingLastSyncingAnnotation(tac *v1alpha1.TidbClusterAutoScaler, time time.Time) error {
+func (am *autoScalerManager) patchAutoscalingLastSyncingAnnotation(tac *v1alpha1.TidbClusterAutoScaler, timestamp time.Time) error {
 	mergePatch, err := json.Marshal(map[string]interface{}{
 		"metadata": map[string]interface{}{
 			"annotations": map[string]interface{}{
-				label.AnnLastSyncingTimestamp: time,
+				label.AnnLastSyncingTimestamp: timestamp.Format(time.RFC3339),
 			},
 		},
 	})

@@ -20,7 +20,6 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -371,19 +370,6 @@ func newTidbClusterAutoScaler() *v1alpha1.TidbClusterAutoScaler {
 	tac.Spec.TiKV = &v1alpha1.TikvAutoScalerSpec{}
 	tac.Spec.TiDB = &v1alpha1.TidbAutoScalerSpec{}
 	return tac
-}
-
-func newSts() *appsv1.StatefulSet {
-	return &appsv1.StatefulSet{
-		Spec: appsv1.StatefulSetSpec{
-			Replicas: pointer.Int32Ptr(1),
-		},
-		Status: appsv1.StatefulSetStatus{
-			CurrentRevision: "1",
-			UpdateRevision:  "2",
-			Replicas:        2,
-		},
-	}
 }
 
 func newTidbCluster() *v1alpha1.TidbCluster {
