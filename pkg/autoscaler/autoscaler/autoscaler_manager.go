@@ -15,7 +15,6 @@ package autoscaler
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -25,8 +24,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
 )
 
@@ -66,12 +63,11 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 		return nil
 	}
 
-	oldTc := tc.DeepCopy()
 	if err := am.syncAutoScaling(tc, tac); err != nil {
 		return err
 	}
 
-	return am.updateAutoScaling(oldTc, tac)
+	return am.patchAutoscalingLastSyncingAnnotation(tac, time.Now())
 }
 
 func (am *autoScalerManager) syncExternal(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) error {
@@ -143,47 +139,6 @@ func (am *autoScalerManager) syncAutoScaling(tc *v1alpha1.TidbCluster, tac *v1al
 	return errorutils.NewAggregate(errs)
 }
 
-func (am *autoScalerManager) updateAutoScaling(oldTc *v1alpha1.TidbCluster,
-	tac *v1alpha1.TidbClusterAutoScaler) error {
-	if tac.Annotations == nil {
-		tac.Annotations = map[string]string{}
-	}
-	now := time.Now()
-	tac.Annotations[label.AnnLastSyncingTimestamp] = fmt.Sprintf("%d", now.Unix())
-	return am.updateTidbClusterAutoScaler(tac)
-}
-
-func (am *autoScalerManager) updateTidbClusterAutoScaler(tac *v1alpha1.TidbClusterAutoScaler) error {
-
-	ns := tac.GetNamespace()
-	tacName := tac.GetName()
-	oldTac := tac.DeepCopy()
-
-	// don't wait due to limited number of clients, but backoff after the default number of steps
-	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		var updateErr error
-		_, updateErr = am.deps.Clientset.PingcapV1alpha1().TidbClusterAutoScalers(ns).Update(tac)
-		if updateErr == nil {
-			klog.Infof("TidbClusterAutoScaler: [%s/%s] updated successfully", ns, tacName)
-			return nil
-		}
-		klog.V(4).Infof("failed to update TidbClusterAutoScaler: [%s/%s], error: %v", ns, tacName, updateErr)
-		if updated, err := am.deps.TiDBClusterAutoScalerLister.TidbClusterAutoScalers(ns).Get(tacName); err == nil {
-			// make a copy so we don't mutate the shared cache
-			tac = updated.DeepCopy()
-			tac.Annotations = oldTac.Annotations
-			tac.Status = oldTac.Status
-		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated TidbClusterAutoScaler %s/%s from lister: %v", ns, tacName, err))
-		}
-		return updateErr
-	})
-	if err != nil {
-		klog.Errorf("failed to update TidbClusterAutoScaler: [%s/%s], error: %v", ns, tacName, err)
-	}
-	return err
-}
-
 func (am *autoScalerManager) gracefullyDeleteTidbCluster(deleteTc *v1alpha1.TidbCluster) error {
 	// Remove cluster
 	// If there are TiKV pods, delete the cluster gracefully because we need to transfer data
@@ -206,6 +161,26 @@ func (am *autoScalerManager) gracefullyDeleteTidbCluster(deleteTc *v1alpha1.Tidb
 	}
 
 	return am.deps.Clientset.PingcapV1alpha1().TidbClusters(deleteTc.Namespace).Delete(deleteTc.Name, nil)
+}
+
+func (am *autoScalerManager) patchAutoscalingLastSyncingAnnotation(tac *v1alpha1.TidbClusterAutoScaler, time time.Time) error {
+	mergePatch, err := json.Marshal(map[string]interface{}{
+		"metadata": map[string]interface{}{
+			"annotations": map[string]interface{}{
+				label.AnnLastSyncingTimestamp: time,
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	_, err = am.deps.Clientset.PingcapV1alpha1().TidbClusterAutoScalers(tac.Namespace).Patch(tac.Name, types.MergePatchType, mergePatch)
+	if err != nil {
+		klog.Errorf("failed to update tac[%s/%s]'s annotation %s, err: %v", tac.Namespace, tac.Name, label.AnnLastSyncingTimestamp, err)
+	}
+
+	return err
 }
 
 func (am *autoScalerManager) patchAutoscalingGroupStatus(tac *v1alpha1.TidbClusterAutoScaler, memberType string, group string, newStatus *v1alpha1.BasicAutoScalerStatus) error {
