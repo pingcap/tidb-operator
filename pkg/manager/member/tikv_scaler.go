@@ -24,6 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -103,14 +104,39 @@ func (tsd *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, new
 		return fmt.Errorf("tikvScaler.ScaleIn: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
 	}
 
+	tc, _ := meta.(*v1alpha1.TidbCluster)
+	upNumber := 0
+	storeState := ""
+	for _, store := range tc.Status.TiKV.Stores {
+		if store.State == v1alpha1.TiKVStateUp {
+			upNumber++
+		}
+		if store.PodName == podName {
+			storeState = store.State
+		}
+	}
+	config, err := controller.GetPDClient(tsd.deps.PDControl, tc).GetConfig()
+	if err != nil {
+		return err
+	}
+	maxReplicas := *(config.Replication.MaxReplicas)
+	if upNumber < int(maxReplicas) {
+		errMsg := fmt.Sprintf("the number of stores in Up state of TidbCluster [%s/%s] is %d, less than MaxReplicas in PD configuration(%d), can't scale in TiKV, podname %s ", meta.GetNamespace(), meta.GetName(), upNumber, maxReplicas, podName)
+		klog.Error(errMsg)
+		tsd.deps.Recorder.Event(tc, v1.EventTypeWarning, "FailedScaleIn", errMsg)
+		return nil
+	} else if upNumber == int(maxReplicas) {
+		if storeState == v1alpha1.TiKVStateUp {
+			errMsg := fmt.Sprintf("can't scale in TiKV of TidbCluster [%s/%s], cause the number of up stores is equal to MaxReplicas in PD configuration(%d), and the store in Pod %s which is going to be deleted is up too", meta.GetNamespace(), meta.GetName(), maxReplicas, podName)
+			klog.Error(errMsg)
+			tsd.deps.Recorder.Event(tc, v1.EventTypeWarning, "FailedScaleIn", errMsg)
+			return nil
+		}
+	}
+
 	if tsd.deps.CLIConfig.PodWebhookEnabled {
 		setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 		return nil
-	}
-
-	tc, ok := meta.(*v1alpha1.TidbCluster)
-	if !ok {
-		return fmt.Errorf("cluster tikv [%s/%s] scaling should enabled webhook", meta.GetNamespace(), meta.GetName())
 	}
 
 	for _, store := range tc.Status.TiKV.Stores {
