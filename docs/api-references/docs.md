@@ -2074,7 +2074,8 @@ string
 <h3 id="backupconditiontype">BackupConditionType</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#backupcondition">BackupCondition</a>)
+<a href="#backupcondition">BackupCondition</a>, 
+<a href="#backupstatus">BackupStatus</a>)
 </p>
 <p>
 <p>BackupConditionType represents a valid condition of a Backup.</p>
@@ -2557,6 +2558,19 @@ string
 </td>
 <td>
 <p>CommitTs is the snapshot time point of tidb cluster.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>phase</code></br>
+<em>
+<a href="#backupconditiontype">
+BackupConditionType
+</a>
+</em>
+</td>
+<td>
+<p>Phase is a user readable state inferred from the underlying Backup conditions</p>
 </td>
 </tr>
 <tr>
@@ -8525,7 +8539,8 @@ string
 <h3 id="restoreconditiontype">RestoreConditionType</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#restorecondition">RestoreCondition</a>)
+<a href="#restorecondition">RestoreCondition</a>, 
+<a href="#restorestatus">RestoreStatus</a>)
 </p>
 <p>
 <p>RestoreConditionType represents a valid condition of a Restore.</p>
@@ -8778,6 +8793,19 @@ string
 </td>
 <td>
 <p>CommitTs is the snapshot time point of tidb cluster.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>phase</code></br>
+<em>
+<a href="#restoreconditiontype">
+RestoreConditionType
+</a>
+</em>
+</td>
+<td>
+<p>Phase is a user readable state inferred from the underlying Restore conditions</p>
 </td>
 </tr>
 <tr>

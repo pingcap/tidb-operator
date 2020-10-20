@@ -9622,6 +9622,10 @@ metadata:
   name: backups.pingcap.com
 spec:
   additionalPrinterColumns:
+  - JSONPath: .status.phase
+    description: The current status of the backup
+    name: Status
+    type: string
   - JSONPath: .status.backupPath
     description: The full path of backup data
     name: BackupPath
@@ -10094,6 +10098,10 @@ metadata:
   name: restores.pingcap.com
 spec:
   additionalPrinterColumns:
+  - JSONPath: .status.phase
+    description: The current status of the restore
+    name: Status
+    type: string
   - JSONPath: .status.timeStarted
     description: The time at which the backup was started
     format: date-time

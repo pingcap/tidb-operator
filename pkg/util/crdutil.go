@@ -102,7 +102,13 @@ var (
 		JSONPath:    ".spec.tidb.replicas",
 	}
 	backupAdditionalPrinterColumns []extensionsobj.CustomResourceColumnDefinition
-	backupPathColumn               = extensionsobj.CustomResourceColumnDefinition{
+	backupStatusColumn             = extensionsobj.CustomResourceColumnDefinition{
+		Name:        "Status",
+		Type:        "string",
+		Description: "The current status of the backup",
+		JSONPath:    ".status.phase",
+	}
+	backupPathColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "BackupPath",
 		Type:        "string",
 		Description: "The full path of backup data",
@@ -137,7 +143,13 @@ var (
 		JSONPath:    ".status.timeCompleted",
 	}
 	restoreAdditionalPrinterColumns []extensionsobj.CustomResourceColumnDefinition
-	restoreStartedColumn            = extensionsobj.CustomResourceColumnDefinition{
+	restoreStatusColumn             = extensionsobj.CustomResourceColumnDefinition{
+		Name:        "Status",
+		Type:        "string",
+		Description: "The current status of the restore",
+		JSONPath:    ".status.phase",
+	}
+	restoreStartedColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "Started",
 		Type:        "string",
 		Format:      "date-time",
@@ -232,8 +244,8 @@ func init() {
 		tidbClusterPDColumn, tidbClusterPDStorageColumn, tidbClusterPDReadyColumn, tidbClusterPDDesireColumn,
 		tidbClusterTiKVColumn, tidbClusterTiKVStorageColumn, tidbClusterTiKVReadyColumn, tidbClusterTiKVDesireColumn,
 		tidbClusterTiDBColumn, tidbClusterTiDBReadyColumn, tidbClusterTiDBDesireColumn, tidbClusterStatusMessageColumn, ageColumn)
-	backupAdditionalPrinterColumns = append(backupAdditionalPrinterColumns, backupPathColumn, backupBackupSizeColumn, backupCommitTSColumn, backupStartedColumn, backupCompletedColumn, ageColumn)
-	restoreAdditionalPrinterColumns = append(restoreAdditionalPrinterColumns, restoreStartedColumn, restoreCompletedColumn, restoreCommitTSColumn, ageColumn)
+	backupAdditionalPrinterColumns = append(backupAdditionalPrinterColumns, backupStatusColumn, backupPathColumn, backupBackupSizeColumn, backupCommitTSColumn, backupStartedColumn, backupCompletedColumn, ageColumn)
+	restoreAdditionalPrinterColumns = append(restoreAdditionalPrinterColumns, restoreStatusColumn, restoreStartedColumn, restoreCompletedColumn, restoreCommitTSColumn, ageColumn)
 	bksAdditionalPrinterColumns = append(bksAdditionalPrinterColumns, bksScheduleColumn, bksMaxBackups, bksLastBackup, bksLastBackupTime, ageColumn)
 	tidbInitializerPrinterColumns = append(tidbInitializerPrinterColumns, tidbInitializerPhase, ageColumn)
 	autoScalerPrinterColumns = append(autoScalerPrinterColumns, autoScalerTiDBMaxReplicasColumn, autoScalerTiDBMinReplicasColumn,
