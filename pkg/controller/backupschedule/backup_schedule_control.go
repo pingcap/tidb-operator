@@ -46,25 +46,25 @@ type defaultBackupScheduleControl struct {
 }
 
 // UpdateBackupSchedule executes the core logic loop for a BackupSchedule.
-func (bsc *defaultBackupScheduleControl) UpdateBackupSchedule(bs *v1alpha1.BackupSchedule) error {
+func (c *defaultBackupScheduleControl) UpdateBackupSchedule(bs *v1alpha1.BackupSchedule) error {
 	var errs []error
 	oldStatus := bs.Status.DeepCopy()
 
-	if err := bsc.updateBackupSchedule(bs); err != nil {
+	if err := c.updateBackupSchedule(bs); err != nil {
 		errs = append(errs, err)
 	}
 	if apiequality.Semantic.DeepEqual(&bs.Status, oldStatus) {
 		return errorutils.NewAggregate(errs)
 	}
-	if err := bsc.statusUpdater.UpdateBackupScheduleStatus(bs.DeepCopy(), &bs.Status, oldStatus); err != nil {
+	if err := c.statusUpdater.UpdateBackupScheduleStatus(bs.DeepCopy(), &bs.Status, oldStatus); err != nil {
 		errs = append(errs, err)
 	}
 
 	return errorutils.NewAggregate(errs)
 }
 
-func (bsc *defaultBackupScheduleControl) updateBackupSchedule(bs *v1alpha1.BackupSchedule) error {
-	return bsc.bsManager.Sync(bs)
+func (c *defaultBackupScheduleControl) updateBackupSchedule(bs *v1alpha1.BackupSchedule) error {
+	return c.bsManager.Sync(bs)
 }
 
 var _ ControlInterface = &defaultBackupScheduleControl{}

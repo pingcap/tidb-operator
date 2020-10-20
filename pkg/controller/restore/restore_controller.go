@@ -62,52 +62,52 @@ func NewController(deps *controller.Dependencies) *Controller {
 }
 
 // Run runs the restore controller.
-func (rsc *Controller) Run(workers int, stopCh <-chan struct{}) {
+func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
-	defer rsc.queue.ShutDown()
+	defer c.queue.ShutDown()
 
 	klog.Info("Starting restore controller")
 	defer klog.Info("Shutting down restore controller")
 
 	for i := 0; i < workers; i++ {
-		go wait.Until(rsc.worker, time.Second, stopCh)
+		go wait.Until(c.worker, time.Second, stopCh)
 	}
 
 	<-stopCh
 }
 
 // worker runs a worker goroutine that invokes processNextWorkItem until the the controller's queue is closed
-func (rsc *Controller) worker() {
-	for rsc.processNextWorkItem() {
+func (c *Controller) worker() {
+	for c.processNextWorkItem() {
 	}
 }
 
 // processNextWorkItem dequeues items, processes them, and marks them done. It enforces that the syncHandler is never
 // invoked concurrently with the same key.
-func (rsc *Controller) processNextWorkItem() bool {
-	key, quit := rsc.queue.Get()
+func (c *Controller) processNextWorkItem() bool {
+	key, quit := c.queue.Get()
 	if quit {
 		return false
 	}
-	defer rsc.queue.Done(key)
-	if err := rsc.sync(key.(string)); err != nil {
+	defer c.queue.Done(key)
+	if err := c.sync(key.(string)); err != nil {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
 			klog.Infof("Restore: %v, still need sync: %v, requeuing", key.(string), err)
-			rsc.queue.AddRateLimited(key)
+			c.queue.AddRateLimited(key)
 		} else if perrors.Find(err, controller.IsIgnoreError) != nil {
 			klog.V(4).Infof("Restore: %v, ignore err: %v", key.(string), err)
 		} else {
 			utilruntime.HandleError(fmt.Errorf("Restore: %v, sync failed, err: %v, requeuing", key.(string), err))
-			rsc.queue.AddRateLimited(key)
+			c.queue.AddRateLimited(key)
 		}
 	} else {
-		rsc.queue.Forget(key)
+		c.queue.Forget(key)
 	}
 	return true
 }
 
 // sync syncs the given restore.
-func (rsc *Controller) sync(key string) error {
+func (c *Controller) sync(key string) error {
 	startTime := time.Now()
 	defer func() {
 		klog.V(4).Infof("Finished syncing Restore %q (%v)", key, time.Since(startTime))
@@ -117,7 +117,7 @@ func (rsc *Controller) sync(key string) error {
 	if err != nil {
 		return err
 	}
-	restore, err := rsc.deps.RestoreLister.Restores(ns).Get(name)
+	restore, err := c.deps.RestoreLister.Restores(ns).Get(name)
 	if errors.IsNotFound(err) {
 		klog.Infof("Restore has been deleted %v", key)
 		return nil
@@ -126,14 +126,14 @@ func (rsc *Controller) sync(key string) error {
 		return err
 	}
 
-	return rsc.syncRestore(restore.DeepCopy())
+	return c.syncRestore(restore.DeepCopy())
 }
 
-func (rsc *Controller) syncRestore(tc *v1alpha1.Restore) error {
-	return rsc.control.UpdateRestore(tc)
+func (c *Controller) syncRestore(tc *v1alpha1.Restore) error {
+	return c.control.UpdateRestore(tc)
 }
 
-func (rsc *Controller) updateRestore(cur interface{}) {
+func (c *Controller) updateRestore(cur interface{}) {
 	newRestore := cur.(*v1alpha1.Restore)
 	ns := newRestore.GetNamespace()
 	name := newRestore.GetName()
@@ -154,15 +154,15 @@ func (rsc *Controller) updateRestore(cur interface{}) {
 	}
 
 	klog.V(4).Infof("restore object %s/%s enqueue", ns, name)
-	rsc.enqueueRestore(newRestore)
+	c.enqueueRestore(newRestore)
 }
 
 // enqueueRestore enqueues the given restore in the work queue.
-func (rsc *Controller) enqueueRestore(obj interface{}) {
+func (c *Controller) enqueueRestore(obj interface{}) {
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("Cound't get key for object %+v: %v", obj, err))
 		return
 	}
-	rsc.queue.Add(key)
+	c.queue.Add(key)
 }
