@@ -117,7 +117,12 @@ func (am *autoScalerManager) deleteAutoscalingClusters(tac *v1alpha1.TidbCluster
 			continue
 		}
 		if deleteTc.Spec.TiDB != nil {
-			am.patchAutoscalingGroupStatus(tac, v1alpha1.TiDBMemberType.String(), group, nil)
+			err = am.patchAutoscalingGroupStatus(tac, v1alpha1.TiDBMemberType.String(), group, nil)
+		} else if deleteTc.Spec.TiKV != nil {
+			err = am.patchAutoscalingGroupStatus(tac, v1alpha1.TiKVMemberType.String(), group, nil)
+		}
+		if err != nil {
+			errs = append(errs, err)
 		}
 	}
 	return errorutils.NewAggregate(errs)
