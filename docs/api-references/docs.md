@@ -2074,7 +2074,8 @@ string
 <h3 id="backupconditiontype">BackupConditionType</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#backupcondition">BackupCondition</a>)
+<a href="#backupcondition">BackupCondition</a>, 
+<a href="#backupstatus">BackupStatus</a>)
 </p>
 <p>
 <p>BackupConditionType represents a valid condition of a Backup.</p>
@@ -2557,6 +2558,19 @@ string
 </td>
 <td>
 <p>CommitTs is the snapshot time point of tidb cluster.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>phase</code></br>
+<em>
+<a href="#backupconditiontype">
+BackupConditionType
+</a>
+</em>
+</td>
+<td>
+<p>Phase is a user readable state inferred from the underlying Backup conditions</p>
 </td>
 </tr>
 <tr>
@@ -9709,7 +9723,20 @@ Optional: Defaults to /dev/stderr</p>
 </tr>
 </tbody>
 </table>
+<<<<<<< HEAD
 <h3 id="ticdcspec">TiCDCSpec</h3>
+=======
+<h3 id="restoreconditiontype">RestoreConditionType</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#restorecondition">RestoreCondition</a>, 
+<a href="#restorestatus">RestoreStatus</a>)
+</p>
+<p>
+<p>RestoreConditionType represents a valid condition of a Restore.</p>
+</p>
+<h3 id="restorespec">RestoreSpec</h3>
+>>>>>>> 3f61fc62... add phase for backup and restore status (#3397)
 <p>
 (<em>Appears on:</em>
 <a href="#tidbclusterspec">TidbClusterSpec</a>)
@@ -9921,7 +9948,24 @@ string
 </tr>
 <tr>
 <td>
+<<<<<<< HEAD
 <code>secretName</code></br>
+=======
+<code>phase</code></br>
+<em>
+<a href="#restoreconditiontype">
+RestoreConditionType
+</a>
+</em>
+</td>
+<td>
+<p>Phase is a user readable state inferred from the underlying Restore conditions</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>conditions</code></br>
+>>>>>>> 3f61fc62... add phase for backup and restore status (#3397)
 <em>
 string
 </em>
