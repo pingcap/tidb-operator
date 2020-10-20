@@ -206,6 +206,15 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 
 		pdClient := controller.NewFakePDClient(pdControl, tc)
 
+		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
+			var replicas uint64 = 3
+			return &pdapi.PDConfigFromAPI{
+				Replication: &pdapi.PDReplicationConfig{
+					MaxReplicas: &replicas,
+				},
+			}, nil
+		})
+
 		if test.delStoreErr {
 			pdClient.AddReaction(pdapi.DeleteStoreActionType, func(action *pdapi.Action) (interface{}, error) {
 				return nil, fmt.Errorf("delete store error")
@@ -276,15 +285,13 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			isPodReady:    true,
 			hasSynced:     true,
 			pvcUpdateErr:  false,
-			errExpectFn:   errExpectNotNil,
+			errExpectFn:   errExpectNil,
 			changed:       false,
 		},
 		{
 			name:          "tikv pod is not ready now, not sure if the status has been synced",
 			tikvUpgrading: false,
-			storeFun: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{}
-			},
+			storeFun:      notReadyStoreFun,
 			delStoreErr:   false,
 			hasPVC:        true,
 			storeIDSynced: true,
@@ -297,9 +304,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 		{
 			name:          "tikv pod is not ready now, make sure the status has been synced",
 			tikvUpgrading: false,
-			storeFun: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{}
-			},
+			storeFun:      notReadyStoreFun,
 			delStoreErr:   false,
 			hasPVC:        true,
 			storeIDSynced: true,
@@ -420,6 +425,19 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			errExpectFn:   errExpectNotNil,
 			changed:       false,
 		},
+		{
+			name:          "minimal up stores, scale in TiKV is not allowed",
+			tikvUpgrading: false,
+			storeFun:      minimalUpStoreFun,
+			delStoreErr:   false,
+			hasPVC:        true,
+			storeIDSynced: true,
+			isPodReady:    true,
+			hasSynced:     true,
+			pvcUpdateErr:  false,
+			errExpectFn:   errExpectNil,
+			changed:       false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -448,10 +466,37 @@ func normalStoreFun(tc *v1alpha1.TidbCluster) {
 			PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 4),
 			State:   v1alpha1.TiKVStateUp,
 		},
+		"10": {
+			ID:      "10",
+			PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 0),
+			State:   v1alpha1.TiKVStateUp,
+		},
+		"11": {
+			ID:      "11",
+			PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 1),
+			State:   v1alpha1.TiKVStateUp,
+		},
+		"12": {
+			ID:      "12",
+			PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 2),
+			State:   v1alpha1.TiKVStateUp,
+		},
+		"13": {
+			ID:      "13",
+			PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 3),
+			State:   v1alpha1.TiKVStateUp,
+		},
 	}
 }
 
+func notReadyStoreFun(tc *v1alpha1.TidbCluster) {
+	normalStoreFun(tc)
+	delete(tc.Status.TiKV.Stores, "1")
+}
+
 func tombstoneStoreFun(tc *v1alpha1.TidbCluster) {
+	notReadyStoreFun(tc)
+
 	tc.Status.TiKV.TombstoneStores = map[string]v1alpha1.TiKVStore{
 		"1": {
 			ID:      "1",
@@ -459,6 +504,13 @@ func tombstoneStoreFun(tc *v1alpha1.TidbCluster) {
 			State:   v1alpha1.TiKVStateTombstone,
 		},
 	}
+}
+
+func minimalUpStoreFun(tc *v1alpha1.TidbCluster) {
+	normalStoreFun(tc)
+
+	tc.Status.TiKV.Stores["12"] = v1alpha1.TiKVStore{State: v1alpha1.TiKVStateDown}
+	tc.Status.TiKV.Stores["13"] = v1alpha1.TiKVStore{State: v1alpha1.TiKVStateDown}
 }
 
 func readyPodFunc(pod *corev1.Pod) {
