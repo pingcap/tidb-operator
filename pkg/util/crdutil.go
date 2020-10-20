@@ -244,18 +244,8 @@ func init() {
 		tidbClusterPDColumn, tidbClusterPDStorageColumn, tidbClusterPDReadyColumn, tidbClusterPDDesireColumn,
 		tidbClusterTiKVColumn, tidbClusterTiKVStorageColumn, tidbClusterTiKVReadyColumn, tidbClusterTiKVDesireColumn,
 		tidbClusterTiDBColumn, tidbClusterTiDBReadyColumn, tidbClusterTiDBDesireColumn, tidbClusterStatusMessageColumn, ageColumn)
-<<<<<<< HEAD
-	backupAdditionalPrinterColumns = append(backupAdditionalPrinterColumns, backupPathColumn, backupBackupSizeColumn, backupCommitTSColumn, backupStartedColumn, backupCompletedColumn, ageColumn)
-	restoreAdditionalPrinterColumns = append(restoreAdditionalPrinterColumns, restoreStartedColumn, restoreCompletedColumn, restoreCommitTSColumn, ageColumn)
-=======
-	dmClusteradditionalPrinterColumns = append(dmClusteradditionalPrinterColumns,
-		dmClusterReadyColumn,
-		dmClusterMasterColumn, dmClusterMasterStorageColumn, dmClusterMasterReadyColumn, dmClusterMasterDesireColumn,
-		dmClusterWorkerColumn, dmClusterWorkerStorageColumn, dmClusterWorkerReadyColumn, dmClusterWorkerDesireColumn,
-		dmClusterStatusMessageColumn, ageColumn)
 	backupAdditionalPrinterColumns = append(backupAdditionalPrinterColumns, backupStatusColumn, backupPathColumn, backupBackupSizeColumn, backupCommitTSColumn, backupStartedColumn, backupCompletedColumn, ageColumn)
 	restoreAdditionalPrinterColumns = append(restoreAdditionalPrinterColumns, restoreStatusColumn, restoreStartedColumn, restoreCompletedColumn, restoreCommitTSColumn, ageColumn)
->>>>>>> 3f61fc62... add phase for backup and restore status (#3397)
 	bksAdditionalPrinterColumns = append(bksAdditionalPrinterColumns, bksScheduleColumn, bksMaxBackups, bksLastBackup, bksLastBackupTime, ageColumn)
 	tidbInitializerPrinterColumns = append(tidbInitializerPrinterColumns, tidbInitializerPhase, ageColumn)
 	autoScalerPrinterColumns = append(autoScalerPrinterColumns, autoScalerTiDBMaxReplicasColumn, autoScalerTiDBMinReplicasColumn,
