@@ -508,16 +508,6 @@ func (m *pdMemberManager) pdStatefulSetIsUpgrading(set *apps.StatefulSet, tc *v1
 	return false, nil
 }
 
-func getFailureReplicas(tc *v1alpha1.TidbCluster) int {
-	failureReplicas := 0
-	for _, failureMember := range tc.Status.PD.FailureMembers {
-		if failureMember.MemberDeleted {
-			failureReplicas++
-		}
-	}
-	return failureReplicas
-}
-
 func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
 	ns := tc.Namespace
 	tcName := tc.Name
@@ -658,8 +648,12 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	pdLabel := label.New().Instance(instanceName).PD()
 	setName := controller.PDMemberName(tcName)
 	podAnnotations := CombineAnnotations(controller.AnnProm(2379), basePDSpec.Annotations())
+<<<<<<< HEAD
 	stsAnnotations := getStsAnnotations(tc, label.PDLabelVal)
 	failureReplicas := getFailureReplicas(tc)
+=======
+	stsAnnotations := getStsAnnotations(tc.Annotations, label.PDLabelVal)
+>>>>>>> 1fd08ed8... Optimize the calculation of `PDStsDesiredReplicas` (#3412)
 
 	pdContainer := corev1.Container{
 		Name:            v1alpha1.PDMemberType.String(),
@@ -739,7 +733,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas: pointer.Int32Ptr(tc.Spec.PD.Replicas + int32(failureReplicas)),
+			Replicas: pointer.Int32Ptr(tc.PDStsDesiredReplicas()),
 			Selector: pdLabel.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -767,7 +761,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{
 				Type: apps.RollingUpdateStatefulSetStrategyType,
 				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
-					Partition: pointer.Int32Ptr(tc.Spec.PD.Replicas + int32(failureReplicas)),
+					Partition: pointer.Int32Ptr(tc.PDStsDesiredReplicas()),
 				}},
 		},
 	}
