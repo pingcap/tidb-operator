@@ -314,8 +314,18 @@ func (tc *TidbCluster) PDAutoFailovering() bool {
 	return false
 }
 
+func (tc *TidbCluster) GetPDFailureReplicas() int32 {
+	var failureReplicas int32 = 0
+	for _, failureMember := range tc.Status.PD.FailureMembers {
+		if failureMember.MemberDeleted {
+			failureReplicas++
+		}
+	}
+	return failureReplicas
+}
+
 func (tc *TidbCluster) PDStsDesiredReplicas() int32 {
-	return tc.Spec.PD.Replicas + int32(len(tc.Status.PD.FailureMembers))
+	return tc.Spec.PD.Replicas + tc.GetPDFailureReplicas()
 }
 
 func (tc *TidbCluster) PDStsActualReplicas() int32 {
