@@ -306,6 +306,9 @@ func updateStatefulSet(setCtl controller.StatefulSetControlInterface, object run
 		}
 		*set.Spec.Replicas = *newSet.Spec.Replicas
 		set.Spec.UpdateStrategy = newSet.Spec.UpdateStrategy
+		if oldSet.Spec.UpdateStrategy.Type == apps.OnDeleteStatefulSetStrategyType || oldSet.Spec.UpdateStrategy.RollingUpdate == nil {
+			set.Spec.UpdateStrategy = oldSet.Spec.UpdateStrategy
+		}
 		if isOrphan {
 			set.OwnerReferences = newSet.OwnerReferences
 			set.Labels = newSet.Labels
