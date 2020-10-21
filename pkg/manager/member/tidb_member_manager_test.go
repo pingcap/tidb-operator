@@ -20,6 +20,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/defaulting"
+
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -52,6 +54,7 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 		t.Log(test.name)
 
 		tc := newTidbClusterForTiDB()
+		defaulting.SetTidbClusterDefault(tc)
 		tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
 			"tikv-0": {PodName: "tikv-0", State: v1alpha1.TiKVStateUp},
 		}
@@ -134,6 +137,7 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 		t.Log(test.name)
 
 		tc := newTidbClusterForTiDB()
+		defaulting.SetTidbClusterDefault(tc)
 		tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
 			"tikv-0": {PodName: "tikv-0", State: v1alpha1.TiKVStateUp},
 		}
@@ -1115,6 +1119,7 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			defaulting.SetTidbClusterDefault(&tt.tc)
 			sts := getNewTiDBSetForTidbCluster(&tt.tc, tt.cm)
 			tt.testSts(sts)
 		})
@@ -1449,6 +1454,7 @@ func TestTiDBInitContainers(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			defaulting.SetTidbClusterDefault(&tt.tc)
 			sts := getNewTiDBSetForTidbCluster(&tt.tc, nil)
 			if diff := cmp.Diff(tt.expectedInit, sts.Spec.Template.Spec.InitContainers); diff != "" {
 				t.Errorf("unexpected InitContainers in Statefulset (-want, +got): %s", diff)
@@ -1896,6 +1902,7 @@ func TestTiDBMemberManagerScaleToZeroReplica(t *testing.T) {
 		t.Log(test.name)
 
 		tc := newTidbClusterForTiDB()
+		defaulting.SetTidbClusterDefault(tc)
 		tc.Spec.TiDB.MaxFailoverCount = pointer.Int32Ptr(3)
 		tc.Spec.TiKV.MaxFailoverCount = pointer.Int32Ptr(3)
 		tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{

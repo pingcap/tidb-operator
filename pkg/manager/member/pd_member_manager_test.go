@@ -19,6 +19,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/defaulting"
+
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/metapb"
@@ -1683,6 +1685,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			defaulting.SetTidbClusterDefault(&tt.tc)
 			sts, err := getNewPDSetForTidbCluster(&tt.tc, nil)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("error %v, wantErr %v", err, tt.wantErr)
