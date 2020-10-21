@@ -8850,20 +8850,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbAutoScalerStatus(ref common.ReferenceC
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
-					"pdAddresses": {
-						SchemaProps: spec.SchemaProps{
-							Description: "PDAddresses are the external PD addresses, if configured, the PDs in this TidbCluster will join to the configured PD cluster.",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Type:   []string{"string"},
-										Format: "",
-									},
-								},
-							},
-						},
-					},
 				},
 				Required: []string{"currentReplicas"},
 			},
@@ -9374,6 +9360,20 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 						SchemaProps: spec.SchemaProps{
 							Description: "Cluster is the external cluster, if configured, the components in this TidbCluster will join to this configured cluster.",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterRef"),
+						},
+					},
+					"pdAddresses": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PDAddresses are the external PD addresses, if configured, the PDs in this TidbCluster will join to the configured PD cluster.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
 						},
 					},
 				},

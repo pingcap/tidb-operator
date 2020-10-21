@@ -16493,18 +16493,6 @@ string
 <p>Name is the name of TidbCluster object</p>
 </td>
 </tr>
-<tr>
-<td>
-<code>pdAddresses</code></br>
-<em>
-[]string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>PDAddresses are the external PD addresses, if configured, the PDs in this TidbCluster will join to the configured PD cluster.</p>
-</td>
-</tr>
 </tbody>
 </table>
 <h3 id="tidbclusterspec">TidbClusterSpec</h3>
@@ -16896,6 +16884,18 @@ TidbClusterRef
 <td>
 <em>(Optional)</em>
 <p>Cluster is the external cluster, if configured, the components in this TidbCluster will join to this configured cluster.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pdAddresses</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PDAddresses are the external PD addresses, if configured, the PDs in this TidbCluster will join to the configured PD cluster.</p>
 </td>
 </tr>
 </tbody>
