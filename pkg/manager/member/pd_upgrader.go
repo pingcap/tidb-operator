@@ -112,7 +112,7 @@ func (pu *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newS
 	tcName := tc.GetName()
 	upgradePodName := PdPodName(tcName, ordinal)
 	if tc.Status.PD.Leader.Name == upgradePodName && tc.PDStsActualReplicas() > 1 {
-		lastOrdinal := tc.PDStsActualReplicas() - 1
+		lastOrdinal := helper.GetMaxPodOrdinal(*newSet.Spec.Replicas, newSet)
 		var targetName string
 		if ordinal == lastOrdinal {
 			targetName = PdPodName(tcName, helper.GetMinPodOrdinal(*newSet.Spec.Replicas, newSet))

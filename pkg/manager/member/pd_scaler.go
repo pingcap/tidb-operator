@@ -121,21 +121,14 @@ func (psd *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 	// If the pd pod was pd leader during scale-in, we would transfer pd leader to pd-0 directly
 	// If the pd statefulSet would be scale-in to zero and the pd-0 was going to be deleted,
 	// we would directly deleted the pd-0 without pd leader transferring
-	if ordinal > 0 {
+	minOrdinal := helper.GetMinPodOrdinal(*newSet.Spec.Replicas, newSet)
+	if ordinal > minOrdinal {
 		leader, err := pdClient.GetPDLeader()
 		if err != nil {
 			return err
 		}
 		if leader.Name == memberName {
-			var targetName string
-			lastOrdinal := helper.GetMaxPodOrdinal(*newSet.Spec.Replicas, newSet)
-			if ordinal == lastOrdinal {
-				targetName = PdPodName(tcName, helper.GetMinPodOrdinal(*newSet.Spec.Replicas, newSet))
-			} else {
-				targetName = PdPodName(tcName, lastOrdinal)
-			}
-
-			err = pdClient.TransferPDLeader(targetName)
+			err = pdClient.TransferPDLeader(PdPodName(tcName, minOrdinal))
 			if err != nil {
 				return err
 			}
