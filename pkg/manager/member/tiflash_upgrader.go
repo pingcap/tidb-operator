@@ -51,6 +51,6 @@ func NewFakeTiFlashUpgrader() Upgrader {
 	return &fakeTiFlashUpgrader{}
 }
 
-func (tku *fakeTiFlashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, _ *apps.StatefulSet, _ *apps.StatefulSet) error {
+func (u *fakeTiFlashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, _ *apps.StatefulSet, _ *apps.StatefulSet) error {
 	return nil
 }

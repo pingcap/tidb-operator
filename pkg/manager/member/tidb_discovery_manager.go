@@ -239,13 +239,13 @@ func NewFakeDiscoveryManger() *FakeDiscoveryManager {
 	return &FakeDiscoveryManager{}
 }
 
-func (fdm *FakeDiscoveryManager) SetReconcileError(err error) {
-	fdm.err = err
+func (m *FakeDiscoveryManager) SetReconcileError(err error) {
+	m.err = err
 }
 
-func (fdm *FakeDiscoveryManager) Reconcile(_ *v1alpha1.TidbCluster) error {
-	if fdm.err != nil {
-		return fdm.err
+func (m *FakeDiscoveryManager) Reconcile(_ *v1alpha1.TidbCluster) error {
+	if m.err != nil {
+		return m.err
 	}
 	return nil
 }

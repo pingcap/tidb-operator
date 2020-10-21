@@ -43,13 +43,13 @@ func NewDefaultTiCDCControl(kubeCli kubernetes.Interface) *defaultTiCDCControl {
 	return &defaultTiCDCControl{httpClient: httpClient{kubeCli: kubeCli}}
 }
 
-func (tcc *defaultTiCDCControl) GetStatus(tc *v1alpha1.TidbCluster, ordinal int32) (*CaptureStatus, error) {
-	httpClient, err := tcc.getHTTPClient(tc)
+func (c *defaultTiCDCControl) GetStatus(tc *v1alpha1.TidbCluster, ordinal int32) (*CaptureStatus, error) {
+	httpClient, err := c.getHTTPClient(tc)
 	if err != nil {
 		return nil, err
 	}
 
-	baseURL := tcc.getBaseURL(tc, ordinal)
+	baseURL := c.getBaseURL(tc, ordinal)
 	url := fmt.Sprintf("%s/status", baseURL)
 	body, err := getBodyOK(httpClient, url)
 	if err != nil {
@@ -61,9 +61,9 @@ func (tcc *defaultTiCDCControl) GetStatus(tc *v1alpha1.TidbCluster, ordinal int3
 	return &status, err
 }
 
-func (tcc *defaultTiCDCControl) getBaseURL(tc *v1alpha1.TidbCluster, ordinal int32) string {
-	if tcc.testURL != "" {
-		return tcc.testURL
+func (c *defaultTiCDCControl) getBaseURL(tc *v1alpha1.TidbCluster, ordinal int32) string {
+	if c.testURL != "" {
+		return c.testURL
 	}
 
 	tcName := tc.GetName()
@@ -85,6 +85,6 @@ func NewFakeTiCDCControl() *FakeTiCDCControl {
 }
 
 // SetHealth set health info for FakeTiCDCControl
-func (ftd *FakeTiCDCControl) SetStatus(status *CaptureStatus) {
-	ftd.status = status
+func (c *FakeTiCDCControl) SetStatus(status *CaptureStatus) {
+	c.status = status
 }
