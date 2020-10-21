@@ -12,6 +12,11 @@ jobs:
     - uses: actions/setup-node@v1
       with:
         node-version: '12'
+    - name: "Check git conflicts"
+      run:
+        git remote add upstream https://github.com/pingcap/docs-tidb-operator.git;
+        git fetch upstream;
+        python3 ./hack/check-conflicts.py $(git diff-tree --name-only --no-commit-id -r upstream/master...HEAD -- 'zh/' 'en/' '.md' ':(exclude).github/*')
     - name: Markdown lint
       uses: avto-dev/markdown-lint@v1
       with:
@@ -23,7 +28,5 @@ jobs:
       run: ./hack/verify-link-anchors.sh 
     - name: "Check unclosed tags"
       run: 
-        git remote add upstream https://github.com/pingcap/docs-tidb-operator.git;
-        git fetch upstream;
         echo "checked files are $(git diff-tree --name-only --no-commit-id -r upstream/master...HEAD -- 'zh/' 'en/' '.md' ':(exclude).github/*')";
         python3 ./hack/check-tags.py $(git diff-tree --name-only --no-commit-id -r upstream/master...HEAD -- 'zh/' 'en/' '.md' ':(exclude).github/*')
