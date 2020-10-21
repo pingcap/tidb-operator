@@ -814,7 +814,7 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 }
 
 func newTidbClusterForTiDB() *v1alpha1.TidbCluster {
-	return &v1alpha1.TidbCluster{
+	tc := &v1alpha1.TidbCluster{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "TidbCluster",
 			APIVersion: "pingcap.com/v1alpha1",
@@ -841,6 +841,8 @@ func newTidbClusterForTiDB() *v1alpha1.TidbCluster {
 			TiKV: &v1alpha1.TiKVSpec{},
 		},
 	}
+	defaulting.SetTidbClusterDefault(tc)
+	return tc
 }
 
 func TestGetNewTiDBHeadlessServiceForTidbCluster(t *testing.T) {
