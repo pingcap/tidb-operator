@@ -774,12 +774,6 @@ func newTidbClusterForPD() *v1alpha1.TidbCluster {
 			PD: &v1alpha1.PDSpec{
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "pd-test-image",
-					StatefulSetUpdateStrategy: &apps.StatefulSetUpdateStrategy{
-						Type: apps.RollingUpdateStatefulSetStrategyType,
-						RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
-							Partition: pointer.Int32Ptr(3),
-						},
-					},
 				},
 				ResourceRequirements: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
@@ -794,12 +788,6 @@ func newTidbClusterForPD() *v1alpha1.TidbCluster {
 			TiKV: &v1alpha1.TiKVSpec{
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "tikv-test-image",
-					StatefulSetUpdateStrategy: &apps.StatefulSetUpdateStrategy{
-						Type: apps.RollingUpdateStatefulSetStrategyType,
-						RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
-							Partition: pointer.Int32Ptr(3),
-						},
-					},
 				},
 				ResourceRequirements: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
