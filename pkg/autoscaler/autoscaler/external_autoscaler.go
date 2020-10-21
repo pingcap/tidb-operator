@@ -81,7 +81,7 @@ func (am *autoScalerManager) createExternalAutoCluster(tc *v1alpha1.TidbCluster,
 		return err
 	}
 
-	updateLastSyncingTimestamp(tac, component.String(), externalStatusKey)
+	updateLastAutoScalingTimestamp(tac, component.String(), externalStatusKey)
 	return nil
 }
 
@@ -114,6 +114,6 @@ func (am *autoScalerManager) updateExternalAutoCluster(externalTc *v1alpha1.Tidb
 		return err
 	}
 
-	updateLastSyncingTimestamp(tac, component.String(), externalStatusKey)
+	updateLastAutoScalingTimestamp(tac, component.String(), externalStatusKey)
 	return nil
 }

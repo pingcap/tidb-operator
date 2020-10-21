@@ -195,7 +195,7 @@ func (am *autoScalerManager) updateTidbClusterAutoScaler(tac *v1alpha1.TidbClust
 	return err
 }
 
-func updateLastSyncingTimestamp(tac *v1alpha1.TidbClusterAutoScaler, memberType string, group string) {
+func updateLastAutoScalingTimestamp(tac *v1alpha1.TidbClusterAutoScaler, memberType string, group string) {
 	switch memberType {
 	case v1alpha1.TiKVMemberType.String():
 		if tac.Status.TiKV == nil {

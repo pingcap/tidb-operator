@@ -157,7 +157,7 @@ func (am *autoScalerManager) updateAutoscalingClusters(tac *v1alpha1.TidbCluster
 			continue
 		}
 
-		updateLastSyncingTimestamp(tac, plan.Component, group)
+		updateLastAutoScalingTimestamp(tac, plan.Component, group)
 	}
 	return errorutils.NewAggregate(errs)
 }
@@ -231,7 +231,7 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 			continue
 		}
 
-		updateLastSyncingTimestamp(tac, component, group)
+		updateLastAutoScalingTimestamp(tac, component, group)
 	}
 	return errorutils.NewAggregate(errs)
 }
