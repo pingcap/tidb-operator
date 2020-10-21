@@ -775,6 +775,11 @@ type ComponentSpec struct {
 	// Defaults to 30 seconds.
 	// +optional
 	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
+
+	// StatefulSetUpdateStrategy indicates the StatefulSetUpdateStrategy that will be
+	// employed to update Pods in the StatefulSet when a revision is made to
+	// Template.
+	StatefulSetUpdateStrategy *apps.StatefulSetUpdateStrategy `json:"updateStrategy,omitempty"`
 }
 
 // +k8s:openapi-gen=true

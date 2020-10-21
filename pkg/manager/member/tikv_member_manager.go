@@ -512,12 +512,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			},
 			ServiceName:         headlessSvcName,
 			PodManagementPolicy: apps.ParallelPodManagement,
-			UpdateStrategy: apps.StatefulSetUpdateStrategy{
-				Type: apps.RollingUpdateStatefulSetStrategyType,
-				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
-					Partition: pointer.Int32Ptr(tc.TiKVStsDesiredReplicas()),
-				},
-			},
+			UpdateStrategy:      *baseTiKVSpec.StatefulSetUpdateStrategy(),
 		},
 	}
 	return tikvset, nil

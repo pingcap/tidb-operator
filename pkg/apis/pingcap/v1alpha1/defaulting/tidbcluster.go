@@ -15,6 +15,7 @@ package defaulting
 
 import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/pointer"
 )
@@ -82,6 +83,15 @@ func setTidbSpecDefault(tc *v1alpha1.TidbCluster) {
 		tc.Spec.TiDB.MaxFailoverCount = pointer.Int32Ptr(3)
 	}
 
+	if tc.Spec.TiDB.StatefulSetUpdateStrategy == nil {
+		tc.Spec.TiDB.StatefulSetUpdateStrategy = &apps.StatefulSetUpdateStrategy{
+			Type: apps.RollingUpdateStatefulSetStrategyType,
+			RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
+				Partition: pointer.Int32Ptr(tc.TiDBStsDesiredReplicas()),
+			},
+		}
+	}
+
 	// Start set config if need.
 	if tc.Spec.TiDB.Config == nil {
 		return
@@ -102,6 +112,15 @@ func setTikvSpecDefault(tc *v1alpha1.TidbCluster) {
 	if tc.Spec.TiKV.MaxFailoverCount == nil {
 		tc.Spec.TiKV.MaxFailoverCount = pointer.Int32Ptr(3)
 	}
+
+	if tc.Spec.TiKV.StatefulSetUpdateStrategy == nil {
+		tc.Spec.TiKV.StatefulSetUpdateStrategy = &apps.StatefulSetUpdateStrategy{
+			Type: apps.RollingUpdateStatefulSetStrategyType,
+			RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
+				Partition: pointer.Int32Ptr(tc.TiKVStsDesiredReplicas()),
+			},
+		}
+	}
 }
 
 func setPdSpecDefault(tc *v1alpha1.TidbCluster) {
@@ -112,6 +131,15 @@ func setPdSpecDefault(tc *v1alpha1.TidbCluster) {
 	}
 	if tc.Spec.PD.MaxFailoverCount == nil {
 		tc.Spec.PD.MaxFailoverCount = pointer.Int32Ptr(3)
+	}
+
+	if tc.Spec.PD.StatefulSetUpdateStrategy == nil {
+		tc.Spec.PD.StatefulSetUpdateStrategy = &apps.StatefulSetUpdateStrategy{
+			Type: apps.RollingUpdateStatefulSetStrategyType,
+			RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
+				Partition: pointer.Int32Ptr(tc.PDStsDesiredReplicas()),
+			},
+		}
 	}
 }
 
