@@ -761,7 +761,7 @@ func newFakePDMemberManager() (*pdMemberManager, cache.Indexer, cache.Indexer) {
 }
 
 func newTidbClusterForPD() *v1alpha1.TidbCluster {
-	return &v1alpha1.TidbCluster{
+	 tc := &v1alpha1.TidbCluster{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "TidbCluster",
 			APIVersion: "pingcap.com/v1alpha1",
@@ -803,6 +803,8 @@ func newTidbClusterForPD() *v1alpha1.TidbCluster {
 			TiDB: &v1alpha1.TiDBSpec{},
 		},
 	}
+	defaulting.SetTidbClusterDefault(tc)
+	return tc
 }
 
 func expectErrIsNotFound(g *GomegaWithT, err error) {
