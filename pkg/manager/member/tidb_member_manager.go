@@ -745,9 +745,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			},
 			ServiceName:         controller.TiDBPeerMemberName(tcName),
 			PodManagementPolicy: apps.ParallelPodManagement,
-			UpdateStrategy: apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType,
-				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{Partition: pointer.Int32Ptr(tc.TiDBStsDesiredReplicas())},
-			},
+			UpdateStrategy:      *baseTiDBSpec.StatefulSetUpdateStrategy(),
 		},
 	}
 

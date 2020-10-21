@@ -14,6 +14,7 @@
 package v1alpha1
 
 import (
+	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -41,6 +42,7 @@ type ComponentAccessor interface {
 	AdditionalContainers() []corev1.Container
 	AdditionalVolumes() []corev1.Volume
 	TerminationGracePeriodSeconds() *int64
+	StatefulSetUpdateStrategy() *apps.StatefulSetUpdateStrategy
 }
 
 type componentAccessorImpl struct {
@@ -57,6 +59,10 @@ type componentAccessorImpl struct {
 
 	// ComponentSpec is the Component Spec
 	ComponentSpec *ComponentSpec
+}
+
+func (a *componentAccessorImpl) StatefulSetUpdateStrategy() *apps.StatefulSetUpdateStrategy {
+	return a.ComponentSpec.StatefulSetUpdateStrategy
 }
 
 func (a *componentAccessorImpl) PodSecurityContext() *corev1.PodSecurityContext {
