@@ -3615,6 +3615,21 @@ Set this value longer than the expected cleanup time for your process.
 Defaults to 30 seconds.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>updateStrategy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#statefulsetupdatestrategy-v1-apps">
+Kubernetes apps/v1.StatefulSetUpdateStrategy
+</a>
+</em>
+</td>
+<td>
+<p>StatefulSetUpdateStrategy indicates the StatefulSetUpdateStrategy that will be
+employed to update Pods in the StatefulSet when a revision is made to
+Template.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="configmapref">ConfigMapRef</h3>

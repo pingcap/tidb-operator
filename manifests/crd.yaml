@@ -1899,6 +1899,7 @@ spec:
                         type: string
                     type: object
                   type: array
+                updateStrategy: {}
                 version:
                   type: string
               required:
@@ -3405,6 +3406,7 @@ spec:
                         type: string
                     type: object
                   type: array
+                updateStrategy: {}
                 version:
                   type: string
               required:
@@ -4920,6 +4922,7 @@ spec:
                         type: string
                     type: object
                   type: array
+                updateStrategy: {}
                 version:
                   type: string
               required:
@@ -6549,6 +6552,7 @@ spec:
                         type: string
                     type: object
                   type: array
+                updateStrategy: {}
                 version:
                   type: string
               required:
@@ -8075,6 +8079,7 @@ spec:
                         type: string
                     type: object
                   type: array
+                updateStrategy: {}
                 version:
                   type: string
               required:
@@ -9589,6 +9594,7 @@ spec:
                         type: string
                     type: object
                   type: array
+                updateStrategy: {}
                 version:
                   type: string
               required:
@@ -11477,6 +11483,7 @@ spec:
                         type: string
                     type: object
                   type: array
+                updateStrategy: {}
                 version:
                   type: string
               required:
@@ -13040,6 +13047,7 @@ spec:
                         type: string
                     type: object
                   type: array
+                updateStrategy: {}
                 version:
                   type: string
               required:
