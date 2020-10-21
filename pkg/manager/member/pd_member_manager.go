@@ -648,12 +648,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	pdLabel := label.New().Instance(instanceName).PD()
 	setName := controller.PDMemberName(tcName)
 	podAnnotations := CombineAnnotations(controller.AnnProm(2379), basePDSpec.Annotations())
-<<<<<<< HEAD
 	stsAnnotations := getStsAnnotations(tc, label.PDLabelVal)
-	failureReplicas := getFailureReplicas(tc)
-=======
-	stsAnnotations := getStsAnnotations(tc.Annotations, label.PDLabelVal)
->>>>>>> 1fd08ed8... Optimize the calculation of `PDStsDesiredReplicas` (#3412)
 
 	pdContainer := corev1.Container{
 		Name:            v1alpha1.PDMemberType.String(),
