@@ -162,22 +162,20 @@ func (am *autoScalerManager) gracefullyDeleteTidbCluster(deleteTc *v1alpha1.Tidb
 func (am *autoScalerManager) updateLastSyncingTimestamp(tac *v1alpha1.TidbClusterAutoScaler, memberType string, group string) error {
 	var status interface{}
 	switch memberType {
+	case v1alpha1.TiKVMemberType.String():
+		status = &v1alpha1.TikvAutoScalerStatus{
+			BasicAutoScalerStatus: v1alpha1.BasicAutoScalerStatus{
+				LastAutoScalingTimestamp: &metav1.Time{Time: time.Now()},
+			},
+		}
 	case v1alpha1.TiDBMemberType.String():
-		switch memberType {
-		case v1alpha1.TiKVMemberType.String():
-			status = &v1alpha1.TikvAutoScalerStatus{
-				BasicAutoScalerStatus: v1alpha1.BasicAutoScalerStatus{
-					LastAutoScalingTimestamp: &metav1.Time{Time: time.Now()},
-				},
-			}
-		case v1alpha1.TiDBMemberType.String():
-			status = &v1alpha1.TidbAutoScalerStatus{
-				BasicAutoScalerStatus: v1alpha1.BasicAutoScalerStatus{
-					LastAutoScalingTimestamp: &metav1.Time{Time: time.Now()},
-				},
-			}
+		status = &v1alpha1.TidbAutoScalerStatus{
+			BasicAutoScalerStatus: v1alpha1.BasicAutoScalerStatus{
+				LastAutoScalingTimestamp: &metav1.Time{Time: time.Now()},
+			},
 		}
 	}
+
 	return am.patchAutoscalingGroupStatus(tac, memberType, group, status)
 }
 
