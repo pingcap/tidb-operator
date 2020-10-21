@@ -37,7 +37,7 @@ func TestTidbDiscoveryManager_Reconcile(t *testing.T) {
 	testFn := func(tt *testcase) {
 		t.Log(tt.name)
 
-		tc := newTidbClusterForTiDB(false)
+		tc := newTidbClusterForTiDB()
 		dm, ctrl := newFakeTidbDiscoveryManager()
 		if tt.prepare != nil {
 			tt.prepare(tc, ctrl)

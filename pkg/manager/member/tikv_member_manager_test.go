@@ -48,6 +48,7 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 		errWhenCreateTiKVPeerService bool
 		errWhenGetStores             bool
 		err                          bool
+		tls                          bool
 		tikvPeerSvcCreated           bool
 		setCreated                   bool
 		pdStores                     *pdapi.StoresInfo
@@ -57,7 +58,10 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 
-		tc := newTidbClusterForPD(false)
+		tc := newTidbClusterForPD()
+		if test.tls {
+			tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+		}
 		tc.Status.PD.Members = map[string]v1alpha1.PDMember{
 			"pd-0": {Name: "pd-0", Health: true},
 			"pd-1": {Name: "pd-1", Health: true},
@@ -142,6 +146,18 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 			tombstoneStores:              &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
 		},
 		{
+			name:                         "normal with tls",
+			prepare:                      nil,
+			errWhenCreateStatefulSet:     false,
+			errWhenCreateTiKVPeerService: false,
+			err:                          false,
+			tls:                          true,
+			tikvPeerSvcCreated:           true,
+			setCreated:                   true,
+			pdStores:                     &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
+			tombstoneStores:              &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
+		},
+		{
 			name: "pd is not available",
 			prepare: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Members = map[string]v1alpha1.PDMember{}
@@ -203,7 +219,7 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 
-		tc := newTidbClusterForPD(false)
+		tc := newTidbClusterForPD()
 		tc.Status.PD.Members = map[string]v1alpha1.PDMember{
 			"pd-0": {Name: "pd-0", Health: true},
 			"pd-1": {Name: "pd-1", Health: true},
@@ -373,7 +389,7 @@ func TestTiKVMemberManagerTiKVStatefulSetIsUpgrading(t *testing.T) {
 		expectUpgrading bool
 	}
 	testFn := func(test *testcase, t *testing.T) {
-		tc := newTidbClusterForPD(false)
+		tc := newTidbClusterForPD()
 		pmm, _, _, _, podIndexer, _ := newFakeTiKVMemberManager(tc)
 		tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{
 			UpdateRevision: "v3",
@@ -475,7 +491,7 @@ func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 		labelSetFailed   bool
 	}
 	testFn := func(test *testcase, t *testing.T) {
-		tc := newTidbClusterForPD(false)
+		tc := newTidbClusterForPD()
 		pmm, _, _, pdClient, podIndexer, nodeIndexer := newFakeTiKVMemberManager(tc)
 		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
 			return &pdapi.PDConfigFromAPI{
@@ -800,7 +816,7 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 	}
 	now := metav1.Time{Time: time.Now()}
 	testFn := func(test *testcase, t *testing.T) {
-		tc := newTidbClusterForPD(false)
+		tc := newTidbClusterForPD()
 		tc.Status.PD.Phase = v1alpha1.NormalPhase
 		set := &apps.StatefulSet{
 			Spec:   spec,

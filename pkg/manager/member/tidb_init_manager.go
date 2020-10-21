@@ -76,7 +76,7 @@ func (m *tidbInitManager) Sync(ti *v1alpha1.TidbInitializer) error {
 
 func (m *tidbInitManager) updateStatus(ti *v1alpha1.TidbInitializer) error {
 	name := controller.TiDBInitializerMemberName(ti.Spec.Clusters.Name)
-	ns := ti.Namespace
+	ns := ti.GetNamespace()
 	job, err := m.deps.JobLister.Jobs(ns).Get(name)
 	if err != nil {
 		return fmt.Errorf("updateStatus: failed to get job %s for TidbInitializer %s/%s, error: %s", name, ns, ti.Name, err)
@@ -112,6 +112,7 @@ func (m *tidbInitManager) updateStatus(ti *v1alpha1.TidbInitializer) error {
 			return nil
 		})
 	}
+
 	return nil
 }
 

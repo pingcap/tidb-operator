@@ -52,7 +52,10 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 
-		tc := newTidbClusterForTiDB(test.tls)
+		tc := newTidbClusterForTiDB()
+		if test.tls {
+			tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+		}
 		tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
 			"tikv-0": {PodName: "tikv-0", State: v1alpha1.TiKVStateUp},
 		}
@@ -142,7 +145,7 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 
-		tc := newTidbClusterForTiDB(false)
+		tc := newTidbClusterForTiDB()
 		tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
 			"tikv-0": {PodName: "tikv-0", State: v1alpha1.TiKVStateUp},
 		}
@@ -251,7 +254,7 @@ func TestTiDBMemberManagerTiDBStatefulSetIsUpgrading(t *testing.T) {
 	}
 	testFn := func(test *testcase, t *testing.T) {
 		pmm, _, _, indexers := newFakeTiDBMemberManager()
-		tc := newTidbClusterForTiDB(false)
+		tc := newTidbClusterForTiDB()
 		tc.Status.TiDB.StatefulSet = &apps.StatefulSetStatus{
 			UpdateRevision: "v3",
 		}
@@ -358,7 +361,7 @@ func TestTiDBMemberManagerSyncTidbClusterStatus(t *testing.T) {
 	}
 	now := metav1.Time{Time: time.Now()}
 	testFn := func(test *testcase, t *testing.T) {
-		tc := newTidbClusterForPD(false)
+		tc := newTidbClusterForPD()
 		tc.Spec.TiDB.Replicas = int32(3)
 		tc.Status.PD.Phase = v1alpha1.NormalPhase
 		tc.Status.TiKV.Phase = v1alpha1.NormalPhase
@@ -560,7 +563,7 @@ func TestTiDBMemberManagerSyncTidbService(t *testing.T) {
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 
-		tc := newTidbClusterForTiDB(false)
+		tc := newTidbClusterForTiDB()
 		tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
 			"tikv-0": {PodName: "tikv-0", State: v1alpha1.TiKVStateUp},
 		}
@@ -795,6 +798,8 @@ type fakeIndexers struct {
 	eps    cache.Indexer
 	secret cache.Indexer
 	set    cache.Indexer
+	job    cache.Indexer
+	ti     cache.Indexer
 }
 
 func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSetControl, *controller.FakeTiDBControl, *fakeIndexers) {
@@ -816,37 +821,6 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 	setControl := fakeDeps.StatefulSetControl.(*controller.FakeStatefulSetControl)
 	tidbControl := fakeDeps.TiDBControl.(*controller.FakeTiDBControl)
 	return tmm, setControl, tidbControl, indexers
-}
-
-func newTidbClusterForTiDB(tls bool) *v1alpha1.TidbCluster {
-	return &v1alpha1.TidbCluster{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "TidbCluster",
-			APIVersion: "pingcap.com/v1alpha1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test",
-			Namespace: corev1.NamespaceDefault,
-			UID:       types.UID("test"),
-		},
-		Spec: v1alpha1.TidbClusterSpec{
-			TLSCluster: &v1alpha1.TLSCluster{Enabled: tls},
-			TiDB: &v1alpha1.TiDBSpec{
-				ComponentSpec: v1alpha1.ComponentSpec{
-					Image: v1alpha1.TiDBMemberType.String(),
-				},
-				ResourceRequirements: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:    resource.MustParse("1"),
-						corev1.ResourceMemory: resource.MustParse("2Gi"),
-					},
-				},
-				Replicas: 3,
-			},
-			PD:   &v1alpha1.PDSpec{},
-			TiKV: &v1alpha1.TiKVSpec{},
-		},
-	}
 }
 
 func TestGetNewTiDBHeadlessServiceForTidbCluster(t *testing.T) {
@@ -1905,7 +1879,7 @@ func TestTiDBMemberManagerScaleToZeroReplica(t *testing.T) {
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 
-		tc := newTidbClusterForTiDB(false)
+		tc := newTidbClusterForTiDB()
 		tc.Spec.TiDB.MaxFailoverCount = pointer.Int32Ptr(3)
 		tc.Spec.TiKV.MaxFailoverCount = pointer.Int32Ptr(3)
 		tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
@@ -2193,4 +2167,34 @@ func mustConfig(x interface{}) *v1alpha1.TiDBConfigWraper {
 	c.UnmarshalTOML(data)
 
 	return c
+}
+
+func newTidbClusterForTiDB() *v1alpha1.TidbCluster {
+	return &v1alpha1.TidbCluster{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "TidbCluster",
+			APIVersion: "pingcap.com/v1alpha1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: corev1.NamespaceDefault,
+			UID:       types.UID("test"),
+		},
+		Spec: v1alpha1.TidbClusterSpec{
+			TiDB: &v1alpha1.TiDBSpec{
+				ComponentSpec: v1alpha1.ComponentSpec{
+					Image: v1alpha1.TiDBMemberType.String(),
+				},
+				ResourceRequirements: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("1"),
+						corev1.ResourceMemory: resource.MustParse("2Gi"),
+					},
+				},
+				Replicas: 3,
+			},
+			PD:   &v1alpha1.PDSpec{},
+			TiKV: &v1alpha1.TiKVSpec{},
+		},
+	}
 }

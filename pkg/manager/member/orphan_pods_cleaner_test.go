@@ -28,7 +28,7 @@ import (
 func TestOrphanPodsCleanerClean(t *testing.T) {
 	g := NewGomegaWithT(t)
 
-	tc := newTidbClusterForPD(false)
+	tc := newTidbClusterForPD()
 	dc := newDMClusterForMaster()
 
 	tests := []struct {

@@ -44,7 +44,7 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 	}
 
 	testFn := func(test testcase, t *testing.T) {
-		tc := newTidbClusterForPD(false)
+		tc := newTidbClusterForPD()
 
 		if test.tikvUpgrading {
 			tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
@@ -163,7 +163,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 	resyncDuration := time.Duration(0)
 
 	testFn := func(test testcase, t *testing.T) {
-		tc := newTidbClusterForPD(false)
+		tc := newTidbClusterForPD()
 		test.storeFun(tc)
 
 		if test.tikvUpgrading {
