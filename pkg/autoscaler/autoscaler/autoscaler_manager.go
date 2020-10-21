@@ -160,10 +160,10 @@ func (am *autoScalerManager) gracefullyDeleteTidbCluster(deleteTc *v1alpha1.Tidb
 }
 
 func (am *autoScalerManager) updateLastSyncingTimestamp(tac *v1alpha1.TidbClusterAutoScaler, memberType string, group string) error {
+	var status interface{}
 	switch memberType {
 	case v1alpha1.TiDBMemberType.String():
-		var status interface{}
-		switch component {
+		switch memberType {
 		case v1alpha1.TiKVMemberType.String():
 			status = &v1alpha1.TikvAutoScalerStatus{
 				BasicAutoScalerStatus: v1alpha1.BasicAutoScalerStatus{
@@ -178,7 +178,7 @@ func (am *autoScalerManager) updateLastSyncingTimestamp(tac *v1alpha1.TidbCluste
 			}
 		}
 	}
-	return am.patchAutoscalingGroupStatus(tac, component, group, status)
+	return am.patchAutoscalingGroupStatus(tac, memberType, group, status)
 }
 
 func (am *autoScalerManager) patchAutoscalingGroupStatus(tac *v1alpha1.TidbClusterAutoScaler, memberType string, group string, newStatus interface{}) error {

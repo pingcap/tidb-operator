@@ -161,7 +161,7 @@ func (am *autoScalerManager) updateAutoscalingClusters(tac *v1alpha1.TidbCluster
 			continue
 		}
 
-		err = am.updateLastSyncingTimestamp(tac, component, group)
+		err = am.updateLastSyncingTimestamp(tac, plan.Component, group)
 		if err != nil {
 			errs = append(errs, err)
 			continue
