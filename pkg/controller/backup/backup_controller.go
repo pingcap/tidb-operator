@@ -63,52 +63,52 @@ func NewController(deps *controller.Dependencies) *Controller {
 }
 
 // Run runs the backup controller.
-func (bkc *Controller) Run(workers int, stopCh <-chan struct{}) {
+func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
-	defer bkc.queue.ShutDown()
+	defer c.queue.ShutDown()
 
 	klog.Info("Starting backup controller")
 	defer klog.Info("Shutting down backup controller")
 
 	for i := 0; i < workers; i++ {
-		go wait.Until(bkc.worker, time.Second, stopCh)
+		go wait.Until(c.worker, time.Second, stopCh)
 	}
 
 	<-stopCh
 }
 
 // worker runs a worker goroutine that invokes processNextWorkItem until the the controller's queue is closed
-func (bkc *Controller) worker() {
-	for bkc.processNextWorkItem() {
+func (c *Controller) worker() {
+	for c.processNextWorkItem() {
 	}
 }
 
 // processNextWorkItem dequeues items, processes them, and marks them done. It enforces that the syncHandler is never
 // invoked concurrently with the same key.
-func (bkc *Controller) processNextWorkItem() bool {
-	key, quit := bkc.queue.Get()
+func (c *Controller) processNextWorkItem() bool {
+	key, quit := c.queue.Get()
 	if quit {
 		return false
 	}
-	defer bkc.queue.Done(key)
-	if err := bkc.sync(key.(string)); err != nil {
+	defer c.queue.Done(key)
+	if err := c.sync(key.(string)); err != nil {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
 			klog.Infof("Backup: %v, still need sync: %v, requeuing", key.(string), err)
-			bkc.queue.AddRateLimited(key)
+			c.queue.AddRateLimited(key)
 		} else if perrors.Find(err, controller.IsIgnoreError) != nil {
 			klog.V(4).Infof("Backup: %v, ignore err: %v", key.(string), err)
 		} else {
 			utilruntime.HandleError(fmt.Errorf("Backup: %v, sync failed, err: %v, requeuing", key.(string), err))
-			bkc.queue.AddRateLimited(key)
+			c.queue.AddRateLimited(key)
 		}
 	} else {
-		bkc.queue.Forget(key)
+		c.queue.Forget(key)
 	}
 	return true
 }
 
 // sync syncs the given backup.
-func (bkc *Controller) sync(key string) error {
+func (c *Controller) sync(key string) error {
 	startTime := time.Now()
 	defer func() {
 		klog.V(4).Infof("Finished syncing Backup %q (%v)", key, time.Since(startTime))
@@ -118,7 +118,7 @@ func (bkc *Controller) sync(key string) error {
 	if err != nil {
 		return err
 	}
-	backup, err := bkc.deps.BackupLister.Backups(ns).Get(name)
+	backup, err := c.deps.BackupLister.Backups(ns).Get(name)
 	if errors.IsNotFound(err) {
 		klog.Infof("Backup has been deleted %v", key)
 		return nil
@@ -127,14 +127,14 @@ func (bkc *Controller) sync(key string) error {
 		return err
 	}
 
-	return bkc.syncBackup(backup.DeepCopy())
+	return c.syncBackup(backup.DeepCopy())
 }
 
-func (bkc *Controller) syncBackup(backup *v1alpha1.Backup) error {
-	return bkc.control.UpdateBackup(backup)
+func (c *Controller) syncBackup(backup *v1alpha1.Backup) error {
+	return c.control.UpdateBackup(backup)
 }
 
-func (bkc *Controller) updateBackup(cur interface{}) {
+func (c *Controller) updateBackup(cur interface{}) {
 	newBackup := cur.(*v1alpha1.Backup)
 	ns := newBackup.GetNamespace()
 	name := newBackup.GetName()
@@ -142,7 +142,7 @@ func (bkc *Controller) updateBackup(cur interface{}) {
 	if newBackup.DeletionTimestamp != nil {
 		// the backup is being deleted, we need to do some cleanup work, enqueue backup.
 		klog.Infof("backup %s/%s is being deleted", ns, name)
-		bkc.enqueueBackup(newBackup)
+		c.enqueueBackup(newBackup)
 		return
 	}
 
@@ -162,15 +162,15 @@ func (bkc *Controller) updateBackup(cur interface{}) {
 	}
 
 	klog.V(4).Infof("backup object %s/%s enqueue", ns, name)
-	bkc.enqueueBackup(newBackup)
+	c.enqueueBackup(newBackup)
 }
 
 // enqueueBackup enqueues the given backup in the work queue.
-func (bkc *Controller) enqueueBackup(obj interface{}) {
+func (c *Controller) enqueueBackup(obj interface{}) {
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("cound't get key for object %+v: %v", obj, err))
 		return
 	}
-	bkc.queue.Add(key)
+	c.queue.Add(key)
 }
