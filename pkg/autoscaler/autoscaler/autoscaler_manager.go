@@ -14,7 +14,7 @@
 package autoscaler
 
 import (
-	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -22,8 +22,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
 )
 
@@ -63,7 +64,13 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 		return nil
 	}
 
-	return am.syncAutoScaling(tc, tac)
+	updatedTac := tac.DeepCopy()
+
+	if err := am.syncAutoScaling(tc, updatedTac); err != nil {
+		return err
+	}
+
+	return am.updateTidbClusterAutoScaler(updatedTac)
 }
 
 func (am *autoScalerManager) syncExternal(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) error {
@@ -159,42 +166,50 @@ func (am *autoScalerManager) gracefullyDeleteTidbCluster(deleteTc *v1alpha1.Tidb
 	return am.deps.Clientset.PingcapV1alpha1().TidbClusters(deleteTc.Namespace).Delete(deleteTc.Name, nil)
 }
 
-func (am *autoScalerManager) updateLastSyncingTimestamp(tac *v1alpha1.TidbClusterAutoScaler, memberType string, group string) error {
-	var status interface{}
-	switch memberType {
-	case v1alpha1.TiKVMemberType.String():
-		status = &v1alpha1.TikvAutoScalerStatus{
-			BasicAutoScalerStatus: v1alpha1.BasicAutoScalerStatus{
-				LastAutoScalingTimestamp: &metav1.Time{Time: time.Now()},
-			},
-		}
-	case v1alpha1.TiDBMemberType.String():
-		status = &v1alpha1.TidbAutoScalerStatus{
-			BasicAutoScalerStatus: v1alpha1.BasicAutoScalerStatus{
-				LastAutoScalingTimestamp: &metav1.Time{Time: time.Now()},
-			},
-		}
-	}
+func (am *autoScalerManager) updateTidbClusterAutoScaler(tac *v1alpha1.TidbClusterAutoScaler) error {
+	ns := tac.GetNamespace()
+	tacName := tac.GetName()
+	oldTac := tac.DeepCopy()
 
-	return am.patchAutoscalingGroupStatus(tac, memberType, group, status)
-}
-
-func (am *autoScalerManager) patchAutoscalingGroupStatus(tac *v1alpha1.TidbClusterAutoScaler, memberType string, group string, newStatus interface{}) error {
-	mergePatch, err := json.Marshal(map[string]interface{}{
-		"status": map[string]interface{}{
-			memberType: map[string]interface{}{
-				group: newStatus,
-			},
-		},
+	// don't wait due to limited number of clients, but backoff after the default number of steps
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		var updateErr error
+		_, updateErr = am.deps.Clientset.PingcapV1alpha1().TidbClusterAutoScalers(ns).Update(tac)
+		if updateErr == nil {
+			klog.Infof("TidbClusterAutoScaler: [%s/%s] updated successfully", ns, tacName)
+			return nil
+		}
+		klog.V(4).Infof("failed to update TidbClusterAutoScaler: [%s/%s], error: %v", ns, tacName, updateErr)
+		if updated, err := am.deps.TiDBClusterAutoScalerLister.TidbClusterAutoScalers(ns).Get(tacName); err == nil {
+			// make a copy so we don't mutate the shared cache
+			tac = updated.DeepCopy()
+			tac.Status = oldTac.Status
+		} else {
+			utilruntime.HandleError(fmt.Errorf("error getting updated TidbClusterAutoScaler %s/%s from lister: %v", ns, tacName, err))
+		}
+		return updateErr
 	})
 	if err != nil {
-		return err
+		klog.Errorf("failed to update TidbClusterAutoScaler: [%s/%s], error: %v", ns, tacName, err)
 	}
-
-	_, err = am.deps.Clientset.PingcapV1alpha1().TidbClusterAutoScalers(tac.Namespace).Patch(tac.Name, types.MergePatchType, mergePatch)
-	if err != nil {
-		klog.Errorf("failed to update tac[%s/%s]'s status for %s group %s, err: %v", tac.Namespace, tac.Name, memberType, group, err)
-	}
-
 	return err
+}
+
+func updateLastSyncingTimestamp(tac *v1alpha1.TidbClusterAutoScaler, memberType string, group string) {
+	switch memberType {
+	case v1alpha1.TiKVMemberType.String():
+		if tac.Status.TiKV == nil {
+			tac.Status.TiKV = map[string]v1alpha1.TikvAutoScalerStatus{}
+		}
+		status := tac.Status.TiKV[group]
+		status.LastAutoScalingTimestamp = &metav1.Time{Time: time.Now()}
+		tac.Status.TiKV[group] = status
+	case v1alpha1.TiDBMemberType.String():
+		if tac.Status.TiDB == nil {
+			tac.Status.TiDB = map[string]v1alpha1.TidbAutoScalerStatus{}
+		}
+		status := tac.Status.TiDB[group]
+		status.LastAutoScalingTimestamp = &metav1.Time{Time: time.Now()}
+		tac.Status.TiDB[group] = status
+	}
 }

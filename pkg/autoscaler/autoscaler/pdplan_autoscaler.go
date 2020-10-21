@@ -115,9 +115,9 @@ func (am *autoScalerManager) deleteAutoscalingClusters(tac *v1alpha1.TidbCluster
 		}
 
 		if deleteTc.Spec.TiDB != nil {
-			err = am.patchAutoscalingGroupStatus(tac, v1alpha1.TiDBMemberType.String(), group, nil)
+			delete(tac.Status.TiDB, group)
 		} else if deleteTc.Spec.TiKV != nil {
-			err = am.patchAutoscalingGroupStatus(tac, v1alpha1.TiKVMemberType.String(), group, nil)
+			delete(tac.Status.TiKV, group)
 		}
 
 		if err != nil {
@@ -161,11 +161,7 @@ func (am *autoScalerManager) updateAutoscalingClusters(tac *v1alpha1.TidbCluster
 			continue
 		}
 
-		err = am.updateLastSyncingTimestamp(tac, plan.Component, group)
-		if err != nil {
-			errs = append(errs, err)
-			continue
-		}
+		updateLastSyncingTimestamp(tac, plan.Component, group)
 	}
 	return errorutils.NewAggregate(errs)
 }
@@ -239,11 +235,7 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 			continue
 		}
 
-		err = am.updateLastSyncingTimestamp(tac, component, group)
-		if err != nil {
-			errs = append(errs, err)
-			continue
-		}
+		updateLastSyncingTimestamp(tac, component, group)
 	}
 	return errorutils.NewAggregate(errs)
 }

@@ -15,11 +15,9 @@ package autoscaler
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 )
 
@@ -50,8 +48,17 @@ func (am *autoScalerManager) syncExternalResult(tc *v1alpha1.TidbCluster, tac *v
 		err := am.gracefullyDeleteTidbCluster(externalTc)
 		if err != nil {
 			klog.Errorf("tac[%s/%s] failed to delete external tc[%s/%s], err: %v", tac.Namespace, tac.Name, tc.Namespace, externalTcName, err)
+			return err
 		}
-		return err
+
+		switch component {
+		case v1alpha1.TiDBMemberType:
+			delete(tac.Status.TiDB, externalStatusKey)
+		case v1alpha1.TiKVMemberType:
+			delete(tac.Status.TiKV, externalStatusKey)
+		}
+
+		return nil
 	}
 
 	return am.updateExternalAutoCluster(externalTc, tac, component, targetReplicas)
@@ -74,12 +81,8 @@ func (am *autoScalerManager) createExternalAutoCluster(tc *v1alpha1.TidbCluster,
 		return err
 	}
 
-	err = am.patchAutoscalingGroupStatus(tac, component.String(), externalStatusKey, &v1alpha1.BasicAutoScalerStatus{
-		LastAutoScalingTimestamp: &metav1.Time{
-			Time: time.Now(),
-		},
-	})
-	return err
+	updateLastSyncingTimestamp(tac, component.String(), externalStatusKey)
+	return nil
 }
 
 func (am *autoScalerManager) updateExternalAutoCluster(externalTc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType, targetReplicas int32) error {
@@ -111,5 +114,6 @@ func (am *autoScalerManager) updateExternalAutoCluster(externalTc *v1alpha1.Tidb
 		return err
 	}
 
-	return am.updateLastSyncingTimestamp(tac, component.String(), externalStatusKey)
+	updateLastSyncingTimestamp(tac, component.String(), externalStatusKey)
+	return nil
 }
