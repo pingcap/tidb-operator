@@ -197,6 +197,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 
 	testFn := func(test *testcase, t *testing.T) {
 		tc := newTidbClusterForPD()
+		defaulting.SetTidbClusterDefault(tc)
 		ns := tc.Namespace
 		tcName := tc.Name
 
