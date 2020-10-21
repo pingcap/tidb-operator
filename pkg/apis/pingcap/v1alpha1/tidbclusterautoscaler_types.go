@@ -154,7 +154,7 @@ type TidbMonitorRef struct {
 }
 
 // +k8s:openapi-gen=true
-// TidbClusterAutoSclaerStatus describe the whole status
+// TidbClusterAutoScalerStatus describe the whole status
 type TidbClusterAutoScalerStatus struct {
 	// Tikv describes the status of each group for the tikv in the last auto-scaling reconciliation
 	// +optional

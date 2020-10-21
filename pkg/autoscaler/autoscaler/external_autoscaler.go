@@ -90,7 +90,7 @@ func (am *autoScalerManager) updateExternalAutoCluster(externalTc *v1alpha1.Tidb
 			return nil
 		}
 
-		if !checkAutoScaling(tac, component, externalStatusKey, updated.Spec.TiKV.Replicas, targetReplicas) {
+		if !checkAutoScaling(tac, component, externalStatusKey, updated.Spec.TiDB.Replicas, targetReplicas) {
 			return nil
 		}
 		updated.Spec.TiDB.Replicas = targetReplicas
@@ -99,7 +99,7 @@ func (am *autoScalerManager) updateExternalAutoCluster(externalTc *v1alpha1.Tidb
 			return nil
 		}
 
-		if !checkAutoScaling(tac, component, externalStatusKey, updated.Spec.TiDB.Replicas, targetReplicas) {
+		if !checkAutoScaling(tac, component, externalStatusKey, updated.Spec.TiKV.Replicas, targetReplicas) {
 			return nil
 		}
 		updated.Spec.TiKV.Replicas = targetReplicas
@@ -111,10 +111,5 @@ func (am *autoScalerManager) updateExternalAutoCluster(externalTc *v1alpha1.Tidb
 		return err
 	}
 
-	err = am.patchAutoscalingGroupStatus(tac, component.String(), externalStatusKey, &v1alpha1.BasicAutoScalerStatus{
-		LastAutoScalingTimestamp: &metav1.Time{
-			Time: time.Now(),
-		},
-	})
-	return err
+	return am.updateLastSyncingTimestamp(tac, component.String(), externalStatusKey)
 }

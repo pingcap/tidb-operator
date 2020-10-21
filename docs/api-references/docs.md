@@ -17546,7 +17546,7 @@ TidbAutoScalerSpec
 <a href="#tidbclusterautoscaler">TidbClusterAutoScaler</a>)
 </p>
 <p>
-<p>TidbClusterAutoSclaerStatus describe the whole status</p>
+<p>TidbClusterAutoScalerStatus describe the whole status</p>
 </p>
 <table>
 <thead>

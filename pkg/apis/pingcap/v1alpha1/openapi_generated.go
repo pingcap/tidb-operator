@@ -9567,7 +9567,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScalerStatus(ref common.Ref
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "TidbClusterAutoSclaerStatus describe the whole status",
+				Description: "TidbClusterAutoScalerStatus describe the whole status",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"tikv": {

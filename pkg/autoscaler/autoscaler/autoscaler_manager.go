@@ -20,8 +20,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler/query"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog"
@@ -63,11 +63,7 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 		return nil
 	}
 
-	if err := am.syncAutoScaling(tc, tac); err != nil {
-		return err
-	}
-
-	return am.patchAutoscalingLastSyncingAnnotation(tac, time.Now())
+	return am.syncAutoScaling(tc, tac)
 }
 
 func (am *autoScalerManager) syncExternal(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) error {
@@ -163,27 +159,29 @@ func (am *autoScalerManager) gracefullyDeleteTidbCluster(deleteTc *v1alpha1.Tidb
 	return am.deps.Clientset.PingcapV1alpha1().TidbClusters(deleteTc.Namespace).Delete(deleteTc.Name, nil)
 }
 
-func (am *autoScalerManager) patchAutoscalingLastSyncingAnnotation(tac *v1alpha1.TidbClusterAutoScaler, timestamp time.Time) error {
-	mergePatch, err := json.Marshal(map[string]interface{}{
-		"metadata": map[string]interface{}{
-			"annotations": map[string]interface{}{
-				label.AnnLastSyncingTimestamp: timestamp.Format(time.RFC3339),
-			},
-		},
-	})
-	if err != nil {
-		return err
+func (am *autoScalerManager) updateLastSyncingTimestamp(tac *v1alpha1.TidbClusterAutoScaler, memberType string, group string) error {
+	switch memberType {
+	case v1alpha1.TiDBMemberType.String():
+		var status interface{}
+		switch component {
+		case v1alpha1.TiKVMemberType.String():
+			status = &v1alpha1.TikvAutoScalerStatus{
+				BasicAutoScalerStatus: v1alpha1.BasicAutoScalerStatus{
+					LastAutoScalingTimestamp: &metav1.Time{Time: time.Now()},
+				},
+			}
+		case v1alpha1.TiDBMemberType.String():
+			status = &v1alpha1.TidbAutoScalerStatus{
+				BasicAutoScalerStatus: v1alpha1.BasicAutoScalerStatus{
+					LastAutoScalingTimestamp: &metav1.Time{Time: time.Now()},
+				},
+			}
+		}
 	}
-
-	_, err = am.deps.Clientset.PingcapV1alpha1().TidbClusterAutoScalers(tac.Namespace).Patch(tac.Name, types.MergePatchType, mergePatch)
-	if err != nil {
-		klog.Errorf("failed to update tac[%s/%s]'s annotation %s, err: %v", tac.Namespace, tac.Name, label.AnnLastSyncingTimestamp, err)
-	}
-
-	return err
+	return am.patchAutoscalingGroupStatus(tac, component, group, status)
 }
 
-func (am *autoScalerManager) patchAutoscalingGroupStatus(tac *v1alpha1.TidbClusterAutoScaler, memberType string, group string, newStatus *v1alpha1.BasicAutoScalerStatus) error {
+func (am *autoScalerManager) patchAutoscalingGroupStatus(tac *v1alpha1.TidbClusterAutoScaler, memberType string, group string, newStatus interface{}) error {
 	mergePatch, err := json.Marshal(map[string]interface{}{
 		"status": map[string]interface{}{
 			memberType: map[string]interface{}{

@@ -15,14 +15,11 @@ package autoscaler
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
@@ -116,11 +113,13 @@ func (am *autoScalerManager) deleteAutoscalingClusters(tac *v1alpha1.TidbCluster
 			errs = append(errs, err)
 			continue
 		}
+
 		if deleteTc.Spec.TiDB != nil {
 			err = am.patchAutoscalingGroupStatus(tac, v1alpha1.TiDBMemberType.String(), group, nil)
 		} else if deleteTc.Spec.TiKV != nil {
 			err = am.patchAutoscalingGroupStatus(tac, v1alpha1.TiKVMemberType.String(), group, nil)
 		}
+
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -162,9 +161,7 @@ func (am *autoScalerManager) updateAutoscalingClusters(tac *v1alpha1.TidbCluster
 			continue
 		}
 
-		err = am.patchAutoscalingGroupStatus(tac, plan.Component, group, &v1alpha1.BasicAutoScalerStatus{
-			LastAutoScalingTimestamp: &v1.Time{Time: time.Now()},
-		})
+		err = am.updateLastSyncingTimestamp(tac, component, group)
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -242,9 +239,7 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 			continue
 		}
 
-		err = am.patchAutoscalingGroupStatus(tac, component, group, &v1alpha1.BasicAutoScalerStatus{
-			LastAutoScalingTimestamp: &metav1.Time{Time: time.Now()},
-		})
+		err = am.updateLastSyncingTimestamp(tac, component, group)
 		if err != nil {
 			errs = append(errs, err)
 			continue
