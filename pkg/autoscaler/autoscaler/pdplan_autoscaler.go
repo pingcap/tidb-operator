@@ -119,10 +119,6 @@ func (am *autoScalerManager) deleteAutoscalingClusters(tac *v1alpha1.TidbCluster
 		} else if deleteTc.Spec.TiKV != nil {
 			delete(tac.Status.TiKV, group)
 		}
-
-		if err != nil {
-			errs = append(errs, err)
-		}
 	}
 	return errorutils.NewAggregate(errs)
 }
