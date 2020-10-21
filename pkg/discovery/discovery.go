@@ -58,9 +58,9 @@ func NewTiDBDiscovery(pdControl pdapi.PDControlInterface, masterControl dmapi.Ma
 	}
 }
 
-func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
-	td.lock.Lock()
-	defer td.lock.Unlock()
+func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
 
 	if advertisePeerUrl == "" {
 		return "", fmt.Errorf("advertisePeerUrl is empty")
@@ -77,21 +77,21 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	if ns != podNamespace {
 		return "", fmt.Errorf("the peer's namespace: %s is not equal to discovery namespace: %s", ns, podNamespace)
 	}
-	tc, err := td.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+	tc, err := d.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
 	keyName := fmt.Sprintf("%s/%s", ns, tcName)
 	pdAddresses := tc.Spec.PDAddresses
 
-	currentCluster := td.clusters[keyName]
+	currentCluster := d.clusters[keyName]
 	if currentCluster == nil || currentCluster.resourceVersion != tc.ResourceVersion {
-		td.clusters[keyName] = &clusterInfo{
+		d.clusters[keyName] = &clusterInfo{
 			resourceVersion: tc.ResourceVersion,
 			peers:           map[string]struct{}{},
 		}
 	}
-	currentCluster = td.clusters[keyName]
+	currentCluster = d.clusters[keyName]
 	currentCluster.peers[podName] = struct{}{}
 
 	// Should take failover replicas into consideration
@@ -105,9 +105,9 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 
 	var pdClient pdapi.PDClient
 	if tc.IsHeterogeneous() {
-		pdClient = td.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
+		pdClient = d.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
 	} else {
-		pdClient = td.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled())
+		pdClient = d.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled())
 	}
 
 	membersInfo, err := pdClient.GetMembers()
@@ -130,9 +130,9 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	return fmt.Sprintf("--join=%s", strings.Join(membersArr, ",")), nil
 }
 
-func (td *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
-	td.lock.Lock()
-	defer td.lock.Unlock()
+func (d *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
 
 	if advertisePeerUrl == "" {
 		return "", fmt.Errorf("dm advertisePeerUrl is empty")
@@ -152,20 +152,20 @@ func (td *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
 	dcName := strings.TrimSuffix(peerServiceName, "-dm-master-peer")
 	ns := os.Getenv("MY_POD_NAMESPACE")
 
-	dc, err := td.cli.PingcapV1alpha1().DMClusters(ns).Get(dcName, metav1.GetOptions{})
+	dc, err := d.cli.PingcapV1alpha1().DMClusters(ns).Get(dcName, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
 	keyName := fmt.Sprintf("%s/%s", ns, dcName)
 
-	currentCluster := td.dmClusters[keyName]
+	currentCluster := d.dmClusters[keyName]
 	if currentCluster == nil || currentCluster.resourceVersion != dc.ResourceVersion {
-		td.dmClusters[keyName] = &clusterInfo{
+		d.dmClusters[keyName] = &clusterInfo{
 			resourceVersion: dc.ResourceVersion,
 			peers:           map[string]struct{}{},
 		}
 	}
-	currentCluster = td.dmClusters[keyName]
+	currentCluster = d.dmClusters[keyName]
 	currentCluster.peers[podName] = struct{}{}
 
 	if len(currentCluster.peers) == int(dc.MasterStsDesiredReplicas()) {
@@ -173,7 +173,7 @@ func (td *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
 		return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, dc.Scheme(), advertisePeerUrl), nil
 	}
 
-	masterClient := td.masterControl.GetMasterClient(dc.GetNamespace(), dc.GetName(), dc.IsTLSClusterEnabled())
+	masterClient := d.masterControl.GetMasterClient(dc.GetNamespace(), dc.GetName(), dc.IsTLSClusterEnabled())
 	mastersInfos, err := masterClient.GetMasters()
 	if err != nil {
 		return "", err
