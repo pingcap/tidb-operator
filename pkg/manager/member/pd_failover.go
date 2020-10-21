@@ -71,8 +71,8 @@ func (f *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 			ns, tcName, healthCount, tc.PDStsDesiredReplicas(), tc.Spec.PD.Replicas, len(tc.Status.PD.FailureMembers))
 	}
 
-	failureReplicas := getFailureReplicas(tc)
-	if failureReplicas >= int(*tc.Spec.PD.MaxFailoverCount) {
+	failureReplicas := tc.GetPDFailureReplicas()
+	if failureReplicas >= *tc.Spec.PD.MaxFailoverCount {
 		klog.Errorf("PD failover replicas (%d) reaches the limit (%d), skip failover", failureReplicas, *tc.Spec.PD.MaxFailoverCount)
 		return nil
 	}
