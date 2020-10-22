@@ -3420,6 +3420,8 @@ spec:
               type: string
             serviceAccount:
               type: string
+            statefulSetUpdateStrategy:
+              type: string
             ticdc:
               properties:
                 additionalContainers:
