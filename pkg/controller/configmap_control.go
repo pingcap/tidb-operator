@@ -57,13 +57,13 @@ func NewRealConfigMapControl(
 	}
 }
 
-func (cc *realConfigMapControl) CreateConfigMap(owner runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
-	created, err := cc.kubeCli.CoreV1().ConfigMaps(cm.Namespace).Create(cm)
-	cc.recordConfigMapEvent("create", owner, cm, err)
+func (c *realConfigMapControl) CreateConfigMap(owner runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
+	created, err := c.kubeCli.CoreV1().ConfigMaps(cm.Namespace).Create(cm)
+	c.recordConfigMapEvent("create", owner, cm, err)
 	return created, err
 }
 
-func (cc *realConfigMapControl) UpdateConfigMap(owner runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
+func (c *realConfigMapControl) UpdateConfigMap(owner runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
 	ns := cm.GetNamespace()
 	cmName := cm.GetName()
 	cmData := cm.Data
@@ -71,13 +71,13 @@ func (cc *realConfigMapControl) UpdateConfigMap(owner runtime.Object, cm *corev1
 	var updatedCm *corev1.ConfigMap
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		var updateErr error
-		updatedCm, updateErr = cc.kubeCli.CoreV1().ConfigMaps(ns).Update(cm)
+		updatedCm, updateErr = c.kubeCli.CoreV1().ConfigMaps(ns).Update(cm)
 		if updateErr == nil {
 			klog.Infof("update ConfigMap: [%s/%s] successfully", ns, cmName)
 			return nil
 		}
 
-		if updated, err := cc.kubeCli.CoreV1().ConfigMaps(cm.Namespace).Get(cmName, metav1.GetOptions{}); err != nil {
+		if updated, err := c.kubeCli.CoreV1().ConfigMaps(cm.Namespace).Get(cmName, metav1.GetOptions{}); err != nil {
 			utilruntime.HandleError(fmt.Errorf("error getting updated ConfigMap %s/%s from lister: %v", ns, cmName, err))
 		} else {
 			cm = updated.DeepCopy()
@@ -89,18 +89,18 @@ func (cc *realConfigMapControl) UpdateConfigMap(owner runtime.Object, cm *corev1
 	return updatedCm, err
 }
 
-func (cc *realConfigMapControl) DeleteConfigMap(owner runtime.Object, cm *corev1.ConfigMap) error {
-	err := cc.kubeCli.CoreV1().ConfigMaps(cm.Namespace).Delete(cm.Name, nil)
-	cc.recordConfigMapEvent("delete", owner, cm, err)
+func (c *realConfigMapControl) DeleteConfigMap(owner runtime.Object, cm *corev1.ConfigMap) error {
+	err := c.kubeCli.CoreV1().ConfigMaps(cm.Namespace).Delete(cm.Name, nil)
+	c.recordConfigMapEvent("delete", owner, cm, err)
 	return err
 }
 
-func (cc *realConfigMapControl) GetConfigMap(owner runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
-	existConfigMap, err := cc.kubeCli.CoreV1().ConfigMaps(cm.Namespace).Get(cm.Name, metav1.GetOptions{})
+func (c *realConfigMapControl) GetConfigMap(owner runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
+	existConfigMap, err := c.kubeCli.CoreV1().ConfigMaps(cm.Namespace).Get(cm.Name, metav1.GetOptions{})
 	return existConfigMap, err
 }
 
-func (cc *realConfigMapControl) recordConfigMapEvent(verb string, owner runtime.Object, cm *corev1.ConfigMap, err error) {
+func (c *realConfigMapControl) recordConfigMapEvent(verb string, owner runtime.Object, cm *corev1.ConfigMap, err error) {
 	kind := owner.GetObjectKind().GroupVersionKind().Kind
 	var name string
 	if accessor, ok := owner.(metav1.ObjectMetaAccessor); ok {
@@ -111,12 +111,12 @@ func (cc *realConfigMapControl) recordConfigMapEvent(verb string, owner runtime.
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
 		msg := fmt.Sprintf("%s ConfigMap %s for %s/%s successful",
 			strings.ToLower(verb), cmName, kind, name)
-		cc.recorder.Event(owner, corev1.EventTypeNormal, reason, msg)
+		c.recorder.Event(owner, corev1.EventTypeNormal, reason, msg)
 	} else {
 		reason := fmt.Sprintf("Failed%s", strings.Title(verb))
 		msg := fmt.Sprintf("%s ConfigMap %s for %s/%s failed error: %s",
 			strings.ToLower(verb), cmName, kind, name, err)
-		cc.recorder.Event(owner, corev1.EventTypeWarning, reason, msg)
+		c.recorder.Event(owner, corev1.EventTypeWarning, reason, msg)
 	}
 }
 
@@ -143,29 +143,29 @@ type FakeConfigMapControl struct {
 }
 
 // SetCreateConfigMapError sets the error attributes of createConfigMapTracker
-func (cc *FakeConfigMapControl) SetCreateConfigMapError(err error, after int) {
-	cc.createConfigMapTracker.SetError(err).SetAfter(after)
+func (c *FakeConfigMapControl) SetCreateConfigMapError(err error, after int) {
+	c.createConfigMapTracker.SetError(err).SetAfter(after)
 }
 
 // SetUpdateConfigMapError sets the error attributes of updateConfigMapTracker
-func (cc *FakeConfigMapControl) SetUpdateConfigMapError(err error, after int) {
-	cc.updateConfigMapTracker.SetError(err).SetAfter(after)
+func (c *FakeConfigMapControl) SetUpdateConfigMapError(err error, after int) {
+	c.updateConfigMapTracker.SetError(err).SetAfter(after)
 }
 
 // SetDeleteConfigMapError sets the error attributes of deleteConfigMapTracker
-func (cc *FakeConfigMapControl) SetDeleteConfigMapError(err error, after int) {
-	cc.deleteConfigMapTracker.SetError(err).SetAfter(after)
+func (c *FakeConfigMapControl) SetDeleteConfigMapError(err error, after int) {
+	c.deleteConfigMapTracker.SetError(err).SetAfter(after)
 }
 
 // CreateConfigMap adds the ConfigMap to ConfigMapIndexer
-func (cc *FakeConfigMapControl) CreateConfigMap(_ runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
-	defer cc.createConfigMapTracker.Inc()
-	if cc.createConfigMapTracker.ErrorReady() {
-		defer cc.createConfigMapTracker.Reset()
-		return nil, cc.createConfigMapTracker.GetError()
+func (c *FakeConfigMapControl) CreateConfigMap(_ runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
+	defer c.createConfigMapTracker.Inc()
+	if c.createConfigMapTracker.ErrorReady() {
+		defer c.createConfigMapTracker.Reset()
+		return nil, c.createConfigMapTracker.GetError()
 	}
 
-	err := cc.CmIndexer.Add(cm)
+	err := c.CmIndexer.Add(cm)
 	if err != nil {
 		return nil, err
 	}
@@ -173,26 +173,26 @@ func (cc *FakeConfigMapControl) CreateConfigMap(_ runtime.Object, cm *corev1.Con
 }
 
 // UpdateConfigMap updates the ConfigMap of CmIndexer
-func (cc *FakeConfigMapControl) UpdateConfigMap(_ runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
-	defer cc.updateConfigMapTracker.Inc()
-	if cc.updateConfigMapTracker.ErrorReady() {
-		defer cc.updateConfigMapTracker.Reset()
-		return nil, cc.updateConfigMapTracker.GetError()
+func (c *FakeConfigMapControl) UpdateConfigMap(_ runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
+	defer c.updateConfigMapTracker.Inc()
+	if c.updateConfigMapTracker.ErrorReady() {
+		defer c.updateConfigMapTracker.Reset()
+		return nil, c.updateConfigMapTracker.GetError()
 	}
 
-	return cm, cc.CmIndexer.Update(cm)
+	return cm, c.CmIndexer.Update(cm)
 }
 
 // DeleteConfigMap deletes the ConfigMap of CmIndexer
-func (cc *FakeConfigMapControl) DeleteConfigMap(_ runtime.Object, _ *corev1.ConfigMap) error {
+func (c *FakeConfigMapControl) DeleteConfigMap(_ runtime.Object, _ *corev1.ConfigMap) error {
 	return nil
 }
 
-func (cc *FakeConfigMapControl) GetConfigMap(controller runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
-	defer cc.getConfigMapTracker.Inc()
-	if cc.getConfigMapTracker.ErrorReady() {
-		defer cc.getConfigMapTracker.Reset()
-		return nil, cc.getConfigMapTracker.GetError()
+func (c *FakeConfigMapControl) GetConfigMap(controller runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
+	defer c.getConfigMapTracker.Inc()
+	if c.getConfigMapTracker.ErrorReady() {
+		defer c.getConfigMapTracker.Reset()
+		return nil, c.getConfigMapTracker.GetError()
 	}
 	return cm, nil
 }

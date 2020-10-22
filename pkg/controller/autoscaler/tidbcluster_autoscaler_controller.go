@@ -45,44 +45,44 @@ func NewController(deps *controller.Dependencies) *Controller {
 	return t
 }
 
-func (tac *Controller) Run(workers int, stopCh <-chan struct{}) {
+func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
-	defer tac.queue.ShutDown()
+	defer c.queue.ShutDown()
 
 	klog.Info("Starting TidbClusterAutoScaler controller")
 	defer klog.Info("Shutting down tidbclusterAutoScaler controller")
 	for i := 0; i < workers; i++ {
-		go wait.Until(tac.worker, time.Second, stopCh)
+		go wait.Until(c.worker, time.Second, stopCh)
 	}
 
 	<-stopCh
 }
 
-func (tac *Controller) worker() {
-	for tac.processNextWorkItem() {
+func (c *Controller) worker() {
+	for c.processNextWorkItem() {
 	}
 }
 
-func (tac *Controller) processNextWorkItem() bool {
-	key, quit := tac.queue.Get()
+func (c *Controller) processNextWorkItem() bool {
+	key, quit := c.queue.Get()
 	if quit {
 		return false
 	}
-	defer tac.queue.Done(key)
-	if err := tac.sync(key.(string)); err != nil {
+	defer c.queue.Done(key)
+	if err := c.sync(key.(string)); err != nil {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
 			klog.Infof("TidbClusterAutoScaler: %v, still need sync: %v, requeuing", key.(string), err)
 		} else {
 			utilruntime.HandleError(fmt.Errorf("TidbClusterAutoScaler: %v, sync failed, err: %v", key.(string), err))
 		}
-		tac.queue.AddRateLimited(key)
+		c.queue.AddRateLimited(key)
 	} else {
-		tac.queue.Forget(key)
+		c.queue.Forget(key)
 	}
 	return true
 }
 
-func (tac *Controller) sync(key string) error {
+func (c *Controller) sync(key string) error {
 	startTime := time.Now()
 	defer func() {
 		klog.V(4).Infof("Finished syncing TidbClusterAutoScaler %q (%v)", key, time.Since(startTime))
@@ -92,7 +92,7 @@ func (tac *Controller) sync(key string) error {
 	if err != nil {
 		return err
 	}
-	ta, err := tac.deps.TiDBClusterAutoScalerLister.TidbClusterAutoScalers(ns).Get(name)
+	ta, err := c.deps.TiDBClusterAutoScalerLister.TidbClusterAutoScalers(ns).Get(name)
 	if errors.IsNotFound(err) {
 		klog.Infof("TidbClusterAutoScaler has been deleted %v", key)
 		return nil
@@ -101,5 +101,5 @@ func (tac *Controller) sync(key string) error {
 		return err
 	}
 
-	return tac.control.ResconcileAutoScaler(ta)
+	return c.control.ResconcileAutoScaler(ta)
 }

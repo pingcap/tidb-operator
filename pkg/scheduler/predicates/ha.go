@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -77,7 +78,7 @@ func (h *ha) Name() string {
 //  b) for TiKV (multiple raft groups, in each raft group, copies of data is hard-coded to 3)
 //     when replicas is less than 3, no HA is forced because HA is impossible
 //     when replicas is equal or greater than 3, we require TiKV pods are running on more than 3 nodes and no more than ceil(replicas / 3) per node
-//  for PD/TiKV, we both try to balance the number of pods acorss the nodes
+//  for PD/TiKV, we both try to balance the number of pods across the nodes
 // 3. let kube-scheduler to make the final decision
 func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]apiv1.Node, error) {
 	h.lock.Lock()
@@ -107,6 +108,7 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 			return nil, err
 		}
 		if pvc.Status.Phase == apiv1.ClaimBound {
+			klog.Infof("pod %s has pvc %s bound, return node %s", podName, pvcName, nodes[0].GetName())
 			return nodes, nil
 		}
 	}
@@ -159,6 +161,12 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 
 	for _, pod := range podList.Items {
 		pName := pod.GetName()
+
+		if !isPodDesired(tc, component, pName) {
+			klog.Infof("pod %s is not in desired ordinals, do not count its topology", pName)
+			continue
+		}
+
 		nodeName := pod.Spec.NodeName
 
 		topology := getTopologyFromNode(topologyKey, nodeName, nodes, scheduledNodes)
@@ -226,7 +234,7 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 			continue
 		}
 
-		if podsCount+1 > maxPodsPerTopology {
+		if podsCount >= maxPodsPerTopology {
 			// pods on this topology exceeds the limit, skip
 			klog.Infof("topology %s has %d instances of component %s, max allowed is %d, skipping",
 				topology, podsCount, component, maxPodsPerTopology)
@@ -447,4 +455,17 @@ func getTopologyFromNode(topologyKey string, nodeName string, nodes []apiv1.Node
 		}
 	}
 	return ""
+}
+
+func isPodDesired(tc *v1alpha1.TidbCluster, component, podName string) bool {
+	ordinals := tc.TiKVStsDesiredOrdinals(false)
+	if component == v1alpha1.PDMemberType.String() {
+		ordinals = tc.PDStsDesiredOrdinals(false)
+	}
+	ordinal, err := util.GetOrdinalFromPodName(podName)
+	if err != nil {
+		klog.Errorf("unexpected pod name %q: %v", podName, err)
+		return false
+	}
+	return ordinals.Has(ordinal)
 }

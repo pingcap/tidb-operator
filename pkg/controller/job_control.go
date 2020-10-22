@@ -52,23 +52,23 @@ func NewRealJobControl(
 	}
 }
 
-func (rjc *realJobControl) CreateJob(object runtime.Object, job *batchv1.Job) error {
+func (c *realJobControl) CreateJob(object runtime.Object, job *batchv1.Job) error {
 	ns := job.GetNamespace()
 	jobName := job.GetName()
 	instanceName := job.GetLabels()[label.InstanceLabelKey]
 	kind := object.GetObjectKind().GroupVersionKind().Kind
 
-	_, err := rjc.kubeCli.BatchV1().Jobs(ns).Create(job)
+	_, err := c.kubeCli.BatchV1().Jobs(ns).Create(job)
 	if err != nil {
 		klog.Errorf("failed to create %s job: [%s/%s], cluster: %s, err: %v", strings.ToLower(kind), ns, jobName, instanceName, err)
 	} else {
 		klog.V(4).Infof("create %s job: [%s/%s] successfully, cluster: %s", strings.ToLower(kind), ns, jobName, instanceName)
 	}
-	rjc.recordJobEvent("create", object, job, err)
+	c.recordJobEvent("create", object, job, err)
 	return err
 }
 
-func (rjc *realJobControl) DeleteJob(object runtime.Object, job *batchv1.Job) error {
+func (c *realJobControl) DeleteJob(object runtime.Object, job *batchv1.Job) error {
 	ns := job.GetNamespace()
 	jobName := job.GetName()
 	instanceName := job.GetLabels()[label.InstanceLabelKey]
@@ -78,17 +78,17 @@ func (rjc *realJobControl) DeleteJob(object runtime.Object, job *batchv1.Job) er
 	opts := &metav1.DeleteOptions{
 		PropagationPolicy: &propForeground,
 	}
-	err := rjc.kubeCli.BatchV1().Jobs(ns).Delete(jobName, opts)
+	err := c.kubeCli.BatchV1().Jobs(ns).Delete(jobName, opts)
 	if err != nil {
 		klog.Errorf("failed to delete %s job: [%s/%s], cluster: %s, err: %v", strings.ToLower(kind), ns, jobName, instanceName, err)
 	} else {
 		klog.V(4).Infof("delete %s job: [%s/%s] successfully, cluster: %s", strings.ToLower(kind), ns, jobName, instanceName)
 	}
-	rjc.recordJobEvent("delete", object, job, err)
+	c.recordJobEvent("delete", object, job, err)
 	return err
 }
 
-func (rjc *realJobControl) recordJobEvent(verb string, obj runtime.Object, job *batchv1.Job, err error) {
+func (c *realJobControl) recordJobEvent(verb string, obj runtime.Object, job *batchv1.Job, err error) {
 	jobName := job.GetName()
 	ns := job.GetNamespace()
 	instanceName := job.GetLabels()[label.InstanceLabelKey]
@@ -97,12 +97,12 @@ func (rjc *realJobControl) recordJobEvent(verb string, obj runtime.Object, job *
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
 		msg := fmt.Sprintf("%s job %s/%s for cluster %s %s successful",
 			strings.ToLower(verb), ns, jobName, instanceName, strings.ToLower(kind))
-		rjc.recorder.Event(obj, corev1.EventTypeNormal, reason, msg)
+		c.recorder.Event(obj, corev1.EventTypeNormal, reason, msg)
 	} else {
 		reason := fmt.Sprintf("Failed%s", strings.Title(verb))
 		msg := fmt.Sprintf("%s job %s/%s for cluster %s %s failed error: %s",
 			strings.ToLower(verb), ns, jobName, instanceName, strings.ToLower(kind), err)
-		rjc.recorder.Event(obj, corev1.EventTypeWarning, reason, msg)
+		c.recorder.Event(obj, corev1.EventTypeWarning, reason, msg)
 	}
 }
 
@@ -127,32 +127,32 @@ func NewFakeJobControl(jobInformer batchinformers.JobInformer) *FakeJobControl {
 }
 
 // SetCreateJobError sets the error attributes of createJobTracker
-func (fjc *FakeJobControl) SetCreateJobError(err error, after int) {
-	fjc.createJobTracker.SetError(err).SetAfter(after)
+func (c *FakeJobControl) SetCreateJobError(err error, after int) {
+	c.createJobTracker.SetError(err).SetAfter(after)
 }
 
 // SetDeleteJobError sets the error attributes of deleteJobTracker
-func (fjc *FakeJobControl) SetDeleteJobError(err error, after int) {
-	fjc.deleteJobTracker.SetError(err).SetAfter(after)
+func (c *FakeJobControl) SetDeleteJobError(err error, after int) {
+	c.deleteJobTracker.SetError(err).SetAfter(after)
 }
 
 // CreateJob adds the job to JobIndexer
-func (fjc *FakeJobControl) CreateJob(_ runtime.Object, job *batchv1.Job) error {
-	defer fjc.createJobTracker.Inc()
-	if fjc.createJobTracker.ErrorReady() {
-		defer fjc.createJobTracker.Reset()
-		return fjc.createJobTracker.GetError()
+func (c *FakeJobControl) CreateJob(_ runtime.Object, job *batchv1.Job) error {
+	defer c.createJobTracker.Inc()
+	if c.createJobTracker.ErrorReady() {
+		defer c.createJobTracker.Reset()
+		return c.createJobTracker.GetError()
 	}
 
-	return fjc.JobIndexer.Add(job)
+	return c.JobIndexer.Add(job)
 }
 
 // DeleteJob deletes the job
-func (fjc *FakeJobControl) DeleteJob(_ runtime.Object, _ *batchv1.Job) error {
-	defer fjc.deleteJobTracker.Inc()
-	if fjc.deleteJobTracker.ErrorReady() {
-		defer fjc.deleteJobTracker.Reset()
-		return fjc.deleteJobTracker.GetError()
+func (c *FakeJobControl) DeleteJob(_ runtime.Object, _ *batchv1.Job) error {
+	defer c.deleteJobTracker.Inc()
+	if c.deleteJobTracker.ErrorReady() {
+		defer c.deleteJobTracker.Reset()
+		return c.deleteJobTracker.GetError()
 	}
 	return nil
 }
