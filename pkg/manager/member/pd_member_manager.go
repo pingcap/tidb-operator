@@ -508,16 +508,6 @@ func (m *pdMemberManager) pdStatefulSetIsUpgrading(set *apps.StatefulSet, tc *v1
 	return false, nil
 }
 
-func getFailureReplicas(tc *v1alpha1.TidbCluster) int {
-	failureReplicas := 0
-	for _, failureMember := range tc.Status.PD.FailureMembers {
-		if failureMember.MemberDeleted {
-			failureReplicas++
-		}
-	}
-	return failureReplicas
-}
-
 func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
 	ns := tc.Namespace
 	tcName := tc.Name
@@ -659,7 +649,6 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	setName := controller.PDMemberName(tcName)
 	podAnnotations := CombineAnnotations(controller.AnnProm(2379), basePDSpec.Annotations())
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.PDLabelVal)
-	failureReplicas := getFailureReplicas(tc)
 
 	pdContainer := corev1.Container{
 		Name:            v1alpha1.PDMemberType.String(),
@@ -749,7 +738,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas: pointer.Int32Ptr(tc.Spec.PD.Replicas + int32(failureReplicas)),
+			Replicas: pointer.Int32Ptr(tc.PDStsDesiredReplicas()),
 			Selector: pdLabel.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
