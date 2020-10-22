@@ -1876,6 +1876,8 @@ spec:
                   type: object
                 serviceAccount:
                   type: string
+                statefulSetUpdateStrategy:
+                  type: string
                 storageClassName:
                   type: string
                 terminationGracePeriodSeconds:
@@ -1899,7 +1901,6 @@ spec:
                         type: string
                     type: object
                   type: array
-                updateStrategy: {}
                 version:
                   type: string
               required:
@@ -3385,6 +3386,8 @@ spec:
                   type: string
                 serviceAccount:
                   type: string
+                statefulSetUpdateStrategy:
+                  type: string
                 storageClassName:
                   type: string
                 terminationGracePeriodSeconds:
@@ -3406,7 +3409,6 @@ spec:
                         type: string
                     type: object
                   type: array
-                updateStrategy: {}
                 version:
                   type: string
               required:
@@ -4903,6 +4905,8 @@ spec:
                   type: string
                 serviceAccount:
                   type: string
+                statefulSetUpdateStrategy:
+                  type: string
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
@@ -4922,7 +4926,6 @@ spec:
                         type: string
                     type: object
                   type: array
-                updateStrategy: {}
                 version:
                   type: string
               required:
@@ -6532,6 +6535,8 @@ spec:
                     requests:
                       type: object
                   type: object
+                statefulSetUpdateStrategy:
+                  type: string
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
@@ -6552,7 +6557,6 @@ spec:
                         type: string
                     type: object
                   type: array
-                updateStrategy: {}
                 version:
                   type: string
               required:
@@ -8046,6 +8050,8 @@ spec:
                   type: string
                 serviceAccount:
                   type: string
+                statefulSetUpdateStrategy:
+                  type: string
                 storageClaims:
                   items:
                     properties:
@@ -8079,7 +8085,6 @@ spec:
                         type: string
                     type: object
                   type: array
-                updateStrategy: {}
                 version:
                   type: string
               required:
@@ -9573,6 +9578,8 @@ spec:
                   type: string
                 serviceAccount:
                   type: string
+                statefulSetUpdateStrategy:
+                  type: string
                 storageClassName:
                   type: string
                 terminationGracePeriodSeconds:
@@ -9594,7 +9601,6 @@ spec:
                         type: string
                     type: object
                   type: array
-                updateStrategy: {}
                 version:
                   type: string
               required:
@@ -11460,6 +11466,8 @@ spec:
                 schedulerName:
                   type: string
                 service: {}
+                statefulSetUpdateStrategy:
+                  type: string
                 storageClassName:
                   type: string
                 storageSize:
@@ -11483,7 +11491,6 @@ spec:
                         type: string
                     type: object
                   type: array
-                updateStrategy: {}
                 version:
                   type: string
               required:
@@ -13024,6 +13031,8 @@ spec:
                   type: object
                 schedulerName:
                   type: string
+                statefulSetUpdateStrategy:
+                  type: string
                 storageClassName:
                   type: string
                 storageSize:
@@ -13047,7 +13056,6 @@ spec:
                         type: string
                     type: object
                   type: array
-                updateStrategy: {}
                 version:
                   type: string
               required:

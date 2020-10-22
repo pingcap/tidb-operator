@@ -736,11 +736,6 @@ func (in *ComponentSpec) DeepCopyInto(out *ComponentSpec) {
 		*out = new(int64)
 		**out = **in
 	}
-	if in.StatefulSetUpdateStrategy != nil {
-		in, out := &in.StatefulSetUpdateStrategy, &out.StatefulSetUpdateStrategy
-		*out = new(appsv1.StatefulSetUpdateStrategy)
-		(*in).DeepCopyInto(*out)
-	}
 	return
 }
 
