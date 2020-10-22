@@ -246,6 +246,10 @@ type TidbClusterSpec struct {
 	// PDAddresses are the external PD addresses, if configured, the PDs in this TidbCluster will join to the configured PD cluster.
 	// +optional
 	PDAddresses []string `json:"pdAddresses,omitempty"`
+
+	// StatefulSetUpdateStrategy of TiDB cluster StatefulSets
+	// +optional
+	StatefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType `json:"statefulSetUpdateStrategy,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
