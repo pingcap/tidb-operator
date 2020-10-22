@@ -1077,7 +1077,10 @@ func TestHAFilter(t *testing.T) {
 				tc, _ := tcGetFn(ns, tcName)
 				pd1 := fmt.Sprintf("%s-%d", controller.PDMemberName(instanceName), 1)
 				tc.Status.PD.FailureMembers = map[string]v1alpha1.PDFailureMember{
-					pd1: {PodName: pd1},
+					pd1: {
+						PodName:       pd1,
+						MemberDeleted: true,
+					},
 				}
 				return tc, nil
 			},
