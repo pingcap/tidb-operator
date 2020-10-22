@@ -28,7 +28,7 @@ This document describes how to migrate a TiDB cluster deployed in the physical o
     {{< copyable "shell-regular" >}}
 
     ```shell
-    search default.svc.cluster.local svc.cluster.local cluster.local  
+    search default.svc.cluster.local svc.cluster.local cluster.local
     nameserver <CoreDNS Pod_IP_1>
     nameserver <CoreDNS Pod_IP_2>
     nameserver <CoreDNS Pod_IP_n>
@@ -71,14 +71,14 @@ This document describes how to migrate a TiDB cluster deployed in the physical o
     - Get the number and state of stores in the new cluster:
 
         {{< copyable "shell-regular" >}}
-        
+
         ```shell
         # Get the number of stores
         pd-ctl -u http://<address>:<port> store | jq '.count'
         # Get the state of stores
-        pd-ctl -u http://<address>:<port> store | jq '.stores | .[] | .store.state_name'   
+        pd-ctl -u http://<address>:<port> store | jq '.stores | .[] | .store.state_name'
         ```
-    
+
     - [Access the TiDB cluster in Kubernetes](access-tidb.md) via MySQL client.
 
 ## Step 3: Scale in the TiDB nodes of the source cluster
