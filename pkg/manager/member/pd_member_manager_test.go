@@ -1674,7 +1674,6 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			defaulting.SetTidbClusterDefault(&tt.tc)
 			sts, err := getNewPDSetForTidbCluster(&tt.tc, nil)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("error %v, wantErr %v", err, tt.wantErr)

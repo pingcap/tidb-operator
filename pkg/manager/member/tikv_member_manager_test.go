@@ -19,8 +19,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/defaulting"
-
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/metapb"
@@ -1778,7 +1776,6 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			defaulting.SetTidbClusterDefault(&tt.tc)
 			sts, err := getNewTiKVSetForTidbCluster(&tt.tc, nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("error %v, wantErr %v", err, tt.wantErr)
@@ -2118,7 +2115,6 @@ func TestTiKVInitContainers(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			defaulting.SetTidbClusterDefault(&tt.tc)
 			sts, err := getNewTiKVSetForTidbCluster(&tt.tc, nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("error %v, wantErr %v", err, tt.wantErr)
