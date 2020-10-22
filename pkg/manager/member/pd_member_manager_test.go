@@ -759,7 +759,7 @@ func newFakePDMemberManager() (*pdMemberManager, cache.Indexer, cache.Indexer) {
 }
 
 func newTidbClusterForPD() *v1alpha1.TidbCluster {
-	tc := &v1alpha1.TidbCluster{
+	 tc := &v1alpha1.TidbCluster{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "TidbCluster",
 			APIVersion: "pingcap.com/v1alpha1",
