@@ -42,7 +42,7 @@ type ComponentAccessor interface {
 	AdditionalContainers() []corev1.Container
 	AdditionalVolumes() []corev1.Volume
 	TerminationGracePeriodSeconds() *int64
-	StatefulSetUpdateStrategy() *apps.StatefulSetUpdateStrategy
+	StatefulSetUpdateStrategy() apps.StatefulSetUpdateStrategyType
 }
 
 type componentAccessorImpl struct {
@@ -61,7 +61,7 @@ type componentAccessorImpl struct {
 	ComponentSpec *ComponentSpec
 }
 
-func (a *componentAccessorImpl) StatefulSetUpdateStrategy() *apps.StatefulSetUpdateStrategy {
+func (a *componentAccessorImpl) StatefulSetUpdateStrategy() apps.StatefulSetUpdateStrategyType {
 	return a.ComponentSpec.StatefulSetUpdateStrategy
 }
 

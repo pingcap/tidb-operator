@@ -83,13 +83,8 @@ func setTidbSpecDefault(tc *v1alpha1.TidbCluster) {
 		tc.Spec.TiDB.MaxFailoverCount = pointer.Int32Ptr(3)
 	}
 
-	if tc.Spec.TiDB.StatefulSetUpdateStrategy == nil {
-		tc.Spec.TiDB.StatefulSetUpdateStrategy = &apps.StatefulSetUpdateStrategy{
-			Type: apps.RollingUpdateStatefulSetStrategyType,
-			RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
-				Partition: pointer.Int32Ptr(tc.TiDBStsDesiredReplicas()),
-			},
-		}
+	if tc.Spec.TiDB.StatefulSetUpdateStrategy == "" {
+		tc.Spec.TiDB.StatefulSetUpdateStrategy = apps.RollingUpdateStatefulSetStrategyType
 	}
 
 	// Start set config if need.
@@ -113,13 +108,8 @@ func setTikvSpecDefault(tc *v1alpha1.TidbCluster) {
 		tc.Spec.TiKV.MaxFailoverCount = pointer.Int32Ptr(3)
 	}
 
-	if tc.Spec.TiKV.StatefulSetUpdateStrategy == nil {
-		tc.Spec.TiKV.StatefulSetUpdateStrategy = &apps.StatefulSetUpdateStrategy{
-			Type: apps.RollingUpdateStatefulSetStrategyType,
-			RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
-				Partition: pointer.Int32Ptr(tc.TiKVStsDesiredReplicas()),
-			},
-		}
+	if tc.Spec.TiKV.StatefulSetUpdateStrategy == "" {
+		tc.Spec.TiKV.StatefulSetUpdateStrategy = apps.RollingUpdateStatefulSetStrategyType
 	}
 }
 
@@ -133,13 +123,8 @@ func setPdSpecDefault(tc *v1alpha1.TidbCluster) {
 		tc.Spec.PD.MaxFailoverCount = pointer.Int32Ptr(3)
 	}
 
-	if tc.Spec.PD.StatefulSetUpdateStrategy == nil {
-		tc.Spec.PD.StatefulSetUpdateStrategy = &apps.StatefulSetUpdateStrategy{
-			Type: apps.RollingUpdateStatefulSetStrategyType,
-			RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
-				Partition: pointer.Int32Ptr(tc.PDStsDesiredReplicas()),
-			},
-		}
+	if tc.Spec.PD.StatefulSetUpdateStrategy == "" {
+		tc.Spec.PD.StatefulSetUpdateStrategy = apps.RollingUpdateStatefulSetStrategyType
 	}
 }
 

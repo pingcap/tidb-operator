@@ -779,7 +779,7 @@ type ComponentSpec struct {
 	// StatefulSetUpdateStrategy indicates the StatefulSetUpdateStrategy that will be
 	// employed to update Pods in the StatefulSet when a revision is made to
 	// Template.
-	StatefulSetUpdateStrategy *apps.StatefulSetUpdateStrategy `json:"updateStrategy,omitempty"`
+	StatefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType `json:"statefulSetUpdateStrategy,omitempty"`
 }
 
 // +k8s:openapi-gen=true
