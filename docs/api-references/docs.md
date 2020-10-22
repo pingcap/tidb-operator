@@ -3639,6 +3639,7 @@ Kubernetes apps/v1.StatefulSetUpdateStrategyType
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>StatefulSetUpdateStrategy indicates the StatefulSetUpdateStrategy that will be
 employed to update Pods in the StatefulSet when a revision is made to
 Template.</p>
