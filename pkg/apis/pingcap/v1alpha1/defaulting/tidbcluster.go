@@ -83,7 +83,7 @@ func setTidbSpecDefault(tc *v1alpha1.TidbCluster) {
 		tc.Spec.TiDB.MaxFailoverCount = pointer.Int32Ptr(3)
 	}
 
-	if string(tc.Spec.TiDB.StatefulSetUpdateStrategy) == "" {
+	if len(tc.Spec.TiDB.StatefulSetUpdateStrategy) == 0 {
 		tc.Spec.TiDB.StatefulSetUpdateStrategy = apps.RollingUpdateStatefulSetStrategyType
 	}
 
@@ -108,7 +108,7 @@ func setTikvSpecDefault(tc *v1alpha1.TidbCluster) {
 		tc.Spec.TiKV.MaxFailoverCount = pointer.Int32Ptr(3)
 	}
 
-	if string(tc.Spec.TiKV.StatefulSetUpdateStrategy) == "" {
+	if len(tc.Spec.TiKV.StatefulSetUpdateStrategy) == 0 {
 		tc.Spec.TiKV.StatefulSetUpdateStrategy = apps.RollingUpdateStatefulSetStrategyType
 	}
 }
@@ -123,7 +123,7 @@ func setPdSpecDefault(tc *v1alpha1.TidbCluster) {
 		tc.Spec.PD.MaxFailoverCount = pointer.Int32Ptr(3)
 	}
 
-	if string(tc.Spec.PD.StatefulSetUpdateStrategy) == "" {
+	if len(tc.Spec.PD.StatefulSetUpdateStrategy) == 0 {
 		tc.Spec.PD.StatefulSetUpdateStrategy = apps.RollingUpdateStatefulSetStrategyType
 	}
 }
