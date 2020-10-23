@@ -66,8 +66,14 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		var tc *v1alpha1.TidbCluster
 		tc, err = rm.deps.TiDBClusterLister.TidbClusters(restoreNamespace).Get(restore.Spec.BR.Cluster)
 		if err != nil {
-			klog.Errorf("failed to fetch tidbcluster %s/%s, error: %s", restoreNamespace, restore.Spec.BR.Cluster, err.Error())
-			return nil
+			reason := fmt.Sprintf("failed to fetch tidbcluster %s/%s", restoreNamespace, restore.Spec.BR.Cluster)
+			rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+				Type:    v1alpha1.RestoreRetryFailed,
+				Status:  corev1.ConditionTrue,
+				Reason:  reason,
+				Message: err.Error(),
+			})
+			return err
 		}
 
 		tikvImage := tc.TiKVImage()
@@ -75,12 +81,15 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	}
 
 	if err != nil {
-		rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+		updateErr := rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreInvalid,
 			Status:  corev1.ConditionTrue,
 			Reason:  "InvalidSpec",
 			Message: err.Error(),
 		})
+		if updateErr != nil {
+			klog.Warning(updateErr)
+		}
 
 		return controller.IgnoreErrorf("invalid restore spec %s/%s", ns, name)
 	}

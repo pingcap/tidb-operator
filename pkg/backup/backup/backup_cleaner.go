@@ -58,6 +58,7 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 	klog.Infof("start to clean backup %s/%s", ns, name)
 
 	cleanJobName := backup.GetCleanJobName()
+	// FIXME: handle error, should only ignore not found error
 	_, err := bc.deps.JobLister.Jobs(ns).Get(cleanJobName)
 	if err == nil {
 		// already have a clean job running，return directly
