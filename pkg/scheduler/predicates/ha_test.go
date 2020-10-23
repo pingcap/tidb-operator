@@ -1049,6 +1049,24 @@ func TestHAFilter(t *testing.T) {
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-3"}))
 			},
 		},
+		{
+			name:          "[support-asts] set pd.tidb.pingcap.com/delete-slots: '[2]' ",
+			podFn:         newHAPDPod,
+			nodesFn:       fakeFourNodes,
+			podListFn:     podListFn(map[string][]int32{"kube-node-1": {1}, "kube-node-2": {2}, "kube-node-3": {3}, "kube-node-4": {4}}),
+			acquireLockFn: acquireSuccess,
+			tcGetFn: func(ns string, tcName string) (*v1alpha1.TidbCluster, error) {
+				tc, _ := tcGetFn(ns, tcName)
+				tc.Annotations["pd.tidb.pingcap.com/delete-slots"] = "[2]"
+				return tc, nil
+			},
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			expectFn: func(nodes []apiv1.Node, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(nodes)).To(Equal(2))
+				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-2", "kube-node-4"}))
+			},
+		},
 	}
 
 	for i := range tests {
