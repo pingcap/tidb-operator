@@ -15310,16 +15310,8 @@ spec:
         status:
           properties:
             tidb:
-              properties:
-                lastAutoScalingTimestamp:
-                  format: date-time
-                  type: string
               type: object
             tikv:
-              properties:
-                lastAutoScalingTimestamp:
-                  format: date-time
-                  type: string
               type: object
           type: object
       type: object

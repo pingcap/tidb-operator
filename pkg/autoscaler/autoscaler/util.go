@@ -16,15 +16,12 @@ package autoscaler
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,29 +31,49 @@ import (
 
 var zeroQuantity = resource.MustParse("0")
 
-// checkStsAutoScalingPrerequisites would check the sts status to ensure wouldn't happen during
-// upgrading, scaling
-func checkStsAutoScalingPrerequisites(set *appsv1.StatefulSet) bool {
-	return !operatorUtils.IsStatefulSetUpgrading(set) && !operatorUtils.IsStatefulSetScaling(set)
+// checkAutoScaling would check whether an autoscaling for a group is permitted
+func checkAutoScaling(tac *v1alpha1.TidbClusterAutoScaler, memberType v1alpha1.MemberType, group string, beforeReplicas, afterReplicas int32) bool {
+	if beforeReplicas > afterReplicas {
+		switch memberType {
+		case v1alpha1.TiKVMemberType:
+			return checkAutoScalingInterval(tac, *tac.Spec.TiKV.ScaleInIntervalSeconds, memberType, group)
+		case v1alpha1.TiDBMemberType:
+			return checkAutoScalingInterval(tac, *tac.Spec.TiDB.ScaleInIntervalSeconds, memberType, group)
+		}
+	} else if beforeReplicas < afterReplicas {
+		switch memberType {
+		case v1alpha1.TiKVMemberType:
+			return checkAutoScalingInterval(tac, *tac.Spec.TiKV.ScaleOutIntervalSeconds, memberType, group)
+		case v1alpha1.TiDBMemberType:
+			return checkAutoScalingInterval(tac, *tac.Spec.TiDB.ScaleOutIntervalSeconds, memberType, group)
+		}
+	}
+	return true
 }
 
-// checkStsAutoScalingInterval would check whether there is enough interval duration between every two auto-scaling
-func checkStsAutoScalingInterval(tac *v1alpha1.TidbClusterAutoScaler, intervalSeconds int32, memberType v1alpha1.MemberType) (bool, error) {
-	lastAutoScalingTimestamp, existed := tac.Annotations[label.AnnTiDBLastAutoScalingTimestamp]
+// checkAutoScalingInterval would check whether there is enough interval duration between every two auto-scaling
+func checkAutoScalingInterval(tac *v1alpha1.TidbClusterAutoScaler, intervalSeconds int32, memberType v1alpha1.MemberType, group string) bool {
+	var lastAutoScalingTimestamp *metav1.Time
 	if memberType == v1alpha1.TiKVMemberType {
-		lastAutoScalingTimestamp, existed = tac.Annotations[label.AnnTiKVLastAutoScalingTimestamp]
+		status, existed := tac.Status.TiKV[group]
+		if !existed {
+			return true
+		}
+		lastAutoScalingTimestamp = status.LastAutoScalingTimestamp
+	} else if memberType == v1alpha1.TiDBMemberType {
+		status, existed := tac.Status.TiDB[group]
+		if !existed {
+			return true
+		}
+		lastAutoScalingTimestamp = status.LastAutoScalingTimestamp
 	}
-	if !existed {
-		return true, nil
+	if lastAutoScalingTimestamp == nil {
+		return true
 	}
-	t, err := strconv.ParseInt(lastAutoScalingTimestamp, 10, 64)
-	if err != nil {
-		return false, fmt.Errorf("tac[%s/%s] parse last auto-scaling timestamp failed,err:%v", tac.Namespace, tac.Name, err)
+	if intervalSeconds > int32(time.Since(lastAutoScalingTimestamp.Time).Seconds()) {
+		return false
 	}
-	if intervalSeconds > int32(time.Since(time.Unix(t, 0)).Seconds()) {
-		return false, nil
-	}
-	return true, nil
+	return true
 }
 
 func defaultResources(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) {
