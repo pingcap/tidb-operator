@@ -81,6 +81,7 @@ func setTidbSpecDefault(tc *v1alpha1.TidbCluster) {
 	if tc.Spec.TiDB.MaxFailoverCount == nil {
 		tc.Spec.TiDB.MaxFailoverCount = pointer.Int32Ptr(3)
 	}
+	
 	// Start set config if need.
 	if tc.Spec.TiDB.Config == nil {
 		return
