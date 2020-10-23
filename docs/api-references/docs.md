@@ -1631,8 +1631,8 @@ TidbAutoScalerSpec
 <td>
 <code>status</code></br>
 <em>
-<a href="#tidbclusterautosclaerstatus">
-TidbClusterAutoSclaerStatus
+<a href="#tidbclusterautoscalerstatus">
+TidbClusterAutoScalerStatus
 </a>
 </em>
 </td>
@@ -17471,7 +17471,7 @@ BasicAutoScalerSpec
 <h3 id="tidbautoscalerstatus">TidbAutoScalerStatus</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#tidbclusterautosclaerstatus">TidbClusterAutoSclaerStatus</a>)
+<a href="#tidbclusterautoscalerstatus">TidbClusterAutoScalerStatus</a>)
 </p>
 <p>
 <p>TidbAutoScalerStatus describe the auto-scaling status of tidb</p>
@@ -17598,13 +17598,13 @@ TidbAutoScalerSpec
 </tr>
 </tbody>
 </table>
-<h3 id="tidbclusterautosclaerstatus">TidbClusterAutoSclaerStatus</h3>
+<h3 id="tidbclusterautoscalerstatus">TidbClusterAutoScalerStatus</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbclusterautoscaler">TidbClusterAutoScaler</a>)
 </p>
 <p>
-<p>TidbClusterAutoSclaerStatus describe the whole status</p>
+<p>TidbClusterAutoScalerStatus describe the whole status</p>
 </p>
 <table>
 <thead>
@@ -17619,13 +17619,13 @@ TidbAutoScalerSpec
 <code>tikv</code></br>
 <em>
 <a href="#tikvautoscalerstatus">
-TikvAutoScalerStatus
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TikvAutoScalerStatus
 </a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Tikv describes the status for the tikv in the last auto-scaling reconciliation</p>
+<p>Tikv describes the status of each group for the tikv in the last auto-scaling reconciliation</p>
 </td>
 </tr>
 <tr>
@@ -17633,13 +17633,13 @@ TikvAutoScalerStatus
 <code>tidb</code></br>
 <em>
 <a href="#tidbautoscalerstatus">
-TidbAutoScalerStatus
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbAutoScalerStatus
 </a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Tidb describes the status for the tidb in the last auto-scaling reconciliation</p>
+<p>Tidb describes the status of each group for the tidb in the last auto-scaling reconciliation</p>
 </td>
 </tr>
 </tbody>
@@ -18893,7 +18893,7 @@ BasicAutoScalerSpec
 <h3 id="tikvautoscalerstatus">TikvAutoScalerStatus</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#tidbclusterautosclaerstatus">TidbClusterAutoSclaerStatus</a>)
+<a href="#tidbclusterautoscalerstatus">TidbClusterAutoScalerStatus</a>)
 </p>
 <p>
 <p>TikvAutoScalerStatus describe the auto-scaling status of tikv</p>
