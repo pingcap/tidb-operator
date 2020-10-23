@@ -167,6 +167,11 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 			continue
 		}
 
+		if isFailureMember(tc, component, pName) {
+			klog.Infof("pod %s is a failure member, do not count its topology", pName)
+			continue
+		}
+
 		nodeName := pod.Spec.NodeName
 
 		topology := getTopologyFromNode(topologyKey, nodeName, nodes, scheduledNodes)
@@ -468,4 +473,23 @@ func isPodDesired(tc *v1alpha1.TidbCluster, component, podName string) bool {
 		return false
 	}
 	return ordinals.Has(ordinal)
+}
+
+func isFailureMember(tc *v1alpha1.TidbCluster, component, podName string) bool {
+	if component == v1alpha1.PDMemberType.String() {
+		for _, fm := range tc.Status.PD.FailureMembers {
+			if fm.PodName == podName {
+				return true
+			}
+		}
+		return false
+	}
+
+	for _, fs := range tc.Status.TiKV.FailureStores {
+		if fs.PodName == podName {
+			return true
+		}
+	}
+
+	return false
 }
