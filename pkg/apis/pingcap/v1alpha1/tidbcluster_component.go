@@ -64,13 +64,16 @@ type componentAccessorImpl struct {
 
 func (a *componentAccessorImpl) StatefulSetUpdateStrategy() apps.StatefulSetUpdateStrategyType {
 	strategy := a.ComponentSpec.StatefulSetUpdateStrategy
-	if len(strategy) == 0 {
-		strategy = a.statefulSetUpdateStrategy
-		if len(strategy) == 0 {
-			return apps.RollingUpdateStatefulSetStrategyType
-		}
+	if len(strategy) != 0 {
+		return strategy
 	}
-	return strategy
+
+	strategy = a.statefulSetUpdateStrategy
+	if len(strategy) != 0 {
+		return strategy
+	}
+
+	return apps.RollingUpdateStatefulSetStrategyType
 }
 
 func (a *componentAccessorImpl) PodSecurityContext() *corev1.PodSecurityContext {
