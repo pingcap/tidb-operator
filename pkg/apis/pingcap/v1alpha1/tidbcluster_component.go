@@ -63,15 +63,14 @@ type componentAccessorImpl struct {
 }
 
 func (a *componentAccessorImpl) StatefulSetUpdateStrategy() apps.StatefulSetUpdateStrategyType {
-	componentUpdateStrategy := a.ComponentSpec.StatefulSetUpdateStrategy
-	globalUpdateStrategy := a.statefulSetUpdateStrategy
-	if len(componentUpdateStrategy) == 0 {
-		if len(globalUpdateStrategy) == 0 {
+	strategy := a.ComponentSpec.StatefulSetUpdateStrategy	
+	if len(strategy) == 0 {
+		strategy = a.statefulSetUpdateStrategy
+		if len(strategy) == 0 {
 			return apps.RollingUpdateStatefulSetStrategyType
 		}
-		return globalUpdateStrategy
 	}
-	return componentUpdateStrategy
+	return strategy
 }
 
 func (a *componentAccessorImpl) PodSecurityContext() *corev1.PodSecurityContext {
