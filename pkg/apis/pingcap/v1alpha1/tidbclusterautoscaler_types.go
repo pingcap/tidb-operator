@@ -33,7 +33,7 @@ type TidbClusterAutoScaler struct {
 	Spec TidbClusterAutoScalerSpec `json:"spec"`
 
 	// Status describe the status of the TidbClusterAutoScaler
-	Status TidbClusterAutoSclaerStatus `json:"status"`
+	Status TidbClusterAutoScalerStatus `json:"status"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -154,14 +154,14 @@ type TidbMonitorRef struct {
 }
 
 // +k8s:openapi-gen=true
-// TidbClusterAutoSclaerStatus describe the whole status
-type TidbClusterAutoSclaerStatus struct {
-	// Tikv describes the status for the tikv in the last auto-scaling reconciliation
+// TidbClusterAutoScalerStatus describe the whole status
+type TidbClusterAutoScalerStatus struct {
+	// Tikv describes the status of each group for the tikv in the last auto-scaling reconciliation
 	// +optional
-	TiKV *TikvAutoScalerStatus `json:"tikv,omitempty"`
-	// Tidb describes the status for the tidb in the last auto-scaling reconciliation
+	TiKV map[string]TikvAutoScalerStatus `json:"tikv,omitempty"`
+	// Tidb describes the status of each group for the tidb in the last auto-scaling reconciliation
 	// +optional
-	TiDB *TidbAutoScalerStatus `json:"tidb,omitempty"`
+	TiDB map[string]TidbAutoScalerStatus `json:"tidb,omitempty"`
 }
 
 // +k8s:openapi-gen=true
