@@ -15,7 +15,6 @@ package defaulting
 
 import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/pointer"
 )
@@ -70,9 +69,6 @@ func setTidbClusterSpecDefault(tc *v1alpha1.TidbCluster) {
 	retainPVP := corev1.PersistentVolumeReclaimRetain
 	if tc.Spec.PVReclaimPolicy == nil {
 		tc.Spec.PVReclaimPolicy = &retainPVP
-	}
-	if len(tc.Spec.StatefulSetUpdateStrategy) == 0 {
-		tc.Spec.StatefulSetUpdateStrategy = apps.RollingUpdateStatefulSetStrategyType
 	}
 }
 
