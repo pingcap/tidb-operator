@@ -63,7 +63,7 @@ type componentAccessorImpl struct {
 }
 
 func (a *componentAccessorImpl) StatefulSetUpdateStrategy() apps.StatefulSetUpdateStrategyType {
-	strategy := a.ComponentSpec.StatefulSetUpdateStrategy	
+	strategy := a.ComponentSpec.StatefulSetUpdateStrategy
 	if len(strategy) == 0 {
 		strategy = a.statefulSetUpdateStrategy
 		if len(strategy) == 0 {
