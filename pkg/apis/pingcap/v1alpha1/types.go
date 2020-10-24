@@ -426,6 +426,11 @@ type TiKVSpec struct {
 	// Defaults to 3m
 	// +optional
 	EvictLeaderTimeout *string `json:"evictLeaderTimeout,omitempty"`
+
+	// StorageVolumes is additional storage apply for TiKV node.
+	// default use storageClassName storage class
+	// +optional
+	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members
@@ -1819,4 +1824,12 @@ type WorkerMember struct {
 type WorkerFailureMember struct {
 	PodName   string      `json:"podName,omitempty"`
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
+}
+
+// StorageVolume is TiKV storage information
+type StorageVolume struct {
+	Name             string  `json:"name,omitempty"`
+	StorageClassName *string `json:"storageClassName,omitempty"`
+	StorageSize      string  `json:"storageSize,omitempty"`
+	MountPath        string  `json:"mountPath,omitempty"`
 }
