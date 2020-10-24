@@ -19,52 +19,22 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler/query"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
-	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	kubeinformers "k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes"
-	appslisters "k8s.io/client-go/listers/apps/v1"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
 )
 
 type autoScalerManager struct {
-	kubecli   kubernetes.Interface
-	cli       versioned.Interface
-	tcLister  v1alpha1listers.TidbClusterLister
-	tmLister  v1alpha1listers.TidbMonitorLister
-	tcControl controller.TidbClusterControlInterface
-	pdControl pdapi.PDControlInterface
-	taLister  v1alpha1listers.TidbClusterAutoScalerLister
-	stsLister appslisters.StatefulSetLister
-	recorder  record.EventRecorder
+	deps *controller.Dependencies
 }
 
-func NewAutoScalerManager(
-	kubecli kubernetes.Interface,
-	cli versioned.Interface,
-	informerFactory informers.SharedInformerFactory,
-	kubeInformerFactory kubeinformers.SharedInformerFactory,
-	recorder record.EventRecorder) *autoScalerManager {
-	tcLister := informerFactory.Pingcap().V1alpha1().TidbClusters().Lister()
+func NewAutoScalerManager(deps *controller.Dependencies) *autoScalerManager {
 	return &autoScalerManager{
-		kubecli:   kubecli,
-		cli:       cli,
-		tcLister:  tcLister,
-		tcControl: controller.NewRealTidbClusterControl(cli, tcLister, recorder),
-		pdControl: pdapi.NewDefaultPDControl(kubecli),
-		taLister:  informerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers().Lister(),
-		tmLister:  informerFactory.Pingcap().V1alpha1().TidbMonitors().Lister(),
-		stsLister: kubeInformerFactory.Apps().V1().StatefulSets().Lister(),
-		recorder:  recorder,
+		deps: deps,
 	}
 }
 
@@ -79,7 +49,7 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 		tac.Spec.Cluster.Namespace = tac.Namespace
 	}
 
-	tc, err := am.tcLister.TidbClusters(tac.Spec.Cluster.Namespace).Get(tcName)
+	tc, err := am.deps.TiDBClusterLister.TidbClusters(tac.Spec.Cluster.Namespace).Get(tcName)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Target TidbCluster Ref is deleted, empty the auto-scaling status
@@ -94,12 +64,13 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 		return nil
 	}
 
-	oldTc := tc.DeepCopy()
-	if err := am.syncAutoScaling(tc, tac); err != nil {
+	updatedTac := tac.DeepCopy()
+
+	if err := am.syncAutoScaling(tc, updatedTac); err != nil {
 		return err
 	}
 
-	return am.updateAutoScaling(oldTc, tac)
+	return am.updateTidbClusterAutoScaler(updatedTac)
 }
 
 func (am *autoScalerManager) syncExternal(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) error {
@@ -111,7 +82,7 @@ func (am *autoScalerManager) syncExternal(tc *v1alpha1.TidbCluster, tac *v1alpha
 		cfg = tac.Spec.TiKV.External
 	}
 
-	targetReplicas, err := query.ExternalService(tc, component, cfg.Endpoint, am.kubecli)
+	targetReplicas, err := query.ExternalService(tc, component, cfg.Endpoint, am.deps.KubeClientset)
 	if err != nil {
 		klog.Errorf("tac[%s/%s]'s query to the external endpoint for component %s got error: %v", tac.Namespace, tac.Name, component.String(), err)
 		return err
@@ -127,7 +98,7 @@ func (am *autoScalerManager) syncExternal(tc *v1alpha1.TidbCluster, tac *v1alpha
 func (am *autoScalerManager) syncPD(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) error {
 	strategy := autoscalerToStrategy(tac, component)
 	// Request PD for auto-scaling plans
-	plans, err := controller.GetPDClient(am.pdControl, tc).GetAutoscalingPlans(*strategy)
+	plans, err := controller.GetPDClient(am.deps.PDControl, tc).GetAutoscalingPlans(*strategy)
 	if err != nil {
 		klog.Errorf("tac[%s/%s] cannot get auto-scaling plans for component %v err:%v", tac.Namespace, tac.Name, component, err)
 		return err
@@ -171,47 +142,6 @@ func (am *autoScalerManager) syncAutoScaling(tc *v1alpha1.TidbCluster, tac *v1al
 	return errorutils.NewAggregate(errs)
 }
 
-func (am *autoScalerManager) updateAutoScaling(oldTc *v1alpha1.TidbCluster,
-	tac *v1alpha1.TidbClusterAutoScaler) error {
-	if tac.Annotations == nil {
-		tac.Annotations = map[string]string{}
-	}
-	now := time.Now()
-	tac.Annotations[label.AnnLastSyncingTimestamp] = fmt.Sprintf("%d", now.Unix())
-	return am.updateTidbClusterAutoScaler(tac)
-}
-
-func (am *autoScalerManager) updateTidbClusterAutoScaler(tac *v1alpha1.TidbClusterAutoScaler) error {
-
-	ns := tac.GetNamespace()
-	tacName := tac.GetName()
-	oldTac := tac.DeepCopy()
-
-	// don't wait due to limited number of clients, but backoff after the default number of steps
-	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		var updateErr error
-		_, updateErr = am.cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Update(tac)
-		if updateErr == nil {
-			klog.Infof("TidbClusterAutoScaler: [%s/%s] updated successfully", ns, tacName)
-			return nil
-		}
-		klog.V(4).Infof("failed to update TidbClusterAutoScaler: [%s/%s], error: %v", ns, tacName, updateErr)
-		if updated, err := am.taLister.TidbClusterAutoScalers(ns).Get(tacName); err == nil {
-			// make a copy so we don't mutate the shared cache
-			tac = updated.DeepCopy()
-			tac.Annotations = oldTac.Annotations
-			tac.Status = oldTac.Status
-		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated TidbClusterAutoScaler %s/%s from lister: %v", ns, tacName, err))
-		}
-		return updateErr
-	})
-	if err != nil {
-		klog.Errorf("failed to update TidbClusterAutoScaler: [%s/%s], error: %v", ns, tacName, err)
-	}
-	return err
-}
-
 func (am *autoScalerManager) gracefullyDeleteTidbCluster(deleteTc *v1alpha1.TidbCluster) error {
 	// Remove cluster
 	// If there are TiKV pods, delete the cluster gracefully because we need to transfer data
@@ -220,7 +150,7 @@ func (am *autoScalerManager) gracefullyDeleteTidbCluster(deleteTc *v1alpha1.Tidb
 		if deleteTc.Spec.TiKV.Replicas != 0 {
 			cloned := deleteTc.DeepCopy()
 			cloned.Spec.TiKV.Replicas = 0
-			_, err := am.tcControl.UpdateTidbCluster(cloned, &cloned.Status, &deleteTc.Status)
+			_, err := am.deps.TiDBClusterControl.UpdateTidbCluster(cloned, &cloned.Status, &deleteTc.Status)
 			return err
 		}
 
@@ -233,5 +163,53 @@ func (am *autoScalerManager) gracefullyDeleteTidbCluster(deleteTc *v1alpha1.Tidb
 		// The TC has scaled in, fall through the code to delete it
 	}
 
-	return am.cli.PingcapV1alpha1().TidbClusters(deleteTc.Namespace).Delete(deleteTc.Name, nil)
+	return am.deps.Clientset.PingcapV1alpha1().TidbClusters(deleteTc.Namespace).Delete(deleteTc.Name, nil)
+}
+
+func (am *autoScalerManager) updateTidbClusterAutoScaler(tac *v1alpha1.TidbClusterAutoScaler) error {
+	ns := tac.GetNamespace()
+	tacName := tac.GetName()
+	oldTac := tac.DeepCopy()
+
+	// don't wait due to limited number of clients, but backoff after the default number of steps
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		var updateErr error
+		_, updateErr = am.deps.Clientset.PingcapV1alpha1().TidbClusterAutoScalers(ns).Update(tac)
+		if updateErr == nil {
+			klog.Infof("TidbClusterAutoScaler: [%s/%s] updated successfully", ns, tacName)
+			return nil
+		}
+		klog.V(4).Infof("failed to update TidbClusterAutoScaler: [%s/%s], error: %v", ns, tacName, updateErr)
+		if updated, err := am.deps.TiDBClusterAutoScalerLister.TidbClusterAutoScalers(ns).Get(tacName); err == nil {
+			// make a copy so we don't mutate the shared cache
+			tac = updated.DeepCopy()
+			tac.Status = oldTac.Status
+		} else {
+			utilruntime.HandleError(fmt.Errorf("error getting updated TidbClusterAutoScaler %s/%s from lister: %v", ns, tacName, err))
+		}
+		return updateErr
+	})
+	if err != nil {
+		klog.Errorf("failed to update TidbClusterAutoScaler: [%s/%s], error: %v", ns, tacName, err)
+	}
+	return err
+}
+
+func updateLastAutoScalingTimestamp(tac *v1alpha1.TidbClusterAutoScaler, memberType string, group string) {
+	switch memberType {
+	case v1alpha1.TiKVMemberType.String():
+		if tac.Status.TiKV == nil {
+			tac.Status.TiKV = map[string]v1alpha1.TikvAutoScalerStatus{}
+		}
+		status := tac.Status.TiKV[group]
+		status.LastAutoScalingTimestamp = &metav1.Time{Time: time.Now()}
+		tac.Status.TiKV[group] = status
+	case v1alpha1.TiDBMemberType.String():
+		if tac.Status.TiDB == nil {
+			tac.Status.TiDB = map[string]v1alpha1.TidbAutoScalerStatus{}
+		}
+		status := tac.Status.TiDB[group]
+		status.LastAutoScalingTimestamp = &metav1.Time{Time: time.Now()}
+		tac.Status.TiDB[group] = status
+	}
 }

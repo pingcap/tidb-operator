@@ -116,13 +116,6 @@ const (
 	// DMWorkerDeleteSlots is annotation key of dm-worker delete slots.
 	AnnDMWorkerDeleteSlots = "dm-worker.tidb.pingcap.com/delete-slots"
 
-	// AnnTiDBLastAutoScalingTimestamp is annotation key of tidbcluster to indicate the last timestamp for tidb auto-scaling
-	AnnTiDBLastAutoScalingTimestamp = "tidb.tidb.pingcap.com/last-autoscaling-timestamp"
-	// AnnTiKVLastAutoScalingTimestamp is annotation key of tidbclusterto which ordinal is created by tikv auto-scaling
-	AnnTiKVLastAutoScalingTimestamp = "tikv.tidb.pingcap.com/last-autoscaling-timestamp"
-	// AnnLastSyncingTimestamp records last sync timestamp
-	AnnLastSyncingTimestamp = "tidb.pingcap.com/last-syncing-timestamp"
-
 	// AnnTiKVAutoScalingOutOrdinals describe the tikv pods' ordinal list which is created by auto-scaling out
 	AnnTiKVAutoScalingOutOrdinals = "tikv.tidb.pingcap.com/scale-out-ordinals"
 	// AnnTiDBAutoScalingOutOrdinals describe the tidb pods' ordinal list which is created by auto-scaling out

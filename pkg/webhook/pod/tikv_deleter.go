@@ -183,7 +183,6 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPod(payload *admitPayload, store
 }
 
 func (pc *PodAdmissionControl) admitDeleteUpTiKVPodDuringUpgrading(payload *admitPayload, store *pdapi.StoreInfo) *admission.AdmissionResponse {
-
 	name := payload.pod.Name
 	namespace := payload.pod.Namespace
 	tc, ok := payload.controller.(*v1alpha1.TidbCluster)
@@ -221,7 +220,6 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPodDuringUpgrading(payload *admi
 // Users should offline the target tikv into tombstone first, then scale-in it.
 // In other cases, we would admit to delete the down tikv pod like upgrading.
 func (pc *PodAdmissionControl) admitDeleteDownTikvPod(payload *admitPayload) *admission.AdmissionResponse {
-
 	isInOrdinal, err := operatorUtils.IsPodOrdinalNotExceedReplicas(payload.pod, payload.ownerStatefulSet)
 	if err != nil {
 		return util.ARFail(err)

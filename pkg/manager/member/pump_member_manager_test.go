@@ -22,8 +22,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util/config"
 	appsv1 "k8s.io/api/apps/v1"
@@ -33,8 +31,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	kubeinformers "k8s.io/client-go/informers"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/pointer"
@@ -85,8 +81,8 @@ func TestPumpMemberManagerSyncCreate(t *testing.T) {
 		}
 
 		syncErr := pmm.Sync(tc)
-		svc, getSvcErr := pmm.svcLister.Services(ns).Get(controller.PumpPeerMemberName(tcName))
-		set, getStsErr := pmm.setLister.StatefulSets(ns).Get(controller.PumpMemberName(tcName))
+		svc, getSvcErr := pmm.deps.ServiceLister.Services(ns).Get(controller.PumpPeerMemberName(tcName))
+		set, getStsErr := pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PumpMemberName(tcName))
 		cm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: controller.PumpMemberName(tcName)}}
 		key, err := client.ObjectKeyFromObject(cm)
 		g.Expect(err).To(Succeed())
@@ -230,8 +226,8 @@ func TestPumpMemberManagerSyncUpdate(t *testing.T) {
 		}
 
 		syncErr := pmm.Sync(tc)
-		svc, getSvcErr := pmm.svcLister.Services(ns).Get(controller.PumpPeerMemberName(tcName))
-		set, getStsErr := pmm.setLister.StatefulSets(ns).Get(controller.PumpMemberName(tcName))
+		svc, getSvcErr := pmm.deps.ServiceLister.Services(ns).Get(controller.PumpPeerMemberName(tcName))
+		set, getStsErr := pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PumpMemberName(tcName))
 		cm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: controller.PumpMemberName(tcName)}}
 		key, err := client.ObjectKeyFromObject(cm)
 		g.Expect(err).To(Succeed())
@@ -377,7 +373,7 @@ func TestSyncConfigUpdate(t *testing.T) {
 		}
 
 		syncErr := pmm.Sync(tc)
-		set, getStsErr := pmm.setLister.StatefulSets(ns).Get(controller.PumpMemberName(tcName))
+		set, getStsErr := pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PumpMemberName(tcName))
 		cmList := &corev1.ConfigMapList{}
 		g.Expect(err).To(Succeed())
 		listCmErr := controls.generic.FakeCli.List(context.TODO(), cmList)
@@ -436,36 +432,17 @@ type pumpFakeControls struct {
 }
 
 func newFakePumpMemberManager() (*pumpMemberManager, *pumpFakeControls, *pumpFakeIndexers) {
-	cli := fake.NewSimpleClientset()
-	kubeCli := kubefake.NewSimpleClientset()
-	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1().StatefulSets()
-	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbClusters()
-	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
-	epsInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Endpoints()
-	cmInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().ConfigMaps()
-	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
-	setControl := controller.NewFakeStatefulSetControl(setInformer)
-	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer)
-	cmControl := controller.NewFakeConfigMapControl(cmInformer)
-	genericControl := controller.NewFakeGenericControl()
-	pmm := &pumpMemberManager{
-		setControl,
-		svcControl,
-		controller.NewTypedControl(genericControl),
-		cmControl,
-		setInformer.Lister(),
-		svcInformer.Lister(),
-		podInformer.Lister(),
-	}
+	fakeDeps := controller.NewFakeDependencies()
+	pmm := &pumpMemberManager{deps: fakeDeps}
 	controls := &pumpFakeControls{
-		svc:     svcControl,
-		set:     setControl,
-		generic: genericControl,
+		svc:     fakeDeps.ServiceControl.(*controller.FakeServiceControl),
+		set:     fakeDeps.StatefulSetControl.(*controller.FakeStatefulSetControl),
+		generic: fakeDeps.GenericControl.(*controller.FakeGenericControl),
 	}
 	indexers := &pumpFakeIndexers{
-		tc:  tcInformer.Informer().GetIndexer(),
-		svc: svcInformer.Informer().GetIndexer(),
-		set: setInformer.Informer().GetIndexer(),
+		tc:  fakeDeps.InformerFactory.Pingcap().V1alpha1().TidbClusters().Informer().GetIndexer(),
+		svc: fakeDeps.KubeInformerFactory.Core().V1().Services().Informer().GetIndexer(),
+		set: fakeDeps.KubeInformerFactory.Apps().V1().StatefulSets().Informer().GetIndexer(),
 	}
 	return pmm, controls, indexers
 }

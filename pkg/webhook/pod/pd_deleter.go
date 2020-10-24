@@ -190,7 +190,6 @@ func (pc *PodAdmissionControl) admitDeleteExceedReplicasPDPod(payload *admitPayl
 
 // this pod is a pd leader, we should transfer pd leader to other pd pod before it gets deleted before.
 func (pc *PodAdmissionControl) transferPDLeader(payload *admitPayload) *admission.AdmissionResponse {
-
 	name := payload.pod.Name
 	namespace := payload.pod.Namespace
 	ordinal, err := operatorUtils.GetOrdinalFromPodName(name)

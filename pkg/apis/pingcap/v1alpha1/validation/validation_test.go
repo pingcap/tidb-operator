@@ -46,11 +46,11 @@ func TestValidateAnnotations(t *testing.T) {
 					Version: "v3.0.8",
 					PD: &v1alpha1.PDSpec{
 						BaseImage: "pingcap/pd",
-						Config:    &v1alpha1.PDConfig{},
+						Config:    v1alpha1.NewPDConfig(),
 					},
 					TiKV: &v1alpha1.TiKVSpec{
 						BaseImage: "pingcap/tikv",
-						Config:    &v1alpha1.TiKVConfig{},
+						Config:    v1alpha1.NewTiKVConfig(),
 					},
 					TiDB: &v1alpha1.TiDBSpec{
 						BaseImage: "pingcap/tidb",
@@ -70,11 +70,11 @@ func TestValidateAnnotations(t *testing.T) {
 					Version: "v3.0.8",
 					PD: &v1alpha1.PDSpec{
 						BaseImage: "pingcap/pd",
-						Config:    &v1alpha1.PDConfig{},
+						Config:    v1alpha1.NewPDConfig(),
 					},
 					TiKV: &v1alpha1.TiKVSpec{
 						BaseImage: "pingcap/tikv",
-						Config:    &v1alpha1.TiKVConfig{},
+						Config:    v1alpha1.NewTiKVConfig(),
 					},
 					TiDB: &v1alpha1.TiDBSpec{
 						BaseImage: "pingcap/tidb",
@@ -111,11 +111,11 @@ func TestValidateAnnotations(t *testing.T) {
 					Version: "v3.0.8",
 					PD: &v1alpha1.PDSpec{
 						BaseImage: "pingcap/pd",
-						Config:    &v1alpha1.PDConfig{},
+						Config:    v1alpha1.NewPDConfig(),
 					},
 					TiKV: &v1alpha1.TiKVSpec{
 						BaseImage: "pingcap/tikv",
-						Config:    &v1alpha1.TiKVConfig{},
+						Config:    v1alpha1.NewTiKVConfig(),
 					},
 					TiDB: &v1alpha1.TiDBSpec{
 						BaseImage: "pingcap/tidb",
@@ -147,11 +147,11 @@ func TestValidateAnnotations(t *testing.T) {
 					Version: "v3.0.8",
 					PD: &v1alpha1.PDSpec{
 						BaseImage: "pingcap/pd",
-						Config:    &v1alpha1.PDConfig{},
+						Config:    v1alpha1.NewPDConfig(),
 					},
 					TiKV: &v1alpha1.TiKVSpec{
 						BaseImage: "pingcap/tikv",
-						Config:    &v1alpha1.TiKVConfig{},
+						Config:    v1alpha1.NewTiKVConfig(),
 					},
 					TiDB: &v1alpha1.TiDBSpec{
 						BaseImage: "pingcap/tidb",
@@ -592,6 +592,43 @@ func TestValidateEvictLeaderTimeout(t *testing.T) {
 		errs := validateTimeDurationStr(c, field.NewPath("evictLeaderTimeout"))
 		if len(errs) == 0 {
 			t.Errorf("expected failure for %s", *c)
+		}
+	}
+}
+
+func TestValidatePDAddresses(t *testing.T) {
+	successCases := [][]string{
+		{
+			"http://1.2.3.4:2379",
+			"http://test-pd-0.test-pd-peer.default.svc:2380",
+			"http://test:2379",
+		},
+	}
+
+	for _, c := range successCases {
+		errs := validatePDAddresses(c, field.NewPath("pdAddresses"))
+		if len(errs) > 0 {
+			t.Errorf("expected success: %v", errs)
+		}
+	}
+
+	errorCases := [][]string{
+		{
+			"https://1.2.3.4:2379",
+		},
+		{
+			"http://1.2.3.4:2380",
+			"https://1.2.3.4:2379",
+		},
+		{
+			"test-pd-0.test-pd-peer.default.svc:2380",
+		},
+	}
+
+	for _, c := range errorCases {
+		errs := validatePDAddresses(c, field.NewPath("pdAddresses"))
+		if len(errs) == 0 {
+			t.Errorf("expected failure for %s", c)
 		}
 	}
 }
