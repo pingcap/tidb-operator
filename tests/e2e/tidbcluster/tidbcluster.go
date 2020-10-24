@@ -1458,6 +1458,31 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				return false, nil
 			})
 		})
+		ginkgo.It("TiKV mount multiple pvc", func() {
+			tc := fixture.GetTidbCluster(ns, "cdc-source", utilimage.TiDBV4Version)
+			tc.Spec.PD.Replicas = 1
+			tc.Spec.TiKV.Replicas = 1
+			tc.Spec.TiDB.Replicas = 1
+			tc.Spec.TiKV.StorageVolumes = []v1alpha1.StorageVolume{
+				{
+					Name:        "wal",
+					StorageSize: "2Gi",
+					MountPath:   "/var/lib/wal",
+				},
+				{
+					Name:        "titan",
+					StorageSize: "2Gi",
+					MountPath:   "/var/lib/titan",
+				},
+			}
+			tc.Spec.TiKV.Config.Set("rocksdb.wal-dir", "/var/lib/wal")
+			tc.Spec.TiKV.Config.Set("titan.dirname", "/var/lib/titan")
+			err := genericCli.Create(context.TODO(), tc)
+			framework.ExpectNoError(err, "Expected TiDB cluster created")
+			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			framework.ExpectNoError(err, "Expected TiDB cluster ready")
+		})
+
 	})
 })
 
