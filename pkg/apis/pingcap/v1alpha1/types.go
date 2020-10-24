@@ -434,7 +434,7 @@ type TiKVSpec struct {
 	// StorageVolumes is additional storage apply for TiKV node.
 	// default use storageClassName storage class
 	// +optional
-	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
+	StorageVolumes []StorageVolume `json:"storageVolumes"`
 }
 
 // TiFlashSpec contains details of TiFlash members
