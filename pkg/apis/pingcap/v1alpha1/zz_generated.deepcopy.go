@@ -6780,6 +6780,11 @@ func (in *TiKVSpec) DeepCopyInto(out *TiKVSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.StorageClassName != nil {
+		in, out := &in.StorageClassName, &out.StorageClassName
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 
@@ -8096,6 +8101,25 @@ func (in *WorkerStatus) DeepCopy() *WorkerStatus {
 		return nil
 	}
 	out := new(WorkerStatus)
+	in.DeepCopyInto(out)
+	return out
+}
+
+func (in *StorageVolume) DeepCopyInto(out *StorageVolume) {
+	*out = *in
+	if in.StorageClassName != nil {
+		in, out := &in.StorageClassName, &out.StorageClassName
+		*out = new(string)
+		**out = **in
+	}
+	return
+}
+
+func (in *StorageVolume) DeepCopy() *StorageVolume {
+	if in == nil {
+		return nil
+	}
+	out := new(StorageVolume)
 	in.DeepCopyInto(out)
 	return out
 }
