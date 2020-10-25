@@ -16786,7 +16786,7 @@ Defaults to 3m</p>
 <td>
 <em>(Optional)</em>
 <p>StorageVolumes is additional storage apply for TiKV node.
-default use storageClassName storage class</p>
+Default to storageClassName storage class</p>
 </td>
 </tr>
 </tbody>
