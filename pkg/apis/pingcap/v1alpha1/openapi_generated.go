@@ -9001,7 +9001,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 					},
 					"storageVolumes": {
 						SchemaProps: spec.SchemaProps{
-							Description: "StorageVolumes is additional storage apply for TiKV node. default use storageClassName storage class",
+							Description: "StorageVolumes is additional storage apply for TiKV node. Default to storageClassName storage class",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
