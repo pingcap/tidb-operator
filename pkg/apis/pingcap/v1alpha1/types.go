@@ -432,9 +432,9 @@ type TiKVSpec struct {
 	EvictLeaderTimeout *string `json:"evictLeaderTimeout,omitempty"`
 
 	// StorageVolumes is additional storage apply for TiKV node.
-	// default use storageClassName storage class
+	// Default to storageClassName storage class
 	// +optional
-	StorageVolumes []StorageVolume `json:"storageVolumes"`
+	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members
