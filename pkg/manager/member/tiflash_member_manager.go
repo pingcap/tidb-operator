@@ -40,7 +40,7 @@ import (
 
 const (
 	//find a better way to manage store only managed by tiflash in Operator
-	tiflashStoreLimitPattern = `%s-tiflash-\d+\.%s-tiflash-peer\.%s\.svc(|\%s):\d+`
+	tiflashStoreLimitPattern = `%s-tiflash-\d+\.%s-tiflash-peer\.%s\.svc(|%s):\d+`
 	tiflashCertPath          = "/var/lib/tiflash-tls"
 	tiflashCertVolumeName    = "tiflash-tls"
 )
