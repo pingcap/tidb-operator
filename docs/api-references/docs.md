@@ -1494,6 +1494,20 @@ TidbClusterRef
 <p>PDAddresses are the external PD addresses, if configured, the PDs in this TidbCluster will join to the configured PD cluster.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>statefulSetUpdateStrategy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#statefulsetupdatestrategytype-v1-apps">
+Kubernetes apps/v1.StatefulSetUpdateStrategyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StatefulSetUpdateStrategy of TiDB cluster StatefulSets</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -1617,8 +1631,8 @@ TidbAutoScalerSpec
 <td>
 <code>status</code></br>
 <em>
-<a href="#tidbclusterautosclaerstatus">
-TidbClusterAutoSclaerStatus
+<a href="#tidbclusterautoscalerstatus">
+TidbClusterAutoScalerStatus
 </a>
 </em>
 </td>
@@ -3613,6 +3627,22 @@ The grace period is the duration in seconds after the processes running in the p
 a termination signal and the time when the processes are forcibly halted with a kill signal.
 Set this value longer than the expected cleanup time for your process.
 Defaults to 30 seconds.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>statefulSetUpdateStrategy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#statefulsetupdatestrategytype-v1-apps">
+Kubernetes apps/v1.StatefulSetUpdateStrategyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StatefulSetUpdateStrategy indicates the StatefulSetUpdateStrategy that will be
+employed to update Pods in the StatefulSet when a revision is made to
+Template.</p>
 </td>
 </tr>
 </tbody>
@@ -17441,7 +17471,7 @@ BasicAutoScalerSpec
 <h3 id="tidbautoscalerstatus">TidbAutoScalerStatus</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#tidbclusterautosclaerstatus">TidbClusterAutoSclaerStatus</a>)
+<a href="#tidbclusterautoscalerstatus">TidbClusterAutoScalerStatus</a>)
 </p>
 <p>
 <p>TidbAutoScalerStatus describe the auto-scaling status of tidb</p>
@@ -17568,13 +17598,13 @@ TidbAutoScalerSpec
 </tr>
 </tbody>
 </table>
-<h3 id="tidbclusterautosclaerstatus">TidbClusterAutoSclaerStatus</h3>
+<h3 id="tidbclusterautoscalerstatus">TidbClusterAutoScalerStatus</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbclusterautoscaler">TidbClusterAutoScaler</a>)
 </p>
 <p>
-<p>TidbClusterAutoSclaerStatus describe the whole status</p>
+<p>TidbClusterAutoScalerStatus describe the whole status</p>
 </p>
 <table>
 <thead>
@@ -17589,13 +17619,13 @@ TidbAutoScalerSpec
 <code>tikv</code></br>
 <em>
 <a href="#tikvautoscalerstatus">
-TikvAutoScalerStatus
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TikvAutoScalerStatus
 </a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Tikv describes the status for the tikv in the last auto-scaling reconciliation</p>
+<p>Tikv describes the status of each group for the tikv in the last auto-scaling reconciliation</p>
 </td>
 </tr>
 <tr>
@@ -17603,13 +17633,13 @@ TikvAutoScalerStatus
 <code>tidb</code></br>
 <em>
 <a href="#tidbautoscalerstatus">
-TidbAutoScalerStatus
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbAutoScalerStatus
 </a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Tidb describes the status for the tidb in the last auto-scaling reconciliation</p>
+<p>Tidb describes the status of each group for the tidb in the last auto-scaling reconciliation</p>
 </td>
 </tr>
 </tbody>
@@ -18163,6 +18193,20 @@ TidbClusterRef
 <td>
 <em>(Optional)</em>
 <p>PDAddresses are the external PD addresses, if configured, the PDs in this TidbCluster will join to the configured PD cluster.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>statefulSetUpdateStrategy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#statefulsetupdatestrategytype-v1-apps">
+Kubernetes apps/v1.StatefulSetUpdateStrategyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StatefulSetUpdateStrategy of TiDB cluster StatefulSets</p>
 </td>
 </tr>
 </tbody>
@@ -18849,7 +18893,7 @@ BasicAutoScalerSpec
 <h3 id="tikvautoscalerstatus">TikvAutoScalerStatus</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#tidbclusterautosclaerstatus">TidbClusterAutoSclaerStatus</a>)
+<a href="#tidbclusterautoscalerstatus">TidbClusterAutoScalerStatus</a>)
 </p>
 <p>
 <p>TikvAutoScalerStatus describe the auto-scaling status of tikv</p>

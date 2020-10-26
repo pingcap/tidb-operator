@@ -145,7 +145,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoScalerList":     schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScalerList(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoScalerRef":      schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScalerRef(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoScalerSpec":     schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScalerSpec(ref),
-		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoSclaerStatus":   schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoSclaerStatus(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoScalerStatus":   schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScalerStatus(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterList":               schema_pkg_apis_pingcap_v1alpha1_TidbClusterList(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterRef":                schema_pkg_apis_pingcap_v1alpha1_TidbClusterRef(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterSpec":               schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref),
@@ -1335,6 +1335,13 @@ func schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref common.ReferenceCallback
 							Description: "Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request. Value must be non-negative integer. The value zero indicates delete immediately. If this value is nil, the default grace period will be used instead. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. Defaults to 30 seconds.",
 							Type:        []string{"integer"},
 							Format:      "int64",
+						},
+					},
+					"statefulSetUpdateStrategy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StatefulSetUpdateStrategy indicates the StatefulSetUpdateStrategy that will be employed to update Pods in the StatefulSet when a revision is made to Template.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},
@@ -2978,6 +2985,13 @@ func schema_pkg_apis_pingcap_v1alpha1_MasterSpec(ref common.ReferenceCallback) c
 							Format:      "int64",
 						},
 					},
+					"statefulSetUpdateStrategy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StatefulSetUpdateStrategy indicates the StatefulSetUpdateStrategy that will be employed to update Pods in the StatefulSet when a revision is made to Template.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"limits": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
@@ -4108,6 +4122,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 							Format:      "int64",
 						},
 					},
+					"statefulSetUpdateStrategy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StatefulSetUpdateStrategy indicates the StatefulSetUpdateStrategy that will be employed to update Pods in the StatefulSet when a revision is made to Template.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"limits": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
@@ -4809,6 +4830,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PumpSpec(ref common.ReferenceCallback) com
 							Description: "Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request. Value must be non-negative integer. The value zero indicates delete immediately. If this value is nil, the default grace period will be used instead. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. Defaults to 30 seconds.",
 							Type:        []string{"integer"},
 							Format:      "int64",
+						},
+					},
+					"statefulSetUpdateStrategy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StatefulSetUpdateStrategy indicates the StatefulSetUpdateStrategy that will be employed to update Pods in the StatefulSet when a revision is made to Template.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"limits": {
@@ -5689,6 +5717,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCDCSpec(ref common.ReferenceCallback) co
 							Format:      "int64",
 						},
 					},
+					"statefulSetUpdateStrategy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StatefulSetUpdateStrategy indicates the StatefulSetUpdateStrategy that will be employed to update Pods in the StatefulSet when a revision is made to Template.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"limits": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
@@ -6359,6 +6394,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 							Format:      "int64",
 						},
 					},
+					"statefulSetUpdateStrategy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StatefulSetUpdateStrategy indicates the StatefulSetUpdateStrategy that will be employed to update Pods in the StatefulSet when a revision is made to Template.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"limits": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
@@ -6670,6 +6712,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiFlashSpec(ref common.ReferenceCallback) 
 							Description: "Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request. Value must be non-negative integer. The value zero indicates delete immediately. If this value is nil, the default grace period will be used instead. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. Defaults to 30 seconds.",
 							Type:        []string{"integer"},
 							Format:      "int64",
+						},
+					},
+					"statefulSetUpdateStrategy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StatefulSetUpdateStrategy indicates the StatefulSetUpdateStrategy that will be employed to update Pods in the StatefulSet when a revision is made to Template.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"limits": {
@@ -8895,6 +8944,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 							Format:      "int64",
 						},
 					},
+					"statefulSetUpdateStrategy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StatefulSetUpdateStrategy indicates the StatefulSetUpdateStrategy that will be employed to update Pods in the StatefulSet when a revision is made to Template.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"limits": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
@@ -9449,7 +9505,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScaler(ref common.Reference
 					"status": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Status describe the status of the TidbClusterAutoScaler",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoSclaerStatus"),
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoScalerStatus"),
 						},
 					},
 				},
@@ -9457,7 +9513,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScaler(ref common.Reference
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoScalerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoSclaerStatus"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoScalerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoScalerStatus"},
 	}
 }
 
@@ -9563,23 +9619,39 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScalerSpec(ref common.Refer
 	}
 }
 
-func schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoSclaerStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScalerStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "TidbClusterAutoSclaerStatus describe the whole status",
+				Description: "TidbClusterAutoScalerStatus describe the whole status",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"tikv": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Tikv describes the status for the tikv in the last auto-scaling reconciliation",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TikvAutoScalerStatus"),
+							Description: "Tikv describes the status of each group for the tikv in the last auto-scaling reconciliation",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TikvAutoScalerStatus"),
+									},
+								},
+							},
 						},
 					},
 					"tidb": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Tidb describes the status for the tidb in the last auto-scaling reconciliation",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbAutoScalerStatus"),
+							Description: "Tidb describes the status of each group for the tidb in the last auto-scaling reconciliation",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbAutoScalerStatus"),
+									},
+								},
+							},
 						},
 					},
 				},
@@ -9885,6 +9957,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 									},
 								},
 							},
+						},
+					},
+					"statefulSetUpdateStrategy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StatefulSetUpdateStrategy of TiDB cluster StatefulSets",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},
@@ -10768,6 +10847,13 @@ func schema_pkg_apis_pingcap_v1alpha1_WorkerSpec(ref common.ReferenceCallback) c
 							Description: "Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request. Value must be non-negative integer. The value zero indicates delete immediately. If this value is nil, the default grace period will be used instead. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. Defaults to 30 seconds.",
 							Type:        []string{"integer"},
 							Format:      "int64",
+						},
+					},
+					"statefulSetUpdateStrategy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StatefulSetUpdateStrategy indicates the StatefulSetUpdateStrategy that will be employed to update Pods in the StatefulSet when a revision is made to Template.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"limits": {
