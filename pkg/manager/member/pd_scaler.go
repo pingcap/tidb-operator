@@ -118,21 +118,29 @@ func (s *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet 
 	}
 
 	pdClient := controller.GetPDClient(s.deps.PDControl, tc)
-	// If the pd pod was pd leader during scale-in, we would transfer pd leader to pd-0 directly
-	// If the pd statefulSet would be scale-in to zero and the pd-0 was going to be deleted,
-	// we would directly deleted the pd-0 without pd leader transferring
-	minOrdinal := helper.GetMinPodOrdinal(*newSet.Spec.Replicas, newSet)
-	if ordinal > minOrdinal {
+	// If the pd pod was pd leader during scale-in with advanced statefulset controller enabled,
+	// we should transfer pd leader to other pd pod before it gets deleted.
+	if *newSet.Spec.Replicas > 1 {
 		leader, err := pdClient.GetPDLeader()
 		if err != nil {
 			return err
 		}
 		if leader.Name == memberName {
-			err = pdClient.TransferPDLeader(PdPodName(tcName, minOrdinal))
-			if err != nil {
-				return err
+			minOrdinal := helper.GetMinPodOrdinal(*newSet.Spec.Replicas, newSet)
+			if ordinal > minOrdinal {
+				err = pdClient.TransferPDLeader(PdPodName(tcName, minOrdinal))
+				if err != nil {
+					return err
+				}
+				return controller.RequeueErrorf("tc[%s/%s]'s pd pod[%s/%s] is transferring pd leader,can't scale-in now", ns, tcName, ns, memberName)
+			} else {
+				maxOrdinal := helper.GetMaxPodOrdinal(*newSet.Spec.Replicas, newSet)
+				err = pdClient.TransferPDLeader(PdPodName(tcName, maxOrdinal))
+				if err != nil {
+					return err
+				}
+				return controller.RequeueErrorf("tc[%s/%s]'s pd pod[%s/%s] is transferring pd leader,can't scale-in now", ns, tcName, ns, memberName)
 			}
-			return controller.RequeueErrorf("tc[%s/%s]'s pd pod[%s/%s] is transferring pd leader,can't scale-in now", ns, tcName, ns, memberName)
 		}
 	}
 
