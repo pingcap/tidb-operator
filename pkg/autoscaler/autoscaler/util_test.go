@@ -110,87 +110,313 @@ func TestCheckStsAutoScalingInterval(t *testing.T) {
 func TestDefaultTac(t *testing.T) {
 	g := NewGomegaWithT(t)
 	tc := newTidbCluster()
-	tac := newTidbClusterAutoScaler()
-	tac.Spec.TiDB = nil
-	tac.Spec.TiKV.ScaleOutIntervalSeconds = nil
-	tac.Spec.TiKV.ScaleInIntervalSeconds = nil
-	tac.Spec.TiKV.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
-		corev1.ResourceCPU: {
-			MaxThreshold: 0.8,
+	testcases := []struct {
+		name      string
+		sourceTac *v1alpha1.TidbClusterAutoScaler
+		expectTac *v1alpha1.TidbClusterAutoScaler
+	}{
+		// case1
+		{
+			name:      "source tac spec don't have resources",
+			sourceTac: newTidbClusterAutoScaler(),
+			expectTac: func() *v1alpha1.TidbClusterAutoScaler {
+				expectTac := newTidbClusterAutoScaler()
+				expectTac.Spec.TiKV.Resources = map[string]v1alpha1.AutoResource{
+					"default_tikv": {
+						CPU:     tc.Spec.TiKV.Requests.Cpu().DeepCopy(),
+						Memory:  tc.Spec.TiKV.Requests.Memory().DeepCopy(),
+						Storage: tc.Spec.TiKV.Requests[corev1.ResourceStorage].DeepCopy(),
+					},
+				}
+				expectTac.Spec.TiDB.Resources = map[string]v1alpha1.AutoResource{
+					"default_tidb": {
+						CPU:    tc.Spec.TiDB.Requests.Cpu().DeepCopy(),
+						Memory: tc.Spec.TiDB.Requests.Memory().DeepCopy(),
+					},
+				}
+				return expectTac
+			}(),
+		},
+		// case2
+		{
+			name: "source tac spec only have tidb",
+			sourceTac: func() *v1alpha1.TidbClusterAutoScaler {
+				sourceTAC := newTidbClusterAutoScaler()
+				sourceTAC.Spec.TiKV = nil
+				sourceTAC.Spec.TiDB.Resources = map[string]v1alpha1.AutoResource{
+					"case2": {
+						CPU:    resource.MustParse("1"),
+						Memory: resource.MustParse("1G"),
+					},
+				}
+				sourceTAC.Spec.TiDB.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
+					corev1.ResourceCPU: {
+					},
+				}
+				return sourceTAC
+			}(),
+			expectTac: func() *v1alpha1.TidbClusterAutoScaler {
+				expectTac := newTidbClusterAutoScaler()
+				expectTac.Spec.TiKV = nil
+				expectTac.Spec.TiDB.Resources = map[string]v1alpha1.AutoResource{
+					"case2": {
+						CPU:    resource.MustParse("1"),
+						Memory: resource.MustParse("1G"),
+					},
+				}
+				expectTac.Spec.TiDB.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
+					corev1.ResourceCPU: {
+						MinThreshold:  pointer.Float64Ptr(0.1),
+						ResourceTypes: []string{"case2"},
+					},
+				}
+				return expectTac
+			}(),
+		},
+		// case3
+		{
+			name: "source tac spec only have tikv",
+			sourceTac: func() *v1alpha1.TidbClusterAutoScaler {
+				sourceTAC := newTidbClusterAutoScaler()
+				sourceTAC.Spec.TiDB = nil
+				sourceTAC.Spec.TiKV.Resources = map[string]v1alpha1.AutoResource{
+					"case3": {
+						CPU:     resource.MustParse("1"),
+						Memory:  resource.MustParse("1G"),
+						Storage: resource.MustParse("10G"),
+					},
+				}
+				sourceTAC.Spec.TiKV.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
+					corev1.ResourceCPU: {
+					},
+				}
+				return sourceTAC
+			}(),
+			expectTac: func() *v1alpha1.TidbClusterAutoScaler {
+				expectTac := newTidbClusterAutoScaler()
+				expectTac.Spec.TiKV.Resources = map[string]v1alpha1.AutoResource{
+					"case3": {
+						CPU:     resource.MustParse("1"),
+						Memory:  resource.MustParse("1G"),
+						Storage: resource.MustParse("10G"),
+					},
+				}
+				expectTac.Spec.TiKV.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
+					corev1.ResourceCPU: {
+						MinThreshold:  pointer.Float64Ptr(0.1),
+						ResourceTypes: []string{"case3"},
+					},
+				}
+				expectTac.Spec.TiDB = nil
+				return expectTac
+			}(),
+		},
+		// case4
+		{
+			name: "source tac spec only have tidb, no resources",
+			sourceTac: func() *v1alpha1.TidbClusterAutoScaler {
+				sourceTAC := newTidbClusterAutoScaler()
+				sourceTAC.Spec.TiKV = nil
+				sourceTAC.Spec.TiDB.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
+					corev1.ResourceCPU: {
+					},
+				}
+				return sourceTAC
+			}(),
+			expectTac: func() *v1alpha1.TidbClusterAutoScaler {
+				expectTac := newTidbClusterAutoScaler()
+				expectTac.Spec.TiDB.Resources = map[string]v1alpha1.AutoResource{
+					"default_tidb": {
+						CPU:    tc.Spec.TiDB.Requests.Cpu().DeepCopy(),
+						Memory: tc.Spec.TiDB.Requests.Memory().DeepCopy(),
+					},
+				}
+				expectTac.Spec.TiDB.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
+					corev1.ResourceCPU: {
+						MinThreshold:  pointer.Float64Ptr(0.1),
+						ResourceTypes: []string{"default_tidb"},
+					},
+				}
+				expectTac.Spec.TiKV = nil
+				return expectTac
+			}(),
+		},
+		// case5
+		{
+			name: "source tac spec only have tikv, no resources",
+			sourceTac: func() *v1alpha1.TidbClusterAutoScaler {
+				sourceTAC := newTidbClusterAutoScaler()
+				sourceTAC.Spec.TiKV.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
+					corev1.ResourceCPU: {
+					},
+				}
+				sourceTAC.Spec.TiDB = nil
+				return sourceTAC
+			}(),
+			expectTac: func() *v1alpha1.TidbClusterAutoScaler {
+				expectTac := newTidbClusterAutoScaler()
+				expectTac.Spec.TiKV.Resources = map[string]v1alpha1.AutoResource{
+					"default_tikv": {
+						CPU:     tc.Spec.TiKV.Requests.Cpu().DeepCopy(),
+						Memory:  tc.Spec.TiKV.Requests.Memory().DeepCopy(),
+						Storage: tc.Spec.TiKV.Requests[corev1.ResourceStorage].DeepCopy(),
+					},
+				}
+				expectTac.Spec.TiKV.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
+					corev1.ResourceCPU: {
+						MinThreshold:  pointer.Float64Ptr(0.1),
+						ResourceTypes: []string{"default_tikv"},
+					},
+				}
+				expectTac.Spec.TiDB = nil
+				return expectTac
+			}(),
+		},
+		// case6
+		{
+			name: "source tac spec don't have rules",
+			sourceTac: func() *v1alpha1.TidbClusterAutoScaler {
+				sourceTAC := newTidbClusterAutoScaler()
+				sourceTAC.Spec.TiKV.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
+					corev1.ResourceCPU: {
+					},
+				}
+				sourceTAC.Spec.TiDB.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
+					corev1.ResourceCPU: {
+					},
+				}
+				return sourceTAC
+			}(),
+			expectTac: func() *v1alpha1.TidbClusterAutoScaler {
+				expectTac := newTidbClusterAutoScaler()
+				expectTac.Spec.TiKV.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
+					corev1.ResourceCPU: {
+						MinThreshold:  pointer.Float64Ptr(0.1),
+						ResourceTypes: []string{"default_tikv"},
+					},
+				}
+				expectTac.Spec.TiDB.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
+					corev1.ResourceCPU: {
+						MinThreshold:  pointer.Float64Ptr(0.1),
+						ResourceTypes: []string{"default_tidb"},
+					},
+				}
+				expectTac.Spec.TiKV.Resources = map[string]v1alpha1.AutoResource{
+					"default_tikv": {
+						CPU:     tc.Spec.TiKV.Requests.Cpu().DeepCopy(),
+						Memory:  tc.Spec.TiKV.Requests.Memory().DeepCopy(),
+						Storage: tc.Spec.TiKV.Requests[corev1.ResourceStorage].DeepCopy(),
+					},
+				}
+				expectTac.Spec.TiDB.Resources = map[string]v1alpha1.AutoResource{
+					"default_tidb": {
+						CPU:    tc.Spec.TiDB.Requests.Cpu().DeepCopy(),
+						Memory: tc.Spec.TiDB.Requests.Memory().DeepCopy(),
+					},
+				}
+				return expectTac
+			}(),
+		},
+		// case7
+		{
+			name: "source tac spec don't have tikv/tidb",
+			sourceTac: func() *v1alpha1.TidbClusterAutoScaler {
+				sourceTAC := newTidbClusterAutoScaler()
+				sourceTAC.Spec.TiDB = nil
+				sourceTAC.Spec.TiKV = nil
+				return sourceTAC
+			}(),
+			expectTac: func() *v1alpha1.TidbClusterAutoScaler {
+				expectTac := newTidbClusterAutoScaler()
+				expectTac.Spec.TiDB = nil
+				expectTac.Spec.TiKV = nil
+				return expectTac
+			}(),
+		},
+		// case8
+		{
+			name: "source tac spec have self-defined resources",
+			sourceTac: func() *v1alpha1.TidbClusterAutoScaler {
+				sourceTAC := newTidbClusterAutoScaler()
+				sourceTAC.Spec.TiKV.Resources = map[string]v1alpha1.AutoResource{
+					"storage": {
+						CPU:     resource.MustParse("1"),
+						Memory:  resource.MustParse("1G"),
+						Storage: resource.MustParse("10G"),
+					},
+					"no-storage": {
+						CPU:    resource.MustParse("1"),
+						Memory: resource.MustParse("1G"),
+					},
+				}
+				sourceTAC.Spec.TiKV.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
+					corev1.ResourceCPU: {
+					},
+				}
+				sourceTAC.Spec.TiDB.Resources = map[string]v1alpha1.AutoResource{
+					"no-storage": {
+						CPU:    resource.MustParse("1"),
+						Memory: resource.MustParse("1G"),
+					},
+				}
+				sourceTAC.Spec.TiDB.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
+					corev1.ResourceCPU: {
+					},
+				}
+				return sourceTAC
+			}(),
+			expectTac: func() *v1alpha1.TidbClusterAutoScaler {
+				expectTac := newTidbClusterAutoScaler()
+				expectTac.Spec.TiKV.Resources = map[string]v1alpha1.AutoResource{
+					"storage": {
+						CPU:     resource.MustParse("1"),
+						Memory:  resource.MustParse("1G"),
+						Storage: resource.MustParse("10G"),
+					},
+					"no-storage": {
+						CPU:    resource.MustParse("1"),
+						Memory: resource.MustParse("1G"),
+					},
+				}
+				expectTac.Spec.TiKV.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
+					corev1.ResourceCPU: {
+						MinThreshold:  pointer.Float64Ptr(0.1),
+						ResourceTypes: []string{"storage"},
+					},
+				}
+				expectTac.Spec.TiDB.Resources = map[string]v1alpha1.AutoResource{
+					"no-storage": {
+						CPU:    resource.MustParse("1"),
+						Memory: resource.MustParse("1G"),
+					},
+				}
+				expectTac.Spec.TiDB.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
+					corev1.ResourceCPU: {
+						MinThreshold:  pointer.Float64Ptr(0.1),
+						ResourceTypes: []string{"no-storage"},
+					},
+				}
+				return expectTac
+			}(),
 		},
 	}
-	defaultTAC(tac, tc)
-	g.Expect(*tac.Spec.TiKV.ScaleOutIntervalSeconds).Should(Equal(int32(300)))
-	g.Expect(*tac.Spec.TiKV.ScaleInIntervalSeconds).Should(Equal(int32(500)))
-	g.Expect(tac.Spec.TiKV.Resources).Should(Equal(map[string]v1alpha1.AutoResource{
-		"default_tikv": {
-			CPU:     tc.Spec.TiKV.Requests.Cpu().DeepCopy(),
-			Memory:  tc.Spec.TiKV.Requests.Memory().DeepCopy(),
-			Storage: tc.Spec.TiKV.Requests[corev1.ResourceStorage].DeepCopy(),
-		},
-	}))
-	g.Expect(*tac.Spec.TiKV.Rules[corev1.ResourceCPU].MinThreshold).Should(BeNumerically("==", 0.1))
-	g.Expect(tac.Spec.TiKV.Rules[corev1.ResourceCPU].ResourceTypes).Should(ConsistOf([]string{"default_tikv"}))
-
-	tac = newTidbClusterAutoScaler()
-	tac.Spec.TiKV = nil
-	tac.Spec.TiDB.ScaleOutIntervalSeconds = nil
-	tac.Spec.TiDB.ScaleInIntervalSeconds = nil
-	tac.Spec.TiDB.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
-		corev1.ResourceCPU: {
-			MaxThreshold: 0.8,
-		},
+	for _, testcase := range testcases {
+		t.Log(testcase.name)
+		tc := newTidbCluster()
+		defaultTAC(testcase.sourceTac, tc)
+		if testcase.sourceTac.Spec.TiKV == nil {
+			g.Expect(testcase.expectTac.Spec.TiKV).Should(BeNil())
+		} else {
+			g.Expect(testcase.sourceTac.Spec.TiKV.Resources).Should(Equal(testcase.expectTac.Spec.TiKV.Resources))
+			g.Expect(testcase.sourceTac.Spec.TiKV.Rules).Should(Equal(testcase.expectTac.Spec.TiKV.Rules))
+		}
+		if testcase.sourceTac.Spec.TiDB == nil {
+			g.Expect(testcase.expectTac.Spec.TiDB).Should(BeNil())
+		} else {
+			g.Expect(testcase.sourceTac.Spec.TiDB.Resources).Should(Equal(testcase.expectTac.Spec.TiDB.Resources))
+			g.Expect(testcase.sourceTac.Spec.TiDB.Rules).Should(Equal(testcase.expectTac.Spec.TiDB.Rules))
+		}
 	}
-	defaultTAC(tac, tc)
-	g.Expect(*tac.Spec.TiDB.ScaleOutIntervalSeconds).Should(Equal(int32(300)))
-	g.Expect(*tac.Spec.TiDB.ScaleInIntervalSeconds).Should(Equal(int32(500)))
-	g.Expect(tac.Spec.TiDB.Resources).Should(Equal(map[string]v1alpha1.AutoResource{
-		"default_tidb": {
-			CPU:     tc.Spec.TiDB.Requests.Cpu().DeepCopy(),
-			Memory:  tc.Spec.TiDB.Requests.Memory().DeepCopy(),
-			Storage: tc.Spec.TiDB.Requests[corev1.ResourceStorage].DeepCopy(),
-		},
-	}))
-	g.Expect(*tac.Spec.TiDB.Rules[corev1.ResourceCPU].MinThreshold).Should(BeNumerically("==", 0.1))
-	g.Expect(tac.Spec.TiDB.Rules[corev1.ResourceCPU].ResourceTypes).Should(ConsistOf([]string{"default_tidb"}))
-
-	tac = newTidbClusterAutoScaler()
-	tac.Spec.TiDB = nil
-	tac.Spec.TiKV.ScaleOutIntervalSeconds = nil
-	tac.Spec.TiKV.ScaleInIntervalSeconds = nil
-	tac.Spec.TiKV.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
-		corev1.ResourceStorage: {
-			MaxThreshold: 0.8,
-		},
-	}
-	tac.Spec.TiKV.Resources = map[string]v1alpha1.AutoResource{
-		"storage": {
-			CPU:     resource.MustParse("1000m"),
-			Memory:  resource.MustParse("2Gi"),
-			Storage: resource.MustParse("200Gi"),
-		},
-	}
-	defaultTAC(tac, tc)
-	g.Expect(tac.Spec.TiKV.Rules[corev1.ResourceStorage].ResourceTypes).Should(ConsistOf([]string{"storage"}))
-
-	tac = newTidbClusterAutoScaler()
-	tac.Spec.TiDB.ScaleOutIntervalSeconds = nil
-	tac.Spec.TiDB.ScaleInIntervalSeconds = nil
-	tac.Spec.TiKV.ScaleOutIntervalSeconds = nil
-	tac.Spec.TiKV.ScaleInIntervalSeconds = nil
-	tac.Spec.TiDB.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
-		corev1.ResourceCPU: {
-			MaxThreshold: 0.8,
-		},
-	}
-	tac.Spec.TiKV.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
-		corev1.ResourceStorage: {
-			MaxThreshold: 0.8,
-		},
-	}
-	defaultTAC(tac, tc)
-	g.Expect(tac.Spec.TiKV.Rules[corev1.ResourceStorage].ResourceTypes).Should(ConsistOf([]string{"default_tikv"}))
-	g.Expect(tac.Spec.TiDB.Rules[corev1.ResourceCPU].ResourceTypes).Should(ConsistOf([]string{"default_tidb"}))
 }
 
 func TestAutoscalerToStrategy(t *testing.T) {

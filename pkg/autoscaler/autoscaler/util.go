@@ -116,7 +116,10 @@ func defaultResources(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoSca
 func defaultResourceTypes(tac *v1alpha1.TidbClusterAutoScaler, rule *v1alpha1.AutoRule, component v1alpha1.MemberType) {
 	resources := getSpecResources(tac, component)
 	if len(rule.ResourceTypes) == 0 {
-		for name := range resources {
+		for name, res := range resources {
+			if component == v1alpha1.TiKVMemberType && res.Storage.Value() < 1 {
+				continue
+			}
 			rule.ResourceTypes = append(rule.ResourceTypes, name)
 		}
 	}
