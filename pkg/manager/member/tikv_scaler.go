@@ -244,11 +244,12 @@ func (s *tikvScaler) preCheck(tc *v1alpha1.TidbCluster, podName string) (bool, e
 	// get the number of stores whose state is up
 	upNumber := 0
 	storesInfo, err := pdClient.GetStores()
-	if storesInfo != nil {
-		for _, store := range storesInfo.Stores {
-			if store.Store.StateName == v1alpha1.TiKVStateUp {
-				upNumber++
-			}
+	if err != nil {
+		return false, fmt.Errorf("failed to get stores info")
+	}
+	for _, store := range storesInfo.Stores {
+		if store.Store.StateName == v1alpha1.TiKVStateUp {
+			upNumber++
 		}
 	}
 
