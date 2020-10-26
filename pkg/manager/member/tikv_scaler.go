@@ -105,33 +105,9 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 	}
 
 	tc, _ := meta.(*v1alpha1.TidbCluster)
-	upNumber := 0
-	storeState := ""
-	for _, store := range tc.Status.TiKV.Stores {
-		if store.State == v1alpha1.TiKVStateUp {
-			upNumber++
-		}
-		if store.PodName == podName {
-			storeState = store.State
-		}
-	}
-	config, err := controller.GetPDClient(s.deps.PDControl, tc).GetConfig()
-	if err != nil {
+
+	if pass, err := s.preCheck(tc, podName); !pass {
 		return err
-	}
-	maxReplicas := *(config.Replication.MaxReplicas)
-	if upNumber < int(maxReplicas) {
-		errMsg := fmt.Sprintf("the number of stores in Up state of TidbCluster [%s/%s] is %d, less than MaxReplicas in PD configuration(%d), can't scale in TiKV, podname %s ", meta.GetNamespace(), meta.GetName(), upNumber, maxReplicas, podName)
-		klog.Error(errMsg)
-		s.deps.Recorder.Event(tc, v1.EventTypeWarning, "FailedScaleIn", errMsg)
-		return nil
-	} else if upNumber == int(maxReplicas) {
-		if storeState == v1alpha1.TiKVStateUp {
-			errMsg := fmt.Sprintf("can't scale in TiKV of TidbCluster [%s/%s], cause the number of up stores is equal to MaxReplicas in PD configuration(%d), and the store in Pod %s which is going to be deleted is up too", meta.GetNamespace(), meta.GetName(), maxReplicas, podName)
-			klog.Error(errMsg)
-			s.deps.Recorder.Event(tc, v1.EventTypeWarning, "FailedScaleIn", errMsg)
-			return nil
-		}
 	}
 
 	if s.deps.CLIConfig.PodWebhookEnabled {
@@ -261,6 +237,49 @@ func (s *tikvScaler) SyncAutoScalerAnn(meta metav1.Object, actual *apps.Stateful
 		return nil
 	}
 	return nil
+}
+
+func (s *tikvScaler) preCheck(tc *v1alpha1.TidbCluster, podName string) (bool, error) {
+	pdClient := controller.GetPDClient(s.deps.PDControl, tc)
+	// get the number of stores whose state is up
+	upNumber := 0
+	storesInfo, err := pdClient.GetStores()
+	if storesInfo != nil {
+		for _, store := range storesInfo.Stores {
+			if store.Store.StateName == v1alpha1.TiKVStateUp {
+				upNumber++
+			}
+		}
+	}
+
+	// get the state of the store which is about to be scaled in
+	storeState := ""
+	for _, store := range tc.Status.TiKV.Stores {
+		if store.PodName == podName {
+			storeState = store.State
+		}
+	}
+
+	config, err := pdClient.GetConfig()
+	if err != nil {
+		return false, err
+	}
+	maxReplicas := *(config.Replication.MaxReplicas)
+	if upNumber < int(maxReplicas) {
+		errMsg := fmt.Sprintf("the number of stores in Up state of TidbCluster [%s/%s] is %d, less than MaxReplicas in PD configuration(%d), can't scale in TiKV, podname %s ", tc.GetNamespace(), tc.GetName(), upNumber, maxReplicas, podName)
+		klog.Error(errMsg)
+		s.deps.Recorder.Event(tc, v1.EventTypeWarning, "FailedScaleIn", errMsg)
+		return false, nil
+	} else if upNumber == int(maxReplicas) {
+		if storeState == v1alpha1.TiKVStateUp {
+			errMsg := fmt.Sprintf("can't scale in TiKV of TidbCluster [%s/%s], cause the number of up stores is equal to MaxReplicas in PD configuration(%d), and the store in Pod %s which is going to be deleted is up too", tc.GetNamespace(), tc.GetName(), maxReplicas, podName)
+			klog.Error(errMsg)
+			s.deps.Recorder.Event(tc, v1.EventTypeWarning, "FailedScaleIn", errMsg)
+			return false, nil
+		}
+	}
+
+	return true, nil
 }
 
 type fakeTiKVScaler struct{}
