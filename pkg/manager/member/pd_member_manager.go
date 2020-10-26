@@ -718,6 +718,17 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	}
 	podSpec.SecurityContext = podSecurityContext
 	podSpec.InitContainers = initContainers
+
+	updateStrategy := apps.StatefulSetUpdateStrategy{}
+	if basePDSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
+		updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
+	} else {
+		updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
+		updateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{
+			Partition: pointer.Int32Ptr(tc.PDStsDesiredReplicas()),
+		}
+	}
+
 	pdSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            setName,
@@ -752,11 +763,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			},
 			ServiceName:         controller.PDPeerMemberName(tcName),
 			PodManagementPolicy: apps.ParallelPodManagement,
-			UpdateStrategy: apps.StatefulSetUpdateStrategy{
-				Type: apps.RollingUpdateStatefulSetStrategyType,
-				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
-					Partition: pointer.Int32Ptr(tc.PDStsDesiredReplicas()),
-				}},
+			UpdateStrategy:      updateStrategy,
 		},
 	}
 
