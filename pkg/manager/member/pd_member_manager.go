@@ -50,7 +50,7 @@ const (
 	tidbClientCertPath = "/var/lib/tidb-client-tls"
 
 	//find a better way to manage store only managed by pd in Operator
-	pdMemberLimitPattern = `%s-pd-\d+\.%s-pd-peer\.%s\.svc%s\:\d+`
+	pdMemberLimitPattern = `%s-pd-\d+\.%s-pd-peer\.%s\.svc(|%s)\:\d+`
 )
 
 type pdMemberManager struct {

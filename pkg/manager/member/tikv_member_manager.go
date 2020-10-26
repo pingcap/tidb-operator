@@ -49,7 +49,7 @@ const (
 	tikvClusterCertPath = "/var/lib/tikv-tls"
 
 	//find a better way to manage store only managed by tikv in Operator
-	tikvStoreLimitPattern = `%s-tikv-\d+\.%s-tikv-peer\.%s\.svc%s\:\d+`
+	tikvStoreLimitPattern = `%s-tikv-\d+\.%s-tikv-peer\.%s\.svc(|%s)\:\d+`
 )
 
 // tikvMemberManager implements manager.Manager.
