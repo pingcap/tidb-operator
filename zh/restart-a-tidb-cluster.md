@@ -14,47 +14,39 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/restart-a-tidb-cluster/']
 
 ## 优雅滚动重启 TiDB 集群组件的所有 Pod 节点
 
-1. 参考[在标准 Kubernetes 上部署 TiDB 集群](deploy-on-general-kubernetes.md)，修改 `${cluster_name}/tidb-cluster.yaml` 文件，为期望优雅滚动重启的 TiDB 集群组件 Spec 添加 annotation `tidb.pingcap.com/restartedAt`，Value 设置为当前时间。以下示例中，为组件 `pd`，`tikv`，`tidb` 都设置了 annotation，表示将优雅滚动重启以上三个 TiDB 集群组件的所有 Pod。可以根据实际情况，只为某个组件设置 annotation。
+参考[在标准 Kubernetes 上部署 TiDB 集群](deploy-on-general-kubernetes.md)，通过 `kubectl edit tc ${name} -n ${namespace}` 修改集群配置，为期望优雅滚动重启的 TiDB 集群组件 Spec 添加 annotation `tidb.pingcap.com/restartedAt`，Value 设置为当前时间。以下示例中，为组件 `pd`、`tikv`、`tidb` 都设置了 annotation，表示将优雅滚动重启以上三个 TiDB 集群组件的所有 Pod。可以根据实际情况，只为某个组件设置 annotation。
 
-    ```yaml
-    apiVersion: pingcap.com/v1alpha1
-    kind: TidbCluster
-    metadata:
-      name: basic
-    spec:
-      version: v4.0.7
-      timezone: UTC
-      pvReclaimPolicy: Delete
-      pd:
-        baseImage: pingcap/pd
-        replicas: 3
-        requests:
-          storage: "1Gi"
-        config: {}
-        annotations:
-          tidb.pingcap.com/restartedAt: 2020-04-20T12:00
-      tikv:
-        baseImage: pingcap/tikv
-        replicas: 3
-        requests:
-          storage: "1Gi"
-        config: {}
-        annotations:
-          tidb.pingcap.com/restartedAt: 2020-04-20T12:00
-      tidb:
-        baseImage: pingcap/tidb
-        replicas: 2
-        service:
-          type: ClusterIP
-        config: {}
-        annotations:
-          tidb.pingcap.com/restartedAt: 2020-04-20T12:00
-    ```
-
-2. 应用更新
-
-    {{< copyable "shell-regular" >}}
-
-    ``` shell
-    kubectl apply -f ${cluster_name} -n ${namespace}
-    ```
+```yaml
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: basic
+spec:
+  version: v4.0.7
+  timezone: UTC
+  pvReclaimPolicy: Delete
+  pd:
+    baseImage: pingcap/pd
+    replicas: 3
+    requests:
+      storage: "1Gi"
+    config: {}
+    annotations:
+      tidb.pingcap.com/restartedAt: 2020-04-20T12:00
+  tikv:
+    baseImage: pingcap/tikv
+    replicas: 3
+    requests:
+      storage: "1Gi"
+    config: {}
+    annotations:
+      tidb.pingcap.com/restartedAt: 2020-04-20T12:00
+  tidb:
+    baseImage: pingcap/tidb
+    replicas: 2
+    service:
+      type: ClusterIP
+    config: {}
+    annotations:
+      tidb.pingcap.com/restartedAt: 2020-04-20T12:00
+```

@@ -16,14 +16,6 @@ TiDB 水平扩缩容操作指的是通过增加或减少节点的数量，来达
 
 使用 kubectl 修改集群所对应的 `TidbCluster` 对象中的 `spec.pd.replicas`、`spec.tidb.replicas`、`spec.tikv.replicas` 至期望值。
 
-如果你本地有描述 TiDB 集群的 yaml 文件，那么你可以修改本地文件中的 `spec.pd.replicas`、`spec.tidb.replicas`、`spec.tikv.replicas` 至期望值，然后使用以下命令将 yaml 文件部署到集群中。
-
-{{< copyable "shell-regular" >}}
-
-```shell
-kubectl apply -f ${target_file}.yaml -n ${namespace}
-```
-
 同样，你可以使用以下命令在线修改 Kubernetes 集群中的 `TidbCluster` 定义。
 
 {{< copyable "shell-regular" >}}
@@ -32,7 +24,7 @@ kubectl apply -f ${target_file}.yaml -n ${namespace}
 kubectl edit tidbcluster ${cluster_name} -n ${namespace}
 ```
 
-无论你是通过本地文件，还是通过在线指令修改，你都可以通过以下指令查看 Kubernetes 集群中对应的 TiDB 集群是否更新到了你的期望定义。
+你可以通过以下指令查看 Kubernetes 集群中对应的 TiDB 集群是否更新到了你的期望定义。
 
 {{< copyable "shell-regular" >}}
 
