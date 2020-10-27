@@ -309,55 +309,6 @@ func TestDefaultTac(t *testing.T) {
 		},
 		// case6
 		{
-			name: "source tac spec don't provide resources",
-			sourceTac: func() *v1alpha1.TidbClusterAutoScaler {
-				sourceTAC := newTidbClusterAutoScaler()
-				sourceTAC.Spec.TiKV.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
-					corev1.ResourceCPU: {
-						MaxThreshold: 0.8,
-					},
-				}
-				sourceTAC.Spec.TiDB.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
-					corev1.ResourceCPU: {
-						MaxThreshold: 0.8,
-					},
-				}
-				return sourceTAC
-			}(),
-			expectTac: func() *v1alpha1.TidbClusterAutoScaler {
-				expectTac := newTidbClusterAutoScaler()
-				expectTac.Spec.TiKV.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
-					corev1.ResourceCPU: {
-						MaxThreshold:  0.8,
-						MinThreshold:  pointer.Float64Ptr(0.1),
-						ResourceTypes: []string{"default_tikv"},
-					},
-				}
-				expectTac.Spec.TiDB.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
-					corev1.ResourceCPU: {
-						MaxThreshold:  0.8,
-						MinThreshold:  pointer.Float64Ptr(0.1),
-						ResourceTypes: []string{"default_tidb"},
-					},
-				}
-				expectTac.Spec.TiKV.Resources = map[string]v1alpha1.AutoResource{
-					"default_tikv": {
-						CPU:     tc.Spec.TiKV.Requests.Cpu().DeepCopy(),
-						Memory:  tc.Spec.TiKV.Requests.Memory().DeepCopy(),
-						Storage: tc.Spec.TiKV.Requests[corev1.ResourceStorage].DeepCopy(),
-					},
-				}
-				expectTac.Spec.TiDB.Resources = map[string]v1alpha1.AutoResource{
-					"default_tidb": {
-						CPU:    tc.Spec.TiDB.Requests.Cpu().DeepCopy(),
-						Memory: tc.Spec.TiDB.Requests.Memory().DeepCopy(),
-					},
-				}
-				return expectTac
-			}(),
-		},
-		// case7
-		{
 			name: "source tac spec don't have tikv/tidb",
 			sourceTac: func() *v1alpha1.TidbClusterAutoScaler {
 				sourceTAC := newTidbClusterAutoScaler()
@@ -372,7 +323,7 @@ func TestDefaultTac(t *testing.T) {
 				return expectTac
 			}(),
 		},
-		// case8
+		// case7
 		{
 			name: "source tac spec have self-defined resources",
 			sourceTac: func() *v1alpha1.TidbClusterAutoScaler {
