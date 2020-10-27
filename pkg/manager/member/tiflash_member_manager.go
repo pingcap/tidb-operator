@@ -39,7 +39,7 @@ import (
 
 const (
 	//find a better way to manage store only managed by tiflash in Operator
-	tiflashStoreLimitPattern = `%s-tiflash-\d+\.%s-tiflash-peer\.%s\.svc\%s:\d+`
+	tiflashStoreLimitPattern = `%s-tiflash-\d+\.%s-tiflash-peer\.%s\.svc%s:\d+`
 	tiflashCertPath          = "/var/lib/tiflash-tls"
 	tiflashCertVolumeName    = "tiflash-tls"
 )
@@ -631,7 +631,7 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 		return err
 	}
 
-	pattern, err := regexp.Compile(fmt.Sprintf(tiflashStoreLimitPattern, tc.Name, tc.Name, tc.Namespace, regexp.QuoteMeta(controller.FormatClusterDomain(tc.Spec.ClusterDomain))))
+	pattern, err := regexp.Compile(fmt.Sprintf(tiflashStoreLimitPattern, tc.Name, tc.Name, tc.Namespace, controller.FormatClusterDomainForRegex(tc.Spec.ClusterDomain)))
 	if err != nil {
 		return err
 	}
@@ -737,7 +737,7 @@ func (m *tiflashMemberManager) setStoreLabelsForTiFlash(tc *v1alpha1.TidbCluster
 		return setCount, nil
 	}
 
-	pattern, err := regexp.Compile(fmt.Sprintf(tiflashStoreLimitPattern, tc.Name, tc.Name, tc.Namespace, regexp.QuoteMeta(controller.FormatClusterDomain(tc.Spec.ClusterDomain))))
+	pattern, err := regexp.Compile(fmt.Sprintf(tiflashStoreLimitPattern, tc.Name, tc.Name, tc.Namespace, controller.FormatClusterDomainForRegex(tc.Spec.ClusterDomain)))
 	if err != nil {
 		return -1, err
 	}

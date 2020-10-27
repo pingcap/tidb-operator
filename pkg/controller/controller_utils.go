@@ -16,6 +16,8 @@ package controller
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -335,6 +337,12 @@ func AnnProm(port int32) map[string]string {
 		"prometheus.io/path":   "/metrics",
 		"prometheus.io/port":   fmt.Sprintf("%d", port),
 	}
+}
+func FormatClusterDomainForRegex(clusterDomain string) string {
+	if clusterDomain == "" {
+		return ""
+	}
+	return "(|"+ regexp.QuoteMeta("." + clusterDomain) + ")"
 }
 
 func FormatClusterDomain(clusterDomain string) string {
