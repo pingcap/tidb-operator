@@ -1876,6 +1876,8 @@ spec:
                   type: object
                 serviceAccount:
                   type: string
+                statefulSetUpdateStrategy:
+                  type: string
                 storageClassName:
                   type: string
                 terminationGracePeriodSeconds:
@@ -3384,6 +3386,8 @@ spec:
                   type: string
                 serviceAccount:
                   type: string
+                statefulSetUpdateStrategy:
+                  type: string
                 storageClassName:
                   type: string
                 terminationGracePeriodSeconds:
@@ -3415,6 +3419,8 @@ spec:
             schedulerName:
               type: string
             serviceAccount:
+              type: string
+            statefulSetUpdateStrategy:
               type: string
             ticdc:
               properties:
@@ -4900,6 +4906,8 @@ spec:
                 schedulerName:
                   type: string
                 serviceAccount:
+                  type: string
+                statefulSetUpdateStrategy:
                   type: string
                 terminationGracePeriodSeconds:
                   format: int64
@@ -6529,6 +6537,8 @@ spec:
                     requests:
                       type: object
                   type: object
+                statefulSetUpdateStrategy:
+                  type: string
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
@@ -8041,6 +8051,8 @@ spec:
                 schedulerName:
                   type: string
                 serviceAccount:
+                  type: string
+                statefulSetUpdateStrategy:
                   type: string
                 storageClaims:
                   items:
@@ -9567,6 +9579,8 @@ spec:
                 schedulerName:
                   type: string
                 serviceAccount:
+                  type: string
+                statefulSetUpdateStrategy:
                   type: string
                 storageClassName:
                   type: string
@@ -11457,6 +11471,8 @@ spec:
                 schedulerName:
                   type: string
                 service: {}
+                statefulSetUpdateStrategy:
+                  type: string
                 storageClassName:
                   type: string
                 storageSize:
@@ -13019,6 +13035,8 @@ spec:
                 requests:
                   type: object
                 schedulerName:
+                  type: string
+                statefulSetUpdateStrategy:
                   type: string
                 storageClassName:
                   type: string

@@ -514,6 +514,16 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		podSpec.ServiceAccountName = tc.Spec.ServiceAccount
 	}
 
+	updateStrategy := apps.StatefulSetUpdateStrategy{}
+	if baseTiKVSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
+		updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
+	} else {
+		updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
+		updateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{
+			Partition: pointer.Int32Ptr(tc.TiKVStsDesiredReplicas()),
+		}
+	}
+
 	tikvset := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            setName,
@@ -537,12 +547,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			},
 			ServiceName:         headlessSvcName,
 			PodManagementPolicy: apps.ParallelPodManagement,
-			UpdateStrategy: apps.StatefulSetUpdateStrategy{
-				Type: apps.RollingUpdateStatefulSetStrategyType,
-				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
-					Partition: pointer.Int32Ptr(tc.TiKVStsDesiredReplicas()),
-				},
-			},
+			UpdateStrategy:      updateStrategy,
 		},
 	}
 
