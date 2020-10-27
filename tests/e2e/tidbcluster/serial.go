@@ -725,7 +725,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			for i := int32(0); i < tc.Spec.TiKV.Replicas; i++ {
 				baseTiKVs = append(baseTiKVs, util.GetPodName(tc, v1alpha1.TiKVMemberType, i))
 			}
-
+			var autoTiKV string
 			// Case 1: No autoscaling cluster and CPU usage over max threshold
 			setCPUUsageAndQuota("35.0", "1.0", v1alpha1.TiKVMemberType.String(), baseTiKVs)
 			// A new cluster should be created and all TiKV stores are up
@@ -746,6 +746,9 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				if autoTc.Spec.TiKV == nil {
 					return false, errors.New("the created cluster has no tikv spec")
 				}
+
+				autoTiKV = util.GetPodName(&autoTc, v1alpha1.TiKVMemberType, 0)
+				setCPUUsageAndQuota("20.0", "1.0", v1alpha1.TiKVMemberType.String(), append(baseTiKVs, autoTiKV))
 
 				if len(autoTc.Status.TiKV.Stores) < int(autoTc.Spec.TiKV.Replicas) {
 					return false, nil
@@ -794,12 +797,10 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectNoError(err, "check create autoscaling tikv cluster error")
 			framework.Logf("success to check create autoscaling tikv cluster")
 
-			autoTiKV := util.GetPodName(&autoTc, v1alpha1.TiKVMemberType, 0)
-
 			// Case 2: Has an autoscaling cluster and CPU usage between max threshold and min threshold
 			setCPUUsageAndQuota("20.0", "1.0", v1alpha1.TiKVMemberType.String(), append(baseTiKVs, autoTiKV))
 			// The TiKV replicas should remain unchanged
-			err = wait.Poll(30*time.Second, 10*time.Minute, func() (done bool, err error) {
+			err = wait.Poll(30*time.Second, 5*time.Minute, func() (done bool, err error) {
 				tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
 
 				if err != nil {
@@ -816,7 +817,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				framework.Logf("confirm autoscaling tikv is not scaled when normal utilization")
 				return false, nil
 			})
-			framework.ExpectEqual(err, wait.ErrWaitTimeout, "expect tikv is not scaled when normal utilization for 10 minutes")
+			framework.ExpectEqual(err, wait.ErrWaitTimeout, "expect tikv is not scaled when normal utilization for 5 minutes")
 
 			// Case 3: Has an autoscaling cluster and CPU usage over max threshold
 			setCPUUsageAndQuota("35.0", "1.0", v1alpha1.TiKVMemberType.String(), append(baseTiKVs, autoTiKV))
@@ -913,6 +914,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			for i := int32(0); i < tc.Spec.TiDB.Replicas; i++ {
 				baseTiDBs = append(baseTiDBs, util.GetPodName(tc, v1alpha1.TiDBMemberType, i))
 			}
+			var autoTiDB string
 
 			// Case 1: No autoscaling cluster and CPU usage over max threshold
 			setCPUUsageAndQuota("35.0", "1.0", v1alpha1.TiDBMemberType.String(), baseTiDBs)
@@ -930,16 +932,18 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				}
 
 				autoTc = tcList.Items[0]
+				autoTiDB = util.GetPodName(&autoTc, v1alpha1.TiDBMemberType, 0)
+				setCPUUsageAndQuota("20.0", "1.0", v1alpha1.TiDBMemberType.String(), append(baseTiDBs, autoTiDB))
 				return true, nil
 			})
 			framework.ExpectNoError(err, "check create autoscaling tidb cluster error")
 			framework.Logf("success to check create autoscaling tidb cluster")
 
-			autoTiDB := util.GetPodName(&autoTc, v1alpha1.TiDBMemberType, 0)
+			autoTiDB = util.GetPodName(&autoTc, v1alpha1.TiDBMemberType, 0)
 			// Case 2: Has an autoscaling cluster and CPU usage between max threshold and min threshold
 			setCPUUsageAndQuota("20.0", "1.0", v1alpha1.TiDBMemberType.String(), append(baseTiDBs, autoTiDB))
 			// The TiDB replicas should remain unchanged
-			err = wait.Poll(30*time.Second, 10*time.Minute, func() (done bool, err error) {
+			err = wait.Poll(30*time.Second, 5*time.Minute, func() (done bool, err error) {
 				tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
 
 				if err != nil {
@@ -956,7 +960,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				framework.Logf("confirm autoscaling tidb is not scaled when normal utilization")
 				return false, nil
 			})
-			framework.ExpectEqual(err, wait.ErrWaitTimeout, "expect tidb is not scaled when normal utilization for 10 minutes")
+			framework.ExpectEqual(err, wait.ErrWaitTimeout, "expect tidb is not scaled when normal utilization for 5 minutes")
 
 			// Case 3: Has an autoscaling cluster and CPU usage over max threshold
 			setCPUUsageAndQuota("35.0", "1.0", v1alpha1.TiDBMemberType.String(), append(baseTiDBs, autoTiDB))
