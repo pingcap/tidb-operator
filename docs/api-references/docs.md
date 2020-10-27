@@ -1495,6 +1495,32 @@ TidbClusterRef
 <p>Cluster is the external cluster, if configured, the components in this TidbCluster will join to this configured cluster.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>pdAddresses</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PDAddresses are the external PD addresses, if configured, the PDs in this TidbCluster will join to the configured PD cluster.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>statefulSetUpdateStrategy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#statefulsetupdatestrategytype-v1-apps">
+Kubernetes apps/v1.StatefulSetUpdateStrategyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StatefulSetUpdateStrategy of TiDB cluster StatefulSets</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -1585,36 +1611,6 @@ TidbClusterRef
 </tr>
 <tr>
 <td>
-<code>metricsUrl</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>We used prometheus to fetch the metrics resources until the pd could provide it.
-MetricsUrl represents the url to fetch the metrics info
-Deprecated</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>monitor</code></br>
-<em>
-<a href="#tidbmonitorref">
-TidbMonitorRef
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>TidbMonitorRef describe the target TidbMonitor, when MetricsUrl and Monitor are both set,
-Operator will use MetricsUrl
-Deprecated</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>tikv</code></br>
 <em>
 <a href="#tikvautoscalerspec">
@@ -1648,8 +1644,8 @@ TidbAutoScalerSpec
 <td>
 <code>status</code></br>
 <em>
-<a href="#tidbclusterautosclaerstatus">
-TidbClusterAutoSclaerStatus
+<a href="#tidbclusterautoscalerstatus">
+TidbClusterAutoScalerStatus
 </a>
 </em>
 </td>
@@ -2287,9 +2283,6 @@ float64
 </tr>
 </tbody>
 </table>
-<h3 id="autoscalerphase">AutoScalerPhase</h3>
-<p>
-</p>
 <h3 id="brconfig">BRConfig</h3>
 <p>
 (<em>Appears on:</em>
@@ -2439,6 +2432,17 @@ bool
 <p>OnLine specifies whether online during restore</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>options</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>Options means options for backup data to remote storage with BR. These options has highest priority.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="backupcondition">BackupCondition</h3>
@@ -2518,7 +2522,8 @@ string
 <h3 id="backupconditiontype">BackupConditionType</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#backupcondition">BackupCondition</a>)
+<a href="#backupcondition">BackupCondition</a>, 
+<a href="#backupstatus">BackupStatus</a>)
 </p>
 <p>
 <p>BackupConditionType represents a valid condition of a Backup.</p>
@@ -3005,6 +3010,19 @@ string
 </tr>
 <tr>
 <td>
+<code>phase</code></br>
+<em>
+<a href="#backupconditiontype">
+BackupConditionType
+</a>
+</em>
+</td>
+<td>
+<p>Phase is a user readable state inferred from the underlying Backup conditions</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>conditions</code></br>
 <em>
 <a href="#backupcondition">
@@ -3049,35 +3067,6 @@ string
 <tbody>
 <tr>
 <td>
-<code>maxReplicas</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out.
-It cannot be less than minReplicas.
-Deprecated</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>minReplicas</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>minReplicas is the lower limit for the number of replicas to which the autoscaler
-can scale down.  It defaults to 1 pod. Scaling is active as long as at least one metric value is
-available.
-Deprecated</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>rules</code></br>
 <em>
 <a href="#autorule">
@@ -3113,33 +3102,6 @@ int32
 <em>(Optional)</em>
 <p>ScaleOutIntervalSeconds represents the duration seconds between each auto-scaling-out
 If not set, the default ScaleOutIntervalSeconds will be set to 300</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>metrics</code></br>
-<em>
-<a href="#custommetric">
-[]CustomMetric
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Deprecated</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>metricsTimeDuration</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>MetricsTimeDuration describes the Time duration to be queried in the Prometheus
-Deprecated</p>
 </td>
 </tr>
 <tr>
@@ -3191,43 +3153,6 @@ The key is resource_type name of the resource</p>
 </tr>
 </thead>
 <tbody>
-<tr>
-<td>
-<code>metrics</code></br>
-<em>
-<a href="#metricsstatus">
-[]MetricsStatus
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>MetricsStatusList describes the metrics status in the last auto-scaling reconciliation</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>currentReplicas</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<p>CurrentReplicas describes the current replicas for the component(tidb/tikv)</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>recommendedReplicas</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>RecommendedReplicas describes the calculated replicas in the last auto-scaling reconciliation for the component(tidb/tikv)</p>
-</td>
-</tr>
 <tr>
 <td>
 <code>lastAutoScalingTimestamp</code></br>
@@ -3717,6 +3642,22 @@ Set this value longer than the expected cleanup time for your process.
 Defaults to 30 seconds.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>statefulSetUpdateStrategy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#statefulsetupdatestrategytype-v1-apps">
+Kubernetes apps/v1.StatefulSetUpdateStrategyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StatefulSetUpdateStrategy indicates the StatefulSetUpdateStrategy that will be
+employed to update Pods in the StatefulSet when a revision is made to
+Template.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="configmapref">ConfigMapRef</h3>
@@ -4017,78 +3958,6 @@ CrdKind
 </em>
 </td>
 <td>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="custommetric">CustomMetric</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#basicautoscalerspec">BasicAutoScalerSpec</a>)
-</p>
-<p>
-<p>Deprecated</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>MetricSpec</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#metricspec-v2beta2-autoscaling">
-Kubernetes autoscaling/v2beta2.MetricSpec
-</a>
-</em>
-</td>
-<td>
-<p>
-(Members of <code>MetricSpec</code> are embedded into this type.)
-</p>
-<em>(Optional)</em>
-<p>metrics contains the specifications for which to use to calculate the
-desired replica count (the maximum replica count across all metrics will
-be used).  The desired replica count is calculated multiplying the
-ratio between the target value and the current value by the current
-number of pods.  Ergo, metrics used must decrease as the pod count is
-increased, and vice-versa.  See the individual metric source types for
-more information about how each type of metric must respond.
-If not set, the auto-scaling won&rsquo;t happen.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>leastStoragePressurePeriodSeconds</code></br>
-<em>
-int64
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>LeastStoragePressurePeriodSeconds is only for the storage auto-scaling case when the resource name in the metricSpec
-is <code>Storage</code>. When the Storage metrics meet the pressure, Operator would wait
-LeastStoragePressurePeriodSeconds duration then able to scale out.
-If not set, the default value is <code>300</code></p>
-</td>
-</tr>
-<tr>
-<td>
-<code>leastRemainAvailableStoragePercent</code></br>
-<em>
-int64
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>LeastRemainAvailableStoragePercent indicates the least remaining available storage percent compare to
-the capacity storage. If the available storage is lower than the capacity storage * LeastRemainAvailableStoragePercent,
-the storage status will become storage pressure and ready to be scaled out.
-LeastRemainAvailableStoragePercent should between 5 and 90. If not set, the default value would be 10</p>
 </td>
 </tr>
 </tbody>
@@ -6881,75 +6750,6 @@ string
 <p>
 <p>MemberType represents member type</p>
 </p>
-<h3 id="metricsstatus">MetricsStatus</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#basicautoscalerstatus">BasicAutoScalerStatus</a>)
-</p>
-<p>
-<p>MetricsStatus describe the basic metrics status in the last auto-scaling reconciliation</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>name</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Name indicates the metrics name</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>currentValue</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>CurrentValue indicates the value calculated in the last auto-scaling reconciliation</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>thresholdValue</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>TargetValue indicates the threshold value for this metrics in auto-scaling</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>StorageMetricsStatus</code></br>
-<em>
-<a href="#storagemetricsstatus">
-StorageMetricsStatus
-</a>
-</em>
-</td>
-<td>
-<p>
-(Members of <code>StorageMetricsStatus</code> are embedded into this type.)
-</p>
-<em>(Optional)</em>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="monitorcomponentaccessor">MonitorComponentAccessor</h3>
 <p>
 </p>
@@ -7256,10 +7056,6 @@ time.Duration
 </tbody>
 </table>
 <h3 id="pdconfig">PDConfig</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#pdspec">PDSpec</a>)
-</p>
 <p>
 <p>PDConfig is the configuration of pd-server</p>
 </p>
@@ -7584,6 +7380,33 @@ DashboardConfig
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pdconfigwraper">PDConfigWraper</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pdspec">PDSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>GenericConfig</code></br>
+<em>
+github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>
@@ -8048,7 +7871,7 @@ Immutable, change should be made through pd-ctl after cluster creation</p>
 </tr>
 <tr>
 <td>
-<code>strictly-match-label,string</code></br>
+<code>strictly-match-label</code></br>
 <em>
 bool
 </em>
@@ -8062,7 +7885,7 @@ Imported from v3.1.0</p>
 </tr>
 <tr>
 <td>
-<code>enable-placement-rules,string</code></br>
+<code>enable-placement-rules</code></br>
 <em>
 bool
 </em>
@@ -8324,7 +8147,7 @@ Immutable, change should be made through pd-ctl after cluster creation</p>
 </tr>
 <tr>
 <td>
-<code>disable-raft-learner,string</code></br>
+<code>disable-raft-learner</code></br>
 <em>
 bool
 </em>
@@ -8337,7 +8160,7 @@ Immutable, change should be made through pd-ctl after cluster creation</p>
 </tr>
 <tr>
 <td>
-<code>disable-remove-down-replica,string</code></br>
+<code>disable-remove-down-replica</code></br>
 <em>
 bool
 </em>
@@ -8351,7 +8174,7 @@ Immutable, change should be made through pd-ctl after cluster creation</p>
 </tr>
 <tr>
 <td>
-<code>disable-replace-offline-replica,string</code></br>
+<code>disable-replace-offline-replica</code></br>
 <em>
 bool
 </em>
@@ -8365,7 +8188,7 @@ Immutable, change should be made through pd-ctl after cluster creation</p>
 </tr>
 <tr>
 <td>
-<code>disable-make-up-replica,string</code></br>
+<code>disable-make-up-replica</code></br>
 <em>
 bool
 </em>
@@ -8379,7 +8202,7 @@ Immutable, change should be made through pd-ctl after cluster creation</p>
 </tr>
 <tr>
 <td>
-<code>disable-remove-extra-replica,string</code></br>
+<code>disable-remove-extra-replica</code></br>
 <em>
 bool
 </em>
@@ -8393,7 +8216,7 @@ Immutable, change should be made through pd-ctl after cluster creation</p>
 </tr>
 <tr>
 <td>
-<code>disable-location-replacement,string</code></br>
+<code>disable-location-replacement</code></br>
 <em>
 bool
 </em>
@@ -8407,7 +8230,7 @@ Immutable, change should be made through pd-ctl after cluster creation</p>
 </tr>
 <tr>
 <td>
-<code>disable-namespace-relocation,string</code></br>
+<code>disable-namespace-relocation</code></br>
 <em>
 bool
 </em>
@@ -8448,7 +8271,7 @@ map[string]string
 </tr>
 <tr>
 <td>
-<code>enable-one-way-merge,string</code></br>
+<code>enable-one-way-merge</code></br>
 <em>
 bool
 </em>
@@ -8461,7 +8284,7 @@ Imported from v3.1.0</p>
 </tr>
 <tr>
 <td>
-<code>enable-cross-table-merge,string</code></br>
+<code>enable-cross-table-merge</code></br>
 <em>
 bool
 </em>
@@ -8616,7 +8439,7 @@ string
 <tbody>
 <tr>
 <td>
-<code>use-region-storage,string</code></br>
+<code>use-region-storage</code></br>
 <em>
 bool
 </em>
@@ -8787,8 +8610,8 @@ Defaults to &ldquo;&rdquo; (volume&rsquo;s root).</p>
 <td>
 <code>config</code></br>
 <em>
-<a href="#pdconfig">
-PDConfig
+<a href="#pdconfigwraper">
+PDConfigWraper
 </a>
 </em>
 </td>
@@ -10156,7 +9979,8 @@ string
 <h3 id="restoreconditiontype">RestoreConditionType</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#restorecondition">RestoreCondition</a>)
+<a href="#restorecondition">RestoreCondition</a>, 
+<a href="#restorestatus">RestoreStatus</a>)
 </p>
 <p>
 <p>RestoreConditionType represents a valid condition of a Restore.</p>
@@ -10409,6 +10233,19 @@ string
 </td>
 <td>
 <p>CommitTs is the snapshot time point of tidb cluster.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>phase</code></br>
+<em>
+<a href="#restoreconditiontype">
+RestoreConditionType
+</a>
+</em>
+</td>
+<td>
+<p>Phase is a user readable state inferred from the underlying Restore conditions</p>
 </td>
 </tr>
 <tr>
@@ -11060,86 +10897,6 @@ string
 <em>(Optional)</em>
 <p>Name of the StorageClass required by the claim.
 More info: <a href="https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1">https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1</a></p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="storagemetricsstatus">StorageMetricsStatus</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#metricsstatus">MetricsStatus</a>)
-</p>
-<p>
-<p>StorageMetricsStatus describe the storage metrics status in the last auto-scaling reconciliation</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>storagePressure</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>StoragePressure indicates whether storage under pressure</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>storagePressureStartTime</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
-Kubernetes meta/v1.Time
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>StoragePressureStartTime indicates the timestamp of the StoragePressure fist become true from false or nil</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>availableStorage</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>capacityStorage</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>baselineAvailableStorage</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>BaselineAvailableStorage indicates the baseline for available storage size.
-This is calculated by the capacity storage size * storage auto-scaling baseline percent value
-If the AvailableStorage is less than the BaselineAvailableStorage, the database is under StoragePressure
-optional</p>
 </td>
 </tr>
 </tbody>
@@ -12759,11 +12516,34 @@ kubectl create secret generic <clusterName>-tidb-client-secret &ndash;namespace=
 </tr>
 </tbody>
 </table>
-<h3 id="tiflashconfig">TiFlashConfig</h3>
+<h3 id="tiflashcommonconfigwraper">TiFlashCommonConfigWraper</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#tiflashspec">TiFlashSpec</a>)
+<a href="#tiflashconfigwraper">TiFlashConfigWraper</a>)
 </p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>GenericConfig</code></br>
+<em>
+github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tiflashconfig">TiFlashConfig</h3>
 <p>
 <p>TiFlashConfig is the configuration of TiFlash.</p>
 </p>
@@ -12801,6 +12581,74 @@ ProxyConfig
 <td>
 <em>(Optional)</em>
 <p>proxyConfig is the Configuration of proxy process</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tiflashconfigwraper">TiFlashConfigWraper</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tiflashspec">TiFlashSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>config</code></br>
+<em>
+<a href="#tiflashcommonconfigwraper">
+TiFlashCommonConfigWraper
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>proxy</code></br>
+<em>
+<a href="#tiflashproxyconfigwraper">
+TiFlashProxyConfigWraper
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tiflashproxyconfigwraper">TiFlashProxyConfigWraper</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tiflashconfigwraper">TiFlashConfigWraper</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>GenericConfig</code></br>
+<em>
+github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>
@@ -12930,8 +12778,8 @@ TiFlash supports multiple disks.</p>
 <td>
 <code>config</code></br>
 <em>
-<a href="#tiflashconfig">
-TiFlashConfig
+<a href="#tiflashconfigwraper">
+TiFlashConfigWraper
 </a>
 </em>
 </td>
@@ -13670,10 +13518,6 @@ CoprocessorCache
 </table>
 <h3 id="tikvconfig">TiKVConfig</h3>
 <p>
-(<em>Appears on:</em>
-<a href="#tikvspec">TiKVSpec</a>)
-</p>
-<p>
 <p>TiKVConfig is the configuration of TiKV.</p>
 </p>
 <table>
@@ -13952,6 +13796,33 @@ TiKVBackupConfig
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tikvconfigwraper">TiKVConfigWraper</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tikvspec">TiKVSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>GenericConfig</code></br>
+<em>
+github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>
@@ -16853,8 +16724,8 @@ Defaults to &ldquo;&rdquo; (volume&rsquo;s root).</p>
 <td>
 <code>config</code></br>
 <em>
-<a href="#tikvconfig">
-TiKVConfig
+<a href="#tikvconfigwraper">
+TiKVConfigWraper
 </a>
 </em>
 </td>
@@ -17637,7 +17508,7 @@ BasicAutoScalerSpec
 <h3 id="tidbautoscalerstatus">TidbAutoScalerStatus</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#tidbclusterautosclaerstatus">TidbClusterAutoSclaerStatus</a>)
+<a href="#tidbclusterautoscalerstatus">TidbClusterAutoScalerStatus</a>)
 </p>
 <p>
 <p>TidbAutoScalerStatus describe the auto-scaling status of tidb</p>
@@ -17736,36 +17607,6 @@ TidbClusterRef
 </tr>
 <tr>
 <td>
-<code>metricsUrl</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>We used prometheus to fetch the metrics resources until the pd could provide it.
-MetricsUrl represents the url to fetch the metrics info
-Deprecated</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>monitor</code></br>
-<em>
-<a href="#tidbmonitorref">
-TidbMonitorRef
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>TidbMonitorRef describe the target TidbMonitor, when MetricsUrl and Monitor are both set,
-Operator will use MetricsUrl
-Deprecated</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>tikv</code></br>
 <em>
 <a href="#tikvautoscalerspec">
@@ -17794,13 +17635,13 @@ TidbAutoScalerSpec
 </tr>
 </tbody>
 </table>
-<h3 id="tidbclusterautosclaerstatus">TidbClusterAutoSclaerStatus</h3>
+<h3 id="tidbclusterautoscalerstatus">TidbClusterAutoScalerStatus</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbclusterautoscaler">TidbClusterAutoScaler</a>)
 </p>
 <p>
-<p>TidbClusterAutoSclaerStatus describe the whole status</p>
+<p>TidbClusterAutoScalerStatus describe the whole status</p>
 </p>
 <table>
 <thead>
@@ -17815,13 +17656,13 @@ TidbAutoScalerSpec
 <code>tikv</code></br>
 <em>
 <a href="#tikvautoscalerstatus">
-TikvAutoScalerStatus
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TikvAutoScalerStatus
 </a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Tikv describes the status for the tikv in the last auto-scaling reconciliation</p>
+<p>Tikv describes the status of each group for the tikv in the last auto-scaling reconciliation</p>
 </td>
 </tr>
 <tr>
@@ -17829,13 +17670,13 @@ TikvAutoScalerStatus
 <code>tidb</code></br>
 <em>
 <a href="#tidbautoscalerstatus">
-TidbAutoScalerStatus
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbAutoScalerStatus
 </a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Tidb describes the status for the tidb in the last auto-scaling reconciliation</p>
+<p>Tidb describes the status of each group for the tidb in the last auto-scaling reconciliation</p>
 </td>
 </tr>
 </tbody>
@@ -18404,6 +18245,32 @@ TidbClusterRef
 <p>Cluster is the external cluster, if configured, the components in this TidbCluster will join to this configured cluster.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>pdAddresses</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PDAddresses are the external PD addresses, if configured, the PDs in this TidbCluster will join to the configured PD cluster.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>statefulSetUpdateStrategy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#statefulsetupdatestrategytype-v1-apps">
+Kubernetes apps/v1.StatefulSetUpdateStrategyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StatefulSetUpdateStrategy of TiDB cluster StatefulSets</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbclusterstatus">TidbClusterStatus</h3>
@@ -18744,7 +18611,6 @@ InitializePhase
 <h3 id="tidbmonitorref">TidbMonitorRef</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#tidbclusterautoscalerspec">TidbClusterAutoScalerSpec</a>, 
 <a href="#tidbclusterstatus">TidbClusterStatus</a>)
 </p>
 <p>
@@ -19089,7 +18955,7 @@ BasicAutoScalerSpec
 <h3 id="tikvautoscalerstatus">TikvAutoScalerStatus</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#tidbclusterautosclaerstatus">TidbClusterAutoSclaerStatus</a>)
+<a href="#tidbclusterautoscalerstatus">TidbClusterAutoScalerStatus</a>)
 </p>
 <p>
 <p>TikvAutoScalerStatus describe the auto-scaling status of tikv</p>

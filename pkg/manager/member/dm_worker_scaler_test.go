@@ -20,8 +20,6 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
-	kubeinformers "k8s.io/client-go/informers"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 
 	. "github.com/onsi/gomega"
@@ -243,15 +241,12 @@ func TestWorkerScalerScaleIn(t *testing.T) {
 }
 
 func newFakeWorkerScaler() (*workerScaler, *dmapi.FakeMasterControl, cache.Indexer, *controller.FakePVCControl) {
-	kubeCli := kubefake.NewSimpleClientset()
-
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
-	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
-	masterControl := dmapi.NewFakeMasterControl(kubeCli)
-	pvcControl := controller.NewFakePVCControl(pvcInformer)
-
-	return &workerScaler{generalScaler{pvcInformer.Lister(), pvcControl}},
-		masterControl, pvcInformer.Informer().GetIndexer(), pvcControl
+	fakeDeps := controller.NewFakeDependencies()
+	scaler := &workerScaler{generalScaler{deps: fakeDeps}}
+	masterControl := fakeDeps.DMMasterControl.(*dmapi.FakeMasterControl)
+	pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
+	pvcControl := fakeDeps.PVCControl.(*controller.FakePVCControl)
+	return scaler, masterControl, pvcIndexer, pvcControl
 }
 
 func normalWorkerMember(dc *v1alpha1.DMCluster) {

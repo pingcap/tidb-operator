@@ -24,9 +24,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	kubeinformers "k8s.io/client-go/informers"
 	podinformers "k8s.io/client-go/informers/core/v1"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/utils/pointer"
 )
 
@@ -194,10 +192,11 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 }
 
 func newTiDBUpgrader() (Upgrader, *controller.FakeTiDBControl, podinformers.PodInformer) {
-	kubeCli := kubefake.NewSimpleClientset()
-	tidbControl := controller.NewFakeTiDBControl()
-	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
-	return &tidbUpgrader{tidbControl: tidbControl, podLister: podInformer.Lister()}, tidbControl, podInformer
+	fakeDeps := controller.NewFakeDependencies()
+	upgrader := &tidbUpgrader{fakeDeps}
+	tidbControl := fakeDeps.TiDBControl.(*controller.FakeTiDBControl)
+	podInformer := fakeDeps.KubeInformerFactory.Core().V1().Pods()
+	return upgrader, tidbControl, podInformer
 }
 
 func newStatefulSetForTiDBUpgrader() *apps.StatefulSet {

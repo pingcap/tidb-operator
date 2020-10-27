@@ -30,8 +30,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
-	kubeinformers "k8s.io/client-go/informers"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog"
 	"k8s.io/utils/pointer"
@@ -166,13 +164,10 @@ func TestGeneralScalerDeleteAllDeferDeletingPVC(t *testing.T) {
 }
 
 func newFakeGeneralScaler() (*generalScaler, cache.Indexer, *controller.FakePVCControl) {
-	kubeCli := kubefake.NewSimpleClientset()
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
-	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
-	pvcControl := controller.NewFakePVCControl(pvcInformer)
-
-	return &generalScaler{pvcLister: pvcInformer.Lister(), pvcControl: pvcControl},
-		pvcInformer.Informer().GetIndexer(), pvcControl
+	fakeDeps := controller.NewFakeDependencies()
+	pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
+	pvcControl := fakeDeps.PVCControl.(*controller.FakePVCControl)
+	return &generalScaler{deps: fakeDeps}, pvcIndexer, pvcControl
 }
 
 func TestScaleOne(t *testing.T) {
@@ -798,11 +793,11 @@ func TestGeneralScalerUpdateDeferDeletingPVC(t *testing.T) {
 			updateFailed: false,
 			expectFn: func(g *GomegaWithT, err error, gs *generalScaler, ns string) {
 				g.Expect(err).NotTo(HaveOccurred())
-				pvc, err := gs.pvcLister.PersistentVolumeClaims(ns).Get("pvc-0")
+				pvc, err := gs.deps.PVCLister.PersistentVolumeClaims(ns).Get("pvc-0")
 				g.Expect(err).NotTo(HaveOccurred())
 				_, ok := pvc.Annotations[label.AnnPVCDeferDeleting]
 				g.Expect(ok).To(Equal(true))
-				pvc, err = gs.pvcLister.PersistentVolumeClaims(ns).Get("pvc-1")
+				pvc, err = gs.deps.PVCLister.PersistentVolumeClaims(ns).Get("pvc-1")
 				g.Expect(err).NotTo(HaveOccurred())
 				_, ok = pvc.Annotations[label.AnnPVCDeferDeleting]
 				g.Expect(ok).To(Equal(true))

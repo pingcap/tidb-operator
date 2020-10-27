@@ -7,9 +7,11 @@ metadata:
   name: ns1
   namespace: ns1
 spec:
-  version: v4.0.6
+  version: v4.0.7
   timezone: UTC
-  pvReclaimPolicy: Delete
+  pvReclaimPolicy: Retain
+  enableDynamicConfiguration: true
+  configUpdateStrategy: RollingUpdate
   imagePullPolicy: IfNotPresent
   discovery: {}
   pd:
