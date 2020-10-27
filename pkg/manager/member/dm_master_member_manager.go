@@ -203,6 +203,16 @@ func (m *masterMemberManager) syncMasterStatefulSetForDMCluster(dc *v1alpha1.DMC
 		return controller.RequeueErrorf("DMCluster: [%s/%s], waiting for dm-master cluster running", ns, dcName)
 	}
 
+	if !dc.Status.Master.Synced {
+		force := NeedForceUpgrade(dc.Annotations)
+		if force {
+			dc.Status.Master.Phase = v1alpha1.UpgradePhase
+			setUpgradePartition(newMasterSet, 0)
+			errSTS := updateStatefulSet(m.deps.StatefulSetControl, dc, newMasterSet, oldMasterSet)
+			return controller.RequeueErrorf("dmcluster: [%s/%s]'s dm-master needs force upgrade, %v", ns, dcName, errSTS)
+		}
+	}
+
 	// Scaling takes precedence over upgrading because:
 	// - if a dm-master fails in the upgrading, users may want to delete it or add
 	//   new replicas
@@ -222,16 +232,6 @@ func (m *masterMemberManager) syncMasterStatefulSetForDMCluster(dc *v1alpha1.DMC
 			if err := m.failover.Failover(dc); err != nil {
 				return err
 			}
-		}
-	}
-
-	if !dc.Status.Master.Synced {
-		force := NeedForceUpgrade(dc.Annotations)
-		if force {
-			dc.Status.Master.Phase = v1alpha1.UpgradePhase
-			setUpgradePartition(newMasterSet, 0)
-			errSTS := updateStatefulSet(m.deps.StatefulSetControl, dc, newMasterSet, oldMasterSet)
-			return controller.RequeueErrorf("dmcluster: [%s/%s]'s dm-master needs force upgrade, %v", ns, dcName, errSTS)
 		}
 	}
 
