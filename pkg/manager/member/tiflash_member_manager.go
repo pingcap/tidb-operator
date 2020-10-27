@@ -537,7 +537,7 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 			ServiceName:          headlessSvcName,
 			PodManagementPolicy:  apps.ParallelPodManagement,
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{
-				Type: apps.RollingUpdateStatefulSetStrategyType,
+				Type: baseTiFlashSpec.StatefulSetUpdateStrategy(),
 			},
 		},
 	}
