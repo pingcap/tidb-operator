@@ -117,8 +117,21 @@ func TestDefaultTac(t *testing.T) {
 	}{
 		// case1
 		{
-			name:      "source tac spec don't have resources",
-			sourceTac: newTidbClusterAutoScaler(),
+			name: "source tac spec don't have resources",
+			sourceTac: func() *v1alpha1.TidbClusterAutoScaler {
+				sourceTAC := newTidbClusterAutoScaler()
+				sourceTAC.Spec.TiDB.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
+					corev1.ResourceCPU: {
+						MaxThreshold: 0.8,
+					},
+				}
+				sourceTAC.Spec.TiKV.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
+					corev1.ResourceCPU: {
+						MaxThreshold: 0.8,
+					},
+				}
+				return sourceTAC
+			}(),
 			expectTac: func() *v1alpha1.TidbClusterAutoScaler {
 				expectTac := newTidbClusterAutoScaler()
 				expectTac.Spec.TiKV.Resources = map[string]v1alpha1.AutoResource{
@@ -132,6 +145,20 @@ func TestDefaultTac(t *testing.T) {
 					"default_tidb": {
 						CPU:    tc.Spec.TiDB.Requests.Cpu().DeepCopy(),
 						Memory: tc.Spec.TiDB.Requests.Memory().DeepCopy(),
+					},
+				}
+				expectTac.Spec.TiKV.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
+					corev1.ResourceCPU: {
+						MaxThreshold:  0.8,
+						MinThreshold:  pointer.Float64Ptr(0.1),
+						ResourceTypes: []string{"default_tikv"},
+					},
+				}
+				expectTac.Spec.TiDB.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
+					corev1.ResourceCPU: {
+						MaxThreshold:  0.8,
+						MinThreshold:  pointer.Float64Ptr(0.1),
+						ResourceTypes: []string{"default_tidb"},
 					},
 				}
 				return expectTac
@@ -151,6 +178,7 @@ func TestDefaultTac(t *testing.T) {
 				}
 				sourceTAC.Spec.TiDB.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
 					corev1.ResourceCPU: {
+						MaxThreshold: 0.8,
 					},
 				}
 				return sourceTAC
@@ -166,6 +194,7 @@ func TestDefaultTac(t *testing.T) {
 				}
 				expectTac.Spec.TiDB.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
 					corev1.ResourceCPU: {
+						MaxThreshold:  0.8,
 						MinThreshold:  pointer.Float64Ptr(0.1),
 						ResourceTypes: []string{"case2"},
 					},
@@ -188,6 +217,7 @@ func TestDefaultTac(t *testing.T) {
 				}
 				sourceTAC.Spec.TiKV.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
 					corev1.ResourceCPU: {
+						MaxThreshold: 0.8,
 					},
 				}
 				return sourceTAC
@@ -203,6 +233,7 @@ func TestDefaultTac(t *testing.T) {
 				}
 				expectTac.Spec.TiKV.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
 					corev1.ResourceCPU: {
+						MaxThreshold:  0.8,
 						MinThreshold:  pointer.Float64Ptr(0.1),
 						ResourceTypes: []string{"case3"},
 					},
@@ -219,6 +250,7 @@ func TestDefaultTac(t *testing.T) {
 				sourceTAC.Spec.TiKV = nil
 				sourceTAC.Spec.TiDB.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
 					corev1.ResourceCPU: {
+						MaxThreshold: 0.8,
 					},
 				}
 				return sourceTAC
@@ -233,6 +265,7 @@ func TestDefaultTac(t *testing.T) {
 				}
 				expectTac.Spec.TiDB.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
 					corev1.ResourceCPU: {
+						MaxThreshold:  0.8,
 						MinThreshold:  pointer.Float64Ptr(0.1),
 						ResourceTypes: []string{"default_tidb"},
 					},
@@ -248,6 +281,7 @@ func TestDefaultTac(t *testing.T) {
 				sourceTAC := newTidbClusterAutoScaler()
 				sourceTAC.Spec.TiKV.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
 					corev1.ResourceCPU: {
+						MaxThreshold: 0.8,
 					},
 				}
 				sourceTAC.Spec.TiDB = nil
@@ -264,6 +298,7 @@ func TestDefaultTac(t *testing.T) {
 				}
 				expectTac.Spec.TiKV.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
 					corev1.ResourceCPU: {
+						MaxThreshold:  0.8,
 						MinThreshold:  pointer.Float64Ptr(0.1),
 						ResourceTypes: []string{"default_tikv"},
 					},
@@ -274,15 +309,17 @@ func TestDefaultTac(t *testing.T) {
 		},
 		// case6
 		{
-			name: "source tac spec don't have rules",
+			name: "source tac spec don't provide resources",
 			sourceTac: func() *v1alpha1.TidbClusterAutoScaler {
 				sourceTAC := newTidbClusterAutoScaler()
 				sourceTAC.Spec.TiKV.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
 					corev1.ResourceCPU: {
+						MaxThreshold: 0.8,
 					},
 				}
 				sourceTAC.Spec.TiDB.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
 					corev1.ResourceCPU: {
+						MaxThreshold: 0.8,
 					},
 				}
 				return sourceTAC
@@ -291,12 +328,14 @@ func TestDefaultTac(t *testing.T) {
 				expectTac := newTidbClusterAutoScaler()
 				expectTac.Spec.TiKV.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
 					corev1.ResourceCPU: {
+						MaxThreshold:  0.8,
 						MinThreshold:  pointer.Float64Ptr(0.1),
 						ResourceTypes: []string{"default_tikv"},
 					},
 				}
 				expectTac.Spec.TiDB.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
 					corev1.ResourceCPU: {
+						MaxThreshold:  0.8,
 						MinThreshold:  pointer.Float64Ptr(0.1),
 						ResourceTypes: []string{"default_tidb"},
 					},
@@ -344,13 +383,10 @@ func TestDefaultTac(t *testing.T) {
 						Memory:  resource.MustParse("1G"),
 						Storage: resource.MustParse("10G"),
 					},
-					"no-storage": {
-						CPU:    resource.MustParse("1"),
-						Memory: resource.MustParse("1G"),
-					},
 				}
 				sourceTAC.Spec.TiKV.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
 					corev1.ResourceCPU: {
+						MaxThreshold: 0.8,
 					},
 				}
 				sourceTAC.Spec.TiDB.Resources = map[string]v1alpha1.AutoResource{
@@ -358,9 +394,15 @@ func TestDefaultTac(t *testing.T) {
 						CPU:    resource.MustParse("1"),
 						Memory: resource.MustParse("1G"),
 					},
+					"storage": {
+						CPU:     resource.MustParse("1"),
+						Memory:  resource.MustParse("1G"),
+						Storage: resource.MustParse("10G"),
+					},
 				}
 				sourceTAC.Spec.TiDB.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
 					corev1.ResourceCPU: {
+						MaxThreshold: 0.8,
 					},
 				}
 				return sourceTAC
@@ -373,13 +415,10 @@ func TestDefaultTac(t *testing.T) {
 						Memory:  resource.MustParse("1G"),
 						Storage: resource.MustParse("10G"),
 					},
-					"no-storage": {
-						CPU:    resource.MustParse("1"),
-						Memory: resource.MustParse("1G"),
-					},
 				}
 				expectTac.Spec.TiKV.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
 					corev1.ResourceCPU: {
+						MaxThreshold:  0.8,
 						MinThreshold:  pointer.Float64Ptr(0.1),
 						ResourceTypes: []string{"storage"},
 					},
@@ -389,11 +428,17 @@ func TestDefaultTac(t *testing.T) {
 						CPU:    resource.MustParse("1"),
 						Memory: resource.MustParse("1G"),
 					},
+					"storage": {
+						CPU:     resource.MustParse("1"),
+						Memory:  resource.MustParse("1G"),
+						Storage: resource.MustParse("10G"),
+					},
 				}
 				expectTac.Spec.TiDB.Rules = map[corev1.ResourceName]v1alpha1.AutoRule{
 					corev1.ResourceCPU: {
+						MaxThreshold:  0.8,
 						MinThreshold:  pointer.Float64Ptr(0.1),
-						ResourceTypes: []string{"no-storage"},
+						ResourceTypes: []string{"no-storage", "storage"},
 					},
 				}
 				return expectTac
@@ -416,6 +461,7 @@ func TestDefaultTac(t *testing.T) {
 			g.Expect(testcase.sourceTac.Spec.TiDB.Resources).Should(Equal(testcase.expectTac.Spec.TiDB.Resources))
 			g.Expect(testcase.sourceTac.Spec.TiDB.Rules).Should(Equal(testcase.expectTac.Spec.TiDB.Rules))
 		}
+		g.Expect(validateTAC(testcase.sourceTac)).Should(BeNil())
 	}
 }
 
