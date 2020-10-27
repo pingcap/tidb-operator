@@ -90,7 +90,7 @@ func DefaultCLIConfig() *CLIConfig {
 		RenewDuration:          5 * time.Second,
 		RetryPeriod:            3 * time.Second,
 		WaitDuration:           5 * time.Second,
-		ResyncDuration:         5 * time.Minute,
+		ResyncDuration:         30 * time.Second,
 		TiDBBackupManagerImage: "pingcap/tidb-backup-manager:latest",
 		TiDBDiscoveryImage:     "pingcap/tidb-operator:latest",
 	}
