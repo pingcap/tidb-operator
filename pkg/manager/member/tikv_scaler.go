@@ -106,7 +106,7 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 
 	tc, _ := meta.(*v1alpha1.TidbCluster)
 
-	if pass, err := s.preCheck(tc, podName); !pass {
+	if pass, err := s.preCheckUpStores(tc, podName); !pass {
 		return err
 	}
 
