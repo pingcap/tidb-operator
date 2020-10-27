@@ -239,7 +239,7 @@ func (s *tikvScaler) SyncAutoScalerAnn(meta metav1.Object, actual *apps.Stateful
 	return nil
 }
 
-func (s *tikvScaler) preCheck(tc *v1alpha1.TidbCluster, podName string) (bool, error) {
+func (s *tikvScaler) preCheckUpStores(tc *v1alpha1.TidbCluster, podName string) (bool, error) {
 	pdClient := controller.GetPDClient(s.deps.PDControl, tc)
 	// get the number of stores whose state is up
 	upNumber := 0
