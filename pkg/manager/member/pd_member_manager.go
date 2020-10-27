@@ -208,14 +208,12 @@ func (m *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PD cluster running", ns, tcName)
 	}
 
-	if !tc.Status.PD.Synced {
-		force := NeedForceUpgrade(tc.Annotations)
-		if force {
-			tc.Status.PD.Phase = v1alpha1.UpgradePhase
-			setUpgradePartition(newPDSet, 0)
-			errSTS := updateStatefulSet(m.deps.StatefulSetControl, tc, newPDSet, oldPDSet)
-			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd needs force upgrade, %v", ns, tcName, errSTS)
-		}
+	// Force update takes precedence over scaling because force upgrade won't take effect when cluster gets stuck at scaling
+	if !tc.Status.PD.Synced && NeedForceUpgrade(tc.Annotations) {
+		tc.Status.PD.Phase = v1alpha1.UpgradePhase
+		setUpgradePartition(newPDSet, 0)
+		errSTS := updateStatefulSet(m.deps.StatefulSetControl, tc, newPDSet, oldPDSet)
+		return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd needs force upgrade, %v", ns, tcName, errSTS)
 	}
 
 	// Scaling takes precedence over upgrading because:
