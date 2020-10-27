@@ -1840,8 +1840,8 @@ type WorkerFailureMember struct {
 
 // StorageVolume is TiKV storage information
 type StorageVolume struct {
-	Name             string  `json:"name,omitempty"`
+	Name             string  `json:"name"`
 	StorageClassName *string `json:"storageClassName,omitempty"`
-	StorageSize      string  `json:"storageSize,omitempty"`
-	MountPath        string  `json:"mountPath,omitempty"`
+	StorageSize      string  `json:"storageSize"`
+	MountPath        string  `json:"mountPath"`
 }

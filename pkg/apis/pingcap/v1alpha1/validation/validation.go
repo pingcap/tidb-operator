@@ -144,6 +144,9 @@ func validateTiKVSpec(spec *v1alpha1.TiKVSpec, fldPath *field.Path) field.ErrorL
 	if len(spec.DataSubDir) > 0 {
 		allErrs = append(allErrs, validateLocalDescendingPath(spec.DataSubDir, fldPath.Child("dataSubDir"))...)
 	}
+	if len(spec.StorageVolumes) > 0 {
+		allErrs = append(allErrs, validateStorageVolumes(spec.StorageVolumes, fldPath.Child("storageVolumes"))...)
+	}
 	allErrs = append(allErrs, validateTimeDurationStr(spec.EvictLeaderTimeout, fldPath.Child("evictLeaderTimeout"))...)
 	return allErrs
 }
@@ -278,6 +281,18 @@ func validateRequestsStorage(requests corev1.ResourceList, fldPath *field.Path) 
 	allErrs := field.ErrorList{}
 	if _, ok := requests[corev1.ResourceStorage]; !ok {
 		allErrs = append(allErrs, field.Required(fldPath.Child("requests.storage").Key((string(corev1.ResourceStorage))), "storage request must not be empty"))
+	}
+	return allErrs
+}
+
+//validateTiKVStorageSize validates resources requests storage
+func validateStorageVolumes(storageVolumes []v1alpha1.StorageVolume, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	for i, _ := range storageVolumes {
+		idxPath := fldPath.Index(i)
+		allErrs = append(allErrs, field.Required(idxPath.Child("name"), "name must not be empty\""))
+		allErrs = append(allErrs, field.Required(idxPath.Child("storageSize"), "storage request must not be empty"))
+		allErrs = append(allErrs, field.Required(idxPath.Child("mountPath"), "mountPath must not be empty"))
 	}
 	return allErrs
 }
