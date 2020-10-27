@@ -79,42 +79,9 @@ func (s *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 		return fmt.Errorf("tikvScaler.ScaleIn: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
 	}
 
-<<<<<<< HEAD
-	upNumber := 0
-	storeState := ""
-	for _, store := range tc.Status.TiKV.Stores {
-		if store.State == v1alpha1.TiKVStateUp {
-			upNumber++
-		}
-		if store.PodName == podName {
-			storeState = store.State
-		}
-	}
-	config, err := controller.GetPDClient(s.deps.PDControl, tc).GetConfig()
-	if err != nil {
-		return err
-	}
-	maxReplicas := *(config.Replication.MaxReplicas)
-	if upNumber < int(maxReplicas) {
-		errMsg := fmt.Sprintf("the number of stores in Up state of TidbCluster [%s/%s] is %d, less than MaxReplicas in PD configuration(%d), can't scale in TiKV, podname %s ", tc.GetNamespace(), tc.GetName(), upNumber, maxReplicas, podName)
-		klog.Error(errMsg)
-		s.deps.Recorder.Event(tc, v1.EventTypeWarning, "FailedScaleIn", errMsg)
-		return nil
-	} else if upNumber == int(maxReplicas) {
-		if storeState == v1alpha1.TiKVStateUp {
-			errMsg := fmt.Sprintf("can't scale in TiKV of TidbCluster [%s/%s], cause the number of up stores is equal to MaxReplicas in PD configuration(%d), and the store in Pod %s which is going to be deleted is up too", tc.GetNamespace(), tc.GetName(), maxReplicas, podName)
-			klog.Error(errMsg)
-			s.deps.Recorder.Event(tc, v1.EventTypeWarning, "FailedScaleIn", errMsg)
-			return nil
-		}
-	}
-=======
-	tc, _ := meta.(*v1alpha1.TidbCluster)
-
 	if pass, err := s.preCheckUpStores(tc, podName); !pass {
 		return err
 	}
->>>>>>> e13879b3... heterogeneous TiKV cluster cannot be scaled in to less than 3 replicas (#3428)
 
 	if s.deps.CLIConfig.PodWebhookEnabled {
 		setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
