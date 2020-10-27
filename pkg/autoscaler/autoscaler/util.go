@@ -117,6 +117,7 @@ func defaultResourceTypes(tac *v1alpha1.TidbClusterAutoScaler, rule *v1alpha1.Au
 	resources := getSpecResources(tac, component)
 	if len(rule.ResourceTypes) == 0 {
 		for name, res := range resources {
+			// filtering resources which don't have storage when member type is TiKV during auto scaling.
 			if component == v1alpha1.TiKVMemberType && res.Storage.Value() < 1 {
 				continue
 			}
