@@ -17,7 +17,6 @@ import (
 	"context"
 	"fmt"
 	"regexp"
-	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
