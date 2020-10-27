@@ -288,7 +288,7 @@ func validateRequestsStorage(requests corev1.ResourceList, fldPath *field.Path) 
 //validateTiKVStorageSize validates resources requests storage
 func validateStorageVolumes(storageVolumes []v1alpha1.StorageVolume, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
-	for i, _ := range storageVolumes {
+	for i := range storageVolumes {
 		idxPath := fldPath.Index(i)
 		allErrs = append(allErrs, field.Required(idxPath.Child("name"), "name must not be empty\""))
 		allErrs = append(allErrs, field.Required(idxPath.Child("storageSize"), "storage request must not be empty"))

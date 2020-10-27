@@ -381,7 +381,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 				corev1.ResourceStorage: resource.MustParse(storageVolume.StorageSize),
 			})
 			if err != nil {
-				klog.Error("cannot parse storage request for tikv, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
+				klog.Errorf("cannot parse storage request for tikv, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
 				break
 			}
 			var storageClassName *string
