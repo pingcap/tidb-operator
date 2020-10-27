@@ -157,7 +157,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 		pvcUpdateErr  bool
 		errExpectFn   func(*GomegaWithT, error)
 		changed       bool
-		getStoresFun  func(action *pdapi.Action) (interface{}, error)
+		getStoresFn   func(action *pdapi.Action) (interface{}, error)
 	}
 
 	resyncDuration := time.Duration(0)
@@ -216,8 +216,8 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			}, nil
 		})
 
-		if test.getStoresFun == nil {
-			test.getStoresFun = func(action *pdapi.Action) (interface{}, error) {
+		if test.getStoresFn == nil {
+			test.getStoresFn = func(action *pdapi.Action) (interface{}, error) {
 				store := &pdapi.StoreInfo{
 					Store: &pdapi.MetaStore{
 						StateName: v1alpha1.TiKVStateUp,
@@ -229,7 +229,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 				}, nil
 			}
 		}
-		pdClient.AddReaction(pdapi.GetStoresActionType, test.getStoresFun)
+		pdClient.AddReaction(pdapi.GetStoresActionType, test.getStoresFn)
 
 		if test.delStoreErr {
 			pdClient.AddReaction(pdapi.DeleteStoreActionType, func(action *pdapi.Action) (interface{}, error) {
@@ -453,7 +453,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			pvcUpdateErr:  false,
 			errExpectFn:   errExpectNil,
 			changed:       false,
-			getStoresFun: func(action *pdapi.Action) (interface{}, error) {
+			getStoresFn: func(action *pdapi.Action) (interface{}, error) {
 				store := &pdapi.StoreInfo{
 					Store: &pdapi.MetaStore{
 						StateName: v1alpha1.TiKVStateUp,
