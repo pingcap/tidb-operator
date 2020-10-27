@@ -26,9 +26,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	kubeinformers "k8s.io/client-go/informers"
 	podinformers "k8s.io/client-go/informers/core/v1"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/utils/pointer"
 )
 
@@ -269,15 +267,12 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 }
 
 func newPDUpgrader() (Upgrader, *pdapi.FakePDControl, *controller.FakePodControl, podinformers.PodInformer) {
-	kubeCli := kubefake.NewSimpleClientset()
-	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
-	pdControl := pdapi.NewFakePDControl(kubeCli)
-	podControl := controller.NewFakePodControl(podInformer)
-	return &pdUpgrader{
-			pdControl:  pdControl,
-			podControl: podControl,
-			podLister:  podInformer.Lister()},
-		pdControl, podControl, podInformer
+	fakeDeps := controller.NewFakeDependencies()
+	pdUpgrader := &pdUpgrader{deps: fakeDeps}
+	pdControl := fakeDeps.PDControl.(*pdapi.FakePDControl)
+	podControl := fakeDeps.PodControl.(*controller.FakePodControl)
+	podInformer := fakeDeps.KubeInformerFactory.Core().V1().Pods()
+	return pdUpgrader, pdControl, podControl, podInformer
 }
 
 func newStatefulSetForPDUpgrader() *apps.StatefulSet {

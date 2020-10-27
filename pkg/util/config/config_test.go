@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/util/json"
 )
@@ -24,6 +25,67 @@ import (
 type Simple struct {
 	A string
 	B int
+}
+
+func TestStringSlice(t *testing.T) {
+	g := NewGomegaWithT(t)
+	data := `slice = ["s1", "s2"]
+	not_slice = "ok"`
+
+	c := New(map[string]interface{}{})
+	err := c.UnmarshalTOML([]byte(data))
+	g.Expect(err).Should(BeNil())
+
+	v := c.Get("slice") // unmarshal from toml will be []interface{}
+	g.Expect(v).ShouldNot(BeNil())
+	slice, err := v.AsStringSlice()
+	g.Expect(err).Should(BeNil())
+	mslice := v.MustStringSlice()
+	g.Expect(mslice).Should(Equal(slice))
+	g.Expect(slice).Should(Equal([]string{"s1", "s2"}))
+
+	// test by set as []string
+	c.Set("slice", []string{"s1"})
+	v = c.Get("slice")
+	g.Expect(v).ShouldNot(BeNil())
+	slice, err = v.AsStringSlice()
+	g.Expect(err).Should(BeNil())
+	mslice = v.MustStringSlice()
+	g.Expect(mslice).Should(Equal(slice))
+	g.Expect(slice).Should(Equal([]string{"s1"}))
+
+	// test negative
+	v = c.Get("not_slice")
+	g.Expect(v).ShouldNot(BeNil())
+	_, err = v.AsStringSlice()
+	g.Expect(err).ShouldNot(BeNil())
+	g.Expect(func() { v.MustStringSlice() }).Should(Panic())
+}
+
+func TestAsInt(t *testing.T) {
+	g := NewGomegaWithT(t)
+	c := New(map[string]interface{}{})
+
+	kv := map[string]interface{}{
+		"int":    int(1),
+		"int8":   int8(1),
+		"int16":  int16(1),
+		"int32":  int32(1),
+		"int64":  int64(1),
+		"uint":   uint(1),
+		"uint8":  uint8(1),
+		"uint16": uint16(1),
+		"uint32": uint32(1),
+		"uint64": uint64(1),
+	}
+
+	for k, v := range kv {
+		c.Set(k, v)
+	}
+
+	for k := range kv {
+		g.Expect(c.Get(k).MustInt()).Should(Equal(int64(1)))
+	}
 }
 
 func TestGetSet(t *testing.T) {
@@ -63,6 +125,90 @@ func TestGetSet(t *testing.T) {
 
 		c.Set("s-"+k, strconv.FormatInt(v, 10))
 		g.Expect(c.Get("s-" + k).MustString()).Should(Equal(strconv.Itoa(int(v))))
+	}
+}
+
+func TestSetIfNil(t *testing.T) {
+	g := NewGomegaWithT(t)
+	kv := map[string]int64{
+		"a.b.c1": 1,
+		"a.b.c2": 2,
+		"a.b1":   1,
+		"a.b2":   2,
+		"a1":     1,
+		"a2":     2,
+	}
+
+	c := New(map[string]interface{}{})
+
+	// set and check value
+	for k, v := range kv {
+		c.Set(k, v)
+	}
+	for k, v := range kv {
+		g.Expect(c.Get(k).MustInt()).Should(Equal(v))
+	}
+
+	// set the existing item change nothing
+	var v int64 = 100
+	for k := range kv {
+		c.SetIfNil(k, v)
+	}
+
+	for k, v := range kv {
+		g.Expect(c.Get(k).MustInt()).Should(Equal(v))
+	}
+
+	// set a nil key
+	c.SetIfNil("nil_key", v)
+	g.Expect(c.Get("nil_key").MustInt()).Should(Equal(v))
+	c.SetIfNil("nil_key", v+10)
+	g.Expect(c.Get("nil_key").MustInt()).Should(Equal(v))
+}
+
+func TestDel(t *testing.T) {
+	g := NewGomegaWithT(t)
+	kv := map[string]int64{
+		"a.b.c1": 1,
+		"a.b.c2": 2,
+		"a.b1":   1,
+		"a.b2":   2,
+		"a1":     1,
+		"a2":     2,
+	}
+
+	c := New(map[string]interface{}{})
+
+	for k, v := range kv {
+		c.Set(k, v)
+	}
+	for k, v := range kv {
+		g.Expect(c.Get(k).MustInt()).Should(Equal(v))
+	}
+
+	// delete bottom level item
+	c.Del("a.b.c1")
+	delete(kv, "a.b.c1")
+	c.Del("a.b1")
+	delete(kv, "a.b1")
+	c.Del("a1")
+	delete(kv, "a1")
+	for k, v := range kv {
+		g.Expect(c.Get(k).MustInt()).Should(Equal(v))
+	}
+
+	// delete non-bottom level item
+	c.Del("a")
+	delete(kv, "a.b.c2")
+	delete(kv, "a.b2")
+	for k, v := range kv {
+		g.Expect(c.Get(k).MustInt()).Should(Equal(v))
+	}
+
+	// delete non-exist item
+	c.Del("what")
+	for k, v := range kv {
+		g.Expect(c.Get(k).MustInt()).Should(Equal(v))
 	}
 }
 
@@ -119,9 +265,10 @@ func TestMarshalTOML(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	c := New(map[string]interface{}{
-		"int":   int64(1),
-		"float": 1.0,
-		"str":   "str",
+		"int":       int64(1),
+		"float":     1.0,
+		"str":       "str",
+		"str_slice": []interface{}{"s1", "s2"},
 	})
 
 	data, err := c.MarshalTOML()
@@ -131,7 +278,9 @@ func TestMarshalTOML(t *testing.T) {
 	cback := New(nil)
 	err = cback.UnmarshalTOML(data)
 	g.Expect(err).Should(BeNil())
-	g.Expect(cback).Should(Equal(c))
+	if diff := cmp.Diff(c, cback); diff != "" {
+		t.Errorf("(-want,+got): %s\n", diff)
+	}
 }
 
 func TestMarshlJSON(t *testing.T) {
@@ -147,10 +296,22 @@ func TestMarshlJSON(t *testing.T) {
 	s.Config.Set("sk", "v")
 	s.Config.Set("ik", int64(1))
 
+	// test string type
 	data, err := json.Marshal(s)
 	g.Expect(err).Should(BeNil())
 
 	sback := new(S)
+	err = json.Unmarshal(data, sback)
+	g.Expect(err).Should(BeNil())
+	g.Expect(sback).Should(Equal(s))
+
+	// test object type
+	data, err = json.Marshal(map[string]interface{}{
+		"config": s.Config.MP,
+	})
+	g.Expect(err).Should(BeNil())
+
+	sback = new(S)
 	err = json.Unmarshal(data, sback)
 	g.Expect(err).Should(BeNil())
 	g.Expect(sback).Should(Equal(s))

@@ -24,13 +24,14 @@ import (
 const (
 	// The TidbCluster for the external query will be "<original-tcname>-<component>-external"
 	externalTcNamePattern = "%s-%s-external"
+	externalStatusKey     = "external"
 	specialUseLabelKey    = "specialUse"
 	specialUseHotRegion   = "hotRegion"
 )
 
 func (am *autoScalerManager) syncExternalResult(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType, targetReplicas int32) error {
 	externalTcName := fmt.Sprintf(externalTcNamePattern, tc.ClusterName, component.String())
-	externalTc, err := am.tcLister.TidbClusters(tc.Namespace).Get(externalTcName)
+	externalTc, err := am.deps.TiDBClusterLister.TidbClusters(tc.Namespace).Get(externalTcName)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			if targetReplicas <= 0 {
@@ -47,8 +48,17 @@ func (am *autoScalerManager) syncExternalResult(tc *v1alpha1.TidbCluster, tac *v
 		err := am.gracefullyDeleteTidbCluster(externalTc)
 		if err != nil {
 			klog.Errorf("tac[%s/%s] failed to delete external tc[%s/%s], err: %v", tac.Namespace, tac.Name, tc.Namespace, externalTcName, err)
+			return err
 		}
-		return err
+
+		switch component {
+		case v1alpha1.TiDBMemberType:
+			delete(tac.Status.TiDB, externalStatusKey)
+		case v1alpha1.TiKVMemberType:
+			delete(tac.Status.TiKV, externalStatusKey)
+		}
+
+		return nil
 	}
 
 	return am.updateExternalAutoCluster(externalTc, tac, component, targetReplicas)
@@ -62,14 +72,17 @@ func (am *autoScalerManager) createExternalAutoCluster(tc *v1alpha1.TidbCluster,
 		autoTc.Spec.TiDB.Replicas = targetReplicas
 	case v1alpha1.TiKVMemberType:
 		autoTc.Spec.TiKV.Replicas = targetReplicas
-		autoTc.Spec.TiKV.Config.Server.Labels[specialUseLabelKey] = specialUseHotRegion
+		autoTc.Spec.TiKV.Config.Set("server.labels."+specialUseLabelKey, specialUseHotRegion)
 	}
 
-	_, err := am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(autoTc)
+	_, err := am.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(autoTc)
 	if err != nil {
 		klog.Errorf("tac[%s/%s] failed to create external tc[%s/%s], err: %v", tac.Namespace, tac.Name, tc.Namespace, externalTcName, err)
+		return err
 	}
-	return err
+
+	updateLastAutoScalingTimestamp(tac, component.String(), externalStatusKey)
+	return nil
 }
 
 func (am *autoScalerManager) updateExternalAutoCluster(externalTc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType, targetReplicas int32) error {
@@ -79,17 +92,28 @@ func (am *autoScalerManager) updateExternalAutoCluster(externalTc *v1alpha1.Tidb
 		if updated.Spec.TiDB.Replicas == targetReplicas {
 			return nil
 		}
+
+		if !checkAutoScaling(tac, component, externalStatusKey, updated.Spec.TiDB.Replicas, targetReplicas) {
+			return nil
+		}
 		updated.Spec.TiDB.Replicas = targetReplicas
 	case v1alpha1.TiKVMemberType:
 		if updated.Spec.TiKV.Replicas == targetReplicas {
 			return nil
 		}
+
+		if !checkAutoScaling(tac, component, externalStatusKey, updated.Spec.TiKV.Replicas, targetReplicas) {
+			return nil
+		}
 		updated.Spec.TiKV.Replicas = targetReplicas
 	}
 
-	_, err := am.tcControl.UpdateTidbCluster(updated, &updated.Status, &externalTc.Status)
+	_, err := am.deps.TiDBClusterControl.UpdateTidbCluster(updated, &updated.Status, &externalTc.Status)
 	if err != nil {
 		klog.Errorf("tac[%s/%s] failed to update external tc[%s/%s], err: %v", tac.Namespace, tac.Name, externalTc.Namespace, externalTc.Name, err)
+		return err
 	}
-	return err
+
+	updateLastAutoScalingTimestamp(tac, component.String(), externalStatusKey)
+	return nil
 }

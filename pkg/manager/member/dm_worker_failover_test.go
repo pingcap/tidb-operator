@@ -19,8 +19,8 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/pointer"
 )
 
@@ -276,7 +276,10 @@ func TestWorkerFailoverFailover(t *testing.T) {
 			dc.Spec.Worker.Replicas = 6
 			dc.Spec.Worker.MaxFailoverCount = pointer.Int32Ptr(3)
 			tt.update(dc)
-			workerFailover := newFakeWorkerFailover()
+
+			fakeDeps := controller.NewFakeDependencies()
+			fakeDeps.CLIConfig.WorkerFailoverPeriod = 1 * time.Hour
+			workerFailover := &workerFailover{deps: fakeDeps}
 
 			err := workerFailover.Failover(dc)
 			if tt.err {
@@ -287,9 +290,4 @@ func TestWorkerFailoverFailover(t *testing.T) {
 			tt.expectFn(t, dc)
 		})
 	}
-}
-
-func newFakeWorkerFailover() *workerFailover {
-	recorder := record.NewFakeRecorder(100)
-	return &workerFailover{1 * time.Hour, recorder}
 }

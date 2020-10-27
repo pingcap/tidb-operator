@@ -58,9 +58,9 @@ func NewTiDBDiscovery(pdControl pdapi.PDControlInterface, masterControl dmapi.Ma
 	}
 }
 
-func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
-	td.lock.Lock()
-	defer td.lock.Unlock()
+func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
 
 	if advertisePeerUrl == "" {
 		return "", fmt.Errorf("advertisePeerUrl is empty")
@@ -80,26 +80,29 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	if ns != podNamespace {
 		return "", fmt.Errorf("the peer's namespace: %s is not equal to discovery namespace: %s", ns, podNamespace)
 	}
-	tc, err := td.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+	tc, err := d.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
 	keyName := fmt.Sprintf("%s/%s", ns, tcName)
-	// TODO: the replicas should be the total replicas of pd sets.
-	replicas := tc.Spec.PD.Replicas
+	pdAddresses := tc.Spec.PDAddresses
 
-	currentCluster := td.clusters[keyName]
+	currentCluster := d.clusters[keyName]
 	if currentCluster == nil || currentCluster.resourceVersion != tc.ResourceVersion {
-		td.clusters[keyName] = &clusterInfo{
+		d.clusters[keyName] = &clusterInfo{
 			resourceVersion: tc.ResourceVersion,
 			peers:           map[string]struct{}{},
 		}
 	}
-	currentCluster = td.clusters[keyName]
+	currentCluster = d.clusters[keyName]
 	currentCluster.peers[podName] = struct{}{}
 
-	if len(currentCluster.peers) == int(replicas) && tc.Spec.Cluster == nil {
+	// Should take failover replicas into consideration
+	if len(currentCluster.peers) == int(tc.PDStsDesiredReplicas()) && tc.Spec.Cluster == nil {
 		delete(currentCluster.peers, podName)
+		if len(pdAddresses) != 0 {
+			return fmt.Sprintf("--join=%s", strings.Join(pdAddresses, ",")), nil
+		}
 		return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, tc.Scheme(), advertisePeerUrl), nil
 	}
 
@@ -109,10 +112,10 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 		if len(namespace) == 0 {
 			namespace = tc.GetNamespace()
 		}
-		pdClients = append(pdClients, td.pdControl.GetClusterRefPDClient(pdapi.Namespace(namespace), tc.Spec.Cluster.Name, tc.Spec.Cluster.ClusterDomain, tc.IsTLSClusterEnabled()))
+		pdClients = append(pdClients, d.pdControl.GetClusterRefPDClient(pdapi.Namespace(namespace), tc.Spec.Cluster.Name, tc.Spec.Cluster.ClusterDomain, tc.IsTLSClusterEnabled()))
 	}
 	if tc.Spec.PD != nil {
-		pdClients = append(pdClients, td.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()))
+		pdClients = append(pdClients, d.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()))
 	}
 
 	var membersInfo *pdapi.MembersInfo
@@ -128,6 +131,12 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 
 	membersArr := make([]string, 0)
 	for _, member := range membersInfo.Members {
+		// In some failure situations, for example, delete the pd's data directory, pd will try to restart
+		// and get join info from discovery service. But pd embed etcd may still have the registered member info,
+		// which will return the argument to join pd itself, which is not suggested in pd.
+		if member.Name == podName {
+			continue
+		}
 		memberURL := strings.ReplaceAll(member.PeerUrls[0], ":2380", ":2379")
 		membersArr = append(membersArr, memberURL)
 	}
@@ -135,9 +144,9 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	return fmt.Sprintf("--join=%s", strings.Join(membersArr, ",")), nil
 }
 
-func (td *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
-	td.lock.Lock()
-	defer td.lock.Unlock()
+func (d *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
 
 	if advertisePeerUrl == "" {
 		return "", fmt.Errorf("dm advertisePeerUrl is empty")
@@ -157,30 +166,28 @@ func (td *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
 	dcName := strings.TrimSuffix(peerServiceName, "-dm-master-peer")
 	ns := os.Getenv("MY_POD_NAMESPACE")
 
-	dc, err := td.cli.PingcapV1alpha1().DMClusters(ns).Get(dcName, metav1.GetOptions{})
+	dc, err := d.cli.PingcapV1alpha1().DMClusters(ns).Get(dcName, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
 	keyName := fmt.Sprintf("%s/%s", ns, dcName)
-	// TODO: the replicas should be the total replicas of dm master sets.
-	replicas := dc.Spec.Master.Replicas
 
-	currentCluster := td.dmClusters[keyName]
+	currentCluster := d.dmClusters[keyName]
 	if currentCluster == nil || currentCluster.resourceVersion != dc.ResourceVersion {
-		td.dmClusters[keyName] = &clusterInfo{
+		d.dmClusters[keyName] = &clusterInfo{
 			resourceVersion: dc.ResourceVersion,
 			peers:           map[string]struct{}{},
 		}
 	}
-	currentCluster = td.dmClusters[keyName]
+	currentCluster = d.dmClusters[keyName]
 	currentCluster.peers[podName] = struct{}{}
 
-	if len(currentCluster.peers) == int(replicas) {
+	if len(currentCluster.peers) == int(dc.MasterStsDesiredReplicas()) {
 		delete(currentCluster.peers, podName)
 		return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, dc.Scheme(), advertisePeerUrl), nil
 	}
 
-	masterClient := td.masterControl.GetMasterClient(dc.GetNamespace(), dc.GetName(), dc.IsTLSClusterEnabled())
+	masterClient := d.masterControl.GetMasterClient(dc.GetNamespace(), dc.GetName(), dc.IsTLSClusterEnabled())
 	mastersInfos, err := masterClient.GetMasters()
 	if err != nil {
 		return "", err

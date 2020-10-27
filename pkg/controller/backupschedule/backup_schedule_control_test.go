@@ -26,7 +26,6 @@ import (
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
 )
 
 func TestBackupScheduleControlUpdateBackupSchedule(t *testing.T) {
@@ -113,12 +112,10 @@ func TestBackupScheduleControlUpdateBackupSchedule(t *testing.T) {
 
 func newFakeBackupSchduleControl() (ControlInterface, *backupschedule.FakeBackupScheduleManager, *controller.FakeBackupScheduleStatusUpdater) {
 	cli := fake.NewSimpleClientset()
-	recorder := record.NewFakeRecorder(10)
-
 	bsInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().BackupSchedules()
 	statusUpdater := controller.NewFakeBackupScheduleStatusUpdater(bsInformer)
 	bsManager := backupschedule.NewFakeBackupScheduleManager()
-	control := NewDefaultBackupScheduleControl(statusUpdater, bsManager, recorder)
+	control := NewDefaultBackupScheduleControl(statusUpdater, bsManager)
 
 	return control, bsManager, statusUpdater
 }

@@ -14,6 +14,7 @@
 package v1alpha1
 
 import (
+	"encoding/json"
 	"strconv"
 	"testing"
 
@@ -44,11 +45,11 @@ func TestTiDBConfigWraper(t *testing.T) {
 		var tidbConfig TiDBConfig
 		f.Fuzz(&tidbConfig)
 
-		tomlData, err := toml.Marshal(&tidbConfig)
+		jsonData, err := json.Marshal(&tidbConfig)
 		g.Expect(err).Should(BeNil())
 
 		tidbConfigWraper := NewTiDBConfig()
-		err = tidbConfigWraper.UnmarshalTOML(tomlData)
+		err = json.Unmarshal(jsonData, tidbConfigWraper)
 		g.Expect(err).Should(BeNil())
 
 		tomlDataBack, err := tidbConfigWraper.MarshalTOML()
@@ -59,4 +60,22 @@ func TestTiDBConfigWraper(t *testing.T) {
 		g.Expect(err).Should(BeNil())
 		g.Expect(tidbConfigBack).Should(Equal(tidbConfig))
 	}
+}
+
+func TestUnmarshlJSON(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	type Tmp struct {
+		Float float64 `toml:"float"`
+		Int   int     `toml:"int"`
+	}
+
+	data := `{"float": 1, "int": 1}`
+
+	tmp := new(Tmp)
+	config, err := unmarshalJSON([]byte(data), tmp)
+	g.Expect(err).Should(BeNil())
+
+	g.Expect(config.Get("float").MustFloat()).Should(Equal(1.0))
+	g.Expect(config.Get("int").MustInt()).Should(Equal(int64(1)))
 }

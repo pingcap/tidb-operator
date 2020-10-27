@@ -16,15 +16,12 @@ package autoscaler
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,29 +31,49 @@ import (
 
 var zeroQuantity = resource.MustParse("0")
 
-// checkStsAutoScalingPrerequisites would check the sts status to ensure wouldn't happen during
-// upgrading, scaling
-func checkStsAutoScalingPrerequisites(set *appsv1.StatefulSet) bool {
-	return !operatorUtils.IsStatefulSetUpgrading(set) && !operatorUtils.IsStatefulSetScaling(set)
+// checkAutoScaling would check whether an autoscaling for a group is permitted
+func checkAutoScaling(tac *v1alpha1.TidbClusterAutoScaler, memberType v1alpha1.MemberType, group string, beforeReplicas, afterReplicas int32) bool {
+	if beforeReplicas > afterReplicas {
+		switch memberType {
+		case v1alpha1.TiKVMemberType:
+			return checkAutoScalingInterval(tac, *tac.Spec.TiKV.ScaleInIntervalSeconds, memberType, group)
+		case v1alpha1.TiDBMemberType:
+			return checkAutoScalingInterval(tac, *tac.Spec.TiDB.ScaleInIntervalSeconds, memberType, group)
+		}
+	} else if beforeReplicas < afterReplicas {
+		switch memberType {
+		case v1alpha1.TiKVMemberType:
+			return checkAutoScalingInterval(tac, *tac.Spec.TiKV.ScaleOutIntervalSeconds, memberType, group)
+		case v1alpha1.TiDBMemberType:
+			return checkAutoScalingInterval(tac, *tac.Spec.TiDB.ScaleOutIntervalSeconds, memberType, group)
+		}
+	}
+	return true
 }
 
-// checkStsAutoScalingInterval would check whether there is enough interval duration between every two auto-scaling
-func checkStsAutoScalingInterval(tac *v1alpha1.TidbClusterAutoScaler, intervalSeconds int32, memberType v1alpha1.MemberType) (bool, error) {
-	lastAutoScalingTimestamp, existed := tac.Annotations[label.AnnTiDBLastAutoScalingTimestamp]
+// checkAutoScalingInterval would check whether there is enough interval duration between every two auto-scaling
+func checkAutoScalingInterval(tac *v1alpha1.TidbClusterAutoScaler, intervalSeconds int32, memberType v1alpha1.MemberType, group string) bool {
+	var lastAutoScalingTimestamp *metav1.Time
 	if memberType == v1alpha1.TiKVMemberType {
-		lastAutoScalingTimestamp, existed = tac.Annotations[label.AnnTiKVLastAutoScalingTimestamp]
+		status, existed := tac.Status.TiKV[group]
+		if !existed {
+			return true
+		}
+		lastAutoScalingTimestamp = status.LastAutoScalingTimestamp
+	} else if memberType == v1alpha1.TiDBMemberType {
+		status, existed := tac.Status.TiDB[group]
+		if !existed {
+			return true
+		}
+		lastAutoScalingTimestamp = status.LastAutoScalingTimestamp
 	}
-	if !existed {
-		return true, nil
+	if lastAutoScalingTimestamp == nil {
+		return true
 	}
-	t, err := strconv.ParseInt(lastAutoScalingTimestamp, 10, 64)
-	if err != nil {
-		return false, fmt.Errorf("tac[%s/%s] parse last auto-scaling timestamp failed,err:%v", tac.Namespace, tac.Name, err)
+	if intervalSeconds > int32(time.Since(lastAutoScalingTimestamp.Time).Seconds()) {
+		return false
 	}
-	if intervalSeconds > int32(time.Since(time.Unix(t, 0)).Seconds()) {
-		return false, nil
-	}
-	return true, nil
+	return true
 }
 
 func defaultResources(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) {
@@ -132,18 +149,11 @@ func getSpecResources(tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.Me
 func defaultBasicAutoScaler(tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) {
 	spec := getBasicAutoScalerSpec(tac, component)
 
-	if spec.MinReplicas == nil {
-		spec.MinReplicas = pointer.Int32Ptr(1)
-	}
 	if spec.ScaleOutIntervalSeconds == nil {
 		spec.ScaleOutIntervalSeconds = pointer.Int32Ptr(300)
 	}
 	if spec.ScaleInIntervalSeconds == nil {
 		spec.ScaleInIntervalSeconds = pointer.Int32Ptr(500)
-	}
-	// If ExternalEndpoint is not provided, we would set default metrics
-	if spec.External == nil && spec.MetricsTimeDuration == nil {
-		spec.MetricsTimeDuration = pointer.StringPtr("3m")
 	}
 
 	if spec.External != nil {
@@ -184,23 +194,8 @@ func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.TidbCluster) {
 
 	if tikv := tac.Spec.TiKV; tikv != nil {
 		defaultBasicAutoScaler(tac, v1alpha1.TiKVMemberType)
-		for id, m := range tikv.Metrics {
-			if m.Resource == nil || m.Resource.Name != corev1.ResourceStorage {
-				continue
-			}
-			if m.LeastStoragePressurePeriodSeconds == nil {
-				m.LeastStoragePressurePeriodSeconds = pointer.Int64Ptr(300)
-			}
-			if m.LeastRemainAvailableStoragePercent == nil {
-				m.LeastRemainAvailableStoragePercent = pointer.Int64Ptr(10)
-			}
-			tikv.Metrics[id] = m
-		}
 	}
 
-	if monitor := tac.Spec.Monitor; monitor != nil && len(monitor.Namespace) < 1 {
-		monitor.Namespace = tac.Namespace
-	}
 }
 
 func validateBasicAutoScalerSpec(tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) error {
@@ -288,16 +283,6 @@ func validateTAC(tac *v1alpha1.TidbClusterAutoScaler) error {
 	}
 
 	return nil
-}
-
-func genMetricsEndpoint(tac *v1alpha1.TidbClusterAutoScaler) (string, error) {
-	if tac.Spec.MetricsUrl == nil && tac.Spec.Monitor == nil {
-		return "", fmt.Errorf("tac[%s/%s] metrics url or monitor should be defined explicitly", tac.Namespace, tac.Name)
-	}
-	if tac.Spec.MetricsUrl != nil {
-		return *tac.Spec.MetricsUrl, nil
-	}
-	return fmt.Sprintf("http://%s-prometheus.%s.svc:9090", tac.Spec.Monitor.Name, tac.Spec.Monitor.Namespace), nil
 }
 
 func autoscalerToStrategy(tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) *pdapi.Strategy {
@@ -415,17 +400,7 @@ func newAutoScalingCluster(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAu
 		autoTc.Spec.TiDB = nil
 		// Initialize Config
 		if autoTc.Spec.TiKV.Config == nil {
-			autoTc.Spec.TiKV.Config = &v1alpha1.TiKVConfig{
-				Server: &v1alpha1.TiKVServerConfig{
-					Labels: map[string]string{},
-				},
-			}
-		} else if autoTc.Spec.TiKV.Config.Server == nil {
-			autoTc.Spec.TiKV.Config.Server = &v1alpha1.TiKVServerConfig{
-				Labels: map[string]string{},
-			}
-		} else if autoTc.Spec.TiKV.Config.Server.Labels == nil {
-			autoTc.Spec.TiKV.Config.Server.Labels = map[string]string{}
+			autoTc.Spec.TiKV.Config = v1alpha1.NewTiKVConfig()
 		}
 	}
 

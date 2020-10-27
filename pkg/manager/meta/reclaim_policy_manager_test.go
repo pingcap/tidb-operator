@@ -26,8 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	kubeinformers "k8s.io/client-go/informers"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -90,17 +88,17 @@ func TestReclaimPolicyManagerSync(t *testing.T) {
 		}
 		if test.err {
 			g.Expect(err).To(HaveOccurred())
-			pv, err := rpm.pvLister.Get(pv1.Name)
+			pv, err := rpm.deps.PVLister.Get(pv1.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pv.Spec.PersistentVolumeReclaimPolicy).To(Equal(corev1.PersistentVolumeReclaimDelete))
 		}
 		if test.changed {
 			g.Expect(err).NotTo(HaveOccurred())
-			pv, err := rpm.pvLister.Get(pv1.Name)
+			pv, err := rpm.deps.PVLister.Get(pv1.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pv.Spec.PersistentVolumeReclaimPolicy).To(Equal(corev1.PersistentVolumeReclaimRetain))
 		} else {
-			pv, err := rpm.pvLister.Get(pv1.Name)
+			pv, err := rpm.deps.PVLister.Get(pv1.Name)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pv.Spec.PersistentVolumeReclaimPolicy).To(Equal(corev1.PersistentVolumeReclaimDelete))
 		}
@@ -166,19 +164,11 @@ func TestReclaimPolicyManagerSync(t *testing.T) {
 }
 
 func newFakeReclaimPolicyManager() (*reclaimPolicyManager, *controller.FakePVControl, cache.Indexer, cache.Indexer) {
-	kubeCli := kubefake.NewSimpleClientset()
-
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
-	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
-	pvInformer := kubeInformerFactory.Core().V1().PersistentVolumes()
-
-	pvControl := controller.NewFakePVControl(pvInformer, pvcInformer)
-
-	return &reclaimPolicyManager{
-		pvcInformer.Lister(),
-		pvInformer.Lister(),
-		pvControl,
-	}, pvControl, pvcInformer.Informer().GetIndexer(), pvInformer.Informer().GetIndexer()
+	fakeDeps := controller.NewFakeDependencies()
+	pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
+	pvIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumes().Informer().GetIndexer()
+	pvControl := fakeDeps.PVControl.(*controller.FakePVControl)
+	return &reclaimPolicyManager{deps: fakeDeps}, pvControl, pvcIndexer, pvIndexer
 }
 
 func newTidbClusterForMeta() *v1alpha1.TidbCluster {

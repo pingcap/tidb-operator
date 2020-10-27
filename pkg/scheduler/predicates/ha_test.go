@@ -439,10 +439,10 @@ func TestHAFilter(t *testing.T) {
 	}
 
 	topologyKey := "zone"
+	instanceName := "demo"
+	clusterName := "cluster-1"
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
-		instanceName := "demo"
-		clusterName := "cluster-1"
 
 		pod := test.podFn(instanceName, clusterName, 0)
 		nodes := test.nodesFn()
@@ -1047,6 +1047,48 @@ func TestHAFilter(t *testing.T) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(1))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-3"}))
+			},
+		},
+		{
+			name:          "[support-asts] set pd.tidb.pingcap.com/delete-slots: '[2]' ",
+			podFn:         newHAPDPod,
+			nodesFn:       fakeFourNodes,
+			podListFn:     podListFn(map[string][]int32{"kube-node-1": {1}, "kube-node-2": {2}, "kube-node-3": {3}, "kube-node-4": {4}}),
+			acquireLockFn: acquireSuccess,
+			tcGetFn: func(ns string, tcName string) (*v1alpha1.TidbCluster, error) {
+				tc, _ := tcGetFn(ns, tcName)
+				tc.Annotations["pd.tidb.pingcap.com/delete-slots"] = "[2]"
+				return tc, nil
+			},
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			expectFn: func(nodes []apiv1.Node, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(nodes)).To(Equal(2))
+				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-2", "kube-node-4"}))
+			},
+		},
+		{
+			name:          "pd-1 is in failureMembers",
+			podFn:         newHAPDPod,
+			nodesFn:       fakeFourNodes,
+			podListFn:     podListFn(map[string][]int32{"kube-node-1": {1}, "kube-node-2": {2}, "kube-node-3": {3}, "kube-node-4": {}}),
+			acquireLockFn: acquireSuccess,
+			tcGetFn: func(ns string, tcName string) (*v1alpha1.TidbCluster, error) {
+				tc, _ := tcGetFn(ns, tcName)
+				pd1 := fmt.Sprintf("%s-%d", controller.PDMemberName(instanceName), 1)
+				tc.Status.PD.FailureMembers = map[string]v1alpha1.PDFailureMember{
+					pd1: {
+						PodName:       pd1,
+						MemberDeleted: true,
+					},
+				}
+				return tc, nil
+			},
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			expectFn: func(nodes []apiv1.Node, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(nodes)).To(Equal(2))
+				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-4"}))
 			},
 		},
 	}

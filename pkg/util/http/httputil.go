@@ -42,20 +42,7 @@ func ReadErrorBody(body io.Reader) (err error) {
 
 // GetBodyOK returns the body or an error if the response is not okay
 func GetBodyOK(httpClient *http.Client, apiURL string) ([]byte, error) {
-	res, err := httpClient.Get(apiURL)
-	if err != nil {
-		return nil, err
-	}
-	defer DeferClose(res.Body)
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, err
-	}
-	if res.StatusCode >= 400 {
-		errMsg := fmt.Errorf("Error response %v URL %s,body response: %s", res.StatusCode, apiURL, string(body[:]))
-		return nil, errMsg
-	}
-	return body, err
+	return DoBodyOK(httpClient, apiURL, "GET", nil)
 }
 
 // PutBodyOK will PUT and returns the body or an error if the response is not okay
@@ -73,7 +60,7 @@ func PostBodyOK(httpClient *http.Client, apiURL string, reqBody io.Reader) ([]by
 	return DoBodyOK(httpClient, apiURL, "POST", reqBody)
 }
 
-// DoBodyOK returns the body or an error if the response is not okay
+// DoBodyOK returns the body or an error if the response is not okay(StatusCode >= 400)
 func DoBodyOK(httpClient *http.Client, apiURL, method string, reqBody io.Reader) ([]byte, error) {
 	req, err := http.NewRequest(method, apiURL, reqBody)
 	if err != nil {
