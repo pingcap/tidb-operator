@@ -306,6 +306,8 @@ For more information on managing node pools, refer to [GKE Node pools](https://c
           value: tiflash
     ```
 
+    To configure other parameters, refer to [Configure a TiDB Cluster](configure-a-tidb-cluster.md).
+
     > **Warning:**
     >
     > TiDB Operator automatically mounts PVs **in the order of the configuration** in the `storageClaims` list. Therefore, if you need to add disks for TiFlash, make sure that you add the disks **only to the end of the original configuration** in the list. In addition, you must **not** alter the order of the original configuration.
@@ -340,7 +342,7 @@ Some GCP instance types provide additional [local store volumes](https://cloud.g
 > **Note:**
 >
 > You cannot dynamically change the storage class of a running TiDB cluster. You can create a new cluster for testing.
-> 
+>
 > During the GKE upgrade, data in the local storage will be [lost](https://cloud.google.com/kubernetes-engine/docs/how-to/persistent-volumes/local-ssd) due to the node reconstruction. When the node reconstruction occurs, you need to migrate data in TiKV. If you do not want to migrate data, it is recommended not to use the local disk in the production environment.
 
 1. Create a node pool with local storage for TiKV:

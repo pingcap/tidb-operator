@@ -87,11 +87,11 @@ It is recommended that you configure `spec.pd.mountClusterClientSecret: true` an
 
 #### PD/TiKV/TiDB
 
-The deployed cluster topology by default has 3 PD Pods, 3 TiKV Pods, and 2 TiDB Pods. In this deployment topology, the scheduler extender of TiDB Operator requires at least 3 nodes in the Kubernetes cluster to provide high availability. You can modify the `replicas` configuration to change the number of pods for each component.
+The deployed cluster topology by default has three PD Pods, three TiKV Pods, and two TiDB Pods. In this deployment topology, the scheduler extender of TiDB Operator requires at least three nodes in the Kubernetes cluster to provide high availability. You can modify the `replicas` configuration to change the number of pods for each component.
 
 > **Note:**
 >
-> If the number of Kubernetes cluster nodes is less than 3, 1 PD Pod goes to the Pending state, and neither TiKV Pods nor TiDB Pods are created. When the number of nodes in the Kubernetes cluster is less than 3, to start the TiDB cluster, you can reduce both the number of PD Pods and the number of TiKV Pods in the default deployment to `1`.
+> If the number of Kubernetes cluster nodes is less than three, one PD Pod goes to the Pending state, and neither TiKV Pods nor TiDB Pods are created. When the number of nodes in the Kubernetes cluster is less than three, to start the TiDB cluster, you can reduce both the number of PD Pods and the number of TiKV Pods in the default deployment to `1`.
 
 #### Enable TiFlash
 
@@ -132,6 +132,8 @@ TiFlash supports mounting multiple Persistent Volumes (PVs). If you want to conf
           storage: 100Gi
       storageClassName: local-storage
 ```
+
+TiFlash mounts all PVs to directories such as `/data0` and `/data1` in the container in the order of configuration. TiFlash has four log files. The proxy log is printed in the standard output of the container. The other three logs are stored in the disk under the `/data0` directory by default, which are `/data0/logs/flash_cluster_manager.log`, `/ data0/logs/error.log`, `/data0/logs/server.log`. To modify the log storage path, refer to [Configure TiFlash parameters](#configure-tiflash-parameters).
 
 > **Warning:**
 >
@@ -330,9 +332,14 @@ spec:
   tiflash:
     config:
       config:
+       flash:
+          flash_cluster:
+            log: "/data0/logs/flash_cluster_manager.log"
         logger:
-          count: 5
+          count: 10
           level: information
+          errorlog: "/data0/logs/error.log"
+          log: "/data0/logs/server.log"
 ```
 
 Since v1.1.6, TiDB Operator supports passing raw TOML configuration to the component:
