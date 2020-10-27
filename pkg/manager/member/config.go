@@ -20,7 +20,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	"k8s.io/klog"
 )
 
 func updateConfigMap(old, new *corev1.ConfigMap) error {
@@ -38,8 +37,6 @@ func updateConfigMap(old, new *corev1.ConfigMap) error {
 		if err != nil {
 			return perrors.Annotatef(err, "compare %s/%s %s and %s failed", old.Namespace, old.Name, oldData, newData)
 		}
-
-		klog.V(3).Infof("compare %s/%s \n%s\n --and-- \n%s\n%v", old.Namespace, old.Name, oldData, newData, equal)
 
 		if equal {
 			new.Data[k] = oldData
@@ -74,16 +71,12 @@ func updateConfigMapIfNeed(
 			return perrors.AddStack(err)
 		}
 
-		klog.V(3).Infof("get in use configmap: %v", *existing)
-
 		err = updateConfigMap(existing, desired)
 		if err != nil {
 			return err
 		}
 
 		AddConfigMapDigestSuffix(desired)
-
-		klog.V(3).Infof("old: %+v, new: %+v", existing, desired)
 		return nil
 	default:
 		return perrors.Errorf("unknown config update strategy: %v", configUpdateStrategy)
