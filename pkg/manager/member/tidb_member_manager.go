@@ -848,17 +848,19 @@ func tidbStatefulSetIsUpgrading(podLister corelisters.PodLister, set *apps.State
 
 func buildTiDBReadinessProbHandler(tc *v1alpha1.TidbCluster) corev1.Handler {
 	if tc.Spec.TiDB.ReadinessProbe != nil {
-		if action := tc.Spec.TiDB.ReadinessProbe.StatusAPI; action != nil {
-			command := buildTiDBProbeCommand(tc, action)
-			return corev1.Handler{
-				Exec: &corev1.ExecAction{
-					Command: command,
-				},
+		if tp := tc.Spec.TiDB.ReadinessProbe.Type; tp != nil {
+			if *tp == v1alpha1.CommandProbeType {
+				command := buildTiDBProbeCommand(tc)
+				return corev1.Handler{
+					Exec: &corev1.ExecAction{
+						Command: command,
+					},
+				}
 			}
 		}
 	}
 
-	// fall to default case
+	// fall to default case v1alpha1.TCPProbeType
 	return corev1.Handler{
 		TCPSocket: &corev1.TCPSocketAction{
 			Port: intstr.FromInt(4000),
@@ -866,11 +868,8 @@ func buildTiDBReadinessProbHandler(tc *v1alpha1.TidbCluster) corev1.Handler {
 	}
 }
 
-func buildTiDBProbeCommand(tc *v1alpha1.TidbCluster, action *v1alpha1.TiDBStatusAPIAction) (command []string) {
+func buildTiDBProbeCommand(tc *v1alpha1.TidbCluster) (command []string) {
 	host := "127.0.0.1"
-	if action.Host != nil {
-		host = *action.Host
-	}
 
 	readinessURL := fmt.Sprintf("%s://%s:10080/status", tc.Scheme(), host)
 	command = append(command, "curl")

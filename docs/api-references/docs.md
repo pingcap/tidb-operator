@@ -12031,16 +12031,15 @@ default probe by TCPPort on 4000.</p>
 <tbody>
 <tr>
 <td>
-<code>statusAPI</code></br>
+<code>type</code></br>
 <em>
-<a href="#tidbstatusapiaction">
-TiDBStatusAPIAction
-</a>
+string
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Probe by status api of tidb.
+<p>&ldquo;tcp&rdquo; will use TCP socket to connetct port 4000</p>
+<p>&ldquo;command&rdquo; will probe the status api of tidb.
 This will use curl command to request tidb, before v4.0.9 there is no curl in the image,
 So do not use this before v4.0.9.</p>
 </td>
@@ -12406,7 +12405,8 @@ TiDBProbe
 </td>
 <td>
 <em>(Optional)</em>
-<p>ReadinessProbe describes actions that probe the tidb&rsquo;s readiness.</p>
+<p>ReadinessProbe describes actions that probe the tidb&rsquo;s readiness.
+the default behavior is like setting type as &ldquo;tcp&rdquo;</p>
 </td>
 </tr>
 </tbody>
@@ -12493,35 +12493,6 @@ string
 </em>
 </td>
 <td>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="tidbstatusapiaction">TiDBStatusAPIAction</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#tidbprobe">TiDBProbe</a>)
-</p>
-<p>
-<p>TiDBStatusAPI contains the details of TiDBStatusAPI to probe tidb.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>host</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
 </td>
 </tr>
 </tbody>

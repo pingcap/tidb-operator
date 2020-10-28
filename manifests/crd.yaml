@@ -6508,11 +6508,8 @@ spec:
                   type: string
                 readinessProbe:
                   properties:
-                    statusAPI:
-                      properties:
-                        host:
-                          type: string
-                      type: object
+                    type:
+                      type: string
                   type: object
                 replicas:
                   format: int32

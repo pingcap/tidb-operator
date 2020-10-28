@@ -2218,19 +2218,26 @@ func TestBuildTiDBProbeHandler(t *testing.T) {
 	get := buildTiDBReadinessProbHandler(tc)
 	g.Expect(get).Should(Equal(defaultHandler))
 
-	// test set statusAPI
+	// test set command type & not tls
 	tc.Spec.TiDB.ReadinessProbe = &v1alpha1.TiDBProbe{
-		StatusAPI: &v1alpha1.TiDBStatusAPIAction{},
+		Type: pointer.StringPtr(v1alpha1.CommandProbeType),
 	}
 	get = buildTiDBReadinessProbHandler(tc)
 	g.Expect(get).Should(Equal(execHandler))
 
-	// test statusAPI and tls
+	// test command type and tls
 	tc.Spec.TLSCluster = &v1alpha1.TLSCluster{
 		Enabled: true,
 	}
 	get = buildTiDBReadinessProbHandler(tc)
 	g.Expect(get).Should(Equal(sslExecHandler))
+
+	// test tcp type
+	tc.Spec.TiDB.ReadinessProbe = &v1alpha1.TiDBProbe{
+		Type: pointer.StringPtr(v1alpha1.TCPProbeType),
+	}
+	get = buildTiDBReadinessProbHandler(tc)
+	g.Expect(get).Should(Equal(defaultHandler))
 }
 
 func mustConfig(x interface{}) *v1alpha1.TiDBConfigWraper {
