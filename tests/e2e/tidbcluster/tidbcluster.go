@@ -1462,11 +1462,9 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 	ginkgo.It("TiKV mount multiple pvc", func() {
 
-		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "tidb-multiple-pvc-scale", "admin", utilimage.TiDBV3Version)
-		cluster.Resources["pd.replicas"] = "1"
-		cluster.Resources["tikv.replicas"] = "2"
-		cluster.Resources["tidb.replicas"] = "1"
-		cluster.Clustrer.Spec.TiKV.StorageVolumes = []v1alpha1.StorageVolume{
+		clusterName := "tidb-multiple-pvc-scale"
+		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4Version)
+		tc.Spec.TiKV.StorageVolumes = []v1alpha1.StorageVolume{
 			{
 				Name:        "wal",
 				StorageSize: "2Gi",
@@ -1478,16 +1476,22 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				MountPath:   "/var/lib/titan",
 			},
 		}
-		cluster.Clustrer.Spec.TiKV.Config.Set("rocksdb.wal-dir", "/var/lib/wal")
-		cluster.Clustrer.Spec.TiKV.Config.Set("titan.dirname", "/var/lib/titan")
-		e2elog.Logf("deploying tidb cluster [%s/%s]", cluster.Namespace, cluster.ClusterName)
-		oa.DeployTidbClusterOrDie(&cluster)
-		oa.CheckTidbClusterStatusOrDie(&cluster)
+		tc.Spec.TiKV.Config.Set("rocksdb.wal-dir", "/var/lib/wal")
+		tc.Spec.TiKV.Config.Set("titan.dirname", "/var/lib/titan")
+		clusterConfig := newTidbClusterConfig(e2econfig.TestConfig, ns, clusterName, "admin", utilimage.TiDBV4Version)
+		clusterConfig.Resources["pd.replicas"] = "1"
+		clusterConfig.Resources["tikv.replicas"] = "2"
+		clusterConfig.Resources["tidb.replicas"] = "1"
+		clusterConfig.Clustrer = tc
+
+		e2elog.Logf("deploying tidb cluster [%s/%s]", clusterConfig.Namespace, clusterConfig.ClusterName)
+		oa.DeployTidbClusterOrDie(&clusterConfig)
+		oa.CheckTidbClusterStatusOrDie(&clusterConfig)
 
 		ginkgo.By("scale multiple pvc tidb cluster")
-		cluster.ScaleTiKV(1)
-		oa.UpgradeTidbClusterOrDie(&cluster)
-		oa.CheckTidbClusterStatusOrDie(&cluster)
+		clusterConfig.ScaleTiKV(1)
+		oa.UpgradeTidbClusterOrDie(&clusterConfig)
+		oa.CheckTidbClusterStatusOrDie(&clusterConfig)
 	})
 })
 
