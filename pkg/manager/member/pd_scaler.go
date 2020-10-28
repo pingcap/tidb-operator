@@ -127,7 +127,7 @@ func (s *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet 
 	// If the PD StatefulSet would be scale-in to zero and no other members in the PD cluster,
 	// we would directly delete the member without the leader transferring
 	if leader.Name == memberName || leader.Name == pdPodName {
-		if ordinal > 0 {
+		if *newSet.Spec.Replicas > 1 {
 			minOrdinal := helper.GetMinPodOrdinal(*newSet.Spec.Replicas, newSet)
 			targetOrdinal := helper.GetMaxPodOrdinal(*newSet.Spec.Replicas, newSet)
 			if ordinal > minOrdinal {
@@ -137,19 +137,20 @@ func (s *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet 
 			if _, exist := tc.Status.PD.Members[targetPdName]; exist {
 				err = pdClient.TransferPDLeader(targetPdName)
 			} else {
-				err = pdClient.TransferPDLeader(PdPodName(tcName, minOrdinal))
+				err = pdClient.TransferPDLeader(PdPodName(tcName, targetOrdinal))
 			}
 			if err != nil {
 				return err
 			}
-		}
-		for _, member := range tc.Status.PD.PeerMembers {
-			if member.Health && member.Name != memberName {
-				err = pdClient.TransferPDLeader(member.Name)
-				if err != nil {
-					return err
+		} else {
+			for _, member := range tc.Status.PD.PeerMembers {
+				if member.Health && member.Name != memberName {
+					err = pdClient.TransferPDLeader(member.Name)
+					if err != nil {
+						return err
+					}
+					return controller.RequeueErrorf("tc[%s/%s]'s pd pod[%s/%s] is transferring pd leader,can't scale-in now", ns, tcName, ns, memberName)
 				}
-				return controller.RequeueErrorf("tc[%s/%s]'s pd pod[%s/%s] is transferring pd leader,can't scale-in now", ns, tcName, ns, memberName)
 			}
 		}
 	}

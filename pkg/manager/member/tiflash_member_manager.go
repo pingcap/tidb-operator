@@ -619,6 +619,7 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	}
 
 	previousStores := tc.Status.TiFlash.Stores
+	previousPeerStores := tc.Status.TiFlash.PeerStores
 	stores := map[string]v1alpha1.TiKVStore{}
 	peerStores := map[string]v1alpha1.TiKVStore{}
 	tombstoneStores := map[string]v1alpha1.TiKVStore{}
@@ -636,32 +637,27 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 		return err
 	}
 	for _, store := range storesInfo.Stores {
-		// In theory, the external tiflash can join the cluster, and the operator would only manage the internal tiflash.
-		// So we check the store owner to make sure it.
-		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
-			continue
-		}
 		status := m.getTiFlashStore(store)
 		if status == nil {
 			continue
 		}
-		// avoid LastHeartbeatTime be overwrite by zero time when pd lost LastHeartbeatTime
-		if status.LastHeartbeatTime.IsZero() {
-			if oldStatus, ok := previousStores[status.ID]; ok {
-				klog.V(4).Infof("the pod:%s's store LastHeartbeatTime is zero,so will keep in %v", status.PodName, oldStatus.LastHeartbeatTime)
-				status.LastHeartbeatTime = oldStatus.LastHeartbeatTime
-			}
-		}
 
 		oldStore, exist := previousStores[status.ID]
+		if !exist {
+			oldStore, exist = previousPeerStores[status.ID]
+		}
+
+		// avoid LastHeartbeatTime be overwrite by zero time when pd lost LastHeartbeatTime
+		if status.LastHeartbeatTime.IsZero() && exist {
+			klog.V(4).Infof("the pod:%s's store LastHeartbeatTime is zero,so will keep in %v", status.PodName, oldStore.LastHeartbeatTime)
+			status.LastHeartbeatTime = oldStore.LastHeartbeatTime
+		}
 
 		status.LastTransitionTime = metav1.Now()
 		if exist && status.State == oldStore.State {
 			status.LastTransitionTime = oldStore.LastTransitionTime
 		}
 
-		// In theory, the external tiflash can join the cluster, and the operator would only manage the internal tiflash.
-		// So we check the store owner to make sure it.
 		if store.Store != nil && pattern.Match([]byte(store.Store.Address)) {
 			stores[status.ID] = *status
 		} else {
