@@ -203,23 +203,30 @@ func (pc *PodAdmissionControl) transferPDLeader(payload *admitPayload) *admissio
 	}
 	tcName := tc.Name
 
-	lastOrdinal := helper.GetMaxPodOrdinal(*payload.ownerStatefulSet.Spec.Replicas, payload.ownerStatefulSet)
-	targetOrdinal := lastOrdinal
-	if ordinal == lastOrdinal {
-		targetOrdinal = helper.GetMinPodOrdinal(*payload.ownerStatefulSet.Spec.Replicas, payload.ownerStatefulSet)
-	}
-	targetName := pdutil.PdName(tcName, targetOrdinal, namespace, tc.Spec.ClusterDomain)
-	if _, exist := tc.Status.PD.Members[targetName]; !exist {
-		targetName = pdutil.PdPodName(tcName, targetOrdinal)
-	}
-	if tc.PDStsActualReplicas() <= 1 && len(tc.Status.PD.PeerMembers) > 0 {
+	var targetName string
+	if tc.PDStsActualReplicas() > 1 {
+		lastOrdinal := helper.GetMaxPodOrdinal(*payload.ownerStatefulSet.Spec.Replicas, payload.ownerStatefulSet)
+		targetOrdinal := lastOrdinal
+		if ordinal == lastOrdinal {
+			targetOrdinal = helper.GetMinPodOrdinal(*payload.ownerStatefulSet.Spec.Replicas, payload.ownerStatefulSet)
+		}
+		targetName = pdutil.PdName(tcName, targetOrdinal, namespace, tc.Spec.ClusterDomain)
+		if _, exist := tc.Status.PD.Members[targetName]; !exist {
+			targetName = pdutil.PdPodName(tcName, targetOrdinal)
+		}
+	} else if len(tc.Status.PD.PeerMembers) > 0 {
 		for _, member := range tc.Status.PD.PeerMembers {
-			if member.Name != pdutil.PdName(tcName, lastOrdinal, tc.Namespace, tc.Spec.ClusterDomain) && member.Health {
+			if member.Name != pdutil.PdName(tcName, ordinal, tc.Namespace, tc.Spec.ClusterDomain) && member.Health {
 				targetName = member.Name
 				break
 			}
 		}
 	}
+
+	if len(targetName) == 0 {
+		return util.ARSuccess()
+	}
+
 	err = payload.pdClient.TransferPDLeader(targetName)
 	if err != nil {
 		klog.Errorf("tc[%s/%s] failed to transfer pd leader to pod[%s/%s],%v", namespace, tcName, namespace, name, err)
