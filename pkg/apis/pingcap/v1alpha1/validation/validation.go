@@ -16,6 +16,7 @@ package validation
 import (
 	"encoding/json"
 	"fmt"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"net/url"
 	"os"
 	"path"
@@ -288,10 +289,18 @@ func validateRequestsStorage(requests corev1.ResourceList, fldPath *field.Path) 
 //validateTiKVStorageSize validates resources requests storage
 func validateStorageVolumes(storageVolumes []v1alpha1.StorageVolume, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
-	for i := range storageVolumes {
+	for i, storageVolume := range storageVolumes {
 		idxPath := fldPath.Index(i)
 		allErrs = append(allErrs, field.Required(idxPath.Child("name"), "name must not be empty"))
-		allErrs = append(allErrs, field.Required(idxPath.Child("storageSize"), "storage request must not be empty"))
+
+		_, err := resource.ParseQuantity(storageVolume.StorageSize)
+		if err != nil {
+			allErrs = append(allErrs, &field.Error{
+				Type:   field.ErrorTypeNotSupported,
+				Detail: `value of "storageSize" format not supported`,
+			})
+		}
+
 		allErrs = append(allErrs, field.Required(idxPath.Child("mountPath"), "mountPath must not be empty"))
 	}
 	return allErrs
