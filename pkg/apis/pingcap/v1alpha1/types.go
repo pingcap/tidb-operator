@@ -1497,8 +1497,6 @@ type IngressSpec struct {
 	// +optional
 	TLS []extensionsv1beta1.IngressTLS `json:"tls,omitempty"`
 }
-<<<<<<< HEAD
-=======
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -1846,4 +1844,3 @@ type StorageVolume struct {
 	StorageSize      string  `json:"storageSize"`
 	MountPath        string  `json:"mountPath"`
 }
->>>>>>> 87e44275... Tikv multiple pvc feature (#3425)
