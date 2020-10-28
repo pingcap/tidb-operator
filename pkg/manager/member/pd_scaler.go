@@ -123,9 +123,9 @@ func (s *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet 
 	if err != nil {
 		return err
 	}
-	// If the pd pod was pd leader during scale-in, we would transfer pd leader to pd-0 directly
-	// If the pd statefulSet would be scale-in to zero and the pd-0 was going to be deleted,
-	// we would directly deleted the pd-0 without pd leader transferring
+	// If the PD pod was PD leader during scale-in, we would transfer PD leader first
+	// If the PD StatefulSet would be scale-in to zero and no other members in the PD cluster,
+	// we would directly delete the member without the leader transferring
 	if leader.Name == memberName || leader.Name == pdPodName {
 		if ordinal > 0 {
 			minOrdinal := helper.GetMinPodOrdinal(*newSet.Spec.Replicas, newSet)
