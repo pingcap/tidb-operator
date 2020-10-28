@@ -209,7 +209,7 @@ func (m *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 	}
 
 	// Force update takes precedence over scaling because force upgrade won't take effect when cluster gets stuck at scaling
-	if !tc.Status.PD.Synced && NeedForceUpgrade(tc.Annotations) {
+	if !tc.Status.PD.Synced && NeedForceUpgrade(tc) {
 		tc.Status.PD.Phase = v1alpha1.UpgradePhase
 		setUpgradePartition(newPDSet, 0)
 		errSTS := updateStatefulSet(m.deps.StatefulSetControl, tc, newPDSet, oldPDSet)
@@ -235,19 +235,6 @@ func (m *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 		}
 	}
 
-<<<<<<< HEAD
-	if !tc.Status.PD.Synced {
-		force := NeedForceUpgrade(tc)
-		if force {
-			tc.Status.PD.Phase = v1alpha1.UpgradePhase
-			setUpgradePartition(newPDSet, 0)
-			errSTS := updateStatefulSet(m.deps.StatefulSetControl, tc, newPDSet, oldPDSet)
-			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd needs force upgrade, %v", ns, tcName, errSTS)
-		}
-	}
-
-=======
->>>>>>> bbab61e8... let force upgrade happen before scale (#3431)
 	if !templateEqual(newPDSet, oldPDSet) || tc.Status.PD.Phase == v1alpha1.UpgradePhase {
 		if err := m.upgrader.Upgrade(tc, oldPDSet, newPDSet); err != nil {
 			return err
