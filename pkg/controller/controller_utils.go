@@ -341,7 +341,7 @@ func FormatClusterDomainForRegex(clusterDomain string) string {
 	if clusterDomain == "" {
 		return ""
 	}
-	return "(|"+ regexp.QuoteMeta("." + clusterDomain) + ")"
+	return "(|" + regexp.QuoteMeta("."+clusterDomain) + ")"
 }
 
 func FormatClusterDomain(clusterDomain string) string {

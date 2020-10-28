@@ -240,6 +240,9 @@ func newTidbClusterForPodAdmissionControl(pdReplicas int32, tikvReplicas int32) 
 				Synced:  true,
 				Phase:   v1alpha1.NormalPhase,
 				Members: map[string]v1alpha1.PDMember{},
+				StatefulSet: &appsv1.StatefulSetStatus{
+					Replicas: 3,
+				},
 			},
 		},
 	}
