@@ -14,51 +14,49 @@ If you find that the memory leak occurs in a Pod during use, you need to restart
 
 ## Performing a graceful rolling restart to all Pods in a component
 
-1. Refer to [Deploy TiDB on general Kubernetes](deploy-on-general-kubernetes.md) and modify the `${cluster_name}/tidb-cluster.yaml` file.
+Refer to [Deploy TiDB on general Kubernetes](deploy-on-general-kubernetes.md) and modify the `${cluster_name}/tidb-cluster.yaml` file by running the following command:
 
-    Add `tidb.pingcap.com/restartedAt` in the annotation of the `spec` of the TiDB component you want to gracefully rolling restart, and set its value to be the current time.
+{{< copyable "shell-regular" >}}
 
-    In the following example, annotations of the `pd`, `tikv`, and `tidb` components are set, which means that all the Pods in these three components will be gracefully rolling restarted. You can set the annotation for a specific component according to your needs.
+```shell
+kubectl edit tc ${name} -n ${namespace}
+```
 
-    ```yaml
-    apiVersion: pingcap.com/v1alpha1
-    kind: TidbCluster
-    metadata:
-      name: basic
-    spec:
-      version: v4.0.7
-      timezone: UTC
-      pvReclaimPolicy: Delete
-      pd:
-        baseImage: pingcap/pd
-        replicas: 3
-        requests:
-          storage: "1Gi"
-        config: {}
-        annotations:
-          tidb.pingcap.com/restartedAt: 2020-04-20T12:00
-      tikv:
-        baseImage: pingcap/tikv
-        replicas: 3
-        requests:
-          storage: "1Gi"
-        config: {}
-        annotations:
-          tidb.pingcap.com/restartedAt: 2020-04-20T12:00
-      tidb:
-        baseImage: pingcap/tidb
-        replicas: 2
-        service:
-          type: ClusterIP
-        config: {}
-        annotations:
-          tidb.pingcap.com/restartedAt: 2020-04-20T12:00
-    ```
+Add `tidb.pingcap.com/restartedAt` in the annotation of the `spec` of the TiDB component you want to gracefully rolling restart, and set its value to be the current time.
 
-2. Apply the update:
+In the following example, annotations of the `pd`, `tikv`, and `tidb` components are set, which means that all the Pods in these three components will be gracefully rolling restarted. You can set the annotation for a specific component according to your needs.
 
-    {{< copyable "shell-regular" >}}
-
-    ``` shell
-    kubectl apply -f ${cluster_name} -n ${namespace}
-    ```
+```yaml
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: basic
+spec:
+  version: v4.0.7
+  timezone: UTC
+  pvReclaimPolicy: Delete
+  pd:
+    baseImage: pingcap/pd
+    replicas: 3
+    requests:
+      storage: "1Gi"
+    config: {}
+    annotations:
+      tidb.pingcap.com/restartedAt: 2020-04-20T12:00
+  tikv:
+    baseImage: pingcap/tikv
+    replicas: 3
+    requests:
+      storage: "1Gi"
+    config: {}
+    annotations:
+      tidb.pingcap.com/restartedAt: 2020-04-20T12:00
+  tidb:
+    baseImage: pingcap/tidb
+    replicas: 2
+    service:
+      type: ClusterIP
+    config: {}
+    annotations:
+      tidb.pingcap.com/restartedAt: 2020-04-20T12:00
+```

@@ -18,14 +18,6 @@ Currently, the TiDB cluster supports management by TidbCluster Custom Resource (
 
 Modify `spec.pd.replicas`, `spec.tidb.replicas`, and `spec.tikv.replicas` in the `TidbCluster` object of the cluster to a desired value using kubectl. You can modify the values in the local file or using online command.
 
-- If a yaml file that describes the TiDB cluster exists in your local machine, modify `spec.pd.replicas`, `spec.tidb.replicas`, and `spec.tikv.replicas` in the local file to your desired values. Then deploy the yaml file to the cluster by running the following command:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    kubectl apply -f ${target_file}.yaml -n ${namespace}
-    ```
-
 - You can also online modify the `TidbCluster` definition in the Kubernetes cluster by running the following command:
 
     {{< copyable "shell-regular" >}}
@@ -34,7 +26,7 @@ Modify `spec.pd.replicas`, `spec.tidb.replicas`, and `spec.tikv.replicas` in the
     kubectl edit tidbcluster ${cluster_name} -n ${namespace}
     ```
 
-After modifying the values above, check whether the TiDB cluster in Kubernetes has updated to your desired definition:
+Check whether the TiDB cluster in Kubernetes has updated to your desired definition by running the following command:
 
 {{< copyable "shell-regular" >}}
 
