@@ -697,8 +697,7 @@ func TestMasterMemberManagerSyncMasterSts(t *testing.T) {
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(set.Spec.Template.Spec.Containers[0].Image).To(Equal("dm-test-image-2:v2.0.0-rc.2"))
-				// scale in one pd from 3 -> 2
-				g.Expect(*set.Spec.Replicas).To(Equal(int32(2)))
+				g.Expect(*set.Spec.Replicas).To(Equal(int32(1)))
 				g.Expect(*set.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(0)))
 			},
 			expectDMClusterFn: func(g *GomegaWithT, dc *v1alpha1.DMCluster) {
