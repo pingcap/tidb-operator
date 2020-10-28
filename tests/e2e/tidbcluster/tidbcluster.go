@@ -1492,6 +1492,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		clusterConfig.ScaleTiKV(3)
 		oa.UpgradeTidbClusterOrDie(&clusterConfig)
 		oa.CheckTidbClusterStatusOrDie(&clusterConfig)
+
 		ginkgo.By("scale out multiple pvc tidb cluster")
 		clusterConfig.ScaleTiKV(4)
 		oa.UpgradeTidbClusterOrDie(&clusterConfig)
