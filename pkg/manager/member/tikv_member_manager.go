@@ -377,12 +377,10 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	var additionalVolumeClaims []corev1.PersistentVolumeClaim
 	if len(tc.Spec.TiKV.StorageVolumes) > 0 {
 		for _, storageVolume := range tc.Spec.TiKV.StorageVolumes {
-			storageRequest, err := controller.ParseStorageRequest(corev1.ResourceList{
-				corev1.ResourceStorage: resource.MustParse(storageVolume.StorageSize),
-			})
-			if err != nil {
-				klog.Errorf("cannot parse storage request for tikv, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
-				break
+			storageRequest := corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceStorage: resource.MustParse(storageVolume.StorageSize),
+				},
 			}
 			var storageClassName *string
 			if storageVolume.StorageClassName != nil && len(*storageVolume.StorageClassName) > 0 {

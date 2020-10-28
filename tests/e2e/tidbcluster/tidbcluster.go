@@ -1480,7 +1480,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		tc.Spec.TiKV.Config.Set("titan.dirname", "/var/lib/titan")
 		clusterConfig := newTidbClusterConfig(e2econfig.TestConfig, ns, clusterName, "admin", utilimage.TiDBV4Version)
 		clusterConfig.Resources["pd.replicas"] = "1"
-		clusterConfig.Resources["tikv.replicas"] = "2"
+		clusterConfig.Resources["tikv.replicas"] = "4"
 		clusterConfig.Resources["tidb.replicas"] = "1"
 		clusterConfig.Clustrer = tc
 
@@ -1489,7 +1489,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.CheckTidbClusterStatusOrDie(&clusterConfig)
 
 		ginkgo.By("scale multiple pvc tidb cluster")
-		clusterConfig.ScaleTiKV(1)
+		clusterConfig.ScaleTiKV(3)
 		oa.UpgradeTidbClusterOrDie(&clusterConfig)
 		oa.CheckTidbClusterStatusOrDie(&clusterConfig)
 	})

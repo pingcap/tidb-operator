@@ -290,7 +290,7 @@ func validateStorageVolumes(storageVolumes []v1alpha1.StorageVolume, fldPath *fi
 	allErrs := field.ErrorList{}
 	for i := range storageVolumes {
 		idxPath := fldPath.Index(i)
-		allErrs = append(allErrs, field.Required(idxPath.Child("name"), "name must not be empty\""))
+		allErrs = append(allErrs, field.Required(idxPath.Child("name"), "name must not be empty"))
 		allErrs = append(allErrs, field.Required(idxPath.Child("storageSize"), "storage request must not be empty"))
 		allErrs = append(allErrs, field.Required(idxPath.Child("mountPath"), "mountPath must not be empty"))
 	}
