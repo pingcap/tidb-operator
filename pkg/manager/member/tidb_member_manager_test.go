@@ -16,6 +16,7 @@ package member
 import (
 	"context"
 	"fmt"
+	"path"
 	"strings"
 	"testing"
 	"time"
@@ -2171,6 +2172,65 @@ func TestTiDBShouldRecover(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestBuildTiDBProbeHandler(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	defaultHandler := corev1.Handler{
+		TCPSocket: &corev1.TCPSocketAction{
+			Port: intstr.FromInt(4000),
+		},
+	}
+
+	execHandler := corev1.Handler{
+		Exec: &corev1.ExecAction{
+			Command: []string{
+				"curl",
+				"http://127.0.0.1:10080/status",
+				"--fail",
+				"--location",
+			},
+		},
+	}
+
+	sslExecHandler := corev1.Handler{
+		Exec: &corev1.ExecAction{
+			Command: []string{
+				"curl",
+				"https://127.0.0.1:10080/status",
+				"--fail",
+				"--location",
+				"--cacert", path.Join(clusterCertPath, tlsSecretRootCAKey),
+				"--cert", path.Join(clusterCertPath, corev1.TLSCertKey),
+				"--key", path.Join(clusterCertPath, corev1.TLSPrivateKeyKey),
+			},
+		},
+	}
+
+	tc := &v1alpha1.TidbCluster{
+		Spec: v1alpha1.TidbClusterSpec{
+			TiDB: &v1alpha1.TiDBSpec{},
+		},
+	}
+
+	// test default
+	get := buildTiDBReadinessProbHandler(tc)
+	g.Expect(get).Should(Equal(defaultHandler))
+
+	// test set statusAPI
+	tc.Spec.TiDB.ReadinessProbe = &v1alpha1.TiDBProbe{
+		StatusAPI: &v1alpha1.TiDBStatusAPIAction{},
+	}
+	get = buildTiDBReadinessProbHandler(tc)
+	g.Expect(get).Should(Equal(execHandler))
+
+	// test statusAPI and tls
+	tc.Spec.TLSCluster = &v1alpha1.TLSCluster{
+		Enabled: true,
+	}
+	get = buildTiDBReadinessProbHandler(tc)
+	g.Expect(get).Should(Equal(sslExecHandler))
 }
 
 func mustConfig(x interface{}) *v1alpha1.TiDBConfigWraper {

@@ -611,6 +611,27 @@ type TiDBSpec struct {
 	// until the action is complete, unless the container process fails, in which case the handler is aborted.
 	// +optional
 	Lifecycle *corev1.Lifecycle `json:"lifecycle,omitempty"`
+	// ReadinessProbe describes actions that probe the tidb's readiness.
+	// +optional
+	ReadinessProbe *TiDBProbe `json:"readinessProbe,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// TiDBStatusAPI contains the details of TiDBStatusAPI to probe tidb.
+type TiDBStatusAPIAction struct {
+	// +optional
+	Host *string `json:"host,omitempty"` // default 127.0.0.1
+}
+
+// +k8s:openapi-gen=true
+// TiDBProbe contains details of probing tidb.
+// default probe by TCPPort on 4000.
+type TiDBProbe struct {
+	// Probe by status api of tidb.
+	// This will use curl command to request tidb, before v4.0.9 there is no curl in the image,
+	// So do not use this before v4.0.9.
+	// +optional
+	StatusAPI *TiDBStatusAPIAction `json:"statusAPI,omitempty"`
 }
 
 // +k8s:openapi-gen=true
