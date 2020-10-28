@@ -16,6 +16,8 @@ package monitor
 import (
 	"encoding/json"
 	"fmt"
+	appsv1 "k8s.io/api/apps/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sort"
 	"strings"
 
@@ -158,8 +160,8 @@ func (m *MonitorManager) syncTidbMonitorService(monitor *v1alpha1.TidbMonitor) e
 }
 
 func (m *MonitorManager) syncTidbMonitorPVC(monitor *v1alpha1.TidbMonitor) (*corev1.PersistentVolumeClaim, error) {
-
-	pvc := getMonitorPVC(monitor)
+	pvcName := GetMonitorObjectName(monitor)
+	pvc := getMonitorPVC(pvcName, monitor)
 	pvc, err := m.deps.TypedControl.CreateOrUpdatePVC(monitor, pvc, false)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s pvc failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
@@ -200,12 +202,18 @@ func (m *MonitorManager) syncTidbMonitorDeployment(tc *v1alpha1.TidbCluster, mon
 		return err
 	}
 
-	deployment, err := getMonitorDeployment(sa, cm, secret, monitor, tc)
+	err = m.smoothMigrationToStatefulSet(monitor)
 	if err != nil {
-		klog.Errorf("tm[%s/%s]'s deployment failed to generate,err: %v", monitor.Namespace, monitor.Name, err)
+		klog.Errorf("tm[%s/%s]'s failed to smooth migration,err: %v", monitor.Namespace, monitor.Name, err)
 		return err
 	}
-	_, err = m.deps.TypedControl.CreateOrUpdateDeployment(monitor, deployment)
+	statefulset, err := getMonitorStatefulSet(sa, cm, secret, monitor, tc)
+	if err != nil {
+		klog.Errorf("tm[%s/%s]'s statefulset failed to generate,err: %v", monitor.Namespace, monitor.Name, err)
+		return err
+	}
+
+	_, err = m.deps.TypedControl.CreateOrUpdateStatefulSet(monitor, statefulset)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s deployment failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return err
@@ -426,4 +434,65 @@ func (m *MonitorManager) patchTidbClusterStatus(tcRef *v1alpha1.TidbClusterRef, 
 	}
 	_, err = m.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Patch(tc.Name, types.MergePatchType, mergePatch)
 	return err
+}
+
+func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMonitor) error {
+	exist, err := m.deps.TypedControl.Exist(client.ObjectKey{
+		Namespace: monitor.Namespace,
+		Name:      monitor.Name,
+	}, &appsv1.Deployment{})
+	if err != nil {
+		klog.Errorf("tm[%s/%s]'s deployment failed to get,err: %v", monitor.Namespace, monitor.Name, err)
+		return err
+	}
+	if exist {
+		err = m.deps.TypedControl.Delete(monitor, &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      monitor.Name,
+				Namespace: monitor.Namespace,
+			},
+		})
+		if err != nil {
+			klog.Errorf("tm[%s/%s]'s deployment failed to delete,err: %v", monitor.Namespace, monitor.Name, err)
+			return err
+		}
+		return nil
+	} else {
+		stsPvcName := fmt.Sprintf("%s-0", GetMonitorObjectName(monitor))
+		stsPvc := getMonitorPVC(stsPvcName, monitor)
+		stsPvc, err := m.deps.TypedControl.CreateOrUpdatePVC(monitor, stsPvc, false)
+
+		if err != nil {
+			klog.Errorf("tm[%s/%s]'s pvc failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
+			return err
+		}
+
+		deploymentPvcName := GetMonitorObjectName(monitor)
+		deploymentPvc, err := m.deps.PVCLister.PersistentVolumeClaims(monitor.Namespace).Get(deploymentPvcName)
+		if err != nil {
+			return err
+		}
+		if deploymentPvc != nil {
+			// update meta info for pv
+			deploymentPv, err := m.deps.PVLister.Get(deploymentPvc.Spec.VolumeName)
+			if err != nil {
+				return err
+			}
+			deploymentPv.Spec.ClaimRef.Name = stsPvc.Name
+			_, err = m.deps.PVControl.UpdateMetaInfo(monitor, deploymentPv)
+			if err != nil {
+				return err
+			}
+			err = m.deps.TypedControl.Delete(monitor, &corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      monitor.Name,
+					Namespace: monitor.Namespace,
+				},
+			})
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

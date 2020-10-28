@@ -796,11 +796,11 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 	return services
 }
 
-func getMonitorPVC(monitor *v1alpha1.TidbMonitor) *core.PersistentVolumeClaim {
+func getMonitorPVC(name string, monitor *v1alpha1.TidbMonitor) *core.PersistentVolumeClaim {
 	l := buildTidbMonitorLabel(monitor.Name)
 	return &core.PersistentVolumeClaim{
 		ObjectMeta: meta.ObjectMeta{
-			Name:        GetMonitorObjectName(monitor),
+			Name:        name,
 			Namespace:   monitor.Namespace,
 			Labels:      l,
 			Annotations: monitor.Spec.Annotations,
@@ -888,4 +888,76 @@ func defaultTidbMonitor(monitor *v1alpha1.TidbMonitor) {
 	if monitor.Spec.PVReclaimPolicy == nil {
 		monitor.Spec.PVReclaimPolicy = &retainPVP
 	}
+}
+
+func getMonitorStatefulSet(sa *core.ServiceAccount, config *core.ConfigMap, secret *core.Secret, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error) {
+	statefulset := getMonitorStatefulSetSkeleton(sa, monitor)
+	initContainer := getMonitorInitContainer(monitor, tc)
+	statefulset.Spec.Template.Spec.InitContainers = append(statefulset.Spec.Template.Spec.InitContainers, initContainer)
+	prometheusContainer := getMonitorPrometheusContainer(monitor, tc)
+	reloaderContainer := getMonitorReloaderContainer(monitor, tc)
+	statefulset.Spec.Template.Spec.Containers = append(statefulset.Spec.Template.Spec.Containers, prometheusContainer, reloaderContainer)
+	additionalContainers := monitor.Spec.AdditionalContainers
+	if len(additionalContainers) > 0 {
+		statefulset.Spec.Template.Spec.Containers = append(statefulset.Spec.Template.Spec.Containers, additionalContainers...)
+	}
+	if monitor.Spec.Grafana != nil {
+		grafanaContainer := getMonitorGrafanaContainer(secret, monitor, tc)
+		statefulset.Spec.Template.Spec.Containers = append(statefulset.Spec.Template.Spec.Containers, grafanaContainer)
+	}
+	volumes := getMonitorVolumes(config, monitor, tc)
+	statefulset.Spec.Template.Spec.Volumes = volumes
+	b, err := json.Marshal(statefulset.Spec.Template.Spec)
+	if err != nil {
+		return nil, err
+	}
+	if statefulset.Annotations == nil {
+		statefulset.Annotations = map[string]string{}
+	}
+	statefulset.Annotations[controller.LastAppliedPodTemplate] = string(b)
+
+	if monitor.Spec.ImagePullSecrets != nil {
+		statefulset.Spec.Template.Spec.ImagePullSecrets = monitor.Spec.ImagePullSecrets
+	}
+
+	return statefulset, nil
+}
+
+func getMonitorStatefulSetSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.TidbMonitor) *apps.StatefulSet {
+	replicas := int32(1)
+	name := GetMonitorObjectName(monitor)
+	statefulset := &apps.StatefulSet{
+		ObjectMeta: meta.ObjectMeta{
+			Name:            name,
+			Namespace:       monitor.Namespace,
+			Labels:          buildTidbMonitorLabel(monitor.Name),
+			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
+			Annotations:     monitor.Spec.Annotations,
+		},
+		Spec: apps.StatefulSetSpec{
+			ServiceName: name,
+			Replicas:    &replicas,
+			UpdateStrategy: apps.StatefulSetUpdateStrategy{
+				Type: apps.RollingUpdateStatefulSetStrategyType,
+			},
+			Selector: &meta.LabelSelector{
+				MatchLabels: buildTidbMonitorLabel(monitor.Name),
+			},
+			Template: core.PodTemplateSpec{
+				ObjectMeta: meta.ObjectMeta{
+					Labels: buildTidbMonitorLabel(monitor.Name),
+				},
+
+				Spec: core.PodSpec{
+					ServiceAccountName: sa.Name,
+					InitContainers:     []core.Container{},
+					Containers:         []core.Container{},
+					Volumes:            []core.Volume{},
+					Tolerations:        monitor.Spec.Tolerations,
+					NodeSelector:       monitor.Spec.NodeSelector,
+				},
+			},
+		},
+	}
+	return statefulset
 }

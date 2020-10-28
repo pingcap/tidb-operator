@@ -95,3 +95,27 @@ func IngressEqual(newIngress, oldIngres *extensionsv1beta1.Ingress) (bool, error
 	}
 	return false, nil
 }
+
+// DeploymentPodSpecChanged checks whether the new deployment differs with the old one's last-applied-config
+func StatefulSetPodSpecChanged(newSts *appsv1.StatefulSet, oldSts *appsv1.StatefulSet) bool {
+	lastAppliedPodTemplate, err := GetStatefulSetLastAppliedPodTemplate(oldSts)
+	if err != nil {
+		klog.Warningf("error get last-applied-config of deployment %s/%s: %v", oldSts.Namespace, oldSts.Name, err)
+		return true
+	}
+	return !apiequality.Semantic.DeepEqual(newSts.Spec.Template.Spec, lastAppliedPodTemplate)
+}
+
+// GetDeploymentLastAppliedPodTemplate set last applied pod template from Deployment's annotation
+func GetStatefulSetLastAppliedPodTemplate(sts *appsv1.StatefulSet) (*corev1.PodSpec, error) {
+	applied, ok := sts.Annotations[LastAppliedPodTemplate]
+	if !ok {
+		return nil, fmt.Errorf("deployment:[%s/%s] not found spec's apply config", sts.GetNamespace(), sts.GetName())
+	}
+	podSpec := &corev1.PodSpec{}
+	err := json.Unmarshal([]byte(applied), podSpec)
+	if err != nil {
+		return nil, err
+	}
+	return podSpec, nil
+}
