@@ -1470,6 +1470,19 @@ bool
 </tr>
 <tr>
 <td>
+<code>clusterDomain</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ClusterDomain is the Kubernetes Cluster Domain of TiDB cluster
+Optional: Defaults to &ldquo;&rdquo;</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>cluster</code></br>
 <em>
 <a href="#tidbclusterref">
@@ -8699,6 +8712,18 @@ Kubernetes apps/v1.StatefulSetStatus
 <tr>
 <td>
 <code>members</code></br>
+<em>
+<a href="#pdmember">
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDMember
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>peerMembers</code></br>
 <em>
 <a href="#pdmember">
 map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDMember
@@ -16885,6 +16910,18 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVStore
 </tr>
 <tr>
 <td>
+<code>peerStores</code></br>
+<em>
+<a href="#tikvstore">
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVStore
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
 <code>tombstoneStores</code></br>
 <em>
 <a href="#tikvstore">
@@ -17863,6 +17900,18 @@ string
 <p>Name is the name of TidbCluster object</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>clusterDomain</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ClusterDomain is the domain of TidbCluster object</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbclusterspec">TidbClusterSpec</h3>
@@ -18240,6 +18289,19 @@ bool
 <td>
 <em>(Optional)</em>
 <p>EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>clusterDomain</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ClusterDomain is the Kubernetes Cluster Domain of TiDB cluster
+Optional: Defaults to &ldquo;&rdquo;</p>
 </td>
 </tr>
 <tr>

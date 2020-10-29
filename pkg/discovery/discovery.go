@@ -66,14 +66,17 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 		return "", fmt.Errorf("advertisePeerUrl is empty")
 	}
 	klog.Infof("advertisePeerUrl is: %s", advertisePeerUrl)
-	strArr := strings.Split(advertisePeerUrl, ".")
-	if len(strArr) != 4 {
+	strArr := strings.Split(advertisePeerUrl, ":")
+	hostArr := strings.Split(strArr[0], ".")
+
+	if len(hostArr) < 4 || hostArr[3] != "svc" {
 		return "", fmt.Errorf("advertisePeerUrl format is wrong: %s", advertisePeerUrl)
 	}
 
-	podName, peerServiceName, ns := strArr[0], strArr[1], strArr[2]
+	podName, peerServiceName, ns := hostArr[0], hostArr[1], hostArr[2]
 	tcName := strings.TrimSuffix(peerServiceName, "-pd-peer")
 	podNamespace := os.Getenv("MY_POD_NAMESPACE")
+
 	if ns != podNamespace {
 		return "", fmt.Errorf("the peer's namespace: %s is not equal to discovery namespace: %s", ns, podNamespace)
 	}
@@ -95,22 +98,36 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	currentCluster.peers[podName] = struct{}{}
 
 	// Should take failover replicas into consideration
-	if len(currentCluster.peers) == int(tc.PDStsDesiredReplicas()) {
+	if len(currentCluster.peers) == int(tc.PDStsDesiredReplicas()) && tc.Spec.Cluster == nil {
 		delete(currentCluster.peers, podName)
 		if len(pdAddresses) != 0 {
 			return fmt.Sprintf("--join=%s", strings.Join(pdAddresses, ",")), nil
 		}
+		if len(tc.Spec.ClusterDomain) > 0 {
+			return fmt.Sprintf("--initial-cluster=%s=%s://%s", strArr[0], tc.Scheme(), advertisePeerUrl), nil
+		}
 		return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, tc.Scheme(), advertisePeerUrl), nil
 	}
 
-	var pdClient pdapi.PDClient
-	if tc.IsHeterogeneous() {
-		pdClient = d.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
-	} else {
-		pdClient = d.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled())
+	var pdClients []pdapi.PDClient
+	if tc.Spec.Cluster != nil && len(tc.Spec.Cluster.Name) > 0 {
+		namespace := tc.Spec.Cluster.Namespace
+		if len(namespace) == 0 {
+			namespace = tc.GetNamespace()
+		}
+		pdClients = append(pdClients, d.pdControl.GetClusterRefPDClient(pdapi.Namespace(namespace), tc.Spec.Cluster.Name, tc.Spec.Cluster.ClusterDomain, tc.IsTLSClusterEnabled()))
+	}
+	if tc.Spec.PD != nil {
+		pdClients = append(pdClients, d.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()))
 	}
 
-	membersInfo, err := pdClient.GetMembers()
+	var membersInfo *pdapi.MembersInfo
+	for _, client := range pdClients {
+		membersInfo, err = client.GetMembers()
+		if err == nil {
+			break
+		}
+	}
 	if err != nil {
 		return "", err
 	}

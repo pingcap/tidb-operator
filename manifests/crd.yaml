@@ -334,6 +334,8 @@ spec:
               type: object
             cluster:
               properties:
+                clusterDomain:
+                  type: string
                 name:
                   type: string
                 namespace:
@@ -341,6 +343,8 @@ spec:
               required:
               - name
               type: object
+            clusterDomain:
+              type: string
             configUpdateStrategy:
               type: string
             discovery:
@@ -15031,6 +15035,8 @@ spec:
             clusters:
               items:
                 properties:
+                  clusterDomain:
+                    type: string
                   name:
                     type: string
                   namespace:
@@ -15122,6 +15128,8 @@ spec:
           properties:
             cluster:
               properties:
+                clusterDomain:
+                  type: string
                 name:
                   type: string
                 namespace:
@@ -15210,6 +15218,8 @@ spec:
           properties:
             cluster:
               properties:
+                clusterDomain:
+                  type: string
                 name:
                   type: string
                 namespace:
