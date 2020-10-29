@@ -33,7 +33,8 @@ func TestUpdateConfigMap(t *testing.T) {
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 
-		origNew := test.new
+		origOld := test.old.DeepCopy()
+		origNew := test.new.DeepCopy()
 		err := updateConfigMap(test.old, test.new)
 
 		if test.err != nil {
@@ -42,25 +43,25 @@ func TestUpdateConfigMap(t *testing.T) {
 		}
 		g.Expect(err).NotTo(HaveOccurred())
 
-		if len(test.old.Data) > 0 {
+		// different keys are updated in new
+		if len(test.new.Data) > 0 {
 			for _, k := range test.updateKeys {
 				// only keys in both old and new are updated
-				_, ok := origNew.Data[k]
+				_, ok := origOld.Data[k]
 				if !ok {
 					continue
 				}
-				g.Expect(test.new.Data[k]).To(Equal(test.old.Data[k]))
+				g.Expect(test.new.Data[k]).To(Equal(origOld.Data[k]))
 			}
 		}
 
-		if len(origNew.Data) > 0 {
-			for k, v := range origNew.Data {
-				_, ok := test.old.Data[k]
-				if !ok {
-					continue
-				}
-				g.Expect(test.new.Data[k]).To(Equal(v))
+		// other keys should not be modified
+		for k, v := range origNew.Data {
+			_, ok := origOld.Data[k]
+			if ok {
+				continue
 			}
+			g.Expect(test.new.Data[k]).To(Equal(v))
 		}
 	}
 
@@ -103,6 +104,24 @@ func TestUpdateConfigMap(t *testing.T) {
 				Data: map[string]string{
 					"pump-config":       "a = \"b\"",
 					"config_templ.toml": "# comment \nc = \"d\"",
+				},
+			},
+			updateKeys: []string{"pump-config", "config_templ.toml"},
+		},
+		{
+			name: "some keys are not updated",
+			old: &corev1.ConfigMap{
+				Data: map[string]string{
+					"config-file":       "foo",
+					"pump-config":       "a = \"b\"",
+					"config_templ.toml": "c = \"d\"",
+				},
+			},
+			new: &corev1.ConfigMap{
+				Data: map[string]string{
+					"pump-config":       "a = \"b\"",
+					"config_templ.toml": "# comment \nc = \"d\"",
+					"proxy_templ.toml":  "e = \"f\"",
 				},
 			},
 			updateKeys: []string{"pump-config", "config_templ.toml"},
