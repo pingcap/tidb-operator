@@ -10919,6 +10919,64 @@ GcsStorageProvider
 </tr>
 </tbody>
 </table>
+<h3 id="storagevolume">StorageVolume</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tikvspec">TiKVSpec</a>)
+</p>
+<p>
+<p>StorageVolume is TiKV storage information</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageSize</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>mountPath</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tlscluster">TLSCluster</h3>
 <p>
 (<em>Appears on:</em>
@@ -16793,6 +16851,21 @@ string
 <em>(Optional)</em>
 <p>EvictLeaderTimeout indicates the timeout to evict tikv leader, in the format of Go Duration.
 Defaults to 3m</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageVolumes</code></br>
+<em>
+<a href="#storagevolume">
+[]StorageVolume
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StorageVolumes is additional storage apply for TiKV node.
+Default to storageClassName storage class</p>
 </td>
 </tr>
 </tbody>
