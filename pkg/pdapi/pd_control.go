@@ -31,6 +31,8 @@ type Namespace string
 type PDControlInterface interface {
 	// GetPDClient provides PDClient of the tidb cluster.
 	GetPDClient(namespace Namespace, tcName string, tlsEnabled bool) PDClient
+	// GetClusterRefPDClient provides PDClient of the tidb cluster.
+	GetClusterRefPDClient(namespace Namespace, tcName string, clusterDomain string, tlsEnabled bool) PDClient
 	// GetPDEtcdClient provides PD etcd Client of the tidb cluster.
 	GetPDEtcdClient(namespace Namespace, tcName string, tlsEnabled bool) (PDEtcdClient, error)
 }
@@ -102,9 +104,42 @@ func (c *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tlsEn
 	return c.pdClients[key]
 }
 
+func (pdc *defaultPDControl) GetClusterRefPDClient(namespace Namespace, tcName string, clusterDomain string, tlsEnabled bool) PDClient {
+	pdc.mutex.Lock()
+	defer pdc.mutex.Unlock()
+
+	var tlsConfig *tls.Config
+	var err error
+	var scheme = "http"
+
+	if tlsEnabled {
+		scheme = "https"
+		tlsConfig, err = GetTLSConfig(pdc.kubeCli, namespace, tcName, util.ClusterClientTLSSecretName(tcName))
+		if err != nil {
+			klog.Errorf("Unable to get tls config for tidb cluster %q, pd client may not work: %v", tcName, err)
+			return &pdClient{url: ClusterRefPDClientUrl(namespace, tcName, scheme, clusterDomain), httpClient: &http.Client{Timeout: DefaultTimeout}}
+		}
+
+		return NewPDClient(ClusterRefPDClientUrl(namespace, tcName, scheme, clusterDomain), DefaultTimeout, tlsConfig)
+	}
+
+	key := ClusterRefpdClientKey(scheme, namespace, tcName, clusterDomain)
+	if _, ok := pdc.pdClients[key]; !ok {
+		pdc.pdClients[key] = NewPDClient(ClusterRefPDClientUrl(namespace, tcName, scheme, clusterDomain), DefaultTimeout, nil)
+	}
+	return pdc.pdClients[key]
+}
+
 // pdClientKey returns the pd client key
 func pdClientKey(scheme string, namespace Namespace, clusterName string) string {
 	return fmt.Sprintf("%s.%s.%s", scheme, clusterName, string(namespace))
+}
+
+func ClusterRefpdClientKey(scheme string, namespace Namespace, clusterName string, clusterDomain string) string {
+	if len(clusterDomain) == 0 {
+		return fmt.Sprintf("%s.%s.%s", scheme, clusterName, string(namespace))
+	}
+	return fmt.Sprintf("%s.%s.%s.%s", scheme, clusterName, string(namespace), clusterDomain)
 }
 
 func pdEtcdClientKey(namespace Namespace, clusterName string) string {
@@ -114,6 +149,17 @@ func pdEtcdClientKey(namespace Namespace, clusterName string) string {
 // pdClientUrl builds the url of pd client
 func PdClientURL(namespace Namespace, clusterName string, scheme string) string {
 	return fmt.Sprintf("%s://%s-pd.%s:2379", scheme, clusterName, string(namespace))
+}
+
+// ClusterRefPDClientUrl builds the url of cluster pd client
+func ClusterRefPDClientUrl(namespace Namespace, clusterName string, scheme string, clusterDomain string) string {
+	if len(namespace) == 0 {
+		return fmt.Sprintf("%s://%s-pd:2379", scheme, clusterName)
+	}
+	if len(clusterDomain) == 0 {
+		return fmt.Sprintf("%s://%s-pd.%s:2379", scheme, clusterName, string(namespace))
+	}
+	return fmt.Sprintf("%s://%s-pd-peer.%s.svc.%s:2379", scheme, clusterName, string(namespace), clusterDomain)
 }
 
 func PDEtcdClientURL(namespace Namespace, clusterName string) string {

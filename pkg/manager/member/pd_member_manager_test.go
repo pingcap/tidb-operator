@@ -298,9 +298,9 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 				}
 			},
 			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
-				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://pd1:2379"}, Health: true},
-				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://pd2:2379"}, Health: true},
-				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://pd3:2379"}, Health: false},
+				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://test-pd-1.test-pd-peer.default.svc:2379"}, Health: true},
+				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-2.test-pd-peer.default.svc:2379"}, Health: true},
+				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://test-pd-3.test-pd-peer.default.svc:2379"}, Health: false},
 			}},
 			errWhenUpdateStatefulSet:   false,
 			errWhenUpdatePDService:     false,
@@ -582,9 +582,9 @@ func TestPDMemberManagerUpgrade(t *testing.T) {
 				cluster.Spec.PD.Image = "pd-test-image:v2"
 			},
 			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
-				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://pd1:2379"}, Health: true},
-				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://pd2:2379"}, Health: true},
-				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://pd3:2379"}, Health: false},
+				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://test-pd-1.test-pd-peer.default.svc:2379"}, Health: true},
+				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-2.test-pd-peer.default.svc:2379"}, Health: true},
+				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://test-pd-3.test-pd-peer.default.svc:2379"}, Health: false},
 			}},
 			err: false,
 			statusChange: func(set *apps.StatefulSet) {
@@ -2437,13 +2437,14 @@ func TestPDMemberManagerSyncPDStsWhenPdNotJoinCluster(t *testing.T) {
 
 			},
 			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
-				{Name: "test-pd-0", MemberID: uint64(1), ClientUrls: []string{"http://test-pd-0:2379"}, Health: false},
-				{Name: "test-pd-1", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-1:2379"}, Health: false},
-				{Name: "test-pd-2", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-2:2379"}, Health: false},
+				{Name: "test-pd-0", MemberID: uint64(1), ClientUrls: []string{"http://test-pd-0.test-pd-peer.default.svc:2379"}, Health: false},
+				{Name: "test-pd-1", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-1.test-pd-peer.default.svc:2379"}, Health: false},
+				{Name: "test-pd-2", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-2.test-pd-peer.default.svc:2379"}, Health: false},
 			}},
 			err: false,
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(tc.Status.PD.UnjoinedMembers).To(BeEmpty())
+				g.Expect(len(tc.Status.PD.Members)).To(Equal(3))
 			},
 		},
 	}

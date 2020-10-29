@@ -441,10 +441,13 @@ func getPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	if tc.IsTLSClusterEnabled() {
 		scheme = "https"
 	}
+
 	return RenderPumpStartScript(&PumpStartScriptModel{
-		Scheme:      scheme,
-		ClusterName: tc.Name,
-		LogLevel:    getPumpLogLevel(tc),
+		Scheme:        scheme,
+		ClusterName:   tc.Name,
+		LogLevel:      getPumpLogLevel(tc),
+		ClusterDomain: tc.Spec.ClusterDomain,
+		Namespace:     tc.GetNamespace(),
 	})
 }
 
