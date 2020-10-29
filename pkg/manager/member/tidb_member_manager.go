@@ -367,6 +367,7 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		EnablePlugin:    len(plugins) > 0,
 		PluginDirectory: "/plugins",
 		PluginList:      strings.Join(plugins, ","),
+		ClusterDomain:   tc.Spec.ClusterDomain,
 	}
 
 	if tc.IsHeterogeneous() {
