@@ -28,6 +28,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -143,6 +144,9 @@ func validateTiKVSpec(spec *v1alpha1.TiKVSpec, fldPath *field.Path) field.ErrorL
 	allErrs = append(allErrs, validateRequestsStorage(spec.ResourceRequirements.Requests, fldPath)...)
 	if len(spec.DataSubDir) > 0 {
 		allErrs = append(allErrs, validateLocalDescendingPath(spec.DataSubDir, fldPath.Child("dataSubDir"))...)
+	}
+	if len(spec.StorageVolumes) > 0 {
+		allErrs = append(allErrs, validateStorageVolumes(spec.StorageVolumes, fldPath.Child("storageVolumes"))...)
 	}
 	allErrs = append(allErrs, validateTimeDurationStr(spec.EvictLeaderTimeout, fldPath.Child("evictLeaderTimeout"))...)
 	return allErrs
@@ -278,6 +282,26 @@ func validateRequestsStorage(requests corev1.ResourceList, fldPath *field.Path) 
 	allErrs := field.ErrorList{}
 	if _, ok := requests[corev1.ResourceStorage]; !ok {
 		allErrs = append(allErrs, field.Required(fldPath.Child("requests.storage").Key((string(corev1.ResourceStorage))), "storage request must not be empty"))
+	}
+	return allErrs
+}
+
+//validateTiKVStorageSize validates resources requests storage
+func validateStorageVolumes(storageVolumes []v1alpha1.StorageVolume, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	for i, storageVolume := range storageVolumes {
+		idxPath := fldPath.Index(i)
+		allErrs = append(allErrs, field.Required(idxPath.Child("name"), "name must not be empty"))
+
+		_, err := resource.ParseQuantity(storageVolume.StorageSize)
+		if err != nil {
+			allErrs = append(allErrs, &field.Error{
+				Type:   field.ErrorTypeNotSupported,
+				Detail: `value of "storageSize" format not supported`,
+			})
+		}
+
+		allErrs = append(allErrs, field.Required(idxPath.Child("mountPath"), "mountPath must not be empty"))
 	}
 	return allErrs
 }
