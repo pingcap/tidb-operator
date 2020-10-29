@@ -21,6 +21,8 @@ import (
 	"strconv"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -47,7 +49,7 @@ const (
 	tikvClusterCertPath = "/var/lib/tikv-tls"
 
 	//find a better way to manage store only managed by tikv in Operator
-	tikvStoreLimitPattern = `%s-tikv-\d+\.%s-tikv-peer\.%s\.svc\:\d+`
+	tikvStoreLimitPattern = `%s-tikv-\d+\.%s-tikv-peer\.%s\.svc%s\:\d+`
 )
 
 // tikvMemberManager implements manager.Manager.
@@ -372,6 +374,32 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		}
 	}
 
+	var additionalVolumeClaims []corev1.PersistentVolumeClaim
+	if len(tc.Spec.TiKV.StorageVolumes) > 0 {
+		for _, storageVolume := range tc.Spec.TiKV.StorageVolumes {
+			quantity, err := resource.ParseQuantity(storageVolume.StorageSize)
+			if err != nil {
+				klog.Errorf("Cannot parse storage size %v in Spec.TiKV.StorageVolumes, tidbcluster %s/%s, error: %v", storageVolume.StorageSize, tc.Namespace, tc.Name, err)
+				continue
+			}
+			storageRequest := corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceStorage: quantity,
+				},
+			}
+			var storageClassName *string
+			if storageVolume.StorageClassName != nil && len(*storageVolume.StorageClassName) > 0 {
+				storageClassName = storageVolume.StorageClassName
+			} else {
+				storageClassName = tc.Spec.TiKV.StorageClassName
+			}
+			additionalVolumeClaims = append(additionalVolumeClaims, volumeClaimTemplate(storageRequest, fmt.Sprintf("%s-%s", v1alpha1.TiKVMemberType.String(), storageVolume.Name), storageClassName))
+			volMounts = append(volMounts, corev1.VolumeMount{
+				Name: fmt.Sprintf("%s-%s", v1alpha1.TiKVMemberType.String(), storageVolume.Name), MountPath: storageVolume.MountPath,
+			})
+		}
+	}
+
 	sysctls := "sysctl -w"
 	var initContainers []corev1.Container
 	if baseTiKVSpec.Annotations() != nil {
@@ -525,6 +553,8 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			UpdateStrategy:      updateStrategy,
 		},
 	}
+
+	tikvset.Spec.VolumeClaimTemplates = append(tikvset.Spec.VolumeClaimTemplates, additionalVolumeClaims...)
 	return tikvset, nil
 }
 
@@ -591,9 +621,10 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	scriptModel := &TiKVStartScriptModel{
 		EnableAdvertiseStatusAddr: false,
 		DataDir:                   filepath.Join(tikvDataVolumeMountPath, tc.Spec.TiKV.DataSubDir),
+		ClusterDomain:             tc.Spec.ClusterDomain,
 	}
 	if tc.Spec.EnableDynamicConfiguration != nil && *tc.Spec.EnableDynamicConfiguration {
-		scriptModel.AdvertiseStatusAddr = "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc"
+		scriptModel.AdvertiseStatusAddr = "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc" + controller.FormatClusterDomain(tc.Spec.ClusterDomain)
 		scriptModel.EnableAdvertiseStatusAddr = true
 	}
 
@@ -643,7 +674,9 @@ func (m *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	}
 
 	previousStores := tc.Status.TiKV.Stores
+	previousPeerStores := tc.Status.TiKV.PeerStores
 	stores := map[string]v1alpha1.TiKVStore{}
+	peerStores := map[string]v1alpha1.TiKVStore{}
 	tombstoneStores := map[string]v1alpha1.TiKVStore{}
 
 	pdCli := controller.GetPDClient(m.deps.PDControl, tc)
@@ -654,36 +687,39 @@ func (m *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 		return err
 	}
 
-	pattern, err := regexp.Compile(fmt.Sprintf(tikvStoreLimitPattern, tc.Name, tc.Name, tc.Namespace))
+	pattern, err := regexp.Compile(fmt.Sprintf(tikvStoreLimitPattern, tc.Name, tc.Name, tc.Namespace, controller.FormatClusterDomainForRegex(tc.Spec.ClusterDomain)))
 	if err != nil {
 		return err
 	}
 	for _, store := range storesInfo.Stores {
-		// In theory, the external tikv can join the cluster, and the operator would only manage the internal tikv.
-		// So we check the store owner to make sure it.
-		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
-			continue
-		}
 		status := getTiKVStore(store)
 		if status == nil {
 			continue
 		}
-		// avoid LastHeartbeatTime be overwrite by zero time when pd lost LastHeartbeatTime
-		if status.LastHeartbeatTime.IsZero() {
-			if oldStatus, ok := previousStores[status.ID]; ok {
-				klog.V(4).Infof("the pod:%s's store LastHeartbeatTime is zero,so will keep in %v", status.PodName, oldStatus.LastHeartbeatTime)
-				status.LastHeartbeatTime = oldStatus.LastHeartbeatTime
-			}
-		}
 
 		oldStore, exist := previousStores[status.ID]
+		if !exist {
+			oldStore, exist = previousPeerStores[status.ID]
+		}
+
+		// avoid LastHeartbeatTime be overwrite by zero time when pd lost LastHeartbeatTime
+		if status.LastHeartbeatTime.IsZero() && exist {
+			klog.V(4).Infof("the pod:%s's store LastHeartbeatTime is zero,so will keep in %v", status.PodName, oldStore.LastHeartbeatTime)
+			status.LastHeartbeatTime = oldStore.LastHeartbeatTime
+		}
 
 		status.LastTransitionTime = metav1.Now()
 		if exist && status.State == oldStore.State {
 			status.LastTransitionTime = oldStore.LastTransitionTime
 		}
 
-		stores[status.ID] = *status
+		// In theory, the external tikv can join the cluster, and the operator would only manage the internal tikv.
+		// So we check the store owner to make sure it.
+		if store.Store != nil && pattern.Match([]byte(store.Store.Address)) {
+			stores[status.ID] = *status
+		} else {
+			peerStores[status.ID] = *status
+		}
 	}
 
 	//this returns all tombstone stores
@@ -705,6 +741,7 @@ func (m *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 
 	tc.Status.TiKV.Synced = true
 	tc.Status.TiKV.Stores = stores
+	tc.Status.TiKV.PeerStores = peerStores
 	tc.Status.TiKV.TombstoneStores = tombstoneStores
 	tc.Status.TiKV.Image = ""
 	c := filterContainer(set, "tikv")
@@ -753,7 +790,7 @@ func (m *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (int
 		return setCount, nil
 	}
 
-	pattern, err := regexp.Compile(fmt.Sprintf(tikvStoreLimitPattern, tc.Name, tc.Name, tc.Namespace))
+	pattern, err := regexp.Compile(fmt.Sprintf(tikvStoreLimitPattern, tc.Name, tc.Name, tc.Namespace, controller.FormatClusterDomainForRegex(tc.Spec.ClusterDomain)))
 	if err != nil {
 		return -1, err
 	}
