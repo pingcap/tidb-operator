@@ -231,7 +231,7 @@ func newRestore() *v1alpha1.Restore {
 			UID:       "test-rt",
 		},
 		Spec: v1alpha1.RestoreSpec{
-			To: v1alpha1.TiDBAccessConfig{
+			To: &v1alpha1.TiDBAccessConfig{
 				Host:       "10.1.1.2",
 				Port:       constants.DefaultTidbPort,
 				User:       constants.DefaultTidbUser,
