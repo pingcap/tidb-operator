@@ -9738,6 +9738,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterRef(ref common.ReferenceCallbac
 							Format:      "",
 						},
 					},
+					"clusterDomain": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ClusterDomain is the domain of TidbCluster object",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"name"},
 			},
@@ -9949,6 +9956,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 						SchemaProps: spec.SchemaProps{
 							Description: "EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster",
 							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"clusterDomain": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ClusterDomain is the Kubernetes Cluster Domain of TiDB cluster Optional: Defaults to \"\"",
+							Type:        []string{"string"},
 							Format:      "",
 						},
 					},

@@ -16,6 +16,7 @@ package member
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -100,10 +101,11 @@ func (f *pdFailover) tryToMarkAPeerAsFailure(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	for podName, pdMember := range tc.Status.PD.Members {
+	for pdName, pdMember := range tc.Status.PD.Members {
 		if pdMember.LastTransitionTime.IsZero() {
 			continue
 		}
+		podName := strings.Split(pdName, ".")[0]
 		if !f.isPodDesired(tc, podName) {
 			continue
 		}
@@ -112,7 +114,8 @@ func (f *pdFailover) tryToMarkAPeerAsFailure(tc *v1alpha1.TidbCluster) error {
 			tc.Status.PD.FailureMembers = map[string]v1alpha1.PDFailureMember{}
 		}
 		deadline := pdMember.LastTransitionTime.Add(f.deps.CLIConfig.PDFailoverPeriod)
-		_, exist := tc.Status.PD.FailureMembers[podName]
+		_, exist := tc.Status.PD.FailureMembers[pdName]
+
 		if pdMember.Health || time.Now().Before(deadline) || exist {
 			continue
 		}
@@ -128,11 +131,11 @@ func (f *pdFailover) tryToMarkAPeerAsFailure(tc *v1alpha1.TidbCluster) error {
 		}
 
 		msg := fmt.Sprintf("pd member[%s] is unhealthy", pdMember.ID)
-		f.deps.Recorder.Event(tc, apiv1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "pd", podName, msg))
+		f.deps.Recorder.Event(tc, apiv1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "pd", pdName, msg))
 
 		// mark a peer member failed and return an error to skip reconciliation
 		// note that status of tidb cluster will be updated always
-		tc.Status.PD.FailureMembers[podName] = v1alpha1.PDFailureMember{
+		tc.Status.PD.FailureMembers[pdName] = v1alpha1.PDFailureMember{
 			PodName:       podName,
 			MemberID:      pdMember.ID,
 			PVCUID:        pvc.UID,
