@@ -21,6 +21,8 @@ import (
 	"strconv"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -372,6 +374,32 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		}
 	}
 
+	var additionalVolumeClaims []corev1.PersistentVolumeClaim
+	if len(tc.Spec.TiKV.StorageVolumes) > 0 {
+		for _, storageVolume := range tc.Spec.TiKV.StorageVolumes {
+			quantity, err := resource.ParseQuantity(storageVolume.StorageSize)
+			if err != nil {
+				klog.Errorf("Cannot parse storage size %v in Spec.TiKV.StorageVolumes, tidbcluster %s/%s, error: %v", storageVolume.StorageSize, tc.Namespace, tc.Name, err)
+				continue
+			}
+			storageRequest := corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceStorage: quantity,
+				},
+			}
+			var storageClassName *string
+			if storageVolume.StorageClassName != nil && len(*storageVolume.StorageClassName) > 0 {
+				storageClassName = storageVolume.StorageClassName
+			} else {
+				storageClassName = tc.Spec.TiKV.StorageClassName
+			}
+			additionalVolumeClaims = append(additionalVolumeClaims, volumeClaimTemplate(storageRequest, fmt.Sprintf("%s-%s", v1alpha1.TiKVMemberType.String(), storageVolume.Name), storageClassName))
+			volMounts = append(volMounts, corev1.VolumeMount{
+				Name: fmt.Sprintf("%s-%s", v1alpha1.TiKVMemberType.String(), storageVolume.Name), MountPath: storageVolume.MountPath,
+			})
+		}
+	}
+
 	sysctls := "sysctl -w"
 	var initContainers []corev1.Container
 	if baseTiKVSpec.Annotations() != nil {
@@ -525,6 +553,8 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			UpdateStrategy:      updateStrategy,
 		},
 	}
+
+	tikvset.Spec.VolumeClaimTemplates = append(tikvset.Spec.VolumeClaimTemplates, additionalVolumeClaims...)
 	return tikvset, nil
 }
 
