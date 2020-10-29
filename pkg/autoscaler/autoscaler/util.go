@@ -16,6 +16,7 @@ package autoscaler
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -124,6 +125,7 @@ func defaultResourceTypes(tac *v1alpha1.TidbClusterAutoScaler, rule *v1alpha1.Au
 			rule.ResourceTypes = append(rule.ResourceTypes, name)
 		}
 	}
+	sort.Strings(rule.ResourceTypes)
 }
 
 func getBasicAutoScalerSpec(tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) *v1alpha1.BasicAutoScalerSpec {
