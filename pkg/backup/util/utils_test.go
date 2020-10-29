@@ -434,13 +434,7 @@ func TestValidateRestore(t *testing.T) {
 
 	// test all error case and normal case
 
-	match("missing cluster config in spec of")
-
-	restore.Spec.To.Host = "localhost"
-	match("missing tidbSecretName config in spec")
-
 	// BR == nil case
-	restore.Spec.To.SecretName = "secretName"
 	match("missing StorageSize config in spec of")
 	restore.Spec.StorageSize = "1m"
 	match("")
