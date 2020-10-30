@@ -3165,6 +3165,13 @@ func (in *PDSpec) DeepCopyInto(out *PDSpec) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.StorageVolumes != nil {
+		in, out := &in.StorageVolumes, &out.StorageVolumes
+		*out = make([]StorageVolume, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 
@@ -4802,6 +4809,18 @@ func (in *TiDBSpec) DeepCopyInto(out *TiDBSpec) {
 		in, out := &in.Lifecycle, &out.Lifecycle
 		*out = new(v1.Lifecycle)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.StorageVolumes != nil {
+		in, out := &in.StorageVolumes, &out.StorageVolumes
+		*out = make([]StorageVolume, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.StorageClassName != nil {
+		in, out := &in.StorageClassName, &out.StorageClassName
+		*out = new(string)
+		**out = **in
 	}
 	return
 }
