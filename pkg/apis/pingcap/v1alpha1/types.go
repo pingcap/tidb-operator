@@ -631,6 +631,11 @@ type TiDBSpec struct {
 	// Default to storageClassName storage class
 	// +optional
 	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
+
+	// The storageClassName of the persistent volume for TiDB data storage.
+	// Defaults to Kubernetes default storage class.
+	// +optional
+	StorageClassName *string `json:"storageClassName,omitempty"`
 }
 
 // +k8s:openapi-gen=true

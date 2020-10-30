@@ -6546,6 +6546,8 @@ spec:
                   type: object
                 statefulSetUpdateStrategy:
                   type: string
+                storageClassName:
+                  type: string
                 storageVolumes:
                   items: {}
                   type: array

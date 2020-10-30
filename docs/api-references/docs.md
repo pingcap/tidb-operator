@@ -12475,6 +12475,19 @@ until the action is complete, unless the container process fails, in which case 
 Default to storageClassName storage class</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>storageClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The storageClassName of the persistent volume for TiDB data storage.
+Defaults to Kubernetes default storage class.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbstatus">TiDBStatus</h3>

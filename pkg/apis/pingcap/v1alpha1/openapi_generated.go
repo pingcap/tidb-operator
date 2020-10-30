@@ -6541,6 +6541,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 							},
 						},
 					},
+					"storageClassName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The storageClassName of the persistent volume for TiDB data storage. Defaults to Kubernetes default storage class.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"replicas"},
 			},

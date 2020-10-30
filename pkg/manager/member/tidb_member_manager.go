@@ -570,7 +570,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 
 	var additionalVolumeClaims []corev1.PersistentVolumeClaim
 	if len(tc.Spec.TiDB.StorageVolumes) > 0 {
-		for _, storageVolume := range tc.Spec.TiKV.StorageVolumes {
+		for _, storageVolume := range tc.Spec.TiDB.StorageVolumes {
 			quantity, err := resource.ParseQuantity(storageVolume.StorageSize)
 			if err != nil {
 				klog.Errorf("Cannot parse storage size %v in Spec.TiDB.StorageVolumes, tidbcluster %s/%s, error: %v", storageVolume.StorageSize, tc.Namespace, tc.Name, err)
@@ -585,7 +585,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			if storageVolume.StorageClassName != nil && len(*storageVolume.StorageClassName) > 0 {
 				storageClassName = storageVolume.StorageClassName
 			} else {
-				storageClassName = tc.Spec.TiKV.StorageClassName
+				storageClassName = tc.Spec.TiDB.StorageClassName
 			}
 			additionalVolumeClaims = append(additionalVolumeClaims, volumeClaimTemplate(storageRequest, fmt.Sprintf("%s-%s", v1alpha1.TiDBMemberType.String(), storageVolume.Name), storageClassName))
 			volMounts = append(volMounts, corev1.VolumeMount{
