@@ -48,6 +48,7 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 		errWhenCreateTiKVPeerService bool
 		errWhenGetStores             bool
 		err                          bool
+		tls                          bool
 		tikvPeerSvcCreated           bool
 		setCreated                   bool
 		pdStores                     *pdapi.StoresInfo
@@ -58,6 +59,9 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 		t.Log(test.name)
 
 		tc := newTidbClusterForPD()
+		if test.tls {
+			tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+		}
 		tc.Status.PD.Members = map[string]v1alpha1.PDMember{
 			"pd-0": {Name: "pd-0", Health: true},
 			"pd-1": {Name: "pd-1", Health: true},
@@ -136,6 +140,18 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 			errWhenCreateStatefulSet:     false,
 			errWhenCreateTiKVPeerService: false,
 			err:                          false,
+			tikvPeerSvcCreated:           true,
+			setCreated:                   true,
+			pdStores:                     &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
+			tombstoneStores:              &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
+		},
+		{
+			name:                         "normal with tls",
+			prepare:                      nil,
+			errWhenCreateStatefulSet:     false,
+			errWhenCreateTiKVPeerService: false,
+			err:                          false,
+			tls:                          true,
 			tikvPeerSvcCreated:           true,
 			setCreated:                   true,
 			pdStores:                     &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
