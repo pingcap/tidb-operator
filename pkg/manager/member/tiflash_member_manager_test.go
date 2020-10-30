@@ -29,6 +29,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -36,6 +37,131 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/pointer"
 )
+
+func TestTiFlashMemberManagerSyncCreate(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name                        string
+		prepare                     func(cluster *v1alpha1.TidbCluster)
+		errWhenCreateStatefulSet    bool
+		errWhenCreateTiFlashService bool
+		err                         bool
+		tls                         bool
+		tiflashSvcCreated           bool
+		setCreated                  bool
+	}
+
+	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+
+		tc := newTidbClusterForTiflash()
+		if test.tls {
+			tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+		}
+		tc.Status.PD.Members = map[string]v1alpha1.PDMember{
+			"pd-0": {Name: "pd-0", Health: true},
+			"pd-1": {Name: "pd-1", Health: true},
+			"pd-2": {Name: "pd-2", Health: true},
+		}
+		tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 3}
+
+		ns := tc.Namespace
+		tcName := tc.Name
+		oldSpec := tc.Spec
+		if test.prepare != nil {
+			test.prepare(tc)
+		}
+
+		tfmm, fakeSetControl, fakeSvcControl, _, _, _ := newFakeTiFlashMemberManager(tc)
+
+		if test.errWhenCreateStatefulSet {
+			fakeSetControl.SetCreateStatefulSetError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
+		}
+		if test.errWhenCreateTiFlashService {
+			fakeSvcControl.SetCreateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
+		}
+
+		err := tfmm.Sync(tc)
+		if test.err {
+			g.Expect(err).To(HaveOccurred())
+		} else {
+			g.Expect(err).NotTo(HaveOccurred())
+		}
+
+		g.Expect(tc.Spec).To(Equal(oldSpec))
+
+		svc, err := tfmm.deps.ServiceLister.Services(ns).Get(controller.TiFlashPeerMemberName(tcName))
+		if test.tiflashSvcCreated {
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(svc).NotTo(Equal(nil))
+		} else {
+			expectErrIsNotFound(g, err)
+		}
+
+		tc1, err := tfmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.TiFlashMemberName(tcName))
+		if test.setCreated {
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(tc1).NotTo(Equal(nil))
+		} else {
+			expectErrIsNotFound(g, err)
+		}
+	}
+
+	tests := []testcase{
+		{
+			name:                        "normal",
+			prepare:                     nil,
+			errWhenCreateStatefulSet:    false,
+			errWhenCreateTiFlashService: false,
+			err:                         false,
+			tiflashSvcCreated:           true,
+			setCreated:                  true,
+		},
+		{
+			name:                        "normal with tls",
+			prepare:                     nil,
+			errWhenCreateStatefulSet:    false,
+			errWhenCreateTiFlashService: false,
+			err:                         false,
+			tls:                         true,
+			tiflashSvcCreated:           true,
+			setCreated:                  true,
+		},
+		{
+			name: "pd is not available",
+			prepare: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Members = map[string]v1alpha1.PDMember{}
+			},
+			errWhenCreateStatefulSet:    false,
+			errWhenCreateTiFlashService: false,
+			err:                         true,
+			tiflashSvcCreated:           false,
+			setCreated:                  false,
+		},
+		{
+			name:                        "error when create statefulset",
+			prepare:                     nil,
+			errWhenCreateStatefulSet:    true,
+			errWhenCreateTiFlashService: false,
+			err:                         true,
+			tiflashSvcCreated:           true,
+			setCreated:                  false,
+		},
+		{
+			name:                        "error when create tiflash service",
+			prepare:                     nil,
+			errWhenCreateStatefulSet:    false,
+			errWhenCreateTiFlashService: true,
+			err:                         true,
+			tiflashSvcCreated:           false,
+			setCreated:                  false,
+		},
+	}
+
+	for i := range tests {
+		testFn(&tests[i], t)
+	}
+}
 
 func TestTiFlashMemberManagerTiFlashStatefulSetIsUpgrading(t *testing.T) {
 	g := NewGomegaWithT(t)
@@ -1118,6 +1244,29 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 		t.Logf(tests[i].name)
 		testFn(&tests[i], t)
 	}
+}
+
+func newTidbClusterForTiflash() *v1alpha1.TidbCluster {
+	tc := newTidbClusterForPD()
+	tc.Spec.TiFlash = &v1alpha1.TiFlashSpec{
+		ComponentSpec: v1alpha1.ComponentSpec{
+			Image: "tiflash-test-image",
+		},
+		ResourceRequirements: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:     resource.MustParse("1"),
+				corev1.ResourceMemory:  resource.MustParse("2Gi"),
+				corev1.ResourceStorage: resource.MustParse("100Gi"),
+			},
+		},
+		Replicas: 3,
+		StorageClaims: []v1alpha1.StorageClaim{
+			{
+				StorageClassName: pointer.StringPtr("my-storage-class"),
+			},
+		},
+	}
+	return tc
 }
 
 func newFakeTiFlashMemberManager(tc *v1alpha1.TidbCluster) (

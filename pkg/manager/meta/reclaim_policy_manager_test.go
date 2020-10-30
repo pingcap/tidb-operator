@@ -163,6 +163,73 @@ func TestReclaimPolicyManagerSync(t *testing.T) {
 	}
 }
 
+func TestReclaimPolicyManagerSyncMonitor(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name              string
+		pvcHasLabels      bool
+		pvcHasVolumeName  bool
+		updateErr         bool
+		err               bool
+		hasDeferDeleteAnn bool
+	}
+
+	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name + ": " + v1alpha1.TiDBMonitorKind)
+		obj := newTiDBMonitorForMeta()
+		pv1 := newPV("1")
+		pvc1 := newPVC(obj, "1")
+
+		if !test.pvcHasLabels {
+			pvc1.Labels = nil
+		}
+		if !test.pvcHasVolumeName {
+			pvc1.Spec.VolumeName = ""
+		}
+
+		if test.hasDeferDeleteAnn {
+			pvc1.Annotations = map[string]string{label.AnnPVCDeferDeleting: time.Now().String()}
+		}
+
+		rpm, fakePVControl, pvcIndexer, pvIndexer := newFakeReclaimPolicyManager()
+		err := pvcIndexer.Add(pvc1)
+		g.Expect(err).NotTo(HaveOccurred())
+		err = pvIndexer.Add(pv1)
+		g.Expect(err).NotTo(HaveOccurred())
+
+		if test.updateErr {
+			fakePVControl.SetUpdatePVError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
+		}
+
+		err = rpm.SyncMonitor(obj)
+		if test.err {
+			g.Expect(err).To(HaveOccurred())
+			pv, err := rpm.deps.PVLister.Get(pv1.Name)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(pv.Spec.PersistentVolumeReclaimPolicy).To(Equal(corev1.PersistentVolumeReclaimDelete))
+		}
+		pv, err := rpm.deps.PVLister.Get(pv1.Name)
+		g.Expect(err).NotTo(HaveOccurred())
+		g.Expect(pv.Spec.PersistentVolumeReclaimPolicy).To(Equal(corev1.PersistentVolumeReclaimDelete))
+	}
+
+	// mocked monitor does not have pvcs, so only normal case for now
+	tests := []testcase{
+		{
+			name:              "normal",
+			pvcHasLabels:      true,
+			pvcHasVolumeName:  true,
+			updateErr:         false,
+			err:               false,
+			hasDeferDeleteAnn: false,
+		},
+	}
+
+	for i := range tests {
+		testFn(&tests[i], t)
+	}
+}
+
 func newFakeReclaimPolicyManager() (*reclaimPolicyManager, *controller.FakePVControl, cache.Indexer, cache.Indexer) {
 	fakeDeps := controller.NewFakeDependencies()
 	pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
@@ -204,6 +271,25 @@ func newDMClusterForMeta() *v1alpha1.DMCluster {
 			Labels:    label.NewDM().Instance(controller.TestClusterName),
 		},
 		Spec: v1alpha1.DMClusterSpec{
+			PVReclaimPolicy: &pvp,
+		},
+	}
+}
+
+func newTiDBMonitorForMeta() *v1alpha1.TidbMonitor {
+	pvp := corev1.PersistentVolumeReclaimDelete
+	return &v1alpha1.TidbMonitor{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "TiDBMonitor",
+			APIVersion: "pingcap.com/v1alpha1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      controller.TestClusterName,
+			Namespace: corev1.NamespaceDefault,
+			UID:       types.UID("test"),
+			Labels:    label.NewDM().Instance(controller.TestClusterName),
+		},
+		Spec: v1alpha1.TidbMonitorSpec{
 			PVReclaimPolicy: &pvp,
 		},
 	}
