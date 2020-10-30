@@ -46,12 +46,16 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 		errWhenCreateStatefulSet bool
 		err                      bool
 		setCreated               bool
+		tls                      bool
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 
 		tc := newTidbClusterForTiDB()
+		if test.tls {
+			tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+		}
 		tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
 			"tikv-0": {PodName: "tikv-0", State: v1alpha1.TiKVStateUp},
 		}
@@ -95,6 +99,14 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 			errWhenCreateStatefulSet: false,
 			err:                      false,
 			setCreated:               true,
+		},
+		{
+			name:                     "normal with tls",
+			prepare:                  nil,
+			errWhenCreateStatefulSet: false,
+			err:                      false,
+			setCreated:               true,
+			tls:                      true,
 		},
 		{
 			name: "tikv is not available",
@@ -786,6 +798,8 @@ type fakeIndexers struct {
 	eps    cache.Indexer
 	secret cache.Indexer
 	set    cache.Indexer
+	job    cache.Indexer
+	ti     cache.Indexer
 }
 
 func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSetControl, *controller.FakeTiDBControl, *fakeIndexers) {
@@ -807,36 +821,6 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 	setControl := fakeDeps.StatefulSetControl.(*controller.FakeStatefulSetControl)
 	tidbControl := fakeDeps.TiDBControl.(*controller.FakeTiDBControl)
 	return tmm, setControl, tidbControl, indexers
-}
-
-func newTidbClusterForTiDB() *v1alpha1.TidbCluster {
-	return &v1alpha1.TidbCluster{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "TidbCluster",
-			APIVersion: "pingcap.com/v1alpha1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test",
-			Namespace: corev1.NamespaceDefault,
-			UID:       types.UID("test"),
-		},
-		Spec: v1alpha1.TidbClusterSpec{
-			TiDB: &v1alpha1.TiDBSpec{
-				ComponentSpec: v1alpha1.ComponentSpec{
-					Image: v1alpha1.TiDBMemberType.String(),
-				},
-				ResourceRequirements: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:    resource.MustParse("1"),
-						corev1.ResourceMemory: resource.MustParse("2Gi"),
-					},
-				},
-				Replicas: 3,
-			},
-			PD:   &v1alpha1.PDSpec{},
-			TiKV: &v1alpha1.TiKVSpec{},
-		},
-	}
 }
 
 func TestGetNewTiDBHeadlessServiceForTidbCluster(t *testing.T) {
@@ -2183,4 +2167,34 @@ func mustConfig(x interface{}) *v1alpha1.TiDBConfigWraper {
 	c.UnmarshalTOML(data)
 
 	return c
+}
+
+func newTidbClusterForTiDB() *v1alpha1.TidbCluster {
+	return &v1alpha1.TidbCluster{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "TidbCluster",
+			APIVersion: "pingcap.com/v1alpha1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: corev1.NamespaceDefault,
+			UID:       types.UID("test"),
+		},
+		Spec: v1alpha1.TidbClusterSpec{
+			TiDB: &v1alpha1.TiDBSpec{
+				ComponentSpec: v1alpha1.ComponentSpec{
+					Image: v1alpha1.TiDBMemberType.String(),
+				},
+				ResourceRequirements: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("1"),
+						corev1.ResourceMemory: resource.MustParse("2Gi"),
+					},
+				},
+				Replicas: 3,
+			},
+			PD:   &v1alpha1.PDSpec{},
+			TiKV: &v1alpha1.TiKVSpec{},
+		},
+	}
 }
