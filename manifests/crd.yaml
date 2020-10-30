@@ -334,6 +334,8 @@ spec:
               type: object
             cluster:
               properties:
+                clusterDomain:
+                  type: string
                 name:
                   type: string
                 namespace:
@@ -341,6 +343,8 @@ spec:
               required:
               - name
               type: object
+            clusterDomain:
+              type: string
             configUpdateStrategy:
               type: string
             discovery:
@@ -9584,6 +9588,9 @@ spec:
                   type: string
                 storageClassName:
                   type: string
+                storageVolumes:
+                  items: {}
+                  type: array
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
@@ -15028,6 +15035,8 @@ spec:
             clusters:
               items:
                 properties:
+                  clusterDomain:
+                    type: string
                   name:
                     type: string
                   namespace:
@@ -15119,6 +15128,8 @@ spec:
           properties:
             cluster:
               properties:
+                clusterDomain:
+                  type: string
                 name:
                   type: string
                 namespace:
@@ -15207,6 +15218,8 @@ spec:
           properties:
             cluster:
               properties:
+                clusterDomain:
+                  type: string
                 name:
                   type: string
                 namespace:

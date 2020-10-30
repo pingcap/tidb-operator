@@ -239,6 +239,11 @@ type TidbClusterSpec struct {
 	// +optional
 	EnableDynamicConfiguration *bool `json:"enableDynamicConfiguration,omitempty"`
 
+	// ClusterDomain is the Kubernetes Cluster Domain of TiDB cluster
+	// Optional: Defaults to ""
+	// +optional
+	ClusterDomain string `json:"clusterDomain,omitempty"`
+
 	// Cluster is the external cluster, if configured, the components in this TidbCluster will join to this configured cluster.
 	// +optional
 	Cluster *TidbClusterRef `json:"cluster,omitempty"`
@@ -434,6 +439,11 @@ type TiKVSpec struct {
 	// Defaults to 3m
 	// +optional
 	EvictLeaderTimeout *string `json:"evictLeaderTimeout,omitempty"`
+
+	// StorageVolumes is additional storage apply for TiKV node.
+	// Default to storageClassName storage class
+	// +optional
+	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members
@@ -859,6 +869,7 @@ type PDStatus struct {
 	Phase           MemberPhase                `json:"phase,omitempty"`
 	StatefulSet     *apps.StatefulSetStatus    `json:"statefulSet,omitempty"`
 	Members         map[string]PDMember        `json:"members,omitempty"`
+	PeerMembers     map[string]PDMember        `json:"peerMembers,omitempty"`
 	Leader          PDMember                   `json:"leader,omitempty"`
 	FailureMembers  map[string]PDFailureMember `json:"failureMembers,omitempty"`
 	UnjoinedMembers map[string]UnjoinedMember  `json:"unjoinedMembers,omitempty"`
@@ -925,6 +936,7 @@ type TiKVStatus struct {
 	Phase           MemberPhase                 `json:"phase,omitempty"`
 	StatefulSet     *apps.StatefulSetStatus     `json:"statefulSet,omitempty"`
 	Stores          map[string]TiKVStore        `json:"stores,omitempty"`
+	PeerStores      map[string]TiKVStore        `json:"peerStores,omitempty"`
 	TombstoneStores map[string]TiKVStore        `json:"tombstoneStores,omitempty"`
 	FailureStores   map[string]TiKVFailureStore `json:"failureStores,omitempty"`
 	Image           string                      `json:"image,omitempty"`
@@ -936,6 +948,7 @@ type TiFlashStatus struct {
 	Phase           MemberPhase                 `json:"phase,omitempty"`
 	StatefulSet     *apps.StatefulSetStatus     `json:"statefulSet,omitempty"`
 	Stores          map[string]TiKVStore        `json:"stores,omitempty"`
+	PeerStores      map[string]TiKVStore        `json:"peerStores,omitempty"`
 	TombstoneStores map[string]TiKVStore        `json:"tombstoneStores,omitempty"`
 	FailureStores   map[string]TiKVFailureStore `json:"failureStores,omitempty"`
 	Image           string                      `json:"image,omitempty"`
@@ -1841,4 +1854,12 @@ type WorkerMember struct {
 type WorkerFailureMember struct {
 	PodName   string      `json:"podName,omitempty"`
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
+}
+
+// StorageVolume is TiKV storage information
+type StorageVolume struct {
+	Name             string  `json:"name"`
+	StorageClassName *string `json:"storageClassName,omitempty"`
+	StorageSize      string  `json:"storageSize"`
+	MountPath        string  `json:"mountPath"`
 }
