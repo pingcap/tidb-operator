@@ -302,7 +302,7 @@ func MustNewRequirement(key string, op selection.Operator, vals []string) *label
 	return r
 }
 
-func AppendAdditionalVolumeAndVolumeMount(volMounts []corev1.VolumeMount, storageVolumes []v1alpha1.StorageVolume, tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) []corev1.PersistentVolumeClaim {
+func AppendAdditionalVolumeAndVolumeMount(volMounts []corev1.VolumeMount, storageVolumes []v1alpha1.StorageVolume, tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) ([]corev1.PersistentVolumeClaim, []corev1.VolumeMount) {
 	var additionalVolumeClaims []corev1.PersistentVolumeClaim
 	if len(storageVolumes) > 0 {
 		for _, storageVolume := range storageVolumes {
@@ -328,7 +328,7 @@ func AppendAdditionalVolumeAndVolumeMount(volMounts []corev1.VolumeMount, storag
 			})
 		}
 	}
-	return additionalVolumeClaims
+	return additionalVolumeClaims, volMounts
 
 }
 
