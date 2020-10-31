@@ -4831,17 +4831,17 @@ func (in *TiDBSpec) DeepCopyInto(out *TiDBSpec) {
 		*out = new(v1.Lifecycle)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.ReadinessProbe != nil {
-		in, out := &in.ReadinessProbe, &out.ReadinessProbe
-		*out = new(TiDBProbe)
-		(*in).DeepCopyInto(*out)
-	}
 	if in.StorageVolumes != nil {
 		in, out := &in.StorageVolumes, &out.StorageVolumes
 		*out = make([]StorageVolume, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
+	}
+	if in.ReadinessProbe != nil {
+		in, out := &in.ReadinessProbe, &out.ReadinessProbe
+		*out = new(TiDBProbe)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.StorageClassName != nil {
 		in, out := &in.StorageClassName, &out.StorageClassName
