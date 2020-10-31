@@ -138,7 +138,7 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 	var (
 		envVars []corev1.EnvVar
 		reason  string
-		err error
+		err     error
 	)
 	if restore.Spec.To != nil {
 		envVars, reason, err = backuputil.GenerateTidbPasswordEnv(ns, name, restore.Spec.To.SecretName, restore.Spec.UseKMS, rm.deps.KubeClientset)

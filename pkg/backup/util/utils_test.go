@@ -375,6 +375,7 @@ func TestValidateBackup(t *testing.T) {
 
 	match("missing cluster config in spec of")
 
+	backup.Spec.From = &v1alpha1.TiDBAccessConfig{}
 	backup.Spec.From.Host = "localhost"
 	match("missing tidbSecretName config in spec")
 
