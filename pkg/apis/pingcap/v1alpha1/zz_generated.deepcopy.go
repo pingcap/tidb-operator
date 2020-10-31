@@ -4838,15 +4838,15 @@ func (in *TiDBSpec) DeepCopyInto(out *TiDBSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.ReadinessProbe != nil {
-		in, out := &in.ReadinessProbe, &out.ReadinessProbe
-		*out = new(TiDBProbe)
-		(*in).DeepCopyInto(*out)
-	}
 	if in.StorageClassName != nil {
 		in, out := &in.StorageClassName, &out.StorageClassName
 		*out = new(string)
 		**out = **in
+	}
+	if in.ReadinessProbe != nil {
+		in, out := &in.ReadinessProbe, &out.ReadinessProbe
+		*out = new(TiDBProbe)
+		(*in).DeepCopyInto(*out)
 	}
 	return
 }
