@@ -6513,6 +6513,11 @@ spec:
                   type: object
                 priorityClassName:
                   type: string
+                readinessProbe:
+                  properties:
+                    type:
+                      type: string
+                  type: object
                 replicas:
                   format: int32
                   type: integer
