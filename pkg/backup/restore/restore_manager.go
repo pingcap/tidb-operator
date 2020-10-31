@@ -53,7 +53,20 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	name := restore.GetName()
 	restoreJobName := restore.GetRestoreJobName()
 
-	err := backuputil.ValidateRestore(restore)
+	tc, err := rm.deps.TiDBClusterLister.TidbClusters(ns).Get(restore.Spec.BR.Cluster)
+	if err != nil {
+		rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+			Type:    v1alpha1.RestoreFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  fmt.Sprintf("failed to fetch tidbcluster %s/%s", ns, restore.Spec.BR.Cluster),
+			Message: err.Error(),
+		})
+
+		return err
+	}
+
+	tikvImage := tc.TiKVImage()
+	err = backuputil.ValidateRestore(restore, tikvImage)
 	if err != nil {
 		rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreInvalid,

@@ -19,11 +19,19 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/Masterminds/semver"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog"
+)
+
+var (
+	// the first version which allows skipping setting tikv_gc_life_time
+	// https://github.com/pingcap/br/pull/553
+	tikvV408 = semver.MustParse("v4.0.8")
 )
 
 // CheckAllKeysExistInSecret check if all keys are included in the specific secret
@@ -334,11 +342,11 @@ func GetBackupDataPath(provider v1alpha1.StorageProvider) (string, string, error
 	return fmt.Sprintf("%s://%s", string(storageType), backupPath), "", nil
 }
 
-func ValidateBackup(backup *v1alpha1.Backup) error {
+func ValidateBackup(backup *v1alpha1.Backup, tikvImage string) error {
 	ns := backup.Namespace
 	name := backup.Name
 
-	if backup.Spec.BR == nil {
+	if !canSkipSetGCLifeTime(tikvImage) {
 		if backup.Spec.From == nil {
 			return fmt.Errorf("missing cluster config in spec of %s/%s", ns, name)
 		} else {
@@ -350,6 +358,9 @@ func ValidateBackup(backup *v1alpha1.Backup) error {
 				return fmt.Errorf("missing tidbSecretName config in spec of %s/%s", ns, name)
 			}
 		}
+	}
+
+	if backup.Spec.BR == nil {
 		if backup.Spec.StorageSize == "" {
 			return fmt.Errorf("missing StorageSize config in spec of %s/%s", ns, name)
 		}
@@ -391,7 +402,7 @@ func ValidateBackup(backup *v1alpha1.Backup) error {
 }
 
 // ValidateRestore checks whether a restore spec is valid.
-func ValidateRestore(restore *v1alpha1.Restore) error {
+func ValidateRestore(restore *v1alpha1.Restore, tikvImage string) error {
 	ns := restore.Namespace
 	name := restore.Name
 
@@ -400,6 +411,19 @@ func ValidateRestore(restore *v1alpha1.Restore) error {
 			return fmt.Errorf("missing StorageSize config in spec of %s/%s", ns, name)
 		}
 	} else {
+		if !canSkipSetGCLifeTime(tikvImage) {
+			if restore.Spec.To == nil {
+				return fmt.Errorf("missing cluster config in spec of %s/%s", ns, name)
+			} else {
+				if restore.Spec.To.Host == "" {
+					return fmt.Errorf("missing cluster config in spec of %s/%s", ns, name)
+				}
+
+				if restore.Spec.To.SecretName == "" {
+					return fmt.Errorf("missing tidbSecretName config in spec of %s/%s", ns, name)
+				}
+			}
+		}
 		if restore.Spec.BR.Cluster == "" {
 			return fmt.Errorf("cluster should be configured for BR in spec of %s/%s", ns, name)
 		}
@@ -447,4 +471,18 @@ func ParseImage(image string) (string, string) {
 		name = image
 	}
 	return name, tag
+}
+
+// canSkipSetGCLifeTime returns if setting tikv_gc_life_time can be skipped based on the TiKV version
+func canSkipSetGCLifeTime(image string) bool {
+	_, version := ParseImage(image)
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		klog.Errorf("Parse version %s failure, error: %v", version, err)
+		return false
+	}
+	if v.LessThan(tikvV408) {
+		return false
+	}
+	return true
 }

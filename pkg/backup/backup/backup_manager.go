@@ -65,7 +65,20 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	name := backup.GetName()
 	backupJobName := backup.GetBackupJobName()
 
-	err := backuputil.ValidateBackup(backup)
+	tc, err := bm.deps.TiDBClusterLister.TidbClusters(ns).Get(backup.Spec.BR.Cluster)
+	if err != nil {
+		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Type:    v1alpha1.BackupFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  fmt.Sprintf("failed to fetch tidbcluster %s/%s", ns, backup.Spec.BR.Cluster),
+			Message: err.Error(),
+		})
+
+		return err
+	}
+
+	tikvImage := tc.TiKVImage()
+	err = backuputil.ValidateBackup(backup, tikvImage)
 	if err != nil {
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupInvalid,
