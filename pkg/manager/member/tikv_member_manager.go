@@ -21,8 +21,6 @@ import (
 	"strconv"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/api/resource"
-
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -373,32 +371,8 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			})
 		}
 	}
-
-	var additionalVolumeClaims []corev1.PersistentVolumeClaim
-	if len(tc.Spec.TiKV.StorageVolumes) > 0 {
-		for _, storageVolume := range tc.Spec.TiKV.StorageVolumes {
-			quantity, err := resource.ParseQuantity(storageVolume.StorageSize)
-			if err != nil {
-				klog.Errorf("Cannot parse storage size %v in Spec.TiKV.StorageVolumes, tidbcluster %s/%s, error: %v", storageVolume.StorageSize, tc.Namespace, tc.Name, err)
-				continue
-			}
-			storageRequest := corev1.ResourceRequirements{
-				Requests: corev1.ResourceList{
-					corev1.ResourceStorage: quantity,
-				},
-			}
-			var storageClassName *string
-			if storageVolume.StorageClassName != nil && len(*storageVolume.StorageClassName) > 0 {
-				storageClassName = storageVolume.StorageClassName
-			} else {
-				storageClassName = tc.Spec.TiKV.StorageClassName
-			}
-			additionalVolumeClaims = append(additionalVolumeClaims, volumeClaimTemplate(storageRequest, fmt.Sprintf("%s-%s", v1alpha1.TiKVMemberType.String(), storageVolume.Name), storageClassName))
-			volMounts = append(volMounts, corev1.VolumeMount{
-				Name: fmt.Sprintf("%s-%s", v1alpha1.TiKVMemberType.String(), storageVolume.Name), MountPath: storageVolume.MountPath,
-			})
-		}
-	}
+	//handle additional StorageVolumes and VolumeMounts
+	additionalVolumeClaims := util.AppendAdditionalVolumeAndVolumeMount(volMounts, tc.Spec.TiKV.StorageVolumes, tc, v1alpha1.TiKVMemberType)
 
 	sysctls := "sysctl -w"
 	var initContainers []corev1.Container
@@ -546,7 +520,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 				Spec: podSpec,
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-				volumeClaimTemplate(storageRequest, v1alpha1.TiKVMemberType.String(), tc.Spec.TiKV.StorageClassName),
+				util.VolumeClaimTemplate(storageRequest, v1alpha1.TiKVMemberType.String(), tc.Spec.TiKV.StorageClassName),
 			},
 			ServiceName:         headlessSvcName,
 			PodManagementPolicy: apps.ParallelPodManagement,
@@ -556,19 +530,6 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 
 	tikvset.Spec.VolumeClaimTemplates = append(tikvset.Spec.VolumeClaimTemplates, additionalVolumeClaims...)
 	return tikvset, nil
-}
-
-func volumeClaimTemplate(r corev1.ResourceRequirements, metaName string, storageClassName *string) corev1.PersistentVolumeClaim {
-	return corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{Name: metaName},
-		Spec: corev1.PersistentVolumeClaimSpec{
-			AccessModes: []corev1.PersistentVolumeAccessMode{
-				corev1.ReadWriteOnce,
-			},
-			StorageClassName: storageClassName,
-			Resources:        r,
-		},
-	}
 }
 
 // transformTiKVConfigMap change the `wait-for-lock-timeout` and `wake-up-delay-duration` due to their content type.

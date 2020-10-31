@@ -12496,21 +12496,6 @@ until the action is complete, unless the container process fails, in which case 
 </tr>
 <tr>
 <td>
-<code>readinessProbe</code></br>
-<em>
-<a href="#tidbprobe">
-TiDBProbe
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>ReadinessProbe describes actions that probe the tidb&rsquo;s readiness.
-the default behavior is like setting type as &ldquo;tcp&rdquo;</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>storageVolumes</code></br>
 <em>
 <a href="#storagevolume">
@@ -12535,6 +12520,21 @@ string
 <em>(Optional)</em>
 <p>The storageClassName of the persistent volume for TiDB data storage.
 Defaults to Kubernetes default storage class.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>readinessProbe</code></br>
+<em>
+<a href="#tidbprobe">
+TiDBProbe
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ReadinessProbe describes actions that probe the tidb&rsquo;s readiness.
+the default behavior is like setting type as &ldquo;tcp&rdquo;</p>
 </td>
 </tr>
 </tbody>

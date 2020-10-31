@@ -20,6 +20,9 @@ import (
 	"strconv"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/klog"
+
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/features"
@@ -297,4 +300,47 @@ func MustNewRequirement(key string, op selection.Operator, vals []string) *label
 		panic(err)
 	}
 	return r
+}
+
+func AppendAdditionalVolumeAndVolumeMount(volMounts []corev1.VolumeMount, storageVolumes []v1alpha1.StorageVolume, tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) []corev1.PersistentVolumeClaim {
+	var additionalVolumeClaims []corev1.PersistentVolumeClaim
+	if len(storageVolumes) > 0 {
+		for _, storageVolume := range storageVolumes {
+			quantity, err := resource.ParseQuantity(storageVolume.StorageSize)
+			if err != nil {
+				klog.Errorf("Cannot parse storage size %v in Spec.TiDB.StorageVolumes, tidbcluster %s/%s, error: %v", storageVolume.StorageSize, tc.Namespace, tc.Name, err)
+				continue
+			}
+			storageRequest := corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceStorage: quantity,
+				},
+			}
+			var storageClassName *string
+			if storageVolume.StorageClassName != nil && len(*storageVolume.StorageClassName) > 0 {
+				storageClassName = storageVolume.StorageClassName
+			} else {
+				storageClassName = tc.Spec.TiDB.StorageClassName
+			}
+			additionalVolumeClaims = append(additionalVolumeClaims, VolumeClaimTemplate(storageRequest, fmt.Sprintf("%s-%s", memberType.String(), storageVolume.Name), storageClassName))
+			volMounts = append(volMounts, corev1.VolumeMount{
+				Name: fmt.Sprintf("%s-%s", memberType.String(), storageVolume.Name), MountPath: storageVolume.MountPath,
+			})
+		}
+	}
+	return additionalVolumeClaims
+
+}
+
+func VolumeClaimTemplate(r corev1.ResourceRequirements, metaName string, storageClassName *string) corev1.PersistentVolumeClaim {
+	return corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{Name: metaName},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes: []corev1.PersistentVolumeAccessMode{
+				corev1.ReadWriteOnce,
+			},
+			StorageClassName: storageClassName,
+			Resources:        r,
+		},
+	}
 }
