@@ -362,7 +362,7 @@ func TestValidateBackup(t *testing.T) {
 	backup := new(v1alpha1.Backup)
 	match := func(sub string) {
 		t.Helper()
-		err := ValidateBackup(backup)
+		err := ValidateBackup(backup, "tikv:v4.0.7")
 		if sub == "" {
 			g.Expect(err).Should(BeNil())
 		} else {
@@ -424,7 +424,7 @@ func TestValidateRestore(t *testing.T) {
 	restore := new(v1alpha1.Restore)
 	match := func(sub string) {
 		t.Helper()
-		err := ValidateRestore(restore)
+		err := ValidateRestore(restore, "tikv:v4.0.7")
 		if sub == "" {
 			g.Expect(err).Should(BeNil())
 		} else {
@@ -442,6 +442,13 @@ func TestValidateRestore(t *testing.T) {
 
 	// start BR != nil case
 	restore.Spec.BR = &v1alpha1.BRConfig{}
+	match("missing cluster config in spec of")
+
+	restore.Spec.To = &v1alpha1.TiDBAccessConfig{}
+	restore.Spec.To.Host = "localhost"
+	match("missing tidbSecretName config in spec")
+
+	restore.Spec.To.SecretName = "secretName"
 	match("cluster should be configured for BR in spec")
 
 	restore.Spec.BR.Cluster = "tidb"
