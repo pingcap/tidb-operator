@@ -376,6 +376,9 @@ func newBackup() *v1alpha1.Backup {
 				label.BackupScheduleLabelKey: "test-schedule",
 			},
 		},
+		Spec: v1alpha1.BackupSpec{
+			From: &v1alpha1.TiDBAccessConfig{},
+		},
 	}
 	return backup
 }

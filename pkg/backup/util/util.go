@@ -339,14 +339,17 @@ func ValidateBackup(backup *v1alpha1.Backup) error {
 	name := backup.Name
 
 	if backup.Spec.BR == nil {
-		if backup.Spec.From.Host == "" {
+		if backup.Spec.From == nil {
 			return fmt.Errorf("missing cluster config in spec of %s/%s", ns, name)
-		}
+		} else {
+			if backup.Spec.From.Host == "" {
+				return fmt.Errorf("missing cluster config in spec of %s/%s", ns, name)
+			}
 
-		if backup.Spec.From.SecretName == "" {
-			return fmt.Errorf("missing tidbSecretName config in spec of %s/%s", ns, name)
+			if backup.Spec.From.SecretName == "" {
+				return fmt.Errorf("missing tidbSecretName config in spec of %s/%s", ns, name)
+			}
 		}
-
 		if backup.Spec.StorageSize == "" {
 			return fmt.Errorf("missing StorageSize config in spec of %s/%s", ns, name)
 		}
