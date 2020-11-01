@@ -77,8 +77,8 @@ func (s *pdScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newSet
 	totalCount := *oldSet.Spec.Replicas
 	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
 	for _, i := range podOrdinals {
-		podName := ordinalPodName(v1alpha1.PDMemberType, tcName, i)
-		if member, ok := tc.Status.PD.Members[podName]; ok && member.Health {
+		targetPdName := PdName(tcName, i,tc.Namespace,tc.Spec.ClusterDomain)
+		if member, ok := tc.Status.PD.Members[targetPdName]; ok && member.Health {
 			healthCount++
 		}
 	}
