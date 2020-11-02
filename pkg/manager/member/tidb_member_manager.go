@@ -695,11 +695,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		Resources:    controller.ContainerResource(tc.Spec.TiDB.ResourceRequirements),
 		Env:          util.AppendEnv(envs, baseTiDBSpec.Env()),
 		ReadinessProbe: &corev1.Probe{
-			Handler: corev1.Handler{
-				TCPSocket: &corev1.TCPSocketAction{
-					Port: intstr.FromInt(4000),
-				},
-			},
+			Handler:             buildTiDBReadinessProbHandler(tc),
 			InitialDelaySeconds: int32(10),
 		},
 	}
@@ -849,6 +845,53 @@ func tidbStatefulSetIsUpgrading(podLister corelisters.PodLister, set *apps.State
 		}
 	}
 	return false, nil
+}
+
+func buildTiDBReadinessProbHandler(tc *v1alpha1.TidbCluster) corev1.Handler {
+	if tc.Spec.TiDB.ReadinessProbe != nil {
+		if tp := tc.Spec.TiDB.ReadinessProbe.Type; tp != nil {
+			if *tp == v1alpha1.CommandProbeType {
+				command := buildTiDBProbeCommand(tc)
+				return corev1.Handler{
+					Exec: &corev1.ExecAction{
+						Command: command,
+					},
+				}
+			}
+		}
+	}
+
+	// fall to default case v1alpha1.TCPProbeType
+	return corev1.Handler{
+		TCPSocket: &corev1.TCPSocketAction{
+			Port: intstr.FromInt(4000),
+		},
+	}
+}
+
+func buildTiDBProbeCommand(tc *v1alpha1.TidbCluster) (command []string) {
+	host := "127.0.0.1"
+
+	readinessURL := fmt.Sprintf("%s://%s:10080/status", tc.Scheme(), host)
+	command = append(command, "curl")
+	command = append(command, readinessURL)
+
+	// Fail silently (no output at all) on server errors
+	// without this if the server return 500, the exist code will be 0
+	// and probe is success.
+	command = append(command, "--fail")
+	// follow 301 or 302 redirect
+	command = append(command, "--location")
+
+	if tc.IsTLSClusterEnabled() {
+		cacert := path.Join(clusterCertPath, tlsSecretRootCAKey)
+		cert := path.Join(clusterCertPath, corev1.TLSCertKey)
+		key := path.Join(clusterCertPath, corev1.TLSPrivateKeyKey)
+		command = append(command, "--cacert", cacert)
+		command = append(command, "--cert", cert)
+		command = append(command, "--key", key)
+	}
+	return
 }
 
 func tlsClientSecretName(tc *v1alpha1.TidbCluster) string {

@@ -51,11 +51,15 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 		pdSvcCreated               bool
 		pdPeerSvcCreated           bool
 		setCreated                 bool
+		tls                        bool
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 		tc := newTidbClusterForPD()
+		if test.tls {
+			tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+		}
 		ns := tc.Namespace
 		tcName := tc.Name
 		oldSpec := tc.Spec
@@ -124,6 +128,18 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 			pdSvcCreated:               true,
 			pdPeerSvcCreated:           true,
 			setCreated:                 true,
+		},
+		{
+			name:                       "normal with tls",
+			prepare:                    nil,
+			errWhenCreateStatefulSet:   false,
+			errWhenCreatePDService:     false,
+			errWhenCreatePDPeerService: false,
+			errExpectFn:                errExpectRequeue,
+			pdSvcCreated:               true,
+			pdPeerSvcCreated:           true,
+			setCreated:                 true,
+			tls:                        true,
 		},
 		{
 			name:                       "error when create statefulset",
