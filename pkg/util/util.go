@@ -324,7 +324,7 @@ func BuildAdditionalVolumeAndVolumeMount(tc *v1alpha1.TidbCluster, memberType v1
 		for _, storageVolume := range storageVolumes {
 			quantity, err := resource.ParseQuantity(storageVolume.StorageSize)
 			if err != nil {
-				klog.Errorf("Cannot parse storage size %v in Spec.TiDB.StorageVolumes, tidbcluster %s/%s, error: %v", storageVolume.StorageSize, tc.Namespace, tc.Name, err)
+				klog.Errorf("Cannot parse storage size %v in StorageVolumes of %v, tidbcluster %s/%s, error: %v", storageVolume.StorageSize, memberType, tc.Namespace, tc.Name, err)
 				continue
 			}
 			storageRequest := corev1.ResourceRequirements{
