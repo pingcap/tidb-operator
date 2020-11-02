@@ -565,8 +565,9 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			},
 		})
 	}
-
-	additionalVolumeClaims, volMounts := util.BuildAdditionalVolumeAndVolumeMount(volMounts, tc.Spec.TiDB.StorageVolumes, tc, v1alpha1.TiDBMemberType)
+	// handle additional storageVolume
+	var volumeClaims []corev1.PersistentVolumeClaim
+	util.BuildAdditionalVolumeAndVolumeMount(volMounts, volumeClaims, tc, v1alpha1.TiDBMemberType)
 
 	sysctls := "sysctl -w"
 	var initContainers []corev1.Container
@@ -753,13 +754,12 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 				},
 				Spec: podSpec,
 			},
-			ServiceName:         controller.TiDBPeerMemberName(tcName),
-			PodManagementPolicy: apps.ParallelPodManagement,
-			UpdateStrategy:      updateStrategy,
+			VolumeClaimTemplates: volumeClaims,
+			ServiceName:          controller.TiDBPeerMemberName(tcName),
+			PodManagementPolicy:  apps.ParallelPodManagement,
+			UpdateStrategy:       updateStrategy,
 		},
 	}
-
-	tidbSet.Spec.VolumeClaimTemplates = append(tidbSet.Spec.VolumeClaimTemplates, additionalVolumeClaims...)
 	return tidbSet
 }
 

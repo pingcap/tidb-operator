@@ -303,8 +303,16 @@ func MustNewRequirement(key string, op selection.Operator, vals []string) *label
 	return r
 }
 
-func BuildAdditionalVolumeAndVolumeMount(volMounts []corev1.VolumeMount, storageVolumes []v1alpha1.StorageVolume, tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) ([]corev1.PersistentVolumeClaim, []corev1.VolumeMount) {
-	var additionalVolumeClaims []corev1.PersistentVolumeClaim
+func BuildAdditionalVolumeAndVolumeMount(volMounts []corev1.VolumeMount, volumeClaims []corev1.PersistentVolumeClaim, tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) {
+	var storageVolumes []v1alpha1.StorageVolume
+	switch memberType {
+	case v1alpha1.PDMemberType:
+		storageVolumes = tc.Spec.PD.StorageVolumes
+	case v1alpha1.TiDBMemberType:
+		storageVolumes = tc.Spec.TiDB.StorageVolumes
+	case v1alpha1.TiKVMemberType:
+		storageVolumes = tc.Spec.TiKV.StorageVolumes
+	}
 	if len(storageVolumes) > 0 {
 		for _, storageVolume := range storageVolumes {
 			quantity, err := resource.ParseQuantity(storageVolume.StorageSize)
@@ -332,13 +340,12 @@ func BuildAdditionalVolumeAndVolumeMount(volMounts []corev1.VolumeMount, storage
 					storageClassName = pointer.StringPtr("")
 				}
 			}
-			additionalVolumeClaims = append(additionalVolumeClaims, VolumeClaimTemplate(storageRequest, fmt.Sprintf("%s-%s", memberType.String(), storageVolume.Name), storageClassName))
+			volumeClaims = append(volumeClaims, VolumeClaimTemplate(storageRequest, fmt.Sprintf("%s-%s", memberType.String(), storageVolume.Name), storageClassName))
 			volMounts = append(volMounts, corev1.VolumeMount{
 				Name: fmt.Sprintf("%s-%s", memberType.String(), storageVolume.Name), MountPath: storageVolume.MountPath,
 			})
 		}
 	}
-	return additionalVolumeClaims, volMounts
 
 }
 
