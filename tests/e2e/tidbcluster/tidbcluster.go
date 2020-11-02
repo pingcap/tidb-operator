@@ -1498,58 +1498,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.UpgradeTidbClusterOrDie(&clusterConfig)
 		oa.CheckTidbClusterStatusOrDie(&clusterConfig)
 	})
-
-	ginkgo.It("TiDB PD TiKV separate pv", func() {
-
-		clusterName := "tidb-separate-pvc"
-		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4Version)
-		tc.Spec.TiKV.StorageVolumes = []v1alpha1.StorageVolume{
-			{
-				Name:        "wal",
-				StorageSize: "2Gi",
-				MountPath:   "/var/lib/wal",
-			},
-			{
-				Name:        "titan",
-				StorageSize: "2Gi",
-				MountPath:   "/var/lib/titan",
-			},
-		}
-		tc.Spec.TiDB.StorageVolumes = []v1alpha1.StorageVolume{
-			{
-				Name:        "log",
-				StorageSize: "2Gi",
-				MountPath:   "/var/log",
-			},
-		}
-		tc.Spec.PD.StorageVolumes = []v1alpha1.StorageVolume{
-			{
-				Name:        "log",
-				StorageSize: "2Gi",
-				MountPath:   "/var/log",
-			},
-		}
-		tc.Spec.PD.Config.Set("log.file.filename", "/var/log/tidb/tidb.log")
-		tc.Spec.PD.Config.Set("log.level", "warn")
-		tc.Spec.TiDB.Config.Set("log.file.max-size", "300")
-		tc.Spec.TiDB.Config.Set("log.file.max-days", "1")
-		tc.Spec.TiDB.Config.Set("log.file.filename", "/var/log/tidb/tidb.log")
-		tc.Spec.TiDB.Config.Set("log.level", "warn")
-		tc.Spec.TiDB.Config.Set("log.file.max-size", "300")
-		tc.Spec.TiDB.Config.Set("log.file.max-days", "1")
-		tc.Spec.TiKV.Config.Set("rocksdb.wal-dir", "/var/lib/wal")
-		tc.Spec.TiKV.Config.Set("rocksdb.wal-dir", "/var/lib/wal")
-		tc.Spec.TiKV.Config.Set("titan.dirname", "/var/lib/titan")
-		clusterConfig := newTidbClusterConfig(e2econfig.TestConfig, ns, clusterName, "admin", utilimage.TiDBV4Version)
-		clusterConfig.Resources["pd.replicas"] = "1"
-		clusterConfig.Resources["tikv.replicas"] = "4"
-		clusterConfig.Resources["tidb.replicas"] = "1"
-		clusterConfig.Clustrer = tc
-
-		e2elog.Logf("deploying tidb cluster [%s/%s]", clusterConfig.Namespace, clusterConfig.ClusterName)
-		oa.DeployTidbClusterOrDie(&clusterConfig)
-		oa.CheckTidbClusterStatusOrDie(&clusterConfig)
-	})
 })
 
 func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVersion string) tests.TidbClusterConfig {
