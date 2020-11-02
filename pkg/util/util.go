@@ -303,8 +303,10 @@ func MustNewRequirement(key string, op selection.Operator, vals []string) *label
 	return r
 }
 
-func BuildAdditionalVolumeAndVolumeMount(volMounts []corev1.VolumeMount, volumeClaims []corev1.PersistentVolumeClaim, tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) {
+func BuildAdditionalVolumeAndVolumeMount(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) ([]corev1.VolumeMount, []corev1.PersistentVolumeClaim) {
 	var storageVolumes []v1alpha1.StorageVolume
+	var volMounts []corev1.VolumeMount
+	var volumeClaims []corev1.PersistentVolumeClaim
 	switch memberType {
 	case v1alpha1.PDMemberType:
 		storageVolumes = tc.Spec.PD.StorageVolumes
@@ -346,7 +348,7 @@ func BuildAdditionalVolumeAndVolumeMount(volMounts []corev1.VolumeMount, volumeC
 			})
 		}
 	}
-
+	return volMounts, volumeClaims
 }
 
 func VolumeClaimTemplate(r corev1.ResourceRequirements, metaName string, storageClassName *string) corev1.PersistentVolumeClaim {

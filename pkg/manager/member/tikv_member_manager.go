@@ -372,8 +372,8 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		}
 	}
 	// handle additional storageVolume
-	var volumeClaims []corev1.PersistentVolumeClaim
-	util.BuildAdditionalVolumeAndVolumeMount(volMounts, volumeClaims, tc, v1alpha1.TiKVMemberType)
+	additionalVolMounts, additionalVolumeClaims := util.BuildAdditionalVolumeAndVolumeMount(tc, v1alpha1.PDMemberType)
+	volMounts = append(volMounts, additionalVolMounts...)
 
 	sysctls := "sysctl -w"
 	var initContainers []corev1.Container
@@ -502,8 +502,6 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		}
 	}
 
-	volumeClaims = append(volumeClaims, util.VolumeClaimTemplate(storageRequest, v1alpha1.TiKVMemberType.String(), tc.Spec.TiKV.StorageClassName))
-
 	tikvset := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            setName,
@@ -522,13 +520,16 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 				},
 				Spec: podSpec,
 			},
-			VolumeClaimTemplates: volumeClaims,
-			ServiceName:          headlessSvcName,
-			PodManagementPolicy:  apps.ParallelPodManagement,
-			UpdateStrategy:       updateStrategy,
+			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+				util.VolumeClaimTemplate(storageRequest, v1alpha1.TiKVMemberType.String(), tc.Spec.TiKV.StorageClassName),
+			},
+			ServiceName:         headlessSvcName,
+			PodManagementPolicy: apps.ParallelPodManagement,
+			UpdateStrategy:      updateStrategy,
 		},
 	}
 
+	tikvset.Spec.VolumeClaimTemplates = append(tikvset.Spec.VolumeClaimTemplates, additionalVolumeClaims...)
 	return tikvset, nil
 }
 

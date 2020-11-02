@@ -619,8 +619,8 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		})
 	}
 	// handle additional storageVolume
-	var volumeClaims []corev1.PersistentVolumeClaim
-	util.BuildAdditionalVolumeAndVolumeMount(volMounts, volumeClaims, tc, v1alpha1.PDMemberType)
+	additionalVolMounts, additionalVolumeClaims := util.BuildAdditionalVolumeAndVolumeMount(tc, v1alpha1.PDMemberType)
+	volMounts = append(volMounts, additionalVolMounts...)
 
 	sysctls := "sysctl -w"
 	var initContainers []corev1.Container
@@ -750,21 +750,6 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		}
 	}
 
-	volumeClaims = append(volumeClaims, []corev1.PersistentVolumeClaim{
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: v1alpha1.PDMemberType.String(),
-			},
-			Spec: corev1.PersistentVolumeClaimSpec{
-				AccessModes: []corev1.PersistentVolumeAccessMode{
-					corev1.ReadWriteOnce,
-				},
-				StorageClassName: tc.Spec.PD.StorageClassName,
-				Resources:        storageRequest,
-			},
-		},
-	}...)
-
 	pdSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            setName,
@@ -783,10 +768,23 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 				},
 				Spec: podSpec,
 			},
-			VolumeClaimTemplates: volumeClaims,
-			ServiceName:          controller.PDPeerMemberName(tcName),
-			PodManagementPolicy:  apps.ParallelPodManagement,
-			UpdateStrategy:       updateStrategy,
+			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: v1alpha1.PDMemberType.String(),
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						AccessModes: []corev1.PersistentVolumeAccessMode{
+							corev1.ReadWriteOnce,
+						},
+						StorageClassName: tc.Spec.PD.StorageClassName,
+						Resources:        storageRequest,
+					},
+				},
+			},
+			ServiceName:         controller.PDPeerMemberName(tcName),
+			PodManagementPolicy: apps.ParallelPodManagement,
+			UpdateStrategy:      updateStrategy,
 		},
 	}
 
