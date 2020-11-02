@@ -372,7 +372,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		}
 	}
 	//handle additional StorageVolumes and VolumeMounts
-	additionalVolumeClaims, volMounts := util.AppendAdditionalVolumeAndVolumeMount(volMounts, tc.Spec.TiKV.StorageVolumes, tc, v1alpha1.TiKVMemberType)
+	additionalVolumeClaims, volMounts := util.BuildAdditionalVolumeAndVolumeMount(volMounts, tc.Spec.TiKV.StorageVolumes, tc, v1alpha1.TiKVMemberType)
 
 	sysctls := "sysctl -w"
 	var initContainers []corev1.Container

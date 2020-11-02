@@ -566,7 +566,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		})
 	}
 
-	additionalVolumeClaims, volMounts := util.AppendAdditionalVolumeAndVolumeMount(volMounts, tc.Spec.TiDB.StorageVolumes, tc, v1alpha1.TiDBMemberType)
+	additionalVolumeClaims, volMounts := util.BuildAdditionalVolumeAndVolumeMount(volMounts, tc.Spec.TiDB.StorageVolumes, tc, v1alpha1.TiDBMemberType)
 
 	sysctls := "sysctl -w"
 	var initContainers []corev1.Container

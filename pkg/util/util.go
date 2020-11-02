@@ -34,6 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/util/sets"
+	pointer "k8s.io/utils/pointer"
 )
 
 var (
@@ -302,7 +303,7 @@ func MustNewRequirement(key string, op selection.Operator, vals []string) *label
 	return r
 }
 
-func AppendAdditionalVolumeAndVolumeMount(volMounts []corev1.VolumeMount, storageVolumes []v1alpha1.StorageVolume, tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) ([]corev1.PersistentVolumeClaim, []corev1.VolumeMount) {
+func BuildAdditionalVolumeAndVolumeMount(volMounts []corev1.VolumeMount, storageVolumes []v1alpha1.StorageVolume, tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) ([]corev1.PersistentVolumeClaim, []corev1.VolumeMount) {
 	var additionalVolumeClaims []corev1.PersistentVolumeClaim
 	if len(storageVolumes) > 0 {
 		for _, storageVolume := range storageVolumes {
@@ -320,7 +321,16 @@ func AppendAdditionalVolumeAndVolumeMount(volMounts []corev1.VolumeMount, storag
 			if storageVolume.StorageClassName != nil && len(*storageVolume.StorageClassName) > 0 {
 				storageClassName = storageVolume.StorageClassName
 			} else {
-				storageClassName = tc.Spec.TiDB.StorageClassName
+				switch memberType {
+				case v1alpha1.PDMemberType:
+					storageClassName = tc.Spec.PD.StorageClassName
+				case v1alpha1.TiDBMemberType:
+					storageClassName = tc.Spec.TiDB.StorageClassName
+				case v1alpha1.TiKVMemberType:
+					storageClassName = tc.Spec.TiKV.StorageClassName
+				default:
+					storageClassName = pointer.StringPtr("")
+				}
 			}
 			additionalVolumeClaims = append(additionalVolumeClaims, VolumeClaimTemplate(storageRequest, fmt.Sprintf("%s-%s", memberType.String(), storageVolume.Name), storageClassName))
 			volMounts = append(volMounts, corev1.VolumeMount{
