@@ -22,9 +22,9 @@ jobs:
       with:
         config: './.markdownlint.yaml'
         args: '.'
-    - name: Verify links
+    - name: Verify internal links
       run: ./hack/verify-links.sh
-    - name: Verify link anchors
+    - name: Verify internal link anchors
       run: ./hack/verify-link-anchors.sh 
     - name: "Check unclosed tags"
       run: 

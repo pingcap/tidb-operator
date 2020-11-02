@@ -386,7 +386,7 @@ spec:
       logLevel: info
 ```
 
-For all configurable start parameters of TiCDC, see [TiCDC start parameters](https://pingcap.com/docs/stable/ticdc/deploy-ticdc/#manually-add-ticdc-component-to-an-existing-tidb-cluster).
+For all configurable start parameters of TiCDC, see [TiCDC configuration](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.md#ticdcconfig).
 
 ## Configure high availability
 

@@ -12,7 +12,7 @@ Kubernetes v1.9 introduces the [dynamic admission control](https://kubernetes.io
 
 Unlike those of most products on Kubernetes, the admission controller of TiDB Operator consists of two mechanisms: [extension API-server](https://kubernetes.io/docs/tasks/access-kubernetes-api/setup-extension-api-server/) and [Webhook Configuration](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#configure-admission-webhooks-on-the-fly).
 
-To use the admission controller, you need to enable the aggregation layer feature of the Kubernetes cluster. The feature is enabled by default. To check whether it is enabled, see [Enable Kubernetes Apiserver flags](https://kubernetes.io/docs/tasks/access-kubernetes-api/configure-aggregation-layer/#enable-kubernetes-apiserver-flags).
+To use the admission controller, you need to enable the aggregation layer feature of the Kubernetes cluster. The feature is enabled by default. To check whether it is enabled, see [Enable Kubernetes Apiserver flags](https://kubernetes.io/docs/tasks/extend-kubernetes/configure-aggregation-layer/#enable-kubernetes-apiserver-flags).
 
 ## Enable the admission controller
 
