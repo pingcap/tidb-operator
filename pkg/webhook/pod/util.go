@@ -33,7 +33,7 @@ const (
 )
 
 func IsPodInPdMembers(tc *v1alpha1.TidbCluster, pod *core.Pod, pdClient pdapi.PDClient) (bool, error) {
-	name := pod.Name
+	name := memberUtil.PdNameWithPodName(pod.Name,tc.GetName(),tc.Namespace,tc.Spec.ClusterDomain)
 	namespace := pod.Namespace
 	memberInfo, err := pdClient.GetMembers()
 	if err != nil {
@@ -114,12 +114,14 @@ func addDeferDeletingToPDPod(kubeCli kubernetes.Interface, pod *core.Pod) error 
 	return err
 }
 
-func isPDLeader(pdClient pdapi.PDClient, pod *core.Pod) (bool, error) {
+func isPDLeader(tc *v1alpha1.TidbCluster,pdClient pdapi.PDClient, pod *core.Pod) (bool, error) {
 	leader, err := pdClient.GetPDLeader()
+	name := memberUtil.PdNameWithPodName(pod.Name,tc.GetName(),tc.Namespace,tc.Spec.ClusterDomain)
+
 	if err != nil {
 		return false, err
 	}
-	return leader.Name == pod.Name, nil
+	return leader.Name == name, nil
 }
 
 // getOwnerStatefulSetForTiDBComponent would find pd/tikv/tidb's owner statefulset,

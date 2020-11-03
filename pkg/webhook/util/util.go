@@ -15,6 +15,7 @@ package util
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"gomodules.xyz/jsonpatch/v2"
 	admission "k8s.io/api/admission/v1beta1"
@@ -64,4 +65,11 @@ func CreateJsonPatch(original, current runtime.Object) ([]byte, error) {
 		return nil, err
 	}
 	return json.Marshal(patches)
+}
+
+func TiKVPodName(PodName string, tcName string, namespace string, clusterDomain string) string {
+	if len(clusterDomain) > 0 {
+		return fmt.Sprintf("%s.%s-tikv-peer.%s.svc.%s", PodName, tcName, namespace, clusterDomain)
+	}
+	return PodName
 }
