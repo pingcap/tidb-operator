@@ -318,7 +318,7 @@ func BuildAdditionalVolumeAndVolumeMount(tc *v1alpha1.TidbCluster, memberType v1
 		storageVolumes = tc.Spec.TiKV.StorageVolumes
 		storageClassName = tc.Spec.TiKV.StorageClassName
 	default:
-		return nil, nil
+		return volMounts, volumeClaims
 	}
 	if len(storageVolumes) > 0 {
 		for _, storageVolume := range storageVolumes {
