@@ -327,7 +327,11 @@ func (in *BackupScheduleStatus) DeepCopy() *BackupScheduleStatus {
 func (in *BackupSpec) DeepCopyInto(out *BackupSpec) {
 	*out = *in
 	in.ResourceRequirements.DeepCopyInto(&out.ResourceRequirements)
-	in.From.DeepCopyInto(&out.From)
+	if in.From != nil {
+		in, out := &in.From, &out.From
+		*out = new(TiDBAccessConfig)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.TikvGCLifeTime != nil {
 		in, out := &in.TikvGCLifeTime, &out.TikvGCLifeTime
 		*out = new(string)
@@ -3879,7 +3883,11 @@ func (in *RestoreList) DeepCopyObject() runtime.Object {
 func (in *RestoreSpec) DeepCopyInto(out *RestoreSpec) {
 	*out = *in
 	in.ResourceRequirements.DeepCopyInto(&out.ResourceRequirements)
-	in.To.DeepCopyInto(&out.To)
+	if in.To != nil {
+		in, out := &in.To, &out.To
+		*out = new(TiDBAccessConfig)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.TikvGCLifeTime != nil {
 		in, out := &in.TikvGCLifeTime, &out.TikvGCLifeTime
 		*out = new(string)
