@@ -36,7 +36,7 @@ func IsPodInPdMembers(tc *v1alpha1.TidbCluster, pod *core.Pod, pdClient pdapi.PD
 	name := pod.Name
 
 	if len(tc.Spec.ClusterDomain) > 0 {
-		name = memberUtil.PdNameWithPodName(pod.Name,tc.GetName(),tc.Namespace,tc.Spec.ClusterDomain)
+		name = memberUtil.PdNameWithPodName(pod.Name, tc.GetName(), tc.Namespace, tc.Spec.ClusterDomain)
 		if _, exist := tc.Status.PD.Members[name]; !exist {
 			name = pod.Name
 		}
@@ -121,12 +121,12 @@ func addDeferDeletingToPDPod(kubeCli kubernetes.Interface, pod *core.Pod) error 
 	return err
 }
 
-func isPDLeader(tc *v1alpha1.TidbCluster,pdClient pdapi.PDClient, pod *core.Pod) (bool, error) {
+func isPDLeader(tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient, pod *core.Pod) (bool, error) {
 	leader, err := pdClient.GetPDLeader()
 	name := pod.Name
 
 	if len(tc.Spec.ClusterDomain) > 0 {
-		name = memberUtil.PdNameWithPodName(pod.Name,tc.GetName(),tc.Namespace,tc.Spec.ClusterDomain)
+		name = memberUtil.PdNameWithPodName(pod.Name, tc.GetName(), tc.Namespace, tc.Spec.ClusterDomain)
 		if _, exist := tc.Status.PD.Members[name]; !exist {
 			name = pod.Name
 		}

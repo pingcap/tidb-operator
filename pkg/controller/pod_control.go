@@ -140,8 +140,8 @@ func (c *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Po
 			// get member id
 			members, err := pdClient.GetMembers()
 			name := podName
-			
-			// If the ClusterDomain is annotationed, the name of PD member is in the format bellow. 
+
+			// If the ClusterDomain is annotationed, the name of PD member is in the format bellow.
 			if len(tc.Spec.ClusterDomain) > 0 {
 				name = fmt.Sprintf("%s.%s-pd-peer.%s.svc.%s", podName, tcName, ns, tc.Spec.ClusterDomain)
 			}
