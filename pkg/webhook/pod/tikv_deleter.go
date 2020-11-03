@@ -59,8 +59,8 @@ func (pc *PodAdmissionControl) admitDeleteTiKVPods(payload *admitPayload) *admis
 	case v1alpha1.TiDBClusterKind:
 		expectedAddress = fmt.Sprintf("%s.%s-tikv-peer.%s.svc:20160", name, controllerName, namespace)
 
-		if len(tc.Spec.ClusterDomain) > 0{
-			expectedAddress = fmt.Sprintf("%s.%s-tikv-peer.%s.svc.%s:20160", name, controllerName, namespace,tc.Spec.ClusterDomain)
+		if len(tc.Spec.ClusterDomain) > 0 {
+			expectedAddress = fmt.Sprintf("%s.%s-tikv-peer.%s.svc.%s:20160", name, controllerName, namespace, tc.Spec.ClusterDomain)
 		}
 
 	default:
