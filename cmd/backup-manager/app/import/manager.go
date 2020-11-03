@@ -20,6 +20,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	bkconstants "github.com/pingcap/tidb-operator/pkg/backup/constants"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
@@ -47,6 +48,24 @@ func NewRestoreManager(
 	}
 }
 
+func (rm *RestoreManager) setOptions(restore *v1alpha1.Restore) {
+	rm.Options.Host = restore.Spec.To.Host
+
+	if restore.Spec.To.Port != 0 {
+		rm.Options.Port = restore.Spec.To.Port
+	} else {
+		rm.Options.Port = bkconstants.DefaultTidbPort
+	}
+
+	if restore.Spec.To.User != "" {
+		rm.Options.User = restore.Spec.To.User
+	} else {
+		rm.Options.User = bkconstants.DefaultTidbUser
+	}
+
+	rm.Options.Password = util.GetOptionValueFromEnv(bkconstants.TidbPasswordKey, bkconstants.BackupManagerEnvVarPrefix)
+}
+
 // ProcessRestore used to process the restore logic
 func (rm *RestoreManager) ProcessRestore() error {
 	var errs []error
@@ -63,6 +82,8 @@ func (rm *RestoreManager) ProcessRestore() error {
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
+
+	rm.setOptions(restore)
 
 	return rm.performRestore(restore.DeepCopy())
 }

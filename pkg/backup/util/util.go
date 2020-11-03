@@ -342,29 +342,38 @@ func GetBackupDataPath(provider v1alpha1.StorageProvider) (string, string, error
 	return fmt.Sprintf("%s://%s", string(storageType), backupPath), "", nil
 }
 
+func validateAccessConfig(config *v1alpha1.TiDBAccessConfig) string {
+	if config == nil {
+		return "missing cluster config in spec of %s/%s"
+	} else {
+		if config.Host == "" {
+			return "missing cluster config in spec of %s/%s"
+		}
+
+		if config.SecretName == "" {
+			return "missing tidbSecretName config in spec of %s/%s"
+		}
+	}
+	return ""
+}
+
 func ValidateBackup(backup *v1alpha1.Backup, tikvImage string) error {
 	ns := backup.Namespace
 	name := backup.Name
 
-	if !canSkipSetGCLifeTime(tikvImage) {
-		if backup.Spec.From == nil {
-			return fmt.Errorf("missing cluster config in spec of %s/%s", ns, name)
-		} else {
-			if backup.Spec.From.Host == "" {
-				return fmt.Errorf("missing cluster config in spec of %s/%s", ns, name)
-			}
-
-			if backup.Spec.From.SecretName == "" {
-				return fmt.Errorf("missing tidbSecretName config in spec of %s/%s", ns, name)
-			}
-		}
-	}
-
 	if backup.Spec.BR == nil {
+		if reason := validateAccessConfig(backup.Spec.From); reason != "" {
+			return fmt.Errorf(reason, ns, name)
+		}
 		if backup.Spec.StorageSize == "" {
 			return fmt.Errorf("missing StorageSize config in spec of %s/%s", ns, name)
 		}
 	} else {
+		if !canSkipSetGCLifeTime(tikvImage) {
+			if reason := validateAccessConfig(backup.Spec.From); reason != "" {
+				return fmt.Errorf(reason, ns, name)
+			}
+		}
 		if backup.Spec.BR.Cluster == "" {
 			return fmt.Errorf("cluster should be configured for BR in spec of %s/%s", ns, name)
 		}
@@ -407,21 +416,16 @@ func ValidateRestore(restore *v1alpha1.Restore, tikvImage string) error {
 	name := restore.Name
 
 	if restore.Spec.BR == nil {
+		if reason := validateAccessConfig(restore.Spec.To); reason != "" {
+			return fmt.Errorf(reason, ns, name)
+		}
 		if restore.Spec.StorageSize == "" {
 			return fmt.Errorf("missing StorageSize config in spec of %s/%s", ns, name)
 		}
 	} else {
 		if !canSkipSetGCLifeTime(tikvImage) {
-			if restore.Spec.To == nil {
-				return fmt.Errorf("missing cluster config in spec of %s/%s", ns, name)
-			} else {
-				if restore.Spec.To.Host == "" {
-					return fmt.Errorf("missing cluster config in spec of %s/%s", ns, name)
-				}
-
-				if restore.Spec.To.SecretName == "" {
-					return fmt.Errorf("missing tidbSecretName config in spec of %s/%s", ns, name)
-				}
+			if reason := validateAccessConfig(restore.Spec.To); reason != "" {
+				return fmt.Errorf(reason, ns, name)
 			}
 		}
 		if restore.Spec.BR.Cluster == "" {
@@ -479,7 +483,7 @@ func canSkipSetGCLifeTime(image string) bool {
 	v, err := semver.NewVersion(version)
 	if err != nil {
 		klog.Errorf("Parse version %s failure, error: %v", version, err)
-		return false
+		return true
 	}
 	if v.LessThan(tikvV408) {
 		return false
