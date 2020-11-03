@@ -70,7 +70,6 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	if backup.Spec.BR == nil {
 		err = backuputil.ValidateBackup(backup, "")
 	} else {
-		klog.Info("------Validate BR-----")
 		backupNamespace := backup.GetNamespace()
 		if backup.Spec.BR.ClusterNamespace != "" {
 			backupNamespace = backup.Spec.BR.ClusterNamespace
@@ -85,7 +84,6 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 
 		tikvImage := tc.TiKVImage()
 		err = backuputil.ValidateBackup(backup, tikvImage)
-		klog.Infof("validate BR error: %v", err)
 	}
 
 	if err != nil {
