@@ -152,7 +152,6 @@ func getStoreByPod(pod *core.Pod, storesInfo *pdapi.StoresInfo) (*pdapi.StoreInf
 	namespace := pod.Namespace
 
 	for _, store := range storesInfo.Stores {
-		// It also works well when multi-cluster is enabled, the stores out of the cluster are listed in PeerStores.
 		ip := strings.Split(store.Store.GetAddress(), ":")[0]
 		podName := strings.Split(ip, ".")[0]
 		if podName == name {
