@@ -178,6 +178,13 @@ func DMMasterPodName(dcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", controller.DMMasterMemberName(dcName), ordinal)
 }
 
+func PdNameWithPodName(pdPodName string, tcName string, namespace string, clusterDomain string) string {
+	if len(clusterDomain) > 0 {
+		return fmt.Sprintf("%s.%s-pd-peer.%s.svc.%s", pdPodName, tcName, namespace, clusterDomain)
+	}
+	return pdPodName
+}
+
 func PdName(tcName string, ordinal int32, namespace string, clusterDomain string) string {
 	if len(clusterDomain) > 0 {
 		return fmt.Sprintf("%s.%s-pd-peer.%s.svc.%s", PdPodName(tcName, ordinal), tcName, namespace, clusterDomain)
