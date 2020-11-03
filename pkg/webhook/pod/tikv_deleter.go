@@ -46,12 +46,24 @@ func (pc *PodAdmissionControl) admitDeleteTiKVPods(payload *admitPayload) *admis
 		return util.ARFail(err)
 	}
 
+	tc, ok := payload.controller.(*v1alpha1.TidbCluster)
+	if !ok {
+		err := fmt.Errorf("tikv pod[%s/%s]'s controller is not tidbcluster,forbid to be deleted", namespace, name)
+		return util.ARFail(err)
+	}
+
 	var storeInfo *pdapi.StoreInfo
 	var expectedAddress string
 
 	switch controllerKind {
 	case v1alpha1.TiDBClusterKind:
+		// TODO multi-cluster Fixed, but not tested
 		expectedAddress = fmt.Sprintf("%s.%s-tikv-peer.%s.svc:20160", name, controllerName, namespace)
+
+		if len(tc.Spec.ClusterDomain) > 0{
+			expectedAddress = fmt.Sprintf("%s.%s-tikv-peer.%s.svc.%s:20160", name, controllerName, namespace,tc.Spec.ClusterDomain)
+		}
+
 	default:
 		// unreachable
 		klog.V(4).Infof("tikv pod[%s/%s] controlled by unknown controllerKind[%s], admite to delete", namespace, name, controllerKind)
