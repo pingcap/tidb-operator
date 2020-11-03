@@ -1597,7 +1597,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 			},
 		},
 		{
-			name: "sysctl without init container due to invalid annotation and spec storageVolumes field",
+			name: "sysctl without init container due to invalid annotation",
 			tc: v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "tc",
@@ -1605,20 +1605,6 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
-						StorageVolumes: []v1alpha1.StorageVolume{
-							{
-								Name:        "log",
-								StorageSize: "2Gi",
-								MountPath:   "/var/log",
-							}},
-						Config: mustPDConfig(&v1alpha1.PDConfig{
-							Log: &v1alpha1.PDLogConfig{
-								File: &v1alpha1.FileLogConfig{
-									Filename: pointer.StringPtr("/var/log/tidb/tidb.log"),
-								},
-								Level: pointer.StringPtr("warn"),
-							},
-						}),
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Annotations: map[string]string{
 								"tidb.pingcap.com/sysctl-init": "false",
@@ -1674,6 +1660,57 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 						},
 					},
 				}))
+			},
+		},
+		{
+			name: "no init container no securityContext",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD:   &v1alpha1.PDSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				g.Expect(sts.Spec.Template.Spec.InitContainers).Should(BeEmpty())
+				g.Expect(sts.Spec.Template.Spec.SecurityContext).To(BeNil())
+			},
+		},
+		{
+			name: "pd spec storageVolumes",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: &v1alpha1.PDSpec{
+						StorageVolumes: []v1alpha1.StorageVolume{
+							{
+								Name:        "log",
+								StorageSize: "2Gi",
+								MountPath:   "/var/log",
+							}},
+						Config: mustPDConfig(&v1alpha1.PDConfig{
+							Log: &v1alpha1.PDLogConfig{
+								File: &v1alpha1.FileLogConfig{
+									Filename: pointer.StringPtr("/var/log/tidb/tidb.log"),
+								},
+								Level: pointer.StringPtr("warn"),
+							},
+						}),
+					},
+					TiDB: &v1alpha1.TiDBSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
 				q, _ := resource.ParseQuantity("2Gi")
 				g.Expect(sts.Spec.VolumeClaimTemplates).To(Equal([]v1.PersistentVolumeClaim{
 					{
@@ -1706,25 +1743,6 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				g.Expect(sts.Spec.Template.Spec.Containers[0].VolumeMounts[index]).To(Equal(corev1.VolumeMount{
 					Name: fmt.Sprintf("%s-%s", v1alpha1.PDMemberType, "log"), MountPath: "/var/log",
 				}))
-			},
-		},
-		{
-			name: "no init container no securityContext",
-			tc: v1alpha1.TidbCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "tc",
-					Namespace: "ns",
-				},
-				Spec: v1alpha1.TidbClusterSpec{
-					PD:   &v1alpha1.PDSpec{},
-					TiDB: &v1alpha1.TiDBSpec{},
-					TiKV: &v1alpha1.TiKVSpec{},
-				},
-			},
-			testSts: func(sts *apps.StatefulSet) {
-				g := NewGomegaWithT(t)
-				g.Expect(sts.Spec.Template.Spec.InitContainers).Should(BeEmpty())
-				g.Expect(sts.Spec.Template.Spec.SecurityContext).To(BeNil())
 			},
 		},
 		// TODO add more tests

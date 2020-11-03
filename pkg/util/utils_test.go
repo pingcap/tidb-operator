@@ -15,6 +15,10 @@ package util
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/util/toml"
+	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/utils/pointer"
 	"os"
 	"sort"
 	"testing"
@@ -510,4 +514,226 @@ func TestRetainManagedFields(t *testing.T) {
 			t.Errorf("%v unwant (-want, +got): %s", test.name, diff)
 		}
 	}
+}
+
+func TestBuildAdditionalVolumeAndVolumeMount(t *testing.T) {
+	tests := []struct {
+		name       string
+		tc         *v1alpha1.TidbCluster
+		memberType v1alpha1.MemberType
+		testResult func([]corev1.VolumeMount, []corev1.PersistentVolumeClaim)
+	}{
+		{
+			name: "unknown memberType",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: &v1alpha1.TiDBSpec{
+						Replicas: 3,
+					},
+				},
+			},
+			memberType: "test",
+			testResult: func(volMounts []corev1.VolumeMount, volumeClaims []corev1.PersistentVolumeClaim) {
+				g := NewGomegaWithT(t)
+				g.Expect(volMounts).Should(BeNil())
+				g.Expect(volumeClaims).Should(BeNil())
+			},
+		},
+		{
+			name: "tidb spec storageVolumes",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: &v1alpha1.TiDBSpec{StorageVolumes: []v1alpha1.StorageVolume{
+						{
+							Name:        "log",
+							StorageSize: "2Gi",
+							MountPath:   "/var/lib/log",
+						}},
+						Config: mustTiDBConfig(&v1alpha1.TiDBConfig{
+							Log: &v1alpha1.Log{
+								File: &v1alpha1.FileLogConfig{
+									Filename: pointer.StringPtr("/var/log/tidb/tidb.log"),
+								},
+							},
+						})},
+				},
+			},
+			memberType: v1alpha1.TiDBMemberType,
+			testResult: func(volMounts []corev1.VolumeMount, volumeClaims []corev1.PersistentVolumeClaim) {
+				g := NewGomegaWithT(t)
+				q, _ := resource.ParseQuantity("2Gi")
+				g.Expect(volumeClaims).To(Equal([]corev1.PersistentVolumeClaim{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: v1alpha1.TiDBMemberType.String() + "-log",
+						},
+						Spec: corev1.PersistentVolumeClaimSpec{
+							AccessModes: []corev1.PersistentVolumeAccessMode{
+								corev1.ReadWriteOnce,
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceStorage: q,
+								},
+							},
+						},
+					},
+				}))
+				g.Expect(volMounts).To(Equal([]corev1.VolumeMount{
+					{
+						Name: fmt.Sprintf("%s-%s", v1alpha1.TiDBMemberType, "log"), MountPath: "/var/lib/log",
+					},
+				}))
+			},
+		},
+		{
+			name: "tikv spec storageVolumes",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiKV: &v1alpha1.TiKVSpec{
+						StorageVolumes: []v1alpha1.StorageVolume{
+							{
+								Name:        "wal",
+								StorageSize: "2Gi",
+								MountPath:   "/var/lib/wal",
+							}},
+						Config: mustTiKVConfig(&v1alpha1.TiKVRaftDBConfig{
+							WalDir: pointer.StringPtr("/var/lib/wal"),
+						}),
+					},
+				},
+			},
+			memberType: v1alpha1.TiKVMemberType,
+			testResult: func(volMounts []corev1.VolumeMount, volumeClaims []corev1.PersistentVolumeClaim) {
+				g := NewGomegaWithT(t)
+				q, _ := resource.ParseQuantity("2Gi")
+				g.Expect(volumeClaims).To(Equal([]corev1.PersistentVolumeClaim{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: v1alpha1.TiKVMemberType.String() + "-wal",
+						},
+						Spec: corev1.PersistentVolumeClaimSpec{
+							AccessModes: []corev1.PersistentVolumeAccessMode{
+								corev1.ReadWriteOnce,
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceStorage: q,
+								},
+							},
+						},
+					},
+				}))
+				g.Expect(volMounts).To(Equal([]corev1.VolumeMount{
+					{
+						Name: fmt.Sprintf("%s-%s", v1alpha1.TiKVMemberType, "wal"), MountPath: "/var/lib/wal",
+					},
+				}))
+			},
+		},
+		{
+			name: "pd spec storageVolumes",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: &v1alpha1.PDSpec{
+						StorageVolumes: []v1alpha1.StorageVolume{
+							{
+								Name:        "log",
+								StorageSize: "2Gi",
+								MountPath:   "/var/log",
+							}},
+						Config: mustPDConfig(&v1alpha1.PDConfig{
+							Log: &v1alpha1.PDLogConfig{
+								File: &v1alpha1.FileLogConfig{
+									Filename: pointer.StringPtr("/var/log/tidb/tidb.log"),
+								},
+								Level: pointer.StringPtr("warn"),
+							},
+						}),
+					},
+				},
+			},
+			memberType: v1alpha1.PDMemberType,
+			testResult: func(volMounts []corev1.VolumeMount, volumeClaims []corev1.PersistentVolumeClaim) {
+				g := NewGomegaWithT(t)
+				q, _ := resource.ParseQuantity("2Gi")
+				g.Expect(volumeClaims).To(Equal([]corev1.PersistentVolumeClaim{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: v1alpha1.PDMemberType.String() + "-log",
+						},
+						Spec: corev1.PersistentVolumeClaimSpec{
+							AccessModes: []corev1.PersistentVolumeAccessMode{
+								corev1.ReadWriteOnce,
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceStorage: q,
+								},
+							},
+						},
+					},
+				}))
+				g.Expect(volMounts).To(Equal([]corev1.VolumeMount{
+					{
+						Name: fmt.Sprintf("%s-%s", v1alpha1.PDMemberType, "log"), MountPath: "/var/log",
+					},
+				}))
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			volMounts, volumeClaims := BuildAdditionalVolumeAndVolumeMount(tt.tc, tt.memberType)
+			tt.testResult(volMounts, volumeClaims)
+		})
+	}
+}
+
+func mustTiDBConfig(x interface{}) *v1alpha1.TiDBConfigWraper {
+	data, err := toml.Marshal(x)
+	if err != nil {
+		panic(err)
+	}
+
+	c := v1alpha1.NewTiDBConfig()
+	c.UnmarshalTOML(data)
+
+	return c
+}
+
+func mustTiKVConfig(x interface{}) *v1alpha1.TiKVConfigWraper {
+	data, err := toml.Marshal(x)
+	if err != nil {
+		panic(err)
+	}
+
+	c := v1alpha1.NewTiKVConfig()
+	c.UnmarshalTOML(data)
+
+	return c
+}
+
+func mustPDConfig(x interface{}) *v1alpha1.PDConfigWraper {
+	data, err := toml.Marshal(x)
+	if err != nil {
+		panic(err)
+	}
+
+	c := v1alpha1.NewPDConfig()
+	c.UnmarshalTOML(data)
+
+	return c
 }
