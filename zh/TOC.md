@@ -87,8 +87,8 @@
     - [tidb-cluster chart 配置](tidb-cluster-chart-config.md)
     - [tidb-backup chart 配置](configure-backup.md)
   - [日志收集](logs-collection.md)
++ [TiDB Operator Roadmap](roadmap.md)
 + 版本发布历史
-  + [TiDB Operator Roadmap](roadmap.md)
   + v1.1
     - [1.1.6](releases/release-1.1.6.md)
     - [1.1.5](releases/release-1.1.5.md)

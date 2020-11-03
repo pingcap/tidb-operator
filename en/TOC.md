@@ -87,8 +87,8 @@
     - [Configure tidb-cluster Chart](tidb-cluster-chart-config.md)
     - [Configure tidb-backup Chart](configure-backup.md)
   - [Log Collection](logs-collection.md)
++ [TiDB Operator Roadmap](roadmap.md)
 + Release Notes
-  + [TiDB Operator Roadmap](roadmap.md)
   + v1.1
     - [1.1.6](releases/release-1.1.6.md)
     - [1.1.5](releases/release-1.1.5.md)
