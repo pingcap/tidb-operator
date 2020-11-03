@@ -362,7 +362,7 @@ func TestValidateBackup(t *testing.T) {
 	backup := new(v1alpha1.Backup)
 	match := func(sub string) {
 		t.Helper()
-		err := ValidateBackup(backup)
+		err := ValidateBackup(backup, "tikv:v4.0.8")
 		if sub == "" {
 			g.Expect(err).Should(BeNil())
 		} else {
@@ -371,14 +371,13 @@ func TestValidateBackup(t *testing.T) {
 		}
 	}
 
-	// test all error case and valid case
-
+	// BR == nil case
 	match("missing cluster config in spec of")
 
+	backup.Spec.From = &v1alpha1.TiDBAccessConfig{}
 	backup.Spec.From.Host = "localhost"
 	match("missing tidbSecretName config in spec")
 
-	// BR == nil case
 	backup.Spec.From.SecretName = "secretName"
 	match("missing StorageSize config in spec of")
 	backup.Spec.StorageSize = "1m"
@@ -423,7 +422,7 @@ func TestValidateRestore(t *testing.T) {
 	restore := new(v1alpha1.Restore)
 	match := func(sub string) {
 		t.Helper()
-		err := ValidateRestore(restore)
+		err := ValidateRestore(restore, "tikv:v4.0.8")
 		if sub == "" {
 			g.Expect(err).Should(BeNil())
 		} else {
@@ -432,14 +431,13 @@ func TestValidateRestore(t *testing.T) {
 		}
 	}
 
-	// test all error case and normal case
-
+	// BR == nil case
 	match("missing cluster config in spec of")
 
+	restore.Spec.To = &v1alpha1.TiDBAccessConfig{}
 	restore.Spec.To.Host = "localhost"
 	match("missing tidbSecretName config in spec")
 
-	// BR == nil case
 	restore.Spec.To.SecretName = "secretName"
 	match("missing StorageSize config in spec of")
 	restore.Spec.StorageSize = "1m"
