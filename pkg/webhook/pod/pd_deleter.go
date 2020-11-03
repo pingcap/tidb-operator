@@ -50,6 +50,9 @@ func (pc *PodAdmissionControl) admitDeletePdPods(payload *admitPayload) *admissi
 
 	if len(tc.Spec.ClusterDomain) > 0 {
 		name = pdutil.PdNameWithPodName(payload.pod.Name, tc.GetName(), tc.Namespace, tc.Spec.ClusterDomain)
+		if _, exist := tc.Status.PD.Members[name]; !exist {
+			name = payload.pod.Name
+		}
 	}
 
 	isMember, err := IsPodInPdMembers(tc, payload.pod, payload.pdClient)
@@ -121,6 +124,9 @@ func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(payload *admitPayload) 
 
 	if len(tc.Spec.ClusterDomain) > 0 {
 		name = pdutil.PdNameWithPodName(payload.pod.Name, tc.GetName(), tc.Namespace, tc.Spec.ClusterDomain)
+		if _, exist := tc.Status.PD.Members[name]; !exist {
+			name = payload.pod.Name
+		}
 	}
 
 	// check whether this pod has been ensured wouldn't be a member in pd cluster

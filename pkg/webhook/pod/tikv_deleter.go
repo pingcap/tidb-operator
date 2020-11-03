@@ -57,7 +57,6 @@ func (pc *PodAdmissionControl) admitDeleteTiKVPods(payload *admitPayload) *admis
 
 	switch controllerKind {
 	case v1alpha1.TiDBClusterKind:
-		// TODO multi-cluster Fixed, but not tested
 		expectedAddress = fmt.Sprintf("%s.%s-tikv-peer.%s.svc:20160", name, controllerName, namespace)
 
 		if len(tc.Spec.ClusterDomain) > 0{
