@@ -985,7 +985,7 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 			testSts: testHostNetwork(t, false, ""),
 		},
 		{
-			name: "tidb should use the latest synced configmap",
+			name: "tidb should use the latest synced configmap and spec storageVolumes field",
 			tc: v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "tc",
@@ -996,7 +996,19 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							ConfigUpdateStrategy: &updateStrategy,
 						},
-						Config: v1alpha1.NewTiDBConfig(),
+						StorageVolumes: []v1alpha1.StorageVolume{
+							{
+								Name:        "log",
+								StorageSize: "2Gi",
+								MountPath:   "/var/lib/log",
+							}},
+						Config: mustTiDBConfig(&v1alpha1.TiDBConfig{
+							Log: &v1alpha1.Log{
+								File: &v1alpha1.FileLogConfig{
+									Filename: pointer.StringPtr("/var/log/tidb/tidb.log"),
+								},
+							},
+						}),
 					},
 					PD:   &v1alpha1.PDSpec{},
 					TiKV: &v1alpha1.TiKVSpec{},
@@ -1013,6 +1025,28 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 				})
 				g := NewGomegaWithT(t)
 				g.Expect(cmName).To(Equal("tc-tidb-xxxxxxxx"))
+				q, _ := resource.ParseQuantity("2Gi")
+				g.Expect(sts.Spec.VolumeClaimTemplates).To(Equal([]v1.PersistentVolumeClaim{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: v1alpha1.TiDBMemberType.String() + "-log",
+						},
+						Spec: corev1.PersistentVolumeClaimSpec{
+							AccessModes: []corev1.PersistentVolumeAccessMode{
+								corev1.ReadWriteOnce,
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceStorage: q,
+								},
+							},
+						},
+					},
+				}))
+				index := len(sts.Spec.Template.Spec.Containers[1].VolumeMounts) - 1
+				g.Expect(sts.Spec.Template.Spec.Containers[1].VolumeMounts[index]).To(Equal(corev1.VolumeMount{
+					Name: fmt.Sprintf("%s-%s", v1alpha1.TiDBMemberType, "log"), MountPath: "/var/lib/log",
+				}))
 			},
 		},
 		{
@@ -1095,57 +1129,6 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 				},
 			},
 			testSts: testAdditionalVolumes(t, []corev1.Volume{{Name: "test", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}}}),
-		},
-		{
-			name: "tidb spec storageVolumes",
-			tc: v1alpha1.TidbCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "tc",
-					Namespace: "ns",
-				},
-				Spec: v1alpha1.TidbClusterSpec{
-					PD: &v1alpha1.PDSpec{},
-					TiDB: &v1alpha1.TiDBSpec{StorageVolumes: []v1alpha1.StorageVolume{
-						{
-							Name:        "log",
-							StorageSize: "2Gi",
-							MountPath:   "/var/lib/log",
-						}},
-						Config: mustTiDBConfig(&v1alpha1.TiDBConfig{
-							Log: &v1alpha1.Log{
-								File: &v1alpha1.FileLogConfig{
-									Filename: pointer.StringPtr("/var/log/tidb/tidb.log"),
-								},
-							},
-						})},
-					TiKV: &v1alpha1.TiKVSpec{},
-				},
-			},
-			testSts: func(sts *apps.StatefulSet) {
-				g := NewGomegaWithT(t)
-				q, _ := resource.ParseQuantity("2Gi")
-				g.Expect(sts.Spec.VolumeClaimTemplates).To(Equal([]v1.PersistentVolumeClaim{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: v1alpha1.TiDBMemberType.String() + "-log",
-						},
-						Spec: corev1.PersistentVolumeClaimSpec{
-							AccessModes: []corev1.PersistentVolumeAccessMode{
-								corev1.ReadWriteOnce,
-							},
-							Resources: corev1.ResourceRequirements{
-								Requests: corev1.ResourceList{
-									corev1.ResourceStorage: q,
-								},
-							},
-						},
-					},
-				}))
-				index := len(sts.Spec.Template.Spec.Containers[1].VolumeMounts) - 1
-				g.Expect(sts.Spec.Template.Spec.Containers[1].VolumeMounts[index]).To(Equal(corev1.VolumeMount{
-					Name: fmt.Sprintf("%s-%s", v1alpha1.TiDBMemberType, "log"), MountPath: "/var/lib/log",
-				}))
-			},
 		},
 		// TODO add more tests
 	}
