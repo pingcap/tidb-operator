@@ -5828,6 +5828,53 @@ imported from v3.1.0</p>
 </tr>
 </tbody>
 </table>
+<h3 id="localtsoconfig">LocalTSOConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pdconfig">PDConfig</a>)
+</p>
+<p>
+<p>LocalTSOConfig is the configuration for Local TSO service.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>enable-local-tso</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableLocalTSO is used to enable the Local TSO Allocator feature,
+which allows the PD server to generate local TSO for certain DC-level transactions.
+To make this feature meaningful, user has to set the dc-location configuration for
+each PD server.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dc-location</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DCLocation indicates that which data center a PD server is in. According to it,
+the PD cluster can elect a TSO allocator to generate local TSO for
+DC-level transactions. It shouldn&rsquo;t be the same with GlobalDCLocation.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="log">Log</h3>
 <p>
 (<em>Appears on:</em>
@@ -7166,6 +7213,20 @@ string
 <em>(Optional)</em>
 <p>TsoSaveInterval is the interval to save timestamp.
 Optional: Defaults to 3s</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>local-tso</code></br>
+<em>
+<a href="#localtsoconfig">
+LocalTSOConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Local TSO service related configuration.</p>
 </td>
 </tr>
 <tr>

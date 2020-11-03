@@ -61,6 +61,10 @@ type PDConfig struct {
 	// +optional
 	TsoSaveInterval *string `toml:"tso-save-interval,omitempty" json:"tso-save-interval,omitempty"`
 
+	// Local TSO service related configuration.
+	// +optional
+	LocalTSO *LocalTSOConfig `toml:"local-tso,omitempty" json:"local-tso,omitempty"`
+
 	// +optional
 	Metric *PDMetricConfig `toml:"metric,omitempty" json:"metric,omitempty"`
 
@@ -481,4 +485,20 @@ type FileLogConfig struct {
 	// Maximum number of old log files to retain.
 	// +optional
 	MaxBackups *int `toml:"max-backups,omitempty" json:"max-backups,omitempty"`
+}
+
+// LocalTSOConfig is the configuration for Local TSO service.
+// +k8s:openapi-gen=true
+type LocalTSOConfig struct {
+	// EnableLocalTSO is used to enable the Local TSO Allocator feature,
+	// which allows the PD server to generate local TSO for certain DC-level transactions.
+	// To make this feature meaningful, user has to set the dc-location configuration for
+	// each PD server.
+	// +optional
+	EnableLocalTSO *bool `toml:"enable-local-tso,omitempty" json:"enable-local-tso,omitempty"`
+	// DCLocation indicates that which data center a PD server is in. According to it,
+	// the PD cluster can elect a TSO allocator to generate local TSO for
+	// DC-level transactions. It shouldn't be the same with GlobalDCLocation.
+	// +optional
+	DCLocation *string `toml:"dc-location,omitempty" json:"dc-location,omitempty"`
 }
