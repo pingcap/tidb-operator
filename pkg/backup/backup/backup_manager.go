@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog"
 	"k8s.io/utils/pointer"
 )
 
@@ -65,20 +66,28 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	name := backup.GetName()
 	backupJobName := backup.GetBackupJobName()
 
-	tc, err := bm.deps.TiDBClusterLister.TidbClusters(ns).Get(backup.Spec.BR.Cluster)
-	if err != nil {
-		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  fmt.Sprintf("failed to fetch tidbcluster %s/%s", ns, backup.Spec.BR.Cluster),
-			Message: err.Error(),
-		})
+	var err error
+	if backup.Spec.BR == nil {
+		err = backuputil.ValidateBackup(backup, "")
+	} else {
+		klog.Info("------Validate BR-----")
+		backupNamespace := backup.GetNamespace()
+		if backup.Spec.BR.ClusterNamespace != "" {
+			backupNamespace = backup.Spec.BR.ClusterNamespace
+		}
 
-		return err
+		var tc *v1alpha1.TidbCluster
+		tc, err = bm.deps.TiDBClusterLister.TidbClusters(backupNamespace).Get(backup.Spec.BR.Cluster)
+		if err != nil {
+			klog.Errorf("failed to fetch tidbcluster %s/%s, error: %s", backupNamespace, backup.Spec.BR.Cluster, err.Error())
+			return nil
+		}
+
+		tikvImage := tc.TiKVImage()
+		err = backuputil.ValidateBackup(backup, tikvImage)
+		klog.Infof("validate BR error: %v", err)
 	}
 
-	tikvImage := tc.TiKVImage()
-	err = backuputil.ValidateBackup(backup, tikvImage)
 	if err != nil {
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupInvalid,
