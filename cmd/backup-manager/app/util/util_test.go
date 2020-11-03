@@ -317,7 +317,7 @@ func newBackup() *v1alpha1.Backup {
 			UID:       types.UID("test-bk"),
 		},
 		Spec: v1alpha1.BackupSpec{
-			From: v1alpha1.TiDBAccessConfig{
+			From: &v1alpha1.TiDBAccessConfig{
 				Host:       "10.1.1.2",
 				Port:       constants.DefaultTidbPort,
 				User:       constants.DefaultTidbUser,
@@ -349,7 +349,7 @@ func newRestore() *v1alpha1.Restore {
 			UID:       types.UID("test-re"),
 		},
 		Spec: v1alpha1.RestoreSpec{
-			To: v1alpha1.TiDBAccessConfig{
+			To: &v1alpha1.TiDBAccessConfig{
 				Host:       "10.1.1.2",
 				Port:       constants.DefaultTidbPort,
 				User:       constants.DefaultTidbUser,
