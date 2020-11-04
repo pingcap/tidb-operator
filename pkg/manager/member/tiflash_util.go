@@ -121,9 +121,9 @@ func getTiFlashConfig(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper {
 	}
 
 	if tc.IsHeterogeneous() {
-		setTiFlashConfigDefault(config, tc.Spec.Cluster.Name, tc.Name, tc.Namespace)
+		setTiFlashConfigDefault(config, tc.Spec.Cluster.Name, tc.Name, tc.Namespace, tc.Spec.ClusterDomain)
 	} else {
-		setTiFlashConfigDefault(config, "", tc.Name, tc.Namespace)
+		setTiFlashConfigDefault(config, "", tc.Name, tc.Namespace, tc.Spec.ClusterDomain)
 	}
 
 	// Note the config of tiflash use "_" by convention, others(proxy) use "-".
@@ -163,26 +163,26 @@ func setTiFlashLogConfigDefault(config *v1alpha1.TiFlashConfigWraper) {
 }
 
 // setTiFlashConfigDefault sets default configs for TiFlash
-func setTiFlashConfigDefault(config *v1alpha1.TiFlashConfigWraper, externalClusterName, clusterName, ns string) {
+func setTiFlashConfigDefault(config *v1alpha1.TiFlashConfigWraper, externalClusterName, clusterName, ns, clusterDomain string) {
 	if config.Common == nil {
 		config.Common = v1alpha1.NewTiFlashCommonConfig()
 	}
-	setTiFlashCommonConfigDefault(config.Common, externalClusterName, clusterName, ns)
+	setTiFlashCommonConfigDefault(config.Common, externalClusterName, clusterName, ns, clusterDomain)
 
 	if config.Proxy == nil {
 		config.Proxy = v1alpha1.NewTiFlashProxyConfig()
 	}
-	setTiFlashProxyConfigDefault(config.Proxy, clusterName, ns)
+	setTiFlashProxyConfigDefault(config.Proxy, clusterName, ns, clusterDomain)
 }
 
-func setTiFlashProxyConfigDefault(config *v1alpha1.TiFlashProxyConfigWraper, clusterName, ns string) {
+func setTiFlashProxyConfigDefault(config *v1alpha1.TiFlashProxyConfigWraper, clusterName, ns, clusterDomain string) {
 	config.SetIfNil("log-level", "info")
-	config.SetIfNil("server.engine-addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc:3930", controller.TiFlashMemberName(clusterName), controller.TiFlashPeerMemberName(clusterName), ns))
+	config.SetIfNil("server.engine-addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:3930", controller.TiFlashMemberName(clusterName), controller.TiFlashPeerMemberName(clusterName), ns, controller.FormatClusterDomain(clusterDomain)))
 	config.SetIfNil("server.status-addr", "0.0.0.0:20292")
-	config.SetIfNil("server.advertise-status-addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc:20292", controller.TiFlashMemberName(clusterName), controller.TiFlashPeerMemberName(clusterName), ns))
+	config.SetIfNil("server.advertise-status-addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:20292", controller.TiFlashMemberName(clusterName), controller.TiFlashPeerMemberName(clusterName), ns, controller.FormatClusterDomain(clusterDomain)))
 }
 
-func setTiFlashCommonConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, externalClusterName string, clusterName, ns string) {
+func setTiFlashCommonConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, externalClusterName string, clusterName, ns, clusterDomain string) {
 	config.SetIfNil("tmp_path", "/data0/tmp")
 	config.SetIfNil("display_name", "TiFlash")
 	config.SetIfNil("default_profile", "default")
@@ -196,7 +196,7 @@ func setTiFlashCommonConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, e
 	config.SetIfNil("https_port", int64(8123))
 	config.SetIfNil("http_port", int64(8123))
 	config.SetIfNil("interserver_http_port", int64(9009))
-	setTiFlashFlashConfigDefault(config, externalClusterName, clusterName, ns)
+	setTiFlashFlashConfigDefault(config, externalClusterName, clusterName, ns, clusterDomain)
 	setTiFlashLoggerConfigDefault(config)
 	setTiFlashApplicationConfigDefault(config)
 	if len(externalClusterName) > 0 {
@@ -206,7 +206,6 @@ func setTiFlashCommonConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, e
 	}
 
 	config.SetIfNil("status.metrics_port", int64(8234))
-
 	config.SetIfNil("quotas.default.interval.duration", int64(3600))
 	config.SetIfNil("quotas.default.interval.queries", int64(0))
 	config.SetIfNil("quotas.default.interval.errors", int64(0))
@@ -229,7 +228,7 @@ func setTiFlashCommonConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, e
 	config.SetIfNil("profiles.default.use_uncompressed_cache", int64(0))
 }
 
-func setTiFlashFlashConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, externalClusterName string, clusterName, ns string) {
+func setTiFlashFlashConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, externalClusterName string, clusterName, ns, clusterDomain string) {
 	var tidbStatusAddr string
 	if len(externalClusterName) > 0 {
 		tidbStatusAddr = fmt.Sprintf("%s.%s.svc:10080", controller.TiDBMemberName(externalClusterName), ns)
@@ -250,7 +249,7 @@ func setTiFlashFlashConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, ex
 
 	// set proxy
 	config.SetIfNil("flash.proxy.addr", "0.0.0.0:20170")
-	config.SetIfNil("flash.proxy.advertise-addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc:20170", controller.TiFlashMemberName(clusterName), controller.TiFlashPeerMemberName(clusterName), ns))
+	config.SetIfNil("flash.proxy.advertise-addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:20170", controller.TiFlashMemberName(clusterName), controller.TiFlashPeerMemberName(clusterName), ns, controller.FormatClusterDomain(clusterDomain)))
 	config.SetIfNil("flash.proxy.data-dir", "/data0/proxy")
 	config.SetIfNil("flash.proxy.config", "/data0/proxy.toml")
 }

@@ -39,7 +39,7 @@ import (
 
 const (
 	//find a better way to manage store only managed by tiflash in Operator
-	tiflashStoreLimitPattern = `%s-tiflash-\d+\.%s-tiflash-peer\.%s\.svc\:\d+`
+	tiflashStoreLimitPattern = `%s-tiflash-\d+\.%s-tiflash-peer\.%s\.svc%s:\d+`
 	tiflashCertPath          = "/var/lib/tiflash-tls"
 	tiflashCertVolumeName    = "tiflash-tls"
 )
@@ -619,7 +619,9 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	}
 
 	previousStores := tc.Status.TiFlash.Stores
+	previousPeerStores := tc.Status.TiFlash.PeerStores
 	stores := map[string]v1alpha1.TiKVStore{}
+	peerStores := map[string]v1alpha1.TiKVStore{}
 	tombstoneStores := map[string]v1alpha1.TiKVStore{}
 
 	pdCli := controller.GetPDClient(m.deps.PDControl, tc)
@@ -630,36 +632,37 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 		return err
 	}
 
-	pattern, err := regexp.Compile(fmt.Sprintf(tiflashStoreLimitPattern, tc.Name, tc.Name, tc.Namespace))
+	pattern, err := regexp.Compile(fmt.Sprintf(tiflashStoreLimitPattern, tc.Name, tc.Name, tc.Namespace, controller.FormatClusterDomainForRegex(tc.Spec.ClusterDomain)))
 	if err != nil {
 		return err
 	}
 	for _, store := range storesInfo.Stores {
-		// In theory, the external tiflash can join the cluster, and the operator would only manage the internal tiflash.
-		// So we check the store owner to make sure it.
-		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
-			continue
-		}
 		status := m.getTiFlashStore(store)
 		if status == nil {
 			continue
 		}
-		// avoid LastHeartbeatTime be overwrite by zero time when pd lost LastHeartbeatTime
-		if status.LastHeartbeatTime.IsZero() {
-			if oldStatus, ok := previousStores[status.ID]; ok {
-				klog.V(4).Infof("the pod:%s's store LastHeartbeatTime is zero,so will keep in %v", status.PodName, oldStatus.LastHeartbeatTime)
-				status.LastHeartbeatTime = oldStatus.LastHeartbeatTime
-			}
-		}
 
 		oldStore, exist := previousStores[status.ID]
+		if !exist {
+			oldStore, exist = previousPeerStores[status.ID]
+		}
+
+		// avoid LastHeartbeatTime be overwrite by zero time when pd lost LastHeartbeatTime
+		if status.LastHeartbeatTime.IsZero() && exist {
+			klog.V(4).Infof("the pod:%s's store LastHeartbeatTime is zero,so will keep in %v", status.PodName, oldStore.LastHeartbeatTime)
+			status.LastHeartbeatTime = oldStore.LastHeartbeatTime
+		}
 
 		status.LastTransitionTime = metav1.Now()
 		if exist && status.State == oldStore.State {
 			status.LastTransitionTime = oldStore.LastTransitionTime
 		}
 
-		stores[status.ID] = *status
+		if store.Store != nil && pattern.Match([]byte(store.Store.Address)) {
+			stores[status.ID] = *status
+		} else {
+			peerStores[status.ID] = *status
+		}
 	}
 
 	//this returns all tombstone stores
@@ -681,6 +684,7 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 
 	tc.Status.TiFlash.Synced = true
 	tc.Status.TiFlash.Stores = stores
+	tc.Status.TiFlash.PeerStores = peerStores
 	tc.Status.TiFlash.TombstoneStores = tombstoneStores
 	tc.Status.TiFlash.Image = ""
 	c := filterContainer(set, "tiflash")
@@ -729,7 +733,7 @@ func (m *tiflashMemberManager) setStoreLabelsForTiFlash(tc *v1alpha1.TidbCluster
 		return setCount, nil
 	}
 
-	pattern, err := regexp.Compile(fmt.Sprintf(tiflashStoreLimitPattern, tc.Name, tc.Name, tc.Namespace))
+	pattern, err := regexp.Compile(fmt.Sprintf(tiflashStoreLimitPattern, tc.Name, tc.Name, tc.Namespace, controller.FormatClusterDomainForRegex(tc.Spec.ClusterDomain)))
 	if err != nil {
 		return -1, err
 	}

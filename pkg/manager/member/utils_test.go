@@ -15,6 +15,7 @@ package member
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -732,6 +733,106 @@ func TestShouldRecover(t *testing.T) {
 			got = shouldRecover(tt.tc, label.PDLabelVal, podLister)
 			if got != false {
 				t.Fatalf("wants %v, got %v", false, got)
+			}
+		})
+	}
+}
+
+func TestCombineAnnotations(t *testing.T) {
+	tests := []struct {
+		name     string
+		a        map[string]string
+		b        map[string]string
+		expected map[string]string
+	}{
+		{
+			name:     "normal",
+			a:        map[string]string{"A": "a"},
+			b:        map[string]string{"B": "b"},
+			expected: map[string]string{"A": "a", "B": "b"},
+		},
+		{
+			name:     "both nil",
+			a:        nil,
+			b:        nil,
+			expected: map[string]string{},
+		},
+		{
+			name:     "both empty",
+			a:        map[string]string{},
+			b:        map[string]string{},
+			expected: map[string]string{},
+		},
+		{
+			name:     "a is nil",
+			a:        nil,
+			b:        map[string]string{"B": "b"},
+			expected: map[string]string{"B": "b"},
+		},
+		{
+			name:     "b is nil",
+			a:        map[string]string{"A": "a"},
+			b:        nil,
+			expected: map[string]string{"A": "a"},
+		},
+		{
+			name:     "a is empty",
+			a:        map[string]string{},
+			b:        map[string]string{"B": "b"},
+			expected: map[string]string{"B": "b"},
+		},
+		{
+			name:     "b is empty",
+			a:        map[string]string{"A": "a"},
+			b:        map[string]string{},
+			expected: map[string]string{"A": "a"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := CombineAnnotations(tt.a, tt.b)
+			if diff := cmp.Diff(tt.expected, got); diff != "" {
+				t.Errorf("unexpected (-want, +got): %s", diff)
+			}
+		})
+	}
+}
+
+func TestMemberPodName(t *testing.T) {
+	tests := []struct {
+		name           string
+		controllerName string
+		controllerKind string
+		ordinal        int32
+		memberType     v1alpha1.MemberType
+		expected       string
+		err            string
+	}{
+		{
+			name:           "tidb cluster",
+			controllerName: "test",
+			controllerKind: v1alpha1.TiDBClusterKind,
+			ordinal:        2,
+			memberType:     v1alpha1.SlowLogTailerMemberType,
+			expected:       "test-slowlog-2",
+		},
+		{
+			name:           "unknown controller kind",
+			controllerName: "test",
+			controllerKind: "foo",
+			ordinal:        1,
+			memberType:     v1alpha1.TiDBMemberType,
+			err:            "unknown controller kind[foo]",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := MemberPodName(tt.controllerName, tt.controllerKind, tt.ordinal, tt.memberType)
+			if tt.err != "" && (err == nil || fmt.Sprintf("%s", err) != tt.err) {
+				t.Errorf("unexpected error context: expected '%s', got '%s'", tt.err, err)
+			}
+			if diff := cmp.Diff(tt.expected, got); diff != "" {
+				t.Errorf("unexpected (-want, +got): %s", diff)
 			}
 		})
 	}

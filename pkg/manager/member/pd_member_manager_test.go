@@ -51,11 +51,15 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 		pdSvcCreated               bool
 		pdPeerSvcCreated           bool
 		setCreated                 bool
+		tls                        bool
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 		tc := newTidbClusterForPD()
+		if test.tls {
+			tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+		}
 		ns := tc.Namespace
 		tcName := tc.Name
 		oldSpec := tc.Spec
@@ -124,6 +128,18 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 			pdSvcCreated:               true,
 			pdPeerSvcCreated:           true,
 			setCreated:                 true,
+		},
+		{
+			name:                       "normal with tls",
+			prepare:                    nil,
+			errWhenCreateStatefulSet:   false,
+			errWhenCreatePDService:     false,
+			errWhenCreatePDPeerService: false,
+			errExpectFn:                errExpectRequeue,
+			pdSvcCreated:               true,
+			pdPeerSvcCreated:           true,
+			setCreated:                 true,
+			tls:                        true,
 		},
 		{
 			name:                       "error when create statefulset",
@@ -298,9 +314,9 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 				}
 			},
 			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
-				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://pd1:2379"}, Health: true},
-				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://pd2:2379"}, Health: true},
-				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://pd3:2379"}, Health: false},
+				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://test-pd-1.test-pd-peer.default.svc:2379"}, Health: true},
+				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-2.test-pd-peer.default.svc:2379"}, Health: true},
+				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://test-pd-3.test-pd-peer.default.svc:2379"}, Health: false},
 			}},
 			errWhenUpdateStatefulSet:   false,
 			errWhenUpdatePDService:     false,
@@ -582,9 +598,9 @@ func TestPDMemberManagerUpgrade(t *testing.T) {
 				cluster.Spec.PD.Image = "pd-test-image:v2"
 			},
 			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
-				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://pd1:2379"}, Health: true},
-				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://pd2:2379"}, Health: true},
-				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://pd3:2379"}, Health: false},
+				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://test-pd-1.test-pd-peer.default.svc:2379"}, Health: true},
+				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-2.test-pd-peer.default.svc:2379"}, Health: true},
+				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://test-pd-3.test-pd-peer.default.svc:2379"}, Health: false},
 			}},
 			err: false,
 			statusChange: func(set *apps.StatefulSet) {
@@ -1665,6 +1681,70 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				g.Expect(sts.Spec.Template.Spec.SecurityContext).To(BeNil())
 			},
 		},
+		{
+			name: "pd spec storageVolumes",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: &v1alpha1.PDSpec{
+						StorageVolumes: []v1alpha1.StorageVolume{
+							{
+								Name:        "log",
+								StorageSize: "2Gi",
+								MountPath:   "/var/log",
+							}},
+						Config: mustPDConfig(&v1alpha1.PDConfig{
+							Log: &v1alpha1.PDLogConfig{
+								File: &v1alpha1.FileLogConfig{
+									Filename: pointer.StringPtr("/var/log/tidb/tidb.log"),
+								},
+								Level: pointer.StringPtr("warn"),
+							},
+						}),
+					},
+					TiDB: &v1alpha1.TiDBSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				q, _ := resource.ParseQuantity("2Gi")
+				g.Expect(sts.Spec.VolumeClaimTemplates).To(Equal([]v1.PersistentVolumeClaim{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: v1alpha1.PDMemberType.String(),
+						},
+						Spec: corev1.PersistentVolumeClaimSpec{
+							AccessModes: []corev1.PersistentVolumeAccessMode{
+								corev1.ReadWriteOnce,
+							},
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: v1alpha1.PDMemberType.String() + "-log",
+						},
+						Spec: corev1.PersistentVolumeClaimSpec{
+							AccessModes: []corev1.PersistentVolumeAccessMode{
+								corev1.ReadWriteOnce,
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceStorage: q,
+								},
+							},
+						},
+					},
+				}))
+				index := len(sts.Spec.Template.Spec.Containers[0].VolumeMounts) - 1
+				g.Expect(sts.Spec.Template.Spec.Containers[0].VolumeMounts[index]).To(Equal(corev1.VolumeMount{
+					Name: fmt.Sprintf("%s-%s", v1alpha1.PDMemberType, "log"), MountPath: "/var/log",
+				}))
+			},
+		},
 		// TODO add more tests
 	}
 
@@ -2437,13 +2517,14 @@ func TestPDMemberManagerSyncPDStsWhenPdNotJoinCluster(t *testing.T) {
 
 			},
 			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
-				{Name: "test-pd-0", MemberID: uint64(1), ClientUrls: []string{"http://test-pd-0:2379"}, Health: false},
-				{Name: "test-pd-1", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-1:2379"}, Health: false},
-				{Name: "test-pd-2", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-2:2379"}, Health: false},
+				{Name: "test-pd-0", MemberID: uint64(1), ClientUrls: []string{"http://test-pd-0.test-pd-peer.default.svc:2379"}, Health: false},
+				{Name: "test-pd-1", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-1.test-pd-peer.default.svc:2379"}, Health: false},
+				{Name: "test-pd-2", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-2.test-pd-peer.default.svc:2379"}, Health: false},
 			}},
 			err: false,
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(tc.Status.PD.UnjoinedMembers).To(BeEmpty())
+				g.Expect(len(tc.Status.PD.Members)).To(Equal(3))
 			},
 		},
 	}
