@@ -1884,6 +1884,9 @@ spec:
                   type: string
                 storageClassName:
                   type: string
+                storageVolumes:
+                  items: {}
+                  type: array
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
@@ -6548,6 +6551,11 @@ spec:
                   type: object
                 statefulSetUpdateStrategy:
                   type: string
+                storageClassName:
+                  type: string
+                storageVolumes:
+                  items: {}
+                  type: array
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
