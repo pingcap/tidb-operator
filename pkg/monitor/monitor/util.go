@@ -16,6 +16,7 @@ package monitor
 import (
 	"encoding/json"
 	"fmt"
+	"k8s.io/klog"
 	"sort"
 	"strconv"
 	"strings"
@@ -508,23 +509,15 @@ func getMonitorReloaderContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.Tid
 
 func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) []core.Volume {
 	volumes := []core.Volume{}
-	monitorData := core.Volume{
-		Name: "monitor-data",
-		VolumeSource: core.VolumeSource{
-			EmptyDir: &core.EmptyDirVolumeSource{},
-		},
-	}
-	if monitor.Spec.Persistent {
-		monitorData = core.Volume{
+	if !monitor.Spec.Persistent {
+		monitorData := core.Volume{
 			Name: "monitor-data",
 			VolumeSource: core.VolumeSource{
-				PersistentVolumeClaim: &core.PersistentVolumeClaimVolumeSource{
-					ClaimName: GetMonitorObjectName(monitor),
-				},
+				EmptyDir: &core.EmptyDirVolumeSource{},
 			},
 		}
+		volumes = append(volumes, monitorData)
 	}
-	volumes = append(volumes, monitorData)
 	prometheusConfig := core.Volume{
 		Name: "prometheus-config",
 		VolumeSource: core.VolumeSource{
@@ -836,6 +829,23 @@ func getMonitorStatefulSet(sa *core.ServiceAccount, config *core.ConfigMap, secr
 	}
 	volumes := getMonitorVolumes(config, monitor, tc)
 	statefulset.Spec.Template.Spec.Volumes = volumes
+
+	if monitor.Spec.Persistent {
+		quantity, err := resource.ParseQuantity(monitor.Spec.Storage)
+		if err != nil {
+			klog.Errorf("Cannot parse storage size %v in TiDBMonitor %s-%s,error: %v", monitor.Namespace, monitor.Name, err)
+			return nil, err
+		}
+		storageRequest := core.ResourceRequirements{
+			Requests: core.ResourceList{
+				core.ResourceStorage: quantity,
+			},
+		}
+		statefulset.Spec.VolumeClaimTemplates = []core.PersistentVolumeClaim{
+			util.VolumeClaimTemplate(storageRequest, "monitor-data", monitor.Spec.StorageClassName),
+		}
+	}
+
 	b, err := json.Marshal(statefulset.Spec.Template.Spec)
 	if err != nil {
 		return nil, err

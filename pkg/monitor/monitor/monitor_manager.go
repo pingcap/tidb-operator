@@ -68,31 +68,35 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		return err
 	}
 	defaultTidbMonitor(monitor)
-	tcRef := monitor.Spec.Clusters[0]
-	if len(tcRef.Namespace) < 1 {
-		tcRef.Namespace = monitor.Namespace
-	}
-	tc, err := m.deps.Clientset.PingcapV1alpha1().TidbClusters(tcRef.Namespace).Get(tcRef.Name, metav1.GetOptions{})
-	if err != nil {
-		rerr := fmt.Errorf("get tm[%s/%s]'s target tc[%s/%s] failed, err: %v", monitor.Namespace, monitor.Name, tcRef.Namespace, tcRef.Name, err)
-		return rerr
-	}
-	if tc.Status.Monitor != nil {
-		if tc.Status.Monitor.Name != monitor.Name || tc.Status.Monitor.Namespace != monitor.Namespace {
-			err := fmt.Errorf("tm[%s/%s]'s target tc[%s/%s] already referenced by TidbMonitor [%s/%s]", monitor.Namespace, monitor.Name, tc.Namespace, tc.Name, tc.Status.Monitor.Namespace, tc.Status.Monitor.Name)
+	var firstTc *v1alpha1.TidbCluster
+	for index, tcRef := range monitor.Spec.Clusters {
+		if len(tcRef.Namespace) < 1 {
+			tcRef.Namespace = monitor.Namespace
+		}
+		tc, err := m.deps.Clientset.PingcapV1alpha1().TidbClusters(tcRef.Namespace).Get(tcRef.Name, metav1.GetOptions{})
+		if index == 0 {
+			firstTc = tc
+		}
+		if err != nil {
+			rerr := fmt.Errorf("get tm[%s/%s]'s target tc[%s/%s] failed, err: %v", monitor.Namespace, monitor.Name, tcRef.Namespace, tcRef.Name, err)
+			return rerr
+		}
+		if tc.Status.Monitor != nil {
+			if tc.Status.Monitor.Name != monitor.Name || tc.Status.Monitor.Namespace != monitor.Namespace {
+				err := fmt.Errorf("tm[%s/%s]'s target tc[%s/%s] already referenced by TidbMonitor [%s/%s]", monitor.Namespace, monitor.Name, tc.Namespace, tc.Name, tc.Status.Monitor.Namespace, tc.Status.Monitor.Name)
+				m.deps.Recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, err.Error())
+				return err
+			}
+		}
+		// TODO: Support validating webhook that forbids the tidbmonitor to update the monitorRef for the tidbcluster whose monitorRef has already
+		// been set by another TidbMonitor.
+		// Patch tidbcluster status first to avoid multi tidbmonitor monitoring the same tidbcluster
+		if err := m.patchTidbClusterStatus(&tcRef, monitor); err != nil {
+			message := fmt.Sprintf("Sync TidbMonitorRef into targetCluster[%s/%s] status failed, err:%v", tc.Namespace, tc.Name, err)
+			klog.Error(message)
 			m.deps.Recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, err.Error())
 			return err
 		}
-	}
-
-	// TODO: Support validating webhook that forbids the tidbmonitor to update the monitorRef for the tidbcluster whose monitorRef has already
-	// been set by another TidbMonitor.
-	// Patch tidbcluster status first to avoid multi tidbmonitor monitoring the same tidbcluster
-	if err := m.patchTidbClusterStatus(&tcRef, monitor); err != nil {
-		message := fmt.Sprintf("Sync TidbMonitorRef into targetCluster[%s/%s] status failed, err:%v", tc.Namespace, tc.Name, err)
-		klog.Error(message)
-		m.deps.Recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, err.Error())
-		return err
 	}
 
 	// Sync Service
@@ -102,38 +106,14 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		return err
 	}
 	klog.V(4).Infof("tm[%s/%s]'s service synced", monitor.Namespace, monitor.Name)
-	// Sync PVC
-	var pvc *corev1.PersistentVolumeClaim
-	if monitor.Spec.Persistent {
-		var err error
-		pvc, err = m.syncTidbMonitorPVC(monitor)
-		if err != nil {
-			message := fmt.Sprintf("Sync TidbMonitor[%s/%s] PVC failed,err:%v", monitor.Namespace, monitor.Name, err)
-			m.deps.Recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
-			return err
-		}
-		klog.V(4).Infof("tm[%s/%s]'s pvc synced", monitor.Namespace, monitor.Name)
 
-		// syncing all PVs managed by this tidbmonitor
-		if err := m.pvManager.SyncMonitor(monitor); err != nil {
-			return err
-		}
-		klog.V(4).Infof("tm[%s/%s]'s pv synced", monitor.Namespace, monitor.Name)
-	}
-
-	// Sync Deployment
-	if err := m.syncTidbMonitorDeployment(tc, monitor); err != nil {
+	// Sync Statefulset
+	if err := m.syncTidbMonitorStatefulset(firstTc, monitor); err != nil {
 		message := fmt.Sprintf("Sync TidbMonitor[%s/%s] Deployment failed,err:%v", monitor.Namespace, monitor.Name, err)
 		m.deps.Recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
 		return err
 	}
 
-	// After the pvc has consumer, we sync monitor pv's labels
-	if monitor.Spec.Persistent {
-		if err := m.syncTidbMonitorPV(monitor, pvc); err != nil {
-			return err
-		}
-	}
 	klog.V(4).Infof("tm[%s/%s]'s deployment synced", monitor.Namespace, monitor.Name)
 
 	// Sync Ingress
@@ -159,31 +139,7 @@ func (m *MonitorManager) syncTidbMonitorService(monitor *v1alpha1.TidbMonitor) e
 	return nil
 }
 
-func (m *MonitorManager) syncTidbMonitorPVC(monitor *v1alpha1.TidbMonitor) (*corev1.PersistentVolumeClaim, error) {
-	pvcName := GetMonitorObjectName(monitor)
-	pvc := getMonitorPVC(pvcName, monitor)
-	pvc, err := m.deps.TypedControl.CreateOrUpdatePVC(monitor, pvc, false)
-	if err != nil {
-		klog.Errorf("tm[%s/%s]'s pvc failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
-		return nil, err
-	}
-	return pvc, nil
-}
-
-func (m *MonitorManager) syncTidbMonitorPV(monitor *v1alpha1.TidbMonitor, pvc *corev1.PersistentVolumeClaim) error {
-	// update meta info for pv
-	pv, err := m.deps.PVLister.Get(pvc.Spec.VolumeName)
-	if err != nil {
-		return err
-	}
-	_, err = m.deps.PVControl.UpdateMetaInfo(monitor, pv)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (m *MonitorManager) syncTidbMonitorDeployment(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) error {
+func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) error {
 
 	cm, err := m.syncTidbMonitorConfig(tc, monitor)
 	if err != nil {
@@ -202,10 +158,14 @@ func (m *MonitorManager) syncTidbMonitorDeployment(tc *v1alpha1.TidbCluster, mon
 		return err
 	}
 
-	err = m.smoothMigrationToStatefulSet(monitor)
+	result, err := m.smoothMigrationToStatefulSet(monitor)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s failed to smooth migration,err: %v", monitor.Namespace, monitor.Name, err)
 		return err
+	}
+	if !result {
+		klog.Errorf("tm[%s/%s]'s wait for smooth migration successfully,err: %v", monitor.Namespace, monitor.Name, err)
+		return nil
 	}
 	statefulset, err := getMonitorStatefulSet(sa, cm, secret, monitor, tc)
 	if err != nil {
@@ -436,16 +396,18 @@ func (m *MonitorManager) patchTidbClusterStatus(tcRef *v1alpha1.TidbClusterRef, 
 	return err
 }
 
-func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMonitor) error {
+func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMonitor) (bool, error) {
+	// Determine whether there is an old deployment
 	exist, err := m.deps.TypedControl.Exist(client.ObjectKey{
 		Namespace: monitor.Namespace,
 		Name:      monitor.Name,
 	}, &appsv1.Deployment{})
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s deployment failed to get,err: %v", monitor.Namespace, monitor.Name, err)
-		return err
+		return false, err
 	}
 	if exist {
+		// if deployment exist, delete it.
 		err = m.deps.TypedControl.Delete(monitor, &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      monitor.Name,
@@ -454,34 +416,37 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 		})
 		if err != nil {
 			klog.Errorf("tm[%s/%s]'s deployment failed to delete,err: %v", monitor.Namespace, monitor.Name, err)
-			return err
+			return false, err
 		}
-		return nil
+		return false, nil
 	} else {
-		stsPvcName := fmt.Sprintf("%s-0", GetMonitorObjectName(monitor))
+		//
+		stsPvcName := fmt.Sprintf("monitor-data-%s-0", GetMonitorObjectName(monitor))
 		stsPvc := getMonitorPVC(stsPvcName, monitor)
 		stsPvc, err := m.deps.TypedControl.CreateOrUpdatePVC(monitor, stsPvc, false)
 
 		if err != nil {
 			klog.Errorf("tm[%s/%s]'s pvc failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
-			return err
+			return false, err
 		}
 
 		deploymentPvcName := GetMonitorObjectName(monitor)
 		deploymentPvc, err := m.deps.PVCLister.PersistentVolumeClaims(monitor.Namespace).Get(deploymentPvcName)
 		if err != nil {
-			return err
+			return false, err
 		}
+
 		if deploymentPvc != nil {
+			// if deployment pvc exist, change pv bind sts pvc and delete deployment pvc.
 			// update meta info for pv
 			deploymentPv, err := m.deps.PVLister.Get(deploymentPvc.Spec.VolumeName)
 			if err != nil {
-				return err
+				return false, err
 			}
 			deploymentPv.Spec.ClaimRef.Name = stsPvc.Name
 			_, err = m.deps.PVControl.UpdateMetaInfo(monitor, deploymentPv)
 			if err != nil {
-				return err
+				return false, err
 			}
 			err = m.deps.TypedControl.Delete(monitor, &corev1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{
@@ -490,9 +455,9 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 				},
 			})
 			if err != nil {
-				return err
+				return false, err
 			}
 		}
 	}
-	return nil
+	return true, nil
 }
