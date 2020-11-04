@@ -344,6 +344,37 @@ func TestDiscoveryDiscovery(t *testing.T) {
 			},
 		},
 		{
+			name: "1 cluster, the request with clusterDomain, get members success",
+			ns:   "default",
+			url:  "demo-pd-0.demo-pd-peer.default.svc.cluster.local:2380",
+			tc:   newTC(),
+			getMembersFn: func() (*pdapi.MembersInfo, error) {
+				return &pdapi.MembersInfo{
+					Members: []*pdpb.Member{
+						{
+							PeerUrls: []string{"demo-pd-2.demo-pd-peer.default.svc.cluster.local:2380"},
+						},
+					},
+				}, nil
+			},
+			clusters: map[string]*clusterInfo{
+				"default/demo": {
+					resourceVersion: "1",
+					peers: map[string]struct{}{
+						"demo-pd-0": {},
+						"demo-pd-1": {},
+					},
+				},
+			},
+			expectFn: func(g *GomegaWithT, td *tidbDiscovery, s string, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(td.clusters)).To(Equal(1))
+				g.Expect(len(td.clusters["default/demo"].peers)).To(Equal(1))
+				g.Expect(td.clusters["default/demo"].peers["demo-pd-1"]).To(Equal(struct{}{}))
+				g.Expect(s).To(Equal("--join=demo-pd-2.demo-pd-peer.default.svc.cluster.local:2379"))
+			},
+		},
+		{
 			name: "2 clusters, the five ordinal request, get members success",
 			ns:   "default",
 			url:  "demo-pd-3.demo-pd-peer.default.svc:2380",
