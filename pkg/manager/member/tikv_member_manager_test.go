@@ -1787,6 +1787,66 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 			},
 			testSts: testAdditionalVolumes(t, []corev1.Volume{{Name: "test", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}}}),
 		},
+		{
+			name: "tikv spec storageVolumes",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+
+				Spec: v1alpha1.TidbClusterSpec{
+					PD:   &v1alpha1.PDSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
+					TiKV: &v1alpha1.TiKVSpec{
+						StorageVolumes: []v1alpha1.StorageVolume{
+							{
+								Name:        "wal",
+								StorageSize: "2Gi",
+								MountPath:   "/var/lib/wal",
+							}},
+						Config: mustTiKVConfig(&v1alpha1.TiKVRaftDBConfig{
+							WalDir: pointer.StringPtr("/var/lib/wal"),
+						}),
+					},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				q, _ := resource.ParseQuantity("2Gi")
+				g.Expect(sts.Spec.VolumeClaimTemplates).To(Equal([]v1.PersistentVolumeClaim{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: v1alpha1.TiKVMemberType.String(),
+						},
+						Spec: corev1.PersistentVolumeClaimSpec{
+							AccessModes: []corev1.PersistentVolumeAccessMode{
+								corev1.ReadWriteOnce,
+							},
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: v1alpha1.TiKVMemberType.String() + "-wal",
+						},
+						Spec: corev1.PersistentVolumeClaimSpec{
+							AccessModes: []corev1.PersistentVolumeAccessMode{
+								corev1.ReadWriteOnce,
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceStorage: q,
+								},
+							},
+						},
+					},
+				}))
+				index := len(sts.Spec.Template.Spec.Containers[0].VolumeMounts) - 1
+				g.Expect(sts.Spec.Template.Spec.Containers[0].VolumeMounts[index]).To(Equal(corev1.VolumeMount{
+					Name: fmt.Sprintf("%s-%s", v1alpha1.TiKVMemberType, "wal"), MountPath: "/var/lib/wal",
+				}))
+			},
+		},
 		// TODO add more tests
 	}
 
