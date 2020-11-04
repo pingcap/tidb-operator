@@ -374,17 +374,6 @@ func TestPDScalerScaleIn(t *testing.T) {
 			changed:          false,
 			isLeader:         false,
 		},
-		{
-			name:             "delete member success, but get member still remain",
-			pdUpgrading:      false,
-			hasPVC:           true,
-			pvcUpdateErr:     false,
-			deleteMemberErr:  false,
-			statusSyncFailed: false,
-			err:              true,
-			changed:          false,
-			isLeader:         false,
-		},
 	}
 
 	for _, tt := range tests {
