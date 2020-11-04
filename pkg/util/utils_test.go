@@ -25,7 +25,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
-	"github.com/pingcap/tidb-operator/pkg/util/toml"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -706,40 +705,4 @@ func TestBuildAdditionalVolumeAndVolumeMount(t *testing.T) {
 			tt.testResult(volMounts, volumeClaims)
 		})
 	}
-}
-
-func mustTiDBConfig(x interface{}) *v1alpha1.TiDBConfigWraper {
-	data, err := toml.Marshal(x)
-	if err != nil {
-		panic(err)
-	}
-
-	c := v1alpha1.NewTiDBConfig()
-	c.UnmarshalTOML(data)
-
-	return c
-}
-
-func mustTiKVConfig(x interface{}) *v1alpha1.TiKVConfigWraper {
-	data, err := toml.Marshal(x)
-	if err != nil {
-		panic(err)
-	}
-
-	c := v1alpha1.NewTiKVConfig()
-	c.UnmarshalTOML(data)
-
-	return c
-}
-
-func mustPDConfig(x interface{}) *v1alpha1.PDConfigWraper {
-	data, err := toml.Marshal(x)
-	if err != nil {
-		panic(err)
-	}
-
-	c := v1alpha1.NewPDConfig()
-	c.UnmarshalTOML(data)
-
-	return c
 }
