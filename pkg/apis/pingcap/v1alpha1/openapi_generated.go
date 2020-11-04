@@ -793,7 +793,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupScheduleSpec(ref common.ReferenceCal
 					},
 					"maxBackups": {
 						SchemaProps: spec.SchemaProps{
-							Description: "MaxBackups is to specify how many backups we want to keep 0 is magic number to indicate un-limited backups.",
+							Description: "MaxBackups is to specify how many backups we want to keep 0 is magic number to indicate un-limited backups. if MaxBackups and MaxReservedTime are set at the same time, MaxReservedTime is preferred and MaxBackups is ignored.",
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},
