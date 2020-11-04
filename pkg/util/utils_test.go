@@ -518,24 +518,17 @@ func TestRetainManagedFields(t *testing.T) {
 
 func TestBuildAdditionalVolumeAndVolumeMount(t *testing.T) {
 	tests := []struct {
-		name       string
-		tc         *v1alpha1.TidbCluster
-		memberType v1alpha1.MemberType
-		testResult func([]corev1.VolumeMount, []corev1.PersistentVolumeClaim)
+		name             string
+		storageVolumes   []v1alpha1.StorageVolume
+		storageClassName *string
+		memberType       v1alpha1.MemberType
+		testResult       func([]corev1.VolumeMount, []corev1.PersistentVolumeClaim)
 	}{
 		{
-			name: "unknown memberType",
-			tc: &v1alpha1.TidbCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{},
-				},
-				Spec: v1alpha1.TidbClusterSpec{
-					TiDB: &v1alpha1.TiDBSpec{
-						Replicas: 3,
-					},
-				},
-			},
-			memberType: "test",
+			name:             "unknown memberType",
+			storageVolumes:   []v1alpha1.StorageVolume{},
+			memberType:       "test",
+			storageClassName: nil,
 			testResult: func(volMounts []corev1.VolumeMount, volumeClaims []corev1.PersistentVolumeClaim) {
 				g := NewGomegaWithT(t)
 				g.Expect(volMounts).Should(BeNil())
@@ -544,26 +537,12 @@ func TestBuildAdditionalVolumeAndVolumeMount(t *testing.T) {
 		},
 		{
 			name: "tidb spec storageVolumes",
-			tc: &v1alpha1.TidbCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{},
-				},
-				Spec: v1alpha1.TidbClusterSpec{
-					TiDB: &v1alpha1.TiDBSpec{StorageVolumes: []v1alpha1.StorageVolume{
-						{
-							Name:        "log",
-							StorageSize: "2Gi",
-							MountPath:   "/var/lib/log",
-						}},
-						Config: mustTiDBConfig(&v1alpha1.TiDBConfig{
-							Log: &v1alpha1.Log{
-								File: &v1alpha1.FileLogConfig{
-									Filename: pointer.StringPtr("/var/log/tidb/tidb.log"),
-								},
-							},
-						})},
-				},
-			},
+			storageVolumes: []v1alpha1.StorageVolume{
+				{
+					Name:        "log",
+					StorageSize: "2Gi",
+					MountPath:   "/var/lib/log",
+				}},
 			memberType: v1alpha1.TiDBMemberType,
 			testResult: func(volMounts []corev1.VolumeMount, volumeClaims []corev1.PersistentVolumeClaim) {
 				g := NewGomegaWithT(t)
@@ -594,24 +573,12 @@ func TestBuildAdditionalVolumeAndVolumeMount(t *testing.T) {
 		},
 		{
 			name: "tikv spec storageVolumes",
-			tc: &v1alpha1.TidbCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{},
-				},
-				Spec: v1alpha1.TidbClusterSpec{
-					TiKV: &v1alpha1.TiKVSpec{
-						StorageVolumes: []v1alpha1.StorageVolume{
-							{
-								Name:        "wal",
-								StorageSize: "2Gi",
-								MountPath:   "/var/lib/wal",
-							}},
-						Config: mustTiKVConfig(&v1alpha1.TiKVRaftDBConfig{
-							WalDir: pointer.StringPtr("/var/lib/wal"),
-						}),
-					},
-				},
-			},
+			storageVolumes: []v1alpha1.StorageVolume{
+				{
+					Name:        "wal",
+					StorageSize: "2Gi",
+					MountPath:   "/var/lib/wal",
+				}},
 			memberType: v1alpha1.TiKVMemberType,
 			testResult: func(volMounts []corev1.VolumeMount, volumeClaims []corev1.PersistentVolumeClaim) {
 				g := NewGomegaWithT(t)
@@ -642,29 +609,12 @@ func TestBuildAdditionalVolumeAndVolumeMount(t *testing.T) {
 		},
 		{
 			name: "pd spec storageVolumes",
-			tc: &v1alpha1.TidbCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{},
-				},
-				Spec: v1alpha1.TidbClusterSpec{
-					PD: &v1alpha1.PDSpec{
-						StorageVolumes: []v1alpha1.StorageVolume{
-							{
-								Name:        "log",
-								StorageSize: "2Gi",
-								MountPath:   "/var/log",
-							}},
-						Config: mustPDConfig(&v1alpha1.PDConfig{
-							Log: &v1alpha1.PDLogConfig{
-								File: &v1alpha1.FileLogConfig{
-									Filename: pointer.StringPtr("/var/log/tidb/tidb.log"),
-								},
-								Level: pointer.StringPtr("warn"),
-							},
-						}),
-					},
-				},
-			},
+			storageVolumes: []v1alpha1.StorageVolume{
+				{
+					Name:        "log",
+					StorageSize: "2Gi",
+					MountPath:   "/var/log",
+				}},
 			memberType: v1alpha1.PDMemberType,
 			testResult: func(volMounts []corev1.VolumeMount, volumeClaims []corev1.PersistentVolumeClaim) {
 				g := NewGomegaWithT(t)
@@ -694,32 +644,20 @@ func TestBuildAdditionalVolumeAndVolumeMount(t *testing.T) {
 			},
 		},
 		{
-			name: "tikv spec multiple storageVolumes",
-			tc: &v1alpha1.TidbCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{},
+			name:             "tikv spec multiple storageVolumes",
+			storageClassName: pointer.StringPtr("ns2"),
+			storageVolumes: []v1alpha1.StorageVolume{
+				{
+					Name:             "wal",
+					StorageSize:      "2Gi",
+					MountPath:        "/var/lib/wal",
+					StorageClassName: pointer.StringPtr("ns1"),
 				},
-				Spec: v1alpha1.TidbClusterSpec{
-					TiKV: &v1alpha1.TiKVSpec{
-						StorageClassName: pointer.StringPtr("ns2"),
-						StorageVolumes: []v1alpha1.StorageVolume{
-							{
-								Name:             "wal",
-								StorageSize:      "2Gi",
-								MountPath:        "/var/lib/wal",
-								StorageClassName: pointer.StringPtr("ns1"),
-							},
-							{
-								Name:        "log",
-								StorageSize: "2Gi",
-								MountPath:   "/var/lib/log",
-							}},
-						Config: mustTiKVConfig(&v1alpha1.TiKVRaftDBConfig{
-							WalDir: pointer.StringPtr("/var/lib/wal"),
-						}),
-					},
-				},
-			},
+				{
+					Name:        "log",
+					StorageSize: "2Gi",
+					MountPath:   "/var/lib/log",
+				}},
 			memberType: v1alpha1.TiKVMemberType,
 			testResult: func(volMounts []corev1.VolumeMount, volumeClaims []corev1.PersistentVolumeClaim) {
 				g := NewGomegaWithT(t)
@@ -764,7 +702,7 @@ func TestBuildAdditionalVolumeAndVolumeMount(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			volMounts, volumeClaims := BuildAdditionalVolumeAndVolumeMount(tt.tc, tt.memberType)
+			volMounts, volumeClaims := BuildAdditionalVolumeAndVolumeMount(tt.storageVolumes, tt.storageClassName, tt.memberType)
 			tt.testResult(volMounts, volumeClaims)
 		})
 	}

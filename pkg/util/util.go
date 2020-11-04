@@ -302,30 +302,15 @@ func MustNewRequirement(key string, op selection.Operator, vals []string) *label
 	return r
 }
 
-func BuildAdditionalVolumeAndVolumeMount(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) ([]corev1.VolumeMount, []corev1.PersistentVolumeClaim) {
-	var storageVolumes []v1alpha1.StorageVolume
+func BuildAdditionalVolumeAndVolumeMount(storageVolumes []v1alpha1.StorageVolume, storageClassName *string, memberType v1alpha1.MemberType) ([]corev1.VolumeMount, []corev1.PersistentVolumeClaim) {
 	var volMounts []corev1.VolumeMount
 	var volumeClaims []corev1.PersistentVolumeClaim
-	var storageClassName *string
-	switch memberType {
-	case v1alpha1.PDMemberType:
-		storageVolumes = tc.Spec.PD.StorageVolumes
-		storageClassName = tc.Spec.PD.StorageClassName
-	case v1alpha1.TiDBMemberType:
-		storageVolumes = tc.Spec.TiDB.StorageVolumes
-		storageClassName = tc.Spec.TiDB.StorageClassName
-	case v1alpha1.TiKVMemberType:
-		storageVolumes = tc.Spec.TiKV.StorageVolumes
-		storageClassName = tc.Spec.TiKV.StorageClassName
-	default:
-		return volMounts, volumeClaims
-	}
 	if len(storageVolumes) > 0 {
 		for _, storageVolume := range storageVolumes {
 			var tmpStorageClass *string
 			quantity, err := resource.ParseQuantity(storageVolume.StorageSize)
 			if err != nil {
-				klog.Errorf("Cannot parse storage size %v in StorageVolumes of %v, tidbcluster %s/%s, error: %v", storageVolume.StorageSize, memberType, tc.Namespace, tc.Name, err)
+				klog.Errorf("Cannot parse storage size %v in StorageVolumes of %v, storageVolume Name %s, error: %v", storageVolume.StorageSize, memberType, storageVolume.Name, err)
 				continue
 			}
 			storageRequest := corev1.ResourceRequirements{
