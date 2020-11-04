@@ -911,7 +911,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	})
 
 	ginkgo.Context("[Feature: AutoScaling]", func() {
-		ginkgo.It("auto-scaling TidbCluster", func() {
+		ginkgo.It("auto-scaling TiKV", func() {
 			clusterName := "auto-scaling"
 			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBNightlyVersion)
 			tc.Spec.PD.Replicas = 1
@@ -1195,11 +1195,12 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		})
 	})
 
-	ginkgo.It("auto-scaling TidbCluster", func() {
+	ginkgo.It("auto-scaling TiDB", func() {
 		clusterName := "auto-scaling"
 		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBNightlyVersion)
 		tc.Spec.PD.Replicas = 1
 		tc.Spec.TiDB.Replicas = 2
+		tc.Spec.TiKV.Replicas = 3
 		tc.Spec.PD.Config.Set("pd-server.metric-storage", "http://monitor-prometheus:9090")
 
 		_, err := cli.PingcapV1alpha1().TidbClusters(ns).Create(tc)
