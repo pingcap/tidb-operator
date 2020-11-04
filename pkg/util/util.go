@@ -322,7 +322,7 @@ func BuildAdditionalVolumeAndVolumeMount(tc *v1alpha1.TidbCluster, memberType v1
 	}
 	if len(storageVolumes) > 0 {
 		for _, storageVolume := range storageVolumes {
-			var tmpStorageVolume *string
+			var tmpStorageClass *string
 			quantity, err := resource.ParseQuantity(storageVolume.StorageSize)
 			if err != nil {
 				klog.Errorf("Cannot parse storage size %v in StorageVolumes of %v, tidbcluster %s/%s, error: %v", storageVolume.StorageSize, memberType, tc.Namespace, tc.Name, err)
@@ -334,11 +334,11 @@ func BuildAdditionalVolumeAndVolumeMount(tc *v1alpha1.TidbCluster, memberType v1
 				},
 			}
 			if storageVolume.StorageClassName != nil && len(*storageVolume.StorageClassName) > 0 {
-				tmpStorageVolume = storageVolume.StorageClassName
+				tmpStorageClass = storageVolume.StorageClassName
 			} else {
-				tmpStorageVolume = storageClassName
+				tmpStorageClass = storageClassName
 			}
-			volumeClaims = append(volumeClaims, VolumeClaimTemplate(storageRequest, fmt.Sprintf("%s-%s", memberType.String(), storageVolume.Name), tmpStorageVolume))
+			volumeClaims = append(volumeClaims, VolumeClaimTemplate(storageRequest, fmt.Sprintf("%s-%s", memberType.String(), storageVolume.Name), tmpStorageClass))
 			volMounts = append(volMounts, corev1.VolumeMount{
 				Name: fmt.Sprintf("%s-%s", memberType.String(), storageVolume.Name), MountPath: storageVolume.MountPath,
 			})
