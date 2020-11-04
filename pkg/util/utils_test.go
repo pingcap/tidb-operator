@@ -14,6 +14,11 @@
 package util
 
 import (
+<<<<<<< HEAD
+=======
+	"encoding/json"
+	"fmt"
+>>>>>>> 1bce004a... pd and tidb nodeTypes support storageVolumes (#3444)
 	"os"
 	"testing"
 
@@ -22,8 +27,10 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/utils/pointer"
 )
 
 func TestGetOrdinalFromPodName(t *testing.T) {
@@ -279,3 +286,359 @@ func TestAppendEnvIfPresent(t *testing.T) {
 		})
 	}
 }
+<<<<<<< HEAD
+=======
+
+func TestAppendOverwriteEnv(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	a := []corev1.EnvVar{
+		{
+			Name:  "ak_1",
+			Value: "ak_1",
+		},
+		{
+			Name:  "ak_2",
+			Value: "ak_2",
+		},
+	}
+	b := []corev1.EnvVar{
+		{
+			Name:  "bk_1",
+			Value: "bk_1",
+		},
+		{
+			Name:  "ak_1",
+			Value: "ak_10",
+		},
+		{
+			Name:  "ak_2",
+			Value: "ak_20",
+		},
+		{
+			Name:  "bk_2",
+			Value: "bk_2",
+		},
+	}
+
+	expect := []corev1.EnvVar{
+		{
+			Name:  "ak_1",
+			Value: "ak_10",
+		},
+		{
+			Name:  "ak_2",
+			Value: "ak_20",
+		},
+		{
+			Name:  "bk_1",
+			Value: "bk_1",
+		},
+		{
+			Name:  "bk_2",
+			Value: "bk_2",
+		},
+	}
+
+	get := AppendOverwriteEnv(a, b)
+	g.Expect(get).Should(Equal(expect))
+}
+
+func TestMustNewRequirement(t *testing.T) {
+	g := NewGomegaWithT(t)
+	var r *labels.Requirement
+
+	// test panic
+	g.Expect(func() {
+		_ = MustNewRequirement("key", selection.Operator("un known"), nil)
+	}).Should(Panic())
+
+	// test normal case
+	r = MustNewRequirement("key", selection.Equals, []string{"value"})
+	g.Expect(r).ShouldNot(BeNil())
+}
+
+func TestIsOwnedByTidbCluster(t *testing.T) {
+
+}
+
+func TestRetainManagedFields(t *testing.T) {
+	tests := []struct {
+		name       string
+		desiredSvc *corev1.Service
+		existedSvc *corev1.Service
+		expect     *corev1.Service
+	}{
+		{
+			name:       "test keep HealthCheckNodePort",
+			desiredSvc: &corev1.Service{},
+			existedSvc: &corev1.Service{
+				Spec: corev1.ServiceSpec{
+					HealthCheckNodePort: 10,
+				},
+			},
+			expect: &corev1.Service{
+				Spec: corev1.ServiceSpec{
+					HealthCheckNodePort: 10,
+				},
+			},
+		},
+		{
+			name: "test keep retain NodePorts",
+			desiredSvc: &corev1.Service{
+				Spec: corev1.ServiceSpec{
+					Type: corev1.ServiceTypeNodePort,
+					Ports: []corev1.ServicePort{
+						corev1.ServicePort{
+							NodePort: 8080,
+						},
+						corev1.ServicePort{
+							NodePort: 0,
+							Port:     10,
+							Protocol: corev1.ProtocolTCP,
+						},
+						corev1.ServicePort{
+							NodePort: 30,
+							Port:     20,
+							Protocol: corev1.ProtocolTCP,
+						},
+					},
+				},
+			},
+			existedSvc: &corev1.Service{
+				Spec: corev1.ServiceSpec{
+					Type:                corev1.ServiceTypeNodePort,
+					HealthCheckNodePort: 10,
+					Ports: []corev1.ServicePort{
+						corev1.ServicePort{
+							NodePort: 9090,
+							Port:     10,
+							Protocol: corev1.ProtocolTCP,
+						},
+					},
+				},
+			},
+			expect: &corev1.Service{
+				Spec: corev1.ServiceSpec{
+					Type:                corev1.ServiceTypeNodePort,
+					HealthCheckNodePort: 10,
+					Ports: []corev1.ServicePort{
+						corev1.ServicePort{
+							NodePort: 8080,
+						},
+						corev1.ServicePort{
+							NodePort: 9090,
+							Port:     10,
+							Protocol: corev1.ProtocolTCP,
+						},
+						corev1.ServicePort{
+							NodePort: 30,
+							Port:     20,
+							Protocol: corev1.ProtocolTCP,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		RetainManagedFields(test.desiredSvc, test.existedSvc)
+		if diff := cmp.Diff(test.expect.Spec, test.desiredSvc.Spec); diff != "" {
+			t.Errorf("%v unwant (-want, +got): %s", test.name, diff)
+		}
+	}
+}
+
+func TestBuildAdditionalVolumeAndVolumeMount(t *testing.T) {
+	tests := []struct {
+		name             string
+		storageVolumes   []v1alpha1.StorageVolume
+		storageClassName *string
+		memberType       v1alpha1.MemberType
+		testResult       func([]corev1.VolumeMount, []corev1.PersistentVolumeClaim)
+	}{
+		{
+			name:             "unknown memberType",
+			storageVolumes:   []v1alpha1.StorageVolume{},
+			memberType:       "test",
+			storageClassName: nil,
+			testResult: func(volMounts []corev1.VolumeMount, volumeClaims []corev1.PersistentVolumeClaim) {
+				g := NewGomegaWithT(t)
+				g.Expect(volMounts).Should(BeNil())
+				g.Expect(volumeClaims).Should(BeNil())
+			},
+		},
+		{
+			name: "tidb spec storageVolumes",
+			storageVolumes: []v1alpha1.StorageVolume{
+				{
+					Name:        "log",
+					StorageSize: "2Gi",
+					MountPath:   "/var/lib/log",
+				}},
+			memberType: v1alpha1.TiDBMemberType,
+			testResult: func(volMounts []corev1.VolumeMount, volumeClaims []corev1.PersistentVolumeClaim) {
+				g := NewGomegaWithT(t)
+				q, _ := resource.ParseQuantity("2Gi")
+				g.Expect(volumeClaims).To(Equal([]corev1.PersistentVolumeClaim{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: v1alpha1.TiDBMemberType.String() + "-log",
+						},
+						Spec: corev1.PersistentVolumeClaimSpec{
+							AccessModes: []corev1.PersistentVolumeAccessMode{
+								corev1.ReadWriteOnce,
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceStorage: q,
+								},
+							},
+						},
+					},
+				}))
+				g.Expect(volMounts).To(Equal([]corev1.VolumeMount{
+					{
+						Name: fmt.Sprintf("%s-%s", v1alpha1.TiDBMemberType, "log"), MountPath: "/var/lib/log",
+					},
+				}))
+			},
+		},
+		{
+			name: "tikv spec storageVolumes",
+			storageVolumes: []v1alpha1.StorageVolume{
+				{
+					Name:        "wal",
+					StorageSize: "2Gi",
+					MountPath:   "/var/lib/wal",
+				}},
+			memberType: v1alpha1.TiKVMemberType,
+			testResult: func(volMounts []corev1.VolumeMount, volumeClaims []corev1.PersistentVolumeClaim) {
+				g := NewGomegaWithT(t)
+				q, _ := resource.ParseQuantity("2Gi")
+				g.Expect(volumeClaims).To(Equal([]corev1.PersistentVolumeClaim{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: v1alpha1.TiKVMemberType.String() + "-wal",
+						},
+						Spec: corev1.PersistentVolumeClaimSpec{
+							AccessModes: []corev1.PersistentVolumeAccessMode{
+								corev1.ReadWriteOnce,
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceStorage: q,
+								},
+							},
+						},
+					},
+				}))
+				g.Expect(volMounts).To(Equal([]corev1.VolumeMount{
+					{
+						Name: fmt.Sprintf("%s-%s", v1alpha1.TiKVMemberType, "wal"), MountPath: "/var/lib/wal",
+					},
+				}))
+			},
+		},
+		{
+			name: "pd spec storageVolumes",
+			storageVolumes: []v1alpha1.StorageVolume{
+				{
+					Name:        "log",
+					StorageSize: "2Gi",
+					MountPath:   "/var/log",
+				}},
+			memberType: v1alpha1.PDMemberType,
+			testResult: func(volMounts []corev1.VolumeMount, volumeClaims []corev1.PersistentVolumeClaim) {
+				g := NewGomegaWithT(t)
+				q, _ := resource.ParseQuantity("2Gi")
+				g.Expect(volumeClaims).To(Equal([]corev1.PersistentVolumeClaim{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: v1alpha1.PDMemberType.String() + "-log",
+						},
+						Spec: corev1.PersistentVolumeClaimSpec{
+							AccessModes: []corev1.PersistentVolumeAccessMode{
+								corev1.ReadWriteOnce,
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceStorage: q,
+								},
+							},
+						},
+					},
+				}))
+				g.Expect(volMounts).To(Equal([]corev1.VolumeMount{
+					{
+						Name: fmt.Sprintf("%s-%s", v1alpha1.PDMemberType, "log"), MountPath: "/var/log",
+					},
+				}))
+			},
+		},
+		{
+			name:             "tikv spec multiple storageVolumes",
+			storageClassName: pointer.StringPtr("ns2"),
+			storageVolumes: []v1alpha1.StorageVolume{
+				{
+					Name:             "wal",
+					StorageSize:      "2Gi",
+					MountPath:        "/var/lib/wal",
+					StorageClassName: pointer.StringPtr("ns1"),
+				},
+				{
+					Name:        "log",
+					StorageSize: "2Gi",
+					MountPath:   "/var/lib/log",
+				}},
+			memberType: v1alpha1.TiKVMemberType,
+			testResult: func(volMounts []corev1.VolumeMount, volumeClaims []corev1.PersistentVolumeClaim) {
+				g := NewGomegaWithT(t)
+				q, _ := resource.ParseQuantity("2Gi")
+				g.Expect(volumeClaims).To(Equal([]corev1.PersistentVolumeClaim{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: v1alpha1.TiKVMemberType.String() + "-wal",
+						},
+						Spec: corev1.PersistentVolumeClaimSpec{
+							AccessModes: []corev1.PersistentVolumeAccessMode{
+								corev1.ReadWriteOnce,
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceStorage: q,
+								},
+							},
+							StorageClassName: pointer.StringPtr("ns1"),
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: v1alpha1.TiKVMemberType.String() + "-log",
+						},
+						Spec: corev1.PersistentVolumeClaimSpec{
+							AccessModes: []corev1.PersistentVolumeAccessMode{
+								corev1.ReadWriteOnce,
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceStorage: q,
+								},
+							},
+							StorageClassName: pointer.StringPtr("ns2"),
+						},
+					},
+				}))
+
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			volMounts, volumeClaims := BuildAdditionalVolumeAndVolumeMount(tt.storageVolumes, tt.storageClassName, tt.memberType)
+			tt.testResult(volMounts, volumeClaims)
+		})
+	}
+}
+>>>>>>> 1bce004a... pd and tidb nodeTypes support storageVolumes (#3444)
