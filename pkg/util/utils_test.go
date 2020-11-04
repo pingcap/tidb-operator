@@ -14,13 +14,12 @@
 package util
 
 import (
-<<<<<<< HEAD
-=======
-	"encoding/json"
 	"fmt"
->>>>>>> 1bce004a... pd and tidb nodeTypes support storageVolumes (#3444)
 	"os"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
@@ -286,8 +285,6 @@ func TestAppendEnvIfPresent(t *testing.T) {
 		})
 	}
 }
-<<<<<<< HEAD
-=======
 
 func TestAppendOverwriteEnv(t *testing.T) {
 	g := NewGomegaWithT(t)
@@ -641,4 +638,3 @@ func TestBuildAdditionalVolumeAndVolumeMount(t *testing.T) {
 		})
 	}
 }
->>>>>>> 1bce004a... pd and tidb nodeTypes support storageVolumes (#3444)

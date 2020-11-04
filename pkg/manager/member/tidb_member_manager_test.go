@@ -811,36 +811,6 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 	return tmm, setControl, tidbControl, indexers
 }
 
-func newTidbClusterForTiDB() *v1alpha1.TidbCluster {
-	return &v1alpha1.TidbCluster{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "TidbCluster",
-			APIVersion: "pingcap.com/v1alpha1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test",
-			Namespace: corev1.NamespaceDefault,
-			UID:       types.UID("test"),
-		},
-		Spec: v1alpha1.TidbClusterSpec{
-			TiDB: &v1alpha1.TiDBSpec{
-				ComponentSpec: v1alpha1.ComponentSpec{
-					Image: v1alpha1.TiDBMemberType.String(),
-				},
-				ResourceRequirements: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:    resource.MustParse("1"),
-						corev1.ResourceMemory: resource.MustParse("2Gi"),
-					},
-				},
-				Replicas: 3,
-			},
-			PD:   &v1alpha1.PDSpec{},
-			TiKV: &v1alpha1.TiKVSpec{},
-		},
-	}
-}
-
 func TestGetNewTiDBHeadlessServiceForTidbCluster(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -2303,8 +2273,6 @@ func mustConfig(x interface{}) *v1alpha1.TiDBConfigWraper {
 
 	return c
 }
-<<<<<<< HEAD
-=======
 
 func newTidbClusterForTiDB() *v1alpha1.TidbCluster {
 	return &v1alpha1.TidbCluster{
@@ -2347,4 +2315,3 @@ func mustTiDBConfig(x interface{}) *v1alpha1.TiDBConfigWraper {
 
 	return c
 }
->>>>>>> 1bce004a... pd and tidb nodeTypes support storageVolumes (#3444)
