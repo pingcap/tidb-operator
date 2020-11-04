@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog"
 	"k8s.io/utils/pointer"
 )
 
@@ -65,7 +66,26 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	name := backup.GetName()
 	backupJobName := backup.GetBackupJobName()
 
-	err := backuputil.ValidateBackup(backup)
+	var err error
+	if backup.Spec.BR == nil {
+		err = backuputil.ValidateBackup(backup, "")
+	} else {
+		backupNamespace := backup.GetNamespace()
+		if backup.Spec.BR.ClusterNamespace != "" {
+			backupNamespace = backup.Spec.BR.ClusterNamespace
+		}
+
+		var tc *v1alpha1.TidbCluster
+		tc, err = bm.deps.TiDBClusterLister.TidbClusters(backupNamespace).Get(backup.Spec.BR.Cluster)
+		if err != nil {
+			klog.Errorf("failed to fetch tidbcluster %s/%s, error: %s", backupNamespace, backup.Spec.BR.Cluster, err.Error())
+			return nil
+		}
+
+		tikvImage := tc.TiKVImage()
+		err = backuputil.ValidateBackup(backup, tikvImage)
+	}
+
 	if err != nil {
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupInvalid,
@@ -273,9 +293,15 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		return nil, fmt.Sprintf("failed to fetch tidbcluster %s/%s", backupNamespace, backup.Spec.BR.Cluster), err
 	}
 
-	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, backup.Spec.UseKMS, bm.deps.KubeClientset)
-	if err != nil {
-		return nil, reason, err
+	var (
+		envVars []corev1.EnvVar
+		reason  string
+	)
+	if backup.Spec.From != nil {
+		envVars, reason, err = backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, backup.Spec.UseKMS, bm.deps.KubeClientset)
+		if err != nil {
+			return nil, reason, err
+		}
 	}
 
 	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bm.deps.KubeClientset)

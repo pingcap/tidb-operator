@@ -1205,7 +1205,7 @@ const (
 type BackupSpec struct {
 	corev1.ResourceRequirements `json:"resources,omitempty"`
 	// From is the tidb cluster that needs to backup.
-	From TiDBAccessConfig `json:"from,omitempty"`
+	From *TiDBAccessConfig `json:"from,omitempty"`
 	// Type is the backup type for tidb cluster.
 	Type BackupType `json:"backupType,omitempty"`
 	// TikvGCLifeTime is to specify the safe gc life time for backup.
@@ -1456,7 +1456,7 @@ type RestoreCondition struct {
 type RestoreSpec struct {
 	corev1.ResourceRequirements `json:"resources,omitempty"`
 	// To is the tidb cluster that needs to restore.
-	To TiDBAccessConfig `json:"to,omitempty"`
+	To *TiDBAccessConfig `json:"to,omitempty"`
 	// Type is the backup type for tidb cluster.
 	Type BackupType `json:"backupType,omitempty"`
 	// TikvGCLifeTime is to specify the safe gc life time for restore.
