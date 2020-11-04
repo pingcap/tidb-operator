@@ -693,6 +693,74 @@ func TestBuildAdditionalVolumeAndVolumeMount(t *testing.T) {
 				}))
 			},
 		},
+		{
+			name: "tikv spec multiple storageVolumes",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiKV: &v1alpha1.TiKVSpec{
+						StorageClassName: pointer.StringPtr("ns2"),
+						StorageVolumes: []v1alpha1.StorageVolume{
+							{
+								Name:             "wal",
+								StorageSize:      "2Gi",
+								MountPath:        "/var/lib/wal",
+								StorageClassName: pointer.StringPtr("ns1"),
+							},
+							{
+								Name:        "log",
+								StorageSize: "2Gi",
+								MountPath:   "/var/lib/log",
+							}},
+						Config: mustTiKVConfig(&v1alpha1.TiKVRaftDBConfig{
+							WalDir: pointer.StringPtr("/var/lib/wal"),
+						}),
+					},
+				},
+			},
+			memberType: v1alpha1.TiKVMemberType,
+			testResult: func(volMounts []corev1.VolumeMount, volumeClaims []corev1.PersistentVolumeClaim) {
+				g := NewGomegaWithT(t)
+				q, _ := resource.ParseQuantity("2Gi")
+				g.Expect(volumeClaims).To(Equal([]corev1.PersistentVolumeClaim{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: v1alpha1.TiKVMemberType.String() + "-wal",
+						},
+						Spec: corev1.PersistentVolumeClaimSpec{
+							AccessModes: []corev1.PersistentVolumeAccessMode{
+								corev1.ReadWriteOnce,
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceStorage: q,
+								},
+							},
+							StorageClassName: pointer.StringPtr("ns1"),
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: v1alpha1.TiKVMemberType.String() + "-log",
+						},
+						Spec: corev1.PersistentVolumeClaimSpec{
+							AccessModes: []corev1.PersistentVolumeAccessMode{
+								corev1.ReadWriteOnce,
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceStorage: q,
+								},
+							},
+							StorageClassName: pointer.StringPtr("ns2"),
+						},
+					},
+				}))
+
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
