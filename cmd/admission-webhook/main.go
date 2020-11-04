@@ -43,6 +43,8 @@ func init() {
 	flag.StringVar(&extraServiceAccounts, "extraServiceAccounts", "", "comma-separated, extra Service Accounts the Webhook should control. The full pattern for each common service account is system:serviceaccount:<namespace>:<serviceaccount-name>")
 	flag.DurationVar(&minResyncDuration, "min-resync-duration", 12*time.Hour, "The resync period in reflectors will be random between MinResyncPeriod and 2*MinResyncPeriod.")
 	features.DefaultFeatureGate.AddFlag(flag.CommandLine)
+
+	flag.Parse()
 }
 
 func main() {
