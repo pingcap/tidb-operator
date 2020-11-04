@@ -8661,6 +8661,21 @@ bool
 <p>MountClusterClientSecret indicates whether to mount <code>cluster-client-secret</code> to the Pod</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>storageVolumes</code></br>
+<em>
+<a href="#storagevolume">
+[]StorageVolume
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StorageVolumes is additional storage apply for PD node.
+Default to storageClassName storage class</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pdstatus">PDStatus</h3>
@@ -10951,6 +10966,8 @@ GcsStorageProvider
 <h3 id="storagevolume">StorageVolume</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#pdspec">PDSpec</a>, 
+<a href="#tidbspec">TiDBSpec</a>, 
 <a href="#tikvspec">TiKVSpec</a>)
 </p>
 <p>
@@ -12479,6 +12496,34 @@ Kubernetes core/v1.Lifecycle
 <p>Lifecycle describes actions that the management system should take in response to container lifecycle
 events. For the PostStart and PreStop lifecycle handlers, management of the container blocks
 until the action is complete, unless the container process fails, in which case the handler is aborted.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageVolumes</code></br>
+<em>
+<a href="#storagevolume">
+[]StorageVolume
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StorageVolumes is additional storage apply for TiDB node.
+Default to storageClassName storage class</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The storageClassName of the persistent volume for TiDB data storage.
+Defaults to Kubernetes default storage class.</p>
 </td>
 </tr>
 <tr>
