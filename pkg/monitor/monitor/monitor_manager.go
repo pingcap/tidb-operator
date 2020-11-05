@@ -407,7 +407,7 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 		return false, err
 	}
 	if exist {
-		// if deployment exist, delete it.
+		// if deployment exist, delete it and wait next reconcile.
 		err = m.deps.TypedControl.Delete(monitor, &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      monitor.Name,
@@ -418,46 +418,51 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 			klog.Errorf("tm[%s/%s]'s deployment failed to delete,err: %v", monitor.Namespace, monitor.Name, err)
 			return false, err
 		}
-		return false, nil
+
+		return !monitor.Spec.Persistent, nil
 	} else {
-		//
-		stsPvcName := fmt.Sprintf("monitor-data-%s-0", GetMonitorObjectName(monitor))
-		stsPvc := getMonitorPVC(stsPvcName, monitor)
-		stsPvc, err := m.deps.TypedControl.CreateOrUpdatePVC(monitor, stsPvc, false)
+		if monitor.Spec.Persistent {
+			stsPvcName := fmt.Sprintf("monitor-data-%s-0", GetMonitorObjectName(monitor))
+			stsPvc := getMonitorPVC(stsPvcName, monitor)
+			stsPvc, err := m.deps.TypedControl.CreateOrUpdatePVC(monitor, stsPvc, false)
 
-		if err != nil {
-			klog.Errorf("tm[%s/%s]'s pvc failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
-			return false, err
-		}
-
-		deploymentPvcName := GetMonitorObjectName(monitor)
-		deploymentPvc, err := m.deps.PVCLister.PersistentVolumeClaims(monitor.Namespace).Get(deploymentPvcName)
-		if err != nil {
-			return false, err
-		}
-
-		if deploymentPvc != nil {
-			// if deployment pvc exist, change pv bind sts pvc and delete deployment pvc.
-			// update meta info for pv
-			deploymentPv, err := m.deps.PVLister.Get(deploymentPvc.Spec.VolumeName)
 			if err != nil {
+				klog.Errorf("tm[%s/%s]'s pvc failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 				return false, err
 			}
-			deploymentPv.Spec.ClaimRef.Name = stsPvc.Name
-			_, err = m.deps.PVControl.UpdateMetaInfo(monitor, deploymentPv)
+
+			deploymentPvcName := GetMonitorObjectName(monitor)
+			deploymentPvc, err := m.deps.PVCLister.PersistentVolumeClaims(monitor.Namespace).Get(deploymentPvcName)
 			if err != nil {
+				if errors.IsNotFound(err) {
+					return true, nil
+				}
 				return false, err
 			}
-			err = m.deps.TypedControl.Delete(monitor, &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      monitor.Name,
-					Namespace: monitor.Namespace,
-				},
-			})
-			if err != nil {
-				return false, err
+			if deploymentPvc != nil {
+				// if deployment pvc exist, change pv bind sts pvc and delete deployment pvc.
+				// update meta info for pv
+				deploymentPv, err := m.deps.PVLister.Get(deploymentPvc.Spec.VolumeName)
+				if err != nil && !errors.IsNotFound(err) {
+					return false, err
+				}
+				deploymentPv.Spec.ClaimRef.Name = stsPvc.Name
+				_, err = m.deps.PVControl.UpdateMetaInfo(monitor, deploymentPv)
+				if err != nil {
+					return false, err
+				}
+				err = m.deps.TypedControl.Delete(monitor, &corev1.PersistentVolumeClaim{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      monitor.Name,
+						Namespace: monitor.Namespace,
+					},
+				})
+				if err != nil {
+					return false, err
+				}
 			}
 		}
+
 	}
 	return true, nil
 }

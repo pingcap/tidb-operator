@@ -720,7 +720,14 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 
 func getMonitorPVC(name string, monitor *v1alpha1.TidbMonitor) *core.PersistentVolumeClaim {
 	l := buildTidbMonitorLabel(monitor.Name)
-	return &core.PersistentVolumeClaim{
+	var storageSize string
+
+	if len(monitor.Spec.Storage) < 1 {
+		storageSize = "0"
+	} else {
+		storageSize = monitor.Spec.Storage
+	}
+	volumeClaim := &core.PersistentVolumeClaim{
 		ObjectMeta: meta.ObjectMeta{
 			Name:        name,
 			Namespace:   monitor.Namespace,
@@ -732,15 +739,17 @@ func getMonitorPVC(name string, monitor *v1alpha1.TidbMonitor) *core.PersistentV
 			AccessModes: []core.PersistentVolumeAccessMode{
 				core.ReadWriteOnce,
 			},
-
-			Resources: core.ResourceRequirements{
-				Requests: core.ResourceList{
-					core.ResourceStorage: resource.MustParse(monitor.Spec.Storage),
-				},
-			},
 			StorageClassName: monitor.Spec.StorageClassName,
 		},
 	}
+	if len(monitor.Spec.Storage) > 0 {
+		volumeClaim.Spec.Resources = core.ResourceRequirements{
+			Requests: core.ResourceList{
+				core.ResourceStorage: resource.MustParse(storageSize),
+			},
+		}
+	}
+	return volumeClaim
 }
 
 func getPrometheusIngress(monitor *v1alpha1.TidbMonitor) *extensionsv1beta1.Ingress {
@@ -830,13 +839,14 @@ func getMonitorStatefulSet(sa *core.ServiceAccount, config *core.ConfigMap, secr
 	volumes := getMonitorVolumes(config, monitor, tc)
 	statefulset.Spec.Template.Spec.Volumes = volumes
 
-	if monitor.Spec.Persistent {
+	if monitor.Spec.Persistent && len(monitor.Spec.Storage) > 0 {
+		var storageRequest core.ResourceRequirements
 		quantity, err := resource.ParseQuantity(monitor.Spec.Storage)
 		if err != nil {
-			klog.Errorf("Cannot parse storage size %v in TiDBMonitor %s-%s,error: %v", monitor.Namespace, monitor.Name, err)
+			klog.Errorf("Cannot parse storage size %v in TiDBMonitor %s-%s,error: %v", monitor.Spec.Storage, monitor.Namespace, monitor.Name, err)
 			return nil, err
 		}
-		storageRequest := core.ResourceRequirements{
+		storageRequest = core.ResourceRequirements{
 			Requests: core.ResourceList{
 				core.ResourceStorage: quantity,
 			},
