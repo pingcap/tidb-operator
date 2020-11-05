@@ -35,6 +35,8 @@ func (pc *PodAdmissionControl) admitDeletePdPods(payload *admitPayload) *admissi
 	}
 	tc, _ := payload.controller.(*v1alpha1.TidbCluster)
 
+	name = PdNameWithPodName(tc, payload.pod)
+	
 	isInOrdinal, err := operatorUtils.IsPodOrdinalNotExceedReplicas(payload.pod, payload.ownerStatefulSet)
 	if err != nil {
 		return util.ARFail(err)

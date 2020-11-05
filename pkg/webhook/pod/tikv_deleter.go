@@ -18,7 +18,6 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
-	memberUtils "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
@@ -57,7 +56,7 @@ func (pc *PodAdmissionControl) admitDeleteTiKVPods(payload *admitPayload) *admis
 			err := fmt.Errorf("tikv pod[%s/%s]'s controller is not tidbcluster,forbid to be deleted", namespace, name)
 			return util.ARFail(err)
 		}
-		expectedAddress = fmt.Sprintf("%s:20160", memberUtils.TikvSVCAddressWithPodName(tc,payload.pod))
+		expectedAddress = fmt.Sprintf("%s:20160", TikvSVCAddressWithPodName(tc,payload.pod))
 	default:
 		// unreachable
 		klog.V(4).Infof("tikv pod[%s/%s] controlled by unknown controllerKind[%s], admite to delete", namespace, name, controllerKind)

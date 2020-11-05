@@ -161,8 +161,6 @@ func (c *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Po
 			for _, store := range stores.Stores {
 				addr := store.Store.GetAddress()
 
-				// It's fine when spec.ClusterDomain is set, because the instances out of this cluster are filtered out of Stores and listed in PeerStores.
-
 				if strings.Split(addr, ".")[0] == podName {
 					storeID = strconv.FormatUint(store.Store.GetId(), 10)
 					break
