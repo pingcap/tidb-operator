@@ -54,7 +54,7 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
 							chartPrefixName=\$chartItem-${RELEASE_TAG}
 							echo "======= release \$chartItem chart ======"
 							sed -i "s/version:.*/version: ${RELEASE_TAG}/g" charts/\$chartItem/Chart.yaml
-							sed -i "s/appVersion:.*/appVersion: ${RELEASE_TAG}/g" charts/\$chartItem/Chart.yaml
+							sed -i "s/appVersihon:.*/appVersion: ${RELEASE_TAG}/g" charts/\$chartItem/Chart.yaml
                             # update image tag to current release
                             sed -r -i "s#pingcap/(tidb-operator|tidb-backup-manager):.*#pingcap/\\1:${RELEASE_TAG}#g" charts/\$chartItem/values.yaml
 							tar -zcf \${chartPrefixName}.tgz -C charts \$chartItem
@@ -64,8 +64,8 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
 						done
 						# Generate index.yaml for helm repo if the version is not "latest" (not a valid semantic version)
                         if [ "${RELEASE_TAG}" != "latest" ]; then
-                            wget https://storage.googleapis.com/kubernetes-helm/helm-v2.14.1-linux-amd64.tar.gz
-                            tar -zxvf helm-v2.14.1-linux-amd64.tar.gz
+                            wget https://get.helm.sh/helm-v3.4.0-linux-amd64.tar.gz
+                            tar -zxvf helm-v3.4.0-linux-amd64.tar.gz
                             mv linux-amd64/helm /usr/local/bin/helm
                             chmod +x /usr/local/bin/helm
                             #ls
