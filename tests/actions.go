@@ -559,9 +559,9 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 		}
 	}
 
-	cmd := fmt.Sprintf(`helm install %s --name %s --namespace %s %s --set-string %s`,
-		oa.operatorChartPath(info.Tag),
+	cmd := fmt.Sprintf(`helm install %s %s --namespace %s %s --set-string %s`,
 		info.ReleaseName,
+		oa.operatorChartPath(info.Tag),
 		info.Namespace,
 		info.OperatorHelmSetBoolean(),
 		info.OperatorHelmSetString(nil))
@@ -732,8 +732,11 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 		return fmt.Errorf("failed to create secret of cluster [%s]: %v", info.ClusterName, err)
 	}
 
-	cmd := fmt.Sprintf("helm install %s  --name %s --namespace %s --set-string %s",
-		oa.tidbClusterChartPath(info.OperatorTag), info.ClusterName, info.Namespace, info.TidbClusterHelmSetString(nil))
+	cmd := fmt.Sprintf("helm install %s %s --namespace %s --set-string %s",
+		info.ClusterName,
+		oa.tidbClusterChartPath(info.OperatorTag),
+		info.Namespace,
+		info.TidbClusterHelmSetString(nil))
 
 	svFilePath, err := info.BuildSubValues(oa.tidbClusterChartPath(info.OperatorTag))
 	if err != nil {
