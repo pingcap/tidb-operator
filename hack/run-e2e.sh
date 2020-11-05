@@ -169,6 +169,7 @@ function e2e::get_kube_version() {
     $KUBECTL_BIN --context $KUBECONTEXT version --short | awk '/Server Version:/ {print $3}'
 }
 
+# TODO: deprecate this
 function e2e::setup_helm_server() {
     $KUBECTL_BIN --context $KUBECONTEXT apply -f ${ROOT}/manifests/tiller-rbac.yaml
     if hack::version_ge $(e2e::get_kube_version) "v1.16.0"; then
@@ -300,7 +301,7 @@ if [ -z "$SKIP_IMAGE_LOAD" ]; then
 fi
 
 e2e::setup_local_pvs
-e2e::setup_helm_server
+#e2e::setup_helm_server
 
 if [ -n "$SKIP_GINKGO" ]; then
     echo "info: skipping ginkgo"

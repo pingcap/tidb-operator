@@ -238,7 +238,7 @@ echo "GCR_IO_MIRROR: $GCR_IO_MIRROR"
 echo "QUAY_IO_MIRROR: $QUAY_IO_MIRROR"
 echo "ARTIFACTS: $ARTIFACTS"
 
-# https://github.com/kubernetes-sigs/kind/releases/tag/v0.8.1
+# https://github.com/kubernetes-sigs/kind/releases/tag/v0.9.0
 declare -A kind_node_images
 kind_node_images["v1.11.10"]="kindest/node:v1.11.10@sha256:74c8740710649a3abb169e7f348312deff88fc97d74cfb874c5095ab3866bb42"
 kind_node_images["v1.12.10"]="kindest/node:v1.12.10@sha256:faeb82453af2f9373447bb63f50bae02b8020968e0889c7fa308e19b348916cb"
@@ -248,6 +248,7 @@ kind_node_images["v1.15.11"]="kindest/node:v1.15.11@sha256:6cc31f3533deb138792db
 kind_node_images["v1.16.9"]="kindest/node:v1.16.9@sha256:7175872357bc85847ec4b1aba46ed1d12fa054c83ac7a8a11f5c268957fd5765"
 kind_node_images["v1.17.5"]="kindest/node:v1.17.5@sha256:ab3f9e6ec5ad8840eeb1f76c89bb7948c77bbf76bcebe1a8b59790b8ae9a283a"
 kind_node_images["v1.18.2"]="kindest/node:v1.18.2@sha256:7b27a6d0f2517ff88ba444025beae41491b016bc6af573ba467b70c5e8e0d85f"
+kind_node_images["v1.19.1"]="kindest/node:v1.19.1@sha256:98cf5288864662e37115e362b23e4369c8c4a408f99cbc06e58ac30ddc721600"
 
 function e2e::image_build() {
     if [ -n "$SKIP_BUILD" ]; then
@@ -259,7 +260,7 @@ function e2e::image_build() {
         return
     fi
     DOCKER_REPO=$DOCKER_REPO IMAGE_TAG=$IMAGE_TAG make docker
-    DOCKER_REPO=$DOCKER_REPO IMAGE_TAG=$IMAGE_TAG make e2e-docker
+    DOCKER_REPO=$DOCKER_REPO IMAGE_TAG=$IMAGE_TAG KUBECTL_VERSION=$KUBECTL_VERSION HELM_VERSION=$HELM_VERSION make e2e-docker
 }
 
 function e2e::__restart_docker() {
