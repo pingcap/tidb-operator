@@ -214,7 +214,7 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	}
 	for _, p := range cleaners {
 		ginkgo.By(p.text)
-		cmd := exec.Command("sh", "-c", p.cmd)
+		cmd := exec.Command("bash", "-c", p.cmd)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			framework.Failf("failed to %s (cmd: %q, error: %v, output: %s", p.text, p.cmd, err, string(output))
