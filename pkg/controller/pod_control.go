@@ -356,9 +356,9 @@ func (c *FakePodControl) UpdatePod(_ runtime.Object, pod *corev1.Pod) (*corev1.P
 var _ PodControlInterface = &FakePodControl{}
 
 func PdNameWithPodName(tc *v1alpha1.TidbCluster, pod *corev1.Pod) string {
-	var name string
+	name := pod.Name
 	if len(tc.Spec.ClusterDomain) > 0 {
-		name := fmt.Sprintf("%s.%s-pd-peer.%s.svc.%s", pod.Name, tc.GetName(), tc.Namespace, tc.Spec.ClusterDomain)
+		name = fmt.Sprintf("%s.%s-pd-peer.%s.svc.%s", pod.Name, tc.GetName(), tc.Namespace, tc.Spec.ClusterDomain)
 		if _, exist := tc.Status.PD.Members[name]; !exist {
 			name = pod.Name
 		}
