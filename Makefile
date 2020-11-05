@@ -99,7 +99,7 @@ stability-test-build:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/stability-test/bin/stability-test ./tests/cmd/stability
 
 stability-test-docker: stability-test-build
-	docker build -t "${DOCKER_REPO}/tidb-operator-stability-test:${IMAGE_TAG}" tests/images/stability-test
+	docker build -t "${DOCKER_REPO}/tidb-operator-stability-test:${IMAGE_TAG}" --build-arg KUBECTL_VERSION="${KUBECTL_VERSION}" --build-arg HELM_VERSION="${HELM_VERSION}" tests/images/stability-test
 
 stability-test-push: stability-test-docker
 	docker push "${DOCKER_REPO}/tidb-operator-stability-test:${IMAGE_TAG}"

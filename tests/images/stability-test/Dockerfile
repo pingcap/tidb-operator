@@ -1,13 +1,13 @@
-FROM alpine:3.10
+FROM alpine:3.12
 
-ENV KUBECTL_VERSION=v1.12.2
-ENV HELM_VERSION=v2.9.1
+ARG KUBECTL_VERSION
+ARG HELM_VERSION
 
 RUN apk update && apk add --no-cache ca-certificates curl git openssl bash mysql-client
 RUN curl https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl \
     -o /usr/local/bin/kubectl && \
     chmod +x /usr/local/bin/kubectl && \
-    curl https://storage.googleapis.com/kubernetes-helm/helm-${HELM_VERSION}-linux-amd64.tar.gz \
+    curl https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz \
     -o helm-${HELM_VERSION}-linux-amd64.tar.gz && \
     tar -zxvf helm-${HELM_VERSION}-linux-amd64.tar.gz && \
     mv linux-amd64/helm /usr/local/bin/helm && \
