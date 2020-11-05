@@ -58,6 +58,8 @@ Environments:
     SKIP_DOWN             skip shutting down the cluster
     SKIP_DUMP             skip dump cluster logs
     SKIP_TEST             skip running the test
+    HELM_VERSION          the version of helm cli
+    KUBECTL_VERSION       the version of kubectl cli
     KUBE_VERSION          the version of Kubernetes to test against
     KUBE_WORKERS          the number of worker nodes (excludes master nodes), defaults: 3
     DOCKER_IO_MIRROR      configure mirror for docker.io
