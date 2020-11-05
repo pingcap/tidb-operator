@@ -422,24 +422,25 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 		return !monitor.Spec.Persistent, nil
 	} else {
 		if monitor.Spec.Persistent {
-			stsPvcName := fmt.Sprintf("monitor-data-%s-0", GetMonitorObjectName(monitor))
-			stsPvc := getMonitorPVC(stsPvcName, monitor)
-			stsPvc, err := m.deps.TypedControl.CreateOrUpdatePVC(monitor, stsPvc, false)
-
-			if err != nil {
-				klog.Errorf("tm[%s/%s]'s pvc failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
-				return false, err
-			}
-
 			deploymentPvcName := GetMonitorObjectName(monitor)
 			deploymentPvc, err := m.deps.PVCLister.PersistentVolumeClaims(monitor.Namespace).Get(deploymentPvcName)
 			if err != nil {
+				// If deploymentPvc not found ,not need to migrate.
 				if errors.IsNotFound(err) {
 					return true, nil
 				}
 				return false, err
 			}
+			// start change bind pvc.
 			if deploymentPvc != nil {
+				stsPvcName := fmt.Sprintf("monitor-data-%s-0", GetMonitorObjectName(monitor))
+				stsPvc := getMonitorPVC(stsPvcName, monitor)
+				stsPvc, err := m.deps.TypedControl.CreateOrUpdatePVC(monitor, stsPvc, false)
+
+				if err != nil {
+					klog.Errorf("tm[%s/%s]'s pvc failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
+					return false, err
+				}
 				// if deployment pvc exist, change pv bind sts pvc and delete deployment pvc.
 				// update meta info for pv
 				deploymentPv, err := m.deps.PVLister.Get(deploymentPvc.Spec.VolumeName)
