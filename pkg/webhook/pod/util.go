@@ -177,7 +177,7 @@ func PdNameWithPodName(tc *v1alpha1.TidbCluster, pod *core.Pod) string {
 			name = pod.Name
 		}
 	}
-	return pod.Name
+	return name
 }
 
 func TikvSVCAddressWithPodName(tc *v1alpha1.TidbCluster, pod *core.Pod) string {
@@ -200,5 +200,5 @@ func TikvMemberWithPodName(tc *v1alpha1.TidbCluster, pod *core.Pod) string {
 			name = pod.Name
 		}
 	}
-	return pod.Name
+	return name
 }
