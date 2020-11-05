@@ -139,12 +139,7 @@ func (c *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Po
 		if labels[label.MemberIDLabelKey] == "" {
 			// get member id
 			members, err := pdClient.GetMembers()
-			name := podName
-
-			// If the ClusterDomain is annotationed, the name of PD member is in the format bellow.
-			if len(tc.Spec.ClusterDomain) > 0 {
-				name = fmt.Sprintf("%s.%s-pd-peer.%s.svc.%s", podName, tcName, ns, tc.Spec.ClusterDomain)
-			}
+			name := PdNameWithPodName(tc, pod)
 
 			if err != nil {
 				return pod, fmt.Errorf("failed to get pd members info from pd, TidbCluster: %s/%s, err: %v", ns, tcName, err)
@@ -166,7 +161,7 @@ func (c *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Po
 			for _, store := range stores.Stores {
 				addr := store.Store.GetAddress()
 
-				// It's fine when ClusterDomain is annotationed, because the instance out of the cluster is ruled out of Stores and listed in PeerStores.
+				// It's fine when spec.ClusterDomain is set, because the instances out of this cluster are filtered out of Stores and listed in PeerStores.
 
 				if strings.Split(addr, ".")[0] == podName {
 					storeID = strconv.FormatUint(store.Store.GetId(), 10)
@@ -361,3 +356,14 @@ func (c *FakePodControl) UpdatePod(_ runtime.Object, pod *corev1.Pod) (*corev1.P
 }
 
 var _ PodControlInterface = &FakePodControl{}
+
+func PdNameWithPodName(tc *v1alpha1.TidbCluster, pod *corev1.Pod) string {
+	var name string
+	if len(tc.Spec.ClusterDomain) > 0 {
+		name = fmt.Sprintf("%s.%s-pd-peer.%s.svc.%s", pod.Name, tc.GetName(), tc.Namespace, tc.Spec.ClusterDomain)
+		if _, exist := tc.Status.PD.Members[name]; !exist {
+			name = pod.Name
+		}
+	}
+	return pod.Name
+}

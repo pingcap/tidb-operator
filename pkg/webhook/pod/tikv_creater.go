@@ -69,7 +69,6 @@ func admitCreateTiKVPod(pod *core.Pod, pdClient pdapi.PDClient) *admission.Admis
 	// if the pod which is going to be created already have a store and was in evictLeaderSchedulers,
 	// we should end this evict leader
 	for _, store := range stores.Stores {
-		// This is incluster operation, so select the store by podName is acceptable when multi-cluster feature is enabled. The stores are not including peerStores.
 		ip := strings.Split(store.Store.GetAddress(), ":")[0]
 		podName := strings.Split(ip, ".")[0]
 		if podName == name && schedulerIds.Has(fmt.Sprintf("%d", store.Store.Id)) {

@@ -33,14 +33,7 @@ const (
 )
 
 func IsPodInPdMembers(tc *v1alpha1.TidbCluster, pod *core.Pod, pdClient pdapi.PDClient) (bool, error) {
-	name := pod.Name
-
-	if len(tc.Spec.ClusterDomain) > 0 {
-		name = memberUtil.PdNameWithPodName(pod.Name, tc.GetName(), tc.Namespace, tc.Spec.ClusterDomain)
-		if _, exist := tc.Status.PD.Members[name]; !exist {
-			name = pod.Name
-		}
-	}
+	name := PdNameWithPodName(tc, pod)
 	namespace := pod.Namespace
 	memberInfo, err := pdClient.GetMembers()
 	if err != nil {
@@ -123,14 +116,7 @@ func addDeferDeletingToPDPod(kubeCli kubernetes.Interface, pod *core.Pod) error 
 
 func isPDLeader(tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient, pod *core.Pod) (bool, error) {
 	leader, err := pdClient.GetPDLeader()
-	name := pod.Name
-
-	if len(tc.Spec.ClusterDomain) > 0 {
-		name = memberUtil.PdNameWithPodName(pod.Name, tc.GetName(), tc.Namespace, tc.Spec.ClusterDomain)
-		if _, exist := tc.Status.PD.Members[name]; !exist {
-			name = pod.Name
-		}
-	}
+	name := PdNameWithPodName(tc, pod)
 
 	if err != nil {
 		return false, err
@@ -181,4 +167,15 @@ func appendExtraLabelsENVForTiKV(labels map[string]string, container *core.Conta
 
 func podDeleteEventMessage(name string) string {
 	return fmt.Sprintf(podDeleteMsgPattern, name)
+}
+
+func PdNameWithPodName(tc *v1alpha1.TidbCluster, pod *core.Pod) string {
+	var name string
+	if len(tc.Spec.ClusterDomain) > 0 {
+		name = fmt.Sprintf("%s.%s-pd-peer.%s.svc.%s", pod.Name, tc.GetName(), tc.Namespace, tc.Spec.ClusterDomain)
+		if _, exist := tc.Status.PD.Members[name]; !exist {
+			name = pod.Name
+		}
+	}
+	return pod.Name
 }

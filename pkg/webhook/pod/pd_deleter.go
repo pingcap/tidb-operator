@@ -33,12 +33,7 @@ func (pc *PodAdmissionControl) admitDeletePdPods(payload *admitPayload) *admissi
 	if err != nil {
 		return util.ARFail(err)
 	}
-	tc, ok := payload.controller.(*v1alpha1.TidbCluster)
-
-	if !ok {
-		klog.V(4).Infof("pd pod[%s/%s]'s controller is not tidbcluster, admit to be deleted", namespace, name)
-		return util.ARSuccess()
-	}
+	tc, _ := payload.controller.(*v1alpha1.TidbCluster)
 
 	isInOrdinal, err := operatorUtils.IsPodOrdinalNotExceedReplicas(payload.pod, payload.ownerStatefulSet)
 	if err != nil {
@@ -47,13 +42,6 @@ func (pc *PodAdmissionControl) admitDeletePdPods(payload *admitPayload) *admissi
 	tcName := tc.Name
 	isUpgrading := operatorUtils.IsStatefulSetUpgrading(payload.ownerStatefulSet)
 	IsDeferDeleting := IsPodWithPDDeferDeletingAnnotations(payload.pod)
-
-	if len(tc.Spec.ClusterDomain) > 0 {
-		name = pdutil.PdNameWithPodName(payload.pod.Name, tc.GetName(), tc.Namespace, tc.Spec.ClusterDomain)
-		if _, exist := tc.Status.PD.Members[name]; !exist {
-			name = payload.pod.Name
-		}
-	}
 
 	isMember, err := IsPodInPdMembers(tc, payload.pod, payload.pdClient)
 	if err != nil {
@@ -120,14 +108,10 @@ func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(payload *admitPayload) 
 		return util.ARSuccess()
 	}
 	tcName := tc.Name
-	IsDeferDeleting := IsPodWithPDDeferDeletingAnnotations(payload.pod)
 
-	if len(tc.Spec.ClusterDomain) > 0 {
-		name = pdutil.PdNameWithPodName(payload.pod.Name, tc.GetName(), tc.Namespace, tc.Spec.ClusterDomain)
-		if _, exist := tc.Status.PD.Members[name]; !exist {
-			name = payload.pod.Name
-		}
-	}
+	name = PdNameWithPodName(tc, payload.pod)
+
+	IsDeferDeleting := IsPodWithPDDeferDeletingAnnotations(payload.pod)
 
 	// check whether this pod has been ensured wouldn't be a member in pd cluster
 	if IsDeferDeleting {
@@ -183,12 +167,7 @@ func (pc *PodAdmissionControl) admitDeleteExceedReplicasPDPod(payload *admitPayl
 	}
 	tcName := tc.Name
 
-	if len(tc.Spec.ClusterDomain) > 0 {
-		name = pdutil.PdNameWithPodName(payload.pod.Name, tc.GetName(), tc.Namespace, tc.Spec.ClusterDomain)
-		if _, exist := tc.Status.PD.Members[name]; !exist {
-			name = payload.pod.Name
-		}
-	}
+	name = PdNameWithPodName(tc, payload.pod)
 
 	if isPdLeader {
 		return pc.transferPDLeader(payload)

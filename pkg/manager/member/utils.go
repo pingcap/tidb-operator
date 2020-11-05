@@ -178,11 +178,27 @@ func DMMasterPodName(dcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", controller.DMMasterMemberName(dcName), ordinal)
 }
 
-func PdNameWithPodName(pdPodName string, tcName string, namespace string, clusterDomain string) string {
-	if len(clusterDomain) > 0 {
-		return fmt.Sprintf("%s.%s-pd-peer.%s.svc.%s", pdPodName, tcName, namespace, clusterDomain)
+func TikvSVCAddressWithPodName(tc *v1alpha1.TidbCluster, pod *corev1.Pod) string {
+	var name string
+	name = fmt.Sprintf("%s.%s-tikv-peer.%s.svc", pod.Name, tc.GetName(), tc.Namespace)
+	if len(tc.Spec.ClusterDomain) > 0 {
+		name = fmt.Sprintf("%s.%s-tikv-peer.%s.svc.%s", pod.Name, tc.GetName(), tc.Namespace, tc.Spec.ClusterDomain)
+		if _, exist := tc.Status.PD.Members[name]; !exist {
+			name = fmt.Sprintf("%s.%s-tikv-peer.%s.svc", pod.Name, tc.GetName(), tc.Namespace)
+		}
 	}
-	return pdPodName
+	return name
+}
+
+func TikvMemberWithPodName(tc *v1alpha1.TidbCluster, pod *corev1.Pod) string {
+	var name string
+	if len(tc.Spec.ClusterDomain) > 0 {
+		name = fmt.Sprintf("%s.%s-tikv-peer.%s.svc.%s", pod.Name, tc.GetName(), tc.Namespace, tc.Spec.ClusterDomain)
+		if _, exist := tc.Status.PD.Members[name]; !exist {
+			name = pod.Name
+		}
+	}
+	return pod.Name
 }
 
 func PdName(tcName string, ordinal int32, namespace string, clusterDomain string) string {
