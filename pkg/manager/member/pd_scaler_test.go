@@ -233,16 +233,15 @@ func TestPDScalerScaleOut(t *testing.T) {
 func TestPDScalerScaleIn(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
-		name                string
-		pdUpgrading         bool
-		hasPVC              bool
-		pvcUpdateErr        bool
-		deleteMemberErr     bool
-		statusSyncFailed    bool
-		err                 bool
-		changed             bool
-		isLeader            bool
-		isMemberStillRemain bool
+		name             string
+		pdUpgrading      bool
+		hasPVC           bool
+		pvcUpdateErr     bool
+		deleteMemberErr  bool
+		statusSyncFailed bool
+		err              bool
+		changed          bool
+		isLeader         bool
 	}
 
 	testFn := func(test testcase, t *testing.T) {
@@ -293,28 +292,6 @@ func TestPDScalerScaleIn(t *testing.T) {
 			})
 		}
 
-		var membersInfo *pdapi.MembersInfo
-		if test.isMemberStillRemain {
-			membersInfo = &pdapi.MembersInfo{
-				Members: []*pdpb.Member{
-					{
-						Name: fmt.Sprintf("%s-pd-%d", tc.GetName(), 4),
-					},
-				},
-			}
-		} else {
-			membersInfo = &pdapi.MembersInfo{
-				Members: []*pdpb.Member{
-					{
-						Name: fmt.Sprintf("%s-pd-%d", tc.GetName(), 1),
-					},
-				},
-			}
-		}
-		pdClient.AddReaction(pdapi.GetMembersActionType, func(action *pdapi.Action) (i interface{}, err error) {
-			return membersInfo, nil
-		})
-
 		tc.Status.PD.Synced = !test.statusSyncFailed
 
 		err := scaler.ScaleIn(tc, oldSet, newSet)
@@ -332,88 +309,70 @@ func TestPDScalerScaleIn(t *testing.T) {
 
 	tests := []testcase{
 		{
-			name:                "normal",
-			pdUpgrading:         false,
-			hasPVC:              true,
-			pvcUpdateErr:        false,
-			deleteMemberErr:     false,
-			statusSyncFailed:    false,
-			err:                 false,
-			changed:             true,
-			isLeader:            false,
-			isMemberStillRemain: false,
+			name:             "normal",
+			pdUpgrading:      false,
+			hasPVC:           true,
+			pvcUpdateErr:     false,
+			deleteMemberErr:  false,
+			statusSyncFailed: false,
+			err:              false,
+			changed:          true,
+			isLeader:         false,
 		},
 		{
-			name:                "able to scale in while pd is upgrading",
-			pdUpgrading:         true,
-			hasPVC:              true,
-			pvcUpdateErr:        false,
-			deleteMemberErr:     false,
-			statusSyncFailed:    false,
-			err:                 false,
-			changed:             true,
-			isLeader:            false,
-			isMemberStillRemain: false,
+			name:             "able to scale in while pd is upgrading",
+			pdUpgrading:      true,
+			hasPVC:           true,
+			pvcUpdateErr:     false,
+			deleteMemberErr:  false,
+			statusSyncFailed: false,
+			err:              false,
+			changed:          true,
+			isLeader:         false,
 		},
 		{
-			name:                "error when delete member",
-			hasPVC:              true,
-			pvcUpdateErr:        false,
-			pdUpgrading:         false,
-			deleteMemberErr:     true,
-			statusSyncFailed:    false,
-			err:                 true,
-			changed:             false,
-			isLeader:            false,
-			isMemberStillRemain: false,
+			name:             "error when delete member",
+			hasPVC:           true,
+			pvcUpdateErr:     false,
+			pdUpgrading:      false,
+			deleteMemberErr:  true,
+			statusSyncFailed: false,
+			err:              true,
+			changed:          false,
+			isLeader:         false,
 		},
 		{
-			name:                "cache don't have pvc",
-			pdUpgrading:         false,
-			hasPVC:              false,
-			pvcUpdateErr:        false,
-			deleteMemberErr:     false,
-			statusSyncFailed:    false,
-			err:                 true,
-			changed:             false,
-			isLeader:            false,
-			isMemberStillRemain: false,
+			name:             "cache don't have pvc",
+			pdUpgrading:      false,
+			hasPVC:           false,
+			pvcUpdateErr:     false,
+			deleteMemberErr:  false,
+			statusSyncFailed: false,
+			err:              true,
+			changed:          false,
+			isLeader:         false,
 		},
 		{
-			name:                "error when update pvc",
-			pdUpgrading:         false,
-			hasPVC:              true,
-			pvcUpdateErr:        true,
-			deleteMemberErr:     false,
-			statusSyncFailed:    false,
-			err:                 true,
-			changed:             false,
-			isLeader:            false,
-			isMemberStillRemain: false,
+			name:             "error when update pvc",
+			pdUpgrading:      false,
+			hasPVC:           true,
+			pvcUpdateErr:     true,
+			deleteMemberErr:  false,
+			statusSyncFailed: false,
+			err:              true,
+			changed:          false,
+			isLeader:         false,
 		},
 		{
-			name:                "pd status sync failed",
-			pdUpgrading:         false,
-			hasPVC:              true,
-			pvcUpdateErr:        false,
-			deleteMemberErr:     false,
-			statusSyncFailed:    true,
-			err:                 true,
-			changed:             false,
-			isLeader:            false,
-			isMemberStillRemain: false,
-		},
-		{
-			name:                "delete member success, but get member still remain",
-			pdUpgrading:         false,
-			hasPVC:              true,
-			pvcUpdateErr:        false,
-			deleteMemberErr:     false,
-			statusSyncFailed:    false,
-			err:                 true,
-			changed:             false,
-			isLeader:            false,
-			isMemberStillRemain: true,
+			name:             "pd status sync failed",
+			pdUpgrading:      false,
+			hasPVC:           true,
+			pvcUpdateErr:     false,
+			deleteMemberErr:  false,
+			statusSyncFailed: true,
+			err:              true,
+			changed:          false,
+			isLeader:         false,
 		},
 	}
 
