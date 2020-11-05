@@ -10,7 +10,7 @@ RUN apt-get update && \
     apt-get autoremove -y && \
     apt-get clean -y
 
-RUN curl https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl \
+RUN curl https://storage.googleapis.com/kubernetes-release/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl \
     -o /usr/local/bin/kubectl && \
     chmod +x /usr/local/bin/kubectl && \
     curl https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz \
