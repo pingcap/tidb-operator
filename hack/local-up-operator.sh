@@ -21,8 +21,8 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-ROOT=$(unset CDPATH && cd $(dirname "${BASH_SOURCE[0]}")/.. && pwd)
-cd $ROOT
+ROOT=$(unset CDPATH && cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd)
+cd "$ROOT"
 
 source "${ROOT}/hack/lib.sh"
 
@@ -149,12 +149,12 @@ fi
 
 echo "info: loading images into cluster"
 images=(
-    $DOCKER_REGISTRY/pingcap/tidb-operator:${IMAGE_TAG}
-    $DOCKER_REGISTRY/pingcap/tidb-backup-manager:${IMAGE_TAG}
+    "$DOCKER_REGISTRY/pingcap/tidb-operator:${IMAGE_TAG}"
+    "$DOCKER_REGISTRY/pingcap/tidb-backup-manager:${IMAGE_TAG}"
 )
-for n in ${images[@]}; do
+for n in "${images[@]}"; do
     echo "info: loading image $n"
-    $KIND_BIN load docker-image --name $CLUSTER $n
+    $KIND_BIN load docker-image --name $CLUSTER "$n"
 done
 
 echo "info: uninstall tidb-operator"
@@ -176,19 +176,19 @@ helm_args=(
     --kube-version "$KUBE_VERSION"
     --name tidb-operator-dev
     --namespace "$NAMESPACE"
-    --set-string operatorImage=$DOCKER_REGISTRY/pingcap/tidb-operator:${IMAGE_TAG}
-    --set-string tidbBackupManagerImage=$DOCKER_REGISTRY/pingcap/tidb-backup-manager:${IMAGE_TAG}
-    --set-string controllerManager.logLevel=4
-    --set-string scheduler.logLevel=4
+    --set-string "operatorImage=$DOCKER_REGISTRY/pingcap/tidb-operator:${IMAGE_TAG}"
+    --set-string "tidbBackupManagerImage=$DOCKER_REGISTRY/pingcap/tidb-backup-manager:${IMAGE_TAG}"
+    --set-string "controllerManager.logLevel=4"
+    --set-string "scheduler.logLevel=4"
 )
  
-$HELM_BIN ${helm_args[@]} ./charts/tidb-operator/ | kubectl -n "$NAMESPACE" apply -f  -
+$HELM_BIN "${helm_args[@]}" ./charts/tidb-operator/ | kubectl -n "$NAMESPACE" apply -f  -
 
 deploys=(
     tidb-controller-manager 
     tidb-scheduler
 )
-for deploy in ${deploys[@]}; do
+for deploy in "${deploys[@]}"; do
     echo "info: waiting for $NAMESPACE/$deploy to be ready"
 	hack::wait_for_deploy "$NAMESPACE" "$deploy"
 done
