@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	admission "k8s.io/api/admission/v1beta1"
@@ -29,7 +30,7 @@ const (
 	tikvNotBootstrapped = `TiKV cluster not bootstrapped, please start TiKV first"`
 )
 
-func admitCreateTiKVPod(pod *core.Pod, pdClient pdapi.PDClient) *admission.AdmissionResponse {
+func admitCreateTiKVPod(pod *core.Pod, pdClient pdapi.PDClient, tc *v1alpha1.TidbCluster) *admission.AdmissionResponse {
 	name := pod.Name
 	namespace := pod.Namespace
 
@@ -70,8 +71,8 @@ func admitCreateTiKVPod(pod *core.Pod, pdClient pdapi.PDClient) *admission.Admis
 	// we should end this evict leader
 	for _, store := range stores.Stores {
 		ip := strings.Split(store.Store.GetAddress(), ":")[0]
-		podName := strings.Split(ip, ".")[0]
-		if podName == name && schedulerIds.Has(fmt.Sprintf("%d", store.Store.Id)) {
+		tikvSVCAddress := TikvSVCAddressWithPodName(tc, pod)
+		if ip == tikvSVCAddress && schedulerIds.Has(fmt.Sprintf("%d", store.Store.Id)) {
 			err := endEvictLeader(store, pdClient)
 			if err != nil {
 				klog.Infof("failed to create pod[%s/%s],%v", namespace, name, err)

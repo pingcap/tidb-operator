@@ -150,6 +150,7 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPod(payload *admitPayload, store
 	isUpgrading := operatorUtils.IsStatefulSetUpgrading(payload.ownerStatefulSet)
 	controllerName := payload.controllerDesc.name
 	controllerKind := payload.controllerDesc.kind
+	tc, _ := payload.controller.(*v1alpha1.TidbCluster)
 
 	if !isInOrdinal {
 		err = payload.pdClient.DeleteStore(store.Store.Id)
@@ -176,7 +177,7 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPod(payload *admitPayload, store
 	}
 
 	if isUpgrading {
-		err = checkFormerTiKVPodStatus(pc.kubeCli, payload.controllerDesc, ordinal, specReplicas, payload.ownerStatefulSet, storesInfo)
+		err = checkFormerTiKVPodStatus(pc.kubeCli, payload.controllerDesc, ordinal, specReplicas, payload.ownerStatefulSet, storesInfo, tc)
 		if err != nil {
 			klog.Infof("%s[%s/%s]'s tikv pod[%s/%s] failed to delete,%v", controllerKind, namespace, controllerName, namespace, name, err)
 			return util.ARFail(err)

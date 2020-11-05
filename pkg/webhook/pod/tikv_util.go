@@ -37,7 +37,7 @@ type controllerDesc struct {
 
 // checkFormerTiKVPodStatus would check all the former tikv pods whether their store state were UP during Upgrading
 // check need both  check former pod is ready ,store up, and no evict leader
-func checkFormerTiKVPodStatus(kubeCli kubernetes.Interface, controllerDesc controllerDesc, ordinal, specReplicas int32, set *apps.StatefulSet, storesInfo *pdapi.StoresInfo) error {
+func checkFormerTiKVPodStatus(kubeCli kubernetes.Interface, controllerDesc controllerDesc, ordinal, specReplicas int32, set *apps.StatefulSet, storesInfo *pdapi.StoresInfo, tc *v1alpha1.TidbCluster) error {
 	controllerKind := controllerDesc.kind
 	controllerNamespace := controllerDesc.namespace
 	controllerName := controllerDesc.name
@@ -67,7 +67,7 @@ func checkFormerTiKVPodStatus(kubeCli kubernetes.Interface, controllerDesc contr
 		if revision != set.Status.UpdateRevision {
 			return fmt.Errorf("tikv pod[%s/%s] is not upgraded yet", namespace, podName)
 		}
-		storeInfo, err := getStoreByPod(pod, storesInfo)
+		storeInfo, err := getStoreByPod(pod, storesInfo, tc)
 		if err != nil {
 			return err
 		}
@@ -147,14 +147,13 @@ func endEvictLeader(storeInfo *pdapi.StoreInfo, pdClient pdapi.PDClient) error {
 	return nil
 }
 
-func getStoreByPod(pod *core.Pod, storesInfo *pdapi.StoresInfo) (*pdapi.StoreInfo, error) {
-	name := pod.Name
+func getStoreByPod(pod *core.Pod, storesInfo *pdapi.StoresInfo, tc *v1alpha1.TidbCluster) (*pdapi.StoreInfo, error) {
+	name := TikvSVCAddressWithPodName(tc, pod)
 	namespace := pod.Namespace
 
 	for _, store := range storesInfo.Stores {
 		ip := strings.Split(store.Store.GetAddress(), ":")[0]
-		podName := strings.Split(ip, ".")[0]
-		if podName == name {
+		if ip == name {
 			return store, nil
 		}
 	}
