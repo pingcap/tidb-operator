@@ -618,6 +618,9 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			},
 		})
 	}
+	// handle additional storageVolume
+	additionalVolMounts, additionalVolumeClaims := util.BuildAdditionalVolumeAndVolumeMount(tc.Spec.PD.StorageVolumes, tc.Spec.PD.StorageClassName, v1alpha1.PDMemberType)
+	volMounts = append(volMounts, additionalVolMounts...)
 
 	sysctls := "sysctl -w"
 	var initContainers []corev1.Container
@@ -785,6 +788,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		},
 	}
 
+	pdSet.Spec.VolumeClaimTemplates = append(pdSet.Spec.VolumeClaimTemplates, additionalVolumeClaims...)
 	return pdSet, nil
 }
 

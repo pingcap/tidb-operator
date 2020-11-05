@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog"
 	"k8s.io/utils/pointer"
 )
 
@@ -53,7 +54,26 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	name := restore.GetName()
 	restoreJobName := restore.GetRestoreJobName()
 
-	err := backuputil.ValidateRestore(restore)
+	var err error
+	if restore.Spec.BR == nil {
+		err = backuputil.ValidateRestore(restore, "")
+	} else {
+		restoreNamespace := restore.GetNamespace()
+		if restore.Spec.BR.ClusterNamespace != "" {
+			restoreNamespace = restore.Spec.BR.ClusterNamespace
+		}
+
+		var tc *v1alpha1.TidbCluster
+		tc, err = rm.deps.TiDBClusterLister.TidbClusters(restoreNamespace).Get(restore.Spec.BR.Cluster)
+		if err != nil {
+			klog.Errorf("failed to fetch tidbcluster %s/%s, error: %s", restoreNamespace, restore.Spec.BR.Cluster, err.Error())
+			return nil
+		}
+
+		tikvImage := tc.TiKVImage()
+		err = backuputil.ValidateRestore(restore, tikvImage)
+	}
+
 	if err != nil {
 		rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreInvalid,
@@ -254,9 +274,15 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		return nil, fmt.Sprintf("failed to fetch tidbcluster %s/%s", restoreNamespace, restore.Spec.BR.Cluster), err
 	}
 
-	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, restore.Spec.To.SecretName, restore.Spec.UseKMS, rm.deps.KubeClientset)
-	if err != nil {
-		return nil, reason, err
+	var (
+		envVars []corev1.EnvVar
+		reason  string
+	)
+	if restore.Spec.To != nil {
+		envVars, reason, err = backuputil.GenerateTidbPasswordEnv(ns, name, restore.Spec.To.SecretName, restore.Spec.UseKMS, rm.deps.KubeClientset)
+		if err != nil {
+			return nil, reason, err
+		}
 	}
 
 	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, restore.Spec.UseKMS, restore.Spec.StorageProvider, rm.deps.KubeClientset)

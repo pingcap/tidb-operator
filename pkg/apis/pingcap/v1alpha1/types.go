@@ -374,6 +374,11 @@ type PDSpec struct {
 	// MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod
 	// +optional
 	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
+
+	// StorageVolumes is additional storage apply for PD node.
+	// Default to storageClassName storage class
+	// +optional
+	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -621,6 +626,39 @@ type TiDBSpec struct {
 	// until the action is complete, unless the container process fails, in which case the handler is aborted.
 	// +optional
 	Lifecycle *corev1.Lifecycle `json:"lifecycle,omitempty"`
+
+	// StorageVolumes is additional storage apply for TiDB node.
+	// Default to storageClassName storage class
+	// +optional
+	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
+
+	// The storageClassName of the persistent volume for TiDB data storage.
+	// Defaults to Kubernetes default storage class.
+	// +optional
+	StorageClassName *string `json:"storageClassName,omitempty"`
+	// ReadinessProbe describes actions that probe the tidb's readiness.
+	// the default behavior is like setting type as "tcp"
+	// +optional
+	ReadinessProbe *TiDBProbe `json:"readinessProbe,omitempty"`
+}
+
+const (
+	TCPProbeType     string = "tcp"
+	CommandProbeType string = "command"
+)
+
+// +k8s:openapi-gen=true
+// TiDBProbe contains details of probing tidb.
+// default probe by TCPPort on 4000.
+type TiDBProbe struct {
+	// "tcp" will use TCP socket to connetct port 4000
+	//
+	// "command" will probe the status api of tidb.
+	// This will use curl command to request tidb, before v4.0.9 there is no curl in the image,
+	// So do not use this before v4.0.9.
+	// +kubebuilder:validation:Enum=tcp,command
+	// +optional
+	Type *string `json:"type,omitempty"` // tcp or command
 }
 
 // +k8s:openapi-gen=true
@@ -1201,7 +1239,7 @@ const (
 type BackupSpec struct {
 	corev1.ResourceRequirements `json:"resources,omitempty"`
 	// From is the tidb cluster that needs to backup.
-	From TiDBAccessConfig `json:"from,omitempty"`
+	From *TiDBAccessConfig `json:"from,omitempty"`
 	// Type is the backup type for tidb cluster.
 	Type BackupType `json:"backupType,omitempty"`
 	// TikvGCLifeTime is to specify the safe gc life time for backup.
@@ -1452,7 +1490,7 @@ type RestoreCondition struct {
 type RestoreSpec struct {
 	corev1.ResourceRequirements `json:"resources,omitempty"`
 	// To is the tidb cluster that needs to restore.
-	To TiDBAccessConfig `json:"to,omitempty"`
+	To *TiDBAccessConfig `json:"to,omitempty"`
 	// Type is the backup type for tidb cluster.
 	Type BackupType `json:"backupType,omitempty"`
 	// TikvGCLifeTime is to specify the safe gc life time for restore.

@@ -8657,6 +8657,21 @@ bool
 <p>MountClusterClientSecret indicates whether to mount <code>cluster-client-secret</code> to the Pod</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>storageVolumes</code></br>
+<em>
+<a href="#storagevolume">
+[]StorageVolume
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StorageVolumes is additional storage apply for PD node.
+Default to storageClassName storage class</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pdstatus">PDStatus</h3>
@@ -10947,6 +10962,8 @@ GcsStorageProvider
 <h3 id="storagevolume">StorageVolume</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#pdspec">PDSpec</a>, 
+<a href="#tidbspec">TiDBSpec</a>, 
 <a href="#tikvspec">TiKVSpec</a>)
 </p>
 <p>
@@ -12095,6 +12112,40 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="tidbprobe">TiDBProbe</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbspec">TiDBSpec</a>)
+</p>
+<p>
+<p>TiDBProbe contains details of probing tidb.
+default probe by TCPPort on 4000.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>type</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>&ldquo;tcp&rdquo; will use TCP socket to connetct port 4000</p>
+<p>&ldquo;command&rdquo; will probe the status api of tidb.
+This will use curl command to request tidb, before v4.0.9 there is no curl in the image,
+So do not use this before v4.0.9.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tidbservicespec">TiDBServiceSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -12441,6 +12492,49 @@ Kubernetes core/v1.Lifecycle
 <p>Lifecycle describes actions that the management system should take in response to container lifecycle
 events. For the PostStart and PreStop lifecycle handlers, management of the container blocks
 until the action is complete, unless the container process fails, in which case the handler is aborted.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageVolumes</code></br>
+<em>
+<a href="#storagevolume">
+[]StorageVolume
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StorageVolumes is additional storage apply for TiDB node.
+Default to storageClassName storage class</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The storageClassName of the persistent volume for TiDB data storage.
+Defaults to Kubernetes default storage class.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>readinessProbe</code></br>
+<em>
+<a href="#tidbprobe">
+TiDBProbe
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ReadinessProbe describes actions that probe the tidb&rsquo;s readiness.
+the default behavior is like setting type as &ldquo;tcp&rdquo;</p>
 </td>
 </tr>
 </tbody>

@@ -161,7 +161,7 @@ func newBackupSchedule() *v1alpha1.BackupSchedule {
 			Schedule:   "1 */10 * * *",
 			MaxBackups: pointer.Int32Ptr(10),
 			BackupTemplate: v1alpha1.BackupSpec{
-				From: v1alpha1.TiDBAccessConfig{
+				From: &v1alpha1.TiDBAccessConfig{
 					Host:       "10.1.1.2",
 					Port:       constants.DefaultTidbPort,
 					User:       constants.DefaultTidbUser,
