@@ -36,14 +36,14 @@ func TestAdmitCreateTiKVPod(t *testing.T) {
 	_, err := kubeCli.CoreV1().Pods(pod.Namespace).Create(pod)
 	g.Expect(err).Should(BeNil())
 	pdClient := pdapi.NewFakePDClient()
-
+	ownerTc := newTidbClusterForPodAdmissionControl(pdReplicas, tikvReplicas)
 	var resp *admission.AdmissionResponse
 
 	// success if tikv is not bootstrapped
 	pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
 		return nil, errors.New(tikvNotBootstrapped + "\n")
 	})
-	resp = admitCreateTiKVPod(pod, pdClient)
+	resp = admitCreateTiKVPod(pod, pdClient, ownerTc)
 	g.Expect(resp.Allowed).Should(BeTrue())
 
 	// test should end evict leader and success
@@ -72,7 +72,7 @@ func TestAdmitCreateTiKVPod(t *testing.T) {
 		return nil, nil
 	})
 
-	resp = admitCreateTiKVPod(pod, pdClient)
+	resp = admitCreateTiKVPod(pod, pdClient, ownerTc)
 	g.Expect(resp.Allowed).Should(BeTrue())
 	g.Expect(endEvictLeader).Should(BeTrue())
 }

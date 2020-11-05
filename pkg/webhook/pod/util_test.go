@@ -168,7 +168,7 @@ func TestCheckTiKVFormerPodStatus(t *testing.T) {
 			namespace: tc.Namespace,
 			kind:      tc.Kind,
 		}
-		err = checkFormerTiKVPodStatus(kubeCli, desc, test.targetOrdinal, tc.Spec.TiKV.Replicas, sts, buildStoresInfo(tc, sts))
+		err = checkFormerTiKVPodStatus(kubeCli, desc, test.targetOrdinal, tc.Spec.TiKV.Replicas, sts, buildStoresInfo(tc, sts), tc)
 		if test.permit {
 			g.Expect(err).NotTo(HaveOccurred())
 		} else {
