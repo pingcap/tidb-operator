@@ -23,22 +23,145 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	kubeinformers "k8s.io/client-go/informers"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/utils/pointer"
 )
+
+func TestTiFlashMemberManagerSyncCreate(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name                        string
+		prepare                     func(cluster *v1alpha1.TidbCluster)
+		errWhenCreateStatefulSet    bool
+		errWhenCreateTiFlashService bool
+		err                         bool
+		tls                         bool
+		tiflashSvcCreated           bool
+		setCreated                  bool
+	}
+
+	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+
+		tc := newTidbClusterForTiflash()
+		if test.tls {
+			tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+		}
+		tc.Status.PD.Members = map[string]v1alpha1.PDMember{
+			"pd-0": {Name: "pd-0", Health: true},
+			"pd-1": {Name: "pd-1", Health: true},
+			"pd-2": {Name: "pd-2", Health: true},
+		}
+		tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 3}
+
+		ns := tc.Namespace
+		tcName := tc.Name
+		oldSpec := tc.Spec
+		if test.prepare != nil {
+			test.prepare(tc)
+		}
+
+		tfmm, fakeSetControl, fakeSvcControl, _, _, _ := newFakeTiFlashMemberManager(tc)
+
+		if test.errWhenCreateStatefulSet {
+			fakeSetControl.SetCreateStatefulSetError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
+		}
+		if test.errWhenCreateTiFlashService {
+			fakeSvcControl.SetCreateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
+		}
+
+		err := tfmm.Sync(tc)
+		if test.err {
+			g.Expect(err).To(HaveOccurred())
+		} else {
+			g.Expect(err).NotTo(HaveOccurred())
+		}
+
+		g.Expect(tc.Spec).To(Equal(oldSpec))
+
+		svc, err := tfmm.deps.ServiceLister.Services(ns).Get(controller.TiFlashPeerMemberName(tcName))
+		if test.tiflashSvcCreated {
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(svc).NotTo(Equal(nil))
+		} else {
+			expectErrIsNotFound(g, err)
+		}
+
+		tc1, err := tfmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.TiFlashMemberName(tcName))
+		if test.setCreated {
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(tc1).NotTo(Equal(nil))
+		} else {
+			expectErrIsNotFound(g, err)
+		}
+	}
+
+	tests := []testcase{
+		{
+			name:                        "normal",
+			prepare:                     nil,
+			errWhenCreateStatefulSet:    false,
+			errWhenCreateTiFlashService: false,
+			err:                         false,
+			tiflashSvcCreated:           true,
+			setCreated:                  true,
+		},
+		{
+			name:                        "normal with tls",
+			prepare:                     nil,
+			errWhenCreateStatefulSet:    false,
+			errWhenCreateTiFlashService: false,
+			err:                         false,
+			tls:                         true,
+			tiflashSvcCreated:           true,
+			setCreated:                  true,
+		},
+		{
+			name: "pd is not available",
+			prepare: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Members = map[string]v1alpha1.PDMember{}
+			},
+			errWhenCreateStatefulSet:    false,
+			errWhenCreateTiFlashService: false,
+			err:                         true,
+			tiflashSvcCreated:           false,
+			setCreated:                  false,
+		},
+		{
+			name:                        "error when create statefulset",
+			prepare:                     nil,
+			errWhenCreateStatefulSet:    true,
+			errWhenCreateTiFlashService: false,
+			err:                         true,
+			tiflashSvcCreated:           true,
+			setCreated:                  false,
+		},
+		{
+			name:                        "error when create tiflash service",
+			prepare:                     nil,
+			errWhenCreateStatefulSet:    false,
+			errWhenCreateTiFlashService: true,
+			err:                         true,
+			tiflashSvcCreated:           false,
+			setCreated:                  false,
+		},
+	}
+
+	for i := range tests {
+		testFn(&tests[i], t)
+	}
+}
 
 func TestTiFlashMemberManagerTiFlashStatefulSetIsUpgrading(t *testing.T) {
 	g := NewGomegaWithT(t)
@@ -81,7 +204,7 @@ func TestTiFlashMemberManagerTiFlashStatefulSetIsUpgrading(t *testing.T) {
 			}
 			podIndexer.Add(pod)
 		}
-		b, err := pmm.tiflashStatefulSetIsUpgradingFn(pmm.podLister, pmm.pdControl, set, tc)
+		b, err := pmm.statefulSetIsUpgradingFn(pmm.deps.PodLister, pmm.deps.PDControl, set, tc)
 		if test.errExpectFn != nil {
 			test.errExpectFn(g, err)
 		}
@@ -478,6 +601,9 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 		tc := newTidbClusterForPD()
 		tc.Status.PD.Phase = v1alpha1.NormalPhase
 		set := &apps.StatefulSet{
+			Spec: apps.StatefulSetSpec{
+				Replicas: pointer.Int32Ptr(0),
+			},
 			Status: status,
 		}
 		if test.updateTC != nil {
@@ -486,7 +612,7 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 		pmm, _, _, pdClient, _, _ := newFakeTiFlashMemberManager(tc)
 
 		if test.upgradingFn != nil {
-			pmm.tiflashStatefulSetIsUpgradingFn = test.upgradingFn
+			pmm.statefulSetIsUpgradingFn = test.upgradingFn
 		}
 		if test.errWhenGetStores {
 			pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
@@ -1120,39 +1246,45 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 	}
 }
 
+func newTidbClusterForTiflash() *v1alpha1.TidbCluster {
+	tc := newTidbClusterForPD()
+	tc.Spec.TiFlash = &v1alpha1.TiFlashSpec{
+		ComponentSpec: v1alpha1.ComponentSpec{
+			Image: "tiflash-test-image",
+		},
+		ResourceRequirements: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:     resource.MustParse("1"),
+				corev1.ResourceMemory:  resource.MustParse("2Gi"),
+				corev1.ResourceStorage: resource.MustParse("100Gi"),
+			},
+		},
+		Replicas: 3,
+		StorageClaims: []v1alpha1.StorageClaim{
+			{
+				StorageClassName: pointer.StringPtr("my-storage-class"),
+			},
+		},
+	}
+	return tc
+}
+
 func newFakeTiFlashMemberManager(tc *v1alpha1.TidbCluster) (
 	*tiflashMemberManager, *controller.FakeStatefulSetControl,
 	*controller.FakeServiceControl, *pdapi.FakePDClient, cache.Indexer, cache.Indexer) {
-	cli := fake.NewSimpleClientset()
-	kubeCli := kubefake.NewSimpleClientset()
-	pdControl := pdapi.NewFakePDControl(kubeCli)
-	pdClient := controller.NewFakePDClient(pdControl, tc)
-	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1().StatefulSets()
-	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
-	epsInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Endpoints()
-	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbClusters()
-	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
-	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer, tcInformer)
-	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
-	nodeInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Nodes()
-	tiflashScaler := NewFakeTiFlashScaler()
-	tiflashUpgrader := NewFakeTiFlashUpgrader()
-	genericControl := controller.NewFakeGenericControl()
-
+	fakeDeps := controller.NewFakeDependencies()
 	tmm := &tiflashMemberManager{
-		pdControl:       pdControl,
-		podLister:       podInformer.Lister(),
-		nodeLister:      nodeInformer.Lister(),
-		setControl:      setControl,
-		svcControl:      svcControl,
-		typedControl:    controller.NewTypedControl(genericControl),
-		setLister:       setInformer.Lister(),
-		svcLister:       svcInformer.Lister(),
-		tiflashScaler:   tiflashScaler,
-		tiflashUpgrader: tiflashUpgrader,
+		deps:                     fakeDeps,
+		scaler:                   NewFakeTiFlashScaler(),
+		upgrader:                 NewFakeTiFlashUpgrader(),
+		statefulSetIsUpgradingFn: tiflashStatefulSetIsUpgrading,
 	}
-	tmm.tiflashStatefulSetIsUpgradingFn = tiflashStatefulSetIsUpgrading
-	return tmm, setControl, svcControl, pdClient, podInformer.Informer().GetIndexer(), nodeInformer.Informer().GetIndexer()
+	pdClient := controller.NewFakePDClient(fakeDeps.PDControl.(*pdapi.FakePDControl), tc)
+	setControl := fakeDeps.StatefulSetControl.(*controller.FakeStatefulSetControl)
+	svcControl := fakeDeps.ServiceControl.(*controller.FakeServiceControl)
+	podIndexer := fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer()
+	nodeIndexer := fakeDeps.KubeInformerFactory.Core().V1().Nodes().Informer().GetIndexer()
+	return tmm, setControl, svcControl, pdClient, podIndexer, nodeIndexer
 }
 
 func TestGetNewServiceForTidbCluster(t *testing.T) {

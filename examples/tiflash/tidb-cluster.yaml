@@ -4,6 +4,7 @@ metadata:
   name: demo
 spec:
   configUpdateStrategy: RollingUpdate
+  enableDynamicConfiguration: true
   enablePVReclaim: false
   imagePullPolicy: IfNotPresent
   pd:
@@ -23,7 +24,7 @@ spec:
     requests:
       storage: 10Gi
     storageClassName: local-storage
-  pvReclaimPolicy: Delete
+  pvReclaimPolicy: Retain
   schedulerName: tidb-scheduler
   services:
   - name: pd
@@ -70,4 +71,4 @@ spec:
       storage: 10Gi
     storageClassName: local-storage
   timezone: UTC
-  version: v4.0.4
+  version: v4.0.7

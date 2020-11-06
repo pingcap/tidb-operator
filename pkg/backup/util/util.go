@@ -14,19 +14,27 @@
 package util
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 	"strings"
 
+	"github.com/Masterminds/semver"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog"
+)
+
+var (
+	// the first version which allows skipping setting tikv_gc_life_time
+	// https://github.com/pingcap/br/pull/553
+	tikvV408 = semver.MustParse("v4.0.8")
 )
 
 // CheckAllKeysExistInSecret check if all keys are included in the specific secret
+// return the not-exist keys join by ","
 func CheckAllKeysExistInSecret(secret *corev1.Secret, keys ...string) (string, bool) {
 	var notExistKeys []string
 
@@ -39,8 +47,8 @@ func CheckAllKeysExistInSecret(secret *corev1.Secret, keys ...string) (string, b
 	return strings.Join(notExistKeys, ","), len(notExistKeys) == 0
 }
 
-// GenerateS3CertEnvVar generate the env info in order to access S3 compliant storage
-func GenerateS3CertEnvVar(s3 *v1alpha1.S3StorageProvider, useKMS bool) ([]corev1.EnvVar, string, error) {
+// generateS3CertEnvVar generate the env info in order to access S3 compliant storage
+func generateS3CertEnvVar(s3 *v1alpha1.S3StorageProvider, useKMS bool) ([]corev1.EnvVar, string, error) {
 	var envVars []corev1.EnvVar
 
 	switch s3.Provider {
@@ -88,6 +96,7 @@ func GenerateS3CertEnvVar(s3 *v1alpha1.S3StorageProvider, useKMS bool) ([]corev1
 			Value: s3.StorageClass,
 		},
 	}
+
 	if useKMS {
 		envVars = append(envVars, []corev1.EnvVar{
 			{
@@ -96,6 +105,7 @@ func GenerateS3CertEnvVar(s3 *v1alpha1.S3StorageProvider, useKMS bool) ([]corev1
 			},
 		}...)
 	}
+
 	if s3.SecretName != "" {
 		envVars = append(envVars, []corev1.EnvVar{
 			{
@@ -118,11 +128,12 @@ func GenerateS3CertEnvVar(s3 *v1alpha1.S3StorageProvider, useKMS bool) ([]corev1
 			},
 		}...)
 	}
+
 	return envVars, "", nil
 }
 
-// GenerateGcsCertEnvVar generate the env info in order to access google cloud storage
-func GenerateGcsCertEnvVar(gcs *v1alpha1.GcsStorageProvider) ([]corev1.EnvVar, string, error) {
+// generateGcsCertEnvVar generate the env info in order to access google cloud storage
+func generateGcsCertEnvVar(gcs *v1alpha1.GcsStorageProvider) ([]corev1.EnvVar, string, error) {
 	if len(gcs.ProjectId) == 0 {
 		return nil, "ProjectIdIsEmpty", fmt.Errorf("the project id is not set")
 	}
@@ -169,10 +180,6 @@ func GenerateStorageCertEnv(ns string, useKMS bool, provider v1alpha1.StoragePro
 
 	switch storageType {
 	case v1alpha1.BackupStorageTypeS3:
-		if provider.S3 == nil {
-			return certEnv, "S3ConfigIsEmpty", errors.New("s3 config is empty")
-		}
-
 		s3SecretName := provider.S3.SecretName
 		if s3SecretName != "" {
 			secret, err := kubeCli.CoreV1().Secrets(ns).Get(s3SecretName, metav1.GetOptions{})
@@ -188,14 +195,11 @@ func GenerateStorageCertEnv(ns string, useKMS bool, provider v1alpha1.StoragePro
 			}
 		}
 
-		certEnv, reason, err = GenerateS3CertEnvVar(provider.S3.DeepCopy(), useKMS)
+		certEnv, reason, err = generateS3CertEnvVar(provider.S3.DeepCopy(), useKMS)
 		if err != nil {
 			return certEnv, reason, err
 		}
 	case v1alpha1.BackupStorageTypeGcs:
-		if provider.Gcs == nil {
-			return certEnv, "GcsConfigIsEmpty", errors.New("gcs config is empty")
-		}
 		gcsSecretName := provider.Gcs.SecretName
 		secret, err := kubeCli.CoreV1().Secrets(ns).Get(gcsSecretName, metav1.GetOptions{})
 		if err != nil {
@@ -209,7 +213,7 @@ func GenerateStorageCertEnv(ns string, useKMS bool, provider v1alpha1.StoragePro
 			return certEnv, "gcsKeyNotExist", err
 		}
 
-		certEnv, reason, err = GenerateGcsCertEnvVar(provider.Gcs)
+		certEnv, reason, err = generateGcsCertEnvVar(provider.Gcs)
 
 		if err != nil {
 			return certEnv, reason, err
@@ -221,27 +225,31 @@ func GenerateStorageCertEnv(ns string, useKMS bool, provider v1alpha1.StoragePro
 	return certEnv, reason, nil
 }
 
+func getPasswordKey(useKMS bool) string {
+	if useKMS {
+		return fmt.Sprintf("%s_%s_%s", constants.KMSSecretPrefix, constants.BackupManagerEnvVarPrefix, strings.ToUpper(constants.TidbPasswordKey))
+	}
+
+	return fmt.Sprintf("%s_%s", constants.BackupManagerEnvVarPrefix, strings.ToUpper(constants.TidbPasswordKey))
+}
+
 // GenerateTidbPasswordEnv generate the password EnvVar
-func GenerateTidbPasswordEnv(ns, name, tidbSecretName string, useKMS bool, kubeCli kubernetes.Interface) ([]corev1.EnvVar, string, error) {
+func GenerateTidbPasswordEnv(ns, tcName, tidbSecretName string, useKMS bool, kubeCli kubernetes.Interface) ([]corev1.EnvVar, string, error) {
 	var certEnv []corev1.EnvVar
 	var passwordKey string
 	secret, err := kubeCli.CoreV1().Secrets(ns).Get(tidbSecretName, metav1.GetOptions{})
 	if err != nil {
-		err = fmt.Errorf("backup %s/%s get tidb secret %s failed, err: %v", ns, name, tidbSecretName, err)
+		err = fmt.Errorf("backup %s/%s get tidb secret %s failed, err: %v", ns, tcName, tidbSecretName, err)
 		return certEnv, "GetTidbSecretFailed", err
 	}
 
 	keyStr, exist := CheckAllKeysExistInSecret(secret, constants.TidbPasswordKey)
 	if !exist {
-		err = fmt.Errorf("backup %s/%s, tidb secret %s missing password key %s", ns, name, tidbSecretName, keyStr)
+		err = fmt.Errorf("backup %s/%s, tidb secret %s missing password key %s", ns, tcName, tidbSecretName, keyStr)
 		return certEnv, "KeyNotExist", err
 	}
 
-	if useKMS {
-		passwordKey = fmt.Sprintf("%s_%s_%s", constants.KMSSecretPrefix, constants.BackupManagerEnvVarPrefix, strings.ToUpper(constants.TidbPasswordKey))
-	} else {
-		passwordKey = fmt.Sprintf("%s_%s", constants.BackupManagerEnvVarPrefix, strings.ToUpper(constants.TidbPasswordKey))
-	}
+	passwordKey = getPasswordKey(useKMS)
 
 	certEnv = []corev1.EnvVar{
 		{
@@ -326,40 +334,62 @@ func GetBackupDataPath(provider v1alpha1.StorageProvider) (string, string, error
 	return fmt.Sprintf("%s://%s", string(storageType), backupPath), "", nil
 }
 
-func ValidateBackup(backup *v1alpha1.Backup) error {
+func validateAccessConfig(config *v1alpha1.TiDBAccessConfig) string {
+	if config == nil {
+		return "missing cluster config in spec of %s/%s"
+	} else {
+		if config.Host == "" {
+			return "missing cluster config in spec of %s/%s"
+		}
+
+		if config.SecretName == "" {
+			return "missing tidbSecretName config in spec of %s/%s"
+		}
+	}
+	return ""
+}
+
+func ValidateBackup(backup *v1alpha1.Backup, tikvImage string) error {
 	ns := backup.Namespace
 	name := backup.Name
 
-	if backup.Spec.From.Host == "" {
-		return fmt.Errorf("missing cluster config in spec of %s/%s", ns, name)
-	}
-	if backup.Spec.From.SecretName == "" {
-		return fmt.Errorf("missing tidbSecretName config in spec of %s/%s", ns, name)
-	}
 	if backup.Spec.BR == nil {
+		if reason := validateAccessConfig(backup.Spec.From); reason != "" {
+			return fmt.Errorf(reason, ns, name)
+		}
 		if backup.Spec.StorageSize == "" {
 			return fmt.Errorf("missing StorageSize config in spec of %s/%s", ns, name)
 		}
 	} else {
+		if !canSkipSetGCLifeTime(tikvImage) {
+			if reason := validateAccessConfig(backup.Spec.From); reason != "" {
+				return fmt.Errorf(reason, ns, name)
+			}
+		}
 		if backup.Spec.BR.Cluster == "" {
 			return fmt.Errorf("cluster should be configured for BR in spec of %s/%s", ns, name)
 		}
+
 		if backup.Spec.Type != "" &&
 			backup.Spec.Type != v1alpha1.BackupTypeFull &&
 			backup.Spec.Type != v1alpha1.BackupTypeDB &&
 			backup.Spec.Type != v1alpha1.BackupTypeTable {
 			return fmt.Errorf("invalid backup type %s for BR in spec of %s/%s", backup.Spec.Type, ns, name)
 		}
+
 		if (backup.Spec.Type == v1alpha1.BackupTypeDB || backup.Spec.Type == v1alpha1.BackupTypeTable) && backup.Spec.BR.DB == "" {
 			return fmt.Errorf("DB should be configured for BR with backup type %s in spec of %s/%s", backup.Spec.Type, ns, name)
 		}
+
 		if backup.Spec.Type == v1alpha1.BackupTypeTable && backup.Spec.BR.Table == "" {
 			return fmt.Errorf("table should be configured for BR with backup type table in spec of %s/%s", ns, name)
 		}
+
 		if backup.Spec.S3 != nil {
 			if backup.Spec.S3.Bucket == "" {
 				return fmt.Errorf("bucket should be configured for BR in spec of %s/%s", ns, name)
 			}
+
 			if backup.Spec.S3.Endpoint != "" {
 				u, err := url.Parse(backup.Spec.S3.Endpoint)
 				if err != nil {
@@ -378,40 +408,47 @@ func ValidateBackup(backup *v1alpha1.Backup) error {
 }
 
 // ValidateRestore checks whether a restore spec is valid.
-func ValidateRestore(restore *v1alpha1.Restore) error {
+func ValidateRestore(restore *v1alpha1.Restore, tikvImage string) error {
 	ns := restore.Namespace
 	name := restore.Name
 
-	if restore.Spec.To.Host == "" {
-		return fmt.Errorf("missing cluster config in spec of %s/%s", ns, name)
-	}
-	if restore.Spec.To.SecretName == "" {
-		return fmt.Errorf("missing tidbSecretName config in spec of %s/%s", ns, name)
-	}
 	if restore.Spec.BR == nil {
+		if reason := validateAccessConfig(restore.Spec.To); reason != "" {
+			return fmt.Errorf(reason, ns, name)
+		}
 		if restore.Spec.StorageSize == "" {
 			return fmt.Errorf("missing StorageSize config in spec of %s/%s", ns, name)
 		}
 	} else {
+		if !canSkipSetGCLifeTime(tikvImage) {
+			if reason := validateAccessConfig(restore.Spec.To); reason != "" {
+				return fmt.Errorf(reason, ns, name)
+			}
+		}
 		if restore.Spec.BR.Cluster == "" {
 			return fmt.Errorf("cluster should be configured for BR in spec of %s/%s", ns, name)
 		}
+
 		if restore.Spec.Type != "" &&
 			restore.Spec.Type != v1alpha1.BackupTypeFull &&
 			restore.Spec.Type != v1alpha1.BackupTypeDB &&
 			restore.Spec.Type != v1alpha1.BackupTypeTable {
 			return fmt.Errorf("invalid backup type %s for BR in spec of %s/%s", restore.Spec.Type, ns, name)
 		}
+
 		if (restore.Spec.Type == v1alpha1.BackupTypeDB || restore.Spec.Type == v1alpha1.BackupTypeTable) && restore.Spec.BR.DB == "" {
 			return fmt.Errorf("DB should be configured for BR with restore type %s in spec of %s/%s", restore.Spec.Type, ns, name)
 		}
+
 		if restore.Spec.Type == v1alpha1.BackupTypeTable && restore.Spec.BR.Table == "" {
 			return fmt.Errorf("table should be configured for BR with restore type table in spec of %s/%s", ns, name)
 		}
+
 		if restore.Spec.S3 != nil {
 			if restore.Spec.S3.Bucket == "" {
 				return fmt.Errorf("bucket should be configured for BR in spec of %s/%s", ns, name)
 			}
+
 			if restore.Spec.S3.Endpoint != "" {
 				u, err := url.Parse(restore.Spec.S3.Endpoint)
 				if err != nil {
@@ -440,4 +477,18 @@ func ParseImage(image string) (string, string) {
 		name = image
 	}
 	return name, tag
+}
+
+// canSkipSetGCLifeTime returns if setting tikv_gc_life_time can be skipped based on the TiKV version
+func canSkipSetGCLifeTime(image string) bool {
+	_, version := ParseImage(image)
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		klog.Errorf("Parse version %s failure, error: %v", version, err)
+		return true
+	}
+	if v.LessThan(tikvV408) {
+		return false
+	}
+	return true
 }

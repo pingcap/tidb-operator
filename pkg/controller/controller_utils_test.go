@@ -54,6 +54,20 @@ func TestGetOwnerRef(t *testing.T) {
 	g.Expect(*ref.BlockOwnerDeletion).To(BeTrue())
 }
 
+func TestGetDMOwnerRef(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	dc := newDMCluster()
+	dc.UID = types.UID("demo-uid")
+	ref := GetDMOwnerRef(dc)
+	g.Expect(ref.APIVersion).To(Equal(DMControllerKind.GroupVersion().String()))
+	g.Expect(ref.Kind).To(Equal(DMControllerKind.Kind))
+	g.Expect(ref.Name).To(Equal(dc.GetName()))
+	g.Expect(ref.UID).To(Equal(types.UID("demo-uid")))
+	g.Expect(*ref.Controller).To(BeTrue())
+	g.Expect(*ref.BlockOwnerDeletion).To(BeTrue())
+}
+
 func TestGetServiceType(t *testing.T) {
 	g := NewGomegaWithT(t)
 
@@ -182,6 +196,26 @@ func TestPumpPeerMemberName(t *testing.T) {
 func TestDiscoveryMemberName(t *testing.T) {
 	g := NewGomegaWithT(t)
 	g.Expect(DiscoveryMemberName("demo")).To(Equal("demo-discovery"))
+}
+
+func TestDMMasterMemberName(t *testing.T) {
+	g := NewGomegaWithT(t)
+	g.Expect(DMMasterMemberName("demo")).To(Equal("demo-dm-master"))
+}
+
+func TestDMMasterPeerMemberName(t *testing.T) {
+	g := NewGomegaWithT(t)
+	g.Expect(DMMasterPeerMemberName("demo")).To(Equal("demo-dm-master-peer"))
+}
+
+func TestDMWorkerMemberName(t *testing.T) {
+	g := NewGomegaWithT(t)
+	g.Expect(DMWorkerMemberName("demo")).To(Equal("demo-dm-worker"))
+}
+
+func TestDMWorkerPeerMemberName(t *testing.T) {
+	g := NewGomegaWithT(t)
+	g.Expect(DMWorkerPeerMemberName("demo")).To(Equal("demo-dm-worker-peer"))
 }
 
 func TestAnnProm(t *testing.T) {
@@ -357,6 +391,24 @@ func newTidbCluster() *v1alpha1.TidbCluster {
 	return tc
 }
 
+func newDMCluster() *v1alpha1.DMCluster {
+	retainPVP := corev1.PersistentVolumeReclaimRetain
+	dc := &v1alpha1.DMCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo",
+			Namespace: metav1.NamespaceDefault,
+		},
+		Spec: v1alpha1.DMClusterSpec{
+			Version:         "v2.0.0-rc.2",
+			Discovery:       v1alpha1.DMDiscoverySpec{Address: "http://basic-discovery.demo:10261"},
+			Master:          v1alpha1.MasterSpec{},
+			Worker:          &v1alpha1.WorkerSpec{},
+			PVReclaimPolicy: &retainPVP,
+		},
+	}
+	return dc
+}
+
 func newService(tc *v1alpha1.TidbCluster, _ string) *corev1.Service {
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -375,6 +427,9 @@ func newBackup() *v1alpha1.Backup {
 			Labels: map[string]string{
 				label.BackupScheduleLabelKey: "test-schedule",
 			},
+		},
+		Spec: v1alpha1.BackupSpec{
+			From: &v1alpha1.TiDBAccessConfig{},
 		},
 	}
 	return backup

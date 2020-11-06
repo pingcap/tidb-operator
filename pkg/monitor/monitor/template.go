@@ -96,7 +96,7 @@ func init() {
 	if err != nil {
 		klog.Fatalf("monitor regex template parse error,%v", err)
 	}
-	addressPattern, err = config.NewRegexp("(.+);(.+);(.+)")
+	addressPattern, err = config.NewRegexp("(.+);(.+);(.+);(.+)")
 	if err != nil {
 		klog.Fatalf("monitor regex template parse error,%v", err)
 	}
@@ -166,7 +166,7 @@ func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
 
 func buildAddressRelabelConfigByComponent(kind string) *config.RelabelConfig {
 	kind = strings.ToLower(kind)
-	replacement := fmt.Sprintf("$1.$2-%s-peer:$3", kind)
+	replacement := fmt.Sprintf("$1.$2-%s-peer.$3:$4", kind)
 	f := func() *config.RelabelConfig {
 		return &config.RelabelConfig{
 			Action:      config.RelabelReplace,
@@ -176,6 +176,7 @@ func buildAddressRelabelConfigByComponent(kind string) *config.RelabelConfig {
 			SourceLabels: model.LabelNames{
 				podNameLabel,
 				instanceLabel,
+				namespaceLabel,
 				portLabel,
 			},
 		}
@@ -197,11 +198,12 @@ func buildAddressRelabelConfigByComponent(kind string) *config.RelabelConfig {
 		return &config.RelabelConfig{
 			Action:      config.RelabelReplace,
 			Regex:       addressPattern,
-			Replacement: "$1.$2-tiflash-peer:$3",
+			Replacement: "$1.$2-tiflash-peer.$3:$4",
 			TargetLabel: "__address__",
 			SourceLabels: model.LabelNames{
 				podNameLabel,
 				instanceLabel,
+				namespaceLabel,
 				model.LabelName(fmt.Sprintf(additionalPortLabelPattern, "tiflash_proxy")),
 			},
 		}
@@ -209,11 +211,12 @@ func buildAddressRelabelConfigByComponent(kind string) *config.RelabelConfig {
 		return &config.RelabelConfig{
 			Action:      config.RelabelReplace,
 			Regex:       addressPattern,
-			Replacement: "$1.$2-pump:$3",
+			Replacement: "$1.$2-pump.$3:$4",
 			TargetLabel: "__address__",
 			SourceLabels: model.LabelNames{
 				podNameLabel,
 				instanceLabel,
+				namespaceLabel,
 				portLabel,
 			},
 		}
@@ -221,11 +224,12 @@ func buildAddressRelabelConfigByComponent(kind string) *config.RelabelConfig {
 		return &config.RelabelConfig{
 			Action:      config.RelabelReplace,
 			Regex:       addressPattern,
-			Replacement: "$1.$2-importer:$3",
+			Replacement: "$1.$2-importer.$3:$4",
 			TargetLabel: "__address__",
 			SourceLabels: model.LabelNames{
 				podNameLabel,
 				instanceLabel,
+				namespaceLabel,
 				portLabel,
 			},
 		}
@@ -233,11 +237,12 @@ func buildAddressRelabelConfigByComponent(kind string) *config.RelabelConfig {
 		return &config.RelabelConfig{
 			Action:      config.RelabelReplace,
 			Regex:       addressPattern,
-			Replacement: "$1.$2:$3",
+			Replacement: "$1.$2.$3:$4",
 			TargetLabel: "__address__",
 			SourceLabels: model.LabelNames{
 				podNameLabel,
 				nameLabel,
+				namespaceLabel,
 				portLabel,
 			},
 		}
@@ -245,11 +250,12 @@ func buildAddressRelabelConfigByComponent(kind string) *config.RelabelConfig {
 		return &config.RelabelConfig{
 			Action:      config.RelabelReplace,
 			Regex:       addressPattern,
-			Replacement: "$2:$3",
+			Replacement: "$2.$3:$4",
 			TargetLabel: "__address__",
 			SourceLabels: model.LabelNames{
 				podNameLabel,
 				nameLabel,
+				namespaceLabel,
 				portLabel,
 			},
 		}

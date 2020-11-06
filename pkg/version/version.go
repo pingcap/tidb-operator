@@ -35,7 +35,7 @@ func PrintVersionInfo() {
 
 // LogVersionInfo print version info at startup
 func LogVersionInfo() {
-	klog.Infof("Welcome to TiDB Operator.")
+	klog.Info("Welcome to TiDB Operator.")
 	klog.Infof("TiDB Operator Version: %#v", Get())
 }
 

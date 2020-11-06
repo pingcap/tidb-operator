@@ -20,24 +20,21 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	apps "k8s.io/api/apps/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 )
 
 type tidbUpgrader struct {
-	podLister   corelisters.PodLister
-	tidbControl controller.TiDBControlInterface
+	deps *controller.Dependencies
 }
 
 // NewTiDBUpgrader returns a tidb Upgrader
-func NewTiDBUpgrader(tidbControl controller.TiDBControlInterface, podLister corelisters.PodLister) Upgrader {
+func NewTiDBUpgrader(deps *controller.Dependencies) Upgrader {
 	return &tidbUpgrader{
-		tidbControl: tidbControl,
-		podLister:   podLister,
+		deps: deps,
 	}
 }
 
-func (tdu *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (u *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 
 	// when scale replica to 0 , all nodes crash and tidb is in upgrade phase, this method will throw error about pod is upgrade.
 	// so  directly return nil when scale replica to 0.
@@ -49,7 +46,10 @@ func (tdu *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 	tcName := tc.GetName()
 
 	if tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.Status.TiKV.Phase == v1alpha1.UpgradePhase ||
-		tc.Status.Pump.Phase == v1alpha1.UpgradePhase {
+		tc.Status.Pump.Phase == v1alpha1.UpgradePhase || tc.TiDBScaling() {
+		klog.Infof("TidbCluster: [%s/%s]'s pd status is %s, tikv status is %s, pump status is %s,"+
+			"tidb status is %s, can not upgrade tidb", ns, tcName, tc.Status.PD.Phase, tc.Status.TiKV.Phase,
+			tc.Status.Pump.Phase, tc.Status.TiDB.Phase)
 		_, podSpec, err := GetLastAppliedConfig(oldSet)
 		if err != nil {
 			return err
@@ -82,7 +82,7 @@ func (tdu *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
 		i := podOrdinals[_i]
 		podName := tidbPodName(tcName, i)
-		pod, err := tdu.podLister.Pods(ns).Get(podName)
+		pod, err := u.deps.PodLister.Pods(ns).Get(podName)
 		if err != nil {
 			return fmt.Errorf("tidbUpgrader.Upgrade: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
 		}
@@ -97,13 +97,13 @@ func (tdu *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 			}
 			continue
 		}
-		return tdu.upgradeTiDBPod(tc, i, newSet)
+		return u.upgradeTiDBPod(tc, i, newSet)
 	}
 
 	return nil
 }
 
-func (tdu *tidbUpgrader) upgradeTiDBPod(tc *v1alpha1.TidbCluster, ordinal int32, newSet *apps.StatefulSet) error {
+func (u *tidbUpgrader) upgradeTiDBPod(tc *v1alpha1.TidbCluster, ordinal int32, newSet *apps.StatefulSet) error {
 	setUpgradePartition(newSet, ordinal)
 	return nil
 }
@@ -115,7 +115,7 @@ func NewFakeTiDBUpgrader() Upgrader {
 	return &fakeTiDBUpgrader{}
 }
 
-func (ftdu *fakeTiDBUpgrader) Upgrade(tc *v1alpha1.TidbCluster, _ *apps.StatefulSet, _ *apps.StatefulSet) error {
+func (u *fakeTiDBUpgrader) Upgrade(tc *v1alpha1.TidbCluster, _ *apps.StatefulSet, _ *apps.StatefulSet) error {
 	tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
 	return nil
 }

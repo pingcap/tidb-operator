@@ -13,55 +13,6 @@
 
 package calculate
 
-import (
-	"fmt"
-
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	appsv1 "k8s.io/api/apps/v1"
-	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
-	corev1 "k8s.io/api/core/v1"
-)
-
-// currently, we only choose one metrics to be computed.
-// If there exists several metrics, we tend to choose ResourceMetricSourceType metric
-func FilterMetrics(metrics []v1alpha1.CustomMetric, name corev1.ResourceName) []v1alpha1.CustomMetric {
-	var list []v1alpha1.CustomMetric
-	for _, m := range metrics {
-		if m.Type == autoscalingv2beta2.ResourceMetricSourceType && m.Resource != nil && m.Resource.Name == name {
-			list = append(list, m)
-			break
-		}
-	}
-	return list
-}
-
-// filterContainer is to filter the specific container from the given statefulset(tidb/tikv)
-func filterContainer(tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.StatefulSet, containerName string) (*corev1.Container, error) {
-	for _, c := range sts.Spec.Template.Spec.Containers {
-		if c.Name == containerName {
-			return &c, nil
-		}
-	}
-	return nil, fmt.Errorf("tac[%s/%s]'s Target have not %s container", tac.Namespace, tac.Name, containerName)
-}
-
-func addMetricsStatusIntoMetricsStatusList(metrics v1alpha1.MetricsStatus, basicStatus *v1alpha1.BasicAutoScalerStatus) {
-	if basicStatus.MetricsStatusList == nil {
-		basicStatus.MetricsStatusList = []v1alpha1.MetricsStatus{}
-	}
-	for id, m := range basicStatus.MetricsStatusList {
-		if m.Name == metrics.Name {
-			basicStatus.MetricsStatusList[id] = metrics
-			return
-		}
-	}
-	basicStatus.MetricsStatusList = append(basicStatus.MetricsStatusList, metrics)
-}
-
-const (
-	statusSuccess = "success"
-)
-
 // Response is used to marshal the data queried from Prometheus
 type Response struct {
 	Status string `json:"status"`

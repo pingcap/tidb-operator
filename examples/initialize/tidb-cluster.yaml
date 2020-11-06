@@ -3,9 +3,11 @@ kind: TidbCluster
 metadata:
   name: initialize-demo
 spec:
-  version: v4.0.4
+  version: v4.0.7
   timezone: UTC
-  pvReclaimPolicy: Delete
+  pvReclaimPolicy: Retain
+  enableDynamicConfiguration: true
+  configUpdateStrategy: RollingUpdate
   pd:
     baseImage: pingcap/pd
     replicas: 1

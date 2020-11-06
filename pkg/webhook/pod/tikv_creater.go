@@ -29,11 +29,11 @@ const (
 	tikvNotBootstrapped = `TiKV cluster not bootstrapped, please start TiKV first"`
 )
 
-func (pc *PodAdmissionControl) admitCreateTiKVPod(pod *core.Pod, pdClient pdapi.PDClient) *admission.AdmissionResponse {
-
+func admitCreateTiKVPod(pod *core.Pod, pdClient pdapi.PDClient) *admission.AdmissionResponse {
 	name := pod.Name
 	namespace := pod.Namespace
 
+	// always success if tikv is not bootstrapped
 	stores, err := pdClient.GetStores()
 	if err != nil {
 		if strings.HasSuffix(err.Error(), tikvNotBootstrapped+"\n") {
@@ -42,6 +42,7 @@ func (pc *PodAdmissionControl) admitCreateTiKVPod(pod *core.Pod, pdClient pdapi.
 		klog.Infof("Failed to get stores during pod [%s/%s] creation, error: %v", namespace, name, err)
 		return util.ARFail(err)
 	}
+
 	evictLeaderSchedulers, err := pdClient.GetEvictLeaderSchedulers()
 	if err != nil {
 		if strings.HasSuffix(err.Error(), tikvNotBootstrapped+"\n") {

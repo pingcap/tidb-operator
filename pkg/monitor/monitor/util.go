@@ -40,6 +40,10 @@ func GetMonitorObjectName(monitor *v1alpha1.TidbMonitor) string {
 	return fmt.Sprintf("%s-monitor", monitor.Name)
 }
 
+func GetMonitorObjectNameCrossNamespace(monitor *v1alpha1.TidbMonitor) string {
+	return fmt.Sprintf("%s-%s-monitor", monitor.Namespace, monitor.Name)
+}
+
 func buildTidbMonitorLabel(name string) map[string]string {
 	return label.NewMonitor().Instance(name).Monitor().Labels()
 }
@@ -134,6 +138,42 @@ func getMonitorRole(monitor *v1alpha1.TidbMonitor, policyRules []rbac.PolicyRule
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 		},
 		Rules: policyRules,
+	}
+}
+
+func getMonitorClusterRole(monitor *v1alpha1.TidbMonitor, policyRules []rbac.PolicyRule) *rbac.ClusterRole {
+	return &rbac.ClusterRole{
+		ObjectMeta: meta.ObjectMeta{
+			Name:            GetMonitorObjectNameCrossNamespace(monitor),
+			Namespace:       monitor.Namespace,
+			Labels:          buildTidbMonitorLabel(monitor.Name),
+			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
+		},
+		Rules: policyRules,
+	}
+}
+
+func getMonitorClusterRoleBinding(sa *core.ServiceAccount, role *rbac.ClusterRole, monitor *v1alpha1.TidbMonitor) *rbac.ClusterRoleBinding {
+	return &rbac.ClusterRoleBinding{
+		ObjectMeta: meta.ObjectMeta{
+			Name:            GetMonitorObjectNameCrossNamespace(monitor),
+			Namespace:       monitor.Namespace,
+			Labels:          buildTidbMonitorLabel(monitor.Name),
+			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
+		},
+		Subjects: []rbac.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      sa.Name,
+				Namespace: sa.Namespace,
+				APIGroup:  "",
+			},
+		},
+		RoleRef: rbac.RoleRef{
+			Kind:     "ClusterRole",
+			Name:     role.Name,
+			APIGroup: "rbac.authorization.k8s.io",
+		},
 	}
 }
 
@@ -474,6 +514,11 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 		Resources: controller.ContainerResource(monitor.Spec.Prometheus.ResourceRequirements),
 		Command: []string{
 			"/bin/prometheus",
+			"--web.enable-admin-api",
+			"--web.enable-lifecycle",
+			"--config.file=/etc/prometheus/prometheus.yml",
+			"--storage.tsdb.path=/data/prometheus",
+			fmt.Sprintf("--storage.tsdb.retention=%dd", monitor.Spec.Prometheus.ReserveDays),
 		},
 		Ports: []core.ContainerPort{
 			{
@@ -505,19 +550,12 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 			},
 		},
 	}
-	commandOptions := []string{"--web.enable-admin-api",
-		"--web.enable-lifecycle",
-		"--config.file=/etc/prometheus/prometheus.yml",
-		"--storage.tsdb.path=/data/prometheus",
-		fmt.Sprintf("--storage.tsdb.retention=%dd", monitor.Spec.Prometheus.ReserveDays)}
-
-	if monitor.Spec.Prometheus.Config != nil && len(monitor.Spec.Prometheus.Config.CommandOptions) > 0 {
-		commandOptions = monitor.Spec.Prometheus.Config.CommandOptions
-	}
-	c.Command = append(c.Command, commandOptions...)
 
 	if len(monitor.Spec.Prometheus.LogLevel) > 0 {
 		c.Command = append(c.Command, fmt.Sprintf("--log.level=%s", monitor.Spec.Prometheus.LogLevel))
+	}
+	if monitor.Spec.Prometheus.Config != nil && len(monitor.Spec.Prometheus.Config.CommandOptions) > 0 {
+		c.Command = append(c.Command, monitor.Spec.Prometheus.Config.CommandOptions...)
 	}
 
 	if tc.IsTLSClusterEnabled() {

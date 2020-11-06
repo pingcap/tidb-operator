@@ -355,6 +355,10 @@ type TiKVGCConfig struct {
 	BatchKeys *int64 `json:"batch-keys,omitempty" toml:"batch-keys,omitempty"`
 	// +optional
 	MaxWriteBytesPerSec *string `json:"max-write-bytes-per-sec,omitempty" toml:"max-write-bytes-per-sec,omitempty"`
+	// +optional
+	EnableCompactionFilter *bool `json:"enable-compaction-filter,omitempty" toml:"enable-compaction-filter,omitempty"`
+	// +optional
+	EnableCompactionFilterSkipVersionCheck *bool `json:"compaction-filter-skip-version-check,omitempty" toml:"compaction-filter-skip-version-check,omitempty"`
 }
 
 // TiKVDbConfig is the rocksdb config.
@@ -964,7 +968,7 @@ type MasterKeyKMSConfig struct {
 
 	// SecretKey of AWS user, leave empty if using other authrization method
 	// optional
-	SecretKey *string `json:"secret-access-key,omitempty" toml:"access-key,omitempty"`
+	SecretKey *string `json:"secret-access-key,omitempty" toml:"secret-access-key,omitempty"`
 
 	// Region of this KMS key
 	// Optional: Default to us-east-1

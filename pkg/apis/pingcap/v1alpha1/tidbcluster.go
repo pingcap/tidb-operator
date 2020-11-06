@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -31,6 +32,8 @@ const (
 	defaultExposeStatus    = true
 	defaultSeparateSlowLog = true
 	defaultEnablePVReclaim = false
+	// defaultEvictLeaderTimeout is the timeout limit of evict leader
+	defaultEvictLeaderTimeout = 3 * time.Minute
 )
 
 var (
@@ -49,7 +52,11 @@ func (tc *TidbCluster) PDImage() string {
 		if version == nil {
 			version = &tc.Spec.Version
 		}
-		image = fmt.Sprintf("%s:%s", baseImage, *version)
+		if *version == "" {
+			image = baseImage
+		} else {
+			image = fmt.Sprintf("%s:%s", baseImage, *version)
+		}
 	}
 	return image
 }
@@ -73,7 +80,11 @@ func (tc *TidbCluster) TiKVImage() string {
 		if version == nil {
 			version = &tc.Spec.Version
 		}
-		image = fmt.Sprintf("%s:%s", baseImage, *version)
+		if *version == "" {
+			image = baseImage
+		} else {
+			image = fmt.Sprintf("%s:%s", baseImage, *version)
+		}
 	}
 	return image
 }
@@ -96,6 +107,16 @@ func (tc *TidbCluster) TiKVContainerPrivilege() *bool {
 	return tc.Spec.TiKV.Privileged
 }
 
+func (tc *TidbCluster) TiKVEvictLeaderTimeout() time.Duration {
+	if tc.Spec.TiKV.EvictLeaderTimeout != nil {
+		d, err := time.ParseDuration(*tc.Spec.TiKV.EvictLeaderTimeout)
+		if err == nil {
+			return d
+		}
+	}
+	return defaultEvictLeaderTimeout
+}
+
 func (tc *TidbCluster) TiFlashImage() string {
 	image := tc.Spec.TiFlash.Image
 	baseImage := tc.Spec.TiFlash.BaseImage
@@ -105,7 +126,11 @@ func (tc *TidbCluster) TiFlashImage() string {
 		if version == nil {
 			version = &tc.Spec.Version
 		}
-		image = fmt.Sprintf("%s:%s", baseImage, *version)
+		if *version == "" {
+			image = baseImage
+		} else {
+			image = fmt.Sprintf("%s:%s", baseImage, *version)
+		}
 	}
 	return image
 }
@@ -119,7 +144,11 @@ func (tc *TidbCluster) TiCDCImage() string {
 		if version == nil {
 			version = &tc.Spec.Version
 		}
-		image = fmt.Sprintf("%s:%s", baseImage, *version)
+		if *version == "" {
+			image = baseImage
+		} else {
+			image = fmt.Sprintf("%s:%s", baseImage, *version)
+		}
 	}
 	return image
 }
@@ -141,7 +170,11 @@ func (tc *TidbCluster) TiDBImage() string {
 		if version == nil {
 			version = &tc.Spec.Version
 		}
-		image = fmt.Sprintf("%s:%s", baseImage, *version)
+		if *version == "" {
+			image = baseImage
+		} else {
+			image = fmt.Sprintf("%s:%s", baseImage, *version)
+		}
 	}
 	return image
 }
@@ -158,7 +191,11 @@ func (tc *TidbCluster) PumpImage() *string {
 		if version == nil {
 			version = &tc.Spec.Version
 		}
-		image = fmt.Sprintf("%s:%s", baseImage, *version)
+		if *version == "" {
+			image = baseImage
+		} else {
+			image = fmt.Sprintf("%s:%s", baseImage, *version)
+		}
 	}
 	return &image
 }
@@ -287,8 +324,18 @@ func (tc *TidbCluster) PDAutoFailovering() bool {
 	return false
 }
 
+func (tc *TidbCluster) GetPDFailureReplicas() int32 {
+	var failureReplicas int32 = 0
+	for _, failureMember := range tc.Status.PD.FailureMembers {
+		if failureMember.MemberDeleted {
+			failureReplicas++
+		}
+	}
+	return failureReplicas
+}
+
 func (tc *TidbCluster) PDStsDesiredReplicas() int32 {
-	return tc.Spec.PD.Replicas + int32(len(tc.Status.PD.FailureMembers))
+	return tc.Spec.PD.Replicas + tc.GetPDFailureReplicas()
 }
 
 func (tc *TidbCluster) PDStsActualReplicas() int32 {

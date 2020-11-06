@@ -123,6 +123,9 @@ type TidbClusterSpec struct {
 	// Discovery spec
 	Discovery DiscoverySpec `json:"discovery,omitempty"`
 
+	// Specify a Service Account
+	ServiceAccount string `json:"serviceAccount,omitempty"`
+
 	// PD cluster spec
 	// +optional
 	PD *PDSpec `json:"pd,omitempty"`
@@ -236,9 +239,22 @@ type TidbClusterSpec struct {
 	// +optional
 	EnableDynamicConfiguration *bool `json:"enableDynamicConfiguration,omitempty"`
 
+	// ClusterDomain is the Kubernetes Cluster Domain of TiDB cluster
+	// Optional: Defaults to ""
+	// +optional
+	ClusterDomain string `json:"clusterDomain,omitempty"`
+
 	// Cluster is the external cluster, if configured, the components in this TidbCluster will join to this configured cluster.
 	// +optional
 	Cluster *TidbClusterRef `json:"cluster,omitempty"`
+
+	// PDAddresses are the external PD addresses, if configured, the PDs in this TidbCluster will join to the configured PD cluster.
+	// +optional
+	PDAddresses []string `json:"pdAddresses,omitempty"`
+
+	// StatefulSetUpdateStrategy of TiDB cluster StatefulSets
+	// +optional
+	StatefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType `json:"statefulSetUpdateStrategy,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
@@ -255,14 +271,6 @@ type TidbClusterStatus struct {
 	// Represents the latest available observations of a tidb cluster's state.
 	// +optional
 	Conditions []TidbClusterCondition `json:"conditions,omitempty"`
-	// +optional
-	TiKVGroups []GroupRef `json:"tikv-groups,omitempty"`
-	// +optional
-	TiDBGroups []GroupRef `json:"tidb-groups,omitempty"`
-}
-
-type GroupRef struct {
-	Reference corev1.LocalObjectReference `json:",inline"`
 }
 
 // TidbClusterCondition describes the state of a tidb cluster at a certain point.
@@ -310,6 +318,9 @@ type PDSpec struct {
 	ComponentSpec               `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
 
+	// Specify a Service Account for pd
+	ServiceAccount string `json:"serviceAccount,omitempty"`
+
 	// The desired ready replicas
 	// +kubebuilder:validation:Minimum=1
 	Replicas int32 `json:"replicas"`
@@ -349,7 +360,7 @@ type PDSpec struct {
 
 	// Config is the Configuration of pd-servers
 	// +optional
-	Config *PDConfig `json:"config,omitempty"`
+	Config *PDConfigWraper `json:"config,omitempty"`
 
 	// TLSClientSecretName is the name of secret which stores tidb server client certificate
 	// which used by Dashboard.
@@ -359,6 +370,15 @@ type PDSpec struct {
 	// EnableDashboardInternalProxy would directly set `internal-proxy` in the `PdConfig`
 	// +optional
 	EnableDashboardInternalProxy *bool `json:"enableDashboardInternalProxy,omitempty"`
+
+	// MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod
+	// +optional
+	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
+
+	// StorageVolumes is additional storage apply for PD node.
+	// Default to storageClassName storage class
+	// +optional
+	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -410,11 +430,25 @@ type TiKVSpec struct {
 
 	// Config is the Configuration of tikv-servers
 	// +optional
-	Config *TiKVConfig `json:"config,omitempty"`
+	Config *TiKVConfigWraper `json:"config,omitempty"`
 
 	// RecoverFailover indicates that Operator can recover the failover Pods
 	// +optional
 	RecoverFailover bool `json:"recoverFailover,omitempty"`
+
+	// MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod
+	// +optional
+	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
+
+	// EvictLeaderTimeout indicates the timeout to evict tikv leader, in the format of Go Duration.
+	// Defaults to 3m
+	// +optional
+	EvictLeaderTimeout *string `json:"evictLeaderTimeout,omitempty"`
+
+	// StorageVolumes is additional storage apply for TiKV node.
+	// Default to storageClassName storage class
+	// +optional
+	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members
@@ -453,7 +487,7 @@ type TiFlashSpec struct {
 
 	// Config is the Configuration of TiFlash
 	// +optional
-	Config *TiFlashConfig `json:"config,omitempty"`
+	Config *TiFlashConfigWraper `json:"config,omitempty"`
 
 	// LogTailer is the configurations of the log tailers for TiFlash
 	// +optional
@@ -536,6 +570,9 @@ type TiDBSpec struct {
 	ComponentSpec               `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
 
+	// Specify a Service Account for tidb
+	ServiceAccount string `json:"serviceAccount,omitempty"`
+
 	// The desired ready replicas
 	// +kubebuilder:validation:Minimum=0
 	Replicas int32 `json:"replicas"`
@@ -582,13 +619,46 @@ type TiDBSpec struct {
 
 	// Config is the Configuration of tidb-servers
 	// +optional
-	Config *TiDBConfig `json:"config,omitempty"`
+	Config *TiDBConfigWraper `json:"config,omitempty"`
 
 	// Lifecycle describes actions that the management system should take in response to container lifecycle
 	// events. For the PostStart and PreStop lifecycle handlers, management of the container blocks
 	// until the action is complete, unless the container process fails, in which case the handler is aborted.
 	// +optional
 	Lifecycle *corev1.Lifecycle `json:"lifecycle,omitempty"`
+
+	// StorageVolumes is additional storage apply for TiDB node.
+	// Default to storageClassName storage class
+	// +optional
+	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
+
+	// The storageClassName of the persistent volume for TiDB data storage.
+	// Defaults to Kubernetes default storage class.
+	// +optional
+	StorageClassName *string `json:"storageClassName,omitempty"`
+	// ReadinessProbe describes actions that probe the tidb's readiness.
+	// the default behavior is like setting type as "tcp"
+	// +optional
+	ReadinessProbe *TiDBProbe `json:"readinessProbe,omitempty"`
+}
+
+const (
+	TCPProbeType     string = "tcp"
+	CommandProbeType string = "command"
+)
+
+// +k8s:openapi-gen=true
+// TiDBProbe contains details of probing tidb.
+// default probe by TCPPort on 4000.
+type TiDBProbe struct {
+	// "tcp" will use TCP socket to connetct port 4000
+	//
+	// "command" will probe the status api of tidb.
+	// This will use curl command to request tidb, before v4.0.9 there is no curl in the image,
+	// So do not use this before v4.0.9.
+	// +kubebuilder:validation:Enum=tcp,command
+	// +optional
+	Type *string `json:"type,omitempty"` // tcp or command
 }
 
 // +k8s:openapi-gen=true
@@ -596,6 +666,9 @@ type TiDBSpec struct {
 type PumpSpec struct {
 	ComponentSpec               `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
+
+	// Specify a Service Account for pump
+	ServiceAccount string `json:"serviceAccount,omitempty"`
 
 	// The desired ready replicas
 	// +kubebuilder:validation:Minimum=0
@@ -615,7 +688,7 @@ type PumpSpec struct {
 	// TODO: add schema
 	// The configuration of Pump cluster.
 	// +optional
-	config.GenericConfig `json:",inline"`
+	Config *config.GenericConfig `json:"config,omitempty"`
 
 	// +k8s:openapi-gen=false
 	// For backward compatibility with helm chart
@@ -754,6 +827,12 @@ type ComponentSpec struct {
 	// Defaults to 30 seconds.
 	// +optional
 	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
+
+	// StatefulSetUpdateStrategy indicates the StatefulSetUpdateStrategy that will be
+	// employed to update Pods in the StatefulSet when a revision is made to
+	// Template.
+	// +optional
+	StatefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType `json:"statefulSetUpdateStrategy,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -828,6 +907,7 @@ type PDStatus struct {
 	Phase           MemberPhase                `json:"phase,omitempty"`
 	StatefulSet     *apps.StatefulSetStatus    `json:"statefulSet,omitempty"`
 	Members         map[string]PDMember        `json:"members,omitempty"`
+	PeerMembers     map[string]PDMember        `json:"peerMembers,omitempty"`
 	Leader          PDMember                   `json:"leader,omitempty"`
 	FailureMembers  map[string]PDFailureMember `json:"failureMembers,omitempty"`
 	UnjoinedMembers map[string]UnjoinedMember  `json:"unjoinedMembers,omitempty"`
@@ -894,6 +974,7 @@ type TiKVStatus struct {
 	Phase           MemberPhase                 `json:"phase,omitempty"`
 	StatefulSet     *apps.StatefulSetStatus     `json:"statefulSet,omitempty"`
 	Stores          map[string]TiKVStore        `json:"stores,omitempty"`
+	PeerStores      map[string]TiKVStore        `json:"peerStores,omitempty"`
 	TombstoneStores map[string]TiKVStore        `json:"tombstoneStores,omitempty"`
 	FailureStores   map[string]TiKVFailureStore `json:"failureStores,omitempty"`
 	Image           string                      `json:"image,omitempty"`
@@ -905,6 +986,7 @@ type TiFlashStatus struct {
 	Phase           MemberPhase                 `json:"phase,omitempty"`
 	StatefulSet     *apps.StatefulSetStatus     `json:"statefulSet,omitempty"`
 	Stores          map[string]TiKVStore        `json:"stores,omitempty"`
+	PeerStores      map[string]TiKVStore        `json:"peerStores,omitempty"`
 	TombstoneStores map[string]TiKVStore        `json:"tombstoneStores,omitempty"`
 	FailureStores   map[string]TiKVFailureStore `json:"failureStores,omitempty"`
 	Image           string                      `json:"image,omitempty"`
@@ -1112,12 +1194,14 @@ type BackupType string
 const (
 	// BackupTypeFull represents the full backup of tidb cluster.
 	BackupTypeFull BackupType = "full"
-	// BackupTypeInc represents the incremental backup of tidb cluster.
-	BackupTypeInc BackupType = "incremental"
+	// BackupTypeRaw represents the raw backup of tidb cluster.
+	BackupTypeRaw BackupType = "raw"
 	// BackupTypeDB represents the backup of one DB for the tidb cluster.
 	BackupTypeDB BackupType = "db"
 	// BackupTypeTable represents the backup of one table for the tidb cluster.
 	BackupTypeTable BackupType = "table"
+	// BackupTypeTiFlashReplica represents restoring the tiflash replica removed by a failed restore of the older version BR
+	BackupTypeTiFlashReplica BackupType = "tiflash-replica"
 )
 
 // +k8s:openapi-gen=true
@@ -1155,7 +1239,7 @@ const (
 type BackupSpec struct {
 	corev1.ResourceRequirements `json:"resources,omitempty"`
 	// From is the tidb cluster that needs to backup.
-	From TiDBAccessConfig `json:"from,omitempty"`
+	From *TiDBAccessConfig `json:"from,omitempty"`
 	// Type is the backup type for tidb cluster.
 	Type BackupType `json:"backupType,omitempty"`
 	// TikvGCLifeTime is to specify the safe gc life time for backup.
@@ -1229,6 +1313,8 @@ type BRConfig struct {
 	SendCredToTikv *bool `json:"sendCredToTikv,omitempty"`
 	// OnLine specifies whether online during restore
 	OnLine *bool `json:"onLine,omitempty"`
+	// Options means options for backup data to remote storage with BR. These options has highest priority.
+	Options []string `json:"options,omitempty"`
 }
 
 // BackupConditionType represents a valid condition of a Backup.
@@ -1277,8 +1363,10 @@ type BackupStatus struct {
 	// BackupSize is the data size of the backup.
 	BackupSize int64 `json:"backupSize"`
 	// CommitTs is the snapshot time point of tidb cluster.
-	CommitTs   string            `json:"commitTs"`
-	Conditions []BackupCondition `json:"conditions"`
+	CommitTs string `json:"commitTs"`
+	// Phase is a user readable state inferred from the underlying Backup conditions
+	Phase      BackupConditionType `json:"phase"`
+	Conditions []BackupCondition   `json:"conditions"`
 }
 
 // +genclient
@@ -1402,7 +1490,7 @@ type RestoreCondition struct {
 type RestoreSpec struct {
 	corev1.ResourceRequirements `json:"resources,omitempty"`
 	// To is the tidb cluster that needs to restore.
-	To TiDBAccessConfig `json:"to,omitempty"`
+	To *TiDBAccessConfig `json:"to,omitempty"`
 	// Type is the backup type for tidb cluster.
 	Type BackupType `json:"backupType,omitempty"`
 	// TikvGCLifeTime is to specify the safe gc life time for restore.
@@ -1443,8 +1531,10 @@ type RestoreStatus struct {
 	// TimeCompleted is the time at which the restore was completed.
 	TimeCompleted metav1.Time `json:"timeCompleted"`
 	// CommitTs is the snapshot time point of tidb cluster.
-	CommitTs   string             `json:"commitTs"`
-	Conditions []RestoreCondition `json:"conditions"`
+	CommitTs string `json:"commitTs"`
+	// Phase is a user readable state inferred from the underlying Restore conditions
+	Phase      RestoreConditionType `json:"phase"`
+	Conditions []RestoreCondition   `json:"conditions"`
 }
 
 // +k8s:openapi-gen=true
@@ -1551,6 +1641,11 @@ type DMClusterSpec struct {
 	// Optional: Defaults to nil
 	// +optional
 	TLSCluster *TLSCluster `json:"tlsCluster,omitempty"`
+
+	// TLSClientSecretNames are the names of secrets which stores mysql/tidb server client certificates
+	// that used by dm-master and dm-worker.
+	// +optional
+	TLSClientSecretNames []string `json:"tlsClientSecretNames,omitempty"`
 
 	// Whether Hostnetwork is enabled for DM cluster Pods
 	// Optional: Defaults to false
@@ -1798,4 +1893,12 @@ type WorkerMember struct {
 type WorkerFailureMember struct {
 	PodName   string      `json:"podName,omitempty"`
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
+}
+
+// StorageVolume is TiKV storage information
+type StorageVolume struct {
+	Name             string  `json:"name"`
+	StorageClassName *string `json:"storageClassName,omitempty"`
+	StorageSize      string  `json:"storageSize"`
+	MountPath        string  `json:"mountPath"`
 }

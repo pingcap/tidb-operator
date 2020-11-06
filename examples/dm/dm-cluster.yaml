@@ -4,9 +4,8 @@ metadata:
   name: basic
   namespace: demo
 spec:
-  version: nightly
-  imagePullPolicy: Always
-  pvReclaimPolicy: Delete
+  version: v2.0.0-beta.2
+  pvReclaimPolicy: Retain
   discovery:
     address: "http://basic-discovery.demo:10261"
   master:
