@@ -9972,6 +9972,8 @@ spec:
                   type: integer
                 db:
                   type: string
+                image:
+                  type: string
                 logLevel:
                   type: string
                 onLine:
@@ -10438,6 +10440,8 @@ spec:
                   type: integer
                 db:
                   type: string
+                image:
+                  type: string
                 logLevel:
                   type: string
                 onLine:
@@ -10892,6 +10896,8 @@ spec:
                       format: int64
                       type: integer
                     db:
+                      type: string
+                    image:
                       type: string
                     logLevel:
                       type: string

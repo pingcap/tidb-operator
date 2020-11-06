@@ -1294,6 +1294,8 @@ type BRConfig struct {
 	SendCredToTikv *bool `json:"sendCredToTikv,omitempty"`
 	// OnLine specifies whether online during restore
 	OnLine *bool `json:"onLine,omitempty"`
+	// Image specifies the BR image used in the backup/restore
+	Image string `json:"image,omitempty"`
 	// Options means options for backup data to remote storage with BR. These options has highest priority.
 	Options []string `json:"options,omitempty"`
 }
