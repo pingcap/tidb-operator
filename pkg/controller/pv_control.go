@@ -187,10 +187,10 @@ func (c *realPVControl) UpdatePVInfo(obj runtime.Object, pv *corev1.PersistentVo
 		var updateErr error
 		updatePV, updateErr = c.kubeCli.CoreV1().PersistentVolumes().Update(pv)
 		if updateErr == nil {
-			klog.Infof("PV: [%s] updated successfully, %s: %s/%s", pvName, kind, ns, name)
+			klog.Errorf("PV: [%s] updated successfully, %s: %s/%s %s", pvName, kind, ns, name, pv.Spec.ClaimRef.Name)
 			return nil
 		}
-		klog.Errorf("failed to update PV: [%s], %s %s/%s, error: %v", pvName, kind, ns, name, err)
+		klog.Errorf("failed to update PV: [%s], %s %s/%s %S , error: %v", pvName, kind, ns, name, pv.Spec.ClaimRef.Name, updateErr)
 
 		if updated, err := c.pvLister.Get(pvName); err == nil {
 			// make a copy so we don't mutate the shared cache
@@ -204,6 +204,7 @@ func (c *realPVControl) UpdatePVInfo(obj runtime.Object, pv *corev1.PersistentVo
 	return updatePV, err
 
 }
+
 func (c *realPVControl) recordPVEvent(verb string, obj runtime.Object, objName, pvName string, err error) {
 	if err == nil {
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
@@ -287,6 +288,10 @@ func (c *FakePVControl) UpdateMetaInfo(obj runtime.Object, pv *corev1.Persistent
 	setIfNotEmpty(pv.Labels, label.MemberIDLabelKey, pvc.Labels[label.MemberIDLabelKey])
 	setIfNotEmpty(pv.Labels, label.StoreIDLabelKey, pvc.Labels[label.StoreIDLabelKey])
 	setIfNotEmpty(pv.Annotations, label.AnnPodNameKey, pvc.Annotations[label.AnnPodNameKey])
+	return pv, c.PVIndexer.Update(pv)
+}
+
+func (c *FakePVControl) UpdatePVInfo(obj runtime.Object, pv *corev1.PersistentVolume) (*corev1.PersistentVolume, error) {
 	return pv, c.PVIndexer.Update(pv)
 }
 
