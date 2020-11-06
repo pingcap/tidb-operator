@@ -169,6 +169,10 @@ function e2e::get_kube_version() {
     $KUBECTL_BIN --context $KUBECONTEXT version --short | awk '/Server Version:/ {print $3}'
 }
 
+function e2e::setup_namespaces() {
+    $KUBECTL_BIN create ns pingcap
+}
+
 # TODO: deprecate this
 function e2e::setup_helm_server() {
     $KUBECTL_BIN --context $KUBECONTEXT apply -f ${ROOT}/manifests/tiller-rbac.yaml
@@ -302,6 +306,7 @@ fi
 
 e2e::setup_local_pvs
 #e2e::setup_helm_server
+e2e::setup_namespaces
 
 if [ -n "$SKIP_GINKGO" ]; then
     echo "info: skipping ginkgo"
