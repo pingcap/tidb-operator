@@ -18,13 +18,13 @@ jobs:
         id: lczh
         uses: peter-evans/link-checker@v1
         with:
-          args: -c 32 -d /github/workspace -r -x "http://172.*|https://github.com/.*/pull/.*|https://github.com/.*/issues/.*|https://github.com/[^.\n]*$|http://127.0.0.1.*|http://localhost.*|.*.md" zh*
+          args: -c 32 -d /github/workspace -r -x "http://172.*|https://github.com/.*/pull/.*|https://github.com/.*/issues/.*|https://github.com/[^.\n]*$|http://127.0.0.1.*|http://localhost.*|https://shell.aliyun.com.*|.*.md" zh*
 
       - name: Check external links in en files
         id: lcen
         uses: peter-evans/link-checker@v1
         with:
-          args: -c 32 -d /github/workspace -r -x "http://172.*|https://github.com/.*/pull/.*|https://github.com/.*/issues/.*|https://github.com/[^.\n]*$|http://127.0.0.1.*|http://localhost.*|.*.md" en*
+          args: -c 32 -d /github/workspace -r -x "http://172.*|https://github.com/.*/pull/.*|https://github.com/.*/issues/.*|https://github.com/[^.\n]*$|http://127.0.0.1.*|http://localhost.*|https://shell.aliyun.com.*|.*.md" en*
 
       - name: Fail if there were external link errors
         if: ${{ steps.lczh.outputs.exit_code || steps.lcen.outputs.exit_code }}
