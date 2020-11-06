@@ -16,7 +16,6 @@ package monitor
 import (
 	"encoding/json"
 	"fmt"
-	"k8s.io/klog"
 	"sort"
 	"strconv"
 	"strings"
@@ -34,6 +33,7 @@ import (
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/klog"
 	"k8s.io/utils/pointer"
 )
 
