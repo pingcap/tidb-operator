@@ -357,7 +357,7 @@ var _ PodControlInterface = &FakePodControl{}
 
 func PdNameWithPodName(tc *v1alpha1.TidbCluster, pod *corev1.Pod) string {
 	name := pod.Name
-	if len(tc.Spec.ClusterDomain) > 0 {
+	if tc.IsMultiClusterEnabled() {
 		name = fmt.Sprintf("%s.%s-pd-peer.%s.svc.%s", pod.Name, tc.GetName(), tc.Namespace, tc.Spec.ClusterDomain)
 		if _, exist := tc.Status.PD.Members[name]; !exist {
 			name = pod.Name

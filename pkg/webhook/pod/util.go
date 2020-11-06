@@ -171,7 +171,7 @@ func podDeleteEventMessage(name string) string {
 
 func PdNameWithPodName(tc *v1alpha1.TidbCluster, pod *core.Pod) string {
 	name := pod.Name
-	if len(tc.Spec.ClusterDomain) > 0 {
+	if tc.IsMultiClusterEnabled() {
 		name = fmt.Sprintf("%s.%s-pd-peer.%s.svc.%s", pod.Name, tc.GetName(), tc.Namespace, tc.Spec.ClusterDomain)
 		if _, exist := tc.Status.PD.Members[name]; !exist {
 			name = pod.Name
@@ -183,7 +183,7 @@ func PdNameWithPodName(tc *v1alpha1.TidbCluster, pod *core.Pod) string {
 func TikvSVCAddressWithPodName(tc *v1alpha1.TidbCluster, pod *core.Pod) string {
 	var name string
 	name = fmt.Sprintf("%s.%s-tikv-peer.%s.svc", pod.Name, tc.GetName(), tc.Namespace)
-	if len(tc.Spec.ClusterDomain) > 0 {
+	if tc.IsMultiClusterEnabled() {
 		// TODO: fix when upgrade from the cluster without ClusterDomain
 		name = fmt.Sprintf("%s.%s-tikv-peer.%s.svc.%s", pod.Name, tc.GetName(), tc.Namespace, tc.Spec.ClusterDomain)
 	}
@@ -192,7 +192,7 @@ func TikvSVCAddressWithPodName(tc *v1alpha1.TidbCluster, pod *core.Pod) string {
 
 func TikvMemberWithPodName(tc *v1alpha1.TidbCluster, pod *core.Pod) string {
 	name := pod.Name
-	if len(tc.Spec.ClusterDomain) > 0 {
+	if tc.IsMultiClusterEnabled() {
 		name = fmt.Sprintf("%s.%s-tikv-peer.%s.svc.%s", pod.Name, tc.GetName(), tc.Namespace, tc.Spec.ClusterDomain)
 		if _, exist := tc.Status.PD.Members[name]; !exist {
 			name = pod.Name

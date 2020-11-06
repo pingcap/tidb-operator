@@ -21,12 +21,12 @@ import (
 // GetPDClient gets the pd client from the TidbCluster
 func GetPDClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) pdapi.PDClient {
 	if tc.IsHeterogeneous() {
-		if len(tc.Spec.ClusterDomain) > 0 {
+		if tc.IsMultiClusterEnabled() {
 			return pdControl.GetClusterRefPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.Spec.ClusterDomain, tc.IsTLSClusterEnabled())
 		}
 		return pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
 	}
-	if len(tc.Spec.ClusterDomain) > 0 {
+	if tc.IsMultiClusterEnabled() {
 		return pdControl.GetClusterRefPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.ClusterDomain, tc.IsTLSClusterEnabled())
 	}
 	return pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled())

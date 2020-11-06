@@ -550,6 +550,10 @@ func (tc *TidbCluster) IsTLSClusterEnabled() bool {
 	return tc.Spec.TLSCluster != nil && tc.Spec.TLSCluster.Enabled
 }
 
+func (tc *TidbCluster) IsMultiClusterEnabled() bool {
+	return len(tc.Spec.ClusterDomain) > 0
+}
+
 func (tc *TidbCluster) Scheme() string {
 	if tc.IsTLSClusterEnabled() {
 		return "https"
