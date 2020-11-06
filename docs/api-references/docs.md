@@ -2434,6 +2434,17 @@ bool
 </tr>
 <tr>
 <td>
+<code>image</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Image specifies the BR image used in the backup/restore</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>options</code></br>
 <em>
 []string
