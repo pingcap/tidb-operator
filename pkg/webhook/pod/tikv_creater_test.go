@@ -53,7 +53,7 @@ func TestAdmitCreateTiKVPod(t *testing.T) {
 			Store: &pdapi.MetaStore{
 				Store: &metapb.Store{
 					Id:      uint64(storeID),
-					Address: pod.Name+ "." + ownerTc.Name + "-tikv-peer." + ownerTc.Namespace + ".svc" + ":8080",
+					Address: pod.Name + "." + ownerTc.Name + "-tikv-peer." + ownerTc.Namespace + ".svc" + ":8080",
 				},
 			},
 			Status: &pdapi.StoreStatus{LeaderCount: 1},
@@ -71,7 +71,7 @@ func TestAdmitCreateTiKVPod(t *testing.T) {
 		endEvictLeader = true
 		return nil, nil
 	})
-	
+
 	resp = admitCreateTiKVPod(pod, pdClient, ownerTc)
 	g.Expect(resp.Allowed).Should(BeTrue())
 	g.Expect(endEvictLeader).Should(BeTrue())
