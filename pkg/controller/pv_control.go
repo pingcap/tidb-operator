@@ -190,7 +190,7 @@ func (c *realPVControl) UpdatePVInfo(obj runtime.Object, pv *corev1.PersistentVo
 			klog.Infof("PV: [%s] updated successfully, %s: %s/%s", pvName, kind, ns, name)
 			return nil
 		}
-		klog.Errorf("failed to update PV: [%s], %s %s/%s, error: %v", pvName, kind, ns, name, err)
+		klog.Errorf("failed to update PV: [%s], %s %s/%s, error: %v", pvName, kind, ns, name, updateErr)
 
 		if updated, err := c.pvLister.Get(pvName); err == nil {
 			// make a copy so we don't mutate the shared cache
