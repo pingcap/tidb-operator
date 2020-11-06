@@ -398,19 +398,21 @@ func (m *MonitorManager) patchTidbClusterStatus(tcRef *v1alpha1.TidbClusterRef, 
 
 func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMonitor) (bool, error) {
 	// Determine whether there is an old deployment
+	deploymentName := GetMonitorObjectName(monitor)
 	exist, err := m.deps.TypedControl.Exist(client.ObjectKey{
 		Namespace: monitor.Namespace,
-		Name:      monitor.Name,
+		Name:      deploymentName,
 	}, &appsv1.Deployment{})
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s deployment failed to get,err: %v", monitor.Namespace, monitor.Name, err)
 		return false, err
 	}
 	if exist {
+		klog.Errorf("tm[%s/%s]'s exist ", monitor.Namespace, monitor.Name)
 		// if deployment exist, delete it and wait next reconcile.
 		err = m.deps.TypedControl.Delete(monitor, &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      monitor.Name,
+				Name:      deploymentName,
 				Namespace: monitor.Namespace,
 			},
 		})
@@ -421,6 +423,7 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 
 		return !monitor.Spec.Persistent, nil
 	} else {
+		klog.Errorf("tm[%s/%s]'s not  exist ", monitor.Namespace, monitor.Name)
 		if monitor.Spec.Persistent {
 			deploymentPvcName := GetMonitorObjectName(monitor)
 			deploymentPvc, err := m.deps.PVCLister.PersistentVolumeClaims(monitor.Namespace).Get(deploymentPvcName)
