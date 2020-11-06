@@ -75,7 +75,7 @@ func TestGetMonitorConfigMap(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			cm, err := getMonitorConfigMap(&tt.cluster, &tt.monitor)
+			cm, err := getMonitorConfigMap(&tt.cluster, nil, &tt.monitor)
 			g.Expect(err).NotTo(HaveOccurred())
 			if tt.expected == nil {
 				g.Expect(cm).To(BeNil())
@@ -771,9 +771,9 @@ func TestGetMonitorVolumes(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			cm, err := getMonitorConfigMap(&tt.cluster, &tt.monitor)
+			cm, err := getMonitorConfigMap(&tt.cluster, nil, &tt.monitor)
 			g.Expect(err).NotTo(HaveOccurred())
-			sa := getMonitorVolumes(cm, &tt.monitor, &tt.cluster)
+			sa := getMonitorVolumes(cm, &tt.monitor, &tt.cluster, nil)
 			if tt.expected == nil {
 				g.Expect(sa).To(BeNil())
 				return
@@ -873,7 +873,7 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			sa := getMonitorPrometheusContainer(&tt.monitor, &tt.cluster)
+			sa := getMonitorPrometheusContainer(&tt.monitor, &tt.cluster, nil)
 			if tt.expected == nil {
 				g.Expect(sa).To(BeNil())
 				return
