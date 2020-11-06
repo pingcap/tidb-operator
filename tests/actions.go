@@ -586,7 +586,7 @@ func (oa *operatorActions) DeployOperatorOrDie(info *OperatorConfig) {
 func (oa *operatorActions) CleanOperator(info *OperatorConfig) error {
 	klog.Infof("cleaning tidb-operator %s", info.ReleaseName)
 
-	res, err := exec.Command("helm", "del", "--purge", info.ReleaseName).CombinedOutput()
+	res, err := exec.Command("helm", "uninstall", info.ReleaseName).CombinedOutput()
 
 	if err == nil || !releaseIsNotFound(err) {
 		return nil

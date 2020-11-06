@@ -306,7 +306,7 @@ fi
 
 e2e::setup_local_pvs
 #e2e::setup_helm_server
-e2e::setup_namespaces
+#e2e::setup_namespaces
 
 if [ -n "$SKIP_GINKGO" ]; then
     echo "info: skipping ginkgo"

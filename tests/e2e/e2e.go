@@ -284,6 +284,10 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	ginkgo.By("Labeling nodes")
 	oa := tests.NewOperatorActions(cli, kubeCli, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, nil, e2econfig.TestConfig, nil, nil, nil)
 	oa.LabelNodesOrDie()
+	_, err = kubeCli.CoreV1().Namespaces().Create(&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "pingcap"}})
+	if err != nil {
+		panic(err)
+	}
 	if e2econfig.TestConfig.InstallOperator {
 		ocfg := e2econfig.NewDefaultOperatorConfig(e2econfig.TestConfig)
 		ginkgo.By("Installing CRDs")
