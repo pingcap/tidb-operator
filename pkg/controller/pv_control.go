@@ -37,6 +37,7 @@ import (
 type PVControlInterface interface {
 	PatchPVReclaimPolicy(runtime.Object, *corev1.PersistentVolume, corev1.PersistentVolumeReclaimPolicy) error
 	UpdateMetaInfo(runtime.Object, *corev1.PersistentVolume) (*corev1.PersistentVolume, error)
+	UpdatePVInfo(obj runtime.Object, pv *corev1.PersistentVolume) (*corev1.PersistentVolume, error)
 }
 
 type realPVControl struct {
@@ -146,6 +147,7 @@ func (c *realPVControl) UpdateMetaInfo(obj runtime.Object, pv *corev1.Persistent
 	labels := pv.GetLabels()
 	ann := pv.GetAnnotations()
 	var updatePV *corev1.PersistentVolume
+	klog.Infof("PV: [%s] updated pv claimRef xxx , %s: %s/%s", pvName, kind, ns, name)
 	err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		var updateErr error
 		updatePV, updateErr = c.kubeCli.CoreV1().PersistentVolumes().Update(pv)
@@ -169,6 +171,39 @@ func (c *realPVControl) UpdateMetaInfo(obj runtime.Object, pv *corev1.Persistent
 	return updatePV, err
 }
 
+func (c *realPVControl) UpdatePVInfo(obj runtime.Object, pv *corev1.PersistentVolume) (*corev1.PersistentVolume, error) {
+	metaObj, ok := obj.(metav1.Object)
+	if !ok {
+		return nil, fmt.Errorf("%+v is not a runtime.Object, cannot get controller from it", obj)
+	}
+
+	ns := metaObj.GetNamespace()
+	name := metaObj.GetName()
+	kind := obj.GetObjectKind().GroupVersionKind().Kind
+	pvName := pv.Name
+	var updatePV *corev1.PersistentVolume
+	klog.Infof("PV: [%s] updated pv claimRef new xxx , %s: %s/%s", pvName, kind, ns, name)
+	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		var updateErr error
+		updatePV, updateErr = c.kubeCli.CoreV1().PersistentVolumes().Update(pv)
+		if updateErr == nil {
+			klog.Infof("PV: [%s] updated successfully, %s: %s/%s", pvName, kind, ns, name)
+			return nil
+		}
+		klog.Errorf("failed to update PV: [%s], %s %s/%s, error: %v", pvName, kind, ns, name, err)
+
+		if updated, err := c.pvLister.Get(pvName); err == nil {
+			// make a copy so we don't mutate the shared cache
+			pv = updated.DeepCopy()
+		} else {
+			utilruntime.HandleError(fmt.Errorf("error getting updated PV %s/%s from lister: %v", ns, pvName, err))
+		}
+		return updateErr
+	})
+
+	return updatePV, err
+
+}
 func (c *realPVControl) recordPVEvent(verb string, obj runtime.Object, objName, pvName string, err error) {
 	if err == nil {
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
