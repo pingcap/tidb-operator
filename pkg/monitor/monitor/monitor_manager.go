@@ -36,6 +36,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	discoverycachedmemory "k8s.io/client-go/discovery/cached/memory"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -447,16 +448,35 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 					return false, err
 				}
 
-				err = m.deps.TypedControl.Delete(monitor, &corev1.PersistentVolumeClaim{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      deploymentName,
-						Namespace: monitor.Namespace,
-					},
+				err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+					err = m.deps.TypedControl.Delete(monitor, &corev1.PersistentVolumeClaim{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      deploymentName,
+							Namespace: monitor.Namespace,
+						},
+					})
+					if err != nil {
+						klog.Errorf("tm[%s/%s]'s failed to delete deployment pvc,err: %v", monitor.Namespace, monitor.Name, err)
+						return err
+					}
+					_, err := m.deps.PVCLister.PersistentVolumeClaims(monitor.Namespace).Get(deploymentPvcName)
+					klog.Errorf("tm[%s/%s]'s get deployment pvc ", monitor.Namespace, monitor.Name)
+					if err != nil {
+						// If deploymentPvc not found ,not need to migrate.
+						if errors.IsNotFound(err) {
+							return nil
+						}
+						return err
+					}
+					return fmt.Errorf("deployment pvc %s/%s is exist: %v", monitor.Namespace, monitor.Name, err)
+
 				})
+
 				if err != nil {
-					klog.Errorf("tm[%s/%s]'s failed to delete deployment pvc,err: %v", monitor.Namespace, monitor.Name, err)
+					klog.Errorf("tm[%s/%s]'s pvc delete failed,err: %v", monitor.Namespace, monitor.Name, err)
 					return false, err
 				}
+				klog.Errorf("tm[%s/%s]'s pvc delete successfully,err: %v", monitor.Namespace, monitor.Name, err)
 				// if deployment pvc exist, change pv bind sts pvc and delete deployment pvc.
 				// update meta info for pv
 				deploymentPv, err := m.deps.PVLister.Get(deploymentPvc.Spec.VolumeName)
@@ -486,21 +506,6 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 					return false, nil
 				}
 
-			}
-		} else {
-			if len(monitor.Status.MigratePV) > 0 {
-				deploymentPv, err := m.deps.PVLister.Get(monitor.Status.MigratePV)
-				if err != nil && !errors.IsNotFound(err) {
-					klog.Errorf("tm[%s/%s]'s pv failed to get migrate pv,err: %v", monitor.Namespace, monitor.Name, err)
-					return false, err
-				}
-				if deploymentPv.Spec.ClaimRef.Name == monitor.Status.MigratePV {
-					klog.Errorf("tm[%s/%s]'s pv update migrate pv ClaimRef successfully", monitor.Namespace, monitor.Name)
-					return true, nil
-				} else {
-					klog.Errorf("tm[%s/%s]'s pv update migrate pv ClaimRef failed", monitor.Namespace, monitor.Name)
-					return false, nil
-				}
 			}
 		}
 
