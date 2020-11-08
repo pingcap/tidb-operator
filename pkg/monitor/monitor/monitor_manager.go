@@ -447,18 +447,19 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 					klog.Errorf("tm[%s/%s]'s pvc failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 					return false, err
 				}
+				err = m.deps.TypedControl.Delete(monitor, &corev1.PersistentVolumeClaim{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      deploymentPvcName,
+						Namespace: monitor.Namespace,
+					},
+				})
+				if err != nil {
+					klog.Errorf("tm[%s/%s]'s failed to delete deployment pvc,err: %v", monitor.Namespace, monitor.Name, err)
+					return false, err
+				}
 
+				// must wait pvc delete
 				err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-					err = m.deps.TypedControl.Delete(monitor, &corev1.PersistentVolumeClaim{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      deploymentName,
-							Namespace: monitor.Namespace,
-						},
-					})
-					if err != nil {
-						klog.Errorf("tm[%s/%s]'s failed to delete deployment pvc,err: %v", monitor.Namespace, monitor.Name, err)
-						return err
-					}
 					_, err := m.deps.PVCLister.PersistentVolumeClaims(monitor.Namespace).Get(deploymentPvcName)
 					klog.Errorf("tm[%s/%s]'s get deployment pvc ", monitor.Namespace, monitor.Name)
 					if err != nil {
