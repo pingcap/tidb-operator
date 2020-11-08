@@ -88,7 +88,7 @@ func (c *realPVControl) PatchPVClaimRef(obj runtime.Object, pv *corev1.Persisten
 
 	name := metaObj.GetName()
 	pvName := pv.GetName()
-	patchBytes := []byte(fmt.Sprintf(`{"spec":{"claimRef":{"name":"%s"}}`, persistentVolumeClaim.Name))
+	patchBytes := []byte(fmt.Sprintf(`{"spec":{"claimRef":{"name":"%s"}}}`, persistentVolumeClaim.Name))
 
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		_, err := c.kubeCli.CoreV1().PersistentVolumes().Patch(pvName, types.StrategicMergePatchType, patchBytes)
@@ -189,41 +189,6 @@ func (c *realPVControl) UpdateMetaInfo(obj runtime.Object, pv *corev1.Persistent
 	return updatePV, err
 }
 
-func (c *realPVControl) UpdatePVInfo(obj runtime.Object, pv *corev1.PersistentVolume) (*corev1.PersistentVolume, error) {
-	metaObj, ok := obj.(metav1.Object)
-	if !ok {
-		return nil, fmt.Errorf("%+v is not a runtime.Object, cannot get controller from it", obj)
-	}
-
-	ns := metaObj.GetNamespace()
-	name := metaObj.GetName()
-	kind := obj.GetObjectKind().GroupVersionKind().Kind
-	pvName := pv.Name
-	var updatePV *corev1.PersistentVolume
-	klog.Infof("PV: [%s] updated pv claimRef new xxx , %s: %s/%s", pvName, kind, ns, name)
-	updateErr := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		var updateErr error
-		updatePV, updateErr = c.kubeCli.CoreV1().PersistentVolumes().Patch(pv)
-		if updateErr == nil {
-			klog.Infof("PV: [%s] updated successfully, %s: %s/%s", pvName, kind, ns, name)
-			return nil
-		}
-		klog.Errorf("failed to update PV: [%s], %s %s/%s, error: %v", pvName, kind, ns, name, updateErr)
-
-		if updated, err := c.pvLister.Get(pvName); err == nil {
-			// make a copy so we don't mutate the shared cache
-			pv = updated.DeepCopy()
-		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated PV %s/%s from lister: %v", ns, pvName, err))
-		}
-		return updateErr
-	})
-	klog.Errorf("failed to update PV: [%s], %s %s/%s %S , error: %v", pvName, kind, ns, name, pv.Spec.ClaimRef.Name, updateErr)
-
-	return updatePV, updateErr
-
-}
-
 func (c *realPVControl) recordPVEvent(verb string, obj runtime.Object, objName, pvName string, err error) {
 	if err == nil {
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
@@ -310,8 +275,15 @@ func (c *FakePVControl) UpdateMetaInfo(obj runtime.Object, pv *corev1.Persistent
 	return pv, c.PVIndexer.Update(pv)
 }
 
-func (c *FakePVControl) UpdatePVInfo(obj runtime.Object, pv *corev1.PersistentVolume) (*corev1.PersistentVolume, error) {
-	return pv, c.PVIndexer.Update(pv)
+func (c *FakePVControl) PatchPVClaimRef(obj runtime.Object, pv *corev1.PersistentVolume, pvc corev1.PersistentVolumeClaim) error {
+	defer c.updatePVTracker.Inc()
+	if c.updatePVTracker.ErrorReady() {
+		defer c.updatePVTracker.Reset()
+		return c.updatePVTracker.GetError()
+	}
+	pv.Spec.ClaimRef.Name = pvc.Name
+
+	return c.PVIndexer.Update(pv)
 }
 
 var _ PVControlInterface = &FakePVControl{}

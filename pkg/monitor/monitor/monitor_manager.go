@@ -446,6 +446,17 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 					klog.Errorf("tm[%s/%s]'s pvc failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 					return false, err
 				}
+
+				err = m.deps.TypedControl.Delete(monitor, &corev1.PersistentVolumeClaim{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      deploymentName,
+						Namespace: monitor.Namespace,
+					},
+				})
+				if err != nil {
+					klog.Errorf("tm[%s/%s]'s failed to delete deployment pvc,err: %v", monitor.Namespace, monitor.Name, err)
+					return false, err
+				}
 				// if deployment pvc exist, change pv bind sts pvc and delete deployment pvc.
 				// update meta info for pv
 				deploymentPv, err := m.deps.PVLister.Get(deploymentPvc.Spec.VolumeName)
@@ -467,16 +478,7 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 					return false, err
 				}
 				if deploymentPv.Spec.ClaimRef.Name == stsPvc.Name {
-					err = m.deps.TypedControl.Delete(monitor, &corev1.PersistentVolumeClaim{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      deploymentName,
-							Namespace: monitor.Namespace,
-						},
-					})
-					if err != nil {
-						klog.Errorf("tm[%s/%s]'s failed to delete deployment pvc,err: %v", monitor.Namespace, monitor.Name, err)
-						return false, err
-					}
+					return true, nil
 				} else {
 					klog.Errorf("tm[%s/%s]'s pv failed to update meta", monitor.Namespace, monitor.Name)
 					return false, nil
