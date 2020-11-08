@@ -182,6 +182,7 @@ type TidbClusterRef struct {
 
 // TODO: sync status
 type TidbMonitorStatus struct {
+	MigratePV string `json:"migratePV,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

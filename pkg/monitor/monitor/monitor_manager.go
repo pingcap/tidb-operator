@@ -423,7 +423,7 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 
 		return !monitor.Spec.Persistent, nil
 	} else {
-		klog.Errorf("tm[%s/%s]'s not  exist ", monitor.Namespace, monitor.Name)
+		klog.Errorf("tm[%s/%s]'s monitor deployment not  exist ", monitor.Namespace, monitor.Name)
 		if monitor.Spec.Persistent {
 			deploymentPvcName := GetMonitorObjectName(monitor)
 			deploymentPvc, err := m.deps.PVCLister.PersistentVolumeClaims(monitor.Namespace).Get(deploymentPvcName)
@@ -435,7 +435,7 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 				}
 				return false, err
 			}
-			klog.Errorf("tm[%s/%s]'s deployment pvc exist ", monitor.Namespace, monitor.Name)
+			klog.Errorf("tm[%s/%s]'s deployment pvc is exist ", monitor.Namespace, monitor.Name)
 			// start change bind pvc.
 			if deploymentPvc != nil {
 				stsPvcName := fmt.Sprintf("monitor-data-%s-0", GetMonitorObjectName(monitor))
@@ -478,12 +478,29 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 					return false, err
 				}
 				if deploymentPv.Spec.ClaimRef.Name == stsPvc.Name {
+					klog.Errorf("tm[%s/%s]'s pv update ClaimRef successfully", monitor.Namespace, monitor.Name)
 					return true, nil
 				} else {
-					klog.Errorf("tm[%s/%s]'s pv failed to update meta", monitor.Namespace, monitor.Name)
+					monitor.Status.MigratePV = deploymentPv.Name
+					klog.Errorf("tm[%s/%s]'s pv update ClaimRef failed", monitor.Namespace, monitor.Name)
 					return false, nil
 				}
 
+			}
+		} else {
+			if len(monitor.Status.MigratePV) > 0 {
+				deploymentPv, err := m.deps.PVLister.Get(monitor.Status.MigratePV)
+				if err != nil && !errors.IsNotFound(err) {
+					klog.Errorf("tm[%s/%s]'s pv failed to get migrate pv,err: %v", monitor.Namespace, monitor.Name, err)
+					return false, err
+				}
+				if deploymentPv.Spec.ClaimRef.Name == monitor.Status.MigratePV {
+					klog.Errorf("tm[%s/%s]'s pv update migrate pv ClaimRef successfully", monitor.Namespace, monitor.Name)
+					return true, nil
+				} else {
+					klog.Errorf("tm[%s/%s]'s pv update migrate pv ClaimRef failed", monitor.Namespace, monitor.Name)
+					return false, nil
+				}
 			}
 		}
 
