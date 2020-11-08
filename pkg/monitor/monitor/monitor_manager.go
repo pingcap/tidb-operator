@@ -456,7 +456,7 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 				deploymentPv.Spec.ClaimRef.Name = stsPvc.Name
 				klog.Errorf("tm[%s/%s]'s update pv meta,ClaimRef: %v", monitor.Namespace, monitor.Name, deploymentPv.Spec.ClaimRef.Name)
 
-				_, err = m.deps.PVControl.UpdatePVInfo(monitor, deploymentPv)
+				err = m.deps.PVControl.PatchPVClaimRef(monitor, deploymentPv, *stsPvc)
 				if err != nil {
 					klog.Errorf("tm[%s/%s]'s failed to update pv meta,err: %v", monitor.Namespace, monitor.Name, err)
 					return false, err

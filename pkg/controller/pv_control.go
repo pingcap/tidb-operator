@@ -37,7 +37,7 @@ import (
 type PVControlInterface interface {
 	PatchPVReclaimPolicy(runtime.Object, *corev1.PersistentVolume, corev1.PersistentVolumeReclaimPolicy) error
 	UpdateMetaInfo(runtime.Object, *corev1.PersistentVolume) (*corev1.PersistentVolume, error)
-	UpdatePVInfo(obj runtime.Object, pv *corev1.PersistentVolume) (*corev1.PersistentVolume, error)
+	PatchPVClaimRef(runtime.Object, *corev1.PersistentVolume, corev1.PersistentVolumeClaim) error
 }
 
 type realPVControl struct {
@@ -47,7 +47,7 @@ type realPVControl struct {
 	recorder  record.EventRecorder
 }
 
-// NewRealPVControl creates a new PVControlInterface
+// NewRealPVControl creates a new PVControlInUpdatePVInfoterface
 func NewRealPVControl(
 	kubeCli kubernetes.Interface,
 	pvcLister corelisters.PersistentVolumeClaimLister,
@@ -71,6 +71,24 @@ func (c *realPVControl) PatchPVReclaimPolicy(obj runtime.Object, pv *corev1.Pers
 	name := metaObj.GetName()
 	pvName := pv.GetName()
 	patchBytes := []byte(fmt.Sprintf(`{"spec":{"persistentVolumeReclaimPolicy":"%s"}}`, reclaimPolicy))
+
+	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		_, err := c.kubeCli.CoreV1().PersistentVolumes().Patch(pvName, types.StrategicMergePatchType, patchBytes)
+		return err
+	})
+	c.recordPVEvent("patch", obj, name, pvName, err)
+	return err
+}
+
+func (c *realPVControl) PatchPVClaimRef(obj runtime.Object, pv *corev1.PersistentVolume, persistentVolumeClaim corev1.PersistentVolumeClaim) error {
+	metaObj, ok := obj.(metav1.Object)
+	if !ok {
+		return fmt.Errorf("%+v is not a runtime.Object, cannot get controller from it", obj)
+	}
+
+	name := metaObj.GetName()
+	pvName := pv.GetName()
+	patchBytes := []byte(fmt.Sprintf(`{"spec":{"claimRef":{"name":"%s"}}`, persistentVolumeClaim.Name))
 
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		_, err := c.kubeCli.CoreV1().PersistentVolumes().Patch(pvName, types.StrategicMergePatchType, patchBytes)
@@ -185,7 +203,7 @@ func (c *realPVControl) UpdatePVInfo(obj runtime.Object, pv *corev1.PersistentVo
 	klog.Infof("PV: [%s] updated pv claimRef new xxx , %s: %s/%s", pvName, kind, ns, name)
 	updateErr := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		var updateErr error
-		updatePV, updateErr = c.kubeCli.CoreV1().PersistentVolumes().Update(pv)
+		updatePV, updateErr = c.kubeCli.CoreV1().PersistentVolumes().Patch(pv)
 		if updateErr == nil {
 			klog.Infof("PV: [%s] updated successfully, %s: %s/%s", pvName, kind, ns, name)
 			return nil
