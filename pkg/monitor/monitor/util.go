@@ -720,13 +720,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 
 func getMonitorPVC(name string, monitor *v1alpha1.TidbMonitor) *core.PersistentVolumeClaim {
 	l := buildTidbMonitorLabel(monitor.Name)
-	var storageSize string
 
-	if len(monitor.Spec.Storage) < 1 {
-		storageSize = "0"
-	} else {
-		storageSize = monitor.Spec.Storage
-	}
 	volumeClaim := &core.PersistentVolumeClaim{
 		ObjectMeta: meta.ObjectMeta{
 			Name:        name,
@@ -745,7 +739,7 @@ func getMonitorPVC(name string, monitor *v1alpha1.TidbMonitor) *core.PersistentV
 	if len(monitor.Spec.Storage) > 0 {
 		volumeClaim.Spec.Resources = core.ResourceRequirements{
 			Requests: core.ResourceList{
-				core.ResourceStorage: resource.MustParse(storageSize),
+				core.ResourceStorage: resource.MustParse(monitor.Spec.Storage),
 			},
 		}
 	}
