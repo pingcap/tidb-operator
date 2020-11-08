@@ -16,8 +16,10 @@ package monitor
 import (
 	"encoding/json"
 	"fmt"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -36,7 +38,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	discoverycachedmemory "k8s.io/client-go/discovery/cached/memory"
-	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -458,19 +459,17 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 					return false, err
 				}
 
-				// must wait pvc delete
-				err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-					_, err := m.deps.PVCLister.PersistentVolumeClaims(monitor.Namespace).Get(deploymentPvcName)
+				err = wait.Poll(10*time.Second, 30*time.Minute, func() (done bool, err error) {
+					_, err = m.deps.PVCLister.PersistentVolumeClaims(monitor.Namespace).Get(deploymentPvcName)
 					klog.Errorf("tm[%s/%s]'s get deployment pvc ", monitor.Namespace, monitor.Name)
 					if err != nil {
 						// If deploymentPvc not found ,not need to migrate.
 						if errors.IsNotFound(err) {
-							return nil
+							return true, nil
 						}
-						return err
+						return false, err
 					}
-					return fmt.Errorf("deployment pvc %s/%s is exist: %v", monitor.Namespace, monitor.Name, err)
-
+					return false, fmt.Errorf("deployment pvc %s/%s is exist: %v", monitor.Namespace, monitor.Name, err)
 				})
 
 				if err != nil {
