@@ -1779,7 +1779,7 @@ func TestGetTiDBConfigMap(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							ConfigUpdateStrategy: &updateStrategy,
 						},
-						Config: mustConfig(&v1alpha1.TiDBConfig{
+						Config: mustTiDBConfig(&v1alpha1.TiDBConfig{
 							Lease: pointer.StringPtr("45s"),
 						}),
 					},
@@ -2260,18 +2260,6 @@ func TestBuildTiDBProbeHandler(t *testing.T) {
 	}
 	get = buildTiDBReadinessProbHandler(tc)
 	g.Expect(get).Should(Equal(defaultHandler))
-}
-
-func mustConfig(x interface{}) *v1alpha1.TiDBConfigWraper {
-	data, err := MarshalTOML(x)
-	if err != nil {
-		panic(err)
-	}
-
-	c := v1alpha1.NewTiDBConfig()
-	c.UnmarshalTOML(data)
-
-	return c
 }
 
 func newTidbClusterForTiDB() *v1alpha1.TidbCluster {
