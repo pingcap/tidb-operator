@@ -16,10 +16,6 @@ package monitor
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
-	"strings"
-	"time"
-
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/features"
@@ -35,11 +31,12 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/discovery"
 	discoverycachedmemory "k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sort"
+	"strings"
 )
 
 type MonitorManager struct {
@@ -451,25 +448,6 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 					klog.Errorf("smoothMigration tm[%s/%s]'s failed to delete deployment pvc,err: %v", monitor.Namespace, monitor.Name, err)
 					return false, err
 				}
-
-				err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-					_, err = m.deps.PVCLister.PersistentVolumeClaims(monitor.Namespace).Get(deploymentPvcName)
-					if err != nil {
-						// If deploymentPvc not found ,not need to migrate.
-						if errors.IsNotFound(err) {
-							klog.Errorf("smoothMigration tm[%s/%s]'s delete deployment pvc successfully ", monitor.Namespace, monitor.Name)
-							return true, nil
-						}
-						return false, err
-					}
-					return false, fmt.Errorf("deployment pvc %s/%s is exist: %v", monitor.Namespace, monitor.Name, err)
-				})
-
-				if err != nil {
-					klog.Errorf("smoothMigration tm[%s/%s]'s pvc delete failed,err: %v", monitor.Namespace, monitor.Name, err)
-					return false, err
-				}
-
 				stsPvcName := fmt.Sprintf("monitor-data-%s-0", GetMonitorObjectName(monitor))
 				// if deployment pvc exist, change pv bind sts pvc and delete deployment pvc.
 				// update meta info for pv
@@ -499,20 +477,6 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 
 					if err != nil {
 						klog.Errorf("smoothMigration tm[%s/%s]'s failed to create sts pvc,err: %v", monitor.Namespace, monitor.Name, err)
-						return false, err
-					}
-
-					err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-						stsPvc, err = m.deps.PVCLister.PersistentVolumeClaims(monitor.Namespace).Get(stsPvcName)
-						if err != nil {
-							klog.Errorf("smoothMigration tm[%s/%s]'s get statefulset pvc successfully ", monitor.Namespace, monitor.Name)
-							return false, err
-						}
-
-						return true, fmt.Errorf("statefulset pvc %s/%s is exist: %v", monitor.Namespace, monitor.Name, err)
-					})
-					if err != nil {
-						klog.Errorf("smoothMigration tm[%s/%s]'s  create sts pvc,err: %v", monitor.Namespace, monitor.Name, err)
 						return false, err
 					}
 					klog.Errorf("smoothMigration tm[%s/%s]'s pv update ClaimRef successfully", monitor.Namespace, monitor.Name)
