@@ -366,7 +366,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		})
 	}
 
-	brVolume := corev1.VolumeMount{
+	brVolumeMount := corev1.VolumeMount{
 		Name:      "br-bin",
 		ReadOnly:  false,
 		MountPath: util.BRBinPath,
@@ -402,7 +402,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 					Name:            "br",
 					Image:           brImage,
 					Command:         []string{"/bin/sh", "-c"},
-					Args:            []string{"cp /br /var/lib/br-bin/br; echo 'copy finished'"},
+					Args:            []string{"cp /br /var/lib/br-bin/br; echo 'BR copy finished'"},
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts:    []corev1.VolumeMount{brVolume},
 					Resources:       backup.Spec.ResourceRequirements,
