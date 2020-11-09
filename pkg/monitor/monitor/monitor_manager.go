@@ -422,22 +422,22 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 
 		return !monitor.Spec.Persistent, nil
 	} else {
-		klog.Errorf("smoothMigration tm[%s/%s]'s monitor deployment is  not exist ", monitor.Namespace, monitor.Name)
+		klog.Errorf("smoothMigration tm[%s/%s]'s monitor deployment is not exist", monitor.Namespace, monitor.Name)
 		if monitor.Spec.Persistent {
 			deploymentPvcName := GetMonitorObjectName(monitor)
 			deploymentPvc, err := m.deps.PVCLister.PersistentVolumeClaims(monitor.Namespace).Get(deploymentPvcName)
-			klog.Errorf("smoothMigration tm[%s/%s]'s get deployment pvc ", monitor.Namespace, monitor.Name)
+			klog.Errorf("smoothMigration tm[%s/%s]'s get deployment pvc", monitor.Namespace, monitor.Name)
 			if err != nil {
 				// If deploymentPvc not found ,not need to migrate.
 				if errors.IsNotFound(err) {
-					klog.Errorf("smoothMigration tm[%s/%s]'s deployment pvc is not exist ", monitor.Namespace, monitor.Name)
+					klog.Errorf("smoothMigration tm[%s/%s]'s deployment pvc is not exist", monitor.Namespace, monitor.Name)
 					return true, nil
 				}
 				return false, err
 			}
-			klog.Errorf("smoothMigration tm[%s/%s]'s deployment pvc is exist ", monitor.Namespace, monitor.Name)
 			// start change bind pvc.
 			if deploymentPvc != nil {
+				klog.Errorf("smoothMigration tm[%s/%s]'s deployment pvc is exist", monitor.Namespace, monitor.Name)
 				err = m.deps.TypedControl.Delete(monitor, &corev1.PersistentVolumeClaim{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      deploymentPvcName,
@@ -449,8 +449,6 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 					return false, err
 				}
 				stsPvcName := fmt.Sprintf("monitor-data-%s-0", GetMonitorObjectName(monitor))
-				// if deployment pvc exist, change pv bind sts pvc and delete deployment pvc.
-				// update meta info for pv
 				deploymentPv, err := m.deps.PVLister.Get(deploymentPvc.Spec.VolumeName)
 				if err != nil && !errors.IsNotFound(err) {
 					klog.Errorf("smoothMigration tm[%s/%s]'s pv failed to get,err: %v", monitor.Namespace, monitor.Name, err)
