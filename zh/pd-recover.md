@@ -53,7 +53,7 @@ kubectl get tc test -n test -o='go-template={{.status.clusterID}}{{"\n"}}'
 
 使用 `pd-recover` 恢复 PD 集群时，需要指定 `alloc-id`。`alloc-id` 的值需要是一个比当前已经分配的最大的 `Alloc ID` 更大的值。
 
-1. 参考[访问监控数据](monitor-a-tidb-cluster.md#访问监控数据)打开 TiDB 集群的 Prometheus 访问页面。
+1. 参考[访问监控数据](monitor-a-tidb-cluster.md#访问-grafana-监控面板)打开 TiDB 集群的 Prometheus 访问页面。
 
 2. 在输入框中输入 `pd_cluster_id` 并点击 `Execute` 按钮查询数据，获取查询结果中的最大值。
 

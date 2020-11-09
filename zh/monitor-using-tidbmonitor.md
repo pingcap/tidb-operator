@@ -39,12 +39,12 @@ spec:
   - name: basic
   prometheus:
     baseImage: prom/prometheus
-    version: v2.11.1
+    version: v2.18.1
     service:
       type: NodePort
   grafana:
     baseImage: grafana/grafana
-    version: 6.0.1
+    version: 6.1.6
   initializer:
     baseImage: pingcap/tidb-monitor-initializer
     version: v4.0.7
@@ -110,12 +110,12 @@ spec:
   storage: 5G
   prometheus:
     baseImage: prom/prometheus
-    version: v2.11.1
+    version: v2.18.1
     service:
       type: NodePort
   grafana:
     baseImage: grafana/grafana
-    version: 6.0.1
+    version: 6.1.6
     service:
       type: NodePort
   initializer:
@@ -153,12 +153,12 @@ spec:
   alertmanagerURL: "your-alert-manager-url"
   prometheus:
     baseImage: prom/prometheus
-    version: v2.11.1
+    version: v2.18.1
     service:
       type: NodePort
   grafana:
     baseImage: grafana/grafana
-    version: 6.0.1
+    version: 6.1.6
     service:
       type: NodePort
   initializer:
@@ -195,20 +195,20 @@ spec:
   persistent: false
   prometheus:
     baseImage: prom/prometheus
-    version: v2.11.1
+    version: v2.18.1
     ingress:
       hosts:
-      - exmaple.com
+      - example.com
       annotations:
         foo: "bar"
   grafana:
     baseImage: grafana/grafana
-    version: 6.0.1
+    version: 6.1.6
     service:
       type: ClusterIP
     ingress:
       hosts:
-        - exmaple.com
+        - example.com
       annotations:
         foo: "bar"
   initializer:
@@ -235,17 +235,17 @@ spec:
   persistent: false
   prometheus:
     baseImage: prom/prometheus
-    version: v2.11.1
+    version: v2.18.1
     ingress:
       hosts:
-      - exmaple.com
+      - example.com
       tls:
       - hosts:
-        - exmaple.com
+        - example.com
         secretName: testsecret-tls
   grafana:
     baseImage: grafana/grafana
-    version: 6.0.1
+    version: 6.1.6
     service:
       type: ClusterIP
   initializer:
@@ -257,9 +257,9 @@ spec:
   imagePullPolicy: IfNotPresent
 ```
 
- TLS Secret 必须包含名为 tls.crt 和 tls.key 的密钥，这些密钥包含用于 TLS 的证书和私钥，例如：
+TLS Secret 必须包含名为 tls.crt 和 tls.key 的密钥，这些密钥包含用于 TLS 的证书和私钥，例如：
 
- ```yaml
+```yaml
 apiVersion: v1
 kind: Secret
 metadata:
@@ -269,7 +269,13 @@ data:
   tls.crt: base64 encoded cert
   tls.key: base64 encoded key
 type: kubernetes.io/tls
- ```
+```
+
+在公有云 Kubernetes 集群中，通常可以[配置 Loadbalancer](https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/) 通过域名访问 Ingress。如果无法配置 Loadbalancer 服务，比如使用了 NodePort 作为 Ingress 的服务类型，可通过与如下命令等价的方式访问服务：
+
+```shell
+curl -H "Host: example.com" ${node_ip}:${NodePort}
+```
 
 ## 监控多集群
 
@@ -292,12 +298,12 @@ spec:
   alertmanagerURL: "your-alert-manager-url"
   prometheus:
     baseImage: prom/prometheus
-    version: v2.11.1
+    version: v2.18.1
     service:
       type: NodePort
   grafana:
     baseImage: grafana/grafana
-    version: 6.0.1
+    version: 6.1.6
     service:
       type: NodePort
   initializer:
