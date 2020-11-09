@@ -494,12 +494,23 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 				if deploymentPv.Spec.ClaimRef.Name == stsPvcName {
 					stsPvcName := fmt.Sprintf("monitor-data-%s-0", GetMonitorObjectName(monitor))
 					stsPvc := getMonitorPVC(stsPvcName, monitor)
+					stsPvc.Spec.VolumeName = deploymentPv.Name
 					stsPvc, err := m.deps.TypedControl.CreateOrUpdatePVC(monitor, stsPvc, false)
 
 					if err != nil {
 						klog.Errorf("smoothMigration tm[%s/%s]'s failed to create sts pvc,err: %v", monitor.Namespace, monitor.Name, err)
 						return false, err
 					}
+
+					err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+						stsPvc, err = m.deps.PVCLister.PersistentVolumeClaims(monitor.Namespace).Get(stsPvcName)
+						if err != nil {
+							klog.Errorf("smoothMigration tm[%s/%s]'s get statefulset pvc successfully ", monitor.Namespace, monitor.Name)
+							return false, err
+						}
+
+						return true, fmt.Errorf("statefulset pvc %s/%s is exist: %v", monitor.Namespace, monitor.Name, err)
+					})
 
 					klog.Errorf("smoothMigration tm[%s/%s]'s pv update ClaimRef successfully", monitor.Namespace, monitor.Name)
 					return true, nil
