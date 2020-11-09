@@ -436,52 +436,43 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 				return false, err
 			}
 			// start change bind pvc.
-			if deploymentPvc != nil {
-				klog.Errorf("smoothMigration tm[%s/%s]'s deployment pvc is exist", monitor.Namespace, monitor.Name)
-				err = m.deps.TypedControl.Delete(monitor, &corev1.PersistentVolumeClaim{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      deploymentPvcName,
-						Namespace: monitor.Namespace,
-					},
-				})
-				if err != nil {
-					klog.Errorf("smoothMigration tm[%s/%s]'s failed to delete deployment pvc,err: %v", monitor.Namespace, monitor.Name, err)
-					return false, err
-				}
-				stsPvcName := fmt.Sprintf("monitor-data-%s-0", GetMonitorObjectName(monitor))
-				deploymentPv, err := m.deps.PVLister.Get(deploymentPvc.Spec.VolumeName)
-				if err != nil && !errors.IsNotFound(err) {
-					klog.Errorf("smoothMigration tm[%s/%s]'s pv failed to get,err: %v", monitor.Namespace, monitor.Name, err)
-					return false, err
-				}
-				deploymentPv.Spec.ClaimRef.Name = stsPvcName
-				klog.Errorf("smoothMigration tm[%s/%s]'s update pv meta,ClaimRef: %v", monitor.Namespace, monitor.Name, deploymentPv.Spec.ClaimRef.Name)
-
-				err = m.deps.PVControl.PatchPVClaimRef(monitor, deploymentPv, stsPvcName)
-				if err != nil {
-					klog.Errorf("smoothMigration tm[%s/%s]'s failed to update pv meta,err: %v", monitor.Namespace, monitor.Name, err)
-					return false, err
-				}
-				deploymentPv, err = m.deps.PVLister.Get(deploymentPvc.Spec.VolumeName)
-				if err != nil {
-					klog.Errorf("smoothMigration tm[%s/%s]'s pv failed to get,err: %v", monitor.Namespace, monitor.Name, err)
-					return false, err
-				}
-				if deploymentPv.Spec.ClaimRef.Name == stsPvcName {
-					stsPvcName := fmt.Sprintf("monitor-data-%s-0", GetMonitorObjectName(monitor))
-					stsPvc := getMonitorPVC(stsPvcName, monitor)
-					stsPvc.Spec.VolumeName = deploymentPv.Name
-					stsPvc, err := m.deps.TypedControl.CreateOrUpdatePVC(monitor, stsPvc, false)
-
-					if err != nil {
-						klog.Errorf("smoothMigration tm[%s/%s]'s failed to create sts pvc,err: %v", monitor.Namespace, monitor.Name, err)
-						return false, err
-					}
-					klog.Errorf("smoothMigration tm[%s/%s]'s pv update ClaimRef successfully", monitor.Namespace, monitor.Name)
-					return true, nil
-				}
-
+			klog.Errorf("smoothMigration tm[%s/%s]'s deployment pvc is exist", monitor.Namespace, monitor.Name)
+			err = m.deps.TypedControl.Delete(monitor, &corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      deploymentPvcName,
+					Namespace: monitor.Namespace,
+				},
+			})
+			if err != nil {
+				klog.Errorf("smoothMigration tm[%s/%s]'s failed to delete deployment pvc,err: %v", monitor.Namespace, monitor.Name, err)
+				return false, err
 			}
+			stsPvcName := fmt.Sprintf("monitor-data-%s-0", GetMonitorObjectName(monitor))
+			deploymentPv, err := m.deps.PVLister.Get(deploymentPvc.Spec.VolumeName)
+			if err != nil && !errors.IsNotFound(err) {
+				klog.Errorf("smoothMigration tm[%s/%s]'s pv failed to get,err: %v", monitor.Namespace, monitor.Name, err)
+				return false, err
+			}
+			deploymentPv.Spec.ClaimRef.Name = stsPvcName
+			klog.Errorf("smoothMigration tm[%s/%s]'s update pv meta,ClaimRef: %v", monitor.Namespace, monitor.Name, deploymentPv.Spec.ClaimRef.Name)
+
+			err = m.deps.PVControl.PatchPVClaimRef(monitor, deploymentPv, stsPvcName)
+			if err != nil {
+				klog.Errorf("smoothMigration tm[%s/%s]'s failed to update pv meta,err: %v", monitor.Namespace, monitor.Name, err)
+				return false, err
+			}
+
+			stsPvc := getMonitorPVC(stsPvcName, monitor)
+			stsPvc.Spec.VolumeName = deploymentPv.Name
+			_, err = m.deps.TypedControl.CreateOrUpdatePVC(monitor, stsPvc, false)
+
+			if err != nil {
+				klog.Errorf("smoothMigration tm[%s/%s]'s failed to create sts pvc,err: %v", monitor.Namespace, monitor.Name, err)
+				return false, err
+			}
+			klog.Errorf("smoothMigration tm[%s/%s]'s pv update ClaimRef successfully", monitor.Namespace, monitor.Name)
+			return true, nil
+
 		}
 
 	}
