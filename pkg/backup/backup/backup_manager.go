@@ -371,7 +371,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		ReadOnly:  false,
 		MountPath: util.BRBinPath,
 	}
-	volumeMounts = append(volumeMounts, brVolume)
+	volumeMounts = append(volumeMounts, brVolumeMount)
 
 	volumes = append(volumes, corev1.Volume{
 		Name: "br-bin",
@@ -386,8 +386,8 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	}
 
 	brImage := "pingcap/br:" + tikvVersion
-	if backup.Spec.BR.Image != "" {
-		brImage = backup.Spec.BR.Image
+	if backup.Spec.ToolImage != "" {
+		brImage = backup.Spec.ToolImage
 	}
 
 	podSpec := &corev1.PodTemplateSpec{
@@ -402,9 +402,9 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 					Name:            "br",
 					Image:           brImage,
 					Command:         []string{"/bin/sh", "-c"},
-					Args:            []string{"cp /br /var/lib/br-bin/br; echo 'BR copy finished'"},
+					Args:            []string{fmt.Sprintf("cp /br %s/br; echo 'BR copy finished'", util.BRBinPath)},
 					ImagePullPolicy: corev1.PullIfNotPresent,
-					VolumeMounts:    []corev1.VolumeMount{brVolume},
+					VolumeMounts:    []corev1.VolumeMount{brVolumeMount},
 					Resources:       backup.Spec.ResourceRequirements,
 				},
 			},

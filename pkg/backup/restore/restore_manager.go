@@ -347,12 +347,12 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		})
 	}
 
-	brVolume := corev1.VolumeMount{
+	brVolumeMount := corev1.VolumeMount{
 		Name:      "br-bin",
 		ReadOnly:  false,
 		MountPath: util.BRBinPath,
 	}
-	volumeMounts = append(volumeMounts, brVolume)
+	volumeMounts = append(volumeMounts, brVolumeMount)
 
 	volumes = append(volumes, corev1.Volume{
 		Name: "br-bin",
@@ -367,8 +367,8 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 	}
 
 	brImage := "pingcap/br:" + tikvVersion
-	if restore.Spec.BR.Image != "" {
-		brImage = restore.Spec.BR.Image
+	if restore.Spec.ToolImage != "" {
+		brImage = restore.Spec.ToolImage
 	}
 
 	// TODO: need add ResourceRequirement for restore job
@@ -384,9 +384,9 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 					Name:            "br",
 					Image:           brImage,
 					Command:         []string{"/bin/sh", "-c"},
-					Args:            []string{"cp /br /var/lib/br-bin/br; echo 'copy finished'"},
+					Args:            []string{fmt.Sprintf("cp /br %s/br; echo 'BR copy finished'", util.BRBinPath)},
 					ImagePullPolicy: corev1.PullIfNotPresent,
-					VolumeMounts:    []corev1.VolumeMount{brVolume},
+					VolumeMounts:    []corev1.VolumeMount{brVolumeMount},
 					Resources:       restore.Spec.ResourceRequirements,
 				},
 			},

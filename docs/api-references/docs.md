@@ -215,6 +215,18 @@ DumplingConfig
 </tr>
 <tr>
 <td>
+<code>image</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>imagePullSecrets</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#localobjectreference-v1-core">
@@ -1006,6 +1018,18 @@ string
 </td>
 <td>
 <p>Specify service account of restore</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>image</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now</p>
 </td>
 </tr>
 <tr>
@@ -2434,17 +2458,6 @@ bool
 </tr>
 <tr>
 <td>
-<code>image</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Image specifies the BR image used in the backup/restore</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>options</code></br>
 <em>
 []string
@@ -2854,6 +2867,18 @@ DumplingConfig
 <td>
 <em>(Optional)</em>
 <p>Base tolerations of backup Pods, components may add more tolerations upon this respectively</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>image</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now</p>
 </td>
 </tr>
 <tr>
@@ -10179,6 +10204,18 @@ string
 </td>
 <td>
 <p>Specify service account of restore</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>image</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now</p>
 </td>
 </tr>
 <tr>
