@@ -174,6 +174,10 @@ type TidbClusterRef struct {
 
 	// Name is the name of TidbCluster object
 	Name string `json:"name"`
+
+	// ClusterDomain is the domain of TidbCluster object
+	// +optional
+	ClusterDomain string `json:"clusterDomain,omitempty"`
 }
 
 // TODO: sync status

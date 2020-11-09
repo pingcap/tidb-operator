@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -44,6 +45,9 @@ const (
 	// pdClusterCertPath is where the cert for inter-cluster communication stored (if any)
 	pdClusterCertPath  = "/var/lib/pd-tls"
 	tidbClientCertPath = "/var/lib/tidb-client-tls"
+
+	//find a better way to manage store only managed by pd in Operator
+	pdMemberLimitPattern = `%s-pd-\d+\.%s-pd-peer\.%s\.svc%s\:\d+`
 )
 
 type pdMemberManager struct {
@@ -208,6 +212,14 @@ func (m *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PD cluster running", ns, tcName)
 	}
 
+	// Force update takes precedence over scaling because force upgrade won't take effect when cluster gets stuck at scaling
+	if !tc.Status.PD.Synced && NeedForceUpgrade(tc.Annotations) {
+		tc.Status.PD.Phase = v1alpha1.UpgradePhase
+		setUpgradePartition(newPDSet, 0)
+		errSTS := updateStatefulSet(m.deps.StatefulSetControl, tc, newPDSet, oldPDSet)
+		return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd needs force upgrade, %v", ns, tcName, errSTS)
+	}
+
 	// Scaling takes precedence over upgrading because:
 	// - if a pd fails in the upgrading, users may want to delete it or add
 	//   new replicas
@@ -224,16 +236,6 @@ func (m *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 			if err := m.failover.Failover(tc); err != nil {
 				return err
 			}
-		}
-	}
-
-	if !tc.Status.PD.Synced {
-		force := NeedForceUpgrade(tc.Annotations)
-		if force {
-			tc.Status.PD.Phase = v1alpha1.UpgradePhase
-			setUpgradePartition(newPDSet, 0)
-			errSTS := updateStatefulSet(m.deps.StatefulSetControl, tc, newPDSet, oldPDSet)
-			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd needs force upgrade, %v", ns, tcName, errSTS)
 		}
 	}
 
@@ -326,7 +328,13 @@ func (m *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *a
 		tc.Status.PD.Synced = false
 		return err
 	}
+
+	pattern, err := regexp.Compile(fmt.Sprintf(pdMemberLimitPattern, tc.Name, tc.Name, tc.Namespace, controller.FormatClusterDomainForRegex(tc.Spec.ClusterDomain)))
+	if err != nil {
+		return err
+	}
 	pdStatus := map[string]v1alpha1.PDMember{}
+	peerPDStatus := map[string]v1alpha1.PDMember{}
 	for _, memberHealth := range healthInfo.Healths {
 		id := memberHealth.MemberID
 		memberID := fmt.Sprintf("%d", id)
@@ -347,20 +355,30 @@ func (m *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *a
 			ClientURL: clientURL,
 			Health:    memberHealth.Health,
 		}
-
-		oldPDMember, exist := tc.Status.PD.Members[name]
-
 		status.LastTransitionTime = metav1.Now()
-		if exist && status.Health == oldPDMember.Health {
-			status.LastTransitionTime = oldPDMember.LastTransitionTime
+
+		if pattern.Match([]byte(clientURL)) {
+			oldPDMember, exist := tc.Status.PD.Members[name]
+			if exist && status.Health == oldPDMember.Health {
+				status.LastTransitionTime = oldPDMember.LastTransitionTime
+			}
+			pdStatus[name] = status
+		} else {
+			oldPDMember, exist := tc.Status.PD.PeerMembers[name]
+			if exist && status.Health == oldPDMember.Health {
+				status.LastTransitionTime = oldPDMember.LastTransitionTime
+			}
+			peerPDStatus[name] = status
 		}
 
-		pdStatus[name] = status
+		if name == leader.GetName() {
+			tc.Status.PD.Leader = status
+		}
 	}
 
 	tc.Status.PD.Synced = true
 	tc.Status.PD.Members = pdStatus
-	tc.Status.PD.Leader = tc.Status.PD.Members[leader.GetName()]
+	tc.Status.PD.PeerMembers = peerPDStatus
 	tc.Status.PD.Image = ""
 	c := filterContainer(set, "pd")
 	if c != nil {
@@ -600,6 +618,9 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			},
 		})
 	}
+	// handle additional storageVolume
+	additionalVolMounts, additionalVolumeClaims := util.BuildAdditionalVolumeAndVolumeMount(tc.Spec.PD.StorageVolumes, tc.Spec.PD.StorageClassName, v1alpha1.PDMemberType)
+	volMounts = append(volMounts, additionalVolMounts...)
 
 	sysctls := "sysctl -w"
 	var initContainers []corev1.Container
@@ -767,6 +788,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		},
 	}
 
+	pdSet.Spec.VolumeClaimTemplates = append(pdSet.Spec.VolumeClaimTemplates, additionalVolumeClaims...)
 	return pdSet, nil
 }
 
@@ -805,8 +827,9 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		return nil, err
 	}
 	startScript, err := RenderPDStartScript(&PDStartScriptModel{
-		Scheme:  tc.Scheme(),
-		DataDir: filepath.Join(pdDataVolumeMountPath, tc.Spec.PD.DataSubDir),
+		Scheme:        tc.Scheme(),
+		DataDir:       filepath.Join(pdDataVolumeMountPath, tc.Spec.PD.DataSubDir),
+		ClusterDomain: tc.Spec.ClusterDomain,
 	})
 	if err != nil {
 		return nil, err
@@ -849,8 +872,12 @@ func (m *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *
 	}
 	for _, pod := range pods {
 		var joined = false
-		for podName := range pdStatus {
-			if strings.EqualFold(pod.Name, podName) {
+		for pdName := range pdStatus {
+			ordinal, err := util.GetOrdinalFromPodName(pod.Name)
+			if err != nil {
+				return fmt.Errorf("unexpected pod name %q: %v", pod.Name, err)
+			}
+			if strings.EqualFold(PdName(tc.Name, ordinal, tc.Namespace, tc.Spec.ClusterDomain), pdName) {
 				joined = true
 				break
 			}
