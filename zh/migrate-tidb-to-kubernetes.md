@@ -55,12 +55,12 @@ summary: 介绍如何将部署在物理机或虚拟机中的 TiDB 迁移至 Kube
     pd-ctl -u http://<address>:<port> member | jq '.members | .[] | .client_urls'
     ```
 
-2. 在 Kubernetes 中创建目标 TiDB 集群（TiKV 节点个数不少于 3 个），并在 `spec.PDAddresses` 字段中指定待迁移 TiDB 集群的 PD 节点地址（以 `http://` 开头）：
+2. 在 Kubernetes 中创建目标 TiDB 集群（TiKV 节点个数不少于 3 个），并在 `spec.pdAddresses` 字段中指定待迁移 TiDB 集群的 PD 节点地址（以 `http://` 开头）：
 
     ```yaml
     spec
       ...
-      PDAddresses:
+      pdAddresses:
       - http://pd1_addr:port
       - http://pd2_addr:port
       - http://pd3_addr:port
@@ -111,6 +111,6 @@ summary: 介绍如何将部署在物理机或虚拟机中的 TiDB 迁移至 Kube
 - 如果待迁移集群使用 TiUP 部署，参考[缩容 TiDB/PD/TiKV 节点](https://docs.pingcap.com/zh/tidb/stable/scale-tidb-using-tiup#缩容-tidbpdtikv-节点)一节。
 - 如果待迁移集群使用 TiDB Ansible 部署，参考[缩容 PD 节点](https://docs.pingcap.com/zh/tidb/stable/scale-tidb-using-ansible#缩容-pd-节点)一节。
 
-## 第六步：删除 `spec.PDAddresses` 字段
+## 第六步：删除 `spec.pdAddresses` 字段
 
-为避免后续对集群进行操作时产生困惑，迁移成功后，建议将新集群的 manifest 中的 `spec.PDAddresses` 字段删除。
+为避免后续对集群进行操作时产生困惑，迁移成功后，建议将新集群的 manifest 中的 `spec.pdAddresses` 字段删除。
