@@ -37,7 +37,7 @@ import (
 type PVControlInterface interface {
 	PatchPVReclaimPolicy(runtime.Object, *corev1.PersistentVolume, corev1.PersistentVolumeReclaimPolicy) error
 	UpdateMetaInfo(runtime.Object, *corev1.PersistentVolume) (*corev1.PersistentVolume, error)
-	PatchPVClaimRef(runtime.Object, *corev1.PersistentVolume, corev1.PersistentVolumeClaim) error
+	PatchPVClaimRef(runtime.Object, *corev1.PersistentVolume, string) error
 }
 
 type realPVControl struct {
@@ -80,7 +80,7 @@ func (c *realPVControl) PatchPVReclaimPolicy(obj runtime.Object, pv *corev1.Pers
 	return err
 }
 
-func (c *realPVControl) PatchPVClaimRef(obj runtime.Object, pv *corev1.PersistentVolume, persistentVolumeClaim corev1.PersistentVolumeClaim) error {
+func (c *realPVControl) PatchPVClaimRef(obj runtime.Object, pv *corev1.PersistentVolume, pvcName string) error {
 	metaObj, ok := obj.(metav1.Object)
 	if !ok {
 		return fmt.Errorf("%+v is not a runtime.Object, cannot get controller from it", obj)
@@ -88,7 +88,7 @@ func (c *realPVControl) PatchPVClaimRef(obj runtime.Object, pv *corev1.Persisten
 
 	name := metaObj.GetName()
 	pvName := pv.GetName()
-	patchBytes := []byte(fmt.Sprintf(`{"spec":{"claimRef":{"name":"%s"}}}`, persistentVolumeClaim.Name))
+	patchBytes := []byte(fmt.Sprintf(`{"spec":{"claimRef":{"name":"%s"}}}`, pvcName))
 
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		_, err := c.kubeCli.CoreV1().PersistentVolumes().Patch(pvName, types.StrategicMergePatchType, patchBytes)
@@ -275,13 +275,13 @@ func (c *FakePVControl) UpdateMetaInfo(obj runtime.Object, pv *corev1.Persistent
 	return pv, c.PVIndexer.Update(pv)
 }
 
-func (c *FakePVControl) PatchPVClaimRef(obj runtime.Object, pv *corev1.PersistentVolume, pvc corev1.PersistentVolumeClaim) error {
+func (c *FakePVControl) PatchPVClaimRef(obj runtime.Object, pv *corev1.PersistentVolume, pvcName string) error {
 	defer c.updatePVTracker.Inc()
 	if c.updatePVTracker.ErrorReady() {
 		defer c.updatePVTracker.Reset()
 		return c.updatePVTracker.GetError()
 	}
-	pv.Spec.ClaimRef.Name = pvc.Name
+	pv.Spec.ClaimRef.Name = pvcName
 
 	return c.PVIndexer.Update(pv)
 }

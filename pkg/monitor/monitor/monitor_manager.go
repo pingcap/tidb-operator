@@ -406,11 +406,11 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 		Name:      deploymentName,
 	}, &appsv1.Deployment{})
 	if err != nil {
-		klog.Errorf("tm[%s/%s]'s deployment failed to get,err: %v", monitor.Namespace, monitor.Name, err)
+		klog.Errorf("smoothMigration tm[%s/%s]'s deployment failed to get,err: %v", monitor.Namespace, monitor.Name, err)
 		return false, err
 	}
 	if exist {
-		klog.Errorf("tm[%s/%s]'s exist ", monitor.Namespace, monitor.Name)
+		klog.Errorf("smoothMigration tm[%s/%s]'s deployment exist ", monitor.Namespace, monitor.Name)
 		// if deployment exist, delete it and wait next reconcile.
 		err = m.deps.TypedControl.Delete(monitor, &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
@@ -419,35 +419,28 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 			},
 		})
 		if err != nil {
-			klog.Errorf("tm[%s/%s]'s deployment failed to delete,err: %v", monitor.Namespace, monitor.Name, err)
+			klog.Errorf("smoothMigration tm[%s/%s]'s deployment failed to delete,err: %v", monitor.Namespace, monitor.Name, err)
 			return false, err
 		}
 
 		return !monitor.Spec.Persistent, nil
 	} else {
-		klog.Errorf("tm[%s/%s]'s monitor deployment not  exist ", monitor.Namespace, monitor.Name)
+		klog.Errorf("smoothMigration tm[%s/%s]'s monitor deployment is  not exist ", monitor.Namespace, monitor.Name)
 		if monitor.Spec.Persistent {
 			deploymentPvcName := GetMonitorObjectName(monitor)
 			deploymentPvc, err := m.deps.PVCLister.PersistentVolumeClaims(monitor.Namespace).Get(deploymentPvcName)
-			klog.Errorf("tm[%s/%s]'s get deployment pvc ", monitor.Namespace, monitor.Name)
+			klog.Errorf("smoothMigration tm[%s/%s]'s get deployment pvc ", monitor.Namespace, monitor.Name)
 			if err != nil {
 				// If deploymentPvc not found ,not need to migrate.
 				if errors.IsNotFound(err) {
+					klog.Errorf("smoothMigration tm[%s/%s]'s deployment pvc is not exist ", monitor.Namespace, monitor.Name)
 					return true, nil
 				}
 				return false, err
 			}
-			klog.Errorf("tm[%s/%s]'s deployment pvc is exist ", monitor.Namespace, monitor.Name)
+			klog.Errorf("smoothMigration tm[%s/%s]'s deployment pvc is exist ", monitor.Namespace, monitor.Name)
 			// start change bind pvc.
 			if deploymentPvc != nil {
-				stsPvcName := fmt.Sprintf("monitor-data-%s-0", GetMonitorObjectName(monitor))
-				stsPvc := getMonitorPVC(stsPvcName, monitor)
-				stsPvc, err := m.deps.TypedControl.CreateOrUpdatePVC(monitor, stsPvc, false)
-
-				if err != nil {
-					klog.Errorf("tm[%s/%s]'s pvc failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
-					return false, err
-				}
 				err = m.deps.TypedControl.Delete(monitor, &corev1.PersistentVolumeClaim{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      deploymentPvcName,
@@ -455,16 +448,16 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 					},
 				})
 				if err != nil {
-					klog.Errorf("tm[%s/%s]'s failed to delete deployment pvc,err: %v", monitor.Namespace, monitor.Name, err)
+					klog.Errorf("smoothMigration tm[%s/%s]'s failed to delete deployment pvc,err: %v", monitor.Namespace, monitor.Name, err)
 					return false, err
 				}
 
 				err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 					_, err = m.deps.PVCLister.PersistentVolumeClaims(monitor.Namespace).Get(deploymentPvcName)
-					klog.Errorf("tm[%s/%s]'s get deployment pvc ", monitor.Namespace, monitor.Name)
 					if err != nil {
 						// If deploymentPvc not found ,not need to migrate.
 						if errors.IsNotFound(err) {
+							klog.Errorf("smoothMigration tm[%s/%s]'s delete deployment pvc successfully ", monitor.Namespace, monitor.Name)
 							return true, nil
 						}
 						return false, err
@@ -473,37 +466,43 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 				})
 
 				if err != nil {
-					klog.Errorf("tm[%s/%s]'s pvc delete failed,err: %v", monitor.Namespace, monitor.Name, err)
+					klog.Errorf("smoothMigration tm[%s/%s]'s pvc delete failed,err: %v", monitor.Namespace, monitor.Name, err)
 					return false, err
 				}
-				klog.Errorf("tm[%s/%s]'s pvc delete successfully,err: %v", monitor.Namespace, monitor.Name, err)
+
+				stsPvcName := fmt.Sprintf("monitor-data-%s-0", GetMonitorObjectName(monitor))
 				// if deployment pvc exist, change pv bind sts pvc and delete deployment pvc.
 				// update meta info for pv
 				deploymentPv, err := m.deps.PVLister.Get(deploymentPvc.Spec.VolumeName)
 				if err != nil && !errors.IsNotFound(err) {
-					klog.Errorf("tm[%s/%s]'s pv failed to get,err: %v", monitor.Namespace, monitor.Name, err)
+					klog.Errorf("smoothMigration tm[%s/%s]'s pv failed to get,err: %v", monitor.Namespace, monitor.Name, err)
 					return false, err
 				}
-				deploymentPv.Spec.ClaimRef.Name = stsPvc.Name
-				klog.Errorf("tm[%s/%s]'s update pv meta,ClaimRef: %v", monitor.Namespace, monitor.Name, deploymentPv.Spec.ClaimRef.Name)
+				deploymentPv.Spec.ClaimRef.Name = stsPvcName
+				klog.Errorf("smoothMigration tm[%s/%s]'s update pv meta,ClaimRef: %v", monitor.Namespace, monitor.Name, deploymentPv.Spec.ClaimRef.Name)
 
-				err = m.deps.PVControl.PatchPVClaimRef(monitor, deploymentPv, *stsPvc)
+				err = m.deps.PVControl.PatchPVClaimRef(monitor, deploymentPv, stsPvcName)
 				if err != nil {
-					klog.Errorf("tm[%s/%s]'s failed to update pv meta,err: %v", monitor.Namespace, monitor.Name, err)
+					klog.Errorf("smoothMigration tm[%s/%s]'s failed to update pv meta,err: %v", monitor.Namespace, monitor.Name, err)
 					return false, err
 				}
 				deploymentPv, err = m.deps.PVLister.Get(deploymentPvc.Spec.VolumeName)
 				if err != nil {
-					klog.Errorf("tm[%s/%s]'s pv failed to get,err: %v", monitor.Namespace, monitor.Name, err)
+					klog.Errorf("smoothMigration tm[%s/%s]'s pv failed to get,err: %v", monitor.Namespace, monitor.Name, err)
 					return false, err
 				}
-				if deploymentPv.Spec.ClaimRef.Name == stsPvc.Name {
-					klog.Errorf("tm[%s/%s]'s pv update ClaimRef successfully", monitor.Namespace, monitor.Name)
+				if deploymentPv.Spec.ClaimRef.Name == stsPvcName {
+					stsPvcName := fmt.Sprintf("monitor-data-%s-0", GetMonitorObjectName(monitor))
+					stsPvc := getMonitorPVC(stsPvcName, monitor)
+					stsPvc, err := m.deps.TypedControl.CreateOrUpdatePVC(monitor, stsPvc, false)
+
+					if err != nil {
+						klog.Errorf("smoothMigration tm[%s/%s]'s failed to create sts pvc,err: %v", monitor.Namespace, monitor.Name, err)
+						return false, err
+					}
+
+					klog.Errorf("smoothMigration tm[%s/%s]'s pv update ClaimRef successfully", monitor.Namespace, monitor.Name)
 					return true, nil
-				} else {
-					monitor.Status.MigratePV = deploymentPv.Name
-					klog.Errorf("tm[%s/%s]'s pv update ClaimRef failed", monitor.Namespace, monitor.Name)
-					return false, nil
 				}
 
 			}
