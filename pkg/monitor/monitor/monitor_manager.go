@@ -459,7 +459,7 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 					return false, err
 				}
 
-				err = wait.Poll(10*time.Second, 30*time.Minute, func() (done bool, err error) {
+				err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 					_, err = m.deps.PVCLister.PersistentVolumeClaims(monitor.Namespace).Get(deploymentPvcName)
 					klog.Errorf("tm[%s/%s]'s get deployment pvc ", monitor.Namespace, monitor.Name)
 					if err != nil {
