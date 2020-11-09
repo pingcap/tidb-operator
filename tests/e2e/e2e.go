@@ -285,6 +285,8 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	oa := tests.NewOperatorActions(cli, kubeCli, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, nil, e2econfig.TestConfig, nil, nil, nil)
 	oa.LabelNodesOrDie()
 	if e2econfig.TestConfig.InstallOperator {
+		OperatorFeatures := map[string]bool{"AutoScaling": true}
+		e2econfig.TestConfig.OperatorFeatures = OperatorFeatures
 		ocfg := e2econfig.NewDefaultOperatorConfig(e2econfig.TestConfig)
 		ginkgo.By("Installing CRDs")
 		oa.CleanCRDOrDie()
