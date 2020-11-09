@@ -167,7 +167,7 @@ func (d *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
 	}
 	peerServiceName := strArr[0]
 	dcName := strings.TrimSuffix(peerServiceName, "-dm-master-peer")
-	ns := os.Getenv("MY_POD_NAMESPACE")
+	ns := os.Getenv("MY_POD_NAMESPACE") // FIXME: maybe not the same namespace of dmcluster
 
 	dc, err := d.cli.PingcapV1alpha1().DMClusters(ns).Get(dcName, metav1.GetOptions{})
 	if err != nil {
