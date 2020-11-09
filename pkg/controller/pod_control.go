@@ -159,9 +159,10 @@ func (c *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Po
 				return pod, fmt.Errorf("failed to get tikv stores info from pd, TidbCluster: %s/%s, err: %v", ns, tcName, err)
 			}
 			for _, store := range stores.Stores {
-				addr := store.Store.GetAddress()
+				addr := strings.Split(store.Store.GetAddress(), ":")[0]
+				tikvSVCAddress := TikvSVCAddressWithPodName(tc, pod)
 
-				if strings.Split(addr, ".")[0] == podName {
+				if tikvSVCAddress == addr {
 					storeID = strconv.FormatUint(store.Store.GetId(), 10)
 					break
 				}
@@ -362,6 +363,16 @@ func PdNameWithPodName(tc *v1alpha1.TidbCluster, pod *corev1.Pod) string {
 		if _, exist := tc.Status.PD.Members[name]; !exist {
 			name = pod.Name
 		}
+	}
+	return name
+}
+
+func TikvSVCAddressWithPodName(tc *v1alpha1.TidbCluster, pod *corev1.Pod) string {
+	var name string
+	name = fmt.Sprintf("%s.%s-tikv-peer.%s.svc", pod.Name, tc.GetName(), tc.Namespace)
+	if tc.IsMultiClusterEnabled() {
+		// TODO: fix when upgrade from the cluster without ClusterDomain
+		name = fmt.Sprintf("%s.%s-tikv-peer.%s.svc.%s", pod.Name, tc.GetName(), tc.Namespace, tc.Spec.ClusterDomain)
 	}
 	return name
 }
