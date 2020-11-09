@@ -242,7 +242,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 
 		ginkgo.It("should perform defaulting and validating properly", func() {
-
 			ginkgo.By("Resources created before webhook enabled could be operated normally")
 			legacyTc := &v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
