@@ -16,7 +16,6 @@ package monitor
 import (
 	"encoding/json"
 	"fmt"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"sort"
 	"strings"
 	"time"
@@ -36,6 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/discovery"
 	discoverycachedmemory "k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/klog"
@@ -511,7 +511,10 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 
 						return true, fmt.Errorf("statefulset pvc %s/%s is exist: %v", monitor.Namespace, monitor.Name, err)
 					})
-
+					if err != nil {
+						klog.Errorf("smoothMigration tm[%s/%s]'s  create sts pvc,err: %v", monitor.Namespace, monitor.Name, err)
+						return false, err
+					}
 					klog.Errorf("smoothMigration tm[%s/%s]'s pv update ClaimRef successfully", monitor.Namespace, monitor.Name)
 					return true, nil
 				}
