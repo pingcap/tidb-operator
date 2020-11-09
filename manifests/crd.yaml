@@ -9972,8 +9972,6 @@ spec:
                   type: integer
                 db:
                   type: string
-                image:
-                  type: string
                 logLevel:
                   type: string
                 onLine:
@@ -10050,6 +10048,8 @@ spec:
               - projectId
               - secretName
               type: object
+            image:
+              type: string
             imagePullSecrets:
               items:
                 properties:
@@ -10440,8 +10440,6 @@ spec:
                   type: integer
                 db:
                   type: string
-                image:
-                  type: string
                 logLevel:
                   type: string
                 onLine:
@@ -10488,6 +10486,8 @@ spec:
               - projectId
               - secretName
               type: object
+            image:
+              type: string
             imagePullSecrets:
               items:
                 properties:
@@ -10897,8 +10897,6 @@ spec:
                       type: integer
                     db:
                       type: string
-                    image:
-                      type: string
                     logLevel:
                       type: string
                     onLine:
@@ -10975,6 +10973,8 @@ spec:
                   - projectId
                   - secretName
                   type: object
+                image:
+                  type: string
                 imagePullSecrets:
                   items:
                     properties:

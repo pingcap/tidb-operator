@@ -498,13 +498,6 @@ func schema_pkg_apis_pingcap_v1alpha1_BRConfig(ref common.ReferenceCallback) com
 							Format:      "",
 						},
 					},
-					"image": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Image specifies the BR image used in the backup/restore",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
 					"options": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Options means options for backup data to remote storage with BR. These options has highest priority.",
@@ -841,6 +834,13 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 									},
 								},
 							},
+						},
+					},
+					"image": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"imagePullSecrets": {
@@ -5027,6 +5027,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCDCSpec(ref common.ReferenceCallback) co
 					"imagePullPolicy": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ImagePullPolicy of the component. Override the cluster-level imagePullPolicy if present Optional: Defaults to cluster-level setting",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"image": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now",
 							Type:        []string{"string"},
 							Format:      "",
 						},

@@ -213,6 +213,18 @@ DumplingConfig
 </tr>
 <tr>
 <td>
+<code>image</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>imagePullSecrets</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#localobjectreference-v1-core">
@@ -963,6 +975,18 @@ Kubernetes core/v1.PullPolicy
 </td>
 <td>
 <p>ImagePullPolicy of TiDB cluster Pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>image</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now</p>
 </td>
 </tr>
 <tr>
@@ -2008,17 +2032,6 @@ bool
 </td>
 <td>
 <p>OnLine specifies whether online during restore</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>image</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Image specifies the BR image used in the backup/restore</p>
 </td>
 </tr>
 <tr>
@@ -3074,6 +3087,18 @@ Kubernetes core/v1.PullPolicy
 <em>(Optional)</em>
 <p>ImagePullPolicy of the component. Override the cluster-level imagePullPolicy if present
 Optional: Defaults to cluster-level setting</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>image</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now</p>
 </td>
 </tr>
 <tr>
@@ -8781,6 +8806,18 @@ string
 </td>
 <td>
 <p>Specify service account of restore</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>image</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now</p>
 </td>
 </tr>
 <tr>
