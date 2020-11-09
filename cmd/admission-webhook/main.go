@@ -47,6 +47,8 @@ func init() {
 
 func main() {
 
+	flag.Parse()
+
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
@@ -56,7 +58,6 @@ func main() {
 	}
 	version.LogVersionInfo()
 
-	flag.Parse()
 	flag.CommandLine.VisitAll(func(flag *flag.Flag) {
 		klog.V(1).Infof("FLAG: --%s=%q", flag.Name, flag.Value)
 	})
