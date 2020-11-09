@@ -88,7 +88,7 @@ func (c *realPVControl) PatchPVClaimRef(obj runtime.Object, pv *corev1.Persisten
 
 	name := metaObj.GetName()
 	pvName := pv.GetName()
-	patchBytes := []byte(fmt.Sprintf(`{"spec":{"claimRef":{"name":"%s"}}}`, pvcName))
+	patchBytes := []byte(fmt.Sprintf(`{"spec":{"claimRef":{"name":"%s","resourceVersion":"","uid":""}}}`, pvcName))
 
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		_, err := c.kubeCli.CoreV1().PersistentVolumes().Patch(pvName, types.StrategicMergePatchType, patchBytes)
