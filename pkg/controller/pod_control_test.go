@@ -299,7 +299,7 @@ func TestPodControlUpdateMetaInfoConflictSuccess(t *testing.T) {
 								Store: &pdapi.MetaStore{
 									Store: &metapb.Store{
 										Id:      333,
-										Address: fmt.Sprintf("%s.%s-tikv-peer.%s.svc", TestPodName, TestClusterName, TestNamespace ),
+										Address: fmt.Sprintf("%s.%s-tikv-peer.%s.svc", TestPodName, TestClusterName, TestNamespace),
 									},
 								},
 							},

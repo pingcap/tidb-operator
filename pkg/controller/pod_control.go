@@ -160,7 +160,7 @@ func (c *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Po
 			}
 			for _, store := range stores.Stores {
 				addr := strings.Split(store.Store.GetAddress(), ":")[0]
-				
+
 				// Select TiKV store
 				tikvSVCAddress := TikvSVCAddressWithPodName(tc, pod)
 				fmt.Println(tikvSVCAddress)
