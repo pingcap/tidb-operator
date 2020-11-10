@@ -544,9 +544,11 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					klog.Errorf("get tidbmonitor sts pvc err:%v", err)
 					return true, nil
 				}
+
 				if stsPvc.Spec.VolumeName == oldVolumeName {
 					return true, nil
 				}
+
 				klog.Infof("tidbmonitor sts pv unequal to old deployment pv")
 				return false, nil
 			})
