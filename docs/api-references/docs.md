@@ -215,7 +215,7 @@ DumplingConfig
 </tr>
 <tr>
 <td>
-<code>image</code></br>
+<code>toolImage</code></br>
 <em>
 string
 </em>
@@ -1022,7 +1022,7 @@ string
 </tr>
 <tr>
 <td>
-<code>image</code></br>
+<code>toolImage</code></br>
 <em>
 string
 </em>
@@ -2871,7 +2871,7 @@ DumplingConfig
 </tr>
 <tr>
 <td>
-<code>image</code></br>
+<code>toolImage</code></br>
 <em>
 string
 </em>
@@ -10208,7 +10208,7 @@ string
 </tr>
 <tr>
 <td>
-<code>image</code></br>
+<code>toolImage</code></br>
 <em>
 string
 </em>

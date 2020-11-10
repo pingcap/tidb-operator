@@ -928,7 +928,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 							},
 						},
 					},
-					"image": {
+					"toolImage": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now",
 							Type:        []string{"string"},
@@ -5103,7 +5103,7 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
-					"image": {
+					"toolImage": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now",
 							Type:        []string{"string"},
