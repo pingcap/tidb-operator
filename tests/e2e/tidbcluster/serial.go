@@ -507,6 +507,51 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			})
 			framework.ExpectEqual(err, wait.ErrWaitTimeout, "expect pd/tikv/tidb haven't been changed for 5 minutes")
 		})
+		ginkgo.It("Deploy TiDBMonitor and Upgrade Operator,TiDBMonitor switch to sts deploy", func() {
+			tcName := "smooth-tidbcluster"
+			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "", utilimage.TiDBV3Version)
+			cluster.Resources["pd.replicas"] = "1"
+			cluster.Resources["tikv.replicas"] = "1"
+			cluster.Resources["tidb.replicas"] = "1"
+			cluster.Monitor = true
+			cluster.OperatorTag = version
+			oa.DeployTidbClusterOrDie(&cluster)
+			oa.CheckTidbClusterStatusOrDie(&cluster)
+
+			monitorName := "smooth-migrate"
+			tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get tidbcluster")
+			tm := fixture.NewTidbMonitor(monitorName, tc.Namespace, tc, true, true)
+			_, err = cli.PingcapV1alpha1().TidbMonitors(tc.Namespace).Create(tm)
+			framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
+			err = tests.CheckTidbMonitor(tm, cli, c, fw)
+			framework.ExpectNoError(err, "Expected tidbmonitor checked success")
+
+			deploymentPvcName := fmt.Sprintf("%s-monitor", monitorName)
+			deploymentPvc, err := c.CoreV1().PersistentVolumeClaims(tc.Namespace).Get(deploymentPvcName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "Expected tidbmonitor deployment pvc success")
+			oldVolumeName := deploymentPvc.Spec.VolumeName
+			ginkgo.By("Upgrade tidb-operator and CRDs to current version")
+			ocfg.Tag = cfg.OperatorTag
+			ocfg.Image = cfg.OperatorImage
+			oa.InstallCRDOrDie(ocfg)
+			oa.UpgradeOperatorOrDie(ocfg)
+
+			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+				newStsPvcName := fmt.Sprintf("%s-monitor-0", monitorName)
+				stsPvc, err := c.CoreV1().PersistentVolumeClaims(tc.Namespace).Get(newStsPvcName, metav1.GetOptions{})
+				if err != nil {
+					klog.Errorf("get tidbmonitor sts pvc err:%v", err)
+					return true, nil
+				}
+				if stsPvc.Spec.VolumeName == oldVolumeName {
+					return true, nil
+				}
+				klog.Infof("tidbmonitor sts pv unequal to old deployment pv")
+				return false, nil
+			})
+			framework.ExpectEqual(err, wait.ErrWaitTimeout, "expect pd/tikv/tidb haven't been changed for 5 minutes")
+		})
 	})
 
 	ginkgo.Context("upgrading tidb-operator in the same minor series should not trigger rolling-update", func() {
