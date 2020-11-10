@@ -215,6 +215,18 @@ DumplingConfig
 </tr>
 <tr>
 <td>
+<code>toolImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>imagePullSecrets</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#localobjectreference-v1-core">
@@ -391,7 +403,9 @@ int32
 </td>
 <td>
 <p>MaxBackups is to specify how many backups we want to keep
-0 is magic number to indicate un-limited backups.</p>
+0 is magic number to indicate un-limited backups.
+if MaxBackups and MaxReservedTime are set at the same time, MaxReservedTime is preferred
+and MaxBackups is ignored.</p>
 </td>
 </tr>
 <tr>
@@ -1006,6 +1020,18 @@ string
 </td>
 <td>
 <p>Specify service account of restore</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>toolImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now</p>
 </td>
 </tr>
 <tr>
@@ -2575,7 +2601,9 @@ int32
 </td>
 <td>
 <p>MaxBackups is to specify how many backups we want to keep
-0 is magic number to indicate un-limited backups.</p>
+0 is magic number to indicate un-limited backups.
+if MaxBackups and MaxReservedTime are set at the same time, MaxReservedTime is preferred
+and MaxBackups is ignored.</p>
 </td>
 </tr>
 <tr>
@@ -2843,6 +2871,18 @@ DumplingConfig
 <td>
 <em>(Optional)</em>
 <p>Base tolerations of backup Pods, components may add more tolerations upon this respectively</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>toolImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now</p>
 </td>
 </tr>
 <tr>
@@ -10168,6 +10208,18 @@ string
 </td>
 <td>
 <p>Specify service account of restore</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>toolImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now</p>
 </td>
 </tr>
 <tr>

@@ -1509,7 +1509,7 @@ func newFakeTiKVMemberManager(tc *v1alpha1.TidbCluster) (
 	return tmm, setControl, svcControl, pdClient, podIndexer, nodeIndexer
 }
 
-func TestGetNewTiFlashServiceForTidbCluster(t *testing.T) {
+func TestGetNewTiKVServiceForTidbCluster(t *testing.T) {
 	tests := []struct {
 		name      string
 		tc        v1alpha1.TidbCluster
