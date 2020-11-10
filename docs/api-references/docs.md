@@ -213,6 +213,18 @@ DumplingConfig
 </tr>
 <tr>
 <td>
+<code>toolImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>imagePullSecrets</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#localobjectreference-v1-core">
@@ -904,6 +916,278 @@ HelperSpec
 </tr>
 <tr>
 <td>
+<<<<<<< HEAD
+=======
+<code>affinity</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#affinity-v1-core">
+Kubernetes core/v1.Affinity
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Affinity of restore Pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>useKMS</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Use KMS to decrypt the secrets</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify service account of restore</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>toolImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>imagePullSecrets</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#localobjectreference-v1-core">
+[]Kubernetes core/v1.LocalObjectReference
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tableFilter</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching. BR supports this from v4.0.3.</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code></br>
+<em>
+<a href="#restorestatus">
+RestoreStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tidbcluster">TidbCluster</h3>
+<p>
+<p>TidbCluster is the control script&rsquo;s spec</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code></br>
+string</td>
+<td>
+<code>
+pingcap.com/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code></br>
+string
+</td>
+<td><code>TidbCluster</code></td>
+</tr>
+<tr>
+<td>
+<code>metadata</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#objectmeta-v1-meta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code></br>
+<em>
+<a href="#tidbclusterspec">
+TidbClusterSpec
+</a>
+</em>
+</td>
+<td>
+<p>Spec defines the behavior of a tidb cluster</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>discovery</code></br>
+<em>
+<a href="#discoveryspec">
+DiscoverySpec
+</a>
+</em>
+</td>
+<td>
+<p>Discovery spec</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify a Service Account</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pd</code></br>
+<em>
+<a href="#pdspec">
+PDSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PD cluster spec</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tidb</code></br>
+<em>
+<a href="#tidbspec">
+TiDBSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TiDB cluster spec</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tikv</code></br>
+<em>
+<a href="#tikvspec">
+TiKVSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TiKV cluster spec</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tiflash</code></br>
+<em>
+<a href="#tiflashspec">
+TiFlashSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TiFlash cluster spec</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ticdc</code></br>
+<em>
+<a href="#ticdcspec">
+TiCDCSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TiCDC cluster spec</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pump</code></br>
+<em>
+<a href="#pumpspec">
+PumpSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Pump cluster spec</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>helper</code></br>
+<em>
+<a href="#helperspec">
+HelperSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Helper spec</p>
+</td>
+</tr>
+<tr>
+<td>
+>>>>>>> bbc27913... add init container for BR backup/restore to supply the BR bin (#3471)
 <code>paused</code></br>
 <em>
 bool
@@ -2421,6 +2705,18 @@ DumplingConfig
 <td>
 <em>(Optional)</em>
 <p>Base tolerations of backup Pods, components may add more tolerations upon this respectively</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>toolImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now</p>
 </td>
 </tr>
 <tr>
@@ -8770,6 +9066,18 @@ string
 </td>
 <td>
 <p>Specify service account of restore</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>toolImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now</p>
 </td>
 </tr>
 <tr>

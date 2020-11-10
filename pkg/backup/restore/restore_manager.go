@@ -347,10 +347,30 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		})
 	}
 
+	brVolumeMount := corev1.VolumeMount{
+		Name:      "br-bin",
+		ReadOnly:  false,
+		MountPath: util.BRBinPath,
+	}
+	volumeMounts = append(volumeMounts, brVolumeMount)
+
+	volumes = append(volumes, corev1.Volume{
+		Name: "br-bin",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	})
+
 	serviceAccount := constants.DefaultServiceAccountName
 	if restore.Spec.ServiceAccount != "" {
 		serviceAccount = restore.Spec.ServiceAccount
 	}
+
+	brImage := "pingcap/br:" + tikvVersion
+	if restore.Spec.ToolImage != "" {
+		brImage = restore.Spec.ToolImage
+	}
+
 	// TODO: need add ResourceRequirement for restore job
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
@@ -359,6 +379,17 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		},
 		Spec: corev1.PodSpec{
 			ServiceAccountName: serviceAccount,
+			InitContainers: []corev1.Container{
+				{
+					Name:            "br",
+					Image:           brImage,
+					Command:         []string{"/bin/sh", "-c"},
+					Args:            []string{fmt.Sprintf("cp /br %s/br; echo 'BR copy finished'", util.BRBinPath)},
+					ImagePullPolicy: corev1.PullIfNotPresent,
+					VolumeMounts:    []corev1.VolumeMount{brVolumeMount},
+					Resources:       restore.Spec.ResourceRequirements,
+				},
+			},
 			Containers: []corev1.Container{
 				{
 					Name:            label.RestoreJobLabelVal,
