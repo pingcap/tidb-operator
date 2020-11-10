@@ -31,14 +31,18 @@ import (
 	"k8s.io/klog"
 )
 
+type nowFn func() time.Time
+
 type backupScheduleManager struct {
 	deps *controller.Dependencies
+	now  nowFn // only use for test
 }
 
 // NewBackupScheduleManager return a *backupScheduleManager
 func NewBackupScheduleManager(deps *controller.Dependencies) backup.BackupScheduleManager {
 	return &backupScheduleManager{
 		deps: deps,
+		now:  time.Now,
 	}
 }
 
@@ -53,7 +57,7 @@ func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
 		return err
 	}
 
-	scheduledTime, err := getLastScheduledTime(bs)
+	scheduledTime, err := getLastScheduledTime(bs, bm.now)
 	if scheduledTime == nil {
 		return err
 	}
@@ -63,7 +67,7 @@ func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
 		return nil
 	}
 
-	backup, err := bm.createBackup(bs, *scheduledTime)
+	backup, err := createBackup(bm.deps.BackupControl, bs, *scheduledTime)
 	if err != nil {
 		return err
 	}
@@ -119,7 +123,9 @@ func (bm *backupScheduleManager) canPerformNextBackup(bs *v1alpha1.BackupSchedul
 	return controller.RequeueErrorf("backup schedule %s/%s, the last backup %s is still running", ns, bsName, bs.Status.LastBackup)
 }
 
-func getLastScheduledTime(bs *v1alpha1.BackupSchedule) (*time.Time, error) {
+// getLastScheduledTime return the newest time need to be scheduled according last backup time.
+// the return time is not before now and return nil if there's no such time.
+func getLastScheduledTime(bs *v1alpha1.BackupSchedule, nowFn nowFn) (*time.Time, error) {
 	ns := bs.GetNamespace()
 	bsName := bs.GetName()
 
@@ -144,7 +150,7 @@ func getLastScheduledTime(bs *v1alpha1.BackupSchedule) (*time.Time, error) {
 		earliestTime = bs.ObjectMeta.CreationTimestamp.Time
 	}
 
-	now := time.Now()
+	now := nowFn()
 	if earliestTime.After(now) {
 		// timestamp fallback, waiting for the next backup schedule period
 		klog.Errorf("backup schedule %s/%s timestamp fallback, lastBackupTime: %s, now: %s",
@@ -168,7 +174,7 @@ func getLastScheduledTime(bs *v1alpha1.BackupSchedule) (*time.Time, error) {
 			// We can't get the last backup schedule time
 			if bs.Status.LastBackupTime == nil && bs.Status.AllBackupCleanTime != nil {
 				// Recovery backup schedule from pause status, should refresh AllBackupCleanTime to avoid unschedulable problem
-				bs.Status.AllBackupCleanTime = &metav1.Time{Time: time.Now()}
+				bs.Status.AllBackupCleanTime = &metav1.Time{Time: nowFn()}
 				return nil, controller.RequeueErrorf("recovery backup schedule %s/%s from pause status, refresh AllBackupCleanTime.", ns, bsName)
 			}
 			klog.Error("Too many missed start backup schedule time (> 100). Check the clock.")
@@ -184,7 +190,7 @@ func getLastScheduledTime(bs *v1alpha1.BackupSchedule) (*time.Time, error) {
 	return &scheduledTime, nil
 }
 
-func (bm *backupScheduleManager) createBackup(bs *v1alpha1.BackupSchedule, timestamp time.Time) (*v1alpha1.Backup, error) {
+func buildBackup(bs *v1alpha1.BackupSchedule, timestamp time.Time) *v1alpha1.Backup {
 	ns := bs.GetNamespace()
 	bsName := bs.GetName()
 
@@ -237,7 +243,12 @@ func (bm *backupScheduleManager) createBackup(bs *v1alpha1.BackupSchedule, times
 		},
 	}
 
-	return bm.deps.BackupControl.CreateBackup(backup)
+	return backup
+}
+
+func createBackup(bkController controller.BackupControlInterface, bs *v1alpha1.BackupSchedule, timestamp time.Time) (*v1alpha1.Backup, error) {
+	bk := buildBackup(bs, timestamp)
+	return bkController.CreateBackup(bk)
 }
 
 func (bm *backupScheduleManager) backupGC(bs *v1alpha1.BackupSchedule) {
@@ -268,7 +279,7 @@ func (bm *backupScheduleManager) backupGCByMaxReservedTime(bs *v1alpha1.BackupSc
 		return
 	}
 
-	backupsList, err := bm.getBackupList(bs, false)
+	backupsList, err := bm.getBackupList(bs)
 	if err != nil {
 		klog.Errorf("backupGCByMaxReservedTime, err: %s", err)
 		return
@@ -276,7 +287,7 @@ func (bm *backupScheduleManager) backupGCByMaxReservedTime(bs *v1alpha1.BackupSc
 
 	var deleteCount int
 	for _, backup := range backupsList {
-		if backup.CreationTimestamp.Add(reservedTime).After(time.Now()) {
+		if backup.CreationTimestamp.Add(reservedTime).After(bm.now()) {
 			continue
 		}
 		// delete the expired backup
@@ -290,9 +301,7 @@ func (bm *backupScheduleManager) backupGCByMaxReservedTime(bs *v1alpha1.BackupSc
 
 	if deleteCount == len(backupsList) {
 		// All backups have been deleted, so the last backup information in the backupSchedule should be reset
-		bs.Status.LastBackupTime = nil
-		bs.Status.LastBackup = ""
-		bs.Status.AllBackupCleanTime = &metav1.Time{Time: time.Now()}
+		bm.resetLastBackup(bs)
 	}
 }
 
@@ -300,11 +309,13 @@ func (bm *backupScheduleManager) backupGCByMaxBackups(bs *v1alpha1.BackupSchedul
 	ns := bs.GetNamespace()
 	bsName := bs.GetName()
 
-	backupsList, err := bm.getBackupList(bs, true)
+	backupsList, err := bm.getBackupList(bs)
 	if err != nil {
 		klog.Errorf("backupGCByMaxBackups failed, err: %s", err)
 		return
 	}
+
+	sort.Sort(byCreateTimeDesc(backupsList))
 
 	var deleteCount int
 	for i, backup := range backupsList {
@@ -322,13 +333,17 @@ func (bm *backupScheduleManager) backupGCByMaxBackups(bs *v1alpha1.BackupSchedul
 
 	if deleteCount == len(backupsList) {
 		// All backups have been deleted, so the last backup information in the backupSchedule should be reset
-		bs.Status.LastBackupTime = nil
-		bs.Status.LastBackup = ""
-		bs.Status.AllBackupCleanTime = &metav1.Time{Time: time.Now()}
+		bm.resetLastBackup(bs)
 	}
 }
 
-func (bm *backupScheduleManager) getBackupList(bs *v1alpha1.BackupSchedule, needSort bool) ([]*v1alpha1.Backup, error) {
+func (bm *backupScheduleManager) resetLastBackup(bs *v1alpha1.BackupSchedule) {
+	bs.Status.LastBackupTime = nil
+	bs.Status.LastBackup = ""
+	bs.Status.AllBackupCleanTime = &metav1.Time{Time: bm.now()}
+}
+
+func (bm *backupScheduleManager) getBackupList(bs *v1alpha1.BackupSchedule) ([]*v1alpha1.Backup, error) {
 	ns := bs.GetNamespace()
 	bsName := bs.GetName()
 
@@ -342,18 +357,14 @@ func (bm *backupScheduleManager) getBackupList(bs *v1alpha1.BackupSchedule, need
 		return nil, fmt.Errorf("get backup schedule %s/%s backup list failed, selector: %s, err: %v", ns, bsName, selector, err)
 	}
 
-	if needSort {
-		// sort backups by creation time before removing expired backups
-		sort.Sort(byCreateTime(backupsList))
-	}
 	return backupsList, nil
 }
 
-type byCreateTime []*v1alpha1.Backup
+type byCreateTimeDesc []*v1alpha1.Backup
 
-func (b byCreateTime) Len() int      { return len(b) }
-func (b byCreateTime) Swap(i, j int) { b[i], b[j] = b[j], b[i] }
-func (b byCreateTime) Less(i, j int) bool {
+func (b byCreateTimeDesc) Len() int      { return len(b) }
+func (b byCreateTimeDesc) Swap(i, j int) { b[i], b[j] = b[j], b[i] }
+func (b byCreateTimeDesc) Less(i, j int) bool {
 	return b[j].ObjectMeta.CreationTimestamp.Before(&b[i].ObjectMeta.CreationTimestamp)
 }
 
