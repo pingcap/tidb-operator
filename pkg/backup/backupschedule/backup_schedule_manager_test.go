@@ -261,7 +261,7 @@ func (h *helper) checkBacklist(ns string, num int) (bks *v1alpha1.BackupList) {
 			return fmt.Errorf("there %d backup, but should be %d, cur backups: %v", len(bks.Items), num, names)
 		}
 		return nil
-	}, time.Second*10).Should(BeNil())
+	}, time.Second*30).Should(BeNil())
 
 	return
 }
