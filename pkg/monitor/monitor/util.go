@@ -816,54 +816,40 @@ func defaultTidbMonitor(monitor *v1alpha1.TidbMonitor) {
 }
 
 func getMonitorStatefulSet(sa *core.ServiceAccount, config *core.ConfigMap, secret *core.Secret, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error) {
-	statefulset := getMonitorStatefulSetSkeleton(sa, monitor)
+	statefulSet := getMonitorStatefulSetSkeleton(sa, monitor)
 	initContainer := getMonitorInitContainer(monitor, tc)
-	statefulset.Spec.Template.Spec.InitContainers = append(statefulset.Spec.Template.Spec.InitContainers, initContainer)
+	statefulSet.Spec.Template.Spec.InitContainers = append(statefulSet.Spec.Template.Spec.InitContainers, initContainer)
 	prometheusContainer := getMonitorPrometheusContainer(monitor, tc)
 	reloaderContainer := getMonitorReloaderContainer(monitor, tc)
-	statefulset.Spec.Template.Spec.Containers = append(statefulset.Spec.Template.Spec.Containers, prometheusContainer, reloaderContainer)
+	statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, prometheusContainer, reloaderContainer)
 	additionalContainers := monitor.Spec.AdditionalContainers
 	if len(additionalContainers) > 0 {
-		statefulset.Spec.Template.Spec.Containers = append(statefulset.Spec.Template.Spec.Containers, additionalContainers...)
+		statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, additionalContainers...)
 	}
 	if monitor.Spec.Grafana != nil {
 		grafanaContainer := getMonitorGrafanaContainer(secret, monitor, tc)
-		statefulset.Spec.Template.Spec.Containers = append(statefulset.Spec.Template.Spec.Containers, grafanaContainer)
+		statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, grafanaContainer)
 	}
 	volumes := getMonitorVolumes(config, monitor, tc)
-	statefulset.Spec.Template.Spec.Volumes = volumes
+	statefulSet.Spec.Template.Spec.Volumes = volumes
 
-	if monitor.Spec.Persistent && len(monitor.Spec.Storage) > 0 {
-		var storageRequest core.ResourceRequirements
-		quantity, err := resource.ParseQuantity(monitor.Spec.Storage)
-		if err != nil {
-			klog.Errorf("Cannot parse storage size %v in TiDBMonitor %s-%s,error: %v", monitor.Spec.Storage, monitor.Namespace, monitor.Name, err)
-			return nil, err
-		}
-		storageRequest = core.ResourceRequirements{
-			Requests: core.ResourceList{
-				core.ResourceStorage: quantity,
-			},
-		}
-		statefulset.Spec.VolumeClaimTemplates = []core.PersistentVolumeClaim{
-			util.VolumeClaimTemplate(storageRequest, "monitor-data", monitor.Spec.StorageClassName),
-		}
-	}
+	volumeClaims := getMonitorVolumeClaims(monitor)
+	statefulSet.Spec.VolumeClaimTemplates = volumeClaims
 
-	b, err := json.Marshal(statefulset.Spec.Template.Spec)
+	b, err := json.Marshal(statefulSet.Spec.Template.Spec)
 	if err != nil {
 		return nil, err
 	}
-	if statefulset.Annotations == nil {
-		statefulset.Annotations = map[string]string{}
+	if statefulSet.Annotations == nil {
+		statefulSet.Annotations = map[string]string{}
 	}
-	statefulset.Annotations[controller.LastAppliedPodTemplate] = string(b)
+	statefulSet.Annotations[controller.LastAppliedPodTemplate] = string(b)
 
 	if monitor.Spec.ImagePullSecrets != nil {
-		statefulset.Spec.Template.Spec.ImagePullSecrets = monitor.Spec.ImagePullSecrets
+		statefulSet.Spec.Template.Spec.ImagePullSecrets = monitor.Spec.ImagePullSecrets
 	}
 
-	return statefulset, nil
+	return statefulSet, nil
 }
 
 func getMonitorStatefulSetSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.TidbMonitor) *apps.StatefulSet {
@@ -903,4 +889,24 @@ func getMonitorStatefulSetSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.Ti
 		},
 	}
 	return statefulset
+}
+
+func getMonitorVolumeClaims(monitor *v1alpha1.TidbMonitor) []core.PersistentVolumeClaim {
+	if monitor.Spec.Persistent && len(monitor.Spec.Storage) > 0 {
+		var storageRequest core.ResourceRequirements
+		quantity, err := resource.ParseQuantity(monitor.Spec.Storage)
+		if err != nil {
+			klog.Errorf("Cannot parse storage size %v in TiDBMonitor %s-%s,error: %v", monitor.Spec.Storage, monitor.Namespace, monitor.Name, err)
+			return nil
+		}
+		storageRequest = core.ResourceRequirements{
+			Requests: core.ResourceList{
+				core.ResourceStorage: quantity,
+			},
+		}
+		return []core.PersistentVolumeClaim{
+			util.VolumeClaimTemplate(storageRequest, "monitor-data", monitor.Spec.StorageClassName),
+		}
+	}
+	return nil
 }

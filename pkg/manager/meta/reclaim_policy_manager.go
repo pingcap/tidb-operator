@@ -15,7 +15,6 @@ package meta
 
 import (
 	"fmt"
-
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -42,7 +41,7 @@ func (m *reclaimPolicyManager) Sync(tc *v1alpha1.TidbCluster) error {
 }
 
 func (m *reclaimPolicyManager) SyncMonitor(tm *v1alpha1.TidbMonitor) error {
-	return m.sync(v1alpha1.TiDBMonitorKind, tm, false, *tm.Spec.PVReclaimPolicy)
+	return m.sync(v1alpha1.TiDBMonitorKind, tm, true, *tm.Spec.PVReclaimPolicy)
 }
 
 func (m *reclaimPolicyManager) SyncDM(dc *v1alpha1.DMCluster) error {
