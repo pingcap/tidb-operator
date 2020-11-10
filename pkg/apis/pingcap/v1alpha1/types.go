@@ -1404,6 +1404,8 @@ type BackupScheduleSpec struct {
 	Pause bool `json:"pause,omitempty"`
 	// MaxBackups is to specify how many backups we want to keep
 	// 0 is magic number to indicate un-limited backups.
+	// if MaxBackups and MaxReservedTime are set at the same time, MaxReservedTime is preferred
+	// and MaxBackups is ignored.
 	MaxBackups *int32 `json:"maxBackups,omitempty"`
 	// MaxReservedTime is to specify how long backups we want to keep.
 	MaxReservedTime *string `json:"maxReservedTime,omitempty"`
