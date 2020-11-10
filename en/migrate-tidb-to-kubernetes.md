@@ -55,12 +55,12 @@ This document describes how to migrate a TiDB cluster deployed in the physical o
     pd-ctl -u http://<address>:<port> member | jq '.members | .[] | .client_urls'
     ```
 
-2. Create the target TiDB cluster in Kubernetes, which must have at least 3 TiKV nodes. Specify the PD node address of the source cluster in the `spec.PDAddresses` field (starting with `http://`):
+2. Create the target TiDB cluster in Kubernetes, which must have at least 3 TiKV nodes. Specify the PD node address of the source cluster in the `spec.pdAddresses` field (starting with `http://`):
 
     ```yaml
     spec
       ...
-      PDAddresses:
+      pdAddresses:
       - http://pd1_addr:port
       - http://pd2_addr:port
       - http://pd3_addr:port
@@ -114,6 +114,6 @@ Remove all PD nodes of the source cluster:
 
 - If the source cluster is deployed using TiDB Ansible, refer to [Decrease the capacity of a PD node](https://docs.pingcap.com/tidb/stable/scale-tidb-using-ansible#decrease-the-capacity-of-a-pd-node).
 
-## Step 6: Delete the `spec.PDAddresses` field
+## Step 6: Delete the `spec.pdAddresses` field
 
-To avoid confusion for further operations on the cluster, it is recommended that you delete the `spec.PDAddresses` field in the new cluster after the migration.
+To avoid confusion for further operations on the cluster, it is recommended that you delete the `spec.pdAddresses` field in the new cluster after the migration.
