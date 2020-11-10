@@ -43,6 +43,10 @@ This document provides examples in which the data of the `demo1` TiDB cluster in
     kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=<password> --namespace=test1
     ```
 
+    > **Note:**
+    >
+    > If TiDB Operator >= v1.1.7 && TiDB >= v4.0.8, `tikv_gc_life_time` will be adjusted by BR automatically, so you can omit this step.
+
 ### Required database account privileges
 
 * The `SELECT` and `UPDATE` privileges of the `mysql.tidb` table: Before and after the backup, the `Backup` CR needs a database account with these privileges to adjust the GC time.
@@ -149,13 +153,13 @@ This document provides examples in which the data of the `demo1` TiDB cluster in
 More descriptions of fields in the `Backup` CR:
 
 * `.spec.metadata.namespace`: The namespace where the `Backup` CR is located.
-* `.spec.tikvGCLifeTime`: The temporary `tikv_gc_lifetime` time setting during the backup. Defaults to 72h.
+* `.spec.tikvGCLifeTime`: The temporary `tikv_gc_life_time` time setting during the backup. Defaults to 72h.
 
-    Before the backup begins, if the `tikv_gc_lifetime` setting in the TiDB cluster is smaller than `spec.tikvGCLifeTime` set by the user, TiDB Operator adjusts the value of `tikv_gc_lifetime` to the value of `spec.tikvGCLifeTime`. This operation makes sure that the backup data is not garbage-collected by TiKV.
+    Before the backup begins, if the `tikv_gc_life_time` setting in the TiDB cluster is smaller than `spec.tikvGCLifeTime` set by the user, TiDB Operator adjusts the value of `tikv_gc_life_time` to the value of `spec.tikvGCLifeTime`. This operation makes sure that the backup data is not garbage-collected by TiKV.
 
-    After the backup, no matter whether the backup is successful or not, as long as the previous `tikv_gc_lifetime` is smaller than `.spec.tikvGCLifeTime`, TiDB Operator will try to set `tikv_gc_lifetime` to the previous value.
+    After the backup, no matter whether the backup is successful or not, as long as the previous `tikv_gc_life_time` is smaller than `.spec.tikvGCLifeTime`, TiDB Operator will try to set `tikv_gc_life_time` to the previous value.
 
-    In extreme cases, if TiDB Operator fails to access the database, TiDB Operator cannot automatically recover the value of `tikv_gc_lifetime` and treats the backup as failed. At this time, you can view `tikv_gc_lifetime` of the current TiDB cluster using the following statement:
+    In extreme cases, if TiDB Operator fails to access the database, TiDB Operator cannot automatically recover the value of `tikv_gc_life_time` and treats the backup as failed. At this time, you can view `tikv_gc_life_time` of the current TiDB cluster using the following statement:
 
     {{< copyable "sql" >}}
 
@@ -163,13 +167,17 @@ More descriptions of fields in the `Backup` CR:
     select VARIABLE_NAME, VARIABLE_VALUE from mysql.tidb where VARIABLE_NAME like "tikv_gc_life_time";
     ```
 
-    In the output of the command above, if the value of `tikv_gc_lifetime` is still larger than expected (10m by default), it means TiDB Operator failed to automatically recover the value. Therefore, you need to set `tikv_gc_lifetime` back to the previous value manually:
+    In the output of the command above, if the value of `tikv_gc_life_time` is still larger than expected (10m by default), it means TiDB Operator failed to automatically recover the value. Therefore, you need to set `tikv_gc_life_time` back to the previous value manually:
 
     {{< copyable "sql" >}}
 
     ```sql
     update mysql.tidb set VARIABLE_VALUE = '10m' where VARIABLE_NAME = 'tikv_gc_life_time';
     ```
+
+    > **Note:**
+    >
+    > If TiDB Operator >= v1.1.7 && TiDB >= v4.0.8, `tikv_gc_life_time` will be adjusted by BR automatically, so you can omit `spec.tikvGCLifeTime`.
 
 * `.spec.cleanPolicy`: The clean policy of the backup data when the backup CR is deleted after the backup is completed.
 
@@ -198,6 +206,10 @@ More descriptions of fields in the `Backup` CR:
     ```shell
     kubectl create secret generic ${secret_name} --namespace=${namespace} --from-file=tls.crt=${cert_path} --from-file=tls.key=${key_path} --from-file=ca.crt=${ca_path}
     ```
+
+    > **Note:**
+    >
+    > If TiDB Operator >= v1.1.7 && TiDB >= v4.0.8, `tikv_gc_life_time` will be adjusted by BR automatically, so you can omit `spec.from`.
 
 * `.spec.tableFilter`: BR only backs up tables that match the [table filter rules](https://docs.pingcap.com/tidb/stable/table-filter/). This field can be ignored by default. If the field is not configured, BR backs up all schemas except the system schemas.
 
@@ -244,6 +256,7 @@ The prerequisites for the scheduled full backup is the same with the [prerequisi
       maxReservedTime: "3h"
       schedule: "*/2 * * * *"
       backupTemplate:
+        # Only needed for TiDB Operator < v1.1.7 or TiDB < v4.0.8
         from:
           host: ${tidb_host}
           port: ${tidb_port}

@@ -49,6 +49,10 @@ Currently, the above three authorization methods are supported for the ad-hoc ba
 
 Before you perform ad-hoc backup, AWS account permissions need to be granted. This section describes three methods to grant AWS account permissions.
 
+> **Note:**
+>
+> If TiDB Operator >= v1.1.7 && TiDB >= v4.0.8, `tikv_gc_life_time` will be adjusted by BR automatically. You can omit the step that creates the secret which stores the account and password needed to access the TiDB cluster.
+
 #### Grant permissions by importing AccessKey and SecretKey
 
 1. Download [backup-rbac.yaml](https://github.com/pingcap/tidb-operator/blob/master/manifests/backup/backup-rbac.yaml), and execute the following command to create the role-based access control (RBAC) resources in the `test1` namespace:
@@ -199,6 +203,7 @@ Before you perform ad-hoc backup, AWS account permissions need to be granted. Th
         # sendCredToTikv: true
         # options:
         # - --lastbackupts=420134118382108673
+      # Only needed for TiDB Operator < v1.1.7 or TiDB < v4.0.8
       from:
         host: ${tidb_host}
         port: ${tidb_port}
@@ -245,6 +250,7 @@ Before you perform ad-hoc backup, AWS account permissions need to be granted. Th
         # checksum: true
         # options:
         # - --lastbackupts=420134118382108673
+      # Only needed for TiDB Operator < v1.1.7 or TiDB < v4.0.8
       from:
         host: ${tidb_host}
         port: ${tidb_port}
@@ -289,6 +295,7 @@ Before you perform ad-hoc backup, AWS account permissions need to be granted. Th
         # checksum: true
         # options:
         # - --lastbackupts=420134118382108673
+      # Only needed for TiDB Operator < v1.1.7 or TiDB < v4.0.8
       from:
         host: ${tidb_host}
         port: ${tidb_port}
@@ -342,13 +349,13 @@ kubectl get bk -n test1 -o wide
 More `Backup` CR parameter description:
 
 - `.spec.metadata.namespace`: the namespace where the `Backup` CR is located.
-- `.spec.tikvGCLifeTime`: the temporary `tikv_gc_lifetime` time setting during the backup. Defaults to 72h.
+- `.spec.tikvGCLifeTime`: the temporary `tikv_gc_life_time` time setting during the backup. Defaults to 72h.
 
-    Before the backup begins, if the `tikv_gc_lifetime` setting in the TiDB cluster is smaller than `spec.tikvGCLifeTime` set by the user, TiDB Operator adjusts the value of `tikv_gc_lifetime` to the value of `spec.tikvGCLifeTime`. This operation makes sure that the backup data is not garbage-collected by TiKV.
+    Before the backup begins, if the `tikv_gc_life_time` setting in the TiDB cluster is smaller than `spec.tikvGCLifeTime` set by the user, TiDB Operator adjusts the value of `tikv_gc_life_time` to the value of `spec.tikvGCLifeTime`. This operation makes sure that the backup data is not garbage-collected by TiKV.
 
-    After the backup, no matter whether the backup is successful or not, as long as the previous `tikv_gc_lifetime` is smaller than `.spec.tikvGCLifeTime`, TiDB Operator will try to set `tikv_gc_lifetime` to the previous value.
+    After the backup, no matter whether the backup is successful or not, as long as the previous `tikv_gc_life_time` is smaller than `.spec.tikvGCLifeTime`, TiDB Operator will try to set `tikv_gc_life_time` to the previous value.
 
-    In extreme cases, if TiDB Operator fails to access the database, TiDB Operator cannot automatically recover the value of `tikv_gc_lifetime` and treats the backup as failed. At this time, you can view `tikv_gc_lifetime` of the current TiDB cluster using the following statement:
+    In extreme cases, if TiDB Operator fails to access the database, TiDB Operator cannot automatically recover the value of `tikv_gc_life_time` and treats the backup as failed. At this time, you can view `tikv_gc_life_time` of the current TiDB cluster using the following statement:
 
     {{< copyable "sql" >}}
 
@@ -356,13 +363,17 @@ More `Backup` CR parameter description:
     select VARIABLE_NAME, VARIABLE_VALUE from mysql.tidb where VARIABLE_NAME like "tikv_gc_life_time";
     ```
 
-    In the output of the command above, if the value of `tikv_gc_lifetime` is still larger than expected (10m by default), it means TiDB Operator failed to automatically recover the value. Therefore, you need to set `tikv_gc_lifetime` back to the previous value manually:
+    In the output of the command above, if the value of `tikv_gc_life_time` is still larger than expected (10m by default), it means TiDB Operator failed to automatically recover the value. Therefore, you need to set `tikv_gc_life_time` back to the previous value manually:
 
     {{< copyable "sql" >}}
 
     ```sql
     update mysql.tidb set VARIABLE_VALUE = '10m' where VARIABLE_NAME = 'tikv_gc_life_time';
     ```
+
+    > **Note:**
+    >
+    > If TiDB Operator >= v1.1.7 && TiDB >= v4.0.8, `tikv_gc_life_time` will be adjusted by BR automatically, so you can omit `spec.tikvGCLifeTime`.
 
 - * `.spec.cleanPolicy`: The clean policy of the backup data when the backup CR is deleted.
 
@@ -389,6 +400,10 @@ More `Backup` CR parameter description:
     ```shell
     kubectl create secret generic ${secret_name} --namespace=${namespace} --from-file=tls.crt=${cert_path} --from-file=tls.key=${key_path} --from-file=ca.crt=${ca_path}
     ```
+
+    > **Note:**
+    >
+    > If TiDB Operator >= v1.1.7 && TiDB >= v4.0.8, `tikv_gc_life_time` will be adjusted by BR automatically, so you can omit `spec.from`.
 
 - `.spec.tableFilter`: BR only backs up tables that match the [table filter rules](https://docs.pingcap.com/tidb/stable/table-filter/). This field can be ignored by default. If the field is not configured, BR backs up all schemas except the system schemas.
 
@@ -474,6 +489,7 @@ The prerequisites for the scheduled full backup is the same as the [prerequisite
           # timeAgo: ${time}
           # checksum: true
           # sendCredToTikv: true
+        # Only needed for TiDB Operator < v1.1.7 or TiDB < v4.0.8
         from:
           host: ${tidb_host}
           port: ${tidb_port}
@@ -523,6 +539,7 @@ The prerequisites for the scheduled full backup is the same as the [prerequisite
           # rateLimit: 0
           # timeAgo: ${time}
           # checksum: true
+        # Only needed for TiDB Operator < v1.1.7 or TiDB < v4.0.8
         from:
           host: ${tidb_host}
           port: ${tidb_port}
@@ -570,6 +587,7 @@ The prerequisites for the scheduled full backup is the same as the [prerequisite
           # rateLimit: 0
           # timeAgo: ${time}
           # checksum: true
+        # Only needed for TiDB Operator < v1.1.7 or TiDB < v4.0.8
         from:
           host: ${tidb_host}
           port: ${tidb_port}

@@ -18,6 +18,10 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/restore-from-aws-s3-using-br/']
 
 ## 环境准备
 
+> **注意：**
+>
+> 如果使用 TiDB Operator >= v1.1.7 && TiDB >= v4.0.8, BR 会自动调整 `tikv_gc_life_time` 参数，以下创建 `backup-demo1-tidb-secret` secret 的步骤可以省略。
+
 ### 通过 AccessKey 和 SecretKey 授权
 
 1. 下载文件 [backup-rbac.yaml](https://github.com/pingcap/tidb-operator/blob/master/manifests/backup/backup-rbac.yaml)，并执行以下命令在 `test2` 这个 namespace 中创建备份需要的 RBAC 相关资源：
@@ -164,6 +168,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/restore-from-aws-s3-using-br/']
         # timeAgo: ${time}
         # checksum: true
         # sendCredToTikv: true
+      # Only needed for TiDB Operator < v1.1.7 or TiDB < v4.0.8
       to:
         host: ${tidb_host}
         port: ${tidb_port}
@@ -207,6 +212,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/restore-from-aws-s3-using-br/']
         # rateLimit: 0
         # timeAgo: ${time}
         # checksum: true
+      # Only needed for TiDB Operator < v1.1.7 or TiDB < v4.0.8
       to:
         host: ${tidb_host}
         port: ${tidb_port}
@@ -248,6 +254,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/restore-from-aws-s3-using-br/']
         # rateLimit: 0
         # timeAgo: ${time}
         # checksum: true
+      # Only needed for TiDB Operator < v1.1.7 or TiDB < v4.0.8
       to:
         host: ${tidb_host}
         port: ${tidb_port}
@@ -284,6 +291,10 @@ kubectl get rt -n test2 -o wide
     ```shell
     kubectl create secret generic ${secret_name} --namespace=${namespace} --from-file=tls.crt=${cert_path} --from-file=tls.key=${key_path} --from-file=ca.crt=${ca_path}
     ```
+
+    > **注意：**
+    >
+    > 如果使用 TiDB Operator >= v1.1.7 && TiDB >= v4.0.8, BR 会自动调整 `tikv_gc_life_time` 参数，无需配置 `spec.to`.
 
 * `.spec.tableFilter`：恢复时指定让 BR 恢复符合 [table-filter 规则](https://docs.pingcap.com/zh/tidb/stable/table-filter/) 的表。默认情况下该字段可以不用配置。当不配置时，BR 会恢复备份文件中的所有数据库：
 

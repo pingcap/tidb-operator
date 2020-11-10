@@ -43,6 +43,10 @@ This document shows an example in which the backup data stored in the specified 
     kubectl create secret generic restore-demo2-tidb-secret --from-literal=user=root --from-literal=password=<password> --namespace=test2
     ```
 
+    > **Note:**
+    >
+    > If TiDB Operator >= v1.1.7 && TiDB >= v4.0.8, `tikv_gc_life_time` will be adjusted by BR automatically, so you can omit this step.
+
 ## Process of restore
 
 1. Create the `Restore` custom resource (CR), and restore the specified data to your cluster:
@@ -73,6 +77,7 @@ This document shows an example in which the backup data stored in the specified 
         # rateLimit: 0
         # checksum: true
         # sendCredToTikv: true
+      # Only needed for TiDB Operator < v1.1.7 or TiDB < v4.0.8
       to:
         host: ${tidb_host}
         port: ${tidb_port}
@@ -114,6 +119,10 @@ More descriptions of fields in the `Restore` CR are as follows:
     ```shell
     kubectl create secret generic ${secret_name} --namespace=${namespace} --from-file=tls.crt=${cert_path} --from-file=tls.key=${key_path} --from-file=ca.crt=${ca_path}
     ```
+
+    > **Note:**
+    >
+    > If TiDB Operator >= v1.1.7 && TiDB >= v4.0.8, `tikv_gc_life_time` will be adjusted by BR automatically, so you can omit `spec.to`.
 
 * `.spec.tableFilter`: BR only restores tables that match the [table filter rules](https://docs.pingcap.com/tidb/stable/table-filter/). This field can be ignored by default. If the field is not configured, BR restores all schemas except the system schemas.
 
