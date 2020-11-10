@@ -250,6 +250,7 @@ func TestPodControlUpdateMetaInfoUpdatePodFailed(t *testing.T) {
 
 func TestPodControlUpdateMetaInfoConflictSuccess(t *testing.T) {
 	g := NewGomegaWithT(t)
+
 	tc := newTidbCluster()
 	pod := newPod(tc)
 	oldPod := newPod(tc)
@@ -258,51 +259,77 @@ func TestPodControlUpdateMetaInfoConflictSuccess(t *testing.T) {
 	podIndexer.Add(oldPod)
 	control := NewRealPodControl(fakeClient, pdControl, podLister, recorder)
 	pdClient := NewFakePDClient(pdControl, tc)
-	pdClient.AddReaction(pdapi.GetClusterActionType, func(action *pdapi.Action) (interface{}, error) {
-		cluster := &metapb.Cluster{
-			Id: 222,
-		}
-		return cluster, nil
-	})
-	pdClient.AddReaction(pdapi.GetMembersActionType, func(action *pdapi.Action) (interface{}, error) {
-		membersInfo := &pdapi.MembersInfo{
-			Members: []*pdpb.Member{
-				{
-					MemberId: 111,
-				},
-			},
-		}
-		return membersInfo, nil
-	})
-	pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
-		storesInfo := &pdapi.StoresInfo{
-			Stores: []*pdapi.StoreInfo{
-				{
-					Store: &pdapi.MetaStore{
-						Store: &metapb.Store{
-							Id:      333,
-							Address: fmt.Sprintf("%s.web", TestPodName),
-						},
-					},
-				},
-			},
-		}
-		return storesInfo, nil
-	})
 
-	conflict := false
-	fakeClient.AddReactor("update", "pods", func(action core.Action) (bool, runtime.Object, error) {
-		update := action.(core.UpdateAction)
-		if !conflict {
-			conflict = true
-			return true, oldPod, apierrors.NewConflict(action.GetResource().GroupResource(), pod.Name, errors.New("conflict"))
-		}
-		return true, update.GetObject(), nil
-	})
-	updatePod, err := control.UpdateMetaInfo(tc, pod)
-	g.Expect(err).To(Succeed())
-	g.Expect(updatePod.Labels[label.StoreIDLabelKey]).To(Equal("333"))
-	g.Expect(updatePod.Labels[label.ClusterIDLabelKey]).To(Equal("222"))
+	type testcase struct {
+		name     string
+		update   func(*v1alpha1.TidbCluster)
+		expectFn func(*GomegaWithT, bool)
+	}
+	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+
+		tc := newTidbCluster()
+		test.update(tc)
+		test.expectFn(g, tc.PDIsAvailable())
+	}
+	tests := []testcase{
+		{
+			name: "Test PodControl UpdateMetaInfo ConflictSuccess",
+			update: func(tc *v1alpha1.TidbCluster) {
+				pdClient.AddReaction(pdapi.GetClusterActionType, func(action *pdapi.Action) (interface{}, error) {
+					cluster := &metapb.Cluster{
+						Id: 222,
+					}
+					return cluster, nil
+				})
+				pdClient.AddReaction(pdapi.GetMembersActionType, func(action *pdapi.Action) (interface{}, error) {
+					membersInfo := &pdapi.MembersInfo{
+						Members: []*pdpb.Member{
+							{
+								MemberId: 111,
+							},
+						},
+					}
+					return membersInfo, nil
+				})
+				pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
+					storesInfo := &pdapi.StoresInfo{
+						Stores: []*pdapi.StoreInfo{
+							{
+								Store: &pdapi.MetaStore{
+									Store: &metapb.Store{
+										Id:      333,
+										Address: fmt.Sprintf("%s.%s-tikv-peer.%s.svc", TestPodName, TestClusterName, TestNamespace ),
+									},
+								},
+							},
+						},
+					}
+					return storesInfo, nil
+				})
+				conflict := false
+				fakeClient.AddReactor("update", "pods", func(action core.Action) (bool, runtime.Object, error) {
+					update := action.(core.UpdateAction)
+					if !conflict {
+						conflict = true
+						return true, oldPod, apierrors.NewConflict(action.GetResource().GroupResource(), pod.Name, errors.New("conflict"))
+					}
+					return true, update.GetObject(), nil
+				})
+			},
+			expectFn: func(g *GomegaWithT, b bool) {
+				updatePod, err := control.UpdateMetaInfo(tc, pod)
+				g.Expect(err).To(Succeed())
+				g.Expect(updatePod.Labels[label.StoreIDLabelKey]).To(Equal("333"))
+				g.Expect(updatePod.Labels[label.ClusterIDLabelKey]).To(Equal("222"))
+			},
+		},
+	}
+
+	for i := range tests {
+		testFn(&tests[i], t)
+	}
+
 }
 
 func TestPodControlUpdatePod(t *testing.T) {

@@ -160,9 +160,19 @@ func (c *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Po
 			}
 			for _, store := range stores.Stores {
 				addr := strings.Split(store.Store.GetAddress(), ":")[0]
+				
+				// Select TiKV store
 				tikvSVCAddress := TikvSVCAddressWithPodName(tc, pod)
-
+				fmt.Println(tikvSVCAddress)
 				if tikvSVCAddress == addr {
+					storeID = strconv.FormatUint(store.Store.GetId(), 10)
+					break
+				}
+
+				// Select TiFlash store
+				tiflashSVCAddressWithPodName := TiFlashSVCAddressWithPodName(tc, pod)
+
+				if tiflashSVCAddressWithPodName == addr {
 					storeID = strconv.FormatUint(store.Store.GetId(), 10)
 					break
 				}
@@ -249,7 +259,8 @@ var (
 	TestComponentName string = "tikv"
 	TestPodName       string = "pod-1"
 	TestManagedByName string = "tidb-operator"
-	TestClusterName   string = "test"
+	TestClusterName   string = "demo"
+	TestNamespace     string = "default"
 )
 
 // FakePodControl is a fake PodControlInterface
@@ -373,6 +384,16 @@ func TikvSVCAddressWithPodName(tc *v1alpha1.TidbCluster, pod *corev1.Pod) string
 	if tc.IsMultiClusterEnabled() {
 		// TODO: fix when upgrade from the cluster without ClusterDomain
 		name = fmt.Sprintf("%s.%s-tikv-peer.%s.svc.%s", pod.Name, tc.GetName(), tc.Namespace, tc.Spec.ClusterDomain)
+	}
+	return name
+}
+
+func TiFlashSVCAddressWithPodName(tc *v1alpha1.TidbCluster, pod *corev1.Pod) string {
+	var name string
+	name = fmt.Sprintf("%s.%s-tiflash-peer.%s.svc", pod.Name, tc.GetName(), tc.Namespace)
+	if tc.IsMultiClusterEnabled() {
+		// TODO: fix when upgrade from the cluster without ClusterDomain
+		name = fmt.Sprintf("%s.%s-tiflash-peer.%s.svc.%s", pod.Name, tc.GetName(), tc.Namespace, tc.Spec.ClusterDomain)
 	}
 	return name
 }
