@@ -28,7 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/klog"
 	"k8s.io/utils/pointer"
 )
 
@@ -81,15 +80,12 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	}
 
 	if err != nil {
-		updateErr := rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+		rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreInvalid,
 			Status:  corev1.ConditionTrue,
 			Reason:  "InvalidSpec",
 			Message: err.Error(),
 		})
-		if updateErr != nil {
-			klog.Warning(updateErr)
-		}
 
 		return controller.IgnoreErrorf("invalid restore spec %s/%s", ns, name)
 	}

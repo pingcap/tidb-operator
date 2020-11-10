@@ -24,6 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/util"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 	"k8s.io/utils/pointer"
@@ -58,12 +59,21 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 	klog.Infof("start to clean backup %s/%s", ns, name)
 
 	cleanJobName := backup.GetCleanJobName()
-	// FIXME: handle error, should only ignore not found error
 	_, err := bc.deps.JobLister.Jobs(ns).Get(cleanJobName)
 	if err == nil {
 		// already have a clean job running，return directly
 		return nil
+	} else if !errors.IsNotFound(err) {
+		bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Type:    v1alpha1.BackupRetryFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "GetBackupFailed",
+			Message: err.Error(),
+		})
+		return err
 	}
+
+	// no found the clean job, we start to create the clean job.
 
 	if backup.Status.BackupPath == "" {
 		// the backup path is empty, so there is no need to clean up backup data
