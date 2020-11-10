@@ -163,7 +163,6 @@ func (c *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Po
 
 				// Select TiKV store
 				tikvSVCAddress := TikvSVCAddressWithPodName(tc, pod)
-				fmt.Println(tikvSVCAddress)
 				if tikvSVCAddress == addr {
 					storeID = strconv.FormatUint(store.Store.GetId(), 10)
 					break
