@@ -14,8 +14,11 @@
 package monitor
 
 import (
-	"fmt"
 	"encoding/json"
+	"fmt"
+	"sort"
+	"strings"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/features"
@@ -35,8 +38,6 @@ import (
 	discoverycachedmemory "k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sort"
-	"strings"
 )
 
 type MonitorManager struct {
