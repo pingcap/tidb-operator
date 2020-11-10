@@ -10048,8 +10048,6 @@ spec:
               - projectId
               - secretName
               type: object
-            image:
-              type: string
             imagePullSecrets:
               items:
                 properties:
@@ -10121,6 +10119,8 @@ spec:
                     type: string
                 type: object
               type: array
+            toolImage:
+              type: string
             useKMS:
               type: boolean
           type: object
@@ -10486,8 +10486,6 @@ spec:
               - projectId
               - secretName
               type: object
-            image:
-              type: string
             imagePullSecrets:
               items:
                 properties:
@@ -10576,6 +10574,8 @@ spec:
                     type: string
                 type: object
               type: array
+            toolImage:
+              type: string
             useKMS:
               type: boolean
           type: object
@@ -10973,8 +10973,6 @@ spec:
                   - projectId
                   - secretName
                   type: object
-                image:
-                  type: string
                 imagePullSecrets:
                   items:
                     properties:
@@ -11046,6 +11044,8 @@ spec:
                         type: string
                     type: object
                   type: array
+                toolImage:
+                  type: string
                 useKMS:
                   type: boolean
               type: object

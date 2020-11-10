@@ -213,7 +213,7 @@ DumplingConfig
 </tr>
 <tr>
 <td>
-<code>image</code></br>
+<code>toolImage</code></br>
 <em>
 string
 </em>
@@ -979,7 +979,7 @@ Kubernetes core/v1.PullPolicy
 </tr>
 <tr>
 <td>
-<code>image</code></br>
+<code>toolImage</code></br>
 <em>
 string
 </em>
@@ -3091,7 +3091,7 @@ Optional: Defaults to cluster-level setting</p>
 </tr>
 <tr>
 <td>
-<code>image</code></br>
+<code>toolImage</code></br>
 <em>
 string
 </em>
@@ -10990,7 +10990,7 @@ Kubernetes core/v1.ResourceRequirements
 </tr>
 <tr>
 <td>
-<code>image</code></br>
+<code>toolImage</code></br>
 <em>
 string
 </em>
