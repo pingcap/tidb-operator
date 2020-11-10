@@ -555,7 +555,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		err = genericCli.Delete(context.TODO(), discoveryDep)
 		framework.ExpectNoError(err, "Expected to delete deployment")
 
-		err = wait.PollImmediate(10*time.Second, 5*time.Minute, func() (bool, error) {
+		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
 			_, err := c.AppsV1().Deployments(tc.Namespace).Get(discoveryName, metav1.GetOptions{})
 			if err != nil {
 				e2elog.Logf("wait discovery deployment get created again: %v", err)
@@ -838,7 +838,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		listOptions := metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(label.New().Instance(tcName).Component(label.TiKVLabelVal).Labels()).String(),
 		}
-		err = wait.PollImmediate(5*time.Second, 15*time.Minute, func() (bool, error) {
+		err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
 			podList, err := c.CoreV1().Pods(ns).List(listOptions)
 			if err != nil && !apierrors.IsNotFound(err) {
 				return false, err
@@ -869,7 +869,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		e2elog.Logf("checking tidb cluster [%s/%s] failed member", cluster.Namespace, cluster.ClusterName)
 		ns := cluster.Namespace
 		tcName := cluster.ClusterName
-		err := wait.PollImmediate(15*time.Second, 15*time.Minute, func() (bool, error) {
+		err := wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
 			var tc *v1alpha1.TidbCluster
 			var err error
 			if tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
@@ -889,7 +889,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.ScaleTidbClusterOrDie(&cluster)
 
 		e2elog.Logf("checking tidb cluster [%s/%s] scale to zero", cluster.Namespace, cluster.ClusterName)
-		err = wait.PollImmediate(15*time.Second, 10*time.Minute, func() (bool, error) {
+		err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
 			var tc *v1alpha1.TidbCluster
 			var err error
 			if tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
@@ -912,7 +912,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 	ginkgo.Context("[Feature: AutoScaling]", func() {
 		ginkgo.It("auto-scaling TiKV", func() {
-			clusterName := "auto-scaling"
+			clusterName := "auto-scaling-tikv"
 			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBNightlyVersion)
 			tc.Spec.PD.Replicas = 1
 			tc.Spec.TiKV.Replicas = 3
@@ -1013,7 +1013,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			// Case 1: No autoscaling cluster and CPU usage over max threshold
 			setCPUUsageAndQuota("35.0", "1.0", v1alpha1.TiKVMemberType.String(), baseTiKVs)
 			// A new cluster should be created and all TiKV stores are up
-			err = wait.Poll(10*time.Second, 10*time.Minute, func() (done bool, err error) {
+			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				tcList, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).List(autoTcListOption)
 
 				if err != nil {
@@ -1084,7 +1084,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			// Case 2: Has an autoscaling cluster and CPU usage between max threshold and min threshold
 			setCPUUsageAndQuota("20.0", "1.0", v1alpha1.TiKVMemberType.String(), append(baseTiKVs, autoTiKV))
 			// The TiKV replicas should remain unchanged
-			err = wait.Poll(30*time.Second, 5*time.Minute, func() (done bool, err error) {
+			err = wait.Poll(30*time.Second, 3*time.Minute, func() (done bool, err error) {
 				tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
 
 				if err != nil {
@@ -1106,7 +1106,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			// Case 3: Has an autoscaling cluster and CPU usage over max threshold
 			setCPUUsageAndQuota("35.0", "1.0", v1alpha1.TiKVMemberType.String(), append(baseTiKVs, autoTiKV))
 			// The existing autoscaling cluster should be scaled out
-			err = wait.Poll(30*time.Second, 10*time.Minute, func() (done bool, err error) {
+			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
 
 				if err != nil {
@@ -1145,7 +1145,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			// Case 4: CPU usage below min threshold
 			setCPUUsageAndQuota("0.0", "1.0", v1alpha1.TiKVMemberType.String(), pods)
 			// The autoscaling cluster should be scaled in
-			err = wait.Poll(30*time.Second, 10*time.Minute, func() (done bool, err error) {
+			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
 
 				if err != nil {
@@ -1175,7 +1175,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 			// Case 5: CPU usage below min threshold for a long time
 			// The autoscaling cluster should be deleted
-			err = wait.Poll(30*time.Second, 10*time.Minute, func() (done bool, err error) {
+			err = wait.Poll(5*time.Second, 10*time.Minute, func() (done bool, err error) {
 				tcList, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).List(autoTcListOption)
 
 				if err != nil {
@@ -1196,7 +1196,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	})
 
 	ginkgo.It("auto-scaling TiDB", func() {
-		clusterName := "auto-scaling"
+		clusterName := "auto-scaling-tidb"
 		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBNightlyVersion)
 		tc.Spec.PD.Replicas = 1
 		tc.Spec.TiDB.Replicas = 2
@@ -1293,7 +1293,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		// Case 1: No autoscaling cluster and CPU usage over max threshold
 		setCPUUsageAndQuota("35.0", "1.0", v1alpha1.TiDBMemberType.String(), baseTiDBs)
 		// A new cluster should be created
-		err = wait.Poll(10*time.Second, 10*time.Minute, func() (done bool, err error) {
+		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 			tcList, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).List(autoTcListOption)
 
 			if err != nil {
@@ -1317,7 +1317,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		// Case 2: Has an autoscaling cluster and CPU usage between max threshold and min threshold
 		setCPUUsageAndQuota("20.0", "1.0", v1alpha1.TiDBMemberType.String(), append(baseTiDBs, autoTiDB))
 		// The TiDB replicas should remain unchanged
-		err = wait.Poll(30*time.Second, 5*time.Minute, func() (done bool, err error) {
+		err = wait.Poll(30*time.Second, 3*time.Minute, func() (done bool, err error) {
 			tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
 
 			if err != nil {
@@ -1339,7 +1339,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		// Case 3: Has an autoscaling cluster and CPU usage over max threshold
 		setCPUUsageAndQuota("35.0", "1.0", v1alpha1.TiDBMemberType.String(), append(baseTiDBs, autoTiDB))
 		// The existing autoscaling cluster should be scaled out
-		err = wait.Poll(30*time.Second, 10*time.Minute, func() (done bool, err error) {
+		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 			tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
 
 			if err != nil {
@@ -1367,7 +1367,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		// Case 4: CPU usage below min threshold
 		setCPUUsageAndQuota("0.0", "1.0", v1alpha1.TiDBMemberType.String(), pods)
 		// The autoscaling cluster should be scaled in
-		err = wait.Poll(30*time.Second, 10*time.Minute, func() (done bool, err error) {
+		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 			tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
 
 			if err != nil {
@@ -1397,7 +1397,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 		// Case 5: CPU usage below min threshold for a long time
 		// The autoscaling cluster should be deleted
-		err = wait.Poll(30*time.Second, 10*time.Minute, func() (done bool, err error) {
+		err = wait.Poll(5*time.Second, 10*time.Minute, func() (done bool, err error) {
 			tcList, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).List(autoTcListOption)
 
 			if err != nil {
@@ -1647,7 +1647,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			err = oa.WaitForTidbClusterReady(heterogeneousTc, 30*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err)
 			ginkgo.By("Checking heterogeneous tls tidb cluster status")
-			err = wait.PollImmediate(15*time.Second, 15*time.Minute, func() (bool, error) {
+			err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
 				var err error
 				if _, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(heterogeneousTc.Name, metav1.GetOptions{}); err != nil {
 					e2elog.Logf("failed to get tidbcluster: %s/%s, %v", ns, heterogeneousTc.Name, err)
@@ -1869,7 +1869,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected Heterogeneous TiDB cluster created")
 		err = oa.WaitForTidbClusterReady(heterogeneousTc, 15*time.Minute, 15*time.Second)
 		framework.ExpectNoError(err, "Expected Heterogeneous TiDB cluster ready")
-		err = wait.PollImmediate(15*time.Second, 15*time.Minute, func() (bool, error) {
+		err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
 			var err error
 			if _, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(heterogeneousTc.Name, metav1.GetOptions{}); err != nil {
 				e2elog.Logf("failed to get tidbcluster: %s/%s, %v", ns, heterogeneousTc.Name, err)
