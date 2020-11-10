@@ -662,7 +662,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		err = tests.CheckTidbMonitor(tm, cli, c, fw)
 		framework.ExpectNoError(err, "Expected tidbmonitor checked success")
 
-		pvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get("e2e-monitor-monitor", metav1.GetOptions{})
+		pvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get("e2e-monitor-monitor-0", metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected fetch tidbmonitor pvc success")
 		pvName := pvc.Spec.VolumeName
 		pv, err := c.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{})
