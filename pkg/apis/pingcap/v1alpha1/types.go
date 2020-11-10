@@ -1263,7 +1263,7 @@ type BackupSpec struct {
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 	// ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now
 	// +optional
-	ToolImage string `json:"image,omitempty"`
+	ToolImage string `json:"toolImage,omitempty"`
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
 	// +optional
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
@@ -1522,7 +1522,7 @@ type RestoreSpec struct {
 	ServiceAccount string `json:"serviceAccount,omitempty"`
 	// ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now
 	// +optional
-	ToolImage string `json:"image,omitempty"`
+	ToolImage string `json:"toolImage,omitempty"`
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
 	// +optional
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
