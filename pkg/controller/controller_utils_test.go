@@ -40,6 +40,17 @@ func TestRequeueError(t *testing.T) {
 	g.Expect(IsRequeueError(fmt.Errorf("i am not a requeue error"))).To(BeFalse())
 }
 
+func TestIgnoreError(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	err := IgnoreErrorf("i am an ignore %s", "error")
+	g.Expect(IsIgnoreError(err)).To(BeTrue())
+	_, ok := err.(error)
+	g.Expect(ok).To(BeTrue())
+	g.Expect(err.Error()).To(Equal("i am an ignore error"))
+	g.Expect(IsIgnoreError(fmt.Errorf("i am not an ignore error"))).To(BeFalse())
+}
+
 func TestGetOwnerRef(t *testing.T) {
 	g := NewGomegaWithT(t)
 
@@ -63,6 +74,62 @@ func TestGetDMOwnerRef(t *testing.T) {
 	g.Expect(ref.APIVersion).To(Equal(DMControllerKind.GroupVersion().String()))
 	g.Expect(ref.Kind).To(Equal(DMControllerKind.Kind))
 	g.Expect(ref.Name).To(Equal(dc.GetName()))
+	g.Expect(ref.UID).To(Equal(types.UID("demo-uid")))
+	g.Expect(*ref.Controller).To(BeTrue())
+	g.Expect(*ref.BlockOwnerDeletion).To(BeTrue())
+}
+
+func TestGetBackupOwnerRef(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	b := newBackup()
+	b.UID = types.UID("demo-uid")
+	ref := GetBackupOwnerRef(b)
+	g.Expect(ref.APIVersion).To(Equal(BackupControllerKind.GroupVersion().String()))
+	g.Expect(ref.Kind).To(Equal(BackupControllerKind.Kind))
+	g.Expect(ref.Name).To(Equal(b.GetName()))
+	g.Expect(ref.UID).To(Equal(types.UID("demo-uid")))
+	g.Expect(*ref.Controller).To(BeTrue())
+	g.Expect(*ref.BlockOwnerDeletion).To(BeTrue())
+}
+
+func TestGetRestoreOwnerRef(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	r := newRestore()
+	r.UID = types.UID("demo-uid")
+	ref := GetRestoreOwnerRef(r)
+	g.Expect(ref.APIVersion).To(Equal(RestoreControllerKind.GroupVersion().String()))
+	g.Expect(ref.Kind).To(Equal(RestoreControllerKind.Kind))
+	g.Expect(ref.Name).To(Equal(r.GetName()))
+	g.Expect(ref.UID).To(Equal(types.UID("demo-uid")))
+	g.Expect(*ref.Controller).To(BeTrue())
+	g.Expect(*ref.BlockOwnerDeletion).To(BeTrue())
+}
+
+func TestGetBackupScheduleOwnerRef(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	b := newBackupSchedule()
+	b.UID = types.UID("demo-uid")
+	ref := GetBackupScheduleOwnerRef(b)
+	g.Expect(ref.APIVersion).To(Equal(backupScheduleControllerKind.GroupVersion().String()))
+	g.Expect(ref.Kind).To(Equal(backupScheduleControllerKind.Kind))
+	g.Expect(ref.Name).To(Equal(b.GetName()))
+	g.Expect(ref.UID).To(Equal(types.UID("demo-uid")))
+	g.Expect(*ref.Controller).To(BeTrue())
+	g.Expect(*ref.BlockOwnerDeletion).To(BeTrue())
+}
+
+func TestGetTiDBClusterAutoScalerOwnerRef(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	tc := newTidbClusterAutoScaler()
+	tc.UID = types.UID("demo-uid")
+	ref := GetTiDBClusterAutoScalerOwnerRef(tc)
+	g.Expect(ref.APIVersion).To(Equal(tidbClusterAutoScalerKind.GroupVersion().String()))
+	g.Expect(ref.Kind).To(Equal(tidbClusterAutoScalerKind.Kind))
+	g.Expect(ref.Name).To(Equal(tc.GetName()))
 	g.Expect(ref.UID).To(Equal(types.UID("demo-uid")))
 	g.Expect(*ref.Controller).To(BeTrue())
 	g.Expect(*ref.BlockOwnerDeletion).To(BeTrue())
@@ -391,6 +458,22 @@ func newTidbCluster() *v1alpha1.TidbCluster {
 	return tc
 }
 
+func newTidbClusterAutoScaler() *v1alpha1.TidbClusterAutoScaler {
+	tc := &v1alpha1.TidbClusterAutoScaler{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo",
+			Namespace: metav1.NamespaceDefault,
+		},
+		Spec: v1alpha1.TidbClusterAutoScalerSpec{
+			Cluster: v1alpha1.TidbClusterRef{
+				Name:      "demo",
+				Namespace: metav1.NamespaceDefault,
+			},
+		},
+	}
+	return tc
+}
+
 func newDMCluster() *v1alpha1.DMCluster {
 	retainPVP := corev1.PersistentVolumeReclaimRetain
 	dc := &v1alpha1.DMCluster{
@@ -430,6 +513,40 @@ func newBackup() *v1alpha1.Backup {
 		},
 		Spec: v1alpha1.BackupSpec{
 			From: &v1alpha1.TiDBAccessConfig{},
+		},
+	}
+	return backup
+}
+
+func newRestore() *v1alpha1.Restore {
+	restore := &v1alpha1.Restore{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo-backup",
+			Namespace: metav1.NamespaceDefault,
+			Labels: map[string]string{
+				label.RestoreJobLabelVal: "test-job",
+			},
+		},
+		Spec: v1alpha1.RestoreSpec{
+			To: &v1alpha1.TiDBAccessConfig{},
+		},
+	}
+	return restore
+}
+
+func newBackupSchedule() *v1alpha1.BackupSchedule {
+	backup := &v1alpha1.BackupSchedule{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo-backup",
+			Namespace: metav1.NamespaceDefault,
+			Labels: map[string]string{
+				label.BackupScheduleLabelKey: "test-schedule",
+			},
+		},
+		Spec: v1alpha1.BackupScheduleSpec{
+			BackupTemplate: v1alpha1.BackupSpec{
+				From: &v1alpha1.TiDBAccessConfig{},
+			},
 		},
 	}
 	return backup
