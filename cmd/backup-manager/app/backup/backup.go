@@ -65,7 +65,7 @@ func (bo *Options) backupData(backup *v1alpha1.Backup) error {
 	}
 	fullArgs = append(fullArgs, args...)
 	klog.Infof("Running br command with args: %v", fullArgs)
-	bin := "br" + backupUtil.Suffix(bo.TiKVVersion)
+	bin := path.Join(util.BRBinPath, "br")
 	cmd := exec.Command(bin, fullArgs...)
 
 	stdOut, err := cmd.StdoutPipe()
