@@ -268,7 +268,6 @@ func TestPodControlUpdateMetaInfoConflictSuccess(t *testing.T) {
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 
-		tc := newTidbCluster()
 		test.update(tc)
 		test.expectFn(g, tc.PDIsAvailable())
 	}
@@ -299,7 +298,7 @@ func TestPodControlUpdateMetaInfoConflictSuccess(t *testing.T) {
 								Store: &pdapi.MetaStore{
 									Store: &metapb.Store{
 										Id:      333,
-										Address: fmt.Sprintf("%s.%s-tikv-peer.%s.svc", TestPodName, TestClusterName, TestNamespace),
+										Address: fmt.Sprintf("%s.web", TestPodName),
 									},
 								},
 							},
@@ -307,6 +306,9 @@ func TestPodControlUpdateMetaInfoConflictSuccess(t *testing.T) {
 					}
 					return storesInfo, nil
 				})
+				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
+					"333": {PodName: TestPodName, ID: "333"},
+				}
 				conflict := false
 				fakeClient.AddReactor("update", "pods", func(action core.Action) (bool, runtime.Object, error) {
 					update := action.(core.UpdateAction)
