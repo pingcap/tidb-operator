@@ -28,7 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/klog"
 	"k8s.io/utils/pointer"
 )
 
@@ -66,8 +65,14 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		var tc *v1alpha1.TidbCluster
 		tc, err = rm.deps.TiDBClusterLister.TidbClusters(restoreNamespace).Get(restore.Spec.BR.Cluster)
 		if err != nil {
-			klog.Errorf("failed to fetch tidbcluster %s/%s, error: %s", restoreNamespace, restore.Spec.BR.Cluster, err.Error())
-			return nil
+			reason := fmt.Sprintf("failed to fetch tidbcluster %s/%s", restoreNamespace, restore.Spec.BR.Cluster)
+			rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+				Type:    v1alpha1.RestoreRetryFailed,
+				Status:  corev1.ConditionTrue,
+				Reason:  reason,
+				Message: err.Error(),
+			})
+			return err
 		}
 
 		tikvImage := tc.TiKVImage()

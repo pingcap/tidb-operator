@@ -391,7 +391,9 @@ int32
 </td>
 <td>
 <p>MaxBackups is to specify how many backups we want to keep
-0 is magic number to indicate un-limited backups.</p>
+0 is magic number to indicate un-limited backups.
+if MaxBackups and MaxReservedTime are set at the same time, MaxReservedTime is preferred
+and MaxBackups is ignored.</p>
 </td>
 </tr>
 <tr>
@@ -2575,7 +2577,9 @@ int32
 </td>
 <td>
 <p>MaxBackups is to specify how many backups we want to keep
-0 is magic number to indicate un-limited backups.</p>
+0 is magic number to indicate un-limited backups.
+if MaxBackups and MaxReservedTime are set at the same time, MaxReservedTime is preferred
+and MaxBackups is ignored.</p>
 </td>
 </tr>
 <tr>
