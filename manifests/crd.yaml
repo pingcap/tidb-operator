@@ -10119,6 +10119,8 @@ spec:
                     type: string
                 type: object
               type: array
+            toolImage:
+              type: string
             useKMS:
               type: boolean
           type: object
@@ -10572,6 +10574,8 @@ spec:
                     type: string
                 type: object
               type: array
+            toolImage:
+              type: string
             useKMS:
               type: boolean
           type: object
@@ -11040,6 +11044,8 @@ spec:
                         type: string
                     type: object
                   type: array
+                toolImage:
+                  type: string
                 useKMS:
                   type: boolean
               type: object

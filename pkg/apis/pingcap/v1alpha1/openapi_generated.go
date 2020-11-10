@@ -836,6 +836,13 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 							},
 						},
 					},
+					"toolImage": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"imagePullSecrets": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.",
@@ -3751,7 +3758,102 @@ func schema_pkg_apis_pingcap_v1alpha1_Performance(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
+<<<<<<< HEAD
 					"cross-join": {
+=======
+					"serviceAccount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Specify service account of restore",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"toolImage": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"imagePullSecrets": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/api/core/v1.LocalObjectReference"),
+									},
+								},
+							},
+						},
+					},
+					"tableFilter": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TableFilter means Table filter expression for 'db.table' matching. BR supports this from v4.0.3.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/api/core/v1.Toleration"},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_S3StorageProvider(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "S3StorageProvider represents a S3 compliant storage for storing backups.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"provider": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Provider represents the specific storage provider that implements the S3 interface",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"region": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Region in which the S3 compatible bucket is located.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"path": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Path is the full path where the backup is saved. The format of the path must be: \"<bucket-name>/<path-to-backup-file>\"",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"bucket": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Bucket in which to store the backup data.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"endpoint": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Endpoint of S3 compatible storage service",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"storageClass": {
+>>>>>>> bbc27913... add init container for BR backup/restore to supply the BR bin (#3471)
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional: Defaults to true",
 							Type:        []string{"boolean"},
