@@ -24,4 +24,4 @@ pushd "${ROOT}/hack/tools" >/dev/null
     GO111MODULE=on go install github.com/golangci/golangci-lint/cmd/golangci-lint
 popd >/dev/null
 
-golangci-lint run $(go list ./... | sed 's|github.com/pingcap/tidb-operator/||')
+golangci-lint run --timeout 10m $(go list ./... | sed 's|github.com/pingcap/tidb-operator/||')
