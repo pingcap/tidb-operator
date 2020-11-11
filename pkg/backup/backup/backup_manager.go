@@ -28,7 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/klog"
 	"k8s.io/utils/pointer"
 )
 
@@ -78,8 +77,14 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 		var tc *v1alpha1.TidbCluster
 		tc, err = bm.deps.TiDBClusterLister.TidbClusters(backupNamespace).Get(backup.Spec.BR.Cluster)
 		if err != nil {
-			klog.Errorf("failed to fetch tidbcluster %s/%s, error: %s", backupNamespace, backup.Spec.BR.Cluster, err.Error())
-			return nil
+			reason := fmt.Sprintf("failed to fetch tidbcluster %s/%s", backupNamespace, backup.Spec.BR.Cluster)
+			bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+				Type:    v1alpha1.BackupRetryFailed,
+				Status:  corev1.ConditionTrue,
+				Reason:  reason,
+				Message: err.Error(),
+			})
+			return err
 		}
 
 		tikvImage := tc.TiKVImage()
@@ -94,7 +99,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 			Message: err.Error(),
 		})
 
-		return controller.IgnoreErrorf("invalid backup spec %s/%s", ns, name)
+		return controller.IgnoreErrorf("invalid backup spec %s/%s cause %s", ns, name, err.Error())
 	}
 
 	_, err = bm.deps.JobLister.Jobs(ns).Get(backupJobName)
@@ -329,6 +334,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	backupLabel := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name)
 	volumeMounts := []corev1.VolumeMount{}
 	volumes := []corev1.Volume{}
+
 	if tc.IsTLSClusterEnabled() {
 		args = append(args, "--cluster-tls=true")
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
@@ -345,6 +351,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 			},
 		})
 	}
+
 	if tc.Spec.TiDB.TLSClient != nil && tc.Spec.TiDB.TLSClient.Enabled && !tc.SkipTLSWhenConnectTiDB() {
 		args = append(args, "--client-tls=true")
 		clientSecretName := util.TiDBClientTLSSecretName(backup.Spec.BR.Cluster)
