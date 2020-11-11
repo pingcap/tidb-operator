@@ -793,7 +793,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupScheduleSpec(ref common.ReferenceCal
 					},
 					"maxBackups": {
 						SchemaProps: spec.SchemaProps{
-							Description: "MaxBackups is to specify how many backups we want to keep 0 is magic number to indicate un-limited backups.",
+							Description: "MaxBackups is to specify how many backups we want to keep 0 is magic number to indicate un-limited backups. if MaxBackups and MaxReservedTime are set at the same time, MaxReservedTime is preferred and MaxBackups is ignored.",
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},
@@ -926,6 +926,13 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 									},
 								},
 							},
+						},
+					},
+					"toolImage": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"imagePullSecrets": {
@@ -5092,6 +5099,13 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 					"serviceAccount": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Specify service account of restore",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"toolImage": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now",
 							Type:        []string{"string"},
 							Format:      "",
 						},
