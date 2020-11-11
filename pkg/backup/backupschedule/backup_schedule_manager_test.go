@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/pointer"
 )
 
@@ -261,7 +262,16 @@ func (h *helper) checkBacklist(ns string, num int) (bks *v1alpha1.BackupList) {
 			return fmt.Errorf("there %d backup, but should be %d, cur backups: %v", len(bks.Items), num, names)
 		}
 		return nil
-	}, time.Second*10).Should(BeNil())
+	}, time.Second*30).Should(BeNil())
+
+	g.Eventually(func() error {
+		var err error
+		bks, err := deps.BackupLister.Backups(ns).List(labels.Everything())
+		if err == nil && len(bks) == num {
+			return nil
+		}
+		return fmt.Errorf("there %d backup, but should be %d", len(bks), num)
+	}, time.Second*30).Should(BeNil())
 
 	return
 }
