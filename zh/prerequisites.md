@@ -147,6 +147,8 @@ cpupower frequency-set --governor performance
 
 TiDB 集群默认会使用很多文件描述符，需要将工作节点上面的 `ulimit` 设置为大于等于 `1048576`：
 
+{{< copyable "shell-regular" >}}
+
 ```shell
 cat <<EOF >>  /etc/security/limits.conf
 root        soft        nofile        1048576
@@ -165,6 +167,8 @@ sysctl --system
 
 1. 将 Docker 的数据保存到一块单独的盘上，Docker 的数据主要包括镜像和容器日志数据。通过设置 [`--data-root`](https://docs.docker.com/config/daemon/systemd/#runtime-directory-and-storage-driver) 参数来实现：
 
+    {{< copyable "shell-regular" >}}
+
     ```shell
     cat > /etc/docker/daemon.json <<EOF
     {
@@ -181,23 +185,24 @@ sysctl --system
     }
     EOF
     ```
-   
+
     上面会将 Docker 的数据目录设置为 `/data1/docker`。
 
-2. 设置 Docker daemon 的 ulimit： 
+2. 设置 Docker daemon 的 ulimit。
+
+    编辑文件：
 
     {{< copyable "shell-regular" >}}
-    
+
     ```shell
     vim /etc/systemd/system/docker.service
-    LimitNOFILE=1048576
     ```
-    
-    设置 `LimitNOFILE` 大于等于 `1048576`。
-    
+
+    设置 `LimitNOFILE=1048576`，这里设置 `LimitNOFILE` 为大于等于 `1048576` 的数字即可。
+
     > **注意：**
     >
-    > `LimitNOFILE` 需要显式设置为 `1048576` 或者更大，而不是默认的 `infinity`，由于 `systemd` 的 [bug](https://github.com/systemd/systemd/commit/6385cb31ef443be3e0d6da5ea62a267a49174688#diff-108b33cf1bd0765d116dd401376ca356L1186)，`infinity` 在 `systemd` 某些版本中指的是 `65536`。
+    > `LimitNOFILE` 需要显式设置为 `1048576` 或者更大，而不是默认的 `infinity`，由于 [`systemd` 的 bug](https://github.com/systemd/systemd/commit/6385cb31ef443be3e0d6da5ea62a267a49174688#diff-108b33cf1bd0765d116dd401376ca356L1186)，`infinity` 在 `systemd` 某些版本中指的是 `65536`。
 
 ## Kubernetes 服务
 

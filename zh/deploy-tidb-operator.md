@@ -32,11 +32,9 @@ Kubernetes 集群建议启用 [RBAC](https://kubernetes.io/docs/admin/authorizat
 
 ## 配置本地持久化卷
 
-### 准备本地卷
-
 参考[本地 PV 配置](configure-storage-class.md#本地-pv-配置)在你的 Kubernetes 集群中配置本地持久化卷。
 
-## 安装 TiDB Operator
+## 部署 TiDB Operator
 
 ### 创建 CRD
 
@@ -76,13 +74,15 @@ tidbinitializers.pingcap.com         2020-06-11T07:59:42Z
 tidbmonitors.pingcap.com             2020-06-11T07:59:41Z
 ```
 
-### 安装 
+### 自定义部署 TiDB Operator
 
-创建以上各种自定义资源类型后，接下来在 Kubernetes 集群上安装 TiDB Operator，有两种安装方式：在线和离线安装 TiDB Operator。
+若需要快速部署 TiDB Operator，可参考快速上手中[部署 TiDB Operator文档](get-started.md#部署-tidb-operator)。本节介绍自定义部署 TiDB Operator 的配置方式。
 
-#### 在线安装 TiDB Operator
+创建 CRDs 之后，在 Kubernetes 集群上部署 TiDB Operator有两种方式：在线和离线部署。
 
-1. 获取你要安装的 `tidb-operator` chart 中的 `values.yaml` 文件：
+#### 在线部署 TiDB Operator
+
+1. 获取你要部署的 `tidb-operator` chart 中的 `values.yaml` 文件：
 
     {{< copyable "shell-regular" >}}
 
@@ -101,7 +101,7 @@ tidbmonitors.pingcap.com             2020-06-11T07:59:41Z
 
     其他项目例如：`limits`、`requests` 和 `replicas`，请根据需要进行修改。
 
-3. 安装 TiDB Operator
+3. 部署 TiDB Operator
 
     {{< copyable "shell-regular" >}}
 
