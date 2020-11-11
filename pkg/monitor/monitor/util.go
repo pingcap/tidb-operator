@@ -33,7 +33,6 @@ import (
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/pointer"
 )
 
 func GetMonitorObjectName(monitor *v1alpha1.TidbMonitor) string {
@@ -327,9 +326,6 @@ chmod 777 /data/prometheus /data/grafana
 			},
 		},
 		Command: command,
-		SecurityContext: &core.SecurityContext{
-			RunAsUser: pointer.Int64Ptr(0),
-		},
 		VolumeMounts: []core.VolumeMount{
 			{
 				MountPath: "/prometheus-rules",
