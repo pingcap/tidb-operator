@@ -16,6 +16,7 @@ package tidbcluster
 import (
 	"context"
 	"fmt"
+	"github.com/pingcap/errors"
 	_ "net/http/pprof"
 	"time"
 
@@ -541,8 +542,12 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				newStsPvcName := fmt.Sprintf("%s-monitor-0", monitorName)
 				stsPvc, err := c.CoreV1().PersistentVolumeClaims(tc.Namespace).Get(newStsPvcName, metav1.GetOptions{})
 				if err != nil {
+					if errors.IsNotFound(err) {
+						klog.Infof("tm[%s/%s]'s,old deployment pvc not found", tc.Namespace, tc.Name)
+						return false, nil
+					}
 					klog.Errorf("get tidbmonitor sts pvc err:%v", err)
-					return true, nil
+					return false, nil
 				}
 
 				if stsPvc.Spec.VolumeName == oldVolumeName {
