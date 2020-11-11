@@ -167,41 +167,6 @@ func TestPodControlUpdateMetaInfoGetMemberFailed(t *testing.T) {
 	g.Expect(err).To(HaveOccurred())
 }
 
-func TestPodControlUpdateMetaInfoGetStoreFailed(t *testing.T) {
-	g := NewGomegaWithT(t)
-	tc := newTidbCluster()
-	pod := newPod(tc)
-	fakeClient, pdControl, podLister, _, recorder := newFakeClientRecorderAndPDControl()
-	control := NewRealPodControl(fakeClient, pdControl, podLister, recorder)
-	pdClient := NewFakePDClient(pdControl, tc)
-	pdClient.AddReaction(pdapi.GetClusterActionType, func(action *pdapi.Action) (interface{}, error) {
-		cluster := &metapb.Cluster{
-			Id: 222,
-		}
-		return cluster, nil
-	})
-	pdClient.AddReaction(pdapi.GetMembersActionType, func(action *pdapi.Action) (interface{}, error) {
-		membersInfo := &pdapi.MembersInfo{
-			Members: []*pdpb.Member{
-				{
-					MemberId: 111,
-				},
-			},
-		}
-		return membersInfo, nil
-	})
-	pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
-		return nil, errors.New("failed to get store info from PD server")
-	})
-
-	fakeClient.AddReactor("update", "pods", func(action core.Action) (bool, runtime.Object, error) {
-		return true, nil, nil
-	})
-	pod.Labels[label.ComponentLabelKey] = label.TiKVLabelVal
-	_, err := control.UpdateMetaInfo(tc, pod)
-	g.Expect(err).To(HaveOccurred())
-}
-
 func TestPodControlUpdateMetaInfoUpdatePodFailed(t *testing.T) {
 	g := NewGomegaWithT(t)
 	tc := newTidbCluster()
