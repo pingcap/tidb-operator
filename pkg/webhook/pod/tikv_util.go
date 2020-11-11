@@ -160,3 +160,21 @@ func getStoreByPod(pod *core.Pod, storesInfo *pdapi.StoresInfo, tc *v1alpha1.Tid
 
 	return nil, fmt.Errorf("failed to find store for pod[%s/%s]", namespace, name)
 }
+
+func TikvSVCAddressWithPodName(tc *v1alpha1.TidbCluster, pod *core.Pod) string {
+	var name string
+	name = fmt.Sprintf("%s.%s-tikv-peer.%s.svc", pod.Name, tc.GetName(), tc.Namespace)
+	if tc.IsMultiClusterEnabled() {
+		name = fmt.Sprintf("%s.%s-tikv-peer.%s.svc.%s", pod.Name, tc.GetName(), tc.Namespace, tc.Spec.ClusterDomain)
+		exist := false
+		for _, store := range tc.Status.TiKV.Stores {
+			if store.IP == name {
+				exist = true
+			}
+		}
+		if !exist {
+			name = fmt.Sprintf("%s.%s-tikv-peer.%s.svc", pod.Name, tc.GetName(), tc.Namespace)
+		}
+	}
+	return name
+}

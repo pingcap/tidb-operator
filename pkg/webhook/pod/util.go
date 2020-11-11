@@ -179,13 +179,3 @@ func PdNameWithPodName(tc *v1alpha1.TidbCluster, pod *core.Pod) string {
 	}
 	return name
 }
-
-func TikvSVCAddressWithPodName(tc *v1alpha1.TidbCluster, pod *core.Pod) string {
-	var name string
-	name = fmt.Sprintf("%s.%s-tikv-peer.%s.svc", pod.Name, tc.GetName(), tc.Namespace)
-	if tc.IsMultiClusterEnabled() {
-		// TODO: fix when upgrade from the cluster without ClusterDomain
-		name = fmt.Sprintf("%s.%s-tikv-peer.%s.svc.%s", pod.Name, tc.GetName(), tc.Namespace, tc.Spec.ClusterDomain)
-	}
-	return name
-}
