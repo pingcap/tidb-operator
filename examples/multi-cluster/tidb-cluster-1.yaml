@@ -1,30 +1,32 @@
 apiVersion: pingcap.com/v1alpha1
 kind: TidbCluster
 metadata:
-  name: tls
+  name: cluster1
+  namespace: pingcap
 spec:
   version: v4.0.8
   timezone: UTC
-  pvReclaimPolicy: Retain
-  enableDynamicConfiguration: true
-  configUpdateStrategy: RollingUpdate
+  pvReclaimPolicy: Delete
+  discovery: {}
+  # set the cluster domain according to your cluster settings
+  clusterDomain: "cluster.local.cef4dcd8f0de1293ae38f5a991d54586b"
   pd:
     baseImage: pingcap/pd
     replicas: 1
     requests:
-      storage: "1Gi"
+      storage: "20Gi"
     config: {}
   tikv:
     baseImage: pingcap/tikv
-    replicas: 1
+    replicas: 3
     requests:
-      storage: "1Gi"
-    config: {}
+      storage: "20Gi"
+    config:
+      storage:
+        reserve-space: "0MB"
   tidb:
     baseImage: pingcap/tidb
     replicas: 1
     service:
       type: ClusterIP
     config: {}
-    tlsClient:
-      enabled: true 
