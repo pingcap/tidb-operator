@@ -17,6 +17,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/scheme"
@@ -656,7 +657,7 @@ func (w *typedWrapper) CreateOrUpdateStatefulSet(controller runtime.Object, depl
 			existingSts.Spec.Template.Annotations[k] = v
 		}
 		// podSpec of statefulset is hard to merge, use an annotation to assist
-		if StatefulSetPodSpecChanged(desiredSts, existingSts) {
+		if util.StatefulSetEqual(*desiredSts, *existingSts) {
 			// Record last applied spec in favor of future equality check
 			b, err := json.Marshal(desiredSts.Spec.Template.Spec)
 			if err != nil {

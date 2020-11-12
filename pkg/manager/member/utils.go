@@ -102,36 +102,6 @@ func GetLastAppliedConfig(set *apps.StatefulSet) (*apps.StatefulSetSpec, *corev1
 	return spec, &spec.Template.Spec, nil
 }
 
-// statefulSetEqual compares the new Statefulset's spec with old Statefulset's last applied config
-func statefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) bool {
-	// The annotations in old sts may include LastAppliedConfigAnnotation
-	tmpAnno := map[string]string{}
-	for k, v := range old.Annotations {
-		if k != LastAppliedConfigAnnotation {
-			tmpAnno[k] = v
-		}
-	}
-	if !apiequality.Semantic.DeepEqual(new.Annotations, tmpAnno) {
-		return false
-	}
-	oldConfig := apps.StatefulSetSpec{}
-	if lastAppliedConfig, ok := old.Annotations[LastAppliedConfigAnnotation]; ok {
-		err := json.Unmarshal([]byte(lastAppliedConfig), &oldConfig)
-		if err != nil {
-			klog.Errorf("unmarshal Statefulset: [%s/%s]'s applied config failed,error: %v", old.GetNamespace(), old.GetName(), err)
-			return false
-		}
-		// oldConfig.Template.Annotations may include LastAppliedConfigAnnotation to keep backward compatiability
-		// Please check detail in https://github.com/pingcap/tidb-operator/pull/1489
-		tmpTemplate := oldConfig.Template.DeepCopy()
-		delete(tmpTemplate.Annotations, LastAppliedConfigAnnotation)
-		return apiequality.Semantic.DeepEqual(oldConfig.Replicas, new.Spec.Replicas) &&
-			apiequality.Semantic.DeepEqual(*tmpTemplate, new.Spec.Template) &&
-			apiequality.Semantic.DeepEqual(oldConfig.UpdateStrategy, new.Spec.UpdateStrategy)
-	}
-	return false
-}
-
 // templateEqual compares the new podTemplateSpec's spec with old podTemplateSpec's last applied config
 func templateEqual(new *apps.StatefulSet, old *apps.StatefulSet) bool {
 	oldStsSpec := apps.StatefulSetSpec{}
@@ -294,7 +264,7 @@ func updateStatefulSet(setCtl controller.StatefulSetControlInterface, object run
 	if oldSet.Annotations == nil {
 		oldSet.Annotations = map[string]string{}
 	}
-	if !statefulSetEqual(*newSet, *oldSet) || isOrphan {
+	if !util.StatefulSetEqual(*newSet, *oldSet) || isOrphan {
 		set := *oldSet
 		// Retain the deprecated last applied pod template annotation for backward compatibility
 		var podConfig string
