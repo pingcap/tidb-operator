@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -644,19 +645,19 @@ func (w *typedWrapper) CreateOrUpdateStatefulSet(controller runtime.Object, depl
 		for k, v := range desiredSts.Annotations {
 			existingSts.Annotations[k] = v
 		}
-		// only override the default strategy if it is explicitly set in the desiredDep
+		// only override the default strategy if it is explicitly set in the desiredSts
 		if string(desiredSts.Spec.UpdateStrategy.Type) != "" {
 			existingSts.Spec.UpdateStrategy.Type = desiredSts.Spec.UpdateStrategy.Type
 			if existingSts.Spec.UpdateStrategy.RollingUpdate != nil {
 				existingSts.Spec.UpdateStrategy.RollingUpdate = desiredSts.Spec.UpdateStrategy.RollingUpdate
 			}
 		}
-		// pod selector of deployment is immutable, so we don't mutate the labels of pod
+		// pod selector of statefulset is immutable, so we don't mutate the labels of pod
 		for k, v := range desiredSts.Spec.Template.Annotations {
 			existingSts.Spec.Template.Annotations[k] = v
 		}
-		// podSpec of deployment is hard to merge, use an annotation to assist
-		if StatefulSetPodSpecChanged(desiredSts, existingSts) {
+		// podSpec of statefulset is hard to merge, use an annotation to assist
+		if member.TemplateEqual(desiredSts, existingSts) {
 			// Record last applied spec in favor of future equality check
 			b, err := json.Marshal(desiredSts.Spec.Template.Spec)
 			if err != nil {

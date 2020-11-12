@@ -70,9 +70,6 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	defaultTidbMonitor(monitor)
 	var firstTc *v1alpha1.TidbCluster
 	for index, tcRef := range monitor.Spec.Clusters {
-		if len(tcRef.Namespace) < 1 {
-			tcRef.Namespace = monitor.Namespace
-		}
 		tc, err := m.deps.Clientset.PingcapV1alpha1().TidbClusters(tcRef.Namespace).Get(tcRef.Name, metav1.GetOptions{})
 		if index == 0 {
 			firstTc = tc
@@ -160,16 +157,16 @@ func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, mo
 
 	result, err := m.smoothMigrationToStatefulSet(monitor)
 	if err != nil {
-		klog.Errorf("tm[%s/%s]'s failed to smooth migration,err: %v", monitor.Namespace, monitor.Name, err)
+		klog.Errorf("Fail to migrate from deployment to statefulset for tm [%s/%s], err: %v", monitor.Namespace, monitor.Name, err)
 		return err
 	}
 	if !result {
-		klog.Errorf("tm[%s/%s]'s wait for smooth migration successfully,err: %v", monitor.Namespace, monitor.Name, err)
+		klog.Errorf("Wait for the smooth migration to be done successfully for tm [%s/%s], err: %v", monitor.Namespace, monitor.Name, err)
 		return nil
 	}
 	statefulset, err := getMonitorStatefulSet(sa, cm, secret, monitor, tc)
 	if err != nil {
-		klog.Errorf("tm[%s/%s]'s statefulset failed to generate,err: %v", monitor.Namespace, monitor.Name, err)
+		klog.Errorf("Fail to generate statefulset for tm [%s/%s], err: %v", monitor.Namespace, monitor.Name, err)
 		return err
 	}
 
@@ -404,11 +401,11 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 		Name:      deploymentName,
 	}, &appsv1.Deployment{})
 	if err != nil {
-		klog.Errorf("smoothMigration tm[%s/%s]'s,old deployment failed to get,err: %v", monitor.Namespace, monitor.Name, err)
+		klog.Errorf("Fail to get deployment for tm [%s/%s], err: %v", monitor.Namespace, monitor.Name, err)
 		return false, err
 	}
 	if exist {
-		klog.Infof("smoothMigration tm[%s/%s]'s,old deployment is exist", monitor.Namespace, monitor.Name)
+		klog.Infof("The deployment exists, start smooth migration for tm [%s/%s]", monitor.Namespace, monitor.Name)
 		// if deployment exist, delete it and wait next reconcile.
 		err = m.deps.TypedControl.Delete(monitor, &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
@@ -443,7 +440,7 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 				},
 			})
 			if err != nil {
-				klog.Errorf("smoothMigration tm[%s/%s]'s,old deployment pvc failed to delete,err: %v", monitor.Namespace, monitor.Name, err)
+				klog.Errorf("Fail to delete the deployment for tm [%s/%s], err: %v", monitor.Namespace, monitor.Name, err)
 				return false, err
 			}
 			stsPvcName := fmt.Sprintf("monitor-data-%s-0", GetMonitorObjectName(monitor))

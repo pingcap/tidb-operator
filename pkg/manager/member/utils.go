@@ -133,7 +133,7 @@ func statefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) bool {
 }
 
 // templateEqual compares the new podTemplateSpec's spec with old podTemplateSpec's last applied config
-func templateEqual(new *apps.StatefulSet, old *apps.StatefulSet) bool {
+func TemplateEqual(new *apps.StatefulSet, old *apps.StatefulSet) bool {
 	oldStsSpec := apps.StatefulSetSpec{}
 	lastAppliedConfig, ok := old.Annotations[LastAppliedConfigAnnotation]
 	if ok {

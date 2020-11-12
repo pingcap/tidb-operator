@@ -47,7 +47,7 @@ type realPVControl struct {
 	recorder  record.EventRecorder
 }
 
-// NewRealPVControl creates a new PVControlInUpdatePVInfoterface
+// NewRealPVControl creates a new PVControlInterface
 func NewRealPVControl(
 	kubeCli kubernetes.Interface,
 	pvcLister corelisters.PersistentVolumeClaimLister,
@@ -165,7 +165,6 @@ func (c *realPVControl) UpdateMetaInfo(obj runtime.Object, pv *corev1.Persistent
 	labels := pv.GetLabels()
 	ann := pv.GetAnnotations()
 	var updatePV *corev1.PersistentVolume
-	klog.Infof("PV: [%s] updated pv claimRef xxx , %s: %s/%s", pvName, kind, ns, name)
 	err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		var updateErr error
 		updatePV, updateErr = c.kubeCli.CoreV1().PersistentVolumes().Update(pv)

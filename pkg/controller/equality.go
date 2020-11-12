@@ -96,7 +96,7 @@ func IngressEqual(newIngress, oldIngres *extensionsv1beta1.Ingress) (bool, error
 	return false, nil
 }
 
-// DeploymentPodSpecChanged checks whether the new deployment differs with the old one's last-applied-config
+// StatefulSetPodSpecChanged checks whether the new statefulset differs with the old one's last-applied-config
 func StatefulSetPodSpecChanged(newSts *appsv1.StatefulSet, oldSts *appsv1.StatefulSet) bool {
 	lastAppliedPodTemplate, err := GetStatefulSetLastAppliedPodTemplate(oldSts)
 	if err != nil {
