@@ -257,9 +257,6 @@ chmod 777 /data/prometheus /data/grafana
 			},
 		},
 		Command: command,
-		SecurityContext: &core.SecurityContext{
-			RunAsUser: pointer.Int64Ptr(0),
-		},
 		VolumeMounts: []core.VolumeMount{
 			{
 				MountPath: "/prometheus-rules",
