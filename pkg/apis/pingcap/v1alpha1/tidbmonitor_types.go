@@ -39,13 +39,15 @@ type TidbMonitor struct {
 // +k8s:openapi-gen=true
 // TidbMonitor spec encode the desired state of tidb monitoring component
 type TidbMonitorSpec struct {
-	Clusters []TidbClusterRef `json:"clusters"`
+	Clusters   []TidbClusterRef `json:"clusters"`
+	DMClusters []TidbClusterRef `json:"dmClusters"`
 
 	Prometheus PrometheusSpec `json:"prometheus"`
 	// +optional
-	Grafana     *GrafanaSpec    `json:"grafana,omitempty"`
-	Reloader    ReloaderSpec    `json:"reloader"`
-	Initializer InitializerSpec `json:"initializer"`
+	Grafana       *GrafanaSpec     `json:"grafana,omitempty"`
+	Reloader      ReloaderSpec     `json:"reloader"`
+	Initializer   InitializerSpec  `json:"initializer"`
+	DMInitializer *InitializerSpec `json:"dmInitializer,omitempty"`
 
 	// Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster
 	// +kubebuilder:default=Retain

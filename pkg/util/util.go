@@ -37,10 +37,11 @@ import (
 )
 
 var (
-	ClusterClientTLSPath = "/var/lib/cluster-client-tls"
-	TiDBClientTLSPath    = "/var/lib/tidb-client-tls"
-	BRBinPath            = "/var/lib/br-bin"
-	ClusterClientVolName = "cluster-client-tls"
+	ClusterClientTLSPath   = "/var/lib/cluster-client-tls"
+	DMClusterClientTLSPath = "/var/lib/dm-cluster-client-tls"
+	TiDBClientTLSPath      = "/var/lib/tidb-client-tls"
+	ClusterClientVolName   = "cluster-client-tls"
+	DMClusterClientVolName = "dm-cluster-client-tls"
 )
 
 func GetOrdinalFromPodName(podName string) (int32, error) {

@@ -93,6 +93,13 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		return err
 	}
 
+	var dc *v1alpha1.DMCluster
+	if dc, err = m.getAndPatchDMCluster(monitor); err != nil {
+		message := fmt.Sprintf("get and patch dmcluster monitor failed, err:%v", err)
+		klog.Error(message)
+		m.deps.Recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, err.Error())
+	}
+
 	// Sync Service
 	if err := m.syncTidbMonitorService(monitor); err != nil {
 		message := fmt.Sprintf("Sync TidbMonitor[%s/%s] Service failed, err: %v", monitor.Namespace, monitor.Name, err)
@@ -120,7 +127,7 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	}
 
 	// Sync Deployment
-	if err := m.syncTidbMonitorDeployment(tc, monitor); err != nil {
+	if err := m.syncTidbMonitorDeployment(tc, dc, monitor); err != nil {
 		message := fmt.Sprintf("Sync TidbMonitor[%s/%s] Deployment failed,err:%v", monitor.Namespace, monitor.Name, err)
 		m.deps.Recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
 		return err
@@ -181,9 +188,9 @@ func (m *MonitorManager) syncTidbMonitorPV(monitor *v1alpha1.TidbMonitor, pvc *c
 	return nil
 }
 
-func (m *MonitorManager) syncTidbMonitorDeployment(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) error {
+func (m *MonitorManager) syncTidbMonitorDeployment(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monitor *v1alpha1.TidbMonitor) error {
 
-	cm, err := m.syncTidbMonitorConfig(tc, monitor)
+	cm, err := m.syncTidbMonitorConfig(tc, dc, monitor)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s configmap failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return err
@@ -200,7 +207,7 @@ func (m *MonitorManager) syncTidbMonitorDeployment(tc *v1alpha1.TidbCluster, mon
 		return err
 	}
 
-	deployment, err := getMonitorDeployment(sa, cm, secret, monitor, tc)
+	deployment, err := getMonitorDeployment(sa, cm, secret, monitor, tc, dc)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s deployment failed to generate,err: %v", monitor.Namespace, monitor.Name, err)
 		return err
@@ -222,7 +229,7 @@ func (m *MonitorManager) syncTidbMonitorSecret(monitor *v1alpha1.TidbMonitor) (*
 	return m.deps.TypedControl.CreateOrUpdateSecret(monitor, newSt)
 }
 
-func (m *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) (*corev1.ConfigMap, error) {
+func (m *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monitor *v1alpha1.TidbMonitor) (*corev1.ConfigMap, error) {
 	if features.DefaultFeatureGate.Enabled(features.AutoScaling) {
 		// TODO: We need to update the status to tell users we are monitoring extra clusters
 		// Get all autoscaling clusters for TC, and add them to .Spec.Clusters to
@@ -266,7 +273,7 @@ func (m *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, monitor
 		monitor = cloned
 	}
 
-	newCM, err := getMonitorConfigMap(tc, monitor)
+	newCM, err := getMonitorConfigMap(tc, dc, monitor)
 	if err != nil {
 		return nil, err
 	}
@@ -426,4 +433,56 @@ func (m *MonitorManager) patchTidbClusterStatus(tcRef *v1alpha1.TidbClusterRef, 
 	}
 	_, err = m.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Patch(tc.Name, types.MergePatchType, mergePatch)
 	return err
+}
+
+func (m *MonitorManager) patchDMClusterStatus(dc *v1alpha1.DMCluster, monitor *v1alpha1.TidbMonitor) error {
+	grafanaEnabled := true
+	if monitor.Spec.Grafana == nil {
+		grafanaEnabled = false
+	}
+	mergePatch, err := json.Marshal(map[string]interface{}{
+		"status": map[string]interface{}{
+			"monitor": map[string]interface{}{
+				"name":           monitor.Name,
+				"namespace":      monitor.Namespace,
+				"grafanaEnabled": grafanaEnabled,
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	_, err = m.deps.Clientset.PingcapV1alpha1().DMClusters(dc.Namespace).Patch(dc.Name, types.MergePatchType, mergePatch)
+	return err
+}
+
+func (m *MonitorManager) getAndPatchDMCluster(monitor *v1alpha1.TidbMonitor) (*v1alpha1.DMCluster, error) {
+	if monitor.Spec.DMClusters == nil || len(monitor.Spec.DMClusters) < 1 {
+		return nil, nil
+	}
+	dcRef := monitor.Spec.DMClusters[0]
+	if len(dcRef.Namespace) < 1 {
+		dcRef.Namespace = monitor.Namespace
+	}
+	dc, err := m.deps.Clientset.PingcapV1alpha1().DMClusters(dcRef.Namespace).Get(dcRef.Name, metav1.GetOptions{})
+	if err != nil {
+		rerr := fmt.Errorf("get tm[%s/%s]'s target dc[%s/%s] failed, err: %v", monitor.Namespace, monitor.Name, dcRef.Namespace, dcRef.Name, err)
+		return nil, rerr
+	}
+	if dc.Status.Monitor != nil {
+		if dc.Status.Monitor.Name != monitor.Name || dc.Status.Monitor.Namespace != monitor.Namespace {
+			err := fmt.Errorf("tm[%s/%s]'s target dc[%s/%s] already referenced by TidbMonitor [%s/%s]", monitor.Namespace, monitor.Name, dc.Namespace, dc.Name, dc.Status.Monitor.Namespace, dc.Status.Monitor.Name)
+			m.deps.Recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, err.Error())
+			return nil, err
+		}
+	}
+
+	// Patch tidbcluster status first to avoid multi tidbmonitor monitoring the same dmcluster
+	if err := m.patchDMClusterStatus(dc, monitor); err != nil {
+		message := fmt.Sprintf("Sync TidbMonitorRef into targetDMCluster[%s/%s] status failed, err:%v", dc.Namespace, dc.Name, err)
+		klog.Error(message)
+		m.deps.Recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, err.Error())
+		return nil, err
+	}
+	return dc, nil
 }
