@@ -71,7 +71,7 @@ EOF
 
     echo "info: update ref of branch '$BUILD_BRANCH'"
     echo -n $GITHASH > $dir/sha1
-	$dir/linux64/filemgr-linux64 --config $dir/linux64/config.cfg --action mput --bucket ${UCLOUD_UFILE_BUCKET} --nobar --key refs/pingcap/operator/${BUILD_BRANCH}/centos7/sha1 --file $dir/sha1
+    $dir/linux64/filemgr-linux64 --config $dir/linux64/config.cfg --action mput --bucket ${UCLOUD_UFILE_BUCKET} --nobar --key refs/pingcap/operator/${BUILD_BRANCH}/centos7/sha1 --file $dir/sha1
 }
 
 # retry a few times until it succeeds, this can avoid temporary network flakes
