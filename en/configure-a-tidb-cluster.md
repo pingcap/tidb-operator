@@ -40,11 +40,11 @@ The cluster name can be configured by changing `metadata.name` in the `TiDBCuste
 Usually, components in a cluster are in the same version. It is recommended to configure `spec.<pd/tidb/tikv/pump/tiflash/ticdc>.baseImage` and `spec.version`, if you need to configure different versions for different components, you can configure `spec.<pd/tidb/tikv/pump/tiflash/ticdc>.version`.
 Here are the formats of the parameters:
 
-- `spec.version`: the format is `imageTag`, such as `v4.0.7`
+- `spec.version`: the format is `imageTag`, such as `v4.0.8`
 
 - `spec.<pd/tidb/tikv/pump/tiflash/ticdc>.baseImage`: the format is `imageName`, such as `pingcap/tidb`
 
-- `spec.<pd/tidb/tikv/pump/tiflash/ticdc>.version`: the format is `imageTag`, such as `v4.0.7`
+- `spec.<pd/tidb/tikv/pump/tiflash/ticdc>.version`: the format is `imageTag`, such as `v4.0.8`
 
 ### Recommended configuration
 
@@ -186,7 +186,7 @@ metadata:
 spec:
 ....
   tidb:
-    image: pingcap/tidb:v4.0.7
+    image: pingcap/tidb:v4.0.8
     imagePullPolicy: IfNotPresent
     replicas: 1
     service:
@@ -208,7 +208,7 @@ metadata:
 spec:
 ....
   tidb:
-    image: pingcap/tidb:v4.0.7
+    image: pingcap/tidb:v4.0.8
     imagePullPolicy: IfNotPresent
     replicas: 1
     service:
@@ -240,7 +240,7 @@ metadata:
 spec:
 ....
   tikv:
-    image: pingcap/tikv:v4.0.7
+    image: pingcap/tikv:v4.0.8
     config:
       log-level: "info"
       slow-log-threshold: "1s"
@@ -259,7 +259,7 @@ metadata:
 spec:
 ....
   tikv:
-    image: pingcap/tikv:v4.0.7
+    image: pingcap/tikv:v4.0.8
     config: |
       #  [storage]
       #    reserve-space = "2MB"
@@ -288,7 +288,7 @@ metadata:
 spec:
 .....
   pd:
-    image: pingcap/pd:v4.0.7
+    image: pingcap/pd:v4.0.8
     config:
       lease: 3
       enable-prevote: true
@@ -304,7 +304,7 @@ metadata:
 spec:
 .....
   pd:
-    image: pingcap/pd:v4.0.7
+    image: pingcap/pd:v4.0.8
     config: |
       lease = 3
       enable-prevote = true
