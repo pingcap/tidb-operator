@@ -1,0 +1,37 @@
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: cluster2
+  namespace: pingcap
+spec:
+  version: v4.0.8
+  timezone: UTC
+  pvReclaimPolicy: Delete
+  discovery: {}
+  # use the cluster domain of cluster 2
+  clusterDomain: "cluster.local.c6db6d163dd4de58246ea278c83518e6b"
+  cluster:
+    # use the cluster info in tidb-cluster-main.yaml
+    namespace: pingcap
+    name: cluster1
+    clusterDomain: "cluster.local.cef38f5a991d54586b4dcd8f0de1293ae"
+  pd:
+    baseImage: pingcap/pd
+    replicas: 1
+    requests:
+      storage: "20Gi"
+    config: {}
+  tikv:
+    baseImage: pingcap/tikv
+    replicas: 1
+    requests:
+      storage: "20Gi"
+    config:
+      storage:
+        reserve-space: "0MB"
+  tidb:
+    baseImage: pingcap/tidb
+    replicas: 1
+    service:
+      type: ClusterIP
+    config: {}
