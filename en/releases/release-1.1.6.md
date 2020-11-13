@@ -8,6 +8,28 @@ Release date: October 16, 2020
 
 TiDB Operator version: 1.1.6
 
+## Compatibility Changes
+
+- With [#3342](https://github.com/pingcap/tidb-operator/pull/3342), the `spec.pd.config` will be migrated from YAML format to TOML format automatically; however, if the following parameters are configured in the `spec.pd.config`, the migration cannot be done after upgrading TiDB Operator to v1.1.6. Therefore, please edit the `TidbCluster` CR to change the value of the parameter from string format to bool format, for example, from `"true"` to `true`.
+
+    - `replication.strictly-match-label`
+    - `replication.enable-placement-rules`
+    - `schedule.disable-raft-learner`
+    - `schedule.disable-remove-down-replica`
+    - `schedule.disable-replace-offline-replica`
+    - `schedule.disable-make-up-replica`
+    - `schedule.disable-remove-extra-replica`
+    - `schedule.disable-location-replacement`
+    - `schedule.disable-namespace-relocation`
+    - `schedule.enable-one-way-merge`
+    - `schedule.enable-cross-table-merge`
+    - `pd-server.use-region-storage`
+
+## Rolling Update Changes
+
+- If `tidb.pingcap.com/sysctl-init: "true"` is set for `spec.tidb.annotations` or `spec.tikv.annotations`, the TiDB or TiKV cluster will be rolling updated after upgrading TiDB Operator to v1.1.6 due to [#3305](https://github.com/pingcap/tidb-operator/pull/3305).
+- If TiFlash is deployed, the TiFlash cluster will be rolling updated after upgrading TiDB Operator to v1.1.6 due to [#3345](https://github.com/pingcap/tidb-operator/pull/3345).    
+
 ## New Features
 
 - Add `spec.br.options` to the Backup and Restore CR to support customizing arguments for BR ([#3360](https://github.com/pingcap/tidb-operator/pull/3360), [@lichunzhu](https://github.com/lichunzhu))

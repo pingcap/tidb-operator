@@ -8,6 +8,28 @@ title: TiDB Operator 1.1.6 Release Notes
 
 TiDB Operator 版本：1.1.6
 
+## 兼容性变化
+
+- 由于 [#3342](https://github.com/pingcap/tidb-operator/pull/3342) 的改动，`spec.pd.config` 会自动从现有的 YAML 格式转换成 TOML 格式，如果 `spec.pd.config` 中配置了如下参数，升级 TiDB Operator 到 v1.1.6 之后，这个转换无法自动完成，需要编辑 TidbCluster CR 把对应参数的值从 string 格式修改为 bool 格式，例如，从 `"true"` 改为 `true`。
+
+    - `replication.strictly-match-label`
+    - `replication.enable-placement-rules`
+    - `schedule.disable-raft-learner`
+    - `schedule.disable-remove-down-replica`
+    - `schedule.disable-replace-offline-replica`
+    - `schedule.disable-make-up-replica`
+    - `schedule.disable-remove-extra-replica`
+    - `schedule.disable-location-replacement`
+    - `schedule.disable-namespace-relocation`
+    - `schedule.enable-one-way-merge`
+    - `schedule.enable-cross-table-merge`
+    - `pd-server.use-region-storage`
+
+## 滚动升级改动
+
+- 由于 [#3305](https://github.com/pingcap/tidb-operator/pull/3305) 的改动，如果 `spec.tidb.annotations` 或者 `spec.tikv.annotations` 中配置了 `tidb.pingcap.com/sysctl-init: "true"`，升级 TiDB Operator 到 v1.1.6 之后 TiDB 或者 TiKV 集群会滚动升级。
+- 由于 [#3345](https://github.com/pingcap/tidb-operator/pull/3345) 的改动，如果集群中部署了 TiFlash，升级 TiDB Operator 到 v1.1.6 之后 TiFlash 集群会滚动升级。  
+
 ## 新功能
 
 - 添加 `spec.br.options` 支持 Backup 和 Restore CR 自定义 BR 命令行参数 ([#3360](https://github.com/pingcap/tidb-operator/pull/3360), [@lichunzhu](https://github.com/lichunzhu))
