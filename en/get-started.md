@@ -237,7 +237,7 @@ Before proceeding, make sure the following requirements are satisfied:
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.6/manifests/crd.yaml
+    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.7/manifests/crd.yaml
     ```
 
     Expected output:
@@ -321,7 +321,7 @@ Before proceeding, make sure the following requirements are satisfied:
             {{< copyable "shell-regular" >}}
 
             ```shell
-            helm install --namespace tidb-admin --name tidb-operator pingcap/tidb-operator --version v1.1.6
+            helm install --namespace tidb-admin --name tidb-operator pingcap/tidb-operator --version v1.1.7
             ```
 
             If the network connection to the Docker Hub is slow, you can try images hosted in Alibaba Cloud:
@@ -329,9 +329,9 @@ Before proceeding, make sure the following requirements are satisfied:
             {{< copyable "shell-regular" >}}
 
             ```
-            helm install --namespace tidb-admin --name tidb-operator pingcap/tidb-operator --version v1.1.6 \
-              --set operatorImage=registry.cn-beijing.aliyuncs.com/tidb/tidb-operator:v1.1.6 \
-              --set tidbBackupManagerImage=registry.cn-beijing.aliyuncs.com/tidb/tidb-backup-manager:v1.1.6 \
+            helm install --namespace tidb-admin --name tidb-operator pingcap/tidb-operator --version v1.1.7 \
+              --set operatorImage=registry.cn-beijing.aliyuncs.com/tidb/tidb-operator:v1.1.7 \
+              --set tidbBackupManagerImage=registry.cn-beijing.aliyuncs.com/tidb/tidb-backup-manager:v1.1.7 \
               --set scheduler.kubeSchedulerImageName=registry.cn-hangzhou.aliyuncs.com/google_containers/kube-scheduler
             ```
 
@@ -386,7 +386,7 @@ Before proceeding, make sure the following requirements are satisfied:
             {{< copyable "shell-regular" >}}
 
             ```shell
-            helm install --namespace tidb-admin tidb-operator pingcap/tidb-operator --version v1.1.6
+            helm install --namespace tidb-admin tidb-operator pingcap/tidb-operator --version v1.1.7
             ```
 
             If the network connection to the Docker Hub is slow, you can try images hosted in Alibaba Cloud:
@@ -394,9 +394,9 @@ Before proceeding, make sure the following requirements are satisfied:
             {{< copyable "shell-regular" >}}
 
             ```
-            helm install --namespace tidb-admin tidb-operator pingcap/tidb-operator --version v1.1.6 \
-              --set operatorImage=registry.cn-beijing.aliyuncs.com/tidb/tidb-operator:v1.1.6 \
-              --set tidbBackupManagerImage=registry.cn-beijing.aliyuncs.com/tidb/tidb-backup-manager:v1.1.6 \
+            helm install --namespace tidb-admin tidb-operator pingcap/tidb-operator --version v1.1.7 \
+              --set operatorImage=registry.cn-beijing.aliyuncs.com/tidb/tidb-operator:v1.1.7 \
+              --set tidbBackupManagerImage=registry.cn-beijing.aliyuncs.com/tidb/tidb-backup-manager:v1.1.7 \
               --set scheduler.kubeSchedulerImageName=registry.cn-hangzhou.aliyuncs.com/google_containers/kube-scheduler
             ```
 
