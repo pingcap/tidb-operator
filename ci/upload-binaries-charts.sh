@@ -67,11 +67,11 @@ EOF
 
     echo "info: uploading charts and binaries"
     tar -zcvf $dir/tidb-operator.tar.gz images/tidb-operator images/tidb-backup-manager charts
-    $dir/linux64/filemgr-linux64 --config $dir/linux64/config.cfg --action mput --bucket ${UCLOUD_UFILE_BUCKET} --nobar --key builds/pingcap/operator/${GITHASH}/centos7/tidb-operator.tar.gz --file $dir/tidb-operator.tar.gz
+    $dir/linux64/filemgr-linux64 --config $dir/config.cfg --action mput --bucket ${UCLOUD_UFILE_BUCKET} --nobar --key builds/pingcap/operator/${GITHASH}/centos7/tidb-operator.tar.gz --file $dir/tidb-operator.tar.gz
 
     echo "info: update ref of branch '$BUILD_BRANCH'"
     echo -n $GITHASH > $dir/sha1
-    $dir/linux64/filemgr-linux64 --config $dir/linux64/config.cfg --action mput --bucket ${UCLOUD_UFILE_BUCKET} --nobar --key refs/pingcap/operator/${BUILD_BRANCH}/centos7/sha1 --file $dir/sha1
+    $dir/linux64/filemgr-linux64 --config $dir/config.cfg --action mput --bucket ${UCLOUD_UFILE_BUCKET} --nobar --key refs/pingcap/operator/${BUILD_BRANCH}/centos7/sha1 --file $dir/sha1
 }
 
 # retry a few times until it succeeds, this can avoid temporary network flakes
