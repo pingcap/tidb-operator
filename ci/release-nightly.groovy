@@ -166,7 +166,7 @@ try {
                             string(credentialsId: 'UCLOUD_PRIVATE_KEY', variable: 'UCLOUD_PRIVATE_KEY'),
                         ]) {
                             sh """
-                            export UCLOUD_UFILE_PROXY_HOST=mainland-hk.ufileos.com
+                            export UCLOUD_UFILE_PROXY_HOST=pingcap-dev.hk.ufileos.com
                             export UCLOUD_UFILE_BUCKET=pingcap-dev
                             export BUILD_BRANCH=${GIT_REF}
                             export GITHASH=${GITHASH}
