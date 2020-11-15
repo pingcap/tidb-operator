@@ -686,7 +686,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			if !existed || value != label.TiDBOperator {
 				return false, nil
 			}
-			if pv.Spec.PersistentVolumeReclaimPolicy != corev1.PersistentVolumeReclaimDelete {
+			if pv.Spec.PersistentVolumeReclaimPolicy != corev1.PersistentVolumeReclaimRetain {
 				return false, fmt.Errorf("pv[%s] 's policy is not Delete", pv.Name)
 			}
 			return true, nil
