@@ -57,7 +57,7 @@ type TypedControlInterface interface {
 	// CreateOrUpdateDeployment create the desired deployment or update the current one to desired state if already existed
 	CreateOrUpdateDeployment(controller runtime.Object, deploy *appsv1.Deployment) (*appsv1.Deployment, error)
 	// CreateOrUpdateStatefulSet create the desired statefulset or update the current one to desired state if already existed
-	CreateOrUpdateStatefulSet(controller runtime.Object, deploy *appsv1.StatefulSet) (*appsv1.StatefulSet, error)
+	CreateOrUpdateStatefulSet(controller runtime.Object, sts *appsv1.StatefulSet) (*appsv1.StatefulSet, error)
 	// CreateOrUpdatePVC create the desired pvc or update the current one to desired state if already existed
 	CreateOrUpdatePVC(controller runtime.Object, pvc *corev1.PersistentVolumeClaim, setOwnerFlag bool) (*corev1.PersistentVolumeClaim, error)
 	// CreateOrUpdateIngress create the desired ingress or update the current one to desired state if already existed
