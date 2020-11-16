@@ -1,6 +1,6 @@
 ---
 title: Deploy TiDB on AWS EKS
-summary: Learn how to deploy a TiDB cluster on AWS EKS.
+summary: Learn how to deploy a TiDB cluster on AWS Elastic Kubernetes Service (EKS).
 aliases: ['/docs/tidb-in-kubernetes/dev/deploy-on-aws-eks/']
 ---
 
@@ -18,18 +18,16 @@ Before deploying a TiDB cluster on AWS EKS, make sure the following requirements
     This guide includes the following contents:
 
     * Install and configure `awscli`.
-    * Install and configure `eksctl` that is used for creating Kubernetes clusters.
+    * Install and configure `eksctl` used for creating Kubernetes clusters.
     * Install `kubectl`.
 
 > **Note:**
 >
-> The operations described in this document requires at least the [minumum privileges needed by `eksctl`](https://eksctl.io/usage/minimum-iam-policies/) and the [services privileges needed to create a Linux bastion host](https://docs.aws.amazon.com/quickstart/latest/linux-bastion/architecture.html#aws-services).
+> The operations described in this document requires at least the [minimum privileges needed by `eksctl`](https://eksctl.io/usage/minimum-iam-policies/) and the [service privileges needed to create a Linux bastion host](https://docs.aws.amazon.com/quickstart/latest/linux-bastion/architecture.html#aws-services).
 
-## Deploy
+## Create a EKS cluster and a node pool
 
-This section describes how to deploy EKS, TiDB operator, the TiDB cluster, and the monitoring component.
-
-### Create EKS and the node pool
+Save the following configuration as the `cluster.yaml` file. Replace `${clusterName}` with your desired cluster name.
 
 {{< copyable "shell-regular" >}}
 
@@ -37,7 +35,7 @@ This section describes how to deploy EKS, TiDB operator, the TiDB cluster, and t
 apiVersion: eksctl.io/v1alpha5
 kind: ClusterConfig
 metadata:
-  name: <clusterName>
+  name: ${clusterName}
   region: us-west-2
 
 nodeGroups:
@@ -68,7 +66,7 @@ nodeGroups:
       dedicated: tikv:NoSchedule
 ```
 
-Save the configuration above as `cluster.yaml`, and replace `<clusterName>` with your desired cluster name. Execute the following command to create the cluster:
+Execute the following command to create the cluster:
 
 {{< copyable "shell-regular" >}}
 
@@ -78,74 +76,74 @@ eksctl create cluster -f cluster.yaml
 
 > **Note:**
 >
-> - After executing the command above, you need to wait until the EKS cluster is successfully created and the node group is created and added in the EKS cluster. This process might take 5 to 10 minutes.
-> - For more cluster configuration, refer to [`eksctl` documentation](https://eksctl.io/usage/creating-and-managing-clusters/#using-config-files).
+> After executing the command above, you need to wait until the EKS cluster is successfully created and the node group is created and added in the EKS cluster. This process might take 5 to 10 minutes. For more cluster configuration, refer to [`eksctl` documentation](https://eksctl.io/usage/creating-and-managing-clusters/#using-config-files).
 
-### Deploy TiDB Operator
+## Deploy TiDB Operator
 
-To deploy TiDB Operator in the Kubernetes cluster, refer to the [*Deploy TiDB Operator* section](get-started.md#deploy-tidb-operator) in Getting Started.
+To deploy TiDB Operator in the EKS cluster, refer to the [*Deploy TiDB Operator* section](get-started.md#deploy-tidb-operator) in Getting Started.
 
-### Deploy a TiDB cluster and the monitoring component
+## Deploy a TiDB cluster and the monitoring component
 
-1. Prepare the TidbCluster and TidbMonitor CR files:
+This section describes how to deploy a TiDB cluster and its monitoring component in AWS EKS.
 
-    {{< copyable "shell-regular" >}}
+### Create namespace
 
-    ```shell
-    curl -LO https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/aws/tidb-cluster.yaml &&
-    curl -LO https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/aws/tidb-monitor.yaml
-    ```
+To create a namespace to deploy the TiDB cluster, run the following command:
 
-2. Create `Namespace`:
+{{< copyable "shell-regular" >}}
 
-    {{< copyable "shell-regular" >}}
+```shell
+kubectl create namespace tidb-cluster
+```
 
-    ```shell
-    kubectl create namespace tidb-cluster
-    ```
+> **Note:**
+>
+> A [`namespace`](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) is a virtual cluster backed by the same physical cluster. This document takes `tidb-cluster` as an example. If you want to use other namespace, modify the corresponding arguments of `-n` or `--namespace`.
 
-    > **Note:**
-    >
-    > A [`namespace`](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) is a virtual cluster backed by the same physical cluster. This document takes `tidb-cluster` as an example. If you want to use other namespace, modify the corresponding arguments of `-n` or `--namespace`.
+### Deploy
 
-3. Deploy the TiDB cluster:
+To deploy the `TidbCluster` and `TidbMonitor` CR in the EKS cluster, run the following command:
 
-    {{< copyable "shell-regular" >}}
+{{< copyable "shell-regular" >}}
 
-    ```shell
-    kubectl create -f tidb-cluster.yaml -n tidb-cluster &&
-    kubectl create -f tidb-monitor.yaml -n tidb-cluster
-    ```
+```shell
+kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/aws/tidb-cluster.yaml -n tidb-cluster && \
+kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/aws/tidb-monitor.yaml -n tidb-cluster
+```
 
-4. View the startup status of the TiDB cluster:
+After the yaml file above is applied to the Kubernetes cluster, TiDB Operator creates the desired TiDB cluster and its monitoring component according to the yaml file.
 
-    {{< copyable "shell-regular" >}}
+### View the cluster status
 
-    ```shell
-    kubectl get pods -n tidb-cluster
-    ```
+To view the status of the starting TiDB cluster, run the following command:
 
-    When all the Pods are in the `Running` or `Ready` state, the TiDB cluster is successfully started. For example:
+{{< copyable "shell-regular" >}}
 
-    ```
-    NAME                              READY   STATUS    RESTARTS   AGE
-    tidb-discovery-5cb8474d89-n8cxk   1/1     Running   0          47h
-    tidb-monitor-6fbcc68669-dsjlc     3/3     Running   0          47h
-    tidb-pd-0                         1/1     Running   0          47h
-    tidb-pd-1                         1/1     Running   0          46h
-    tidb-pd-2                         1/1     Running   0          46h
-    tidb-tidb-0                       2/2     Running   0          47h
-    tidb-tidb-1                       2/2     Running   0          46h
-    tidb-tikv-0                       1/1     Running   0          47h
-    tidb-tikv-1                       1/1     Running   0          47h
-    tidb-tikv-2                       1/1     Running   0          47h
-    ```
+```shell
+kubectl get pods -n tidb-cluster
+```
+
+When all the Pods are in the `Running` or `Ready` state, the TiDB cluster is successfully started. For example:
+
+```
+NAME                              READY   STATUS    RESTARTS   AGE
+tidb-discovery-5cb8474d89-n8cxk   1/1     Running   0          47h
+tidb-monitor-6fbcc68669-dsjlc     3/3     Running   0          47h
+tidb-pd-0                         1/1     Running   0          47h
+tidb-pd-1                         1/1     Running   0          46h
+tidb-pd-2                         1/1     Running   0          46h
+tidb-tidb-0                       2/2     Running   0          47h
+tidb-tidb-1                       2/2     Running   0          46h
+tidb-tikv-0                       1/1     Running   0          47h
+tidb-tikv-1                       1/1     Running   0          47h
+tidb-tikv-2                       1/1     Running   0          47h
+```
 
 ## Access the database
 
-After you deploy a TiDB cluster, you can access the TiDB database via MySQL client.
+After you have deployed a TiDB cluster, you can access the TiDB database to test or develop your application.
 
-### Prepare a host that can access the cluster
+### Prepare a bastion host
 
 The LoadBalancer created for your TiDB cluster is an intranet LoadBalancer. You can create a [bastion host](https://aws.amazon.com/quickstart/architecture/linux-bastion/) in the cluster VPC to access the database. To create a bastion host on AWS console, refer to [AWS documentation](https://aws.amazon.com/quickstart/architecture/linux-bastion/).
 
@@ -154,21 +152,20 @@ Select the cluster's VPC and Subnet, and verify whether the cluster name is corr
 {{< copyable "shell-regular" >}}
 
 ```shell
-eksctl get cluster -n <clusterName>
+eksctl get cluster -n ${clusterName}
 ```
 
 Allow the bastion host to access the Internet. Select the correct key pair so that you can log in to the host via SSH.
 
 > **Note:**
 >
-> - In addition to the bastion host, you can also connect the existing machine to the cluster VPC by [VPC Peering](https://docs.aws.amazon.com/vpc/latest/peering/what-is-vpc-peering.html).
-> - If the EKS cluster is created in an existing VPC, you can use the host inside the VPC.
+> In addition to the bastion host, you can also connect an existing host to the cluster VPC by [VPC Peering](https://docs.aws.amazon.com/vpc/latest/peering/what-is-vpc-peering.html). If the EKS cluster is created in an existing VPC, you can use the host in the VPC.
 
 ### Install the MySQL client and connect
 
 After the bastion host is created, you can connect to the bastion host via SSH and access the TiDB cluster via the MySQL client.
 
-1. Connect to the bastion host via SSH:
+1. Log in to the bastion host via SSH:
 
     {{< copyable "shell-regular" >}}
 
@@ -176,7 +173,7 @@ After the bastion host is created, you can connect to the bastion host via SSH a
     ssh [-i /path/to/your/private-key.pem] ec2-user@<bastion-public-dns-name>
     ```
 
-2. Install the MySQL client:
+2. Install the MySQL client on the bastion host:
 
     {{< copyable "shell-regular" >}}
 
@@ -189,8 +186,10 @@ After the bastion host is created, you can connect to the bastion host via SSH a
     {{< copyable "shell-regular" >}}
 
     ```shell
-    mysql -h <tidb-nlb-dnsname> -P 4000 -u root
+    mysql -h ${tidb-nlb-dnsname} -P 4000 -u root
     ```
+
+    `${tidb-nlb-dnsname}` is the LoadBalancer domain name of the TiDB service. You can view the domain name in the `EXTERNAL-IP` field by executing `kubectl get svc basic-tidb -n tidb-cluster`.
 
     For example:
 
@@ -218,14 +217,12 @@ After the bastion host is created, you can connect to the bastion host via SSH a
     6 rows in set (0.00 sec)
     ```
 
-    `<tidb-nlb-dnsname>` is the LoadBalancer domain name of the TiDB service. You can view the domain name in the `EXTERNAL-IP` field by executing `kubectl get svc basic-tidb -n tidb-cluster`.
-
 > **Note:**
 >
-> * [The default authentication plugin of MySQL 8.0](https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_default_authentication_plugin) is updated from `mysql_native_password` to `caching_sha2_password`. Therefore, if you use MySQL client from MySQL 8.0 to access the TiDB service (TiDB version < v4.0.7), and if the user account has a password, you need to explicitly specify the `--default-auth=mysql_native_password` parameter.
+> * [The default authentication plugin of MySQL 8.0](https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_default_authentication_plugin) is updated from `mysql_native_password` to `caching_sha2_password`. Therefore, if you use MySQL client from MySQL 8.0 to access the TiDB service (cluster version < v4.0.7), and if the user account has a password, you need to explicitly specify the `--default-auth=mysql_native_password` parameter.
 > * By default, TiDB (starting from v4.0.2) periodically shares usage details with PingCAP to help understand how to improve the product. For details about what is shared and how to disable the sharing, see [Telemetry](https://docs.pingcap.com/tidb/stable/telemetry).
 
-## Monitor
+### Access the Grafana monitoring dashboard
 
 Obtain the LoadBalancer domain name of Grafana:
 
@@ -245,12 +242,11 @@ basic-grafana   LoadBalancer   10.100.199.42   a806cfe84c12a4831aa3313e792e3eed-
 
 In the output above, the `EXTERNAL-IP` column is the LoadBalancer domain name.
 
-You can access the `<grafana-lb>:3000` address using your web browser to view monitoring metrics. Replace `<grafana-lb>` with the LoadBalancer domain name.
+You can access the `${grafana-lb}:3000` address using your web browser to view monitoring metrics. Replace `${grafana-lb}` with the LoadBalancer domain name.
 
-The initial Grafana login credentials are:
-
-- User: admin
-- Password: admin
+> **Note:**
+>
+> The default Grafana username and password are both `admin`.
 
 ## Upgrade
 
@@ -262,25 +258,37 @@ The upgrade process does not finish immediately. You can watch the upgrade progr
 
 Before scaling out the cluster, you need to scale out the corresponding node group so that the new instances have enough resources for operation.
 
-The following example shows how to scale out the `tikv` group of the `<clusterName>` cluster to 4 nodes:
+This section describes how to scale out the EKS node group and TiDB components.
+
+### Scale out EKS node group
+
+The following example shows how to scale out the `tikv` group of the `${clusterName}` cluster to 4 nodes:
 
 {{< copyable "shell-regular" >}}
 
 ```shell
-eksctl scale nodegroup --cluster <clusterName> --name tikv --nodes 4 --nodes-min 4 --nodes-max 4
+eksctl scale nodegroup --cluster ${clusterName} --name tikv --nodes 4 --nodes-min 4 --nodes-max 4
 ```
-
-After that, execute `kubectl edit tc basic -n tidb-cluster`, and modify each component's `replicas` to the desired number of replicas. The scaling-out process is then completed.
 
 For more information on managing node groups, refer to [`eksctl` documentation](https://eksctl.io/usage/managing-nodegroups/).
 
+### Scale out TiDB components
+
+After scaling out the EKS node group, execute `kubectl edit tc basic -n tidb-cluster`, and modify each component's `replicas` to the desired number of replicas. The scaling-out process is then completed.
+
 ## Deploy TiFlash/TiCDC
+
+[TiFlash](https://docs.pingcap.com/tidb/stable/tiflash-overview) is the columnar storage extension of TiKV.
+
+[TiCDC](https://docs.pingcap.com/tidb/stable/ticdc-overview) is a tool for replicating the incremental data of TiDB by pulling TiKV change logs.
+
+The two components are *not required* in the deployment. This section shows a quick start example.
 
 ### Add node groups
 
 In the configuration file of eksctl (`cluster.yaml`), add the following two items to add a node group for TiFlash/TiCDC respectively. `desiredCapacity` is the number of nodes you desire.
 
-```
+```yaml
 - name: tiflash
     desiredCapacity: 3
     labels:
@@ -295,12 +303,14 @@ In the configuration file of eksctl (`cluster.yaml`), add the following two item
       dedicated: ticdc:NoSchedule
 ```
 
+Depending on the EKS cluster status, use different commands:
+
 - If the cluster is not created, execute `eksctl create cluster -f cluster.yaml` to create the cluster and node groups.
 - If the cluster is already created, execute `eksctl create nodegroup -f cluster.yaml` to create the node groups. The existing node groups are ignored and will not be created again.
 
 ### Configure and deploy
 
-+ If you want to deploy TiFlash, configure `spec.tiflash` in `tidb-cluster.yaml`:
++ To deploy TiFlash, configure `spec.tiflash` in `tidb-cluster.yaml`:
 
     ```yaml
     spec:
@@ -319,13 +329,13 @@ In the configuration file of eksctl (`cluster.yaml`), add the following two item
           value: tiflash
     ```
 
-    To configure other parameters, refer to [Configure a TiDB Cluster](configure-a-tidb-cluster.md).
+    For other parameters, refer to [Configure a TiDB Cluster](configure-a-tidb-cluster.md).
 
     > **Warning:**
     >
     > TiDB Operator automatically mount PVs **in the order of the configuration** in the `storageClaims` list. Therefore, if you need to add disks for TiFlash, make sure that you add the disks **only to the end of the original configuration** in the list. In addition, you must **not** alter the order of the original configuration.
 
-+ If you want to deploy TiCDC, configure `spec.ticdc` in `tidb-cluster.yaml`:
++ To deploy TiCDC, configure `spec.ticdc` in `tidb-cluster.yaml`:
 
     ```yaml
     spec:
@@ -348,7 +358,7 @@ For detailed CR configuration, refer to [API references](https://github.com/ping
 
 ## Deploy TiDB Enterprise Edition
 
-If you need to deploy TiDB/PD/TiKV/TiFlash/TiCDC Enterprise Edition, configure `spec.<tidb/pd/tikv/tiflash/ticdc>.baseImage` in `tidb-cluster.yaml` as the enterprise image. The image format is `pingcap/<tidb/pd/tikv/tiflash/ticdc>-enterprise`.
+To deploy TiDB/PD/TiKV/TiFlash/TiCDC Enterprise Edition, configure `spec.[tidb|pd|tikv|tiflash|ticdc].baseImage` in `tidb-cluster.yaml` as the enterprise image. The enterprise image format is `pingcap/[tidb|pd|tikv|tiflash|ticdc]-enterprise`.
 
 For example:
 
@@ -368,7 +378,7 @@ AWS EBS supports multiple volume types. If you need low latency and high through
 
 1. Create a storage class for `io1`:
 
-    ```
+    ```yaml
     kind: StorageClass
     apiVersion: storage.k8s.io/v1
     metadata:
@@ -377,9 +387,25 @@ AWS EBS supports multiple volume types. If you need low latency and high through
     parameters:
       type: io1
       fsType: ext4
+      iopsPerGB: "10"
+      encrypted: "false"
     ```
 
 2. In `tidb-cluster.yaml`, specify the `io1` storage class to apply for the `io1` volume type through the `storageClassName` field.
+
+    The following is a TiKV configuration example you can refer to:
+
+    ```yaml
+    spec:
+      tikv:
+        baseImage: pingcap/tikv
+        replicas: 3
+        storageClaims:
+        - resources:
+          requests:
+            storage: 100Gi
+          storageClassName: io1
+    ```
 
 For more information about the storage class configuration and EBS volume types, refer to [Storage Class documentation](https://kubernetes.io/docs/concepts/storage/storage-classes/) and [EBS Volume Types](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebs-volume-types.html).
 
@@ -390,8 +416,8 @@ Some AWS instance types provide additional [NVMe SSD local store volumes](https:
 > **Note:**
 >
 > You cannot dynamically change the storage class of a running TiDB cluster. You can create a new cluster for testing.
-> 
-> During the EKS upgrade, data in the local storage will be [lost](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html#instance-store-lifetime) due to the node reconstruction. When the node reconstruction occurs, you need to migrate data in TiKV. If you do not want to migrate data, it is recommended not to use the local disk in the production environment.
+>
+> During the EKS upgrade, [data in the local storage will be lost](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html#instance-store-lifetime) due to the node reconstruction. When the node reconstruction occurs, you need to migrate data in TiKV. If you do not want to migrate data, it is recommended not to use the local disk in the production environment.
 
 For instance types that provide local volumes, see [AWS Instance Types](https://aws.amazon.com/ec2/instance-types/). Take `c5d.4xlarge` as an example:
 
@@ -399,7 +425,7 @@ For instance types that provide local volumes, see [AWS Instance Types](https://
 
     Modify the instance type of the TiKV node group in the `eksctl` configuration file to `c5d.4xlarge`:
 
-    ```
+    ```yaml
       - name: tikv
         instanceType: c5d.4xlarge
         labels:
@@ -434,3 +460,5 @@ For instance types that provide local volumes, see [AWS Instance Types](https://
     After the steps above, the local volume provisioner can discover all the local NVMe SSD disks in the cluster.
 
     Modify `tikv.storageClassName` in the `tidb-cluster.yaml` file to `local-storage`.
+
+    For more information, refer to [Deploy TiDB cluster and its monitoring components](#deploy)

@@ -277,7 +277,11 @@ eksctl scale nodegroup --cluster ${clusterName} --name tikv --nodes 4 --nodes-mi
 
 ## 部署 TiFlash/TiCDC
 
-[TiFlash](https://docs.pingcap.com/zh/tidb/stable/tiflash-overview) 是 TiKV 的列存扩展，[TiCDC](https://docs.pingcap.com/zh/tidb/stable/ticdc-overview) 是一款通过拉取 TiKV 变更日志实现的 TiDB 增量数据同步工具。这两个组件不是必选安装项，这里提供一个快速安装上手示例。
+[TiFlash](https://docs.pingcap.com/zh/tidb/stable/tiflash-overview) 是 TiKV 的列存扩展。
+
+[TiCDC](https://docs.pingcap.com/zh/tidb/stable/ticdc-overview) 是一款通过拉取 TiKV 变更日志实现的 TiDB 增量数据同步工具。
+
+这两个组件*不是必选*安装项，这里提供一个快速安装上手示例。
 
 ### 新增节点组
 
