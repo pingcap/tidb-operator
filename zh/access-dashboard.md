@@ -163,7 +163,7 @@ spec:
 
 TiDB Dashboard 中的部分功能会因为 kubernetes 的特殊环境而无法使用，包括以下功能：
 
-1. **概况** -> **监控和告警** -> **查看监控项**的链接无法正确跳转到 Grafana 监控页。如果需要访问 Grafana 监控，可以参考[查看监控面板](monitor-a-tidb-cluster.md#访问-grafana-监控面板)。
+1. **概况** -> **监控和告警** -> **查看监控项**的链接无法正确跳转到 Grafana 监控页。如果需要访问 Grafana 监控，可以参考[访问 Grafana 监控面板](monitor-a-tidb-cluster.md#访问-grafana-监控面板)。
 
 2. 日志搜索功能无法使用。如果需要查看对应组件的日志，可以使用 `kubectl logs ${pod_name} -n {namespace}` 查看对应组件的日志或者通过 Kubernetes 集群的日志服务查看。
 

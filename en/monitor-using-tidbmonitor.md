@@ -41,12 +41,12 @@ spec:
   - name: basic
   prometheus:
     baseImage: prom/prometheus
-    version: v2.11.1
+    version: v2.18.1
     service:
       type: NodePort
   grafana:
     baseImage: grafana/grafana
-    version: 6.0.1
+    version: 6.1.6
   initializer:
     baseImage: pingcap/tidb-monitor-initializer
     version: v4.0.8
@@ -120,12 +120,12 @@ spec:
   storage: 5G
   prometheus:
     baseImage: prom/prometheus
-    version: v2.11.1
+    version: v2.18.1
     service:
       type: NodePort
   grafana:
     baseImage: grafana/grafana
-    version: 6.0.1
+    version: 6.1.6
     service:
       type: NodePort
   initializer:
@@ -168,12 +168,12 @@ spec:
   alertmanagerURL: "your-alert-manager-url"
   prometheus:
     baseImage: prom/prometheus
-    version: v2.11.1
+    version: v2.18.1
     service:
       type: NodePort
   grafana:
     baseImage: grafana/grafana
-    version: 6.0.1
+    version: 6.1.6
     service:
       type: NodePort
   initializer:
@@ -214,20 +214,20 @@ spec:
   persistent: false
   prometheus:
     baseImage: prom/prometheus
-    version: v2.11.1
+    version: v2.18.1
     ingress:
       hosts:
-      - exmaple.com
+      - example.com
       annotations:
         foo: "bar"
   grafana:
     baseImage: grafana/grafana
-    version: 6.0.1
+    version: 6.1.6
     service:
       type: ClusterIP
     ingress:
       hosts:
-        - exmaple.com
+        - example.com
       annotations:
         foo: "bar"
   initializer:
@@ -254,17 +254,17 @@ spec:
   persistent: false
   prometheus:
     baseImage: prom/prometheus
-    version: v2.11.1
+    version: v2.18.1
     ingress:
       hosts:
-      - exmaple.com
+      - example.com
       tls:
       - hosts:
-        - exmaple.com
+        - example.com
         secretName: testsecret-tls
   grafana:
     baseImage: grafana/grafana
-    version: 6.0.1
+    version: 6.1.6
     service:
       type: ClusterIP
   initializer:
@@ -278,7 +278,7 @@ spec:
 
 TLS Secret must include the `tls.crt` and `tls.key` keys, which include the certificate and private key used for TLS. For example:
 
- ```yaml
+```yaml
 apiVersion: v1
 kind: Secret
 metadata:
@@ -288,7 +288,13 @@ data:
   tls.crt: base64 encoded cert
   tls.key: base64 encoded key
 type: kubernetes.io/tls
- ```
+```
+
+In a public cloud-deployed Kubernetes cluster, you can usually [configure Loadbalancer](https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/) to access Ingress through a domain name. If you cannot configure the Loadbalancer service (for example, when you use NodePort as the service type of Ingress), you can access the service in a way equivalent to the following command:
+
+```shell
+curl -H "Host: example.com" ${node_ip}:${NodePort}
+```
 
 ## Monitor multiple TiDB clusters
 
@@ -311,12 +317,12 @@ spec:
   alertmanagerURL: "your-alert-manager-url"
   prometheus:
     baseImage: prom/prometheus
-    version: v2.11.1
+    version: v2.18.1
     service:
       type: NodePort
   grafana:
     baseImage: grafana/grafana
-    version: 6.0.1
+    version: 6.1.6
     service:
       type: NodePort
   initializer:

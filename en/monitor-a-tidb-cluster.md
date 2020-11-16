@@ -1,29 +1,27 @@
 ---
-title: Monitor a TiDB Cluster in Kubernetes
-summary: Learn how to monitor a TiDB cluster in kubernetes.
+title: Monitor and Alert of Kubernetes and the TiDB Cluster
+summary: Learn how to monitor a TiDB cluster in Kubernetes.
 aliases: ['/docs/tidb-in-kubernetes/dev/monitor-a-tidb-cluster/']
 ---
 
-# Monitor a TiDB Cluster in Kubernetes
+# Monitor and Alert of Kubernetes and the TiDB Cluster
 
 Monitoring a TiDB cluster deployed in Kubernetes can be roughly divided into two parts:
 
-- Monitoring the TiDB cluster itself
-- Monitoring the Kubernetes cluster and TiDB Operator
-
-This document gives a brief introduction to the two monitoring tasks.
+- Monitoring **the TiDB cluster itself**
+- Monitoring **the Kubernetes cluster** and **TiDB Operator**
 
 ## Monitor the TiDB cluster
 
-You can monitor the TiDB cluster with Prometheus and Grafana. When you create a new TiDB cluster using TiDB Operator, refer to [Monitor a TiDB Cluster Using TidbMonitor](monitor-using-tidbmonitor.md) to deploy a separate monitoring system for the TiDB cluster. The monitoring system must run in the same namespace as the TiDB cluster, and includes two components: Prometheus and Grafana.
+You can monitor the TiDB cluster with Prometheus and Grafana. When you create a new TiDB cluster using TiDB Operator, refer to [TidbMonitor Configuration](monitor-using-tidbmonitor.md) to deploy a separate monitoring system for the TiDB cluster. The monitoring system must run in the same namespace as the TiDB cluster, and includes two components: Prometheus and Grafana.
 
 The monitoring data is not persisted by default. To persist the monitoring data, you can set `spec.persistent` to `true` in `TidbMonitor`. When you enable this option, you need to set `spec.storageClassName` to an existing storage in the current cluster, and this storage is required to support persisting data; otherwise, there is a risk of data loss.
 
 For configuration details on the monitoring system, refer to [TiDB Cluster Monitoring](https://pingcap.com/docs/stable/how-to/monitor/monitor-a-cluster).
 
-### View the monitoring dashboard
+### Access the Grafana monitoring dashboard
 
-You can run the `kubectl port-forward` command to view the monitoring dashboard:
+You can run the `kubectl port-forward` command to access the Grafana monitoring dashboard:
 
 {{< copyable "shell-regular" >}}
 
@@ -33,11 +31,11 @@ kubectl port-forward -n ${namespace} svc/${cluster_name}-grafana 3000:3000 &>/tm
 
 Then open [http://localhost:3000](http://localhost:3000) in your browser and log on with the default username and password `admin`.
 
-You can also set `spec.grafana.service.type` to `NodePort` or `LoadBalancer`, and then view the monitoring dashboard through `NodePort` or `LoadBalancer`. For details, see [Monitor the TiDB Cluster Using TidbMonitor](monitor-using-tidbmonitor.md).
+You can also set `spec.grafana.service.type` to `NodePort` or `LoadBalancer`, and then view the monitoring dashboard through `NodePort` or `LoadBalancer`. For details, see [TidbMonitor Configuration](monitor-using-tidbmonitor.md).
 
 If there is no need to use Grafana, you can delete the part of `spec.grafana` in `TidbMonitor` during deployment. In this case, you need to use other existing or newly deployed data visualization tools to directly access the monitoring data.
 
-### Access the monitoring data
+### Access the Prometheus monitoring data
 
 To access the monitoring data directly, run the `kubectl port-forward` command to access Prometheus:
 
@@ -49,7 +47,7 @@ kubectl port-forward -n ${namespace} svc/${cluster_name}-prometheus 9090:9090 &>
 
 Then open [http://localhost:9090](http://localhost:9090) in your browser or access this address via a client tool.
 
-You can also set `spec.prometheus.service.type` to `NodePort` or `LoadBalancer`, and then view the monitoring data through `NodePort` or `LoadBalancer`. For details, see [Monitor the TiDB Cluster Using TidbMonitor](monitor-using-tidbmonitor.md).
+You can also set `spec.prometheus.service.type` to `NodePort` or `LoadBalancer`, and then view the monitoring data through `NodePort` or `LoadBalancer`. For details, see [TidbMonitor Configuration](monitor-using-tidbmonitor.md).
 
 ## Monitor the Kubernetes cluster
 
@@ -84,7 +82,7 @@ TiDB Operator is actually a container running in Kubernetes. For this reason, yo
 
 It is recommended to deploy a host monitoring system via [Prometheus Operator](https://github.com/coreos/prometheus-operator) based on [Node Exporter](https://github.com/prometheus/node_exporter) and Prometheus. This solution can also be compatible with and used for monitoring host resources.
 
-## Alert configuration
+## Configure alert
 
 ### Alerts in the TiDB Cluster
 
@@ -92,7 +90,7 @@ When Prometheus is deployed with a TiDB cluster, some default alert rules are au
 
 The custom configuration of alert rules is supported. You can modify the alert rules by taking the following steps:
 
-1. When deploying the monitoring system for the TiDB cluster, set `spec.reloader.service.type` to `NodePort` or `LoadBalancer`. For details, see [Monitor the TiDB Cluster Using TidbMonitor](monitor-using-tidbmonitor.md).
+1. When deploying the monitoring system for the TiDB cluster, set `spec.reloader.service.type` to `NodePort` or `LoadBalancer`. For details, see [TidbMonitor Configuration](monitor-using-tidbmonitor.md).
 2. Access the `reloader` service through `NodePort` or `LoadBalancer`. Click the `Files` button above to select the alert rule file to be modified, and make the custom configuration. Click `Save` after the modification.
 
 The default Prometheus and alert configuration do not support sending alert messages. To send an alert message, you can integrate Prometheus with any tool that supports Prometheus alerts. It is recommended to manage and send alert messages via [AlertManager](https://prometheus.io/docs/alerting/alertmanager/).
