@@ -18,7 +18,7 @@ This document introduces the hardware and software prerequisites for deploying a
 
 ## Configure the firewall
 
-It is recommended that you disable the firewall. 
+It is recommended that you disable the firewall.
 
 {{< copyable "shell-regular" >}}
 
@@ -32,7 +32,7 @@ If you cannot stop the firewalld service, to ensure the normal operation of Kube
 1. Enable the following ports on the master, and then restart the service:
 
     {{< copyable "shell-regular" >}}
-    
+
     ```shell
     firewall-cmd --permanent --add-port=6443/tcp
     firewall-cmd --permanent --add-port=2379-2380/tcp
@@ -42,7 +42,7 @@ If you cannot stop the firewalld service, to ensure the normal operation of Kube
     firewall-cmd --permanent --add-port=10255/tcp
     firewall-cmd --permanent --add-port=8472/udp
     firewall-cmd --add-masquerade --permanent
-    
+
     # Set it when you need to expose NodePort on the master node.
     firewall-cmd --permanent --add-port=30000-32767/tcp
     systemctl restart firewalld
@@ -58,7 +58,7 @@ If you cannot stop the firewalld service, to ensure the normal operation of Kube
     firewall-cmd --permanent --add-port=8472/udp
     firewall-cmd --permanent --add-port=30000-32767/tcp
     firewall-cmd --add-masquerade --permanent
-   
+
     systemctl restart firewalld
     ```
 
@@ -81,7 +81,7 @@ setenforce 0
 sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
 ```
 
-## Disable swap 
+## Disable swap
 
 To make kubelet work, you need to turn off swap and comment out the swap-related line in the `/etc/fstab` file.
 
@@ -89,7 +89,7 @@ To make kubelet work, you need to turn off swap and comment out the swap-related
 
 ```shell
 swapoff -a
-sed -i 's/^\(.*swap.*\)$/#\1/' /etc/fstab 
+sed -i 's/^\(.*swap.*\)$/#\1/' /etc/fstab
 ```
 
 ## Configure kernel parameters
@@ -146,6 +146,8 @@ cpupower frequency-set --governor performance
 
 The TiDB cluster uses many file descriptors by default. The `ulimit` of the worker node must be greater than or equal to `1048576`.
 
+{{< copyable "shell-regular" >}}
+
 ```shell
 cat <<EOF >>  /etc/security/limits.conf
 root        soft        nofile        1048576
@@ -162,6 +164,8 @@ It is recommended to install Docker CE 18.09.6 or later versions. See [Install D
 After the installation, take the following steps:
 
 1. Save the Docker data to a separate disk. The data mainly contains images and the container logs. To implement this, set the [`--data-root`](https://docs.docker.com/config/daemon/systemd/#runtime-directory-and-storage-driver) parameter:
+
+    {{< copyable "shell-regular" >}}
 
     ```shell
     cat > /etc/docker/daemon.json <<EOF
@@ -184,14 +188,15 @@ After the installation, take the following steps:
 
 2. Set `ulimit` for the Docker daemon:
 
+    Edit the file:
+
     {{< copyable "shell-regular" >}}
 
     ```shell
     vim /etc/systemd/system/docker.service
-    LimitNOFILE=1048576
     ```
 
-    Set `LimitNOFILE` as equal to or greater than `1048576`.
+    Set `LimitNOFILE` to `1048576`. Here, you can set `LimitNOFILE` to a number equal to or greater than `1048576`.
 
     > **Note:**
     >
@@ -217,7 +222,7 @@ After Kubelet is installed, take the following steps:
 1. Save the Kubelet data to a separate disk (it can share the same disk with Docker). The data mainly contains the data used by [emptyDir](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir). To implement this, set the `--root-dir` parameter:
 
     {{< copyable "shell-regular" >}}
-    
+
     ```shell
     echo "KUBELET_EXTRA_ARGS=--root-dir=/data1/kubelet" > /etc/sysconfig/kubelet
     systemctl restart kubelet

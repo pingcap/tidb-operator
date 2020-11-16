@@ -151,7 +151,7 @@ If the components such as monitoring, TiDB Binlog, and `tidb-backup` use local d
 
 Based on the disk mounts above, you need to modify the [`local-volume-provisioner` YAML file](https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/local-dind/local-volume-provisioner.yaml) accordingly, configure discovery directory and create the necessary `StorageClass`. Here is an example of a modified YAML file:
 
-```
+```yaml
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:

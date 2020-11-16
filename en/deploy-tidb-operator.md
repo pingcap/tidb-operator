@@ -32,11 +32,9 @@ Refer to [Use Helm](tidb-toolkit.md#use-helm) to install Helm and configure it w
 
 ## Configure local persistent volumes
 
-### Prepare local volumes
-
 Refer to [Local PV Configuration](configure-storage-class.md) to set up local persistent volumes in your Kubernetes cluster.
 
-## Install TiDB Operator
+## Deploy TiDB Operator
 
 ### Create CRD
 
@@ -76,13 +74,15 @@ tidbinitializers.pingcap.com         2020-06-11T07:59:42Z
 tidbmonitors.pingcap.com             2020-06-11T07:59:41Z
 ```
 
-### Installation
+### Customize TiDB Operator deployment
 
-After the various CRDs above are created, you can install TiDB Operator on your Kubernetes cluster. There are two installation methods: online and offline.
+To deploy TiDB Operator quickly, you can refer to [Deploy TiDB Operator](get-started.md#deploy-tidb-operator). This section describes how to customize the deployment of TiDB Operator.
 
-#### Online installation
+After creating CRDs in the step above, there are two methods to deploy TiDB Operator on your Kubernetes cluster: online and offline.
 
-1. Get the `values.yaml` file of the `tidb-operator` chart you want to install.
+#### Online deployment
+
+1. Get the `values.yaml` file of the `tidb-operator` chart you want to deploy:
 
     {{< copyable "shell-regular" >}}
 
@@ -101,7 +101,7 @@ After the various CRDs above are created, you can install TiDB Operator on your 
 
     You can modify other items such as `limits`, `requests`, and `replicas` as needed.
 
-3. Install TiDB Operator.
+3. Deploy TiDB Operator
 
     {{< copyable "shell-regular" >}}
 

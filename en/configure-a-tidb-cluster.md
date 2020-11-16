@@ -77,7 +77,7 @@ For the demonstration environment or functional verification, you can use networ
 
 > **Note:**
 >
-> If you set a storage class that does not exist in the TiDB cluster that you are creating, then the cluster creation goes to the Pending state. In this situation, you must [destroy the TiDB cluster in Kubernetes](destroy-a-tidb-cluster.md).
+> When you create the TiDB cluster, if you set a storage class that does not exist in the Kubernetes cluster, then the TiDB cluster creation goes to the Pending state. In this situation, you must [destroy the TiDB cluster in Kubernetes](destroy-a-tidb-cluster.md) and retry the creation.
 
 ### mountClusterClientSecret
 
