@@ -709,7 +709,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		tm, err = cli.PingcapV1alpha1().TidbMonitors(ns).Update(tm)
 		framework.ExpectNoError(err, "update tidbmonitor service portName error")
 
-		pvc, err = c.CoreV1().PersistentVolumeClaims(ns).Get("e2e-monitor-monitor", metav1.GetOptions{})
+		pvc, err = c.CoreV1().PersistentVolumeClaims(ns).Get("monitor-data-e2e-monitor-0", metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected fetch tidbmonitor pvc success")
 		pvName = pvc.Spec.VolumeName
 		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
