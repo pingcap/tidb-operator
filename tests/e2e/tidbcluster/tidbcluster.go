@@ -669,7 +669,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected fetch tidbmonitor pv success")
 
 		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-			if pv.Spec.PersistentVolumeReclaimPolicy != corev1.PersistentVolumeReclaimRetain {
+			if pv.Spec.PersistentVolumeReclaimPolicy != corev1.PersistentVolumeReclaimDelete {
 				return false, fmt.Errorf("pv[%s] 's policy is not Delete", pv.Name)
 			}
 			return true, nil
