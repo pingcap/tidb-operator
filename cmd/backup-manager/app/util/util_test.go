@@ -206,6 +206,104 @@ func TestConstructBRGlobalOptionsForBackup(t *testing.T) {
 	}
 }
 
+func TestGetRemotePath(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	type testcase struct {
+		name   string
+		backup *v1alpha1.Backup
+		expect string
+		err    bool
+	}
+
+	tests := []*testcase{
+		{
+			name: "normal s3",
+			backup: &v1alpha1.Backup{
+				Spec: v1alpha1.BackupSpec{
+					StorageProvider: v1alpha1.StorageProvider{
+						S3: &v1alpha1.S3StorageProvider{
+							Bucket:     "test1-demo1",
+							SecretName: "demo",
+						},
+					},
+				},
+			},
+			expect: "s3://test1-demo1/",
+		},
+		{
+			name: "normal gcs",
+			backup: &v1alpha1.Backup{
+				Spec: v1alpha1.BackupSpec{
+					StorageProvider: v1alpha1.StorageProvider{
+						Gcs: &v1alpha1.GcsStorageProvider{
+							Bucket:     "test1-demo1",
+							SecretName: "demo",
+						},
+					},
+				},
+			},
+			expect: "gcs://test1-demo1/",
+		},
+		{
+			name: "unknow storage type",
+			backup: &v1alpha1.Backup{
+				Spec: v1alpha1.BackupSpec{
+					StorageProvider: v1alpha1.StorageProvider{},
+				},
+			},
+			err: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p, err := GetRemotePath(tt.backup)
+			if tt.err {
+				g.Expect(err).To(HaveOccurred())
+				return
+			}
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(p).To(Equal(tt.expect))
+		})
+	}
+}
+
+func TestSuffix(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	type testcase struct {
+		name    string
+		version string
+		expect  string
+	}
+
+	tests := []*testcase{
+		{
+			name:    "normal",
+			version: "v3.1.2",
+			expect:  "31",
+		},
+		{
+			name:    "unsupported version",
+			version: "v1.2.3",
+			expect:  "40",
+		},
+		{
+			name:    "invalid version",
+			version: "v4.0.x",
+			expect:  "40",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			suffix := Suffix(tt.version)
+			g.Expect(suffix).To(Equal(tt.expect))
+		})
+	}
+}
+
 func TestConstructBRGlobalOptionsForRestore(t *testing.T) {
 	g := NewGomegaWithT(t)
 
