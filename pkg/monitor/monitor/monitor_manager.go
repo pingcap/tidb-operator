@@ -60,6 +60,11 @@ func NewMonitorManager(deps *controller.Dependencies) *MonitorManager {
 }
 
 func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
+	// syncing all PVs managed by operator's reclaim policy to Retain
+	if err := m.pvManager.SyncMonitor(monitor); err != nil {
+		return err
+	}
+
 	if monitor.DeletionTimestamp != nil {
 		return nil
 	}
