@@ -9,7 +9,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/get-started/','/docs-cn/dev/tidb-in-k
 本文档介绍了如何创建一个简单的 Kubernetes 集群，部署 TiDB Operator，并使用 TiDB Operator 部署 TiDB 集群。
 
 > **警告：**
-> 
+>
 > 本文中部署例子仅用于测试目的。**不要**直接用于生产环境。
 
 基本步骤如下：
@@ -53,7 +53,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/get-started/','/docs-cn/dev/tidb-in-k
 [kind](https://kind.sigs.k8s.io/) 是用于使用 Docker 容器作为集群节点运行本地 Kubernetes 集群的工具，是为测试本地 Kubernetes 集群而开发的。Kubernetes 集群版本取决于 kind 使用的节点镜像，您可以指定要用于节点的镜像并选择任何发布的版本。请参阅 [Docker Hub](https://hub.docker.com/r/kindest/node/tags) 以查看可用 tags。默认使用当前 kind 支持的最新版本。
 
 > **警告：**
-> 
+>
 > kind 集群仅用于测试目的，**不要**直接用于生产环境。
 
 部署前，请确保满足以下要求：
@@ -123,7 +123,7 @@ kind delete cluster
 [minikube](https://minikube.sigs.k8s.io/docs/start/) 可以在虚拟机中创建一个 Kubernetes 集群，可在 macOS, Linux 和 Windows 上运行。
 
 > **警告：**
-> 
+>
 > minikube 集群仅用于测试目的，**不要**直接用于生产环境。
 
 部署前，请确保满足以下要求：
@@ -269,7 +269,7 @@ TiDB Operator 使用 Helm 3 安装。
     期望输出：
 
     ```
-    "pingcap" has been added to your repositories  
+    "pingcap" has been added to your repositories
     ```
 
 2. 为 TiDB Operator 创建一个命名空间
@@ -337,7 +337,7 @@ tidb-scheduler-644d59b46f-4f6sb            2/2     Running   0          2m22s
 ```
 
 当所有的 pods 都处于 Running 状态时，可进行下一步操作。
-    
+
 ## 部署 TiDB 集群和监控
 
 下面分别介绍 TiDB 集群和监控的部署方法。
@@ -489,111 +489,113 @@ owners.
 
 Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
 
-mysql> 
+mysql>
 ```
 
 以下是一些可以用来验证集群功能的命令。
 
 - 创建 `hello_world` 表：
 
-```
-mysql> create table hello_world (id int unsigned not null auto_increment primary key, v varchar(32));
-Query OK, 0 rows affected (0.17 sec)
+    ```sql
+    mysql> create table hello_world (id int unsigned not null auto_increment primary key, v varchar(32));
+    Query OK, 0 rows affected (0.17 sec)
 
-mysql> select * from information_schema.tikv_region_status where db_name=database() and table_name='hello_world'\G
-*************************** 1. row ***************************
-        REGION_ID: 2
-        START_KEY: 7480000000000000FF3700000000000000F8
-            END_KEY:
-        TABLE_ID: 55
-            DB_NAME: test
-        TABLE_NAME: hello_world
-        IS_INDEX: 0
-        INDEX_ID: NULL
-        INDEX_NAME: NULL
-    EPOCH_CONF_VER: 5
-    EPOCH_VERSION: 23
-    WRITTEN_BYTES: 0
-        READ_BYTES: 0
-APPROXIMATE_SIZE: 1
-APPROXIMATE_KEYS: 0
-1 row in set (0.03 sec)
-```
+    mysql> select * from information_schema.tikv_region_status where db_name=database() and table_name='hello_world'\G
+    *************************** 1. row ***************************
+            REGION_ID: 2
+            START_KEY: 7480000000000000FF3700000000000000F8
+                END_KEY:
+            TABLE_ID: 55
+                DB_NAME: test
+            TABLE_NAME: hello_world
+            IS_INDEX: 0
+            INDEX_ID: NULL
+            INDEX_NAME: NULL
+        EPOCH_CONF_VER: 5
+        EPOCH_VERSION: 23
+        WRITTEN_BYTES: 0
+            READ_BYTES: 0
+    APPROXIMATE_SIZE: 1
+    APPROXIMATE_KEYS: 0
+    1 row in set (0.03 sec)
+    ```
 
-- 查询 TiDB 版本号
+- 查询 TiDB 版本号：
 
-```
-mysql> select tidb_version()\G
-*************************** 1. row ***************************
-tidb_version(): Release Version: v4.0.0
-Edition: Community
-Git Commit Hash: 689a6b6439ae7835947fcaccf329a3fc303986cb
-Git Branch: heads/refs/tags/v4.0.0
-UTC Build Time: 2020-05-28 01:37:40
-GoVersion: go1.13
-Race Enabled: false
-TiKV Min Version: v3.0.0-60965b006877ca7234adaced7890d7b029ed1306
-Check Table Before Drop: false
-1 row in set (0.00 sec)
-```
+    ```sql
+    mysql> select tidb_version()\G
+    *************************** 1. row ***************************
+    tidb_version(): Release Version: v4.0.0
+    Edition: Community
+    Git Commit Hash: 689a6b6439ae7835947fcaccf329a3fc303986cb
+    Git Branch: heads/refs/tags/v4.0.0
+    UTC Build Time: 2020-05-28 01:37:40
+    GoVersion: go1.13
+    Race Enabled: false
+    TiKV Min Version: v3.0.0-60965b006877ca7234adaced7890d7b029ed1306
+    Check Table Before Drop: false
+    1 row in set (0.00 sec)
+    ```
 
-- 查询 TiKV 存储状态
+- 查询 TiKV 存储状态：
 
-```
-mysql> select * from information_schema.tikv_store_status\G
-*************************** 1. row ***************************
-            STORE_ID: 4
-            ADDRESS: basic-tikv-0.basic-tikv-peer.tidb-cluster.svc:20160
-        STORE_STATE: 0
-    STORE_STATE_NAME: Up
-            LABEL: null
+    ```sql
+    mysql> select * from information_schema.tikv_store_status\G
+    *************************** 1. row ***************************
+                STORE_ID: 4
+                ADDRESS: basic-tikv-0.basic-tikv-peer.tidb-cluster.svc:20160
+            STORE_STATE: 0
+        STORE_STATE_NAME: Up
+                LABEL: null
+                VERSION: 4.0.0
+                CAPACITY: 58.42GiB
+            AVAILABLE: 36.18GiB
+            LEADER_COUNT: 3
+        LEADER_WEIGHT: 1
+            LEADER_SCORE: 3
+            LEADER_SIZE: 3
+            REGION_COUNT: 21
+        REGION_WEIGHT: 1
+            REGION_SCORE: 21
+            REGION_SIZE: 21
+                START_TS: 2020-05-28 22:48:21
+    LAST_HEARTBEAT_TS: 2020-05-28 22:52:01
+                UPTIME: 3m40.598302151s
+    1 rows in set (0.01 sec)
+    ```
+
+- 查询 TiDB 集群基本信息：
+
+    （该命令需要 TiDB 4.0 或以上版本，如果你部署的 TiDB 版本不支持该命令，请[升级集群](#升级-tidb-集群)。）
+
+    ```sql
+    mysql> select * from information_schema.cluster_info\G
+    *************************** 1. row ***************************
+                TYPE: tidb
+            INSTANCE: basic-tidb-0.basic-tidb-peer.tidb-cluster.svc:4000
+    STATUS_ADDRESS: basic-tidb-0.basic-tidb-peer.tidb-cluster.svc:10080
+            VERSION: 5.7.25-TiDB-v4.0.0
+            GIT_HASH: 689a6b6439ae7835947fcaccf329a3fc303986cb
+        START_TIME: 2020-05-28T22:50:11Z
+            UPTIME: 3m21.459090928s
+    *************************** 2. row ***************************
+                TYPE: pd
+            INSTANCE: basic-pd:2379
+    STATUS_ADDRESS: basic-pd:2379
             VERSION: 4.0.0
-            CAPACITY: 58.42GiB
-        AVAILABLE: 36.18GiB
-        LEADER_COUNT: 3
-    LEADER_WEIGHT: 1
-        LEADER_SCORE: 3
-        LEADER_SIZE: 3
-        REGION_COUNT: 21
-    REGION_WEIGHT: 1
-        REGION_SCORE: 21
-        REGION_SIZE: 21
-            START_TS: 2020-05-28 22:48:21
-LAST_HEARTBEAT_TS: 2020-05-28 22:52:01
-            UPTIME: 3m40.598302151s
-1 rows in set (0.01 sec)
-```
-
-- 查询 TiDB 集群基本信息
-
-```
-mysql> select * from information_schema.cluster_info\G
-*************************** 1. row ***************************
-            TYPE: tidb
-        INSTANCE: basic-tidb-0.basic-tidb-peer.tidb-cluster.svc:4000
-STATUS_ADDRESS: basic-tidb-0.basic-tidb-peer.tidb-cluster.svc:10080
-        VERSION: 5.7.25-TiDB-v4.0.0
-        GIT_HASH: 689a6b6439ae7835947fcaccf329a3fc303986cb
-    START_TIME: 2020-05-28T22:50:11Z
-        UPTIME: 3m21.459090928s
-*************************** 2. row ***************************
-            TYPE: pd
-        INSTANCE: basic-pd:2379
-STATUS_ADDRESS: basic-pd:2379
-        VERSION: 4.0.0
-        GIT_HASH: 56d4c3d2237f5bf6fb11a794731ed1d95c8020c2
-    START_TIME: 2020-05-28T22:45:04Z
-        UPTIME: 8m28.459091915s
-*************************** 3. row ***************************
-            TYPE: tikv
-        INSTANCE: basic-tikv-0.basic-tikv-peer.tidb-cluster.svc:20160
-STATUS_ADDRESS: 0.0.0.0:20180
-        VERSION: 4.0.0
-        GIT_HASH: 198a2cea01734ce8f46d55a29708f123f9133944
-    START_TIME: 2020-05-28T22:48:21Z
-        UPTIME: 5m11.459102648s
-3 rows in set (0.01 sec)
-```
+            GIT_HASH: 56d4c3d2237f5bf6fb11a794731ed1d95c8020c2
+        START_TIME: 2020-05-28T22:45:04Z
+            UPTIME: 8m28.459091915s
+    *************************** 3. row ***************************
+                TYPE: tikv
+            INSTANCE: basic-tikv-0.basic-tikv-peer.tidb-cluster.svc:20160
+    STATUS_ADDRESS: 0.0.0.0:20180
+            VERSION: 4.0.0
+            GIT_HASH: 198a2cea01734ce8f46d55a29708f123f9133944
+        START_TIME: 2020-05-28T22:48:21Z
+            UPTIME: 5m11.459102648s
+    3 rows in set (0.01 sec)
+    ```
 
 ### 访问 Grafana 面板
 
@@ -621,6 +623,8 @@ TiDB Operator 还可简化 TiDB 集群的滚动升级。以下展示使用 kubec
 
 ### 修改 TiDB 集群版本
 
+执行以下命令，将 TiDB 集群升级到 nightly 版本：
+
 {{< copyable "shell-regular" >}}
 
 ```shell
@@ -631,7 +635,7 @@ kubectl patch tc basic -n tidb-cluster --type merge -p '{"spec": {"version": "re
 
 ```
 tidbcluster.pingcap.com/basic patched
-```  
+```
 
 ### 等待 Pods 重启
 
@@ -655,7 +659,9 @@ basic-tikv-0                      1/1     Running       0          4m13s
 
 ### 转发 TiDB 服务端口
 
-当所有 Pods 都重启后，将看到版本号已更改。现在可以重新运行 `kubeclt port-forward` 命令进行端口转发，以便访问集群中 TiDB 集群。
+当所有 Pods 都重启后，将看到版本号已更改。
+
+需要注意的是，由于相关 Pods 已被销毁重建，这里需要重新设置端口转发。如果 `kubeclt port-forward` 进程仍然在运行，请结束进程后再转发端口。
 
 {{< copyable "shell-regular" >}}
 
@@ -721,7 +727,7 @@ kubectl delete tidbmonitor basic -n tidb-cluster
 ```shell
 kubectl delete pvc -n tidb-cluster -l app.kubernetes.io/instance=basic,app.kubernetes.io/managed-by=tidb-operator && \
 kubectl get pv -l app.kubernetes.io/namespace=tidb-cluster,app.kubernetes.io/managed-by=tidb-operator,app.kubernetes.io/instance=basic -o name | xargs -I {} kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
-```   
+```
 
 ### 删除命名空间
 
@@ -731,7 +737,7 @@ kubectl get pv -l app.kubernetes.io/namespace=tidb-cluster,app.kubernetes.io/man
 
 ```shell
 kubectl delete namespace tidb-cluster
-```  
+```
 
 ### 停止 `kubectl` 的端口转发
 
