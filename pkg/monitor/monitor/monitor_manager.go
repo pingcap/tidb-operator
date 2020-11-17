@@ -60,11 +60,6 @@ func NewMonitorManager(deps *controller.Dependencies) *MonitorManager {
 }
 
 func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
-	// syncing all PVs managed by operator's reclaim policy to Retain
-	if err := m.pvManager.SyncMonitor(monitor); err != nil {
-		return err
-	}
-
 	if monitor.DeletionTimestamp != nil {
 		return nil
 	}
@@ -118,6 +113,32 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		return err
 	}
 
+	// Sync PVC
+	var pvc *corev1.PersistentVolumeClaim
+	if monitor.Spec.Persistent {
+		var err error
+		pvc, err = m.syncTidbMonitorPVC(monitor)
+		if err != nil {
+			message := fmt.Sprintf("Sync TidbMonitor[%s/%s] PVC failed,err:%v", monitor.Namespace, monitor.Name, err)
+			m.deps.Recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
+			return err
+		}
+		klog.V(4).Infof("tm[%s/%s]'s pvc synced", monitor.Namespace, monitor.Name)
+
+		// syncing all PVs managed by this tidbmonitor
+		if err := m.pvManager.SyncMonitor(monitor); err != nil {
+			return err
+		}
+		klog.V(4).Infof("tm[%s/%s]'s pv synced", monitor.Namespace, monitor.Name)
+	}
+
+	// After the pvc has consumer, we sync monitor pv's labels
+	if monitor.Spec.Persistent {
+		if err := m.syncTidbMonitorPV(monitor, pvc); err != nil {
+			return err
+		}
+	}
+
 	klog.V(4).Infof("tm[%s/%s]'s deployment synced", monitor.Namespace, monitor.Name)
 
 	// Sync Ingress
@@ -128,6 +149,30 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	}
 	klog.V(4).Infof("tm[%s/%s]'s ingress synced", monitor.Namespace, monitor.Name)
 
+	return nil
+}
+
+func (m *MonitorManager) syncTidbMonitorPVC(monitor *v1alpha1.TidbMonitor) (*corev1.PersistentVolumeClaim, error) {
+	stsPvcName := fmt.Sprintf("monitor-data-%s-0", GetMonitorObjectName(monitor))
+	pvc := getMonitorPVC(stsPvcName, monitor)
+	pvc, err := m.deps.TypedControl.CreateOrUpdatePVC(monitor, pvc, false)
+	if err != nil {
+		klog.Errorf("tm[%s/%s]'s pvc failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
+		return nil, err
+	}
+	return pvc, nil
+}
+
+func (m *MonitorManager) syncTidbMonitorPV(monitor *v1alpha1.TidbMonitor, pvc *corev1.PersistentVolumeClaim) error {
+	// update meta info for pv
+	pv, err := m.deps.PVLister.Get(pvc.Spec.VolumeName)
+	if err != nil {
+		return err
+	}
+	_, err = m.deps.PVControl.UpdateMetaInfo(monitor, pv)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
