@@ -472,7 +472,7 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 
 		return !monitor.Spec.Persistent, nil
 	} else {
-		klog.Infof("smoothMigration tm[%s/%s]'s,old deployment is not exist", monitor.Namespace, monitor.Name)
+		klog.Infof("Start smooth migration for tm[%s/%s], deployment does not exist", monitor.Namespace, monitor.Name)
 		if monitor.Spec.Persistent {
 			deploymentPvcName := GetMonitorObjectName(monitor)
 			deploymentPvc, err := m.deps.PVCLister.PersistentVolumeClaims(monitor.Namespace).Get(deploymentPvcName)
@@ -516,7 +516,7 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 				klog.Errorf("Smooth migration for tm[%s/%s], fail to create new PVC %s, err: %v", monitor.Namespace, monitor.Name, stsPvcName, err)
 				return false, err
 			}
-			klog.Infof("smoothMigration tm[%s/%s]'s successfully", monitor.Namespace, monitor.Name)
+			klog.Infof("Smooth migration for tm[%s/%s] is finished successfully", monitor.Namespace, monitor.Name)
 			return true, nil
 
 		}

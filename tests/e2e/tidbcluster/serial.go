@@ -508,7 +508,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			})
 			framework.ExpectEqual(err, wait.ErrWaitTimeout, "expect pd/tikv/tidb haven't been changed for 5 minutes")
 		})
-		ginkgo.It("Deploy TiDBMonitor and Upgrade Operator,TiDBMonitor switch to sts deploy", func() {
+		ginkgo.It("Deploy TiDBMonitor and Upgrade Operator, TiDBMonitor switch from deployment to StatefulSet", func() {
 			tcName := "smooth-tidbcluster"
 			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "", utilimage.TiDBV4Version)
 			cluster.Resources["pd.replicas"] = "1"
