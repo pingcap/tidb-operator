@@ -732,13 +732,13 @@ func getMonitorPVC(name string, monitor *v1alpha1.TidbMonitor) *core.PersistentV
 			StorageClassName: monitor.Spec.StorageClassName,
 		},
 	}
-	if len(monitor.Spec.Storage) > 0 {
-		volumeClaim.Spec.Resources = core.ResourceRequirements{
-			Requests: core.ResourceList{
-				core.ResourceStorage: resource.MustParse(monitor.Spec.Storage),
-			},
-		}
+
+	volumeClaim.Spec.Resources = core.ResourceRequirements{
+		Requests: core.ResourceList{
+			core.ResourceStorage: resource.MustParse(monitor.Spec.Storage),
+		},
 	}
+
 	return volumeClaim
 }
 
@@ -892,7 +892,7 @@ func getMonitorVolumeClaims(monitor *v1alpha1.TidbMonitor) []core.PersistentVolu
 		var storageRequest core.ResourceRequirements
 		quantity, err := resource.ParseQuantity(monitor.Spec.Storage)
 		if err != nil {
-			klog.Errorf("Cannot parse storage size %v in TiDBMonitor %s-%s,error: %v", monitor.Spec.Storage, monitor.Namespace, monitor.Name, err)
+			klog.Errorf("Cannot parse storage size %v in TiDBMonitor %s/%s, error: %v", monitor.Spec.Storage, monitor.Namespace, monitor.Name, err)
 			return nil
 		}
 		storageRequest = core.ResourceRequirements{

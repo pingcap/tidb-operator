@@ -70,7 +70,9 @@ func ValidateTidbMonitor(monitor *v1alpha1.TidbMonitor) field.ErrorList {
 
 	allErrs = append(allErrs, validateService(&monitor.Spec.Prometheus.Service, field.NewPath("spec"))...)
 	allErrs = append(allErrs, validateService(&monitor.Spec.Reloader.Service, field.NewPath("spec"))...)
-	allErrs = append(allErrs, validateStorageInfo(&monitor.Spec, field.NewPath("spec"))...)
+	if monitor.Spec.Persistent {
+		allErrs = append(allErrs, validateStorageInfo(&monitor.Spec, field.NewPath("spec"))...)
+	}
 	return allErrs
 }
 
@@ -611,12 +613,16 @@ func validateAdditionalContainers(containers []corev1.Container, fldPath *field.
 func validateStorageInfo(spec *v1alpha1.TidbMonitorSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	if spec.Persistent {
-		_, err := resource.ParseQuantity(spec.Storage)
-		if err != nil {
-			allErrs = append(allErrs, &field.Error{
-				Type:   field.ErrorTypeNotSupported,
-				Detail: `value of "storage" format not supported`,
-			})
+		if len(spec.Storage) == 0 {
+			allErrs = append(allErrs, field.Required(fldPath.Child("storage"), "empty storage"))
+		} else {
+			_, err := resource.ParseQuantity(spec.Storage)
+			if err != nil {
+				allErrs = append(allErrs, &field.Error{
+					Type:   field.ErrorTypeNotSupported,
+					Detail: `value of "storage" format not supported`,
+				})
+			}
 		}
 	}
 	return allErrs

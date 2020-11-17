@@ -631,8 +631,8 @@ func (c *FakeGenericControl) Delete(controller, obj runtime.Object) error {
 	return c.control.Delete(controller, obj)
 }
 
-func (w *typedWrapper) CreateOrUpdateStatefulSet(controller runtime.Object, deploy *appsv1.StatefulSet) (*appsv1.StatefulSet, error) {
-	result, err := w.GenericControlInterface.CreateOrUpdate(controller, deploy, func(existing, desired runtime.Object) error {
+func (w *typedWrapper) CreateOrUpdateStatefulSet(controller runtime.Object, sts *appsv1.StatefulSet) (*appsv1.StatefulSet, error) {
+	result, err := w.GenericControlInterface.CreateOrUpdate(controller, sts, func(existing, desired runtime.Object) error {
 		existingSts := existing.(*appsv1.StatefulSet)
 		desiredSts := desired.(*appsv1.StatefulSet)
 

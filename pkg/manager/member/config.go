@@ -47,7 +47,7 @@ func updateConfigMap(old, new *corev1.ConfigMap) error {
 }
 
 // updateConfigMap set the toml field as the old one if they are logically equal.
-func updateConfigMapIfNeed(
+func UpdateConfigMapIfNeed(
 	cmLister corelisters.ConfigMapLister,
 	configUpdateStrategy v1alpha1.ConfigUpdateStrategy,
 	inUseName string,

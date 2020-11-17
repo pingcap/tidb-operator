@@ -74,14 +74,14 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	}
 	defaultTidbMonitor(monitor)
 	var firstTc *v1alpha1.TidbCluster
-	for index, tcRef := range monitor.Spec.Clusters {
+	for _, tcRef := range monitor.Spec.Clusters {
 		tc, err := m.deps.Clientset.PingcapV1alpha1().TidbClusters(tcRef.Namespace).Get(tcRef.Name, metav1.GetOptions{})
-		if index == 0 {
-			firstTc = tc
-		}
 		if err != nil {
 			rerr := fmt.Errorf("get tm[%s/%s]'s target tc[%s/%s] failed, err: %v", monitor.Namespace, monitor.Name, tcRef.Namespace, tcRef.Name, err)
 			return rerr
+		}
+		if firstTc == nil && !tc.IsHeterogeneous() {
+			firstTc = tc
 		}
 		if tc.Status.Monitor != nil {
 			if tc.Status.Monitor.Name != monitor.Name || tc.Status.Monitor.Namespace != monitor.Namespace {
@@ -93,11 +93,13 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		// TODO: Support validating webhook that forbids the tidbmonitor to update the monitorRef for the tidbcluster whose monitorRef has already
 		// been set by another TidbMonitor.
 		// Patch tidbcluster status first to avoid multi tidbmonitor monitoring the same tidbcluster
-		if err := m.patchTidbClusterStatus(&tcRef, monitor); err != nil {
-			message := fmt.Sprintf("Sync TidbMonitorRef into targetCluster[%s/%s] status failed, err:%v", tc.Namespace, tc.Name, err)
-			klog.Error(message)
-			m.deps.Recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, err.Error())
-			return err
+		if !tc.IsHeterogeneous() {
+			if err := m.patchTidbClusterStatus(&tcRef, monitor); err != nil {
+				message := fmt.Sprintf("Sync TidbMonitorRef into targetCluster[%s/%s] status failed, err:%v", tc.Namespace, tc.Name, err)
+				klog.Error(message)
+				m.deps.Recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, err.Error())
+				return err
+			}
 		}
 	}
 
@@ -166,7 +168,7 @@ func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, mo
 		return err
 	}
 	if !result {
-		klog.Errorf("Wait for the smooth migration to be done successfully for tm [%s/%s], err: %v", monitor.Namespace, monitor.Name, err)
+		klog.Infof("Wait for the smooth migration to be done successfully for tm [%s/%s]", monitor.Namespace, monitor.Name)
 		return nil
 	}
 	statefulset, err := getMonitorStatefulSet(sa, cm, secret, monitor, tc)
@@ -430,9 +432,9 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 			deploymentPvcName := GetMonitorObjectName(monitor)
 			deploymentPvc, err := m.deps.PVCLister.PersistentVolumeClaims(monitor.Namespace).Get(deploymentPvcName)
 			if err != nil {
-				// If old deployment pvc not found ,it's not need to migrate.
+				// If the PVC of the deployment does not exist, no need to migrate.
 				if errors.IsNotFound(err) {
-					klog.Infof("smoothMigration tm[%s/%s]'s,old deployment pvc is not exist", monitor.Namespace, monitor.Name)
+					klog.Infof("Smooth migration for tm[%s/%s], the PVC of the deployment does not exist", monitor.Namespace, monitor.Name)
 					return true, nil
 				}
 				return false, err
@@ -445,28 +447,28 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 				},
 			})
 			if err != nil {
-				klog.Errorf("Fail to delete the deployment for tm [%s/%s], err: %v", monitor.Namespace, monitor.Name, err)
+				klog.Errorf("Fail to delete the PVC %s for tm [%s/%s], err: %v", deploymentPvcName, monitor.Namespace, monitor.Name, err)
 				return false, err
 			}
 			stsPvcName := fmt.Sprintf("monitor-data-%s-0", GetMonitorObjectName(monitor))
 			deploymentPv, err := m.deps.PVLister.Get(deploymentPvc.Spec.VolumeName)
 			if err != nil && !errors.IsNotFound(err) {
-				klog.Errorf("smoothMigration tm[%s/%s]'s,old deployment pv failed to get,err: %v", monitor.Namespace, monitor.Name, err)
+				klog.Errorf("Smooth migration for tm[%s/%s], fail to get PV %s, err: %v", monitor.Namespace, monitor.Name, deploymentPvc.Spec.VolumeName, err)
 				return false, err
 			}
 			deploymentPv.Spec.ClaimRef.Name = stsPvcName
 			err = m.deps.PVControl.PatchPVClaimRef(monitor, deploymentPv, stsPvcName)
 			if err != nil {
-				klog.Errorf("smoothMigration tm[%s/%s]'s,failed to patch old deployment pv,err: %v", monitor.Namespace, monitor.Name, err)
+				klog.Errorf("Smooth migration for tm[%s/%s], fail to patch PV %s, err: %v", monitor.Namespace, monitor.Name, deploymentPv.Name, err)
 				return false, err
 			}
 			//create new statefulSet pvc at advance.
 			stsPvc := getMonitorPVC(stsPvcName, monitor)
 			stsPvc.Spec.VolumeName = deploymentPv.Name
-			_, err = m.deps.TypedControl.CreateOrUpdatePVC(monitor, stsPvc, false)
+			_, err = m.deps.TypedControl.CreateOrUpdatePVC(monitor, stsPvc, true)
 
 			if err != nil {
-				klog.Errorf("smoothMigration tm[%s/%s]'s,failed to create new sts pvc,err: %v", monitor.Namespace, monitor.Name, err)
+				klog.Errorf("Smooth migration for tm[%s/%s], fail to create new PVC %s, err: %v", monitor.Namespace, monitor.Name, stsPvcName, err)
 				return false, err
 			}
 			klog.Infof("smoothMigration tm[%s/%s]'s successfully", monitor.Namespace, monitor.Name)
