@@ -180,8 +180,9 @@ type TidbClusterRef struct {
 	ClusterDomain string `json:"clusterDomain,omitempty"`
 }
 
-// TODO: sync status
 type TidbMonitorStatus struct {
+	// old deployment storage status
+	OldDeploymentStorageStatus *OldDeploymentStorageStatus `json:"oldDeploymentStatus,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -194,4 +195,13 @@ type TidbMonitorList struct {
 	metav1.ListMeta `json:"metadata"`
 
 	Items []TidbMonitor `json:"items"`
+}
+
+// GrafanaSpec is the desired state of grafana
+type OldDeploymentStorageStatus struct {
+	// old pvc name
+	PvcName string `json:"pvcName,omitempty"`
+
+	// old pv name
+	PvName string `json:"pvName,omitempty"`
 }
