@@ -669,23 +669,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected fetch tidbmonitor pv success")
 
 		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-			value, existed := pv.Labels[label.ComponentLabelKey]
-			if !existed || value != label.TiDBMonitorVal {
-				return false, nil
-			}
-			value, existed = pv.Labels[label.InstanceLabelKey]
-			if !existed || value != "e2e-monitor" {
-				return false, nil
-			}
-
-			value, existed = pv.Labels[label.NameLabelKey]
-			if !existed || value != "tidb-cluster" {
-				return false, nil
-			}
-			value, existed = pv.Labels[label.ManagedByLabelKey]
-			if !existed || value != label.TiDBOperator {
-				return false, nil
-			}
 			if pv.Spec.PersistentVolumeReclaimPolicy != corev1.PersistentVolumeReclaimDelete {
 				return false, fmt.Errorf("pv[%s] 's policy is not Delete", pv.Name)
 			}
