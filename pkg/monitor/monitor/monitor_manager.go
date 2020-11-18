@@ -460,7 +460,7 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 					if errors.IsNotFound(err) {
 						if len(monitor.Status.OldDeploymentStorageStatus.PvName) > 0 {
 							deploymentPv, err := m.deps.PVLister.Get(monitor.Status.OldDeploymentStorageStatus.PvName)
-							if err != nil && !errors.IsNotFound(err) {
+							if err != nil {
 								klog.Errorf("Smooth migration for tm[%s/%s], fail to get PV %s, err: %v", monitor.Namespace, monitor.Name, deploymentPvc.Spec.VolumeName, err)
 								return false, err
 							}
