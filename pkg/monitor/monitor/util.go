@@ -714,34 +714,6 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 	return services
 }
 
-func getMonitorPVC(name string, monitor *v1alpha1.TidbMonitor) *core.PersistentVolumeClaim {
-	l := buildTidbMonitorLabel(monitor.Name)
-
-	volumeClaim := &core.PersistentVolumeClaim{
-		ObjectMeta: meta.ObjectMeta{
-			Name:        name,
-			Namespace:   monitor.Namespace,
-			Labels:      l,
-			Annotations: monitor.Spec.Annotations,
-		},
-
-		Spec: core.PersistentVolumeClaimSpec{
-			AccessModes: []core.PersistentVolumeAccessMode{
-				core.ReadWriteOnce,
-			},
-			StorageClassName: monitor.Spec.StorageClassName,
-		},
-	}
-
-	volumeClaim.Spec.Resources = core.ResourceRequirements{
-		Requests: core.ResourceList{
-			core.ResourceStorage: resource.MustParse(monitor.Spec.Storage),
-		},
-	}
-
-	return volumeClaim
-}
-
 func getPrometheusIngress(monitor *v1alpha1.TidbMonitor) *extensionsv1beta1.Ingress {
 	return getIngress(monitor, monitor.Spec.Prometheus.Ingress, prometheusName(monitor), 9090)
 }
