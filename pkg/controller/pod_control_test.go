@@ -138,7 +138,7 @@ func TestPodControlUpdateMetaInfo(t *testing.T) {
 				pod.Labels[label.ComponentLabelKey] = label.PDLabelVal
 				pod.Labels[label.MemberIDLabelKey] = ""
 				tc.Status.PD.Members = map[string]v1alpha1.PDMember{
-					"333": {Name:"333.cluster.local",ID: "333"},
+					"333": {Name: "333.cluster.local", ID: "333"},
 				}
 			},
 			expectFn: func(g *GomegaWithT, b bool) {
@@ -153,7 +153,6 @@ func TestPodControlUpdateMetaInfo(t *testing.T) {
 		testFn(&tests[i], t)
 	}
 }
-
 
 func TestPodControlUpdateMetaInfoSuccess(t *testing.T) {
 	g := NewGomegaWithT(t)
