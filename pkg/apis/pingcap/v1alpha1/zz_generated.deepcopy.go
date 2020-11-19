@@ -206,7 +206,8 @@ func (in *BackupSchedule) DeepCopyInto(out *BackupSchedule) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
 	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
-	out.Status = in.Status
+	in.Spec.DeepCopyInto(&out.Spec)
+	in.Status.DeepCopyInto(&out.Status)
 	return
 }
 
@@ -864,6 +865,7 @@ func (in *DMCluster) DeepCopyInto(out *DMCluster) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
 	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
+	in.Spec.DeepCopyInto(&out.Spec)
 	in.Status.DeepCopyInto(&out.Status)
 	return
 }
