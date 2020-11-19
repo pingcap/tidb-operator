@@ -185,7 +185,7 @@ func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, mo
 		klog.Errorf("tm[%s/%s]'s deployment failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return err
 	}
-	klog.V(4).Infof("tm[%s/%s]'s deployment synced", monitor.Namespace, monitor.Name)
+	klog.V(4).Infof("tm[%s/%s]'s statefulset synced", monitor.Namespace, monitor.Name)
 	return nil
 }
 
@@ -428,6 +428,7 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 								klog.Errorf("Smooth migration for tm[%s/%s], fail to patch PV %s, err: %v", monitor.Namespace, monitor.Name, deploymentPv.Name, err)
 								return false, err
 							}
+							// smooth migration successfully and clear status
 							monitor.Status.OldDeploymentStorageStatus = nil
 						}
 						return true, nil
