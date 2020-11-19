@@ -7797,7 +7797,6 @@ func (in *TidbMonitor) DeepCopyInto(out *TidbMonitor) {
 	out.TypeMeta = in.TypeMeta
 	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
 	in.Spec.DeepCopyInto(&out.Spec)
-	out.Status = in.Status
 	return
 }
 
