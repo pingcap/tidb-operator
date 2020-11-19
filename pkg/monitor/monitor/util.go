@@ -644,10 +644,10 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 			prometheusService.Spec.LoadBalancerSourceRanges = monitor.Spec.Prometheus.Service.LoadBalancerSourceRanges
 		}
 	}
-
+	reloaderName := reloaderName(monitor)
 	reloaderService := &core.Service{
 		ObjectMeta: meta.ObjectMeta{
-			Name:            fmt.Sprintf("%s-monitor-reloader", monitor.Name),
+			Name:            reloaderName,
 			Namespace:       monitor.Namespace,
 			Labels:          buildTidbMonitorLabel(monitor.Name),
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
@@ -768,6 +768,10 @@ func prometheusName(monitor *v1alpha1.TidbMonitor) string {
 
 func grafanaName(monitor *v1alpha1.TidbMonitor) string {
 	return fmt.Sprintf("%s-grafana", monitor.Name)
+}
+
+func reloaderName(monitor *v1alpha1.TidbMonitor) string {
+	return fmt.Sprintf("%s-monitor-reloader", monitor.Name)
 }
 
 func defaultTidbMonitor(monitor *v1alpha1.TidbMonitor) {
