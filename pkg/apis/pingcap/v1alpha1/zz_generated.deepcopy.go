@@ -7962,7 +7962,6 @@ func (in *TidbMonitorStatus) DeepCopyInto(out *TidbMonitorStatus) {
 		in, out := &in.OldDeploymentStorageStatus, &out.OldDeploymentStorageStatus
 		*out = new(OldDeploymentStorageStatus)
 		**out = **in
-		return
 	}
 	return
 }
