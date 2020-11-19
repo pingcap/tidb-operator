@@ -14,23 +14,37 @@
 package tidbmonitor
 
 import (
+	"fmt"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/monitor"
-	"k8s.io/apimachinery/pkg/util/errors"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	errorutils "k8s.io/apimachinery/pkg/util/errors"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/util/retry"
+	"k8s.io/klog"
 )
 
 // ControlInterface reconciles TidbMonitor
 type ControlInterface interface {
 	// ReconcileTidbMonitor implements the reconcile logic of TidbMonitor
 	ReconcileTidbMonitor(tm *v1alpha1.TidbMonitor) error
+
+	// Update tidbmonitor status
+	UpdateTidbMonitor(*v1alpha1.TidbMonitor) (*v1alpha1.TidbMonitor, error)
 }
 
 // NewDefaultTidbMonitorControl returns a new instance of the default TidbMonitor ControlInterface
-func NewDefaultTidbMonitorControl(monitorManager monitor.MonitorManager) ControlInterface {
-	return &defaultTidbMonitorControl{monitorManager: monitorManager}
+func NewDefaultTidbMonitorControl(cli versioned.Interface,
+	tmLister listers.TidbMonitorLister, monitorManager monitor.MonitorManager) ControlInterface {
+	return &defaultTidbMonitorControl{cli: cli, tmLister: tmLister, monitorManager: monitorManager}
 }
 
 type defaultTidbMonitorControl struct {
+	cli            versioned.Interface
+	tmLister       listers.TidbMonitorLister
 	monitorManager monitor.MonitorManager
 }
 
@@ -39,11 +53,24 @@ func (c *defaultTidbMonitorControl) ReconcileTidbMonitor(tm *v1alpha1.TidbMonito
 	if err := c.reconcileTidbMonitor(tm); err != nil {
 		errs = append(errs, err)
 	}
-	return errors.NewAggregate(errs)
+	return errorutils.NewAggregate(errs)
 }
 
 func (c *defaultTidbMonitorControl) reconcileTidbMonitor(tm *v1alpha1.TidbMonitor) error {
-	return c.monitorManager.SyncMonitor(tm)
+	var errs []error
+	oldStatus := tm.Status.DeepCopy()
+	if err := c.monitorManager.SyncMonitor(tm); err != nil {
+		errs = append(errs, err)
+	}
+
+	if apiequality.Semantic.DeepEqual(&tm.Status, oldStatus) {
+		return errorutils.NewAggregate(errs)
+	}
+	if _, err := c.UpdateTidbMonitor(tm.DeepCopy()); err != nil {
+		errs = append(errs, err)
+	}
+
+	return errorutils.NewAggregate(errs)
 }
 
 var _ ControlInterface = &defaultTidbMonitorControl{}
@@ -70,4 +97,42 @@ func (tmc *FakeTidbMonitorControl) ReconcileTidbMonitor(tm *v1alpha1.TidbMonitor
 	return nil
 }
 
+// CreateBackup adds the backup to BackupIndexer
+func (tmc *FakeTidbMonitorControl) UpdateTidbMonitor(tm *v1alpha1.TidbMonitor) (*v1alpha1.TidbMonitor, error) {
+	return nil, nil
+}
+
 var _ ControlInterface = &FakeTidbMonitorControl{}
+
+func (c *defaultTidbMonitorControl) UpdateTidbMonitor(tm *v1alpha1.TidbMonitor) (*v1alpha1.TidbMonitor, error) {
+	ns := tm.GetNamespace()
+	tmName := tm.GetName()
+
+	status := tm.Status.DeepCopy()
+	var updateTC *v1alpha1.TidbMonitor
+
+	// don't wait due to limited number of clients, but backoff after the default number of steps
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		var updateErr error
+		updateTC, updateErr = c.cli.PingcapV1alpha1().TidbMonitors(ns).Update(tm)
+		if updateErr == nil {
+			klog.Infof("TidbMonitor: [%s/%s] updated successfully", ns, tmName)
+			return nil
+		}
+		klog.V(4).Infof("failed to update TidbMonitor: [%s/%s], error: %v", ns, tmName, updateErr)
+
+		if updated, err := c.tmLister.TidbMonitors(ns).Get(tmName); err == nil {
+			// make a copy so we don't mutate the shared cache
+			tm = updated.DeepCopy()
+			tm.Status = *status
+		} else {
+			utilruntime.HandleError(fmt.Errorf("error getting updated TidbMonitor %s/%s from lister: %v", ns, tmName, err))
+		}
+
+		return updateErr
+	})
+	if err != nil {
+		klog.Errorf("failed to update TidbMonitor: [%s/%s], error: %v", ns, tmName, err)
+	}
+	return updateTC, err
+}

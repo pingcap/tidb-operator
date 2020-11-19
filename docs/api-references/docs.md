@@ -6891,6 +6891,46 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="olddeploymentstoragestatus">OldDeploymentStorageStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbmonitorstatus">TidbMonitorStatus</a>)
+</p>
+<p>
+<p>GrafanaSpec is the desired state of grafana</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>pvcName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>old pvc name</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pvName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>old pv name</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="opentracing">OpenTracing</h3>
 <p>
 (<em>Appears on:</em>
@@ -19136,8 +19176,30 @@ bool
 <a href="#tidbmonitor">TidbMonitor</a>)
 </p>
 <p>
-<p>TODO: sync status</p>
 </p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>oldDeploymentStatus</code></br>
+<em>
+<a href="#olddeploymentstoragestatus">
+OldDeploymentStorageStatus
+</a>
+</em>
+</td>
+<td>
+<p>old deployment storage status</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tikvautoscalerspec">TikvAutoScalerSpec</h3>
 <p>
 (<em>Appears on:</em>
