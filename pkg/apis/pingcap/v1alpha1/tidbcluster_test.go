@@ -65,20 +65,6 @@ func TestPDIsAvailable(t *testing.T) {
 			},
 		},
 		{
-			name: "pd members count is 3, health count is 3, but ready replicas is 1",
-			update: func(tc *TidbCluster) {
-				tc.Status.PD.Members = map[string]PDMember{
-					"pd-0": {Name: "pd-0", Health: true},
-					"pd-1": {Name: "pd-1", Health: true},
-					"pd-2": {Name: "pd-2", Health: true},
-				}
-				tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 1}
-			},
-			expectFn: func(g *GomegaWithT, b bool) {
-				g.Expect(b).To(BeFalse())
-			},
-		},
-		{
 			name: "pd is available",
 			update: func(tc *TidbCluster) {
 				tc.Status.PD.Members = map[string]PDMember{
