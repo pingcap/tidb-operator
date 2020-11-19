@@ -180,6 +180,16 @@ To deploy multiple drainers using the `tidb-drainer` Helm chart for a TiDB clust
     helm repo update
     ```
 
+    Helm 3:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    helm search repo tidb-drainer -l
+    ```
+
+    Helm 2:
+
     {{< copyable "shell-regular" >}}
 
     ```shell
@@ -320,7 +330,7 @@ metadata:
 spec:
   containers:
   - name: binlogctl
-    image: pingcap/tidb-binlog:${version}
+    image: pingcap/tidb-binlog:${tidb_version}
     command: ['/bin/sh']
     stdin: true
     stdinOnce: true
@@ -342,14 +352,14 @@ The steps are as follows:
 
 1. Take the Pump node offline.
 
-    Assume there are three Pump nodes in the cluster. You need to take the third node offline and replace `${ordinal_id}` with `2`. (`${version}` is the current TiDB version.)
+    Assume there are three Pump nodes in the cluster. You need to take the third node offline and replace `${ordinal_id}` with `2`. (`${tidb_version}` is the current TiDB version.)
 
     - If TLS is not enabled for Pump, create a Pod to take Pump offline:
 
         {{< copyable "shell-regular" >}}
 
         ```shell
-        kubectl run offline-pump-${ordinal_id} --image=pingcap/tidb-binlog:${version} --namespace=${namespace} --restart=OnFailure -- /binlogctl -pd-urls=http://${cluster_name}-pd:2379 -cmd offline-pump -node-id ${cluster_name}-pump-${ordinal_id}:8250
+        kubectl run offline-pump-${ordinal_id} --image=pingcap/tidb-binlog:${tidb_version} --namespace=${namespace} --restart=OnFailure -- /binlogctl -pd-urls=http://${cluster_name}-pd:2379 -cmd offline-pump -node-id ${cluster_name}-pump-${ordinal_id}:8250
         ```
 
     - If TLS is enabled for Pump, use the previously started Pod to take Pump offline:
@@ -383,7 +393,7 @@ The steps are as follows:
         {{< copyable "shell-regular" >}}
 
         ```shell
-        kubectl run update-pump-${ordinal_id} --image=pingcap/tidb-binlog:${version} --namespace=${namespace} --restart=OnFailure -- /binlogctl -pd-urls=http://${cluster_name}-pd:2379 -cmd update-pump -node-id ${cluster_name}-pump-${ordinal_id}:8250 --state offline
+        kubectl run update-pump-${ordinal_id} --image=pingcap/tidb-binlog:${tidb_version} --namespace=${namespace} --restart=OnFailure -- /binlogctl -pd-urls=http://${cluster_name}-pd:2379 -cmd update-pump -node-id ${cluster_name}-pump-${ordinal_id}:8250 --state offline
         ```
 
     - If TLS is enabled for Pump, mark Pump as `offline` using the previously started Pod:
@@ -395,6 +405,11 @@ The steps are as follows:
         ```
 
 ### Remove Pump nodes completely
+
+> **Note:**
+>
+> - Before performing the following steps, you need to have at least one Pump node in the cluster. If you have scaled in Pump nodes to `0`, you need to scale out Pump at least to `1` node before you perform the removing operation in this section.
+> - To scale out the Pump to `1`, execute `kubectl edit tc ${tidb-cluster} -n ${namespace}` and modify the `spec.pump.replicas` to `1`.
 
 1. Before removing Pump nodes, execute `kubectl edit tc ${cluster_name} -n ${namespace}` and set `spec.tidb.binlogEnabled` to `false`. After the TiDB Pods are rolling updated, you can remove the Pump nodes.
 
@@ -419,7 +434,7 @@ The steps are as follows:
         {{< copyable "shell-regular" >}}
 
         ```shell
-        kubectl run offline-drainer-0 --image=pingcap/tidb-binlog:${version} --namespace=${namespace} --restart=OnFailure -- /binlogctl -pd-urls=http://${cluster_name}-pd:2379 -cmd offline-drainer -node-id ${drainer_node_id}:8249
+        kubectl run offline-drainer-0 --image=pingcap/tidb-binlog:${tidb_version} --namespace=${namespace} --restart=OnFailure -- /binlogctl -pd-urls=http://${cluster_name}-pd:2379 -cmd offline-drainer -node-id ${drainer_node_id}:8249
         ```
 
     - If TLS is enabled for Drainer, use the previously started Pod to take Drainer offline:
@@ -455,7 +470,7 @@ The steps are as follows:
         {{< copyable "shell-regular" >}}
 
         ```shell
-        kubectl run update-drainer-${ordinal_id} --image=pingcap/tidb-binlog:${version} --namespace=${namespace} --restart=OnFailure -- /binlogctl -pd-urls=http://${cluster_name}-pd:2379 -cmd update-drainer -node-id ${drainer_node_id}:8249 --state offline
+        kubectl run update-drainer-${ordinal_id} --image=pingcap/tidb-binlog:${tidb_version} --namespace=${namespace} --restart=OnFailure -- /binlogctl -pd-urls=http://${cluster_name}-pd:2379 -cmd update-drainer -node-id ${drainer_node_id}:8249 --state offline
         ```
 
     - If TLS is enabled for Drainer, use the previously started Pod to take Drainer offline:
