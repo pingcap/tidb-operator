@@ -85,6 +85,11 @@ func (in *BRConfig) DeepCopyInto(out *BRConfig) {
 		*out = new(uint32)
 		**out = **in
 	}
+	if in.ChecksumConcurrency != nil {
+		in, out := &in.ChecksumConcurrency, &out.ChecksumConcurrency
+		*out = new(uint32)
+		**out = **in
+	}
 	if in.RateLimit != nil {
 		in, out := &in.RateLimit, &out.RateLimit
 		*out = new(uint)

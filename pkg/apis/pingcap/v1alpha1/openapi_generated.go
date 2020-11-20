@@ -555,6 +555,13 @@ func schema_pkg_apis_pingcap_v1alpha1_BRConfig(ref common.ReferenceCallback) com
 							Format:      "int64",
 						},
 					},
+					"checksum-concurrency": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ChecksumConcurrency is the size of thread pool on each node that execute the checksum task",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
 					"rateLimit": {
 						SchemaProps: spec.SchemaProps{
 							Description: "RateLimit is the rate limit of the backup task, MB/s per node",

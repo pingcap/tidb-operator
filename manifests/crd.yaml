@@ -13403,6 +13403,9 @@ spec:
               properties:
                 checksum:
                   type: boolean
+                checksum-concurrency:
+                  format: int64
+                  type: integer
                 cluster:
                   type: string
                 clusterNamespace:
@@ -13871,6 +13874,9 @@ spec:
               properties:
                 checksum:
                   type: boolean
+                checksum-concurrency:
+                  format: int64
+                  type: integer
                 cluster:
                   type: string
                 clusterNamespace:
@@ -14328,6 +14334,9 @@ spec:
                   properties:
                     checksum:
                       type: boolean
+                    checksum-concurrency:
+                      format: int64
+                      type: integer
                     cluster:
                       type: string
                     clusterNamespace:

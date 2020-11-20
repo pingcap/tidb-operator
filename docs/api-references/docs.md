@@ -2405,6 +2405,17 @@ uint32
 </tr>
 <tr>
 <td>
+<code>checksum-concurrency</code></br>
+<em>
+uint32
+</em>
+</td>
+<td>
+<p>ChecksumConcurrency is the size of thread pool on each node that execute the checksum task</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>rateLimit</code></br>
 <em>
 uint

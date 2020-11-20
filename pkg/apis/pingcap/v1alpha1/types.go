@@ -1306,6 +1306,8 @@ type BRConfig struct {
 	StatusAddr string `json:"statusAddr,omitempty"`
 	// Concurrency is the size of thread pool on each node that execute the backup task
 	Concurrency *uint32 `json:"concurrency,omitempty"`
+	// ChecksumConcurrency is the size of thread pool on each node that execute the checksum task
+	ChecksumConcurrency *uint32 `json:"checksum-concurrency,omitempty"`
 	// RateLimit is the rate limit of the backup task, MB/s per node
 	RateLimit *uint `json:"rateLimit,omitempty"`
 	// TimeAgo is the history version of the backup task, e.g. 1m, 1h
