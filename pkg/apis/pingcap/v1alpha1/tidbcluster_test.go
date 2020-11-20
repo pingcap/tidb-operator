@@ -121,18 +121,18 @@ func TestTiKVIsAvailable(t *testing.T) {
 				g.Expect(b).To(BeFalse())
 			},
 		},
-		{
-			name: "tikv stores count is 1, available count is 1, ready replicas is 0",
-			update: func(tc *TidbCluster) {
-				tc.Status.TiKV.Stores = map[string]TiKVStore{
-					"tikv-0": {PodName: "tikv-0", State: TiKVStateUp},
-				}
-				tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 0}
-			},
-			expectFn: func(g *GomegaWithT, b bool) {
-				g.Expect(b).To(BeFalse())
-			},
-		},
+		// {
+		// 	name: "tikv stores count is 1, available count is 1, ready replicas is 0",
+		// 	update: func(tc *TidbCluster) {
+		// 		tc.Status.TiKV.Stores = map[string]TiKVStore{
+		// 			"tikv-0": {PodName: "tikv-0", State: TiKVStateUp},
+		// 		}
+		// 		tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 0}
+		// 	},
+		// 	expectFn: func(g *GomegaWithT, b bool) {
+		// 		g.Expect(b).To(BeFalse())
+		// 	},
+		// },
 		{
 			name: "tikv is available",
 			update: func(tc *TidbCluster) {

@@ -492,10 +492,6 @@ func (tc *TidbCluster) PDIsAvailable() bool {
 		return false
 	}
 
-	if tc.Spec.TiDB.Replicas+tc.Spec.TiKV.Replicas+tc.Spec.TiFlash.Replicas > 0 && len(tc.Status.PD.Members) < 1 {
-		return false
-	}
-
 	var availableNum int
 	for _, pdMember := range tc.Status.PD.Members {
 		if pdMember.Health {
