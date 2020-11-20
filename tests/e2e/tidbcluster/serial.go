@@ -514,8 +514,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			cluster.Resources["pd.replicas"] = "1"
 			cluster.Resources["tikv.replicas"] = "1"
 			cluster.Resources["tidb.replicas"] = "1"
-			cluster.Monitor = true
-			cluster.OperatorTag = version
 			oa.DeployTidbClusterOrDie(&cluster)
 			oa.CheckTidbClusterStatusOrDie(&cluster)
 

@@ -78,6 +78,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(sts).NotTo(Equal(nil))
 			quantity, err := resource.ParseQuantity(tm.Spec.Storage)
+			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(sts.Spec.VolumeClaimTemplates).To(Equal([]v1.PersistentVolumeClaim{
 				{
 					ObjectMeta: metav1.ObjectMeta{Name: "monitor-data"},
@@ -181,9 +182,4 @@ func newFakeTidbMonitorManager() *MonitorManager {
 	}
 
 	return monitorManager
-}
-
-func expectErrIsNotFound(g *GomegaWithT, err error) {
-	g.Expect(err).NotTo(BeNil())
-	g.Expect(errors.IsNotFound(err)).To(Equal(true))
 }
