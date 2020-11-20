@@ -303,7 +303,8 @@ func MustNewRequirement(key string, op selection.Operator, vals []string) *label
 	return r
 }
 
-func BuildAdditionalVolumeAndVolumeMount(storageVolumes []v1alpha1.StorageVolume, storageClassName *string, memberType v1alpha1.MemberType) ([]corev1.VolumeMount, []corev1.PersistentVolumeClaim) {
+// BuildStorageVolumeAndVolumeMount builds VolumeMounts and PVCs for volumes declaired in spec.storageVolumes of ComponentSpec
+func BuildStorageVolumeAndVolumeMount(storageVolumes []v1alpha1.StorageVolume, defaultStorageClassName *string, memberType v1alpha1.MemberType) ([]corev1.VolumeMount, []corev1.PersistentVolumeClaim) {
 	var volMounts []corev1.VolumeMount
 	var volumeClaims []corev1.PersistentVolumeClaim
 	if len(storageVolumes) > 0 {
@@ -322,7 +323,7 @@ func BuildAdditionalVolumeAndVolumeMount(storageVolumes []v1alpha1.StorageVolume
 			if storageVolume.StorageClassName != nil && len(*storageVolume.StorageClassName) > 0 {
 				tmpStorageClass = storageVolume.StorageClassName
 			} else {
-				tmpStorageClass = storageClassName
+				tmpStorageClass = defaultStorageClassName
 			}
 			volumeClaims = append(volumeClaims, VolumeClaimTemplate(storageRequest, fmt.Sprintf("%s-%s", memberType.String(), storageVolume.Name), tmpStorageClass))
 			volMounts = append(volMounts, corev1.VolumeMount{
