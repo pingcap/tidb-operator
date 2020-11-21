@@ -4640,6 +4640,46 @@ Optional: Defaults to false</p>
 </tr>
 </tbody>
 </table>
+<h3 id="deploymentstoragestatus">DeploymentStorageStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbmonitorstatus">TidbMonitorStatus</a>)
+</p>
+<p>
+<p>DeploymentStorageStatus is the storage information of the deployment</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>pvcName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PVC name</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pvName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PV name</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="discoveryspec">DiscoverySpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -6887,46 +6927,6 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="olddeploymentstoragestatus">OldDeploymentStorageStatus</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#tidbmonitorstatus">TidbMonitorStatus</a>)
-</p>
-<p>
-<p>GrafanaSpec is the desired state of grafana</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>pvcName</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>old pvc name</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>pvName</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>old pv name</p>
 </td>
 </tr>
 </tbody>
@@ -19187,15 +19187,15 @@ bool
 <tbody>
 <tr>
 <td>
-<code>oldDeploymentStatus</code></br>
+<code>deploymentStorageStatus</code></br>
 <em>
-<a href="#olddeploymentstoragestatus">
-OldDeploymentStorageStatus
+<a href="#deploymentstoragestatus">
+DeploymentStorageStatus
 </a>
 </em>
 </td>
 <td>
-<p>old deployment storage status</p>
+<p>Storage status for deployment</p>
 </td>
 </tr>
 </tbody>

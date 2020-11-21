@@ -16,7 +16,6 @@ package monitor
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	"sort"
 	"strings"
 
@@ -24,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/manager/meta"
 	"github.com/pingcap/tidb-operator/pkg/monitor"
 	utildiscovery "github.com/pingcap/tidb-operator/pkg/util/discovery"
