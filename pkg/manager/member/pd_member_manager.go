@@ -216,7 +216,7 @@ func (m *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 	if !tc.Status.PD.Synced && NeedForceUpgrade(tc.Annotations) {
 		tc.Status.PD.Phase = v1alpha1.UpgradePhase
 		setUpgradePartition(newPDSet, 0)
-		errSTS := updateStatefulSet(m.deps.StatefulSetControl, tc, newPDSet, oldPDSet)
+		errSTS := UpdateStatefulSet(m.deps.StatefulSetControl, tc, newPDSet, oldPDSet)
 		return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd needs force upgrade, %v", ns, tcName, errSTS)
 	}
 
@@ -245,7 +245,7 @@ func (m *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 		}
 	}
 
-	return updateStatefulSet(m.deps.StatefulSetControl, tc, newPDSet, oldPDSet)
+	return UpdateStatefulSet(m.deps.StatefulSetControl, tc, newPDSet, oldPDSet)
 }
 
 // shouldRecover checks whether we should perform recovery operation.

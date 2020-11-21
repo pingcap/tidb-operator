@@ -181,8 +181,8 @@ type TidbClusterRef struct {
 }
 
 type TidbMonitorStatus struct {
-	// old deployment storage status
-	OldDeploymentStorageStatus *OldDeploymentStorageStatus `json:"oldDeploymentStatus,omitempty"`
+	// Storage status for deployment
+	DeploymentStorageStatus *DeploymentStorageStatus `json:"deploymentStorageStatus,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -197,11 +197,11 @@ type TidbMonitorList struct {
 	Items []TidbMonitor `json:"items"`
 }
 
-// GrafanaSpec is the desired state of grafana
-type OldDeploymentStorageStatus struct {
-	// old pvc name
+// DeploymentStorageStatus is the storage information of the deployment
+type DeploymentStorageStatus struct {
+	// PVC name
 	PvcName string `json:"pvcName,omitempty"`
 
-	// old pv name
+	// PV name
 	PvName string `json:"pvName,omitempty"`
 }

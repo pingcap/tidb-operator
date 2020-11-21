@@ -16,6 +16,7 @@ package monitor
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	"sort"
 	"strings"
 
@@ -136,57 +137,96 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 
 func (m *MonitorManager) syncTidbMonitorService(monitor *v1alpha1.TidbMonitor) error {
 	services := getMonitorService(monitor)
-	for _, svc := range services {
-		_, err := m.deps.TypedControl.CreateOrUpdateService(monitor, svc)
+	for _, newSvc := range services {
+		oldSvc, err := m.deps.ServiceLister.Services(newSvc.Namespace).Get(newSvc.Name)
+		if errors.IsNotFound(err) {
+			err = controller.SetServiceLastAppliedConfigAnnotation(newSvc)
+			if err != nil {
+				return err
+			}
+			err = m.deps.ServiceControl.CreateService(oldSvc, newSvc)
+			if err != nil {
+				return err
+			}
+			continue
+		}
 		if err != nil {
-			klog.Errorf("tm[%s/%s]'s service[%s] failed to sync,err: %v", monitor.Namespace, monitor.Name, svc.Name, err)
-			return controller.RequeueErrorf("tm[%s/%s]'s service[%s] failed to sync,err: %v", monitor.Namespace, monitor.Name, svc.Name, err)
+			return fmt.Errorf("syncTidbMonitorService: failed to get svc %s for cluster %s/%s, error: %s", newSvc.Name, monitor.Namespace, monitor.Name, err)
+		}
+
+		equal, err := controller.ServiceEqual(newSvc, oldSvc)
+		if err != nil {
+			return err
+		}
+		if !equal {
+			svc := *oldSvc
+			svc.Spec = newSvc.Spec
+			err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
+			if err != nil {
+				return err
+			}
+			_, err = m.deps.ServiceControl.UpdateService(monitor, &svc)
+			if err != nil {
+				return fmt.Errorf("syncTidbMonitorService: failed to update svc %s for cluster %s/%s, error: %s", newSvc.Name, monitor.Namespace, monitor.Name, err)
+			}
+
 		}
 	}
 	return nil
 }
 
 func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) error {
-
+	ns := monitor.Namespace
+	name := monitor.Name
 	cm, err := m.syncTidbMonitorConfig(tc, monitor)
 	if err != nil {
-		klog.Errorf("tm[%s/%s]'s configmap failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
+		klog.Errorf("tm[%s/%s]'s configmap failed to sync,err: %v", ns, name, err)
 		return err
 	}
 	secret, err := m.syncTidbMonitorSecret(monitor)
 	if err != nil {
-		klog.Errorf("tm[%s/%s]'s secret failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
+		klog.Errorf("tm[%s/%s]'s secret failed to sync,err: %v", ns, name, err)
 		return err
 	}
 
 	sa, err := m.syncTidbMonitorRbac(monitor)
 	if err != nil {
-		klog.Errorf("tm[%s/%s]'s rbac failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
+		klog.Errorf("tm[%s/%s]'s rbac failed to sync,err: %v", ns, name, err)
 		return err
 	}
 
 	result, err := m.smoothMigrationToStatefulSet(monitor)
 	if err != nil {
-		klog.Errorf("Fail to migrate from deployment to statefulset for tm [%s/%s], err: %v", monitor.Namespace, monitor.Name, err)
+		klog.Errorf("Fail to migrate from deployment to statefulset for tm [%s/%s], err: %v", ns, name, err)
 		return err
 	}
 	if !result {
-		klog.Infof("Wait for the smooth migration to be done successfully for tm [%s/%s]", monitor.Namespace, monitor.Name)
+		klog.Infof("Wait for the smooth migration to be done successfully for tm [%s/%s]", ns, name)
 		return nil
 	}
-	statefulset, err := getMonitorStatefulSet(sa, cm, secret, monitor, tc)
+	newMonitorSts, err := getMonitorStatefulSet(sa, cm, secret, monitor, tc)
 	if err != nil {
-		klog.Errorf("Fail to generate statefulset for tm [%s/%s], err: %v", monitor.Namespace, monitor.Name, err)
+		klog.Errorf("Fail to generate statefulset for tm [%s/%s], err: %v", ns, name, err)
 		return err
 	}
 
-	_, err = m.deps.TypedControl.CreateOrUpdateStatefulSet(monitor, statefulset)
-	if err != nil {
-		klog.Errorf("tm[%s/%s]'s deployment failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
-		return err
+	oldMonitorSetTmp, err := m.deps.StatefulSetLister.StatefulSets(ns).Get(GetMonitorObjectName(monitor))
+	if err != nil && !errors.IsNotFound(err) {
+		return fmt.Errorf("syncTidbMonitorStatefulset: fail to get sts %s for cluster %s/%s, error: %s", GetMonitorObjectName(monitor), ns, name, err)
 	}
-	klog.V(4).Infof("tm[%s/%s]'s statefulset synced", monitor.Namespace, monitor.Name)
-	return nil
+	setNotExist := errors.IsNotFound(err)
+	if setNotExist {
+		err = member.SetStatefulSetLastAppliedConfigAnnotation(newMonitorSts)
+		if err != nil {
+			return err
+		}
+		if err := m.deps.StatefulSetControl.CreateStatefulSet(tc, newMonitorSts); err != nil {
+			return err
+		}
+		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PD cluster running", ns, name)
+	}
+
+	return member.UpdateStatefulSet(m.deps.StatefulSetControl, tc, newMonitorSts, oldMonitorSetTmp)
 }
 
 func (m *MonitorManager) syncTidbMonitorSecret(monitor *v1alpha1.TidbMonitor) (*corev1.Secret, error) {
@@ -416,8 +456,8 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 				if err != nil {
 					if errors.IsNotFound(err) {
 						// If the PVC of the deployment does not exist and no old pvc status, we don't need to migrate.
-						if monitor.Status.OldDeploymentStorageStatus != nil && len(monitor.Status.OldDeploymentStorageStatus.PvName) > 0 {
-							deploymentPv, err := m.deps.PVLister.Get(monitor.Status.OldDeploymentStorageStatus.PvName)
+						if monitor.Status.DeploymentStorageStatus != nil && len(monitor.Status.DeploymentStorageStatus.PvName) > 0 {
+							deploymentPv, err := m.deps.PVLister.Get(monitor.Status.DeploymentStorageStatus.PvName)
 							if err != nil {
 								klog.Errorf("Smooth migration for tm[%s/%s], fail to get PV %s, err: %v", monitor.Namespace, monitor.Name, deploymentPvc.Spec.VolumeName, err)
 								return false, err
@@ -429,7 +469,7 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 								return false, err
 							}
 							// smooth migration successfully and clear status
-							monitor.Status.OldDeploymentStorageStatus = nil
+							monitor.Status.DeploymentStorageStatus = nil
 						}
 						return true, nil
 					}
@@ -444,7 +484,7 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 					},
 				})
 				if err != nil {
-					monitor.Status.OldDeploymentStorageStatus = &v1alpha1.OldDeploymentStorageStatus{
+					monitor.Status.DeploymentStorageStatus = &v1alpha1.DeploymentStorageStatus{
 						PvName: deploymentPvc.Spec.VolumeName,
 					}
 					klog.Errorf("Fail to delete the PVC %s for tm [%s/%s], err: %v", deploymentPvcName, monitor.Namespace, monitor.Name, err)
@@ -453,7 +493,7 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 
 				deploymentPv, err := m.deps.PVLister.Get(deploymentPvc.Spec.VolumeName)
 				if err != nil && !errors.IsNotFound(err) {
-					monitor.Status.OldDeploymentStorageStatus = &v1alpha1.OldDeploymentStorageStatus{
+					monitor.Status.DeploymentStorageStatus = &v1alpha1.DeploymentStorageStatus{
 						PvName: deploymentPvc.Spec.VolumeName,
 					}
 					klog.Errorf("Smooth migration for tm[%s/%s], fail to get PV %s, err: %v", monitor.Namespace, monitor.Name, deploymentPvc.Spec.VolumeName, err)
@@ -462,7 +502,7 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 				deploymentPv.Spec.ClaimRef.Name = stsPvcName
 				err = m.deps.PVControl.PatchPVClaimRef(monitor, deploymentPv, stsPvcName)
 				if err != nil {
-					monitor.Status.OldDeploymentStorageStatus = &v1alpha1.OldDeploymentStorageStatus{
+					monitor.Status.DeploymentStorageStatus = &v1alpha1.DeploymentStorageStatus{
 						PvName: deploymentPvc.Spec.VolumeName,
 					}
 					klog.Errorf("Smooth migration for tm[%s/%s], fail to patch PV %s, err: %v", monitor.Namespace, monitor.Name, deploymentPv.Name, err)

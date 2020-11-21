@@ -27,7 +27,6 @@ import (
 	discoverycachedmemory "k8s.io/client-go/discovery/cached/memory"
 	discoveryfake "k8s.io/client-go/discovery/fake"
 	k8stesting "k8s.io/client-go/testing"
-	"k8s.io/utils/pointer"
 )
 
 func TestTidbMonitorSyncCreate(t *testing.T) {
@@ -36,6 +35,8 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 		name          string
 		prepare       func(monitor *v1alpha1.TidbMonitor)
 		errExpectFn   func(*GomegaWithT, error)
+		stsCreated    bool
+		svcCreated    bool
 		volumeCreated bool
 	}
 
@@ -72,6 +73,18 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 			g.Expect(err).NotTo(HaveOccurred())
 		}
 
+		if test.svcCreated {
+			_, err = tmm.deps.ServiceLister.Services(ns).Get(prometheusName(tm))
+			g.Expect(err).NotTo(HaveOccurred())
+			_, err = tmm.deps.ServiceLister.Services(ns).Get(reloaderName(tm))
+			g.Expect(err).NotTo(HaveOccurred())
+		}
+
+		if test.stsCreated {
+			_, err = tmm.deps.StatefulSetLister.StatefulSets(ns).Get(GetMonitorObjectName(tm))
+			g.Expect(err).NotTo(HaveOccurred())
+		}
+
 		if test.volumeCreated {
 			sts, err := tmm.deps.StatefulSetLister.StatefulSets(ns).Get(GetMonitorObjectName(tm))
 			g.Expect(err).NotTo(HaveOccurred())
@@ -85,7 +98,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 						AccessModes: []v1.PersistentVolumeAccessMode{
 							v1.ReadWriteOnce,
 						},
-						StorageClassName: pointer.StringPtr(""),
+						StorageClassName: nil,
 						Resources: v1.ResourceRequirements{
 							Requests: v1.ResourceList{
 								v1.ResourceStorage: quantity,
@@ -101,9 +114,13 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 		{
 			name: "enable monitor persistent",
 			prepare: func(monitor *v1alpha1.TidbMonitor) {
+				monitor.Spec.Persistent = true
+				monitor.Spec.Storage = "10Gi"
 			},
-			errExpectFn:   nil,
-			volumeCreated: false,
+			errExpectFn:   errExpectRequeue,
+			stsCreated:    true,
+			volumeCreated: true,
+			svcCreated:    true,
 		},
 		{
 			name: "not set clusters field",
@@ -114,6 +131,8 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "does not configure the target tidbcluster")).To(BeTrue())
 			},
+			stsCreated: false,
+			svcCreated: false,
 		},
 		{
 			name: "normal",
@@ -122,6 +141,9 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 			errExpectFn: func(g *GomegaWithT, err error) {
 
 			},
+			stsCreated:    true,
+			svcCreated:    true,
+			volumeCreated: false,
 		},
 	}
 
@@ -181,4 +203,8 @@ func newFakeTidbMonitorManager() *MonitorManager {
 	}
 
 	return monitorManager
+}
+
+func errExpectRequeue(g *GomegaWithT, err error) {
+	g.Expect(controller.IsRequeueError(err)).To(Equal(true))
 }
