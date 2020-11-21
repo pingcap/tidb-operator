@@ -324,7 +324,7 @@ func (c *FakePVControl) GetPV(name string) (*corev1.PersistentVolume, error) {
 		return nil, err
 	}
 	if !existed {
-		return nil, fmt.Errorf("pvc[%s/%s] not existed", name)
+		return nil, fmt.Errorf("pvc[%s] not existed", name)
 	}
 	a := obj.(*corev1.PersistentVolume)
 	return a, nil
