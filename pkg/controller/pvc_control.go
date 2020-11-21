@@ -39,6 +39,7 @@ type PVCControlInterface interface {
 	UpdatePVC(runtime.Object, *corev1.PersistentVolumeClaim) (*corev1.PersistentVolumeClaim, error)
 	DeletePVC(runtime.Object, *corev1.PersistentVolumeClaim) error
 	GetPVC(name, namespace string) (*corev1.PersistentVolumeClaim, error)
+	CreatePVC(controller runtime.Object, pvc *corev1.PersistentVolumeClaim) error
 }
 
 type realPVCControl struct {
@@ -80,6 +81,26 @@ func (c *realPVCControl) DeletePVC(controller runtime.Object, pvc *corev1.Persis
 	klog.V(4).Infof("delete PVC: [%s/%s] successfully, %s: %s", namespace, pvcName, kind, name)
 	c.recordPVCEvent("delete", kind, name, controller, pvcName, err)
 	return err
+}
+
+// AddPVC add new pvc
+func (c *realPVCControl) CreatePVC(controller runtime.Object, pvc *corev1.PersistentVolumeClaim) error {
+	controllerMo, ok := controller.(metav1.Object)
+	if !ok {
+		return fmt.Errorf("%T is not a metav1.Object, cannot call setControllerReference", controller)
+	}
+	kind := controller.GetObjectKind().GroupVersionKind().Kind
+	name := controllerMo.GetName()
+	namespace := controllerMo.GetNamespace()
+
+	pvcName := pvc.GetName()
+	_, err := c.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Create(pvc)
+	if err != nil {
+		klog.Errorf("failed to create PVC: [%s/%s], %s: %s, %v", namespace, pvcName, kind, name, err)
+	}
+	klog.V(4).Infof("create PVC: [%s/%s] successfully, %s: %s", namespace, pvcName, kind, name)
+	c.recordPVCEvent("create", kind, name, controller, pvcName, err)
+	return nil
 }
 
 func (c *realPVCControl) UpdatePVC(controller runtime.Object, pvc *corev1.PersistentVolumeClaim) (*corev1.PersistentVolumeClaim, error) {
@@ -246,6 +267,17 @@ func (c *FakePVCControl) UpdatePVC(_ runtime.Object, pvc *corev1.PersistentVolum
 	}
 
 	return pvc, c.PVCIndexer.Update(pvc)
+}
+
+// AddPVC add new pvc
+func (c *FakePVCControl) CreatePVC(controller runtime.Object, pvc *corev1.PersistentVolumeClaim) error {
+	defer c.updatePVCTracker.Inc()
+	if c.updatePVCTracker.ErrorReady() {
+		defer c.updatePVCTracker.Reset()
+		return c.updatePVCTracker.GetError()
+	}
+
+	return c.PVCIndexer.Add(pvc)
 }
 
 // UpdateMetaInfo updates the meta info of pvc

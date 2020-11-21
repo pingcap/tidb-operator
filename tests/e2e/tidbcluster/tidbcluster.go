@@ -17,6 +17,7 @@ import (
 	"context"
 	errors1 "errors"
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/monitor/monitor"
 	_ "net/http/pprof"
 	"strconv"
 	"strings"
@@ -661,8 +662,8 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
 		err = tests.CheckTidbMonitor(tm, cli, c, fw)
 		framework.ExpectNoError(err, "Expected tidbmonitor checked success")
-		pvcName := "monitor-data-e2e-monitor-0"
-		pvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get(pvcName, metav1.GetOptions{})
+		firstPvcName := monitor.GetMonitorFirstPVCName(tm.Name)
+		pvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get(firstPvcName, metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected fetch tidbmonitor pvc success")
 		pvName := pvc.Spec.VolumeName
 		pv, err := c.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{})

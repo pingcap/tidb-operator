@@ -38,6 +38,8 @@ type PVControlInterface interface {
 	PatchPVReclaimPolicy(runtime.Object, *corev1.PersistentVolume, corev1.PersistentVolumeReclaimPolicy) error
 	UpdateMetaInfo(runtime.Object, *corev1.PersistentVolume) (*corev1.PersistentVolume, error)
 	PatchPVClaimRef(runtime.Object, *corev1.PersistentVolume, string) error
+	CreatePV(obj runtime.Object, pv *corev1.PersistentVolume) error
+	GetPV(name string) (*corev1.PersistentVolume, error)
 }
 
 type realPVControl struct {
@@ -77,6 +79,23 @@ func (c *realPVControl) PatchPVReclaimPolicy(obj runtime.Object, pv *corev1.Pers
 		return err
 	})
 	c.recordPVEvent("patch", obj, name, pvName, err)
+	return err
+}
+
+func (c *realPVControl) GetPV(name string) (*corev1.PersistentVolume, error) {
+	return c.pvLister.Get(name)
+}
+
+func (c *realPVControl) CreatePV(obj runtime.Object, pv *corev1.PersistentVolume) error {
+	metaObj, ok := obj.(metav1.Object)
+	if !ok {
+		return fmt.Errorf("%+v is not a runtime.Object, cannot get controller from it", obj)
+	}
+
+	name := metaObj.GetName()
+	pvName := pv.GetName()
+	_, err := c.kubeCli.CoreV1().PersistentVolumes().Create(pv)
+	c.recordPVEvent("create", obj, name, pvName, err)
 	return err
 }
 
@@ -209,6 +228,7 @@ type FakePVControl struct {
 	PVCLister       corelisters.PersistentVolumeClaimLister
 	PVIndexer       cache.Indexer
 	updatePVTracker RequestTracker
+	createPVTracker RequestTracker
 }
 
 // NewFakePVControl returns a FakePVControl
@@ -216,6 +236,7 @@ func NewFakePVControl(pvInformer coreinformers.PersistentVolumeInformer, pvcInfo
 	return &FakePVControl{
 		pvcInformer.Lister(),
 		pvInformer.Informer().GetIndexer(),
+		RequestTracker{},
 		RequestTracker{},
 	}
 }
@@ -283,6 +304,30 @@ func (c *FakePVControl) PatchPVClaimRef(obj runtime.Object, pv *corev1.Persisten
 	pv.Spec.ClaimRef.Name = pvcName
 
 	return c.PVIndexer.Update(pv)
+}
+
+// CreatePV create new pv
+func (c *FakePVControl) CreatePV(_ runtime.Object, pv *corev1.PersistentVolume) error {
+	defer c.createPVTracker.Inc()
+	if c.createPVTracker.ErrorReady() {
+		defer c.createPVTracker.Reset()
+		return c.createPVTracker.GetError()
+	}
+
+	return c.PVIndexer.Add(pv)
+}
+
+func (c *FakePVControl) GetPV(name string) (*corev1.PersistentVolume, error) {
+	defer c.updatePVTracker.Inc()
+	obj, existed, err := c.PVIndexer.GetByKey(fmt.Sprintf("%s", name))
+	if err != nil {
+		return nil, err
+	}
+	if !existed {
+		return nil, fmt.Errorf("pvc[%s/%s] not existed", name)
+	}
+	a := obj.(*corev1.PersistentVolume)
+	return a, nil
 }
 
 var _ PVControlInterface = &FakePVControl{}

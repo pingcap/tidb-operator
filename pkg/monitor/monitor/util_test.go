@@ -677,7 +677,7 @@ func TestGetMonitorVolumes(t *testing.T) {
 				g := NewGomegaWithT(t)
 				g.Expect(volumes).To(Equal([]corev1.Volume{
 					{
-						Name: "monitor-data",
+						Name: v1alpha1.TidbMonitorMemberType.String(),
 						VolumeSource: corev1.VolumeSource{
 							EmptyDir: &corev1.EmptyDirVolumeSource{},
 						},
@@ -729,7 +729,7 @@ func TestGetMonitorVolumes(t *testing.T) {
 				g := NewGomegaWithT(t)
 				g.Expect(volumes).To(Equal([]corev1.Volume{
 					{
-						Name: "monitor-data",
+						Name: v1alpha1.TidbMonitorMemberType.String(),
 						VolumeSource: corev1.VolumeSource{
 							EmptyDir: &corev1.EmptyDirVolumeSource{},
 						},
@@ -848,7 +848,7 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 						MountPath: "/etc/prometheus",
 					},
 					corev1.VolumeMount{
-						Name:      "monitor-data",
+						Name:      v1alpha1.TidbMonitorMemberType.String(),
 						ReadOnly:  false,
 						MountPath: "/data",
 					},
@@ -960,7 +960,7 @@ func TestGetMonitorGrafanaContainer(t *testing.T) {
 				Resources: corev1.ResourceRequirements{},
 				VolumeMounts: []corev1.VolumeMount{
 					corev1.VolumeMount{
-						Name:      "monitor-data",
+						Name:      v1alpha1.TidbMonitorMemberType.String(),
 						ReadOnly:  false,
 						MountPath: "/data",
 					},

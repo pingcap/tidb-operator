@@ -223,7 +223,7 @@ func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, mo
 		if err := m.deps.StatefulSetControl.CreateStatefulSet(tc, newMonitorSts); err != nil {
 			return err
 		}
-		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PD cluster running", ns, name)
+		return controller.RequeueErrorf("TidbMonitor: [%s/%s], waiting for tidbmonitor running", ns, name)
 	}
 
 	return member.UpdateStatefulSet(m.deps.StatefulSetControl, tc, newMonitorSts, oldMonitorSetTmp)
@@ -450,7 +450,7 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 	if err != nil {
 		if errors.IsNotFound(err) {
 			if monitor.Spec.Persistent {
-				stsPvcName := fmt.Sprintf("monitor-data-%s-0", GetMonitorObjectName(monitor))
+				firstStsPvcName := GetMonitorFirstPVCName(monitor.Name)
 				deploymentPvcName := GetMonitorObjectName(monitor)
 				deploymentPvc, err := m.deps.PVCLister.PersistentVolumeClaims(monitor.Namespace).Get(deploymentPvcName)
 				if err != nil {
@@ -459,11 +459,11 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 						if monitor.Status.DeploymentStorageStatus != nil && len(monitor.Status.DeploymentStorageStatus.PvName) > 0 {
 							deploymentPv, err := m.deps.PVLister.Get(monitor.Status.DeploymentStorageStatus.PvName)
 							if err != nil {
-								klog.Errorf("Smooth migration for tm[%s/%s], fail to get PV %s, err: %v", monitor.Namespace, monitor.Name, deploymentPvc.Spec.VolumeName, err)
+								klog.Errorf("Smooth migration for tm[%s/%s], fail to get PV %s, err: %v", monitor.Namespace, monitor.Name, monitor.Status.DeploymentStorageStatus.PvName, err)
 								return false, err
 							}
-							deploymentPv.Spec.ClaimRef.Name = stsPvcName
-							err = m.deps.PVControl.PatchPVClaimRef(monitor, deploymentPv, stsPvcName)
+							deploymentPv.Spec.ClaimRef.Name = firstStsPvcName
+							err = m.deps.PVControl.PatchPVClaimRef(monitor, deploymentPv, firstStsPvcName)
 							if err != nil {
 								klog.Errorf("Smooth migration for tm[%s/%s], fail to patch PV %s, err: %v", monitor.Namespace, monitor.Name, deploymentPv.Name, err)
 								return false, err
@@ -477,7 +477,7 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 					return false, err
 				}
 
-				err = m.deps.TypedControl.Delete(monitor, &corev1.PersistentVolumeClaim{
+				err = m.deps.PVCControl.DeletePVC(monitor, &corev1.PersistentVolumeClaim{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      deploymentPvcName,
 						Namespace: monitor.Namespace,
@@ -499,8 +499,11 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 					klog.Errorf("Smooth migration for tm[%s/%s], fail to get PV %s, err: %v", monitor.Namespace, monitor.Name, deploymentPvc.Spec.VolumeName, err)
 					return false, err
 				}
-				deploymentPv.Spec.ClaimRef.Name = stsPvcName
-				err = m.deps.PVControl.PatchPVClaimRef(monitor, deploymentPv, stsPvcName)
+				if deploymentPv.Spec.ClaimRef == nil {
+					deploymentPv.Spec.ClaimRef = &corev1.ObjectReference{}
+				}
+				deploymentPv.Spec.ClaimRef.Name = firstStsPvcName
+				err = m.deps.PVControl.PatchPVClaimRef(monitor, deploymentPv, firstStsPvcName)
 				if err != nil {
 					monitor.Status.DeploymentStorageStatus = &v1alpha1.DeploymentStorageStatus{
 						PvName: deploymentPvc.Spec.VolumeName,

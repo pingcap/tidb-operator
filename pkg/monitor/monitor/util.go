@@ -40,6 +40,10 @@ func GetMonitorObjectName(monitor *v1alpha1.TidbMonitor) string {
 	return fmt.Sprintf("%s-monitor", monitor.Name)
 }
 
+func GetMonitorFirstPVCName(name string) string {
+	return fmt.Sprintf(v1alpha1.TidbMonitorMemberType.String()+"-%s-0", name)
+}
+
 func GetMonitorObjectNameCrossNamespace(monitor *v1alpha1.TidbMonitor) string {
 	return fmt.Sprintf("%s-%s-monitor", monitor.Namespace, monitor.Name)
 }
@@ -264,7 +268,7 @@ chmod 777 /data/prometheus /data/grafana
 			},
 			{
 				MountPath: "/data",
-				Name:      "monitor-data",
+				Name:      v1alpha1.TidbMonitorMemberType.String(),
 			},
 		},
 		Resources: controller.ContainerResource(monitor.Spec.Initializer.ResourceRequirements),
@@ -348,7 +352,7 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 				ReadOnly:  true,
 			},
 			{
-				Name:      "monitor-data",
+				Name:      v1alpha1.TidbMonitorMemberType.String(),
 				MountPath: "/data",
 			},
 			{
@@ -425,7 +429,7 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 		},
 		VolumeMounts: []core.VolumeMount{
 			{
-				Name:      "monitor-data",
+				Name:      v1alpha1.TidbMonitorMemberType.String(),
 				MountPath: "/data",
 			},
 			{
@@ -485,7 +489,7 @@ func getMonitorReloaderContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.Tid
 				ReadOnly:  false,
 			},
 			{
-				Name:      "monitor-data",
+				Name:      v1alpha1.TidbMonitorMemberType.String(),
 				MountPath: "/data",
 			},
 		},
@@ -507,7 +511,7 @@ func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor, tc
 	volumes := []core.Volume{}
 	if !monitor.Spec.Persistent {
 		monitorData := core.Volume{
-			Name: "monitor-data",
+			Name: v1alpha1.TidbMonitorMemberType.String(),
 			VolumeSource: core.VolumeSource{
 				EmptyDir: &core.EmptyDirVolumeSource{},
 			},
@@ -877,7 +881,7 @@ func getMonitorVolumeClaims(monitor *v1alpha1.TidbMonitor) []core.PersistentVolu
 			},
 		}
 		return []core.PersistentVolumeClaim{
-			util.VolumeClaimTemplate(storageRequest, "monitor-data", monitor.Spec.StorageClassName),
+			util.VolumeClaimTemplate(storageRequest, v1alpha1.TidbMonitorMemberType.String(), monitor.Spec.StorageClassName),
 		}
 	}
 	return nil
