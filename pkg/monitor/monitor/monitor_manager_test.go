@@ -85,7 +85,6 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 			_, err = tmm.deps.StatefulSetLister.StatefulSets(ns).Get(GetMonitorObjectName(tm))
 			g.Expect(err).NotTo(HaveOccurred())
 		}
-
 		if test.volumeCreated {
 			sts, err := tmm.deps.StatefulSetLister.StatefulSets(ns).Get(GetMonitorObjectName(tm))
 			g.Expect(err).NotTo(HaveOccurred())
