@@ -319,7 +319,7 @@ func (c *FakePVControl) CreatePV(_ runtime.Object, pv *corev1.PersistentVolume) 
 
 func (c *FakePVControl) GetPV(name string) (*corev1.PersistentVolume, error) {
 	defer c.updatePVTracker.Inc()
-	obj, existed, err := c.PVIndexer.GetByKey(fmt.Sprintf("%s", name))
+	obj, existed, err := c.PVIndexer.GetByKey(name)
 	if err != nil {
 		return nil, err
 	}

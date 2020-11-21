@@ -14,7 +14,6 @@
 package monitor
 
 import (
-	"k8s.io/utils/pointer"
 	"strings"
 	"testing"
 
@@ -28,6 +27,7 @@ import (
 	discoverycachedmemory "k8s.io/client-go/discovery/cached/memory"
 	discoveryfake "k8s.io/client-go/discovery/fake"
 	k8stesting "k8s.io/client-go/testing"
+	"k8s.io/utils/pointer"
 )
 
 func TestTidbMonitorSyncCreate(t *testing.T) {
@@ -125,6 +125,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 				}
 			},
 			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
+				errExpectRequeuefunc(g, err, tmm, tm)
 				_, err = tmm.deps.ServiceLister.Services(tm.Namespace).Get(grafanaName(tm))
 				g.Expect(err).NotTo(HaveOccurred())
 				sts, err := tmm.deps.StatefulSetLister.StatefulSets(tm.Namespace).Get(GetMonitorObjectName(tm))
@@ -313,6 +314,7 @@ func TestTidbMonitorSyncUpdate(t *testing.T) {
 				}
 			},
 			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
+				errExpectRequeuefunc(g, err, tmm, tm)
 				_, err = tmm.deps.ServiceLister.Services(tm.Namespace).Get(grafanaName(tm))
 				g.Expect(err).NotTo(HaveOccurred())
 				sts, err := tmm.deps.StatefulSetLister.StatefulSets(tm.Namespace).Get(GetMonitorObjectName(tm))
@@ -331,6 +333,7 @@ func TestTidbMonitorSyncUpdate(t *testing.T) {
 				monitor.Spec.Reloader.Service.PortName = pointer.StringPtr("test")
 			},
 			updateExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
+				g.Expect(err).NotTo(HaveOccurred())
 				grafanaSvc, err := tmm.deps.ServiceLister.Services(tm.Namespace).Get(grafanaName(tm))
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(grafanaSvc.Spec.Type).To(Equal(v1.ServiceTypeLoadBalancer))
