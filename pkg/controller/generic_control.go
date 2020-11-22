@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/scheme"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -56,8 +55,6 @@ type TypedControlInterface interface {
 	CreateOrUpdateService(controller runtime.Object, svc *corev1.Service) (*corev1.Service, error)
 	// CreateOrUpdateDeployment create the desired deployment or update the current one to desired state if already existed
 	CreateOrUpdateDeployment(controller runtime.Object, deploy *appsv1.Deployment) (*appsv1.Deployment, error)
-	// CreateOrUpdateStatefulSet create the desired statefulset or update the current one to desired state if already existed
-	CreateOrUpdateStatefulSet(controller runtime.Object, sts *appsv1.StatefulSet) (*appsv1.StatefulSet, error)
 	// CreateOrUpdatePVC create the desired pvc or update the current one to desired state if already existed
 	CreateOrUpdatePVC(controller runtime.Object, pvc *corev1.PersistentVolumeClaim, setOwnerFlag bool) (*corev1.PersistentVolumeClaim, error)
 	// CreateOrUpdateIngress create the desired ingress or update the current one to desired state if already existed
@@ -629,49 +626,6 @@ func (c *FakeGenericControl) Delete(controller, obj runtime.Object) error {
 	}
 
 	return c.control.Delete(controller, obj)
-}
-
-func (w *typedWrapper) CreateOrUpdateStatefulSet(controller runtime.Object, sts *appsv1.StatefulSet) (*appsv1.StatefulSet, error) {
-	result, err := w.GenericControlInterface.CreateOrUpdate(controller, sts, func(existing, desired runtime.Object) error {
-		existingSts := existing.(*appsv1.StatefulSet)
-		desiredSts := desired.(*appsv1.StatefulSet)
-
-		existingSts.Spec.Replicas = desiredSts.Spec.Replicas
-		existingSts.Labels = desiredSts.Labels
-
-		if existingSts.Annotations == nil {
-			existingSts.Annotations = map[string]string{}
-		}
-		for k, v := range desiredSts.Annotations {
-			existingSts.Annotations[k] = v
-		}
-		// only override the default strategy if it is explicitly set in the desiredSts
-		if string(desiredSts.Spec.UpdateStrategy.Type) != "" {
-			existingSts.Spec.UpdateStrategy.Type = desiredSts.Spec.UpdateStrategy.Type
-			if existingSts.Spec.UpdateStrategy.RollingUpdate != nil {
-				existingSts.Spec.UpdateStrategy.RollingUpdate = desiredSts.Spec.UpdateStrategy.RollingUpdate
-			}
-		}
-		// pod selector of statefulset is immutable, so we don't mutate the labels of pod
-		for k, v := range desiredSts.Spec.Template.Annotations {
-			existingSts.Spec.Template.Annotations[k] = v
-		}
-		// podSpec of statefulset is hard to merge, use an annotation to assist
-		if util.StatefulSetEqual(*desiredSts, *existingSts) {
-			// Record last applied spec in favor of future equality check
-			b, err := json.Marshal(desiredSts.Spec.Template.Spec)
-			if err != nil {
-				return err
-			}
-			existingSts.Annotations[LastAppliedConfigAnnotation] = string(b)
-			existingSts.Spec.Template.Spec = desiredSts.Spec.Template.Spec
-		}
-		return nil
-	}, true)
-	if err != nil {
-		return nil, err
-	}
-	return result.(*appsv1.StatefulSet), err
 }
 
 var _ GenericControlInterface = &FakeGenericControl{}
