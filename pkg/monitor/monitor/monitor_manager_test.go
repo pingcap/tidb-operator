@@ -55,6 +55,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 				},
 			},
 		}
+
 		tc.Namespace = "ns"
 		tc.Name = "foo"
 		_, err := tmm.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
