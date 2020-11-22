@@ -537,7 +537,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			oa.UpgradeOperatorOrDie(ocfg)
 
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-				newStsPvcName := fmt.Sprintf("%s-monitor-0", monitorName)
+				newStsPvcName := fmt.Sprintf("tidbmonitor-%s-monitor-0", tm.Name)
 				stsPvc, err := c.CoreV1().PersistentVolumeClaims(tc.Namespace).Get(newStsPvcName, metav1.GetOptions{})
 				if err != nil {
 					if errors.IsNotFound(err) {
