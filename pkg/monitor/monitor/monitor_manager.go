@@ -144,7 +144,7 @@ func (m *MonitorManager) syncTidbMonitorService(monitor *v1alpha1.TidbMonitor) e
 			if err != nil {
 				return err
 			}
-			err = m.deps.ServiceControl.CreateService(oldSvc, newSvc)
+			err = m.deps.ServiceControl.CreateService(monitor, newSvc)
 			if err != nil {
 				return err
 			}

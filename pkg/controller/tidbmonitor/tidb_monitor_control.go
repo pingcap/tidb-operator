@@ -17,12 +17,15 @@ import (
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	v1alpha1validation "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/validation"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/monitor"
+	v1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
 )
@@ -38,14 +41,15 @@ type ControlInterface interface {
 
 // NewDefaultTidbMonitorControl returns a new instance of the default TidbMonitor ControlInterface
 func NewDefaultTidbMonitorControl(cli versioned.Interface,
-	tmLister listers.TidbMonitorLister, monitorManager monitor.MonitorManager) ControlInterface {
-	return &defaultTidbMonitorControl{cli: cli, tmLister: tmLister, monitorManager: monitorManager}
+	tmLister listers.TidbMonitorLister, monitorManager monitor.MonitorManager, recorder record.EventRecorder) ControlInterface {
+	return &defaultTidbMonitorControl{cli: cli, tmLister: tmLister, monitorManager: monitorManager, recorder: recorder}
 }
 
 type defaultTidbMonitorControl struct {
 	cli            versioned.Interface
 	tmLister       listers.TidbMonitorLister
 	monitorManager monitor.MonitorManager
+	recorder       record.EventRecorder
 }
 
 func (c *defaultTidbMonitorControl) ReconcileTidbMonitor(tm *v1alpha1.TidbMonitor) error {
@@ -57,6 +61,9 @@ func (c *defaultTidbMonitorControl) ReconcileTidbMonitor(tm *v1alpha1.TidbMonito
 }
 
 func (c *defaultTidbMonitorControl) reconcileTidbMonitor(tm *v1alpha1.TidbMonitor) error {
+	if !c.validate(tm) {
+		return nil // fatal error, no need to retry on invalid object
+	}
 	var errs []error
 	oldStatus := tm.Status.DeepCopy()
 	if err := c.monitorManager.SyncMonitor(tm); err != nil {
@@ -135,4 +142,15 @@ func (c *defaultTidbMonitorControl) UpdateTidbMonitor(tm *v1alpha1.TidbMonitor) 
 		klog.Errorf("failed to update TidbMonitor: [%s/%s], error: %v", ns, tmName, err)
 	}
 	return updateTC, err
+}
+
+func (c *defaultTidbMonitorControl) validate(tidbmonitor *v1alpha1.TidbMonitor) bool {
+	errs := v1alpha1validation.ValidateCreateTidbMonitor(tidbmonitor)
+	if len(errs) > 0 {
+		aggregatedErr := errs.ToAggregate()
+		klog.Errorf("tidbmonitor %s/%s is not valid and must be fixed first, aggregated error: %v", tidbmonitor.GetNamespace(), tidbmonitor.GetName(), aggregatedErr)
+		c.recorder.Event(tidbmonitor, v1.EventTypeWarning, "FailedValidation", aggregatedErr.Error())
+		return false
+	}
+	return true
 }

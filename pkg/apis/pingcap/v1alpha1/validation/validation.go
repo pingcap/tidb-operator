@@ -61,7 +61,7 @@ func ValidateDMCluster(dc *v1alpha1.DMCluster) field.ErrorList {
 	return allErrs
 }
 
-func ValidateTidbMonitor(monitor *v1alpha1.TidbMonitor) field.ErrorList {
+func ValidateCreateTidbMonitor(monitor *v1alpha1.TidbMonitor) field.ErrorList {
 	allErrs := field.ErrorList{}
 	// validate monitor service
 	if monitor.Spec.Grafana != nil {
@@ -613,7 +613,7 @@ func validateAdditionalContainers(containers []corev1.Container, fldPath *field.
 func validateStorageInfo(storage string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	if len(storage) == 0 {
-		allErrs = append(allErrs, field.Required(fldPath.Child("storage"), "empty storage"))
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("storage"), storage, "storage must not be empty"))
 	} else {
 		_, err := resource.ParseQuantity(storage)
 		if err != nil {

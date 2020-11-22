@@ -41,7 +41,7 @@ type Controller struct {
 func NewController(deps *controller.Dependencies) *Controller {
 	c := &Controller{
 		deps:    deps,
-		control: NewDefaultTidbMonitorControl(deps.Clientset, deps.TiDBMonitorLister, monitor.NewMonitorManager(deps)),
+		control: NewDefaultTidbMonitorControl(deps.Clientset, deps.TiDBMonitorLister, monitor.NewMonitorManager(deps), deps.Recorder),
 		queue:   workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "tidbmonitor"),
 	}
 
