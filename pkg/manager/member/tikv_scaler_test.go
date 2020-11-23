@@ -19,6 +19,7 @@ import (
 	"time"
 
 	. "github.com/onsi/gomega"
+	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -221,6 +222,9 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 				store := &pdapi.StoreInfo{
 					Store: &pdapi.MetaStore{
 						StateName: v1alpha1.TiKVStateUp,
+						Store: &metapb.Store{
+							Address: fmt.Sprintf("%s-tikv-0", "basic"),
+						},
 					},
 				}
 				return &pdapi.StoresInfo{
@@ -457,6 +461,9 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 				store := &pdapi.StoreInfo{
 					Store: &pdapi.MetaStore{
 						StateName: v1alpha1.TiKVStateUp,
+						Store: &metapb.Store{
+							Address: fmt.Sprintf("%s-tikv-0", "basic"),
+						},
 					},
 				}
 				return &pdapi.StoresInfo{

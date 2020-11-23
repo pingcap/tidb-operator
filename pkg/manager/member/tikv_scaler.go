@@ -16,6 +16,7 @@ package member
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
@@ -247,8 +248,12 @@ func (s *tikvScaler) preCheckUpStores(tc *v1alpha1.TidbCluster, podName string) 
 	if err != nil {
 		return false, fmt.Errorf("failed to get stores info in TidbCluster %s/%s", tc.GetNamespace(), tc.GetName())
 	}
+	// filter out TiFlash
 	for _, store := range storesInfo.Stores {
-		if store.Store != nil && store.Store.StateName == v1alpha1.TiKVStateUp {
+		fmt.Println(store.Store.Address)
+		storePodName := strings.Split(store.Store.Address, ".")[0]
+		podKind := strings.Split(storePodName, "-")
+		if store.Store != nil && store.Store.StateName == v1alpha1.TiKVStateUp && podKind[len(podKind)-2] == "tikv" {
 			upNumber++
 		}
 	}
