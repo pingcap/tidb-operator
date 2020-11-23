@@ -111,7 +111,7 @@ func (c *defaultTidbMonitorControl) UpdateTidbMonitor(tm *v1alpha1.TidbMonitor) 
 	tmName := tm.GetName()
 
 	status := tm.Status.DeepCopy()
-	var updateTC *v1alpha1.TidbMonitor
+	var update *v1alpha1.TidbMonitor
 
 	// don't wait due to limited number of clients, but backoff after the default number of steps
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
