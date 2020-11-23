@@ -511,18 +511,11 @@ func (tc *TidbCluster) PDIsAvailable() bool {
 		return false
 	}
 
-	if tc.Status.PD.StatefulSet == nil {
+	if tc.Status.PD.StatefulSet == nil || int(tc.Status.PD.StatefulSet.ReadyReplicas)+peerAvailableNum < lowerLimit {
 		return false
 	}
 
-	if int(tc.Status.PD.StatefulSet.ReadyReplicas)+peerAvailableNum < lowerLimit {
-		return false
-	}
-
-	if tc.Status.PD.StatefulSet.ReadyReplicas < 1 {
-		return false
-	}
-
+	// TODO: keep 1 pd client if there are TiDB clusters on cluster2
 	return true
 }
 
@@ -550,15 +543,11 @@ func (tc *TidbCluster) TiKVIsAvailable() bool {
 
 	availableNum += peerAvailableNum
 
-	if tc.Status.TiKV.StatefulSet.ReadyReplicas+peerAvailableNum < lowerLimit {
-		return false
-	}
-
 	if availableNum < lowerLimit {
 		return false
 	}
 
-	if tc.Status.TiKV.StatefulSet == nil {
+	if tc.Status.TiKV.StatefulSet == nil || tc.Status.TiKV.StatefulSet.ReadyReplicas+peerAvailableNum < lowerLimit{
 		return false
 	}
 
