@@ -16,6 +16,5 @@ package registry
 var (
 	Strategies = []CreateUpdateStrategy{
 		TidbClusterStrategy{},
-		TidbMonitorStrategy{},
 	}
 )

@@ -61,7 +61,7 @@ func ValidateDMCluster(dc *v1alpha1.DMCluster) field.ErrorList {
 	return allErrs
 }
 
-func ValidateCreateTidbMonitor(monitor *v1alpha1.TidbMonitor) field.ErrorList {
+func ValidateTidbMonitor(monitor *v1alpha1.TidbMonitor) field.ErrorList {
 	allErrs := field.ErrorList{}
 	// validate monitor service
 	if monitor.Spec.Grafana != nil {

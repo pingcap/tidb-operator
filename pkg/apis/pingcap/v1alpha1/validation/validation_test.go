@@ -436,7 +436,7 @@ func TestValidateTidbMonitor(t *testing.T) {
 			monitor.Spec.Prometheus.Service.LoadBalancerSourceRanges = tt.loadBalancerSourceRanges
 			monitor.Spec.Grafana.Service.LoadBalancerSourceRanges = tt.loadBalancerSourceRanges
 			monitor.Spec.Reloader.Service.LoadBalancerSourceRanges = tt.loadBalancerSourceRanges
-			err := ValidateCreateTidbMonitor(monitor)
+			err := ValidateTidbMonitor(monitor)
 			r := len(err)
 			g.Expect(r).Should(Equal(tt.expectedErrors))
 			if r > 0 {

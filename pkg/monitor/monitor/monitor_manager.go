@@ -16,6 +16,8 @@ package monitor
 import (
 	"encoding/json"
 	"fmt"
+	v1alpha1validation "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/validation"
+	"k8s.io/client-go/tools/record"
 	"sort"
 	"strings"
 
@@ -44,6 +46,7 @@ type MonitorManager struct {
 	deps               *controller.Dependencies
 	pvManager          monitor.MonitorManager
 	discoveryInterface discovery.CachedDiscoveryInterface
+	recorder           record.EventRecorder
 }
 
 const (
@@ -56,6 +59,7 @@ func NewMonitorManager(deps *controller.Dependencies) *MonitorManager {
 		deps:               deps,
 		pvManager:          meta.NewReclaimPolicyManager(deps),
 		discoveryInterface: discoverycachedmemory.NewMemCacheClient(deps.KubeClientset.Discovery()),
+		recorder:           deps.Recorder,
 	}
 }
 
@@ -67,7 +71,12 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		err := fmt.Errorf("tm[%s/%s] does not configure the target tidbcluster", monitor.Namespace, monitor.Name)
 		return err
 	}
+
 	defaultTidbMonitor(monitor)
+	if !m.validate(monitor) {
+		return nil // fatal error, no need to retry on invalid object
+	}
+
 	var firstTc *v1alpha1.TidbCluster
 	for _, tcRef := range monitor.Spec.Clusters {
 		tc, err := m.deps.Clientset.PingcapV1alpha1().TidbClusters(tcRef.Namespace).Get(tcRef.Name, metav1.GetOptions{})
@@ -534,4 +543,15 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 	// If enable persistent,operator need to migrate pvc and pv binding relationship.
 	return !monitor.Spec.Persistent, nil
 
+}
+
+func (c *MonitorManager) validate(tidbmonitor *v1alpha1.TidbMonitor) bool {
+	errs := v1alpha1validation.ValidateTidbMonitor(tidbmonitor)
+	if len(errs) > 0 {
+		aggregatedErr := errs.ToAggregate()
+		klog.Errorf("tidbmonitor %s/%s is not valid and must be fixed first, aggregated error: %v", tidbmonitor.GetNamespace(), tidbmonitor.GetName(), aggregatedErr)
+		c.recorder.Event(tidbmonitor, corev1.EventTypeWarning, "FailedValidation", aggregatedErr.Error())
+		return false
+	}
+	return true
 }
