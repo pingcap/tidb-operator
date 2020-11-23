@@ -226,12 +226,14 @@ type FakePVCControl struct {
 	PVCIndexer       cache.Indexer
 	updatePVCTracker RequestTracker
 	deletePVCTracker RequestTracker
+	createPVCTracker RequestTracker
 }
 
 // NewFakePVCControl returns a FakePVCControl
 func NewFakePVCControl(pvcInformer coreinformers.PersistentVolumeClaimInformer) *FakePVCControl {
 	return &FakePVCControl{
 		pvcInformer.Informer().GetIndexer(),
+		RequestTracker{},
 		RequestTracker{},
 		RequestTracker{},
 	}
@@ -270,11 +272,11 @@ func (c *FakePVCControl) UpdatePVC(_ runtime.Object, pvc *corev1.PersistentVolum
 }
 
 // AddPVC add new pvc
-func (c *FakePVCControl) CreatePVC(controller runtime.Object, pvc *corev1.PersistentVolumeClaim) error {
-	defer c.updatePVCTracker.Inc()
-	if c.updatePVCTracker.ErrorReady() {
-		defer c.updatePVCTracker.Reset()
-		return c.updatePVCTracker.GetError()
+func (c *FakePVCControl) CreatePVC(_ runtime.Object, pvc *corev1.PersistentVolumeClaim) error {
+	defer c.createPVCTracker.Inc()
+	if c.createPVCTracker.ErrorReady() {
+		defer c.createPVCTracker.Reset()
+		return c.createPVCTracker.GetError()
 	}
 
 	return c.PVCIndexer.Add(pvc)

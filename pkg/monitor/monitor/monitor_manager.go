@@ -122,7 +122,7 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		return err
 	}
 
-	// Sync PVC
+	// Sync PV
 	if monitor.Spec.Persistent {
 		// syncing all PVs managed by this tidbmonitor
 		if err := m.pvManager.SyncMonitor(monitor); err != nil {
@@ -131,7 +131,7 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		klog.V(4).Infof("tm[%s/%s]'s pv synced", monitor.Namespace, monitor.Name)
 	}
 
-	klog.V(4).Infof("tm[%s/%s]'s deployment synced", monitor.Namespace, monitor.Name)
+	klog.V(4).Infof("tm[%s/%s]'s StatefulSet synced", monitor.Namespace, monitor.Name)
 
 	// Sync Ingress
 	if err := m.syncIngress(monitor); err != nil {
