@@ -116,7 +116,7 @@ func (c *defaultTidbMonitorControl) UpdateTidbMonitor(tm *v1alpha1.TidbMonitor) 
 	// don't wait due to limited number of clients, but backoff after the default number of steps
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		var updateErr error
-		updateTC, updateErr = c.cli.PingcapV1alpha1().TidbMonitors(ns).Update(tm)
+		update, updateErr = c.cli.PingcapV1alpha1().TidbMonitors(ns).Update(tm)
 		if updateErr == nil {
 			klog.Infof("TidbMonitor: [%s/%s] updated successfully", ns, tmName)
 			return nil
@@ -136,5 +136,5 @@ func (c *defaultTidbMonitorControl) UpdateTidbMonitor(tm *v1alpha1.TidbMonitor) 
 	if err != nil {
 		klog.Errorf("failed to update TidbMonitor: [%s/%s], error: %v", ns, tmName, err)
 	}
-	return updateTC, err
+	return update, err
 }
