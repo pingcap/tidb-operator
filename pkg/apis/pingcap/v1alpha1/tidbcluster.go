@@ -499,17 +499,23 @@ func (tc *TidbCluster) PDIsAvailable() bool {
 		}
 	}
 
+	var peerAvailableNum int
 	for _, pdMember := range tc.Status.PD.PeerMembers {
 		if pdMember.Health {
-			availableNum++
+			peerAvailableNum++
 		}
 	}
 
+	availableNum += peerAvailableNum
 	if availableNum < lowerLimit {
 		return false
 	}
 
 	if tc.Status.PD.StatefulSet == nil {
+		return false
+	}
+
+	if int(tc.Status.PD.StatefulSet.ReadyReplicas) + peerAvailableNum < lowerLimit {
 		return false
 	}
 
@@ -533,14 +539,21 @@ func (tc *TidbCluster) TiKVIsAvailable() bool {
 		}
 	}
 
+	var peerAvailableNum int32
 	for _, store := range tc.Status.TiKV.PeerStores {
 		// filter out the TiFlash PeerStores
 		podKind := strings.Split(store.PodName, "-")
 		if store.State == TiKVStateUp && podKind[len(podKind)-2] == "tikv" {
-			availableNum++
+			peerAvailableNum++
 		}
 	}
 
+	availableNum+=peerAvailableNum
+
+	if tc.Status.TiKV.StatefulSet.ReadyReplicas + peerAvailableNum < lowerLimit {
+		return false
+	}
+	
 	if availableNum < lowerLimit {
 		return false
 	}
