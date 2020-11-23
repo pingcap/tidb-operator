@@ -515,7 +515,7 @@ func (tc *TidbCluster) PDIsAvailable() bool {
 		return false
 	}
 
-	if int(tc.Status.PD.StatefulSet.ReadyReplicas) + peerAvailableNum < lowerLimit {
+	if int(tc.Status.PD.StatefulSet.ReadyReplicas)+peerAvailableNum < lowerLimit {
 		return false
 	}
 
@@ -548,12 +548,12 @@ func (tc *TidbCluster) TiKVIsAvailable() bool {
 		}
 	}
 
-	availableNum+=peerAvailableNum
+	availableNum += peerAvailableNum
 
-	if tc.Status.TiKV.StatefulSet.ReadyReplicas + peerAvailableNum < lowerLimit {
+	if tc.Status.TiKV.StatefulSet.ReadyReplicas+peerAvailableNum < lowerLimit {
 		return false
 	}
-	
+
 	if availableNum < lowerLimit {
 		return false
 	}
