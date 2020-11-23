@@ -64,19 +64,19 @@ func TestPDIsAvailable(t *testing.T) {
 				g.Expect(b).To(BeFalse())
 			},
 		},
-		{	
-			name: "pd members count is 3, health count is 3, but ready replicas is 1",	
-			update: func(tc *TidbCluster) {	
-				tc.Status.PD.Members = map[string]PDMember{	
-					"pd-0": {Name: "pd-0", Health: true},	
-					"pd-1": {Name: "pd-1", Health: true},	
-					"pd-2": {Name: "pd-2", Health: true},	
-				}	
-				tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 1}	
-			},	
-			expectFn: func(g *GomegaWithT, b bool) {	
-				g.Expect(b).To(BeFalse())	
-			},	
+		{
+			name: "pd members count is 3, health count is 3, but ready replicas is 1",
+			update: func(tc *TidbCluster) {
+				tc.Status.PD.Members = map[string]PDMember{
+					"pd-0": {Name: "pd-0", Health: true},
+					"pd-1": {Name: "pd-1", Health: true},
+					"pd-2": {Name: "pd-2", Health: true},
+				}
+				tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 1}
+			},
+			expectFn: func(g *GomegaWithT, b bool) {
+				g.Expect(b).To(BeFalse())
+			},
 		},
 		{
 			name: "pd is available",
@@ -135,17 +135,17 @@ func TestTiKVIsAvailable(t *testing.T) {
 				g.Expect(b).To(BeFalse())
 			},
 		},
-		{	
-			name: "tikv stores count is 1, available count is 1, ready replicas is 0",	
-			update: func(tc *TidbCluster) {	
-				tc.Status.TiKV.Stores = map[string]TiKVStore{	
-					"tikv-0": {PodName: "tikv-0", State: TiKVStateUp},	
-				}	
-				tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 0}	
-			},	
-			expectFn: func(g *GomegaWithT, b bool) {	
-				g.Expect(b).To(BeFalse())	
-			},	
+		{
+			name: "tikv stores count is 1, available count is 1, ready replicas is 0",
+			update: func(tc *TidbCluster) {
+				tc.Status.TiKV.Stores = map[string]TiKVStore{
+					"tikv-0": {PodName: "tikv-0", State: TiKVStateUp},
+				}
+				tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 0}
+			},
+			expectFn: func(g *GomegaWithT, b bool) {
+				g.Expect(b).To(BeFalse())
+			},
 		},
 		{
 			name: "tikv is available",
