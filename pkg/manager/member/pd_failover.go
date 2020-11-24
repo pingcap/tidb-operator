@@ -158,10 +158,10 @@ func (f *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error {
 	var failureMember *v1alpha1.PDFailureMember
 	var failurePodName string
 
-	for podName, pdMember := range tc.Status.PD.FailureMembers {
+	for pdName, pdMember := range tc.Status.PD.FailureMembers {
 		if !pdMember.MemberDeleted {
 			failureMember = &pdMember
-			failurePodName = podName
+			failurePodName = strings.Split(pdName, ".")[0]
 			break
 		}
 	}
