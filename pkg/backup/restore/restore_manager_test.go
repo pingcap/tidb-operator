@@ -108,26 +108,6 @@ func genValidBRRestores() []*v1alpha1.Restore {
 	return rs
 }
 
-var validBRRestore = &v1alpha1.Restore{
-	Spec: v1alpha1.RestoreSpec{
-		To: &v1alpha1.TiDBAccessConfig{
-			Host:       "localhost",
-			SecretName: "secretName",
-		},
-		BR: &v1alpha1.BRConfig{
-			ClusterNamespace: "ns",
-			Cluster:          "tcName",
-		},
-		Type: v1alpha1.BackupTypeFull,
-		StorageProvider: v1alpha1.StorageProvider{
-			S3: &v1alpha1.S3StorageProvider{
-				Bucket:   "bname",
-				Endpoint: "s3://pingcap/",
-			},
-		},
-	},
-}
-
 func TestInvalid(t *testing.T) {
 	g := NewGomegaWithT(t)
 	helper := newHelper(t)
