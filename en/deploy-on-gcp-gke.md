@@ -9,7 +9,7 @@ aliases: ['/docs/tidb-in-kubernetes/dev/deploy-on-gcp-gke/']
 <!-- markdownlint-disable MD029 -->
 <!-- markdownlint-disable MD037 -->
 
-This document describes how to deploy a TiDB cluster on GCP Google Kubernetes Engine (GKE).
+This document describes how to deploy a GCP Google Kubernetes Engine (GKE) cluster and deploy a TiDB cluster on GCP GKE.
 
 ## Prerequisites
 
@@ -24,9 +24,7 @@ Before deploying a TiDB cluster on GCP GKE, make sure the following requirements
     * Enable Kubernetes APIs
     * Configure enough quota
 
-## Deploy the cluster
-
-### Configure the GCP service
+## Configure the GCP service
 
 Configure your GCP project and default region:
 
@@ -37,14 +35,14 @@ gcloud config set core/project <gcp-project>
 gcloud config set compute/region <gcp-region>
 ```
 
-### Create a GKE cluster
+## Create a GKE cluster and node pool
 
 1. Create a GKE cluster and a default node pool:
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    gcloud container clusters create tidb --machine-type n1-standard-4 --num-nodes=1
+    gcloud container clusters create tidb --region us-east1 --machine-type n1-standard-4 --num-nodes=1
     ```
 
     * The command above creates a regional cluster.
@@ -58,78 +56,81 @@ gcloud config set compute/region <gcp-region>
 
     ```shell
     gcloud container node-pools create pd --cluster tidb --machine-type n1-standard-4 --num-nodes=1 \
-      --node-labels=dedicated=pd --node-taints=dedicated=pd:NoSchedule
+        --node-labels=dedicated=pd --node-taints=dedicated=pd:NoSchedule
     gcloud container node-pools create tikv --cluster tidb --machine-type n1-highmem-8 --num-nodes=1 \
-      --node-labels=dedicated=tikv --node-taints=dedicated=tikv:NoSchedule
+        --node-labels=dedicated=tikv --node-taints=dedicated=tikv:NoSchedule
     gcloud container node-pools create tidb --cluster tidb --machine-type n1-standard-8 --num-nodes=1 \
-      --node-labels=dedicated=tidb --node-taints=dedicated=tidb:NoSchedule
+        --node-labels=dedicated=tidb --node-taints=dedicated=tidb:NoSchedule
     ```
 
-### Deploy TiDB Operator
+    The process might take a few minutes.
 
-To deploy TiDB Operator in the Kubernetes cluster, refer to the [*Deploy TiDB Operator* section](get-started.md#deploy-tidb-operator).
+## Deploy TiDB Operator
 
-### Deploy a TiDB cluster and the monitoring component
+To deploy TiDB Operator on GKE, refer to [deploy TiDB Operator](get-started.md#deploy-tidb-operator).
 
-1. Prepare the `TidbCluster` and `TidbMonitor` CR files:
+## Deploy a TiDB cluster and the monitoring component
 
-    {{< copyable "shell-regular" >}}
+This section describes how to deploy a TiDB cluster and its monitoring component on GCP GKE.
 
-    ```shell
-    curl -LO https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/gcp/tidb-cluster.yaml &&
-    curl -LO https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/gcp/tidb-monitor.yaml
-    ```
+### Create namespace
 
-2. Create `Namespace`:
+To create a namespace to deploy the TiDB cluster, run the following command:
 
-    {{< copyable "shell-regular" >}}
+{{< copyable "shell-regular" >}}
 
-    ```shell
-    kubectl create namespace tidb-cluster
-    ```
+```shell
+kubectl create namespace tidb-cluster
+```
 
-    > **Note:**
-    >
-    > A [`namespace`](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) is a virtual cluster backed by the same physical cluster. This document takes `tidb-cluster` as an example. If you want to use other namespace, modify the corresponding arguments of `-n` or `--namespace`.
+> **Note:**
+>
+> A [`namespace`](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) is a virtual cluster backed by the same physical cluster. This document takes `tidb-cluster` as an example. If you want to use other namespace, modify the corresponding arguments of `-n` or `--namespace`.
 
-3. Deploy the TiDB cluster:
+### Deploy
 
-    {{< copyable "shell-regular" >}}
+To deploy the `TidbCluster` and `TidbMonitor` CR in the GKE cluster, run the following command:
 
-    ```shell
-    kubectl create -f tidb-cluster.yaml -n tidb-cluster &&
-    kubectl create -f tidb-monitor.yaml -n tidb-cluster
-    ```
+{{< copyable "shell-regular" >}}
 
-4. View the startup status of the TiDB cluster:
+```shell
+kubectl create -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/gcp/tidb-cluster.yaml -n tidb-cluster &&
+kubectl create -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/gcp/tidb-monitor.yaml -n tidb-cluster
+```
 
-    {{< copyable "shell-regular" >}}
+After the yaml file above is applied to the Kubernetes cluster, TiDB Operator creates the desired TiDB cluster and its monitoring component according to the yaml file.
 
-    ```shell
-    kubectl get pods -n tidb-cluster
-    ```
+### View the cluster status
 
-    When all the Pods are in the `Running` or `Ready` state, the TiDB cluster is successfully started. For example:
+To view the status of the starting TiDB cluster, run the following command:
 
-    ```
-    NAME                              READY   STATUS    RESTARTS   AGE
-    tidb-discovery-5cb8474d89-n8cxk   1/1     Running   0          47h
-    tidb-monitor-6fbcc68669-dsjlc     3/3     Running   0          47h
-    tidb-pd-0                         1/1     Running   0          47h
-    tidb-pd-1                         1/1     Running   0          46h
-    tidb-pd-2                         1/1     Running   0          46h
-    tidb-tidb-0                       2/2     Running   0          47h
-    tidb-tidb-1                       2/2     Running   0          46h
-    tidb-tikv-0                       1/1     Running   0          47h
-    tidb-tikv-1                       1/1     Running   0          47h
-    tidb-tikv-2                       1/1     Running   0          47h
-    ```
+{{< copyable "shell-regular" >}}
+
+```shell
+kubectl get pods -n tidb-cluster
+```
+
+When all the Pods are in the `Running` or `Ready` state, the TiDB cluster is successfully started. For example:
+
+```
+NAME                              READY   STATUS    RESTARTS   AGE
+tidb-discovery-5cb8474d89-n8cxk   1/1     Running   0          47h
+tidb-monitor-6fbcc68669-dsjlc     3/3     Running   0          47h
+tidb-pd-0                         1/1     Running   0          47h
+tidb-pd-1                         1/1     Running   0          46h
+tidb-pd-2                         1/1     Running   0          46h
+tidb-tidb-0                       2/2     Running   0          47h
+tidb-tidb-1                       2/2     Running   0          46h
+tidb-tikv-0                       1/1     Running   0          47h
+tidb-tikv-1                       1/1     Running   0          47h
+tidb-tikv-2                       1/1     Running   0          47h
+```
 
 ## Access the TiDB database
 
 After you deploy a TiDB cluster, you can access the TiDB database via MySQL client.
 
-### Prepare a host that can access the cluster
+### Prepare a bastion host
 
 The LoadBalancer created for your TiDB cluster is an intranet LoadBalancer. You can create a [bastion host](https://cloud.google.com/solutions/connecting-securely#bastion) in the cluster VPC to access the database.
 
@@ -137,15 +138,15 @@ The LoadBalancer created for your TiDB cluster is an intranet LoadBalancer. You 
 
 ```shell
 gcloud compute instances create bastion \
-  --machine-type=n1-standard-4 \
-  --image-project=centos-cloud \
-  --image-family=centos-7 \
-  --zone=<your-region>-a
+    --machine-type=n1-standard-4 \
+    --image-project=centos-cloud \
+    --image-family=centos-7 \
+    --zone=${your-region}-a
 ```
 
 > **Note:**
 >
-> `<your-region>-a` is the `a` zone in the region of the cluster, such as `us-central1-a`. You can also create the bastion host in other zones in the same region.
+> `${your-region}-a` is the `a` zone in the region of the cluster, such as `us-central1-a`. You can also create the bastion host in other zones in the same region.
 
 ### Install the MySQL client and connect
 
@@ -172,10 +173,10 @@ After the bastion host is created, you can connect to the bastion host via SSH a
     {{< copyable "shell-regular" >}}
 
     ```shell
-    mysql -h <tidb-nlb-dnsname> -P 4000 -u root
+    mysql -h ${tidb-nlb-dnsname} -P 4000 -u root
     ```
 
-    `<tidb-nlb-dnsname>` is the LoadBalancer IP of the TiDB service. You can view the IP in the `EXTERNAL-IP` field of the `kubectl get svc basic-tidb -n tidb-cluster` execution result.
+    `${tidb-nlb-dnsname}` is the LoadBalancer IP of the TiDB service. You can view the IP in the `EXTERNAL-IP` field of the `kubectl get svc basic-tidb -n tidb-cluster` execution result.
 
     For example:
 
@@ -208,7 +209,7 @@ After the bastion host is created, you can connect to the bastion host via SSH a
 > * [The default authentication plugin of MySQL 8.0](https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_default_authentication_plugin) is updated from `mysql_native_password` to `caching_sha2_password`. Therefore, if you use MySQL client from MySQL 8.0 to access the TiDB service (TiDB version < v4.0.7), and if the user account has a password, you need to explicitly specify the `--default-auth=mysql_native_password` parameter.
 > * By default, TiDB (starting from v4.0.2) periodically shares usage details with PingCAP to help understand how to improve the product. For details about what is shared and how to disable the sharing, see [Telemetry](https://docs.pingcap.com/tidb/stable/telemetry).
 
-## Monitor
+### Access the Grafana monitoring dashboard
 
 Obtain the LoadBalancer IP of Grafana:
 
@@ -228,12 +229,11 @@ basic-grafana            LoadBalancer   10.15.255.169   34.123.168.114   3000:30
 
 In the output above, the `EXTERNAL-IP` column is the LoadBalancer IP.
 
-You can access the `<grafana-lb>:3000` address using your web browser to view monitoring metrics. Replace `<grafana-lb>` with the LoadBalancer IP.
+You can access the `${grafana-lb}:3000` address using your web browser to view monitoring metrics. Replace `${grafana-lb}` with the LoadBalancer IP.
 
-The initial Grafana login credentials are:
-
-- User: admin
-- Password: admin
+> **Note:**
+>
+> The default Grafana username and password are both `admin`.
 
 ## Upgrade
 
@@ -245,7 +245,11 @@ The upgrade process does not finish immediately. You can watch the upgrade progr
 
 Before scaling out the cluster, you need to scale out the corresponding node pool so that the new instances have enough resources for operation.
 
-The following example shows how to scale out the `tikv` node pool of the `tidb` cluster to have 6 nodes:
+This section describes how to scale out the EKS node group and TiDB components.
+
+### Scale out GKE node group
+
+The following example shows how to scale out the `tikv` node pool of the `tidb` cluster to 6 nodes:
 
 {{< copyable "shell-regular" >}}
 
@@ -257,11 +261,19 @@ gcloud container clusters resize tidb --node-pool tikv --num-nodes 2
 >
 > In the regional cluster, the nodes are created in 3 zones. Therefore, after scaling out, the number of nodes is `2 * 3 = 6`.
 
+### Scale out TiDB components
+
 After that, execute `kubectl edit tc basic -n tidb-cluster` and modify each component's `replicas` to the desired number of replicas. The scaling-out process is then completed.
 
 For more information on managing node pools, refer to [GKE Node pools](https://cloud.google.com/kubernetes-engine/docs/concepts/node-pools).
 
 ## Deploy TiFlash and TiCDC
+
+[TiFlash](https://docs.pingcap.com/tidb/stable/tiflash-overview) is the columnar storage extension of TiKV.
+
+[TiCDC](https://docs.pingcap.com/tidb/stable/ticdc-overview) is a tool for replicating the incremental data of TiDB by pulling TiKV change logs.
+
+The two components are *not required* in the deployment. This section shows a quick start example.
 
 ### Create new node pools
 
@@ -335,6 +347,22 @@ Finally, execute `kubectl -n tidb-cluster apply -f tidb-cluster.yaml` to update 
 
 For detailed CR configuration, refer to [API references](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.md) and [Configure a TiDB Cluster](configure-a-tidb-cluster.md).
 
+## Deploy TiDB Enterprise Edition
+
+To deploy TiDB/PD/TiKV/TiFlash/TiCDC Enterprise Edition, configure `spec.[tidb|pd|tikv|tiflash|ticdc].baseImage` in `tidb-cluster.yaml` as the enterprise image. The enterprise image format is `pingcap/[tidb|pd|tikv|tiflash|ticdc]-enterprise`.
+
+For example:
+
+```yaml
+spec:
+  ...
+  pd:
+    baseImage: pingcap/pd-enterprise
+  ...
+  tikv:
+    baseImage: pingcap/tikv-enterprise
+```
+
 ## Use local storage
 
 Some GCP instance types provide additional [local store volumes](https://cloud.google.com/kubernetes-engine/docs/how-to/persistent-volumes/local-ssd). You can choose such instances for the TiKV node pool to achieve higher IOPS and lower latency.
@@ -343,7 +371,7 @@ Some GCP instance types provide additional [local store volumes](https://cloud.g
 >
 > You cannot dynamically change the storage class of a running TiDB cluster. You can create a new cluster for testing.
 >
-> During the GKE upgrade, data in the local storage will be [lost](https://cloud.google.com/kubernetes-engine/docs/how-to/persistent-volumes/local-ssd) due to the node reconstruction. When the node reconstruction occurs, you need to migrate data in TiKV. If you do not want to migrate data, it is recommended not to use the local disk in the production environment.
+> During the GKE upgrade, [data in the local storage will be lost](https://cloud.google.com/kubernetes-engine/docs/how-to/persistent-volumes/local-ssd) due to the node reconstruction. When the node reconstruction occurs, you need to migrate data in TiKV. If you do not want to migrate data, it is recommended not to use the local disk in the production environment.
 
 1. Create a node pool with local storage for TiKV:
 
