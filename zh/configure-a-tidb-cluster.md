@@ -83,8 +83,8 @@ TiDB Operator 支持为 PD、TiDB、TiKV 挂载多块 PV，可以用于不同用
 相关字段的含义如下：
 
 - `storageVolume.name`：PV 的名称。
-- `storageVolume.storageClassName`：PV 使用哪一个 StorageClass。如果不配置，会使用spec.pd/tidb/tikv.storageClassName。
-- `storageVolume.storageSize`：申请PV存储容量的大小。
+- `storageVolume.storageClassName`：PV 使用哪一个 StorageClass。如果不配置，会使用 spec.pd/tidb/tikv.storageClassName。
+- `storageVolume.storageSize`：申请 PV 存储容量的大小。
 - `storageVolume.mountPath`：将 PV 挂载到容器的哪个目录。
 
 例子:
@@ -131,7 +131,7 @@ TiDB Operator 支持为 PD、TiDB、TiKV 挂载多块 PV，可以用于不同用
       storage: "1Gi"
     config:
       storage:
-        # In basic examples, we set this to avoid using too much storage.
+        # In basic examples, you can set this to avoid using too much storage.
         reserve-space: "0MB"
       rocksdb:
         wal-dir: "/data_sbi/tikv/wal"

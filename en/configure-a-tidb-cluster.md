@@ -65,7 +65,7 @@ Versions required:
 
 It is recommended that you configure `spec.pvReclaimPolicy: Retain` to ensure that the PV is retained even if the PVC is deleted. This is to ensure your data safety.
 
-### Storage class
+### Storage
 
 You can set the storage class by modifying `storageClassName` of each component in `${cluster_name}/tidb-cluster.yaml` and `${cluster_name}/tidb-monitor.yaml`. For the [storage classes](configure-storage-class.md) supported by the Kubernetes cluster, check with your system administrator.
 
@@ -78,6 +78,78 @@ For the demonstration environment or functional verification, you can use networ
 > **Note:**
 >
 > When you create the TiDB cluster, if you set a storage class that does not exist in the Kubernetes cluster, then the TiDB cluster creation goes to the Pending state. In this situation, you must [destroy the TiDB cluster in Kubernetes](destroy-a-tidb-cluster.md) and retry the creation.
+
+### Multiple disks mounting
+
+TiDB Operator supports mounting multiple PVs for PD, TiDB, and TiKV, which can be used for data writing for different purposes.
+
+You can configure the `storageVolumes` field for each component to describe multiple user-customized PVs.
+
+The meanings of the related fields are as follows:
+
+- `storageVolume.name`: The name of the PV.
+- `storageVolume.storageClassName`: The StorageClass that the PV uses. If not configured, `spec.pd/tidb/tikv.storageClassName` will be used.
+- `storageVolume.storageSize`: The storage size of the requested PV.
+- `storageVolume.mountPath`: The path of the container to mount the PV to.
+
+For example:
+
+{{< copyable "shell-regular" >}}
+
+```yaml
+  pd:
+    baseImage: pingcap/pd
+    replicas: 1
+    # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
+    # storageClassName: local-storage
+    requests:
+      storage: "1Gi"
+    config:
+      log:
+        file:
+          name: /var/log/pd
+        level: "warn"
+    storageVolumes:
+      - name: log
+        storageSize: "2Gi"
+        mountPath: "/var/log/pd"
+  tidb:
+    baseImage: pingcap/tidb
+    replicas: 1
+    service:
+      type: ClusterIP
+    config:
+      log:
+        file:
+          name: /var/log/tidb
+        level: "warn"
+    storageVolumes:
+      - name: log
+        storageSize: "2Gi"
+        mountPath: "/var/log/tidb"
+  tikv:
+    baseImage: pingcap/tikv
+    replicas: 1
+    # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
+    # storageClassName: local-storage
+    requests:
+      storage: "1Gi"
+    config:
+      storage:
+        # In basic examples, you can set this to avoid using too much storage.
+        reserve-space: "0MB"
+      rocksdb:
+        wal-dir: "/data_sbi/tikv/wal"
+      titan:
+        dirname: "/data_sbj/titan/data"
+    storageVolumes:
+      - name: wal
+        storageSize: "2Gi"
+        mountPath: "/data_sbi/tikv/wal"
+      - name: titan
+        storageSize: "2Gi"
+        mountPath: "/data_sbj/titan/data"
+```
 
 ### mountClusterClientSecret
 
