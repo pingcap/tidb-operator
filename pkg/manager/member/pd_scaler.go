@@ -22,7 +22,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	apps "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 )
@@ -119,11 +118,6 @@ func (s *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet 
 		return nil
 	}
 
-	// limit scale in when multi-cluster is enabled
-	if pass, err := s.preCheckUpMembers(tc, pdPodName); !pass {
-		return err
-	}
-
 	pdClient := controller.GetPDClient(s.deps.PDControl, tc)
 	leader, err := pdClient.GetPDLeader()
 	if err != nil {
@@ -195,17 +189,6 @@ func (s *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet 
 
 func (s *pdScaler) SyncAutoScalerAnn(meta metav1.Object, actual *apps.StatefulSet) error {
 	return nil
-}
-
-func (s *pdScaler) preCheckUpMembers(tc *v1alpha1.TidbCluster, podName string) (bool, error) {
-	if tc.Status.TiKV.StatefulSet.Replicas+tc.Status.TiDB.StatefulSet.Replicas+tc.Status.TiFlash.StatefulSet.Replicas != 0 && tc.Status.PD.StatefulSet.Replicas == 0 {
-		errMsg := fmt.Sprintf("The PD is in use by TidbCluster [%s/%s], can't scale in PD, podname %s ", tc.GetNamespace(), tc.GetName(), podName)
-		klog.Error(errMsg)
-		s.deps.Recorder.Event(tc, v1.EventTypeWarning, "FailedScaleIn", errMsg)
-		return false, nil
-	}
-
-	return true, nil
 }
 
 type fakePDScaler struct{}
