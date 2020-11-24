@@ -141,8 +141,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 			name: "deployment without pv and pvc, can't smooth migrate",
 			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
 				monitor.Status.DeploymentStorageStatus = &v1alpha1.DeploymentStorageStatus{
-					PvcName: GetMonitorObjectName(monitor),
-					PvName:  "test-pv",
+					PvName: "test-pv",
 				}
 				monitor.Spec.Persistent = true
 				monitor.Spec.Storage = "10Gi"
@@ -158,8 +157,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 			name: "deployment pvc and smooth migrate",
 			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
 				monitor.Status.DeploymentStorageStatus = &v1alpha1.DeploymentStorageStatus{
-					PvcName: GetMonitorObjectName(monitor),
-					PvName:  "test-pv",
+					PvName: "test-pv",
 				}
 				monitor.Spec.Persistent = true
 				monitor.Spec.Storage = "10Gi"
