@@ -19,6 +19,8 @@ import (
 	_ "net/http/pprof"
 	"time"
 
+	"github.com/pingcap/tidb-operator/pkg/monitor/monitor"
+
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
@@ -537,7 +539,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			oa.UpgradeOperatorOrDie(ocfg)
 
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-				newStsPvcName := fmt.Sprintf("tidbmonitor-%s-monitor-0", tm.Name)
+				newStsPvcName := monitor.GetMonitorFirstPVCName(tm.Name)
 				stsPvc, err := c.CoreV1().PersistentVolumeClaims(tc.Namespace).Get(newStsPvcName, metav1.GetOptions{})
 				if err != nil {
 					if errors.IsNotFound(err) {

@@ -41,7 +41,7 @@ func GetMonitorObjectName(monitor *v1alpha1.TidbMonitor) string {
 }
 
 func GetMonitorFirstPVCName(name string) string {
-	return fmt.Sprintf(v1alpha1.TidbMonitorMemberType.String()+"-%s-0", name)
+	return fmt.Sprintf(v1alpha1.TidbMonitorMemberType.String()+"-%s-monitor-0", name)
 }
 
 func GetMonitorObjectNameCrossNamespace(monitor *v1alpha1.TidbMonitor) string {

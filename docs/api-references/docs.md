@@ -4658,17 +4658,6 @@ Optional: Defaults to false</p>
 <tbody>
 <tr>
 <td>
-<code>pvcName</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>PVC name</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>pvName</code></br>
 <em>
 string

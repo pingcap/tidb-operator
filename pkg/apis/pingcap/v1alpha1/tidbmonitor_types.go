@@ -199,9 +199,6 @@ type TidbMonitorList struct {
 
 // DeploymentStorageStatus is the storage information of the deployment
 type DeploymentStorageStatus struct {
-	// PVC name
-	PvcName string `json:"pvcName,omitempty"`
-
 	// PV name
 	PvName string `json:"pvName,omitempty"`
 }
