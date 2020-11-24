@@ -16,6 +16,8 @@ package util
 import (
 	"encoding/json"
 	"fmt"
+	"k8s.io/apimachinery/pkg/api/errors"
+	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	"os"
 	"strconv"
 	"strings"
@@ -380,4 +382,27 @@ func StatefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) bool {
 			apiequality.Semantic.DeepEqual(oldConfig.UpdateStrategy, new.Spec.UpdateStrategy)
 	}
 	return false
+}
+
+func ResolvePVCFromPod(pod *corev1.Pod, pvcLister corelisterv1.PersistentVolumeClaimLister) ([]*corev1.PersistentVolumeClaim, error) {
+	var pvcs []*corev1.PersistentVolumeClaim
+	var pvcName string
+	for _, vol := range pod.Spec.Volumes {
+		if vol.PersistentVolumeClaim != nil {
+			pvcName = vol.PersistentVolumeClaim.ClaimName
+			if len(pvcName) == 0 {
+				continue
+			}
+			pvc, err := pvcLister.PersistentVolumeClaims(pod.Namespace).Get(pvcName)
+			if err != nil {
+				klog.Errorf("Get PVC %s/%s error: %v", pod.Namespace, pvcName, err)
+				continue
+			}
+			pvcs = append(pvcs, pvc)
+		}
+	}
+	if len(pvcs) == 0 {
+		return nil, errors.NewNotFound(corev1.Resource("pvc"), pod.Name)
+	}
+	return pvcs, nil
 }

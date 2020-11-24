@@ -19,9 +19,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pingcap/tidb-operator/pkg/util"
-	"k8s.io/client-go/tools/record"
-
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	v1alpha1validation "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/validation"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -30,6 +27,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/manager/meta"
 	"github.com/pingcap/tidb-operator/pkg/monitor"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	utildiscovery "github.com/pingcap/tidb-operator/pkg/util/discovery"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -48,7 +46,6 @@ type MonitorManager struct {
 	deps               *controller.Dependencies
 	pvManager          monitor.MonitorManager
 	discoveryInterface discovery.CachedDiscoveryInterface
-	recorder           record.EventRecorder
 }
 
 const (
@@ -61,7 +58,6 @@ func NewMonitorManager(deps *controller.Dependencies) *MonitorManager {
 		deps:               deps,
 		pvManager:          meta.NewReclaimPolicyManager(deps),
 		discoveryInterface: discoverycachedmemory.NewMemCacheClient(deps.KubeClientset.Discovery()),
-		recorder:           deps.Recorder,
 	}
 }
 
@@ -152,53 +148,8 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 func (m *MonitorManager) syncTidbMonitorService(monitor *v1alpha1.TidbMonitor) error {
 	services := getMonitorService(monitor)
 	for _, newSvc := range services {
-		oldSvcTmp, err := m.deps.ServiceLister.Services(newSvc.Namespace).Get(newSvc.Name)
-		if errors.IsNotFound(err) {
-			err = controller.SetServiceLastAppliedConfigAnnotation(newSvc)
-			if err != nil {
-				return err
-			}
-			err = m.deps.ServiceControl.CreateService(monitor, newSvc)
-			if err != nil {
-				return err
-			}
-			continue
-		}
-		if err != nil {
-			return fmt.Errorf("syncTidbMonitorService: failed to get svc %s for cluster %s/%s, error: %s", newSvc.Name, monitor.Namespace, monitor.Name, err)
-		}
-
-		oldSvc := oldSvcTmp.DeepCopy()
-		util.RetainManagedFields(newSvc, oldSvc)
-
-		equal, err := controller.ServiceEqual(newSvc, oldSvc)
-		if err != nil {
+		if err := m.createOrUpdateService(newSvc, monitor); err != nil {
 			return err
-		}
-		annoEqual := util.IsSubMapOf(newSvc.Annotations, oldSvc.Annotations)
-		isOrphan := metav1.GetControllerOf(oldSvc) == nil
-
-		if !equal || !annoEqual || isOrphan {
-			svc := *oldSvc
-			svc.Spec = newSvc.Spec
-			err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
-			if err != nil {
-				return err
-			}
-			svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
-			// apply change of annotations if any
-			for k, v := range newSvc.Annotations {
-				svc.Annotations[k] = v
-			}
-			// also override labels when adopt orphan
-			if isOrphan {
-				svc.OwnerReferences = newSvc.OwnerReferences
-				svc.Labels = newSvc.Labels
-			}
-			_, err = m.deps.ServiceControl.UpdateService(monitor, &svc)
-			if err != nil {
-				return err
-			}
 		}
 	}
 	return nil
@@ -477,89 +428,75 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 	oldDeploymentName := GetMonitorObjectName(monitor)
 	oldDeployment, err := m.deps.DeploymentLister.Deployments(monitor.Namespace).Get(oldDeploymentName)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			if monitor.Spec.Persistent {
-				firstStsPvcName := GetMonitorFirstPVCName(monitor.Name)
-				deploymentPvcName := GetMonitorObjectName(monitor)
-				deploymentPvc, err := m.deps.PVCLister.PersistentVolumeClaims(monitor.Namespace).Get(deploymentPvcName)
-				if err != nil {
-					if errors.IsNotFound(err) {
-						// If the PVC of the deployment does not exist and no old pvc status, we don't need to migrate.
-						if monitor.Status.DeploymentStorageStatus != nil && len(monitor.Status.DeploymentStorageStatus.PvName) > 0 {
-							deploymentPv, err := m.deps.PVLister.Get(monitor.Status.DeploymentStorageStatus.PvName)
-							if err != nil {
-								klog.Errorf("Smooth migration for tm[%s/%s], fail to get PV %s, err: %v", monitor.Namespace, monitor.Name, monitor.Status.DeploymentStorageStatus.PvName, err)
-								return false, err
-							}
-							deploymentPv.Spec.ClaimRef.Name = firstStsPvcName
-							err = m.deps.PVControl.PatchPVClaimRef(monitor, deploymentPv, firstStsPvcName)
-							if err != nil {
-								klog.Errorf("Smooth migration for tm[%s/%s], fail to patch PV %s, err: %v", monitor.Namespace, monitor.Name, deploymentPv.Name, err)
-								return false, err
-							}
-							// smooth migration successfully and clean status
-							monitor.Status.DeploymentStorageStatus = nil
-						}
-						return true, nil
-					}
-					klog.Errorf("Smooth migration for tm[%s/%s], the PVC of the deployment get error:%v", monitor.Namespace, monitor.Name, err)
-					return false, err
-				}
-
-				// firstly patch status
-				if monitor.Status.DeploymentStorageStatus == nil {
-					monitor.Status.DeploymentStorageStatus = &v1alpha1.DeploymentStorageStatus{
-						PvName: deploymentPvc.Spec.VolumeName,
-					}
-					err = m.deps.TypedControl.UpdateStatus(monitor)
-					if err != nil {
-						return false, err
-					}
-					//monitor patch status successfully
-				}
-
-				err = m.deps.PVCControl.DeletePVC(monitor, &corev1.PersistentVolumeClaim{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      deploymentPvcName,
-						Namespace: monitor.Namespace,
-					},
-				})
-				if err != nil {
-					klog.Errorf("Fail to delete the PVC %s for tm [%s/%s], err: %v", deploymentPvcName, monitor.Namespace, monitor.Name, err)
-					return false, err
-				}
-
-				deploymentPv, err := m.deps.PVLister.Get(deploymentPvc.Spec.VolumeName)
-				if err != nil && !errors.IsNotFound(err) {
-					klog.Errorf("Smooth migration for tm[%s/%s], fail to get PV %s, err: %v", monitor.Namespace, monitor.Name, deploymentPvc.Spec.VolumeName, err)
-					return false, err
-				}
-
-				if deploymentPv.Spec.ClaimRef != nil && deploymentPv.Spec.ClaimRef.Name == firstStsPvcName {
-					// smooth migration successfully and clean status
-					monitor.Status.DeploymentStorageStatus = nil
-					return true, nil
-				}
-
-				if deploymentPv.Spec.ClaimRef == nil {
-					deploymentPv.Spec.ClaimRef = &corev1.ObjectReference{}
-				}
-
-				deploymentPv.Spec.ClaimRef.Name = firstStsPvcName
-				err = m.deps.PVControl.PatchPVClaimRef(monitor, deploymentPv, firstStsPvcName)
-				if err != nil {
-					klog.Errorf("Smooth migration for tm[%s/%s], fail to patch PV %s, err: %v", monitor.Namespace, monitor.Name, deploymentPv.Name, err)
-					return false, err
-				}
-				// smooth migration successfully and clean status
-				monitor.Status.DeploymentStorageStatus = nil
-				return true, nil
-			}
-			return true, nil
-		} else {
+		if !errors.IsNotFound(err) {
 			klog.Errorf("Fail to get deployment for tm [%s/%s], err: %v", monitor.Namespace, monitor.Name, err)
 			return false, err
 		}
+		if !monitor.Spec.Persistent {
+			return true, nil
+		}
+		firstStsPvcName := GetMonitorFirstPVCName(monitor.Name)
+		deploymentPvcName := GetMonitorObjectName(monitor)
+		deploymentPvc, err := m.deps.PVCLister.PersistentVolumeClaims(monitor.Namespace).Get(deploymentPvcName)
+		if err != nil {
+			if !errors.IsNotFound(err) {
+				klog.Errorf("Smooth migration for tm[%s/%s], the PVC of the deployment get error:%v", monitor.Namespace, monitor.Name, err)
+				return false, err
+			}
+
+			// If the PVC of the deployment does not exist and no old pvc status, we don't need to migrate.
+			if monitor.Status.DeploymentStorageStatus == nil || len(monitor.Status.DeploymentStorageStatus.PvName) <= 0 {
+				return true, nil
+			}
+
+			err = m.patchPVClaimRef(monitor.Status.DeploymentStorageStatus.PvName, firstStsPvcName, monitor)
+			if err != nil {
+				klog.Errorf("Smooth migration for tm[%s/%s], fail to patch PV %s, err: %v", monitor.Namespace, monitor.Name, deploymentPvc.Spec.VolumeName, err)
+				return false, err
+			}
+			// smooth migration successfully and clean status
+			monitor.Status.DeploymentStorageStatus = nil
+			return true, nil
+		}
+
+		deploymentPv, err := m.deps.PVLister.Get(deploymentPvc.Spec.VolumeName)
+		if err != nil {
+			klog.Errorf("Smooth migration for tm[%s/%s], fail to get PV %s, err: %v", monitor.Namespace, monitor.Name, deploymentPvc.Spec.VolumeName, err)
+			return false, err
+		}
+		if deploymentPv.Spec.PersistentVolumeReclaimPolicy == corev1.PersistentVolumeReclaimDelete {
+			klog.Errorf("Smooth migration for tm[%s/%s], pv[%s] policy is delete, it must be retain", monitor.Namespace, monitor.Name, deploymentPvc.Spec.VolumeName)
+			return false, err
+		}
+
+		// firstly patch status
+		if monitor.Status.DeploymentStorageStatus == nil && len(deploymentPvc.Spec.VolumeName) > 0 {
+			err = m.patchTidbMonitorStatus(monitor, deploymentPvc.Spec.VolumeName)
+			if err != nil {
+				return false, err
+			}
+			//monitor patch status successfully
+		}
+
+		err = m.deps.PVCControl.DeletePVC(monitor, &corev1.PersistentVolumeClaim{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      deploymentPvcName,
+				Namespace: monitor.Namespace,
+			},
+		})
+		if err != nil {
+			klog.Errorf("Fail to delete the PVC %s for tm [%s/%s], err: %v", deploymentPvcName, monitor.Namespace, monitor.Name, err)
+			return false, err
+		}
+		err = m.patchPVClaimRef(deploymentPvc.Spec.VolumeName, firstStsPvcName, monitor)
+		if err != nil {
+			klog.Errorf("Smooth migration for tm[%s/%s], fail to patch PV %s, err: %v", monitor.Namespace, monitor.Name, deploymentPvc.Spec.VolumeName, err)
+			return false, err
+		}
+		// smooth migration successfully and clean status
+		monitor.Status.DeploymentStorageStatus = nil
+		return true, nil
+
 	}
 	klog.Infof("The old deployment exists, start smooth migration for tm [%s/%s]", monitor.Namespace, monitor.Name)
 	// if deployment exist, delete it and wait next reconcile.
@@ -583,7 +520,7 @@ func (c *MonitorManager) validate(tidbmonitor *v1alpha1.TidbMonitor) bool {
 	if len(errs) > 0 {
 		aggregatedErr := errs.ToAggregate()
 		klog.Errorf("tidbmonitor %s/%s is not valid and must be fixed first, aggregated error: %v", tidbmonitor.GetNamespace(), tidbmonitor.GetName(), aggregatedErr)
-		c.recorder.Event(tidbmonitor, corev1.EventTypeWarning, "FailedValidation", aggregatedErr.Error())
+		c.deps.Recorder.Event(tidbmonitor, corev1.EventTypeWarning, "FailedValidation", aggregatedErr.Error())
 		return false
 	}
 	return true
@@ -608,7 +545,7 @@ func (m *MonitorManager) syncTidbMonitorPV(tm *v1alpha1.TidbMonitor) error {
 			continue
 		}
 		// update meta info for pvc
-		pvcs, err := m.resolvePVCFromPod(pod)
+		pvcs, err := util.ResolvePVCFromPod(pod, m.deps.PVCLister)
 		if err != nil {
 			return err
 		}
@@ -632,25 +569,96 @@ func (m *MonitorManager) syncTidbMonitorPV(tm *v1alpha1.TidbMonitor) error {
 	return nil
 }
 
-func (m *MonitorManager) resolvePVCFromPod(pod *corev1.Pod) ([]*corev1.PersistentVolumeClaim, error) {
-	var pvcs []*corev1.PersistentVolumeClaim
-	var pvcName string
-	for _, vol := range pod.Spec.Volumes {
-		if vol.PersistentVolumeClaim != nil {
-			pvcName = vol.PersistentVolumeClaim.ClaimName
-			if len(pvcName) == 0 {
-				continue
-			}
-			pvc, err := m.deps.PVCLister.PersistentVolumeClaims(pod.Namespace).Get(pvcName)
-			if err != nil {
-				klog.Errorf("Get PVC %s/%s error: %v", pod.Namespace, pvcName, err)
-				continue
-			}
-			pvcs = append(pvcs, pvc)
+func (m *MonitorManager) createOrUpdateService(newSvc *corev1.Service, monitor *v1alpha1.TidbMonitor) error {
+	oldSvcTmp, err := m.deps.ServiceLister.Services(newSvc.Namespace).Get(newSvc.Name)
+	if errors.IsNotFound(err) {
+		err = controller.SetServiceLastAppliedConfigAnnotation(newSvc)
+		if err != nil {
+			return err
+		}
+		err = m.deps.ServiceControl.CreateService(monitor, newSvc)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("syncTidbMonitorService: failed to get svc %s for cluster %s/%s, error: %s", newSvc.Name, monitor.Namespace, monitor.Name, err)
+	}
+
+	oldSvc := oldSvcTmp.DeepCopy()
+	util.RetainManagedFields(newSvc, oldSvc)
+
+	equal, err := controller.ServiceEqual(newSvc, oldSvc)
+	if err != nil {
+		return err
+	}
+	annoEqual := util.IsSubMapOf(newSvc.Annotations, oldSvc.Annotations)
+	isOrphan := metav1.GetControllerOf(oldSvc) == nil
+
+	if !equal || !annoEqual || isOrphan {
+		svc := *oldSvc
+		svc.Spec = newSvc.Spec
+		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
+		if err != nil {
+			return err
+		}
+		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
+		// apply change of annotations if any
+		for k, v := range newSvc.Annotations {
+			svc.Annotations[k] = v
+		}
+		// also override labels when adopt orphan
+		if isOrphan {
+			svc.OwnerReferences = newSvc.OwnerReferences
+			svc.Labels = newSvc.Labels
+		}
+		_, err = m.deps.ServiceControl.UpdateService(monitor, &svc)
+		if err != nil {
+			return err
 		}
 	}
-	if len(pvcs) == 0 {
-		return nil, errors.NewNotFound(corev1.Resource("pvc"), pod.Name)
+	return nil
+}
+
+func (m *MonitorManager) patchPVClaimRef(pvName string, patchPvcName string, monitor *v1alpha1.TidbMonitor) error {
+	deploymentPv, err := m.deps.PVLister.Get(pvName)
+	if err != nil {
+		klog.Errorf("Smooth migration for tm[%s/%s], fail to get PV %s, err: %v", monitor.Namespace, monitor.Name, pvName, err)
+		return err
 	}
-	return pvcs, nil
+
+	if deploymentPv.Spec.ClaimRef != nil && deploymentPv.Spec.ClaimRef.Name == patchPvcName {
+		// smooth migration successfully and clean status
+		monitor.Status.DeploymentStorageStatus = nil
+		return nil
+	}
+
+	if deploymentPv.Spec.ClaimRef == nil {
+		deploymentPv.Spec.ClaimRef = &corev1.ObjectReference{}
+	}
+
+	deploymentPv.Spec.ClaimRef.Name = patchPvcName
+	err = m.deps.PVControl.PatchPVClaimRef(monitor, deploymentPv, patchPvcName)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *MonitorManager) patchTidbMonitorStatus(tm *v1alpha1.TidbMonitor, pvName string) error {
+
+	mergePatch, err := json.Marshal(map[string]interface{}{
+		"status": map[string]interface{}{
+			"deploymentStorageStatus": map[string]interface{}{
+				"pvName": pvName,
+			},
+		},
+	})
+
+	if err != nil {
+		return err
+	}
+	_, err = m.deps.Clientset.PingcapV1alpha1().TidbMonitors(tm.Namespace).Patch(tm.Name, types.MergePatchType, mergePatch)
+	return err
 }

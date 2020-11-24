@@ -55,6 +55,7 @@ func (c *defaultTidbMonitorControl) ReconcileTidbMonitor(tm *v1alpha1.TidbMonito
 	if err := c.reconcileTidbMonitor(tm); err != nil {
 		errs = append(errs, err)
 	}
+
 	return errorutils.NewAggregate(errs)
 }
 
