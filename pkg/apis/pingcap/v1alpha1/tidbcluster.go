@@ -511,6 +511,7 @@ func (tc *TidbCluster) PDIsAvailable() bool {
 		return false
 	}
 
+	// Response to incluster pod changes. There is a delay for infos in PD.
 	if tc.Status.PD.StatefulSet == nil || tc.Status.PD.StatefulSet.ReadyReplicas+peerAvailableNum < lowerLimit {
 		return false
 	}
@@ -535,7 +536,7 @@ func (tc *TidbCluster) TiKVIsAvailable() bool {
 	for _, store := range tc.Status.TiKV.PeerStores {
 		// filter out the TiFlash PeerStores
 		podKind := strings.Split(store.PodName, "-")
-		if store.State == TiKVStateUp && podKind[len(podKind)-2] == "tikv" {
+		if store.State == TiKVStateUp && podKind[len(podKind)-2] == label.TiKVLabelVal {
 			peerAvailableNum++
 		}
 	}
