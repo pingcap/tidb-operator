@@ -543,7 +543,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				stsPvc, err := c.CoreV1().PersistentVolumeClaims(tc.Namespace).Get(newStsPvcName, metav1.GetOptions{})
 				if err != nil {
 					if errors.IsNotFound(err) {
-						klog.Infof("tm[%s/%s]'s,old deployment pvc not found", tc.Namespace, tc.Name)
+						klog.Infof("tm[%s/%s]'s first sts pvc not found", tc.Namespace, tc.Name)
 						return false, nil
 					}
 					klog.Errorf("get tidbmonitor sts pvc err:%v", err)
