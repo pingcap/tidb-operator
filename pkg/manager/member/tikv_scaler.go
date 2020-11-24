@@ -250,10 +250,12 @@ func (s *tikvScaler) preCheckUpStores(tc *v1alpha1.TidbCluster, podName string) 
 	}
 	// filter out TiFlash
 	for _, store := range storesInfo.Stores {
-		storePodName := strings.Split(store.Store.Address, ".")[0]
-		podKind := strings.Split(storePodName, "-")
-		if store.Store != nil && store.Store.StateName == v1alpha1.TiKVStateUp && podKind[len(podKind)-2] == "tikv" {
-			upNumber++
+		if store.Store != nil {
+			storePodName := strings.Split(store.Store.Address, ".")[0]
+			podKind := strings.Split(storePodName, "-")
+			if store.Store.StateName == v1alpha1.TiKVStateUp && podKind[len(podKind)-2] == label.TiKVLabelVal {
+				upNumber++
+			}
 		}
 	}
 
