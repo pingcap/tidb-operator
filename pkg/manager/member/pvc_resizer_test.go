@@ -20,26 +20,25 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	v1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/utils/pointer"
 )
 
-func newPVCWithStorage(name string, component string, storaegClass, storageRequest string) *v1.PersistentVolumeClaim {
+func newFullPVC(name, component, storageClass, storageRequest, nameLabel, instance string) *v1.PersistentVolumeClaim {
 	return &v1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: v1.NamespaceDefault,
 			Name:      name,
 			Labels: map[string]string{
-				label.NameLabelKey:      "tidb-cluster",
+				label.NameLabelKey:      nameLabel,
 				label.ManagedByLabelKey: label.TiDBOperator,
-				label.InstanceLabelKey:  "tc",
+				label.InstanceLabelKey:  instance,
 				label.ComponentLabelKey: component,
 			},
 		},
@@ -49,9 +48,17 @@ func newPVCWithStorage(name string, component string, storaegClass, storageReque
 					v1.ResourceStorage: resource.MustParse(storageRequest),
 				},
 			},
-			StorageClassName: pointer.StringPtr(storaegClass),
+			StorageClassName: pointer.StringPtr(storageClass),
 		},
 	}
+}
+
+func newPVCWithStorage(name string, component string, storageClass, storageRequest string) *v1.PersistentVolumeClaim {
+	return newFullPVC(name, component, storageClass, storageRequest, "tidb-cluster", "tc")
+}
+
+func newDMPVCWithStorage(name string, component string, storageClass, storageRequest string) *v1.PersistentVolumeClaim {
+	return newFullPVC(name, component, storageClass, storageRequest, "dm-cluster", "dc")
 }
 
 func newStorageClass(name string, volumeExpansion bool) *storagev1.StorageClass {
@@ -285,17 +292,17 @@ func TestPVCResizer(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			kubeCli := fake.NewSimpleClientset()
+			fakeDeps := controller.NewFakeDependencies()
 			for _, pvc := range tt.pvcs {
-				kubeCli.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(pvc)
+				fakeDeps.KubeClientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(pvc)
 			}
 			if tt.sc != nil {
-				kubeCli.StorageV1().StorageClasses().Create(tt.sc)
+				fakeDeps.KubeClientset.StorageV1().StorageClasses().Create(tt.sc)
 			}
 
-			informerFactory := informers.NewSharedInformerFactory(kubeCli, 0)
-			resizer := NewPVCResizer(kubeCli, informerFactory.Core().V1().PersistentVolumeClaims(), informerFactory.Storage().V1().StorageClasses())
+			resizer := NewPVCResizer(fakeDeps)
 
+			informerFactory := fakeDeps.KubeInformerFactory
 			informerFactory.Start(ctx.Done())
 			informerFactory.WaitForCacheSync(ctx.Done())
 
@@ -306,7 +313,113 @@ func TestPVCResizer(t *testing.T) {
 
 			for i, pvc := range tt.pvcs {
 				wantPVC := tt.wantPVCs[i]
-				got, err := kubeCli.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(pvc.Name, metav1.GetOptions{})
+				got, err := fakeDeps.KubeClientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(pvc.Name, metav1.GetOptions{})
+				if err != nil {
+					t.Fatal(err)
+				}
+				if diff := cmp.Diff(wantPVC, got); diff != "" {
+					t.Errorf("unexpected (-want, +got): %s", diff)
+				}
+			}
+		})
+	}
+}
+
+func TestDMPVCResizer(t *testing.T) {
+	tests := []struct {
+		name     string
+		dc       *v1alpha1.DMCluster
+		sc       *storagev1.StorageClass
+		pvcs     []*v1.PersistentVolumeClaim
+		wantPVCs []*v1.PersistentVolumeClaim
+		wantErr  error
+	}{
+		{
+			name: "no PVCs",
+			dc: &v1alpha1.DMCluster{
+				Spec: v1alpha1.DMClusterSpec{},
+			},
+		},
+		{
+			name: "resize dm-master PVCs",
+			dc: &v1alpha1.DMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: v1.NamespaceDefault,
+					Name:      "dc",
+				},
+				Spec: v1alpha1.DMClusterSpec{
+					Master: v1alpha1.MasterSpec{
+						StorageSize: "2Gi",
+					},
+				},
+			},
+			sc: newStorageClass("sc", true),
+			pvcs: []*v1.PersistentVolumeClaim{
+				newDMPVCWithStorage("dm-master-0", label.DMMasterLabelVal, "sc", "1Gi"),
+				newDMPVCWithStorage("dm-master-1", label.DMMasterLabelVal, "sc", "1Gi"),
+				newDMPVCWithStorage("dm-master-2", label.DMMasterLabelVal, "sc", "1Gi"),
+			},
+			wantPVCs: []*v1.PersistentVolumeClaim{
+				newDMPVCWithStorage("dm-master-0", label.DMMasterLabelVal, "sc", "2Gi"),
+				newDMPVCWithStorage("dm-master-1", label.DMMasterLabelVal, "sc", "2Gi"),
+				newDMPVCWithStorage("dm-master-2", label.DMMasterLabelVal, "sc", "2Gi"),
+			},
+		},
+		{
+			name: "resize dm-worker PVCs",
+			dc: &v1alpha1.DMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: v1.NamespaceDefault,
+					Name:      "dc",
+				},
+				Spec: v1alpha1.DMClusterSpec{
+					Worker: &v1alpha1.WorkerSpec{
+						StorageSize: "2Gi",
+					},
+				},
+			},
+			sc: newStorageClass("sc", true),
+			pvcs: []*v1.PersistentVolumeClaim{
+				newDMPVCWithStorage("dm-worker-0", label.DMWorkerLabelVal, "sc", "1Gi"),
+				newDMPVCWithStorage("dm-worker-1", label.DMWorkerLabelVal, "sc", "1Gi"),
+				newDMPVCWithStorage("dm-worker-2", label.DMWorkerLabelVal, "sc", "1Gi"),
+			},
+			wantPVCs: []*v1.PersistentVolumeClaim{
+				newDMPVCWithStorage("dm-worker-0", label.DMWorkerLabelVal, "sc", "2Gi"),
+				newDMPVCWithStorage("dm-worker-1", label.DMWorkerLabelVal, "sc", "2Gi"),
+				newDMPVCWithStorage("dm-worker-2", label.DMWorkerLabelVal, "sc", "2Gi"),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			fakeDeps := controller.NewFakeDependencies()
+
+			for _, pvc := range tt.pvcs {
+				fakeDeps.KubeClientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(pvc)
+			}
+			if tt.sc != nil {
+				fakeDeps.KubeClientset.StorageV1().StorageClasses().Create(tt.sc)
+			}
+
+			informerFactory := fakeDeps.KubeInformerFactory
+			resizer := NewPVCResizer(fakeDeps)
+
+			informerFactory.Start(ctx.Done())
+			informerFactory.WaitForCacheSync(ctx.Done())
+
+			err := resizer.ResizeDM(tt.dc)
+			if !reflect.DeepEqual(tt.wantErr, err) {
+				t.Errorf("want %v, got %v", tt.wantErr, err)
+			}
+
+			for i, pvc := range tt.pvcs {
+				wantPVC := tt.wantPVCs[i]
+				got, err := fakeDeps.KubeClientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(pvc.Name, metav1.GetOptions{})
 				if err != nil {
 					t.Fatal(err)
 				}

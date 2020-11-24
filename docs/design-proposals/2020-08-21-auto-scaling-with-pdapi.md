@@ -110,7 +110,7 @@ type ExternalConfig struct {
     // ExternalEndpoint makes the auto-scaler controller able to query the
     // external service to fetch the recommended replicas for TiKV/TiDB
     // +optional
-    Endpoint *ExternalEndpoint `json:"endpoint"`
+    Endpoint ExternalEndpoint `json:"endpoint"`
     // maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out.
     // It cannot be less than minReplicas.
     MaxReplicas int32 `json:"maxReplicas"`

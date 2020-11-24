@@ -14,25 +14,26 @@
 package member
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"path"
 
-	"github.com/BurntSushi/toml"
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	"github.com/pingcap/tidb-operator/pkg/util/toml"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
+	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
-	"k8s.io/utils/pointer"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
 const (
@@ -156,8 +157,6 @@ func MemberPodName(controllerName, controllerKind string, ordinal int32, memberT
 	switch controllerKind {
 	case v1alpha1.TiDBClusterKind:
 		return fmt.Sprintf("%s-%s-%d", controllerName, memberType.String(), ordinal), nil
-	case v1alpha1.TiKVGroupKind:
-		return fmt.Sprintf("%s-%s-group-%d", controllerName, memberType.String(), ordinal), nil
 	default:
 		return "", fmt.Errorf("unknown controller kind[%s]", controllerKind)
 	}
@@ -175,8 +174,15 @@ func tidbPodName(tcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", controller.TiDBMemberName(tcName), ordinal)
 }
 
-func TiKVGroupPodName(tgName string, ordinal int32) string {
-	return fmt.Sprintf("%s-%d", controller.TiKVGroupMemberName(tgName), ordinal)
+func DMMasterPodName(dcName string, ordinal int32) string {
+	return fmt.Sprintf("%s-%d", controller.DMMasterMemberName(dcName), ordinal)
+}
+
+func PdName(tcName string, ordinal int32, namespace string, clusterDomain string) string {
+	if len(clusterDomain) > 0 {
+		return fmt.Sprintf("%s.%s-pd-peer.%s.svc.%s", PdPodName(tcName, ordinal), tcName, namespace, clusterDomain)
+	}
+	return PdPodName(tcName, ordinal)
 }
 
 // CombineAnnotations merges two annotations maps
@@ -214,14 +220,7 @@ func FindConfigMapVolume(podSpec *corev1.PodSpec, pred func(string) bool) string
 
 // MarshalTOML is a template function that try to marshal a go value to toml
 func MarshalTOML(v interface{}) ([]byte, error) {
-	buff := new(bytes.Buffer)
-	encoder := toml.NewEncoder(buff)
-	err := encoder.Encode(v)
-	if err != nil {
-		return nil, err
-	}
-	data := buff.Bytes()
-	return data, nil
+	return toml.Marshal(v)
 }
 
 func UnmarshalTOML(b []byte, obj interface{}) error {
@@ -353,14 +352,11 @@ func copyAnnotations(src map[string]string) map[string]string {
 func getTikVConfigMapForTiKVSpec(tikvSpec *v1alpha1.TiKVSpec, tc *v1alpha1.TidbCluster, scriptModel *TiKVStartScriptModel) (*corev1.ConfigMap, error) {
 	config := tikvSpec.Config
 	if tc.IsTLSClusterEnabled() {
-		if config.Security == nil {
-			config.Security = &v1alpha1.TiKVSecurityConfig{}
-		}
-		config.Security.CAPath = pointer.StringPtr(path.Join(tikvClusterCertPath, tlsSecretRootCAKey))
-		config.Security.CertPath = pointer.StringPtr(path.Join(tikvClusterCertPath, corev1.TLSCertKey))
-		config.Security.KeyPath = pointer.StringPtr(path.Join(tikvClusterCertPath, corev1.TLSPrivateKeyKey))
+		config.Set("security.ca-path", path.Join(tikvClusterCertPath, tlsSecretRootCAKey))
+		config.Set("security.cert-path", path.Join(tikvClusterCertPath, corev1.TLSCertKey))
+		config.Set("security.key-path", path.Join(tikvClusterCertPath, corev1.TLSPrivateKeyKey))
 	}
-	confText, err := MarshalTOML(config)
+	confText, err := config.MarshalTOML()
 	if err != nil {
 		return nil, err
 	}
@@ -375,4 +371,109 @@ func getTikVConfigMapForTiKVSpec(tikvSpec *v1alpha1.TiKVSpec, tc *v1alpha1.TidbC
 		},
 	}
 	return cm, nil
+}
+
+// shouldRecover checks whether we should perform recovery operation.
+func shouldRecover(tc *v1alpha1.TidbCluster, component string, podLister corelisters.PodLister) bool {
+	var stores map[string]v1alpha1.TiKVStore
+	var failureStores map[string]v1alpha1.TiKVFailureStore
+	var ordinals sets.Int32
+	var podPrefix string
+
+	switch component {
+	case label.TiKVLabelVal:
+		stores = tc.Status.TiKV.Stores
+		failureStores = tc.Status.TiKV.FailureStores
+		ordinals = tc.TiKVStsDesiredOrdinals(true)
+		podPrefix = controller.TiKVMemberName(tc.Name)
+	case label.TiFlashLabelVal:
+		stores = tc.Status.TiFlash.Stores
+		failureStores = tc.Status.TiFlash.FailureStores
+		ordinals = tc.TiFlashStsDesiredOrdinals(true)
+		podPrefix = controller.TiFlashMemberName(tc.Name)
+	default:
+		klog.Warningf("Unexpected component %s for %s/%s in shouldRecover", component, tc.Namespace, tc.Name)
+		return false
+	}
+	if failureStores == nil {
+		return false
+	}
+	// If all desired replicas (excluding failover pods) of tidb cluster are
+	// healthy, we can perform our failover recovery operation.
+	// Note that failover pods may fail (e.g. lack of resources) and we don't care
+	// about them because we're going to delete them.
+	for ordinal := range ordinals {
+		name := fmt.Sprintf("%s-%d", podPrefix, ordinal)
+		pod, err := podLister.Pods(tc.Namespace).Get(name)
+		if err != nil {
+			klog.Errorf("pod %s/%s does not exist: %v", tc.Namespace, name, err)
+			return false
+		}
+		if !podutil.IsPodReady(pod) {
+			return false
+		}
+		var exist bool
+		for _, v := range stores {
+			if v.PodName == pod.Name {
+				exist = true
+				if v.State != v1alpha1.TiKVStateUp {
+					return false
+				}
+			}
+		}
+		if !exist {
+			return false
+		}
+	}
+	return true
+}
+
+// shouldRecover checks whether we should perform recovery operation.
+func shouldRecoverDM(dc *v1alpha1.DMCluster, component string, podLister corelisters.PodLister) bool {
+	var members map[string]v1alpha1.WorkerMember
+	var failureMembers map[string]v1alpha1.WorkerFailureMember
+	var ordinals sets.Int32
+	var podPrefix string
+
+	switch component {
+	case label.DMWorkerLabelVal:
+		members = dc.Status.Worker.Members
+		failureMembers = dc.Status.Worker.FailureMembers
+		ordinals = dc.WorkerStsDesiredOrdinals(true)
+		podPrefix = controller.DMWorkerMemberName(dc.Name)
+	default:
+		klog.Warningf("Unexpected component %s for %s/%s in shouldRecover", component, dc.Namespace, dc.Name)
+		return false
+	}
+	if failureMembers == nil {
+		return false
+	}
+	// If all desired replicas (excluding failover pods) of dm cluster are
+	// healthy, we can perform our failover recovery operation.
+	// Note that failover pods may fail (e.g. lack of resources) and we don't care
+	// about them because we're going to delete them.
+	for ordinal := range ordinals {
+		name := fmt.Sprintf("%s-%d", podPrefix, ordinal)
+		pod, err := podLister.Pods(dc.Namespace).Get(name)
+		if err != nil {
+			klog.Errorf("pod %s/%s does not exist: %v", dc.Namespace, name, err)
+			return false
+		}
+		if !podutil.IsPodReady(pod) {
+			return false
+		}
+		var exist bool
+		for _, v := range members {
+			if v.Name == pod.Name {
+				exist = true
+				if v.Stage == v1alpha1.DMWorkerStateOffline {
+					return false
+				}
+			}
+		}
+		if !exist {
+			return false
+		}
+	}
+	return true
 }

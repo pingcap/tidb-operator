@@ -22,6 +22,8 @@ import (
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
@@ -44,8 +46,7 @@ func TestGenericControlInterface_CreateOrUpdate(t *testing.T) {
 	testFn := func(tt *testCase) {
 		t.Log(tt.name)
 
-		var c client.Client
-		c = fake.NewFakeClientWithScheme(scheme.Scheme)
+		c := fake.NewFakeClientWithScheme(scheme.Scheme)
 		withTracker := NewFakeClientWithTracker(c)
 		recorder := record.NewFakeRecorder(10)
 		control := NewRealGenericControl(withTracker, recorder)
@@ -180,6 +181,314 @@ func TestGenericControlInterface_CreateOrUpdate(t *testing.T) {
 	}
 }
 
+func TestCreateOrUpdatePVC(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	type testCase struct {
+		name     string
+		initial  *corev1.PersistentVolumeClaim
+		existing *corev1.PersistentVolumeClaim
+		desired  *corev1.PersistentVolumeClaim
+		expectFn func(*GomegaWithT, *FakeClientWithTracker, error)
+	}
+	testFn := func(tt *testCase) {
+		t.Log(tt.name)
+
+		c := fake.NewFakeClientWithScheme(scheme.Scheme)
+		withTracker := NewFakeClientWithTracker(c)
+		recorder := record.NewFakeRecorder(10)
+		control := NewRealGenericControl(withTracker, recorder)
+		typed := NewTypedControl(control)
+		controller := newTidbCluster()
+		if tt.initial != nil {
+			err := typed.Create(controller, tt.initial)
+			g.Expect(err).To(Succeed())
+		}
+		if tt.existing != nil {
+			_, err := typed.CreateOrUpdatePVC(controller, tt.existing, false)
+			g.Expect(err).To(Succeed())
+		}
+		withTracker.UpdateTracker.SetRequests(0)
+		withTracker.CreateTracker.SetRequests(0)
+		_, createErr := typed.CreateOrUpdatePVC(controller, tt.desired, true)
+		tt.expectFn(g, withTracker, createErr)
+	}
+	pvc := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "default",
+		},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"k": "v",
+				},
+			},
+			StorageClassName: pointer.StringPtr("local-storage"),
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceStorage: resource.MustParse("100Gi"),
+				},
+			},
+		},
+	}
+	pvc2 := pvc.DeepCopy()
+	pvc2.Spec.Resources.Requests[corev1.ResourceStorage] = resource.MustParse("200Gi")
+	cases := []*testCase{
+		{
+			name:     "CreateOrUpdate same desired state twice will skip real updating",
+			initial:  pvc,
+			existing: pvc,
+			desired:  pvc,
+			expectFn: func(g *GomegaWithT, c *FakeClientWithTracker, err error) {
+				g.Expect(err).To(Succeed())
+				g.Expect(c.CreateTracker.GetRequests()).To(Equal(1))
+				g.Expect(c.UpdateTracker.GetRequests()).To(Equal(0))
+			},
+		},
+		{
+			name:     "update value",
+			initial:  pvc2,
+			existing: pvc,
+			desired:  pvc2,
+			expectFn: func(g *GomegaWithT, c *FakeClientWithTracker, err error) {
+				g.Expect(err).To(Succeed())
+				g.Expect(c.CreateTracker.GetRequests()).To(Equal(1))
+				g.Expect(c.UpdateTracker.GetRequests()).To(Equal(1))
+			},
+		},
+	}
+
+	for _, tt := range cases {
+		testFn(tt)
+	}
+}
+
+func TestCreateOrUpdateClusterRoleBinding(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	type testCase struct {
+		name     string
+		initial  *rbacv1.ClusterRoleBinding
+		existing *rbacv1.ClusterRoleBinding
+		desired  *rbacv1.ClusterRoleBinding
+		expectFn func(*GomegaWithT, *FakeClientWithTracker, error)
+	}
+	testFn := func(tt *testCase) {
+		t.Log(tt.name)
+
+		c := fake.NewFakeClientWithScheme(scheme.Scheme)
+		withTracker := NewFakeClientWithTracker(c)
+		recorder := record.NewFakeRecorder(10)
+		control := NewRealGenericControl(withTracker, recorder)
+		typed := NewTypedControl(control)
+		controller := newTidbCluster()
+		if tt.initial != nil {
+			err := typed.Create(controller, tt.initial)
+			g.Expect(err).To(Succeed())
+		}
+		if tt.existing != nil {
+			_, err := typed.CreateOrUpdateClusterRoleBinding(controller, tt.existing)
+			g.Expect(err).To(Succeed())
+		}
+		withTracker.UpdateTracker.SetRequests(0)
+		withTracker.CreateTracker.SetRequests(0)
+		_, createErr := typed.CreateOrUpdateClusterRoleBinding(controller, tt.desired)
+		tt.expectFn(g, withTracker, createErr)
+	}
+	rb := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "default",
+		},
+		Subjects: []rbacv1.Subject{
+			rbacv1.Subject{
+				Kind: "*",
+				Name: "update",
+			},
+		},
+	}
+	rb2 := rb.DeepCopy()
+	rb2.Subjects[0].APIGroup = "tidbcluster.pingcap.com"
+	cases := []*testCase{
+		{
+			name:     "CreateOrUpdate same desired state twice will skip real updating",
+			initial:  rb,
+			existing: rb,
+			desired:  rb,
+			expectFn: func(g *GomegaWithT, c *FakeClientWithTracker, err error) {
+				g.Expect(err).To(Succeed())
+				g.Expect(c.CreateTracker.GetRequests()).To(Equal(1))
+				g.Expect(c.UpdateTracker.GetRequests()).To(Equal(0))
+			},
+		},
+		{
+			name:     "update value",
+			initial:  rb2,
+			existing: rb,
+			desired:  rb2,
+			expectFn: func(g *GomegaWithT, c *FakeClientWithTracker, err error) {
+				g.Expect(err).To(Succeed())
+				g.Expect(c.CreateTracker.GetRequests()).To(Equal(1))
+				g.Expect(c.UpdateTracker.GetRequests()).To(Equal(1))
+			},
+		},
+	}
+
+	for _, tt := range cases {
+		testFn(tt)
+	}
+}
+
+func TestCreateOrUpdateClusterRole(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	type testCase struct {
+		name     string
+		initial  *rbacv1.ClusterRole
+		existing *rbacv1.ClusterRole
+		desired  *rbacv1.ClusterRole
+		expectFn func(*GomegaWithT, *FakeClientWithTracker, error)
+	}
+	testFn := func(tt *testCase) {
+		t.Log(tt.name)
+
+		c := fake.NewFakeClientWithScheme(scheme.Scheme)
+		withTracker := NewFakeClientWithTracker(c)
+		recorder := record.NewFakeRecorder(10)
+		control := NewRealGenericControl(withTracker, recorder)
+		typed := NewTypedControl(control)
+		controller := newTidbCluster()
+		if tt.initial != nil {
+			err := typed.Create(controller, tt.initial)
+			g.Expect(err).To(Succeed())
+		}
+		if tt.existing != nil {
+			_, err := typed.CreateOrUpdateClusterRole(controller, tt.existing)
+			g.Expect(err).To(Succeed())
+		}
+		withTracker.UpdateTracker.SetRequests(0)
+		withTracker.CreateTracker.SetRequests(0)
+		_, createErr := typed.CreateOrUpdateClusterRole(controller, tt.desired)
+		tt.expectFn(g, withTracker, createErr)
+	}
+	rb := &rbacv1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "default",
+		},
+		Rules: []rbacv1.PolicyRule{
+			rbacv1.PolicyRule{
+				Verbs: []string{"create", "patch"},
+			},
+		},
+	}
+	rb2 := rb.DeepCopy()
+	rb2.Rules[0].APIGroups = []string{"*", "tidbcluster.pingcap.com"}
+	rb2.Rules[0].Verbs = append(rb2.Rules[0].Verbs, "delete")
+	cases := []*testCase{
+		{
+			name:     "CreateOrUpdate same desired state twice will skip real updating",
+			initial:  rb,
+			existing: rb,
+			desired:  rb,
+			expectFn: func(g *GomegaWithT, c *FakeClientWithTracker, err error) {
+				g.Expect(err).To(Succeed())
+				g.Expect(c.CreateTracker.GetRequests()).To(Equal(1))
+				g.Expect(c.UpdateTracker.GetRequests()).To(Equal(0))
+			},
+		},
+		{
+			name:     "update value",
+			initial:  rb2,
+			existing: rb,
+			desired:  rb2,
+			expectFn: func(g *GomegaWithT, c *FakeClientWithTracker, err error) {
+				g.Expect(err).To(Succeed())
+				g.Expect(c.CreateTracker.GetRequests()).To(Equal(1))
+				g.Expect(c.UpdateTracker.GetRequests()).To(Equal(1))
+			},
+		},
+	}
+
+	for _, tt := range cases {
+		testFn(tt)
+	}
+}
+
+func TestCreateOrUpdateSecret(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	type testCase struct {
+		name     string
+		initial  *corev1.Secret
+		existing *corev1.Secret
+		desired  *corev1.Secret
+		expectFn func(*GomegaWithT, *FakeClientWithTracker, error)
+	}
+	testFn := func(tt *testCase) {
+		t.Log(tt.name)
+
+		c := fake.NewFakeClientWithScheme(scheme.Scheme)
+		withTracker := NewFakeClientWithTracker(c)
+		recorder := record.NewFakeRecorder(10)
+		control := NewRealGenericControl(withTracker, recorder)
+		typed := NewTypedControl(control)
+		controller := newTidbCluster()
+		if tt.initial != nil {
+			err := typed.Create(controller, tt.initial)
+			g.Expect(err).To(Succeed())
+		}
+		if tt.existing != nil {
+			_, err := typed.CreateOrUpdateSecret(controller, tt.existing)
+			g.Expect(err).To(Succeed())
+		}
+		withTracker.UpdateTracker.SetRequests(0)
+		withTracker.CreateTracker.SetRequests(0)
+		_, createErr := typed.CreateOrUpdateSecret(controller, tt.desired)
+		tt.expectFn(g, withTracker, createErr)
+	}
+	sec := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "default",
+		},
+		Data: map[string][]byte{
+			"key": []byte("value"),
+		},
+	}
+	sec2 := sec.DeepCopy()
+	sec2.Data["key"] = []byte("value2")
+	cases := []*testCase{
+		{
+			name:     "CreateOrUpdate same desired state twice will skip real updating",
+			initial:  sec,
+			existing: sec,
+			desired:  sec,
+			expectFn: func(g *GomegaWithT, c *FakeClientWithTracker, err error) {
+				g.Expect(err).To(Succeed())
+				g.Expect(c.CreateTracker.GetRequests()).To(Equal(1))
+				g.Expect(c.UpdateTracker.GetRequests()).To(Equal(0))
+			},
+		},
+		{
+			name:     "update value",
+			initial:  sec2,
+			existing: sec,
+			desired:  sec2,
+			expectFn: func(g *GomegaWithT, c *FakeClientWithTracker, err error) {
+				g.Expect(err).To(Succeed())
+				g.Expect(c.CreateTracker.GetRequests()).To(Equal(1))
+				g.Expect(c.UpdateTracker.GetRequests()).To(Equal(1))
+			},
+		},
+	}
+
+	for _, tt := range cases {
+		testFn(tt)
+	}
+}
+
 func TestCreateOrUpdateDeployment(t *testing.T) {
 	g := NewGomegaWithT(t)
 
@@ -193,8 +502,7 @@ func TestCreateOrUpdateDeployment(t *testing.T) {
 	testFn := func(tt *testCase) {
 		t.Log(tt.name)
 
-		var c client.Client
-		c = fake.NewFakeClientWithScheme(scheme.Scheme)
+		c := fake.NewFakeClientWithScheme(scheme.Scheme)
 		withTracker := NewFakeClientWithTracker(c)
 		recorder := record.NewFakeRecorder(10)
 		control := NewRealGenericControl(withTracker, recorder)
@@ -348,8 +656,7 @@ func TestCreateOrUpdateService(t *testing.T) {
 	testFn := func(tt *testCase) {
 		t.Log(tt.name)
 
-		var c client.Client
-		c = fake.NewFakeClientWithScheme(scheme.Scheme)
+		c := fake.NewFakeClientWithScheme(scheme.Scheme)
 		withTracker := NewFakeClientWithTracker(c)
 		recorder := record.NewFakeRecorder(10)
 		control := NewRealGenericControl(withTracker, recorder)
@@ -382,6 +689,8 @@ func TestCreateOrUpdateService(t *testing.T) {
 			}},
 		},
 	}
+	svc2 := svc.DeepCopy()
+	svc2.Spec.Selector["k"] = "v2"
 	cases := []*testCase{
 		{
 			name:     "CreateOrUpdate same desired state twice will skip real updating",
@@ -392,6 +701,17 @@ func TestCreateOrUpdateService(t *testing.T) {
 				g.Expect(err).To(Succeed())
 				g.Expect(c.CreateTracker.GetRequests()).To(Equal(1))
 				g.Expect(c.UpdateTracker.GetRequests()).To(Equal(0))
+			},
+		},
+		{
+			name:     "update value",
+			initial:  svc2,
+			existing: svc,
+			desired:  svc2,
+			expectFn: func(g *GomegaWithT, c *FakeClientWithTracker, err error) {
+				g.Expect(err).To(Succeed())
+				g.Expect(c.CreateTracker.GetRequests()).To(Equal(1))
+				g.Expect(c.UpdateTracker.GetRequests()).To(Equal(1))
 			},
 		},
 	}

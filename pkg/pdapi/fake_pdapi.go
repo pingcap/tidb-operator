@@ -41,6 +41,7 @@ const (
 	GetEvictLeaderSchedulersActionType ActionType = "GetEvictLeaderSchedulers"
 	GetPDLeaderActionType              ActionType = "GetPDLeader"
 	TransferPDLeaderActionType         ActionType = "TransferPDLeader"
+	GetAutoscalingPlansActionType      ActionType = "GetAutoscalingPlans"
 )
 
 type NotFoundReaction struct {
@@ -69,13 +70,13 @@ func NewFakePDClient() *FakePDClient {
 	return &FakePDClient{reactions: map[ActionType]Reaction{}}
 }
 
-func (pc *FakePDClient) AddReaction(actionType ActionType, reaction Reaction) {
-	pc.reactions[actionType] = reaction
+func (c *FakePDClient) AddReaction(actionType ActionType, reaction Reaction) {
+	c.reactions[actionType] = reaction
 }
 
 // fakeAPI is a small helper for fake API calls
-func (pc *FakePDClient) fakeAPI(actionType ActionType, action *Action) (interface{}, error) {
-	if reaction, ok := pc.reactions[actionType]; ok {
+func (c *FakePDClient) fakeAPI(actionType ActionType, action *Action) (interface{}, error) {
+	if reaction, ok := c.reactions[actionType]; ok {
 		result, err := reaction(action)
 		if err != nil {
 			return nil, err
@@ -85,73 +86,73 @@ func (pc *FakePDClient) fakeAPI(actionType ActionType, action *Action) (interfac
 	return nil, &NotFoundReaction{actionType}
 }
 
-func (pc *FakePDClient) GetHealth() (*HealthInfo, error) {
+func (c *FakePDClient) GetHealth() (*HealthInfo, error) {
 	action := &Action{}
-	result, err := pc.fakeAPI(GetHealthActionType, action)
+	result, err := c.fakeAPI(GetHealthActionType, action)
 	if err != nil {
 		return nil, err
 	}
 	return result.(*HealthInfo), nil
 }
 
-func (pc *FakePDClient) GetConfig() (*PDConfigFromAPI, error) {
+func (c *FakePDClient) GetConfig() (*PDConfigFromAPI, error) {
 	action := &Action{}
-	result, err := pc.fakeAPI(GetConfigActionType, action)
+	result, err := c.fakeAPI(GetConfigActionType, action)
 	if err != nil {
 		return nil, err
 	}
 	return result.(*PDConfigFromAPI), nil
 }
 
-func (pc *FakePDClient) GetCluster() (*metapb.Cluster, error) {
+func (c *FakePDClient) GetCluster() (*metapb.Cluster, error) {
 	action := &Action{}
-	result, err := pc.fakeAPI(GetClusterActionType, action)
+	result, err := c.fakeAPI(GetClusterActionType, action)
 	if err != nil {
 		return nil, err
 	}
 	return result.(*metapb.Cluster), nil
 }
 
-func (pc *FakePDClient) GetMembers() (*MembersInfo, error) {
+func (c *FakePDClient) GetMembers() (*MembersInfo, error) {
 	action := &Action{}
-	result, err := pc.fakeAPI(GetMembersActionType, action)
+	result, err := c.fakeAPI(GetMembersActionType, action)
 	if err != nil {
 		return nil, err
 	}
 	return result.(*MembersInfo), nil
 }
 
-func (pc *FakePDClient) GetStores() (*StoresInfo, error) {
+func (c *FakePDClient) GetStores() (*StoresInfo, error) {
 	action := &Action{}
-	result, err := pc.fakeAPI(GetStoresActionType, action)
+	result, err := c.fakeAPI(GetStoresActionType, action)
 	if err != nil {
 		return nil, err
 	}
 	return result.(*StoresInfo), nil
 }
 
-func (pc *FakePDClient) GetTombStoneStores() (*StoresInfo, error) {
+func (c *FakePDClient) GetTombStoneStores() (*StoresInfo, error) {
 	action := &Action{}
-	result, err := pc.fakeAPI(GetTombStoneStoresActionType, action)
+	result, err := c.fakeAPI(GetTombStoneStoresActionType, action)
 	if err != nil {
 		return nil, err
 	}
 	return result.(*StoresInfo), nil
 }
 
-func (pc *FakePDClient) GetStore(id uint64) (*StoreInfo, error) {
+func (c *FakePDClient) GetStore(id uint64) (*StoreInfo, error) {
 	action := &Action{
 		ID: id,
 	}
-	result, err := pc.fakeAPI(GetStoreActionType, action)
+	result, err := c.fakeAPI(GetStoreActionType, action)
 	if err != nil {
 		return nil, err
 	}
 	return result.(*StoreInfo), nil
 }
 
-func (pc *FakePDClient) DeleteStore(id uint64) error {
-	if reaction, ok := pc.reactions[DeleteStoreActionType]; ok {
+func (c *FakePDClient) DeleteStore(id uint64) error {
+	if reaction, ok := c.reactions[DeleteStoreActionType]; ok {
 		action := &Action{ID: id}
 		_, err := reaction(action)
 		return err
@@ -159,8 +160,8 @@ func (pc *FakePDClient) DeleteStore(id uint64) error {
 	return nil
 }
 
-func (pc *FakePDClient) SetStoreState(id uint64, state string) error {
-	if reaction, ok := pc.reactions[SetStoreStateActionType]; ok {
+func (c *FakePDClient) SetStoreState(id uint64, state string) error {
+	if reaction, ok := c.reactions[SetStoreStateActionType]; ok {
 		action := &Action{ID: id}
 		_, err := reaction(action)
 		return err
@@ -168,8 +169,8 @@ func (pc *FakePDClient) SetStoreState(id uint64, state string) error {
 	return nil
 }
 
-func (pc *FakePDClient) DeleteMemberByID(id uint64) error {
-	if reaction, ok := pc.reactions[DeleteMemberByIDActionType]; ok {
+func (c *FakePDClient) DeleteMemberByID(id uint64) error {
+	if reaction, ok := c.reactions[DeleteMemberByIDActionType]; ok {
 		action := &Action{ID: id}
 		_, err := reaction(action)
 		return err
@@ -177,8 +178,8 @@ func (pc *FakePDClient) DeleteMemberByID(id uint64) error {
 	return nil
 }
 
-func (pc *FakePDClient) DeleteMember(name string) error {
-	if reaction, ok := pc.reactions[DeleteMemberActionType]; ok {
+func (c *FakePDClient) DeleteMember(name string) error {
+	if reaction, ok := c.reactions[DeleteMemberActionType]; ok {
 		action := &Action{Name: name}
 		_, err := reaction(action)
 		return err
@@ -187,8 +188,8 @@ func (pc *FakePDClient) DeleteMember(name string) error {
 }
 
 // SetStoreLabels sets TiKV labels
-func (pc *FakePDClient) SetStoreLabels(storeID uint64, labels map[string]string) (bool, error) {
-	if reaction, ok := pc.reactions[SetStoreLabelsActionType]; ok {
+func (c *FakePDClient) SetStoreLabels(storeID uint64, labels map[string]string) (bool, error) {
+	if reaction, ok := c.reactions[SetStoreLabelsActionType]; ok {
 		action := &Action{ID: storeID, Labels: labels}
 		result, err := reaction(action)
 		return result.(bool), err
@@ -197,8 +198,8 @@ func (pc *FakePDClient) SetStoreLabels(storeID uint64, labels map[string]string)
 }
 
 // UpdateReplicationConfig updates the replication config
-func (pc *FakePDClient) UpdateReplicationConfig(config PDReplicationConfig) error {
-	if reaction, ok := pc.reactions[UpdateReplicationActionType]; ok {
+func (c *FakePDClient) UpdateReplicationConfig(config PDReplicationConfig) error {
+	if reaction, ok := c.reactions[UpdateReplicationActionType]; ok {
 		action := &Action{Replication: config}
 		_, err := reaction(action)
 		return err
@@ -206,8 +207,8 @@ func (pc *FakePDClient) UpdateReplicationConfig(config PDReplicationConfig) erro
 	return nil
 }
 
-func (pc *FakePDClient) BeginEvictLeader(storeID uint64) error {
-	if reaction, ok := pc.reactions[BeginEvictLeaderActionType]; ok {
+func (c *FakePDClient) BeginEvictLeader(storeID uint64) error {
+	if reaction, ok := c.reactions[BeginEvictLeaderActionType]; ok {
 		action := &Action{ID: storeID}
 		_, err := reaction(action)
 		return err
@@ -215,8 +216,8 @@ func (pc *FakePDClient) BeginEvictLeader(storeID uint64) error {
 	return nil
 }
 
-func (pc *FakePDClient) EndEvictLeader(storeID uint64) error {
-	if reaction, ok := pc.reactions[EndEvictLeaderActionType]; ok {
+func (c *FakePDClient) EndEvictLeader(storeID uint64) error {
+	if reaction, ok := c.reactions[EndEvictLeaderActionType]; ok {
 		action := &Action{ID: storeID}
 		_, err := reaction(action)
 		return err
@@ -224,8 +225,8 @@ func (pc *FakePDClient) EndEvictLeader(storeID uint64) error {
 	return nil
 }
 
-func (pc *FakePDClient) GetEvictLeaderSchedulers() ([]string, error) {
-	if reaction, ok := pc.reactions[GetEvictLeaderSchedulersActionType]; ok {
+func (c *FakePDClient) GetEvictLeaderSchedulers() ([]string, error) {
+	if reaction, ok := c.reactions[GetEvictLeaderSchedulersActionType]; ok {
 		action := &Action{}
 		result, err := reaction(action)
 		return result.([]string), err
@@ -233,8 +234,8 @@ func (pc *FakePDClient) GetEvictLeaderSchedulers() ([]string, error) {
 	return nil, nil
 }
 
-func (pc *FakePDClient) GetPDLeader() (*pdpb.Member, error) {
-	if reaction, ok := pc.reactions[GetPDLeaderActionType]; ok {
+func (c *FakePDClient) GetPDLeader() (*pdpb.Member, error) {
+	if reaction, ok := c.reactions[GetPDLeaderActionType]; ok {
 		action := &Action{}
 		result, err := reaction(action)
 		return result.(*pdpb.Member), err
@@ -242,11 +243,20 @@ func (pc *FakePDClient) GetPDLeader() (*pdpb.Member, error) {
 	return nil, nil
 }
 
-func (pc *FakePDClient) TransferPDLeader(memberName string) error {
-	if reaction, ok := pc.reactions[TransferPDLeaderActionType]; ok {
+func (c *FakePDClient) TransferPDLeader(memberName string) error {
+	if reaction, ok := c.reactions[TransferPDLeaderActionType]; ok {
 		action := &Action{Name: memberName}
 		_, err := reaction(action)
 		return err
 	}
 	return nil
+}
+
+func (c *FakePDClient) GetAutoscalingPlans(strategy Strategy) ([]Plan, error) {
+	if reaction, ok := c.reactions[GetAutoscalingPlansActionType]; ok {
+		action := &Action{}
+		result, err := reaction(action)
+		return result.([]Plan), err
+	}
+	return nil, nil
 }

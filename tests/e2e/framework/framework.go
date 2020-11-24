@@ -80,7 +80,6 @@ func NewDefaultFramework(baseName string) *framework.Framework {
 				framework.Logf("successfully set PersistentVolumeReclaimPolicy of PV %q to Delete", pv.Name)
 			}
 		}
-		return
 	})
 	return f
 }

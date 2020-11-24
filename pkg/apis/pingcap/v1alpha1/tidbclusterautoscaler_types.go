@@ -14,16 +14,9 @@
 package v1alpha1
 
 import (
-	"k8s.io/api/autoscaling/v2beta2"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
-
-type AutoScalerPhase string
-
-const (
-	NormalAutoScalerPhase          AutoScalerPhase = "Normal"
-	ReadyToScaleOutAutoScalerPhase AutoScalerPhase = "ReadyToScaleOut"
-	ReadyToScaleInAutoScalerPhase  AutoScalerPhase = "ReadyToScaleIn"
 )
 
 // +genclient
@@ -40,7 +33,7 @@ type TidbClusterAutoScaler struct {
 	Spec TidbClusterAutoScalerSpec `json:"spec"`
 
 	// Status describe the status of the TidbClusterAutoScaler
-	Status TidbClusterAutoSclaerStatus `json:"status"`
+	Status TidbClusterAutoScalerStatus `json:"status"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -61,16 +54,6 @@ type TidbClusterAutoScalerSpec struct {
 	// TidbClusterRef describe the target TidbCluster
 	Cluster TidbClusterRef `json:"cluster"`
 
-	// We used prometheus to fetch the metrics resources until the pd could provide it.
-	// MetricsUrl represents the url to fetch the metrics info
-	// +optional
-	MetricsUrl *string `json:"metricsUrl,omitempty"`
-
-	// TidbMonitorRef describe the target TidbMonitor, when MetricsUrl and Monitor are both set,
-	// Operator will use MetricsUrl
-	// +optional
-	Monitor *TidbMonitorRef `json:"monitor,omitempty"`
-
 	// TiKV represents the auto-scaling spec for tikv
 	// +optional
 	TiKV *TikvAutoScalerSpec `json:"tikv,omitempty"`
@@ -78,6 +61,30 @@ type TidbClusterAutoScalerSpec struct {
 	// TiDB represents the auto-scaling spec for tidb
 	// +optional
 	TiDB *TidbAutoScalerSpec `json:"tidb,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// AutoResource describes the resource type definitions
+type AutoResource struct {
+	// CPU defines the CPU of this resource type
+	CPU resource.Quantity `json:"cpu"`
+	// Memory defines the memory of this resource type
+	Memory resource.Quantity `json:"memory"`
+	// Storage defines the storage of this resource type
+	Storage resource.Quantity `json:"storage,omitempty"`
+	// Count defines the max availabel count of this resource type
+	Count *int32 `json:"count,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// AutoRule describes the rules for auto-scaling with PD API
+type AutoRule struct {
+	// MaxThreshold defines the threshold to scale out
+	MaxThreshold float64 `json:"max_threshold"`
+	// MinThreshold defines the threshold to scale in, not applicable to `storage` rule
+	MinThreshold *float64 `json:"min_threshold,omitempty"`
+	// ResourceTypes defines the resource types that can be used for scaling
+	ResourceTypes []string `json:"resource_types,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -95,15 +102,8 @@ type TidbAutoScalerSpec struct {
 // +k8s:openapi-gen=true
 // BasicAutoScalerSpec describes the basic spec for auto-scaling
 type BasicAutoScalerSpec struct {
-	// maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out.
-	// It cannot be less than minReplicas.
-	MaxReplicas int32 `json:"maxReplicas"`
-
-	// minReplicas is the lower limit for the number of replicas to which the autoscaler
-	// can scale down.  It defaults to 1 pod. Scaling is active as long as at least one metric value is
-	// available.
-	// +optional
-	MinReplicas *int32 `json:"minReplicas,omitempty"`
+	// Rules defines the rules for auto-scaling with PD API
+	Rules map[corev1.ResourceName]AutoRule `json:"rules,omitempty"`
 
 	// ScaleInIntervalSeconds represents the duration seconds between each auto-scaling-in
 	// If not set, the default ScaleInIntervalSeconds will be set to 500
@@ -115,41 +115,26 @@ type BasicAutoScalerSpec struct {
 	// +optional
 	ScaleOutIntervalSeconds *int32 `json:"scaleOutIntervalSeconds,omitempty"`
 
-	// +optional
-	Metrics []CustomMetric `json:"metrics,omitempty"`
-
-	// MetricsTimeDuration describes the Time duration to be queried in the Prometheus
-	// +optional
-	MetricsTimeDuration *string `json:"metricsTimeDuration,omitempty"`
-	// ExternalEndpoint makes the auto-scaler controller able to query the external service
+	// External makes the auto-scaler controller able to query the external service
 	// to fetch the recommended replicas for TiKV/TiDB
 	// +optional
-	ExternalEndpoint *ExternalEndpoint `json:"externalEndpoint,omitempty"`
+	External *ExternalConfig `json:"external,omitempty"`
+
+	// Resources represent the resource type definitions that can be used for TiDB/TiKV
+	// The key is resource_type name of the resource
+	// +optional
+	Resources map[string]AutoResource `json:"resources,omitempty"`
 }
 
-type CustomMetric struct {
-	// metrics contains the specifications for which to use to calculate the
-	// desired replica count (the maximum replica count across all metrics will
-	// be used).  The desired replica count is calculated multiplying the
-	// ratio between the target value and the current value by the current
-	// number of pods.  Ergo, metrics used must decrease as the pod count is
-	// increased, and vice-versa.  See the individual metric source types for
-	// more information about how each type of metric must respond.
-	// If not set, the auto-scaling won't happen.
+// +k8s:openapi-gen=true
+// ExternalConfig represents the external config.
+type ExternalConfig struct {
+	// ExternalEndpoint makes the auto-scaler controller able to query the
+	// external service to fetch the recommended replicas for TiKV/TiDB
 	// +optional
-	v2beta2.MetricSpec `json:",inline"`
-	// LeastStoragePressurePeriodSeconds is only for the storage auto-scaling case when the resource name in the metricSpec
-	// is `Storage`. When the Storage metrics meet the pressure, Operator would wait
-	// LeastStoragePressurePeriodSeconds duration then able to scale out.
-	// If not set, the default value is `300`
-	// +optional
-	LeastStoragePressurePeriodSeconds *int64 `json:"leastStoragePressurePeriodSeconds,omitempty"`
-	// LeastRemainAvailableStoragePercent indicates the least remaining available storage percent compare to
-	// the capacity storage. If the available storage is lower than the capacity storage * LeastRemainAvailableStoragePercent,
-	// the storage status will become storage pressure and ready to be scaled out.
-	// LeastRemainAvailableStoragePercent should between 5 and 90. If not set, the default value would be 10
-	// +optional
-	LeastRemainAvailableStoragePercent *int64 `json:"leastRemainAvailableStoragePercent,omitempty"`
+	Endpoint ExternalEndpoint `json:"endpoint"`
+	// maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out.
+	MaxReplicas int32 `json:"maxReplicas"`
 }
 
 // +k8s:openapi-gen=true
@@ -169,14 +154,14 @@ type TidbMonitorRef struct {
 }
 
 // +k8s:openapi-gen=true
-// TidbClusterAutoSclaerStatus describe the whole status
-type TidbClusterAutoSclaerStatus struct {
-	// Tikv describes the status for the tikv in the last auto-scaling reconciliation
+// TidbClusterAutoScalerStatus describe the whole status
+type TidbClusterAutoScalerStatus struct {
+	// Tikv describes the status of each group for the tikv in the last auto-scaling reconciliation
 	// +optional
-	TiKV *TikvAutoScalerStatus `json:"tikv,omitempty"`
-	// Tidb describes the status for the tidb in the last auto-scaling reconciliation
+	TiKV map[string]TikvAutoScalerStatus `json:"tikv,omitempty"`
+	// Tidb describes the status of each group for the tidb in the last auto-scaling reconciliation
 	// +optional
-	TiDB *TidbAutoScalerStatus `json:"tidb,omitempty"`
+	TiDB map[string]TidbAutoScalerStatus `json:"tidb,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -194,52 +179,9 @@ type TikvAutoScalerStatus struct {
 // +k8s:openapi-gen=true
 // BasicAutoScalerStatus describe the basic auto-scaling status
 type BasicAutoScalerStatus struct {
-	// MetricsStatusList describes the metrics status in the last auto-scaling reconciliation
-	// +optional
-	MetricsStatusList []MetricsStatus `json:"metrics,omitempty"`
-	// CurrentReplicas describes the current replicas for the component(tidb/tikv)
-	CurrentReplicas int32 `json:"currentReplicas"`
-	// RecommendedReplicas describes the calculated replicas in the last auto-scaling reconciliation for the component(tidb/tikv)
-	// +optional
-	RecommendedReplicas int32 `json:"recommendedReplicas,omitempty"`
 	// LastAutoScalingTimestamp describes the last auto-scaling timestamp for the component(tidb/tikv)
 	// +optional
 	LastAutoScalingTimestamp *metav1.Time `json:"lastAutoScalingTimestamp,omitempty"`
-}
-
-// +k8s:openapi-gen=true
-// MetricsStatus describe the basic metrics status in the last auto-scaling reconciliation
-type MetricsStatus struct {
-	// Name indicates the metrics name
-	Name string `json:"name"`
-	// CurrentValue indicates the value calculated in the last auto-scaling reconciliation
-	// +optional
-	CurrentValue *string `json:"currentValue,omitempty"`
-	// TargetValue indicates the threshold value for this metrics in auto-scaling
-	// +optional
-	ThresholdValue *string `json:"thresholdValue,omitempty"`
-	// +optional
-	StorageMetricsStatus `json:",inline"`
-}
-
-// +k8s:openapi-gen=true
-// StorageMetricsStatus describe the storage metrics status in the last auto-scaling reconciliation
-type StorageMetricsStatus struct {
-	// StoragePressure indicates whether storage under pressure
-	// +optional
-	StoragePressure *bool `json:"storagePressure,omitempty"`
-	// StoragePressureStartTime indicates the timestamp of the StoragePressure fist become true from false or nil
-	// +optional
-	StoragePressureStartTime *metav1.Time `json:"storagePressureStartTime,omitempty"`
-	// +optional
-	AvailableStorage *string `json:"availableStorage,omitempty"`
-	// +optional
-	CapacityStorage *string `json:"capacityStorage,omitempty"`
-	// BaselineAvailableStorage indicates the baseline for available storage size.
-	// This is calculated by the capacity storage size * storage auto-scaling baseline percent value
-	// If the AvailableStorage is less than the BaselineAvailableStorage, the database is under StoragePressure
-	// optional
-	BaselineAvailableStorage *string `json:"baselineAvailableStorage,omitempty"`
 }
 
 // +k8s:openapi-gen=true

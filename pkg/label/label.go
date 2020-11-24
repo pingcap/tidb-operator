@@ -62,6 +62,15 @@ const (
 	// BackupProtectionFinalizer is the name of finalizer on backups
 	BackupProtectionFinalizer string = "tidb.pingcap.com/backup-protection"
 
+	// AutoScalingGroupLabelKey describes the autoscaling group of the TiDB
+	AutoScalingGroupLabelKey = "tidb.pingcap.com/autoscaling-group"
+	// AutoInstanceLabelKey is label key used in autoscaling, it represents the autoscaler name
+	AutoInstanceLabelKey string = "tidb.pingcap.com/auto-instance"
+	// AutoComponentLabelKey is label key used in autoscaling, it represents which component is auto scaled
+	AutoComponentLabelKey string = "tidb.pingcap.com/auto-component"
+	// BaseTCLabelKey is label key used for heterogeneous clusters to refer to its base TidbCluster
+	BaseTCLabelKey string = "tidb.pingcap.com/base-tc"
+
 	// High availability is realized based on the topology
 	AnnHATopologyKey = "pingcap.com/ha-topology-key"
 
@@ -86,8 +95,6 @@ const (
 	AnnSysctlInit = "tidb.pingcap.com/sysctl-init"
 	// AnnEvictLeaderBeginTime is pod annotation key to indicate the begin time for evicting region leader
 	AnnEvictLeaderBeginTime = "tidb.pingcap.com/evictLeaderBeginTime"
-	// AnnPodDeferDeleting is pod annotation key to indicate the pod which need to be restarted
-	AnnPodDeferDeleting = "tidb.pingcap.com/pod-defer-deleting"
 	// AnnStsSyncTimestamp is sts annotation key to indicate the last timestamp the operator sync the sts
 	AnnStsLastSyncTimestamp = "tidb.pingcap.com/sync-timestamp"
 
@@ -108,13 +115,6 @@ const (
 	AnnDMMasterDeleteSlots = "dm-master.tidb.pingcap.com/delete-slots"
 	// DMWorkerDeleteSlots is annotation key of dm-worker delete slots.
 	AnnDMWorkerDeleteSlots = "dm-worker.tidb.pingcap.com/delete-slots"
-
-	// AnnTiDBLastAutoScalingTimestamp is annotation key of tidbcluster to indicate the last timestamp for tidb auto-scaling
-	AnnTiDBLastAutoScalingTimestamp = "tidb.tidb.pingcap.com/last-autoscaling-timestamp"
-	// AnnTiKVLastAutoScalingTimestamp is annotation key of tidbclusterto which ordinal is created by tikv auto-scaling
-	AnnTiKVLastAutoScalingTimestamp = "tikv.tidb.pingcap.com/last-autoscaling-timestamp"
-	// AnnLastSyncingTimestamp records last sync timestamp
-	AnnLastSyncingTimestamp = "tidb.pingcap.com/last-syncing-timestamp"
 
 	// AnnTiKVAutoScalingOutOrdinals describe the tikv pods' ordinal list which is created by auto-scaling out
 	AnnTiKVAutoScalingOutOrdinals = "tikv.tidb.pingcap.com/scale-out-ordinals"
@@ -455,8 +455,4 @@ func (l Label) IsManagedByTiDBOperator() bool {
 
 func (l Label) IsTidbClusterPod() bool {
 	return l[NameLabelKey] == "tidb-cluster"
-}
-
-func (l Label) IsGroupPod() bool {
-	return l[NameLabelKey] == "tidb-cluster-group"
 }

@@ -57,7 +57,6 @@ func TestPDDeleterDelete(t *testing.T) {
 
 	testFn := func(test *testcase) {
 		t.Log(test.name)
-
 		/**
 		init statefulset with 3 replicas
 		deletePod := tc-pd-2
@@ -139,7 +138,7 @@ func TestPDDeleterDelete(t *testing.T) {
 		if test.isLeader {
 			fakePDClient.AddReaction(pdapi.GetPDLeaderActionType, func(action *pdapi.Action) (interface{}, error) {
 				leader := pdpb.Member{
-					Name: pdUtils.PdPodName(tcName, 3),
+					Name: deletePod.Name,
 				}
 				return &leader, nil
 			})

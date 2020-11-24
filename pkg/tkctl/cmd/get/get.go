@@ -174,7 +174,6 @@ func (o *GetOptions) Complete(tkcContext *config.TkcContext, cmd *cobra.Command,
 			o.GetTiKV = true
 			o.GetTiDB = true
 			o.GetVolume = true
-			break
 		case kindPD:
 			o.GetPD = true
 		case kindTiKV:
@@ -354,9 +353,7 @@ func (o *GetOptions) printGeneric(objs []runtime.Object) error {
 			},
 			ListMeta: metav1.ListMeta{},
 		}
-		for _, obj := range objs {
-			list.Items = append(list.Items, obj)
-		}
+		list.Items = append(list.Items, objs...)
 
 		listData, err := json.Marshal(list)
 		if err != nil {

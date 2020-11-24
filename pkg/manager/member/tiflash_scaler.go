@@ -21,46 +21,43 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
 type tiflashScaler struct {
 	generalScaler
-	podLister corelisters.PodLister
 }
 
 // NewTiFlashScaler returns a tiflash Scaler
-func NewTiFlashScaler(pdControl pdapi.PDControlInterface,
-	pvcLister corelisters.PersistentVolumeClaimLister,
-	pvcControl controller.PVCControlInterface,
-	podLister corelisters.PodLister) Scaler {
-	return &tiflashScaler{generalScaler{pdControl, pvcLister, pvcControl}, podLister}
+func NewTiFlashScaler(deps *controller.Dependencies) Scaler {
+	return &tiflashScaler{generalScaler: generalScaler{deps: deps}}
 }
 
-func (tfs *tiflashScaler) Scale(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (s *tiflashScaler) Scale(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	scaling, _, _, _ := scaleOne(oldSet, newSet)
 	if scaling > 0 {
-		return tfs.ScaleOut(tc, oldSet, newSet)
+		return s.ScaleOut(meta, oldSet, newSet)
 	} else if scaling < 0 {
-		return tfs.ScaleIn(tc, oldSet, newSet)
+		return s.ScaleIn(meta, oldSet, newSet)
 	}
 	// we only sync auto scaler annotations when we are finishing syncing scaling
-	return tfs.SyncAutoScalerAnn(tc, oldSet)
+	return s.SyncAutoScalerAnn(meta, oldSet)
 }
 
-func (tfs *tiflashScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
-	resetReplicas(newSet, oldSet)
-	if tc.TiFlashUpgrading() {
+func (s *tiflashScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	tc, ok := meta.(*v1alpha1.TidbCluster)
+	if !ok {
 		return nil
 	}
 
+	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
+	resetReplicas(newSet, oldSet)
+
 	klog.Infof("scaling out tiflash statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
-	_, err := tfs.deleteDeferDeletingPVC(tc, oldSet.GetName(), v1alpha1.TiFlashMemberType, ordinal)
+	_, err := s.deleteDeferDeletingPVC(tc, oldSet.GetName(), v1alpha1.TiFlashMemberType, ordinal)
 	if err != nil {
 		return err
 	}
@@ -69,24 +66,22 @@ func (tfs *tiflashScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.Statef
 	return nil
 }
 
-func (tfs *tiflashScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (s *tiflashScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	tc, ok := meta.(*v1alpha1.TidbCluster)
+	if !ok {
+		return nil
+	}
+
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	// we can only remove one member at a time when scaling in
 	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
 	resetReplicas(newSet, oldSet)
 
-	// tiflash can not scale in when it is upgrading
-	if tc.TiFlashUpgrading() {
-		klog.Infof("TidbCluster: [%s/%s]'s tiflash is upgrading, postpone the scale in until the upgrade completes",
-			ns, tcName)
-		return nil
-	}
-
 	klog.Infof("scaling in tiflash statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
 	// We need delete store from cluster before decreasing the statefulset replicas
 	podName := ordinalPodName(v1alpha1.TiFlashMemberType, tcName, ordinal)
-	pod, err := tfs.podLister.Pods(ns).Get(podName)
+	pod, err := s.deps.PodLister.Pods(ns).Get(podName)
 	if err != nil {
 		return fmt.Errorf("tiflashScaler.ScaleIn: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
 	}
@@ -105,13 +100,13 @@ func (tfs *tiflashScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 				return err
 			}
 			if state != v1alpha1.TiKVStateOffline {
-				if err := controller.GetPDClient(tfs.pdControl, tc).DeleteStore(id); err != nil {
+				if err := controller.GetPDClient(s.deps.PDControl, tc).DeleteStore(id); err != nil {
 					klog.Errorf("tiflash scale in: failed to delete store %d, %v", id, err)
 					return err
 				}
 				klog.Infof("tiflash scale in: delete store %d for tiflash %s/%s successfully", id, ns, podName)
 			}
-			return controller.RequeueErrorf("TiFlash %s/%s store %d  still in cluster, state: %s", ns, podName, id, state)
+			return controller.RequeueErrorf("TiFlash %s/%s store %d is still in cluster, state: %s", ns, podName, id, state)
 		}
 	}
 	for id, store := range tc.Status.TiFlash.TombstoneStores {
@@ -124,7 +119,7 @@ func (tfs *tiflashScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 			// TODO: double check if store is really not in Up/Offline/Down state
 			klog.Infof("TiFlash %s/%s store %d becomes tombstone", ns, podName, id)
 
-			err = tfs.updateDeferDeletingPVC(tc, v1alpha1.TiFlashMemberType, ordinal)
+			err = s.updateDeferDeletingPVC(tc, v1alpha1.TiFlashMemberType, ordinal)
 			if err != nil {
 				return err
 			}
@@ -140,7 +135,7 @@ func (tfs *tiflashScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 	// 2. This can happen when TiFlash pod has not been successfully registered in the cluster, such as always pending.
 	//    In this situation we should delete this TiFlash pod immediately to avoid blocking the subsequent operations.
 	if !podutil.IsPodReady(pod) {
-		safeTimeDeadline := pod.CreationTimestamp.Add(5 * controller.ResyncDuration)
+		safeTimeDeadline := pod.CreationTimestamp.Add(5 * s.deps.CLIConfig.ResyncDuration)
 		if time.Now().Before(safeTimeDeadline) {
 			// Wait for 5 resync periods to ensure that the following situation does not occur:
 			//
@@ -153,8 +148,8 @@ func (tfs *tiflashScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 			return fmt.Errorf("TiFlash %s/%s is not ready, wait for some resync periods to synced its status", ns, podName)
 		}
 		klog.Infof("Pod %s/%s not ready for more than %v and no store for it, scale in it",
-			ns, podName, 5*controller.ResyncDuration)
-		err = tfs.updateDeferDeletingPVC(tc, v1alpha1.TiFlashMemberType, ordinal)
+			ns, podName, 5*s.deps.CLIConfig.ResyncDuration)
+		err = s.updateDeferDeletingPVC(tc, v1alpha1.TiFlashMemberType, ordinal)
 		if err != nil {
 			return err
 		}
@@ -165,8 +160,7 @@ func (tfs *tiflashScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 }
 
 // SyncAutoScalerAnn reclaims the auto-scaling-out slots if the target pods no longer exist
-func (tfs *tiflashScaler) SyncAutoScalerAnn(tc *v1alpha1.TidbCluster, actual *apps.StatefulSet) error {
-
+func (s *tiflashScaler) SyncAutoScalerAnn(meta metav1.Object, actual *apps.StatefulSet) error {
 	return nil
 }
 
@@ -177,25 +171,25 @@ func NewFakeTiFlashScaler() Scaler {
 	return &fakeTiFlashScaler{}
 }
 
-func (fsd *fakeTiFlashScaler) Scale(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (s *fakeTiFlashScaler) Scale(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	if *newSet.Spec.Replicas > *oldSet.Spec.Replicas {
-		return fsd.ScaleOut(tc, oldSet, newSet)
+		return s.ScaleOut(meta, oldSet, newSet)
 	} else if *newSet.Spec.Replicas < *oldSet.Spec.Replicas {
-		return fsd.ScaleIn(tc, oldSet, newSet)
+		return s.ScaleIn(meta, oldSet, newSet)
 	}
 	return nil
 }
 
-func (fsd *fakeTiFlashScaler) ScaleOut(_ *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (s *fakeTiFlashScaler) ScaleOut(_ metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	setReplicasAndDeleteSlots(newSet, *oldSet.Spec.Replicas+1, nil)
 	return nil
 }
 
-func (fsd *fakeTiFlashScaler) ScaleIn(_ *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (s *fakeTiFlashScaler) ScaleIn(_ metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	setReplicasAndDeleteSlots(newSet, *oldSet.Spec.Replicas-1, nil)
 	return nil
 }
 
-func (fsd *fakeTiFlashScaler) SyncAutoScalerAnn(tc *v1alpha1.TidbCluster, actual *apps.StatefulSet) error {
+func (s *fakeTiFlashScaler) SyncAutoScalerAnn(meta metav1.Object, actual *apps.StatefulSet) error {
 	return nil
 }
