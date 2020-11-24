@@ -201,16 +201,18 @@ func GenerateStorageCertEnv(ns string, useKMS bool, provider v1alpha1.StoragePro
 		}
 	case v1alpha1.BackupStorageTypeGcs:
 		gcsSecretName := provider.Gcs.SecretName
-		secret, err := kubeCli.CoreV1().Secrets(ns).Get(gcsSecretName, metav1.GetOptions{})
-		if err != nil {
-			err := fmt.Errorf("get gcs secret %s/%s failed, err: %v", ns, gcsSecretName, err)
-			return certEnv, "GetGcsSecretFailed", err
-		}
+		if gcsSecretName != "" {
+			secret, err := kubeCli.CoreV1().Secrets(ns).Get(gcsSecretName, metav1.GetOptions{})
+			if err != nil {
+				err := fmt.Errorf("get gcs secret %s/%s failed, err: %v", ns, gcsSecretName, err)
+				return certEnv, "GetGcsSecretFailed", err
+			}
 
-		keyStr, exist := CheckAllKeysExistInSecret(secret, constants.GcsCredentialsKey)
-		if !exist {
-			err := fmt.Errorf("the gcs secret %s/%s missing some keys %s", ns, gcsSecretName, keyStr)
-			return certEnv, "gcsKeyNotExist", err
+			keyStr, exist := CheckAllKeysExistInSecret(secret, constants.GcsCredentialsKey)
+			if !exist {
+				err := fmt.Errorf("the gcs secret %s/%s missing some keys %s", ns, gcsSecretName, keyStr)
+				return certEnv, "gcsKeyNotExist", err
+			}
 		}
 
 		certEnv, reason, err = generateGcsCertEnvVar(provider.Gcs)

@@ -14,18 +14,55 @@
 package restore
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/backup/constants"
-	"github.com/pingcap/tidb-operator/pkg/controller"
-	v1 "k8s.io/api/core/v1"
+	"github.com/pingcap/tidb-operator/pkg/backup/testutils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 )
+
+type helper struct {
+	testutils.Helper
+}
+
+func newHelper(t *testing.T) *helper {
+	h := testutils.NewHelper(t)
+	return &helper{*h}
+}
+
+func (h *helper) createRestore(restore *v1alpha1.Restore) {
+	h.T.Helper()
+	g := NewGomegaWithT(h.T)
+	var err error
+
+	_, err = h.Deps.Clientset.PingcapV1alpha1().Restores(restore.Namespace).Create(restore)
+	g.Expect(err).Should(BeNil())
+	g.Eventually(func() error {
+		_, err := h.Deps.RestoreLister.Restores(restore.Namespace).Get(restore.Name)
+		return err
+	}, time.Second*10).Should(BeNil())
+}
+
+func (h *helper) hasCondition(ns string, name string, tp v1alpha1.RestoreConditionType, reasonSub string) {
+	h.T.Helper()
+	g := NewGomegaWithT(h.T)
+	get, err := h.Deps.Clientset.PingcapV1alpha1().Restores(ns).Get(name, metav1.GetOptions{})
+	g.Expect(err).Should(BeNil())
+	for _, c := range get.Status.Conditions {
+		if c.Type == tp {
+			if reasonSub == "" || strings.Contains(c.Reason, reasonSub) {
+				return
+			}
+			h.T.Fatalf("%s do not match reason %s", reasonSub, c.Reason)
+		}
+	}
+	h.T.Fatalf("%s/%s do not has condition type: %s, cur conds: %v", ns, name, tp, get.Status.Conditions)
+}
 
 var validDumpRestore = &v1alpha1.Restore{
 	Spec: v1alpha1.RestoreSpec{
@@ -42,6 +79,33 @@ var validDumpRestore = &v1alpha1.Restore{
 			},
 		},
 	},
+}
+
+func genValidBRRestores() []*v1alpha1.Restore {
+	var rs []*v1alpha1.Restore
+	for i, sp := range testutils.GenValidStorageProviders() {
+		r := &v1alpha1.Restore{
+			Spec: v1alpha1.RestoreSpec{
+				To: &v1alpha1.TiDBAccessConfig{
+					Host:       "localhost",
+					SecretName: fmt.Sprintf("backup_secret_%d", i),
+				},
+				StorageSize:     "1G",
+				StorageProvider: sp,
+				Type:            v1alpha1.BackupTypeDB,
+				BR: &v1alpha1.BRConfig{
+					ClusterNamespace: "ns",
+					Cluster:          fmt.Sprintf("tidb_%d", i),
+					DB:               "dbName",
+				},
+			},
+		}
+		r.Namespace = "ns"
+		r.Name = fmt.Sprintf("backup_name_%d", i)
+		rs = append(rs, r)
+	}
+
+	return rs
 }
 
 var validBRRestore = &v1alpha1.Restore{
@@ -67,8 +131,8 @@ var validBRRestore = &v1alpha1.Restore{
 func TestInvalid(t *testing.T) {
 	g := NewGomegaWithT(t)
 	helper := newHelper(t)
-	defer helper.close()
-	deps := helper.deps
+	defer helper.Close()
+	deps := helper.Deps
 	var err error
 
 	restore := &v1alpha1.Restore{}
@@ -85,8 +149,8 @@ func TestInvalid(t *testing.T) {
 func TestDumplingRestore(t *testing.T) {
 	g := NewGomegaWithT(t)
 	helper := newHelper(t)
-	defer helper.close()
-	deps := helper.deps
+	defer helper.Close()
+	deps := helper.Deps
 	var err error
 
 	// create restore
@@ -94,138 +158,31 @@ func TestDumplingRestore(t *testing.T) {
 	restore.Namespace = "ns"
 	restore.Name = "name"
 	helper.createRestore(restore)
-	helper.createSecret(restore)
+	helper.CreateSecret(restore)
 
 	m := NewRestoreManager(deps)
 	err = m.Sync(restore)
 	g.Expect(err).Should(BeNil())
 	helper.hasCondition(restore.Namespace, restore.Name, v1alpha1.RestoreScheduled, "")
-	helper.jobCreated(restore)
+	helper.JobExists(restore)
 }
 
 func TestBRRestore(t *testing.T) {
 	g := NewGomegaWithT(t)
 	helper := newHelper(t)
-	defer helper.close()
-	deps := helper.deps
+	defer helper.Close()
+	deps := helper.Deps
 	var err error
 
-	// create restore
-	restore := validBRRestore.DeepCopy()
-	restore.Namespace = "ns"
-	restore.Name = "name"
-	helper.createRestore(restore)
-	helper.createSecret(restore)
-	helper.createTC(restore)
+	for _, restore := range genValidBRRestores() {
+		helper.createRestore(restore)
+		helper.CreateSecret(restore)
+		helper.CreateTC(restore.Spec.BR.ClusterNamespace, restore.Spec.BR.Cluster)
 
-	m := NewRestoreManager(deps)
-	err = m.Sync(restore)
-	g.Expect(err).Should(BeNil())
-	helper.hasCondition(restore.Namespace, restore.Name, v1alpha1.RestoreScheduled, "")
-	helper.jobCreated(restore)
-}
-
-type helper struct {
-	t    *testing.T
-	deps *controller.Dependencies
-	stop chan struct{}
-}
-
-func newHelper(t *testing.T) *helper {
-	deps := controller.NewSimpleClientDependencies()
-	stop := make(chan struct{})
-	deps.InformerFactory.Start(stop)
-	deps.KubeInformerFactory.Start(stop)
-	deps.InformerFactory.WaitForCacheSync(stop)
-	deps.KubeInformerFactory.WaitForCacheSync(stop)
-
-	return &helper{
-		stop: stop,
-		t:    t,
-		deps: deps,
+		m := NewRestoreManager(deps)
+		err = m.Sync(restore)
+		g.Expect(err).Should(BeNil())
+		helper.hasCondition(restore.Namespace, restore.Name, v1alpha1.RestoreScheduled, "")
+		helper.JobExists(restore)
 	}
-}
-
-func (h *helper) close() {
-	close(h.stop)
-}
-
-func (h *helper) hasCondition(ns string, name string, tp v1alpha1.RestoreConditionType, reasonSub string) {
-	h.t.Helper()
-	g := NewGomegaWithT(h.t)
-	get, err := h.deps.Clientset.PingcapV1alpha1().Restores(ns).Get(name, metav1.GetOptions{})
-	g.Expect(err).Should(BeNil())
-	for _, c := range get.Status.Conditions {
-		if c.Type == tp {
-			if reasonSub == "" || strings.Contains(c.Reason, reasonSub) {
-				return
-			}
-			h.t.Fatalf("%s do not match reason %s", reasonSub, c.Reason)
-		}
-	}
-	h.t.Fatalf("%s/%s do not has condition type: %s, cur conds: %v", ns, name, tp, get.Status.Conditions)
-}
-
-func (h *helper) jobCreated(restore *v1alpha1.Restore) {
-	h.t.Helper()
-	g := NewGomegaWithT(h.t)
-	_, err := h.deps.KubeClientset.BatchV1().Jobs(restore.Namespace).Get(restore.GetRestoreJobName(), metav1.GetOptions{})
-	g.Expect(err).Should(BeNil())
-}
-
-func (h *helper) createSecret(restore *v1alpha1.Restore) {
-	h.t.Helper()
-	g := NewGomegaWithT(h.t)
-	s := &v1.Secret{}
-	s.Data = map[string][]byte{
-		constants.TidbPasswordKey:   []byte("dummy"),
-		constants.GcsCredentialsKey: []byte("dummy"),
-		constants.S3AccessKey:       []byte("dummy"),
-		constants.S3SecretKey:       []byte("dummy"),
-	}
-	s.Namespace = restore.Namespace
-	s.Name = restore.Spec.To.SecretName
-	_, err := h.deps.KubeClientset.CoreV1().Secrets(s.Namespace).Create(s)
-	g.Expect(err).Should(BeNil())
-}
-
-func (h *helper) createRestore(restore *v1alpha1.Restore) {
-	h.t.Helper()
-	g := NewGomegaWithT(h.t)
-	var err error
-
-	_, err = h.deps.Clientset.PingcapV1alpha1().Restores(restore.Namespace).Create(restore)
-	g.Expect(err).Should(BeNil())
-	g.Eventually(func() error {
-		_, err := h.deps.RestoreLister.Restores(restore.Namespace).Get(restore.Name)
-		return err
-	}, time.Second*10).Should(BeNil())
-}
-
-func (h *helper) createTC(restore *v1alpha1.Restore) {
-	h.t.Helper()
-	g := NewGomegaWithT(h.t)
-	var err error
-
-	tc := &v1alpha1.TidbCluster{
-		Spec: v1alpha1.TidbClusterSpec{
-			TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
-			TiKV: &v1alpha1.TiKVSpec{
-				BaseImage: "pingcap/tikv",
-			},
-			TiDB: &v1alpha1.TiDBSpec{
-				TLSClient: &v1alpha1.TiDBTLSClient{Enabled: true},
-			},
-		},
-	}
-	tc.Namespace = restore.Spec.BR.ClusterNamespace
-	tc.Name = restore.Spec.BR.Cluster
-	_, err = h.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
-	g.Expect(err).Should(BeNil())
-	// make sure can read tc from lister
-	g.Eventually(func() error {
-		_, err := h.deps.TiDBClusterLister.TidbClusters(tc.Namespace).Get(tc.Name)
-		return err
-	}, time.Second*10).Should(BeNil())
-	g.Expect(err).Should(BeNil())
 }
