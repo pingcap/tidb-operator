@@ -170,6 +170,7 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 		oldTikvGCTimeDuration, tikvGCTimeDuration time.Duration
 	)
 
+	// set tikv gc life time to prevent gc when backing up data
 	if db != nil {
 		oldTikvGCTime, err = bm.GetTikvGCLifeTime(db)
 		if err != nil {

@@ -21,9 +21,9 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"gocloud.dev/blob"
+	"gocloud.dev/blob/fileblob"
 	"gocloud.dev/blob/gcsblob"
 	"gocloud.dev/blob/s3blob"
-	"gocloud.dev/blob/fileblob"
 	"gocloud.dev/gcp"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -58,7 +58,7 @@ type gcsQuery struct {
 	prefix       string
 }
 
-// NewRemoteStorage creates new remote storage
+// NewRemoteStorage creates new remote storage, now supports S3/GCS/Local
 func NewRemoteStorage(provider v1alpha1.StorageProvider) (*blob.Bucket, error) {
 	st := util.GetStorageType(provider)
 	switch st {
