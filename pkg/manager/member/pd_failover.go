@@ -157,11 +157,13 @@ func (f *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error {
 	tcName := tc.GetName()
 	var failureMember *v1alpha1.PDFailureMember
 	var failurePodName string
+	var failurePdName string
 
 	for pdName, pdMember := range tc.Status.PD.FailureMembers {
 		if !pdMember.MemberDeleted {
 			failureMember = &pdMember
 			failurePodName = strings.Split(pdName, ".")[0]
+			failurePdName = pdName
 			break
 		}
 	}
@@ -217,7 +219,7 @@ func (f *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error {
 		klog.Infof("pd failover: pvc: %s/%s successfully", ns, pvcName)
 	}
 
-	setMemberDeleted(tc, failurePodName)
+	setMemberDeleted(tc, failurePdName)
 	return nil
 }
 
@@ -234,11 +236,11 @@ func (f *pdFailover) isPodDesired(tc *v1alpha1.TidbCluster, podName string) bool
 func (f *pdFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
 }
 
-func setMemberDeleted(tc *v1alpha1.TidbCluster, podName string) {
-	failureMember := tc.Status.PD.FailureMembers[podName]
+func setMemberDeleted(tc *v1alpha1.TidbCluster, pdName string) {
+	failureMember := tc.Status.PD.FailureMembers[pdName]
 	failureMember.MemberDeleted = true
-	tc.Status.PD.FailureMembers[podName] = failureMember
-	klog.Infof("pd failover: set pd member: %s/%s deleted", tc.GetName(), podName)
+	tc.Status.PD.FailureMembers[pdName] = failureMember
+	klog.Infof("pd failover: set pd member: %s/%s deleted", tc.GetName(), pdName)
 }
 
 type fakePDFailover struct{}
