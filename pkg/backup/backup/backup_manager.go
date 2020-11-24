@@ -286,6 +286,7 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	return job, "", nil
 }
 
+// makeBackupJob requires that backup.Spec.BR != nil
 func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
@@ -386,6 +387,18 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		},
 	})
+
+	// mount volumes if specified
+	if backup.Spec.Local != nil {
+		localVolume := backup.Spec.Local.Volume
+		localVolumeMount := backup.Spec.Local.VolumeMount
+		if localVolumeMount.Name != localVolume.Name {
+			reason := "Backup.Spec.Local.Volume.Name != Backup.Spec.Local.VolumeMount.Name"
+			return nil, reason, fmt.Errorf(reason)
+		}
+		volumes = append(volumes, *localVolume)
+		volumeMounts = append(volumeMounts, *localVolumeMount)
+	}
 
 	serviceAccount := constants.DefaultServiceAccountName
 	if backup.Spec.ServiceAccount != "" {

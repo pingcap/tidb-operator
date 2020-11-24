@@ -1114,6 +1114,8 @@ const (
 	BackupStorageTypeS3 BackupStorageType = "s3"
 	// BackupStorageTypeGcs represents the google cloud storage
 	BackupStorageTypeGcs BackupStorageType = "gcs"
+	// BackupStorageTypeLocal represents local volume storage type
+	BackupStorageTypeLocal BackupStorageType = "local"
 	// BackupStorageTypeUnknown represents the unknown storage type
 	BackupStorageTypeUnknown BackupStorageType = "unknown"
 )
@@ -1132,8 +1134,15 @@ const (
 // StorageProvider defines the configuration for storing a backup in backend storage.
 // +k8s:openapi-gen=true
 type StorageProvider struct {
-	S3  *S3StorageProvider  `json:"s3,omitempty"`
-	Gcs *GcsStorageProvider `json:"gcs,omitempty"`
+	S3    *S3StorageProvider    `json:"s3,omitempty"`
+	Gcs   *GcsStorageProvider   `json:"gcs,omitempty"`
+	Local *LocalStorageProvider `json:"local,omitempty"`
+}
+
+// LocalStorageProvider defines local storage options, which can be any k8s supported mounted volume
+type LocalStorageProvider struct {
+	Volume      *corev1.Volume      `json:"volume"`
+	VolumeMount *corev1.VolumeMount `json:"volumeMount"`
 }
 
 // +k8s:openapi-gen=true

@@ -34,6 +34,7 @@ type Options struct {
 	backupUtil.GenericOptions
 }
 
+// backupData generates br args and runs br binary to do the real backup work
 func (bo *Options) backupData(backup *v1alpha1.Backup) error {
 	clusterNamespace := backup.Spec.BR.ClusterNamespace
 	if backup.Spec.BR.ClusterNamespace == "" {
@@ -47,21 +48,21 @@ func (bo *Options) backupData(backup *v1alpha1.Backup) error {
 		args = append(args, fmt.Sprintf("--key=%s", path.Join(util.ClusterClientTLSPath, corev1.TLSPrivateKeyKey)))
 	}
 	// `options` in spec are put to the last because we want them to have higher priority than generated arguments
-	newArgs, err := constructOptions(backup)
+	dataArgs, err := constructOptions(backup)
 	if err != nil {
 		return err
 	}
-	args = append(args, newArgs...)
+	args = append(args, dataArgs...)
 
-	var btype string
+	var bktype string
 	if backup.Spec.Type == "" {
-		btype = string(v1alpha1.BackupTypeFull)
+		bktype = string(v1alpha1.BackupTypeFull)
 	} else {
-		btype = string(backup.Spec.Type)
+		bktype = string(backup.Spec.Type)
 	}
 	fullArgs := []string{
 		"backup",
-		btype,
+		bktype,
 	}
 	fullArgs = append(fullArgs, args...)
 	klog.Infof("Running br command with args: %v", fullArgs)
@@ -107,7 +108,7 @@ func (bo *Options) backupData(backup *v1alpha1.Backup) error {
 	return nil
 }
 
-// constructOptions constructs options for BR and also return the remote path
+// constructOptions constructs options for BR
 func constructOptions(backup *v1alpha1.Backup) ([]string, error) {
 	args, err := backupUtil.ConstructBRGlobalOptionsForBackup(backup)
 	if err != nil {

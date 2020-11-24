@@ -23,6 +23,7 @@ import (
 	"gocloud.dev/blob"
 	"gocloud.dev/blob/gcsblob"
 	"gocloud.dev/blob/s3blob"
+	"gocloud.dev/blob/fileblob"
 	"gocloud.dev/gcp"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -75,13 +76,19 @@ func NewRemoteStorage(provider v1alpha1.StorageProvider) (*blob.Bucket, error) {
 			return nil, err
 		}
 		return bucket, nil
+	case v1alpha1.BackupStorageTypeLocal:
+		bucket, err := newLocalStorage(provider.Local.VolumeMount.MountPath)
+		if err != nil {
+			return nil, err
+		}
+		return bucket, nil
 	default:
-		return nil, fmt.Errorf("storage %s not support yet", st)
+		return nil, fmt.Errorf("storage %s not supported yet", st)
 	}
 }
 
-// getRemoteStorage returns the arg for --storage option and the remote path for br
-func getRemoteStorage(provider v1alpha1.StorageProvider) ([]string, error) {
+// genStorageArgs returns the arg for --storage option and the remote/local path for br
+func genStorageArgs(provider v1alpha1.StorageProvider) ([]string, error) {
 	st := util.GetStorageType(provider)
 	switch st {
 	case v1alpha1.BackupStorageTypeS3:
@@ -92,9 +99,23 @@ func getRemoteStorage(provider v1alpha1.StorageProvider) ([]string, error) {
 		qs := checkGcsConfig(provider.Gcs, false)
 		s := newGcsStorageOption(qs)
 		return s, nil
+	case v1alpha1.BackupStorageTypeLocal:
+		cmdOpts, err := newLocalStorageOption(provider.Local.VolumeMount.MountPath)
+		if err != nil {
+			return nil, err
+		}
+		return cmdOpts, nil
 	default:
-		return nil, fmt.Errorf("storage %s not support yet", st)
+		return nil, fmt.Errorf("storage %s not supported yet", st)
 	}
+}
+
+// newLocalStorageOption constructs `--storage local://$PATH` arg for br
+func newLocalStorageOption(mountPath string) ([]string, error) {
+	if len(mountPath) == 0 {
+		return nil, fmt.Errorf("empty mount path")
+	}
+	return []string{fmt.Sprintf("--storage=local://%s", mountPath)}, nil
 }
 
 // newS3StorageOption constructs the arg for --storage option and the remote path for br
@@ -126,6 +147,11 @@ func newS3StorageOption(qs *s3Query) []string {
 		s3options = append(s3options, fmt.Sprintf("--s3.storage-class=%s", qs.storageClass))
 	}
 	return s3options
+}
+
+func newLocalStorage(mountPath string) (*blob.Bucket, error) {
+	bucket, err := fileblob.OpenBucket(mountPath, nil)
+	return bucket, err
 }
 
 // newS3Storage initialize a new s3 storage

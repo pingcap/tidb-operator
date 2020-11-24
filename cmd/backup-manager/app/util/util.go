@@ -111,8 +111,11 @@ func GetRemotePath(backup *v1alpha1.Backup) (string, error) {
 			path = fmt.Sprintf("gcs://%s/%s", bucket, prefix)
 		}
 		return path, nil
+	case v1alpha1.BackupStorageTypeLocal:
+		path = fmt.Sprintf("local://%s", backup.Spec.StorageProvider.Local.VolumeMount.MountPath)
+		return path, nil
 	default:
-		return "", fmt.Errorf("storage %s not support yet", st)
+		return "", fmt.Errorf("storage %s not supported yet", st)
 	}
 }
 
@@ -166,7 +169,7 @@ func ConstructBRGlobalOptionsForBackup(backup *v1alpha1.Backup) ([]string, error
 		return nil, fmt.Errorf("no config for br in backup %s/%s", backup.Namespace, backup.Name)
 	}
 	args = append(args, constructBRGlobalOptions(config.BR)...)
-	storageArgs, err := getRemoteStorage(backup.Spec.StorageProvider)
+	storageArgs, err := genStorageArgs(backup.Spec.StorageProvider)
 	if err != nil {
 		return nil, err
 	}
@@ -235,7 +238,7 @@ func ConstructBRGlobalOptionsForRestore(restore *v1alpha1.Restore) ([]string, er
 		return nil, fmt.Errorf("no config for br in restore %s/%s", restore.Namespace, restore.Name)
 	}
 	args = append(args, constructBRGlobalOptions(config.BR)...)
-	storageArgs, err := getRemoteStorage(restore.Spec.StorageProvider)
+	storageArgs, err := genStorageArgs(restore.Spec.StorageProvider)
 	if err != nil {
 		return nil, err
 	}

@@ -250,6 +250,7 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 		}
 	}
 
+	// run br binary to do the real job
 	backupErr := bm.backupData(backup)
 
 	if db != nil && oldTikvGCTimeDuration < tikvGCTimeDuration {
