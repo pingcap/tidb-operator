@@ -100,7 +100,7 @@ func (ro *Options) loadTidbClusterData(restorePath string, tableFilter []string)
 
 	if tableFilter != nil && len(tableFilter) > 0 {
 		for _, tableFilter := range tableFilter {
-			args = append(args, "--filter", tableFilter)
+			args = append(args, "-f", tableFilter)
 		}
 	}
 
