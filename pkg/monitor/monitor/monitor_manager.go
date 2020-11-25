@@ -449,7 +449,19 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 				return true, nil
 			}
 
-			err = m.patchPVClaimRef(monitor.Status.DeploymentStorageStatus.PvName, firstStsPvcName, monitor)
+			deploymentPv, err := m.deps.PVLister.Get(monitor.Status.DeploymentStorageStatus.PvName)
+			if err != nil {
+				klog.Errorf("Smooth migration for tm[%s/%s], fail to get PV %s, err: %v", monitor.Namespace, monitor.Name, deploymentPvc.Spec.VolumeName, err)
+				return false, err
+			}
+
+			if deploymentPv.Spec.ClaimRef != nil && deploymentPv.Spec.ClaimRef.Name == firstStsPvcName {
+				// smooth migration successfully and clean status
+				monitor.Status.DeploymentStorageStatus = nil
+				return true, nil
+			}
+
+			err = m.patchPVClaimRef(deploymentPv, firstStsPvcName, monitor)
 			if err != nil {
 				klog.Errorf("Smooth migration for tm[%s/%s], fail to patch PV %s, err: %v", monitor.Namespace, monitor.Name, monitor.Status.DeploymentStorageStatus.PvName, err)
 				return false, err
@@ -494,7 +506,7 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 			klog.Errorf("Fail to delete the PVC %s for tm [%s/%s], err: %v", deploymentPvcName, monitor.Namespace, monitor.Name, err)
 			return false, err
 		}
-		err = m.patchPVClaimRef(deploymentPvc.Spec.VolumeName, firstStsPvcName, monitor)
+		err = m.patchPVClaimRef(deploymentPv, firstStsPvcName, monitor)
 		if err != nil {
 			klog.Errorf("Smooth migration for tm[%s/%s], fail to patch PV %s, err: %v", monitor.Namespace, monitor.Name, deploymentPvc.Spec.VolumeName, err)
 			return false, err
@@ -627,19 +639,13 @@ func (m *MonitorManager) createOrUpdateService(newSvc *corev1.Service, monitor *
 	return nil
 }
 
-func (m *MonitorManager) patchPVClaimRef(pvName string, patchPvcName string, monitor *v1alpha1.TidbMonitor) error {
-	deploymentPv, err := m.deps.PVLister.Get(pvName)
-	if err != nil {
-		klog.Errorf("Smooth migration for tm[%s/%s], fail to get PV %s, err: %v", monitor.Namespace, monitor.Name, pvName, err)
-		return err
+func (m *MonitorManager) patchPVClaimRef(pv *corev1.PersistentVolume, patchPvcName string, monitor *v1alpha1.TidbMonitor) error {
+	if pv.Spec.ClaimRef == nil {
+		pv.Spec.ClaimRef = &corev1.ObjectReference{}
 	}
 
-	if deploymentPv.Spec.ClaimRef == nil {
-		deploymentPv.Spec.ClaimRef = &corev1.ObjectReference{}
-	}
-
-	deploymentPv.Spec.ClaimRef.Name = patchPvcName
-	err = m.deps.PVControl.PatchPVClaimRef(monitor, deploymentPv, patchPvcName)
+	pv.Spec.ClaimRef.Name = patchPvcName
+	err := m.deps.PVControl.PatchPVClaimRef(monitor, pv, patchPvcName)
 	if err != nil {
 		return err
 	}
