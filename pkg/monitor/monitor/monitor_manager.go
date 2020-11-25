@@ -440,11 +440,11 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 		deploymentPvc, err := m.deps.PVCLister.PersistentVolumeClaims(monitor.Namespace).Get(deploymentPvcName)
 		if err != nil {
 			if !errors.IsNotFound(err) {
-				klog.Errorf("Smooth migration for tm[%s/%s], the PVC of the deployment get error:%v", monitor.Namespace, monitor.Name, err)
+				klog.Errorf("Smooth migration for tm[%s/%s], get the PVC of the deployment error: %v", monitor.Namespace, monitor.Name, err)
 				return false, err
 			}
 
-			// If the PVC of the deployment does not exist and no old pvc status, we don't need to migrate.
+			// If the PVC of the deployment does not exist and no old PV status, we don't need to migrate.
 			if monitor.Status.DeploymentStorageStatus == nil || len(monitor.Status.DeploymentStorageStatus.PvName) <= 0 {
 				return true, nil
 			}
@@ -536,7 +536,7 @@ func (m *MonitorManager) syncTidbMonitorPV(tm *v1alpha1.TidbMonitor) error {
 	}
 	pods, err := m.deps.PodLister.Pods(ns).List(l)
 	if err != nil {
-		return fmt.Errorf("metaManager.Sync: failed to list pods for tidbmonitor %s/%s, selector: %s, error: %v", ns, instanceName, l, err)
+		return fmt.Errorf("fail to list pods for tidbmonitor %s/%s, selector: %s, error: %v", ns, instanceName, l, err)
 	}
 
 	for _, pod := range pods {
@@ -583,7 +583,7 @@ func (m *MonitorManager) createOrUpdateService(newSvc *corev1.Service, monitor *
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("syncTidbMonitorService: failed to get svc %s for cluster %s/%s, error: %s", newSvc.Name, monitor.Namespace, monitor.Name, err)
+		return fmt.Errorf("createOrUpdateService: fail to get svc %s for tm %s/%s, error: %s", newSvc.Name, monitor.Namespace, monitor.Name, err)
 	}
 
 	oldSvc := oldSvcTmp.DeepCopy()
