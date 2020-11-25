@@ -15,15 +15,13 @@ package tidbmonitor
 
 import (
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/monitor"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
 )
@@ -38,16 +36,13 @@ type ControlInterface interface {
 }
 
 // NewDefaultTidbMonitorControl returns a new instance of the default TidbMonitor ControlInterface
-func NewDefaultTidbMonitorControl(cli versioned.Interface,
-	tmLister listers.TidbMonitorLister, monitorManager monitor.MonitorManager, recorder record.EventRecorder) ControlInterface {
-	return &defaultTidbMonitorControl{cli: cli, tmLister: tmLister, monitorManager: monitorManager, recorder: recorder}
+func NewDefaultTidbMonitorControl(monitorManager monitor.MonitorManager) ControlInterface {
+	return &defaultTidbMonitorControl{monitorManager: monitorManager}
 }
 
 type defaultTidbMonitorControl struct {
-	cli            versioned.Interface
-	tmLister       listers.TidbMonitorLister
+	deps           *controller.Dependencies
 	monitorManager monitor.MonitorManager
-	recorder       record.EventRecorder
 }
 
 func (c *defaultTidbMonitorControl) ReconcileTidbMonitor(tm *v1alpha1.TidbMonitor) error {
@@ -117,14 +112,14 @@ func (c *defaultTidbMonitorControl) UpdateTidbMonitor(tm *v1alpha1.TidbMonitor) 
 	// don't wait due to limited number of clients, but backoff after the default number of steps
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		var updateErr error
-		update, updateErr = c.cli.PingcapV1alpha1().TidbMonitors(ns).Update(tm)
+		update, updateErr = c.deps.Clientset.PingcapV1alpha1().TidbMonitors(ns).Update(tm)
 		if updateErr == nil {
 			klog.Infof("TidbMonitor: [%s/%s] updated successfully", ns, tmName)
 			return nil
 		}
 		klog.V(4).Infof("failed to update TidbMonitor: [%s/%s], error: %v", ns, tmName, updateErr)
 
-		if updated, err := c.tmLister.TidbMonitors(ns).Get(tmName); err == nil {
+		if updated, err := c.deps.TiDBMonitorLister.TidbMonitors(ns).Get(tmName); err == nil {
 			// make a copy so we don't mutate the shared cache
 			tm = updated.DeepCopy()
 			tm.Status = *status

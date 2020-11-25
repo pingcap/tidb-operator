@@ -850,7 +850,8 @@ func getMonitorStatefulSetSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.Ti
 			},
 			Template: core.PodTemplateSpec{
 				ObjectMeta: meta.ObjectMeta{
-					Labels: buildTidbMonitorLabel(monitor.Name),
+					Labels:      buildTidbMonitorLabel(monitor.Name),
+					Annotations: monitor.Spec.Annotations,
 				},
 
 				Spec: core.PodSpec{

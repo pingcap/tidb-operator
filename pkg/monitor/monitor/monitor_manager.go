@@ -530,7 +530,7 @@ func (m *MonitorManager) syncTidbMonitorPV(tm *v1alpha1.TidbMonitor) error {
 	ns := tm.GetNamespace()
 	instanceName := tm.Name
 
-	l, err := label.New().Instance(instanceName).Selector()
+	l, err := label.New().Instance(instanceName).TiDBMonitor().Selector()
 	if err != nil {
 		return err
 	}

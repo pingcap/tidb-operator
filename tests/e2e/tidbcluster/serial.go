@@ -512,7 +512,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 		ginkgo.It("Deploy TiDBMonitor and Upgrade Operator, TiDBMonitor switch from deployment to StatefulSet", func() {
 			tcName := "smooth-tidbcluster"
-			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "", utilimage.TiDBV3UpgradeVersion)
+			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "", utilimage.TiDBV4Version)
 			cluster.Resources["pd.replicas"] = "1"
 			cluster.Resources["tikv.replicas"] = "1"
 			cluster.Resources["tidb.replicas"] = "1"
