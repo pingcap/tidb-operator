@@ -98,7 +98,7 @@ func (ro *Options) loadTidbClusterData(restorePath string, tableFilter []string)
 		fmt.Sprintf("--tidb-port=%d", ro.Port),
 	}
 
-	if tableFilter != nil && len(tableFilter) > 0 {
+	if len(tableFilter) != 0 {
 		for _, tableFilter := range tableFilter {
 			args = append(args, "-f", tableFilter)
 		}
