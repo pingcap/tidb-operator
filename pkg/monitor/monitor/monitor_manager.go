@@ -536,7 +536,7 @@ func (m *MonitorManager) syncTidbMonitorPV(tm *v1alpha1.TidbMonitor) error {
 	}
 	pods, err := m.deps.PodLister.Pods(ns).List(l)
 	if err != nil {
-		return fmt.Errorf("metaManager.Sync: failed to list pods for tidbmonitor %s/%s, selector: %s, error: %v", ns, instanceName, l, err)
+		return fmt.Errorf("fail to list pods for tidbmonitor %s/%s, selector: %s, error: %v", ns, instanceName, l, err)
 	}
 
 	for _, pod := range pods {
