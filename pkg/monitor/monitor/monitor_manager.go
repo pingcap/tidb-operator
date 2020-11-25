@@ -469,6 +469,12 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 			return false, err
 		}
 
+		if deploymentPv.Spec.ClaimRef != nil && deploymentPv.Spec.ClaimRef.Name == firstStsPvcName {
+			// smooth migration successfully and clean status
+			monitor.Status.DeploymentStorageStatus = nil
+			return true, nil
+		}
+
 		// firstly patch status
 		if monitor.Status.DeploymentStorageStatus == nil && len(deploymentPvc.Spec.VolumeName) > 0 {
 			err = m.patchTidbMonitorStatus(monitor, deploymentPvc.Spec.VolumeName)
@@ -626,12 +632,6 @@ func (m *MonitorManager) patchPVClaimRef(pvName string, patchPvcName string, mon
 	if err != nil {
 		klog.Errorf("Smooth migration for tm[%s/%s], fail to get PV %s, err: %v", monitor.Namespace, monitor.Name, pvName, err)
 		return err
-	}
-
-	if deploymentPv.Spec.ClaimRef != nil && deploymentPv.Spec.ClaimRef.Name == patchPvcName {
-		// smooth migration successfully and clean status
-		monitor.Status.DeploymentStorageStatus = nil
-		return nil
 	}
 
 	if deploymentPv.Spec.ClaimRef == nil {
