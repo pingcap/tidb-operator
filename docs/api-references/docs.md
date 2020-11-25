@@ -5920,6 +5920,16 @@ Kubernetes core/v1.VolumeMount
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>prefix</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="log">Log</h3>

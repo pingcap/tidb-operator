@@ -143,7 +143,7 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 		return err
 	}
 
-	backupFullPath, err := util.GetRemotePath(backup)
+	backupFullPath, err := util.GetStoragePath(backup)
 	if err != nil {
 		errs = append(errs, err)
 		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{

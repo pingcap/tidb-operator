@@ -374,8 +374,8 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 			reason := "Restore.Spec.Local.Volume.Name != Restore.Spec.Local.VolumeMount.Name"
 			return nil, reason, fmt.Errorf(reason)
 		}
-		volumes = append(volumes, *localVolume)
-		volumeMounts = append(volumeMounts, *localVolumeMount)
+		volumes = append(volumes, localVolume)
+		volumeMounts = append(volumeMounts, localVolumeMount)
 	}
 
 	serviceAccount := constants.DefaultServiceAccountName

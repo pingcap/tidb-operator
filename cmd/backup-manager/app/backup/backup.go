@@ -54,15 +54,15 @@ func (bo *Options) backupData(backup *v1alpha1.Backup) error {
 	}
 	args = append(args, dataArgs...)
 
-	var bktype string
+	var backupType string
 	if backup.Spec.Type == "" {
-		bktype = string(v1alpha1.BackupTypeFull)
+		backupType = string(v1alpha1.BackupTypeFull)
 	} else {
-		bktype = string(backup.Spec.Type)
+		backupType = string(backup.Spec.Type)
 	}
 	fullArgs := []string{
 		"backup",
-		bktype,
+		backupType,
 	}
 	fullArgs = append(fullArgs, args...)
 	klog.Infof("Running br command with args: %v", fullArgs)

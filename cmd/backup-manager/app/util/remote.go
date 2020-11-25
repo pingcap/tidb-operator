@@ -34,7 +34,7 @@ const (
 	maxRetries = 3 // number of retries to make of operations
 )
 
-type s3Query struct {
+type s3Config struct {
 	region         string
 	endpoint       string
 	bucket         string
@@ -46,7 +46,7 @@ type s3Query struct {
 	forcePathStyle bool
 }
 
-type gcsQuery struct {
+type gcsConfig struct {
 	projectId    string
 	location     string
 	path         string
@@ -58,26 +58,32 @@ type gcsQuery struct {
 	prefix       string
 }
 
-// NewRemoteStorage creates new remote storage, now supports S3/GCS/Local
-func NewRemoteStorage(provider v1alpha1.StorageProvider) (*blob.Bucket, error) {
+type localConfig struct {
+	mountPath string
+	prefix    string
+}
+
+// NewStorageBackend creates new storage backend, now supports S3/GCS/Local
+func NewStorageBackend(provider v1alpha1.StorageProvider) (*blob.Bucket, error) {
 	st := util.GetStorageType(provider)
 	switch st {
 	case v1alpha1.BackupStorageTypeS3:
-		qs := checkS3Config(provider.S3, true)
-		bucket, err := newS3Storage(qs)
+		conf := makeS3Config(provider.S3, true)
+		bucket, err := newS3Storage(conf)
 		if err != nil {
 			return nil, err
 		}
 		return bucket, nil
 	case v1alpha1.BackupStorageTypeGcs:
-		qs := checkGcsConfig(provider.Gcs, true)
-		bucket, err := newGcsStorage(qs)
+		conf := makeGcsConfig(provider.Gcs, true)
+		bucket, err := newGcsStorage(conf)
 		if err != nil {
 			return nil, err
 		}
 		return bucket, nil
 	case v1alpha1.BackupStorageTypeLocal:
-		bucket, err := newLocalStorage(provider.Local.VolumeMount.MountPath)
+		conf := makeLocalConfig(provider.Local)
+		bucket, err := newLocalStorage(conf)
 		if err != nil {
 			return nil, err
 		}
@@ -92,15 +98,16 @@ func genStorageArgs(provider v1alpha1.StorageProvider) ([]string, error) {
 	st := util.GetStorageType(provider)
 	switch st {
 	case v1alpha1.BackupStorageTypeS3:
-		qs := checkS3Config(provider.S3, false)
+		qs := makeS3Config(provider.S3, false)
 		s := newS3StorageOption(qs)
 		return s, nil
 	case v1alpha1.BackupStorageTypeGcs:
-		qs := checkGcsConfig(provider.Gcs, false)
+		qs := makeGcsConfig(provider.Gcs, false)
 		s := newGcsStorageOption(qs)
 		return s, nil
 	case v1alpha1.BackupStorageTypeLocal:
-		cmdOpts, err := newLocalStorageOption(provider.Local.VolumeMount.MountPath)
+		localConfig := makeLocalConfig(provider.Local)
+		cmdOpts, err := newLocalStorageOption(localConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -111,58 +118,54 @@ func genStorageArgs(provider v1alpha1.StorageProvider) ([]string, error) {
 }
 
 // newLocalStorageOption constructs `--storage local://$PATH` arg for br
-func newLocalStorageOption(mountPath string) ([]string, error) {
-	if len(mountPath) == 0 {
+func newLocalStorageOption(conf localConfig) ([]string, error) {
+	if len(conf.mountPath) == 0 {
 		return nil, fmt.Errorf("empty mount path")
 	}
-	return []string{fmt.Sprintf("--storage=local://%s", mountPath)}, nil
+	return []string{fmt.Sprintf("--storage=local://%s/%s", conf.mountPath, conf.prefix)}, nil
 }
 
 // newS3StorageOption constructs the arg for --storage option and the remote path for br
-func newS3StorageOption(qs *s3Query) []string {
+func newS3StorageOption(conf *s3Config) []string {
 	var s3options []string
-	var path string
-	if qs.prefix == "/" {
-		path = fmt.Sprintf("s3://%s%s", qs.bucket, qs.prefix)
-	} else {
-		path = fmt.Sprintf("s3://%s/%s", qs.bucket, qs.prefix)
-	}
+	path := fmt.Sprintf("s3://%s/%s", conf.bucket, conf.prefix)
 	s3options = append(s3options, fmt.Sprintf("--storage=%s", path))
-	if qs.region != "" {
-		s3options = append(s3options, fmt.Sprintf("--s3.region=%s", qs.region))
+	if conf.region != "" {
+		s3options = append(s3options, fmt.Sprintf("--s3.region=%s", conf.region))
 	}
-	if qs.provider != "" {
-		s3options = append(s3options, fmt.Sprintf("--s3.provider=%s", qs.provider))
+	if conf.provider != "" {
+		s3options = append(s3options, fmt.Sprintf("--s3.provider=%s", conf.provider))
 	}
-	if qs.endpoint != "" {
-		s3options = append(s3options, fmt.Sprintf("--s3.endpoint=%s", qs.endpoint))
+	if conf.endpoint != "" {
+		s3options = append(s3options, fmt.Sprintf("--s3.endpoint=%s", conf.endpoint))
 	}
-	if qs.sse != "" {
-		s3options = append(s3options, fmt.Sprintf("--s3.sse=%s", qs.sse))
+	if conf.sse != "" {
+		s3options = append(s3options, fmt.Sprintf("--s3.sse=%s", conf.sse))
 	}
-	if qs.acl != "" {
-		s3options = append(s3options, fmt.Sprintf("--s3.acl=%s", qs.acl))
+	if conf.acl != "" {
+		s3options = append(s3options, fmt.Sprintf("--s3.acl=%s", conf.acl))
 	}
-	if qs.storageClass != "" {
-		s3options = append(s3options, fmt.Sprintf("--s3.storage-class=%s", qs.storageClass))
+	if conf.storageClass != "" {
+		s3options = append(s3options, fmt.Sprintf("--s3.storage-class=%s", conf.storageClass))
 	}
 	return s3options
 }
 
-func newLocalStorage(mountPath string) (*blob.Bucket, error) {
-	bucket, err := fileblob.OpenBucket(mountPath, nil)
+func newLocalStorage(conf localConfig) (*blob.Bucket, error) {
+	dir := fmt.Sprintf("%s/%s", conf.mountPath, conf.prefix)
+	bucket, err := fileblob.OpenBucket(dir, nil)
 	return bucket, err
 }
 
 // newS3Storage initialize a new s3 storage
-func newS3Storage(qs *s3Query) (*blob.Bucket, error) {
+func newS3Storage(conf *s3Config) (*blob.Bucket, error) {
 	awsConfig := aws.NewConfig().WithMaxRetries(maxRetries).
-		WithS3ForcePathStyle(qs.forcePathStyle)
-	if qs.region != "" {
-		awsConfig.WithRegion(qs.region)
+		WithS3ForcePathStyle(conf.forcePathStyle)
+	if conf.region != "" {
+		awsConfig.WithRegion(conf.region)
 	}
-	if qs.endpoint != "" {
-		awsConfig.WithEndpoint(qs.endpoint)
+	if conf.endpoint != "" {
+		awsConfig.WithEndpoint(conf.endpoint)
 	}
 	// awsConfig.WithLogLevel(aws.LogDebugWithSigning)
 	awsSessionOpts := session.Options{
@@ -174,16 +177,16 @@ func newS3Storage(qs *s3Query) (*blob.Bucket, error) {
 	}
 
 	// Create a *blob.Bucket.
-	bkt, err := s3blob.OpenBucket(context.Background(), ses, qs.bucket, nil)
+	bkt, err := s3blob.OpenBucket(context.Background(), ses, conf.bucket, nil)
 	if err != nil {
 		return nil, err
 	}
-	return blob.PrefixedBucket(bkt, qs.prefix), nil
+	return blob.PrefixedBucket(bkt, conf.prefix), nil
 
 }
 
 // newGcsStorage initialize a new gcs storage
-func newGcsStorage(qs *gcsQuery) (*blob.Bucket, error) {
+func newGcsStorage(conf *gcsConfig) (*blob.Bucket, error) {
 	ctx := context.Background()
 
 	// Your GCP credentials.
@@ -201,77 +204,74 @@ func newGcsStorage(qs *gcsQuery) (*blob.Bucket, error) {
 	}
 
 	// Create a *blob.Bucket.
-	bucket, err := gcsblob.OpenBucket(ctx, client, qs.bucket, nil)
+	bucket, err := gcsblob.OpenBucket(ctx, client, conf.bucket, nil)
 	if err != nil {
 		return nil, err
 	}
-	return blob.PrefixedBucket(bucket, qs.prefix), nil
+	return blob.PrefixedBucket(bucket, conf.prefix), nil
 }
 
 // newGcsStorageOption constructs the arg for --storage option and the remote path for br
-func newGcsStorageOption(qs *gcsQuery) []string {
+func newGcsStorageOption(conf *gcsConfig) []string {
 	var gcsoptions []string
-	var path string
-	if qs.prefix == "/" {
-		path = fmt.Sprintf("gcs://%s%s", qs.bucket, qs.prefix)
-	} else {
-		path = fmt.Sprintf("gcs://%s/%s", qs.bucket, qs.prefix)
-	}
+	path := fmt.Sprintf("gcs://%s/%s", conf.bucket, conf.prefix)
 	gcsoptions = append(gcsoptions, fmt.Sprintf("--storage=%s", path))
-	if qs.storageClass != "" {
-		gcsoptions = append(gcsoptions, fmt.Sprintf("--gcs.storage-class=%s", qs.storageClass))
+	if conf.storageClass != "" {
+		gcsoptions = append(gcsoptions, fmt.Sprintf("--gcs.storage-class=%s", conf.storageClass))
 	}
-	if qs.objectAcl != "" {
-		gcsoptions = append(gcsoptions, fmt.Sprintf("--gcs.predefined-acl=%s", qs.objectAcl))
+	if conf.objectAcl != "" {
+		gcsoptions = append(gcsoptions, fmt.Sprintf("--gcs.predefined-acl=%s", conf.objectAcl))
 	}
 	return gcsoptions
 }
 
-// checkS3Config constructs s3Query parameters
-func checkS3Config(s3 *v1alpha1.S3StorageProvider, fakeRegion bool) *s3Query {
-	sqs := s3Query{}
+// makeS3Config constructs s3Config parameters
+func makeS3Config(s3 *v1alpha1.S3StorageProvider, fakeRegion bool) *s3Config {
+	conf := s3Config{}
 
-	sqs.bucket = s3.Bucket
-	sqs.region = s3.Region
-	sqs.provider = string(s3.Provider)
-	sqs.prefix = s3.Prefix
-	sqs.endpoint = s3.Endpoint
-	sqs.sse = s3.SSE
-	sqs.acl = s3.Acl
-	sqs.storageClass = s3.StorageClass
-	sqs.forcePathStyle = true
+	conf.bucket = s3.Bucket
+	conf.region = s3.Region
+	conf.provider = string(s3.Provider)
+	conf.prefix = strings.Trim(s3.Prefix, "/") + "/"
+	conf.endpoint = s3.Endpoint
+	conf.sse = s3.SSE
+	conf.acl = s3.Acl
+	conf.storageClass = s3.StorageClass
+	conf.forcePathStyle = true
 	// In some cases, we need to set ForcePathStyle to false.
 	// Refer to: https://rclone.org/s3/#s3-force-path-style
 	// if UseAccelerateEndpoint is supported for AWS s3 in future,
 	// need to set forcePathStyle = false too.
-	if sqs.provider == "alibaba" || sqs.provider == "netease" {
-		sqs.forcePathStyle = false
+	if conf.provider == "alibaba" || conf.provider == "netease" {
+		conf.forcePathStyle = false
 	}
-	if fakeRegion && sqs.region == "" {
-		sqs.region = "us-east-1"
+	if fakeRegion && conf.region == "" {
+		conf.region = "us-east-1"
 	}
-	sqs.prefix = strings.Trim(sqs.prefix, "/")
-	sqs.prefix += "/"
 
-	return &sqs
+	return &conf
 }
 
-// checkGcsConfig constructs gcsQuery parameters
-func checkGcsConfig(gcs *v1alpha1.GcsStorageProvider, fakeRegion bool) *gcsQuery {
-	gqs := gcsQuery{}
+// makeGcsConfig constructs gcsConfig parameters
+func makeGcsConfig(gcs *v1alpha1.GcsStorageProvider, fakeRegion bool) *gcsConfig {
+	conf := gcsConfig{}
 
-	gqs.bucket = gcs.Bucket
-	gqs.location = gcs.Location
-	gqs.path = gcs.Path
-	gqs.projectId = gcs.ProjectId
-	gqs.storageClass = gcs.StorageClass
-	gqs.objectAcl = gcs.ObjectAcl
-	gqs.bucketAcl = gcs.BucketAcl
-	gqs.secretName = gcs.SecretName
-	gqs.prefix = gcs.Prefix
+	conf.bucket = gcs.Bucket
+	conf.location = gcs.Location
+	conf.path = gcs.Path
+	conf.projectId = gcs.ProjectId
+	conf.storageClass = gcs.StorageClass
+	conf.objectAcl = gcs.ObjectAcl
+	conf.bucketAcl = gcs.BucketAcl
+	conf.secretName = gcs.SecretName
+	conf.prefix = strings.Trim(gcs.Prefix, "/") + "/"
 
-	gqs.prefix = strings.Trim(gqs.prefix, "/")
-	gqs.prefix += "/"
+	return &conf
+}
 
-	return &gqs
+func makeLocalConfig(local *v1alpha1.LocalStorageProvider) localConfig {
+	return localConfig{
+		mountPath: local.VolumeMount.MountPath,
+		prefix:    strings.Trim(local.Prefix, "/") + "/",
+	}
 }

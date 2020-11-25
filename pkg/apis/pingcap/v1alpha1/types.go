@@ -1141,12 +1141,13 @@ type StorageProvider struct {
 
 // LocalStorageProvider defines local storage options, which can be any k8s supported mounted volume
 type LocalStorageProvider struct {
-	Volume      *corev1.Volume      `json:"volume"`
-	VolumeMount *corev1.VolumeMount `json:"volumeMount"`
+	Volume      corev1.Volume      `json:"volume"`
+	VolumeMount corev1.VolumeMount `json:"volumeMount"`
+	Prefix      string             `json:"prefix,omitempty"`
 }
 
-// +k8s:openapi-gen=true
 // S3StorageProvider represents a S3 compliant storage for storing backups.
+// +k8s:openapi-gen=true
 type S3StorageProvider struct {
 	// Provider represents the specific storage provider that implements the S3 interface
 	Provider S3StorageProviderType `json:"provider"`
@@ -1242,7 +1243,7 @@ const (
 	CleanPolicyTypeRetain CleanPolicyType = "Retain"
 	// CleanPolicyTypeOnFailure represents that the backup data in remote storage will be cleaned only for the failed backups when the Backup CR is deleted
 	CleanPolicyTypeOnFailure CleanPolicyType = "OnFailure"
-	// CleanPolicyTypeIfFailed represents that the backup data in remote storage will be cleaned when the Backup CR is deleted
+	// CleanPolicyTypeDelete represents that the backup data in remote storage will be cleaned when the Backup CR is deleted
 	CleanPolicyTypeDelete CleanPolicyType = "Delete"
 )
 

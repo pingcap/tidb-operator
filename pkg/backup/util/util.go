@@ -224,7 +224,7 @@ func GenerateStorageCertEnv(ns string, useKMS bool, provider v1alpha1.StoragePro
 		return []corev1.EnvVar{}, "", nil
 	default:
 		err := fmt.Errorf("unsupported storage type %s", storageType)
-		return certEnv, "UnsupportedStorageTye", err
+		return certEnv, "UnsupportedStorageType", err
 	}
 	return certEnv, reason, nil
 }
