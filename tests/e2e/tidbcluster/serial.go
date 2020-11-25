@@ -527,9 +527,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
 			err = tests.CheckTidbMonitor(tm, cli, c, fw)
 			framework.ExpectNoError(err, "Expected tidbmonitor checked success")
-
-			deploymentPvcName := fmt.Sprintf("%s-monitor", monitorName)
-			deploymentPvc, err := c.CoreV1().PersistentVolumeClaims(tc.Namespace).Get(deploymentPvcName, metav1.GetOptions{})
+			deploymentPvc, err := c.CoreV1().PersistentVolumeClaims(tc.Namespace).Get(monitor.GetMonitorFirstPVCName(tm.Name), metav1.GetOptions{})
 			framework.ExpectNoError(err, "Expected tidbmonitor deployment pvc success")
 			oldVolumeName := deploymentPvc.Spec.VolumeName
 			ginkgo.By("Upgrade tidb-operator and CRDs to current version")
@@ -543,7 +541,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				stsPvc, err := c.CoreV1().PersistentVolumeClaims(tc.Namespace).Get(newStsPvcName, metav1.GetOptions{})
 				if err != nil {
 					if errors.IsNotFound(err) {
-						klog.Infof("tm[%s/%s]'s first sts pvc not found", tc.Namespace, tc.Name)
+						klog.Infof("tm[%s/%s]'s first sts pvc not found", tm.Namespace, tm.Name)
 						return false, nil
 					}
 					klog.Errorf("get tidbmonitor sts pvc err:%v", err)
@@ -555,7 +553,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				klog.Infof("tidbmonitor sts pv unequal to old deployment pv")
 				return false, nil
 			})
-			framework.ExpectEqual(err, wait.ErrWaitTimeout, "expect pd/tikv/tidb haven't been changed for 5 minutes")
+			framework.ExpectEqual(err, wait.ErrWaitTimeout, "expect tm pv haven't been changed for 5 minutes")
 		})
 	})
 
