@@ -36,8 +36,8 @@ type ControlInterface interface {
 }
 
 // NewDefaultTidbMonitorControl returns a new instance of the default TidbMonitor ControlInterface
-func NewDefaultTidbMonitorControl(monitorManager monitor.MonitorManager) ControlInterface {
-	return &defaultTidbMonitorControl{monitorManager: monitorManager}
+func NewDefaultTidbMonitorControl(deps *controller.Dependencies, monitorManager monitor.MonitorManager) ControlInterface {
+	return &defaultTidbMonitorControl{deps: deps, monitorManager: monitorManager}
 }
 
 type defaultTidbMonitorControl struct {
