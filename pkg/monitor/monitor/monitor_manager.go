@@ -451,7 +451,7 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 
 			err = m.patchPVClaimRef(monitor.Status.DeploymentStorageStatus.PvName, firstStsPvcName, monitor)
 			if err != nil {
-				klog.Errorf("Smooth migration for tm[%s/%s], fail to patch PV %s, err: %v", monitor.Namespace, monitor.Name, deploymentPvc.Spec.VolumeName, err)
+				klog.Errorf("Smooth migration for tm[%s/%s], fail to patch PV %s, err: %v", monitor.Namespace, monitor.Name, monitor.Status.DeploymentStorageStatus.PvName, err)
 				return false, err
 			}
 			// smooth migration successfully and clean status
