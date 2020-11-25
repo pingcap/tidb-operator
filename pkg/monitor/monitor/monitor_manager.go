@@ -444,7 +444,7 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 				return false, err
 			}
 
-			// If the PVC of the deployment does not exist and no old pvc status, we don't need to migrate.
+			// If the PVC of the deployment does not exist and no old PV status, we don't need to migrate.
 			if monitor.Status.DeploymentStorageStatus == nil || len(monitor.Status.DeploymentStorageStatus.PvName) <= 0 {
 				return true, nil
 			}
