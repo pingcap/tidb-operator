@@ -440,7 +440,7 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 		deploymentPvc, err := m.deps.PVCLister.PersistentVolumeClaims(monitor.Namespace).Get(deploymentPvcName)
 		if err != nil {
 			if !errors.IsNotFound(err) {
-				klog.Errorf("Smooth migration for tm[%s/%s], the PVC of the deployment get error:%v", monitor.Namespace, monitor.Name, err)
+				klog.Errorf("Smooth migration for tm[%s/%s], get the PVC of the deployment error: %v", monitor.Namespace, monitor.Name, err)
 				return false, err
 			}
 
