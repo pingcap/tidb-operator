@@ -50,18 +50,18 @@ func NewMockPrometheus() MonitorInterface {
 }
 
 func (m *mockPrometheus) ServeQuery(w http.ResponseWriter, r *http.Request) {
-	params := r.URL.Query()
-	key := ""
-	for k, v := range params {
-		if k == "query" && len(v) == 1 {
-			key = v[0]
-			break
-		}
-	}
-	if len(key) < 1 {
-		klog.Info()
-		writeResponse(w, "no query param")
+	err := r.ParseForm()
+	if err != nil {
+		writeResponse(w, "parse query form failed")
 		return
+	}
+	key := r.Form.Get("query")
+	if len(key) < 1 {
+		key = r.URL.Query().Get("query")
+		if len(key) < 1 {
+			writeResponse(w, "no query param")
+			return
+		}
 	}
 	klog.Infof("receive query, key: %s", key)
 	v, ok := m.responses[key]
@@ -92,7 +92,6 @@ func (m *mockPrometheus) SetResponse(w http.ResponseWriter, r *http.Request) {
 
 	m.addIntoMaps(mp, string(b))
 	writeResponse(w, "ok")
-	return
 }
 
 func (m *mockPrometheus) ServeTargets(w http.ResponseWriter, r *http.Request) {
@@ -120,28 +119,27 @@ func (m *mockPrometheus) ServeTargets(w http.ResponseWriter, r *http.Request) {
 
 func (m *mockPrometheus) addIntoMaps(mp *MonitorParams, response string) {
 	currentType := mp.QueryType
-	if currentType == "cpu" {
-		key := ""
-		name := mp.Name
-		memberType := mp.MemberType
-		duration := mp.Duration
-		klog.Infof("name=%s, memberType =%s, duration =%s, response =%s", name, memberType, duration, response)
-		if memberType == "tidb" {
-			key = fmt.Sprintf(calculate.TidbSumCpuMetricsPattern, name, duration)
-		} else if memberType == "tikv" {
-			key = fmt.Sprintf(calculate.TikvSumCpuMetricsPattern, name, duration)
+	key := ""
+	name := mp.Name
+	memberType := mp.MemberType
+	duration := mp.Duration
+	klog.Infof("name=%s, memberType =%s, duration =%s, response =%s", name, memberType, duration, response)
+	if memberType == "tidb" {
+		if currentType == "cpu_usage" {
+			key = fmt.Sprintf(calculate.TidbSumCPUUsageMetricsPattern, duration)
+		} else if currentType == "cpu_quota" {
+			key = calculate.TidbCPUQuotaMetricsPattern
 		}
-		m.responses[fmt.Sprintf("%s", key)] = response
-		klog.Infof("add key: %s with value: %s", key, response)
-	} else if currentType == "storage" {
-		key := ""
-		cluster := mp.Name
-		stype := mp.StorageType
-		klog.Infof("cluster=%s, storageType=%s, response =%s", cluster, stype, response)
-		key = fmt.Sprintf(calculate.TikvSumStorageMetricsPattern, cluster, stype)
-		m.responses[fmt.Sprintf("%s", key)] = response
-		klog.Infof("add key: %s with value: %s", key, response)
+	} else if memberType == "tikv" {
+		if currentType == "cpu_usage" {
+			key = fmt.Sprintf(calculate.TikvSumCPUUsageMetricsPattern, duration)
+		} else if currentType == "cpu_quota" {
+			key = calculate.TikvCPUQuotaMetricsPattern
+		}
 	}
+	m.responses[key] = response
+	klog.Infof("add key: %s with value: %s", key, response)
+
 }
 
 func writeResponse(w http.ResponseWriter, msg string) {

@@ -344,6 +344,37 @@ func TestDiscoveryDiscovery(t *testing.T) {
 			},
 		},
 		{
+			name: "1 cluster, the request with clusterDomain, get members success",
+			ns:   "default",
+			url:  "demo-pd-0.demo-pd-peer.default.svc.cluster.local:2380",
+			tc:   newTC(),
+			getMembersFn: func() (*pdapi.MembersInfo, error) {
+				return &pdapi.MembersInfo{
+					Members: []*pdpb.Member{
+						{
+							PeerUrls: []string{"demo-pd-2.demo-pd-peer.default.svc.cluster.local:2380"},
+						},
+					},
+				}, nil
+			},
+			clusters: map[string]*clusterInfo{
+				"default/demo": {
+					resourceVersion: "1",
+					peers: map[string]struct{}{
+						"demo-pd-0": {},
+						"demo-pd-1": {},
+					},
+				},
+			},
+			expectFn: func(g *GomegaWithT, td *tidbDiscovery, s string, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(td.clusters)).To(Equal(1))
+				g.Expect(len(td.clusters["default/demo"].peers)).To(Equal(1))
+				g.Expect(td.clusters["default/demo"].peers["demo-pd-1"]).To(Equal(struct{}{}))
+				g.Expect(s).To(Equal("--join=demo-pd-2.demo-pd-peer.default.svc.cluster.local:2379"))
+			},
+		},
+		{
 			name: "2 clusters, the five ordinal request, get members success",
 			ns:   "default",
 			url:  "demo-pd-3.demo-pd-peer.default.svc:2380",
@@ -391,6 +422,78 @@ func TestDiscoveryDiscovery(t *testing.T) {
 				g.Expect(s).To(Equal("--join=demo-pd-0.demo-pd-peer.default.svc:2379,demo-pd-1.demo-pd-peer.default.svc:2379,demo-pd-2.demo-pd-peer.default.svc:2379,demo-pd-3.demo-pd-peer.default.svc:2379"))
 			},
 		},
+		{
+			name: "pdAddresses exists, 3 pd replicas, the 3rd pd send request",
+			ns:   "default",
+			url:  "demo-pd-2.demo-pd-peer.default.svc:2380",
+			tc: func() *v1alpha1.TidbCluster {
+				tc := newTC()
+				tc.Spec.PDAddresses = []string{"http://address0:2379", "http://address1:2379", "http://address2:2379"}
+				return tc
+			}(),
+			clusters: map[string]*clusterInfo{
+				"default/demo": {
+					resourceVersion: "1",
+					peers: map[string]struct{}{
+						"demo-pd-0": {},
+						"demo-pd-1": {},
+					},
+				},
+			},
+			expectFn: func(g *GomegaWithT, td *tidbDiscovery, s string, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(td.clusters["default/demo"].peers)).To(Equal(2))
+				g.Expect(s).To(Equal("--join=http://address0:2379,http://address1:2379,http://address2:2379"))
+			},
+		},
+		{
+			name: "pdAddresses exists, 3 pd replicas, get members success, the 1st pd send request",
+			ns:   "default",
+			url:  "demo-pd-0.demo-pd-peer.default.svc:2380",
+			tc: func() *v1alpha1.TidbCluster {
+				tc := newTC()
+				tc.Spec.PDAddresses = []string{
+					"http://address0:2379",
+					"http://address1:2379",
+					"http://address2:2379",
+				}
+				return tc
+			}(),
+			getMembersFn: func() (*pdapi.MembersInfo, error) {
+				return &pdapi.MembersInfo{
+					Members: []*pdpb.Member{
+						{
+							PeerUrls: []string{"http://address0:2380"},
+						},
+						{
+							PeerUrls: []string{"http://address1:2380"},
+						},
+						{
+							PeerUrls: []string{"http://address2:2380"},
+						},
+						{
+							PeerUrls: []string{"demo-pd-1.demo-pd-peer.default.svc:2380"},
+						},
+						{
+							PeerUrls: []string{"demo-pd-2.demo-pd-peer.default.svc:2380"},
+						},
+					},
+				}, nil
+			},
+			clusters: map[string]*clusterInfo{
+				"default/demo": {
+					resourceVersion: "1",
+					peers: map[string]struct{}{
+						"demo-pd-0": {},
+					},
+				},
+			},
+			expectFn: func(g *GomegaWithT, td *tidbDiscovery, s string, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(td.clusters["default/demo"].peers)).To(Equal(0))
+				g.Expect(s).To(Equal("--join=http://address0:2379,http://address1:2379,http://address2:2379,demo-pd-1.demo-pd-peer.default.svc:2379,demo-pd-2.demo-pd-peer.default.svc:2379"))
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -419,7 +522,7 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 		masterClient := dmapi.NewFakeMasterClient()
 		if test.dc != nil {
 			cli.PingcapV1alpha1().DMClusters(test.dc.Namespace).Create(test.dc)
-			fakeMasterControl.SetMasterClient(dmapi.Namespace(test.dc.GetNamespace()), test.dc.GetName(), masterClient)
+			fakeMasterControl.SetMasterClient(test.dc.GetNamespace(), test.dc.GetName(), masterClient)
 		}
 		masterClient.AddReaction(dmapi.GetMastersActionType, func(action *dmapi.Action) (interface{}, error) {
 			return test.getMastersFn()

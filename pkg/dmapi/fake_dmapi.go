@@ -20,9 +20,12 @@ import (
 type ActionType string
 
 const (
-	GetMastersActionType ActionType = "GetMasters"
-	GetWorkersActionType ActionType = "GetWorkers"
-	GetLeaderActionType  ActionType = "GetLeader"
+	GetMastersActionType   ActionType = "GetMasters"
+	GetWorkersActionType   ActionType = "GetWorkers"
+	GetLeaderActionType    ActionType = "GetLeader"
+	EvictLeaderActionType  ActionType = "EvictLeader"
+	DeleteMasterActionType ActionType = "DeleteMaster"
+	DeleteWorkerActionType ActionType = "DeleteWorker"
 )
 
 type NotFoundReaction struct {
@@ -50,13 +53,13 @@ func NewFakeMasterClient() *FakeMasterClient {
 	return &FakeMasterClient{reactions: map[ActionType]Reaction{}}
 }
 
-func (pc *FakeMasterClient) AddReaction(actionType ActionType, reaction Reaction) {
-	pc.reactions[actionType] = reaction
+func (c *FakeMasterClient) AddReaction(actionType ActionType, reaction Reaction) {
+	c.reactions[actionType] = reaction
 }
 
 // fakeAPI is a small helper for fake API calls
-func (pc *FakeMasterClient) fakeAPI(actionType ActionType, action *Action) (interface{}, error) {
-	if reaction, ok := pc.reactions[actionType]; ok {
+func (c *FakeMasterClient) fakeAPI(actionType ActionType, action *Action) (interface{}, error) {
+	if reaction, ok := c.reactions[actionType]; ok {
 		result, err := reaction(action)
 		if err != nil {
 			return nil, err
@@ -66,29 +69,47 @@ func (pc *FakeMasterClient) fakeAPI(actionType ActionType, action *Action) (inte
 	return nil, &NotFoundReaction{actionType}
 }
 
-func (pc *FakeMasterClient) GetMasters() ([]*MastersInfo, error) {
+func (c *FakeMasterClient) GetMasters() ([]*MastersInfo, error) {
 	action := &Action{}
-	result, err := pc.fakeAPI(GetMastersActionType, action)
+	result, err := c.fakeAPI(GetMastersActionType, action)
 	if err != nil {
 		return nil, err
 	}
 	return result.([]*MastersInfo), nil
 }
 
-func (pc *FakeMasterClient) GetWorkers() ([]*WorkersInfo, error) {
+func (c *FakeMasterClient) GetWorkers() ([]*WorkersInfo, error) {
 	action := &Action{}
-	result, err := pc.fakeAPI(GetWorkersActionType, action)
+	result, err := c.fakeAPI(GetWorkersActionType, action)
 	if err != nil {
 		return nil, err
 	}
 	return result.([]*WorkersInfo), nil
 }
 
-func (pc *FakeMasterClient) GetLeader() (MembersLeader, error) {
+func (c *FakeMasterClient) GetLeader() (MembersLeader, error) {
 	action := &Action{}
-	result, err := pc.fakeAPI(GetLeaderActionType, action)
+	result, err := c.fakeAPI(GetLeaderActionType, action)
 	if err != nil {
 		return MembersLeader{}, err
 	}
 	return result.(MembersLeader), nil
+}
+
+func (c *FakeMasterClient) EvictLeader() error {
+	action := &Action{}
+	_, err := c.fakeAPI(EvictLeaderActionType, action)
+	return err
+}
+
+func (c *FakeMasterClient) DeleteMaster(_ string) error {
+	action := &Action{}
+	_, err := c.fakeAPI(DeleteMasterActionType, action)
+	return err
+}
+
+func (c *FakeMasterClient) DeleteWorker(_ string) error {
+	action := &Action{}
+	_, err := c.fakeAPI(DeleteWorkerActionType, action)
+	return err
 }

@@ -14,6 +14,7 @@
 package server
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
@@ -31,6 +32,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"golang.org/x/sync/errgroup"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
@@ -45,6 +47,17 @@ var (
 		},
 		Spec: v1alpha1.TidbClusterSpec{
 			PD: &v1alpha1.PDSpec{Replicas: 3},
+		},
+	}
+	dc = &v1alpha1.DMCluster{
+		TypeMeta: metav1.TypeMeta{Kind: "DMCluster", APIVersion: "v1alpha1"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            "foo",
+			Namespace:       metav1.NamespaceDefault,
+			ResourceVersion: "1",
+		},
+		Spec: v1alpha1.DMClusterSpec{
+			Master: v1alpha1.MasterSpec{Replicas: 3},
 		},
 	}
 )
@@ -77,21 +90,22 @@ func TestServer(t *testing.T) {
 	cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
 	fakePDControl.SetPDClient(pdapi.Namespace(tc.Namespace), tc.Name, pdClient)
 
-	var wg sync.WaitGroup
 	var (
 		initial int32
 		join    int32
 	)
+
+	errg, _ := errgroup.WithContext(context.Background())
+
 	for i := 0; i < 3; i++ {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
+		i := i
+		errg.Go(func() error {
 			for {
 				svc := fmt.Sprintf(`foo-pd-%d.foo-pd-peer.default.svc:2380`, i)
 				url := httpServer.URL + fmt.Sprintf("/new/%s", base64.StdEncoding.EncodeToString([]byte(svc)))
 				resp, err := http.Get(url)
 				if err != nil {
-					t.Fatal(err)
+					return err
 				}
 				if resp.StatusCode != http.StatusOK {
 					time.Sleep(time.Millisecond * 100)
@@ -99,7 +113,7 @@ func TestServer(t *testing.T) {
 				}
 				data, err := ioutil.ReadAll(resp.Body)
 				if err != nil {
-					t.Fatal(err)
+					return err
 				}
 				lock.Lock()
 				pdMemberInfos.Members = append(pdMemberInfos.Members, &pdpb.Member{
@@ -114,11 +128,97 @@ func TestServer(t *testing.T) {
 				} else if strings.HasPrefix(string(data), "--initial-cluster=") {
 					atomic.AddInt32(&initial, 1)
 				}
-				break
+				return nil
 			}
-		}(i)
+		})
 	}
-	wg.Wait()
+
+	err := errg.Wait()
+	if err != nil {
+		t.Errorf("get pd info failed: %v", err)
+	}
+
+	if initial != 1 {
+		t.Errorf("initial expects 1, got %d", initial)
+	}
+	if join != 2 {
+		t.Errorf("join expects 2, got %d", join)
+	}
+}
+
+func TestDMServer(t *testing.T) {
+	os.Setenv("MY_POD_NAMESPACE", "default")
+	cli := fake.NewSimpleClientset()
+	kubeCli := kubefake.NewSimpleClientset()
+	fakePDControl := pdapi.NewFakePDControl(kubeCli)
+	faleMasterControl := dmapi.NewFakeMasterControl(kubeCli)
+	masterClient := dmapi.NewFakeMasterClient()
+	s := NewServer(fakePDControl, faleMasterControl, cli, kubeCli)
+	httpServer := httptest.NewServer(s.(*server).container.ServeMux)
+	defer httpServer.Close()
+
+	var lock sync.RWMutex
+	masterMemberInfos := make([]*dmapi.MastersInfo, 0)
+	masterClient.AddReaction(dmapi.GetMastersActionType, func(action *dmapi.Action) (interface{}, error) {
+		lock.RLock()
+		defer lock.RUnlock()
+		if len(masterMemberInfos) <= 0 {
+			return nil, fmt.Errorf("no members yet")
+		}
+		// as masterMemberInfos.Members maybe modified, we must return a copy
+		ret := append([]*dmapi.MastersInfo{}, masterMemberInfos...)
+		return ret, nil
+	})
+	cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(dc)
+	faleMasterControl.SetMasterClient(dc.Namespace, dc.Name, masterClient)
+
+	var (
+		initial int32
+		join    int32
+	)
+
+	errg, _ := errgroup.WithContext(context.Background())
+
+	for i := 0; i < 3; i++ {
+		i := i
+		errg.Go(func() error {
+			for {
+				svc := fmt.Sprintf(`foo-dm-master-%d.foo-dm-master-peer:2380`, i)
+				url := httpServer.URL + fmt.Sprintf("/new/%s/dm", base64.StdEncoding.EncodeToString([]byte(svc)))
+				resp, err := http.Get(url)
+				if err != nil {
+					return err
+				}
+				if resp.StatusCode != http.StatusOK {
+					time.Sleep(time.Millisecond * 100)
+					continue
+				}
+				data, err := ioutil.ReadAll(resp.Body)
+				if err != nil {
+					return err
+				}
+				lock.Lock()
+				masterMemberInfos = append(masterMemberInfos, &dmapi.MastersInfo{
+					Name: svc,
+					PeerURLs: []string{
+						svc,
+					},
+				})
+				lock.Unlock()
+				if strings.HasPrefix(string(data), "--join=") {
+					atomic.AddInt32(&join, 1)
+				} else if strings.HasPrefix(string(data), "--initial-cluster=") {
+					atomic.AddInt32(&initial, 1)
+				}
+				return nil
+			}
+		})
+	}
+
+	err := errg.Wait()
+	if err != nil {
+		t.Errorf("get dm-master info failed: %v", err)
+	}
 
 	if initial != 1 {
 		t.Errorf("initial expects 1, got %d", initial)

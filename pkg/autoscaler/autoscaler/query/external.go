@@ -39,7 +39,7 @@ const (
 	defaultTimeout = 5 * time.Second
 )
 
-func ExternalService(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, endpoint *v1alpha1.ExternalEndpoint, kubecli kubernetes.Interface) (int32, error) {
+func ExternalService(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, endpoint v1alpha1.ExternalEndpoint, kubecli kubernetes.Interface) (int32, error) {
 	bytes, err := sendRequest(tc, memberType, endpoint, kubecli)
 	if err != nil {
 		return -1, err
@@ -55,7 +55,7 @@ func ExternalService(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, e
 	return resp.RecommendedReplicas, nil
 }
 
-func sendRequest(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, endpoint *v1alpha1.ExternalEndpoint, kubecli kubernetes.Interface) ([]byte, error) {
+func sendRequest(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, endpoint v1alpha1.ExternalEndpoint, kubecli kubernetes.Interface) ([]byte, error) {
 	client, err := getClient(endpoint, kubecli)
 	if err != nil {
 		return nil, err
@@ -80,7 +80,7 @@ func sendRequest(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, endpo
 	return bytes, nil
 }
 
-func getClient(endpoint *v1alpha1.ExternalEndpoint, kubecli kubernetes.Interface) (*http.Client, error) {
+func getClient(endpoint v1alpha1.ExternalEndpoint, kubecli kubernetes.Interface) (*http.Client, error) {
 	var client *http.Client
 	if endpoint.TLSSecret != nil {
 		tlsConfig, err := loadTLSConfig(endpoint, kubecli)
@@ -103,7 +103,7 @@ func getClient(endpoint *v1alpha1.ExternalEndpoint, kubecli kubernetes.Interface
 	return client, nil
 }
 
-func loadTLSConfig(endpoint *v1alpha1.ExternalEndpoint, kubecli kubernetes.Interface) (*tls.Config, error) {
+func loadTLSConfig(endpoint v1alpha1.ExternalEndpoint, kubecli kubernetes.Interface) (*tls.Config, error) {
 	secret, err := kubecli.CoreV1().Secrets(endpoint.TLSSecret.Namespace).Get(endpoint.TLSSecret.Name, metav1.GetOptions{})
 	if err != nil {
 		klog.Error(err)

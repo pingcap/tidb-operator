@@ -63,37 +63,37 @@ func NewRealBackupControl(
 	}
 }
 
-func (rbc *realBackupControl) CreateBackup(backup *v1alpha1.Backup) (*v1alpha1.Backup, error) {
+func (c *realBackupControl) CreateBackup(backup *v1alpha1.Backup) (*v1alpha1.Backup, error) {
 	ns := backup.GetNamespace()
 	backupName := backup.GetName()
 
 	bsName := backup.GetLabels()[label.BackupScheduleLabelKey]
-	backup, err := rbc.cli.PingcapV1alpha1().Backups(ns).Create(backup)
+	backup, err := c.cli.PingcapV1alpha1().Backups(ns).Create(backup)
 	if err != nil {
 		klog.Errorf("failed to create Backup: [%s/%s] for backupSchedule/%s, err: %v", ns, backupName, bsName, err)
 	} else {
 		klog.V(4).Infof("create Backup: [%s/%s] for backupSchedule/%s successfully", ns, backupName, bsName)
 	}
-	rbc.recordBackupEvent("create", backup, err)
+	c.recordBackupEvent("create", backup, err)
 	return backup, err
 }
 
-func (rbc *realBackupControl) DeleteBackup(backup *v1alpha1.Backup) error {
+func (c *realBackupControl) DeleteBackup(backup *v1alpha1.Backup) error {
 	ns := backup.GetNamespace()
 	backupName := backup.GetName()
 
 	bsName := backup.GetLabels()[label.BackupScheduleLabelKey]
-	err := rbc.cli.PingcapV1alpha1().Backups(ns).Delete(backupName, nil)
+	err := c.cli.PingcapV1alpha1().Backups(ns).Delete(backupName, nil)
 	if err != nil {
 		klog.Errorf("failed to delete Backup: [%s/%s] for backupSchedule/%s, err: %v", ns, backupName, bsName, err)
 	} else {
 		klog.V(4).Infof("delete backup: [%s/%s] successfully, backupSchedule/%s", ns, backupName, bsName)
 	}
-	rbc.recordBackupEvent("delete", backup, err)
+	c.recordBackupEvent("delete", backup, err)
 	return err
 }
 
-func (rbc *realBackupControl) recordBackupEvent(verb string, backup *v1alpha1.Backup, err error) {
+func (c *realBackupControl) recordBackupEvent(verb string, backup *v1alpha1.Backup, err error) {
 	backupName := backup.GetName()
 	ns := backup.GetNamespace()
 
@@ -102,12 +102,12 @@ func (rbc *realBackupControl) recordBackupEvent(verb string, backup *v1alpha1.Ba
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
 		msg := fmt.Sprintf("%s Backup %s/%s for backupSchedule/%s successful",
 			strings.ToLower(verb), ns, backupName, bsName)
-		rbc.recorder.Event(backup, corev1.EventTypeNormal, reason, msg)
+		c.recorder.Event(backup, corev1.EventTypeNormal, reason, msg)
 	} else {
 		reason := fmt.Sprintf("Failed%s", strings.Title(verb))
 		msg := fmt.Sprintf("%s Backup %s/%s for backupSchedule/%s failed error: %s",
 			strings.ToLower(verb), ns, backupName, bsName, err)
-		rbc.recorder.Event(backup, corev1.EventTypeWarning, reason, msg)
+		c.recorder.Event(backup, corev1.EventTypeWarning, reason, msg)
 	}
 }
 

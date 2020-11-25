@@ -3,15 +3,19 @@ kind: TidbCluster
 metadata:
   name: auto-scaling-demo
 spec:
-  version: v4.0.4
+  version: v4.0.8
   timezone: UTC
-  pvReclaimPolicy: Delete
+  pvReclaimPolicy: Retain
+  enableDynamicConfiguration: true
+  configUpdateStrategy: RollingUpdate
   pd:
     baseImage: pingcap/pd
     replicas: 3
     requests:
       storage: "1Gi"
-    config: {}
+    config: 
+      pd-server:
+        metric-storage: "http://auto-scaling-demo-prometheus:9090/"
   tikv:
     baseImage: pingcap/tikv
     replicas: 3

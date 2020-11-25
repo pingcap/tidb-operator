@@ -18,94 +18,71 @@ import (
 	"time"
 
 	perrors "github.com/pingcap/errors"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
-	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	kubeinformers "k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes"
-	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
 )
 
 type Controller struct {
-	control  ControlInterface
-	taLister listers.TidbClusterAutoScalerLister
-	queue    workqueue.RateLimitingInterface
+	deps    *controller.Dependencies
+	control ControlInterface
+	queue   workqueue.RateLimitingInterface
 }
 
-func NewController(
-	kubeCli kubernetes.Interface,
-	cli versioned.Interface,
-	informerFactory informers.SharedInformerFactory,
-	kubeInformerFactory kubeinformers.SharedInformerFactory,
-) *Controller {
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(klog.Infof)
-	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
-		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
-	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tidbclusterautoscaler"})
-	autoScalerInformer := informerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers()
-	asm := autoscaler.NewAutoScalerManager(kubeCli, cli, informerFactory, kubeInformerFactory, recorder)
-
-	tac := &Controller{
-		control:  NewDefaultAutoScalerControl(recorder, asm),
-		taLister: autoScalerInformer.Lister(),
-		queue: workqueue.NewNamedRateLimitingQueue(
-			workqueue.DefaultControllerRateLimiter(),
-			"tidbclusterautoscaler"),
+func NewController(deps *controller.Dependencies) *Controller {
+	t := &Controller{
+		deps:    deps,
+		control: NewDefaultAutoScalerControl(autoscaler.NewAutoScalerManager(deps)),
+		queue:   workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "tidbclusterautoscaler"),
 	}
-	controller.WatchForObject(autoScalerInformer.Informer(), tac.queue)
-	return tac
+	tidbAutoScalerInformer := deps.InformerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers()
+	controller.WatchForObject(tidbAutoScalerInformer.Informer(), t.queue)
+	return t
 }
 
-func (tac *Controller) Run(workers int, stopCh <-chan struct{}) {
+func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
-	defer tac.queue.ShutDown()
+	defer c.queue.ShutDown()
 
 	klog.Info("Starting TidbClusterAutoScaler controller")
 	defer klog.Info("Shutting down tidbclusterAutoScaler controller")
 	for i := 0; i < workers; i++ {
-		go wait.Until(tac.worker, time.Second, stopCh)
+		go wait.Until(c.worker, time.Second, stopCh)
 	}
 
 	<-stopCh
 }
 
-func (tac *Controller) worker() {
-	for tac.processNextWorkItem() {
+func (c *Controller) worker() {
+	for c.processNextWorkItem() {
 	}
 }
 
-func (tac *Controller) processNextWorkItem() bool {
-	key, quit := tac.queue.Get()
+func (c *Controller) processNextWorkItem() bool {
+	key, quit := c.queue.Get()
 	if quit {
 		return false
 	}
-	defer tac.queue.Done(key)
-	if err := tac.sync(key.(string)); err != nil {
+	defer c.queue.Done(key)
+	if err := c.sync(key.(string)); err != nil {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
 			klog.Infof("TidbClusterAutoScaler: %v, still need sync: %v, requeuing", key.(string), err)
 		} else {
 			utilruntime.HandleError(fmt.Errorf("TidbClusterAutoScaler: %v, sync failed, err: %v", key.(string), err))
 		}
-		tac.queue.AddRateLimited(key)
+		c.queue.AddRateLimited(key)
 	} else {
-		tac.queue.Forget(key)
+		c.queue.Forget(key)
 	}
 	return true
 }
 
-func (tac *Controller) sync(key string) error {
+func (c *Controller) sync(key string) error {
 	startTime := time.Now()
 	defer func() {
 		klog.V(4).Infof("Finished syncing TidbClusterAutoScaler %q (%v)", key, time.Since(startTime))
@@ -115,7 +92,7 @@ func (tac *Controller) sync(key string) error {
 	if err != nil {
 		return err
 	}
-	ta, err := tac.taLister.TidbClusterAutoScalers(ns).Get(name)
+	ta, err := c.deps.TiDBClusterAutoScalerLister.TidbClusterAutoScalers(ns).Get(name)
 	if errors.IsNotFound(err) {
 		klog.Infof("TidbClusterAutoScaler has been deleted %v", key)
 		return nil
@@ -124,5 +101,5 @@ func (tac *Controller) sync(key string) error {
 		return err
 	}
 
-	return tac.control.ResconcileAutoScaler(ta)
+	return c.control.ResconcileAutoScaler(ta)
 }

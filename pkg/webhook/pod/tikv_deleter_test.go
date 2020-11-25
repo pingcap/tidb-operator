@@ -325,9 +325,6 @@ func newTiKVPod(ordinal int32, clusterPod bool) *core.Pod {
 	if clusterPod {
 		pod.Name = memberUtils.TikvPodName(tcName, ordinal)
 		pod.Labels[label.NameLabelKey] = "tidb-cluster"
-	} else {
-		pod.Name = memberUtils.TiKVGroupPodName(tcName, ordinal)
-		pod.Labels[label.NameLabelKey] = "tidb-cluster-group"
 	}
 	pod.Namespace = namespace
 	return &pod

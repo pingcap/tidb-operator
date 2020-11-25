@@ -85,7 +85,7 @@ func NewCSR(commonName string, hostList []string, IPList []string) ([]byte, []by
 	return csr, convertKeyToPEM("RSA PRIVATE KEY", privKey), nil
 }
 
-func ReadCACerts() (*x509.CertPool, error) {
+func readCACerts(tryAppendCAFile string) (*x509.CertPool, error) {
 	// try to load system CA certs
 	rootCAs, err := x509.SystemCertPool()
 	if err != nil {
@@ -95,10 +95,9 @@ func ReadCACerts() (*x509.CertPool, error) {
 		rootCAs = x509.NewCertPool()
 	}
 
-	// load k8s CA cert
-	caCert, err := ioutil.ReadFile(k8sCAFile)
+	caCert, err := ioutil.ReadFile(tryAppendCAFile)
 	if err != nil {
-		klog.Errorf("fail to read CA file %s, error: %v", k8sCAFile, err)
+		klog.Errorf("fail to read CA file %s, error: %v", tryAppendCAFile, err)
 		return nil, err
 	}
 	if ok := rootCAs.AppendCertsFromPEM(caCert); !ok {
@@ -107,11 +106,18 @@ func ReadCACerts() (*x509.CertPool, error) {
 	return rootCAs, nil
 }
 
+func ReadCACerts() (*x509.CertPool, error) {
+	// load k8s CA cert
+	return readCACerts(k8sCAFile)
+}
+
 func LoadTlsConfigFromSecret(secret *corev1.Secret) (*tls.Config, error) {
 	rootCAs := x509.NewCertPool()
 	var tlsCert tls.Certificate
 
-	rootCAs.AppendCertsFromPEM(secret.Data[corev1.ServiceAccountRootCAKey])
+	if !rootCAs.AppendCertsFromPEM(secret.Data[corev1.ServiceAccountRootCAKey]) {
+		return nil, fmt.Errorf("failed to append ca certs")
+	}
 
 	clientCert, certExists := secret.Data[corev1.TLSCertKey]
 	clientKey, keyExists := secret.Data[corev1.TLSPrivateKeyKey]
@@ -125,6 +131,7 @@ func LoadTlsConfigFromSecret(secret *corev1.Secret) (*tls.Config, error) {
 
 	return &tls.Config{
 		RootCAs:      rootCAs,
+		ClientCAs:    rootCAs,
 		Certificates: []tls.Certificate{tlsCert},
 	}, nil
 }

@@ -41,23 +41,20 @@ func NewDefaultDMClusterControl(
 	dcControl controller.DMClusterControlInterface,
 	masterMemberManager manager.DMManager,
 	workerMemberManager manager.DMManager,
-	//reclaimPolicyManager manager.DMManager,
-	//metaManager manager.DMManager,
-	//orphanPodsCleaner member.OrphanPodsCleaner,
+	reclaimPolicyManager manager.DMManager,
+	orphanPodsCleaner member.OrphanPodsCleaner,
 	pvcCleaner member.PVCCleanerInterface,
 	pvcResizer member.PVCResizerInterface,
-	//podRestarter member.PodRestarter,
 	conditionUpdater DMClusterConditionUpdater,
 	recorder record.EventRecorder) ControlInterface {
 	return &defaultDMClusterControl{
 		dcControl,
 		masterMemberManager,
 		workerMemberManager,
-		//reclaimPolicyManager,
+		reclaimPolicyManager,
 		//metaManager,
-		//orphanPodsCleaner,
+		orphanPodsCleaner,
 		pvcCleaner,
-		//podRestarter,
 		pvcResizer,
 		conditionUpdater,
 		recorder,
@@ -65,87 +62,77 @@ func NewDefaultDMClusterControl(
 }
 
 type defaultDMClusterControl struct {
-	dcControl           controller.DMClusterControlInterface
-	masterMemberManager manager.DMManager
-	workerMemberManager manager.DMManager
-	//reclaimPolicyManager manager.DMManager
+	dcControl            controller.DMClusterControlInterface
+	masterMemberManager  manager.DMManager
+	workerMemberManager  manager.DMManager
+	reclaimPolicyManager manager.DMManager
 	//metaManager       manager.DMManager
-	//orphanPodsCleaner member.OrphanPodsCleaner
-	pvcCleaner member.PVCCleanerInterface
-	//podRestarter     member.PodRestarter
-	pvcResizer       member.PVCResizerInterface
-	conditionUpdater DMClusterConditionUpdater
-	recorder         record.EventRecorder
+	orphanPodsCleaner member.OrphanPodsCleaner
+	pvcCleaner        member.PVCCleanerInterface
+	pvcResizer        member.PVCResizerInterface
+	conditionUpdater  DMClusterConditionUpdater
+	recorder          record.EventRecorder
 }
 
 // UpdateStatefulSet executes the core logic loop for a dmcluster.
-func (dcc *defaultDMClusterControl) UpdateDMCluster(dc *v1alpha1.DMCluster) error {
-	dcc.defaulting(dc)
-	if !dcc.validate(dc) {
+func (c *defaultDMClusterControl) UpdateDMCluster(dc *v1alpha1.DMCluster) error {
+	c.defaulting(dc)
+	if !c.validate(dc) {
 		return nil // fatal error, no need to retry on invalid object
 	}
 
 	var errs []error
 	oldStatus := dc.Status.DeepCopy()
 
-	if err := dcc.updateDMCluster(dc); err != nil {
+	if err := c.updateDMCluster(dc); err != nil {
 		errs = append(errs, err)
 	}
 
-	if err := dcc.conditionUpdater.Update(dc); err != nil {
+	if err := c.conditionUpdater.Update(dc); err != nil {
 		errs = append(errs, err)
 	}
 
 	if apiequality.Semantic.DeepEqual(&dc.Status, oldStatus) {
 		return errorutils.NewAggregate(errs)
 	}
-	if _, err := dcc.dcControl.UpdateDMCluster(dc.DeepCopy(), &dc.Status, oldStatus); err != nil {
+	if _, err := c.dcControl.UpdateDMCluster(dc.DeepCopy(), &dc.Status, oldStatus); err != nil {
 		errs = append(errs, err)
 	}
 
 	return errorutils.NewAggregate(errs)
 }
 
-func (dcc *defaultDMClusterControl) defaulting(dc *v1alpha1.DMCluster) {
+func (c *defaultDMClusterControl) defaulting(dc *v1alpha1.DMCluster) {
 	defaulting.SetDMClusterDefault(dc)
 }
 
-func (dcc *defaultDMClusterControl) validate(dc *v1alpha1.DMCluster) bool {
+func (c *defaultDMClusterControl) validate(dc *v1alpha1.DMCluster) bool {
 	errs := v1alpha1validation.ValidateDMCluster(dc)
 	if len(errs) > 0 {
 		aggregatedErr := errs.ToAggregate()
 		klog.Errorf("dm cluster %s/%s is not valid and must be fixed first, aggregated error: %v", dc.GetNamespace(), dc.GetName(), aggregatedErr)
-		dcc.recorder.Event(dc, v1.EventTypeWarning, "FailedValidation", aggregatedErr.Error())
+		c.recorder.Event(dc, v1.EventTypeWarning, "FailedValidation", aggregatedErr.Error())
 		return false
 	}
 	return true
 }
 
-func (dcc *defaultDMClusterControl) updateDMCluster(dc *v1alpha1.DMCluster) error {
+func (c *defaultDMClusterControl) updateDMCluster(dc *v1alpha1.DMCluster) error {
 	var errs []error
-	// TODO: implement reclaimPolicyManager
-	// syncing all PVs managed by operator's reclaim policy to Retain
-	// if err := dcc.reclaimPolicyManager.Sync(dc); err != nil {
-	//	return err
-	// }
+	if err := c.reclaimPolicyManager.SyncDM(dc); err != nil {
+		return err
+	}
 
-	// TODO: add orphanPodsCleaner for dm cluster
-	// cleaning all orphan pods(pd, tikv or tiflash which don't have a related PVC) managed by operator
-	// skipReasons, err := dcc.orphanPodsCleaner.Clean(dc)
-	// if err != nil {
-	// 	return err
-	// }
-	// if klog.V(10) {
-	// 	for podName, reason := range skipReasons {
-	// 		klog.Infof("pod %s of cluster %s/%s is skipped, reason %q", podName, dc.Namespace, dc.Name, reason)
-	// 	}
-	// }
-
-	// TODO: restarted pods in dm cluster
-	// sync all the pods which need to be restarted
-	// if err := dcc.podRestarter.Sync(dc); err != nil {
-	// 	return err
-	// }
+	// cleaning all orphan pods(dm-master or dm-worker which don't have a related PVC) managed by operator
+	skipReasons, err := c.orphanPodsCleaner.Clean(dc)
+	if err != nil {
+		return err
+	}
+	if klog.V(10) {
+		for podName, reason := range skipReasons {
+			klog.Infof("pod %s of cluster %s/%s is skipped, reason %q", podName, dc.Namespace, dc.Name, reason)
+		}
+	}
 
 	// works that should do to making the dm-master cluster current state match the desired state:
 	//   - create or update the dm-master service
@@ -158,7 +145,7 @@ func (dcc *defaultDMClusterControl) updateDMCluster(dc *v1alpha1.DMCluster) erro
 	//   - upgrade the dm-master cluster
 	//   - scale out/in the dm-master cluster
 	//   - failover the dm-master cluster
-	if err := dcc.masterMemberManager.Sync(dc); err != nil {
+	if err := c.masterMemberManager.SyncDM(dc); err != nil {
 		errs = append(errs, err)
 	}
 
@@ -170,7 +157,7 @@ func (dcc *defaultDMClusterControl) updateDMCluster(dc *v1alpha1.DMCluster) erro
 	//   - upgrade the dm-worker cluster
 	//   - scale out/in the dm-worker cluster
 	//   - failover the dm-worker cluster
-	if err := dcc.workerMemberManager.Sync(dc); err != nil {
+	if err := c.workerMemberManager.SyncDM(dc); err != nil {
 		errs = append(errs, err)
 	}
 
@@ -178,29 +165,51 @@ func (dcc *defaultDMClusterControl) updateDMCluster(dc *v1alpha1.DMCluster) erro
 	//   - label.StoreIDLabelKey
 	//   - label.MemberIDLabelKey
 	//   - label.NamespaceLabelKey
-	// if err := dcc.metaManager.Sync(dc); err != nil {
+	// if err := c.metaManager.Sync(dc); err != nil {
 	// 	return err
 	// }
 
-	// TODO: clean pods cleaning the pod scheduling annotation for dm cluster
-	// pvcSkipReasons, err := dcc.pvcCleaner.Clean(dc)
-	// if err != nil {
-	// 	return err
-	// }
-	// if klog.V(10) {
-	// 	for pvcName, reason := range pvcSkipReasons {
-	// 		klog.Infof("pvc %s of cluster %s/%s is skipped, reason %q", pvcName, dc.Namespace, dc.Name, reason)
-	// 	}
-	// }
+	pvcSkipReasons, err := c.pvcCleaner.Clean(dc)
+	if err != nil {
+		return err
+	}
+	if klog.V(10) {
+		for pvcName, reason := range pvcSkipReasons {
+			klog.Infof("pvc %s of cluster %s/%s is skipped, reason %q", pvcName, dc.Namespace, dc.Name, reason)
+		}
+	}
 
 	// TODO: sync dm cluster attributes
 	// syncing the some tidbcluster status attributes
 	// 	- sync tidbmonitor reference
-	// return dcc.tidbClusterStatusManager.Sync(dc)
+	// return c.tidbClusterStatusManager.Sync(dc)
 
 	// resize PVC if necessary
-	if err := dcc.pvcResizer.ResizeDM(dc); err != nil {
+	if err := c.pvcResizer.ResizeDM(dc); err != nil {
 		errs = append(errs, err)
 	}
 	return errorutils.NewAggregate(errs)
 }
+
+var _ ControlInterface = &defaultDMClusterControl{}
+
+type FakeDMClusterControlInterface struct {
+	err error
+}
+
+func NewFakeDMClusterControlInterface() *FakeDMClusterControlInterface {
+	return &FakeDMClusterControlInterface{}
+}
+
+func (ftcc *FakeDMClusterControlInterface) SetUpdateDCError(err error) {
+	ftcc.err = err
+}
+
+func (ftcc *FakeDMClusterControlInterface) UpdateDMCluster(_ *v1alpha1.DMCluster) error {
+	if ftcc.err != nil {
+		return ftcc.err
+	}
+	return nil
+}
+
+var _ ControlInterface = &FakeDMClusterControlInterface{}

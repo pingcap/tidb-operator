@@ -33,11 +33,14 @@ import (
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/pointer"
 )
 
 func GetMonitorObjectName(monitor *v1alpha1.TidbMonitor) string {
 	return fmt.Sprintf("%s-monitor", monitor.Name)
+}
+
+func GetMonitorObjectNameCrossNamespace(monitor *v1alpha1.TidbMonitor) string {
+	return fmt.Sprintf("%s-%s-monitor", monitor.Namespace, monitor.Name)
 }
 
 func buildTidbMonitorLabel(name string) map[string]string {
@@ -124,18 +127,6 @@ func getMonitorServiceAccount(monitor *v1alpha1.TidbMonitor) *core.ServiceAccoun
 	return sa
 }
 
-func getMonitorClusterRole(monitor *v1alpha1.TidbMonitor, policyRules []rbac.PolicyRule) *rbac.ClusterRole {
-	return &rbac.ClusterRole{
-		ObjectMeta: meta.ObjectMeta{
-			Name:            GetMonitorObjectName(monitor),
-			Namespace:       monitor.Namespace,
-			Labels:          buildTidbMonitorLabel(monitor.Name),
-			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
-		},
-		Rules: policyRules,
-	}
-}
-
 func getMonitorRole(monitor *v1alpha1.TidbMonitor, policyRules []rbac.PolicyRule) *rbac.Role {
 	return &rbac.Role{
 		ObjectMeta: meta.ObjectMeta{
@@ -148,10 +139,22 @@ func getMonitorRole(monitor *v1alpha1.TidbMonitor, policyRules []rbac.PolicyRule
 	}
 }
 
-func getMonitorClusterRoleBinding(sa *core.ServiceAccount, cr *rbac.ClusterRole, monitor *v1alpha1.TidbMonitor) *rbac.ClusterRoleBinding {
+func getMonitorClusterRole(monitor *v1alpha1.TidbMonitor, policyRules []rbac.PolicyRule) *rbac.ClusterRole {
+	return &rbac.ClusterRole{
+		ObjectMeta: meta.ObjectMeta{
+			Name:            GetMonitorObjectNameCrossNamespace(monitor),
+			Namespace:       monitor.Namespace,
+			Labels:          buildTidbMonitorLabel(monitor.Name),
+			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
+		},
+		Rules: policyRules,
+	}
+}
+
+func getMonitorClusterRoleBinding(sa *core.ServiceAccount, role *rbac.ClusterRole, monitor *v1alpha1.TidbMonitor) *rbac.ClusterRoleBinding {
 	return &rbac.ClusterRoleBinding{
 		ObjectMeta: meta.ObjectMeta{
-			Name:            GetMonitorObjectName(monitor),
+			Name:            GetMonitorObjectNameCrossNamespace(monitor),
 			Namespace:       monitor.Namespace,
 			Labels:          buildTidbMonitorLabel(monitor.Name),
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
@@ -166,7 +169,7 @@ func getMonitorClusterRoleBinding(sa *core.ServiceAccount, cr *rbac.ClusterRole,
 		},
 		RoleRef: rbac.RoleRef{
 			Kind:     "ClusterRole",
-			Name:     cr.Name,
+			Name:     role.Name,
 			APIGroup: "rbac.authorization.k8s.io",
 		},
 	}
@@ -323,9 +326,6 @@ chmod 777 /data/prometheus /data/grafana
 			},
 		},
 		Command: command,
-		SecurityContext: &core.SecurityContext{
-			RunAsUser: pointer.Int64Ptr(0),
-		},
 		VolumeMounts: []core.VolumeMount{
 			{
 				MountPath: "/prometheus-rules",
@@ -374,12 +374,14 @@ chmod 777 /data/prometheus /data/grafana
 			})
 
 	}
+	var envOverrides []core.EnvVar
 	for k, v := range monitor.Spec.Initializer.Envs {
-		util.AppendOverwriteEnv(container.Env, []core.EnvVar{{
+		envOverrides = append(envOverrides, core.EnvVar{
 			Name:  k,
 			Value: v,
-		}})
+		})
 	}
+	container.Env = util.AppendOverwriteEnv(container.Env, envOverrides)
 	return container
 }
 
@@ -390,6 +392,11 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 		Resources: controller.ContainerResource(monitor.Spec.Prometheus.ResourceRequirements),
 		Command: []string{
 			"/bin/prometheus",
+			"--web.enable-admin-api",
+			"--web.enable-lifecycle",
+			"--config.file=/etc/prometheus/prometheus.yml",
+			"--storage.tsdb.path=/data/prometheus",
+			fmt.Sprintf("--storage.tsdb.retention=%dd", monitor.Spec.Prometheus.ReserveDays),
 		},
 		Ports: []core.ContainerPort{
 			{
@@ -421,19 +428,12 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 			},
 		},
 	}
-	commandOptions := []string{"--web.enable-admin-api",
-		"--web.enable-lifecycle",
-		"--config.file=/etc/prometheus/prometheus.yml",
-		"--storage.tsdb.path=/data/prometheus",
-		fmt.Sprintf("--storage.tsdb.retention=%dd", monitor.Spec.Prometheus.ReserveDays)}
-
-	if monitor.Spec.Prometheus.Config != nil && len(monitor.Spec.Prometheus.Config.CommandOptions) > 0 {
-		commandOptions = monitor.Spec.Prometheus.Config.CommandOptions
-	}
-	c.Command = append(c.Command, commandOptions...)
 
 	if len(monitor.Spec.Prometheus.LogLevel) > 0 {
 		c.Command = append(c.Command, fmt.Sprintf("--log.level=%s", monitor.Spec.Prometheus.LogLevel))
+	}
+	if monitor.Spec.Prometheus.Config != nil && len(monitor.Spec.Prometheus.Config.CommandOptions) > 0 {
+		c.Command = append(c.Command, monitor.Spec.Prometheus.Config.CommandOptions...)
 	}
 
 	if tc.IsTLSClusterEnabled() {
@@ -518,12 +518,14 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 	if monitor.Spec.Grafana.ImagePullPolicy != nil {
 		c.ImagePullPolicy = *monitor.Spec.Grafana.ImagePullPolicy
 	}
+	var envOverrides []core.EnvVar
 	for k, v := range monitor.Spec.Grafana.Envs {
-		util.AppendOverwriteEnv(c.Env, []core.EnvVar{{
+		envOverrides = append(envOverrides, core.EnvVar{
 			Name:  k,
 			Value: v,
-		}})
+		})
 	}
+	c.Env = util.AppendOverwriteEnv(c.Env, envOverrides)
 	sort.Sort(util.SortEnvByName(c.Env))
 	return c
 }

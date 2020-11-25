@@ -29,8 +29,9 @@ import (
 const (
 	TiDBV3Version                 = "v3.1.1"
 	TiDBV3UpgradeVersion          = "v3.1.2"
-	TiDBV4Version                 = "v4.0.0-rc.2"
-	TiDBV4UpgradeVersion          = "v4.0.0"
+	TiDBV4Version                 = "v4.0.4"
+	TiDBV4UpgradeVersion          = "v4.0.5"
+	TiDBNightlyVersion            = "nightly"
 	PrometheusImage               = "prom/prometheus"
 	PrometheusVersion             = "v2.18.1"
 	TiDBMonitorReloaderImage      = "pingcap/tidb-monitor-reloader"
@@ -48,6 +49,7 @@ func ListImages() []string {
 	versions = append(versions, TiDBV3UpgradeVersion)
 	versions = append(versions, TiDBV4Version)
 	versions = append(versions, TiDBV4UpgradeVersion)
+	versions = append(versions, TiDBNightlyVersion)
 	for _, v := range versions {
 		images = append(images, fmt.Sprintf("pingcap/pd:%s", v))
 		images = append(images, fmt.Sprintf("pingcap/tidb:%s", v))

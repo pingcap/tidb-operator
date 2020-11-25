@@ -30,7 +30,7 @@ type httpClient struct {
 	kubeCli kubernetes.Interface
 }
 
-func (hc *httpClient) getHTTPClient(tc *v1alpha1.TidbCluster) (*http.Client, error) {
+func (c *httpClient) getHTTPClient(tc *v1alpha1.TidbCluster) (*http.Client, error) {
 	httpClient := &http.Client{Timeout: timeout}
 	if !tc.IsTLSClusterEnabled() {
 		return httpClient, nil
@@ -39,7 +39,7 @@ func (hc *httpClient) getHTTPClient(tc *v1alpha1.TidbCluster) (*http.Client, err
 	tcName := tc.Name
 	ns := tc.Namespace
 	secretName := util.ClusterClientTLSSecretName(tcName)
-	secret, err := hc.kubeCli.CoreV1().Secrets(ns).Get(secretName, metav1.GetOptions{})
+	secret, err := c.kubeCli.CoreV1().Secrets(ns).Get(secretName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}

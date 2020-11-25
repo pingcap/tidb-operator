@@ -22,8 +22,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog"
 )
 
@@ -45,63 +45,57 @@ const (
 
 // PVCCleaner implements the logic for cleaning the pvc related resource
 type PVCCleanerInterface interface {
-	Clean(*v1alpha1.TidbCluster) (map[string]string, error)
+	Clean(metav1.Object) (map[string]string, error)
 }
 
 type realPVCCleaner struct {
-	kubeCli    kubernetes.Interface
-	podLister  corelisters.PodLister
-	pvcControl controller.PVCControlInterface
-	pvcLister  corelisters.PersistentVolumeClaimLister
-	pvLister   corelisters.PersistentVolumeLister
-	pvControl  controller.PVControlInterface
+	deps *controller.Dependencies
 }
 
 // NewRealPVCCleaner returns a realPVCCleaner
-func NewRealPVCCleaner(
-	kubeCli kubernetes.Interface,
-	podLister corelisters.PodLister,
-	pvcControl controller.PVCControlInterface,
-	pvcLister corelisters.PersistentVolumeClaimLister,
-	pvLister corelisters.PersistentVolumeLister,
-	pvControl controller.PVControlInterface) PVCCleanerInterface {
+func NewRealPVCCleaner(deps *controller.Dependencies) PVCCleanerInterface {
 	return &realPVCCleaner{
-		kubeCli,
-		podLister,
-		pvcControl,
-		pvcLister,
-		pvLister,
-		pvControl,
+		deps: deps,
 	}
 }
 
-func (rpc *realPVCCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string, error) {
-	if skipReason, err := rpc.cleanScheduleLock(tc); err != nil {
+func (c *realPVCCleaner) Clean(meta metav1.Object) (map[string]string, error) {
+	if skipReason, err := c.cleanScheduleLock(meta); err != nil {
 		return skipReason, err
 	}
-	return rpc.reclaimPV(tc)
+	return c.reclaimPV(meta)
 }
 
 // reclaimPV reclaims PV used by tidb cluster if necessary.
-func (rpc *realPVCCleaner) reclaimPV(tc *v1alpha1.TidbCluster) (map[string]string, error) {
-	if !tc.IsPVReclaimEnabled() {
-		// PV reclaim is not enabled, return directly.
-		return nil, nil
+func (c *realPVCCleaner) reclaimPV(meta metav1.Object) (map[string]string, error) {
+	var clusterType string
+	switch meta := meta.(type) {
+	case *v1alpha1.TidbCluster:
+		if !meta.IsPVReclaimEnabled() {
+			return nil, nil
+		}
+		clusterType = "tidbcluster"
+	case *v1alpha1.DMCluster:
+		if !meta.IsPVReclaimEnabled() {
+			return nil, nil
+		}
+		clusterType = "dmcluster"
 	}
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
+	ns := meta.GetNamespace()
+	metaName := meta.GetName()
 
 	skipReason := map[string]string{}
 
-	pvcs, err := rpc.listAllPVCs(tc)
+	pvcs, err := c.listAllPVCs(meta)
 	if err != nil {
 		return skipReason, err
 	}
+	runtimeMeta := meta.(runtime.Object)
 
 	for _, pvc := range pvcs {
 		pvcName := pvc.GetName()
 		l := label.Label(pvc.Labels)
-		if !(l.IsPD() || l.IsTiKV() || l.IsTiFlash()) {
+		if !(l.IsPD() || l.IsTiKV() || l.IsTiFlash() || l.IsDMMaster() || l.IsDMWorker()) {
 			skipReason[pvcName] = skipReasonPVCCleanerIsNotTarget
 			continue
 		}
@@ -132,53 +126,53 @@ func (rpc *realPVCCleaner) reclaimPV(tc *v1alpha1.TidbCluster) (map[string]strin
 			continue
 		}
 
-		_, err := rpc.podLister.Pods(ns).Get(podName)
+		_, err := c.deps.PodLister.Pods(ns).Get(podName)
 		if err == nil {
 			// PVC is still referenced by this pod, can't reclaim PV
 			skipReason[pvcName] = skipReasonPVCCleanerPVCeferencedByPod
 			continue
 		}
 		if !errors.IsNotFound(err) {
-			return skipReason, fmt.Errorf("cluster %s/%s get pvc %s pod %s from local cache failed, err: %v", ns, tcName, pvcName, podName, err)
+			return skipReason, fmt.Errorf("%s %s/%s get pvc %s pod %s from local cache failed, err: %v", clusterType, ns, metaName, pvcName, podName, err)
 		}
 
 		// if pod not found in cache, re-check from apiserver directly to make sure the pod really not exist
-		_, err = rpc.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+		_, err = c.deps.KubeClientset.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
 		if err == nil {
 			// PVC is still referenced by this pod, can't reclaim PV
 			skipReason[pvcName] = skipReasonPVCCleanerPVCeferencedByPod
 			continue
 		}
 		if !errors.IsNotFound(err) {
-			return skipReason, fmt.Errorf("cluster %s/%s get pvc %s pod %s from apiserver failed, err: %v", ns, tcName, pvcName, podName, err)
+			return skipReason, fmt.Errorf("%s %s/%s get pvc %s pod %s from apiserver failed, err: %v", clusterType, ns, metaName, pvcName, podName, err)
 		}
 
 		// Without pod reference this defer delete PVC, start to reclaim PV
 		pvName := pvc.Spec.VolumeName
-		pv, err := rpc.pvLister.Get(pvName)
+		pv, err := c.deps.PVLister.Get(pvName)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				skipReason[pvcName] = skipReasonPVCCleanerNotFoundPV
 				continue
 			}
-			return skipReason, fmt.Errorf("cluster %s/%s get pvc %s pv %s failed, err: %v", ns, tcName, pvcName, pvName, err)
+			return skipReason, fmt.Errorf("%s %s/%s get pvc %s pv %s failed, err: %v", clusterType, ns, metaName, pvcName, pvName, err)
 		}
 
 		if pv.Spec.PersistentVolumeReclaimPolicy != corev1.PersistentVolumeReclaimDelete {
-			err := rpc.pvControl.PatchPVReclaimPolicy(tc, pv, corev1.PersistentVolumeReclaimDelete)
+			err := c.deps.PVControl.PatchPVReclaimPolicy(runtimeMeta, pv, corev1.PersistentVolumeReclaimDelete)
 			if err != nil {
-				return skipReason, fmt.Errorf("cluster %s/%s patch pv %s to %s failed, err: %v", ns, tcName, pvName, corev1.PersistentVolumeReclaimDelete, err)
+				return skipReason, fmt.Errorf("%s %s/%s patch pv %s to %s failed, err: %v", clusterType, ns, metaName, pvName, corev1.PersistentVolumeReclaimDelete, err)
 			}
-			klog.Infof("cluster %s/%s patch pv %s to policy %s success", ns, tcName, pvName, corev1.PersistentVolumeReclaimDelete)
+			klog.Infof("%s %s/%s patch pv %s to policy %s success", clusterType, ns, metaName, pvName, corev1.PersistentVolumeReclaimDelete)
 		}
 
-		apiPVC, err := rpc.kubeCli.CoreV1().PersistentVolumeClaims(ns).Get(pvcName, metav1.GetOptions{})
+		apiPVC, err := c.deps.KubeClientset.CoreV1().PersistentVolumeClaims(ns).Get(pvcName, metav1.GetOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {
 				skipReason[pvcName] = skipReasonPVCCleanerPVCNotFound
 				continue
 			}
-			return skipReason, fmt.Errorf("cluster %s/%s get pvc %s failed, err: %v", ns, tcName, pvcName, err)
+			return skipReason, fmt.Errorf("%s %s/%s get pvc %s failed, err: %v", clusterType, ns, metaName, pvcName, err)
 		}
 
 		if apiPVC.UID != pvc.UID || apiPVC.ResourceVersion != pvc.ResourceVersion {
@@ -186,29 +180,37 @@ func (rpc *realPVCCleaner) reclaimPV(tc *v1alpha1.TidbCluster) (map[string]strin
 			continue
 		}
 
-		if err := rpc.pvcControl.DeletePVC(tc, pvc); err != nil {
-			return skipReason, fmt.Errorf("cluster %s/%s delete pvc %s failed, err: %v", ns, tcName, pvcName, err)
+		if err := c.deps.PVCControl.DeletePVC(runtimeMeta, pvc); err != nil {
+			return skipReason, fmt.Errorf("%s %s/%s delete pvc %s failed, err: %v", clusterType, ns, metaName, pvcName, err)
 		}
-		klog.Infof("cluster %s/%s reclaim pv %s success, pvc %s", ns, tcName, pvName, pvcName)
+		klog.Infof("%s %s/%s reclaim pv %s success, pvc %s", clusterType, ns, metaName, pvName, pvcName)
 	}
 	return skipReason, nil
 }
 
 // cleanScheduleLock cleans AnnPVCPodScheduling label if necessary.
-func (rpc *realPVCCleaner) cleanScheduleLock(tc *v1alpha1.TidbCluster) (map[string]string, error) {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
+func (c *realPVCCleaner) cleanScheduleLock(meta metav1.Object) (map[string]string, error) {
+	ns := meta.GetNamespace()
+	metaName := meta.GetName()
 	skipReason := map[string]string{}
 
-	pvcs, err := rpc.listAllPVCs(tc)
+	var clusterType string
+	switch meta.(type) {
+	case *v1alpha1.TidbCluster:
+		clusterType = "tidbcluster"
+	case *v1alpha1.DMCluster:
+		clusterType = "dmcluster"
+	}
+	pvcs, err := c.listAllPVCs(meta)
 	if err != nil {
 		return skipReason, err
 	}
+	runtimeMeta := meta.(runtime.Object)
 
 	for _, pvc := range pvcs {
 		pvcName := pvc.GetName()
 		l := label.Label(pvc.Labels)
-		if !(l.IsPD() || l.IsTiKV() || l.IsTiFlash()) {
+		if !(l.IsPD() || l.IsTiKV() || l.IsTiFlash() || l.IsDMMaster() || l.IsDMWorker()) {
 			skipReason[pvcName] = skipReasonPVCCleanerIsNotTarget
 			continue
 		}
@@ -216,14 +218,14 @@ func (rpc *realPVCCleaner) cleanScheduleLock(tc *v1alpha1.TidbCluster) (map[stri
 		if pvc.Annotations[label.AnnPVCDeferDeleting] != "" {
 			if _, exist := pvc.Annotations[label.AnnPVCPodScheduling]; !exist {
 				// The defer deleting PVC without pod scheduling annotation, do nothing
-				klog.V(4).Infof("cluster %s/%s defer delete pvc %s has not pod scheduling annotation, skip clean", ns, tcName, pvcName)
+				klog.V(4).Infof("%s %s/%s defer delete pvc %s has not pod scheduling annotation, skip clean", clusterType, ns, metaName, pvcName)
 				skipReason[pvcName] = skipReasonPVCCleanerDeferDeletePVCNotHasLock
 				continue
 			}
 			// The defer deleting PVC has pod scheduling annotation, so we need to delete the pod scheduling annotation
 			delete(pvc.Annotations, label.AnnPVCPodScheduling)
-			if _, err := rpc.pvcControl.UpdatePVC(tc, pvc); err != nil {
-				return skipReason, fmt.Errorf("cluster %s/%s remove pvc %s pod scheduling annotation faild, err: %v", ns, tcName, pvcName, err)
+			if _, err := c.deps.PVCControl.UpdatePVC(runtimeMeta, pvc); err != nil {
+				return skipReason, fmt.Errorf("%s %s/%s remove pvc %s pod scheduling annotation faild, err: %v", clusterType, ns, metaName, pvcName, err)
 			}
 			continue
 		}
@@ -235,10 +237,10 @@ func (rpc *realPVCCleaner) cleanScheduleLock(tc *v1alpha1.TidbCluster) (map[stri
 			continue
 		}
 
-		pod, err := rpc.podLister.Pods(ns).Get(podName)
+		pod, err := c.deps.PodLister.Pods(ns).Get(podName)
 		if err != nil {
 			if !errors.IsNotFound(err) {
-				return skipReason, fmt.Errorf("cluster %s/%s get pvc %s pod %s failed, err: %v", ns, tcName, pvcName, podName, err)
+				return skipReason, fmt.Errorf("%s %s/%s get pvc %s pod %s failed, err: %v", clusterType, ns, metaName, pvcName, podName, err)
 			}
 			skipReason[pvcName] = skipReasonPVCCleanerPodNotFound
 			continue
@@ -246,41 +248,52 @@ func (rpc *realPVCCleaner) cleanScheduleLock(tc *v1alpha1.TidbCluster) (map[stri
 
 		if _, exist := pvc.Annotations[label.AnnPVCPodScheduling]; !exist {
 			// The PVC without pod scheduling annotation, do nothing
-			klog.V(4).Infof("cluster %s/%s pvc %s has not pod scheduling annotation, skip clean", ns, tcName, pvcName)
+			klog.V(4).Infof("%s %s/%s pvc %s has not pod scheduling annotation, skip clean", clusterType, ns, metaName, pvcName)
 			skipReason[pvcName] = skipReasonPVCCleanerPVCNotHasLock
 			continue
 		}
 
 		if pvc.Status.Phase != corev1.ClaimBound || pod.Spec.NodeName == "" {
 			// This pod has not been scheduled yet, no need to clean up the pvc pod schedule annotation
-			klog.V(4).Infof("cluster %s/%s pod %s has not been scheduled yet, skip clean pvc %s pod schedule annotation", ns, tcName, podName, pvcName)
+			klog.V(4).Infof("%s %s/%s pod %s has not been scheduled yet, skip clean pvc %s pod schedule annotation", clusterType, ns, metaName, podName, pvcName)
 			skipReason[pvcName] = skipReasonPVCCleanerPodWaitingForScheduling
 			continue
 		}
 
 		delete(pvc.Annotations, label.AnnPVCPodScheduling)
-		if _, err := rpc.pvcControl.UpdatePVC(tc, pvc); err != nil {
-			return skipReason, fmt.Errorf("cluster %s/%s remove pvc %s pod scheduling annotation faild, err: %v", ns, tcName, pvcName, err)
+		if _, err := c.deps.PVCControl.UpdatePVC(runtimeMeta, pvc); err != nil {
+			return skipReason, fmt.Errorf("%s %s/%s remove pvc %s pod scheduling annotation faild, err: %v", clusterType, ns, metaName, pvcName, err)
 		}
-		klog.Infof("cluster %s/%s, clean pvc %s pod scheduling annotation successfully", ns, tcName, pvcName)
+		klog.Infof("%s %s/%s, clean pvc %s pod scheduling annotation successfully", clusterType, ns, metaName, pvcName)
 	}
 
 	return skipReason, nil
 }
 
 // listAllPVCs lists all PVCs used by the given tidb cluster.
-func (rpc *realPVCCleaner) listAllPVCs(tc *v1alpha1.TidbCluster) ([]*corev1.PersistentVolumeClaim, error) {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
+func (c *realPVCCleaner) listAllPVCs(meta metav1.Object) ([]*corev1.PersistentVolumeClaim, error) {
+	ns := meta.GetNamespace()
+	metaName := meta.GetName()
 
-	selector, err := label.New().Instance(tc.GetInstanceName()).Selector()
+	var (
+		selector labels.Selector
+		err      error
+	)
+	switch meta := meta.(type) {
+	case *v1alpha1.TidbCluster:
+		selector, err = label.New().Instance(meta.GetInstanceName()).Selector()
+	case *v1alpha1.DMCluster:
+		selector, err = label.NewDM().Instance(meta.GetInstanceName()).Selector()
+	default:
+		err = fmt.Errorf("realPVCCleaner.listAllPVCs: unknown meta spec %s", meta)
+	}
 	if err != nil {
-		return nil, fmt.Errorf("cluster %s/%s assemble label selector failed, err: %v", ns, tcName, err)
+		return nil, fmt.Errorf("cluster %s/%s assemble label selector failed, err: %v", ns, metaName, err)
 	}
 
-	pvcs, err := rpc.pvcLister.PersistentVolumeClaims(ns).List(selector)
+	pvcs, err := c.deps.PVCLister.PersistentVolumeClaims(ns).List(selector)
 	if err != nil {
-		return nil, fmt.Errorf("cluster %s/%s list pvc failed, selector: %s, err: %v", ns, tcName, selector, err)
+		return nil, fmt.Errorf("cluster %s/%s list pvc failed, selector: %s, err: %v", ns, metaName, selector, err)
 	}
 	return pvcs, nil
 }
@@ -296,12 +309,12 @@ func NewFakePVCCleaner() *FakePVCCleaner {
 	return &FakePVCCleaner{}
 }
 
-func (fpc *FakePVCCleaner) SetPVCCleanerError(err error) {
-	fpc.err = err
+func (c *FakePVCCleaner) SetPVCCleanerError(err error) {
+	c.err = err
 }
 
-func (fpc *FakePVCCleaner) Clean(_ *v1alpha1.TidbCluster) (map[string]string, error) {
-	return nil, fpc.err
+func (c *FakePVCCleaner) Clean(_ metav1.Object) (map[string]string, error) {
+	return nil, c.err
 }
 
 var _ PVCCleanerInterface = &FakePVCCleaner{}

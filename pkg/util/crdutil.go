@@ -162,7 +162,13 @@ var (
 		JSONPath:    ".spec.worker.replicas",
 	}
 	backupAdditionalPrinterColumns []extensionsobj.CustomResourceColumnDefinition
-	backupPathColumn               = extensionsobj.CustomResourceColumnDefinition{
+	backupStatusColumn             = extensionsobj.CustomResourceColumnDefinition{
+		Name:        "Status",
+		Type:        "string",
+		Description: "The current status of the backup",
+		JSONPath:    ".status.phase",
+	}
+	backupPathColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "BackupPath",
 		Type:        "string",
 		Description: "The full path of backup data",
@@ -197,7 +203,13 @@ var (
 		JSONPath:    ".status.timeCompleted",
 	}
 	restoreAdditionalPrinterColumns []extensionsobj.CustomResourceColumnDefinition
-	restoreStartedColumn            = extensionsobj.CustomResourceColumnDefinition{
+	restoreStatusColumn             = extensionsobj.CustomResourceColumnDefinition{
+		Name:        "Status",
+		Type:        "string",
+		Description: "The current status of the restore",
+		JSONPath:    ".status.phase",
+	}
+	restoreStartedColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "Started",
 		Type:        "string",
 		Format:      "date-time",
@@ -297,8 +309,8 @@ func init() {
 		dmClusterMasterColumn, dmClusterMasterStorageColumn, dmClusterMasterReadyColumn, dmClusterMasterDesireColumn,
 		dmClusterWorkerColumn, dmClusterWorkerStorageColumn, dmClusterWorkerReadyColumn, dmClusterWorkerDesireColumn,
 		dmClusterStatusMessageColumn, ageColumn)
-	backupAdditionalPrinterColumns = append(backupAdditionalPrinterColumns, backupPathColumn, backupBackupSizeColumn, backupCommitTSColumn, backupStartedColumn, backupCompletedColumn, ageColumn)
-	restoreAdditionalPrinterColumns = append(restoreAdditionalPrinterColumns, restoreStartedColumn, restoreCompletedColumn, restoreCommitTSColumn, ageColumn)
+	backupAdditionalPrinterColumns = append(backupAdditionalPrinterColumns, backupStatusColumn, backupPathColumn, backupBackupSizeColumn, backupCommitTSColumn, backupStartedColumn, backupCompletedColumn, ageColumn)
+	restoreAdditionalPrinterColumns = append(restoreAdditionalPrinterColumns, restoreStatusColumn, restoreStartedColumn, restoreCompletedColumn, restoreCommitTSColumn, ageColumn)
 	bksAdditionalPrinterColumns = append(bksAdditionalPrinterColumns, bksScheduleColumn, bksMaxBackups, bksLastBackup, bksLastBackupTime, ageColumn)
 	tidbInitializerPrinterColumns = append(tidbInitializerPrinterColumns, tidbInitializerPhase, ageColumn)
 	autoScalerPrinterColumns = append(autoScalerPrinterColumns, autoScalerTiDBMaxReplicasColumn, autoScalerTiDBMinReplicasColumn,
@@ -340,10 +352,6 @@ func GetCrdKindFromKindName(kindName string) (v1alpha1.CrdKind, error) {
 		return v1alpha1.DefaultCrdKinds.TiDBInitializer, nil
 	case v1alpha1.TidbClusterAutoScalerKindKey:
 		return v1alpha1.DefaultCrdKinds.TidbClusterAutoScaler, nil
-	case v1alpha1.TiKVGroupKindKey:
-		return v1alpha1.DefaultCrdKinds.TiKVGroup, nil
-	case v1alpha1.TiDBGroupKindKey:
-		return v1alpha1.DefaultCrdKinds.TiDBGroup, nil
 	default:
 		return v1alpha1.CrdKind{}, errors.New("unknown CrdKind Name")
 	}
@@ -353,28 +361,20 @@ func addAdditionalPrinterColumnsForCRD(crd *extensionsobj.CustomResourceDefiniti
 	switch crdKind.Kind {
 	case v1alpha1.DefaultCrdKinds.TiDBCluster.Kind:
 		crd.Spec.AdditionalPrinterColumns = tidbClusteradditionalPrinterColumns
-		break
 	case v1alpha1.DefaultCrdKinds.DMCluster.Kind:
 		crd.Spec.AdditionalPrinterColumns = dmClusteradditionalPrinterColumns
-		break
 	case v1alpha1.DefaultCrdKinds.Backup.Kind:
 		crd.Spec.AdditionalPrinterColumns = backupAdditionalPrinterColumns
-		break
 	case v1alpha1.DefaultCrdKinds.Restore.Kind:
 		crd.Spec.AdditionalPrinterColumns = restoreAdditionalPrinterColumns
-		break
 	case v1alpha1.DefaultCrdKinds.BackupSchedule.Kind:
 		crd.Spec.AdditionalPrinterColumns = bksAdditionalPrinterColumns
-		break
 	case v1alpha1.DefaultCrdKinds.TiDBMonitor.Kind:
 		crd.Spec.AdditionalPrinterColumns = []extensionsobj.CustomResourceColumnDefinition{}
-		break
 	case v1alpha1.DefaultCrdKinds.TiDBInitializer.Kind:
 		crd.Spec.AdditionalPrinterColumns = tidbInitializerPrinterColumns
-		break
 	case v1alpha1.DefaultCrdKinds.TidbClusterAutoScaler.Kind:
 		crd.Spec.AdditionalPrinterColumns = autoScalerPrinterColumns
 	default:
-		break
 	}
 }

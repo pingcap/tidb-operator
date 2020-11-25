@@ -90,7 +90,7 @@ func checkFormerPDPodStatus(kubeCli kubernetes.Interface, pdClient pdapi.PDClien
 			return fmt.Errorf("tidbcluster: [%s/%s]'s pd pod: [%s] has no label: %s", namespace, tcName, podName, apps.ControllerRevisionHashLabelKey)
 		}
 
-		healthy, existed := membersHealthMap[podName]
+		healthy, existed := membersHealthMap[memberUtil.PdName(tcName, i, tc.Namespace, tc.Spec.ClusterDomain)]
 		if revision != tc.Status.PD.StatefulSet.UpdateRevision || !existed || !healthy {
 			return fmt.Errorf("tidbcluster: [%s/%s]'s pd upgraded pod: [%s] is not ready", namespace, tcName, podName)
 		}
@@ -138,43 +138,6 @@ func getOwnerStatefulSetForTiDBComponent(pod *core.Pod, kubeCli kubernetes.Inter
 		return nil, fmt.Errorf(failToFindTidbComponentOwnerStatefulset, namespace, name)
 	}
 	return kubeCli.AppsV1().StatefulSets(namespace).Get(ownerStatefulSetName, meta.GetOptions{})
-}
-
-// checkFormerPodRestartStatus checks whether there are any former pod is going to be restarted
-// return true if existed
-func checkFormerPodRestartStatus(kubeCli kubernetes.Interface, memberType v1alpha1.MemberType, payload *admitPayload, ordinal int32) (bool, error) {
-	replicas := *payload.ownerStatefulSet.Spec.Replicas
-	controllerName := payload.controllerDesc.name
-	controllerKind := payload.controllerDesc.kind
-
-	f := func(ordinal int32, memberType v1alpha1.MemberType) (bool, error) {
-		podName, err := memberUtil.MemberPodName(controllerName, controllerKind, ordinal, memberType)
-		if err != nil {
-			return false, err
-		}
-		pod, err := kubeCli.CoreV1().Pods(payload.pod.Namespace).Get(podName, meta.GetOptions{})
-		if err != nil {
-			return false, err
-		}
-		if _, existed := pod.Annotations[label.AnnPodDeferDeleting]; existed {
-			return true, nil
-		}
-		return false, nil
-	}
-
-	for k := range helper.GetPodOrdinals(replicas, payload.ownerStatefulSet) {
-		if k > ordinal {
-			existed, err := f(k, memberType)
-			if err != nil {
-				return false, err
-			}
-			if existed {
-				return true, nil
-			}
-		}
-	}
-
-	return false, nil
 }
 
 func appendExtraLabelsENVForTiKV(labels map[string]string, container *core.Container) {

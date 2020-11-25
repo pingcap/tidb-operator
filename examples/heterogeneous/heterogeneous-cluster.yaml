@@ -7,9 +7,10 @@ metadata:
   name: heterogeneous
 spec:
   configUpdateStrategy: RollingUpdate
-  version: v4.0.4
+  version: v4.0.8
   timezone: UTC
-  pvReclaimPolicy: Delete
+  pvReclaimPolicy: Retain
+  enableDynamicConfiguration: true
   discovery: {}
   cluster:
     name: basic

@@ -28,67 +28,54 @@ func TestSetTidbSpecDefault(t *testing.T) {
 	g.Expect(tc.Spec.TiDB.Config).Should(BeNil())
 
 	tc = newTidbCluster()
-	tc.Spec.TiDB.Config = &v1alpha1.TiDBConfig{}
+	tc.Spec.TiDB.Config = v1alpha1.NewTiDBConfig()
 	setTidbSpecDefault(tc)
-	g.Expect(*tc.Spec.TiDB.Config.Log.File.MaxBackups).Should(Equal(tidbLogMaxBackups))
+	g.Expect(tc.Spec.TiDB.Config.Get("log.file.max-backups").AsInt()).Should(Equal(int64(tidbLogMaxBackups)))
 
 	tc = newTidbCluster()
+	tc.Spec.TiDB.Config = v1alpha1.NewTiDBConfig()
 	oomAction := "cancel"
-	tc.Spec.TiDB.Config = &v1alpha1.TiDBConfig{
-		OOMAction: &oomAction,
-	}
+	tc.Spec.TiDB.Config.Set("oom-action", oomAction)
 	setTidbSpecDefault(tc)
-	g.Expect(*tc.Spec.TiDB.Config.Log.File.MaxBackups).Should(Equal(tidbLogMaxBackups))
-	g.Expect(*tc.Spec.TiDB.Config.OOMAction).Should(Equal(oomAction))
+	g.Expect(tc.Spec.TiDB.Config.Get("log.file.max-backups").AsInt()).Should(Equal(int64(tidbLogMaxBackups)))
+	g.Expect(tc.Spec.TiDB.Config.Get("oom-action").AsString()).Should(Equal(oomAction))
 
 	tc = newTidbCluster()
+	tc.Spec.TiDB.Config = v1alpha1.NewTiDBConfig()
 	infoLevel := "info"
-	tc.Spec.TiDB.Config = &v1alpha1.TiDBConfig{
-		OOMAction: &oomAction,
-		Log: &v1alpha1.Log{
-			Level: &infoLevel,
-		},
-	}
+	tc.Spec.TiDB.Config.Set("oom-action", oomAction)
+	tc.Spec.TiDB.Config.Set("log.level", infoLevel)
 	setTidbSpecDefault(tc)
-	g.Expect(*tc.Spec.TiDB.Config.Log.File.MaxBackups).Should(Equal(tidbLogMaxBackups))
-	g.Expect(*tc.Spec.TiDB.Config.OOMAction).Should(Equal(oomAction))
-	g.Expect(*tc.Spec.TiDB.Config.Log.Level).Should(Equal(infoLevel))
+	g.Expect(tc.Spec.TiDB.Config.Get("log.file.max-backups").AsInt()).Should(Equal(int64(tidbLogMaxBackups)))
+	g.Expect(tc.Spec.TiDB.Config.Get("oom-action").AsString()).Should(Equal(oomAction))
+	g.Expect(tc.Spec.TiDB.Config.Get("log.level").AsString()).Should(Equal(infoLevel))
 
 	tc = newTidbCluster()
+	tc.Spec.TiDB.Config = v1alpha1.NewTiDBConfig()
 	fileName := "slowlog.log"
-	tc.Spec.TiDB.Config = &v1alpha1.TiDBConfig{
-		OOMAction: &oomAction,
-		Log: &v1alpha1.Log{
-			Level: &infoLevel,
-			File: &v1alpha1.FileLogConfig{
-				Filename: &fileName,
-			},
-		},
-	}
+	tc.Spec.TiDB.Config.Set("oom-action", oomAction)
+	tc.Spec.TiDB.Config.Set("log.level", infoLevel)
+	tc.Spec.TiDB.Config.Set("log.file.filename", fileName)
 	setTidbSpecDefault(tc)
-	g.Expect(*tc.Spec.TiDB.Config.Log.File.MaxBackups).Should(Equal(tidbLogMaxBackups))
-	g.Expect(*tc.Spec.TiDB.Config.OOMAction).Should(Equal(oomAction))
-	g.Expect(*tc.Spec.TiDB.Config.Log.Level).Should(Equal(infoLevel))
-	g.Expect(*tc.Spec.TiDB.Config.Log.File.Filename).Should(Equal(fileName))
+	g.Expect(tc.Spec.TiDB.Config.Get("log.file.max-backups").AsInt()).Should(Equal(int64(tidbLogMaxBackups)))
+	g.Expect(tc.Spec.TiDB.Config.Get("oom-action").AsString()).Should(Equal(oomAction))
+	g.Expect(tc.Spec.TiDB.Config.Get("log.level").AsString()).Should(Equal(infoLevel))
+	g.Expect(tc.Spec.TiDB.Config.Get("log.file.filename").AsString()).Should(Equal(fileName))
 
 	tc = newTidbCluster()
-	maxSize := 600
-	tc.Spec.TiDB.Config = &v1alpha1.TiDBConfig{
-		OOMAction: &oomAction,
-		Log: &v1alpha1.Log{
-			Level: &infoLevel,
-			File: &v1alpha1.FileLogConfig{
-				Filename: &fileName,
-				MaxSize:  &maxSize,
-			},
-		},
-	}
+	tc.Spec.TiDB.Config = v1alpha1.NewTiDBConfig()
+	var maxSize int64 = 600
+	tc.Spec.TiDB.Config.Set("oom-action", oomAction)
+	tc.Spec.TiDB.Config.Set("log.level", infoLevel)
+	tc.Spec.TiDB.Config.Set("log.file.filename", fileName)
+	tc.Spec.TiDB.Config.Set("log.file.max-size", maxSize)
+
 	setTidbSpecDefault(tc)
-	g.Expect(*tc.Spec.TiDB.Config.Log.File.MaxSize).Should(Equal(maxSize))
-	g.Expect(*tc.Spec.TiDB.Config.Log.File.MaxBackups).Should(Equal(tidbLogMaxBackups))
-	g.Expect(*tc.Spec.TiDB.Config.OOMAction).Should(Equal(oomAction))
-	g.Expect(*tc.Spec.TiDB.Config.Log.Level).Should(Equal(infoLevel))
-	g.Expect(*tc.Spec.TiDB.Config.Log.File.Filename).Should(Equal(fileName))
+	g.Expect(tc.Spec.TiDB.Config.Get("log.file.max-backups").AsInt()).Should(Equal(int64(tidbLogMaxBackups)))
+	g.Expect(tc.Spec.TiDB.Config.Get("oom-action").AsString()).Should(Equal(oomAction))
+	g.Expect(tc.Spec.TiDB.Config.Get("log.level").AsString()).Should(Equal(infoLevel))
+	g.Expect(tc.Spec.TiDB.Config.Get("log.file.filename").AsString()).Should(Equal(fileName))
+	g.Expect(tc.Spec.TiDB.Config.Get("log.file.max-size").AsInt()).Should(Equal(maxSize))
 
 }
 

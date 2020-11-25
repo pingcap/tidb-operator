@@ -5,27 +5,28 @@ metadata:
 spec:
   cluster:
     name: auto-scaling-demo
-  monitor:
-    name: auto-scaling-demo
   tikv:
-    minReplicas: 3
-    maxReplicas: 4
-    metricsTimeDuration: "1m"
-    metrics:
-      - type: "Resource"
-        resource:
-          name: "cpu"
-          target:
-            type: "Utilization"
-            averageUtilization: 80
+    resources:
+      storage_small:
+        cpu: 1000m
+        memory: 2Gi
+        storage: 10Gi
+        count: 3
+    rules:
+      cpu:
+        max_threshold: 0.8
+        min_threshold: 0.2
+        resource_types:
+          - storage_small
   tidb:
-    minReplicas: 2
-    maxReplicas: 3
-    metricsTimeDuration: "1m"
-    metrics:
-      - type: "Resource"
-        resource:
-          name: "cpu"
-          target:
-            type: "Utilization"
-            averageUtilization: 80
+    resources:
+      compute_small:
+        cpu: 1000m
+        memory: 2Gi
+        count: 3
+    rules:
+      cpu:
+        max_threshold: 0.8
+        min_threshold: 0.2
+        resource_types:
+          - compute_small
