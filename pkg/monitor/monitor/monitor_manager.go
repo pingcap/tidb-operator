@@ -525,7 +525,7 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 		},
 	})
 	if err != nil {
-		klog.Errorf("smoothMigration tm[%s/%s]'s,old deployment failed to delete,err: %v", monitor.Namespace, monitor.Name, err)
+		klog.Errorf("Smooth migration for tm[%s/%s], fail to delete the old deployment, err: %v", monitor.Namespace, monitor.Name, err)
 		return false, err
 	}
 	// If enable persistent,operator need to migrate pvc and pv binding relationship.
