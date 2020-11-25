@@ -40,7 +40,7 @@ type TidbMonitor struct {
 // TidbMonitor spec encode the desired state of tidb monitoring component
 type TidbMonitorSpec struct {
 	Clusters   []TidbClusterRef `json:"clusters"`
-	DMClusters []TidbClusterRef `json:"dmClusters"`
+	DMClusters []TidbClusterRef `json:"dmClusters,omitempty"`
 
 	Prometheus PrometheusSpec `json:"prometheus"`
 	// +optional

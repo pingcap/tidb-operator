@@ -15064,6 +15064,20 @@ spec:
                 - name
                 type: object
               type: array
+            dmClusters:
+              items:
+                properties:
+                  clusterDomain:
+                    type: string
+                  name:
+                    type: string
+                  namespace:
+                    type: string
+                required:
+                - name
+                type: object
+              type: array
+            dmInitializer: {}
             grafana: {}
             imagePullPolicy:
               type: string
@@ -15107,6 +15121,7 @@ spec:
               type: array
           required:
           - clusters
+          - dmClusters
           - prometheus
           - reloader
           - initializer

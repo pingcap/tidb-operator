@@ -40,6 +40,7 @@ var (
 	ClusterClientTLSPath   = "/var/lib/cluster-client-tls"
 	DMClusterClientTLSPath = "/var/lib/dm-cluster-client-tls"
 	TiDBClientTLSPath      = "/var/lib/tidb-client-tls"
+	BRBinPath              = "/var/lib/br-bin"
 	ClusterClientVolName   = "cluster-client-tls"
 	DMClusterClientVolName = "dm-cluster-client-tls"
 )

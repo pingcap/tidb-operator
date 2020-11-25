@@ -1028,6 +1028,11 @@ func (in *DMClusterStatus) DeepCopyInto(out *DMClusterStatus) {
 	*out = *in
 	in.Master.DeepCopyInto(&out.Master)
 	in.Worker.DeepCopyInto(&out.Worker)
+	if in.Monitor != nil {
+		in, out := &in.Monitor, &out.Monitor
+		*out = new(TidbMonitorRef)
+		**out = **in
+	}
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
 		*out = make([]DMClusterCondition, len(*in))
@@ -7860,6 +7865,11 @@ func (in *TidbMonitorSpec) DeepCopyInto(out *TidbMonitorSpec) {
 		*out = make([]TidbClusterRef, len(*in))
 		copy(*out, *in)
 	}
+	if in.DMClusters != nil {
+		in, out := &in.DMClusters, &out.DMClusters
+		*out = make([]TidbClusterRef, len(*in))
+		copy(*out, *in)
+	}
 	in.Prometheus.DeepCopyInto(&out.Prometheus)
 	if in.Grafana != nil {
 		in, out := &in.Grafana, &out.Grafana
@@ -7868,6 +7878,11 @@ func (in *TidbMonitorSpec) DeepCopyInto(out *TidbMonitorSpec) {
 	}
 	in.Reloader.DeepCopyInto(&out.Reloader)
 	in.Initializer.DeepCopyInto(&out.Initializer)
+	if in.DMInitializer != nil {
+		in, out := &in.DMInitializer, &out.DMInitializer
+		*out = new(InitializerSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.PVReclaimPolicy != nil {
 		in, out := &in.PVReclaimPolicy, &out.PVReclaimPolicy
 		*out = new(v1.PersistentVolumeReclaimPolicy)

@@ -1961,6 +1961,18 @@ TidbMonitorSpec
 </tr>
 <tr>
 <td>
+<code>dmClusters</code></br>
+<em>
+<a href="#tidbclusterref">
+[]TidbClusterRef
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
 <code>prometheus</code></br>
 <em>
 <a href="#prometheusspec">
@@ -1999,6 +2011,18 @@ ReloaderSpec
 <tr>
 <td>
 <code>initializer</code></br>
+<em>
+<a href="#initializerspec">
+InitializerSpec
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>dmInitializer</code></br>
 <em>
 <a href="#initializerspec">
 InitializerSpec
@@ -4407,6 +4431,18 @@ MasterStatus
 <em>
 <a href="#workerstatus">
 WorkerStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>monitor</code></br>
+<em>
+<a href="#tidbmonitorref">
+TidbMonitorRef
 </a>
 </em>
 </td>
@@ -18830,6 +18866,7 @@ InitializePhase
 <h3 id="tidbmonitorref">TidbMonitorRef</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#dmclusterstatus">DMClusterStatus</a>, 
 <a href="#tidbclusterstatus">TidbClusterStatus</a>)
 </p>
 <p>
@@ -18911,6 +18948,18 @@ bool
 </tr>
 <tr>
 <td>
+<code>dmClusters</code></br>
+<em>
+<a href="#tidbclusterref">
+[]TidbClusterRef
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
 <code>prometheus</code></br>
 <em>
 <a href="#prometheusspec">
@@ -18949,6 +18998,18 @@ ReloaderSpec
 <tr>
 <td>
 <code>initializer</code></br>
+<em>
+<a href="#initializerspec">
+InitializerSpec
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>dmInitializer</code></br>
 <em>
 <a href="#initializerspec">
 InitializerSpec

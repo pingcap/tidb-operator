@@ -54,6 +54,7 @@ var (
 	importerPattern  config.Regexp
 	lightningPattern config.Regexp
 	dmWorkerPattern  config.Regexp
+	dmMasterPattern  config.Regexp
 	dashBoardConfig  = `{
     "apiVersion": 1,
     "providers": [
@@ -128,14 +129,19 @@ func init() {
 	if err != nil {
 		klog.Fatalf("monitor regex template parse error,%v", err)
 	}
+	dmMasterPattern, err = config.NewRegexp("dm-master")
+	if err != nil {
+		klog.Fatalf("monitor regex template parse error,%v", err)
+	}
 }
 
 type MonitorConfigModel struct {
-	AlertmanagerURL    string
-	ReleaseNamespaces  []string
-	ReleaseTargetRegex *config.Regexp
-	EnableTLSCluster   bool
-	EnableTLSDMCluster bool
+	AlertmanagerURL      string
+	ReleaseNamespaces    []string
+	ReleaseTargetRegex   *config.Regexp
+	DMReleaseTargetRegex *config.Regexp
+	EnableTLSCluster     bool
+	EnableTLSDMCluster   bool
 }
 
 func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
@@ -159,6 +165,7 @@ func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
 			scrapeJob("importer", importerPattern, cmodel, buildAddressRelabelConfigByComponent("importer")),
 			scrapeJob("lightning", lightningPattern, cmodel, buildAddressRelabelConfigByComponent("lightning")),
 			scrapeJob("dm-worker", dmWorkerPattern, cmodel, buildAddressRelabelConfigByComponent("dm-worker")),
+			scrapeJob("dm-master", dmMasterPattern, cmodel, buildAddressRelabelConfigByComponent("dm-master")),
 		},
 	}
 	return &c
@@ -193,6 +200,8 @@ func buildAddressRelabelConfigByComponent(kind string) *config.RelabelConfig {
 	case "ticdc":
 		return f()
 	case "dm-worker":
+		return f()
+	case "dm-master":
 		return f()
 	case "tiflash-proxy":
 		return &config.RelabelConfig{
@@ -301,7 +310,12 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 					instanceLabel,
 				},
 				Action: config.RelabelKeep,
-				Regex:  *cmodel.ReleaseTargetRegex,
+				Regex: func(jobName string) config.Regexp {
+					if jobName == "dm-master" || jobName == "dm-worker" {
+						return *cmodel.DMReleaseTargetRegex
+					}
+					return *cmodel.ReleaseTargetRegex
+				}(jobName),
 			},
 			{
 				SourceLabels: model.LabelNames{
@@ -404,7 +418,7 @@ func addTlsConfig(pc *config.Config) {
 
 func addTlsDMConfig(pc *config.Config) {
 	for id, sconfig := range pc.ScrapeConfigs {
-		if sconfig.JobName == "dm-worker" {
+		if sconfig.JobName == "dm-worker" || sconfig.JobName == "dm-master" {
 			sconfig.HTTPClientConfig.TLSConfig = config.TLSConfig{
 				CAFile:   path.Join(util.DMClusterClientTLSPath, corev1.ServiceAccountRootCAKey),
 				CertFile: path.Join(util.DMClusterClientTLSPath, corev1.TLSCertKey),

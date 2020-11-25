@@ -53,22 +53,32 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monit
 
 	var releaseNamespaces []string
 	var releaseClusters []string
+	var dmReleaseClusters []string
 	for _, cluster := range monitor.Spec.Clusters {
 		releaseNamespaces = append(releaseNamespaces, cluster.Namespace)
 		releaseClusters = append(releaseClusters, cluster.Name)
 	}
 
+	for _, cluster := range monitor.Spec.DMClusters {
+		releaseNamespaces = append(releaseNamespaces, cluster.Namespace)
+		dmReleaseClusters = append(dmReleaseClusters, cluster.Name)
+	}
+
 	relabelConfigsRegex := strings.Join(releaseClusters, "|")
 	targetPattern, err := config.NewRegexp(relabelConfigsRegex)
+
+	dmRelabelConfigsRefex := strings.Join(dmReleaseClusters, "|")
+	dmTargetPattern, err := config.NewRegexp(dmRelabelConfigsRefex)
 	if err != nil {
 		return nil, err
 	}
 	model := &MonitorConfigModel{
-		AlertmanagerURL:    "",
-		ReleaseNamespaces:  releaseNamespaces,
-		ReleaseTargetRegex: &targetPattern,
-		EnableTLSCluster:   tc.IsTLSClusterEnabled(),
-		EnableTLSDMCluster: dc != nil && dc.IsTLSClusterEnabled(),
+		AlertmanagerURL:      "",
+		ReleaseNamespaces:    releaseNamespaces,
+		ReleaseTargetRegex:   &targetPattern,
+		DMReleaseTargetRegex: &dmTargetPattern,
+		EnableTLSCluster:     tc.IsTLSClusterEnabled(),
+		EnableTLSDMCluster:   dc != nil && dc.IsTLSClusterEnabled(),
 	}
 
 	if monitor.Spec.AlertmanagerURL != nil {
@@ -428,7 +438,7 @@ chmod 777 /data/prometheus /data/grafana
 				Value: alertManagerRulesVersion,
 			},
 			{
-				Name:  "GF_TIDB_PROMETHEUS_URL",
+				Name:  "GF_DM_PROMETHEUS_URL",
 				Value: "http://127.0.0.1:9090",
 			},
 			{
@@ -441,9 +451,6 @@ chmod 777 /data/prometheus /data/grafana
 			},
 		},
 		Command: command,
-		SecurityContext: &core.SecurityContext{
-			RunAsUser: pointer.Int64Ptr(0),
-		},
 		VolumeMounts: []core.VolumeMount{
 			{
 				MountPath: "/prometheus-rules",
