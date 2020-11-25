@@ -15,9 +15,9 @@ package tidbmonitor
 
 import (
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/controller"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/monitor"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
