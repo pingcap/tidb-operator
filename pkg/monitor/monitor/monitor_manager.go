@@ -427,57 +427,47 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 	// determine whether there is an old deployment
 	oldDeploymentName := GetMonitorObjectName(monitor)
 	oldDeployment, err := m.deps.DeploymentLister.Deployments(monitor.Namespace).Get(oldDeploymentName)
+	if err == nil {
+		klog.Infof("The old deployment exists, start smooth migration for tm [%s/%s]", monitor.Namespace, monitor.Name)
+		// if deployment exist, delete it and wait next reconcile.
+		err = m.deps.TypedControl.Delete(monitor, &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      oldDeployment.Name,
+				Namespace: oldDeployment.Namespace,
+			},
+		})
+		if err != nil {
+			klog.Errorf("smoothMigration tm[%s/%s]'s,old deployment failed to delete,err: %v", monitor.Namespace, monitor.Name, err)
+			return false, err
+		}
+		// If enable persistent,operator need to migrate pvc and pv binding relationship.
+		return !monitor.Spec.Persistent, nil
+	}
+
+	if !errors.IsNotFound(err) {
+		klog.Errorf("Fail to get deployment for tm [%s/%s], err: %v", monitor.Namespace, monitor.Name, err)
+		return false, err
+	}
+	if !monitor.Spec.Persistent {
+		return true, nil
+	}
+	firstStsPvcName := GetMonitorFirstPVCName(monitor.Name)
+	deploymentPvcName := GetMonitorObjectName(monitor)
+	deploymentPvc, err := m.deps.PVCLister.PersistentVolumeClaims(monitor.Namespace).Get(deploymentPvcName)
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			klog.Errorf("Fail to get deployment for tm [%s/%s], err: %v", monitor.Namespace, monitor.Name, err)
+			klog.Errorf("Smooth migration for tm[%s/%s], get the PVC of the deployment error: %v", monitor.Namespace, monitor.Name, err)
 			return false, err
 		}
-		if !monitor.Spec.Persistent {
-			return true, nil
-		}
-		firstStsPvcName := GetMonitorFirstPVCName(monitor.Name)
-		deploymentPvcName := GetMonitorObjectName(monitor)
-		deploymentPvc, err := m.deps.PVCLister.PersistentVolumeClaims(monitor.Namespace).Get(deploymentPvcName)
-		if err != nil {
-			if !errors.IsNotFound(err) {
-				klog.Errorf("Smooth migration for tm[%s/%s], get the PVC of the deployment error: %v", monitor.Namespace, monitor.Name, err)
-				return false, err
-			}
 
-			// If the PVC of the deployment does not exist and no old PV status, we don't need to migrate.
-			if monitor.Status.DeploymentStorageStatus == nil || len(monitor.Status.DeploymentStorageStatus.PvName) <= 0 {
-				return true, nil
-			}
-
-			deploymentPv, err := m.deps.PVLister.Get(monitor.Status.DeploymentStorageStatus.PvName)
-			if err != nil {
-				klog.Errorf("Smooth migration for tm[%s/%s], fail to get PV %s, err: %v", monitor.Namespace, monitor.Name, deploymentPvc.Spec.VolumeName, err)
-				return false, err
-			}
-
-			if deploymentPv.Spec.ClaimRef != nil && deploymentPv.Spec.ClaimRef.Name == firstStsPvcName {
-				// smooth migration successfully and clean status
-				monitor.Status.DeploymentStorageStatus = nil
-				return true, nil
-			}
-
-			err = m.patchPVClaimRef(deploymentPv, firstStsPvcName, monitor)
-			if err != nil {
-				klog.Errorf("Smooth migration for tm[%s/%s], fail to patch PV %s, err: %v", monitor.Namespace, monitor.Name, monitor.Status.DeploymentStorageStatus.PvName, err)
-				return false, err
-			}
-			// smooth migration successfully and clean status
-			monitor.Status.DeploymentStorageStatus = nil
+		// If the PVC of the deployment does not exist and no old PV status, we don't need to migrate.
+		if monitor.Status.DeploymentStorageStatus == nil || len(monitor.Status.DeploymentStorageStatus.PvName) <= 0 {
 			return true, nil
 		}
 
-		deploymentPv, err := m.deps.PVLister.Get(deploymentPvc.Spec.VolumeName)
+		deploymentPv, err := m.deps.PVLister.Get(monitor.Status.DeploymentStorageStatus.PvName)
 		if err != nil {
-			klog.Errorf("Smooth migration for tm[%s/%s], fail to get PV %s, err: %v", monitor.Namespace, monitor.Name, deploymentPvc.Spec.VolumeName, err)
-			return false, err
-		}
-		if deploymentPv.Spec.PersistentVolumeReclaimPolicy == corev1.PersistentVolumeReclaimDelete {
-			klog.Errorf("Smooth migration for tm[%s/%s], pv[%s] policy is delete, it must be retain", monitor.Namespace, monitor.Name, deploymentPvc.Spec.VolumeName)
+			klog.Errorf("Smooth migration for tm[%s/%s], fail to patch PV %s, err: %v", monitor.Namespace, monitor.Name, monitor.Status.DeploymentStorageStatus.PvName, err)
 			return false, err
 		}
 
@@ -487,50 +477,64 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 			return true, nil
 		}
 
-		// firstly patch status
-		if monitor.Status.DeploymentStorageStatus == nil && len(deploymentPvc.Spec.VolumeName) > 0 {
-			err = m.patchTidbMonitorStatus(monitor, deploymentPvc.Spec.VolumeName)
-			if err != nil {
-				return false, err
-			}
-			//monitor patch status successfully
-		}
-
-		err = m.deps.PVCControl.DeletePVC(monitor, &corev1.PersistentVolumeClaim{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      deploymentPvcName,
-				Namespace: monitor.Namespace,
-			},
-		})
-		if err != nil {
-			klog.Errorf("Fail to delete the PVC %s for tm [%s/%s], err: %v", deploymentPvcName, monitor.Namespace, monitor.Name, err)
-			return false, err
-		}
 		err = m.patchPVClaimRef(deploymentPv, firstStsPvcName, monitor)
 		if err != nil {
-			klog.Errorf("Smooth migration for tm[%s/%s], fail to patch PV %s, err: %v", monitor.Namespace, monitor.Name, deploymentPvc.Spec.VolumeName, err)
+			klog.Errorf("Smooth migration for tm[%s/%s], fail to patch PV %s, err: %v", monitor.Namespace, monitor.Name, monitor.Status.DeploymentStorageStatus.PvName, err)
 			return false, err
 		}
 		// smooth migration successfully and clean status
 		monitor.Status.DeploymentStorageStatus = nil
 		return true, nil
-
 	}
-	klog.Infof("The old deployment exists, start smooth migration for tm [%s/%s]", monitor.Namespace, monitor.Name)
-	// if deployment exist, delete it and wait next reconcile.
-	err = m.deps.TypedControl.Delete(monitor, &appsv1.Deployment{
+
+	if len(deploymentPvc.Spec.VolumeName) <= 0 {
+		klog.Errorf("Smooth migration for tm[%s/%s], old pvc not bind pv", monitor.Namespace, monitor.Name)
+		return false, nil
+	}
+
+	deploymentPv, err := m.deps.PVLister.Get(deploymentPvc.Spec.VolumeName)
+	if err != nil {
+		klog.Errorf("Smooth migration for tm[%s/%s], fail to get PV %s, err: %v", monitor.Namespace, monitor.Name, deploymentPvc.Spec.VolumeName, err)
+		return false, err
+	}
+	if deploymentPv.Spec.PersistentVolumeReclaimPolicy == corev1.PersistentVolumeReclaimDelete {
+		klog.Errorf("Smooth migration for tm[%s/%s], pv[%s] policy is delete, it must be retain", monitor.Namespace, monitor.Name, deploymentPvc.Spec.VolumeName)
+		return false, err
+	}
+
+	if deploymentPv.Spec.ClaimRef != nil && deploymentPv.Spec.ClaimRef.Name == firstStsPvcName {
+		// smooth migration successfully and clean status
+		monitor.Status.DeploymentStorageStatus = nil
+		return true, nil
+	}
+
+	// firstly patch status
+	if monitor.Status.DeploymentStorageStatus == nil {
+		err = m.patchTidbMonitorStatus(monitor, deploymentPvc.Spec.VolumeName)
+		if err != nil {
+			return false, err
+		}
+		//monitor patch status successfully
+	}
+
+	err = m.deps.PVCControl.DeletePVC(monitor, &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      oldDeployment.Name,
-			Namespace: oldDeployment.Namespace,
+			Name:      deploymentPvcName,
+			Namespace: monitor.Namespace,
 		},
 	})
 	if err != nil {
-		klog.Errorf("smoothMigration tm[%s/%s]'s,old deployment failed to delete,err: %v", monitor.Namespace, monitor.Name, err)
+		klog.Errorf("Fail to delete the PVC %s for tm [%s/%s], err: %v", deploymentPvcName, monitor.Namespace, monitor.Name, err)
 		return false, err
 	}
-	// If enable persistent,operator need to migrate pvc and pv binding relationship.
-	return !monitor.Spec.Persistent, nil
-
+	err = m.patchPVClaimRef(deploymentPv, firstStsPvcName, monitor)
+	if err != nil {
+		klog.Errorf("Smooth migration for tm[%s/%s], fail to patch PV %s, err: %v", monitor.Namespace, monitor.Name, deploymentPvc.Spec.VolumeName, err)
+		return false, err
+	}
+	// smooth migration successfully and clean status
+	monitor.Status.DeploymentStorageStatus = nil
+	return true, nil
 }
 
 func (c *MonitorManager) validate(tidbmonitor *v1alpha1.TidbMonitor) bool {
