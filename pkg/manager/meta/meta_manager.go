@@ -14,7 +14,6 @@
 package meta
 
 import (
-	"errors"
 	"fmt"
 	"github.com/pingcap/tidb-operator/pkg/util"
 
@@ -24,8 +23,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"k8s.io/klog"
 )
-
-var errPVCNotFound = errors.New("PVC is not found")
 
 type metaManager struct {
 	deps *controller.Dependencies
