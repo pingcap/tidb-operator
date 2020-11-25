@@ -583,7 +583,7 @@ func (m *MonitorManager) createOrUpdateService(newSvc *corev1.Service, monitor *
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("syncTidbMonitorService: failed to get svc %s for cluster %s/%s, error: %s", newSvc.Name, monitor.Namespace, monitor.Name, err)
+		return fmt.Errorf("createOrUpdateService: fail to get svc %s for tm %s/%s, error: %s", newSvc.Name, monitor.Namespace, monitor.Name, err)
 	}
 
 	oldSvc := oldSvcTmp.DeepCopy()
