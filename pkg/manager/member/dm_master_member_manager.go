@@ -509,9 +509,9 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	}
 	masterConfigMap := cm.Name
 
-	annMount, annVolume := annotationsMountVolume()
+	annoMount, annoVolume := annotationsMountVolume()
 	volMounts := []corev1.VolumeMount{
-		annMount,
+		annoMount,
 		{Name: "config", ReadOnly: true, MountPath: "/etc/dm-master"},
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
 		{Name: v1alpha1.DMMasterMemberType.String(), MountPath: dmMasterDataVolumeMountPath},
@@ -523,7 +523,7 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	}
 
 	vols := []corev1.Volume{
-		annVolume,
+		annoVolume,
 		{Name: "config",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
@@ -567,6 +567,8 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 			},
 		})
 	}
+
+	volMounts = append(volMounts, dc.Spec.Master.AdditionalVolumeMounts...)
 
 	storageSize := DefaultStorageSize
 	if dc.Spec.Master.StorageSize != "" {

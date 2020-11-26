@@ -510,9 +510,9 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		tidbConfigMap = cm.Name
 	}
 
-	annMount, annVolume := annotationsMountVolume()
+	annoMount, annoVolume := annotationsMountVolume()
 	volMounts := []corev1.VolumeMount{
-		annMount,
+		annoMount,
 		{Name: "config", ReadOnly: true, MountPath: "/etc/tidb"},
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
 	}
@@ -528,7 +528,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	}
 
 	vols := []corev1.Volume{
-		annVolume,
+		annoVolume,
 		{Name: "config", VolumeSource: corev1.VolumeSource{
 			ConfigMap: &corev1.ConfigMapVolumeSource{
 				LocalObjectReference: corev1.LocalObjectReference{
@@ -565,6 +565,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			},
 		})
 	}
+	volMounts = append(volMounts, tc.Spec.TiDB.AdditionalVolumeMounts...)
 
 	sysctls := "sysctl -w"
 	var initContainers []corev1.Container

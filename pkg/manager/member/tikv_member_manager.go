@@ -316,9 +316,9 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		tikvConfigMap = cm.Name
 	}
 
-	annMount, annVolume := annotationsMountVolume()
+	annoMount, annoVolume := annotationsMountVolume()
 	volMounts := []corev1.VolumeMount{
-		annMount,
+		annoMount,
 		{Name: v1alpha1.TiKVMemberType.String(), MountPath: tikvDataVolumeMountPath},
 		{Name: "config", ReadOnly: true, MountPath: "/etc/tikv"},
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
@@ -335,7 +335,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	}
 
 	vols := []corev1.Volume{
-		annVolume,
+		annoVolume,
 		{Name: "config", VolumeSource: corev1.VolumeSource{
 			ConfigMap: &corev1.ConfigMapVolumeSource{
 				LocalObjectReference: corev1.LocalObjectReference{
