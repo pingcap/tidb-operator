@@ -48,6 +48,9 @@ func NewBackupManager(deps *controller.Dependencies) backup.BackupManager {
 }
 
 func (bm *backupManager) Sync(backup *v1alpha1.Backup) error {
+	// because a finalizer is installed on the backup on creation, when backup is deleted,
+	// backup.DeletionTimestamp will be set, controller will be informed with an onUpdate event,
+	// this is the moment that we can do clean up work.
 	if err := bm.backupCleaner.Clean(backup); err != nil {
 		return err
 	}
