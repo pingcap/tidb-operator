@@ -237,7 +237,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 				}
 				return &pdapi.StoresInfo{
 					Count:  6,
-					Stores: []*pdapi.StoreInfo{store, store, store, store, store,tiflashstore},
+					Stores: []*pdapi.StoreInfo{store, store, store, store, store, tiflashstore},
 				}, nil
 			}
 		}
@@ -484,7 +484,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 				}
 				return &pdapi.StoresInfo{
 					Count:  4,
-					Stores: []*pdapi.StoreInfo{store, store, store,tiflashstore},
+					Stores: []*pdapi.StoreInfo{store, store, store, tiflashstore},
 				}, nil
 			},
 		},
