@@ -28,6 +28,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -446,4 +447,56 @@ func shouldRecoverDM(dc *v1alpha1.DMCluster, component string, podLister corelis
 		}
 	}
 	return true
+}
+
+func CreateOrUpdateService(serviceLister corelisters.ServiceLister, serviceControl controller.ServiceControlInterface, newSvc *corev1.Service, monitor *v1alpha1.TidbMonitor) error {
+	oldSvcTmp, err := serviceLister.Services(newSvc.Namespace).Get(newSvc.Name)
+	if errors.IsNotFound(err) {
+		err = controller.SetServiceLastAppliedConfigAnnotation(newSvc)
+		if err != nil {
+			return err
+		}
+		err = serviceControl.CreateService(monitor, newSvc)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("createOrUpdateService: fail to get svc %s for tm %s/%s, error: %s", newSvc.Name, monitor.Namespace, monitor.Name, err)
+	}
+
+	oldSvc := oldSvcTmp.DeepCopy()
+	util.RetainManagedFields(newSvc, oldSvc)
+
+	equal, err := controller.ServiceEqual(newSvc, oldSvc)
+	if err != nil {
+		return err
+	}
+	annoEqual := util.IsSubMapOf(newSvc.Annotations, oldSvc.Annotations)
+	isOrphan := metav1.GetControllerOf(oldSvc) == nil
+
+	if !equal || !annoEqual || isOrphan {
+		svc := *oldSvc
+		svc.Spec = newSvc.Spec
+		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
+		if err != nil {
+			return err
+		}
+		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
+		// apply change of annotations if any
+		for k, v := range newSvc.Annotations {
+			svc.Annotations[k] = v
+		}
+		// also override labels when adopt orphan
+		if isOrphan {
+			svc.OwnerReferences = newSvc.OwnerReferences
+			svc.Labels = newSvc.Labels
+		}
+		_, err = serviceControl.UpdateService(monitor, &svc)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

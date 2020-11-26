@@ -29,9 +29,8 @@ import (
 const (
 	TiDBV3Version                 = "v3.1.1"
 	TiDBV3UpgradeVersion          = "v3.1.2"
-	TiDBV4Version                 = "v4.0.4"
-	TiDBV4UpgradeVersion          = "v4.0.5"
-	TiDBV47UpgradeVersion         = "v4.0.5"
+	TiDBV4Version                 = "v4.0.7"
+	TiDBV4UpgradeVersion          = "v4.0.8"
 	TiDBNightlyVersion            = "nightly"
 	PrometheusImage               = "prom/prometheus"
 	PrometheusVersion             = "v2.18.1"

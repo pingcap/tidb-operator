@@ -512,7 +512,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 		ginkgo.It("Deploy TiDBMonitor and Upgrade Operator, TiDBMonitor switch from deployment to StatefulSet", func() {
 			tcName := "smooth-tidbcluster"
-			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "admin", utilimage.TiDBV47UpgradeVersion)
+			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "admin", utilimage.TiDBV4UpgradeVersion)
 			cluster.Resources["pd.replicas"] = "3"
 			cluster.Resources["tikv.replicas"] = "3"
 			cluster.Resources["tidb.replicas"] = "1"
@@ -537,7 +537,8 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			ocfg.Image = cfg.OperatorImage
 			oa.InstallCRDOrDie(ocfg)
 			oa.UpgradeOperatorOrDie(ocfg)
-
+			err = tests.CheckTidbMonitor(tm, cli, c, fw)
+			framework.ExpectNoError(err, "Expected tidbmonitor checked success under migration")
 			err = wait.Poll(5*time.Second, 30*time.Minute, func() (done bool, err error) {
 				newStsPvcName := monitor.GetMonitorFirstPVCName(tm.Name)
 				klog.Infof("tidbmonitor newStsPvcName:%s", newStsPvcName)

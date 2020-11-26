@@ -148,7 +148,7 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 func (m *MonitorManager) syncTidbMonitorService(monitor *v1alpha1.TidbMonitor) error {
 	services := getMonitorService(monitor)
 	for _, newSvc := range services {
-		if err := m.createOrUpdateService(newSvc, monitor); err != nil {
+		if err := member.CreateOrUpdateService(m.deps.ServiceLister, m.deps.ServiceControl, newSvc, monitor); err != nil {
 			return err
 		}
 	}
@@ -583,58 +583,6 @@ func (m *MonitorManager) syncTidbMonitorPV(tm *v1alpha1.TidbMonitor) error {
 		}
 	}
 
-	return nil
-}
-
-func (m *MonitorManager) createOrUpdateService(newSvc *corev1.Service, monitor *v1alpha1.TidbMonitor) error {
-	oldSvcTmp, err := m.deps.ServiceLister.Services(newSvc.Namespace).Get(newSvc.Name)
-	if errors.IsNotFound(err) {
-		err = controller.SetServiceLastAppliedConfigAnnotation(newSvc)
-		if err != nil {
-			return err
-		}
-		err = m.deps.ServiceControl.CreateService(monitor, newSvc)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("createOrUpdateService: fail to get svc %s for tm %s/%s, error: %s", newSvc.Name, monitor.Namespace, monitor.Name, err)
-	}
-
-	oldSvc := oldSvcTmp.DeepCopy()
-	util.RetainManagedFields(newSvc, oldSvc)
-
-	equal, err := controller.ServiceEqual(newSvc, oldSvc)
-	if err != nil {
-		return err
-	}
-	annoEqual := util.IsSubMapOf(newSvc.Annotations, oldSvc.Annotations)
-	isOrphan := metav1.GetControllerOf(oldSvc) == nil
-
-	if !equal || !annoEqual || isOrphan {
-		svc := *oldSvc
-		svc.Spec = newSvc.Spec
-		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
-		if err != nil {
-			return err
-		}
-		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
-		// apply change of annotations if any
-		for k, v := range newSvc.Annotations {
-			svc.Annotations[k] = v
-		}
-		// also override labels when adopt orphan
-		if isOrphan {
-			svc.OwnerReferences = newSvc.OwnerReferences
-			svc.Labels = newSvc.Labels
-		}
-		_, err = m.deps.ServiceControl.UpdateService(monitor, &svc)
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
