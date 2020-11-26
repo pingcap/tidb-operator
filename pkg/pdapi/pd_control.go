@@ -33,6 +33,8 @@ type PDControlInterface interface {
 	GetPDClient(namespace Namespace, tcName string, tlsEnabled bool) PDClient
 	// GetClusterRefPDClient provides PDClient of the tidb cluster.
 	GetClusterRefPDClient(namespace Namespace, tcName string, clusterDomain string, tlsEnabled bool) PDClient
+	// GetClusterRefPDClientMultiClusterRetry provides PD etcd Client of the tidb cluster.
+	GetClusterRefPDClientMultiClusterRetry(namespace Namespace, tcName string, clusterDomain string, tlsEnabled bool, peerURL string) PDClient
 	// GetPDEtcdClient provides PD etcd Client of the tidb cluster.
 	GetPDEtcdClient(namespace Namespace, tcName string, tlsEnabled bool) (PDEtcdClient, error)
 }
@@ -127,6 +129,29 @@ func (pdc *defaultPDControl) GetClusterRefPDClient(namespace Namespace, tcName s
 	if _, ok := pdc.pdClients[key]; !ok {
 		pdc.pdClients[key] = NewPDClient(ClusterRefPDClientUrl(namespace, tcName, scheme, clusterDomain), DefaultTimeout, nil)
 	}
+	return pdc.pdClients[key]
+}
+
+func (pdc *defaultPDControl) GetClusterRefPDClientMultiClusterRetry(namespace Namespace, tcName string, clusterDomain string, tlsEnabled bool, peerURL string) PDClient {
+	pdc.mutex.Lock()
+	defer pdc.mutex.Unlock()
+
+	var tlsConfig *tls.Config
+	var err error
+	var scheme = "http"
+
+	if tlsEnabled {
+		scheme = "https"
+		tlsConfig, err = GetTLSConfig(pdc.kubeCli, namespace, tcName, util.ClusterClientTLSSecretName(tcName))
+		if err != nil {
+			klog.Errorf("Unable to get tls config for tidb cluster %q, pd client may not work: %v", tcName, err)
+			return &pdClient{url: peerURL, httpClient: &http.Client{Timeout: DefaultTimeout}}
+		}
+
+		return NewPDClient(peerURL, DefaultTimeout, tlsConfig)
+	}
+	key := ClusterRefpdClientKey(scheme, namespace, tcName, clusterDomain)
+	pdc.pdClients[key] = NewPDClient(peerURL, DefaultTimeout, nil)
 	return pdc.pdClients[key]
 }
 

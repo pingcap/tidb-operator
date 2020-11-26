@@ -301,6 +301,20 @@ func (m *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *a
 	}
 
 	pdClient := controller.GetPDClient(m.deps.PDControl, tc)
+	// retry when PeerMember is existed and the cluster info updating is blocked.
+	// examples:
+	// ClientURL:https://my-cluster-demo-2-pd-0.my-cluster-demo-2-pd-peer.pingcap.svc.cluster2.internal.com
+	_, err = pdClient.GetHealth()
+	if err != nil && len(tc.Status.PD.PeerMembers) > 0 {
+		for _, pdMember := range tc.Status.PD.PeerMembers {
+			pdClient1 := controller.GetPDClientRetryforPeerMembers(m.deps.PDControl, tc, pdMember.ClientURL)
+			_, err := pdClient1.GetHealth()
+			fmt.Println(err)
+			if err == nil {
+				break
+			}
+		}
+	}
 
 	healthInfo, err := pdClient.GetHealth()
 	if err != nil {

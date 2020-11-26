@@ -32,6 +32,11 @@ func GetPDClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) p
 	return pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled())
 }
 
+// Retry to GetPDClient for multi-cluster
+func GetPDClientRetryforPeerMembers(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster, peerURL string) pdapi.PDClient {
+	return pdControl.GetClusterRefPDClientMultiClusterRetry(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.ClusterDomain, tc.IsTLSClusterEnabled(), peerURL)
+}
+
 // NewFakePDClient creates a fake pdclient that is set as the pd client
 func NewFakePDClient(pdControl *pdapi.FakePDControl, tc *v1alpha1.TidbCluster) *pdapi.FakePDClient {
 	pdClient := pdapi.NewFakePDClient()
