@@ -16,6 +16,7 @@ package tidbcluster
 import (
 	"context"
 	"fmt"
+	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	_ "net/http/pprof"
 	"time"
 
@@ -69,6 +70,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 	var config *restclient.Config
 	var fw portforward.PortForward
 	var fwCancel context.CancelFunc
+	var stsGetter typedappsv1.StatefulSetsGetter
 	/**
 	 * StatefulSet or AdvancedStatefulSet getter interface.
 	 */
@@ -102,6 +104,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		fwCancel = cancel
 		cfg = e2econfig.TestConfig
 		cfg = e2econfig.TestConfig
+		stsGetter = c.AppsV1()
 	})
 
 	ginkgo.AfterEach(func() {
@@ -523,7 +526,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			monitorName := "smooth-migrate"
 			tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "failed to get tidbcluster")
-			tm := fixture.NewTidbMonitor(monitorName, tc.Namespace, tc, true, true, true)
+			tm := fixture.NewTidbMonitor(monitorName, ns, tc, true, true, true)
 			_, err = cli.PingcapV1alpha1().TidbMonitors(tc.Namespace).Create(tm)
 			framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
 			err = tests.CheckTidbMonitor(tm, cli, c, fw)
@@ -540,6 +543,15 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			oa.UpgradeOperatorOrDie(ocfg)
 			err = tests.CheckTidbMonitor(tm, cli, c, fw)
 			framework.ExpectNoError(err, "Expected tidbmonitor checked success under migration")
+			err = wait.Poll(5*time.Second, 30*time.Minute, func() (done bool, err error) {
+				tmSet, err := stsGetter.StatefulSets(ns).Get(monitor.GetMonitorObjectName(tm), metav1.GetOptions{})
+				if err != nil {
+					klog.Errorf("failed to get statefulset: %s/%s, %v", ns, tmSet, err)
+					return false, nil
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "Expected tidbmonitor sts success")
 			err = wait.Poll(5*time.Second, 30*time.Minute, func() (done bool, err error) {
 				newStsPvcName := monitor.GetMonitorFirstPVCName(tm.Name)
 				klog.Infof("tidbmonitor newStsPvcName:%s", newStsPvcName)

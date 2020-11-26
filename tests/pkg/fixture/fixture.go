@@ -258,8 +258,6 @@ func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 				},
 				Envs: map[string]string{},
 			},
-			Persistent: persist,
-			Storage:    "10Gi",
 		},
 	}
 	if isRetain {
