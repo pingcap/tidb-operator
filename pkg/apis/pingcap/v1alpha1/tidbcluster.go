@@ -511,7 +511,6 @@ func (tc *TidbCluster) PDIsAvailable() bool {
 		return false
 	}
 
-	// Response to incluster pod changes. There is a delay for infos in PD.
 	if tc.Status.PD.StatefulSet == nil || tc.Status.PD.StatefulSet.ReadyReplicas+peerAvailableNum < lowerLimit {
 		return false
 	}
