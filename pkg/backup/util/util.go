@@ -356,6 +356,7 @@ func validateAccessConfig(config *v1alpha1.TiDBAccessConfig) string {
 	return ""
 }
 
+// ValidateBackup validates backup sepc
 func ValidateBackup(backup *v1alpha1.Backup, tikvImage string) error {
 	ns := backup.Namespace
 	name := backup.Name
@@ -393,22 +394,35 @@ func ValidateBackup(backup *v1alpha1.Backup, tikvImage string) error {
 		}
 
 		if backup.Spec.S3 != nil {
-			if backup.Spec.S3.Bucket == "" {
-				return fmt.Errorf("bucket should be configured for BR in spec of %s/%s", ns, name)
+			s3 := backup.Spec.S3
+			configuredForBR := fmt.Sprintf("configured for BR in spec of %s/%s", ns, name)
+			if s3.Bucket == "" {
+				return fmt.Errorf("bucket should be %s", configuredForBR)
 			}
 
-			if backup.Spec.S3.Endpoint != "" {
-				u, err := url.Parse(backup.Spec.S3.Endpoint)
+			if s3.Endpoint != "" {
+				u, err := url.Parse(s3.Endpoint)
 				if err != nil {
-					return fmt.Errorf("invalid endpoint %s is configured for BR in spec of %s/%s", backup.Spec.S3.Endpoint, ns, name)
+					return fmt.Errorf("invalid endpoint %s is %s", s3.Endpoint, configuredForBR)
 				}
 				if u.Scheme == "" {
-					return fmt.Errorf("scheme not found in endpoint %s configured for BR in spec of %s/%s", backup.Spec.S3.Endpoint, ns, name)
+					return fmt.Errorf("scheme not found in endpoint %s %s", s3.Endpoint, configuredForBR)
 				}
 				if u.Host == "" {
-					return fmt.Errorf("host not found in endpoint %s configured for BR in spec of %s/%s", backup.Spec.S3.Endpoint, ns, name)
+					return fmt.Errorf("host not found in endpoint %s %s", s3.Endpoint, configuredForBR)
 				}
 			}
+		} else if backup.Spec.Gcs != nil {
+			gcs := backup.Spec.Gcs
+			configuredForBR := fmt.Sprintf("configured for BR in spec of %s/%s", ns, name)
+			if gcs.ProjectId == "" {
+				return fmt.Errorf("projectId should be %s", configuredForBR)
+			}
+			if gcs.Bucket == "" {
+				return fmt.Errorf("bucket should be %s", configuredForBR)
+			}
+		} else if backup.Spec.Local != nil {
+			// need not to validate yet
 		}
 	}
 	return nil
