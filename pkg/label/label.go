@@ -456,9 +456,3 @@ func (l Label) IsManagedByTiDBOperator() bool {
 func (l Label) IsTidbClusterPod() bool {
 	return l[NameLabelKey] == "tidb-cluster"
 }
-
-// TiDB assigns tidb to component key in label
-func (l Label) TiDBMonitor() Label {
-	l.Component(TiDBMonitorVal)
-	return l
-}

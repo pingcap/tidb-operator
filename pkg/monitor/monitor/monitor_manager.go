@@ -488,8 +488,8 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 	}
 
 	if len(deploymentPvc.Spec.VolumeName) <= 0 {
-		klog.Errorf("Smooth migration for tm[%s/%s], old pvc not bind pv", monitor.Namespace, monitor.Name)
-		return false, nil
+		klog.Infof("Smooth migration for tm[%s/%s], old pvc not bind pv and continue create statefulset", monitor.Namespace, monitor.Name)
+		return true, nil
 	}
 
 	deploymentPv, err := m.deps.PVLister.Get(deploymentPvc.Spec.VolumeName)
@@ -551,8 +551,7 @@ func (c *MonitorManager) validate(tidbmonitor *v1alpha1.TidbMonitor) bool {
 func (m *MonitorManager) syncTidbMonitorPV(tm *v1alpha1.TidbMonitor) error {
 	ns := tm.GetNamespace()
 	instanceName := tm.Name
-
-	l, err := label.New().Instance(instanceName).TiDBMonitor().Selector()
+	l, err := label.New().Instance(instanceName).Monitor().Selector()
 	if err != nil {
 		return err
 	}

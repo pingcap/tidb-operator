@@ -412,7 +412,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		var version string
 
 		ginkgo.BeforeEach(func() {
-			version = "v1.1.0"
+			version = "v1.1.7"
 			ocfg = &tests.OperatorConfig{
 				Namespace:   ns,
 				ReleaseName: "operator",
@@ -513,8 +513,8 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		ginkgo.It("Deploy TiDBMonitor and Upgrade Operator, TiDBMonitor switch from deployment to StatefulSet", func() {
 			tcName := "smooth-tidbcluster"
 			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "admin", utilimage.TiDBV4Version)
-			cluster.Resources["pd.replicas"] = "1"
-			cluster.Resources["tikv.replicas"] = "1"
+			cluster.Resources["pd.replicas"] = "3"
+			cluster.Resources["tikv.replicas"] = "3"
 			cluster.Resources["tidb.replicas"] = "1"
 			oa.DeployTidbClusterOrDie(&cluster)
 			oa.CheckTidbClusterStatusOrDie(&cluster)
@@ -557,6 +557,8 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				return false, nil
 			})
 			framework.ExpectEqual(err, wait.ErrWaitTimeout, "expect tm pv haven't been changed for 5 minutes")
+			err = tests.CheckTidbMonitor(tm, cli, c, fw)
+			framework.ExpectNoError(err, "Expected tidbmonitor checked success")
 		})
 	})
 
