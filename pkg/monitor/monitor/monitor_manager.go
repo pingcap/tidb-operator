@@ -565,6 +565,10 @@ func (m *MonitorManager) syncTidbMonitorPV(tm *v1alpha1.TidbMonitor) error {
 			// only update tidbmonitor pod
 			continue
 		}
+		if name := pod.Labels[label.InstanceLabelKey]; name != instanceName {
+			// only update current tidbmonitor pod
+			continue
+		}
 		// update meta info for pvc
 		pvcs, err := util.ResolvePVCFromPod(pod, m.deps.PVCLister)
 		if err != nil {
