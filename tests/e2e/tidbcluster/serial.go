@@ -538,7 +538,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			oa.InstallCRDOrDie(ocfg)
 			oa.UpgradeOperatorOrDie(ocfg)
 
-			err = wait.Poll(5*time.Second, 10*time.Minute, func() (done bool, err error) {
+			err = wait.Poll(5*time.Second, 30*time.Minute, func() (done bool, err error) {
 				newStsPvcName := monitor.GetMonitorFirstPVCName(tm.Name)
 				klog.Infof("tidbmonitor newStsPvcName:%s", newStsPvcName)
 				stsPvc, err := c.CoreV1().PersistentVolumeClaims(tm.Namespace).Get(newStsPvcName, metav1.GetOptions{})
