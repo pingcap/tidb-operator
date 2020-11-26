@@ -227,9 +227,17 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 						},
 					},
 				}
+				tiflashstore := &pdapi.StoreInfo{
+					Store: &pdapi.MetaStore{
+						StateName: v1alpha1.TiKVStateUp,
+						Store: &metapb.Store{
+							Address: fmt.Sprintf("%s-tiflash-0", "basic"),
+						},
+					},
+				}
 				return &pdapi.StoresInfo{
-					Count:  5,
-					Stores: []*pdapi.StoreInfo{store, store, store, store, store},
+					Count:  6,
+					Stores: []*pdapi.StoreInfo{store, store, store, store, store,tiflashstore},
 				}, nil
 			}
 		}
@@ -466,9 +474,17 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 						},
 					},
 				}
+				tiflashstore := &pdapi.StoreInfo{
+					Store: &pdapi.MetaStore{
+						StateName: v1alpha1.TiKVStateUp,
+						Store: &metapb.Store{
+							Address: fmt.Sprintf("%s-tiflash-0", "basic"),
+						},
+					},
+				}
 				return &pdapi.StoresInfo{
-					Count:  3,
-					Stores: []*pdapi.StoreInfo{store, store, store},
+					Count:  4,
+					Stores: []*pdapi.StoreInfo{store, store, store,tiflashstore},
 				}, nil
 			},
 		},
