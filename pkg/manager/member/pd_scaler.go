@@ -213,7 +213,7 @@ func (s *pdScaler) preCheckUpMembers(tc *v1alpha1.TidbCluster, podName string) (
 	}
 
 	if upComponents != 0 && tc.Spec.PD.Replicas == 0 {
-		errMsg := fmt.Sprintf("The PD is in use by TidbCluster [%s/%s], can't scale in PD, podname %s ", tc.GetNamespace(), tc.GetName(), podName)
+		errMsg := fmt.Sprintf("The PD is in use by TidbCluster [%s/%s], can't scale in PD, podname %s", tc.GetNamespace(), tc.GetName(), podName)
 		klog.Error(errMsg)
 		s.deps.Recorder.Event(tc, v1.EventTypeWarning, "FailedScaleIn", errMsg)
 		return false, nil
