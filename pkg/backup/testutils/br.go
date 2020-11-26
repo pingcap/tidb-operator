@@ -54,7 +54,7 @@ func GenValidStorageProviders() []v1alpha1.StorageProvider {
 		{
 			Local: &v1alpha1.LocalStorageProvider{
 				Prefix: "prefix-",
-				Volume: &corev1.Volume{
+				Volume: corev1.Volume{
 					Name: "nfs",
 					VolumeSource: corev1.VolumeSource{
 						NFS: &corev1.NFSVolumeSource{
@@ -64,7 +64,7 @@ func GenValidStorageProviders() []v1alpha1.StorageProvider {
 						},
 					},
 				},
-				VolumeMount: &corev1.VolumeMount{
+				VolumeMount: corev1.VolumeMount{
 					Name:      "nfs",
 					MountPath: "/some/path",
 				},

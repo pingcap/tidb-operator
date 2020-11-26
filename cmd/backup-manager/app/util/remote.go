@@ -181,7 +181,7 @@ func newS3Storage(conf *s3Config) (*blob.Bucket, error) {
 	if err != nil {
 		return nil, err
 	}
-	return blob.PrefixedBucket(bkt, conf.prefix), nil
+	return blob.PrefixedBucket(bkt, conf.prefix+"/"), nil
 
 }
 
@@ -208,7 +208,7 @@ func newGcsStorage(conf *gcsConfig) (*blob.Bucket, error) {
 	if err != nil {
 		return nil, err
 	}
-	return blob.PrefixedBucket(bucket, conf.prefix), nil
+	return blob.PrefixedBucket(bucket, conf.prefix+"/"), nil
 }
 
 // newGcsStorageOption constructs the arg for --storage option and the remote path for br
@@ -232,7 +232,7 @@ func makeS3Config(s3 *v1alpha1.S3StorageProvider, fakeRegion bool) *s3Config {
 	conf.bucket = s3.Bucket
 	conf.region = s3.Region
 	conf.provider = string(s3.Provider)
-	conf.prefix = strings.Trim(s3.Prefix, "/") + "/"
+	conf.prefix = strings.Trim(s3.Prefix, "/")
 	conf.endpoint = s3.Endpoint
 	conf.sse = s3.SSE
 	conf.acl = s3.Acl
@@ -264,7 +264,7 @@ func makeGcsConfig(gcs *v1alpha1.GcsStorageProvider, fakeRegion bool) *gcsConfig
 	conf.objectAcl = gcs.ObjectAcl
 	conf.bucketAcl = gcs.BucketAcl
 	conf.secretName = gcs.SecretName
-	conf.prefix = strings.Trim(gcs.Prefix, "/") + "/"
+	conf.prefix = strings.Trim(gcs.Prefix, "/")
 
 	return &conf
 }
@@ -272,6 +272,6 @@ func makeGcsConfig(gcs *v1alpha1.GcsStorageProvider, fakeRegion bool) *gcsConfig
 func makeLocalConfig(local *v1alpha1.LocalStorageProvider) localConfig {
 	return localConfig{
 		mountPath: local.VolumeMount.MountPath,
-		prefix:    strings.Trim(local.Prefix, "/") + "/",
+		prefix:    strings.Trim(local.Prefix, "/"),
 	}
 }
