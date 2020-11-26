@@ -98,12 +98,12 @@ func GetStoragePath(backup *v1alpha1.Backup) (string, error) {
 	case v1alpha1.BackupStorageTypeGcs:
 		prefix = strings.Trim(backup.Spec.StorageProvider.Gcs.Prefix, "/")
 		bucket = backup.Spec.StorageProvider.Gcs.Bucket
-		path = fmt.Sprintf("s3://%s/%s", bucket, prefix)
+		path = fmt.Sprintf("gcs://%s/%s", bucket, prefix)
 		return path, nil
 	case v1alpha1.BackupStorageTypeLocal:
 		prefix = strings.Trim(backup.Spec.StorageProvider.Local.Prefix, "/")
 		mountPath := backup.Spec.StorageProvider.Local.VolumeMount.MountPath
-		path = fmt.Sprintf("s3://%s/%s", mountPath, prefix)
+		path = fmt.Sprintf("local://%s/%s", mountPath, prefix)
 		return path, nil
 	default:
 		return "", fmt.Errorf("storage %s not supported yet", st)
