@@ -307,8 +307,8 @@ func (m *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *a
 	_, err = pdClient.GetHealth()
 	if err != nil && len(tc.Status.PD.PeerMembers) > 0 {
 		for _, pdMember := range tc.Status.PD.PeerMembers {
-			pdClient1 := controller.GetPDClientRetryforPeerMembers(m.deps.PDControl, tc, pdMember.ClientURL)
-			_, err := pdClient1.GetHealth()
+			pdClient = controller.GetPDClientRetryforPeerMembers(m.deps.PDControl, tc, pdMember.ClientURL)
+			_, err := pdClient.GetHealth()
 			fmt.Println(err)
 			if err == nil {
 				break
