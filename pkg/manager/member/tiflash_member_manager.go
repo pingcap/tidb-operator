@@ -661,7 +661,11 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 		if store.Store != nil && pattern.Match([]byte(store.Store.Address)) {
 			stores[status.ID] = *status
 		} else {
-			peerStores[status.ID] = *status
+			storePodName := strings.Split(store.Store.Address, ".")[0]
+			storeKind := strings.Split(storePodName, "-")
+			if storeKind[len(storeKind)-2] == label.TiFlashLabelVal {
+				peerStores[status.ID] = *status
+			}
 		}
 	}
 
