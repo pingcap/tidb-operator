@@ -551,7 +551,7 @@ func (c *MonitorManager) validate(tidbmonitor *v1alpha1.TidbMonitor) bool {
 func (m *MonitorManager) syncTidbMonitorPV(tm *v1alpha1.TidbMonitor) error {
 	ns := tm.GetNamespace()
 	instanceName := tm.Name
-	l, err := label.New().Instance(instanceName).Monitor().Selector()
+	l, err := label.NewMonitor().Instance(instanceName).Monitor().Selector()
 	if err != nil {
 		return err
 	}
@@ -561,14 +561,6 @@ func (m *MonitorManager) syncTidbMonitorPV(tm *v1alpha1.TidbMonitor) error {
 	}
 
 	for _, pod := range pods {
-		if component := pod.Labels[label.ComponentLabelKey]; component != label.TiDBMonitorVal {
-			// only update tidbmonitor pod
-			continue
-		}
-		if name := pod.Labels[label.InstanceLabelKey]; name != instanceName {
-			// only update current tidbmonitor pod
-			continue
-		}
 		// update meta info for pvc
 		pvcs, err := util.ResolvePVCFromPod(pod, m.deps.PVCLister)
 		if err != nil {

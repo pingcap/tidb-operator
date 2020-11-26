@@ -3,6 +3,9 @@ kind: TidbMonitor
 metadata:
   name: basic
 spec:
+  persistent: true
+  storage: "1Gi"
+  pvReclaimPolicy: "Retain"
   clusters:
   - name: basic
   prometheus:
