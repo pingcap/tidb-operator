@@ -414,10 +414,11 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		ginkgo.BeforeEach(func() {
 			version = "v1.1.7"
 			ocfg = &tests.OperatorConfig{
-				Namespace:   ns,
-				ReleaseName: "operator",
-				Tag:         version,
-				Image:       fmt.Sprintf("pingcap/tidb-operator:%s", version),
+				Namespace:       ns,
+				ReleaseName:     "operator",
+				Tag:             version,
+				Image:           fmt.Sprintf("pingcap/tidb-operator:%s", version),
+				ImagePullPolicy: v1.PullAlways,
 			}
 			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")
@@ -545,7 +546,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				stsPvc, err := c.CoreV1().PersistentVolumeClaims(tm.Namespace).Get(newStsPvcName, metav1.GetOptions{})
 				if err != nil {
 					if errors.IsNotFound(err) {
-						klog.Infof("tm[%s/%s]'s first sts pvc not found", tm.Namespace, tm.Name)
+						klog.Infof("tm[%s/%s]'s first sts pvc not found,tag:%s,image:%s", tm.Namespace, tm.Name, cfg.OperatorTag, cfg.OperatorImage)
 						return false, nil
 					}
 					klog.Errorf("get tidbmonitor sts pvc err:%v", err)
