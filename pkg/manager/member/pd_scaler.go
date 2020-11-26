@@ -200,17 +200,7 @@ func (s *pdScaler) SyncAutoScalerAnn(meta metav1.Object, actual *apps.StatefulSe
 func (s *pdScaler) preCheckUpMembers(tc *v1alpha1.TidbCluster, podName string) bool {
 	upComponents := 0
 
-	if tc.Status.TiKV.Stores != nil {
-		upComponents += len(tc.Status.TiKV.Stores)
-	}
-
-	if tc.Status.TiFlash.Stores != nil {
-		upComponents += len(tc.Status.TiFlash.Stores)
-	}
-
-	if tc.Status.TiDB.Members != nil {
-		upComponents += len(tc.Status.TiDB.Members)
-	}
+	upComponents += len(tc.Status.TiKV.Stores) + len(tc.Status.TiFlash.Stores) + len(tc.Status.TiDB.Members)
 
 	if tc.Status.TiCDC.StatefulSet != nil {
 		upComponents += int(tc.Status.TiCDC.StatefulSet.Replicas)
