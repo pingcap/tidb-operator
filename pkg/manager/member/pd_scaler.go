@@ -120,8 +120,8 @@ func (s *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet 
 	}
 
 	// limit scale in when multi-cluster is enabled
-	if pass, err := s.preCheckUpMembers(tc, pdPodName); !pass {
-		return err
+	if pass := s.preCheckUpMembers(tc, pdPodName); !pass {
+		return nil
 	}
 
 	pdClient := controller.GetPDClient(s.deps.PDControl, tc)
@@ -197,7 +197,7 @@ func (s *pdScaler) SyncAutoScalerAnn(meta metav1.Object, actual *apps.StatefulSe
 	return nil
 }
 
-func (s *pdScaler) preCheckUpMembers(tc *v1alpha1.TidbCluster, podName string) (bool, error) {
+func (s *pdScaler) preCheckUpMembers(tc *v1alpha1.TidbCluster, podName string) bool {
 	upComponents := 0
 
 	if tc.Status.TiKV.Stores != nil {
@@ -208,18 +208,26 @@ func (s *pdScaler) preCheckUpMembers(tc *v1alpha1.TidbCluster, podName string) (
 		upComponents += len(tc.Status.TiFlash.Stores)
 	}
 
-	if tc.Status.TiDB.StatefulSet != nil {
-		upComponents += int(tc.Status.TiDB.StatefulSet.Replicas)
+	if tc.Status.TiDB.Members != nil {
+		upComponents += len(tc.Status.TiDB.Members)
+	}
+
+	if tc.Status.TiCDC.StatefulSet != nil {
+		upComponents += int(tc.Status.TiCDC.StatefulSet.Replicas)
+	}
+
+	if tc.Status.Pump.StatefulSet != nil {
+		upComponents += int(tc.Status.Pump.StatefulSet.Replicas)
 	}
 
 	if upComponents != 0 && tc.Spec.PD.Replicas == 0 {
 		errMsg := fmt.Sprintf("The PD is in use by TidbCluster [%s/%s], can't scale in PD, podname %s", tc.GetNamespace(), tc.GetName(), podName)
 		klog.Error(errMsg)
 		s.deps.Recorder.Event(tc, v1.EventTypeWarning, "FailedScaleIn", errMsg)
-		return false, nil
+		return false
 	}
 
-	return true, nil
+	return true
 }
 
 type fakePDScaler struct{}
