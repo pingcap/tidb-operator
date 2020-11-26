@@ -92,6 +92,25 @@ func TestPDIsAvailable(t *testing.T) {
 				g.Expect(b).To(BeTrue())
 			},
 		},
+		{
+			name: "pd is available with peermemebrs",
+			update: func(tc *TidbCluster) {
+				tc.Status.PD.Members = map[string]PDMember{
+					"pd-0": {Name: "pd-0", Health: true},
+					"pd-1": {Name: "pd-1", Health: true},
+					"pd-2": {Name: "pd-2", Health: true},
+				}
+				tc.Status.PD.PeerMembers = map[string]PDMember{
+					"pd-0": {Name: "pd-0", Health: true},
+					"pd-1": {Name: "pd-1", Health: true},
+					"pd-2": {Name: "pd-2", Health: true},
+				}
+				tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 6}
+			},
+			expectFn: func(g *GomegaWithT, b bool) {
+				g.Expect(b).To(BeTrue())
+			},
+		},
 	}
 
 	for i := range tests {
@@ -154,6 +173,21 @@ func TestTiKVIsAvailable(t *testing.T) {
 					"tikv-0": {PodName: "tikv-0", State: TiKVStateUp},
 				}
 				tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 1}
+			},
+			expectFn: func(g *GomegaWithT, b bool) {
+				g.Expect(b).To(BeTrue())
+			},
+		},
+		{
+			name: "tikv is available with peer stores",
+			update: func(tc *TidbCluster) {
+				tc.Status.TiKV.Stores = map[string]TiKVStore{
+					"tikv-0": {PodName: "tikv-0", State: TiKVStateUp},
+				}
+				tc.Status.TiKV.PeerStores = map[string]TiKVStore{
+					"tikv-0": {PodName: "tikv-0", State: TiKVStateUp},
+				}
+				tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 2}
 			},
 			expectFn: func(g *GomegaWithT, b bool) {
 				g.Expect(b).To(BeTrue())
