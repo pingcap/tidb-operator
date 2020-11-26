@@ -209,9 +209,8 @@ func GetTidbInitializer(ns, tcName, initName, initPassWDName, initTLSName string
 	}
 }
 
-func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEnabled, persist bool) *v1alpha1.TidbMonitor {
+func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEnabled, persist bool, isRetain bool) *v1alpha1.TidbMonitor {
 	imagePullPolicy := corev1.PullIfNotPresent
-	retainPVP := corev1.PersistentVolumeReclaimRetain
 	monitor := &v1alpha1.TidbMonitor{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -259,10 +258,13 @@ func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 				},
 				Envs: map[string]string{},
 			},
-			Persistent:      persist,
-			Storage:         "10Gi",
-			PVReclaimPolicy: &retainPVP,
+			Persistent: persist,
+			Storage:    "10Gi",
 		},
+	}
+	if isRetain {
+		retainPVP := corev1.PersistentVolumeReclaimRetain
+		monitor.Spec.PVReclaimPolicy = &retainPVP
 	}
 	if grafanaEnabled {
 		monitor.Spec.Grafana = &v1alpha1.GrafanaSpec{

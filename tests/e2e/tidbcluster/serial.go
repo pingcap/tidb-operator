@@ -522,7 +522,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			monitorName := "smooth-migrate"
 			tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "failed to get tidbcluster")
-			tm := fixture.NewTidbMonitor(monitorName, tc.Namespace, tc, true, true)
+			tm := fixture.NewTidbMonitor(monitorName, tc.Namespace, tc, true, true, true)
 			_, err = cli.PingcapV1alpha1().TidbMonitors(tc.Namespace).Create(tm)
 			framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
 			err = tests.CheckTidbMonitor(tm, cli, c, fw)

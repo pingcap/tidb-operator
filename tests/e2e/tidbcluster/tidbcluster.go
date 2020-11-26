@@ -655,7 +655,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
 		framework.ExpectNoError(err, "Expected get tidbcluster")
 
-		tm := fixture.NewTidbMonitor("e2e", tc.Namespace, tc, true, true)
+		tm := fixture.NewTidbMonitor("e2e", tc.Namespace, tc, true, true, false)
 		deletePVP := corev1.PersistentVolumeReclaimDelete
 		tm.Spec.PVReclaimPolicy = &deletePVP
 		_, err = cli.PingcapV1alpha1().TidbMonitors(tc.Namespace).Create(tm)
@@ -922,7 +922,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			framework.ExpectNoError(err, "Create TidbCluster error")
 			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err, "Check TidbCluster error")
-			monitor := fixture.NewTidbMonitor("monitor", ns, tc, false, false)
+			monitor := fixture.NewTidbMonitor("monitor", ns, tc, false, false, false)
 
 			// Replace Prometheus into Mock Prometheus
 			a := e2econfig.TestConfig.E2EImage
@@ -1207,7 +1207,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Create TidbCluster error")
 		err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 15*time.Second)
 		framework.ExpectNoError(err, "Check TidbCluster error")
-		monitor := fixture.NewTidbMonitor("monitor", ns, tc, false, false)
+		monitor := fixture.NewTidbMonitor("monitor", ns, tc, false, false, false)
 
 		// Replace Prometheus into Mock Prometheus
 		a := e2econfig.TestConfig.E2EImage
