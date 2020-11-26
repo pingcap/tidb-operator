@@ -267,10 +267,17 @@ func (m *pdMemberManager) shouldRecover(tc *v1alpha1.TidbCluster) bool {
 		if !podutil.IsPodReady(pod) {
 			return false
 		}
+		ok := false
 		for pdName, pdMember := range tc.Status.PD.Members {
-			if strings.Split(pdName, ".")[0] == pod.Name && !pdMember.Health {
-				return false
+			if strings.Split(pdName, ".")[0] == pod.Name {
+				if !pdMember.Health {
+					return false
+				}
+				ok = true
 			}
+		}
+		if !ok {
+			return false
 		}
 	}
 	return true
