@@ -16,7 +16,6 @@ package tidbcluster
 import (
 	"context"
 	"fmt"
-	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	_ "net/http/pprof"
 	"time"
 
@@ -45,6 +44,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
+	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/klog"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
