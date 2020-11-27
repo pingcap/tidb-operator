@@ -381,13 +381,18 @@ func addTlsConfig(pc *config.Config) {
 		// TODO support tiflash tls when it gets ready
 		if sconfig.JobName == "pd" || sconfig.JobName == "tidb" || sconfig.JobName == "tikv" ||
 			sconfig.JobName == "pump" || sconfig.JobName == "drainer" ||
-			sconfig.JobName == "tiflash" || sconfig.JobName == "tiflash-proxy" || sconfig.JobName == "lightning" {
+			sconfig.JobName == "tiflash" || sconfig.JobName == "tiflash-proxy" {
 			sconfig.HTTPClientConfig.TLSConfig = config.TLSConfig{
 				CAFile:   path.Join(util.ClusterClientTLSPath, corev1.ServiceAccountRootCAKey),
 				CertFile: path.Join(util.ClusterClientTLSPath, corev1.TLSCertKey),
 				KeyFile:  path.Join(util.ClusterClientTLSPath, corev1.TLSPrivateKeyKey),
 			}
 			pc.ScrapeConfigs[id] = sconfig
+			sconfig.Scheme = "https"
+		}
+		// lightning does not need to monitor the access of other components,
+		// so there is no need to enable mtls for the time being.
+		if sconfig.JobName == "lightning" {
 			sconfig.Scheme = "https"
 		}
 	}
