@@ -381,7 +381,7 @@ func addTlsConfig(pc *config.Config) {
 		// TODO support tiflash tls when it gets ready
 		if sconfig.JobName == "pd" || sconfig.JobName == "tidb" || sconfig.JobName == "tikv" ||
 			sconfig.JobName == "pump" || sconfig.JobName == "drainer" ||
-			sconfig.JobName == "tiflash" || sconfig.JobName == "tiflash-proxy" {
+			sconfig.JobName == "tiflash" || sconfig.JobName == "tiflash-proxy" || sconfig.JobName == "lightning" {
 			sconfig.HTTPClientConfig.TLSConfig = config.TLSConfig{
 				CAFile:   path.Join(util.ClusterClientTLSPath, corev1.ServiceAccountRootCAKey),
 				CertFile: path.Join(util.ClusterClientTLSPath, corev1.TLSCertKey),
