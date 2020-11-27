@@ -527,7 +527,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "failed to get tidbcluster")
 			tm := fixture.NewTidbMonitor(monitorName, ns, tc, true, true, true)
-			_, err = cli.PingcapV1alpha1().TidbMonitors(tc.Namespace).Create(tm)
+			_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(tm)
 			framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
 			err = tests.CheckTidbMonitor(tm, cli, c, fw)
 			framework.ExpectNoError(err, "Expected tidbmonitor checked success")
@@ -558,7 +558,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				stsPvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get(newStsPvcName, metav1.GetOptions{})
 				if err != nil {
 					if errors.IsNotFound(err) {
-						klog.Infof("tm[%s/%s]'s first sts pvc not found,tag:%s,image:%s", tm.Namespace, tm.Name, cfg.OperatorTag, cfg.OperatorImage)
+						klog.Infof("tm[%s/%s]'s first sts pvc not found,tag:%s,image:%s", ns, tm.Name, cfg.OperatorTag, cfg.OperatorImage)
 						return false, nil
 					}
 					klog.Errorf("get tidbmonitor sts pvc err:%v", err)
