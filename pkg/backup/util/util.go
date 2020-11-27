@@ -421,8 +421,6 @@ func ValidateBackup(backup *v1alpha1.Backup, tikvImage string) error {
 			if gcs.Bucket == "" {
 				return fmt.Errorf("bucket should be %s", configuredForBR)
 			}
-		} else if backup.Spec.Local != nil {
-			// need not to validate yet
 		}
 	}
 	return nil
