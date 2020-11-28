@@ -656,6 +656,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected get tidbcluster")
 
 		tm := fixture.NewTidbMonitor("monitor-test", ns, tc, true, true, false)
+		klog.Errorf("tm[%s/%s] check monitor:%v", tm.Namespace, tm.Name, tm)
 		deletePVP := corev1.PersistentVolumeReclaimDelete
 		tm.Spec.PVReclaimPolicy = &deletePVP
 		_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(tm)
@@ -664,6 +665,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected tidbmonitor checked success")
 		pvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get(monitor.GetMonitorFirstPVCName(tm.Name), metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected fetch tidbmonitor pvc success")
+
 		pvName := pvc.Spec.VolumeName
 		pv, err := c.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected fetch tidbmonitor pv success")
