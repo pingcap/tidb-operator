@@ -571,7 +571,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				klog.Infof("tidbmonitor sts pv unequal to old deployment pv")
 				return false, nil
 			})
-			framework.ExpectEqual(err, wait.ErrWaitTimeout, "expect tm pv haven't been changed for 5 minutes")
+			framework.ExpectNoError(err, "Expected tidbmonitor smooth migrate successfully")
 			err = tests.CheckTidbMonitor(tm, cli, c, fw)
 			framework.ExpectNoError(err, "Expected tidbmonitor checked success")
 		})
