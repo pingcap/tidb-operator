@@ -527,7 +527,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "failed to get tidbcluster")
 			tm := fixture.NewTidbMonitor(monitorName, ns, tc, true, true, true)
-			framework.Logf("tm[%s/%s] check monitor:%v", tm.Namespace, tm.Name, tm)
+			framework.Logf("tm[%s/%s] check monitor:%v,%v", tm.Namespace, tm.Name, tm, tm.Spec)
 			_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(tm)
 			framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
 			err = tests.CheckTidbMonitor(tm, cli, c, fw)
