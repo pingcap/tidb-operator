@@ -656,7 +656,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected get tidbcluster")
 
 		tm := fixture.NewTidbMonitor("monitor-test", ns, tc, true, true, false)
-		klog.Errorf("tm[%s/%s] check monitor:%v", tm.Namespace, tm.Name, tm)
+		framework.Logf("tm[%s/%s] check monitor:%v", tm.Namespace, tm.Name, tm)
 		deletePVP := corev1.PersistentVolumeReclaimDelete
 		tm.Spec.PVReclaimPolicy = &deletePVP
 		_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(tm)
