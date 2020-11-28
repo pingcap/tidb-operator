@@ -459,7 +459,7 @@ func CreateOrUpdateService(serviceLister corelisters.ServiceLister, serviceContr
 		return serviceControl.CreateService(obj, newSvc)
 	}
 	if err != nil {
-		return fmt.Errorf("createOrUpdateService: fail to get svc %s for tm %s/%s, error: %s", newSvc.Name, monitor.Namespace, monitor.Name, err)
+		return fmt.Errorf("createOrUpdateService: fail to get svc %s for obj %v, error: %s", newSvc.Name, obj, err)
 	}
 
 	oldSvc := oldSvcTmp.DeepCopy()
@@ -489,7 +489,7 @@ func CreateOrUpdateService(serviceLister corelisters.ServiceLister, serviceContr
 			svc.OwnerReferences = newSvc.OwnerReferences
 			svc.Labels = newSvc.Labels
 		}
-		_, err = serviceControl.UpdateService(monitor, &svc)
+		_, err = serviceControl.UpdateService(obj, &svc)
 		return err
 	}
 	return nil
