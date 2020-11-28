@@ -421,7 +421,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				ReleaseName:     "operator",
 				Tag:             version,
 				Image:           fmt.Sprintf("pingcap/tidb-operator:%s", version),
-				ImagePullPolicy: v1.PullAlways,
+				ImagePullPolicy: v1.PullIfNotPresent,
 			}
 			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")

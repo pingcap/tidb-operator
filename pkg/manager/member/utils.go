@@ -449,18 +449,14 @@ func shouldRecoverDM(dc *v1alpha1.DMCluster, component string, podLister corelis
 	return true
 }
 
-func CreateOrUpdateService(serviceLister corelisters.ServiceLister, serviceControl controller.ServiceControlInterface, newSvc *corev1.Service, monitor *v1alpha1.TidbMonitor) error {
+func CreateOrUpdateService(serviceLister corelisters.ServiceLister, serviceControl controller.ServiceControlInterface, newSvc *corev1.Service, obj runtime.Object) error {
 	oldSvcTmp, err := serviceLister.Services(newSvc.Namespace).Get(newSvc.Name)
 	if errors.IsNotFound(err) {
 		err = controller.SetServiceLastAppliedConfigAnnotation(newSvc)
 		if err != nil {
 			return err
 		}
-		err = serviceControl.CreateService(monitor, newSvc)
-		if err != nil {
-			return err
-		}
-		return nil
+		return serviceControl.CreateService(obj, newSvc)
 	}
 	if err != nil {
 		return fmt.Errorf("createOrUpdateService: fail to get svc %s for tm %s/%s, error: %s", newSvc.Name, monitor.Namespace, monitor.Name, err)
@@ -494,9 +490,7 @@ func CreateOrUpdateService(serviceLister corelisters.ServiceLister, serviceContr
 			svc.Labels = newSvc.Labels
 		}
 		_, err = serviceControl.UpdateService(monitor, &svc)
-		if err != nil {
-			return err
-		}
+		return err
 	}
 	return nil
 }
