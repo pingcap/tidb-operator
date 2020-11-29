@@ -393,14 +393,8 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 
 	// mount volumes if specified
 	if backup.Spec.Local != nil {
-		localVolume := backup.Spec.Local.Volume
-		localVolumeMount := backup.Spec.Local.VolumeMount
-		if localVolumeMount.Name != localVolume.Name {
-			reason := "Backup.Spec.Local.Volume.Name != Backup.Spec.Local.VolumeMount.Name"
-			return nil, reason, fmt.Errorf(reason)
-		}
-		volumes = append(volumes, localVolume)
-		volumeMounts = append(volumeMounts, localVolumeMount)
+		volumes = append(volumes, backup.Spec.Local.Volume)
+		volumeMounts = append(volumeMounts, backup.Spec.Local.VolumeMount)
 	}
 
 	serviceAccount := constants.DefaultServiceAccountName

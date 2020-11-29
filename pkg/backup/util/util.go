@@ -421,6 +421,12 @@ func ValidateBackup(backup *v1alpha1.Backup, tikvImage string) error {
 			if gcs.Bucket == "" {
 				return fmt.Errorf("bucket should be %s", configuredForBR)
 			}
+		} else if backup.Spec.Local != nil {
+			local := backup.Spec.Local
+			configuredForBR := fmt.Sprintf("configured for BR in spec of %s/%s", ns, name)
+			if local.VolumeMount.Name != local.Volume.Name {
+				return fmt.Errorf("Backup.Spec.Local.Volume.Name != Backup.Spec.Local.VolumeMount.Name %s", configuredForBR)
+			}
 		}
 	}
 	return nil
@@ -464,21 +470,38 @@ func ValidateRestore(restore *v1alpha1.Restore, tikvImage string) error {
 		}
 
 		if restore.Spec.S3 != nil {
-			if restore.Spec.S3.Bucket == "" {
-				return fmt.Errorf("bucket should be configured for BR in spec of %s/%s", ns, name)
+			s3 := restore.Spec.S3
+			configuredForBR := fmt.Sprintf("configured for BR in spec of %s/%s", ns, name)
+			if s3.Bucket == "" {
+				return fmt.Errorf("bucket should be %s", configuredForBR)
 			}
 
-			if restore.Spec.S3.Endpoint != "" {
-				u, err := url.Parse(restore.Spec.S3.Endpoint)
+			if s3.Endpoint != "" {
+				u, err := url.Parse(s3.Endpoint)
 				if err != nil {
-					return fmt.Errorf("invalid endpoint %s is configured for BR in spec of %s/%s", restore.Spec.S3.Endpoint, ns, name)
+					return fmt.Errorf("invalid endpoint %s is %s", s3.Endpoint, configuredForBR)
 				}
 				if u.Scheme == "" {
-					return fmt.Errorf("scheme not found in endpoint %s configured for BR in spec of %s/%s", restore.Spec.S3.Endpoint, ns, name)
+					return fmt.Errorf("scheme not found in endpoint %s %s", s3.Endpoint, configuredForBR)
 				}
 				if u.Host == "" {
-					return fmt.Errorf("host not found in endpoint %s configured for BR in spec of %s/%s", restore.Spec.S3.Endpoint, ns, name)
+					return fmt.Errorf("host not found in endpoint %s %s", s3.Endpoint, configuredForBR)
 				}
+			}
+		} else if restore.Spec.Gcs != nil {
+			gcs := restore.Spec.Gcs
+			configuredForBR := fmt.Sprintf("configured for BR in spec of %s/%s", ns, name)
+			if gcs.ProjectId == "" {
+				return fmt.Errorf("projectId should be %s", configuredForBR)
+			}
+			if gcs.Bucket == "" {
+				return fmt.Errorf("bucket should be %s", configuredForBR)
+			}
+		} else if restore.Spec.Local != nil {
+			local := restore.Spec.Local
+			configuredForBR := fmt.Sprintf("configured for BR in spec of %s/%s", ns, name)
+			if local.VolumeMount.Name != local.Volume.Name {
+				return fmt.Errorf("Restore.Spec.Local.Volume.Name != Restore.Spec.Local.VolumeMount.Name %s", configuredForBR)
 			}
 		}
 	}
