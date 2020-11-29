@@ -119,9 +119,6 @@ func genStorageArgs(provider v1alpha1.StorageProvider) ([]string, error) {
 
 // newLocalStorageOption constructs `--storage local://$PATH` arg for br
 func newLocalStorageOption(conf localConfig) ([]string, error) {
-	if len(conf.mountPath) == 0 {
-		return nil, fmt.Errorf("empty mount path")
-	}
 	return []string{fmt.Sprintf("--storage=local://%s", path.Join(conf.mountPath, conf.prefix))}, nil
 }
 

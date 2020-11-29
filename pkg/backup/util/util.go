@@ -427,6 +427,9 @@ func ValidateBackup(backup *v1alpha1.Backup, tikvImage string) error {
 			if local.VolumeMount.Name != local.Volume.Name {
 				return fmt.Errorf("Backup.Spec.Local.Volume.Name != Backup.Spec.Local.VolumeMount.Name %s", configuredForBR)
 			}
+			if local.VolumeMount.MountPath == "" {
+				return fmt.Errorf("Backup.Spec.Local.VolumeMount.MountPath is empty %s", configuredForBR)
+			}
 		}
 	}
 	return nil

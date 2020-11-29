@@ -135,10 +135,6 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 		klog.Info("mounting local volumes in Backup.Spec")
 		localVolume := backup.Spec.Local.Volume
 		localVolumeMount := backup.Spec.Local.VolumeMount
-		if localVolumeMount.Name != localVolume.Name {
-			reason := "Backup.Spec.Local.Volume.Name != Backup.Spec.Local.VolumeMount.Name"
-			return nil, reason, fmt.Errorf(reason)
-		}
 		volumes = append(volumes, localVolume)
 		volumeMounts = append(volumeMounts, localVolumeMount)
 	}
