@@ -16,7 +16,7 @@ package util
 import (
 	"context"
 	"fmt"
-	"strings"
+	"path"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -122,13 +122,13 @@ func newLocalStorageOption(conf localConfig) ([]string, error) {
 	if len(conf.mountPath) == 0 {
 		return nil, fmt.Errorf("empty mount path")
 	}
-	return []string{fmt.Sprintf("--storage=local://%s/%s", conf.mountPath, conf.prefix)}, nil
+	return []string{fmt.Sprintf("--storage=local://%s", path.Join(conf.mountPath, conf.prefix))}, nil
 }
 
 // newS3StorageOption constructs the arg for --storage option and the remote path for br
 func newS3StorageOption(conf *s3Config) []string {
 	var s3options []string
-	path := fmt.Sprintf("s3://%s/%s", conf.bucket, conf.prefix)
+	path := fmt.Sprintf("s3://%s", path.Join(conf.bucket, conf.prefix))
 	s3options = append(s3options, fmt.Sprintf("--storage=%s", path))
 	if conf.region != "" {
 		s3options = append(s3options, fmt.Sprintf("--s3.region=%s", conf.region))
@@ -152,7 +152,7 @@ func newS3StorageOption(conf *s3Config) []string {
 }
 
 func newLocalStorage(conf localConfig) (*blob.Bucket, error) {
-	dir := fmt.Sprintf("%s/%s", conf.mountPath, conf.prefix)
+	dir := path.Join(conf.mountPath, conf.prefix)
 	bucket, err := fileblob.OpenBucket(dir, nil)
 	return bucket, err
 }
@@ -214,7 +214,7 @@ func newGcsStorage(conf *gcsConfig) (*blob.Bucket, error) {
 // newGcsStorageOption constructs the arg for --storage option and the remote path for br
 func newGcsStorageOption(conf *gcsConfig) []string {
 	var gcsoptions []string
-	path := fmt.Sprintf("gcs://%s/%s", conf.bucket, conf.prefix)
+	path := fmt.Sprintf("gcs://%s", path.Join(conf.bucket, conf.prefix))
 	gcsoptions = append(gcsoptions, fmt.Sprintf("--storage=%s", path))
 	if conf.storageClass != "" {
 		gcsoptions = append(gcsoptions, fmt.Sprintf("--gcs.storage-class=%s", conf.storageClass))
@@ -232,7 +232,7 @@ func makeS3Config(s3 *v1alpha1.S3StorageProvider, fakeRegion bool) *s3Config {
 	conf.bucket = s3.Bucket
 	conf.region = s3.Region
 	conf.provider = string(s3.Provider)
-	conf.prefix = strings.Trim(s3.Prefix, "/")
+	conf.prefix = s3.Prefix
 	conf.endpoint = s3.Endpoint
 	conf.sse = s3.SSE
 	conf.acl = s3.Acl
@@ -264,7 +264,7 @@ func makeGcsConfig(gcs *v1alpha1.GcsStorageProvider, fakeRegion bool) *gcsConfig
 	conf.objectAcl = gcs.ObjectAcl
 	conf.bucketAcl = gcs.BucketAcl
 	conf.secretName = gcs.SecretName
-	conf.prefix = strings.Trim(gcs.Prefix, "/")
+	conf.prefix = gcs.Prefix
 
 	return &conf
 }
@@ -272,6 +272,6 @@ func makeGcsConfig(gcs *v1alpha1.GcsStorageProvider, fakeRegion bool) *gcsConfig
 func makeLocalConfig(local *v1alpha1.LocalStorageProvider) localConfig {
 	return localConfig{
 		mountPath: local.VolumeMount.MountPath,
-		prefix:    strings.Trim(local.Prefix, "/"),
+		prefix:    local.Prefix,
 	}
 }

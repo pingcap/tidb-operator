@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -87,24 +88,24 @@ func EnsureDirectoryExist(dirName string) error {
 
 // GetStoragePath generate the path of a specific storage
 func GetStoragePath(backup *v1alpha1.Backup) (string, error) {
-	var path, bucket, prefix string
+	var url, bucket, prefix string
 	st := util.GetStorageType(backup.Spec.StorageProvider)
 	switch st {
 	case v1alpha1.BackupStorageTypeS3:
-		prefix = strings.Trim(backup.Spec.StorageProvider.S3.Prefix, "/")
+		prefix = backup.Spec.StorageProvider.S3.Prefix
 		bucket = backup.Spec.StorageProvider.S3.Bucket
-		path = fmt.Sprintf("s3://%s/%s", bucket, prefix)
-		return path, nil
+		url = fmt.Sprintf("s3://%s", path.Join(bucket, prefix))
+		return url, nil
 	case v1alpha1.BackupStorageTypeGcs:
-		prefix = strings.Trim(backup.Spec.StorageProvider.Gcs.Prefix, "/")
+		prefix = backup.Spec.StorageProvider.Gcs.Prefix
 		bucket = backup.Spec.StorageProvider.Gcs.Bucket
-		path = fmt.Sprintf("gcs://%s/%s", bucket, prefix)
-		return path, nil
+		url = fmt.Sprintf("gcs://%s", path.Join(bucket, prefix))
+		return url, nil
 	case v1alpha1.BackupStorageTypeLocal:
-		prefix = strings.Trim(backup.Spec.StorageProvider.Local.Prefix, "/")
+		prefix = backup.Spec.StorageProvider.Local.Prefix
 		mountPath := backup.Spec.StorageProvider.Local.VolumeMount.MountPath
-		path = fmt.Sprintf("local://%s/%s", mountPath, prefix)
-		return path, nil
+		url = fmt.Sprintf("local://%s", path.Join(mountPath, prefix))
+		return url, nil
 	default:
 		return "", fmt.Errorf("storage %s not supported yet", st)
 	}
