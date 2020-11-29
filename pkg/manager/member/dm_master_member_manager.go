@@ -516,6 +516,8 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
 		{Name: v1alpha1.DMMasterMemberType.String(), MountPath: dmMasterDataVolumeMountPath},
 	}
+	volMounts = append(volMounts, dc.Spec.Master.AdditionalVolumeMounts...)
+
 	if dc.IsTLSClusterEnabled() {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "dm-master-tls", ReadOnly: true, MountPath: "/var/lib/dm-master-tls",
@@ -567,8 +569,6 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 			},
 		})
 	}
-
-	volMounts = append(volMounts, dc.Spec.Master.AdditionalVolumeMounts...)
 
 	storageSize := DefaultStorageSize
 	if dc.Spec.Master.StorageSize != "" {

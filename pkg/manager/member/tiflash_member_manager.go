@@ -317,6 +317,7 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: fmt.Sprintf("data%d", k), MountPath: fmt.Sprintf("/data%d", k)})
 	}
+	volMounts = append(volMounts, tc.Spec.TiFlash.AdditionalVolumeMounts...)
 
 	if tc.IsTLSClusterEnabled() {
 		volMounts = append(volMounts, corev1.VolumeMount{
@@ -344,7 +345,6 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 			},
 		})
 	}
-	volMounts = append(volMounts, tc.Spec.TiFlash.AdditionalVolumeMounts...)
 
 	sysctls := "sysctl -w"
 	var initContainers []corev1.Container
