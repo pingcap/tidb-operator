@@ -305,7 +305,7 @@ try {
                             sh """#!/bin/bash
                             set -eu
                             echo "info: logging into hub.pingcap.net"
-                            docker login -u \$USERNAME --password-stdin hub.pingcap.net <<< \$PASSWORD
+                            docker login hub.docker.com  -u mikechengwei -p  aini1314
                             echo "info: build and push images for e2e"
                             NO_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} make docker-push e2e-docker-push
                             echo "info: download binaries for e2e"
