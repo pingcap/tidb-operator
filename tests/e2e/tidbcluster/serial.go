@@ -543,7 +543,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			oa.UpgradeOperatorOrDie(ocfg)
 			err = tests.CheckTidbMonitor(tm, cli, c, fw)
 			framework.ExpectNoError(err, "Expected tidbmonitor checked success under migration")
-			err = wait.Poll(5*time.Second, 30*time.Minute, func() (done bool, err error) {
+			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				tmSet, err := stsGetter.StatefulSets(ns).Get(monitor.GetMonitorObjectName(tm), metav1.GetOptions{})
 				if err != nil {
 					klog.Errorf("failed to get statefulset: %s/%s, %v", ns, tmSet, err)
@@ -552,7 +552,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				return true, nil
 			})
 			framework.ExpectNoError(err, "Expected tidbmonitor sts success")
-			err = wait.Poll(5*time.Second, 30*time.Minute, func() (done bool, err error) {
+			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				newStsPvcName := monitor.GetMonitorFirstPVCName(tm.Name)
 				klog.Infof("tidbmonitor newStsPvcName:%s", newStsPvcName)
 				stsPvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get(newStsPvcName, metav1.GetOptions{})
