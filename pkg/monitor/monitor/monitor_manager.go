@@ -510,10 +510,10 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 
 	// firstly patch status
 	if monitor.Status.DeploymentStorageStatus == nil {
-		err = m.patchTidbMonitorStatus(monitor, deploymentPvc.Spec.VolumeName)
-		if err != nil {
-			return false, err
+		monitor.Status.DeploymentStorageStatus = &v1alpha1.DeploymentStorageStatus{
+			PvName: deploymentPvc.Spec.VolumeName,
 		}
+		return false, nil
 		//monitor patch status successfully
 	}
 
@@ -597,21 +597,4 @@ func (m *MonitorManager) patchPVClaimRef(pv *corev1.PersistentVolume, patchPvcNa
 		return err
 	}
 	return nil
-}
-
-func (m *MonitorManager) patchTidbMonitorStatus(tm *v1alpha1.TidbMonitor, pvName string) error {
-
-	mergePatch, err := json.Marshal(map[string]interface{}{
-		"status": map[string]interface{}{
-			"deploymentStorageStatus": map[string]interface{}{
-				"pvName": pvName,
-			},
-		},
-	})
-
-	if err != nil {
-		return err
-	}
-	_, err = m.deps.Clientset.PingcapV1alpha1().TidbMonitors(tm.Namespace).Patch(tm.Name, types.MergePatchType, mergePatch)
-	return err
 }
