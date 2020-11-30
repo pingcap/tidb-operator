@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -85,34 +86,28 @@ func EnsureDirectoryExist(dirName string) error {
 	return nil
 }
 
-func GetRemotePath(backup *v1alpha1.Backup) (string, error) {
-	var path, bucket, prefix string
+// GetStoragePath generate the path of a specific storage
+func GetStoragePath(backup *v1alpha1.Backup) (string, error) {
+	var url, bucket, prefix string
 	st := util.GetStorageType(backup.Spec.StorageProvider)
 	switch st {
 	case v1alpha1.BackupStorageTypeS3:
 		prefix = backup.Spec.StorageProvider.S3.Prefix
 		bucket = backup.Spec.StorageProvider.S3.Bucket
-		prefix = strings.Trim(prefix, "/")
-		prefix += "/"
-		if prefix == "/" {
-			path = fmt.Sprintf("s3://%s%s", bucket, prefix)
-		} else {
-			path = fmt.Sprintf("s3://%s/%s", bucket, prefix)
-		}
-		return path, nil
+		url = fmt.Sprintf("s3://%s", path.Join(bucket, prefix))
+		return url, nil
 	case v1alpha1.BackupStorageTypeGcs:
 		prefix = backup.Spec.StorageProvider.Gcs.Prefix
 		bucket = backup.Spec.StorageProvider.Gcs.Bucket
-		prefix = strings.Trim(prefix, "/")
-		prefix += "/"
-		if prefix == "/" {
-			path = fmt.Sprintf("gcs://%s%s", bucket, prefix)
-		} else {
-			path = fmt.Sprintf("gcs://%s/%s", bucket, prefix)
-		}
-		return path, nil
+		url = fmt.Sprintf("gcs://%s", path.Join(bucket, prefix))
+		return url, nil
+	case v1alpha1.BackupStorageTypeLocal:
+		prefix = backup.Spec.StorageProvider.Local.Prefix
+		mountPath := backup.Spec.StorageProvider.Local.VolumeMount.MountPath
+		url = fmt.Sprintf("local://%s", path.Join(mountPath, prefix))
+		return url, nil
 	default:
-		return "", fmt.Errorf("storage %s not support yet", st)
+		return "", fmt.Errorf("storage %s not supported yet", st)
 	}
 }
 
@@ -161,19 +156,19 @@ func GetOptionValueFromEnv(option, envPrefix string) string {
 // ConstructBRGlobalOptionsForBackup constructs BR global options for backup and also return the remote path.
 func ConstructBRGlobalOptionsForBackup(backup *v1alpha1.Backup) ([]string, error) {
 	var args []string
-	config := backup.Spec
-	if config.BR == nil {
-		return nil, fmt.Errorf("no config for br in backup %s/%s", backup.Namespace, backup.Name)
+	spec := backup.Spec
+	if spec.BR == nil {
+		return nil, fmt.Errorf("no config for br in Backup %s/%s", backup.Namespace, backup.Name)
 	}
-	args = append(args, constructBRGlobalOptions(config.BR)...)
-	storageArgs, err := getRemoteStorage(backup.Spec.StorageProvider)
+	args = append(args, constructBRGlobalOptions(spec.BR)...)
+	storageArgs, err := genStorageArgs(backup.Spec.StorageProvider)
 	if err != nil {
 		return nil, err
 	}
 	args = append(args, storageArgs...)
 
-	if config.TableFilter != nil && len(config.TableFilter) > 0 {
-		for _, tableFilter := range config.TableFilter {
+	if spec.TableFilter != nil && len(spec.TableFilter) > 0 {
+		for _, tableFilter := range spec.TableFilter {
 			args = append(args, "--filter", tableFilter)
 		}
 		return args, nil
@@ -181,15 +176,15 @@ func ConstructBRGlobalOptionsForBackup(backup *v1alpha1.Backup) ([]string, error
 
 	switch backup.Spec.Type {
 	case v1alpha1.BackupTypeTable:
-		if config.BR.Table != "" {
-			args = append(args, fmt.Sprintf("--table=%s", config.BR.Table))
+		if spec.BR.Table != "" {
+			args = append(args, fmt.Sprintf("--table=%s", spec.BR.Table))
 		}
-		if config.BR.DB != "" {
-			args = append(args, fmt.Sprintf("--db=%s", config.BR.DB))
+		if spec.BR.DB != "" {
+			args = append(args, fmt.Sprintf("--db=%s", spec.BR.DB))
 		}
 	case v1alpha1.BackupTypeDB:
-		if config.BR.DB != "" {
-			args = append(args, fmt.Sprintf("--db=%s", config.BR.DB))
+		if spec.BR.DB != "" {
+			args = append(args, fmt.Sprintf("--db=%s", spec.BR.DB))
 		}
 	}
 
@@ -235,7 +230,7 @@ func ConstructBRGlobalOptionsForRestore(restore *v1alpha1.Restore) ([]string, er
 		return nil, fmt.Errorf("no config for br in restore %s/%s", restore.Namespace, restore.Name)
 	}
 	args = append(args, constructBRGlobalOptions(config.BR)...)
-	storageArgs, err := getRemoteStorage(restore.Spec.StorageProvider)
+	storageArgs, err := genStorageArgs(restore.Spec.StorageProvider)
 	if err != nil {
 		return nil, err
 	}
@@ -358,7 +353,7 @@ func GetBRArchiveSize(meta *kvbackup.BackupMeta) uint64 {
 
 // GetBRMetaData get backup metadata from cloud storage
 func GetBRMetaData(provider v1alpha1.StorageProvider) (*kvbackup.BackupMeta, error) {
-	s, err := NewRemoteStorage(provider)
+	s, err := NewStorageBackend(provider)
 	if err != nil {
 		return nil, err
 	}

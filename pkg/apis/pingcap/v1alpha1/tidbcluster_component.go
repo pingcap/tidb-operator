@@ -41,6 +41,7 @@ type ComponentAccessor interface {
 	Env() []corev1.EnvVar
 	AdditionalContainers() []corev1.Container
 	AdditionalVolumes() []corev1.Volume
+	AdditionalVolumeMounts() []corev1.VolumeMount
 	TerminationGracePeriodSeconds() *int64
 	StatefulSetUpdateStrategy() apps.StatefulSetUpdateStrategyType
 }
@@ -205,6 +206,10 @@ func (a *componentAccessorImpl) AdditionalContainers() []corev1.Container {
 
 func (a *componentAccessorImpl) AdditionalVolumes() []corev1.Volume {
 	return a.ComponentSpec.AdditionalVolumes
+}
+
+func (a *componentAccessorImpl) AdditionalVolumeMounts() []corev1.VolumeMount {
+	return a.ComponentSpec.AdditionalVolumeMounts
 }
 
 func (a *componentAccessorImpl) TerminationGracePeriodSeconds() *int64 {

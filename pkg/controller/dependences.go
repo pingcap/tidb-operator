@@ -311,8 +311,7 @@ func newFakeControl(kubeClientset kubernetes.Interface, informerFactory informer
 	}
 }
 
-// NewSimpleClientDependencies returns a dependencies
-// the returning Dependencies use NewSimpleClientset and is useful for test.
+// NewSimpleClientDependencies returns a dependencies using NewSimpleClientset useful for testing.
 func NewSimpleClientDependencies() *Dependencies {
 	deps := NewFakeDependencies()
 

@@ -3791,8 +3791,25 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
+<<<<<<< HEAD
 <p>When enabled, usage data will be sent to PingCAP for improving user experience.
 Optional: Defaults to true</p>
+=======
+<p>Additional volumes of component pod.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>additionalVolumeMounts</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#volumemount-v1-core">
+[]Kubernetes core/v1.VolumeMount
+</a>
+</em>
+</td>
+<td>
+<p>Additional volume mounts of component pod.</p>
+>>>>>>> fc4800e7... add local volume support for Backup/Restore using BR (#3517)
 </td>
 </tr>
 <tr>
@@ -5760,6 +5777,1659 @@ string
 <td>
 <code>lease</code></br>
 <em>
+<<<<<<< HEAD
+=======
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>password</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>envs</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>ingress</code></br>
+<em>
+<a href="#ingressspec">
+IngressSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="helperspec">HelperSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
+</p>
+<p>
+<p>HelperSpec contains details of helper component</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>image</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Image used to tail slow log and set kernel parameters if necessary, must have <code>tail</code> and <code>sysctl</code> installed
+Optional: Defaults to busybox:1.26.2</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>imagePullPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#pullpolicy-v1-core">
+Kubernetes core/v1.PullPolicy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ImagePullPolicy of the component. Override the cluster-level imagePullPolicy if present
+Optional: Defaults to the cluster-level setting</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ingressspec">IngressSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#grafanaspec">GrafanaSpec</a>, 
+<a href="#prometheusspec">PrometheusSpec</a>)
+</p>
+<p>
+<p>IngressSpec describe the ingress desired state for the target component</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>hosts</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>Hosts describe the hosts for the ingress</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>annotations</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Annotations describe the desired annotations for the ingress</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tls</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#ingresstls-v1beta1-extensions">
+[]Kubernetes extensions/v1beta1.IngressTLS
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TLS configuration. Currently the Ingress only supports a single TLS
+port, 443. If multiple members of this list specify different hosts, they
+will be multiplexed on the same port according to the hostname specified
+through the SNI TLS extension, if the ingress controller fulfilling the
+ingress supports SNI.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="initializephase">InitializePhase</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbinitializerstatus">TidbInitializerStatus</a>)
+</p>
+<p>
+</p>
+<h3 id="initializerspec">InitializerSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbmonitorspec">TidbMonitorSpec</a>)
+</p>
+<p>
+<p>InitializerSpec is the desired state of initializer</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>MonitorContainer</code></br>
+<em>
+<a href="#monitorcontainer">
+MonitorContainer
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>MonitorContainer</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>envs</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="interval">Interval</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#quota">Quota</a>)
+</p>
+<p>
+<p>Interval is the configuration of [quotas.default.interval] section.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>duration</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 3600</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>queries</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 0</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>errors</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 0</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>result_rows</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 0</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>read_rows</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 0</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>execution_time</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 0</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="isolationread">IsolationRead</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbconfig">TiDBConfig</a>)
+</p>
+<p>
+<p>IsolationRead is the config for isolation read.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>engines</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Engines filters tidb-server access paths by engine type.
+imported from v3.1.0</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="localstorageprovider">LocalStorageProvider</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#storageprovider">StorageProvider</a>)
+</p>
+<p>
+<p>LocalStorageProvider defines local storage options, which can be any k8s supported mounted volume</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>volume</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#volume-v1-core">
+Kubernetes core/v1.Volume
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeMount</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#volumemount-v1-core">
+Kubernetes core/v1.VolumeMount
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>prefix</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="log">Log</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbconfig">TiDBConfig</a>)
+</p>
+<p>
+<p>Log is the log section of config.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>level</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Log level.
+Optional: Defaults to info</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>format</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Log format. one of json, text, or console.
+Optional: Defaults to text</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>disable-timestamp</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Deprecated in v3.0.5. Use EnableTimestamp instead
+Disable automatic timestamps in output.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enable-timestamp</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableTimestamp enables automatic timestamps in log output.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enable-error-stack</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableErrorStack enables annotating logs with the full stack error
+message.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>file</code></br>
+<em>
+<a href="#filelogconfig">
+FileLogConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>File log config.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enable-slow-log</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>slow-query-file</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>slow-threshold</code></br>
+<em>
+uint64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 300</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>expensive-threshold</code></br>
+<em>
+uint
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 10000</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>query-log-max-len</code></br>
+<em>
+uint64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 2048</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>record-plan-in-slow-log</code></br>
+<em>
+uint32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 1</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="logtailerspec">LogTailerSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tiflashspec">TiFlashSpec</a>)
+</p>
+<p>
+<p>LogTailerSpec represents an optional log tailer sidecar container</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ResourceRequirements</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ResourceRequirements</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="masterconfig">MasterConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#masterspec">MasterSpec</a>)
+</p>
+<p>
+<p>MasterConfig is the configuration of dm-master-server</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>log-level</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Log level.
+Optional: Defaults to info</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>log-file</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>File log config.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>log-format</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Log format. one of json or text.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>rpc-timeout</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RPC timeout when dm-master request to dm-worker
+Optional: Defaults to 30s</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>rpc-rate-limit</code></br>
+<em>
+float64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RPC agent rate limit when dm-master request to dm-worker
+Optional: Defaults to 10</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>rpc-rate-burst</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RPC agent rate burst when dm-master request to dm-worker
+Optional: Defaults to 40</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>DMSecurityConfig</code></br>
+<em>
+<a href="#dmsecurityconfig">
+DMSecurityConfig
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>DMSecurityConfig</code> are embedded into this type.)
+</p>
+<em>(Optional)</em>
+<p>dm-master&rsquo;s security config</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="masterfailuremember">MasterFailureMember</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#masterstatus">MasterStatus</a>)
+</p>
+<p>
+<p>MasterFailureMember is the dm-master failure member information</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>podName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>memberID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>pvcUID</code></br>
+<em>
+k8s.io/apimachinery/pkg/types.UID
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>memberDeleted</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>createdAt</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="masterkeyfileconfig">MasterKeyFileConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tikvmasterkeyconfig">TiKVMasterKeyConfig</a>, 
+<a href="#tikvsecurityconfigencryptionmasterkey">TiKVSecurityConfigEncryptionMasterKey</a>, 
+<a href="#tikvsecurityconfigencryptionpreviousmasterkey">TiKVSecurityConfigEncryptionPreviousMasterKey</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>method</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Encrypyion method, use master key encryption data key
+Possible values: plaintext, aes128-ctr, aes192-ctr, aes256-ctr
+Optional: Default to plaintext
+optional</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Text file containing the key in hex form, end with &lsquo;\n&rsquo;</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="masterkeykmsconfig">MasterKeyKMSConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tikvmasterkeyconfig">TiKVMasterKeyConfig</a>, 
+<a href="#tikvsecurityconfigencryptionmasterkey">TiKVSecurityConfigEncryptionMasterKey</a>, 
+<a href="#tikvsecurityconfigencryptionpreviousmasterkey">TiKVSecurityConfigEncryptionPreviousMasterKey</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>key-id</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>AWS CMK key-id it can be find in AWS Console or use aws cli
+This field is required</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>access-key</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>AccessKey of AWS user, leave empty if using other authrization method
+optional</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>secret-access-key</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>SecretKey of AWS user, leave empty if using other authrization method
+optional</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>region</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Region of this KMS key
+Optional: Default to us-east-1
+optional</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>endpoint</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Used for KMS compatible KMS, such as Ceph, minio, If use AWS, leave empty
+optional</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="mastermember">MasterMember</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#masterstatus">MasterStatus</a>)
+</p>
+<p>
+<p>MasterMember is dm-master member status</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>id</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>member id is actually a uint64, but apimachinery&rsquo;s json only treats numbers as int64/float64
+so uint64 may overflow int64 and thus convert to float64</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>clientURL</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>health</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastTransitionTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>Last time the health transitioned from one to another.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="masterservicespec">MasterServiceSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#masterspec">MasterSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ServiceSpec</code></br>
+<em>
+<a href="#servicespec">
+ServiceSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ServiceSpec</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>externalTrafficPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#serviceexternaltrafficpolicytype-v1-core">
+Kubernetes core/v1.ServiceExternalTrafficPolicyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ExternalTrafficPolicy of the service
+Optional: Defaults to omitted</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>masterNodePort</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 0</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="masterspec">MasterSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#dmclusterspec">DMClusterSpec</a>)
+</p>
+<p>
+<p>MasterSpec contains details of dm-master members</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ComponentSpec</code></br>
+<em>
+<a href="#componentspec">
+ComponentSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ComponentSpec</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ResourceRequirements</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ResourceRequirements</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>replicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>The desired ready replicas</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>baseImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Base image of the component, image tag is now allowed during validation</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>service</code></br>
+<em>
+<a href="#masterservicespec">
+MasterServiceSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Service defines a Kubernetes service of Master cluster.
+Optional: Defaults to <code>.spec.services</code> in favor of backward compatibility</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>maxFailoverCount</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover.
+Optional: Defaults to 3</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The storageClassName of the persistent volume for dm-master data storage.
+Defaults to Kubernetes default storage class.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageSize</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StorageSize is the request storage size for dm-master.
+Defaults to &ldquo;10Gi&rdquo;.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dataSubDir</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Subdirectory within the volume to store dm-master Data. By default, the data
+is stored in the root directory of volume which is mounted at
+/var/lib/dm-master.
+Specifying this will change the data directory to a subdirectory, e.g.
+/var/lib/dm-master/data if you set the value to &ldquo;data&rdquo;.
+It&rsquo;s dangerous to change this value for a running cluster as it will
+upgrade your cluster to use a new storage directory.
+Defaults to &ldquo;&rdquo; (volume&rsquo;s root).</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>config</code></br>
+<em>
+<a href="#masterconfig">
+MasterConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Config is the Configuration of dm-master-servers</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="masterstatus">MasterStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#dmclusterstatus">DMClusterStatus</a>)
+</p>
+<p>
+<p>MasterStatus is dm-master status</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>synced</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>phase</code></br>
+<em>
+<a href="#memberphase">
+MemberPhase
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>statefulSet</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#statefulsetstatus-v1-apps">
+Kubernetes apps/v1.StatefulSetStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>members</code></br>
+<em>
+<a href="#mastermember">
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MasterMember
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>leader</code></br>
+<em>
+<a href="#mastermember">
+MasterMember
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>failureMembers</code></br>
+<em>
+<a href="#masterfailuremember">
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MasterFailureMember
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>unjoinedMembers</code></br>
+<em>
+<a href="#unjoinedmember">
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.UnjoinedMember
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>image</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="memberphase">MemberPhase</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#masterstatus">MasterStatus</a>, 
+<a href="#pdstatus">PDStatus</a>, 
+<a href="#pumpstatus">PumpStatus</a>, 
+<a href="#ticdcstatus">TiCDCStatus</a>, 
+<a href="#tidbstatus">TiDBStatus</a>, 
+<a href="#tikvstatus">TiKVStatus</a>, 
+<a href="#workerstatus">WorkerStatus</a>)
+</p>
+<p>
+<p>MemberPhase is the current state of member</p>
+</p>
+<h3 id="membertype">MemberType</h3>
+<p>
+<p>MemberType represents member type</p>
+</p>
+<h3 id="monitorcomponentaccessor">MonitorComponentAccessor</h3>
+<p>
+</p>
+<h3 id="monitorcontainer">MonitorContainer</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#grafanaspec">GrafanaSpec</a>, 
+<a href="#initializerspec">InitializerSpec</a>, 
+<a href="#prometheusspec">PrometheusSpec</a>, 
+<a href="#reloaderspec">ReloaderSpec</a>)
+</p>
+<p>
+<p>MonitorContainer is the common attributes of the container of monitoring</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ResourceRequirements</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ResourceRequirements</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>baseImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>version</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>imagePullPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#pullpolicy-v1-core">
+Kubernetes core/v1.PullPolicy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="networks">Networks</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#user">User</a>)
+</p>
+<p>
+<p>Networks is the configuration of [users.readonly.networks] section.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ip</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="opentracing">OpenTracing</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbconfig">TiDBConfig</a>)
+</p>
+<p>
+<p>OpenTracing is the opentracing section of the config.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>enable</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sampler</code></br>
+<em>
+<a href="#opentracingsampler">
+OpenTracingSampler
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>reporter</code></br>
+<em>
+<a href="#opentracingreporter">
+OpenTracingReporter
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>rpc-metrics</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="opentracingreporter">OpenTracingReporter</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#opentracing">OpenTracing</a>)
+</p>
+<p>
+<p>OpenTracingReporter is the config for opentracing reporter.
+See <a href="https://godoc.org/github.com/uber/jaeger-client-go/config#ReporterConfig">https://godoc.org/github.com/uber/jaeger-client-go/config#ReporterConfig</a></p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>queue-size</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>buffer-flush-interval</code></br>
+<em>
+time.Duration
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>log-spans</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>local-agent-host-port</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="opentracingsampler">OpenTracingSampler</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#opentracing">OpenTracing</a>)
+</p>
+<p>
+<p>OpenTracingSampler is the config for opentracing sampler.
+See <a href="https://godoc.org/github.com/uber/jaeger-client-go/config#SamplerConfig">https://godoc.org/github.com/uber/jaeger-client-go/config#SamplerConfig</a></p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>type</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>param</code></br>
+<em>
+float64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>sampling-server-url</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>max-operations</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>sampling-refresh-interval</code></br>
+<em>
+time.Duration
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pdconfig">PDConfig</h3>
+<p>
+<p>PDConfig is the configuration of pd-server</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>force-new-cluster</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>enable-grpc-gateway</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to true</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>initial-cluster-token</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>set different tokens to prevent communication between PDs in different clusters.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lease</code></br>
+<em>
+>>>>>>> fc4800e7... add local volume support for Backup/Restore using BR (#3517)
 int64
 </em>
 </td>
@@ -9276,6 +10946,7 @@ string
 <a href="#tidbservicespec">TiDBServiceSpec</a>)
 </p>
 <p>
+<p>ServiceSpec specifies the service object in k8s</p>
 </p>
 <table>
 <thead>
@@ -9684,6 +11355,18 @@ S3StorageProvider
 <em>
 <a href="#gcsstorageprovider">
 GcsStorageProvider
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>local</code></br>
+<em>
+<a href="#localstorageprovider">
+LocalStorageProvider
 </a>
 </em>
 </td>
