@@ -67,8 +67,12 @@ func ValidateTidbMonitor(monitor *v1alpha1.TidbMonitor) field.ErrorList {
 	if monitor.Spec.Grafana != nil {
 		allErrs = append(allErrs, validateService(&monitor.Spec.Grafana.Service, field.NewPath("spec"))...)
 	}
+
 	allErrs = append(allErrs, validateService(&monitor.Spec.Prometheus.Service, field.NewPath("spec"))...)
 	allErrs = append(allErrs, validateService(&monitor.Spec.Reloader.Service, field.NewPath("spec"))...)
+	if monitor.Spec.Persistent {
+		allErrs = append(allErrs, validateStorageInfo(monitor.Spec.Storage, field.NewPath("spec"))...)
+	}
 	return allErrs
 }
 
@@ -600,6 +604,23 @@ func validateAdditionalContainers(containers []corev1.Container, fldPath *field.
 		idxPath := fldPath.Index(i)
 		if len(container.Image) == 0 {
 			allErrs = append(allErrs, field.Required(idxPath.Child("image"), "empty image"))
+		}
+	}
+
+	return allErrs
+}
+
+func validateStorageInfo(storage string, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if len(storage) == 0 {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("storage"), storage, "storage must not be empty"))
+	} else {
+		_, err := resource.ParseQuantity(storage)
+		if err != nil {
+			allErrs = append(allErrs, &field.Error{
+				Type:   field.ErrorTypeNotSupported,
+				Detail: `value of "storage" format not supported`,
+			})
 		}
 	}
 
