@@ -68,6 +68,7 @@ func (c *defaultBackupControl) updateBackup(backup *v1alpha1.Backup) error {
 	return c.backupManager.Sync(backup)
 }
 
+// addProtectionFinalizer will be called when the Backup CR is created
 func (c *defaultBackupControl) addProtectionFinalizer(backup *v1alpha1.Backup) error {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
