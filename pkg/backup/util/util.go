@@ -501,10 +501,10 @@ func validateGcs(ns, name string, gcs *v1alpha1.GcsStorageProvider) error {
 func validateLocal(ns, name string, local *v1alpha1.LocalStorageProvider) error {
 	configuredForBR := fmt.Sprintf("configured for BR in spec of %s/%s", ns, name)
 	if local.VolumeMount.Name != local.Volume.Name {
-		return fmt.Errorf("Spec.Local.Volume.Name != Spec.Local.VolumeMount.Name %s", configuredForBR)
+		return fmt.Errorf("Spec.Local.Volume.Name != Spec.Local.VolumeMount.Name is %s", configuredForBR)
 	}
 	if local.VolumeMount.MountPath == "" {
-		return fmt.Errorf("Spec.Local.VolumeMount.MountPath is empty %s", configuredForBR)
+		return fmt.Errorf("Empty Spec.Local.VolumeMount.MountPath is %s", configuredForBR)
 	}
 	if strings.Contains(local.VolumeMount.MountPath, ":") {
 		return fmt.Errorf("Spec.Local.VolumeMount.MountPath cannot contain ':' %s", configuredForBR)

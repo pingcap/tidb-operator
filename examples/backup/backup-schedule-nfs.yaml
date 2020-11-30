@@ -27,10 +27,10 @@ spec:
       # sendCredToTikv: true
     local:
       volume:
-        name: vol1
+        name: nfs
         nfs:
           server: 192.168.0.2
           path: /nfs
       volumeMount:
-        name: vol1
-        mountPath: /vol1
+        name: nfs
+        mountPath: /nfs
