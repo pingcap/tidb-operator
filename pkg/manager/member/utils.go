@@ -28,6 +28,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -100,36 +101,6 @@ func GetLastAppliedConfig(set *apps.StatefulSet) (*apps.StatefulSetSpec, *corev1
 	}
 
 	return spec, &spec.Template.Spec, nil
-}
-
-// statefulSetEqual compares the new Statefulset's spec with old Statefulset's last applied config
-func statefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) bool {
-	// The annotations in old sts may include LastAppliedConfigAnnotation
-	tmpAnno := map[string]string{}
-	for k, v := range old.Annotations {
-		if k != LastAppliedConfigAnnotation {
-			tmpAnno[k] = v
-		}
-	}
-	if !apiequality.Semantic.DeepEqual(new.Annotations, tmpAnno) {
-		return false
-	}
-	oldConfig := apps.StatefulSetSpec{}
-	if lastAppliedConfig, ok := old.Annotations[LastAppliedConfigAnnotation]; ok {
-		err := json.Unmarshal([]byte(lastAppliedConfig), &oldConfig)
-		if err != nil {
-			klog.Errorf("unmarshal Statefulset: [%s/%s]'s applied config failed,error: %v", old.GetNamespace(), old.GetName(), err)
-			return false
-		}
-		// oldConfig.Template.Annotations may include LastAppliedConfigAnnotation to keep backward compatiability
-		// Please check detail in https://github.com/pingcap/tidb-operator/pull/1489
-		tmpTemplate := oldConfig.Template.DeepCopy()
-		delete(tmpTemplate.Annotations, LastAppliedConfigAnnotation)
-		return apiequality.Semantic.DeepEqual(oldConfig.Replicas, new.Spec.Replicas) &&
-			apiequality.Semantic.DeepEqual(*tmpTemplate, new.Spec.Template) &&
-			apiequality.Semantic.DeepEqual(oldConfig.UpdateStrategy, new.Spec.UpdateStrategy)
-	}
-	return false
 }
 
 // templateEqual compares the new podTemplateSpec's spec with old podTemplateSpec's last applied config
@@ -286,7 +257,7 @@ func MapContainers(podSpec *corev1.PodSpec) map[string]corev1.Container {
 }
 
 // updateStatefulSet is a template function to update the statefulset of components
-func updateStatefulSet(setCtl controller.StatefulSetControlInterface, object runtime.Object, newSet, oldSet *apps.StatefulSet) error {
+func UpdateStatefulSet(setCtl controller.StatefulSetControlInterface, object runtime.Object, newSet, oldSet *apps.StatefulSet) error {
 	isOrphan := metav1.GetControllerOf(oldSet) == nil
 	if newSet.Annotations == nil {
 		newSet.Annotations = map[string]string{}
@@ -294,7 +265,7 @@ func updateStatefulSet(setCtl controller.StatefulSetControlInterface, object run
 	if oldSet.Annotations == nil {
 		oldSet.Annotations = map[string]string{}
 	}
-	if !statefulSetEqual(*newSet, *oldSet) || isOrphan {
+	if !util.StatefulSetEqual(*newSet, *oldSet) || isOrphan {
 		set := *oldSet
 		// Retain the deprecated last applied pod template annotation for backward compatibility
 		var podConfig string
@@ -476,4 +447,50 @@ func shouldRecoverDM(dc *v1alpha1.DMCluster, component string, podLister corelis
 		}
 	}
 	return true
+}
+
+func CreateOrUpdateService(serviceLister corelisters.ServiceLister, serviceControl controller.ServiceControlInterface, newSvc *corev1.Service, obj runtime.Object) error {
+	oldSvcTmp, err := serviceLister.Services(newSvc.Namespace).Get(newSvc.Name)
+	if errors.IsNotFound(err) {
+		err = controller.SetServiceLastAppliedConfigAnnotation(newSvc)
+		if err != nil {
+			return err
+		}
+		return serviceControl.CreateService(obj, newSvc)
+	}
+	if err != nil {
+		return fmt.Errorf("createOrUpdateService: fail to get svc %s for obj %v, error: %s", newSvc.Name, obj, err)
+	}
+
+	oldSvc := oldSvcTmp.DeepCopy()
+	util.RetainManagedFields(newSvc, oldSvc)
+
+	equal, err := controller.ServiceEqual(newSvc, oldSvc)
+	if err != nil {
+		return err
+	}
+	annoEqual := util.IsSubMapOf(newSvc.Annotations, oldSvc.Annotations)
+	isOrphan := metav1.GetControllerOf(oldSvc) == nil
+
+	if !equal || !annoEqual || isOrphan {
+		svc := *oldSvc
+		svc.Spec = newSvc.Spec
+		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
+		if err != nil {
+			return err
+		}
+		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
+		// apply change of annotations if any
+		for k, v := range newSvc.Annotations {
+			svc.Annotations[k] = v
+		}
+		// also override labels when adopt orphan
+		if isOrphan {
+			svc.OwnerReferences = newSvc.OwnerReferences
+			svc.Labels = newSvc.Labels
+		}
+		_, err = serviceControl.UpdateService(obj, &svc)
+		return err
+	}
+	return nil
 }
