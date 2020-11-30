@@ -92,8 +92,8 @@ const (
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// +k8s:openapi-gen=true
 // TidbCluster is the control script's spec
+// +k8s:openapi-gen=true
 type TidbCluster struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
@@ -109,8 +109,8 @@ type TidbCluster struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// +k8s:openapi-gen=true
 // TidbClusterList is TidbCluster list
+// +k8s:openapi-gen=true
 type TidbClusterList struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
@@ -383,8 +383,8 @@ type PDSpec struct {
 	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
 }
 
-// +k8s:openapi-gen=true
 // TiKVSpec contains details of TiKV members
+// +k8s:openapi-gen=true
 type TiKVSpec struct {
 	ComponentSpec               `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
@@ -815,10 +815,12 @@ type ComponentSpec struct {
 	// +optional
 	AdditionalContainers []corev1.Container `json:"additionalContainers,omitempty"`
 
-	// Additional volumes of component pod. Currently this only
-	// supports additional volume mounts for sidecar containers.
+	// Additional volumes of component pod.
 	// +optional
 	AdditionalVolumes []corev1.Volume `json:"additionalVolumes,omitempty"`
+
+	// Additional volume mounts of component pod.
+	AdditionalVolumeMounts []corev1.VolumeMount `json:"additionalVolumeMounts,omitempty"`
 
 	// Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request.
 	// Value must be non-negative integer. The value zero indicates delete immediately.
@@ -837,6 +839,7 @@ type ComponentSpec struct {
 	StatefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType `json:"statefulSetUpdateStrategy,omitempty"`
 }
 
+// ServiceSpec specifies the service object in k8s
 // +k8s:openapi-gen=true
 type ServiceSpec struct {
 	// Type of the real kubernetes service
@@ -1113,6 +1116,8 @@ const (
 	BackupStorageTypeS3 BackupStorageType = "s3"
 	// BackupStorageTypeGcs represents the google cloud storage
 	BackupStorageTypeGcs BackupStorageType = "gcs"
+	// BackupStorageTypeLocal represents local volume storage type
+	BackupStorageTypeLocal BackupStorageType = "local"
 	// BackupStorageTypeUnknown represents the unknown storage type
 	BackupStorageTypeUnknown BackupStorageType = "unknown"
 )
@@ -1128,15 +1133,23 @@ const (
 	S3StorageProviderTypeAWS S3StorageProviderType = "aws"
 )
 
-// +k8s:openapi-gen=true
 // StorageProvider defines the configuration for storing a backup in backend storage.
+// +k8s:openapi-gen=true
 type StorageProvider struct {
-	S3  *S3StorageProvider  `json:"s3,omitempty"`
-	Gcs *GcsStorageProvider `json:"gcs,omitempty"`
+	S3    *S3StorageProvider    `json:"s3,omitempty"`
+	Gcs   *GcsStorageProvider   `json:"gcs,omitempty"`
+	Local *LocalStorageProvider `json:"local,omitempty"`
 }
 
-// +k8s:openapi-gen=true
+// LocalStorageProvider defines local storage options, which can be any k8s supported mounted volume
+type LocalStorageProvider struct {
+	Volume      corev1.Volume      `json:"volume"`
+	VolumeMount corev1.VolumeMount `json:"volumeMount"`
+	Prefix      string             `json:"prefix,omitempty"`
+}
+
 // S3StorageProvider represents a S3 compliant storage for storing backups.
+// +k8s:openapi-gen=true
 type S3StorageProvider struct {
 	// Provider represents the specific storage provider that implements the S3 interface
 	Provider S3StorageProviderType `json:"provider"`
@@ -1189,8 +1202,8 @@ type GcsStorageProvider struct {
 	Prefix string `json:"prefix,omitempty"`
 }
 
-// +k8s:openapi-gen=true
 // BackupType represents the backup type.
+// +k8s:openapi-gen=true
 type BackupType string
 
 const (
@@ -1206,8 +1219,8 @@ const (
 	BackupTypeTiFlashReplica BackupType = "tiflash-replica"
 )
 
-// +k8s:openapi-gen=true
 // TiDBAccessConfig defines the configuration for access tidb cluster
+// +k8s:openapi-gen=true
 type TiDBAccessConfig struct {
 	// Host is the tidb cluster access address
 	Host string `json:"host"`
@@ -1232,7 +1245,7 @@ const (
 	CleanPolicyTypeRetain CleanPolicyType = "Retain"
 	// CleanPolicyTypeOnFailure represents that the backup data in remote storage will be cleaned only for the failed backups when the Backup CR is deleted
 	CleanPolicyTypeOnFailure CleanPolicyType = "OnFailure"
-	// CleanPolicyTypeIfFailed represents that the backup data in remote storage will be cleaned when the Backup CR is deleted
+	// CleanPolicyTypeDelete represents that the backup data in remote storage will be cleaned when the Backup CR is deleted
 	CleanPolicyTypeDelete CleanPolicyType = "Delete"
 )
 

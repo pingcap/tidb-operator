@@ -118,7 +118,7 @@ func IsBackupScheduled(backup *Backup) bool {
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
 
-// IsBackupClean returns true if a Backup has successfully clean
+// IsBackupClean returns true if a Backup has been successfully cleaned up
 func IsBackupClean(backup *Backup) bool {
 	_, condition := GetBackupCondition(&backup.Status, BackupClean)
 	return condition != nil && condition.Status == corev1.ConditionTrue
