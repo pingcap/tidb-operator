@@ -390,7 +390,7 @@ func addTlsConfig(pc *config.Config) {
 			pc.ScrapeConfigs[id] = sconfig
 			sconfig.Scheme = "https"
 		}
-		// lightning does not need to monitor the access of other components,
+		// lightning does not need to authenticate the access of other components,
 		// so there is no need to enable mtls for the time being.
 		if sconfig.JobName == "lightning" {
 			sconfig.Scheme = "https"
