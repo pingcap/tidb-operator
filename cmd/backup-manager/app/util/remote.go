@@ -17,6 +17,7 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -178,7 +179,7 @@ func newS3Storage(conf *s3Config) (*blob.Bucket, error) {
 	if err != nil {
 		return nil, err
 	}
-	return blob.PrefixedBucket(bkt, conf.prefix+"/"), nil
+	return blob.PrefixedBucket(bkt, strings.Trim(conf.prefix, "/")+"/"), nil
 
 }
 
@@ -205,7 +206,7 @@ func newGcsStorage(conf *gcsConfig) (*blob.Bucket, error) {
 	if err != nil {
 		return nil, err
 	}
-	return blob.PrefixedBucket(bucket, conf.prefix+"/"), nil
+	return blob.PrefixedBucket(bucket, strings.Trim(conf.prefix, "/")+"/"), nil
 }
 
 // newGcsStorageOption constructs the arg for --storage option and the remote path for br
