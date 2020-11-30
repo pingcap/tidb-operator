@@ -207,7 +207,7 @@ func (m *masterMemberManager) syncMasterStatefulSetForDMCluster(dc *v1alpha1.DMC
 	if !dc.Status.Master.Synced && NeedForceUpgrade(dc.Annotations) {
 		dc.Status.Master.Phase = v1alpha1.UpgradePhase
 		setUpgradePartition(newMasterSet, 0)
-		errSTS := updateStatefulSet(m.deps.StatefulSetControl, dc, newMasterSet, oldMasterSet)
+		errSTS := UpdateStatefulSet(m.deps.StatefulSetControl, dc, newMasterSet, oldMasterSet)
 		return controller.RequeueErrorf("dmcluster: [%s/%s]'s dm-master needs force upgrade, %v", ns, dcName, errSTS)
 	}
 
@@ -239,7 +239,7 @@ func (m *masterMemberManager) syncMasterStatefulSetForDMCluster(dc *v1alpha1.DMC
 		}
 	}
 
-	return updateStatefulSet(m.deps.StatefulSetControl, dc, newMasterSet, oldMasterSet)
+	return UpdateStatefulSet(m.deps.StatefulSetControl, dc, newMasterSet, oldMasterSet)
 }
 
 // shouldRecover checks whether we should perform recovery operation.
