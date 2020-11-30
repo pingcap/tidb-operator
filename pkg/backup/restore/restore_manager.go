@@ -366,6 +366,12 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		},
 	})
 
+	// mount volumes if specified
+	if restore.Spec.Local != nil {
+		volumes = append(volumes, restore.Spec.Local.Volume)
+		volumeMounts = append(volumeMounts, restore.Spec.Local.VolumeMount)
+	}
+
 	serviceAccount := constants.DefaultServiceAccountName
 	if restore.Spec.ServiceAccount != "" {
 		serviceAccount = restore.Spec.ServiceAccount

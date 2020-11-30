@@ -334,13 +334,15 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	}
 	workerConfigMap := cm.Name
 
-	annMount, annVolume := annotationsMountVolume()
+	annoMount, annoVolume := annotationsMountVolume()
 	volMounts := []corev1.VolumeMount{
-		annMount,
+		annoMount,
 		{Name: "config", ReadOnly: true, MountPath: "/etc/dm-worker"},
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
 		{Name: v1alpha1.DMWorkerMemberType.String(), MountPath: dmWorkerDataVolumeMountPath},
 	}
+	volMounts = append(volMounts, dc.Spec.Worker.AdditionalVolumeMounts...)
+
 	if dc.IsTLSClusterEnabled() {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "dm-worker-tls", ReadOnly: true, MountPath: "/var/lib/dm-worker-tls",
@@ -348,7 +350,7 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	}
 
 	vols := []corev1.Volume{
-		annVolume,
+		annoVolume,
 		{Name: "config",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
