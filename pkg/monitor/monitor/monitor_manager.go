@@ -513,7 +513,7 @@ func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMoni
 		monitor.Status.DeploymentStorageStatus = &v1alpha1.DeploymentStorageStatus{
 			PvName: deploymentPvc.Spec.VolumeName,
 		}
-		return false, nil
+		return false, controller.RequeueErrorf("TidbMonitor: [%s/%s] update deploymentStorageStatus requeue", monitor.Namespace, monitor.Name)
 		//monitor patch status successfully
 	}
 
