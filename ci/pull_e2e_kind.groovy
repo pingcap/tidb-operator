@@ -59,6 +59,18 @@ spec:
         docker kill `docker ps -q` || true
         docker system prune -af || true
       }
+      function setup_docker_mirror() {
+        cat /etc/docker/daemon.json <<EOF
+        {
+          "registry-mirrors": [
+            "https://registry-mirror.pingcap.net"
+          ]
+        }
+        EOF
+        systemctl daemon-reload
+        systemctl restart docker
+      }
+      setup_docker_mirror
       trap clean TERM
       sleep 1d & wait
     # we need privileged mode in order to do docker in docker
@@ -237,7 +249,7 @@ try {
     timeout (time: 2, unit: 'HOURS') {
         // use fixed label, so we can reuse previous workers
         // increase version in pod label when we update pod template
-        def buildPodLabel = "tidb-operator-build-v1"
+        def buildPodLabel = "tidb-operator-build-v1-pingcap-docker-mirror"
         def resources = [
             requests: [
                 cpu: "4",
