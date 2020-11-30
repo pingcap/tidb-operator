@@ -4640,6 +4640,35 @@ Optional: Defaults to false</p>
 </tr>
 </tbody>
 </table>
+<h3 id="deploymentstoragestatus">DeploymentStorageStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbmonitorstatus">TidbMonitorStatus</a>)
+</p>
+<p>
+<p>DeploymentStorageStatus is the storage information of the deployment</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>pvName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PV name</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="discoveryspec">DiscoverySpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -19136,8 +19165,30 @@ bool
 <a href="#tidbmonitor">TidbMonitor</a>)
 </p>
 <p>
-<p>TODO: sync status</p>
 </p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>deploymentStorageStatus</code></br>
+<em>
+<a href="#deploymentstoragestatus">
+DeploymentStorageStatus
+</a>
+</em>
+</td>
+<td>
+<p>Storage status for deployment</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tikvautoscalerspec">TikvAutoScalerSpec</h3>
 <p>
 (<em>Appears on:</em>

@@ -230,7 +230,7 @@ func (m *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 		}
 	}
 
-	return updateStatefulSet(m.deps.StatefulSetControl, tc, newSet, oldSet)
+	return UpdateStatefulSet(m.deps.StatefulSetControl, tc, newSet, oldSet)
 }
 
 func (m *tiflashMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
