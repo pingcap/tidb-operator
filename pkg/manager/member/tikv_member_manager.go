@@ -323,6 +323,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		{Name: "config", ReadOnly: true, MountPath: "/etc/tikv"},
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
 	}
+	volMounts = append(volMounts, tc.Spec.TiKV.AdditionalVolumeMounts...)
 	if tc.IsTLSClusterEnabled() {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "tikv-tls", ReadOnly: true, MountPath: "/var/lib/tikv-tls",
@@ -374,7 +375,6 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	// handle StorageVolumes and AdditionalVolumeMounts in ComponentSpec
 	storageVolMounts, additionalPVCs := util.BuildStorageVolumeAndVolumeMount(tc.Spec.TiKV.StorageVolumes, tc.Spec.TiKV.StorageClassName, v1alpha1.TiKVMemberType)
 	volMounts = append(volMounts, storageVolMounts...)
-	volMounts = append(volMounts, tc.Spec.TiKV.AdditionalVolumeMounts...)
 
 	sysctls := "sysctl -w"
 	var initContainers []corev1.Container
