@@ -35,7 +35,7 @@ type nowFn func() time.Time
 
 type backupScheduleManager struct {
 	deps *controller.Dependencies
-	now  nowFn // only use for test
+	now  nowFn
 }
 
 // NewBackupScheduleManager return a *backupScheduleManager
@@ -215,12 +215,13 @@ func buildBackup(bs *v1alpha1.BackupSchedule, timestamp time.Time) *v1alpha1.Bac
 		}
 		pdAddress = fmt.Sprintf("%s-pd.%s:2379", backupSpec.BR.Cluster, clusterNamespace)
 
+		backupPrefix := strings.ReplaceAll(pdAddress, ":", "-") + "-" + timestamp.UTC().Format(constants.TimeFormat)
 		if backupSpec.S3 != nil {
-			backupSpec.S3.Prefix = path.Join(backupSpec.S3.Prefix,
-				strings.ReplaceAll(pdAddress, ":", "-")+"-"+timestamp.UTC().Format(constants.TimeFormat))
+			backupSpec.S3.Prefix = path.Join(backupSpec.S3.Prefix, backupPrefix)
 		} else if backupSpec.Gcs != nil {
-			backupSpec.Gcs.Prefix = path.Join(backupSpec.Gcs.Prefix,
-				strings.ReplaceAll(pdAddress, ":", "-")+"-"+timestamp.UTC().Format(constants.TimeFormat))
+			backupSpec.Gcs.Prefix = path.Join(backupSpec.Gcs.Prefix, backupPrefix)
+		} else if backupSpec.Local != nil {
+			backupSpec.Local.Prefix = path.Join(backupSpec.Local.Prefix, backupPrefix)
 		}
 	}
 

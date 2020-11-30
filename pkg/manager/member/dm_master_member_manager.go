@@ -509,13 +509,15 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	}
 	masterConfigMap := cm.Name
 
-	annMount, annVolume := annotationsMountVolume()
+	annoMount, annoVolume := annotationsMountVolume()
 	volMounts := []corev1.VolumeMount{
-		annMount,
+		annoMount,
 		{Name: "config", ReadOnly: true, MountPath: "/etc/dm-master"},
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
 		{Name: v1alpha1.DMMasterMemberType.String(), MountPath: dmMasterDataVolumeMountPath},
 	}
+	volMounts = append(volMounts, dc.Spec.Master.AdditionalVolumeMounts...)
+
 	if dc.IsTLSClusterEnabled() {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "dm-master-tls", ReadOnly: true, MountPath: "/var/lib/dm-master-tls",
@@ -523,7 +525,7 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	}
 
 	vols := []corev1.Volume{
-		annVolume,
+		annoVolume,
 		{Name: "config",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
