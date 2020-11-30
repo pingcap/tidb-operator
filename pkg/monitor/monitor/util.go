@@ -16,15 +16,10 @@ package monitor
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
-	"strconv"
-	"strings"
-
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
-	"github.com/prometheus/prometheus/config"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -34,6 +29,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog"
+	"sort"
+	"strconv"
 )
 
 func GetMonitorObjectName(monitor *v1alpha1.TidbMonitor) string {
@@ -56,33 +53,22 @@ func buildTidbMonitorLabel(name string) map[string]string {
 // If the namespace in ClusterRef is empty, we would set the TidbMonitor's namespace in the default
 func getMonitorConfigMap(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) (*core.ConfigMap, error) {
 
-	var releaseNamespaces []string
-	var releaseClusters []string
+	var releaseClusterInfos []ClusterRegexInfo
 	for _, cluster := range monitor.Spec.Clusters {
-		releaseNamespaces = append(releaseNamespaces, cluster.Namespace)
-		releaseClusters = append(releaseClusters, cluster.Name)
-	}
-
-	relabelConfigsRegex := strings.Join(releaseClusters, "|")
-	targetPattern, err := config.NewRegexp(relabelConfigsRegex)
-	if err != nil {
-		return nil, err
+		releaseClusterInfos = append(releaseClusterInfos, ClusterRegexInfo{
+			Name:      cluster.Name,
+			Namespace: cluster.Namespace,
+		})
 	}
 	model := &MonitorConfigModel{
-		AlertmanagerURL:    "",
-		ReleaseNamespaces:  releaseNamespaces,
-		ReleaseTargetRegex: &targetPattern,
-		EnableTLSCluster:   tc.IsTLSClusterEnabled(),
+		AlertmanagerURL:  "",
+		ClusterInfos:     releaseClusterInfos,
+		EnableTLSCluster: tc.IsTLSClusterEnabled(),
 	}
 
 	if monitor.Spec.AlertmanagerURL != nil {
 		model.AlertmanagerURL = *monitor.Spec.AlertmanagerURL
 	}
-
-	if len(model.ReleaseNamespaces) < 1 {
-		model.ReleaseNamespaces = append(model.ReleaseNamespaces, monitor.Namespace)
-	}
-
 	content, err := RenderPrometheusConfig(model)
 	if err != nil {
 		return nil, err

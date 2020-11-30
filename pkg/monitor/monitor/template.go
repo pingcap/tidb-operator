@@ -16,6 +16,7 @@ package monitor
 import (
 	"fmt"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -126,13 +127,29 @@ func init() {
 }
 
 type MonitorConfigModel struct {
-	AlertmanagerURL    string
-	ReleaseNamespaces  []string
-	ReleaseTargetRegex *config.Regexp
-	EnableTLSCluster   bool
+	AlertmanagerURL  string
+	ClusterInfos     []ClusterRegexInfo
+	EnableTLSCluster bool
+}
+
+// ClusterRegexInfo is the monitor cluster info
+type ClusterRegexInfo struct {
+	Name      string
+	Namespace string
 }
 
 func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
+	var scrapeJobs []*config.ScrapeConfig
+	scrapeJobs = append(scrapeJobs, scrapeJob("pd", pdPattern, cmodel, buildAddressRelabelConfigByComponent("pd"))...)
+	scrapeJobs = append(scrapeJobs, scrapeJob("tidb", tidbPattern, cmodel, buildAddressRelabelConfigByComponent("tidb"))...)
+	scrapeJobs = append(scrapeJobs, scrapeJob("tikv", tikvPattern, cmodel, buildAddressRelabelConfigByComponent("tikv"))...)
+	scrapeJobs = append(scrapeJobs, scrapeJob("tiflash", tiflashPattern, cmodel, buildAddressRelabelConfigByComponent("tiflash"))...)
+	scrapeJobs = append(scrapeJobs, scrapeJob("tiflash-proxy", tiflashPattern, cmodel, buildAddressRelabelConfigByComponent("tiflash-proxy"))...)
+	scrapeJobs = append(scrapeJobs, scrapeJob("pump", pumpPattern, cmodel, buildAddressRelabelConfigByComponent("pump"))...)
+	scrapeJobs = append(scrapeJobs, scrapeJob("drainer", drainerPattern, cmodel, buildAddressRelabelConfigByComponent("drainer"))...)
+	scrapeJobs = append(scrapeJobs, scrapeJob("ticdc", cdcPattern, cmodel, buildAddressRelabelConfigByComponent("ticdc"))...)
+	scrapeJobs = append(scrapeJobs, scrapeJob("importer", importerPattern, cmodel, buildAddressRelabelConfigByComponent("importer"))...)
+	scrapeJobs = append(scrapeJobs, scrapeJob("lightning", lightningPattern, cmodel, buildAddressRelabelConfigByComponent("lightning"))...)
 	var c = config.Config{
 		GlobalConfig: config.GlobalConfig{
 			ScrapeInterval:     model.Duration(15 * time.Second),
@@ -141,18 +158,7 @@ func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
 		RuleFiles: []string{
 			"/prometheus-rules/rules/*.rules.yml",
 		},
-		ScrapeConfigs: []*config.ScrapeConfig{
-			scrapeJob("pd", pdPattern, cmodel, buildAddressRelabelConfigByComponent("pd")),
-			scrapeJob("tidb", tidbPattern, cmodel, buildAddressRelabelConfigByComponent("tidb")),
-			scrapeJob("tikv", tikvPattern, cmodel, buildAddressRelabelConfigByComponent("tikv")),
-			scrapeJob("tiflash", tiflashPattern, cmodel, buildAddressRelabelConfigByComponent("tiflash")),
-			scrapeJob("tiflash-proxy", tiflashPattern, cmodel, buildAddressRelabelConfigByComponent("tiflash-proxy")),
-			scrapeJob("pump", pumpPattern, cmodel, buildAddressRelabelConfigByComponent("pump")),
-			scrapeJob("drainer", drainerPattern, cmodel, buildAddressRelabelConfigByComponent("drainer")),
-			scrapeJob("ticdc", cdcPattern, cmodel, buildAddressRelabelConfigByComponent("ticdc")),
-			scrapeJob("importer", importerPattern, cmodel, buildAddressRelabelConfigByComponent("importer")),
-			scrapeJob("lightning", lightningPattern, cmodel, buildAddressRelabelConfigByComponent("lightning")),
-		},
+		ScrapeConfigs: scrapeJobs,
 	}
 	return &c
 }
@@ -264,96 +270,114 @@ func buildAddressRelabelConfigByComponent(kind string) *config.RelabelConfig {
 	}
 }
 
-func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorConfigModel, addressRelabelConfig *config.RelabelConfig) *config.ScrapeConfig {
-	return &config.ScrapeConfig{
-
-		JobName:        jobName,
-		ScrapeInterval: model.Duration(15 * time.Second),
-		Scheme:         "http",
-		HonorLabels:    true,
-		ServiceDiscoveryConfig: config.ServiceDiscoveryConfig{
-			KubernetesSDConfigs: []*config.KubernetesSDConfig{
-				{
-					Role: "pod",
-					NamespaceDiscovery: config.KubernetesNamespaceDiscovery{
-						Names: cmodel.ReleaseNamespaces,
+func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorConfigModel, addressRelabelConfig *config.RelabelConfig) []*config.ScrapeConfig {
+	var scrapeJobs []*config.ScrapeConfig
+	for index, cluster := range cmodel.ClusterInfos {
+		clusterTargetPattern, err := config.NewRegexp(cluster.Name)
+		if err != nil {
+			continue
+		}
+		nsTargetPattern, err := config.NewRegexp(cluster.Namespace)
+		if err != nil {
+			continue
+		}
+		scrapeJobs = append(scrapeJobs, &config.ScrapeConfig{
+			JobName:        jobName + "-" + strconv.Itoa(index),
+			ScrapeInterval: model.Duration(15 * time.Second),
+			Scheme:         "http",
+			HonorLabels:    true,
+			ServiceDiscoveryConfig: config.ServiceDiscoveryConfig{
+				KubernetesSDConfigs: []*config.KubernetesSDConfig{
+					{
+						Role: "pod",
+						NamespaceDiscovery: config.KubernetesNamespaceDiscovery{
+							Names: []string{cluster.Namespace},
+						},
 					},
 				},
 			},
-		},
-		HTTPClientConfig: config.HTTPClientConfig{
-			TLSConfig: config.TLSConfig{
-				InsecureSkipVerify: true,
-			},
-		},
-		RelabelConfigs: []*config.RelabelConfig{
-			{
-				SourceLabels: model.LabelNames{
-					instanceLabel,
+			HTTPClientConfig: config.HTTPClientConfig{
+				TLSConfig: config.TLSConfig{
+					InsecureSkipVerify: true,
 				},
-				Action: config.RelabelKeep,
-				Regex:  *cmodel.ReleaseTargetRegex,
 			},
-			{
-				SourceLabels: model.LabelNames{
-					componentLabel,
+			RelabelConfigs: []*config.RelabelConfig{
+				{
+					SourceLabels: model.LabelNames{
+						instanceLabel,
+					},
+					Action: config.RelabelKeep,
+					Regex:  clusterTargetPattern,
 				},
-				Action: config.RelabelKeep,
-				Regex:  componentPattern,
-			},
-			{
-				SourceLabels: model.LabelNames{
-					scrapeLabel,
+				{
+					SourceLabels: model.LabelNames{
+						namespaceLabel,
+					},
+					Action: config.RelabelKeep,
+					Regex:  nsTargetPattern,
 				},
-				Action: config.RelabelKeep,
-				Regex:  truePattern,
-			},
-			{
-				SourceLabels: model.LabelNames{
-					metricsPathLabel,
+				{
+					SourceLabels: model.LabelNames{
+						componentLabel,
+					},
+					Action: config.RelabelKeep,
+					Regex:  componentPattern,
 				},
-				Action:      config.RelabelReplace,
-				TargetLabel: "__metrics_path__",
-				Regex:       allMatchPattern,
-			},
-			addressRelabelConfig,
-			{
-				SourceLabels: model.LabelNames{
-					namespaceLabel,
+				{
+					SourceLabels: model.LabelNames{
+						scrapeLabel,
+					},
+					Action: config.RelabelKeep,
+					Regex:  truePattern,
 				},
-				Action:      config.RelabelReplace,
-				TargetLabel: "kubernetes_namespace",
-			},
-			{
-				SourceLabels: model.LabelNames{
-					podNameLabel,
+				{
+					SourceLabels: model.LabelNames{
+						metricsPathLabel,
+					},
+					Action:      config.RelabelReplace,
+					TargetLabel: "__metrics_path__",
+					Regex:       allMatchPattern,
 				},
-				Action:      config.RelabelReplace,
-				TargetLabel: "instance",
-			},
-			{
-				SourceLabels: model.LabelNames{
-					instanceLabel,
+				addressRelabelConfig,
+				{
+					SourceLabels: model.LabelNames{
+						namespaceLabel,
+					},
+					Action:      config.RelabelReplace,
+					TargetLabel: "kubernetes_namespace",
 				},
-				Action:      config.RelabelReplace,
-				TargetLabel: "cluster",
-			},
-			{
-				SourceLabels: model.LabelNames{
-					podNameLabel,
+				{
+					SourceLabels: model.LabelNames{
+						podNameLabel,
+					},
+					Action:      config.RelabelReplace,
+					TargetLabel: "instance",
 				},
-				Action:      config.RelabelReplace,
-				TargetLabel: "instance",
-			},
-			{
-				SourceLabels: model.LabelNames{
-					instanceLabel,
+				{
+					SourceLabels: model.LabelNames{
+						instanceLabel,
+					},
+					Action:      config.RelabelReplace,
+					TargetLabel: "cluster",
 				},
-				Action:      config.RelabelReplace,
-				TargetLabel: "cluster",
+				{
+					SourceLabels: model.LabelNames{
+						podNameLabel,
+					},
+					Action:      config.RelabelReplace,
+					TargetLabel: "instance",
+				},
+				{
+					SourceLabels: model.LabelNames{
+						instanceLabel,
+					},
+					Action:      config.RelabelReplace,
+					TargetLabel: "cluster",
+				},
 			},
-		},
+		})
 	}
+	return scrapeJobs
 
 }
 
