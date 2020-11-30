@@ -20,20 +20,23 @@ import (
 	"strconv"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/klog"
-
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	apps "k8s.io/api/apps/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/util/sets"
+	corelisterv1 "k8s.io/client-go/listers/core/v1"
+	"k8s.io/klog"
 )
 
 var (
@@ -41,6 +44,11 @@ var (
 	TiDBClientTLSPath    = "/var/lib/tidb-client-tls"
 	BRBinPath            = "/var/lib/br-bin"
 	ClusterClientVolName = "cluster-client-tls"
+)
+
+const (
+	// LastAppliedConfigAnnotation is annotation key of last applied configuration
+	LastAppliedConfigAnnotation = "pingcap.com/last-applied-configuration"
 )
 
 func GetOrdinalFromPodName(podName string) (int32, error) {
@@ -344,4 +352,57 @@ func VolumeClaimTemplate(r corev1.ResourceRequirements, metaName string, storage
 			Resources:        r,
 		},
 	}
+}
+
+// statefulSetEqual compares the new Statefulset's spec with old Statefulset's last applied config
+func StatefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) bool {
+	// The annotations in old sts may include LastAppliedConfigAnnotation
+	tmpAnno := map[string]string{}
+	for k, v := range old.Annotations {
+		if k != LastAppliedConfigAnnotation {
+			tmpAnno[k] = v
+		}
+	}
+	if !apiequality.Semantic.DeepEqual(new.Annotations, tmpAnno) {
+		return false
+	}
+	oldConfig := apps.StatefulSetSpec{}
+	if lastAppliedConfig, ok := old.Annotations[LastAppliedConfigAnnotation]; ok {
+		err := json.Unmarshal([]byte(lastAppliedConfig), &oldConfig)
+		if err != nil {
+			klog.Errorf("unmarshal Statefulset: [%s/%s]'s applied config failed,error: %v", old.GetNamespace(), old.GetName(), err)
+			return false
+		}
+		// oldConfig.Template.Annotations may include LastAppliedConfigAnnotation to keep backward compatiability
+		// Please check detail in https://github.com/pingcap/tidb-operator/pull/1489
+		tmpTemplate := oldConfig.Template.DeepCopy()
+		delete(tmpTemplate.Annotations, LastAppliedConfigAnnotation)
+		return apiequality.Semantic.DeepEqual(oldConfig.Replicas, new.Spec.Replicas) &&
+			apiequality.Semantic.DeepEqual(*tmpTemplate, new.Spec.Template) &&
+			apiequality.Semantic.DeepEqual(oldConfig.UpdateStrategy, new.Spec.UpdateStrategy)
+	}
+	return false
+}
+
+func ResolvePVCFromPod(pod *corev1.Pod, pvcLister corelisterv1.PersistentVolumeClaimLister) ([]*corev1.PersistentVolumeClaim, error) {
+	var pvcs []*corev1.PersistentVolumeClaim
+	var pvcName string
+	for _, vol := range pod.Spec.Volumes {
+		if vol.PersistentVolumeClaim != nil {
+			pvcName = vol.PersistentVolumeClaim.ClaimName
+			if len(pvcName) == 0 {
+				continue
+			}
+			pvc, err := pvcLister.PersistentVolumeClaims(pod.Namespace).Get(pvcName)
+			if err != nil {
+				klog.Errorf("Get PVC %s/%s error: %v", pod.Namespace, pvcName, err)
+				continue
+			}
+			pvcs = append(pvcs, pvc)
+		}
+	}
+	if len(pvcs) == 0 {
+		return nil, errors.NewNotFound(corev1.Resource("pvc"), pod.Name)
+	}
+	return pvcs, nil
 }
