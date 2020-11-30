@@ -101,7 +101,7 @@ func (m *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 		return nil
 	}
 
-	return updateStatefulSet(m.deps.StatefulSetControl, tc, newPumpSet, oldPumpSet)
+	return UpdateStatefulSet(m.deps.StatefulSetControl, tc, newPumpSet, oldPumpSet)
 }
 
 func (m *pumpMemberManager) syncTiDBClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {

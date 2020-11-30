@@ -224,7 +224,7 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 		}
 	}
 
-	return updateStatefulSet(m.deps.StatefulSetControl, tc, newTiDBSet, oldTiDBSet)
+	return UpdateStatefulSet(m.deps.StatefulSetControl, tc, newTiDBSet, oldTiDBSet)
 }
 
 func (m *tidbMemberManager) shouldRecover(tc *v1alpha1.TidbCluster) bool {

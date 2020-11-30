@@ -217,7 +217,7 @@ func (m *workerMemberManager) syncWorkerStatefulSetForDMCluster(dc *v1alpha1.DMC
 		}
 	}
 
-	return updateStatefulSet(m.deps.StatefulSetControl, dc, newSts, oldSts)
+	return UpdateStatefulSet(m.deps.StatefulSetControl, dc, newSts, oldSts)
 }
 
 func (m *workerMemberManager) syncDMClusterStatus(dc *v1alpha1.DMCluster, set *apps.StatefulSet) error {
