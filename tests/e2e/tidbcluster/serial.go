@@ -22,10 +22,12 @@ import (
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
+	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/monitor/monitor"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
@@ -41,6 +43,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
+	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/klog"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
@@ -66,6 +69,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 	var config *restclient.Config
 	var fw portforward.PortForward
 	var fwCancel context.CancelFunc
+	var stsGetter typedappsv1.StatefulSetsGetter
 	/**
 	 * StatefulSet or AdvancedStatefulSet getter interface.
 	 */
@@ -99,6 +103,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		fwCancel = cancel
 		cfg = e2econfig.TestConfig
 		cfg = e2econfig.TestConfig
+		stsGetter = c.AppsV1()
 	})
 
 	ginkgo.AfterEach(func() {
@@ -409,12 +414,13 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		var version string
 
 		ginkgo.BeforeEach(func() {
-			version = "v1.1.0"
+			version = "v1.1.7"
 			ocfg = &tests.OperatorConfig{
-				Namespace:   ns,
-				ReleaseName: "operator",
-				Tag:         version,
-				Image:       fmt.Sprintf("pingcap/tidb-operator:%s", version),
+				Namespace:       ns,
+				ReleaseName:     "operator",
+				Tag:             version,
+				Image:           fmt.Sprintf("pingcap/tidb-operator:%s", version),
+				ImagePullPolicy: v1.PullIfNotPresent,
 			}
 			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")
@@ -506,6 +512,66 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				return false, nil
 			})
 			framework.ExpectEqual(err, wait.ErrWaitTimeout, "expect pd/tikv/tidb haven't been changed for 5 minutes")
+		})
+		ginkgo.It("Deploy TiDBMonitor and Upgrade Operator, TiDBMonitor switch from deployment to StatefulSet", func() {
+			tcName := "smooth-tidbcluster"
+			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "admin", utilimage.TiDBV4UpgradeVersion)
+			cluster.Resources["pd.replicas"] = "3"
+			cluster.Resources["tikv.replicas"] = "3"
+			cluster.Resources["tidb.replicas"] = "1"
+			oa.DeployTidbClusterOrDie(&cluster)
+			oa.CheckTidbClusterStatusOrDie(&cluster)
+
+			monitorName := "smooth-migrate"
+			tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get tidbcluster")
+			tm := fixture.NewTidbMonitor(monitorName, ns, tc, true, true, true)
+			_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(tm)
+			framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
+			err = tests.CheckTidbMonitor(tm, cli, c, fw)
+			framework.ExpectNoError(err, "Expected tidbmonitor checked success")
+
+			deploymentPvcName := fmt.Sprintf("%s-monitor", monitorName)
+			deploymentPvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get(deploymentPvcName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "Expected tidbmonitor deployment pvc success")
+			oldVolumeName := deploymentPvc.Spec.VolumeName
+			ginkgo.By("Upgrade tidb-operator and CRDs to current version")
+			ocfg.Tag = cfg.OperatorTag
+			ocfg.Image = cfg.OperatorImage
+			oa.InstallCRDOrDie(ocfg)
+			oa.UpgradeOperatorOrDie(ocfg)
+			err = tests.CheckTidbMonitor(tm, cli, c, fw)
+			framework.ExpectNoError(err, "Expected tidbmonitor checked success under migration")
+			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+				tmSet, err := stsGetter.StatefulSets(ns).Get(monitor.GetMonitorObjectName(tm), metav1.GetOptions{})
+				if err != nil {
+					klog.Errorf("failed to get statefulset: %s/%s, %v", ns, tmSet, err)
+					return false, nil
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "Expected tidbmonitor sts success")
+			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+				newStsPvcName := monitor.GetMonitorFirstPVCName(tm.Name)
+				klog.Infof("tidbmonitor newStsPvcName:%s", newStsPvcName)
+				stsPvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get(newStsPvcName, metav1.GetOptions{})
+				if err != nil {
+					if errors.IsNotFound(err) {
+						klog.Infof("tm[%s/%s]'s first sts pvc not found,tag:%s,image:%s", ns, tm.Name, cfg.OperatorTag, cfg.OperatorImage)
+						return false, nil
+					}
+					klog.Errorf("get tidbmonitor sts pvc err:%v", err)
+					return false, nil
+				}
+				if stsPvc.Spec.VolumeName == oldVolumeName {
+					return true, nil
+				}
+				klog.Infof("tidbmonitor sts pv unequal to old deployment pv")
+				return false, nil
+			})
+			framework.ExpectNoError(err, "Expected tidbmonitor smooth migrate successfully")
+			err = tests.CheckTidbMonitor(tm, cli, c, fw)
+			framework.ExpectNoError(err, "Expected tidbmonitor checked success")
 		})
 	})
 

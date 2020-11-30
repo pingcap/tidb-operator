@@ -119,7 +119,7 @@ func (m *ticdcMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
-	return updateStatefulSet(m.deps.StatefulSetControl, tc, newSts, oldSts)
+	return UpdateStatefulSet(m.deps.StatefulSetControl, tc, newSts, oldSts)
 }
 
 func (m *ticdcMemberManager) syncTiCDCStatus(tc *v1alpha1.TidbCluster, sts *apps.StatefulSet) error {

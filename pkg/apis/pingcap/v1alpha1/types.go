@@ -60,6 +60,8 @@ const (
 	DMWorkerMemberType MemberType = "dm-worker"
 	// SlowLogTailerMemberType is tidb log tailer container type
 	SlowLogTailerMemberType MemberType = "slowlog"
+	// TidbMonitorMemberType is tidbmonitor type
+	TidbMonitorMemberType MemberType = "tidbmonitor"
 	// UnknownMemberType is unknown container type
 	UnknownMemberType MemberType = "unknown"
 )
