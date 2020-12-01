@@ -274,6 +274,7 @@ func (m *pdMemberManager) shouldRecover(tc *v1alpha1.TidbCluster) bool {
 					return false
 				}
 				ok = true
+				break
 			}
 		}
 		if !ok {
