@@ -14,18 +14,15 @@
 package meta
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
-	corev1 "k8s.io/api/core/v1"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	"k8s.io/klog"
 )
-
-var errPVCNotFound = errors.New("PVC is not found")
 
 type metaManager struct {
 	deps *controller.Dependencies
@@ -64,7 +61,7 @@ func (m *metaManager) Sync(tc *v1alpha1.TidbCluster) error {
 			continue
 		}
 		// update meta info for pvc
-		pvcs, err := m.resolvePVCFromPod(pod)
+		pvcs, err := util.ResolvePVCFromPod(pod, m.deps.PVCLister)
 		if err != nil {
 			return err
 		}
@@ -90,29 +87,6 @@ func (m *metaManager) Sync(tc *v1alpha1.TidbCluster) error {
 	}
 
 	return nil
-}
-
-func (m *metaManager) resolvePVCFromPod(pod *corev1.Pod) ([]*corev1.PersistentVolumeClaim, error) {
-	var pvcs []*corev1.PersistentVolumeClaim
-	var pvcName string
-	for _, vol := range pod.Spec.Volumes {
-		if vol.PersistentVolumeClaim != nil {
-			pvcName = vol.PersistentVolumeClaim.ClaimName
-			if len(pvcName) == 0 {
-				continue
-			}
-			pvc, err := m.deps.PVCLister.PersistentVolumeClaims(pod.Namespace).Get(pvcName)
-			if err != nil {
-				klog.Errorf("Get PVC %s/%s error: %v", pod.Namespace, pvcName, err)
-				continue
-			}
-			pvcs = append(pvcs, pvc)
-		}
-	}
-	if len(pvcs) == 0 {
-		return nil, errPVCNotFound
-	}
-	return pvcs, nil
 }
 
 var _ manager.Manager = &metaManager{}
