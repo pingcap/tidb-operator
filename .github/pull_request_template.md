@@ -1,4 +1,4 @@
-<!--Thanks for your contribution to TiDB Operator documentation. See [CONTRIBUTING](https://github.com/pingcap/community/blob/master/CONTRIBUTING.md) before filing this pull request (PR).-->
+<!--Thanks for your contribution to TiDB Operator documentation. See [CONTRIBUTING](https://github.com/pingcap/docs/blob/master/CONTRIBUTING.md) before filing this pull request (PR).-->
 
 ### First-time contributors' checklist <!--Remove this section if you're not a first-time contributor.-->
 
