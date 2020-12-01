@@ -2708,7 +2708,7 @@ func TestPDShouldRecover(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "shouldn't recover when replicas is more than PD members number",
+			name: "Pod is not ready",
 			tc: &v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "failover",
@@ -2740,6 +2740,41 @@ func TestPDShouldRecover(t *testing.T) {
 				},
 			},
 			pods: podsWithFailover,
+			want: false,
+		},
+		{
+			name: "shouldn't recover when replicas is more than PD members number",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "failover",
+					Namespace: v1.NamespaceDefault,
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: &v1alpha1.PDSpec{
+						Replicas: 3,
+					},
+				},
+				Status: v1alpha1.TidbClusterStatus{
+					PD: v1alpha1.PDStatus{
+						Members: map[string]v1alpha1.PDMember{
+							"failover-pd-0": {
+								Name:   "failover-pd-0",
+								Health: true,
+							},
+							"failover-pd-1": {
+								Name:   "failover-pd-1",
+								Health: true,
+							},
+						},
+						FailureMembers: map[string]v1alpha1.PDFailureMember{
+							"failover-pd-0": {
+								PodName: "failover-pd-0",
+							},
+						},
+					},
+				},
+			},
+			pods: pods,
 			want: false,
 		},
 		{
@@ -2804,41 +2839,6 @@ func TestPDShouldRecover(t *testing.T) {
 					},
 				},
 			},
-			want: false,
-		},
-		{
-			name: "DesiredOrinals is more than real",
-			tc: &v1alpha1.TidbCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "failover",
-					Namespace: v1.NamespaceDefault,
-				},
-				Spec: v1alpha1.TidbClusterSpec{
-					PD: &v1alpha1.PDSpec{
-						Replicas: 5,
-					},
-				},
-				Status: v1alpha1.TidbClusterStatus{
-					PD: v1alpha1.PDStatus{
-						Members: map[string]v1alpha1.PDMember{
-							"failover-pd-0": {
-								Name:   "failover-pd-0",
-								Health: true,
-							},
-							"failover-pd-1": {
-								Name:   "failover-pd-1",
-								Health: true,
-							},
-						},
-						FailureMembers: map[string]v1alpha1.PDFailureMember{
-							"failover-pd-0": {
-								PodName: "failover-pd-0",
-							},
-						},
-					},
-				},
-			},
-			pods: pods,
 			want: false,
 		},
 	}
