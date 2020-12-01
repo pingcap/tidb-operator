@@ -533,9 +533,7 @@ func (tc *TidbCluster) TiKVIsAvailable() bool {
 
 	var peerAvailableNum int32
 	for _, store := range tc.Status.TiKV.PeerStores {
-		// filter out the TiFlash PeerStores
-		podKind := strings.Split(store.PodName, "-")
-		if store.State == TiKVStateUp && podKind[len(podKind)-2] == label.TiKVLabelVal {
+		if store.State == TiKVStateUp {
 			peerAvailableNum++
 		}
 	}
