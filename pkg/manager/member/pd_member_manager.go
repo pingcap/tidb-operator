@@ -216,7 +216,7 @@ func (m *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 	if !tc.Status.PD.Synced && NeedForceUpgrade(tc.Annotations) {
 		tc.Status.PD.Phase = v1alpha1.UpgradePhase
 		setUpgradePartition(newPDSet, 0)
-		errSTS := updateStatefulSet(m.deps.StatefulSetControl, tc, newPDSet, oldPDSet)
+		errSTS := UpdateStatefulSet(m.deps.StatefulSetControl, tc, newPDSet, oldPDSet)
 		return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd needs force upgrade, %v", ns, tcName, errSTS)
 	}
 
@@ -245,7 +245,7 @@ func (m *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 		}
 	}
 
-	return updateStatefulSet(m.deps.StatefulSetControl, tc, newPDSet, oldPDSet)
+	return UpdateStatefulSet(m.deps.StatefulSetControl, tc, newPDSet, oldPDSet)
 }
 
 // shouldRecover checks whether we should perform recovery operation.
@@ -626,9 +626,10 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			},
 		})
 	}
-	// handle additional storageVolume
-	additionalVolMounts, additionalVolumeClaims := util.BuildAdditionalVolumeAndVolumeMount(tc.Spec.PD.StorageVolumes, tc.Spec.PD.StorageClassName, v1alpha1.PDMemberType)
-	volMounts = append(volMounts, additionalVolMounts...)
+	// handle StorageVolumes and AdditionalVolumeMounts in ComponentSpec
+	storageVolMounts, additionalPVCs := util.BuildStorageVolumeAndVolumeMount(tc.Spec.PD.StorageVolumes, tc.Spec.PD.StorageClassName, v1alpha1.PDMemberType)
+	volMounts = append(volMounts, storageVolMounts...)
+	volMounts = append(volMounts, tc.Spec.PD.AdditionalVolumeMounts...)
 
 	sysctls := "sysctl -w"
 	var initContainers []corev1.Container
@@ -796,7 +797,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		},
 	}
 
-	pdSet.Spec.VolumeClaimTemplates = append(pdSet.Spec.VolumeClaimTemplates, additionalVolumeClaims...)
+	pdSet.Spec.VolumeClaimTemplates = append(pdSet.Spec.VolumeClaimTemplates, additionalPVCs...)
 	return pdSet, nil
 }
 
