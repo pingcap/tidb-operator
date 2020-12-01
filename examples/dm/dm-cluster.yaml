@@ -1,7 +1,7 @@
 apiVersion: pingcap.com/v1alpha1
 kind: DMCluster
 metadata:
-  name: basicdm
+  name: basic
 spec:
   version: v2.0.0
   pvReclaimPolicy: Retain

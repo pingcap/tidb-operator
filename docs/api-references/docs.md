@@ -1961,18 +1961,6 @@ TidbMonitorSpec
 </tr>
 <tr>
 <td>
-<code>dmClusters</code></br>
-<em>
-<a href="#tidbclusterref">
-[]TidbClusterRef
-</a>
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
 <code>prometheus</code></br>
 <em>
 <a href="#prometheusspec">
@@ -2011,18 +1999,6 @@ ReloaderSpec
 <tr>
 <td>
 <code>initializer</code></br>
-<em>
-<a href="#initializerspec">
-InitializerSpec
-</a>
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
-<code>dmInitializer</code></br>
 <em>
 <a href="#initializerspec">
 InitializerSpec
@@ -2203,6 +2179,18 @@ bool
 </td>
 </tr>
 </table>
+</td>
+</tr>
+<tr>
+<td>
+<code>dmSpec</code></br>
+<em>
+<a href="#dmmonitorspec">
+DMMonitorSpec
+</a>
+</em>
+</td>
+<td>
 </td>
 </tr>
 <tr>
@@ -4506,6 +4494,47 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="dmmonitorspec">DMMonitorSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbmonitor">TidbMonitor</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>clusters</code></br>
+<em>
+<a href="#tidbclusterref">
+[]TidbClusterRef
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>initializer</code></br>
+<em>
+<a href="#initializerspec">
+InitializerSpec
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="dmsecurityconfig">DMSecurityConfig</h3>
 <p>
 (<em>Appears on:</em>
@@ -5783,6 +5812,7 @@ ingress supports SNI.</p>
 <h3 id="initializerspec">InitializerSpec</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#dmmonitorspec">DMMonitorSpec</a>, 
 <a href="#tidbmonitorspec">TidbMonitorSpec</a>)
 </p>
 <p>
@@ -18148,6 +18178,7 @@ string
 <h3 id="tidbclusterref">TidbClusterRef</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#dmmonitorspec">DMMonitorSpec</a>, 
 <a href="#tidbclusterautoscalerspec">TidbClusterAutoScalerSpec</a>, 
 <a href="#tidbclusterspec">TidbClusterSpec</a>, 
 <a href="#tidbinitializerspec">TidbInitializerSpec</a>, 
@@ -19054,18 +19085,6 @@ bool
 </tr>
 <tr>
 <td>
-<code>dmClusters</code></br>
-<em>
-<a href="#tidbclusterref">
-[]TidbClusterRef
-</a>
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
 <code>prometheus</code></br>
 <em>
 <a href="#prometheusspec">
@@ -19104,18 +19123,6 @@ ReloaderSpec
 <tr>
 <td>
 <code>initializer</code></br>
-<em>
-<a href="#initializerspec">
-InitializerSpec
-</a>
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
-<code>dmInitializer</code></br>
 <em>
 <a href="#initializerspec">
 InitializerSpec

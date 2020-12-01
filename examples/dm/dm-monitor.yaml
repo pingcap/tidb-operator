@@ -17,3 +17,10 @@ spec:
   reloader:
     baseImage: pingcap/tidb-monitor-reloader
     version: v1.0.1
+# dmSpec:
+#   clusters:
+#   - name: basic
+#   initializer:
+#     baseImage: hub.pingcap.net/chenbin_test/dm-monitor-initializer
+#     version: v2.0.0
+#   imagePullPolicy: IfNotPresent

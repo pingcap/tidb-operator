@@ -64,9 +64,11 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monit
 		releaseClusters = append(releaseClusters, cluster.Name)
 	}
 
-	for _, cluster := range monitor.Spec.DMClusters {
-		releaseNamespaces = append(releaseNamespaces, cluster.Namespace)
-		dmReleaseClusters = append(dmReleaseClusters, cluster.Name)
+	if monitor.DMSpec != nil {
+		for _, cluster := range monitor.DMSpec.Clusters {
+			releaseNamespaces = append(releaseNamespaces, cluster.Namespace)
+			dmReleaseClusters = append(dmReleaseClusters, cluster.Name)
+		}
 	}
 
 	relabelConfigsRegex := strings.Join(releaseClusters, "|")
@@ -215,8 +217,7 @@ func getMonitorRoleBinding(sa *core.ServiceAccount, role *rbac.Role, monitor *v1
 	}
 }
 
-
-func getMonitorInitContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) core.Container {
+func getInitCommand(monitor *v1alpha1.TidbMonitor) []string {
 	c := `mkdir -p /data/prometheus
 chmod 777 /data/prometheus
 /usr/bin/init.sh`
@@ -230,6 +231,44 @@ chmod 777 /data/prometheus /data/grafana
 		"-c",
 		c,
 	}
+	return command
+}
+
+func getGrafaPromeEnvs(monitor *v1alpha1.TidbMonitor, container core.Container) {
+	if monitor.Spec.KubePrometheusURL != nil {
+		container.Env = append(container.Env, core.EnvVar{
+			Name:  "GF_K8S_PROMETHEUS_URL",
+			Value: *monitor.Spec.KubePrometheusURL,
+		})
+	}
+
+	if monitor.Spec.Grafana != nil {
+		container.VolumeMounts = append(container.VolumeMounts, core.VolumeMount{
+
+			MountPath: "/etc/grafana/provisioning/datasources",
+			Name:      "datasource",
+			ReadOnly:  false,
+		}, core.VolumeMount{
+
+			MountPath: "/grafana-dashboard-definitions/tidb",
+			Name:      "grafana-dashboard",
+			ReadOnly:  false,
+		})
+		container.Env = append(container.Env,
+			core.EnvVar{
+				Name:  "GF_PROVISIONING_PATH",
+				Value: "/grafana-dashboard-definitions/tidb",
+			},
+			core.EnvVar{
+				Name:  "GF_DATASOURCE_PATH",
+				Value: "/etc/grafana/provisioning/datasources",
+			})
+
+	}
+}
+
+func getMonitorInitContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) core.Container {
+	command := getInitCommand(monitor)
 	alertManagerRulesVersion := tc.TiDBImage()
 	if monitor.Spec.AlertManagerRulesVersion != nil {
 		alertManagerRulesVersion = fmt.Sprintf("tidb:%s", *monitor.Spec.AlertManagerRulesVersion)
@@ -290,36 +329,7 @@ chmod 777 /data/prometheus /data/grafana
 		container.ImagePullPolicy = *monitor.Spec.Initializer.ImagePullPolicy
 	}
 
-	if monitor.Spec.KubePrometheusURL != nil {
-		container.Env = append(container.Env, core.EnvVar{
-			Name:  "GF_K8S_PROMETHEUS_URL",
-			Value: *monitor.Spec.KubePrometheusURL,
-		})
-	}
-
-	if monitor.Spec.Grafana != nil {
-		container.VolumeMounts = append(container.VolumeMounts, core.VolumeMount{
-
-			MountPath: "/etc/grafana/provisioning/datasources",
-			Name:      "datasource",
-			ReadOnly:  false,
-		}, core.VolumeMount{
-
-			MountPath: "/grafana-dashboard-definitions/tidb",
-			Name:      "grafana-dashboard",
-			ReadOnly:  false,
-		})
-		container.Env = append(container.Env,
-			core.EnvVar{
-				Name:  "GF_PROVISIONING_PATH",
-				Value: "/grafana-dashboard-definitions/tidb",
-			},
-			core.EnvVar{
-				Name:  "GF_DATASOURCE_PATH",
-				Value: "/etc/grafana/provisioning/datasources",
-			})
-
-	}
+	getGrafaPromeEnvs(monitor, container)
 	var envOverrides []core.EnvVar
 	for k, v := range monitor.Spec.Initializer.Envs {
 		envOverrides = append(envOverrides, core.EnvVar{
@@ -332,26 +342,14 @@ chmod 777 /data/prometheus /data/grafana
 }
 
 func getMonitorDMInitContainer(monitor *v1alpha1.TidbMonitor, dc *v1alpha1.DMCluster) core.Container {
-	c := `mkdir -p /data/prometheus
-chmod 777 /data/prometheus
-/usr/bin/init.sh`
-	if monitor.Spec.Grafana != nil {
-		c = `mkdir -p /data/prometheus /data/grafana
-chmod 777 /data/prometheus /data/grafana
-/usr/bin/init.sh`
-	}
-	command := []string{
-		"/bin/sh",
-		"-c",
-		c,
-	}
+	command := getInitCommand(monitor)
 	alertManagerRulesVersion := dc.MasterImage()
 	if monitor.Spec.AlertManagerRulesVersion != nil {
 		alertManagerRulesVersion = fmt.Sprintf("dm:%s", *monitor.Spec.AlertManagerRulesVersion)
 	}
 	container := core.Container{
 		Name:  "monitor-dm-initializer",
-		Image: fmt.Sprintf("%s:%s", monitor.Spec.DMInitializer.BaseImage, monitor.Spec.DMInitializer.Version),
+		Image: fmt.Sprintf("%s:%s", monitor.DMSpec.Initializer.BaseImage, monitor.DMSpec.Initializer.Version),
 		Env: []core.EnvVar{
 			{
 				Name:  "DM_CLUSTER_NAME",
@@ -391,14 +389,14 @@ chmod 777 /data/prometheus /data/grafana
 			},
 			{
 				MountPath: "/data",
-				Name:      "monitor-data",
+				Name:      v1alpha1.TidbMonitorMemberType.String(),
 			},
 		},
-		Resources: controller.ContainerResource(monitor.Spec.DMInitializer.ResourceRequirements),
+		Resources: controller.ContainerResource(monitor.DMSpec.Initializer.ResourceRequirements),
 	}
 
-	if monitor.Spec.DMInitializer.ImagePullPolicy != nil {
-		container.ImagePullPolicy = *monitor.Spec.DMInitializer.ImagePullPolicy
+	if monitor.DMSpec.Initializer.ImagePullPolicy != nil {
+		container.ImagePullPolicy = *monitor.DMSpec.Initializer.ImagePullPolicy
 	}
 
 	if monitor.Spec.KubePrometheusURL != nil {
@@ -408,31 +406,9 @@ chmod 777 /data/prometheus /data/grafana
 		})
 	}
 
-	if monitor.Spec.Grafana != nil {
-		container.VolumeMounts = append(container.VolumeMounts, core.VolumeMount{
-
-			MountPath: "/etc/grafana/provisioning/datasources",
-			Name:      "datasource",
-			ReadOnly:  false,
-		}, core.VolumeMount{
-
-			MountPath: "/grafana-dashboard-definitions/tidb",
-			Name:      "grafana-dashboard",
-			ReadOnly:  false,
-		})
-		container.Env = append(container.Env,
-			core.EnvVar{
-				Name:  "GF_PROVISIONING_PATH",
-				Value: "/grafana-dashboard-definitions/tidb",
-			},
-			core.EnvVar{
-				Name:  "GF_DATASOURCE_PATH",
-				Value: "/etc/grafana/provisioning/datasources",
-			})
-
-	}
+	getGrafaPromeEnvs(monitor, container)
 	var envOverrides []core.EnvVar
-	for k, v := range monitor.Spec.DMInitializer.Envs {
+	for k, v := range monitor.DMSpec.Initializer.Envs {
 		envOverrides = append(envOverrides, core.EnvVar{
 			Name:  k,
 			Value: v,
@@ -928,17 +904,29 @@ func defaultTidbMonitor(monitor *v1alpha1.TidbMonitor) {
 		}
 		monitor.Spec.Clusters[id] = tcRef
 	}
+	if monitor.DMSpec != nil {
+		for id, dcRef := range monitor.DMSpec.Clusters {
+			if len(dcRef.Namespace) < 1 {
+				dcRef.Namespace = monitor.Namespace
+			}
+			monitor.DMSpec.Clusters[id] = dcRef
+		}
+	}
 	retainPVP := core.PersistentVolumeReclaimRetain
 	if monitor.Spec.PVReclaimPolicy == nil {
 		monitor.Spec.PVReclaimPolicy = &retainPVP
 	}
 }
 
-func getMonitorStatefulSet(sa *core.ServiceAccount, config *core.ConfigMap, secret *core.Secret, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error) {
+func getMonitorStatefulSet(sa *core.ServiceAccount, config *core.ConfigMap, secret *core.Secret, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster) (*apps.StatefulSet, error) {
 	statefulSet := getMonitorStatefulSetSkeleton(sa, monitor)
 	initContainer := getMonitorInitContainer(monitor, tc)
 	statefulSet.Spec.Template.Spec.InitContainers = append(statefulSet.Spec.Template.Spec.InitContainers, initContainer)
-	prometheusContainer := getMonitorPrometheusContainer(monitor, tc)
+	if dc != nil {
+		dmInitContainer := getMonitorDMInitContainer(monitor, dc)
+		statefulSet.Spec.Template.Spec.InitContainers = append(statefulSet.Spec.Template.Spec.InitContainers, dmInitContainer)
+	}
+	prometheusContainer := getMonitorPrometheusContainer(monitor, tc, dc)
 	reloaderContainer := getMonitorReloaderContainer(monitor, tc)
 	statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, prometheusContainer, reloaderContainer)
 	additionalContainers := monitor.Spec.AdditionalContainers
@@ -949,7 +937,7 @@ func getMonitorStatefulSet(sa *core.ServiceAccount, config *core.ConfigMap, secr
 		grafanaContainer := getMonitorGrafanaContainer(secret, monitor, tc)
 		statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, grafanaContainer)
 	}
-	volumes := getMonitorVolumes(config, monitor, tc)
+	volumes := getMonitorVolumes(config, monitor, tc, dc)
 	statefulSet.Spec.Template.Spec.Volumes = volumes
 
 	volumeClaims := getMonitorVolumeClaims(monitor)
