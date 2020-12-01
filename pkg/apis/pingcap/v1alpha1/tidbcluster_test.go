@@ -42,6 +42,15 @@ func TestPDIsAvailable(t *testing.T) {
 	}
 	tests := []testcase{
 		{
+			name: "pd is nil",
+			update: func(tc *TidbCluster) {
+				tc.Spec.PD = nil
+			},
+			expectFn: func(g *GomegaWithT, b bool) {
+				g.Expect(b).To(BeTrue())
+			},
+		},
+		{
 			name: "pd members count is 1",
 			update: func(tc *TidbCluster) {
 				tc.Status.PD.Members = map[string]PDMember{
@@ -110,6 +119,26 @@ func TestPDIsAvailable(t *testing.T) {
 			},
 			expectFn: func(g *GomegaWithT, b bool) {
 				g.Expect(b).To(BeTrue())
+			},
+		},
+		{
+			name: "pd is unavailable with peermemebrs",
+			update: func(tc *TidbCluster) {
+				// If PeerMembers are left to count, this will be false
+				tc.Status.PD.Members = map[string]PDMember{
+					"pd-0": {Name: "pd-0", Health: true},
+					"pd-1": {Name: "pd-1", Health: false},
+					"pd-2": {Name: "pd-2", Health: false},
+				}
+				tc.Status.PD.PeerMembers = map[string]PDMember{
+					"pd-0": {Name: "pd-0", Health: false},
+					"pd-1": {Name: "pd-1", Health: true},
+					"pd-2": {Name: "pd-2", Health: true},
+				}
+				tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 6}
+			},
+			expectFn: func(g *GomegaWithT, b bool) {
+				g.Expect(b).To(BeFalse())
 			},
 		},
 	}
@@ -194,6 +223,23 @@ func TestTiKVIsAvailable(t *testing.T) {
 			},
 			expectFn: func(g *GomegaWithT, b bool) {
 				g.Expect(b).To(BeTrue())
+			},
+		},
+		{
+			name: "tikv is unavailable with peer stores",
+			// If PeerStores is left to count, return value will be false.
+			update: func(tc *TidbCluster) {
+				tc.Status.TiKV.Stores = map[string]TiKVStore{
+					"tikv-0": {PodName: "tikv-0", State: TiKVStateDown},
+				}
+				tc.Status.TiKV.PeerStores = map[string]TiKVStore{
+					"tikv-0": {PodName: "tikv-0", State: TiKVStateDown},
+					"tikv-1": {PodName: "tikv-1", State: TiKVStateDown},
+				}
+				tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 0}
+			},
+			expectFn: func(g *GomegaWithT, b bool) {
+				g.Expect(b).To(BeFalse())
 			},
 		},
 	}
