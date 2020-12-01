@@ -677,13 +677,13 @@ func (m *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 
 		// In theory, the external tikv can join the cluster, and the operator would only manage the internal tikv.
 		// So we check the store owner to make sure it.
-		if store.Store != nil && pattern.Match([]byte(store.Store.Address)) {
-			stores[status.ID] = *status
-		} else {
-			storePodName := strings.Split(store.Store.Address, ".")[0]
-			storeKind := strings.Split(storePodName, "-")
-			if storeKind[len(storeKind)-2] == label.TiKVLabelVal {
-				peerStores[status.ID] = *status
+		if store.Store != nil {
+			if pattern.Match([]byte(store.Store.Address)) {
+				stores[status.ID] = *status
+			} else {
+				if util.MatchLabelFromStoreAddress(store.Store.Address, label.TiKVLabelVal) {
+					peerStores[status.ID] = *status
+				}
 			}
 		}
 	}
