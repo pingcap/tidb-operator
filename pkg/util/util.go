@@ -346,7 +346,7 @@ func VolumeClaimTemplate(r corev1.ResourceRequirements, metaName string, storage
 	}
 }
 
-func MatchLabelFromStoreAddress(Address string ,label string) bool {
+func MatchLabelFromStoreAddress(Address string, label string) bool {
 	storePodName := strings.Split(Address, ".")[0]
 	storeKind := strings.Split(storePodName, "-")
 	return storeKind[len(storeKind)-2] == label
