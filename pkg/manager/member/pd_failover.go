@@ -56,7 +56,7 @@ func (f *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 		tc.Status.PD.FailureMembers = map[string]v1alpha1.PDFailureMember{}
 	}
 
-	inQuorum, healthCount := isPDInQuorum(tc, f)
+	inQuorum, healthCount := f.isPDInQuorum(tc)
 	if !inQuorum {
 		return fmt.Errorf("TidbCluster: %s/%s's pd cluster is not health: %d/%d, "+
 			"replicas: %d, failureCount: %d, can't failover",
@@ -232,7 +232,7 @@ func setMemberDeleted(tc *v1alpha1.TidbCluster, podName string) {
 	klog.Infof("pd failover: set pd member: %s/%s deleted", tc.GetName(), podName)
 }
 
-func isPDInQuorum(tc *v1alpha1.TidbCluster, f *pdFailover) (bool, int) {
+func (f *pdFailover) isPDInQuorum(tc *v1alpha1.TidbCluster) (bool, int) {
 	healthCount := 0
 	for podName, pdMember := range tc.Status.PD.Members {
 		if pdMember.Health {
