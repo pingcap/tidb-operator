@@ -66,9 +66,8 @@ spec:
             "https://registry-mirror.pingcap.net"
           ]
         }
-        EOF
-        systemctl daemon-reload
-        systemctl restart docker
+      EOF
+        service docker restart
       }
       setup_docker_mirror
       trap clean TERM
