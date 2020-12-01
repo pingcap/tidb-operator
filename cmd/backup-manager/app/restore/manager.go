@@ -160,6 +160,7 @@ func (rm *Manager) performRestore(restore *v1alpha1.Restore, db *sql.DB) error {
 		oldTikvGCTimeDuration, tikvGCTimeDuration time.Duration
 	)
 
+	// set tikv gc life time to prevent gc when restoring data
 	if db != nil {
 		oldTikvGCTime, err = rm.GetTikvGCLifeTime(db)
 		if err != nil {

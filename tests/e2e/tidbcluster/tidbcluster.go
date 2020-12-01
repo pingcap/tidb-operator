@@ -32,6 +32,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
+	"github.com/pingcap/tidb-operator/pkg/monitor/monitor"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	tcconfig "github.com/pingcap/tidb-operator/pkg/util/config"
@@ -654,16 +655,16 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
 		framework.ExpectNoError(err, "Expected get tidbcluster")
 
-		tm := fixture.NewTidbMonitor("e2e-monitor", tc.Namespace, tc, true, true)
+		tm := fixture.NewTidbMonitor("monitor-test", ns, tc, true, true, false)
 		deletePVP := corev1.PersistentVolumeReclaimDelete
 		tm.Spec.PVReclaimPolicy = &deletePVP
-		_, err = cli.PingcapV1alpha1().TidbMonitors(tc.Namespace).Create(tm)
+		_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(tm)
 		framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
 		err = tests.CheckTidbMonitor(tm, cli, c, fw)
 		framework.ExpectNoError(err, "Expected tidbmonitor checked success")
-
-		pvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get("e2e-monitor-monitor", metav1.GetOptions{})
+		pvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get(monitor.GetMonitorFirstPVCName(tm.Name), metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected fetch tidbmonitor pvc success")
+
 		pvName := pvc.Spec.VolumeName
 		pv, err := c.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected fetch tidbmonitor pv success")
@@ -674,7 +675,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				return false, nil
 			}
 			value, existed = pv.Labels[label.InstanceLabelKey]
-			if !existed || value != "e2e-monitor" {
+			if !existed || value != "monitor-test" {
 				return false, nil
 			}
 
@@ -726,7 +727,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		tm, err = cli.PingcapV1alpha1().TidbMonitors(ns).Update(tm)
 		framework.ExpectNoError(err, "update tidbmonitor service portName error")
 
-		pvc, err = c.CoreV1().PersistentVolumeClaims(ns).Get("e2e-monitor-monitor", metav1.GetOptions{})
+		pvc, err = c.CoreV1().PersistentVolumeClaims(ns).Get(monitor.GetMonitorFirstPVCName(tm.Name), metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected fetch tidbmonitor pvc success")
 		pvName = pvc.Spec.VolumeName
 		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
@@ -922,7 +923,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			framework.ExpectNoError(err, "Create TidbCluster error")
 			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err, "Check TidbCluster error")
-			monitor := fixture.NewTidbMonitor("monitor", ns, tc, false, false)
+			monitor := fixture.NewTidbMonitor("monitor", ns, tc, false, false, false)
 
 			// Replace Prometheus into Mock Prometheus
 			a := e2econfig.TestConfig.E2EImage
@@ -1207,7 +1208,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Create TidbCluster error")
 		err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 15*time.Second)
 		framework.ExpectNoError(err, "Check TidbCluster error")
-		monitor := fixture.NewTidbMonitor("monitor", ns, tc, false, false)
+		monitor := fixture.NewTidbMonitor("monitor", ns, tc, false, false, false)
 
 		// Replace Prometheus into Mock Prometheus
 		a := e2econfig.TestConfig.E2EImage

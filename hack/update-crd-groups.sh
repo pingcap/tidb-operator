@@ -45,7 +45,7 @@ hack::ensure_gen_crd_api_references_docs
 
 DOCS_PATH="$ROOT/docs/api-references"
 
-${DOCS_BIN} \
+GOROOT=$(go env GOROOT) ${DOCS_BIN} \
 -config "$DOCS_PATH/config.json" \
 -template-dir "$DOCS_PATH/template" \
 -api-dir "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1" \
