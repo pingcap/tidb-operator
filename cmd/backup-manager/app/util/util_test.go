@@ -200,9 +200,6 @@ func TestConstructBRGlobalOptionsForBackup(t *testing.T) {
 			}
 
 			generateArgs, err := ConstructBRGlobalOptionsForBackup(backup)
-<<<<<<< HEAD
-			if err != nil {
-=======
 			g.Expect(err).To(Succeed())
 			g.Expect(apiequality.Semantic.DeepEqual(generateArgs, expectArgs)).To(Equal(true))
 		})
@@ -265,7 +262,6 @@ func TestGetRemotePath(t *testing.T) {
 			if tt.err {
 				g.Expect(err).To(HaveOccurred())
 				return
->>>>>>> fc4800e7... add local volume support for Backup/Restore using BR (#3517)
 			}
 			g.Expect(apiequality.Semantic.DeepEqual(generateArgs, expectArgs)).To(Equal(true))
 		})

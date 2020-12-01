@@ -397,28 +397,12 @@ func ValidateBackup(backup *v1alpha1.Backup, tikvImage string) error {
 		if backup.Spec.Type == v1alpha1.BackupTypeTable && backup.Spec.BR.Table == "" {
 			return fmt.Errorf("table should be configured for BR with backup type table in spec of %s/%s", ns, name)
 		}
-<<<<<<< HEAD
-=======
 
 		// validate storage providers
->>>>>>> fc4800e7... add local volume support for Backup/Restore using BR (#3517)
 		if backup.Spec.S3 != nil {
 			if err := validateS3(ns, name, backup.Spec.S3); err != nil {
 				return err
 			}
-<<<<<<< HEAD
-			if backup.Spec.S3.Endpoint != "" {
-				u, err := url.Parse(backup.Spec.S3.Endpoint)
-				if err != nil {
-					return fmt.Errorf("invalid endpoint %s is configured for BR in spec of %s/%s", backup.Spec.S3.Endpoint, ns, name)
-				}
-				if u.Scheme == "" {
-					return fmt.Errorf("scheme not found in endpoint %s configured for BR in spec of %s/%s", backup.Spec.S3.Endpoint, ns, name)
-				}
-				if u.Host == "" {
-					return fmt.Errorf("host not found in endpoint %s configured for BR in spec of %s/%s", backup.Spec.S3.Endpoint, ns, name)
-				}
-=======
 		} else if backup.Spec.Gcs != nil {
 			if err := validateGcs(ns, name, backup.Spec.Gcs); err != nil {
 				return err
@@ -426,7 +410,6 @@ func ValidateBackup(backup *v1alpha1.Backup, tikvImage string) error {
 		} else if backup.Spec.Local != nil {
 			if err := validateLocal(ns, name, backup.Spec.Local); err != nil {
 				return err
->>>>>>> fc4800e7... add local volume support for Backup/Restore using BR (#3517)
 			}
 		}
 	}
@@ -466,32 +449,15 @@ func ValidateRestore(restore *v1alpha1.Restore, tikvImage string) error {
 		if restore.Spec.Type == v1alpha1.BackupTypeTable && restore.Spec.BR.Table == "" {
 			return fmt.Errorf("table should be configured for BR with restore type table in spec of %s/%s", ns, name)
 		}
-<<<<<<< HEAD
-=======
 
 		// validate storage providers
->>>>>>> fc4800e7... add local volume support for Backup/Restore using BR (#3517)
 		if restore.Spec.S3 != nil {
 			if err := validateS3(ns, name, restore.Spec.S3); err != nil {
 				return err
 			}
-<<<<<<< HEAD
-			if restore.Spec.S3.Endpoint != "" {
-				u, err := url.Parse(restore.Spec.S3.Endpoint)
-				if err != nil {
-					return fmt.Errorf("invalid endpoint %s is configured for BR in spec of %s/%s", restore.Spec.S3.Endpoint, ns, name)
-				}
-				if u.Scheme == "" {
-					return fmt.Errorf("scheme not found in endpoint %s configured for BR in spec of %s/%s", restore.Spec.S3.Endpoint, ns, name)
-				}
-				if u.Host == "" {
-					return fmt.Errorf("host not found in endpoint %s configured for BR in spec of %s/%s", restore.Spec.S3.Endpoint, ns, name)
-				}
-=======
 		} else if restore.Spec.Gcs != nil {
 			if err := validateGcs(ns, name, restore.Spec.Gcs); err != nil {
 				return err
->>>>>>> fc4800e7... add local volume support for Backup/Restore using BR (#3517)
 			}
 		} else if restore.Spec.Local != nil {
 			if err := validateLocal(ns, name, restore.Spec.Local); err != nil {
