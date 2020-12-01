@@ -6,10 +6,12 @@ metadata:
 spec:
   version: v4.0.8
   timezone: UTC
-  pvReclaimPolicy: Delete
+  pvReclaimPolicy: Retain
+  enableDynamicConfiguration: true
+  configUpdateStrategy: RollingUpdate
   discovery: {}
   # set the cluster domain according to your cluster settings
-  clusterDomain: "cluster.local.cef4dcd8f0de1293ae38f5a991d54586b"
+  clusterDomain: "cluster1.com"
   pd:
     baseImage: pingcap/pd
     replicas: 1

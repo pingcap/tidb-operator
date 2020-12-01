@@ -6,15 +6,17 @@ metadata:
 spec:
   version: v4.0.8
   timezone: UTC
-  pvReclaimPolicy: Delete
+  pvReclaimPolicy: Retain
+  enableDynamicConfiguration: true
+  configUpdateStrategy: RollingUpdate
   discovery: {}
   # use the cluster domain of cluster 2
-  clusterDomain: "cluster.local.c6db6d163dd4de58246ea278c83518e6b"
+  clusterDomain: "cluster2.com"
   cluster:
     # use the cluster info in tidb-cluster-main.yaml
     namespace: pingcap
     name: cluster1
-    clusterDomain: "cluster.local.cef38f5a991d54586b4dcd8f0de1293ae"
+    clusterDomain: "cluster1.com"
   pd:
     baseImage: pingcap/pd
     replicas: 1
