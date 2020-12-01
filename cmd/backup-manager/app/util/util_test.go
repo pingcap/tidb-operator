@@ -263,7 +263,8 @@ func TestGetRemotePath(t *testing.T) {
 				g.Expect(err).To(HaveOccurred())
 				return
 			}
-			g.Expect(apiequality.Semantic.DeepEqual(generateArgs, expectArgs)).To(Equal(true))
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(p).To(Equal(tt.expect))
 		})
 	}
 }
