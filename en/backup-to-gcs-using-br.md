@@ -70,8 +70,8 @@ This document provides examples in which the data of the `demo1` TiDB cluster in
     apiVersion: pingcap.com/v1alpha1
     kind: Backup
     metadata:
-    name: demo1-backup-gcs
-    namespace: test1
+      name: demo1-backup-gcs
+      namespace: test1
     spec:
       # backupType: full
       from:
@@ -248,8 +248,8 @@ The prerequisites for the scheduled full backup is the same with the [prerequisi
     apiVersion: pingcap.com/v1alpha1
     kind: BackupSchedule
     metadata:
-    name: demo1-backup-schedule-gcs
-    namespace: test1
+      name: demo1-backup-schedule-gcs
+      namespace: test1
     spec:
       #maxBackups: 5
       #pause: true

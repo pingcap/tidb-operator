@@ -69,8 +69,8 @@ Ad-hoc 备份支持全量备份与增量备份。Ad-hoc 备份通过创建一个
     apiVersion: pingcap.com/v1alpha1
     kind: Backup
     metadata:
-    name: demo1-backup-gcs
-    namespace: test1
+      name: demo1-backup-gcs
+      namespace: test1
     spec:
       # backupType: full
       # Only needed for TiDB Operator < v1.1.7 or TiDB < v4.0.8
@@ -240,8 +240,8 @@ Ad-hoc 备份支持全量备份与增量备份。Ad-hoc 备份通过创建一个
     apiVersion: pingcap.com/v1alpha1
     kind: BackupSchedule
     metadata:
-    name: demo1-backup-schedule-gcs
-    namespace: test1
+      name: demo1-backup-schedule-gcs
+      namespace: test1
     spec:
       #maxBackups: 5
       #pause: true
