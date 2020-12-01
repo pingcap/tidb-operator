@@ -1091,7 +1091,7 @@ scrape_configs:
 - job_name: lightning
   honor_labels: true
   scrape_interval: 15s
-  scheme: http
+  scheme: https
   kubernetes_sd_configs:
   - api_server: null
     role: pod

@@ -658,7 +658,7 @@ func TestGetMonitorVolumes(t *testing.T) {
 		name     string
 		cluster  v1alpha1.TidbCluster
 		monitor  v1alpha1.TidbMonitor
-		expected []corev1.Volume
+		expected func(volumes []corev1.Volume)
 	}{
 		{
 			name: "basic",
@@ -673,35 +673,39 @@ func TestGetMonitorVolumes(t *testing.T) {
 					Namespace: "ns",
 				},
 			},
-			expected: []corev1.Volume{
-				corev1.Volume{
-					Name: "monitor-data",
-					VolumeSource: corev1.VolumeSource{
-						EmptyDir: &corev1.EmptyDirVolumeSource{},
+			expected: func(volumes []corev1.Volume) {
+				g := NewGomegaWithT(t)
+				g.Expect(volumes).To(Equal([]corev1.Volume{
+					{
+						Name: v1alpha1.TidbMonitorMemberType.String(),
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
 					},
-				},
-				corev1.Volume{
-					Name: "prometheus-config",
-					VolumeSource: corev1.VolumeSource{
-						ConfigMap: &corev1.ConfigMapVolumeSource{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "foo-monitor",
-							},
-							Items: []corev1.KeyToPath{
-								corev1.KeyToPath{
-									Key:  "prometheus-config",
-									Path: "prometheus.yml",
+					{
+						Name: "prometheus-config",
+						VolumeSource: corev1.VolumeSource{
+							ConfigMap: &corev1.ConfigMapVolumeSource{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "foo-monitor",
+								},
+								Items: []corev1.KeyToPath{
+									corev1.KeyToPath{
+										Key:  "prometheus-config",
+										Path: "prometheus.yml",
+									},
 								},
 							},
 						},
 					},
-				},
-				corev1.Volume{
-					Name: "prometheus-rules",
-					VolumeSource: corev1.VolumeSource{
-						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					{
+						Name: "prometheus-rules",
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
 					},
 				},
+				))
 			},
 		},
 		{
@@ -720,51 +724,49 @@ func TestGetMonitorVolumes(t *testing.T) {
 					Name:      "foo",
 					Namespace: "ns",
 				},
-				Spec: v1alpha1.TidbMonitorSpec{
-					Persistent: true,
-				},
 			},
-			expected: []corev1.Volume{
-				corev1.Volume{
-					Name: "monitor-data",
-					VolumeSource: corev1.VolumeSource{
-						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-							ClaimName: "foo-monitor",
-							ReadOnly:  false,
+			expected: func(volumes []corev1.Volume) {
+				g := NewGomegaWithT(t)
+				g.Expect(volumes).To(Equal([]corev1.Volume{
+					{
+						Name: v1alpha1.TidbMonitorMemberType.String(),
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
 						},
 					},
-				},
-				corev1.Volume{
-					Name: "prometheus-config",
-					VolumeSource: corev1.VolumeSource{
-						ConfigMap: &corev1.ConfigMapVolumeSource{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "foo-monitor",
-							},
-							Items: []corev1.KeyToPath{
-								corev1.KeyToPath{
-									Key:  "prometheus-config",
-									Path: "prometheus.yml",
+					{
+						Name: "prometheus-config",
+						VolumeSource: corev1.VolumeSource{
+							ConfigMap: &corev1.ConfigMapVolumeSource{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "foo-monitor",
+								},
+								Items: []corev1.KeyToPath{
+									corev1.KeyToPath{
+										Key:  "prometheus-config",
+										Path: "prometheus.yml",
+									},
 								},
 							},
 						},
 					},
-				},
-				corev1.Volume{
-					Name: "prometheus-rules",
-					VolumeSource: corev1.VolumeSource{
-						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					{
+						Name: "prometheus-rules",
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
 					},
-				},
-				corev1.Volume{
-					Name: "cluster-client-tls",
-					VolumeSource: corev1.VolumeSource{
-						Secret: &corev1.SecretVolumeSource{
-							SecretName:  "foo-cluster-client-secret",
-							DefaultMode: pointer.Int32Ptr(420),
+					{
+						Name: "cluster-client-tls",
+						VolumeSource: corev1.VolumeSource{
+							Secret: &corev1.SecretVolumeSource{
+								SecretName:  "foo-cluster-client-secret",
+								DefaultMode: pointer.Int32Ptr(420),
+							},
 						},
 					},
 				},
+				))
 			},
 		},
 	}
@@ -773,14 +775,8 @@ func TestGetMonitorVolumes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cm, err := getMonitorConfigMap(&tt.cluster, nil, &tt.monitor)
 			g.Expect(err).NotTo(HaveOccurred())
-			sa := getMonitorVolumes(cm, &tt.monitor, &tt.cluster, nil)
-			if tt.expected == nil {
-				g.Expect(sa).To(BeNil())
-				return
-			}
-			if diff := cmp.Diff(&tt.expected, &sa); diff != "" {
-				t.Errorf("unexpected volume configuration (-want, +got): %s", diff)
-			}
+			sa := getMonitorVolumes(cm, &tt.monitor, &tt.cluster)
+			tt.expected(sa)
 		})
 	}
 }
@@ -852,7 +848,7 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 						MountPath: "/etc/prometheus",
 					},
 					corev1.VolumeMount{
-						Name:      "monitor-data",
+						Name:      v1alpha1.TidbMonitorMemberType.String(),
 						ReadOnly:  false,
 						MountPath: "/data",
 					},
@@ -964,7 +960,7 @@ func TestGetMonitorGrafanaContainer(t *testing.T) {
 				Resources: corev1.ResourceRequirements{},
 				VolumeMounts: []corev1.VolumeMount{
 					corev1.VolumeMount{
-						Name:      "monitor-data",
+						Name:      v1alpha1.TidbMonitorMemberType.String(),
 						ReadOnly:  false,
 						MountPath: "/data",
 					},

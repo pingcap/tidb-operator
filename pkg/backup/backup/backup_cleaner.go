@@ -127,6 +127,18 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 		fmt.Sprintf("--backupName=%s", name),
 	}
 
+	var volumes []corev1.Volume
+	var volumeMounts []corev1.VolumeMount
+
+	// mount volumes if specified
+	if backup.Spec.Local != nil {
+		klog.Info("mounting local volumes in Backup.Spec")
+		localVolume := backup.Spec.Local.Volume
+		localVolumeMount := backup.Spec.Local.VolumeMount
+		volumes = append(volumes, localVolume)
+		volumeMounts = append(volumeMounts, localVolumeMount)
+	}
+
 	serviceAccount := constants.DefaultServiceAccountName
 	if backup.Spec.ServiceAccount != "" {
 		serviceAccount = backup.Spec.ServiceAccount
@@ -147,9 +159,11 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					Env:             util.AppendEnvIfPresent(storageEnv, "TZ"),
 					Resources:       backup.Spec.ResourceRequirements,
+					VolumeMounts:    volumeMounts,
 				},
 			},
 			RestartPolicy: corev1.RestartPolicyNever,
+			Volumes:       volumes,
 		},
 	}
 

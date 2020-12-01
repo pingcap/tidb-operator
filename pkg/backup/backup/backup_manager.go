@@ -48,6 +48,9 @@ func NewBackupManager(deps *controller.Dependencies) backup.BackupManager {
 }
 
 func (bm *backupManager) Sync(backup *v1alpha1.Backup) error {
+	// because a finalizer is installed on the backup on creation, when backup is deleted,
+	// backup.DeletionTimestamp will be set, controller will be informed with an onUpdate event,
+	// this is the moment that we can do clean up work.
 	if err := bm.backupCleaner.Clean(backup); err != nil {
 		return err
 	}
@@ -286,6 +289,7 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	return job, "", nil
 }
 
+// makeBackupJob requires that backup.Spec.BR != nil
 func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
@@ -355,7 +359,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	if tc.Spec.TiDB.TLSClient != nil && tc.Spec.TiDB.TLSClient.Enabled && !tc.SkipTLSWhenConnectTiDB() {
 		args = append(args, "--client-tls=true")
 		clientSecretName := util.TiDBClientTLSSecretName(backup.Spec.BR.Cluster)
-		if backup.Spec.From.TLSClientSecretName != nil {
+		if backup.Spec.From != nil && backup.Spec.From.TLSClientSecretName != nil {
 			clientSecretName = *backup.Spec.From.TLSClientSecretName
 		}
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
@@ -386,6 +390,12 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		},
 	})
+
+	// mount volumes if specified
+	if backup.Spec.Local != nil {
+		volumes = append(volumes, backup.Spec.Local.Volume)
+		volumeMounts = append(volumeMounts, backup.Spec.Local.VolumeMount)
+	}
 
 	serviceAccount := constants.DefaultServiceAccountName
 	if backup.Spec.ServiceAccount != "" {

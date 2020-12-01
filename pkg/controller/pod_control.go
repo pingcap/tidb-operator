@@ -138,28 +138,30 @@ func (c *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Po
 	case label.PDLabelVal:
 		if labels[label.MemberIDLabelKey] == "" {
 			// get member id
-			members, err := pdClient.GetMembers()
-			if err != nil {
-				return pod, fmt.Errorf("failed to get pd members info from pd, TidbCluster: %s/%s, err: %v", ns, tcName, err)
-			}
-			for _, member := range members.Members {
-				if member.GetName() == podName {
-					memberID = strconv.FormatUint(member.GetMemberId(), 10)
+			for _, member := range tc.Status.PD.Members {
+				name := strings.Split(member.Name, ".")[0]
+				if podName == name {
+					memberID = member.ID
 					break
 				}
 			}
 		}
-	case label.TiKVLabelVal, label.TiFlashLabelVal:
+	case label.TiKVLabelVal:
 		if labels[label.StoreIDLabelKey] == "" {
 			// get store id
-			stores, err := pdClient.GetStores()
-			if err != nil {
-				return pod, fmt.Errorf("failed to get tikv stores info from pd, TidbCluster: %s/%s, err: %v", ns, tcName, err)
+			for _, store := range tc.Status.TiKV.Stores {
+				if store.PodName == podName {
+					storeID = store.ID
+					break
+				}
 			}
-			for _, store := range stores.Stores {
-				addr := store.Store.GetAddress()
-				if strings.Split(addr, ".")[0] == podName {
-					storeID = strconv.FormatUint(store.Store.GetId(), 10)
+		}
+	case label.TiFlashLabelVal:
+		if labels[label.StoreIDLabelKey] == "" {
+			// get store id
+			for _, store := range tc.Status.TiFlash.Stores {
+				if store.PodName == podName {
+					storeID = store.ID
 					break
 				}
 			}

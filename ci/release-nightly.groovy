@@ -28,66 +28,16 @@ properties([
 podYAML = '''
 apiVersion: v1
 kind: Pod
+metadata:
+  labels:
+    app: tidb-operator-nightly
 spec:
   containers:
   - name: golang-builder
     image: 'golang:latest'
+    command: ["/bin/bash", "-c", "--"]
+    args: ["trap : TERM; sleep infinity & wait"]
 '''
-
-def build(String name, String code, Map resources = e2ePodResources) {
-    podTemplate(yaml: podYAML) {
-        node(POD_LABEL) {
-            container('main') {
-                def WORKSPACE = pwd()
-                def ARTIFACTS = "${WORKSPACE}/go/src/github.com/pingcap/tidb-operator/_artifacts"
-                try {
-                    dir("${WORKSPACE}/go/src/github.com/pingcap/tidb-operator") {
-                        unstash 'tidb-operator'
-                        stage("Debug Info") {
-                            println "debug host: 172.16.5.15"
-                            println "debug command: kubectl -n jenkins-ci exec -ti ${NODE_NAME} bash"
-                            sh """
-                            echo "====== shell env ======"
-                            echo "pwd: \$(pwd)"
-                            env
-                            echo "====== go env ======"
-                            go env
-                            echo "====== docker version ======"
-                            docker version
-                            """
-                        }
-                        stage('Run') {
-                            sh """#!/bin/bash
-                            export GOPATH=${WORKSPACE}/go
-                            export ARTIFACTS=${ARTIFACTS}
-                            export RUNNER_SUITE_NAME=${name}
-                            ${code}
-                            """
-                        }
-                    }
-                } finally {
-                    dir(ARTIFACTS) {
-                        sh """#!/bin/bash
-                        echo "info: change ownerships for jenkins"
-                        chown -R 1000:1000 .
-                        echo "info: print total size of artifacts"
-                        du -sh .
-                        echo "info: list all files"
-                        find .
-                        echo "info: moving all artifacts into a sub-directory"
-                        shopt -s extglob
-                        mkdir ${name}
-                        mv !(${name}) ${name}/
-                        """
-                        archiveArtifacts artifacts: "${name}/**", allowEmptyArchive: true
-                        junit testResults: "${name}/*.xml", allowEmptyResults: true
-                    }
-                }
-            }
-        }
-    }
-}
-
 
 try {
     def GITHASH
@@ -101,10 +51,10 @@ try {
         GIT_REF = env.ghprbActualCommit
     }
 
-    timeout (time: 1, unit: 'HOURS') {
+    timeout (time: 20, unit: 'MINUTES') {
         // use fixed label, so we can reuse previous workers
         // increase version in pod label when we update pod template
-        def buildPodLabel = "tidb-operator-build-v1"
+        def buildPodLabel = "tidb-operator-build-nightly"
         def resources = [
             requests: [
                 cpu: "4",
@@ -112,7 +62,7 @@ try {
             ],
             limits: [
                 cpu: "8",
-                memory: "32G"
+                memory: "16G"
             ],
         ]
         podTemplate(
@@ -123,7 +73,7 @@ try {
             idleMinutes: 180,
         ) {
         node(buildPodLabel) {
-            container("main") {
+            container("golang-builder") {
                 dir("${PROJECT_DIR}") {
 
                     stage('Checkout') {
@@ -166,7 +116,7 @@ try {
                             string(credentialsId: 'UCLOUD_PRIVATE_KEY', variable: 'UCLOUD_PRIVATE_KEY'),
                         ]) {
                             sh """
-                            export UCLOUD_UFILE_PROXY_HOST=mainland-hk.ufileos.com
+                            export UCLOUD_UFILE_PROXY_HOST=pingcap-dev.hk.ufileos.com
                             export UCLOUD_UFILE_BUCKET=pingcap-dev
                             export BUILD_BRANCH=${GIT_REF}
                             export GITHASH=${GITHASH}
