@@ -135,19 +135,19 @@ Refer to [Prerequisites](restore-from-aws-s3-using-br.md#prerequisites).
       namespace: test2
       annotations:
         iam.amazonaws.com/role: arn:aws:iam::123456789012:role/user
-      spec:
-        backupType: full
-        to:
-          host: ${tidb_host}
-          port: ${tidb_port}
-          user: ${tidb_user}
-          secretName: restore-demo2-tidb-secret
-        s3:
-          provider: aws
-          region: ${region}
-          path: s3://${backup_path}
-        # storageClassName: local-storage
-        storageSize: 1Gi
+    spec:
+      backupType: full
+      to:
+        host: ${tidb_host}
+        port: ${tidb_port}
+        user: ${tidb_user}
+        secretName: restore-demo2-tidb-secret
+      s3:
+        provider: aws
+        region: ${region}
+        path: s3://${backup_path}
+      # storageClassName: local-storage
+      storageSize: 1Gi
     ```
 
 + Create the `Restore` CR, and restore the cluster data from Amazon S3 by binding IAM with ServiceAccount to grant permissions:
@@ -167,20 +167,20 @@ Refer to [Prerequisites](restore-from-aws-s3-using-br.md#prerequisites).
     metadata:
       name: demo2-restore
       namespace: test2
-      spec:
-        backupType: full
-        serviceAccount: tidb-backup-manager
-        to:
-          host: ${tidb_host}
-          port: ${tidb_port}
-          user: ${tidb_user}
-          secretName: restore-demo2-tidb-secret
-        s3:
-          provider: aws
-          region: ${region}
-          path: s3://${backup_path}
-        # storageClassName: local-storage
-        storageSize: 1Gi
+    spec:
+      backupType: full
+      serviceAccount: tidb-backup-manager
+      to:
+        host: ${tidb_host}
+        port: ${tidb_port}
+        user: ${tidb_user}
+        secretName: restore-demo2-tidb-secret
+      s3:
+        provider: aws
+        region: ${region}
+        path: s3://${backup_path}
+      # storageClassName: local-storage
+      storageSize: 1Gi
     ```
 
 After creating the `Restore` CR, execute the following command to check the restoration status:

@@ -134,19 +134,19 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/restore-from-s3/']
           namespace: test2
           annotations:
             iam.amazonaws.com/role: arn:aws:iam::123456789012:role/user
-          spec:
-            backupType: full
-            to:
-              host: ${tidb_host}
-              port: ${tidb_port}
-              user: ${tidb_user}
-              secretName: restore-demo2-tidb-secret
-            s3:
-              provider: aws
-              region: ${region}
-              path: s3://${backup_path}
-            # storageClassName: local-storage
-            storageSize: 1Gi
+        spec:
+          backupType: full
+          to:
+            host: ${tidb_host}
+            port: ${tidb_port}
+            user: ${tidb_user}
+            secretName: restore-demo2-tidb-secret
+          s3:
+            provider: aws
+            region: ${region}
+            path: s3://${backup_path}
+          # storageClassName: local-storage
+          storageSize: 1Gi
         ```
 
     + 创建 Restore custom resource (CR)，通过 IAM 绑定 ServiceAccount 授权的方式将指定的备份数据恢复至 TiDB 集群：
@@ -166,20 +166,20 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/restore-from-s3/']
         metadata:
           name: demo2-restore
           namespace: test2
-          spec:
-            backupType: full
-            serviceAccount: tidb-backup-manager
-            to:
-              host: ${tidb_host}
-              port: ${tidb_port}
-              user: ${tidb_user}
-              secretName: restore-demo2-tidb-secret
-            s3:
-              provider: aws
-              region: ${region}
-              path: s3://${backup_path}
-            # storageClassName: local-storage
-            storageSize: 1Gi
+        spec:
+          backupType: full
+          serviceAccount: tidb-backup-manager
+          to:
+            host: ${tidb_host}
+            port: ${tidb_port}
+            user: ${tidb_user}
+            secretName: restore-demo2-tidb-secret
+          s3:
+            provider: aws
+            region: ${region}
+            path: s3://${backup_path}
+          # storageClassName: local-storage
+          storageSize: 1Gi
         ```
 
 2. 创建好 `Restore` CR 后，可通过以下命令查看恢复的状态：
