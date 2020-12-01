@@ -454,15 +454,15 @@ func TestRetainManagedFields(t *testing.T) {
 				Spec: corev1.ServiceSpec{
 					Type: corev1.ServiceTypeNodePort,
 					Ports: []corev1.ServicePort{
-						corev1.ServicePort{
+						{
 							NodePort: 8080,
 						},
-						corev1.ServicePort{
+						{
 							NodePort: 0,
 							Port:     10,
 							Protocol: corev1.ProtocolTCP,
 						},
-						corev1.ServicePort{
+						{
 							NodePort: 30,
 							Port:     20,
 							Protocol: corev1.ProtocolTCP,
@@ -475,7 +475,7 @@ func TestRetainManagedFields(t *testing.T) {
 					Type:                corev1.ServiceTypeNodePort,
 					HealthCheckNodePort: 10,
 					Ports: []corev1.ServicePort{
-						corev1.ServicePort{
+						{
 							NodePort: 9090,
 							Port:     10,
 							Protocol: corev1.ProtocolTCP,
@@ -488,15 +488,15 @@ func TestRetainManagedFields(t *testing.T) {
 					Type:                corev1.ServiceTypeNodePort,
 					HealthCheckNodePort: 10,
 					Ports: []corev1.ServicePort{
-						corev1.ServicePort{
+						{
 							NodePort: 8080,
 						},
-						corev1.ServicePort{
+						{
 							NodePort: 9090,
 							Port:     10,
 							Protocol: corev1.ProtocolTCP,
 						},
-						corev1.ServicePort{
+						{
 							NodePort: 30,
 							Port:     20,
 							Protocol: corev1.ProtocolTCP,
@@ -701,7 +701,7 @@ func TestBuildAdditionalVolumeAndVolumeMount(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			volMounts, volumeClaims := BuildAdditionalVolumeAndVolumeMount(tt.storageVolumes, tt.storageClassName, tt.memberType)
+			volMounts, volumeClaims := BuildStorageVolumeAndVolumeMount(tt.storageVolumes, tt.storageClassName, tt.memberType)
 			tt.testResult(volMounts, volumeClaims)
 		})
 	}
