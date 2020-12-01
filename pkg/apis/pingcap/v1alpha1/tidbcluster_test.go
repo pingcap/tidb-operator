@@ -95,10 +95,11 @@ func TestPDIsAvailable(t *testing.T) {
 		{
 			name: "pd is available with peermemebrs",
 			update: func(tc *TidbCluster) {
+				// If PeerMembers are left to count, this will be false
 				tc.Status.PD.Members = map[string]PDMember{
 					"pd-0": {Name: "pd-0", Health: true},
-					"pd-1": {Name: "pd-1", Health: true},
-					"pd-2": {Name: "pd-2", Health: true},
+					"pd-1": {Name: "pd-1", Health: false},
+					"pd-2": {Name: "pd-2", Health: false},
 				}
 				tc.Status.PD.PeerMembers = map[string]PDMember{
 					"pd-0": {Name: "pd-0", Health: true},
@@ -180,14 +181,16 @@ func TestTiKVIsAvailable(t *testing.T) {
 		},
 		{
 			name: "tikv is available with peer stores",
+			// If PeerStores is left to count, return value will be false.
 			update: func(tc *TidbCluster) {
 				tc.Status.TiKV.Stores = map[string]TiKVStore{
-					"tikv-0": {PodName: "tikv-0", State: TiKVStateUp},
+					"tikv-0": {PodName: "tikv-0", State: TiKVStateDown},
 				}
 				tc.Status.TiKV.PeerStores = map[string]TiKVStore{
 					"tikv-0": {PodName: "tikv-0", State: TiKVStateUp},
+					"tikv-1": {PodName: "tikv-1", State: TiKVStateUp},
 				}
-				tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 2}
+				tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 0}
 			},
 			expectFn: func(g *GomegaWithT, b bool) {
 				g.Expect(b).To(BeTrue())
