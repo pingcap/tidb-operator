@@ -359,7 +359,8 @@ func MatchLabelFromStoreAddress(Address string, label string) bool {
 	storePodName := strings.Split(Address, ".")[0]
 	storeKind := strings.Split(storePodName, "-")
 	return storeKind[len(storeKind)-2] == label
-	
+}
+
 // statefulSetEqual compares the new Statefulset's spec with old Statefulset's last applied config
 func StatefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) bool {
 	// The annotations in old sts may include LastAppliedConfigAnnotation
