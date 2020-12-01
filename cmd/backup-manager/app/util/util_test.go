@@ -176,7 +176,7 @@ func TestConstructBRGlobalOptionsForBackup(t *testing.T) {
 
 			backup.Spec.BR = &v1alpha1.BRConfig{Cluster: "cluster-1", ClusterNamespace: "default"}
 			var expectArgs []string
-			expectArgs = append(expectArgs, "--storage=s3://test1-demo1/")
+			expectArgs = append(expectArgs, "--storage=s3://test1-demo1")
 			expectArgs = append(expectArgs, "--s3.provider=ceph")
 			expectArgs = append(expectArgs, "--s3.endpoint=http://10.0.0.1")
 
@@ -200,9 +200,71 @@ func TestConstructBRGlobalOptionsForBackup(t *testing.T) {
 			}
 
 			generateArgs, err := ConstructBRGlobalOptionsForBackup(backup)
-			if err != nil {
-			}
+			g.Expect(err).To(Succeed())
 			g.Expect(apiequality.Semantic.DeepEqual(generateArgs, expectArgs)).To(Equal(true))
+		})
+	}
+}
+
+func TestGetRemotePath(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	type testcase struct {
+		name   string
+		backup *v1alpha1.Backup
+		expect string
+		err    bool
+	}
+
+	tests := []*testcase{
+		{
+			name: "normal s3",
+			backup: &v1alpha1.Backup{
+				Spec: v1alpha1.BackupSpec{
+					StorageProvider: v1alpha1.StorageProvider{
+						S3: &v1alpha1.S3StorageProvider{
+							Bucket:     "test1-demo1",
+							SecretName: "demo",
+						},
+					},
+				},
+			},
+			expect: "s3://test1-demo1",
+		},
+		{
+			name: "normal gcs",
+			backup: &v1alpha1.Backup{
+				Spec: v1alpha1.BackupSpec{
+					StorageProvider: v1alpha1.StorageProvider{
+						Gcs: &v1alpha1.GcsStorageProvider{
+							Bucket:     "test1-demo1",
+							SecretName: "demo",
+						},
+					},
+				},
+			},
+			expect: "gcs://test1-demo1",
+		},
+		{
+			name: "unknow storage type",
+			backup: &v1alpha1.Backup{
+				Spec: v1alpha1.BackupSpec{
+					StorageProvider: v1alpha1.StorageProvider{},
+				},
+			},
+			err: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p, err := GetStoragePath(tt.backup)
+			if tt.err {
+				g.Expect(err).To(HaveOccurred())
+				return
+			}
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(p).To(Equal(tt.expect))
 		})
 	}
 }
@@ -254,7 +316,7 @@ func TestConstructBRGlobalOptionsForRestore(t *testing.T) {
 
 			restore.Spec.BR = &v1alpha1.BRConfig{Cluster: "cluster-1", ClusterNamespace: "default"}
 			var expectArgs []string
-			expectArgs = append(expectArgs, "--storage=s3://test1-demo1/")
+			expectArgs = append(expectArgs, "--storage=s3://test1-demo1")
 			expectArgs = append(expectArgs, "--s3.provider=ceph")
 			expectArgs = append(expectArgs, "--s3.endpoint=http://10.0.0.1")
 

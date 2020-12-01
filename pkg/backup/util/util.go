@@ -205,16 +205,18 @@ func GenerateStorageCertEnv(ns string, useKMS bool, provider v1alpha1.StoragePro
 			return certEnv, "GcsConfigIsEmpty", errors.New("gcs config is empty")
 		}
 		gcsSecretName := provider.Gcs.SecretName
-		secret, err := kubeCli.CoreV1().Secrets(ns).Get(gcsSecretName, metav1.GetOptions{})
-		if err != nil {
-			err := fmt.Errorf("get gcs secret %s/%s failed, err: %v", ns, gcsSecretName, err)
-			return certEnv, "GetGcsSecretFailed", err
-		}
+		if gcsSecretName != "" {
+			secret, err := kubeCli.CoreV1().Secrets(ns).Get(gcsSecretName, metav1.GetOptions{})
+			if err != nil {
+				err := fmt.Errorf("get gcs secret %s/%s failed, err: %v", ns, gcsSecretName, err)
+				return certEnv, "GetGcsSecretFailed", err
+			}
 
-		keyStr, exist := CheckAllKeysExistInSecret(secret, constants.GcsCredentialsKey)
-		if !exist {
-			err := fmt.Errorf("the gcs secret %s/%s missing some keys %s", ns, gcsSecretName, keyStr)
-			return certEnv, "gcsKeyNotExist", err
+			keyStr, exist := CheckAllKeysExistInSecret(secret, constants.GcsCredentialsKey)
+			if !exist {
+				err := fmt.Errorf("the gcs secret %s/%s missing some keys %s", ns, gcsSecretName, keyStr)
+				return certEnv, "gcsKeyNotExist", err
+			}
 		}
 
 		certEnv, reason, err = GenerateGcsCertEnvVar(provider.Gcs)
@@ -222,9 +224,11 @@ func GenerateStorageCertEnv(ns string, useKMS bool, provider v1alpha1.StoragePro
 		if err != nil {
 			return certEnv, reason, err
 		}
+	case v1alpha1.BackupStorageTypeLocal:
+		return []corev1.EnvVar{}, "", nil
 	default:
 		err := fmt.Errorf("unsupported storage type %s", storageType)
-		return certEnv, "UnsupportedStorageTye", err
+		return certEnv, "UnsupportedStorageType", err
 	}
 	return certEnv, reason, nil
 }
@@ -318,6 +322,9 @@ func GetStorageType(provider v1alpha1.StorageProvider) v1alpha1.BackupStorageTyp
 	if provider.Gcs != nil {
 		return v1alpha1.BackupStorageTypeGcs
 	}
+	if provider.Local != nil {
+		return v1alpha1.BackupStorageTypeLocal
+	}
 	return v1alpha1.BackupStorageTypeUnknown
 }
 
@@ -357,6 +364,7 @@ func validateAccessConfig(config *v1alpha1.TiDBAccessConfig) string {
 	return ""
 }
 
+// ValidateBackup validates backup sepc
 func ValidateBackup(backup *v1alpha1.Backup, tikvImage string) error {
 	ns := backup.Namespace
 	name := backup.Name
@@ -389,21 +397,19 @@ func ValidateBackup(backup *v1alpha1.Backup, tikvImage string) error {
 		if backup.Spec.Type == v1alpha1.BackupTypeTable && backup.Spec.BR.Table == "" {
 			return fmt.Errorf("table should be configured for BR with backup type table in spec of %s/%s", ns, name)
 		}
+
+		// validate storage providers
 		if backup.Spec.S3 != nil {
-			if backup.Spec.S3.Bucket == "" {
-				return fmt.Errorf("bucket should be configured for BR in spec of %s/%s", ns, name)
+			if err := validateS3(ns, name, backup.Spec.S3); err != nil {
+				return err
 			}
-			if backup.Spec.S3.Endpoint != "" {
-				u, err := url.Parse(backup.Spec.S3.Endpoint)
-				if err != nil {
-					return fmt.Errorf("invalid endpoint %s is configured for BR in spec of %s/%s", backup.Spec.S3.Endpoint, ns, name)
-				}
-				if u.Scheme == "" {
-					return fmt.Errorf("scheme not found in endpoint %s configured for BR in spec of %s/%s", backup.Spec.S3.Endpoint, ns, name)
-				}
-				if u.Host == "" {
-					return fmt.Errorf("host not found in endpoint %s configured for BR in spec of %s/%s", backup.Spec.S3.Endpoint, ns, name)
-				}
+		} else if backup.Spec.Gcs != nil {
+			if err := validateGcs(ns, name, backup.Spec.Gcs); err != nil {
+				return err
+			}
+		} else if backup.Spec.Local != nil {
+			if err := validateLocal(ns, name, backup.Spec.Local); err != nil {
+				return err
 			}
 		}
 	}
@@ -443,23 +449,67 @@ func ValidateRestore(restore *v1alpha1.Restore, tikvImage string) error {
 		if restore.Spec.Type == v1alpha1.BackupTypeTable && restore.Spec.BR.Table == "" {
 			return fmt.Errorf("table should be configured for BR with restore type table in spec of %s/%s", ns, name)
 		}
+
+		// validate storage providers
 		if restore.Spec.S3 != nil {
-			if restore.Spec.S3.Bucket == "" {
-				return fmt.Errorf("bucket should be configured for BR in spec of %s/%s", ns, name)
+			if err := validateS3(ns, name, restore.Spec.S3); err != nil {
+				return err
 			}
-			if restore.Spec.S3.Endpoint != "" {
-				u, err := url.Parse(restore.Spec.S3.Endpoint)
-				if err != nil {
-					return fmt.Errorf("invalid endpoint %s is configured for BR in spec of %s/%s", restore.Spec.S3.Endpoint, ns, name)
-				}
-				if u.Scheme == "" {
-					return fmt.Errorf("scheme not found in endpoint %s configured for BR in spec of %s/%s", restore.Spec.S3.Endpoint, ns, name)
-				}
-				if u.Host == "" {
-					return fmt.Errorf("host not found in endpoint %s configured for BR in spec of %s/%s", restore.Spec.S3.Endpoint, ns, name)
-				}
+		} else if restore.Spec.Gcs != nil {
+			if err := validateGcs(ns, name, restore.Spec.Gcs); err != nil {
+				return err
+			}
+		} else if restore.Spec.Local != nil {
+			if err := validateLocal(ns, name, restore.Spec.Local); err != nil {
+				return err
 			}
 		}
+	}
+	return nil
+}
+
+func validateS3(ns, name string, s3 *v1alpha1.S3StorageProvider) error {
+	configuredForBR := fmt.Sprintf("configured for BR in spec of %s/%s", ns, name)
+	if s3.Bucket == "" {
+		return fmt.Errorf("bucket should be %s", configuredForBR)
+	}
+
+	if s3.Endpoint != "" {
+		u, err := url.Parse(s3.Endpoint)
+		if err != nil {
+			return fmt.Errorf("invalid endpoint %s is %s", s3.Endpoint, configuredForBR)
+		}
+		if u.Scheme == "" {
+			return fmt.Errorf("scheme not found in endpoint %s %s", s3.Endpoint, configuredForBR)
+		}
+		if u.Host == "" {
+			return fmt.Errorf("host not found in endpoint %s %s", s3.Endpoint, configuredForBR)
+		}
+	}
+	return nil
+}
+
+func validateGcs(ns, name string, gcs *v1alpha1.GcsStorageProvider) error {
+	configuredForBR := fmt.Sprintf("configured for BR in spec of %s/%s", ns, name)
+	if gcs.ProjectId == "" {
+		return fmt.Errorf("projectId should be %s", configuredForBR)
+	}
+	if gcs.Bucket == "" {
+		return fmt.Errorf("bucket should be %s", configuredForBR)
+	}
+	return nil
+}
+
+func validateLocal(ns, name string, local *v1alpha1.LocalStorageProvider) error {
+	configuredForBR := fmt.Sprintf("configured for BR in spec of %s/%s", ns, name)
+	if local.VolumeMount.Name != local.Volume.Name {
+		return fmt.Errorf("Spec.Local.Volume.Name != Spec.Local.VolumeMount.Name is %s", configuredForBR)
+	}
+	if local.VolumeMount.MountPath == "" {
+		return fmt.Errorf("Empty Spec.Local.VolumeMount.MountPath is %s", configuredForBR)
+	}
+	if strings.Contains(local.VolumeMount.MountPath, ":") {
+		return fmt.Errorf("Spec.Local.VolumeMount.MountPath cannot contain ':' %s", configuredForBR)
 	}
 	return nil
 }

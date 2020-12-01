@@ -883,6 +883,26 @@ spec:
                     - name
                     type: object
                   type: array
+                additionalVolumeMounts:
+                  items:
+                    properties:
+                      mountPath:
+                        type: string
+                      mountPropagation:
+                        type: string
+                      name:
+                        type: string
+                      readOnly:
+                        type: boolean
+                      subPath:
+                        type: string
+                      subPathExpr:
+                        type: string
+                    required:
+                    - name
+                    - mountPath
+                    type: object
+                  type: array
                 additionalVolumes:
                   items:
                     properties:
@@ -2422,6 +2442,26 @@ spec:
                     - name
                     type: object
                   type: array
+                additionalVolumeMounts:
+                  items:
+                    properties:
+                      mountPath:
+                        type: string
+                      mountPropagation:
+                        type: string
+                      name:
+                        type: string
+                      readOnly:
+                        type: boolean
+                      subPath:
+                        type: string
+                      subPathExpr:
+                        type: string
+                    required:
+                    - name
+                    - mountPath
+                    type: object
+                  type: array
                 additionalVolumes:
                   items:
                     properties:
@@ -3930,6 +3970,26 @@ spec:
                         type: string
                     required:
                     - name
+                    type: object
+                  type: array
+                additionalVolumeMounts:
+                  items:
+                    properties:
+                      mountPath:
+                        type: string
+                      mountPropagation:
+                        type: string
+                      name:
+                        type: string
+                      readOnly:
+                        type: boolean
+                      subPath:
+                        type: string
+                      subPathExpr:
+                        type: string
+                    required:
+                    - name
+                    - mountPath
                     type: object
                   type: array
                 additionalVolumes:
@@ -5441,6 +5501,26 @@ spec:
                         type: string
                     required:
                     - name
+                    type: object
+                  type: array
+                additionalVolumeMounts:
+                  items:
+                    properties:
+                      mountPath:
+                        type: string
+                      mountPropagation:
+                        type: string
+                      name:
+                        type: string
+                      readOnly:
+                        type: boolean
+                      subPath:
+                        type: string
+                      subPathExpr:
+                        type: string
+                    required:
+                    - name
+                    - mountPath
                     type: object
                   type: array
                 additionalVolumes:
@@ -7084,6 +7164,26 @@ spec:
                     - name
                     type: object
                   type: array
+                additionalVolumeMounts:
+                  items:
+                    properties:
+                      mountPath:
+                        type: string
+                      mountPropagation:
+                        type: string
+                      name:
+                        type: string
+                      readOnly:
+                        type: boolean
+                      subPath:
+                        type: string
+                      subPathExpr:
+                        type: string
+                    required:
+                    - name
+                    - mountPath
+                    type: object
+                  type: array
                 additionalVolumes:
                   items:
                     properties:
@@ -8613,6 +8713,26 @@ spec:
                     - name
                     type: object
                   type: array
+                additionalVolumeMounts:
+                  items:
+                    properties:
+                      mountPath:
+                        type: string
+                      mountPropagation:
+                        type: string
+                      name:
+                        type: string
+                      readOnly:
+                        type: boolean
+                      subPath:
+                        type: string
+                      subPathExpr:
+                        type: string
+                    required:
+                    - name
+                    - mountPath
+                    type: object
+                  type: array
                 additionalVolumes:
                   items:
                     properties:
@@ -10055,6 +10175,7 @@ spec:
                     type: string
                 type: object
               type: array
+            local: {}
             resources:
               properties:
                 limits:
@@ -10493,6 +10614,7 @@ spec:
                     type: string
                 type: object
               type: array
+            local: {}
             resources:
               properties:
                 limits:
@@ -10980,6 +11102,7 @@ spec:
                         type: string
                     type: object
                   type: array
+                local: {}
                 resources:
                   properties:
                     limits:

@@ -3296,8 +3296,20 @@ tidb-operator built envs.
 </td>
 <td>
 <em>(Optional)</em>
-<p>Additional volumes of component pod. Currently this only
-supports additional volume mounts for sidecar containers.</p>
+<p>Additional volumes of component pod.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>additionalVolumeMounts</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#volumemount-v1-core">
+[]Kubernetes core/v1.VolumeMount
+</a>
+</em>
+</td>
+<td>
+<p>Additional volume mounts of component pod.</p>
 </td>
 </tr>
 <tr>
@@ -4992,6 +5004,58 @@ int32
 <em>(Optional)</em>
 <p>Engines filters tidb-server access paths by engine type.
 imported from v3.1.0</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="localstorageprovider">LocalStorageProvider</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#storageprovider">StorageProvider</a>)
+</p>
+<p>
+<p>LocalStorageProvider defines local storage options, which can be any k8s supported mounted volume</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>volume</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#volume-v1-core">
+Kubernetes core/v1.Volume
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeMount</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#volumemount-v1-core">
+Kubernetes core/v1.VolumeMount
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>prefix</code></br>
+<em>
+string
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>
@@ -9276,6 +9340,7 @@ string
 <a href="#tidbservicespec">TiDBServiceSpec</a>)
 </p>
 <p>
+<p>ServiceSpec specifies the service object in k8s</p>
 </p>
 <table>
 <thead>
@@ -9684,6 +9749,18 @@ S3StorageProvider
 <em>
 <a href="#gcsstorageprovider">
 GcsStorageProvider
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>local</code></br>
+<em>
+<a href="#localstorageprovider">
+LocalStorageProvider
 </a>
 </em>
 </td>
