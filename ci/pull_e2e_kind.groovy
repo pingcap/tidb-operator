@@ -59,6 +59,18 @@ spec:
         docker kill `docker ps -q` || true
         docker system prune -af || true
       }
+      function setup_docker_mirror() {
+        cat > /etc/docker/daemon.json <<EOF
+        {
+          "registry-mirrors": [
+            "https://registry-mirror.pingcap.net"
+          ]
+        }
+        EOF
+        systemctl daemon-reload
+        systemctl restart docker
+      }
+      setup_docker_mirror
       trap clean TERM
       sleep 1d & wait
     # we need privileged mode in order to do docker in docker
@@ -237,7 +249,7 @@ try {
     timeout (time: 2, unit: 'HOURS') {
         // use fixed label, so we can reuse previous workers
         // increase version in pod label when we update pod template
-        def buildPodLabel = "tidb-operator-build-v1"
+        def buildPodLabel = "tidb-operator-build-v1-pingcap-docker-mirror"
         def resources = [
             requests: [
                 cpu: "4",
@@ -307,6 +319,8 @@ try {
                             echo "info: logging into hub.pingcap.net"
                             docker login -u \$USERNAME --password-stdin hub.pingcap.net <<< \$PASSWORD
                             echo "info: build and push images for e2e"
+                            echo "test: show docker daemon config file"
+                            cat /etc/docker/daemon.json
                             NO_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} make docker-push e2e-docker-push
                             echo "info: download binaries for e2e"
                             SKIP_BUILD=y SKIP_IMAGE_BUILD=y SKIP_UP=y SKIP_TEST=y SKIP_DOWN=y ./hack/e2e.sh
