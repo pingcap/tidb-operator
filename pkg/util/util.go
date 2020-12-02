@@ -356,10 +356,10 @@ func VolumeClaimTemplate(r corev1.ResourceRequirements, metaName string, storage
 	}
 }
 
-func MatchLabelFromStoreLabels(Labels []*metapb.StoreLabel, componentLabel string) bool {
+func MatchLabelFromStoreLabels(storeLabels []*metapb.StoreLabel, componentLabel string) bool {
 	storeKind := label.TiKVLabelVal
-	for _, Label := range Labels {
-		if Label.Key == "engine" && Label.Value == label.TiFlashLabelVal {
+	for _, storeLabel := range storeLabels {
+		if storeLabel.Key == "engine" && storeLabel.Value == label.TiFlashLabelVal {
 			storeKind = label.TiFlashLabelVal
 			break
 		}
