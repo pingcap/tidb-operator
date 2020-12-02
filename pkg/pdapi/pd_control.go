@@ -181,6 +181,6 @@ func (fpc *FakePDControl) SetPDClient(namespace Namespace, tcName string, pdclie
 	fpc.defaultPDControl.pdClients[pdClientKey("http", namespace, tcName)] = pdclient
 }
 
-func (fpc *FakePDControl) SetPDClientForCrossRegion(namespace Namespace, tcName string, tcClusterDomain string, pdclient PDClient) {
+func (fpc *FakePDControl) SetPDClientWithClusterDomain(namespace Namespace, tcName string, tcClusterDomain string, pdclient PDClient) {
 	fpc.defaultPDControl.pdClients[ClusterRefpdClientKey("http", namespace, tcName, tcClusterDomain)] = pdclient
 }
