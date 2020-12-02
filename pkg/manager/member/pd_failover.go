@@ -56,16 +56,7 @@ func (f *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 		tc.Status.PD.FailureMembers = map[string]v1alpha1.PDFailureMember{}
 	}
 
-	healthCount := 0
-	for podName, pdMember := range tc.Status.PD.Members {
-		if pdMember.Health {
-			healthCount++
-		} else {
-			f.deps.Recorder.Eventf(tc, apiv1.EventTypeWarning, "PDMemberUnhealthy",
-				"%s(%s) is unhealthy", podName, pdMember.ID)
-		}
-	}
-	inQuorum := healthCount > len(tc.Status.PD.Members)/2
+	inQuorum, healthCount := f.isPDInQuorum(tc)
 	if !inQuorum {
 		return fmt.Errorf("TidbCluster: %s/%s's pd cluster is not health: %d/%d, "+
 			"replicas: %d, failureCount: %d, can't failover",
@@ -241,6 +232,24 @@ func setMemberDeleted(tc *v1alpha1.TidbCluster, pdName string) {
 	failureMember.MemberDeleted = true
 	tc.Status.PD.FailureMembers[pdName] = failureMember
 	klog.Infof("pd failover: set pd member: %s/%s deleted", tc.GetName(), pdName)
+}
+
+func (f *pdFailover) isPDInQuorum(tc *v1alpha1.TidbCluster) (bool, int) {
+	healthCount := 0
+	for podName, pdMember := range tc.Status.PD.Members {
+		if pdMember.Health {
+			healthCount++
+		} else {
+			f.deps.Recorder.Eventf(tc, apiv1.EventTypeWarning, "PDMemberUnhealthy",
+				"%s(%s) is unhealthy", podName, pdMember.ID)
+		}
+	}
+	for _, pdMember := range tc.Status.PD.PeerMembers {
+		if pdMember.Health {
+			healthCount++
+		}
+	}
+	return healthCount > (len(tc.Status.PD.Members)+len(tc.Status.PD.PeerMembers))/2, healthCount
 }
 
 type fakePDFailover struct{}
