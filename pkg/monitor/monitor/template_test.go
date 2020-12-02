@@ -483,7 +483,6 @@ scrape_configs:
 	}
 	content, err := RenderPrometheusConfig(model)
 	g.Expect(err).NotTo(HaveOccurred())
-	print(content)
 	g.Expect(content).Should(Equal(expectedContent))
 }
 
@@ -990,4 +989,40 @@ action: replace
 	bs, err := yaml.Marshal(c)
 	g.Expect(err).NotTo(HaveOccurred())
 	g.Expect(string(bs)).Should(Equal(expectedContent))
+}
+
+func TestMultipleClusterConfigRender(t *testing.T) {
+	g := NewGomegaWithT(t)
+	model := &MonitorConfigModel{
+		ClusterInfos: []ClusterRegexInfo{
+			{Name: "ns1", Namespace: "ns1"},
+			{Name: "ns2", Namespace: "ns2"},
+		},
+		EnableTLSCluster: false,
+		AlertmanagerURL:  "alert-url",
+	}
+	// firsrt validate json generate normally
+	_, err := RenderPrometheusConfig(model)
+	g.Expect(err).NotTo(HaveOccurred())
+	// check scrapeJob number
+	pc := newPrometheusConfig(model)
+	g.Expect(len(pc.ScrapeConfigs)).Should(Equal(20))
+}
+
+func TestMultipleClusterTlsConfigRender(t *testing.T) {
+	g := NewGomegaWithT(t)
+	model := &MonitorConfigModel{
+		ClusterInfos: []ClusterRegexInfo{
+			{Name: "ns1", Namespace: "ns1"},
+			{Name: "ns2", Namespace: "ns2"},
+		},
+		EnableTLSCluster: true,
+		AlertmanagerURL:  "alert-url",
+	}
+	// firsrt validate json generate normally
+	_, err := RenderPrometheusConfig(model)
+	g.Expect(err).NotTo(HaveOccurred())
+	// check scrapeJob number
+	pc := newPrometheusConfig(model)
+	g.Expect(pc.ScrapeConfigs[0].Scheme).Should(Equal("https"))
 }
