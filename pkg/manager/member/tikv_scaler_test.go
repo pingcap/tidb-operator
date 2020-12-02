@@ -227,31 +227,9 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 						},
 					},
 				}
-				tiflashstore := &pdapi.StoreInfo{
-					Store: &pdapi.MetaStore{
-						StateName: v1alpha1.TiKVStateUp,
-						Store: &metapb.Store{
-							Address: fmt.Sprintf("%s-tiflash-0", "basic"),
-							Labels: []*metapb.StoreLabel{
-								{
-									Key:   "engine",
-									Value: "tiflash",
-								},
-							},
-						},
-					},
-				}
-				outsideStore := &pdapi.StoreInfo{
-					Store: &pdapi.MetaStore{
-						StateName: v1alpha1.TiKVStateUp,
-						Store: &metapb.Store{
-							Address: "outsidetikv",
-						},
-					},
-				}
 				return &pdapi.StoresInfo{
-					Count:  7,
-					Stores: []*pdapi.StoreInfo{store, store, store, store, store, tiflashstore, outsideStore},
+					Count:  5,
+					Stores: []*pdapi.StoreInfo{store, store, store, store, store},
 				}, nil
 			}
 		}
@@ -488,6 +466,33 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 						},
 					},
 				}
+				return &pdapi.StoresInfo{
+					Count:  3,
+					Stores: []*pdapi.StoreInfo{store, store, store},
+				}, nil
+			},
+		},
+		{
+			name:          "minimal up(3) stores with tiflash store, scale in TiKV is not allowed",
+			tikvUpgrading: false,
+			storeFun:      minimalUpStoreFun,
+			delStoreErr:   false,
+			hasPVC:        true,
+			storeIDSynced: true,
+			isPodReady:    true,
+			hasSynced:     true,
+			pvcUpdateErr:  false,
+			errExpectFn:   errExpectNil,
+			changed:       false,
+			getStoresFn: func(action *pdapi.Action) (interface{}, error) {
+				store := &pdapi.StoreInfo{
+					Store: &pdapi.MetaStore{
+						StateName: v1alpha1.TiKVStateUp,
+						Store: &metapb.Store{
+							Address: fmt.Sprintf("%s-tikv-0", "basic"),
+						},
+					},
+				}
 				tiflashstore := &pdapi.StoreInfo{
 					Store: &pdapi.MetaStore{
 						StateName: v1alpha1.TiKVStateUp,
@@ -502,17 +507,9 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 						},
 					},
 				}
-				outsideStore := &pdapi.StoreInfo{
-					Store: &pdapi.MetaStore{
-						StateName: v1alpha1.TiKVStateUp,
-						Store: &metapb.Store{
-							Address: "outsidetikv",
-						},
-					},
-				}
 				return &pdapi.StoresInfo{
-					Count:  5,
-					Stores: []*pdapi.StoreInfo{store, store, store, tiflashstore, outsideStore},
+					Count:  4,
+					Stores: []*pdapi.StoreInfo{store, store, store, tiflashstore},
 				}, nil
 			},
 		},
