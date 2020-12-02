@@ -16,7 +16,6 @@ package monitor
 import (
 	"fmt"
 	"path"
-	"strconv"
 	"strings"
 	"time"
 
@@ -272,17 +271,20 @@ func buildAddressRelabelConfigByComponent(kind string) *config.RelabelConfig {
 
 func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorConfigModel, addressRelabelConfig *config.RelabelConfig) []*config.ScrapeConfig {
 	var scrapeJobs []*config.ScrapeConfig
-	for index, cluster := range cmodel.ClusterInfos {
+	for _, cluster := range cmodel.ClusterInfos {
 		clusterTargetPattern, err := config.NewRegexp(cluster.Name)
 		if err != nil {
+			klog.Errorf("generate scrapeJob[%s] clusterName:%s error:%v", jobName, cluster.Name, err)
 			continue
 		}
 		nsTargetPattern, err := config.NewRegexp(cluster.Namespace)
 		if err != nil {
+			klog.Errorf("generate scrapeJob[%s] clusterName:%s namespace:%s error:%v", jobName, cluster.Name, cluster.Namespace, err)
 			continue
 		}
-		scrapeJobs = append(scrapeJobs, &config.ScrapeConfig{
-			JobName:        jobName + "-" + strconv.Itoa(index),
+
+		scrapeconfig := &config.ScrapeConfig{
+			JobName:        fmt.Sprintf("%s-%s", cluster.Name, jobName),
 			ScrapeInterval: model.Duration(15 * time.Second),
 			Scheme:         "http",
 			HonorLabels:    true,
@@ -348,13 +350,6 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 				},
 				{
 					SourceLabels: model.LabelNames{
-						podNameLabel,
-					},
-					Action:      config.RelabelReplace,
-					TargetLabel: "instance",
-				},
-				{
-					SourceLabels: model.LabelNames{
 						instanceLabel,
 					},
 					Action:      config.RelabelReplace,
@@ -366,16 +361,19 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 					},
 					Action:      config.RelabelReplace,
 					TargetLabel: "instance",
-				},
-				{
-					SourceLabels: model.LabelNames{
-						instanceLabel,
-					},
-					Action:      config.RelabelReplace,
-					TargetLabel: "cluster",
 				},
 			},
-		})
+		}
+		if cmodel.EnableTLSCluster {
+			scrapeconfig.HTTPClientConfig.TLSConfig = config.TLSConfig{
+				CAFile:   path.Join(util.ClusterClientTLSPath, corev1.ServiceAccountRootCAKey),
+				CertFile: path.Join(util.ClusterClientTLSPath, corev1.TLSCertKey),
+				KeyFile:  path.Join(util.ClusterClientTLSPath, corev1.TLSPrivateKeyKey),
+			}
+			scrapeconfig.Scheme = "https"
+		}
+		scrapeJobs = append(scrapeJobs, scrapeconfig)
+
 	}
 	return scrapeJobs
 
@@ -424,9 +422,6 @@ func addTlsConfig(pc *config.Config) {
 
 func RenderPrometheusConfig(model *MonitorConfigModel) (string, error) {
 	pc := newPrometheusConfig(model)
-	if model.EnableTLSCluster {
-		addTlsConfig(pc)
-	}
 	if len(model.AlertmanagerURL) > 0 {
 		addAlertManagerUrl(pc, model)
 	}

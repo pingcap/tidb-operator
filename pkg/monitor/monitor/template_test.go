@@ -33,7 +33,7 @@ alerting:
 rule_files:
 - /prometheus-rules/rules/*.rules.yml
 scrape_configs:
-- job_name: pd-0
+- job_name: target-pd
   honor_labels: true
   scrape_interval: 15s
   scheme: http
@@ -71,19 +71,13 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_namespace]
     target_label: kubernetes_namespace
     action: replace
-  - source_labels: [__meta_kubernetes_pod_name]
-    target_label: instance
-    action: replace
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     target_label: cluster
     action: replace
   - source_labels: [__meta_kubernetes_pod_name]
     target_label: instance
     action: replace
-  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
-    target_label: cluster
-    action: replace
-- job_name: tidb-0
+- job_name: target-tidb
   honor_labels: true
   scrape_interval: 15s
   scheme: http
@@ -121,19 +115,13 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_namespace]
     target_label: kubernetes_namespace
     action: replace
-  - source_labels: [__meta_kubernetes_pod_name]
-    target_label: instance
-    action: replace
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     target_label: cluster
     action: replace
   - source_labels: [__meta_kubernetes_pod_name]
     target_label: instance
     action: replace
-  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
-    target_label: cluster
-    action: replace
-- job_name: tikv-0
+- job_name: target-tikv
   honor_labels: true
   scrape_interval: 15s
   scheme: http
@@ -171,19 +159,13 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_namespace]
     target_label: kubernetes_namespace
     action: replace
-  - source_labels: [__meta_kubernetes_pod_name]
-    target_label: instance
-    action: replace
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     target_label: cluster
     action: replace
   - source_labels: [__meta_kubernetes_pod_name]
     target_label: instance
     action: replace
-  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
-    target_label: cluster
-    action: replace
-- job_name: tiflash-0
+- job_name: target-tiflash
   honor_labels: true
   scrape_interval: 15s
   scheme: http
@@ -221,19 +203,13 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_namespace]
     target_label: kubernetes_namespace
     action: replace
-  - source_labels: [__meta_kubernetes_pod_name]
-    target_label: instance
-    action: replace
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     target_label: cluster
     action: replace
   - source_labels: [__meta_kubernetes_pod_name]
     target_label: instance
     action: replace
-  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
-    target_label: cluster
-    action: replace
-- job_name: tiflash-proxy-0
+- job_name: target-tiflash-proxy
   honor_labels: true
   scrape_interval: 15s
   scheme: http
@@ -271,19 +247,13 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_namespace]
     target_label: kubernetes_namespace
     action: replace
-  - source_labels: [__meta_kubernetes_pod_name]
-    target_label: instance
-    action: replace
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     target_label: cluster
     action: replace
   - source_labels: [__meta_kubernetes_pod_name]
     target_label: instance
     action: replace
-  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
-    target_label: cluster
-    action: replace
-- job_name: pump-0
+- job_name: target-pump
   honor_labels: true
   scrape_interval: 15s
   scheme: http
@@ -321,19 +291,13 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_namespace]
     target_label: kubernetes_namespace
     action: replace
-  - source_labels: [__meta_kubernetes_pod_name]
-    target_label: instance
-    action: replace
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     target_label: cluster
     action: replace
   - source_labels: [__meta_kubernetes_pod_name]
     target_label: instance
     action: replace
-  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
-    target_label: cluster
-    action: replace
-- job_name: drainer-0
+- job_name: target-drainer
   honor_labels: true
   scrape_interval: 15s
   scheme: http
@@ -371,19 +335,13 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_namespace]
     target_label: kubernetes_namespace
     action: replace
-  - source_labels: [__meta_kubernetes_pod_name]
-    target_label: instance
-    action: replace
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     target_label: cluster
     action: replace
   - source_labels: [__meta_kubernetes_pod_name]
     target_label: instance
     action: replace
-  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
-    target_label: cluster
-    action: replace
-- job_name: ticdc-0
+- job_name: target-ticdc
   honor_labels: true
   scrape_interval: 15s
   scheme: http
@@ -421,19 +379,13 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_namespace]
     target_label: kubernetes_namespace
     action: replace
-  - source_labels: [__meta_kubernetes_pod_name]
-    target_label: instance
-    action: replace
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     target_label: cluster
     action: replace
   - source_labels: [__meta_kubernetes_pod_name]
     target_label: instance
     action: replace
-  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
-    target_label: cluster
-    action: replace
-- job_name: importer-0
+- job_name: target-importer
   honor_labels: true
   scrape_interval: 15s
   scheme: http
@@ -471,19 +423,13 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_namespace]
     target_label: kubernetes_namespace
     action: replace
-  - source_labels: [__meta_kubernetes_pod_name]
-    target_label: instance
-    action: replace
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     target_label: cluster
     action: replace
   - source_labels: [__meta_kubernetes_pod_name]
     target_label: instance
     action: replace
-  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
-    target_label: cluster
-    action: replace
-- job_name: lightning-0
+- job_name: target-lightning
   honor_labels: true
   scrape_interval: 15s
   scheme: http
@@ -521,17 +467,11 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_namespace]
     target_label: kubernetes_namespace
     action: replace
-  - source_labels: [__meta_kubernetes_pod_name]
-    target_label: instance
-    action: replace
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     target_label: cluster
     action: replace
   - source_labels: [__meta_kubernetes_pod_name]
     target_label: instance
-    action: replace
-  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
-    target_label: cluster
     action: replace
 `
 	model := &MonitorConfigModel{
@@ -543,6 +483,7 @@ scrape_configs:
 	}
 	content, err := RenderPrometheusConfig(model)
 	g.Expect(err).NotTo(HaveOccurred())
+	print(content)
 	g.Expect(content).Should(Equal(expectedContent))
 }
 
@@ -554,10 +495,10 @@ func TestRenderPrometheusConfigTLSEnabled(t *testing.T) {
 rule_files:
 - /prometheus-rules/rules/*.rules.yml
 scrape_configs:
-- job_name: pd-0
+- job_name: target-pd
   honor_labels: true
   scrape_interval: 15s
-  scheme: http
+  scheme: https
   kubernetes_sd_configs:
   - api_server: null
     role: pod
@@ -565,7 +506,10 @@ scrape_configs:
       names:
       - ns1
   tls_config:
-    insecure_skip_verify: true
+    ca_file: /var/lib/cluster-client-tls/ca.crt
+    cert_file: /var/lib/cluster-client-tls/tls.crt
+    key_file: /var/lib/cluster-client-tls/tls.key
+    insecure_skip_verify: false
   relabel_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     regex: target
@@ -592,22 +536,16 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_namespace]
     target_label: kubernetes_namespace
     action: replace
-  - source_labels: [__meta_kubernetes_pod_name]
-    target_label: instance
-    action: replace
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     target_label: cluster
     action: replace
   - source_labels: [__meta_kubernetes_pod_name]
     target_label: instance
     action: replace
-  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
-    target_label: cluster
-    action: replace
-- job_name: tidb-0
+- job_name: target-tidb
   honor_labels: true
   scrape_interval: 15s
-  scheme: http
+  scheme: https
   kubernetes_sd_configs:
   - api_server: null
     role: pod
@@ -615,7 +553,10 @@ scrape_configs:
       names:
       - ns1
   tls_config:
-    insecure_skip_verify: true
+    ca_file: /var/lib/cluster-client-tls/ca.crt
+    cert_file: /var/lib/cluster-client-tls/tls.crt
+    key_file: /var/lib/cluster-client-tls/tls.key
+    insecure_skip_verify: false
   relabel_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     regex: target
@@ -642,22 +583,16 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_namespace]
     target_label: kubernetes_namespace
     action: replace
-  - source_labels: [__meta_kubernetes_pod_name]
-    target_label: instance
-    action: replace
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     target_label: cluster
     action: replace
   - source_labels: [__meta_kubernetes_pod_name]
     target_label: instance
     action: replace
-  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
-    target_label: cluster
-    action: replace
-- job_name: tikv-0
+- job_name: target-tikv
   honor_labels: true
   scrape_interval: 15s
-  scheme: http
+  scheme: https
   kubernetes_sd_configs:
   - api_server: null
     role: pod
@@ -665,7 +600,10 @@ scrape_configs:
       names:
       - ns1
   tls_config:
-    insecure_skip_verify: true
+    ca_file: /var/lib/cluster-client-tls/ca.crt
+    cert_file: /var/lib/cluster-client-tls/tls.crt
+    key_file: /var/lib/cluster-client-tls/tls.key
+    insecure_skip_verify: false
   relabel_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     regex: target
@@ -692,22 +630,16 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_namespace]
     target_label: kubernetes_namespace
     action: replace
-  - source_labels: [__meta_kubernetes_pod_name]
-    target_label: instance
-    action: replace
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     target_label: cluster
     action: replace
   - source_labels: [__meta_kubernetes_pod_name]
     target_label: instance
     action: replace
-  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
-    target_label: cluster
-    action: replace
-- job_name: tiflash-0
+- job_name: target-tiflash
   honor_labels: true
   scrape_interval: 15s
-  scheme: http
+  scheme: https
   kubernetes_sd_configs:
   - api_server: null
     role: pod
@@ -715,7 +647,10 @@ scrape_configs:
       names:
       - ns1
   tls_config:
-    insecure_skip_verify: true
+    ca_file: /var/lib/cluster-client-tls/ca.crt
+    cert_file: /var/lib/cluster-client-tls/tls.crt
+    key_file: /var/lib/cluster-client-tls/tls.key
+    insecure_skip_verify: false
   relabel_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     regex: target
@@ -742,22 +677,16 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_namespace]
     target_label: kubernetes_namespace
     action: replace
-  - source_labels: [__meta_kubernetes_pod_name]
-    target_label: instance
-    action: replace
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     target_label: cluster
     action: replace
   - source_labels: [__meta_kubernetes_pod_name]
     target_label: instance
     action: replace
-  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
-    target_label: cluster
-    action: replace
-- job_name: tiflash-proxy-0
+- job_name: target-tiflash-proxy
   honor_labels: true
   scrape_interval: 15s
-  scheme: http
+  scheme: https
   kubernetes_sd_configs:
   - api_server: null
     role: pod
@@ -765,7 +694,10 @@ scrape_configs:
       names:
       - ns1
   tls_config:
-    insecure_skip_verify: true
+    ca_file: /var/lib/cluster-client-tls/ca.crt
+    cert_file: /var/lib/cluster-client-tls/tls.crt
+    key_file: /var/lib/cluster-client-tls/tls.key
+    insecure_skip_verify: false
   relabel_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     regex: target
@@ -792,22 +724,16 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_namespace]
     target_label: kubernetes_namespace
     action: replace
-  - source_labels: [__meta_kubernetes_pod_name]
-    target_label: instance
-    action: replace
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     target_label: cluster
     action: replace
   - source_labels: [__meta_kubernetes_pod_name]
     target_label: instance
     action: replace
-  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
-    target_label: cluster
-    action: replace
-- job_name: pump-0
+- job_name: target-pump
   honor_labels: true
   scrape_interval: 15s
-  scheme: http
+  scheme: https
   kubernetes_sd_configs:
   - api_server: null
     role: pod
@@ -815,7 +741,10 @@ scrape_configs:
       names:
       - ns1
   tls_config:
-    insecure_skip_verify: true
+    ca_file: /var/lib/cluster-client-tls/ca.crt
+    cert_file: /var/lib/cluster-client-tls/tls.crt
+    key_file: /var/lib/cluster-client-tls/tls.key
+    insecure_skip_verify: false
   relabel_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     regex: target
@@ -842,22 +771,16 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_namespace]
     target_label: kubernetes_namespace
     action: replace
-  - source_labels: [__meta_kubernetes_pod_name]
-    target_label: instance
-    action: replace
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     target_label: cluster
     action: replace
   - source_labels: [__meta_kubernetes_pod_name]
     target_label: instance
     action: replace
-  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
-    target_label: cluster
-    action: replace
-- job_name: drainer-0
+- job_name: target-drainer
   honor_labels: true
   scrape_interval: 15s
-  scheme: http
+  scheme: https
   kubernetes_sd_configs:
   - api_server: null
     role: pod
@@ -865,7 +788,10 @@ scrape_configs:
       names:
       - ns1
   tls_config:
-    insecure_skip_verify: true
+    ca_file: /var/lib/cluster-client-tls/ca.crt
+    cert_file: /var/lib/cluster-client-tls/tls.crt
+    key_file: /var/lib/cluster-client-tls/tls.key
+    insecure_skip_verify: false
   relabel_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     regex: target
@@ -892,22 +818,16 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_namespace]
     target_label: kubernetes_namespace
     action: replace
-  - source_labels: [__meta_kubernetes_pod_name]
-    target_label: instance
-    action: replace
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     target_label: cluster
     action: replace
   - source_labels: [__meta_kubernetes_pod_name]
     target_label: instance
     action: replace
-  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
-    target_label: cluster
-    action: replace
-- job_name: ticdc-0
+- job_name: target-ticdc
   honor_labels: true
   scrape_interval: 15s
-  scheme: http
+  scheme: https
   kubernetes_sd_configs:
   - api_server: null
     role: pod
@@ -915,7 +835,10 @@ scrape_configs:
       names:
       - ns1
   tls_config:
-    insecure_skip_verify: true
+    ca_file: /var/lib/cluster-client-tls/ca.crt
+    cert_file: /var/lib/cluster-client-tls/tls.crt
+    key_file: /var/lib/cluster-client-tls/tls.key
+    insecure_skip_verify: false
   relabel_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     regex: target
@@ -942,22 +865,16 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_namespace]
     target_label: kubernetes_namespace
     action: replace
-  - source_labels: [__meta_kubernetes_pod_name]
-    target_label: instance
-    action: replace
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     target_label: cluster
     action: replace
   - source_labels: [__meta_kubernetes_pod_name]
     target_label: instance
     action: replace
-  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
-    target_label: cluster
-    action: replace
-- job_name: importer-0
+- job_name: target-importer
   honor_labels: true
   scrape_interval: 15s
-  scheme: http
+  scheme: https
   kubernetes_sd_configs:
   - api_server: null
     role: pod
@@ -965,7 +882,10 @@ scrape_configs:
       names:
       - ns1
   tls_config:
-    insecure_skip_verify: true
+    ca_file: /var/lib/cluster-client-tls/ca.crt
+    cert_file: /var/lib/cluster-client-tls/tls.crt
+    key_file: /var/lib/cluster-client-tls/tls.key
+    insecure_skip_verify: false
   relabel_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     regex: target
@@ -992,22 +912,16 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_namespace]
     target_label: kubernetes_namespace
     action: replace
-  - source_labels: [__meta_kubernetes_pod_name]
-    target_label: instance
-    action: replace
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     target_label: cluster
     action: replace
   - source_labels: [__meta_kubernetes_pod_name]
     target_label: instance
     action: replace
-  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
-    target_label: cluster
-    action: replace
-- job_name: lightning-0
+- job_name: target-lightning
   honor_labels: true
   scrape_interval: 15s
-  scheme: http
+  scheme: https
   kubernetes_sd_configs:
   - api_server: null
     role: pod
@@ -1015,7 +929,10 @@ scrape_configs:
       names:
       - ns1
   tls_config:
-    insecure_skip_verify: true
+    ca_file: /var/lib/cluster-client-tls/ca.crt
+    cert_file: /var/lib/cluster-client-tls/tls.crt
+    key_file: /var/lib/cluster-client-tls/tls.key
+    insecure_skip_verify: false
   relabel_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     regex: target
@@ -1042,17 +959,11 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_namespace]
     target_label: kubernetes_namespace
     action: replace
-  - source_labels: [__meta_kubernetes_pod_name]
-    target_label: instance
-    action: replace
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     target_label: cluster
     action: replace
   - source_labels: [__meta_kubernetes_pod_name]
     target_label: instance
-    action: replace
-  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
-    target_label: cluster
     action: replace
 `
 	model := &MonitorConfigModel{
@@ -1063,7 +974,6 @@ scrape_configs:
 	}
 	content, err := RenderPrometheusConfig(model)
 	g.Expect(err).NotTo(HaveOccurred())
-	print(content)
 	g.Expect(content).Should(Equal(expectedContent))
 }
 
