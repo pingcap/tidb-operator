@@ -490,9 +490,17 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 						},
 					},
 				}
+				outsideStore := &pdapi.StoreInfo{
+					Store: &pdapi.MetaStore{
+						StateName: v1alpha1.TiKVStateUp,
+						Store: &metapb.Store{
+							Address: fmt.Sprintf("%s", "outsidetikv"),
+						},
+					},
+				}
 				return &pdapi.StoresInfo{
-					Count:  4,
-					Stores: []*pdapi.StoreInfo{store, store, store, tiflashstore},
+					Count:  5,
+					Stores: []*pdapi.StoreInfo{store, store, store, tiflashstore, outsideStore},
 				}, nil
 			},
 		},
