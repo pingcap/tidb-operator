@@ -58,8 +58,8 @@ spec:
   ## specify pdAddresses will make PD in this TiDB cluster to join another existing PD cluster
   ## PD will then start with arguments --join= instead of --initial-cluster=
   # pdAddresses:
-  #   - cluster1-pd-0.default.svc.cluster.local
-  #   - cluster1-pd-1.default.svc.cluster.local
+  #   - http://cluster1-pd-0.cluster1-pd-peer.default.svc:2379
+  #   - http://cluster1-pd-1.cluster1-pd-peer.default.svc:2379
 
   ## Enable mutual TLS connection between TiDB cluster components
   ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/enable-tls-between-components/
@@ -86,7 +86,7 @@ spec:
 
   ## Use the node network namespace, default to false
   ## Ref: https://kubernetes.io/docs/concepts/policy/pod-security-policy/#host-namespaces
-  # hostNetwork: true
+  hostNetwork: false
 
   ## specify resource requirements for discovery deployment
   # discovery:
@@ -115,7 +115,7 @@ spec:
 
   ## Enable the dynamic configuration feature
   ## Currently only used for tikv --advertise-addr arg
-  # enableDynamicConfiguration: true
+  enableDynamicConfiguration: true
 
   ## set statefulsets' update strategy, can be overwritten by each component settings
   ## defaults to RollingUpdate
