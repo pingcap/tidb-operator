@@ -39,6 +39,23 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/upgrade-tidb-operator/']
     ```shell
     helm upgrade tidb-operator pingcap/tidb-operator --version=${version} -f ${HOME}/tidb-operator/${version}/values-tidb-operator.yaml
     ```
+    
+    Pod 全部正常启动之后，运行以下命令确认 TiDB Operator 镜像版本：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl get po -n tidb-admin -l app.kubernetes.io/instance=tidb-operator -o yaml | grep 'image:.*operator:'
+    ```
+
+    输出类似下方结果则表示升级成功，`${version}`表示要升级到的版本号。
+
+    ```
+    image: pingcap/tidb-operator:${version}
+    image: docker.io/pingcap/tidb-operator:${version}
+    image: pingcap/tidb-operator:${version}
+    image: docker.io/pingcap/tidb-operator:${version}
+    ```
 
     > **注意：**
     >

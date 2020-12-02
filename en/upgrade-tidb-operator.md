@@ -40,6 +40,23 @@ This document describes how to upgrade TiDB Operator and Kubernetes.
     helm upgrade tidb-operator pingcap/tidb-operator --version=${version} -f ${HOME}/tidb-operator/${version}/values-tidb-operator.yaml
     ```
 
+    After all the Pods start normally, execute the following command to check the image of TiDB Operator:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl get po -n tidb-admin -l app.kubernetes.io/instance=tidb-operator -o yaml | grep 'image:.*operator:'
+    ```
+
+    If TiDB Operator is successfully upgraded, the expected output is as follows. `${version}` represents the desired version of TiDB Operator.
+
+    ```
+    image: pingcap/tidb-operator:${version}
+    image: docker.io/pingcap/tidb-operator:${version}
+    image: pingcap/tidb-operator:${version}
+    image: docker.io/pingcap/tidb-operator:${version}
+    ```
+    
     > **Note:**
     >
     > After TiDB Operator is upgraded, the `discovery` deployment in all TiDB clusters will automatically upgrade to the specified version of TiDB Operator.
