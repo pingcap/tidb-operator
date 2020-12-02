@@ -486,8 +486,9 @@ func (tc *TidbCluster) PDIsAvailable() bool {
 	if tc.Spec.PD == nil {
 		return true
 	}
-	lowerLimit := tc.Spec.PD.Replicas/2 + 1
-	if int32(len(tc.Status.PD.Members)) < lowerLimit {
+	lowerLimit := (tc.Spec.PD.Replicas+int32(len(tc.Status.PD.PeerMembers)))/2 + 1
+
+	if int32(len(tc.Status.PD.Members)+len(tc.Status.PD.PeerMembers)) < lowerLimit {
 		return false
 	}
 
@@ -498,11 +499,19 @@ func (tc *TidbCluster) PDIsAvailable() bool {
 		}
 	}
 
+	var peerAvailableNum int32
+	for _, pdMember := range tc.Status.PD.PeerMembers {
+		if pdMember.Health {
+			peerAvailableNum++
+		}
+	}
+
+	availableNum += peerAvailableNum
 	if availableNum < lowerLimit {
 		return false
 	}
 
-	if tc.Status.PD.StatefulSet == nil || tc.Status.PD.StatefulSet.ReadyReplicas < lowerLimit {
+	if tc.Status.PD.StatefulSet == nil || tc.Status.PD.StatefulSet.ReadyReplicas+peerAvailableNum < lowerLimit {
 		return false
 	}
 
@@ -511,7 +520,7 @@ func (tc *TidbCluster) PDIsAvailable() bool {
 
 func (tc *TidbCluster) TiKVIsAvailable() bool {
 	var lowerLimit int32 = 1
-	if int32(len(tc.Status.TiKV.Stores)) < lowerLimit {
+	if int32(len(tc.Status.TiKV.Stores)+len(tc.Status.TiKV.PeerStores)) < lowerLimit {
 		return false
 	}
 
@@ -522,11 +531,20 @@ func (tc *TidbCluster) TiKVIsAvailable() bool {
 		}
 	}
 
+	var peerAvailableNum int32
+	for _, store := range tc.Status.TiKV.PeerStores {
+		if store.State == TiKVStateUp {
+			peerAvailableNum++
+		}
+	}
+
+	availableNum += peerAvailableNum
+
 	if availableNum < lowerLimit {
 		return false
 	}
 
-	if tc.Status.TiKV.StatefulSet == nil || tc.Status.TiKV.StatefulSet.ReadyReplicas < lowerLimit {
+	if tc.Status.TiKV.StatefulSet == nil || tc.Status.TiKV.StatefulSet.ReadyReplicas+peerAvailableNum < lowerLimit {
 		return false
 	}
 
