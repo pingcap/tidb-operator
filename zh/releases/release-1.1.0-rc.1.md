@@ -27,7 +27,7 @@ TiDB Operator version: 1.1.0-rc.1
 - 在 `maxFailoverCount` 设为 `0` 时禁用自动故障转移的功能  ([#2015](https://github.com/pingcap/tidb-operator/pull/2015), [@Yisaer](https://github.com/Yisaer))
 - 支持通过 Terraform 使用TidbCluster 及 TidbMonitor CR 在 ACK 上部署 TiDB 集群  ([#2012](https://github.com/pingcap/tidb-operator/pull/2012), [@DanielZhangQD](https://github.com/DanielZhangQD))
 - 将 TidbCluster 中的 PDConfig 升级到 PD v3.1.0 ([#1928](https://github.com/pingcap/tidb-operator/pull/1928), [@Yisaer](https://github.com/Yisaer))
-- 支持通过 Terraform使用 TidbCluster 及 TidbMonitor CR 在 AWS 上部署 TiDB 集群 ([#2004](https://github.com/pingcap/tidb-operator/pull/2004), [@DanielZhangQD](https://github.com/DanielZhangQD))
+- 支持通过 Terraform 使用 TidbCluster 及 TidbMonitor CR 在 AWS 上部署 TiDB 集群 ([#2004](https://github.com/pingcap/tidb-operator/pull/2004), [@DanielZhangQD](https://github.com/DanielZhangQD))
 - 将 TidbCluster 中的 TidbConfig 升级到 TiDB v3.1.0 ([#1906](https://github.com/pingcap/tidb-operator/pull/1906), [@Yisaer](https://github.com/Yisaer))
 - 允许用户在 TiDB 初始化时为 initContainers 指定资源 ([#1938](https://github.com/pingcap/tidb-operator/pull/1938), [@tfulcrand](https://github.com/tfulcrand))
 - 为 Pump 及 Drainer 添加 TLS 支持 ([#1979](https://github.com/pingcap/tidb-operator/pull/1979), [@weekface](https://github.com/weekface))

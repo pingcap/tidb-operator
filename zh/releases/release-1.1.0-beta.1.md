@@ -80,7 +80,7 @@ TiDB Operator 版本：1.1.0-beta.1
 - 增加对 TiDB Lightning 的支持 ([#817](https://github.com/pingcap/tidb-operator/pull/817), [@tennix](https://github.com/tennix))
 - 支持从指定的定时备份目录还原 TiDB 集群 ([#804](https://github.com/pingcap/tidb-operator/pull/804), [@onlymellb](https://github.com/onlymellb))
 - 修复了一个 `tkctl` 日志中的异常 ([#797](https://github.com/pingcap/tidb-operator/pull/797), [@onlymellb](https://github.com/onlymellb))
-- 在 PD/TiKV/TiDB规范中添加 `hostNetwork` 字段，以便可以在主机网络中运行 TiDB 组件 ([#774](https://github.com/pingcap/tidb-operator/pull/774), [@cofyc](https://github.com/cofyc))
+- 在 PD/TiKV/TiDB 规范中添加 `hostNetwork` 字段，以便可以在主机网络中运行 TiDB 组件 ([#774](https://github.com/pingcap/tidb-operator/pull/774), [@cofyc](https://github.com/cofyc))
 - 当 mdadm 和 RAID 在 GKE 上可用时，使用 mdadm 和 RAID 而不是 LVM ([#789](https://github.com/pingcap/tidb-operator/pull/789), [@gregwebs](https://github.com/gregwebs))
 - 支持通过增加 PVC 存储大小来动态扩展云存储 PV ([#772](https://github.com/pingcap/tidb-operator/pull/772), [@tennix](https://github.com/tennix))
 - 支持为 PD/TiDB/TiKV 节点池配置节点镜像类型 ([#776](https://github.com/pingcap/tidb-operator/pull/776), [@cofyc](https://github.com/cofyc))
