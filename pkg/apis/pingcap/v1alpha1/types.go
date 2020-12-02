@@ -207,6 +207,7 @@ type TidbClusterSpec struct {
 	HostNetwork *bool `json:"hostNetwork,omitempty"`
 
 	// Affinity of TiDB cluster Pods
+	// Will be overwritten by each cluster component's specific affinity setting
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 
@@ -234,10 +235,14 @@ type TidbClusterSpec struct {
 
 	// Services list non-headless services type used in TidbCluster
 	// Deprecated
+	// TODO: really deprecate this in code
 	// +k8s:openapi-gen=false
 	Services []Service `json:"services,omitempty"`
 
 	// EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster
+	// Currently only used for tikv --advertise-addr arg
+	// Deprecated
+	// TODO: rename this into tikv-specific config name
 	// +optional
 	EnableDynamicConfiguration *bool `json:"enableDynamicConfiguration,omitempty"`
 
@@ -727,8 +732,8 @@ type TiDBSlowLogTailerSpec struct {
 	ImagePullPolicy *corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 }
 
-// +k8s:openapi-gen=true
 // ComponentSpec is the base spec of each component, the fields should always accessed by the Basic<Component>Spec() method to respect the cluster-level properties
+// +k8s:openapi-gen=true
 type ComponentSpec struct {
 	// Image of the component, override baseImage and version if present
 	// Deprecated
@@ -754,7 +759,7 @@ type ComponentSpec struct {
 	// +optional
 	HostNetwork *bool `json:"hostNetwork,omitempty"`
 
-	// Affinity of the component. Override the cluster-level one if present
+	// Affinity of the component. Override the cluster-level setting if present
 	// Optional: Defaults to cluster-level setting
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
@@ -1057,14 +1062,14 @@ type TiDBTLSClient struct {
 	Enabled bool `json:"enabled,omitempty"`
 }
 
-// TLSCluster can enable TLS connection between TiDB server components
+// TLSCluster can enable mutual TLS connection between TiDB cluster components
 // https://pingcap.com/docs/stable/how-to/secure/enable-tls-between-components/
 type TLSCluster struct {
-	// Enable mutual TLS authentication among TiDB components
+	// Enable mutual TLS connection between TiDB cluster components
 	// Once enabled, the mutual authentication applies to all components,
 	// and it does not support applying to only part of the components.
 	// The steps to enable this feature:
-	//   1. Generate TiDB server components certificates and a client-side certifiacete for them.
+	//   1. Generate TiDB cluster components certificates and a client-side certifiacete for them.
 	//      There are multiple ways to generate these certificates:
 	//        - user-provided certificates: https://pingcap.com/docs/stable/how-to/secure/generate-self-signed-certificates/
 	//        - use the K8s built-in certificate signing system signed certificates: https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/

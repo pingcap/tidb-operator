@@ -85,7 +85,6 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 		return "", err
 	}
 	keyName := fmt.Sprintf("%s/%s", ns, tcName)
-	pdAddresses := tc.Spec.PDAddresses
 
 	currentCluster := d.clusters[keyName]
 	if currentCluster == nil || currentCluster.resourceVersion != tc.ResourceVersion {
@@ -100,12 +99,16 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	// Should take failover replicas into consideration
 	if len(currentCluster.peers) == int(tc.PDStsDesiredReplicas()) && tc.Spec.Cluster == nil {
 		delete(currentCluster.peers, podName)
+		pdAddresses := tc.Spec.PDAddresses
+		// we should join an existing pd cluster
 		if len(pdAddresses) != 0 {
 			return fmt.Sprintf("--join=%s", strings.Join(pdAddresses, ",")), nil
 		}
+		// we should start a pd cluster that can be accessed from other k8s clusters
 		if len(tc.Spec.ClusterDomain) > 0 {
 			return fmt.Sprintf("--initial-cluster=%s=%s://%s", strArr[0], tc.Scheme(), advertisePeerUrl), nil
 		}
+		// we should start a normal pd cluster
 		return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, tc.Scheme(), advertisePeerUrl), nil
 	}
 

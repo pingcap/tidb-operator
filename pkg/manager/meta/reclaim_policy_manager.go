@@ -81,7 +81,7 @@ func (m *reclaimPolicyManager) sync(kind string, obj runtime.Object, isPVReclaim
 			continue
 		}
 		if isPVReclaimEnabled && len(pvc.Annotations[label.AnnPVCDeferDeleting]) != 0 {
-			// If the pv reclaim function is turned on, and when pv is the candidate pv to be reclaimed, skip patch this pv.
+			// If the pv reclaim setting is turned on, and when pv is a candidate to be reclaimed, skip patch this pv.
 			continue
 		}
 		if l := label.Label(pvc.Labels); kind == v1alpha1.TiDBClusterKind && (!l.IsPD() && !l.IsTiDB() && !l.IsTiKV() && !l.IsTiFlash() && !l.IsPump()) {

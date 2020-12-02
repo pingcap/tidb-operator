@@ -5,33 +5,131 @@ metadata:
   namespace: default
 
 spec:
-  # ** Basic Configuration **
+  #######################
+  # Basic Configuration #
+  #######################
+
+  ## Configuration
   # TiDB cluster version
   version: "v4.0.8"
 
-  # Time zone of TiDB cluster Pods
+  ## Time zone of TiDB cluster Pods
   timezone: UTC
 
-  # ConfigUpdateStrategy determines how the configuration change is applied to the cluster.
-  # UpdateStrategyInPlace will update the ConfigMap of configuration in-place and an extra rolling-update of the
-  # cluster component is needed to reload the configuration change.
-  # UpdateStrategyRollingUpdate will create a new ConfigMap with the new configuration and rolling-update the
-  # related components to use the new ConfigMap, that is, the new configuration will be applied automatically.
-  # support InPlace and RollingUpdate
+  ## serviceAccount specifies service account for PD/TiDB/TiKV/TiFlash/Pump/TiCDC components in this TidbCluster
+  # serviceAccount: advanced-tidb
+
+  ## ConfigUpdateStrategy determines how the configuration change is applied to the cluster.
+  ## Valid values are `InPlace` and `RollingUpdate`
+  ##   UpdateStrategy `InPlace` will update the ConfigMap of configuration in-place and an extra rolling-update of the
+  ##   cluster component is needed to reload the configuration change.
+  ##   UpdateStrategy `RollingUpdate` will create a new ConfigMap with the new configuration and rolling-update the
+  ##   related components to use the new ConfigMap, that is, the new configuration will be applied automatically.
   configUpdateStrategy: RollingUpdate
 
-  # Host networking requested for this pod. Use the host's network namespace
-  hostNetwork: false
-
-  # ImagePullPolicy of TiDB cluster Pods
+  ## ImagePullPolicy of TiDB cluster Pods
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/overview/#container-images
   imagePullPolicy: IfNotPresent
 
-  # Image used to tail slow log and set kernel parameters if necessary, must have `tail` and `sysctl` installed
-  # helper:
-  #   image: busybox:1.31.1
+  ## If secret image repo is used, must set ImagePullSecrets
+  ## Ref: https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod
+  # ImagePullSecrets: secretName
 
-  # Enable the dynamic configuration feature
-  enableDynamicConfiguration: true
+  ## Image used to tail slow log and set kernel parameters if necessary, must have `tail` and `sysctl` installed
+  # helper:
+  #   image: busybox:latest
+
+  ## Enable PVC/PV reclaim for orphan PVC/PV left by statefulset scale-in
+  enablePVReclaim: false
+
+  ## Persistent volume reclaim policy applied to the PVC/PV consumed by the TiDB cluster, default to `Retain`.
+  ## Note that the reclaim policy Recycle may not be supported by some storage types, .e.g. local.
+  ## Ref: https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy/
+  pvReclaimPolicy: Retain
+
+
+  ##########################
+  # Advanced Configuration #
+  ##########################
+
+  ## when deploying a heterogeneous TiDB cluster, you MUST specify the cluster name to join here
+  # cluster: tidb-cluster-to-join
+
+  ## specify pdAddresses will make PD in this TiDB cluster to join another existing PD cluster
+  ## PD will then start with arguments --join= instead of --initial-cluster=
+  # pdAddresses:
+  #   - cluster1-pd-0.default.svc.cluster.local
+  #   - cluster1-pd-1.default.svc.cluster.local
+
+  ## Enable mutual TLS connection between TiDB cluster components
+  ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/enable-tls-between-components/
+  # tlsCluster:
+  #   enabled: true
+
+  ## Annotations of TiDB cluster pods, will be overwritten by component annotation settings
+  # annotations:
+  #   node.kubernetes.io/instance-type: some-vm-type
+  #   topology.kubernetes.io/region: some-region
+
+  ## Specify node labels for pods scheduling, will be overwritten by component nodeSelector settings
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+  # nodeSelector:
+  #   node-role.kubernetes.io/tidb: true
+
+  ## Tolerations are applied to TiDB cluster pods, allowing (but do not require) pods to be scheduled onto nodes with matching taints.
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+  # tolerations:
+  #   - effect: NoSchedule
+  #     key: dedicated
+  #     operator: Equal
+  #     value: tidb
+
+  ## Use the node network namespace, default to false
+  ## Ref: https://kubernetes.io/docs/concepts/policy/pod-security-policy/#host-namespaces
+  # hostNetwork: true
+
+  ## specify resource requirements for discovery deployment
+  # discovery:
+  #   requests:
+  #     memory: 128Mi
+  #     cpu: 100m
+  #   limits:
+  #     memory: 256Mi
+  #     cpu: 200m
+
+  ## if true, this tidb cluster is paused and will not be synced by the controller
+  # paused: false
+
+  ## SchedulerName of TiDB cluster pods
+  ## If specified, the pods will be dispatched by specified scheduler
+  # schedulerName: tidb-scheduler
+
+  ## Affinity for pod scheduling, will be overwritten by each cluster component's specific affinity setting
+  ## Can reference to PD/TiDB/TiKV affinity settings, and ensure only cluster-wise general settings here
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+  # affinity: {}
+
+  ## Specify pod priorities of pods in TidbCluster, default to empty
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
+  # priorityClassName: system-cluster-critical
+
+  ## Enable the dynamic configuration feature
+  ## Currently only used for tikv --advertise-addr arg
+  # enableDynamicConfiguration: true
+
+  ## set statefulsets' update strategy, can be overwritten by each component settings
+  ## defaults to RollingUpdate
+  ## Ref: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#update-strategies
+  # statefulSetUpdateStrategy: RollingUpdate
+
+  ## the FQDN of component services will be ended with clusterDomain here, in case you want to access TiDB clusters
+  ## in different Kubernetes clusters, AKA vpc-native clusters. default to empty
+  # clusterDomain: cluster-domain.example
+
+
+  #################################
+  # Basic TiDB Cluster Components #
+  #################################
 
   pd:
     # Base image of the component
@@ -69,7 +167,7 @@ spec:
     ## Defaults to "" (volume's root).
     # dataSubDir: ""
 
-    ## Affinity for pod assignment
+    ## Affinity for pod scheduling
     ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
     # affinity:
     #   podAntiAffinity:
@@ -84,7 +182,7 @@ spec:
     #                   - tikv
     #           topologyKey: ""
     #         weight: 100
-    ## If you use require affinity, you must ensure that at least 3 nodes are available in the cluster
+    ## If you use requiredDuringSchedulingIgnoredDuringExecution, you must ensure that at least 3 nodes are available in the cluster
     #     requiredDuringSchedulingIgnoredDuringExecution:
     #       - labelSelector:
     #           matchExpressions:
@@ -94,7 +192,7 @@ spec:
     #                 - pd
     #         topologyKey: ""
     
-    ## Specify node labels for pods assignment
+    ## Specify node labels for pods scheduling
     ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
     # nodeSelector:
     #   app.kubernetes.io/component: pd
@@ -125,7 +223,7 @@ spec:
     #   mysqlNodePort: 30020
     #   statusNodePort: 30040
 
-    ## Affinity for pod assignment
+    ## Affinity for pod scheduling
     ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
     # affinity:
     #   podAntiAffinity:
@@ -140,7 +238,7 @@ spec:
     #                   - tikv
     #           topologyKey: ""
     #         weight: 100
-    ## If you use require affinity, you must ensure that at least 3 nodes are available in the cluster
+    ## If you use requiredDuringSchedulingIgnoredDuringExecution, you must ensure that at least 3 nodes are available in the cluster
     #     requiredDuringSchedulingIgnoredDuringExecution:
     #       - labelSelector:
     #           matchExpressions:
@@ -150,7 +248,7 @@ spec:
     #                 - tidb
     #         topologyKey: ""
 
-    ## Specify node labels for pods assignment
+    ## Specify node labels for pods scheduling
     ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
     # nodeSelector:
     #   app.kubernetes.io/component: tidb
@@ -191,7 +289,7 @@ spec:
     ## Defaults to "" (volume's root).
     # dataSubDir: ""
 
-    ## Affinity for pod assignment
+    ## Affinity for pod scheduling
     ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
     # affinity:
     #   podAntiAffinity:
@@ -206,7 +304,7 @@ spec:
     #                   - pd
     #           topologyKey: ""
     #         weight: 100
-    ## If you use require affinity, you must ensure that at least 3 nodes are available in the cluster
+    ## If you use requiredDuringSchedulingIgnoredDuringExecution, you must ensure that at least 3 nodes are available in the cluster
     #     requiredDuringSchedulingIgnoredDuringExecution:
     #       - labelSelector:
     #           matchExpressions:
@@ -216,7 +314,7 @@ spec:
     #                 - tikv
     #         topologyKey: ""
   
-    ## Specify node labels for pods assignment
+    ## Specify node labels for pods scheduling
     ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
     # nodeSelector:
     #   app.kubernetes.io/component: tikv
@@ -254,42 +352,3 @@ spec:
   #         requests:
   #           storage: 1Gi
   #       storageClassName: local-storage
-
-
-  # ** Persistent Volume Reclaim Configuration **
-  # Whether enable PVC reclaim for orphan PVC left by statefulset scale-in
-  enablePVReclaim: false
-
-  ## Persistent volume reclaim policy applied to the PVs that consumed by the TiDB cluster, default is Retain.
-  ## Note that the reclaim policy Recycle may not be supported by some storage types, .e.g. local.
-  ## Ref: https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy/
-  pvReclaimPolicy: Retain
-
-  # ** TLS related Configuration **
-  # Whether enable the TLS connection between TiDB server components
-  # Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/enable-tls-between-components/
-  tlsCluster: {}
-
-
-  ## ** Global Scheduler related Configuration **
-  ## SchedulerName of TiDB cluster Pods
-  # schedulerName: tidb-scheduler
-
-  ## Affinity for pod assignment
-  ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
-  # affinity: {}
-
-  # priorityClassName: system-cluster-critical
-
-  ## Specify node labels for pods assignment
-  ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
-  # nodeSelector:
-  #   "node-role.kubernetes.io/tidb:": "true"
-
-  ## Tolerations are applied to pods, and allow (but do not require) the pods to schedule onto nodes with matching taints.
-  ## Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
-  # tolerations:
-  #   - effect: NoSchedule
-  #     key: dedicated
-  #     operator: Equal
-  #     value: tidb
