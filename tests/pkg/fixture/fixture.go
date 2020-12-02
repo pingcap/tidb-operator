@@ -209,7 +209,7 @@ func GetTidbInitializer(ns, tcName, initName, initPassWDName, initTLSName string
 	}
 }
 
-func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEnabled, persist bool) *v1alpha1.TidbMonitor {
+func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEnabled, persist bool, isRetain bool) *v1alpha1.TidbMonitor {
 	imagePullPolicy := corev1.PullIfNotPresent
 	monitor := &v1alpha1.TidbMonitor{
 		ObjectMeta: metav1.ObjectMeta{
@@ -258,8 +258,11 @@ func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 				},
 				Envs: map[string]string{},
 			},
-			Persistent: persist,
 		},
+	}
+	if isRetain {
+		retainPVP := corev1.PersistentVolumeReclaimRetain
+		monitor.Spec.PVReclaimPolicy = &retainPVP
 	}
 	if grafanaEnabled {
 		monitor.Spec.Grafana = &v1alpha1.GrafanaSpec{
@@ -287,6 +290,7 @@ func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 		storageClassName := "local-storage"
 		monitor.Spec.StorageClassName = &storageClassName
 		monitor.Spec.Storage = "2Gi"
+		monitor.Spec.Persistent = true
 	}
 	return monitor
 }
