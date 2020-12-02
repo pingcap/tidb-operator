@@ -2707,6 +2707,140 @@ func TestPDShouldRecover(t *testing.T) {
 			pods: podsWithFailover,
 			want: true,
 		},
+		{
+			name: "Pod is not ready",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "failover",
+					Namespace: v1.NamespaceDefault,
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: &v1alpha1.PDSpec{
+						Replicas: 3,
+					},
+				},
+				Status: v1alpha1.TidbClusterStatus{
+					PD: v1alpha1.PDStatus{
+						Members: map[string]v1alpha1.PDMember{
+							"failover-pd-0": {
+								Name:   "failover-pd-0",
+								Health: true,
+							},
+							"failover-pd-1": {
+								Name:   "failover-pd-1",
+								Health: true,
+							},
+						},
+						FailureMembers: map[string]v1alpha1.PDFailureMember{
+							"failover-pd-0": {
+								PodName: "failover-pd-0",
+							},
+						},
+					},
+				},
+			},
+			pods: podsWithFailover,
+			want: false,
+		},
+		{
+			name: "shouldn't recover when replicas is more than PD members number",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "failover",
+					Namespace: v1.NamespaceDefault,
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: &v1alpha1.PDSpec{
+						Replicas: 3,
+					},
+				},
+				Status: v1alpha1.TidbClusterStatus{
+					PD: v1alpha1.PDStatus{
+						Members: map[string]v1alpha1.PDMember{
+							"failover-pd-0": {
+								Name:   "failover-pd-0",
+								Health: true,
+							},
+							"failover-pd-1": {
+								Name:   "failover-pd-1",
+								Health: true,
+							},
+						},
+						FailureMembers: map[string]v1alpha1.PDFailureMember{
+							"failover-pd-0": {
+								PodName: "failover-pd-0",
+							},
+						},
+					},
+				},
+			},
+			pods: pods,
+			want: false,
+		},
+		{
+			name: "PD url is misleading",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "failover",
+					Namespace: v1.NamespaceDefault,
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: &v1alpha1.PDSpec{
+						Replicas: 2,
+					},
+				},
+				Status: v1alpha1.TidbClusterStatus{
+					PD: v1alpha1.PDStatus{
+						Members: map[string]v1alpha1.PDMember{
+							"err-pd-0": {
+								Name:   "err-pd-0",
+								Health: true,
+							},
+							"failover-pd-1": {
+								Name:   "failover-pd-1",
+								Health: true,
+							},
+						},
+						FailureMembers: map[string]v1alpha1.PDFailureMember{
+							"failover-pd-0": {
+								PodName: "failover-pd-0",
+							},
+						},
+					},
+				},
+			},
+			pods: []*v1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "failover-pd-0",
+						Namespace: v1.NamespaceDefault,
+					},
+					Status: v1.PodStatus{
+						Conditions: []v1.PodCondition{
+							{
+								Type:   corev1.PodReady,
+								Status: corev1.ConditionTrue,
+							},
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "err-pd-1",
+						Namespace: v1.NamespaceDefault,
+					},
+					Status: v1.PodStatus{
+						Conditions: []v1.PodCondition{
+							{
+								Type:   corev1.PodReady,
+								Status: corev1.ConditionTrue,
+							},
+						},
+					},
+				},
+			},
+			want: false,
+		},
 	}
 
 	for _, tt := range tests {
