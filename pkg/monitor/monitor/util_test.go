@@ -775,7 +775,7 @@ func TestGetMonitorVolumes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cm, err := getMonitorConfigMap(&tt.cluster, nil, &tt.monitor)
 			g.Expect(err).NotTo(HaveOccurred())
-			sa := getMonitorVolumes(cm, &tt.monitor, &tt.cluster)
+			sa := getMonitorVolumes(cm, &tt.monitor, &tt.cluster, nil)
 			tt.expected(sa)
 		})
 	}
@@ -837,7 +837,8 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 				},
 				Env: []corev1.EnvVar{
 					corev1.EnvVar{
-						Name: "TZ",
+						Name:  "TZ",
+						Value: "UTC",
 					},
 				},
 				Resources: corev1.ResourceRequirements{},

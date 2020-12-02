@@ -17,3 +17,4 @@ spec:
   reloader:
     baseImage: pingcap/tidb-monitor-reloader
     version: v1.0.1
+  imagePullPolicy: IfNotPresent

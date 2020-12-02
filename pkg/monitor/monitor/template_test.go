@@ -613,7 +613,8 @@ scrape_configs:
     action: replace
 `
 	model := &MonitorConfigModel{
-		ReleaseTargetRegex: &target,
+		ReleaseTargetRegex:   &target,
+		DMReleaseTargetRegex: &target,
 		ReleaseNamespaces: []string{
 			"ns1",
 			"ns2",
@@ -1234,7 +1235,8 @@ scrape_configs:
     action: replace
 `
 	model := &MonitorConfigModel{
-		ReleaseTargetRegex: &target,
+		ReleaseTargetRegex:   &target,
+		DMReleaseTargetRegex: &target,
 		ReleaseNamespaces: []string{
 			"ns1",
 			"ns2",
