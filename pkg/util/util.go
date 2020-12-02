@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
+	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -355,10 +356,15 @@ func VolumeClaimTemplate(r corev1.ResourceRequirements, metaName string, storage
 	}
 }
 
-func MatchLabelFromStoreAddress(Address string, label string) bool {
-	storePodName := strings.Split(Address, ".")[0]
-	storeKind := strings.Split(storePodName, "-")
-	return len(storeKind) >= 2 && storeKind[len(storeKind)-2] == label
+func MatchLabelFromStoreAddress(Labels []*metapb.StoreLabel, componentLabel string) bool {
+	storeKind := label.TiKVLabelVal
+	for _, Label := range Labels {
+		if Label.Key == "engine" && Label.Value == label.TiFlashLabelVal{
+			storeKind = label.TiFlashLabelVal
+			break
+		}
+	}
+	return storeKind == componentLabel
 }
 
 // statefulSetEqual compares the new Statefulset's spec with old Statefulset's last applied config
