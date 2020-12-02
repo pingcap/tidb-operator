@@ -681,7 +681,7 @@ func (m *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 		if store.Store != nil {
 			if pattern.Match([]byte(store.Store.Address)) {
 				stores[status.ID] = *status
-			} else if util.MatchLabelFromStoreAddress(store.Store.Labels, label.TiKVLabelVal) {
+			} else if util.MatchLabelFromStoreLabels(store.Store.Labels, label.TiKVLabelVal) {
 				peerStores[status.ID] = *status
 			}
 		}

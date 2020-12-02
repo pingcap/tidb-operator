@@ -1522,6 +1522,12 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 							Store: &metapb.Store{
 								Id:      330,
 								Address: fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc.cluster1.com:20160", "test", "test", "default"),
+								Labels: []*metapb.StoreLabel{
+									{
+										Key:   "engine",
+										Value: "tiflash",
+									},
+								},
 							},
 							StateName: "Up",
 						},
