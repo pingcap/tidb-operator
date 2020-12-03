@@ -143,7 +143,7 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 		return err
 	}
 
-	backupFullPath, err := util.GetRemotePath(backup)
+	backupFullPath, err := util.GetStoragePath(backup)
 	if err != nil {
 		errs = append(errs, err)
 		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
@@ -170,6 +170,7 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 		oldTikvGCTimeDuration, tikvGCTimeDuration time.Duration
 	)
 
+	// set tikv gc life time to prevent gc when backing up data
 	if db != nil {
 		oldTikvGCTime, err = bm.GetTikvGCLifeTime(db)
 		if err != nil {
@@ -250,6 +251,7 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 		}
 	}
 
+	// run br binary to do the real job
 	backupErr := bm.backupData(backup)
 
 	if db != nil && oldTikvGCTimeDuration < tikvGCTimeDuration {

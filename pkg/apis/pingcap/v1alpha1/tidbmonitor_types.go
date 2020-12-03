@@ -180,8 +180,9 @@ type TidbClusterRef struct {
 	ClusterDomain string `json:"clusterDomain,omitempty"`
 }
 
-// TODO: sync status
 type TidbMonitorStatus struct {
+	// Storage status for deployment
+	DeploymentStorageStatus *DeploymentStorageStatus `json:"deploymentStorageStatus,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -194,4 +195,10 @@ type TidbMonitorList struct {
 	metav1.ListMeta `json:"metadata"`
 
 	Items []TidbMonitor `json:"items"`
+}
+
+// DeploymentStorageStatus is the storage information of the deployment
+type DeploymentStorageStatus struct {
+	// PV name
+	PvName string `json:"pvName,omitempty"`
 }
