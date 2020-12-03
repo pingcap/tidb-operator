@@ -216,9 +216,12 @@ func (s *tikvScaler) preCheckUpStores(tc *v1alpha1.TidbCluster, podName string) 
 	if err != nil {
 		return false, fmt.Errorf("failed to get stores info in TidbCluster %s/%s", tc.GetNamespace(), tc.GetName())
 	}
+	// filter out TiFlash
 	for _, store := range storesInfo.Stores {
-		if store.Store != nil && store.Store.StateName == v1alpha1.TiKVStateUp {
-			upNumber++
+		if store.Store != nil {
+			if store.Store.StateName == v1alpha1.TiKVStateUp && util.MatchLabelFromStoreLabels(store.Store.Labels, label.TiKVLabelVal) {
+				upNumber++
+			}
 		}
 	}
 
