@@ -19,6 +19,7 @@ import (
 	"time"
 
 	. "github.com/onsi/gomega"
+	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -220,6 +221,9 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 				store := &pdapi.StoreInfo{
 					Store: &pdapi.MetaStore{
 						StateName: v1alpha1.TiKVStateUp,
+						Store: &metapb.Store{
+							Address: fmt.Sprintf("%s-tikv-0", "basic"),
+						},
 					},
 				}
 				return &pdapi.StoresInfo{
@@ -456,11 +460,55 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 				store := &pdapi.StoreInfo{
 					Store: &pdapi.MetaStore{
 						StateName: v1alpha1.TiKVStateUp,
+						Store: &metapb.Store{
+							Address: fmt.Sprintf("%s-tikv-0", "basic"),
+						},
 					},
 				}
 				return &pdapi.StoresInfo{
 					Count:  3,
 					Stores: []*pdapi.StoreInfo{store, store, store},
+				}, nil
+			},
+		},
+		{
+			name:          "minimal up(3) stores with tiflash store, scale in TiKV is not allowed",
+			tikvUpgrading: false,
+			storeFun:      minimalUpStoreFun,
+			delStoreErr:   false,
+			hasPVC:        true,
+			storeIDSynced: true,
+			isPodReady:    true,
+			hasSynced:     true,
+			pvcUpdateErr:  false,
+			errExpectFn:   errExpectNil,
+			changed:       false,
+			getStoresFn: func(action *pdapi.Action) (interface{}, error) {
+				store := &pdapi.StoreInfo{
+					Store: &pdapi.MetaStore{
+						StateName: v1alpha1.TiKVStateUp,
+						Store: &metapb.Store{
+							Address: fmt.Sprintf("%s-tikv-0", "basic"),
+						},
+					},
+				}
+				tiflashstore := &pdapi.StoreInfo{
+					Store: &pdapi.MetaStore{
+						StateName: v1alpha1.TiKVStateUp,
+						Store: &metapb.Store{
+							Address: fmt.Sprintf("%s-tiflash-0", "basic"),
+							Labels: []*metapb.StoreLabel{
+								{
+									Key:   "engine",
+									Value: "tiflash",
+								},
+							},
+						},
+					},
+				}
+				return &pdapi.StoresInfo{
+					Count:  4,
+					Stores: []*pdapi.StoreInfo{store, store, store, tiflashstore},
 				}, nil
 			},
 		},
