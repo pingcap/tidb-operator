@@ -142,6 +142,7 @@ func (bm *BackupManager) ProcessBackup() error {
 	return bm.performBackup(backup.DeepCopy(), db)
 }
 
+// use dumpling to export data
 func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 	started := time.Now()
 

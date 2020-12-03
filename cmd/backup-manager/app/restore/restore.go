@@ -46,11 +46,11 @@ func (ro *Options) restoreData(restore *v1alpha1.Restore) error {
 		args = append(args, fmt.Sprintf("--key=%s", path.Join(util.ClusterClientTLSPath, corev1.TLSPrivateKeyKey)))
 	}
 	// `options` in spec are put to the last because we want them to have higher priority than generated arguments
-	newArgs, err := constructBROptions(restore)
+	dataArgs, err := constructBROptions(restore)
 	if err != nil {
 		return err
 	}
-	args = append(args, newArgs...)
+	args = append(args, dataArgs...)
 
 	var restoreType string
 	if restore.Spec.Type == "" {
