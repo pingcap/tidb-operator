@@ -1,3 +1,4 @@
+{{- if .Values.scheduler.create }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -42,10 +43,8 @@ spec:
         {{- if .Values.features }}
           - -features={{ join "," .Values.features }}
         {{- end }}
-        env:
-        - name: HELM_RELEASE
-          value: {{ .Release.Name }}
       {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
+        env:
         - name: TZ
           value: {{ .Values.timezone | default "UTC" }}
       {{- end }}
@@ -64,10 +63,8 @@ spec:
         - --v={{ .Values.scheduler.logLevel }}
         - --policy-configmap={{ .Values.scheduler.schedulerName }}-policy
         - --policy-configmap-namespace={{ .Release.Namespace }}
-        env:
-        - name: HELM_RELEASE
-          value: {{ .Release.Name }}
       {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
+        env:
         - name: TZ
           value: {{ .Values.timezone | default "UTC" }}
       {{- end }}
@@ -83,3 +80,4 @@ spec:
       tolerations:
 {{ toYaml . | indent 8 }}
     {{- end }}
+{{- end }}
