@@ -17,13 +17,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	tcinformers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
 	v1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	appsinformers "k8s.io/client-go/informers/apps/v1"
 	"k8s.io/client-go/kubernetes"
@@ -36,9 +35,12 @@ import (
 
 // StatefulSetControlInterface defines the interface that uses to create, update, and delete StatefulSets,
 type StatefulSetControlInterface interface {
-	CreateStatefulSet(runtime.Object, *apps.StatefulSet) error
-	UpdateStatefulSet(runtime.Object, *apps.StatefulSet) (*apps.StatefulSet, error)
-	DeleteStatefulSet(runtime.Object, *apps.StatefulSet) error
+	// CreateStatefulSet creates a StatefulSet in a TidbCluster.
+	CreateStatefulSet(*v1alpha1.TidbCluster, *apps.StatefulSet) error
+	// UpdateStatefulSet updates a StatefulSet in a TidbCluster.
+	UpdateStatefulSet(*v1alpha1.TidbCluster, *apps.StatefulSet) (*apps.StatefulSet, error)
+	// DeleteStatefulSet deletes a StatefulSet in a TidbCluster.
+	DeleteStatefulSet(*v1alpha1.TidbCluster, *apps.StatefulSet) error
 }
 
 type realStatefulSetControl struct {
@@ -52,35 +54,21 @@ func NewRealStatefuSetControl(kubeCli kubernetes.Interface, setLister appslister
 	return &realStatefulSetControl{kubeCli, setLister, recorder}
 }
 
-// CreateStatefulSet create a StatefulSet for a controller
-func (c *realStatefulSetControl) CreateStatefulSet(controller runtime.Object, set *apps.StatefulSet) error {
-	controllerMo, ok := controller.(metav1.Object)
-	if !ok {
-		return fmt.Errorf("%T is not a metav1.Object, cannot call setControllerReference", controller)
-	}
-	kind := controller.GetObjectKind().GroupVersionKind().Kind
-	name := controllerMo.GetName()
-	namespace := controllerMo.GetNamespace()
-
-	_, err := c.kubeCli.AppsV1().StatefulSets(namespace).Create(set)
+// CreateStatefulSet create a StatefulSet in a TidbCluster.
+func (sc *realStatefulSetControl) CreateStatefulSet(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
+	_, err := sc.kubeCli.AppsV1().StatefulSets(tc.Namespace).Create(set)
 	// sink already exists errors
 	if apierrors.IsAlreadyExists(err) {
 		return err
 	}
-	c.recordStatefulSetEvent("create", kind, name, controller, set, err)
+	sc.recordStatefulSetEvent("create", tc, set, err)
 	return err
 }
 
 // UpdateStatefulSet update a StatefulSet in a TidbCluster.
-func (c *realStatefulSetControl) UpdateStatefulSet(controller runtime.Object, set *apps.StatefulSet) (*apps.StatefulSet, error) {
-	controllerMo, ok := controller.(metav1.Object)
-	if !ok {
-		return nil, fmt.Errorf("%T is not a metav1.Object, cannot call setControllerReference", controller)
-	}
-	kind := controller.GetObjectKind().GroupVersionKind().Kind
-	name := controllerMo.GetName()
-	namespace := controllerMo.GetNamespace()
-
+func (sc *realStatefulSetControl) UpdateStatefulSet(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*apps.StatefulSet, error) {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
 	setName := set.GetName()
 	setSpec := set.Spec.DeepCopy()
 	var updatedSS *apps.StatefulSet
@@ -88,19 +76,19 @@ func (c *realStatefulSetControl) UpdateStatefulSet(controller runtime.Object, se
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		// TODO: verify if StatefulSet identity(name, namespace, labels) matches TidbCluster
 		var updateErr error
-		updatedSS, updateErr = c.kubeCli.AppsV1().StatefulSets(namespace).Update(set)
+		updatedSS, updateErr = sc.kubeCli.AppsV1().StatefulSets(ns).Update(set)
 		if updateErr == nil {
-			klog.Infof("%s: [%s/%s]'s StatefulSet: [%s/%s] updated successfully", kind, namespace, name, namespace, setName)
+			klog.Infof("TidbCluster: [%s/%s]'s StatefulSet: [%s/%s] updated successfully", ns, tcName, ns, setName)
 			return nil
 		}
-		klog.Errorf("failed to update %s: [%s/%s]'s StatefulSet: [%s/%s], error: %v", kind, namespace, name, namespace, setName, updateErr)
+		klog.Errorf("failed to update TidbCluster: [%s/%s]'s StatefulSet: [%s/%s], error: %v", ns, tcName, ns, setName, updateErr)
 
-		if updated, err := c.setLister.StatefulSets(namespace).Get(setName); err == nil {
+		if updated, err := sc.setLister.StatefulSets(ns).Get(setName); err == nil {
 			// make a copy so we don't mutate the shared cache
 			set = updated.DeepCopy()
 			set.Spec = *setSpec
 		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated StatefulSet %s/%s from lister: %v", namespace, setName, err))
+			utilruntime.HandleError(fmt.Errorf("error getting updated StatefulSet %s/%s from lister: %v", ns, setName, err))
 		}
 		return updateErr
 	})
@@ -109,32 +97,25 @@ func (c *realStatefulSetControl) UpdateStatefulSet(controller runtime.Object, se
 }
 
 // DeleteStatefulSet delete a StatefulSet in a TidbCluster.
-func (c *realStatefulSetControl) DeleteStatefulSet(controller runtime.Object, set *apps.StatefulSet) error {
-	controllerMo, ok := controller.(metav1.Object)
-	if !ok {
-		return fmt.Errorf("%T is not a metav1.Object, cannot call setControllerReference", controller)
-	}
-	kind := controller.GetObjectKind().GroupVersionKind().Kind
-	name := controllerMo.GetName()
-	namespace := controllerMo.GetNamespace()
-
-	err := c.kubeCli.AppsV1().StatefulSets(namespace).Delete(set.Name, nil)
-	c.recordStatefulSetEvent("delete", kind, name, controller, set, err)
+func (sc *realStatefulSetControl) DeleteStatefulSet(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
+	err := sc.kubeCli.AppsV1().StatefulSets(tc.Namespace).Delete(set.Name, nil)
+	sc.recordStatefulSetEvent("delete", tc, set, err)
 	return err
 }
 
-func (c *realStatefulSetControl) recordStatefulSetEvent(verb, kind, name string, object runtime.Object, set *apps.StatefulSet, err error) {
+func (sc *realStatefulSetControl) recordStatefulSetEvent(verb string, tc *v1alpha1.TidbCluster, set *apps.StatefulSet, err error) {
+	tcName := tc.Name
 	setName := set.Name
 	if err == nil {
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
-		message := fmt.Sprintf("%s StatefulSet %s in %s %s successful",
-			strings.ToLower(verb), setName, kind, name)
-		c.recorder.Event(object, corev1.EventTypeNormal, reason, message)
+		message := fmt.Sprintf("%s StatefulSet %s in TidbCluster %s successful",
+			strings.ToLower(verb), setName, tcName)
+		sc.recorder.Event(tc, corev1.EventTypeNormal, reason, message)
 	} else {
 		reason := fmt.Sprintf("Failed%s", strings.Title(verb))
-		message := fmt.Sprintf("%s StatefulSet %s in %s %s failed error: %s",
-			strings.ToLower(verb), setName, kind, name, err)
-		c.recorder.Event(object, corev1.EventTypeWarning, reason, message)
+		message := fmt.Sprintf("%s StatefulSet %s in TidbCluster %s failed error: %s",
+			strings.ToLower(verb), setName, tcName, err)
+		sc.recorder.Event(tc, corev1.EventTypeWarning, reason, message)
 	}
 }
 
@@ -167,70 +148,63 @@ func NewFakeStatefulSetControl(setInformer appsinformers.StatefulSetInformer, tc
 }
 
 // SetCreateStatefulSetError sets the error attributes of createStatefulSetTracker
-func (c *FakeStatefulSetControl) SetCreateStatefulSetError(err error, after int) {
-	c.createStatefulSetTracker.SetError(err).SetAfter(after)
+func (ssc *FakeStatefulSetControl) SetCreateStatefulSetError(err error, after int) {
+	ssc.createStatefulSetTracker.SetError(err).SetAfter(after)
 }
 
 // SetUpdateStatefulSetError sets the error attributes of updateStatefulSetTracker
-func (c *FakeStatefulSetControl) SetUpdateStatefulSetError(err error, after int) {
-	c.updateStatefulSetTracker.SetError(err).SetAfter(after)
+func (ssc *FakeStatefulSetControl) SetUpdateStatefulSetError(err error, after int) {
+	ssc.updateStatefulSetTracker.SetError(err).SetAfter(after)
 }
 
 // SetDeleteStatefulSetError sets the error attributes of deleteStatefulSetTracker
-func (c *FakeStatefulSetControl) SetDeleteStatefulSetError(err error, after int) {
-	c.deleteStatefulSetTracker.SetError(err).SetAfter(after)
+func (ssc *FakeStatefulSetControl) SetDeleteStatefulSetError(err error, after int) {
+	ssc.deleteStatefulSetTracker.SetError(err).SetAfter(after)
 }
 
-func (c *FakeStatefulSetControl) SetStatusChange(fn func(*apps.StatefulSet)) {
-	c.statusChange = fn
+func (ssc *FakeStatefulSetControl) SetStatusChange(fn func(*apps.StatefulSet)) {
+	ssc.statusChange = fn
 }
 
 // CreateStatefulSet adds the statefulset to SetIndexer
-func (c *FakeStatefulSetControl) CreateStatefulSet(controller runtime.Object, set *apps.StatefulSet) error {
+func (ssc *FakeStatefulSetControl) CreateStatefulSet(_ *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
 	defer func() {
-		c.createStatefulSetTracker.Inc()
-		c.statusChange = nil
+		ssc.createStatefulSetTracker.Inc()
+		ssc.statusChange = nil
 	}()
-	controllerMo, ok := controller.(metav1.Object)
-	if !ok {
-		return fmt.Errorf("%T is not a metav1.Object, cannot call CreateStatefulSet", controller)
-	}
-	namespace := controllerMo.GetNamespace()
-	if namespace != set.Namespace {
-		return fmt.Errorf("%T is not match sts namespace:%s", controller, set.Namespace)
-	}
-	if c.createStatefulSetTracker.ErrorReady() {
-		defer c.createStatefulSetTracker.Reset()
-		return c.createStatefulSetTracker.GetError()
+
+	if ssc.createStatefulSetTracker.ErrorReady() {
+		defer ssc.createStatefulSetTracker.Reset()
+		return ssc.createStatefulSetTracker.GetError()
 	}
 
-	if c.statusChange != nil {
-		c.statusChange(set)
+	if ssc.statusChange != nil {
+		ssc.statusChange(set)
 	}
 
-	return c.SetIndexer.Add(set)
+	return ssc.SetIndexer.Add(set)
 }
 
 // UpdateStatefulSet updates the statefulset of SetIndexer
-func (c *FakeStatefulSetControl) UpdateStatefulSet(_ runtime.Object, set *apps.StatefulSet) (*apps.StatefulSet, error) {
+func (ssc *FakeStatefulSetControl) UpdateStatefulSet(_ *v1alpha1.TidbCluster, set *apps.StatefulSet) (*apps.StatefulSet, error) {
 	defer func() {
-		c.updateStatefulSetTracker.Inc()
-		c.statusChange = nil
+		ssc.updateStatefulSetTracker.Inc()
+		ssc.statusChange = nil
 	}()
 
-	if c.updateStatefulSetTracker.ErrorReady() {
-		defer c.updateStatefulSetTracker.Reset()
-		return nil, c.updateStatefulSetTracker.GetError()
+	if ssc.updateStatefulSetTracker.ErrorReady() {
+		defer ssc.updateStatefulSetTracker.Reset()
+		return nil, ssc.updateStatefulSetTracker.GetError()
 	}
 
-	if c.statusChange != nil {
-		c.statusChange(set)
+	if ssc.statusChange != nil {
+		ssc.statusChange(set)
 	}
-	return set, c.SetIndexer.Update(set)
+	return set, ssc.SetIndexer.Update(set)
 }
 
 // DeleteStatefulSet deletes the statefulset of SetIndexer
-func (c *FakeStatefulSetControl) DeleteStatefulSet(_ runtime.Object, _ *apps.StatefulSet) error {
+func (ssc *FakeStatefulSetControl) DeleteStatefulSet(_ *v1alpha1.TidbCluster, _ *apps.StatefulSet) error {
 	return nil
 }
 
