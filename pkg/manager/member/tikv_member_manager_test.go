@@ -1483,7 +1483,7 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 			},
 		},
 		{
-			name: "get tiflash Store and PeerStores without TiFlash Stores",
+			name: "get TiKV Store and PeerStores without TiFlash Stores",
 			updateTC: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.ClusterDomain = "cluster1.com"
 			},
