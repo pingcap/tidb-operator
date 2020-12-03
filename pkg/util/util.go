@@ -24,6 +24,7 @@ import (
 	"k8s.io/klog"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
+	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -348,4 +349,15 @@ func VolumeClaimTemplate(r corev1.ResourceRequirements, metaName string, storage
 			Resources:        r,
 		},
 	}
+}
+
+func MatchLabelFromStoreLabels(storeLabels []*metapb.StoreLabel, componentLabel string) bool {
+	storeKind := label.TiKVLabelVal
+	for _, storeLabel := range storeLabels {
+		if storeLabel.Key == "engine" && storeLabel.Value == label.TiFlashLabelVal {
+			storeKind = label.TiFlashLabelVal
+			break
+		}
+	}
+	return storeKind == componentLabel
 }
