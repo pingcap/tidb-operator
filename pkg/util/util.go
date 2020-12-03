@@ -361,4 +361,3 @@ func MatchLabelFromStoreLabels(storeLabels []*metapb.StoreLabel, componentLabel 
 	}
 	return storeKind == componentLabel
 }
-
