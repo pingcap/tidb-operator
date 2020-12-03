@@ -217,26 +217,17 @@ func (d *tidbDiscovery) VerifyPDEndpoint(advertisePeerURL string) (string, error
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
-	_, err := http.Get(advertisePeerURL)
-	fmt.Println(err)
-	if err != nil {
+	data, _ := http.Get(advertisePeerURL)
+	if data == nil || data.StatusCode != 200 {
 		ns := os.Getenv("MY_POD_NAMESPACE")
-		// TODO: compatitable with tls
-		// schema := strings.Split(advertisePeerURL,"://")[0]
-		// if schema == "https"{
-
-		// }else{
-
-		// }
 		hostArrs := strings.Split(advertisePeerURL, "-pd")
 		if len(hostArrs) >= 2 {
 			tcName := hostArrs[0]
-			fmt.Println(tcName)
 			tc, _ := d.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 			if len(tc.Status.PD.PeerMembers) > 0 {
 				for _, pdMember := range tc.Status.PD.PeerMembers {
-					_, err := http.Get(pdMember.ClientURL)
-					if err == nil {
+					data, _ = http.Get(pdMember.ClientURL)
+					if data != nil && data.StatusCode == 200 {
 						return pdMember.ClientURL, nil
 					}
 				}
