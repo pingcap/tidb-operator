@@ -88,7 +88,7 @@ controllerManager:
   #- k2!=v2
 
 scheduler:
-  create: false
+  create: true
   # With rbac.create=false, the user is responsible for creating this account
   # With rbac.create=true, this service account will be created
   # Also see rbac.create and clusterScoped
