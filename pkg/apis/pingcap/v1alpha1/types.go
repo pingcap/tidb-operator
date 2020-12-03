@@ -799,9 +799,8 @@ type ComponentSpec struct {
 	ConfigUpdateStrategy *ConfigUpdateStrategy `json:"configUpdateStrategy,omitempty"`
 
 	// List of environment variables to set in the container, like
-	// v1.Container.Env.
-	// Note that following env names cannot be used and may be overrided by
-	// tidb-operator built envs.
+	// v1.Container.Env
+	// Note that the following env names cannot be used and may be overrided by TiDB Operator builtin envs
 	// - NAMESPACE
 	// - TZ
 	// - SERVICE_NAME
@@ -871,8 +870,9 @@ type ServiceSpec struct {
 	// If specified and supported by the platform, this will restrict traffic through the cloud-provider
 	// load-balancer will be restricted to the specified client IPs. This field will be ignored if the
 	// cloud-provider does not support the feature."
-	// More info: https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/
+	// More info: https://kubernetes.io/docs/concepts/services-networking/service/#aws-nlb-support
 	// Optional: Defaults to omitted
+	// NOTE: it seems like this is not a mainstream option, maybe we should reevaluate whether to deprecate this
 	// +optional
 	LoadBalancerSourceRanges []string `json:"loadBalancerSourceRanges,omitempty"`
 }
