@@ -138,10 +138,8 @@ func (pdc *defaultPDControl) GetClusterRefPDClientMultiClusterRetry(namespace Na
 
 	var tlsConfig *tls.Config
 	var err error
-	var scheme = "http"
 
 	if tlsEnabled {
-		scheme = "https"
 		tlsConfig, err = GetTLSConfig(pdc.kubeCli, namespace, tcName, util.ClusterClientTLSSecretName(tcName))
 		if err != nil {
 			klog.Errorf("Unable to get tls config for tidb cluster %q, pd client may not work: %v", tcName, err)
@@ -150,9 +148,7 @@ func (pdc *defaultPDControl) GetClusterRefPDClientMultiClusterRetry(namespace Na
 
 		return NewPDClient(peerURL, DefaultTimeout, tlsConfig)
 	}
-	key := ClusterRefpdClientKey(scheme, namespace, tcName, clusterDomain)
-	pdc.pdClients[key] = NewPDClient(peerURL, DefaultTimeout, nil)
-	return pdc.pdClients[key]
+	return NewPDClient(peerURL, DefaultTimeout, nil)
 }
 
 // pdClientKey returns the pd client key
