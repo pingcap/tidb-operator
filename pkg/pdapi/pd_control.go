@@ -34,7 +34,7 @@ type PDControlInterface interface {
 	// GetClusterRefPDClient provides PDClient of the tidb cluster.
 	GetClusterRefPDClient(namespace Namespace, tcName string, clusterDomain string, tlsEnabled bool) PDClient
 	// GetClusterRefPDClientMultiClusterRetry provides PD etcd Client of the tidb cluster.
-	GetClusterRefPDClientMultiClusterRetry(namespace Namespace, tcName string, clusterDomain string, tlsEnabled bool, peerURL string) PDClient
+	GetClusterRefPDClientMultiClusterRetry(namespace Namespace, tcName string, clusterDomain string, tlsEnabled bool, peerURL string, peerKey string) PDClient
 	// GetPDEtcdClient provides PD etcd Client of the tidb cluster.
 	GetPDEtcdClient(namespace Namespace, tcName string, tlsEnabled bool) (PDEtcdClient, error)
 }
@@ -132,7 +132,7 @@ func (pdc *defaultPDControl) GetClusterRefPDClient(namespace Namespace, tcName s
 	return pdc.pdClients[key]
 }
 
-func (pdc *defaultPDControl) GetClusterRefPDClientMultiClusterRetry(namespace Namespace, tcName string, clusterDomain string, tlsEnabled bool, peerURL string) PDClient {
+func (pdc *defaultPDControl) GetClusterRefPDClientMultiClusterRetry(namespace Namespace, tcName string, clusterDomain string, tlsEnabled bool, peerURL string, peerKey string) PDClient {
 	pdc.mutex.Lock()
 	defer pdc.mutex.Unlock()
 
@@ -145,10 +145,15 @@ func (pdc *defaultPDControl) GetClusterRefPDClientMultiClusterRetry(namespace Na
 			klog.Errorf("Unable to get tls config for tidb cluster %q, pd client may not work: %v", tcName, err)
 			return &pdClient{url: peerURL, httpClient: &http.Client{Timeout: DefaultTimeout}}
 		}
-
-		return NewPDClient(peerURL, DefaultTimeout, tlsConfig)
+		if _, ok := pdc.pdClients[peerKey]; !ok {
+			pdc.pdClients[peerKey] = NewPDClient(peerURL, DefaultTimeout, tlsConfig)
+		}
+		return pdc.pdClients[peerKey]
 	}
-	return NewPDClient(peerURL, DefaultTimeout, nil)
+	if _, ok := pdc.pdClients[peerKey]; !ok {
+		pdc.pdClients[peerKey] = NewPDClient(peerURL, DefaultTimeout, nil)
+	}
+	return pdc.pdClients[peerKey]
 }
 
 // pdClientKey returns the pd client key
