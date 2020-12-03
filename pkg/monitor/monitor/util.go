@@ -18,13 +18,11 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
-	"github.com/prometheus/prometheus/config"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -99,25 +97,12 @@ func getGrafanaEnvs(monitor *v1alpha1.TidbMonitor, container *core.Container) {
 // If the namespace in ClusterRef is empty, we would set the TidbMonitor's namespace in the default
 func getMonitorConfigMap(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monitor *v1alpha1.TidbMonitor) (*core.ConfigMap, error) {
 
-	var releaseNamespaces []string
-	var releaseClusters []string
-	var dmReleaseClusters []string
+	var releaseClusterInfos []ClusterRegexInfo
 	for _, cluster := range monitor.Spec.Clusters {
-		releaseNamespaces = append(releaseNamespaces, cluster.Namespace)
-		releaseClusters = append(releaseClusters, cluster.Name)
-	}
-
-	if monitor.DMSpec != nil {
-		for _, cluster := range monitor.DMSpec.Clusters {
-			releaseNamespaces = append(releaseNamespaces, cluster.Namespace)
-			dmReleaseClusters = append(dmReleaseClusters, cluster.Name)
-		}
-	}
-
-	relabelConfigsRegex := strings.Join(releaseClusters, "|")
-	targetPattern, err := config.NewRegexp(relabelConfigsRegex)
-	if err != nil {
-		return nil, err
+		releaseClusterInfos = append(releaseClusterInfos, ClusterRegexInfo{
+			Name:      cluster.Name,
+			Namespace: cluster.Namespace,
+		})
 	}
 
 	dmRelabelConfigsRefex := strings.Join(dmReleaseClusters, "|")
@@ -126,22 +111,15 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monit
 		return nil, err
 	}
 	model := &MonitorConfigModel{
-		AlertmanagerURL:      "",
-		ReleaseNamespaces:    releaseNamespaces,
-		ReleaseTargetRegex:   &targetPattern,
-		DMReleaseTargetRegex: &dmTargetPattern,
-		EnableTLSCluster:     tc.IsTLSClusterEnabled(),
-		EnableTLSDMCluster:   dc != nil && dc.IsTLSClusterEnabled(),
+		AlertmanagerURL:  "",
+		ClusterInfos:     releaseClusterInfos,
+		EnableTLSCluster: tc.IsTLSClusterEnabled(),
+    EnableTLSDMCluster: dc != nil && dc.IsTLSClusterEnabled(),
 	}
 
 	if monitor.Spec.AlertmanagerURL != nil {
 		model.AlertmanagerURL = *monitor.Spec.AlertmanagerURL
 	}
-
-	if len(model.ReleaseNamespaces) < 1 {
-		model.ReleaseNamespaces = append(model.ReleaseNamespaces, monitor.Namespace)
-	}
-
 	content, err := RenderPrometheusConfig(model)
 	if err != nil {
 		return nil, err

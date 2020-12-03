@@ -214,13 +214,13 @@ func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, dc
 		if err != nil {
 			return err
 		}
-		if err := m.deps.StatefulSetControl.CreateStatefulSet(tc, newMonitorSts); err != nil {
+		if err := m.deps.StatefulSetControl.CreateStatefulSet(monitor, newMonitorSts); err != nil {
 			return err
 		}
 		return controller.RequeueErrorf("TidbMonitor: [%s/%s], waiting for tidbmonitor running", ns, name)
 	}
 
-	return member.UpdateStatefulSet(m.deps.StatefulSetControl, tc, newMonitorSts, oldMonitorSetTmp)
+	return member.UpdateStatefulSet(m.deps.StatefulSetControl, monitor, newMonitorSts, oldMonitorSetTmp)
 }
 
 func (m *MonitorManager) syncTidbMonitorSecret(monitor *v1alpha1.TidbMonitor) (*corev1.Secret, error) {

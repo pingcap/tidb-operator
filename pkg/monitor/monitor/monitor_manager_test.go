@@ -62,7 +62,6 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 		g.Expect(err).Should(BeNil())
 
 		tm := newTidbMonitor(v1alpha1.TidbClusterRef{Name: tc.Name, Namespace: tc.Namespace})
-		ns := tm.Namespace
 		if test.prepare != nil {
 			test.prepare(tmm, tm)
 		}
@@ -76,18 +75,18 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 		}
 
 		if test.svcCreated {
-			_, err = tmm.deps.ServiceLister.Services(ns).Get(prometheusName(tm))
+			_, err = tmm.deps.ServiceLister.Services(tm.Namespace).Get(prometheusName(tm))
 			g.Expect(err).NotTo(HaveOccurred())
-			_, err = tmm.deps.ServiceLister.Services(ns).Get(reloaderName(tm))
+			_, err = tmm.deps.ServiceLister.Services(tm.Namespace).Get(reloaderName(tm))
 			g.Expect(err).NotTo(HaveOccurred())
 		}
 
 		if test.stsCreated {
-			_, err = tmm.deps.StatefulSetLister.StatefulSets(ns).Get(GetMonitorObjectName(tm))
+			_, err := tmm.deps.StatefulSetLister.StatefulSets(tm.Namespace).Get(GetMonitorObjectName(tm))
 			g.Expect(err).NotTo(HaveOccurred())
 		}
 		if test.volumeCreated {
-			sts, err := tmm.deps.StatefulSetLister.StatefulSets(ns).Get(GetMonitorObjectName(tm))
+			sts, err := tmm.deps.StatefulSetLister.StatefulSets(tm.Namespace).Get(GetMonitorObjectName(tm))
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(sts).NotTo(Equal(nil))
 			quantity, err := resource.ParseQuantity(tm.Spec.Storage)
@@ -112,6 +111,19 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 	}
 
 	tests := []testcase{
+		{
+			name: "tidbmonitor enable clusterScope",
+			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
+				monitor.Spec.ClusterScoped = true
+				monitor.Namespace = "ns2"
+			},
+			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
+				errExpectRequeuefunc(g, err, tmm, tm)
+			},
+			stsCreated:    true,
+			svcCreated:    true,
+			volumeCreated: false,
+		},
 		{
 			name: "enable grafana",
 			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
