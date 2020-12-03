@@ -204,8 +204,29 @@ func (m *MonitorManager) syncTidbMonitorDeployment(tc *v1alpha1.TidbCluster, mon
 		klog.Errorf("tm[%s/%s]'s deployment failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return err
 	}
+<<<<<<< HEAD
 	klog.V(4).Infof("tm[%s/%s]'s deployment synced", monitor.Namespace, monitor.Name)
 	return nil
+=======
+
+	oldMonitorSetTmp, err := m.deps.StatefulSetLister.StatefulSets(ns).Get(GetMonitorObjectName(monitor))
+	if err != nil && !errors.IsNotFound(err) {
+		return fmt.Errorf("syncTidbMonitorStatefulset: fail to get sts %s for cluster %s/%s, error: %s", GetMonitorObjectName(monitor), ns, name, err)
+	}
+	setNotExist := errors.IsNotFound(err)
+	if setNotExist {
+		err = member.SetStatefulSetLastAppliedConfigAnnotation(newMonitorSts)
+		if err != nil {
+			return err
+		}
+		if err := m.deps.StatefulSetControl.CreateStatefulSet(monitor, newMonitorSts); err != nil {
+			return err
+		}
+		return controller.RequeueErrorf("TidbMonitor: [%s/%s], waiting for tidbmonitor running", ns, name)
+	}
+
+	return member.UpdateStatefulSet(m.deps.StatefulSetControl, monitor, newMonitorSts, oldMonitorSetTmp)
+>>>>>>> d581af58... fix consistency question for  tidbmonitor monitor  multiple cluster  (#3543)
 }
 
 func (m *MonitorManager) syncTidbMonitorSecret(monitor *v1alpha1.TidbMonitor) (*corev1.Secret, error) {
