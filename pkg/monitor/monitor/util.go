@@ -105,16 +105,20 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monit
 		})
 	}
 
-	dmRelabelConfigsRefex := strings.Join(dmReleaseClusters, "|")
-	dmTargetPattern, err := config.NewRegexp(dmRelabelConfigsRefex)
-	if err != nil {
-		return nil, err
+	if monitor.DMSpec != nil {
+		for _, dmcluster := range monitor.DMSpec.Clusters {
+			releaseClusterInfos = append(releaseClusterInfos, ClusterRegexInfo{
+				Name:      dmcluster.Name,
+				Namespace: dmcluster.Namespace,
+			})
+		}
 	}
+
 	model := &MonitorConfigModel{
-		AlertmanagerURL:  "",
-		ClusterInfos:     releaseClusterInfos,
-		EnableTLSCluster: tc.IsTLSClusterEnabled(),
-    EnableTLSDMCluster: dc != nil && dc.IsTLSClusterEnabled(),
+		AlertmanagerURL:    "",
+		ClusterInfos:       releaseClusterInfos,
+		EnableTLSCluster:   tc.IsTLSClusterEnabled(),
+		EnableTLSDMCluster: dc != nil && dc.IsTLSClusterEnabled(),
 	}
 
 	if monitor.Spec.AlertmanagerURL != nil {

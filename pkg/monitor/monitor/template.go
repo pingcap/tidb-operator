@@ -136,10 +136,10 @@ func init() {
 }
 
 type MonitorConfigModel struct {
-	AlertmanagerURL  string
-	ClusterInfos     []ClusterRegexInfo
-	EnableTLSCluster bool
-  EnableTLSDMCluster   bool
+	AlertmanagerURL    string
+	ClusterInfos       []ClusterRegexInfo
+	EnableTLSCluster   bool
+	EnableTLSDMCluster bool
 }
 
 // ClusterRegexInfo is the monitor cluster info
@@ -160,8 +160,8 @@ func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
 	scrapeJobs = append(scrapeJobs, scrapeJob("ticdc", cdcPattern, cmodel, buildAddressRelabelConfigByComponent("ticdc"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("importer", importerPattern, cmodel, buildAddressRelabelConfigByComponent("importer"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("lightning", lightningPattern, cmodel, buildAddressRelabelConfigByComponent("lightning"))...)
-  scrapeJobs = append(scrapeJobs, scrapeJob("dm-worker", dmWorkerPattern, cmodel, buildAddressRelabelConfigByComponent("dm-worker"))...)
-  scrapeJobs = append(scrapeJobs, scrapeJob("dm-master", dmMasterPattern, cmodel, buildAddressRelabelConfigByComponent("dm-master"))...)
+	scrapeJobs = append(scrapeJobs, scrapeJob("dm-worker", dmWorkerPattern, cmodel, buildAddressRelabelConfigByComponent("dm-worker"))...)
+	scrapeJobs = append(scrapeJobs, scrapeJob("dm-master", dmMasterPattern, cmodel, buildAddressRelabelConfigByComponent("dm-master"))...)
 	var c = config.Config{
 		GlobalConfig: config.GlobalConfig{
 			ScrapeInterval:     model.Duration(15 * time.Second),
@@ -393,6 +393,17 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 				}
 			}
 		}
+
+		if cmodel.EnableTLSDMCluster {
+			scrapeconfig.Scheme = "https"
+			if scrapeconfig.JobName == fmt.Sprintf("%s-%s", cluster.Name, "dm-master") || scrapeconfig.JobName == fmt.Sprintf("%s-%s", cluster.Name, "dm-worker") {
+				scrapeconfig.HTTPClientConfig.TLSConfig = config.TLSConfig{
+					CAFile:   path.Join(util.DMClusterClientTLSPath, corev1.ServiceAccountRootCAKey),
+					CertFile: path.Join(util.DMClusterClientTLSPath, corev1.TLSCertKey),
+					KeyFile:  path.Join(util.DMClusterClientTLSPath, corev1.TLSPrivateKeyKey),
+				}
+			}
+		}
 		scrapeJobs = append(scrapeJobs, scrapeconfig)
 
 	}
@@ -417,7 +428,6 @@ func addAlertManagerUrl(pc *config.Config, cmodel *MonitorConfigModel) {
 		},
 	}
 }
-
 
 func RenderPrometheusConfig(model *MonitorConfigModel) (string, error) {
 	pc := newPrometheusConfig(model)
