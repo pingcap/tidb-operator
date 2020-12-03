@@ -42,8 +42,10 @@ spec:
         {{- if .Values.features }}
           - -features={{ join "," .Values.features }}
         {{- end }}
-      {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
         env:
+        - name: HELM_RELEASE
+          value: {{ .Release.Name }}
+      {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
         - name: TZ
           value: {{ .Values.timezone | default "UTC" }}
       {{- end }}
@@ -62,8 +64,10 @@ spec:
         - --v={{ .Values.scheduler.logLevel }}
         - --policy-configmap={{ .Values.scheduler.schedulerName }}-policy
         - --policy-configmap-namespace={{ .Release.Namespace }}
-      {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
         env:
+        - name: HELM_RELEASE
+          value: {{ .Release.Name }}
+      {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
         - name: TZ
           value: {{ .Values.timezone | default "UTC" }}
       {{- end }}

@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: tidb-controller-manager
+  name: {{ .Release.Name }}-tidb-controller-manager
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -66,6 +66,9 @@ spec:
           {{- if and ( .Values.admissionWebhook.create ) ( .Values.admissionWebhook.validation.pods ) }}
           - -pod-webhook-enabled=true
           {{- end }}
+          {{- if .Values.controllerManager.selector }}
+          - -selector={{ .Values.controllerManager.selector | replace " "  ","}}
+          {{- end}}
         env:
           - name: NAMESPACE
             valueFrom:
@@ -73,7 +76,8 @@ spec:
                 fieldPath: metadata.namespace
           - name: TZ
             value: {{ .Values.timezone | default "UTC" }}
-
+          - name: HELM_RELEASE
+            value: {{ .Release.Name }}
       {{- with .Values.controllerManager.nodeSelector }}
       nodeSelector:
 {{ toYaml . | indent 8 }}
