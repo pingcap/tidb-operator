@@ -65,10 +65,8 @@ spec:
         - --v={{ .Values.scheduler.logLevel }}
         - --policy-configmap={{ .Values.scheduler.schedulerName }}-policy
         - --policy-configmap-namespace={{ .Release.Namespace }}
-        env:
-        - name: HELM_RELEASE
-          value: {{ .Release.Name }}
       {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
+        env:
         - name: TZ
           value: {{ .Values.timezone | default "UTC" }}
       {{- end }}
