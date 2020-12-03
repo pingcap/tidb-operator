@@ -928,10 +928,7 @@ scrape_configs:
       names:
       - ns1
   tls_config:
-    ca_file: /var/lib/cluster-client-tls/ca.crt
-    cert_file: /var/lib/cluster-client-tls/tls.crt
-    key_file: /var/lib/cluster-client-tls/tls.key
-    insecure_skip_verify: false
+    insecure_skip_verify: true
   relabel_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     regex: target
