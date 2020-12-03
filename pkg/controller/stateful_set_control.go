@@ -180,12 +180,19 @@ func (c *FakeStatefulSetControl) SetStatusChange(fn func(*apps.StatefulSet)) {
 }
 
 // CreateStatefulSet adds the statefulset to SetIndexer
-func (c *FakeStatefulSetControl) CreateStatefulSet(_ runtime.Object, set *apps.StatefulSet) error {
+func (c *FakeStatefulSetControl) CreateStatefulSet(controller runtime.Object, set *apps.StatefulSet) error {
 	defer func() {
 		c.createStatefulSetTracker.Inc()
 		c.statusChange = nil
 	}()
-
+	controllerMo, ok := controller.(metav1.Object)
+	if !ok {
+		return fmt.Errorf("%T is not a metav1.Object, cannot call CreateStatefulSet", controller)
+	}
+	namespace := controllerMo.GetNamespace()
+	if namespace != set.Namespace {
+		return fmt.Errorf("%T is not match sts namespace:%s", controller, set.Namespace)
+	}
 	if c.createStatefulSetTracker.ErrorReady() {
 		defer c.createStatefulSetTracker.Reset()
 		return c.createStatefulSetTracker.GetError()
