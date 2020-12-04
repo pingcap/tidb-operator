@@ -375,6 +375,7 @@ type PDSpec struct {
 	TLSClientSecretName *string `json:"tlsClientSecretName,omitempty"`
 
 	// EnableDashboardInternalProxy would directly set `internal-proxy` in the `PdConfig`
+	// Deprecated, should just set `dashboard.internal-proxy` in pd.config
 	// +optional
 	EnableDashboardInternalProxy *bool `json:"enableDashboardInternalProxy,omitempty"`
 

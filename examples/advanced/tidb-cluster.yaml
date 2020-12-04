@@ -137,7 +137,7 @@ spec:
     # Base image of the component
     baseImage: pingcap/pd
 
-    ## PD Configuration
+    ## pd-server configuration
     ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/configure-cluster-using-tidbcluster/#configure-pd-parameters
     config: {}
 
@@ -243,7 +243,7 @@ spec:
     #     - name: net.ipv4.tcp_syncookies
     #       value: 0
 
-    ## TiDB Operator will automatically mount the certificates
+    ## when TLS cluster feature is enabled, TiDB Operator will automatically mount the certificates if mountClusterClientSecret set to true
     ## Defaults to false
     ## Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/configure-a-tidb-cluster#mountclusterclientsecret
     mountClusterClientSecret: false
@@ -261,17 +261,18 @@ spec:
 
     ## Subdirectory within the volume to store PD Data. By default, the data
     ## is stored in the root directory of volume which is mounted at
-    ## /var/lib/pd.
-    ## Specifying this will change the data directory to a subdirectory, e.g.
-    ## /var/lib/pd/data if you set the value to "data".
+    ## /var/lib/pd. Specifying this will change the data directory to a subdirectory,
+    ## e.g. /var/lib/pd/data if you set the value to "data".
     ## It's dangerous to change this value for a running cluster as it will
     ## upgrade your cluster to use a new storage directory.
     ## Defaults to "" (volume's root).
     # dataSubDir: ""
+
     ## Affinity for pod scheduling
     ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
     # affinity:
     #   podAntiAffinity:
+    #     # prefer not to run pd pods on the same node which runs tidb/tikv pods
     #     preferredDuringSchedulingIgnoredDuringExecution:
     #       - podAffinityTerm:
     #           labelSelector:
@@ -281,9 +282,10 @@ spec:
     #                 values:
     #                   - tidb
     #                   - tikv
-    #           topologyKey: ""
+    #           topologyKey: kubernetes.io/hostname
     #         weight: 100
-    ## If you use requiredDuringSchedulingIgnoredDuringExecution, you must ensure that at least 3 nodes are available in the cluster
+    #     # require not to run pd pods on nodes where there's already a pd pod running
+    #     # if setting this, you must ensure that at least 3 nodes are available in the cluster
     #     requiredDuringSchedulingIgnoredDuringExecution:
     #       - labelSelector:
     #           matchExpressions:
@@ -291,7 +293,12 @@ spec:
     #               operator: In
     #               values:
     #                 - pd
-    #         topologyKey: ""
+    #         topologyKey: kubernetes.io/hostname
+
+    ## set a different tidb client tls cert secret name than default $clusterName-tidb-client-secret
+    ## only useful when TLS is enabled for TiDB client
+    ## Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/enable-tls-for-mysql-client
+    # tlsClientSecretName: custom-tidb-client-secret-name
 
   tidb:
     # Base image of the component
