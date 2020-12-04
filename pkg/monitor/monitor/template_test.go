@@ -566,6 +566,9 @@ scrape_configs:
 		ClusterInfos: []ClusterRegexInfo{
 			{Name: "target", Namespace: "ns1"},
 		},
+		DMClusterInfos: []ClusterRegexInfo{
+			{Name: "target", Namespace: "ns1"},
+		},
 		EnableTLSCluster:   false,
 		EnableTLSDMCluster: false,
 		AlertmanagerURL:    "alert-url",
@@ -1149,6 +1152,9 @@ scrape_configs:
 		ClusterInfos: []ClusterRegexInfo{
 			{Name: "target", Namespace: "ns1"},
 		},
+		DMClusterInfos: []ClusterRegexInfo{
+			{Name: "target", Namespace: "ns1"},
+		},
 		EnableTLSCluster:   true,
 		EnableTLSDMCluster: true,
 	}
@@ -1179,6 +1185,10 @@ func TestMultipleClusterConfigRender(t *testing.T) {
 			{Name: "ns1", Namespace: "ns1"},
 			{Name: "ns2", Namespace: "ns2"},
 		},
+		DMClusterInfos: []ClusterRegexInfo{
+			{Name: "ns1", Namespace: "ns1"},
+			{Name: "ns2", Namespace: "ns2"},
+		},
 		EnableTLSCluster:   false,
 		EnableTLSDMCluster: false,
 		AlertmanagerURL:    "alert-url",
@@ -1195,6 +1205,10 @@ func TestMultipleClusterTlsConfigRender(t *testing.T) {
 	g := NewGomegaWithT(t)
 	model := &MonitorConfigModel{
 		ClusterInfos: []ClusterRegexInfo{
+			{Name: "ns1", Namespace: "ns1"},
+			{Name: "ns2", Namespace: "ns2"},
+		},
+		DMClusterInfos: []ClusterRegexInfo{
 			{Name: "ns1", Namespace: "ns1"},
 			{Name: "ns2", Namespace: "ns2"},
 		},

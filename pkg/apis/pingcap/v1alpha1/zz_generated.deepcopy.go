@@ -7849,11 +7849,6 @@ func (in *TidbMonitor) DeepCopyInto(out *TidbMonitor) {
 	out.TypeMeta = in.TypeMeta
 	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
 	in.Spec.DeepCopyInto(&out.Spec)
-	if in.DMSpec != nil {
-		in, out := &in.DMSpec, &out.DMSpec
-		*out = new(DMMonitorSpec)
-		(*in).DeepCopyInto(*out)
-	}
 	in.Status.DeepCopyInto(&out.Status)
 	return
 }
@@ -7941,6 +7936,11 @@ func (in *TidbMonitorSpec) DeepCopyInto(out *TidbMonitorSpec) {
 	}
 	in.Reloader.DeepCopyInto(&out.Reloader)
 	in.Initializer.DeepCopyInto(&out.Initializer)
+	if in.DMSpec != nil {
+		in, out := &in.DMSpec, &out.DMSpec
+		*out = new(DMMonitorSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.PVReclaimPolicy != nil {
 		in, out := &in.PVReclaimPolicy, &out.PVReclaimPolicy
 		*out = new(v1.PersistentVolumeReclaimPolicy)

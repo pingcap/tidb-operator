@@ -67,29 +67,30 @@ chmod 777 /data/prometheus /data/grafana
 	return command
 }
 
-func getGrafanaEnvs(monitor *v1alpha1.TidbMonitor, container *core.Container) {
-	if monitor.Spec.Grafana != nil {
-		container.VolumeMounts = append(container.VolumeMounts, core.VolumeMount{
-
+func getGrafanaVols() []core.VolumeMount {
+	return []core.VolumeMount{
+		{
 			MountPath: "/etc/grafana/provisioning/datasources",
 			Name:      "datasource",
 			ReadOnly:  false,
-		}, core.VolumeMount{
-
+		}, {
 			MountPath: "/grafana-dashboard-definitions/tidb",
 			Name:      "grafana-dashboard",
 			ReadOnly:  false,
-		})
-		container.Env = append(container.Env,
-			core.EnvVar{
-				Name:  "GF_PROVISIONING_PATH",
-				Value: "/grafana-dashboard-definitions/tidb",
-			},
-			core.EnvVar{
-				Name:  "GF_DATASOURCE_PATH",
-				Value: "/etc/grafana/provisioning/datasources",
-			})
+		},
+	}
+}
 
+func getGrafanaEnvs() []core.EnvVar {
+	return []core.EnvVar{
+		{
+			Name:  "GF_PROVISIONING_PATH",
+			Value: "/grafana-dashboard-definitions/tidb",
+		},
+		{
+			Name:  "GF_DATASOURCE_PATH",
+			Value: "/etc/grafana/provisioning/datasources",
+		},
 	}
 }
 
@@ -105,9 +106,10 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monit
 		})
 	}
 
-	if monitor.DMSpec != nil {
-		for _, dmcluster := range monitor.DMSpec.Clusters {
-			releaseClusterInfos = append(releaseClusterInfos, ClusterRegexInfo{
+	var releaseDMClusterInfos []ClusterRegexInfo
+	if monitor.Spec.DMSpec != nil {
+		for _, dmcluster := range monitor.Spec.DMSpec.Clusters {
+			releaseDMClusterInfos = append(releaseDMClusterInfos, ClusterRegexInfo{
 				Name:      dmcluster.Name,
 				Namespace: dmcluster.Namespace,
 			})
@@ -117,6 +119,7 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monit
 	model := &MonitorConfigModel{
 		AlertmanagerURL:    "",
 		ClusterInfos:       releaseClusterInfos,
+		DMClusterInfos:     releaseDMClusterInfos,
 		EnableTLSCluster:   tc.IsTLSClusterEnabled(),
 		EnableTLSDMCluster: dc != nil && dc.IsTLSClusterEnabled(),
 	}
@@ -314,7 +317,11 @@ func getMonitorInitContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbClu
 		})
 	}
 
-	getGrafanaEnvs(monitor, &container)
+	if monitor.Spec.Grafana != nil {
+		container.VolumeMounts = append(container.VolumeMounts, getGrafanaVols()...)
+		container.Env = append(container.Env, getGrafanaEnvs()...)
+	}
+
 	var envOverrides []core.EnvVar
 	for k, v := range monitor.Spec.Initializer.Envs {
 		envOverrides = append(envOverrides, core.EnvVar{
@@ -326,12 +333,12 @@ func getMonitorInitContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbClu
 	return container
 }
 
-func getMonitorDMInitContainer(monitor *v1alpha1.TidbMonitor, dc *v1alpha1.DMCluster) core.Container {
+func getMonitorDMInitContainer(monitor *v1alpha1.TidbMonitor, dc *v1alpha1.DMCluster, alertManagerRulesVersion string) core.Container {
+	// TODO: support dm in reloader, currently dm cluster shares the same persistent rules dir with tidb cluster
 	command := getInitCommand(monitor)
-	dmImageVersion := dc.MasterImage()
 	container := core.Container{
 		Name:  "monitor-dm-initializer",
-		Image: fmt.Sprintf("%s:%s", monitor.DMSpec.Initializer.BaseImage, monitor.DMSpec.Initializer.Version),
+		Image: fmt.Sprintf("%s:%s", monitor.Spec.DMSpec.Initializer.BaseImage, monitor.Spec.DMSpec.Initializer.Version),
 		Env: []core.EnvVar{
 			{
 				Name:  "DM_CLUSTER_NAME",
@@ -347,7 +354,7 @@ func getMonitorDMInitContainer(monitor *v1alpha1.TidbMonitor, dc *v1alpha1.DMClu
 			},
 			{
 				Name:  "DM_VERSION",
-				Value: dmImageVersion,
+				Value: alertManagerRulesVersion,
 			},
 			{
 				Name:  "GF_DM_PROMETHEUS_URL",
@@ -374,16 +381,20 @@ func getMonitorDMInitContainer(monitor *v1alpha1.TidbMonitor, dc *v1alpha1.DMClu
 				Name:      v1alpha1.TidbMonitorMemberType.String(),
 			},
 		},
-		Resources: controller.ContainerResource(monitor.DMSpec.Initializer.ResourceRequirements),
+		Resources: controller.ContainerResource(monitor.Spec.DMSpec.Initializer.ResourceRequirements),
 	}
 
-	if monitor.DMSpec.Initializer.ImagePullPolicy != nil {
-		container.ImagePullPolicy = *monitor.DMSpec.Initializer.ImagePullPolicy
+	if monitor.Spec.DMSpec.Initializer.ImagePullPolicy != nil {
+		container.ImagePullPolicy = *monitor.Spec.DMSpec.Initializer.ImagePullPolicy
 	}
 
-	getGrafanaEnvs(monitor, &container)
+	if monitor.Spec.Grafana != nil {
+		container.VolumeMounts = append(container.VolumeMounts, getGrafanaVols()...)
+		container.Env = append(container.Env, getGrafanaEnvs()...)
+	}
+
 	var envOverrides []core.EnvVar
-	for k, v := range monitor.DMSpec.Initializer.Envs {
+	for k, v := range monitor.Spec.DMSpec.Initializer.Envs {
 		envOverrides = append(envOverrides, core.EnvVar{
 			Name:  k,
 			Value: v,
@@ -879,12 +890,12 @@ func defaultTidbMonitor(monitor *v1alpha1.TidbMonitor) {
 		}
 		monitor.Spec.Clusters[id] = tcRef
 	}
-	if monitor.DMSpec != nil {
-		for id, dcRef := range monitor.DMSpec.Clusters {
+	if monitor.Spec.DMSpec != nil {
+		for id, dcRef := range monitor.Spec.DMSpec.Clusters {
 			if len(dcRef.Namespace) < 1 {
 				dcRef.Namespace = monitor.Namespace
 			}
-			monitor.DMSpec.Clusters[id] = dcRef
+			monitor.Spec.DMSpec.Clusters[id] = dcRef
 		}
 	}
 	retainPVP := core.PersistentVolumeReclaimRetain
@@ -898,7 +909,7 @@ func getMonitorStatefulSet(sa *core.ServiceAccount, config *core.ConfigMap, secr
 	initContainer := getMonitorInitContainer(monitor, tc)
 	statefulSet.Spec.Template.Spec.InitContainers = append(statefulSet.Spec.Template.Spec.InitContainers, initContainer)
 	if dc != nil {
-		dmInitContainer := getMonitorDMInitContainer(monitor, dc)
+		dmInitContainer := getMonitorDMInitContainer(monitor, dc, tc.TiDBImage())
 		statefulSet.Spec.Template.Spec.InitContainers = append(statefulSet.Spec.Template.Spec.InitContainers, dmInitContainer)
 	}
 	prometheusContainer := getMonitorPrometheusContainer(monitor, tc, dc)

@@ -14697,7 +14697,6 @@ spec:
       properties:
         apiVersion:
           type: string
-        dmSpec: {}
         kind:
           type: string
         spec:
@@ -15228,6 +15227,7 @@ spec:
                 - name
                 type: object
               type: array
+            dm: {}
             grafana: {}
             imagePullPolicy:
               type: string

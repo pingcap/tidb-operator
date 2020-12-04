@@ -106,15 +106,15 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	}
 
 	var firstDc *v1alpha1.DMCluster
-	if monitor.DMSpec != nil {
-		for _, dcRef := range monitor.DMSpec.Clusters {
-			dc, err := m.deps.Clientset.PingcapV1alpha1().DMClusters(dcRef.Namespace).Get(dcRef.Name, metav1.GetOptions{})
+	if monitor.Spec.DMSpec != nil {
+		for _, dcRef := range monitor.Spec.DMSpec.Clusters {
+			dc, err := m.deps.DMClusterLister.DMClusters(dcRef.Namespace).Get(dcRef.Name)
 			if err != nil {
 				rerr := fmt.Errorf("get tm[%s/%s]'s target dc[%s/%s] failed, err: %v", monitor.Namespace, monitor.Name, dcRef.Namespace, dcRef.Name, err)
 				return rerr
-			}
-			if firstDc == nil {
+			} else {
 				firstDc = dc
+				break
 			}
 		}
 	}

@@ -2010,6 +2010,18 @@ InitializerSpec
 </tr>
 <tr>
 <td>
+<code>dm</code></br>
+<em>
+<a href="#dmmonitorspec">
+DMMonitorSpec
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
 <code>pvReclaimPolicy</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#persistentvolumereclaimpolicy-v1-core">
@@ -2179,18 +2191,6 @@ bool
 </td>
 </tr>
 </table>
-</td>
-</tr>
-<tr>
-<td>
-<code>dmSpec</code></br>
-<em>
-<a href="#dmmonitorspec">
-DMMonitorSpec
-</a>
-</em>
-</td>
-<td>
 </td>
 </tr>
 <tr>
@@ -4485,7 +4485,7 @@ string
 <h3 id="dmmonitorspec">DMMonitorSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#tidbmonitor">TidbMonitor</a>)
+<a href="#tidbmonitorspec">TidbMonitorSpec</a>)
 </p>
 <p>
 </p>
@@ -19113,6 +19113,18 @@ ReloaderSpec
 <em>
 <a href="#initializerspec">
 InitializerSpec
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>dm</code></br>
+<em>
+<a href="#dmmonitorspec">
+DMMonitorSpec
 </a>
 </em>
 </td>

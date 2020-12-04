@@ -190,8 +190,8 @@ func Encode(obj interface{}) (string, error) {
 	return string(b), nil
 }
 
-func DMClientTLSSecretName(tcName string) string {
-	return fmt.Sprintf("%s-dm-client-secret", tcName)
+func DMClientTLSSecretName(dcName string) string {
+	return fmt.Sprintf("%s-dm-client-secret", dcName)
 }
 
 func ClusterClientTLSSecretName(tcName string) string {

@@ -10464,17 +10464,12 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitor(ref common.ReferenceCallback) 
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbMonitorSpec"),
 						},
 					},
-					"dmSpec": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DMMonitorSpec"),
-						},
-					},
 				},
 				Required: []string{"spec"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DMMonitorSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbMonitorSpec"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbMonitorSpec"},
 	}
 }
 
@@ -10592,6 +10587,11 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 					"initializer": {
 						SchemaProps: spec.SchemaProps{
 							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.InitializerSpec"),
+						},
+					},
+					"dm": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DMMonitorSpec"),
 						},
 					},
 					"pvReclaimPolicy": {
@@ -10723,7 +10723,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GrafanaSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.InitializerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PrometheusSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ReloaderSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterRef", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.Toleration"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DMMonitorSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GrafanaSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.InitializerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PrometheusSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ReloaderSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterRef", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.Toleration"},
 	}
 }
 

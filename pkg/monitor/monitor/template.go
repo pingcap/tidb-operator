@@ -138,6 +138,7 @@ func init() {
 type MonitorConfigModel struct {
 	AlertmanagerURL    string
 	ClusterInfos       []ClusterRegexInfo
+	DMClusterInfos     []ClusterRegexInfo
 	EnableTLSCluster   bool
 	EnableTLSDMCluster bool
 }
@@ -288,7 +289,15 @@ func buildAddressRelabelConfigByComponent(kind string) *config.RelabelConfig {
 
 func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorConfigModel, addressRelabelConfig *config.RelabelConfig) []*config.ScrapeConfig {
 	var scrapeJobs []*config.ScrapeConfig
-	for _, cluster := range cmodel.ClusterInfos {
+	var currCluster []ClusterRegexInfo
+
+	if jobName == "dm-master" || jobName == "dm-worker" {
+		currCluster = cmodel.DMClusterInfos
+	} else {
+		currCluster = cmodel.ClusterInfos
+	}
+
+	for _, cluster := range currCluster {
 		clusterTargetPattern, err := config.NewRegexp(cluster.Name)
 		if err != nil {
 			klog.Errorf("generate scrapeJob[%s] clusterName:%s error:%v", jobName, cluster.Name, err)
@@ -381,7 +390,8 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 				},
 			},
 		}
-		if cmodel.EnableTLSCluster {
+
+		if cmodel.EnableTLSCluster && jobName != "dm-master" && jobName != "dm-worker" {
 			scrapeconfig.Scheme = "https"
 			// lightning does not need to authenticate the access of other components,
 			// so there is no need to enable mtls for the time being.
@@ -396,7 +406,7 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 
 		if cmodel.EnableTLSDMCluster {
 			scrapeconfig.Scheme = "https"
-			if scrapeconfig.JobName == fmt.Sprintf("%s-%s", cluster.Name, "dm-master") || scrapeconfig.JobName == fmt.Sprintf("%s-%s", cluster.Name, "dm-worker") {
+			if jobName == "dm-master" || jobName == "dm-worker" {
 				scrapeconfig.HTTPClientConfig.TLSConfig = config.TLSConfig{
 					CAFile:   path.Join(util.DMClusterClientTLSPath, corev1.ServiceAccountRootCAKey),
 					CertFile: path.Join(util.DMClusterClientTLSPath, corev1.TLSCertKey),

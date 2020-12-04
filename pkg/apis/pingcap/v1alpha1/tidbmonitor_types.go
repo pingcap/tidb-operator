@@ -29,8 +29,7 @@ type TidbMonitor struct {
 	metav1.ObjectMeta `json:"metadata"`
 
 	// Spec defines the desired state of TidbMonitor
-	Spec   TidbMonitorSpec `json:"spec"`
-	DMSpec *DMMonitorSpec  `json:"dmSpec,omitempty"`
+	Spec TidbMonitorSpec `json:"spec"`
 
 	// +k8s:openapi-gen=false
 	// Most recently observed status of the TidbMonitor
@@ -52,6 +51,7 @@ type TidbMonitorSpec struct {
 	Grafana     *GrafanaSpec    `json:"grafana,omitempty"`
 	Reloader    ReloaderSpec    `json:"reloader"`
 	Initializer InitializerSpec `json:"initializer"`
+	DMSpec      *DMMonitorSpec  `json:"dm,omitempty"`
 
 	// Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster
 	// +kubebuilder:default=Retain
