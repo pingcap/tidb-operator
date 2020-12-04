@@ -1,6 +1,7 @@
 <!--
 Thank you for contributing to TiDB Operator!
 Please complete the following template before creating a PR :D
+Ref: TiDB Operator [CONTRIBUTING](https://github.com/pingcap/tidb-operator/blob/master/CONTRIBUTING.md) document
 -->
 
 ### What problem does this PR solve?
