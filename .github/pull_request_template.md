@@ -41,7 +41,7 @@ For example:
 ### Side effects
 
 - [ ] Breaking backward compatibility <!-- If this PR breaks things deployed with previous TiDB Operator versions, check this box -->
-- [ ] Other side effects: <!-- Any other side effects, such as requiring additional storage / consumes substantial memory / potential reconcilation latency -->
+- [ ] Other side effects: <!-- Any other side effects, such as requiring additional storage / consumes substantial memory / potential reconciliation latency -->
 
 ### Related changes
 
