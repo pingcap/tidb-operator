@@ -328,7 +328,7 @@ for file in os.listdir(password_dir):
     if file.startswith('.'):
         continue
     user = file
-    with open(os.path.join(password_dir, file), 'r') as f:
+    with open(os.path.join(password_dir, file), 'r', encoding="utf-8") as f:
         password = f.read()
     if user == 'root':
         conn.cursor().execute("set password for 'root'@'%%' = %s;", (password,))
@@ -336,7 +336,7 @@ for file in os.listdir(password_dir):
         conn.cursor().execute("create user %s@%s identified by %s;", (user, permit_host, password,))
 {{- end }}
 {{- if .InitSQL }}
-with open('/data/init.sql', 'r') as sql:
+with open('/data/init.sql', 'r', encoding="utf-8") as sql:
     for line in sql.readlines():
         conn.cursor().execute(line)
         conn.commit()
