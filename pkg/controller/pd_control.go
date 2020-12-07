@@ -35,7 +35,7 @@ func GetPDClientBasic(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbClust
 // Retry to GetPDClient for multi-cluster
 func GetPDClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) pdapi.PDClient {
 	pdClient := GetPDClientBasic(pdControl, tc)
-	// Add health check for
+	// Add health check for cross-region
 	_, err := pdClient.GetHealth()
 	if err != nil && len(tc.Status.PD.PeerMembers) > 0 {
 		for _, pdMember := range tc.Status.PD.PeerMembers {

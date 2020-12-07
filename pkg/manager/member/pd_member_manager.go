@@ -313,6 +313,7 @@ func (m *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *a
 	// examples:
 	// ClientURL:https://my-cluster-demo-2-pd-0.my-cluster-demo-2-pd-peer.pingcap.svc.cluster2.internal.com
 	pdClient := controller.GetPDClient(m.deps.PDControl, tc)
+
 	healthInfo, err := pdClient.GetHealth()
 	if err != nil {
 		tc.Status.PD.Synced = false
