@@ -103,10 +103,12 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 		if len(pdAddresses) != 0 {
 			return fmt.Sprintf("--join=%s", strings.Join(pdAddresses, ",")), nil
 		}
-		if len(tc.Spec.ClusterDomain) > 0 {
-			return fmt.Sprintf("--initial-cluster=%s=%s://%s", strArr[0], tc.Scheme(), advertisePeerUrl), nil
+		if len(tc.Status.PD.PeerMembers) == 0 {
+			if len(tc.Spec.ClusterDomain) > 0 {
+				return fmt.Sprintf("--initial-cluster=%s=%s://%s", strArr[0], tc.Scheme(), advertisePeerUrl), nil
+			}
+			return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, tc.Scheme(), advertisePeerUrl), nil
 		}
-		return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, tc.Scheme(), advertisePeerUrl), nil
 	}
 
 	var pdClients []pdapi.PDClient
@@ -116,6 +118,15 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 			namespace = tc.GetNamespace()
 		}
 		pdClients = append(pdClients, d.pdControl.GetClusterRefPDClient(pdapi.Namespace(namespace), tc.Spec.Cluster.Name, tc.Spec.Cluster.ClusterDomain, tc.IsTLSClusterEnabled()))
+	}
+	if len(tc.Status.PD.PeerMembers) > 0 {
+		namespace := tc.Spec.Cluster.Namespace
+		if len(namespace) == 0 {
+			namespace = tc.GetNamespace()
+		}
+		for _, pdMember := range tc.Status.PD.PeerMembers {
+			pdClients = append(pdClients, d.pdControl.GetClusterRefPDClientMultiClusterRetry(pdapi.Namespace(namespace), tc.Spec.Cluster.Name, tc.Spec.Cluster.ClusterDomain, tc.IsTLSClusterEnabled(), pdMember.ClientURL, pdMember.Name))
+		}
 	}
 	if tc.Spec.PD != nil {
 		pdClients = append(pdClients, d.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()))
