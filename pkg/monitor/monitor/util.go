@@ -14,8 +14,8 @@
 package monitor
 
 import (
-	"encoding/json"
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	"sort"
 	"strconv"
 
@@ -799,14 +799,9 @@ func getMonitorStatefulSet(sa *core.ServiceAccount, config *core.ConfigMap, secr
 	volumeClaims := getMonitorVolumeClaims(monitor)
 	statefulSet.Spec.VolumeClaimTemplates = volumeClaims
 
-	b, err := json.Marshal(statefulSet.Spec.Template.Spec)
-	if err != nil {
-		return nil, err
-	}
 	if statefulSet.Annotations == nil {
 		statefulSet.Annotations = map[string]string{}
 	}
-	statefulSet.Annotations[controller.LastAppliedPodTemplate] = string(b)
 
 	if monitor.Spec.ImagePullSecrets != nil {
 		statefulSet.Spec.Template.Spec.ImagePullSecrets = monitor.Spec.ImagePullSecrets
@@ -824,7 +819,7 @@ func getMonitorStatefulSetSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.Ti
 			Namespace:       monitor.Namespace,
 			Labels:          buildTidbMonitorLabel(monitor.Name),
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
-			Annotations:     monitor.Spec.Annotations,
+			Annotations:     member.CopyAnnotations(monitor.Spec.Annotations),
 		},
 		Spec: apps.StatefulSetSpec{
 			ServiceName: name,
