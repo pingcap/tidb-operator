@@ -167,14 +167,14 @@ The deployed cluster topology by default has three PD Pods, three TiKV Pods, and
 
 #### Enable TiFlash
 
-If you want to enable TiFlash in the cluster, configure `spec.pd.config.replication.enable-placement-rules` to `true` and configure `spec.tiflash` in the `${cluster_name}/tidb-cluster.yaml` file as follows:
+If you want to enable TiFlash in the cluster, configure `spec.pd.config.replication.enable-placement-rules: true` and configure `spec.tiflash` in the `${cluster_name}/tidb-cluster.yaml` file as follows:
 
 ```yaml
   pd:
     config:
       ...
       replication:
-        enable-placement-rules: "true"
+        enable-placement-rules: true
         ...
   tiflash:
     baseImage: pingcap/tiflash

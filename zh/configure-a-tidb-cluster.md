@@ -162,14 +162,14 @@ PD 和 TiKV 支持配置 `mountClusterClientSecret`，建议配置 `spec.pd.moun
 
 #### 部署 TiFlash
 
-如果要在集群中开启 TiFlash，需要在 `${cluster_name}/tidb-cluster.yaml` 文件中配置 `spec.pd.config.replication.enable-placement-rules: "true"`，并配置 `spec.tiflash`：
+如果要在集群中开启 TiFlash，需要在 `${cluster_name}/tidb-cluster.yaml` 文件中配置 `spec.pd.config.replication.enable-placement-rules: true`，并配置 `spec.tiflash`：
 
 ```yaml
   pd:
     config:
       ...
       replication:
-        enable-placement-rules: "true"
+        enable-placement-rules: true
         ...
   tiflash:
     baseImage: pingcap/tiflash
