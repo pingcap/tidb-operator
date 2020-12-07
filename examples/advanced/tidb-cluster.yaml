@@ -38,6 +38,7 @@ spec:
   ## Image used to tail slow log and set kernel parameters if necessary, must have `tail` and `sysctl` installed
   # helper:
   #   image: busybox:latest
+  #   imagePullPolicy: IfNotPresent
 
   ## Enable PVC/PV reclaim for orphan PVC/PV left by statefulset scale-in
   enablePVReclaim: false
@@ -125,9 +126,9 @@ spec:
   ## in different Kubernetes clusters, AKA vpc-native clusters. default to empty
   # clusterDomain: cluster-domain.example
 
-  #################################
-  # Basic TiDB Cluster Components #
-  #################################
+  ###########################
+  # TiDB Cluster Components #
+  ###########################
 
   pd:
     ##########################
@@ -141,7 +142,7 @@ spec:
     ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/configure-cluster-using-tidbcluster/#configure-pd-parameters
     config: {}
 
-    # The desired ready replicas
+    # The desired replicas
     replicas: 3
 
     ## describes the compute resource requirements and limits.
@@ -155,7 +156,7 @@ spec:
       memory: 2Gi
       storage: 10Gi
     
-    ## define PD service settings
+    ## define Kubernetes service for pd-server
     ## Ref: https://kubernetes.io/docs/concepts/services-networking/service/
     # service:
     #   type: ClusterIP
@@ -301,30 +302,100 @@ spec:
     # tlsClientSecretName: custom-tidb-client-secret-name
 
   tidb:
+    ############################
+    # Basic TiDB Configuration #
+    ############################
+
     # Base image of the component
     baseImage: pingcap/tidb
 
-    # The desired ready replicas
+    # tidb-server Configuration
+    # https://pingcap.com/docs/tidb-in-kubernetes/stable/configure-cluster-using-tidbcluster/#configure-tidb-parameters
+    config: {}
+
+    # The desired replicas
     replicas: 3
 
     # describes the compute resource requirements.
     # Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
     requests:
-      cpu: "100m"
+      cpu: 100m
+      memory: 256Mi
+      storage: 1Gi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+      storage: 10Gi
 
-    # TiDB Configuration
-    # https://pingcap.com/docs/tidb-in-kubernetes/stable/configure-cluster-using-tidbcluster/#configure-tidb-parameters
-    config: {}
-
-    ## Service defines a Kubernetes service of TiDB cluster.
-    ## If you are in a public cloud environment, you can use cloud LB to access the TiDB service
-    ## if you are in a private cloud environment, you can use ingress
+    ## defines Kubernetes service for tidb-server
+    ## If you are in a public cloud environment, you can use cloud LoadBalancer to access the TiDB service
+    ## if you are in a private cloud environment, you can use Ingress
     ## you can set mysqlNodePort and statusNodePort to expose server/status service to given NodePort
-    # service:
-    #   externalTrafficPolicy: Local
-    #   type: LoadBalancer
-    #   mysqlNodePort: 30020
-    #   statusNodePort: 30040
+    service:
+      type: LoadBalancer
+      externalTrafficPolicy: Local  # Ref: https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#preserving-the-client-source-ip
+      # # which NodePort to expose 4000 (mysql) port of tidb-server, only effective when type=LoadBalancer/NodePort
+      # mysqlNodePort: 30020
+      # exposeStatus: true  # defaults to true
+      # # which NodePort to expose 10080 (status) port of tidb-server, only effective when type=LoadBalancer/NodePort and exposeStatus=true
+      # statusNodePort: 30040
+
+    ###############################
+    # Advanced TiDB Configuration #
+    ###############################
+
+    ## prob tidb-server readiness
+    ## valid type values:
+    ##   - `tcp`, which uses Kubernetes TCPSocketAction to prob the 4000 tcp port of the pod
+    ##   - `command`, which uses curl to access the /status path on port 10080 of the pod
+    ## This is only supported after tidb v4.0.9, ref: https://github.com/pingcap/tidb/pull/20694
+    # readinessProbe:
+    #   type: command
+
+    ## max inprogress failover TiDB pod counts
+    # maxFailoverCount: 3
+
+    ## when enabled, TiDB will accept TLS encrypted connections from MySQL client
+    ## Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/enable-tls-for-mysql-client
+    # tlsClient:
+    #   enabled: true
+
+    ## MANUAL CONFIG NOT RECOMMENDED
+    ## binlogEnabled will automatically be true if Pump is enabled, otherwise false
+    ## set this manually if you really know what you are doing
+    # binlogEnabled: false
+
+    ## if enabled, slow log will be output into a separate sidecar container
+    # separateSlowLog: true
+    # # configures seperate sidecar container, where `image` & `imagePullPolicy` will be overwritten by
+    # # the same field in `TidbCluster.helper`
+    # slowLogTailer:
+    #   requests:
+    #     cpu: 100m
+    #     memory: 256Mi
+    #   limits:
+    #     cpu: 200m
+    #     memory: 512Mi
+    #   image: busybox
+    #   imagePullPolicy: IfNotPresent
+
+    ## The default storageClassName of the persistent volume for TiDB data storage.
+    ## Can be overwritten by `storageClassName` field in `storageVolumes` settings
+    # storageClassName: ""
+
+    ## defines volumes which uses PVCs as storage backend
+    # storageVolumes:
+    #   - name: pvcName  # this will be suffix of PVCs' name
+    #     storageClassName: local-storage  # specify which storageClass to use
+    #     storageSize: 1Gi  # storage request of PVC
+    #     mountPath: /some/path  # mount path of the PVC
+
+    ## config Kubernetes container lifecycle hooks for tidb-server pods
+    ## Ref: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/
+    # lifecycle:
+    #   postStart:
+    #   preStop:
+
     ## Affinity for pod scheduling
     ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
     # affinity:
@@ -340,7 +411,8 @@ spec:
     #                   - tikv
     #           topologyKey: ""
     #         weight: 100
-    ## If you use requiredDuringSchedulingIgnoredDuringExecution, you must ensure that at least 3 nodes are available in the cluster
+    #     # require not to run tidb pods on nodes where there's already a tidb pod running
+    #     # if setting this, you must ensure that at least 3 nodes are available in the cluster
     #     requiredDuringSchedulingIgnoredDuringExecution:
     #       - labelSelector:
     #           matchExpressions:
@@ -362,7 +434,7 @@ spec:
     # https://pingcap.com/docs/tidb-in-kubernetes/stable/configure-cluster-using-tidbcluster/#configure-tikv-parameters
     config: {}
 
-    # The desired ready replicas
+    # The desired replicas
     replicas: 3
 
     # describes the compute resource requirements.

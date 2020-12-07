@@ -627,6 +627,7 @@ func (tidbSvc *TiDBServiceSpec) ShouldExposeStatus() bool {
 	return *exposeStatus
 }
 
+// GetMySQLNodePort returns mysqlNodePort config in spec.tidb.service
 func (tidbSvc *TiDBServiceSpec) GetMySQLNodePort() int32 {
 	mysqlNodePort := tidbSvc.MySQLNodePort
 	if mysqlNodePort == nil {
@@ -635,6 +636,7 @@ func (tidbSvc *TiDBServiceSpec) GetMySQLNodePort() int32 {
 	return int32(*mysqlNodePort)
 }
 
+// GetStatusNodePort returns statusNodePort config in spec.tidb.service
 func (tidbSvc *TiDBServiceSpec) GetStatusNodePort() int32 {
 	statusNodePort := tidbSvc.StatusNodePort
 	if statusNodePort == nil {

@@ -572,8 +572,8 @@ type StorageClaim struct {
 	StorageClassName *string `json:"storageClassName,omitempty"`
 }
 
-// +k8s:openapi-gen=true
 // TiDBSpec contains details of TiDB members
+// +k8s:openapi-gen=true
 type TiDBSpec struct {
 	ComponentSpec               `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
@@ -612,17 +612,19 @@ type TiDBSpec struct {
 	// +optional
 	SeparateSlowLog *bool `json:"separateSlowLog,omitempty"`
 
+	// The spec of the slow log tailer sidecar
+	// +optional
+	SlowLogTailer *TiDBSlowLogTailerSpec `json:"slowLogTailer,omitempty"`
+
 	// Whether enable the TLS connection between the SQL client and TiDB server
 	// Optional: Defaults to nil
 	// +optional
 	TLSClient *TiDBTLSClient `json:"tlsClient,omitempty"`
 
-	// The spec of the slow log tailer sidecar
-	// +optional
-	SlowLogTailer *TiDBSlowLogTailerSpec `json:"slowLogTailer,omitempty"`
-
 	// Plugins is a list of plugins that are loaded by TiDB server, empty means plugin disabled
 	// +optional
+	// TODO: additional volumes should be used to hold .so plugin binaries.
+	// 	     Since this is not a runnable implementation, maybe we can change this without backward compatibility.
 	Plugins []string `json:"plugins,omitempty"`
 
 	// Config is the Configuration of tidb-servers
@@ -651,12 +653,14 @@ type TiDBSpec struct {
 }
 
 const (
-	TCPProbeType     string = "tcp"
+	// TCPProbeType represents readiness prob method with tcp
+	TCPProbeType string = "tcp"
+	// CommandProbeType represents readiness prob method with arbitrary exec format command
 	CommandProbeType string = "command"
 )
 
-// +k8s:openapi-gen=true
 // TiDBProbe contains details of probing tidb.
+// +k8s:openapi-gen=true
 // default probe by TCPPort on 4000.
 type TiDBProbe struct {
 	// "tcp" will use TCP socket to connetct port 4000
@@ -669,8 +673,8 @@ type TiDBProbe struct {
 	Type *string `json:"type,omitempty"` // tcp or command
 }
 
-// +k8s:openapi-gen=true
 // PumpSpec contains details of Pump members
+// +k8s:openapi-gen=true
 type PumpSpec struct {
 	ComponentSpec               `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
@@ -703,8 +707,8 @@ type PumpSpec struct {
 	SetTimeZone *bool `json:"setTimeZone,omitempty"`
 }
 
-// +k8s:openapi-gen=true
 // HelperSpec contains details of helper component
+// +k8s:openapi-gen=true
 type HelperSpec struct {
 	// Image used to tail slow log and set kernel parameters if necessary, must have `tail` and `sysctl` installed
 	// Optional: Defaults to busybox:1.26.2
@@ -717,8 +721,8 @@ type HelperSpec struct {
 	ImagePullPolicy *corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 }
 
-// +k8s:openapi-gen=true
 // TiDBSlowLogTailerSpec represents an optional log tailer sidecar with TiDB
+// +k8s:openapi-gen=true
 type TiDBSlowLogTailerSpec struct {
 	corev1.ResourceRequirements `json:",inline"`
 
@@ -878,6 +882,7 @@ type ServiceSpec struct {
 	LoadBalancerSourceRanges []string `json:"loadBalancerSourceRanges,omitempty"`
 }
 
+// TiDBServiceSpec defines .tidb field of TidbCluster.spec
 // +k8s:openapi-gen=true
 type TiDBServiceSpec struct {
 	// +k8s:openapi-gen=false
@@ -904,9 +909,9 @@ type TiDBServiceSpec struct {
 	StatusNodePort *int `json:"statusNodePort,omitempty"`
 }
 
-// +k8s:openapi-gen=false
-// Deprecated
 // Service represent service type used in TidbCluster
+// Deprecated
+// +k8s:openapi-gen=false
 type Service struct {
 	Name string `json:"name,omitempty"`
 	Type string `json:"type,omitempty"`

@@ -26,12 +26,15 @@ import (
 var _ stdjson.Marshaler = &TiDBConfigWraper{}
 var _ stdjson.Unmarshaler = &TiDBConfigWraper{}
 
+// NewTiDBConfig returns an empty config struct
 func NewTiDBConfig() *TiDBConfigWraper {
 	return &TiDBConfigWraper{
 		GenericConfig: config.New(map[string]interface{}{}),
 	}
 }
 
+// TiDBConfigWraper simply wrapps a GenericConfig
+// FIXME: typo, should be TiDBConfigWrapper with two 'p's
 type TiDBConfigWraper struct {
 	*config.GenericConfig
 }
