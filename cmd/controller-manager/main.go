@@ -191,7 +191,7 @@ func main() {
 			Lock: &resourcelock.EndpointsLock{
 				EndpointsMeta: metav1.ObjectMeta{
 					Namespace: ns,
-					Name:      helmRelease + "-controller-manager",
+					Name:      "tidb-controller-manager-"helmRelease,
 				},
 				Client: kubeCli.CoreV1(),
 				LockConfig: resourcelock.ResourceLockConfig{
