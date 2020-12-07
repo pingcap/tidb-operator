@@ -40,6 +40,10 @@ func GetPDClientRetryforPeerMembers(pdControl pdapi.PDControlInterface, tc *v1al
 // NewFakePDClient creates a fake pdclient that is set as the pd client
 func NewFakePDClient(pdControl *pdapi.FakePDControl, tc *v1alpha1.TidbCluster) *pdapi.FakePDClient {
 	pdClient := pdapi.NewFakePDClient()
-	pdControl.SetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), pdClient)
+	if len(tc.Spec.ClusterDomain) > 0 {
+		pdControl.SetPDClientWithClusterDomain(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.ClusterDomain, pdClient)
+	} else {
+		pdControl.SetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), pdClient)
+	}
 	return pdClient
 }
