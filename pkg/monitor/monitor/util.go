@@ -367,6 +367,9 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 	if monitor.Spec.Prometheus.ImagePullPolicy != nil {
 		c.ImagePullPolicy = *monitor.Spec.Prometheus.ImagePullPolicy
 	}
+	if monitor.Spec.Thanos != nil {
+		c.Command = append(c.Command, "--storage.tsdb.max-block-duration=2h")
+	}
 	return c
 }
 
@@ -783,8 +786,9 @@ func getMonitorStatefulSet(sa *core.ServiceAccount, config *core.ConfigMap, secr
 	initContainer := getMonitorInitContainer(monitor, tc)
 	statefulSet.Spec.Template.Spec.InitContainers = append(statefulSet.Spec.Template.Spec.InitContainers, initContainer)
 	prometheusContainer := getMonitorPrometheusContainer(monitor, tc)
+	thanosSideCarContainer := getThanosSidecarContainer(monitor, tc)
 	reloaderContainer := getMonitorReloaderContainer(monitor, tc)
-	statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, prometheusContainer, reloaderContainer)
+	statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, prometheusContainer, reloaderContainer, thanosSideCarContainer)
 	additionalContainers := monitor.Spec.AdditionalContainers
 	if len(additionalContainers) > 0 {
 		statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, additionalContainers...)
@@ -873,4 +877,106 @@ func getMonitorVolumeClaims(monitor *v1alpha1.TidbMonitor) []core.PersistentVolu
 		}
 	}
 	return nil
+}
+
+func getThanosSidecarContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) core.Container {
+	bindAddress := "[$(POD_IP)]"
+	if monitor.Spec.Thanos.ListenLocal {
+		bindAddress = "127.0.0.1"
+	}
+	thanosArgs := []string{"sidecar",
+		fmt.Sprintf("--prometheus.url=http://%s:9090/", "localhost"),
+		fmt.Sprintf("--grpc-address=%s:10901", bindAddress),
+		fmt.Sprintf("--http-address=%s:10902", bindAddress),
+	}
+
+	if monitor.Spec.Thanos.GRPCServerTLSConfig != nil {
+		tls := monitor.Spec.Thanos.GRPCServerTLSConfig
+		if tls.CertFile != "" {
+			thanosArgs = append(thanosArgs, "--grpc-server-tls-cert="+tls.CertFile)
+		}
+		if tls.KeyFile != "" {
+			thanosArgs = append(thanosArgs, "--grpc-server-tls-key="+tls.KeyFile)
+		}
+		if tls.CAFile != "" {
+			thanosArgs = append(thanosArgs, "--grpc-server-tls-client-ca="+tls.CAFile)
+		}
+	}
+	container := core.Container{
+		Name:      "thanos-sidecar",
+		Image:     fmt.Sprintf("%s:%s", monitor.Spec.Thanos.BaseImage, monitor.Spec.Thanos.Version),
+		Resources: controller.ContainerResource(monitor.Spec.Thanos.ResourceRequirements),
+		Args:      thanosArgs,
+		Env: []core.EnvVar{
+			{
+				Name: "POD_IP",
+				ValueFrom: &core.EnvVarSource{
+					FieldRef: &core.ObjectFieldSelector{
+						FieldPath: "status.podIP",
+					},
+				},
+			},
+		},
+		Ports: []core.ContainerPort{
+			{
+				Name:          "http",
+				ContainerPort: 10902,
+			},
+			{
+				Name:          "grpc",
+				ContainerPort: 10901,
+			},
+		},
+	}
+	if monitor.Spec.Thanos.ObjectStorageConfig != nil || monitor.Spec.Thanos.ObjectStorageConfigFile != nil {
+		if monitor.Spec.Thanos.ObjectStorageConfig != nil {
+			container.Args = append(container.Args, "--objstore.config=$(OBJSTORE_CONFIG)")
+			container.Env = append(container.Env, core.EnvVar{
+				Name: "OBJSTORE_CONFIG",
+				ValueFrom: &core.EnvVarSource{
+					SecretKeyRef: monitor.Spec.Thanos.ObjectStorageConfig,
+				},
+			})
+		}
+
+		if monitor.Spec.Thanos.ObjectStorageConfigFile != nil {
+			container.Args = append(container.Args, "--objstore.config-file="+*monitor.Spec.Thanos.ObjectStorageConfigFile)
+		}
+		storageDir := "/prometheus"
+		container.Args = append(container.Args, fmt.Sprintf("--tsdb.path=%s", storageDir))
+		container.VolumeMounts = append(
+			container.VolumeMounts,
+			core.VolumeMount{
+				Name:      v1alpha1.TidbMonitorMemberType.String(),
+				MountPath: storageDir,
+				SubPath:   "prometheus-db",
+			},
+		)
+	}
+
+	if monitor.Spec.Thanos.TracingConfig != nil {
+		container.Args = append(container.Args, "--tracing.config=$(TRACING_CONFIG)")
+		container.Env = append(container.Env, core.EnvVar{
+			Name: "TRACING_CONFIG",
+			ValueFrom: &core.EnvVarSource{
+				SecretKeyRef: monitor.Spec.Thanos.TracingConfig,
+			},
+		})
+	}
+
+	if monitor.Spec.Thanos.LogLevel != "" {
+		container.Args = append(container.Args, "--log.level="+monitor.Spec.Thanos.LogLevel)
+	} else if monitor.Spec.Thanos.LogLevel != "" {
+		container.Args = append(container.Args, "--log.level="+monitor.Spec.Thanos.LogLevel)
+	}
+	if monitor.Spec.Thanos.LogFormat != "" {
+		container.Args = append(container.Args, "--log.format="+monitor.Spec.Thanos.LogFormat)
+	} else if monitor.Spec.Thanos.LogFormat != "" {
+		container.Args = append(container.Args, "--log.format="+monitor.Spec.Thanos.LogFormat)
+	}
+
+	if monitor.Spec.Thanos.MinTime != "" {
+		container.Args = append(container.Args, "--min-time="+monitor.Spec.Thanos.MinTime)
+	}
+	return container
 }

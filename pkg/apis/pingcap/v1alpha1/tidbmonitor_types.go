@@ -46,6 +46,7 @@ type TidbMonitorSpec struct {
 	Grafana     *GrafanaSpec    `json:"grafana,omitempty"`
 	Reloader    ReloaderSpec    `json:"reloader"`
 	Initializer InitializerSpec `json:"initializer"`
+	Thanos      *ThanosSpec     `json:"thanos"`
 
 	// Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster
 	// +kubebuilder:default=Retain
@@ -153,6 +154,33 @@ type InitializerSpec struct {
 	Envs map[string]string `json:"envs,omitempty"`
 }
 
+// InitializerSpec is the desired state of initializer
+type ThanosSpec struct {
+	MonitorContainer `json:",inline"`
+	// ObjectStorageConfig configures object storage in Thanos.
+	// Alternative to ObjectStorageConfigFile, and lower order priority.
+	ObjectStorageConfig *corev1.SecretKeySelector `json:"objectStorageConfig,omitempty"`
+	// ObjectStorageConfigFile specifies the path of the object storage configuration file.
+	// When used alongside with ObjectStorageConfig, ObjectStorageConfigFile takes precedence.
+	ObjectStorageConfigFile *string `json:"objectStorageConfigFile,omitempty"`
+	// ListenLocal makes the Thanos sidecar listen on loopback, so that it
+	// does not bind against the Pod IP.
+	ListenLocal bool `json:"listenLocal,omitempty"`
+	// TracingConfig configures tracing in Thanos. This is an experimental feature, it may change in any upcoming release in a breaking way.
+	TracingConfig *corev1.SecretKeySelector `json:"tracingConfig,omitempty"`
+	// GRPCServerTLSConfig configures the gRPC server from which Thanos Querier reads
+	// recorded rule data.
+	// Note: Currently only the CAFile, CertFile, and KeyFile fields are supported.
+	// Maps to the '--grpc-server-tls-*' CLI args.
+	GRPCServerTLSConfig *TLSConfig `json:"grpcServerTlsConfig,omitempty"`
+	// LogLevel for Thanos sidecar to be configured with.
+	LogLevel string `json:"logLevel,omitempty"`
+	// LogFormat for Thanos sidecar to be configured with.
+	LogFormat string `json:"logFormat,omitempty"`
+	// MinTime for Thanos sidecar to be configured with. Option can be a constant time in RFC3339 format or time duration relative to current time, such as -1d or 2h45m. Valid duration units are ms, s, m, h, d, w, y.
+	MinTime string `json:"minTime,omitempty"`
+}
+
 // +k8s:openapi-gen=true
 // MonitorContainer is the common attributes of the container of monitoring
 type MonitorContainer struct {
@@ -201,4 +229,15 @@ type TidbMonitorList struct {
 type DeploymentStorageStatus struct {
 	// PV name
 	PvName string `json:"pvName,omitempty"`
+}
+
+// TLSConfig extends the safe TLS configuration with file parameters.
+// +k8s:openapi-gen=true
+type TLSConfig struct {
+	// Path to the CA cert in the Prometheus container to use for the targets.
+	CAFile string `json:"caFile,omitempty"`
+	// Path to the client cert file in the Prometheus container for the targets.
+	CertFile string `json:"certFile,omitempty"`
+	// Path to the client key file in the Prometheus container for the targets.
+	KeyFile string `json:"keyFile,omitempty"`
 }

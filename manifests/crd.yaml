@@ -15252,6 +15252,7 @@ spec:
               type: string
             storageClassName:
               type: string
+            thanos: {}
             tolerations:
               items:
                 properties:
@@ -15273,6 +15274,7 @@ spec:
           - prometheus
           - reloader
           - initializer
+          - thanos
           type: object
       type: object
   version: v1alpha1

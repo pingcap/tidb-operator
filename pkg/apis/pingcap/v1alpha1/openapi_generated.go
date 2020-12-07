@@ -104,6 +104,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StmtSummary":                   schema_pkg_apis_pingcap_v1alpha1_StmtSummary(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageClaim":                  schema_pkg_apis_pingcap_v1alpha1_StorageClaim(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageProvider":               schema_pkg_apis_pingcap_v1alpha1_StorageProvider(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TLSConfig":                     schema_pkg_apis_pingcap_v1alpha1_TLSConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCDCConfig":                   schema_pkg_apis_pingcap_v1alpha1_TiCDCConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCDCSpec":                     schema_pkg_apis_pingcap_v1alpha1_TiCDCSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig":              schema_pkg_apis_pingcap_v1alpha1_TiDBAccessConfig(ref),
@@ -5609,6 +5610,40 @@ func schema_pkg_apis_pingcap_v1alpha1_StorageProvider(ref common.ReferenceCallba
 	}
 }
 
+func schema_pkg_apis_pingcap_v1alpha1_TLSConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "TLSConfig extends the safe TLS configuration with file parameters.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"caFile": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Path to the CA cert in the Prometheus container to use for the targets.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"certFile": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Path to the client cert file in the Prometheus container for the targets.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"keyFile": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Path to the client key file in the Prometheus container for the targets.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_pingcap_v1alpha1_TiCDCConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -10589,6 +10624,11 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.InitializerSpec"),
 						},
 					},
+					"thanos": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ThanosSpec"),
+						},
+					},
 					"pvReclaimPolicy": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster",
@@ -10714,11 +10754,11 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 						},
 					},
 				},
-				Required: []string{"clusters", "prometheus", "reloader", "initializer"},
+				Required: []string{"clusters", "prometheus", "reloader", "initializer", "thanos"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GrafanaSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.InitializerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PrometheusSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ReloaderSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterRef", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.Toleration"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GrafanaSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.InitializerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PrometheusSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ReloaderSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ThanosSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterRef", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.Toleration"},
 	}
 }
 
