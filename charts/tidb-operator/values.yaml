@@ -80,7 +80,7 @@ controllerManager:
   #   operator: Equal
   #   value: tidb-operator
   #   effect: "NoSchedule"
-  ## selector make sure that controller only management tidbcluster which match labels
+  ## Selector (label query) to filter on, make sure that this controller manager only manages the custom resources that match the labels
   ## refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#equality-based-requirement
   selector: []
   # - canary-release=v1
