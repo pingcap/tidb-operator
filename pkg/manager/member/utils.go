@@ -275,6 +275,9 @@ func UpdateStatefulSet(setCtl controller.StatefulSetControlInterface, object run
 		}
 		set.Spec.Template = newSet.Spec.Template
 		if hasPodConfig {
+			if set.Spec.Template.Annotations == nil {
+				set.Spec.Template.Annotations = map[string]string{}
+			}
 			set.Spec.Template.Annotations[LastAppliedConfigAnnotation] = podConfig
 		}
 		set.Annotations = newSet.Annotations
