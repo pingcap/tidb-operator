@@ -1,4 +1,4 @@
-{{- if and .Values.rbac.create .Values.scheduler.create }}
+{{- if .Values.rbac.create }}
 kind: ServiceAccount
 apiVersion: v1
 metadata:

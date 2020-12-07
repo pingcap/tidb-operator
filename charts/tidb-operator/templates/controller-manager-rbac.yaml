@@ -1,7 +1,7 @@
 {{/*
 Delete permission is required in OpenShift because we can't own resources we created if we can't delete them.
 */}}
-{{- if and .Values.rbac.create .Values.controllerManager.create }}
+{{- if .Values.rbac.create }}
 kind: ServiceAccount
 apiVersion: v1
 metadata:

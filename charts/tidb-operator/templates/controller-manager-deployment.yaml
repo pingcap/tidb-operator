@@ -1,4 +1,3 @@
-{{- if .Values.controllerManager.create }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -68,9 +67,8 @@ spec:
           - -pod-webhook-enabled=true
           {{- end }}
           {{- if .Values.controllerManager.selector }}
-          {{- $label := join "," .Values.controllerManager.selector }}
-          - -selector={{ $label }}
-          {{- end }}
+          - -selector={{ .Values.controllerManager.selector | replace " "  ","}}
+          {{- end}}
         env:
           - name: NAMESPACE
             valueFrom:
@@ -98,4 +96,4 @@ spec:
       {{- if .Values.controllerManager.priorityClassName }}
       priorityClassName: {{ .Values.controllerManager.priorityClassName }}
       {{- end }}
-{{- end }}
+
