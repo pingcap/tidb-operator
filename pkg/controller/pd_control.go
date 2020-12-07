@@ -19,7 +19,7 @@ import (
 )
 
 // GetPDClientBasic gets the pd client from the TidbCluster
-func GetPDClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) pdapi.PDClient {
+func GetPDClientBasic(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) pdapi.PDClient {
 	if tc.IsHeterogeneous() {
 		if len(tc.Spec.ClusterDomain) > 0 {
 			return pdControl.GetClusterRefPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.Spec.ClusterDomain, tc.IsTLSClusterEnabled())
@@ -33,8 +33,8 @@ func GetPDClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) p
 }
 
 // Retry to GetPDClient for multi-cluster
-func GetPDClientwithPeerMembers(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) pdapi.PDClient {
-	pdClient := GetPDClient(pdControl, tc)
+func GetPDClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) pdapi.PDClient {
+	pdClient := GetPDClientBasic(pdControl, tc)
 	// Add health check for
 	_, err := pdClient.GetHealth()
 	if err != nil && len(tc.Status.PD.PeerMembers) > 0 {
