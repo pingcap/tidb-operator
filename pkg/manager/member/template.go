@@ -318,9 +318,9 @@ host = '{{ .ClusterName }}-tidb'
 permit_host = '{{ .PermitHost }}'
 port = 4000
 {{- if .TLS }}
-conn = MySQLdb.connect(host=host, port=port, user='root', connect_timeout=5, ssl={'ca': '{{ .CAPath }}', 'cert': '{{ .CertPath }}', 'key': '{{ .KeyPath }}'})
+conn = MySQLdb.connect(host=host, port=port, user='root', charset='utf8mb4',connect_timeout=5, ssl={'ca': '{{ .CAPath }}', 'cert': '{{ .CertPath }}', 'key': '{{ .KeyPath }}'})
 {{- else }}
-conn = MySQLdb.connect(host=host, port=port, user='root', connect_timeout=5)
+conn = MySQLdb.connect(host=host, port=port, user='root', connect_timeout=5, charset='utf8mb4')
 {{- end }}
 {{- if .PasswordSet }}
 password_dir = '/etc/tidb/password'
@@ -328,7 +328,7 @@ for file in os.listdir(password_dir):
     if file.startswith('.'):
         continue
     user = file
-    with open(os.path.join(password_dir, file), 'r', encoding="utf-8") as f:
+    with open(os.path.join(password_dir, file), 'r') as f:
         password = f.read()
     if user == 'root':
         conn.cursor().execute("set password for 'root'@'%%' = %s;", (password,))
@@ -336,7 +336,7 @@ for file in os.listdir(password_dir):
         conn.cursor().execute("create user %s@%s identified by %s;", (user, permit_host, password,))
 {{- end }}
 {{- if .InitSQL }}
-with open('/data/init.sql', 'r', encoding="utf-8") as sql:
+with open('/data/init.sql', 'r') as sql:
     for line in sql.readlines():
         conn.cursor().execute(line)
         conn.commit()
