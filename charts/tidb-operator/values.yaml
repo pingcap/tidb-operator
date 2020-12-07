@@ -83,9 +83,9 @@ controllerManager:
   ## selector make sure that controller only management tidbcluster which match labels
   ## refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#equality-based-requirement
   selector: []
-  # - canary-release=v1
-  # - k1==v1
-  # - k2!=v2
+  #- canary-release=v1
+  #- k1==v1
+  #- k2!=v2
 
 scheduler:
   create: true
