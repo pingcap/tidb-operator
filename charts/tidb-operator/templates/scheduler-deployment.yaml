@@ -43,8 +43,10 @@ spec:
         {{- if .Values.features }}
           - -features={{ join "," .Values.features }}
         {{- end }}
-      {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
         env:
+        - name: HELM_RELEASE
+          value: {{ .Release.Name }}
+      {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
         - name: TZ
           value: {{ .Values.timezone | default "UTC" }}
       {{- end }}
