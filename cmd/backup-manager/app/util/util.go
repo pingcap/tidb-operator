@@ -389,12 +389,17 @@ func GetCommitTsFromBRMetaData(provider v1alpha1.StorageProvider) (uint64, error
 }
 
 // ConstructArgs constructs the rclone args
-func ConstructArgs(conf string, opts []string, command, source, dest string) []string {
+func ConstructArgs(conf string, opts []string, command, source, dest string, rcloneLog bool) []string {
 	var args []string
 	if conf != "" {
 		args = append(args, conf)
 	}
 	if len(opts) > 0 {
+		for _, opt := range opts {
+			if opt == "-q" || strings.HasPrefix(opt, "-v") {
+				rcloneLog = false
+			}
+		}
 		args = append(args, opts...)
 	}
 	if command != "" {
@@ -405,6 +410,9 @@ func ConstructArgs(conf string, opts []string, command, source, dest string) []s
 	}
 	if dest != "" {
 		args = append(args, dest)
+	}
+	if rcloneLog {
+		args = append(args, "-v")
 	}
 	return args
 }

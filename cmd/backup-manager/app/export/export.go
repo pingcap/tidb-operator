@@ -90,9 +90,10 @@ func (bo *Options) dumpTidbClusterData(backup *v1alpha1.Backup) (string, error) 
 func (bo *Options) backupDataToRemote(source, bucketURI string, opts []string) error {
 	destBucket := backupUtil.NormalizeBucketURI(bucketURI)
 	tmpDestBucket := fmt.Sprintf("%s.tmp", destBucket)
-	args := backupUtil.ConstructArgs(constants.RcloneConfigArg, opts, "copyto", source, tmpDestBucket)
+	args := backupUtil.ConstructArgs(constants.RcloneConfigArg, opts, "copyto", source, tmpDestBucket, true)
 	// TODO: We may need to use exec.CommandContext to control timeouts.
 	output, err := exec.Command("rclone", args...).CombinedOutput()
+	klog.Infof("rclone copy data from %s data to %s. rclone log: %s", source, tmpDestBucket, output)
 	if err != nil {
 		return fmt.Errorf("cluster %s, execute rclone copyto command for upload backup data %s failed, output: %s, err: %v", bo, bucketURI, string(output), err)
 	}
@@ -101,8 +102,9 @@ func (bo *Options) backupDataToRemote(source, bucketURI string, opts []string) e
 
 	// the backup was a success
 	// remove .tmp extension
-	args = backupUtil.ConstructArgs(constants.RcloneConfigArg, opts, "moveto", tmpDestBucket, destBucket)
+	args = backupUtil.ConstructArgs(constants.RcloneConfigArg, opts, "moveto", tmpDestBucket, destBucket, true)
 	output, err = exec.Command("rclone", args...).CombinedOutput()
+	klog.Infof("rclone move data from %s data to %s. rclone log: %s", tmpDestBucket, destBucket, output)
 	if err != nil {
 		return fmt.Errorf("cluster %s, execute rclone moveto command failed, output: %s, err: %v", bo, string(output), err)
 	}
@@ -115,7 +117,7 @@ func getBackupSize(backupPath string, opts []string) (int64, error) {
 	if exist := backupUtil.IsFileExist(backupPath); !exist {
 		return size, fmt.Errorf("file %s does not exist or is not regular file", backupPath)
 	}
-	args := backupUtil.ConstructArgs(constants.RcloneConfigArg, opts, "ls", backupPath, "")
+	args := backupUtil.ConstructArgs(constants.RcloneConfigArg, nil, "ls", backupPath, "", false)
 	out, err := exec.Command("rclone", args...).CombinedOutput()
 	if err != nil {
 		return size, fmt.Errorf("failed to get backup %s size, err: %v", backupPath, err)

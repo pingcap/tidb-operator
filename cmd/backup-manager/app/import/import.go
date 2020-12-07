@@ -47,7 +47,7 @@ func (ro *Options) downloadBackupData(localPath string, opts []string) error {
 	}
 
 	remoteBucket := backupUtil.NormalizeBucketURI(ro.BackupPath)
-	args := backupUtil.ConstructArgs(constants.RcloneConfigArg, opts, "copyto", remoteBucket, localPath)
+	args := backupUtil.ConstructArgs(constants.RcloneConfigArg, opts, "copyto", remoteBucket, localPath, true)
 	rcCopy := exec.Command("rclone", args...)
 
 	stdOut, err := rcCopy.StdoutPipe()
