@@ -97,7 +97,7 @@ func DefaultCLIConfig() *CLIConfig {
 		ResyncDuration:         30 * time.Second,
 		TiDBBackupManagerImage: "pingcap/tidb-backup-manager:latest",
 		TiDBDiscoveryImage:     "pingcap/tidb-operator:latest",
-		Selector: "",
+		Selector:               "",
 	}
 }
 
