@@ -37,6 +37,9 @@ func GetPDClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) p
 	pdClient := GetPDClientBasic(pdControl, tc)
 	// Add health check for cross-region
 	_, err := pdClient.GetHealth()
+	// retry when PeerMember is existed and the cluster info updating is blocked.
+	// examples:
+	// ClientURL:https://my-cluster-demo-2-pd-0.my-cluster-demo-2-pd-peer.pingcap.svc.cluster2.internal.com
 	if err != nil && len(tc.Status.PD.PeerMembers) > 0 {
 		for _, pdMember := range tc.Status.PD.PeerMembers {
 			pdClient = pdControl.GetClusterRefPDClientMultiClusterRetry(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.ClusterDomain, tc.IsTLSClusterEnabled(), pdMember.ClientURL, pdMember.Name)
