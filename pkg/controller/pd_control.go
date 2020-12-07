@@ -18,7 +18,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 )
 
-// GetPDClient gets the pd client from the TidbCluster
+// GetPDClientBasic gets the pd client from the TidbCluster
 func GetPDClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) pdapi.PDClient {
 	if tc.IsHeterogeneous() {
 		if len(tc.Spec.ClusterDomain) > 0 {
@@ -33,8 +33,20 @@ func GetPDClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) p
 }
 
 // Retry to GetPDClient for multi-cluster
-func GetPDClientRetryforPeerMembers(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster, peerURL string, peerKey string) pdapi.PDClient {
-	return pdControl.GetClusterRefPDClientMultiClusterRetry(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.ClusterDomain, tc.IsTLSClusterEnabled(), peerURL, peerKey)
+func GetPDClientwithPeerMembers(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) pdapi.PDClient {
+	pdClient := GetPDClient(pdControl, tc)
+	// Add health check for
+	_, err := pdClient.GetHealth()
+	if err != nil && len(tc.Status.PD.PeerMembers) > 0 {
+		for _, pdMember := range tc.Status.PD.PeerMembers {
+			pdClient = pdControl.GetClusterRefPDClientMultiClusterRetry(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.ClusterDomain, tc.IsTLSClusterEnabled(), pdMember.ClientURL, pdMember.Name)
+			_, err := pdClient.GetHealth()
+			if err == nil {
+				return pdClient
+			}
+		}
+	}
+	return pdClient
 }
 
 // NewFakePDClient creates a fake pdclient that is set as the pd client
