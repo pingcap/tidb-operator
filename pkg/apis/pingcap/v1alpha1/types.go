@@ -354,6 +354,11 @@ type PDSpec struct {
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 
+	// StorageVolumes is additional storage apply for PD node.
+	// Default to storageClassName storage class
+	// +optional
+	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
+
 	// Subdirectory within the volume to store PD Data. By default, the data
 	// is stored in the root directory of volume which is mounted at
 	// /var/lib/pd.
@@ -382,11 +387,6 @@ type PDSpec struct {
 	// MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod
 	// +optional
 	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
-
-	// StorageVolumes is additional storage apply for PD node.
-	// Default to storageClassName storage class
-	// +optional
-	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
 }
 
 // TiKVSpec contains details of TiKV members

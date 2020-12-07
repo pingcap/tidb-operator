@@ -135,15 +135,18 @@ spec:
     # Basic PD Configuration #
     ##########################
 
-    # Base image of the component
+    ## Base image of the component
     baseImage: pingcap/pd
 
     ## pd-server configuration
-    ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/configure-cluster-using-tidbcluster/#configure-pd-parameters
+    ## Ref: https://docs.pingcap.com/tidb/stable/pd-configuration-file
     config: {}
 
-    # The desired replicas
+    ## The desired replicas
     replicas: 3
+
+    ## max inprogress failover PD pod counts
+    # maxFailoverCount: 3
 
     ## describes the compute resource requirements and limits.
     ## Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
@@ -155,7 +158,7 @@ spec:
       cpu: 1000m
       memory: 2Gi
       storage: 10Gi
-    
+
     ## define Kubernetes service for pd-server
     ## Ref: https://kubernetes.io/docs/concepts/services-networking/service/
     # service:
@@ -230,9 +233,6 @@ spec:
     #   - name: nfs
     #     mountPath: /nfs
 
-    ## max inprogress failover PD pod counts
-    # maxFailoverCount: 3
-
     ## define the time period between pod Terminating and killed
     ## Ref: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#hook-handler-execution
     # terminationGracePeriodSeconds: 30s
@@ -306,18 +306,21 @@ spec:
     # Basic TiDB Configuration #
     ############################
 
-    # Base image of the component
+    ## Base image of the component
     baseImage: pingcap/tidb
 
-    # tidb-server Configuration
-    # https://pingcap.com/docs/tidb-in-kubernetes/stable/configure-cluster-using-tidbcluster/#configure-tidb-parameters
+    ## tidb-server Configuration
+    ## Ref: https://docs.pingcap.com/tidb/stable/tidb-configuration-file
     config: {}
 
-    # The desired replicas
+    ## The desired replicas
     replicas: 3
 
-    # describes the compute resource requirements.
-    # Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+    ## max inprogress failover TiDB pod counts
+    # maxFailoverCount: 3
+
+    ## describes the compute resource requirements.
+    ## Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
     requests:
       cpu: 100m
       memory: 256Mi
@@ -364,6 +367,57 @@ spec:
     # configUpdateStrategy: RollingUpdate
     # statefulSetUpdateStrategy: RollingUpdate
 
+    ## List of environment variables to set in the container
+    ## Note that the following env names cannot be used and may be overrided by TiDB Operator builtin envs
+    ##   - NAMESPACE
+    ##   - TZ
+    ##   - SERVICE_NAME
+    ##   - PEER_SERVICE_NAME
+    ##   - HEADLESS_SERVICE_NAME
+    ##   - SET_NAME
+    ##   - HOSTNAME
+    ##   - CLUSTER_NAME
+    ##   - POD_NAME
+    ##   - BINLOG_ENABLED
+    ##   - SLOW_LOG_FILE
+    ## Ref: https://kubernetes.io/docs/tasks/inject-data-application/environment-variable-expose-pod-information/
+    # env:
+    #   - name: MY_ENV_1
+    #     value: value1
+    #   - name: MY_ENV_2
+    #     valueFrom:
+    #       fieldRef:
+    #         fieldPath: status.myEnv2
+
+    ## Custom sidecar containers can be injected into the TiDB pods,
+    ## which can act as a logging/tracing agent or for any other use case
+    # additionalContainers:
+    #   - name: myCustomContainer
+    #     image: ubuntu
+
+    ## custom additional volumes in TiDB pods
+    # additionalVolumes:
+    #   - name: nfs
+    #     nfs:
+    #       server: 192.168.0.2
+    #       path: /nfs
+
+    ## custom additional volume mounts in TiDB pods
+    # additionalVolumeMounts:
+    #   - name: nfs
+    #     mountPath: /nfs
+
+    ## define the time period between pod Terminating and killed
+    ## Ref: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#hook-handler-execution
+    # terminationGracePeriodSeconds: 30s
+
+    ## defines privilege and access control settings for TiDB pods
+    ## Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+    # podSecurityContext:
+    #   sysctls:
+    #     - name: net.ipv4.tcp_syncookies
+    #       value: 0
+
     ## prob tidb-server readiness
     ## valid type values:
     ##   - `tcp`, which uses Kubernetes TCPSocketAction to prob the 4000 tcp port of the pod
@@ -371,9 +425,6 @@ spec:
     ## This is only supported after tidb v4.0.9, ref: https://github.com/pingcap/tidb/pull/20694
     # readinessProbe:
     #   type: command
-
-    ## max inprogress failover TiDB pod counts
-    # maxFailoverCount: 3
 
     ## when enabled, TiDB will accept TLS encrypted connections from MySQL client
     ## Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/enable-tls-for-mysql-client
@@ -443,29 +494,125 @@ spec:
     #         topologyKey: kubernetes.io/hostname
 
   tikv:
-    # Base image of the component
+    ############################
+    # Basic TiKV Configuration #
+    ############################
+
+    ## Base image of the component
     baseImage: pingcap/tikv
 
-    # TiKV Configuration
-    # https://pingcap.com/docs/tidb-in-kubernetes/stable/configure-cluster-using-tidbcluster/#configure-tikv-parameters
+    ## tikv-server configuration
+    ## Ref: https://docs.pingcap.com/tidb/stable/tikv-configuration-file
     config: {}
 
-    # The desired replicas
+    ## The desired replicas
     replicas: 3
 
-    # describes the compute resource requirements.
-    # Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
-    requests:
-      cpu: "100m"
-      storage: 1Gi
+    ## max inprogress failover TiKV pod counts
+    # maxFailoverCount: 3
 
-    # TiDB Operator will automatically mount the certificates
-    # Defaults to "false"
-    # Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/configure-a-tidb-cluster#mountclusterclientsecret
+    ## describes the compute resource requirements.
+    ## Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+    requests:
+      cpu: 100m
+      memory: 256Mi
+      storage: 1Gi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+      storage: 10Gi
+
+    ###############################
+    # Advanced TiKV Configuration #
+    ###############################
+
+    ## Overwrite TiDB cluster level configurations
+    # version: "v4.0.8"
+    # imagePullPolicy: IfNotPresent
+    # ImagePullSecrets: secretName
+    # hostNetwork: false
+    # serviceAccount: advanced-tidb-tikv
+    # priorityClassName: system-cluster-critical
+    # schedulerName: tidb-scheduler
+    # nodeSelector:
+    #   app.kubernetes.io/component: tikv
+    # annotations:
+    #   node.kubernetes.io/instance-type: some-vm-type
+    # tolerations:
+    #   - effect: NoSchedule
+    #     key: dedicated
+    #     operator: Equal
+    #     value: tikv
+    # configUpdateStrategy: RollingUpdate
+    # statefulSetUpdateStrategy: RollingUpdate
+
+    ## List of environment variables to set in the container
+    ## Note that the following env names cannot be used and may be overrided by TiDB Operator builtin envs
+    ##   - NAMESPACE
+    ##   - TZ
+    ##   - SERVICE_NAME
+    ##   - PEER_SERVICE_NAME
+    ##   - HEADLESS_SERVICE_NAME
+    ##   - SET_NAME
+    ##   - HOSTNAME
+    ##   - CLUSTER_NAME
+    ##   - POD_NAME
+    ##   - BINLOG_ENABLED
+    ##   - SLOW_LOG_FILE
+    ## Ref: https://kubernetes.io/docs/tasks/inject-data-application/environment-variable-expose-pod-information/
+    # env:
+    #   - name: MY_ENV_1
+    #     value: value1
+    #   - name: MY_ENV_2
+    #     valueFrom:
+    #       fieldRef:
+    #         fieldPath: status.myEnv2
+
+    ## Custom sidecar containers can be injected into the TiKV pods,
+    ## which can act as a logging/tracing agent or for any other use case
+    # additionalContainers:
+    #   - name: myCustomContainer
+    #     image: ubuntu
+
+    ## custom additional volumes in TiKV pods
+    # additionalVolumes:
+    #   - name: nfs
+    #     nfs:
+    #       server: 192.168.0.2
+    #       path: /nfs
+
+    ## custom additional volume mounts in TiKV pods
+    # additionalVolumeMounts:
+    #   - name: nfs
+    #     mountPath: /nfs
+
+    ## define the time period between pod Terminating and killed
+    ## Ref: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#hook-handler-execution
+    # terminationGracePeriodSeconds: 30s
+
+    ## defines privilege and access control settings for TiKV pods
+    ## Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+    # podSecurityContext:
+    #   sysctls:
+    #     - name: net.ipv4.tcp_syncookies
+    #       value: 0
+
+    ## when TLS cluster feature is enabled, TiDB Operator will automatically mount the certificates if mountClusterClientSecret set to true
+    ## Defaults to false
+    ## Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/configure-a-tidb-cluster#mountclusterclientsecret
     mountClusterClientSecret: false
-    ## The storageClassName of the persistent volume for TiKV data storage.
-    ## Defaults to Kubernetes default storage class.
+
+    # The default storageClassName of the persistent volume for TiKV data storage.
+    ## Can be overwritten by `storageClassName` field in `storageVolumes` settings
     # storageClassName: ""
+
+    ## defines volumes which uses PVCs as storage backend
+    # storageVolumes:
+    #   - name: pvcName  # this will be suffix of PVCs' name
+    #     storageClassName: local-storage  # specify which storageClass to use
+    #     storageSize: 1Gi  # storage request of PVC
+    #     mountPath: /some/path  # mount path of the PVC
+
     ## Subdirectory within the volume to store TiKV Data. By default, the data
     ## is stored in the root directory of volume which is mounted at
     ## /var/lib/tikv.
@@ -475,6 +622,7 @@ spec:
     ## upgrade your cluster to use a new storage directory.
     ## Defaults to "" (volume's root).
     # dataSubDir: ""
+
     ## Affinity for pod scheduling
     ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
     # affinity:
@@ -503,7 +651,7 @@ spec:
     ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
     # nodeSelector:
     #   app.kubernetes.io/component: tikv
-  ## ** TiDB advanced feature **
+
   ## Deploy TiDB Binlog of a TiDB cluster
   ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/deploy-tidb-binlog/#deploy-pump
   # pump:
@@ -517,11 +665,13 @@ spec:
   #     addr: 0.0.0.0:8250
   #     gc: 7
   #     heartbeat-interval: 2
+
   ## Ref: TiCDC is a tool for replicating the incremental data of TiDB
   ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/deploy-ticdc/
   # ticdc:
   #   baseImage: pingcap/ticdc
   #   replicas: 3
+
   ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/deploy-tiflash/
   # tiflash:
   #   baseImage: pingcap/tiflash
