@@ -344,6 +344,26 @@ spec:
     # Advanced TiDB Configuration #
     ###############################
 
+    ## Overwrite TiDB cluster level configurations
+    # version: "v4.0.8"
+    # imagePullPolicy: IfNotPresent
+    # ImagePullSecrets: secretName
+    # hostNetwork: false
+    # serviceAccount: advanced-tidb-tidb
+    # priorityClassName: system-cluster-critical
+    # schedulerName: tidb-scheduler
+    # nodeSelector:
+    #   app.kubernetes.io/component: tidb
+    # annotations:
+    #   node.kubernetes.io/instance-type: some-vm-type
+    # tolerations:
+    #   - effect: NoSchedule
+    #     key: dedicated
+    #     operator: Equal
+    #     value: tidb
+    # configUpdateStrategy: RollingUpdate
+    # statefulSetUpdateStrategy: RollingUpdate
+
     ## prob tidb-server readiness
     ## valid type values:
     ##   - `tcp`, which uses Kubernetes TCPSocketAction to prob the 4000 tcp port of the pod
@@ -409,7 +429,7 @@ spec:
     #                 values:
     #                   - pd
     #                   - tikv
-    #           topologyKey: ""
+    #           topologyKey: kubernetes.io/hostname
     #         weight: 100
     #     # require not to run tidb pods on nodes where there's already a tidb pod running
     #     # if setting this, you must ensure that at least 3 nodes are available in the cluster
@@ -420,11 +440,7 @@ spec:
     #               operator: In
     #               values:
     #                 - tidb
-    #         topologyKey: ""
-    ## Specify node labels for pods scheduling
-    ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
-    # nodeSelector:
-    #   app.kubernetes.io/component: tidb
+    #         topologyKey: kubernetes.io/hostname
 
   tikv:
     # Base image of the component
@@ -472,7 +488,7 @@ spec:
     #                 values:
     #                   - tidb
     #                   - pd
-    #           topologyKey: ""
+    #           topologyKey: kubernetes.io/hostname
     #         weight: 100
     ## If you use requiredDuringSchedulingIgnoredDuringExecution, you must ensure that at least 3 nodes are available in the cluster
     #     requiredDuringSchedulingIgnoredDuringExecution:
@@ -482,7 +498,7 @@ spec:
     #               operator: In
     #               values:
     #                 - tikv
-    #         topologyKey: ""
+    #         topologyKey: kubernetes.io/hostname
     ## Specify node labels for pods scheduling
     ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
     # nodeSelector:
