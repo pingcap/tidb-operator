@@ -98,12 +98,13 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	currentCluster.peers[podName] = struct{}{}
 
 	// Should take failover replicas into consideration
-	if len(currentCluster.peers) == int(tc.PDStsDesiredReplicas()) && tc.Spec.Cluster == nil {
-		delete(currentCluster.peers, podName)
-		if len(pdAddresses) != 0 {
-			return fmt.Sprintf("--join=%s", strings.Join(pdAddresses, ",")), nil
-		}
-		if len(tc.Status.PD.PeerMembers) == 0 {
+	if len(tc.Status.PD.PeerMembers) == 0 {
+		if len(currentCluster.peers) == int(tc.PDStsDesiredReplicas()) && tc.Spec.Cluster == nil {
+			delete(currentCluster.peers, podName)
+			if len(pdAddresses) != 0 {
+				return fmt.Sprintf("--join=%s", strings.Join(pdAddresses, ",")), nil
+			}
+
 			if len(tc.Spec.ClusterDomain) > 0 {
 				return fmt.Sprintf("--initial-cluster=%s=%s://%s", strArr[0], tc.Scheme(), advertisePeerUrl), nil
 			}
@@ -120,12 +121,9 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 		pdClients = append(pdClients, d.pdControl.GetClusterRefPDClient(pdapi.Namespace(namespace), tc.Spec.Cluster.Name, tc.Spec.Cluster.ClusterDomain, tc.IsTLSClusterEnabled()))
 	}
 	if len(tc.Status.PD.PeerMembers) > 0 {
-		namespace := tc.Spec.Cluster.Namespace
-		if len(namespace) == 0 {
-			namespace = tc.GetNamespace()
-		}
+		namespace := tc.GetNamespace()
 		for _, pdMember := range tc.Status.PD.PeerMembers {
-			pdClients = append(pdClients, d.pdControl.GetClusterRefPDClientMultiClusterRetry(pdapi.Namespace(namespace), tc.Spec.Cluster.Name, tc.Spec.Cluster.ClusterDomain, tc.IsTLSClusterEnabled(), pdMember.ClientURL, pdMember.Name))
+			pdClients = append(pdClients, d.pdControl.GetClusterRefPDClientMultiClusterRetry(pdapi.Namespace(namespace), tc.Name, tc.Spec.ClusterDomain, tc.IsTLSClusterEnabled(), pdMember.ClientURL, pdMember.Name))
 		}
 	}
 	if tc.Spec.PD != nil {
