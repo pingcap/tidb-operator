@@ -295,8 +295,9 @@ func validateStorageVolumes(storageVolumes []v1alpha1.StorageVolume, fldPath *fi
 	allErrs := field.ErrorList{}
 	for i, storageVolume := range storageVolumes {
 		idxPath := fldPath.Index(i)
-		allErrs = append(allErrs, field.Required(idxPath.Child("name"), "name must not be empty"))
-
+		if len(storageVolume.Name) == 0 {
+			allErrs = append(allErrs, field.Required(idxPath.Child("name"), "name must not be empty"))
+		}
 		_, err := resource.ParseQuantity(storageVolume.StorageSize)
 		if err != nil {
 			allErrs = append(allErrs, &field.Error{
@@ -304,8 +305,9 @@ func validateStorageVolumes(storageVolumes []v1alpha1.StorageVolume, fldPath *fi
 				Detail: `value of "storageSize" format not supported`,
 			})
 		}
-
-		allErrs = append(allErrs, field.Required(idxPath.Child("mountPath"), "mountPath must not be empty"))
+		if len(storageVolume.MountPath) == 0 {
+			allErrs = append(allErrs, field.Required(idxPath.Child("mountPath"), "mountPath must not be empty"))
+		}
 	}
 	return allErrs
 }
