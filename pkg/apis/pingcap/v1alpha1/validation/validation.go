@@ -124,6 +124,9 @@ func validatePDSpec(spec *v1alpha1.PDSpec, fldPath *field.Path) field.ErrorList 
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
 	allErrs = append(allErrs, validateRequestsStorage(spec.ResourceRequirements.Requests, fldPath)...)
+	if len(spec.StorageVolumes) > 0 {
+		allErrs = append(allErrs, validateStorageVolumes(spec.StorageVolumes, fldPath.Child("storageVolumes"))...)
+	}
 	return allErrs
 }
 
@@ -229,6 +232,9 @@ func validateTiDBSpec(spec *v1alpha1.TiDBSpec, fldPath *field.Path) field.ErrorL
 	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
 	if spec.Service != nil {
 		allErrs = append(allErrs, validateService(&spec.Service.ServiceSpec, fldPath)...)
+	}
+	if len(spec.StorageVolumes) > 0 {
+		allErrs = append(allErrs, validateStorageVolumes(spec.StorageVolumes, fldPath.Child("storageVolumes"))...)
 	}
 	return allErrs
 }
