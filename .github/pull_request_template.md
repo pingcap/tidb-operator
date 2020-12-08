@@ -1,13 +1,13 @@
 <!--
 Thank you for contributing to TiDB Operator!
-Please complete the following template before creating a PR
+Please complete the following template before creating a PR.
 Ref: TiDB Operator [CONTRIBUTING](https://github.com/pingcap/tidb-operator/blob/master/CONTRIBUTING.md) document
 -->
 
 ### What problem does this PR solve?
 <!--
 Please describe the problem AS DETAILED AS POSSIBLE.
-Add and ISSUE LINK WITH SUMMARY if exists.
+Add an ISSUE LINK WITH SUMMARY if exists.
 
 For example:
 
@@ -46,7 +46,7 @@ For example:
 ### Related changes
 
 - [ ] Need to cherry-pick to the release branch <!-- If this PR should also appear in the current release branch, check this box -->
-- [ ] Need to update the documentation <!-- If this PR introduces new features / change previous usages, check this box -->
+- [ ] Need to update the documentation <!-- If this PR introduces new features or changes previous usages, check this box -->
 
 ### Release Notes
 <!--
