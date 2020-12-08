@@ -97,6 +97,9 @@ func validatePDSpec(spec *v1alpha1.PDSpec, fldPath *field.Path) field.ErrorList 
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
 	allErrs = append(allErrs, validateRequestsStorage(spec.ResourceRequirements.Requests, fldPath)...)
+	if len(spec.StorageVolumes) > 0 {
+		allErrs = append(allErrs, validateStorageVolumes(spec.StorageVolumes, fldPath.Child("storageVolumes"))...)
+	}
 	return allErrs
 }
 
@@ -203,6 +206,9 @@ func validateTiDBSpec(spec *v1alpha1.TiDBSpec, fldPath *field.Path) field.ErrorL
 	if spec.Service != nil {
 		allErrs = append(allErrs, validateService(&spec.Service.ServiceSpec, fldPath)...)
 	}
+	if len(spec.StorageVolumes) > 0 {
+		allErrs = append(allErrs, validateStorageVolumes(spec.StorageVolumes, fldPath.Child("storageVolumes"))...)
+	}
 	return allErrs
 }
 
@@ -234,8 +240,9 @@ func validateStorageVolumes(storageVolumes []v1alpha1.StorageVolume, fldPath *fi
 	allErrs := field.ErrorList{}
 	for i, storageVolume := range storageVolumes {
 		idxPath := fldPath.Index(i)
-		allErrs = append(allErrs, field.Required(idxPath.Child("name"), "name must not be empty"))
-
+		if len(storageVolume.Name) == 0 {
+			allErrs = append(allErrs, field.Required(idxPath.Child("name"), "name must not be empty"))
+		}
 		_, err := resource.ParseQuantity(storageVolume.StorageSize)
 		if err != nil {
 			allErrs = append(allErrs, &field.Error{
@@ -243,8 +250,9 @@ func validateStorageVolumes(storageVolumes []v1alpha1.StorageVolume, fldPath *fi
 				Detail: `value of "storageSize" format not supported`,
 			})
 		}
-
-		allErrs = append(allErrs, field.Required(idxPath.Child("mountPath"), "mountPath must not be empty"))
+		if len(storageVolume.MountPath) == 0 {
+			allErrs = append(allErrs, field.Required(idxPath.Child("mountPath"), "mountPath must not be empty"))
+		}
 	}
 	return allErrs
 }
