@@ -440,7 +440,7 @@ type TiKVSpec struct {
 	// +optional
 	Config *TiKVConfigWraper `json:"config,omitempty"`
 
-	// RecoverFailover indicates that Operator can recover the failover Pods
+	// RecoverFailover indicates that Operator can recover the failed Pods
 	// +optional
 	RecoverFailover bool `json:"recoverFailover,omitempty"`
 
