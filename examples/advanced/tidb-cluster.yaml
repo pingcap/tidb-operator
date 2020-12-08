@@ -664,11 +664,30 @@ spec:
   ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/deploy-tidb-binlog/#deploy-pump
   # pump:
   #   baseImage: pingcap/tidb-binlog
+  #   version: "v4.0.8"
   #   replicas: 1
   #   storageClassName: local-storage
   #   requests:
-  #     storage: 30Gi
-  #   schedulerName: default-scheduler
+  #     storage: 1Gi
+  #   imagePullPolicy: IfNotPresent
+  #   ImagePullSecrets: secretName
+  #   hostNetwork: false
+  #   serviceAccount: advanced-tidb-pump
+  #   priorityClassName: system-cluster-critical
+  #   schedulerName: tidb-scheduler
+  #   nodeSelector:
+  #     app.kubernetes.io/component: pump
+  #   annotations:
+  #     node.kubernetes.io/instance-type: some-vm-type
+  #   tolerations: {}
+  #   configUpdateStrategy: RollingUpdate
+  #   statefulSetUpdateStrategy: RollingUpdate
+  #   podSecurityContext: {}
+  #   env: []
+  #   AdditionalContainers: []
+  #   additionalVolumes: []
+  #   additionalVolumeMounts: []
+  #   terminationGracePeriodSeconds: 30s
   #   config:
   #     addr: 0.0.0.0:8250
   #     gc: 7
@@ -678,13 +697,59 @@ spec:
   ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/deploy-ticdc/
   # ticdc:
   #   baseImage: pingcap/ticdc
+  #   version: "v4.0.8"
   #   replicas: 3
+  #   storageClassName: local-storage
+  #   requests:
+  #     storage: 1Gi
+  #   imagePullPolicy: IfNotPresent
+  #   ImagePullSecrets: secretName
+  #   hostNetwork: false
+  #   serviceAccount: advanced-tidb-ticdc
+  #   priorityClassName: system-cluster-critical
+  #   schedulerName: tidb-scheduler
+  #   nodeSelector:
+  #     app.kubernetes.io/component: ticdc
+  #   annotations:
+  #     node.kubernetes.io/instance-type: some-vm-type
+  #   tolerations: {}
+  #   configUpdateStrategy: RollingUpdate
+  #   statefulSetUpdateStrategy: RollingUpdate
+  #   podSecurityContext: {}
+  #   env: []
+  #   AdditionalContainers: []
+  #   additionalVolumes: []
+  #   additionalVolumeMounts: []
+  #   terminationGracePeriodSeconds: 30s
 
   ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/deploy-tiflash/
   # tiflash:
   #   baseImage: pingcap/tiflash
-  #   maxFailoverCount: 3
+  #   version: "v4.0.8"
   #   replicas: 1
+  #   maxFailoverCount: 3
+  #   storageClassName: local-storage
+  #   requests:
+  #     storage: 1Gi
+  #   imagePullPolicy: IfNotPresent
+  #   ImagePullSecrets: secretName
+  #   hostNetwork: false
+  #   serviceAccount: advanced-tidb-tiflash
+  #   priorityClassName: system-cluster-critical
+  #   schedulerName: tidb-scheduler
+  #   nodeSelector:
+  #     app.kubernetes.io/component: tiflash
+  #   annotations:
+  #     node.kubernetes.io/instance-type: some-vm-type
+  #   tolerations: {}
+  #   configUpdateStrategy: RollingUpdate
+  #   statefulSetUpdateStrategy: RollingUpdate
+  #   podSecurityContext: {}
+  #   env: []
+  #   AdditionalContainers: []
+  #   additionalVolumes: []
+  #   additionalVolumeMounts: []
+  #   terminationGracePeriodSeconds: 30s
   #   storageClaims:
   #     - resources:
   #         requests:
