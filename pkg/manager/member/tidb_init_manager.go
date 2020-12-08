@@ -26,6 +26,8 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -105,13 +107,43 @@ func (m *tidbInitManager) updateStatus(ti *v1alpha1.TidbInitializer) error {
 		update = true
 	}
 	if update {
-		status := ti.Status.DeepCopy()
-		return controller.GuaranteedUpdate(m.deps.GenericClient, ti, func() error {
-			ti.Status = *status
-			return nil
-		})
+		_, err = m.updateInitializer(ti)
+		return err
 	}
 	return nil
+}
+
+func (m *tidbInitManager) updateInitializer(ti *v1alpha1.TidbInitializer) (*v1alpha1.TidbInitializer, error) {
+	ns := ti.GetNamespace()
+	tiName := ti.GetName()
+
+	status := ti.Status.DeepCopy()
+	var update *v1alpha1.TidbInitializer
+
+	// don't wait due to limited number of clients, but backoff after the default number of steps
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		var updateErr error
+		update, updateErr = m.deps.Clientset.PingcapV1alpha1().TidbInitializers(ns).Update(ti)
+		if updateErr == nil {
+			klog.Infof("TidbInitializer: [%s/%s] updated successfully", ns, tiName)
+			return nil
+		}
+		klog.V(4).Infof("failed to update TidbInitializer: [%s/%s], error: %v", ns, tiName, updateErr)
+
+		if updated, err := m.deps.TiDBInitializerLister.TidbInitializers(ns).Get(tiName); err == nil {
+			// make a copy so we don't mutate the shared cache
+			ti = updated.DeepCopy()
+			ti.Status = *status
+		} else {
+			utilruntime.HandleError(fmt.Errorf("error getting updated TidbInitializer %s/%s from lister: %v", ns, tiName, err))
+		}
+
+		return updateErr
+	})
+	if err != nil {
+		klog.Errorf("failed to update TidbInitializer: [%s/%s], error: %v", ns, tiName, err)
+	}
+	return update, err
 }
 
 func (m *tidbInitManager) syncTiDBInitConfigMap(ti *v1alpha1.TidbInitializer) error {
