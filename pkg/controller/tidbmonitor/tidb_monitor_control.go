@@ -47,7 +47,7 @@ type defaultTidbMonitorControl struct {
 
 func (c *defaultTidbMonitorControl) ReconcileTidbMonitor(tm *v1alpha1.TidbMonitor) error {
 	var errs []error
-	if err := c.reconcileTidbMonitor(tm); err != nil {
+	if err := c.reconcileTidbMonitor(tm.DeepCopy()); err != nil {
 		errs = append(errs, err)
 	}
 
@@ -57,7 +57,7 @@ func (c *defaultTidbMonitorControl) ReconcileTidbMonitor(tm *v1alpha1.TidbMonito
 func (c *defaultTidbMonitorControl) reconcileTidbMonitor(tm *v1alpha1.TidbMonitor) error {
 	var errs []error
 	oldStatus := tm.Status.DeepCopy()
-	if err := c.monitorManager.SyncMonitor(tm.DeepCopy()); err != nil {
+	if err := c.monitorManager.SyncMonitor(tm); err != nil {
 		errs = append(errs, err)
 	}
 
