@@ -1401,7 +1401,8 @@ Kubernetes core/v1.Affinity
 </td>
 <td>
 <em>(Optional)</em>
-<p>Affinity of TiDB cluster Pods</p>
+<p>Affinity of TiDB cluster Pods
+Will be overwritten by each cluster component&rsquo;s specific affinity setting</p>
 </td>
 </tr>
 <tr>
@@ -1479,7 +1480,8 @@ Optional: Defaults to UTC</p>
 </td>
 <td>
 <p>Services list non-headless services type used in TidbCluster
-Deprecated</p>
+Deprecated
+TODO: really deprecate this in code</p>
 </td>
 </tr>
 <tr>
@@ -1491,7 +1493,10 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster</p>
+<p>EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster
+Currently only used for tikv &ndash;advertise-addr arg
+Deprecated
+TODO: rename this into tikv-specific config name</p>
 </td>
 </tr>
 <tr>
@@ -3507,7 +3512,7 @@ Kubernetes core/v1.Affinity
 </td>
 <td>
 <em>(Optional)</em>
-<p>Affinity of the component. Override the cluster-level one if present
+<p>Affinity of the component. Override the cluster-level setting if present
 Optional: Defaults to cluster-level setting</p>
 </td>
 </tr>
@@ -3619,9 +3624,8 @@ Optional: Defaults to cluster-level setting</p>
 <td>
 <em>(Optional)</em>
 <p>List of environment variables to set in the container, like
-v1.Container.Env.
-Note that following env names cannot be used and may be overrided by
-tidb-operator built envs.
+v1.Container.Env
+Note that the following env names cannot be used and may be overrided by TiDB Operator builtin envs
 - NAMESPACE
 - TZ
 - SERVICE_NAME
@@ -8722,6 +8726,21 @@ Defaults to Kubernetes default storage class.</p>
 </tr>
 <tr>
 <td>
+<code>storageVolumes</code></br>
+<em>
+<a href="#storagevolume">
+[]StorageVolume
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StorageVolumes is additional storage apply for PD node.
+Default to storageClassName storage class</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>dataSubDir</code></br>
 <em>
 string
@@ -8775,7 +8794,8 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>EnableDashboardInternalProxy would directly set <code>internal-proxy</code> in the <code>PdConfig</code></p>
+<p>EnableDashboardInternalProxy would directly set <code>internal-proxy</code> in the <code>PdConfig</code>
+Deprecated, should just set <code>dashboard.internal-proxy</code> in pd.config</p>
 </td>
 </tr>
 <tr>
@@ -8788,21 +8808,6 @@ bool
 <td>
 <em>(Optional)</em>
 <p>MountClusterClientSecret indicates whether to mount <code>cluster-client-secret</code> to the Pod</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>storageVolumes</code></br>
-<em>
-<a href="#storagevolume">
-[]StorageVolume
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>StorageVolumes is additional storage apply for PD node.
-Default to storageClassName storage class</p>
 </td>
 </tr>
 </tbody>
@@ -10724,8 +10729,8 @@ string
 <a href="#tidbclusterspec">TidbClusterSpec</a>)
 </p>
 <p>
-<p>Deprecated
-Service represent service type used in TidbCluster</p>
+<p>Service represent service type used in TidbCluster
+Deprecated</p>
 </p>
 <table>
 <thead>
@@ -10853,8 +10858,9 @@ string
 If specified and supported by the platform, this will restrict traffic through the cloud-provider
 load-balancer will be restricted to the specified client IPs. This field will be ignored if the
 cloud-provider does not support the feature.&rdquo;
-More info: <a href="https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/">https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/</a>
-Optional: Defaults to omitted</p>
+More info: <a href="https://kubernetes.io/docs/concepts/services-networking/service/#aws-nlb-support">https://kubernetes.io/docs/concepts/services-networking/service/#aws-nlb-support</a>
+Optional: Defaults to omitted
+NOTE: it seems like this is not a mainstream option, maybe we should reevaluate whether to deprecate this</p>
 </td>
 </tr>
 </tbody>
@@ -11184,7 +11190,7 @@ string
 <a href="#tidbclusterspec">TidbClusterSpec</a>)
 </p>
 <p>
-<p>TLSCluster can enable TLS connection between TiDB server components
+<p>TLSCluster can enable mutual TLS connection between TiDB cluster components
 <a href="https://pingcap.com/docs/stable/how-to/secure/enable-tls-between-components/">https://pingcap.com/docs/stable/how-to/secure/enable-tls-between-components/</a></p>
 </p>
 <table>
@@ -11204,11 +11210,11 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>Enable mutual TLS authentication among TiDB components
+<p>Enable mutual TLS connection between TiDB cluster components
 Once enabled, the mutual authentication applies to all components,
 and it does not support applying to only part of the components.
 The steps to enable this feature:
-1. Generate TiDB server components certificates and a client-side certifiacete for them.
+1. Generate TiDB cluster components certificates and a client-side certifiacete for them.
 There are multiple ways to generate these certificates:
 - user-provided certificates: <a href="https://pingcap.com/docs/stable/how-to/secure/generate-self-signed-certificates/">https://pingcap.com/docs/stable/how-to/secure/generate-self-signed-certificates/</a>
 - use the K8s built-in certificate signing system signed certificates: <a href="https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/">https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/</a>
@@ -12147,6 +12153,8 @@ map[string]string
 <a href="#tidbspec">TiDBSpec</a>)
 </p>
 <p>
+<p>TiDBConfigWraper simply wrapps a GenericConfig
+FIXME: typo, should be TiDBConfigWrapper with two &lsquo;p&rsquo;s</p>
 </p>
 <table>
 <thead>
@@ -12310,6 +12318,7 @@ So do not use this before v4.0.9.</p>
 <a href="#tidbspec">TiDBSpec</a>)
 </p>
 <p>
+<p>TiDBServiceSpec defines .tidb field of TidbCluster.spec</p>
 </p>
 <table>
 <thead>
@@ -12583,6 +12592,20 @@ Optional: Defaults to true</p>
 </tr>
 <tr>
 <td>
+<code>slowLogTailer</code></br>
+<em>
+<a href="#tidbslowlogtailerspec">
+TiDBSlowLogTailerSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The spec of the slow log tailer sidecar</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>tlsClient</code></br>
 <em>
 <a href="#tidbtlsclient">
@@ -12598,20 +12621,6 @@ Optional: Defaults to nil</p>
 </tr>
 <tr>
 <td>
-<code>slowLogTailer</code></br>
-<em>
-<a href="#tidbslowlogtailerspec">
-TiDBSlowLogTailerSpec
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>The spec of the slow log tailer sidecar</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>plugins</code></br>
 <em>
 []string
@@ -12619,7 +12628,9 @@ TiDBSlowLogTailerSpec
 </td>
 <td>
 <em>(Optional)</em>
-<p>Plugins is a list of plugins that are loaded by TiDB server, empty means plugin disabled</p>
+<p>Plugins is a list of plugins that are loaded by TiDB server, empty means plugin disabled
+TODO: additional volumes should be used to hold .so plugin binaries.
+Since this is not a runnable implementation, maybe we can change this without backward compatibility.</p>
 </td>
 </tr>
 <tr>
@@ -17053,7 +17064,7 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>RecoverFailover indicates that Operator can recover the failover Pods</p>
+<p>RecoverFailover indicates that Operator can recover the failed Pods</p>
 </td>
 </tr>
 <tr>
@@ -18450,7 +18461,8 @@ Kubernetes core/v1.Affinity
 </td>
 <td>
 <em>(Optional)</em>
-<p>Affinity of TiDB cluster Pods</p>
+<p>Affinity of TiDB cluster Pods
+Will be overwritten by each cluster component&rsquo;s specific affinity setting</p>
 </td>
 </tr>
 <tr>
@@ -18528,7 +18540,8 @@ Optional: Defaults to UTC</p>
 </td>
 <td>
 <p>Services list non-headless services type used in TidbCluster
-Deprecated</p>
+Deprecated
+TODO: really deprecate this in code</p>
 </td>
 </tr>
 <tr>
@@ -18540,7 +18553,10 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster</p>
+<p>EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster
+Currently only used for tikv &ndash;advertise-addr arg
+Deprecated
+TODO: rename this into tikv-specific config name</p>
 </td>
 </tr>
 <tr>
