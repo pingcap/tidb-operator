@@ -407,7 +407,7 @@ func (m *masterMemberManager) getNewMasterServiceForDMCluster(dc *v1alpha1.DMClu
 		if svcSpec.Type != "" {
 			masterSvc.Spec.Type = svcSpec.Type
 		}
-		masterSvc.ObjectMeta.Annotations = copyAnnotations(svcSpec.Annotations)
+		masterSvc.ObjectMeta.Annotations = CopyAnnotations(svcSpec.Annotations)
 		masterSvc.Spec.Ports[0].NodePort = svcSpec.GetMasterNodePort()
 		if svcSpec.Type == corev1.ServiceTypeLoadBalancer {
 			if svcSpec.LoadBalancerIP != nil {
