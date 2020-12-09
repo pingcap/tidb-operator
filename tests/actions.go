@@ -569,7 +569,8 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 		info.OperatorHelmSetBoolean(),
 		info.OperatorHelmSetString(nil))
 	klog.Info(cmd)
-
+	klog.Infof("deploy operator --name %s --namespace %s cmd: %s\n", info.ReleaseName,
+		info.Namespace, cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to deploy operator: %v, %s", err, string(res))
@@ -626,7 +627,8 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 		info.ReleaseName, oa.operatorChartPath(info.Tag),
 		info.OperatorHelmSetBoolean(),
 		info.OperatorHelmSetString(nil))
-
+	klog.Infof("upgrade operator --name %s --namespace %s cmd: %s\n", info.ReleaseName,
+		info.Namespace, cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to upgrade operator to: %s, %v, %s", info.Image, err, string(res))
