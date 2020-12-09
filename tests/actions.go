@@ -465,6 +465,9 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 		set["controllerManager.autoFailover"] = strconv.FormatBool(*oi.AutoFailover)
 	}
 
+	set["controllerManager.create"] = "true"
+	set["scheduler.create"] = "true"
+
 	// merge with additional STRING values
 	for k, v := range oi.StringValues {
 		set[k] = v
