@@ -9,8 +9,7 @@ spec:
   # Basic Configuration #
   #######################
 
-  ## Configuration
-  # TiDB cluster version
+  ## TiDB cluster version
   version: "v4.0.8"
 
   ## Time zone of TiDB cluster Pods
@@ -613,7 +612,7 @@ spec:
     #     storageSize: 1Gi  # storage request of PVC
     #     mountPath: /some/path  # mount path of the PVC
 
-    ## run tikv container in previleged mode
+    ## run tikv container in privileged mode
     ## Processes in privileged containers are essentially equivalent to root on the host
     ## NOT RECOMMENDED in production environment
     ## Ref: https://kubernetes.io/docs/concepts/policy/pod-security-policy/#privileged
@@ -668,7 +667,13 @@ spec:
   #   replicas: 1
   #   storageClassName: local-storage
   #   requests:
+  #     cpu: 100m
+  #     memory: 256Mi
   #     storage: 1Gi
+  #   limits:
+  #     cpu: 200m
+  #     memory: 512Mi
+  #     storage: 10Gi
   #   imagePullPolicy: IfNotPresent
   #   ImagePullSecrets: secretName
   #   hostNetwork: false
@@ -688,12 +693,12 @@ spec:
   #   additionalVolumes: []
   #   additionalVolumeMounts: []
   #   terminationGracePeriodSeconds: 30s
-  #   config:
+  #   config:  # Ref: https://docs.pingcap.com/tidb/stable/tidb-binlog-configuration-file#pump
   #     addr: 0.0.0.0:8250
   #     gc: 7
   #     heartbeat-interval: 2
 
-  ## Ref: TiCDC is a tool for replicating the incremental data of TiDB
+  ## TiCDC is a tool for replicating the incremental data of TiDB
   ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/deploy-ticdc/
   # ticdc:
   #   baseImage: pingcap/ticdc
@@ -701,7 +706,13 @@ spec:
   #   replicas: 3
   #   storageClassName: local-storage
   #   requests:
+  #     cpu: 100m
+  #     memory: 256Mi
   #     storage: 1Gi
+  #   limits:
+  #     cpu: 200m
+  #     memory: 512Mi
+  #     storage: 10Gi
   #   imagePullPolicy: IfNotPresent
   #   ImagePullSecrets: secretName
   #   hostNetwork: false
@@ -721,18 +732,36 @@ spec:
   #   additionalVolumes: []
   #   additionalVolumeMounts: []
   #   terminationGracePeriodSeconds: 30s
+  #   config:  # Ref: https://docs.pingcap.com/tidb/stable/deploy-ticdc#add-ticdc-to-an-existing-tidb-cluster-using-binary-not-recommended
+  #     timezone: UTC
+  #     gcTTL: 86400
+  #     logLevel: info
+  #     logFile: /dev/stderr
 
+  ## TiFlash is the columnar storage extension of TiKV
   ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/deploy-tiflash/
   # tiflash:
+  #   ###############################
+  #   # Basic TiFlash Configuration #
+  #   ###############################
   #   baseImage: pingcap/tiflash
   #   version: "v4.0.8"
   #   replicas: 1
-  #   maxFailoverCount: 3
-  #   storageClassName: local-storage
   #   requests:
+  #     cpu: 100m
+  #     memory: 256Mi
   #     storage: 1Gi
+  #   limits:
+  #     cpu: 200m
+  #     memory: 512Mi
+  #     storage: 10Gi
   #   imagePullPolicy: IfNotPresent
   #   ImagePullSecrets: secretName
+
+  #   ##################################
+  #   # Advanced TiFlash Configuration #
+  #   ##################################
+  #   maxFailoverCount: 3
   #   hostNetwork: false
   #   serviceAccount: advanced-tidb-tiflash
   #   priorityClassName: system-cluster-critical
@@ -755,3 +784,30 @@ spec:
   #         requests:
   #           storage: 1Gi
   #       storageClassName: local-storage
+  #   # run tikv container in privileged mode
+  #   # Processes in privileged containers are essentially equivalent to root on the host
+  #   # NOT RECOMMENDED in production environment
+  #   # Ref: https://kubernetes.io/docs/concepts/policy/pod-security-policy/#privileged
+  #   privileged: false
+
+  #   # enable failover when tikv pod is failed
+  #   recoverFailover: true
+
+  #   # configures serverlog/errorlog/clusterlog sidecar container resource requirements
+  #   logTailer:
+  #     requests:
+  #       cpu: 100m
+  #       memory: 256Mi
+  #     limits:
+  #       cpu: 200m
+  #       memory: 512Mi
+
+  #   # TOML format configuration
+  #   # Ref: https://docs.pingcap.com/tidb/dev/tiflash-configuration
+  #   config:
+  #     # configure the tiflash.toml file
+  #     config:
+  #       logger.log: /var/log/somelog
+  #     # configure the config file pointed by `flash.proxy.config`
+  #     proxy:
+  #       security.cert-allowed-cn: CNNAME

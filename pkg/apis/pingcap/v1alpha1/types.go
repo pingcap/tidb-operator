@@ -553,14 +553,14 @@ type TiCDCConfig struct {
 	LogFile *string `json:"logFile,omitempty"`
 }
 
-// +k8s:openapi-gen=true
 // LogTailerSpec represents an optional log tailer sidecar container
+// +k8s:openapi-gen=true
 type LogTailerSpec struct {
 	corev1.ResourceRequirements `json:",inline"`
 }
 
-// +k8s:openapi-gen=true
 // StorageClaim contains details of TiFlash storages
+// +k8s:openapi-gen=true
 type StorageClaim struct {
 	// Resources represents the minimum resources the volume should have.
 	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
