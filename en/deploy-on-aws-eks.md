@@ -27,6 +27,8 @@ Before deploying a TiDB cluster on AWS EKS, make sure the following requirements
 
 ## Create a EKS cluster and a node pool
 
+According to AWS [Official Blog](https://aws.amazon.com/blogs/containers/amazon-eks-cluster-multi-zone-auto-scaling-groups/) recommendation and EKS [Best Practice Document](https://aws.github.io/aws-eks-best-practices/reliability/docs/dataplane/#ensure-capacity-in-each-az-when-using-ebs-volumes), since most of the TiDB cluster components use EBS volumes as storage, it is recommended to create a node pool in each availability zone (at least 3 in total) for each component when creating an EKS.
+
 Save the following configuration as the `cluster.yaml` file. Replace `${clusterName}` with your desired cluster name.
 
 {{< copyable "shell-regular" >}}
@@ -36,35 +38,92 @@ apiVersion: eksctl.io/v1alpha5
 kind: ClusterConfig
 metadata:
   name: ${clusterName}
-  region: us-west-2
+  region: ap-northeast-1
 
 nodeGroups:
   - name: admin
     desiredCapacity: 1
+    privateNetworking: true
     labels:
       dedicated: admin
 
-  - name: tidb
-    desiredCapacity: 2
+  - name: tidb-1a
+    desiredCapacity: 1
+    privateNetworking: true
+    availabilityZones: ["ap-northeast-1a"]
+    labels:
+      dedicated: tidb
+    taints:
+      dedicated: tidb:NoSchedule
+  - name: tidb-1d
+    desiredCapacity: 0
+    privateNetworking: true
+    availabilityZones: ["ap-northeast-1d"]
+    labels:
+      dedicated: tidb
+    taints:
+      dedicated: tidb:NoSchedule
+  - name: tidb-1c
+    desiredCapacity: 1
+    privateNetworking: true
+    availabilityZones: ["ap-northeast-1c"]
     labels:
       dedicated: tidb
     taints:
       dedicated: tidb:NoSchedule
 
-  - name: pd
-    desiredCapacity: 3
+  - name: pd-1a
+    desiredCapacity: 1
+    privateNetworking: true
+    availabilityZones: ["ap-northeast-1a"]
+    labels:
+      dedicated: pd
+    taints:
+      dedicated: pd:NoSchedule
+  - name: pd-1d
+    desiredCapacity: 1
+    privateNetworking: true
+    availabilityZones: ["ap-northeast-1d"]
+    labels:
+      dedicated: pd
+    taints:
+      dedicated: pd:NoSchedule
+  - name: pd-1c
+    desiredCapacity: 1
+    privateNetworking: true
+    availabilityZones: ["ap-northeast-1c"]
     labels:
       dedicated: pd
     taints:
       dedicated: pd:NoSchedule
 
-  - name: tikv
-    desiredCapacity: 3
+  - name: tikv-1a
+    desiredCapacity: 1
+    privateNetworking: true
+    availabilityZones: ["ap-northeast-1a"]
+    labels:
+      dedicated: tikv
+    taints:
+      dedicated: tikv:NoSchedule
+  - name: tikv-1d
+    desiredCapacity: 1
+    privateNetworking: true
+    availabilityZones: ["ap-northeast-1d"]
+    labels:
+      dedicated: tikv
+    taints:
+      dedicated: tikv:NoSchedule
+  - name: tikv-1c
+    desiredCapacity: 1
+    privateNetworking: true
+    availabilityZones: ["ap-northeast-1c"]
     labels:
       dedicated: tikv
     taints:
       dedicated: tikv:NoSchedule
 ```
+
+By default, only two TiDB nodes are required, so you can set the `desiredCapacity` of the `tidb-1d` node group to `0`. You can scale out this node group any time if necessary.
 
 Execute the following command to create the cluster:
 
@@ -74,9 +133,14 @@ Execute the following command to create the cluster:
 eksctl create cluster -f cluster.yaml
 ```
 
-> **Note:**
+After executing the command above, you need to wait until the EKS cluster is successfully created and the node group is created and added in the EKS cluster. This process might take 5 to 10 minutes. For more cluster configuration, refer to [`eksctl` documentation](https://eksctl.io/usage/creating-and-managing-clusters/#using-config-files).
+
+> **Warning:**
 >
-> After executing the command above, you need to wait until the EKS cluster is successfully created and the node group is created and added in the EKS cluster. This process might take 5 to 10 minutes. For more cluster configuration, refer to [`eksctl` documentation](https://eksctl.io/usage/creating-and-managing-clusters/#using-config-files).
+> If the Regional Auto Scaling Group (ASG) is used:
+>
+> * [Enable the instance scale-in protection](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-instance-termination.html#instance-protection-instance) for all the EC2s that have been started. The instance scale-in protection for the ASG is not required.
+> * [Set termination policy](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-instance-termination.html#custom-termination-policy) to `NewestInstance` for the ASG.
 
 ## Deploy TiDB Operator
 
@@ -262,12 +326,14 @@ This section describes how to scale out the EKS node group and TiDB components.
 
 ### Scale out EKS node group
 
-The following example shows how to scale out the `tikv` group of the `${clusterName}` cluster to 4 nodes:
+When scaling out TiKV, the node groups must be scaled out evenly among the different availability zones. The following example shows how to scale out the `tikv-1a`, `tikv-1c`, and `tikv-1d` groups of the `${clusterName}` cluster to 2 nodes:
 
 {{< copyable "shell-regular" >}}
 
 ```shell
-eksctl scale nodegroup --cluster ${clusterName} --name tikv --nodes 4 --nodes-min 4 --nodes-max 4
+eksctl scale nodegroup --cluster ${clusterName} --name tikv-1a --nodes 2 --nodes-min 2 --nodes-max 2
+eksctl scale nodegroup --cluster ${clusterName} --name tikv-1c --nodes 2 --nodes-min 2 --nodes-max 2
+eksctl scale nodegroup --cluster ${clusterName} --name tikv-1d --nodes 2 --nodes-min 2 --nodes-max 2
 ```
 
 For more information on managing node groups, refer to [`eksctl` documentation](https://eksctl.io/usage/managing-nodegroups/).
@@ -289,16 +355,53 @@ The two components are *not required* in the deployment. This section shows a qu
 In the configuration file of eksctl (`cluster.yaml`), add the following two items to add a node group for TiFlash/TiCDC respectively. `desiredCapacity` is the number of nodes you desire.
 
 ```yaml
-- name: tiflash
-    desiredCapacity: 3
+  - name: tiflash-1a
+    desiredCapacity: 1
+    privateNetworking: true
+    availabilityZones: ["ap-northeast-1a"]
     labels:
-      role: tiflash
+      dedicated: tiflash
     taints:
       dedicated: tiflash:NoSchedule
-  - name: ticdc
+  - name: tiflash-1d
     desiredCapacity: 1
+    privateNetworking: true
+    availabilityZones: ["ap-northeast-1d"]
     labels:
-      role: ticdc
+      dedicated: tiflash
+    taints:
+      dedicated: tiflash:NoSchedule
+  - name: tiflash-1c
+    desiredCapacity: 1
+    privateNetworking: true
+    availabilityZones: ["ap-northeast-1c"]
+    labels:
+      dedicated: tiflash
+    taints:
+      dedicated: tiflash:NoSchedule
+
+  - name: ticdc-1a
+    desiredCapacity: 1
+    privateNetworking: true
+    availabilityZones: ["ap-northeast-1a"]
+    labels:
+      dedicated: ticdc
+    taints:
+      dedicated: ticdc:NoSchedule
+  - name: ticdc-1d
+    desiredCapacity: 1
+    privateNetworking: true
+    availabilityZones: ["ap-northeast-1d"]
+    labels:
+      dedicated: ticdc
+    taints:
+      dedicated: ticdc:NoSchedule
+  - name: ticdc-1c
+    desiredCapacity: 1
+    privateNetworking: true
+    availabilityZones: ["ap-northeast-1c"]
+    labels:
+      dedicated: ticdc
     taints:
       dedicated: ticdc:NoSchedule
 ```
@@ -418,6 +521,8 @@ Some AWS instance types provide additional [NVMe SSD local store volumes](https:
 > You cannot dynamically change the storage class of a running TiDB cluster. You can create a new cluster for testing.
 >
 > During the EKS upgrade, [data in the local storage will be lost](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html#instance-store-lifetime) due to the node reconstruction. When the node reconstruction occurs, you need to migrate data in TiKV. If you do not want to migrate data, it is recommended not to use the local disk in the production environment.
+>
+> As the node reconstruction will cause the data loss of local storage, refer to [AWS document](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-suspend-resume-processes.html) to suspend the `ReplaceUnhealthy` process for the TiKV node group.
 
 For instance types that provide local volumes, see [AWS Instance Types](https://aws.amazon.com/ec2/instance-types/). Take `c5d.4xlarge` as an example:
 
@@ -426,10 +531,13 @@ For instance types that provide local volumes, see [AWS Instance Types](https://
     Modify the instance type of the TiKV node group in the `eksctl` configuration file to `c5d.4xlarge`:
 
     ```yaml
-      - name: tikv
+      - name: tikv-1a
+        desiredCapacity: 1
+        privateNetworking: true
+        availabilityZones: ["ap-northeast-1a"]
         instanceType: c5d.4xlarge
         labels:
-          role: tikv
+          dedicated: tikv
         taints:
           dedicated: tikv:NoSchedule
         ...

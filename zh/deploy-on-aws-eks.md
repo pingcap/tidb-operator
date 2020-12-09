@@ -28,6 +28,8 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-on-aws-eks/']
 
 ## 创建 EKS 集群和节点池
 
+根据 AWS [官方博客](https://aws.amazon.com/cn/blogs/containers/amazon-eks-cluster-multi-zone-auto-scaling-groups/)推荐和 EKS [最佳实践文档](https://aws.github.io/aws-eks-best-practices/reliability/docs/dataplane/#ensure-capacity-in-each-az-when-using-ebs-volumes)，由于 TiDB 集群大部分组件使用 EBS 卷作为存储，推荐在创建 EKS 的时候针对每个组件在每个可用区（至少 3 个可用区）创建一个节点池。
+
 将以下配置存为 cluster.yaml 文件，并替换 `${clusterName}` 为自己想命名的集群名字：
 
 {{< copyable "shell-regular" >}}
@@ -37,35 +39,92 @@ apiVersion: eksctl.io/v1alpha5
 kind: ClusterConfig
 metadata:
   name: ${clusterName}
-  region: us-west-2
+  region: ap-northeast-1
 
 nodeGroups:
   - name: admin
     desiredCapacity: 1
+    privateNetworking: true
     labels:
       dedicated: admin
 
-  - name: tidb
-    desiredCapacity: 2
+  - name: tidb-1a
+    desiredCapacity: 1
+    privateNetworking: true
+    availabilityZones: ["ap-northeast-1a"]
+    labels:
+      dedicated: tidb
+    taints:
+      dedicated: tidb:NoSchedule
+  - name: tidb-1d
+    desiredCapacity: 0
+    privateNetworking: true
+    availabilityZones: ["ap-northeast-1d"]
+    labels:
+      dedicated: tidb
+    taints:
+      dedicated: tidb:NoSchedule
+  - name: tidb-1c
+    desiredCapacity: 1
+    privateNetworking: true
+    availabilityZones: ["ap-northeast-1c"]
     labels:
       dedicated: tidb
     taints:
       dedicated: tidb:NoSchedule
 
-  - name: pd
-    desiredCapacity: 3
+  - name: pd-1a
+    desiredCapacity: 1
+    privateNetworking: true
+    availabilityZones: ["ap-northeast-1a"]
+    labels:
+      dedicated: pd
+    taints:
+      dedicated: pd:NoSchedule
+  - name: pd-1d
+    desiredCapacity: 1
+    privateNetworking: true
+    availabilityZones: ["ap-northeast-1d"]
+    labels:
+      dedicated: pd
+    taints:
+      dedicated: pd:NoSchedule
+  - name: pd-1c
+    desiredCapacity: 1
+    privateNetworking: true
+    availabilityZones: ["ap-northeast-1c"]
     labels:
       dedicated: pd
     taints:
       dedicated: pd:NoSchedule
 
-  - name: tikv
-    desiredCapacity: 3
+  - name: tikv-1a
+    desiredCapacity: 1
+    privateNetworking: true
+    availabilityZones: ["ap-northeast-1a"]
+    labels:
+      dedicated: tikv
+    taints:
+      dedicated: tikv:NoSchedule
+  - name: tikv-1d
+    desiredCapacity: 1
+    privateNetworking: true
+    availabilityZones: ["ap-northeast-1d"]
+    labels:
+      dedicated: tikv
+    taints:
+      dedicated: tikv:NoSchedule
+  - name: tikv-1c
+    desiredCapacity: 1
+    privateNetworking: true
+    availabilityZones: ["ap-northeast-1c"]
     labels:
       dedicated: tikv
     taints:
       dedicated: tikv:NoSchedule
 ```
+
+默认只需要两个 TiDB 节点，因此可以设置 `tidb-1d` 节点组的 `desiredCapacity` 为 `0`，后面如果需要可以随时扩容这个节点组。
 
 执行以下命令创建集群：
 
@@ -75,9 +134,14 @@ nodeGroups:
 eksctl create cluster -f cluster.yaml
 ```
 
-> **注意：**
+该命令需要等待 EKS 集群创建完成，以及节点组创建完成并加入进去，耗时约 5~10 分钟。可参考 [eksctl 文档](https://eksctl.io/usage/creating-and-managing-clusters/#using-config-files)了解更多集群配置选项。
+
+> **警告：**
 >
-> 该命令需要等待 EKS 集群创建完成，以及节点组创建完成并加入进去，耗时约 5~10 分钟。可参考 [eksctl 文档](https://eksctl.io/usage/creating-and-managing-clusters/#using-config-files)了解更多集群配置选项。
+> 如果使用了 Regional Auto Scaling Group (ASG)：
+>
+> * 为已经启动的 EC2 [开启实例缩减保护](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-instance-termination.html#instance-protection-instance)，ASG 自身的实例缩减保护不需要打开。
+> * [设置 ASG 终止策略](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-instance-termination.html#custom-termination-policy)为 `NewestInstance`。
 
 ## 部署 TiDB Operator
 
@@ -261,12 +325,14 @@ basic-grafana   LoadBalancer   10.100.199.42   a806cfe84c12a4831aa3313e792e3eed-
 
 ### 扩容 EKS 节点组
 
-以下是将集群 `${clusterName}` 的 `tikv` 节点组扩容到 4 节点的示例：
+TiKV 扩容需要保证在各可用区均匀扩容。以下是将集群 `${clusterName}` 的 `tikv-1a`、`tikv-1c`、`tikv-1d` 节点组扩容到 2 节点的示例：
 
 {{< copyable "shell-regular" >}}
 
 ```shell
-eksctl scale nodegroup --cluster ${clusterName} --name tikv --nodes 4 --nodes-min 4 --nodes-max 4
+eksctl scale nodegroup --cluster ${clusterName} --name tikv-1a --nodes 2 --nodes-min 2 --nodes-max 2
+eksctl scale nodegroup --cluster ${clusterName} --name tikv-1c --nodes 2 --nodes-min 2 --nodes-max 2
+eksctl scale nodegroup --cluster ${clusterName} --name tikv-1d --nodes 2 --nodes-min 2 --nodes-max 2
 ```
 
 更多节点组管理可参考 [eksctl 文档](https://eksctl.io/usage/managing-nodegroups/)。
@@ -288,16 +354,53 @@ eksctl scale nodegroup --cluster ${clusterName} --name tikv --nodes 4 --nodes-mi
 在 eksctl 的配置文件 cluster.yaml 中新增以下两项，为 TiFlash/TiCDC 各自新增一个节点组。`desiredCapacity` 决定期望的节点数，根据实际需求而定。
 
 ```yaml
-  - name: tiflash
-    desiredCapacity: 3
+  - name: tiflash-1a
+    desiredCapacity: 1
+    privateNetworking: true
+    availabilityZones: ["ap-northeast-1a"]
     labels:
-      role: tiflash
+      dedicated: tiflash
     taints:
       dedicated: tiflash:NoSchedule
-  - name: ticdc
+  - name: tiflash-1d
     desiredCapacity: 1
+    privateNetworking: true
+    availabilityZones: ["ap-northeast-1d"]
     labels:
-      role: ticdc
+      dedicated: tiflash
+    taints:
+      dedicated: tiflash:NoSchedule
+  - name: tiflash-1c
+    desiredCapacity: 1
+    privateNetworking: true
+    availabilityZones: ["ap-northeast-1c"]
+    labels:
+      dedicated: tiflash
+    taints:
+      dedicated: tiflash:NoSchedule
+
+  - name: ticdc-1a
+    desiredCapacity: 1
+    privateNetworking: true
+    availabilityZones: ["ap-northeast-1a"]
+    labels:
+      dedicated: ticdc
+    taints:
+      dedicated: ticdc:NoSchedule
+  - name: ticdc-1d
+    desiredCapacity: 1
+    privateNetworking: true
+    availabilityZones: ["ap-northeast-1d"]
+    labels:
+      dedicated: ticdc
+    taints:
+      dedicated: ticdc:NoSchedule
+  - name: ticdc-1c
+    desiredCapacity: 1
+    privateNetworking: true
+    availabilityZones: ["ap-northeast-1c"]
+    labels:
+      dedicated: ticdc
     taints:
       dedicated: ticdc:NoSchedule
 ```
@@ -413,6 +516,8 @@ AWS 部分实例类型提供额外的 [NVMe SSD 本地存储卷](https://docs.aw
 > 运行中的 TiDB 集群不能动态更换 storage class，可创建一个新的 TiDB 集群测试。
 >
 > 由于 EKS 升级过程中节点重建，[本地盘数据会丢失](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html#instance-store-lifetime)。由于 EKS 升级或其他原因造成的节点重建，会导致需要迁移 TiKV 数据，如果无法接受这一点，则不建议在生产环境中使用本地盘。
+>
+> 由于节点重建会导致本地存储数据丢失，请参考 [AWS 文档](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-suspend-resume-processes.html)停止 TiKV 节点组的 `ReplaceUnhealthy` 功能。
 
 了解哪些实例可提供本地存储卷，可以查看 [AWS 实例列表](https://aws.amazon.com/ec2/instance-types/)。以下以 `c5d.4xlarge` 为例：
 
@@ -421,10 +526,13 @@ AWS 部分实例类型提供额外的 [NVMe SSD 本地存储卷](https://docs.aw
     修改 `eksctl` 配置文件中 TiKV 节点组实例类型为 `c5d.4xlarge`：
 
     ```yaml
-      - name: tikv
+      - name: tikv-1a
+        desiredCapacity: 1
+        privateNetworking: true
+        availabilityZones: ["ap-northeast-1a"]
         instanceType: c5d.4xlarge
         labels:
-          role: tikv
+          dedicated: tikv
         taints:
           dedicated: tikv:NoSchedule
         ...
