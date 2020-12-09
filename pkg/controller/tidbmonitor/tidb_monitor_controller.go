@@ -46,9 +46,9 @@ func NewController(deps *controller.Dependencies) *Controller {
 	}
 
 	tidbMonitorInformer := deps.InformerFactory.Pingcap().V1alpha1().TidbMonitors()
-	deploymentInformer := deps.KubeInformerFactory.Apps().V1().Deployments()
+	statefulsetInformer := deps.KubeInformerFactory.Apps().V1().StatefulSets()
 	controller.WatchForObject(tidbMonitorInformer.Informer(), c.queue)
-	controller.WatchForController(deploymentInformer.Informer(), c.queue, func(ns, name string) (runtime.Object, error) {
+	controller.WatchForController(statefulsetInformer.Informer(), c.queue, func(ns, name string) (runtime.Object, error) {
 		return c.deps.TiDBMonitorLister.TidbMonitors(ns).Get(name)
 	}, nil)
 
