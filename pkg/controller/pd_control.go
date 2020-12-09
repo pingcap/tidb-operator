@@ -66,3 +66,10 @@ func NewFakePDClient(pdControl *pdapi.FakePDControl, tc *v1alpha1.TidbCluster) *
 	}
 	return pdClient
 }
+
+// NewFakePDClient creates a fake pdclient that is set as the pd client
+func NewFakePDClientWithAddress(pdControl *pdapi.FakePDControl, peerURL string) *pdapi.FakePDClient {
+	pdClient := pdapi.NewFakePDClient()
+	pdControl.SetPDClientWithAddress(peerURL, pdClient)
+	return pdClient
+}

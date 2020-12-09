@@ -210,3 +210,7 @@ func (fpc *FakePDControl) SetPDClient(namespace Namespace, tcName string, pdclie
 func (fpc *FakePDControl) SetPDClientWithClusterDomain(namespace Namespace, tcName string, tcClusterDomain string, pdclient PDClient) {
 	fpc.defaultPDControl.pdClients[ClusterRefpdClientKey("http", namespace, tcName, tcClusterDomain)] = pdclient
 }
+
+func (fpc *FakePDControl) SetPDClientWithAddress(peerURL string, pdclient PDClient) {
+	fpc.defaultPDControl.pdClients[peerURL] = pdclient
+}
