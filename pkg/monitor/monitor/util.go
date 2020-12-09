@@ -14,17 +14,15 @@
 package monitor
 
 import (
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/util"
-	"github.com/prometheus/prometheus/config"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -56,33 +54,22 @@ func buildTidbMonitorLabel(name string) map[string]string {
 // If the namespace in ClusterRef is empty, we would set the TidbMonitor's namespace in the default
 func getMonitorConfigMap(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) (*core.ConfigMap, error) {
 
-	var releaseNamespaces []string
-	var releaseClusters []string
+	var releaseClusterInfos []ClusterRegexInfo
 	for _, cluster := range monitor.Spec.Clusters {
-		releaseNamespaces = append(releaseNamespaces, cluster.Namespace)
-		releaseClusters = append(releaseClusters, cluster.Name)
-	}
-
-	relabelConfigsRegex := strings.Join(releaseClusters, "|")
-	targetPattern, err := config.NewRegexp(relabelConfigsRegex)
-	if err != nil {
-		return nil, err
+		releaseClusterInfos = append(releaseClusterInfos, ClusterRegexInfo{
+			Name:      cluster.Name,
+			Namespace: cluster.Namespace,
+		})
 	}
 	model := &MonitorConfigModel{
-		AlertmanagerURL:    "",
-		ReleaseNamespaces:  releaseNamespaces,
-		ReleaseTargetRegex: &targetPattern,
-		EnableTLSCluster:   tc.IsTLSClusterEnabled(),
+		AlertmanagerURL:  "",
+		ClusterInfos:     releaseClusterInfos,
+		EnableTLSCluster: tc.IsTLSClusterEnabled(),
 	}
 
 	if monitor.Spec.AlertmanagerURL != nil {
 		model.AlertmanagerURL = *monitor.Spec.AlertmanagerURL
 	}
-
-	if len(model.ReleaseNamespaces) < 1 {
-		model.ReleaseNamespaces = append(model.ReleaseNamespaces, monitor.Namespace)
-	}
-
 	content, err := RenderPrometheusConfig(model)
 	if err != nil {
 		return nil, err
@@ -812,14 +799,9 @@ func getMonitorStatefulSet(sa *core.ServiceAccount, config *core.ConfigMap, secr
 	volumeClaims := getMonitorVolumeClaims(monitor)
 	statefulSet.Spec.VolumeClaimTemplates = volumeClaims
 
-	b, err := json.Marshal(statefulSet.Spec.Template.Spec)
-	if err != nil {
-		return nil, err
-	}
 	if statefulSet.Annotations == nil {
 		statefulSet.Annotations = map[string]string{}
 	}
-	statefulSet.Annotations[controller.LastAppliedPodTemplate] = string(b)
 
 	if monitor.Spec.ImagePullSecrets != nil {
 		statefulSet.Spec.Template.Spec.ImagePullSecrets = monitor.Spec.ImagePullSecrets
@@ -837,7 +819,7 @@ func getMonitorStatefulSetSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.Ti
 			Namespace:       monitor.Namespace,
 			Labels:          buildTidbMonitorLabel(monitor.Name),
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
-			Annotations:     monitor.Spec.Annotations,
+			Annotations:     member.CopyAnnotations(monitor.Spec.Annotations),
 		},
 		Spec: apps.StatefulSetSpec{
 			ServiceName: name,
@@ -851,7 +833,7 @@ func getMonitorStatefulSetSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.Ti
 			Template: core.PodTemplateSpec{
 				ObjectMeta: meta.ObjectMeta{
 					Labels:      buildTidbMonitorLabel(monitor.Name),
-					Annotations: monitor.Spec.Annotations,
+					Annotations: member.CopyAnnotations(monitor.Spec.Annotations),
 				},
 
 				Spec: core.PodSpec{
