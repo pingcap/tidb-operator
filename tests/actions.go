@@ -467,7 +467,7 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 
 	set["controllerManager.create"] = "true"
 	set["scheduler.create"] = "true"
-	set["selector"] = "[]"
+	set["controllerManager.selector"] = "[]"
 
 	// merge with additional STRING values
 	for k, v := range oi.StringValues {
