@@ -1,4 +1,4 @@
-{{- if and .Values.rbac.create .Values.scheduler.create }}
+{{- if and .Values.rbac.create (hasKey .Values.scheduler "create" | ternary .Values.scheduler.create true) }}
 kind: ServiceAccount
 apiVersion: v1
 metadata:

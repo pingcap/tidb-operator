@@ -1,4 +1,4 @@
-{{- if .Values.scheduler.create }}
+{{- if (hasKey .Values.scheduler "create" | ternary .Values.scheduler.create true) }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:

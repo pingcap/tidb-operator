@@ -1,4 +1,4 @@
-{{- if .Values.scheduler.create }}
+{{- if (hasKey .Values.scheduler "create" | ternary .Values.scheduler.create true) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
