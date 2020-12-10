@@ -73,6 +73,9 @@ type CLIConfig struct {
 	// PodWebhookEnabled is the key to indicate whether pod admission
 	// webhook is set up.
 	PodWebhookEnabled bool
+	// Selector is used to filter CR labels to decide
+	// what resources should be watched and synced by controller
+	Selector string
 }
 
 // DefaultCLIConfig returns the default command line configuration
@@ -94,6 +97,7 @@ func DefaultCLIConfig() *CLIConfig {
 		ResyncDuration:         30 * time.Second,
 		TiDBBackupManagerImage: "pingcap/tidb-backup-manager:latest",
 		TiDBDiscoveryImage:     "pingcap/tidb-operator:latest",
+		Selector:               "",
 	}
 }
 
@@ -116,6 +120,7 @@ func (c *CLIConfig) AddFlag(_ *flag.FlagSet) {
 	// TODO: actually we just want to use the same image with tidb-controller-manager, but DownwardAPI cannot get image ID, see if there is any better solution
 	flag.StringVar(&c.TiDBDiscoveryImage, "tidb-discovery-image", c.TiDBDiscoveryImage, "The image of the tidb discovery service")
 	flag.BoolVar(&c.PodWebhookEnabled, "pod-webhook-enabled", false, "Whether Pod admission webhook is enabled")
+	flag.StringVar(&c.Selector, "selector", c.Selector, "Selector (label query) to filter on, supports '=', '==', and '!='")
 }
 
 type Controls struct {
@@ -283,11 +288,17 @@ func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface
 		}
 	}
 	labelKubeOptions := append(kubeoptions, kubeinformers.WithTweakListOptions(tweakListOptionsFunc))
+	tweakListOptionsFunc = func(options *metav1.ListOptions) {
+		if len(cliCfg.Selector) > 0 {
+			options.LabelSelector = cliCfg.Selector
+		}
+	}
+	options = append(options, informers.WithTweakListOptions(tweakListOptionsFunc))
 
-	// Initialize the informaer factories
+	// Initialize the informer factories
 	informerFactory := informers.NewSharedInformerFactoryWithOptions(clientset, cliCfg.ResyncDuration, options...)
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(kubeClientset, cliCfg.ResyncDuration, kubeoptions...)
-	labelFliterKubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(kubeClientset, cliCfg.ResyncDuration, labelKubeOptions...)
+	labelFilterKubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(kubeClientset, cliCfg.ResyncDuration, labelKubeOptions...)
 
 	// Initialize the event recorder
 	eventBroadcaster := record.NewBroadcasterWithCorrelatorOptions(record.CorrelatorOptions{QPS: 1})
@@ -295,7 +306,7 @@ func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface
 	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
 		Interface: eventv1.New(kubeClientset.CoreV1().RESTClient()).Events("")})
 	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tidb-controller-manager"})
-	deps := newDependencies(cliCfg, clientset, kubeClientset, genericCli, informerFactory, kubeInformerFactory, labelFliterKubeInformerFactory, recorder)
+	deps := newDependencies(cliCfg, clientset, kubeClientset, genericCli, informerFactory, kubeInformerFactory, labelFilterKubeInformerFactory, recorder)
 	deps.Controls = newRealControls(clientset, kubeClientset, genericCli, informerFactory, kubeInformerFactory, recorder)
 	return deps
 }
