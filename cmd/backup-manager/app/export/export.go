@@ -93,21 +93,21 @@ func (bo *Options) backupDataToRemote(source, bucketURI string, opts []string) e
 	args := backupUtil.ConstructArgs(constants.RcloneConfigArg, opts, "copyto", source, tmpDestBucket, true)
 	// TODO: We may need to use exec.CommandContext to control timeouts.
 	output, err := exec.Command("rclone", args...).CombinedOutput()
-	klog.Infof("rclone copy data from %s data to %s. rclone log: %s", source, tmpDestBucket, output)
 	if err != nil {
 		return fmt.Errorf("cluster %s, execute rclone copyto command for upload backup data %s failed, output: %s, err: %v", bo, bucketURI, string(output), err)
 	}
 
+	klog.Infof("cluster %s rclone copy data from %s data to %s, log: %s", bo, source, tmpDestBucket, output)
 	klog.Infof("upload cluster %s backup data to %s successfully, now move it to permanent URL %s", bo, tmpDestBucket, destBucket)
 
 	// the backup was a success
 	// remove .tmp extension
 	args = backupUtil.ConstructArgs(constants.RcloneConfigArg, opts, "moveto", tmpDestBucket, destBucket, true)
 	output, err = exec.Command("rclone", args...).CombinedOutput()
-	klog.Infof("rclone move data from %s data to %s. rclone log: %s", tmpDestBucket, destBucket, output)
 	if err != nil {
 		return fmt.Errorf("cluster %s, execute rclone moveto command failed, output: %s, err: %v", bo, string(output), err)
 	}
+	klog.Infof("cluster %s rclone move data from %s data to %s, log: %s", bo, tmpDestBucket, destBucket, output)
 	return nil
 }
 
