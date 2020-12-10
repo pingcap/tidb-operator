@@ -415,6 +415,8 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 
 func (oi *OperatorConfig) OperatorHelmSetBoolean() string {
 	set := map[string]bool{
+		"controllerManager.create":                     true,
+		"scheduler.create":                             true,
 		"admissionWebhook.create":                      oi.WebhookEnabled,
 		"admissionWebhook.validation.pods":             oi.PodWebhookEnabled,
 		"admissionWebhook.mutation.pods":               oi.PodWebhookEnabled,
@@ -465,8 +467,6 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 		set["controllerManager.autoFailover"] = strconv.FormatBool(*oi.AutoFailover)
 	}
 
-	set["controllerManager.create"] = "true"
-	set["scheduler.create"] = "true"
 	set["controllerManager.selector"] = "[]"
 
 	// merge with additional STRING values
