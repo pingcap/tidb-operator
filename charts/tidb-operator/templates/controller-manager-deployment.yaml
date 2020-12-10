@@ -67,10 +67,6 @@ spec:
           {{- if and ( .Values.admissionWebhook.create ) ( .Values.admissionWebhook.validation.pods ) }}
           - -pod-webhook-enabled=true
           {{- end }}
-          {{- if .Values.controllerManager.selector }}
-          {{- $label := join "," .Values.controllerManager.selector }}
-          - -selector={{ $label }}
-          {{- end }}
         env:
           - name: NAMESPACE
             valueFrom:
