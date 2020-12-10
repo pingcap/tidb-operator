@@ -104,7 +104,7 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 		if len(pdAddresses) != 0 {
 			return fmt.Sprintf("--join=%s", strings.Join(pdAddresses, ",")), nil
 		}
-		// we should start a pd cluster that can be accessed from other k8s clusters
+		// we should use the FQDN PD address for global accessibility when the cross-region feature enabled
 		if len(tc.Spec.ClusterDomain) > 0 {
 			return fmt.Sprintf("--initial-cluster=%s=%s://%s", strArr[0], tc.Scheme(), advertisePeerUrl), nil
 		}
