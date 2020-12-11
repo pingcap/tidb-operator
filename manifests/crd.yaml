@@ -6605,6 +6605,27 @@ spec:
                   type: boolean
                 service:
                   properties:
+                    additionalPorts:
+                      items:
+                        properties:
+                          name:
+                            type: string
+                          nodePort:
+                            format: int32
+                            type: integer
+                          port:
+                            format: int32
+                            type: integer
+                          protocol:
+                            type: string
+                          targetPort:
+                            anyOf:
+                            - type: string
+                            - type: integer
+                        required:
+                        - port
+                        type: object
+                      type: array
                     exposeStatus:
                       type: boolean
                     externalTrafficPolicy:
