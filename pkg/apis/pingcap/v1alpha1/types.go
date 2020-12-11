@@ -897,7 +897,7 @@ type TiDBServiceSpec struct {
 	// +optional
 	StatusNodePort *int `json:"statusNodePort,omitempty"`
 
-	// Expose the tidb node port for additional usage
+	// Expose additional ports for TiDB
 	// Optional: Defaults to omitted
 	// +optional
 	AdditionalPorts []corev1.ServicePort `json:"additionalPorts,omitempty"`
