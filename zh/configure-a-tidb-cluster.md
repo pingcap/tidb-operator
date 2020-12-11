@@ -102,12 +102,12 @@ TiDB Operator 支持为 PD、TiDB、TiKV 挂载多块 PV，可以用于不同用
     config:
       log:
         file:
-          name: /var/log/pd
+          filename: /var/log/pdlog/pd.log
         level: "warn"
     storageVolumes:
       - name: log
         storageSize: "2Gi"
-        mountPath: "/var/log/pd"
+        mountPath: "/var/log/pdlog"
   tidb:
     baseImage: pingcap/tidb
     replicas: 1
@@ -116,7 +116,7 @@ TiDB Operator 支持为 PD、TiDB、TiKV 挂载多块 PV，可以用于不同用
     config:
       log:
         file:
-          name: /var/log/tidblog
+          filename: /var/log/tidblog/tidb.log
         level: "warn"
     storageVolumes:
       - name: log
