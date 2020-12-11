@@ -60,9 +60,9 @@ targetTidbCluster:
   #secretName: ""
   #secretUserKey: user
   #secretPwdKey: password
-  secretSSLCA: ca.crt
-  secretSSLCert: tls.crt
-  secretSSLKey: tls.key
+  #secretSSLCA: ca.crt
+  #secretSSLCert: tls.crt
+  #secretSSLKey: tls.key
 
 resources: {}
   # limits:
