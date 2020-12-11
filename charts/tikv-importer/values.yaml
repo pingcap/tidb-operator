@@ -12,6 +12,13 @@ image: pingcap/tidb-lightning:v4.0.8
 imagePullPolicy: IfNotPresent
 # imagePullSecrets: []
 
+# If the `secretName`, `secretSSLCA`, `secretSSLCert` and `secretSSLKey` are set,
+# TiKV-Importer will use these files to connect to PD and TiKV.
+#secretName: ""
+#secretSSLCA: ca.crt
+#secretSSLCert: tls.crt
+#secretSSLKey: tls.key
+
 storageClassName: local-storage
 storage: 20Gi
 resources:

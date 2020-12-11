@@ -68,6 +68,11 @@ spec:
           mountPath: /var/lib/tikv-importer
         - name: config
           mountPath: /etc/tikv-importer
+        {{- if .Values.secretName }}
+        - name: tikv-importer-tls
+          mountPath: /etc/tikv-importer-tls
+          readOnly: true
+        {{- end }}
         {{- if .Values.resources }}
         resources:
 {{ toYaml .Values.resources | indent 10 }}
@@ -82,6 +87,11 @@ spec:
           items:
           - key: config-file
             path: tikv-importer.toml
+      {{- if .Values.secretName }}
+      - name: tikv-importer-tls
+        secret:
+          secretName: {{ .Values.secretName }}
+      {{- end }}
   volumeClaimTemplates:
   - metadata:
       name: data
