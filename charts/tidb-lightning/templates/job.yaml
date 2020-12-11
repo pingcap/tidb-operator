@@ -105,6 +105,11 @@ spec:
           {{- else -}}
           mountPath: /var/lib/tidb-lightning
           {{- end }}
+        {{- if .Values.targetTidbCluster.secretName }}
+        - name: tidb-lightning-tls
+          mountPath: /etc/tidb-lightning-tls
+          readOnly: true
+        {{- end }}
       volumes:
       - name: config
         configMap:
@@ -138,6 +143,11 @@ spec:
         persistentVolumeClaim:
           claimName: {{ include "tidb-lightning.name" . }}
       {{ end -}}
+      {{- if .Values.targetTidbCluster.secretName }}
+      - name: tidb-lightning-tls
+        secret:
+          secretName: {{ .Values.targetTidbCluster.secretName }}
+      {{- end }}
     {{- if .Values.affinity }}
       affinity:
 {{ toYaml .Values.affinity | indent 6 }}
