@@ -2461,7 +2461,7 @@ func schema_pkg_apis_pingcap_v1alpha1_GcsStorageProvider(ref common.ReferenceCal
 						},
 					},
 				},
-				Required: []string{"projectId", "secretName"},
+				Required: []string{"projectId"},
 			},
 		},
 	}
