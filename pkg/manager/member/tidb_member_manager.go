@@ -428,9 +428,7 @@ func getNewTiDBServiceOrNil(tc *v1alpha1.TidbCluster) *corev1.Service {
 		},
 	}
 	if len(tc.Spec.TiDB.Service.AdditionalPorts) > 0 {
-		for _, port := range tc.Spec.TiDB.Service.AdditionalPorts {
-			ports = append(ports, port)
-		}
+		ports = append(ports, tc.Spec.TiDB.Service.AdditionalPorts...)
 	}
 	if svcSpec.ShouldExposeStatus() {
 		ports = append(ports, corev1.ServicePort{
