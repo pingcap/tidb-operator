@@ -6313,7 +6313,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBServiceSpec(ref common.ReferenceCallba
 					},
 					"additionalPorts": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Expose the tidb node port for additional usage Optional: Defaults to omitted",
+							Description: "Expose additional ports for TiDB Optional: Defaults to omitted",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{

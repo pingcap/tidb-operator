@@ -12396,7 +12396,7 @@ Optional: Defaults to 0</p>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Expose the tidb node port for additional usage
+<p>Expose additional ports for TiDB
 Optional: Defaults to omitted</p>
 </td>
 </tr>
