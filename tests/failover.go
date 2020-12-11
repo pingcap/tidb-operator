@@ -974,7 +974,7 @@ func (oa *operatorActions) CheckK8sAvailable(excludeNodes map[string]string, exc
 func (oa *operatorActions) CheckOperatorAvailable(operatorConfig *OperatorConfig) error {
 	var errCount int
 	var e error
-	tidbControllerNameWithHelmRelease := fmt.Sprintf(tidbControllerName, "-", operatorConfig.ReleaseName)
+	tidbControllerNameWithHelmRelease := fmt.Sprintf("%s-%s", tidbControllerName, operatorConfig.ReleaseName)
 	return wait.Poll(10*time.Second, 3*time.Minute, func() (bool, error) {
 		if errCount >= 10 {
 			return true, e
