@@ -12385,6 +12385,21 @@ int
 Optional: Defaults to 0</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>additionalPorts</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#serviceport-v1-core">
+[]Kubernetes core/v1.ServicePort
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Expose the tidb node port for additional usage
+Optional: Defaults to omitted</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbslowlogtailerspec">TiDBSlowLogTailerSpec</h3>

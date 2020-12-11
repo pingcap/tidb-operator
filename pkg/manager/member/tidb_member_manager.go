@@ -427,6 +427,11 @@ func getNewTiDBServiceOrNil(tc *v1alpha1.TidbCluster) *corev1.Service {
 			NodePort:   svcSpec.GetMySQLNodePort(),
 		},
 	}
+	if len(tc.Spec.TiDB.Service.AdditionalPorts) > 0 {
+		for _, port := range tc.Spec.TiDB.Service.AdditionalPorts {
+			ports = append(ports, port)
+		}
+	}
 	if svcSpec.ShouldExposeStatus() {
 		ports = append(ports, corev1.ServicePort{
 			Name:       "status",

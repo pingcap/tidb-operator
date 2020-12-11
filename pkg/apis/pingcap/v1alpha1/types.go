@@ -896,6 +896,11 @@ type TiDBServiceSpec struct {
 	// Optional: Defaults to 0
 	// +optional
 	StatusNodePort *int `json:"statusNodePort,omitempty"`
+
+	// Expose the tidb node port for additional usage
+	// Optional: Defaults to omitted
+	// +optional
+	AdditionalPorts []corev1.ServicePort `json:"additionalPorts,omitempty"`
 }
 
 // +k8s:openapi-gen=false

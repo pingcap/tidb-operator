@@ -6311,9 +6311,24 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBServiceSpec(ref common.ReferenceCallba
 							Format:      "int32",
 						},
 					},
+					"additionalPorts": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Expose the tidb node port for additional usage Optional: Defaults to omitted",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/api/core/v1.ServicePort"),
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},
+		Dependencies: []string{
+			"k8s.io/api/core/v1.ServicePort"},
 	}
 }
 
