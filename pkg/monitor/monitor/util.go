@@ -15,6 +15,7 @@ package monitor
 
 import (
 	"fmt"
+	"path"
 	"sort"
 	"strconv"
 
@@ -786,7 +787,7 @@ func getMonitorStatefulSet(sa *core.ServiceAccount, config *core.ConfigMap, secr
 	initContainer := getMonitorInitContainer(monitor, tc)
 	statefulSet.Spec.Template.Spec.InitContainers = append(statefulSet.Spec.Template.Spec.InitContainers, initContainer)
 	prometheusContainer := getMonitorPrometheusContainer(monitor, tc)
-	thanosSideCarContainer := getThanosSidecarContainer(monitor, tc)
+	thanosSideCarContainer := getThanosSidecarContainer(monitor)
 	reloaderContainer := getMonitorReloaderContainer(monitor, tc)
 	statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, prometheusContainer, reloaderContainer, thanosSideCarContainer)
 	additionalContainers := monitor.Spec.AdditionalContainers
@@ -874,13 +875,13 @@ func getMonitorVolumeClaims(monitor *v1alpha1.TidbMonitor) []core.PersistentVolu
 	return nil
 }
 
-func getThanosSidecarContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) core.Container {
+func getThanosSidecarContainer(monitor *v1alpha1.TidbMonitor) core.Container {
 	bindAddress := "[$(POD_IP)]"
 	if monitor.Spec.Thanos.ListenLocal {
 		bindAddress = "127.0.0.1"
 	}
 	thanosArgs := []string{"sidecar",
-		fmt.Sprintf("--prometheus.url=http://%s:9090/", "localhost"),
+		fmt.Sprintf("--prometheus.url=http://%s:9090/%s", "localhost", path.Clean(monitor.Spec.Thanos.RoutePrefix)),
 		fmt.Sprintf("--grpc-address=%s:10901", bindAddress),
 		fmt.Sprintf("--http-address=%s:10902", bindAddress),
 	}
@@ -960,8 +961,6 @@ func getThanosSidecarContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbC
 	}
 
 	if monitor.Spec.Thanos.LogLevel != "" {
-		container.Args = append(container.Args, "--log.level="+monitor.Spec.Thanos.LogLevel)
-	} else if monitor.Spec.Thanos.LogLevel != "" {
 		container.Args = append(container.Args, "--log.level="+monitor.Spec.Thanos.LogLevel)
 	}
 	if monitor.Spec.Thanos.LogFormat != "" {
