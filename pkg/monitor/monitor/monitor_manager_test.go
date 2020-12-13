@@ -294,7 +294,7 @@ func TestTidbMonitorSyncUpdate(t *testing.T) {
 		} else {
 			g.Expect(err).NotTo(HaveOccurred())
 		}
-		if test.updateExpectFn != nil {
+		if test.update != nil {
 			test.update(tmm, tm)
 		}
 		err = tmm.SyncMonitor(tm)
@@ -307,6 +307,41 @@ func TestTidbMonitorSyncUpdate(t *testing.T) {
 	}
 
 	tests := []testcase{
+		{
+			name: "validate annoation",
+			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
+				monitor.Spec.Persistent = true
+				monitor.Spec.Storage = "10Gi"
+				monitor.Spec.ClusterScoped = true
+				monitor.Spec.Grafana = &v1alpha1.GrafanaSpec{
+					MonitorContainer: v1alpha1.MonitorContainer{
+						BaseImage: "grafana/grafana",
+						Version:   "6.1.6",
+					},
+					Ingress: &v1alpha1.IngressSpec{},
+				}
+			},
+			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
+				errExpectRequeuefunc(g, err, tmm, tm)
+				_, err = tmm.deps.ServiceLister.Services(tm.Namespace).Get(grafanaName(tm))
+				g.Expect(err).NotTo(HaveOccurred())
+				sts, err := tmm.deps.StatefulSetLister.StatefulSets(tm.Namespace).Get(GetMonitorObjectName(tm))
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(3))
+			},
+			update: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
+
+			},
+			updateExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(tm.Annotations).To(HaveLen(0))
+				sts, err := tmm.deps.StatefulSetLister.StatefulSets(tm.Namespace).Get(GetMonitorObjectName(tm))
+				g.Expect(err).NotTo(HaveOccurred())
+				annoations := map[string]string{}
+				annoations["pingcap.com/last-applied-configuration"] = "{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app.kubernetes.io/component\":\"monitor\",\"app.kubernetes.io/instance\":\"foo\",\"app.kubernetes.io/managed-by\":\"tidb-operator\",\"app.kubernetes.io/name\":\"tidb-cluster\"}},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app.kubernetes.io/component\":\"monitor\",\"app.kubernetes.io/instance\":\"foo\",\"app.kubernetes.io/managed-by\":\"tidb-operator\",\"app.kubernetes.io/name\":\"tidb-cluster\"}},\"spec\":{\"volumes\":[{\"name\":\"prometheus-config\",\"configMap\":{\"name\":\"foo-monitor\",\"items\":[{\"key\":\"prometheus-config\",\"path\":\"prometheus.yml\"}]}},{\"name\":\"datasource\",\"emptyDir\":{}},{\"name\":\"dashboards-provisioning\",\"configMap\":{\"name\":\"foo-monitor\",\"items\":[{\"key\":\"dashboard-config\",\"path\":\"dashboards.yaml\"}]}},{\"name\":\"grafana-dashboard\",\"emptyDir\":{}},{\"name\":\"prometheus-rules\",\"emptyDir\":{}},{\"name\":\"cluster-client-tls\",\"secret\":{\"secretName\":\"foo-cluster-client-secret\",\"defaultMode\":420}}],\"initContainers\":[{\"name\":\"monitor-initializer\",\"image\":\":\",\"command\":[\"/bin/sh\",\"-c\",\"mkdir -p /data/prometheus /data/grafana\\nchmod 777 /data/prometheus /data/grafana\\n/usr/bin/init.sh\"],\"env\":[{\"name\":\"TIDB_CLUSTER_NAME\",\"value\":\"foo\"},{\"name\":\"TIDB_ENABLE_BINLOG\",\"value\":\"false\"},{\"name\":\"PROM_CONFIG_PATH\",\"value\":\"/prometheus-rules\"},{\"name\":\"PROM_PERSISTENT_DIR\",\"value\":\"/data\"},{\"name\":\"TIDB_VERSION\"},{\"name\":\"GF_TIDB_PROMETHEUS_URL\",\"value\":\"http://127.0.0.1:9090\"},{\"name\":\"TIDB_CLUSTER_NAMESPACE\",\"value\":\"ns\"},{\"name\":\"TZ\"},{\"name\":\"GF_PROVISIONING_PATH\",\"value\":\"/grafana-dashboard-definitions/tidb\"},{\"name\":\"GF_DATASOURCE_PATH\",\"value\":\"/etc/grafana/provisioning/datasources\"}],\"resources\":{},\"volumeMounts\":[{\"name\":\"prometheus-rules\",\"mountPath\":\"/prometheus-rules\"},{\"name\":\"tidbmonitor\",\"mountPath\":\"/data\"},{\"name\":\"datasource\",\"mountPath\":\"/etc/grafana/provisioning/datasources\"},{\"name\":\"grafana-dashboard\",\"mountPath\":\"/grafana-dashboard-definitions/tidb\"}]}],\"containers\":[{\"name\":\"prometheus\",\"image\":\"hub.pingcap.net:latest\",\"command\":[\"/bin/prometheus\",\"--web.enable-admin-api\",\"--web.enable-lifecycle\",\"--config.file=/etc/prometheus/prometheus.yml\",\"--storage.tsdb.path=/data/prometheus\",\"--storage.tsdb.retention=0d\",\"--web.external-url=https://www.example.com/prometheus/\"],\"ports\":[{\"name\":\"prometheus\",\"containerPort\":9090,\"protocol\":\"TCP\"}],\"env\":[{\"name\":\"TZ\"}],\"resources\":{},\"volumeMounts\":[{\"name\":\"prometheus-config\",\"readOnly\":true,\"mountPath\":\"/etc/prometheus\"},{\"name\":\"tidbmonitor\",\"mountPath\":\"/data\"},{\"name\":\"prometheus-rules\",\"mountPath\":\"/prometheus-rules\"},{\"name\":\"cluster-client-tls\",\"readOnly\":true,\"mountPath\":\"/var/lib/cluster-client-tls\"}]},{\"name\":\"reloader\",\"image\":\":\",\"command\":[\"/bin/reload\",\"--root-store-path=/data\",\"--sub-store-path=\",\"--watch-path=/prometheus-rules/rules\",\"--prometheus-url=http://127.0.0.1:9090\"],\"ports\":[{\"name\":\"reloader\",\"containerPort\":9089,\"protocol\":\"TCP\"}],\"env\":[{\"name\":\"TZ\"}],\"resources\":{},\"volumeMounts\":[{\"name\":\"prometheus-rules\",\"mountPath\":\"/prometheus-rules\"},{\"name\":\"tidbmonitor\",\"mountPath\":\"/data\"}]},{\"name\":\"grafana\",\"image\":\"grafana/grafana:6.1.6\",\"ports\":[{\"name\":\"grafana\",\"containerPort\":3000,\"protocol\":\"TCP\"}],\"env\":[{\"name\":\"GF_PATHS_DATA\",\"value\":\"/data/grafana\"},{\"name\":\"GF_SECURITY_ADMIN_PASSWORD\",\"valueFrom\":{\"secretKeyRef\":{\"name\":\"foo-monitor\",\"key\":\"password\"}}},{\"name\":\"GF_SECURITY_ADMIN_USER\",\"valueFrom\":{\"secretKeyRef\":{\"name\":\"foo-monitor\",\"key\":\"username\"}}},{\"name\":\"TZ\",\"value\":\"UTC\"}],\"resources\":{},\"volumeMounts\":[{\"name\":\"tidbmonitor\",\"mountPath\":\"/data\"},{\"name\":\"datasource\",\"mountPath\":\"/etc/grafana/provisioning/datasources\"},{\"name\":\"dashboards-provisioning\",\"mountPath\":\"/etc/grafana/provisioning/dashboards\"},{\"name\":\"grafana-dashboard\",\"mountPath\":\"/grafana-dashboard-definitions/tidb\"}]}],\"serviceAccountName\":\"foo-monitor\"}},\"volumeClaimTemplates\":[{\"metadata\":{\"name\":\"tidbmonitor\",\"creationTimestamp\":null},\"spec\":{\"accessModes\":[\"ReadWriteOnce\"],\"resources\":{\"requests\":{\"storage\":\"10Gi\"}}},\"status\":{}}],\"serviceName\":\"foo-monitor\",\"updateStrategy\":{\"type\":\"RollingUpdate\"}}"
+				g.Expect(sts.Annotations).To(Equal(annoations))
+			},
+		},
 		{
 			name: "enable grafana",
 			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
