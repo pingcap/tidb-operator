@@ -1,4 +1,3 @@
-{{- if (hasKey .Values.scheduler "create" | ternary .Values.scheduler.create true) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -12,4 +11,3 @@ metadata:
 data:
   policy.cfg: |-
 {{ tuple "config/_scheduler-policy-json.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
-{{- end }}
