@@ -777,13 +777,13 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			}
 			if *tc.Spec.PVReclaimPolicy != corev1.PersistentVolumeReclaimDelete {
 				framework.Logf("tidbcluster PVReclaimPolicy changed into %v", *tc.Spec.PVReclaimPolicy)
-				return false, nil
+				return true, nil
 			}
 			if *tm.Spec.PVReclaimPolicy != corev1.PersistentVolumeReclaimRetain {
 				framework.Logf("tidbmonitor PVReclaimPolicy changed into %v", *tm.Spec.PVReclaimPolicy)
-				return false, nil
+				return true, nil
 			}
-			return true, nil
+			return false, nil
 		})
 		framework.ExpectEqual(err, wait.ErrWaitTimeout, "verify tidbmonitor and tidbcluster PVReclaimPolicy won't affect each other")
 
