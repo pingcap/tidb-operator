@@ -639,6 +639,18 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 			prometheusService.Spec.LoadBalancerSourceRanges = monitor.Spec.Prometheus.Service.LoadBalancerSourceRanges
 		}
 	}
+
+	if monitor.Spec.Thanos != nil {
+		prometheusService.Spec.Ports = append(prometheusService.Spec.Ports, core.ServicePort{
+			Name:       "thanossidecar-grpc",
+			Port:       10901,
+			TargetPort: intstr.FromInt(10901),
+		}, core.ServicePort{
+			Name:       "thanossidecar-http",
+			Port:       10902,
+			TargetPort: intstr.FromInt(10902),
+		})
+	}
 	reloaderName := reloaderName(monitor)
 	reloaderService := &core.Service{
 		ObjectMeta: meta.ObjectMeta{
@@ -706,6 +718,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 
 		services = append(services, grafanaService)
 	}
+
 	return services
 }
 
@@ -763,6 +776,10 @@ func prometheusName(monitor *v1alpha1.TidbMonitor) string {
 
 func grafanaName(monitor *v1alpha1.TidbMonitor) string {
 	return fmt.Sprintf("%s-grafana", monitor.Name)
+}
+
+func thanosSidecarName(monitor *v1alpha1.TidbMonitor) string {
+	return fmt.Sprintf("%s-thanos-sidecar", monitor.Name)
 }
 
 func reloaderName(monitor *v1alpha1.TidbMonitor) string {
