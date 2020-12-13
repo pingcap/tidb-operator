@@ -14,7 +14,6 @@
 package monitor
 
 import (
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -36,7 +35,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	discoverycachedmemory "k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/klog"
@@ -79,23 +77,24 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	for _, tcRef := range monitor.Spec.Clusters {
 		var tc *v1alpha1.TidbCluster
 		var err error
-
+		var tcNs string
 		if len(tcRef.Namespace) > 0 {
-			tc, err = m.deps.TiDBClusterLister.TidbClusters(tcRef.Namespace).Get(tcRef.Name)
+			tcNs = tcRef.Namespace
 		} else {
-			tc, err = m.deps.TiDBClusterLister.TidbClusters(monitor.Namespace).Get(tcRef.Name)
+			tcNs = monitor.Namespace
 		}
 
+		tc, err = m.deps.TiDBClusterLister.TidbClusters(tcNs).Get(tcRef.Name)
 		if err != nil {
-			rerr := fmt.Errorf("get tm[%s/%s]'s target tc[%s/%s] failed, err: %v", monitor.Namespace, monitor.Name, tcRef.Namespace, tcRef.Name, err)
+			rerr := fmt.Errorf("get tm[%s/%s]'s target tc[%s/%s] failed, err: %v", monitor.Namespace, monitor.Name, tcNs, tcRef.Name, err)
 			return rerr
 		}
 		if firstTc == nil && !tc.IsHeterogeneous() {
 			firstTc = tc
 		}
 		if tc.Status.Monitor != nil {
-			if tc.Status.Monitor.Name != monitor.Name || tc.Status.Monitor.Namespace != monitor.Namespace {
-				err := fmt.Errorf("tm[%s/%s]'s target tc[%s/%s] already referenced by TidbMonitor [%s/%s]", monitor.Namespace, monitor.Name, tc.Namespace, tc.Name, tc.Status.Monitor.Namespace, tc.Status.Monitor.Name)
+			if tc.Status.Monitor.Name != monitor.Name || tc.Status.Monitor.Namespace != tcNs {
+				err := fmt.Errorf("tm[%s/%s]'s target tc[%s/%s] already referenced by TidbMonitor [%s/%s]", monitor.Namespace, monitor.Name, tcNs, tc.Name, tc.Status.Monitor.Namespace, tc.Status.Monitor.Name)
 				m.deps.Recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, err.Error())
 				return err
 			}
@@ -105,7 +104,7 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		// Patch tidbcluster status first to avoid multi tidbmonitor monitoring the same tidbcluster
 		if !tc.IsHeterogeneous() {
 			if err := m.patchTidbClusterStatus(tc, monitor); err != nil {
-				message := fmt.Sprintf("Sync TidbMonitorRef into targetCluster[%s/%s] status failed, err:%v", tc.Namespace, tc.Name, err)
+				message := fmt.Sprintf("Sync TidbMonitorRef into targetCluster[%s/%s] status failed, err:%v", tcNs, tc.Name, err)
 				klog.Error(message)
 				m.deps.Recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, err.Error())
 				return err
@@ -398,26 +397,14 @@ func (m *MonitorManager) removeIngressIfExist(monitor *v1alpha1.TidbMonitor, nam
 }
 
 func (m *MonitorManager) patchTidbClusterStatus(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) error {
-	var mergePatch []byte
 	var err error
 	grafanaEnabled := true
 	if monitor.Spec.Grafana == nil {
 		grafanaEnabled = false
 	}
-	mergePatch, err = json.Marshal(map[string]interface{}{
-		"status": map[string]interface{}{
-			"monitor": map[string]interface{}{
-				"name":           monitor.Name,
-				"namespace":      monitor.Namespace,
-				"grafanaEnabled": grafanaEnabled,
-			},
-		},
-	})
-
-	if err != nil {
-		return err
-	}
-	_, err = m.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Patch(tc.Name, types.MergePatchType, mergePatch)
+	tc.Status.Monitor = &v1alpha1.TidbMonitorRef{Name: monitor.Name,
+		Namespace: monitor.Namespace, GrafanaEnabled: grafanaEnabled}
+	_, err = m.deps.TiDBClusterControl.UpdateTidbCluster(tc, nil, nil)
 	return err
 }
 

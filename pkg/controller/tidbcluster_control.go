@@ -32,6 +32,7 @@ import (
 // TidbClusterControlInterface manages TidbClusters
 type TidbClusterControlInterface interface {
 	UpdateTidbCluster(*v1alpha1.TidbCluster, *v1alpha1.TidbClusterStatus, *v1alpha1.TidbClusterStatus) (*v1alpha1.TidbCluster, error)
+	Create(*v1alpha1.TidbCluster) error
 }
 
 type realTidbClusterControl struct {
@@ -84,6 +85,10 @@ func (c *realTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, new
 	return updateTC, err
 }
 
+func (c *realTidbClusterControl) Create(*v1alpha1.TidbCluster) error {
+	return nil
+}
+
 func deepEqualExceptHeartbeatTime(newStatus *v1alpha1.TidbClusterStatus, oldStatus *v1alpha1.TidbClusterStatus) bool {
 	sweepHeartbeatTime(newStatus.TiKV.Stores)
 	sweepHeartbeatTime(newStatus.TiKV.TombstoneStores)
@@ -105,6 +110,7 @@ type FakeTidbClusterControl struct {
 	TcLister                 listers.TidbClusterLister
 	TcIndexer                cache.Indexer
 	updateTidbClusterTracker RequestTracker
+	createTidbClusterTracker RequestTracker
 }
 
 // NewFakeTidbClusterControl returns a FakeTidbClusterControl
@@ -112,6 +118,7 @@ func NewFakeTidbClusterControl(tcInformer tcinformers.TidbClusterInformer) *Fake
 	return &FakeTidbClusterControl{
 		tcInformer.Lister(),
 		tcInformer.Informer().GetIndexer(),
+		RequestTracker{},
 		RequestTracker{},
 	}
 }
@@ -130,4 +137,16 @@ func (c *FakeTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, _ *
 	}
 
 	return tc, c.TcIndexer.Update(tc)
+}
+
+func (c *FakeTidbClusterControl) Create(tc *v1alpha1.TidbCluster) error {
+	defer func() {
+		c.createTidbClusterTracker.Inc()
+	}()
+
+	if c.createTidbClusterTracker.ErrorReady() {
+		defer c.createTidbClusterTracker.Reset()
+		return c.createTidbClusterTracker.GetError()
+	}
+	return c.TcIndexer.Add(tc)
 }
