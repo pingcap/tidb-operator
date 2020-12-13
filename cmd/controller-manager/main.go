@@ -79,6 +79,11 @@ func main() {
 		klog.Fatal("NAMESPACE environment variable not set")
 	}
 
+	helmRelease := os.Getenv("HELM_RELEASE")
+	if helmRelease == "" {
+		klog.Info("HELM_RELEASE environment variable not set")
+	}
+
 	cfg, err := rest.InClusterConfig()
 	if err != nil {
 		klog.Fatalf("failed to get config: %v", err)
@@ -180,13 +185,17 @@ func main() {
 		klog.Fatalf("leader election lost")
 	}
 
+	endPointsName := "tidb-controller-manager"
+	if helmRelease != "" {
+		endPointsName += "-" + helmRelease
+	}
 	// leader election for multiple tidb-controller-manager instances
 	go wait.Forever(func() {
 		leaderelection.RunOrDie(controllerCtx, leaderelection.LeaderElectionConfig{
 			Lock: &resourcelock.EndpointsLock{
 				EndpointsMeta: metav1.ObjectMeta{
 					Namespace: ns,
-					Name:      "tidb-controller-manager",
+					Name:      endPointsName,
 				},
 				Client: kubeCli.CoreV1(),
 				LockConfig: resourcelock.ResourceLockConfig{
