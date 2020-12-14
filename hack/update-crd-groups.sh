@@ -40,16 +40,12 @@ to-crdgen generate backupschedule >> $crd_target
 to-crdgen generate tidbmonitor >> $crd_target
 to-crdgen generate tidbinitializer >> $crd_target
 to-crdgen generate tidbclusterautoscaler >> $crd_target
-to-crdgen generate tidbgroup >> $crd_target
-to-crdgen generate tikvgroup >> $crd_target
-
-
 
 hack::ensure_gen_crd_api_references_docs
 
 DOCS_PATH="$ROOT/docs/api-references"
 
-${DOCS_BIN} \
+GOROOT=$(go env GOROOT) ${DOCS_BIN} \
 -config "$DOCS_PATH/config.json" \
 -template-dir "$DOCS_PATH/template" \
 -api-dir "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1" \

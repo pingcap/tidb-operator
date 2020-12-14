@@ -16,7 +16,6 @@ package pod
 import (
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	pdutil "github.com/pingcap/tidb-operator/pkg/manager/member"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
@@ -28,7 +27,6 @@ import (
 )
 
 func (pc *PodAdmissionControl) admitDeletePdPods(payload *admitPayload) *admission.AdmissionResponse {
-
 	name := payload.pod.Name
 	namespace := payload.pod.Namespace
 	ordinal, err := operatorUtils.GetOrdinalFromPodName(name)
@@ -39,19 +37,6 @@ func (pc *PodAdmissionControl) admitDeletePdPods(payload *admitPayload) *admissi
 	if !ok {
 		klog.V(4).Infof("pd pod[%s/%s]'s controller is not tidbcluster, admit to be deleted", namespace, name)
 		return util.ARSuccess()
-	}
-
-	// If the pd pod is deleted by restarter, it is necessary to check former pd restart status
-	if _, exist := payload.pod.Annotations[label.AnnPodDeferDeleting]; exist {
-		existed, err := checkFormerPodRestartStatus(pc.kubeCli, v1alpha1.PDMemberType, payload, ordinal)
-		if err != nil {
-			return util.ARFail(err)
-		}
-		if existed {
-			return &admission.AdmissionResponse{
-				Allowed: false,
-			}
-		}
 	}
 
 	isInOrdinal, err := operatorUtils.IsPodOrdinalNotExceedReplicas(payload.pod, payload.ownerStatefulSet)
@@ -205,7 +190,6 @@ func (pc *PodAdmissionControl) admitDeleteExceedReplicasPDPod(payload *admitPayl
 
 // this pod is a pd leader, we should transfer pd leader to other pd pod before it gets deleted before.
 func (pc *PodAdmissionControl) transferPDLeader(payload *admitPayload) *admission.AdmissionResponse {
-
 	name := payload.pod.Name
 	namespace := payload.pod.Namespace
 	ordinal, err := operatorUtils.GetOrdinalFromPodName(name)
@@ -218,13 +202,29 @@ func (pc *PodAdmissionControl) transferPDLeader(payload *admitPayload) *admissio
 		return util.ARSuccess()
 	}
 	tcName := tc.Name
-	var targetName string
 
-	lastOrdinal := helper.GetMaxPodOrdinal(*payload.ownerStatefulSet.Spec.Replicas, payload.ownerStatefulSet)
-	if ordinal == lastOrdinal {
-		targetName = pdutil.PdPodName(tcName, helper.GetMinPodOrdinal(*payload.ownerStatefulSet.Spec.Replicas, payload.ownerStatefulSet))
-	} else {
-		targetName = pdutil.PdPodName(tcName, lastOrdinal)
+	var targetName string
+	if tc.PDStsActualReplicas() > 1 {
+		lastOrdinal := helper.GetMaxPodOrdinal(*payload.ownerStatefulSet.Spec.Replicas, payload.ownerStatefulSet)
+		targetOrdinal := lastOrdinal
+		if ordinal == lastOrdinal {
+			targetOrdinal = helper.GetMinPodOrdinal(*payload.ownerStatefulSet.Spec.Replicas, payload.ownerStatefulSet)
+		}
+		targetName = pdutil.PdName(tcName, targetOrdinal, namespace, tc.Spec.ClusterDomain)
+		if _, exist := tc.Status.PD.Members[targetName]; !exist {
+			targetName = pdutil.PdPodName(tcName, targetOrdinal)
+		}
+	} else if len(tc.Status.PD.PeerMembers) > 0 {
+		for _, member := range tc.Status.PD.PeerMembers {
+			if member.Name != pdutil.PdName(tcName, ordinal, tc.Namespace, tc.Spec.ClusterDomain) && member.Health {
+				targetName = member.Name
+				break
+			}
+		}
+	}
+
+	if len(targetName) == 0 {
+		return util.ARSuccess()
 	}
 
 	err = payload.pdClient.TransferPDLeader(targetName)

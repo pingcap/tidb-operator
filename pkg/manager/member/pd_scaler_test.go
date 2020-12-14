@@ -28,8 +28,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	kubeinformers "k8s.io/client-go/informers"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/pointer"
 )
@@ -235,16 +233,15 @@ func TestPDScalerScaleOut(t *testing.T) {
 func TestPDScalerScaleIn(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
-		name                string
-		pdUpgrading         bool
-		hasPVC              bool
-		pvcUpdateErr        bool
-		deleteMemberErr     bool
-		statusSyncFailed    bool
-		err                 bool
-		changed             bool
-		isLeader            bool
-		isMemberStillRemain bool
+		name             string
+		pdUpgrading      bool
+		hasPVC           bool
+		pvcUpdateErr     bool
+		deleteMemberErr  bool
+		statusSyncFailed bool
+		err              bool
+		changed          bool
+		isLeader         bool
 	}
 
 	testFn := func(test testcase, t *testing.T) {
@@ -295,28 +292,6 @@ func TestPDScalerScaleIn(t *testing.T) {
 			})
 		}
 
-		var membersInfo *pdapi.MembersInfo
-		if test.isMemberStillRemain {
-			membersInfo = &pdapi.MembersInfo{
-				Members: []*pdpb.Member{
-					{
-						Name: fmt.Sprintf("%s-pd-%d", tc.GetName(), 4),
-					},
-				},
-			}
-		} else {
-			membersInfo = &pdapi.MembersInfo{
-				Members: []*pdpb.Member{
-					{
-						Name: fmt.Sprintf("%s-pd-%d", tc.GetName(), 1),
-					},
-				},
-			}
-		}
-		pdClient.AddReaction(pdapi.GetMembersActionType, func(action *pdapi.Action) (i interface{}, err error) {
-			return membersInfo, nil
-		})
-
 		tc.Status.PD.Synced = !test.statusSyncFailed
 
 		err := scaler.ScaleIn(tc, oldSet, newSet)
@@ -334,88 +309,206 @@ func TestPDScalerScaleIn(t *testing.T) {
 
 	tests := []testcase{
 		{
-			name:                "normal",
-			pdUpgrading:         false,
-			hasPVC:              true,
-			pvcUpdateErr:        false,
-			deleteMemberErr:     false,
-			statusSyncFailed:    false,
-			err:                 false,
-			changed:             true,
-			isLeader:            false,
-			isMemberStillRemain: false,
+			name:             "normal",
+			pdUpgrading:      false,
+			hasPVC:           true,
+			pvcUpdateErr:     false,
+			deleteMemberErr:  false,
+			statusSyncFailed: false,
+			err:              false,
+			changed:          true,
+			isLeader:         false,
 		},
 		{
-			name:                "able to scale in while pd is upgrading",
-			pdUpgrading:         true,
-			hasPVC:              true,
-			pvcUpdateErr:        false,
-			deleteMemberErr:     false,
-			statusSyncFailed:    false,
-			err:                 false,
-			changed:             true,
-			isLeader:            false,
-			isMemberStillRemain: false,
+			name:             "able to scale in while pd is upgrading",
+			pdUpgrading:      true,
+			hasPVC:           true,
+			pvcUpdateErr:     false,
+			deleteMemberErr:  false,
+			statusSyncFailed: false,
+			err:              false,
+			changed:          true,
+			isLeader:         false,
 		},
 		{
-			name:                "error when delete member",
-			hasPVC:              true,
-			pvcUpdateErr:        false,
-			pdUpgrading:         false,
-			deleteMemberErr:     true,
-			statusSyncFailed:    false,
-			err:                 true,
-			changed:             false,
-			isLeader:            false,
-			isMemberStillRemain: false,
+			name:             "error when delete member",
+			hasPVC:           true,
+			pvcUpdateErr:     false,
+			pdUpgrading:      false,
+			deleteMemberErr:  true,
+			statusSyncFailed: false,
+			err:              true,
+			changed:          false,
+			isLeader:         false,
 		},
 		{
-			name:                "cache don't have pvc",
-			pdUpgrading:         false,
-			hasPVC:              false,
-			pvcUpdateErr:        false,
-			deleteMemberErr:     false,
-			statusSyncFailed:    false,
-			err:                 true,
-			changed:             false,
-			isLeader:            false,
-			isMemberStillRemain: false,
+			name:             "cache don't have pvc",
+			pdUpgrading:      false,
+			hasPVC:           false,
+			pvcUpdateErr:     false,
+			deleteMemberErr:  false,
+			statusSyncFailed: false,
+			err:              true,
+			changed:          false,
+			isLeader:         false,
 		},
 		{
-			name:                "error when update pvc",
-			pdUpgrading:         false,
-			hasPVC:              true,
-			pvcUpdateErr:        true,
-			deleteMemberErr:     false,
-			statusSyncFailed:    false,
-			err:                 true,
-			changed:             false,
-			isLeader:            false,
-			isMemberStillRemain: false,
+			name:             "error when update pvc",
+			pdUpgrading:      false,
+			hasPVC:           true,
+			pvcUpdateErr:     true,
+			deleteMemberErr:  false,
+			statusSyncFailed: false,
+			err:              true,
+			changed:          false,
+			isLeader:         false,
 		},
 		{
-			name:                "pd status sync failed",
-			pdUpgrading:         false,
-			hasPVC:              true,
-			pvcUpdateErr:        false,
-			deleteMemberErr:     false,
-			statusSyncFailed:    true,
-			err:                 true,
-			changed:             false,
-			isLeader:            false,
-			isMemberStillRemain: false,
+			name:             "pd status sync failed",
+			pdUpgrading:      false,
+			hasPVC:           true,
+			pvcUpdateErr:     false,
+			deleteMemberErr:  false,
+			statusSyncFailed: true,
+			err:              true,
+			changed:          false,
+			isLeader:         false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testFn(tt, t)
+		})
+	}
+}
+
+func TestPDScalerScaleInBlockByOtherComponents(t *testing.T) {
+	// check if PD scale in is blocked when other components are using PD
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name    string
+		tikv    bool
+		tidb    bool
+		tiflash bool
+		ticdc   bool
+		pump    bool
+	}
+
+	testFn := func(test testcase, t *testing.T) {
+		tc := newTidbClusterForPD()
+
+		oldSet := newStatefulSetForPDScale()
+		newSet := oldSet.DeepCopy()
+		newSet.Spec.Replicas = pointer.Int32Ptr(3)
+
+		scaler, _, _, _ := newFakePDScaler()
+
+		tc.Spec.PD.Replicas = 0
+
+		if test.tikv {
+			tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
+				"1": {
+					ID:      "1",
+					PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 4),
+					State:   v1alpha1.TiKVStateUp,
+				},
+			}
+		} else {
+			tc.Status.TiKV.Stores = nil
+		}
+
+		if test.tidb {
+			tc.Status.TiDB.Members = map[string]v1alpha1.TiDBMember{
+				"failover-tidb-0": {
+					Name:   "failover-tidb-0",
+					Health: true,
+				},
+			}
+		} else {
+			tc.Status.TiDB.Members = nil
+		}
+
+		if test.tiflash {
+			tc.Status.TiFlash.Stores = map[string]v1alpha1.TiKVStore{
+				"1": {
+					ID:      "1",
+					PodName: ordinalPodName(v1alpha1.TiFlashMemberType, tc.GetName(), 4),
+					State:   v1alpha1.TiKVStateUp,
+				},
+			}
+		} else {
+			tc.Status.TiFlash.Stores = nil
+		}
+
+		if test.ticdc {
+			tc.Status.TiCDC.StatefulSet = &apps.StatefulSetStatus{Replicas: 1}
+		} else {
+			tc.Status.TiCDC.StatefulSet = &apps.StatefulSetStatus{Replicas: 0}
+		}
+
+		if test.pump {
+			tc.Status.Pump.StatefulSet = &apps.StatefulSetStatus{Replicas: 1}
+		} else {
+			tc.Status.Pump.StatefulSet = &apps.StatefulSetStatus{Replicas: 0}
+		}
+
+		result := scaler.preCheckUpMembers(tc, "pd-1")
+		if test.tikv || test.tidb || test.tiflash || test.ticdc || test.pump {
+			g.Expect(result).To(BeFalse())
+		} else {
+			g.Expect(result).To(BeTrue())
+		}
+	}
+
+	tests := []testcase{
+		{
+			name:    "tikv on",
+			tikv:    true,
+			tidb:    false,
+			tiflash: false,
+			ticdc:   false,
+			pump:    false,
 		},
 		{
-			name:                "delete member success, but get member still remain",
-			pdUpgrading:         false,
-			hasPVC:              true,
-			pvcUpdateErr:        false,
-			deleteMemberErr:     false,
-			statusSyncFailed:    false,
-			err:                 true,
-			changed:             false,
-			isLeader:            false,
-			isMemberStillRemain: true,
+			name:    "tidb on",
+			tikv:    false,
+			tidb:    true,
+			tiflash: false,
+			ticdc:   false,
+			pump:    false,
+		},
+		{
+			name:    "tiflash on",
+			tikv:    false,
+			tidb:    false,
+			tiflash: true,
+			ticdc:   false,
+			pump:    false,
+		},
+		{
+			name:    "ticdc on",
+			tikv:    false,
+			tidb:    false,
+			tiflash: false,
+			ticdc:   true,
+			pump:    false,
+		},
+		{
+			name:    "pump on",
+			tikv:    false,
+			tidb:    false,
+			tiflash: false,
+			ticdc:   false,
+			pump:    true,
+		},
+		{
+			name:    "all zero",
+			tikv:    false,
+			tidb:    false,
+			tiflash: false,
+			ticdc:   false,
+			pump:    false,
 		},
 	}
 
@@ -427,15 +520,12 @@ func TestPDScalerScaleIn(t *testing.T) {
 }
 
 func newFakePDScaler() (*pdScaler, *pdapi.FakePDControl, cache.Indexer, *controller.FakePVCControl) {
-	kubeCli := kubefake.NewSimpleClientset()
-
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
-	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
-	pdControl := pdapi.NewFakePDControl(kubeCli)
-	pvcControl := controller.NewFakePVCControl(pvcInformer)
-
-	return &pdScaler{generalScaler{pvcInformer.Lister(), pvcControl}, pdControl},
-		pdControl, pvcInformer.Informer().GetIndexer(), pvcControl
+	fakeDeps := controller.NewFakeDependencies()
+	pdScaler := &pdScaler{generalScaler: generalScaler{deps: fakeDeps}}
+	pdControl := fakeDeps.PDControl.(*pdapi.FakePDControl)
+	pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
+	pvcControl := fakeDeps.PVCControl.(*controller.FakePVCControl)
+	return pdScaler, pdControl, pvcIndexer, pvcControl
 }
 
 func newStatefulSetForPDScale() *apps.StatefulSet {
@@ -453,7 +543,13 @@ func newStatefulSetForPDScale() *apps.StatefulSet {
 
 func newPVCForStatefulSet(set *apps.StatefulSet, memberType v1alpha1.MemberType, name string) *corev1.PersistentVolumeClaim {
 	podName := ordinalPodName(memberType, name, *set.Spec.Replicas)
-	l := label.New().Instance(name)
+	var l label.Label
+	switch memberType {
+	case v1alpha1.DMMasterMemberType, v1alpha1.DMWorkerMemberType:
+		l = label.NewDM().Instance(name)
+	default:
+		l = label.New().Instance(name)
+	}
 	l[label.AnnPodNameKey] = podName
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
@@ -466,7 +562,13 @@ func newPVCForStatefulSet(set *apps.StatefulSet, memberType v1alpha1.MemberType,
 
 func newScaleInPVCForStatefulSet(set *apps.StatefulSet, memberType v1alpha1.MemberType, name string) *corev1.PersistentVolumeClaim {
 	podName := ordinalPodName(memberType, name, *set.Spec.Replicas-1)
-	l := label.New().Instance(name)
+	var l label.Label
+	switch memberType {
+	case v1alpha1.DMMasterMemberType, v1alpha1.DMWorkerMemberType:
+		l = label.NewDM().Instance(name)
+	default:
+		l = label.New().Instance(name)
+	}
 	l[label.AnnPodNameKey] = podName
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{

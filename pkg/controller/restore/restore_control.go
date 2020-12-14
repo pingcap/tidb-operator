@@ -44,9 +44,9 @@ type defaultRestoreControl struct {
 var _ ControlInterface = &defaultRestoreControl{}
 
 // UpdateRestore executes the core logic loop for a Restore.
-func (rc *defaultRestoreControl) UpdateRestore(restore *v1alpha1.Restore) error {
+func (c *defaultRestoreControl) UpdateRestore(restore *v1alpha1.Restore) error {
 	restore.SetGroupVersionKind(controller.RestoreControllerKind)
-	return rc.restoreManager.Sync(restore)
+	return c.restoreManager.Sync(restore)
 }
 
 // FakeRestoreControl is a fake RestoreControlInterface
@@ -64,19 +64,19 @@ func NewFakeRestoreControl(restoreInformer informers.RestoreInformer) *FakeResto
 }
 
 // SetUpdateRestoreError sets the error attributes of updateRestoreTracker
-func (fbc *FakeRestoreControl) SetUpdateRestoreError(err error, after int) {
-	fbc.updateRestoreTracker.SetError(err).SetAfter(after)
+func (c *FakeRestoreControl) SetUpdateRestoreError(err error, after int) {
+	c.updateRestoreTracker.SetError(err).SetAfter(after)
 }
 
 // UpdateRestore adds the backup to RestoreIndexer
-func (fbc *FakeRestoreControl) UpdateRestore(backup *v1alpha1.Restore) error {
-	defer fbc.updateRestoreTracker.Inc()
-	if fbc.updateRestoreTracker.ErrorReady() {
-		defer fbc.updateRestoreTracker.Reset()
-		return fbc.updateRestoreTracker.GetError()
+func (c *FakeRestoreControl) UpdateRestore(backup *v1alpha1.Restore) error {
+	defer c.updateRestoreTracker.Inc()
+	if c.updateRestoreTracker.ErrorReady() {
+		defer c.updateRestoreTracker.Reset()
+		return c.updateRestoreTracker.GetError()
 	}
 
-	return fbc.backupIndexer.Add(backup)
+	return c.backupIndexer.Add(backup)
 }
 
 var _ ControlInterface = &FakeRestoreControl{}

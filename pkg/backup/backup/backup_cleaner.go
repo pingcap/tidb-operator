@@ -24,9 +24,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/util"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	batchlisters "k8s.io/client-go/listers/batch/v1"
 	"k8s.io/klog"
 	"k8s.io/utils/pointer"
 )
@@ -37,23 +36,15 @@ type BackupCleaner interface {
 }
 
 type backupCleaner struct {
+	deps          *controller.Dependencies
 	statusUpdater controller.BackupConditionUpdaterInterface
-	kubeCli       kubernetes.Interface
-	jobLister     batchlisters.JobLister
-	jobControl    controller.JobControlInterface
 }
 
 // NewBackupCleaner returns a BackupCleaner
-func NewBackupCleaner(
-	statusUpdater controller.BackupConditionUpdaterInterface,
-	kubeCli kubernetes.Interface,
-	jobLister batchlisters.JobLister,
-	jobControl controller.JobControlInterface) BackupCleaner {
+func NewBackupCleaner(deps *controller.Dependencies, statusUpdater controller.BackupConditionUpdaterInterface) BackupCleaner {
 	return &backupCleaner{
-		statusUpdater,
-		kubeCli,
-		jobLister,
-		jobControl,
+		deps:          deps,
+		statusUpdater: statusUpdater,
 	}
 }
 
@@ -68,11 +59,21 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 	klog.Infof("start to clean backup %s/%s", ns, name)
 
 	cleanJobName := backup.GetCleanJobName()
-	_, err := bc.jobLister.Jobs(ns).Get(cleanJobName)
+	_, err := bc.deps.JobLister.Jobs(ns).Get(cleanJobName)
 	if err == nil {
 		// already have a clean job running，return directly
 		return nil
+	} else if !errors.IsNotFound(err) {
+		bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Type:    v1alpha1.BackupRetryFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "GetBackupFailed",
+			Message: err.Error(),
+		})
+		return err
 	}
+
+	// no found the clean job, we start to create the clean job.
 
 	if backup.Status.BackupPath == "" {
 		// the backup path is empty, so there is no need to clean up backup data
@@ -94,7 +95,7 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 		return err
 	}
 
-	if err := bc.jobControl.CreateJob(backup, job); err != nil {
+	if err := bc.deps.JobControl.CreateJob(backup, job); err != nil {
 		errMsg := fmt.Errorf("create backup %s/%s job %s failed, err: %v", ns, name, cleanJobName, err)
 		bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupRetryFailed,
@@ -115,7 +116,7 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bc.kubeCli)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bc.deps.KubeClientset)
 	if err != nil {
 		return nil, reason, err
 	}
@@ -124,6 +125,18 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 		"clean",
 		fmt.Sprintf("--namespace=%s", ns),
 		fmt.Sprintf("--backupName=%s", name),
+	}
+
+	var volumes []corev1.Volume
+	var volumeMounts []corev1.VolumeMount
+
+	// mount volumes if specified
+	if backup.Spec.Local != nil {
+		klog.Info("mounting local volumes in Backup.Spec")
+		localVolume := backup.Spec.Local.Volume
+		localVolumeMount := backup.Spec.Local.VolumeMount
+		volumes = append(volumes, localVolume)
+		volumeMounts = append(volumeMounts, localVolumeMount)
 	}
 
 	serviceAccount := constants.DefaultServiceAccountName
@@ -141,14 +154,16 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 			Containers: []corev1.Container{
 				{
 					Name:            label.BackupJobLabelVal,
-					Image:           controller.TidbBackupManagerImage,
+					Image:           bc.deps.CLIConfig.TiDBBackupManagerImage,
 					Args:            args,
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					Env:             util.AppendEnvIfPresent(storageEnv, "TZ"),
 					Resources:       backup.Spec.ResourceRequirements,
+					VolumeMounts:    volumeMounts,
 				},
 			},
 			RestartPolicy: corev1.RestartPolicyNever,
+			Volumes:       volumes,
 		},
 	}
 

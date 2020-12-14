@@ -15,7 +15,6 @@ package backup
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -35,35 +34,39 @@ type Options struct {
 	backupUtil.GenericOptions
 }
 
+// backupData generates br args and runs br binary to do the real backup work
 func (bo *Options) backupData(backup *v1alpha1.Backup) error {
 	clusterNamespace := backup.Spec.BR.ClusterNamespace
 	if backup.Spec.BR.ClusterNamespace == "" {
 		clusterNamespace = backup.Namespace
 	}
-	args, err := constructOptions(backup)
-	if err != nil {
-		return err
-	}
+	args := make([]string, 0)
 	args = append(args, fmt.Sprintf("--pd=%s-pd.%s:2379", backup.Spec.BR.Cluster, clusterNamespace))
 	if bo.TLSCluster {
 		args = append(args, fmt.Sprintf("--ca=%s", path.Join(util.ClusterClientTLSPath, corev1.ServiceAccountRootCAKey)))
 		args = append(args, fmt.Sprintf("--cert=%s", path.Join(util.ClusterClientTLSPath, corev1.TLSCertKey)))
 		args = append(args, fmt.Sprintf("--key=%s", path.Join(util.ClusterClientTLSPath, corev1.TLSPrivateKeyKey)))
 	}
+	// `options` in spec are put to the last because we want them to have higher priority than generated arguments
+	dataArgs, err := constructOptions(backup)
+	if err != nil {
+		return err
+	}
+	args = append(args, dataArgs...)
 
-	var btype string
+	var backupType string
 	if backup.Spec.Type == "" {
-		btype = string(v1alpha1.BackupTypeFull)
+		backupType = string(v1alpha1.BackupTypeFull)
 	} else {
-		btype = string(backup.Spec.Type)
+		backupType = string(backup.Spec.Type)
 	}
 	fullArgs := []string{
 		"backup",
-		btype,
+		backupType,
 	}
 	fullArgs = append(fullArgs, args...)
 	klog.Infof("Running br command with args: %v", fullArgs)
-	bin := "br" + backupUtil.Suffix(bo.TiKVVersion)
+	bin := path.Join(util.BRBinPath, "br")
 	cmd := exec.Command(bin, fullArgs...)
 
 	stdOut, err := cmd.StdoutPipe()
@@ -86,14 +89,14 @@ func (bo *Options) backupData(backup *v1alpha1.Backup) error {
 			errMsg += line
 		}
 
-		klog.Infof(strings.Replace(line, "\n", "", -1))
+		klog.Info(strings.Replace(line, "\n", "", -1))
 		if err != nil || io.EOF == err {
 			break
 		}
 	}
 	tmpErr, _ := ioutil.ReadAll(stdErr)
 	if len(tmpErr) > 0 {
-		klog.Infof(string(tmpErr))
+		klog.Info(string(tmpErr))
 		errMsg += string(tmpErr)
 	}
 	err = cmd.Wait()
@@ -105,7 +108,7 @@ func (bo *Options) backupData(backup *v1alpha1.Backup) error {
 	return nil
 }
 
-// constructOptions constructs options for BR and also return the remote path
+// constructOptions constructs options for BR
 func constructOptions(backup *v1alpha1.Backup) ([]string, error) {
 	args, err := backupUtil.ConstructBRGlobalOptionsForBackup(backup)
 	if err != nil {
@@ -124,28 +127,6 @@ func constructOptions(backup *v1alpha1.Backup) ([]string, error) {
 	if config.Checksum != nil {
 		args = append(args, fmt.Sprintf("--checksum=%t", *config.Checksum))
 	}
+	args = append(args, config.Options...)
 	return args, nil
-}
-
-// getBackupSize get the backup data size from remote
-func getBackupSize(backup *v1alpha1.Backup) (int64, error) {
-	var size int64
-	s, err := backupUtil.NewRemoteStorage(backup.Spec.StorageProvider)
-	if err != nil {
-		return size, err
-	}
-	defer s.Close()
-	ctx := context.Background()
-	iter := s.List(nil)
-	for {
-		obj, err := iter.Next(ctx)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return size, err
-		}
-		size += obj.Size
-	}
-	return size, nil
 }

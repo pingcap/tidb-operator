@@ -1,0 +1,34 @@
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: cluster1
+  namespace: pingcap
+spec:
+  version: v4.0.8
+  timezone: UTC
+  pvReclaimPolicy: Retain
+  enableDynamicConfiguration: true
+  configUpdateStrategy: RollingUpdate
+  discovery: {}
+  # set the cluster domain according to your cluster settings
+  clusterDomain: "cluster1.com"
+  pd:
+    baseImage: pingcap/pd
+    replicas: 1
+    requests:
+      storage: "20Gi"
+    config: {}
+  tikv:
+    baseImage: pingcap/tikv
+    replicas: 3
+    requests:
+      storage: "20Gi"
+    config:
+      storage:
+        reserve-space: "0MB"
+  tidb:
+    baseImage: pingcap/tidb
+    replicas: 1
+    service:
+      type: ClusterIP
+    config: {}

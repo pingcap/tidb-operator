@@ -30,15 +30,14 @@ import (
 )
 
 var (
-	tikvConfig = &v1alpha1.TiKVConfig{
-		LogLevel: pointer.StringPtr("info"),
-		Server:   &v1alpha1.TiKVServerConfig{},
-		Storage: &v1alpha1.TiKVStorageConfig{
-			// Don't reserve space in e2e tests, see
-			// https://github.com/pingcap/tidb-operator/issues/2509.
-			ReserveSpace: pointer.StringPtr("0MB"),
-		},
-	}
+	tikvConfig = func() *v1alpha1.TiKVConfigWraper {
+		c := v1alpha1.NewTiKVConfig()
+		c.Set("log-level", "info")
+		// Don't reserve space in e2e tests, see
+		// https://github.com/pingcap/tidb-operator/issues/2509.
+		c.Set("storage.reserve-space", "0MB")
+		return c
+	}()
 )
 
 var (
@@ -89,9 +88,13 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 	// We assume all unparsable versions are greater or equal to v4.0.0-beta,
 	// e.g. nightly.
 	if v, err := semver.NewVersion(version); err == nil && v.LessThan(tikvV4Beta) {
-		tikvConfig.Storage = nil
+		tikvConfig.Del("storage")
 	}
 	deletePVP := corev1.PersistentVolumeReclaimDelete
+
+	tidbConfig := v1alpha1.NewTiDBConfig()
+	tidbConfig.Set("log.level", "info")
+
 	return &v1alpha1.TidbCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -107,15 +110,12 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				Replicas:             3,
 				BaseImage:            "pingcap/pd",
 				ResourceRequirements: WithStorage(BurstbleSmall, "1Gi"),
-				Config: &v1alpha1.PDConfig{
-					Log: &v1alpha1.PDLogConfig{
-						Level: pointer.StringPtr("info"),
-					},
-					// accelerate failover
-					Schedule: &v1alpha1.PDScheduleConfig{
-						MaxStoreDownTime: pointer.StringPtr("5m"),
-					},
-				},
+				Config: func() *v1alpha1.PDConfigWraper {
+					c := v1alpha1.NewPDConfig()
+					c.Set("log.level", "info")
+					c.Set("schedule.max-store-down-time", "5m")
+					return c
+				}(),
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Affinity: buildAffinity(name, ns, v1alpha1.PDMemberType),
 				},
@@ -144,45 +144,13 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				},
 				SeparateSlowLog:  pointer.BoolPtr(true),
 				MaxFailoverCount: pointer.Int32Ptr(3),
-				Config: &v1alpha1.TiDBConfig{
-					Log: &v1alpha1.Log{
-						Level: pointer.StringPtr("info"),
-					},
-				},
+				Config:           tidbConfig,
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Affinity: buildAffinity(name, ns, v1alpha1.TiDBMemberType),
 				},
 			},
 		},
 	}
-}
-
-func GetTiKVGroup(ns, name, clusterName, version string) *v1alpha1.TiKVGroup {
-	// We assume all unparsable versions are greater or equal to v4.0.0-beta,
-	// e.g. nightly.
-	if v, err := semver.NewVersion(version); err == nil && v.LessThan(tikvV4Beta) {
-		tikvConfig.Storage = nil
-	}
-	tg := &v1alpha1.TiKVGroup{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: ns,
-		},
-		Spec: v1alpha1.TiKVGroupSpec{
-			TiKVSpec: v1alpha1.TiKVSpec{
-				Replicas:             3,
-				ResourceRequirements: WithStorage(BurstbleMedium, "10Gi"),
-				MaxFailoverCount:     pointer.Int32Ptr(3),
-				Config:               tikvConfig,
-				ComponentSpec: v1alpha1.ComponentSpec{
-					Affinity: buildAffinity(name, ns, v1alpha1.TiKVMemberType),
-					Image:    fmt.Sprintf("pingcap/tikv:%s", version),
-				},
-			},
-			ClusterName: clusterName,
-		},
-	}
-	return tg
 }
 
 func buildAffinity(name, namespace string, memberType v1alpha1.MemberType) *corev1.Affinity {
@@ -241,7 +209,7 @@ func GetTidbInitializer(ns, tcName, initName, initPassWDName, initTLSName string
 	}
 }
 
-func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEnabled, persist bool) *v1alpha1.TidbMonitor {
+func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEnabled, persist bool, isRetain bool) *v1alpha1.TidbMonitor {
 	imagePullPolicy := corev1.PullIfNotPresent
 	monitor := &v1alpha1.TidbMonitor{
 		ObjectMeta: metav1.ObjectMeta{
@@ -290,8 +258,11 @@ func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 				},
 				Envs: map[string]string{},
 			},
-			Persistent: persist,
 		},
+	}
+	if isRetain {
+		retainPVP := corev1.PersistentVolumeReclaimRetain
+		monitor.Spec.PVReclaimPolicy = &retainPVP
 	}
 	if grafanaEnabled {
 		monitor.Spec.Grafana = &v1alpha1.GrafanaSpec{
@@ -319,6 +290,7 @@ func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 		storageClassName := "local-storage"
 		monitor.Spec.StorageClassName = &storageClassName
 		monitor.Spec.Storage = "2Gi"
+		monitor.Spec.Persistent = true
 	}
 	return monitor
 }
@@ -426,10 +398,6 @@ func GetTidbClusterAutoScaler(name, ns string, tc *v1alpha1.TidbCluster, tm *v1a
 				Name:      tc.Name,
 				Namespace: tc.Namespace,
 			},
-			Monitor: &v1alpha1.TidbMonitorRef{
-				Name:      tm.Name,
-				Namespace: tm.Namespace,
-			},
 			TiKV: nil,
 			TiDB: nil,
 		},
@@ -456,7 +424,7 @@ func GetBackupCRDWithS3(tc *v1alpha1.TidbCluster, fromSecretName, brType string,
 			StorageProvider: v1alpha1.StorageProvider{
 				S3: s3config,
 			},
-			From: v1alpha1.TiDBAccessConfig{
+			From: &v1alpha1.TiDBAccessConfig{
 				Host:       util.GetTidbServiceName(tc.Name),
 				SecretName: fromSecretName,
 				Port:       4000,
@@ -494,7 +462,7 @@ func GetRestoreCRDWithS3(tc *v1alpha1.TidbCluster, toSecretName, restoreType str
 			StorageProvider: v1alpha1.StorageProvider{
 				S3: s3config,
 			},
-			To: v1alpha1.TiDBAccessConfig{
+			To: &v1alpha1.TiDBAccessConfig{
 				Host:       util.GetTidbServiceName(tc.Name),
 				SecretName: toSecretName,
 				Port:       4000,
@@ -558,7 +526,7 @@ func AddPumpForTidbCluster(tc *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
 				corev1.ResourceStorage: resource.MustParse("10Gi"),
 			},
 		},
-		GenericConfig: tcconfig.New(map[string]interface{}{
+		Config: tcconfig.New(map[string]interface{}{
 			"addr":               "0.0.0.0:8250",
 			"gc":                 7,
 			"data-dir":           "/data",

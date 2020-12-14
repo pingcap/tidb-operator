@@ -88,6 +88,10 @@ func (rm *Manager) ProcessRestore() error {
 		return fmt.Errorf("no br config in %s", rm)
 	}
 
+	if restore.Spec.To == nil {
+		return rm.performRestore(restore.DeepCopy(), nil)
+	}
+
 	rm.setOptions(restore)
 
 	var db *sql.DB
@@ -151,88 +155,95 @@ func (rm *Manager) performRestore(restore *v1alpha1.Restore, db *sql.DB) error {
 		return errorutils.NewAggregate(errs)
 	}
 
-	oldTikvGCTime, err := rm.GetTikvGCLifeTime(db)
-	if err != nil {
-		errs = append(errs, err)
-		klog.Errorf("cluster %s get %s failed, err: %s", rm, constants.TikvGCVariable, err)
-		uerr := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-			Type:    v1alpha1.RestoreFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "GetTikvGCLifeTimeFailed",
-			Message: err.Error(),
-		})
-		errs = append(errs, uerr)
-		return errorutils.NewAggregate(errs)
-	}
-	klog.Infof("cluster %s %s is %s", rm, constants.TikvGCVariable, oldTikvGCTime)
+	var (
+		oldTikvGCTime, tikvGCLifeTime             string
+		oldTikvGCTimeDuration, tikvGCTimeDuration time.Duration
+	)
 
-	oldTikvGCTimeDuration, err := time.ParseDuration(oldTikvGCTime)
-	if err != nil {
-		errs = append(errs, err)
-		klog.Errorf("cluster %s parse old %s failed, err: %s", rm, constants.TikvGCVariable, err)
-		uerr := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-			Type:    v1alpha1.RestoreFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "ParseOldTikvGCLifeTimeFailed",
-			Message: err.Error(),
-		})
-		errs = append(errs, uerr)
-		return errorutils.NewAggregate(errs)
-	}
-
-	var tikvGCTimeDuration time.Duration
-	var tikvGCLifeTime string
-	if restore.Spec.TikvGCLifeTime != nil {
-		tikvGCLifeTime = *restore.Spec.TikvGCLifeTime
-		tikvGCTimeDuration, err = time.ParseDuration(tikvGCLifeTime)
+	// set tikv gc life time to prevent gc when restoring data
+	if db != nil {
+		oldTikvGCTime, err = rm.GetTikvGCLifeTime(db)
 		if err != nil {
 			errs = append(errs, err)
-			klog.Errorf("cluster %s parse configured %s failed, err: %s", rm, constants.TikvGCVariable, err)
+			klog.Errorf("cluster %s get %s failed, err: %s", rm, constants.TikvGCVariable, err)
 			uerr := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 				Type:    v1alpha1.RestoreFailed,
 				Status:  corev1.ConditionTrue,
-				Reason:  "ParseConfiguredTikvGCLifeTimeFailed",
+				Reason:  "GetTikvGCLifeTimeFailed",
 				Message: err.Error(),
 			})
 			errs = append(errs, uerr)
 			return errorutils.NewAggregate(errs)
 		}
-	} else {
-		tikvGCLifeTime = constants.TikvGCLifeTime
-		tikvGCTimeDuration, err = time.ParseDuration(tikvGCLifeTime)
-		if err != nil {
-			errs = append(errs, err)
-			klog.Errorf("cluster %s parse default %s failed, err: %s", rm, constants.TikvGCVariable, err)
-			uerr := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-				Type:    v1alpha1.RestoreFailed,
-				Status:  corev1.ConditionTrue,
-				Reason:  "ParseDefaultTikvGCLifeTimeFailed",
-				Message: err.Error(),
-			})
-			errs = append(errs, uerr)
-			return errorutils.NewAggregate(errs)
-		}
-	}
+		klog.Infof("cluster %s %s is %s", rm, constants.TikvGCVariable, oldTikvGCTime)
 
-	if oldTikvGCTimeDuration < tikvGCTimeDuration {
-		err = rm.SetTikvGCLifeTime(db, tikvGCLifeTime)
+		oldTikvGCTimeDuration, err = time.ParseDuration(oldTikvGCTime)
 		if err != nil {
 			errs = append(errs, err)
-			klog.Errorf("cluster %s set tikv GC life time to %s failed, err: %s", rm, tikvGCLifeTime, err)
+			klog.Errorf("cluster %s parse old %s failed, err: %s", rm, constants.TikvGCVariable, err)
 			uerr := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 				Type:    v1alpha1.RestoreFailed,
 				Status:  corev1.ConditionTrue,
-				Reason:  "SetTikvGCLifeTimeFailed",
+				Reason:  "ParseOldTikvGCLifeTimeFailed",
 				Message: err.Error(),
 			})
 			errs = append(errs, uerr)
 			return errorutils.NewAggregate(errs)
 		}
-		klog.Infof("set cluster %s %s to %s success", rm, constants.TikvGCVariable, tikvGCLifeTime)
+
+		if restore.Spec.TikvGCLifeTime != nil {
+			tikvGCLifeTime = *restore.Spec.TikvGCLifeTime
+			tikvGCTimeDuration, err = time.ParseDuration(tikvGCLifeTime)
+			if err != nil {
+				errs = append(errs, err)
+				klog.Errorf("cluster %s parse configured %s failed, err: %s", rm, constants.TikvGCVariable, err)
+				uerr := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+					Type:    v1alpha1.RestoreFailed,
+					Status:  corev1.ConditionTrue,
+					Reason:  "ParseConfiguredTikvGCLifeTimeFailed",
+					Message: err.Error(),
+				})
+				errs = append(errs, uerr)
+				return errorutils.NewAggregate(errs)
+			}
+		} else {
+			tikvGCLifeTime = constants.TikvGCLifeTime
+			tikvGCTimeDuration, err = time.ParseDuration(tikvGCLifeTime)
+			if err != nil {
+				errs = append(errs, err)
+				klog.Errorf("cluster %s parse default %s failed, err: %s", rm, constants.TikvGCVariable, err)
+				uerr := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+					Type:    v1alpha1.RestoreFailed,
+					Status:  corev1.ConditionTrue,
+					Reason:  "ParseDefaultTikvGCLifeTimeFailed",
+					Message: err.Error(),
+				})
+				errs = append(errs, uerr)
+				return errorutils.NewAggregate(errs)
+			}
+		}
+
+		if oldTikvGCTimeDuration < tikvGCTimeDuration {
+			err = rm.SetTikvGCLifeTime(db, tikvGCLifeTime)
+			if err != nil {
+				errs = append(errs, err)
+				klog.Errorf("cluster %s set tikv GC life time to %s failed, err: %s", rm, tikvGCLifeTime, err)
+				uerr := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+					Type:    v1alpha1.RestoreFailed,
+					Status:  corev1.ConditionTrue,
+					Reason:  "SetTikvGCLifeTimeFailed",
+					Message: err.Error(),
+				})
+				errs = append(errs, uerr)
+				return errorutils.NewAggregate(errs)
+			}
+			klog.Infof("set cluster %s %s to %s success", rm, constants.TikvGCVariable, tikvGCLifeTime)
+		}
 	}
 
 	restoreErr := rm.restoreData(restore)
-	if oldTikvGCTimeDuration < tikvGCTimeDuration {
+
+	if db != nil && oldTikvGCTimeDuration < tikvGCTimeDuration {
 		err = rm.SetTikvGCLifeTime(db, oldTikvGCTime)
 		if err != nil {
 			if restoreErr != nil {

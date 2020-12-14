@@ -112,10 +112,10 @@ type masterClient struct {
 	httpClient *http.Client
 }
 
-func (mc *masterClient) GetMasters() ([]*MastersInfo, error) {
+func (c *masterClient) GetMasters() ([]*MastersInfo, error) {
 	query := "?master=true"
-	apiURL := fmt.Sprintf("%s/%s%s", mc.url, membersPrefix, query)
-	body, err := httputil.GetBodyOK(mc.httpClient, apiURL)
+	apiURL := fmt.Sprintf("%s/%s%s", c.url, membersPrefix, query)
+	body, err := httputil.GetBodyOK(c.httpClient, apiURL)
 	if err != nil {
 		return nil, err
 	}
@@ -134,10 +134,10 @@ func (mc *masterClient) GetMasters() ([]*MastersInfo, error) {
 	return listMemberResp.ListMemberResp[0].Masters, nil
 }
 
-func (mc *masterClient) GetWorkers() ([]*WorkersInfo, error) {
+func (c *masterClient) GetWorkers() ([]*WorkersInfo, error) {
 	query := "?worker=true"
-	apiURL := fmt.Sprintf("%s/%s%s", mc.url, membersPrefix, query)
-	body, err := httputil.GetBodyOK(mc.httpClient, apiURL)
+	apiURL := fmt.Sprintf("%s/%s%s", c.url, membersPrefix, query)
+	body, err := httputil.GetBodyOK(c.httpClient, apiURL)
 	if err != nil {
 		return nil, err
 	}
@@ -156,10 +156,10 @@ func (mc *masterClient) GetWorkers() ([]*WorkersInfo, error) {
 	return listMemberResp.ListMemberResp[0].Workers, nil
 }
 
-func (mc *masterClient) GetLeader() (MembersLeader, error) {
+func (c *masterClient) GetLeader() (MembersLeader, error) {
 	query := "?leader=true"
-	apiURL := fmt.Sprintf("%s/%s%s", mc.url, membersPrefix, query)
-	body, err := httputil.GetBodyOK(mc.httpClient, apiURL)
+	apiURL := fmt.Sprintf("%s/%s%s", c.url, membersPrefix, query)
+	body, err := httputil.GetBodyOK(c.httpClient, apiURL)
 	if err != nil {
 		return MembersLeader{}, err
 	}
@@ -178,10 +178,10 @@ func (mc *masterClient) GetLeader() (MembersLeader, error) {
 	return listMemberResp.ListMemberResp[0].MembersLeader, nil
 }
 
-func (mc *masterClient) EvictLeader() error {
+func (c *masterClient) EvictLeader() error {
 	query := "/1"
-	apiURL := fmt.Sprintf("%s/%s%s", mc.url, leaderPrefix, query)
-	body, err := httputil.PutBodyOK(mc.httpClient, apiURL)
+	apiURL := fmt.Sprintf("%s/%s%s", c.url, leaderPrefix, query)
+	body, err := httputil.PutBodyOK(c.httpClient, apiURL)
 	if err != nil {
 		return err
 	}
@@ -197,32 +197,32 @@ func (mc *masterClient) EvictLeader() error {
 	return nil
 }
 
-func (mc *masterClient) deleteMember(query string) error {
-	apiURL := fmt.Sprintf("%s/%s%s", mc.url, membersPrefix, query)
-	body, err := httputil.DeleteBodyOK(mc.httpClient, apiURL)
+func (c *masterClient) deleteMember(query string) error {
+	apiURL := fmt.Sprintf("%s/%s%s", c.url, membersPrefix, query)
+	body, err := httputil.DeleteBodyOK(c.httpClient, apiURL)
 	if err != nil {
 		return err
 	}
-	deleteMemeberResp := &RespHeader{}
-	err = json.Unmarshal(body, deleteMemeberResp)
+	deleteMemberResp := &RespHeader{}
+	err = json.Unmarshal(body, deleteMemberResp)
 	if err != nil {
 		return fmt.Errorf("unable to unmarshal delete member resp: %s, query: %s, err: %s", body, query, err)
 	}
-	if !deleteMemeberResp.Result {
-		return fmt.Errorf("unable to delete member, query: %s, err: %s", query, deleteMemeberResp.Msg)
+	if !deleteMemberResp.Result {
+		return fmt.Errorf("unable to delete member, query: %s, err: %s", query, deleteMemberResp.Msg)
 	}
 
 	return nil
 }
 
-func (mc *masterClient) DeleteMaster(name string) error {
+func (c *masterClient) DeleteMaster(name string) error {
 	query := "/master/" + name
-	return mc.deleteMember(query)
+	return c.deleteMember(query)
 }
 
-func (mc *masterClient) DeleteWorker(name string) error {
+func (c *masterClient) DeleteWorker(name string) error {
 	query := "/worker/" + name
-	return mc.deleteMember(query)
+	return c.deleteMember(query)
 }
 
 // NewMasterClient returns a new MasterClient

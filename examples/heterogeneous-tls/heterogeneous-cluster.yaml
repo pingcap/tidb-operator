@@ -9,15 +9,17 @@ spec:
   tlsCluster:
     enabled: true
   configUpdateStrategy: RollingUpdate
-  version: v4.0.6
+  enableDynamicConfiguration: true
+  version: v4.0.8
   timezone: UTC
-  pvReclaimPolicy: Delete
+  pvReclaimPolicy: Retain
   discovery: {}
   cluster:
     name: basic
   tikv:
     baseImage: pingcap/tikv
     replicas: 1
+    mountClusterClientSecret: true
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
     # storageClassName: local-storage
     requests:
@@ -36,7 +38,7 @@ spec:
       enabled: true
   tiflash:
     baseImage: pingcap/tiflash
-    version: v4.0.6
+    version: v4.0.8
     maxFailoverCount: 1
     replicas: 1
     storageClaims:

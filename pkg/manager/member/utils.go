@@ -14,28 +14,27 @@
 package member
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"path"
 
-	"github.com/BurntSushi/toml"
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	"github.com/pingcap/tidb-operator/pkg/util/toml"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
-	"k8s.io/utils/pointer"
 )
 
 const (
@@ -104,36 +103,6 @@ func GetLastAppliedConfig(set *apps.StatefulSet) (*apps.StatefulSetSpec, *corev1
 	return spec, &spec.Template.Spec, nil
 }
 
-// statefulSetEqual compares the new Statefulset's spec with old Statefulset's last applied config
-func statefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) bool {
-	// The annotations in old sts may include LastAppliedConfigAnnotation
-	tmpAnno := map[string]string{}
-	for k, v := range old.Annotations {
-		if k != LastAppliedConfigAnnotation {
-			tmpAnno[k] = v
-		}
-	}
-	if !apiequality.Semantic.DeepEqual(new.Annotations, tmpAnno) {
-		return false
-	}
-	oldConfig := apps.StatefulSetSpec{}
-	if lastAppliedConfig, ok := old.Annotations[LastAppliedConfigAnnotation]; ok {
-		err := json.Unmarshal([]byte(lastAppliedConfig), &oldConfig)
-		if err != nil {
-			klog.Errorf("unmarshal Statefulset: [%s/%s]'s applied config failed,error: %v", old.GetNamespace(), old.GetName(), err)
-			return false
-		}
-		// oldConfig.Template.Annotations may include LastAppliedConfigAnnotation to keep backward compatiability
-		// Please check detail in https://github.com/pingcap/tidb-operator/pull/1489
-		tmpTemplate := oldConfig.Template.DeepCopy()
-		delete(tmpTemplate.Annotations, LastAppliedConfigAnnotation)
-		return apiequality.Semantic.DeepEqual(oldConfig.Replicas, new.Spec.Replicas) &&
-			apiequality.Semantic.DeepEqual(*tmpTemplate, new.Spec.Template) &&
-			apiequality.Semantic.DeepEqual(oldConfig.UpdateStrategy, new.Spec.UpdateStrategy)
-	}
-	return false
-}
-
 // templateEqual compares the new podTemplateSpec's spec with old podTemplateSpec's last applied config
 func templateEqual(new *apps.StatefulSet, old *apps.StatefulSet) bool {
 	oldStsSpec := apps.StatefulSetSpec{}
@@ -159,8 +128,6 @@ func MemberPodName(controllerName, controllerKind string, ordinal int32, memberT
 	switch controllerKind {
 	case v1alpha1.TiDBClusterKind:
 		return fmt.Sprintf("%s-%s-%d", controllerName, memberType.String(), ordinal), nil
-	case v1alpha1.TiKVGroupKind:
-		return fmt.Sprintf("%s-%s-group-%d", controllerName, memberType.String(), ordinal), nil
 	default:
 		return "", fmt.Errorf("unknown controller kind[%s]", controllerKind)
 	}
@@ -178,12 +145,15 @@ func tidbPodName(tcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", controller.TiDBMemberName(tcName), ordinal)
 }
 
-func TiKVGroupPodName(tgName string, ordinal int32) string {
-	return fmt.Sprintf("%s-%d", controller.TiKVGroupMemberName(tgName), ordinal)
-}
-
 func DMMasterPodName(dcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", controller.DMMasterMemberName(dcName), ordinal)
+}
+
+func PdName(tcName string, ordinal int32, namespace string, clusterDomain string) string {
+	if len(clusterDomain) > 0 {
+		return fmt.Sprintf("%s.%s-pd-peer.%s.svc.%s", PdPodName(tcName, ordinal), tcName, namespace, clusterDomain)
+	}
+	return PdPodName(tcName, ordinal)
 }
 
 // CombineAnnotations merges two annotations maps
@@ -221,14 +191,7 @@ func FindConfigMapVolume(podSpec *corev1.PodSpec, pred func(string) bool) string
 
 // MarshalTOML is a template function that try to marshal a go value to toml
 func MarshalTOML(v interface{}) ([]byte, error) {
-	buff := new(bytes.Buffer)
-	encoder := toml.NewEncoder(buff)
-	err := encoder.Encode(v)
-	if err != nil {
-		return nil, err
-	}
-	data := buff.Bytes()
-	return data, nil
+	return toml.Marshal(v)
 }
 
 func UnmarshalTOML(b []byte, obj interface{}) error {
@@ -294,7 +257,7 @@ func MapContainers(podSpec *corev1.PodSpec) map[string]corev1.Container {
 }
 
 // updateStatefulSet is a template function to update the statefulset of components
-func updateStatefulSet(setCtl controller.StatefulSetControlInterface, object runtime.Object, newSet, oldSet *apps.StatefulSet) error {
+func UpdateStatefulSet(setCtl controller.StatefulSetControlInterface, object runtime.Object, newSet, oldSet *apps.StatefulSet) error {
 	isOrphan := metav1.GetControllerOf(oldSet) == nil
 	if newSet.Annotations == nil {
 		newSet.Annotations = map[string]string{}
@@ -302,7 +265,7 @@ func updateStatefulSet(setCtl controller.StatefulSetControlInterface, object run
 	if oldSet.Annotations == nil {
 		oldSet.Annotations = map[string]string{}
 	}
-	if !statefulSetEqual(*newSet, *oldSet) || isOrphan {
+	if !util.StatefulSetEqual(*newSet, *oldSet) || isOrphan {
 		set := *oldSet
 		// Retain the deprecated last applied pod template annotation for backward compatibility
 		var podConfig string
@@ -312,6 +275,9 @@ func updateStatefulSet(setCtl controller.StatefulSetControlInterface, object run
 		}
 		set.Spec.Template = newSet.Spec.Template
 		if hasPodConfig {
+			if set.Spec.Template.Annotations == nil {
+				set.Spec.Template.Annotations = map[string]string{}
+			}
 			set.Spec.Template.Annotations[LastAppliedConfigAnnotation] = podConfig
 		}
 		set.Annotations = newSet.Annotations
@@ -346,7 +312,7 @@ func filterContainer(sts *apps.StatefulSet, containerName string) *corev1.Contai
 	return nil
 }
 
-func copyAnnotations(src map[string]string) map[string]string {
+func CopyAnnotations(src map[string]string) map[string]string {
 	if src == nil {
 		return nil
 	}
@@ -360,14 +326,11 @@ func copyAnnotations(src map[string]string) map[string]string {
 func getTikVConfigMapForTiKVSpec(tikvSpec *v1alpha1.TiKVSpec, tc *v1alpha1.TidbCluster, scriptModel *TiKVStartScriptModel) (*corev1.ConfigMap, error) {
 	config := tikvSpec.Config
 	if tc.IsTLSClusterEnabled() {
-		if config.Security == nil {
-			config.Security = &v1alpha1.TiKVSecurityConfig{}
-		}
-		config.Security.CAPath = pointer.StringPtr(path.Join(tikvClusterCertPath, tlsSecretRootCAKey))
-		config.Security.CertPath = pointer.StringPtr(path.Join(tikvClusterCertPath, corev1.TLSCertKey))
-		config.Security.KeyPath = pointer.StringPtr(path.Join(tikvClusterCertPath, corev1.TLSPrivateKeyKey))
+		config.Set("security.ca-path", path.Join(tikvClusterCertPath, tlsSecretRootCAKey))
+		config.Set("security.cert-path", path.Join(tikvClusterCertPath, corev1.TLSCertKey))
+		config.Set("security.key-path", path.Join(tikvClusterCertPath, corev1.TLSPrivateKeyKey))
 	}
-	confText, err := MarshalTOML(config)
+	confText, err := config.MarshalTOML()
 	if err != nil {
 		return nil, err
 	}
@@ -487,4 +450,50 @@ func shouldRecoverDM(dc *v1alpha1.DMCluster, component string, podLister corelis
 		}
 	}
 	return true
+}
+
+func CreateOrUpdateService(serviceLister corelisters.ServiceLister, serviceControl controller.ServiceControlInterface, newSvc *corev1.Service, obj runtime.Object) error {
+	oldSvcTmp, err := serviceLister.Services(newSvc.Namespace).Get(newSvc.Name)
+	if errors.IsNotFound(err) {
+		err = controller.SetServiceLastAppliedConfigAnnotation(newSvc)
+		if err != nil {
+			return err
+		}
+		return serviceControl.CreateService(obj, newSvc)
+	}
+	if err != nil {
+		return fmt.Errorf("createOrUpdateService: fail to get svc %s for obj %v, error: %s", newSvc.Name, obj, err)
+	}
+
+	oldSvc := oldSvcTmp.DeepCopy()
+	util.RetainManagedFields(newSvc, oldSvc)
+
+	equal, err := controller.ServiceEqual(newSvc, oldSvc)
+	if err != nil {
+		return err
+	}
+	annoEqual := util.IsSubMapOf(newSvc.Annotations, oldSvc.Annotations)
+	isOrphan := metav1.GetControllerOf(oldSvc) == nil
+
+	if !equal || !annoEqual || isOrphan {
+		svc := *oldSvc
+		svc.Spec = newSvc.Spec
+		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
+		if err != nil {
+			return err
+		}
+		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
+		// apply change of annotations if any
+		for k, v := range newSvc.Annotations {
+			svc.Annotations[k] = v
+		}
+		// also override labels when adopt orphan
+		if isOrphan {
+			svc.OwnerReferences = newSvc.OwnerReferences
+			svc.Labels = newSvc.Labels
+		}
+		_, err = serviceControl.UpdateService(obj, &svc)
+		return err
+	}
+	return nil
 }

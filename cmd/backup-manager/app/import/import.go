@@ -66,11 +66,11 @@ func (ro *Options) downloadBackupData(localPath string, opts []string) error {
 	var errMsg string
 	tmpOut, _ := ioutil.ReadAll(stdOut)
 	if len(tmpOut) > 0 {
-		klog.Infof(string(tmpOut))
+		klog.Info(string(tmpOut))
 	}
 	tmpErr, _ := ioutil.ReadAll(stdErr)
 	if len(tmpErr) > 0 {
-		klog.Infof(string(tmpErr))
+		klog.Info(string(tmpErr))
 		errMsg = string(tmpErr)
 	}
 
@@ -81,7 +81,7 @@ func (ro *Options) downloadBackupData(localPath string, opts []string) error {
 	return nil
 }
 
-func (ro *Options) loadTidbClusterData(restorePath string) error {
+func (ro *Options) loadTidbClusterData(restorePath string, tableFilter []string) error {
 	if exist := backupUtil.IsDirExist(restorePath); !exist {
 		return fmt.Errorf("dir %s does not exist or is not a dir", restorePath)
 	}
@@ -97,6 +97,11 @@ func (ro *Options) loadTidbClusterData(restorePath string) error {
 		fmt.Sprintf("--d=%s", restorePath),
 		fmt.Sprintf("--tidb-port=%d", ro.Port),
 	}
+
+	for _, filter := range tableFilter {
+		args = append(args, "-f", filter)
+	}
+
 	if ro.TLSClient {
 		args = append(args, fmt.Sprintf("--ca=%s", path.Join(util.TiDBClientTLSPath, corev1.ServiceAccountRootCAKey)))
 		args = append(args, fmt.Sprintf("--cert=%s", path.Join(util.TiDBClientTLSPath, corev1.TLSCertKey)))

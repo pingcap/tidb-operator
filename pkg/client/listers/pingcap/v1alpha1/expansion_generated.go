@@ -55,22 +55,6 @@ type RestoreListerExpansion interface{}
 // RestoreNamespaceLister.
 type RestoreNamespaceListerExpansion interface{}
 
-// TiDBGroupListerExpansion allows custom methods to be added to
-// TiDBGroupLister.
-type TiDBGroupListerExpansion interface{}
-
-// TiDBGroupNamespaceListerExpansion allows custom methods to be added to
-// TiDBGroupNamespaceLister.
-type TiDBGroupNamespaceListerExpansion interface{}
-
-// TiKVGroupListerExpansion allows custom methods to be added to
-// TiKVGroupLister.
-type TiKVGroupListerExpansion interface{}
-
-// TiKVGroupNamespaceListerExpansion allows custom methods to be added to
-// TiKVGroupNamespaceLister.
-type TiKVGroupNamespaceListerExpansion interface{}
-
 // TidbClusterListerExpansion allows custom methods to be added to
 // TidbClusterLister.
 type TidbClusterListerExpansion interface{}

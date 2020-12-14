@@ -3,9 +3,11 @@ kind: TidbCluster
 metadata:
   name: asts
 spec:
-  version: v4.0.4
+  version: v4.0.8
   timezone: UTC
-  pvReclaimPolicy: Delete
+  pvReclaimPolicy: Retain
+  enableDynamicConfiguration: true
+  configUpdateStrategy: RollingUpdate
   pd:
     baseImage: pingcap/pd
     replicas: 3

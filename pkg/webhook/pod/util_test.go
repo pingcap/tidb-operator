@@ -16,6 +16,7 @@ package pod
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
@@ -26,7 +27,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
+	core "k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
@@ -86,7 +89,7 @@ func TestCheckPDFormerPodStatus(t *testing.T) {
 			healthInfo := &pdapi.HealthInfo{}
 			for i := range helper.GetPodOrdinals(test.stsReplicas, sts) {
 				healthInfo.Healths = append(healthInfo.Healths, pdapi.MemberHealth{
-					Name:   memberUtils.PdPodName(tc.Name, i),
+					Name:   memberUtils.PdName(tc.Name, i, tc.Namespace, tc.Spec.ClusterDomain),
 					Health: true,
 				})
 				pod := buildPod(tc, v1alpha1.PDMemberType, i)
@@ -172,6 +175,118 @@ func TestCheckTiKVFormerPodStatus(t *testing.T) {
 			g.Expect(err).Should(HaveOccurred())
 		}
 	}
+}
+func TestIsTiKVReadyToUpgrade(t *testing.T) {
+	g := NewGomegaWithT(t)
+	store0 := &pdapi.StoreInfo{
+		Store: &pdapi.MetaStore{
+			Store: &metapb.Store{},
+		},
+		Status: &pdapi.StoreStatus{LeaderCount: 0},
+	}
+
+	store1 := &pdapi.StoreInfo{
+		Store: &pdapi.MetaStore{
+			Store: &metapb.Store{},
+		},
+		Status: &pdapi.StoreStatus{LeaderCount: 1},
+	}
+
+	tests := []struct {
+		name    string
+		pod     *core.Pod
+		store   *pdapi.StoreInfo
+		timeout time.Duration
+		result  bool
+	}{
+		{
+			name:    "leader count is zero should be ready",
+			pod:     &core.Pod{},
+			store:   store0,
+			timeout: time.Second,
+			result:  true,
+		},
+		{
+			name:    "not EvictLeaderBeginTime should be false",
+			pod:     &core.Pod{},
+			store:   store1,
+			timeout: time.Second,
+			result:  false,
+		},
+		{
+			name: "timeout should be true",
+			pod: &core.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						EvictLeaderBeginTime: time.Now().AddDate(0, 0, -1 /* one day */).Format(time.RFC3339),
+					},
+				},
+			},
+			store:   store1,
+			timeout: time.Hour * 12,
+			result:  true,
+		},
+		{
+			name: "not timeout should be false",
+			pod: &core.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						EvictLeaderBeginTime: time.Now().AddDate(0, 0, -1 /* one day */).Format(time.RFC3339),
+					},
+				},
+			},
+			store:   store1,
+			timeout: time.Hour * 25,
+			result:  false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Log("test: ", test.name)
+		get := isTiKVReadyToUpgrade(test.pod, test.store, test.timeout)
+		g.Expect(get).Should(Equal(test.result))
+	}
+}
+
+func TestEvictLeader(t *testing.T) {
+	g := NewGomegaWithT(t)
+	kubeCli := kubefake.NewSimpleClientset()
+	pod := &core.Pod{}
+	pod.Namespace = "ns"
+	pod.Name = "name"
+	_, err := kubeCli.CoreV1().Pods(pod.Namespace).Create(pod)
+	g.Expect(err).Should(BeNil())
+	store := &pdapi.StoreInfo{
+		Store: &pdapi.MetaStore{
+			Store: &metapb.Store{
+				Id: 1,
+			},
+		},
+		Status: &pdapi.StoreStatus{LeaderCount: 1},
+	}
+	pdClient := pdapi.NewFakePDClient()
+
+	err = beginEvictLeader(kubeCli, store.Store.Id, pod, pdClient)
+	g.Expect(err).Should(BeNil())
+	err = endEvictLeader(store, pdClient)
+	g.Expect(err).Should(BeNil())
+}
+
+func TestAddEvictLeaderAnnotation(t *testing.T) {
+	g := NewGomegaWithT(t)
+	kubeCli := kubefake.NewSimpleClientset()
+
+	pod := &core.Pod{}
+	pod.Namespace = "ns"
+	pod.Name = "name"
+	err := addEvictLeaderAnnotation(kubeCli, pod)
+	g.Expect(err).ShouldNot(BeNil()) // not exist
+
+	// create first and add again should success.
+	_, err = kubeCli.CoreV1().Pods(pod.Namespace).Create(pod)
+	g.Expect(err).Should(BeNil())
+	err = addEvictLeaderAnnotation(kubeCli, pod)
+	g.Expect(err).Should(BeNil())
 }
 
 func buildStoresInfo(tc *v1alpha1.TidbCluster, sts *apps.StatefulSet) *pdapi.StoresInfo {

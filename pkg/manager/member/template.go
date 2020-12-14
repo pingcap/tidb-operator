@@ -15,6 +15,7 @@ package member
 
 import (
 	"bytes"
+	"fmt"
 	"text/template"
 )
 
@@ -50,7 +51,7 @@ fi
 # Use HOSTNAME if POD_NAME is unset for backward compatibility.
 POD_NAME=${POD_NAME:-$HOSTNAME}
 ARGS="--store=tikv \
---advertise-address=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc \
+--advertise-address=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc{{ .FormatClusterDomain }} \
 --host=0.0.0.0 \
 --path={{ .Path }} \
 --config=/etc/tidb/tidb.toml
@@ -80,7 +81,15 @@ type TidbStartScriptModel struct {
 	EnablePlugin    bool
 	PluginDirectory string
 	PluginList      string
+	ClusterDomain   string
 	Path            string
+}
+
+func (t *TidbStartScriptModel) FormatClusterDomain() string {
+	if len(t.ClusterDomain) > 0 {
+		return "." + t.ClusterDomain
+	}
+	return ""
 }
 
 func RenderTiDBStartScript(model *TidbStartScriptModel) (string, error) {
@@ -122,8 +131,8 @@ POD_NAME=${POD_NAME:-$HOSTNAME}
 # the general form of variable PEER_SERVICE_NAME is: "<clusterName>-pd-peer"
 cluster_name=` + "`" + `echo ${PEER_SERVICE_NAME} | sed 's/-pd-peer//'` + "`" +
 	`
-domain="${POD_NAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc"
-discovery_url="${cluster_name}-discovery.${NAMESPACE}.svc:10261"
+domain="${POD_NAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc{{ .FormatClusterDomain }}"
+discovery_url="${cluster_name}-discovery.${NAMESPACE}.svc{{ .FormatClusterDomain }}:10261"
 encoded_domain_url=` + "`" + `echo ${domain}:2380 | base64 | tr "\n" " " | sed "s/ //g"` + "`" +
 	`
 elapseTime=0
@@ -149,7 +158,7 @@ fi
 done
 
 ARGS="--data-dir={{ .DataDir }} \
---name=${POD_NAME} \
+--name={{- if .ClusterDomain }}${domain}{{- else }}${POD_NAME}{{- end }} \
 --peer-urls={{ .Scheme }}://0.0.0.0:2380 \
 --advertise-peer-urls={{ .Scheme }}://${domain}:2380 \
 --client-urls={{ .Scheme }}://0.0.0.0:2379 \
@@ -182,8 +191,16 @@ exec /pd-server ${ARGS}
 `))
 
 type PDStartScriptModel struct {
-	Scheme  string
-	DataDir string
+	Scheme        string
+	DataDir       string
+	ClusterDomain string
+}
+
+func (p *PDStartScriptModel) FormatClusterDomain() string {
+	if len(p.ClusterDomain) > 0 {
+		return "." + p.ClusterDomain
+	}
+	return ""
 }
 
 func RenderPDStartScript(model *PDStartScriptModel) (string, error) {
@@ -221,7 +238,7 @@ fi
 # Use HOSTNAME if POD_NAME is unset for backward compatibility.
 POD_NAME=${POD_NAME:-$HOSTNAME}
 ARGS="--pd={{ .PDAddress }} \
---advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20160 \
+--advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc{{ .FormatClusterDomain }}:20160 \
 --addr=0.0.0.0:20160 \
 --status-addr=0.0.0.0:20180 \{{if .EnableAdvertiseStatusAddr }}
 --advertise-status-addr={{ .AdvertiseStatusAddr }}:20180 \{{end}}
@@ -244,7 +261,15 @@ type TiKVStartScriptModel struct {
 	EnableAdvertiseStatusAddr bool
 	AdvertiseStatusAddr       string
 	DataDir                   string
+	ClusterDomain             string
 	PDAddress                 string
+}
+
+func (t *TiKVStartScriptModel) FormatClusterDomain() string {
+	if len(t.ClusterDomain) > 0 {
+		return "." + t.ClusterDomain
+	}
+	return ""
 }
 
 func RenderTiKVStartScript(model *TiKVStartScriptModel) (string, error) {
@@ -258,7 +283,7 @@ var pumpStartScriptTpl = template.Must(template.New("pump-start-script").Parse(`
 /pump \
 -pd-urls={{ .Scheme }}://{{ .ClusterName }}-pd:2379 \
 -L={{ .LogLevel }} \
--advertise-addr=` + "`" + `echo ${HOSTNAME}` + "`" + `.{{ .ClusterName }}-pump:8250 \
+-advertise-addr=` + "`" + `echo ${HOSTNAME}` + "`" + `.{{ .ClusterName }}-pump{{ .FormatPumpZone }}:8250 \
 -config=/etc/pump/pump.toml \
 -data-dir=/data \
 -log-file=
@@ -269,9 +294,18 @@ if [ $? == 0 ]; then
 fi`))
 
 type PumpStartScriptModel struct {
-	Scheme      string
-	ClusterName string
-	LogLevel    string
+	Scheme        string
+	ClusterName   string
+	LogLevel      string
+	Namespace     string
+	ClusterDomain string
+}
+
+func (pssm *PumpStartScriptModel) FormatPumpZone() string {
+	if pssm.ClusterDomain != "" {
+		return fmt.Sprintf(".%s.svc.%s", pssm.Namespace, pssm.ClusterDomain)
+	}
+	return ""
 }
 
 func RenderPumpStartScript(model *PumpStartScriptModel) (string, error) {
@@ -284,9 +318,9 @@ host = '{{ .ClusterName }}-tidb'
 permit_host = '{{ .PermitHost }}'
 port = 4000
 {{- if .TLS }}
-conn = MySQLdb.connect(host=host, port=port, user='root', connect_timeout=5, ssl={'ca': '{{ .CAPath }}', 'cert': '{{ .CertPath }}', 'key': '{{ .KeyPath }}'})
+conn = MySQLdb.connect(host=host, port=port, user='root', charset='utf8mb4',connect_timeout=5, ssl={'ca': '{{ .CAPath }}', 'cert': '{{ .CertPath }}', 'key': '{{ .KeyPath }}'})
 {{- else }}
-conn = MySQLdb.connect(host=host, port=port, user='root', connect_timeout=5)
+conn = MySQLdb.connect(host=host, port=port, user='root', connect_timeout=5, charset='utf8mb4')
 {{- end }}
 {{- if .PasswordSet }}
 password_dir = '/etc/tidb/password'
@@ -427,7 +461,7 @@ ARGS="--data-dir={{ .DataDir }} \
 --name=${POD_NAME} \
 --peer-urls={{ .Scheme }}://0.0.0.0:8291 \
 --advertise-peer-urls={{ .Scheme }}://${domain}:8291 \
---master-addr=0.0.0.0:8261 \
+--master-addr=:8261 \
 --advertise-addr=${domain}:8261 \
 --config=/etc/dm-master/dm-master.toml \
 "
@@ -438,9 +472,8 @@ then
 #   demo-dm-master-0=http://demo-dm-master-0.demo-dm-master-peer.demo.svc:8291,demo-dm-master-1=http://demo-dm-master-1.demo-dm-master-peer.demo.svc:8291
 # The --join args must be:
 #   --join=http://demo-dm-master-0.demo-dm-master-peer.demo.svc:8261,http://demo-dm-master-1.demo-dm-master-peer.demo.svc:8261
-join=` + "`" + `cat {{ .DataDir }}/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ","` + "`" + `
-join=${join%,}
-ARGS="${ARGS} --join=${join}"
+result=$(cat {{ .DataDir }}/join)
+ARGS="${ARGS} --initial-cluster=${result}"
 elif [[ ! -d {{ .DataDir }}/member/wal ]]
 then
 until result=$(wget -qO- -T 3 ${discovery_url}/new/${encoded_domain_url}/dm 2>/dev/null); do

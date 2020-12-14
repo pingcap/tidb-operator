@@ -22,15 +22,12 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	kubeinformers "k8s.io/client-go/informers"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/pointer"
@@ -117,6 +114,62 @@ func TestPDFailoverFailover(t *testing.T) {
 				g.Expect(events).To(HaveLen(2))
 				g.Expect(events[0]).To(ContainSubstring("test-pd-0(0) is unhealthy"))
 				g.Expect(events[1]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
+			},
+		},
+		{
+			name:                     "two members are not ready while two peermembers ready, cluster in quorum",
+			update:                   twoMembersNotReadyWithPeerMembers,
+			maxFailoverCount:         3,
+			hasPVC:                   true,
+			hasPod:                   true,
+			podWithDeletionTimestamp: false,
+			delMemberFailed:          false,
+			delPodFailed:             false,
+			delPVCFailed:             false,
+			statusSyncFailed:         false,
+			errExpectFn:              errExpectNil,
+			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
+				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
+				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(0))
+				events := collectEvents(recorder.Events)
+				sort.Strings(events)
+				g.Expect(events).To(HaveLen(2))
+				g.Expect(events[0]).To(ContainSubstring("test-pd-0(0) is unhealthy"))
+				g.Expect(events[1]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
+			},
+		},
+		{
+			name: "two members are not ready while two peermembers ready, cluster not in quorum",
+			update: func(tc *v1alpha1.TidbCluster) {
+				pd0 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 0)
+				pd1 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
+				pd2 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 2)
+				tc.Status.PD.Members = map[string]v1alpha1.PDMember{
+					pd0: {Name: pd0, ID: "0", Health: true},
+					pd1: {Name: pd1, ID: "12891273174085095651", Health: false},
+					pd2: {Name: pd2, ID: "2", Health: true},
+				}
+				tc.Status.PD.PeerMembers = map[string]v1alpha1.PDMember{
+					pd0: {Name: pd0, ID: "0", Health: false},
+					pd2: {Name: pd2, ID: "2", Health: true},
+				}
+			},
+			maxFailoverCount:         3,
+			hasPVC:                   true,
+			hasPod:                   true,
+			podWithDeletionTimestamp: false,
+			delMemberFailed:          false,
+			delPodFailed:             false,
+			delPVCFailed:             false,
+			statusSyncFailed:         false,
+			errExpectFn:              errExpectNil,
+			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
+				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
+				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(0))
+				events := collectEvents(recorder.Events)
+				sort.Strings(events)
+				g.Expect(events).To(HaveLen(1))
+				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
 			},
 		},
 		{
@@ -421,9 +474,9 @@ func TestPDFailoverFailover(t *testing.T) {
 				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
 				g.Expect(ok).To(Equal(true))
 				g.Expect(pd1.MemberDeleted).To(Equal(true))
-				_, err := pf.podLister.Pods(metav1.NamespaceDefault).Get(pd1Name)
+				_, err := pf.deps.PodLister.Pods(metav1.NamespaceDefault).Get(pd1Name)
 				g.Expect(err).NotTo(HaveOccurred())
-				_, err = pf.pvcLister.PersistentVolumeClaims(metav1.NamespaceDefault).Get(pvcName)
+				_, err = pf.deps.PVCLister.PersistentVolumeClaims(metav1.NamespaceDefault).Get(pvcName)
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(errors.IsNotFound(err)).To(BeTrue())
 				events := collectEvents(recorder.Events)
@@ -452,10 +505,10 @@ func TestPDFailoverFailover(t *testing.T) {
 				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
 				g.Expect(ok).To(Equal(true))
 				g.Expect(pd1.MemberDeleted).To(Equal(true))
-				_, err := pf.podLister.Pods(metav1.NamespaceDefault).Get(pd1Name)
+				_, err := pf.deps.PodLister.Pods(metav1.NamespaceDefault).Get(pd1Name)
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(errors.IsNotFound(err)).To(BeTrue())
-				_, err = pf.pvcLister.PersistentVolumeClaims(metav1.NamespaceDefault).Get(pvcName)
+				_, err = pf.deps.PVCLister.PersistentVolumeClaims(metav1.NamespaceDefault).Get(pvcName)
 				g.Expect(err).NotTo(HaveOccurred())
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(2))
@@ -472,8 +525,8 @@ func TestPDFailoverFailover(t *testing.T) {
 			test.update(tc)
 
 			pdFailover, pvcIndexer, podIndexer, fakePDControl, fakePodControl, fakePVCControl := newFakePDFailover()
+			pdFailover.deps.Recorder = recorder
 			pdClient := controller.NewFakePDClient(fakePDControl, tc)
-			pdFailover.recorder = recorder
 
 			pdClient.AddReaction(pdapi.DeleteMemberByIDActionType, func(action *pdapi.Action) (interface{}, error) {
 				if test.delMemberFailed {
@@ -615,29 +668,14 @@ func TestPDFailoverRecovery(t *testing.T) {
 }
 
 func newFakePDFailover() (*pdFailover, cache.Indexer, cache.Indexer, *pdapi.FakePDControl, *controller.FakePodControl, *controller.FakePVCControl) {
-	cli := fake.NewSimpleClientset()
-	kubeCli := kubefake.NewSimpleClientset()
-	pdControl := pdapi.NewFakePDControl(kubeCli)
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
-	podInformer := kubeInformerFactory.Core().V1().Pods()
-	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
-	pvInformer := kubeInformerFactory.Core().V1().PersistentVolumes()
-	podControl := controller.NewFakePodControl(podInformer)
-	pvcControl := controller.NewFakePVCControl(pvcInformer)
-
-	return &pdFailover{
-			cli,
-			pdControl,
-			5 * time.Minute,
-			podInformer.Lister(),
-			podControl,
-			pvcInformer.Lister(),
-			pvcControl,
-			pvInformer.Lister(),
-			nil},
-		pvcInformer.Informer().GetIndexer(),
-		podInformer.Informer().GetIndexer(),
-		pdControl, podControl, pvcControl
+	fakeDeps := controller.NewFakeDependencies()
+	pdFailover := &pdFailover{deps: fakeDeps}
+	pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
+	podIndexer := fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer()
+	pdControl := fakeDeps.PDControl.(*pdapi.FakePDControl)
+	podControl := fakeDeps.PodControl.(*controller.FakePodControl)
+	pvcControl := fakeDeps.PVCControl.(*controller.FakePVCControl)
+	return pdFailover, pvcIndexer, podIndexer, pdControl, podControl, pvcControl
 }
 
 func oneFailureMember(tc *v1alpha1.TidbCluster) {
@@ -709,6 +747,21 @@ func twoMembersNotReady(tc *v1alpha1.TidbCluster) {
 	tc.Status.PD.Members = map[string]v1alpha1.PDMember{
 		pd0: {Name: pd0, ID: "0", Health: false},
 		pd1: {Name: pd1, ID: "12891273174085095651", Health: false},
+		pd2: {Name: pd2, ID: "2", Health: true},
+	}
+}
+
+func twoMembersNotReadyWithPeerMembers(tc *v1alpha1.TidbCluster) {
+	pd0 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 0)
+	pd1 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
+	pd2 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 2)
+	tc.Status.PD.Members = map[string]v1alpha1.PDMember{
+		pd0: {Name: pd0, ID: "0", Health: false},
+		pd1: {Name: pd1, ID: "12891273174085095651", Health: false},
+		pd2: {Name: pd2, ID: "2", Health: true},
+	}
+	tc.Status.PD.PeerMembers = map[string]v1alpha1.PDMember{
+		pd0: {Name: pd0, ID: "0", Health: true},
 		pd2: {Name: pd2, ID: "2", Health: true},
 	}
 }

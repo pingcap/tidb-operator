@@ -62,7 +62,7 @@ $ git remote -v
 
 The output should look like:
 
-```
+```sh
 origin    git@github.com:$(user)/tidb-operator.git (fetch)
 origin    git@github.com:$(user)/tidb-operator.git (push)
 upstream  https://github.com/pingcap/tidb-operator (fetch)
@@ -96,12 +96,19 @@ You can now edit the code on the `myfeature` branch.
 
 Run following commands to check your code change.
 
-```
+```sh
 $ make check
 ```
 
 This will show errors if your code change does not pass checks (e.g. fmt,
 lint). Please fix them before submitting the PR.
+
+If you change code related to CRD, such as type definitions in `pkg/apis/pingcap/v1alpha1/types.go`,
+please also run following commands to generate necessary code and artifacts.
+
+```sh
+$ hack/update-all.sh
+```
 
 #### Start tidb-operator locally and do manual tests
 
@@ -114,14 +121,14 @@ You can refer to their official references to install them on your machine, or
 run the following command to install them into our local binary directory:
 `output/bin`.
 
-```
+```sh
 $ hack/local-up-operator.sh -i
 $ export PATH=$(pwd)/output/bin:$PATH
 ```
 
 Make sure they are installed correctly:
 
-```
+```sh
 $ kind --version
 ...
 $ kubectl version --client
@@ -130,19 +137,19 @@ $ kubectl version --client
 
 Create a Kubernetes cluster with `kind`:
 
-```
+```sh
 $ kind create cluster
 ```
 
 Build and run tidb-operator:
 
-```
+```sh
 $ ./hack/local-up-operator.sh
 ```
 
 Start a basic TiDB cluster:
 
-```
+```sh
 $ kubectl apply -f examples/basic/tidb-cluster.yaml
 ```
 
@@ -170,20 +177,20 @@ users, please run `hack/run-in-container.sh` to start a containerized environmen
 
 It's possible to limit specs to run, for example:
 
-```
+```sh
 $ ./hack/e2e.sh -- --ginkgo.focus='Basic'
 ```
 
 Run the following command to see help:
 
-```
+```sh
 $ ./hack/e2e.sh -h
 ```
 
 **NOTE**: `hack/run-in-container.sh` can start a dev container the same as our CI
 environment. This is recommended way to run e2e tests, e.g.
 
-```
+```sh
 $ ./hack/run-in-container.sh # starts an interactive shell
 (tidb-operator-dev) $ <run your commands>
 ```

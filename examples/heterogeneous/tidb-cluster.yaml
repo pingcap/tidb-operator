@@ -6,9 +6,11 @@ kind: TidbCluster
 metadata:
   name: basic
 spec:
-  version: v4.0.4
+  version: v4.0.8
   timezone: UTC
-  pvReclaimPolicy: Delete
+  pvReclaimPolicy: Retain
+  enableDynamicConfiguration: true
+  configUpdateStrategy: RollingUpdate
   imagePullPolicy: IfNotPresent
   discovery: {}
   pd:

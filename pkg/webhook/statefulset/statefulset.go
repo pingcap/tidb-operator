@@ -106,7 +106,7 @@ func (sc *StatefulSetAdmissionControl) Validate(ar *admission.AdmissionRequest) 
 	tc, err := sc.operatorCli.PingcapV1alpha1().TidbClusters(namespace).Get(tcName, metav1.GetOptions{})
 	if err != nil {
 		err := fmt.Errorf("get tidbcluster %s/%s failed, statefulset %s, err %v", namespace, tcName, name, err)
-		klog.Errorf(err.Error())
+		klog.Error(err.Error())
 		return util.ARFail(err)
 	}
 
@@ -123,7 +123,7 @@ func (sc *StatefulSetAdmissionControl) Validate(ar *admission.AdmissionRequest) 
 	partition, err := strconv.ParseInt(partitionStr, 10, 32)
 	if err != nil {
 		err := fmt.Errorf("statefulset %s/%s, convert partition str %s to int failed, err: %v", namespace, name, partitionStr, err)
-		klog.Errorf(err.Error())
+		klog.Error(err.Error())
 		return util.ARFail(err)
 	}
 

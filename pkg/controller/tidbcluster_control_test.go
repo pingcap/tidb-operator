@@ -16,7 +16,6 @@ package controller
 import (
 	"errors"
 	"testing"
-
 	"time"
 
 	. "github.com/onsi/gomega"

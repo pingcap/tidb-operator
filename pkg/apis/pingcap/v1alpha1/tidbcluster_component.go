@@ -14,6 +14,7 @@
 package v1alpha1
 
 import (
+	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -40,23 +41,40 @@ type ComponentAccessor interface {
 	Env() []corev1.EnvVar
 	AdditionalContainers() []corev1.Container
 	AdditionalVolumes() []corev1.Volume
+	AdditionalVolumeMounts() []corev1.VolumeMount
 	TerminationGracePeriodSeconds() *int64
+	StatefulSetUpdateStrategy() apps.StatefulSetUpdateStrategyType
 }
 
 type componentAccessorImpl struct {
-	imagePullPolicy      corev1.PullPolicy
-	imagePullSecrets     []corev1.LocalObjectReference
-	hostNetwork          *bool
-	affinity             *corev1.Affinity
-	priorityClassName    *string
-	schedulerName        string
-	clusterNodeSelector  map[string]string
-	clusterAnnotations   map[string]string
-	tolerations          []corev1.Toleration
-	configUpdateStrategy ConfigUpdateStrategy
+	imagePullPolicy           corev1.PullPolicy
+	imagePullSecrets          []corev1.LocalObjectReference
+	hostNetwork               *bool
+	affinity                  *corev1.Affinity
+	priorityClassName         *string
+	schedulerName             string
+	clusterNodeSelector       map[string]string
+	clusterAnnotations        map[string]string
+	tolerations               []corev1.Toleration
+	configUpdateStrategy      ConfigUpdateStrategy
+	statefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType
 
 	// ComponentSpec is the Component Spec
 	ComponentSpec *ComponentSpec
+}
+
+func (a *componentAccessorImpl) StatefulSetUpdateStrategy() apps.StatefulSetUpdateStrategyType {
+	strategy := a.ComponentSpec.StatefulSetUpdateStrategy
+	if len(strategy) != 0 {
+		return strategy
+	}
+
+	strategy = a.statefulSetUpdateStrategy
+	if len(strategy) != 0 {
+		return strategy
+	}
+
+	return apps.RollingUpdateStatefulSetStrategyType
 }
 
 func (a *componentAccessorImpl) PodSecurityContext() *corev1.PodSecurityContext {
@@ -199,22 +217,27 @@ func (a *componentAccessorImpl) AdditionalVolumes() []corev1.Volume {
 	return a.ComponentSpec.AdditionalVolumes
 }
 
+func (a *componentAccessorImpl) AdditionalVolumeMounts() []corev1.VolumeMount {
+	return a.ComponentSpec.AdditionalVolumeMounts
+}
+
 func (a *componentAccessorImpl) TerminationGracePeriodSeconds() *int64 {
 	return a.ComponentSpec.TerminationGracePeriodSeconds
 }
 
 func buildTidbClusterComponentAccessor(spec *TidbClusterSpec, componentSpec *ComponentSpec) ComponentAccessor {
 	return &componentAccessorImpl{
-		imagePullPolicy:      spec.ImagePullPolicy,
-		imagePullSecrets:     spec.ImagePullSecrets,
-		hostNetwork:          spec.HostNetwork,
-		affinity:             spec.Affinity,
-		priorityClassName:    spec.PriorityClassName,
-		schedulerName:        spec.SchedulerName,
-		clusterNodeSelector:  spec.NodeSelector,
-		clusterAnnotations:   spec.Annotations,
-		tolerations:          spec.Tolerations,
-		configUpdateStrategy: spec.ConfigUpdateStrategy,
+		imagePullPolicy:           spec.ImagePullPolicy,
+		imagePullSecrets:          spec.ImagePullSecrets,
+		hostNetwork:               spec.HostNetwork,
+		affinity:                  spec.Affinity,
+		priorityClassName:         spec.PriorityClassName,
+		schedulerName:             spec.SchedulerName,
+		clusterNodeSelector:       spec.NodeSelector,
+		clusterAnnotations:        spec.Annotations,
+		tolerations:               spec.Tolerations,
+		configUpdateStrategy:      spec.ConfigUpdateStrategy,
+		statefulSetUpdateStrategy: spec.StatefulSetUpdateStrategy,
 
 		ComponentSpec: componentSpec,
 	}
