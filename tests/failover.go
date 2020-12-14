@@ -974,18 +974,17 @@ func (oa *operatorActions) CheckK8sAvailable(excludeNodes map[string]string, exc
 func (oa *operatorActions) CheckOperatorAvailable(operatorConfig *OperatorConfig) error {
 	var errCount int
 	var e error
-	tidbControllerNameWithHelmRelease := fmt.Sprintf("%s-%s", tidbControllerName, operatorConfig.ReleaseName)
 	return wait.Poll(10*time.Second, 3*time.Minute, func() (bool, error) {
 		if errCount >= 10 {
 			return true, e
 		}
-		controllerDeployment, err := oa.kubeCli.AppsV1().Deployments(operatorConfig.Namespace).Get(tidbControllerNameWithHelmRelease, metav1.GetOptions{})
+		controllerDeployment, err := oa.kubeCli.AppsV1().Deployments(operatorConfig.Namespace).Get(tidbControllerName, metav1.GetOptions{})
 		if err != nil {
-			klog.Errorf("failed to get deployment：%s failed,error:%v", tidbControllerNameWithHelmRelease, err)
+			klog.Errorf("failed to get deployment：%s failed,error:%v", tidbControllerName, err)
 			return false, nil
 		}
 		if controllerDeployment.Status.AvailableReplicas != *controllerDeployment.Spec.Replicas {
-			e = fmt.Errorf("the %s is not available", tidbControllerNameWithHelmRelease)
+			e = fmt.Errorf("the %s is not available", tidbControllerName)
 			klog.Error(e)
 			errCount++
 			return false, nil
