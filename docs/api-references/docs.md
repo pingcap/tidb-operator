@@ -13625,7 +13625,7 @@ int64
 </tr>
 <tr>
 <td>
-<code>enable-compaction-guard</code></br>
+<code>enable-doubly-skiplist</code></br>
 <em>
 bool
 </em>
@@ -13636,7 +13636,7 @@ bool
 </tr>
 <tr>
 <td>
-<code>enable-doubly-skiplist</code></br>
+<code>enable-compaction-guard</code></br>
 <em>
 bool
 </em>
