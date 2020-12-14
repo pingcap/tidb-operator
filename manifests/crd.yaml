@@ -13667,7 +13667,6 @@ spec:
                   type: string
               required:
               - projectId
-              - secretName
               type: object
             imagePullSecrets:
               items:
@@ -14106,7 +14105,6 @@ spec:
                   type: string
               required:
               - projectId
-              - secretName
               type: object
             imagePullSecrets:
               items:
@@ -14594,7 +14592,6 @@ spec:
                       type: string
                   required:
                   - projectId
-                  - secretName
                   type: object
                 imagePullSecrets:
                   items:
