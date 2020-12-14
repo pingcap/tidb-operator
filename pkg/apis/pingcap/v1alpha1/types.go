@@ -1181,7 +1181,7 @@ type GcsStorageProvider struct {
 	BucketAcl string `json:"bucketAcl,omitempty"`
 	// SecretName is the name of secret which stores the
 	// gcs service account credentials JSON.
-	SecretName string `json:"secretName"`
+	SecretName string `json:"secretName,omitempty"`
 	// Prefix of the data path.
 	Prefix string `json:"prefix,omitempty"`
 }
