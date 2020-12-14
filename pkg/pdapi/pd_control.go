@@ -145,10 +145,8 @@ func (pdc *defaultPDControl) GetClusterRefPDClientMultiClusterRetry(namespace Na
 			klog.Errorf("Unable to get tls config for tidb cluster %q, pd client may not work: %v", tcName, err)
 			return &pdClient{url: peerURL, httpClient: &http.Client{Timeout: DefaultTimeout}}
 		}
-		if _, ok := pdc.pdClients[peerKey]; !ok {
-			pdc.pdClients[peerKey] = NewPDClient(peerURL, DefaultTimeout, tlsConfig)
-		}
-		return pdc.pdClients[peerKey]
+
+		return NewPDClient(peerURL, DefaultTimeout, tlsConfig)
 	}
 	if _, ok := pdc.pdClients[peerKey]; !ok {
 		pdc.pdClients[peerKey] = NewPDClient(peerURL, DefaultTimeout, nil)
