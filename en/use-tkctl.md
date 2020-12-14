@@ -8,6 +8,10 @@ aliases: ['/docs/tidb-in-kubernetes/dev/use-tkctl/']
 
 TiDB Kubernetes Control (`tkctl`) is a command line utility that is used for TiDB Operator to maintain and diagnose the TiDB cluster in Kubernetes.
 
+> **Note:**
+>
+> PingCAP is no longer maintaining `tkctl` from v1.1.x, some of the following functions may not be usable, please use the equivalent `kubectl` commands directly.
+
 ## Installation
 
 To install `tkctl`, you can download the pre-built binary or build `tkctl` from source.

@@ -86,14 +86,6 @@ Migrating PD and TiDB instances from a node is relatively fast, so you can proac
     watch kubectl get -n $namespace pod -o wide
     ```
 
-    Or:
-
-    {{< copyable "shell-regular" >}}
-
-    ```sql
-    watch tkctl get all
-    ```
-
     When you confirm that all Pods are running normally, then you have successfully finished the maintenance task.
 
 ## Maintain nodes that hold TiKV instances

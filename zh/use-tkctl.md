@@ -8,6 +8,10 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/use-tkctl/']
 
 `tkctl` (TiDB Kubernetes Control) 是为 TiDB in Kubernetes 设计的命令行工具，用于运维集群和诊断集群问题。
 
+> **注意：**
+>
+> PingCAP 从 v1.1.x 开始不再维护 `tkctl`，以下部分功能可能不可用，请直接使用对应的 `kubectl` 命令。
+
 ## 安装
 
 安装 `tkctl` 时，可以直接下载预编译的可执行文件，也可以自行从源码进行编译。
