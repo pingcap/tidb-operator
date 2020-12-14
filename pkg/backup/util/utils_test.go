@@ -171,6 +171,13 @@ func TestGenerateStorageCertEnv(t *testing.T) {
 			},
 		},
 		{
+			provider: v1alpha1.StorageProvider{
+				Gcs: &v1alpha1.GcsStorageProvider{
+					ProjectId: "id",
+				},
+			},
+		},
+		{
 			provider: v1alpha1.StorageProvider{},
 		},
 	}
@@ -188,7 +195,11 @@ func TestGenerateStorageCertEnv(t *testing.T) {
 
 		// start normal storage type
 		_, _, err := GenerateStorageCertEnv(ns, false, test.provider, client)
-		g.Expect(err.Error()).Should(MatchRegexp(".*get.*secret.*"))
+		if test.provider.Gcs != nil && test.provider.Gcs.SecretName == "" {
+			g.Expect(err).Should(BeNil())
+		} else {
+			g.Expect(err.Error()).Should(MatchRegexp(".*get.*secret.*"))
+		}
 		// create secret and missing key in secret
 		s := &corev1.Secret{}
 		s.Namespace = ns
@@ -196,7 +207,11 @@ func TestGenerateStorageCertEnv(t *testing.T) {
 		_, err = client.CoreV1().Secrets(ns).Create(s)
 		g.Expect(err).Should(BeNil())
 		_, _, err = GenerateStorageCertEnv(ns, false, test.provider, client)
-		g.Expect(err.Error()).Should(MatchRegexp(".*missing some keys.*"))
+		if test.provider.Gcs != nil && test.provider.Gcs.SecretName == "" {
+			g.Expect(err).Should(BeNil())
+		} else {
+			g.Expect(err.Error()).Should(MatchRegexp(".*missing some keys.*"))
+		}
 		// update secret with need key
 		s.Data = map[string][]byte{
 			constants.TidbPasswordKey:   []byte("dummy"),

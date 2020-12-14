@@ -155,7 +155,9 @@ func GenerateGcsCertEnvVar(gcs *v1alpha1.GcsStorageProvider) ([]corev1.EnvVar, s
 			Name:  "GCS_STORAGE_CLASS",
 			Value: gcs.StorageClass,
 		},
-		{
+	}
+	if gcs.SecretName != "" {
+		envVars = append(envVars, corev1.EnvVar{
 			Name: "GCS_SERVICE_ACCOUNT_JSON_KEY",
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
@@ -163,7 +165,7 @@ func GenerateGcsCertEnvVar(gcs *v1alpha1.GcsStorageProvider) ([]corev1.EnvVar, s
 					Key:                  constants.GcsCredentialsKey,
 				},
 			},
-		},
+		})
 	}
 	return envVars, "", nil
 }
