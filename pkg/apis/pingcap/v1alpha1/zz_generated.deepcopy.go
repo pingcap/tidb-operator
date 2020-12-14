@@ -5392,6 +5392,11 @@ func (in *TiKVCfConfig) DeepCopyInto(out *TiKVCfConfig) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.EnableCompactionGuard != nil {
+		in, out := &in.EnableCompactionGuard, &out.EnableCompactionGuard
+		*out = new(bool)
+		**out = **in
+	}
 	if in.Titan != nil {
 		in, out := &in.Titan, &out.Titan
 		*out = new(TiKVTitanCfConfig)

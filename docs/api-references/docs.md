@@ -13625,6 +13625,17 @@ int64
 </tr>
 <tr>
 <td>
+<code>enable-compaction-guard</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
 <code>enable-doubly-skiplist</code></br>
 <em>
 bool

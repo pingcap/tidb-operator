@@ -504,6 +504,8 @@ type TiKVCfConfig struct {
 	// +optional
 	EnableDoublySkiplist *bool `json:"enable-doubly-skiplist,omitempty" toml:"enable-doubly-skiplist,omitempty"`
 	// +optional
+	EnableCompactionGuard *bool `json:"enable-compaction-guard,omitempty" toml:"enable-compaction-guard,omitempty"`
+	// +optional
 	Titan *TiKVTitanCfConfig `json:"titan,omitempty" toml:"titan,omitempty"`
 }
 
