@@ -55,14 +55,22 @@ targetTidbCluster:
   # `secretName` will be used by lightning.
   # If the `secretName` and `secretPwdKey` are set, the
   # password in the `secretName` will be used by lightning.
-  # If the `secretName`, `secretSSLCA`, `secretSSLCert` and `secretSSLKey` are set,
-  # TIDB-Lightning will use these files to connect to TiDB, PD, TiKV and TiKV-importer.
   #secretName: ""
   #secretUserKey: user
   #secretPwdKey: password
-  #secretSSLCA: ca.crt
-  #secretSSLCert: tls.crt
-  #secretSSLKey: tls.key
+
+# Whether enable the TLS connection between TiDB cluster components.
+# If enabled, a Secret named "<targetTidbCluster.name>-lightning-cluster-secret" must exist.
+# To create this Secret: kubectl create secret generic <targetTidbCluster.name>-lightning-cluster-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+# tlsCluster:
+#   enabled: true
+
+# Whether enable the TLS connection with the TiDB MySQL protocol port.
+# if enabled, a Secret named `secretName` (if specified) or `${targetTidbCluster.name}-tidb-client-secret` must exist.
+# To create this Secret: kubectl create secret generic ${targetTidbCluster.name}-tidb-client-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+# tlsClient:
+#   enabled: true
+#   secretName: ${targetTidbCluster.name}-tidb-client-secret
 
 resources: {}
   # limits:

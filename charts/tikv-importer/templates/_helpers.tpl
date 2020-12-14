@@ -14,15 +14,11 @@ config-file: |-
     {{- if .Values.config }}
 {{ .Values.config | indent 2 }}
     {{- end -}}
-    [security]
-    {{- if and .Values.secretName .Values.secretSSLCA }}
-  ca-path="/etc/tikv-importer-tls/{{ .Values.secretSSLCA }}"
-    {{- end }}
-    {{- if and .Values.secretName .Values.secretSSLCert }}
-  cert-path="/etc/tikv-importer-tls/{{ .Values.secretSSLCert }}"
-    {{- end }}
-    {{- if and .Values.secretName .Values.secretSSLKey }}
-  key-path="/etc/tikv-importer-tls/{{ .Values.secretSSLKey }}"
+    {{- if and .Values.tlsCluster .Values.tlsCluster.enabled }}
+  [security]
+  ca-path="/etc/lib/importer-tls/ca.crt"
+  cert-path="/etc/lib/importer-tls/tls.crt"
+  key-path="/etc/lib/importer-tls/tls.key"
     {{- end }}
 {{- end -}}
 

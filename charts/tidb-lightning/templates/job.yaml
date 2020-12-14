@@ -105,9 +105,14 @@ spec:
           {{- else -}}
           mountPath: /var/lib/tidb-lightning
           {{- end }}
-        {{- if .Values.targetTidbCluster.secretName }}
-        - name: tidb-lightning-tls
-          mountPath: /etc/tidb-lightning-tls
+        {{- if and .Values.tlsCluster .Values.tlsCluster.enabled }}
+        - name: lightning-tls
+          mountPath: /etc/lib/lightning-tls
+          readOnly: true
+        {{- end }}
+        {{- if and .Values.tlsClient .Values.tlsClient.enabled }}
+        - name: tidb-client-tls
+          mountPath: /etc/lib/tidb-client-tls
           readOnly: true
         {{- end }}
       volumes:
@@ -143,10 +148,19 @@ spec:
         persistentVolumeClaim:
           claimName: {{ include "tidb-lightning.name" . }}
       {{ end -}}
-      {{- if .Values.targetTidbCluster.secretName }}
-      - name: tidb-lightning-tls
+      {{- if and .Values.tlsCluster .Values.tlsCluster.enabled }}
+      - name: lightning-tls
         secret:
-          secretName: {{ .Values.targetTidbCluster.secretName }}
+          secretName: {{ .Values.targetTidbCluster.name }}-lightning-cluster-secret
+      {{- end }}
+      {{- if and .Values.tlsClient .Values.tlsClient.enabled }}
+      - name: tidb-client-tls
+        secret:
+        {{- if and .Values.tlsClient .Values.tlsClient.secretName }}
+          secretName: {{ .Values.tlsClient.secretName }}
+        {{- else }}
+          secretName: {{ .Values.targetTidbCluster.name }}-tidb-client-secret
+        {{- end }}
       {{- end }}
     {{- if .Values.affinity }}
       affinity:

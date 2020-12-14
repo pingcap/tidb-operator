@@ -40,15 +40,6 @@ fi
 {{- if and .Values.targetTidbCluster.secretName .Values.targetTidbCluster.secretPwdKey -}}
     --tidb-password=${TIDB_PASSWORD} \
 {{- end }}
-{{- if and .Values.targetTidbCluster.secretName .Values.targetTidbCluster.secretSSLCA }}
-    --ca=/etc/tidb-lightning-tls/{{ .Values.targetTidbCluster.secretSSLCA }} \
-{{- end }}
-{{- if and .Values.targetTidbCluster.secretName .Values.targetTidbCluster.secretSSLCert }}
-    --cert=/etc/tidb-lightning-tls/{{ .Values.targetTidbCluster.secretSSLCert }} \
-{{- end }}
-{{- if and .Values.targetTidbCluster.secretName .Values.targetTidbCluster.secretSSLKey }}
-    --key=/etc/tidb-lightning-tls/{{ .Values.targetTidbCluster.secretSSLKey }} \
-{{- end }}
     --tidb-host={{ .Values.targetTidbCluster.name }}-tidb.{{ .Values.targetTidbCluster.namespace | default .Release.Namespace }} \
     --d=${data_dir} \
     --config=/etc/tidb-lightning/tidb-lightning.toml \
