@@ -2096,7 +2096,7 @@ func schema_pkg_apis_pingcap_v1alpha1_GcsStorageProvider(ref common.ReferenceCal
 						},
 					},
 				},
-				Required: []string{"projectId", "secretName"},
+				Required: []string{"projectId"},
 			},
 		},
 	}
@@ -2489,11 +2489,7 @@ func schema_pkg_apis_pingcap_v1alpha1_MetricsStatus(ref common.ReferenceCallback
 						},
 					},
 				},
-<<<<<<< HEAD
 				Required: []string{"name"},
-=======
-				Required: []string{"projectId"},
->>>>>>> 11f59966... allow empty secret in gcs BR (#3597)
 			},
 		},
 		Dependencies: []string{
