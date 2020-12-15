@@ -106,8 +106,8 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	}
 
 	var firstDc *v1alpha1.DMCluster
-	if monitor.Spec.DMSpec != nil {
-		for _, dcRef := range monitor.Spec.DMSpec.Clusters {
+	if monitor.Spec.DM != nil {
+		for _, dcRef := range monitor.Spec.DM.Clusters {
 			dc, err := m.deps.DMClusterLister.DMClusters(dcRef.Namespace).Get(dcRef.Name)
 			if err != nil {
 				rerr := fmt.Errorf("get tm[%s/%s]'s target dc[%s/%s] failed, err: %v", monitor.Namespace, monitor.Name, dcRef.Namespace, dcRef.Name, err)

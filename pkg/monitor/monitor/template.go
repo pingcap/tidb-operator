@@ -37,6 +37,8 @@ const (
 	namespaceLabel             = "__meta_kubernetes_namespace"
 	podNameLabel               = "__meta_kubernetes_pod_name"
 	additionalPortLabelPattern = "__meta_kubernetes_pod_annotation_%s_prometheus_io_port"
+	dmWorker                   = "dm-worker"
+	dmMaster                   = "dm-master"
 )
 
 var (
@@ -125,11 +127,11 @@ func init() {
 	if err != nil {
 		klog.Fatalf("monitor regex template parse error,%v", err)
 	}
-	dmWorkerPattern, err = config.NewRegexp("dm-worker")
+	dmWorkerPattern, err = config.NewRegexp(dmWorker)
 	if err != nil {
 		klog.Fatalf("monitor regex template parse error,%v", err)
 	}
-	dmMasterPattern, err = config.NewRegexp("dm-master")
+	dmMasterPattern, err = config.NewRegexp(dmMaster)
 	if err != nil {
 		klog.Fatalf("monitor regex template parse error,%v", err)
 	}
@@ -161,8 +163,8 @@ func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
 	scrapeJobs = append(scrapeJobs, scrapeJob("ticdc", cdcPattern, cmodel, buildAddressRelabelConfigByComponent("ticdc"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("importer", importerPattern, cmodel, buildAddressRelabelConfigByComponent("importer"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("lightning", lightningPattern, cmodel, buildAddressRelabelConfigByComponent("lightning"))...)
-	scrapeJobs = append(scrapeJobs, scrapeJob("dm-worker", dmWorkerPattern, cmodel, buildAddressRelabelConfigByComponent("dm-worker"))...)
-	scrapeJobs = append(scrapeJobs, scrapeJob("dm-master", dmMasterPattern, cmodel, buildAddressRelabelConfigByComponent("dm-master"))...)
+	scrapeJobs = append(scrapeJobs, scrapeJob(dmWorker, dmWorkerPattern, cmodel, buildAddressRelabelConfigByComponent(dmWorker))...)
+	scrapeJobs = append(scrapeJobs, scrapeJob(dmMaster, dmMasterPattern, cmodel, buildAddressRelabelConfigByComponent(dmMaster))...)
 	var c = config.Config{
 		GlobalConfig: config.GlobalConfig{
 			ScrapeInterval:     model.Duration(15 * time.Second),
@@ -204,9 +206,9 @@ func buildAddressRelabelConfigByComponent(kind string) *config.RelabelConfig {
 		return f()
 	case "ticdc":
 		return f()
-	case "dm-worker":
+	case dmWorker:
 		return f()
-	case "dm-master":
+	case dmMaster:
 		return f()
 	case "tiflash-proxy":
 		return &config.RelabelConfig{
@@ -291,7 +293,7 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 	var scrapeJobs []*config.ScrapeConfig
 	var currCluster []ClusterRegexInfo
 
-	if jobName == "dm-master" || jobName == "dm-worker" {
+	if isDMJob(jobName) {
 		currCluster = cmodel.DMClusterInfos
 	} else {
 		currCluster = cmodel.ClusterInfos
@@ -391,7 +393,7 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 			},
 		}
 
-		if cmodel.EnableTLSCluster && jobName != "dm-master" && jobName != "dm-worker" {
+		if cmodel.EnableTLSCluster && !isDMJob(jobName) {
 			scrapeconfig.Scheme = "https"
 			// lightning does not need to authenticate the access of other components,
 			// so there is no need to enable mtls for the time being.
@@ -404,14 +406,12 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 			}
 		}
 
-		if cmodel.EnableTLSDMCluster {
+		if cmodel.EnableTLSDMCluster && isDMJob(jobName) {
 			scrapeconfig.Scheme = "https"
-			if jobName == "dm-master" || jobName == "dm-worker" {
-				scrapeconfig.HTTPClientConfig.TLSConfig = config.TLSConfig{
-					CAFile:   path.Join(util.DMClusterClientTLSPath, corev1.ServiceAccountRootCAKey),
-					CertFile: path.Join(util.DMClusterClientTLSPath, corev1.TLSCertKey),
-					KeyFile:  path.Join(util.DMClusterClientTLSPath, corev1.TLSPrivateKeyKey),
-				}
+			scrapeconfig.HTTPClientConfig.TLSConfig = config.TLSConfig{
+				CAFile:   path.Join(util.DMClusterClientTLSPath, corev1.ServiceAccountRootCAKey),
+				CertFile: path.Join(util.DMClusterClientTLSPath, corev1.TLSCertKey),
+				KeyFile:  path.Join(util.DMClusterClientTLSPath, corev1.TLSPrivateKeyKey),
 			}
 		}
 		scrapeJobs = append(scrapeJobs, scrapeconfig)
@@ -419,6 +419,13 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 	}
 	return scrapeJobs
 
+}
+
+func isDMJob(jobName string) bool {
+	if jobName == dmMaster || jobName == dmWorker {
+		return true
+	}
+	return false
 }
 
 func addAlertManagerUrl(pc *config.Config, cmodel *MonitorConfigModel) {

@@ -51,7 +51,7 @@ type TidbMonitorSpec struct {
 	Grafana     *GrafanaSpec    `json:"grafana,omitempty"`
 	Reloader    ReloaderSpec    `json:"reloader"`
 	Initializer InitializerSpec `json:"initializer"`
-	DMSpec      *DMMonitorSpec  `json:"dm,omitempty"`
+	DM          *DMMonitorSpec  `json:"dm,omitempty"`
 
 	// Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster
 	// +kubebuilder:default=Retain

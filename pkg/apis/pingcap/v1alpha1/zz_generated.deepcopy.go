@@ -7941,8 +7941,8 @@ func (in *TidbMonitorSpec) DeepCopyInto(out *TidbMonitorSpec) {
 	}
 	in.Reloader.DeepCopyInto(&out.Reloader)
 	in.Initializer.DeepCopyInto(&out.Initializer)
-	if in.DMSpec != nil {
-		in, out := &in.DMSpec, &out.DMSpec
+	if in.DM != nil {
+		in, out := &in.DM, &out.DM
 		*out = new(DMMonitorSpec)
 		(*in).DeepCopyInto(*out)
 	}
