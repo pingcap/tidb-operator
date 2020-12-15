@@ -66,11 +66,11 @@ tlsCluster: {}
   # enabled: true
 
 # Whether enable the TLS connection with the TiDB MySQL protocol port.
-# if enabled, a Secret named `secretName` (if specified) or `${targetTidbCluster.name}-tidb-client-secret` must exist.
+# if enabled, a Secret named `tlsClientSecretName` (if specified) or `${targetTidbCluster.name}-tidb-client-secret` must exist.
 # To create this Secret: kubectl create secret generic ${targetTidbCluster.name}-tidb-client-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
 tlsClient: {}
   # enabled: true
-  # secretName: ${targetTidbCluster.name}-tidb-client-secret
+  # tlsClientSecretName: ${targetTidbCluster.name}-tidb-client-secret
 
 resources: {}
   # limits:
