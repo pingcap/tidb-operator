@@ -124,9 +124,8 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	}
 
 	if len(tc.Status.PD.PeerMembers) > 0 {
-		namespace := tc.GetNamespace()
 		for _, pdMember := range tc.Status.PD.PeerMembers {
-			pdClients = append(pdClients, d.pdControl.GetPeerPDClient(pdapi.Namespace(namespace), tc.Name, tc.IsTLSClusterEnabled(), pdMember.ClientURL, pdMember.Name))
+			pdClients = append(pdClients, d.pdControl.GetPeerPDClient(pdapi.Namespace(ns), tc.Name, tc.IsTLSClusterEnabled(), pdMember.ClientURL, pdMember.Name))
 		}
 	}
 
