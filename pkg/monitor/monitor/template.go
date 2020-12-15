@@ -362,6 +362,13 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 					Action:      config.RelabelReplace,
 					TargetLabel: "instance",
 				},
+				{
+					SourceLabels: model.LabelNames{
+						componentLabel,
+					},
+					Action:      config.RelabelReplace,
+					TargetLabel: "component",
+				},
 			},
 		}
 		if cmodel.EnableTLSCluster {
