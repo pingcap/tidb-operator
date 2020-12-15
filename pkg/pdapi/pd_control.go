@@ -33,8 +33,8 @@ type PDControlInterface interface {
 	GetPDClient(namespace Namespace, tcName string, tlsEnabled bool) PDClient
 	// GetClusterRefPDClient provides PDClient of the tidb cluster.
 	GetClusterRefPDClient(namespace Namespace, tcName string, clusterDomain string, tlsEnabled bool) PDClient
-	// GetClusterRefPDClientMultiClusterRetry provides PD etcd Client of the tidb cluster.
-	GetClusterRefPDClientMultiClusterRetry(namespace Namespace, tcName string, clusterDomain string, tlsEnabled bool, peerURL string, peerKey string) PDClient
+	// GetPeerPDClient provides PD etcd Client of the tidb cluster.
+	GetPeerPDClient(namespace Namespace, tcName string, tlsEnabled bool, peerURL string, peerKey string) PDClient
 	// GetPDEtcdClient provides PD etcd Client of the tidb cluster.
 	GetPDEtcdClient(namespace Namespace, tcName string, tlsEnabled bool) (PDEtcdClient, error)
 }
@@ -132,7 +132,7 @@ func (pdc *defaultPDControl) GetClusterRefPDClient(namespace Namespace, tcName s
 	return pdc.pdClients[key]
 }
 
-func (pdc *defaultPDControl) GetClusterRefPDClientMultiClusterRetry(namespace Namespace, tcName string, clusterDomain string, tlsEnabled bool, peerURL string, peerKey string) PDClient {
+func (pdc *defaultPDControl) GetPeerPDClient(namespace Namespace, tcName string, tlsEnabled bool, peerURL string, peerKey string) PDClient {
 	pdc.mutex.Lock()
 	defer pdc.mutex.Unlock()
 

@@ -39,17 +39,20 @@ func GetPDClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) p
 	// retry when PeerMember is existed and the cluster info updating is blocked.
 	// examples:
 	// ClientURL:https://my-cluster-demo-2-pd-0.my-cluster-demo-2-pd-peer.pingcap.svc.cluster2.internal.com
-	if len(tc.Status.PD.PeerMembers) > 0 {
-		_, err := pdClient.GetHealth()
+	if len(tc.Status.PD.PeerMembers) == 0 {
+		return pdClient
+	}
 
-		if err != nil {
-			for _, pdMember := range tc.Status.PD.PeerMembers {
-				pdClient = pdControl.GetClusterRefPDClientMultiClusterRetry(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.ClusterDomain, tc.IsTLSClusterEnabled(), pdMember.ClientURL, pdMember.Name)
-				_, err := pdClient.GetHealth()
-				if err == nil {
-					return pdClient
-				}
-			}
+	_, err := pdClient.GetHealth()
+	if err == nil {
+		return pdClient
+	}
+
+	for _, pdMember := range tc.Status.PD.PeerMembers {
+		pdClient = pdControl.GetPeerPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled(), pdMember.ClientURL, pdMember.Name)
+		_, err := pdClient.GetHealth()
+		if err == nil {
+			return pdClient
 		}
 	}
 

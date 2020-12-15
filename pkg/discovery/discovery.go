@@ -113,6 +113,11 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	}
 
 	var pdClients []pdapi.PDClient
+
+	if tc.Spec.PD != nil {
+		pdClients = append(pdClients, d.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()))
+	}
+
 	if tc.Spec.Cluster != nil && len(tc.Spec.Cluster.Name) > 0 {
 		namespace := tc.Spec.Cluster.Namespace
 		if len(namespace) == 0 {
@@ -123,11 +128,8 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	if len(tc.Status.PD.PeerMembers) > 0 {
 		namespace := tc.GetNamespace()
 		for _, pdMember := range tc.Status.PD.PeerMembers {
-			pdClients = append(pdClients, d.pdControl.GetClusterRefPDClientMultiClusterRetry(pdapi.Namespace(namespace), tc.Name, tc.Spec.ClusterDomain, tc.IsTLSClusterEnabled(), pdMember.ClientURL, pdMember.Name))
+			pdClients = append(pdClients, d.pdControl.GetPeerPDClient(pdapi.Namespace(namespace), tc.Name, tc.IsTLSClusterEnabled(), pdMember.ClientURL, pdMember.Name))
 		}
-	}
-	if tc.Spec.PD != nil {
-		pdClients = append(pdClients, d.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()))
 	}
 
 	var membersInfo *pdapi.MembersInfo
