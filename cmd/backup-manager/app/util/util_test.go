@@ -369,6 +369,92 @@ func TestGetCommitTsFromMetadata(t *testing.T) {
 	g.Expect(commitTs).To(Equal("409054741514944513"))
 }
 
+func TestConstructRcloneArgs(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	type testcase struct {
+		name       string
+		config     string
+		opts       []string
+		command    string
+		source     string
+		dest       string
+		verboseLog bool
+		expect     []string
+	}
+
+	tests := []*testcase{
+		{
+			name:       "rclonels_wo_opts",
+			config:     appconstant.RcloneConfigArg,
+			opts:       nil,
+			command:    "ls",
+			source:     "src",
+			dest:       "dst",
+			verboseLog: false,
+			expect:     []string{"--config=/tmp/rclone.conf", "ls", "src", "dst"},
+		},
+		{
+			name:       "rclonels_w_opts",
+			config:     appconstant.RcloneConfigArg,
+			opts:       []string{"-v", "-vv", "--verbose=4", "-v=4", "--ignore-checksum"},
+			command:    "ls",
+			source:     "src",
+			dest:       "dst",
+			verboseLog: false,
+			expect:     []string{"--config=/tmp/rclone.conf", "--ignore-checksum", "ls", "src", "dst"},
+		},
+		{
+			name:       "rclonels_w_q",
+			config:     appconstant.RcloneConfigArg,
+			opts:       []string{"-q"},
+			command:    "ls",
+			source:     "src",
+			dest:       "dst",
+			verboseLog: false,
+			expect:     []string{"--config=/tmp/rclone.conf", "-q", "ls", "src", "dst"},
+		},
+		{
+			name:       "rclonecp_wo_opts",
+			config:     appconstant.RcloneConfigArg,
+			opts:       nil,
+			command:    "copyto",
+			source:     "src",
+			dest:       "dst",
+			verboseLog: true,
+			expect:     []string{"--config=/tmp/rclone.conf", "-v", "copyto", "src", "dst"},
+		},
+		{
+			name:       "rclonecp_w_opts",
+			config:     appconstant.RcloneConfigArg,
+			opts:       []string{"-v", "-vv", "--verbose=4", "-v=4"},
+			command:    "copyto",
+			source:     "src",
+			dest:       "dst",
+			verboseLog: true,
+			expect:     []string{"--config=/tmp/rclone.conf", "-v", "-vv", "--verbose=4", "-v=4", "-v", "copyto", "src", "dst"},
+		},
+		{
+			name:       "rclonecp_w_q",
+			config:     appconstant.RcloneConfigArg,
+			opts:       []string{"-q"},
+			command:    "copyto",
+			source:     "src",
+			dest:       "dst",
+			verboseLog: true,
+			expect:     []string{"--config=/tmp/rclone.conf", "-q", "copyto", "src", "dst"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := ConstructRcloneArgs(tt.config, tt.opts, tt.command, tt.source, tt.dest, tt.verboseLog)
+			g.Expect(opts).To(Equal(tt.expect))
+		})
+	}
+
+}
+
 func newBackup() *v1alpha1.Backup {
 	return &v1alpha1.Backup{
 		TypeMeta: metav1.TypeMeta{
