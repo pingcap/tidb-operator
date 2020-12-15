@@ -33,12 +33,13 @@ func GetPDClientBasic(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbClust
 }
 
 // Retry to GetPDClient for multi-cluster
+// If the pdClient built from the PD service name is unavailable, try to
+// build another one with the ClientURL in the PeerMembers.
+// ClientURL example:
+// ClientURL: https://cluster2-pd-0.cluster2-pd-peer.pingcap.svc.cluster2.local
 func GetPDClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) pdapi.PDClient {
 	pdClient := GetPDClientBasic(pdControl, tc)
-	// Add health check for cross-region
-	// retry when PeerMember is existed and the cluster info updating is blocked.
-	// examples:
-	// ClientURL:https://my-cluster-demo-2-pd-0.my-cluster-demo-2-pd-peer.pingcap.svc.cluster2.internal.com
+
 	if len(tc.Status.PD.PeerMembers) == 0 {
 		return pdClient
 	}
