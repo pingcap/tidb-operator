@@ -132,7 +132,7 @@ func (pdc *defaultPDControl) GetClusterRefPDClient(namespace Namespace, tcName s
 	return pdc.pdClients[key]
 }
 
-func (pdc *defaultPDControl) GetClusterRefPDClientMultiClusterRetry(namespace Namespace, tcName string, clusterDomain string, tlsEnabled bool, peerURL string, peerKey string) PDClient {
+func (pdc *defaultPDControl) GetPeerPDClient(namespace Namespace, tcName string, clusterDomain string, tlsEnabled bool, peerURL string, peerKey string) PDClient {
 	pdc.mutex.Lock()
 	defer pdc.mutex.Unlock()
 
