@@ -22,6 +22,18 @@ config-file: |-
     {{- if .Values.config }}
 {{ .Values.config | indent 2 }}
     {{- end -}}
+    {{- if and .Values.tlsCluster .Values.tlsCluster.enabled }}
+  [security]
+  ca-path="/var/lib/lightning-tls/ca.crt"
+  cert-path="/var/lib/lightning-tls/tls.crt"
+  key-path="/var/lib/lightning-tls/tls.key"
+    {{- end }}
+    {{- if and .Values.tlsClient .Values.tlsClient.enabled }}
+  [tidb.security]
+  ca-path="/var/lib/tidb-client-tls/ca.crt"
+  cert-path="/var/lib/tidb-client-tls/tls.crt"
+  key-path="/var/lib/tidb-client-tls/tls.key"
+    {{- end }}
 {{- end -}}
 
 {{- define "lightning-configmap.data-digest" -}}
