@@ -96,20 +96,17 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	}
 	currentCluster = d.clusters[keyName]
 	currentCluster.peers[podName] = struct{}{}
-
 	// Should take failover replicas into consideration
-	if len(tc.Status.PD.PeerMembers) == 0 {
-		if len(currentCluster.peers) == int(tc.PDStsDesiredReplicas()) && tc.Spec.Cluster == nil {
-			delete(currentCluster.peers, podName)
-			if len(pdAddresses) != 0 {
-				return fmt.Sprintf("--join=%s", strings.Join(pdAddresses, ",")), nil
-			}
-
-			if len(tc.Spec.ClusterDomain) > 0 {
-				return fmt.Sprintf("--initial-cluster=%s=%s://%s", strArr[0], tc.Scheme(), advertisePeerUrl), nil
-			}
-			return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, tc.Scheme(), advertisePeerUrl), nil
+	if len(currentCluster.peers) == int(tc.PDStsDesiredReplicas()) && tc.Spec.Cluster == nil {
+		delete(currentCluster.peers, podName)
+		if len(pdAddresses) != 0 {
+			return fmt.Sprintf("--join=%s", strings.Join(pdAddresses, ",")), nil
 		}
+
+		if len(tc.Spec.ClusterDomain) > 0 {
+			return fmt.Sprintf("--initial-cluster=%s=%s://%s", strArr[0], tc.Scheme(), advertisePeerUrl), nil
+		}
+		return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, tc.Scheme(), advertisePeerUrl), nil
 	}
 
 	var pdClients []pdapi.PDClient
