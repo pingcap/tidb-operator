@@ -50,10 +50,10 @@ func GetPDClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) p
 	}
 
 	for _, pdMember := range tc.Status.PD.PeerMembers {
-		pdClient = pdControl.GetPeerPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled(), pdMember.ClientURL, pdMember.Name)
-		_, err := pdClient.GetHealth()
+		pdPeerClient := pdControl.GetPeerPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled(), pdMember.ClientURL, pdMember.Name)
+		_, err := pdPeerClient.GetHealth()
 		if err == nil {
-			return pdClient
+			return pdPeerClient
 		}
 	}
 
