@@ -4817,6 +4817,11 @@ func (in *TiDBServiceSpec) DeepCopyInto(out *TiDBServiceSpec) {
 		*out = new(int)
 		**out = **in
 	}
+	if in.AdditionalPorts != nil {
+		in, out := &in.AdditionalPorts, &out.AdditionalPorts
+		*out = make([]v1.ServicePort, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 
