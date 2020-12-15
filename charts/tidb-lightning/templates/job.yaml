@@ -156,7 +156,7 @@ spec:
       {{- if and .Values.tlsClient .Values.tlsClient.enabled }}
       - name: tidb-client-tls
         secret:
-        {{- if and .Values.tlsClient .Values.tlsClient.tlsClientSecretName }}
+        {{- if .Values.tlsClient.tlsClientSecretName }}
           secretName: {{ .Values.tlsClient.tlsClientSecretName }}
         {{- else }}
           secretName: {{ .Values.targetTidbCluster.name }}-tidb-client-secret
