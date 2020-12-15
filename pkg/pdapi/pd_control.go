@@ -118,7 +118,7 @@ func (pdc *defaultPDControl) GetClusterRefPDClient(namespace Namespace, tcName s
 		scheme = "https"
 		tlsConfig, err = GetTLSConfig(pdc.kubeCli, namespace, tcName, util.ClusterClientTLSSecretName(tcName))
 		if err != nil {
-			klog.Errorf("Unable to get tls config for tidb cluster %q, pd client may not work: %v", tcName, err)
+			klog.Errorf("Unable to get tls config for tidb cluster %q in %s, pd client may not work: %v", tcName, namespace, err)
 			return &pdClient{url: ClusterRefPDClientUrl(namespace, tcName, scheme, clusterDomain), httpClient: &http.Client{Timeout: DefaultTimeout}}
 		}
 
@@ -142,7 +142,7 @@ func (pdc *defaultPDControl) GetPeerPDClient(namespace Namespace, tcName string,
 	if tlsEnabled {
 		tlsConfig, err = GetTLSConfig(pdc.kubeCli, namespace, tcName, util.ClusterClientTLSSecretName(tcName))
 		if err != nil {
-			klog.Errorf("Unable to get tls config for tidb cluster %q, pd client may not work: %v", tcName, err)
+			klog.Errorf("Unable to get tls config for tidb cluster %q in %s, pd client may not work: %v", tcName, namespace, err)
 			return &pdClient{url: peerURL, httpClient: &http.Client{Timeout: DefaultTimeout}}
 		}
 
