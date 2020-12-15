@@ -63,14 +63,21 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-ticdc/']
 
     ```shell
     [
-            {
-                    "id": "6d92386a-73fc-43f3-89de-4e337a42b766",
-                    "is-owner": true
-            },
-            {
-                    "id": "b293999a-4168-4988-a4f4-35d9589b226b",
-                    "is-owner": false
-            }
+      {
+        "id": "3ed24f6c-22cf-446f-9fe0-bf4a66d00f5b",
+        "is-owner": false,
+        "address": "${cluster_name}-ticdc-2.${cluster_name}-ticdc-peer.${namespace}.svc:8301"
+      },
+      {
+        "id": "60e98ed7-cd49-45f4-b5ae-d3b85ba3cd96",
+        "is-owner": false,
+        "address": "${cluster_name}-ticdc-0.${cluster_name}-ticdc-peer.${namespace}.svc:8301"
+      },
+      {
+        "id": "dc3592c0-dace-42a0-8afc-fb8506e8271c",
+        "is-owner": true,
+        "address": "${cluster_name}-ticdc-1.${cluster_name}-ticdc-peer.${namespace}.svc:8301"
+      }
     ]
     ```
 
