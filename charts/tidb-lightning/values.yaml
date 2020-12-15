@@ -62,6 +62,9 @@ targetTidbCluster:
 # Whether enable the TLS connection between TiDB cluster components.
 # If enabled, a Secret named "<targetTidbCluster.name>-lightning-cluster-secret" must exist.
 # To create this Secret: kubectl create secret generic <targetTidbCluster.name>-lightning-cluster-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+# NOTE: if tlsCluster enabled but tlsClient not enabled, then you should add the following TOML config items into `config`:
+#  [tidb]
+#  tls="false"
 tlsCluster: {}
   # enabled: true
 

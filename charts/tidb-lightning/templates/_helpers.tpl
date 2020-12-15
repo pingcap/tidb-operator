@@ -33,9 +33,6 @@ config-file: |-
   ca-path="/var/lib/tidb-client-tls/ca.crt"
   cert-path="/var/lib/tidb-client-tls/tls.crt"
   key-path="/var/lib/tidb-client-tls/tls.key"
-    {{- else }}
-  [tidb]
-  tls="false"
     {{- end }}
 {{- end -}}
 
