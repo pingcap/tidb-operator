@@ -32,7 +32,7 @@ func GetPDClientBasic(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbClust
 	return pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled())
 }
 
-// Retry to GetPDClient for multi-cluster
+// GetPDClient tries to return an available PDClient
 // If the pdClient built from the PD service name is unavailable, try to
 // build another one with the ClientURL in the PeerMembers.
 // ClientURL example:

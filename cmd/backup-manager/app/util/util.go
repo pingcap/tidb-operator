@@ -388,14 +388,27 @@ func GetCommitTsFromBRMetaData(provider v1alpha1.StorageProvider) (uint64, error
 	return backupMeta.EndVersion, nil
 }
 
-// ConstructArgs constructs the rclone args
-func ConstructArgs(conf string, opts []string, command, source, dest string) []string {
+// ConstructRcloneArgs constructs the rclone args
+func ConstructRcloneArgs(conf string, opts []string, command, source, dest string, verboseLog bool) []string {
 	var args []string
+	defaultLog := true
 	if conf != "" {
 		args = append(args, conf)
 	}
 	if len(opts) > 0 {
-		args = append(args, opts...)
+		for _, opt := range opts {
+			// If forbid logging with verboseLog==false, user-provided args starting with -v or --verbose should be filtered out.
+			if !verboseLog && (strings.HasPrefix(opt, "-v") || strings.HasPrefix(opt, "--verbose")) {
+				continue
+			}
+			if opt == "-q" || opt == "--quiet" {
+				defaultLog = false
+			}
+			args = append(args, opt)
+		}
+	}
+	if defaultLog && verboseLog {
+		args = append(args, "-v")
 	}
 	if command != "" {
 		args = append(args, command)
