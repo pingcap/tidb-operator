@@ -34,8 +34,8 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name          string
-		prepare       func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor)
-		errExpectFn   func(*GomegaWithT, error, *MonitorManager, *v1alpha1.TidbMonitor)
+		prepare       func(tmm *FakeMonitorManager, monitor *v1alpha1.TidbMonitor)
+		errExpectFn   func(*GomegaWithT, error, *FakeMonitorManager, *v1alpha1.TidbMonitor)
 		stsCreated    bool
 		svcCreated    bool
 		volumeCreated bool
@@ -44,6 +44,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 		tmm := newFakeTidbMonitorManager()
+
 		tc := &v1alpha1.TidbCluster{
 			Spec: v1alpha1.TidbClusterSpec{
 				TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
@@ -111,11 +112,11 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 	tests := []testcase{
 		{
 			name: "tidbmonitor enable clusterScope and running normally",
-			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
+			prepare: func(tmm *FakeMonitorManager, monitor *v1alpha1.TidbMonitor) {
 				monitor.Spec.ClusterScoped = true
 				monitor.Namespace = "ns2"
 			},
-			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
+			errExpectFn: func(g *GomegaWithT, err error, tmm *FakeMonitorManager, tm *v1alpha1.TidbMonitor) {
 				errExpectRequeuefunc(g, err, tmm, tm)
 			},
 			stsCreated:    true,
@@ -124,7 +125,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 		},
 		{
 			name: "tidbmonitor enable grafana container and running normally",
-			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
+			prepare: func(tmm *FakeMonitorManager, monitor *v1alpha1.TidbMonitor) {
 				monitor.Spec.Persistent = true
 				monitor.Spec.Storage = "10Gi"
 				monitor.Spec.Grafana = &v1alpha1.GrafanaSpec{
@@ -134,7 +135,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 					},
 				}
 			},
-			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
+			errExpectFn: func(g *GomegaWithT, err error, tmm *FakeMonitorManager, tm *v1alpha1.TidbMonitor) {
 				errExpectRequeuefunc(g, err, tmm, tm)
 				_, err = tmm.deps.ServiceLister.Services(tm.Namespace).Get(grafanaName(tm))
 				g.Expect(err).NotTo(HaveOccurred())
@@ -149,14 +150,14 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 		},
 		{
 			name: "tidbmonitor use deployment running without pv and pvc, tidbmonitor can't smooth migrate to statefulset",
-			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
+			prepare: func(tmm *FakeMonitorManager, monitor *v1alpha1.TidbMonitor) {
 				monitor.Status.DeploymentStorageStatus = &v1alpha1.DeploymentStorageStatus{
 					PvName: "test-pv",
 				}
 				monitor.Spec.Persistent = true
 				monitor.Spec.Storage = "10Gi"
 			},
-			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
+			errExpectFn: func(g *GomegaWithT, err error, tmm *FakeMonitorManager, tm *v1alpha1.TidbMonitor) {
 				g.Expect(err).To(HaveOccurred())
 			},
 			stsCreated:    false,
@@ -165,7 +166,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 		},
 		{
 			name: "tidbmonitor use deployment running , tidbmonitor can smooth migrate to statefulset",
-			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
+			prepare: func(tmm *FakeMonitorManager, monitor *v1alpha1.TidbMonitor) {
 				monitor.Status.DeploymentStorageStatus = &v1alpha1.DeploymentStorageStatus{
 					PvName: "test-pv",
 				}
@@ -202,7 +203,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 				})
 
 			},
-			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
+			errExpectFn: func(g *GomegaWithT, err error, tmm *FakeMonitorManager, tm *v1alpha1.TidbMonitor) {
 				g.Expect(controller.IsRequeueError(err)).To(Equal(true))
 				pv, err := tmm.deps.PVControl.GetPV("test-pv")
 				g.Expect(err).NotTo(HaveOccurred())
@@ -214,7 +215,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 		},
 		{
 			name: "tidbmonitor enable persistent and running normally",
-			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
+			prepare: func(tmm *FakeMonitorManager, monitor *v1alpha1.TidbMonitor) {
 				monitor.Spec.Persistent = true
 				monitor.Spec.Storage = "10Gi"
 			},
@@ -225,10 +226,10 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 		},
 		{
 			name: "tidbmonitor not spec clusters field",
-			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
+			prepare: func(tmm *FakeMonitorManager, monitor *v1alpha1.TidbMonitor) {
 				monitor.Spec.Clusters = nil
 			},
-			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
+			errExpectFn: func(g *GomegaWithT, err error, tmm *FakeMonitorManager, monitor *v1alpha1.TidbMonitor) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "does not configure the target tidbcluster")).To(BeTrue())
 			},
@@ -237,9 +238,9 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 		},
 		{
 			name: "normal",
-			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
+			prepare: func(tmm *FakeMonitorManager, monitor *v1alpha1.TidbMonitor) {
 			},
-			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
+			errExpectFn: func(g *GomegaWithT, err error, tmm *FakeMonitorManager, monitor *v1alpha1.TidbMonitor) {
 
 			},
 			stsCreated:    true,
@@ -257,10 +258,10 @@ func TestTidbMonitorSyncUpdate(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name           string
-		prepare        func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor)
-		errExpectFn    func(*GomegaWithT, error, *MonitorManager, *v1alpha1.TidbMonitor)
-		update         func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor)
-		updateExpectFn func(*GomegaWithT, error, *MonitorManager, *v1alpha1.TidbMonitor)
+		prepare        func(tmm *FakeMonitorManager, monitor *v1alpha1.TidbMonitor)
+		errExpectFn    func(*GomegaWithT, error, *FakeMonitorManager, *v1alpha1.TidbMonitor)
+		update         func(tmm *FakeMonitorManager, monitor *v1alpha1.TidbMonitor)
+		updateExpectFn func(*GomegaWithT, error, *FakeMonitorManager, *v1alpha1.TidbMonitor)
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
@@ -309,7 +310,7 @@ func TestTidbMonitorSyncUpdate(t *testing.T) {
 	tests := []testcase{
 		{
 			name: "validate annoation",
-			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
+			prepare: func(tmm *FakeMonitorManager, monitor *v1alpha1.TidbMonitor) {
 				monitor.Spec.Persistent = true
 				monitor.Spec.Storage = "10Gi"
 				monitor.Spec.ClusterScoped = true
@@ -321,7 +322,7 @@ func TestTidbMonitorSyncUpdate(t *testing.T) {
 					Ingress: &v1alpha1.IngressSpec{},
 				}
 			},
-			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
+			errExpectFn: func(g *GomegaWithT, err error, tmm *FakeMonitorManager, tm *v1alpha1.TidbMonitor) {
 				errExpectRequeuefunc(g, err, tmm, tm)
 				_, err = tmm.deps.ServiceLister.Services(tm.Namespace).Get(grafanaName(tm))
 				g.Expect(err).NotTo(HaveOccurred())
@@ -329,10 +330,10 @@ func TestTidbMonitorSyncUpdate(t *testing.T) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(3))
 			},
-			update: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
+			update: func(tmm *FakeMonitorManager, monitor *v1alpha1.TidbMonitor) {
 
 			},
-			updateExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
+			updateExpectFn: func(g *GomegaWithT, err error, tmm *FakeMonitorManager, tm *v1alpha1.TidbMonitor) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(tm.Annotations).To(HaveLen(0))
 				sts, err := tmm.deps.StatefulSetLister.StatefulSets(tm.Namespace).Get(GetMonitorObjectName(tm))
@@ -344,7 +345,7 @@ func TestTidbMonitorSyncUpdate(t *testing.T) {
 		},
 		{
 			name: "enable grafana",
-			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
+			prepare: func(tmm *FakeMonitorManager, monitor *v1alpha1.TidbMonitor) {
 				monitor.Spec.Persistent = true
 				monitor.Spec.Storage = "10Gi"
 				monitor.Spec.ClusterScoped = true
@@ -356,7 +357,7 @@ func TestTidbMonitorSyncUpdate(t *testing.T) {
 					Ingress: &v1alpha1.IngressSpec{},
 				}
 			},
-			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
+			errExpectFn: func(g *GomegaWithT, err error, tmm *FakeMonitorManager, tm *v1alpha1.TidbMonitor) {
 				errExpectRequeuefunc(g, err, tmm, tm)
 				_, err = tmm.deps.ServiceLister.Services(tm.Namespace).Get(grafanaName(tm))
 				g.Expect(err).NotTo(HaveOccurred())
@@ -364,7 +365,7 @@ func TestTidbMonitorSyncUpdate(t *testing.T) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(3))
 			},
-			update: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
+			update: func(tmm *FakeMonitorManager, monitor *v1alpha1.TidbMonitor) {
 				monitor.Spec.Grafana.Service.Type = v1.ServiceTypeLoadBalancer
 				monitor.Spec.Grafana.Service.PortName = pointer.StringPtr("test")
 				monitor.Spec.Grafana.Service.LoadBalancerIP = pointer.StringPtr("127.0.0.1")
@@ -375,7 +376,7 @@ func TestTidbMonitorSyncUpdate(t *testing.T) {
 				monitor.Spec.Reloader.Service.LoadBalancerIP = pointer.StringPtr("127.0.0.1")
 				monitor.Spec.Reloader.Service.PortName = pointer.StringPtr("test")
 			},
-			updateExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
+			updateExpectFn: func(g *GomegaWithT, err error, tmm *FakeMonitorManager, tm *v1alpha1.TidbMonitor) {
 				g.Expect(err).NotTo(HaveOccurred())
 				grafanaSvc, err := tmm.deps.ServiceLister.Services(tm.Namespace).Get(grafanaName(tm))
 				g.Expect(err).NotTo(HaveOccurred())
@@ -423,7 +424,7 @@ func newTidbMonitor(cluster v1alpha1.TidbClusterRef) *v1alpha1.TidbMonitor {
 	}
 }
 
-func newFakeTidbMonitorManager() *MonitorManager {
+func newFakeTidbMonitorManager() *FakeMonitorManager {
 	fakeDeps := controller.NewFakeDependencies()
 	fake := &k8stesting.Fake{
 		Resources: []*metav1.APIResourceList{
@@ -442,14 +443,17 @@ func newFakeTidbMonitorManager() *MonitorManager {
 	discoveryClient := &discoveryfake.FakeDiscovery{
 		Fake: fake,
 	}
-	monitorManager := &MonitorManager{
-		deps:               fakeDeps,
-		pvManager:          meta.NewReclaimPolicyManager(fakeDeps),
-		discoveryInterface: discoverycachedmemory.NewMemCacheClient(discoveryClient),
+	monitorManager := &FakeMonitorManager{
+		MonitorManager{deps: fakeDeps,
+			pvManager:          meta.NewReclaimPolicyManager(fakeDeps),
+			discoveryInterface: discoverycachedmemory.NewMemCacheClient(discoveryClient),
+		},
 	}
+
 	return monitorManager
+
 }
 
-func errExpectRequeuefunc(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
+func errExpectRequeuefunc(g *GomegaWithT, err error, tmm *FakeMonitorManager, tm *v1alpha1.TidbMonitor) {
 	g.Expect(controller.IsRequeueError(err)).To(Equal(true))
 }
