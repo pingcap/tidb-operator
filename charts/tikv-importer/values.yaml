@@ -12,6 +12,12 @@ image: pingcap/tidb-lightning:v4.0.8
 imagePullPolicy: IfNotPresent
 # imagePullSecrets: []
 
+# Whether enable the TLS connection between TiDB cluster components.
+# If enabled, a Secret named "<clusterName>-importer-cluster-secret" must exist.
+# To create this Secret: kubectl create secret generic <clusterName>-importer-cluster-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+tlsCluster:  {}
+  # enabled: true
+
 storageClassName: local-storage
 storage: 20Gi
 resources:
