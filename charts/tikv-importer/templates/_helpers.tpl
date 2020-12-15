@@ -16,9 +16,9 @@ config-file: |-
     {{- end -}}
     {{- if and .Values.tlsCluster .Values.tlsCluster.enabled }}
   [security]
-  ca-path="/etc/lib/importer-tls/ca.crt"
-  cert-path="/etc/lib/importer-tls/tls.crt"
-  key-path="/etc/lib/importer-tls/tls.key"
+  ca-path="/var/lib/importer-tls/ca.crt"
+  cert-path="/var/lib/importer-tls/tls.crt"
+  key-path="/var/lib/importer-tls/tls.key"
     {{- end }}
 {{- end -}}
 

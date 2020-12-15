@@ -70,7 +70,7 @@ spec:
           mountPath: /etc/tikv-importer
         {{- if and .Values.tlsCluster .Values.tlsCluster.enabled }}
         - name: importer-tls
-          mountPath: /etc/lib/importer-tls
+          mountPath: /var/lib/importer-tls
           readOnly: true
         {{- end }}
         {{- if .Values.resources }}

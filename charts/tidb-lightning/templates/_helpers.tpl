@@ -24,15 +24,15 @@ config-file: |-
     {{- end -}}
     {{- if and .Values.tlsCluster .Values.tlsCluster.enabled }}
   [security]
-  ca-path="/etc/lib/lightning-tls/ca.crt"
-  cert-path="/etc/lib/lightning-tls/tls.crt"
-  key-path="/etc/lib/lightning-tls/tls.key"
+  ca-path="/var/lib/lightning-tls/ca.crt"
+  cert-path="/var/lib/lightning-tls/tls.crt"
+  key-path="/var/lib/lightning-tls/tls.key"
     {{- end }}
     {{- if and .Values.tlsClient .Values.tlsClient.enabled }}
   [tidb.security]
-  ca-path="/etc/lib/tidb-client-tls/ca.crt"
-  cert-path="/etc/lib/tidb-client-tls/tls.crt"
-  key-path="/etc/lib/tidb-client-tls/tls.key"
+  ca-path="/var/lib/tidb-client-tls/ca.crt"
+  cert-path="/var/lib/tidb-client-tls/tls.crt"
+  key-path="/var/lib/tidb-client-tls/tls.key"
     {{- else }}
   [tidb]
   tls="false"

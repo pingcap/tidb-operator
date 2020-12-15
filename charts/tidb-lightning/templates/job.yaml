@@ -107,12 +107,12 @@ spec:
           {{- end }}
         {{- if and .Values.tlsCluster .Values.tlsCluster.enabled }}
         - name: lightning-tls
-          mountPath: /etc/lib/lightning-tls
+          mountPath: /var/lib/lightning-tls
           readOnly: true
         {{- end }}
         {{- if and .Values.tlsClient .Values.tlsClient.enabled }}
         - name: tidb-client-tls
-          mountPath: /etc/lib/tidb-client-tls
+          mountPath: /var/lib/tidb-client-tls
           readOnly: true
         {{- end }}
       volumes:
