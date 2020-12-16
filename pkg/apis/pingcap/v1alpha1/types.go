@@ -904,6 +904,11 @@ type TiDBServiceSpec struct {
 	// Optional: Defaults to 0
 	// +optional
 	StatusNodePort *int `json:"statusNodePort,omitempty"`
+
+	// Expose additional ports for TiDB
+	// Optional: Defaults to omitted
+	// +optional
+	AdditionalPorts []corev1.ServicePort `json:"additionalPorts,omitempty"`
 }
 
 // (Deprecated) Service represent service type used in TidbCluster
@@ -1204,7 +1209,7 @@ type GcsStorageProvider struct {
 	BucketAcl string `json:"bucketAcl,omitempty"`
 	// SecretName is the name of secret which stores the
 	// gcs service account credentials JSON.
-	SecretName string `json:"secretName"`
+	SecretName string `json:"secretName,omitempty"`
 	// Prefix of the data path.
 	Prefix string `json:"prefix,omitempty"`
 }

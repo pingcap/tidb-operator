@@ -2461,7 +2461,7 @@ func schema_pkg_apis_pingcap_v1alpha1_GcsStorageProvider(ref common.ReferenceCal
 						},
 					},
 				},
-				Required: []string{"projectId", "secretName"},
+				Required: []string{"projectId"},
 			},
 		},
 	}
@@ -6312,9 +6312,24 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBServiceSpec(ref common.ReferenceCallba
 							Format:      "int32",
 						},
 					},
+					"additionalPorts": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Expose additional ports for TiDB Optional: Defaults to omitted",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/api/core/v1.ServicePort"),
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},
+		Dependencies: []string{
+			"k8s.io/api/core/v1.ServicePort"},
 	}
 }
 
