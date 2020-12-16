@@ -226,8 +226,8 @@ func (d *tidbDiscovery) VerifyPDEndpoint(advertisePeerURL string) (string, error
 	advertisePeerURL = strings.Replace(advertisePeerURL, "\n", "", -1)
 	copyAdvertisePeerURL := advertisePeerURL
 	pdEndpoint := parseAdvertisePeerURL(advertisePeerURL)
-	ns := os.Getenv("MY_POD_NAMESPACE")
 
+	ns := os.Getenv("MY_POD_NAMESPACE")
 	tc, err := d.cli.PingcapV1alpha1().TidbClusters(ns).Get(pdEndpoint.tcName, metav1.GetOptions{})
 	if err != nil {
 		return advertisePeerURL, err
@@ -243,6 +243,9 @@ func (d *tidbDiscovery) VerifyPDEndpoint(advertisePeerURL string) (string, error
 	}
 
 	if pdEndpointHealthCheck(d, tc, advertisePeerURL, pdEndpoint.pdMemberName) {
+		if pdEndpoint.noSchema {
+			return fmt.Sprintf("%s:2379", pdEndpoint.pdMemberName), nil
+		}
 		return advertisePeerURL, nil
 	}
 
