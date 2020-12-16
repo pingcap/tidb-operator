@@ -53,6 +53,7 @@ type pdEndpointURL struct {
 	schema       string
 	pdMemberName string
 	pdMemberPort string
+	tcName       string
 	noSchema     bool
 }
 
@@ -221,8 +222,13 @@ func (d *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
 }
 
 func (d *tidbDiscovery) VerifyPDEndpoint(advertisePeerURL string) (string, error) {
+	// save a copy of AdvertisePeerURL for failure
+	copyAdvertisePeerURL := advertisePeerURL
 	pdEndpoint := ParseAdvertisePeerURL(advertisePeerURL)
-	tc, err := GetTiDBClusterforEndpointVerify(d, advertisePeerURL)
+	fmt.Println(pdEndpoint)
+	ns := os.Getenv("MY_POD_NAMESPACE")
+
+	tc, err := d.cli.PingcapV1alpha1().TidbClusters(ns).Get(pdEndpoint.tcName, metav1.GetOptions{})
 	if err != nil {
 		return advertisePeerURL, err
 	}
@@ -250,7 +256,7 @@ func (d *tidbDiscovery) VerifyPDEndpoint(advertisePeerURL string) (string, error
 	}
 
 	// if failed, we should return the default value here
-	return advertisePeerURL, nil
+	return copyAdvertisePeerURL, nil
 }
 
 // PDEndpointHealthCheck checks if PD PeerEndpoint is working
@@ -258,20 +264,6 @@ func PDEndpointHealthCheck(d *tidbDiscovery, tc *v1alpha1.TidbCluster, advertise
 	pdClient := d.pdControl.GetPeerPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled(), advertisePeerURL, peerName)
 	_, err := pdClient.GetHealth()
 	return err == nil
-}
-
-// GetTiDBClusterforEndpointVerify gets the tidbcluster
-func GetTiDBClusterforEndpointVerify(d *tidbDiscovery, advertisePeerURL string) (*v1alpha1.TidbCluster, error) {
-	ns := os.Getenv("MY_POD_NAMESPACE")
-
-	hostArrs := strings.Split(advertisePeerURL, "-pd")
-	if len(hostArrs) == 1 {
-		// advertisePeerURL doesn't consist of -pd
-		return nil, fmt.Errorf("advertisePeerURL is invaild")
-	}
-	tcName := hostArrs[0]
-	tc, err := d.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
-	return tc, err
 }
 
 // ParseAdvertisePeerURL parses advertisePeerURL to PDEndpoint related information
@@ -298,6 +290,10 @@ func ParseAdvertisePeerURL(advertisePeerURL string) pdEndpointURL {
 		pdEndpoint.pdMemberName = hostURLArr[0]
 		pdEndpoint.pdMemberPort = hostURLArr[1]
 	}
+
+	// Deal with tcName
+	hostArrs := strings.Split(pdEndpoint.pdMemberName, "-pd")
+	pdEndpoint.tcName = hostArrs[0]
 
 	return pdEndpoint
 }
