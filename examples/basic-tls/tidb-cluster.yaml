@@ -55,7 +55,3 @@ spec:
       security:
         cert-verify-cn:
           - TiDB
-
-  ticdc:
-    baseImage: pingcap/ticdc
-    replicas: 1
