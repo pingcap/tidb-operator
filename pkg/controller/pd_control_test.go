@@ -83,6 +83,28 @@ func TestGetPDClient(t *testing.T) {
 				g.Expect(err).To(BeNil())
 			},
 		},
+		{
+			name: "Test GetPDClient when in-cluster PD endpoint failed and peer-cluster PD endpoint failed too",
+			update: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.PeerMembers = map[string]v1alpha1.PDMember{
+					"pd-0": {Name: "pd-0", ClientURL: "http://pd-0.pd.pingcap.cluster2.com:2379", Health: true},
+				}
+			},
+			expectFn: func(g *GomegaWithT, b bool) {
+				pdClientCluster1 := NewFakePDClient(pdControl, tc)
+
+				pdClientCluster1.AddReaction(pdapi.GetHealthActionType, func(action *pdapi.Action) (interface{}, error) {
+					return nil, fmt.Errorf("Fake cluster 1 PD crashed")
+				})
+				pdClientCluster2 := NewFakePDClientWithAddress(pdControl, "pd-0")
+				pdClientCluster2.AddReaction(pdapi.GetHealthActionType, func(action *pdapi.Action) (interface{}, error) {
+					return nil, fmt.Errorf("Fake cluster 2 PD crashed")
+				})
+				pdClient := GetPDClient(pdControl, tc)
+				_, err := pdClient.GetHealth()
+				g.Expect(err).To(HaveOccurred())
+			},
+		},
 	}
 
 	for i := range tests {
