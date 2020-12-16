@@ -874,7 +874,6 @@ type ServiceSpec struct {
 	// cloud-provider does not support the feature."
 	// More info: https://kubernetes.io/docs/concepts/services-networking/service/#aws-nlb-support
 	// Optional: Defaults to omitted
-	// NOTE: it seems like this is not a mainstream option, maybe we should reevaluate whether to deprecate this
 	// +optional
 	LoadBalancerSourceRanges []string `json:"loadBalancerSourceRanges,omitempty"`
 }
