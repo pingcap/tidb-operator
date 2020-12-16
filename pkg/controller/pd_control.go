@@ -18,8 +18,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 )
 
-// getPDClientBasic gets the pd client from the TidbCluster
-func getPDClientBasic(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) pdapi.PDClient {
+// getPDClientFromService gets the pd client from the TidbCluster
+func getPDClientFromService(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) pdapi.PDClient {
 	if tc.IsHeterogeneous() {
 		if len(tc.Spec.ClusterDomain) > 0 {
 			return pdControl.GetClusterRefPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.Spec.ClusterDomain, tc.IsTLSClusterEnabled())
@@ -38,7 +38,7 @@ func getPDClientBasic(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbClust
 // ClientURL example:
 // ClientURL: https://cluster2-pd-0.cluster2-pd-peer.pingcap.svc.cluster2.local
 func GetPDClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) pdapi.PDClient {
-	pdClient := getPDClientBasic(pdControl, tc)
+	pdClient := getPDClientFromService(pdControl, tc)
 
 	if len(tc.Status.PD.PeerMembers) == 0 {
 		return pdClient
