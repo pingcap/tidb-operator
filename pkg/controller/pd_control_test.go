@@ -72,8 +72,8 @@ func TestGetPDClient(t *testing.T) {
 				pdClientCluster1.AddReaction(pdapi.GetHealthActionType, func(action *pdapi.Action) (interface{}, error) {
 					return nil, fmt.Errorf("Fake cluster 1 PD crashed")
 				})
-				pdClientCLUSTER2 := NewFakePDClientWithAddress(pdControl, "pd-0")
-				pdClientCLUSTER2.AddReaction(pdapi.GetHealthActionType, func(action *pdapi.Action) (interface{}, error) {
+				pdClientCluster2 := NewFakePDClientWithAddress(pdControl, "pd-0")
+				pdClientCluster2.AddReaction(pdapi.GetHealthActionType, func(action *pdapi.Action) (interface{}, error) {
 					return &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
 						{Name: "pd-0", MemberID: uint64(1), ClientUrls: []string{"http://pd-0.pd.pingcap.cluster2.com:2379"}, Health: true},
 					}}, nil
