@@ -53,7 +53,6 @@ type pdEndpointURL struct {
 	schema       string
 	pdMemberName string
 	pdMemberPort string
-	tcName       string
 	noSchema     bool
 }
 

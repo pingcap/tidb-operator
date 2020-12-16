@@ -52,7 +52,7 @@ fi
 POD_NAME=${POD_NAME:-$HOSTNAME}
 
 pd_url="{{ .Path }}"
-encoded_domain_url=` + "`" + `echo $pd_url | base64 | tr "\n" " " | sed "s/ //g"` + "`" +`
+encoded_domain_url=` + "`" + `echo $pd_url | base64 | tr "\n" " " | sed "s/ //g"` + "`" + `
 discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}.svc{{ .FormatClusterDomain }}:10261"
 until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
 echo "waiting for verification for PD endpoints ..."
@@ -247,7 +247,7 @@ fi
 # Use HOSTNAME if POD_NAME is unset for backward compatibility.
 POD_NAME=${POD_NAME:-$HOSTNAME}
 pd_url="{{ .PDAddress }}"
-encoded_domain_url=` + "`" + `echo $pd_url | base64 | tr "\n" " " | sed "s/ //g"` + "`" +`
+encoded_domain_url=` + "`" + `echo $pd_url | base64 | tr "\n" " " | sed "s/ //g"` + "`" + `
 discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}.svc{{ .FormatClusterDomain }}:10261"
 
 until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
