@@ -22,10 +22,7 @@ cd $ROOT
 
 source "${ROOT}/hack/lib.sh"
 
-TLS_DIR="${OUTPUT}/tls"
-CA_DIR="${TLS_DIR}/ca"
-
-# parameters
+# parameters begin
 TIDB_CLUSTER=${TIDB_CLUSTER:-"basic-tls"}
 NAMESPACE=${NAMESPACE:-"default"}
 
@@ -36,6 +33,10 @@ ORGANIZATION=${ORGANIZATION:-"PingCAP"}
 COUNTRY=${COUNTRY:-"US"}
 LOCALITY=${LOCALITY:-"CA"}
 STATE_OR_PROVINCE_NAME=${STATE_OR_PROVINCE_NAME:-"Beijing"}
+# paramenters end
+
+TLS_DIR="${OUTPUT}/tls"
+CA_DIR="${TLS_DIR}/ca"
 
 function gen_ca() {
     echo "generating CA"
