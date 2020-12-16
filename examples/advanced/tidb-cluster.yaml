@@ -150,11 +150,11 @@ spec:
 
     ## pd-server configuration
     ## Ref: https://docs.pingcap.com/tidb/stable/pd-configuration-file
-    # config:
-    #   dashboard:
-    #     tidb-cacert-path: ""
-    #     tidb-cert-path: ""
-    #     tidb-key-path: ""
+    config: |
+      [dashboard]
+        tidb-cacert-path = ""
+        tidb-cert-path = ""
+        tidb-key-path = ""
 
     ## The desired replicas
     replicas: 3
@@ -327,9 +327,9 @@ spec:
 
     ## tidb-server Configuration
     ## Ref: https://docs.pingcap.com/tidb/stable/tidb-configuration-file
-    config:
-      mem-quota-query: 536870912
-      token-limit: 100
+    config: |
+      mem-quota-query = 536870912
+      token-limit = 100
 
     ## The desired replicas
     replicas: 3
@@ -342,7 +342,6 @@ spec:
     # requests:
     #   cpu: 1000m
     #   memory: 1Gi
-    #   storage: 1Gi
     # limits:
     #   cpu: 2000m
     #   memory: 2Gi
@@ -436,8 +435,12 @@ spec:
     ## Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
     # podSecurityContext:
     #   sysctls:
-    #   - name: net.ipv4.tcp_syncookies
-    #     value: 0
+    #   - name: net.ipv4.tcp_keepalive_time
+    #     value: "300"
+    #   - name: net.ipv4.tcp_keepalive_intvl
+    #     value: "75"
+    #   - name: net.core.somaxconn
+    #     value: "32768"
 
     ## prob tidb-server readiness
     ## valid type values:
@@ -639,8 +642,12 @@ spec:
     ## Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
     # podSecurityContext:
     #   sysctls:
-    #   - name: net.ipv4.tcp_syncookies
-    #     value: 0
+    #   - name: net.ipv4.tcp_keepalive_time
+    #     value: "300"
+    #   - name: net.ipv4.tcp_keepalive_intvl
+    #     value: "75"
+    #   - name: net.core.somaxconn
+    #     value: "32768"
 
     ## when TLS cluster feature is enabled, TiDB Operator will automatically mount the cluster client certificates if mountClusterClientSecret set to true
     ## Defaults to false

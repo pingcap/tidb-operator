@@ -71,7 +71,7 @@ const (
 	// BaseTCLabelKey is label key used for heterogeneous clusters to refer to its base TidbCluster
 	BaseTCLabelKey string = "tidb.pingcap.com/base-tc"
 
-	// High availability is realized based on the topology
+	// AnnHATopologyKey defines the High availability topology key
 	AnnHATopologyKey = "pingcap.com/ha-topology-key"
 
 	// AnnFailTiDBScheduler is for injecting a failure into the TiDB custom scheduler
@@ -95,7 +95,7 @@ const (
 	AnnSysctlInit = "tidb.pingcap.com/sysctl-init"
 	// AnnEvictLeaderBeginTime is pod annotation key to indicate the begin time for evicting region leader
 	AnnEvictLeaderBeginTime = "tidb.pingcap.com/evictLeaderBeginTime"
-	// AnnStsSyncTimestamp is sts annotation key to indicate the last timestamp the operator sync the sts
+	// AnnStsLastSyncTimestamp is sts annotation key to indicate the last timestamp the operator sync the sts
 	AnnStsLastSyncTimestamp = "tidb.pingcap.com/sync-timestamp"
 
 	// AnnForceUpgradeVal is tc annotation value to indicate whether force upgrade should be done
@@ -105,15 +105,15 @@ const (
 
 	// AnnPDDeleteSlots is annotation key of pd delete slots.
 	AnnPDDeleteSlots = "pd.tidb.pingcap.com/delete-slots"
-	// TiDBDeleteSlots is annotation key of tidb delete slots.
+	// AnnTiDBDeleteSlots is annotation key of tidb delete slots.
 	AnnTiDBDeleteSlots = "tidb.tidb.pingcap.com/delete-slots"
-	// TiKVDeleteSlots is annotation key of tikv delete slots.
+	// AnnTiKVDeleteSlots is annotation key of tikv delete slots.
 	AnnTiKVDeleteSlots = "tikv.tidb.pingcap.com/delete-slots"
-	// TiFlashDeleteSlots is annotation key of tiflash delete slots.
+	// AnnTiFlashDeleteSlots is annotation key of tiflash delete slots.
 	AnnTiFlashDeleteSlots = "tiflash.tidb.pingcap.com/delete-slots"
-	// DMMasterDeleteSlots is annotation key of DM-master delete slots.
+	// AnnDMMasterDeleteSlots is annotation key of dm-master delete slots.
 	AnnDMMasterDeleteSlots = "dm-master.tidb.pingcap.com/delete-slots"
-	// DMWorkerDeleteSlots is annotation key of DM-worker delete slots.
+	// AnnDMWorkerDeleteSlots is annotation key of dm-worker delete slots.
 	AnnDMWorkerDeleteSlots = "dm-worker.tidb.pingcap.com/delete-slots"
 
 	// AnnTiKVAutoScalingOutOrdinals describe the tikv pods' ordinal list which is created by auto-scaling out
@@ -154,9 +154,9 @@ const (
 	// TiDBOperator is ManagedByLabelKey label value
 	TiDBOperator string = "tidb-operator"
 
-	// DMMasterLabelVal is DM-master label value
+	// DMMasterLabelVal is dm-master label value
 	DMMasterLabelVal string = "dm-master"
-	// DMWorkerLabelVal is DM-worker label value
+	// DMWorkerLabelVal is dm-worker label value
 	DMWorkerLabelVal string = "dm-worker"
 )
 
@@ -332,7 +332,7 @@ func (l Label) IsPump() bool {
 	return l[ComponentLabelKey] == PumpLabelVal
 }
 
-// DMMaster assigns DM-master to component key in label
+// DMMaster assigns dm-master to component key in label
 func (l Label) DMMaster() Label {
 	return l.Component(DMMasterLabelVal)
 }
@@ -342,7 +342,7 @@ func (l Label) IsDMMaster() bool {
 	return l[ComponentLabelKey] == DMMasterLabelVal
 }
 
-// DMWorker assigns DM-worker to component key in label
+// DMWorker assigns dm-worker to component key in label
 func (l Label) DMWorker() Label {
 	return l.Component(DMWorkerLabelVal)
 }
