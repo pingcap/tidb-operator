@@ -32,7 +32,7 @@ DOCS_BIN=$OUTPUT_BIN/gen-crd-api-reference-docs
 # Don't upgrade to 2.15.x/2.16.x until this issue
 # (https://github.com/helm/helm/issues/6361) has been fixed.
 #
-HELM_VERSION=${HELM_VERSION:-2.9.1}
+HELM_VERSION=${HELM_VERSION:-2.17.0}
 KIND_VERSION=${KIND_VERSION:-0.8.1}
 DOCS_VERSION=${DOCS_VERSION:-0.2.1}
 KIND_BIN=$OUTPUT_BIN/kind
