@@ -224,7 +224,7 @@ func (d *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
 func (d *tidbDiscovery) VerifyPDEndpoint(advertisePeerURL string) (string, error) {
 	// save a copy of AdvertisePeerURL for failure
 	copyAdvertisePeerURL := advertisePeerURL
-	pdEndpoint := ParseAdvertisePeerURL(advertisePeerURL)
+	pdEndpoint := parseAdvertisePeerURL(advertisePeerURL)
 	fmt.Println(pdEndpoint)
 	ns := os.Getenv("MY_POD_NAMESPACE")
 
@@ -242,12 +242,12 @@ func (d *tidbDiscovery) VerifyPDEndpoint(advertisePeerURL string) (string, error
 		advertisePeerURL = fmt.Sprintf("%s://%s", pdEndpoint.schema, advertisePeerURL)
 	}
 
-	if PDEndpointHealthCheck(d, tc, advertisePeerURL, pdEndpoint.pdMemberName) {
+	if pdEndpointHealthCheck(d, tc, advertisePeerURL, pdEndpoint.pdMemberName) {
 		return advertisePeerURL, nil
 	}
 
 	for _, pdMember := range tc.Status.PD.PeerMembers {
-		if PDEndpointHealthCheck(d, tc, pdMember.ClientURL, pdMember.Name) {
+		if pdEndpointHealthCheck(d, tc, pdMember.ClientURL, pdMember.Name) {
 			if pdEndpoint.noSchema {
 				return fmt.Sprintf("%s:2379", pdMember.Name), nil
 			}
@@ -259,18 +259,25 @@ func (d *tidbDiscovery) VerifyPDEndpoint(advertisePeerURL string) (string, error
 	return copyAdvertisePeerURL, nil
 }
 
-// PDEndpointHealthCheck checks if PD PeerEndpoint is working
-func PDEndpointHealthCheck(d *tidbDiscovery, tc *v1alpha1.TidbCluster, advertisePeerURL string, peerName string) bool {
+// pdEndpointHealthCheck checks if PD PeerEndpoint is working
+func pdEndpointHealthCheck(d *tidbDiscovery, tc *v1alpha1.TidbCluster, advertisePeerURL string, peerName string) bool {
 	pdClient := d.pdControl.GetPeerPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled(), advertisePeerURL, peerName)
 	_, err := pdClient.GetHealth()
 	return err == nil
 }
 
-// ParseAdvertisePeerURL parses advertisePeerURL to PDEndpoint related information
-func ParseAdvertisePeerURL(advertisePeerURL string) pdEndpointURL {
+// parseAdvertisePeerURL parses advertisePeerURL to PDEndpoint related information
+func parseAdvertisePeerURL(advertisePeerURL string) *pdEndpointURL {
 	// Deal with schema
+	pdEndpoint := &pdEndpointURL{
+		schema:       "",
+		noSchema:     true,
+		pdMemberName: "",
+		pdMemberPort: "",
+		tcName:       "",
+	}
+
 	schema := strings.Split(advertisePeerURL, "://")
-	var pdEndpoint pdEndpointURL
 	if len(schema) == 1 {
 		pdEndpoint.schema = ""
 		pdEndpoint.noSchema = true
