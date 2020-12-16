@@ -15,11 +15,11 @@ package discovery
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 	"strings"
 	"sync"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
@@ -214,27 +214,63 @@ func (d *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
 }
 
 func (d *tidbDiscovery) VerifyPDEndpoint(advertisePeerURL string) (string, error) {
-	d.lock.Lock()
-	defer d.lock.Unlock()
+	tc, err := GetTiDBClusterforEndpointVerify(d, advertisePeerURL)
+	if err != nil {
+		return advertisePeerURL, err
+	}
 
-	data, _ := http.Get(advertisePeerURL)
-	if data == nil || data.StatusCode != 200 {
-		ns := os.Getenv("MY_POD_NAMESPACE")
-		hostArrs := strings.Split(advertisePeerURL, "-pd")
-		if len(hostArrs) >= 2 {
-			tcName := hostArrs[0]
-			tc, _ := d.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
-			if len(tc.Status.PD.PeerMembers) > 0 {
-				for _, pdMember := range tc.Status.PD.PeerMembers {
-					data, _ = http.Get(pdMember.ClientURL)
-					if data != nil && data.StatusCode == 200 {
-						return pdMember.ClientURL, nil
-					}
-				}
+	if PDEndpointHealthCheck(d, tc, advertisePeerURL, "") {
+		return advertisePeerURL, nil
+	}
+
+	if len(tc.Status.PD.PeerMembers) > 0 {
+		for _, pdMember := range tc.Status.PD.PeerMembers {
+			if PDEndpointHealthCheck(d, tc, pdMember.ClientURL, pdMember.Name) {
+				return pdMember.ClientURL, nil
 			}
 		}
 	}
 
 	// if failed, we should return the default value here
 	return advertisePeerURL, nil
+}
+
+// PDEndpointHealthCheck is checking if PD PeerEndpoint is working
+func PDEndpointHealthCheck(d *tidbDiscovery, tc *v1alpha1.TidbCluster, advertisePeerURL string, peerName string) bool {
+	schema := strings.Split(advertisePeerURL, "://")
+
+	if schema[0] != "http" && schema[0] != "https" {
+		if tc.IsTLSClusterEnabled() {
+			advertisePeerURL = "https://" + advertisePeerURL
+			schema = append([]string{"https"}, schema[0])
+		} else {
+			advertisePeerURL = "http://" + advertisePeerURL
+			schema = append([]string{"http"}, schema[0])
+		}
+	}
+
+	if peerName == "" {
+		peerName = strings.Split(schema[1], ":")[0]
+	}
+
+	pdClient := d.pdControl.GetPeerPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled(), advertisePeerURL, peerName)
+	_, err := pdClient.GetHealth()
+	return err == nil
+}
+
+func GetTiDBClusterforEndpointVerify(d *tidbDiscovery, advertisePeerURL string) (*v1alpha1.TidbCluster, error) {
+	ns := os.Getenv("MY_POD_NAMESPACE")
+
+	schema := strings.Split(advertisePeerURL, "://")
+	if len(schema) > 1 {
+		advertisePeerURL = schema[1]
+	}
+	hostArrs := strings.Split(advertisePeerURL, "-pd")
+	if len(hostArrs) == 1 {
+		// advertisePeerURL doesn't consist of -pd
+		return nil, fmt.Errorf("advertisePeerURL is invaild")
+	}
+	tcName := hostArrs[0]
+	tc, err := d.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+	return tc, err
 }

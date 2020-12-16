@@ -33,6 +33,8 @@ type PDControlInterface interface {
 	GetPDClient(namespace Namespace, tcName string, tlsEnabled bool) PDClient
 	// GetClusterRefPDClient provides PDClient of the tidb cluster.
 	GetClusterRefPDClient(namespace Namespace, tcName string, clusterDomain string, tlsEnabled bool) PDClient
+	// GetPeerPDClient provides PD Client of the tidb cluster from peerURL.
+	GetPeerPDClient(namespace Namespace, tcName string, tlsEnabled bool, peerURL string, peerKey string) PDClient
 	// GetPDEtcdClient provides PD etcd Client of the tidb cluster.
 	GetPDEtcdClient(namespace Namespace, tcName string, tlsEnabled bool) (PDEtcdClient, error)
 }
@@ -116,7 +118,7 @@ func (pdc *defaultPDControl) GetClusterRefPDClient(namespace Namespace, tcName s
 		scheme = "https"
 		tlsConfig, err = GetTLSConfig(pdc.kubeCli, namespace, tcName, util.ClusterClientTLSSecretName(tcName))
 		if err != nil {
-			klog.Errorf("Unable to get tls config for tidb cluster %q, pd client may not work: %v", tcName, err)
+			klog.Errorf("Unable to get tls config for tidb cluster %q in %s, pd client may not work: %v", tcName, namespace, err)
 			return &pdClient{url: ClusterRefPDClientUrl(namespace, tcName, scheme, clusterDomain), httpClient: &http.Client{Timeout: DefaultTimeout}}
 		}
 
@@ -128,6 +130,28 @@ func (pdc *defaultPDControl) GetClusterRefPDClient(namespace Namespace, tcName s
 		pdc.pdClients[key] = NewPDClient(ClusterRefPDClientUrl(namespace, tcName, scheme, clusterDomain), DefaultTimeout, nil)
 	}
 	return pdc.pdClients[key]
+}
+
+func (pdc *defaultPDControl) GetPeerPDClient(namespace Namespace, tcName string, tlsEnabled bool, peerURL string, peerKey string) PDClient {
+	pdc.mutex.Lock()
+	defer pdc.mutex.Unlock()
+
+	var tlsConfig *tls.Config
+	var err error
+
+	if tlsEnabled {
+		tlsConfig, err = GetTLSConfig(pdc.kubeCli, namespace, tcName, util.ClusterClientTLSSecretName(tcName))
+		if err != nil {
+			klog.Errorf("Unable to get tls config for tidb cluster %q in %s, pd client may not work: %v", tcName, namespace, err)
+			return &pdClient{url: peerURL, httpClient: &http.Client{Timeout: DefaultTimeout}}
+		}
+
+		return NewPDClient(peerURL, DefaultTimeout, tlsConfig)
+	}
+	if _, ok := pdc.pdClients[peerKey]; !ok {
+		pdc.pdClients[peerKey] = NewPDClient(peerURL, DefaultTimeout, nil)
+	}
+	return pdc.pdClients[peerKey]
 }
 
 // pdClientKey returns the pd client key
@@ -183,4 +207,8 @@ func (fpc *FakePDControl) SetPDClient(namespace Namespace, tcName string, pdclie
 
 func (fpc *FakePDControl) SetPDClientWithClusterDomain(namespace Namespace, tcName string, tcClusterDomain string, pdclient PDClient) {
 	fpc.defaultPDControl.pdClients[ClusterRefpdClientKey("http", namespace, tcName, tcClusterDomain)] = pdclient
+}
+
+func (fpc *FakePDControl) SetPDClientWithAddress(peerURL string, pdclient PDClient) {
+	fpc.defaultPDControl.pdClients[peerURL] = pdclient
 }
