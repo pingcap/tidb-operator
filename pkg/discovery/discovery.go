@@ -49,6 +49,14 @@ type clusterInfo struct {
 	peers           map[string]struct{}
 }
 
+type pdEndpointURL struct {
+	schema       string
+	pdMemberName string
+	pdMemberPort string
+	tcName       string
+	noSchema     bool
+}
+
 // NewTiDBDiscovery returns a TiDBDiscovery
 func NewTiDBDiscovery(pdControl pdapi.PDControlInterface, masterControl dmapi.MasterControlInterface, cli versioned.Interface, kubeCli kubernetes.Interface) TiDBDiscovery {
 	return &tidbDiscovery{
@@ -214,9 +222,19 @@ func (d *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
 }
 
 func (d *tidbDiscovery) VerifyPDEndpoint(advertisePeerURL string) (string, error) {
+	pdEndpoint := ParseAdvertisePeerURL(advertisePeerURL)
 	tc, err := GetTiDBClusterforEndpointVerify(d, advertisePeerURL)
 	if err != nil {
 		return advertisePeerURL, err
+	}
+
+	if pdEndpoint.noSchema {
+		if tc.IsTLSClusterEnabled() {
+			pdEndpoint.schema = "https"
+		} else {
+			pdEndpoint.schema = "http"
+		}
+		advertisePeerURL = fmt.Sprintf("%s://%s", pdEndpoint.schema, advertisePeerURL)
 	}
 
 	if PDEndpointHealthCheck(d, tc, advertisePeerURL, "") {
@@ -226,6 +244,9 @@ func (d *tidbDiscovery) VerifyPDEndpoint(advertisePeerURL string) (string, error
 	if len(tc.Status.PD.PeerMembers) > 0 {
 		for _, pdMember := range tc.Status.PD.PeerMembers {
 			if PDEndpointHealthCheck(d, tc, pdMember.ClientURL, pdMember.Name) {
+				if pdEndpoint.noSchema {
+					return fmt.Sprintf("%s:2379", pdMember.Name), nil
+				}
 				return pdMember.ClientURL, nil
 			}
 		}
@@ -237,22 +258,6 @@ func (d *tidbDiscovery) VerifyPDEndpoint(advertisePeerURL string) (string, error
 
 // PDEndpointHealthCheck is checking if PD PeerEndpoint is working
 func PDEndpointHealthCheck(d *tidbDiscovery, tc *v1alpha1.TidbCluster, advertisePeerURL string, peerName string) bool {
-	schema := strings.Split(advertisePeerURL, "://")
-
-	if schema[0] != "http" && schema[0] != "https" {
-		if tc.IsTLSClusterEnabled() {
-			advertisePeerURL = "https://" + advertisePeerURL
-			schema = append([]string{"https"}, schema[0])
-		} else {
-			advertisePeerURL = "http://" + advertisePeerURL
-			schema = append([]string{"http"}, schema[0])
-		}
-	}
-
-	if peerName == "" {
-		peerName = strings.Split(schema[1], ":")[0]
-	}
-
 	pdClient := d.pdControl.GetPeerPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled(), advertisePeerURL, peerName)
 	_, err := pdClient.GetHealth()
 	return err == nil
@@ -261,10 +266,6 @@ func PDEndpointHealthCheck(d *tidbDiscovery, tc *v1alpha1.TidbCluster, advertise
 func GetTiDBClusterforEndpointVerify(d *tidbDiscovery, advertisePeerURL string) (*v1alpha1.TidbCluster, error) {
 	ns := os.Getenv("MY_POD_NAMESPACE")
 
-	schema := strings.Split(advertisePeerURL, "://")
-	if len(schema) > 1 {
-		advertisePeerURL = schema[1]
-	}
 	hostArrs := strings.Split(advertisePeerURL, "-pd")
 	if len(hostArrs) == 1 {
 		// advertisePeerURL doesn't consist of -pd
@@ -273,4 +274,31 @@ func GetTiDBClusterforEndpointVerify(d *tidbDiscovery, advertisePeerURL string) 
 	tcName := hostArrs[0]
 	tc, err := d.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 	return tc, err
+}
+
+func ParseAdvertisePeerURL(advertisePeerURL string) pdEndpointURL {
+	// Deal with schema
+	schema := strings.Split(advertisePeerURL, "://")
+	var pdEndpoint pdEndpointURL
+	if len(schema) == 1 {
+		pdEndpoint.schema = ""
+		pdEndpoint.noSchema = true
+		pdEndpoint.pdMemberName = schema[0]
+	} else {
+		pdEndpoint.schema = schema[0]
+		pdEndpoint.noSchema = false
+		pdEndpoint.pdMemberName = schema[1]
+	}
+
+	// Deal with port
+	hostURLArr := strings.Split(pdEndpoint.pdMemberName, ":")
+	if len(hostURLArr) == 1 {
+		pdEndpoint.pdMemberName = hostURLArr[0]
+		pdEndpoint.pdMemberPort = ""
+	} else {
+		pdEndpoint.pdMemberName = hostURLArr[0]
+		pdEndpoint.pdMemberPort = hostURLArr[1]
+	}
+
+	return pdEndpoint
 }
