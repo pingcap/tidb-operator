@@ -237,18 +237,16 @@ func (d *tidbDiscovery) VerifyPDEndpoint(advertisePeerURL string) (string, error
 		advertisePeerURL = fmt.Sprintf("%s://%s", pdEndpoint.schema, advertisePeerURL)
 	}
 
-	if PDEndpointHealthCheck(d, tc, advertisePeerURL, "") {
+	if PDEndpointHealthCheck(d, tc, advertisePeerURL, pdEndpoint.pdMemberName) {
 		return advertisePeerURL, nil
 	}
 
-	if len(tc.Status.PD.PeerMembers) > 0 {
-		for _, pdMember := range tc.Status.PD.PeerMembers {
-			if PDEndpointHealthCheck(d, tc, pdMember.ClientURL, pdMember.Name) {
-				if pdEndpoint.noSchema {
-					return fmt.Sprintf("%s:2379", pdMember.Name), nil
-				}
-				return pdMember.ClientURL, nil
+	for _, pdMember := range tc.Status.PD.PeerMembers {
+		if PDEndpointHealthCheck(d, tc, pdMember.ClientURL, pdMember.Name) {
+			if pdEndpoint.noSchema {
+				return fmt.Sprintf("%s:2379", pdMember.Name), nil
 			}
+			return pdMember.ClientURL, nil
 		}
 	}
 
