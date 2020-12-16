@@ -223,9 +223,9 @@ func (d *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
 
 func (d *tidbDiscovery) VerifyPDEndpoint(advertisePeerURL string) (string, error) {
 	// save a copy of AdvertisePeerURL for failure
-	advertisePeerURL = strings.Replace(advertisePeerURL, "\n", "", -1)
 	copyAdvertisePeerURL := advertisePeerURL
 	pdEndpoint := parseAdvertisePeerURL(advertisePeerURL)
+	fmt.Println(pdEndpoint)
 	ns := os.Getenv("MY_POD_NAMESPACE")
 
 	tc, err := d.cli.PingcapV1alpha1().TidbClusters(ns).Get(pdEndpoint.tcName, metav1.GetOptions{})
