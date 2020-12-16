@@ -111,9 +111,9 @@ const (
 	AnnTiKVDeleteSlots = "tikv.tidb.pingcap.com/delete-slots"
 	// TiFlashDeleteSlots is annotation key of tiflash delete slots.
 	AnnTiFlashDeleteSlots = "tiflash.tidb.pingcap.com/delete-slots"
-	// DMMasterDeleteSlots is annotation key of dm-master delete slots.
+	// DMMasterDeleteSlots is annotation key of DM-master delete slots.
 	AnnDMMasterDeleteSlots = "dm-master.tidb.pingcap.com/delete-slots"
-	// DMWorkerDeleteSlots is annotation key of dm-worker delete slots.
+	// DMWorkerDeleteSlots is annotation key of DM-worker delete slots.
 	AnnDMWorkerDeleteSlots = "dm-worker.tidb.pingcap.com/delete-slots"
 
 	// AnnTiKVAutoScalingOutOrdinals describe the tikv pods' ordinal list which is created by auto-scaling out
@@ -154,9 +154,9 @@ const (
 	// TiDBOperator is ManagedByLabelKey label value
 	TiDBOperator string = "tidb-operator"
 
-	// DMMasterLabelVal is dm-master label value
+	// DMMasterLabelVal is DM-master label value
 	DMMasterLabelVal string = "dm-master"
-	// DMWorkerLabelVal is dm-worker label value
+	// DMWorkerLabelVal is DM-worker label value
 	DMWorkerLabelVal string = "dm-worker"
 )
 
@@ -332,7 +332,7 @@ func (l Label) IsPump() bool {
 	return l[ComponentLabelKey] == PumpLabelVal
 }
 
-// DMMaster assigns dm-master to component key in label
+// DMMaster assigns DM-master to component key in label
 func (l Label) DMMaster() Label {
 	return l.Component(DMMasterLabelVal)
 }
@@ -342,7 +342,7 @@ func (l Label) IsDMMaster() bool {
 	return l[ComponentLabelKey] == DMMasterLabelVal
 }
 
-// DMWorker assigns dm-worker to component key in label
+// DMWorker assigns DM-worker to component key in label
 func (l Label) DMWorker() Label {
 	return l.Component(DMWorkerLabelVal)
 }
