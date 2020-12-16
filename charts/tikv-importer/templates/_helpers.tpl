@@ -14,6 +14,12 @@ config-file: |-
     {{- if .Values.config }}
 {{ .Values.config | indent 2 }}
     {{- end -}}
+    {{- if and .Values.tlsCluster .Values.tlsCluster.enabled }}
+  [security]
+  ca-path="/var/lib/importer-tls/ca.crt"
+  cert-path="/var/lib/importer-tls/tls.crt"
+  key-path="/var/lib/importer-tls/tls.key"
+    {{- end }}
 {{- end -}}
 
 {{- define "importer-configmap.data-digest" -}}
