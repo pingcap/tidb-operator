@@ -254,13 +254,14 @@ func (d *tidbDiscovery) VerifyPDEndpoint(advertisePeerURL string) (string, error
 	return advertisePeerURL, nil
 }
 
-// PDEndpointHealthCheck is checking if PD PeerEndpoint is working
+// PDEndpointHealthCheck checks if PD PeerEndpoint is working
 func PDEndpointHealthCheck(d *tidbDiscovery, tc *v1alpha1.TidbCluster, advertisePeerURL string, peerName string) bool {
 	pdClient := d.pdControl.GetPeerPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled(), advertisePeerURL, peerName)
 	_, err := pdClient.GetHealth()
 	return err == nil
 }
 
+// GetTiDBClusterforEndpointVerify gets the tidbcluster
 func GetTiDBClusterforEndpointVerify(d *tidbDiscovery, advertisePeerURL string) (*v1alpha1.TidbCluster, error) {
 	ns := os.Getenv("MY_POD_NAMESPACE")
 
@@ -274,6 +275,7 @@ func GetTiDBClusterforEndpointVerify(d *tidbDiscovery, advertisePeerURL string) 
 	return tc, err
 }
 
+// ParseAdvertisePeerURL parses advertisePeerURL to PDEndpoint related information
 func ParseAdvertisePeerURL(advertisePeerURL string) pdEndpointURL {
 	// Deal with schema
 	schema := strings.Split(advertisePeerURL, "://")
