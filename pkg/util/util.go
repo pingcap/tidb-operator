@@ -334,10 +334,10 @@ func BuildStorageVolumeAndVolumeMount(storageVolumes []v1alpha1.StorageVolume, d
 			} else {
 				tmpStorageClass = defaultStorageClassName
 			}
-			pvcName := fmt.Sprintf("%s-%s", memberType.String(), storageVolume.Name)
-			volumeClaims = append(volumeClaims, VolumeClaimTemplate(storageRequest, pvcName, tmpStorageClass))
+			pvcNameInVCT := fmt.Sprintf("%s-%s", memberType.String(), storageVolume.Name)
+			volumeClaims = append(volumeClaims, VolumeClaimTemplate(storageRequest, pvcNameInVCT, tmpStorageClass))
 			volMounts = append(volMounts, corev1.VolumeMount{
-				Name: pvcName, MountPath: storageVolume.MountPath,
+				Name: pvcNameInVCT, MountPath: storageVolume.MountPath,
 			})
 		}
 	}

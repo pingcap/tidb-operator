@@ -607,8 +607,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>TODO: remove optional after defaulting logic introduced
-dm cluster version</p>
+<p>dm cluster version</p>
 </td>
 </tr>
 <tr>
@@ -1277,8 +1276,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>TODO: remove optional after defaulting logic introduced
-TiDB cluster version</p>
+<p>TiDB cluster version</p>
 </td>
 </tr>
 <tr>
@@ -1401,8 +1399,8 @@ Kubernetes core/v1.Affinity
 </td>
 <td>
 <em>(Optional)</em>
-<p>Affinity of TiDB cluster Pods
-Will be overwritten by each cluster component&rsquo;s specific affinity setting</p>
+<p>Affinity of TiDB cluster Pods.
+Will be overwritten by each cluster component&rsquo;s specific affinity setting, e.g. <code>spec.tidb.affinity</code></p>
 </td>
 </tr>
 <tr>
@@ -1479,9 +1477,7 @@ Optional: Defaults to UTC</p>
 </em>
 </td>
 <td>
-<p>Services list non-headless services type used in TidbCluster
-Deprecated
-TODO: really deprecate this in code</p>
+<p>(Deprecated) Services list non-headless services type used in TidbCluster</p>
 </td>
 </tr>
 <tr>
@@ -1493,10 +1489,8 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster
-Currently only used for tikv &ndash;advertise-addr arg
-Deprecated
-TODO: rename this into tikv-specific config name</p>
+<p>EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster.
+If set it to <code>true</code>, <code>--advertise-status-addr</code> will be appended to the startup parameters of TiKV</p>
 </td>
 </tr>
 <tr>
@@ -3442,8 +3436,7 @@ string
 </em>
 </td>
 <td>
-<p>Image of the component, override baseImage and version if present
-Deprecated</p>
+<p>(Deprecated) Image of the component, override baseImage and version if present</p>
 </td>
 </tr>
 <tr>
@@ -3512,7 +3505,7 @@ Kubernetes core/v1.Affinity
 </td>
 <td>
 <em>(Optional)</em>
-<p>Affinity of the component. Override the cluster-level setting if present
+<p>Affinity of the component. Override the cluster-level setting if present.
 Optional: Defaults to cluster-level setting</p>
 </td>
 </tr>
@@ -3625,7 +3618,7 @@ Optional: Defaults to cluster-level setting</p>
 <em>(Optional)</em>
 <p>List of environment variables to set in the container, like
 v1.Container.Env
-Note that the following env names cannot be used and may be overrided by TiDB Operator builtin envs
+Note that the following env names cannot be used and will be overridden by TiDB Operator builtin envs
 - NAMESPACE
 - TZ
 - SERVICE_NAME
@@ -4200,8 +4193,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>TODO: remove optional after defaulting logic introduced
-dm cluster version</p>
+<p>dm cluster version</p>
 </td>
 </tr>
 <tr>
@@ -8679,8 +8671,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>TODO: remove optional after defaulting introduced
-Base image of the component, image tag is now allowed during validation</p>
+<p>Base image of the component, image tag is now allowed during validation</p>
 </td>
 </tr>
 <tr>
@@ -8735,8 +8726,8 @@ Defaults to Kubernetes default storage class.</p>
 </td>
 <td>
 <em>(Optional)</em>
-<p>StorageVolumes is additional storage apply for PD node.
-Default to storageClassName storage class</p>
+<p>StorageVolumes configure additional storage for PD pods.
+Default to the <code>storageClassName</code> storage class</p>
 </td>
 </tr>
 <tr>
@@ -8794,8 +8785,8 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>EnableDashboardInternalProxy would directly set <code>internal-proxy</code> in the <code>PdConfig</code>
-Deprecated, should just set <code>dashboard.internal-proxy</code> in pd.config</p>
+<p>(Deprecated) EnableDashboardInternalProxy would directly set <code>internal-proxy</code> in the <code>PdConfig</code>.
+Note that this is deprecated, we should just set <code>dashboard.internal-proxy</code> in <code>pd.config</code>.</p>
 </td>
 </tr>
 <tr>
@@ -9898,8 +9889,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>TODO: remove optional after defaulting introduced
-Base image of the component, image tag is now allowed during validation</p>
+<p>Base image of the component, image tag is now allowed during validation</p>
 </td>
 </tr>
 <tr>
@@ -9924,8 +9914,7 @@ github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
 </td>
 <td>
 <em>(Optional)</em>
-<p>TODO: add schema
-The configuration of Pump cluster.</p>
+<p>The configuration of Pump cluster.</p>
 </td>
 </tr>
 <tr>
@@ -10729,8 +10718,7 @@ string
 <a href="#tidbclusterspec">TidbClusterSpec</a>)
 </p>
 <p>
-<p>Service represent service type used in TidbCluster
-Deprecated</p>
+<p>(Deprecated) Service represent service type used in TidbCluster</p>
 </p>
 <table>
 <thead>
@@ -12153,8 +12141,7 @@ map[string]string
 <a href="#tidbspec">TiDBSpec</a>)
 </p>
 <p>
-<p>TiDBConfigWraper simply wrapps a GenericConfig
-FIXME: typo, should be TiDBConfigWrapper with two &lsquo;p&rsquo;s</p>
+<p>TiDBConfigWraper simply wrapps a GenericConfig</p>
 </p>
 <table>
 <thead>
@@ -12318,7 +12305,7 @@ So do not use this before v4.0.9.</p>
 <a href="#tidbspec">TiDBSpec</a>)
 </p>
 <p>
-<p>TiDBServiceSpec defines .tidb field of TidbCluster.spec</p>
+<p>TiDBServiceSpec defines <code>.tidb.service</code> field of <code>TidbCluster.spec</code>.</p>
 </p>
 <table>
 <thead>
@@ -12435,8 +12422,8 @@ string
 </em>
 </td>
 <td>
-<p>Image used for slowlog tailer
-Deprecated, use TidbCluster.HelperImage instead</p>
+<p>(Deprecated) Image used for slowlog tailer.
+Note that this is deprecated, use <code>TidbCluster.HelperImage</code> instead</p>
 </td>
 </tr>
 <tr>
@@ -12449,8 +12436,8 @@ Kubernetes core/v1.PullPolicy
 </em>
 </td>
 <td>
-<p>ImagePullPolicy of the component. Override the cluster-level imagePullPolicy if present
-Deprecated, use TidbCluster.HelperImagePullPolicy instead</p>
+<p>(Deprecated) ImagePullPolicy of the component. Override the cluster-level imagePullPolicy if present
+Note that this is deprecated, use <code>TidbCluster.HelperImagePullPolicy</code> instead</p>
 </td>
 </tr>
 </tbody>
@@ -12532,8 +12519,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>TODO: remove optional after defaulting introduced
-Base image of the component, image tag is now allowed during validation</p>
+<p>Base image of the component, image tag is now allowed during validation</p>
 </td>
 </tr>
 <tr>
@@ -12601,7 +12587,7 @@ TiDBSlowLogTailerSpec
 </td>
 <td>
 <em>(Optional)</em>
-<p>The spec of the slow log tailer sidecar</p>
+<p>The specification of the slow log tailer sidecar</p>
 </td>
 </tr>
 <tr>
@@ -12628,9 +12614,7 @@ Optional: Defaults to nil</p>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Plugins is a list of plugins that are loaded by TiDB server, empty means plugin disabled
-TODO: additional volumes should be used to hold .so plugin binaries.
-Since this is not a runnable implementation, maybe we can change this without backward compatibility.</p>
+<p>Plugins is a list of plugins that are loaded by TiDB server, empty means plugin disabled</p>
 </td>
 </tr>
 <tr>
@@ -12674,8 +12658,8 @@ until the action is complete, unless the container process fails, in which case 
 </td>
 <td>
 <em>(Optional)</em>
-<p>StorageVolumes is additional storage apply for TiDB node.
-Default to storageClassName storage class</p>
+<p>StorageVolumes configure additional storage for TiDB pods.
+Default to the <code>storageClassName</code> storage class</p>
 </td>
 </tr>
 <tr>
@@ -16978,8 +16962,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>TODO: remove optional after defaulting introduced
-Base image of the component, image tag is now allowed during validation</p>
+<p>Base image of the component, image tag is now allowed during validation</p>
 </td>
 </tr>
 <tr>
@@ -17103,8 +17086,8 @@ Defaults to 3m</p>
 </td>
 <td>
 <em>(Optional)</em>
-<p>StorageVolumes is additional storage apply for TiKV node.
-Default to storageClassName storage class</p>
+<p>StorageVolumes configure additional storage for TiKV pods.
+Default to the <code>storageClassName</code> storage class</p>
 </td>
 </tr>
 </tbody>
@@ -18337,8 +18320,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>TODO: remove optional after defaulting logic introduced
-TiDB cluster version</p>
+<p>TiDB cluster version</p>
 </td>
 </tr>
 <tr>
@@ -18461,8 +18443,8 @@ Kubernetes core/v1.Affinity
 </td>
 <td>
 <em>(Optional)</em>
-<p>Affinity of TiDB cluster Pods
-Will be overwritten by each cluster component&rsquo;s specific affinity setting</p>
+<p>Affinity of TiDB cluster Pods.
+Will be overwritten by each cluster component&rsquo;s specific affinity setting, e.g. <code>spec.tidb.affinity</code></p>
 </td>
 </tr>
 <tr>
@@ -18539,9 +18521,7 @@ Optional: Defaults to UTC</p>
 </em>
 </td>
 <td>
-<p>Services list non-headless services type used in TidbCluster
-Deprecated
-TODO: really deprecate this in code</p>
+<p>(Deprecated) Services list non-headless services type used in TidbCluster</p>
 </td>
 </tr>
 <tr>
@@ -18553,10 +18533,8 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster
-Currently only used for tikv &ndash;advertise-addr arg
-Deprecated
-TODO: rename this into tikv-specific config name</p>
+<p>EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster.
+If set it to <code>true</code>, <code>--advertise-status-addr</code> will be appended to the startup parameters of TiKV</p>
 </td>
 </tr>
 <tr>

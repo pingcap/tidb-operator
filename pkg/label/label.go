@@ -317,7 +317,7 @@ func (l Label) PD() Label {
 	return l.Component(PDLabelVal)
 }
 
-// IsPD returns whether label is a PD
+// IsPD returns whether label is a PD component
 func (l Label) IsPD() bool {
 	return l[ComponentLabelKey] == PDLabelVal
 }
@@ -327,7 +327,7 @@ func (l Label) Pump() Label {
 	return l.Component(PumpLabelVal)
 }
 
-// IsPump returns whether label is a Pump
+// IsPump returns whether label is a Pump component
 func (l Label) IsPump() bool {
 	return l[ComponentLabelKey] == PumpLabelVal
 }
@@ -337,7 +337,7 @@ func (l Label) DMMaster() Label {
 	return l.Component(DMMasterLabelVal)
 }
 
-// IsDMMaster returns whether label is a DMMaster
+// IsDMMaster returns whether label is a DMMaster component
 func (l Label) IsDMMaster() bool {
 	return l[ComponentLabelKey] == DMMasterLabelVal
 }
@@ -347,7 +347,7 @@ func (l Label) DMWorker() Label {
 	return l.Component(DMWorkerLabelVal)
 }
 
-// IsDMWorker returns whether label is a DMWorker
+// IsDMWorker returns whether label is a DMWorker component
 func (l Label) IsDMWorker() bool {
 	return l[ComponentLabelKey] == DMWorkerLabelVal
 }
@@ -357,7 +357,7 @@ func (l Label) Monitor() Label {
 	return l.Component(TiDBMonitorVal)
 }
 
-// IsMonitor returns whether label is a Monitor
+// IsMonitor returns whether label is a Monitor component
 func (l Label) IsMonitor() bool {
 	return l[ComponentLabelKey] == TiDBMonitorVal
 }
@@ -372,7 +372,7 @@ func (l Label) TiDB() Label {
 	return l.Component(TiDBLabelVal)
 }
 
-// IsTiDB returns whether label is a TiDB
+// IsTiDB returns whether label is a TiDB component
 func (l Label) IsTiDB() bool {
 	return l[ComponentLabelKey] == TiDBLabelVal
 }
@@ -382,7 +382,7 @@ func (l Label) TiKV() Label {
 	return l.Component(TiKVLabelVal)
 }
 
-// IsTiKV returns whether label is a TiKV
+// IsTiKV returns whether label is a TiKV component
 func (l Label) IsTiKV() bool {
 	return l[ComponentLabelKey] == TiKVLabelVal
 }
@@ -392,7 +392,7 @@ func (l Label) TiFlash() Label {
 	return l.Component(TiFlashLabelVal)
 }
 
-// IsTiFlash returns whether label is a TiFlash
+// IsTiFlash returns whether label is a TiFlash component
 func (l Label) IsTiFlash() bool {
 	return l[ComponentLabelKey] == TiFlashLabelVal
 }
@@ -402,7 +402,7 @@ func (l Label) TiCDC() Label {
 	return l.Component(TiCDCLabelVal)
 }
 
-// IsTiCDC returns whether label is a TiCDC
+// IsTiCDC returns whether label is a TiCDC component
 func (l Label) IsTiCDC() bool {
 	return l[ComponentLabelKey] == TiCDCLabelVal
 }
@@ -447,7 +447,7 @@ func (l Label) IsManagedByTiDBOperator() bool {
 	return l[ManagedByLabelKey] == TiDBOperator
 }
 
-// IsTidbClusterPod returns whether it's a TidbCluster controlled pod
+// IsTidbClusterPod returns whether it is a TidbCluster-controlled pod
 func (l Label) IsTidbClusterPod() bool {
 	return l[NameLabelKey] == "tidb-cluster"
 }

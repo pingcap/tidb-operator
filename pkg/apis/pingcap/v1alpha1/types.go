@@ -119,8 +119,8 @@ type TidbClusterList struct {
 	Items []TidbCluster `json:"items"`
 }
 
-// +k8s:openapi-gen=true
 // TidbClusterSpec describes the attributes that a user creates on a tidb cluster
+// +k8s:openapi-gen=true
 type TidbClusterSpec struct {
 	// Discovery spec
 	Discovery DiscoverySpec `json:"discovery,omitempty"`
@@ -161,10 +161,10 @@ type TidbClusterSpec struct {
 	// +optional
 	Paused bool `json:"paused,omitempty"`
 
-	// TODO: remove optional after defaulting logic introduced
 	// TiDB cluster version
 	// +optional
 	Version string `json:"version"`
+	// TODO: remove optional after defaulting logic introduced
 
 	// SchedulerName of TiDB cluster Pods
 	// +kubebuilder:default=tidb-scheduler
@@ -206,8 +206,8 @@ type TidbClusterSpec struct {
 	// +optional
 	HostNetwork *bool `json:"hostNetwork,omitempty"`
 
-	// Affinity of TiDB cluster Pods
-	// Will be overwritten by each cluster component's specific affinity setting
+	// Affinity of TiDB cluster Pods.
+	// Will be overwritten by each cluster component's specific affinity setting, e.g. `spec.tidb.affinity`
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 
@@ -233,18 +233,16 @@ type TidbClusterSpec struct {
 	// +optional
 	Timezone string `json:"timezone,omitempty"`
 
-	// Services list non-headless services type used in TidbCluster
-	// Deprecated
-	// TODO: really deprecate this in code
+	// (Deprecated) Services list non-headless services type used in TidbCluster
 	// +k8s:openapi-gen=false
 	Services []Service `json:"services,omitempty"`
+	// TODO: really deprecate this in code
 
-	// EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster
-	// Currently only used for tikv --advertise-addr arg
-	// Deprecated
-	// TODO: rename this into tikv-specific config name
+	// EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster.
+	// If set it to `true`, `--advertise-status-addr` will be appended to the startup parameters of TiKV
 	// +optional
 	EnableDynamicConfiguration *bool `json:"enableDynamicConfiguration,omitempty"`
+	// TODO: rename this into tikv-specific config name
 
 	// ClusterDomain is the Kubernetes Cluster Domain of TiDB cluster
 	// Optional: Defaults to ""
@@ -332,11 +330,11 @@ type PDSpec struct {
 	// +kubebuilder:validation:Minimum=1
 	Replicas int32 `json:"replicas"`
 
-	// TODO: remove optional after defaulting introduced
 	// Base image of the component, image tag is now allowed during validation
 	// +kubebuilder:default=pingcap/pd
 	// +optional
 	BaseImage string `json:"baseImage"`
+	// TODO: remove optional after defaulting introduced
 
 	// Service defines a Kubernetes service of PD cluster.
 	// Optional: Defaults to `.spec.services` in favor of backward compatibility
@@ -354,8 +352,8 @@ type PDSpec struct {
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 
-	// StorageVolumes is additional storage apply for PD node.
-	// Default to storageClassName storage class
+	// StorageVolumes configure additional storage for PD pods.
+	// Default to the `storageClassName` storage class
 	// +optional
 	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
 
@@ -379,8 +377,8 @@ type PDSpec struct {
 	// +optional
 	TLSClientSecretName *string `json:"tlsClientSecretName,omitempty"`
 
-	// EnableDashboardInternalProxy would directly set `internal-proxy` in the `PdConfig`
-	// Deprecated, should just set `dashboard.internal-proxy` in pd.config
+	// (Deprecated) EnableDashboardInternalProxy would directly set `internal-proxy` in the `PdConfig`.
+	// Note that this is deprecated, we should just set `dashboard.internal-proxy` in `pd.config`.
 	// +optional
 	EnableDashboardInternalProxy *bool `json:"enableDashboardInternalProxy,omitempty"`
 
@@ -402,11 +400,11 @@ type TiKVSpec struct {
 	// +kubebuilder:validation:Minimum=1
 	Replicas int32 `json:"replicas"`
 
-	// TODO: remove optional after defaulting introduced
 	// Base image of the component, image tag is now allowed during validation
 	// +kubebuilder:default=pingcap/tikv
 	// +optional
 	BaseImage string `json:"baseImage"`
+	// TODO: remove optional after defaulting introduced
 
 	// Whether create the TiKV container in privileged mode, it is highly discouraged to enable this in
 	// critical environment.
@@ -453,8 +451,8 @@ type TiKVSpec struct {
 	// +optional
 	EvictLeaderTimeout *string `json:"evictLeaderTimeout,omitempty"`
 
-	// StorageVolumes is additional storage apply for TiKV node.
-	// Default to storageClassName storage class
+	// StorageVolumes configure additional storage for TiKV pods.
+	// Default to the `storageClassName` storage class
 	// +optional
 	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
 }
@@ -585,11 +583,11 @@ type TiDBSpec struct {
 	// +kubebuilder:validation:Minimum=0
 	Replicas int32 `json:"replicas"`
 
-	// TODO: remove optional after defaulting introduced
 	// Base image of the component, image tag is now allowed during validation
 	// +kubebuilder:default=pingcap/tidb
 	// +optional
 	BaseImage string `json:"baseImage"`
+	// TODO: remove optional after defaulting introduced
 
 	// Service defines a Kubernetes service of TiDB cluster.
 	// Optional: No kubernetes service will be created by default.
@@ -612,7 +610,7 @@ type TiDBSpec struct {
 	// +optional
 	SeparateSlowLog *bool `json:"separateSlowLog,omitempty"`
 
-	// The spec of the slow log tailer sidecar
+	// The specification of the slow log tailer sidecar
 	// +optional
 	SlowLogTailer *TiDBSlowLogTailerSpec `json:"slowLogTailer,omitempty"`
 
@@ -623,9 +621,9 @@ type TiDBSpec struct {
 
 	// Plugins is a list of plugins that are loaded by TiDB server, empty means plugin disabled
 	// +optional
-	// TODO: additional volumes should be used to hold .so plugin binaries.
-	// 	     Since this is not a runnable implementation, maybe we can change this without backward compatibility.
 	Plugins []string `json:"plugins,omitempty"`
+	// TODO: additional volumes should be used to hold .so plugin binaries.
+	// 	     Because this is not a complete implementation, maybe we can change this without backward compatibility.
 
 	// Config is the Configuration of tidb-servers
 	// +optional
@@ -637,8 +635,8 @@ type TiDBSpec struct {
 	// +optional
 	Lifecycle *corev1.Lifecycle `json:"lifecycle,omitempty"`
 
-	// StorageVolumes is additional storage apply for TiDB node.
-	// Default to storageClassName storage class
+	// StorageVolumes configure additional storage for TiDB pods.
+	// Default to the `storageClassName` storage class
 	// +optional
 	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
 
@@ -653,9 +651,9 @@ type TiDBSpec struct {
 }
 
 const (
-	// TCPProbeType represents readiness prob method with tcp
+	// TCPProbeType represents the readiness prob method with TCP
 	TCPProbeType string = "tcp"
-	// CommandProbeType represents readiness prob method with arbitrary exec format command
+	// CommandProbeType represents the readiness prob method with arbitrary unix `exec` call format commands
 	CommandProbeType string = "command"
 )
 
@@ -686,21 +684,21 @@ type PumpSpec struct {
 	// +kubebuilder:validation:Minimum=0
 	Replicas int32 `json:"replicas"`
 
-	// TODO: remove optional after defaulting introduced
 	// Base image of the component, image tag is now allowed during validation
 	// +kubebuilder:default=pingcap/tidb-binlog
 	// +optional
 	BaseImage string `json:"baseImage"`
+	// TODO: remove optional after defaulting introduced
 
 	// The storageClassName of the persistent volume for Pump data storage.
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 
-	// TODO: add schema
 	// The configuration of Pump cluster.
 	// +optional
 	Config *config.GenericConfig `json:"config,omitempty"`
+	// TODO: add schema
 
 	// +k8s:openapi-gen=false
 	// For backward compatibility with helm chart
@@ -726,13 +724,13 @@ type HelperSpec struct {
 type TiDBSlowLogTailerSpec struct {
 	corev1.ResourceRequirements `json:",inline"`
 
-	// Image used for slowlog tailer
-	// Deprecated, use TidbCluster.HelperImage instead
+	// (Deprecated) Image used for slowlog tailer.
+	// Note that this is deprecated, use `TidbCluster.HelperImage` instead
 	// +k8s:openapi-gen=false
 	Image *string `json:"image,omitempty"`
 
-	// ImagePullPolicy of the component. Override the cluster-level imagePullPolicy if present
-	// Deprecated, use TidbCluster.HelperImagePullPolicy instead
+	// (Deprecated) ImagePullPolicy of the component. Override the cluster-level imagePullPolicy if present
+	// Note that this is deprecated, use `TidbCluster.HelperImagePullPolicy` instead
 	// +k8s:openapi-gen=false
 	ImagePullPolicy *corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 }
@@ -740,8 +738,7 @@ type TiDBSlowLogTailerSpec struct {
 // ComponentSpec is the base spec of each component, the fields should always accessed by the Basic<Component>Spec() method to respect the cluster-level properties
 // +k8s:openapi-gen=true
 type ComponentSpec struct {
-	// Image of the component, override baseImage and version if present
-	// Deprecated
+	// (Deprecated) Image of the component, override baseImage and version if present
 	// +k8s:openapi-gen=false
 	Image string `json:"image,omitempty"`
 
@@ -764,7 +761,7 @@ type ComponentSpec struct {
 	// +optional
 	HostNetwork *bool `json:"hostNetwork,omitempty"`
 
-	// Affinity of the component. Override the cluster-level setting if present
+	// Affinity of the component. Override the cluster-level setting if present.
 	// Optional: Defaults to cluster-level setting
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
@@ -805,7 +802,7 @@ type ComponentSpec struct {
 
 	// List of environment variables to set in the container, like
 	// v1.Container.Env
-	// Note that the following env names cannot be used and may be overrided by TiDB Operator builtin envs
+	// Note that the following env names cannot be used and will be overridden by TiDB Operator builtin envs
 	// - NAMESPACE
 	// - TZ
 	// - SERVICE_NAME
@@ -882,7 +879,7 @@ type ServiceSpec struct {
 	LoadBalancerSourceRanges []string `json:"loadBalancerSourceRanges,omitempty"`
 }
 
-// TiDBServiceSpec defines .tidb field of TidbCluster.spec
+// TiDBServiceSpec defines `.tidb.service` field of `TidbCluster.spec`.
 // +k8s:openapi-gen=true
 type TiDBServiceSpec struct {
 	// +k8s:openapi-gen=false
@@ -909,8 +906,7 @@ type TiDBServiceSpec struct {
 	StatusNodePort *int `json:"statusNodePort,omitempty"`
 }
 
-// Service represent service type used in TidbCluster
-// Deprecated
+// (Deprecated) Service represent service type used in TidbCluster
 // +k8s:openapi-gen=false
 type Service struct {
 	Name string `json:"name,omitempty"`
@@ -1645,10 +1641,10 @@ type DMClusterSpec struct {
 	// +optional
 	Paused bool `json:"paused,omitempty"`
 
-	// TODO: remove optional after defaulting logic introduced
 	// dm cluster version
 	// +optional
 	Version string `json:"version"`
+	// TODO: remove optional after defaulting logic introduced
 
 	// SchedulerName of DM cluster Pods
 	// +kubebuilder:default=tidb-scheduler
