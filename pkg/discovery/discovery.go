@@ -120,6 +120,11 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	}
 
 	var pdClients []pdapi.PDClient
+
+	if tc.Spec.PD != nil {
+		pdClients = append(pdClients, d.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()))
+	}
+
 	if tc.Spec.Cluster != nil && len(tc.Spec.Cluster.Name) > 0 {
 		namespace := tc.Spec.Cluster.Namespace
 		if len(namespace) == 0 {
@@ -127,8 +132,9 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 		}
 		pdClients = append(pdClients, d.pdControl.GetClusterRefPDClient(pdapi.Namespace(namespace), tc.Spec.Cluster.Name, tc.Spec.Cluster.ClusterDomain, tc.IsTLSClusterEnabled()))
 	}
-	if tc.Spec.PD != nil {
-		pdClients = append(pdClients, d.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()))
+
+	for _, pdMember := range tc.Status.PD.PeerMembers {
+		pdClients = append(pdClients, d.pdControl.GetPeerPDClient(pdapi.Namespace(ns), tc.Name, tc.IsTLSClusterEnabled(), pdMember.ClientURL, pdMember.Name))
 	}
 
 	var membersInfo *pdapi.MembersInfo
