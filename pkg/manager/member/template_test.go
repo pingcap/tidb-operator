@@ -114,10 +114,19 @@ fi
 
 # Use HOSTNAME if POD_NAME is unset for backward compatibility.
 POD_NAME=${POD_NAME:-$HOSTNAME}
+pd_url="cluster01-pd:2379"
+encoded_domain_url=` + "`" + `echo $pd_url | base64 | tr "\n" " " | sed "s/ //g"` + "`" + `
+discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}.svc.test.com:10261"
+until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
+echo "waiting for the verification of PD endpoints ..."
+sleep $((RANDOM % 5))
+done
+
 ARGS="--store=tikv \
 --advertise-address=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc.test.com \
 --host=0.0.0.0 \
---path=cluster01-pd:2379 \
+--path=${result} \
+
 --config=/etc/tidb/tidb.toml
 "
 
@@ -364,7 +373,17 @@ fi
 
 # Use HOSTNAME if POD_NAME is unset for backward compatibility.
 POD_NAME=${POD_NAME:-$HOSTNAME}
-ARGS="--pd=http://${CLUSTER_NAME}-pd:2379 \
+pd_url="http://${CLUSTER_NAME}-pd:2379"
+encoded_domain_url=` + "`" + `echo $pd_url | base64 | tr "\n" " " | sed "s/ //g"` + "`" + `
+discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}.svc.cluster.local:10261"
+
+until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
+echo "waiting for the verification of PD endpoints ..."
+sleep $((RANDOM % 5))
+done
+
+ARGS="--pd=${result} \
+
 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc.cluster.local:20160 \
 --addr=0.0.0.0:20160 \
 --status-addr=0.0.0.0:20180 \
