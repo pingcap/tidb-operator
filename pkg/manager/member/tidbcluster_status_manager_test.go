@@ -110,7 +110,7 @@ func newFakeTidbClusterStatusManager() (*TidbClusterStatusManager, kubernetes.In
 func newTidbClusterAutoScaler(tc *v1alpha1.TidbCluster) *v1alpha1.TidbClusterAutoScaler {
 	tac := &v1alpha1.TidbClusterAutoScaler{
 		Spec: v1alpha1.TidbClusterAutoScalerSpec{
-			Cluster: v1alpha1.TidbClusterRef{
+			Cluster: v1alpha1.ClusterRef{
 				Namespace: tc.Namespace,
 				Name:      tc.Name,
 			},

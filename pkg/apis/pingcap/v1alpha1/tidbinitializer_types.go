@@ -56,7 +56,7 @@ type TidbInitializer struct {
 type TidbInitializerSpec struct {
 	Image string `json:"image"`
 
-	Clusters TidbClusterRef `json:"cluster"`
+	Clusters ClusterRef `json:"cluster"`
 
 	// +optional
 	ImagePullPolicy *corev1.PullPolicy `json:"imagePullPolicy,omitempty"`

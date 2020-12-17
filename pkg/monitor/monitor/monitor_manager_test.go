@@ -61,7 +61,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 		_, err := tmm.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
 		g.Expect(err).Should(BeNil())
 
-		tm := newTidbMonitor(v1alpha1.TidbClusterRef{Name: tc.Name, Namespace: tc.Namespace})
+		tm := newTidbMonitor(v1alpha1.ClusterRef{Name: tc.Name, Namespace: tc.Namespace})
 		if test.prepare != nil {
 			test.prepare(tmm, tm)
 		}
@@ -284,7 +284,7 @@ func TestTidbMonitorSyncUpdate(t *testing.T) {
 		_, err := tmm.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
 		g.Expect(err).Should(BeNil())
 
-		tm := newTidbMonitor(v1alpha1.TidbClusterRef{Name: tc.Name, Namespace: tc.Namespace})
+		tm := newTidbMonitor(v1alpha1.ClusterRef{Name: tc.Name, Namespace: tc.Namespace})
 		if test.prepare != nil {
 			test.prepare(tmm, tm)
 		}
@@ -400,14 +400,14 @@ func TestTidbMonitorSyncUpdate(t *testing.T) {
 	}
 }
 
-func newTidbMonitor(cluster v1alpha1.TidbClusterRef) *v1alpha1.TidbMonitor {
+func newTidbMonitor(cluster v1alpha1.ClusterRef) *v1alpha1.TidbMonitor {
 	return &v1alpha1.TidbMonitor{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "ns",
 		},
 		Spec: v1alpha1.TidbMonitorSpec{
-			Clusters: []v1alpha1.TidbClusterRef{
+			Clusters: []v1alpha1.ClusterRef{
 				cluster,
 			},
 			Prometheus: v1alpha1.PrometheusSpec{

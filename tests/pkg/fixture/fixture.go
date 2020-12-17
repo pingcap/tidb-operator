@@ -200,7 +200,7 @@ func GetTidbInitializer(ns, tcName, initName, initPassWDName, initTLSName string
 		},
 		Spec: v1alpha1.TidbInitializerSpec{
 			Image: "tnir/mysqlclient",
-			Clusters: v1alpha1.TidbClusterRef{
+			Clusters: v1alpha1.ClusterRef{
 				Name: tcName,
 			},
 			PasswordSecret:      &initPassWDName,
@@ -217,7 +217,7 @@ func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 			Namespace: namespace,
 		},
 		Spec: v1alpha1.TidbMonitorSpec{
-			Clusters: []v1alpha1.TidbClusterRef{
+			Clusters: []v1alpha1.ClusterRef{
 				{
 					Name:      tc.Name,
 					Namespace: tc.Namespace,
@@ -394,7 +394,7 @@ func GetTidbClusterAutoScaler(name, ns string, tc *v1alpha1.TidbCluster, tm *v1a
 			Namespace: ns,
 		},
 		Spec: v1alpha1.TidbClusterAutoScalerSpec{
-			Cluster: v1alpha1.TidbClusterRef{
+			Cluster: v1alpha1.ClusterRef{
 				Name:      tc.Name,
 				Namespace: tc.Namespace,
 			},

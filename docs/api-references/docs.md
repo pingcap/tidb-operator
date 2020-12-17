@@ -1511,8 +1511,8 @@ Optional: Defaults to &ldquo;&rdquo;</p>
 <td>
 <code>cluster</code></br>
 <em>
-<a href="#tidbclusterref">
-TidbClusterRef
+<a href="#clusterref">
+ClusterRef
 </a>
 </em>
 </td>
@@ -1626,13 +1626,13 @@ TidbClusterAutoScalerSpec
 <td>
 <code>cluster</code></br>
 <em>
-<a href="#tidbclusterref">
-TidbClusterRef
+<a href="#clusterref">
+ClusterRef
 </a>
 </em>
 </td>
 <td>
-<p>TidbClusterRef describe the target TidbCluster</p>
+<p>ClusterRef describe the target TidbCluster</p>
 </td>
 </tr>
 <tr>
@@ -1752,8 +1752,8 @@ string
 <td>
 <code>cluster</code></br>
 <em>
-<a href="#tidbclusterref">
-TidbClusterRef
+<a href="#clusterref">
+ClusterRef
 </a>
 </em>
 </td>
@@ -1951,8 +1951,8 @@ TidbMonitorSpec
 <td>
 <code>clusters</code></br>
 <em>
-<a href="#tidbclusterref">
-[]TidbClusterRef
+<a href="#clusterref">
+[]ClusterRef
 </a>
 </em>
 </td>
@@ -3308,6 +3308,64 @@ Optional: Defaults to range</p>
 <p>
 <p>CleanPolicyType represents the clean policy of backup data in remote storage</p>
 </p>
+<h3 id="clusterref">ClusterRef</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#dmmonitorspec">DMMonitorSpec</a>, 
+<a href="#tidbclusterautoscalerspec">TidbClusterAutoScalerSpec</a>, 
+<a href="#tidbclusterspec">TidbClusterSpec</a>, 
+<a href="#tidbinitializerspec">TidbInitializerSpec</a>, 
+<a href="#tidbmonitorspec">TidbMonitorSpec</a>)
+</p>
+<p>
+<p>ClusterRef reference to a TidbCluster</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>namespace</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Namespace is the namespace that TidbCluster object locates,
+default to the same namespace with TidbMonitor</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name is the name of TidbCluster object</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>clusterDomain</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ClusterDomain is the domain of TidbCluster object</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="commonconfig">CommonConfig</h3>
 <p>
 (<em>Appears on:</em>
@@ -4501,8 +4559,8 @@ string
 <td>
 <code>clusters</code></br>
 <em>
-<a href="#tidbclusterref">
-[]TidbClusterRef
+<a href="#clusterref">
+[]ClusterRef
 </a>
 </em>
 </td>
@@ -17990,13 +18048,13 @@ string
 <td>
 <code>cluster</code></br>
 <em>
-<a href="#tidbclusterref">
-TidbClusterRef
+<a href="#clusterref">
+ClusterRef
 </a>
 </em>
 </td>
 <td>
-<p>TidbClusterRef describe the target TidbCluster</p>
+<p>ClusterRef describe the target TidbCluster</p>
 </td>
 </tr>
 <tr>
@@ -18178,64 +18236,6 @@ string
 <p>
 <p>TidbClusterConditionType represents a tidb cluster condition value.</p>
 </p>
-<h3 id="tidbclusterref">TidbClusterRef</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#dmmonitorspec">DMMonitorSpec</a>, 
-<a href="#tidbclusterautoscalerspec">TidbClusterAutoScalerSpec</a>, 
-<a href="#tidbclusterspec">TidbClusterSpec</a>, 
-<a href="#tidbinitializerspec">TidbInitializerSpec</a>, 
-<a href="#tidbmonitorspec">TidbMonitorSpec</a>)
-</p>
-<p>
-<p>TidbClusterRef reference to a TidbCluster</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>namespace</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Namespace is the namespace that TidbCluster object locates,
-default to the same namespace with TidbMonitor</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>name</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Name is the name of TidbCluster object</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>clusterDomain</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>ClusterDomain is the domain of TidbCluster object</p>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="tidbclusterspec">TidbClusterSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -18630,8 +18630,8 @@ Optional: Defaults to &ldquo;&rdquo;</p>
 <td>
 <code>cluster</code></br>
 <em>
-<a href="#tidbclusterref">
-TidbClusterRef
+<a href="#clusterref">
+ClusterRef
 </a>
 </em>
 </td>
@@ -18836,8 +18836,8 @@ string
 <td>
 <code>cluster</code></br>
 <em>
-<a href="#tidbclusterref">
-TidbClusterRef
+<a href="#clusterref">
+ClusterRef
 </a>
 </em>
 </td>
@@ -19077,8 +19077,8 @@ bool
 <td>
 <code>clusters</code></br>
 <em>
-<a href="#tidbclusterref">
-[]TidbClusterRef
+<a href="#clusterref">
+[]ClusterRef
 </a>
 </em>
 </td>

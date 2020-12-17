@@ -237,7 +237,7 @@ func (m *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, dc *v1a
 		// Get all autoscaling clusters for TC, and add them to .Spec.Clusters to
 		// generate Prometheus config without modifying the original TidbMonitor
 		cloned := monitor.DeepCopy()
-		autoTcRefs := []v1alpha1.TidbClusterRef{}
+		autoTcRefs := []v1alpha1.ClusterRef{}
 		for _, tcRef := range monitor.Spec.Clusters {
 			r1, err := labels.NewRequirement(label.AutoInstanceLabelKey, selection.Exists, nil)
 			if err != nil {
@@ -256,7 +256,7 @@ func (m *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, dc *v1a
 				continue
 			}
 			for _, autoTc := range tcList.Items {
-				autoTcRefs = append(autoTcRefs, v1alpha1.TidbClusterRef{
+				autoTcRefs = append(autoTcRefs, v1alpha1.ClusterRef{
 					Name:      autoTc.Name,
 					Namespace: autoTc.Namespace,
 				})
@@ -403,7 +403,7 @@ func (m *MonitorManager) removeIngressIfExist(monitor *v1alpha1.TidbMonitor, nam
 	return m.deps.TypedControl.Delete(monitor, ingress)
 }
 
-func (m *MonitorManager) patchTidbClusterStatus(tcRef *v1alpha1.TidbClusterRef, monitor *v1alpha1.TidbMonitor) error {
+func (m *MonitorManager) patchTidbClusterStatus(tcRef *v1alpha1.ClusterRef, monitor *v1alpha1.TidbMonitor) error {
 	tc, err := m.deps.Clientset.PingcapV1alpha1().TidbClusters(tcRef.Namespace).Get(tcRef.Name, metav1.GetOptions{})
 	if err != nil {
 		return err

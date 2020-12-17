@@ -51,8 +51,8 @@ type TidbClusterAutoScalerList struct {
 // +k8s:openapi-gen=true
 // TidbAutoScalerSpec describes the state of the TidbClusterAutoScaler
 type TidbClusterAutoScalerSpec struct {
-	// TidbClusterRef describe the target TidbCluster
-	Cluster TidbClusterRef `json:"cluster"`
+	// ClusterRef describe the target TidbCluster
+	Cluster ClusterRef `json:"cluster"`
 
 	// TiKV represents the auto-scaling spec for tikv
 	// +optional

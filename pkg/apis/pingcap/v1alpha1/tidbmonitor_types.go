@@ -37,14 +37,14 @@ type TidbMonitor struct {
 }
 
 type DMMonitorSpec struct {
-	Clusters    []TidbClusterRef `json:"clusters"`
-	Initializer InitializerSpec  `json:"initializer"`
+	Clusters    []ClusterRef    `json:"clusters"`
+	Initializer InitializerSpec `json:"initializer"`
 }
 
 // +k8s:openapi-gen=true
 // TidbMonitor spec encode the desired state of tidb monitoring component
 type TidbMonitorSpec struct {
-	Clusters []TidbClusterRef `json:"clusters"`
+	Clusters []ClusterRef `json:"clusters"`
 
 	Prometheus PrometheusSpec `json:"prometheus"`
 	// +optional
@@ -171,8 +171,8 @@ type MonitorContainer struct {
 }
 
 // +k8s:openapi-gen=true
-// TidbClusterRef reference to a TidbCluster
-type TidbClusterRef struct {
+// ClusterRef reference to a TidbCluster
+type ClusterRef struct {
 	// Namespace is the namespace that TidbCluster object locates,
 	// default to the same namespace with TidbMonitor
 	// +optional

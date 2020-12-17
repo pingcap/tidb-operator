@@ -465,7 +465,7 @@ func newTidbClusterAutoScaler() *v1alpha1.TidbClusterAutoScaler {
 			Namespace: metav1.NamespaceDefault,
 		},
 		Spec: v1alpha1.TidbClusterAutoScalerSpec{
-			Cluster: v1alpha1.TidbClusterRef{
+			Cluster: v1alpha1.ClusterRef{
 				Name:      "demo",
 				Namespace: metav1.NamespaceDefault,
 			},

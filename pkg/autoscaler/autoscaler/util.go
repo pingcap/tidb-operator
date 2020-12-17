@@ -385,7 +385,7 @@ func newAutoScalingCluster(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAu
 		Spec: *tc.Spec.DeepCopy(),
 	}
 
-	autoTc.Spec.Cluster = &v1alpha1.TidbClusterRef{
+	autoTc.Spec.Cluster = &v1alpha1.ClusterRef{
 		Namespace: tc.Namespace,
 		Name:      tc.Name,
 	}
