@@ -18,8 +18,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 )
 
-// GetPDClient gets the pd client from the TidbCluster
-func GetPDClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) pdapi.PDClient {
+// getPDClientFromService gets the pd client from the TidbCluster
+func getPDClientFromService(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) pdapi.PDClient {
 	if tc.IsHeterogeneous() {
 		if len(tc.Spec.ClusterDomain) > 0 {
 			return pdControl.GetClusterRefPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.Spec.ClusterDomain, tc.IsTLSClusterEnabled())
@@ -32,6 +32,34 @@ func GetPDClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) p
 	return pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled())
 }
 
+// GetPDClient tries to return an available PDClient
+// If the pdClient built from the PD service name is unavailable, try to
+// build another one with the ClientURL in the PeerMembers.
+// ClientURL example:
+// ClientURL: https://cluster2-pd-0.cluster2-pd-peer.pingcap.svc.cluster2.local
+func GetPDClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) pdapi.PDClient {
+	pdClient := getPDClientFromService(pdControl, tc)
+
+	if len(tc.Status.PD.PeerMembers) == 0 {
+		return pdClient
+	}
+
+	_, err := pdClient.GetHealth()
+	if err == nil {
+		return pdClient
+	}
+
+	for _, pdMember := range tc.Status.PD.PeerMembers {
+		pdPeerClient := pdControl.GetPeerPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled(), pdMember.ClientURL, pdMember.Name)
+		_, err := pdPeerClient.GetHealth()
+		if err == nil {
+			return pdPeerClient
+		}
+	}
+
+	return pdClient
+}
+
 // NewFakePDClient creates a fake pdclient that is set as the pd client
 func NewFakePDClient(pdControl *pdapi.FakePDControl, tc *v1alpha1.TidbCluster) *pdapi.FakePDClient {
 	pdClient := pdapi.NewFakePDClient()
@@ -40,5 +68,12 @@ func NewFakePDClient(pdControl *pdapi.FakePDControl, tc *v1alpha1.TidbCluster) *
 	} else {
 		pdControl.SetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), pdClient)
 	}
+	return pdClient
+}
+
+// NewFakePDClient creates a fake pdclient that is set as the pd client
+func NewFakePDClientWithAddress(pdControl *pdapi.FakePDControl, peerURL string) *pdapi.FakePDClient {
+	pdClient := pdapi.NewFakePDClient()
+	pdControl.SetPDClientWithAddress(peerURL, pdClient)
 	return pdClient
 }
