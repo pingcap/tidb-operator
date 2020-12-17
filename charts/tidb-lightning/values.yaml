@@ -98,3 +98,4 @@ backend: importer # importer | tidb
 config: |
   [lightning]
   level = "info"
+  file = "-"
