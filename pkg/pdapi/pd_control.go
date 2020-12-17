@@ -34,7 +34,7 @@ type PDControlInterface interface {
 	// GetClusterRefPDClient provides PDClient of the tidb cluster.
 	GetClusterRefPDClient(namespace Namespace, tcName string, clusterDomain string, tlsEnabled bool) PDClient
 	// GetPeerPDClient provides PD Client of the tidb cluster from peerURL.
-	GetPeerPDClient(namespace Namespace, tcName string, tlsEnabled bool, peerURL string, peerKey string) PDClient
+	GetPeerPDClient(namespace Namespace, tcName string, tlsEnabled bool, clientURL string, clientName string) PDClient
 	// GetPDEtcdClient provides PD etcd Client of the tidb cluster.
 	GetPDEtcdClient(namespace Namespace, tcName string, tlsEnabled bool) (PDEtcdClient, error)
 }
@@ -132,7 +132,7 @@ func (pdc *defaultPDControl) GetClusterRefPDClient(namespace Namespace, tcName s
 	return pdc.pdClients[key]
 }
 
-func (pdc *defaultPDControl) GetPeerPDClient(namespace Namespace, tcName string, tlsEnabled bool, peerURL string, peerKey string) PDClient {
+func (pdc *defaultPDControl) GetPeerPDClient(namespace Namespace, tcName string, tlsEnabled bool, clientURL string, clientName string) PDClient {
 	pdc.mutex.Lock()
 	defer pdc.mutex.Unlock()
 
@@ -143,15 +143,15 @@ func (pdc *defaultPDControl) GetPeerPDClient(namespace Namespace, tcName string,
 		tlsConfig, err = GetTLSConfig(pdc.kubeCli, namespace, tcName, util.ClusterClientTLSSecretName(tcName))
 		if err != nil {
 			klog.Errorf("Unable to get tls config for tidb cluster %q in %s, pd client may not work: %v", tcName, namespace, err)
-			return &pdClient{url: peerURL, httpClient: &http.Client{Timeout: DefaultTimeout}}
+			return &pdClient{url: clientURL, httpClient: &http.Client{Timeout: DefaultTimeout}}
 		}
 
-		return NewPDClient(peerURL, DefaultTimeout, tlsConfig)
+		return NewPDClient(clientURL, DefaultTimeout, tlsConfig)
 	}
-	if _, ok := pdc.pdClients[peerKey]; !ok {
-		pdc.pdClients[peerKey] = NewPDClient(peerURL, DefaultTimeout, nil)
+	if _, ok := pdc.pdClients[clientName]; !ok {
+		pdc.pdClients[clientName] = NewPDClient(clientURL, DefaultTimeout, nil)
 	}
-	return pdc.pdClients[peerKey]
+	return pdc.pdClients[clientName]
 }
 
 // pdClientKey returns the pd client key
