@@ -3433,7 +3433,8 @@ string
 </em>
 </td>
 <td>
-<p>(Deprecated) Image of the component, override baseImage and version if present</p>
+<p>(Deprecated) Image of the component
+Please use <code>baseImage</code> and <code>version</code> instead</p>
 </td>
 </tr>
 <tr>
@@ -11112,8 +11113,8 @@ LocalStorageProvider
 <a href="#tikvspec">TiKVSpec</a>)
 </p>
 <p>
-<p>StorageVolume configure additional storage for PD pods.
-Default to the <code>storageClassName</code> storage class</p>
+<p>StorageVolume configures additional storage for PD/TiDB/TiKV pods.
+If <code>StorageClassName</code> not set, default to the <code>spec.[pd|tidb|tikv].storageClassName</code></p>
 </p>
 <table>
 <thead>
