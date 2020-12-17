@@ -151,10 +151,8 @@ spec:
     ## pd-server configuration
     ## Ref: https://docs.pingcap.com/tidb/stable/pd-configuration-file
     config: |
-      [dashboard]
-        tidb-cacert-path = ""
-        tidb-cert-path = ""
-        tidb-key-path = ""
+      lease = 3
+      enable-prevote = true
 
     ## The desired replicas
     replicas: 3
@@ -234,7 +232,7 @@ spec:
 
     ## custom additional volumes in PD pods
     # additionalVolumes:
-    # # this must match `name` in `additionalVolumeMounts`
+    # # specify volume types that are supported by Kubernetes, Ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/#types-of-persistent-volumes
     # - name: nfs
     #   nfs:
     #     server: 192.168.0.2
@@ -254,8 +252,8 @@ spec:
     ## Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
     # podSecurityContext:
     #   sysctls:
-    #   - name: net.ipv4.tcp_syncookies
-    #     value: 0
+    #   - name: net.core.somaxconn
+    #     value: "32768"
 
     ## when TLS cluster feature is enabled, TiDB Operator will automatically mount the cluster client certificates if mountClusterClientSecret set to true
     ## Defaults to false
@@ -328,8 +326,8 @@ spec:
     ## tidb-server Configuration
     ## Ref: https://docs.pingcap.com/tidb/stable/tidb-configuration-file
     config: |
-      mem-quota-query = 536870912
-      token-limit = 100
+      level = info
+      enable-timestamp = true
 
     ## The desired replicas
     replicas: 3
@@ -415,7 +413,7 @@ spec:
 
     ## custom additional volumes in TiDB pods
     # additionalVolumes:
-    # # this must match `name` in `additionalVolumeMounts`
+    # # specify volume types that are supported by Kubernetes, Ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/#types-of-persistent-volumes
     # - name: nfs
     #   nfs:
     #     server: 192.168.0.2
@@ -539,16 +537,8 @@ spec:
 
     ## tikv-server configuration
     ## Ref: https://docs.pingcap.com/tidb/stable/tikv-configuration-file
-    config:
-      storage:
-        # In this examples, we set this to avoid using too much storage.
-        reserve-space: "0MB"
-      rocksdb:
-        # In this examples, we set this to avoid the following error in some Kubernetes clusters:
-        # "the maximum number of open file descriptors is too small, got 1024, expect greater or equal to 82920"
-        max-open-files: 256
-      raftdb:
-        max-open-files: 256
+    config: |
+      prevote = true
 
     ## The desired replicas
     replicas: 3
@@ -622,7 +612,7 @@ spec:
 
     ## custom additional volumes in TiKV pods
     # additionalVolumes:
-    # # this must match `name` in `additionalVolumeMounts`
+    # # specify volume types that are supported by Kubernetes, Ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/#types-of-persistent-volumes
     # - name: nfs
     #   nfs:
     #     server: 192.168.0.2
@@ -674,7 +664,7 @@ spec:
     ## Ref: https://kubernetes.io/docs/concepts/policy/pod-security-policy/#privileged
     # privileged: false
 
-    ## if set to true, TiDB Operator can recover failed TiKV pods
+    ## if set to true, TiDB Operator will recover newly created TiKV pods due to automatic failover
     # recoverFailover: true
 
     ## Subdirectory within the volume to store TiKV Data. By default, the data
@@ -686,7 +676,7 @@ spec:
     ## Defaults to "" (volume's root).
     # dataSubDir: ""
 
-    ## defines timeout for region leader eviction in golang `Duration` format, after which the operator can safely delete the tikv pod
+    ## defines the timeout for region leader eviction in golang `Duration` format, if raft region leaders are not transferred to other stores after this duration, TiDB Operator will delete the Pod forcibly.
     # evictLeaderTimeout: 3m
 
     ## Affinity for pod scheduling
@@ -750,10 +740,7 @@ spec:
   #   terminationGracePeriodSeconds: 30s
   #   # Ref: https://docs.pingcap.com/tidb/stable/tidb-binlog-configuration-file#pump
   #   config: |
-  #     gc = 6
-  #     [storage]
-  #     [storage.kv]
-  #       compaction-total-size-multiplier = 8.0
+  #     gc = 7
 
   ## TiCDC is a tool for replicating the incremental data of TiDB
   ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/deploy-ticdc/
@@ -803,10 +790,6 @@ spec:
   #   baseImage: pingcap/tiflash
   #   version: "v4.0.8"
   #   replicas: 1
-  #   # requests:
-  #   #   cpu: 1000m
-  #   #   memory: 1Gi
-  #   #   storage: 1Gi
   #   # limits:
   #   #   cpu: 2000m
   #   #   memory: 2Gi
@@ -847,7 +830,7 @@ spec:
   #   # Ref: https://kubernetes.io/docs/concepts/policy/pod-security-policy/#privileged
   #   privileged: false
 
-  #   # if set to true, TiDB Operator can recover failed TiFlash pods
+  #   # if set to true, TiDB Operator will recover newly created TiFlash pods due to automatic failover
   #   recoverFailover: true
 
   #   # configures serverlog/errorlog/clusterlog sidecar container resource requirements
@@ -862,11 +845,11 @@ spec:
   #   # TOML format configuration
   #   # Ref: https://docs.pingcap.com/tidb/dev/tiflash-configuration
   #   config:
-  #     # configure the tiflash.toml file
+  #     # configure the configuration file for TiFlash process
   #     config: |
   #       [logger]
-  #         log = /var/log/somelog
-  #     # configure the config file pointed by `flash.proxy.config`
+  #         log = /data0/logs/somelog
+  #     # configure the configuration file for TiFlash Proxy process
   #     proxy: |
   #       [security]
   #         cert-allowed-cn = CNNAME
