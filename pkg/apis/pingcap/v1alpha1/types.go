@@ -727,7 +727,8 @@ type TiDBSlowLogTailerSpec struct {
 // ComponentSpec is the base spec of each component, the fields should always accessed by the Basic<Component>Spec() method to respect the cluster-level properties
 // +k8s:openapi-gen=true
 type ComponentSpec struct {
-	// (Deprecated) Image of the component, override baseImage and version if present
+	// (Deprecated) Image of the component
+	// Please use `baseImage` and `version` instead
 	// +k8s:openapi-gen=false
 	Image string `json:"image,omitempty"`
 
@@ -1914,8 +1915,8 @@ type WorkerFailureMember struct {
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
 
-// StorageVolume configure additional storage for PD pods.
-// Default to the `storageClassName` storage class
+// StorageVolume configures additional storage for PD/TiDB/TiKV pods.
+// If `StorageClassName` not set, default to the `spec.[pd|tidb|tikv].storageClassName`
 type StorageVolume struct {
 	Name             string  `json:"name"`
 	StorageClassName *string `json:"storageClassName,omitempty"`
