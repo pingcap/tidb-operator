@@ -9790,6 +9790,8 @@ spec:
               type: array
             version:
               type: string
+          required:
+          - version
           type: object
       type: object
   version: v1alpha1
@@ -13266,6 +13268,7 @@ spec:
               type: object
           required:
           - discovery
+          - version
           type: object
       type: object
   version: v1alpha1

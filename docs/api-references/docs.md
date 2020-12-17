@@ -606,7 +606,6 @@ string
 </em>
 </td>
 <td>
-<em>(Optional)</em>
 <p>dm cluster version</p>
 </td>
 </tr>
@@ -1275,7 +1274,6 @@ string
 </em>
 </td>
 <td>
-<em>(Optional)</em>
 <p>TiDB cluster version</p>
 </td>
 </tr>
@@ -1489,8 +1487,7 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster.
-If set it to <code>true</code>, <code>--advertise-status-addr</code> will be appended to the startup parameters of TiKV</p>
+<p>EnableDynamicConfiguration indicates whether to append <code>--advertise-status-addr</code> to the startup parameters of TiKV.</p>
 </td>
 </tr>
 <tr>
@@ -3616,8 +3613,7 @@ Optional: Defaults to cluster-level setting</p>
 </td>
 <td>
 <em>(Optional)</em>
-<p>List of environment variables to set in the container, like
-v1.Container.Env
+<p>List of environment variables to set in the container, like v1.Container.Env.
 Note that the following env names cannot be used and will be overridden by TiDB Operator builtin envs
 - NAMESPACE
 - TZ
@@ -4192,7 +4188,6 @@ string
 </em>
 </td>
 <td>
-<em>(Optional)</em>
 <p>dm cluster version</p>
 </td>
 </tr>
@@ -8726,8 +8721,7 @@ Defaults to Kubernetes default storage class.</p>
 </td>
 <td>
 <em>(Optional)</em>
-<p>StorageVolumes configure additional storage for PD pods.
-Default to the <code>storageClassName</code> storage class</p>
+<p>StorageVolumes configure additional storage for PD pods.</p>
 </td>
 </tr>
 <tr>
@@ -10847,8 +10841,7 @@ If specified and supported by the platform, this will restrict traffic through t
 load-balancer will be restricted to the specified client IPs. This field will be ignored if the
 cloud-provider does not support the feature.&rdquo;
 More info: <a href="https://kubernetes.io/docs/concepts/services-networking/service/#aws-nlb-support">https://kubernetes.io/docs/concepts/services-networking/service/#aws-nlb-support</a>
-Optional: Defaults to omitted
-NOTE: it seems like this is not a mainstream option, maybe we should reevaluate whether to deprecate this</p>
+Optional: Defaults to omitted</p>
 </td>
 </tr>
 </tbody>
@@ -11119,7 +11112,8 @@ LocalStorageProvider
 <a href="#tikvspec">TiKVSpec</a>)
 </p>
 <p>
-<p>StorageVolume is TiKV storage information</p>
+<p>StorageVolume configure additional storage for PD pods.
+Default to the <code>storageClassName</code> storage class</p>
 </p>
 <table>
 <thead>
@@ -12438,7 +12432,7 @@ string
 </td>
 <td>
 <p>(Deprecated) Image used for slowlog tailer.
-Note that this is deprecated, use <code>TidbCluster.HelperImage</code> instead</p>
+Note that this is deprecated, use <code>spec.helper.image</code> instead</p>
 </td>
 </tr>
 <tr>
@@ -12452,7 +12446,7 @@ Kubernetes core/v1.PullPolicy
 </td>
 <td>
 <p>(Deprecated) ImagePullPolicy of the component. Override the cluster-level imagePullPolicy if present
-Note that this is deprecated, use <code>TidbCluster.HelperImagePullPolicy</code> instead</p>
+Note that this is deprecated, use <code>spec.helper.imagePullPolicy</code> instead</p>
 </td>
 </tr>
 </tbody>
@@ -12673,8 +12667,7 @@ until the action is complete, unless the container process fails, in which case 
 </td>
 <td>
 <em>(Optional)</em>
-<p>StorageVolumes configure additional storage for TiDB pods.
-Default to the <code>storageClassName</code> storage class</p>
+<p>StorageVolumes configure additional storage for TiDB pods.</p>
 </td>
 </tr>
 <tr>
@@ -17101,8 +17094,7 @@ Defaults to 3m</p>
 </td>
 <td>
 <em>(Optional)</em>
-<p>StorageVolumes configure additional storage for TiKV pods.
-Default to the <code>storageClassName</code> storage class</p>
+<p>StorageVolumes configure additional storage for TiKV pods.</p>
 </td>
 </tr>
 </tbody>
@@ -18334,7 +18326,6 @@ string
 </em>
 </td>
 <td>
-<em>(Optional)</em>
 <p>TiDB cluster version</p>
 </td>
 </tr>
@@ -18548,8 +18539,7 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster.
-If set it to <code>true</code>, <code>--advertise-status-addr</code> will be appended to the startup parameters of TiKV</p>
+<p>EnableDynamicConfiguration indicates whether to append <code>--advertise-status-addr</code> to the startup parameters of TiKV.</p>
 </td>
 </tr>
 <tr>

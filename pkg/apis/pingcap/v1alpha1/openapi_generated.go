@@ -1306,7 +1306,7 @@ func schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref common.ReferenceCallback
 					},
 					"env": {
 						SchemaProps: spec.SchemaProps{
-							Description: "List of environment variables to set in the container, like v1.Container.Env Note that the following env names cannot be used and will be overridden by TiDB Operator builtin envs - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
+							Description: "List of environment variables to set in the container, like v1.Container.Env. Note that the following env names cannot be used and will be overridden by TiDB Operator builtin envs - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -1653,7 +1653,7 @@ func schema_pkg_apis_pingcap_v1alpha1_DMClusterSpec(ref common.ReferenceCallback
 						},
 					},
 				},
-				Required: []string{"discovery"},
+				Required: []string{"discovery", "version"},
 			},
 		},
 		Dependencies: []string{
@@ -2967,7 +2967,7 @@ func schema_pkg_apis_pingcap_v1alpha1_MasterSpec(ref common.ReferenceCallback) c
 					},
 					"env": {
 						SchemaProps: spec.SchemaProps{
-							Description: "List of environment variables to set in the container, like v1.Container.Env Note that the following env names cannot be used and will be overridden by TiDB Operator builtin envs - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
+							Description: "List of environment variables to set in the container, like v1.Container.Env. Note that the following env names cannot be used and will be overridden by TiDB Operator builtin envs - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -4117,7 +4117,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 					},
 					"env": {
 						SchemaProps: spec.SchemaProps{
-							Description: "List of environment variables to set in the container, like v1.Container.Env Note that the following env names cannot be used and will be overridden by TiDB Operator builtin envs - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
+							Description: "List of environment variables to set in the container, like v1.Container.Env. Note that the following env names cannot be used and will be overridden by TiDB Operator builtin envs - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -4252,7 +4252,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 					},
 					"storageVolumes": {
 						SchemaProps: spec.SchemaProps{
-							Description: "StorageVolumes configure additional storage for PD pods. Default to the `storageClassName` storage class",
+							Description: "StorageVolumes configure additional storage for PD pods.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -4853,7 +4853,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PumpSpec(ref common.ReferenceCallback) com
 					},
 					"env": {
 						SchemaProps: spec.SchemaProps{
-							Description: "List of environment variables to set in the container, like v1.Container.Env Note that the following env names cannot be used and will be overridden by TiDB Operator builtin envs - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
+							Description: "List of environment variables to set in the container, like v1.Container.Env. Note that the following env names cannot be used and will be overridden by TiDB Operator builtin envs - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -5438,7 +5438,7 @@ func schema_pkg_apis_pingcap_v1alpha1_ServiceSpec(ref common.ReferenceCallback) 
 					},
 					"loadBalancerSourceRanges": {
 						SchemaProps: spec.SchemaProps{
-							Description: "LoadBalancerSourceRanges is the loadBalancerSourceRanges of service If specified and supported by the platform, this will restrict traffic through the cloud-provider load-balancer will be restricted to the specified client IPs. This field will be ignored if the cloud-provider does not support the feature.\" More info: https://kubernetes.io/docs/concepts/services-networking/service/#aws-nlb-support Optional: Defaults to omitted NOTE: it seems like this is not a mainstream option, maybe we should reevaluate whether to deprecate this",
+							Description: "LoadBalancerSourceRanges is the loadBalancerSourceRanges of service If specified and supported by the platform, this will restrict traffic through the cloud-provider load-balancer will be restricted to the specified client IPs. This field will be ignored if the cloud-provider does not support the feature.\" More info: https://kubernetes.io/docs/concepts/services-networking/service/#aws-nlb-support Optional: Defaults to omitted",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -5769,7 +5769,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCDCSpec(ref common.ReferenceCallback) co
 					},
 					"env": {
 						SchemaProps: spec.SchemaProps{
-							Description: "List of environment variables to set in the container, like v1.Container.Env Note that the following env names cannot be used and will be overridden by TiDB Operator builtin envs - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
+							Description: "List of environment variables to set in the container, like v1.Container.Env. Note that the following env names cannot be used and will be overridden by TiDB Operator builtin envs - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -6495,7 +6495,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 					},
 					"env": {
 						SchemaProps: spec.SchemaProps{
-							Description: "List of environment variables to set in the container, like v1.Container.Env Note that the following env names cannot be used and will be overridden by TiDB Operator builtin envs - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
+							Description: "List of environment variables to set in the container, like v1.Container.Env. Note that the following env names cannot be used and will be overridden by TiDB Operator builtin envs - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -6675,7 +6675,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 					},
 					"storageVolumes": {
 						SchemaProps: spec.SchemaProps{
-							Description: "StorageVolumes configure additional storage for TiDB pods. Default to the `storageClassName` storage class",
+							Description: "StorageVolumes configure additional storage for TiDB pods.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -6854,7 +6854,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiFlashSpec(ref common.ReferenceCallback) 
 					},
 					"env": {
 						SchemaProps: spec.SchemaProps{
-							Description: "List of environment variables to set in the container, like v1.Container.Env Note that the following env names cannot be used and will be overridden by TiDB Operator builtin envs - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
+							Description: "List of environment variables to set in the container, like v1.Container.Env. Note that the following env names cannot be used and will be overridden by TiDB Operator builtin envs - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -9097,7 +9097,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 					},
 					"env": {
 						SchemaProps: spec.SchemaProps{
-							Description: "List of environment variables to set in the container, like v1.Container.Env Note that the following env names cannot be used and will be overridden by TiDB Operator builtin envs - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
+							Description: "List of environment variables to set in the container, like v1.Container.Env. Note that the following env names cannot be used and will be overridden by TiDB Operator builtin envs - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -9267,7 +9267,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 					},
 					"storageVolumes": {
 						SchemaProps: spec.SchemaProps{
-							Description: "StorageVolumes configure additional storage for TiKV pods. Default to the `storageClassName` storage class",
+							Description: "StorageVolumes configure additional storage for TiKV pods.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -10164,7 +10164,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 					},
 					"enableDynamicConfiguration": {
 						SchemaProps: spec.SchemaProps{
-							Description: "EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster. If set it to `true`, `--advertise-status-addr` will be appended to the startup parameters of TiKV",
+							Description: "EnableDynamicConfiguration indicates whether to append `--advertise-status-addr` to the startup parameters of TiKV.",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
@@ -10204,6 +10204,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 						},
 					},
 				},
+				Required: []string{"version"},
 			},
 		},
 		Dependencies: []string{
@@ -11042,7 +11043,7 @@ func schema_pkg_apis_pingcap_v1alpha1_WorkerSpec(ref common.ReferenceCallback) c
 					},
 					"env": {
 						SchemaProps: spec.SchemaProps{
-							Description: "List of environment variables to set in the container, like v1.Container.Env Note that the following env names cannot be used and will be overridden by TiDB Operator builtin envs - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
+							Description: "List of environment variables to set in the container, like v1.Container.Env. Note that the following env names cannot be used and will be overridden by TiDB Operator builtin envs - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
