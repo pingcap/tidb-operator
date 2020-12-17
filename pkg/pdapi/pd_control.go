@@ -35,7 +35,6 @@ type PDControlInterface interface {
 	GetClusterRefPDClient(namespace Namespace, tcName string, clusterDomain string, tlsEnabled bool) PDClient
 	// GetPeerPDClient provides PD Client of the tidb cluster from peerURL.
 	GetPeerPDClient(namespace Namespace, tcName string, tlsEnabled bool, clientURL string, clientName string) PDClient
-
 	// GetPDEtcdClient provides PD etcd Client of the tidb cluster.
 	GetPDEtcdClient(namespace Namespace, tcName string, tlsEnabled bool) (PDEtcdClient, error)
 }
