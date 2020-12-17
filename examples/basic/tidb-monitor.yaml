@@ -7,13 +7,13 @@ spec:
   - name: basic
   prometheus:
     baseImage: prom/prometheus
-    version: v2.18.1
+    version: v2.11.1
   grafana:
     baseImage: grafana/grafana
     version: 6.1.6
   initializer:
-    baseImage: pingcap/tidb-monitor-initializer
-    version: v4.0.8
+    baseImage: xxxxzzzz/tidb-monitor-initializer
+    version: v4.0.8-job0
   reloader:
     baseImage: pingcap/tidb-monitor-reloader
     version: v1.0.1
