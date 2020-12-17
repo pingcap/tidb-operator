@@ -137,7 +137,7 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 		// In some failure situations, for example, delete the pd's data directory, pd will try to restart
 		// and get join info from discovery service. But pd embed etcd may still have the registered member info,
 		// which will return the argument to join pd itself, which is not suggested in pd.
-		if member.Name == podName {
+		if member.Name == podName || member.Name == strArr[0] {
 			continue
 		}
 		memberURL := strings.ReplaceAll(member.PeerUrls[0], ":2380", ":2379")
