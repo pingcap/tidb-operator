@@ -49,9 +49,7 @@ then
 fi
 
 # Use HOSTNAME if POD_NAME is unset for backward compatibility.
-POD_NAME=${POD_NAME:-$HOSTNAME}
-
-{{ if .FormatClusterDomain }}
+POD_NAME=${POD_NAME:-$HOSTNAME}{{ if .FormatClusterDomain }}
 pd_url="{{ .Path }}"
 encoded_domain_url=` + "`" + `echo $pd_url | base64 | tr "\n" " " | sed "s/ //g"` + "`" + `
 discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}.svc{{ .FormatClusterDomain }}:10261"
@@ -63,8 +61,8 @@ done
 ARGS="--store=tikv \
 --advertise-address=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc{{ .FormatClusterDomain }} \
 --host=0.0.0.0 \
---path=${result} \{{ else }}
-ARGS="--store=tikv \
+--path=${result} \
+{{ else }}ARGS="--store=tikv \
 --advertise-address=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc{{ .FormatClusterDomain }} \
 --host=0.0.0.0 \
 --path={{ .Path }} \{{ end }}
@@ -250,8 +248,7 @@ then
 fi
 
 # Use HOSTNAME if POD_NAME is unset for backward compatibility.
-POD_NAME=${POD_NAME:-$HOSTNAME}
-{{ if .ClusterDomain }}
+POD_NAME=${POD_NAME:-$HOSTNAME}{{ if .FormatClusterDomain }}
 pd_url="{{ .PDAddress }}"
 encoded_domain_url=` + "`" + `echo $pd_url | base64 | tr "\n" " " | sed "s/ //g"` + "`" + `
 discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}.svc{{ .FormatClusterDomain }}:10261"
@@ -261,8 +258,8 @@ echo "waiting for the verification of PD endpoints ..."
 sleep $((RANDOM % 5))
 done
 
-ARGS="--pd=${result} \{{ else }}
-ARGS="--pd={{ .PDAddress }} \{{ end }}
+ARGS="--pd=${result} \
+{{ else }}ARGS="--pd={{ .PDAddress }} \{{ end }}
 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc{{ .FormatClusterDomain }}:20160 \
 --addr=0.0.0.0:20160 \
 --status-addr=0.0.0.0:20180 \{{if .EnableAdvertiseStatusAddr }}
