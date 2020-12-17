@@ -284,7 +284,7 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 		}
 
 		scrapeconfig := &config.ScrapeConfig{
-			JobName:        fmt.Sprintf("%s-%s", cluster.Name, jobName),
+			JobName:        jobName,
 			ScrapeInterval: model.Duration(15 * time.Second),
 			Scheme:         "http",
 			HonorLabels:    true,
@@ -361,6 +361,13 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 					},
 					Action:      config.RelabelReplace,
 					TargetLabel: "instance",
+				},
+				{
+					SourceLabels: model.LabelNames{
+						componentLabel,
+					},
+					Action:      config.RelabelReplace,
+					TargetLabel: "component",
 				},
 			},
 		}
