@@ -512,7 +512,6 @@ scrape_configs:
 		AlertmanagerURL:  "alert-url",
 	}
 	content, err := RenderPrometheusConfig(model)
-	print(content)
 	g.Expect(err).NotTo(HaveOccurred())
 	g.Expect(content).Should(Equal(expectedContent))
 }
