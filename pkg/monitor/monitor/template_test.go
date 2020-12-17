@@ -33,7 +33,7 @@ alerting:
 rule_files:
 - /prometheus-rules/rules/*.rules.yml
 scrape_configs:
-- job_name: ns1-target-pd
+- job_name: pd
   honor_labels: true
   scrape_interval: 15s
   scheme: http
@@ -80,7 +80,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     target_label: component
     action: replace
-- job_name: ns1-target-tidb
+- job_name: tidb
   honor_labels: true
   scrape_interval: 15s
   scheme: http
@@ -127,7 +127,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     target_label: component
     action: replace
-- job_name: ns1-target-tikv
+- job_name: tikv
   honor_labels: true
   scrape_interval: 15s
   scheme: http
@@ -174,7 +174,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     target_label: component
     action: replace
-- job_name: ns1-target-tiflash
+- job_name: tiflash
   honor_labels: true
   scrape_interval: 15s
   scheme: http
@@ -221,7 +221,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     target_label: component
     action: replace
-- job_name: ns1-target-tiflash-proxy
+- job_name: tiflash-proxy
   honor_labels: true
   scrape_interval: 15s
   scheme: http
@@ -268,7 +268,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     target_label: component
     action: replace
-- job_name: ns1-target-pump
+- job_name: pump
   honor_labels: true
   scrape_interval: 15s
   scheme: http
@@ -315,7 +315,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     target_label: component
     action: replace
-- job_name: ns1-target-drainer
+- job_name: drainer
   honor_labels: true
   scrape_interval: 15s
   scheme: http
@@ -362,7 +362,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     target_label: component
     action: replace
-- job_name: ns1-target-ticdc
+- job_name: ticdc
   honor_labels: true
   scrape_interval: 15s
   scheme: http
@@ -409,7 +409,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     target_label: component
     action: replace
-- job_name: ns1-target-importer
+- job_name: importer
   honor_labels: true
   scrape_interval: 15s
   scheme: http
@@ -456,7 +456,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     target_label: component
     action: replace
-- job_name: ns1-target-lightning
+- job_name: lightning
   honor_labels: true
   scrape_interval: 15s
   scheme: http
@@ -524,7 +524,7 @@ func TestRenderPrometheusConfigTLSEnabled(t *testing.T) {
 rule_files:
 - /prometheus-rules/rules/*.rules.yml
 scrape_configs:
-- job_name: ns1-target-pd
+- job_name: pd
   honor_labels: true
   scrape_interval: 15s
   scheme: https
@@ -574,7 +574,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     target_label: component
     action: replace
-- job_name: ns1-target-tidb
+- job_name: tidb
   honor_labels: true
   scrape_interval: 15s
   scheme: https
@@ -624,7 +624,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     target_label: component
     action: replace
-- job_name: ns1-target-tikv
+- job_name: tikv
   honor_labels: true
   scrape_interval: 15s
   scheme: https
@@ -674,7 +674,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     target_label: component
     action: replace
-- job_name: ns1-target-tiflash
+- job_name: tiflash
   honor_labels: true
   scrape_interval: 15s
   scheme: https
@@ -724,7 +724,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     target_label: component
     action: replace
-- job_name: ns1-target-tiflash-proxy
+- job_name: tiflash-proxy
   honor_labels: true
   scrape_interval: 15s
   scheme: https
@@ -774,7 +774,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     target_label: component
     action: replace
-- job_name: ns1-target-pump
+- job_name: pump
   honor_labels: true
   scrape_interval: 15s
   scheme: https
@@ -824,7 +824,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     target_label: component
     action: replace
-- job_name: ns1-target-drainer
+- job_name: drainer
   honor_labels: true
   scrape_interval: 15s
   scheme: https
@@ -874,7 +874,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     target_label: component
     action: replace
-- job_name: ns1-target-ticdc
+- job_name: ticdc
   honor_labels: true
   scrape_interval: 15s
   scheme: https
@@ -924,7 +924,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     target_label: component
     action: replace
-- job_name: ns1-target-importer
+- job_name: importer
   honor_labels: true
   scrape_interval: 15s
   scheme: https
@@ -974,7 +974,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     target_label: component
     action: replace
-- job_name: ns1-target-lightning
+- job_name: lightning
   honor_labels: true
   scrape_interval: 15s
   scheme: https
