@@ -55,7 +55,7 @@ pd_url="{{ .Path }}"
 encoded_domain_url=` + "`" + `echo $pd_url | base64 | tr "\n" " " | sed "s/ //g"` + "`" + `
 discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}.svc{{ .FormatClusterDomain }}:10261"
 until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
-echo "waiting for verification for PD endpoints ..."
+echo "waiting for the verification of PD endpoints ..."
 sleep $((RANDOM % 5))
 done
 
@@ -251,10 +251,10 @@ encoded_domain_url=` + "`" + `echo $pd_url | base64 | tr "\n" " " | sed "s/ //g"
 discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}.svc{{ .FormatClusterDomain }}:10261"
 
 until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
-echo "waiting for verification for PD endpoints ..."
+echo "waiting for the verification of PD endpoints ..."
 sleep $((RANDOM % 5))
 done
-echo ${result}
+
 ARGS="--pd=${result} \
 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc{{ .FormatClusterDomain }}:20160 \
 --addr=0.0.0.0:20160 \
