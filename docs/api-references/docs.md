@@ -3434,7 +3434,7 @@ string
 </td>
 <td>
 <p>(Deprecated) Image of the component
-Please use <code>baseImage</code> and <code>version</code> instead</p>
+Use <code>baseImage</code> and <code>version</code> instead</p>
 </td>
 </tr>
 <tr>
@@ -12433,7 +12433,7 @@ string
 </td>
 <td>
 <p>(Deprecated) Image used for slowlog tailer.
-Note that this is deprecated, use <code>spec.helper.image</code> instead</p>
+Use <code>spec.helper.image</code> instead</p>
 </td>
 </tr>
 <tr>
@@ -12447,7 +12447,7 @@ Kubernetes core/v1.PullPolicy
 </td>
 <td>
 <p>(Deprecated) ImagePullPolicy of the component. Override the cluster-level imagePullPolicy if present
-Note that this is deprecated, use <code>spec.helper.imagePullPolicy</code> instead</p>
+Use <code>spec.helper.imagePullPolicy</code> instead</p>
 </td>
 </tr>
 </tbody>
