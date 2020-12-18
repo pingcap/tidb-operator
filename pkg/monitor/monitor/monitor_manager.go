@@ -55,8 +55,8 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	if monitor.DeletionTimestamp != nil {
 		return nil
 	}
-	if monitor.Spec.Clusters == nil || len(monitor.Spec.Clusters) != 1 {
-		klog.Errorf("tm[%s/%s] does not configure the target tidbcluster or contain multiple target tidbclusters, ingore sync", monitor.Namespace, monitor.Name)
+	if monitor.Spec.Clusters == nil || len(monitor.Spec.Clusters) < 1 {
+		klog.Errorf("tm[%s/%s] does not configure the target tidbcluster", monitor.Namespace, monitor.Name)
 		return nil
 	}
 	defaultTidbMonitor(monitor)
