@@ -171,7 +171,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 				}
 			},
 			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
-				// errExpectRequeuefunc(g, err, tmm, tm)
+				errExpectRequeuefunc(g, err, tmm, tm)
 				sts, err := tmm.deps.StatefulSetLister.StatefulSets(tm.Namespace).Get(GetMonitorObjectName(tm))
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(2))
