@@ -44,7 +44,7 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 	}
 
 	tcName := tac.Spec.Cluster.Name
-	// When Namespace in ClusterRef is omitted, we take tac's namespace as default
+	// When Namespace in TidbClusterRef is omitted, we take tac's namespace as default
 	if len(tac.Spec.Cluster.Namespace) < 1 {
 		tac.Spec.Cluster.Namespace = tac.Namespace
 	}

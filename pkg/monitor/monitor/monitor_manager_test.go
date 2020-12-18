@@ -61,7 +61,11 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 		_, err := tmm.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
 		g.Expect(err).Should(BeNil())
 
-		tm := newTidbMonitor(v1alpha1.ClusterRef{Name: tc.Name, Namespace: tc.Namespace})
+		if test.name == "enable dm monitor" {
+			newFakeDMCluster(tmm)
+		}
+
+		tm := newTidbMonitor(v1alpha1.TidbClusterRef{Name: tc.Name, Namespace: tc.Namespace})
 		if test.prepare != nil {
 			test.prepare(tmm, tm)
 		}
@@ -147,6 +151,35 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 			},
 			stsCreated:    true,
 			volumeCreated: true,
+			svcCreated:    true,
+		},
+		{
+			name: "enable dm monitor",
+			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
+				monitor.Spec.DM = &v1alpha1.DMMonitorSpec{
+					Clusters: []v1alpha1.ClusterRef{
+						{
+							Namespace: "ns",
+							Name:      "dm-test",
+						},
+					},
+					Initializer: v1alpha1.InitializerSpec{
+						MonitorContainer: v1alpha1.MonitorContainer{
+							BaseImage: "pingcap/dm-monitor-initializer",
+							Version:   "v2.0.0",
+						},
+					},
+				}
+			},
+			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
+				// errExpectRequeuefunc(g, err, tmm, tm)
+				sts, err := tmm.deps.StatefulSetLister.StatefulSets(tm.Namespace).Get(GetMonitorObjectName(tm))
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(2))
+				g.Expect(sts.Spec.Template.Spec.InitContainers).To(HaveLen(2))
+			},
+			stsCreated:    true,
+			volumeCreated: false,
 			svcCreated:    true,
 		},
 		{
@@ -284,7 +317,7 @@ func TestTidbMonitorSyncUpdate(t *testing.T) {
 		_, err := tmm.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
 		g.Expect(err).Should(BeNil())
 
-		tm := newTidbMonitor(v1alpha1.ClusterRef{Name: tc.Name, Namespace: tc.Namespace})
+		tm := newTidbMonitor(v1alpha1.TidbClusterRef{Name: tc.Name, Namespace: tc.Namespace})
 		if test.prepare != nil {
 			test.prepare(tmm, tm)
 		}
@@ -400,14 +433,14 @@ func TestTidbMonitorSyncUpdate(t *testing.T) {
 	}
 }
 
-func newTidbMonitor(cluster v1alpha1.ClusterRef) *v1alpha1.TidbMonitor {
+func newTidbMonitor(cluster v1alpha1.TidbClusterRef) *v1alpha1.TidbMonitor {
 	return &v1alpha1.TidbMonitor{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "ns",
 		},
 		Spec: v1alpha1.TidbMonitorSpec{
-			Clusters: []v1alpha1.ClusterRef{
+			Clusters: []v1alpha1.TidbClusterRef{
 				cluster,
 			},
 			Prometheus: v1alpha1.PrometheusSpec{
@@ -423,6 +456,23 @@ func newTidbMonitor(cluster v1alpha1.ClusterRef) *v1alpha1.TidbMonitor {
 			},
 		},
 	}
+}
+
+func newFakeDMCluster(mm *MonitorManager) {
+	dmInformer := mm.deps.InformerFactory.Pingcap().V1alpha1().DMClusters()
+	dmIndexer := dmInformer.Informer().GetIndexer()
+	dc := &v1alpha1.DMCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "dm-test",
+			Namespace: "ns",
+		},
+		Spec: v1alpha1.DMClusterSpec{
+			TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
+			Discovery:  v1alpha1.DMDiscoverySpec{Address: "http://foo-discovery.ns:10261"},
+			Master:     v1alpha1.MasterSpec{Replicas: 1},
+		},
+	}
+	dmIndexer.Add(dc)
 }
 
 func newFakeTidbMonitorManager() *MonitorManager {

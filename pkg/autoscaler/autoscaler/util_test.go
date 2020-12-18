@@ -586,7 +586,7 @@ func newTidbClusterAutoScaler() *v1alpha1.TidbClusterAutoScaler {
 	tac.Name = "tac"
 	tac.Namespace = "default"
 	tac.Annotations = map[string]string{}
-	tac.Spec.Cluster = v1alpha1.ClusterRef{
+	tac.Spec.Cluster = v1alpha1.TidbClusterRef{
 		Name:      "tc",
 		Namespace: "default",
 	}

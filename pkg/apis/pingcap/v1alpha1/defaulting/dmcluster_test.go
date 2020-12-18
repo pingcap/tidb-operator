@@ -20,7 +20,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 )
 
-func TestSetDMDefault(t *testing.T) {
+func TestSetDMSpecDefault(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	dc := newDMCluster()

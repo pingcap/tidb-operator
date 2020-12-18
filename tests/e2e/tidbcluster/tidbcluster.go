@@ -1636,7 +1636,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 						},
 					}},
 				}}
-			heterogeneousTc.Spec.Cluster = &v1alpha1.ClusterRef{
+			heterogeneousTc.Spec.Cluster = &v1alpha1.TidbClusterRef{
 				Name: tcName,
 			}
 
@@ -1863,7 +1863,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 					},
 				}},
 			}}
-		heterogeneousTc.Spec.Cluster = &v1alpha1.ClusterRef{
+		heterogeneousTc.Spec.Cluster = &v1alpha1.TidbClusterRef{
 			Name: originTc.Name,
 		}
 		err = genericCli.Create(context.TODO(), heterogeneousTc)

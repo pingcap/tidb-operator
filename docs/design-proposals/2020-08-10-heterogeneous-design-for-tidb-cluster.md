@@ -33,7 +33,7 @@ And this is also useful for the auto-scaling case, where we may want to scale ou
 
   ```
   // +optional
-  Cluster *ClusterRef `json:"cluster,omitempty"`
+  Cluster *TidbClusterRef `json:"cluster,omitempty"`
   ```
 
 * The status of each TidbCluster should only include the components managed by this TidbCluster and based on this, the failureMembers/failureStores will only include the Pods managed by this TidbCluster so that failover function can work normally

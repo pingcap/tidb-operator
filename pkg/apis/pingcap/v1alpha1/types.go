@@ -248,7 +248,7 @@ type TidbClusterSpec struct {
 
 	// Cluster is the external cluster, if configured, the components in this TidbCluster will join to this configured cluster.
 	// +optional
-	Cluster *ClusterRef `json:"cluster,omitempty"`
+	Cluster *TidbClusterRef `json:"cluster,omitempty"`
 
 	// PDAddresses are the external PD addresses, if configured, the PDs in this TidbCluster will join to the configured PD cluster.
 	// +optional

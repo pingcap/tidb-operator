@@ -147,7 +147,7 @@ func newTidbInitializerForTiDB() *v1alpha1.TidbInitializer {
 			UID:       types.UID("test"),
 		},
 		Spec: v1alpha1.TidbInitializerSpec{
-			Clusters: v1alpha1.ClusterRef{
+			Clusters: v1alpha1.TidbClusterRef{
 				Name:      "test",
 				Namespace: corev1.NamespaceDefault,
 			},
