@@ -503,7 +503,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     target_label: component
     action: replace
-- job_name: dm-worker
+- job_name: ns1-target-dm-worker
   honor_labels: true
   scrape_interval: 15s
   scheme: http
@@ -550,7 +550,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     target_label: component
     action: replace
-- job_name: dm-master
+- job_name: ns1-target-dm-master
   honor_labels: true
   scrape_interval: 15s
   scheme: http
@@ -1119,7 +1119,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     target_label: component
     action: replace
-- job_name: dm-worker
+- job_name: ns1-target-dm-worker
   honor_labels: true
   scrape_interval: 15s
   scheme: https
@@ -1169,7 +1169,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     target_label: component
     action: replace
-- job_name: dm-master
+- job_name: ns1-target-dm-master
   honor_labels: true
   scrape_interval: 15s
   scheme: https
