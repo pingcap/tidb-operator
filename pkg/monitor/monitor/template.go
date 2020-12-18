@@ -312,7 +312,7 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 		}
 
 		scrapeconfig := &config.ScrapeConfig{
-			JobName:        jobName,
+			JobName:        fmt.Sprintf("%s-%s-%s", cluster.Namespace, cluster.Name, jobName),
 			ScrapeInterval: model.Duration(15 * time.Second),
 			Scheme:         "http",
 			HonorLabels:    true,
