@@ -36,7 +36,7 @@ spec:
   # imagePullSecrets: secretName
 
   ## Image used to do miscellaneous tasks as sidecar container, such as:
-  ## - execute sysctls when PodSecurityContext is set for some conponents, requires `sysctl` installed
+  ## - execute sysctls when PodSecurityContext is set for some components, requires `sysctl` installed
   ## - tail slow log for tidb, requires `tail` installed
   ## - fill tiflash config template file based on pod ordinal
   # helper:
@@ -255,7 +255,7 @@ spec:
     #   - name: net.core.somaxconn
     #     value: "32768"
 
-    ## when TLS cluster feature is enabled, TiDB Operator will automatically mount the cluster client certificates if mountClusterClientSecret set to true
+    ## when TLS cluster feature is enabled, TiDB Operator will automatically mount the cluster client certificates if mountClusterClientSecret is set to true
     ## Defaults to false
     ## Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/configure-a-tidb-cluster#mountclusterclientsecret
     mountClusterClientSecret: true
@@ -639,7 +639,7 @@ spec:
     #   - name: net.core.somaxconn
     #     value: "32768"
 
-    ## when TLS cluster feature is enabled, TiDB Operator will automatically mount the cluster client certificates if mountClusterClientSecret set to true
+    ## when TLS cluster feature is enabled, TiDB Operator will automatically mount the cluster client certificates if mountClusterClientSecret is set to true
     ## Defaults to false
     ## Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/configure-a-tidb-cluster#mountclusterclientsecret
     mountClusterClientSecret: true
