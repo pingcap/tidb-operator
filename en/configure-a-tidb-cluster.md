@@ -107,12 +107,12 @@ For example:
     config:
       log:
         file:
-          name: /var/log/pd
+          filename: /var/log/pdlog/pd.log
         level: "warn"
     storageVolumes:
       - name: log
         storageSize: "2Gi"
-        mountPath: "/var/log/pd"
+        mountPath: "/var/log/pdlog"
   tidb:
     baseImage: pingcap/tidb
     replicas: 1
@@ -121,12 +121,12 @@ For example:
     config:
       log:
         file:
-          name: /var/log/tidb
+          filename: /var/log/tidblog/tidb.log
         level: "warn"
     storageVolumes:
       - name: log
         storageSize: "2Gi"
-        mountPath: "/var/log/tidb"
+        mountPath: "/var/log/tidblog"
   tikv:
     baseImage: pingcap/tikv
     replicas: 1
@@ -150,6 +150,10 @@ For example:
         storageSize: "2Gi"
         mountPath: "/data_sbj/titan/data"
 ```
+
+> **Note:**
+>
+> TiDB Operator uses some mount paths by default. For example, it mounts `EmptyDir` to the `/var/log/tidb` directory for the TiDB Pod. Therefore, avoid duplicate `mountPath` when you configure `storageVolumes`.
 
 ### mountClusterClientSecret
 
