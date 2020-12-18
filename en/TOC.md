@@ -58,7 +58,7 @@
   - [Restart a TiDB Cluster](restart-a-tidb-cluster.md)
   - [Maintain a Kubernetes Node](maintain-a-kubernetes-node.md)
   - [View TiDB Logs](view-logs.md)
-  - [Enable Automatic Failover](use-auto-failover.md)
+  - [Configure Automatic Failover](use-auto-failover.md)
   - [Destroy a TiDB Cluster](destroy-a-tidb-cluster.md)
 + Disaster Recovery
   - [Recover PD Cluster](pd-recover.md)

@@ -10,7 +10,17 @@ Automatic failover means that when a node in the TiDB cluster fails, TiDB Operat
 
 TiDB Operator manages Pods based on `StatefulSet`, which does not automatically create a new node to replace the original node when a Pod goes down. For this reason, the automatic failover feature is added to TiDB Operator, which expands the behavior of `StatefulSet`.
 
-The automatic failover feature is enabled by default in TiDB Operator. You can disable it by setting `controllerManager.autoFailover` to `false` in the `charts/tidb-operator/values.yaml` file when deploying TiDB Operator:
+## Configure automatic failover
+
+The automatic failover feature is enabled by default in TiDB Operator. 
+
+> **Note:**
+>
+> If there are not enough resources in the cluster for TiDB Operator to create new nodes, the automatic failover feature will not take effect.
+
+### Disable Automatic Failover
+
+You can disable it by setting `controllerManager.autoFailover` to `false` in the `charts/tidb-operator/values.yaml` file when deploying TiDB Operator. For example:
 
 ```yaml
 controllerManager:
@@ -25,7 +35,7 @@ controllerManager:
      cpu: 80m
      memory: 50Mi
  # autoFailover is whether tidb-operator should auto failover when failure occurs
- autoFailover: true
+ autoFailover: false
  # pd failover period default(5m)
  pdFailoverPeriod: 5m
  # tikv failover period default(5m)
