@@ -1653,7 +1653,7 @@ func schema_pkg_apis_pingcap_v1alpha1_DMClusterSpec(ref common.ReferenceCallback
 						},
 					},
 				},
-				Required: []string{"discovery", "version"},
+				Required: []string{"discovery"},
 			},
 		},
 		Dependencies: []string{
@@ -10204,7 +10204,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 						},
 					},
 				},
-				Required: []string{"version"},
 			},
 		},
 		Dependencies: []string{

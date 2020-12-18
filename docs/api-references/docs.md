@@ -606,6 +606,7 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>dm cluster version</p>
 </td>
 </tr>
@@ -1274,6 +1275,7 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>TiDB cluster version</p>
 </td>
 </tr>
@@ -4189,6 +4191,7 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>dm cluster version</p>
 </td>
 </tr>
@@ -18327,6 +18330,7 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>TiDB cluster version</p>
 </td>
 </tr>
