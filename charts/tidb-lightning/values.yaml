@@ -95,6 +95,9 @@ backend: importer # importer | tidb
 # Specify a Service Account for lightning
 # serviceAccount:
 
+# For TiDB-Lightning v3.0.18+ or v4.0.3+,
+# if we want to log to stdout, we should set `file = "-"`.
 config: |
   [lightning]
   level = "info"
+  file = "-"
