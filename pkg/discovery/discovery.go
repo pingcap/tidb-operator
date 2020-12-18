@@ -100,15 +100,15 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	if len(currentCluster.peers) == int(tc.PDStsDesiredReplicas()) && tc.Spec.Cluster == nil {
 		delete(currentCluster.peers, podName)
 		pdAddresses := tc.Spec.PDAddresses
-		// we should join an existing PD cluster
+		// Join an existing PD cluster if tc.Spec.PDAddresses is set
 		if len(pdAddresses) != 0 {
 			return fmt.Sprintf("--join=%s", strings.Join(pdAddresses, ",")), nil
 		}
-		// we should start a PD cluster with the full domain name
+		// Initialize the PD cluster with the FQDN format service record if tc.Spec.ClusterDomain is set.
 		if len(tc.Spec.ClusterDomain) > 0 {
 			return fmt.Sprintf("--initial-cluster=%s=%s://%s", strArr[0], tc.Scheme(), advertisePeerUrl), nil
 		}
-		// we should start a normal PD cluster
+		// Initialize the PD cluster in the normal format service record.
 		return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, tc.Scheme(), advertisePeerUrl), nil
 	}
 

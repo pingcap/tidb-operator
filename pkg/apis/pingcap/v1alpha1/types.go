@@ -714,12 +714,12 @@ type TiDBSlowLogTailerSpec struct {
 	corev1.ResourceRequirements `json:",inline"`
 
 	// (Deprecated) Image used for slowlog tailer.
-	// Note that this is deprecated, use `spec.helper.image` instead
+	// Use `spec.helper.image` instead
 	// +k8s:openapi-gen=false
 	Image *string `json:"image,omitempty"`
 
 	// (Deprecated) ImagePullPolicy of the component. Override the cluster-level imagePullPolicy if present
-	// Note that this is deprecated, use `spec.helper.imagePullPolicy` instead
+	// Use `spec.helper.imagePullPolicy` instead
 	// +k8s:openapi-gen=false
 	ImagePullPolicy *corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 }
@@ -728,7 +728,7 @@ type TiDBSlowLogTailerSpec struct {
 // +k8s:openapi-gen=true
 type ComponentSpec struct {
 	// (Deprecated) Image of the component
-	// Please use `baseImage` and `version` instead
+	// Use `baseImage` and `version` instead
 	// +k8s:openapi-gen=false
 	Image string `json:"image,omitempty"`
 
