@@ -63,13 +63,13 @@ func (f *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 			ns, tcName, healthCount, tc.PDStsDesiredReplicas(), tc.Spec.PD.Replicas, len(tc.Status.PD.FailureMembers))
 	}
 
-	deletedFailureReplicas := tc.GetPDFailureReplicas()
-	if deletedFailureReplicas >= *tc.Spec.PD.MaxFailoverCount {
-		klog.Errorf("PD failover replicas (%d) reaches the limit (%d), skip failover", deletedFailureReplicas, *tc.Spec.PD.MaxFailoverCount)
+	pdFailureReplicasTobeDeleted := tc.CountPDFailureReplicasTobeDeleted()
+	if pdFailureReplicasTobeDeleted >= *tc.Spec.PD.MaxFailoverCount {
+		klog.Errorf("PD failover replicas (%d) reaches the limit (%d), skip failover", pdFailureReplicasTobeDeleted, *tc.Spec.PD.MaxFailoverCount)
 		return nil
 	}
 
-	notDeletedFailureReplicas := len(tc.Status.PD.FailureMembers) - int(deletedFailureReplicas)
+	notDeletedFailureReplicas := len(tc.Status.PD.FailureMembers) - int(pdFailureReplicasTobeDeleted)
 	// we can only failover one at a time
 	if notDeletedFailureReplicas == 0 {
 		return f.tryToMarkAPeerAsFailure(tc)
