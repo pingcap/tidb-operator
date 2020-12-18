@@ -162,7 +162,9 @@ type TidbClusterSpec struct {
 	Paused bool `json:"paused,omitempty"`
 
 	// TiDB cluster version
+	// +optional
 	Version string `json:"version"`
+	// TODO: remove optional after defaulting logic introduced
 
 	// SchedulerName of TiDB cluster Pods
 	// +kubebuilder:default=tidb-scheduler
@@ -1635,7 +1637,9 @@ type DMClusterSpec struct {
 	Paused bool `json:"paused,omitempty"`
 
 	// dm cluster version
+	// +optional
 	Version string `json:"version"`
+	// TODO: remove optional after defaulting logic introduced
 
 	// SchedulerName of DM cluster Pods
 	// +kubebuilder:default=tidb-scheduler
