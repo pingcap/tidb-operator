@@ -21,8 +21,9 @@ import (
 	"os"
 	"reflect"
 
-	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
-	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/util/conversion"
+
+	kruiseclientset "github.com/openkruise/kruise-api/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/controller/autoscaler"
@@ -36,7 +37,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbmonitor"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
-	"github.com/pingcap/tidb-operator/pkg/upgrader"
 	"github.com/pingcap/tidb-operator/pkg/version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -98,7 +98,7 @@ func main() {
 	if err != nil {
 		klog.Fatalf("failed to get kubernetes Clientset: %v", err)
 	}
-	asCli, err := asclientset.NewForConfig(cfg)
+	kruiseCli, err := kruiseclientset.NewForConfig(cfg)
 	if err != nil {
 		klog.Fatalf("failed to get advanced-statefulset Clientset: %v", err)
 	}
@@ -109,17 +109,18 @@ func main() {
 	}
 
 	// note that kubeCli here must not be the hijacked one
-	var operatorUpgrader upgrader.Interface
-	if cliCfg.ClusterScoped {
-		operatorUpgrader = upgrader.NewUpgrader(kubeCli, cli, asCli, metav1.NamespaceAll)
-	} else {
-		operatorUpgrader = upgrader.NewUpgrader(kubeCli, cli, asCli, ns)
-	}
+	// TODO
+	//var operatorUpgrader upgrader.Interface
+	//if cliCfg.ClusterScoped {
+	//	operatorUpgrader = upgrader.NewUpgrader(kubeCli, cli, kruiseCli, metav1.NamespaceAll)
+	//} else {
+	//	operatorUpgrader = upgrader.NewUpgrader(kubeCli, cli, kruiseCli, ns)
+	//}
 
 	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
 		// If AdvancedStatefulSet is enabled, we hijack the Kubernetes client to use
 		// AdvancedStatefulSet.
-		kubeCli = helper.NewHijackClient(kubeCli, asCli)
+		kubeCli = conversion.NewHijackClient(kubeCli, kruiseCli)
 	}
 
 	deps := controller.NewDependencies(ns, cliCfg, cli, kubeCli, genericCli)
@@ -129,9 +130,10 @@ func main() {
 	onStarted := func(ctx context.Context) {
 		// Upgrade before running any controller logic. If it fails, we wait
 		// for process supervisor to restart it again.
-		if err := operatorUpgrader.Upgrade(); err != nil {
-			klog.Fatalf("failed to upgrade: %v", err)
-		}
+		// TODO
+		//if err := operatorUpgrader.Upgrade(); err != nil {
+		//	klog.Fatalf("failed to upgrade: %v", err)
+		//}
 
 		// Define some nested types to simplify the codebase
 		type Controller interface {
