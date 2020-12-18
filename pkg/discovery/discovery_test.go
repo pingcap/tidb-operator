@@ -494,6 +494,35 @@ func TestDiscoveryDiscovery(t *testing.T) {
 				g.Expect(s).To(Equal("--join=http://address0:2379,http://address1:2379,http://address2:2379,demo-pd-1.demo-pd-peer.default.svc:2379,demo-pd-2.demo-pd-peer.default.svc:2379"))
 			},
 		},
+		{
+			name: "skip initialize when PD on initial cluster failover for cross-region clusters",
+			ns:   "default",
+			url:  "demo-pd-3.demo-pd-peer.default.svc:2380",
+			tc: func() *v1alpha1.TidbCluster {
+				tc := newTC()
+				tc.Status.PD.PeerMembers = map[string]v1alpha1.PDMember{
+					"pd-0": {Name: "pd-0", ClientURL: "http://pd-0.pd.pingcap.cluster2.com:2379", Health: true},
+				}
+				return tc
+			}(),
+			getMembersFn: func() (*pdapi.MembersInfo, error) {
+				return &pdapi.MembersInfo{
+					Members: []*pdpb.Member{
+						{
+							PeerUrls: []string{"demo-pd-3.demo-pd-peer.default.svc:2380"},
+						},
+						{
+							PeerUrls: []string{"pd-0.pd.pingcap.cluster2.com:2380"},
+						},
+					},
+				}, nil
+			},
+			clusters: map[string]*clusterInfo{},
+			expectFn: func(g *GomegaWithT, td *tidbDiscovery, s string, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(s).To(Equal("--join=demo-pd-3.demo-pd-peer.default.svc:2379,pd-0.pd.pingcap.cluster2.com:2379"))
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
