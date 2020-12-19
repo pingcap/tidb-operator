@@ -122,8 +122,9 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 					},
 				}
 			},
-			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
-				svc, err := tmm.deps.ServiceLister.Services(monitor.Namespace).Get(prometheusName(monitor))
+			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
+				errExpectRequeuefunc(g, err, tmm, tm)
+				svc, err := tmm.deps.ServiceLister.Services(tm.Namespace).Get(prometheusName(tm))
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(svc.Spec.Ports).To(Equal([]v1.ServicePort{
 					{
@@ -145,7 +146,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 					},
 				}))
 
-				sts, err := tmm.deps.StatefulSetLister.StatefulSets(monitor.Namespace).Get(GetMonitorObjectName(monitor))
+				sts, err := tmm.deps.StatefulSetLister.StatefulSets(tm.Namespace).Get(GetMonitorObjectName(tm))
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(3))
 			},

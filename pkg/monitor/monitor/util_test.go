@@ -14,6 +14,7 @@
 package monitor
 
 import (
+	"github.com/prometheus/common/model"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -986,6 +987,143 @@ func TestGetMonitorGrafanaContainer(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			sa := getMonitorGrafanaContainer(&tt.secret, &tt.monitor, &tt.cluster)
+			if tt.expected == nil {
+				g.Expect(sa).To(BeNil())
+				return
+			}
+			if diff := cmp.Diff(tt.expected, &sa); diff != "" {
+				t.Errorf("unexpected plugin configuration (-want, +got): %s", diff)
+			}
+		})
+	}
+}
+
+func TestGetMonitorThanosSidecarContainer(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	testCases := []struct {
+		name     string
+		secret   corev1.Secret
+		cluster  v1alpha1.TidbCluster
+		monitor  v1alpha1.TidbMonitor
+		expected *corev1.Container
+	}{
+		{
+			name: "basic",
+			secret: corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+			},
+			cluster: v1alpha1.TidbCluster{
+				Spec: v1alpha1.TidbClusterSpec{
+					TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
+				},
+			},
+			monitor: v1alpha1.TidbMonitor{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbMonitorSpec{
+					Thanos: &v1alpha1.ThanosSpec{
+						MonitorContainer: v1alpha1.MonitorContainer{
+							BaseImage: "thanosio/thanos",
+							Version:   "v0.17.2",
+						},
+					},
+				},
+			},
+			expected: &corev1.Container{
+				Name:  "thanos-sidecar",
+				Image: "thanosio/thanos:v0.17.2",
+				Args: []string{
+					"sidecar",
+					"--prometheus.url=http://localhost:9090/.",
+					"--grpc-address=[$(POD_IP)]:10901",
+					"--http-address=[$(POD_IP)]:10902",
+				},
+				Ports: []corev1.ContainerPort{
+					{
+						Name:          "http",
+						ContainerPort: 10902,
+						Protocol:      "TCP",
+					},
+					{
+						Name:          "grpc",
+						ContainerPort: 10901,
+						Protocol:      "TCP",
+					},
+				},
+				Env: []corev1.EnvVar{
+					{
+						Name: "POD_IP",
+						ValueFrom: &corev1.EnvVarSource{
+							FieldRef: &corev1.ObjectFieldSelector{
+								FieldPath: "status.podIP",
+							},
+						},
+					},
+				},
+				Resources: corev1.ResourceRequirements{},
+			},
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			sa := getThanosSidecarContainer(&tt.monitor)
+			if tt.expected == nil {
+				g.Expect(sa).To(BeNil())
+				return
+			}
+			if diff := cmp.Diff(tt.expected, &sa); diff != "" {
+				t.Errorf("unexpected plugin configuration (-want, +got): %s", diff)
+			}
+		})
+	}
+}
+
+func TestBuildExternalLabels(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	testCases := []struct {
+		name     string
+		secret   corev1.Secret
+		cluster  v1alpha1.TidbCluster
+		monitor  v1alpha1.TidbMonitor
+		expected *model.LabelSet
+	}{
+		{
+			cluster: v1alpha1.TidbCluster{
+				Spec: v1alpha1.TidbClusterSpec{
+					TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
+				},
+			},
+			monitor: v1alpha1.TidbMonitor{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbMonitorSpec{
+					Thanos: &v1alpha1.ThanosSpec{
+						MonitorContainer: v1alpha1.MonitorContainer{
+							BaseImage: "thanosio/thanos",
+							Version:   "v0.17.2",
+						},
+					},
+				},
+			},
+			expected: &model.LabelSet{
+				defaultReplicaExternalLabelName: "$(POD_NAME)",
+			},
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			sa := buildExternalLabels(&tt.monitor)
 			if tt.expected == nil {
 				g.Expect(sa).To(BeNil())
 				return

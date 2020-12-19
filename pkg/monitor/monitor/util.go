@@ -787,10 +787,6 @@ func grafanaName(monitor *v1alpha1.TidbMonitor) string {
 	return fmt.Sprintf("%s-grafana", monitor.Name)
 }
 
-func thanosSidecarName(monitor *v1alpha1.TidbMonitor) string {
-	return fmt.Sprintf("%s-thanos-sidecar", monitor.Name)
-}
-
 func reloaderName(monitor *v1alpha1.TidbMonitor) string {
 	return fmt.Sprintf("%s-monitor-reloader", monitor.Name)
 }
@@ -946,10 +942,12 @@ func getThanosSidecarContainer(monitor *v1alpha1.TidbMonitor) core.Container {
 			{
 				Name:          "http",
 				ContainerPort: 10902,
+				Protocol:      "TCP",
 			},
 			{
 				Name:          "grpc",
 				ContainerPort: 10901,
+				Protocol:      "TCP",
 			},
 		},
 	}
@@ -993,8 +991,6 @@ func getThanosSidecarContainer(monitor *v1alpha1.TidbMonitor) core.Container {
 		container.Args = append(container.Args, "--log.level="+monitor.Spec.Thanos.LogLevel)
 	}
 	if monitor.Spec.Thanos.LogFormat != "" {
-		container.Args = append(container.Args, "--log.format="+monitor.Spec.Thanos.LogFormat)
-	} else if monitor.Spec.Thanos.LogFormat != "" {
 		container.Args = append(container.Args, "--log.format="+monitor.Spec.Thanos.LogFormat)
 	}
 
