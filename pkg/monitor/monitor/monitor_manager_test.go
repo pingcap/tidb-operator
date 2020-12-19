@@ -14,7 +14,6 @@
 package monitor
 
 import (
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -24,6 +23,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	discoverycachedmemory "k8s.io/client-go/discovery/cached/memory"
 	discoveryfake "k8s.io/client-go/discovery/fake"
 	k8stesting "k8s.io/client-go/testing"
