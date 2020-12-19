@@ -589,11 +589,3 @@ func (m *MonitorManager) patchPVClaimRef(pv *corev1.PersistentVolume, patchPvcNa
 	}
 	return nil
 }
-
-type FakeMonitorManager struct {
-	MonitorManager
-}
-
-func NewFakeMonitorManager() *FakeMonitorManager {
-	return &FakeMonitorManager{}
-}
