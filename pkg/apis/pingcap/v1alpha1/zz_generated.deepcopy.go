@@ -8035,6 +8035,18 @@ func (in *TidbMonitorSpec) DeepCopyInto(out *TidbMonitorSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.ExternalLabels != nil {
+		in, out := &in.ExternalLabels, &out.ExternalLabels
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
+	if in.ReplicaExternalLabelName != nil {
+		in, out := &in.ReplicaExternalLabelName, &out.ReplicaExternalLabelName
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 

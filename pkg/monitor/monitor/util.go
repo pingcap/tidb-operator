@@ -19,6 +19,8 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/prometheus/common/model"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -33,6 +35,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog"
+)
+
+const (
+	defaultReplicaExternalLabelName = "prometheus_replica"
 )
 
 func GetMonitorObjectName(monitor *v1alpha1.TidbMonitor) string {
@@ -66,6 +72,7 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor
 		AlertmanagerURL:  "",
 		ClusterInfos:     releaseClusterInfos,
 		EnableTLSCluster: tc.IsTLSClusterEnabled(),
+		ExternalLabels:   buildExternalLabels(monitor),
 	}
 
 	if monitor.Spec.AlertmanagerURL != nil {
@@ -643,10 +650,12 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 	if monitor.Spec.Thanos != nil {
 		prometheusService.Spec.Ports = append(prometheusService.Spec.Ports, core.ServicePort{
 			Name:       "thanossidecar-grpc",
+			Protocol:   core.ProtocolTCP,
 			Port:       10901,
 			TargetPort: intstr.FromInt(10901),
 		}, core.ServicePort{
 			Name:       "thanossidecar-http",
+			Protocol:   core.ProtocolTCP,
 			Port:       10902,
 			TargetPort: intstr.FromInt(10902),
 		})
@@ -804,9 +813,12 @@ func getMonitorStatefulSet(sa *core.ServiceAccount, config *core.ConfigMap, secr
 	initContainer := getMonitorInitContainer(monitor, tc)
 	statefulSet.Spec.Template.Spec.InitContainers = append(statefulSet.Spec.Template.Spec.InitContainers, initContainer)
 	prometheusContainer := getMonitorPrometheusContainer(monitor, tc)
-	thanosSideCarContainer := getThanosSidecarContainer(monitor)
 	reloaderContainer := getMonitorReloaderContainer(monitor, tc)
-	statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, prometheusContainer, reloaderContainer, thanosSideCarContainer)
+	statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, prometheusContainer, reloaderContainer)
+	if monitor.Spec.Thanos != nil {
+		thanosSideCarContainer := getThanosSidecarContainer(monitor)
+		statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, thanosSideCarContainer)
+	}
 	additionalContainers := monitor.Spec.AdditionalContainers
 	if len(additionalContainers) > 0 {
 		statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, additionalContainers...)
@@ -990,4 +1002,25 @@ func getThanosSidecarContainer(monitor *v1alpha1.TidbMonitor) core.Container {
 		container.Args = append(container.Args, "--min-time="+monitor.Spec.Thanos.MinTime)
 	}
 	return container
+}
+
+func buildExternalLabels(monitor *v1alpha1.TidbMonitor) model.LabelSet {
+	m := model.LabelSet{}
+	// Use defaultReplicaExternalLabelName constant by default if field is missing.
+	// Do not add external label if field is set to empty string.
+	replicaExternalLabelName := defaultReplicaExternalLabelName
+	if monitor.Spec.ReplicaExternalLabelName != nil {
+		if *monitor.Spec.ReplicaExternalLabelName != "" {
+			replicaExternalLabelName = *monitor.Spec.ReplicaExternalLabelName
+		} else {
+			replicaExternalLabelName = ""
+		}
+	}
+	if replicaExternalLabelName != "" {
+		m[model.LabelName(replicaExternalLabelName)] = "$(POD_NAME)"
+	}
+	for n, v := range monitor.Spec.ExternalLabels {
+		m[model.LabelName(n)] = model.LabelValue(v)
+	}
+	return m
 }

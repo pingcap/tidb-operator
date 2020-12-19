@@ -2016,6 +2016,7 @@ ThanosSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 </td>
 </tr>
 <tr>
@@ -2186,6 +2187,31 @@ bool
 </td>
 <td>
 <p>ClusterScoped indicates whether this monitor should manage Kubernetes cluster-wide TiDB clusters</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>externalLabels</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>The labels to add to any time series or alerts when communicating with
+external systems (federation, remote storage, Alertmanager).</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>replicaExternalLabelName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of Prometheus external label used to denote replica name.
+Defaults to the value of <code>prometheus_replica</code>. External label will
+<em>not</em> be added when value is set to empty string (<code>&quot;&quot;</code>).</p>
 </td>
 </tr>
 </table>
@@ -19286,6 +19312,7 @@ ThanosSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 </td>
 </tr>
 <tr>
@@ -19456,6 +19483,31 @@ bool
 </td>
 <td>
 <p>ClusterScoped indicates whether this monitor should manage Kubernetes cluster-wide TiDB clusters</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>externalLabels</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>The labels to add to any time series or alerts when communicating with
+external systems (federation, remote storage, Alertmanager).</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>replicaExternalLabelName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of Prometheus external label used to denote replica name.
+Defaults to the value of <code>prometheus_replica</code>. External label will
+<em>not</em> be added when value is set to empty string (<code>&quot;&quot;</code>).</p>
 </td>
 </tr>
 </tbody>

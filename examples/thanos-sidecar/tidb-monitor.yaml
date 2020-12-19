@@ -6,17 +6,17 @@ spec:
   clusters:
   - name: basic
   thanos:
-    baseImage: thanos/thanos
-    version: v0.8.1
+    baseImage: thanosio/thanos
+    version: v0.10.1
   prometheus:
     baseImage: prom/prometheus
-    version: v2.18.1
+    version: v2.11.1
   grafana:
     baseImage: grafana/grafana
     version: 6.1.6
   initializer:
     baseImage: pingcap/tidb-monitor-initializer
-    version: v4.0.8
+    version: v4.0.7
   reloader:
     baseImage: pingcap/tidb-monitor-reloader
     version: v1.0.1

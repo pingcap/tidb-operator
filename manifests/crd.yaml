@@ -15245,6 +15245,8 @@ spec:
                 - name
                 type: object
               type: array
+            externalLabels:
+              type: object
             grafana: {}
             imagePullPolicy:
               type: string
@@ -15266,6 +15268,8 @@ spec:
             pvReclaimPolicy:
               type: string
             reloader: {}
+            replicaExternalLabelName:
+              type: string
             storage:
               type: string
             storageClassName:
@@ -15292,7 +15296,6 @@ spec:
           - prometheus
           - reloader
           - initializer
-          - thanos
           type: object
       type: object
   version: v1alpha1

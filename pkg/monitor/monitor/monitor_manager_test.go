@@ -14,6 +14,7 @@
 package monitor
 
 import (
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -110,6 +111,48 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 	}
 
 	tests := []testcase{
+		{
+			name: "tidbmonitor spec thanos sidecar",
+			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
+
+				monitor.Spec.Thanos = &v1alpha1.ThanosSpec{
+					MonitorContainer: v1alpha1.MonitorContainer{
+						BaseImage: "thanosio/thanos",
+						Version:   "v0.10.1",
+					},
+				}
+			},
+			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
+				svc, err := tmm.deps.ServiceLister.Services(monitor.Namespace).Get(prometheusName(monitor))
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(svc.Spec.Ports).To(Equal([]v1.ServicePort{
+					{
+						Name:       "http-prometheus",
+						Port:       9090,
+						Protocol:   v1.ProtocolTCP,
+						TargetPort: intstr.FromInt(9090),
+					}, {
+						Name:       "thanossidecar-grpc",
+						Port:       10901,
+						Protocol:   v1.ProtocolTCP,
+						TargetPort: intstr.FromInt(10901),
+					},
+					{
+						Name:       "thanossidecar-http",
+						Port:       10902,
+						Protocol:   v1.ProtocolTCP,
+						TargetPort: intstr.FromInt(10902),
+					},
+				}))
+
+				sts, err := tmm.deps.StatefulSetLister.StatefulSets(monitor.Namespace).Get(GetMonitorObjectName(monitor))
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(3))
+			},
+			stsCreated:    true,
+			svcCreated:    true,
+			volumeCreated: false,
+		},
 		{
 			name: "tidbmonitor enable clusterScope",
 			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {

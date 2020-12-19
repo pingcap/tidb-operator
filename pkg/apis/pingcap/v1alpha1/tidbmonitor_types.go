@@ -46,7 +46,8 @@ type TidbMonitorSpec struct {
 	Grafana     *GrafanaSpec    `json:"grafana,omitempty"`
 	Reloader    ReloaderSpec    `json:"reloader"`
 	Initializer InitializerSpec `json:"initializer"`
-	Thanos      *ThanosSpec     `json:"thanos"`
+	// +optional
+	Thanos *ThanosSpec `json:"thanos,omitempty"`
 
 	// Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster
 	// +kubebuilder:default=Retain
@@ -87,6 +88,13 @@ type TidbMonitorSpec struct {
 
 	// ClusterScoped indicates whether this monitor should manage Kubernetes cluster-wide TiDB clusters
 	ClusterScoped bool `json:"clusterScoped,omitempty"`
+	// The labels to add to any time series or alerts when communicating with
+	// external systems (federation, remote storage, Alertmanager).
+	ExternalLabels map[string]string `json:"externalLabels,omitempty"`
+	// Name of Prometheus external label used to denote replica name.
+	// Defaults to the value of `prometheus_replica`. External label will
+	// _not_ be added when value is set to empty string (`""`).
+	ReplicaExternalLabelName *string `json:"replicaExternalLabelName,omitempty"`
 }
 
 // PrometheusSpec is the desired state of prometheus
