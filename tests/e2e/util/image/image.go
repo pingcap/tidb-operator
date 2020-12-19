@@ -41,7 +41,7 @@ const (
 	GrafanaImage                  = "grafana/grafana"
 	GrafanaVersion                = "6.1.6"
 	ThanosImage                   = "thanosio/thanos"
-	ThanosVersion                 = "v0.10.1"
+	ThanosVersion                 = "v0.17.2"
 )
 
 func ListImages() []string {

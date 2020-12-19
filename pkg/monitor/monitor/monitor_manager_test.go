@@ -118,7 +118,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 				monitor.Spec.Thanos = &v1alpha1.ThanosSpec{
 					MonitorContainer: v1alpha1.MonitorContainer{
 						BaseImage: "thanosio/thanos",
-						Version:   "v0.10.1",
+						Version:   "v0.17.2",
 					},
 				}
 			},
