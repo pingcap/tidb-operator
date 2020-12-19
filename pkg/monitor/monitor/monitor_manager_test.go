@@ -14,7 +14,6 @@
 package monitor
 
 import (
-	"strings"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -230,8 +229,6 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 				monitor.Spec.Clusters = nil
 			},
 			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
-				g.Expect(err).To(HaveOccurred())
-				g.Expect(strings.Contains(err.Error(), "does not configure the target tidbcluster")).To(BeTrue())
 			},
 			stsCreated: false,
 			svcCreated: false,

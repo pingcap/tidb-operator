@@ -85,7 +85,6 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 		return "", err
 	}
 	keyName := fmt.Sprintf("%s/%s", ns, tcName)
-	pdAddresses := tc.Spec.PDAddresses
 
 	currentCluster := d.clusters[keyName]
 	if currentCluster == nil || currentCluster.resourceVersion != tc.ResourceVersion {
@@ -100,16 +99,25 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	// Should take failover replicas into consideration
 	if len(currentCluster.peers) == int(tc.PDStsDesiredReplicas()) && tc.Spec.Cluster == nil {
 		delete(currentCluster.peers, podName)
+		pdAddresses := tc.Spec.PDAddresses
+		// Join an existing PD cluster if tc.Spec.PDAddresses is set
 		if len(pdAddresses) != 0 {
 			return fmt.Sprintf("--join=%s", strings.Join(pdAddresses, ",")), nil
 		}
+		// Initialize the PD cluster with the FQDN format service record if tc.Spec.ClusterDomain is set.
 		if len(tc.Spec.ClusterDomain) > 0 {
 			return fmt.Sprintf("--initial-cluster=%s=%s://%s", strArr[0], tc.Scheme(), advertisePeerUrl), nil
 		}
+		// Initialize the PD cluster in the normal format service record.
 		return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, tc.Scheme(), advertisePeerUrl), nil
 	}
 
 	var pdClients []pdapi.PDClient
+
+	if tc.Spec.PD != nil {
+		pdClients = append(pdClients, d.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()))
+	}
+
 	if tc.Spec.Cluster != nil && len(tc.Spec.Cluster.Name) > 0 {
 		namespace := tc.Spec.Cluster.Namespace
 		if len(namespace) == 0 {
@@ -117,8 +125,9 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 		}
 		pdClients = append(pdClients, d.pdControl.GetClusterRefPDClient(pdapi.Namespace(namespace), tc.Spec.Cluster.Name, tc.Spec.Cluster.ClusterDomain, tc.IsTLSClusterEnabled()))
 	}
-	if tc.Spec.PD != nil {
-		pdClients = append(pdClients, d.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()))
+
+	for _, pdMember := range tc.Status.PD.PeerMembers {
+		pdClients = append(pdClients, d.pdControl.GetPeerPDClient(pdapi.Namespace(ns), tc.Name, tc.IsTLSClusterEnabled(), pdMember.ClientURL, pdMember.Name))
 	}
 
 	var membersInfo *pdapi.MembersInfo
