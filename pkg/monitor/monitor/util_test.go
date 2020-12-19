@@ -1032,6 +1032,12 @@ func TestGetMonitorThanosSidecarContainer(t *testing.T) {
 							BaseImage: "thanosio/thanos",
 							Version:   "v0.17.2",
 						},
+						ObjectStorageConfig: &corev1.SecretKeySelector{
+							Key: "objectstorage.yaml",
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "thanos-objectstorage",
+							},
+						},
 					},
 				},
 			},
@@ -1043,6 +1049,8 @@ func TestGetMonitorThanosSidecarContainer(t *testing.T) {
 					"--prometheus.url=http://localhost:9090/.",
 					"--grpc-address=[$(POD_IP)]:10901",
 					"--http-address=[$(POD_IP)]:10902",
+					"--objstore.config=$(OBJSTORE_CONFIG)",
+					"--tsdb.path=/prometheus",
 				},
 				Ports: []corev1.ContainerPort{
 					{
@@ -1065,8 +1073,26 @@ func TestGetMonitorThanosSidecarContainer(t *testing.T) {
 							},
 						},
 					},
+					{
+						Name: "OBJSTORE_CONFIG",
+						ValueFrom: &corev1.EnvVarSource{
+							SecretKeyRef: &corev1.SecretKeySelector{
+								Key: "objectstorage.yaml",
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "thanos-objectstorage",
+								},
+							},
+						},
+					},
 				},
 				Resources: corev1.ResourceRequirements{},
+				VolumeMounts: []corev1.VolumeMount{
+					{
+						Name:      v1alpha1.TidbMonitorMemberType.String(),
+						MountPath: "/prometheus",
+						SubPath:   "prometheus-db",
+					},
+				},
 			},
 		},
 	}
