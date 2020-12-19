@@ -27,7 +27,7 @@ import (
 
 type GenericConfig struct {
 	// Export this field to make "apiequality.Semantic.DeepEqual" happy now.
-	// User of GenericConfig should do not directly access this field.
+	// User of GenericConfig should not directly access this field.
 	MP map[string]interface{}
 }
 

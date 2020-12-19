@@ -59,6 +59,22 @@ targetTidbCluster:
   #secretUserKey: user
   #secretPwdKey: password
 
+# Whether enable the TLS connection between TiDB cluster components.
+# If enabled, a Secret named "<targetTidbCluster.name>-lightning-cluster-secret" must exist.
+# To create this Secret: kubectl create secret generic <targetTidbCluster.name>-lightning-cluster-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+# NOTE: if tlsCluster enabled but tlsClient not enabled, then you should add the following TOML config items into `config`:
+#  [tidb]
+#  tls="false"
+tlsCluster: {}
+  # enabled: true
+
+# Whether enable the TLS connection with the TiDB MySQL protocol port.
+# if enabled, a Secret named `tlsClientSecretName` (if specified) or `${targetTidbCluster.name}-tidb-client-secret` must exist.
+# To create this Secret: kubectl create secret generic ${targetTidbCluster.name}-tidb-client-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+tlsClient: {}
+  # enabled: true
+  # tlsClientSecretName: ${targetTidbCluster.name}-tidb-client-secret
+
 resources: {}
   # limits:
   #  cpu: 16000m
@@ -79,6 +95,9 @@ backend: importer # importer | tidb
 # Specify a Service Account for lightning
 # serviceAccount:
 
+# For TiDB-Lightning v3.0.18+ or v4.0.3+,
+# if we want to log to stdout, we should set `file = "-"`.
 config: |
   [lightning]
   level = "info"
+  file = "-"

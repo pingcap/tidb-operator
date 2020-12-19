@@ -47,7 +47,7 @@ func (ro *Options) downloadBackupData(localPath string, opts []string) error {
 	}
 
 	remoteBucket := backupUtil.NormalizeBucketURI(ro.BackupPath)
-	args := backupUtil.ConstructArgs(constants.RcloneConfigArg, opts, "copyto", remoteBucket, localPath)
+	args := backupUtil.ConstructRcloneArgs(constants.RcloneConfigArg, opts, "copyto", remoteBucket, localPath, true)
 	rcCopy := exec.Command("rclone", args...)
 
 	stdOut, err := rcCopy.StdoutPipe()
@@ -90,7 +90,7 @@ func (ro *Options) loadTidbClusterData(restorePath string, tableFilter []string)
 		"--status-addr=0.0.0.0:8289",
 		"--backend=tidb",
 		"--server-mode=false",
-		"--log-file=",
+		"--log-file=-", // "-" to stdout
 		fmt.Sprintf("--tidb-user=%s", ro.User),
 		fmt.Sprintf("--tidb-password=%s", ro.Password),
 		fmt.Sprintf("--tidb-host=%s", ro.Host),
