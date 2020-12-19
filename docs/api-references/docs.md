@@ -11411,6 +11411,17 @@ string
 <p>MinTime for Thanos sidecar to be configured with. Option can be a constant time in RFC3339 format or time duration relative to current time, such as -1d or 2h45m. Valid duration units are ms, s, m, h, d, w, y.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>routePrefix</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>RoutePrefix is prometheus prefix url</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="ticdccapture">TiCDCCapture</h3>
