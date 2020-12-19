@@ -770,11 +770,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			if err != nil {
 				return false, err
 			}
-			//validate tidbcluster status
-			if tc.Status.Monitor.Name != tm.Name || tc.Status.Monitor.Namespace != tm.Namespace {
-				framework.Logf("tidbcluster status monitor info incorrect")
-				return false, nil
-			}
 			if *tc.Spec.PVReclaimPolicy != corev1.PersistentVolumeReclaimDelete {
 				framework.Logf("tidbcluster PVReclaimPolicy changed into %v", *tc.Spec.PVReclaimPolicy)
 				return true, nil

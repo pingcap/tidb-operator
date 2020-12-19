@@ -62,7 +62,7 @@ func (m *TidbClusterStatusManager) syncTidbMonitorRef(tc *v1alpha1.TidbCluster) 
 		return nil, nil
 	}
 	tmRef := tc.Status.Monitor
-	tm, err := m.deps.Clientset.PingcapV1alpha1().TidbMonitors(tmRef.Namespace).Get(tmRef.Name, metav1.GetOptions{})
+	tm, err := m.deps.TiDBMonitorLister.TidbMonitors(tmRef.Namespace).Get(tmRef.Name)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			tc.Status.Monitor = nil
