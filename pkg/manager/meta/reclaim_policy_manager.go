@@ -58,6 +58,7 @@ func (m *reclaimPolicyManager) sync(kind, ns, instanceName string, isPVReclaimEn
 		if pvc.Spec.VolumeName == "" {
 			continue
 		}
+<<<<<<< HEAD
 		l := label.Label(pvc.Labels)
 		switch kind {
 		case v1alpha1.TiDBClusterKind:
@@ -69,6 +70,10 @@ func (m *reclaimPolicyManager) sync(kind, ns, instanceName string, isPVReclaimEn
 				continue
 			}
 		default:
+=======
+		if isPVReclaimEnabled && len(pvc.Annotations[label.AnnPVCDeferDeleting]) != 0 {
+			// If the PV reclaim setting is enabled, and when PV is a candidate to be reclaimed, skip patching this PV.
+>>>>>>> 929f1c76... Improve advanced example: TidbCluster (#3550)
 			continue
 		}
 

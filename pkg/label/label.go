@@ -63,7 +63,20 @@ const (
 	// BackupProtectionFinalizer is the name of finalizer on backups
 	BackupProtectionFinalizer string = "tidb.pingcap.com/backup-protection"
 
+<<<<<<< HEAD
 	// High availability is realized based on the topology
+=======
+	// AutoScalingGroupLabelKey describes the autoscaling group of the TiDB
+	AutoScalingGroupLabelKey = "tidb.pingcap.com/autoscaling-group"
+	// AutoInstanceLabelKey is label key used in autoscaling, it represents the autoscaler name
+	AutoInstanceLabelKey string = "tidb.pingcap.com/auto-instance"
+	// AutoComponentLabelKey is label key used in autoscaling, it represents which component is auto scaled
+	AutoComponentLabelKey string = "tidb.pingcap.com/auto-component"
+	// BaseTCLabelKey is label key used for heterogeneous clusters to refer to its base TidbCluster
+	BaseTCLabelKey string = "tidb.pingcap.com/base-tc"
+
+	// AnnHATopologyKey defines the High availability topology key
+>>>>>>> 929f1c76... Improve advanced example: TidbCluster (#3550)
 	AnnHATopologyKey = "pingcap.com/ha-topology-key"
 
 	// AnnFailTiDBScheduler is for injecting a failure into the TiDB custom scheduler
@@ -87,7 +100,7 @@ const (
 	AnnSysctlInit = "tidb.pingcap.com/sysctl-init"
 	// AnnEvictLeaderBeginTime is pod annotation key to indicate the begin time for evicting region leader
 	AnnEvictLeaderBeginTime = "tidb.pingcap.com/evictLeaderBeginTime"
-	// AnnStsSyncTimestamp is sts annotation key to indicate the last timestamp the operator sync the sts
+	// AnnStsLastSyncTimestamp is sts annotation key to indicate the last timestamp the operator sync the sts
 	AnnStsLastSyncTimestamp = "tidb.pingcap.com/sync-timestamp"
 
 	// AnnForceUpgradeVal is tc annotation value to indicate whether force upgrade should be done
@@ -97,12 +110,13 @@ const (
 
 	// AnnPDDeleteSlots is annotation key of pd delete slots.
 	AnnPDDeleteSlots = "pd.tidb.pingcap.com/delete-slots"
-	// TiDBDeleteSlots is annotation key of tidb delete slots.
+	// AnnTiDBDeleteSlots is annotation key of tidb delete slots.
 	AnnTiDBDeleteSlots = "tidb.tidb.pingcap.com/delete-slots"
-	// TiKVDeleteSlots is annotation key of tikv delete slots.
+	// AnnTiKVDeleteSlots is annotation key of tikv delete slots.
 	AnnTiKVDeleteSlots = "tikv.tidb.pingcap.com/delete-slots"
-	// TiFlashDeleteSlots is annotation key of tiflash delete slots.
+	// AnnTiFlashDeleteSlots is annotation key of tiflash delete slots.
 	AnnTiFlashDeleteSlots = "tiflash.tidb.pingcap.com/delete-slots"
+<<<<<<< HEAD
 
 	// AnnTiDBLastAutoScalingTimestamp is annotation key of tidbcluster to indicate the last timestamp for tidb auto-scaling
 	AnnTiDBLastAutoScalingTimestamp = "tidb.tidb.pingcap.com/last-autoscaling-timestamp"
@@ -110,6 +124,12 @@ const (
 	AnnTiKVLastAutoScalingTimestamp = "tikv.tidb.pingcap.com/last-autoscaling-timestamp"
 	// AnnLastSyncingTimestamp records last sync timestamp
 	AnnLastSyncingTimestamp = "tidb.pingcap.com/last-syncing-timestamp"
+=======
+	// AnnDMMasterDeleteSlots is annotation key of dm-master delete slots.
+	AnnDMMasterDeleteSlots = "dm-master.tidb.pingcap.com/delete-slots"
+	// AnnDMWorkerDeleteSlots is annotation key of dm-worker delete slots.
+	AnnDMWorkerDeleteSlots = "dm-worker.tidb.pingcap.com/delete-slots"
+>>>>>>> 929f1c76... Improve advanced example: TidbCluster (#3550)
 
 	// AnnTiKVAutoScalingOutOrdinals describe the tikv pods' ordinal list which is created by auto-scaling out
 	AnnTiKVAutoScalingOutOrdinals = "tikv.tidb.pingcap.com/scale-out-ordinals"
@@ -250,20 +270,17 @@ func (l Label) Initializer(val string) Label {
 
 // CleanJob assigns clean to component key in label
 func (l Label) CleanJob() Label {
-	l.Component(CleanJobLabelVal)
-	return l
+	return l.Component(CleanJobLabelVal)
 }
 
 // BackupJob assigns backup to component key in label
 func (l Label) BackupJob() Label {
-	l.Component(BackupJobLabelVal)
-	return l
+	return l.Component(BackupJobLabelVal)
 }
 
 // RestoreJob assigns restore to component key in label
 func (l Label) RestoreJob() Label {
-	l.Component(RestoreJobLabelVal)
-	return l
+	return l.Component(RestoreJobLabelVal)
 }
 
 // Backup assigns specific value to backup key in label
@@ -286,82 +303,102 @@ func (l Label) Restore(val string) Label {
 
 // PD assigns pd to component key in label
 func (l Label) PD() Label {
-	l.Component(PDLabelVal)
-	return l
+	return l.Component(PDLabelVal)
+}
+
+// IsPD returns whether label is a PD component
+func (l Label) IsPD() bool {
+	return l[ComponentLabelKey] == PDLabelVal
 }
 
 // Pump assigns pump to component key in label
 func (l Label) Pump() Label {
-	l.Component(PumpLabelVal)
-	return l
+	return l.Component(PumpLabelVal)
 }
 
+<<<<<<< HEAD
+func (l Label) IsPump() bool {
+	return l[ComponentLabelKey] == PumpLabelVal
+=======
+// IsPump returns whether label is a Pump component
 func (l Label) IsPump() bool {
 	return l[ComponentLabelKey] == PumpLabelVal
 }
 
-func (l Label) Monitor() Label {
-	l.Component(TiDBMonitorVal)
-	return l
+// DMMaster assigns dm-master to component key in label
+func (l Label) DMMaster() Label {
+	return l.Component(DMMasterLabelVal)
 }
 
+// IsDMMaster returns whether label is a DMMaster component
+func (l Label) IsDMMaster() bool {
+	return l[ComponentLabelKey] == DMMasterLabelVal
+}
+
+// DMWorker assigns dm-worker to component key in label
+func (l Label) DMWorker() Label {
+	return l.Component(DMWorkerLabelVal)
+}
+
+// IsDMWorker returns whether label is a DMWorker component
+func (l Label) IsDMWorker() bool {
+	return l[ComponentLabelKey] == DMWorkerLabelVal
+>>>>>>> 929f1c76... Improve advanced example: TidbCluster (#3550)
+}
+
+// Monitor assigns monitor to component key in label
+func (l Label) Monitor() Label {
+	return l.Component(TiDBMonitorVal)
+}
+
+// IsMonitor returns whether label is a Monitor component
 func (l Label) IsMonitor() bool {
 	return l[ComponentLabelKey] == TiDBMonitorVal
 }
 
 // Discovery assigns discovery to component key in label
 func (l Label) Discovery() Label {
-	l.Component(DiscoveryLabelVal)
-	return l
-}
-
-// IsPD returns whether label is a PD
-func (l Label) IsPD() bool {
-	return l[ComponentLabelKey] == PDLabelVal
+	return l.Component(DiscoveryLabelVal)
 }
 
 // TiDB assigns tidb to component key in label
 func (l Label) TiDB() Label {
-	l.Component(TiDBLabelVal)
-	return l
+	return l.Component(TiDBLabelVal)
+}
+
+// IsTiDB returns whether label is a TiDB component
+func (l Label) IsTiDB() bool {
+	return l[ComponentLabelKey] == TiDBLabelVal
 }
 
 // TiKV assigns tikv to component key in label
 func (l Label) TiKV() Label {
-	l.Component(TiKVLabelVal)
-	return l
+	return l.Component(TiKVLabelVal)
+}
+
+// IsTiKV returns whether label is a TiKV component
+func (l Label) IsTiKV() bool {
+	return l[ComponentLabelKey] == TiKVLabelVal
 }
 
 // TiFlash assigns tiflash to component key in label
 func (l Label) TiFlash() Label {
-	l.Component(TiFlashLabelVal)
-	return l
+	return l.Component(TiFlashLabelVal)
 }
 
-// IsTiFlash returns whether label is a TiFlash
+// IsTiFlash returns whether label is a TiFlash component
 func (l Label) IsTiFlash() bool {
 	return l[ComponentLabelKey] == TiFlashLabelVal
 }
 
 // TiCDC assigns ticdc to component key in label
 func (l Label) TiCDC() Label {
-	l.Component(TiCDCLabelVal)
-	return l
+	return l.Component(TiCDCLabelVal)
 }
 
-// IsTiCDC returns whether label is a TiCDC
+// IsTiCDC returns whether label is a TiCDC component
 func (l Label) IsTiCDC() bool {
 	return l[ComponentLabelKey] == TiCDCLabelVal
-}
-
-// IsTiKV returns whether label is a TiKV
-func (l Label) IsTiKV() bool {
-	return l[ComponentLabelKey] == TiKVLabelVal
-}
-
-// IsTiDB returns whether label is a TiDB
-func (l Label) IsTiDB() bool {
-	return l[ComponentLabelKey] == TiDBLabelVal
 }
 
 // Selector gets labels.Selector from label
@@ -403,3 +440,11 @@ func (l Label) String() string {
 func (l Label) IsManagedByTiDBOperator() bool {
 	return l[ManagedByLabelKey] == TiDBOperator
 }
+<<<<<<< HEAD
+=======
+
+// IsTidbClusterPod returns whether it is a TidbCluster-controlled pod
+func (l Label) IsTidbClusterPod() bool {
+	return l[NameLabelKey] == "tidb-cluster"
+}
+>>>>>>> 929f1c76... Improve advanced example: TidbCluster (#3550)
