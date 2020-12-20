@@ -231,45 +231,6 @@ func (d *tidbDiscovery) VerifyPDEndpoint(advertisePeerURL string) (string, error
 	// save a copy of AdvertisePeerURL for failure
 	advertisePeerURL = strings.Replace(advertisePeerURL, "\n", "", -1)
 	copyAdvertisePeerURL := advertisePeerURL
-	// parseAdvertisePeerURL parses advertisePeerURL to PDEndpoint related information
-	parseAdvertisePeerURL := func(advertisePeerURL string) *pdEndpointURL {
-		// Deal with schema
-		pdEndpoint := &pdEndpointURL{
-			schema:       "",
-			noSchema:     true,
-			pdMemberName: "",
-			pdMemberPort: "2379",
-			tcName:       "",
-		}
-
-		schema := strings.Split(advertisePeerURL, "://")
-		if len(schema) == 1 {
-			pdEndpoint.schema = ""
-			pdEndpoint.noSchema = true
-			pdEndpoint.pdMemberName = schema[0]
-		} else {
-			pdEndpoint.schema = schema[0]
-			pdEndpoint.noSchema = false
-			pdEndpoint.pdMemberName = schema[1]
-		}
-
-		// Deal with port
-		hostURLArr := strings.Split(pdEndpoint.pdMemberName, ":")
-		if len(hostURLArr) == 1 {
-			pdEndpoint.pdMemberName = hostURLArr[0]
-			pdEndpoint.pdMemberPort = ""
-		} else {
-			pdEndpoint.pdMemberName = hostURLArr[0]
-			pdEndpoint.pdMemberPort = hostURLArr[1]
-		}
-
-		// Deal with tcName
-		hostArrs := strings.Split(pdEndpoint.pdMemberName, "-pd")
-		pdEndpoint.tcName = hostArrs[0]
-
-		return pdEndpoint
-	}
-
 	pdEndpoint := parseAdvertisePeerURL(advertisePeerURL)
 
 	ns := os.Getenv("MY_POD_NAMESPACE")
@@ -285,13 +246,6 @@ func (d *tidbDiscovery) VerifyPDEndpoint(advertisePeerURL string) (string, error
 			pdEndpoint.schema = "http"
 		}
 		advertisePeerURL = fmt.Sprintf("%s://%s", pdEndpoint.schema, advertisePeerURL)
-	}
-
-	// pdEndpointHealthCheck checks if PD PeerEndpoint is working
-	pdEndpointHealthCheck := func(d *tidbDiscovery, tc *v1alpha1.TidbCluster, advertisePeerURL string, peerName string) bool {
-		pdClient := d.pdControl.GetPeerPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled(), advertisePeerURL, peerName)
-		_, err := pdClient.GetHealth()
-		return err == nil
 	}
 
 	if pdEndpointHealthCheck(d, tc, advertisePeerURL, pdEndpoint.pdMemberName) {
@@ -312,4 +266,50 @@ func (d *tidbDiscovery) VerifyPDEndpoint(advertisePeerURL string) (string, error
 
 	// if failed, we should return the default value here
 	return copyAdvertisePeerURL, nil
+}
+
+// pdEndpointHealthCheck checks if PD PeerEndpoint is working
+func pdEndpointHealthCheck(d *tidbDiscovery, tc *v1alpha1.TidbCluster, advertisePeerURL string, peerName string) bool {
+	pdClient := d.pdControl.GetPeerPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled(), advertisePeerURL, peerName)
+	_, err := pdClient.GetHealth()
+	return err == nil
+}
+
+// parseAdvertisePeerURL parses advertisePeerURL to PDEndpoint related information
+func parseAdvertisePeerURL(advertisePeerURL string) *pdEndpointURL {
+	// Deal with schema
+	pdEndpoint := &pdEndpointURL{
+		schema:       "",
+		noSchema:     true,
+		pdMemberName: "",
+		pdMemberPort: "2379",
+		tcName:       "",
+	}
+
+	schema := strings.Split(advertisePeerURL, "://")
+	if len(schema) == 1 {
+		pdEndpoint.schema = ""
+		pdEndpoint.noSchema = true
+		pdEndpoint.pdMemberName = schema[0]
+	} else {
+		pdEndpoint.schema = schema[0]
+		pdEndpoint.noSchema = false
+		pdEndpoint.pdMemberName = schema[1]
+	}
+
+	// Deal with port
+	hostURLArr := strings.Split(pdEndpoint.pdMemberName, ":")
+	if len(hostURLArr) == 1 {
+		pdEndpoint.pdMemberName = hostURLArr[0]
+		pdEndpoint.pdMemberPort = ""
+	} else {
+		pdEndpoint.pdMemberName = hostURLArr[0]
+		pdEndpoint.pdMemberPort = hostURLArr[1]
+	}
+
+	// Deal with tcName
+	hostArrs := strings.Split(pdEndpoint.pdMemberName, "-pd")
+	pdEndpoint.tcName = hostArrs[0]
+
+	return pdEndpoint
 }
