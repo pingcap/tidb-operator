@@ -15,6 +15,7 @@ package controller
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -33,6 +34,7 @@ import (
 type TidbClusterControlInterface interface {
 	UpdateTidbCluster(*v1alpha1.TidbCluster, *v1alpha1.TidbClusterStatus, *v1alpha1.TidbClusterStatus) (*v1alpha1.TidbCluster, error)
 	Create(*v1alpha1.TidbCluster) error
+	Patch(tc *v1alpha1.TidbCluster, data []byte, subresources ...string) (result *v1alpha1.TidbCluster, err error)
 }
 
 type realTidbClusterControl struct {
@@ -87,6 +89,18 @@ func (c *realTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, new
 
 func (c *realTidbClusterControl) Create(*v1alpha1.TidbCluster) error {
 	return nil
+}
+
+func (c *realTidbClusterControl) Patch(tc *v1alpha1.TidbCluster, data []byte, subresources ...string) (result *v1alpha1.TidbCluster, err error) {
+	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		var patchErr error
+		_, patchErr = c.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Patch(tc.Name, types.MergePatchType, data)
+		return patchErr
+	})
+	if err != nil {
+		klog.Errorf("failed to update TidbCluster: [%s/%s], error: %v", tc.Namespace, tc.Name, err)
+	}
+	return tc, err
 }
 
 func deepEqualExceptHeartbeatTime(newStatus *v1alpha1.TidbClusterStatus, oldStatus *v1alpha1.TidbClusterStatus) bool {
@@ -149,4 +163,8 @@ func (c *FakeTidbClusterControl) Create(tc *v1alpha1.TidbCluster) error {
 		return c.createTidbClusterTracker.GetError()
 	}
 	return c.TcIndexer.Add(tc)
+}
+
+func (c *FakeTidbClusterControl) Patch(tc *v1alpha1.TidbCluster, data []byte, subresources ...string) (result *v1alpha1.TidbCluster, err error) {
+	return nil, nil
 }

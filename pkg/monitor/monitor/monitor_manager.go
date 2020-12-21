@@ -36,7 +36,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	discoverycachedmemory "k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/klog"
@@ -423,7 +422,7 @@ func (m *MonitorManager) patchTidbClusterStatus(tc *v1alpha1.TidbCluster, monito
 	if err != nil {
 		return err
 	}
-	_, err = m.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Patch(tc.Name, types.MergePatchType, mergePatch)
+	_, err = m.deps.TiDBClusterControl.Patch(tc, mergePatch)
 	return err
 }
 
