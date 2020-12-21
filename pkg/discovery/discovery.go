@@ -146,8 +146,8 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 		// Corresponds to https://github.com/tikv/pd/blob/43baea981b406df26cd49e8b99cc42354f0a6696/server/join/join.go#L88.
 		// When multi-cluster enabled, the PD member name is not pod name(cluster1-pd-0) but the FQDN (cluster1-pd-0.cluster1-pd-peer.pingcap.svc.cluster.local).
 		// For example,
-		// advertisePeerURL without cluster domain: strArr = cluster1-pd-0:2379, member.Name: cluster1-pd-0:2379
-		// advertisePeerURL with cluster domain: strArr = cluster1-pd-0.cluster1-pd-peer.pingcap.svc.cluster.local:2379, member.Name: cluster1-pd-0.cluster1-pd-peer.pingcap.svc.cluster.local
+		// advertisePeerURL without cluster domain: strArr = cluster1-pd-0.cluster1-pd-peer.pingcap.svc:2380, member.Name: cluster1-pd-0
+		// advertisePeerURL with cluster domain: strArr = cluster1-pd-0.cluster1-pd-peer.pingcap.svc.cluster.local:2380, member.Name: cluster1-pd-0.cluster1-pd-peer.pingcap.svc.cluster.local
 		//
 		// In some failure situations, for example, delete the pd's data directory, pd will try to restart
 		// and get join info from discovery service. But pd embed etcd may still have the registered member info,
