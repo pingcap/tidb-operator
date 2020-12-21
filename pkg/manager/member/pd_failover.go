@@ -69,6 +69,7 @@ func (f *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
+	// TODO: refactor this calculation to simply use `failureReplicas`
 	notDeletedCount := 0
 	for _, pdMember := range tc.Status.PD.FailureMembers {
 		if !pdMember.MemberDeleted {
