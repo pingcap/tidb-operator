@@ -143,7 +143,7 @@ type MonitorConfigModel struct {
 	DMClusterInfos     []ClusterRegexInfo
 	EnableTLSCluster   bool
 	EnableTLSDMCluster bool
-	ExternalLabels   model.LabelSet
+	ExternalLabels     model.LabelSet
 }
 
 // ClusterRegexInfo is the monitor cluster info

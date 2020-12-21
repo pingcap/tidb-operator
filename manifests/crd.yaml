@@ -15245,9 +15245,9 @@ spec:
                 - name
                 type: object
               type: array
+            dm: {}
             externalLabels:
               type: object
-            dm: {}
             grafana: {}
             imagePullPolicy:
               type: string

@@ -19,12 +19,12 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/prometheus/common/model"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	"github.com/prometheus/common/model"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -131,11 +131,11 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monit
 	}
 
 	model := &MonitorConfigModel{
-		AlertmanagerURL:  "",
-		ClusterInfos:     releaseClusterInfos,
+		AlertmanagerURL:    "",
+		ClusterInfos:       releaseClusterInfos,
 		DMClusterInfos:     releaseDMClusterInfos,
-		EnableTLSCluster: tc.IsTLSClusterEnabled(),
-		ExternalLabels:   buildExternalLabels(monitor),
+		EnableTLSCluster:   tc.IsTLSClusterEnabled(),
+		ExternalLabels:     buildExternalLabels(monitor),
 		EnableTLSDMCluster: dc != nil && dc.IsTLSClusterEnabled(),
 	}
 
