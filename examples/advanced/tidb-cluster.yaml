@@ -10,7 +10,7 @@ spec:
   #######################
 
   ## TiDB cluster version
-  version: "v4.0.8"
+  version: "v4.0.9"
 
   ## Time zone of TiDB cluster Pods
   timezone: UTC
