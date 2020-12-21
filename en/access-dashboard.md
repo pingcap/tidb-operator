@@ -42,7 +42,7 @@ TiDB Dashboard is built in the PD component in TiDB 4.0 and later versions. You 
     metadata:
       name: basic
     spec:
-      version: v4.0.8
+      version: v4.0.9
       timezone: UTC
       pvReclaimPolicy: Delete
       pd:
