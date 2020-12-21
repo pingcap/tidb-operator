@@ -438,11 +438,11 @@ scrape_configs:
     regex: (.+)
     target_label: __metrics_path__
     action: replace
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_name,
       __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
-    replacement: $1.$2-importer.$3:$4
+    replacement: $2.$3:$4
     action: replace
   - source_labels: [__meta_kubernetes_namespace]
     target_label: kubernetes_namespace
@@ -1054,11 +1054,11 @@ scrape_configs:
     regex: (.+)
     target_label: __metrics_path__
     action: replace
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_name,
       __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
-    replacement: $1.$2-importer.$3:$4
+    replacement: $2.$3:$4
     action: replace
   - source_labels: [__meta_kubernetes_namespace]
     target_label: kubernetes_namespace

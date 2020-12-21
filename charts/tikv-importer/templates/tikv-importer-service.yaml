@@ -3,17 +3,18 @@ kind: Service
 metadata:
   name: {{ .Values.clusterName }}-importer
   labels:
-    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/name: {{ .Values.clusterName }}-importer
     app.kubernetes.io/managed-by: {{ .Release.Service }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
     app.kubernetes.io/component: importer
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
-  clusterIP: None
   ports:
   - name: importer
     port: 8287
+  - name: status
+    port: 8286
   selector:
-    app.kubernetes.io/name: {{ template "chart.name" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/name: {{ .Values.clusterName }}-importer
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
     app.kubernetes.io/component: importer

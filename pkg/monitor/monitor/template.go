@@ -240,11 +240,11 @@ func buildAddressRelabelConfigByComponent(kind string) *config.RelabelConfig {
 		return &config.RelabelConfig{
 			Action:      config.RelabelReplace,
 			Regex:       addressPattern,
-			Replacement: "$1.$2-importer.$3:$4",
+			Replacement: "$2.$3:$4",
 			TargetLabel: "__address__",
 			SourceLabels: model.LabelNames{
 				podNameLabel,
-				instanceLabel,
+				nameLabel,
 				namespaceLabel,
 				portLabel,
 			},
