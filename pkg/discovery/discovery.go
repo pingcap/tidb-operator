@@ -149,7 +149,7 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 		// advertisePeerURL without cluster domain: strArr = ["cluster1-pd-0.cluster1-pd-peer.pingcap.svc","2380"], member.Name = cluster1-pd-0, podName = cluster1-pd-0
 		// advertisePeerURL with cluster domain: strArr = ["cluster1-pd-0.cluster1-pd-peer.pingcap.svc.cluster.local","2380"], member.Name = cluster1-pd-0.cluster1-pd-peer.pingcap.svc.cluster.local, podName = cluster1-pd-0
 		// So we use podName when advertisePeerURL without cluster domain and use strArr[0] when advertisePeerURL with cluster domain
-		// 
+		//
 		// In some failure situations, for example, delete the pd's data directory, pd will try to restart
 		// and get join info from discovery service. But pd embed etcd may still have the registered member info,
 		// which will return the argument to join pd itself, which is not suggested in pd.
