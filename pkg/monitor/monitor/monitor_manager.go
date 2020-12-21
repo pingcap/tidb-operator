@@ -423,8 +423,7 @@ func (m *MonitorManager) patchTidbClusterStatus(tc *v1alpha1.TidbCluster, monito
 	if err != nil {
 		return err
 	}
-	xx := m.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace)
-	_, err = xx.Patch(tc.Name, types.MergePatchType, mergePatch)
+	_, err = m.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Patch(tc.Name, types.MergePatchType, mergePatch)
 	return err
 }
 

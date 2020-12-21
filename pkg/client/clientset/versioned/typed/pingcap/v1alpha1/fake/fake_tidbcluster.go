@@ -131,7 +131,7 @@ func (c *FakeTidbClusters) Patch(name string, pt types.PatchType, data []byte, s
 		Invokes(testing.NewPatchSubresourceAction(tidbclustersResource, c.ns, name, pt, data, subresources...), &v1alpha1.TidbCluster{})
 
 	if obj == nil {
-		return nil, err
+		return nil, nil
 	}
-	return obj.(*v1alpha1.TidbCluster), err
+	return obj.(*v1alpha1.TidbCluster), nil
 }

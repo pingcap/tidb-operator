@@ -57,7 +57,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 
 		tc.Namespace = "ns"
 		tc.Name = "foo"
-		_, err := tmm.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
+		err := tmm.deps.TiDBClusterControl.Create(tc)
 		g.Expect(err).Should(BeNil())
 
 		if test.name == "enable dm monitor" {
@@ -310,7 +310,7 @@ func TestTidbMonitorSyncUpdate(t *testing.T) {
 		}
 		tc.Namespace = "ns"
 		tc.Name = "foo"
-		_, err := tmm.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
+		err := tmm.deps.TiDBClusterControl.Create(tc)
 		g.Expect(err).Should(BeNil())
 
 		tm := newTidbMonitor(v1alpha1.TidbClusterRef{Name: tc.Name, Namespace: tc.Namespace})
