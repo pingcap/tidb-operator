@@ -65,8 +65,8 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	if monitor.DeletionTimestamp != nil {
 		return nil
 	}
-	if monitor.Spec.Clusters == nil || len(monitor.Spec.Clusters) != 1 {
-		klog.Errorf("tm[%s/%s] does not configure the target tidbcluster or contain multiple target tidbclusters, ingore sync", monitor.Namespace, monitor.Name)
+	if monitor.Spec.Clusters == nil || len(monitor.Spec.Clusters) < 1 {
+		klog.Errorf("tm[%s/%s] does not configure the target tidbcluster", monitor.Namespace, monitor.Name)
 		return nil
 	}
 
@@ -105,6 +105,20 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		}
 	}
 
+	var firstDc *v1alpha1.DMCluster
+	if monitor.Spec.DM != nil {
+		for _, dcRef := range monitor.Spec.DM.Clusters {
+			dc, err := m.deps.DMClusterLister.DMClusters(dcRef.Namespace).Get(dcRef.Name)
+			if err != nil {
+				rerr := fmt.Errorf("get tm[%s/%s]'s target dc[%s/%s] failed, err: %v", monitor.Namespace, monitor.Name, dcRef.Namespace, dcRef.Name, err)
+				return rerr
+			} else {
+				firstDc = dc
+				break
+			}
+		}
+	}
+
 	// Sync Service
 	if err := m.syncTidbMonitorService(monitor); err != nil {
 		message := fmt.Sprintf("Sync TidbMonitor[%s/%s] Service failed, err: %v", monitor.Namespace, monitor.Name, err)
@@ -114,7 +128,7 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	klog.V(4).Infof("tm[%s/%s]'s service synced", monitor.Namespace, monitor.Name)
 
 	// Sync Statefulset
-	if err := m.syncTidbMonitorStatefulset(firstTc, monitor); err != nil {
+	if err := m.syncTidbMonitorStatefulset(firstTc, firstDc, monitor); err != nil {
 		message := fmt.Sprintf("Sync TidbMonitor[%s/%s] Deployment failed,err:%v", monitor.Namespace, monitor.Name, err)
 		m.deps.Recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
 		return err
@@ -155,10 +169,10 @@ func (m *MonitorManager) syncTidbMonitorService(monitor *v1alpha1.TidbMonitor) e
 	return nil
 }
 
-func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) error {
+func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monitor *v1alpha1.TidbMonitor) error {
 	ns := monitor.Namespace
 	name := monitor.Name
-	cm, err := m.syncTidbMonitorConfig(tc, monitor)
+	cm, err := m.syncTidbMonitorConfig(tc, dc, monitor)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s configmap failed to sync,err: %v", ns, name, err)
 		return err
@@ -184,7 +198,7 @@ func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, mo
 		klog.Infof("Wait for the smooth migration to be done successfully for tm [%s/%s]", ns, name)
 		return nil
 	}
-	newMonitorSts, err := getMonitorStatefulSet(sa, cm, secret, monitor, tc)
+	newMonitorSts, err := getMonitorStatefulSet(sa, cm, secret, monitor, tc, dc)
 	if err != nil {
 		klog.Errorf("Fail to generate statefulset for tm [%s/%s], err: %v", ns, name, err)
 		return err
@@ -217,7 +231,7 @@ func (m *MonitorManager) syncTidbMonitorSecret(monitor *v1alpha1.TidbMonitor) (*
 	return m.deps.TypedControl.CreateOrUpdateSecret(monitor, newSt)
 }
 
-func (m *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) (*corev1.ConfigMap, error) {
+func (m *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monitor *v1alpha1.TidbMonitor) (*corev1.ConfigMap, error) {
 	if features.DefaultFeatureGate.Enabled(features.AutoScaling) {
 		// TODO: We need to update the status to tell users we are monitoring extra clusters
 		// Get all autoscaling clusters for TC, and add them to .Spec.Clusters to
@@ -261,7 +275,7 @@ func (m *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, monitor
 		monitor = cloned
 	}
 
-	newCM, err := getMonitorConfigMap(tc, monitor)
+	newCM, err := getMonitorConfigMap(tc, dc, monitor)
 	if err != nil {
 		return nil, err
 	}
