@@ -70,6 +70,7 @@ func (f *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	}
 
 	notDeletedFailureReplicas := len(tc.Status.PD.FailureMembers) - int(pdFailureReplicasTobeDeleted)
+
 	// we can only failover one at a time
 	if notDeletedFailureReplicas == 0 {
 		return f.tryToMarkAPeerAsFailure(tc)
