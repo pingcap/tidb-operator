@@ -15245,6 +15245,7 @@ spec:
                 - name
                 type: object
               type: array
+            dm: {}
             grafana: {}
             imagePullPolicy:
               type: string
