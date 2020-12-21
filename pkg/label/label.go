@@ -63,20 +63,7 @@ const (
 	// BackupProtectionFinalizer is the name of finalizer on backups
 	BackupProtectionFinalizer string = "tidb.pingcap.com/backup-protection"
 
-<<<<<<< HEAD
-	// High availability is realized based on the topology
-=======
-	// AutoScalingGroupLabelKey describes the autoscaling group of the TiDB
-	AutoScalingGroupLabelKey = "tidb.pingcap.com/autoscaling-group"
-	// AutoInstanceLabelKey is label key used in autoscaling, it represents the autoscaler name
-	AutoInstanceLabelKey string = "tidb.pingcap.com/auto-instance"
-	// AutoComponentLabelKey is label key used in autoscaling, it represents which component is auto scaled
-	AutoComponentLabelKey string = "tidb.pingcap.com/auto-component"
-	// BaseTCLabelKey is label key used for heterogeneous clusters to refer to its base TidbCluster
-	BaseTCLabelKey string = "tidb.pingcap.com/base-tc"
-
 	// AnnHATopologyKey defines the High availability topology key
->>>>>>> 929f1c76... Improve advanced example: TidbCluster (#3550)
 	AnnHATopologyKey = "pingcap.com/ha-topology-key"
 
 	// AnnFailTiDBScheduler is for injecting a failure into the TiDB custom scheduler
@@ -116,7 +103,6 @@ const (
 	AnnTiKVDeleteSlots = "tikv.tidb.pingcap.com/delete-slots"
 	// AnnTiFlashDeleteSlots is annotation key of tiflash delete slots.
 	AnnTiFlashDeleteSlots = "tiflash.tidb.pingcap.com/delete-slots"
-<<<<<<< HEAD
 
 	// AnnTiDBLastAutoScalingTimestamp is annotation key of tidbcluster to indicate the last timestamp for tidb auto-scaling
 	AnnTiDBLastAutoScalingTimestamp = "tidb.tidb.pingcap.com/last-autoscaling-timestamp"
@@ -124,12 +110,6 @@ const (
 	AnnTiKVLastAutoScalingTimestamp = "tikv.tidb.pingcap.com/last-autoscaling-timestamp"
 	// AnnLastSyncingTimestamp records last sync timestamp
 	AnnLastSyncingTimestamp = "tidb.pingcap.com/last-syncing-timestamp"
-=======
-	// AnnDMMasterDeleteSlots is annotation key of dm-master delete slots.
-	AnnDMMasterDeleteSlots = "dm-master.tidb.pingcap.com/delete-slots"
-	// AnnDMWorkerDeleteSlots is annotation key of dm-worker delete slots.
-	AnnDMWorkerDeleteSlots = "dm-worker.tidb.pingcap.com/delete-slots"
->>>>>>> 929f1c76... Improve advanced example: TidbCluster (#3550)
 
 	// AnnTiKVAutoScalingOutOrdinals describe the tikv pods' ordinal list which is created by auto-scaling out
 	AnnTiKVAutoScalingOutOrdinals = "tikv.tidb.pingcap.com/scale-out-ordinals"
@@ -316,34 +296,8 @@ func (l Label) Pump() Label {
 	return l.Component(PumpLabelVal)
 }
 
-<<<<<<< HEAD
 func (l Label) IsPump() bool {
 	return l[ComponentLabelKey] == PumpLabelVal
-=======
-// IsPump returns whether label is a Pump component
-func (l Label) IsPump() bool {
-	return l[ComponentLabelKey] == PumpLabelVal
-}
-
-// DMMaster assigns dm-master to component key in label
-func (l Label) DMMaster() Label {
-	return l.Component(DMMasterLabelVal)
-}
-
-// IsDMMaster returns whether label is a DMMaster component
-func (l Label) IsDMMaster() bool {
-	return l[ComponentLabelKey] == DMMasterLabelVal
-}
-
-// DMWorker assigns dm-worker to component key in label
-func (l Label) DMWorker() Label {
-	return l.Component(DMWorkerLabelVal)
-}
-
-// IsDMWorker returns whether label is a DMWorker component
-func (l Label) IsDMWorker() bool {
-	return l[ComponentLabelKey] == DMWorkerLabelVal
->>>>>>> 929f1c76... Improve advanced example: TidbCluster (#3550)
 }
 
 // Monitor assigns monitor to component key in label
@@ -440,11 +394,3 @@ func (l Label) String() string {
 func (l Label) IsManagedByTiDBOperator() bool {
 	return l[ManagedByLabelKey] == TiDBOperator
 }
-<<<<<<< HEAD
-=======
-
-// IsTidbClusterPod returns whether it is a TidbCluster-controlled pod
-func (l Label) IsTidbClusterPod() bool {
-	return l[NameLabelKey] == "tidb-cluster"
-}
->>>>>>> 929f1c76... Improve advanced example: TidbCluster (#3550)

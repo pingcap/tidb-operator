@@ -95,14 +95,7 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 		if len(pdAddresses) != 0 {
 			return fmt.Sprintf("--join=%s", strings.Join(pdAddresses, ",")), nil
 		}
-<<<<<<< HEAD
-=======
-		// Initialize the PD cluster with the FQDN format service record if tc.Spec.ClusterDomain is set.
-		if len(tc.Spec.ClusterDomain) > 0 {
-			return fmt.Sprintf("--initial-cluster=%s=%s://%s", strArr[0], tc.Scheme(), advertisePeerUrl), nil
-		}
 		// Initialize the PD cluster in the normal format service record.
->>>>>>> 929f1c76... Improve advanced example: TidbCluster (#3550)
 		return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, tc.Scheme(), advertisePeerUrl), nil
 	}
 

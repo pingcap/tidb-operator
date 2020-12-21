@@ -27,49 +27,26 @@ For example:
 
 ### Code changes
 
-<<<<<<< HEAD
- - Unit test
- - E2E test
- - Stability test
- - Manual test (add detailed scripts or steps below)
- - No code
-=======
 - [ ] Has Go code change
 - [ ] Has CI related scripts change
->>>>>>> b911de1e... improve github PR template (#3559)
 
 ### Tests
 <!-- AT LEAST ONE test must be included. -->
 
-<<<<<<< HEAD
- - Has Go code change
- - Has CI related scripts change
- - Has Terraform scripts change
-=======
 - [ ] Unit test <!-- If you added any unit test cases, check this box -->
 - [ ] E2E test <!-- If you added any e2e test cases, check this box -->
 - [ ] Manual test <!-- If this PR needs manual test, check this box, and add detailed manual test scripts or steps below, so that ANYONE CAN REPRODUCE IT. Ref: https://github.com/pingcap/tidb-operator/pull/3517 -->
 - [ ] No code <!-- If this PR contains no code changes, check this box -->
->>>>>>> b911de1e... improve github PR template (#3559)
 
 ### Side effects
 
-<<<<<<< HEAD
- - Breaking backward compatibility
-=======
 - [ ] Breaking backward compatibility <!-- If this PR breaks things deployed with previous TiDB Operator versions, check this box -->
 - [ ] Other side effects: <!-- Any other side effects, such as requiring additional storage / consumes substantial memory / potential reconciliation latency -->
->>>>>>> b911de1e... improve github PR template (#3559)
 
 ### Related changes
 
-<<<<<<< HEAD
- - Need to cherry-pick to the release branch
- - Need to update the documentation
-=======
 - [ ] Need to cherry-pick to the release branch <!-- If this PR should also appear in the current release branch, check this box -->
 - [ ] Need to update the documentation <!-- If this PR introduces new features or changes previous usages, check this box -->
->>>>>>> b911de1e... improve github PR template (#3559)
 
 ### Release Notes
 <!--

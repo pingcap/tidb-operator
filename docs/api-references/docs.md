@@ -576,37 +576,7 @@ BackupType
 </em>
 </td>
 <td>
-<<<<<<< HEAD
 <p>Type is the backup type for tidb cluster.</p>
-=======
-<em>(Optional)</em>
-<p>dm-worker cluster spec</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>paused</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Indicates that the dm cluster is paused and will not be processed by
-the controller.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>version</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>dm cluster version</p>
->>>>>>> 929f1c76... Improve advanced example: TidbCluster (#3550)
 </td>
 </tr>
 <tr>
@@ -980,8 +950,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>TODO: remove optional after defaulting logic introduced
-TiDB cluster version</p>
+<p>TiDB cluster version</p>
 </td>
 </tr>
 <tr>
@@ -1104,7 +1073,8 @@ Kubernetes core/v1.Affinity
 </td>
 <td>
 <em>(Optional)</em>
-<p>Affinity of TiDB cluster Pods</p>
+<p>Affinity of TiDB cluster Pods.
+Will be overwritten by each cluster component&rsquo;s specific affinity setting, e.g. <code>spec.tidb.affinity</code></p>
 </td>
 </tr>
 <tr>
@@ -1181,8 +1151,7 @@ Optional: Defaults to UTC</p>
 </em>
 </td>
 <td>
-<p>Services list non-headless services type used in TidbCluster
-Deprecated</p>
+<p>(Deprecated) Services list non-headless services type used in TidbCluster</p>
 </td>
 </tr>
 <tr>
@@ -1194,7 +1163,7 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster</p>
+<p>EnableDynamicConfiguration indicates whether to append <code>--advertise-status-addr</code> to the startup parameters of TiKV.</p>
 </td>
 </tr>
 <tr>
@@ -1234,14 +1203,10 @@ Kubernetes apps/v1.StatefulSetUpdateStrategyType
 </td>
 <td>
 <em>(Optional)</em>
-<<<<<<< HEAD
 <p>StatefulSetUpdateStrategy of TiDB cluster StatefulSets</p>
 </td>
 </tr>
 </table>
-=======
-<p>TiDB cluster version</p>
->>>>>>> 929f1c76... Improve advanced example: TidbCluster (#3550)
 </td>
 </tr>
 <tr>
@@ -1442,14 +1407,8 @@ Kubernetes meta/v1.ObjectMeta
 </em>
 </td>
 <td>
-<<<<<<< HEAD
 Refer to the Kubernetes API documentation for the fields of the
 <code>metadata</code> field.
-=======
-<em>(Optional)</em>
-<p>Affinity of TiDB cluster Pods.
-Will be overwritten by each cluster component&rsquo;s specific affinity setting, e.g. <code>spec.tidb.affinity</code></p>
->>>>>>> 929f1c76... Improve advanced example: TidbCluster (#3550)
 </td>
 </tr>
 <tr>
@@ -1535,12 +1494,8 @@ string
 </em>
 </td>
 <td>
-<<<<<<< HEAD
 <em>(Optional)</em>
 <p>InitSql is the SQL statements executed after the TiDB cluster is bootstrapped.</p>
-=======
-<p>(Deprecated) Services list non-headless services type used in TidbCluster</p>
->>>>>>> 929f1c76... Improve advanced example: TidbCluster (#3550)
 </td>
 </tr>
 <tr>
@@ -1552,11 +1507,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<<<<<<< HEAD
 <p>InitSqlConfigMapName reference a configmap that provide init-sql, take high precedence than initSql if set</p>
-=======
-<p>EnableDynamicConfiguration indicates whether to append <code>--advertise-status-addr</code> to the startup parameters of TiKV.</p>
->>>>>>> 929f1c76... Improve advanced example: TidbCluster (#3550)
 </td>
 </tr>
 <tr>
@@ -3121,8 +3072,8 @@ string
 </em>
 </td>
 <td>
-<p>Image of the component, override baseImage and version if present
-Deprecated</p>
+<p>(Deprecated) Image of the component
+Use <code>baseImage</code> and <code>version</code> instead</p>
 </td>
 </tr>
 <tr>
@@ -3191,7 +3142,7 @@ Kubernetes core/v1.Affinity
 </td>
 <td>
 <em>(Optional)</em>
-<p>Affinity of the component. Override the cluster-level one if present
+<p>Affinity of the component. Override the cluster-level setting if present.
 Optional: Defaults to cluster-level setting</p>
 </td>
 </tr>
@@ -3302,10 +3253,8 @@ Optional: Defaults to cluster-level setting</p>
 </td>
 <td>
 <em>(Optional)</em>
-<p>List of environment variables to set in the container, like
-v1.Container.Env.
-Note that following env names cannot be used and may be overrided by
-tidb-operator built envs.
+<p>List of environment variables to set in the container, like v1.Container.Env.
+Note that the following env names cannot be used and will be overridden by TiDB Operator builtin envs
 - NAMESPACE
 - TZ
 - SERVICE_NAME
@@ -3622,11 +3571,6 @@ CrdKind
 </em>
 </td>
 <td>
-<<<<<<< HEAD
-=======
-<p>(Deprecated) Image of the component
-Use <code>baseImage</code> and <code>version</code> instead</p>
->>>>>>> 929f1c76... Improve advanced example: TidbCluster (#3550)
 </td>
 </tr>
 <tr>
@@ -3687,12 +3631,6 @@ CrdKind
 </em>
 </td>
 <td>
-<<<<<<< HEAD
-=======
-<em>(Optional)</em>
-<p>Affinity of the component. Override the cluster-level setting if present.
-Optional: Defaults to cluster-level setting</p>
->>>>>>> 929f1c76... Improve advanced example: TidbCluster (#3550)
 </td>
 </tr>
 </tbody>
@@ -3815,22 +3753,6 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<<<<<<< HEAD
-=======
-<p>List of environment variables to set in the container, like v1.Container.Env.
-Note that the following env names cannot be used and will be overridden by TiDB Operator builtin envs
-- NAMESPACE
-- TZ
-- SERVICE_NAME
-- PEER_SERVICE_NAME
-- HEADLESS_SERVICE_NAME
-- SET_NAME
-- HOSTNAME
-- CLUSTER_NAME
-- POD_NAME
-- BINLOG_ENABLED
-- SLOW_LOG_FILE</p>
->>>>>>> 929f1c76... Improve advanced example: TidbCluster (#3550)
 </td>
 </tr>
 <tr>
@@ -4370,11 +4292,7 @@ int32
 </td>
 <td>
 <em>(Optional)</em>
-<<<<<<< HEAD
 <p>Optional: Defaults to 10</p>
-=======
-<p>dm cluster version</p>
->>>>>>> 929f1c76... Improve advanced example: TidbCluster (#3550)
 </td>
 </tr>
 </tbody>
@@ -16757,36 +16675,7 @@ TidbAutoScalerStatus
 </td>
 <td>
 <em>(Optional)</em>
-<<<<<<< HEAD
 <p>Tidb describes the status for the tidb in the last auto-scaling reconciliation</p>
-=======
-<p>Helper spec</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>paused</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Indicates that the tidb cluster is paused and will not be processed by
-the controller.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>version</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>TiDB cluster version</p>
->>>>>>> 929f1c76... Improve advanced example: TidbCluster (#3550)
 </td>
 </tr>
 </tbody>
@@ -16884,7 +16773,6 @@ string
 <p>A human readable message indicating details about the transition.</p>
 </td>
 </tr>
-<<<<<<< HEAD
 </tbody>
 </table>
 <h3 id="tidbclusterconditiontype">TidbClusterConditionType</h3>
@@ -16911,22 +16799,6 @@ string
 <tr>
 <th>Field</th>
 <th>Description</th>
-=======
-<tr>
-<td>
-<code>affinity</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#affinity-v1-core">
-Kubernetes core/v1.Affinity
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Affinity of TiDB cluster Pods.
-Will be overwritten by each cluster component&rsquo;s specific affinity setting, e.g. <code>spec.tidb.affinity</code></p>
-</td>
->>>>>>> 929f1c76... Improve advanced example: TidbCluster (#3550)
 </tr>
 </thead>
 <tbody>
@@ -17006,24 +16878,8 @@ PDSpec
 </em>
 </td>
 <td>
-<<<<<<< HEAD
 <em>(Optional)</em>
 <p>PD cluster spec</p>
-=======
-<p>(Deprecated) Services list non-headless services type used in TidbCluster</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>enableDynamicConfiguration</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>EnableDynamicConfiguration indicates whether to append <code>--advertise-status-addr</code> to the startup parameters of TiKV.</p>
->>>>>>> 929f1c76... Improve advanced example: TidbCluster (#3550)
 </td>
 </tr>
 <tr>
@@ -17132,8 +16988,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>TODO: remove optional after defaulting logic introduced
-TiDB cluster version</p>
+<p>TiDB cluster version</p>
 </td>
 </tr>
 <tr>
@@ -17256,7 +17111,8 @@ Kubernetes core/v1.Affinity
 </td>
 <td>
 <em>(Optional)</em>
-<p>Affinity of TiDB cluster Pods</p>
+<p>Affinity of TiDB cluster Pods.
+Will be overwritten by each cluster component&rsquo;s specific affinity setting, e.g. <code>spec.tidb.affinity</code></p>
 </td>
 </tr>
 <tr>
@@ -17333,8 +17189,7 @@ Optional: Defaults to UTC</p>
 </em>
 </td>
 <td>
-<p>Services list non-headless services type used in TidbCluster
-Deprecated</p>
+<p>(Deprecated) Services list non-headless services type used in TidbCluster</p>
 </td>
 </tr>
 <tr>
@@ -17346,7 +17201,7 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster</p>
+<p>EnableDynamicConfiguration indicates whether to append <code>--advertise-status-addr</code> to the startup parameters of TiKV.</p>
 </td>
 </tr>
 <tr>
