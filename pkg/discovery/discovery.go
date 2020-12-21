@@ -76,7 +76,6 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 		return "", err
 	}
 	keyName := fmt.Sprintf("%s/%s", ns, tcName)
-	pdAddresses := tc.Spec.PDAddresses
 
 	currentCluster := d.clusters[keyName]
 	if currentCluster == nil || currentCluster.resourceVersion != tc.ResourceVersion {
@@ -91,9 +90,12 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	// Should take failover replicas into consideration
 	if len(currentCluster.peers) == int(tc.PDStsDesiredReplicas()) {
 		delete(currentCluster.peers, podName)
+		pdAddresses := tc.Spec.PDAddresses
+		// Join an existing PD cluster if tc.Spec.PDAddresses is set
 		if len(pdAddresses) != 0 {
 			return fmt.Sprintf("--join=%s", strings.Join(pdAddresses, ",")), nil
 		}
+		// Initialize the PD cluster in the normal format service record.
 		return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, tc.Scheme(), advertisePeerUrl), nil
 	}
 

@@ -2741,6 +2741,13 @@ func (in *PDSpec) DeepCopyInto(out *PDSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.StorageVolumes != nil {
+		in, out := &in.StorageVolumes, &out.StorageVolumes
+		*out = make([]StorageVolume, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.Config != nil {
 		in, out := &in.Config, &out.Config
 		*out = new(PDConfigWraper)
@@ -2760,13 +2767,6 @@ func (in *PDSpec) DeepCopyInto(out *PDSpec) {
 		in, out := &in.MountClusterClientSecret, &out.MountClusterClientSecret
 		*out = new(bool)
 		**out = **in
-	}
-	if in.StorageVolumes != nil {
-		in, out := &in.StorageVolumes, &out.StorageVolumes
-		*out = make([]StorageVolume, len(*in))
-		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
-		}
 	}
 	return
 }
@@ -4449,15 +4449,15 @@ func (in *TiDBSpec) DeepCopyInto(out *TiDBSpec) {
 		*out = new(bool)
 		**out = **in
 	}
-	if in.TLSClient != nil {
-		in, out := &in.TLSClient, &out.TLSClient
-		*out = new(TiDBTLSClient)
-		**out = **in
-	}
 	if in.SlowLogTailer != nil {
 		in, out := &in.SlowLogTailer, &out.SlowLogTailer
 		*out = new(TiDBSlowLogTailerSpec)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.TLSClient != nil {
+		in, out := &in.TLSClient, &out.TLSClient
+		*out = new(TiDBTLSClient)
+		**out = **in
 	}
 	if in.Plugins != nil {
 		in, out := &in.Plugins, &out.Plugins

@@ -73,7 +73,7 @@ func (m *reclaimPolicyManager) sync(kind, ns, instanceName string, isPVReclaimEn
 		}
 
 		if isPVReclaimEnabled && len(pvc.Annotations[label.AnnPVCDeferDeleting]) != 0 {
-			// If the pv reclaim function is turned on, and when pv is the candidate pv to be reclaimed, skip patch this pv.
+			// If the PV reclaim setting is enabled, and when PV is a candidate to be reclaimed, skip patching this PV.
 			continue
 		}
 		pv, err := m.deps.PVLister.Get(pvc.Spec.VolumeName)

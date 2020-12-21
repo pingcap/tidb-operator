@@ -1172,7 +1172,7 @@ func schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref common.ReferenceCallback
 					},
 					"affinity": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Affinity of the component. Override the cluster-level one if present Optional: Defaults to cluster-level setting",
+							Description: "Affinity of the component. Override the cluster-level setting if present. Optional: Defaults to cluster-level setting",
 							Ref:         ref("k8s.io/api/core/v1.Affinity"),
 						},
 					},
@@ -1248,7 +1248,7 @@ func schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref common.ReferenceCallback
 					},
 					"env": {
 						SchemaProps: spec.SchemaProps{
-							Description: "List of environment variables to set in the container, like v1.Container.Env. Note that following env names cannot be used and may be overrided by tidb-operator built envs. - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
+							Description: "List of environment variables to set in the container, like v1.Container.Env. Note that the following env names cannot be used and will be overridden by TiDB Operator builtin envs - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -3416,7 +3416,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 					},
 					"affinity": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Affinity of the component. Override the cluster-level one if present Optional: Defaults to cluster-level setting",
+							Description: "Affinity of the component. Override the cluster-level setting if present. Optional: Defaults to cluster-level setting",
 							Ref:         ref("k8s.io/api/core/v1.Affinity"),
 						},
 					},
@@ -3492,7 +3492,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 					},
 					"env": {
 						SchemaProps: spec.SchemaProps{
-							Description: "List of environment variables to set in the container, like v1.Container.Env. Note that following env names cannot be used and may be overrided by tidb-operator built envs. - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
+							Description: "List of environment variables to set in the container, like v1.Container.Env. Note that the following env names cannot be used and will be overridden by TiDB Operator builtin envs - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -3625,6 +3625,19 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 							Format:      "",
 						},
 					},
+					"storageVolumes": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StorageVolumes configure additional storage for PD pods.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolume"),
+									},
+								},
+							},
+						},
+					},
 					"dataSubDir": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Subdirectory within the volume to store PD Data. By default, the data is stored in the root directory of volume which is mounted at /var/lib/pd. Specifying this will change the data directory to a subdirectory, e.g. /var/lib/pd/data if you set the value to \"data\". It's dangerous to change this value for a running cluster as it will upgrade your cluster to use a new storage directory. Defaults to \"\" (volume's root).",
@@ -3647,7 +3660,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 					},
 					"enableDashboardInternalProxy": {
 						SchemaProps: spec.SchemaProps{
-							Description: "EnableDashboardInternalProxy would directly set `internal-proxy` in the `PdConfig`",
+							Description: "(Deprecated) EnableDashboardInternalProxy would directly set `internal-proxy` in the `PdConfig`. Note that this is deprecated, we should just set `dashboard.internal-proxy` in `pd.config`.",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
@@ -3657,19 +3670,6 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 							Description: "MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod",
 							Type:        []string{"boolean"},
 							Format:      "",
-						},
-					},
-					"storageVolumes": {
-						SchemaProps: spec.SchemaProps{
-							Description: "StorageVolumes is additional storage apply for PD node. Default to storageClassName storage class",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolume"),
-									},
-								},
-							},
 						},
 					},
 				},
@@ -4152,7 +4152,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PumpSpec(ref common.ReferenceCallback) com
 					},
 					"affinity": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Affinity of the component. Override the cluster-level one if present Optional: Defaults to cluster-level setting",
+							Description: "Affinity of the component. Override the cluster-level setting if present. Optional: Defaults to cluster-level setting",
 							Ref:         ref("k8s.io/api/core/v1.Affinity"),
 						},
 					},
@@ -4228,7 +4228,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PumpSpec(ref common.ReferenceCallback) com
 					},
 					"env": {
 						SchemaProps: spec.SchemaProps{
-							Description: "List of environment variables to set in the container, like v1.Container.Env. Note that following env names cannot be used and may be overrided by tidb-operator built envs. - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
+							Description: "List of environment variables to set in the container, like v1.Container.Env. Note that the following env names cannot be used and will be overridden by TiDB Operator builtin envs - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -4813,7 +4813,7 @@ func schema_pkg_apis_pingcap_v1alpha1_ServiceSpec(ref common.ReferenceCallback) 
 					},
 					"loadBalancerSourceRanges": {
 						SchemaProps: spec.SchemaProps{
-							Description: "LoadBalancerSourceRanges is the loadBalancerSourceRanges of service If specified and supported by the platform, this will restrict traffic through the cloud-provider load-balancer will be restricted to the specified client IPs. This field will be ignored if the cloud-provider does not support the feature.\" More info: https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/ Optional: Defaults to omitted",
+							Description: "LoadBalancerSourceRanges is the loadBalancerSourceRanges of service If specified and supported by the platform, this will restrict traffic through the cloud-provider load-balancer will be restricted to the specified client IPs. This field will be ignored if the cloud-provider does not support the feature.\" More info: https://kubernetes.io/docs/concepts/services-networking/service/#aws-nlb-support Optional: Defaults to omitted",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -5115,7 +5115,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCDCSpec(ref common.ReferenceCallback) co
 					},
 					"affinity": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Affinity of the component. Override the cluster-level one if present Optional: Defaults to cluster-level setting",
+							Description: "Affinity of the component. Override the cluster-level setting if present. Optional: Defaults to cluster-level setting",
 							Ref:         ref("k8s.io/api/core/v1.Affinity"),
 						},
 					},
@@ -5191,7 +5191,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCDCSpec(ref common.ReferenceCallback) co
 					},
 					"env": {
 						SchemaProps: spec.SchemaProps{
-							Description: "List of environment variables to set in the container, like v1.Container.Env. Note that following env names cannot be used and may be overrided by tidb-operator built envs. - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
+							Description: "List of environment variables to set in the container, like v1.Container.Env. Note that the following env names cannot be used and will be overridden by TiDB Operator builtin envs - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -5703,7 +5703,8 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBServiceSpec(ref common.ReferenceCallba
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
+				Description: "TiDBServiceSpec defines `.tidb.service` field of `TidbCluster.spec`.",
+				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"externalTrafficPolicy": {
 						SchemaProps: spec.SchemaProps{
@@ -5840,7 +5841,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 					},
 					"affinity": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Affinity of the component. Override the cluster-level one if present Optional: Defaults to cluster-level setting",
+							Description: "Affinity of the component. Override the cluster-level setting if present. Optional: Defaults to cluster-level setting",
 							Ref:         ref("k8s.io/api/core/v1.Affinity"),
 						},
 					},
@@ -5916,7 +5917,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 					},
 					"env": {
 						SchemaProps: spec.SchemaProps{
-							Description: "List of environment variables to set in the container, like v1.Container.Env. Note that following env names cannot be used and may be overrided by tidb-operator built envs. - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
+							Description: "List of environment variables to set in the container, like v1.Container.Env. Note that the following env names cannot be used and will be overridden by TiDB Operator builtin envs - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -6056,16 +6057,16 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 							Format:      "",
 						},
 					},
+					"slowLogTailer": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The specification of the slow log tailer sidecar",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBSlowLogTailerSpec"),
+						},
+					},
 					"tlsClient": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Whether enable the TLS connection between the SQL client and TiDB server Optional: Defaults to nil",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBTLSClient"),
-						},
-					},
-					"slowLogTailer": {
-						SchemaProps: spec.SchemaProps{
-							Description: "The spec of the slow log tailer sidecar",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBSlowLogTailerSpec"),
 						},
 					},
 					"plugins": {
@@ -6096,7 +6097,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 					},
 					"storageVolumes": {
 						SchemaProps: spec.SchemaProps{
-							Description: "StorageVolumes is additional storage apply for TiDB node. Default to storageClassName storage class",
+							Description: "StorageVolumes configure additional storage for TiDB pods.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -6199,7 +6200,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiFlashSpec(ref common.ReferenceCallback) 
 					},
 					"affinity": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Affinity of the component. Override the cluster-level one if present Optional: Defaults to cluster-level setting",
+							Description: "Affinity of the component. Override the cluster-level setting if present. Optional: Defaults to cluster-level setting",
 							Ref:         ref("k8s.io/api/core/v1.Affinity"),
 						},
 					},
@@ -6275,7 +6276,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiFlashSpec(ref common.ReferenceCallback) 
 					},
 					"env": {
 						SchemaProps: spec.SchemaProps{
-							Description: "List of environment variables to set in the container, like v1.Container.Env. Note that following env names cannot be used and may be overrided by tidb-operator built envs. - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
+							Description: "List of environment variables to set in the container, like v1.Container.Env. Note that the following env names cannot be used and will be overridden by TiDB Operator builtin envs - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -8442,7 +8443,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 					},
 					"affinity": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Affinity of the component. Override the cluster-level one if present Optional: Defaults to cluster-level setting",
+							Description: "Affinity of the component. Override the cluster-level setting if present. Optional: Defaults to cluster-level setting",
 							Ref:         ref("k8s.io/api/core/v1.Affinity"),
 						},
 					},
@@ -8518,7 +8519,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 					},
 					"env": {
 						SchemaProps: spec.SchemaProps{
-							Description: "List of environment variables to set in the container, like v1.Container.Env. Note that following env names cannot be used and may be overrided by tidb-operator built envs. - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
+							Description: "List of environment variables to set in the container, like v1.Container.Env. Note that the following env names cannot be used and will be overridden by TiDB Operator builtin envs - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -8667,7 +8668,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 					},
 					"recoverFailover": {
 						SchemaProps: spec.SchemaProps{
-							Description: "RecoverFailover indicates that Operator can recover the failover Pods",
+							Description: "RecoverFailover indicates that Operator can recover the failed Pods",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
@@ -8688,7 +8689,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 					},
 					"storageVolumes": {
 						SchemaProps: spec.SchemaProps{
-							Description: "StorageVolumes is additional storage apply for TiKV node. Default to storageClassName storage class",
+							Description: "StorageVolumes configure additional storage for TiKV pods.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -9546,7 +9547,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 					},
 					"affinity": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Affinity of TiDB cluster Pods",
+							Description: "Affinity of TiDB cluster Pods. Will be overwritten by each cluster component's specific affinity setting, e.g. `spec.tidb.affinity`",
 							Ref:         ref("k8s.io/api/core/v1.Affinity"),
 						},
 					},
@@ -9609,7 +9610,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 					},
 					"enableDynamicConfiguration": {
 						SchemaProps: spec.SchemaProps{
-							Description: "EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster",
+							Description: "EnableDynamicConfiguration indicates whether to append `--advertise-status-addr` to the startup parameters of TiKV.",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
