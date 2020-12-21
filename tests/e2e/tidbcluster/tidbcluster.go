@@ -709,7 +709,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			if err != nil {
 				return false, nil
 			}
-			if len(prometheusSvc.Spec.Ports) != 1 {
+			if len(prometheusSvc.Spec.Ports) != 3 {
 				return false, nil
 			}
 			if prometheusSvc.Spec.Type != corev1.ServiceTypeNodePort {
