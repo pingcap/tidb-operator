@@ -2008,6 +2008,18 @@ InitializerSpec
 </tr>
 <tr>
 <td>
+<code>dm</code></br>
+<em>
+<a href="#dmmonitorspec">
+DMMonitorSpec
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
 <code>pvReclaimPolicy</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#persistentvolumereclaimpolicy-v1-core">
@@ -3294,6 +3306,60 @@ Optional: Defaults to range</p>
 <p>
 <p>CleanPolicyType represents the clean policy of backup data in remote storage</p>
 </p>
+<h3 id="clusterref">ClusterRef</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#dmmonitorspec">DMMonitorSpec</a>)
+</p>
+<p>
+<p>ClusterRef reference to a TidbCluster</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>namespace</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Namespace is the namespace that TidbCluster object locates,
+default to the same namespace with TidbMonitor</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name is the name of TidbCluster object</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>clusterDomain</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ClusterDomain is the domain of TidbCluster object</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="commonconfig">CommonConfig</h3>
 <p>
 (<em>Appears on:</em>
@@ -4461,6 +4527,47 @@ string
 </td>
 <td>
 <p>Address indicates the existed TiDB discovery address</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dmmonitorspec">DMMonitorSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbmonitorspec">TidbMonitorSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>clusters</code></br>
+<em>
+<a href="#clusterref">
+[]ClusterRef
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>initializer</code></br>
+<em>
+<a href="#initializerspec">
+InitializerSpec
+</a>
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>
@@ -5742,6 +5849,7 @@ ingress supports SNI.</p>
 <h3 id="initializerspec">InitializerSpec</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#dmmonitorspec">DMMonitorSpec</a>, 
 <a href="#tidbmonitorspec">TidbMonitorSpec</a>)
 </p>
 <p>
@@ -19062,6 +19170,18 @@ ReloaderSpec
 <em>
 <a href="#initializerspec">
 InitializerSpec
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>dm</code></br>
+<em>
+<a href="#dmmonitorspec">
+DMMonitorSpec
 </a>
 </em>
 </td>
