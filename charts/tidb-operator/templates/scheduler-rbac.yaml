@@ -2,7 +2,11 @@
 kind: ServiceAccount
 apiVersion: v1
 metadata:
+  {{- if eq .Values.appendReleaseSuffix true}}
+  name: {{ .Values.scheduler.serviceAccount }}-{{ .Release.Name }}
+  {{- else }}
   name: {{ .Values.scheduler.serviceAccount }}
+  {{- end }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}

@@ -2,7 +2,11 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  {{- if eq .Values.appendReleaseSuffix true}}
+  name: {{ .Values.scheduler.schedulerName }}-{{.Release.Name}}
+  {{- else }}
   name: {{ .Values.scheduler.schedulerName }}
+  {{- end }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -57,11 +61,17 @@ spec:
         - kube-scheduler
         - --port=10261
         - --leader-elect=true
-        - --lock-object-name={{ .Values.scheduler.schedulerName }}
         - --lock-object-namespace={{ .Release.Namespace }}
+        {{- if eq .Values.appendReleaseSuffix true}}
+        - --lock-object-name={{ .Values.scheduler.schedulerName }}-{{.Release.Name}}
+        - --scheduler-name={{ .Values.scheduler.schedulerName }}-{{.Release.Name}}
+        - --policy-configmap={{ .Values.scheduler.schedulerName }}-policy-{{.Release.Name}}
+        {{- else }}
+        - --lock-object-name={{ .Values.scheduler.schedulerName }}
         - --scheduler-name={{ .Values.scheduler.schedulerName }}
-        - --v={{ .Values.scheduler.logLevel }}
         - --policy-configmap={{ .Values.scheduler.schedulerName }}-policy
+        {{- end }}
+        - --v={{ .Values.scheduler.logLevel }}
         - --policy-configmap-namespace={{ .Release.Namespace }}
       {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
         env:

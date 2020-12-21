@@ -37,6 +37,8 @@ features: []
 # - StableScheduling=true
 # - AutoScaling=false
 
+appendReleaseSuffix: false
+
 controllerManager:
   create: true
   # With rbac.create=false, the user is responsible for creating this account
