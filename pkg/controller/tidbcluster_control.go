@@ -98,7 +98,7 @@ func (c *realTidbClusterControl) Patch(tc *v1alpha1.TidbCluster, data []byte, su
 		return patchErr
 	})
 	if err != nil {
-		klog.Errorf("failed to update TidbCluster: [%s/%s], error: %v", tc.Namespace, tc.Name, err)
+		klog.Errorf("failed to patch TidbCluster: [%s/%s], error: %v", tc.Namespace, tc.Name, err)
 	}
 	return tc, err
 }
