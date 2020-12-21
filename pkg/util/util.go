@@ -41,10 +41,12 @@ import (
 )
 
 var (
-	ClusterClientTLSPath = "/var/lib/cluster-client-tls"
-	TiDBClientTLSPath    = "/var/lib/tidb-client-tls"
-	BRBinPath            = "/var/lib/br-bin"
-	ClusterClientVolName = "cluster-client-tls"
+	ClusterClientTLSPath   = "/var/lib/cluster-client-tls"
+	DMClusterClientTLSPath = "/var/lib/dm-cluster-client-tls"
+	TiDBClientTLSPath      = "/var/lib/tidb-client-tls"
+	BRBinPath              = "/var/lib/br-bin"
+	ClusterClientVolName   = "cluster-client-tls"
+	DMClusterClientVolName = "dm-cluster-client-tls"
 )
 
 const (
@@ -186,6 +188,10 @@ func Encode(obj interface{}) (string, error) {
 		return "", err
 	}
 	return string(b), nil
+}
+
+func DMClientTLSSecretName(dcName string) string {
+	return fmt.Sprintf("%s-dm-client-secret", dcName)
 }
 
 func ClusterClientTLSSecretName(tcName string) string {
