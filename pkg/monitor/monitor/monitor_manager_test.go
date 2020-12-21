@@ -43,7 +43,6 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 		tmm := newFakeTidbMonitorManager()
-
 		tc := &v1alpha1.TidbCluster{
 			Spec: v1alpha1.TidbClusterSpec{
 				TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
