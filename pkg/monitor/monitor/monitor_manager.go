@@ -249,7 +249,7 @@ func (m *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, dc *v1a
 				continue
 			}
 			selector := labels.NewSelector().Add(*r1).Add(*r2)
-			tcList, err := m.deps.TiDBClusterLister.List(selector)
+			tcList, err := m.deps.TiDBClusterLister.TidbClusters(tcRef.Namespace).List(selector)
 			if err != nil {
 				klog.Errorf("tm[%s/%s] gets tc[%s/%s]'s autoscaling clusters failed, err: %v", monitor.Namespace, monitor.Name, tcRef.Namespace, tcRef.Name, err)
 				continue
