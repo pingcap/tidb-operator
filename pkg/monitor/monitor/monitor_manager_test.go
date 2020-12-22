@@ -58,7 +58,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 
 		tc.Namespace = "ns"
 		tc.Name = "foo"
-		_, err := tmm.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
+		err := tmm.deps.TiDBClusterControl.Create(tc)
 		g.Expect(err).Should(BeNil())
 
 		if test.name == "enable dm monitor" {
@@ -71,7 +71,6 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 		}
 
 		err = tmm.SyncMonitor(tm)
-
 		if test.errExpectFn != nil {
 			test.errExpectFn(g, err, tmm, tm)
 		} else {
@@ -159,7 +158,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 			volumeCreated: false,
 		},
 		{
-			name: "tidbmonitor enable clusterScope",
+			name: "tidbmonitor enable clusterScope and running normally",
 			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
 				monitor.Spec.ClusterScoped = true
 				monitor.Namespace = "ns2"
@@ -172,7 +171,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 			volumeCreated: false,
 		},
 		{
-			name: "enable grafana",
+			name: "tidbmonitor enable grafana container and running normally",
 			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
 				monitor.Spec.Persistent = true
 				monitor.Spec.Storage = "10Gi"
@@ -226,7 +225,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 			svcCreated:    true,
 		},
 		{
-			name: "deployment without pv and pvc, can't smooth migrate",
+			name: "tidbmonitor use deployment running without pv and pvc, tidbmonitor can't smooth migrate to statefulset",
 			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
 				monitor.Status.DeploymentStorageStatus = &v1alpha1.DeploymentStorageStatus{
 					PvName: "test-pv",
@@ -242,7 +241,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 			volumeCreated: false,
 		},
 		{
-			name: "deployment pvc and smooth migrate",
+			name: "tidbmonitor use deployment running , tidbmonitor can smooth migrate to statefulset",
 			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
 				monitor.Status.DeploymentStorageStatus = &v1alpha1.DeploymentStorageStatus{
 					PvName: "test-pv",
@@ -291,7 +290,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 			volumeCreated: false,
 		},
 		{
-			name: "enable monitor persistent",
+			name: "tidbmonitor enable persistent and running normally",
 			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
 				monitor.Spec.Persistent = true
 				monitor.Spec.Storage = "10Gi"
@@ -302,7 +301,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 			svcCreated:    true,
 		},
 		{
-			name: "not set clusters field",
+			name: "tidbmonitor not spec clusters field",
 			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
 				monitor.Spec.Clusters = nil
 			},
@@ -355,7 +354,7 @@ func TestTidbMonitorSyncUpdate(t *testing.T) {
 		}
 		tc.Namespace = "ns"
 		tc.Name = "foo"
-		_, err := tmm.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
+		err := tmm.deps.TiDBClusterControl.Create(tc)
 		g.Expect(err).Should(BeNil())
 
 		tm := newTidbMonitor(v1alpha1.TidbClusterRef{Name: tc.Name, Namespace: tc.Namespace})
@@ -535,12 +534,12 @@ func newFakeTidbMonitorManager() *MonitorManager {
 	discoveryClient := &discoveryfake.FakeDiscovery{
 		Fake: fake,
 	}
-	monitorManager := &MonitorManager{
-		deps:               fakeDeps,
+
+	return &MonitorManager{deps: fakeDeps,
 		pvManager:          meta.NewReclaimPolicyManager(fakeDeps),
 		discoveryInterface: discoverycachedmemory.NewMemCacheClient(discoveryClient),
 	}
-	return monitorManager
+
 }
 
 func errExpectRequeuefunc(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {

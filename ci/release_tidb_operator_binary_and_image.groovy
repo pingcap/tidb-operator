@@ -45,8 +45,8 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
 						export QINIU_SECRET_KEY="${SECRET_KEY}"
 						export QINIU_BUCKET_NAME="charts"
 						set -x
-						curl https://raw.githubusercontent.com/pingcap/docs-cn/master/scripts/upload.py -o upload.py
-						sed -i 's%http://download.pingcap.org%http://charts.pingcap.org%g' upload.py
+						curl https://raw.githubusercontent.com/pingcap/docs-cn/a4db3fc5171ed8e4e705fb34552126a302d29c94/scripts/upload.py -o upload.py
+						sed -i 's%https://download.pingcap.org%https://charts.pingcap.org%g' upload.py
 						sed -i 's/python3/python/g' upload.py
 						chmod +x upload.py
 						for chartItem in ${CHART_ITEMS}
