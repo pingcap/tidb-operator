@@ -235,7 +235,7 @@ func TestVerifyServer(t *testing.T) {
 	fakePDControl := pdapi.NewFakePDControl(kubeCli)
 	faleMasterControl := dmapi.NewFakeMasterControl(kubeCli)
 	s := NewServer(fakePDControl, faleMasterControl, cli, kubeCli)
-	
+
 	httpServer := httptest.NewServer(s.(*server).container.ServeMux)
 
 	errfunction := func() error {
@@ -254,6 +254,6 @@ func TestVerifyServer(t *testing.T) {
 
 	err := errfunction()
 	if err != nil {
-		t.Errorf("get pd info failed: %v", err)
+		t.Errorf("verify pdEndpoint failed: %v", err)
 	}
 }
