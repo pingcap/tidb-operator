@@ -3,7 +3,7 @@ kind: StatefulSet
 metadata:
   name: {{ .Values.clusterName }}-importer
   labels:
-    app.kubernetes.io/name: {{ .Values.clusterName }}-importer
+    app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     app.kubernetes.io/instance: {{ .Values.clusterName }}
     app.kubernetes.io/component: importer
@@ -11,7 +11,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ .Values.clusterName }}-importer
+      app.kubernetes.io/name: {{ template "chart.name" . }}
       app.kubernetes.io/instance: {{ .Values.clusterName }}
       app.kubernetes.io/component: importer
   serviceName: {{ .Values.clusterName }}-importer
@@ -23,7 +23,7 @@ spec:
         prometheus.io/path: "/metrics"
         prometheus.io/port: "8286"
       labels:
-        app.kubernetes.io/name: {{ .Values.clusterName }}-importer
+        app.kubernetes.io/name: {{ template "chart.name" . }}
         app.kubernetes.io/instance: {{ .Values.clusterName }}
         app.kubernetes.io/component: importer
     spec:

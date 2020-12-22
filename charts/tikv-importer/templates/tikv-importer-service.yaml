@@ -3,7 +3,7 @@ kind: Service
 metadata:
   name: {{ .Values.clusterName }}-importer
   labels:
-    app.kubernetes.io/name: {{ .Values.clusterName }}-importer
+    app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     app.kubernetes.io/instance: {{ .Values.clusterName }}
     app.kubernetes.io/component: importer
@@ -15,6 +15,6 @@ spec:
   - name: status
     port: 8286
   selector:
-    app.kubernetes.io/name: {{ .Values.clusterName }}-importer
+    app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/instance: {{ .Values.clusterName }}
     app.kubernetes.io/component: importer
