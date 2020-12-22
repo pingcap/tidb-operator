@@ -1,25 +1,26 @@
 apiVersion: pingcap.com/v1alpha1
 kind: TidbMonitor
 metadata:
-  name: demo
+  name: basic
 spec:
   clusters:
-  - name: demo
+  - name: basic
   prometheus:
     baseImage: prom/prometheus
     version: v2.18.1
   grafana:
     baseImage: grafana/grafana
     version: 6.1.6
-    service:
-      type: NodePort
   initializer:
     baseImage: pingcap/tidb-monitor-initializer
-    version: v4.0.9
+    version: v4.0.8
   reloader:
     baseImage: pingcap/tidb-monitor-reloader
     version: v1.0.1
-  persistent: true
+  dm:
+    clusters:
+    - name: basic
+    initializer:
+      baseImage: pingcap/dm-monitor-initializer
+      version: v2.0.0
   imagePullPolicy: IfNotPresent
-  storage: 10Gi
-  storageClassName: local-storage
