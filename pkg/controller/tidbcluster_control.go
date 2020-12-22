@@ -22,6 +22,7 @@ import (
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
@@ -32,6 +33,8 @@ import (
 // TidbClusterControlInterface manages TidbClusters
 type TidbClusterControlInterface interface {
 	UpdateTidbCluster(*v1alpha1.TidbCluster, *v1alpha1.TidbClusterStatus, *v1alpha1.TidbClusterStatus) (*v1alpha1.TidbCluster, error)
+	Create(*v1alpha1.TidbCluster) error
+	Patch(tc *v1alpha1.TidbCluster, data []byte, subresources ...string) (result *v1alpha1.TidbCluster, err error)
 }
 
 type realTidbClusterControl struct {
@@ -84,6 +87,22 @@ func (c *realTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, new
 	return updateTC, err
 }
 
+func (c *realTidbClusterControl) Create(*v1alpha1.TidbCluster) error {
+	return nil
+}
+
+func (c *realTidbClusterControl) Patch(tc *v1alpha1.TidbCluster, data []byte, subresources ...string) (result *v1alpha1.TidbCluster, err error) {
+	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		var patchErr error
+		_, patchErr = c.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Patch(tc.Name, types.MergePatchType, data)
+		return patchErr
+	})
+	if err != nil {
+		klog.Errorf("failed to patch TidbCluster: [%s/%s], error: %v", tc.Namespace, tc.Name, err)
+	}
+	return tc, err
+}
+
 func deepEqualExceptHeartbeatTime(newStatus *v1alpha1.TidbClusterStatus, oldStatus *v1alpha1.TidbClusterStatus) bool {
 	sweepHeartbeatTime(newStatus.TiKV.Stores)
 	sweepHeartbeatTime(newStatus.TiKV.TombstoneStores)
@@ -105,6 +124,7 @@ type FakeTidbClusterControl struct {
 	TcLister                 listers.TidbClusterLister
 	TcIndexer                cache.Indexer
 	updateTidbClusterTracker RequestTracker
+	createTidbClusterTracker RequestTracker
 }
 
 // NewFakeTidbClusterControl returns a FakeTidbClusterControl
@@ -112,6 +132,7 @@ func NewFakeTidbClusterControl(tcInformer tcinformers.TidbClusterInformer) *Fake
 	return &FakeTidbClusterControl{
 		tcInformer.Lister(),
 		tcInformer.Informer().GetIndexer(),
+		RequestTracker{},
 		RequestTracker{},
 	}
 }
@@ -130,4 +151,20 @@ func (c *FakeTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, _ *
 	}
 
 	return tc, c.TcIndexer.Update(tc)
+}
+
+func (c *FakeTidbClusterControl) Create(tc *v1alpha1.TidbCluster) error {
+	defer func() {
+		c.createTidbClusterTracker.Inc()
+	}()
+
+	if c.createTidbClusterTracker.ErrorReady() {
+		defer c.createTidbClusterTracker.Reset()
+		return c.createTidbClusterTracker.GetError()
+	}
+	return c.TcIndexer.Add(tc)
+}
+
+func (c *FakeTidbClusterControl) Patch(tc *v1alpha1.TidbCluster, data []byte, subresources ...string) (result *v1alpha1.TidbCluster, err error) {
+	return nil, nil
 }
