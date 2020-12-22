@@ -770,12 +770,12 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 
 	if monitor.Spec.Thanos != nil {
 		prometheusService.Spec.Ports = append(prometheusService.Spec.Ports, core.ServicePort{
-			Name:       "thanossidecar-grpc",
+			Name:       "thanos-grpc",
 			Protocol:   core.ProtocolTCP,
 			Port:       10901,
 			TargetPort: intstr.FromInt(10901),
 		}, core.ServicePort{
-			Name:       "thanossidecar-http",
+			Name:       "thanos-http",
 			Protocol:   core.ProtocolTCP,
 			Port:       10902,
 			TargetPort: intstr.FromInt(10902),
