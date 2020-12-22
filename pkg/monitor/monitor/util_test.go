@@ -1167,7 +1167,7 @@ func TestGetMonitorThanosSidecarContainer(t *testing.T) {
 					"--grpc-address=[$(POD_IP)]:10901",
 					"--http-address=[$(POD_IP)]:10902",
 					"--objstore.config=$(OBJSTORE_CONFIG)",
-					"--tsdb.path=/prometheus",
+					"--tsdb.path=/data/prometheus",
 				},
 				Ports: []corev1.ContainerPort{
 					{
@@ -1191,6 +1191,12 @@ func TestGetMonitorThanosSidecarContainer(t *testing.T) {
 						},
 					},
 					{
+						Name: "POD_NAME",
+						ValueFrom: &corev1.EnvVarSource{
+							FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.name"},
+						},
+					},
+					{
 						Name: "OBJSTORE_CONFIG",
 						ValueFrom: &corev1.EnvVarSource{
 							SecretKeyRef: &corev1.SecretKeySelector{
@@ -1206,8 +1212,7 @@ func TestGetMonitorThanosSidecarContainer(t *testing.T) {
 				VolumeMounts: []corev1.VolumeMount{
 					{
 						Name:      v1alpha1.TidbMonitorMemberType.String(),
-						MountPath: "/prometheus",
-						SubPath:   "prometheus-db",
+						MountPath: "/data",
 					},
 				},
 			},

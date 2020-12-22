@@ -1058,6 +1058,7 @@ func getThanosSidecarContainer(monitor *v1alpha1.TidbMonitor) core.Container {
 			thanosArgs = append(thanosArgs, "--grpc-server-tls-client-ca="+tls.CAFile)
 		}
 	}
+
 	container := core.Container{
 		Name:      "thanos-sidecar",
 		Image:     fmt.Sprintf("%s:%s", thanos.BaseImage, thanos.Version),
@@ -1070,6 +1071,12 @@ func getThanosSidecarContainer(monitor *v1alpha1.TidbMonitor) core.Container {
 					FieldRef: &core.ObjectFieldSelector{
 						FieldPath: "status.podIP",
 					},
+				},
+			},
+			{
+				Name: "POD_NAME",
+				ValueFrom: &core.EnvVarSource{
+					FieldRef: &core.ObjectFieldSelector{FieldPath: "metadata.name"},
 				},
 			},
 		},
