@@ -239,7 +239,7 @@ func TestVerifyServer(t *testing.T) {
 	httpServer := httptest.NewServer(s.(*server).container.ServeMux)
 
 	errfunction := func() error {
-		svc := fmt.Sprintf(`demo-pd:2380`)
+		svc := "demo-pd:2380"
 		url := httpServer.URL + fmt.Sprintf("/verify/%s", base64.StdEncoding.EncodeToString([]byte(svc)))
 		resp, err := http.Get(url)
 		if err != nil {
