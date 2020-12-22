@@ -136,13 +136,13 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 						Protocol:   v1.ProtocolTCP,
 						TargetPort: intstr.FromInt(9090),
 					}, {
-						Name:       "thanossidecar-grpc",
+						Name:       "thanos-grpc",
 						Port:       10901,
 						Protocol:   v1.ProtocolTCP,
 						TargetPort: intstr.FromInt(10901),
 					},
 					{
-						Name:       "thanossidecar-http",
+						Name:       "thanos-http",
 						Port:       10902,
 						Protocol:   v1.ProtocolTCP,
 						TargetPort: intstr.FromInt(10902),
