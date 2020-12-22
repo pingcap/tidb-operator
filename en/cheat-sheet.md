@@ -475,7 +475,7 @@ For example:
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm inspect values pingcap/tidb-operator --version=v1.1.7 > values-tidb-operator.yaml
+helm inspect values pingcap/tidb-operator --version=v1.1.8 > values-tidb-operator.yaml
 ```
 
 ### Deploy using Helm chart
@@ -491,7 +491,7 @@ For example:
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm install pingcap/tidb-operator --name=tidb-operator --namespace=tidb-admin --version=v1.1.7 -f values-tidb-operator.yaml
+helm install pingcap/tidb-operator --name=tidb-operator --namespace=tidb-admin --version=v1.1.8 -f values-tidb-operator.yaml
 ```
 
 ### View the deployed Helm release
@@ -515,7 +515,7 @@ For example:
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm upgrade tidb-operator pingcap/tidb-operator --version=v1.1.7 -f values-tidb-operator.yaml
+helm upgrade tidb-operator pingcap/tidb-operator --version=v1.1.8 -f values-tidb-operator.yaml
 ```
 
 ### Delete Helm release
