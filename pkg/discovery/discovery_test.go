@@ -1117,6 +1117,18 @@ func TestDiscoveryVerifyPDEndpoint(t *testing.T) {
 				g.Expect(s).To(Equal("https://demo-pd:2379"))
 			},
 		},
+		{
+			name:          "tidbcluster name not exist",
+			ns:            "default",
+			url:           "non-exists-demo-pd:2379",
+			tls:           false,
+			inclusterPD:   true,
+			peerclusterPD: true,
+			expectFn: func(g *GomegaWithT, td *tidbDiscovery, s string, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(s).To(Equal("non-exists-demo-pd:2379"))
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

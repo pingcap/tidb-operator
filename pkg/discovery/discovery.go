@@ -302,11 +302,7 @@ func parseAdvertisePeerURL(advertisePeerURL string) *pdEndpointURL {
 
 	// Deal with port
 	hostURLArr := strings.Split(pdEndpoint.pdMemberName, ":")
-	if len(hostURLArr) == 1 {
-		// Usually there isn't exists a pdEndpoint without port for requests from startup scripts.
-		pdEndpoint.pdMemberName = hostURLArr[0]
-		pdEndpoint.pdMemberPort = ""
-	} else {
+	if len(hostURLArr) > 1 {
 		pdEndpoint.pdMemberName = hostURLArr[0]
 		pdEndpoint.pdMemberPort = hostURLArr[1]
 	}
