@@ -227,3 +227,33 @@ func TestDMServer(t *testing.T) {
 		t.Errorf("join expects 2, got %d", join)
 	}
 }
+
+func TestVerifyServer(t *testing.T) {
+	os.Setenv("MY_POD_NAMESPACE", "default")
+	cli := fake.NewSimpleClientset()
+	kubeCli := kubefake.NewSimpleClientset()
+	fakePDControl := pdapi.NewFakePDControl(kubeCli)
+	faleMasterControl := dmapi.NewFakeMasterControl(kubeCli)
+	s := NewServer(fakePDControl, faleMasterControl, cli, kubeCli)
+	
+	httpServer := httptest.NewServer(s.(*server).container.ServeMux)
+
+	errfunction := func() error {
+		svc := fmt.Sprintf(`demo-pd:2380`)
+		url := httpServer.URL + fmt.Sprintf("/verify/%s", base64.StdEncoding.EncodeToString([]byte(svc)))
+		resp, err := http.Get(url)
+		if err != nil {
+			return err
+		}
+		_, err = ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	err := errfunction()
+	if err != nil {
+		t.Errorf("get pd info failed: %v", err)
+	}
+}
