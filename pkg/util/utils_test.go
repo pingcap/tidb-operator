@@ -185,6 +185,9 @@ func TestName(t *testing.T) {
 
 	name = TiDBClientTLSSecretName(tcName)
 	g.Expect(name).Should(Equal(tcName + "-tidb-client-secret"))
+
+	name = DMClientTLSSecretName(tcName)
+	g.Expect(name).Should(Equal(tcName + "-dm-client-secret"))
 }
 
 func TestSortEnvByName(t *testing.T) {

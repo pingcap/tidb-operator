@@ -324,7 +324,7 @@ func (tc *TidbCluster) PDAutoFailovering() bool {
 	return false
 }
 
-func (tc *TidbCluster) GetPDFailureReplicas() int32 {
+func (tc *TidbCluster) GetPDDeletedFailureReplicas() int32 {
 	var failureReplicas int32 = 0
 	for _, failureMember := range tc.Status.PD.FailureMembers {
 		if failureMember.MemberDeleted {
@@ -335,7 +335,7 @@ func (tc *TidbCluster) GetPDFailureReplicas() int32 {
 }
 
 func (tc *TidbCluster) PDStsDesiredReplicas() int32 {
-	return tc.Spec.PD.Replicas + tc.GetPDFailureReplicas()
+	return tc.Spec.PD.Replicas + tc.GetPDDeletedFailureReplicas()
 }
 
 func (tc *TidbCluster) PDStsActualReplicas() int32 {
@@ -627,6 +627,7 @@ func (tidbSvc *TiDBServiceSpec) ShouldExposeStatus() bool {
 	return *exposeStatus
 }
 
+// GetMySQLNodePort returns the mysqlNodePort config in spec.tidb.service
 func (tidbSvc *TiDBServiceSpec) GetMySQLNodePort() int32 {
 	mysqlNodePort := tidbSvc.MySQLNodePort
 	if mysqlNodePort == nil {
@@ -635,6 +636,7 @@ func (tidbSvc *TiDBServiceSpec) GetMySQLNodePort() int32 {
 	return int32(*mysqlNodePort)
 }
 
+// GetStatusNodePort returns the statusNodePort config in spec.tidb.service
 func (tidbSvc *TiDBServiceSpec) GetStatusNodePort() int32 {
 	statusNodePort := tidbSvc.StatusNodePort
 	if statusNodePort == nil {
