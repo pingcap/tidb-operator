@@ -222,7 +222,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now</p>
+<p>ToolImage specifies the tool image used in the backup/restore, supporting BR image and Lightning/Dumpling images</p>
 </td>
 </tr>
 <tr>
@@ -1030,7 +1030,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now</p>
+<p>ToolImage specifies the tool image used in the backup/restore, supporting BR image and Lightning/Dumpling images</p>
 </td>
 </tr>
 <tr>
@@ -2892,7 +2892,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now</p>
+<p>ToolImage specifies the tool image used in the backup/restore, supporting BR image and Lightning/Dumpling images</p>
 </td>
 </tr>
 <tr>
@@ -10412,7 +10412,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now</p>
+<p>ToolImage specifies the tool image used in the backup/restore, supporting BR image and Lightning/Dumpling images</p>
 </td>
 </tr>
 <tr>
