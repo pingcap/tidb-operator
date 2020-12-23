@@ -559,9 +559,9 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 		}
 	}
 
-	cmd := fmt.Sprintf(`helm install %s --name %s --namespace %s %s --set-string %s`,
-		oa.operatorChartPath(info.Tag),
+	cmd := fmt.Sprintf(`helm install %s %s --namespace %s %s --set-string %s --create-namespace`,
 		info.ReleaseName,
+		oa.operatorChartPath(info.Tag),
 		info.Namespace,
 		info.OperatorHelmSetBoolean(),
 		info.OperatorHelmSetString(nil))
@@ -732,8 +732,8 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 		return fmt.Errorf("failed to create secret of cluster [%s]: %v", info.ClusterName, err)
 	}
 
-	cmd := fmt.Sprintf("helm install %s  --name %s --namespace %s --set-string %s",
-		oa.tidbClusterChartPath(info.OperatorTag), info.ClusterName, info.Namespace, info.TidbClusterHelmSetString(nil))
+	cmd := fmt.Sprintf("helm install %s %s --namespace %s --set-string %s --create-namespace",
+		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), info.Namespace, info.TidbClusterHelmSetString(nil))
 
 	svFilePath, err := info.BuildSubValues(oa.tidbClusterChartPath(info.OperatorTag))
 	if err != nil {
@@ -2442,8 +2442,8 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 	setString := info.BackupHelmSetString(sets)
 
 	fullbackupName := fmt.Sprintf("%s-backup", info.ClusterName)
-	cmd := fmt.Sprintf("helm install -n %s --namespace %s %s --set-string %s",
-		fullbackupName, info.Namespace, oa.backupChartPath(info.OperatorTag), setString)
+	cmd := fmt.Sprintf("helm install %s %s --namespace %s --set-string %s --create-namespace",
+		fullbackupName, oa.backupChartPath(info.OperatorTag), info.Namespace, setString)
 	klog.Infof("install adhoc deployment [%s]", cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -2534,8 +2534,8 @@ func (oa *operatorActions) Restore(from *TidbClusterConfig, to *TidbClusterConfi
 	setString := to.BackupHelmSetString(sets)
 
 	restoreName := fmt.Sprintf("%s-restore", to.ClusterName)
-	cmd := fmt.Sprintf("helm install -n %s --namespace %s %s --set-string %s",
-		restoreName, to.Namespace, oa.backupChartPath(to.OperatorTag), setString)
+	cmd := fmt.Sprintf("helm install %s %s --namespace %s  --set-string %s --create-namespace",
+		restoreName, oa.backupChartPath(to.OperatorTag), to.Namespace, setString)
 	klog.Infof("install restore [%s]", cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {

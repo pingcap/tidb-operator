@@ -32,7 +32,7 @@ DOCS_BIN=$OUTPUT_BIN/gen-crd-api-reference-docs
 # Don't upgrade to 2.15.x/2.16.x until this issue
 # (https://github.com/helm/helm/issues/6361) has been fixed.
 #
-HELM_VERSION=${HELM_VERSION:-2.9.1}
+HELM_VERSION=${HELM_VERSION:-3.4.2}
 KIND_VERSION=${KIND_VERSION:-0.8.1}
 DOCS_VERSION=${DOCS_VERSION:-0.2.1}
 KIND_BIN=$OUTPUT_BIN/kind
@@ -92,7 +92,7 @@ function hack::ensure_kubectl() {
 
 function hack::verify_helm() {
     if test -x "$HELM_BIN"; then
-        local v=$($HELM_BIN version --short --client | grep -o -E '[0-9]+\.[0-9]+\.[0-9]+')
+        local v=$($HELM_BIN version --short | grep -o -E '[0-9]+\.[0-9]+\.[0-9]+')
         [[ "$v" == "$HELM_VERSION" ]]
         return
     fi
@@ -103,7 +103,7 @@ function hack::ensure_helm() {
     if hack::verify_helm; then
         return 0
     fi
-    local HELM_URL=http://storage.googleapis.com/kubernetes-helm/helm-v${HELM_VERSION}-${OS}-${ARCH}.tar.gz
+    local HELM_URL=https://get.helm.sh/helm-v${HELM_VERSION}-${OS}-${ARCH}.tar.gz
     curl --retry 10 -L -s "$HELM_URL" | tar --strip-components 1 -C $OUTPUT_BIN -zxf - ${OS}-${ARCH}/helm
 }
 
