@@ -428,7 +428,7 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetBoolean(m map[string]bool) string
 	for k, v := range set {
 		arr = append(arr, fmt.Sprintf("%s=%v", k, v))
 	}
-	return strings.Join(arr, " ")
+	return strings.Join(arr, ",")
 }
 
 func (oi *OperatorConfig) OperatorHelmSetBoolean() string {
@@ -750,8 +750,8 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 		return fmt.Errorf("failed to create secret of cluster [%s]: %v", info.ClusterName, err)
 	}
 
-	cmd := fmt.Sprintf("helm install %s  --name %s --namespace %s --set-string %s",
-		oa.tidbClusterChartPath(info.OperatorTag), info.ClusterName, info.Namespace, info.TidbClusterHelmSetString(nil))
+	cmd := fmt.Sprintf("helm install %s  --name %s --namespace %s --set-string %s --set %s",
+		oa.tidbClusterChartPath(info.OperatorTag), info.ClusterName, info.Namespace, info.TidbClusterHelmSetString(nil), info.TidbClusterHelmSetBoolean(nil))
 
 	svFilePath, err := info.BuildSubValues(oa.tidbClusterChartPath(info.OperatorTag))
 	if err != nil {
