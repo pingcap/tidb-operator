@@ -36,7 +36,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	discoverycachedmemory "k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/klog"
@@ -77,7 +76,7 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 
 	var firstTc *v1alpha1.TidbCluster
 	for _, tcRef := range monitor.Spec.Clusters {
-		tc, err := m.deps.Clientset.PingcapV1alpha1().TidbClusters(tcRef.Namespace).Get(tcRef.Name, metav1.GetOptions{})
+		tc, err := m.deps.TiDBClusterLister.TidbClusters(tcRef.Namespace).Get(tcRef.Name)
 		if err != nil {
 			rerr := fmt.Errorf("get tm[%s/%s]'s target tc[%s/%s] failed, err: %v", monitor.Namespace, monitor.Name, tcRef.Namespace, tcRef.Name, err)
 			return rerr
@@ -96,7 +95,7 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		// been set by another TidbMonitor.
 		// Patch tidbcluster status first to avoid multi tidbmonitor monitoring the same tidbcluster
 		if !tc.IsHeterogeneous() {
-			if err := m.patchTidbClusterStatus(&tcRef, monitor); err != nil {
+			if err := m.patchTidbClusterStatus(tc, monitor); err != nil {
 				message := fmt.Sprintf("Sync TidbMonitorRef into targetCluster[%s/%s] status failed, err:%v", tc.Namespace, tc.Name, err)
 				klog.Error(message)
 				m.deps.Recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, err.Error())
@@ -250,12 +249,12 @@ func (m *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, dc *v1a
 				continue
 			}
 			selector := labels.NewSelector().Add(*r1).Add(*r2)
-			tcList, err := m.deps.Clientset.PingcapV1alpha1().TidbClusters(tcRef.Namespace).List(metav1.ListOptions{LabelSelector: selector.String()})
+			tcList, err := m.deps.TiDBClusterLister.TidbClusters(tcRef.Namespace).List(selector)
 			if err != nil {
 				klog.Errorf("tm[%s/%s] gets tc[%s/%s]'s autoscaling clusters failed, err: %v", monitor.Namespace, monitor.Name, tcRef.Namespace, tcRef.Name, err)
 				continue
 			}
-			for _, autoTc := range tcList.Items {
+			for _, autoTc := range tcList {
 				autoTcRefs = append(autoTcRefs, v1alpha1.TidbClusterRef{
 					Name:      autoTc.Name,
 					Namespace: autoTc.Namespace,
@@ -403,37 +402,27 @@ func (m *MonitorManager) removeIngressIfExist(monitor *v1alpha1.TidbMonitor, nam
 	return m.deps.TypedControl.Delete(monitor, ingress)
 }
 
-func (m *MonitorManager) patchTidbClusterStatus(tcRef *v1alpha1.TidbClusterRef, monitor *v1alpha1.TidbMonitor) error {
-	tc, err := m.deps.Clientset.PingcapV1alpha1().TidbClusters(tcRef.Namespace).Get(tcRef.Name, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
+func (m *MonitorManager) patchTidbClusterStatus(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) error {
 	var mergePatch []byte
-	if tcRef != nil {
-		grafanaEnabled := true
-		if monitor.Spec.Grafana == nil {
-			grafanaEnabled = false
-		}
-		mergePatch, err = json.Marshal(map[string]interface{}{
-			"status": map[string]interface{}{
-				"monitor": map[string]interface{}{
-					"name":           monitor.Name,
-					"namespace":      monitor.Namespace,
-					"grafanaEnabled": grafanaEnabled,
-				},
-			},
-		})
-	} else {
-		mergePatch, err = json.Marshal(map[string]interface{}{
-			"status": map[string]interface{}{
-				"monitor": nil,
-			},
-		})
+	var err error
+	grafanaEnabled := true
+	if monitor.Spec.Grafana == nil {
+		grafanaEnabled = false
 	}
+	mergePatch, err = json.Marshal(map[string]interface{}{
+		"status": map[string]interface{}{
+			"monitor": map[string]interface{}{
+				"name":           monitor.Name,
+				"namespace":      monitor.Namespace,
+				"grafanaEnabled": grafanaEnabled,
+			},
+		},
+	})
+
 	if err != nil {
 		return err
 	}
-	_, err = m.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Patch(tc.Name, types.MergePatchType, mergePatch)
+	_, err = m.deps.TiDBClusterControl.Patch(tc, mergePatch)
 	return err
 }
 
