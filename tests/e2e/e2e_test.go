@@ -108,6 +108,7 @@ func createTestingNS(baseName string, c clientset.Interface, labels map[string]s
 	return got, nil
 }
 
+// TestMain does some initial setups before running the real TestE2E function
 func TestMain(m *testing.M) {
 	// Register test flags, then parse flags.
 	handleFlags()
@@ -135,6 +136,7 @@ func TestMain(m *testing.M) {
 	framework.TestContext.CreateTestingNS = createTestingNS
 
 	rand.Seed(time.Now().UnixNano())
+	// run test functions with `go test`
 	os.Exit(m.Run())
 }
 
