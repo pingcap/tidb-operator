@@ -38,26 +38,12 @@ import (
 )
 
 var (
-<<<<<<< HEAD
 	ClusterClientTLSPath = "/var/lib/cluster-client-tls"
 	TiDBClientTLSPath    = "/var/lib/tidb-client-tls"
 	BRBinPath            = "/var/lib/br-bin"
+	DumplingBinPath      = "/var/lib/dumpling-bin"
+	LightningBinPath     = "/var/lib/lightning-bin"
 	ClusterClientVolName = "cluster-client-tls"
-=======
-	ClusterClientTLSPath   = "/var/lib/cluster-client-tls"
-	DMClusterClientTLSPath = "/var/lib/dm-cluster-client-tls"
-	TiDBClientTLSPath      = "/var/lib/tidb-client-tls"
-	BRBinPath              = "/var/lib/br-bin"
-	DumplingBinPath        = "/var/lib/dumpling-bin"
-	LightningBinPath       = "/var/lib/lightning-bin"
-	ClusterClientVolName   = "cluster-client-tls"
-	DMClusterClientVolName = "dm-cluster-client-tls"
-)
-
-const (
-	// LastAppliedConfigAnnotation is annotation key of last applied configuration
-	LastAppliedConfigAnnotation = "pingcap.com/last-applied-configuration"
->>>>>>> be3806cd... support toolimage when backup/restore using dumpling/lightning (#3641)
 )
 
 func GetOrdinalFromPodName(podName string) (int32, error) {
