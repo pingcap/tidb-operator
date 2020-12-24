@@ -160,8 +160,8 @@ function gen_component_certs() {
     mkdir -p $COMP_DIR
     pushd $COMP_DIR
     $CFSSL_BIN print-defaults csr |
-        jq ".hosts=[\"127.0.0.1\",\"::1\",\"${TIDB_CLUSTER}-${COMP}\",\"${TIDB_CLUSTER}-${COMP}.${NAMESPACE}\",\"${TIDB_CLUSTER}-${COMP}.${NAMESPACE}.svc\",\"${TIDB_CLUSTER}-${COMP}-peer\",\"${TIDB_CLUSTER}-${COMP}-peer.${NAMESPACE}\",\"${TIDB_CLUSTER}-${COMP}-peer.${NAMESPACE}.svc\",\"*.${TIDB_CLUSTER}-${COMP}-peer\",\"*.${TIDB_CLUSTER}-${COMP}-peer.${NAMESPACE}\",\"*.${TIDB_CLUSTER}-${COMP}-peer.${NAMESPACE}.svc\"]" |
-        jq ".CN=\"${COMMON_NAME}\"" \
+        $JQ_BIN ".hosts=[\"127.0.0.1\",\"::1\",\"${TIDB_CLUSTER}-${COMP}\",\"${TIDB_CLUSTER}-${COMP}.${NAMESPACE}\",\"${TIDB_CLUSTER}-${COMP}.${NAMESPACE}.svc\",\"${TIDB_CLUSTER}-${COMP}-peer\",\"${TIDB_CLUSTER}-${COMP}-peer.${NAMESPACE}\",\"${TIDB_CLUSTER}-${COMP}-peer.${NAMESPACE}.svc\",\"*.${TIDB_CLUSTER}-${COMP}-peer\",\"*.${TIDB_CLUSTER}-${COMP}-peer.${NAMESPACE}\",\"*.${TIDB_CLUSTER}-${COMP}-peer.${NAMESPACE}.svc\"]" |
+        $JQ_BIN ".CN=\"${COMMON_NAME}\"" \
             >${COMP}-server.json
     $CFSSL_BIN gencert -ca=$CA_DIR/ca.pem -ca-key=$CA_DIR/ca-key.pem -config=$CA_DIR/ca-config.json -profile=$PROFILE ${COMP}-server.json | $CFSSLJSON_BIN -bare ${COMP}-server
     popd
