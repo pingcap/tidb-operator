@@ -1,5 +1,5 @@
 ---
-Title: Scale TiDB in Kubernetes
+title: Scale TiDB in Kubernetes
 summary: Learn how to horizontally and vertically scale up and down a TiDB cluster in Kubernetes.
 aliases: ['/docs/tidb-in-kubernetes/dev/scale-a-tidb-cluster/']
 ---

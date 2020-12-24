@@ -6,7 +6,7 @@ aliases: ['/docs/tidb-in-kubernetes/dev/destroy-a-tidb-cluster/']
 
 # Destroy TiDB Clusters in Kubernetes
 
-This document describes how to deploy TiDB clusters in Kubernetes.
+This document describes how to destroy TiDB clusters in Kubernetes.
 
 ## Destroy a TiDB cluster managed by `TidbCluster`
 

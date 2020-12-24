@@ -5,7 +5,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/monitor-using-tidbmonitor/']
 
 # 通过 TidbMonitor 监控 TiDB 集群
 
-在 v1.1 及更高版本的 TiDB Operator 中，我们可以通过简单的 CR 文件（即 TidbMonitor）来快速建立对 Kubernetes 集群上的 TiDB 集群的监控。
+在 v1.1 及更高版本的 TiDB Operator 中，可以通过简单的 CR 文件（即 TidbMonitor）来快速建立对 Kubernetes 集群上的 TiDB 集群的监控。
 
 ## 快速上手
 
@@ -22,7 +22,7 @@ standard (default)   rancher.io/local-path   Delete          WaitForFirstConsume
 
 ### 安装
 
-你可以在 Kubernetes 集群上通过 CR 文件快速建立起一个 TidbMonitor 监控 TiDB 集群。接下来我们可以将以下内容存为 yaml 文件，通过 `kubectl apply -f` 的方式部署一个 TidbMonitor 组件。
+你可以在 Kubernetes 集群上通过 CR 文件快速建立起一个 TidbMonitor 监控 TiDB 集群。将以下内容存为 yaml 文件，通过 `kubectl apply -f` 的方式部署一个 TidbMonitor 组件。
 
 > **注意：**
 >
@@ -62,14 +62,14 @@ spec:
 kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/basic/tidb-monitor.yaml -n ${namespace}
 ```
 
-如果服务器没有外网，请参考 [部署 TiDB 集群](deploy-on-general-kubernetes.md#部署-tidb-集群) 在有外网的机器上将用到的 Docker 镜像下载下来并上传到服务器上。
+如果服务器没有外网，请参考[部署 TiDB 集群](deploy-on-general-kubernetes.md#部署-tidb-集群) 在有外网的机器上将用到的 Docker 镜像下载下来并上传到服务器上。
 
-然后我们通过 kubectl get pod 命令来检查 TidbMonitor 启动完毕:
+然后通过 `kubectl get pod` 命令来检查 TidbMonitor 启动完毕:
 
 {{< copyable "shell-regular" >}}
 
 ```shell
-$ kubectl get pod -l app.kubernetes.io/instance=basic -n ${namespace} | grep monitor
+kubectl get pod -l app.kubernetes.io/instance=basic -n ${namespace} | grep monitor
 basic-monitor-85fcf66bc4-cwpcn     3/3     Running   0          117s
 ```
 
@@ -83,9 +83,11 @@ basic-monitor-85fcf66bc4-cwpcn     3/3     Running   0          117s
 kubectl -n ${namespace} port-forward svc/basic-grafana 3000:3000 &>/tmp/pf-grafana.log &
 ```
 
-然后访问 localhost:3000。
+然后访问 <http://localhost:3000> 即可查看监控面板。
 
 ### 删除监控
+
+运行以下命令删除监控：
 
 {{< copyable "shell-regular" >}}
 
@@ -95,7 +97,7 @@ kubectl delete tidbmonitor basic -n ${namespace}
 
 ## 持久化监控数据
 
-如果我们需要将 TidbMonitor 的监控数据持久化存储，我们需要在 TidbMonitor 中开启持久化选项:
+如果要将 TidbMonitor 的监控数据持久化存储，需要在 TidbMonitor 中开启持久化选项:
 
 ```yaml
 apiVersion: pingcap.com/v1alpha1
@@ -129,17 +131,22 @@ spec:
 
 你可以通过以下命令来确认 PVC 情况:
 
+{{< copyable "shell-regular" >}}
+
 ```shell
-$ kubectl get pvc -l app.kubernetes.io/instance=basic,app.kubernetes.io/component=monitor -n ${namespace}
+kubectl get pvc -l app.kubernetes.io/instance=basic,app.kubernetes.io/component=monitor -n ${namespace}
+```
+
+```
 NAME            STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
 basic-monitor   Bound    pvc-6db79253-cc9e-4730-bbba-ba987c29db6f   5G         RWO            standard       51s
 ```
 
 ### 设置 kube-prometheus 与 AlertManager
 
-在部分情况下，你可能需要 TidbMonitor 同时获取 Kubernetes 上的监控指标。你可以通过设置 TidbMonitor.Spec.kubePrometheusURL 来使其获取 kube-prometheus metrics，了解 [kube-prometheus](https://github.com/coreos/kube-prometheus)。
+在部分情况下，你可能需要 TidbMonitor 同时获取 Kubernetes 上的监控指标。你可以通过设置 `TidbMonitor.Spec.kubePrometheusURL` 来使其获取 [kube-prometheus](https://github.com/coreos/kube-prometheus) metrics。
 
-同样的，你可以通过设置 TidbMonitor 来将监控推送警报至指定的 AlertManager，了解 [AlertManager](https://prometheus.io/docs/alerting/alertmanager/)。
+同样的，你可以通过设置 TidbMonitor 来将监控推送警报至指定的 [AlertManager](https://prometheus.io/docs/alerting/alertmanager/)。
 
 ```yaml
 apiVersion: pingcap.com/v1alpha1
@@ -178,7 +185,7 @@ spec:
 
 更多关于 `Ingress` 环境准备，可以参考 [Ingress 环境准备](https://kubernetes.io/zh/docs/concepts/services-networking/ingress/#%E7%8E%AF%E5%A2%83%E5%87%86%E5%A4%87)
 
-### 使用 Ingress 访问 TidbMonitor 
+### 使用 Ingress 访问 TidbMonitor
 
 目前, `TidbMonitor` 提供了通过 Ingress 将 Prometheus/Grafana 服务暴露出去的方式，你可以通过 [Ingress 文档](https://kubernetes.io/zh/docs/concepts/services-networking/ingress/)了解更多关于 Ingress 的详情。
 
