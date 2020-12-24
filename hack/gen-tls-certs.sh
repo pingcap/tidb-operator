@@ -30,13 +30,61 @@ CA_EXPIRATION=${CA_EXPIRATION:-"87600h"}
 COMMON_NAME=${COMMON_NAME:-"TiDB"}
 ORGANIZATION_UNIT=${ORGANIZATION_UNIT:-"TiDB"}
 ORGANIZATION=${ORGANIZATION:-"PingCAP"}
-COUNTRY=${COUNTRY:-"US"}
-LOCALITY=${LOCALITY:-"CA"}
+COUNTRY=${COUNTRY:-"CN"}
+LOCALITY=${LOCALITY:-"Beijing"}
 STATE_OR_PROVINCE_NAME=${STATE_OR_PROVINCE_NAME:-"Beijing"}
 # paramenters end
 
 TLS_DIR="${OUTPUT}/tls"
 CA_DIR="${TLS_DIR}/ca"
+
+function usage() {
+    cat <<'EOF'
+This script is used to generate TLS certs for tidb cluster/client using cfssl.
+
+Usage: hack/gen-tls-certs.sh [-h]
+
+    -h      show this message and exit
+
+Environments:
+
+    TIDB_CLUSTER           should match the tidb cluster you want to enable TLS features, defaults to "basic-tls"
+    NAMESPACE              namespace of the tidb cluster, defaults to "default"
+    # following are CA cert configs
+    CA_EXPIRATION          expiration time of CA certs, defaults to "87600h" (10*365 Days)
+    COMMON_NAME            COMMON_NAME(CN) of the CA cert, defaults to "TiDB"
+    ORGANIZATION_UNIT      ORGANIZATION_UNIT(OU) of the CA cert, defaults to "TiDB"
+    ORGANIZATION           ORGANIZATION(O) of the CA cert, defaults to "PingCAP"
+    COUNTRY                COUNTRY(C) of the CA cert, defaults to "CN"
+    LOCALITY               LOCALITY(L) of the CA cert, defaults to "Beijing"
+    STATE_OR_PROVINCE_NAME STATE_OR_PROVINCE_NAME(ST) of the CA cert, defaults to Beijing
+
+Examples:
+
+0) view help
+
+    ./hack/gen-tls-certs.sh -h
+
+1) generate certs using default settings
+
+    ./hack/gen-tls-certs.sh
+
+2) generate certs with customized settings
+
+    TIDB_CLUSTER=my-tidb-cluster NAMESPACE=my-namespace COMMON_NAME=my-org ORGANIZATION_UNIT=my-org ORGANIZATION=my-org ./hack/gen-tls-certs.sh
+
+EOF
+
+}
+
+while getopts "h?" opt; do
+    case "$opt" in
+    h | \?)
+        usage
+        exit 0
+        ;;
+    esac
+done
 
 function gen_ca() {
     echo "generating CA"
@@ -111,17 +159,17 @@ function gen_component_certs() {
     echo "generating $COMP server certs"
     mkdir -p $COMP_DIR
     pushd $COMP_DIR
-    $CFSSL_BIN print-defaults csr \
-        | jq ".hosts=[\"127.0.0.1\",\"::1\",\"${TIDB_CLUSTER}-${COMP}\",\"${TIDB_CLUSTER}-${COMP}.${NAMESPACE}\",\"${TIDB_CLUSTER}-${COMP}.${NAMESPACE}.svc\",\"${TIDB_CLUSTER}-${COMP}-peer\",\"${TIDB_CLUSTER}-${COMP}-peer.${NAMESPACE}\",\"${TIDB_CLUSTER}-${COMP}-peer.${NAMESPACE}.svc\",\"*.${TIDB_CLUSTER}-${COMP}-peer\",\"*.${TIDB_CLUSTER}-${COMP}-peer.${NAMESPACE}\",\"*.${TIDB_CLUSTER}-${COMP}-peer.${NAMESPACE}.svc\"]" \
-        | jq ".CN=\"${COMMON_NAME}\"" \
-        > ${COMP}-server.json
+    $CFSSL_BIN print-defaults csr |
+        jq ".hosts=[\"127.0.0.1\",\"::1\",\"${TIDB_CLUSTER}-${COMP}\",\"${TIDB_CLUSTER}-${COMP}.${NAMESPACE}\",\"${TIDB_CLUSTER}-${COMP}.${NAMESPACE}.svc\",\"${TIDB_CLUSTER}-${COMP}-peer\",\"${TIDB_CLUSTER}-${COMP}-peer.${NAMESPACE}\",\"${TIDB_CLUSTER}-${COMP}-peer.${NAMESPACE}.svc\",\"*.${TIDB_CLUSTER}-${COMP}-peer\",\"*.${TIDB_CLUSTER}-${COMP}-peer.${NAMESPACE}\",\"*.${TIDB_CLUSTER}-${COMP}-peer.${NAMESPACE}.svc\"]" |
+        jq ".CN=\"${COMMON_NAME}\"" \
+            >${COMP}-server.json
     $CFSSL_BIN gencert -ca=$CA_DIR/ca.pem -ca-key=$CA_DIR/ca-key.pem -config=$CA_DIR/ca-config.json -profile=$PROFILE ${COMP}-server.json | $CFSSLJSON_BIN -bare ${COMP}-server
     popd
 }
 
 function create_cluster_secret() {
     local COMP=$1
-    $KUBECTL_BIN get secret ${TIDB_CLUSTER}-${COMP}-cluster-secret --namespace=${NAMESPACE} && \
+    $KUBECTL_BIN get secret ${TIDB_CLUSTER}-${COMP}-cluster-secret --namespace=${NAMESPACE} &&
         $KUBECTL_BIN delete secret ${TIDB_CLUSTER}-${COMP}-cluster-secret --namespace=${NAMESPACE}
     $KUBECTL_BIN create secret generic ${TIDB_CLUSTER}-${COMP}-cluster-secret --namespace=${NAMESPACE} \
         --from-file=tls.crt=${TLS_DIR}/cluster/${COMP}/${COMP}-server.pem \
@@ -145,17 +193,15 @@ gen_ca
 
 # generate certs for cluster components
 components=("pd" "tidb" "tikv" "pump" "ticdc" "tiflash")
-for i in "${components[@]}"
-do
-	gen_component_certs "cluster" $i "internal"
+for i in "${components[@]}"; do
+    gen_component_certs "cluster" $i "internal"
 done
 gen_component_certs "cluster" "client" "client"
 
-for i in "${components[@]}"
-do
+for i in "${components[@]}"; do
     create_cluster_secret $i
 done
-$KUBECTL_BIN get secret ${TIDB_CLUSTER}-cluster-client-secret --namespace=${NAMESPACE} && \
+$KUBECTL_BIN get secret ${TIDB_CLUSTER}-cluster-client-secret --namespace=${NAMESPACE} &&
     $KUBECTL_BIN delete secret ${TIDB_CLUSTER}-cluster-client-secret --namespace=${NAMESPACE}
 $KUBECTL_BIN create secret generic ${TIDB_CLUSTER}-cluster-client-secret --namespace=${NAMESPACE} \
     --from-file=tls.crt=${TLS_DIR}/cluster/client/client-server.pem \
@@ -165,13 +211,13 @@ $KUBECTL_BIN create secret generic ${TIDB_CLUSTER}-cluster-client-secret --names
 # generate certs for mysql client and server
 gen_component_certs "mysql" "tidb" "server"
 gen_component_certs "mysql" "client" "client"
-$KUBECTL_BIN get secret ${TIDB_CLUSTER}-tidb-server-secret --namespace=${NAMESPACE} && \
+$KUBECTL_BIN get secret ${TIDB_CLUSTER}-tidb-server-secret --namespace=${NAMESPACE} &&
     $KUBECTL_BIN delete secret ${TIDB_CLUSTER}-tidb-server-secret --namespace=${NAMESPACE}
 $KUBECTL_BIN create secret generic ${TIDB_CLUSTER}-tidb-server-secret --namespace=${NAMESPACE} \
     --from-file=tls.crt=${TLS_DIR}/mysql/tidb/tidb-server.pem \
     --from-file=tls.key=${TLS_DIR}/mysql/tidb/tidb-server-key.pem \
     --from-file=ca.crt=${CA_DIR}/ca.pem
-$KUBECTL_BIN get secret ${TIDB_CLUSTER}-tidb-client-secret --namespace=${NAMESPACE} && \
+$KUBECTL_BIN get secret ${TIDB_CLUSTER}-tidb-client-secret --namespace=${NAMESPACE} &&
     $KUBECTL_BIN delete secret ${TIDB_CLUSTER}-tidb-client-secret --namespace=${NAMESPACE}
 $KUBECTL_BIN create secret generic ${TIDB_CLUSTER}-tidb-client-secret --namespace=${NAMESPACE} \
     --from-file=tls.crt=${TLS_DIR}/mysql/client/client-server.pem \
