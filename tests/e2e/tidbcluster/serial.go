@@ -48,7 +48,7 @@ import (
 	"k8s.io/klog"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
-	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	k8se2elog "k8s.io/kubernetes/test/e2e/framework/log"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -386,7 +386,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectNoError(err, "Though some required fields are omitted, they will be set by defaulting")
 			// don't have to check all fields, just take some to test if defaulting set
 			if empty, err := gomega.BeEmpty().Match(newTC.Spec.TiDB.BaseImage); empty {
-				e2elog.Failf("Expected tidb.baseImage has default value set, %v", err)
+				k8se2elog.Failf("Expected tidb.baseImage has default value set, %v", err)
 			}
 
 			ginkgo.By("Validating should reject illegal update")

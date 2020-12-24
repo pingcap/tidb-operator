@@ -45,7 +45,7 @@ import (
 	"k8s.io/klog"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
-	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	k8se2elog "k8s.io/kubernetes/test/e2e/framework/log"
 	e2esset "k8s.io/kubernetes/test/e2e/framework/statefulset"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -361,7 +361,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 		stsList, err := c.AppsV1().StatefulSets(tc.Namespace).List(listOption)
 		framework.ExpectNoError(err)
 		if len(stsList.Items) < 3 {
-			e2elog.Failf("at least 3 statefulsets must be created, got %d", len(stsList.Items))
+			k8se2elog.Failf("at least 3 statefulsets must be created, got %d", len(stsList.Items))
 		}
 
 		podListBeforeUpgrade, err := c.CoreV1().Pods(tc.Namespace).List(listOption)

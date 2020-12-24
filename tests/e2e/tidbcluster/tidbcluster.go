@@ -63,8 +63,8 @@ import (
 	"k8s.io/klog"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
-	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
-	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
+	k8se2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	k8se2epod "k8s.io/kubernetes/test/e2e/framework/pod"
 	"k8s.io/kubernetes/test/utils"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -275,10 +275,10 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		webhookPod, err = c.CoreV1().Pods(webhookPod.Namespace).Get(webhookPod.Name, metav1.GetOptions{})
 		framework.ExpectNoError(err, fmt.Sprintf("unable to get pod %s/%s", webhookPod.Namespace, webhookPod.Name))
 		if webhookPod.Status.Phase != v1.PodRunning {
-			logs, err := e2epod.GetPodLogs(c, webhookPod.Namespace, webhookPod.Name, "webhook")
+			logs, err := k8se2epod.GetPodLogs(c, webhookPod.Namespace, webhookPod.Name, "webhook")
 			framework.ExpectNoError(err)
-			e2elog.Logf("webhook logs: %s", logs)
-			e2elog.Fail("webhook pod is not running")
+			k8se2elog.Logf("webhook logs: %s", logs)
+			k8se2elog.Fail("webhook pod is not running")
 		}
 
 		oa.CleanWebHookAndServiceOrDie(ocfg.WebhookConfigName)
@@ -321,7 +321,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected TiDB cluster created by helm chart")
 		if isNil, err := gomega.BeNil().Match(metav1.GetControllerOf(oldSvc)); !isNil {
-			e2elog.Failf("Expected TiDB service created by helm chart is orphaned: %v", err)
+			k8se2elog.Failf("Expected TiDB service created by helm chart is orphaned: %v", err)
 		}
 
 		ginkgo.By("Adopt orphaned service created by helm")
@@ -337,12 +337,12 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				if errors.IsNotFound(err) {
 					return false, err
 				}
-				e2elog.Logf("error get TiDB service: %v", err)
+				k8se2elog.Logf("error get TiDB service: %v", err)
 				return false, nil
 			}
 			owner := metav1.GetControllerOf(svc)
 			if owner == nil {
-				e2elog.Logf("tidb service has not been adopted by TidbCluster yet")
+				k8se2elog.Logf("tidb service has not been adopted by TidbCluster yet")
 				return false, nil
 			}
 			framework.ExpectEqual(metav1.IsControlledBy(svc, tc), true, "Expected owner is TidbCluster")
@@ -373,19 +373,19 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				if errors.IsNotFound(err) {
 					return false, err
 				}
-				e2elog.Logf("error get TiDB service: %v", err)
+				k8se2elog.Logf("error get TiDB service: %v", err)
 				return false, nil
 			}
 			if isEqual, err := gomega.Equal(svcType).Match(svc.Spec.Type); !isEqual {
-				e2elog.Logf("tidb service is not synced, %v", err)
+				k8se2elog.Logf("tidb service is not synced, %v", err)
 				return false, nil
 			}
 			if isEqual, err := gomega.Equal(trafficPolicy).Match(svc.Spec.ExternalTrafficPolicy); !isEqual {
-				e2elog.Logf("tidb service is not synced, %v", err)
+				k8se2elog.Logf("tidb service is not synced, %v", err)
 				return false, nil
 			}
 			if haveKV, err := gomega.HaveKeyWithValue("test", "test").Match(svc.Annotations); !haveKV {
-				e2elog.Logf("tidb service is not synced, %v", err)
+				k8se2elog.Logf("tidb service is not synced, %v", err)
 				return false, nil
 			}
 
@@ -484,11 +484,11 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				return false, err
 			}
 			if err != nil {
-				e2elog.Logf("error get pump statefulset: %v", err)
+				k8se2elog.Logf("error get pump statefulset: %v", err)
 				return false, nil
 			}
 			if !metav1.IsControlledBy(pumpSet, tc) {
-				e2elog.Logf("expect pump staetfulset adopted by tidbcluster, still waiting...")
+				k8se2elog.Logf("expect pump staetfulset adopted by tidbcluster, still waiting...")
 				return false, nil
 			}
 			// The desired state encoded in CRD should be exactly same with the one created by helm chart
@@ -499,18 +499,18 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				return strings.HasPrefix(name, controller.PumpMemberName(tc.Name))
 			})
 			if usingName == "" {
-				e2elog.Fail("cannot find configmap that used by pump statefulset")
+				k8se2elog.Fail("cannot find configmap that used by pump statefulset")
 			}
 			pumpConfigMap, err := c.CoreV1().ConfigMaps(tc.Namespace).Get(usingName, metav1.GetOptions{})
 			if errors.IsNotFound(err) {
 				return false, err
 			}
 			if err != nil {
-				e2elog.Logf("error get pump configmap: %v", err)
+				k8se2elog.Logf("error get pump configmap: %v", err)
 				return false, nil
 			}
 			if !metav1.IsControlledBy(pumpConfigMap, tc) {
-				e2elog.Logf("expect pump configmap adopted by tidbcluster, still waiting...")
+				k8se2elog.Logf("expect pump configmap adopted by tidbcluster, still waiting...")
 				return false, nil
 			}
 
@@ -519,11 +519,11 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				return false, err
 			}
 			if err != nil {
-				e2elog.Logf("error get pump peer service: %v", err)
+				k8se2elog.Logf("error get pump peer service: %v", err)
 				return false, nil
 			}
 			if !metav1.IsControlledBy(pumpPeerSvc, tc) {
-				e2elog.Logf("expect pump peer service adopted by tidbcluster, still waiting...")
+				k8se2elog.Logf("expect pump peer service adopted by tidbcluster, still waiting...")
 				return false, nil
 			}
 			return true, nil
@@ -550,7 +550,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected get discovery deployment")
 		WaitObjectToBeControlledByOrDie(genericCli, discoveryDep, tc, 5*time.Minute)
 
-		err = utils.WaitForDeploymentComplete(c, discoveryDep, e2elog.Logf, 10*time.Second, 5*time.Minute)
+		err = utils.WaitForDeploymentComplete(c, discoveryDep, k8se2elog.Logf, 10*time.Second, 5*time.Minute)
 		framework.ExpectNoError(err, "Discovery Deployment should be healthy after managed by tidb-operator")
 
 		err = genericCli.Delete(context.TODO(), discoveryDep)
@@ -559,7 +559,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
 			_, err := c.AppsV1().Deployments(tc.Namespace).Get(discoveryName, metav1.GetOptions{})
 			if err != nil {
-				e2elog.Logf("wait discovery deployment get created again: %v", err)
+				k8se2elog.Logf("wait discovery deployment get created again: %v", err)
 				return false, nil
 			}
 			return true, nil
@@ -615,7 +615,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		})
 
 		if err != wait.ErrWaitTimeout {
-			e2elog.Failf("Unexpected error when checking tidb statefulset will not get rolling-update: %v", err)
+			k8se2elog.Failf("Unexpected error when checking tidb statefulset will not get rolling-update: %v", err)
 		}
 
 		err = wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
@@ -628,14 +628,14 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 					return strings.HasPrefix(name, setName)
 				})
 				if usingName == "" {
-					e2elog.Failf("cannot find configmap that used by %s", setName)
+					k8se2elog.Failf("cannot find configmap that used by %s", setName)
 				}
 				usingCm, err := c.CoreV1().ConfigMaps(tc.Namespace).Get(usingName, metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
 				if !metav1.IsControlledBy(usingCm, tc) {
-					e2elog.Logf("expect configmap of %s adopted by tidbcluster, still waiting...", setName)
+					k8se2elog.Logf("expect configmap of %s adopted by tidbcluster, still waiting...", setName)
 					return false, nil
 				}
 			}
@@ -867,21 +867,21 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		cluster.TiDBPreStartScript = strconv.Quote("exit 1")
 		oa.DeployTidbClusterOrDie(&cluster)
 
-		e2elog.Logf("checking tidb cluster [%s/%s] failed member", cluster.Namespace, cluster.ClusterName)
+		k8se2elog.Logf("checking tidb cluster [%s/%s] failed member", cluster.Namespace, cluster.ClusterName)
 		ns := cluster.Namespace
 		tcName := cluster.ClusterName
 		err := wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
 			var tc *v1alpha1.TidbCluster
 			var err error
 			if tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
-				e2elog.Logf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
+				k8se2elog.Logf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
 				return false, nil
 			}
 			if len(tc.Status.TiDB.FailureMembers) == 0 {
-				e2elog.Logf("the number of failed member is zero")
+				k8se2elog.Logf("the number of failed member is zero")
 				return false, nil
 			}
-			e2elog.Logf("the number of failed member is not zero (current: %d)", len(tc.Status.TiDB.FailureMembers))
+			k8se2elog.Logf("the number of failed member is not zero (current: %d)", len(tc.Status.TiDB.FailureMembers))
 			return true, nil
 		})
 		framework.ExpectNoError(err, "tidb failover not work")
@@ -889,23 +889,23 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		cluster.ScaleTiDB(0)
 		oa.ScaleTidbClusterOrDie(&cluster)
 
-		e2elog.Logf("checking tidb cluster [%s/%s] scale to zero", cluster.Namespace, cluster.ClusterName)
+		k8se2elog.Logf("checking tidb cluster [%s/%s] scale to zero", cluster.Namespace, cluster.ClusterName)
 		err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
 			var tc *v1alpha1.TidbCluster
 			var err error
 			if tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
-				e2elog.Logf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
+				k8se2elog.Logf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
 				return false, nil
 			}
 			if tc.Status.TiDB.StatefulSet.Replicas != 0 {
-				e2elog.Logf("failed to scale tidb member to zero (current: %d)", tc.Status.TiDB.StatefulSet.Replicas)
+				k8se2elog.Logf("failed to scale tidb member to zero (current: %d)", tc.Status.TiDB.StatefulSet.Replicas)
 				return false, nil
 			}
 			if len(tc.Status.TiDB.FailureMembers) != 0 {
-				e2elog.Logf("failed to clear fail member (current: %d)", len(tc.Status.TiDB.FailureMembers))
+				k8se2elog.Logf("failed to clear fail member (current: %d)", len(tc.Status.TiDB.FailureMembers))
 				return false, nil
 			}
-			e2elog.Logf("scale tidb member to zero successfully")
+			k8se2elog.Logf("scale tidb member to zero successfully")
 			return true, nil
 		})
 		framework.ExpectNoError(err, "not clear TiDB failureMembers when scale TiDB to zero")
@@ -1651,22 +1651,22 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
 				var err error
 				if _, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(heterogeneousTc.Name, metav1.GetOptions{}); err != nil {
-					e2elog.Logf("failed to get tidbcluster: %s/%s, %v", ns, heterogeneousTc.Name, err)
+					k8se2elog.Logf("failed to get tidbcluster: %s/%s, %v", ns, heterogeneousTc.Name, err)
 					return false, nil
 				}
-				e2elog.Logf("start check heterogeneous cluster storeInfo: %s/%s", ns, heterogeneousTc.Name)
+				k8se2elog.Logf("start check heterogeneous cluster storeInfo: %s/%s", ns, heterogeneousTc.Name)
 				pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, tcName, true)
 				framework.ExpectNoError(err, "create pdClient error")
 				defer cancel()
 				storeInfo, err := pdClient.GetStores()
 				if err != nil {
-					e2elog.Logf("failed to get stores, %v", err)
+					k8se2elog.Logf("failed to get stores, %v", err)
 				}
 				if storeInfo.Count != 3 {
-					e2elog.Logf("failed to check stores (current: %d)", storeInfo.Count)
+					k8se2elog.Logf("failed to check stores (current: %d)", storeInfo.Count)
 					return false, nil
 				}
-				e2elog.Logf("check heterogeneous tc successfully")
+				k8se2elog.Logf("check heterogeneous tc successfully")
 				return true, nil
 			})
 			framework.ExpectNoError(err)
@@ -1873,22 +1873,22 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
 			var err error
 			if _, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(heterogeneousTc.Name, metav1.GetOptions{}); err != nil {
-				e2elog.Logf("failed to get tidbcluster: %s/%s, %v", ns, heterogeneousTc.Name, err)
+				k8se2elog.Logf("failed to get tidbcluster: %s/%s, %v", ns, heterogeneousTc.Name, err)
 				return false, nil
 			}
-			e2elog.Logf("start check heterogeneous cluster storeInfo: %s/%s", ns, heterogeneousTc.Name)
+			k8se2elog.Logf("start check heterogeneous cluster storeInfo: %s/%s", ns, heterogeneousTc.Name)
 			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, originTc.Name, false)
 			framework.ExpectNoError(err, "create pdClient error")
 			defer cancel()
 			storeInfo, err := pdClient.GetStores()
 			if err != nil {
-				e2elog.Logf("failed to get stores, %v", err)
+				k8se2elog.Logf("failed to get stores, %v", err)
 			}
 			if storeInfo.Count != 3 {
-				e2elog.Logf("failed to check stores (current: %d)", storeInfo.Count)
+				k8se2elog.Logf("failed to check stores (current: %d)", storeInfo.Count)
 				return false, nil
 			}
-			e2elog.Logf("check heterogeneous tc successfully")
+			k8se2elog.Logf("check heterogeneous tc successfully")
 			return true, nil
 		})
 		framework.ExpectNoError(err)
@@ -2023,7 +2023,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		clusterConfig.Resources["tidb.replicas"] = "1"
 		clusterConfig.Clustrer = tc
 
-		e2elog.Logf("deploying tidb cluster [%s/%s]", clusterConfig.Namespace, clusterConfig.ClusterName)
+		k8se2elog.Logf("deploying tidb cluster [%s/%s]", clusterConfig.Namespace, clusterConfig.ClusterName)
 		oa.DeployTidbClusterOrDie(&clusterConfig)
 		oa.CheckTidbClusterStatusOrDie(&clusterConfig)
 

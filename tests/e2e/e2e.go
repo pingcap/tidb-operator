@@ -50,8 +50,8 @@ import (
 	aggregatorclientset "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	storageutil "k8s.io/kubernetes/pkg/apis/storage/v1/util"
 	"k8s.io/kubernetes/test/e2e/framework"
-	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
-	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
+	k8se2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	k8se2epod "k8s.io/kubernetes/test/e2e/framework/pod"
 
 	// ensure auth plugins are loaded
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -97,11 +97,11 @@ func setupSuite() {
 		}
 		deleted, err := framework.DeleteNamespaces(c, nil, reservedNamespaces)
 		if err != nil {
-			e2elog.Failf("Error deleting orphaned namespaces: %v", err)
+			k8se2elog.Failf("Error deleting orphaned namespaces: %v", err)
 		}
 		klog.Infof("Waiting for deletion of the following namespaces: %v", deleted)
 		if err := framework.WaitForNamespacesDeleted(c, deleted, framework.NamespaceCleanupTimeout); err != nil {
-			e2elog.Failf("Failed to delete orphaned namespaces %v: %v", deleted, err)
+			k8se2elog.Failf("Failed to delete orphaned namespaces %v: %v", deleted, err)
 		}
 	}
 
@@ -124,14 +124,14 @@ func setupSuite() {
 	// #41007. To avoid those pods preventing the whole test runs (and just
 	// wasting the whole run), we allow for some not-ready pods (with the
 	// number equal to the number of allowed not-ready nodes).
-	if err := e2epod.WaitForPodsRunningReady(c, metav1.NamespaceSystem, int32(framework.TestContext.MinStartupPods), int32(framework.TestContext.AllowedNotReadyNodes), podStartupTimeout, map[string]string{}); err != nil {
+	if err := k8se2epod.WaitForPodsRunningReady(c, metav1.NamespaceSystem, int32(framework.TestContext.MinStartupPods), int32(framework.TestContext.AllowedNotReadyNodes), podStartupTimeout, map[string]string{}); err != nil {
 		framework.DumpAllNamespaceInfo(c, metav1.NamespaceSystem)
-		framework.LogFailedContainers(c, metav1.NamespaceSystem, e2elog.Logf)
-		e2elog.Failf("Error waiting for all pods to be running and ready: %v", err)
+		framework.LogFailedContainers(c, metav1.NamespaceSystem, k8se2elog.Logf)
+		k8se2elog.Failf("Error waiting for all pods to be running and ready: %v", err)
 	}
 
 	if err := framework.WaitForDaemonSets(c, metav1.NamespaceSystem, int32(framework.TestContext.AllowedNotReadyNodes), framework.TestContext.SystemDaemonsetStartupTimeout); err != nil {
-		e2elog.Logf("WARNING: Waiting for all daemonsets to be ready failed: %v", err)
+		k8se2elog.Logf("WARNING: Waiting for all daemonsets to be ready failed: %v", err)
 	}
 
 	ginkgo.By("Initializing all nodes")
@@ -165,28 +165,28 @@ func setupSuite() {
 			}
 		}
 		if localStorageSC == nil {
-			e2elog.Fail("local-storage storage class not found")
+			k8se2elog.Fail("local-storage storage class not found")
 		}
 		if localStorageSC.Annotations == nil {
 			localStorageSC.Annotations = map[string]string{}
 		}
 		localStorageSC.Annotations[storageutil.IsDefaultStorageClassAnnotation] = "true"
-		e2elog.Logf("Setting %q as the default storage class", localStorageSC.Name)
+		k8se2elog.Logf("Setting %q as the default storage class", localStorageSC.Name)
 		_, err = c.StorageV1().StorageClasses().Update(localStorageSC)
 		framework.ExpectNoError(err)
 	}
 
 	// Log the version of the server and this client.
-	e2elog.Logf("e2e test version: %s", version.Get().GitVersion)
+	k8se2elog.Logf("e2e test version: %s", version.Get().GitVersion)
 
 	dc := c.DiscoveryClient
 
 	serverVersion, serverErr := dc.ServerVersion()
 	if serverErr != nil {
-		e2elog.Logf("Unexpected server error retrieving version: %v", serverErr)
+		k8se2elog.Logf("Unexpected server error retrieving version: %v", serverErr)
 	}
 	if serverVersion != nil {
-		e2elog.Logf("kube-apiserver version: %s", serverVersion.GitVersion)
+		k8se2elog.Logf("kube-apiserver version: %s", serverVersion.GitVersion)
 	}
 }
 
@@ -349,7 +349,7 @@ func RunE2ETests(t *testing.T) {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	gomega.RegisterFailHandler(e2elog.Fail)
+	gomega.RegisterFailHandler(k8se2elog.Fail)
 
 	// Disable serial and stability tests by default unless they are explicitly requested.
 	if config.GinkgoConfig.FocusString == "" && config.GinkgoConfig.SkipString == "" {
