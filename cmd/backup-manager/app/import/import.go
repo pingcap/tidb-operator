@@ -111,14 +111,14 @@ func (ro *Options) loadTidbClusterData(restorePath string, restore *v1alpha1.Res
 		args = append(args, fmt.Sprintf("--key=%s", path.Join(util.TiDBClientTLSPath, corev1.TLSPrivateKeyKey)))
 	}
 
-	bin := "/tidb-lightning"
+	binPath := "/tidb-lightning"
 	if restore.Spec.ToolImage != "" {
-		bin = path.Join(util.LightningBinPath, "tidb-lightning")
+		binPath = path.Join(util.LightningBinPath, "tidb-lightning")
 	}
 
-	klog.Infof("The lightning process is ready, command \"%s %s\"", bin, strings.Join(args, " "))
+	klog.Infof("The lightning process is ready, command \"%s %s\"", binPath, strings.Join(args, " "))
 
-	output, err := exec.Command(bin, args...).CombinedOutput()
+	output, err := exec.Command(binPath, args...).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("cluster %s, execute loader command %v failed, output: %s, err: %v", ro, args, string(output), err)
 	}

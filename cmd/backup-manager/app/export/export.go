@@ -78,14 +78,14 @@ func (bo *Options) dumpTidbClusterData(backup *v1alpha1.Backup) (string, error) 
 		args = append(args, fmt.Sprintf("--key=%s", path.Join(util.TiDBClientTLSPath, corev1.TLSPrivateKeyKey)))
 	}
 
-	bin := "/dumpling"
+	binPath := "/dumpling"
 	if backup.Spec.ToolImage != "" {
-		bin = path.Join(util.DumplingBinPath, "dumpling")
+		binPath = path.Join(util.DumplingBinPath, "dumpling")
 	}
 
-	klog.Infof("The dump process is ready, command \"%s %s\"", bin, strings.Join(args, " "))
+	klog.Infof("The dump process is ready, command \"%s %s\"", binPath, strings.Join(args, " "))
 
-	output, err := exec.Command(bin, args...).CombinedOutput()
+	output, err := exec.Command(binPath, args...).CombinedOutput()
 	if err != nil {
 		return bfPath, fmt.Errorf("cluster %s, execute dumpling command %v failed, output: %s, err: %v", bo, args, string(output), err)
 	}

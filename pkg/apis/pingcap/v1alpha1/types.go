@@ -1278,7 +1278,7 @@ type BackupSpec struct {
 	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
-	// ToolImage specifies the tool image used in the backup/restore, supporting BR image and Lightning/Dumpling images
+	// ToolImage specifies the tool image used in `Backup` and `Restore`, which supports BR, Lightning and Dumpling images
 	// +optional
 	ToolImage string `json:"toolImage,omitempty"`
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
@@ -1539,7 +1539,7 @@ type RestoreSpec struct {
 	UseKMS bool `json:"useKMS,omitempty"`
 	// Specify service account of restore
 	ServiceAccount string `json:"serviceAccount,omitempty"`
-	// ToolImage specifies the tool image used in the backup/restore, supporting BR image and Lightning/Dumpling images
+	// ToolImage specifies the tool image used in `Backup` and `Restore`, which supports BR, Lightning and Dumpling images
 	// +optional
 	ToolImage string `json:"toolImage,omitempty"`
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
