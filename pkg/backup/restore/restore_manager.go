@@ -185,6 +185,8 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 
 	volumeMounts := []corev1.VolumeMount{}
 	volumes := []corev1.Volume{}
+	initContainers := []corev1.Container{}
+
 	if restore.Spec.To.TLSClientSecretName != nil {
 		args = append(args, "--client-tls=true")
 		clientSecretName := *restore.Spec.To.TLSClientSecretName
@@ -203,6 +205,30 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 		})
 	}
 
+	if restore.Spec.ToolImage != "" {
+		lightningVolumeMount := corev1.VolumeMount{
+			Name:      "lightning-bin",
+			ReadOnly:  false,
+			MountPath: util.LightningBinPath,
+		}
+		volumeMounts = append(volumeMounts, lightningVolumeMount)
+		volumes = append(volumes, corev1.Volume{
+			Name: "lightning-bin",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		})
+		initContainers = append(initContainers, corev1.Container{
+			Name:            "lightning",
+			Image:           restore.Spec.ToolImage,
+			Command:         []string{"/bin/sh", "-c"},
+			Args:            []string{fmt.Sprintf("cp /tidb-lightning %s/tidb-lightning; echo 'tidb-lightning copy finished'", util.LightningBinPath)},
+			ImagePullPolicy: corev1.PullIfNotPresent,
+			VolumeMounts:    []corev1.VolumeMount{lightningVolumeMount},
+			Resources:       restore.Spec.ResourceRequirements,
+		})
+	}
+
 	restoreLabel := label.NewBackup().Instance(restore.GetInstanceName()).RestoreJob().Restore(name)
 	serviceAccount := constants.DefaultServiceAccountName
 	if restore.Spec.ServiceAccount != "" {
@@ -217,6 +243,7 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 		},
 		Spec: corev1.PodSpec{
 			ServiceAccountName: serviceAccount,
+			InitContainers:     initContainers,
 			Containers: []corev1.Container{
 				{
 					Name:            label.RestoreJobLabelVal,
