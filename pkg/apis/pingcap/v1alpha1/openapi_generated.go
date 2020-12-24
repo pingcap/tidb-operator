@@ -936,7 +936,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 					},
 					"toolImage": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ToolImage specifies the tool image used in `Backup` and `Restore`, which supports BR, Lightning and Dumpling images",
+							Description: "ToolImage specifies the tool image used in `Backup` and `Restore`, which supports BR, and Dumpling images. For examples `spec.toolImage: pingcap/br:v4.0.8` or `spec.toolImage: pingcap/dumpling:v4.0.8`",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -5203,7 +5203,7 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 					},
 					"toolImage": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ToolImage specifies the tool image used in `Backup` and `Restore`, which supports BR, Lightning and Dumpling images",
+							Description: "ToolImage specifies the tool image used in `Backup` and `Restore`, which supports BR and TiDB Lightning images. For examples `spec.toolImage: pingcap/br:v4.0.8` or `spec.toolImage: pingcap/tidb-lightning:v4.0.8`",
 							Type:        []string{"string"},
 							Format:      "",
 						},
