@@ -54,7 +54,6 @@ func NewRealBackupConditionUpdater(
 func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition) error {
 	ns := backup.GetNamespace()
 	backupName := backup.GetName()
-	oldStatus := backup.Status.DeepCopy()
 	var isUpdate bool
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		isUpdate = v1alpha1.UpdateBackupCondition(&backup.Status, condition)
@@ -67,7 +66,6 @@ func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *
 			if updated, err := u.backupLister.Backups(ns).Get(backupName); err == nil {
 				// make a copy so we don't mutate the shared cache
 				backup = updated.DeepCopy()
-				backup.Status = *oldStatus
 			} else {
 				utilruntime.HandleError(fmt.Errorf("error getting updated backup %s/%s from lister: %v", ns, backupName, err))
 			}
