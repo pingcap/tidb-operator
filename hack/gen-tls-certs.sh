@@ -57,7 +57,7 @@ Environments:
     ORGANIZATION           ORGANIZATION(O) of the CA cert, defaults to "PingCAP"
     COUNTRY                COUNTRY(C) of the CA cert, defaults to "CN"
     LOCALITY               LOCALITY(L) of the CA cert, defaults to "Beijing"
-    STATE_OR_PROVINCE_NAME STATE_OR_PROVINCE_NAME(ST) of the CA cert, defaults to Beijing
+    STATE_OR_PROVINCE_NAME STATE_OR_PROVINCE_NAME(ST) of the CA cert, defaults to "Beijing"
 
 Examples:
 
