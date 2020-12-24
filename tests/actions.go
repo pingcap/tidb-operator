@@ -3412,9 +3412,9 @@ func (oa *operatorActions) eventWorker() {
 	}
 }
 
-func (oa *operatorActions) getHelmUpgradeClusterCmd(info *TidbClusterConfig, setString map[string]string, setboolean map[string]bool) (string, error) {
+func (oa *operatorActions) getHelmUpgradeClusterCmd(info *TidbClusterConfig, setString map[string]string, setBoolean map[string]bool) (string, error) {
 	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s --set %s",
-		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), info.TidbClusterHelmSetString(setString), info.TidbClusterHelmSetBoolean(setboolean))
+		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), info.TidbClusterHelmSetString(setString), info.TidbClusterHelmSetBoolean(setBoolean))
 	svFilePath, err := info.BuildSubValues(oa.tidbClusterChartPath(info.OperatorTag))
 	if err != nil {
 		return "", err
