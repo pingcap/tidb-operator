@@ -167,10 +167,16 @@ function gen_component_certs() {
     popd
 }
 
+function delete_secret() {
+    set +o errexit
+    local NAME=$1
+    $KUBECTL_BIN delete secret ${TIDB_CLUSTER}-${NAME}-secret --namespace=${NAMESPACE}
+    set -o errexit
+}
+
 function create_cluster_secret() {
     local COMP=$1
-    $KUBECTL_BIN get secret ${TIDB_CLUSTER}-${COMP}-cluster-secret --namespace=${NAMESPACE} &&
-        $KUBECTL_BIN delete secret ${TIDB_CLUSTER}-${COMP}-cluster-secret --namespace=${NAMESPACE}
+    delete_secret ${COMP}-cluster
     $KUBECTL_BIN create secret generic ${TIDB_CLUSTER}-${COMP}-cluster-secret --namespace=${NAMESPACE} \
         --from-file=tls.crt=${TLS_DIR}/cluster/${COMP}/${COMP}-server.pem \
         --from-file=tls.key=${TLS_DIR}/cluster/${COMP}/${COMP}-server-key.pem \
@@ -187,38 +193,49 @@ if [[ -d $TLS_DIR ]]; then
     rm -rf $TLS_DIR
 fi
 
+components=("pd" "tidb" "tikv" "pump" "ticdc" "tiflash" "importer" "lightning")
+
+if [[ $# -eq 1 && $1 = "clean" ]]; then
+    echo "cleaning up"
+    for i in "${components[@]}"; do
+        delete_secret $i-cluster
+    done
+    delete_secret cluster-client
+    delete_secret tidb-server
+    delete_secret tidb-client
+    exit
+fi
+
 mkdir $TLS_DIR
 
 gen_ca
 
 # generate certs for cluster components
-components=("pd" "tidb" "tikv" "pump" "ticdc" "tiflash")
 for i in "${components[@]}"; do
     gen_component_certs "cluster" $i "internal"
-done
-gen_component_certs "cluster" "client" "client"
-
-for i in "${components[@]}"; do
     create_cluster_secret $i
 done
-$KUBECTL_BIN get secret ${TIDB_CLUSTER}-cluster-client-secret --namespace=${NAMESPACE} &&
-    $KUBECTL_BIN delete secret ${TIDB_CLUSTER}-cluster-client-secret --namespace=${NAMESPACE}
+gen_component_certs "cluster" "client" "client"
+# secret name not obey name convention of cluster components
+delete_secret cluster-client
 $KUBECTL_BIN create secret generic ${TIDB_CLUSTER}-cluster-client-secret --namespace=${NAMESPACE} \
     --from-file=tls.crt=${TLS_DIR}/cluster/client/client-server.pem \
     --from-file=tls.key=${TLS_DIR}/cluster/client/client-server-key.pem \
     --from-file=ca.crt=${CA_DIR}/ca.pem
 
+
 # generate certs for mysql client and server
 gen_component_certs "mysql" "tidb" "server"
-gen_component_certs "mysql" "client" "client"
-$KUBECTL_BIN get secret ${TIDB_CLUSTER}-tidb-server-secret --namespace=${NAMESPACE} &&
-    $KUBECTL_BIN delete secret ${TIDB_CLUSTER}-tidb-server-secret --namespace=${NAMESPACE}
+# secret name not obey name convention of cluster components
+delete_secret tidb-server
 $KUBECTL_BIN create secret generic ${TIDB_CLUSTER}-tidb-server-secret --namespace=${NAMESPACE} \
     --from-file=tls.crt=${TLS_DIR}/mysql/tidb/tidb-server.pem \
     --from-file=tls.key=${TLS_DIR}/mysql/tidb/tidb-server-key.pem \
     --from-file=ca.crt=${CA_DIR}/ca.pem
-$KUBECTL_BIN get secret ${TIDB_CLUSTER}-tidb-client-secret --namespace=${NAMESPACE} &&
-    $KUBECTL_BIN delete secret ${TIDB_CLUSTER}-tidb-client-secret --namespace=${NAMESPACE}
+
+gen_component_certs "mysql" "client" "client"
+# secret name not obey name convention of cluster components
+delete_secret tidb-client
 $KUBECTL_BIN create secret generic ${TIDB_CLUSTER}-tidb-client-secret --namespace=${NAMESPACE} \
     --from-file=tls.crt=${TLS_DIR}/mysql/client/client-server.pem \
     --from-file=tls.key=${TLS_DIR}/mysql/client/client-server-key.pem \

@@ -51,7 +51,7 @@ spec:
       type: NodePort
     tlsClient:
       enabled: true
-    config:
-      security:
-        cert-verify-cn:
-          - TiDB
+    config: |
+      require-secure-transport = true
+      [security]
+        cert-verify-cn = [ "TiDB" ]
