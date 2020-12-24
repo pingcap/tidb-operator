@@ -90,7 +90,14 @@ annotations: {}
 tolerations: []
 affinity: {}
 
-backend: importer # importer | tidb
+# The delivery backend used to import data.
+# If set to `local`, then the following `sortedKV` should be set.
+backend: importer # importer | local | tidb
+
+# For `local` backend, an extra PV is needed for local KV sorting.
+sortedKV: {}
+#  storageClassName: local-path
+#  storage: 1Gi
 
 # Specify a Service Account for lightning
 # serviceAccount:

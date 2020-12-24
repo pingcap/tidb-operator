@@ -105,6 +105,10 @@ spec:
           {{- else -}}
           mountPath: /var/lib/tidb-lightning
           {{- end }}
+        {{ if eq .Values.backend "local" }}
+        - name: sorted-kv
+          mountPath: /var/lib/sorted-kv
+        {{- end }}
         {{- if and .Values.tlsCluster .Values.tlsCluster.enabled }}
         - name: lightning-tls
           mountPath: /var/lib/lightning-tls
@@ -147,6 +151,11 @@ spec:
       - name: data
         persistentVolumeClaim:
           claimName: {{ include "tidb-lightning.name" . }}
+      {{ end -}}
+      {{ if eq .Values.backend "local" }}
+      - name: sorted-kv
+        persistentVolumeClaim:
+          claimName: {{ include "tidb-lightning.name" . }}-sorted-kv
       {{ end -}}
       {{- if and .Values.tlsCluster .Values.tlsCluster.enabled }}
       - name: lightning-tls
