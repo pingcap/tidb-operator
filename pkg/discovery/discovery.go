@@ -291,7 +291,6 @@ func parsePDURL(pdURL string) *pdEndpointURL {
 	// Deal with scheme
 	pdEndpoint := &pdEndpointURL{
 		scheme:       "",
-		noScheme:     true,
 		pdMemberName: "",
 		pdMemberPort: "2379",
 		tcName:       "",
