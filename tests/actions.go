@@ -2716,13 +2716,8 @@ func (oa *operatorActions) DeployScheduledBackup(info *TidbClusterConfig) error 
 	oa.EmitEvent(info, "DeploySchedulerBackup")
 	klog.Infof("begin to deploy scheduled backup")
 
-<<<<<<< HEAD
-	cron := fmt.Sprintf("'*/1 * * * *'")
-	sets := map[string]string{
-=======
 	cron := "'*/1 * * * *'"
 	setString := map[string]string{
->>>>>>> 997286b6... Bump helm to v2.17.0 (#3611)
 		"clusterName":                info.ClusterName,
 		"scheduledBackup.user":       "root",
 		"scheduledBackup.password":   info.Password,
