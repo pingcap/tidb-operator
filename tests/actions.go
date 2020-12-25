@@ -413,6 +413,24 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 	return strings.Join(arr, ",")
 }
 
+func (tc *TidbClusterConfig) TidbClusterHelmSetBoolean(m map[string]bool) string {
+	set := map[string]bool{
+		"enablePVReclaim":        tc.EnablePVReclaim,
+		"monitor.create":         tc.Monitor,
+		"enableConfigMapRollout": tc.EnableConfigMapRollout,
+	}
+
+	for k, v := range m {
+		set[k] = v
+	}
+
+	arr := make([]string, 0, len(set))
+	for k, v := range set {
+		arr = append(arr, fmt.Sprintf("%s=%v", k, v))
+	}
+	return strings.Join(arr, ",")
+}
+
 func (oi *OperatorConfig) OperatorHelmSetBoolean() string {
 	set := map[string]bool{
 		"admissionWebhook.create":                      oi.WebhookEnabled,
@@ -732,8 +750,8 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 		return fmt.Errorf("failed to create secret of cluster [%s]: %v", info.ClusterName, err)
 	}
 
-	cmd := fmt.Sprintf("helm install %s  --name %s --namespace %s --set-string %s",
-		oa.tidbClusterChartPath(info.OperatorTag), info.ClusterName, info.Namespace, info.TidbClusterHelmSetString(nil))
+	cmd := fmt.Sprintf("helm install %s  --name %s --namespace %s --set-string %s --set %s",
+		oa.tidbClusterChartPath(info.OperatorTag), info.ClusterName, info.Namespace, info.TidbClusterHelmSetString(nil), info.TidbClusterHelmSetBoolean(nil))
 
 	svFilePath, err := info.BuildSubValues(oa.tidbClusterChartPath(info.OperatorTag))
 	if err != nil {
@@ -1161,7 +1179,7 @@ func (oa *operatorActions) ScaleTidbCluster(info *TidbClusterConfig) error {
 	oa.EmitEvent(info, fmt.Sprintf("ScaleTidbCluster to pd: %s, tikv: %s, tidb: %s",
 		info.Args["pd.replicas"], info.Args["tikv.replicas"], info.Args["tidb.replicas"]))
 
-	cmd, err := oa.getHelmUpgradeClusterCmd(info, nil)
+	cmd, err := oa.getHelmUpgradeClusterCmd(info, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -1257,7 +1275,7 @@ func (oa *operatorActions) setPartitionAnnotation(namespace, tcName, component s
 func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterConfig) error {
 	oa.EmitEvent(info, "UpgradeTidbCluster")
 
-	cmd, err := oa.getHelmUpgradeClusterCmd(info, nil)
+	cmd, err := oa.getHelmUpgradeClusterCmd(info, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -2694,17 +2712,18 @@ func (oa *operatorActions) DeployScheduledBackup(info *TidbClusterConfig) error 
 	klog.Infof("begin to deploy scheduled backup")
 
 	cron := "'*/1 * * * *'"
-	sets := map[string]string{
+	setString := map[string]string{
 		"clusterName":                info.ClusterName,
-		"scheduledBackup.create":     "true",
 		"scheduledBackup.user":       "root",
 		"scheduledBackup.password":   info.Password,
 		"scheduledBackup.schedule":   cron,
 		"scheduledBackup.storage":    "10Gi",
 		"scheduledBackup.secretName": info.BackupSecretName,
 	}
-
-	cmd, err := oa.getHelmUpgradeClusterCmd(info, sets)
+	setBoolean := map[string]bool{
+		"scheduledBackup.create": true,
+	}
+	cmd, err := oa.getHelmUpgradeClusterCmd(info, setString, setBoolean)
 	if err != nil {
 		return err
 	}
@@ -2720,12 +2739,15 @@ func (oa *operatorActions) DeployScheduledBackup(info *TidbClusterConfig) error 
 func (oa *operatorActions) disableScheduledBackup(info *TidbClusterConfig) error {
 	klog.Infof("disabling scheduled backup")
 
-	sets := map[string]string{
-		"clusterName":            info.ClusterName,
-		"scheduledBackup.create": "false",
+	setString := map[string]string{
+		"clusterName": info.ClusterName,
 	}
 
-	cmd, err := oa.getHelmUpgradeClusterCmd(info, sets)
+	setBoolean := map[string]bool{
+		"scheduledBackup.create": false,
+	}
+
+	cmd, err := oa.getHelmUpgradeClusterCmd(info, setString, setBoolean)
 	if err != nil {
 		return err
 	}
@@ -2930,23 +2952,26 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 	// https://github.com/pingcap/tidb-operator/pull/693
 	isv1 := from.OperatorTag == "v1.0.0"
 
-	sets := map[string]string{
-		"binlog.pump.create":  "true",
+	setString := map[string]string{
 		"binlog.pump.storage": "1Gi",
 		"binlog.pump.image":   fmt.Sprintf("pingcap/tidb-binlog:%v", from.ClusterVersion),
 	}
 
+	setBoolean := map[string]bool{
+		"binlog.pump.create": true,
+	}
+
 	if withDrainer {
-		sets["binlog.drainer.create"] = "true"
-		sets["binlog.drainer.image"] = fmt.Sprintf("pingcap/tidb-binlog:%v", from.ClusterVersion)
+		setBoolean["binlog.drainer.create"] = true
+		setString["binlog.drainer.image"] = fmt.Sprintf("pingcap/tidb-binlog:%v", from.ClusterVersion)
 		if isv1 {
-			sets["binlog.pump.create"] = "true"
-			sets["binlog.drainer.destDBType"] = "mysql"
-			sets["binlog.drainer.mysql.host"] = fmt.Sprintf("%s-tidb.%s", to.ClusterName, to.Namespace)
-			sets["binlog.drainer.mysql.user"] = "root"
-			sets["binlog.drainer.mysql.password"] = to.Password
-			sets["binlog.drainer.mysql.port"] = "4000"
-			sets["binlog.drainer.ignoreSchemas"] = ""
+			setBoolean["binlog.pump.create"] = true
+			setString["binlog.drainer.destDBType"] = "mysql"
+			setString["binlog.drainer.mysql.host"] = fmt.Sprintf("%s-tidb.%s", to.ClusterName, to.Namespace)
+			setString["binlog.drainer.mysql.user"] = "root"
+			setString["binlog.drainer.mysql.password"] = to.Password
+			setString["binlog.drainer.mysql.port"] = "4000"
+			setString["binlog.drainer.ignoreSchemas"] = ""
 		} else {
 			from.drainerConfig = []string{
 				`detect-interval = 10`,
@@ -2968,10 +2993,10 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 	}
 
 	if ts != "" {
-		sets["binlog.drainer.initialCommitTs"] = ts
+		setString["binlog.drainer.initialCommitTs"] = ts
 	}
 
-	cmd, err := oa.getHelmUpgradeClusterCmd(from, sets)
+	cmd, err := oa.getHelmUpgradeClusterCmd(from, setString, setBoolean)
 	if err != nil {
 		return err
 	}
@@ -3387,9 +3412,9 @@ func (oa *operatorActions) eventWorker() {
 	}
 }
 
-func (oa *operatorActions) getHelmUpgradeClusterCmd(info *TidbClusterConfig, set map[string]string) (string, error) {
-	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
-		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), info.TidbClusterHelmSetString(set))
+func (oa *operatorActions) getHelmUpgradeClusterCmd(info *TidbClusterConfig, setString map[string]string, setBoolean map[string]bool) (string, error) {
+	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s --set %s",
+		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), info.TidbClusterHelmSetString(setString), info.TidbClusterHelmSetBoolean(setBoolean))
 	svFilePath, err := info.BuildSubValues(oa.tidbClusterChartPath(info.OperatorTag))
 	if err != nil {
 		return "", err

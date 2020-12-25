@@ -64,8 +64,8 @@ def call(BUILD_BRANCH) {
                             writeFile file: 'values.yaml', text: "${values}"
                             sh """
                             # ensure helm
-                            wget https://storage.googleapis.com/kubernetes-helm/helm-v2.9.1-linux-amd64.tar.gz
-                            tar -zxvf helm-v2.9.1-linux-amd64.tar.gz
+                            wget https://storage.googleapis.com/kubernetes-helm/helm-v2.17.0-linux-amd64.tar.gz
+                            tar -zxvf helm-v2.17.0-linux-amd64.tar.gz
                             chmod +x linux-amd64/helm
 
                             # deploy to staging
