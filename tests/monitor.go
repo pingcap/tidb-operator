@@ -231,7 +231,7 @@ func checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Clien
 	err := wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 		datasourceID, err = getDatasourceID(addr)
 		if err != nil {
-			k8se2elog.Logf(err)
+			k8se2elog.Logf(err.Error())
 			return false, nil
 		}
 		return true, nil
