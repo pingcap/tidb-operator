@@ -33,7 +33,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/component-base/logs"
-	"k8s.io/klog"
+	k8se2elog "k8s.io/kubernetes/test/e2e/framework/log"
 	"k8s.io/utils/pointer"
 )
 
@@ -49,7 +49,9 @@ func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 	go func() {
-		klog.Info(http.ListenAndServe(":6060", nil))
+		if err := http.ListenAndServe(":6060", nil); err != nil {
+			k8se2elog.Fail(err.Error())
+		}
 	}()
 	metrics.StartServer()
 	cfg = tests.ParseConfigOrDie()
@@ -128,7 +130,7 @@ func run() {
 	oa.DeployOperatorOrDie(ocfg)
 
 	crdUtil := tests.NewCrdTestUtil(cli, kubeCli, asCli, kubeCli.AppsV1())
-	klog.Infof(fmt.Sprintf("allclusters: %v", allClusters))
+	k8se2elog.Logf(fmt.Sprintf("allclusters: %v", allClusters))
 	crdUtil.CleanResourcesOrDie("tc", "ns1")
 	crdUtil.CleanResourcesOrDie("tc", "ns2")
 	crdUtil.CleanResourcesOrDie("pvc", "ns1")
@@ -163,7 +165,7 @@ func run() {
 			crdUtil.CheckDisasterToleranceOrDie(tc)
 			oa.BeginInsertDataToOrDie(cluster)
 		}
-		klog.Infof("clusters deployed and checked")
+		k8se2elog.Logf("clusters deployed and checked")
 		slack.NotifyAndCompletedf("clusters deployed and checked, ready to run stability test")
 
 		// upgrade
@@ -174,7 +176,7 @@ func run() {
 			crdUtil.UpdateTidbClusterOrDie(cluster.Clustrer)
 			crdUtil.WaitTidbClusterReadyOrDie(cluster.Clustrer, 60*time.Minute)
 		}
-		klog.Infof("clusters upgraded in checked")
+		k8se2elog.Logf("clusters upgraded in checked")
 
 		// configuration change
 		for _, cluster := range clusters {
@@ -186,12 +188,12 @@ func run() {
 			crdUtil.WaitTidbClusterReadyOrDie(cluster.Clustrer, 60*time.Minute)
 		}
 		oa.CleanWebHookAndServiceOrDie(ocfg.WebhookConfigName)
-		klog.Infof("clusters configurations updated in checked")
+		k8se2elog.Logf("clusters configurations updated in checked")
 
 		for _, cluster := range clusters {
 			crdUtil.CheckDisasterToleranceOrDie(cluster.Clustrer)
 		}
-		klog.Infof("clusters DisasterTolerance checked")
+		k8se2elog.Logf("clusters DisasterTolerance checked")
 
 		//stop node
 		physicalNode, node, faultTime := fta.StopNodeOrDie()
@@ -206,17 +208,17 @@ func run() {
 		for _, cluster := range deployedClusters {
 			crdUtil.WaitTidbClusterReadyOrDie(cluster.Clustrer, 30*time.Minute)
 		}
-		klog.Infof("clusters node stopped and restarted checked")
+		k8se2elog.Logf("clusters node stopped and restarted checked")
 		slack.NotifyAndCompletedf("stability test: clusters node stopped and restarted checked")
 
 		// truncate tikv sst file
 		oa.TruncateSSTFileThenCheckFailoverOrDie(clusters[0], 5*time.Minute)
-		klog.Infof("clusters truncate sst file and checked failover")
+		k8se2elog.Logf("clusters truncate sst file and checked failover")
 		slack.NotifyAndCompletedf("stability test: clusters truncate sst file and checked failover")
 
 		// delete pd data
 		oa.DeletePDDataThenCheckFailoverOrDie(clusters[0], 5*time.Minute)
-		klog.Infof("cluster[%s/%s] DeletePDDataThenCheckFailoverOrDie success", clusters[0].Namespace, clusters[0].ClusterName)
+		k8se2elog.Logf("cluster[%s/%s] DeletePDDataThenCheckFailoverOrDie success", clusters[0].Namespace, clusters[0].ClusterName)
 		slack.NotifyAndCompletedf("stability test: DeletePDDataThenCheckFailoverOrDie success")
 
 		// stop one etcd
@@ -226,27 +228,27 @@ func run() {
 		time.Sleep(3 * time.Minute)
 		oa.CheckEtcdDownOrDie(ocfg, deployedClusters, faultEtcd)
 		fta.StartETCDOrDie(faultEtcd)
-		klog.Infof("clusters stop on etcd and restart")
+		k8se2elog.Logf("clusters stop on etcd and restart")
 
 		// stop all etcds
 		fta.StopETCDOrDie()
 		time.Sleep(10 * time.Minute)
 		fta.StartETCDOrDie()
 		oa.CheckEtcdDownOrDie(ocfg, deployedClusters, "")
-		klog.Infof("clusters stop all etcd and restart")
+		k8se2elog.Logf("clusters stop all etcd and restart")
 
 		// stop all kubelets
 		fta.StopKubeletOrDie()
 		time.Sleep(10 * time.Minute)
 		fta.StartKubeletOrDie()
 		oa.CheckKubeletDownOrDie(ocfg, deployedClusters, "")
-		klog.Infof("clusters stop all kubelets and restart")
+		k8se2elog.Logf("clusters stop all kubelets and restart")
 
 		// stop all kube-proxy and k8s/operator/tidbcluster is available
 		fta.StopKubeProxyOrDie()
 		oa.CheckKubeProxyDownOrDie(ocfg, clusters)
 		fta.StartKubeProxyOrDie()
-		klog.Infof("clusters stop all kube-proxy and restart")
+		k8se2elog.Logf("clusters stop all kube-proxy and restart")
 
 		// stop all kube-scheduler pods
 		for _, physicalNode := range cfg.APIServers {
@@ -260,7 +262,7 @@ func run() {
 				fta.StartKubeSchedulerOrDie(vNode.IP)
 			}
 		}
-		klog.Infof("clusters stop all kube-scheduler and restart")
+		k8se2elog.Logf("clusters stop all kube-scheduler and restart")
 
 		// stop all kube-controller-manager pods
 		for _, physicalNode := range cfg.APIServers {
@@ -274,17 +276,17 @@ func run() {
 				fta.StartKubeControllerManagerOrDie(vNode.IP)
 			}
 		}
-		klog.Infof("clusters stop all kube-controller and restart")
+		k8se2elog.Logf("clusters stop all kube-controller and restart")
 
 		// stop one kube-apiserver pod
 		faultApiServer := tests.SelectNode(cfg.APIServers)
-		klog.Infof("fault ApiServer Node name = %s", faultApiServer)
+		k8se2elog.Logf("fault ApiServer Node name = %s", faultApiServer)
 		fta.StopKubeAPIServerOrDie(faultApiServer)
 		defer fta.StartKubeAPIServerOrDie(faultApiServer)
 		time.Sleep(3 * time.Minute)
 		oa.CheckOneApiserverDownOrDie(ocfg, clusters, faultApiServer)
 		fta.StartKubeAPIServerOrDie(faultApiServer)
-		klog.Infof("clusters stop one kube-apiserver and restart")
+		k8se2elog.Logf("clusters stop one kube-apiserver and restart")
 
 		time.Sleep(time.Minute)
 		// stop all kube-apiserver pods
@@ -299,7 +301,7 @@ func run() {
 				fta.StartKubeAPIServerOrDie(vNode.IP)
 			}
 		}
-		klog.Infof("clusters stop all kube-apiserver and restart")
+		k8se2elog.Logf("clusters stop all kube-apiserver and restart")
 		time.Sleep(time.Minute)
 	}
 
@@ -363,7 +365,7 @@ func run() {
 
 	slack.SuccessCount++
 	slack.NotifyAndCompletedf("Succeed stability onetime")
-	klog.Infof("################## Stability test finished at: %v\n\n\n\n", time.Now().Format(time.RFC3339))
+	k8se2elog.Logf("################## Stability test finished at: %v\n\n\n\n", time.Now().Format(time.RFC3339))
 }
 
 func newOperatorConfig() *tests.OperatorConfig {

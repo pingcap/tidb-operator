@@ -31,7 +31,7 @@ import (
 	"net/http"
 
 	"github.com/juju/errors"
-	"k8s.io/klog"
+	k8se2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 // Response defines a new response struct for http
@@ -71,7 +71,7 @@ func ExtractResponse(data []byte) ([]byte, error) {
 	if respData.StatusCode != http.StatusOK {
 		d, err := json.Marshal(respData.Payload)
 		if err != nil {
-			klog.Errorf("marshal data failed %v", d)
+			k8se2elog.Logf("marshal data failed %v", d)
 		}
 
 		return d, errors.New(respData.Message)

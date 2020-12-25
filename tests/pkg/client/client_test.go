@@ -18,7 +18,7 @@ import (
 
 	fclient "github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/client"
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/manager"
-	"k8s.io/klog"
+	k8se2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 func TestClientConn(t *testing.T) {
@@ -29,6 +29,6 @@ func TestClientConn(t *testing.T) {
 	if err := faultCli.StopVM(&manager.VM{
 		Name: "105",
 	}); err != nil {
-		klog.Errorf("failed to start node on physical node %v", err)
+		k8se2elog.Failf("failed to start node on physical node %v", err)
 	}
 }

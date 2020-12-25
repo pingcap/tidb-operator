@@ -18,7 +18,7 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"k8s.io/klog"
+	k8se2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 type DbType string
@@ -73,6 +73,6 @@ func (d *DrainerConfig) BuildSubValues(dir string) (string, error) {
 	if err := ioutil.WriteFile(path, []byte(values), 0644); err != nil {
 		return "", err
 	}
-	klog.Infof("Values of drainer %s:\n %s", d.DrainerName, values)
+	k8se2elog.Logf("Values of drainer %s:\n %s", d.DrainerName, values)
 	return path, nil
 }

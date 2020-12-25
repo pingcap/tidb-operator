@@ -42,7 +42,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
-	"k8s.io/klog"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
 	k8se2elog "k8s.io/kubernetes/test/e2e/framework/log"
@@ -280,11 +279,11 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 						return false, nil
 					}
 					if *sts.Spec.Replicas != st.replicas {
-						klog.Infof("replicas of sts %s/%s is %d, expects %d", ns, stsName, *sts.Spec.Replicas, st.replicas)
+						k8se2elog.Logf("replicas of sts %s/%s is %d, expects %d", ns, stsName, *sts.Spec.Replicas, st.replicas)
 						return false, nil
 					}
 					if !helper.GetDeleteSlots(sts).Equal(st.deleteSlots) {
-						klog.Infof("delete slots of sts %s/%s is %v, expects %v", ns, stsName, helper.GetDeleteSlots(sts).List(), st.deleteSlots.List())
+						k8se2elog.Logf("delete slots of sts %s/%s is %v, expects %v", ns, stsName, helper.GetDeleteSlots(sts).List(), st.deleteSlots.List())
 						return false, nil
 					}
 					// check all desired pods are running and ready
@@ -382,7 +381,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				return false, nil
 			}
 			if len(advancedStsList.Items) != len(stsList.Items) {
-				klog.Infof("advanced statefulsets got %d, expect %d", len(advancedStsList.Items), len(stsList.Items))
+				k8se2elog.Logf("advanced statefulsets got %d, expect %d", len(advancedStsList.Items), len(stsList.Items))
 				return false, nil
 			}
 			stsListAfterUpgrade, err := c.AppsV1().StatefulSets(tc.Namespace).List(listOption)
@@ -390,7 +389,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				return false, nil
 			}
 			if len(stsListAfterUpgrade.Items) != 0 {
-				klog.Infof("Kubernetes statefulsets got %d, expect %d", len(stsListAfterUpgrade.Items), 0)
+				k8se2elog.Logf("Kubernetes statefulsets got %d, expect %d", len(stsListAfterUpgrade.Items), 0)
 				return false, nil
 			}
 			return true, nil

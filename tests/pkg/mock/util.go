@@ -23,7 +23,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler/calculate"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
-	"k8s.io/klog"
+	k8se2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 type MonitorParams struct {
@@ -82,7 +82,7 @@ func SetPrometheusResponse(monitorName, monitorNamespace string, mp *MonitorPara
 		return err
 	}
 	if string(b) != "ok" {
-		klog.Errorf("set mock-monitor response failed, response = %s", string(b))
+		k8se2elog.Logf("set mock-monitor response failed, response = %s", string(b))
 		return fmt.Errorf("set mock-monitor response failed")
 	}
 	return nil

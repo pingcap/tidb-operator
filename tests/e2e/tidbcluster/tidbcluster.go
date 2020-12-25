@@ -60,7 +60,6 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	restclient "k8s.io/client-go/rest"
-	"k8s.io/klog"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
 	k8se2elog "k8s.io/kubernetes/test/e2e/framework/log"
@@ -214,7 +213,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			serverVersion, err := c.Discovery().ServerVersion()
 			framework.ExpectNoError(err, "failed to fetch Kubernetes version")
 			sv := utilversion.MustParseSemantic(serverVersion.GitVersion)
-			klog.Infof("ServerVersion: %v", serverVersion.String())
+			k8se2elog.Logf("ServerVersion: %v", serverVersion.String())
 			if sv.LessThan(utilversion.MustParseSemantic("v1.13.11")) || // < v1.13.11
 				(sv.AtLeast(utilversion.MustParseSemantic("v1.14.0")) && sv.LessThan(utilversion.MustParseSemantic("v1.14.7"))) || // >= v1.14.0 but < v1.14.7
 				(sv.AtLeast(utilversion.MustParseSemantic("v1.15.0")) && sv.LessThan(utilversion.MustParseSemantic("v1.15.4"))) { // >= v1.15.0 but < v1.15.4

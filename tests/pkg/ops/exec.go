@@ -25,7 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
-	"k8s.io/klog"
+	k8se2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 // ExecOptions passed to ExecWithOptions
@@ -47,7 +47,7 @@ type ExecOptions struct {
 // returning stdout, stderr and error. `options` allowed for
 // additional parameters to be passed.
 func (cli *ClientOps) ExecWithOptions(options ExecOptions) (string, string, error) {
-	klog.Infof("ExecWithOptions %+v", options)
+	k8se2elog.Logf("ExecWithOptions %+v", options)
 
 	config, err := client.LoadConfig()
 	if err != nil {

@@ -20,7 +20,7 @@ import (
 	"net/http"
 
 	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler/calculate"
-	"k8s.io/klog"
+	k8se2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 type MonitorInterface interface {
@@ -43,7 +43,7 @@ func NewMockPrometheus() MonitorInterface {
 	upResp := buildPrometheusResponse(params)
 	b, err := json.Marshal(upResp)
 	if err != nil {
-		klog.Fatal(err.Error())
+		k8se2elog.Fail(err.Error())
 	}
 	mp.responses["up"] = string(b)
 	return mp
@@ -63,7 +63,7 @@ func (m *mockPrometheus) ServeQuery(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	klog.Infof("receive query, key: %s", key)
+	k8se2elog.Logf("receive query, key: %s", key)
 	v, ok := m.responses[key]
 	if !ok {
 		writeResponse(w, "no response value found")
@@ -123,7 +123,7 @@ func (m *mockPrometheus) addIntoMaps(mp *MonitorParams, response string) {
 	name := mp.Name
 	memberType := mp.MemberType
 	duration := mp.Duration
-	klog.Infof("name=%s, memberType =%s, duration =%s, response =%s", name, memberType, duration, response)
+	k8se2elog.Logf("name=%s, memberType =%s, duration =%s, response =%s", name, memberType, duration, response)
 	if memberType == "tidb" {
 		if currentType == "cpu_usage" {
 			key = fmt.Sprintf(calculate.TidbSumCPUUsageMetricsPattern, duration)
@@ -138,12 +138,12 @@ func (m *mockPrometheus) addIntoMaps(mp *MonitorParams, response string) {
 		}
 	}
 	m.responses[key] = response
-	klog.Infof("add key: %s with value: %s", key, response)
+	k8se2elog.Logf("add key: %s with value: %s", key, response)
 
 }
 
 func writeResponse(w http.ResponseWriter, msg string) {
 	if _, err := w.Write([]byte(msg)); err != nil {
-		klog.Error(err.Error())
+		k8se2elog.Logf(err.Error())
 	}
 }

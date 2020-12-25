@@ -31,8 +31,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
-	"k8s.io/klog"
 	"k8s.io/kubectl/pkg/polymorphichelpers"
+	k8se2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 const (
@@ -79,7 +79,7 @@ func (f *portForwarder) forwardPorts(podKey, method string, url *url.URL, addres
 	go func() {
 		lineScanner := bufio.NewScanner(r)
 		for lineScanner.Scan() {
-			klog.Infof("log from port forwarding %q: %s", podKey, lineScanner.Text())
+			k8se2elog.Logf("log from port forwarding %q: %s", podKey, lineScanner.Text())
 		}
 	}()
 

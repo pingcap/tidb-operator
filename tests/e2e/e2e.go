@@ -46,7 +46,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/component-base/logs"
-	"k8s.io/klog"
 	aggregatorclientset "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	storageutil "k8s.io/kubernetes/pkg/apis/storage/v1/util"
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -76,7 +75,7 @@ func setupSuite() {
 
 	c, err := framework.LoadClientset()
 	if err != nil {
-		klog.Fatal("Error loading client: ", err)
+		k8se2elog.Failf("Error loading client: %v", err)
 	}
 
 	// Delete any namespaces except those created by the system. This ensures no
@@ -99,7 +98,7 @@ func setupSuite() {
 		if err != nil {
 			k8se2elog.Failf("Error deleting orphaned namespaces: %v", err)
 		}
-		klog.Infof("Waiting for deletion of the following namespaces: %v", deleted)
+		k8se2elog.Logf("Waiting for deletion of the following namespaces: %v", deleted)
 		if err := framework.WaitForNamespacesDeleted(c, deleted, framework.NamespaceCleanupTimeout); err != nil {
 			k8se2elog.Failf("Failed to delete orphaned namespaces %v: %v", deleted, err)
 		}
@@ -362,12 +361,12 @@ func RunE2ETests(t *testing.T) {
 		// TODO: we should probably only be trying to create this directory once
 		// rather than once-per-Ginkgo-node.
 		if err := os.MkdirAll(framework.TestContext.ReportDir, 0755); err != nil {
-			klog.Errorf("Failed creating report directory: %v", err)
+			k8se2elog.Logf("Failed creating report directory: %v", err)
 		} else {
 			r = append(r, reporters.NewJUnitReporter(path.Join(framework.TestContext.ReportDir, fmt.Sprintf("junit_%v%02d.xml", framework.TestContext.ReportPrefix, config.GinkgoConfig.ParallelNode))))
 		}
 	}
-	klog.Infof("Starting e2e run %q on Ginkgo node %d", framework.RunID, config.GinkgoConfig.ParallelNode)
+	k8se2elog.Logf("Starting e2e run %q on Ginkgo node %d", framework.RunID, config.GinkgoConfig.ParallelNode)
 
 	ginkgo.RunSpecsWithDefaultAndCustomReporters(t, "tidb-operator e2e suite", r)
 }

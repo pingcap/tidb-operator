@@ -45,7 +45,6 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	restclient "k8s.io/client-go/rest"
-	"k8s.io/klog"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
 	k8se2elog "k8s.io/kubernetes/test/e2e/framework/log"
@@ -149,7 +148,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 
 		ginkgo.It("[PodAdmissionWebhook] able to upgrade TiDB Cluster with pod admission webhook", func() {
-			klog.Info("start to upgrade tidbcluster with pod admission webhook")
+			k8se2elog.Logf("start to upgrade tidbcluster with pod admission webhook")
 			// deploy new cluster and test upgrade and scale-in/out with pod admission webhook
 			tc := fixture.GetTidbCluster(ns, "admission", utilimage.TiDBV3Version)
 			tc.Spec.PD.Replicas = 3
@@ -479,35 +478,35 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				// confirm the pd Pod haven't been changed
 				changed, err := utilpod.PodsAreChanged(c, pdPods)()
 				if err != nil {
-					klog.Errorf("meet error during verify pd pods, err:%v", err)
+					k8se2elog.Logf("meet error during verify pd pods, err:%v", err)
 					return true, nil
 				}
 				if changed {
 					return true, nil
 				}
-				klog.Infof("confirm pd pods haven't been changed this time")
+				k8se2elog.Logf("confirm pd pods haven't been changed this time")
 
 				// confirm the tikv haven't been changed
 				changed, err = utilpod.PodsAreChanged(c, tikvPods)()
 				if err != nil {
-					klog.Errorf("meet error during verify tikv pods, err:%v", err)
+					k8se2elog.Logf("meet error during verify tikv pods, err:%v", err)
 					return true, nil
 				}
 				if changed {
 					return true, nil
 				}
-				klog.Infof("confirm tikv pods haven't been changed this time")
+				k8se2elog.Logf("confirm tikv pods haven't been changed this time")
 
 				// confirm the tidb haven't been changed
 				changed, err = utilpod.PodsAreChanged(c, tidbPods)()
 				if err != nil {
-					klog.Errorf("meet error during verify tidb pods, err:%v", err)
+					k8se2elog.Logf("meet error during verify tidb pods, err:%v", err)
 					return true, nil
 				}
 				if changed {
 					return true, nil
 				}
-				klog.Infof("confirm tidb pods haven't been changed this time")
+				k8se2elog.Logf("confirm tidb pods haven't been changed this time")
 
 				return false, nil
 			})
@@ -545,7 +544,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				tmSet, err := stsGetter.StatefulSets(ns).Get(monitor.GetMonitorObjectName(tm), metav1.GetOptions{})
 				if err != nil {
-					klog.Errorf("failed to get statefulset: %s/%s, %v", ns, tmSet, err)
+					k8se2elog.Logf("failed to get statefulset: %s/%s, %v", ns, tmSet, err)
 					return false, nil
 				}
 				return true, nil
@@ -553,20 +552,20 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectNoError(err, "Expected tidbmonitor sts success")
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				newStsPvcName := monitor.GetMonitorFirstPVCName(tm.Name)
-				klog.Infof("tidbmonitor newStsPvcName:%s", newStsPvcName)
+				k8se2elog.Logf("tidbmonitor newStsPvcName:%s", newStsPvcName)
 				stsPvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get(newStsPvcName, metav1.GetOptions{})
 				if err != nil {
 					if errors.IsNotFound(err) {
-						klog.Infof("tm[%s/%s]'s first sts pvc not found,tag:%s,image:%s", ns, tm.Name, cfg.OperatorTag, cfg.OperatorImage)
+						k8se2elog.Logf("tm[%s/%s]'s first sts pvc not found,tag:%s,image:%s", ns, tm.Name, cfg.OperatorTag, cfg.OperatorImage)
 						return false, nil
 					}
-					klog.Errorf("get tidbmonitor sts pvc err:%v", err)
+					k8se2elog.Logf("get tidbmonitor sts pvc err:%v", err)
 					return false, nil
 				}
 				if stsPvc.Spec.VolumeName == oldVolumeName {
 					return true, nil
 				}
-				klog.Infof("tidbmonitor sts pv unequal to old deployment pv")
+				k8se2elog.Logf("tidbmonitor sts pv unequal to old deployment pv")
 				return false, nil
 			})
 			framework.ExpectNoError(err, "Expected tidbmonitor smooth migrate successfully")

@@ -25,7 +25,8 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/slack"
 	"gopkg.in/yaml.v2"
-	"k8s.io/klog"
+
+	k8se2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 const (
@@ -160,7 +161,7 @@ func ParseConfigOrDie() *Config {
 		slack.NotifyAndPanic(err)
 	}
 
-	klog.Infof("using config: %+v", cfg)
+	k8se2elog.Logf("using config: %+v", cfg)
 	return cfg
 }
 
