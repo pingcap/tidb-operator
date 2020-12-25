@@ -28,20 +28,12 @@ KUBECTL_VERSION=${KUBECTL_VERSION:-1.12.10}
 KUBECTL_BIN=$OUTPUT_BIN/kubectl
 HELM_BIN=$OUTPUT_BIN/helm
 DOCS_BIN=$OUTPUT_BIN/gen-crd-api-reference-docs
-<<<<<<< HEAD
-#
-# Don't upgrade to 2.15.x/2.16.x until this issue
-# (https://github.com/helm/helm/issues/6361) has been fixed.
-#
-HELM_VERSION=${HELM_VERSION:-2.9.1}
-=======
 CFSSL_BIN=$OUTPUT_BIN/cfssl
 CFSSLJSON_BIN=$OUTPUT_BIN/cfssljson
 JQ_BIN=$OUTPUT_BIN/jq
 CFSSL_VERSION=${CFSSL_VERSION:-1.2}
 JQ_VERSION=${JQ_VERSION:-1.6}
 HELM_VERSION=${HELM_VERSION:-2.17.0}
->>>>>>> 556c4db6... Add scripts and examples of TLS features (#3594)
 KIND_VERSION=${KIND_VERSION:-0.8.1}
 DOCS_VERSION=${DOCS_VERSION:-0.2.1}
 KIND_BIN=$OUTPUT_BIN/kind
