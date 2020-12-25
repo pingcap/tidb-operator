@@ -96,8 +96,8 @@ backend: importer # importer | local | tidb
 
 # For `local` backend, an extra PV is needed for local KV sorting.
 sortedKV: {}
-#  storageClassName: local-path
-#  storage: 1Gi
+#  storageClassName: local-storage
+#  storage: 100Gi
 
 # Specify a Service Account for lightning
 # serviceAccount:
