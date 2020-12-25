@@ -31,10 +31,6 @@ DOCS_BIN=$OUTPUT_BIN/gen-crd-api-reference-docs
 CFSSL_BIN=$OUTPUT_BIN/cfssl
 CFSSLJSON_BIN=$OUTPUT_BIN/cfssljson
 JQ_BIN=$OUTPUT_BIN/jq
-#
-# Don't upgrade to 2.15.x/2.16.x until this issue
-# (https://github.com/helm/helm/issues/6361) has been fixed.
-#
 CFSSL_VERSION=${CFSSL_VERSION:-1.2}
 JQ_VERSION=${JQ_VERSION:-1.6}
 HELM_VERSION=${HELM_VERSION:-2.17.0}
