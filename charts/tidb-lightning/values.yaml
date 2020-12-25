@@ -95,9 +95,15 @@ backend: importer # importer | tidb
 # Specify a Service Account for lightning
 # serviceAccount:
 
-# For TiDB-Lightning v3.0.18+ or v4.0.3+,
-# if we want to log to stdout, we should set `file = "-"`.
+# For TiDB-Lightning v3.0.18+ or v4.0.3+, if you want to log to stdout, you should set `file = "-"`.
+# If you want to store the checkpoint under source data directory,
+# you should set `CHECKPOINT_USE_DATA_DIR` as the prefix of `dsn`.
 config: |
   [lightning]
   level = "info"
   file = "-"
+  [checkpoint]
+  enable = true
+  driver = "file"
+  dsn = "CHECKPOINT_USE_DATA_DIR/tidb_lightning_checkpoint.pb"
+  keep-after-success = false
