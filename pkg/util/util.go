@@ -41,6 +41,8 @@ var (
 	ClusterClientTLSPath = "/var/lib/cluster-client-tls"
 	TiDBClientTLSPath    = "/var/lib/tidb-client-tls"
 	BRBinPath            = "/var/lib/br-bin"
+	DumplingBinPath      = "/var/lib/dumpling-bin"
+	LightningBinPath     = "/var/lib/lightning-bin"
 	ClusterClientVolName = "cluster-client-tls"
 )
 

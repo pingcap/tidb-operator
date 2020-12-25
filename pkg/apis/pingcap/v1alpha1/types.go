@@ -1257,7 +1257,8 @@ type BackupSpec struct {
 	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
-	// ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now
+	// ToolImage specifies the tool image used in `Backup`, which supports BR and Dumpling images.
+	// For examples `spec.toolImage: pingcap/br:v4.0.8` or `spec.toolImage: pingcap/dumpling:v4.0.8`
 	// +optional
 	ToolImage string `json:"toolImage,omitempty"`
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
@@ -1518,7 +1519,8 @@ type RestoreSpec struct {
 	UseKMS bool `json:"useKMS,omitempty"`
 	// Specify service account of restore
 	ServiceAccount string `json:"serviceAccount,omitempty"`
-	// ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now
+	// ToolImage specifies the tool image used in `Restore`, which supports BR and TiDB Lightning images.
+	// For examples `spec.toolImage: pingcap/br:v4.0.8` or `spec.toolImage: pingcap/tidb-lightning:v4.0.8`
 	// +optional
 	ToolImage string `json:"toolImage,omitempty"`
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
