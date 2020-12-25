@@ -255,3 +255,7 @@ fork.
 
 Very small PRs are easy to review. Very large PRs are very difficult to
 review.
+
+## Developer Docs
+
+There are api reference docs, design proposals, and other developer related docs in `docs` directory. Feel free to check things there. Happy Hacking!
