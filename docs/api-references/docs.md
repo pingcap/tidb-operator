@@ -9703,6 +9703,17 @@ PrometheusConfiguration
 <em>(Optional)</em>
 </td>
 </tr>
+<tr>
+<td>
+<code>disableCompaction</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Disable prometheus compaction.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="proxyconfig">ProxyConfig</h3>
@@ -10712,6 +10723,129 @@ string
 <p>
 <p>S3StorageProviderType represents the specific storage provider that implements the S3 interface</p>
 </p>
+<h3 id="safetlsconfig">SafeTLSConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tlsconfig">TLSConfig</a>)
+</p>
+<p>
+<p>SafeTLSConfig specifies safe TLS configuration parameters.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ca</code></br>
+<em>
+<a href="#secretorconfigmap">
+SecretOrConfigMap
+</a>
+</em>
+</td>
+<td>
+<p>Struct containing the CA cert to use for the targets.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>cert</code></br>
+<em>
+<a href="#secretorconfigmap">
+SecretOrConfigMap
+</a>
+</em>
+</td>
+<td>
+<p>Struct containing the client cert file for the targets.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>keySecret</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#secretkeyselector-v1-core">
+Kubernetes core/v1.SecretKeySelector
+</a>
+</em>
+</td>
+<td>
+<p>Secret containing the client key file for the targets.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serverName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Used to verify the hostname for the targets.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>insecureSkipVerify</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Disable target certificate validation.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="secretorconfigmap">SecretOrConfigMap</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#safetlsconfig">SafeTLSConfig</a>)
+</p>
+<p>
+<p>SecretOrConfigMap allows to specify data as a Secret or ConfigMap. Fields are mutually exclusive.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>secret</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#secretkeyselector-v1-core">
+Kubernetes core/v1.SecretKeySelector
+</a>
+</em>
+</td>
+<td>
+<p>Secret containing data to use for the targets.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>configMap</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#configmapkeyselector-v1-core">
+Kubernetes core/v1.ConfigMapKeySelector
+</a>
+</em>
+</td>
+<td>
+<p>ConfigMap containing data to use for the targets.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="secretref">SecretRef</h3>
 <p>
 (<em>Appears on:</em>
@@ -11381,6 +11515,21 @@ Same for other components.</p>
 <tbody>
 <tr>
 <td>
+<code>SafeTLSConfig</code></br>
+<em>
+<a href="#safetlsconfig">
+SafeTLSConfig
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>SafeTLSConfig</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>caFile</code></br>
 <em>
 string
@@ -11420,7 +11569,7 @@ string
 <a href="#tidbmonitorspec">TidbMonitorSpec</a>)
 </p>
 <p>
-<p>InitializerSpec is the desired state of initializer</p>
+<p>ThanosSpec is the desired state of thanos sidecar</p>
 </p>
 <table>
 <thead>
@@ -11494,6 +11643,18 @@ Kubernetes core/v1.SecretKeySelector
 </td>
 <td>
 <p>TracingConfig configures tracing in Thanos. This is an experimental feature, it may change in any upcoming release in a breaking way.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tracingConfigFile</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>TracingConfig specifies the path of the tracing configuration file.
+When used alongside with TracingConfig, TracingConfigFile takes precedence.</p>
 </td>
 </tr>
 <tr>
