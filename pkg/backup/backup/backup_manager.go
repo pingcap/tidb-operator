@@ -207,6 +207,8 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 
 	volumeMounts := []corev1.VolumeMount{}
 	volumes := []corev1.Volume{}
+	initContainers := []corev1.Container{}
+
 	if backup.Spec.From.TLSClientSecretName != nil {
 		args = append(args, "--client-tls=true")
 		clientSecretName := *backup.Spec.From.TLSClientSecretName
@@ -225,6 +227,30 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		})
 	}
 
+	if backup.Spec.ToolImage != "" {
+		dumplingVolumeMount := corev1.VolumeMount{
+			Name:      "dumpling-bin",
+			ReadOnly:  false,
+			MountPath: util.DumplingBinPath,
+		}
+		volumeMounts = append(volumeMounts, dumplingVolumeMount)
+		volumes = append(volumes, corev1.Volume{
+			Name: "dumpling-bin",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		})
+		initContainers = append(initContainers, corev1.Container{
+			Name:            "dumpling",
+			Image:           backup.Spec.ToolImage,
+			Command:         []string{"/bin/sh", "-c"},
+			Args:            []string{fmt.Sprintf("cp /dumpling %s/dumpling; echo 'dumpling copy finished'", util.DumplingBinPath)},
+			ImagePullPolicy: corev1.PullIfNotPresent,
+			VolumeMounts:    []corev1.VolumeMount{dumplingVolumeMount},
+			Resources:       backup.Spec.ResourceRequirements,
+		})
+	}
+
 	serviceAccount := constants.DefaultServiceAccountName
 	if backup.Spec.ServiceAccount != "" {
 		serviceAccount = backup.Spec.ServiceAccount
@@ -238,6 +264,7 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		},
 		Spec: corev1.PodSpec{
 			ServiceAccountName: serviceAccount,
+			InitContainers:     initContainers,
 			Containers: []corev1.Container{
 				{
 					Name:            label.BackupJobLabelVal,

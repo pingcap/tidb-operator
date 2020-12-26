@@ -56,6 +56,7 @@ func ListImages() []string {
 		images = append(images, fmt.Sprintf("pingcap/pd:%s", v))
 		images = append(images, fmt.Sprintf("pingcap/tidb:%s", v))
 		images = append(images, fmt.Sprintf("pingcap/tikv:%s", v))
+		images = append(images, fmt.Sprintf("pingcap/tidb-binlog:%s", v))
 	}
 	images = append(images, fmt.Sprintf("%s:%s", PrometheusImage, PrometheusVersion))
 	images = append(images, fmt.Sprintf("%s:%s", TiDBMonitorReloaderImage, TiDBMonitorReloaderVersion))
