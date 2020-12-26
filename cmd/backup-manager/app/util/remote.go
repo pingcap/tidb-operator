@@ -212,7 +212,7 @@ func newGcsStorage(conf *gcsConfig) (*blob.Bucket, error) {
 // newGcsStorageOption constructs the arg for --storage option and the remote path for br
 func newGcsStorageOption(conf *gcsConfig) []string {
 	var gcsoptions []string
-	path := fmt.Sprintf("gcs://%s", path.Join(conf.bucket, conf.prefix))
+	path := fmt.Sprintf("gcs://%s/", path.Join(conf.bucket, conf.prefix))
 	gcsoptions = append(gcsoptions, fmt.Sprintf("--storage=%s", path))
 	if conf.storageClass != "" {
 		gcsoptions = append(gcsoptions, fmt.Sprintf("--gcs.storage-class=%s", conf.storageClass))
