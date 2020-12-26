@@ -1094,7 +1094,9 @@ func getThanosSidecarContainer(monitor *v1alpha1.TidbMonitor) core.Container {
 		},
 	}
 	if thanos.ObjectStorageConfig != nil || thanos.ObjectStorageConfigFile != nil {
-		if thanos.ObjectStorageConfig != nil {
+		if thanos.ObjectStorageConfigFile != nil {
+				container.Args = append(container.Args, "--objstore.config-file="+*thanos.ObjectStorageConfigFile)
+		} else {
 			container.Args = append(container.Args, "--objstore.config=$(OBJSTORE_CONFIG)")
 			container.Env = append(container.Env, core.EnvVar{
 				Name: "OBJSTORE_CONFIG",
@@ -1102,10 +1104,6 @@ func getThanosSidecarContainer(monitor *v1alpha1.TidbMonitor) core.Container {
 					SecretKeyRef: thanos.ObjectStorageConfig,
 				},
 			})
-		} else {
-			if thanos.ObjectStorageConfigFile != nil {
-				container.Args = append(container.Args, "--objstore.config-file="+*thanos.ObjectStorageConfigFile)
-			}
 		}
 		storageDir := "/data/prometheus"
 		container.Args = append(container.Args, fmt.Sprintf("--tsdb.path=%s", storageDir))
