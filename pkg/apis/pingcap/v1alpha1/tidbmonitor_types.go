@@ -117,6 +117,9 @@ type PrometheusSpec struct {
 
 	// +optional
 	Config *PrometheusConfiguration `json:"config,omitempty"`
+
+	// Disable prometheus compaction.
+	DisableCompaction bool `json:"disableCompaction,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -168,7 +171,7 @@ type InitializerSpec struct {
 	Envs map[string]string `json:"envs,omitempty"`
 }
 
-// InitializerSpec is the desired state of initializer
+// ThanosSpec is the desired state of thanos sidecar
 type ThanosSpec struct {
 	MonitorContainer `json:",inline"`
 	// ObjectStorageConfig configures object storage in Thanos.
@@ -182,6 +185,9 @@ type ThanosSpec struct {
 	ListenLocal bool `json:"listenLocal,omitempty"`
 	// TracingConfig configures tracing in Thanos. This is an experimental feature, it may change in any upcoming release in a breaking way.
 	TracingConfig *corev1.SecretKeySelector `json:"tracingConfig,omitempty"`
+	// TracingConfig specifies the path of the tracing configuration file.
+	// When used alongside with TracingConfig, TracingConfigFile takes precedence.
+	TracingConfigFile *string `json:"objectStorageConfigFile,omitempty"`
 	// GRPCServerTLSConfig configures the gRPC server from which Thanos Querier reads
 	// recorded rule data.
 	// Note: Currently only the CAFile, CertFile, and KeyFile fields are supported.
@@ -254,10 +260,34 @@ type DeploymentStorageStatus struct {
 // TLSConfig extends the safe TLS configuration with file parameters.
 // +k8s:openapi-gen=true
 type TLSConfig struct {
+	SafeTLSConfig `json:",inline"`
 	// Path to the CA cert in the Prometheus container to use for the targets.
 	CAFile string `json:"caFile,omitempty"`
 	// Path to the client cert file in the Prometheus container for the targets.
 	CertFile string `json:"certFile,omitempty"`
 	// Path to the client key file in the Prometheus container for the targets.
 	KeyFile string `json:"keyFile,omitempty"`
+}
+
+// SafeTLSConfig specifies safe TLS configuration parameters.
+// +k8s:openapi-gen=true
+type SafeTLSConfig struct {
+	// Struct containing the CA cert to use for the targets.
+	CA SecretOrConfigMap `json:"ca,omitempty"`
+	// Struct containing the client cert file for the targets.
+	Cert SecretOrConfigMap `json:"cert,omitempty"`
+	// Secret containing the client key file for the targets.
+	KeySecret *corev1.SecretKeySelector `json:"keySecret,omitempty"`
+	// Used to verify the hostname for the targets.
+	ServerName string `json:"serverName,omitempty"`
+	// Disable target certificate validation.
+	InsecureSkipVerify bool `json:"insecureSkipVerify,omitempty"`
+}
+
+// SecretOrConfigMap allows to specify data as a Secret or ConfigMap. Fields are mutually exclusive.
+type SecretOrConfigMap struct {
+	// Secret containing data to use for the targets.
+	Secret *v1.SecretKeySelector `json:"secret,omitempty"`
+	// ConfigMap containing data to use for the targets.
+	ConfigMap *v1.ConfigMapKeySelector `json:"configMap,omitempty"`
 }
