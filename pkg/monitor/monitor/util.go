@@ -467,6 +467,7 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 	}
 	if monitor.Spec.Prometheus.DisableCompaction {
 		c.Command = append(c.Command, "--storage.tsdb.max-block-duration=2h")
+		c.Command = append(c.Command, "--storage.tsdb.min-block-duration=2h")
 	}
 
 	if tc.IsTLSClusterEnabled() {
@@ -1095,7 +1096,7 @@ func getThanosSidecarContainer(monitor *v1alpha1.TidbMonitor) core.Container {
 	}
 	if thanos.ObjectStorageConfig != nil || thanos.ObjectStorageConfigFile != nil {
 		if thanos.ObjectStorageConfigFile != nil {
-				container.Args = append(container.Args, "--objstore.config-file="+*thanos.ObjectStorageConfigFile)
+			container.Args = append(container.Args, "--objstore.config-file="+*thanos.ObjectStorageConfigFile)
 		} else {
 			container.Args = append(container.Args, "--objstore.config=$(OBJSTORE_CONFIG)")
 			container.Env = append(container.Env, core.EnvVar{
@@ -1116,14 +1117,18 @@ func getThanosSidecarContainer(monitor *v1alpha1.TidbMonitor) core.Container {
 		)
 	}
 
-	if thanos.TracingConfig != nil {
-		container.Args = append(container.Args, "--tracing.config=$(TRACING_CONFIG)")
-		container.Env = append(container.Env, core.EnvVar{
-			Name: "TRACING_CONFIG",
-			ValueFrom: &core.EnvVarSource{
-				SecretKeyRef: thanos.TracingConfig,
-			},
-		})
+	if thanos.TracingConfig != nil || thanos.TracingConfigFile != nil {
+		if thanos.TracingConfigFile != nil {
+			container.Args = append(container.Args, "--tracing.config-file="+*thanos.TracingConfigFile)
+		} else {
+			container.Args = append(container.Args, "--tracing.config=$(TRACING_CONFIG)")
+			container.Env = append(container.Env, core.EnvVar{
+				Name: "TRACING_CONFIG",
+				ValueFrom: &core.EnvVarSource{
+					SecretKeyRef: thanos.TracingConfig,
+				},
+			})
+		}
 	}
 
 	if thanos.LogLevel != "" {
