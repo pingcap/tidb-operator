@@ -24,6 +24,7 @@ import (
 	"github.com/mholt/archiver"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
@@ -81,7 +82,9 @@ func (ro *Options) downloadBackupData(localPath string, opts []string) error {
 	return nil
 }
 
-func (ro *Options) loadTidbClusterData(restorePath string, tableFilter []string) error {
+func (ro *Options) loadTidbClusterData(restorePath string, restore *v1alpha1.Restore) error {
+	tableFilter := restore.Spec.TableFilter
+
 	if exist := backupUtil.IsDirExist(restorePath); !exist {
 		return fmt.Errorf("dir %s does not exist or is not a dir", restorePath)
 	}
@@ -108,7 +111,14 @@ func (ro *Options) loadTidbClusterData(restorePath string, tableFilter []string)
 		args = append(args, fmt.Sprintf("--key=%s", path.Join(util.TiDBClientTLSPath, corev1.TLSPrivateKeyKey)))
 	}
 
-	output, err := exec.Command("/tidb-lightning", args...).CombinedOutput()
+	binPath := "/tidb-lightning"
+	if restore.Spec.ToolImage != "" {
+		binPath = path.Join(util.LightningBinPath, "tidb-lightning")
+	}
+
+	klog.Infof("The lightning process is ready, command \"%s %s\"", binPath, strings.Join(args, " "))
+
+	output, err := exec.Command(binPath, args...).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("cluster %s, execute loader command %v failed, output: %s, err: %v", ro, args, string(output), err)
 	}
