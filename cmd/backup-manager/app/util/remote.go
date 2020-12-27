@@ -95,6 +95,7 @@ func NewStorageBackend(provider v1alpha1.StorageProvider) (*blob.Bucket, error) 
 }
 
 // genStorageArgs returns the arg for --storage option and the remote/local path for br
+// TODO: add unit test
 func genStorageArgs(provider v1alpha1.StorageProvider) ([]string, error) {
 	st := util.GetStorageType(provider)
 	switch st {
