@@ -1,0 +1,146 @@
+name: e2e
+
+on:
+  push:
+    branches:
+      - multicluster-e2e
+  workflow_dispatch:
+
+jobs:
+  image-build:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Set up Go 1.13
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.13
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: go/src/github.com/${{ github.repository }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Cache Docker layers
+        uses: actions/cache@v2
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+            go/src/github.com/${{ github.repository }}/go/pkg/mod
+            go/src/github.com/${{ github.repository }}/.cache/go-build
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Build binary
+        run: |
+          echo $GOCACHE
+          make build
+          make e2e-build
+          [ -d tests/images/e2e/tidb-operator ] && rm -r tests/images/e2e/tidb-operator || true
+          [ -d tests/images/e2e/tidb-cluster ] && rm -r tests/images/e2e/tidb-cluster || true
+          [ -d tests/images/e2e/tidb-backup ] && rm -r tests/images/e2e/tidb-backup || true
+          [ -d tests/images/e2e/manifests ] && rm -r tests/images/e2e/manifests || true
+          cp -r charts/tidb-operator tests/images/e2e
+          cp -r charts/tidb-cluster tests/images/e2e
+          cp -r charts/tidb-backup tests/images/e2e
+          cp -r charts/tidb-drainer tests/images/e2e
+          cp -r manifests tests/images/e2e
+        working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.CR_PAT }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v2
+        with:
+          context: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}/images/tidb-backup-manager
+          file: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}/images/tidb-backup-manager/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/handlerww/tidb-operator/tidb-backup-manager:${{ github.sha }}
+      - name: Build and push
+        uses: docker/build-push-action@v2
+        with:
+          context: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}/images/tidb-operator
+          file: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}/images/tidb-operator/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/handlerww/tidb-operator/tidb-operator:${{ github.sha }}
+      - name: Build and push
+        uses: docker/build-push-action@v2
+        with:
+          context: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}/tests/images/e2e
+          file: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}/tests/images/e2e/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/handlerww/tidb-operator/tidb-operator-e2e:${{ github.sha }}
+      - name: Get matrix jobs
+        id: set-matrix
+        run: |
+          echo "::set-output name=matrix::{\"include\":[{\"job\":\"Multicluster\"}]}"
+  e2e-cases:
+    needs: ["image-build"]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{fromJson(needs.image-build.outputs.matrix)}}
+    steps:
+      - name: Set up Go 1.13
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.13
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: go/src/github.com/${{ github.repository }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.CR_PAT }}
+
+      - name: Creating kind cluster
+        run: |
+          SKIP_DOWN=y SKIP_BUILD=y SKIP_IMAGE_BUILD=y SKIP_TEST=y KUBE_WORKERS=0 ./hack/e2e.sh
+          echo "info: waiting for all nodes to be ready"
+          kubectl wait --for=condition=Ready nodes --all --timeout=120s
+          echo "info: waiting for all pods in kube-system namespace to be ready"
+          kubectl -n kube-system wait --for=condition=Ready pods --all
+          echo "info: print cluster information"
+          kubectl get nodes
+          kubectl get pods -n kube-system
+          helm version
+          kubectl version
+          echo "info: create pingcap namespace for configurations"
+          kubectl create ns pingcap
+        working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}
+
+      - name: e2e(${{ matrix.job }})
+        run: |
+          SKIP_BUILD=y SKIP_IMAGE_BUILD=y SKIP_UP=y DOCKER_REPO=ghcr.io/handlerww/tidb-operator IMAGE_TAG=${{ github.sha }} ./hack/e2e.sh -- --ginkgo.focus='${{ matrix.job }}'
+        working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}
