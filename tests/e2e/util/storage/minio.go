@@ -26,7 +26,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
-	k8se2epod "k8s.io/kubernetes/test/e2e/framework/pod"
+	"k8s.io/kubernetes/test/e2e/framework/pod"
 )
 
 const (
@@ -46,7 +46,7 @@ func NewMinioStorage(fw portforward.PortForward, ns, accessKey, secretKey string
 	if data, err := exec.Command("sh", "-c", cmd).CombinedOutput(); err != nil {
 		return nil, nil, fmt.Errorf("failed to install minio %s %v", string(data), err)
 	}
-	err := k8se2epod.WaitTimeoutForPodReadyInNamespace(cli, minioPodName, ns, 5*time.Minute)
+	err := pod.WaitTimeoutForPodReadyInNamespace(cli, minioPodName, ns, 5*time.Minute)
 	if err != nil {
 		return nil, nil, err
 	}

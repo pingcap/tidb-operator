@@ -63,7 +63,7 @@ import (
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/framework/log"
-	k8se2epod "k8s.io/kubernetes/test/e2e/framework/pod"
+	"k8s.io/kubernetes/test/e2e/framework/pod"
 	"k8s.io/kubernetes/test/utils"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -274,7 +274,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		webhookPod, err = c.CoreV1().Pods(webhookPod.Namespace).Get(webhookPod.Name, metav1.GetOptions{})
 		framework.ExpectNoError(err, fmt.Sprintf("unable to get pod %s/%s", webhookPod.Namespace, webhookPod.Name))
 		if webhookPod.Status.Phase != v1.PodRunning {
-			logs, err := k8se2epod.GetPodLogs(c, webhookPod.Namespace, webhookPod.Name, "webhook")
+			logs, err := pod.GetPodLogs(c, webhookPod.Namespace, webhookPod.Name, "webhook")
 			framework.ExpectNoError(err)
 			log.Logf("webhook logs: %s", logs)
 			log.Fail("webhook pod is not running")

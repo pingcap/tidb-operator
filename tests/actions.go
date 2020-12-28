@@ -73,7 +73,7 @@ import (
 	aggregatorclientset "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/framework/log"
-	k8se2epod "k8s.io/kubernetes/test/e2e/framework/pod"
+	"k8s.io/kubernetes/test/e2e/framework/pod"
 )
 
 const (
@@ -1113,7 +1113,7 @@ func (oa *operatorActions) BeginInsertDataTo(info *TidbClusterConfig) error {
 		return err
 	}
 	info.blockWriterPod = pod
-	err = k8se2epod.WaitForPodRunningInNamespace(oa.kubeCli, pod)
+	err = pod.WaitForPodRunningInNamespace(oa.kubeCli, pod)
 	if err != nil {
 		return err
 	}

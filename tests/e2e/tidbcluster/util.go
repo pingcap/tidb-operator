@@ -24,7 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
-	k8se2epod "k8s.io/kubernetes/test/e2e/framework/pod"
+	"k8s.io/kubernetes/test/e2e/framework/pod"
 )
 
 func startWebhook(c clientset.Interface, image, ns, svcName string, cert []byte, key []byte) (*v1.Pod, *v1.Service) {
@@ -159,7 +159,7 @@ func startWebhook(c clientset.Interface, image, ns, svcName string, cert []byte,
 	pod, err = c.CoreV1().Pods(ns).Create(pod)
 	framework.ExpectNoError(err, "failed to create Pod")
 
-	err = k8se2epod.WaitForPodRunningInNamespace(c, pod)
+	err = pod.WaitForPodRunningInNamespace(c, pod)
 	framework.ExpectNoError(err, "failed to wait for pod %s/%s to be running", pod.Namespace, pod.Name)
 	return pod, svc
 }
