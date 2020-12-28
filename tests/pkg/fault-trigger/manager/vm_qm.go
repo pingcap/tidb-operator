@@ -18,7 +18,7 @@ import (
 	"os/exec"
 	"strings"
 
-	k8se2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 type QMVMManager struct {
@@ -33,7 +33,7 @@ func (qm *QMVMManager) ListVMs() ([]*VM, error) {
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		k8se2elog.Logf("ERROR: exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
+		log.Logf("ERROR: exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
 		return nil, err
 	}
 	vms := qm.parserVMs(string(output))
@@ -45,11 +45,11 @@ func (qm *QMVMManager) StartVM(vm *VM) error {
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		k8se2elog.Logf("ERROR: exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
+		log.Logf("ERROR: exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
 		return err
 	}
 
-	k8se2elog.Logf("virtual machine %s is started", vm.Name)
+	log.Logf("virtual machine %s is started", vm.Name)
 
 	return nil
 }
@@ -59,11 +59,11 @@ func (qm *QMVMManager) StopVM(vm *VM) error {
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		k8se2elog.Logf("ERROR: exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
+		log.Logf("ERROR: exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
 		return err
 	}
 
-	k8se2elog.Logf("virtual machine %s is stopped", vm.Name)
+	log.Logf("virtual machine %s is stopped", vm.Name)
 	return nil
 }
 

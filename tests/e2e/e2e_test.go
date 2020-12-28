@@ -29,7 +29,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/framework/config"
-	k8se2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 	"k8s.io/kubernetes/test/e2e/framework/testfiles"
 	"k8s.io/kubernetes/test/e2e/framework/viperconfig"
 
@@ -114,7 +114,7 @@ func TestMain(m *testing.M) {
 	handleFlags()
 
 	flag.CommandLine.VisitAll(func(flag *flag.Flag) {
-		k8se2elog.Logf("FLAG: --%s=%q", flag.Name, flag.Value)
+		log.Logf("FLAG: --%s=%q", flag.Name, flag.Value)
 	})
 
 	// Now that we know which Viper config (if any) was chosen,

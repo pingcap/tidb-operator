@@ -20,7 +20,7 @@ import (
 	"net/http"
 	"time"
 
-	k8se2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 var (
@@ -163,7 +163,7 @@ func SendWarnMsg(msg string) error {
 func NotifyAndPanic(err error) {
 	sendErr := SendErrMsg(fmt.Sprintf("Succeed %d times, then failed: %s", SuccessCount, err.Error()))
 	if sendErr != nil {
-		k8se2elog.Logf("failed to notify slack[%s] the massage: %v,error: %v", WebhookURL, err, sendErr)
+		log.Logf("failed to notify slack[%s] the massage: %v,error: %v", WebhookURL, err, sendErr)
 	}
 	time.Sleep(3 * time.Second)
 	panic(err)
@@ -173,7 +173,7 @@ func NotifyAndCompletedf(format string, args ...interface{}) {
 	msg := fmt.Sprintf(format, args...)
 	sendErr := SendGoodMsg(msg)
 	if sendErr != nil {
-		k8se2elog.Logf("failed to notify slack[%s] the massage: %s,error: %v", WebhookURL, msg, sendErr)
+		log.Logf("failed to notify slack[%s] the massage: %s,error: %v", WebhookURL, msg, sendErr)
 	}
-	k8se2elog.Logf(msg)
+	log.Logf(msg)
 }

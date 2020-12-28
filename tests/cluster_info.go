@@ -18,7 +18,7 @@ import (
 	"os"
 	"strconv"
 
-	k8se2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 func (tc *TidbClusterConfig) set(name string, value string) (string, bool) {
@@ -161,6 +161,6 @@ func (tc *TidbClusterConfig) BuildSubValues(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	k8se2elog.Logf("subValues:\n %s", subValues)
+	log.Logf("subValues:\n %s", subValues)
 	return subVaulesPath, nil
 }

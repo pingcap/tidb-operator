@@ -21,7 +21,7 @@ import (
 
 	"k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8se2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 // toAdmissionResponse is a helper function to create an AdmissionResponse
@@ -83,10 +83,10 @@ func serve(w http.ResponseWriter, r *http.Request, admit admitFunc) {
 returnData:
 	respBytes, err := json.Marshal(responseAdmissionReview)
 	if err != nil {
-		k8se2elog.Logf("ERROR: %v", err)
+		log.Logf("ERROR: %v", err)
 	}
 	if _, err := w.Write(respBytes); err != nil {
-		k8se2elog.Logf("ERROR: %v", err)
+		log.Logf("ERROR: %v", err)
 	}
 }
 

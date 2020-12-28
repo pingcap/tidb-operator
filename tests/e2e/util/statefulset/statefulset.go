@@ -24,7 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
-	k8se2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 var statefulPodRegex = regexp.MustCompile("(.*)-([0-9]+)$")
@@ -46,7 +46,7 @@ func IsAllDesiredPodsRunningAndReady(c kubernetes.Interface, sts *appsv1.Statefu
 	deleteSlots := helper.GetDeleteSlots(sts)
 	actualPodList, err := getPodList(c, sts)
 	if err != nil {
-		k8se2elog.Logf("get podlist error in IsAllDesiredPodsRunningAndReady, err:%v", err)
+		log.Logf("get podlist error in IsAllDesiredPodsRunningAndReady, err:%v", err)
 		return false
 	}
 	actualPodOrdinals := sets.NewInt32()
@@ -55,16 +55,16 @@ func IsAllDesiredPodsRunningAndReady(c kubernetes.Interface, sts *appsv1.Statefu
 	}
 	desiredPodOrdinals := helper.GetPodOrdinalsFromReplicasAndDeleteSlots(*sts.Spec.Replicas, deleteSlots)
 	if !actualPodOrdinals.Equal(desiredPodOrdinals) {
-		k8se2elog.Logf("pod ordinals of sts %s/%s is %v, expects: %v", sts.Namespace, sts.Name, actualPodOrdinals.List(), desiredPodOrdinals.List())
+		log.Logf("pod ordinals of sts %s/%s is %v, expects: %v", sts.Namespace, sts.Name, actualPodOrdinals.List(), desiredPodOrdinals.List())
 		return false
 	}
 	for _, pod := range actualPodList.Items {
 		if !podutil.IsPodReady(&pod) {
-			k8se2elog.Logf("pod %s of sts %s/%s is not ready, got: %v", pod.Name, sts.Namespace, sts.Name, podutil.GetPodReadyCondition(pod.Status))
+			log.Logf("pod %s of sts %s/%s is not ready, got: %v", pod.Name, sts.Namespace, sts.Name, podutil.GetPodReadyCondition(pod.Status))
 			return false
 		}
 	}
-	k8se2elog.Logf("desired pods of sts %s/%s are running and ready (%v)", sts.Namespace, sts.Name, actualPodOrdinals.List())
+	log.Logf("desired pods of sts %s/%s are running and ready (%v)", sts.Namespace, sts.Name, actualPodOrdinals.List())
 	return true
 }
 

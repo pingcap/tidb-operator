@@ -27,7 +27,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	k8se2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 const (
@@ -72,7 +72,7 @@ func (oa *operatorActions) BackupAndRestoreToMultipleClusters(source *TidbCluste
 	if err != nil {
 		return err
 	}
-	k8se2elog.Logf("waiting 30 seconds to insert into more records")
+	log.Logf("waiting 30 seconds to insert into more records")
 	time.Sleep(30 * time.Second)
 
 	// we should stop insert data before backup
@@ -81,32 +81,32 @@ func (oa *operatorActions) BackupAndRestoreToMultipleClusters(source *TidbCluste
 
 	err = oa.DeployAdHocBackup(source)
 	if err != nil {
-		k8se2elog.Logf("ERROR: cluster:[%s] deploy happen error: %v", source.ClusterName, err)
+		log.Logf("ERROR: cluster:[%s] deploy happen error: %v", source.ClusterName, err)
 		return err
 	}
 
 	ts, err := oa.CheckAdHocBackup(source)
 	if err != nil {
-		k8se2elog.Logf("ERROR: cluster:[%s] deploy happen error: %v", source.ClusterName, err)
+		log.Logf("ERROR: cluster:[%s] deploy happen error: %v", source.ClusterName, err)
 		return err
 	}
 
 	prepareIncremental := func(source *TidbClusterConfig, target BackupTarget) error {
 		err = oa.CheckTidbClusterStatus(target.TargetCluster)
 		if err != nil {
-			k8se2elog.Logf("ERROR: cluster:[%s] deploy faild error: %v", target.TargetCluster.ClusterName, err)
+			log.Logf("ERROR: cluster:[%s] deploy faild error: %v", target.TargetCluster.ClusterName, err)
 			return err
 		}
 
 		err = oa.Restore(source, target.TargetCluster)
 		if err != nil {
-			k8se2elog.Logf("ERROR: from cluster:[%s] to cluster [%s] restore happen error: %v",
+			log.Logf("ERROR: from cluster:[%s] to cluster [%s] restore happen error: %v",
 				source.ClusterName, target.TargetCluster.ClusterName, err)
 			return err
 		}
 		err = oa.CheckRestore(source, target.TargetCluster)
 		if err != nil {
-			k8se2elog.Logf("ERROR: from cluster:[%s] to cluster [%s] restore failed error: %v",
+			log.Logf("ERROR: from cluster:[%s] to cluster [%s] restore failed error: %v",
 				source.ClusterName, target.TargetCluster.ClusterName, err)
 			return err
 		}
@@ -166,13 +166,13 @@ func (oa *operatorActions) BackupAndRestoreToMultipleClusters(source *TidbCluste
 	if err != nil {
 		return err
 	}
-	k8se2elog.Logf("waiting 30 seconds to insert into more records")
+	log.Logf("waiting 30 seconds to insert into more records")
 	time.Sleep(30 * time.Second)
 
-	k8se2elog.Logf("cluster[%s] stop insert data", source.ClusterName)
+	log.Logf("cluster[%s] stop insert data", source.ClusterName)
 	oa.StopInsertDataTo(source)
 
-	k8se2elog.Logf("wait on-going inserts to be drained for 60 seconds")
+	log.Logf("wait on-going inserts to be drained for 60 seconds")
 	time.Sleep(60 * time.Second)
 
 	dsn, cancel, err := oa.getTiDBDSN(source.Namespace, source.ClusterName, "test", source.Password)
@@ -199,15 +199,15 @@ func (oa *operatorActions) BackupAndRestoreToMultipleClusters(source *TidbCluste
 	if err != nil {
 		return err
 	}
-	k8se2elog.Logf("waiting 30 seconds to insert into more records")
+	log.Logf("waiting 30 seconds to insert into more records")
 	time.Sleep(30 * time.Second)
 
-	k8se2elog.Logf("cluster[%s] stop insert data", source.ClusterName)
+	log.Logf("cluster[%s] stop insert data", source.ClusterName)
 	oa.StopInsertDataTo(source)
 
 	err = oa.DeployScheduledBackup(source)
 	if err != nil {
-		k8se2elog.Logf("ERROR: cluster:[%s] scheduler happen error: %v", source.ClusterName, err)
+		log.Logf("ERROR: cluster:[%s] scheduler happen error: %v", source.ClusterName, err)
 		return err
 	}
 
@@ -257,7 +257,7 @@ func (oa *operatorActions) CheckDataConsistency(from, to *TidbClusterConfig, tim
 	fn := func() (bool, error) {
 		b, err := oa.DataIsTheSameAs(to, from)
 		if err != nil {
-			k8se2elog.Logf("ERROR: %v", err)
+			log.Logf("ERROR: %v", err)
 			return false, nil
 		}
 		if b {
@@ -271,7 +271,7 @@ func (oa *operatorActions) CheckDataConsistency(from, to *TidbClusterConfig, tim
 
 func (oa *operatorActions) DeployDrainer(info *DrainerConfig, source *TidbClusterConfig) error {
 	oa.EmitEvent(source, "DeployDrainer")
-	k8se2elog.Logf("begin to deploy drainer [%s] namespace[%s], source cluster [%s]", info.DrainerName,
+	log.Logf("begin to deploy drainer [%s] namespace[%s], source cluster [%s]", info.DrainerName,
 		source.Namespace, source.ClusterName)
 
 	valuesPath, err := info.BuildSubValues(oa.drainerChartPath(source.OperatorTag))
@@ -290,7 +290,7 @@ func (oa *operatorActions) DeployDrainer(info *DrainerConfig, source *TidbCluste
 
 	cmd := fmt.Sprintf("helm install %s  --name %s --namespace %s --set-string %s -f %s",
 		oa.drainerChartPath(source.OperatorTag), info.DrainerName, source.Namespace, info.DrainerHelmString(override, source), valuesPath)
-	k8se2elog.Logf(cmd)
+	log.Logf(cmd)
 
 	if res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to deploy drainer [%s/%s], %v, %s",
@@ -307,30 +307,30 @@ func (oa *operatorActions) DeployDrainerOrDie(info *DrainerConfig, source *TidbC
 }
 
 func (oa *operatorActions) CheckDrainer(info *DrainerConfig, source *TidbClusterConfig) error {
-	k8se2elog.Logf("checking drainer [%s/%s]", info.DrainerName, source.Namespace)
+	log.Logf("checking drainer [%s/%s]", info.DrainerName, source.Namespace)
 
 	ns := source.Namespace
 	stsName := fmt.Sprintf("%s-%s-drainer", source.ClusterName, info.DrainerName)
 	fn := func() (bool, error) {
 		sts, err := oa.kubeCli.AppsV1().StatefulSets(source.Namespace).Get(stsName, v1.GetOptions{})
 		if err != nil {
-			k8se2elog.Logf("ERROR: failed to get drainer StatefulSet %s ,%v", sts, err)
+			log.Logf("ERROR: failed to get drainer StatefulSet %s ,%v", sts, err)
 			return false, nil
 		}
 		if *sts.Spec.Replicas != DrainerReplicas {
-			k8se2elog.Logf("StatefulSet: %s/%s .spec.Replicas(%d) != %d",
+			log.Logf("StatefulSet: %s/%s .spec.Replicas(%d) != %d",
 				ns, sts.Name, *sts.Spec.Replicas, DrainerReplicas)
 			return false, nil
 		}
 		if sts.Status.ReadyReplicas != DrainerReplicas {
-			k8se2elog.Logf("StatefulSet: %s/%s .state.ReadyReplicas(%d) != %d",
+			log.Logf("StatefulSet: %s/%s .state.ReadyReplicas(%d) != %d",
 				ns, sts.Name, sts.Status.ReadyReplicas, DrainerReplicas)
 			return false, nil
 		}
 		for i := 0; i < int(*sts.Spec.Replicas); i++ {
 			podName := fmt.Sprintf("%s-%d", stsName, i)
 			if !oa.drainerHealth(source.ClusterName, source.Namespace, podName, info.TLSCluster) {
-				k8se2elog.Logf("%s is not health yet", podName)
+				log.Logf("%s is not health yet", podName)
 				return false, nil
 			}
 		}
@@ -346,7 +346,7 @@ func (oa *operatorActions) CheckDrainer(info *DrainerConfig, source *TidbCluster
 }
 
 func (oa *operatorActions) RestoreIncrementalFiles(from *DrainerConfig, to *TidbClusterConfig, stopTSO int64) error {
-	k8se2elog.Logf("restoring incremental data from drainer [%s/%s] to TiDB cluster [%s/%s]",
+	log.Logf("restoring incremental data from drainer [%s/%s] to TiDB cluster [%s/%s]",
 		from.Namespace, from.DrainerName, to.Namespace, to.ClusterName)
 
 	// TODO: better incremental files restore solution
@@ -383,7 +383,7 @@ func (oa *operatorActions) RestoreIncrementalFiles(from *DrainerConfig, to *Tidb
 	}
 
 	cmd := buff.String()
-	k8se2elog.Logf("Restore incremental data, command: \n%s", cmd)
+	log.Logf("Restore incremental data, command: \n%s", cmd)
 
 	if res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to restore incremental files from dainer [%s/%s] to TiDB cluster [%s/%s], %v, %s",

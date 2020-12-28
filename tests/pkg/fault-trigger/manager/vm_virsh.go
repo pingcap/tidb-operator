@@ -18,7 +18,7 @@ import (
 	"os/exec"
 	"strings"
 
-	k8se2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 type VirshVMManager struct {
@@ -34,7 +34,7 @@ func (m *VirshVMManager) ListVMs() ([]*VM, error) {
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		k8se2elog.Logf("ERROR: exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
+		log.Logf("ERROR: exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
 		return nil, err
 	}
 	vms := m.parserVMs(string(output))
@@ -47,11 +47,11 @@ func (m *VirshVMManager) StopVM(v *VM) error {
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		k8se2elog.Logf("ERROR: exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
+		log.Logf("ERROR: exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
 		return err
 	}
 
-	k8se2elog.Logf("virtual machine %s is stopped", v.Name)
+	log.Logf("virtual machine %s is stopped", v.Name)
 
 	return nil
 }
@@ -62,11 +62,11 @@ func (m *VirshVMManager) StartVM(v *VM) error {
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		k8se2elog.Logf("ERROR: exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
+		log.Logf("ERROR: exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
 		return err
 	}
 
-	k8se2elog.Logf("virtual machine %s is started", v.Name)
+	log.Logf("virtual machine %s is started", v.Name)
 
 	return nil
 }

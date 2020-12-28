@@ -23,7 +23,7 @@ import (
 	"github.com/ghodss/yaml"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/kubernetes/test/e2e/framework"
-	k8se2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 const (
@@ -119,7 +119,7 @@ func nsenter(args ...string) ([]byte, error) {
 		"--",
 	}
 	nsenter_args = append(nsenter_args, args...)
-	k8se2elog.Logf("run nsenter command: %s %s", "nsenter", strings.Join(nsenter_args, " "))
+	log.Logf("run nsenter command: %s %s", "nsenter", strings.Join(nsenter_args, " "))
 	return exec.Command("nsenter", nsenter_args...).CombinedOutput()
 }
 
@@ -148,7 +148,7 @@ func PreloadImages() error {
 	}
 	for _, image := range images {
 		if _, err := nsenter("docker", "pull", image); err != nil {
-			k8se2elog.Logf("ERROR: preloadImages, error pulling image %s", image)
+			log.Logf("ERROR: preloadImages, error pulling image %s", image)
 			continue
 		}
 		if _, err := nsenter(kindBin, "load", "docker-image", "--name", cluster, "--nodes", strings.Join(nodes, ","), image); err != nil {

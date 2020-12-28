@@ -18,7 +18,7 @@ import (
 	"os"
 	"os/exec"
 
-	k8se2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 const (
@@ -66,7 +66,7 @@ func (m *Manager) StopKubeControllerManager() error {
 func (m *Manager) stopStaticPodService(serviceName string, fileName string) error {
 	manifest := fmt.Sprintf("%s/%s", staticPodPath, fileName)
 	if _, err := os.Stat(manifest); os.IsNotExist(err) {
-		k8se2elog.Logf("%s had been stopped before", serviceName)
+		log.Logf("%s had been stopped before", serviceName)
 		return nil
 	}
 	shell := fmt.Sprintf("mkdir -p %s && mv %s %s", staticPodTmpPath, manifest, staticPodTmpPath)
@@ -74,11 +74,11 @@ func (m *Manager) stopStaticPodService(serviceName string, fileName string) erro
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		k8se2elog.Logf("ERROR: exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
+		log.Logf("ERROR: exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
 		return err
 	}
 
-	k8se2elog.Logf("%s is stopped", serviceName)
+	log.Logf("%s is stopped", serviceName)
 
 	return nil
 }
@@ -86,7 +86,7 @@ func (m *Manager) stopStaticPodService(serviceName string, fileName string) erro
 func (m *Manager) startStaticPodService(serviceName string, fileName string) error {
 	manifest := fmt.Sprintf("%s/%s", staticPodTmpPath, fileName)
 	if _, err := os.Stat(manifest); os.IsNotExist(err) {
-		k8se2elog.Logf("%s had been started before", serviceName)
+		log.Logf("%s had been started before", serviceName)
 		return nil
 	}
 	shell := fmt.Sprintf("mv %s %s", manifest, staticPodPath)
@@ -94,11 +94,11 @@ func (m *Manager) startStaticPodService(serviceName string, fileName string) err
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		k8se2elog.Logf("ERROR: exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
+		log.Logf("ERROR: exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
 		return err
 	}
 
-	k8se2elog.Logf("%s is started", serviceName)
+	log.Logf("%s is started", serviceName)
 
 	return nil
 }

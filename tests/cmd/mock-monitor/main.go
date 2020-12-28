@@ -18,7 +18,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/tests/pkg/mock"
 	"k8s.io/apiserver/pkg/server/healthz"
-	k8se2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 func main() {
@@ -28,6 +28,6 @@ func main() {
 	http.HandleFunc("/api/v1/targets", m.ServeTargets)
 	healthz.InstallHandler(http.DefaultServeMux)
 	if err := http.ListenAndServe(":9090", nil); err != nil {
-		k8se2elog.Fail(err.Error())
+		log.Fail(err.Error())
 	}
 }

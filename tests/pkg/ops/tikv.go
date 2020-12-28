@@ -22,7 +22,7 @@ import (
 
 	"github.com/pingcap/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8se2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 const (
@@ -70,7 +70,7 @@ func (ops *TiKVOps) TruncateSSTFile(opts TruncateOptions) error {
 		}
 		stdout, stderr, err := exec("find", "/var/lib/tikv/db", "-name", "*.sst", "-o", "-name", "*.save")
 		if err != nil {
-			k8se2elog.Logf(logHdr+"list sst files: stderr=%s err=%s", stderr, err.Error())
+			log.Logf(logHdr+"list sst files: stderr=%s err=%s", stderr, err.Error())
 			continue
 		}
 
@@ -93,7 +93,7 @@ func (ops *TiKVOps) TruncateSSTFile(opts TruncateOptions) error {
 			}
 		}
 		if len(ssts) == 0 {
-			k8se2elog.Logf(logHdr + "cannot find a sst file")
+			log.Logf(logHdr + "cannot find a sst file")
 			continue
 		}
 
@@ -102,17 +102,17 @@ func (ops *TiKVOps) TruncateSSTFile(opts TruncateOptions) error {
 			_, stderr, err = exec("sh", "-c",
 				fmt.Sprintf("cp %s %s.save && truncate -s 0 %s", sst, sst, sst))
 			if err != nil {
-				k8se2elog.Logf(logHdr+"truncate sst file: sst=%s stderr=%s err=%s", sst, stderr, err.Error())
+				log.Logf(logHdr+"truncate sst file: sst=%s stderr=%s err=%s", sst, stderr, err.Error())
 				continue
 			}
 			truncated++
 		}
 		if truncated == 0 {
-			k8se2elog.Logf(logHdr + "no sst file has been truncated")
+			log.Logf(logHdr + "no sst file has been truncated")
 			continue
 		}
 
-		k8se2elog.Logf(logHdr+"%d sst files got truncated", truncated)
+		log.Logf(logHdr+"%d sst files got truncated", truncated)
 		break
 	}
 
@@ -125,14 +125,14 @@ func (ops *TiKVOps) TruncateSSTFile(opts TruncateOptions) error {
 
 func (ops *TiKVOps) RecoverSSTFile(ns, podName string) error {
 	annotateCmd := fmt.Sprintf("kubectl annotate pod %s -n %s runmode=debug --overwrite", podName, ns)
-	k8se2elog.Logf(annotateCmd)
+	log.Logf(annotateCmd)
 	res, err := exec.Command("/bin/sh", "-c", annotateCmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to annotation pod: %s/%s, %v, %s", ns, podName, err, string(res))
 	}
 
 	findCmd := fmt.Sprintf("kubectl exec -n %s %s -- find /var/lib/tikv/db -name '*.sst.save'", ns, podName)
-	k8se2elog.Logf(findCmd)
+	log.Logf(findCmd)
 	findData, err := exec.Command("/bin/sh", "-c", findCmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to find .save files: %s/%s, %v, %s", ns, podName, err, string(findData))
@@ -145,7 +145,7 @@ func (ops *TiKVOps) RecoverSSTFile(ns, podName string) error {
 		}
 		sstFile := strings.TrimSuffix(saveFile, ".save")
 		mvCmd := fmt.Sprintf("kubectl exec -n %s %s -- mv %s %s", ns, podName, saveFile, sstFile)
-		k8se2elog.Logf(mvCmd)
+		log.Logf(mvCmd)
 		res, err := exec.Command("/bin/sh", "-c", mvCmd).CombinedOutput()
 		if err != nil {
 			return fmt.Errorf("failed to recovery .sst files: %s/%s, %s, %s, %v, %s",
@@ -158,7 +158,7 @@ func (ops *TiKVOps) RecoverSSTFile(ns, podName string) error {
 
 func (ops *TiKVOps) RemovePanicMark(ns, podName string) error {
 	annotateCmd := fmt.Sprintf("kubectl annotate pod %s -n %s runmode=debug --overwrite", podName, ns)
-	k8se2elog.Logf(annotateCmd)
+	log.Logf(annotateCmd)
 	res, err := exec.Command("/bin/sh", "-c", annotateCmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to annotation pod: %s/%s, %v, %s", ns, podName, err, string(res))
@@ -166,7 +166,7 @@ func (ops *TiKVOps) RemovePanicMark(ns, podName string) error {
 
 	rmMarkCmd := "rm -f /var/lib/tikv/panic_mark_file"
 	rmCmd := fmt.Sprintf("kubectl exec -n %s %s -- %s", ns, podName, rmMarkCmd)
-	k8se2elog.Logf(rmCmd)
+	log.Logf(rmCmd)
 	res, err = exec.Command("/bin/sh", "-c", rmCmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to remove panic mark for pod[%s/%s],err:%v, resp:%v", ns, podName, err, string(res))

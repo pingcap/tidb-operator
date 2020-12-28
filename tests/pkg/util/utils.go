@@ -19,7 +19,7 @@ import (
 	"os/exec"
 	"strings"
 
-	k8se2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 const (
@@ -70,7 +70,7 @@ func ListK8sNodes(kubectlPath, labels string) ([]string, error) {
 	if len(nodes) == 0 {
 		return nil, fmt.Errorf("get k8s nodes is empty")
 	}
-	k8se2elog.Logf("get k8s nodes success: %s, labels: %s", nodes, labels)
+	log.Logf("get k8s nodes success: %s, labels: %s", nodes, labels)
 	return nodes, nil
 }
 

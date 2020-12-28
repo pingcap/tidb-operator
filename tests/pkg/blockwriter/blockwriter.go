@@ -25,7 +25,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/tests/pkg/util"
 	"k8s.io/apimachinery/pkg/util/wait"
-	k8se2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 const (
@@ -96,7 +96,7 @@ func (c *BlockWriterCase) newBlockWriter() *blockWriter {
 
 func (c *BlockWriterCase) generateQuery(ctx context.Context, queryChan chan []string, wg *sync.WaitGroup) {
 	defer func() {
-		k8se2elog.Logf("[%s] [%s] [action: generate Query] stopped", c, c.ClusterName)
+		log.Logf("[%s] [%s] [action: generate Query] stopped", c, c.ClusterName)
 		wg.Done()
 	}()
 
@@ -126,7 +126,7 @@ func (c *BlockWriterCase) generateQuery(ctx context.Context, queryChan chan []st
 		case queryChan <- querys:
 			continue
 		default:
-			k8se2elog.Logf("[%s] [%s] [action: generate Query] query channel is full, sleep 10 seconds", c, c.ClusterName)
+			log.Logf("[%s] [%s] [action: generate Query] query channel is full, sleep 10 seconds", c, c.ClusterName)
 			util.Sleep(ctx, 10*time.Second)
 		}
 	}
@@ -135,7 +135,7 @@ func (c *BlockWriterCase) generateQuery(ctx context.Context, queryChan chan []st
 func (bw *blockWriter) batchExecute(db *sql.DB, query string) error {
 	_, err := db.Exec(query)
 	if err != nil {
-		k8se2elog.Logf("exec sql [%s] failed, err: %v", query, err)
+		log.Logf("exec sql [%s] failed, err: %v", query, err)
 		return err
 	}
 
@@ -143,7 +143,7 @@ func (bw *blockWriter) batchExecute(db *sql.DB, query string) error {
 }
 
 func (bw *blockWriter) run(ctx context.Context, db *sql.DB, queryChan chan []string) {
-	defer k8se2elog.Logf("run stopped")
+	defer log.Logf("run stopped")
 	for {
 		select {
 		case <-ctx.Done():
@@ -163,7 +163,7 @@ func (bw *blockWriter) run(ctx context.Context, db *sql.DB, queryChan chan []str
 				return
 			default:
 				if err := bw.batchExecute(db, query); err != nil {
-					k8se2elog.Logf(err.Error())
+					log.Logf(err.Error())
 					time.Sleep(5 * time.Second)
 					continue
 				}
@@ -174,10 +174,10 @@ func (bw *blockWriter) run(ctx context.Context, db *sql.DB, queryChan chan []str
 
 // Initialize inits case
 func (c *BlockWriterCase) initialize(db *sql.DB) error {
-	k8se2elog.Logf("[%s] [%s] start to init...", c, c.ClusterName)
+	log.Logf("[%s] [%s] start to init...", c, c.ClusterName)
 	defer func() {
 		atomic.StoreUint32(&c.isInit, 1)
-		k8se2elog.Logf("[%s] [%s] init end...", c, c.ClusterName)
+		log.Logf("[%s] [%s] init end...", c, c.ClusterName)
 	}()
 
 	for i := 0; i < c.cfg.TableNum; i++ {
@@ -196,7 +196,7 @@ func (c *BlockWriterCase) initialize(db *sql.DB) error {
 		err := wait.PollImmediate(5*time.Second, 30*time.Second, func() (bool, error) {
 			_, err := db.Exec(tmt)
 			if err != nil {
-				k8se2elog.Logf("[%s] exec sql [%s] failed, err: %v, retry...", c, tmt, err)
+				log.Logf("[%s] exec sql [%s] failed, err: %v, retry...", c, tmt, err)
 				return false, nil
 			}
 
@@ -204,7 +204,7 @@ func (c *BlockWriterCase) initialize(db *sql.DB) error {
 		})
 
 		if err != nil {
-			k8se2elog.Logf("ERROR: [%s] exec sql [%s] failed, err: %v", c, tmt, err)
+			log.Logf("ERROR: [%s] exec sql [%s] failed, err: %v", c, tmt, err)
 			return err
 		}
 	}
@@ -216,13 +216,13 @@ func (c *BlockWriterCase) initialize(db *sql.DB) error {
 func (c *BlockWriterCase) Start(db *sql.DB) error {
 	if !atomic.CompareAndSwapUint32(&c.isRunning, 0, 1) {
 		err := fmt.Errorf("[%s] [%s] is running, you can't start it again", c, c.ClusterName)
-		k8se2elog.Logf("ERROR: %v", err)
+		log.Logf("ERROR: %v", err)
 		return nil
 	}
 
 	defer func() {
 		c.RLock()
-		k8se2elog.Logf("[%s] [%s] stopped", c, c.ClusterName)
+		log.Logf("[%s] [%s] stopped", c, c.ClusterName)
 		atomic.SwapUint32(&c.isRunning, 0)
 	}()
 
@@ -232,7 +232,7 @@ func (c *BlockWriterCase) Start(db *sql.DB) error {
 		}
 	}
 
-	k8se2elog.Logf("[%s] [%s] start to execute case...", c, c.ClusterName)
+	log.Logf("[%s] [%s] start to execute case...", c, c.ClusterName)
 
 	var wg sync.WaitGroup
 
@@ -255,7 +255,7 @@ loop:
 	for {
 		select {
 		case <-c.stopChan:
-			k8se2elog.Logf("[%s] stoping...", c)
+			log.Logf("[%s] stoping...", c)
 			cancel()
 			break loop
 		default:
