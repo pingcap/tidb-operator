@@ -1197,6 +1197,12 @@ func TestGetMonitorThanosSidecarContainer(t *testing.T) {
 						},
 					},
 					{
+						Name: "NAMESPACE",
+						ValueFrom: &corev1.EnvVarSource{
+							FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.namespace"},
+						},
+					},
+					{
 						Name: "OBJSTORE_CONFIG",
 						ValueFrom: &corev1.EnvVarSource{
 							SecretKeyRef: &corev1.SecretKeySelector{
