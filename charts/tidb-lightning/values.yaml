@@ -17,6 +17,7 @@ service:
 failFast: true
 
 dataSource:
+  # for `local` source, the `nodeName` should be the label value of `kubernetes.io/hostname`.
   local: {}
     # nodeName: kind-worker3
     # hostPath: /data/export-20190820
@@ -90,9 +91,9 @@ annotations: {}
 tolerations: []
 affinity: {}
 
-# The delivery backend used to import data.
+# The delivery backend used to import data (valid options include `importer`, `local` and `tidb`).
 # If set to `local`, then the following `sortedKV` should be set.
-backend: importer # importer | local | tidb
+backend: importer
 
 # For `local` backend, an extra PV is needed for local KV sorting.
 sortedKV: {}

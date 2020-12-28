@@ -36,7 +36,8 @@ spec:
 {{ toYaml .Values.imagePullSecrets | indent 6 }}
       {{- end }}
       {{ if and .Values.dataSource.local.hostPath .Values.dataSource.local.nodeName -}}
-      nodeName: {{ .Values.dataSource.local.nodeName }}
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.dataSource.local.nodeName }}
       {{ else if not .Values.dataSource.adhoc.pvcName -}}
       initContainers:
       - name: data-retriever
