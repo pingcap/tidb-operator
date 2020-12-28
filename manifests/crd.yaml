@@ -15246,6 +15246,8 @@ spec:
                 type: object
               type: array
             dm: {}
+            externalLabels:
+              type: object
             grafana: {}
             imagePullPolicy:
               type: string
@@ -15267,10 +15269,13 @@ spec:
             pvReclaimPolicy:
               type: string
             reloader: {}
+            replicaExternalLabelName:
+              type: string
             storage:
               type: string
             storageClassName:
               type: string
+            thanos: {}
             tolerations:
               items:
                 properties:

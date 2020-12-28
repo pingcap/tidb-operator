@@ -2022,6 +2022,19 @@ DMMonitorSpec
 </tr>
 <tr>
 <td>
+<code>thanos</code></br>
+<em>
+<a href="#thanosspec">
+ThanosSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
 <code>pvReclaimPolicy</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#persistentvolumereclaimpolicy-v1-core">
@@ -2188,6 +2201,31 @@ bool
 </td>
 <td>
 <p>ClusterScoped indicates whether this monitor should manage Kubernetes cluster-wide TiDB clusters</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>externalLabels</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>The labels to add to any time series or alerts when communicating with
+external systems (federation, remote storage, Alertmanager).</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>replicaExternalLabelName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of Prometheus external label used to denote replica name.
+Defaults to the value of <code>prometheus_replica</code>. External label will
+<em>not</em> be added when value is set to empty string (<code>&quot;&quot;</code>).</p>
 </td>
 </tr>
 </table>
@@ -6998,7 +7036,8 @@ string
 <a href="#grafanaspec">GrafanaSpec</a>, 
 <a href="#initializerspec">InitializerSpec</a>, 
 <a href="#prometheusspec">PrometheusSpec</a>, 
-<a href="#reloaderspec">ReloaderSpec</a>)
+<a href="#reloaderspec">ReloaderSpec</a>, 
+<a href="#thanosspec">ThanosSpec</a>)
 </p>
 <p>
 <p>MonitorContainer is the common attributes of the container of monitoring</p>
@@ -9667,6 +9706,17 @@ PrometheusConfiguration
 <em>(Optional)</em>
 </td>
 </tr>
+<tr>
+<td>
+<code>disableCompaction</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Disable prometheus compaction.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="proxyconfig">ProxyConfig</h3>
@@ -10677,6 +10727,129 @@ string
 <p>
 <p>S3StorageProviderType represents the specific storage provider that implements the S3 interface</p>
 </p>
+<h3 id="safetlsconfig">SafeTLSConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tlsconfig">TLSConfig</a>)
+</p>
+<p>
+<p>SafeTLSConfig specifies safe TLS configuration parameters.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ca</code></br>
+<em>
+<a href="#secretorconfigmap">
+SecretOrConfigMap
+</a>
+</em>
+</td>
+<td>
+<p>Struct containing the CA cert to use for the targets.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>cert</code></br>
+<em>
+<a href="#secretorconfigmap">
+SecretOrConfigMap
+</a>
+</em>
+</td>
+<td>
+<p>Struct containing the client cert file for the targets.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>keySecret</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#secretkeyselector-v1-core">
+Kubernetes core/v1.SecretKeySelector
+</a>
+</em>
+</td>
+<td>
+<p>Secret containing the client key file for the targets.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serverName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Used to verify the hostname for the targets.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>insecureSkipVerify</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Disable target certificate validation.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="secretorconfigmap">SecretOrConfigMap</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#safetlsconfig">SafeTLSConfig</a>)
+</p>
+<p>
+<p>SecretOrConfigMap allows to specify data as a Secret or ConfigMap. Fields are mutually exclusive.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>secret</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#secretkeyselector-v1-core">
+Kubernetes core/v1.SecretKeySelector
+</a>
+</em>
+</td>
+<td>
+<p>Secret containing data to use for the targets.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>configMap</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#configmapkeyselector-v1-core">
+Kubernetes core/v1.ConfigMapKeySelector
+</a>
+</em>
+</td>
+<td>
+<p>ConfigMap containing data to use for the targets.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="secretref">SecretRef</h3>
 <p>
 (<em>Appears on:</em>
@@ -11324,6 +11497,228 @@ For TiKV: kubectl create secret generic <clusterName>-tikv-cluster-secret &ndash
 For TiDB: kubectl create secret generic <clusterName>-tidb-cluster-secret &ndash;namespace=<namespace> &ndash;from-file=tls.crt=<path/to/tls.crt> &ndash;from-file=tls.key=<path/to/tls.key> &ndash;from-file=ca.crt=<path/to/ca.crt>
 For Client: kubectl create secret generic <clusterName>-cluster-client-secret &ndash;namespace=<namespace> &ndash;from-file=tls.crt=<path/to/tls.crt> &ndash;from-file=tls.key=<path/to/tls.key> &ndash;from-file=ca.crt=<path/to/ca.crt>
 Same for other components.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tlsconfig">TLSConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#thanosspec">ThanosSpec</a>)
+</p>
+<p>
+<p>TLSConfig extends the safe TLS configuration with file parameters.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>SafeTLSConfig</code></br>
+<em>
+<a href="#safetlsconfig">
+SafeTLSConfig
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>SafeTLSConfig</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>caFile</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Path to the CA cert in the Prometheus container to use for the targets.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>certFile</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Path to the client cert file in the Prometheus container for the targets.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>keyFile</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Path to the client key file in the Prometheus container for the targets.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="thanosspec">ThanosSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbmonitorspec">TidbMonitorSpec</a>)
+</p>
+<p>
+<p>ThanosSpec is the desired state of thanos sidecar</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>MonitorContainer</code></br>
+<em>
+<a href="#monitorcontainer">
+MonitorContainer
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>MonitorContainer</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>objectStorageConfig</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#secretkeyselector-v1-core">
+Kubernetes core/v1.SecretKeySelector
+</a>
+</em>
+</td>
+<td>
+<p>ObjectStorageConfig configures object storage in Thanos.
+Alternative to ObjectStorageConfigFile, and lower order priority.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>objectStorageConfigFile</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>ObjectStorageConfigFile specifies the path of the object storage configuration file.
+When used alongside with ObjectStorageConfig, ObjectStorageConfigFile takes precedence.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>listenLocal</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>ListenLocal makes the Thanos sidecar listen on loopback, so that it
+does not bind against the Pod IP.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tracingConfig</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#secretkeyselector-v1-core">
+Kubernetes core/v1.SecretKeySelector
+</a>
+</em>
+</td>
+<td>
+<p>TracingConfig configures tracing in Thanos. This is an experimental feature, it may change in any upcoming release in a breaking way.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tracingConfigFile</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>TracingConfig specifies the path of the tracing configuration file.
+When used alongside with TracingConfig, TracingConfigFile takes precedence.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>grpcServerTlsConfig</code></br>
+<em>
+<a href="#tlsconfig">
+TLSConfig
+</a>
+</em>
+</td>
+<td>
+<p>GRPCServerTLSConfig configures the gRPC server from which Thanos Querier reads
+recorded rule data.
+Note: Currently only the CAFile, CertFile, and KeyFile fields are supported.
+Maps to the &lsquo;&ndash;grpc-server-tls-*&rsquo; CLI args.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logLevel</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LogLevel for Thanos sidecar to be configured with.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logFormat</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LogFormat for Thanos sidecar to be configured with.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>minTime</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>MinTime for Thanos sidecar to be configured with. Option can be a constant time in RFC3339 format or time duration relative to current time, such as -1d or 2h45m. Valid duration units are ms, s, m, h, d, w, y.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>routePrefix</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>RoutePrefix is prometheus prefix url</p>
 </td>
 </tr>
 </tbody>
@@ -19194,6 +19589,19 @@ DMMonitorSpec
 </tr>
 <tr>
 <td>
+<code>thanos</code></br>
+<em>
+<a href="#thanosspec">
+ThanosSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
 <code>pvReclaimPolicy</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#persistentvolumereclaimpolicy-v1-core">
@@ -19360,6 +19768,31 @@ bool
 </td>
 <td>
 <p>ClusterScoped indicates whether this monitor should manage Kubernetes cluster-wide TiDB clusters</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>externalLabels</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>The labels to add to any time series or alerts when communicating with
+external systems (federation, remote storage, Alertmanager).</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>replicaExternalLabelName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of Prometheus external label used to denote replica name.
+Defaults to the value of <code>prometheus_replica</code>. External label will
+<em>not</em> be added when value is set to empty string (<code>&quot;&quot;</code>).</p>
 </td>
 </tr>
 </tbody>
