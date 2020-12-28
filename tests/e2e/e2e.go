@@ -108,7 +108,7 @@ func setupSuite() {
 	// In large clusters we may get to this point but still have a bunch
 	// of nodes without Routes created. Since this would make a node
 	// unschedulable, we need to wait until all of them are schedulable.
-	framework.ExpectNoError(framework.WaitForAllNodesSchedulable(c, framework.TestContext.NodeSchedulableTimeout))
+	framework.ExpectNoError(framework.WaitForAllNodesSchedulable(c, framework.TestContext.NodeSchedulableTimeout), "some nodes are not schedulable")
 
 	// If NumNodes is not specified then auto-detect how many are scheduleable and not tainted
 	if framework.TestContext.CloudConfig.NumNodes == framework.DefaultNumNodes {
@@ -136,10 +136,10 @@ func setupSuite() {
 
 	ginkgo.By("Initializing all nodes")
 	nodeList, err := c.CoreV1().Nodes().List(metav1.ListOptions{})
-	framework.ExpectNoError(err)
+	framework.ExpectNoError(err, "list nodes failed")
 	for _, node := range nodeList.Items {
 		framework.Logf("Initializing node %q", node.Name)
-		framework.ExpectNoError(utilnode.InitNode(&node))
+		framework.ExpectNoError(utilnode.InitNode(&node), fmt.Sprintf("initializing node %s failed", node.Name))
 	}
 
 	// By using default storage class in GKE/EKS (aws), network attached storage
@@ -151,7 +151,7 @@ func setupSuite() {
 	if framework.TestContext.Provider == "gke" || framework.TestContext.Provider == "aws" || framework.TestContext.Provider == "kind" {
 		defaultSCName := "local-storage"
 		list, err := c.StorageV1().StorageClasses().List(metav1.ListOptions{})
-		framework.ExpectNoError(err)
+		framework.ExpectNoError(err, "list storage class failed")
 		// only one storage class can be marked default
 		// https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/#changing-the-default-storageclass
 		var localStorageSC *storagev1.StorageClass
@@ -161,7 +161,7 @@ func setupSuite() {
 			} else if storageutil.IsDefaultAnnotation(sc.ObjectMeta) {
 				delete(sc.ObjectMeta.Annotations, storageutil.IsDefaultStorageClassAnnotation)
 				_, err = c.StorageV1().StorageClasses().Update(&sc)
-				framework.ExpectNoError(err)
+				framework.ExpectNoError(err, "update storage class failed, %v", sc)
 			}
 		}
 		if localStorageSC == nil {
@@ -173,7 +173,7 @@ func setupSuite() {
 		localStorageSC.Annotations[storageutil.IsDefaultStorageClassAnnotation] = "true"
 		e2elog.Logf("Setting %q as the default storage class", localStorageSC.Name)
 		_, err = c.StorageV1().StorageClasses().Update(localStorageSC)
-		framework.ExpectNoError(err)
+		framework.ExpectNoError(err, "update storage class failed, %v", localStorageSC)
 	}
 
 	// Log the version of the server and this client.
@@ -235,22 +235,23 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	}
 	// Get clients
 	config, err := framework.LoadConfig()
+	framework.ExpectNoError(err, "failed to load config")
 	config.QPS = 20
 	config.Burst = 50
-	framework.ExpectNoError(err, "failed to load config")
 	cli, err := versioned.NewForConfig(config)
-	framework.ExpectNoError(err, "failed to create clientset")
+	framework.ExpectNoError(err, "failed to create clientset for Pingcap")
 	kubeCli, err := kubernetes.NewForConfig(config)
-	framework.ExpectNoError(err, "failed to create clientset")
+	framework.ExpectNoError(err, "failed to create clientset for Kubernetes")
 	aggrCli, err := aggregatorclientset.NewForConfig(config)
-	framework.ExpectNoError(err, "failed to create clientset")
+	framework.ExpectNoError(err, "failed to create clientset for kube-aggregator")
 	apiExtCli, err := apiextensionsclientset.NewForConfig(config)
-	framework.ExpectNoError(err, "failed to create clientset")
+	framework.ExpectNoError(err, "failed to create clientset for apiextensions-apiserver")
 	asCli, err := asclientset.NewForConfig(config)
-	framework.ExpectNoError(err, "failed to create clientset")
+	framework.ExpectNoError(err, "failed to create clientset for advanced-statefulset")
+
 	ginkgo.By("Recycle all local PVs")
 	pvList, err := kubeCli.CoreV1().PersistentVolumes().List(metav1.ListOptions{})
-	framework.ExpectNoError(err, "failed to list pvList")
+	framework.ExpectNoError(err, "failed to list persistent volumes")
 	for _, pv := range pvList.Items {
 		if pv.Spec.StorageClassName != "local-storage" {
 			continue
@@ -258,11 +259,12 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 		if pv.Spec.PersistentVolumeReclaimPolicy == v1.PersistentVolumeReclaimDelete {
 			continue
 		}
-		ginkgo.By(fmt.Sprintf("Update reclaim policy of PV %s to %s", pv.Name, v1.PersistentVolumeReclaimDelete))
+		e2elog.Logf("Update reclaim policy of PV %s to %s", pv.Name, v1.PersistentVolumeReclaimDelete)
 		pv.Spec.PersistentVolumeReclaimPolicy = v1.PersistentVolumeReclaimDelete
 		_, err = kubeCli.CoreV1().PersistentVolumes().Update(&pv)
-		framework.ExpectNoError(err, fmt.Sprintf("failed to update pv %s", pv.Name))
+		framework.ExpectNoError(err, "failed to update pv %s", pv.Name)
 	}
+
 	ginkgo.By("Wait for all local PVs to be available")
 	err = wait.Poll(time.Second, time.Minute, func() (bool, error) {
 		pvList, err := kubeCli.CoreV1().PersistentVolumes().List(metav1.ListOptions{})
