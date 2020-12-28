@@ -258,6 +258,14 @@ func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 				},
 				Envs: map[string]string{},
 			},
+			Thanos: &v1alpha1.ThanosSpec{
+				MonitorContainer: v1alpha1.MonitorContainer{
+					BaseImage:            utilimage.ThanosImage,
+					Version:              utilimage.ThanosVersion,
+					ImagePullPolicy:      &imagePullPolicy,
+					ResourceRequirements: corev1.ResourceRequirements{},
+				},
+			},
 		},
 	}
 	if isRetain {
