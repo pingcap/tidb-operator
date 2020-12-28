@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"k8s.io/klog"
+	k8se2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 var (
@@ -161,6 +162,7 @@ func SendWarnMsg(msg string) error {
 }
 
 func NotifyAndPanic(err error) {
+	k8se2elog.Logf("sending err via slack, err: %v", err)
 	sendErr := SendErrMsg(fmt.Sprintf("Succeed %d times, then failed: %s", SuccessCount, err.Error()))
 	if sendErr != nil {
 		klog.Warningf("failed to notify slack[%s] the massage: %v,error: %v", WebhookURL, err, sendErr)
