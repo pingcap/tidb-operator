@@ -1106,18 +1106,18 @@ func (oa *operatorActions) getBlockWriterPod(info *TidbClusterConfig, database s
 func (oa *operatorActions) BeginInsertDataTo(info *TidbClusterConfig) error {
 	oa.EmitEvent(info, fmt.Sprintf("BeginInsertData: concurrency: %d", info.BlockWriteConfig.Concurrency))
 
-	pod := oa.getBlockWriterPod(info, "sbtest")
-	pod, err := oa.kubeCli.CoreV1().Pods(info.Namespace).Create(pod)
+	bwpod := oa.getBlockWriterPod(info, "sbtest")
+	bwpod, err := oa.kubeCli.CoreV1().Pods(info.Namespace).Create(bwpod)
 	if err != nil {
 		log.Logf("ERROR: %v", err)
 		return err
 	}
-	info.blockWriterPod = pod
-	err = pod.WaitForPodRunningInNamespace(oa.kubeCli, pod)
+	info.blockWriterPod = bwpod
+	err = pod.WaitForPodRunningInNamespace(oa.kubeCli, bwpod)
 	if err != nil {
 		return err
 	}
-	log.Logf("begin insert Data in pod[%s/%s]", pod.Namespace, pod.Name)
+	log.Logf("begin insert Data in pod[%s/%s]", bwpod.Namespace, bwpod.Name)
 	return nil
 }
 
