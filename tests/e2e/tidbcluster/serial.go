@@ -943,7 +943,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		var version string
 
 		ginkgo.BeforeEach(func() {
-			version = "v1.1.0"
+			version = "v1.1.7"
 			ocfg = &tests.OperatorConfig{
 				Namespace:   ns,
 				ReleaseName: "operator",
