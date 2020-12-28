@@ -20,7 +20,7 @@ dataSource:
   local: {}
     # nodeName: kind-worker3
     # hostPath: /data/export-20190820
-  # The backup data is on a PVC which is from tidb-backup or scheduled backup, and is not uploaded to cloud storage yet.
+  # The backup data is on a PVC which is exported and unarchived from tidb-backup or scheduled backup.
   # Note: when using this mode, the lightning needs to be deployed in the same namespace as the PVC
   # and the `targetTidbCluster.namespace` needs to be configured explicitly
   adhoc: {}
