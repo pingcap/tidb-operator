@@ -1,7 +1,12 @@
+{{- if (hasKey .Values.controllerManager "create" | ternary .Values.controllerManager.create true) }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  {{- if eq .Values.appendReleaseSuffix true}}
+  name: tidb-controller-manager-{{.Release.Name }}
+  {{- else }}
   name: tidb-controller-manager
+  {{- end }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -66,6 +71,10 @@ spec:
           {{- if and ( .Values.admissionWebhook.create ) ( .Values.admissionWebhook.validation.pods ) }}
           - -pod-webhook-enabled=true
           {{- end }}
+          {{- if .Values.controllerManager.selector }}
+          {{- $label := join "," .Values.controllerManager.selector }}
+          - -selector={{ $label }}
+          {{- end }}
         env:
           - name: NAMESPACE
             valueFrom:
@@ -73,7 +82,10 @@ spec:
                 fieldPath: metadata.namespace
           - name: TZ
             value: {{ .Values.timezone | default "UTC" }}
-
+          {{- if eq .Values.appendReleaseSuffix true}}
+          - name: HELM_RELEASE
+            value: {{ .Release.Name }}
+          {{- end }}
       {{- with .Values.controllerManager.nodeSelector }}
       nodeSelector:
 {{ toYaml . | indent 8 }}
@@ -92,4 +104,4 @@ spec:
       {{- if .Values.controllerManager.priorityClassName }}
       priorityClassName: {{ .Values.controllerManager.priorityClassName }}
       {{- end }}
-
+{{- end }}
