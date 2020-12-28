@@ -99,7 +99,7 @@ backend: importer # importer | tidb
 # If you want to store the checkpoint under source data directory, you should set `CHECKPOINT_USE_DATA_DIR` as the prefix of `dsn`.
 # If you do not update the `CHECKPOINT_USE_DATA_DIR` in the following `dsn` field, it will be replaced automatically in the startup script with the following rules:
 # for `local` data source, `CHECKPOINT_USE_DATA_DIR` is replaced by `hostPath`;
-# for `adhoc` data source, `CHECKPOINT_USE_DATA_DIR` is the path to `backupName` (`pvcName` if `backupName` is not specified) in `pvcName` PVC;
+# for `adhoc` data source, `CHECKPOINT_USE_DATA_DIR` is replaced by the path to `backupName` (`pvcName` if `backupName` is not specified) in `pvcName` PVC;
 # for `remote` data source, `CHECKPOINT_USE_DATA_DIR` is a path to the PVC which requested by this chart.
 config: |
   [lightning]
