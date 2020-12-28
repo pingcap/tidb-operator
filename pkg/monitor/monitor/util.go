@@ -1080,6 +1080,12 @@ func getThanosSidecarContainer(monitor *v1alpha1.TidbMonitor) core.Container {
 					FieldRef: &core.ObjectFieldSelector{FieldPath: "metadata.name"},
 				},
 			},
+			{
+				Name: "NAMESPACE",
+				ValueFrom: &core.EnvVarSource{
+					FieldRef: &core.ObjectFieldSelector{FieldPath: "metadata.namespace"},
+				},
+			},
 		},
 		Ports: []core.ContainerPort{
 			{
@@ -1157,7 +1163,7 @@ func buildExternalLabels(monitor *v1alpha1.TidbMonitor) model.LabelSet {
 		}
 	}
 	if replicaExternalLabelName != "" {
-		m[model.LabelName(replicaExternalLabelName)] = "$(POD_NAME)"
+		m[model.LabelName(replicaExternalLabelName)] = "$(NAMESPACE)_$(POD_NAME)"
 	}
 	for n, v := range monitor.Spec.ExternalLabels {
 		m[model.LabelName(n)] = model.LabelValue(v)
