@@ -99,7 +99,7 @@ func GetStoragePath(backup *v1alpha1.Backup) (string, error) {
 	case v1alpha1.BackupStorageTypeGcs:
 		prefix = backup.Spec.StorageProvider.Gcs.Prefix
 		bucket = backup.Spec.StorageProvider.Gcs.Bucket
-		url = fmt.Sprintf("gcs://%s", path.Join(bucket, prefix))
+		url = fmt.Sprintf("gcs://%s/", path.Join(bucket, prefix))
 		return url, nil
 	case v1alpha1.BackupStorageTypeLocal:
 		prefix = backup.Spec.StorageProvider.Local.Prefix
