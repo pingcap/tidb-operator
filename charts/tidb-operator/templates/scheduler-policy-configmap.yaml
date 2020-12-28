@@ -1,7 +1,12 @@
+{{- if (hasKey .Values.scheduler "create" | ternary .Values.scheduler.create true) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  {{- if eq .Values.appendReleaseSuffix true}}
+  name: {{ .Values.scheduler.schedulerName }}-policy-{{.Release.Name}}
+  {{- else }}
   name: {{ .Values.scheduler.schedulerName }}-policy
+  {{- end }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -11,3 +16,4 @@ metadata:
 data:
   policy.cfg: |-
 {{ tuple "config/_scheduler-policy-json.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+{{- end }}
