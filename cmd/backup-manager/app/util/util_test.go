@@ -243,7 +243,7 @@ func TestGetRemotePath(t *testing.T) {
 					},
 				},
 			},
-			expect: "gcs://test1-demo1",
+			expect: "gcs://test1-demo1/",
 		},
 		{
 			name: "unknow storage type",
