@@ -1,11 +1,15 @@
 {{/*
 Delete permission is required in OpenShift because we can't own resources we created if we can't delete them.
 */}}
-{{- if .Values.rbac.create }}
+{{- if and .Values.rbac.create (hasKey .Values.controllerManager "create" | ternary .Values.controllerManager.create true) }}
 kind: ServiceAccount
 apiVersion: v1
 metadata:
+  {{- if eq .Values.appendReleaseSuffix true}}
+  name: {{ .Values.controllerManager.serviceAccount }}-{{ .Release.Name }}
+  {{- else }}
   name: {{ .Values.controllerManager.serviceAccount }}
+  {{- end }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
