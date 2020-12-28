@@ -1270,7 +1270,7 @@ func TestBuildExternalLabels(t *testing.T) {
 				},
 			},
 			expected: &model.LabelSet{
-				defaultReplicaExternalLabelName: "$(NAMESPACE)_$(POD_NAME)s",
+				defaultReplicaExternalLabelName: "$(NAMESPACE)_$(POD_NAME)",
 			},
 		},
 	}
