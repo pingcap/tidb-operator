@@ -465,7 +465,7 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 	if monitor.Spec.Prometheus.Config != nil && len(monitor.Spec.Prometheus.Config.CommandOptions) > 0 {
 		c.Command = append(c.Command, monitor.Spec.Prometheus.Config.CommandOptions...)
 	}
-	if monitor.Spec.Prometheus.DisableCompaction {
+	if monitor.Spec.Prometheus.DisableCompaction || monitor.Spec.Thanos != nil {
 		c.Command = append(c.Command, "--storage.tsdb.max-block-duration=2h")
 		c.Command = append(c.Command, "--storage.tsdb.min-block-duration=2h")
 	}
