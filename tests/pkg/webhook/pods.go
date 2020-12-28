@@ -38,7 +38,7 @@ func (wh *webhook) admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionRespo
 	podResource := metav1.GroupVersionResource{Group: "", Version: "v1", Resource: "pods"}
 	if ar.Request.Resource != podResource {
 		err := fmt.Errorf("expect resource to be %s", podResource)
-		k8se2elog.Logf("%v", err)
+		k8se2elog.Logf("ERROR: %v", err)
 		return toAdmissionResponse(err)
 	}
 
@@ -88,17 +88,17 @@ func (wh *webhook) admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionRespo
 
 		leader, err := pdClient.GetPDLeader()
 		if err != nil {
-			k8se2elog.Logf("fail to get pd leader %v", err)
+			k8se2elog.Logf("ERROR: fail to get pd leader %v", err)
 			return &reviewResponse
 		}
 
 		if leader.Name == name && tc.Status.PD.StatefulSet.Replicas > 1 {
 			time.Sleep(10 * time.Second)
 			err := fmt.Errorf("pd is leader, can't be deleted namespace %s name %s", namespace, name)
-			k8se2elog.Logf(err.Error())
+			k8se2elog.Logf("ERROR: %v", err)
 			sendErr := slack.SendErrMsg(err.Error())
 			if sendErr != nil {
-				k8se2elog.Logf(sendErr.Error())
+				k8se2elog.Logf("ERROR: %v", sendErr)
 			}
 			// TODO use context instead
 			os.Exit(3)

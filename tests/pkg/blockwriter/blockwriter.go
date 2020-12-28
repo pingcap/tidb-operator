@@ -204,7 +204,7 @@ func (c *BlockWriterCase) initialize(db *sql.DB) error {
 		})
 
 		if err != nil {
-			k8se2elog.Logf("[%s] exec sql [%s] failed, err: %v", c, tmt, err)
+			k8se2elog.Logf("ERROR: [%s] exec sql [%s] failed, err: %v", c, tmt, err)
 			return err
 		}
 	}
@@ -216,7 +216,7 @@ func (c *BlockWriterCase) initialize(db *sql.DB) error {
 func (c *BlockWriterCase) Start(db *sql.DB) error {
 	if !atomic.CompareAndSwapUint32(&c.isRunning, 0, 1) {
 		err := fmt.Errorf("[%s] [%s] is running, you can't start it again", c, c.ClusterName)
-		k8se2elog.Logf(err.Error())
+		k8se2elog.Logf("ERROR: %v", err)
 		return nil
 	}
 

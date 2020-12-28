@@ -71,7 +71,7 @@ func ExtractResponse(data []byte) ([]byte, error) {
 	if respData.StatusCode != http.StatusOK {
 		d, err := json.Marshal(respData.Payload)
 		if err != nil {
-			k8se2elog.Logf("marshal data failed %v", d)
+			k8se2elog.Logf("ERROR: marshal data failed %v", d)
 		}
 
 		return d, errors.New(respData.Message)

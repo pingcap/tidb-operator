@@ -144,6 +144,6 @@ func (m *mockPrometheus) addIntoMaps(mp *MonitorParams, response string) {
 
 func writeResponse(w http.ResponseWriter, msg string) {
 	if _, err := w.Write([]byte(msg)); err != nil {
-		k8se2elog.Logf(err.Error())
+		k8se2elog.Logf("ERROR: %v", err)
 	}
 }

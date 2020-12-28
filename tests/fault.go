@@ -176,7 +176,7 @@ func (fa *faultTriggerActions) StopNode() (string, string, time.Time, error) {
 	if err := faultCli.StopVM(&manager.VM{
 		Name: name,
 	}); err != nil {
-		k8se2elog.Logf("failed to stop node %s on physical node: %s: %v", node, physicalNode, err)
+		k8se2elog.Logf("ERROR: failed to stop node %s on physical node: %s: %v", node, physicalNode, err)
 		return "", "", now, err
 	}
 
@@ -216,7 +216,7 @@ func (fa *faultTriggerActions) StartNode(physicalNode string, node string) error
 	if err := faultCli.StartVM(&manager.VM{
 		Name: name,
 	}); err != nil {
-		k8se2elog.Logf("failed to start node %s on physical node %s: %v", node, physicalNode, err)
+		k8se2elog.Logf("ERROR: failed to start node %s on physical node %s: %v", node, physicalNode, err)
 		return err
 	}
 
@@ -553,7 +553,7 @@ func (fa *faultTriggerActions) serviceAction(node string, serverName string, act
 	}
 
 	if err != nil {
-		k8se2elog.Logf("failed to %s %s %s: %v", action, serverName, node, err)
+		k8se2elog.Logf("ERROR: failed to %s %s %s: %v", action, serverName, node, err)
 		return err
 	}
 
@@ -576,7 +576,7 @@ func getFaultNode(kubeCli kubernetes.Interface) (string, error) {
 	err = wait.Poll(2*time.Second, 10*time.Second, func() (bool, error) {
 		nodes, err = kubeCli.CoreV1().Nodes().List(metav1.ListOptions{})
 		if err != nil {
-			k8se2elog.Logf("trigger node stop failed when get all nodes, error: %v", err)
+			k8se2elog.Logf("ERROR: trigger node stop failed when get all nodes, error: %v", err)
 			return false, nil
 		}
 
@@ -584,7 +584,7 @@ func getFaultNode(kubeCli kubernetes.Interface) (string, error) {
 	})
 
 	if err != nil {
-		k8se2elog.Logf("failed to list nodes: %v", err)
+		k8se2elog.Logf("ERROR: failed to list nodes: %v", err)
 		return "", err
 	}
 

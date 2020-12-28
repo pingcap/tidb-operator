@@ -478,7 +478,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				// confirm the pd Pod haven't been changed
 				changed, err := utilpod.PodsAreChanged(c, pdPods)()
 				if err != nil {
-					k8se2elog.Logf("meet error during verify pd pods, err:%v", err)
+					k8se2elog.Logf("ERROR: meet error during verify pd pods, err:%v", err)
 					return true, nil
 				}
 				if changed {
@@ -489,7 +489,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				// confirm the tikv haven't been changed
 				changed, err = utilpod.PodsAreChanged(c, tikvPods)()
 				if err != nil {
-					k8se2elog.Logf("meet error during verify tikv pods, err:%v", err)
+					k8se2elog.Logf("ERROR: meet error during verify tikv pods, err:%v", err)
 					return true, nil
 				}
 				if changed {
@@ -500,7 +500,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				// confirm the tidb haven't been changed
 				changed, err = utilpod.PodsAreChanged(c, tidbPods)()
 				if err != nil {
-					k8se2elog.Logf("meet error during verify tidb pods, err:%v", err)
+					k8se2elog.Logf("ERROR: meet error during verify tidb pods, err:%v", err)
 					return true, nil
 				}
 				if changed {
@@ -544,7 +544,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				tmSet, err := stsGetter.StatefulSets(ns).Get(monitor.GetMonitorObjectName(tm), metav1.GetOptions{})
 				if err != nil {
-					k8se2elog.Logf("failed to get statefulset: %s/%s, %v", ns, tmSet, err)
+					k8se2elog.Logf("ERROR: failed to get statefulset: %s/%s, %v", ns, tmSet, err)
 					return false, nil
 				}
 				return true, nil
@@ -559,7 +559,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 						k8se2elog.Logf("tm[%s/%s]'s first sts pvc not found,tag:%s,image:%s", ns, tm.Name, cfg.OperatorTag, cfg.OperatorImage)
 						return false, nil
 					}
-					k8se2elog.Logf("get tidbmonitor sts pvc err:%v", err)
+					k8se2elog.Logf("ERROR: get tidbmonitor sts pvc err:%v", err)
 					return false, nil
 				}
 				if stsPvc.Spec.VolumeName == oldVolumeName {

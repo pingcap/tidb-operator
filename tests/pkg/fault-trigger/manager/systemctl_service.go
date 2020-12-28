@@ -50,7 +50,7 @@ func (m *Manager) systemctlStartService(serviceName string) error {
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		k8se2elog.Logf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
+		k8se2elog.Logf("ERROR: exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
 		return err
 	}
 
@@ -64,7 +64,7 @@ func (m *Manager) systemctlStopService(serviceName string) error {
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		k8se2elog.Logf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
+		k8se2elog.Logf("ERROR: exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
 		return err
 	}
 

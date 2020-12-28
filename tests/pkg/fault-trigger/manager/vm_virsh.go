@@ -34,7 +34,7 @@ func (m *VirshVMManager) ListVMs() ([]*VM, error) {
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		k8se2elog.Logf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
+		k8se2elog.Logf("ERROR: exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
 		return nil, err
 	}
 	vms := m.parserVMs(string(output))
@@ -47,7 +47,7 @@ func (m *VirshVMManager) StopVM(v *VM) error {
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		k8se2elog.Logf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
+		k8se2elog.Logf("ERROR: exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
 		return err
 	}
 
@@ -62,7 +62,7 @@ func (m *VirshVMManager) StartVM(v *VM) error {
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		k8se2elog.Logf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
+		k8se2elog.Logf("ERROR: exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
 		return err
 	}
 

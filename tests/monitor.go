@@ -36,11 +36,11 @@ import (
 func CheckTidbMonitor(monitor *v1alpha1.TidbMonitor, cli versioned.Interface, kubeCli kubernetes.Interface, fw portforward.PortForward) error {
 
 	if err := checkTidbMonitorPod(monitor, kubeCli); err != nil {
-		k8se2elog.Logf("tm[%s/%s] failed to check pod:%v", monitor.Namespace, monitor.Name, err)
+		k8se2elog.Logf("ERROR: tm[%s/%s] failed to check pod:%v", monitor.Namespace, monitor.Name, err)
 		return err
 	}
 	if err := checkTidbMonitorFunctional(monitor, fw); err != nil {
-		k8se2elog.Logf("tm[%s/%s] failed to check functional:%v", monitor.Namespace, monitor.Name, err)
+		k8se2elog.Logf("ERROR: tm[%s/%s] failed to check functional:%v", monitor.Namespace, monitor.Name, err)
 		return err
 	}
 	return checkTidbClusterStatus(monitor, cli)
@@ -78,17 +78,17 @@ func checkTidbMonitorPod(tm *v1alpha1.TidbMonitor, kubeCli kubernetes.Interface)
 			LabelSelector: monitorLabel.String(),
 		})
 		if err != nil {
-			k8se2elog.Logf("tm[%s/%s]'s pod is failed to fetch", tm.Namespace, tm.Name)
+			k8se2elog.Logf("ERROR: tm[%s/%s]'s pod is failed to fetch", tm.Namespace, tm.Name)
 			return false, nil
 		}
 		if len(pods.Items) < 1 || len(pods.Items) > 1 {
-			k8se2elog.Logf("tm[%s/%s] have incorrect count[%d] of pods", tm.Namespace, tm.Name, len(pods.Items))
+			k8se2elog.Logf("ERROR: tm[%s/%s] have incorrect count[%d] of pods", tm.Namespace, tm.Name, len(pods.Items))
 			return false, nil
 		}
 		pod := &pods.Items[0]
 
 		if !podutil.IsPodReady(pod) {
-			k8se2elog.Logf("tm[%s/%s]'s pod[%s/%s] is not ready", tm.Namespace, tm.Name, pod.Namespace, pod.Name)
+			k8se2elog.Logf("ERROR: tm[%s/%s]'s pod[%s/%s] is not ready", tm.Namespace, tm.Name, pod.Namespace, pod.Name)
 			return false, nil
 		}
 		if tm.Spec.Grafana != nil && len(pod.Spec.Containers) != 3 {
@@ -100,7 +100,7 @@ func checkTidbMonitorPod(tm *v1alpha1.TidbMonitor, kubeCli kubernetes.Interface)
 		k8se2elog.Logf("tm[%s/%s]'s pod[%s/%s] is ready", tm.Namespace, tm.Name, pod.Namespace, pod.Name)
 		_, err = kubeCli.CoreV1().Services(namespace).Get(svcName, metav1.GetOptions{})
 		if err != nil {
-			k8se2elog.Logf("tm[%s/%s]'s service[%s/%s] failed to fetch", tm.Namespace, tm.Name, tm.Namespace, svcName)
+			k8se2elog.Logf("ERROR: tm[%s/%s]'s service[%s/%s] failed to fetch", tm.Namespace, tm.Name, tm.Namespace, svcName)
 			return false, nil
 		}
 		return true, err
@@ -110,14 +110,14 @@ func checkTidbMonitorPod(tm *v1alpha1.TidbMonitor, kubeCli kubernetes.Interface)
 // checkTidbMonitorFunctional check whether TidbMonitor's Prometheus and Grafana are working now
 func checkTidbMonitorFunctional(monitor *v1alpha1.TidbMonitor, fw portforward.PortForward) error {
 	if err := checkPrometheusCommon(monitor.Name, monitor.Namespace, fw); err != nil {
-		k8se2elog.Logf("tm[%s/%s]'s prometheus check error:%v", monitor.Namespace, monitor.Namespace, err)
+		k8se2elog.Logf("ERROR: tm[%s/%s]'s prometheus check error:%v", monitor.Namespace, monitor.Namespace, err)
 		return err
 	}
 	k8se2elog.Logf("tidbmonitor[%s/%s]'s prometheus is ready", monitor.Name, monitor.Namespace)
 	if monitor.Spec.Grafana != nil {
 		var grafanaClient *metrics.Client
 		if _, err := checkGrafanaDataCommon(monitor.Name, monitor.Namespace, grafanaClient, fw); err != nil {
-			k8se2elog.Logf("tm[%s/%s]'s grafana check error:%v", monitor.Namespace, monitor.Namespace, err)
+			k8se2elog.Logf("ERROR: tm[%s/%s]'s grafana check error:%v", monitor.Namespace, monitor.Namespace, err)
 			return err
 		}
 		k8se2elog.Logf("tidbmonitor[%s/%s]'s grafana is ready", monitor.Name, monitor.Namespace)
@@ -142,13 +142,13 @@ func checkPrometheusCommon(name, namespace string, fw portforward.PortForward) e
 		prometheusSvc := fmt.Sprintf("http://%s/api/v1/query?query=up", prometheusAddr)
 		resp, err := http.Get(prometheusSvc)
 		if err != nil {
-			k8se2elog.Logf(err.Error())
+			k8se2elog.Logf("ERROR: %v", err)
 			return false, nil
 		}
 		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			k8se2elog.Logf(err.Error())
+			k8se2elog.Logf("ERROR: %v", err)
 			return false, nil
 		}
 		response := &struct {
@@ -156,17 +156,17 @@ func checkPrometheusCommon(name, namespace string, fw portforward.PortForward) e
 		}{}
 		err = json.Unmarshal(body, response)
 		if err != nil {
-			k8se2elog.Logf(err.Error())
+			k8se2elog.Logf("ERROR: %v", err)
 			return false, nil
 		}
 		if response.Status != "success" {
-			k8se2elog.Logf("the prometheus's api[%s] has not ready", prometheusSvc)
+			k8se2elog.Logf("ERROR: he prometheus's api[%s] has not ready", prometheusSvc)
 			return false, nil
 		}
 		return true, nil
 	})
 	if err != nil {
-		k8se2elog.Logf(err.Error())
+		k8se2elog.Logf("ERROR: %v", err)
 		return err
 	}
 	k8se2elog.Logf("prometheus[%s/%s] is up", namespace, name)
@@ -175,13 +175,13 @@ func checkPrometheusCommon(name, namespace string, fw portforward.PortForward) e
 		prometheusTargets := fmt.Sprintf("http://%s/api/v1/targets", prometheusAddr)
 		targetResponse, err := http.Get(prometheusTargets)
 		if err != nil {
-			k8se2elog.Logf(err.Error())
+			k8se2elog.Logf("ERROR: %v", err)
 			return false, nil
 		}
 		defer targetResponse.Body.Close()
 		body, err := ioutil.ReadAll(targetResponse.Body)
 		if err != nil {
-			k8se2elog.Logf(err.Error())
+			k8se2elog.Logf("ERROR: %v", err)
 			return false, nil
 		}
 		data := struct {
@@ -197,11 +197,11 @@ func checkPrometheusCommon(name, namespace string, fw portforward.PortForward) e
 			} `json:"data"`
 		}{}
 		if err := json.Unmarshal(body, &data); err != nil {
-			k8se2elog.Logf(err.Error())
+			k8se2elog.Logf("ERROR: %v", err)
 			return false, nil
 		}
 		if data.Status != "success" || len(data.Data.ActiveTargets) < 1 {
-			k8se2elog.Logf("monitor[%s/%s]'s prometheus targets error", namespace, name)
+			k8se2elog.Logf("ERROR: monitor[%s/%s]'s prometheus targets error", namespace, name)
 			return false, nil
 		}
 		for _, target := range data.Data.ActiveTargets {
@@ -231,7 +231,7 @@ func checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Clien
 	err := wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 		datasourceID, err = getDatasourceID(addr)
 		if err != nil {
-			k8se2elog.Logf(err.Error())
+			k8se2elog.Logf("ERROR: %v", err)
 			return false, nil
 		}
 		return true, nil
@@ -260,7 +260,7 @@ func checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Clien
 		client := &http.Client{}
 		resp, err := client.Do(req)
 		if err != nil {
-			k8se2elog.Logf("tm[%s/%s]'s grafana response error:%v", namespace, name, err)
+			k8se2elog.Logf("ERROR: tm[%s/%s]'s grafana response error:%v", namespace, name, err)
 			return false, nil
 		}
 		defer resp.Body.Close()
@@ -284,7 +284,7 @@ func checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Clien
 			return false, nil
 		}
 		if data.Status != "success" || len(data.Data.Result) < 1 {
-			k8se2elog.Logf("invalid response: status: %s, result: %v", data.Status, data.Data.Result)
+			k8se2elog.Logf("ERROR: invalid response: status: %s, result: %v", data.Status, data.Data.Result)
 			return false, nil
 		}
 		return true, nil

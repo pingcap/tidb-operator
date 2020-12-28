@@ -81,32 +81,32 @@ func (oa *operatorActions) BackupAndRestoreToMultipleClusters(source *TidbCluste
 
 	err = oa.DeployAdHocBackup(source)
 	if err != nil {
-		k8se2elog.Logf("cluster:[%s] deploy happen error: %v", source.ClusterName, err)
+		k8se2elog.Logf("ERROR: cluster:[%s] deploy happen error: %v", source.ClusterName, err)
 		return err
 	}
 
 	ts, err := oa.CheckAdHocBackup(source)
 	if err != nil {
-		k8se2elog.Logf("cluster:[%s] deploy happen error: %v", source.ClusterName, err)
+		k8se2elog.Logf("ERROR: cluster:[%s] deploy happen error: %v", source.ClusterName, err)
 		return err
 	}
 
 	prepareIncremental := func(source *TidbClusterConfig, target BackupTarget) error {
 		err = oa.CheckTidbClusterStatus(target.TargetCluster)
 		if err != nil {
-			k8se2elog.Logf("cluster:[%s] deploy faild error: %v", target.TargetCluster.ClusterName, err)
+			k8se2elog.Logf("ERROR: cluster:[%s] deploy faild error: %v", target.TargetCluster.ClusterName, err)
 			return err
 		}
 
 		err = oa.Restore(source, target.TargetCluster)
 		if err != nil {
-			k8se2elog.Logf("from cluster:[%s] to cluster [%s] restore happen error: %v",
+			k8se2elog.Logf("ERROR: from cluster:[%s] to cluster [%s] restore happen error: %v",
 				source.ClusterName, target.TargetCluster.ClusterName, err)
 			return err
 		}
 		err = oa.CheckRestore(source, target.TargetCluster)
 		if err != nil {
-			k8se2elog.Logf("from cluster:[%s] to cluster [%s] restore failed error: %v",
+			k8se2elog.Logf("ERROR: from cluster:[%s] to cluster [%s] restore failed error: %v",
 				source.ClusterName, target.TargetCluster.ClusterName, err)
 			return err
 		}
@@ -207,7 +207,7 @@ func (oa *operatorActions) BackupAndRestoreToMultipleClusters(source *TidbCluste
 
 	err = oa.DeployScheduledBackup(source)
 	if err != nil {
-		k8se2elog.Logf("cluster:[%s] scheduler happen error: %v", source.ClusterName, err)
+		k8se2elog.Logf("ERROR: cluster:[%s] scheduler happen error: %v", source.ClusterName, err)
 		return err
 	}
 
@@ -257,7 +257,7 @@ func (oa *operatorActions) CheckDataConsistency(from, to *TidbClusterConfig, tim
 	fn := func() (bool, error) {
 		b, err := oa.DataIsTheSameAs(to, from)
 		if err != nil {
-			k8se2elog.Logf(err.Error())
+			k8se2elog.Logf("ERROR: %v", err)
 			return false, nil
 		}
 		if b {
@@ -314,7 +314,7 @@ func (oa *operatorActions) CheckDrainer(info *DrainerConfig, source *TidbCluster
 	fn := func() (bool, error) {
 		sts, err := oa.kubeCli.AppsV1().StatefulSets(source.Namespace).Get(stsName, v1.GetOptions{})
 		if err != nil {
-			k8se2elog.Logf("failed to get drainer StatefulSet %s ,%v", sts, err)
+			k8se2elog.Logf("ERROR: failed to get drainer StatefulSet %s ,%v", sts, err)
 			return false, nil
 		}
 		if *sts.Spec.Replicas != DrainerReplicas {

@@ -82,7 +82,7 @@ func SetPrometheusResponse(monitorName, monitorNamespace string, mp *MonitorPara
 		return err
 	}
 	if string(b) != "ok" {
-		k8se2elog.Logf("set mock-monitor response failed, response = %s", string(b))
+		k8se2elog.Logf("ERROR: set mock-monitor response failed, response = %s", string(b))
 		return fmt.Errorf("set mock-monitor response failed")
 	}
 	return nil

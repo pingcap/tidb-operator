@@ -83,10 +83,10 @@ func serve(w http.ResponseWriter, r *http.Request, admit admitFunc) {
 returnData:
 	respBytes, err := json.Marshal(responseAdmissionReview)
 	if err != nil {
-		k8se2elog.Logf(err.Error())
+		k8se2elog.Logf("ERROR: %v", err)
 	}
 	if _, err := w.Write(respBytes); err != nil {
-		k8se2elog.Logf(err.Error())
+		k8se2elog.Logf("ERROR: %v", err)
 	}
 }
 

@@ -66,14 +66,14 @@ func (oa *operatorActions) LabelNodes() error {
 		err := wait.PollImmediate(3*time.Second, time.Minute, func() (bool, error) {
 			n, err := oa.kubeCli.CoreV1().Nodes().Get(node.Name, metav1.GetOptions{})
 			if err != nil {
-				k8se2elog.Logf("get node:[%s] failed! error: %v", node.Name, err)
+				k8se2elog.Logf("ERROR: get node:[%s] failed! error: %v", node.Name, err)
 				return false, nil
 			}
 			index := i % RackNum
 			n.Labels[RackLabel] = fmt.Sprintf("rack%d", index)
 			_, err = oa.kubeCli.CoreV1().Nodes().Update(n)
 			if err != nil {
-				k8se2elog.Logf("label node:[%s] failed! error: %v", node.Name, err)
+				k8se2elog.Logf("ERROR: label node:[%s] failed! error: %v", node.Name, err)
 				return false, nil
 			}
 			return true, nil

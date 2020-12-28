@@ -177,7 +177,7 @@ func (ctu *CrdTestUtil) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeou
 		var local *v1alpha1.TidbCluster
 		var err error
 		if local, err = ctu.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{}); err != nil {
-			k8se2elog.Logf("failed to get tidbcluster: %s/%s, %v", tc.Namespace, tc.Name, err)
+			k8se2elog.Logf("ERROR: failed to get tidbcluster: %s/%s, %v", tc.Namespace, tc.Name, err)
 			return false, nil
 		}
 
@@ -211,7 +211,7 @@ func (ctu *CrdTestUtil) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, error)
 
 	pdSet, err := ctu.tcStsGetter.StatefulSets(ns).Get(pdSetName, metav1.GetOptions{})
 	if err != nil {
-		k8se2elog.Logf("failed to get statefulset: %s/%s, %v", ns, pdSetName, err)
+		k8se2elog.Logf("ERROR: failed to get statefulset: %s/%s, %v", ns, pdSetName, err)
 		return false, nil
 	}
 
@@ -274,11 +274,11 @@ func (ctu *CrdTestUtil) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, error)
 	pdServiceName := controller.PDMemberName(tcName)
 	pdPeerServiceName := controller.PDPeerMemberName(tcName)
 	if _, err := ctu.kubeCli.CoreV1().Services(ns).Get(pdServiceName, metav1.GetOptions{}); err != nil {
-		k8se2elog.Logf("failed to get service: %s/%s", ns, pdServiceName)
+		k8se2elog.Logf("ERROR: failed to get service: %s/%s", ns, pdServiceName)
 		return false, nil
 	}
 	if _, err := ctu.kubeCli.CoreV1().Services(ns).Get(pdPeerServiceName, metav1.GetOptions{}); err != nil {
-		k8se2elog.Logf("failed to get peer service: %s/%s", ns, pdPeerServiceName)
+		k8se2elog.Logf("ERROR: failed to get peer service: %s/%s", ns, pdPeerServiceName)
 		return false, nil
 	}
 
@@ -302,7 +302,7 @@ func (ctu *CrdTestUtil) tikvMembersReadyFn(obj runtime.Object) (bool, error) {
 
 	tikvSet, err := ctu.tcStsGetter.StatefulSets(ns).Get(tikvSetName, metav1.GetOptions{})
 	if err != nil {
-		k8se2elog.Logf("failed to get statefulset: %s/%s, %v", ns, tikvSetName, err)
+		k8se2elog.Logf("ERROR: failed to get statefulset: %s/%s, %v", ns, tikvSetName, err)
 		return false, nil
 	}
 
@@ -373,7 +373,7 @@ func (ctu *CrdTestUtil) tikvMembersReadyFn(obj runtime.Object) (bool, error) {
 		}
 	}
 	if _, err := ctu.kubeCli.CoreV1().Services(ns).Get(tikvPeerServiceName, metav1.GetOptions{}); err != nil {
-		k8se2elog.Logf("failed to get peer service: %s/%s", ns, tikvPeerServiceName)
+		k8se2elog.Logf("ERROR: failed to get peer service: %s/%s", ns, tikvPeerServiceName)
 		return false, nil
 	}
 	return true, nil
@@ -386,7 +386,7 @@ func (ctu *CrdTestUtil) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, erro
 
 	tidbSet, err := ctu.tcStsGetter.StatefulSets(ns).Get(tidbSetName, metav1.GetOptions{})
 	if err != nil {
-		k8se2elog.Logf("failed to get statefulset: %s/%s, %v", ns, tidbSetName, err)
+		k8se2elog.Logf("ERROR: failed to get statefulset: %s/%s, %v", ns, tidbSetName, err)
 		return false, nil
 	}
 
@@ -440,12 +440,12 @@ func (ctu *CrdTestUtil) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, erro
 
 	_, err = ctu.kubeCli.CoreV1().Services(ns).Get(tidbSetName, metav1.GetOptions{})
 	if err != nil {
-		k8se2elog.Logf("failed to get service: %s/%s", ns, tidbSetName)
+		k8se2elog.Logf("ERROR: failed to get service: %s/%s", ns, tidbSetName)
 		return false, nil
 	}
 	_, err = ctu.kubeCli.CoreV1().Services(ns).Get(controller.TiDBPeerMemberName(tcName), metav1.GetOptions{})
 	if err != nil {
-		k8se2elog.Logf("failed to get peer service: %s/%s", ns, controller.TiDBPeerMemberName(tcName))
+		k8se2elog.Logf("ERROR: failed to get peer service: %s/%s", ns, controller.TiDBPeerMemberName(tcName))
 		return false, nil
 	}
 
@@ -459,7 +459,7 @@ func (ctu *CrdTestUtil) tiflashMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 
 	tiflashSet, err := ctu.tcStsGetter.StatefulSets(ns).Get(tiflashSetName, metav1.GetOptions{})
 	if err != nil {
-		k8se2elog.Logf("failed to get statefulset: %s/%s, %v", ns, tiflashSetName, err)
+		k8se2elog.Logf("ERROR: failed to get statefulset: %s/%s, %v", ns, tiflashSetName, err)
 		return false, nil
 	}
 
@@ -520,7 +520,7 @@ func (ctu *CrdTestUtil) tiflashMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 
 	tiflashPeerServiceName := controller.TiFlashPeerMemberName(tcName)
 	if _, err := ctu.kubeCli.CoreV1().Services(ns).Get(tiflashPeerServiceName, metav1.GetOptions{}); err != nil {
-		k8se2elog.Logf("failed to get peer service: %s/%s", ns, tiflashPeerServiceName)
+		k8se2elog.Logf("ERROR: failed to get peer service: %s/%s", ns, tiflashPeerServiceName)
 		return false, nil
 	}
 
@@ -533,7 +533,7 @@ func (ctu *CrdTestUtil) pumpMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, erro
 
 	pumpStatefulSet, err := ctu.kubeCli.AppsV1().StatefulSets(tc.Namespace).Get(pumpStatefulSetName, metav1.GetOptions{})
 	if err != nil {
-		k8se2elog.Logf("failed to get jobs %s ,%v", pumpStatefulSetName, err)
+		k8se2elog.Logf("ERROR: failed to get jobs %s ,%v", pumpStatefulSetName, err)
 		return false, nil
 	}
 	if pumpStatefulSet.Status.Replicas != pumpStatefulSet.Status.ReadyReplicas {
@@ -553,13 +553,13 @@ func (ctu *CrdTestUtil) pumpMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, erro
 
 	pods, err := ctu.kubeCli.CoreV1().Pods(tc.Namespace).List(listOps)
 	if err != nil {
-		k8se2elog.Logf("failed to get pods via pump labels %s ,%v", pumpStatefulSetName, err)
+		k8se2elog.Logf("ERROR: failed to get pods via pump labels %s ,%v", pumpStatefulSetName, err)
 		return false, nil
 	}
 
 	for _, pod := range pods.Items {
 		if !ctu.pumpHealth(tc, pod.Name) {
-			k8se2elog.Logf("some pods is not health %s", pumpStatefulSetName)
+			k8se2elog.Logf("ERROR: some pods is not health %s", pumpStatefulSetName)
 			return false, nil
 		}
 
@@ -587,27 +587,27 @@ func (ctu *CrdTestUtil) pumpHealth(tc *v1alpha1.TidbCluster, podName string) boo
 	pumpHealthURL := fmt.Sprintf("http://%s/status", addr)
 	res, err := http.Get(pumpHealthURL)
 	if err != nil {
-		k8se2elog.Logf("cluster:[%s] call %s failed,error:%v", tc.Name, pumpHealthURL, err)
+		k8se2elog.Logf("ERROR: cluster:[%s] call %s failed,error:%v", tc.Name, pumpHealthURL, err)
 		return false
 	}
 	if res.StatusCode >= 400 {
-		k8se2elog.Logf("Error response %v", res.StatusCode)
+		k8se2elog.Logf("ERROR: Error response %v", res.StatusCode)
 		return false
 	}
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		k8se2elog.Logf("cluster:[%s] read response body failed,error:%v", tc.Name, err)
+		k8se2elog.Logf("ERROR: cluster:[%s] read response body failed,error:%v", tc.Name, err)
 		return false
 	}
 	healths := pumpStatus{}
 	err = json.Unmarshal(body, &healths)
 	if err != nil {
-		k8se2elog.Logf("cluster:[%s] unmarshal failed,error:%v", tc.Name, err)
+		k8se2elog.Logf("ERROR: cluster:[%s] unmarshal failed,error:%v", tc.Name, err)
 		return false
 	}
 	for _, status := range healths.StatusMap {
 		if status.State != "online" {
-			k8se2elog.Logf("cluster:[%s] pump's state is not online", tc.Name)
+			k8se2elog.Logf("ERROR: cluster:[%s] pump's state is not online", tc.Name)
 			return false
 		}
 	}

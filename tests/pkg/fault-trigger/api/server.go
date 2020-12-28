@@ -66,7 +66,7 @@ func (s *Server) listVMs(req *restful.Request, resp *restful.Response) {
 	if err != nil {
 		res.message(err.Error()).statusCode(http.StatusInternalServerError)
 		if err = resp.WriteEntity(res); err != nil {
-			k8se2elog.Logf("failed to response, methods: listVMs, error: %v", err)
+			k8se2elog.Logf("ERROR: failed to response, methods: listVMs, error: %v", err)
 		}
 		return
 	}
@@ -74,7 +74,7 @@ func (s *Server) listVMs(req *restful.Request, resp *restful.Response) {
 	res.payload(vms).statusCode(http.StatusOK)
 
 	if err = resp.WriteEntity(res); err != nil {
-		k8se2elog.Logf("failed to response, method: listVMs, error: %v", err)
+		k8se2elog.Logf("ERROR: failed to response, method: listVMs, error: %v", err)
 	}
 }
 
@@ -87,7 +87,7 @@ func (s *Server) startVM(req *restful.Request, resp *restful.Response) {
 		res.message(fmt.Sprintf("failed to get vm %s, error: %v", name, err)).
 			statusCode(http.StatusInternalServerError)
 		if err = resp.WriteEntity(res); err != nil {
-			k8se2elog.Logf("failed to response, methods: startVM, error: %v", err)
+			k8se2elog.Logf("ERROR: failed to response, methods: startVM, error: %v", err)
 		}
 		return
 	}
@@ -95,7 +95,7 @@ func (s *Server) startVM(req *restful.Request, resp *restful.Response) {
 	if targetVM == nil {
 		res.message(fmt.Sprintf("vm %s not found", name)).statusCode(http.StatusNotFound)
 		if err = resp.WriteEntity(res); err != nil {
-			k8se2elog.Logf("failed to response, methods: startVM, error: %v", err)
+			k8se2elog.Logf("ERROR: failed to response, methods: startVM, error: %v", err)
 		}
 		return
 	}
@@ -112,7 +112,7 @@ func (s *Server) stopVM(req *restful.Request, resp *restful.Response) {
 		res.message(fmt.Sprintf("failed to get vm %s, error: %v", name, err)).
 			statusCode(http.StatusInternalServerError)
 		if err = resp.WriteEntity(res); err != nil {
-			k8se2elog.Logf("failed to response, methods: stopVM, error: %v", err)
+			k8se2elog.Logf("ERROR: failed to response, methods: stopVM, error: %v", err)
 		}
 		return
 	}
@@ -120,7 +120,7 @@ func (s *Server) stopVM(req *restful.Request, resp *restful.Response) {
 	if targetVM == nil {
 		res.message(fmt.Sprintf("vm %s not found", name)).statusCode(http.StatusNotFound)
 		if err = resp.WriteEntity(res); err != nil {
-			k8se2elog.Logf("failed to response, methods: stopVM, error: %v", err)
+			k8se2elog.Logf("ERROR: failed to response, methods: stopVM, error: %v", err)
 		}
 		return
 	}
@@ -180,7 +180,7 @@ func (s *Server) action(
 		res.message(fmt.Sprintf("failed to %s, error: %v", method, err)).
 			statusCode(http.StatusInternalServerError)
 		if err = resp.WriteEntity(res); err != nil {
-			k8se2elog.Logf("failed to response, methods: %s, error: %v", method, err)
+			k8se2elog.Logf("ERROR: failed to response, methods: %s, error: %v", method, err)
 		}
 		return
 	}
@@ -188,7 +188,7 @@ func (s *Server) action(
 	res.message("OK").statusCode(http.StatusOK)
 
 	if err := resp.WriteEntity(res); err != nil {
-		k8se2elog.Logf("failed to response, method: %s, error: %v", method, err)
+		k8se2elog.Logf("ERROR: failed to response, method: %s, error: %v", method, err)
 	}
 }
 
@@ -204,7 +204,7 @@ func (s *Server) vmAction(
 		res.message(fmt.Sprintf("failed to %s vm: %s, error: %v", method, targetVM.Name, err)).
 			statusCode(http.StatusInternalServerError)
 		if err = resp.WriteEntity(res); err != nil {
-			k8se2elog.Logf("failed to response, methods: %s, error: %v", method, err)
+			k8se2elog.Logf("ERROR: failed to response, methods: %s, error: %v", method, err)
 		}
 		return
 	}
@@ -212,7 +212,7 @@ func (s *Server) vmAction(
 	res.message("OK").statusCode(http.StatusOK)
 
 	if err := resp.WriteEntity(res); err != nil {
-		k8se2elog.Logf("failed to response, method: %s, error: %v", method, err)
+		k8se2elog.Logf("ERROR: failed to response, method: %s, error: %v", method, err)
 	}
 }
 
