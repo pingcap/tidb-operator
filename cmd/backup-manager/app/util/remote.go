@@ -95,6 +95,7 @@ func NewStorageBackend(provider v1alpha1.StorageProvider) (*blob.Bucket, error) 
 }
 
 // genStorageArgs returns the arg for --storage option and the remote/local path for br
+// TODO: add unit test
 func genStorageArgs(provider v1alpha1.StorageProvider) ([]string, error) {
 	st := util.GetStorageType(provider)
 	switch st {
@@ -212,7 +213,7 @@ func newGcsStorage(conf *gcsConfig) (*blob.Bucket, error) {
 // newGcsStorageOption constructs the arg for --storage option and the remote path for br
 func newGcsStorageOption(conf *gcsConfig) []string {
 	var gcsoptions []string
-	path := fmt.Sprintf("gcs://%s", path.Join(conf.bucket, conf.prefix))
+	path := fmt.Sprintf("gcs://%s/", path.Join(conf.bucket, conf.prefix))
 	gcsoptions = append(gcsoptions, fmt.Sprintf("--storage=%s", path))
 	if conf.storageClass != "" {
 		gcsoptions = append(gcsoptions, fmt.Sprintf("--gcs.storage-class=%s", conf.storageClass))
