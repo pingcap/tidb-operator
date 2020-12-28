@@ -91,10 +91,10 @@ func checkTidbMonitorPod(tm *v1alpha1.TidbMonitor, kubeCli kubernetes.Interface)
 			log.Logf("ERROR: tm[%s/%s]'s pod[%s/%s] is not ready", tm.Namespace, tm.Name, pod.Namespace, pod.Name)
 			return false, nil
 		}
-		if tm.Spec.Grafana != nil && len(pod.Spec.Containers) != 3 {
+		if tm.Spec.Grafana != nil && len(pod.Spec.Containers) != 3 && tm.Spec.Thanos == nil {
 			return false, fmt.Errorf("tm[%s/%s]'s pod didn't have 3 containers with grafana enabled", tm.Namespace, tm.Name)
 		}
-		if tm.Spec.Grafana == nil && len(pod.Spec.Containers) != 2 {
+		if tm.Spec.Grafana == nil && len(pod.Spec.Containers) != 2 && tm.Spec.Thanos == nil {
 			return false, fmt.Errorf("tm[%s/%s]'s pod didnt' have 2 containers with grafana disabled", tm.Namespace, tm.Name)
 		}
 		log.Logf("tm[%s/%s]'s pod[%s/%s] is ready", tm.Namespace, tm.Name, pod.Namespace, pod.Name)

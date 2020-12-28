@@ -23,6 +23,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	discoverycachedmemory "k8s.io/client-go/discovery/cached/memory"
 	discoveryfake "k8s.io/client-go/discovery/fake"
 	k8stesting "k8s.io/client-go/testing"
@@ -113,6 +114,49 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 	}
 
 	tests := []testcase{
+		{
+			name: "tidbmonitor spec thanos sidecar",
+			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
+
+				monitor.Spec.Thanos = &v1alpha1.ThanosSpec{
+					MonitorContainer: v1alpha1.MonitorContainer{
+						BaseImage: "thanosio/thanos",
+						Version:   "v0.17.2",
+					},
+				}
+			},
+			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
+				errExpectRequeuefunc(g, err, tmm, tm)
+				svc, err := tmm.deps.ServiceLister.Services(tm.Namespace).Get(prometheusName(tm))
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(svc.Spec.Ports).To(Equal([]v1.ServicePort{
+					{
+						Name:       "http-prometheus",
+						Port:       9090,
+						Protocol:   v1.ProtocolTCP,
+						TargetPort: intstr.FromInt(9090),
+					}, {
+						Name:       "thanos-grpc",
+						Port:       10901,
+						Protocol:   v1.ProtocolTCP,
+						TargetPort: intstr.FromInt(10901),
+					},
+					{
+						Name:       "thanos-http",
+						Port:       10902,
+						Protocol:   v1.ProtocolTCP,
+						TargetPort: intstr.FromInt(10902),
+					},
+				}))
+
+				sts, err := tmm.deps.StatefulSetLister.StatefulSets(tm.Namespace).Get(GetMonitorObjectName(tm))
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(3))
+			},
+			stsCreated:    true,
+			svcCreated:    true,
+			volumeCreated: false,
+		},
 		{
 			name: "tidbmonitor enable clusterScope and running normally",
 			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
