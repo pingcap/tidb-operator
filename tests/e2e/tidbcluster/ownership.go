@@ -23,7 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/kubernetes/test/e2e/framework"
-	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -31,7 +31,7 @@ import (
 func WaitObjectToBeControlledByOrDie(c client.Client, obj runtime.Object, owner runtime.Object, timeout time.Duration) {
 	meta, ok := obj.(metav1.Object)
 	if !ok {
-		e2elog.Failf("object is not a metav1.Object, cannot call WaitObjectToBeControlledByOrDie")
+		log.Failf("object is not a metav1.Object, cannot call WaitObjectToBeControlledByOrDie")
 	}
 	objGVK, err := controller.InferObjectKind(obj)
 	framework.ExpectNoError(err, "Object should have GVK")
@@ -39,7 +39,7 @@ func WaitObjectToBeControlledByOrDie(c client.Client, obj runtime.Object, owner 
 	framework.ExpectNoError(err, "Owner should have GVK")
 	ownerMeta, ok := owner.(metav1.Object)
 	if !ok {
-		e2elog.Failf("owner is not a metav1.Object, cannot call WaitObjectToBeControlledByOrDie")
+		log.Failf("owner is not a metav1.Object, cannot call WaitObjectToBeControlledByOrDie")
 	}
 	fetched := obj.DeepCopyObject()
 	err = wait.PollImmediate(10*time.Second, timeout, func() (bool, error) {
@@ -52,19 +52,19 @@ func WaitObjectToBeControlledByOrDie(c client.Client, obj runtime.Object, owner 
 			return false, err
 		}
 		if err != nil {
-			e2elog.Logf("error get object %s/%s: %v", objGVK.Kind, meta.GetName(), err)
+			log.Logf("error get object %s/%s: %v", objGVK.Kind, meta.GetName(), err)
 			return false, nil
 		}
 
 		// checked at beginning, safe to cast here
 		meta := fetched.(metav1.Object)
 		if !metav1.IsControlledBy(meta, ownerMeta) {
-			e2elog.Logf("wait object %s/%s to be controlled by %s/%s...", objGVK.Kind, meta.GetName(), ownerGVK.Kind, ownerMeta.GetName())
+			log.Logf("wait object %s/%s to be controlled by %s/%s...", objGVK.Kind, meta.GetName(), ownerGVK.Kind, ownerMeta.GetName())
 			return false, nil
 		}
 		return true, nil
 	})
 	if err != nil {
-		e2elog.Failf("error object %s/%s to be controlled by %s/%s: %v", objGVK.Kind, meta.GetName(), ownerGVK.Kind, ownerMeta.GetName(), err)
+		log.Failf("error object %s/%s to be controlled by %s/%s: %v", objGVK.Kind, meta.GetName(), ownerGVK.Kind, ownerMeta.GetName(), err)
 	}
 }

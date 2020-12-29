@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 # Copyright 2020 PingCAP, Inc.
 #
@@ -13,11 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#
 # Pin all k8s.io dependencies to a specified version.
 #
+# Kubernetes staging repos are hosted in code repo (k8s.io/kubernetes). If we
+# use pkgs from k8s.io/kubernetes, `replace` directive must be used to override
+# version constraints derived from k8s.io/kubernetes.
 
-VERSION=1.16.0
+VERSION=${VERSION:-${1:-}}
+
+if [ -z "$VERSION" ]; then
+    echo "VERSION is required, e.g. VERSION=x.y.z $0 or $0 x.y.z"
+    exit 1
+fi
+
+echo "VERSION: $VERSION"
 
 # Explicitly opt into go modules, even though we're inside a GOPATH directory
 export GO111MODULE=on
@@ -48,8 +57,15 @@ edit_args=(
 )
 
 for repo in ${STAGING_REPOS[@]}; do
-	edit_args+=(-replace $repo=$repo@kubernetes-$VERSION)
+    if version_ge "1.17.0" $VERSION; then
+        echo ">=1.17.0"
+        staging_v=${VERSION/#1/0}
+	    edit_args+=(-replace $repo=$repo@v$staging_v)
+    else
+	    edit_args+=(-replace $repo=$repo@kubernetes-$VERSION)
+    fi
 done
+echo "edit_args=$edit_args"
 
 go mod edit ${edit_args[@]}
 # workaround for https://github.com/golang/go/issues/33008
