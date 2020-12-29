@@ -120,7 +120,8 @@ func (s *server) newVerifyHandler(req *restful.Request, resp *restful.Response) 
 		if werr := resp.WriteError(http.StatusInternalServerError, err); werr != nil {
 			klog.Errorf("failed to writeError: %v", werr)
 		}
-		return
+		// Return default value if verification failed
+		result = pdPeerURL
 	}
 
 	klog.Infof("return pd-url for %s: %s", pdPeerURL, result)

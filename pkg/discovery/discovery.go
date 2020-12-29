@@ -296,6 +296,7 @@ func parsePDURL(pdURL string) *pdEndpointURL {
 		tcName:       "",
 	}
 
+	// TiDB provide empty scheme URL, TiKV provide URL with scheme
 	scheme := strings.Split(pdURL, "://")
 	if len(scheme) == 1 {
 		pdEndpoint.scheme = ""
@@ -306,15 +307,15 @@ func parsePDURL(pdURL string) *pdEndpointURL {
 	}
 
 	// Deal with port
+	// If there is no port in Membername, leave Port empty.
 	hostURLArr := strings.Split(pdEndpoint.pdMemberName, ":")
+	pdEndpoint.pdMemberName = hostURLArr[0]
 	if len(hostURLArr) > 1 {
-		pdEndpoint.pdMemberName = hostURLArr[0]
 		pdEndpoint.pdMemberPort = hostURLArr[1]
 	}
 
 	// Deal with tcName
-	hostArrs := strings.Split(pdEndpoint.pdMemberName, "-pd")
-	pdEndpoint.tcName = hostArrs[0]
+	pdEndpoint.tcName = strings.TrimSuffix(pdEndpoint.pdMemberName, "-pd")
 
 	return pdEndpoint
 }
