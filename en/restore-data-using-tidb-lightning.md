@@ -10,9 +10,17 @@ This document describes how to restore data into a TiDB cluster in Kubernetes us
 
 TiDB Lightning contains two components: tidb-lightning and tikv-importer. In Kubernetes, the tikv-importer is inside the separate Helm chart of the TiDB cluster. And tikv-importer is deployed as a `StatefulSet` with `replicas=1` while tidb-lightning is in a separate Helm chart and deployed as a `Job`.
 
-Therefore, both the tikv-importer and tidb-lightning need to be deployed to restore data with TiDB Lightning.
+TiDB Lightning supports [three backends](https://docs.pingcap.com/tidb/stable/tidb-lightning-backends): `importer`, `local`, and `tidb`.
+
+- For the `importer` backend, both tikv-importer and tidb-lightning need to be deployed.
+- For the `local` or `tidb` backend, only tidb-lightning needs to be deployed.
+- For the `tidb` backend, it is recommended to import data using CustomResourceDefinition (CRD) in TiDB Operator v1.1 and later versions. For details, refer to [Restore Data from GCS Using TiDB Lightning](restore-from-gcs.md) or [Restore Data from S3-Compatible Storage Using TiDB Lightning](restore-from-s3.md)
 
 ## Deploy tikv-importer
+
+> **Note:**
+>
+> If you use the `local` or `tidb` backend for data restoration, you can skip deploying tikv-importer and [deploy tidb-lightning](#deploy-tidb-lightning) directly.
 
 You can deploy tikv-importer using the Helm chart. See the following example:
 
@@ -82,6 +90,12 @@ Use the following command to get the default configuration of TiDB Lightning:
 helm inspect values pingcap/tidb-lightning --version=${chart_version} > tidb-lightning-values.yaml
 ```
 
+Configure a `backend` used by TiDB Lightning according to your needs. The options include `importer`, `local`, and `tidb`.
+
+> **Note:**
+>
+> If you use the [`local` backend](https://docs.pingcap.com/tidb/stable/tidb-lightning-backends#tidb-lightning-local-backend), you must set `sortedKV` in `values.yaml` to create the corresponding PVC. The PVC is used for local KV sorting.
+
 TiDB Lightning Helm chart supports both local and remote data sources.
 
 * Local
@@ -139,7 +153,7 @@ TiDB Lightning Helm chart supports both local and remote data sources.
         * If you grant permissions by associating Amazon S3 IAM with Pod or with ServiceAccount, you can ignore `s3.access_key_id` and `s3.secret_access_key`:
 
             {{< copyable "" >}}
-    
+
             ```yaml
             apiVersion: v1
             kind: Secret
