@@ -10,9 +10,15 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/restore-data-using-tidb-lightning/']
 
 TiDB Lightning 包含两个组件：tidb-lightning 和 tikv-importer。在 Kubernetes 上，tikv-importer 位于单独的 Helm chart 内，被部署为一个副本数为 1 (`replicas=1`) 的 `StatefulSet`；tidb-lightning 位于单独的 Helm chart 内，被部署为一个 `Job`。
 
-为了使用 TiDB Lightning 恢复数据，tikv-importer 和 tidb-lightning 都必须分别部署。
+目前，[TiDB Lightning 支持 `importer`, `local` 及 `tidb` 三种后端](https://docs.pingcap.com/zh/tidb/stable/tidb-lightning-backends)。对于 `importer` 后端, 需要分别部署 tikv-importer 与 tidb-lightning；对于 `local` 或 `tidb` 后端，则仅需要部署 tidb-lightning。
+
+此外，对于 `tidb` 后端，推荐使用基于 TiDB Operator 新版（v1.1 及以上）的 CustomResourceDefinition (CRD) 实现。具体信息可参考[使用 TiDB Lightning 恢复 GCS 上的备份数据](restore-from-gcs.md)或[使用 TiDB Lightning 恢复 S3 兼容存储上的备份数据](restore-from-s3.md)。
 
 ## 部署 tikv-importer
+
+> **注意：**
+>
+> 如需要使用 TiDB Lightning 的 `local` 或 `tidb` 后端用于数据恢复，则不需要部署 tikv-importer。
 
 可以通过 `tikv-importer` Helm chart 来部署 tikv-importer，示例如下：
 
@@ -83,6 +89,12 @@ TiDB Lightning 包含两个组件：tidb-lightning 和 tikv-importer。在 Kuber
 ```shell
 helm inspect values pingcap/tidb-lightning --version=${chart_version} > tidb-lightning-values.yaml
 ```
+
+根据需要配置 TiDB Lightning 所使用的后端 `backend`，即将 `values.yaml` 中的 `backend` 设置为 `importer`, `local` 或 `tidb`。
+
+> **注意：**
+>
+> 如果使用 [`local` 后端](https://docs.pingcap.com/zh/tidb/stable/tidb-lightning-backends#tidb-lightning-local-backend)，则还需要在 `values.yaml` 中设置 `sortedKV` 来创建相应的 PVC 以用于本地 KV 排序。
 
 如果目标 TiDB 集群组件间开启了 TLS (`spec.tlsCluster.enabled: true`)，则可以参考[为 TiDB 集群各个组件生成证书](enable-tls-between-components.md#第一步为-tidb-集群各个组件生成证书)为 TiDB Lightning 组件生成 Server 端证书，并在 `values.yaml` 中通过配置 `tlsCluster.enabled: true` 开启集群内部的 TLS 支持。
 
