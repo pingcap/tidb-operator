@@ -237,7 +237,7 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 	// prepare for create backup/restore CRD
 	backupRole := fixture.GetBackupRole(tcFrom, serviceAccountName)
 	_, err = c.RbacV1beta1().Roles(ns).Create(backupRole)
-	framework.ExpectNoError(err, "failed to create RBAC roles for backup in ns %s: %v", backupRole)
+	framework.ExpectNoError(err, "failed to create RBAC roles for backup in ns %s: %v", ns, backupRole)
 	backupServiceAccount := fixture.GetBackupServiceAccount(tcFrom, serviceAccountName)
 	_, err = c.CoreV1().ServiceAccounts(ns).Create(backupServiceAccount)
 	framework.ExpectNoError(err, "failed to create backup service account in ns %s: %v", ns, backupServiceAccount)
@@ -267,7 +267,7 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 	cleanFunc := func() {
 		// delete backup data in S3
 		err = cli.PingcapV1alpha1().Backups(ns).Delete(backup.Name, &metav1.DeleteOptions{})
-		framework.ExpectNoError(err, "failed to delete backup in ns %s, ")
+		framework.ExpectNoError(err, "failed to delete backup in ns %s: %v", ns, backup)
 
 		err = storage.CheckDataCleaned()
 		framework.ExpectNoError(err, "failed to check data is cleaned")

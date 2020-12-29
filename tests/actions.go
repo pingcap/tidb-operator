@@ -530,7 +530,7 @@ func (oa *operatorActions) CleanCRDOrDie() {
 		// Even if DELETE API request succeeds, the CRD object may still exists
 		// in ap server. We should wait for it to be gone.
 		err = e2eutil.WaitForCRDNotFound(oa.apiExtCli, crd.Name)
-		framework.ExpectNoError(err, "failed to wait for CRD deleted")
+		framework.ExpectNoError(err, "failed to wait for CRD %q deleted", crd.Name)
 	}
 }
 

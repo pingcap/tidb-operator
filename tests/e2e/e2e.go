@@ -136,7 +136,7 @@ func setupSuite() {
 
 	ginkgo.By("Initializing all nodes")
 	nodeList, err := c.CoreV1().Nodes().List(metav1.ListOptions{})
-	framework.ExpectNoError(err, "list nodes failed")
+	framework.ExpectNoError(err, "failed to list nodes")
 	for _, node := range nodeList.Items {
 		framework.Logf("Initializing node %q", node.Name)
 		framework.ExpectNoError(utilnode.InitNode(&node), fmt.Sprintf("initializing node %s failed", node.Name))
