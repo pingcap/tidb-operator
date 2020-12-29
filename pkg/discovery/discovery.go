@@ -245,6 +245,7 @@ func (d *tidbDiscovery) VerifyPDEndpoint(pdURL string) (string, error) {
 	ns := os.Getenv("MY_POD_NAMESPACE")
 	tc, err := d.cli.PingcapV1alpha1().TidbClusters(ns).Get(pdEndpoint.tcName, metav1.GetOptions{})
 	if err != nil {
+		klog.Errorf("Failed to get the tidbcluster when verifying PD endpoint")
 		return pdURL, err
 	}
 
@@ -260,6 +261,8 @@ func (d *tidbDiscovery) VerifyPDEndpoint(pdURL string) (string, error) {
 	}
 
 	if d.pdEndpointHealthCheck(tc, pdURL, pdEndpoint.pdMemberName) {
+		// the input PD endpoint works normally
+		klog.Infof("The PD endpoint to be checked works fine")
 		if noScheme {
 			return fmt.Sprintf("%s:%s", pdEndpoint.pdMemberName, pdEndpoint.pdMemberPort), nil
 		}
@@ -271,6 +274,7 @@ func (d *tidbDiscovery) VerifyPDEndpoint(pdURL string) (string, error) {
 			if noScheme {
 				return fmt.Sprintf("%s:%s", pdMember.Name, pdEndpoint.pdMemberPort), nil
 			}
+			klog.Infof("Successfully get the peer PD endpoint : %s", pdMember.ClientURL)
 			return pdMember.ClientURL, nil
 		}
 	}
