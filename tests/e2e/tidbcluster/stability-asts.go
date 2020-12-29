@@ -42,10 +42,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
-	"k8s.io/klog"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
-	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 	e2esset "k8s.io/kubernetes/test/e2e/framework/statefulset"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -280,11 +279,11 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 						return false, nil
 					}
 					if *sts.Spec.Replicas != st.replicas {
-						klog.Infof("replicas of sts %s/%s is %d, expects %d", ns, stsName, *sts.Spec.Replicas, st.replicas)
+						log.Logf("replicas of sts %s/%s is %d, expects %d", ns, stsName, *sts.Spec.Replicas, st.replicas)
 						return false, nil
 					}
 					if !helper.GetDeleteSlots(sts).Equal(st.deleteSlots) {
-						klog.Infof("delete slots of sts %s/%s is %v, expects %v", ns, stsName, helper.GetDeleteSlots(sts).List(), st.deleteSlots.List())
+						log.Logf("delete slots of sts %s/%s is %v, expects %v", ns, stsName, helper.GetDeleteSlots(sts).List(), st.deleteSlots.List())
 						return false, nil
 					}
 					// check all desired pods are running and ready
@@ -361,7 +360,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 		stsList, err := c.AppsV1().StatefulSets(tc.Namespace).List(listOption)
 		framework.ExpectNoError(err)
 		if len(stsList.Items) < 3 {
-			e2elog.Failf("at least 3 statefulsets must be created, got %d", len(stsList.Items))
+			log.Failf("at least 3 statefulsets must be created, got %d", len(stsList.Items))
 		}
 
 		podListBeforeUpgrade, err := c.CoreV1().Pods(tc.Namespace).List(listOption)
@@ -382,7 +381,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				return false, nil
 			}
 			if len(advancedStsList.Items) != len(stsList.Items) {
-				klog.Infof("advanced statefulsets got %d, expect %d", len(advancedStsList.Items), len(stsList.Items))
+				log.Logf("advanced statefulsets got %d, expect %d", len(advancedStsList.Items), len(stsList.Items))
 				return false, nil
 			}
 			stsListAfterUpgrade, err := c.AppsV1().StatefulSets(tc.Namespace).List(listOption)
@@ -390,7 +389,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				return false, nil
 			}
 			if len(stsListAfterUpgrade.Items) != 0 {
-				klog.Infof("Kubernetes statefulsets got %d, expect %d", len(stsListAfterUpgrade.Items), 0)
+				log.Logf("Kubernetes statefulsets got %d, expect %d", len(stsListAfterUpgrade.Items), 0)
 				return false, nil
 			}
 			return true, nil

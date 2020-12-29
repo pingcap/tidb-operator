@@ -54,8 +54,8 @@ import (
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/kubernetes/test/e2e/framework"
-	e2enode "k8s.io/kubernetes/test/e2e/framework/node"
-	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
+	"k8s.io/kubernetes/test/e2e/framework/node"
+	"k8s.io/kubernetes/test/e2e/framework/pod"
 	storageutils "k8s.io/kubernetes/test/e2e/storage/utils"
 	testutils "k8s.io/kubernetes/test/utils"
 	"k8s.io/utils/pointer"
@@ -360,7 +360,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				framework.ExpectNoError(err)
 
 				ginkgo.By("[AWS/EKS] New instance will be created and join the cluster")
-				_, err := e2enode.CheckReady(c, len(nodeList.Items), 5*time.Minute)
+				_, err := node.CheckReady(c, len(nodeList.Items), 5*time.Minute)
 				framework.ExpectNoError(err)
 
 				ginkgo.By("[AWS/EKS] Initialize newly created node")
@@ -400,7 +400,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				framework.ExpectNoError(err)
 
 				ginkgo.By("[GCP/GKE] Wait for the node to be ready")
-				e2enode.WaitForNodeToBeReady(c, nodeToDelete.Name, time.Minute*5)
+				node.WaitForNodeToBeReady(c, nodeToDelete.Name, time.Minute*5)
 
 				ginkgo.By(fmt.Sprintf("[GCP/GKE] Initialize underlying machine of node %s", nodeToDelete.Name))
 				node, err := c.CoreV1().Nodes().Get(nodeToDelete.Name, metav1.GetOptions{})
@@ -676,11 +676,11 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			storageutils.KubeletCommand(storageutils.KStart, c, &pod0)
 
 			ginkgo.By("Wait for the failed PD to be recovered")
-			err = e2epod.WaitTimeoutForPodRunningInNamespace(c, pod0.Name, ns, time.Minute*5)
+			err = pod.WaitTimeoutForPodRunningInNamespace(c, pod0.Name, ns, time.Minute*5)
 			framework.ExpectNoError(err)
 
 			ginkgo.By("Wait for the replacement to be gone")
-			err = e2epod.WaitForPodNotFoundInNamespace(c, podName, ns, time.Minute*5)
+			err = pod.WaitForPodNotFoundInNamespace(c, podName, ns, time.Minute*5)
 			framework.ExpectNoError(err)
 		})
 
@@ -851,7 +851,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			framework.ExpectNoError(err)
 
 			ginkgo.By("Wait for the replacement to be gone")
-			err = e2epod.WaitForPodNotFoundInNamespace(c, newPodName, ns, time.Minute*5)
+			err = pod.WaitForPodNotFoundInNamespace(c, newPodName, ns, time.Minute*5)
 			framework.ExpectNoError(err)
 		})
 
@@ -1070,7 +1070,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			framework.ExpectNoError(err)
 
 			ginkgo.By(fmt.Sprintf("Waiting for the failed pod %q to be gone", podName))
-			err = e2epod.WaitForPodNotFoundInNamespace(c, podName, ns, time.Minute*5)
+			err = pod.WaitForPodNotFoundInNamespace(c, podName, ns, time.Minute*5)
 			framework.ExpectNoError(err)
 
 			ginkgo.By(fmt.Sprintf("Waiting for the record of failed pod to be removed from failure stores"))

@@ -20,7 +20,7 @@ import (
 	"net/http"
 
 	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler/calculate"
-	"k8s.io/klog"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 type MonitorInterface interface {
@@ -43,7 +43,7 @@ func NewMockPrometheus() MonitorInterface {
 	upResp := buildPrometheusResponse(params)
 	b, err := json.Marshal(upResp)
 	if err != nil {
-		klog.Fatal(err.Error())
+		log.Fail(err.Error())
 	}
 	mp.responses["up"] = string(b)
 	return mp
@@ -63,7 +63,7 @@ func (m *mockPrometheus) ServeQuery(w http.ResponseWriter, r *http.Request) {
 		writeResponse(w, "no query param")
 		return
 	}
-	klog.Infof("receive query, key: %s", key)
+	log.Logf("receive query, key: %s", key)
 	v, ok := m.responses[key]
 	if !ok {
 		writeResponse(w, "no response value found")
@@ -120,6 +120,7 @@ func (m *mockPrometheus) ServeTargets(w http.ResponseWriter, r *http.Request) {
 
 func (m *mockPrometheus) addIntoMaps(mp *MonitorParams, response string) {
 	currentType := mp.QueryType
+<<<<<<< HEAD
 	if currentType == "cpu" {
 		key := ""
 		name := mp.Name
@@ -130,6 +131,24 @@ func (m *mockPrometheus) addIntoMaps(mp *MonitorParams, response string) {
 			key = fmt.Sprintf(calculate.TidbSumCpuMetricsPattern, name, duration)
 		} else if memberType == "tikv" {
 			key = fmt.Sprintf(calculate.TikvSumCpuMetricsPattern, name, duration)
+=======
+	key := ""
+	name := mp.Name
+	memberType := mp.MemberType
+	duration := mp.Duration
+	log.Logf("name=%s, memberType =%s, duration =%s, response =%s", name, memberType, duration, response)
+	if memberType == "tidb" {
+		if currentType == "cpu_usage" {
+			key = fmt.Sprintf(calculate.TidbSumCPUUsageMetricsPattern, duration)
+		} else if currentType == "cpu_quota" {
+			key = calculate.TidbCPUQuotaMetricsPattern
+		}
+	} else if memberType == "tikv" {
+		if currentType == "cpu_usage" {
+			key = fmt.Sprintf(calculate.TikvSumCPUUsageMetricsPattern, duration)
+		} else if currentType == "cpu_quota" {
+			key = calculate.TikvCPUQuotaMetricsPattern
+>>>>>>> 7236eaba... Unify e2e test logging (#3639)
 		}
 		m.responses[fmt.Sprintf("%s", key)] = response
 		klog.Infof("add key: %s with value: %s", key, response)
@@ -142,10 +161,16 @@ func (m *mockPrometheus) addIntoMaps(mp *MonitorParams, response string) {
 		m.responses[fmt.Sprintf("%s", key)] = response
 		klog.Infof("add key: %s with value: %s", key, response)
 	}
+<<<<<<< HEAD
+=======
+	m.responses[key] = response
+	log.Logf("add key: %s with value: %s", key, response)
+
+>>>>>>> 7236eaba... Unify e2e test logging (#3639)
 }
 
 func writeResponse(w http.ResponseWriter, msg string) {
 	if _, err := w.Write([]byte(msg)); err != nil {
-		klog.Error(err.Error())
+		log.Logf("ERROR: %v", err)
 	}
 }

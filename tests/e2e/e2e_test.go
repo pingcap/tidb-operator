@@ -27,9 +27,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
-	"k8s.io/klog"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/framework/config"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 	"k8s.io/kubernetes/test/e2e/framework/testfiles"
 	"k8s.io/kubernetes/test/e2e/framework/viperconfig"
 
@@ -108,12 +108,13 @@ func createTestingNS(baseName string, c clientset.Interface, labels map[string]s
 	return got, nil
 }
 
+// TestMain does some initial setups before running the real TestE2E function
 func TestMain(m *testing.M) {
 	// Register test flags, then parse flags.
 	handleFlags()
 
 	flag.CommandLine.VisitAll(func(flag *flag.Flag) {
-		klog.V(1).Infof("FLAG: --%s=%q", flag.Name, flag.Value)
+		log.Logf("FLAG: --%s=%q", flag.Name, flag.Value)
 	})
 
 	// Now that we know which Viper config (if any) was chosen,
@@ -135,6 +136,7 @@ func TestMain(m *testing.M) {
 	framework.TestContext.CreateTestingNS = createTestingNS
 
 	rand.Seed(time.Now().UnixNano())
+	// run test functions with `go test`
 	os.Exit(m.Run())
 }
 
