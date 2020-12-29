@@ -15,6 +15,7 @@ package monitor
 
 import (
 	"fmt"
+	"path"
 	"sort"
 	"strconv"
 
@@ -23,6 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	"github.com/prometheus/common/model"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -32,6 +34,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog"
+)
+
+const (
+	defaultReplicaExternalLabelName = "prometheus_replica"
 )
 
 func GetMonitorObjectName(monitor *v1alpha1.TidbMonitor) string {
@@ -129,6 +135,7 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monit
 		ClusterInfos:       releaseClusterInfos,
 		DMClusterInfos:     releaseDMClusterInfos,
 		EnableTLSCluster:   tc.IsTLSClusterEnabled(),
+		ExternalLabels:     buildExternalLabels(monitor),
 		EnableTLSDMCluster: dc != nil && dc.IsTLSClusterEnabled(),
 	}
 
@@ -458,6 +465,10 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 	if monitor.Spec.Prometheus.Config != nil && len(monitor.Spec.Prometheus.Config.CommandOptions) > 0 {
 		c.Command = append(c.Command, monitor.Spec.Prometheus.Config.CommandOptions...)
 	}
+	if monitor.Spec.Prometheus.DisableCompaction || monitor.Spec.Thanos != nil {
+		c.Command = append(c.Command, "--storage.tsdb.max-block-duration=2h")
+		c.Command = append(c.Command, "--storage.tsdb.min-block-duration=2h")
+	}
 
 	if tc.IsTLSClusterEnabled() {
 		c.VolumeMounts = append(c.VolumeMounts, core.VolumeMount{
@@ -476,6 +487,7 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 	if monitor.Spec.Prometheus.ImagePullPolicy != nil {
 		c.ImagePullPolicy = *monitor.Spec.Prometheus.ImagePullPolicy
 	}
+
 	return c
 }
 
@@ -757,6 +769,20 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 			prometheusService.Spec.LoadBalancerSourceRanges = monitor.Spec.Prometheus.Service.LoadBalancerSourceRanges
 		}
 	}
+
+	if monitor.Spec.Thanos != nil {
+		prometheusService.Spec.Ports = append(prometheusService.Spec.Ports, core.ServicePort{
+			Name:       "thanos-grpc",
+			Protocol:   core.ProtocolTCP,
+			Port:       10901,
+			TargetPort: intstr.FromInt(10901),
+		}, core.ServicePort{
+			Name:       "thanos-http",
+			Protocol:   core.ProtocolTCP,
+			Port:       10902,
+			TargetPort: intstr.FromInt(10902),
+		})
+	}
 	reloaderName := reloaderName(monitor)
 	reloaderService := &core.Service{
 		ObjectMeta: meta.ObjectMeta{
@@ -824,6 +850,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 
 		services = append(services, grafanaService)
 	}
+
 	return services
 }
 
@@ -919,6 +946,10 @@ func getMonitorStatefulSet(sa *core.ServiceAccount, config *core.ConfigMap, secr
 	prometheusContainer := getMonitorPrometheusContainer(monitor, tc, dc)
 	reloaderContainer := getMonitorReloaderContainer(monitor, tc)
 	statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, prometheusContainer, reloaderContainer)
+	if monitor.Spec.Thanos != nil {
+		thanosSideCarContainer := getThanosSidecarContainer(monitor)
+		statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, thanosSideCarContainer)
+	}
 	additionalContainers := monitor.Spec.AdditionalContainers
 	if len(additionalContainers) > 0 {
 		statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, additionalContainers...)
@@ -1002,4 +1033,140 @@ func getMonitorVolumeClaims(monitor *v1alpha1.TidbMonitor) []core.PersistentVolu
 		}
 	}
 	return nil
+}
+
+func getThanosSidecarContainer(monitor *v1alpha1.TidbMonitor) core.Container {
+	bindAddress := "[$(POD_IP)]"
+	thanos := monitor.Spec.Thanos
+	if thanos.ListenLocal {
+		bindAddress = "127.0.0.1"
+	}
+	thanosArgs := []string{"sidecar",
+		fmt.Sprintf("--prometheus.url=http://%s:9090/%s", "localhost", path.Clean(thanos.RoutePrefix)),
+		fmt.Sprintf("--grpc-address=%s:10901", bindAddress),
+		fmt.Sprintf("--http-address=%s:10902", bindAddress),
+	}
+
+	if thanos.GRPCServerTLSConfig != nil {
+		tls := thanos.GRPCServerTLSConfig
+		if tls.CertFile != "" {
+			thanosArgs = append(thanosArgs, "--grpc-server-tls-cert="+tls.CertFile)
+		}
+		if tls.KeyFile != "" {
+			thanosArgs = append(thanosArgs, "--grpc-server-tls-key="+tls.KeyFile)
+		}
+		if tls.CAFile != "" {
+			thanosArgs = append(thanosArgs, "--grpc-server-tls-client-ca="+tls.CAFile)
+		}
+	}
+
+	container := core.Container{
+		Name:      "thanos-sidecar",
+		Image:     fmt.Sprintf("%s:%s", thanos.BaseImage, thanos.Version),
+		Resources: controller.ContainerResource(thanos.ResourceRequirements),
+		Args:      thanosArgs,
+		Env: []core.EnvVar{
+			{
+				Name: "POD_IP",
+				ValueFrom: &core.EnvVarSource{
+					FieldRef: &core.ObjectFieldSelector{
+						FieldPath: "status.podIP",
+					},
+				},
+			},
+			{
+				Name: "POD_NAME",
+				ValueFrom: &core.EnvVarSource{
+					FieldRef: &core.ObjectFieldSelector{FieldPath: "metadata.name"},
+				},
+			},
+			{
+				Name: "NAMESPACE",
+				ValueFrom: &core.EnvVarSource{
+					FieldRef: &core.ObjectFieldSelector{FieldPath: "metadata.namespace"},
+				},
+			},
+		},
+		Ports: []core.ContainerPort{
+			{
+				Name:          "http",
+				ContainerPort: 10902,
+				Protocol:      "TCP",
+			},
+			{
+				Name:          "grpc",
+				ContainerPort: 10901,
+				Protocol:      "TCP",
+			},
+		},
+	}
+	if thanos.ObjectStorageConfig != nil || thanos.ObjectStorageConfigFile != nil {
+		if thanos.ObjectStorageConfigFile != nil {
+			container.Args = append(container.Args, "--objstore.config-file="+*thanos.ObjectStorageConfigFile)
+		} else {
+			container.Args = append(container.Args, "--objstore.config=$(OBJSTORE_CONFIG)")
+			container.Env = append(container.Env, core.EnvVar{
+				Name: "OBJSTORE_CONFIG",
+				ValueFrom: &core.EnvVarSource{
+					SecretKeyRef: thanos.ObjectStorageConfig,
+				},
+			})
+		}
+		storageDir := "/data/prometheus"
+		container.Args = append(container.Args, fmt.Sprintf("--tsdb.path=%s", storageDir))
+		container.VolumeMounts = append(
+			container.VolumeMounts,
+			core.VolumeMount{
+				Name:      v1alpha1.TidbMonitorMemberType.String(),
+				MountPath: "/data",
+			},
+		)
+	}
+
+	if thanos.TracingConfig != nil || thanos.TracingConfigFile != nil {
+		if thanos.TracingConfigFile != nil {
+			container.Args = append(container.Args, "--tracing.config-file="+*thanos.TracingConfigFile)
+		} else {
+			container.Args = append(container.Args, "--tracing.config=$(TRACING_CONFIG)")
+			container.Env = append(container.Env, core.EnvVar{
+				Name: "TRACING_CONFIG",
+				ValueFrom: &core.EnvVarSource{
+					SecretKeyRef: thanos.TracingConfig,
+				},
+			})
+		}
+	}
+
+	if thanos.LogLevel != "" {
+		container.Args = append(container.Args, "--log.level="+thanos.LogLevel)
+	}
+	if thanos.LogFormat != "" {
+		container.Args = append(container.Args, "--log.format="+thanos.LogFormat)
+	}
+
+	if thanos.MinTime != "" {
+		container.Args = append(container.Args, "--min-time="+thanos.MinTime)
+	}
+	return container
+}
+
+func buildExternalLabels(monitor *v1alpha1.TidbMonitor) model.LabelSet {
+	m := model.LabelSet{}
+	// Use defaultReplicaExternalLabelName constant by default if field is missing.
+	// Do not add external label if field is set to empty string.
+	replicaExternalLabelName := defaultReplicaExternalLabelName
+	if monitor.Spec.ReplicaExternalLabelName != nil {
+		if *monitor.Spec.ReplicaExternalLabelName != "" {
+			replicaExternalLabelName = *monitor.Spec.ReplicaExternalLabelName
+		} else {
+			replicaExternalLabelName = ""
+		}
+	}
+	if replicaExternalLabelName != "" {
+		m[model.LabelName(replicaExternalLabelName)] = "$(NAMESPACE)_$(POD_NAME)"
+	}
+	for n, v := range monitor.Spec.ExternalLabels {
+		m[model.LabelName(n)] = model.LabelValue(v)
+	}
+	return m
 }
