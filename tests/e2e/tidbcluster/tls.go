@@ -386,10 +386,10 @@ func DeleteCertManager(cli clientset.Interface) error {
 		if err != nil {
 			return false, nil
 		}
-		for _, pod := range podList.Items {
-			err := pod.WaitForPodNotFoundInNamespace(cli, pod.Name, "cert-manager", 5*time.Minute)
+		for _, _pod := range podList.Items {
+			err := pod.WaitForPodNotFoundInNamespace(cli, _pod.Name, "cert-manager", 5*time.Minute)
 			if err != nil {
-				framework.Logf("failed to wait for pod cert-manager/%s disappear", pod.Name)
+				framework.Logf("failed to wait for pod cert-manager/%s disappear", _pod.Name)
 				return false, nil
 			}
 		}

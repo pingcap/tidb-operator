@@ -112,7 +112,7 @@ func startWebhook(c clientset.Interface, image, ns, svcName string, cert []byte,
 	svc, err = c.CoreV1().Services(ns).Create(svc)
 	framework.ExpectNoError(err, "failed to create Service")
 
-	pod := &v1.Pod{
+	_pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ns,
 			Name:      "webhook",
@@ -156,12 +156,12 @@ func startWebhook(c clientset.Interface, image, ns, svcName string, cert []byte,
 			RestartPolicy:      v1.RestartPolicyNever,
 		},
 	}
-	pod, err = c.CoreV1().Pods(ns).Create(pod)
+	_pod, err = c.CoreV1().Pods(ns).Create(_pod)
 	framework.ExpectNoError(err, "failed to create Pod")
 
-	err = pod.WaitForPodRunningInNamespace(c, pod)
-	framework.ExpectNoError(err, "failed to wait for pod %s/%s to be running", pod.Namespace, pod.Name)
-	return pod, svc
+	err = pod.WaitForPodRunningInNamespace(c, _pod)
+	framework.ExpectNoError(err, "failed to wait for pod %s/%s to be running", _pod.Namespace, _pod.Name)
+	return _pod, svc
 }
 
 func mustToString(set sets.Int32) string {
