@@ -85,7 +85,7 @@ If TiCDC is deployed in the cluster, you can scale out TiCDC by modifying `spec.
         {{< copyable "sql" >}}
 
         ```sql
-        alter table <db-name>.<table-name> set tiflash replica 0;
+        alter table <db_name>.<table_name> set tiflash replica 0;
         ```
 
 5. Wait for TiFlash replicas in the related tables to be deleted.

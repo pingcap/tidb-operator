@@ -75,7 +75,7 @@ watch kubectl -n ${namespace} get pod -o wide
     {{< copyable "sql" >}}
 
     ```sql
-    alter table <db-name>.<table-name> set tiflash replica 0;
+    alter table <db_name>.<table_name> set tiflash replica 0;
     ```
 
 5. 等待相关表的 TiFlash 副本被删除。
