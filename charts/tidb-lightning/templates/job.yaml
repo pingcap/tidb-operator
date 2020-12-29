@@ -36,7 +36,8 @@ spec:
 {{ toYaml .Values.imagePullSecrets | indent 6 }}
       {{- end }}
       {{ if and .Values.dataSource.local.hostPath .Values.dataSource.local.nodeName -}}
-      nodeName: {{ .Values.dataSource.local.nodeName }}
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.dataSource.local.nodeName }}
       {{ else if not .Values.dataSource.adhoc.pvcName -}}
       initContainers:
       - name: data-retriever
@@ -105,6 +106,10 @@ spec:
           {{- else -}}
           mountPath: /var/lib/tidb-lightning
           {{- end }}
+        {{ if eq .Values.backend "local" }}
+        - name: sorted-kv
+          mountPath: /var/lib/sorted-kv
+        {{- end }}
         {{- if and .Values.tlsCluster .Values.tlsCluster.enabled }}
         - name: lightning-tls
           mountPath: /var/lib/lightning-tls
@@ -147,6 +152,11 @@ spec:
       - name: data
         persistentVolumeClaim:
           claimName: {{ include "tidb-lightning.name" . }}
+      {{ end -}}
+      {{ if eq .Values.backend "local" }}
+      - name: sorted-kv
+        persistentVolumeClaim:
+          claimName: {{ include "tidb-lightning.name" . }}-sorted-kv
       {{ end -}}
       {{- if and .Values.tlsCluster .Values.tlsCluster.enabled }}
       - name: lightning-tls
