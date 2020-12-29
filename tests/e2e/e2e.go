@@ -258,7 +258,7 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 		if pv.Spec.PersistentVolumeReclaimPolicy == v1.PersistentVolumeReclaimDelete {
 			continue
 		}
-		e2elog.Logf("Update reclaim policy of PV %s to %s", pv.Name, v1.PersistentVolumeReclaimDelete)
+		log.Logf("Update reclaim policy of PV %s to %s", pv.Name, v1.PersistentVolumeReclaimDelete)
 		pv.Spec.PersistentVolumeReclaimPolicy = v1.PersistentVolumeReclaimDelete
 		_, err = kubeCli.CoreV1().PersistentVolumes().Update(&pv)
 		framework.ExpectNoError(err, "failed to update pv %s", pv.Name)
