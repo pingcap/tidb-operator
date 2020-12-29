@@ -449,7 +449,10 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/enable-tls-between-components/']
               "::1",
               "${cluster_name}-importer",
               "${cluster_name}-importer.${namespace}",
-              "${cluster_name}-importer.${namespace}.svc"
+              "${cluster_name}-importer.${namespace}.svc",
+              "*.${cluster_name}-importer",
+              "*.${cluster_name}-importer.${namespace}",
+              "*.${cluster_name}-importer.${namespace}.svc"
             ],
         ...
         ```
@@ -1143,6 +1146,9 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/enable-tls-between-components/']
           - "${cluster_name}-importer"
           - "${cluster_name}-importer.${namespace}"
           - "${cluster_name}-importer.${namespace}.svc"
+          - "*.${cluster_name}-importer"
+          - "*.${cluster_name}-importer.${namespace}"
+          - "*.${cluster_name}-importer.${namespace}.svc"
           ipAddresses:
           - 127.0.0.1
           - ::1
