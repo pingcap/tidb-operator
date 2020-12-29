@@ -174,6 +174,16 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
 
     3. 将 `dataSource.remote.storageClassName` 设置为 Kubernetes 集群中现有的一个存储类型。
 
+* Ad hoc 模式
+
+    当使用远程模式进行恢复时，如果在恢复过程中由于异常而造成中断、但又不希望重复从网络存储中下载备份数据，则可以使用 Ad hoc 模式直接恢复已通过远程模式下载并解压到 PV 中的数据。步骤如下：
+
+    1. 确保 `values.yaml` 中的 `dataSource.local` 和 `dataSource.remote` 均为空配置。
+
+    2. 配置 `values.yaml` 中的 `dataSource.adhoc.pvcName` 为使用远程模式时创建的 PVC 名称。
+
+    3. 配置 `values.yaml` 中的 `dataSource.adhoc.backupName` 为原备份数据对应的名称，如 `backup-2020-12-17T10:12:51Z`（不包含在网络存储上压缩文件名的 `.tgz` 后缀）。
+
 ### 部署 TiDB Lightning
 
 部署 TiDB Lightning 的方式根据不同的权限授予方式及存储方式，有不同的情况。
