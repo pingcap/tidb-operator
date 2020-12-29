@@ -75,19 +75,12 @@ func main() {
 	signalCh := make(chan os.Signal, 1)
 	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM)
 	go writer.Start(db)
-<<<<<<< HEAD
 	select {
 	case sig := <-signalCh:
-		klog.Infof("signal %v received, stopping blockwriter", sig)
+		log.Logf("signal %v received, stopping blockwriter", sig)
 		writer.Stop()
 		return
 	}
-=======
-
-	sig := <-signalCh
-	log.Logf("signal %v received, stopping blockwriter", sig)
-	writer.Stop()
->>>>>>> 7236eaba... Unify e2e test logging (#3639)
 }
 
 func initDB() error {

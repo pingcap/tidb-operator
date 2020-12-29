@@ -1421,28 +1421,16 @@ func getMemberContainer(kubeCli kubernetes.Interface, stsGetter typedappsv1.Stat
 	}
 	podList, err := kubeCli.CoreV1().Pods(namespace).List(listOption)
 	if err != nil {
-<<<<<<< HEAD
-		klog.Errorf("fail to get pods for component %s of cluster %s/%s", component, namespace, tcName)
+		log.Logf("ERROR: fail to get pods for container %s of sts %s/%s", component, namespace, tcName)
 		return nil, false
 	}
 	if len(podList.Items) == 0 {
-		klog.Errorf("no pods found for component %s of cluster %s/%s", component, namespace, tcName)
-=======
-		log.Logf("ERROR: fail to get pods for container %s of sts %s/%s", containerName, sts.Namespace, sts.Name)
-		return nil, false
-	}
-	if len(podList.Items) == 0 {
-		log.Logf("ERROR: no pods found for component %s of cluster %s/%s", containerName, sts.Namespace, sts.Name)
->>>>>>> 7236eaba... Unify e2e test logging (#3639)
+		log.Logf("ERROR: no pods found for component %s of cluster %s/%s", component, namespace, tcName)
 		return nil, false
 	}
 	pod := podList.Items[0]
 	if len(pod.Spec.Containers) == 0 {
-<<<<<<< HEAD
-		klog.Errorf("no containers found for component %s of cluster %s/%s", component, namespace, tcName)
-=======
-		log.Logf("ERROR: no containers found for component %s of cluster %s/%s", containerName, sts.Namespace, sts.Name)
->>>>>>> 7236eaba... Unify e2e test logging (#3639)
+		log.Logf("ERROR: no containers found for component %s of cluster %s/%s", component, namespace, tcName)
 		return nil, false
 	}
 

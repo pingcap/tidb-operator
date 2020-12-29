@@ -882,13 +882,8 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		cluster.ScaleTiDB(0)
 		oa.ScaleTidbClusterOrDie(&cluster)
 
-<<<<<<< HEAD
-		e2elog.Logf("checking tidb cluster [%s/%s] scale to zero", cluster.Namespace, cluster.ClusterName)
-		err = wait.PollImmediate(15*time.Second, 10*time.Minute, func() (bool, error) {
-=======
 		log.Logf("checking tidb cluster [%s/%s] scale to zero", cluster.Namespace, cluster.ClusterName)
-		err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
->>>>>>> 7236eaba... Unify e2e test logging (#3639)
+		err = wait.PollImmediate(15*time.Second, 10*time.Minute, func() (bool, error) {
 			var tc *v1alpha1.TidbCluster
 			var err error
 			if tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {

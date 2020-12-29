@@ -601,7 +601,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 						return true, nil
 					}
 				}
-				klog.Infof("tikv auto-scale out haven't find the special label")
+				log.Logf("tikv auto-scale out haven't find the special label")
 				return false, nil
 			})
 			framework.ExpectNoError(err, "check tikv auto-scale to 4 error")
@@ -736,7 +736,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					return false, nil
 				}
 				if tc.Spec.TiDB.Replicas != 3 {
-					klog.Info("tidb haven't auto-scaler to 3 replicas")
+					log.Logf("tidb haven't auto-scaler to 3 replicas")
 					return false, nil
 				}
 				tac, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
@@ -744,12 +744,12 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					return false, nil
 				}
 				if tac.Annotations == nil || len(tac.Annotations) < 1 {
-					klog.Info("tac haven't marked any annotations")
+					log.Logf("tac haven't marked any annotations")
 					return false, nil
 				}
 				v, ok := tac.Annotations[label.AnnTiDBLastAutoScalingTimestamp]
 				if !ok {
-					klog.Info("tac haven't marked tidb auto-scaler timstamp annotation")
+					log.Logf("tac haven't marked tidb auto-scaler timstamp annotation")
 					return false, nil
 				}
 				firstScaleTimestamp, err = strconv.ParseInt(v, 10, 64)
@@ -792,7 +792,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					return false, nil
 				}
 				if tc.Spec.TiDB.Replicas != 2 {
-					klog.Info("tidb haven't auto-scaler to 2 replicas")
+					log.Logf("tidb haven't auto-scaler to 2 replicas")
 					return false, nil
 				}
 				tac, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
@@ -800,12 +800,12 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					return false, nil
 				}
 				if tac.Annotations == nil || len(tac.Annotations) < 1 {
-					klog.Info("tac haven't marked any annotations")
+					log.Logf("tac haven't marked any annotations")
 					return false, nil
 				}
 				v, ok := tac.Annotations[label.AnnTiDBLastAutoScalingTimestamp]
 				if !ok {
-					klog.Info("tac haven't marked tidb auto-scale timestamp")
+					log.Logf("tac haven't marked tidb auto-scale timestamp")
 					return false, nil
 				}
 				secondTs, err := strconv.ParseInt(v, 10, 64)
@@ -813,7 +813,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					return false, err
 				}
 				if secondTs == firstScaleTimestamp {
-					klog.Info("tidb haven't scale yet")
+					log.Logf("tidb haven't scale yet")
 					return false, nil
 				}
 				if secondTs-firstScaleTimestamp < 100 {
@@ -1040,69 +1040,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			})
 			framework.ExpectEqual(err, wait.ErrWaitTimeout, "expect pd/tikv/tidb haven't been changed for 5 minutes")
 		})
-<<<<<<< HEAD
-=======
-		ginkgo.It("Deploy TiDBMonitor and Upgrade Operator, TiDBMonitor switch from deployment to StatefulSet", func() {
-			tcName := "smooth-tidbcluster"
-			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "admin", utilimage.TiDBV4UpgradeVersion)
-			cluster.Resources["pd.replicas"] = "3"
-			cluster.Resources["tikv.replicas"] = "3"
-			cluster.Resources["tidb.replicas"] = "1"
-			oa.DeployTidbClusterOrDie(&cluster)
-			oa.CheckTidbClusterStatusOrDie(&cluster)
-
-			monitorName := "smooth-migrate"
-			tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
-			framework.ExpectNoError(err, "failed to get tidbcluster")
-			tm := fixture.NewTidbMonitor(monitorName, ns, tc, true, true, true)
-			_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(tm)
-			framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
-			err = tests.CheckTidbMonitor(tm, cli, c, fw)
-			framework.ExpectNoError(err, "Expected tidbmonitor checked success")
-
-			deploymentPvcName := fmt.Sprintf("%s-monitor", monitorName)
-			deploymentPvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get(deploymentPvcName, metav1.GetOptions{})
-			framework.ExpectNoError(err, "Expected tidbmonitor deployment pvc success")
-			oldVolumeName := deploymentPvc.Spec.VolumeName
-			ginkgo.By("Upgrade tidb-operator and CRDs to current version")
-			ocfg.Tag = cfg.OperatorTag
-			ocfg.Image = cfg.OperatorImage
-			oa.InstallCRDOrDie(ocfg)
-			oa.UpgradeOperatorOrDie(ocfg)
-			err = tests.CheckTidbMonitor(tm, cli, c, fw)
-			framework.ExpectNoError(err, "Expected tidbmonitor checked success under migration")
-			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-				tmSet, err := stsGetter.StatefulSets(ns).Get(monitor.GetMonitorObjectName(tm), metav1.GetOptions{})
-				if err != nil {
-					log.Logf("ERROR: failed to get statefulset: %s/%s, %v", ns, tmSet, err)
-					return false, nil
-				}
-				return true, nil
-			})
-			framework.ExpectNoError(err, "Expected tidbmonitor sts success")
-			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-				newStsPvcName := monitor.GetMonitorFirstPVCName(tm.Name)
-				log.Logf("tidbmonitor newStsPvcName:%s", newStsPvcName)
-				stsPvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get(newStsPvcName, metav1.GetOptions{})
-				if err != nil {
-					if errors.IsNotFound(err) {
-						log.Logf("tm[%s/%s]'s first sts pvc not found,tag:%s,image:%s", ns, tm.Name, cfg.OperatorTag, cfg.OperatorImage)
-						return false, nil
-					}
-					log.Logf("ERROR: get tidbmonitor sts pvc err:%v", err)
-					return false, nil
-				}
-				if stsPvc.Spec.VolumeName == oldVolumeName {
-					return true, nil
-				}
-				log.Logf("tidbmonitor sts pv unequal to old deployment pv")
-				return false, nil
-			})
-			framework.ExpectNoError(err, "Expected tidbmonitor smooth migrate successfully")
-			err = tests.CheckTidbMonitor(tm, cli, c, fw)
-			framework.ExpectNoError(err, "Expected tidbmonitor checked success")
-		})
->>>>>>> 7236eaba... Unify e2e test logging (#3639)
 	})
 
 	ginkgo.Context("upgrading tidb-operator in the same minor series should not trigger rolling-update", func() {

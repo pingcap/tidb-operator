@@ -302,13 +302,8 @@ func (ctu *CrdTestUtil) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, erro
 		return false, nil
 	}
 
-<<<<<<< HEAD
 	if tc.Status.TiKV.StatefulSet == nil {
-		klog.Infof("tidbcluster: %s/%s .status.TiKV.StatefulSet is nil", ns, tcName)
-=======
-	if tikvStatus.StatefulSet == nil {
-		log.Logf("%s/%s .status.StatefulSet is nil", ns, name)
->>>>>>> 7236eaba... Unify e2e test logging (#3639)
+		log.Logf("tidbcluster: %s/%s .status.TiKV.StatefulSet is nil", ns, tcName)
 		return false, nil
 	}
 	failureCount := len(tc.Status.TiKV.FailureStores)
@@ -323,15 +318,9 @@ func (ctu *CrdTestUtil) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, erro
 			ns, tikvSetName, tikvSet.Status.ReadyReplicas, replicas)
 		return false, nil
 	}
-<<<<<<< HEAD
 	if len(tc.Status.TiKV.Stores) != int(replicas) {
-		klog.Infof("tidbcluster: %s/%s .status.TiKV.Stores.count(%d) != %d",
+		log.Logf("tidbcluster: %s/%s .status.TiKV.Stores.count(%d) != %d",
 			ns, tcName, len(tc.Status.TiKV.Stores), replicas)
-=======
-	if storeCounts != replicas {
-		log.Logf("%s/%s .status.TiKV.Stores.count(%d) != %d",
-			ns, name, storeCounts, replicas)
->>>>>>> 7236eaba... Unify e2e test logging (#3639)
 		return false, nil
 	}
 	if tikvSet.Status.ReadyReplicas != tikvSet.Status.Replicas {
@@ -347,25 +336,15 @@ func (ctu *CrdTestUtil) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, erro
 		return false, nil
 	}
 
-<<<<<<< HEAD
 	if tc.TiKVImage() != c.Image {
-		klog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tikv].image(%s) != %s",
-			ns, tikvSetName, c.Image, tc.TiKVImage())
-=======
-	if image != c.Image {
 		log.Logf("statefulset: %s/%s .spec.template.spec.containers[name=tikv].image(%s) != %s",
-			ns, tikvSetName, c.Image, image)
->>>>>>> 7236eaba... Unify e2e test logging (#3639)
+			ns, tikvSetName, c.Image, tc.TiKVImage())
 		return false, nil
 	}
 
 	for _, store := range tc.Status.TiKV.Stores {
 		if store.State != v1alpha1.TiKVStateUp {
-<<<<<<< HEAD
-			klog.Infof("tidbcluster: %s/%s's store(%s) state != %s", ns, tcName, store.ID, v1alpha1.TiKVStateUp)
-=======
-			log.Logf("%s/%s's store(%s) state != %s", ns, name, store.ID, v1alpha1.TiKVStateUp)
->>>>>>> 7236eaba... Unify e2e test logging (#3639)
+			log.Logf("tidbcluster: %s/%s's store(%s) state != %s", ns, tcName, store.ID, v1alpha1.TiKVStateUp)
 			return false, nil
 		}
 	}

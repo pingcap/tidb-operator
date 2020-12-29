@@ -59,7 +59,6 @@ func (m *mockPrometheus) ServeQuery(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if len(key) < 1 {
-		klog.Info()
 		writeResponse(w, "no query param")
 		return
 	}
@@ -120,53 +119,28 @@ func (m *mockPrometheus) ServeTargets(w http.ResponseWriter, r *http.Request) {
 
 func (m *mockPrometheus) addIntoMaps(mp *MonitorParams, response string) {
 	currentType := mp.QueryType
-<<<<<<< HEAD
 	if currentType == "cpu" {
 		key := ""
 		name := mp.Name
 		memberType := mp.MemberType
 		duration := mp.Duration
-		klog.Infof("name=%s, memberType =%s, duration =%s, response =%s", name, memberType, duration, response)
+		log.Logf("name=%s, memberType =%s, duration =%s, response =%s", name, memberType, duration, response)
 		if memberType == "tidb" {
 			key = fmt.Sprintf(calculate.TidbSumCpuMetricsPattern, name, duration)
 		} else if memberType == "tikv" {
 			key = fmt.Sprintf(calculate.TikvSumCpuMetricsPattern, name, duration)
-=======
-	key := ""
-	name := mp.Name
-	memberType := mp.MemberType
-	duration := mp.Duration
-	log.Logf("name=%s, memberType =%s, duration =%s, response =%s", name, memberType, duration, response)
-	if memberType == "tidb" {
-		if currentType == "cpu_usage" {
-			key = fmt.Sprintf(calculate.TidbSumCPUUsageMetricsPattern, duration)
-		} else if currentType == "cpu_quota" {
-			key = calculate.TidbCPUQuotaMetricsPattern
-		}
-	} else if memberType == "tikv" {
-		if currentType == "cpu_usage" {
-			key = fmt.Sprintf(calculate.TikvSumCPUUsageMetricsPattern, duration)
-		} else if currentType == "cpu_quota" {
-			key = calculate.TikvCPUQuotaMetricsPattern
->>>>>>> 7236eaba... Unify e2e test logging (#3639)
 		}
 		m.responses[fmt.Sprintf("%s", key)] = response
-		klog.Infof("add key: %s with value: %s", key, response)
+		log.Logf("add key: %s with value: %s", key, response)
 	} else if currentType == "storage" {
 		key := ""
 		cluster := mp.Name
 		stype := mp.StorageType
-		klog.Infof("cluster=%s, storageType=%s, response =%s", cluster, stype, response)
+		log.Logf("cluster=%s, storageType=%s, response =%s", cluster, stype, response)
 		key = fmt.Sprintf(calculate.TikvSumStorageMetricsPattern, cluster, stype)
 		m.responses[fmt.Sprintf("%s", key)] = response
-		klog.Infof("add key: %s with value: %s", key, response)
+		log.Logf("add key: %s with value: %s", key, response)
 	}
-<<<<<<< HEAD
-=======
-	m.responses[key] = response
-	log.Logf("add key: %s with value: %s", key, response)
-
->>>>>>> 7236eaba... Unify e2e test logging (#3639)
 }
 
 func writeResponse(w http.ResponseWriter, msg string) {
