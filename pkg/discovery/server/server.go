@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
 
@@ -112,6 +113,7 @@ func (s *server) newVerifyHandler(req *restful.Request, resp *restful.Response) 
 		return
 	}
 	pdPeerURL := string(data)
+	pdPeerURL = strings.Trim(pdPeerURL, "\n")
 
 	var result string
 	result, err = s.discovery.VerifyPDEndpoint(pdPeerURL)

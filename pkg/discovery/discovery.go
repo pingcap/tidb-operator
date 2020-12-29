@@ -238,7 +238,6 @@ func (d *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
 
 func (d *tidbDiscovery) VerifyPDEndpoint(pdURL string) (string, error) {
 	// save a copy of pdURL for failure
-	pdURL = strings.Trim(pdURL, "\n")
 	copyAdvertisePeerURL := pdURL
 	pdEndpoint := parsePDURL(pdURL)
 
@@ -300,22 +299,31 @@ func parsePDURL(pdURL string) *pdEndpointURL {
 		tcName:       "",
 	}
 
-	// TiDB provide empty scheme URL, TiKV provide URL with scheme
-	scheme := strings.Split(pdURL, "://")
-	if len(scheme) == 1 {
-		pdEndpoint.scheme = ""
-		pdEndpoint.pdMemberName = scheme[0]
-	} else {
-		pdEndpoint.scheme = scheme[0]
-		pdEndpoint.pdMemberName = scheme[1]
+	noScheme := true
+	if strings.Contains(pdURL, "://") {
+		noScheme = false
 	}
-
-	// Deal with port
-	// If there is no port in Membername, leave Port empty.
-	hostURLArr := strings.Split(pdEndpoint.pdMemberName, ":")
-	pdEndpoint.pdMemberName = hostURLArr[0]
-	if len(hostURLArr) > 1 {
-		pdEndpoint.pdMemberPort = hostURLArr[1]
+	pdURL = strings.ReplaceAll(pdURL, "//", "")
+	partsPDURL := strings.Split(pdURL, ":")
+	// If len == 1, the URL doesn't contain ":", it should be pdMemberName
+	// If len == 2, the URL contains 1 ":", if noScheme is true, it should be like "cluster1-pd:2379", or "http://clutser1-pd"
+	// If len == 3, the URL contains 2 ":", the URL should be like "http://cluster1-pd:2379"
+	// In normal scenario, the URL should be like "cluster1-pd:2379" or "http://cluster1-pd:2379"
+	switch len(partsPDURL) {
+	case 1:
+		pdEndpoint.pdMemberName = partsPDURL[0]
+	case 2:
+		if noScheme {
+			pdEndpoint.pdMemberName = partsPDURL[0]
+			pdEndpoint.pdMemberPort = partsPDURL[1]
+		} else {
+			pdEndpoint.scheme = partsPDURL[0]
+			pdEndpoint.pdMemberName = partsPDURL[1]
+		}
+	case 3:
+		pdEndpoint.scheme = partsPDURL[0]
+		pdEndpoint.pdMemberName = partsPDURL[1]
+		pdEndpoint.pdMemberPort = partsPDURL[2]
 	}
 
 	// Deal with tcName
