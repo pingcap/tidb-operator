@@ -610,4 +610,16 @@ fi
 
 hack::ensure_kubetest2
 echo "info: run 'kubetest2 ${kubetest2_args[@]} -- hack/run-e2e.sh $@'"
+# example kubetest2 command:
+# kubetest2 kind \
+#     --up \
+#     --down \
+#     --test exec \
+#     --image-name kindest/node:v1.18.2@sha256:7b27a6d0f2517ff88ba444025beae41491b016bc6af573ba467b70c5e8e0d85f \
+#     --up-retries 3 \
+#     --cluster-name tidb-operator \
+#     --config /tmp/tmp.bZOmp7Cgh2 \
+#     --verbosity 4 \
+#     -- \
+#     hack/run-e2e.sh --ginkgo.focus=Basic
 $KUBETSTS2_BIN ${kubetest2_args[@]} -- hack/run-e2e.sh "$@"

@@ -35,7 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
-	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
+	"k8s.io/kubernetes/test/e2e/framework/pod"
 )
 
 var tidbIssuerTmpl = `
@@ -365,7 +365,7 @@ func InstallCertManager(cli clientset.Interface) error {
 		return fmt.Errorf("failed to install cert-manager %s %v", string(data), err)
 	}
 
-	err := e2epod.WaitForPodsRunningReady(cli, "cert-manager", 3, 0, 10*time.Minute, nil)
+	err := pod.WaitForPodsRunningReady(cli, "cert-manager", 3, 0, 10*time.Minute, nil)
 	if err != nil {
 		return err
 	}
@@ -386,10 +386,10 @@ func DeleteCertManager(cli clientset.Interface) error {
 		if err != nil {
 			return false, nil
 		}
-		for _, pod := range podList.Items {
-			err := e2epod.WaitForPodNotFoundInNamespace(cli, pod.Name, "cert-manager", 5*time.Minute)
+		for _, _pod := range podList.Items {
+			err := pod.WaitForPodNotFoundInNamespace(cli, _pod.Name, "cert-manager", 5*time.Minute)
 			if err != nil {
-				framework.Logf("failed to wait for pod cert-manager/%s disappear", pod.Name)
+				framework.Logf("failed to wait for pod cert-manager/%s disappear", _pod.Name)
 				return false, nil
 			}
 		}

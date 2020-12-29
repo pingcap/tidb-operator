@@ -20,7 +20,7 @@ import (
 	"net/http"
 
 	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler/calculate"
-	"k8s.io/klog"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 type MonitorInterface interface {
@@ -43,7 +43,7 @@ func NewMockPrometheus() MonitorInterface {
 	upResp := buildPrometheusResponse(params)
 	b, err := json.Marshal(upResp)
 	if err != nil {
-		klog.Fatal(err.Error())
+		log.Fail(err.Error())
 	}
 	mp.responses["up"] = string(b)
 	return mp
@@ -59,11 +59,10 @@ func (m *mockPrometheus) ServeQuery(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if len(key) < 1 {
-		klog.Info()
 		writeResponse(w, "no query param")
 		return
 	}
-	klog.Infof("receive query, key: %s", key)
+	log.Logf("receive query, key: %s", key)
 	v, ok := m.responses[key]
 	if !ok {
 		writeResponse(w, "no response value found")
@@ -125,27 +124,27 @@ func (m *mockPrometheus) addIntoMaps(mp *MonitorParams, response string) {
 		name := mp.Name
 		memberType := mp.MemberType
 		duration := mp.Duration
-		klog.Infof("name=%s, memberType =%s, duration =%s, response =%s", name, memberType, duration, response)
+		log.Logf("name=%s, memberType =%s, duration =%s, response =%s", name, memberType, duration, response)
 		if memberType == "tidb" {
 			key = fmt.Sprintf(calculate.TidbSumCpuMetricsPattern, name, duration)
 		} else if memberType == "tikv" {
 			key = fmt.Sprintf(calculate.TikvSumCpuMetricsPattern, name, duration)
 		}
 		m.responses[fmt.Sprintf("%s", key)] = response
-		klog.Infof("add key: %s with value: %s", key, response)
+		log.Logf("add key: %s with value: %s", key, response)
 	} else if currentType == "storage" {
 		key := ""
 		cluster := mp.Name
 		stype := mp.StorageType
-		klog.Infof("cluster=%s, storageType=%s, response =%s", cluster, stype, response)
+		log.Logf("cluster=%s, storageType=%s, response =%s", cluster, stype, response)
 		key = fmt.Sprintf(calculate.TikvSumStorageMetricsPattern, cluster, stype)
 		m.responses[fmt.Sprintf("%s", key)] = response
-		klog.Infof("add key: %s with value: %s", key, response)
+		log.Logf("add key: %s with value: %s", key, response)
 	}
 }
 
 func writeResponse(w http.ResponseWriter, msg string) {
 	if _, err := w.Write([]byte(msg)); err != nil {
-		klog.Error(err.Error())
+		log.Logf("ERROR: %v", err)
 	}
 }

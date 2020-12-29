@@ -50,10 +50,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
-	"k8s.io/klog"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
-	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -148,7 +147,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 
 		ginkgo.It("[PodAdmissionWebhook] able to upgrade TiDB Cluster with pod admission webhook", func() {
-			klog.Info("start to upgrade tidbcluster with pod admission webhook")
+			log.Logf("start to upgrade tidbcluster with pod admission webhook")
 			// deploy new cluster and test upgrade and scale-in/out with pod admission webhook
 			tc := fixture.GetTidbCluster(ns, "admission", utilimage.TiDBV3Version)
 			tc.Spec.PD.Replicas = 3
@@ -386,7 +385,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectNoError(err, "Though some required fields are omitted, they will be set by defaulting")
 			// don't have to check all fields, just take some to test if defaulting set
 			if empty, err := gomega.BeEmpty().Match(newTC.Spec.TiDB.BaseImage); empty {
-				e2elog.Failf("Expected tidb.baseImage has default value set, %v", err)
+				log.Failf("Expected tidb.baseImage has default value set, %v", err)
 			}
 
 			ginkgo.By("Validating should reject illegal update")
@@ -602,7 +601,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 						return true, nil
 					}
 				}
-				klog.Infof("tikv auto-scale out haven't find the special label")
+				log.Logf("tikv auto-scale out haven't find the special label")
 				return false, nil
 			})
 			framework.ExpectNoError(err, "check tikv auto-scale to 4 error")
@@ -737,7 +736,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					return false, nil
 				}
 				if tc.Spec.TiDB.Replicas != 3 {
-					klog.Info("tidb haven't auto-scaler to 3 replicas")
+					log.Logf("tidb haven't auto-scaler to 3 replicas")
 					return false, nil
 				}
 				tac, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
@@ -745,12 +744,12 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					return false, nil
 				}
 				if tac.Annotations == nil || len(tac.Annotations) < 1 {
-					klog.Info("tac haven't marked any annotations")
+					log.Logf("tac haven't marked any annotations")
 					return false, nil
 				}
 				v, ok := tac.Annotations[label.AnnTiDBLastAutoScalingTimestamp]
 				if !ok {
-					klog.Info("tac haven't marked tidb auto-scaler timstamp annotation")
+					log.Logf("tac haven't marked tidb auto-scaler timstamp annotation")
 					return false, nil
 				}
 				firstScaleTimestamp, err = strconv.ParseInt(v, 10, 64)
@@ -793,7 +792,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					return false, nil
 				}
 				if tc.Spec.TiDB.Replicas != 2 {
-					klog.Info("tidb haven't auto-scaler to 2 replicas")
+					log.Logf("tidb haven't auto-scaler to 2 replicas")
 					return false, nil
 				}
 				tac, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
@@ -801,12 +800,12 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					return false, nil
 				}
 				if tac.Annotations == nil || len(tac.Annotations) < 1 {
-					klog.Info("tac haven't marked any annotations")
+					log.Logf("tac haven't marked any annotations")
 					return false, nil
 				}
 				v, ok := tac.Annotations[label.AnnTiDBLastAutoScalingTimestamp]
 				if !ok {
-					klog.Info("tac haven't marked tidb auto-scale timestamp")
+					log.Logf("tac haven't marked tidb auto-scale timestamp")
 					return false, nil
 				}
 				secondTs, err := strconv.ParseInt(v, 10, 64)
@@ -814,7 +813,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					return false, err
 				}
 				if secondTs == firstScaleTimestamp {
-					klog.Info("tidb haven't scale yet")
+					log.Logf("tidb haven't scale yet")
 					return false, nil
 				}
 				if secondTs-firstScaleTimestamp < 100 {
@@ -1007,35 +1006,35 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				// confirm the pd Pod haven't been changed
 				changed, err := utilpod.PodsAreChanged(c, pdPods)()
 				if err != nil {
-					klog.Errorf("meet error during verify pd pods, err:%v", err)
+					log.Logf("ERROR: meet error during verify pd pods, err:%v", err)
 					return true, nil
 				}
 				if changed {
 					return true, nil
 				}
-				klog.Infof("confirm pd pods haven't been changed this time")
+				log.Logf("confirm pd pods haven't been changed this time")
 
 				// confirm the tikv haven't been changed
 				changed, err = utilpod.PodsAreChanged(c, tikvPods)()
 				if err != nil {
-					klog.Errorf("meet error during verify tikv pods, err:%v", err)
+					log.Logf("ERROR: meet error during verify tikv pods, err:%v", err)
 					return true, nil
 				}
 				if changed {
 					return true, nil
 				}
-				klog.Infof("confirm tikv pods haven't been changed this time")
+				log.Logf("confirm tikv pods haven't been changed this time")
 
 				// confirm the tidb haven't been changed
 				changed, err = utilpod.PodsAreChanged(c, tidbPods)()
 				if err != nil {
-					klog.Errorf("meet error during verify tidb pods, err:%v", err)
+					log.Logf("ERROR: meet error during verify tidb pods, err:%v", err)
 					return true, nil
 				}
 				if changed {
 					return true, nil
 				}
-				klog.Infof("confirm tidb pods haven't been changed this time")
+				log.Logf("confirm tidb pods haven't been changed this time")
 
 				return false, nil
 			})

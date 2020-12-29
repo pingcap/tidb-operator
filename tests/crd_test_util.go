@@ -36,7 +36,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
-	"k8s.io/klog"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 type CrdTestUtil struct {
@@ -175,7 +175,7 @@ func (ctu *CrdTestUtil) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeou
 		var local *v1alpha1.TidbCluster
 		var err error
 		if local, err = ctu.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{}); err != nil {
-			klog.Errorf("failed to get tidbcluster: %s/%s, %v", tc.Namespace, tc.Name, err)
+			log.Logf("ERROR: failed to get tidbcluster: %s/%s, %v", tc.Namespace, tc.Name, err)
 			return false, nil
 		}
 
@@ -209,7 +209,7 @@ func (ctu *CrdTestUtil) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, error)
 
 	pdSet, err := ctu.tcStsGetter.StatefulSets(ns).Get(pdSetName, metav1.GetOptions{})
 	if err != nil {
-		klog.Errorf("failed to get statefulset: %s/%s, %v", ns, pdSetName, err)
+		log.Logf("ERROR: failed to get statefulset: %s/%s, %v", ns, pdSetName, err)
 		return false, nil
 	}
 
@@ -222,48 +222,48 @@ func (ctu *CrdTestUtil) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, error)
 	}
 
 	if tc.Status.PD.StatefulSet == nil {
-		klog.Infof("tidbcluster: %s/%s .status.PD.StatefulSet is nil", ns, tcName)
+		log.Logf("tidbcluster: %s/%s .status.PD.StatefulSet is nil", ns, tcName)
 		return false, nil
 	}
 	failureCount := len(tc.Status.PD.FailureMembers)
 	replicas := tc.Spec.PD.Replicas + int32(failureCount)
 	if *pdSet.Spec.Replicas != replicas {
-		klog.Infof("statefulset: %s/%s .spec.Replicas(%d) != %d",
+		log.Logf("statefulset: %s/%s .spec.Replicas(%d) != %d",
 			ns, pdSetName, *pdSet.Spec.Replicas, replicas)
 		return false, nil
 	}
 	if pdSet.Status.ReadyReplicas != tc.Spec.PD.Replicas {
-		klog.Infof("statefulset: %s/%s .status.ReadyReplicas(%d) != %d",
+		log.Logf("statefulset: %s/%s .status.ReadyReplicas(%d) != %d",
 			ns, pdSetName, pdSet.Status.ReadyReplicas, tc.Spec.PD.Replicas)
 		return false, nil
 	}
 	if len(tc.Status.PD.Members) != int(tc.Spec.PD.Replicas) {
-		klog.Infof("tidbcluster: %s/%s .status.PD.Members count(%d) != %d",
+		log.Logf("tidbcluster: %s/%s .status.PD.Members count(%d) != %d",
 			ns, tcName, len(tc.Status.PD.Members), tc.Spec.PD.Replicas)
 		return false, nil
 	}
 	if pdSet.Status.ReadyReplicas != pdSet.Status.Replicas {
-		klog.Infof("statefulset: %s/%s .status.ReadyReplicas(%d) != .status.Replicas(%d)",
+		log.Logf("statefulset: %s/%s .status.ReadyReplicas(%d) != .status.Replicas(%d)",
 			ns, pdSetName, pdSet.Status.ReadyReplicas, pdSet.Status.Replicas)
 		return false, nil
 	}
 
 	c, found := getMemberContainer(ctu.kubeCli, ctu.tcStsGetter, ns, tc.Name, label.PDLabelVal)
 	if !found {
-		klog.Infof("statefulset: %s/%s not found containers[name=pd] or pod %s-0",
+		log.Logf("statefulset: %s/%s not found containers[name=pd] or pod %s-0",
 			ns, pdSetName, pdSetName)
 		return false, nil
 	}
 
 	if tc.PDImage() != c.Image {
-		klog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=pd].image(%s) != %s",
+		log.Logf("statefulset: %s/%s .spec.template.spec.containers[name=pd].image(%s) != %s",
 			ns, pdSetName, c.Image, tc.PDImage())
 		return false, nil
 	}
 
 	for _, member := range tc.Status.PD.Members {
 		if !member.Health {
-			klog.Infof("tidbcluster: %s/%s pd member(%s/%s) is not health",
+			log.Logf("tidbcluster: %s/%s pd member(%s/%s) is not health",
 				ns, tcName, member.ID, member.Name)
 			return false, nil
 		}
@@ -272,11 +272,11 @@ func (ctu *CrdTestUtil) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, error)
 	pdServiceName := controller.PDMemberName(tcName)
 	pdPeerServiceName := controller.PDPeerMemberName(tcName)
 	if _, err := ctu.kubeCli.CoreV1().Services(ns).Get(pdServiceName, metav1.GetOptions{}); err != nil {
-		klog.Errorf("failed to get service: %s/%s", ns, pdServiceName)
+		log.Logf("ERROR: failed to get service: %s/%s", ns, pdServiceName)
 		return false, nil
 	}
 	if _, err := ctu.kubeCli.CoreV1().Services(ns).Get(pdPeerServiceName, metav1.GetOptions{}); err != nil {
-		klog.Errorf("failed to get peer service: %s/%s", ns, pdPeerServiceName)
+		log.Logf("ERROR: failed to get peer service: %s/%s", ns, pdPeerServiceName)
 		return false, nil
 	}
 
@@ -290,7 +290,7 @@ func (ctu *CrdTestUtil) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, erro
 
 	tikvSet, err := ctu.tcStsGetter.StatefulSets(ns).Get(tikvSetName, metav1.GetOptions{})
 	if err != nil {
-		klog.Errorf("failed to get statefulset: %s/%s, %v", ns, tikvSetName, err)
+		log.Logf("ERROR: failed to get statefulset: %s/%s, %v", ns, tikvSetName, err)
 		return false, nil
 	}
 
@@ -303,55 +303,55 @@ func (ctu *CrdTestUtil) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, erro
 	}
 
 	if tc.Status.TiKV.StatefulSet == nil {
-		klog.Infof("tidbcluster: %s/%s .status.TiKV.StatefulSet is nil", ns, tcName)
+		log.Logf("tidbcluster: %s/%s .status.TiKV.StatefulSet is nil", ns, tcName)
 		return false, nil
 	}
 	failureCount := len(tc.Status.TiKV.FailureStores)
 	replicas := tc.Spec.TiKV.Replicas + int32(failureCount)
 	if *tikvSet.Spec.Replicas != replicas {
-		klog.Infof("statefulset: %s/%s .spec.Replicas(%d) != %d",
+		log.Logf("statefulset: %s/%s .spec.Replicas(%d) != %d",
 			ns, tikvSetName, *tikvSet.Spec.Replicas, replicas)
 		return false, nil
 	}
 	if tikvSet.Status.ReadyReplicas != replicas {
-		klog.Infof("statefulset: %s/%s .status.ReadyReplicas(%d) != %d",
+		log.Logf("statefulset: %s/%s .status.ReadyReplicas(%d) != %d",
 			ns, tikvSetName, tikvSet.Status.ReadyReplicas, replicas)
 		return false, nil
 	}
 	if len(tc.Status.TiKV.Stores) != int(replicas) {
-		klog.Infof("tidbcluster: %s/%s .status.TiKV.Stores.count(%d) != %d",
+		log.Logf("tidbcluster: %s/%s .status.TiKV.Stores.count(%d) != %d",
 			ns, tcName, len(tc.Status.TiKV.Stores), replicas)
 		return false, nil
 	}
 	if tikvSet.Status.ReadyReplicas != tikvSet.Status.Replicas {
-		klog.Infof("statefulset: %s/%s .status.ReadyReplicas(%d) != .status.Replicas(%d)",
+		log.Logf("statefulset: %s/%s .status.ReadyReplicas(%d) != .status.Replicas(%d)",
 			ns, tikvSetName, tikvSet.Status.ReadyReplicas, tikvSet.Status.Replicas)
 		return false, nil
 	}
 
 	c, found := getMemberContainer(ctu.kubeCli, ctu.tcStsGetter, ns, tc.Name, label.TiKVLabelVal)
 	if !found {
-		klog.Infof("statefulset: %s/%s not found containers[name=tikv] or pod %s-0",
+		log.Logf("statefulset: %s/%s not found containers[name=tikv] or pod %s-0",
 			ns, tikvSetName, tikvSetName)
 		return false, nil
 	}
 
 	if tc.TiKVImage() != c.Image {
-		klog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tikv].image(%s) != %s",
+		log.Logf("statefulset: %s/%s .spec.template.spec.containers[name=tikv].image(%s) != %s",
 			ns, tikvSetName, c.Image, tc.TiKVImage())
 		return false, nil
 	}
 
 	for _, store := range tc.Status.TiKV.Stores {
 		if store.State != v1alpha1.TiKVStateUp {
-			klog.Infof("tidbcluster: %s/%s's store(%s) state != %s", ns, tcName, store.ID, v1alpha1.TiKVStateUp)
+			log.Logf("tidbcluster: %s/%s's store(%s) state != %s", ns, tcName, store.ID, v1alpha1.TiKVStateUp)
 			return false, nil
 		}
 	}
 
 	tikvPeerServiceName := controller.TiKVPeerMemberName(tcName)
 	if _, err := ctu.kubeCli.CoreV1().Services(ns).Get(tikvPeerServiceName, metav1.GetOptions{}); err != nil {
-		klog.Errorf("failed to get peer service: %s/%s", ns, tikvPeerServiceName)
+		log.Logf("ERROR: failed to get peer service: %s/%s", ns, tikvPeerServiceName)
 		return false, nil
 	}
 
@@ -365,7 +365,7 @@ func (ctu *CrdTestUtil) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, erro
 
 	tidbSet, err := ctu.tcStsGetter.StatefulSets(ns).Get(tidbSetName, metav1.GetOptions{})
 	if err != nil {
-		klog.Errorf("failed to get statefulset: %s/%s, %v", ns, tidbSetName, err)
+		log.Logf("ERROR: failed to get statefulset: %s/%s, %v", ns, tidbSetName, err)
 		return false, nil
 	}
 
@@ -378,53 +378,53 @@ func (ctu *CrdTestUtil) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, erro
 	}
 
 	if tc.Status.TiDB.StatefulSet == nil {
-		klog.Infof("tidbcluster: %s/%s .status.TiDB.StatefulSet is nil", ns, tcName)
+		log.Logf("tidbcluster: %s/%s .status.TiDB.StatefulSet is nil", ns, tcName)
 		return false, nil
 	}
 	failureCount := len(tc.Status.TiDB.FailureMembers)
 	replicas := tc.Spec.TiDB.Replicas + int32(failureCount)
 	if *tidbSet.Spec.Replicas != replicas {
-		klog.Infof("statefulset: %s/%s .spec.Replicas(%d) != %d",
+		log.Logf("statefulset: %s/%s .spec.Replicas(%d) != %d",
 			ns, tidbSetName, *tidbSet.Spec.Replicas, replicas)
 		return false, nil
 	}
 	if tidbSet.Status.ReadyReplicas != tc.Spec.TiDB.Replicas {
-		klog.Infof("statefulset: %s/%s .status.ReadyReplicas(%d) != %d",
+		log.Logf("statefulset: %s/%s .status.ReadyReplicas(%d) != %d",
 			ns, tidbSetName, tidbSet.Status.ReadyReplicas, tc.Spec.TiDB.Replicas)
 		return false, nil
 	}
 	if len(tc.Status.TiDB.Members) != int(tc.Spec.TiDB.Replicas) {
-		klog.Infof("tidbcluster: %s/%s .status.TiDB.Members count(%d) != %d",
+		log.Logf("tidbcluster: %s/%s .status.TiDB.Members count(%d) != %d",
 			ns, tcName, len(tc.Status.TiDB.Members), tc.Spec.TiDB.Replicas)
 		return false, nil
 	}
 	if tidbSet.Status.ReadyReplicas != tidbSet.Status.Replicas {
-		klog.Infof("statefulset: %s/%s .status.ReadyReplicas(%d) != .status.Replicas(%d)",
+		log.Logf("statefulset: %s/%s .status.ReadyReplicas(%d) != .status.Replicas(%d)",
 			ns, tidbSetName, tidbSet.Status.ReadyReplicas, tidbSet.Status.Replicas)
 		return false, nil
 	}
 
 	c, found := getMemberContainer(ctu.kubeCli, ctu.tcStsGetter, ns, tc.Name, label.TiDBLabelVal)
 	if !found {
-		klog.Infof("statefulset: %s/%s not found containers[name=tidb] or pod %s-0",
+		log.Logf("statefulset: %s/%s not found containers[name=tidb] or pod %s-0",
 			ns, tidbSetName, tidbSetName)
 		return false, nil
 	}
 
 	if tc.TiDBImage() != c.Image {
-		klog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tidb].image(%s) != %s",
+		log.Logf("statefulset: %s/%s .spec.template.spec.containers[name=tidb].image(%s) != %s",
 			ns, tidbSetName, c.Image, tc.TiDBImage())
 		return false, nil
 	}
 
 	_, err = ctu.kubeCli.CoreV1().Services(ns).Get(tidbSetName, metav1.GetOptions{})
 	if err != nil {
-		klog.Errorf("failed to get service: %s/%s", ns, tidbSetName)
+		log.Logf("ERROR: failed to get service: %s/%s", ns, tidbSetName)
 		return false, nil
 	}
 	_, err = ctu.kubeCli.CoreV1().Services(ns).Get(controller.TiDBPeerMemberName(tcName), metav1.GetOptions{})
 	if err != nil {
-		klog.Errorf("failed to get peer service: %s/%s", ns, controller.TiDBPeerMemberName(tcName))
+		log.Logf("ERROR: failed to get peer service: %s/%s", ns, controller.TiDBPeerMemberName(tcName))
 		return false, nil
 	}
 
@@ -438,7 +438,7 @@ func (ctu *CrdTestUtil) tiflashMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 
 	tiflashSet, err := ctu.tcStsGetter.StatefulSets(ns).Get(tiflashSetName, metav1.GetOptions{})
 	if err != nil {
-		klog.Errorf("failed to get statefulset: %s/%s, %v", ns, tiflashSetName, err)
+		log.Logf("ERROR: failed to get statefulset: %s/%s, %v", ns, tiflashSetName, err)
 		return false, nil
 	}
 
@@ -451,55 +451,55 @@ func (ctu *CrdTestUtil) tiflashMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	}
 
 	if tc.Status.TiFlash.StatefulSet == nil {
-		klog.Infof("tidbcluster: %s/%s .status.TiFlash.StatefulSet is nil", ns, tcName)
+		log.Logf("tidbcluster: %s/%s .status.TiFlash.StatefulSet is nil", ns, tcName)
 		return false, nil
 	}
 	failureCount := len(tc.Status.TiFlash.FailureStores)
 	replicas := tc.Spec.TiFlash.Replicas + int32(failureCount)
 	if *tiflashSet.Spec.Replicas != replicas {
-		klog.Infof("statefulset: %s/%s .spec.Replicas(%d) != %d",
+		log.Logf("statefulset: %s/%s .spec.Replicas(%d) != %d",
 			ns, tiflashSetName, *tiflashSet.Spec.Replicas, replicas)
 		return false, nil
 	}
 	if tiflashSet.Status.ReadyReplicas != replicas {
-		klog.Infof("statefulset: %s/%s .status.ReadyReplicas(%d) != %d",
+		log.Logf("statefulset: %s/%s .status.ReadyReplicas(%d) != %d",
 			ns, tiflashSetName, tiflashSet.Status.ReadyReplicas, replicas)
 		return false, nil
 	}
 	if len(tc.Status.TiFlash.Stores) != int(replicas) {
-		klog.Infof("tidbcluster: %s/%s .status.TiFlash.Stores.count(%d) != %d",
+		log.Logf("tidbcluster: %s/%s .status.TiFlash.Stores.count(%d) != %d",
 			ns, tcName, len(tc.Status.TiFlash.Stores), replicas)
 		return false, nil
 	}
 	if tiflashSet.Status.ReadyReplicas != tiflashSet.Status.Replicas {
-		klog.Infof("statefulset: %s/%s .status.ReadyReplicas(%d) != .status.Replicas(%d)",
+		log.Logf("statefulset: %s/%s .status.ReadyReplicas(%d) != .status.Replicas(%d)",
 			ns, tiflashSetName, tiflashSet.Status.ReadyReplicas, tiflashSet.Status.Replicas)
 		return false, nil
 	}
 
 	c, found := getMemberContainer(ctu.kubeCli, ctu.tcStsGetter, ns, tc.Name, label.TiFlashLabelVal)
 	if !found {
-		klog.Infof("statefulset: %s/%s not found containers[name=tiflash] or pod %s-0",
+		log.Logf("statefulset: %s/%s not found containers[name=tiflash] or pod %s-0",
 			ns, tiflashSetName, tiflashSetName)
 		return false, nil
 	}
 
 	if tc.TiFlashImage() != c.Image {
-		klog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tiflash].image(%s) != %s",
+		log.Logf("statefulset: %s/%s .spec.template.spec.containers[name=tiflash].image(%s) != %s",
 			ns, tiflashSetName, c.Image, tc.TiFlashImage())
 		return false, nil
 	}
 
 	for _, store := range tc.Status.TiFlash.Stores {
 		if store.State != v1alpha1.TiKVStateUp {
-			klog.Infof("tidbcluster: %s/%s's store(%s) state != %s", ns, tcName, store.ID, v1alpha1.TiKVStateUp)
+			log.Logf("tidbcluster: %s/%s's store(%s) state != %s", ns, tcName, store.ID, v1alpha1.TiKVStateUp)
 			return false, nil
 		}
 	}
 
 	tiflashPeerServiceName := controller.TiFlashPeerMemberName(tcName)
 	if _, err := ctu.kubeCli.CoreV1().Services(ns).Get(tiflashPeerServiceName, metav1.GetOptions{}); err != nil {
-		klog.Errorf("failed to get peer service: %s/%s", ns, tiflashPeerServiceName)
+		log.Logf("ERROR: failed to get peer service: %s/%s", ns, tiflashPeerServiceName)
 		return false, nil
 	}
 
@@ -507,16 +507,16 @@ func (ctu *CrdTestUtil) tiflashMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 }
 
 func (ctu *CrdTestUtil) pumpMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, error) {
-	klog.Infof("begin to check incremental backup cluster[%s] namespace[%s]", tc.Name, tc.Namespace)
+	log.Logf("begin to check incremental backup cluster[%s] namespace[%s]", tc.Name, tc.Namespace)
 	pumpStatefulSetName := fmt.Sprintf("%s-pump", tc.Name)
 
 	pumpStatefulSet, err := ctu.kubeCli.AppsV1().StatefulSets(tc.Namespace).Get(pumpStatefulSetName, metav1.GetOptions{})
 	if err != nil {
-		klog.Errorf("failed to get jobs %s ,%v", pumpStatefulSetName, err)
+		log.Logf("ERROR: failed to get jobs %s ,%v", pumpStatefulSetName, err)
 		return false, nil
 	}
 	if pumpStatefulSet.Status.Replicas != pumpStatefulSet.Status.ReadyReplicas {
-		klog.Errorf("pump replicas is not ready, please wait ! %s ", pumpStatefulSetName)
+		log.Logf("pump replicas is not ready, please wait ! %s ", pumpStatefulSetName)
 		return false, nil
 	}
 
@@ -532,21 +532,21 @@ func (ctu *CrdTestUtil) pumpMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, erro
 
 	pods, err := ctu.kubeCli.CoreV1().Pods(tc.Namespace).List(listOps)
 	if err != nil {
-		klog.Errorf("failed to get pods via pump labels %s ,%v", pumpStatefulSetName, err)
+		log.Logf("ERROR: failed to get pods via pump labels %s ,%v", pumpStatefulSetName, err)
 		return false, nil
 	}
 
 	for _, pod := range pods.Items {
 		if !ctu.pumpHealth(tc, pod.Name) {
-			klog.Errorf("some pods is not health %s", pumpStatefulSetName)
+			log.Logf("ERROR: some pods is not health %s", pumpStatefulSetName)
 			return false, nil
 		}
 
-		klog.Info(pod.Spec.Affinity)
+		log.Logf("pod.Spec.Affinity: %v", pod.Spec.Affinity)
 		if pod.Spec.Affinity == nil || pod.Spec.Affinity.PodAntiAffinity == nil || len(pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution) != 1 {
 			return true, fmt.Errorf("pump pod %s/%s should have affinity set", pod.Namespace, pod.Name)
 		}
-		klog.Info(pod.Spec.Tolerations)
+		log.Logf("pod.Spec.Tolerations: %v", pod.Spec.Tolerations)
 		foundKey := false
 		for _, tor := range pod.Spec.Tolerations {
 			if tor.Key == "node-role" {
@@ -567,27 +567,27 @@ func (ctu *CrdTestUtil) pumpHealth(tc *v1alpha1.TidbCluster, podName string) boo
 	pumpHealthURL := fmt.Sprintf("http://%s/status", addr)
 	res, err := http.Get(pumpHealthURL)
 	if err != nil {
-		klog.Errorf("cluster:[%s] call %s failed,error:%v", tc.Name, pumpHealthURL, err)
+		log.Logf("ERROR: cluster:[%s] call %s failed,error:%v", tc.Name, pumpHealthURL, err)
 		return false
 	}
 	if res.StatusCode >= 400 {
-		klog.Errorf("Error response %v", res.StatusCode)
+		log.Logf("ERROR: Error response %v", res.StatusCode)
 		return false
 	}
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		klog.Errorf("cluster:[%s] read response body failed,error:%v", tc.Name, err)
+		log.Logf("ERROR: cluster:[%s] read response body failed,error:%v", tc.Name, err)
 		return false
 	}
 	healths := pumpStatus{}
 	err = json.Unmarshal(body, &healths)
 	if err != nil {
-		klog.Errorf("cluster:[%s] unmarshal failed,error:%v", tc.Name, err)
+		log.Logf("ERROR: cluster:[%s] unmarshal failed,error:%v", tc.Name, err)
 		return false
 	}
 	for _, status := range healths.StatusMap {
 		if status.State != "online" {
-			klog.Errorf("cluster:[%s] pump's state is not online", tc.Name)
+			log.Logf("ERROR: cluster:[%s] pump's state is not online", tc.Name)
 			return false
 		}
 	}

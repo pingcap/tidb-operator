@@ -29,18 +29,18 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/klog"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 func CheckTidbMonitor(monitor *v1alpha1.TidbMonitor, cli versioned.Interface, kubeCli kubernetes.Interface, fw portforward.PortForward) error {
 
 	if err := checkTidbMonitorPod(monitor, kubeCli); err != nil {
-		klog.Errorf("tm[%s/%s] failed to check pod:%v", monitor.Namespace, monitor.Name, err)
+		log.Logf("ERROR: tm[%s/%s] failed to check pod:%v", monitor.Namespace, monitor.Name, err)
 		return err
 	}
 	if err := checkTidbMonitorFunctional(monitor, fw); err != nil {
-		klog.Errorf("tm[%s/%s] failed to check functional:%v", monitor.Namespace, monitor.Name, err)
+		log.Logf("ERROR: tm[%s/%s] failed to check functional:%v", monitor.Namespace, monitor.Name, err)
 		return err
 	}
 	return checkTidbClusterStatus(monitor, cli)
@@ -78,17 +78,17 @@ func checkTidbMonitorPod(tm *v1alpha1.TidbMonitor, kubeCli kubernetes.Interface)
 			LabelSelector: monitorLabel.String(),
 		})
 		if err != nil {
-			klog.Infof("tm[%s/%s]'s pod is failed to fetch", tm.Namespace, tm.Name)
+			log.Logf("ERROR: tm[%s/%s]'s pod is failed to fetch", tm.Namespace, tm.Name)
 			return false, nil
 		}
 		if len(pods.Items) < 1 || len(pods.Items) > 1 {
-			klog.Infof("tm[%s/%s] have incorrect count[%d] of pods", tm.Namespace, tm.Name, len(pods.Items))
+			log.Logf("ERROR: tm[%s/%s] have incorrect count[%d] of pods", tm.Namespace, tm.Name, len(pods.Items))
 			return false, nil
 		}
 		pod := &pods.Items[0]
 
 		if !podutil.IsPodReady(pod) {
-			klog.Infof("tm[%s/%s]'s pod[%s/%s] is not ready", tm.Namespace, tm.Name, pod.Namespace, pod.Name)
+			log.Logf("ERROR: tm[%s/%s]'s pod[%s/%s] is not ready", tm.Namespace, tm.Name, pod.Namespace, pod.Name)
 			return false, nil
 		}
 		if tm.Spec.Grafana != nil && len(pod.Spec.Containers) != 3 {
@@ -97,10 +97,10 @@ func checkTidbMonitorPod(tm *v1alpha1.TidbMonitor, kubeCli kubernetes.Interface)
 		if tm.Spec.Grafana == nil && len(pod.Spec.Containers) != 2 {
 			return false, fmt.Errorf("tm[%s/%s]'s pod didnt' have 2 containers with grafana disabled", tm.Namespace, tm.Name)
 		}
-		klog.Infof("tm[%s/%s]'s pod[%s/%s] is ready", tm.Namespace, tm.Name, pod.Namespace, pod.Name)
+		log.Logf("tm[%s/%s]'s pod[%s/%s] is ready", tm.Namespace, tm.Name, pod.Namespace, pod.Name)
 		_, err = kubeCli.CoreV1().Services(namespace).Get(svcName, metav1.GetOptions{})
 		if err != nil {
-			klog.Infof("tm[%s/%s]'s service[%s/%s] failed to fetch", tm.Namespace, tm.Name, tm.Namespace, svcName)
+			log.Logf("ERROR: tm[%s/%s]'s service[%s/%s] failed to fetch", tm.Namespace, tm.Name, tm.Namespace, svcName)
 			return false, nil
 		}
 		return true, err
@@ -110,17 +110,17 @@ func checkTidbMonitorPod(tm *v1alpha1.TidbMonitor, kubeCli kubernetes.Interface)
 // checkTidbMonitorFunctional check whether TidbMonitor's Prometheus and Grafana are working now
 func checkTidbMonitorFunctional(monitor *v1alpha1.TidbMonitor, fw portforward.PortForward) error {
 	if err := checkPrometheusCommon(monitor.Name, monitor.Namespace, fw); err != nil {
-		klog.Errorf("tm[%s/%s]'s prometheus check error:%v", monitor.Namespace, monitor.Namespace, err)
+		log.Logf("ERROR: tm[%s/%s]'s prometheus check error:%v", monitor.Namespace, monitor.Namespace, err)
 		return err
 	}
-	klog.Infof("tidbmonitor[%s/%s]'s prometheus is ready", monitor.Name, monitor.Namespace)
+	log.Logf("tidbmonitor[%s/%s]'s prometheus is ready", monitor.Name, monitor.Namespace)
 	if monitor.Spec.Grafana != nil {
 		var grafanaClient *metrics.Client
 		if _, err := checkGrafanaDataCommon(monitor.Name, monitor.Namespace, grafanaClient, fw); err != nil {
-			klog.Errorf("tm[%s/%s]'s grafana check error:%v", monitor.Namespace, monitor.Namespace, err)
+			log.Logf("ERROR: tm[%s/%s]'s grafana check error:%v", monitor.Namespace, monitor.Namespace, err)
 			return err
 		}
-		klog.Infof("tidbmonitor[%s/%s]'s grafana is ready", monitor.Name, monitor.Namespace)
+		log.Logf("tidbmonitor[%s/%s]'s grafana is ready", monitor.Name, monitor.Namespace)
 	}
 	return nil
 }
@@ -142,13 +142,13 @@ func checkPrometheusCommon(name, namespace string, fw portforward.PortForward) e
 		prometheusSvc := fmt.Sprintf("http://%s/api/v1/query?query=up", prometheusAddr)
 		resp, err := http.Get(prometheusSvc)
 		if err != nil {
-			klog.Error(err.Error())
+			log.Logf("ERROR: %v", err)
 			return false, nil
 		}
 		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			klog.Error(err.Error())
+			log.Logf("ERROR: %v", err)
 			return false, nil
 		}
 		response := &struct {
@@ -156,32 +156,32 @@ func checkPrometheusCommon(name, namespace string, fw portforward.PortForward) e
 		}{}
 		err = json.Unmarshal(body, response)
 		if err != nil {
-			klog.Error(err.Error())
+			log.Logf("ERROR: %v", err)
 			return false, nil
 		}
 		if response.Status != "success" {
-			klog.Errorf("the prometheus's api[%s] has not ready", prometheusSvc)
+			log.Logf("ERROR: he prometheus's api[%s] has not ready", prometheusSvc)
 			return false, nil
 		}
 		return true, nil
 	})
 	if err != nil {
-		klog.Error(err.Error())
+		log.Logf("ERROR: %v", err)
 		return err
 	}
-	klog.Infof("prometheus[%s/%s] is up", namespace, name)
+	log.Logf("prometheus[%s/%s] is up", namespace, name)
 
 	return wait.PollImmediate(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 		prometheusTargets := fmt.Sprintf("http://%s/api/v1/targets", prometheusAddr)
 		targetResponse, err := http.Get(prometheusTargets)
 		if err != nil {
-			klog.Error(err.Error())
+			log.Logf("ERROR: %v", err)
 			return false, nil
 		}
 		defer targetResponse.Body.Close()
 		body, err := ioutil.ReadAll(targetResponse.Body)
 		if err != nil {
-			klog.Error(err.Error())
+			log.Logf("ERROR: %v", err)
 			return false, nil
 		}
 		data := struct {
@@ -197,15 +197,15 @@ func checkPrometheusCommon(name, namespace string, fw portforward.PortForward) e
 			} `json:"data"`
 		}{}
 		if err := json.Unmarshal(body, &data); err != nil {
-			klog.Error(err.Error())
+			log.Logf("ERROR: %v", err)
 			return false, nil
 		}
 		if data.Status != "success" || len(data.Data.ActiveTargets) < 1 {
-			klog.Errorf("monitor[%s/%s]'s prometheus targets error", namespace, name)
+			log.Logf("ERROR: monitor[%s/%s]'s prometheus targets error", namespace, name)
 			return false, nil
 		}
 		for _, target := range data.Data.ActiveTargets {
-			klog.Infof("monitor[%s/%s]'s target[%s]", namespace, name, target.DiscoveredLabels.PodName)
+			log.Logf("monitor[%s/%s]'s target[%s]", namespace, name, target.DiscoveredLabels.PodName)
 		}
 		return true, nil
 	})
@@ -231,7 +231,7 @@ func checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Clien
 	err := wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 		datasourceID, err = getDatasourceID(addr)
 		if err != nil {
-			klog.Error(err)
+			log.Logf("ERROR: %v", err)
 			return false, nil
 		}
 		return true, nil
@@ -250,7 +250,7 @@ func checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Clien
 		values.Set("end", fmt.Sprintf("%d", end.Unix()))
 		values.Set("step", "30")
 		u := fmt.Sprintf("http://%s/api/datasources/proxy/%d/api/v1/query_range?%s", addr, datasourceID, values.Encode())
-		klog.Infof("tm[%s/%s]'s grafana query url is %s", namespace, name, u)
+		log.Logf("tm[%s/%s]'s grafana query url is %s", namespace, name, u)
 
 		req, err := http.NewRequest(http.MethodGet, u, nil)
 		if err != nil {
@@ -260,7 +260,7 @@ func checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Clien
 		client := &http.Client{}
 		resp, err := client.Do(req)
 		if err != nil {
-			klog.Errorf("tm[%s/%s]'s grafana response error:%v", namespace, name, err)
+			log.Logf("ERROR: tm[%s/%s]'s grafana response error:%v", namespace, name, err)
 			return false, nil
 		}
 		defer resp.Body.Close()
@@ -284,7 +284,7 @@ func checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Clien
 			return false, nil
 		}
 		if data.Status != "success" || len(data.Data.Result) < 1 {
-			klog.Errorf("invalid response: status: %s, result: %v", data.Status, data.Data.Result)
+			log.Logf("ERROR: invalid response: status: %s, result: %v", data.Status, data.Data.Result)
 			return false, nil
 		}
 		return true, nil
