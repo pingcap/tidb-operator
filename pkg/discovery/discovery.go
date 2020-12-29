@@ -271,10 +271,10 @@ func (d *tidbDiscovery) VerifyPDEndpoint(pdURL string) (string, error) {
 
 	for _, pdMember := range tc.Status.PD.PeerMembers {
 		if d.pdEndpointHealthCheck(tc, pdMember.ClientURL, pdMember.Name) {
+			klog.Infof("Successfully get the peer PD endpoint : %s", pdMember.ClientURL)
 			if noScheme {
 				return fmt.Sprintf("%s:%s", pdMember.Name, pdEndpoint.pdMemberPort), nil
 			}
-			klog.Infof("Successfully get the peer PD endpoint : %s", pdMember.ClientURL)
 			return pdMember.ClientURL, nil
 		}
 	}
