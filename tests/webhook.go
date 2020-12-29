@@ -19,7 +19,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilversion "k8s.io/apimachinery/pkg/util/version"
-	"k8s.io/klog"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 func (oa *operatorActions) setCabundleFromApiServer(info *OperatorConfig) error {
@@ -29,7 +29,7 @@ func (oa *operatorActions) setCabundleFromApiServer(info *OperatorConfig) error 
 		return fmt.Errorf("failed to get api server version")
 	}
 	sv := utilversion.MustParseSemantic(serverVersion.GitVersion)
-	klog.Infof("ServerVersion: %v", serverVersion.String())
+	log.Logf("ServerVersion: %v", serverVersion.String())
 
 	if sv.LessThan(utilversion.MustParseSemantic("v1.13.0")) && len(info.Cabundle) < 1 {
 		namespace := "kube-system"
