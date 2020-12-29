@@ -85,18 +85,18 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		asCli, err = asclientset.NewForConfig(config)
 		framework.ExpectNoError(err, "failed to create clientset")
 		mapper, err := apiutil.NewDynamicRESTMapper(config, apiutil.WithLazyDiscovery)
-		framework.ExpectNoError(err)
+		framework.ExpectNoError(err, "failed to create dynamic RESTMapper")
 		genericCli, err = client.New(config, client.Options{
 			Scheme: scheme.Scheme,
 			Mapper: mapper,
 		})
-		framework.ExpectNoError(err, "failed to create clientset")
+		framework.ExpectNoError(err, "failed to create clientset for controller-runtime")
 		aggrCli, err = aggregatorclient.NewForConfig(config)
-		framework.ExpectNoError(err, "failed to create clientset")
+		framework.ExpectNoError(err, "failed to create clientset for kube-aggregator")
 		apiExtCli, err = apiextensionsclientset.NewForConfig(config)
-		framework.ExpectNoError(err, "failed to create clientset")
+		framework.ExpectNoError(err, "failed to create clientset for apiextensions-apiserver")
 		clientRawConfig, err := e2econfig.LoadClientRawConfig()
-		framework.ExpectNoError(err, "failed to load raw config")
+		framework.ExpectNoError(err, "failed to load raw config for tidb operator")
 		ctx, cancel := context.WithCancel(context.Background())
 		fw, err = portforward.NewPortForwarder(ctx, e2econfig.NewSimpleRESTClientGetter(clientRawConfig))
 		framework.ExpectNoError(err, "failed to create port forwarder")
@@ -156,9 +156,9 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			tc.Spec.TiKV.Replicas = 3
 			tc.Spec.TiDB.Replicas = 2
 			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 			ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", utilimage.TiDBV3Version, utilimage.TiDBV3UpgradeVersion))
 			ginkgo.By("Set tikv partition annotation")
 			err = setPartitionAnnotation(ns, tc.Name, label.TiKVLabelVal, 1)
@@ -169,7 +169,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				tc.Spec.Version = utilimage.TiDBV3UpgradeVersion
 				return nil
 			})
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to update TidbCluster to upgrade tidb version to %v", utilimage.TiDBV3UpgradeVersion)
 
 			err = wait.Poll(5*time.Second, 30*time.Minute, func() (done bool, err error) {
 				tikvPod, err := c.CoreV1().Pods(ns).Get(fmt.Sprintf("%s-tikv-1", tc.Name), metav1.GetOptions{})
@@ -202,11 +202,11 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				tc.Annotations = nil
 				return nil
 			})
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to set TidbCluster annotation to nil: %v", tc)
 			framework.Logf("tidbcluster annotation have been cleaned")
 			// TODO: find a more graceful way to check tidbcluster during upgrading
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 		})
 	})
 
@@ -618,7 +618,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				LabelSelector: labels.SelectorFromSet(label.New().Instance(tcName).Labels()).String(),
 			}
 			podList, err := c.CoreV1().Pods(ns).List(listOptions)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to list pods in ns %s: %v", ns, listOptions)
 
 			ginkgo.By("Upgrade tidb-operator and CRDs to current version")
 			ocfg.Tag = cfg.OperatorTag
@@ -628,7 +628,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 			ginkgo.By("Wait for pods are not changed in 5 minutes")
 			err = utilpod.WaitForPodsAreChanged(c, podList.Items, time.Minute*5)
-			framework.ExpectEqual(err, wait.ErrWaitTimeout)
+			framework.ExpectEqual(err, wait.ErrWaitTimeout, "pods should not change in 5 minutes")
 		})
 	})
 })

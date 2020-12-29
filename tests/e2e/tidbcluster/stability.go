@@ -673,7 +673,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				}
 				return false, nil
 			})
-			framework.ExpectEqual(err, wait.ErrWaitTimeout)
+			framework.ExpectEqual(err, wait.ErrWaitTimeout, "only one replacement should be created")
 
 			ginkgo.By("Recover failed PD")
 			storageutils.KubeletCommand(storageutils.KStart, c, &pod0)
@@ -684,7 +684,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 
 			ginkgo.By("Wait for the replacement to be gone")
 			err = e2epod.WaitForPodNotFoundInNamespace(c, podName, ns, time.Minute*5)
-			framework.ExpectNoError(err, "failed to wait for replacement pod destroyed")
+			framework.ExpectNoError(err, "failed to wait for replacement pod deleted")
 		})
 
 		ginkgo.It("[Feature: AutoFailover] TiDB: one replacement for one failed member and replacements should be deleted when failed members are recovered", func() {
@@ -752,7 +752,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				}
 				return !apierrors.IsNotFound(err), nil
 			})
-			framework.ExpectNoError(err, "wait for")
+			framework.ExpectNoError(err, "failed to wait for the new pod to be created")
 
 			ginkgo.By("Make sure the new pod will not be scheduled")
 			err = wait.PollImmediate(time.Second*10, 1*time.Minute, func() (bool, error) {
@@ -769,7 +769,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				}
 				return true, nil
 			})
-			framework.ExpectEqual(err, wait.ErrWaitTimeout)
+			framework.ExpectEqual(err, wait.ErrWaitTimeout, "the new pod should not be scheduled")
 
 			listOptions := metav1.ListOptions{
 				LabelSelector: labels.SelectorFromSet(
@@ -786,7 +786,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				}
 				return false, nil
 			})
-			framework.ExpectEqual(err, wait.ErrWaitTimeout)
+			framework.ExpectEqual(err, wait.ErrWaitTimeout, "no new replacement should be created for non-scheduled TiDB pod")
 
 			ginkgo.By("Fix the TiDB scheduling requirements")
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
@@ -848,7 +848,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				}
 				return false, nil
 			})
-			framework.ExpectEqual(err, wait.ErrWaitTimeout)
+			framework.ExpectEqual(err, wait.ErrWaitTimeout, "only one replacement should be created")
 
 			ginkgo.By(fmt.Sprintf("Fix the TiDB pod %q", podName))
 			err = c.CoreV1().Pods(ns).Delete(podName, &metav1.DeleteOptions{})
@@ -856,7 +856,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 
 			ginkgo.By("Wait for the replacement to be gone")
 			err = e2epod.WaitForPodNotFoundInNamespace(c, newPodName, ns, time.Minute*5)
-			framework.ExpectNoError(err, "failed to wait for replacement pod to be destroyed")
+			framework.ExpectNoError(err, "failed to wait for replacement pod to be deleted")
 		})
 
 		// https://github.com/pingcap/tidb-operator/issues/2739
