@@ -17,8 +17,8 @@ import (
 	"os/exec"
 	"strings"
 
-	"k8s.io/klog"
 	"k8s.io/kubernetes/test/e2e/framework"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 func getClusterLocation() string {
@@ -52,7 +52,7 @@ func isRegionalCluster() bool {
 }
 
 func execCmd(args ...string) *exec.Cmd {
-	klog.Infof("Executing: %s", strings.Join(args, " "))
+	log.Logf("Executing: %s", strings.Join(args, " "))
 	return exec.Command(args[0], args[1:]...)
 }
 
@@ -60,11 +60,11 @@ func DisableNodeAutoRepair() {
 	if framework.TestContext.Provider == "gke" {
 		// https://cloud.google.com/kubernetes-engine/docs/how-to/node-auto-repair
 		nodePool := "default-pool"
-		klog.Infof("Using gcloud to disable auto-repair for pool %s", nodePool)
+		log.Logf("Using gcloud to disable auto-repair for pool %s", nodePool)
 		args := []string{"container", "node-pools", "update", "default-pool", "--cluster", framework.TestContext.CloudConfig.Cluster,
 			"--no-enable-autorepair"}
 		output, err := execCmd(getGcloudCommand(args)...).CombinedOutput()
-		klog.Infof("Config update result: %s", output)
+		log.Logf("Config update result: %s", output)
 		framework.ExpectNoError(err)
 	} else {
 		// TODO support AWS (EKS)
@@ -76,11 +76,11 @@ func EnableNodeAutoRepair() {
 	if framework.TestContext.Provider == "gke" {
 		// https://cloud.google.com/kubernetes-engine/docs/how-to/node-auto-repair
 		nodePool := "default-pool"
-		klog.Infof("Using gcloud to disable auto-repair for pool %s", nodePool)
+		log.Logf("Using gcloud to disable auto-repair for pool %s", nodePool)
 		args := []string{"container", "node-pools", "update", "default-pool", "--cluster", framework.TestContext.CloudConfig.Cluster,
 			"--enable-autorepair"}
 		output, err := execCmd(getGcloudCommand(args)...).CombinedOutput()
-		klog.Infof("Config update result: %s", output)
+		log.Logf("Config update result: %s", output)
 		framework.ExpectNoError(err)
 	} else {
 		// TODO support AWS (EKS)

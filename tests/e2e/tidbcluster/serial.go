@@ -45,10 +45,9 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	restclient "k8s.io/client-go/rest"
-	"k8s.io/klog"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
-	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -149,7 +148,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 
 		ginkgo.It("[PodAdmissionWebhook] able to upgrade TiDB Cluster with pod admission webhook", func() {
-			klog.Info("start to upgrade tidbcluster with pod admission webhook")
+			log.Logf("start to upgrade tidbcluster with pod admission webhook")
 			// deploy new cluster and test upgrade and scale-in/out with pod admission webhook
 			tc := fixture.GetTidbCluster(ns, "admission", utilimage.TiDBV3Version)
 			tc.Spec.PD.Replicas = 3
@@ -386,7 +385,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectNoError(err, "Though some required fields are omitted, they will be set by defaulting")
 			// don't have to check all fields, just take some to test if defaulting set
 			if empty, err := gomega.BeEmpty().Match(newTC.Spec.TiDB.BaseImage); empty {
-				e2elog.Failf("Expected tidb.baseImage has default value set, %v", err)
+				log.Failf("Expected tidb.baseImage has default value set, %v", err)
 			}
 
 			ginkgo.By("Validating should reject illegal update")
@@ -479,35 +478,35 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				// confirm the pd Pod haven't been changed
 				changed, err := utilpod.PodsAreChanged(c, pdPods)()
 				if err != nil {
-					klog.Errorf("meet error during verify pd pods, err:%v", err)
+					log.Logf("ERROR: meet error during verify pd pods, err:%v", err)
 					return true, nil
 				}
 				if changed {
 					return true, nil
 				}
-				klog.Infof("confirm pd pods haven't been changed this time")
+				log.Logf("confirm pd pods haven't been changed this time")
 
 				// confirm the tikv haven't been changed
 				changed, err = utilpod.PodsAreChanged(c, tikvPods)()
 				if err != nil {
-					klog.Errorf("meet error during verify tikv pods, err:%v", err)
+					log.Logf("ERROR: meet error during verify tikv pods, err:%v", err)
 					return true, nil
 				}
 				if changed {
 					return true, nil
 				}
-				klog.Infof("confirm tikv pods haven't been changed this time")
+				log.Logf("confirm tikv pods haven't been changed this time")
 
 				// confirm the tidb haven't been changed
 				changed, err = utilpod.PodsAreChanged(c, tidbPods)()
 				if err != nil {
-					klog.Errorf("meet error during verify tidb pods, err:%v", err)
+					log.Logf("ERROR: meet error during verify tidb pods, err:%v", err)
 					return true, nil
 				}
 				if changed {
 					return true, nil
 				}
-				klog.Infof("confirm tidb pods haven't been changed this time")
+				log.Logf("confirm tidb pods haven't been changed this time")
 
 				return false, nil
 			})
@@ -545,7 +544,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				tmSet, err := stsGetter.StatefulSets(ns).Get(monitor.GetMonitorObjectName(tm), metav1.GetOptions{})
 				if err != nil {
-					klog.Errorf("failed to get statefulset: %s/%s, %v", ns, tmSet, err)
+					log.Logf("ERROR: failed to get statefulset: %s/%s, %v", ns, tmSet, err)
 					return false, nil
 				}
 				return true, nil
@@ -553,20 +552,20 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectNoError(err, "Expected tidbmonitor sts success")
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				newStsPvcName := monitor.GetMonitorFirstPVCName(tm.Name)
-				klog.Infof("tidbmonitor newStsPvcName:%s", newStsPvcName)
+				log.Logf("tidbmonitor newStsPvcName:%s", newStsPvcName)
 				stsPvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get(newStsPvcName, metav1.GetOptions{})
 				if err != nil {
 					if errors.IsNotFound(err) {
-						klog.Infof("tm[%s/%s]'s first sts pvc not found,tag:%s,image:%s", ns, tm.Name, cfg.OperatorTag, cfg.OperatorImage)
+						log.Logf("tm[%s/%s]'s first sts pvc not found,tag:%s,image:%s", ns, tm.Name, cfg.OperatorTag, cfg.OperatorImage)
 						return false, nil
 					}
-					klog.Errorf("get tidbmonitor sts pvc err:%v", err)
+					log.Logf("ERROR: get tidbmonitor sts pvc err:%v", err)
 					return false, nil
 				}
 				if stsPvc.Spec.VolumeName == oldVolumeName {
 					return true, nil
 				}
-				klog.Infof("tidbmonitor sts pv unequal to old deployment pv")
+				log.Logf("tidbmonitor sts pv unequal to old deployment pv")
 				return false, nil
 			})
 			framework.ExpectNoError(err, "Expected tidbmonitor smooth migrate successfully")

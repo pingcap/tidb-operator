@@ -325,7 +325,7 @@ if [[ "${GINKGO_STREAM}" == "y" ]]; then
     ginkgo_args+=("--stream")
 fi
 
-e2e_args=(
+tester_args=(
     /usr/local/bin/ginkgo
     ${ginkgo_args[@]:-}
     /usr/local/bin/e2e.test
@@ -342,7 +342,8 @@ e2e_args=(
     -v=4
 )
 
-e2e_args+=(${@:-})
+# append any args passed to kubetest2 as tester args after -- in the parent script
+tester_args+=(${@:-})
 
 docker_args=(
     run
@@ -359,7 +360,7 @@ docker_args=(
 )
 
 if [ "$PROVIDER" == "eks" ]; then
-    e2e_args+=(
+    tester_args+=(
         --provider=aws
         --gce-zone="${AWS_ZONE}" # reuse gce-zone to configure aws zone
     )
@@ -370,7 +371,7 @@ if [ "$PROVIDER" == "eks" ]; then
         -v $HOME/.ssh/kube_aws_rsa:/root/.ssh/kube_aws_rsa
     )
 elif [ "$PROVIDER" == "gke" ]; then
-    e2e_args+=(
+    tester_args+=(
         --provider="${PROVIDER}"
         --gce-project="${GCP_PROJECT}"
         --gce-region="${GCP_REGION}"
@@ -395,13 +396,13 @@ elif [ "$PROVIDER" == "gke" ]; then
         -v $HOME/.ssh/google_compute_engine:/root/.ssh/google_compute_engine
     )
 else
-    e2e_args+=(
+    tester_args+=(
         --provider="${PROVIDER}"
     )
 fi
 
 if [ -n "$REPORT_DIR" ]; then
-    e2e_args+=(
+    tester_args+=(
         --report-dir="${REPORT_DIR}"
         --report-prefix="${REPORT_PREFIX}"
     )
@@ -410,5 +411,5 @@ if [ -n "$REPORT_DIR" ]; then
     )
 fi
 
-echo "info: docker ${docker_args[@]} $E2E_IMAGE ${e2e_args[@]}"
-docker ${docker_args[@]} $E2E_IMAGE ${e2e_args[@]}
+echo "info: docker ${docker_args[@]} $E2E_IMAGE ${tester_args[@]}"
+docker ${docker_args[@]} $E2E_IMAGE ${tester_args[@]}

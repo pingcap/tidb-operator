@@ -26,7 +26,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/component-base/logs"
-	"k8s.io/klog"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 var (
@@ -51,32 +51,32 @@ func main() {
 
 	kubeConfig, err := clientcmd.BuildConfigFromFlags("", optKubeconfig)
 	if err != nil {
-		klog.Fatal(err)
+		log.Fail(err.Error())
 	}
 
 	kubeCli, err := kubernetes.NewForConfig(kubeConfig)
 	if err != nil {
-		klog.Fatal(err)
+		log.Fail(err.Error())
 	}
 
 	versionedCli, err := versioned.NewForConfig(kubeConfig)
 	if err != nil {
-		klog.Fatal(err)
+		log.Fail(err.Error())
 	}
 
 	certBytes, err := ioutil.ReadFile(optCert)
 	if err != nil {
-		klog.Fatal(err)
+		log.Fail(err.Error())
 	}
 
 	keyBytes, err := ioutil.ReadFile(optKey)
 	if err != nil {
-		klog.Fatal(err)
+		log.Fail(err.Error())
 	}
 
 	cert, err := tls.X509KeyPair(certBytes, keyBytes)
 	if err != nil {
-		klog.Fatal(err)
+		log.Fail(err.Error())
 	}
 
 	wh := webhook.NewWebhook(kubeCli, versionedCli, optWatchNamespaces)
@@ -88,5 +88,7 @@ func main() {
 		},
 	}
 	healthz.InstallHandler(http.DefaultServeMux)
-	klog.Fatal(server.ListenAndServeTLS("", ""))
+	if err := server.ListenAndServeTLS("", ""); err != nil {
+		log.Fail(err.Error())
+	}
 }
