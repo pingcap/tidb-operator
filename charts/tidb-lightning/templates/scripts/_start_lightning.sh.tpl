@@ -23,6 +23,9 @@ if [ -z $data_dir ]; then
     fi
 fi
 {{ end }}
+
+sed "s#CHECKPOINT_USE_DATA_DIR#$data_dir#g" /etc/tidb-lightning/tidb-lightning.toml > /tidb-lightning.toml
+
 /tidb-lightning \
     --pd-urls={{ .Values.targetTidbCluster.name }}-pd.{{ .Values.targetTidbCluster.namespace | default .Release.Namespace }}:2379 \
     --status-addr=0.0.0.0:8289 \
@@ -42,7 +45,7 @@ fi
 {{- end }}
     --tidb-host={{ .Values.targetTidbCluster.name }}-tidb.{{ .Values.targetTidbCluster.namespace | default .Release.Namespace }} \
     --d=${data_dir} \
-    --config=/etc/tidb-lightning/tidb-lightning.toml \
+    --config=/tidb-lightning.toml \
     --log-file=""
 
 if [ $? != 0 ]; then
