@@ -261,7 +261,7 @@ func (d *tidbDiscovery) VerifyPDEndpoint(pdURL string) (string, error) {
 
 	if d.pdEndpointHealthCheck(tc, pdURL, pdEndpoint.pdMemberName) {
 		// the input PD endpoint works normally
-		klog.Infof("The PD endpoint to be checked works fine")
+		klog.Infof("The PD endpoint: %s is healthy", pdURL)
 		if noScheme {
 			return fmt.Sprintf("%s:%s", pdEndpoint.pdMemberName, pdEndpoint.pdMemberPort), nil
 		}
@@ -270,7 +270,7 @@ func (d *tidbDiscovery) VerifyPDEndpoint(pdURL string) (string, error) {
 
 	for _, pdMember := range tc.Status.PD.PeerMembers {
 		if d.pdEndpointHealthCheck(tc, pdMember.ClientURL, pdMember.Name) {
-			klog.Infof("Successfully get the peer PD endpoint : %s", pdMember.ClientURL)
+			klog.Infof("The peer PD endpoint: %s is healthy", pdMember.ClientURL)
 			if noScheme {
 				return fmt.Sprintf("%s:%s", pdMember.Name, pdEndpoint.pdMemberPort), nil
 			}
@@ -278,7 +278,7 @@ func (d *tidbDiscovery) VerifyPDEndpoint(pdURL string) (string, error) {
 		}
 	}
 
-	// if failed, we should return the default value here
+	// if no healthy endpoint found, we just return the original PD URL here
 	return copyAdvertisePeerURL, nil
 }
 
