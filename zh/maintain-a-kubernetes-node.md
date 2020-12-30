@@ -184,7 +184,7 @@ pd-ctl -d config set max-store-down-time 10m
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl delete -n ${namespace} pvc ${pvc_name}
+    kubectl delete -n ${namespace} pvc ${pvc_name} --wait=false
     ```
 
 6. 删除 TiKV 实例：
