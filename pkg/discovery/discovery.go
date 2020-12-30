@@ -19,7 +19,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
@@ -237,8 +236,6 @@ func (d *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
 }
 
 func (d *tidbDiscovery) VerifyPDEndpoint(pdURL string) (string, error) {
-	// save a copy of pdURL for failure
-	copyPDEndpoint := pdURL
 	pdEndpoint := parsePDURL(pdURL)
 
 	ns := os.Getenv("MY_POD_NAMESPACE")
@@ -248,48 +245,22 @@ func (d *tidbDiscovery) VerifyPDEndpoint(pdURL string) (string, error) {
 		return pdURL, err
 	}
 
-	noScheme := false
-	if len(pdEndpoint.scheme) == 0 {
-		noScheme = true
-		if tc.IsTLSClusterEnabled() {
-			pdEndpoint.scheme = "https"
-		} else {
-			pdEndpoint.scheme = "http"
-		}
-		pdURL = fmt.Sprintf("%s://%s", pdEndpoint.scheme, pdURL)
-	}
-
-	if d.pdEndpointHealthCheck(tc, pdURL, pdEndpoint.pdMemberName) {
-		// the input PD endpoint works normally
-		klog.Infof("The PD endpoint: %s is healthy", pdURL)
-		if noScheme {
-			return fmt.Sprintf("%s:%s", pdEndpoint.pdMemberName, pdEndpoint.pdMemberPort), nil
-		}
-		return pdURL, nil
-	}
-
-	var returnPDMembers []string
 	var returnPDMember string
-	returnPDMembers = append(returnPDMembers, copyPDEndpoint)
-	for _, pdMember := range tc.Status.PD.PeerMembers {
-		if pdMember.Health {
-			if noScheme {
-				returnPDMember = fmt.Sprintf("%s:%s", pdMember.Name, pdEndpoint.pdMemberPort)
+	returnPDMembers := []string{pdURL}
+	for _, peerPDMember := range tc.Status.PD.PeerMembers {
+		if peerPDMember.Health {
+			if len(pdEndpoint.scheme) == 0 {
+				peerPDEndpoint := parsePDURL(peerPDMember.ClientURL)
+				returnPDMember = fmt.Sprintf("%s:%s", peerPDEndpoint.pdMemberName, peerPDEndpoint.pdMemberPort)
 			} else {
-				returnPDMember = pdMember.ClientURL
+				returnPDMember = peerPDMember.ClientURL
 			}
 			returnPDMembers = append(returnPDMembers, returnPDMember)
 		}
 	}
-	// if no healthy endpoint found, there is only the original PD URL will be returned
-	return strings.Join(returnPDMembers, ","), nil
-}
 
-// pdEndpointHealthCheck checks if PD PeerEndpoint is working
-func (d *tidbDiscovery) pdEndpointHealthCheck(tc *v1alpha1.TidbCluster, advertisePeerURL string, peerName string) bool {
-	pdClient := d.pdControl.GetPeerPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled(), advertisePeerURL, peerName)
-	_, err := pdClient.GetHealth()
-	return err == nil
+	// if no healthy peer members found, only the original PD URL will be returned
+	return strings.Join(returnPDMembers, ","), nil
 }
 
 // parsePDURL parses pdURL to PDEndpoint related information

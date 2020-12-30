@@ -988,7 +988,7 @@ func TestDiscoveryVerifyPDEndpoint(t *testing.T) {
 			peerclusterPD: true,
 			expectFn: func(g *GomegaWithT, td *tidbDiscovery, s string, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(s).To(Equal("demo-pd:2379"))
+				g.Expect(s).To(Equal("demo-pd:2379,pd-0.pd.pingcap.cluster2.com:2379"))
 			},
 		},
 		{
@@ -1024,7 +1024,7 @@ func TestDiscoveryVerifyPDEndpoint(t *testing.T) {
 			peerclusterPD: true,
 			expectFn: func(g *GomegaWithT, td *tidbDiscovery, s string, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(s).To(Equal("demo-pd:2379"))
+				g.Expect(s).To(Equal("demo-pd:2379,pd-0.pd.pingcap.cluster2.com:2379"))
 			},
 		},
 		{
@@ -1060,7 +1060,7 @@ func TestDiscoveryVerifyPDEndpoint(t *testing.T) {
 			peerclusterPD: true,
 			expectFn: func(g *GomegaWithT, td *tidbDiscovery, s string, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(s).To(Equal("http://demo-pd:2379"))
+				g.Expect(s).To(Equal("http://demo-pd:2379,http://pd-0.pd.pingcap.cluster2.com:2379"))
 			},
 		},
 		{
@@ -1096,7 +1096,7 @@ func TestDiscoveryVerifyPDEndpoint(t *testing.T) {
 			peerclusterPD: true,
 			expectFn: func(g *GomegaWithT, td *tidbDiscovery, s string, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(s).To(Equal("https://demo-pd:2379"))
+				g.Expect(s).To(Equal("https://demo-pd:2379,https://pd-0.pd.pingcap.cluster2.com:2379"))
 			},
 		},
 		{
