@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
 
@@ -48,6 +49,7 @@ func (s *server) registerHandlers() {
 	ws := new(restful.WebService)
 	ws.Route(ws.GET("/new/{advertise-peer-url}").To(s.newHandler))
 	ws.Route(ws.GET("/new/{advertise-peer-url}/{register-type}").To(s.newHandler))
+	ws.Route(ws.GET("/verify/{pd-url}").To(s.newVerifyHandler))
 	s.container.Add(ws)
 }
 
@@ -94,6 +96,37 @@ func (s *server) newHandler(req *restful.Request, resp *restful.Response) {
 	}
 
 	klog.Infof("generated args for %s: %s, register-type: %s", advertisePeerURL, result, registerType)
+	if _, err := io.WriteString(resp, result); err != nil {
+		klog.Errorf("failed to writeString: %s, %v", result, err)
+	}
+
+}
+
+func (s *server) newVerifyHandler(req *restful.Request, resp *restful.Response) {
+	encodedPDPeerURL := req.PathParameter("pd-url")
+	data, err := base64.StdEncoding.DecodeString(encodedPDPeerURL)
+	if err != nil {
+		klog.Errorf("failed to decode pd-peer-url: %s", encodedPDPeerURL)
+		if werr := resp.WriteError(http.StatusInternalServerError, err); werr != nil {
+			klog.Errorf("failed to writeError: %v", werr)
+		}
+		return
+	}
+	pdPeerURL := string(data)
+	pdPeerURL = strings.Trim(pdPeerURL, "\n")
+
+	var result string
+	result, err = s.discovery.VerifyPDEndpoint(pdPeerURL)
+	if err != nil {
+		klog.Errorf("failed to verify pd-url: %s, %v", pdPeerURL, err)
+		if werr := resp.WriteError(http.StatusInternalServerError, err); werr != nil {
+			klog.Errorf("failed to writeError: %v", werr)
+		}
+		// Return default value if verification failed
+		result = pdPeerURL
+	}
+
+	klog.Infof("return pd-url for %s: %s", pdPeerURL, result)
 	if _, err := io.WriteString(resp, result); err != nil {
 		klog.Errorf("failed to writeString: %s, %v", result, err)
 	}
