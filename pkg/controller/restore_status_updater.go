@@ -76,6 +76,7 @@ func (u *realRestoreConditionUpdater) Update(restore *v1alpha1.Restore, conditio
 				klog.Infof("Restore: [%s/%s] updated successfully", ns, restoreName)
 				return nil
 			}
+			klog.Errorf("Failed to update resotre [%s/%s], error: %v", ns, restoreName, updateErr)
 			if updated, err := u.restoreLister.Restores(ns).Get(restoreName); err == nil {
 				// make a copy so we don't mutate the shared cache
 				restore = updated.DeepCopy()
