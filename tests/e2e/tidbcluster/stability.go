@@ -152,9 +152,9 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				clusterName := "test"
 				tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV3Version)
 				err := genericCli.Create(context.TODO(), tc)
-				framework.ExpectNoError(err)
+				framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
 				err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
-				framework.ExpectNoError(err)
+				framework.ExpectNoError(err, "failed to wait for TidbCluster ready")
 
 				test.fn()
 
@@ -163,7 +163,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 					LabelSelector: labels.SelectorFromSet(label.New().Instance(clusterName).Labels()).String(),
 				}
 				podList, err := c.CoreV1().Pods(ns).List(listOptions)
-				framework.ExpectNoError(err)
+				framework.ExpectNoError(err, "failed to list pods in ns %s", ns)
 				err = wait.PollImmediate(time.Second*30, time.Minute*5, func() (bool, error) {
 					var ok bool
 					var err error
@@ -284,9 +284,9 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			tc.Spec.TiKV.Replicas = 3
 			tc.Spec.TiKV.MaxFailoverCount = pointer.Int32Ptr(0)
 			err := genericCli.Create(context.TODO(), tc)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to wait for TidbCluster ready")
 
 			ginkgo.By("By using tidb-scheduler, 3 TiKV/PD replicas should be on different nodes")
 			allNodes := make(map[string]v1.Node)
@@ -299,7 +299,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				LabelSelector: labels.SelectorFromSet(label.New().Instance(clusterName).Labels()).String(),
 			}
 			podList, err := c.CoreV1().Pods(ns).List(listOptions)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to list pods in ns %s", ns)
 			for _, pod := range podList.Items {
 				if v, ok := pod.Labels[label.ComponentLabelKey]; !ok {
 					framework.Failf("pod %s/%s does not have component label key %q", pod.Namespace, pod.Name, label.ComponentLabelKey)
@@ -357,15 +357,15 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 					}
 					return true, nil
 				})
-				framework.ExpectNoError(err)
+				framework.ExpectNoError(err, "failed to get node %s", nodeToDelete.Name)
 
 				ginkgo.By("[AWS/EKS] New instance will be created and join the cluster")
 				_, err := node.CheckReady(c, len(nodeList.Items), 5*time.Minute)
-				framework.ExpectNoError(err)
+				framework.ExpectNoError(err, "failed to check node ready state")
 
 				ginkgo.By("[AWS/EKS] Initialize newly created node")
 				nodeList, err = c.CoreV1().Nodes().List(metav1.ListOptions{})
-				framework.ExpectNoError(err)
+				framework.ExpectNoError(err, "failed to list nodes")
 				initialized := 0
 				for _, node := range nodeList.Items {
 					if _, ok := allNodes[node.Name]; !ok {
@@ -397,20 +397,20 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 					framework.Logf("instance ID of node %q changed from %q to %q", nodeToDelete.Name, oldInstanceID, instanceID)
 					return true, nil
 				})
-				framework.ExpectNoError(err)
+				framework.ExpectNoError(err, "wait for instance ID timeout")
 
 				ginkgo.By("[GCP/GKE] Wait for the node to be ready")
 				node.WaitForNodeToBeReady(c, nodeToDelete.Name, time.Minute*5)
 
 				ginkgo.By(fmt.Sprintf("[GCP/GKE] Initialize underlying machine of node %s", nodeToDelete.Name))
 				node, err := c.CoreV1().Nodes().Get(nodeToDelete.Name, metav1.GetOptions{})
-				framework.ExpectNoError(err)
+				framework.ExpectNoError(err, "failed to get node %s", nodeToDelete.Name)
 				framework.ExpectNoError(utilnode.InitNode(node))
 			}
 
 			ginkgo.By("Mark stores of failed tikv pods as tombstone")
 			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, clusterName, false)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to create proxied PD client")
 			defer func() {
 				if cancel != nil {
 					cancel()
@@ -429,7 +429,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 					}
 					return true, nil
 				})
-				framework.ExpectNoError(err)
+				framework.ExpectNoError(err, "mark tikv store as Tombstone timeout")
 			}
 			ginkgo.By("Delete pd members")
 			for _, pod := range pdPodsOnDeletedNode {
@@ -441,7 +441,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 					}
 					return true, nil
 				})
-				framework.ExpectNoError(err)
+				framework.ExpectNoError(err, "delete pd members timeout")
 			}
 			cancel()
 			cancel = nil
@@ -466,7 +466,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 					if pvc.Spec.StorageClassName != nil && *pvc.Spec.StorageClassName == "local-storage" {
 						localPVs = append(localPVs, pvc.Spec.VolumeName)
 						err = c.CoreV1().PersistentVolumeClaims(ns).Delete(pvc.Name, &metav1.DeleteOptions{})
-						framework.ExpectNoError(err)
+						framework.ExpectNoError(err, "failed to delete pvc %s", pvc.Name)
 					}
 				}
 			} else if framework.TestContext.Provider == "gke" {
@@ -482,7 +482,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 
 			ginkgo.By("Waiting for tidb cluster to be fully ready")
 			err = oa.WaitForTidbClusterReady(tc, 5*time.Minute, 15*time.Second)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %v", tc)
 		})
 
 		// There is no guarantee but tidb pods should be assigned back to
@@ -495,16 +495,16 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			tc.Spec.TiKV.Replicas = 1
 			tc.Spec.TiDB.Replicas = 3
 			err := genericCli.Create(context.TODO(), tc)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %v", tc)
 
 			listOptions := metav1.ListOptions{
 				LabelSelector: labels.SelectorFromSet(
 					label.New().Instance(clusterName).Component(label.TiDBLabelVal).Labels()).String(),
 			}
 			oldPodList, err := c.CoreV1().Pods(ns).List(listOptions)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to list pods in ns %s", ns)
 
 			ginkgo.By("Update tidb configuration")
 			updateStrategy := v1alpha1.ConfigUpdateStrategyRollingUpdate
@@ -513,7 +513,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				tc.Spec.TiDB.ConfigUpdateStrategy = &updateStrategy
 				return nil
 			})
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to update TidbCluster: %v", tc)
 
 			ginkgo.By("Waiting for all tidb pods are recreated and assigned to the same node")
 			getOldPodByName := func(pod *v1.Pod) *v1.Pod {
@@ -551,7 +551,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				}
 				return true, nil
 			})
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "wait for pod recreate timeout")
 		})
 	})
 
@@ -604,9 +604,9 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			tc.Spec.TiKV.Replicas = 1
 			tc.Spec.TiDB.Replicas = 1
 			err := genericCli.Create(context.TODO(), tc)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %v", tc)
 
 			ginkgo.By("Pre-create an invalid PVC to fail the auto-created failover member")
 			invalidPVC := v1.PersistentVolumeClaim{
@@ -627,7 +627,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				},
 			}
 			_, err = c.CoreV1().PersistentVolumeClaims(ns).Create(&invalidPVC)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to create persistent volume claims: %v", invalidPVC)
 
 			// We should stop the kubelet after failing the PD. Because
 			// tidb-operator will try to recreate POD & PVC soon after a new
@@ -638,7 +638,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 					label.New().Instance(clusterName).Component(label.PDLabelVal).Labels()).String(),
 			}
 			pdPodList, err := c.CoreV1().Pods(ns).List(listOptions)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to list pods in ns %s with selector %v", ns, listOptions)
 			gomega.Expect(len(pdPodList.Items)).To(gomega.BeNumerically("==", 3), "the number of pd nodes should be 3")
 			pod0 := pdPodList.Items[0]
 			f.ExecCommandInContainer(pod0.Name, "pd", "sh", "-c", "rm -rf /var/lib/pd/member")
@@ -657,7 +657,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				}
 				return !apierrors.IsNotFound(err), nil
 			})
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "wait for pod to be replaced timeout")
 
 			ginkgo.By("Wait for only one replacement to be created")
 			err = wait.PollImmediate(time.Second*10, 1*time.Minute, func() (bool, error) {
@@ -670,18 +670,18 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				}
 				return false, nil
 			})
-			framework.ExpectEqual(err, wait.ErrWaitTimeout)
+			framework.ExpectEqual(err, wait.ErrWaitTimeout, "only one replacement should be created")
 
 			ginkgo.By("Recover failed PD")
 			storageutils.KubeletCommand(storageutils.KStart, c, &pod0)
 
-			ginkgo.By("Wait for the failed PD to be recovered")
+			ginkgo.By("Wait for the failed PD to recover")
 			err = pod.WaitTimeoutForPodRunningInNamespace(c, pod0.Name, ns, time.Minute*5)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "wait for failed pd to recover timeout")
 
 			ginkgo.By("Wait for the replacement to be gone")
 			err = pod.WaitForPodNotFoundInNamespace(c, podName, ns, time.Minute*5)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to wait for replacement pod deleted")
 		})
 
 		ginkgo.It("[Feature: AutoFailover] TiDB: one replacement for one failed member and replacements should be deleted when failed members are recovered", func() {
@@ -729,16 +729,16 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				},
 			}
 			err := genericCli.Create(context.TODO(), tc)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %v", tc)
 
 			ginkgo.By("Increase replicas of TiDB from 2 to 3")
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 				tc.Spec.TiDB.Replicas = 3
 				return nil
 			})
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to update TidbCluster to scale out tidb")
 
 			ginkgo.By("Wait for the new pod to be created")
 			podName := controller.TiDBMemberName(clusterName) + "-2"
@@ -749,7 +749,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				}
 				return !apierrors.IsNotFound(err), nil
 			})
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to wait for the new pod to be created")
 
 			ginkgo.By("Make sure the new pod will not be scheduled")
 			err = wait.PollImmediate(time.Second*10, 1*time.Minute, func() (bool, error) {
@@ -766,7 +766,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				}
 				return true, nil
 			})
-			framework.ExpectEqual(err, wait.ErrWaitTimeout)
+			framework.ExpectEqual(err, wait.ErrWaitTimeout, "the new pod should not be scheduled")
 
 			listOptions := metav1.ListOptions{
 				LabelSelector: labels.SelectorFromSet(
@@ -783,17 +783,17 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				}
 				return false, nil
 			})
-			framework.ExpectEqual(err, wait.ErrWaitTimeout)
+			framework.ExpectEqual(err, wait.ErrWaitTimeout, "no new replacement should be created for non-scheduled TiDB pod")
 
 			ginkgo.By("Fix the TiDB scheduling requirements")
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 				tc.Spec.TiDB.Affinity = nil
 				return nil
 			})
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to update TidbCluster for tidb affinity")
 
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %v", tc)
 
 			ginkgo.By(fmt.Sprintf("Fail the TiDB pod %q", podName))
 			patch := []byte(`
@@ -808,11 +808,12 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 	}
 }`)
 			_, err = c.CoreV1().Pods(ns).Patch(podName, types.StrategicMergePatchType, patch)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to patch pod with patch: %v", patch)
 
 			err = wait.PollImmediate(time.Second*10, 1*time.Minute, func() (bool, error) {
 				pod, err := c.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
 				if err != nil {
+					// TODO: should do this in wait.Poll and wait.PollImmediate
 					if testutils.IsRetryableAPIError(err) {
 						return false, nil
 					}
@@ -820,7 +821,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				}
 				return !podutil.IsPodReady(pod), nil
 			})
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "wait for patched pod ready timeout")
 
 			ginkgo.By("Wait for a replacement to be created")
 			newPodName := controller.TiDBMemberName(clusterName) + "-3"
@@ -831,7 +832,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				}
 				return !apierrors.IsNotFound(err), nil
 			})
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to wait for failover tidb pod")
 
 			ginkgo.By("Wait for only one replacement to be created")
 			err = wait.PollImmediate(time.Second*10, 1*time.Minute, func() (bool, error) {
@@ -844,15 +845,15 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				}
 				return false, nil
 			})
-			framework.ExpectEqual(err, wait.ErrWaitTimeout)
+			framework.ExpectEqual(err, wait.ErrWaitTimeout, "only one replacement should be created")
 
 			ginkgo.By(fmt.Sprintf("Fix the TiDB pod %q", podName))
 			err = c.CoreV1().Pods(ns).Delete(podName, &metav1.DeleteOptions{})
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to delete tidb pod %s/%s", ns, podName)
 
 			ginkgo.By("Wait for the replacement to be gone")
 			err = pod.WaitForPodNotFoundInNamespace(c, newPodName, ns, time.Minute*5)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to wait for replacement pod to be deleted")
 		})
 
 		// https://github.com/pingcap/tidb-operator/issues/2739
@@ -866,9 +867,9 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			tc.Spec.TiKV.Replicas = 3
 			tc.Spec.TiDB.Replicas = 1
 			err := genericCli.Create(context.TODO(), tc)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %v", tc)
 
 			ginkgo.By("Fail a TiKV store")
 			podName := controller.TiKVMemberName(clusterName) + "-1"
@@ -883,7 +884,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				}
 				return false, nil
 			})
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to wait for ")
 
 			ginkgo.By("Upgrade TiKV configuration")
 			updateStrategy := v1alpha1.ConfigUpdateStrategyRollingUpdate
@@ -892,9 +893,9 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				tc.Spec.TiKV.ConfigUpdateStrategy = &updateStrategy
 				return nil
 			})
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to upgrade tikv configuration")
 
-			ginkgo.By("Waiting for the store to be put into failsure stores")
+			ginkgo.By("Waiting for the store to be put into failure stores")
 			err = utiltidbcluster.WaitForTidbClusterCondition(cli, tc.Namespace, tc.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
 				for _, failureStore := range tc.Status.TiKV.FailureStores {
 					if failureStore.PodName == podName {
@@ -903,7 +904,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				}
 				return false, nil
 			})
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to wait for the store to be put into failure stores")
 
 			ginkgo.By("Waiting for the new pod to be created")
 			newPodName := controller.TiKVMemberName(clusterName) + "-3"
@@ -914,7 +915,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				}
 				return !apierrors.IsNotFound(err), nil
 			})
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to wait for the new pod to be created")
 		})
 
 		// https://github.com/pingcap/tidb-operator/issues/2739
@@ -925,9 +926,9 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			tc.Spec.TiKV.Replicas = 1
 			tc.Spec.TiDB.Replicas = 1
 			err := genericCli.Create(context.TODO(), tc)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %v", tc)
 
 			ginkgo.By("Fail a PD")
 			podName := controller.PDMemberName(clusterName) + "-1"
@@ -942,7 +943,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				}
 				return false, nil
 			})
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to wait for the pd to be in unhealthy state")
 
 			ginkgo.By("Upgrade PD configuration")
 			updateStrategy := v1alpha1.ConfigUpdateStrategyRollingUpdate
@@ -951,9 +952,9 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				tc.Spec.PD.ConfigUpdateStrategy = &updateStrategy
 				return nil
 			})
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to upgrade pd configuration")
 
-			ginkgo.By("Waiting for the pd to be put into failsure members")
+			ginkgo.By("Waiting for the pd to be put into failure members")
 			err = utiltidbcluster.WaitForTidbClusterCondition(cli, tc.Namespace, tc.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
 				for _, failureMember := range tc.Status.PD.FailureMembers {
 					if failureMember.PodName == podName {
@@ -962,7 +963,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				}
 				return false, nil
 			})
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to wait for the pd to be put into failure members")
 
 			ginkgo.By("Waiting for the new pod to be created")
 			newPodName := controller.PDMemberName(clusterName) + "-3"
@@ -973,7 +974,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				}
 				return !apierrors.IsNotFound(err), nil
 			})
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to wait for the new pod to be created")
 		})
 	})
 
@@ -1027,17 +1028,17 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			tc.Spec.TiDB.Replicas = 1
 			tc.Spec.TiKV.Replicas = 3
 			err := genericCli.Create(context.TODO(), tc)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
 
 			ginkgo.By("Waiting for the tidb cluster to become ready")
 			err = utiltidbcluster.WaitForTidbClusterReady(cli, tc.Namespace, tc.Name, time.Minute*30, 0)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 
 			ginkgo.By("Fail a TiKV store")
 			podName := controller.TiKVMemberName(clusterName) + "-1"
 			f.ExecCommandInContainer(podName, "tikv", "sh", "-c", "rm -rf /var/lib/tikv/*")
 
-			ginkgo.By("Waiting for the store to be put into failsure stores")
+			ginkgo.By("Waiting for the store to be put into failure stores")
 			err = utiltidbcluster.WaitForTidbClusterCondition(cli, tc.Namespace, tc.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
 				for _, failureStore := range tc.Status.TiKV.FailureStores {
 					if failureStore.PodName == podName {
@@ -1046,7 +1047,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				}
 				return false, nil
 			})
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to wait for the store to be put into failure stores")
 
 			ginkgo.By("Waiting for the new pod to be created")
 			newPodName := controller.TiKVMemberName(clusterName) + "-3"
@@ -1057,7 +1058,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				}
 				return !apierrors.IsNotFound(err), nil
 			})
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to wait for the new pod to be created")
 
 			ginkgo.By(fmt.Sprintf("Deleting the failed pod %q via delete-slots", podName))
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
@@ -1067,11 +1068,11 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				tc.Annotations[label.AnnTiKVDeleteSlots] = mustToString(sets.NewInt32(1))
 				return nil
 			})
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to delete failed pod %q via delete-slots", podName)
 
 			ginkgo.By(fmt.Sprintf("Waiting for the failed pod %q to be gone", podName))
 			err = pod.WaitForPodNotFoundInNamespace(c, podName, ns, time.Minute*5)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to wait for the failed pod %q to be gone", podName)
 
 			ginkgo.By(fmt.Sprintf("Waiting for the record of failed pod to be removed from failure stores"))
 			err = utiltidbcluster.WaitForTidbClusterCondition(cli, tc.Namespace, tc.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
@@ -1083,11 +1084,11 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				}
 				return !exist, nil
 			})
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to wait for the record of failed pod to be removed from failure stores")
 
 			ginkgo.By("Waiting for the tidb cluster to become ready")
 			err = utiltidbcluster.WaitForTidbClusterReady(cli, tc.Namespace, tc.Name, time.Minute*30, 0)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 		})
 	})
 
