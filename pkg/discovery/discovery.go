@@ -268,16 +268,22 @@ func (d *tidbDiscovery) VerifyPDEndpoint(pdURL string) (string, error) {
 		return pdURL, nil
 	}
 
+	var returnPDMembers []string
+	var returnPDMember string
 	for _, pdMember := range tc.Status.PD.PeerMembers {
-		if d.pdEndpointHealthCheck(tc, pdMember.ClientURL, pdMember.Name) {
-			klog.Infof("The peer PD endpoint: %s is healthy", pdMember.ClientURL)
+		if pdMember.Health {
 			if noScheme {
-				return fmt.Sprintf("%s:%s", pdMember.Name, pdEndpoint.pdMemberPort), nil
+				returnPDMember = fmt.Sprintf("%s:%s", pdMember.Name, pdEndpoint.pdMemberPort)
+			} else {
+				returnPDMember = pdMember.ClientURL
 			}
-			return pdMember.ClientURL, nil
+			returnPDMembers = append(returnPDMembers, returnPDMember)
 		}
 	}
-
+	if len(returnPDMembers) > 0 {
+		return strings.Join(returnPDMembers, ","), nil
+	}
+	
 	// if no healthy endpoint found, we just return the original PD URL here
 	return copyAdvertisePeerURL, nil
 }
