@@ -71,7 +71,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 				Status:  corev1.ConditionTrue,
 				Reason:  reason,
 				Message: err.Error(),
-			})
+			}, nil)
 			return err
 		}
 
@@ -85,7 +85,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 			Status:  corev1.ConditionTrue,
 			Reason:  "InvalidSpec",
 			Message: err.Error(),
-		})
+		}, nil)
 
 		return controller.IgnoreErrorf("invalid restore spec %s/%s", ns, name)
 	}
@@ -112,7 +112,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 				Status:  corev1.ConditionTrue,
 				Reason:  reason,
 				Message: err.Error(),
-			})
+			}, nil)
 			return err
 		}
 
@@ -123,7 +123,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 				Status:  corev1.ConditionTrue,
 				Reason:  reason,
 				Message: err.Error(),
-			})
+			}, nil)
 			return err
 		}
 	} else {
@@ -134,7 +134,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 				Status:  corev1.ConditionTrue,
 				Reason:  reason,
 				Message: err.Error(),
-			})
+			}, nil)
 			return err
 		}
 	}
@@ -146,14 +146,14 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 			Status:  corev1.ConditionTrue,
 			Reason:  "CreateRestoreJobFailed",
 			Message: errMsg.Error(),
-		})
+		}, nil)
 		return errMsg
 	}
 
 	return rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 		Type:   v1alpha1.RestoreScheduled,
 		Status: corev1.ConditionTrue,
-	})
+	}, nil)
 }
 
 func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job, string, error) {
