@@ -238,7 +238,7 @@ func (d *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
 
 func (d *tidbDiscovery) VerifyPDEndpoint(pdURL string) (string, error) {
 	// save a copy of pdURL for failure
-	copyAdvertisePeerURL := pdURL
+	copyPDEndpoint := pdURL
 	pdEndpoint := parsePDURL(pdURL)
 
 	ns := os.Getenv("MY_POD_NAMESPACE")
@@ -270,6 +270,7 @@ func (d *tidbDiscovery) VerifyPDEndpoint(pdURL string) (string, error) {
 
 	var returnPDMembers []string
 	var returnPDMember string
+	returnPDMembers = append(returnPDMembers, copyPDEndpoint)
 	for _, pdMember := range tc.Status.PD.PeerMembers {
 		if pdMember.Health {
 			if noScheme {
@@ -280,12 +281,8 @@ func (d *tidbDiscovery) VerifyPDEndpoint(pdURL string) (string, error) {
 			returnPDMembers = append(returnPDMembers, returnPDMember)
 		}
 	}
-	if len(returnPDMembers) > 0 {
-		return strings.Join(returnPDMembers, ","), nil
-	}
-	
-	// if no healthy endpoint found, we just return the original PD URL here
-	return copyAdvertisePeerURL, nil
+	// if no healthy endpoint found, there is only the original PD URL will be returned
+	return strings.Join(returnPDMembers, ","), nil
 }
 
 // pdEndpointHealthCheck checks if PD PeerEndpoint is working
