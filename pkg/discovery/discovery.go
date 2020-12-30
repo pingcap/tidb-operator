@@ -31,6 +31,7 @@ import (
 type TiDBDiscovery interface {
 	Discover(string) (string, error)
 	DiscoverDM(string) (string, error)
+	VerifyPDEndpoint(string) (string, error)
 }
 
 type tidbDiscovery struct {
@@ -45,6 +46,13 @@ type tidbDiscovery struct {
 type clusterInfo struct {
 	resourceVersion string
 	peers           map[string]struct{}
+}
+
+type pdEndpointURL struct {
+	scheme       string
+	pdMemberName string
+	pdMemberPort string
+	tcName       string
 }
 
 // NewTiDBDiscovery returns a TiDBDiscovery
@@ -225,4 +233,76 @@ func (d *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
 	}
 	delete(currentCluster.peers, podName)
 	return fmt.Sprintf("--join=%s", strings.Join(mastersArr, ",")), nil
+}
+
+func (d *tidbDiscovery) VerifyPDEndpoint(pdURL string) (string, error) {
+	pdEndpoint := parsePDURL(pdURL)
+	klog.Infof("Get PD endpoint URL: %s, scheme is %s, pdMemberName is %s, pdMemberPort is %s, tcName is %s", pdURL, pdEndpoint.scheme, pdEndpoint.pdMemberName, pdEndpoint.pdMemberPort, pdEndpoint.tcName)
+
+	ns := os.Getenv("MY_POD_NAMESPACE")
+	tc, err := d.cli.PingcapV1alpha1().TidbClusters(ns).Get(pdEndpoint.tcName, metav1.GetOptions{})
+	if err != nil {
+		klog.Errorf("Failed to get the tidbcluster when verifying PD endpoint, tcName: %s , ns: %s", pdEndpoint.tcName, ns)
+		return pdURL, err
+	}
+
+	var returnPDMember string
+	returnPDMembers := []string{pdURL}
+	for _, peerPDMember := range tc.Status.PD.PeerMembers {
+		if peerPDMember.Health {
+			if len(pdEndpoint.scheme) == 0 {
+				peerPDEndpoint := parsePDURL(peerPDMember.ClientURL)
+				returnPDMember = fmt.Sprintf("%s:%s", peerPDEndpoint.pdMemberName, peerPDEndpoint.pdMemberPort)
+			} else {
+				returnPDMember = peerPDMember.ClientURL
+			}
+			returnPDMembers = append(returnPDMembers, returnPDMember)
+		}
+	}
+
+	// if no healthy peer members found, only the original PD URL will be returned
+	return strings.Join(returnPDMembers, ","), nil
+}
+
+// parsePDURL parses pdURL to PDEndpoint related information
+func parsePDURL(pdURL string) pdEndpointURL {
+	// Deal with scheme
+	pdEndpoint := pdEndpointURL{
+		scheme:       "",
+		pdMemberName: "",
+		pdMemberPort: "2379",
+		tcName:       "",
+	}
+
+	noScheme := true
+	if strings.Contains(pdURL, "://") {
+		noScheme = false
+	}
+	pdURL = strings.ReplaceAll(pdURL, "//", "")
+	partsPDURL := strings.Split(pdURL, ":")
+	// If len == 1, the URL doesn't contain ":", it should be pdMemberName
+	// If len == 2, the URL contains 1 ":", if noScheme is true, it should be like "cluster1-pd:2379", or "http://clutser1-pd"
+	// If len == 3, the URL contains 2 ":", the URL should be like "http://cluster1-pd:2379"
+	// In normal scenario, the URL should be like "cluster1-pd:2379" or "http://cluster1-pd:2379"
+	switch len(partsPDURL) {
+	case 1:
+		pdEndpoint.pdMemberName = partsPDURL[0]
+	case 2:
+		if noScheme {
+			pdEndpoint.pdMemberName = partsPDURL[0]
+			pdEndpoint.pdMemberPort = partsPDURL[1]
+		} else {
+			pdEndpoint.scheme = partsPDURL[0]
+			pdEndpoint.pdMemberName = partsPDURL[1]
+		}
+	case 3:
+		pdEndpoint.scheme = partsPDURL[0]
+		pdEndpoint.pdMemberName = partsPDURL[1]
+		pdEndpoint.pdMemberPort = partsPDURL[2]
+	}
+
+	// Deal with tcName
+	pdEndpoint.tcName = strings.TrimSuffix(pdEndpoint.pdMemberName, "-pd")
+
+	return pdEndpoint
 }
