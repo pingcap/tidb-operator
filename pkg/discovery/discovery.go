@@ -237,11 +237,12 @@ func (d *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
 
 func (d *tidbDiscovery) VerifyPDEndpoint(pdURL string) (string, error) {
 	pdEndpoint := parsePDURL(pdURL)
+	klog.Infof("Get PD endpoint URL: %s, scheme is %s, pdMemberName is %s, pdMemberPort is %s, tcName is %s", pdURL, pdEndpoint.scheme, pdEndpoint.pdMemberName, pdEndpoint.pdMemberPort, pdEndpoint.tcName)
 
 	ns := os.Getenv("MY_POD_NAMESPACE")
 	tc, err := d.cli.PingcapV1alpha1().TidbClusters(ns).Get(pdEndpoint.tcName, metav1.GetOptions{})
 	if err != nil {
-		klog.Errorf("Failed to get the tidbcluster when verifying PD endpoint")
+		klog.Errorf("Failed to get the tidbcluster when verifying PD endpoint, tcName: %s , ns: %s", pdEndpoint.tcName, ns)
 		return pdURL, err
 	}
 
@@ -264,9 +265,9 @@ func (d *tidbDiscovery) VerifyPDEndpoint(pdURL string) (string, error) {
 }
 
 // parsePDURL parses pdURL to PDEndpoint related information
-func parsePDURL(pdURL string) *pdEndpointURL {
+func parsePDURL(pdURL string) pdEndpointURL {
 	// Deal with scheme
-	pdEndpoint := &pdEndpointURL{
+	pdEndpoint := pdEndpointURL{
 		scheme:       "",
 		pdMemberName: "",
 		pdMemberPort: "2379",
