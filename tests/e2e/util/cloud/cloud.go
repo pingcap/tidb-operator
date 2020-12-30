@@ -63,9 +63,10 @@ func DisableNodeAutoRepair() {
 		log.Logf("Using gcloud to disable auto-repair for pool %s", nodePool)
 		args := []string{"container", "node-pools", "update", "default-pool", "--cluster", framework.TestContext.CloudConfig.Cluster,
 			"--no-enable-autorepair"}
-		output, err := execCmd(getGcloudCommand(args)...).CombinedOutput()
+		gcloudCommand := getGcloudCommand(args)
+		output, err := execCmd(gcloudCommand...).CombinedOutput()
 		log.Logf("Config update result: %s", output)
-		framework.ExpectNoError(err)
+		framework.ExpectNoError(err, "failed to get gcloud command: %q", gcloudCommand)
 	} else {
 		// TODO support AWS (EKS)
 		framework.Failf("unsupported provider %q", framework.TestContext.Provider)
@@ -79,9 +80,10 @@ func EnableNodeAutoRepair() {
 		log.Logf("Using gcloud to disable auto-repair for pool %s", nodePool)
 		args := []string{"container", "node-pools", "update", "default-pool", "--cluster", framework.TestContext.CloudConfig.Cluster,
 			"--enable-autorepair"}
-		output, err := execCmd(getGcloudCommand(args)...).CombinedOutput()
+		gcloudCommand := getGcloudCommand(args)
+		output, err := execCmd(gcloudCommand...).CombinedOutput()
 		log.Logf("Config update result: %s", output)
-		framework.ExpectNoError(err)
+		framework.ExpectNoError(err, "failed to get gcloud command: %q", gcloudCommand)
 	} else {
 		// TODO support AWS (EKS)
 		framework.Failf("unsupported provider %q", framework.TestContext.Provider)
