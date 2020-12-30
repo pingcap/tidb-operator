@@ -86,7 +86,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 				Status:  corev1.ConditionTrue,
 				Reason:  reason,
 				Message: err.Error(),
-			})
+			}, nil)
 			return err
 		}
 
@@ -100,7 +100,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 			Status:  corev1.ConditionTrue,
 			Reason:  "InvalidSpec",
 			Message: err.Error(),
-		})
+		}, nil)
 
 		return controller.IgnoreErrorf("invalid backup spec %s/%s cause %s", ns, name, err.Error())
 	}
@@ -126,7 +126,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 				Status:  corev1.ConditionTrue,
 				Reason:  reason,
 				Message: err.Error(),
-			})
+			}, nil)
 			return err
 		}
 
@@ -137,7 +137,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 				Status:  corev1.ConditionTrue,
 				Reason:  reason,
 				Message: err.Error(),
-			})
+			}, nil)
 			return err
 		}
 
@@ -150,7 +150,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 				Status:  corev1.ConditionTrue,
 				Reason:  reason,
 				Message: err.Error(),
-			})
+			}, nil)
 			return err
 		}
 	}
@@ -162,14 +162,14 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 			Status:  corev1.ConditionTrue,
 			Reason:  "CreateBackupJobFailed",
 			Message: errMsg.Error(),
-		})
+		}, nil)
 		return errMsg
 	}
 
 	return bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Type:   v1alpha1.BackupScheduled,
 		Status: corev1.ConditionTrue,
-	})
+	}, nil)
 }
 
 func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
