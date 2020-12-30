@@ -62,7 +62,7 @@ func (bm *Manager) performCleanBackup(backup *v1alpha1.Backup) error {
 			Status:  corev1.ConditionTrue,
 			Reason:  "BackupPathIsEmpty",
 			Message: fmt.Sprintf("the cluster %s backup path is empty", bm),
-		})
+		}, nil)
 	}
 
 	var errs []error
@@ -82,7 +82,7 @@ func (bm *Manager) performCleanBackup(backup *v1alpha1.Backup) error {
 			Status:  corev1.ConditionTrue,
 			Reason:  "CleanBackupDataFailed",
 			Message: err.Error(),
-		})
+		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
@@ -91,5 +91,5 @@ func (bm *Manager) performCleanBackup(backup *v1alpha1.Backup) error {
 	return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Type:   v1alpha1.BackupClean,
 		Status: corev1.ConditionTrue,
-	})
+	}, nil)
 }
