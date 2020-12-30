@@ -309,7 +309,7 @@ func DeployReleasedCRDOrDie(version string) {
 		}
 		return true, nil
 	})
-	framework.ExpectNoError(err)
+	framework.ExpectNoError(err, "failed to apply CRD of version %s", version)
 }
 
 func CleanReleasedCRDOrDie(version string) {
@@ -321,5 +321,5 @@ func CleanReleasedCRDOrDie(version string) {
 		}
 		return true, nil
 	})
-	framework.ExpectNoError(err)
+	framework.ExpectNoError(err, "failed to delete CRD of version %s", version)
 }
