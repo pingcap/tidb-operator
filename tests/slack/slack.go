@@ -161,6 +161,7 @@ func SendWarnMsg(msg string) error {
 }
 
 func NotifyAndPanic(err error) {
+	log.Logf("sending err via slack, err: %v", err)
 	sendErr := SendErrMsg(fmt.Sprintf("Succeed %d times, then failed: %s", SuccessCount, err.Error()))
 	if sendErr != nil {
 		log.Logf("failed to notify slack[%s] the massage: %v,error: %v", WebhookURL, err, sendErr)

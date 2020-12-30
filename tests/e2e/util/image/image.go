@@ -63,15 +63,13 @@ func ListImages() []string {
 	images = append(images, fmt.Sprintf("%s:%s", TiDBMonitorInitializerImage, TiDBMonitorInitializerVersion))
 	images = append(images, fmt.Sprintf("%s:%s", GrafanaImage, GrafanaVersion))
 	imagesFromOperator, err := readImagesFromValues(filepath.Join(framework.TestContext.RepoRoot, "charts/tidb-operator/values.yaml"), sets.NewString(".advancedStatefulset.image", ".admissionWebhook.jobImage"))
-	if err != nil {
-		framework.ExpectNoError(err)
-	}
+	framework.ExpectNoError(err, "failed to read images from values in charts/tidb-operator/values.yaml")
+
 	images = append(images, imagesFromOperator...)
 	imageKeysFromTiDBCluster := sets.NewString(".pd.image", ".tikv.image", ".tidb.image")
 	imagesFromTiDBCluster, err := readImagesFromValues(filepath.Join(framework.TestContext.RepoRoot, "charts/tidb-cluster/values.yaml"), imageKeysFromTiDBCluster)
-	if err != nil {
-		framework.ExpectNoError(err)
-	}
+	framework.ExpectNoError(err, "failed to read images from values in charts/tidb-cluster/values.yaml")
+
 	images = append(images, imagesFromTiDBCluster...)
 	return sets.NewString(images...).List()
 }
