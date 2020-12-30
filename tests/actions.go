@@ -123,7 +123,7 @@ func NewOperatorActions(cli versioned.Interface,
 	}
 	if fw != nil {
 		kubeCfg, err := framework.LoadConfig()
-		framework.ExpectNoError(err)
+		framework.ExpectNoError(err, "failed to load config")
 		oa.tidbControl = proxiedtidbclient.NewProxiedTiDBClient(fw, kubeCfg.TLSClientConfig.CAData)
 	} else {
 		oa.tidbControl = controller.NewDefaultTiDBControl(kubeCli)
@@ -518,7 +518,7 @@ func (oa *operatorActions) runKubectlOrDie(args ...string) string {
 
 func (oa *operatorActions) CleanCRDOrDie() {
 	crdList, err := oa.apiExtCli.ApiextensionsV1beta1().CustomResourceDefinitions().List(metav1.ListOptions{})
-	framework.ExpectNoError(err)
+	framework.ExpectNoError(err, "failed to list CRD")
 	for _, crd := range crdList.Items {
 		if !strings.HasSuffix(crd.Name, ".pingcap.com") {
 			framework.Logf("CRD %q ignored", crd.Name)
@@ -526,11 +526,11 @@ func (oa *operatorActions) CleanCRDOrDie() {
 		}
 		framework.Logf("Deleting CRD %q", crd.Name)
 		err = oa.apiExtCli.ApiextensionsV1beta1().CustomResourceDefinitions().Delete(crd.Name, &metav1.DeleteOptions{})
-		framework.ExpectNoError(err)
+		framework.ExpectNoError(err, "failed to delete CRD %q", crd.Name)
 		// Even if DELETE API request succeeds, the CRD object may still exists
 		// in ap server. We should wait for it to be gone.
-		e2eutil.WaitForCRDNotFound(oa.apiExtCli, crd.Name)
-		framework.ExpectNoError(err)
+		err = e2eutil.WaitForCRDNotFound(oa.apiExtCli, crd.Name)
+		framework.ExpectNoError(err, "failed to wait for CRD %q deleted", crd.Name)
 	}
 }
 
