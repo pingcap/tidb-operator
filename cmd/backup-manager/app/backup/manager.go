@@ -82,7 +82,7 @@ func (bm *Manager) ProcessBackup() error {
 			Status:  corev1.ConditionTrue,
 			Reason:  "GetBackupCRFailed",
 			Message: err.Error(),
-		})
+		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
@@ -122,7 +122,7 @@ func (bm *Manager) ProcessBackup() error {
 			Status:  corev1.ConditionTrue,
 			Reason:  "ConnectTidbFailed",
 			Message: err.Error(),
-		})
+		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
@@ -138,7 +138,7 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 	err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Type:   v1alpha1.BackupRunning,
 		Status: corev1.ConditionTrue,
-	})
+	}, nil)
 	if err != nil {
 		return err
 	}
@@ -151,16 +151,18 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 			Status:  corev1.ConditionTrue,
 			Reason:  "GetBackupRemotePathFailed",
 			Message: err.Error(),
-		})
+		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
 
-	backup.Status.BackupPath = backupFullPath
+	updatePathStatus := &controller.BackupUpdateStatus{
+		BackupPath: &backupFullPath,
+	}
 	err = bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Type:   v1alpha1.BackupPrepare,
 		Status: corev1.ConditionTrue,
-	})
+	}, updatePathStatus)
 	if err != nil {
 		return err
 	}
@@ -181,7 +183,7 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 				Status:  corev1.ConditionTrue,
 				Reason:  "GetTikvGCLifeTimeFailed",
 				Message: err.Error(),
-			})
+			}, nil)
 			errs = append(errs, uerr)
 			return errorutils.NewAggregate(errs)
 		}
@@ -196,7 +198,7 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 				Status:  corev1.ConditionTrue,
 				Reason:  "ParseOldTikvGCLifeTimeFailed",
 				Message: err.Error(),
-			})
+			}, nil)
 			errs = append(errs, uerr)
 			return errorutils.NewAggregate(errs)
 		}
@@ -212,7 +214,7 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 					Status:  corev1.ConditionTrue,
 					Reason:  "ParseConfiguredTikvGCLifeTimeFailed",
 					Message: err.Error(),
-				})
+				}, nil)
 				errs = append(errs, uerr)
 				return errorutils.NewAggregate(errs)
 			}
@@ -227,7 +229,7 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 					Status:  corev1.ConditionTrue,
 					Reason:  "ParseDefaultTikvGCLifeTimeFailed",
 					Message: err.Error(),
-				})
+				}, nil)
 				errs = append(errs, uerr)
 				return errorutils.NewAggregate(errs)
 			}
@@ -243,7 +245,7 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 					Status:  corev1.ConditionTrue,
 					Reason:  "SetTikvGCLifeTimeFailed",
 					Message: err.Error(),
-				})
+				}, nil)
 				errs = append(errs, uerr)
 				return errorutils.NewAggregate(errs)
 			}
@@ -267,7 +269,7 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 				Status:  corev1.ConditionTrue,
 				Reason:  "ResetTikvGCLifeTimeFailed",
 				Message: err.Error(),
-			})
+			}, nil)
 			errs = append(errs, uerr)
 			return errorutils.NewAggregate(errs)
 		}
@@ -282,7 +284,7 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 			Status:  corev1.ConditionTrue,
 			Reason:  "BackupDataToRemoteFailed",
 			Message: backupErr.Error(),
-		})
+		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
@@ -297,7 +299,7 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 			Status:  corev1.ConditionTrue,
 			Reason:  "GetBackupMetadataFailed",
 			Message: err.Error(),
-		})
+		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
@@ -308,14 +310,18 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 	klog.Infof("Get cluster %s commitTs %d success", bm, commitTs)
 	finish := time.Now()
 
-	backup.Status.TimeStarted = metav1.Time{Time: started}
-	backup.Status.TimeCompleted = metav1.Time{Time: finish}
-	backup.Status.BackupSize = int64(size)
-	backup.Status.BackupSizeReadable = humanize.Bytes(uint64(size))
-	backup.Status.CommitTs = strconv.FormatUint(commitTs, 10)
-
+	backupSize := int64(size)
+	backupSizeReadable := humanize.Bytes(uint64(size))
+	ts := strconv.FormatUint(commitTs, 10)
+	updateStatus := &controller.BackupUpdateStatus{
+		TimeStarted:        &metav1.Time{Time: started},
+		TimeCompleted:      &metav1.Time{Time: finish},
+		BackupSize:         &backupSize,
+		BackupSizeReadable: &backupSizeReadable,
+		CommitTs:           &ts,
+	}
 	return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Type:   v1alpha1.BackupComplete,
 		Status: corev1.ConditionTrue,
-	})
+	}, updateStatus)
 }
