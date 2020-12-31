@@ -1,6 +1,6 @@
 {{- if .Values.monitor.create }}
 {{- if .Values.rbac.create }}
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
   {{- if .Values.rbac.crossNamespace }}
 kind: ClusterRole
   {{- else }}
@@ -43,7 +43,7 @@ kind: ClusterRoleBinding
   {{- else }}
 kind: RoleBinding
   {{- end }}
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   {{- if .Values.rbac.crossNamespace }}
   name: {{ template "cluster.name" . }}:monitor
