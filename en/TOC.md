@@ -56,6 +56,8 @@
       - [Restore Data from GCS Using BR](restore-from-gcs-using-br.md)
       - [Back up Data to S3-Compatible Storage Using BR](backup-to-aws-s3-using-br.md)
       - [Restore Data from S3-Compatible Storage Using BR](restore-from-aws-s3-using-br.md)
+      - [Back up Data to PV Using BR](backup-to-pv-using-br.md)
+      - [Restore Data from PV Using BR](restore-from-pv-using-br.md)
   - [Restart a TiDB Cluster](restart-a-tidb-cluster.md)
   - [Maintain a Kubernetes Node](maintain-a-kubernetes-node.md)
   - [View TiDB Logs](view-logs.md)

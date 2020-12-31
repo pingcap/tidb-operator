@@ -165,11 +165,19 @@ Ad-hoc 备份支持全量备份与增量备份。Ad-hoc 备份通过创建一个
 
     此时，可以通过下述语句查看当前 TiDB 集群的 `tikv_gc_life_time`：
 
+    {{< copyable "sql" >}}
+
     ```sql
     select VARIABLE_NAME, VARIABLE_VALUE from mysql.tidb where VARIABLE_NAME like "tikv_gc_life_time";
     ```
 
-    如果发现 `tikv_gc_life_time` 值过大（通常为 10m），则需要按照[调节 `tikv_gc_life_time`](https://docs.pingcap.com/zh/tidb/stable/dumpling-overview#导出大规模数据时的-tidb-gc-设置) 将 `tikv_gc_life_time` 调回原样。
+    如果发现 `tikv_gc_life_time` 值过大（通常为 10m），则需要按照[调节 `tikv_gc_life_time`](https://docs.pingcap.com/zh/tidb/stable/dumpling-overview#导出大规模数据时的-tidb-gc-设置) 将 `tikv_gc_life_time` 调回原样：
+
+    {{< copyable "sql" >}}
+
+    ```sql
+    UPDATE mysql.tidb SET VARIABLE_VALUE = '10m' WHERE VARIABLE_NAME = 'tikv_gc_life_time';
+    ```
 
     > **Note:**
     >
