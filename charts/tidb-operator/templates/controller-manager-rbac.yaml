@@ -14,7 +14,7 @@ metadata:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 ---
 kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: {{ .Release.Name }}:tidb-controller-manager
   labels:
@@ -92,7 +92,7 @@ Ref: https://kubernetes.io/docs/reference/access-authn-authz/rbac/#privilege-esc
   verbs: ["create","get","update", "delete"]
 ---
 kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: {{ .Release.Name }}:tidb-controller-manager
   labels:
@@ -112,7 +112,7 @@ roleRef:
 {{- if (not .Values.clusterScoped) }}
 ---
 kind: Role
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: {{ .Release.Name }}:tidb-controller-manager
   labels:
@@ -173,7 +173,7 @@ rules:
 {{- end }}
 ---
 kind: RoleBinding
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: {{ .Release.Name }}:tidb-controller-manager
   labels:
