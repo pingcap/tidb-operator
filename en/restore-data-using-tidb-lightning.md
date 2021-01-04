@@ -1,12 +1,12 @@
 ---
-title: Restore Data into TiDB in Kubernetes
-summary: Learn how to quickly restore data into a TiDB cluster in Kubernetes with TiDB Lightning.
+title: Import Data
+summary: Learn how to quickly import data with TiDB Lightning.
 aliases: ['/docs/tidb-in-kubernetes/dev/restore-data-using-tidb-lightning/']
 ---
 
-# Restore Data into TiDB in Kubernetes
+# Import Data
 
-This document describes how to restore data into a TiDB cluster in Kubernetes using [TiDB Lightning](https://github.com/pingcap/tidb-lightning).
+This document describes how to import data into a TiDB cluster in Kubernetes using [TiDB Lightning](https://github.com/pingcap/tidb-lightning).
 
 TiDB Lightning contains two components: tidb-lightning and tikv-importer. In Kubernetes, the tikv-importer is inside the separate Helm chart of the TiDB cluster. And tikv-importer is deployed as a `StatefulSet` with `replicas=1` while tidb-lightning is in a separate Helm chart and deployed as a `Job`.
 
@@ -16,7 +16,7 @@ TiDB Lightning supports [three backends](https://docs.pingcap.com/tidb/stable/ti
 - For the `local` or `tidb` backend, only tidb-lightning needs to be deployed.
 - For the `tidb` backend, it is recommended to import data using CustomResourceDefinition (CRD) in TiDB Operator v1.1 and later versions. For details, refer to [Restore Data from GCS Using TiDB Lightning](restore-from-gcs.md) or [Restore Data from S3-Compatible Storage Using TiDB Lightning](restore-from-s3.md)
 
-## Deploy tikv-importer
+## Deploy TiKV Importer
 
 > **Note:**
 >
@@ -47,6 +47,8 @@ You can deploy tikv-importer using the Helm chart. See the following example:
     ```
 
 3. Modify the `values.yaml` file to specify the target TiDB cluster. See the following example:
+
+    {{< copyable "" >}}
 
     ```yaml
     clusterName: demo
@@ -80,7 +82,7 @@ You can deploy tikv-importer using the Helm chart. See the following example:
 
 ## Deploy TiDB Lightning
 
-### Configure
+### Configure TiDB Lightning
 
 Use the following command to get the default configuration of TiDB Lightning:
 
@@ -98,23 +100,27 @@ Configure a `backend` used by TiDB Lightning according to your needs. The option
 
 TiDB Lightning Helm chart supports both local and remote data sources.
 
-* Local
+#### Local
 
-    In the local mode, the backup data must be on one of the Kubernetes node. To enable this mode, set `dataSource.local.nodeName` to the node name and `dataSource.local.hostPath` to the path of the backup data. The path should contain a file named `metadata`.
+In the local mode, the backup data must be on one of the Kubernetes node. To enable this mode, set `dataSource.local.nodeName` to the node name and `dataSource.local.hostPath` to the path of the backup data. The path should contain a file named `metadata`.
 
-* Remote
+#### Remote
 
-    Unlike the local mode, the remote mode needs to use [rclone](https://rclone.org) to download the backup tarball file from a network storage to a PV. Any cloud storage supported by rclone should work, but currently only the following have been tested: [Google Cloud Storage (GCS)](https://cloud.google.com/storage/), [Amazon S3](https://aws.amazon.com/s3/), [Ceph Object Storage](https://ceph.com/ceph-storage/object-storage/).
+Unlike the local mode, the remote mode needs to use [rclone](https://rclone.org) to download the backup tarball file from a network storage to a PV. Any cloud storage supported by rclone should work, but currently only the following have been tested: [Google Cloud Storage (GCS)](https://cloud.google.com/storage/), [Amazon S3](https://aws.amazon.com/s3/), [Ceph Object Storage](https://ceph.com/ceph-storage/object-storage/).
 
-    To restore backup data from the remote source, take the following steps:
+To restore backup data from the remote source, take the following steps:
 
-    1. Make sure that `dataSource.local.nodeName` and `dataSource.local.hostPath` in `values.yaml` are commented out.
+1. Make sure that `dataSource.local.nodeName` and `dataSource.local.hostPath` in `values.yaml` are commented out.
 
-    2. Create a `Secret` containing the rclone configuration. A sample configuration is listed below. Only one cloud storage configuration is required. For other cloud storages, refer to [rclone documentation](https://rclone.org/). Using Amazon S3 as the storage is the same as restoring data using BR and Dumpling.
+2. Grant permissions to remote storage access
 
-        There are three methods to grant permissions. The configuration varies with different methods. For details, see [Backup the TiDB Cluster on AWS using BR](backup-to-aws-s3-using-br.md#three-methods-to-grant-aws-account-permissions).
+    Like restoring data using BR and Dumpling, when using Amazon S3 as the storage, there are three methods to grant permissions. The configuration varies with different methods. For details, see [Back up the TiDB Cluster on AWS using BR](backup-to-aws-s3-using-br.md#three-methods-to-grant-aws-account-permissions). If you use Ceph or GCS as the storage, you can only grant permissions by importing AccessKey and SecretKey.
 
-        * If you grant permissions by importing Amazon S3 AccessKey and SecretKey, or if you use Ceph or GCS as the storage, use the following configuration:
+    * Grant permissions by importing AccessKey and SecretKey
+
+        If you use Amazon S3, Ceph, or GCS as the storage, grant permissions by importing AccessKey and SecretKey.
+
+        1. Create a `Secret` configuration file `secret.yaml` containing the rclone configuration. A sample configuration is listed below. Only one cloud storage configuration is required.
 
             {{< copyable "" >}}
 
@@ -133,7 +139,7 @@ TiDB Lightning Helm chart supports both local and remote data sources.
                 access_key_id = ${access_key}
                 secret_access_key = ${secret_key}
                 region = us-east-1
-
+            
                 [ceph]
                 type = s3
                 provider = Ceph
@@ -142,7 +148,7 @@ TiDB Lightning Helm chart supports both local and remote data sources.
                 secret_access_key = ${secret_key}
                 endpoint = ${endpoint}
                 region = :default-placement
-
+            
                 [gcs]
                 type = google cloud storage
                 # The service account must include Storage Object Viewer role
@@ -150,8 +156,20 @@ TiDB Lightning Helm chart supports both local and remote data sources.
                 service_account_credentials = ${service_account_json_file_content}
             ```
 
-        * If you grant permissions by associating Amazon S3 IAM with Pod or with ServiceAccount, you can ignore `s3.access_key_id` and `s3.secret_access_key`:
+        2. Execute the following command to create `Secret`:
 
+            {{< copyable "shell-regular" >}}
+
+            ```shell
+            kubectl apply -f secret.yaml -n ${namespace}
+            ```
+
+    * Grant permissions by associating IAM with Pod or with ServiceAccount
+
+       If you use Amazon S3 as the storage, you can grant permissions by associating IAM with Pod or with ServiceAccount, in which `s3.access_key_id` and `s3.secret_access_key` can be ignored. 
+        
+        1. Save the following configurations as `secret.yaml`.
+        
             {{< copyable "" >}}
 
             ```yaml
@@ -170,12 +188,28 @@ TiDB Lightning Helm chart supports both local and remote data sources.
                 secret_access_key =
                 region = us-east-1
             ```
+            
+        2. Execute the following command to create `Secret`:
+        
+            {{< copyable "shell-regular" >}}
+        
+            ```shell
+            kubectl apply -f secret.yaml -n ${namespace}
+            ```
 
-            Fill in the placeholders with your configurations and save it as `secret.yaml`, and then create the `Secret` via `kubectl apply -f secret.yaml -n ${namespace}`.
+3. Configure the `dataSource.remote.storageClassName` to an existing storage class in the Kubernetes cluster.
 
-    3. Configure the `dataSource.remote.storageClassName` to an existing storage class in the Kubernetes cluster.
+#### Ad hoc 
 
-### Deploy
+When restoring data from remote storage, sometimes the restore process is interrupted due to the exception. In such cases, if you do not want to download backup data from the network storage repeatedly, you can use the ad hoc mode to directly recover the data that has been downloaded and decompressed into PV in the remote mode. The steps are as follows:
+
+1. Ensure `dataSource.local` and `dataSource.remote` in the config file `values.yaml` are empty。
+
+2. Configure `dataSource.adhoc.pvcName` in `values.yaml` to the PVC name used in restoring data from remote storage.
+
+3. Configure `dataSource.adhoc.backupName` in `values.yaml` to the name of the original backup data, such as: `backup-2020-12-17T10:12:51Z` (Do not contain the '. tgz' suffix of the compressed file name on network storage).
+
+### Deploy TiDB Lightning
 
 The method of deploying TiDB Lightning varies with different methods of granting permissions and with different storages.
 
@@ -252,7 +286,7 @@ If the lightning fails to restore data, follow the steps below to do manual inte
 
 5. Diagnose the lightning following the [troubleshooting guide](https://pingcap.com/docs/stable/troubleshoot-tidb-lightning/).
 
-## Destroy TiDB Lightning
+## Destroy TiKV Importer and TiDB Lightning
 
 Currently, TiDB Lightning can only restore data offline. When the restoration finishes and the TiDB cluster needs to provide service for applications, the TiDB Lightning should be deleted to save cost.
 
