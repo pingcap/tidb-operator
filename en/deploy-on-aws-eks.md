@@ -510,6 +510,8 @@ AWS EBS supports multiple volume types. If you need low latency and high through
           storageClassName: io1
     ```
 
+AWS already supports [EBS gp3](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebs-volume-types.html#gp3-ebs-volume-type), so it is recommended to use EBS gp3 volume type. However, EKS does not support provisioning the EBS gp3 StorageClass by default. For details, refer to the [issue](https://github.com/aws/containers-roadmap/issues/1187). If you use [Amazon Elastic Block Store (EBS) CSI driver](https://github.com/kubernetes-sigs/aws-ebs-csi-driver) [v0.8.0](https://github.com/kubernetes-sigs/aws-ebs-csi-driver/blob/master/CHANGELOG-0.x.md#v080) or later versions, gp3 is already the default volume type.
+
 For more information about the storage class configuration and EBS volume types, refer to [Storage Class documentation](https://kubernetes.io/docs/concepts/storage/storage-classes/) and [EBS Volume Types](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebs-volume-types.html).
 
 ## Use local storage

@@ -507,6 +507,8 @@ spec:
       storageClassName: io1
 ```
 
+AWS 已经支持 [EBS gp3](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebs-volume-types.html#gp3-ebs-volume-type)，建议使用 EBS gp3 卷类型。但是 EKS 默认还不支持使用 EBS gp3 的 StorageClass，详情可以参考 [issue](https://github.com/aws/containers-roadmap/issues/1187)，如果你使用 [Amazon Elastic Block Store (EBS) CSI driver](https://github.com/kubernetes-sigs/aws-ebs-csi-driver) [v0.8.0](https://github.com/kubernetes-sigs/aws-ebs-csi-driver/blob/master/CHANGELOG-0.x.md#v080) 及以上版本，gp3 已经是默认的卷类型。
+
 更多存储类配置以及 EBS 存储类型选择，可以查看 [Storage Class 官方文档](https://kubernetes.io/docs/concepts/storage/storage-classes/)和 [EBS 存储类型文档](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebs-volume-types.html)。
 
 ## 使用本地存储
