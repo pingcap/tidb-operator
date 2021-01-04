@@ -69,7 +69,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
+var _ = ginkgo.Describe("TiDBCluster", func() {
 	f := e2eframework.NewDefaultFramework("tidb-cluster")
 
 	var ns string
@@ -156,6 +156,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				tc.Spec.EnablePVReclaim = pointer.BoolPtr(true)
 				// change tikv data directory to a subdirectory of data volume
 				tc.Spec.TiKV.DataSubDir = "data"
+				framework.ExpectNoError(errors1.New("surprise"))
 
 				_, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
 				framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
@@ -2036,16 +2037,16 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	})
 })
 
-func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVersion string) tests.TidbClusterConfig {
+func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tcVersion string) tests.TidbClusterConfig {
 	return tests.TidbClusterConfig{
 		Namespace:        ns,
 		ClusterName:      clusterName,
 		EnablePVReclaim:  false,
 		OperatorTag:      cfg.OperatorTag,
-		PDImage:          fmt.Sprintf("pingcap/pd:%s", tidbVersion),
-		TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", tidbVersion),
-		TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", tidbVersion),
-		PumpImage:        fmt.Sprintf("pingcap/tidb-binlog:%s", tidbVersion),
+		PDImage:          fmt.Sprintf("pingcap/pd:%s", tcVersion),
+		TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", tcVersion),
+		TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", tcVersion),
+		PumpImage:        fmt.Sprintf("pingcap/tidb-binlog:%s", tcVersion),
 		StorageClassName: "local-storage",
 		Password:         password,
 		UserName:         "root",
@@ -2082,6 +2083,6 @@ func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVers
 		},
 		TopologyKey:            "rack",
 		EnableConfigMapRollout: true,
-		ClusterVersion:         tidbVersion,
+		ClusterVersion:         tcVersion,
 	}
 }

@@ -140,9 +140,9 @@ func NewOperatorActions(cli versioned.Interface,
 }
 
 const (
-	DefaultPollTimeout          time.Duration = 20 * time.Minute
+	DefaultPollTimeout          time.Duration = 5 * time.Minute
 	DefaultPollInterval         time.Duration = 5 * time.Second
-	BackupAndRestorePollTimeOut time.Duration = 60 * time.Minute
+	BackupAndRestorePollTimeOut time.Duration = 10 * time.Minute
 	grafanaUsername                           = "admin"
 	grafanaPassword                           = "admin"
 	operartorChartName                        = "tidb-operator"
@@ -975,7 +975,8 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 
 	ns := info.Namespace
 	tcName := info.ClusterName
-	if err := wait.Poll(oa.pollInterval, 120*time.Minute, func() (bool, error) {
+	// TODO: remove redundant checks already in WaitForTidbClusterReady
+	if err := wait.Poll(oa.pollInterval, 10*time.Minute, func() (bool, error) {
 		var tc *v1alpha1.TidbCluster
 		var err error
 		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
@@ -1461,6 +1462,7 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 	}
 
 	if pdSet.Status.CurrentRevision != pdSet.Status.UpdateRevision {
+		log.Logf("pd sts .status.CurrentRevision != .status.UpdateRevision")
 		return false, nil
 	}
 
