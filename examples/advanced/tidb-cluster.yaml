@@ -326,7 +326,7 @@ spec:
     ## tidb-server Configuration
     ## Ref: https://docs.pingcap.com/tidb/stable/tidb-configuration-file
     config: |
-      level = info
+      level = "info"
       enable-timestamp = true
 
     ## The desired replicas
