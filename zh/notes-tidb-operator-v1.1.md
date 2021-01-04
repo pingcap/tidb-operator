@@ -44,7 +44,7 @@ Discovery 服务直接由 TiDB Operator 内部生成，不再需要用户做任�
 
 ### Monitor
 
-可以参考 [Kubernetes 上的 TiDB 集群监控](monitor-using-tidbmonitor.md) 创建 TidbMonitor CR，管理 Monitor 组件。
+可以参考 [TiDB 集群的监控与告警](monitor-a-tidb-cluster.md)创建 TidbMonitor CR，管理 Monitor 组件。
 
 > **注意：**
 >

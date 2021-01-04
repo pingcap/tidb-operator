@@ -611,7 +611,7 @@ Grafana 面板可在 kubectl 所运行的主机上通过 <http://localhost:3000>
 
 默认用户名和密码都是 "admin" 。
 
-了解更多使用 TiDB Operator 部署 TiDB 集群监控的信息，可以查阅[使用 TidbMonitor 监控 TiDB 集群](monitor-using-tidbmonitor.md)。
+了解更多使用 TiDB Operator 部署 TiDB 集群监控的信息，可以查阅 [TiDB 集群监控与告警](monitor-a-tidb-cluster.md)。
 
 ## 升级 TiDB 集群
 
