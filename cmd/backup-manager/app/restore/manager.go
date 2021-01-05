@@ -80,7 +80,7 @@ func (rm *Manager) ProcessRestore() error {
 			Status:  corev1.ConditionTrue,
 			Reason:  "GetRestoreCRFailed",
 			Message: err.Error(),
-		})
+		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
@@ -119,7 +119,7 @@ func (rm *Manager) ProcessRestore() error {
 			Status:  corev1.ConditionTrue,
 			Reason:  "ConnectTidbFailed",
 			Message: err.Error(),
-		})
+		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
@@ -134,7 +134,7 @@ func (rm *Manager) performRestore(restore *v1alpha1.Restore, db *sql.DB) error {
 	err := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 		Type:   v1alpha1.RestoreRunning,
 		Status: corev1.ConditionTrue,
-	})
+	}, nil)
 	if err != nil {
 		return err
 	}
@@ -150,7 +150,7 @@ func (rm *Manager) performRestore(restore *v1alpha1.Restore, db *sql.DB) error {
 			Status:  corev1.ConditionTrue,
 			Reason:  "GetCommitTsFailed",
 			Message: err.Error(),
-		})
+		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
@@ -171,7 +171,7 @@ func (rm *Manager) performRestore(restore *v1alpha1.Restore, db *sql.DB) error {
 				Status:  corev1.ConditionTrue,
 				Reason:  "GetTikvGCLifeTimeFailed",
 				Message: err.Error(),
-			})
+			}, nil)
 			errs = append(errs, uerr)
 			return errorutils.NewAggregate(errs)
 		}
@@ -186,7 +186,7 @@ func (rm *Manager) performRestore(restore *v1alpha1.Restore, db *sql.DB) error {
 				Status:  corev1.ConditionTrue,
 				Reason:  "ParseOldTikvGCLifeTimeFailed",
 				Message: err.Error(),
-			})
+			}, nil)
 			errs = append(errs, uerr)
 			return errorutils.NewAggregate(errs)
 		}
@@ -202,7 +202,7 @@ func (rm *Manager) performRestore(restore *v1alpha1.Restore, db *sql.DB) error {
 					Status:  corev1.ConditionTrue,
 					Reason:  "ParseConfiguredTikvGCLifeTimeFailed",
 					Message: err.Error(),
-				})
+				}, nil)
 				errs = append(errs, uerr)
 				return errorutils.NewAggregate(errs)
 			}
@@ -217,7 +217,7 @@ func (rm *Manager) performRestore(restore *v1alpha1.Restore, db *sql.DB) error {
 					Status:  corev1.ConditionTrue,
 					Reason:  "ParseDefaultTikvGCLifeTimeFailed",
 					Message: err.Error(),
-				})
+				}, nil)
 				errs = append(errs, uerr)
 				return errorutils.NewAggregate(errs)
 			}
@@ -233,7 +233,7 @@ func (rm *Manager) performRestore(restore *v1alpha1.Restore, db *sql.DB) error {
 					Status:  corev1.ConditionTrue,
 					Reason:  "SetTikvGCLifeTimeFailed",
 					Message: err.Error(),
-				})
+				}, nil)
 				errs = append(errs, uerr)
 				return errorutils.NewAggregate(errs)
 			}
@@ -256,7 +256,7 @@ func (rm *Manager) performRestore(restore *v1alpha1.Restore, db *sql.DB) error {
 				Status:  corev1.ConditionTrue,
 				Reason:  "ResetTikvGCLifeTimeFailed",
 				Message: err.Error(),
-			})
+			}, nil)
 			errs = append(errs, uerr)
 			return errorutils.NewAggregate(errs)
 		}
@@ -271,19 +271,21 @@ func (rm *Manager) performRestore(restore *v1alpha1.Restore, db *sql.DB) error {
 			Status:  corev1.ConditionTrue,
 			Reason:  "RestoreDataFromRemoteFailed",
 			Message: restoreErr.Error(),
-		})
+		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
 	klog.Infof("restore cluster %s from %s succeed", rm, restore.Spec.Type)
 
 	finish := time.Now()
-	restore.Status.TimeStarted = metav1.Time{Time: started}
-	restore.Status.TimeCompleted = metav1.Time{Time: finish}
-	restore.Status.CommitTs = strconv.FormatUint(commitTs, 10)
-
+	ts := strconv.FormatUint(commitTs, 10)
+	updateStatus := &controller.RestoreUpdateStatus{
+		TimeStarted:   &metav1.Time{Time: started},
+		TimeCompleted: &metav1.Time{Time: finish},
+		CommitTs:      &ts,
+	}
 	return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 		Type:   v1alpha1.RestoreComplete,
 		Status: corev1.ConditionTrue,
-	})
+	}, updateStatus)
 }

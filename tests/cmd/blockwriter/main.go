@@ -28,7 +28,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/util"
 	flag "github.com/spf13/pflag"
 	"k8s.io/component-base/logs"
-	"k8s.io/klog"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 var (
@@ -62,12 +62,12 @@ func main() {
 
 	err := initDB()
 	if err != nil {
-		klog.Fatal(err)
+		log.Failf(err.Error())
 	}
 	dsn := getDSN(optNamespace, optClusterName, optDatabase, optPassword)
 	db, err := util.OpenDB(dsn, optConfig.Concurrency)
 	if err != nil {
-		klog.Fatal(err)
+		log.Failf(err.Error())
 	}
 
 	writer := blockwriter.NewBlockWriterCase(optConfig)
@@ -77,7 +77,7 @@ func main() {
 	go writer.Start(db)
 
 	sig := <-signalCh
-	klog.Infof("signal %v received, stopping blockwriter", sig)
+	log.Logf("signal %v received, stopping blockwriter", sig)
 	writer.Stop()
 }
 

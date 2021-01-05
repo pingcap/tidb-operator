@@ -102,6 +102,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.RestoreList":                   schema_pkg_apis_pingcap_v1alpha1_RestoreList(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.RestoreSpec":                   schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider":             schema_pkg_apis_pingcap_v1alpha1_S3StorageProvider(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SafeTLSConfig":                 schema_pkg_apis_pingcap_v1alpha1_SafeTLSConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SecretRef":                     schema_pkg_apis_pingcap_v1alpha1_SecretRef(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Security":                      schema_pkg_apis_pingcap_v1alpha1_Security(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ServiceSpec":                   schema_pkg_apis_pingcap_v1alpha1_ServiceSpec(ref),
@@ -109,6 +110,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StmtSummary":                   schema_pkg_apis_pingcap_v1alpha1_StmtSummary(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageClaim":                  schema_pkg_apis_pingcap_v1alpha1_StorageClaim(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageProvider":               schema_pkg_apis_pingcap_v1alpha1_StorageProvider(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TLSConfig":                     schema_pkg_apis_pingcap_v1alpha1_TLSConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCDCConfig":                   schema_pkg_apis_pingcap_v1alpha1_TiCDCConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCDCSpec":                     schema_pkg_apis_pingcap_v1alpha1_TiCDCSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig":              schema_pkg_apis_pingcap_v1alpha1_TiDBAccessConfig(ref),
@@ -940,7 +942,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 					},
 					"toolImage": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now",
+							Description: "ToolImage specifies the tool image used in `Backup`, which supports BR and Dumpling images. For examples `spec.toolImage: pingcap/br:v4.0.8` or `spec.toolImage: pingcap/dumpling:v4.0.8`",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -1004,33 +1006,6 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 		},
 		Dependencies: []string{
 			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DumplingConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LocalStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/api/core/v1.Toleration"},
-	}
-}
-
-func schema_pkg_apis_pingcap_v1alpha1_BasicAuth(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "BasicAuth allow an endpoint to authenticate over basic authentication More info: https://prometheus.io/docs/operating/configuration/#endpoints",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"username": {
-						SchemaProps: spec.SchemaProps{
-							Description: "The secret in the service monitor namespace that contains the username for authentication.",
-							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
-						},
-					},
-					"password": {
-						SchemaProps: spec.SchemaProps{
-							Description: "The secret in the service monitor namespace that contains the password for authentication.",
-							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
-						},
-					},
-				},
-			},
-		},
-		Dependencies: []string{
-			"k8s.io/api/core/v1.SecretKeySelector"},
 	}
 }
 
@@ -5055,218 +5030,6 @@ func schema_pkg_apis_pingcap_v1alpha1_PumpSpec(ref common.ReferenceCallback) com
 	}
 }
 
-func schema_pkg_apis_pingcap_v1alpha1_QueueConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "QueueConfig allows the tuning of remote_write queue_config parameters. This object is referenced in the RemoteWriteSpec object.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"Capacity": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Number of samples to buffer per shard before we start dropping them.",
-							Type:        []string{"integer"},
-							Format:      "int32",
-						},
-					},
-					"MaxShards": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Max number of shards, i.e. amount of concurrency.",
-							Type:        []string{"integer"},
-							Format:      "int32",
-						},
-					},
-					"MaxSamplesPerSend": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Maximum number of samples per send.",
-							Type:        []string{"integer"},
-							Format:      "int32",
-						},
-					},
-					"BatchSendDeadline": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Maximum time sample will wait in buffer.",
-							Type:        []string{"integer"},
-							Format:      "int64",
-						},
-					},
-					"MaxRetries": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Max number of times to retry a batch on recoverable errors.",
-							Type:        []string{"integer"},
-							Format:      "int32",
-						},
-					},
-					"MinBackoff": {
-						SchemaProps: spec.SchemaProps{
-							Description: "On recoverable errors, backoff exponentially.",
-							Type:        []string{"integer"},
-							Format:      "int64",
-						},
-					},
-					"MaxBackoff": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"integer"},
-							Format: "int64",
-						},
-					},
-				},
-				Required: []string{"Capacity", "MaxShards", "MaxSamplesPerSend", "BatchSendDeadline", "MaxRetries", "MinBackoff", "MaxBackoff"},
-			},
-		},
-	}
-}
-
-func schema_pkg_apis_pingcap_v1alpha1_RelabelConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion. It defines `<metric_relabel_configs>`-section of Prometheus configuration. More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"SourceLabels": {
-						SchemaProps: spec.SchemaProps{
-							Description: "A list of labels from which values are taken and concatenated with the configured separator in order.",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Type:   []string{"string"},
-										Format: "",
-									},
-								},
-							},
-						},
-					},
-					"Separator": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Separator is the string between concatenated values from the source labels.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"regex": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Regular expression against which the extracted value is matched. Default is '(.*)'",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"Modulus": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Modulus to take of the hash of concatenated values from the source labels.",
-							Type:        []string{"integer"},
-							Format:      "int64",
-						},
-					},
-					"TargetLabel": {
-						SchemaProps: spec.SchemaProps{
-							Description: "TargetLabel is the label to which the resulting string is written in a replacement. Regexp interpolation is allowed for the replace action.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"Replacement": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Replacement is the regex replacement pattern to be used.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"Action": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Action is the action to be performed for the relabeling.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-				},
-				Required: []string{"SourceLabels", "Separator", "Modulus", "TargetLabel", "Replacement", "Action"},
-			},
-		},
-	}
-}
-
-func schema_pkg_apis_pingcap_v1alpha1_RemoteWriteSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "RemoteWriteSpec defines the remote_write configuration for prometheus.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"url": {
-						SchemaProps: spec.SchemaProps{
-							Description: "The URL of the endpoint to send samples to.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"RemoteTimeout": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"integer"},
-							Format: "int64",
-						},
-					},
-					"writeRelabelConfigs": {
-						SchemaProps: spec.SchemaProps{
-							Description: "The list of remote write relabel configurations.",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.RelabelConfig"),
-									},
-								},
-							},
-						},
-					},
-					"basicAuth": {
-						SchemaProps: spec.SchemaProps{
-							Description: "BasicAuth for the URL.",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BasicAuth"),
-						},
-					},
-					"bearerToken": {
-						SchemaProps: spec.SchemaProps{
-							Description: "File to read bearer token for remote write.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"bearerTokenFile": {
-						SchemaProps: spec.SchemaProps{
-							Description: "File to read bearer token for remote write.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"tlsConfig": {
-						SchemaProps: spec.SchemaProps{
-							Description: "TLS Config to use for remote write.",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TLSConfig"),
-						},
-					},
-					"proxyUrl": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Optional ProxyURL",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"QueueConfig": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.QueueConfig"),
-						},
-					},
-				},
-				Required: []string{"url", "RemoteTimeout", "QueueConfig"},
-			},
-		},
-		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BasicAuth", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.QueueConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.RelabelConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TLSConfig"},
-	}
-}
-
 func schema_pkg_apis_pingcap_v1alpha1_Restore(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -5446,7 +5209,7 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 					},
 					"toolImage": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ToolImage specifies the tool image used in the backup/restore, only BR image is supported for now",
+							Description: "ToolImage specifies the tool image used in `Restore`, which supports BR and TiDB Lightning images. For examples `spec.toolImage: pingcap/br:v4.0.8` or `spec.toolImage: pingcap/tidb-lightning:v4.0.8`",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -5581,6 +5344,53 @@ func schema_pkg_apis_pingcap_v1alpha1_S3StorageProvider(ref common.ReferenceCall
 				Required: []string{"provider"},
 			},
 		},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_SafeTLSConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "SafeTLSConfig specifies safe TLS configuration parameters.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"ca": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Struct containing the CA cert to use for the targets.",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SecretOrConfigMap"),
+						},
+					},
+					"cert": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Struct containing the client cert file for the targets.",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SecretOrConfigMap"),
+						},
+					},
+					"keySecret": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Secret containing the client key file for the targets.",
+							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
+						},
+					},
+					"serverName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Used to verify the hostname for the targets.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"insecureSkipVerify": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Disable target certificate validation.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SecretOrConfigMap", "k8s.io/api/core/v1.SecretKeySelector"},
 	}
 }
 
@@ -5885,6 +5695,74 @@ func schema_pkg_apis_pingcap_v1alpha1_StorageProvider(ref common.ReferenceCallba
 		},
 		Dependencies: []string{
 			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LocalStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider"},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_TLSConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "TLSConfig extends the safe TLS configuration with file parameters.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"ca": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Struct containing the CA cert to use for the targets.",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SecretOrConfigMap"),
+						},
+					},
+					"cert": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Struct containing the client cert file for the targets.",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SecretOrConfigMap"),
+						},
+					},
+					"keySecret": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Secret containing the client key file for the targets.",
+							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
+						},
+					},
+					"serverName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Used to verify the hostname for the targets.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"insecureSkipVerify": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Disable target certificate validation.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"caFile": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Path to the CA cert in the Prometheus container to use for the targets.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"certFile": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Path to the client cert file in the Prometheus container for the targets.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"keyFile": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Path to the client key file in the Prometheus container for the targets.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SecretOrConfigMap", "k8s.io/api/core/v1.SecretKeySelector"},
 	}
 }
 
@@ -10889,6 +10767,11 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DMMonitorSpec"),
 						},
 					},
+					"thanos": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ThanosSpec"),
+						},
+					},
 					"pvReclaimPolicy": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster",
@@ -11010,6 +10893,28 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 						SchemaProps: spec.SchemaProps{
 							Description: "ClusterScoped indicates whether this monitor should manage Kubernetes cluster-wide TiDB clusters",
 							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"externalLabels": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The labels to add to any time series or alerts when communicating with external systems (federation, remote storage, Alertmanager).",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
+						},
+					},
+					"replicaExternalLabelName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name of Prometheus external label used to denote replica name. Defaults to the value of `prometheus_replica`. External label will _not_ be added when value is set to empty string (`\"\"`).",
+							Type:        []string{"string"},
 							Format:      "",
 						},
 					},

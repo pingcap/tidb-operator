@@ -14,10 +14,6 @@
 package v1alpha1
 
 import (
-	"time"
-
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/config"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -56,6 +52,8 @@ type TidbMonitorSpec struct {
 	Reloader    ReloaderSpec    `json:"reloader"`
 	Initializer InitializerSpec `json:"initializer"`
 	DM          *DMMonitorSpec  `json:"dm,omitempty"`
+	// +optional
+	Thanos *ThanosSpec `json:"thanos,omitempty"`
 
 	// Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster
 	// +kubebuilder:default=Retain
@@ -103,8 +101,6 @@ type TidbMonitorSpec struct {
 	// Defaults to the value of `prometheus_replica`. External label will
 	// _not_ be added when value is set to empty string (`""`).
 	ReplicaExternalLabelName *string `json:"replicaExternalLabelName,omitempty"`
-	// If specified, the remote_write spec. This is an experimental feature, it may change in any upcoming release in a breaking way.
-	RemoteWrite []RemoteWriteSpec `json:"remoteWrite,omitempty"`
 }
 
 // PrometheusSpec is the desired state of prometheus
@@ -121,6 +117,9 @@ type PrometheusSpec struct {
 
 	// +optional
 	Config *PrometheusConfiguration `json:"config,omitempty"`
+
+	// Disable prometheus compaction.
+	DisableCompaction bool `json:"disableCompaction,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -170,6 +169,38 @@ type InitializerSpec struct {
 	MonitorContainer `json:",inline"`
 	// +optional
 	Envs map[string]string `json:"envs,omitempty"`
+}
+
+// ThanosSpec is the desired state of thanos sidecar
+type ThanosSpec struct {
+	MonitorContainer `json:",inline"`
+	// ObjectStorageConfig configures object storage in Thanos.
+	// Alternative to ObjectStorageConfigFile, and lower order priority.
+	ObjectStorageConfig *corev1.SecretKeySelector `json:"objectStorageConfig,omitempty"`
+	// ObjectStorageConfigFile specifies the path of the object storage configuration file.
+	// When used alongside with ObjectStorageConfig, ObjectStorageConfigFile takes precedence.
+	ObjectStorageConfigFile *string `json:"objectStorageConfigFile,omitempty"`
+	// ListenLocal makes the Thanos sidecar listen on loopback, so that it
+	// does not bind against the Pod IP.
+	ListenLocal bool `json:"listenLocal,omitempty"`
+	// TracingConfig configures tracing in Thanos. This is an experimental feature, it may change in any upcoming release in a breaking way.
+	TracingConfig *corev1.SecretKeySelector `json:"tracingConfig,omitempty"`
+	// TracingConfig specifies the path of the tracing configuration file.
+	// When used alongside with TracingConfig, TracingConfigFile takes precedence.
+	TracingConfigFile *string `json:"tracingConfigFile,omitempty"`
+	// GRPCServerTLSConfig configures the gRPC server from which Thanos Querier reads
+	// recorded rule data.
+	// Note: Currently only the CAFile, CertFile, and KeyFile fields are supported.
+	// Maps to the '--grpc-server-tls-*' CLI args.
+	GRPCServerTLSConfig *TLSConfig `json:"grpcServerTlsConfig,omitempty"`
+	// LogLevel for Thanos sidecar to be configured with.
+	LogLevel string `json:"logLevel,omitempty"`
+	// LogFormat for Thanos sidecar to be configured with.
+	LogFormat string `json:"logFormat,omitempty"`
+	// MinTime for Thanos sidecar to be configured with. Option can be a constant time in RFC3339 format or time duration relative to current time, such as -1d or 2h45m. Valid duration units are ms, s, m, h, d, w, y.
+	MinTime string `json:"minTime,omitempty"`
+	// RoutePrefix is prometheus prefix url
+	RoutePrefix string `json:"routePrefix,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -259,85 +290,4 @@ type SecretOrConfigMap struct {
 	Secret *corev1.SecretKeySelector `json:"secret,omitempty"`
 	// ConfigMap containing data to use for the targets.
 	ConfigMap *corev1.ConfigMapKeySelector `json:"configMap,omitempty"`
-}
-
-// RemoteWriteSpec defines the remote_write configuration for prometheus.
-// +k8s:openapi-gen=true
-type RemoteWriteSpec struct {
-	// The URL of the endpoint to send samples to.
-	URL           string         `json:"url"`
-	RemoteTimeout model.Duration `yaml:"remote_timeout,omitempty"`
-	// The list of remote write relabel configurations.
-	WriteRelabelConfigs []*RelabelConfig `json:"writeRelabelConfigs,omitempty"`
-
-	//BasicAuth for the URL.
-	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
-	// File to read bearer token for remote write.
-	BearerToken string `json:"bearerToken,omitempty"`
-	// File to read bearer token for remote write.
-	BearerTokenFile string `json:"bearerTokenFile,omitempty"`
-	// TLS Config to use for remote write.
-	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
-	// Optional ProxyURL
-	ProxyURL    string      `json:"proxyUrl,omitempty"`
-	QueueConfig QueueConfig `yaml:"queue_config,omitempty"`
-}
-
-// BasicAuth allow an endpoint to authenticate over basic authentication
-// More info: https://prometheus.io/docs/operating/configuration/#endpoints
-// +k8s:openapi-gen=true
-type BasicAuth struct {
-	// The secret in the service monitor namespace that contains the username
-	// for authentication.
-	Username corev1.SecretKeySelector `json:"username,omitempty"`
-	// The secret in the service monitor namespace that contains the password
-	// for authentication.
-	Password corev1.SecretKeySelector `json:"password,omitempty"`
-}
-
-// RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-// It defines `<metric_relabel_configs>`-section of Prometheus configuration.
-// More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
-// +k8s:openapi-gen=true
-type RelabelConfig struct {
-	// A list of labels from which values are taken and concatenated
-	// with the configured separator in order.
-	SourceLabels model.LabelNames `yaml:"source_labels,flow,omitempty"`
-	// Separator is the string between concatenated values from the source labels.
-	Separator string `yaml:"separator,omitempty"`
-	//Regular expression against which the extracted value is matched. Default is '(.*)'
-	Regex string `json:"regex,omitempty"`
-	// Modulus to take of the hash of concatenated values from the source labels.
-	Modulus uint64 `yaml:"modulus,omitempty"`
-	// TargetLabel is the label to which the resulting string is written in a replacement.
-	// Regexp interpolation is allowed for the replace action.
-	TargetLabel string `yaml:"target_label,omitempty"`
-	// Replacement is the regex replacement pattern to be used.
-	Replacement string `yaml:"replacement,omitempty"`
-	// Action is the action to be performed for the relabeling.
-	Action config.RelabelAction `yaml:"action,omitempty"`
-}
-
-// QueueConfig allows the tuning of remote_write queue_config parameters. This object
-// is referenced in the RemoteWriteSpec object.
-// +k8s:openapi-gen=true
-type QueueConfig struct {
-	// Number of samples to buffer per shard before we start dropping them.
-	Capacity int `yaml:"capacity,omitempty"`
-
-	// Max number of shards, i.e. amount of concurrency.
-	MaxShards int `yaml:"max_shards,omitempty"`
-
-	// Maximum number of samples per send.
-	MaxSamplesPerSend int `yaml:"max_samples_per_send,omitempty"`
-
-	// Maximum time sample will wait in buffer.
-	BatchSendDeadline time.Duration `yaml:"batch_send_deadline,omitempty"`
-
-	// Max number of times to retry a batch on recoverable errors.
-	MaxRetries int `yaml:"max_retries,omitempty"`
-
-	// On recoverable errors, backoff exponentially.
-	MinBackoff time.Duration `yaml:"min_backoff,omitempty"`
-	MaxBackoff time.Duration `yaml:"max_backoff,omitempty"`
 }

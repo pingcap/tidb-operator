@@ -28,11 +28,12 @@ KUBECTL_VERSION=${KUBECTL_VERSION:-1.12.10}
 KUBECTL_BIN=$OUTPUT_BIN/kubectl
 HELM_BIN=$OUTPUT_BIN/helm
 DOCS_BIN=$OUTPUT_BIN/gen-crd-api-reference-docs
-#
-# Don't upgrade to 2.15.x/2.16.x until this issue
-# (https://github.com/helm/helm/issues/6361) has been fixed.
-#
-HELM_VERSION=${HELM_VERSION:-2.9.1}
+CFSSL_BIN=$OUTPUT_BIN/cfssl
+CFSSLJSON_BIN=$OUTPUT_BIN/cfssljson
+JQ_BIN=$OUTPUT_BIN/jq
+CFSSL_VERSION=${CFSSL_VERSION:-1.2}
+JQ_VERSION=${JQ_VERSION:-1.6}
+HELM_VERSION=${HELM_VERSION:-2.17.0}
 KIND_VERSION=${KIND_VERSION:-0.8.1}
 DOCS_VERSION=${DOCS_VERSION:-0.2.1}
 KIND_BIN=$OUTPUT_BIN/kind
@@ -42,6 +43,44 @@ AWS_K8S_TESTER_VERSION=v1.1.5
 AWS_K8S_TESTER_BIN=$OUTPUT_BIN/aws-k8s-tester
 
 test -d "$OUTPUT_BIN" || mkdir -p "$OUTPUT_BIN"
+
+function hack::verify_cfssl() {
+    if test -x "$CFSSL_BIN"; then
+        local v_cfssl=$($CFSSL_BIN version | grep -o -E '[0-9]+\.[0-9]+\.[0-9]+')
+        local v_jq=$($JQ_BIN --version | grep -o -E '[0-9]+\.[0-9]+')
+        echo "cfssl/cfssljson: ${v_cfssl}"
+        echo "jq: ${v_jq}"
+        [[ "$v_cfssl" == "$CFSSL_VERSION.0" && "$v_jq" == "$JQ_VERSION" ]]
+        return
+    fi
+    return 1
+}
+
+function hack::install_cfssl() {
+    echo "Installing cfssl/cfssljson R${CFSSL_VERSION}"
+    tmpfile=$(mktemp)
+    trap "test -f $tmpfile && rm $tmpfile" RETURN
+    
+    curl --retry 10 -L -o $tmpfile https://pkg.cfssl.org/R${CFSSL_VERSION}/cfssl_linux-amd64
+    mv $tmpfile $CFSSL_BIN
+    chmod +x $CFSSL_BIN
+    
+    curl --retry 10 -L -o $tmpfile https://pkg.cfssl.org/R${CFSSL_VERSION}/cfssljson_linux-amd64
+    mv $tmpfile $CFSSLJSON_BIN
+    chmod +x $CFSSLJSON_BIN
+
+    curl --retry 10 -L -o $tmpfile https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64
+    mv $tmpfile $JQ_BIN
+    chmod +x $JQ_BIN
+}
+
+function hack::ensure_cfssl() {
+    if ! hack::verify_cfssl; then
+        hack::install_cfssl
+    else
+        echo "cfssl tools already installed, skip"
+    fi
+}
 
 function hack::verify_terraform() {
     if test -x "$TERRAFORM_BIN"; then
@@ -103,6 +142,7 @@ function hack::ensure_helm() {
     if hack::verify_helm; then
         return 0
     fi
+    echo "Installing helm ${HELM_VERSION}..."
     local HELM_URL=http://storage.googleapis.com/kubernetes-helm/helm-v${HELM_VERSION}-${OS}-${ARCH}.tar.gz
     curl --retry 10 -L -s "$HELM_URL" | tar --strip-components 1 -C $OUTPUT_BIN -zxf - ${OS}-${ARCH}/helm
 }

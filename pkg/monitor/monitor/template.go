@@ -144,7 +144,6 @@ type MonitorConfigModel struct {
 	EnableTLSCluster   bool
 	EnableTLSDMCluster bool
 	ExternalLabels     model.LabelSet
-	RemoteWriteConfig  []*config.RemoteWriteConfig
 }
 
 // ClusterRegexInfo is the monitor cluster info
@@ -171,12 +170,12 @@ func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
 		GlobalConfig: config.GlobalConfig{
 			ScrapeInterval:     model.Duration(15 * time.Second),
 			EvaluationInterval: model.Duration(15 * time.Second),
+			ExternalLabels:     cmodel.ExternalLabels,
 		},
 		RuleFiles: []string{
 			"/prometheus-rules/rules/*.rules.yml",
 		},
-		ScrapeConfigs:      scrapeJobs,
-		RemoteWriteConfigs: cmodel.RemoteWriteSpec,
+		ScrapeConfigs: scrapeJobs,
 	}
 	return &c
 }

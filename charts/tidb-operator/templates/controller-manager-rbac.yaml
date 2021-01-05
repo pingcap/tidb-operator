@@ -1,11 +1,15 @@
 {{/*
 Delete permission is required in OpenShift because we can't own resources we created if we can't delete them.
 */}}
-{{- if .Values.rbac.create }}
+{{- if and .Values.rbac.create (hasKey .Values.controllerManager "create" | ternary .Values.controllerManager.create true) }}
 kind: ServiceAccount
 apiVersion: v1
 metadata:
+  {{- if eq .Values.appendReleaseSuffix true}}
+  name: {{ .Values.controllerManager.serviceAccount }}-{{ .Release.Name }}
+  {{- else }}
   name: {{ .Values.controllerManager.serviceAccount }}
+  {{- end }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -14,7 +18,7 @@ metadata:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 ---
 kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: {{ .Release.Name }}:tidb-controller-manager
   labels:
@@ -92,7 +96,7 @@ Ref: https://kubernetes.io/docs/reference/access-authn-authz/rbac/#privilege-esc
   verbs: ["create","get","update", "delete"]
 ---
 kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: {{ .Release.Name }}:tidb-controller-manager
   labels:
@@ -112,7 +116,7 @@ roleRef:
 {{- if (not .Values.clusterScoped) }}
 ---
 kind: Role
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: {{ .Release.Name }}:tidb-controller-manager
   labels:
@@ -173,7 +177,7 @@ rules:
 {{- end }}
 ---
 kind: RoleBinding
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: {{ .Release.Name }}:tidb-controller-manager
   labels:

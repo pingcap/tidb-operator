@@ -69,7 +69,7 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 			Status:  corev1.ConditionTrue,
 			Reason:  "GetBackupFailed",
 			Message: err.Error(),
-		})
+		}, nil)
 		return err
 	}
 
@@ -80,7 +80,7 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 		return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:   v1alpha1.BackupClean,
 			Status: corev1.ConditionTrue,
-		})
+		}, nil)
 	}
 
 	// not found clean job, create it
@@ -91,7 +91,7 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 			Status:  corev1.ConditionTrue,
 			Reason:  reason,
 			Message: err.Error(),
-		})
+		}, nil)
 		return err
 	}
 
@@ -102,14 +102,14 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 			Status:  corev1.ConditionTrue,
 			Reason:  "CreateCleanJobFailed",
 			Message: errMsg.Error(),
-		})
+		}, nil)
 		return errMsg
 	}
 
 	return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Type:   v1alpha1.BackupClean,
 		Status: corev1.ConditionFalse,
-	})
+	}, nil)
 }
 
 func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {

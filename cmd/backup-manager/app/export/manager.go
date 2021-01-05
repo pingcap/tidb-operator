@@ -89,7 +89,7 @@ func (bm *BackupManager) ProcessBackup() error {
 			Status:  corev1.ConditionTrue,
 			Reason:  "GetBackupCRFailed",
 			Message: err.Error(),
-		})
+		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
@@ -103,7 +103,7 @@ func (bm *BackupManager) ProcessBackup() error {
 			Status:  corev1.ConditionTrue,
 			Reason:  reason,
 			Message: err.Error(),
-		})
+		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
@@ -133,7 +133,7 @@ func (bm *BackupManager) ProcessBackup() error {
 			Status:  corev1.ConditionTrue,
 			Reason:  "ConnectTidbFailed",
 			Message: err.Error(),
-		})
+		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
@@ -149,7 +149,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 	err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Type:   v1alpha1.BackupRunning,
 		Status: corev1.ConditionTrue,
-	})
+	}, nil)
 	if err != nil {
 		return err
 	}
@@ -164,7 +164,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 			Status:  corev1.ConditionTrue,
 			Reason:  "GetTikvGCLifeTimeFailed",
 			Message: err.Error(),
-		})
+		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
@@ -179,7 +179,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 			Status:  corev1.ConditionTrue,
 			Reason:  "ParseOldTikvGCLifeTimeFailed",
 			Message: err.Error(),
-		})
+		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
@@ -197,7 +197,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 				Status:  corev1.ConditionTrue,
 				Reason:  "ParseConfiguredTikvGCLifeTimeFailed",
 				Message: err.Error(),
-			})
+			}, nil)
 			errs = append(errs, uerr)
 			return errorutils.NewAggregate(errs)
 		}
@@ -212,7 +212,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 				Status:  corev1.ConditionTrue,
 				Reason:  "ParseDefaultTikvGCLifeTimeFailed",
 				Message: err.Error(),
-			})
+			}, nil)
 			errs = append(errs, uerr)
 			return errorutils.NewAggregate(errs)
 		}
@@ -228,7 +228,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 				Status:  corev1.ConditionTrue,
 				Reason:  "SetTikvGCLifeTimeFailed",
 				Message: err.Error(),
-			})
+			}, nil)
 			errs = append(errs, uerr)
 			return errorutils.NewAggregate(errs)
 		}
@@ -249,7 +249,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 				Status:  corev1.ConditionTrue,
 				Reason:  "ResetTikvGCLifeTimeFailed",
 				Message: err.Error(),
-			})
+			}, nil)
 			errs = append(errs, uerr)
 			return errorutils.NewAggregate(errs)
 		}
@@ -264,7 +264,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 			Status:  corev1.ConditionTrue,
 			Reason:  "DumpTidbClusterFailed",
 			Message: backupErr.Error(),
-		})
+		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
@@ -279,7 +279,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 			Status:  corev1.ConditionTrue,
 			Reason:  "GetCommitTsFailed",
 			Message: err.Error(),
-		})
+		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
@@ -296,7 +296,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 			Status:  corev1.ConditionTrue,
 			Reason:  "ArchiveBackupDataFailed",
 			Message: err.Error(),
-		})
+		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
@@ -312,7 +312,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 			Status:  corev1.ConditionTrue,
 			Reason:  "GetBackupSizeFailed",
 			Message: err.Error(),
-		})
+		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
@@ -323,11 +323,13 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 
 	remotePath := strings.TrimPrefix(archiveBackupPath, constants.BackupRootPath+"/")
 	bucketURI := bm.getDestBucketURI(remotePath)
-	backup.Status.BackupPath = bucketURI
+	updatePathStatus := &controller.BackupUpdateStatus{
+		BackupPath: &bucketURI,
+	}
 	err = bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Type:   v1alpha1.BackupPrepare,
 		Status: corev1.ConditionTrue,
-	})
+	}, updatePathStatus)
 	if err != nil {
 		return err
 	}
@@ -341,7 +343,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 			Status:  corev1.ConditionTrue,
 			Reason:  "BackupDataToRemoteFailed",
 			Message: err.Error(),
-		})
+		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
@@ -351,14 +353,17 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 
 	finish := time.Now()
 
-	backup.Status.TimeStarted = metav1.Time{Time: started}
-	backup.Status.TimeCompleted = metav1.Time{Time: finish}
-	backup.Status.BackupSize = size
-	backup.Status.BackupSizeReadable = humanize.Bytes(uint64(size))
-	backup.Status.CommitTs = commitTs
+	backupSizeReadable := humanize.Bytes(uint64(size))
+	updateStatus := &controller.BackupUpdateStatus{
+		TimeStarted:        &metav1.Time{Time: started},
+		TimeCompleted:      &metav1.Time{Time: finish},
+		BackupSize:         &size,
+		BackupSizeReadable: &backupSizeReadable,
+		CommitTs:           &commitTs,
+	}
 
 	return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Type:   v1alpha1.BackupComplete,
 		Status: corev1.ConditionTrue,
-	})
+	}, updateStatus)
 }
