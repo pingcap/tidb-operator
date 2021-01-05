@@ -74,7 +74,7 @@ pd-ctl -u 127.0.0.1:${local_port} -d config show
     tikv-ctl --pd 127.0.0.1:2379 compact-cluster
     ```
 
-* **本地模式**：本地模式需要访问 TiKV 的数据文件，并且需要停止正在运行的 TiKV 实例。需要先使用[诊断模式](tips.md#诊断模式)关闭 TiKV 实例自动重启，关闭 TiKV 进程，再使用 `tkctl debug` 命令在目标 TiKV Pod 中启动一个包含 `tikv-ctl` 可执行文件的新容器来执行操作，步骤如下：
+* **本地模式**：本地模式需要访问 TiKV 的数据文件，并且需要停止正在运行的 TiKV 实例。需要先使用[诊断模式](tips.md#诊断模式)关闭 TiKV 实例自动重启，关闭 TiKV 进程，再进入目标 TiKV Pod 中使用 `tikv-ctl` 来执行操作，步骤如下：
 
     1. 进入诊断模式：
 
@@ -92,23 +92,21 @@ pd-ctl -u 127.0.0.1:${local_port} -d config show
         kubectl exec ${pod_name} -n ${namespace} -c tikv -- kill -s TERM 1
         ```
 
-    3. 启动 debug 容器：
+    3. 等待 TiKV 容器重启后进入容器：
 
         {{< copyable "shell-regular" >}}
 
         ```shell
-        tkctl debug ${pod_name} -c tikv
+        kubectl exec -it ${pod_name} -n ${namespace} -- sh
         ```
 
-    4. 开始使用 `tikv-ctl` 的本地模式，需要注意的是 `tikv` 容器的根文件系统在 `/proc/1/root` 下，因此执行命令时也需要调整数据目录的路径：
+    4. 开始使用 `tikv-ctl` 的本地模式，TiKV 容器中的默认 db 路径是 `/var/lib/tikv/db`：
 
         {{< copyable "shell-regular" >}}
 
         ```shell
-        tikv-ctl --db /path/to/tikv/db size -r 2
+        tikv-ctl --db /var/lib/tikv/db size -r 2
         ```
-
-        Kubernetes 上 TiKV 实例在 debug 容器中的的默认 db 路径是 `/proc/1/root/var/lib/tikv/db size -r 2`
 
 ## 在 Kubernetes 上使用 TiDB Control
 

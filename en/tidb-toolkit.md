@@ -74,7 +74,7 @@ pd-ctl -u 127.0.0.1:${local_port} -d config show
     tikv-ctl --pd 127.0.0.1:2379 compact-cluster
     ```
 
-* **Local Mode**：In this mode, `tikv-ctl` accesses data files of TiKV, and the running TiKV instances must be stopped. To operate in the local mode, first you need to enter the [Diagnostic Mode](tips.md#use-the-diagnostic-mode) to turn off automatic re-starting for the TiKV instance, stop the TiKV process, and use the `tkctl debug` command to start in the target TiKV Pod a new container that contains the `tikv-ctl` executable. The steps are as follows:
+* **Local Mode**：In this mode, `tikv-ctl` accesses data files of TiKV, and the running TiKV instances must be stopped. To operate in the local mode, first you need to enter the [Diagnostic Mode](tips.md#use-the-diagnostic-mode) to turn off automatic re-starting for the TiKV instance, stop the TiKV process, and enter the target TiKV Pod and use `tikv-ctl` to perform the operation. The steps are as follows:
 
     1. Enter the Diagnostic mode:
 
@@ -92,25 +92,21 @@ pd-ctl -u 127.0.0.1:${local_port} -d config show
         kubectl exec ${pod_name} -n ${namespace} -c tikv -- kill -s TERM 1
         ```
 
-    3. Start the debug container:
+    3. Wait for the TiKV container to restart, and enter the container:
 
         {{< copyable "shell-regular" >}}
 
         ```shell
-        tkctl debug ${pod_name} -c tikv
+        kubectl exec -it ${pod_name} -n ${namespace} -- sh
         ```
 
-    4. Start using `tikv-ctl` in local mode. It should be noted that the root file system of `tikv` is under `/proc/1/root`, so you need to adjust the path of the data directory accordingly when executing a command:
+    4. Start using `tikv-ctl` in local mode. The default db path in the TiKV container is `/var/lib/tikv/db`:
 
         {{< copyable "shell-regular" >}}
 
         ```shell
-        tikv-ctl --db /path/to/tikv/db size -r 2
+        tikv-ctl --db /var/lib/tikv/db size -r 2
         ```
-
-        > **Note:**
-        >
-        >   The default db path of TiKV instances in the debug container is `/proc/1/root/var/lib/tikv/db`
 
 ## Use TiDB Control in Kubernetes
 
