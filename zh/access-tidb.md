@@ -4,46 +4,42 @@ summary: 介绍如何访问 Kubernetes 上的 TiDB 集群。
 aliases: ['/docs-cn/tidb-in-kubernetes/dev/access-tidb/']
 ---
 
-# 访问 Kubernetes 上的 TiDB 集群
+# 访问 TiDB 集群
 
-在 Kubernetes 集群内访问 TiDB 时，使用 TiDB service 域名 `${cluster_name}-tidb.${namespace}` 即可。
+Service 可以根据场景配置不同的类型，比如 `ClusterIP`、`NodePort`、`LoadBalancer` 等，对于不同的类型可以有不同的访问方式。
 
-若需要在集群外访问，则需将 TiDB 服务端口暴露出去。在 `TidbCluster` CR 中，通过 `spec.tidb.service` 字段进行配置：
+可以通过如下命令获取 TiDB Service 信息：
 
-{{< copyable "" >}}
+{{< copyable "shell-regular" >}}
 
-```yaml
-spec:
-  ...
-  tidb:
-    service:
-      type: NodePort
-      # externalTrafficPolicy: Cluster
-      # annotations:
-      #   cloud.google.com/load-balancer-type: Internal
+```shell
+kubectl get svc ${serviceName} -n ${namespace}
 ```
+
+示例：
+
+```
+# kubectl get svc basic-tidb -n default
+NAME         TYPE       CLUSTER-IP     EXTERNAL-IP   PORT(S)                          AGE
+basic-tidb   NodePort   10.233.6.240   <none>        4000:32498/TCP,10080:30171/TCP   61d
+```
+
+上述示例描述了 `default` namespace 下 `basic-tidb` 服务的信息，类型为 `NodePort`，ClusterIP 为 `10.233.6.240`，ServicePort 为 `4000` 和 `10080`，对应的 NodePort 分别为 `32498` 和 `30171`。
 
 > **注意：**
 >
 > [MySQL 8.0 默认认证插件](https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_default_authentication_plugin)从 `mysql_native_password` 更新为 `caching_sha2_password`，因此如果使用 MySQL 8.0 客户端访问 TiDB 服务（TiDB 版本 < v4.0.7），并且用户账户有配置密码，需要显示指定 `--default-auth=mysql_native_password` 参数。
 
+## ClusterIP
+
+`ClusterIP` 是通过集群的内部 IP 暴露服务，选择该类型的服务时，只能在集群内部访问，可以通过如下方式访问：
+
+* ClusterIP + ServicePort
+* Service 域名 (`${serviceName}.${namespace}`) + ServicePort
+
 ## NodePort
 
-在没有 LoadBalancer 时，可选择通过 NodePort 暴露。NodePort 有两种模式：
-
-- `externalTrafficPolicy=Cluster`：集群所有的机器都会给 TiDB 分配 TCP 端口，此为默认值
-
-    使用 `Cluster` 模式时，可以通过任意一台机器的 IP 加同一个端口访问 TiDB 服务，如果该机器上没有 TiDB Pod，则相应请求会转发到有 TiDB Pod 的机器上。
-
-    > **注意：**
-    >
-    > 该模式下 TiDB 服务获取到的请求源 IP 是主机 IP，并不是真正的客户端源 IP，所以基于客户端源 IP 的访问权限控制在该模式下不可用。
-
-- `externalTrafficPolicy=Local`：只有运行 TiDB 的机器会分配 TCP 端口，用于访问本地的 TiDB 实例
-
-    使用 `Local` 模式时，建议打开 tidb-scheduler 的 `StableScheduling` 特性。tidb-scheduler 会尽可能在升级过程中将新 TiDB 实例调度到原机器，这样集群外的客户端便不需要在 TiDB 重启后更新配置。
-
-### 查看 NodePort 模式下对外暴露的 IP/PORT
+在没有 LoadBalancer 时，可选择通过 NodePort 暴露。NodePort 是通过节点的 IP 和静态端口暴露服务。通过请求 `NodeIP + NodePort`，可以从集群的外部访问一个 NodePort 服务。
 
 查看 Service 分配的 Node Port，可通过获取 TiDB 的 Service 对象来获知：
 
@@ -68,57 +64,6 @@ kubectl -n ${namespace} get svc ${cluster_name}-tidb -ojsonpath="{.spec.ports[?(
 
 若运行在有 LoadBalancer 的环境，比如 GCP/AWS 平台，建议使用云平台的 LoadBalancer 特性。
 
+参考 [EKS](deploy-on-aws-eks.md#安装-mysql-客户端并连接)、[GKE](deploy-on-gcp-gke.md#安装-mysql-客户端并连接) 和 [ACK](deploy-on-alibaba-cloud.md#连接数据库) 文档，通过 LoadBalancer 访问 TiDB 服务。
+
 访问 [Kubernetes Service 文档](https://kubernetes.io/docs/concepts/services-networking/service/)，了解更多 Service 特性以及云平台 Load Balancer 支持。
-
-## 平滑升级 TiDB 集群
-
-滚动更新 TiDB 集群的过程中，在停止 TiDB Pod 之前，Kubernetes 会向 TiDB server 进程发送一个 [`TERM`](https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods) 信号。在收到 `TERM` 信号后，TiDB server 会尝试等待所有的连接关闭，不过 15 秒后会强制关闭所有连接并退出进程。
-
-从 v1.1.2 版本开始，TiDB Operator 已经支持平滑升级 TiDB 集群。通过配置下面两个属性来实现平滑升级 TiDB 集群：
-
-- `spec.tidb.terminationGracePeriodSeconds`：滚动更新的时候，删除旧的 TiDB Pod 最多容忍的时间，即过了这个时间，TiDB Pod 会被强制删除；
-- `spec.tidb.lifecycle`：设置 TiDB Pod 的 `preStop` Hook，在 TiDB server 停止之前执行的操作。
-
-```yaml
-apiVersion: pingcap.com/v1alpha1
-kind: TidbCluster
-metadata:
-  name: basic
-spec:
-  version: v4.0.9
-  pvReclaimPolicy: Retain
-  discovery: {}
-  pd:
-    baseImage: pingcap/pd
-    replicas: 1
-    requests:
-      storage: "1Gi"
-    config: {}
-  tikv:
-    baseImage: pingcap/tikv
-    replicas: 1
-    requests:
-      storage: "1Gi"
-    config: {}
-  tidb:
-    baseImage: pingcap/tidb
-    replicas: 1
-    service:
-      type: ClusterIP
-    config: {}
-    terminationGracePeriodSeconds: 60
-    lifecycle:
-      preStop:
-        exec:
-          command:
-          - /bin/sh
-          - -c
-          - "sleep 10 && kill -QUIT 1"
-```
-
-上述 YAML 文件中：
-
-- 设置了删除 TiDB Pod 的最多容忍时间为 60 秒，如果 60 秒之内客户端仍然没有关闭连接的话，那么这些连接将会强制关闭。这个时间可根据需要进行调整；
-- 设置 `preStop` Hook 为 `sleep 10 && kill -QUIT 1`，这里 Pid 1 为 TiDB Pod 内 TiDB server 进程的 Pid。TiDB server 进程收到这个信号之后，会等待所有连接被客户端关闭之后才会退出。
-
-Kubernetes 在删除 TiDB Pod 的同时，也会把该 TiDB 节点从 Service 的 Endpoints 中移除。这样就可以保证新的连接不会连接到该 TiDB 节点，但是由于此过程是异步的，所以可以在发送 Kill 信号之前 sleep 几秒钟，确保该 TiDB 节点从 Endpoints 中去掉。
