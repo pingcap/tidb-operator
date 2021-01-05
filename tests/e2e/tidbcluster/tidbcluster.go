@@ -98,7 +98,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		config, err = framework.LoadConfig()
 		framework.ExpectNoError(err, "failed to load config")
 		cli, err = versioned.NewForConfig(config)
-		framework.ExpectNoError(err, "failed to create clientset for Pingcap")
+		framework.ExpectNoError(err, "failed to create clientset for pingcap")
 		asCli, err = asclientset.NewForConfig(config)
 		framework.ExpectNoError(err, "failed to create clientset for advanced-statefulset")
 		genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
@@ -132,7 +132,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		}
 	})
 
-	ginkgo.Context("Basic: Deploying, Scaling, Update Configuration", func() {
+	ginkgo.Describe("when deploy, scale, update config", func() {
 		clusterCfgs := []struct {
 			Version string
 			Name    string
@@ -150,47 +150,49 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 		for _, clusterCfg := range clusterCfgs {
 			localCfg := clusterCfg
-			ginkgo.It(fmt.Sprintf("[TiDB Version: %s] %s", localCfg.Version, localCfg.Name), func() {
+			ginkgo.It(fmt.Sprintf("should work in %s", localCfg.Version), func() {
+				ginkgo.By("deploy a basic tc")
 				tc := fixture.GetTidbCluster(ns, localCfg.Name, localCfg.Version)
+				tc.Spec.TiDB.Replicas = 1
 				// support reclaim pv when scale in tikv or pd component
 				tc.Spec.EnablePVReclaim = pointer.BoolPtr(true)
 				// change tikv data directory to a subdirectory of data volume
 				tc.Spec.TiKV.DataSubDir = "data"
-				framework.ExpectNoError(errors1.New("surprise"))
 
 				_, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
 				framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
-				err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
-				framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %v", tc)
+				err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
+				framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 				err = crdUtil.CheckDisasterTolerance(tc)
 				framework.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %v", tc)
 
-				// scale
+				ginkgo.By("scale out tidb, tikv, pd")
 				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 					tc.Spec.TiDB.Replicas = 3
-					tc.Spec.TiKV.Replicas = 5
-					tc.Spec.PD.Replicas = 5
+					tc.Spec.TiKV.Replicas = 4
+					tc.Spec.PD.Replicas = 4
 					return nil
 				})
-				framework.ExpectNoError(err, "failed to update TidbCluster: %v", tc)
-				err = crdUtil.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
-				framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %v", tc)
+				framework.ExpectNoError(err, "failed to scale out TidbCluster: %v", tc)
+				err = crdUtil.WaitForTidbClusterReady(tc, 5*time.Minute, 5*time.Second)
+				framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 				err = crdUtil.CheckDisasterTolerance(tc)
 				framework.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %v", tc)
 
+				ginkgo.By("scale in tidb, tikv, pd")
 				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 					tc.Spec.TiDB.Replicas = 2
-					tc.Spec.TiKV.Replicas = 4
+					tc.Spec.TiKV.Replicas = 3
 					tc.Spec.PD.Replicas = 3
 					return nil
 				})
-				framework.ExpectNoError(err, "failed to update TidbCluster: %v", tc)
-				err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
-				framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %v", tc)
+				framework.ExpectNoError(err, "failed to scale in TidbCluster: %v", tc)
+				err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 5*time.Second)
+				framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 				err = crdUtil.CheckDisasterTolerance(tc)
 				framework.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %v", tc)
 
-				// configuration change
+				ginkgo.By("change configuration")
 				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 					tc.Spec.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyRollingUpdate
 					tc.Spec.PD.MaxFailoverCount = pointer.Int32Ptr(4)
@@ -198,9 +200,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					tc.Spec.TiDB.MaxFailoverCount = pointer.Int32Ptr(4)
 					return nil
 				})
-				framework.ExpectNoError(err, "failed to update TidbCluster: %v", tc)
-				err = crdUtil.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
-				framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %v", tc)
+				framework.ExpectNoError(err, "failed to change configuration of TidbCluster: %v", tc)
+				err = crdUtil.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
+				framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 			})
 		}
 	})
@@ -209,43 +211,44 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	 * This test case switches back and forth between pod network and host network of a single cluster.
 	 * Note that only one cluster can run in host network mode at the same time.
 	 */
-	ginkgo.It("Switching back and forth between pod network and host network", func() {
+	ginkgo.It("should switch between pod network and host network", func() {
 		if !ocfg.Enabled(features.AdvancedStatefulSet) {
 			serverVersion, err := c.Discovery().ServerVersion()
 			framework.ExpectNoError(err, "failed to fetch Kubernetes version")
 			sv := utilversion.MustParseSemantic(serverVersion.GitVersion)
 			log.Logf("ServerVersion: %v", serverVersion.String())
 			if sv.LessThan(utilversion.MustParseSemantic("v1.13.11")) || // < v1.13.11
-				(sv.AtLeast(utilversion.MustParseSemantic("v1.14.0")) && sv.LessThan(utilversion.MustParseSemantic("v1.14.7"))) || // >= v1.14.0 but < v1.14.7
-				(sv.AtLeast(utilversion.MustParseSemantic("v1.15.0")) && sv.LessThan(utilversion.MustParseSemantic("v1.15.4"))) { // >= v1.15.0 but < v1.15.4
+				(sv.AtLeast(utilversion.MustParseSemantic("v1.14.0")) && sv.LessThan(utilversion.MustParseSemantic("v1.14.7"))) || // >= v1.14.0 and < v1.14.7
+				(sv.AtLeast(utilversion.MustParseSemantic("v1.15.0")) && sv.LessThan(utilversion.MustParseSemantic("v1.15.4"))) { // >= v1.15.0 and < v1.15.4
 				// https://github.com/pingcap/tidb-operator/issues/1042#issuecomment-547742565
 				framework.Skipf("Skipping HostNetwork test. Kubernetes %v has a bug that StatefulSet may apply revision incorrectly, HostNetwork cannot work well in this cluster", serverVersion)
 			}
-			ginkgo.By(fmt.Sprintf("Testing HostNetwork feature with Kubernetes %v", serverVersion))
+			log.Logf("Testing HostNetwork feature with Kubernetes %v", serverVersion)
 		} else {
-			ginkgo.By("Testing HostNetwork feature with Advanced StatefulSet")
+			log.Logf("Testing HostNetwork feature with Advanced StatefulSet")
 		}
 
-		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "host-network", "", utilimage.TiDBV3Version)
-		cluster.Resources["pd.replicas"] = "1"
-		cluster.Resources["tidb.replicas"] = "1"
-		cluster.Resources["tikv.replicas"] = "1"
-		oa.DeployTidbClusterOrDie(&cluster)
+		ginkgo.By("deploy initial tc")
+		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "host-network", "", utilimage.TiDBV3Version)
+		tcCfg.Resources["pd.replicas"] = "1"
+		tcCfg.Resources["tidb.replicas"] = "1"
+		tcCfg.Resources["tikv.replicas"] = "1"
+		oa.DeployTidbClusterOrDie(&tcCfg)
 
 		ginkgo.By("switch to host network")
-		cluster.RunInHost(true)
-		oa.UpgradeTidbClusterOrDie(&cluster)
-		oa.CheckTidbClusterStatusOrDie(&cluster)
+		tcCfg.SetHostNetwork(true)
+		oa.UpgradeTidbClusterOrDie(&tcCfg)
+		oa.CheckTidbClusterStatusOrDie(&tcCfg)
 
 		ginkgo.By("switch back to pod network")
-		cluster.RunInHost(false)
-		oa.UpgradeTidbClusterOrDie(&cluster)
-		oa.CheckTidbClusterStatusOrDie(&cluster)
+		tcCfg.SetHostNetwork(false)
+		oa.UpgradeTidbClusterOrDie(&tcCfg)
+		oa.CheckTidbClusterStatusOrDie(&tcCfg)
 	})
 
-	ginkgo.It("Upgrading TiDB Cluster", func() {
-		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "cluster", "admin", utilimage.TiDBV3Version)
-		cluster.Resources["pd.replicas"] = "3"
+	ginkgo.It("should upgrade TidbCluster with webhook enabled", func() {
+		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "cluster", "admin", utilimage.TiDBV3Version)
+		tcCfg.Resources["pd.replicas"] = "3"
 
 		ginkgo.By("Creating webhook certs and self signing it")
 		svcName := "webhook"
@@ -258,22 +261,22 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		ginkgo.By("Register webhook")
 		oa.RegisterWebHookAndServiceOrDie(ocfg.WebhookConfigName, ns, svc.Name, certCtx)
 
-		ginkgo.By(fmt.Sprintf("Deploying tidb cluster %s", cluster.ClusterVersion))
-		oa.DeployTidbClusterOrDie(&cluster)
-		oa.CheckTidbClusterStatusOrDie(&cluster)
-		oa.CheckDisasterToleranceOrDie(&cluster)
+		ginkgo.By(fmt.Sprintf("Deploying tidb cluster %s", tcCfg.ClusterVersion))
+		oa.DeployTidbClusterOrDie(&tcCfg)
+		oa.CheckTidbClusterStatusOrDie(&tcCfg)
+		oa.CheckDisasterToleranceOrDie(&tcCfg)
 
-		ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", cluster.ClusterVersion, utilimage.TiDBV3UpgradeVersion))
+		ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", tcCfg.ClusterVersion, utilimage.TiDBV3UpgradeVersion))
 		ctx, cancel := context.WithCancel(context.Background())
-		cluster.UpgradeAll(utilimage.TiDBV3UpgradeVersion)
-		oa.UpgradeTidbClusterOrDie(&cluster)
-		oa.CheckUpgradeOrDie(ctx, &cluster)
-		oa.CheckTidbClusterStatusOrDie(&cluster)
+		tcCfg.UpgradeAll(utilimage.TiDBV3UpgradeVersion)
+		oa.UpgradeTidbClusterOrDie(&tcCfg)
+		oa.CheckUpgradeOrDie(ctx, &tcCfg)
+		oa.CheckTidbClusterStatusOrDie(&tcCfg)
 		cancel()
 
 		ginkgo.By("Check webhook is still running")
 		webhookPod, err = c.CoreV1().Pods(webhookPod.Namespace).Get(webhookPod.Name, metav1.GetOptions{})
-		framework.ExpectNoError(err, "failed to get pod %s/%s", webhookPod.Namespace, webhookPod.Name)
+		framework.ExpectNoError(err, "failed to get webhook pod %s/%s", webhookPod.Namespace, webhookPod.Name)
 		if webhookPod.Status.Phase != v1.PodRunning {
 			logs, err := pod.GetPodLogs(c, webhookPod.Namespace, webhookPod.Name, "webhook")
 			framework.ExpectNoError(err, "failed to get pod log %s/%s", webhookPod.Namespace, webhookPod.Name)
@@ -281,45 +284,47 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			log.Fail("webhook pod is not running")
 		}
 
+		ginkgo.By("clean up webhook")
 		oa.CleanWebHookAndServiceOrDie(ocfg.WebhookConfigName)
 	})
 
-	ginkgo.It("Backup and restore TiDB Cluster", func() {
-		clusterFrom := newTidbClusterConfig(e2econfig.TestConfig, ns, "from", "admin", utilimage.TiDBV3Version)
-		clusterFrom.Resources["pd.replicas"] = "1"
-		clusterFrom.Resources["tidb.replicas"] = "1"
-		clusterFrom.Resources["tikv.replicas"] = "1"
-		clusterTo := newTidbClusterConfig(e2econfig.TestConfig, ns, "to", "admin", utilimage.TiDBV3Version)
-		clusterTo.Resources["pd.replicas"] = "1"
-		clusterTo.Resources["tidb.replicas"] = "1"
-		clusterTo.Resources["tikv.replicas"] = "1"
-		oa.DeployTidbClusterOrDie(&clusterFrom)
-		oa.DeployTidbClusterOrDie(&clusterTo)
-		oa.CheckTidbClusterStatusOrDie(&clusterFrom)
-		oa.CheckTidbClusterStatusOrDie(&clusterTo)
-		oa.CheckDisasterToleranceOrDie(&clusterFrom)
-		oa.CheckDisasterToleranceOrDie(&clusterTo)
+	ginkgo.It("should backup and restore TiDB Cluster", func() {
+		tcCfgFrom := newTidbClusterConfig(e2econfig.TestConfig, ns, "from", "admin", utilimage.TiDBV3Version)
+		tcCfgFrom.Resources["pd.replicas"] = "1"
+		tcCfgFrom.Resources["tidb.replicas"] = "1"
+		tcCfgFrom.Resources["tikv.replicas"] = "1"
+		tcCfgTo := newTidbClusterConfig(e2econfig.TestConfig, ns, "to", "admin", utilimage.TiDBV3Version)
+		tcCfgTo.Resources["pd.replicas"] = "1"
+		tcCfgTo.Resources["tidb.replicas"] = "1"
+		tcCfgTo.Resources["tikv.replicas"] = "1"
+		oa.DeployTidbClusterOrDie(&tcCfgFrom)
+		oa.DeployTidbClusterOrDie(&tcCfgTo)
+		oa.CheckTidbClusterStatusOrDie(&tcCfgFrom)
+		oa.CheckTidbClusterStatusOrDie(&tcCfgTo)
+		oa.CheckDisasterToleranceOrDie(&tcCfgFrom)
+		oa.CheckDisasterToleranceOrDie(&tcCfgTo)
 
 		// backup and restore
-		ginkgo.By(fmt.Sprintf("Backup %q and restore into %q", clusterFrom.ClusterName, clusterTo.ClusterName))
-		oa.BackupRestoreOrDie(&clusterFrom, &clusterTo)
+		ginkgo.By(fmt.Sprintf("Backup %q and restore into %q", tcCfgFrom.ClusterName, tcCfgTo.ClusterName))
+		oa.BackupRestoreOrDie(&tcCfgFrom, &tcCfgTo)
 	})
 
-	ginkgo.It("Service: Sync TiDB service", func() {
-		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "service-it", "admin", utilimage.TiDBV3Version)
-		cluster.Resources["pd.replicas"] = "1"
-		cluster.Resources["tidb.replicas"] = "1"
-		cluster.Resources["tikv.replicas"] = "1"
-		oa.DeployTidbClusterOrDie(&cluster)
-		oa.CheckTidbClusterStatusOrDie(&cluster)
+	ginkgo.It("should keep tidb service in sync", func() {
+		ginkgo.By("deploy initial tc")
+		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "service", "admin", utilimage.TiDBV3Version)
+		tcCfg.Resources["pd.replicas"] = "1"
+		tcCfg.Resources["tidb.replicas"] = "1"
+		tcCfg.Resources["tikv.replicas"] = "1"
+		oa.DeployTidbClusterOrDie(&tcCfg)
+		oa.CheckTidbClusterStatusOrDie(&tcCfg)
 
-		ns := cluster.Namespace
-		tcName := cluster.ClusterName
+		ns := tcCfg.Namespace
+		tcName := tcCfg.ClusterName
 
 		oldSvc, err := c.CoreV1().Services(ns).Get(controller.TiDBMemberName(tcName), metav1.GetOptions{})
-		framework.ExpectNoError(err, "failed to get service for TidbCluster: %v", cluster)
+		framework.ExpectNoError(err, "failed to get service for TidbCluster: %v", tcCfg)
 		tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
-		framework.ExpectNoError(err, "failed to get TidbCluster: %v", cluster)
+		framework.ExpectNoError(err, "failed to get TidbCluster: %v", tcCfg)
 		if isNil, err := gomega.BeNil().Match(metav1.GetControllerOf(oldSvc)); !isNil {
 			log.Failf("Expected TiDB service created by helm chart is orphaned: %v", err)
 		}
@@ -329,15 +334,14 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tc.Spec.TiDB.Service = &v1alpha1.TiDBServiceSpec{}
 			return nil
 		})
-		framework.ExpectNoError(err, "failed to update TidbCluster: %v", tc)
-
-		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
+		framework.ExpectNoError(err, "failed to update tidb service of TidbCluster: %v", tc)
+		err = wait.PollImmediate(5*time.Second, 2*time.Minute, func() (bool, error) {
 			svc, err := c.CoreV1().Services(ns).Get(controller.TiDBMemberName(tcName), metav1.GetOptions{})
 			if err != nil {
 				if errors.IsNotFound(err) {
 					return false, err
 				}
-				log.Logf("error get TiDB service: %v", err)
+				log.Logf("failed to get TiDB service: %v", err)
 				return false, nil
 			}
 			owner := metav1.GetControllerOf(svc)
@@ -345,13 +349,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				log.Logf("tidb service has not been adopted by TidbCluster yet")
 				return false, nil
 			}
-			framework.ExpectEqual(metav1.IsControlledBy(svc, tc), true, "Expected owner is TidbCluster")
-			framework.ExpectEqual(svc.Spec.ClusterIP, oldSvc.Spec.ClusterIP, "ClusterIP should be stable across adopting and updating")
+			framework.ExpectEqual(metav1.IsControlledBy(svc, tc), true, "Expected tidb service owner is TidbCluster")
+			framework.ExpectEqual(svc.Spec.ClusterIP, oldSvc.Spec.ClusterIP, "tidb service ClusterIP should be stable across adopting and updating")
 			return true, nil
 		})
 		framework.ExpectNoError(err, "failed to wait for TidbCluster managed svc to be ready: %v", tc)
-
-		ginkgo.By("Sync TiDB service properties")
 
 		ginkgo.By("Updating TiDB service")
 		trafficPolicy := corev1.ServiceExternalTrafficPolicyTypeLocal
@@ -363,10 +365,10 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			}
 			return nil
 		})
-		framework.ExpectNoError(err, "failed to update TidbCluster: %v", tc)
+		framework.ExpectNoError(err, "failed to update tidb service of TidbCluster: %v", tc)
 
 		ginkgo.By("Waiting for the TiDB service to be synced")
-		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
+		err = wait.PollImmediate(5*time.Second, 2*time.Minute, func() (bool, error) {
 			svc, err := c.CoreV1().Services(ns).Get(controller.TiDBMemberName(tcName), metav1.GetOptions{})
 			if err != nil {
 				if errors.IsNotFound(err) {
@@ -387,10 +389,8 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				log.Logf("tidb service has no annotation test=test, %v", err)
 				return false, nil
 			}
-
 			return true, nil
 		})
-
 		framework.ExpectNoError(err, "failed to wait for TidbCluster managed svc to be ready: %v", tc)
 	})
 
@@ -398,19 +398,19 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	// Basic IT for managed in TidbCluster CR
 	// TODO: deploy pump through CR in backup and restore IT
 	ginkgo.It("Pump: Test managing Pump in TidbCluster CRD", func() {
-		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "pump-it", "admin", utilimage.TiDBV3Version)
-		cluster.Resources["pd.replicas"] = "1"
-		cluster.Resources["tikv.replicas"] = "1"
-		cluster.Resources["tidb.replicas"] = "1"
-		oa.DeployTidbClusterOrDie(&cluster)
-		oa.CheckTidbClusterStatusOrDie(&cluster)
+		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "pump-it", "admin", utilimage.TiDBV3Version)
+		tcCfg.Resources["pd.replicas"] = "1"
+		tcCfg.Resources["tikv.replicas"] = "1"
+		tcCfg.Resources["tidb.replicas"] = "1"
+		oa.DeployTidbClusterOrDie(&tcCfg)
+		oa.CheckTidbClusterStatusOrDie(&tcCfg)
 
 		ginkgo.By("Test adopting pump statefulset created by helm could avoid rolling-update.")
-		err := oa.DeployAndCheckPump(&cluster)
-		framework.ExpectNoError(err, "failed to deploy pump for TidbCluster: %v", cluster)
+		err := oa.DeployAndCheckPump(&tcCfg)
+		framework.ExpectNoError(err, "failed to deploy pump for TidbCluster: %v", tcCfg)
 
-		tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
-		framework.ExpectNoError(err, "failed to get TidbCluster: %v", cluster)
+		tc, err := cli.PingcapV1alpha1().TidbClusters(tcCfg.Namespace).Get(tcCfg.ClusterName, metav1.GetOptions{})
+		framework.ExpectNoError(err, "failed to get TidbCluster: %v", tcCfg)
 
 		// If using advanced statefulset, we must upgrade all Kubernetes statefulsets to advanced statefulsets first.
 		if ocfg.Enabled(features.AdvancedStatefulSet) {
@@ -433,14 +433,14 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tc.Spec.Pump = &v1alpha1.PumpSpec{
 				BaseImage: "pingcap/tidb-binlog",
 				ComponentSpec: v1alpha1.ComponentSpec{
-					Version:         &cluster.ClusterVersion,
+					Version:         &tcCfg.ClusterVersion,
 					ImagePullPolicy: &pullPolicy,
 					Affinity: &corev1.Affinity{
 						PodAntiAffinity: &corev1.PodAntiAffinity{
 							PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
 								{
 									PodAffinityTerm: corev1.PodAffinityTerm{
-										Namespaces:  []string{cluster.Namespace},
+										Namespaces:  []string{tcCfg.Namespace},
 										TopologyKey: "rack",
 									},
 									Weight: 50,
@@ -533,15 +533,15 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	})
 
 	ginkgo.It("API: Migrate from helm to CRD", func() {
-		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "helm-migration", "admin", utilimage.TiDBV3Version)
-		cluster.Resources["pd.replicas"] = "1"
-		cluster.Resources["tikv.replicas"] = "1"
-		cluster.Resources["tidb.replicas"] = "1"
-		oa.DeployTidbClusterOrDie(&cluster)
-		oa.CheckTidbClusterStatusOrDie(&cluster)
+		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "helm-migration", "admin", utilimage.TiDBV3Version)
+		tcCfg.Resources["pd.replicas"] = "1"
+		tcCfg.Resources["tikv.replicas"] = "1"
+		tcCfg.Resources["tidb.replicas"] = "1"
+		oa.DeployTidbClusterOrDie(&tcCfg)
+		oa.CheckTidbClusterStatusOrDie(&tcCfg)
 
-		tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
-		framework.ExpectNoError(err, "failed to get TidbCluster: %v", cluster)
+		tc, err := cli.PingcapV1alpha1().TidbClusters(tcCfg.Namespace).Get(tcCfg.ClusterName, metav1.GetOptions{})
+		framework.ExpectNoError(err, "failed to get TidbCluster: %v", tcCfg)
 
 		ginkgo.By("Discovery service should be reconciled by tidb-operator")
 		discoveryName := controller.DiscoveryMemberName(tc.Name)
@@ -583,7 +583,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			setNameToRevision[setName] = oldRev
 		}
 
-		tc, err = cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
+		tc, err = cli.PingcapV1alpha1().TidbClusters(tcCfg.Namespace).Get(tcCfg.ClusterName, metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected get tidbcluster")
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 			tc.Spec.TiDB.Config = v1alpha1.NewTiDBConfig()
@@ -598,7 +598,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 		// check for 2 minutes to ensure the tidb statefulset do not get rolling-update
 		err = wait.PollImmediate(10*time.Second, 2*time.Minute, func() (bool, error) {
-			tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
+			tc, err := cli.PingcapV1alpha1().TidbClusters(tcCfg.Namespace).Get(tcCfg.ClusterName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "Expected get tidbcluster")
 			framework.ExpectEqual(tc.Status.PD.Phase, v1alpha1.NormalPhase, "PD should not be updated")
 			framework.ExpectEqual(tc.Status.TiKV.Phase, v1alpha1.NormalPhase, "TiKV should not be updated")
@@ -858,17 +858,17 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	})
 
 	ginkgo.It("[Feature: AutoFailover] clear TiDB failureMembers when scale TiDB to zero", func() {
-		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "tidb-scale", "admin", utilimage.TiDBV3Version)
-		cluster.Resources["pd.replicas"] = "3"
-		cluster.Resources["tikv.replicas"] = "1"
-		cluster.Resources["tidb.replicas"] = "1"
+		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "tidb-scale", "admin", utilimage.TiDBV3Version)
+		tcCfg.Resources["pd.replicas"] = "3"
+		tcCfg.Resources["tikv.replicas"] = "1"
+		tcCfg.Resources["tidb.replicas"] = "1"
 
-		cluster.TiDBPreStartScript = strconv.Quote("exit 1")
-		oa.DeployTidbClusterOrDie(&cluster)
+		tcCfg.TiDBPreStartScript = strconv.Quote("exit 1")
+		oa.DeployTidbClusterOrDie(&tcCfg)
 
-		log.Logf("checking tidb cluster [%s/%s] failed member", cluster.Namespace, cluster.ClusterName)
-		ns := cluster.Namespace
-		tcName := cluster.ClusterName
+		log.Logf("checking tidb cluster [%s/%s] failed member", tcCfg.Namespace, tcCfg.ClusterName)
+		ns := tcCfg.Namespace
+		tcName := tcCfg.ClusterName
 		err := wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
 			var tc *v1alpha1.TidbCluster
 			var err error
@@ -885,10 +885,10 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		})
 		framework.ExpectNoError(err, "tidb failover not work")
 
-		cluster.ScaleTiDB(0)
-		oa.ScaleTidbClusterOrDie(&cluster)
+		tcCfg.ScaleTiDB(0)
+		oa.ScaleTidbClusterOrDie(&tcCfg)
 
-		log.Logf("checking tidb cluster [%s/%s] scale to zero", cluster.Namespace, cluster.ClusterName)
+		log.Logf("checking tidb cluster [%s/%s] scale to zero", tcCfg.Namespace, tcCfg.ClusterName)
 		err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
 			var tc *v1alpha1.TidbCluster
 			var err error
@@ -2015,25 +2015,25 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		tc.Spec.TiDB.Config.Set("log.file.max-days", "1")
 		tc.Spec.TiKV.Config.Set("rocksdb.wal-dir", "/var/lib/wal")
 		tc.Spec.TiKV.Config.Set("titan.dirname", "/var/lib/titan")
-		clusterConfig := newTidbClusterConfig(e2econfig.TestConfig, ns, clusterName, "admin", utilimage.TiDBV4Version)
-		clusterConfig.Resources["pd.replicas"] = "1"
-		clusterConfig.Resources["tikv.replicas"] = "4"
-		clusterConfig.Resources["tidb.replicas"] = "1"
-		clusterConfig.Clustrer = tc
+		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, clusterName, "admin", utilimage.TiDBV4Version)
+		tcCfg.Resources["pd.replicas"] = "1"
+		tcCfg.Resources["tikv.replicas"] = "4"
+		tcCfg.Resources["tidb.replicas"] = "1"
+		tcCfg.Clustrer = tc
 
-		log.Logf("deploying tidb cluster [%s/%s]", clusterConfig.Namespace, clusterConfig.ClusterName)
-		oa.DeployTidbClusterOrDie(&clusterConfig)
-		oa.CheckTidbClusterStatusOrDie(&clusterConfig)
+		log.Logf("deploying tidb cluster [%s/%s]", tcCfg.Namespace, tcCfg.ClusterName)
+		oa.DeployTidbClusterOrDie(&tcCfg)
+		oa.CheckTidbClusterStatusOrDie(&tcCfg)
 
 		ginkgo.By("scale multiple pvc tidb cluster")
-		clusterConfig.ScaleTiKV(3)
-		oa.UpgradeTidbClusterOrDie(&clusterConfig)
-		oa.CheckTidbClusterStatusOrDie(&clusterConfig)
+		tcCfg.ScaleTiKV(3)
+		oa.UpgradeTidbClusterOrDie(&tcCfg)
+		oa.CheckTidbClusterStatusOrDie(&tcCfg)
 
 		ginkgo.By("scale out multiple pvc tidb cluster")
-		clusterConfig.ScaleTiKV(4)
-		oa.UpgradeTidbClusterOrDie(&clusterConfig)
-		oa.CheckTidbClusterStatusOrDie(&clusterConfig)
+		tcCfg.ScaleTiKV(4)
+		oa.UpgradeTidbClusterOrDie(&tcCfg)
+		oa.CheckTidbClusterStatusOrDie(&tcCfg)
 	})
 })
 

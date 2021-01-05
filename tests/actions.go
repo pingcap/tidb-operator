@@ -317,8 +317,8 @@ type TidbClusterConfig struct {
 	Password               string
 	RecordCount            string
 	InsertBatchSize        string
-	Resources              map[string]string
-	Args                   map[string]string
+	Resources              map[string]string // TODO: rename this to TidbClusterCfg
+	Args                   map[string]string // TODO: rename this to BackupCfg
 	blockWriterPod         *corev1.Pod
 	Monitor                bool
 	UserName               string
@@ -343,6 +343,7 @@ type TidbClusterConfig struct {
 	pumpConfig    []string
 	drainerConfig []string
 
+	// TODO: remove this reference, which is not actually a configuration
 	Clustrer *v1alpha1.TidbCluster
 }
 
@@ -1294,6 +1295,7 @@ func (oa *operatorActions) UpgradeTidbClusterOrDie(info *TidbClusterConfig) {
 	}
 }
 
+// TODO: add explanation
 func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterConfig) error {
 	ns := info.Namespace
 	tcName := info.ClusterName
@@ -1325,7 +1327,8 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 
 	replicas := tc.TiKVStsDesiredReplicas()
 	for i := replicas - 1; i >= 0; i-- {
-		err := wait.PollImmediate(1*time.Second, 10*time.Minute, func() (done bool, err error) {
+		log.Logf("checking upgrade for tikv ordinal %d", i)
+		err := wait.PollImmediate(5*time.Second, 3*time.Minute, func() (done bool, err error) {
 			podName := fmt.Sprintf("%s-tikv-%d", tcName, i)
 			scheduler := fmt.Sprintf("evict-leader-scheduler-%s", findStoreFn(tc, podName))
 			pdClient, cancel, err := oa.getPDClient(tc)
@@ -1339,7 +1342,7 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 				log.Logf("ERROR: failed to get evict leader schedulers, %v", err)
 				return false, nil
 			}
-			log.Logf("index:%d,schedulers:%v,error:%v", i, schedulers, err)
+			log.Logf("index:%d, schedulers:%v, error:%v", i, schedulers, err)
 			if len(schedulers) > 1 {
 				log.Logf("ERROR: there are too many evict leader schedulers: %v", schedulers)
 				for _, s := range schedulers {
@@ -1354,10 +1357,10 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 				return false, nil
 			}
 			if schedulers[0] == scheduler {
-				log.Logf("index: %d,the schedulers: %s = %s", i, schedulers[0], scheduler)
+				log.Logf("index: %d, schedulers: %s = %s", i, schedulers[0], scheduler)
 				return true, nil
 			}
-			log.Logf("ERROR: index: %d, the scheduler: %s != %s", i, schedulers[0], scheduler)
+			log.Logf("ERROR: index: %d, scheduler: %s != %s", i, schedulers[0], scheduler)
 			return false, nil
 		})
 		if err != nil {
@@ -1382,7 +1385,7 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 		return err
 	}
 
-	return wait.PollImmediate(1*time.Second, 6*time.Minute, func() (done bool, err error) {
+	return wait.PollImmediate(5*time.Second, 3*time.Minute, func() (done bool, err error) {
 		pdClient, cancel, err := oa.getPDClient(tc)
 		if err != nil {
 			log.Logf("ERROR: failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
@@ -3444,7 +3447,7 @@ func (oa *operatorActions) checkManualPauseComponent(info *TidbClusterConfig, co
 			setName = controller.TiDBMemberName(info.ClusterName)
 			tidbPod, err := oa.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
 			if err != nil {
-				log.Logf("fail to get pod in CheckManualPauseCompoent tidb [%s/%s]", ns, podName)
+				log.Logf("fail to get pod in CheckManualPauseComponent tidb [%s/%s]", ns, podName)
 				return false, nil
 			}
 
@@ -3465,7 +3468,7 @@ func (oa *operatorActions) checkManualPauseComponent(info *TidbClusterConfig, co
 			setName = controller.TiKVMemberName(info.ClusterName)
 			tikvPod, err := oa.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
 			if err != nil {
-				log.Logf("fail to get pod in CheckManualPauseCompoent tikv [%s/%s]", ns, podName)
+				log.Logf("fail to get pod in CheckManualPauseComponent tikv [%s/%s]", ns, podName)
 				return false, nil
 			}
 
