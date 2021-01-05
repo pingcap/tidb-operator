@@ -76,6 +76,31 @@ kubectl annotate --overwrite tc ${cluster_name} -n ${namespace} tidb.pingcap.com
 > kubectl annotate tc ${cluster_name} -n ${namespace} tidb.pingcap.com/force-upgrade-
 > ```
 
+### 修改 TiDB 集群配置
+
+> **注意：**
+>
+> - 在首次启动成功后，PD 部分配置项会持久化到 etcd 中，且后续将以 etcd 中的配置为准。因此在 PD 首次启动后，这些配置项将无法再通过配置参数来进行修改，而需要使用 SQL、pd-ctl 或 PD server API 来动态进行修改。目前，[在线修改 PD 配置](https://docs.pingcap.com/zh/tidb/stable/dynamic-config#在线修改-pd-配置)文档中所列的配置项中，除 `log.level` 外，其他配置项在 PD 首次启动之后均不再支持通过配置参数进行修改。
+> - 通过[在线修改集群配置](https://docs.pingcap.com/zh/tidb/stable/dynamic-config)进行修改的配置项，在滚动升级后可能被 CR 中的配置项覆盖。
+
+1. 参考[配置 TiDB 组件](configure-a-tidb-cluster.md#配置-tidb-组件)修改集群的 TidbCluster CR 中各组件配置。
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl edit tc ${cluster_name} -n ${namespace}
+    ```
+
+2. 查看配置修改后的更新进度：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    watch kubectl -n ${namespace} get pod -o wide
+    ```
+
+    当所有 Pod 都重建完毕进入 `Running` 状态后，配置修改完成。
+
 ## 通过 Helm 升级
 
 如果选择继续用 Helm 管理集群，可以参考下面步骤升级 TiDB 集群。
