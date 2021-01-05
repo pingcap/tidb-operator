@@ -394,11 +394,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		framework.ExpectNoError(err, "failed to wait for TidbCluster managed svc to be ready: %v", tc)
 	})
 
-	updateStrategy := v1alpha1.ConfigUpdateStrategyInPlace
 	// Basic IT for managed in TidbCluster CR
 	// TODO: deploy pump through CR in backup and restore IT
-	ginkgo.It("Pump: Test managing Pump in TidbCluster CRD", func() {
-		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "pump-it", "admin", utilimage.TiDBV3Version)
+	ginkgo.It("should adopt helm created Pump with TidbCluster CR", func() {
+		ginkgo.By("deploy initial tc")
+		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "pump", "admin", utilimage.TiDBV3Version)
 		tcCfg.Resources["pd.replicas"] = "1"
 		tcCfg.Resources["tikv.replicas"] = "1"
 		tcCfg.Resources["tidb.replicas"] = "1"
@@ -428,6 +428,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		oldRev := oldPumpSet.Status.CurrentRevision
 		framework.ExpectEqual(oldPumpSet.Status.UpdateRevision, oldRev, "Expected pump is not upgrading")
 
+		updateStrategy := v1alpha1.ConfigUpdateStrategyInPlace
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 			pullPolicy := corev1.PullIfNotPresent
 			tc.Spec.Pump = &v1alpha1.PumpSpec{
@@ -585,6 +586,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 		tc, err = cli.PingcapV1alpha1().TidbClusters(tcCfg.Namespace).Get(tcCfg.ClusterName, metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected get tidbcluster")
+		updateStrategy := v1alpha1.ConfigUpdateStrategyInPlace
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 			tc.Spec.TiDB.Config = v1alpha1.NewTiDBConfig()
 			tc.Spec.TiDB.ConfigUpdateStrategy = &updateStrategy
