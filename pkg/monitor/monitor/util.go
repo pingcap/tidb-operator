@@ -18,6 +18,9 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/docker/docker/client"
+	"github.com/prometheus/prometheus/config"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -130,6 +133,58 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monit
 		DMClusterInfos:     releaseDMClusterInfos,
 		EnableTLSCluster:   tc.IsTLSClusterEnabled(),
 		EnableTLSDMCluster: dc != nil && dc.IsTLSClusterEnabled(),
+	}
+
+	if len(monitor.Spec.RemoteWrite) > 0 {
+		var remoteWriteConfigs []*config.RemoteWriteConfig
+		for _, remoteWrite := range monitor.Spec.RemoteWrite {
+			url, err := client.ParseHostURL(remoteWrite.URL)
+			if err != nil {
+				continue
+			}
+			httpClientConfig := config.HTTPClientConfig{
+				BearerTokenFile: remoteWrite.BearerTokenFile,
+				TLSConfig: config.TLSConfig{
+					CAFile:             remoteWrite.TLSConfig.CAFile,
+					CertFile:           remoteWrite.TLSConfig.CertFile,
+					KeyFile:            remoteWrite.TLSConfig.KeyFile,
+					ServerName:         remoteWrite.TLSConfig.ServerName,
+					InsecureSkipVerify: remoteWrite.TLSConfig.InsecureSkipVerify,
+				},
+			}
+			var writeRelabelConfigs []*config.RelabelConfig
+			for _, writeRelabelConfig := range remoteWrite.WriteRelabelConfigs {
+				regex, err := config.NewRegexp(writeRelabelConfig.Regex)
+				if err != nil {
+					continue
+				}
+				writeRelabelConfigs = append(writeRelabelConfigs, &config.RelabelConfig{
+					SourceLabels: writeRelabelConfig.SourceLabels,
+					Separator:    writeRelabelConfig.Separator,
+					Regex:        regex,
+					Modulus:      writeRelabelConfig.Modulus,
+					TargetLabel:  writeRelabelConfig.TargetLabel,
+					Replacement:  writeRelabelConfig.Replacement,
+					Action:       writeRelabelConfig.Action,
+				})
+			}
+			remoteWriteConfigs = append(remoteWriteConfigs, &config.RemoteWriteConfig{
+				URL:                 &config.URL{url},
+				RemoteTimeout:       remoteWrite.RemoteTimeout,
+				WriteRelabelConfigs: writeRelabelConfigs,
+				HTTPClientConfig:    httpClientConfig,
+				QueueConfig: config.QueueConfig{
+					Capacity:          remoteWrite.QueueConfig.Capacity,
+					MaxShards:         remoteWrite.QueueConfig.MaxShards,
+					MaxSamplesPerSend: remoteWrite.QueueConfig.MaxSamplesPerSend,
+					BatchSendDeadline: remoteWrite.QueueConfig.BatchSendDeadline,
+					MaxRetries:        remoteWrite.QueueConfig.MaxRetries,
+					MinBackoff:        remoteWrite.QueueConfig.MinBackoff,
+					MaxBackoff:        remoteWrite.QueueConfig.MaxBackoff,
+				},
+			})
+		}
+		model.RemoteWriteConfig = remoteWriteConfigs
 	}
 
 	if monitor.Spec.AlertmanagerURL != nil {

@@ -2188,6 +2188,44 @@ bool
 <p>ClusterScoped indicates whether this monitor should manage Kubernetes cluster-wide TiDB clusters</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>externalLabels</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>The labels to add to any time series or alerts when communicating with
+external systems (federation, remote storage, Alertmanager).</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>replicaExternalLabelName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of Prometheus external label used to denote replica name.
+Defaults to the value of <code>prometheus_replica</code>. External label will
+<em>not</em> be added when value is set to empty string (<code>&quot;&quot;</code>).</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>remoteWrite</code></br>
+<em>
+<a href="#remotewritespec">
+[]RemoteWriteSpec
+</a>
+</em>
+</td>
+<td>
+<p>If specified, the remote_write spec. This is an experimental feature, it may change in any upcoming release in a breaking way.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -3098,6 +3136,53 @@ BackupConditionType
 <p>
 <p>BackupType represents the backup type.</p>
 </p>
+<h3 id="basicauth">BasicAuth</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#remotewritespec">RemoteWriteSpec</a>)
+</p>
+<p>
+<p>BasicAuth allow an endpoint to authenticate over basic authentication
+More info: <a href="https://prometheus.io/docs/operating/configuration/#endpoints">https://prometheus.io/docs/operating/configuration/#endpoints</a></p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>username</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#secretkeyselector-v1-core">
+Kubernetes core/v1.SecretKeySelector
+</a>
+</em>
+</td>
+<td>
+<p>The secret in the service monitor namespace that contains the username
+for authentication.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>password</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#secretkeyselector-v1-core">
+Kubernetes core/v1.SecretKeySelector
+</a>
+</em>
+</td>
+<td>
+<p>The secret in the service monitor namespace that contains the password
+for authentication.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="basicautoscalerspec">BasicAutoScalerSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -10078,6 +10163,101 @@ Kubernetes apps/v1.StatefulSetStatus
 </tr>
 </tbody>
 </table>
+<h3 id="queueconfig">QueueConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#remotewritespec">RemoteWriteSpec</a>)
+</p>
+<p>
+<p>QueueConfig allows the tuning of remote_write queue_config parameters. This object
+is referenced in the RemoteWriteSpec object.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>Capacity</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>Number of samples to buffer per shard before we start dropping them.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>MaxShards</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>Max number of shards, i.e. amount of concurrency.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>MaxSamplesPerSend</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>Maximum number of samples per send.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>BatchSendDeadline</code></br>
+<em>
+time.Duration
+</em>
+</td>
+<td>
+<p>Maximum time sample will wait in buffer.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>MaxRetries</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>Max number of times to retry a batch on recoverable errors.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>MinBackoff</code></br>
+<em>
+time.Duration
+</em>
+</td>
+<td>
+<p>On recoverable errors, backoff exponentially.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>MaxBackoff</code></br>
+<em>
+time.Duration
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="quota">Quota</h3>
 <p>
 <p>Quota is the configuration of [quotas.default] section.</p>
@@ -10101,6 +10281,101 @@ Interval
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="relabelconfig">RelabelConfig</h3>
+<p>
+<p>RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
+It defines <code>&lt;metric_relabel_configs&gt;</code>-section of Prometheus configuration.
+More info: <a href="https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs">https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs</a></p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>SourceLabels</code></br>
+<em>
+github.com/prometheus/common/model.LabelNames
+</em>
+</td>
+<td>
+<p>A list of labels from which values are taken and concatenated
+with the configured separator in order.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>Separator</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Separator is the string between concatenated values from the source labels.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>regex</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Regular expression against which the extracted value is matched. Default is &lsquo;(.*)&rsquo;</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>Modulus</code></br>
+<em>
+uint64
+</em>
+</td>
+<td>
+<p>Modulus to take of the hash of concatenated values from the source labels.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>TargetLabel</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>TargetLabel is the label to which the resulting string is written in a replacement.
+Regexp interpolation is allowed for the replace action.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>Replacement</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Replacement is the regex replacement pattern to be used.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>Action</code></br>
+<em>
+github.com/prometheus/prometheus/config.RelabelAction
+</em>
+</td>
+<td>
+<p>Action is the action to be performed for the relabeling.</p>
 </td>
 </tr>
 </tbody>
@@ -10142,6 +10417,129 @@ MonitorContainer
 <em>
 <a href="#servicespec">
 ServiceSpec
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="remotewritespec">RemoteWriteSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbmonitorspec">TidbMonitorSpec</a>)
+</p>
+<p>
+<p>RemoteWriteSpec defines the remote_write configuration for prometheus.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>url</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>The URL of the endpoint to send samples to.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>RemoteTimeout</code></br>
+<em>
+github.com/prometheus/common/model.Duration
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>writeRelabelConfigs</code></br>
+<em>
+<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.relabelconfig">
+[]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.RelabelConfig
+</a>
+</em>
+</td>
+<td>
+<p>The list of remote write relabel configurations.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>basicAuth</code></br>
+<em>
+<a href="#basicauth">
+BasicAuth
+</a>
+</em>
+</td>
+<td>
+<p>BasicAuth for the URL.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>bearerToken</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>File to read bearer token for remote write.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>bearerTokenFile</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>File to read bearer token for remote write.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tlsConfig</code></br>
+<em>
+<a href="#tlsconfig">
+TLSConfig
+</a>
+</em>
+</td>
+<td>
+<p>TLS Config to use for remote write.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>proxyUrl</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Optional ProxyURL</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>QueueConfig</code></br>
+<em>
+<a href="#queueconfig">
+QueueConfig
 </a>
 </em>
 </td>
@@ -11320,6 +11718,229 @@ For TiKV: kubectl create secret generic <clusterName>-tikv-cluster-secret &ndash
 For TiDB: kubectl create secret generic <clusterName>-tidb-cluster-secret &ndash;namespace=<namespace> &ndash;from-file=tls.crt=<path/to/tls.crt> &ndash;from-file=tls.key=<path/to/tls.key> &ndash;from-file=ca.crt=<path/to/ca.crt>
 For Client: kubectl create secret generic <clusterName>-cluster-client-secret &ndash;namespace=<namespace> &ndash;from-file=tls.crt=<path/to/tls.crt> &ndash;from-file=tls.key=<path/to/tls.key> &ndash;from-file=ca.crt=<path/to/ca.crt>
 Same for other components.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tlsconfig">TLSConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#remotewritespec">RemoteWriteSpec</a>, 
+<a href="#thanosspec">ThanosSpec</a>)
+</p>
+<p>
+<p>TLSConfig extends the safe TLS configuration with file parameters.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>SafeTLSConfig</code></br>
+<em>
+<a href="#safetlsconfig">
+SafeTLSConfig
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>SafeTLSConfig</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>caFile</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Path to the CA cert in the Prometheus container to use for the targets.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>certFile</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Path to the client cert file in the Prometheus container for the targets.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>keyFile</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Path to the client key file in the Prometheus container for the targets.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="thanosspec">ThanosSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbmonitorspec">TidbMonitorSpec</a>)
+</p>
+<p>
+<p>ThanosSpec is the desired state of thanos sidecar</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>MonitorContainer</code></br>
+<em>
+<a href="#monitorcontainer">
+MonitorContainer
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>MonitorContainer</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>objectStorageConfig</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#secretkeyselector-v1-core">
+Kubernetes core/v1.SecretKeySelector
+</a>
+</em>
+</td>
+<td>
+<p>ObjectStorageConfig configures object storage in Thanos.
+Alternative to ObjectStorageConfigFile, and lower order priority.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>objectStorageConfigFile</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>ObjectStorageConfigFile specifies the path of the object storage configuration file.
+When used alongside with ObjectStorageConfig, ObjectStorageConfigFile takes precedence.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>listenLocal</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>ListenLocal makes the Thanos sidecar listen on loopback, so that it
+does not bind against the Pod IP.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tracingConfig</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#secretkeyselector-v1-core">
+Kubernetes core/v1.SecretKeySelector
+</a>
+</em>
+</td>
+<td>
+<p>TracingConfig configures tracing in Thanos. This is an experimental feature, it may change in any upcoming release in a breaking way.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tracingConfigFile</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>TracingConfig specifies the path of the tracing configuration file.
+When used alongside with TracingConfig, TracingConfigFile takes precedence.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>grpcServerTlsConfig</code></br>
+<em>
+<a href="#tlsconfig">
+TLSConfig
+</a>
+</em>
+</td>
+<td>
+<p>GRPCServerTLSConfig configures the gRPC server from which Thanos Querier reads
+recorded rule data.
+Note: Currently only the CAFile, CertFile, and KeyFile fields are supported.
+Maps to the &lsquo;&ndash;grpc-server-tls-*&rsquo; CLI args.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logLevel</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LogLevel for Thanos sidecar to be configured with.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logFormat</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LogFormat for Thanos sidecar to be configured with.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>minTime</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>MinTime for Thanos sidecar to be configured with. Option can be a constant time in RFC3339 format or time duration relative to current time, such as -1d or 2h45m. Valid duration units are ms, s, m, h, d, w, y.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>routePrefix</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>RoutePrefix is prometheus prefix url</p>
 </td>
 </tr>
 </tbody>
@@ -19356,6 +19977,44 @@ bool
 </td>
 <td>
 <p>ClusterScoped indicates whether this monitor should manage Kubernetes cluster-wide TiDB clusters</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>externalLabels</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>The labels to add to any time series or alerts when communicating with
+external systems (federation, remote storage, Alertmanager).</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>replicaExternalLabelName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of Prometheus external label used to denote replica name.
+Defaults to the value of <code>prometheus_replica</code>. External label will
+<em>not</em> be added when value is set to empty string (<code>&quot;&quot;</code>).</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>remoteWrite</code></br>
+<em>
+<a href="#remotewritespec">
+[]RemoteWriteSpec
+</a>
+</em>
+</td>
+<td>
+<p>If specified, the remote_write spec. This is an experimental feature, it may change in any upcoming release in a breaking way.</p>
 </td>
 </tr>
 </tbody>

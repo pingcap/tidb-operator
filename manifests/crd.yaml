@@ -15267,6 +15267,140 @@ spec:
             pvReclaimPolicy:
               type: string
             reloader: {}
+            remoteWrite:
+              items:
+                properties:
+                  QueueConfig:
+                    properties:
+                      BatchSendDeadline:
+                        format: int64
+                        type: integer
+                      Capacity:
+                        format: int32
+                        type: integer
+                      MaxBackoff:
+                        format: int64
+                        type: integer
+                      MaxRetries:
+                        format: int32
+                        type: integer
+                      MaxSamplesPerSend:
+                        format: int32
+                        type: integer
+                      MaxShards:
+                        format: int32
+                        type: integer
+                      MinBackoff:
+                        format: int64
+                        type: integer
+                    required:
+                    - Capacity
+                    - MaxShards
+                    - MaxSamplesPerSend
+                    - BatchSendDeadline
+                    - MaxRetries
+                    - MinBackoff
+                    - MaxBackoff
+                    type: object
+                  RemoteTimeout:
+                    format: int64
+                    type: integer
+                  basicAuth:
+                    properties:
+                      password:
+                        properties:
+                          key:
+                            type: string
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        required:
+                        - key
+                        type: object
+                      username:
+                        properties:
+                          key:
+                            type: string
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        required:
+                        - key
+                        type: object
+                    type: object
+                  bearerToken:
+                    type: string
+                  bearerTokenFile:
+                    type: string
+                  proxyUrl:
+                    type: string
+                  tlsConfig:
+                    properties:
+                      ca: {}
+                      caFile:
+                        type: string
+                      cert: {}
+                      certFile:
+                        type: string
+                      insecureSkipVerify:
+                        type: boolean
+                      keyFile:
+                        type: string
+                      keySecret:
+                        properties:
+                          key:
+                            type: string
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        required:
+                        - key
+                        type: object
+                      serverName:
+                        type: string
+                    type: object
+                  url:
+                    type: string
+                  writeRelabelConfigs:
+                    items:
+                      properties:
+                        Action:
+                          type: string
+                        Modulus:
+                          format: int64
+                          type: integer
+                        Replacement:
+                          type: string
+                        Separator:
+                          type: string
+                        SourceLabels:
+                          items:
+                            type: string
+                          type: array
+                        TargetLabel:
+                          type: string
+                        regex:
+                          type: string
+                      required:
+                      - SourceLabels
+                      - Separator
+                      - Modulus
+                      - TargetLabel
+                      - Replacement
+                      - Action
+                      type: object
+                    type: array
+                required:
+                - url
+                - RemoteTimeout
+                - QueueConfig
+                type: object
+              type: array
+            replicaExternalLabelName:
+              type: string
             storage:
               type: string
             storageClassName:
