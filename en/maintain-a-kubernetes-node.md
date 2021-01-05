@@ -184,7 +184,7 @@ For the maintenance on an node that cannot be recovered in a short term (for exa
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl delete -n ${namespace} pvc ${pvc_name}
+    kubectl delete -n ${namespace} pvc ${pvc_name} --wait=false
     ```
 
 6. Delete the TiKV instance:
