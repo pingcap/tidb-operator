@@ -15269,8 +15269,6 @@ spec:
             pvReclaimPolicy:
               type: string
             reloader: {}
-            replicaExternalLabelName:
-              type: string
             remoteWrite:
               items:
                 properties:

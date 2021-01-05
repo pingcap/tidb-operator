@@ -8036,13 +8036,6 @@ func (in *TidbInitializerSpec) DeepCopyInto(out *TidbInitializerSpec) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.RemoteWrite != nil {
-		in, out := &in.RemoteWrite, &out.RemoteWrite
-		*out = make([]RemoteWriteSpec, len(*in))
-		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
-		}
-	}
 	return
 }
 
@@ -8245,6 +8238,13 @@ func (in *TidbMonitorSpec) DeepCopyInto(out *TidbMonitorSpec) {
 		in, out := &in.ReplicaExternalLabelName, &out.ReplicaExternalLabelName
 		*out = new(string)
 		**out = **in
+	}
+	if in.RemoteWrite != nil {
+		in, out := &in.RemoteWrite, &out.RemoteWrite
+		*out = make([]RemoteWriteSpec, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
 	}
 	return
 }

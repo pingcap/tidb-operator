@@ -14,6 +14,10 @@
 package v1alpha1
 
 import (
+	"time"
+
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/config"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -101,6 +105,8 @@ type TidbMonitorSpec struct {
 	// Defaults to the value of `prometheus_replica`. External label will
 	// _not_ be added when value is set to empty string (`""`).
 	ReplicaExternalLabelName *string `json:"replicaExternalLabelName,omitempty"`
+	// If specified, the remote_write spec. This is an experimental feature, it may change in any upcoming release in a breaking way.
+	RemoteWrite []RemoteWriteSpec `json:"remoteWrite,omitempty"`
 }
 
 // PrometheusSpec is the desired state of prometheus
@@ -290,4 +296,85 @@ type SecretOrConfigMap struct {
 	Secret *corev1.SecretKeySelector `json:"secret,omitempty"`
 	// ConfigMap containing data to use for the targets.
 	ConfigMap *corev1.ConfigMapKeySelector `json:"configMap,omitempty"`
+}
+
+// RemoteWriteSpec defines the remote_write configuration for prometheus.
+// +k8s:openapi-gen=true
+type RemoteWriteSpec struct {
+	// The URL of the endpoint to send samples to.
+	URL           string         `json:"url"`
+	RemoteTimeout model.Duration `yaml:"remote_timeout,omitempty"`
+	// The list of remote write relabel configurations.
+	WriteRelabelConfigs []*RelabelConfig `json:"writeRelabelConfigs,omitempty"`
+
+	//BasicAuth for the URL.
+	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
+	// File to read bearer token for remote write.
+	BearerToken string `json:"bearerToken,omitempty"`
+	// File to read bearer token for remote write.
+	BearerTokenFile string `json:"bearerTokenFile,omitempty"`
+	// TLS Config to use for remote write.
+	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
+	// Optional ProxyURL
+	ProxyURL    string      `json:"proxyUrl,omitempty"`
+	QueueConfig QueueConfig `yaml:"queue_config,omitempty"`
+}
+
+// BasicAuth allow an endpoint to authenticate over basic authentication
+// More info: https://prometheus.io/docs/operating/configuration/#endpoints
+// +k8s:openapi-gen=true
+type BasicAuth struct {
+	// The secret in the service monitor namespace that contains the username
+	// for authentication.
+	Username corev1.SecretKeySelector `json:"username,omitempty"`
+	// The secret in the service monitor namespace that contains the password
+	// for authentication.
+	Password corev1.SecretKeySelector `json:"password,omitempty"`
+}
+
+// RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
+// It defines `<metric_relabel_configs>`-section of Prometheus configuration.
+// More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+// +k8s:openapi-gen=true
+type RelabelConfig struct {
+	// A list of labels from which values are taken and concatenated
+	// with the configured separator in order.
+	SourceLabels model.LabelNames `yaml:"source_labels,flow,omitempty"`
+	// Separator is the string between concatenated values from the source labels.
+	Separator string `yaml:"separator,omitempty"`
+	//Regular expression against which the extracted value is matched. Default is '(.*)'
+	Regex string `json:"regex,omitempty"`
+	// Modulus to take of the hash of concatenated values from the source labels.
+	Modulus uint64 `yaml:"modulus,omitempty"`
+	// TargetLabel is the label to which the resulting string is written in a replacement.
+	// Regexp interpolation is allowed for the replace action.
+	TargetLabel string `yaml:"target_label,omitempty"`
+	// Replacement is the regex replacement pattern to be used.
+	Replacement string `yaml:"replacement,omitempty"`
+	// Action is the action to be performed for the relabeling.
+	Action config.RelabelAction `yaml:"action,omitempty"`
+}
+
+// QueueConfig allows the tuning of remote_write queue_config parameters. This object
+// is referenced in the RemoteWriteSpec object.
+// +k8s:openapi-gen=true
+type QueueConfig struct {
+	// Number of samples to buffer per shard before we start dropping them.
+	Capacity int `yaml:"capacity,omitempty"`
+
+	// Max number of shards, i.e. amount of concurrency.
+	MaxShards int `yaml:"max_shards,omitempty"`
+
+	// Maximum number of samples per send.
+	MaxSamplesPerSend int `yaml:"max_samples_per_send,omitempty"`
+
+	// Maximum time sample will wait in buffer.
+	BatchSendDeadline time.Duration `yaml:"batch_send_deadline,omitempty"`
+
+	// Max number of times to retry a batch on recoverable errors.
+	MaxRetries int `yaml:"max_retries,omitempty"`
+
+	// On recoverable errors, backoff exponentially.
+	MinBackoff time.Duration `yaml:"min_backoff,omitempty"`
+	MaxBackoff time.Duration `yaml:"max_backoff,omitempty"`
 }

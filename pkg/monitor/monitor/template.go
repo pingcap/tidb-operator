@@ -144,6 +144,7 @@ type MonitorConfigModel struct {
 	EnableTLSCluster   bool
 	EnableTLSDMCluster bool
 	ExternalLabels     model.LabelSet
+	RemoteWriteConfig  []*config.RemoteWriteConfig
 }
 
 // ClusterRegexInfo is the monitor cluster info
