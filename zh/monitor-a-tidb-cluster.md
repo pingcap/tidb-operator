@@ -14,6 +14,13 @@ TiDB 通过 Prometheus 和 Grafana 监控 TiDB 集群。在通过 TiDB Operator 
 
 在 [TiDB 集群监控](https://pingcap.com/docs-cn/stable/deploy-monitoring-services/)中有一些监控系统配置的细节可供参考。
 
+在 v1.1 及更高版本的 TiDB Operator 中，可以通过简单的 CR 文件（即 TidbMonitor，可参考 [tidb-operator 中的示例](https://github.com/pingcap/tidb-operator/blob/master/manifests/monitor/tidb-monitor.yaml)）来快速建立对 Kubernetes 集群上的 TiDB 集群的监控。
+
+> **注意：**
+>
+> * 一个 TidbMonitor 只支持监控一个 TidbCluster。
+> * `spec.clusters[0].name` 需要配置为 TiDB 集群 TidbCluster 的名字。
+
 ### 持久化监控数据
 
 可以在 `TidbMonitor` 中设置 `spec.persistent` 为 `true` 来持久化监控数据。开启此选项时应将 `spec.storageClassName` 设置为一个当前集群中已有的存储，并且此存储应当支持将数据持久化，否则会存在数据丢失的风险。配置示例如下：
