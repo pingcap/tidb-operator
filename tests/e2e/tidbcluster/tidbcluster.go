@@ -650,6 +650,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	})
 
 	ginkgo.It("TidbMonitor: Deploying and checking monitor", func() {
+		ginkgo.By("deploy initial tc")
 		tc := fixture.GetTidbCluster(ns, "monitor-test", utilimage.TiDBV4UpgradeVersion)
 		tc.Spec.PD.Replicas = 1
 		tc.Spec.TiKV.Replicas = 1
@@ -659,56 +660,62 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
 		framework.ExpectNoError(err, "Expected get tidbcluster")
 
+		ginkgo.By("deploy tidbmonitor")
 		tm := fixture.NewTidbMonitor("monitor-test", ns, tc, true, true, false)
-		deletePVP := corev1.PersistentVolumeReclaimDelete
-		tm.Spec.PVReclaimPolicy = &deletePVP
+		pvpDelete := corev1.PersistentVolumeReclaimDelete
+		tm.Spec.PVReclaimPolicy = &pvpDelete
 		_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(tm)
 		framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
 		err = tests.CheckTidbMonitor(tm, cli, c, fw)
 		framework.ExpectNoError(err, "Expected tidbmonitor checked success")
-		pvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get(monitor.GetMonitorFirstPVCName(tm.Name), metav1.GetOptions{})
-		framework.ExpectNoError(err, "Expected fetch tidbmonitor pvc success")
 
-		pvName := pvc.Spec.VolumeName
-		pv, err := c.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{})
-		framework.ExpectNoError(err, "Expected fetch tidbmonitor pv success")
+		ginkgo.By("check tidbmonitor pv label")
+		err = wait.Poll(5*time.Second, 2*time.Minute, func() (done bool, err error) {
+			pvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get(monitor.GetMonitorFirstPVCName(tm.Name), metav1.GetOptions{})
+			framework.ExpectNoError(err, "Expected fetch tidbmonitor pvc success")
+			pvName := pvc.Spec.VolumeName
+			pv, err := c.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "Expected fetch tidbmonitor pv success")
 
-		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 			value, existed := pv.Labels[label.ComponentLabelKey]
 			if !existed || value != label.TiDBMonitorVal {
+				log.Logf("label %q not synced", label.ComponentLabelKey)
 				return false, nil
 			}
 			value, existed = pv.Labels[label.InstanceLabelKey]
 			if !existed || value != "monitor-test" {
+				log.Logf("label %q not synced", label.InstanceLabelKey)
 				return false, nil
 			}
-
 			value, existed = pv.Labels[label.NameLabelKey]
 			if !existed || value != "tidb-cluster" {
+				log.Logf("label %q not synced", label.NameLabelKey)
 				return false, nil
 			}
 			value, existed = pv.Labels[label.ManagedByLabelKey]
 			if !existed || value != label.TiDBOperator {
+				log.Logf("label %q not synced", label.ManagedByLabelKey)
 				return false, nil
 			}
 			if pv.Spec.PersistentVolumeReclaimPolicy != corev1.PersistentVolumeReclaimDelete {
-				return false, fmt.Errorf("pv[%s] 's policy is not Delete", pv.Name)
+				return false, fmt.Errorf("pv[%s]'s policy is not \"Delete\"", pv.Name)
 			}
 			return true, nil
 		})
-		framework.ExpectNoError(err, "monitor pv label error")
+		framework.ExpectNoError(err, "tidbmonitor pv label error")
 
 		// update TidbMonitor and check whether portName is updated and the nodePort is unchanged
-		tm, err = cli.PingcapV1alpha1().TidbMonitors(ns).Get(tm.Name, metav1.GetOptions{})
-		framework.ExpectNoError(err, "fetch latest tidbmonitor error")
-		tm.Spec.Prometheus.Service.Type = corev1.ServiceTypeNodePort
-		retainPVP := corev1.PersistentVolumeReclaimRetain
-		tm.Spec.PVReclaimPolicy = &retainPVP
-		tm, err = cli.PingcapV1alpha1().TidbMonitors(ns).Update(tm)
+		ginkgo.By("update tidbmonitor service")
+		err = controller.GuaranteedUpdate(genericCli, tm, func() error {
+			tm.Spec.Prometheus.Service.Type = corev1.ServiceTypeNodePort
+			retainPVP := corev1.PersistentVolumeReclaimRetain
+			tm.Spec.PVReclaimPolicy = &retainPVP
+			return nil
+		})
 		framework.ExpectNoError(err, "update tidbmonitor service type error")
 
 		var targetPort int32
-		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+		err = wait.Poll(5*time.Second, 3*time.Minute, func() (done bool, err error) {
 			prometheusSvc, err := c.CoreV1().Services(ns).Get(fmt.Sprintf("%s-prometheus", tm.Name), metav1.GetOptions{})
 			if err != nil {
 				return false, nil
@@ -722,19 +729,19 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			targetPort = prometheusSvc.Spec.Ports[0].NodePort
 			return true, nil
 		})
-		framework.ExpectNoError(err, "first update tidbmonitor service error")
+		framework.ExpectNoError(err, "failed to wait for tidbmonitor service to be changed")
 
-		tm, err = cli.PingcapV1alpha1().TidbMonitors(ns).Get(tm.Name, metav1.GetOptions{})
-		framework.ExpectNoError(err, "fetch latest tidbmonitor again error")
-		newPortName := "any-other-word"
-		tm.Spec.Prometheus.Service.PortName = &newPortName
-		tm, err = cli.PingcapV1alpha1().TidbMonitors(ns).Update(tm)
+		err = controller.GuaranteedUpdate(genericCli, tm, func() error {
+			newPortName := "any-other-word"
+			tm.Spec.Prometheus.Service.PortName = &newPortName
+			return nil
+		})
 		framework.ExpectNoError(err, "update tidbmonitor service portName error")
 
-		pvc, err = c.CoreV1().PersistentVolumeClaims(ns).Get(monitor.GetMonitorFirstPVCName(tm.Name), metav1.GetOptions{})
+		pvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get(monitor.GetMonitorFirstPVCName(tm.Name), metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected fetch tidbmonitor pvc success")
-		pvName = pvc.Spec.VolumeName
-		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+		pvName := pvc.Spec.VolumeName
+		err = wait.Poll(5*time.Second, 3*time.Minute, func() (done bool, err error) {
 			prometheusSvc, err := c.CoreV1().Services(ns).Get(fmt.Sprintf("%s-prometheus", tm.Name), metav1.GetOptions{})
 			if err != nil {
 				return false, nil
@@ -753,7 +760,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			if prometheusSvc.Spec.Ports[0].NodePort != targetPort {
 				return false, nil
 			}
-			pv, err = c.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{})
+			pv, err := c.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{})
 			if err != nil {
 				return false, nil
 			}
@@ -765,6 +772,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		})
 		framework.ExpectNoError(err, "second update tidbmonitor service error")
 
+		ginkgo.By("verify tidbmonitor and tidbcluster PVReclaimPolicy won't affect each other")
 		err = wait.Poll(5*time.Second, 3*time.Minute, func() (done bool, err error) {
 			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
 			if err != nil {
@@ -784,11 +792,12 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			}
 			return false, nil
 		})
-		framework.ExpectEqual(err, wait.ErrWaitTimeout, "verify tidbmonitor and tidbcluster PVReclaimPolicy won't affect each other")
+		framework.ExpectEqual(err, wait.ErrWaitTimeout, "tidbmonitor and tidbcluster PVReclaimPolicy should not affect each other")
 
+		ginkgo.By("delete tidbmonitor")
 		err = cli.PingcapV1alpha1().TidbMonitors(tm.Namespace).Delete(tm.Name, &metav1.DeleteOptions{})
 		framework.ExpectNoError(err, "delete tidbmonitor failed")
-		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+		err = wait.Poll(5*time.Second, 3*time.Minute, func() (done bool, err error) {
 			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
 			if err != nil {
 				return false, err
