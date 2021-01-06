@@ -3415,7 +3415,7 @@ string
 <tbody>
 <tr>
 <td>
-<code>enabled</code></br>
+<code>enable</code></br>
 <em>
 bool
 </em>
@@ -3760,7 +3760,6 @@ string
 </tr>
 <tr>
 <td>
-<<<<<<< HEAD
 <code>public-path-prefix</code></br>
 <em>
 string
@@ -3773,9 +3772,6 @@ string
 <tr>
 <td>
 <code>internal-proxy</code></br>
-=======
-<code>enable</code></br>
->>>>>>> 33e9cc86... fix copr-cache.enable config (#3678)
 <em>
 bool
 </em>
