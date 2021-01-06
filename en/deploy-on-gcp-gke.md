@@ -11,6 +11,8 @@ aliases: ['/docs/tidb-in-kubernetes/dev/deploy-on-gcp-gke/']
 
 This document describes how to deploy a GCP Google Kubernetes Engine (GKE) cluster and deploy a TiDB cluster on GCP GKE.
 
+To deploy TiDB Operator and the TiDB cluster in a self-managed Kubernetes environment, refer to [Deploy TiDB Operator](deploy-tidb-operator.md) and [Deploy TiDB in General Kubernetes](deploy-on-general-kubernetes.md).
+
 ## Prerequisites
 
 Before deploying a TiDB cluster on GCP GKE, make sure the following requirements are satisfied:
