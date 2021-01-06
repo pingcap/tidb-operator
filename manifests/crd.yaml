@@ -1879,6 +1879,7 @@ spec:
                   type: integer
                 requests:
                   type: object
+                rollingUpdateStatefulSetStrategy: {}
                 schedulerName:
                   type: string
                 service:
@@ -3429,6 +3430,7 @@ spec:
                   type: integer
                 requests:
                   type: object
+                rollingUpdateStatefulSetStrategy: {}
                 schedulerName:
                   type: string
                 serviceAccount:
@@ -3463,6 +3465,7 @@ spec:
               type: object
             pvReclaimPolicy:
               type: string
+            rollingUpdateStatefulSetStrategy: {}
             schedulerName:
               type: string
             serviceAccount:
@@ -4970,6 +4973,7 @@ spec:
                   type: integer
                 requests:
                   type: object
+                rollingUpdateStatefulSetStrategy: {}
                 schedulerName:
                   type: string
                 serviceAccount:
@@ -6603,6 +6607,7 @@ spec:
                   type: integer
                 requests:
                   type: object
+                rollingUpdateStatefulSetStrategy: {}
                 schedulerName:
                   type: string
                 separateSlowLog:
@@ -8186,6 +8191,7 @@ spec:
                   type: integer
                 requests:
                   type: object
+                rollingUpdateStatefulSetStrategy: {}
                 schedulerName:
                   type: string
                 serviceAccount:
@@ -9734,6 +9740,7 @@ spec:
                   type: integer
                 requests:
                   type: object
+                rollingUpdateStatefulSetStrategy: {}
                 schedulerName:
                   type: string
                 serviceAccount:
@@ -11646,6 +11653,7 @@ spec:
                   type: integer
                 requests:
                   type: object
+                rollingUpdateStatefulSetStrategy: {}
                 schedulerName:
                   type: string
                 service: {}
@@ -13232,6 +13240,7 @@ spec:
                   type: integer
                 requests:
                   type: object
+                rollingUpdateStatefulSetStrategy: {}
                 schedulerName:
                   type: string
                 statefulSetUpdateStrategy:

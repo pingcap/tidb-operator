@@ -44,23 +44,33 @@ type ComponentAccessor interface {
 	AdditionalVolumeMounts() []corev1.VolumeMount
 	TerminationGracePeriodSeconds() *int64
 	StatefulSetUpdateStrategy() apps.StatefulSetUpdateStrategyType
+	RollingUpdateStatefulSetStrategy() *RollingUpdateStatefulSetStrategy
 }
 
 type componentAccessorImpl struct {
-	imagePullPolicy           corev1.PullPolicy
-	imagePullSecrets          []corev1.LocalObjectReference
-	hostNetwork               *bool
-	affinity                  *corev1.Affinity
-	priorityClassName         *string
-	schedulerName             string
-	clusterNodeSelector       map[string]string
-	clusterAnnotations        map[string]string
-	tolerations               []corev1.Toleration
-	configUpdateStrategy      ConfigUpdateStrategy
-	statefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType
+	imagePullPolicy                  corev1.PullPolicy
+	imagePullSecrets                 []corev1.LocalObjectReference
+	hostNetwork                      *bool
+	affinity                         *corev1.Affinity
+	priorityClassName                *string
+	schedulerName                    string
+	clusterNodeSelector              map[string]string
+	clusterAnnotations               map[string]string
+	tolerations                      []corev1.Toleration
+	configUpdateStrategy             ConfigUpdateStrategy
+	statefulSetUpdateStrategy        apps.StatefulSetUpdateStrategyType
+	rollingUpdateStatefulSetStrategy *RollingUpdateStatefulSetStrategy
 
 	// ComponentSpec is the Component Spec
 	ComponentSpec *ComponentSpec
+}
+
+func (a *componentAccessorImpl) RollingUpdateStatefulSetStrategy() *RollingUpdateStatefulSetStrategy {
+	strategy := a.ComponentSpec.RollingUpdateStatefulSetStrategy
+	if strategy == nil {
+		strategy = a.rollingUpdateStatefulSetStrategy
+	}
+	return strategy
 }
 
 func (a *componentAccessorImpl) StatefulSetUpdateStrategy() apps.StatefulSetUpdateStrategyType {
@@ -227,17 +237,18 @@ func (a *componentAccessorImpl) TerminationGracePeriodSeconds() *int64 {
 
 func buildTidbClusterComponentAccessor(spec *TidbClusterSpec, componentSpec *ComponentSpec) ComponentAccessor {
 	return &componentAccessorImpl{
-		imagePullPolicy:           spec.ImagePullPolicy,
-		imagePullSecrets:          spec.ImagePullSecrets,
-		hostNetwork:               spec.HostNetwork,
-		affinity:                  spec.Affinity,
-		priorityClassName:         spec.PriorityClassName,
-		schedulerName:             spec.SchedulerName,
-		clusterNodeSelector:       spec.NodeSelector,
-		clusterAnnotations:        spec.Annotations,
-		tolerations:               spec.Tolerations,
-		configUpdateStrategy:      spec.ConfigUpdateStrategy,
-		statefulSetUpdateStrategy: spec.StatefulSetUpdateStrategy,
+		imagePullPolicy:                  spec.ImagePullPolicy,
+		imagePullSecrets:                 spec.ImagePullSecrets,
+		hostNetwork:                      spec.HostNetwork,
+		affinity:                         spec.Affinity,
+		priorityClassName:                spec.PriorityClassName,
+		schedulerName:                    spec.SchedulerName,
+		clusterNodeSelector:              spec.NodeSelector,
+		clusterAnnotations:               spec.Annotations,
+		tolerations:                      spec.Tolerations,
+		configUpdateStrategy:             spec.ConfigUpdateStrategy,
+		statefulSetUpdateStrategy:        spec.StatefulSetUpdateStrategy,
+		rollingUpdateStatefulSetStrategy: spec.RollingUpdateStatefulSetStrategy,
 
 		ComponentSpec: componentSpec,
 	}

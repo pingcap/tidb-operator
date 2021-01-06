@@ -89,6 +89,42 @@ const (
 	ConfigUpdateStrategyRollingUpdate ConfigUpdateStrategy = "RollingUpdate"
 )
 
+// PodUpdateStrategyType is a string enumeration type that enumerates
+// all possible ways we can update a Pod when updating application
+type PodUpdateStrategyType string
+
+const (
+	// RecreatePodUpdateStrategyType indicates that we always delete Pod and create new Pod
+	// during Pod update, which is the default behavior
+	RecreatePodUpdateStrategyType PodUpdateStrategyType = "ReCreate"
+	// InPlaceIfPossiblePodUpdateStrategyType indicates that we try to in-place update Pod instead of
+	// recreating Pod when possible. Currently, only image update of pod spec is allowed. Any other changes to the pod
+	// spec will fall back to ReCreate PodUpdateStrategyType where pod will be recreated.
+	InPlaceIfPossiblePodUpdateStrategyType PodUpdateStrategyType = "InPlaceIfPossible"
+	// InPlaceOnlyPodUpdateStrategyType indicates that we will in-place update Pod instead of
+	// recreating pod. Currently we only allow image update for pod spec. Any other changes to the pod spec will be
+	// rejected by kube-apiserver
+	InPlaceOnlyPodUpdateStrategyType PodUpdateStrategyType = "InPlaceOnly"
+)
+
+// InPlaceUpdateStrategy defines the strategies for in-place update.
+type InPlaceUpdateStrategy struct {
+	// GracePeriodSeconds is the timespan between set Pod status to not-ready and update images in Pod spec
+	// when in-place update a Pod.
+	GracePeriodSeconds int32 `json:"gracePeriodSeconds,omitempty"`
+}
+
+// RollingUpdateStatefulSetStrategy is used to communicate parameter for RollingUpdateStatefulSetStrategyType.
+type RollingUpdateStatefulSetStrategy struct {
+	// PodUpdatePolicy indicates how pods should be updated
+	// Default value is "ReCreate"
+	// +optional
+	PodUpdatePolicy PodUpdateStrategyType `json:"podUpdatePolicy,omitempty"`
+	// InPlaceUpdateStrategy contains strategies for in-place update.
+	// +optional
+	InPlaceUpdateStrategy *InPlaceUpdateStrategy `json:"inPlaceUpdateStrategy,omitempty"`
+}
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -257,6 +293,9 @@ type TidbClusterSpec struct {
 	// StatefulSetUpdateStrategy of TiDB cluster StatefulSets
 	// +optional
 	StatefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType `json:"statefulSetUpdateStrategy,omitempty"`
+
+	// RollingUpdateStatefulSetStrategy is used to communicate parameter for RollingUpdateStatefulSetStrategyType.
+	RollingUpdateStatefulSetStrategy *RollingUpdateStatefulSetStrategy `json:"rollingUpdateStatefulSetStrategy,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
@@ -837,6 +876,9 @@ type ComponentSpec struct {
 	// Template.
 	// +optional
 	StatefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType `json:"statefulSetUpdateStrategy,omitempty"`
+
+	// RollingUpdateStatefulSetStrategy is used to communicate parameter for RollingUpdateStatefulSetStrategyType.
+	RollingUpdateStatefulSetStrategy *RollingUpdateStatefulSetStrategy `json:"rollingUpdateStatefulSetStrategy,omitempty"`
 }
 
 // ServiceSpec specifies the service object in k8s

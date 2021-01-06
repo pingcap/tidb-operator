@@ -1547,6 +1547,19 @@ Kubernetes apps/v1.StatefulSetUpdateStrategyType
 <p>StatefulSetUpdateStrategy of TiDB cluster StatefulSets</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>rollingUpdateStatefulSetStrategy</code></br>
+<em>
+<a href="#rollingupdatestatefulsetstrategy">
+RollingUpdateStatefulSetStrategy
+</a>
+</em>
+</td>
+<td>
+<p>RollingUpdateStatefulSetStrategy is used to communicate parameter for RollingUpdateStatefulSetStrategyType.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -3710,6 +3723,19 @@ employed to update Pods in the StatefulSet when a revision is made to
 Template.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>rollingUpdateStatefulSetStrategy</code></br>
+<em>
+<a href="#rollingupdatestatefulsetstrategy">
+RollingUpdateStatefulSetStrategy
+</a>
+</em>
+</td>
+<td>
+<p>RollingUpdateStatefulSetStrategy is used to communicate parameter for RollingUpdateStatefulSetStrategyType.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="configmapref">ConfigMapRef</h3>
@@ -5673,6 +5699,36 @@ Kubernetes core/v1.PullPolicy
 <em>(Optional)</em>
 <p>ImagePullPolicy of the component. Override the cluster-level imagePullPolicy if present
 Optional: Defaults to the cluster-level setting</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="inplaceupdatestrategy">InPlaceUpdateStrategy</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#rollingupdatestatefulsetstrategy">RollingUpdateStatefulSetStrategy</a>)
+</p>
+<p>
+<p>InPlaceUpdateStrategy defines the strategies for in-place update.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>gracePeriodSeconds</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>GracePeriodSeconds is the timespan between set Pod status to not-ready and update images in Pod spec
+when in-place update a Pod.</p>
 </td>
 </tr>
 </tbody>
@@ -9318,6 +9374,15 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="podupdatestrategytype">PodUpdateStrategyType</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#rollingupdatestatefulsetstrategy">RollingUpdateStatefulSetStrategy</a>)
+</p>
+<p>
+<p>PodUpdateStrategyType is a string enumeration type that enumerates
+all possible ways we can update a Pod when updating application</p>
+</p>
 <h3 id="preparedplancache">PreparedPlanCache</h3>
 <p>
 (<em>Appears on:</em>
@@ -10418,6 +10483,54 @@ RestoreConditionType
 </em>
 </td>
 <td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="rollingupdatestatefulsetstrategy">RollingUpdateStatefulSetStrategy</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#componentspec">ComponentSpec</a>, 
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
+</p>
+<p>
+<p>RollingUpdateStatefulSetStrategy is used to communicate parameter for RollingUpdateStatefulSetStrategyType.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>podUpdatePolicy</code></br>
+<em>
+<a href="#podupdatestrategytype">
+PodUpdateStrategyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodUpdatePolicy indicates how pods should be updated
+Default value is &ldquo;ReCreate&rdquo;</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>inPlaceUpdateStrategy</code></br>
+<em>
+<a href="#inplaceupdatestrategy">
+InPlaceUpdateStrategy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>InPlaceUpdateStrategy contains strategies for in-place update.</p>
 </td>
 </tr>
 </tbody>
@@ -18609,6 +18722,19 @@ Kubernetes apps/v1.StatefulSetUpdateStrategyType
 <td>
 <em>(Optional)</em>
 <p>StatefulSetUpdateStrategy of TiDB cluster StatefulSets</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>rollingUpdateStatefulSetStrategy</code></br>
+<em>
+<a href="#rollingupdatestatefulsetstrategy">
+RollingUpdateStatefulSetStrategy
+</a>
+</em>
+</td>
+<td>
+<p>RollingUpdateStatefulSetStrategy is used to communicate parameter for RollingUpdateStatefulSetStrategyType.</p>
 </td>
 </tr>
 </tbody>

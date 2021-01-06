@@ -14,6 +14,7 @@
 package member
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -419,6 +420,17 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiFlashLabelVal)
 	capacity := controller.TiKVCapacity(tc.Spec.TiFlash.Limits)
 	headlessSvcName := controller.TiFlashPeerMemberName(tcName)
+
+	// marshal `tc.spec.rollingUpdateStatefulSetStrategy` field into statefulset annotation.
+	// Notice: this annotation will be unmarshalled into `statefulset.spec.updateStrategy.rollingUpdate` field in advancedStatefulSet of openKruise
+	rollingUpdateStrategy := baseTiFlashSpec.RollingUpdateStatefulSetStrategy()
+	if rollingUpdateStrategy != nil {
+		b, err := json.Marshal(rollingUpdateStrategy)
+		if err != nil {
+			return nil, fmt.Errorf("cannot marshal RollingUpdateStatefulSetStrategy for tiflash, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
+		}
+		stsAnnotations[label.AnnRollingUpdateStrategy] = string(b)
+	}
 
 	env := []corev1.EnvVar{
 		{

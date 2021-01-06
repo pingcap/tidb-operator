@@ -14,6 +14,7 @@
 package member
 
 import (
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"reflect"
@@ -424,6 +425,18 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	setName := controller.TiKVMemberName(tcName)
 	podAnnotations := CombineAnnotations(controller.AnnProm(20180), baseTiKVSpec.Annotations())
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiKVLabelVal)
+
+	// marshal `tc.spec.rollingUpdateStatefulSetStrategy` field into statefulset annotation.
+	// Notice: this annotation will be unmarshalled into `statefulset.spec.updateStrategy.rollingUpdate` field in advancedStatefulSet of openKruise
+	rollingUpdateStrategy := baseTiKVSpec.RollingUpdateStatefulSetStrategy()
+	if rollingUpdateStrategy != nil {
+		b, err := json.Marshal(rollingUpdateStrategy)
+		if err != nil {
+			return nil, fmt.Errorf("cannot marshal RollingUpdateStatefulSetStrategy for tikv, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
+		}
+		stsAnnotations[label.AnnRollingUpdateStrategy] = string(b)
+	}
+
 	capacity := controller.TiKVCapacity(tc.Spec.TiKV.Limits)
 	headlessSvcName := controller.TiKVPeerMemberName(tcName)
 

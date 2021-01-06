@@ -124,6 +124,10 @@ const (
 	// AnnSkipTLSWhenConnectTiDB describes whether skip TLS when connecting to TiDB Server
 	AnnSkipTLSWhenConnectTiDB = "tidb.tidb.pingcap.com/skip-tls-when-connect-tidb"
 
+	// AnnRollingUpdateStrategy is used to marshal the `tc.spec.rollingUpdateStatefulSetStrategy` field into annotation string
+	// which will be finally unmarshalled into `statefulset.spec.updateStrategy.rollingUpdate` field in advancedStatefulSet of openKruise
+	AnnRollingUpdateStrategy = "statefulset.apps.kruise.io/rolling-update-strategy"
+
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"
 	// TiDBLabelVal is TiDB label value

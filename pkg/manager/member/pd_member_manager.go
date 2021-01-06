@@ -14,6 +14,7 @@
 package member
 
 import (
+	"encoding/json"
 	"fmt"
 	"path"
 	"path/filepath"
@@ -681,6 +682,16 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	podAnnotations := CombineAnnotations(controller.AnnProm(2379), basePDSpec.Annotations())
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.PDLabelVal)
 
+	// marshal `tc.spec.rollingUpdateStatefulSetStrategy` field into statefulset annotation.
+	// Notice: this annotation will be unmarshalled into `statefulset.spec.updateStrategy.rollingUpdate` field in advancedStatefulSet of openKruise
+	rollingUpdateStrategy := basePDSpec.RollingUpdateStatefulSetStrategy()
+	if rollingUpdateStrategy != nil {
+		b, err := json.Marshal(rollingUpdateStrategy)
+		if err != nil {
+			return nil, fmt.Errorf("cannot marshal RollingUpdateStatefulSetStrategy for pd, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
+		}
+		stsAnnotations[label.AnnRollingUpdateStrategy] = string(b)
+	}
 	pdContainer := corev1.Container{
 		Name:            v1alpha1.PDMemberType.String(),
 		Image:           tc.PDImage(),

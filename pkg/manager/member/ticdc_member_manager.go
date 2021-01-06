@@ -14,6 +14,7 @@
 package member
 
 import (
+	"encoding/json"
 	"fmt"
 	"path"
 	"strings"
@@ -235,6 +236,17 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error)
 	podAnnotations := CombineAnnotations(controller.AnnProm(8301), baseTiCDCSpec.Annotations())
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiCDCLabelVal)
 	headlessSvcName := controller.TiCDCPeerMemberName(tcName)
+
+	// marshal `tc.spec.rollingUpdateStatefulSetStrategy` field into statefulset annotation.
+	// Notice: this annotation will be unmarshalled into `statefulset.spec.updateStrategy.rollingUpdate` field in advancedStatefulSet of openKruise
+	rollingUpdateStrategy := baseTiCDCSpec.RollingUpdateStatefulSetStrategy()
+	if rollingUpdateStrategy != nil {
+		b, err := json.Marshal(rollingUpdateStrategy)
+		if err != nil {
+			return nil, fmt.Errorf("cannot marshal RollingUpdateStatefulSetStrategy for ticdc, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
+		}
+		stsAnnotations[label.AnnRollingUpdateStrategy] = string(b)
+	}
 
 	cmdArgs := []string{"/cdc server", "--addr=0.0.0.0:8301", fmt.Sprintf("--advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc%s:8301", controller.FormatClusterDomain(tc.Spec.ClusterDomain))}
 	cmdArgs = append(cmdArgs, fmt.Sprintf("--gc-ttl=%d", tc.TiCDCGCTTL()))
