@@ -171,7 +171,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			framework.ExpectNoError(err, "failed to update TidbCluster to upgrade tidb version to %v", utilimage.TiDBV3UpgradeVersion)
 
 			ginkgo.By(fmt.Sprintf("wait for tikv-1 pod upgrading to %q", utilimage.TiDBV3UpgradeVersion))
-			err = wait.Poll(5*time.Second, 2*time.Minute, func() (done bool, err error) {
+			err = wait.Poll(5*time.Second, 10*time.Minute, func() (done bool, err error) {
 				tikvPod, err := c.CoreV1().Pods(ns).Get(fmt.Sprintf("%s-tikv-1", tc.Name), metav1.GetOptions{})
 				if err != nil {
 					return false, nil
