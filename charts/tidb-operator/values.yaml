@@ -33,7 +33,7 @@ tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.1.7
 #     manage pods. This is in alpha phase.
 #
 features: []
-  - KruiseAdvancedStatefulSet=false
+# - KruiseAdvancedStatefulSet=false
 # - AdvancedStatefulSet=false
 # - StableScheduling=true
 # - AutoScaling=false
