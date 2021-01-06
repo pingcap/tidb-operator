@@ -47,6 +47,7 @@ const (
 	// AutoScaling controls whether to use TidbClusterAutoScaler to auto scale-in/out pods
 	AutoScaling string = "AutoScaling"
 
+	// KruiseAdvancedStatefulSet controls whether to use OpenKruise AdvancedStatefulSet to manage pods
 	KruiseAdvancedStatefulSet string = "KruiseAdvancedStatefulSet"
 )
 

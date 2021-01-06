@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/openkruise/kruise-api/apps/pub"
+
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -13,6 +15,7 @@ import (
 	kruiseclientset "github.com/openkruise/kruise-api/client/clientset/versioned"
 	kruiseclientsetv1beta1 "github.com/openkruise/kruise-api/client/clientset/versioned/typed/apps/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -60,23 +63,6 @@ func (s *hijackStatefulSet) Create(sts *appsv1.StatefulSet) (*appsv1.StatefulSet
 	if err != nil {
 		return nil, err
 	}
-	// unmarshal rolling-update-strategy annotation into `Spec.UpdateStrategy.RollingUpdate` in advancedStatefulSet of openKruise
-	if strategyAnn, ok := sts.Annotations[label.AnnRollingUpdateStrategy]; ok {
-		var strategy kruisev1beta1.RollingUpdateStatefulSetStrategy
-		if err := json.Unmarshal([]byte(strategyAnn), &strategy); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal rolling-update-strategy annotation in statefulset %s/%s", sts.Namespace, sts.Name)
-		}
-		kruiseSts.Spec.UpdateStrategy.RollingUpdate = &strategy
-	}
-
-	// unmarshal delete-slots annotation into `Spec.ReserveOrdinals` in advancedStatefulSet of openKruise
-	if ords, ok := sts.Annotations[helper.DeleteSlotsAnn]; ok {
-		var slots []int
-		if err := json.Unmarshal([]byte(ords), &slots); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal delete-slots annotation in statefulset %s/%s", sts.Namespace, sts.Name)
-		}
-		kruiseSts.Spec.ReserveOrdinals = slots
-	}
 
 	kruiseSts, err = s.StatefulSetInterface.Create(kruiseSts)
 	if err != nil {
@@ -89,24 +75,6 @@ func (s *hijackStatefulSet) Update(sts *appsv1.StatefulSet) (*appsv1.StatefulSet
 	kruiseSts, err := FromBuiltinStatefulSet(sts)
 	if err != nil {
 		return nil, err
-	}
-
-	// unmarshal rolling-update-strategy annotation into `Spec.UpdateStrategy.RollingUpdate` in advancedStatefulSet of openKruise
-	if strategyAnn, ok := sts.Annotations[label.AnnRollingUpdateStrategy]; ok {
-		var strategy kruisev1beta1.RollingUpdateStatefulSetStrategy
-		if err := json.Unmarshal([]byte(strategyAnn), &strategy); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal rolling-update-strategy annotation in statefulset %s/%s", sts.Namespace, sts.Name)
-		}
-		kruiseSts.Spec.UpdateStrategy.RollingUpdate = &strategy
-	}
-
-	// unmarshal delete-slots annotation into `Spec.ReserveOrdinals` in advancedStatefulSet of openKruise
-	if ords, ok := sts.Annotations[helper.DeleteSlotsAnn]; ok {
-		var slots []int
-		if err := json.Unmarshal([]byte(ords), &slots); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal delete-slots annotation in statefulset %s/%s", sts.Namespace, sts.Name)
-		}
-		kruiseSts.Spec.ReserveOrdinals = slots
 	}
 
 	kruiseSts, err = s.StatefulSetInterface.Update(kruiseSts)
@@ -226,6 +194,31 @@ func FromBuiltinStatefulSet(sts *appsv1.StatefulSet) (*kruisev1beta1.StatefulSet
 		return nil, err
 	}
 	newSet.TypeMeta.APIVersion = kruisev1beta1.SchemeGroupVersion.String()
+
+	// unmarshal rolling-update-strategy annotation into `Spec.UpdateStrategy.RollingUpdate` in advancedStatefulSet of openKruise
+	if strategyAnn, ok := sts.Annotations[label.AnnRollingUpdateStrategy]; ok {
+		var strategy kruisev1beta1.RollingUpdateStatefulSetStrategy
+		if err := json.Unmarshal([]byte(strategyAnn), &strategy); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal rolling-update-strategy annotation in statefulset %s/%s", sts.Namespace, sts.Name)
+		}
+		newSet.Spec.UpdateStrategy.RollingUpdate = &strategy
+	}
+	newSet.Spec.UpdateStrategy.RollingUpdate.Partition = sts.Spec.UpdateStrategy.RollingUpdate.Partition
+
+	// unmarshal delete-slots annotation into `Spec.ReserveOrdinals` in advancedStatefulSet of openKruise
+	if ords, ok := sts.Annotations[helper.DeleteSlotsAnn]; ok {
+		var slots []int
+		if err := json.Unmarshal([]byte(ords), &slots); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal delete-slots annotation in statefulset %s/%s", sts.Namespace, sts.Name)
+		}
+		newSet.Spec.ReserveOrdinals = slots
+	}
+
+	// add ReadinessGates
+	readinessGates := []corev1.PodReadinessGate{
+		{ConditionType: pub.InPlaceUpdateReady},
+	}
+	newSet.Spec.Template.Spec.ReadinessGates = readinessGates
 	return newSet, nil
 }
 

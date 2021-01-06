@@ -123,14 +123,14 @@ func main() {
 		operatorUpgrader = upgrader.NewUpgrader(kubeCli, cli, asCli, ns)
 	}
 
-	if features.DefaultFeatureGate.Enabled(features.KruiseAdvancedStatefulSet) {
-		// If KruiseAdvancedStatefulSet is enabled, we hijack the Kubernetes client to use
-		// KruiseAdvancedStatefulSet.
-		kubeCli = conversion.NewHijackClient(kubeCli, kruiseCli)
-	} else if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
+	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
 		// If AdvancedStatefulSet is enabled, we hijack the Kubernetes client to use
 		// AdvancedStatefulSet.
-		kubeCli = helper.NewHijackClient(kubeCli, asCli)
+		if features.DefaultFeatureGate.Enabled(features.KruiseAdvancedStatefulSet) {
+			kubeCli = conversion.NewHijackClient(kubeCli, kruiseCli)
+		} else {
+			kubeCli = helper.NewHijackClient(kubeCli, asCli)
+		}
 	}
 
 	deps := controller.NewDependencies(ns, cliCfg, cli, kubeCli, genericCli)

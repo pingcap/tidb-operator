@@ -21,8 +21,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/openkruise/kruise-api/apps/pub"
-
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -738,19 +736,12 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	// marshal `tc.spec.rollingUpdateStatefulSetStrategy` field into statefulset annotation.
 	// Notice: this annotation will be unmarshalled into `statefulset.spec.updateStrategy.rollingUpdate` field in advancedStatefulSet of openKruise
 	rollingUpdateStrategy := baseTiDBSpec.RollingUpdateStatefulSetStrategy()
-	var readinessGates []corev1.PodReadinessGate
 	if rollingUpdateStrategy != nil {
-		rollingUpdateStrategy.Partition = pointer.Int32Ptr(tc.TiDBStsDesiredReplicas())
 		b, err := json.Marshal(rollingUpdateStrategy)
 		if err != nil {
 			return nil, fmt.Errorf("cannot marshal RollingUpdateStatefulSetStrategy for tidb, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
 		}
 		stsAnnotations[label.AnnRollingUpdateStrategy] = string(b)
-		if rollingUpdateStrategy.PodUpdatePolicy == v1alpha1.InPlaceIfPossiblePodUpdateStrategyType ||
-			rollingUpdateStrategy.PodUpdatePolicy == v1alpha1.InPlaceOnlyPodUpdateStrategyType {
-			readinessGates = append(readinessGates, corev1.PodReadinessGate{ConditionType: pub.InPlaceUpdateReady})
-			podSpec.ReadinessGates = readinessGates
-		}
 	}
 
 	updateStrategy := apps.StatefulSetUpdateStrategy{}
