@@ -3415,7 +3415,7 @@ string
 <tbody>
 <tr>
 <td>
-<code>enabled</code></br>
+<code>enable</code></br>
 <em>
 bool
 </em>
