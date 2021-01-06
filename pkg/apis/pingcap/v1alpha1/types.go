@@ -116,6 +116,11 @@ type InPlaceUpdateStrategy struct {
 
 // RollingUpdateStatefulSetStrategy is used to communicate parameter for RollingUpdateStatefulSetStrategyType.
 type RollingUpdateStatefulSetStrategy struct {
+	// Partition indicates the ordinal at which the StatefulSet should be
+	// partitioned.
+	// Default value is 0.
+	// +optional
+	Partition *int32 `json:"partition,omitempty" protobuf:"varint,1,opt,name=partition"`
 	// PodUpdatePolicy indicates how pods should be updated
 	// Default value is "ReCreate"
 	// +optional

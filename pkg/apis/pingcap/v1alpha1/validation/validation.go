@@ -24,9 +24,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pingcap/tidb-operator/pkg/features"
+
 	"github.com/Masterminds/semver"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
@@ -116,6 +119,16 @@ func validateTiDBClusterSpec(spec *v1alpha1.TidbClusterSpec, fldPath *field.Path
 	}
 	if spec.PDAddresses != nil {
 		allErrs = append(allErrs, validatePDAddresses(spec.PDAddresses, fldPath.Child("pdAddresses"))...)
+	}
+	if spec.RollingUpdateStatefulSetStrategy != nil {
+		if spec.StatefulSetUpdateStrategy != appsv1.RollingUpdateStatefulSetStrategyType {
+			allErrs = append(allErrs, field.Forbidden(fldPath.Child("rollingUpdateStatefulSetStrategy"),
+				"Cannot specify rollingUpdateStatefulSetStrategy when statefulSetUpdateStrategy is not RollingUpdate"))
+		}
+		if !features.DefaultFeatureGate.Enabled(features.KruiseAdvancedStatefulSet) {
+			allErrs = append(allErrs, field.Forbidden(fldPath.Child("rollingUpdateStatefulSetStrategy"),
+				"Cannot specify rollingUpdateStatefulSetStrategy when KruiseAdvancedStatefulSet feature is not enabled"))
+		}
 	}
 	return allErrs
 }
@@ -284,6 +297,16 @@ func validateComponentSpec(spec *v1alpha1.ComponentSpec, fldPath *field.Path) fi
 	// TODO validate other fields
 	allErrs = append(allErrs, validateEnv(spec.Env, fldPath.Child("env"))...)
 	allErrs = append(allErrs, validateAdditionalContainers(spec.AdditionalContainers, fldPath.Child("additionalContainers"))...)
+	if spec.RollingUpdateStatefulSetStrategy != nil {
+		if spec.StatefulSetUpdateStrategy != appsv1.RollingUpdateStatefulSetStrategyType {
+			allErrs = append(allErrs, field.Forbidden(fldPath.Child("rollingUpdateStatefulSetStrategy"),
+				"Cannot specify rollingUpdateStatefulSetStrategy when statefulSetUpdateStrategy is not RollingUpdate"))
+		}
+		if !features.DefaultFeatureGate.Enabled(features.KruiseAdvancedStatefulSet) {
+			allErrs = append(allErrs, field.Forbidden(fldPath.Child("rollingUpdateStatefulSetStrategy"),
+				"Cannot specify rollingUpdateStatefulSetStrategy when KruiseAdvancedStatefulSet feature is not enabled"))
+		}
+	}
 	return allErrs
 }
 

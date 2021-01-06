@@ -20,6 +20,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/openkruise/kruise-api/apps/pub"
+
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -424,12 +426,17 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 	// marshal `tc.spec.rollingUpdateStatefulSetStrategy` field into statefulset annotation.
 	// Notice: this annotation will be unmarshalled into `statefulset.spec.updateStrategy.rollingUpdate` field in advancedStatefulSet of openKruise
 	rollingUpdateStrategy := baseTiFlashSpec.RollingUpdateStatefulSetStrategy()
+	var readinessGates []corev1.PodReadinessGate
 	if rollingUpdateStrategy != nil {
 		b, err := json.Marshal(rollingUpdateStrategy)
 		if err != nil {
 			return nil, fmt.Errorf("cannot marshal RollingUpdateStatefulSetStrategy for tiflash, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
 		}
 		stsAnnotations[label.AnnRollingUpdateStrategy] = string(b)
+		if rollingUpdateStrategy.PodUpdatePolicy == v1alpha1.InPlaceIfPossiblePodUpdateStrategyType ||
+			rollingUpdateStrategy.PodUpdatePolicy == v1alpha1.InPlaceOnlyPodUpdateStrategyType {
+			readinessGates = append(readinessGates, corev1.PodReadinessGate{ConditionType: pub.InPlaceUpdateReady})
+		}
 	}
 
 	env := []corev1.EnvVar{
@@ -527,6 +534,7 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 	if podSpec.ServiceAccountName == "" {
 		podSpec.ServiceAccountName = tc.Spec.ServiceAccount
 	}
+	podSpec.ReadinessGates = readinessGates
 
 	tiflashset := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
