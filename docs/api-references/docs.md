@@ -3760,6 +3760,7 @@ string
 </tr>
 <tr>
 <td>
+<<<<<<< HEAD
 <code>public-path-prefix</code></br>
 <em>
 string
@@ -3772,6 +3773,9 @@ string
 <tr>
 <td>
 <code>internal-proxy</code></br>
+=======
+<code>enable</code></br>
+>>>>>>> 33e9cc86... fix copr-cache.enable config (#3678)
 <em>
 bool
 </em>
