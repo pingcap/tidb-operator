@@ -450,7 +450,7 @@ type CoprocessorCache struct {
 	// Whether to enable the copr cache. The copr cache saves the result from TiKV Coprocessor in the memory and
 	// reuses the result when corresponding data in TiKV is unchanged, on a region basis.
 	// +optional
-	Enabled *bool `toml:"enabled,omitempty" json:"enabled,omitempty"`
+	Enabled *bool `toml:"enable,omitempty" json:"enable,omitempty"`
 	// The capacity in MB of the cache.
 	// +optional
 	CapacityMB *float64 `toml:"capacity-mb,omitempty" json:"capacity-mb,omitempty"`
