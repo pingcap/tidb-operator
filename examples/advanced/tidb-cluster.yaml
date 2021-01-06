@@ -165,7 +165,7 @@ spec:
     requests:
     #   cpu: 1000m
     #   memory: 1Gi
-      storage: 1Gi
+      storage: 10Gi
     # limits:
     #   cpu: 2000m
     #   memory: 2Gi
@@ -551,7 +551,7 @@ spec:
     requests:
     #   cpu: 1000m
     #   memory: 1Gi
-      storage: 1Gi
+      storage: 100Gi
     # limits:
     #   cpu: 2000m
     #   memory: 2Gi
