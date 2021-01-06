@@ -21,13 +21,9 @@ import (
 	"os"
 	"reflect"
 
-	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
-
-	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
-
-	"github.com/pingcap/tidb-operator/pkg/util/conversion"
-
 	kruiseclientset "github.com/openkruise/kruise-api/client/clientset/versioned"
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
+	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/controller/autoscaler"
@@ -41,6 +37,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbmonitor"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
+	"github.com/pingcap/tidb-operator/pkg/upgrader"
+	"github.com/pingcap/tidb-operator/pkg/util/conversion"
 	"github.com/pingcap/tidb-operator/pkg/version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -117,13 +115,12 @@ func main() {
 	}
 
 	// note that kubeCli here must not be the hijacked one
-	// TODO
-	//var operatorUpgrader upgrader.Interface
-	//if cliCfg.ClusterScoped {
-	//	operatorUpgrader = upgrader.NewUpgrader(kubeCli, cli, kruiseCli, metav1.NamespaceAll)
-	//} else {
-	//	operatorUpgrader = upgrader.NewUpgrader(kubeCli, cli, kruiseCli, ns)
-	//}
+	var operatorUpgrader upgrader.Interface
+	if cliCfg.ClusterScoped {
+		operatorUpgrader = upgrader.NewUpgrader(kubeCli, cli, kruiseCli, metav1.NamespaceAll)
+	} else {
+		operatorUpgrader = upgrader.NewUpgrader(kubeCli, cli, kruiseCli, ns)
+	}
 
 	if features.DefaultFeatureGate.Enabled(features.KruiseAdvancedStatefulSet) {
 		// If KruiseAdvancedStatefulSet is enabled, we hijack the Kubernetes client to use
@@ -142,10 +139,9 @@ func main() {
 	onStarted := func(ctx context.Context) {
 		// Upgrade before running any controller logic. If it fails, we wait
 		// for process supervisor to restart it again.
-		// TODO
-		//if err := operatorUpgrader.Upgrade(); err != nil {
-		//	klog.Fatalf("failed to upgrade: %v", err)
-		//}
+		if err := operatorUpgrader.Upgrade(); err != nil {
+			klog.Fatalf("failed to upgrade: %v", err)
+		}
 
 		// Define some nested types to simplify the codebase
 		type Controller interface {
