@@ -47,6 +47,7 @@ GINKGO_NO_COLOR=${GINKGO_NO_COLOR:-n}
 GINKGO_STREAM=${GINKGO_STREAM:-y}
 GINKGO_PROGRESS=${GINKGO_PROGRESS:-y}
 GINKGO_TRACE=${GINKGO_TRACE:-y}
+GINKGO_FLAKY_ATTEMPTS=${GINKGO_FLAKY_ATTEMPTS:-1}
 SKIP_GINKGO=${SKIP_GINKGO:-}
 # We don't delete namespace on failure by default for easier debugging in local development.
 DELETE_NAMESPACE_ON_FAILURE=${DELETE_NAMESPACE_ON_FAILURE:-false}
@@ -70,6 +71,7 @@ echo "GINKGO_NO_COLOR: $GINKGO_NO_COLOR"
 echo "GINKGO_STREAM: $GINKGO_STREAM"
 echo "GINKGO_PROGRESS: $GINKGO_PROGRESS"
 echo "GINKGO_TRACE: $GINKGO_TRACE"
+echo "GINKGO_FLAKY_ATTEMPTS: $GINKGO_FLAKY_ATTEMPTS"
 echo "DELETE_NAMESPACE_ON_FAILURE: $DELETE_NAMESPACE_ON_FAILURE"
 
 function e2e::__wait_for_ds() {
@@ -335,6 +337,10 @@ fi
 
 if [[ "${GINKGO_TRACE}" == "y" ]]; then
     ginkgo_args+=("--trace")
+fi
+
+if [[ -n "${GINKGO_FLAKY_ATTEMPTS:-}" ]]; then
+    ginkgo_args+=("--flakeAttempts=${GINKGO_FLAKY_ATTEMPTS}")
 fi
 
 tester_args=(
