@@ -170,7 +170,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 					tc.Spec.TiDB.Replicas = 3
 					tc.Spec.TiKV.Replicas = 4
-					tc.Spec.PD.Replicas = 4
+					tc.Spec.PD.Replicas = 5
 					return nil
 				})
 				framework.ExpectNoError(err, "failed to scale out TidbCluster: %v", tc)
@@ -181,7 +181,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 				ginkgo.By("scale in tidb, tikv, pd")
 				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-					tc.Spec.TiDB.Replicas = 2
+					tc.Spec.TiDB.Replicas = 1
 					tc.Spec.TiKV.Replicas = 3
 					tc.Spec.PD.Replicas = 3
 					return nil
