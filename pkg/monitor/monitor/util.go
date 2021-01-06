@@ -45,6 +45,61 @@ func buildTidbMonitorLabel(name string) map[string]string {
 	return label.NewMonitor().Instance(name).Monitor().Labels()
 }
 
+<<<<<<< HEAD
+=======
+func getInitCommand(monitor *v1alpha1.TidbMonitor) []string {
+	c := `mkdir -p /data/prometheus
+chmod 777 /data/prometheus
+/usr/bin/init.sh`
+	if monitor.Spec.Grafana != nil {
+		c = `mkdir -p /data/prometheus /data/grafana
+chmod 777 /data/prometheus /data/grafana
+/usr/bin/init.sh`
+	}
+	command := []string{
+		"/bin/sh",
+		"-c",
+		c,
+	}
+	return command
+}
+
+func getGrafanaVolumeMounts() []core.VolumeMount {
+	return []core.VolumeMount{
+		{
+			MountPath: "/etc/grafana/provisioning/datasources",
+			Name:      "datasource",
+			ReadOnly:  false,
+		}, {
+			MountPath: "/grafana-dashboard-definitions/tidb",
+			Name:      "grafana-dashboard",
+			ReadOnly:  false,
+		},
+	}
+}
+
+func getGrafanaEnvs() []core.EnvVar {
+	return []core.EnvVar{
+		{
+			Name:  "GF_PROVISIONING_PATH",
+			Value: "/grafana-dashboard-definitions/tidb",
+		},
+		{
+			Name:  "GF_DATASOURCE_PATH",
+			Value: "/etc/grafana/provisioning/datasources",
+		},
+	}
+}
+
+func getAlertManagerRulesVersion(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) string {
+	alertManagerRulesVersion := fmt.Sprintf("tidb:%s", monitor.Spec.Initializer.Version)
+	if monitor.Spec.AlertManagerRulesVersion != nil {
+		alertManagerRulesVersion = fmt.Sprintf("tidb:%s", *monitor.Spec.AlertManagerRulesVersion)
+	}
+	return alertManagerRulesVersion
+}
+
+>>>>>>> f68851ec... change alertManagerRulesVersion from TiDB version to initializer image version (#3684)
 // getMonitorConfigMap generate the Prometheus config and Grafana config for TidbMonitor,
 // If the namespace in ClusterRef is empty, we would set the TidbMonitor's namespace in the default
 func getMonitorConfigMap(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) (*core.ConfigMap, error) {
@@ -524,7 +579,7 @@ func getMonitorReloaderContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.Tid
 		Command: []string{
 			"/bin/reload",
 			"--root-store-path=/data",
-			fmt.Sprintf("--sub-store-path=%s", tc.TiDBImage()),
+			fmt.Sprintf("--sub-store-path=%s", getAlertManagerRulesVersion(tc, monitor)),
 			"--watch-path=/prometheus-rules/rules",
 			"--prometheus-url=http://127.0.0.1:9090",
 		},
