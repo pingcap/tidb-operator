@@ -21,6 +21,10 @@ import (
 	"os"
 	"reflect"
 
+	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
+
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
+
 	"github.com/pingcap/tidb-operator/pkg/util/conversion"
 
 	kruiseclientset "github.com/openkruise/kruise-api/client/clientset/versioned"
@@ -98,6 +102,10 @@ func main() {
 	if err != nil {
 		klog.Fatalf("failed to get kubernetes Clientset: %v", err)
 	}
+	asCli, err := asclientset.NewForConfig(cfg)
+	if err != nil {
+		klog.Fatalf("failed to get advanced-statefulset Clientset: %v", err)
+	}
 	kruiseCli, err := kruiseclientset.NewForConfig(cfg)
 	if err != nil {
 		klog.Fatalf("failed to get advanced-statefulset Clientset: %v", err)
@@ -117,10 +125,14 @@ func main() {
 	//	operatorUpgrader = upgrader.NewUpgrader(kubeCli, cli, kruiseCli, ns)
 	//}
 
-	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
+	if features.DefaultFeatureGate.Enabled(features.KruiseAdvancedStatefulSet) {
+		// If KruiseAdvancedStatefulSet is enabled, we hijack the Kubernetes client to use
+		// KruiseAdvancedStatefulSet.
+		kubeCli = conversion.NewHijackClient(kubeCli, kruiseCli)
+	} else if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
 		// If AdvancedStatefulSet is enabled, we hijack the Kubernetes client to use
 		// AdvancedStatefulSet.
-		kubeCli = conversion.NewHijackClient(kubeCli, kruiseCli)
+		kubeCli = helper.NewHijackClient(kubeCli, asCli)
 	}
 
 	deps := controller.NewDependencies(ns, cliCfg, cli, kubeCli, genericCli)
