@@ -176,7 +176,7 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monit
 				})
 			}
 			remoteWriteConfigs = append(remoteWriteConfigs, &config.RemoteWriteConfig{
-				URL:                 &config.URL{url},
+				URL:                 &config.URL{URL: url},
 				RemoteTimeout:       remoteWrite.RemoteTimeout,
 				WriteRelabelConfigs: writeRelabelConfigs,
 				HTTPClientConfig:    httpClientConfig,
