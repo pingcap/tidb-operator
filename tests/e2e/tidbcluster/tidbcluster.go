@@ -649,7 +649,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		framework.ExpectNoError(err, "failed to waite for configmaps to be controlled by TidbCluster")
 	})
 
-	ginkgo.It("TidbMonitor: Deploying and checking monitor", func() {
+	ginkgo.It("should manage tidb monitor normally", func() {
 		ginkgo.By("deploy initial tc")
 		tc := fixture.GetTidbCluster(ns, "monitor-test", utilimage.TiDBV4UpgradeVersion)
 		tc.Spec.PD.Replicas = 1
@@ -810,7 +810,8 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		framework.ExpectNoError(err, "tc monitorRef status failed to clean after monitor deleted")
 	})
 
-	ginkgo.It("TiDB cluster can be paused and unpaused", func() {
+	ginkgo.It("can be paused and resumed", func() {
+		ginkgo.By("deploy initial tc")
 		tcName := "paused"
 		tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV3Version)
 		tc.Spec.PD.Replicas = 1
@@ -818,7 +819,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		tc.Spec.TiDB.Replicas = 1
 		err := genericCli.Create(context.TODO(), tc)
 		framework.ExpectNoError(err, "failed to create TidbCluster: %+v", tc)
-		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+		err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
 		framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %+v", tc)
 
 		podListBeforePaused, err := c.CoreV1().Pods(ns).List(metav1.ListOptions{})
@@ -829,30 +830,31 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tc.Spec.Paused = true
 			return nil
 		})
-		framework.ExpectNoError(err, "failed to update TidbCluster: %+v", tc)
-		ginkgo.By("Make a change")
+		framework.ExpectNoError(err, "failed to pause TidbCluster: %+v", tc)
+
+		ginkgo.By(fmt.Sprintf("change tc version to %q", utilimage.TiDBV3UpgradeVersion))
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 			tc.Spec.Version = utilimage.TiDBV3UpgradeVersion
 			return nil
 		})
-		framework.ExpectNoError(err, "failed to update TidbCluster: %+v", tc)
+		framework.ExpectNoError(err, "failed to upgrade TidbCluster version: %+v", tc)
 
-		ginkgo.By("Check pods are not changed when the tidb cluster is paused")
-		err = utilpod.WaitForPodsAreChanged(c, podListBeforePaused.Items, time.Minute*5)
+		ginkgo.By("Check pods are not changed when the tidb cluster is paused for 3 min")
+		err = utilpod.WaitForPodsAreChanged(c, podListBeforePaused.Items, 3*time.Minute)
 		framework.ExpectEqual(err, wait.ErrWaitTimeout, "Pods are changed when the tidb cluster is paused")
 
-		ginkgo.By("Unpause the tidb cluster")
+		ginkgo.By("resume the tidb cluster")
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 			tc.Spec.Paused = false
 			return nil
 		})
-		framework.ExpectNoError(err, "failed to update TidbCluster: %+v", tc)
+		framework.ExpectNoError(err, "failed to resume TidbCluster: %+v", tc)
 
-		ginkgo.By("Check the tidb cluster will be upgraded now")
+		ginkgo.By("Check the tidb cluster will be upgraded")
 		listOptions := metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(label.New().Instance(tcName).Component(label.TiKVLabelVal).Labels()).String(),
 		}
-		err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
+		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
 			podList, err := c.CoreV1().Pods(ns).List(listOptions)
 			if err != nil && !apierrors.IsNotFound(err) {
 				return false, err
@@ -868,10 +870,12 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			}
 			return false, nil
 		})
-		framework.ExpectNoError(err, "wait for tikv upgraded timeout: %+v", tc)
+		framework.ExpectNoError(err, "failed to wait for tikv upgraded: %+v", tc)
 	})
 
-	ginkgo.It("[Feature: AutoFailover] clear TiDB failureMembers when scale TiDB to zero", func() {
+	// TODO: explain purpose of this case
+	ginkgo.It("[Feature: AutoFailover] should clear TiDB failureMembers when scale TiDB to zero", func() {
+		ginkgo.By("deploy initial tc with bad tidb pre-start script")
 		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "tidb-scale", "admin", utilimage.TiDBV3Version)
 		tcCfg.Resources["pd.replicas"] = "3"
 		tcCfg.Resources["tikv.replicas"] = "1"
@@ -880,30 +884,28 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		tcCfg.TiDBPreStartScript = strconv.Quote("exit 1")
 		oa.DeployTidbClusterOrDie(&tcCfg)
 
-		log.Logf("checking tidb cluster [%s/%s] failed member", tcCfg.Namespace, tcCfg.ClusterName)
+		ginkgo.By("check tidb failure member count")
 		ns := tcCfg.Namespace
 		tcName := tcCfg.ClusterName
-		err := wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
+		err := wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
 			var tc *v1alpha1.TidbCluster
 			var err error
 			if tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
 				log.Logf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
 				return false, nil
 			}
-			if len(tc.Status.TiDB.FailureMembers) == 0 {
-				log.Logf("the number of failed member is zero")
-				return false, nil
+			if len(tc.Status.TiDB.FailureMembers) == 1 {
+				return true, nil
 			}
-			log.Logf("the number of failed member is not zero (current: %d)", len(tc.Status.TiDB.FailureMembers))
-			return true, nil
+			log.Logf("the number of failed tidb member is not 1 (current: %d)", len(tc.Status.TiDB.FailureMembers))
+			return false, nil
 		})
-		framework.ExpectNoError(err, "tidb failover not work")
+		framework.ExpectNoError(err, "expect tidb failure member count = 1")
 
+		ginkgo.By("scale tidb to 0")
 		tcCfg.ScaleTiDB(0)
 		oa.ScaleTidbClusterOrDie(&tcCfg)
-
-		log.Logf("checking tidb cluster [%s/%s] scale to zero", tcCfg.Namespace, tcCfg.ClusterName)
-		err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
+		err = wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
 			var tc *v1alpha1.TidbCluster
 			var err error
 			if tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
@@ -925,7 +927,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	})
 
 	ginkgo.Context("[Feature: AutoScaling]", func() {
-		ginkgo.It("auto-scaling TiKV", func() {
+		ginkgo.It("should auto scale TiKV pods", func() {
 			clusterName := "auto-scaling-tikv"
 			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBNightlyVersion)
 			tc.Spec.PD.Replicas = 1
@@ -1477,7 +1479,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			}
 			err = genericCli.Create(context.TODO(), tc)
 			framework.ExpectNoError(err, "failed to create TidbCluster: %+v", tc)
-			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %+v", tc)
 
 			ginkgo.By("Ensure Dashboard use custom secret")
@@ -1518,7 +1520,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			targetTc.Spec.TiDB.Replicas = 1
 			err = genericCli.Create(context.TODO(), targetTc)
 			framework.ExpectNoError(err, "failed to create TidbCluster: %v", targetTc)
-			err = oa.WaitForTidbClusterReady(targetTc, 30*time.Minute, 15*time.Second)
+			err = oa.WaitForTidbClusterReady(targetTc, 10*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err, "wait for TidbCluster timeout: %v", targetTc)
 
 			drainerConfig := &tests.DrainerConfig{
@@ -1560,7 +1562,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				return nil
 			})
 			framework.ExpectNoError(err, "failed to update TidbCluster: %+v", tc)
-			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %+v", tc)
 
 			ginkgo.By("Scaling in tidb cluster")
@@ -1571,7 +1573,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				return nil
 			})
 			framework.ExpectNoError(err, "failed to update TidbCluster: %+v", tc)
-			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %+v", tc)
 
 			ginkgo.By("Upgrading tidb cluster")
@@ -1580,7 +1582,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				return nil
 			})
 			framework.ExpectNoError(err, "failed to update TidbCluster: %+v", tc)
-			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %+v", tc)
 		})
 
@@ -1633,7 +1635,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			}
 			err = genericCli.Create(context.TODO(), tc)
 			framework.ExpectNoError(err, "failed to create TidbCluster: %+v", tc)
-			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %+v", tc)
 
 			ginkgo.By("Creating heterogeneous tidb cluster")
@@ -1658,7 +1660,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			err = genericCli.Create(context.TODO(), heterogeneousTc)
 			framework.ExpectNoError(err, "failed to create heterogeneous TidbCluster: %v", heterogeneousTc)
 			ginkgo.By("Waiting heterogeneous tls tidb cluster ready")
-			err = oa.WaitForTidbClusterReady(heterogeneousTc, 30*time.Minute, 15*time.Second)
+			err = oa.WaitForTidbClusterReady(heterogeneousTc, 10*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %+v", tc)
 			ginkgo.By("Checking heterogeneous tls tidb cluster status")
 			err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
@@ -1722,7 +1724,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			targetTc.Spec.TiDB.Replicas = 1
 			err = genericCli.Create(context.TODO(), targetTc)
 			framework.ExpectNoError(err, "failed to create TidbCluster: %v", targetTc)
-			err = oa.WaitForTidbClusterReady(targetTc, 30*time.Minute, 15*time.Second)
+			err = oa.WaitForTidbClusterReady(targetTc, 10*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %+v", tc)
 
 			drainerConfig := &tests.DrainerConfig{
@@ -1772,7 +1774,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		}
 		err := genericCli.Create(context.TODO(), nodeTc)
 		framework.ExpectNoError(err, "Expected TiDB cluster created")
-		err = oa.WaitForTidbClusterReady(nodeTc, 30*time.Minute, 15*time.Second)
+		err = oa.WaitForTidbClusterReady(nodeTc, 10*time.Minute, 5*time.Second)
 		framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
 		// expect tidb service type is Nodeport
@@ -1860,7 +1862,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		originTc.Spec.TiDB.Replicas = 1
 		err := genericCli.Create(context.TODO(), originTc)
 		framework.ExpectNoError(err, "Expected TiDB cluster created")
-		err = oa.WaitForTidbClusterReady(originTc, 30*time.Minute, 15*time.Second)
+		err = oa.WaitForTidbClusterReady(originTc, 10*time.Minute, 5*time.Second)
 		framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
 		heterogeneousTc := fixture.GetTidbCluster(ns, "heterogeneous", utilimage.TiDBV4UpgradeVersion)
@@ -1919,7 +1921,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		}
 		err := genericCli.Create(context.TODO(), fromTc)
 		framework.ExpectNoError(err, "Expected TiDB cluster created")
-		err = oa.WaitForTidbClusterReady(fromTc, 30*time.Minute, 15*time.Second)
+		err = oa.WaitForTidbClusterReady(fromTc, 10*time.Minute, 5*time.Second)
 		framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
 		ginkgo.By("Creating cdc-sink cluster")
@@ -1929,7 +1931,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		toTc.Spec.TiDB.Replicas = 1
 		err = genericCli.Create(context.TODO(), toTc)
 		framework.ExpectNoError(err, "Expected TiDB cluster created")
-		err = oa.WaitForTidbClusterReady(toTc, 30*time.Minute, 15*time.Second)
+		err = oa.WaitForTidbClusterReady(toTc, 10*time.Minute, 5*time.Second)
 		framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
 		ginkgo.By("Creating change feed task")
