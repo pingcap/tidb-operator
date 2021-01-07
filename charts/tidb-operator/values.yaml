@@ -12,12 +12,12 @@ rbac:
 timezone: UTC
 
 # operatorImage is TiDB Operator image
-operatorImage: pingcap/tidb-operator:v1.1.7
+operatorImage: pingcap/tidb-operator:v1.1.9
 imagePullPolicy: IfNotPresent
 # imagePullSecrets: []
 
 # tidbBackupManagerImage is tidb backup manager image
-tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.1.7
+tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.1.9
 
 #
 # Enable or disable tidb-operator features:
@@ -38,7 +38,10 @@ features: []
 # - StableScheduling=true
 # - AutoScaling=false
 
+appendReleaseSuffix: false
+
 controllerManager:
+  create: true
   # With rbac.create=false, the user is responsible for creating this account
   # With rbac.create=true, this service account will be created
   # Also see rbac.create and clusterScoped
@@ -80,8 +83,15 @@ controllerManager:
   #   operator: Equal
   #   value: tidb-operator
   #   effect: "NoSchedule"
+  ## Selector (label query) to filter on, make sure that this controller manager only manages the custom resources that match the labels
+  ## refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#equality-based-requirement
+  selector: []
+  # - canary-release=v1
+  # - k1==v1
+  # - k2!=v2
 
 scheduler:
+  create: true
   # With rbac.create=false, the user is responsible for creating this account
   # With rbac.create=true, this service account will be created
   # Also see rbac.create and clusterScoped

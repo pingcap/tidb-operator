@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"os/exec"
 
-	"k8s.io/klog"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 const (
@@ -50,11 +50,11 @@ func (m *Manager) systemctlStartService(serviceName string) error {
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		klog.Errorf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
+		log.Logf("ERROR: exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
 		return err
 	}
 
-	klog.Infof("%s is started", serviceName)
+	log.Logf("%s is started", serviceName)
 
 	return nil
 }
@@ -64,11 +64,11 @@ func (m *Manager) systemctlStopService(serviceName string) error {
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		klog.Errorf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
+		log.Logf("ERROR: exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
 		return err
 	}
 
-	klog.Infof("%s is stopped", serviceName)
+	log.Logf("%s is stopped", serviceName)
 
 	return nil
 }

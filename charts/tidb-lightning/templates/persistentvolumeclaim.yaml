@@ -18,3 +18,23 @@ spec:
     requests:
       storage: {{ .Values.dataSource.remote.storage }}
 {{ end -}}
+---
+{{ if eq .Values.backend "local" }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "tidb-lightning.name" . }}-sorted-kv
+  labels:
+    app.kubernetes.io/name: {{ include "tidb-lightning.name" . }}-sorted-kv
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Values.targetTidbCluster.name }}
+    app.kubernetes.io/component: tidb-lightning
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  storageClassName: {{ .Values.sortedKV.storageClassName }}
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.sortedKV.storage }}
+{{ end -}}

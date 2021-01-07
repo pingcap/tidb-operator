@@ -49,11 +49,24 @@ then
 fi
 
 # Use HOSTNAME if POD_NAME is unset for backward compatibility.
-POD_NAME=${POD_NAME:-$HOSTNAME}
+POD_NAME=${POD_NAME:-$HOSTNAME}{{ if .FormatClusterDomain }}
+pd_url="{{ .Path }}"
+encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
+discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}.svc{{ .FormatClusterDomain }}:10261"
+until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
+echo "waiting for the verification of PD endpoints ..."
+sleep $((RANDOM % 5))
+done
+
 ARGS="--store=tikv \
 --advertise-address=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc{{ .FormatClusterDomain }} \
 --host=0.0.0.0 \
---path={{ .Path }} \
+--path=${result} \
+{{ else }}
+ARGS="--store=tikv \
+--advertise-address=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc{{ .FormatClusterDomain }} \
+--host=0.0.0.0 \
+--path={{ .Path }} \{{ end }}
 --config=/etc/tidb/tidb.toml
 "
 
@@ -236,8 +249,19 @@ then
 fi
 
 # Use HOSTNAME if POD_NAME is unset for backward compatibility.
-POD_NAME=${POD_NAME:-$HOSTNAME}
-ARGS="--pd={{ .PDAddress }} \
+POD_NAME=${POD_NAME:-$HOSTNAME}{{ if .FormatClusterDomain }}
+pd_url="{{ .PDAddress }}"
+encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
+discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}.svc{{ .FormatClusterDomain }}:10261"
+
+until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
+echo "waiting for the verification of PD endpoints ..."
+sleep $((RANDOM % 5))
+done
+
+ARGS="--pd=${result} \
+{{ else }}
+ARGS="--pd={{ .PDAddress }} \{{ end }}
 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc{{ .FormatClusterDomain }}:20160 \
 --addr=0.0.0.0:20160 \
 --status-addr=0.0.0.0:20180 \{{if .EnableAdvertiseStatusAddr }}

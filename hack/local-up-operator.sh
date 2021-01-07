@@ -185,7 +185,7 @@ helm_args=(
 $HELM_BIN ${helm_args[@]} ./charts/tidb-operator/ | kubectl -n "$NAMESPACE" apply -f  -
 
 deploys=(
-    tidb-controller-manager 
+    tidb-controller-manager
     tidb-scheduler
 )
 for deploy in ${deploys[@]}; do

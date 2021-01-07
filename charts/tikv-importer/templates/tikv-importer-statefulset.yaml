@@ -5,14 +5,14 @@ metadata:
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
     app.kubernetes.io/component: importer
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ template "chart.name" . }}
-      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/instance: {{ .Values.clusterName }}
       app.kubernetes.io/component: importer
   serviceName: {{ .Values.clusterName }}-importer
   replicas: 1
@@ -21,10 +21,10 @@ spec:
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/path: "/metrics"
-        prometheus.io/port: "9091"
+        prometheus.io/port: "8286"
       labels:
         app.kubernetes.io/name: {{ template "chart.name" . }}
-        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/instance: {{ .Values.clusterName }}
         app.kubernetes.io/component: importer
     spec:
     {{- if .Values.affinity }}
@@ -68,13 +68,15 @@ spec:
           mountPath: /var/lib/tikv-importer
         - name: config
           mountPath: /etc/tikv-importer
+        {{- if and .Values.tlsCluster .Values.tlsCluster.enabled }}
+        - name: importer-tls
+          mountPath: /var/lib/importer-tls
+          readOnly: true
+        {{- end }}
         {{- if .Values.resources }}
         resources:
 {{ toYaml .Values.resources | indent 10 }}
         {{- end }}
-      - name: pushgateway
-        image: {{ .Values.pushgatewayImage }}
-        imagePullPolicy: {{ .Values.pushgatewayImagePullPolicy | default "IfNotPresent" }}
       volumes:
       - name: config
         configMap:
@@ -82,6 +84,11 @@ spec:
           items:
           - key: config-file
             path: tikv-importer.toml
+      {{- if and .Values.tlsCluster .Values.tlsCluster.enabled }}
+      - name: importer-tls
+        secret:
+          secretName: {{ .Values.clusterName }}-importer-cluster-secret
+      {{- end }}
   volumeClaimTemplates:
   - metadata:
       name: data

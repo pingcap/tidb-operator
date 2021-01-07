@@ -1,0 +1,45 @@
+# IT IS NOT SUITABLE FOR PRODUCTION USE.
+# This YAML describes a basic TiDB cluster with minimum resource requirements,
+# which should be able to run in any Kubernetes cluster with storage support.
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: basic-tls
+spec:
+  tlsCluster:
+    enabled: true
+  version: v4.0.9
+  timezone: UTC
+  pvReclaimPolicy: Delete
+  enableDynamicConfiguration: true
+  configUpdateStrategy: RollingUpdate
+  discovery: {}
+
+  pd:
+    baseImage: pingcap/pd
+    replicas: 1
+    requests:
+      storage: "1Gi"
+    config: |
+      [security]
+        cert-allowed-cn = [ "TiDB" ]
+
+  tikv:
+    baseImage: pingcap/tikv
+    replicas: 1
+    requests:
+      storage: "1Gi"
+    config: |
+      [security]
+        cert-allowed-cn = [ "TiDB" ]
+
+  tidb:
+    baseImage: pingcap/tidb
+    replicas: 1
+    service:
+      type: NodePort
+    tlsClient:
+      enabled: true
+    config: |
+      [security]
+        cert-verify-cn = [ "TiDB" ]

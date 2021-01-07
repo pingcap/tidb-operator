@@ -22,11 +22,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/sets"
+	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
-	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
+	"k8s.io/kubernetes/test/e2e/framework/pod"
 )
 
-func startWebhook(f *framework.Framework, image, ns, svcName string, cert []byte, key []byte) (*v1.Pod, *v1.Service) {
+func startWebhook(c clientset.Interface, image, ns, svcName string, cert []byte, key []byte) (*v1.Pod, *v1.Service) {
 	var err error
 	cm := &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -38,7 +39,7 @@ func startWebhook(f *framework.Framework, image, ns, svcName string, cert []byte
 			"webhook.key":  key,
 		},
 	}
-	cm, err = f.ClientSet.CoreV1().ConfigMaps(ns).Create(cm)
+	cm, err = c.CoreV1().ConfigMaps(ns).Create(cm)
 	framework.ExpectNoError(err, "failed to create ConfigMap")
 
 	sa := &v1.ServiceAccount{
@@ -47,7 +48,7 @@ func startWebhook(f *framework.Framework, image, ns, svcName string, cert []byte
 			Name:      "webhook",
 		},
 	}
-	sa, err = f.ClientSet.CoreV1().ServiceAccounts(ns).Create(sa)
+	sa, err = c.CoreV1().ServiceAccounts(ns).Create(sa)
 	framework.ExpectNoError(err, "failed to create ServiceAccount")
 
 	role := &rbacv1.Role{
@@ -68,7 +69,7 @@ func startWebhook(f *framework.Framework, image, ns, svcName string, cert []byte
 			},
 		},
 	}
-	role, err = f.ClientSet.RbacV1().Roles(ns).Create(role)
+	role, err = c.RbacV1().Roles(ns).Create(role)
 	framework.ExpectNoError(err, "failed to create Role")
 
 	roleBinding := &rbacv1.RoleBinding{
@@ -88,7 +89,7 @@ func startWebhook(f *framework.Framework, image, ns, svcName string, cert []byte
 			Name:     role.Name,
 		},
 	}
-	_, err = f.ClientSet.RbacV1().RoleBindings(ns).Create(roleBinding)
+	_, err = c.RbacV1().RoleBindings(ns).Create(roleBinding)
 	framework.ExpectNoError(err, "failed to create RoleBinding")
 
 	svc := &v1.Service{
@@ -108,10 +109,10 @@ func startWebhook(f *framework.Framework, image, ns, svcName string, cert []byte
 			},
 		},
 	}
-	svc, err = f.ClientSet.CoreV1().Services(ns).Create(svc)
+	svc, err = c.CoreV1().Services(ns).Create(svc)
 	framework.ExpectNoError(err, "failed to create Service")
 
-	pod := &v1.Pod{
+	_pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ns,
 			Name:      "webhook",
@@ -155,12 +156,12 @@ func startWebhook(f *framework.Framework, image, ns, svcName string, cert []byte
 			RestartPolicy:      v1.RestartPolicyNever,
 		},
 	}
-	pod, err = f.ClientSet.CoreV1().Pods(ns).Create(pod)
+	_pod, err = c.CoreV1().Pods(ns).Create(_pod)
 	framework.ExpectNoError(err, "failed to create Pod")
 
-	err = e2epod.WaitForPodRunningInNamespace(f.ClientSet, pod)
-	framework.ExpectNoError(err, "failed to wait for pod %s/%s to be running", pod.Namespace, pod.Name)
-	return pod, svc
+	err = pod.WaitForPodRunningInNamespace(c, _pod)
+	framework.ExpectNoError(err, "failed to wait for pod %s/%s to be running", _pod.Namespace, _pod.Name)
+	return _pod, svc
 }
 
 func mustToString(set sets.Int32) string {
