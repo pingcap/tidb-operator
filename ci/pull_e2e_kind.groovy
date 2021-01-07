@@ -251,8 +251,8 @@ try {
         def buildPodLabel = "tidb-operator-build-v1-pingcap-docker-mirror"
         def resources = [
             requests: [
-                cpu: "4",
-                memory: "4Gi"
+                cpu: "6",
+                memory: "10Gi"
             ],
             limits: [
                 cpu: "8",
