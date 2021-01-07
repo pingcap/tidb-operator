@@ -256,7 +256,7 @@ try {
             ],
             limits: [
                 cpu: "8",
-                memory: "16Gi"
+                memory: "32Gi"
             ],
         ]
         podTemplate(
@@ -365,7 +365,7 @@ try {
                     }
                 }
             }
-            }
+        }
     }
     currentBuild.result = "SUCCESS"
 } catch (err) {
