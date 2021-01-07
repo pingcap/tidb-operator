@@ -158,7 +158,7 @@ spec:
 String buildPodYAML(Map m = [:]) {
     m.putIfAbsent("resources", [:])
     m.putIfAbsent("any", false)
-    def engine = new SimpleTemplateEngine()
+    def engine = new groovy.text.SimpleTemplateEngine()
     def template = engine.createTemplate(podYAML).make(m)
     return template.toString()
 }
