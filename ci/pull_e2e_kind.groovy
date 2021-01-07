@@ -84,13 +84,13 @@ spec:
       requests:
         cpu: <%= resources.requests.cpu %>
         memory: <%= resources.requests.memory %>
-        ephemeral-storage: 70Gi
+        ephemeral-storage: 100Gi
     <% } %>
     <% if (resources.limits) { %>
       limits:
         cpu: <%= resources.limits.cpu %>
         memory: <%= resources.limits.memory %>
-        ephemeral-storage: 70Gi
+        ephemeral-storage: 100Gi
     <% } %>
 <% } %>
     # kind needs /lib/modules and cgroups from the host
@@ -164,15 +164,15 @@ String buildPodYAML(Map m = [:]) {
 }
 
 e2ePodResources = [
-        requests: [
-            cpu: "4",
-            memory: "4Gi"
-        ],
-        limits: [
-            cpu: "8",
-            memory: "8Gi"
-        ],
-    ]
+    requests: [
+        cpu: "6",
+        memory: "10Gi"
+    ],
+    limits: [
+        cpu: "8",
+        memory: "16Gi"
+    ],
+]
 
 def build(String name, String code, Map resources = e2ePodResources) {
     podTemplate(yaml: buildPodYAML(resources: resources)) {
@@ -251,12 +251,12 @@ try {
         def buildPodLabel = "tidb-operator-build-v1-pingcap-docker-mirror"
         def resources = [
             requests: [
-                cpu: "4",
-                memory: "4G"
+                cpu: "6",
+                memory: "10Gi"
             ],
             limits: [
                 cpu: "8",
-                memory: "32G"
+                memory: "32Gi"
             ],
         ]
         podTemplate(
@@ -342,7 +342,7 @@ try {
         if (GIT_REF ==~ /^(master|)$/ || GIT_REF ==~ /^(release-.*)$/
             || GIT_REF ==~ /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/) {
             // Upload assets if the git ref is the master branch or version tag
-            podTemplate(yaml: buildPodYAML(resources: [requests: [cpu: "1", memory: "1G"]])) {
+            podTemplate(yaml: buildPodYAML(resources: [requests: [cpu: "1", memory: "2Gi"]])) {
                 node(POD_LABEL) {
                     container("main") {
                         dir("${PROJECT_DIR}") {
@@ -366,9 +366,7 @@ try {
                 }
             }
         }
-
     }
-
     currentBuild.result = "SUCCESS"
 } catch (err) {
     println("fatal: " + err)
