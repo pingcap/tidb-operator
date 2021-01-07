@@ -33,7 +33,7 @@ TiDB Lightning 包含两个组件：tidb-lightning 和 tikv-importer。在 Kuber
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm search tikv-importer -l
+    helm search repo tikv-importer -l
     ```
 
 2. 获取默认的 `values.yaml` 文件以方便自定义：
@@ -73,7 +73,7 @@ TiDB Lightning 包含两个组件：tidb-lightning 和 tikv-importer。在 Kuber
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install pingcap/tikv-importer --name=${cluster_name} --namespace=${namespace} --version=${chart_version} -f values.yaml
+    helm install ${cluster_name} pingcap/tikv-importer --namespace=${namespace} --version=${chart_version} -f values.yaml
     ```
 
     > **注意：**
@@ -235,7 +235,7 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install pingcap/tidb-lightning --name=${release_name} --namespace=${namespace} --set failFast=true -f tidb-lightning-values.yaml --version=${chart_version}
+    helm install ${release_name} pingcap/tidb-lightning --namespace=${namespace} --set failFast=true -f tidb-lightning-values.yaml --version=${chart_version}
     ```
 
 + 使用 Amazon S3 IAM 绑定 Pod 的授权方式时，需要做以下步骤：
@@ -251,7 +251,7 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
         {{< copyable "shell-regular" >}}
 
         ```shell
-        helm install pingcap/tidb-lightning --name=${release_name} --namespace=${namespace} --set failFast=true -f tidb-lightning-values.yaml --version=${chart_version}
+        helm install ${release_name} pingcap/tidb-lightning --namespace=${namespace} --set failFast=true -f tidb-lightning-values.yaml --version=${chart_version}
         ```
 
         > **注意：**
@@ -281,7 +281,7 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
         {{< copyable "shell-regular" >}}
 
         ```shell
-        helm install pingcap/tidb-lightning --name=${release_name} --namespace=${namespace} --set-string failFast=true,serviceAccount=${servieaccount} -f tidb-lightning-values.yaml --version=${chart_version}
+        helm install ${release_name} pingcap/tidb-lightning --namespace=${namespace} --set-string failFast=true,serviceAccount=${servieaccount} -f tidb-lightning-values.yaml --version=${chart_version}
         ```
 
         > **注意：**
@@ -295,11 +295,11 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
 
 删除 tikv-importer 的步骤：
 
-* 运行 `helm delete ${release_name} --purge`。
+* 运行 `helm delete ${release_name}`。
 
 删除 tidb-lightning 的方法：
 
-* 运行 `helm delete ${release_name} --purge`。
+* 运行 `helm delete ${release_name}`。
 
 ## 故障诊断
 

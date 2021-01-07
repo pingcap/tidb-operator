@@ -422,14 +422,6 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
 ## Helm
 
-### 安装 Tiller
-
-{{< copyable "shell-regular" >}}
-
-```shell
-helm init --service-account=tiller --upgrade
-```
-
 ### 添加 Helm Repo
 
 {{< copyable "shell-regular" >}}
@@ -448,19 +440,37 @@ helm repo update
 
 ### 查看可用的 Helm Chart
 
-{{< copyable "shell-regular" >}}
+- 查看 Helm Hub 中的 Chart
 
-```shell
-helm search ${chart_name} -l --devel
-```
+    {{< copyable "shell-regular" >}}
 
-示例：
+    ```shell
+    helm search hub ${chart_name}
+    ```
 
-{{< copyable "shell-regular" >}}
+    示例：
 
-```shell
-helm search tidb-operator -l --devel
-```
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    helm search hub mysql
+    ```
+
+- 查看其他 Repo 中的 Chart
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    helm search repo ${chart_name} -l --devel
+    ```
+
+    示例：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    helm search repo tidb-operator -l --devel
+    ```
 
 ### 获取 Helm Chart 默认 values.yaml
 
@@ -483,7 +493,7 @@ helm inspect values pingcap/tidb-operator --version=v1.1.9 > values-tidb-operato
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm install ${chart_name} --name=${name} --namespace=${namespace} --version=${chart_version} -f ${values_file}
+helm install ${name} ${chart_name} --namespace=${namespace} --version=${chart_version} -f ${values_file}
 ```
 
 示例：
@@ -491,7 +501,7 @@ helm install ${chart_name} --name=${name} --namespace=${namespace} --version=${c
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm install pingcap/tidb-operator --name=tidb-operator --namespace=tidb-admin --version=v1.1.9 -f values-tidb-operator.yaml
+helm install tidb-operator pingcap/tidb-operator --namespace=tidb-admin --version=v1.1.9 -f values-tidb-operator.yaml
 ```
 
 ### 查看已经部署的 Helm Release
@@ -523,7 +533,7 @@ helm upgrade tidb-operator pingcap/tidb-operator --version=v1.1.9 -f values-tidb
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm del --purge ${name}
+helm del ${name}
 ```
 
 示例：
@@ -531,9 +541,9 @@ helm del --purge ${name}
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm del --purge tidb-operator
+helm del tidb-operator
 ```
 
 ### 更多
 
-其他更多 Helm 的使用，请参考 [Helm Commands](https://v2.helm.sh/docs/helm/#helm)。
+其他更多 Helm 的使用，请参考 [Helm Commands](https://helm.sh/docs/helm/)。

@@ -62,6 +62,7 @@
   - [查看日志](view-logs.md)
   - [集群故障自动转移](use-auto-failover.md)
   - [销毁 TiDB 集群](destroy-a-tidb-cluster.md)
+  - [从 Helm 2 迁移到 Helm 3](migrate-to-helm3.md)
 + 灾难恢复
   - [恢复 PD 集群](pd-recover.md)
   - [恢复误删的集群](recover-deleted-cluster.md)

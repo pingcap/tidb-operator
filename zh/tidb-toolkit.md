@@ -134,19 +134,19 @@ tidb-ctl schema in mysql
 
 ## 使用 Helm
 
-[Helm](https://helm.sh/) 是一个 Kubernetes 的包管理工具，确保安装的 Helm 版本为 >= 2.11.0 && < 3.0.0 && != [2.16.4](https://github.com/helm/helm/issues/7797)。安装步骤如下：
+[Helm](https://helm.sh/) 是一个 Kubernetes 的包管理工具。安装步骤如下：
 
-### 安装 Helm 客户端
+### 安装 Helm
 
-参考[官方文档](https://v2.helm.sh/docs/using_helm/#installing-helm)安装 Helm 客户端。
+参考[官方文档](https://helm.sh/docs/intro/install/)安装 Helm。
 
-如果服务器没有外网，需要先将 Helm 客户端在有外网的机器上下载下来，然后再拷贝到服务器上，这里以安装 Helm 客户端 `2.16.7` 为例：
+如果服务器没有外网，需要先将 Helm 在有外网的机器上下载下来，然后再拷贝到服务器上，这里以安装 Helm `3.4.1` 为例：
 
 {{< copyable "shell-regular" >}}
 
 ```shell
-wget https://get.helm.sh/helm-v2.16.7-linux-amd64.tar.gz
-tar zxvf helm-v2.16.7-linux-amd64.tar.gz
+wget https://get.helm.sh/helm-v3.4.1-linux-amd64.tar.gz
+tar zxvf helm-v3.4.1-linux-amd64.tar.gz
 ```
 
 解压之后，有以下文件：
@@ -154,100 +154,25 @@ tar zxvf helm-v2.16.7-linux-amd64.tar.gz
 ```shell
 linux-amd64/
 linux-amd64/README.md
-linux-amd64/tiller
 linux-amd64/helm
 linux-amd64/LICENSE
 ```
 
 请自行将 `linux-amd64/helm` 文件拷贝到服务器上，并将其放到 `/usr/local/bin/` 目录下即可。
 
-然后执行 `helm verison -c`，如果正常输出则表示 Helm 客户端安装成功：
+然后执行 `helm verison`，如果正常输出则表示 Helm 安装成功：
 
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm version -c
+helm version
 ```
 
 ```shell
-Client: &version.Version{SemVer:"v2.16.7", GitCommit:"5f2584fd3d35552c4af26036f0c464191287986b", GitTreeState:"clean"}
+version.BuildInfo{Version:"v3.4.1", GitCommit:"c4e74854886b2efe3321e185578e6db9be0a6e29", GitTreeState:"clean", GoVersion:"go1.14.11"}
 ```
 
-### 安装 Helm 服务端
-
-#### 安装 RBAC
-
-如果 Kubernetes 集群没有启用 `RBAC`，请跳过此小节，直接安装 Tiller 即可。
-
-Helm 服务端是一个名字叫 `tiller` 的服务, 请首先安装 `tiller` 所需的 `RBAC` 规则：
-
-{{< copyable "shell-regular" >}}
-
-```shell
-kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.9/manifests/tiller-rbac.yaml
-```
-
-如果服务器没有外网，需要先用有外网的机器下载 `tiller-rbac.yaml` 文件：
-
-{{< copyable "shell-regular" >}}
-
-```shell
-wget https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.9/manifests/tiller-rbac.yaml
-```
-
-将 `tiller-rbac.yaml` 文件拷贝到服务器上并安装 `RBAC`：
-
-{{< copyable "shell-regular" >}}
-
-```shell
-kubectl apply -f tiller-rbac.yaml
-```
-
-#### 安装 Tiller
-
-Helm 服务端是一个名字叫 `tiller` 的服务，是作为一个 Pod 运行在 Kubernetes 集群里的。使用下面的命令安装 `tiller`：
-
-{{< copyable "shell-regular" >}}
-
-```shell
-helm init --service-account=tiller --upgrade
-```
-
-`tiller` 这个Pod 使用的镜像是 `gcr.io/kubernetes-helm/tiller:v2.16.7`，如果服务器无法访问 gcr.io，你可以尝试 mirror 仓库：
-
-{{< copyable "shell-regular" >}}
-
-``` shell
-helm init --service-account=tiller --upgrade --tiller-image registry.cn-hangzhou.aliyuncs.com/google_containers/tiller:$(helm version --client --short | grep -Eo 'v[0-9]\.[0-9]+\.[0-9]+')
-```
-
-如果服务器没有外网，需要先将 `tiller` 所使用的 Docker 镜像在有外网的机器下载下来：
-
-{{< copyable "shell-regular" >}}
-
-``` shell
-docker pull gcr.io/kubernetes-helm/tiller:v2.16.7
-docker save -o tiller-v2.16.7.tar gcr.io/kubernetes-helm/tiller:v2.16.7
-```
-
-将 `tiller-v2.16.7.tar` 文件拷贝到服务器上，执行 `docker load` 命令将其 load 到服务器上：
-
-{{< copyable "shell-regular" >}}
-
-``` shell
-docker load -i tiller-v2.16.7.tar
-```
-
-最后通过下面命令安装 `tiller` 并确认 `tiller` Pod 进入 Running 状态：
-
-{{< copyable "shell-regular" >}}
-
-```shell
-helm init --service-account=tiller --skip-refresh
-kubectl get po -n kube-system -l name=tiller
-```
-
-#### 配置 Helm repo
+### 配置 Helm repo
 
 Kubernetes 应用在 Helm 中被打包为 chart。PingCAP 针对 Kubernetes 上的 TiDB 部署运维提供了多个 Helm chart：
 
@@ -268,29 +193,21 @@ helm repo add pingcap https://charts.pingcap.org/
 
 添加完成后，可以使用 `helm search` 搜索 PingCAP 提供的 chart：
 
-- 如果 Helm 版本 < 2.16.0:
+{{< copyable "shell-regular" >}}
 
-    {{< copyable "shell-regular" >}}
+```shell
+helm search repo pingcap
+```
 
-    ```shell
-    helm search pingcap -l
-    ```
-
-- 如果 Helm 版本 >= 2.16.0:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    helm search pingcap -l --devel
-    ```
-
-    ```
-    NAME                    CHART VERSION   APP VERSION DESCRIPTION
-    pingcap/tidb-backup     v1.0.0                      A Helm chart for TiDB Backup or Restore
-    pingcap/tidb-cluster    v1.0.0                      A Helm chart for TiDB Cluster
-    pingcap/tidb-operator   v1.0.0                      tidb-operator Helm chart for Kubernetes
-    ...
-    ```
+```
+NAME                    CHART VERSION   APP VERSION     DESCRIPTION
+pingcap/tidb-backup     v1.1.9                          A Helm chart for TiDB Backup or Restore
+pingcap/tidb-cluster    v1.1.9                          A Helm chart for TiDB Cluster
+pingcap/tidb-drainer    v1.1.9                          A Helm chart for TiDB Binlog drainer.
+pingcap/tidb-lightning  v1.1.9                          A Helm chart for TiDB Lightning
+pingcap/tidb-operator   v1.1.9          v1.1.9          tidb-operator Helm chart for Kubernetes
+pingcap/tikv-importer   v1.1.9                          A Helm chart for TiKV Importer
+```
 
 当新版本的 chart 发布后，你可以使用 `helm repo update` 命令更新本地对于仓库的缓存：
 
@@ -300,7 +217,7 @@ helm repo add pingcap https://charts.pingcap.org/
 helm repo update
 ```
 
-#### Helm 常用操作
+### Helm 常用操作
 
 Helm 的常用操作有部署（`helm install`）、升级（`helm upgrade`)、销毁（`helm del`)、查询（`helm ls`）。Helm chart 往往都有很多可配置参数，通过命令行进行配置比较繁琐，因此推荐使用 YAML 文件的形式来编写这些配置项。基于 Helm 社区约定俗称的命名方式，在文档中将用于配置 chart 的 YAML 文件称为 `values.yaml` 文件。
 
@@ -319,7 +236,7 @@ helm ls
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install ${chart_name} --name=${release_name} --namespace=${namespace} --version=${chart_version} -f ${values_file}
+    helm install ${release_name} ${chart_name} --namespace=${namespace} --version=${chart_version} -f ${values_file}
     ```
 
 * 执行升级（升级可以是修改 `chart-version` 升级到新版本的 chart，也可以是修改 `values.yaml` 文件更新应用配置）：
@@ -335,12 +252,12 @@ helm ls
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm del --purge ${release_name}
+helm del ${release_name}
 ```
 
 更多 helm 的相关文档，请参考 [Helm 官方文档](https://helm.sh/docs/)。
 
-#### 离线情况下使用 Helm chart
+### 离线情况下使用 Helm chart
 
 如果服务器上没有外网，就无法通过配置 Helm repo 来安装 TiDB Operator 组件以及其他应用。这时，需要在有外网的机器上下载集群安装需用到的 chart 文件，再拷贝到服务器上。
 
@@ -360,7 +277,7 @@ wget http://charts.pingcap.org/tidb-lightning-v1.1.9.tgz
 
 ```shell
 tar zxvf tidb-operator.v1.1.9.tgz
-helm install ./tidb-operator --name=${release_name} --namespace=${namespace}
+helm install ${release_name} ./tidb-operator --namespace=${namespace}
 ```
 
 ## 使用 Terraform

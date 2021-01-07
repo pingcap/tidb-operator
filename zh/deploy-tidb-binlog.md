@@ -174,20 +174,10 @@ spec:
     helm repo update
     ```
 
-    Helm 3:
-
     {{< copyable "shell-regular" >}}
 
     ```shell
     helm search repo tidb-drainer -l
-    ```
-
-    Helm 2:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    helm search tidb-drainer -l
     ```
 
 2. 获取默认的 `values.yaml` 文件以方便自定义：
@@ -242,7 +232,7 @@ spec:
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install pingcap/tidb-drainer --name=${release_name} --namespace=${namespace} --version=${chart_version} -f values.yaml
+    helm install ${release_name} pingcap/tidb-drainer --namespace=${namespace} --version=${chart_version} -f values.yaml
     ```
 
     如果服务器没有外网，请参考 [部署 TiDB 集群](deploy-on-general-kubernetes.md#部署-tidb-集群) 在有外网的机器上将用到的 Docker 镜像下载下来并上传到服务器上。
@@ -438,7 +428,7 @@ spec:
 
 2. 删除对应的 Drainer Pod：
 
-    运行 `helm del --purge ${release_name}` 指令即可删除 Drainer Pod。
+    运行 `helm del ${release_name}` 指令即可删除 Drainer Pod。
 
     如果不再使用 Drainer，使用 `kubectl delete pvc data-${drainer_node_id} -n ${namespace}` 指令删除该 Drainer 的 PVC 资源。
 

@@ -98,7 +98,7 @@ Ad-hoc 全量备份封装在 `pingcap/tidb-backup` 这个 Helm chart 中。根�
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install pingcap/tidb-backup --name=${backup_name} --namespace=${namespace} -f values.yaml --version=${version}
+    helm install ${backup_name} pingcap/tidb-backup --namespace=${namespace} -f values.yaml --version=${version}
     ```
 
 ### 查看备份
@@ -134,7 +134,7 @@ kubectl get pvc -n ${namespace} -l app.kubernetes.io/component=backup,pingcap.co
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install pingcap/tidb-backup --namespace=${namespace} --name=${restore_name} -f values.yaml --version=${version}
+    helm install ${restore_name} pingcap/tidb-backup --namespace=${namespace} -f values.yaml --version=${version}
     ```
 
 ## 增量备份
