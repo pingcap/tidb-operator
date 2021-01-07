@@ -887,7 +887,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		ginkgo.By("check tidb failure member count")
 		ns := tcCfg.Namespace
 		tcName := tcCfg.ClusterName
-		err := wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
+		err := wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
 			var tc *v1alpha1.TidbCluster
 			var err error
 			if tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
@@ -926,6 +926,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		framework.ExpectNoError(err, "not clear TiDB failureMembers when scale TiDB to zero")
 	})
 
+	// TODO: add case for TiKV storage auto scaling
 	ginkgo.Context("[Feature: AutoScaling]", func() {
 		setCPUUsageAndQuota := func(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor, usage, quota, memberType string, insts []string) {
 			// TODO: This duration is now hard-coded in PD
@@ -1404,30 +1405,30 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	})
 
 	ginkgo.Context("[Feature: TLS]", func() {
-		ginkgo.It("TLS for MySQL Client and TLS between TiDB components", func() {
+		ginkgo.It("should enable TLS for MySQL Client and between TiDB components", func() {
 			tcName := "tls"
 
-			ginkgo.By("Installing tidb issuer")
+			ginkgo.By("Installing tidb CA certificate")
 			err := installTiDBIssuer(ns, tcName)
-			framework.ExpectNoError(err, "failed to generate tidb issuer template")
+			framework.ExpectNoError(err, "failed to install CA certificate")
 
 			ginkgo.By("Installing tidb server and client certificate")
 			err = installTiDBCertificates(ns, tcName)
 			framework.ExpectNoError(err, "failed to install tidb server and client certificate")
 
-			ginkgo.By("Installing separate tidbInitializer client certificate")
+			ginkgo.By("Installing tidbInitializer client certificate")
 			err = installTiDBInitializerCertificates(ns, tcName)
-			framework.ExpectNoError(err, "failed to install separate tidbInitializer client certificate")
+			framework.ExpectNoError(err, "failed to install tidbInitializer client certificate")
 
-			ginkgo.By("Installing separate dashboard client certificate")
+			ginkgo.By("Installing dashboard client certificate")
 			err = installPDDashboardCertificates(ns, tcName)
-			framework.ExpectNoError(err, "failed to install separate dashboard client certificate")
+			framework.ExpectNoError(err, "failed to install dashboard client certificate")
 
 			ginkgo.By("Installing tidb components certificates")
 			err = installTiDBComponentsCertificates(ns, tcName)
 			framework.ExpectNoError(err, "failed to install tidb components certificates")
 
-			ginkgo.By("Creating tidb cluster")
+			ginkgo.By("Creating tidb cluster with TLS enabled")
 			dashTLSName := fmt.Sprintf("%s-dashboard-tls", tcName)
 			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4Version)
 			tc.Spec.PD.Replicas = 3
