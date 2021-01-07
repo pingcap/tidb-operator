@@ -220,7 +220,7 @@ def build(String name, String code, Map resources = e2ePodResources) {
                         mv !(${name}) ${name}/
                         """
                         archiveArtifacts artifacts: "${name}/**", allowEmptyArchive: true
-                        junit testResults: "${name}/*.xml", allowEmptyResults: true
+                        junit testResults: "${name}/*.xml", allowEmptyResults: true, keepLongStdio: true
                     }
                 }
             }
