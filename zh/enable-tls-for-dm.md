@@ -80,6 +80,9 @@ TiDB Operator 从 v1.2 开始已经支持为 Kubernetes 上 DM 集群组件间�
     cat << EOF > ca-csr.json
     {
         "CN": "TiDB",
+        "CA": {
+            "expiry": "87600h"
+        },
         "key": {
             "algo": "rsa",
             "size": 2048
@@ -285,6 +288,8 @@ TiDB Operator 从 v1.2 开始已经支持为 Kubernetes 上 DM 集群组件间�
       secretName: ${cluster_name}-ca-secret
       commonName: "TiDB"
       isCA: true
+      duration: 87600h # 10yrs
+      renewBefore: 720h # 30d
       issuerRef:
         name: ${cluster_name}-selfsigned-ca-issuer
         kind: Issuer

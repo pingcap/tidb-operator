@@ -88,6 +88,9 @@ This section describes how to issue certificates using two methods: `cfssl` and 
     cat << EOF > ca-csr.json
     {
         "CN": "TiDB",
+        "CA": {
+            "expiry": "87600h"
+        },
         "key": {
             "algo": "rsa",
             "size": 2048
@@ -664,6 +667,8 @@ This section describes how to issue certificates using two methods: `cfssl` and 
       secretName: ${cluster_name}-ca-secret
       commonName: "TiDB"
       isCA: true
+      duration: 87600h # 10yrs
+      renewBefore: 720h # 30d
       issuerRef:
         name: ${cluster_name}-selfsigned-ca-issuer
         kind: Issuer

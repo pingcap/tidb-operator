@@ -79,6 +79,9 @@ This section describes how to issue certificates for the TiDB cluster using two 
     ```json
     {
         "CN": "TiDB Server",
+        "CA": {
+            "expiry": "87600h"
+        },
         "key": {
             "algo": "rsa",
             "size": 2048
@@ -228,6 +231,8 @@ You can generate multiple sets of client-side certificates. At least one set of 
       secretName: ${cluster_name}-ca-secret
       commonName: "TiDB CA"
       isCA: true
+      duration: 87600h # 10yrs
+      renewBefore: 720h # 30d
       issuerRef:
         name: ${cluster_name}-selfsigned-ca-issuer
         kind: Issuer
