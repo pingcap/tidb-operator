@@ -1959,14 +1959,13 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			storesInfo, err := pdClient.GetStores()
 			framework.ExpectNoError(err, "get stores info error")
 
-			err = wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
+			_ = wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
 				framework.ExpectEqual(storesInfo.Count, 3, "Expect number of stores is 3")
 				for _, store := range storesInfo.Stores {
 					framework.ExpectEqual(store.Store.StateName, "Up", "Expect state of stores are Up")
 				}
 				return false, nil
 			})
-			framework.ExpectNoError(err, "some store fails")
 		})
 	})
 
