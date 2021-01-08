@@ -1465,7 +1465,7 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 	}
 
 	if pdSet.Status.CurrentRevision != pdSet.Status.UpdateRevision {
-		log.Logf("pd sts .status.CurrentRevision != .status.UpdateRevision")
+		log.Logf("pd sts .Status.CurrentRevision (%s) != .Status.UpdateRevision (%s)", pdSet.Status.CurrentRevision, pdSet.Status.UpdateRevision)
 		return false, nil
 	}
 
@@ -1550,6 +1550,7 @@ func (oa *operatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	}
 
 	if tikvSet.Status.CurrentRevision != tikvSet.Status.UpdateRevision {
+		log.Logf("tikv sts .Status.CurrentRevision (%s) != .Status.UpdateRevision (%s)", tikvSet.Status.CurrentRevision, tikvSet.Status.UpdateRevision)
 		return false, nil
 	}
 
@@ -1625,6 +1626,7 @@ func (oa *operatorActions) tiflashMembersReadyFn(tc *v1alpha1.TidbCluster) (bool
 	}
 
 	if tiflashSet.Status.CurrentRevision != tiflashSet.Status.UpdateRevision {
+		log.Logf("tiflash sts .Status.CurrentRevision (%s) != .Status.UpdateRevision (%s)", tiflashSet.Status.CurrentRevision, tiflashSet.Status.UpdateRevision)
 		return false, nil
 	}
 
@@ -1703,6 +1705,7 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	}
 
 	if tidbSet.Status.CurrentRevision != tidbSet.Status.UpdateRevision {
+		log.Logf("tidb sts .Status.CurrentRevision (%s) != .Status.UpdateRevision (%s)", tidbSet.Status.CurrentRevision, tidbSet.Status.UpdateRevision)
 		return false, nil
 	}
 
@@ -3589,6 +3592,7 @@ func (oa *operatorActions) pumpMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	}
 
 	if ss.Status.CurrentRevision != ss.Status.UpdateRevision {
+		log.Logf("pump sts .Status.CurrentRevision (%s) != .Status.UpdateRevision (%s)", ss.Status.CurrentRevision, ss.Status.UpdateRevision)
 		return false, nil
 	}
 
@@ -3607,6 +3611,7 @@ func (oa *operatorActions) pumpMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	return true, nil
 }
 
+// FIXME: this duplicates with WaitForTidbClusterReady in crd_test_utils.go, and all functions in it
 func (oa *operatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error {
 	if tc == nil {
 		return fmt.Errorf("tidbcluster is nil, cannot call WaitForTidbClusterReady")
@@ -3620,26 +3625,44 @@ func (oa *operatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, tim
 		}
 
 		if b, err := oa.pdMembersReadyFn(local); !b && err == nil {
+			log.Logf("pd members are not ready")
 			return false, nil
 		}
+		log.Logf("pd members are ready")
+
 		if b, err := oa.tikvMembersReadyFn(local); !b && err == nil {
+			log.Logf("tikv members are not ready")
 			return false, nil
 		}
+		log.Logf("tikv members are ready")
+
 		if b, err := oa.tidbMembersReadyFn(local); !b && err == nil {
+			log.Logf("tidb members are not ready")
 			return false, nil
 		}
-		if tc.Spec.TiFlash != nil {
+		log.Logf("tidb members are ready")
+
+		if tc.Spec.TiFlash != nil && tc.Spec.TiFlash.Replicas > int32(0) {
 			if b, err := oa.tiflashMembersReadyFn(local); !b && err == nil {
-				log.Logf("tiflash  members not ready: %s/%s, %v", tc.Namespace, tc.Name, err)
+				log.Logf("tiflash members are not ready")
 				return false, nil
 			}
-			log.Logf("tiflash  members ready: %s/%s, %v", tc.Namespace, tc.Name, err)
+			log.Logf("tiflash members are ready")
+		} else {
+			log.Logf("no tiflash in tc spec")
 		}
+
 		if tc.Spec.Pump != nil {
 			if b, err := oa.pumpMembersReadyFn(local); !b && err == nil {
+				log.Logf("pump members are not ready")
 				return false, nil
 			}
+			log.Logf("pump members are ready")
+		} else {
+			log.Logf("no pump in tc spec")
 		}
+
+		log.Logf("TidbCluster is ready")
 		return true, nil
 	})
 }

@@ -1554,11 +1554,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %+v", tc)
 		})
 
-		ginkgo.It("TLS for MySQL Client and TLS between Heterogeneous TiDB components", func() {
+		ginkgo.It("should enable TLS for MySQL Client and between Heterogeneous TiDB components", func() {
 			tcName := "origintls"
 			heterogeneousTcName := "heterogeneoustls"
 
-			ginkgo.By("Installing tidb issuer")
+			ginkgo.By("Installing tidb CA certificate")
 			err := installTiDBIssuer(ns, tcName)
 			framework.ExpectNoError(err, "failed to generate tidb issuer template")
 
@@ -1627,9 +1627,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			heterogeneousTc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
 			err = genericCli.Create(context.TODO(), heterogeneousTc)
 			framework.ExpectNoError(err, "failed to create heterogeneous TidbCluster: %v", heterogeneousTc)
+
 			ginkgo.By("Waiting heterogeneous tls tidb cluster ready")
 			err = oa.WaitForTidbClusterReady(heterogeneousTc, 10*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %+v", tc)
+
 			ginkgo.By("Checking heterogeneous tls tidb cluster status")
 			err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
 				var err error
@@ -1725,11 +1727,10 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			ginkgo.By("Connecting to tidb server to verify the connection is TLS enabled")
 			err = wait.PollImmediate(time.Second*5, time.Minute*5, tidbIsTLSEnabled(fw, c, ns, tcName, passwd))
 			framework.ExpectNoError(err, "connect to TLS tidb timeout")
-
 		})
 	})
 
-	ginkgo.It("Ensure Service NodePort Not Change", func() {
+	ginkgo.It("should ensure TiDB service NodePort not changed during", func() {
 		// Create TidbCluster with NodePort to check whether node port would change
 		nodeTc := fixture.GetTidbCluster(ns, "nodeport", utilimage.TiDBV3Version)
 		nodeTc.Spec.PD.Replicas = 1
@@ -1746,6 +1747,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
 		// expect tidb service type is Nodeport
+		// NOTE: should we poll here or just check for once? because tc is ready
 		var s *corev1.Service
 		err = wait.Poll(5*time.Second, 1*time.Minute, func() (done bool, err error) {
 			s, err = c.CoreV1().Services(ns).Get("nodeport-tidb", metav1.GetOptions{})
@@ -1759,9 +1761,8 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			return true, nil
 		})
 		framework.ExpectNoError(err, "wait for tidb service sync timeout")
-		ports := s.Spec.Ports
+		oldPorts := s.Spec.Ports
 
-		// f is the function to check whether service NodePort have changed for 1 min
 		ensureSvcNodePortUnchangedFor1Min := func() {
 			err := wait.Poll(5*time.Second, 1*time.Minute, func() (done bool, err error) {
 				s, err := c.CoreV1().Services(ns).Get("nodeport-tidb", metav1.GetOptions{})
@@ -1772,7 +1773,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					return false, err
 				}
 				for _, dport := range s.Spec.Ports {
-					for _, eport := range ports {
+					for _, eport := range oldPorts {
 						if dport.Port == eport.Port && dport.NodePort != eport.NodePort {
 							return false, fmt.Errorf("nodePort tidbcluster tidb service NodePort changed")
 						}
@@ -1782,10 +1783,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			})
 			framework.ExpectEqual(err, wait.ErrWaitTimeout, "service NodePort should not change in 1 minute")
 		}
-		// check whether nodeport have changed for 1 min
-		ensureSvcNodePortUnchangedFor1Min()
-		framework.Logf("tidbcluster tidb service NodePort haven't changed")
 
+		ginkgo.By("make sure tidb service NodePort doesn't changed")
+		ensureSvcNodePortUnchangedFor1Min()
+
+		ginkgo.By("change tidb service annotation")
 		nodeTc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get("nodeport", metav1.GetOptions{})
 		framework.ExpectNoError(err, "failed to get TidbCluster")
 		err = controller.GuaranteedUpdate(genericCli, nodeTc, func() error {
@@ -1794,10 +1796,10 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			}
 			return nil
 		})
-		framework.ExpectNoError(err, "failed to update TidbCluster: %v", nodeTc)
+		framework.ExpectNoError(err, "failed to change tidb service annotation")
 
 		// check whether the tidb svc have updated
-		err = wait.Poll(5*time.Second, 2*time.Minute, func() (done bool, err error) {
+		err = wait.Poll(5*time.Second, 1*time.Minute, func() (done bool, err error) {
 			s, err := c.CoreV1().Services(ns).Get("nodeport-tidb", metav1.GetOptions{})
 			if err != nil {
 				return false, err
@@ -1814,15 +1816,15 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			}
 			return true, nil
 		})
-		framework.ExpectNoError(err, "wait for service sync timeout")
-		framework.Logf("tidb nodeport svc updated")
+		framework.ExpectNoError(err, "failed wait for tidb service sync")
 
+		ginkgo.By("make sure tidb service NodePort doesn't changed")
 		// check whether NodePort have changed for 1 min
 		ensureSvcNodePortUnchangedFor1Min()
 		framework.Logf("tidbcluster tidb service NodePort haven't changed after update")
 	})
 
-	ginkgo.It("Heterogeneous: Add heterogeneous cluster into an existing cluster  ", func() {
+	ginkgo.It("[Feature: Heterogeneous Cluster] should join heterogeneous cluster into an existing cluster", func() {
 		// Create TidbCluster with NodePort to check whether node port would change
 		originTc := fixture.GetTidbCluster(ns, "origin", utilimage.TiDBV4UpgradeVersion)
 		originTc.Spec.PD.Replicas = 1
