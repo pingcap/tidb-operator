@@ -37,6 +37,8 @@ const (
 	namespaceLabel             = "__meta_kubernetes_namespace"
 	podNameLabel               = "__meta_kubernetes_pod_name"
 	additionalPortLabelPattern = "__meta_kubernetes_pod_annotation_%s_prometheus_io_port"
+	dmWorker                   = "dm-worker"
+	dmMaster                   = "dm-master"
 )
 
 var (
@@ -53,6 +55,8 @@ var (
 	cdcPattern       config.Regexp
 	importerPattern  config.Regexp
 	lightningPattern config.Regexp
+	dmWorkerPattern  config.Regexp
+	dmMasterPattern  config.Regexp
 	dashBoardConfig  = `{
     "apiVersion": 1,
     "providers": [
@@ -123,12 +127,23 @@ func init() {
 	if err != nil {
 		klog.Fatalf("monitor regex template parse error,%v", err)
 	}
+	dmWorkerPattern, err = config.NewRegexp(dmWorker)
+	if err != nil {
+		klog.Fatalf("monitor regex template parse error,%v", err)
+	}
+	dmMasterPattern, err = config.NewRegexp(dmMaster)
+	if err != nil {
+		klog.Fatalf("monitor regex template parse error,%v", err)
+	}
 }
 
 type MonitorConfigModel struct {
-	AlertmanagerURL  string
-	ClusterInfos     []ClusterRegexInfo
-	EnableTLSCluster bool
+	AlertmanagerURL    string
+	ClusterInfos       []ClusterRegexInfo
+	DMClusterInfos     []ClusterRegexInfo
+	EnableTLSCluster   bool
+	EnableTLSDMCluster bool
+	ExternalLabels     model.LabelSet
 }
 
 // ClusterRegexInfo is the monitor cluster info
@@ -149,10 +164,13 @@ func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
 	scrapeJobs = append(scrapeJobs, scrapeJob("ticdc", cdcPattern, cmodel, buildAddressRelabelConfigByComponent("ticdc"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("importer", importerPattern, cmodel, buildAddressRelabelConfigByComponent("importer"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("lightning", lightningPattern, cmodel, buildAddressRelabelConfigByComponent("lightning"))...)
+	scrapeJobs = append(scrapeJobs, scrapeJob(dmWorker, dmWorkerPattern, cmodel, buildAddressRelabelConfigByComponent(dmWorker))...)
+	scrapeJobs = append(scrapeJobs, scrapeJob(dmMaster, dmMasterPattern, cmodel, buildAddressRelabelConfigByComponent(dmMaster))...)
 	var c = config.Config{
 		GlobalConfig: config.GlobalConfig{
 			ScrapeInterval:     model.Duration(15 * time.Second),
 			EvaluationInterval: model.Duration(15 * time.Second),
+			ExternalLabels:     cmodel.ExternalLabels,
 		},
 		RuleFiles: []string{
 			"/prometheus-rules/rules/*.rules.yml",
@@ -189,6 +207,10 @@ func buildAddressRelabelConfigByComponent(kind string) *config.RelabelConfig {
 	case "tiflash":
 		return f()
 	case "ticdc":
+		return f()
+	case dmWorker:
+		return f()
+	case dmMaster:
 		return f()
 	case "tiflash-proxy":
 		return &config.RelabelConfig{
@@ -271,7 +293,15 @@ func buildAddressRelabelConfigByComponent(kind string) *config.RelabelConfig {
 
 func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorConfigModel, addressRelabelConfig *config.RelabelConfig) []*config.ScrapeConfig {
 	var scrapeJobs []*config.ScrapeConfig
-	for _, cluster := range cmodel.ClusterInfos {
+	var currCluster []ClusterRegexInfo
+
+	if isDMJob(jobName) {
+		currCluster = cmodel.DMClusterInfos
+	} else {
+		currCluster = cmodel.ClusterInfos
+	}
+
+	for _, cluster := range currCluster {
 		clusterTargetPattern, err := config.NewRegexp(cluster.Name)
 		if err != nil {
 			klog.Errorf("generate scrapeJob[%s] clusterName:%s error:%v", jobName, cluster.Name, err)
@@ -284,7 +314,7 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 		}
 
 		scrapeconfig := &config.ScrapeConfig{
-			JobName:        fmt.Sprintf("%s-%s", cluster.Name, jobName),
+			JobName:        fmt.Sprintf("%s-%s-%s", cluster.Namespace, cluster.Name, jobName),
 			ScrapeInterval: model.Duration(15 * time.Second),
 			Scheme:         "http",
 			HonorLabels:    true,
@@ -362,9 +392,17 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 					Action:      config.RelabelReplace,
 					TargetLabel: "instance",
 				},
+				{
+					SourceLabels: model.LabelNames{
+						componentLabel,
+					},
+					Action:      config.RelabelReplace,
+					TargetLabel: "component",
+				},
 			},
 		}
-		if cmodel.EnableTLSCluster {
+
+		if cmodel.EnableTLSCluster && !isDMJob(jobName) {
 			scrapeconfig.Scheme = "https"
 			// lightning does not need to authenticate the access of other components,
 			// so there is no need to enable mtls for the time being.
@@ -376,11 +414,27 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 				}
 			}
 		}
+
+		if cmodel.EnableTLSDMCluster && isDMJob(jobName) {
+			scrapeconfig.Scheme = "https"
+			scrapeconfig.HTTPClientConfig.TLSConfig = config.TLSConfig{
+				CAFile:   path.Join(util.DMClusterClientTLSPath, corev1.ServiceAccountRootCAKey),
+				CertFile: path.Join(util.DMClusterClientTLSPath, corev1.TLSCertKey),
+				KeyFile:  path.Join(util.DMClusterClientTLSPath, corev1.TLSPrivateKeyKey),
+			}
+		}
 		scrapeJobs = append(scrapeJobs, scrapeconfig)
 
 	}
 	return scrapeJobs
 
+}
+
+func isDMJob(jobName string) bool {
+	if jobName == dmMaster || jobName == dmWorker {
+		return true
+	}
+	return false
 }
 
 func addAlertManagerUrl(pc *config.Config, cmodel *MonitorConfigModel) {

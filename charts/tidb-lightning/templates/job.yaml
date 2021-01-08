@@ -36,7 +36,8 @@ spec:
 {{ toYaml .Values.imagePullSecrets | indent 6 }}
       {{- end }}
       {{ if and .Values.dataSource.local.hostPath .Values.dataSource.local.nodeName -}}
-      nodeName: {{ .Values.dataSource.local.nodeName }}
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.dataSource.local.nodeName }}
       {{ else if not .Values.dataSource.adhoc.pvcName -}}
       initContainers:
       - name: data-retriever
@@ -105,6 +106,20 @@ spec:
           {{- else -}}
           mountPath: /var/lib/tidb-lightning
           {{- end }}
+        {{ if eq .Values.backend "local" }}
+        - name: sorted-kv
+          mountPath: /var/lib/sorted-kv
+        {{- end }}
+        {{- if and .Values.tlsCluster .Values.tlsCluster.enabled }}
+        - name: lightning-tls
+          mountPath: /var/lib/lightning-tls
+          readOnly: true
+        {{- end }}
+        {{- if and .Values.tlsClient .Values.tlsClient.enabled }}
+        - name: tidb-client-tls
+          mountPath: /var/lib/tidb-client-tls
+          readOnly: true
+        {{- end }}
       volumes:
       - name: config
         configMap:
@@ -138,6 +153,25 @@ spec:
         persistentVolumeClaim:
           claimName: {{ include "tidb-lightning.name" . }}
       {{ end -}}
+      {{ if eq .Values.backend "local" }}
+      - name: sorted-kv
+        persistentVolumeClaim:
+          claimName: {{ include "tidb-lightning.name" . }}-sorted-kv
+      {{ end -}}
+      {{- if and .Values.tlsCluster .Values.tlsCluster.enabled }}
+      - name: lightning-tls
+        secret:
+          secretName: {{ .Values.targetTidbCluster.name }}-lightning-cluster-secret
+      {{- end }}
+      {{- if and .Values.tlsClient .Values.tlsClient.enabled }}
+      - name: tidb-client-tls
+        secret:
+        {{- if .Values.tlsClient.tlsClientSecretName }}
+          secretName: {{ .Values.tlsClient.tlsClientSecretName }}
+        {{- else }}
+          secretName: {{ .Values.targetTidbCluster.name }}-tidb-client-secret
+        {{- end }}
+      {{- end }}
     {{- if .Values.affinity }}
       affinity:
 {{ toYaml .Values.affinity | indent 6 }}

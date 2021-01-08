@@ -134,6 +134,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 
 })
 
+// TODO: rename to something more meaningful
 func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interface, genericCli client.Client, oa tests.OperatorActions, cli versioned.Interface, tlsEnabled bool, brType string) {
 	backupFolder := time.Now().Format(time.RFC3339)
 	var storage teststorage.TestStorage
@@ -148,7 +149,7 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 		}
 		key := "12345678"
 		minio, cancel, err := teststorage.NewMinioStorage(fw, ns, key, key, c, s3config)
-		framework.ExpectNoError(err)
+		framework.ExpectNoError(err, "failed to create minio storage")
 		storage = minio
 		defer cancel()
 	case "aws":
@@ -161,7 +162,7 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 			SecretName: fixture.S3Secret,
 		}
 		s3Storage, err := teststorage.NewS3Storage(cred, s3config)
-		framework.ExpectNoError(err)
+		framework.ExpectNoError(err, "failed to create s3 storage")
 		storage = s3Storage
 	default:
 		framework.Failf("unknown provider: %s", provider)
@@ -203,7 +204,7 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 		tcFrom.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
 	}
 	err := genericCli.Create(context.TODO(), tcFrom)
-	framework.ExpectNoError(err)
+	framework.ExpectNoError(err, "failed to create TidbCluster tcFrom: %v", tcFrom)
 
 	// create restore cluster
 	tcTo := fixture.GetTidbCluster(ns, tcNameTo, utilimage.TiDBV4Version)
@@ -214,43 +215,44 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 		tcTo.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
 	}
 	err = genericCli.Create(context.TODO(), tcTo)
-	framework.ExpectNoError(err)
+	framework.ExpectNoError(err, "failed to create TidbCluster tcTo: %v", tcTo)
 
 	// wait both tidbcluster ready
 	err = oa.WaitForTidbClusterReady(tcFrom, 30*time.Minute, 15*time.Second)
-	framework.ExpectNoError(err)
+	framework.ExpectNoError(err, "failed to wait for TidbCluster tcFrom ready")
 	clusterFrom := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameFrom, "", utilimage.TiDBV4Version)
+
 	err = oa.WaitForTidbClusterReady(tcTo, 30*time.Minute, 15*time.Second)
-	framework.ExpectNoError(err)
+	framework.ExpectNoError(err, "failed to wait for TidbCluster tcTo ready")
 	clusterTo := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameTo, "", utilimage.TiDBV4Version)
 
 	// import some data to sql with blockwriter
 	ginkgo.By(fmt.Sprintf("Begin inserting data into cluster %q", clusterFrom.ClusterName))
 	oa.BeginInsertDataToOrDie(&clusterFrom)
 	err = wait.PollImmediate(time.Second*5, time.Minute*5, utiltidb.TiDBIsInserted(fw, tcFrom.GetNamespace(), tcFrom.GetName(), "root", "", "sbtest", "block_writer"))
-	framework.ExpectNoError(err)
+	framework.ExpectNoError(err, "failed to insert data into cluster clusterFrom: %v", clusterFrom)
 	ginkgo.By(fmt.Sprintf("Stop inserting data into cluster %q", clusterFrom.ClusterName))
 	oa.StopInsertDataTo(&clusterFrom)
 
 	// prepare for create backup/restore CRD
 	backupRole := fixture.GetBackupRole(tcFrom, serviceAccountName)
 	_, err = c.RbacV1beta1().Roles(ns).Create(backupRole)
-	framework.ExpectNoError(err)
+	framework.ExpectNoError(err, "failed to create RBAC roles for backup in ns %s: %v", ns, backupRole)
 	backupServiceAccount := fixture.GetBackupServiceAccount(tcFrom, serviceAccountName)
 	_, err = c.CoreV1().ServiceAccounts(ns).Create(backupServiceAccount)
-	framework.ExpectNoError(err)
+	framework.ExpectNoError(err, "failed to create backup service account in ns %s: %v", ns, backupServiceAccount)
 	backupRoleBinding := fixture.GetBackupRoleBinding(tcFrom, serviceAccountName)
 	_, err = c.RbacV1beta1().RoleBindings(ns).Create(backupRoleBinding)
-	framework.ExpectNoError(err)
+	framework.ExpectNoError(err, "failed to create RBAC role bindings for backup in ns %s: %v", ns, backupRoleBinding)
 	backupSecret := fixture.GetBackupSecret(tcFrom, "")
 	_, err = c.CoreV1().Secrets(ns).Create(backupSecret)
-	framework.ExpectNoError(err)
+	framework.ExpectNoError(err, "failed to create backup secrets in ns %s: %v", ns, backupSecret)
 	restoreSecret := fixture.GetBackupSecret(tcTo, "")
 	_, err = c.CoreV1().Secrets(ns).Create(restoreSecret)
-	framework.ExpectNoError(err)
+	framework.ExpectNoError(err, "failed to create restore secret in ns %s, %v", ns, restoreSecret)
 	storageSecret := storage.ProvideCredential(ns)
 	_, err = c.CoreV1().Secrets(ns).Create(storageSecret)
-	framework.ExpectNoError(err)
+	framework.ExpectNoError(err, "failed to create storage secrets in ns %s, %v", ns, storageSecret)
 
 	ginkgo.By(fmt.Sprintf("Begion to backup data cluster %q", clusterFrom.ClusterName))
 	// create backup CRD to process backup
@@ -260,15 +262,15 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 		backup.Spec.From.TLSClientSecretName = &backupSecretName
 	}
 	_, err = cli.PingcapV1alpha1().Backups(ns).Create(backup)
-	framework.ExpectNoError(err)
+	framework.ExpectNoError(err, "failed to create backup in ns %s: %v", ns, backup)
 
 	cleanFunc := func() {
 		// delete backup data in S3
 		err = cli.PingcapV1alpha1().Backups(ns).Delete(backup.Name, &metav1.DeleteOptions{})
-		framework.ExpectNoError(err)
+		framework.ExpectNoError(err, "failed to delete backup in ns %s: %v", ns, backup)
 
 		err = storage.CheckDataCleaned()
-		framework.ExpectNoError(err)
+		framework.ExpectNoError(err, "failed to check data is cleaned")
 
 		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
 			_, err := cli.PingcapV1alpha1().Backups(ns).Get(backup.Name, metav1.GetOptions{})
@@ -277,13 +279,13 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 			}
 			return false, nil
 		})
-		framework.ExpectNoError(err)
+		framework.ExpectNoError(err, "failed to clean backup")
 		framework.Logf("clean backup success")
 	}
 	// If error happened in following code, we would still delete data in storage
 	defer cleanFunc()
 
-	// check backup is successed
+	// check backup is successful
 	err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
 		tmpBackup, err := cli.PingcapV1alpha1().Backups(ns).Get(backup.Name, metav1.GetOptions{})
 		if err != nil {
@@ -300,20 +302,20 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 		}
 		return false, nil
 	})
-	framework.ExpectNoError(err)
+	framework.ExpectNoError(err, "failed to check backup is")
 
 	ginkgo.By(fmt.Sprintf("Begion to Restore data cluster %q", clusterTo.ClusterName))
-	// create restore CRD to process restore
+	// create restore CR to process restore
 	restore, err := storage.ProvideRestore(tcTo, restoreSecret, brType)
-	framework.ExpectNoError(err)
+	framework.ExpectNoError(err, "failed to create restore in TidbCluster %s", tcTo)
 	if tlsEnabled {
 		restoreSecretName := fmt.Sprintf("%s-restore-tls", tcNameTo)
 		restore.Spec.To.TLSClientSecretName = &restoreSecretName
 	}
 	_, err = cli.PingcapV1alpha1().Restores(ns).Create(restore)
-	framework.ExpectNoError(err)
+	framework.ExpectNoError(err, "failed to create restore in ns %s: %v", ns, restore)
 
-	// check restore is successed
+	// check restore is successful
 	err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
 		tmpRestore, err := cli.PingcapV1alpha1().Restores(ns).Get(restore.Name, metav1.GetOptions{})
 		if err != nil {
@@ -330,11 +332,11 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 		}
 		return false, nil
 	})
-	framework.ExpectNoError(err)
+	framework.ExpectNoError(err, "failed to check restore")
 
 	ginkgo.By(fmt.Sprintf("Check the correctness of cluster %q and %q", clusterFrom.ClusterName, clusterTo.ClusterName))
 	isSame, err := oa.DataIsTheSameAs(&clusterFrom, &clusterTo)
-	framework.ExpectNoError(err)
+	framework.ExpectNoError(err, "failed to check the correctness of cluster %q and %q", clusterFrom.ClusterName, clusterTo.ClusterName)
 	if !isSame {
 		framework.ExpectNoError(nerrors.New("backup database and restore database is not the same"))
 	}

@@ -5,7 +5,7 @@ metadata:
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
     app.kubernetes.io/component: importer
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
@@ -13,7 +13,9 @@ spec:
   ports:
   - name: importer
     port: 8287
+  - name: status
+    port: 8286
   selector:
     app.kubernetes.io/name: {{ template "chart.name" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
     app.kubernetes.io/component: importer

@@ -19,6 +19,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/prometheus/common/model"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -30,15 +31,58 @@ func TestGetMonitorConfigMap(t *testing.T) {
 	varTrue := true
 
 	testCases := []struct {
-		name     string
-		cluster  v1alpha1.TidbCluster
-		monitor  v1alpha1.TidbMonitor
-		expected *corev1.ConfigMap
+		name      string
+		cluster   v1alpha1.TidbCluster
+		dmCluster v1alpha1.DMCluster
+		monitor   v1alpha1.TidbMonitor
+		expected  *corev1.ConfigMap
 	}{
 		{
 			name: "basic",
 			cluster: v1alpha1.TidbCluster{
 				Spec: v1alpha1.TidbClusterSpec{
+					TLSCluster: &v1alpha1.TLSCluster{Enabled: false},
+				},
+			},
+			dmCluster: v1alpha1.DMCluster{},
+			monitor: v1alpha1.TidbMonitor{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+			},
+			expected: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo-monitor",
+					Namespace: "ns",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "foo",
+						"app.kubernetes.io/component":  "monitor",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "pingcap.com/v1alpha1",
+							Kind:               "TidbMonitor",
+							Name:               "foo",
+							Controller:         &varTrue,
+							BlockOwnerDeletion: &varTrue,
+						},
+					},
+				},
+				Data: nil, // tests are in template_test.go
+			},
+		},
+		{
+			name: "basic",
+			cluster: v1alpha1.TidbCluster{
+				Spec: v1alpha1.TidbClusterSpec{
+					TLSCluster: &v1alpha1.TLSCluster{Enabled: false},
+				},
+			},
+			dmCluster: v1alpha1.DMCluster{
+				Spec: v1alpha1.DMClusterSpec{
 					TLSCluster: &v1alpha1.TLSCluster{Enabled: false},
 				},
 			},
@@ -75,7 +119,7 @@ func TestGetMonitorConfigMap(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			cm, err := getMonitorConfigMap(&tt.cluster, &tt.monitor)
+			cm, err := getMonitorConfigMap(&tt.cluster, &tt.dmCluster, &tt.monitor)
 			g.Expect(err).NotTo(HaveOccurred())
 			if tt.expected == nil {
 				g.Expect(cm).To(BeNil())
@@ -655,15 +699,70 @@ func TestGetMonitorVolumes(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	testCases := []struct {
-		name     string
-		cluster  v1alpha1.TidbCluster
-		monitor  v1alpha1.TidbMonitor
-		expected func(volumes []corev1.Volume)
+		name      string
+		cluster   v1alpha1.TidbCluster
+		dmCluster v1alpha1.DMCluster
+		monitor   v1alpha1.TidbMonitor
+		expected  func(volumes []corev1.Volume)
 	}{
 		{
 			name: "basic",
 			cluster: v1alpha1.TidbCluster{
 				Spec: v1alpha1.TidbClusterSpec{
+					TLSCluster: &v1alpha1.TLSCluster{Enabled: false},
+				},
+			},
+			dmCluster: v1alpha1.DMCluster{},
+			monitor: v1alpha1.TidbMonitor{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+			},
+			expected: func(volumes []corev1.Volume) {
+				g := NewGomegaWithT(t)
+				g.Expect(volumes).To(Equal([]corev1.Volume{
+					{
+						Name: v1alpha1.TidbMonitorMemberType.String(),
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
+					},
+					{
+						Name: "prometheus-config",
+						VolumeSource: corev1.VolumeSource{
+							ConfigMap: &corev1.ConfigMapVolumeSource{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "foo-monitor",
+								},
+								Items: []corev1.KeyToPath{
+									corev1.KeyToPath{
+										Key:  "prometheus-config",
+										Path: "prometheus.yml",
+									},
+								},
+							},
+						},
+					},
+					{
+						Name: "prometheus-rules",
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
+					},
+				},
+				))
+			},
+		},
+		{
+			name: "basic",
+			cluster: v1alpha1.TidbCluster{
+				Spec: v1alpha1.TidbClusterSpec{
+					TLSCluster: &v1alpha1.TLSCluster{Enabled: false},
+				},
+			},
+			dmCluster: v1alpha1.DMCluster{
+				Spec: v1alpha1.DMClusterSpec{
 					TLSCluster: &v1alpha1.TLSCluster{Enabled: false},
 				},
 			},
@@ -719,6 +818,15 @@ func TestGetMonitorVolumes(t *testing.T) {
 					TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
 				},
 			},
+			dmCluster: v1alpha1.DMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foodm",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.DMClusterSpec{
+					TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
+				},
+			},
 			monitor: v1alpha1.TidbMonitor{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
@@ -765,6 +873,15 @@ func TestGetMonitorVolumes(t *testing.T) {
 							},
 						},
 					},
+					{
+						Name: "dm-cluster-client-tls",
+						VolumeSource: corev1.VolumeSource{
+							Secret: &corev1.SecretVolumeSource{
+								SecretName:  "foodm-dm-client-secret",
+								DefaultMode: pointer.Int32Ptr(420),
+							},
+						},
+					},
 				},
 				))
 			},
@@ -773,9 +890,9 @@ func TestGetMonitorVolumes(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			cm, err := getMonitorConfigMap(&tt.cluster, &tt.monitor)
+			cm, err := getMonitorConfigMap(&tt.cluster, &tt.dmCluster, &tt.monitor)
 			g.Expect(err).NotTo(HaveOccurred())
-			sa := getMonitorVolumes(cm, &tt.monitor, &tt.cluster)
+			sa := getMonitorVolumes(cm, &tt.monitor, &tt.cluster, &tt.dmCluster)
 			tt.expected(sa)
 		})
 	}
@@ -837,7 +954,8 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 				},
 				Env: []corev1.EnvVar{
 					corev1.EnvVar{
-						Name: "TZ",
+						Name:  "TZ",
+						Value: "UTC",
 					},
 				},
 				Resources: corev1.ResourceRequirements{},
@@ -869,7 +987,7 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			sa := getMonitorPrometheusContainer(&tt.monitor, &tt.cluster)
+			sa := getMonitorPrometheusContainer(&tt.monitor, &tt.cluster, nil)
 			if tt.expected == nil {
 				g.Expect(sa).To(BeNil())
 				return
@@ -986,6 +1104,180 @@ func TestGetMonitorGrafanaContainer(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			sa := getMonitorGrafanaContainer(&tt.secret, &tt.monitor, &tt.cluster)
+			if tt.expected == nil {
+				g.Expect(sa).To(BeNil())
+				return
+			}
+			if diff := cmp.Diff(tt.expected, &sa); diff != "" {
+				t.Errorf("unexpected plugin configuration (-want, +got): %s", diff)
+			}
+		})
+	}
+}
+
+func TestGetMonitorThanosSidecarContainer(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	testCases := []struct {
+		name     string
+		secret   corev1.Secret
+		cluster  v1alpha1.TidbCluster
+		monitor  v1alpha1.TidbMonitor
+		expected *corev1.Container
+	}{
+		{
+			name: "basic",
+			secret: corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+			},
+			cluster: v1alpha1.TidbCluster{
+				Spec: v1alpha1.TidbClusterSpec{
+					TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
+				},
+			},
+			monitor: v1alpha1.TidbMonitor{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbMonitorSpec{
+					Thanos: &v1alpha1.ThanosSpec{
+						MonitorContainer: v1alpha1.MonitorContainer{
+							BaseImage: "thanosio/thanos",
+							Version:   "v0.17.2",
+						},
+						ObjectStorageConfig: &corev1.SecretKeySelector{
+							Key: "objectstorage.yaml",
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "thanos-objectstorage",
+							},
+						},
+					},
+				},
+			},
+			expected: &corev1.Container{
+				Name:  "thanos-sidecar",
+				Image: "thanosio/thanos:v0.17.2",
+				Args: []string{
+					"sidecar",
+					"--prometheus.url=http://localhost:9090/.",
+					"--grpc-address=[$(POD_IP)]:10901",
+					"--http-address=[$(POD_IP)]:10902",
+					"--objstore.config=$(OBJSTORE_CONFIG)",
+					"--tsdb.path=/data/prometheus",
+				},
+				Ports: []corev1.ContainerPort{
+					{
+						Name:          "http",
+						ContainerPort: 10902,
+						Protocol:      "TCP",
+					},
+					{
+						Name:          "grpc",
+						ContainerPort: 10901,
+						Protocol:      "TCP",
+					},
+				},
+				Env: []corev1.EnvVar{
+					{
+						Name: "POD_IP",
+						ValueFrom: &corev1.EnvVarSource{
+							FieldRef: &corev1.ObjectFieldSelector{
+								FieldPath: "status.podIP",
+							},
+						},
+					},
+					{
+						Name: "POD_NAME",
+						ValueFrom: &corev1.EnvVarSource{
+							FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.name"},
+						},
+					},
+					{
+						Name: "NAMESPACE",
+						ValueFrom: &corev1.EnvVarSource{
+							FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.namespace"},
+						},
+					},
+					{
+						Name: "OBJSTORE_CONFIG",
+						ValueFrom: &corev1.EnvVarSource{
+							SecretKeyRef: &corev1.SecretKeySelector{
+								Key: "objectstorage.yaml",
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "thanos-objectstorage",
+								},
+							},
+						},
+					},
+				},
+				Resources: corev1.ResourceRequirements{},
+				VolumeMounts: []corev1.VolumeMount{
+					{
+						Name:      v1alpha1.TidbMonitorMemberType.String(),
+						MountPath: "/data",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			sa := getThanosSidecarContainer(&tt.monitor)
+			if tt.expected == nil {
+				g.Expect(sa).To(BeNil())
+				return
+			}
+			if diff := cmp.Diff(tt.expected, &sa); diff != "" {
+				t.Errorf("unexpected plugin configuration (-want, +got): %s", diff)
+			}
+		})
+	}
+}
+
+func TestBuildExternalLabels(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	testCases := []struct {
+		name     string
+		secret   corev1.Secret
+		cluster  v1alpha1.TidbCluster
+		monitor  v1alpha1.TidbMonitor
+		expected *model.LabelSet
+	}{
+		{
+			cluster: v1alpha1.TidbCluster{
+				Spec: v1alpha1.TidbClusterSpec{
+					TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
+				},
+			},
+			monitor: v1alpha1.TidbMonitor{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbMonitorSpec{
+					Thanos: &v1alpha1.ThanosSpec{
+						MonitorContainer: v1alpha1.MonitorContainer{
+							BaseImage: "thanosio/thanos",
+							Version:   "v0.17.2",
+						},
+					},
+				},
+			},
+			expected: &model.LabelSet{
+				defaultReplicaExternalLabelName: "$(NAMESPACE)_$(POD_NAME)",
+			},
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			sa := buildExternalLabels(&tt.monitor)
 			if tt.expected == nil {
 				g.Expect(sa).To(BeNil())
 				return

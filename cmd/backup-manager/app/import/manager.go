@@ -78,7 +78,7 @@ func (rm *RestoreManager) ProcessRestore() error {
 			Status:  corev1.ConditionTrue,
 			Reason:  "GetRestoreCRFailed",
 			Message: err.Error(),
-		})
+		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
@@ -94,7 +94,7 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 	err := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 		Type:   v1alpha1.RestoreRunning,
 		Status: corev1.ConditionTrue,
-	})
+	}, nil)
 	if err != nil {
 		return err
 	}
@@ -110,7 +110,7 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 			Status:  corev1.ConditionTrue,
 			Reason:  "DownloadBackupDataFailed",
 			Message: fmt.Sprintf("download backup %s data failed, err: %v", rm.BackupPath, err),
-		})
+		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
@@ -126,7 +126,7 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 			Status:  corev1.ConditionTrue,
 			Reason:  "UnarchiveBackupDataFailed",
 			Message: fmt.Sprintf("unarchive backup %s data failed, err: %v", restoreDataPath, err),
-		})
+		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
@@ -141,13 +141,13 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 			Status:  corev1.ConditionTrue,
 			Reason:  "GetCommitTsFailed",
 			Message: err.Error(),
-		})
+		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
 	klog.Infof("get cluster %s commitTs %s success", rm, commitTs)
 
-	err = rm.loadTidbClusterData(unarchiveDataPath, restore.Spec.TableFilter)
+	err = rm.loadTidbClusterData(unarchiveDataPath, restore)
 	if err != nil {
 		errs = append(errs, err)
 		klog.Errorf("restore cluster %s from backup %s failed, err: %s", rm, rm.BackupPath, err)
@@ -156,7 +156,7 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 			Status:  corev1.ConditionTrue,
 			Reason:  "LoaderBackupDataFailed",
 			Message: fmt.Sprintf("loader backup %s data failed, err: %v", restoreDataPath, err),
-		})
+		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
@@ -164,12 +164,13 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 
 	finish := time.Now()
 
-	restore.Status.TimeStarted = metav1.Time{Time: started}
-	restore.Status.TimeCompleted = metav1.Time{Time: finish}
-	restore.Status.CommitTs = commitTs
-
+	updateStatus := &controller.RestoreUpdateStatus{
+		TimeStarted:   &metav1.Time{Time: started},
+		TimeCompleted: &metav1.Time{Time: finish},
+		CommitTs:      &commitTs,
+	}
 	return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 		Type:   v1alpha1.RestoreComplete,
 		Status: corev1.ConditionTrue,
-	})
+	}, updateStatus)
 }

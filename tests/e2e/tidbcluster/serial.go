@@ -45,10 +45,9 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	restclient "k8s.io/client-go/rest"
-	"k8s.io/klog"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
-	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -85,18 +84,18 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		asCli, err = asclientset.NewForConfig(config)
 		framework.ExpectNoError(err, "failed to create clientset")
 		mapper, err := apiutil.NewDynamicRESTMapper(config, apiutil.WithLazyDiscovery)
-		framework.ExpectNoError(err)
+		framework.ExpectNoError(err, "failed to create dynamic RESTMapper")
 		genericCli, err = client.New(config, client.Options{
 			Scheme: scheme.Scheme,
 			Mapper: mapper,
 		})
-		framework.ExpectNoError(err, "failed to create clientset")
+		framework.ExpectNoError(err, "failed to create clientset for controller-runtime")
 		aggrCli, err = aggregatorclient.NewForConfig(config)
-		framework.ExpectNoError(err, "failed to create clientset")
+		framework.ExpectNoError(err, "failed to create clientset for kube-aggregator")
 		apiExtCli, err = apiextensionsclientset.NewForConfig(config)
-		framework.ExpectNoError(err, "failed to create clientset")
+		framework.ExpectNoError(err, "failed to create clientset for apiextensions-apiserver")
 		clientRawConfig, err := e2econfig.LoadClientRawConfig()
-		framework.ExpectNoError(err, "failed to load raw config")
+		framework.ExpectNoError(err, "failed to load raw config for tidb operator")
 		ctx, cancel := context.WithCancel(context.Background())
 		fw, err = portforward.NewPortForwarder(ctx, e2econfig.NewSimpleRESTClientGetter(clientRawConfig))
 		framework.ExpectNoError(err, "failed to create port forwarder")
@@ -149,16 +148,16 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 
 		ginkgo.It("[PodAdmissionWebhook] able to upgrade TiDB Cluster with pod admission webhook", func() {
-			klog.Info("start to upgrade tidbcluster with pod admission webhook")
+			log.Logf("start to upgrade tidbcluster with pod admission webhook")
 			// deploy new cluster and test upgrade and scale-in/out with pod admission webhook
 			tc := fixture.GetTidbCluster(ns, "admission", utilimage.TiDBV3Version)
 			tc.Spec.PD.Replicas = 3
 			tc.Spec.TiKV.Replicas = 3
 			tc.Spec.TiDB.Replicas = 2
 			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 			ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", utilimage.TiDBV3Version, utilimage.TiDBV3UpgradeVersion))
 			ginkgo.By("Set tikv partition annotation")
 			err = setPartitionAnnotation(ns, tc.Name, label.TiKVLabelVal, 1)
@@ -169,7 +168,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				tc.Spec.Version = utilimage.TiDBV3UpgradeVersion
 				return nil
 			})
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to update TidbCluster to upgrade tidb version to %v", utilimage.TiDBV3UpgradeVersion)
 
 			err = wait.Poll(5*time.Second, 30*time.Minute, func() (done bool, err error) {
 				tikvPod, err := c.CoreV1().Pods(ns).Get(fmt.Sprintf("%s-tikv-1", tc.Name), metav1.GetOptions{})
@@ -202,11 +201,11 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				tc.Annotations = nil
 				return nil
 			})
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to set TidbCluster annotation to nil: %v", tc)
 			framework.Logf("tidbcluster annotation have been cleaned")
 			// TODO: find a more graceful way to check tidbcluster during upgrading
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 		})
 	})
 
@@ -386,7 +385,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectNoError(err, "Though some required fields are omitted, they will be set by defaulting")
 			// don't have to check all fields, just take some to test if defaulting set
 			if empty, err := gomega.BeEmpty().Match(newTC.Spec.TiDB.BaseImage); empty {
-				e2elog.Failf("Expected tidb.baseImage has default value set, %v", err)
+				log.Failf("Expected tidb.baseImage has default value set, %v", err)
 			}
 
 			ginkgo.By("Validating should reject illegal update")
@@ -479,35 +478,35 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				// confirm the pd Pod haven't been changed
 				changed, err := utilpod.PodsAreChanged(c, pdPods)()
 				if err != nil {
-					klog.Errorf("meet error during verify pd pods, err:%v", err)
+					log.Logf("ERROR: meet error during verify pd pods, err:%v", err)
 					return true, nil
 				}
 				if changed {
 					return true, nil
 				}
-				klog.Infof("confirm pd pods haven't been changed this time")
+				log.Logf("confirm pd pods haven't been changed this time")
 
 				// confirm the tikv haven't been changed
 				changed, err = utilpod.PodsAreChanged(c, tikvPods)()
 				if err != nil {
-					klog.Errorf("meet error during verify tikv pods, err:%v", err)
+					log.Logf("ERROR: meet error during verify tikv pods, err:%v", err)
 					return true, nil
 				}
 				if changed {
 					return true, nil
 				}
-				klog.Infof("confirm tikv pods haven't been changed this time")
+				log.Logf("confirm tikv pods haven't been changed this time")
 
 				// confirm the tidb haven't been changed
 				changed, err = utilpod.PodsAreChanged(c, tidbPods)()
 				if err != nil {
-					klog.Errorf("meet error during verify tidb pods, err:%v", err)
+					log.Logf("ERROR: meet error during verify tidb pods, err:%v", err)
 					return true, nil
 				}
 				if changed {
 					return true, nil
 				}
-				klog.Infof("confirm tidb pods haven't been changed this time")
+				log.Logf("confirm tidb pods haven't been changed this time")
 
 				return false, nil
 			})
@@ -545,7 +544,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				tmSet, err := stsGetter.StatefulSets(ns).Get(monitor.GetMonitorObjectName(tm), metav1.GetOptions{})
 				if err != nil {
-					klog.Errorf("failed to get statefulset: %s/%s, %v", ns, tmSet, err)
+					log.Logf("ERROR: failed to get statefulset: %s/%s, %v", ns, tmSet, err)
 					return false, nil
 				}
 				return true, nil
@@ -553,20 +552,20 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectNoError(err, "Expected tidbmonitor sts success")
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				newStsPvcName := monitor.GetMonitorFirstPVCName(tm.Name)
-				klog.Infof("tidbmonitor newStsPvcName:%s", newStsPvcName)
+				log.Logf("tidbmonitor newStsPvcName:%s", newStsPvcName)
 				stsPvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get(newStsPvcName, metav1.GetOptions{})
 				if err != nil {
 					if errors.IsNotFound(err) {
-						klog.Infof("tm[%s/%s]'s first sts pvc not found,tag:%s,image:%s", ns, tm.Name, cfg.OperatorTag, cfg.OperatorImage)
+						log.Logf("tm[%s/%s]'s first sts pvc not found,tag:%s,image:%s", ns, tm.Name, cfg.OperatorTag, cfg.OperatorImage)
 						return false, nil
 					}
-					klog.Errorf("get tidbmonitor sts pvc err:%v", err)
+					log.Logf("ERROR: get tidbmonitor sts pvc err:%v", err)
 					return false, nil
 				}
 				if stsPvc.Spec.VolumeName == oldVolumeName {
 					return true, nil
 				}
-				klog.Infof("tidbmonitor sts pv unequal to old deployment pv")
+				log.Logf("tidbmonitor sts pv unequal to old deployment pv")
 				return false, nil
 			})
 			framework.ExpectNoError(err, "Expected tidbmonitor smooth migrate successfully")
@@ -618,7 +617,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				LabelSelector: labels.SelectorFromSet(label.New().Instance(tcName).Labels()).String(),
 			}
 			podList, err := c.CoreV1().Pods(ns).List(listOptions)
-			framework.ExpectNoError(err)
+			framework.ExpectNoError(err, "failed to list pods in ns %s: %v", ns, listOptions)
 
 			ginkgo.By("Upgrade tidb-operator and CRDs to current version")
 			ocfg.Tag = cfg.OperatorTag
@@ -628,7 +627,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 			ginkgo.By("Wait for pods are not changed in 5 minutes")
 			err = utilpod.WaitForPodsAreChanged(c, podList.Items, time.Minute*5)
-			framework.ExpectEqual(err, wait.ErrWaitTimeout)
+			framework.ExpectEqual(err, wait.ErrWaitTimeout, "pods should not change in 5 minutes")
 		})
 	})
 })

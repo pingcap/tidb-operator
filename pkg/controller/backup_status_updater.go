@@ -22,15 +22,35 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 )
 
+// BackupUpdateStatus represents the status of a backup to be updated.
+// This structure should keep synced with the fields in `BackupStatus`
+// except for `Phase` and `Conditions`.
+type BackupUpdateStatus struct {
+	// BackupPath is the location of the backup.
+	BackupPath *string
+	// TimeStarted is the time at which the backup was started.
+	TimeStarted *metav1.Time
+	// TimeCompleted is the time at which the backup was completed.
+	TimeCompleted *metav1.Time
+	// BackupSizeReadable is the data size of the backup.
+	// the difference with BackupSize is that its format is human readable
+	BackupSizeReadable *string
+	// BackupSize is the data size of the backup.
+	BackupSize *int64
+	// CommitTs is the snapshot time point of tidb cluster.
+	CommitTs *string
+}
+
 // BackupConditionUpdaterInterface enables updating Backup conditions.
 type BackupConditionUpdaterInterface interface {
-	Update(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition) error
+	Update(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) error
 }
 
 type realBackupConditionUpdater struct {
@@ -51,12 +71,12 @@ func NewRealBackupConditionUpdater(
 	}
 }
 
-func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition) error {
+func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) error {
 	ns := backup.GetNamespace()
 	backupName := backup.GetName()
-	oldStatus := backup.Status.DeepCopy()
 	var isUpdate bool
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		updateBackupStatus(&backup.Status, newStatus)
 		isUpdate = v1alpha1.UpdateBackupCondition(&backup.Status, condition)
 		if isUpdate {
 			_, updateErr := u.cli.PingcapV1alpha1().Backups(ns).Update(backup)
@@ -64,10 +84,10 @@ func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *
 				klog.Infof("Backup: [%s/%s] updated successfully", ns, backupName)
 				return nil
 			}
+			klog.Errorf("Failed to update backup [%s/%s], error: %v", ns, backupName, updateErr)
 			if updated, err := u.backupLister.Backups(ns).Get(backupName); err == nil {
 				// make a copy so we don't mutate the shared cache
 				backup = updated.DeepCopy()
-				backup.Status = *oldStatus
 			} else {
 				utilruntime.HandleError(fmt.Errorf("error getting updated backup %s/%s from lister: %v", ns, backupName, err))
 			}
@@ -76,6 +96,32 @@ func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *
 		return nil
 	})
 	return err
+}
+
+// updateBackupStatus updates existing Backup status
+// from the fields in BackupUpdateStatus.
+func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateStatus) {
+	if newStatus == nil {
+		return
+	}
+	if newStatus.BackupPath != nil {
+		status.BackupPath = *newStatus.BackupPath
+	}
+	if newStatus.TimeStarted != nil {
+		status.TimeStarted = *newStatus.TimeStarted
+	}
+	if newStatus.TimeCompleted != nil {
+		status.TimeCompleted = *newStatus.TimeCompleted
+	}
+	if newStatus.BackupSizeReadable != nil {
+		status.BackupSizeReadable = *newStatus.BackupSizeReadable
+	}
+	if newStatus.BackupSize != nil {
+		status.BackupSize = *newStatus.BackupSize
+	}
+	if newStatus.CommitTs != nil {
+		status.CommitTs = *newStatus.CommitTs
+	}
 }
 
 var _ BackupConditionUpdaterInterface = &realBackupConditionUpdater{}
@@ -102,7 +148,7 @@ func (c *FakeBackupConditionUpdater) SetUpdateBackupError(err error, after int) 
 }
 
 // UpdateBackup updates the Backup
-func (c *FakeBackupConditionUpdater) Update(backup *v1alpha1.Backup, _ *v1alpha1.BackupCondition) error {
+func (c *FakeBackupConditionUpdater) Update(backup *v1alpha1.Backup, _ *v1alpha1.BackupCondition, _ *BackupUpdateStatus) error {
 	defer c.updateBackupTracker.Inc()
 	if c.updateBackupTracker.ErrorReady() {
 		defer c.updateBackupTracker.Reset()

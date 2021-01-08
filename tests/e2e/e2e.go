@@ -46,12 +46,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/component-base/logs"
-	"k8s.io/klog"
 	aggregatorclientset "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	storageutil "k8s.io/kubernetes/pkg/apis/storage/v1/util"
 	"k8s.io/kubernetes/test/e2e/framework"
-	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
-	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
+	"k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/kubernetes/test/e2e/framework/pod"
 
 	// ensure auth plugins are loaded
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -76,7 +75,7 @@ func setupSuite() {
 
 	c, err := framework.LoadClientset()
 	if err != nil {
-		klog.Fatal("Error loading client: ", err)
+		log.Failf("Error loading client: %v", err)
 	}
 
 	// Delete any namespaces except those created by the system. This ensures no
@@ -97,18 +96,18 @@ func setupSuite() {
 		}
 		deleted, err := framework.DeleteNamespaces(c, nil, reservedNamespaces)
 		if err != nil {
-			e2elog.Failf("Error deleting orphaned namespaces: %v", err)
+			log.Failf("Error deleting orphaned namespaces: %v", err)
 		}
-		klog.Infof("Waiting for deletion of the following namespaces: %v", deleted)
+		log.Logf("Waiting for deletion of the following namespaces: %v", deleted)
 		if err := framework.WaitForNamespacesDeleted(c, deleted, framework.NamespaceCleanupTimeout); err != nil {
-			e2elog.Failf("Failed to delete orphaned namespaces %v: %v", deleted, err)
+			log.Failf("Failed to delete orphaned namespaces %v: %v", deleted, err)
 		}
 	}
 
 	// In large clusters we may get to this point but still have a bunch
 	// of nodes without Routes created. Since this would make a node
 	// unschedulable, we need to wait until all of them are schedulable.
-	framework.ExpectNoError(framework.WaitForAllNodesSchedulable(c, framework.TestContext.NodeSchedulableTimeout))
+	framework.ExpectNoError(framework.WaitForAllNodesSchedulable(c, framework.TestContext.NodeSchedulableTimeout), "some nodes are not schedulable")
 
 	// If NumNodes is not specified then auto-detect how many are scheduleable and not tainted
 	if framework.TestContext.CloudConfig.NumNodes == framework.DefaultNumNodes {
@@ -124,22 +123,22 @@ func setupSuite() {
 	// #41007. To avoid those pods preventing the whole test runs (and just
 	// wasting the whole run), we allow for some not-ready pods (with the
 	// number equal to the number of allowed not-ready nodes).
-	if err := e2epod.WaitForPodsRunningReady(c, metav1.NamespaceSystem, int32(framework.TestContext.MinStartupPods), int32(framework.TestContext.AllowedNotReadyNodes), podStartupTimeout, map[string]string{}); err != nil {
+	if err := pod.WaitForPodsRunningReady(c, metav1.NamespaceSystem, int32(framework.TestContext.MinStartupPods), int32(framework.TestContext.AllowedNotReadyNodes), podStartupTimeout, map[string]string{}); err != nil {
 		framework.DumpAllNamespaceInfo(c, metav1.NamespaceSystem)
-		framework.LogFailedContainers(c, metav1.NamespaceSystem, e2elog.Logf)
-		e2elog.Failf("Error waiting for all pods to be running and ready: %v", err)
+		framework.LogFailedContainers(c, metav1.NamespaceSystem, log.Logf)
+		log.Failf("Error waiting for all pods to be running and ready: %v", err)
 	}
 
 	if err := framework.WaitForDaemonSets(c, metav1.NamespaceSystem, int32(framework.TestContext.AllowedNotReadyNodes), framework.TestContext.SystemDaemonsetStartupTimeout); err != nil {
-		e2elog.Logf("WARNING: Waiting for all daemonsets to be ready failed: %v", err)
+		log.Logf("WARNING: Waiting for all daemonsets to be ready failed: %v", err)
 	}
 
 	ginkgo.By("Initializing all nodes")
 	nodeList, err := c.CoreV1().Nodes().List(metav1.ListOptions{})
-	framework.ExpectNoError(err)
+	framework.ExpectNoError(err, "failed to list nodes")
 	for _, node := range nodeList.Items {
 		framework.Logf("Initializing node %q", node.Name)
-		framework.ExpectNoError(utilnode.InitNode(&node))
+		framework.ExpectNoError(utilnode.InitNode(&node), fmt.Sprintf("initializing node %s failed", node.Name))
 	}
 
 	// By using default storage class in GKE/EKS (aws), network attached storage
@@ -151,7 +150,7 @@ func setupSuite() {
 	if framework.TestContext.Provider == "gke" || framework.TestContext.Provider == "aws" || framework.TestContext.Provider == "kind" {
 		defaultSCName := "local-storage"
 		list, err := c.StorageV1().StorageClasses().List(metav1.ListOptions{})
-		framework.ExpectNoError(err)
+		framework.ExpectNoError(err, "list storage class failed")
 		// only one storage class can be marked default
 		// https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/#changing-the-default-storageclass
 		var localStorageSC *storagev1.StorageClass
@@ -161,32 +160,32 @@ func setupSuite() {
 			} else if storageutil.IsDefaultAnnotation(sc.ObjectMeta) {
 				delete(sc.ObjectMeta.Annotations, storageutil.IsDefaultStorageClassAnnotation)
 				_, err = c.StorageV1().StorageClasses().Update(&sc)
-				framework.ExpectNoError(err)
+				framework.ExpectNoError(err, "update storage class failed, %v", sc)
 			}
 		}
 		if localStorageSC == nil {
-			e2elog.Fail("local-storage storage class not found")
+			log.Fail("local-storage storage class not found")
 		}
 		if localStorageSC.Annotations == nil {
 			localStorageSC.Annotations = map[string]string{}
 		}
 		localStorageSC.Annotations[storageutil.IsDefaultStorageClassAnnotation] = "true"
-		e2elog.Logf("Setting %q as the default storage class", localStorageSC.Name)
+		log.Logf("Setting %q as the default storage class", localStorageSC.Name)
 		_, err = c.StorageV1().StorageClasses().Update(localStorageSC)
-		framework.ExpectNoError(err)
+		framework.ExpectNoError(err, "update storage class failed, %v", localStorageSC)
 	}
 
 	// Log the version of the server and this client.
-	e2elog.Logf("e2e test version: %s", version.Get().GitVersion)
+	log.Logf("e2e test version: %s", version.Get().GitVersion)
 
 	dc := c.DiscoveryClient
 
 	serverVersion, serverErr := dc.ServerVersion()
 	if serverErr != nil {
-		e2elog.Logf("Unexpected server error retrieving version: %v", serverErr)
+		log.Logf("Unexpected server error retrieving version: %v", serverErr)
 	}
 	if serverVersion != nil {
-		e2elog.Logf("kube-apiserver version: %s", serverVersion.GitVersion)
+		log.Logf("kube-apiserver version: %s", serverVersion.GitVersion)
 	}
 }
 
@@ -235,22 +234,23 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	}
 	// Get clients
 	config, err := framework.LoadConfig()
+	framework.ExpectNoError(err, "failed to load config")
 	config.QPS = 20
 	config.Burst = 50
-	framework.ExpectNoError(err, "failed to load config")
 	cli, err := versioned.NewForConfig(config)
-	framework.ExpectNoError(err, "failed to create clientset")
+	framework.ExpectNoError(err, "failed to create clientset for Pingcap")
 	kubeCli, err := kubernetes.NewForConfig(config)
-	framework.ExpectNoError(err, "failed to create clientset")
+	framework.ExpectNoError(err, "failed to create clientset for Kubernetes")
 	aggrCli, err := aggregatorclientset.NewForConfig(config)
-	framework.ExpectNoError(err, "failed to create clientset")
+	framework.ExpectNoError(err, "failed to create clientset for kube-aggregator")
 	apiExtCli, err := apiextensionsclientset.NewForConfig(config)
-	framework.ExpectNoError(err, "failed to create clientset")
+	framework.ExpectNoError(err, "failed to create clientset for apiextensions-apiserver")
 	asCli, err := asclientset.NewForConfig(config)
-	framework.ExpectNoError(err, "failed to create clientset")
+	framework.ExpectNoError(err, "failed to create clientset for advanced-statefulset")
+
 	ginkgo.By("Recycle all local PVs")
 	pvList, err := kubeCli.CoreV1().PersistentVolumes().List(metav1.ListOptions{})
-	framework.ExpectNoError(err, "failed to list pvList")
+	framework.ExpectNoError(err, "failed to list persistent volumes")
 	for _, pv := range pvList.Items {
 		if pv.Spec.StorageClassName != "local-storage" {
 			continue
@@ -258,11 +258,12 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 		if pv.Spec.PersistentVolumeReclaimPolicy == v1.PersistentVolumeReclaimDelete {
 			continue
 		}
-		ginkgo.By(fmt.Sprintf("Update reclaim policy of PV %s to %s", pv.Name, v1.PersistentVolumeReclaimDelete))
+		log.Logf("Update reclaim policy of PV %s to %s", pv.Name, v1.PersistentVolumeReclaimDelete)
 		pv.Spec.PersistentVolumeReclaimPolicy = v1.PersistentVolumeReclaimDelete
 		_, err = kubeCli.CoreV1().PersistentVolumes().Update(&pv)
-		framework.ExpectNoError(err, fmt.Sprintf("failed to update pv %s", pv.Name))
+		framework.ExpectNoError(err, "failed to update pv %s", pv.Name)
 	}
+
 	ginkgo.By("Wait for all local PVs to be available")
 	err = wait.Poll(time.Second, time.Minute, func() (bool, error) {
 		pvList, err := kubeCli.CoreV1().PersistentVolumes().List(metav1.ListOptions{})
@@ -349,7 +350,7 @@ func RunE2ETests(t *testing.T) {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	gomega.RegisterFailHandler(e2elog.Fail)
+	gomega.RegisterFailHandler(log.Fail)
 
 	// Disable serial and stability tests by default unless they are explicitly requested.
 	if config.GinkgoConfig.FocusString == "" && config.GinkgoConfig.SkipString == "" {
@@ -362,12 +363,12 @@ func RunE2ETests(t *testing.T) {
 		// TODO: we should probably only be trying to create this directory once
 		// rather than once-per-Ginkgo-node.
 		if err := os.MkdirAll(framework.TestContext.ReportDir, 0755); err != nil {
-			klog.Errorf("Failed creating report directory: %v", err)
+			log.Logf("ERROR: Failed creating report directory: %v", err)
 		} else {
 			r = append(r, reporters.NewJUnitReporter(path.Join(framework.TestContext.ReportDir, fmt.Sprintf("junit_%v%02d.xml", framework.TestContext.ReportPrefix, config.GinkgoConfig.ParallelNode))))
 		}
 	}
-	klog.Infof("Starting e2e run %q on Ginkgo node %d", framework.RunID, config.GinkgoConfig.ParallelNode)
+	log.Logf("Starting e2e run %q on Ginkgo node %d", framework.RunID, config.GinkgoConfig.ParallelNode)
 
 	ginkgo.RunSpecsWithDefaultAndCustomReporters(t, "tidb-operator e2e suite", r)
 }
