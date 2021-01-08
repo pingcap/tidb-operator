@@ -14,7 +14,7 @@ If you find that the memory leak occurs in a Pod during use, you need to restart
 
 ## Performing a graceful rolling restart to all Pods in a component
 
-Refer to [Deploy TiDB on general Kubernetes](deploy-on-general-kubernetes.md) and modify the cluster configuration by running the following command:
+After [Deploying TiDB on general Kubernetes](deploy-on-general-kubernetes.md), modify the cluster configuration by running the following command:
 
 {{< copyable "shell-regular" >}}
 

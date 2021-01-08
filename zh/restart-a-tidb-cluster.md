@@ -14,7 +14,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/restart-a-tidb-cluster/']
 
 ## 优雅滚动重启 TiDB 集群组件的所有 Pod 节点
 
-参考[在标准 Kubernetes 上部署 TiDB 集群](deploy-on-general-kubernetes.md)，通过 `kubectl edit tc ${name} -n ${namespace}` 修改集群配置，为期望优雅滚动重启的 TiDB 集群组件 Spec 添加 annotation `tidb.pingcap.com/restartedAt`，Value 设置为当前时间。以下示例中，为组件 `pd`、`tikv`、`tidb` 都设置了 annotation，表示将优雅滚动重启以上三个 TiDB 集群组件的所有 Pod。可以根据实际情况，只为某个组件设置 annotation。
+[在标准 Kubernetes 上部署 TiDB 集群](deploy-on-general-kubernetes.md)之后，通过 `kubectl edit tc ${name} -n ${namespace}` 修改集群配置，为期望优雅滚动重启的 TiDB 集群组件 Spec 添加 annotation `tidb.pingcap.com/restartedAt`，Value 设置为当前时间。以下示例中，为组件 `pd`、`tikv`、`tidb` 都设置了 annotation，表示将优雅滚动重启以上三个 TiDB 集群组件的所有 Pod。可以根据实际情况，只为某个组件设置 annotation。
 
 ```yaml
 apiVersion: pingcap.com/v1alpha1
