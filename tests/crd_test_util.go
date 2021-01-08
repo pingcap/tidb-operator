@@ -168,6 +168,7 @@ func (ctu *CrdTestUtil) WaitTidbClusterReadyOrDie(tc *v1alpha1.TidbCluster, time
 	}
 }
 
+// WaitForTidbClusterReady waits for tidb components ready, or timeout
 func (ctu *CrdTestUtil) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error {
 	if tc == nil {
 		return fmt.Errorf("tidbcluster is nil, cannot call WaitForTidbClusterReady")
@@ -183,22 +184,36 @@ func (ctu *CrdTestUtil) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeou
 		if b, err := ctu.pdMembersReadyFn(local); !b && err == nil {
 			return false, nil
 		}
+		log.Logf("pd members are ready")
+
 		if b, err := ctu.tikvMembersReadyFn(local); !b && err == nil {
 			return false, nil
 		}
+		log.Logf("tikv members are ready")
+
 		if b, err := ctu.tidbMembersReadyFn(local); !b && err == nil {
 			return false, nil
 		}
+		log.Logf("tidb members are ready")
+
 		if tc.Spec.TiFlash != nil && tc.Spec.TiFlash.Replicas > int32(0) {
 			if b, err := ctu.tiflashMembersReadyFn(local); !b && err == nil {
 				return false, nil
 			}
+			log.Logf("tiflash members are ready")
+		} else {
+			log.Logf("no tiflash in tc spec")
 		}
+
 		if tc.Spec.Pump != nil {
 			if b, err := ctu.pumpMembersReadyFn(local); !b && err == nil {
 				return false, nil
 			}
+			log.Logf("pump members are ready")
+		} else {
+			log.Logf("no pump in tc spec")
 		}
+
 		return true, nil
 	})
 }
@@ -215,6 +230,7 @@ func (ctu *CrdTestUtil) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, error)
 	}
 
 	if pdSet.Status.CurrentRevision != pdSet.Status.UpdateRevision {
+		log.Logf("pdSet.Status.CurrentRevision (%s) != pdSet.Status.UpdateRevision (%s)", pdSet.Status.CurrentRevision, pdSet.Status.UpdateRevision)
 		return false, nil
 	}
 
@@ -294,8 +310,7 @@ func (ctu *CrdTestUtil) tikvMembersReadyFn(obj runtime.Object) (bool, error) {
 	var tikvSetName string
 	if tc, ok := obj.(*v1alpha1.TidbCluster); ok {
 		tikvSetName = controller.TiKVMemberName(tc.Name)
-	}
-	if len(tikvSetName) < 1 {
+	} else {
 		return false, fmt.Errorf("failed to parse obj to TidbCluster")
 	}
 
@@ -306,6 +321,7 @@ func (ctu *CrdTestUtil) tikvMembersReadyFn(obj runtime.Object) (bool, error) {
 	}
 
 	if tikvSet.Status.CurrentRevision != tikvSet.Status.UpdateRevision {
+		log.Logf("tikvSet.Status.CurrentRevision (%s) != tikvSet.Status.UpdateRevision (%s)", tikvSet.Status.CurrentRevision, tikvSet.Status.UpdateRevision)
 		return false, nil
 	}
 
@@ -390,6 +406,7 @@ func (ctu *CrdTestUtil) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, erro
 	}
 
 	if tidbSet.Status.CurrentRevision != tidbSet.Status.UpdateRevision {
+		log.Logf("tidbSet.Status.CurrentRevision (%s) != tidbSet.Status.UpdateRevision (%s)", tidbSet.Status.CurrentRevision, tidbSet.Status.UpdateRevision)
 		return false, nil
 	}
 
