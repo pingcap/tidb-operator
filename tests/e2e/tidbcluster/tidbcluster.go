@@ -161,7 +161,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 				_, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
 				framework.ExpectNoError(err, "failed to create TidbCluster: %+v", tc)
-				err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
+				err = oa.WaitForTidbClusterReady(tc, 20*time.Minute, 5*time.Second)
 				framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %+v", tc)
 				err = crdUtil.CheckDisasterTolerance(tc)
 				framework.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %+v", tc)
@@ -174,7 +174,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					return nil
 				})
 				framework.ExpectNoError(err, "failed to scale out TidbCluster: %+v", tc)
-				err = crdUtil.WaitForTidbClusterReady(tc, 5*time.Minute, 5*time.Second)
+				err = oa.WaitForTidbClusterReady(tc, 5*time.Minute, 5*time.Second)
 				framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %+v", tc)
 				err = crdUtil.CheckDisasterTolerance(tc)
 				framework.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %+v", tc)
