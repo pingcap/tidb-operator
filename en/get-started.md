@@ -619,7 +619,7 @@ You can access Grafana dashboard at <http://localhost:3000> on the host where yo
 
 The default username and password in Grafana are both `admin`.
 
-For more information about monitoring the TiDB cluster in TiDB Operator, refer to [Monitor a TiDB Cluster Using TidbMonitor](monitor-using-tidbmonitor.md).
+For more information about monitoring the TiDB cluster in TiDB Operator, refer to [Deploy Monitoring and Alerts for a TiDB Cluster](monitor-a-tidb-cluster.md).
 
 ## Upgrade a TiDB cluster
 

@@ -48,7 +48,7 @@ Since TiDB Operator v1.1, you can configure TiDB, TiKV, and PD directly in TidbC
 
 ### Monitor
 
-To create the TidbMonitor CR and manage the Monitor component, refer to [Monitor a TiDB Cluster using TidbMonitor](monitor-using-tidbmonitor.md).
+To create the TidbMonitor CR and manage the Monitor component, refer to [Monitor a TiDB Cluster](monitor-a-tidb-cluster.md).
 
 > **Note:**
 >

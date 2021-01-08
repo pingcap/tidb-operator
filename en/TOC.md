@@ -29,8 +29,7 @@
   - [Deploy TiDB Binlog](deploy-tidb-binlog.md)
   - [Deploy TiDB Enterprise Edition](deploy-tidb-enterprise-edition.md)
   + Deploy Monitoring
-    - [Monitor Kubernetes and TiDB Cluster](monitor-a-tidb-cluster.md)
-    - [Monitor TiDB Cluster Using TidbMonitor](monitor-using-tidbmonitor.md)
+    - [Deploy Monitoring and Alerts for TiDB](monitor-a-tidb-cluster.md)
     - [Access TiDB Dashboard](access-dashboard.md)
 + Secure
   - [Enable TLS for the MySQL Client](enable-tls-for-mysql-client.md)
@@ -90,6 +89,7 @@
     - [Configure tidb-cluster Chart](tidb-cluster-chart-config.md)
     - [Configure tidb-backup Chart](configure-backup.md)
   - [Log Collection](logs-collection.md)
+  - [Monitoring and Alert on Kubernetes](monitor-kubernetes.md)
 + [TiDB Operator Roadmap](roadmap.md)
 + Release Notes
   + v1.1

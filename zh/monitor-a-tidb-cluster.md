@@ -68,7 +68,9 @@ NAME            STATUS   VOLUME                                     CAPACITY   A
 basic-monitor   Bound    pvc-6db79253-cc9e-4730-bbba-ba987c29db6f   5G         RWO            standard       51s
 ```
 
-### 自定义Prometheus 配置
+### 自定义 Prometheus 配置
+
+用户可以通过自定义配置文件或增加额外的命令行参数，来自定义 Prometheus 配置。
 
 #### 使用自定义配置文件
 
@@ -162,6 +164,8 @@ spec:
 ```
 
 ## 开启 Ingress
+
+本节介绍如何为 TidbMonitor 开启 Ingress。[Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/) 是一个 API 对象，负责管理集群中服务的外部访问。
 
 ### 环境准备
 
@@ -269,8 +273,6 @@ curl -H "Host: example.com" ${node_ip}:${NodePort}
 ```
 
 ## 告警配置
-
-### TiDB 集群告警
 
 在随 TiDB 集群部署 Prometheus 时，会自动导入一些默认的告警规则，可以通过浏览器访问 Prometheus 的 Alerts 页面查看当前系统中的所有告警规则和状态。
 
