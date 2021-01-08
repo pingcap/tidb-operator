@@ -115,18 +115,24 @@ func main() {
 		klog.Fatalf("failed to get the generic kube-apiserver client: %v", err)
 	}
 
+	kruiseEnabled := features.DefaultFeatureGate.Enabled(features.KruiseAdvancedStatefulSet)
+	astsEnabled := features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet)
+	if kruiseEnabled && !astsEnabled {
+		klog.Fatalf("can not enable feature KruiseAdvancedStatefulSet without AdvancedStatefulSet enabled")
+	}
+
 	// note that kubeCli here must not be the hijacked one
 	var operatorUpgrader upgrader.Interface
 	if cliCfg.ClusterScoped {
-		operatorUpgrader = upgrader.NewUpgrader(kubeCli, cli, asCli, metav1.NamespaceAll)
+		operatorUpgrader = upgrader.NewUpgrader(kubeCli, cli, asCli, kruiseCli, kruiseEnabled, metav1.NamespaceAll)
 	} else {
-		operatorUpgrader = upgrader.NewUpgrader(kubeCli, cli, asCli, ns)
+		operatorUpgrader = upgrader.NewUpgrader(kubeCli, cli, asCli, kruiseCli, kruiseEnabled, ns)
 	}
 
-	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
+	if astsEnabled {
 		// If AdvancedStatefulSet is enabled, we hijack the Kubernetes client to use
 		// AdvancedStatefulSet.
-		if features.DefaultFeatureGate.Enabled(features.KruiseAdvancedStatefulSet) {
+		if kruiseEnabled {
 			kubeCli = conversion.NewHijackClient(kubeCli, kruiseCli)
 		} else {
 			kubeCli = helper.NewHijackClient(kubeCli, asCli)
