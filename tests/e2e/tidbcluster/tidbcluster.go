@@ -873,57 +873,59 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		framework.ExpectNoError(err, "failed to wait for tikv upgraded: %+v", tc)
 	})
 
-	// TODO: explain purpose of this case
-	ginkgo.It("[Feature: AutoFailover] should clear TiDB failureMembers when scale TiDB to zero", func() {
-		ginkgo.By("deploy initial tc with bad tidb pre-start script")
-		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "tidb-scale", "admin", utilimage.TiDBV3Version)
-		tcCfg.Resources["pd.replicas"] = "3"
-		tcCfg.Resources["tikv.replicas"] = "1"
-		tcCfg.Resources["tidb.replicas"] = "1"
+	ginkgo.Context("[Feature: AutoFailover]", func() {
+		// TODO: explain purpose of this case
+		ginkgo.It("should clear TiDB failureMembers when scale TiDB to zero", func() {
+			ginkgo.By("deploy initial tc with bad tidb pre-start script")
+			tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "tidb-scale", "admin", utilimage.TiDBV3Version)
+			tcCfg.Resources["pd.replicas"] = "3"
+			tcCfg.Resources["tikv.replicas"] = "1"
+			tcCfg.Resources["tidb.replicas"] = "1"
 
-		tcCfg.TiDBPreStartScript = strconv.Quote("exit 1")
-		oa.DeployTidbClusterOrDie(&tcCfg)
+			tcCfg.TiDBPreStartScript = strconv.Quote("exit 1")
+			oa.DeployTidbClusterOrDie(&tcCfg)
 
-		ginkgo.By("check tidb failure member count")
-		ns := tcCfg.Namespace
-		tcName := tcCfg.ClusterName
-		err := wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
-			var tc *v1alpha1.TidbCluster
-			var err error
-			if tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
-				log.Logf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
+			ginkgo.By("check tidb failure member count")
+			ns := tcCfg.Namespace
+			tcName := tcCfg.ClusterName
+			err := wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
+				var tc *v1alpha1.TidbCluster
+				var err error
+				if tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
+					log.Logf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
+					return false, nil
+				}
+				if len(tc.Status.TiDB.FailureMembers) == 1 {
+					return true, nil
+				}
+				log.Logf("the number of failed tidb member is not 1 (current: %d)", len(tc.Status.TiDB.FailureMembers))
 				return false, nil
-			}
-			if len(tc.Status.TiDB.FailureMembers) == 1 {
+			})
+			framework.ExpectNoError(err, "expect tidb failure member count = 1")
+
+			ginkgo.By("scale tidb to 0")
+			tcCfg.ScaleTiDB(0)
+			oa.ScaleTidbClusterOrDie(&tcCfg)
+			err = wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
+				var tc *v1alpha1.TidbCluster
+				var err error
+				if tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
+					log.Logf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
+					return false, nil
+				}
+				if tc.Status.TiDB.StatefulSet.Replicas != 0 {
+					log.Logf("failed to scale tidb member to zero (current: %d)", tc.Status.TiDB.StatefulSet.Replicas)
+					return false, nil
+				}
+				if len(tc.Status.TiDB.FailureMembers) != 0 {
+					log.Logf("failed to clear fail member (current: %d)", len(tc.Status.TiDB.FailureMembers))
+					return false, nil
+				}
+				log.Logf("scale tidb member to zero successfully")
 				return true, nil
-			}
-			log.Logf("the number of failed tidb member is not 1 (current: %d)", len(tc.Status.TiDB.FailureMembers))
-			return false, nil
+			})
+			framework.ExpectNoError(err, "not clear TiDB failureMembers when scale TiDB to zero")
 		})
-		framework.ExpectNoError(err, "expect tidb failure member count = 1")
-
-		ginkgo.By("scale tidb to 0")
-		tcCfg.ScaleTiDB(0)
-		oa.ScaleTidbClusterOrDie(&tcCfg)
-		err = wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
-			var tc *v1alpha1.TidbCluster
-			var err error
-			if tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
-				log.Logf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
-				return false, nil
-			}
-			if tc.Status.TiDB.StatefulSet.Replicas != 0 {
-				log.Logf("failed to scale tidb member to zero (current: %d)", tc.Status.TiDB.StatefulSet.Replicas)
-				return false, nil
-			}
-			if len(tc.Status.TiDB.FailureMembers) != 0 {
-				log.Logf("failed to clear fail member (current: %d)", len(tc.Status.TiDB.FailureMembers))
-				return false, nil
-			}
-			log.Logf("scale tidb member to zero successfully")
-			return true, nil
-		})
-		framework.ExpectNoError(err, "not clear TiDB failureMembers when scale TiDB to zero")
 	})
 
 	// TODO: add case for TiKV storage auto scaling
@@ -1824,59 +1826,64 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		framework.Logf("tidbcluster tidb service NodePort haven't changed after update")
 	})
 
-	ginkgo.It("[Feature: Heterogeneous Cluster] should join heterogeneous cluster into an existing cluster", func() {
-		// Create TidbCluster with NodePort to check whether node port would change
-		originTc := fixture.GetTidbCluster(ns, "origin", utilimage.TiDBV4UpgradeVersion)
-		originTc.Spec.PD.Replicas = 1
-		originTc.Spec.TiKV.Replicas = 1
-		originTc.Spec.TiDB.Replicas = 1
-		err := genericCli.Create(context.TODO(), originTc)
-		framework.ExpectNoError(err, "Expected TiDB cluster created")
-		err = oa.WaitForTidbClusterReady(originTc, 10*time.Minute, 5*time.Second)
-		framework.ExpectNoError(err, "Expected TiDB cluster ready")
+	ginkgo.Context("[Feature: Heterogeneous Cluster]", func() {
+		ginkgo.It("should join heterogeneous cluster into an existing cluster", func() {
+			// Create TidbCluster with NodePort to check whether node port would change
+			ginkgo.By("deploy origin tc")
+			originTc := fixture.GetTidbCluster(ns, "origin", utilimage.TiDBV4UpgradeVersion)
+			originTc.Spec.PD.Replicas = 1
+			originTc.Spec.TiKV.Replicas = 1
+			originTc.Spec.TiDB.Replicas = 1
+			err := genericCli.Create(context.TODO(), originTc)
+			framework.ExpectNoError(err, "Expected TiDB cluster created")
+			err = oa.WaitForTidbClusterReady(originTc, 10*time.Minute, 5*time.Second)
+			framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
-		heterogeneousTc := fixture.GetTidbCluster(ns, "heterogeneous", utilimage.TiDBV4UpgradeVersion)
-		heterogeneousTc.Spec.PD = nil
-		heterogeneousTc.Spec.TiKV.Replicas = 1
-		heterogeneousTc.Spec.TiDB.Replicas = 1
-		heterogeneousTc.Spec.TiFlash = &v1alpha1.TiFlashSpec{Replicas: 1,
-			BaseImage: "pingcap/tiflash", StorageClaims: []v1alpha1.StorageClaim{
-				{Resources: v1.ResourceRequirements{
-					Requests: v1.ResourceList{
-						v1.ResourceStorage: resource.MustParse("10G"),
-					},
-				}},
-			}}
-		heterogeneousTc.Spec.Cluster = &v1alpha1.TidbClusterRef{
-			Name: originTc.Name,
-		}
-		err = genericCli.Create(context.TODO(), heterogeneousTc)
-		framework.ExpectNoError(err, "Expected Heterogeneous TiDB cluster created")
-		err = oa.WaitForTidbClusterReady(heterogeneousTc, 15*time.Minute, 15*time.Second)
-		framework.ExpectNoError(err, "Expected Heterogeneous TiDB cluster ready")
-		err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
-			var err error
-			if _, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(heterogeneousTc.Name, metav1.GetOptions{}); err != nil {
-				log.Logf("failed to get tidbcluster: %s/%s, %v", ns, heterogeneousTc.Name, err)
-				return false, nil
+			ginkgo.By("deploy heterogeneous tc")
+			heterogeneousTc := fixture.GetTidbCluster(ns, "heterogeneous", utilimage.TiDBV4UpgradeVersion)
+			heterogeneousTc.Spec.PD = nil
+			heterogeneousTc.Spec.TiKV.Replicas = 1
+			heterogeneousTc.Spec.TiDB.Replicas = 1
+			heterogeneousTc.Spec.TiFlash = &v1alpha1.TiFlashSpec{Replicas: 1,
+				BaseImage: "pingcap/tiflash", StorageClaims: []v1alpha1.StorageClaim{
+					{Resources: v1.ResourceRequirements{
+						Requests: v1.ResourceList{
+							v1.ResourceStorage: resource.MustParse("10G"),
+						},
+					}},
+				}}
+			heterogeneousTc.Spec.Cluster = &v1alpha1.TidbClusterRef{
+				Name: originTc.Name,
 			}
-			log.Logf("start check heterogeneous cluster storeInfo: %s/%s", ns, heterogeneousTc.Name)
-			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, originTc.Name, false)
-			framework.ExpectNoError(err, "create pdClient error")
-			defer cancel()
-			storeInfo, err := pdClient.GetStores()
-			if err != nil {
-				log.Logf("failed to get stores, %v", err)
-			}
-			if storeInfo.Count != 3 {
-				log.Logf("failed to check stores (current: %d)", storeInfo.Count)
-				return false, nil
-			}
-			log.Logf("check heterogeneous tc successfully")
-			return true, nil
+			err = genericCli.Create(context.TODO(), heterogeneousTc)
+			framework.ExpectNoError(err, "Expected Heterogeneous TiDB cluster created")
+			err = oa.WaitForTidbClusterReady(heterogeneousTc, 15*time.Minute, 15*time.Second)
+			framework.ExpectNoError(err, "Expected Heterogeneous TiDB cluster ready")
+
+			ginkgo.By("wait for heterogeneous tc to join origin tc")
+			err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
+				var err error
+				if _, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(heterogeneousTc.Name, metav1.GetOptions{}); err != nil {
+					log.Logf("failed to get tidbcluster: %s/%s, %v", ns, heterogeneousTc.Name, err)
+					return false, nil
+				}
+				log.Logf("start check heterogeneous cluster storeInfo: %s/%s", ns, heterogeneousTc.Name)
+				pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, originTc.Name, false)
+				framework.ExpectNoError(err, "create pdClient error")
+				defer cancel()
+				storeInfo, err := pdClient.GetStores()
+				if err != nil {
+					log.Logf("failed to get stores, %v", err)
+				}
+				if storeInfo.Count != 3 {
+					log.Logf("failed to check stores (current: %d)", storeInfo.Count)
+					return false, nil
+				}
+				log.Logf("check heterogeneous tc successfully")
+				return true, nil
+			})
+			framework.ExpectNoError(err, "failed to wait heterogeneous tc to join origin tc")
 		})
-		framework.ExpectNoError(err, "check heterogeneous timeout")
-
 	})
 
 	ginkgo.It("[Feature: CDC]", func() {
@@ -1931,37 +1938,40 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 	ginkgo.Context("when stores number is equal to 3", func() {
 		ginkgo.It("forbid to scale in TiKV and the state of all stores are up", func() {
-			tc := fixture.GetTidbCluster(ns, "scale-in-tikv-test", utilimage.TiDBV4Version)
+			ginkgo.By("deploy initial tc")
+			tc := fixture.GetTidbCluster(ns, "scale-in-tikv", utilimage.TiDBV4Version)
 			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
 			framework.ExpectNoError(err, "Expected create tidbcluster")
 			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err, "Expected get tidbcluster")
 
-			// scale in tikv
+			ginkgo.By("scale in tikv to 2 replicas")
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 				tc.Spec.TiKV.Replicas = 2
 				return nil
 			})
-			framework.ExpectNoError(err, "failed to update TidbCluster: %+v", tc)
+			framework.ExpectNoError(err, "failed to scale in tikv")
 
+			ginkgo.By("expect up stores number stays 3")
 			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, tc.Name, false)
 			framework.ExpectNoError(err, "create pdClient error")
 			defer cancel()
 			storesInfo, err := pdClient.GetStores()
 			framework.ExpectNoError(err, "get stores info error")
 
-			_ = wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
+			err = wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
 				framework.ExpectEqual(storesInfo.Count, 3, "Expect number of stores is 3")
 				for _, store := range storesInfo.Stores {
 					framework.ExpectEqual(store.Store.StateName, "Up", "Expect state of stores are Up")
 				}
 				return false, nil
 			})
+			framework.ExpectNoError(err, "some store fails")
 		})
 	})
 
-	ginkgo.It("TiKV mount multiple pvc", func() {
-
+	ginkgo.It("TiKV should mount multiple pvc", func() {
+		ginkgo.By("deploy initial tc with addition")
 		clusterName := "tidb-multiple-pvc-scale"
 		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4Version)
 		tc.Spec.TiKV.StorageVolumes = []v1alpha1.StorageVolume{
