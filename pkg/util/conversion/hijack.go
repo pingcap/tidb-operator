@@ -203,7 +203,11 @@ func FromBuiltinStatefulSet(sts *appsv1.StatefulSet) (*kruisev1beta1.StatefulSet
 		}
 		newSet.Spec.UpdateStrategy.RollingUpdate = &strategy
 	}
-	newSet.Spec.UpdateStrategy.RollingUpdate.Partition = sts.Spec.UpdateStrategy.RollingUpdate.Partition
+
+	// RollingUpdate Partition
+	if sts.Spec.UpdateStrategy.RollingUpdate != nil {
+		newSet.Spec.UpdateStrategy.RollingUpdate.Partition = sts.Spec.UpdateStrategy.RollingUpdate.Partition
+	}
 
 	// unmarshal delete-slots annotation into `Spec.ReserveOrdinals` in advancedStatefulSet of openKruise
 	if ords, ok := sts.Annotations[helper.DeleteSlotsAnn]; ok {
