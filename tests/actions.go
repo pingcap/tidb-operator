@@ -1328,7 +1328,7 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 	replicas := tc.TiKVStsDesiredReplicas()
 	for i := replicas - 1; i >= 0; i-- {
 		log.Logf("checking upgrade for tikv ordinal %d", i)
-		err := wait.PollImmediate(5*time.Second, 3*time.Minute, func() (done bool, err error) {
+		err := wait.PollImmediate(5*time.Second, 10*time.Minute, func() (done bool, err error) {
 			podName := fmt.Sprintf("%s-tikv-%d", tcName, i)
 			scheduler := fmt.Sprintf("evict-leader-scheduler-%s", findStoreFn(tc, podName))
 			pdClient, cancel, err := oa.getPDClient(tc)
