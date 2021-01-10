@@ -1552,7 +1552,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				return nil
 			})
 			framework.ExpectNoError(err, "failed to update TidbCluster: %+v", tc)
-			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
+			err = oa.WaitForTidbClusterReady(tc, 20*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %+v", tc)
 		})
 
