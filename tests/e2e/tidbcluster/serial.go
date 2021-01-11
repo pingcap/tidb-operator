@@ -183,7 +183,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			})
 			framework.ExpectNoError(err, "failed to upgrade tikv-1 to %q", utilimage.TiDBV3UpgradeVersion)
 
-			ginkgo.By("wait to see if tikv sts partition annotation remains 1 for 3 min")
+			ginkgo.By("Wait to see if tikv sts partition annotation remains 1 for 3 min")
 			// TODO: explain the purpose of this testing
 			err = wait.Poll(5*time.Second, 3*time.Minute, func() (done bool, err error) {
 				tikvSts, err := c.AppsV1().StatefulSets(ns).Get(fmt.Sprintf("%s-tikv", tc.Name), metav1.GetOptions{})
@@ -249,7 +249,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 		})
 
 		ginkgo.It("should perform defaulting and validating properly", func() {
-			ginkgo.By("deploy a legacy tc")
+			ginkgo.By("Deploy a legacy tc")
 			legacyTc := &v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: ns,
@@ -291,7 +291,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			// err := genericCli.Create(context.TODO(), legacyTc)
 			framework.ExpectNoError(err, "Expected create tidbcluster without defaulting and validating")
 
-			ginkgo.By("enable webhook in operator")
+			ginkgo.By("Enable webhook in operator")
 			ocfg.WebhookEnabled = true
 			oa.UpgradeOperatorOrDie(ocfg)
 			// now the webhook enabled
@@ -303,7 +303,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			framework.ExpectNoError(err, "Update legacy TidbCluster should not be influenced by validating")
 			framework.ExpectEqual(legacyTc.Spec.TiDB.BaseImage, "", "Update legacy tidbcluster should not be influenced by defaulting")
 
-			ginkgo.By("update TidbCluster to use webhook")
+			ginkgo.By("Update TidbCluster to use webhook")
 			err = controller.GuaranteedUpdate(genericCli, legacyTc, func() error {
 				legacyTc.Spec.TiDB.BaseImage = "pingcap/tidb"
 				legacyTc.Spec.TiKV.BaseImage = "pingcap/tikv"
@@ -313,7 +313,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			})
 			framework.ExpectNoError(err, "failed to update TidbCluster")
 
-			ginkgo.By("set empty values to test validating")
+			ginkgo.By("Set empty values to test validating")
 			err = controller.GuaranteedUpdate(genericCli, legacyTc, func() error {
 				legacyTc.Spec.TiDB.BaseImage = ""
 				legacyTc.Spec.PD.Version = pointer.StringPtr("")
@@ -321,7 +321,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			})
 			framework.ExpectError(err, "Validating should reject empty mandatory fields")
 
-			ginkgo.By("deploy a new tc with legacy fields")
+			ginkgo.By("Deploy a new tc with legacy fields")
 			// TODO: explain the purpose of this testing
 			newTC := &v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
@@ -359,7 +359,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			_, err = cli.PingcapV1alpha1().TidbClusters(ns).Create(newTC)
 			framework.ExpectError(err, "Validating should reject legacy fields for newly created cluster")
 
-			ginkgo.By("deploy a new tc")
+			ginkgo.By("Deploy a new tc")
 			newTC = &v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: ns,
@@ -395,7 +395,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				log.Failf("Expected tidb.baseImage has default value set, %v", err)
 			}
 
-			ginkgo.By("update tc with invalid instance label value")
+			ginkgo.By("Update tc with invalid instance label value")
 			err = controller.GuaranteedUpdate(genericCli, newTC, func() error {
 				newTC.Labels = map[string]string{
 					label.InstanceLabelKey: "some-insane-label-value",
@@ -404,7 +404,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			})
 			framework.ExpectError(err, "Could not set instance label with value other than cluster name")
 
-			ginkgo.By("update pd replication config in tc")
+			ginkgo.By("Update pd replication config in tc")
 			err = controller.GuaranteedUpdate(genericCli, newTC, func() error {
 				c := v1alpha1.NewPDConfig()
 				c.Set("replication.max-replicas", 5)
@@ -415,7 +415,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 		})
 	})
 
-	ginkgo.Describe("Upgrading Operator from 1.1.0 to latest", func() {
+	ginkgo.Describe("Upgrading Operator from 1.1.7 to latest", func() {
 		var oa tests.OperatorActions
 		var ocfg *tests.OperatorConfig
 		var operatorVersion string
@@ -519,7 +519,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 		})
 
 		/*
-		  Release: v1.1.8
+		  Release: v1.2.0
 		  new feature in https://github.com/pingcap/tidb-operator/pull/3440
 		  deploy tidbmonitor and upgrade tidb-perator, then tidbmonitor should switch from deployment to statefulset
 		*/
@@ -592,7 +592,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 		var operatorVersion string
 
 		ginkgo.BeforeEach(func() {
-			operatorVersion = "v1.1.0-rc.2"
+			operatorVersion = "v1.1.0"
 			ocfg = &tests.OperatorConfig{
 				Namespace:   ns,
 				ReleaseName: "operator",

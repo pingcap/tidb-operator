@@ -182,39 +182,39 @@ func (ctu *CrdTestUtil) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeou
 		}
 
 		if b, err := ctu.pdMembersReadyFn(local); !b && err == nil {
-			log.Logf("pd members are not ready")
+			log.Logf("pd members are not ready for tc %q", tc.Name)
 			return false, nil
 		}
-		log.Logf("pd members are ready")
+		log.Logf("pd members are ready for tc %q", tc.Name)
 
 		if b, err := ctu.tikvMembersReadyFn(local); !b && err == nil {
-			log.Logf("tikv members are not ready")
+			log.Logf("tikv members are not ready for tc %q", tc.Name)
 			return false, nil
 		}
-		log.Logf("tikv members are ready")
+		log.Logf("tikv members are ready for tc %q", tc.Name)
 
 		if b, err := ctu.tidbMembersReadyFn(local); !b && err == nil {
-			log.Logf("tidb members are not ready")
+			log.Logf("tidb members are not ready for tc %q", tc.Name)
 			return false, nil
 		}
-		log.Logf("tidb members are ready")
+		log.Logf("tidb members are ready for tc %q", tc.Name)
 
 		if tc.Spec.TiFlash != nil && tc.Spec.TiFlash.Replicas > int32(0) {
 			if b, err := ctu.tiflashMembersReadyFn(local); !b && err == nil {
-				log.Logf("tiflash members are not ready")
+				log.Logf("tiflash members are not ready for tc %q", tc.Name)
 				return false, nil
 			}
-			log.Logf("tiflash members are ready")
+			log.Logf("tiflash members are ready for tc %q", tc.Name)
 		} else {
 			log.Logf("no tiflash in tc spec")
 		}
 
 		if tc.Spec.Pump != nil {
 			if b, err := ctu.pumpMembersReadyFn(local); !b && err == nil {
-				log.Logf("pump members are not ready")
+				log.Logf("pump members are not ready for tc %q", tc.Name)
 				return false, nil
 			}
-			log.Logf("pump members are ready")
+			log.Logf("pump members are ready for tc %q", tc.Name)
 		} else {
 			log.Logf("no pump in tc spec")
 		}

@@ -1328,7 +1328,7 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 	replicas := tc.TiKVStsDesiredReplicas()
 	for i := replicas - 1; i >= 0; i-- {
 		log.Logf("checking upgrade for tikv ordinal %d", i)
-		err := wait.PollImmediate(5*time.Second, 10*time.Minute, func() (done bool, err error) {
+		err := wait.PollImmediate(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 			podName := fmt.Sprintf("%s-tikv-%d", tcName, i)
 			scheduler := fmt.Sprintf("evict-leader-scheduler-%s", findStoreFn(tc, podName))
 			pdClient, cancel, err := oa.getPDClient(tc)
@@ -3625,39 +3625,39 @@ func (oa *operatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, tim
 		}
 
 		if b, err := oa.pdMembersReadyFn(local); !b && err == nil {
-			log.Logf("pd members are not ready")
+			log.Logf("pd members are not ready for tc %q", tc.Name)
 			return false, nil
 		}
-		log.Logf("pd members are ready")
+		log.Logf("pd members are ready for tc %q", tc.Name)
 
 		if b, err := oa.tikvMembersReadyFn(local); !b && err == nil {
-			log.Logf("tikv members are not ready")
+			log.Logf("tikv members are not ready for tc %q", tc.Name)
 			return false, nil
 		}
-		log.Logf("tikv members are ready")
+		log.Logf("tikv members are ready for tc %q", tc.Name)
 
 		if b, err := oa.tidbMembersReadyFn(local); !b && err == nil {
-			log.Logf("tidb members are not ready")
+			log.Logf("tidb members are not ready for tc %q", tc.Name)
 			return false, nil
 		}
-		log.Logf("tidb members are ready")
+		log.Logf("tidb members are ready for tc %q", tc.Name)
 
 		if tc.Spec.TiFlash != nil && tc.Spec.TiFlash.Replicas > int32(0) {
 			if b, err := oa.tiflashMembersReadyFn(local); !b && err == nil {
-				log.Logf("tiflash members are not ready")
+				log.Logf("tiflash members are not ready for tc %q", tc.Name)
 				return false, nil
 			}
-			log.Logf("tiflash members are ready")
+			log.Logf("tiflash members are ready for tc %q", tc.Name)
 		} else {
 			log.Logf("no tiflash in tc spec")
 		}
 
 		if tc.Spec.Pump != nil {
 			if b, err := oa.pumpMembersReadyFn(local); !b && err == nil {
-				log.Logf("pump members are not ready")
+				log.Logf("pump members are not ready for tc %q", tc.Name)
 				return false, nil
 			}
-			log.Logf("pump members are ready")
+			log.Logf("pump members are ready for tc %q", tc.Name)
 		} else {
 			log.Logf("no pump in tc spec")
 		}
