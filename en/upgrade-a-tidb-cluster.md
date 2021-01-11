@@ -75,6 +75,31 @@ Change the related PD configuration to make sure that PD is in a normal state.
 > kubectl annotate tc ${cluster_name} -n ${namespace} tidb.pingcap.com/force-upgrade-
 > ```
 
+### Modify TiDB cluster configuration
+
+> **Note:**
+>
+> - After the cluster is started for the first time, some PD configuration items are persisted in etcd. The persisted configuration in etcd takes precedence over that in PD. Therefore, after the first start, you cannot modify some PD configuration using parameters. You need to dynamically modify the configuration using SQL statements, pd-ctl, or PD server API. Currently, among all the configuration items listed in [Modify PD configuration online](https://docs.pingcap.com/tidb/stable/dynamic-config#modify-pd-configuration-online), except `log.level`, all the other configuration items cannot be modified using parameters after the first start.
+> If you modify configuration items by [dynamically modifying configuration online](https://docs.pingcap.com/tidb/stable/dynamic-config), after rolling upgrade, the configuration might be overwritten by CR.
+
+1. Refer to [Configure TiDB components](configure-a-tidb-cluster.md#configure-tidb-components) to modify the component configuration in the `TidbCluster` CR of the cluster:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl edit tc ${cluster_name} -n ${namespace}
+    ```
+
+2. View the updating progress after the configuration is modified:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    watch kubectl -n ${namespace} get pod -o wide
+    ```
+
+    After all the Pods are recreated and are in the `Running` state, the configuration is successfully modified.
+
 ## Upgrade using Helm
 
 If you continue to manage your cluster using Helm, refer to the following steps to upgrade the TiDB cluster.
