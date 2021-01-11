@@ -201,7 +201,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					return nil
 				})
 				framework.ExpectNoError(err, "failed to change configuration of TidbCluster: %+v", tc)
-				err = crdUtil.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
+				err = crdUtil.WaitForTidbClusterReady(tc, 20*time.Minute, 5*time.Second)
 				framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %+v", tc)
 			})
 		}
