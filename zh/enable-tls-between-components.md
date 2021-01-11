@@ -24,6 +24,8 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/enable-tls-between-components/']
 - 使用 `cfssl` 系统颁发证书；
 - 使用 `cert-manager` 系统颁发证书；
 
+当需要更新已有 TLS 证书时，可参考[更新和替换 TLS 证书](renew-tls-certificate.md)。
+
 ## 第一步：为 TiDB 集群各个组件生成证书
 
 ### 使用 `cfssl` 系统颁发证书
