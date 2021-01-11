@@ -647,7 +647,7 @@ func (m *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	storesInfo, err := pdCli.GetStores()
 	if err != nil {
 		if pdapi.IsTiKVNotBootstrappedError(err) {
-			klog.V(4).Infof("TiKV of Cluster %s/%s is not bootstrapped yet, get no store", tc.Namespace, tc.Name)
+			klog.V(4).Infof("TiKV of Cluster %s/%s is not bootstrapped yet, got no store", tc.Namespace, tc.Name)
 			tc.Status.TiKV.Synced = true
 			return nil
 		}
