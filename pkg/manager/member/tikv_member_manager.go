@@ -646,6 +646,11 @@ func (m *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	// This only returns Up/Down/Offline stores
 	storesInfo, err := pdCli.GetStores()
 	if err != nil {
+		if pdapi.IsTiKVNotBootstrappedError(err) {
+			klog.V(4).Infof("TiKV of Cluster %s/%s is not bootstrapped yet, get no store", tc.Namespace, tc.Name)
+			tc.Status.TiKV.Synced = true
+			return nil
+		}
 		tc.Status.TiKV.Synced = false
 		return err
 	}
@@ -742,6 +747,10 @@ func (m *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (int
 	pdCli := controller.GetPDClient(m.deps.PDControl, tc)
 	storesInfo, err := pdCli.GetStores()
 	if err != nil {
+		if pdapi.IsTiKVNotBootstrappedError(err) {
+			klog.V(4).Infof("TiKV of Cluster %s/%s is not bootstrapped yet, get no store", tc.Namespace, tc.Name)
+			return setCount, nil
+		}
 		return setCount, err
 	}
 

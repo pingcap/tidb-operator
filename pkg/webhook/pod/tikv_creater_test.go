@@ -27,6 +27,10 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
+const (
+	tikvNotBootstrapped = `TiKV cluster not bootstrapped, please start TiKV first"`
+)
+
 func TestAdmitCreateTiKVPod(t *testing.T) {
 	g := NewGomegaWithT(t)
 	kubeCli := kubefake.NewSimpleClientset()
