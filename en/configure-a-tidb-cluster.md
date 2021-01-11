@@ -65,7 +65,13 @@ Versions required:
 
 It is recommended that you configure `spec.pvReclaimPolicy: Retain` to ensure that the PV is retained even if the PVC is deleted. This is to ensure your data safety.
 
+#### mountClusterClientSecret
+
+PD and TiKV supports configuring `mountClusterClientSecret`. If [TLS is enabled between cluster components](enable-tls-between-components.md), it is recommended to configure `spec.pd.mountClusterClientSecret: true` and `spec.tikv.mountClusterClientSecret: true`. Under such configuration, TiDB Operator automatically mounts the `${cluster_name}-cluster-client-secret` certificate to the PD and TiKV container, so you can conveniently [use `pd-ctl` and `tikv-ctl`](enable-tls-between-components.md#configure-pd-ctl-tikv-ctl-and-connect-to-the-cluster).
+
 ### Storage
+
+#### Storage Class
 
 You can set the storage class by modifying `storageClassName` of each component in `${cluster_name}/tidb-cluster.yaml` and `${cluster_name}/tidb-monitor.yaml`. For the [storage classes](configure-storage-class.md) supported by the Kubernetes cluster, check with your system administrator.
 
@@ -79,7 +85,7 @@ For the demonstration environment or functional verification, you can use networ
 >
 > When you create the TiDB cluster, if you set a storage class that does not exist in the Kubernetes cluster, then the TiDB cluster creation goes to the Pending state. In this situation, you must [destroy the TiDB cluster in Kubernetes](destroy-a-tidb-cluster.md) and retry the creation.
 
-### Multiple disks mounting
+#### Multiple disks mounting
 
 TiDB Operator supports mounting multiple PVs for PD, TiDB, and TiKV, which can be used for data writing for different purposes.
 
@@ -155,9 +161,13 @@ For example:
 >
 > TiDB Operator uses some mount paths by default. For example, it mounts `EmptyDir` to the `/var/log/tidb` directory for the TiDB Pod. Therefore, avoid duplicate `mountPath` when you configure `storageVolumes`.
 
-### mountClusterClientSecret
+### HostNetwork
 
-It is recommended that you configure `spec.pd.mountClusterClientSecret: true` and `spec.tikv.mountClusterClientSecret: true`, so that TiDB Operator can mount the `${cluster_name}-cluster-client-secret` certificates to the PD and TiKV containers automatically, which can make the [use of `pd-ctl` and `tikv-ctl`](enable-tls-between-components.md#configure-pd-ctl-tikv-ctl-and-connect-to-the-cluster) easier.
+For PD, TiKV, TiDB, TiFlash, TiCDC, and Pump, you can configure the Pods to use the host namespace [`HostNetwork`](https://kubernetes.io/docs/concepts/policy/pod-security-policy/#host-namespaces).
+
+To enable `HostNetwork` for all supported components, configure `spec.hostNetwork: true`.
+
+To enable `HostNetwork` for specified components, configure `hostNetwork: true` for the components.
 
 ### Cluster topology
 
