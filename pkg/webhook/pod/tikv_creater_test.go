@@ -17,8 +17,6 @@ import (
 	"strconv"
 	"testing"
 
-	"errors"
-
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
@@ -45,7 +43,7 @@ func TestAdmitCreateTiKVPod(t *testing.T) {
 
 	// success if tikv is not bootstrapped
 	pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
-		return nil, errors.New(tikvNotBootstrapped + "\n")
+		return nil, pdapi.TiKVNotBootstrappedErrorf(tikvNotBootstrapped + "\n")
 	})
 	resp = admitCreateTiKVPod(pod, pdClient)
 	g.Expect(resp.Allowed).Should(BeTrue())
