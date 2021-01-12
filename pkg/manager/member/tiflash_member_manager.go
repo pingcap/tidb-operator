@@ -727,8 +727,8 @@ func (m *tiflashMemberManager) setStoreLabelsForTiFlash(tc *v1alpha1.TidbCluster
 	// for unit test
 	setCount := 0
 
-	if !tc.TiFlashBootStrapped() {
-		klog.Infof("TiFlash of Cluster %s/%s is not bootstrapped yet, no need to set store labels", tc.Namespace, tc.Name)
+	if !tc.TiKVBootStrapped() {
+		klog.Infof("TiKV of Cluster %s/%s is not bootstrapped yet, no need to set store labels", tc.Namespace, tc.Name)
 		return setCount, nil
 	}
 
