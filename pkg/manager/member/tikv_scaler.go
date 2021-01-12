@@ -18,6 +18,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
+
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -245,6 +247,10 @@ func (s *tikvScaler) preCheckUpStores(tc *v1alpha1.TidbCluster, podName string) 
 	upNumber := 0
 	storesInfo, err := pdClient.GetStores()
 	if err != nil {
+		if pdapi.IsTiKVNotBootstrappedError(err) {
+			klog.Infof("TiKV of Cluster %s/%s is not bootstrapped yet, skip pre check when scale in TiKV", tc.Namespace, tc.Name)
+			return true, nil
+		}
 		return false, fmt.Errorf("failed to get stores info in TidbCluster %s/%s", tc.GetNamespace(), tc.GetName())
 	}
 	// filter out TiFlash
