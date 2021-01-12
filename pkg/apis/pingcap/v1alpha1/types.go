@@ -992,7 +992,6 @@ type TiKVStatus struct {
 type TiFlashStatus struct {
 	Synced          bool                        `json:"synced,omitempty"`
 	Phase           MemberPhase                 `json:"phase,omitempty"`
-	BootStrapped    bool                        `json:"bootStrapped,omitempty"`
 	StatefulSet     *apps.StatefulSetStatus     `json:"statefulSet,omitempty"`
 	Stores          map[string]TiKVStore        `json:"stores,omitempty"`
 	PeerStores      map[string]TiKVStore        `json:"peerStores,omitempty"`

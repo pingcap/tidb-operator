@@ -135,7 +135,7 @@ func (s *tiflashScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, ne
 	// 2. This can happen when TiFlash pod has not been successfully registered in the cluster, such as always pending.
 	//    In this situation we should delete this TiFlash pod immediately to avoid blocking the subsequent operations.
 	if !podutil.IsPodReady(pod) {
-		if tc.TiFlashBootStrapped() {
+		if tc.TiKVBootStrapped() {
 			safeTimeDeadline := pod.CreationTimestamp.Add(5 * s.deps.CLIConfig.ResyncDuration)
 			if time.Now().Before(safeTimeDeadline) {
 				// Wait for 5 resync periods to ensure that the following situation does not occur:
