@@ -34,7 +34,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/klog"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/utils/pointer"
 )
 
@@ -250,38 +249,7 @@ func (m *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 
 // shouldRecover checks whether we should perform recovery operation.
 func (m *pdMemberManager) shouldRecover(tc *v1alpha1.TidbCluster) bool {
-	if tc.Status.PD.FailureMembers == nil {
-		return false
-	}
-	// If all desired replicas (excluding failover pods) of tidb cluster are
-	// healthy, we can perform our failover recovery operation.
-	// Note that failover pods may fail (e.g. lack of resources) and we don't care
-	// about them because we're going to delete them.
-	for ordinal := range tc.PDStsDesiredOrdinals(true) {
-		name := fmt.Sprintf("%s-%d", controller.PDMemberName(tc.GetName()), ordinal)
-		pod, err := m.deps.PodLister.Pods(tc.Namespace).Get(name)
-		if err != nil {
-			klog.Errorf("pod %s/%s does not exist: %v", tc.Namespace, name, err)
-			return false
-		}
-		if !podutil.IsPodReady(pod) {
-			return false
-		}
-		ok := false
-		for pdName, pdMember := range tc.Status.PD.Members {
-			if strings.Split(pdName, ".")[0] == pod.Name {
-				if !pdMember.Health {
-					return false
-				}
-				ok = true
-				break
-			}
-		}
-		if !ok {
-			return false
-		}
-	}
-	return true
+	return shouldRecover(tc, label.PDLabelVal, m.deps.PodLister)
 }
 
 func (m *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {

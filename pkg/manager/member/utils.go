@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
+	"strings"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -349,8 +350,12 @@ func getTikVConfigMapForTiKVSpec(tikvSpec *v1alpha1.TiKVSpec, tc *v1alpha1.TidbC
 
 // shouldRecover checks whether we should perform recovery operation.
 func shouldRecover(tc *v1alpha1.TidbCluster, component string, podLister corelisters.PodLister) bool {
+	var pdMembers map[string]v1alpha1.PDMember
 	var stores map[string]v1alpha1.TiKVStore
+	var tidbMembers map[string]v1alpha1.TiDBMember
+	var pdFailureMembers map[string]v1alpha1.PDFailureMember
 	var failureStores map[string]v1alpha1.TiKVFailureStore
+	var tidbFailureMembers map[string]v1alpha1.TiDBFailureMember
 	var ordinals sets.Int32
 	var podPrefix string
 
@@ -360,18 +365,38 @@ func shouldRecover(tc *v1alpha1.TidbCluster, component string, podLister corelis
 		failureStores = tc.Status.TiKV.FailureStores
 		ordinals = tc.TiKVStsDesiredOrdinals(true)
 		podPrefix = controller.TiKVMemberName(tc.Name)
+		if failureStores == nil {
+			return false
+		}
 	case label.TiFlashLabelVal:
 		stores = tc.Status.TiFlash.Stores
 		failureStores = tc.Status.TiFlash.FailureStores
 		ordinals = tc.TiFlashStsDesiredOrdinals(true)
 		podPrefix = controller.TiFlashMemberName(tc.Name)
+		if failureStores == nil {
+			return false
+		}
+	case label.PDLabelVal:
+		pdMembers = tc.Status.PD.Members
+		pdFailureMembers = tc.Status.PD.FailureMembers
+		ordinals = tc.PDStsDesiredOrdinals(true)
+		podPrefix = controller.PDMemberName(tc.Name)
+		if pdFailureMembers == nil {
+			return false
+		}
+	case label.TiDBLabelVal:
+		tidbMembers = tc.Status.TiDB.Members
+		tidbFailureMembers = tc.Status.TiDB.FailureMembers
+		ordinals = tc.TiDBStsDesiredOrdinals(true)
+		podPrefix = controller.TiDBMemberName(tc.Name)
+		if tidbFailureMembers == nil {
+			return false
+		}
 	default:
 		klog.Warningf("Unexpected component %s for %s/%s in shouldRecover", component, tc.Namespace, tc.Name)
 		return false
 	}
-	if failureStores == nil {
-		return false
-	}
+
 	// If all desired replicas (excluding failover pods) of tidb cluster are
 	// healthy, we can perform our failover recovery operation.
 	// Note that failover pods may fail (e.g. lack of resources) and we don't care
@@ -387,15 +412,34 @@ func shouldRecover(tc *v1alpha1.TidbCluster, component string, podLister corelis
 			return false
 		}
 		var exist bool
-		for _, v := range stores {
-			if v.PodName == pod.Name {
-				exist = true
-				if v.State != v1alpha1.TiKVStateUp {
-					return false
+		switch component {
+		case label.TiKVLabelVal, label.TiFlashLabelVal:
+			for _, v := range stores {
+				if v.PodName == pod.Name {
+					exist = true
+					if v.State != v1alpha1.TiKVStateUp {
+						return false
+					}
 				}
 			}
+		case label.PDLabelVal:
+			for pdName, pdMember := range pdMembers {
+				if strings.Split(pdName, ".")[0] == pod.Name {
+					if !pdMember.Health {
+						return false
+					}
+					exist = true
+					break
+				}
+			}
+		case label.TiDBLabelVal:
+			status, ok := tidbMembers[pod.Name]
+			if !ok || !status.Health {
+				return false
+			}
 		}
-		if !exist {
+
+		if !exist && component != label.TiDBLabelVal {
 			return false
 		}
 	}
