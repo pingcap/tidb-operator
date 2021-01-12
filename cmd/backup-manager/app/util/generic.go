@@ -14,6 +14,7 @@
 package util
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"database/sql"
@@ -74,10 +75,10 @@ func (bo *GenericOptions) GetDSN(enabledTLSClient bool) (string, error) {
 	return fmt.Sprintf("%s:%s@(%s:%d)/%s?tls=customer&charset=utf8", bo.User, bo.Password, bo.Host, bo.Port, constants.TidbMetaDB), nil
 }
 
-func (bo *GenericOptions) GetTikvGCLifeTime(db *sql.DB) (string, error) {
+func (bo *GenericOptions) GetTikvGCLifeTime(ctx context.Context, db *sql.DB) (string, error) {
 	var tikvGCTime string
 	sql := fmt.Sprintf("select variable_value from %s where variable_name= ?", constants.TidbMetaTable)
-	row := db.QueryRow(sql, constants.TikvGCVariable)
+	row := db.QueryRowContext(ctx, sql, constants.TikvGCVariable)
 	err := row.Scan(&tikvGCTime)
 	if err != nil {
 		return tikvGCTime, fmt.Errorf("query cluster %s %s failed, sql: %s, err: %v", bo, constants.TikvGCVariable, sql, err)
@@ -85,9 +86,9 @@ func (bo *GenericOptions) GetTikvGCLifeTime(db *sql.DB) (string, error) {
 	return tikvGCTime, nil
 }
 
-func (bo *GenericOptions) SetTikvGCLifeTime(db *sql.DB, gcTime string) error {
+func (bo *GenericOptions) SetTikvGCLifeTime(ctx context.Context, db *sql.DB, gcTime string) error {
 	sql := fmt.Sprintf("update %s set variable_value = ? where variable_name = ?", constants.TidbMetaTable)
-	_, err := db.Exec(sql, gcTime, constants.TikvGCVariable)
+	_, err := db.ExecContext(ctx, sql, gcTime, constants.TikvGCVariable)
 	if err != nil {
 		return fmt.Errorf("set cluster %s %s failed, sql: %s, err: %v", bo, constants.TikvGCVariable, sql, err)
 	}

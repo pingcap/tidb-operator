@@ -37,13 +37,12 @@ func (bo *Options) String() string {
 }
 
 // cleanBRRemoteBackupData clean the backup data from remote
-func (bo *Options) cleanBRRemoteBackupData(backup *v1alpha1.Backup) error {
+func (bo *Options) cleanBRRemoteBackupData(ctx context.Context, backup *v1alpha1.Backup) error {
 	s, err := util.NewStorageBackend(backup.Spec.StorageProvider)
 	if err != nil {
 		return err
 	}
 	defer s.Close()
-	ctx := context.Background()
 	iter := s.List(nil)
 	for {
 		obj, err := iter.Next(ctx)
@@ -63,16 +62,16 @@ func (bo *Options) cleanBRRemoteBackupData(backup *v1alpha1.Backup) error {
 	return nil
 }
 
-func (bo *Options) cleanRemoteBackupData(bucket string, opts []string) error {
+func (bo *Options) cleanRemoteBackupData(ctx context.Context, bucket string, opts []string) error {
 	destBucket := util.NormalizeBucketURI(bucket)
 	args := util.ConstructRcloneArgs(constants.RcloneConfigArg, opts, "delete", destBucket, "", true)
-	output, err := exec.Command("rclone", args...).CombinedOutput()
+	output, err := exec.CommandContext(ctx, "rclone", args...).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("cluster %s, execute rclone delete command failed, output: %s, err: %v", bo, string(output), err)
 	}
 
 	args = util.ConstructRcloneArgs(constants.RcloneConfigArg, opts, "delete", fmt.Sprintf("%s.tmp", destBucket), "", true)
-	output, err = exec.Command("rclone", args...).CombinedOutput()
+	output, err = exec.CommandContext(ctx, "rclone", args...).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("cluster %s, execute rclone delete command failed, output: %s, err: %v", bo, string(output), err)
 	}

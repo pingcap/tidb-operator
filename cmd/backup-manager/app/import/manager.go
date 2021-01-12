@@ -14,8 +14,12 @@
 package _import
 
 import (
+	"context"
 	"fmt"
+	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
@@ -68,6 +72,21 @@ func (rm *RestoreManager) setOptions(restore *v1alpha1.Restore) {
 
 // ProcessRestore used to process the restore logic
 func (rm *RestoreManager) ProcessRestore() error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sc := make(chan os.Signal, 1)
+	signal.Notify(sc,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT)
+	go func() {
+		sig := <-sc
+		klog.Errorf("got signal %s to exit, the restore %s will be canceled", sig, rm.ResourceName)
+		cancel() // NOTE: the `Message` in `Status.Conditions` will contain `context canceled`.
+	}()
+
 	var errs []error
 	restore, err := rm.restoreLister.Restores(rm.Namespace).Get(rm.ResourceName)
 	if err != nil {
@@ -85,10 +104,10 @@ func (rm *RestoreManager) ProcessRestore() error {
 
 	rm.setOptions(restore)
 
-	return rm.performRestore(restore.DeepCopy())
+	return rm.performRestore(ctx, restore.DeepCopy())
 }
 
-func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
+func (rm *RestoreManager) performRestore(ctx context.Context, restore *v1alpha1.Restore) error {
 	started := time.Now()
 
 	err := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
@@ -102,7 +121,7 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 	var errs []error
 	restoreDataPath := rm.getRestoreDataPath()
 	opts := util.GetOptions(restore.Spec.StorageProvider)
-	if err := rm.downloadBackupData(restoreDataPath, opts); err != nil {
+	if err := rm.downloadBackupData(ctx, restoreDataPath, opts); err != nil {
 		errs = append(errs, err)
 		klog.Errorf("download cluster %s backup %s data failed, err: %s", rm, rm.BackupPath, err)
 		uerr := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
@@ -147,7 +166,7 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 	}
 	klog.Infof("get cluster %s commitTs %s success", rm, commitTs)
 
-	err = rm.loadTidbClusterData(unarchiveDataPath, restore)
+	err = rm.loadTidbClusterData(ctx, unarchiveDataPath, restore)
 	if err != nil {
 		errs = append(errs, err)
 		klog.Errorf("restore cluster %s from backup %s failed, err: %s", rm, rm.BackupPath, err)
