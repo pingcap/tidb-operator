@@ -191,7 +191,7 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monit
 				},
 			})
 		}
-		model.RemoteWriteConfig = remoteWriteConfigs
+		model.RemoteWriteConfigs = remoteWriteConfigs
 	}
 
 	if monitor.Spec.AlertmanagerURL != nil {

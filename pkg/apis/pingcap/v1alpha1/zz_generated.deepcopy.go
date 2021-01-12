@@ -21,6 +21,7 @@ import (
 	time "time"
 
 	model "github.com/prometheus/common/model"
+	config "github.com/prometheus/prometheus/config"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -8244,6 +8245,17 @@ func (in *TidbMonitorSpec) DeepCopyInto(out *TidbMonitorSpec) {
 		*out = make([]RemoteWriteSpec, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.RemoteWriteConfig != nil {
+		in, out := &in.RemoteWriteConfig, &out.RemoteWriteConfig
+		*out = make([]*config.RemoteWriteConfig, len(*in))
+		for i := range *in {
+			if (*in)[i] != nil {
+				in, out := &(*in)[i], &(*out)[i]
+				*out = new(config.RemoteWriteConfig)
+				(*in).DeepCopyInto(*out)
+			}
 		}
 	}
 	return
