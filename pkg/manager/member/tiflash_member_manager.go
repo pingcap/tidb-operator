@@ -630,8 +630,9 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	storesInfo, err := pdCli.GetStores()
 	if err != nil {
 		if pdapi.IsTiKVNotBootstrappedError(err) {
-			klog.Infof("TiKV of Cluster %s/%s is not bootstrapped yet", tc.Namespace, tc.Name)
+			klog.Infof("TiFlash of Cluster %s/%s is not bootstrapped yet", tc.Namespace, tc.Name)
 			tc.Status.TiFlash.Synced = true
+			tc.Status.TiFlash.BootStrapped = false
 			return nil
 		}
 		tc.Status.TiFlash.Synced = false
@@ -694,6 +695,7 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	tc.Status.TiFlash.Stores = stores
 	tc.Status.TiFlash.PeerStores = peerStores
 	tc.Status.TiFlash.TombstoneStores = tombstoneStores
+	tc.Status.TiFlash.BootStrapped = true
 	tc.Status.TiFlash.Image = ""
 	c := filterContainer(set, "tiflash")
 	if c != nil {
@@ -725,13 +727,14 @@ func (m *tiflashMemberManager) setStoreLabelsForTiFlash(tc *v1alpha1.TidbCluster
 	// for unit test
 	setCount := 0
 
+	if !tc.TiFlashBootStrapped() {
+		klog.Infof("TiFlash of Cluster %s/%s is not bootstrapped yet, no need to set store labels", tc.Namespace, tc.Name)
+		return setCount, nil
+	}
+
 	pdCli := controller.GetPDClient(m.deps.PDControl, tc)
 	storesInfo, err := pdCli.GetStores()
 	if err != nil {
-		if pdapi.IsTiKVNotBootstrappedError(err) {
-			klog.Infof("TiKV of Cluster %s/%s is not bootstrapped yet, no need to set store labels", tc.Namespace, tc.Name)
-			return setCount, nil
-		}
 		return setCount, err
 	}
 

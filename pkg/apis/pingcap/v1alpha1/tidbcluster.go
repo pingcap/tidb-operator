@@ -251,6 +251,10 @@ func (tc *TidbCluster) TiKVScaling() bool {
 	return tc.Status.TiKV.Phase == ScalePhase
 }
 
+func (tc *TidbCluster) TiKVBootStrapped() bool {
+	return tc.Status.TiKV.BootStrapped
+}
+
 func (tc *TidbCluster) TiDBUpgrading() bool {
 	return tc.Status.TiDB.Phase == UpgradePhase
 }
@@ -261,6 +265,10 @@ func (tc *TidbCluster) TiDBScaling() bool {
 
 func (tc *TidbCluster) TiFlashUpgrading() bool {
 	return tc.Status.TiFlash.Phase == UpgradePhase
+}
+
+func (tc *TidbCluster) TiFlashBootStrapped() bool {
+	return tc.Status.TiFlash.BootStrapped
 }
 
 func (tc *TidbCluster) getDeleteSlots(component string) (deleteSlots sets.Int32) {

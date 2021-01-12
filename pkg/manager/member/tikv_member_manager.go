@@ -647,8 +647,9 @@ func (m *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	storesInfo, err := pdCli.GetStores()
 	if err != nil {
 		if pdapi.IsTiKVNotBootstrappedError(err) {
-			klog.Infof("TiKV of Cluster %s/%s is not bootstrapped yet, got no store", tc.Namespace, tc.Name)
+			klog.Infof("TiKV of Cluster %s/%s not bootstrapped yet", tc.Namespace, tc.Name)
 			tc.Status.TiKV.Synced = true
+			tc.Status.TiKV.BootStrapped = false
 			return nil
 		}
 		tc.Status.TiKV.Synced = false
@@ -713,6 +714,7 @@ func (m *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	tc.Status.TiKV.Stores = stores
 	tc.Status.TiKV.PeerStores = peerStores
 	tc.Status.TiKV.TombstoneStores = tombstoneStores
+	tc.Status.TiKV.BootStrapped = true
 	tc.Status.TiKV.Image = ""
 	c := filterContainer(set, "tikv")
 	if c != nil {
@@ -744,13 +746,14 @@ func (m *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (int
 	// for unit test
 	setCount := 0
 
+	if !tc.TiKVBootStrapped() {
+		klog.Infof("TiKV of Cluster %s/%s is not bootstrapped yet, no need to set store labels", tc.Namespace, tc.Name)
+		return setCount, nil
+	}
+
 	pdCli := controller.GetPDClient(m.deps.PDControl, tc)
 	storesInfo, err := pdCli.GetStores()
 	if err != nil {
-		if pdapi.IsTiKVNotBootstrappedError(err) {
-			klog.Infof("TiKV of Cluster %s/%s is not bootstrapped yet, got no store", tc.Namespace, tc.Name)
-			return setCount, nil
-		}
 		return setCount, err
 	}
 
