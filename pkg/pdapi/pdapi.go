@@ -319,7 +319,7 @@ func (c *pdClient) GetStores() (*StoresInfo, error) {
 	storesInfo, err := c.getStores(fmt.Sprintf("%s/%s", c.url, storesPrefix))
 	if err != nil {
 		if strings.HasSuffix(err.Error(), tiKVNotBootstrapped+"\n") {
-			err = TiKVNotBootstrappedErrorf("TiKV cluster not bootstrapped, please start TiKV first")
+			err = TiKVNotBootstrappedErrorf(tiKVNotBootstrapped)
 		}
 		return nil, err
 	}
