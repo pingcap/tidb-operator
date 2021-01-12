@@ -52,12 +52,13 @@ type Interface interface {
 }
 
 type upgrader struct {
-	kubeCli       kubernetes.Interface
-	cli           versioned.Interface
-	asCli         asclientset.Interface
-	kruiseCli     kruiseclientset.Interface
-	kruiseEnabled bool
-	ns            string
+	kubeCli          kubernetes.Interface
+	cli              versioned.Interface
+	asCli            asclientset.Interface
+	kruiseCli        kruiseclientset.Interface
+	kruiseEnabled    bool
+	tidbClusterLists []v1alpha1.TidbCluster
+	ns               string
 }
 
 var _ Interface = &upgrader{}
@@ -127,13 +128,15 @@ func (u *upgrader) getStsToMigrate() ([]appsv1.StatefulSet, error) {
 	tidbClusters := make([]*v1alpha1.TidbCluster, 0)
 	for _, sts := range stsList.Items {
 		if ok, tcRef := util.IsOwnedByTidbCluster(&sts); ok {
-			stsToMigrate = append(stsToMigrate, sts)
 			tc, err := u.cli.PingcapV1alpha1().TidbClusters(sts.Namespace).Get(tcRef.Name, metav1.GetOptions{})
 			if err != nil && !apierrors.IsNotFound(err) {
 				return nil, err
 			}
 			if tc != nil {
 				tidbClusters = append(tidbClusters, tc)
+				if u.isTidbClusterManaged(tc) {
+					stsToMigrate = append(stsToMigrate, sts)
+				}
 			}
 		}
 	}
@@ -160,8 +163,14 @@ func (u *upgrader) getAstsToMigrate() ([]asappsv1.StatefulSet, error) {
 
 	astsToMigrate := make([]asappsv1.StatefulSet, 0)
 	for _, asts := range astsList.Items {
-		if ok, _ := util.IsOwnedByTidbCluster(&asts); ok {
-			astsToMigrate = append(astsToMigrate, asts)
+		if ok, tcRef := util.IsOwnedByTidbCluster(&asts); ok {
+			tc, err := u.cli.PingcapV1alpha1().TidbClusters(asts.Namespace).Get(tcRef.Name, metav1.GetOptions{})
+			if err != nil && !apierrors.IsNotFound(err) {
+				return nil, err
+			}
+			if u.isTidbClusterManaged(tc) {
+				astsToMigrate = append(astsToMigrate, asts)
+			}
 		}
 	}
 
@@ -177,8 +186,14 @@ func (u *upgrader) getKruiseAstsToMigrate() ([]kruiseappsv1beta1.StatefulSet, er
 
 	kruiseAstsToMigrate := make([]kruiseappsv1beta1.StatefulSet, 0)
 	for _, kAsts := range kruiseStsList.Items {
-		if ok, _ := util.IsOwnedByTidbCluster(&kAsts); ok {
-			kruiseAstsToMigrate = append(kruiseAstsToMigrate, kAsts)
+		if ok, tcRef := util.IsOwnedByTidbCluster(&kAsts); ok {
+			tc, err := u.cli.PingcapV1alpha1().TidbClusters(kAsts.Namespace).Get(tcRef.Name, metav1.GetOptions{})
+			if err != nil && !apierrors.IsNotFound(err) {
+				return nil, err
+			}
+			if u.isTidbClusterManaged(tc) {
+				kruiseAstsToMigrate = append(kruiseAstsToMigrate, kAsts)
+			}
 		}
 	}
 
@@ -218,6 +233,15 @@ func (u *upgrader) doUpgrade(stsToMigrate []appsv1.StatefulSet, astsToMigrate []
 	return nil
 }
 
+func (u *upgrader) isTidbClusterManaged(tc *v1alpha1.TidbCluster) bool {
+	for _, item := range u.tidbClusterLists {
+		if item.UID == tc.UID {
+			return true
+		}
+	}
+	return false
+}
+
 func deleteSlotAnns(tc *v1alpha1.TidbCluster) map[string]string {
 	anns := make(map[string]string)
 	if tc == nil || tc.Annotations == nil {
@@ -231,6 +255,10 @@ func deleteSlotAnns(tc *v1alpha1.TidbCluster) map[string]string {
 	return anns
 }
 
-func NewUpgrader(kubeCli kubernetes.Interface, cli versioned.Interface, asCli asclientset.Interface, kruiseCli kruiseclientset.Interface, kruiseEnabled bool, ns string) Interface {
-	return &upgrader{kubeCli, cli, asCli, kruiseCli, kruiseEnabled, ns}
+func NewUpgrader(kubeCli kubernetes.Interface, cli versioned.Interface, asCli asclientset.Interface, kruiseCli kruiseclientset.Interface, kruiseEnabled bool, labelSelector string, ns string) (Interface, error) {
+	tidbClusters, err := cli.PingcapV1alpha1().TidbClusters(ns).List(metav1.ListOptions{LabelSelector: labelSelector})
+	if err != nil {
+		return nil, fmt.Errorf("Upgrader: get tidbclusters managed by this operator(ns:%s, labelSelector:%s) failed", ns, labelSelector)
+	}
+	return &upgrader{kubeCli, cli, asCli, kruiseCli, kruiseEnabled, tidbClusters.Items, ns}, nil
 }

@@ -124,9 +124,12 @@ func main() {
 	// note that kubeCli here must not be the hijacked one
 	var operatorUpgrader upgrader.Interface
 	if cliCfg.ClusterScoped {
-		operatorUpgrader = upgrader.NewUpgrader(kubeCli, cli, asCli, kruiseCli, kruiseEnabled, metav1.NamespaceAll)
+		operatorUpgrader, err = upgrader.NewUpgrader(kubeCli, cli, asCli, kruiseCli, kruiseEnabled, cliCfg.Selector, metav1.NamespaceAll)
 	} else {
-		operatorUpgrader = upgrader.NewUpgrader(kubeCli, cli, asCli, kruiseCli, kruiseEnabled, ns)
+		operatorUpgrader, err = upgrader.NewUpgrader(kubeCli, cli, asCli, kruiseCli, kruiseEnabled, cliCfg.Selector, ns)
+	}
+	if err != nil {
+		klog.Fatalf("failed to create Upgrader")
 	}
 
 	if astsEnabled {
