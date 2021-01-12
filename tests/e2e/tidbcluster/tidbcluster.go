@@ -755,11 +755,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				return false, nil
 			}
 			if prometheusSvc.Spec.Type != corev1.ServiceTypeNodePort {
-				framework.Logf("prometheus service type haven't be changed")
+				log.Logf("prometheus service type haven't be changed")
 				return false, nil
 			}
 			if prometheusSvc.Spec.Ports[0].Name != "any-other-word" {
-				framework.Logf("prometheus port name haven't be changed")
+				log.Logf("prometheus port name haven't be changed")
 				return false, nil
 			}
 			if prometheusSvc.Spec.Ports[0].NodePort != targetPort {
@@ -770,7 +770,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				return false, nil
 			}
 			if pv.Spec.PersistentVolumeReclaimPolicy != corev1.PersistentVolumeReclaimRetain {
-				framework.Logf("prometheus PersistentVolumeReclaimPolicy haven't be changed")
+				log.Logf("prometheus PersistentVolumeReclaimPolicy haven't be changed")
 				return false, nil
 			}
 			return true, nil
@@ -788,11 +788,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				return false, err
 			}
 			if *tc.Spec.PVReclaimPolicy != corev1.PersistentVolumeReclaimDelete {
-				framework.Logf("tidbcluster PVReclaimPolicy changed into %v", *tc.Spec.PVReclaimPolicy)
+				log.Logf("tidbcluster PVReclaimPolicy changed into %v", *tc.Spec.PVReclaimPolicy)
 				return true, nil
 			}
 			if *tm.Spec.PVReclaimPolicy != corev1.PersistentVolumeReclaimRetain {
-				framework.Logf("tidbmonitor PVReclaimPolicy changed into %v", *tm.Spec.PVReclaimPolicy)
+				log.Logf("tidbmonitor PVReclaimPolicy changed into %v", *tm.Spec.PVReclaimPolicy)
 				return true, nil
 			}
 			return false, nil
@@ -1035,19 +1035,20 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			// A new cluster should be created and all TiKV stores are up
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				tcList, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).List(autoTcListOption)
-
 				if err != nil {
+					log.Logf("failed to list tc %q with selector %+v", tc.Name, autoTcListOption)
 					return false, err
 				}
 
 				if len(tcList.Items) < 1 {
-					framework.Logf("autoscaling tikv cluster is not created")
+					log.Logf("autoscaling tikv cluster is not created")
 					return false, nil
 				}
 
 				autoTc = tcList.Items[0]
 
 				if autoTc.Spec.TiKV == nil {
+					log.Logf("the created cluster has no tikv spec")
 					return false, errors1.New("the created cluster has no tikv spec")
 				}
 
@@ -1055,32 +1056,37 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				setCPUUsageAndQuota(tc, monitor, "20.0", "1.0", v1alpha1.TiKVMemberType.String(), append(baseTiKVs, autoTiKV))
 
 				if len(autoTc.Status.TiKV.Stores) < int(autoTc.Spec.TiKV.Replicas) {
+					log.Logf("len(.Status.TiKV.Stores) < .Spec.TiKV.Replicas for tc %q", autoTc.Name)
 					return false, nil
 				}
 
 				for _, store := range autoTc.Status.TiKV.Stores {
 					if store.State != v1alpha1.TiKVStateUp {
-						framework.Logf("autoscaling tikv cluster not ready, store %s is not %s", store.PodName, v1alpha1.TiKVStateUp)
+						log.Logf("autoscaling tikv cluster not ready, store %s is not %s", store.PodName, v1alpha1.TiKVStateUp)
 						return false, nil
 					}
 				}
 
 				storeID := ""
+				podNameTikv0 := util.GetPodName(&autoTc, v1alpha1.TiKVMemberType, int32(0)
 				for k, v := range autoTc.Status.TiKV.Stores {
-					if v.PodName == util.GetPodName(&autoTc, v1alpha1.TiKVMemberType, int32(0)) {
+					if v.PodName == podNameTikv0) {
 						storeID = k
 						break
 					}
 				}
 				if storeID == "" {
+					log.Logf("no store found for pod %q", podNameTikv0)
 					return false, nil
 				}
 				sid, err := strconv.ParseUint(storeID, 10, 64)
 				if err != nil {
+					log.Logf("failed to parse store id %q for pod %q", storeID, podNameTikv0)
 					return false, err
 				}
 				info, err := pdClient.GetStore(sid)
 				if err != nil {
+					log.Logf("fail to get stores")
 					return false, err
 				}
 
@@ -1092,61 +1098,64 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				}
 				for _, label := range info.Store.Labels {
 					if value, ok := expectedLabels[label.Key]; ok && value != label.Value {
-						return false, fmt.Errorf("expected label %s of tc[%s/%s]'s store %d to have value %s, got %s", label.Key, autoTc.Namespace, autoTc.Name, sid, expectedLabels[label.Key], label.Value)
+						errMsg := fmt.Sprintf("expected label %s of tc[%s/%s]'s store %d to have value %s, got %s", label.Key, autoTc.Namespace, autoTc.Name, sid, expectedLabels[label.Key], label.Value)
+						log.Logf(errMsg)
+						return false, fmt.Errorf(errMsg)
 					}
 				}
 
 				return true, nil
 			})
 			framework.ExpectNoError(err, "check create autoscaling tikv cluster error")
-			framework.Logf("success to check create autoscaling tikv cluster")
+			log.Logf("success to check create autoscaling tikv cluster")
 
 			ginkgo.By("Case 2: Has an autoscaling cluster and CPU usage between max threshold and min threshold")
 			setCPUUsageAndQuota(tc, monitor, "20.0", "1.0", v1alpha1.TiKVMemberType.String(), append(baseTiKVs, autoTiKV))
 			// The TiKV replicas should remain unchanged
 			err = wait.Poll(10*time.Second, 3*time.Minute, func() (done bool, err error) {
 				tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
-
 				if err != nil {
+					log.Logf("failed to get tc %q", tcPtr.Name)
 					return false, err
 				}
 
 				autoTc = *tcPtr
 
 				if autoTc.Spec.TiKV.Replicas != 1 {
-					framework.Logf("expected tc[%s/%s]'s tikv replicas to stay at 1, now %d", autoTc.Namespace, autoTc.Name, autoTc.Spec.TiKV.Replicas)
+					log.Logf("expected tc[%s/%s]'s tikv replicas to stay at 1, now %d", autoTc.Namespace, autoTc.Name, autoTc.Spec.TiKV.Replicas)
 					return true, nil
 				}
 
-				framework.Logf("confirm autoscaling tikv is not scaled when normal utilization")
+				log.Logf("tikv is not autoscaled")
 				return false, nil
 			})
-			framework.ExpectEqual(err, wait.ErrWaitTimeout, "expect tikv is not scaled when normal utilization for 5 minutes")
+			framework.ExpectEqual(err, wait.ErrWaitTimeout, "expect tikv is not scaled under normal utilization for 3 minutes")
 
 			ginkgo.By("Case 3: Has an autoscaling cluster and CPU usage over max threshold")
 			setCPUUsageAndQuota(tc, monitor, "35.0", "1.0", v1alpha1.TiKVMemberType.String(), append(baseTiKVs, autoTiKV))
 			// The existing autoscaling cluster should be scaled out
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
-
 				if err != nil {
+					log.Logf("failed to get tc %q", tcPtr.Name)
 					return false, err
 				}
 
 				autoTc = *tcPtr
 
 				if autoTc.Spec.TiKV.Replicas < 2 {
-					framework.Logf("autoscaling tikv cluster is not scaled out")
+					log.Logf("autoscaling tikv cluster is not scaled out")
 					return false, nil
 				}
 
 				if len(autoTc.Status.TiKV.Stores) < int(autoTc.Spec.TiKV.Replicas) {
+					log.Logf("len(.Status.TiKV.Stores) < .Spec.TiKV.Replicas for tc %q", autoTc.Name)
 					return false, nil
 				}
 
 				for _, store := range autoTc.Status.TiKV.Stores {
 					if store.State != v1alpha1.TiKVStateUp {
-						framework.Logf("autoscaling tikv cluster scaled out but store %s is not %s", store.PodName, v1alpha1.TiKVStateUp)
+						log.Logf("autoscaling tikv cluster scaled out but store %s is not %s", store.PodName, v1alpha1.TiKVStateUp)
 						return false, nil
 					}
 				}
@@ -1154,7 +1163,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				return true, nil
 			})
 			framework.ExpectNoError(err, "check scale out existing autoscaling tikv cluster error")
-			framework.Logf("success to check scale out existing autoscaling tikv cluster")
+			log.Logf("success to check scale out existing autoscaling tikv cluster")
 
 			pods := make([]string, len(baseTiKVs))
 			copy(pods, baseTiKVs)
@@ -1167,23 +1176,24 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			// The autoscaling cluster should be scaled in
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
-
 				if err != nil {
 					if errors.IsNotFound(err) {
+						log.Logf("tc %q not found", tcPtr.Name)
 						return true, nil
 					}
+					log.Logf("failed to get tc %q", tcPtr.Name)
 					return false, err
 				}
 
 				autoTc = *tcPtr
 
 				if autoTc.Spec.TiKV.Replicas > 1 {
-					framework.Logf("autoscaling tikv cluster is not scaled in, replicas=%d", autoTc.Spec.TiKV.Replicas)
+					log.Logf("autoscaling tikv cluster is not scaled in, replicas=%d", autoTc.Spec.TiKV.Replicas)
 					return false, nil
 				}
 
 				if autoTc.Spec.TiKV.Replicas <= 1 {
-					framework.Logf("autoscaling tikv cluster tc[%s/%s] is scaled in", autoTc.Namespace, autoTc.Name)
+					log.Logf("autoscaling tikv cluster tc[%s/%s] is scaled in", autoTc.Namespace, autoTc.Name)
 					return true, nil
 				}
 
@@ -1191,27 +1201,27 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			})
 
 			framework.ExpectNoError(err, "failed to check scale in autoscaling tikv cluster")
-			framework.Logf("success to check scale in autoscaling tikv cluster")
+			log.Logf("success to check scale in autoscaling tikv cluster")
 
 			ginkgo.By("Case 5: CPU usage below min threshold for a long time")
 			// The autoscaling cluster should be deleted
 			err = wait.Poll(5*time.Second, 10*time.Minute, func() (done bool, err error) {
 				tcList, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).List(autoTcListOption)
-
 				if err != nil {
+					log.Logf("failed to list tc %q with selector %+v", tc.Name, autoTcListOption)
 					return false, err
 				}
 
 				if len(tcList.Items) > 0 {
-					framework.Logf("autoscaling tikv cluster is not deleted")
+					log.Logf("autoscaling tikv cluster is not deleted")
 					return false, nil
 				}
 
-				framework.Logf("autoscaling tikv cluster deleted")
+				log.Logf("autoscaling tikv cluster deleted")
 				return true, nil
 			})
 			framework.ExpectNoError(err, "check delete autoscaling tikv cluster error")
-			framework.Logf("success to check delete autoscaling tikv cluster")
+			log.Logf("success to check delete autoscaling tikv cluster")
 		})
 
 		ginkgo.It("should auto scale TiDB pods", func() {
@@ -1284,13 +1294,13 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			// A new cluster should be created
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				tcList, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).List(autoTcListOption)
-
 				if err != nil {
+					log.Logf("failed to list tc with selector %+v", autoTcListOption)
 					return false, err
 				}
 
 				if len(tcList.Items) < 1 {
-					framework.Logf("autoscaling tidb cluster is not created")
+					log.Logf("autoscaling tidb cluster is not created")
 					return false, nil
 				}
 
@@ -1300,7 +1310,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				return true, nil
 			})
 			framework.ExpectNoError(err, "check create autoscaling tidb cluster error")
-			framework.Logf("success to check create autoscaling tidb cluster")
+			log.Logf("success to check create autoscaling tidb cluster")
 
 			autoTiDB = util.GetPodName(&autoTc, v1alpha1.TiDBMemberType, 0)
 			ginkgo.By("Case 2: Has an autoscaling cluster and CPU usage between max threshold and min threshold")
@@ -1308,7 +1318,6 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			// The TiDB replicas should remain unchanged
 			err = wait.Poll(5*time.Second, 3*time.Minute, func() (done bool, err error) {
 				tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
-
 				if err != nil {
 					return false, err
 				}
@@ -1316,11 +1325,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				autoTc = *tcPtr
 
 				if autoTc.Spec.TiDB.Replicas != 1 {
-					framework.Logf("expected tc[%s/%s]'s tidb replicas to stay at 1, now %d", autoTc.Namespace, autoTc.Name, autoTc.Spec.TiDB.Replicas)
+					log.Logf("expected tc[%s/%s]'s tidb replicas to stay at 1, now %d", autoTc.Namespace, autoTc.Name, autoTc.Spec.TiDB.Replicas)
 					return true, nil
 				}
 
-				framework.Logf("confirm autoscaling tidb is not scaled when normal utilization")
+				log.Logf("confirm autoscaling tidb is not scaled when normal utilization")
 				return false, nil
 			})
 			framework.ExpectEqual(err, wait.ErrWaitTimeout, "expect tidb is not scaled when normal utilization for 5 minutes")
@@ -1330,22 +1339,22 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			// The existing autoscaling cluster should be scaled out
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
-
 				if err != nil {
+					log.Logf("failed to get tc %q", tcPtr.Name)
 					return false, err
 				}
 
 				autoTc = *tcPtr
 
 				if autoTc.Spec.TiDB.Replicas < 2 {
-					framework.Logf("autoscaling tidb cluster is not scaled out")
+					log.Logf("autoscaling tidb cluster is not scaled out")
 					return false, nil
 				}
 
 				return true, nil
 			})
 			framework.ExpectNoError(err, "check scale out existing autoscaling tidb cluster error")
-			framework.Logf("success to check scale out existing autoscaling tidb cluster")
+			log.Logf("success to check scale out existing autoscaling tidb cluster")
 
 			pods := make([]string, len(baseTiDBs))
 			copy(pods, baseTiDBs)
@@ -1361,20 +1370,22 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 				if err != nil {
 					if errors.IsNotFound(err) {
+						log.Logf("tc %q not found", tcPtr.Name)
 						return true, nil
 					}
+					log.Logf("failed to get tc %q", tcPtr.Name)
 					return false, err
 				}
 
 				autoTc = *tcPtr
 
 				if autoTc.Spec.TiDB.Replicas > 1 {
-					framework.Logf("autoscaling tidb cluster is not scaled in, replicas=%d", autoTc.Spec.TiDB.Replicas)
+					log.Logf("autoscaling tidb cluster is not scaled in, replicas=%d", autoTc.Spec.TiDB.Replicas)
 					return false, nil
 				}
 
 				if autoTc.Spec.TiDB.Replicas <= 1 {
-					framework.Logf("autoscaling tidb cluster tc[%s/%s] is scaled in", autoTc.Namespace, autoTc.Name)
+					log.Logf("autoscaling tidb cluster tc[%s/%s] is scaled in", autoTc.Namespace, autoTc.Name)
 					return true, nil
 				}
 
@@ -1382,27 +1393,27 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			})
 
 			framework.ExpectNoError(err, "failed to check scale in autoscaling tidb cluster")
-			framework.Logf("success to check scale in autoscaling tidb cluster")
+			log.Logf("success to check scale in autoscaling tidb cluster")
 
 			ginkgo.By("Case 5: CPU usage below min threshold for a long time")
 			// The autoscaling cluster should be deleted
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				tcList, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).List(autoTcListOption)
-
 				if err != nil {
+					log.Logf("failed to list tc with selector %+v", autoTcListOption)
 					return false, err
 				}
 
 				if len(tcList.Items) > 0 {
-					framework.Logf("autoscaling tidb cluster is not deleted")
+					log.Logf("autoscaling tidb cluster is not deleted")
 					return false, nil
 				}
 
-				framework.Logf("autoscaling tidb cluster deleted")
+				log.Logf("autoscaling tidb cluster deleted")
 				return true, nil
 			})
 			framework.ExpectNoError(err, "check delete autoscaling tidb cluster error")
-			framework.Logf("success to check delete autoscaling tidb cluster")
+			log.Logf("success to check delete autoscaling tidb cluster")
 
 			// Clean autoscaler
 			err = cli.PingcapV1alpha1().TidbClusterAutoScalers(tcas.Namespace).Delete(tcas.Name, &metav1.DeleteOptions{})
@@ -1759,7 +1770,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		err = wait.Poll(5*time.Second, 1*time.Minute, func() (done bool, err error) {
 			s, err = c.CoreV1().Services(ns).Get("nodeport-tidb", metav1.GetOptions{})
 			if err != nil {
-				framework.Logf(err.Error())
+				log.Logf(err.Error())
 				return false, nil
 			}
 			if s.Spec.Type != corev1.ServiceTypeNodePort {
@@ -1828,7 +1839,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		ginkgo.By("Make sure tidb service NodePort doesn't changed")
 		// check whether NodePort have changed for 1 min
 		ensureSvcNodePortUnchangedFor1Min()
-		framework.Logf("tidbcluster tidb service NodePort haven't changed after update")
+		log.Logf("tidbcluster tidb service NodePort haven't changed after update")
 	})
 
 	ginkgo.Context("[Feature: Heterogeneous Cluster]", func() {
@@ -1938,7 +1949,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		err = wait.PollImmediate(time.Second*5, time.Minute*5, dataInClusterIsCorrect(fw, c, ns, toTCName, "", false))
 		framework.ExpectNoError(err, "check cdc timeout")
 
-		framework.Logf("CDC works as expected")
+		log.Logf("CDC works as expected")
 	})
 
 	ginkgo.Context("when stores number is equal to 3", func() {
