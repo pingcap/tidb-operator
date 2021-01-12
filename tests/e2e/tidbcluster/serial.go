@@ -524,6 +524,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 		  deploy tidbmonitor and upgrade tidb-perator, then tidbmonitor should switch from deployment to statefulset
 		*/
 		ginkgo.It("should migrate tidbmonitor from deployment to sts", func() {
+			ginkgo.By("deploy initial tc")
 			tcName := "smooth-tidbcluster"
 			tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "admin", utilimage.TiDBV4UpgradeVersion)
 			tcCfg.Resources["pd.replicas"] = "3"
@@ -532,6 +533,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			oa.DeployTidbClusterOrDie(&tcCfg)
 			oa.CheckTidbClusterStatusOrDie(&tcCfg)
 
+			ginkgo.By("deploy tidb monitor")
 			monitorName := "smooth-migrate"
 			tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "failed to get tidbcluster")
