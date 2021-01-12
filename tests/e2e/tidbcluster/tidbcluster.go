@@ -1068,9 +1068,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				}
 
 				storeID := ""
-				podNameTikv0 := util.GetPodName(&autoTc, v1alpha1.TiKVMemberType, int32(0)
+				podNameTikv0 := util.GetPodName(&autoTc, v1alpha1.TiKVMemberType, int32(0))
 				for k, v := range autoTc.Status.TiKV.Stores {
-					if v.PodName == podNameTikv0) {
+					if v.PodName == podNameTikv0 {
 						storeID = k
 						break
 					}
