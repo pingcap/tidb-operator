@@ -19,9 +19,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/signal"
 	"path"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/Masterminds/semver"
 	"github.com/gogo/protobuf/proto"
@@ -419,4 +421,22 @@ func ConstructRcloneArgs(conf string, opts []string, command, source, dest strin
 		args = append(args, dest)
 	}
 	return args
+}
+
+// GetContextForSignal get a context for some signals, and the context will become done after any of these signals triggered.
+func GetContextForSignal(op string) context.Context {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	sc := make(chan os.Signal, 1)
+	signal.Notify(sc,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT)
+	go func() {
+		sig := <-sc
+		klog.Errorf("got signal %s to exit, %s will be canceled", sig, op)
+		cancel() // NOTE: the `Message` in `Status.Conditions` will contain `context canceled`.
+	}()
+	return ctx
 }

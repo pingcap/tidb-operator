@@ -16,10 +16,6 @@ package clean
 import (
 	"context"
 	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
-
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
@@ -50,20 +46,7 @@ func NewManager(
 
 // ProcessCleanBackup used to clean the specific backup
 func (bm *Manager) ProcessCleanBackup() error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	sc := make(chan os.Signal, 1)
-	signal.Notify(sc,
-		syscall.SIGHUP,
-		syscall.SIGINT,
-		syscall.SIGTERM,
-		syscall.SIGQUIT)
-	go func() {
-		sig := <-sc
-		klog.Errorf("got signal %s to exit, the clean backup %s will be canceled", sig, bm.BackupName)
-		cancel() // NOTE: the `Message` in `Status.Conditions` will contain `context canceled`.
-	}()
+	ctx := util.GetContextForSignal(fmt.Sprintf("clean %s", bm.BackupName))
 
 	backup, err := bm.backupLister.Backups(bm.Namespace).Get(bm.BackupName)
 	if err != nil {

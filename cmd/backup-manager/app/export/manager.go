@@ -17,9 +17,7 @@ import (
 	"context"
 	"database/sql"
 	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -82,20 +80,7 @@ func (bm *BackupManager) setOptions(backup *v1alpha1.Backup) (string, error) {
 
 // ProcessBackup used to process the backup logic
 func (bm *BackupManager) ProcessBackup() error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	sc := make(chan os.Signal, 1)
-	signal.Notify(sc,
-		syscall.SIGHUP,
-		syscall.SIGINT,
-		syscall.SIGTERM,
-		syscall.SIGQUIT)
-	go func() {
-		sig := <-sc
-		klog.Errorf("got signal %s to exit, the backup %s will be canceled", sig, bm.ResourceName)
-		cancel() // NOTE: the `Message` in `Status.Conditions` will contain `context canceled`.
-	}()
+	ctx := util.GetContextForSignal(bm.ResourceName)
 
 	var errs []error
 	backup, err := bm.backupLister.Backups(bm.Namespace).Get(bm.ResourceName)

@@ -16,10 +16,7 @@ package _import
 import (
 	"context"
 	"fmt"
-	"os"
-	"os/signal"
 	"path/filepath"
-	"syscall"
 	"time"
 
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
@@ -72,20 +69,7 @@ func (rm *RestoreManager) setOptions(restore *v1alpha1.Restore) {
 
 // ProcessRestore used to process the restore logic
 func (rm *RestoreManager) ProcessRestore() error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	sc := make(chan os.Signal, 1)
-	signal.Notify(sc,
-		syscall.SIGHUP,
-		syscall.SIGINT,
-		syscall.SIGTERM,
-		syscall.SIGQUIT)
-	go func() {
-		sig := <-sc
-		klog.Errorf("got signal %s to exit, the restore %s will be canceled", sig, rm.ResourceName)
-		cancel() // NOTE: the `Message` in `Status.Conditions` will contain `context canceled`.
-	}()
+	ctx := util.GetContextForSignal(rm.ResourceName)
 
 	var errs []error
 	restore, err := rm.restoreLister.Restores(rm.Namespace).Get(rm.ResourceName)
