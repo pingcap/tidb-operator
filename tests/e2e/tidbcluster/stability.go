@@ -65,7 +65,7 @@ import (
 // Stability specs describe tests which involve disruptive operations, e.g.
 // stop kubelet, kill nodes, empty pd/tikv data.
 // Like serial tests, they cannot run in parallel too.
-var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
+var _ = ginkgo.Describe("[Stability]", func() {
 	f := e2eframework.NewDefaultFramework("stability")
 
 	var ns string

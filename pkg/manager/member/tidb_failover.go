@@ -60,7 +60,7 @@ func (f *tidbFailover) Failover(tc *v1alpha1.TidbCluster) error {
 		deadline := tidbMember.LastTransitionTime.Add(f.deps.CLIConfig.TiDBFailoverPeriod)
 		if !tidbMember.Health && time.Now().After(deadline) && !exist {
 			if len(tc.Status.TiDB.FailureMembers) >= int(maxFailoverCount) {
-				klog.Warningf("the failover count reachs the limit (%d), no more failover pods will be created", maxFailoverCount)
+				klog.Warningf("the failover count reaches the limit (%d), no more failover pods will be created", maxFailoverCount)
 				break
 			}
 			pod, err := f.deps.PodLister.Pods(tc.Namespace).Get(tidbMember.Name)

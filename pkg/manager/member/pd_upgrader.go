@@ -42,7 +42,7 @@ func (u *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stat
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	if !tc.Status.PD.Synced {
-		return fmt.Errorf("tidbcluster: [%s/%s]'s pd status sync failed,can not to be upgraded", ns, tcName)
+		return fmt.Errorf("tidbcluster: [%s/%s]'s pd status sync failed, can not to be upgraded", ns, tcName)
 	}
 	if tc.PDScaling() {
 		klog.Infof("TidbCluster: [%s/%s]'s pd is scaling, can not upgrade pd",
@@ -145,7 +145,7 @@ func NewFakePDUpgrader() Upgrader {
 
 func (u *fakePDUpgrader) Upgrade(tc *v1alpha1.TidbCluster, _ *apps.StatefulSet, _ *apps.StatefulSet) error {
 	if !tc.Status.PD.Synced {
-		return fmt.Errorf("tidbcluster: pd status sync failed,can not to be upgraded")
+		return fmt.Errorf("tidbcluster: pd status sync failed, can not to be upgraded")
 	}
 	tc.Status.PD.Phase = v1alpha1.UpgradePhase
 	return nil

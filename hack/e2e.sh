@@ -209,6 +209,7 @@ SKIP_GINKGO=${SKIP_GINKGO:-}
 RUNNER_SUITE_NAME=${RUNNER_SUITE_NAME:-}
 ARTIFACTS=${ARTIFACTS:-}
 
+echo "starting e2e test at $(date -Iseconds -u)"
 echo "PROVIDER: $PROVIDER"
 echo "DOCKER_REPO: $DOCKER_REPO"
 echo "IMAGE_TAG: $IMAGE_TAG"

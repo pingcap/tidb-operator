@@ -139,9 +139,9 @@ func NewOperatorActions(cli versioned.Interface,
 }
 
 const (
-	DefaultPollTimeout          time.Duration = 20 * time.Minute
+	DefaultPollTimeout          time.Duration = 5 * time.Minute
 	DefaultPollInterval         time.Duration = 5 * time.Second
-	BackupAndRestorePollTimeOut time.Duration = 60 * time.Minute
+	BackupAndRestorePollTimeOut time.Duration = 10 * time.Minute
 	grafanaUsername                           = "admin"
 	grafanaPassword                           = "admin"
 	operartorChartName                        = "tidb-operator"
@@ -316,8 +316,8 @@ type TidbClusterConfig struct {
 	Password               string
 	RecordCount            string
 	InsertBatchSize        string
-	Resources              map[string]string
-	Args                   map[string]string
+	Resources              map[string]string // TODO: rename this to TidbClusterCfg
+	Args                   map[string]string // TODO: rename this to BackupCfg
 	blockWriterPod         *corev1.Pod
 	Monitor                bool
 	UserName               string
@@ -342,6 +342,7 @@ type TidbClusterConfig struct {
 	pumpConfig    []string
 	drainerConfig []string
 
+	// TODO: remove this reference, which is not actually a configuration
 	Clustrer *v1alpha1.TidbCluster
 }
 
@@ -974,7 +975,8 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 
 	ns := info.Namespace
 	tcName := info.ClusterName
-	if err := wait.Poll(oa.pollInterval, 120*time.Minute, func() (bool, error) {
+	// TODO: remove redundant checks already in WaitForTidbClusterReady
+	if err := wait.Poll(oa.pollInterval, 10*time.Minute, func() (bool, error) {
 		var tc *v1alpha1.TidbCluster
 		var err error
 		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
@@ -1292,6 +1294,7 @@ func (oa *operatorActions) UpgradeTidbClusterOrDie(info *TidbClusterConfig) {
 	}
 }
 
+// TODO: add explanation
 func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterConfig) error {
 	ns := info.Namespace
 	tcName := info.ClusterName
@@ -1323,7 +1326,8 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 
 	replicas := tc.TiKVStsDesiredReplicas()
 	for i := replicas - 1; i >= 0; i-- {
-		err := wait.PollImmediate(1*time.Second, 10*time.Minute, func() (done bool, err error) {
+		log.Logf("checking upgrade for tikv ordinal %d", i)
+		err := wait.PollImmediate(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 			podName := fmt.Sprintf("%s-tikv-%d", tcName, i)
 			scheduler := fmt.Sprintf("evict-leader-scheduler-%s", findStoreFn(tc, podName))
 			pdClient, cancel, err := oa.getPDClient(tc)
@@ -1337,7 +1341,7 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 				log.Logf("ERROR: failed to get evict leader schedulers, %v", err)
 				return false, nil
 			}
-			log.Logf("index:%d,schedulers:%v,error:%v", i, schedulers, err)
+			log.Logf("index:%d, schedulers:%v, error:%v", i, schedulers, err)
 			if len(schedulers) > 1 {
 				log.Logf("ERROR: there are too many evict leader schedulers: %v", schedulers)
 				for _, s := range schedulers {
@@ -1352,10 +1356,10 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 				return false, nil
 			}
 			if schedulers[0] == scheduler {
-				log.Logf("index: %d,the schedulers: %s = %s", i, schedulers[0], scheduler)
+				log.Logf("index: %d, schedulers: %s = %s", i, schedulers[0], scheduler)
 				return true, nil
 			}
-			log.Logf("ERROR: index: %d, the scheduler: %s != %s", i, schedulers[0], scheduler)
+			log.Logf("ERROR: index: %d, scheduler: %s != %s", i, schedulers[0], scheduler)
 			return false, nil
 		})
 		if err != nil {
@@ -1380,7 +1384,7 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 		return err
 	}
 
-	return wait.PollImmediate(1*time.Second, 6*time.Minute, func() (done bool, err error) {
+	return wait.PollImmediate(5*time.Second, 3*time.Minute, func() (done bool, err error) {
 		pdClient, cancel, err := oa.getPDClient(tc)
 		if err != nil {
 			log.Logf("ERROR: failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
@@ -1460,6 +1464,7 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 	}
 
 	if pdSet.Status.CurrentRevision != pdSet.Status.UpdateRevision {
+		log.Logf("pd sts .Status.CurrentRevision (%s) != .Status.UpdateRevision (%s)", pdSet.Status.CurrentRevision, pdSet.Status.UpdateRevision)
 		return false, nil
 	}
 
@@ -1544,6 +1549,7 @@ func (oa *operatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	}
 
 	if tikvSet.Status.CurrentRevision != tikvSet.Status.UpdateRevision {
+		log.Logf("tikv sts .Status.CurrentRevision (%s) != .Status.UpdateRevision (%s)", tikvSet.Status.CurrentRevision, tikvSet.Status.UpdateRevision)
 		return false, nil
 	}
 
@@ -1619,6 +1625,7 @@ func (oa *operatorActions) tiflashMembersReadyFn(tc *v1alpha1.TidbCluster) (bool
 	}
 
 	if tiflashSet.Status.CurrentRevision != tiflashSet.Status.UpdateRevision {
+		log.Logf("tiflash sts .Status.CurrentRevision (%s) != .Status.UpdateRevision (%s)", tiflashSet.Status.CurrentRevision, tiflashSet.Status.UpdateRevision)
 		return false, nil
 	}
 
@@ -1697,6 +1704,7 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	}
 
 	if tidbSet.Status.CurrentRevision != tidbSet.Status.UpdateRevision {
+		log.Logf("tidb sts .Status.CurrentRevision (%s) != .Status.UpdateRevision (%s)", tidbSet.Status.CurrentRevision, tidbSet.Status.UpdateRevision)
 		return false, nil
 	}
 
@@ -3447,7 +3455,7 @@ func (oa *operatorActions) checkManualPauseComponent(info *TidbClusterConfig, co
 			setName = controller.TiDBMemberName(info.ClusterName)
 			tidbPod, err := oa.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
 			if err != nil {
-				log.Logf("fail to get pod in CheckManualPauseCompoent tidb [%s/%s]", ns, podName)
+				log.Logf("fail to get pod in CheckManualPauseComponent tidb [%s/%s]", ns, podName)
 				return false, nil
 			}
 
@@ -3468,7 +3476,7 @@ func (oa *operatorActions) checkManualPauseComponent(info *TidbClusterConfig, co
 			setName = controller.TiKVMemberName(info.ClusterName)
 			tikvPod, err := oa.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
 			if err != nil {
-				log.Logf("fail to get pod in CheckManualPauseCompoent tikv [%s/%s]", ns, podName)
+				log.Logf("fail to get pod in CheckManualPauseComponent tikv [%s/%s]", ns, podName)
 				return false, nil
 			}
 
@@ -3589,6 +3597,7 @@ func (oa *operatorActions) pumpMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	}
 
 	if ss.Status.CurrentRevision != ss.Status.UpdateRevision {
+		log.Logf("pump sts .Status.CurrentRevision (%s) != .Status.UpdateRevision (%s)", ss.Status.CurrentRevision, ss.Status.UpdateRevision)
 		return false, nil
 	}
 
@@ -3607,6 +3616,7 @@ func (oa *operatorActions) pumpMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	return true, nil
 }
 
+// FIXME: this duplicates with WaitForTidbClusterReady in crd_test_utils.go, and all functions in it
 func (oa *operatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error {
 	if tc == nil {
 		return fmt.Errorf("tidbcluster is nil, cannot call WaitForTidbClusterReady")
@@ -3620,26 +3630,44 @@ func (oa *operatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, tim
 		}
 
 		if b, err := oa.pdMembersReadyFn(local); !b && err == nil {
+			log.Logf("pd members are not ready for tc %q", tc.Name)
 			return false, nil
 		}
+		log.Logf("pd members are ready for tc %q", tc.Name)
+
 		if b, err := oa.tikvMembersReadyFn(local); !b && err == nil {
+			log.Logf("tikv members are not ready for tc %q", tc.Name)
 			return false, nil
 		}
+		log.Logf("tikv members are ready for tc %q", tc.Name)
+
 		if b, err := oa.tidbMembersReadyFn(local); !b && err == nil {
+			log.Logf("tidb members are not ready for tc %q", tc.Name)
 			return false, nil
 		}
-		if tc.Spec.TiFlash != nil {
+		log.Logf("tidb members are ready for tc %q", tc.Name)
+
+		if tc.Spec.TiFlash != nil && tc.Spec.TiFlash.Replicas > int32(0) {
 			if b, err := oa.tiflashMembersReadyFn(local); !b && err == nil {
-				log.Logf("tiflash  members not ready: %s/%s, %v", tc.Namespace, tc.Name, err)
+				log.Logf("tiflash members are not ready for tc %q", tc.Name)
 				return false, nil
 			}
-			log.Logf("tiflash  members ready: %s/%s, %v", tc.Namespace, tc.Name, err)
+			log.Logf("tiflash members are ready for tc %q", tc.Name)
+		} else {
+			log.Logf("no tiflash in tc spec")
 		}
+
 		if tc.Spec.Pump != nil {
 			if b, err := oa.pumpMembersReadyFn(local); !b && err == nil {
+				log.Logf("pump members are not ready for tc %q", tc.Name)
 				return false, nil
 			}
+			log.Logf("pump members are ready for tc %q", tc.Name)
+		} else {
+			log.Logf("no pump in tc spec")
 		}
+
+		log.Logf("TidbCluster is ready")
 		return true, nil
 	})
 }
