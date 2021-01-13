@@ -427,6 +427,11 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	capacity := controller.TiKVCapacity(tc.Spec.TiKV.Limits)
 	headlessSvcName := controller.TiKVPeerMemberName(tcName)
 
+	deleteSlotsNumber, err := util.GetDeleteSlotsNumber(stsAnnotations)
+	if err != nil {
+		return nil, fmt.Errorf("get delete slots number failed, err:%v", err)
+	}
+
 	env := []corev1.EnvVar{
 		{
 			Name: "NAMESPACE",
@@ -499,7 +504,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	} else {
 		updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
 		updateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{
-			Partition: pointer.Int32Ptr(tc.TiKVStsDesiredReplicas()),
+			Partition: pointer.Int32Ptr(tc.TiKVStsDesiredReplicas() + deleteSlotsNumber),
 		}
 	}
 

@@ -590,6 +590,11 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	stsAnnotations := getStsAnnotations(dc.Annotations, label.DMMasterLabelVal)
 	failureReplicas := getDMMasterFailureReplicas(dc)
 
+	deleteSlotsNumber, err := util.GetDeleteSlotsNumber(stsAnnotations)
+	if err != nil {
+		return nil, fmt.Errorf("get delete slots number failed, err:%v", err)
+	}
+
 	masterContainer := corev1.Container{
 		Name:            v1alpha1.DMMasterMemberType.String(),
 		Image:           dc.MasterImage(),
@@ -690,7 +695,7 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{
 				Type: apps.RollingUpdateStatefulSetStrategyType,
 				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
-					Partition: pointer.Int32Ptr(dc.Spec.Master.Replicas + int32(failureReplicas)),
+					Partition: pointer.Int32Ptr(dc.Spec.Master.Replicas + int32(failureReplicas) + deleteSlotsNumber),
 				}},
 		},
 	}
