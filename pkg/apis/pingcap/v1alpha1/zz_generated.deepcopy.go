@@ -3946,9 +3946,26 @@ func (in *RemoteWriteSpec) DeepCopyInto(out *RemoteWriteSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	in.BasicAuth.DeepCopyInto(&out.BasicAuth)
-	in.TLSConfig.DeepCopyInto(&out.TLSConfig)
-	out.QueueConfig = in.QueueConfig
+	if in.BasicAuth != nil {
+		in, out := &in.BasicAuth, &out.BasicAuth
+		*out = new(BasicAuth)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.TLSConfig != nil {
+		in, out := &in.TLSConfig, &out.TLSConfig
+		*out = new(TLSConfig)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.ProxyURL != nil {
+		in, out := &in.ProxyURL, &out.ProxyURL
+		*out = new(string)
+		**out = **in
+	}
+	if in.QueueConfig != nil {
+		in, out := &in.QueueConfig, &out.QueueConfig
+		*out = new(QueueConfig)
+		**out = **in
+	}
 	return
 }
 

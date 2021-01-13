@@ -310,7 +310,7 @@ type RemoteWriteSpec struct {
 	WriteRelabelConfigs []RelabelConfig `json:"writeRelabelConfigs,omitempty"`
 	//BasicAuth for the URL.
 	// +optional
-	BasicAuth BasicAuth `json:"basicAuth,omitempty"`
+	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
 	// File to read bearer token for remote write.
 	// +optional
 	BearerToken string `json:"bearerToken,omitempty"`
@@ -320,12 +320,12 @@ type RemoteWriteSpec struct {
 	BearerTokenFile string `json:"bearerTokenFile,omitempty"`
 	// TLS Config to use for remote write.
 	// +optional
-	TLSConfig TLSConfig `json:"tlsConfig,omitempty"`
+	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
 	// Proxy url
 	// +optional
-	ProxyURL string `json:"proxyUrl,omitempty"`
+	ProxyURL *string `json:"proxyUrl,omitempty"`
 	// +optional
-	QueueConfig QueueConfig `json:"queue_config,omitempty"`
+	QueueConfig *QueueConfig `json:"queue_config,omitempty"`
 }
 
 // BasicAuth allow an endpoint to authenticate over basic authentication

@@ -275,7 +275,6 @@ func (m *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, dc *v1a
 	}
 
 	newCM, err := getMonitorConfigMap(tc, dc, monitor)
-	klog.Errorf("tm monitor remote : %v", monitor.Spec.RemoteWrite[0])
 	if err != nil {
 		return nil, err
 	}

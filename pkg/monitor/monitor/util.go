@@ -147,17 +147,20 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monit
 		for _, remoteWrite := range monitor.Spec.RemoteWrite {
 			url, err := client.ParseHostURL(remoteWrite.URL)
 			if err != nil {
+				klog.Warning("tm[%s/%s] parse remoteWrite url, err: %v", monitor.Namespace, monitor.Name, err)
 				continue
 			}
 			httpClientConfig := config.HTTPClientConfig{
 				BearerTokenFile: remoteWrite.BearerTokenFile,
-				TLSConfig: config.TLSConfig{
+			}
+			if remoteWrite.TLSConfig != nil {
+				httpClientConfig.TLSConfig = config.TLSConfig{
 					CAFile:             remoteWrite.TLSConfig.CAFile,
 					CertFile:           remoteWrite.TLSConfig.CertFile,
 					KeyFile:            remoteWrite.TLSConfig.KeyFile,
 					ServerName:         remoteWrite.TLSConfig.ServerName,
 					InsecureSkipVerify: remoteWrite.TLSConfig.InsecureSkipVerify,
-				},
+				}
 			}
 			var writeRelabelConfigs []*config.RelabelConfig
 			for _, writeRelabelConfig := range remoteWrite.WriteRelabelConfigs {
@@ -175,12 +178,14 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monit
 					Action:       writeRelabelConfig.Action,
 				})
 			}
-			remoteWriteConfigs = append(remoteWriteConfigs, &config.RemoteWriteConfig{
+			remoteWriteConfig := &config.RemoteWriteConfig{
 				URL:                 &config.URL{URL: url},
 				RemoteTimeout:       remoteWrite.RemoteTimeout,
 				WriteRelabelConfigs: writeRelabelConfigs,
 				HTTPClientConfig:    httpClientConfig,
-				QueueConfig: config.QueueConfig{
+			}
+			if remoteWrite.QueueConfig != nil {
+				remoteWriteConfig.QueueConfig = config.QueueConfig{
 					Capacity:          remoteWrite.QueueConfig.Capacity,
 					MaxShards:         remoteWrite.QueueConfig.MaxShards,
 					MaxSamplesPerSend: remoteWrite.QueueConfig.MaxSamplesPerSend,
@@ -188,8 +193,9 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monit
 					MaxRetries:        remoteWrite.QueueConfig.MaxRetries,
 					MinBackoff:        remoteWrite.QueueConfig.MinBackoff,
 					MaxBackoff:        remoteWrite.QueueConfig.MaxBackoff,
-				},
-			})
+				}
+			}
+			remoteWriteConfigs = append(remoteWriteConfigs, remoteWriteConfig)
 		}
 		model.RemoteWriteConfigs = remoteWriteConfigs
 	}
