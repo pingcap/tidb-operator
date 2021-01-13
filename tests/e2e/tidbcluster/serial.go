@@ -296,8 +296,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			oa.UpgradeOperatorOrDie(ocfg)
 			// now the webhook enabled
 			err = controller.GuaranteedUpdate(genericCli, legacyTc, func() error {
-				// NOTE: this seems not changing tc spec at all?
-				legacyTc.Spec.TiDB.Image = fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV3Version)
+				legacyTc.Spec.TiDB.Image = fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV3UpgradeVersion)
 				return nil
 			})
 			framework.ExpectNoError(err, "Update legacy TidbCluster should not be influenced by validating")

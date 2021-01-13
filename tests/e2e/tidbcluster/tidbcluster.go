@@ -551,7 +551,6 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		discoveryName := controller.DiscoveryMemberName(tc.Name)
 		discoveryDeploy, err := c.AppsV1().Deployments(tc.Namespace).Get(discoveryName, metav1.GetOptions{})
 		framework.ExpectNoError(err, "failed to get discovery deployment for TidbCluster: %q", tc.Name)
-		// FIXME: this discovery is created by tc CR, why bother wait for it to be controlled by operator?
 		WaitObjectToBeControlledByOrDie(genericCli, discoveryDeploy, tc, 5*time.Minute)
 
 		err = utils.WaitForDeploymentComplete(c, discoveryDeploy, log.Logf, 10*time.Second, 5*time.Minute)
