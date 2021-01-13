@@ -47,7 +47,8 @@ func NewManager(
 
 // ProcessCleanBackup used to clean the specific backup
 func (bm *Manager) ProcessCleanBackup() error {
-	ctx := util.GetContextForSignal(fmt.Sprintf("clean %s", bm.BackupName))
+	ctx, cancel := util.GetContextForSignal(fmt.Sprintf("clean %s", bm.BackupName))
+	defer cancel()
 
 	backup, err := bm.backupLister.Backups(bm.Namespace).Get(bm.BackupName)
 	if err != nil {

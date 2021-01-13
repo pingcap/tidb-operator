@@ -80,7 +80,8 @@ func (bm *BackupManager) setOptions(backup *v1alpha1.Backup) (string, error) {
 
 // ProcessBackup used to process the backup logic
 func (bm *BackupManager) ProcessBackup() error {
-	ctx := util.GetContextForSignal(bm.ResourceName)
+	ctx, cancel := util.GetContextForSignal(bm.ResourceName)
+	defer cancel()
 
 	var errs []error
 	backup, err := bm.backupLister.Backups(bm.Namespace).Get(bm.ResourceName)

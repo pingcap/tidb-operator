@@ -69,7 +69,8 @@ func (rm *RestoreManager) setOptions(restore *v1alpha1.Restore) {
 
 // ProcessRestore used to process the restore logic
 func (rm *RestoreManager) ProcessRestore() error {
-	ctx := util.GetContextForSignal(rm.ResourceName)
+	ctx, cancel := util.GetContextForSignal(rm.ResourceName)
+	defer cancel()
 
 	var errs []error
 	restore, err := rm.restoreLister.Restores(rm.Namespace).Get(rm.ResourceName)

@@ -424,7 +424,7 @@ func ConstructRcloneArgs(conf string, opts []string, command, source, dest strin
 }
 
 // GetContextForSignal get a context for some signals, and the context will become done after any of these signals triggered.
-func GetContextForSignal(op string) context.Context {
+func GetContextForSignal(op string) (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	sc := make(chan os.Signal, 1)
@@ -438,5 +438,5 @@ func GetContextForSignal(op string) context.Context {
 		klog.Errorf("got signal %s to exit, %s will be canceled", sig, op)
 		cancel() // NOTE: the `Message` in `Status.Conditions` will contain `context canceled`.
 	}()
-	return ctx
+	return ctx, cancel
 }
