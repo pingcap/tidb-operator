@@ -363,35 +363,35 @@ func shouldRecover(tc *v1alpha1.TidbCluster, component string, podLister corelis
 	case label.TiKVLabelVal:
 		stores = tc.Status.TiKV.Stores
 		failureStores = tc.Status.TiKV.FailureStores
-		ordinals = tc.TiKVStsDesiredOrdinals(true)
-		podPrefix = controller.TiKVMemberName(tc.Name)
 		if failureStores == nil {
 			return false
 		}
+		ordinals = tc.TiKVStsDesiredOrdinals(true)
+		podPrefix = controller.TiKVMemberName(tc.Name)
 	case label.TiFlashLabelVal:
 		stores = tc.Status.TiFlash.Stores
 		failureStores = tc.Status.TiFlash.FailureStores
-		ordinals = tc.TiFlashStsDesiredOrdinals(true)
-		podPrefix = controller.TiFlashMemberName(tc.Name)
 		if failureStores == nil {
 			return false
 		}
+		ordinals = tc.TiFlashStsDesiredOrdinals(true)
+		podPrefix = controller.TiFlashMemberName(tc.Name)
 	case label.PDLabelVal:
 		pdMembers = tc.Status.PD.Members
 		pdFailureMembers = tc.Status.PD.FailureMembers
-		ordinals = tc.PDStsDesiredOrdinals(true)
-		podPrefix = controller.PDMemberName(tc.Name)
 		if pdFailureMembers == nil {
 			return false
 		}
+		ordinals = tc.PDStsDesiredOrdinals(true)
+		podPrefix = controller.PDMemberName(tc.Name)
 	case label.TiDBLabelVal:
 		tidbMembers = tc.Status.TiDB.Members
 		tidbFailureMembers = tc.Status.TiDB.FailureMembers
-		ordinals = tc.TiDBStsDesiredOrdinals(true)
-		podPrefix = controller.TiDBMemberName(tc.Name)
 		if tidbFailureMembers == nil {
 			return false
 		}
+		ordinals = tc.TiDBStsDesiredOrdinals(true)
+		podPrefix = controller.TiDBMemberName(tc.Name)
 	default:
 		klog.Warningf("Unexpected component %s for %s/%s in shouldRecover", component, tc.Namespace, tc.Name)
 		return false
