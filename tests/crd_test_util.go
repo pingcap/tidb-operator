@@ -305,26 +305,10 @@ func (ctu *CrdTestUtil) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, error)
 	return true, nil
 }
 
-<<<<<<< HEAD
 func (ctu *CrdTestUtil) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, error) {
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
 	tikvSetName := controller.TiKVMemberName(tcName)
-=======
-func (ctu *CrdTestUtil) tikvMembersReadyFn(obj runtime.Object) (bool, error) {
-	meta, ok := obj.(metav1.Object)
-	if !ok {
-		return false, fmt.Errorf("failed to convert to meta.Object")
-	}
-	name := meta.GetName()
-	ns := meta.GetNamespace()
-	var tikvSetName string
-	if tc, ok := obj.(*v1alpha1.TidbCluster); ok {
-		tikvSetName = controller.TiKVMemberName(tc.Name)
-	} else {
-		return false, fmt.Errorf("failed to parse obj to TidbCluster")
-	}
->>>>>>> 18666d4f... improve e2e semantics (#3673)
 
 	tikvSet, err := ctu.tcStsGetter.StatefulSets(ns).Get(tikvSetName, metav1.GetOptions{})
 	if err != nil {

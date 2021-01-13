@@ -102,10 +102,6 @@ var _ = ginkgo.Describe("[Serial]", func() {
 		framework.ExpectNoError(err, "failed to create port forwarder")
 		fwCancel = cancel
 		cfg = e2econfig.TestConfig
-<<<<<<< HEAD
-=======
-		stsGetter = c.AppsV1()
->>>>>>> 18666d4f... improve e2e semantics (#3673)
 	})
 
 	ginkgo.AfterEach(func() {
@@ -253,12 +249,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 		})
 
 		ginkgo.It("should perform defaulting and validating properly", func() {
-<<<<<<< HEAD
-
-			ginkgo.By("Resources created before webhook enabled could be operated normally")
-=======
 			ginkgo.By("Deploy a legacy tc")
->>>>>>> 18666d4f... improve e2e semantics (#3673)
 			legacyTc := &v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: ns,
@@ -423,7 +414,6 @@ var _ = ginkgo.Describe("[Serial]", func() {
 		})
 	})
 
-<<<<<<< HEAD
 	ginkgo.Context("[Feature: AutoScaling]", func() {
 		var ocfg *tests.OperatorConfig
 		var oa tests.OperatorActions
@@ -953,10 +943,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 		})
 	})
 
-	ginkgo.Context("[Verify: Upgrading Operator from 1.1.0", func() {
-=======
-	ginkgo.Describe("Upgrading Operator from 1.1.7 to latest", func() {
->>>>>>> 18666d4f... improve e2e semantics (#3673)
+	ginkgo.Context("Upgrading Operator from 1.1.7 to latest", func() {
 		var oa tests.OperatorActions
 		var ocfg *tests.OperatorConfig
 		var operatorVersion string
@@ -964,18 +951,11 @@ var _ = ginkgo.Describe("[Serial]", func() {
 		ginkgo.BeforeEach(func() {
 			operatorVersion = "v1.1.7"
 			ocfg = &tests.OperatorConfig{
-<<<<<<< HEAD
-				Namespace:   ns,
-				ReleaseName: "operator",
-				Tag:         version,
-				Image:       fmt.Sprintf("pingcap/tidb-operator:%s", version),
-=======
 				Namespace:       ns,
 				ReleaseName:     "operator",
 				Tag:             operatorVersion,
 				Image:           fmt.Sprintf("pingcap/tidb-operator:%s", operatorVersion),
 				ImagePullPolicy: v1.PullIfNotPresent,
->>>>>>> 18666d4f... improve e2e semantics (#3673)
 			}
 			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")
@@ -1065,78 +1045,6 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			})
 			framework.ExpectEqual(err, wait.ErrWaitTimeout, "expect pd/tikv/tidb haven't been changed for 5 minutes")
 		})
-<<<<<<< HEAD
-=======
-
-		/*
-		  Release: v1.2.0
-		  new feature in https://github.com/pingcap/tidb-operator/pull/3440
-		  deploy tidbmonitor and upgrade tidb-perator, then tidbmonitor should switch from deployment to statefulset
-		*/
-		ginkgo.It("should migrate tidbmonitor from deployment to sts", func() {
-			ginkgo.By("deploy initial tc")
-			tcName := "smooth-tidbcluster"
-			tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "admin", utilimage.TiDBV4UpgradeVersion)
-			tcCfg.Resources["pd.replicas"] = "3"
-			tcCfg.Resources["tikv.replicas"] = "3"
-			tcCfg.Resources["tidb.replicas"] = "1"
-			oa.DeployTidbClusterOrDie(&tcCfg)
-			oa.CheckTidbClusterStatusOrDie(&tcCfg)
-
-			ginkgo.By("deploy tidb monitor")
-			monitorName := "smooth-migrate"
-			tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
-			framework.ExpectNoError(err, "failed to get tidbcluster")
-			tm := fixture.NewTidbMonitor(monitorName, ns, tc, true, true, true)
-			_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(tm)
-			framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
-			err = tests.CheckTidbMonitor(tm, cli, c, fw)
-			framework.ExpectNoError(err, "Expected tidbmonitor checked success")
-
-			deploymentPvcName := fmt.Sprintf("%s-monitor", monitorName)
-			deploymentPvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get(deploymentPvcName, metav1.GetOptions{})
-			framework.ExpectNoError(err, "Expected tidbmonitor deployment pvc success")
-			oldVolumeName := deploymentPvc.Spec.VolumeName
-
-			ginkgo.By("Upgrade tidb-operator and CRDs to the latest version")
-			ocfg.Tag = cfg.OperatorTag
-			ocfg.Image = cfg.OperatorImage
-			oa.InstallCRDOrDie(ocfg)
-			oa.UpgradeOperatorOrDie(ocfg)
-			err = tests.CheckTidbMonitor(tm, cli, c, fw)
-			framework.ExpectNoError(err, "Expected tidbmonitor checked success under migration")
-			err = wait.Poll(5*time.Second, 3*time.Minute, func() (done bool, err error) {
-				tmSet, err := stsGetter.StatefulSets(ns).Get(monitor.GetMonitorObjectName(tm), metav1.GetOptions{})
-				if err != nil {
-					log.Logf("ERROR: failed to get statefulset: %s/%s, %v", ns, tmSet, err)
-					return false, nil
-				}
-				return true, nil
-			})
-			framework.ExpectNoError(err, "Expected tidbmonitor sts success")
-			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-				newStsPvcName := monitor.GetMonitorFirstPVCName(tm.Name)
-				log.Logf("tidbmonitor newStsPvcName:%s", newStsPvcName)
-				stsPvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get(newStsPvcName, metav1.GetOptions{})
-				if err != nil {
-					if errors.IsNotFound(err) {
-						log.Logf("tm[%s/%s]'s first sts pvc not found,tag:%s,image:%s", ns, tm.Name, cfg.OperatorTag, cfg.OperatorImage)
-						return false, nil
-					}
-					log.Logf("ERROR: get tidbmonitor sts pvc err:%v", err)
-					return false, nil
-				}
-				if stsPvc.Spec.VolumeName == oldVolumeName {
-					return true, nil
-				}
-				log.Logf("tidbmonitor sts pv unequal to old deployment pv")
-				return false, nil
-			})
-			framework.ExpectNoError(err, "Expected tidbmonitor sts use pv of old deployment")
-			err = tests.CheckTidbMonitor(tm, cli, c, fw)
-			framework.ExpectNoError(err, "Expected tidbmonitor checked success")
-		})
->>>>>>> 18666d4f... improve e2e semantics (#3673)
 	})
 
 	ginkgo.Describe("upgrading tidb-operator in the same minor series", func() {
