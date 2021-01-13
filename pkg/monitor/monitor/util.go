@@ -147,7 +147,6 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monit
 		for _, remoteWrite := range monitor.Spec.RemoteWrite {
 			url, err := client.ParseHostURL(remoteWrite.URL)
 			if err != nil {
-				klog.Warning("tm[%s/%s] parse remoteWrite url, err: %v", monitor.Namespace, monitor.Name, err)
 				continue
 			}
 			httpClientConfig := config.HTTPClientConfig{
