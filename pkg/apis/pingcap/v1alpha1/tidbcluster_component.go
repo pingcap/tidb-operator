@@ -14,6 +14,7 @@
 package v1alpha1
 
 import (
+	"github.com/openkruise/kruise-api/apps/pub"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -211,6 +212,12 @@ func (a *componentAccessorImpl) BuildPodSpec() corev1.PodSpec {
 	}
 	if a.TerminationGracePeriodSeconds() != nil {
 		spec.TerminationGracePeriodSeconds = a.TerminationGracePeriodSeconds()
+	}
+	if a.RollingUpdateStatefulSetStrategy() != nil {
+		readinessGates := []corev1.PodReadinessGate{
+			{ConditionType: pub.InPlaceUpdateReady},
+		}
+		spec.ReadinessGates = readinessGates
 	}
 	return spec
 }
