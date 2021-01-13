@@ -45,6 +45,10 @@ GINKGO_PARALLEL=${GINKGO_PARALLEL:-n} # set to 'y' to run tests in parallel
 # in parallel
 GINKGO_NO_COLOR=${GINKGO_NO_COLOR:-n}
 GINKGO_STREAM=${GINKGO_STREAM:-y}
+GINKGO_PROGRESS=${GINKGO_PROGRESS:-y}
+GINKGO_TRACE=${GINKGO_TRACE:-y}
+GINKGO_FLAKY_ATTEMPTS=${GINKGO_FLAKY_ATTEMPTS:-2}
+GINKGO_UNTILITFAILS=${GINKGO_UNTILITFAILS:-}
 SKIP_GINKGO=${SKIP_GINKGO:-}
 # We don't delete namespace on failure by default for easier debugging in local development.
 DELETE_NAMESPACE_ON_FAILURE=${DELETE_NAMESPACE_ON_FAILURE:-false}
@@ -66,6 +70,10 @@ echo "GINKGO_NODES: $GINKGO_NODES"
 echo "GINKGO_PARALLEL: $GINKGO_PARALLEL"
 echo "GINKGO_NO_COLOR: $GINKGO_NO_COLOR"
 echo "GINKGO_STREAM: $GINKGO_STREAM"
+echo "GINKGO_PROGRESS: $GINKGO_PROGRESS"
+echo "GINKGO_TRACE: $GINKGO_TRACE"
+echo "GINKGO_FLAKY_ATTEMPTS: $GINKGO_FLAKY_ATTEMPTS"
+echo "GINKGO_UNTILITFAILS: $GINKGO_UNTILITFAILS"
 echo "DELETE_NAMESPACE_ON_FAILURE: $DELETE_NAMESPACE_ON_FAILURE"
 
 function e2e::__wait_for_ds() {
@@ -80,7 +88,7 @@ function e2e::__wait_for_ds() {
             return 0
         fi
         echo "info: pods of daemonset $ns/$name (desired: $a, ready: $b)"
-        sleep 1
+        sleep 5
     }
     echo "info: timed out waiting for pods of daemonset $ns/$name are ready"
     return 1
@@ -98,7 +106,7 @@ function e2e::__wait_for_deploy() {
             return 0
         fi
         echo "info: pods of deployment $ns/$name (desired: $a, ready: $b)"
-        sleep 1
+        sleep 5
     }
     echo "info: timed out waiting for pods of deployment $ns/$name are ready"
     return 1
@@ -323,6 +331,22 @@ fi
 
 if [[ "${GINKGO_STREAM}" == "y" ]]; then
     ginkgo_args+=("--stream")
+fi
+
+if [[ "${GINKGO_PROGRESS}" == "y" ]]; then
+    ginkgo_args+=("--progress")
+fi
+
+if [[ "${GINKGO_TRACE}" == "y" ]]; then
+    ginkgo_args+=("--trace")
+fi
+
+if [[ -n "${GINKGO_FLAKY_ATTEMPTS:-}" ]]; then
+    ginkgo_args+=("--flakeAttempts=${GINKGO_FLAKY_ATTEMPTS}")
+fi
+
+if [[ -n "${GINKGO_UNTILITFAILS:-}" ]]; then
+    ginkgo_args+=("--untilItFails")
 fi
 
 tester_args=(
