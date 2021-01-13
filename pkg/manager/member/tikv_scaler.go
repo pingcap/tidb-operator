@@ -242,14 +242,14 @@ func (s *tikvScaler) SyncAutoScalerAnn(meta metav1.Object, actual *apps.Stateful
 }
 
 func (s *tikvScaler) preCheckUpStores(tc *v1alpha1.TidbCluster, podName string) (bool, error) {
-	pdClient := controller.GetPDClient(s.deps.PDControl, tc)
-	// get the number of stores whose state is up
-	upNumber := 0
-
 	if !tc.TiKVBootStrapped() {
 		klog.Infof("TiKV of Cluster %s/%s is not bootstrapped yet, skip pre check when scale in TiKV", tc.Namespace, tc.Name)
 		return true, nil
 	}
+
+	pdClient := controller.GetPDClient(s.deps.PDControl, tc)
+	// get the number of stores whose state is up
+	upNumber := 0
 
 	storesInfo, err := pdClient.GetStores()
 	if err != nil {
