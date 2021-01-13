@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/openkruise/kruise-api/apps/pub"
-
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -15,7 +13,6 @@ import (
 	kruiseclientset "github.com/openkruise/kruise-api/client/clientset/versioned"
 	kruiseclientsetv1beta1 "github.com/openkruise/kruise-api/client/clientset/versioned/typed/apps/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -218,11 +215,6 @@ func FromBuiltinStatefulSet(sts *appsv1.StatefulSet) (*kruisev1beta1.StatefulSet
 		newSet.Spec.ReserveOrdinals = slots
 	}
 
-	// add ReadinessGates
-	readinessGates := []corev1.PodReadinessGate{
-		{ConditionType: pub.InPlaceUpdateReady},
-	}
-	newSet.Spec.Template.Spec.ReadinessGates = readinessGates
 	return newSet, nil
 }
 
