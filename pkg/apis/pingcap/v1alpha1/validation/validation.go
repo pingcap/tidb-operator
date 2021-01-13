@@ -121,9 +121,9 @@ func validateTiDBClusterSpec(spec *v1alpha1.TidbClusterSpec, fldPath *field.Path
 		allErrs = append(allErrs, validatePDAddresses(spec.PDAddresses, fldPath.Child("pdAddresses"))...)
 	}
 	if spec.RollingUpdateStatefulSetStrategy != nil {
-		if spec.StatefulSetUpdateStrategy != appsv1.RollingUpdateStatefulSetStrategyType {
+		if spec.StatefulSetUpdateStrategy == appsv1.OnDeleteStatefulSetStrategyType {
 			allErrs = append(allErrs, field.Forbidden(fldPath.Child("rollingUpdateStatefulSetStrategy"),
-				"Cannot specify rollingUpdateStatefulSetStrategy when statefulSetUpdateStrategy is not RollingUpdate"))
+				"Cannot specify rollingUpdateStatefulSetStrategy when statefulSetUpdateStrategy is OnDelete"))
 		}
 		if !features.DefaultFeatureGate.Enabled(features.KruiseAdvancedStatefulSet) {
 			allErrs = append(allErrs, field.Forbidden(fldPath.Child("rollingUpdateStatefulSetStrategy"),
@@ -298,9 +298,9 @@ func validateComponentSpec(spec *v1alpha1.ComponentSpec, fldPath *field.Path) fi
 	allErrs = append(allErrs, validateEnv(spec.Env, fldPath.Child("env"))...)
 	allErrs = append(allErrs, validateAdditionalContainers(spec.AdditionalContainers, fldPath.Child("additionalContainers"))...)
 	if spec.RollingUpdateStatefulSetStrategy != nil {
-		if spec.StatefulSetUpdateStrategy != appsv1.RollingUpdateStatefulSetStrategyType {
+		if spec.StatefulSetUpdateStrategy == appsv1.OnDeleteStatefulSetStrategyType {
 			allErrs = append(allErrs, field.Forbidden(fldPath.Child("rollingUpdateStatefulSetStrategy"),
-				"Cannot specify rollingUpdateStatefulSetStrategy when statefulSetUpdateStrategy is not RollingUpdate"))
+				"Cannot specify rollingUpdateStatefulSetStrategy when statefulSetUpdateStrategy is OnDelete"))
 		}
 		if !features.DefaultFeatureGate.Enabled(features.KruiseAdvancedStatefulSet) {
 			allErrs = append(allErrs, field.Forbidden(fldPath.Child("rollingUpdateStatefulSetStrategy"),
