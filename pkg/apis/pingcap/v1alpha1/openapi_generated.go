@@ -5064,56 +5064,55 @@ func schema_pkg_apis_pingcap_v1alpha1_QueueConfig(ref common.ReferenceCallback) 
 				Description: "QueueConfig allows the tuning of remote_write queue_config parameters. This object is referenced in the RemoteWriteSpec object.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"Capacity": {
+					"capacity": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Number of samples to buffer per shard before we start dropping them.",
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},
 					},
-					"MaxShards": {
+					"max_shards": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Max number of shards, i.e. amount of concurrency.",
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},
 					},
-					"MaxSamplesPerSend": {
+					"max_samples_per_send": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Maximum number of samples per send.",
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},
 					},
-					"BatchSendDeadline": {
+					"batch_send_deadline": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Maximum time sample will wait in buffer.",
 							Type:        []string{"integer"},
 							Format:      "int64",
 						},
 					},
-					"MaxRetries": {
+					"max_retries": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Max number of times to retry a batch on recoverable errors.",
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},
 					},
-					"MinBackoff": {
+					"min_backoff": {
 						SchemaProps: spec.SchemaProps{
 							Description: "On recoverable errors, backoff exponentially.",
 							Type:        []string{"integer"},
 							Format:      "int64",
 						},
 					},
-					"MaxBackoff": {
+					"max_backoff": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
 							Format: "int64",
 						},
 					},
 				},
-				Required: []string{"Capacity", "MaxShards", "MaxSamplesPerSend", "BatchSendDeadline", "MaxRetries", "MinBackoff", "MaxBackoff"},
 			},
 		},
 	}
@@ -5126,7 +5125,7 @@ func schema_pkg_apis_pingcap_v1alpha1_RelabelConfig(ref common.ReferenceCallback
 				Description: "RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion. It defines `<metric_relabel_configs>`-section of Prometheus configuration. More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"SourceLabels": {
+					"source_labels": {
 						SchemaProps: spec.SchemaProps{
 							Description: "A list of labels from which values are taken and concatenated with the configured separator in order.",
 							Type:        []string{"array"},
@@ -5140,7 +5139,7 @@ func schema_pkg_apis_pingcap_v1alpha1_RelabelConfig(ref common.ReferenceCallback
 							},
 						},
 					},
-					"Separator": {
+					"separator": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Separator is the string between concatenated values from the source labels.",
 							Type:        []string{"string"},
@@ -5154,28 +5153,28 @@ func schema_pkg_apis_pingcap_v1alpha1_RelabelConfig(ref common.ReferenceCallback
 							Format:      "",
 						},
 					},
-					"Modulus": {
+					"modulus": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Modulus to take of the hash of concatenated values from the source labels.",
 							Type:        []string{"integer"},
 							Format:      "int64",
 						},
 					},
-					"TargetLabel": {
+					"target_label": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TargetLabel is the label to which the resulting string is written in a replacement. Regexp interpolation is allowed for the replace action.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
-					"Replacement": {
+					"replacement": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Replacement is the regex replacement pattern to be used.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
-					"Action": {
+					"action": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Action is the action to be performed for the relabeling.",
 							Type:        []string{"string"},
@@ -5183,7 +5182,6 @@ func schema_pkg_apis_pingcap_v1alpha1_RelabelConfig(ref common.ReferenceCallback
 						},
 					},
 				},
-				Required: []string{"SourceLabels", "Separator", "Modulus", "TargetLabel", "Replacement", "Action"},
 			},
 		},
 	}
@@ -5203,7 +5201,7 @@ func schema_pkg_apis_pingcap_v1alpha1_RemoteWriteSpec(ref common.ReferenceCallba
 							Format:      "",
 						},
 					},
-					"RemoteTimeout": {
+					"remote_timeout": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
 							Format: "int64",
@@ -5250,18 +5248,18 @@ func schema_pkg_apis_pingcap_v1alpha1_RemoteWriteSpec(ref common.ReferenceCallba
 					},
 					"proxyUrl": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Optional ProxyURL",
+							Description: "Proxy url",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
-					"QueueConfig": {
+					"queue_config": {
 						SchemaProps: spec.SchemaProps{
 							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.QueueConfig"),
 						},
 					},
 				},
-				Required: []string{"url", "RemoteTimeout", "QueueConfig"},
+				Required: []string{"url"},
 			},
 		},
 		Dependencies: []string{

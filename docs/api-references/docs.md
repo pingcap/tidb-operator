@@ -2232,8 +2232,8 @@ Defaults to the value of <code>prometheus_replica</code>. External label will
 <td>
 <code>remoteWrite</code></br>
 <em>
-<a href="#remotewritespec">
-[]RemoteWriteSpec
+<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.remotewritespec">
+[]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.RemoteWriteSpec
 </a>
 </em>
 </td>
@@ -10210,7 +10210,7 @@ is referenced in the RemoteWriteSpec object.</p>
 <tbody>
 <tr>
 <td>
-<code>Capacity</code></br>
+<code>capacity</code></br>
 <em>
 int
 </em>
@@ -10221,7 +10221,7 @@ int
 </tr>
 <tr>
 <td>
-<code>MaxShards</code></br>
+<code>max_shards</code></br>
 <em>
 int
 </em>
@@ -10232,7 +10232,7 @@ int
 </tr>
 <tr>
 <td>
-<code>MaxSamplesPerSend</code></br>
+<code>max_samples_per_send</code></br>
 <em>
 int
 </em>
@@ -10243,7 +10243,7 @@ int
 </tr>
 <tr>
 <td>
-<code>BatchSendDeadline</code></br>
+<code>batch_send_deadline</code></br>
 <em>
 time.Duration
 </em>
@@ -10254,7 +10254,7 @@ time.Duration
 </tr>
 <tr>
 <td>
-<code>MaxRetries</code></br>
+<code>max_retries</code></br>
 <em>
 int
 </em>
@@ -10265,7 +10265,7 @@ int
 </tr>
 <tr>
 <td>
-<code>MinBackoff</code></br>
+<code>min_backoff</code></br>
 <em>
 time.Duration
 </em>
@@ -10276,7 +10276,7 @@ time.Duration
 </tr>
 <tr>
 <td>
-<code>MaxBackoff</code></br>
+<code>max_backoff</code></br>
 <em>
 time.Duration
 </em>
@@ -10315,6 +10315,10 @@ Interval
 </table>
 <h3 id="relabelconfig">RelabelConfig</h3>
 <p>
+(<em>Appears on:</em>
+<a href="#remotewritespec">RemoteWriteSpec</a>)
+</p>
+<p>
 <p>RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
 It defines <code>&lt;metric_relabel_configs&gt;</code>-section of Prometheus configuration.
 More info: <a href="https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs">https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs</a></p>
@@ -10329,7 +10333,7 @@ More info: <a href="https://prometheus.io/docs/prometheus/latest/configuration/c
 <tbody>
 <tr>
 <td>
-<code>SourceLabels</code></br>
+<code>source_labels</code></br>
 <em>
 github.com/prometheus/common/model.LabelNames
 </em>
@@ -10341,7 +10345,7 @@ with the configured separator in order.</p>
 </tr>
 <tr>
 <td>
-<code>Separator</code></br>
+<code>separator</code></br>
 <em>
 string
 </em>
@@ -10363,7 +10367,7 @@ string
 </tr>
 <tr>
 <td>
-<code>Modulus</code></br>
+<code>modulus</code></br>
 <em>
 uint64
 </em>
@@ -10374,7 +10378,7 @@ uint64
 </tr>
 <tr>
 <td>
-<code>TargetLabel</code></br>
+<code>target_label</code></br>
 <em>
 string
 </em>
@@ -10386,7 +10390,7 @@ Regexp interpolation is allowed for the replace action.</p>
 </tr>
 <tr>
 <td>
-<code>Replacement</code></br>
+<code>replacement</code></br>
 <em>
 string
 </em>
@@ -10397,7 +10401,7 @@ string
 </tr>
 <tr>
 <td>
-<code>Action</code></br>
+<code>action</code></br>
 <em>
 github.com/prometheus/prometheus/config.RelabelAction
 </em>
@@ -10455,10 +10459,6 @@ ServiceSpec
 </table>
 <h3 id="remotewritespec">RemoteWriteSpec</h3>
 <p>
-(<em>Appears on:</em>
-<a href="#tidbmonitorspec">TidbMonitorSpec</a>)
-</p>
-<p>
 <p>RemoteWriteSpec defines the remote_write configuration for prometheus.</p>
 </p>
 <table>
@@ -10482,24 +10482,26 @@ string
 </tr>
 <tr>
 <td>
-<code>RemoteTimeout</code></br>
+<code>remote_timeout</code></br>
 <em>
 github.com/prometheus/common/model.Duration
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 </td>
 </tr>
 <tr>
 <td>
 <code>writeRelabelConfigs</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.relabelconfig">
-[]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.RelabelConfig
+<a href="#relabelconfig">
+[]RelabelConfig
 </a>
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>The list of remote write relabel configurations.</p>
 </td>
 </tr>
@@ -10513,6 +10515,7 @@ BasicAuth
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>BasicAuth for the URL.</p>
 </td>
 </tr>
@@ -10524,6 +10527,7 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>File to read bearer token for remote write.</p>
 </td>
 </tr>
@@ -10535,6 +10539,7 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>File to read bearer token for remote write.</p>
 </td>
 </tr>
@@ -10548,6 +10553,7 @@ TLSConfig
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>TLS Config to use for remote write.</p>
 </td>
 </tr>
@@ -10559,12 +10565,13 @@ string
 </em>
 </td>
 <td>
-<p>Optional ProxyURL</p>
+<em>(Optional)</em>
+<p>Proxy url</p>
 </td>
 </tr>
 <tr>
 <td>
-<code>QueueConfig</code></br>
+<code>queue_config</code></br>
 <em>
 <a href="#queueconfig">
 QueueConfig
@@ -10572,6 +10579,7 @@ QueueConfig
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>
@@ -20173,8 +20181,8 @@ Defaults to the value of <code>prometheus_replica</code>. External label will
 <td>
 <code>remoteWrite</code></br>
 <em>
-<a href="#remotewritespec">
-[]RemoteWriteSpec
+<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.remotewritespec">
+[]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.RemoteWriteSpec
 </a>
 </em>
 </td>

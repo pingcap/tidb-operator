@@ -142,7 +142,7 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monit
 		EnableTLSDMCluster: dc != nil && dc.IsTLSClusterEnabled(),
 	}
 
-	if len(monitor.Spec.RemoteWrite) > 0 {
+	if monitor.Spec.RemoteWrite != nil && len(monitor.Spec.RemoteWrite) > 0 {
 		var remoteWriteConfigs []*config.RemoteWriteConfig
 		for _, remoteWrite := range monitor.Spec.RemoteWrite {
 			url, err := client.ParseHostURL(remoteWrite.URL)

@@ -3941,25 +3941,13 @@ func (in *RemoteWriteSpec) DeepCopyInto(out *RemoteWriteSpec) {
 	*out = *in
 	if in.WriteRelabelConfigs != nil {
 		in, out := &in.WriteRelabelConfigs, &out.WriteRelabelConfigs
-		*out = make([]*RelabelConfig, len(*in))
+		*out = make([]RelabelConfig, len(*in))
 		for i := range *in {
-			if (*in)[i] != nil {
-				in, out := &(*in)[i], &(*out)[i]
-				*out = new(RelabelConfig)
-				(*in).DeepCopyInto(*out)
-			}
+			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.BasicAuth != nil {
-		in, out := &in.BasicAuth, &out.BasicAuth
-		*out = new(BasicAuth)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.TLSConfig != nil {
-		in, out := &in.TLSConfig, &out.TLSConfig
-		*out = new(TLSConfig)
-		(*in).DeepCopyInto(*out)
-	}
+	in.BasicAuth.DeepCopyInto(&out.BasicAuth)
+	in.TLSConfig.DeepCopyInto(&out.TLSConfig)
 	out.QueueConfig = in.QueueConfig
 	return
 }
@@ -8241,9 +8229,13 @@ func (in *TidbMonitorSpec) DeepCopyInto(out *TidbMonitorSpec) {
 	}
 	if in.RemoteWrite != nil {
 		in, out := &in.RemoteWrite, &out.RemoteWrite
-		*out = make([]RemoteWriteSpec, len(*in))
+		*out = make([]*RemoteWriteSpec, len(*in))
 		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
+			if (*in)[i] != nil {
+				in, out := &(*in)[i], &(*out)[i]
+				*out = new(RemoteWriteSpec)
+				(*in).DeepCopyInto(*out)
+			}
 		}
 	}
 	return
