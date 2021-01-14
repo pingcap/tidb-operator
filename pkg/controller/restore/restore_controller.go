@@ -45,7 +45,7 @@ func NewController(deps *controller.Dependencies) *Controller {
 		deps:    deps,
 		control: NewDefaultRestoreControl(restore.NewRestoreManager(deps)),
 		queue: workqueue.NewNamedRateLimitingQueue(
-			workqueue.DefaultControllerRateLimiter(),
+			controller.NewControllerRateLimiter(1*time.Second, 100*time.Second),
 			"restore",
 		),
 	}
