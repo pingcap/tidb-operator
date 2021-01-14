@@ -22,9 +22,9 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 fi
 
 # parameters
-OPERATOR_OLD="v1\.1\.8"
-OPERATOR_NEW="v1\.1\.9"
-TIDB_OLD="v4\.0\.8"
+OPERATOR_OLD="v1\.1\.9"
+OPERATOR_NEW="v1\.2\.0-alpha\.1"
+TIDB_OLD="v4\.0\.9"
 TIDB_NEW="v4\.0\.9"
 
 find ./deploy -name "*\.tf"| xargs $SED_BIN -i "s/$OPERATOR_OLD/$OPERATOR_NEW/g"
