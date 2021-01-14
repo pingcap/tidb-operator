@@ -74,6 +74,7 @@ require (
 	github.com/yisaer/crd-validation v0.0.3
 	gocloud.dev v0.18.0
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
+	golang.org/x/time v0.0.0-20181108054448-85acf8d2951c
 	gomodules.xyz/jsonpatch/v2 v2.0.1
 	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce // indirect
 	gopkg.in/yaml.v2 v2.2.4
