@@ -41,16 +41,11 @@ type Controller struct {
 func NewController(deps *controller.Dependencies) *Controller {
 	c := &Controller{
 		deps:    deps,
-<<<<<<< HEAD
 		control: NewDefaultTidbMonitorControl(monitor.NewMonitorManager(deps)),
-		queue:   workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "tidbmonitor"),
-=======
-		control: NewDefaultTidbMonitorControl(deps, monitor.NewMonitorManager(deps)),
 		queue: workqueue.NewNamedRateLimitingQueue(
 			controller.NewControllerRateLimiter(1*time.Second, 100*time.Second),
 			"tidbmonitor",
 		),
->>>>>>> 961a45b0... add customizable controller rate limiter (#3700)
 	}
 
 	tidbMonitorInformer := deps.InformerFactory.Pingcap().V1alpha1().TidbMonitors()
