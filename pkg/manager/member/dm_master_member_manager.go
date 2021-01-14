@@ -592,7 +592,7 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 
 	deleteSlotsNumber, err := util.GetDeleteSlotsNumber(stsAnnotations)
 	if err != nil {
-		return nil, fmt.Errorf("get delete slots number failed, err:%v", err)
+		return nil, fmt.Errorf("get delete slots number of statefulset %s/%s failed, err:%v", ns, setName, err)
 	}
 
 	masterContainer := corev1.Container{
