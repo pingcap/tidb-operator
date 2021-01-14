@@ -116,15 +116,6 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 
 	tests := []testcase{
 		{
-			//remoteWrite:
-			//- url: "http://localhost:1234"
-			//writeRelabelConfigs:
-			//- source_labels: [__test]
-			//separator: ;
-			//regex: (.*)
-			//target_label: node
-			//replacement: $1
-			//action: replace
 			name: "tidbmonitor spec remote write",
 			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
 				monitor.Spec.RemoteWrite = []*v1alpha1.RemoteWriteSpec{
