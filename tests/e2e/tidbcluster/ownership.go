@@ -27,7 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// WaitObjectToBeControlledBy wait desired owner become the controller of the object
+// WaitObjectToBeControlledByOrDie wait desired owner become the controller of the object
 func WaitObjectToBeControlledByOrDie(c client.Client, obj runtime.Object, owner runtime.Object, timeout time.Duration) {
 	meta, ok := obj.(metav1.Object)
 	if !ok {
