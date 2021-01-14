@@ -64,7 +64,7 @@ func IsAllDesiredPodsRunningAndReady(c kubernetes.Interface, sts *appsv1.Statefu
 			return false
 		}
 	}
-	log.Logf("desired pods of sts %s/%s are running and ready (%v)", sts.Namespace, sts.Name, actualPodOrdinals.List())
+	// log.Logf("desired pods of sts %s/%s are running and ready (%v)", sts.Namespace, sts.Name, actualPodOrdinals.List())
 	return true
 }
 
