@@ -15,12 +15,11 @@ package monitor
 
 import (
 	"fmt"
+	"github.com/docker/docker/client"
+	"github.com/prometheus/prometheus/config"
 	"path"
 	"sort"
 	"strconv"
-
-	"github.com/docker/docker/client"
-	"github.com/prometheus/prometheus/config"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -143,60 +142,7 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monit
 	}
 
 	if monitor.Spec.RemoteWrite != nil && len(monitor.Spec.RemoteWrite) > 0 {
-		var remoteWriteConfigs []*config.RemoteWriteConfig
-		for _, remoteWrite := range monitor.Spec.RemoteWrite {
-			url, err := client.ParseHostURL(remoteWrite.URL)
-			if err != nil {
-				continue
-			}
-			httpClientConfig := config.HTTPClientConfig{
-				BearerTokenFile: remoteWrite.BearerTokenFile,
-			}
-			if remoteWrite.TLSConfig != nil {
-				httpClientConfig.TLSConfig = config.TLSConfig{
-					CAFile:             remoteWrite.TLSConfig.CAFile,
-					CertFile:           remoteWrite.TLSConfig.CertFile,
-					KeyFile:            remoteWrite.TLSConfig.KeyFile,
-					ServerName:         remoteWrite.TLSConfig.ServerName,
-					InsecureSkipVerify: remoteWrite.TLSConfig.InsecureSkipVerify,
-				}
-			}
-			var writeRelabelConfigs []*config.RelabelConfig
-			for _, writeRelabelConfig := range remoteWrite.WriteRelabelConfigs {
-				regex, err := config.NewRegexp(writeRelabelConfig.Regex)
-				if err != nil {
-					continue
-				}
-				writeRelabelConfigs = append(writeRelabelConfigs, &config.RelabelConfig{
-					SourceLabels: writeRelabelConfig.SourceLabels,
-					Separator:    writeRelabelConfig.Separator,
-					Regex:        regex,
-					Modulus:      writeRelabelConfig.Modulus,
-					TargetLabel:  writeRelabelConfig.TargetLabel,
-					Replacement:  writeRelabelConfig.Replacement,
-					Action:       writeRelabelConfig.Action,
-				})
-			}
-			remoteWriteConfig := &config.RemoteWriteConfig{
-				URL:                 &config.URL{URL: url},
-				RemoteTimeout:       remoteWrite.RemoteTimeout,
-				WriteRelabelConfigs: writeRelabelConfigs,
-				HTTPClientConfig:    httpClientConfig,
-			}
-			if remoteWrite.QueueConfig != nil {
-				remoteWriteConfig.QueueConfig = config.QueueConfig{
-					Capacity:          remoteWrite.QueueConfig.Capacity,
-					MaxShards:         remoteWrite.QueueConfig.MaxShards,
-					MaxSamplesPerSend: remoteWrite.QueueConfig.MaxSamplesPerSend,
-					BatchSendDeadline: remoteWrite.QueueConfig.BatchSendDeadline,
-					MaxRetries:        remoteWrite.QueueConfig.MaxRetries,
-					MinBackoff:        remoteWrite.QueueConfig.MinBackoff,
-					MaxBackoff:        remoteWrite.QueueConfig.MaxBackoff,
-				}
-			}
-			remoteWriteConfigs = append(remoteWriteConfigs, remoteWriteConfig)
-		}
-		model.RemoteWriteConfigs = remoteWriteConfigs
+		model.RemoteWriteConfigs = generateRemoteWrite(monitor)
 	}
 
 	if monitor.Spec.AlertmanagerURL != nil {
@@ -1229,4 +1175,61 @@ func buildExternalLabels(monitor *v1alpha1.TidbMonitor) model.LabelSet {
 		m[model.LabelName(n)] = model.LabelValue(v)
 	}
 	return m
+}
+
+func generateRemoteWrite(monitor *v1alpha1.TidbMonitor) []*config.RemoteWriteConfig {
+	var remoteWriteConfigs []*config.RemoteWriteConfig
+	for _, remoteWrite := range monitor.Spec.RemoteWrite {
+		url, err := client.ParseHostURL(remoteWrite.URL)
+		if err != nil {
+			continue
+		}
+		httpClientConfig := config.HTTPClientConfig{
+			BearerTokenFile: remoteWrite.BearerTokenFile,
+		}
+		if remoteWrite.TLSConfig != nil {
+			httpClientConfig.TLSConfig = config.TLSConfig{
+				CAFile:             remoteWrite.TLSConfig.CAFile,
+				CertFile:           remoteWrite.TLSConfig.CertFile,
+				KeyFile:            remoteWrite.TLSConfig.KeyFile,
+				ServerName:         remoteWrite.TLSConfig.ServerName,
+				InsecureSkipVerify: remoteWrite.TLSConfig.InsecureSkipVerify,
+			}
+		}
+		var writeRelabelConfigs []*config.RelabelConfig
+		for _, writeRelabelConfig := range remoteWrite.WriteRelabelConfigs {
+			regex, err := config.NewRegexp(writeRelabelConfig.Regex)
+			if err != nil {
+				continue
+			}
+			writeRelabelConfigs = append(writeRelabelConfigs, &config.RelabelConfig{
+				SourceLabels: writeRelabelConfig.SourceLabels,
+				Separator:    writeRelabelConfig.Separator,
+				Regex:        regex,
+				Modulus:      writeRelabelConfig.Modulus,
+				TargetLabel:  writeRelabelConfig.TargetLabel,
+				Replacement:  writeRelabelConfig.Replacement,
+				Action:       writeRelabelConfig.Action,
+			})
+		}
+		remoteWriteConfig := &config.RemoteWriteConfig{
+			URL:                 &config.URL{URL: url},
+			RemoteTimeout:       remoteWrite.RemoteTimeout,
+			WriteRelabelConfigs: writeRelabelConfigs,
+			HTTPClientConfig:    httpClientConfig,
+		}
+		if remoteWrite.QueueConfig != nil {
+			remoteWriteConfig.QueueConfig = config.QueueConfig{
+				Capacity:          remoteWrite.QueueConfig.Capacity,
+				MaxShards:         remoteWrite.QueueConfig.MaxShards,
+				MaxSamplesPerSend: remoteWrite.QueueConfig.MaxSamplesPerSend,
+				BatchSendDeadline: remoteWrite.QueueConfig.BatchSendDeadline,
+				MaxRetries:        remoteWrite.QueueConfig.MaxRetries,
+				MinBackoff:        remoteWrite.QueueConfig.MinBackoff,
+				MaxBackoff:        remoteWrite.QueueConfig.MaxBackoff,
+			}
+		}
+		remoteWriteConfigs = append(remoteWriteConfigs, remoteWriteConfig)
+	}
+	return remoteWriteConfigs
 }
