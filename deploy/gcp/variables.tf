@@ -28,7 +28,7 @@ variable "tidb_version" {
 }
 
 variable "tidb_operator_version" {
-  default = "v1.1.9"
+  default = "v1.2.0-alpha.1"
 }
 
 variable "tidb_operator_chart_version" {
