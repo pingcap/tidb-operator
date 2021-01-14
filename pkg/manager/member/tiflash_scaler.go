@@ -135,19 +135,17 @@ func (s *tiflashScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, ne
 	// 2. This can happen when TiFlash pod has not been successfully registered in the cluster, such as always pending.
 	//    In this situation we should delete this TiFlash pod immediately to avoid blocking the subsequent operations.
 	if !podutil.IsPodReady(pod) {
-		if tc.TiKVBootStrapped() {
-			safeTimeDeadline := pod.CreationTimestamp.Add(5 * s.deps.CLIConfig.ResyncDuration)
-			if time.Now().Before(safeTimeDeadline) {
-				// Wait for 5 resync periods to ensure that the following situation does not occur:
-				//
-				// The tiflash pod starts for a while, but has not synced its status, and then the pod becomes not ready.
-				// Here we wait for 5 resync periods to ensure that the status of this tiflash pod has been synced.
-				// After this period of time, if there is still no information about this tiflash in TidbCluster status,
-				// then we can be sure that this tiflash has never been added to the tidb cluster.
-				// So we can scale in this tiflash pod safely.
-				resetReplicas(newSet, oldSet)
-				return fmt.Errorf("TiFlash %s/%s is not ready, wait for some resync periods to synced its status", ns, podName)
-			}
+		safeTimeDeadline := pod.CreationTimestamp.Add(5 * s.deps.CLIConfig.ResyncDuration)
+		if time.Now().Before(safeTimeDeadline) {
+			// Wait for 5 resync periods to ensure that the following situation does not occur:
+			//
+			// The tiflash pod starts for a while, but has not synced its status, and then the pod becomes not ready.
+			// Here we wait for 5 resync periods to ensure that the status of this tiflash pod has been synced.
+			// After this period of time, if there is still no information about this tiflash in TidbCluster status,
+			// then we can be sure that this tiflash has never been added to the tidb cluster.
+			// So we can scale in this tiflash pod safely.
+			resetReplicas(newSet, oldSet)
+			return fmt.Errorf("TiFlash %s/%s is not ready, wait for some resync periods to synced its status", ns, podName)
 		}
 		klog.Infof("Pod %s/%s not ready for more than %v and no store for it, scale in it",
 			ns, podName, 5*s.deps.CLIConfig.ResyncDuration)

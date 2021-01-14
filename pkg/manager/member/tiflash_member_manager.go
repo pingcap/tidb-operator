@@ -629,11 +629,6 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	// This only returns Up/Down/Offline stores
 	storesInfo, err := pdCli.GetStores()
 	if err != nil {
-		if pdapi.IsTiKVNotBootstrappedError(err) {
-			klog.Infof("TiKV of Cluster %s/%s is not bootstrapped yet", tc.Namespace, tc.Name)
-			tc.Status.TiFlash.Synced = true
-			return nil
-		}
 		tc.Status.TiFlash.Synced = false
 		return err
 	}
@@ -724,11 +719,6 @@ func (m *tiflashMemberManager) setStoreLabelsForTiFlash(tc *v1alpha1.TidbCluster
 	ns := tc.GetNamespace()
 	// for unit test
 	setCount := 0
-
-	if !tc.TiKVBootStrapped() {
-		klog.Infof("TiKV of Cluster %s/%s is not bootstrapped yet, no need to set store labels", tc.Namespace, tc.Name)
-		return setCount, nil
-	}
 
 	pdCli := controller.GetPDClient(m.deps.PDControl, tc)
 	storesInfo, err := pdCli.GetStores()

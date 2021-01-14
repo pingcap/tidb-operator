@@ -319,7 +319,7 @@ func (c *pdClient) GetStores() (*StoresInfo, error) {
 	storesInfo, err := c.getStores(fmt.Sprintf("%s/%s", c.url, storesPrefix))
 	if err != nil {
 		if strings.HasSuffix(err.Error(), tiKVNotBootstrapped+"\n") {
-			err = TiKVNotBootstrappedErrorf(tiKVNotBootstrapped)
+			err = TiKVNotBootstrappedErrorf(err.Error())
 		}
 		return nil, err
 	}
