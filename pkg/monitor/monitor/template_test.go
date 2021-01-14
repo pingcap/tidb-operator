@@ -14,7 +14,11 @@
 package monitor
 
 import (
+	"github.com/docker/docker/client"
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/config"
 	"testing"
+	"time"
 
 	. "github.com/onsi/gomega"
 	"gopkg.in/yaml.v2"
@@ -597,7 +601,19 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     target_label: component
     action: replace
+remote_write:
+- url: http://localhost:1234
+  remote_timeout: 15s
+  write_relabel_configs:
+  - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+    separator: ;
+    regex: (.+)
+    target_label: node
+    replacement: $1
+    action: replace
 `
+	url, _ := client.ParseHostURL("http://localhost:1234")
+	regex, _ := config.NewRegexp("(.+)")
 	model := &MonitorConfigModel{
 		ClusterInfos: []ClusterRegexInfo{
 			{Name: "target", Namespace: "ns1"},
@@ -608,6 +624,25 @@ scrape_configs:
 		EnableTLSCluster:   false,
 		EnableTLSDMCluster: false,
 		AlertmanagerURL:    "alert-url",
+		RemoteWriteConfigs: []*config.RemoteWriteConfig{
+			{
+				URL:           &config.URL{url},
+				RemoteTimeout: model.Duration(15 * time.Second),
+				WriteRelabelConfigs: []*config.RelabelConfig{
+					{
+						SourceLabels: model.LabelNames{
+							"__address__",
+							portLabel,
+						},
+						Separator:   ";",
+						Regex:       regex,
+						TargetLabel: "node",
+						Replacement: "$1",
+						Action:      "replace",
+					},
+				},
+			},
+		},
 	}
 	content, err := RenderPrometheusConfig(model)
 	g.Expect(err).NotTo(HaveOccurred())
