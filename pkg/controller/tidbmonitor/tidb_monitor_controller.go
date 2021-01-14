@@ -42,7 +42,10 @@ func NewController(deps *controller.Dependencies) *Controller {
 	c := &Controller{
 		deps:    deps,
 		control: NewDefaultTidbMonitorControl(monitor.NewMonitorManager(deps)),
-		queue:   workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "tidbmonitor"),
+		queue: workqueue.NewNamedRateLimitingQueue(
+			controller.NewControllerRateLimiter(1*time.Second, 100*time.Second),
+			"tidbmonitor",
+		),
 	}
 
 	tidbMonitorInformer := deps.InformerFactory.Pingcap().V1alpha1().TidbMonitors()
