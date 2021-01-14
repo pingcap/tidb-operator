@@ -10,20 +10,11 @@
 // For more information about this plugin, please check out https://plugins.jenkins.io/ghprb/.
 //
 
-import groovy.text.SimpleTemplateEngine
-
 // Able to override default values in Jenkins job via environment variables.
-if (!env.DEFAULT_GIT_REF) {
-    env.DEFAULT_GIT_REF = "master"
-}
-
-if (!env.DEFAULT_GINKGO_NODES) {
-    env.DEFAULT_GINKGO_NODES = "8"
-}
-
-if (!env.DEFAULT_E2E_ARGS) {
-    env.DEFAULT_E2E_ARGS = ""
-}
+env.DEFAULT_GIT_REF = env.DEFAULT_GIT_REF ?: 'master'
+env.DEFAULT_GINKGO_NODES = env.DEFAULT_GINKGO_NODES ?: '8'
+env.DEFAULT_E2E_ARGS = env.DEFAULT_E2E_ARGS ?: ''
+env.DEFAULT_DELETE_NAMESPACE_ON_FAILURE = env.DEFAULT_DELETE_NAMESPACE_ON_FAILURE ?: 'true'
 
 properties([
     parameters([
@@ -33,6 +24,7 @@ properties([
         string(name: 'PR_ID', defaultValue: '', description: 'pull request ID, this will override GIT_REF if set, e.g. 1889'),
         string(name: 'GINKGO_NODES', defaultValue: env.DEFAULT_GINKGO_NODES, description: 'the number of ginkgo nodes'),
         string(name: 'E2E_ARGS', defaultValue: env.DEFAULT_E2E_ARGS, description: "e2e args, e.g. --ginkgo.focus='\\[Stability\\]'"),
+        string(name: 'DELETE_NAMESPACE_ON_FAILURE', defaultValue: env.DEFAULT_DELETE_NAMESPACE_ON_FAILURE, description: 'delete ns after test case fails')
     ])
 ])
 
@@ -336,7 +328,7 @@ try {
         }
         }
 
-        def GLOBALS = "KIND_ETCD_DATADIR=/mnt/tmpfs/etcd SKIP_BUILD=y SKIP_IMAGE_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} DELETE_NAMESPACE_ON_FAILURE=true GINKGO_NO_COLOR=y"
+        def GLOBALS = "KIND_ETCD_DATADIR=/mnt/tmpfs/etcd SKIP_BUILD=y SKIP_IMAGE_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} DELETE_NAMESPACE_ON_FAILURE=${params.DELETE_NAMESPACE_ON_FAILURE} GINKGO_NO_COLOR=y"
         build("tidb-operator", "${GLOBALS} GINKGO_NODES=${params.GINKGO_NODES} ./hack/e2e.sh -- ${params.E2E_ARGS}")
 
         if (GIT_REF ==~ /^(master|)$/ || GIT_REF ==~ /^(release-.*)$/
