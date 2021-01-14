@@ -47,7 +47,7 @@ func NewController(deps *controller.Dependencies) *Controller {
 		deps:    deps,
 		control: NewDefaultBackupControl(deps.Clientset, backup.NewBackupManager(deps)),
 		queue: workqueue.NewNamedRateLimitingQueue(
-			workqueue.DefaultControllerRateLimiter(),
+			controller.NewControllerRateLimiter(1*time.Second, 100*time.Second),
 			"backup",
 		),
 	}
