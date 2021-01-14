@@ -21,12 +21,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// GetRestoreJobName return the backup job name
+// GetRestoreJobName return the restore job name
 func (rs *Restore) GetRestoreJobName() string {
 	return fmt.Sprintf("restore-%s", rs.GetName())
 }
 
-// GetInstanceName return the backup instance name
+// GetInstanceName return the restore instance name
 func (rs *Restore) GetInstanceName() string {
 	if rs.Labels != nil {
 		if v, ok := rs.Labels[label.InstanceLabelKey]; ok {
@@ -41,7 +41,7 @@ func (rs *Restore) GetTidbEndpointHash() string {
 	return HashContents([]byte(rs.Spec.To.GetTidbEndpoint()))
 }
 
-// GetRestorePVCName return the backup pvc name
+// GetRestorePVCName return the restore pvc name
 func (rs *Restore) GetRestorePVCName() string {
 	return fmt.Sprintf("restore-pvc-%s", rs.GetTidbEndpointHash())
 }
@@ -57,6 +57,14 @@ func GetRestoreCondition(status *RestoreStatus, conditionType RestoreConditionTy
 		}
 	}
 	return -1, nil
+}
+
+// GetRestoreLastCondition gets the last RestoreCondition from the given RestoreStatus.
+func GetRestoreLastCondition(status *RestoreStatus) *RestoreCondition {
+	if status == nil || len(status.Conditions) == 0 {
+		return nil
+	}
+	return &status.Conditions[len(status.Conditions)-1]
 }
 
 // UpdateRestoreCondition updates existing Restore condition or creates a new
@@ -105,4 +113,10 @@ func IsRestoreComplete(restore *Restore) bool {
 func IsRestoreScheduled(restore *Restore) bool {
 	_, condition := GetRestoreCondition(&restore.Status, RestoreScheduled)
 	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// IsRestoreLastRunning returns true if a Restore's last condition is Running.
+func IsRestoreLastRunning(restore *Restore) bool {
+	condition := GetRestoreLastCondition(&restore.Status)
+	return condition != nil && condition.Type == RestoreRunning && condition.Status == corev1.ConditionTrue
 }

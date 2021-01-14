@@ -32,6 +32,8 @@ import (
 type ControlInterface interface {
 	// UpdateBackup implements the control logic for backup job and backup clean job's creation, deletion
 	UpdateBackup(backup *v1alpha1.Backup) error
+	// UpdateCondition updates the condition for a Backup.
+	UpdateCondition(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition) error
 }
 
 // NewDefaultBackupControl returns a new instance of the default implementation BackupControlInterface that
@@ -62,6 +64,11 @@ func (c *defaultBackupControl) UpdateBackup(backup *v1alpha1.Backup) error {
 	}
 
 	return c.updateBackup(backup)
+}
+
+// UpdateCondition updates the condition for a Backup.
+func (c *defaultBackupControl) UpdateCondition(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition) error {
+	return c.backupManager.UpdateCondition(backup, condition)
 }
 
 func (c *defaultBackupControl) updateBackup(backup *v1alpha1.Backup) error {
@@ -141,6 +148,11 @@ func (c *FakeBackupControl) UpdateBackup(backup *v1alpha1.Backup) error {
 	}
 
 	return c.backupIndexer.Add(backup)
+}
+
+// UpdateCondition updates the condition for a Backup.
+func (c *FakeBackupControl) UpdateCondition(_ *v1alpha1.Backup, _ *v1alpha1.BackupCondition) error {
+	return nil
 }
 
 var _ ControlInterface = &FakeBackupControl{}

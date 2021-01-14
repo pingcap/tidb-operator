@@ -63,6 +63,10 @@ func (bm *backupManager) Sync(backup *v1alpha1.Backup) error {
 	return bm.syncBackupJob(backup)
 }
 
+func (bm *backupManager) UpdateCondition(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition) error {
+	return bm.statusUpdater.Update(backup, condition, nil)
+}
+
 func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
@@ -562,6 +566,10 @@ func (m *FakeBackupManager) SetSyncError(err error) {
 
 func (m *FakeBackupManager) Sync(_ *v1alpha1.Backup) error {
 	return m.err
+}
+
+func (m *FakeBackupManager) UpdateCondition(_ *v1alpha1.Backup, _ *v1alpha1.BackupCondition) error {
+	return nil
 }
 
 var _ backup.BackupManager = &FakeBackupManager{}

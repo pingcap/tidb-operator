@@ -27,6 +27,8 @@ import (
 type ControlInterface interface {
 	// UpdateRestore implements the control logic for restore job creation, update, and deletion
 	UpdateRestore(restore *v1alpha1.Restore) error
+	// UpdateCondition updates the condition for a Restore.
+	UpdateCondition(restore *v1alpha1.Restore, condition *v1alpha1.RestoreCondition) error
 }
 
 // NewDefaultRestoreControl returns a new instance of the default implementation RestoreControlInterface that
@@ -47,6 +49,11 @@ var _ ControlInterface = &defaultRestoreControl{}
 func (c *defaultRestoreControl) UpdateRestore(restore *v1alpha1.Restore) error {
 	restore.SetGroupVersionKind(controller.RestoreControllerKind)
 	return c.restoreManager.Sync(restore)
+}
+
+// UpdateCondition updates the condition for a Restore.
+func (c *defaultRestoreControl) UpdateCondition(restore *v1alpha1.Restore, condition *v1alpha1.RestoreCondition) error {
+	return c.restoreManager.UpdateCondition(restore, condition)
 }
 
 // FakeRestoreControl is a fake RestoreControlInterface
@@ -77,6 +84,11 @@ func (c *FakeRestoreControl) UpdateRestore(backup *v1alpha1.Restore) error {
 	}
 
 	return c.backupIndexer.Add(backup)
+}
+
+// UpdateCondition updates the condition for a Restore.
+func (c *FakeRestoreControl) UpdateCondition(_ *v1alpha1.Restore, _ *v1alpha1.RestoreCondition) error {
+	return nil
 }
 
 var _ ControlInterface = &FakeRestoreControl{}

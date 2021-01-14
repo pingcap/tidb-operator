@@ -21,6 +21,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/restore"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/label"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -146,6 +148,31 @@ func (c *Controller) updateRestore(cur interface{}) {
 	if v1alpha1.IsRestoreComplete(newRestore) {
 		klog.V(4).Infof("restore %s/%s is Complete, skipping.", ns, name)
 		return
+	}
+
+	if v1alpha1.IsRestoreLastRunning(newRestore) {
+		selector, err := label.NewRestore().Instance(newRestore.GetInstanceName()).RestoreJob().Restore(name).Selector()
+		if err == nil {
+			pods, err2 := c.deps.PodLister.Pods(ns).List(selector)
+			if err2 == nil {
+				for _, pod := range pods {
+					if pod.Status.Phase == corev1.PodFailed {
+						klog.V(4).Infof("restore %s/%s has failed pod %s.", ns, name, pod.Name)
+						err2 = c.control.UpdateCondition(newRestore, &v1alpha1.RestoreCondition{
+							Type:    v1alpha1.RestoreFailed,
+							Status:  corev1.ConditionTrue,
+							Reason:  "AlreadyFailed",
+							Message: fmt.Sprintf("have failed pod %s", pod.Name),
+						})
+						if err2 != nil {
+							klog.Errorf("fail to update the condition of restore %s/%s", ns, name)
+						}
+						break
+					}
+				}
+			}
+		}
+		klog.V(4).Infof("restore %s/%s is already Running or Failed, skipping.", ns, name)
 	}
 
 	if v1alpha1.IsRestoreScheduled(newRestore) {
