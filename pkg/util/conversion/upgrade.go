@@ -48,7 +48,7 @@ func UpgradeFromSts(c clientset.Interface, kruiseCli kruiseclientset.Interface, 
 	if err = emptyControllerRevisionLabel(c, oldRevisionList, sts.Spec.Selector.MatchLabels); err != nil {
 		return nil, err
 	}
-	klog.V(2).Infof("Succesfully empty labels of all controller revisions (%d) of StatefulSet %s/%s", len(oldRevisionList.Items), sts.Namespace, sts.Name)
+	klog.V(2).Infof("Successfully empty labels of all controller revisions (%d) of StatefulSet %s/%s", len(oldRevisionList.Items), sts.Namespace, sts.Name)
 
 	// Create or Update Kruise StatefulSet
 	kruiseAsts, err := createOrUpdateKruiseStatefulSet(kruiseCli, sts.Namespace, sts.Name, sts)
@@ -64,7 +64,7 @@ func UpgradeFromSts(c clientset.Interface, kruiseCli kruiseclientset.Interface, 
 	if err != nil && !apierrors.IsNotFound(err) {
 		return nil, err
 	}
-	klog.V(2).Infof("Succesfully deleted the old builtin StatefulSet %s/%s", sts.Namespace, sts.Name)
+	klog.V(2).Infof("Successfully deleted the old builtin StatefulSet %s/%s", sts.Namespace, sts.Name)
 
 	// We wait for old StatefulSet to be deleted actually from etcd, then write back the labels to controller revisions
 	// just like what is done in Advanced-Statefulset: https://github.com/pingcap/advanced-statefulset/blob/master/pkg/controller/statefulset/stateful_set.go#L358-L363
@@ -87,7 +87,7 @@ func UpgradeFromAsts(c clientset.Interface, asCli asclientset.Interface, kruiseC
 	if err = emptyControllerRevisionLabel(c, oldRevisionList, asts.Spec.Selector.MatchLabels); err != nil {
 		return nil, err
 	}
-	klog.V(2).Infof("Succesfully empty labels of all controller revisions (%d) of StatefulSet %s/%s", len(oldRevisionList.Items), asts.Namespace, asts.Name)
+	klog.V(2).Infof("Successfully empty labels of all controller revisions (%d) of StatefulSet %s/%s", len(oldRevisionList.Items), asts.Namespace, asts.Name)
 
 	tmpSts, err := helper.ToBuiltinStatefulSet(asts)
 	if err != nil {
@@ -108,7 +108,7 @@ func UpgradeFromAsts(c clientset.Interface, asCli asclientset.Interface, kruiseC
 	if err != nil && !apierrors.IsNotFound(err) {
 		return nil, err
 	}
-	klog.V(2).Infof("Succesfully deleted the old Pingcap Advanced StatefulSet %s/%s", asts.Namespace, asts.Name)
+	klog.V(2).Infof("Successfully deleted the old Pingcap Advanced StatefulSet %s/%s", asts.Namespace, asts.Name)
 
 	// We wait for old StatefulSet to be deleted actually from etcd, then write back the labels to controller revisions
 	// Just like what is done here: https://github.com/pingcap/advanced-statefulset/blob/master/pkg/controller/statefulset/stateful_set.go#L331-L341
@@ -188,14 +188,14 @@ func createOrUpdateKruiseStatefulSet(kruiseCli kruiseclientset.Interface, ns, na
 		if err != nil {
 			return nil, err
 		}
-		klog.V(2).Infof("Succesfully created the new Kruise Advanced StatefulSet %s/%s", kruiseAsts.Namespace, kruiseAsts.Name)
+		klog.V(2).Infof("Successfully created the new Kruise Advanced StatefulSet %s/%s", kruiseAsts.Namespace, kruiseAsts.Name)
 	} else {
 		kruiseAsts.Spec = upgradedKruiseAsts.Spec
 		kruiseAsts, err = kruiseCli.AppsV1beta1().StatefulSets(kruiseAsts.Namespace).Update(kruiseAsts)
 		if err != nil {
 			return nil, err
 		}
-		klog.V(2).Infof("Succesfully updated Kruise Advanced StatefulSet %s/%s", kruiseAsts.Namespace, kruiseAsts.Name)
+		klog.V(2).Infof("Successfully updated Kruise Advanced StatefulSet %s/%s", kruiseAsts.Namespace, kruiseAsts.Name)
 	}
 
 	// Status must be updated via UpdateStatus
