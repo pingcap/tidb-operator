@@ -25,10 +25,6 @@ import (
 	"k8s.io/klog"
 )
 
-const (
-	tikvNotBootstrapped = `TiKV cluster not bootstrapped, please start TiKV first"`
-)
-
 func admitCreateTiKVPod(pod *core.Pod, pdClient pdapi.PDClient) *admission.AdmissionResponse {
 	name := pod.Name
 	namespace := pod.Namespace
@@ -36,7 +32,7 @@ func admitCreateTiKVPod(pod *core.Pod, pdClient pdapi.PDClient) *admission.Admis
 	// always success if tikv is not bootstrapped
 	stores, err := pdClient.GetStores()
 	if err != nil {
-		if strings.HasSuffix(err.Error(), tikvNotBootstrapped+"\n") {
+		if pdapi.IsTiKVNotBootstrappedError(err) {
 			return util.ARSuccess()
 		}
 		klog.Infof("Failed to get stores during pod [%s/%s] creation, error: %v", namespace, name, err)
@@ -45,7 +41,7 @@ func admitCreateTiKVPod(pod *core.Pod, pdClient pdapi.PDClient) *admission.Admis
 
 	evictLeaderSchedulers, err := pdClient.GetEvictLeaderSchedulers()
 	if err != nil {
-		if strings.HasSuffix(err.Error(), tikvNotBootstrapped+"\n") {
+		if pdapi.IsTiKVNotBootstrappedError(err) {
 			return util.ARSuccess()
 		}
 		klog.Infof("failed to create pod[%s/%s],%v", namespace, name, err)

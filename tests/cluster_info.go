@@ -46,7 +46,7 @@ func (tc *TidbClusterConfig) ScaleTiDB(replicas uint) *TidbClusterConfig {
 	return tc
 }
 
-func (tc *TidbClusterConfig) RunInHost(flag bool) *TidbClusterConfig {
+func (tc *TidbClusterConfig) SetHostNetwork(flag bool) *TidbClusterConfig {
 	val := "false"
 	if flag {
 		val = "true"
