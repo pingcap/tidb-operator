@@ -629,8 +629,9 @@ func newTidbClusterForTiKVUpgrader() *v1alpha1.TidbCluster {
 		},
 		Status: v1alpha1.TidbClusterStatus{
 			TiKV: v1alpha1.TiKVStatus{
-				Synced: true,
-				Phase:  v1alpha1.UpgradePhase,
+				Synced:       true,
+				BootStrapped: true,
+				Phase:        v1alpha1.UpgradePhase,
 				StatefulSet: &apps.StatefulSetStatus{
 					Replicas:        3,
 					CurrentReplicas: 3,

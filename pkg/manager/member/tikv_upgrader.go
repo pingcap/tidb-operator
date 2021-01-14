@@ -87,6 +87,7 @@ func (u *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 		i := podOrdinals[_i]
 		store := u.getStoreByOrdinal(tc, i)
 		if store == nil {
+			setUpgradePartition(newSet, i)
 			continue
 		}
 		podName := TikvPodName(tcName, i)
