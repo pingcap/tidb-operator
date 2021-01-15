@@ -626,7 +626,7 @@ remote_write:
 		AlertmanagerURL:    "alert-url",
 		RemoteWriteConfigs: []*config.RemoteWriteConfig{
 			{
-				URL:           &config.URL{url},
+				URL:           &config.URL{URL: url},
 				RemoteTimeout: model.Duration(15 * time.Second),
 				WriteRelabelConfigs: []*config.RelabelConfig{
 					{
