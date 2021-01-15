@@ -14,13 +14,13 @@
 package monitor
 
 import (
-	"github.com/docker/docker/client"
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/config"
 	"testing"
 	"time"
 
+	"github.com/docker/docker/client"
 	. "github.com/onsi/gomega"
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/config"
 	"gopkg.in/yaml.v2"
 )
 

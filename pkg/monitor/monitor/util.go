@@ -15,18 +15,19 @@ package monitor
 
 import (
 	"fmt"
-	"github.com/docker/docker/client"
-	"github.com/prometheus/prometheus/config"
 	"path"
 	"sort"
 	"strconv"
+	"time"
 
+	"github.com/docker/docker/client"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/config"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -1198,20 +1199,35 @@ func generateRemoteWrite(monitor *v1alpha1.TidbMonitor) []*config.RemoteWriteCon
 		}
 		var writeRelabelConfigs []*config.RelabelConfig
 		for _, writeRelabelConfig := range remoteWrite.WriteRelabelConfigs {
-			regex, err := config.NewRegexp(writeRelabelConfig.Regex)
-			if err != nil {
-				continue
+			relabelConfig := &config.RelabelConfig{}
+			if len(writeRelabelConfig.SourceLabels) > 0 {
+				relabelConfig.SourceLabels = writeRelabelConfig.SourceLabels
 			}
-			writeRelabelConfigs = append(writeRelabelConfigs, &config.RelabelConfig{
-				SourceLabels: writeRelabelConfig.SourceLabels,
-				Separator:    writeRelabelConfig.Separator,
-				Regex:        regex,
-				Modulus:      writeRelabelConfig.Modulus,
-				TargetLabel:  writeRelabelConfig.TargetLabel,
-				Replacement:  writeRelabelConfig.Replacement,
-				Action:       writeRelabelConfig.Action,
-			})
+			if writeRelabelConfig.Separator != "" {
+				relabelConfig.Separator = writeRelabelConfig.Separator
+			}
+			if writeRelabelConfig.TargetLabel != "" {
+				relabelConfig.TargetLabel = writeRelabelConfig.TargetLabel
+			}
+			if writeRelabelConfig.Regex != "" {
+				regex, err := config.NewRegexp(writeRelabelConfig.Regex)
+				if err != nil {
+					continue
+				}
+				relabelConfig.Regex = regex
+			}
+			if writeRelabelConfig.Modulus != uint64(0) {
+				relabelConfig.Modulus = writeRelabelConfig.Modulus
+			}
+			if writeRelabelConfig.Replacement != "" {
+				relabelConfig.Replacement = writeRelabelConfig.Replacement
+			}
+			if writeRelabelConfig.Action != "" {
+				relabelConfig.Action = writeRelabelConfig.Action
+			}
+			writeRelabelConfigs = append(writeRelabelConfigs, relabelConfig)
 		}
+
 		remoteWriteConfig := &config.RemoteWriteConfig{
 			URL:                 &config.URL{URL: url},
 			RemoteTimeout:       remoteWrite.RemoteTimeout,
@@ -1219,15 +1235,30 @@ func generateRemoteWrite(monitor *v1alpha1.TidbMonitor) []*config.RemoteWriteCon
 			HTTPClientConfig:    httpClientConfig,
 		}
 		if remoteWrite.QueueConfig != nil {
-			remoteWriteConfig.QueueConfig = config.QueueConfig{
-				Capacity:          remoteWrite.QueueConfig.Capacity,
-				MaxShards:         remoteWrite.QueueConfig.MaxShards,
-				MaxSamplesPerSend: remoteWrite.QueueConfig.MaxSamplesPerSend,
-				BatchSendDeadline: remoteWrite.QueueConfig.BatchSendDeadline,
-				MaxRetries:        remoteWrite.QueueConfig.MaxRetries,
-				MinBackoff:        remoteWrite.QueueConfig.MinBackoff,
-				MaxBackoff:        remoteWrite.QueueConfig.MaxBackoff,
+			queueConfig := config.QueueConfig{}
+
+			if remoteWrite.QueueConfig.Capacity != 0 {
+				queueConfig.Capacity = remoteWrite.QueueConfig.Capacity
 			}
+			if remoteWrite.QueueConfig.MaxShards != 0 {
+				queueConfig.MaxShards = remoteWrite.QueueConfig.MaxShards
+			}
+			if remoteWrite.QueueConfig.MaxSamplesPerSend != 0 {
+				queueConfig.MaxSamplesPerSend = remoteWrite.QueueConfig.MaxSamplesPerSend
+			}
+			if remoteWrite.QueueConfig.BatchSendDeadline != time.Duration(0) {
+				queueConfig.BatchSendDeadline = remoteWrite.QueueConfig.BatchSendDeadline
+			}
+			if remoteWrite.QueueConfig.MaxRetries != 0 {
+				queueConfig.MaxRetries = remoteWrite.QueueConfig.MaxRetries
+			}
+			if remoteWrite.QueueConfig.MinBackoff != time.Duration(0) {
+				queueConfig.MinBackoff = remoteWrite.QueueConfig.MinBackoff
+			}
+			if remoteWrite.QueueConfig.MaxBackoff != time.Duration(0) {
+				queueConfig.MaxBackoff = remoteWrite.QueueConfig.MaxBackoff
+			}
+			remoteWriteConfig.QueueConfig = queueConfig
 		}
 		remoteWriteConfigs = append(remoteWriteConfigs, remoteWriteConfig)
 	}
