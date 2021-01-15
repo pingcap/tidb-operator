@@ -15409,21 +15409,7 @@ uint
 </tr>
 <tr>
 <td>
-<<<<<<< HEAD
 <code>end-point-batch-row-limit</code></br>
-=======
-<code>bootStrapped</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
-<code>statefulSet</code></br>
->>>>>>> 195c46d3... Sync TiKV Statefulset even when TiKV is not bootstrapped (#3694)
 <em>
 uint
 </em>
@@ -15807,6 +15793,16 @@ bool
 <a href="#memberphase">
 MemberPhase
 </a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>bootStrapped</code></br>
+<em>
+bool
 </em>
 </td>
 <td>
