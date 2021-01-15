@@ -184,7 +184,7 @@ The Helm server is a service called `tiller`, first install the `RBAC` rules req
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.9/manifests/tiller-rbac.yaml
+kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/tiller-rbac.yaml
 ```
 
 If the server cannot access the Internet, download the `tiller-rbac.yaml` file on a machine with Internet access:
@@ -192,7 +192,7 @@ If the server cannot access the Internet, download the `tiller-rbac.yaml` file o
 {{< copyable "shell-regular" >}}
 
 ```shell
-wget https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.9/manifests/tiller-rbac.yaml
+wget https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/tiller-rbac.yaml
 ```
 
 Copy the file `tiller-rbac.yaml` to the server and install the `RBAC`:
@@ -353,9 +353,9 @@ Use the following command to download the chart file required for cluster instal
 {{< copyable "shell-regular" >}}
 
 ```shell
-wget http://charts.pingcap.org/tidb-operator-v1.1.9.tgz
-wget http://charts.pingcap.org/tidb-drainer-v1.1.9.tgz
-wget http://charts.pingcap.org/tidb-lightning-v1.1.9.tgz
+wget http://charts.pingcap.org/tidb-operator-v1.2.0-alpha.1.tgz
+wget http://charts.pingcap.org/tidb-drainer-v1.2.0-alpha.1.tgz
+wget http://charts.pingcap.org/tidb-lightning-v1.2.0-alpha.1.tgz
 ```
 
 Copy these chart files to the server and decompress them. You can use these charts to install the corresponding components by running the `helm install` command. Take `tidb-operator` as an example:
@@ -363,7 +363,7 @@ Copy these chart files to the server and decompress them. You can use these char
 {{< copyable "shell-regular" >}}
 
 ```shell
-tar zxvf tidb-operator.v1.1.9.tgz
+tar zxvf tidb-operator.v1.2.0-alpha.1.tgz
 helm install ./tidb-operator --name=${release_name} --namespace=${namespace}
 ```
 
