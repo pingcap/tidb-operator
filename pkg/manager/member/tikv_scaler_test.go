@@ -50,6 +50,7 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 		if test.tikvUpgrading {
 			tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
 		}
+		tc.Status.TiKV.BootStrapped = true
 
 		oldSet := newStatefulSetForPDScale()
 		newSet := oldSet.DeepCopy()
@@ -169,6 +170,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 		if test.tikvUpgrading {
 			tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
 		}
+		tc.Status.TiKV.BootStrapped = true
 
 		oldSet := newStatefulSetForPDScale()
 		newSet := oldSet.DeepCopy()
