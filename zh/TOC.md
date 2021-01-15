@@ -96,6 +96,8 @@
   - [Kubernetes 监控与告警](monitor-kubernetes.md)
 + [TiDB Operator Roadmap](roadmap.md)
 + 版本发布历史
+  + v1.2
+    - [1.2.0-alpha.1](releases/release-1.2.0-alpha.1.md)
   + v1.1
     - [1.1.9](releases/release-1.1.9.md)
     - [1.1.8](releases/release-1.1.8.md)
