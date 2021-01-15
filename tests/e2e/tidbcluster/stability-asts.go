@@ -49,7 +49,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
+var _ = ginkgo.Describe("[Stability]", func() {
 	f := e2eframework.NewDefaultFramework("asts")
 
 	var ns string

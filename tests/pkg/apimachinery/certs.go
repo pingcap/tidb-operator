@@ -32,6 +32,7 @@ type CertContext struct {
 
 // Setup the server cert. For example, user apiservers and admission webhooks
 // can use the cert to prove their identify to the kube-apiserver
+// TODO: do we really need to write to fs?
 func SetupServerCert(namespaceName, serviceName string) (*CertContext, error) {
 	certDir, err := ioutil.TempDir("", "test-e2e-server-cert")
 	if err != nil {
