@@ -8907,7 +8907,6 @@ PDConfigWraper
 </em>
 </td>
 <td>
-<em>(Optional)</em>
 <p>Config is the Configuration of pd-servers</p>
 </td>
 </tr>
