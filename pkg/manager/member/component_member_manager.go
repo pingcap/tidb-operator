@@ -1,4 +1,4 @@
-// Copyright 2018 PingCAP, Inc.
+// Copyright 2021 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -51,26 +51,27 @@ func ComponentSyncServiceForTidbCluster(context *ComponentContext) error {
 	component := context.component
 
 	if tc.Spec.Paused {
-		klog.V(4).Infof("tidb cluster %s/%s is paused, skip syncing for pd service", tc.GetNamespace(), tc.GetName())
+		klog.V(4).Infof("tidb cluster %s/%s is paused, skip syncing for %s service", tc.GetNamespace(), tc.GetName(), component)
 		return nil
 	}
 
-	switch component{
-	case label.TiKVLabelVal:
-		svcList := []SvcConfig{
-			{
-				Name:       "peer",
-				Port:       20160,
-				Headless:   true,
-				SvcLabel:   func(l label.Label) label.Label { return l.TiKV() },
-				MemberName: controller.TiKVPeerMemberName,
-			},
-		}
-	}
+	// switch component{
+	// case label.TiKVLabelVal:
+	// 	svcList := []SvcConfig{
+	// 		{
+	// 			Name:       "peer",
+	// 			Port:       20160,
+	// 			Headless:   true,
+	// 			SvcLabel:   func(l label.Label) label.Label { return l.TiKV() },
+	// 			MemberName: controller.TiKVPeerMemberName,
+	// 		},
+	// 	}
+	// }
 
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
+	// Why there is svc config for tikv?
 	newSvc := ComponentGetNewServiceForTidbCluster(context)
 	oldSvcTmp, err := dependencies.ServiceLister.Services(ns).Get(controller.PDMemberName(tcName))
 	if errors.IsNotFound(err) {
