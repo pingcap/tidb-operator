@@ -45,111 +45,6 @@ type ComponentContext struct {
 	component    string
 }
 
-func ComponentSyncServiceForTidbCluster(context *ComponentContext) error {
-	tc := context.tc
-	dependencies := context.dependencies
-	component := context.component
-
-	if tc.Spec.Paused {
-		klog.V(4).Infof("tidb cluster %s/%s is paused, skip syncing for %s service", tc.GetNamespace(), tc.GetName(), component)
-		return nil
-	}
-
-	// switch component{
-	// case label.TiKVLabelVal:
-	// 	svcList := []SvcConfig{
-	// 		{
-	// 			Name:       "peer",
-	// 			Port:       20160,
-	// 			Headless:   true,
-	// 			SvcLabel:   func(l label.Label) label.Label { return l.TiKV() },
-	// 			MemberName: controller.TiKVPeerMemberName,
-	// 		},
-	// 	}
-	// }
-
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-
-	// Why there is svc config for tikv?
-	newSvc := ComponentGetNewServiceForTidbCluster(context)
-	oldSvcTmp, err := dependencies.ServiceLister.Services(ns).Get(controller.PDMemberName(tcName))
-	if errors.IsNotFound(err) {
-		err = controller.SetServiceLastAppliedConfigAnnotation(newSvc)
-		if err != nil {
-			return err
-		}
-		return dependencies.ServiceControl.CreateService(tc, newSvc)
-	}
-	if err != nil {
-		return fmt.Errorf("syncPDServiceForTidbCluster: failed to get svc %s for cluster %s/%s, error: %s", controller.PDMemberName(tcName), ns, tcName, err)
-	}
-
-	oldSvc := oldSvcTmp.DeepCopy()
-
-	equal, err := controller.ServiceEqual(newSvc, oldSvc)
-	if err != nil {
-		return err
-	}
-	if !equal {
-		svc := *oldSvc
-		svc.Spec = newSvc.Spec
-		// TODO add unit test
-		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
-		if err != nil {
-			return err
-		}
-		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
-		_, err = dependencies.ServiceControl.UpdateService(tc, &svc)
-		return err
-	}
-
-	return nil
-}
-
-func ComponentSyncHeadlessServiceForTidbCluster(context *ComponentContext) error {
-	tc := context.tc
-	dependencies := context.dependencies
-
-	if tc.Spec.Paused {
-		klog.V(4).Infof("tidb cluster %s/%s is paused, skip syncing for pd headless service", tc.GetNamespace(), tc.GetName())
-		return nil
-	}
-
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-
-	newSvc := getNewPDHeadlessServiceForTidbCluster(tc)
-	oldSvc, err := dependencies.ServiceLister.Services(ns).Get(controller.PDPeerMemberName(tcName))
-	if errors.IsNotFound(err) {
-		err = controller.SetServiceLastAppliedConfigAnnotation(newSvc)
-		if err != nil {
-			return err
-		}
-		return dependencies.ServiceControl.CreateService(tc, newSvc)
-	}
-	if err != nil {
-		return fmt.Errorf("syncPDHeadlessServiceForTidbCluster: failed to get svc %s for cluster %s/%s, error: %s", controller.PDPeerMemberName(tcName), ns, tcName, err)
-	}
-
-	equal, err := controller.ServiceEqual(newSvc, oldSvc)
-	if err != nil {
-		return err
-	}
-	if !equal {
-		svc := *oldSvc
-		svc.Spec = newSvc.Spec
-		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
-		if err != nil {
-			return err
-		}
-		_, err = dependencies.ServiceControl.UpdateService(tc, &svc)
-		return err
-	}
-
-	return nil
-}
-
 func ComponentSyncStatefulSetForTidbCluster(context *ComponentContext) error {
 	tc := context.tc
 	dependencies := context.dependencies
@@ -228,108 +123,6 @@ func ComponentSyncStatefulSetForTidbCluster(context *ComponentContext) error {
 	}
 
 	return UpdateStatefulSet(dependencies.StatefulSetControl, tc, newPDSet, oldPDSet)
-}
-
-// shouldRecover checks whether we should perform recovery operation.
-func ComponentShouldRecover(context *ComponentContext) bool {
-	tc := context.tc
-	component := context.component
-	dependencies := context.dependencies
-
-	var pdMembers map[string]v1alpha1.PDMember
-	var stores map[string]v1alpha1.TiKVStore
-	var tidbMembers map[string]v1alpha1.TiDBMember
-	var pdFailureMembers map[string]v1alpha1.PDFailureMember
-	var failureStores map[string]v1alpha1.TiKVFailureStore
-	var tidbFailureMembers map[string]v1alpha1.TiDBFailureMember
-	var ordinals sets.Int32
-	var podPrefix string
-
-	switch component {
-	case label.TiKVLabelVal:
-		stores = tc.Status.TiKV.Stores
-		failureStores = tc.Status.TiKV.FailureStores
-		if failureStores == nil {
-			return false
-		}
-		ordinals = tc.TiKVStsDesiredOrdinals(true)
-		podPrefix = controller.TiKVMemberName(tc.Name)
-	case label.TiFlashLabelVal:
-		stores = tc.Status.TiFlash.Stores
-		failureStores = tc.Status.TiFlash.FailureStores
-		if failureStores == nil {
-			return false
-		}
-		ordinals = tc.TiFlashStsDesiredOrdinals(true)
-		podPrefix = controller.TiFlashMemberName(tc.Name)
-	case label.PDLabelVal:
-		pdMembers = tc.Status.PD.Members
-		pdFailureMembers = tc.Status.PD.FailureMembers
-		if pdFailureMembers == nil {
-			return false
-		}
-		ordinals = tc.PDStsDesiredOrdinals(true)
-		podPrefix = controller.PDMemberName(tc.Name)
-	case label.TiDBLabelVal:
-		tidbMembers = tc.Status.TiDB.Members
-		tidbFailureMembers = tc.Status.TiDB.FailureMembers
-		if tidbFailureMembers == nil {
-			return false
-		}
-		ordinals = tc.TiDBStsDesiredOrdinals(true)
-		podPrefix = controller.TiDBMemberName(tc.Name)
-	default:
-		klog.Warningf("Unexpected component %s for %s/%s in shouldRecover", component, tc.Namespace, tc.Name)
-		return false
-	}
-
-	// If all desired replicas (excluding failover pods) of tidb cluster are
-	// healthy, we can perform our failover recovery operation.
-	// Note that failover pods may fail (e.g. lack of resources) and we don't care
-	// about them because we're going to delete them.
-	for ordinal := range ordinals {
-		name := fmt.Sprintf("%s-%d", podPrefix, ordinal)
-		pod, err := dependencies.PodLister.Pods(tc.Namespace).Get(name)
-		if err != nil {
-			klog.Errorf("pod %s/%s does not exist: %v", tc.Namespace, name, err)
-			return false
-		}
-		if !podutil.IsPodReady(pod) {
-			return false
-		}
-		var exist bool
-		switch component {
-		case label.TiKVLabelVal, label.TiFlashLabelVal:
-			for _, v := range stores {
-				if v.PodName == pod.Name {
-					exist = true
-					if v.State != v1alpha1.TiKVStateUp {
-						return false
-					}
-				}
-			}
-		case label.PDLabelVal:
-			for pdName, pdMember := range pdMembers {
-				if strings.Split(pdName, ".")[0] == pod.Name {
-					if !pdMember.Health {
-						return false
-					}
-					exist = true
-					break
-				}
-			}
-		case label.TiDBLabelVal:
-			status, ok := tidbMembers[pod.Name]
-			if !ok || !status.Health {
-				return false
-			}
-		}
-
-		if !exist && component != label.TiDBLabelVal {
-			return false
-		}
-	}
-	return true
 }
 
 func ComponentSyncTidbClusterStatus(context *ComponentContext, set *apps.StatefulSet) error {
@@ -481,87 +274,542 @@ func ComponentSyncConfigMap(context *ComponentContext, set *apps.StatefulSet) (*
 	return dependencies.TypedControl.CreateOrUpdateConfigMap(tc, newCm)
 }
 
-func ComponentGetNewServiceForTidbCluster(context *ComponentContext) *corev1.Service {
+func ComponentGetConfigMap(context *ComponentContext) (*corev1.ConfigMap, error) {
 	tc := context.tc
 
-	ns := tc.Namespace
-	tcName := tc.Name
-	svcName := controller.PDMemberName(tcName)
-	instanceName := tc.GetInstanceName()
-	pdSelector := label.New().Instance(instanceName).PD()
-	pdLabels := pdSelector.Copy().UsedByEndUser().Labels()
+	// For backward compatibility, only sync tidb configmap when .tidb.config is non-nil
+	config := tc.Spec.PD.Config
+	if config == nil {
+		return nil, nil
+	}
 
-	pdService := &corev1.Service{
+	clusterVersionGE4, err := clusterVersionGreaterThanOrEqualTo4(tc.PDVersion())
+	if err != nil {
+		klog.V(4).Infof("cluster version: %s is not semantic versioning compatible", tc.PDVersion())
+	}
+
+	// override CA if tls enabled
+	if tc.IsTLSClusterEnabled() {
+		config.Set("security.cacert-path", path.Join(pdClusterCertPath, tlsSecretRootCAKey))
+		config.Set("security.cert-path", path.Join(pdClusterCertPath, corev1.TLSCertKey))
+		config.Set("security.key-path", path.Join(pdClusterCertPath, corev1.TLSPrivateKeyKey))
+	}
+	// Versions below v4.0 do not support Dashboard
+	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
+		config.Set("dashboard.tidb-cacert-path", path.Join(tidbClientCertPath, tlsSecretRootCAKey))
+		config.Set("dashboard.tidb-cert-path", path.Join(tidbClientCertPath, corev1.TLSCertKey))
+		config.Set("dashboard.tidb-key-path", path.Join(tidbClientCertPath, corev1.TLSPrivateKeyKey))
+	}
+
+	if tc.Spec.PD.EnableDashboardInternalProxy != nil {
+		config.Set("dashboard.internal-proxy", *tc.Spec.PD.EnableDashboardInternalProxy)
+	}
+
+	confText, err := config.MarshalTOML()
+	if err != nil {
+		return nil, err
+	}
+	startScript, err := RenderPDStartScript(&PDStartScriptModel{
+		Scheme:        tc.Scheme(),
+		DataDir:       filepath.Join(pdDataVolumeMountPath, tc.Spec.PD.DataSubDir),
+		ClusterDomain: tc.Spec.ClusterDomain,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	instanceName := tc.GetInstanceName()
+	pdLabel := label.New().Instance(instanceName).PD().Labels()
+	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            svcName,
-			Namespace:       ns,
-			Labels:          pdLabels,
+			Name:            controller.PDMemberName(tc.Name),
+			Namespace:       tc.Namespace,
+			Labels:          pdLabel,
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
-		Spec: corev1.ServiceSpec{
-			Type: controller.GetServiceType(tc.Spec.Services, v1alpha1.PDMemberType.String()),
-			Ports: []corev1.ServicePort{
-				{
-					Name:       "client",
-					Port:       2379,
-					TargetPort: intstr.FromInt(2379),
-					Protocol:   corev1.ProtocolTCP,
-				},
-			},
-			Selector: pdSelector.Labels(),
+		Data: map[string]string{
+			"config-file":    string(confText),
+			"startup-script": startScript,
 		},
 	}
-	// if set pd service type ,overwrite global variable services
-	svcSpec := tc.Spec.PD.Service
-	if svcSpec != nil {
-		if svcSpec.Type != "" {
-			pdService.Spec.Type = svcSpec.Type
+	return cm, nil
+}
+
+func ComponentClusterVersionGreaterThanOrEqualTo4(version string) (bool, error) {
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		return true, err
+	}
+
+	return v.Major() >= 4, nil
+}
+
+func ComponentCollectUnjoinedMembers(context *ComponentContext, set *apps.StatefulSet, pdStatus map[string]v1alpha1.PDMember) error {
+	tc := context.tc
+	dependencies := context.dependencies
+
+	podSelector, podSelectErr := metav1.LabelSelectorAsSelector(set.Spec.Selector)
+	if podSelectErr != nil {
+		return podSelectErr
+	}
+	pods, podErr := dependencies.PodLister.Pods(tc.Namespace).List(podSelector)
+	if podErr != nil {
+		return fmt.Errorf("collectUnjoinedMembers: failed to list pods for cluster %s/%s, selector %s, error %v", tc.GetNamespace(), tc.GetName(), set.Spec.Selector, podErr)
+	}
+	for _, pod := range pods {
+		var joined = false
+		for pdName := range pdStatus {
+			ordinal, err := util.GetOrdinalFromPodName(pod.Name)
+			if err != nil {
+				return fmt.Errorf("unexpected pod name %q: %v", pod.Name, err)
+			}
+			if strings.EqualFold(PdName(tc.Name, ordinal, tc.Namespace, tc.Spec.ClusterDomain), pdName) {
+				joined = true
+				break
+			}
 		}
-		pdService.ObjectMeta.Annotations = CopyAnnotations(svcSpec.Annotations)
-		if svcSpec.LoadBalancerIP != nil {
-			pdService.Spec.LoadBalancerIP = *svcSpec.LoadBalancerIP
-		}
-		if svcSpec.ClusterIP != nil {
-			pdService.Spec.ClusterIP = *svcSpec.ClusterIP
-		}
-		if svcSpec.PortName != nil {
-			pdService.Spec.Ports[0].Name = *svcSpec.PortName
+		if !joined {
+			if tc.Status.PD.UnjoinedMembers == nil {
+				tc.Status.PD.UnjoinedMembers = map[string]v1alpha1.UnjoinedMember{}
+			}
+			ordinal, err := util.GetOrdinalFromPodName(pod.Name)
+			if err != nil {
+				return err
+			}
+			pvcName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tc.Name), ordinal)
+			pvc, err := dependencies.PVCLister.PersistentVolumeClaims(tc.Namespace).Get(pvcName)
+			if err != nil {
+				return fmt.Errorf("collectUnjoinedMembers: failed to get pvc %s of cluster %s/%s, error %v", pvcName, tc.GetNamespace(), tc.GetName(), err)
+			}
+			tc.Status.PD.UnjoinedMembers[pod.Name] = v1alpha1.UnjoinedMember{
+				PodName:   pod.Name,
+				PVCUID:    pvc.UID,
+				CreatedAt: metav1.Now(),
+			}
+		} else {
+			if tc.Status.PD.UnjoinedMembers != nil {
+				delete(tc.Status.PD.UnjoinedMembers, pod.Name)
+			}
 		}
 	}
-	return pdService
+	return nil
+}
+
+// shouldRecover checks whether we should perform recovery operation.
+func ComponentShouldRecover(context *ComponentContext) bool {
+	tc := context.tc
+	component := context.component
+	dependencies := context.dependencies
+
+	var pdMembers map[string]v1alpha1.PDMember
+	var stores map[string]v1alpha1.TiKVStore
+	var tidbMembers map[string]v1alpha1.TiDBMember
+	var pdFailureMembers map[string]v1alpha1.PDFailureMember
+	var failureStores map[string]v1alpha1.TiKVFailureStore
+	var tidbFailureMembers map[string]v1alpha1.TiDBFailureMember
+	var ordinals sets.Int32
+	var podPrefix string
+
+	switch component {
+	case label.TiKVLabelVal:
+		stores = tc.Status.TiKV.Stores
+		failureStores = tc.Status.TiKV.FailureStores
+		if failureStores == nil {
+			return false
+		}
+		ordinals = tc.TiKVStsDesiredOrdinals(true)
+		podPrefix = controller.TiKVMemberName(tc.Name)
+	case label.TiFlashLabelVal:
+		stores = tc.Status.TiFlash.Stores
+		failureStores = tc.Status.TiFlash.FailureStores
+		if failureStores == nil {
+			return false
+		}
+		ordinals = tc.TiFlashStsDesiredOrdinals(true)
+		podPrefix = controller.TiFlashMemberName(tc.Name)
+	case label.PDLabelVal:
+		pdMembers = tc.Status.PD.Members
+		pdFailureMembers = tc.Status.PD.FailureMembers
+		if pdFailureMembers == nil {
+			return false
+		}
+		ordinals = tc.PDStsDesiredOrdinals(true)
+		podPrefix = controller.PDMemberName(tc.Name)
+	case label.TiDBLabelVal:
+		tidbMembers = tc.Status.TiDB.Members
+		tidbFailureMembers = tc.Status.TiDB.FailureMembers
+		if tidbFailureMembers == nil {
+			return false
+		}
+		ordinals = tc.TiDBStsDesiredOrdinals(true)
+		podPrefix = controller.TiDBMemberName(tc.Name)
+	default:
+		klog.Warningf("Unexpected component %s for %s/%s in shouldRecover", component, tc.Namespace, tc.Name)
+		return false
+	}
+
+	// If all desired replicas (excluding failover pods) of tidb cluster are
+	// healthy, we can perform our failover recovery operation.
+	// Note that failover pods may fail (e.g. lack of resources) and we don't care
+	// about them because we're going to delete them.
+	for ordinal := range ordinals {
+		name := fmt.Sprintf("%s-%d", podPrefix, ordinal)
+		pod, err := dependencies.PodLister.Pods(tc.Namespace).Get(name)
+		if err != nil {
+			klog.Errorf("pod %s/%s does not exist: %v", tc.Namespace, name, err)
+			return false
+		}
+		if !podutil.IsPodReady(pod) {
+			return false
+		}
+		var exist bool
+		switch component {
+		case label.TiKVLabelVal, label.TiFlashLabelVal:
+			for _, v := range stores {
+				if v.PodName == pod.Name {
+					exist = true
+					if v.State != v1alpha1.TiKVStateUp {
+						return false
+					}
+				}
+			}
+		case label.PDLabelVal:
+			for pdName, pdMember := range pdMembers {
+				if strings.Split(pdName, ".")[0] == pod.Name {
+					if !pdMember.Health {
+						return false
+					}
+					exist = true
+					break
+				}
+			}
+		case label.TiDBLabelVal:
+			status, ok := tidbMembers[pod.Name]
+			if !ok || !status.Health {
+				return false
+			}
+		}
+
+		if !exist && component != label.TiDBLabelVal {
+			return false
+		}
+	}
+	return true
+}
+
+// sync service
+
+func componentSyncGeneralServiceForTidbCluster(context *ComponentContext, isHeadless bool) error {
+	tc := context.tc
+	dependencies := context.dependencies
+	component := context.component
+
+	if tc.Spec.Paused {
+		klog.V(4).Infof("tidb cluster %s/%s is paused, skip syncing for %s service", tc.GetNamespace(), tc.GetName(), component)
+		return nil
+	}
+
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	var componentMemberName string
+	switch component {
+	case label.PDLabelVal:
+		componentMemberName = controller.PDMemberName(tcName)
+	case label.TiKVLabelVal:
+		componentMemberName = controller.TiKVMemberName(tcName)
+	case label.TiFlashLabelVal:
+		componentMemberName = controller.TiFlashMemberName(tcName)
+	case label.TiDBLabelVal:
+		componentMemberName = controller.TiDBMemberName(tcName)
+	case label.TiCDCLabelVal:
+		componentMemberName = controller.TiCDCMemberName(tcName)
+	case label.PumpLabelVal:
+		componentMemberName = controller.PumpMemberName(tcName)
+	}
+
+	var newSvc *corev1.Service
+	if isHeadless {
+		newSvc = ComponentGetNewServiceForTidbCluster(context)
+	} else {
+		newSvc = ComponentGetNewHeadlessServiceForTidbCluster(context)
+	}
+
+	oldSvcTmp, err := dependencies.ServiceLister.Services(ns).Get(componentMemberName)
+	if errors.IsNotFound(err) {
+		err = controller.SetServiceLastAppliedConfigAnnotation(newSvc)
+		if err != nil {
+			return err
+		}
+		return dependencies.ServiceControl.CreateService(tc, newSvc)
+	}
+	if err != nil {
+		return fmt.Errorf("syncServiceForTidbCluster: failed to get svc %s for cluster %s/%s, error: %s", componentMemberName, ns, tcName, err)
+	}
+
+	oldSvc := oldSvcTmp.DeepCopy()
+
+	equal, err := controller.ServiceEqual(newSvc, oldSvc)
+	if err != nil {
+		return err
+	}
+	if !equal {
+		svc := *oldSvc
+		svc.Spec = newSvc.Spec
+		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
+		if err != nil {
+			return err
+		}
+		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
+		_, err = dependencies.ServiceControl.UpdateService(tc, &svc)
+		return err
+	}
+
+	return nil
+}
+
+func ComponentSyncServiceForTidbCluster(context *ComponentContext) error {
+	isHeadless := false
+	return componentSyncGeneralServiceForTidbCluster(context, isHeadless)
+}
+
+func ComponentSyncHeadlessServiceForTidbCluster(context *ComponentContext) error {
+	isHeadless := true
+	return componentSyncGeneralServiceForTidbCluster(context, isHeadless)
+}
+
+func componentGetNewGeneralServiceForTidbCluster(context *ComponentContext, isHeadless bool) *corev1.Service {
+	tc := context.tc
+	component := context.component
+
+	// Common pre handling
+	ns := tc.Namespace
+	tcName := tc.Name
+	instanceName := tc.GetInstanceName()
+	var componentService *corev1.Service
+
+	if isHeadless {
+		switch component {
+		case label.PDLabelVal:
+			svcName := controller.PDPeerMemberName(tcName)
+			pdSelector := label.New().Instance(instanceName).PD()
+			pdLabels := pdSelector.Copy().UsedByPeer().Labels()
+			componentService = &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            svcName,
+					Namespace:       ns,
+					Labels:          pdLabels,
+					OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
+				},
+				Spec: corev1.ServiceSpec{
+					ClusterIP: "None",
+					Ports: []corev1.ServicePort{
+						{
+							Name:       "peer",
+							Port:       2380,
+							TargetPort: intstr.FromInt(2380),
+							Protocol:   corev1.ProtocolTCP,
+						},
+					},
+					Selector:                 pdSelector.Labels(),
+					PublishNotReadyAddresses: true,
+				},
+			}
+		case label.TiFlashLabelVal:
+			svcName := controller.TiFlashPeerMemberName(tcName)
+			svcLabel := label.New().Instance(instanceName).TiFlash().Labels()
+
+			componentService = &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            svcName,
+					Namespace:       ns,
+					Labels:          svcLabel,
+					OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
+				},
+				Spec: corev1.ServiceSpec{
+					ClusterIP: "None",
+					Ports: []corev1.ServicePort{
+						{
+							Name:       "tiflash",
+							Port:       3930,
+							TargetPort: intstr.FromInt(int(3930)),
+							Protocol:   corev1.ProtocolTCP,
+						},
+						{
+							Name:       "proxy",
+							Port:       20170,
+							TargetPort: intstr.FromInt(int(20170)),
+							Protocol:   corev1.ProtocolTCP,
+						},
+					},
+					Selector:                 svcLabel,
+					PublishNotReadyAddresses: true,
+				},
+			}
+		}
+	} else {
+
+		switch component {
+		case label.PDLabelVal:
+			svcName := controller.PDMemberName(tcName)
+			svcSelector := label.New().Instance(instanceName).PD()
+			svcLabels := svcSelector.Copy().UsedByEndUser().Labels()
+			componentService := &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            svcName,
+					Namespace:       ns,
+					Labels:          svcLabels,
+					OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
+				},
+				Spec: corev1.ServiceSpec{
+					Ports: []corev1.ServicePort{
+						{
+							Name:       "client",
+							Port:       2379,
+							TargetPort: intstr.FromInt(2379),
+							Protocol:   corev1.ProtocolTCP,
+						},
+					},
+					Selector: svcSelector.Labels(),
+				},
+			}
+
+			componentService.Spec.Type = controller.GetServiceType(tc.Spec.Services, v1alpha1.PDMemberType.String())
+
+			svcSpec := tc.Spec.PD.Service
+
+			if svcSpec != nil {
+				if svcSpec.Type != "" {
+					componentService.Spec.Type = svcSpec.Type
+				}
+				componentService.ObjectMeta.Annotations = CopyAnnotations(svcSpec.Annotations)
+				if svcSpec.LoadBalancerIP != nil {
+					componentService.Spec.LoadBalancerIP = *svcSpec.LoadBalancerIP
+				}
+				if svcSpec.ClusterIP != nil {
+					componentService.Spec.ClusterIP = *svcSpec.ClusterIP
+				}
+				if svcSpec.PortName != nil {
+					componentService.Spec.Ports[0].Name = *svcSpec.PortName
+				}
+			}
+		case label.TiKVLabelVal:
+			svcConfig := SvcConfig{
+				Name:       "peer",
+				Port:       20160,
+				Headless:   true,
+				SvcLabel:   func(l label.Label) label.Label { return l.TiKV() },
+				MemberName: controller.TiKVPeerMemberName,
+			}
+
+			svcName := svcConfig.MemberName(tcName)
+			svcSelector := svcConfig.SvcLabel(label.New().Instance(instanceName))
+			svcLabel := svcSelector.Copy()
+			if svcConfig.Headless {
+				svcLabel = svcLabel.UsedByPeer()
+			} else {
+				svcLabel = svcLabel.UsedByEndUser()
+			}
+
+			componentService := &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            svcName,
+					Namespace:       ns,
+					Labels:          svcLabel.Labels(),
+					OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
+				},
+				Spec: corev1.ServiceSpec{
+					Ports: []corev1.ServicePort{
+						{
+							Name:       svcConfig.Name,
+							Port:       svcConfig.Port,
+							TargetPort: intstr.FromInt(int(svcConfig.Port)),
+							Protocol:   corev1.ProtocolTCP,
+						},
+					},
+					Selector:                 svcSelector.Labels(),
+					PublishNotReadyAddresses: true,
+				},
+			}
+			if svcConfig.Headless {
+				componentService.Spec.ClusterIP = "None"
+			} else {
+				componentService.Spec.Type = controller.GetServiceType(tc.Spec.Services, v1alpha1.TiKVMemberType.String())
+			}
+		case label.TiDBLabelVal:
+			svcSpec := tc.Spec.TiDB.Service
+			if svcSpec == nil {
+				return nil
+			}
+
+			tidbSelector := label.New().Instance(instanceName).TiDB()
+			svcName := controller.TiDBMemberName(tcName)
+			tidbLabels := tidbSelector.Copy().UsedByEndUser().Labels()
+			portName := "mysql-client"
+			if svcSpec.PortName != nil {
+				portName = *svcSpec.PortName
+			}
+			ports := []corev1.ServicePort{
+				{
+					Name:       portName,
+					Port:       4000,
+					TargetPort: intstr.FromInt(4000),
+					Protocol:   corev1.ProtocolTCP,
+					NodePort:   svcSpec.GetMySQLNodePort(),
+				},
+			}
+			ports = append(ports, tc.Spec.TiDB.Service.AdditionalPorts...)
+			if svcSpec.ShouldExposeStatus() {
+				ports = append(ports, corev1.ServicePort{
+					Name:       "status",
+					Port:       10080,
+					TargetPort: intstr.FromInt(10080),
+					Protocol:   corev1.ProtocolTCP,
+					NodePort:   svcSpec.GetStatusNodePort(),
+				})
+			}
+
+			componentService := &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            svcName,
+					Namespace:       ns,
+					Labels:          tidbLabels,
+					Annotations:     CopyAnnotations(svcSpec.Annotations),
+					OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
+				},
+				Spec: corev1.ServiceSpec{
+					Type:     svcSpec.Type,
+					Ports:    ports,
+					Selector: tidbSelector.Labels(),
+				},
+			}
+			if svcSpec.Type == corev1.ServiceTypeLoadBalancer {
+				if svcSpec.LoadBalancerIP != nil {
+					componentService.Spec.LoadBalancerIP = *svcSpec.LoadBalancerIP
+				}
+				if svcSpec.LoadBalancerSourceRanges != nil {
+					componentService.Spec.LoadBalancerSourceRanges = svcSpec.LoadBalancerSourceRanges
+				}
+			}
+			if svcSpec.ExternalTrafficPolicy != nil {
+				componentService.Spec.ExternalTrafficPolicy = *svcSpec.ExternalTrafficPolicy
+			}
+			if svcSpec.ClusterIP != nil {
+				componentService.Spec.ClusterIP = *svcSpec.ClusterIP
+			}
+		}
+	}
+	return componentService
+}
+
+func ComponentGetNewServiceForTidbCluster(context *ComponentContext) *corev1.Service {
+	isHeadless := false
+	return componentGetNewGeneralServiceForTidbCluster(context, isHeadless)
 }
 
 func ComponentGetNewHeadlessServiceForTidbCluster(context *ComponentContext) *corev1.Service {
-	tc := context.tc
-
-	ns := tc.Namespace
-	tcName := tc.Name
-	svcName := controller.PDPeerMemberName(tcName)
-	instanceName := tc.GetInstanceName()
-	pdSelector := label.New().Instance(instanceName).PD()
-	pdLabels := pdSelector.Copy().UsedByPeer().Labels()
-
-	return &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            svcName,
-			Namespace:       ns,
-			Labels:          pdLabels,
-			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
-		},
-		Spec: corev1.ServiceSpec{
-			ClusterIP: "None",
-			Ports: []corev1.ServicePort{
-				{
-					Name:       "peer",
-					Port:       2380,
-					TargetPort: intstr.FromInt(2380),
-					Protocol:   corev1.ProtocolTCP,
-				},
-			},
-			Selector:                 pdSelector.Labels(),
-			PublishNotReadyAddresses: true,
-		},
-	}
+	isHeadless := true
+	return componentGetNewGeneralServiceForTidbCluster(context, isHeadless)
 }
 
 func ComponentStatefulSetIsUpgrading(set *apps.StatefulSet, context *ComponentContext) (bool, error) {
@@ -862,125 +1110,4 @@ func ComponentGetNewSetForTidbCluster(context *ComponentContext, cm *corev1.Conf
 
 	pdSet.Spec.VolumeClaimTemplates = append(pdSet.Spec.VolumeClaimTemplates, additionalPVCs...)
 	return pdSet, nil
-}
-
-func ComponentGetConfigMap(context *ComponentContext) (*corev1.ConfigMap, error) {
-	tc := context.tc
-	
-	// For backward compatibility, only sync tidb configmap when .tidb.config is non-nil
-	config := tc.Spec.PD.Config
-	if config == nil {
-		return nil, nil
-	}
-
-	clusterVersionGE4, err := clusterVersionGreaterThanOrEqualTo4(tc.PDVersion())
-	if err != nil {
-		klog.V(4).Infof("cluster version: %s is not semantic versioning compatible", tc.PDVersion())
-	}
-
-	// override CA if tls enabled
-	if tc.IsTLSClusterEnabled() {
-		config.Set("security.cacert-path", path.Join(pdClusterCertPath, tlsSecretRootCAKey))
-		config.Set("security.cert-path", path.Join(pdClusterCertPath, corev1.TLSCertKey))
-		config.Set("security.key-path", path.Join(pdClusterCertPath, corev1.TLSPrivateKeyKey))
-	}
-	// Versions below v4.0 do not support Dashboard
-	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
-		config.Set("dashboard.tidb-cacert-path", path.Join(tidbClientCertPath, tlsSecretRootCAKey))
-		config.Set("dashboard.tidb-cert-path", path.Join(tidbClientCertPath, corev1.TLSCertKey))
-		config.Set("dashboard.tidb-key-path", path.Join(tidbClientCertPath, corev1.TLSPrivateKeyKey))
-	}
-
-	if tc.Spec.PD.EnableDashboardInternalProxy != nil {
-		config.Set("dashboard.internal-proxy", *tc.Spec.PD.EnableDashboardInternalProxy)
-	}
-
-	confText, err := config.MarshalTOML()
-	if err != nil {
-		return nil, err
-	}
-	startScript, err := RenderPDStartScript(&PDStartScriptModel{
-		Scheme:        tc.Scheme(),
-		DataDir:       filepath.Join(pdDataVolumeMountPath, tc.Spec.PD.DataSubDir),
-		ClusterDomain: tc.Spec.ClusterDomain,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	instanceName := tc.GetInstanceName()
-	pdLabel := label.New().Instance(instanceName).PD().Labels()
-	cm := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            controller.PDMemberName(tc.Name),
-			Namespace:       tc.Namespace,
-			Labels:          pdLabel,
-			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
-		},
-		Data: map[string]string{
-			"config-file":    string(confText),
-			"startup-script": startScript,
-		},
-	}
-	return cm, nil
-}
-
-func ComponentClusterVersionGreaterThanOrEqualTo4(version string) (bool, error) {
-	v, err := semver.NewVersion(version)
-	if err != nil {
-		return true, err
-	}
-
-	return v.Major() >= 4, nil
-}
-
-func ComponentCollectUnjoinedMembers(context *ComponentContext, set *apps.StatefulSet, pdStatus map[string]v1alpha1.PDMember) error {
-	tc := context.tc
-	dependencies := context.dependencies
-	
-	podSelector, podSelectErr := metav1.LabelSelectorAsSelector(set.Spec.Selector)
-	if podSelectErr != nil {
-		return podSelectErr
-	}
-	pods, podErr := dependencies.PodLister.Pods(tc.Namespace).List(podSelector)
-	if podErr != nil {
-		return fmt.Errorf("collectUnjoinedMembers: failed to list pods for cluster %s/%s, selector %s, error %v", tc.GetNamespace(), tc.GetName(), set.Spec.Selector, podErr)
-	}
-	for _, pod := range pods {
-		var joined = false
-		for pdName := range pdStatus {
-			ordinal, err := util.GetOrdinalFromPodName(pod.Name)
-			if err != nil {
-				return fmt.Errorf("unexpected pod name %q: %v", pod.Name, err)
-			}
-			if strings.EqualFold(PdName(tc.Name, ordinal, tc.Namespace, tc.Spec.ClusterDomain), pdName) {
-				joined = true
-				break
-			}
-		}
-		if !joined {
-			if tc.Status.PD.UnjoinedMembers == nil {
-				tc.Status.PD.UnjoinedMembers = map[string]v1alpha1.UnjoinedMember{}
-			}
-			ordinal, err := util.GetOrdinalFromPodName(pod.Name)
-			if err != nil {
-				return err
-			}
-			pvcName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tc.Name), ordinal)
-			pvc, err := dependencies.PVCLister.PersistentVolumeClaims(tc.Namespace).Get(pvcName)
-			if err != nil {
-				return fmt.Errorf("collectUnjoinedMembers: failed to get pvc %s of cluster %s/%s, error %v", pvcName, tc.GetNamespace(), tc.GetName(), err)
-			}
-			tc.Status.PD.UnjoinedMembers[pod.Name] = v1alpha1.UnjoinedMember{
-				PodName:   pod.Name,
-				PVCUID:    pvc.UID,
-				CreatedAt: metav1.Now(),
-			}
-		} else {
-			if tc.Status.PD.UnjoinedMembers != nil {
-				delete(tc.Status.PD.UnjoinedMembers, pod.Name)
-			}
-		}
-	}
-	return nil
 }
