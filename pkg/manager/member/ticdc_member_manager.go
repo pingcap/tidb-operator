@@ -71,12 +71,18 @@ func (m *ticdcMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return controller.RequeueErrorf("TidbCluster: %s/%s, waiting for PD cluster running", ns, tcName)
 	}
 
+	context := &ComponentContext{
+		tc:           tc,
+		dependencies: m.deps,
+		component:    label.TiCDCLabelVal,
+	}
+
 	// Sync CDC Headless Service
-	if err := m.syncCDCHeadlessService(tc); err != nil {
+	if err := ComponentSyncHeadlessServiceForTidbCluster(context); err != nil {
 		return err
 	}
 
-	return m.syncStatefulSet(tc)
+	return ComponentSyncStatefulSetForTidbCluster(context)
 }
 
 func (m *ticdcMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {

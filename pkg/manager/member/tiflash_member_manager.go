@@ -83,12 +83,19 @@ func (m *tiflashMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		klog.Errorf("Enable placement rules failed, error: %v", err)
 		// No need to return err here, just continue to sync tiflash
 	}
+
+	context := &ComponentContext{
+		tc:           tc,
+		dependencies: m.deps,
+		component:    label.TiFlashLabelVal,
+	}
+
 	// Sync TiFlash Headless Service
-	if err = m.syncHeadlessService(tc); err != nil {
+	if err = ComponentSyncHeadlessServiceForTidbCluster(context); err != nil {
 		return err
 	}
 
-	return m.syncStatefulSet(tc)
+	return ComponentSyncStatefulSetForTidbCluster(context)
 }
 
 func (m *tiflashMemberManager) enablePlacementRules(tc *v1alpha1.TidbCluster) error {

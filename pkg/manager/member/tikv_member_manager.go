@@ -94,21 +94,17 @@ func (m *tikvMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PD cluster running", ns, tcName)
 	}
 
-	svcList := []SvcConfig{
-		{
-			Name:       "peer",
-			Port:       20160,
-			Headless:   true,
-			SvcLabel:   func(l label.Label) label.Label { return l.TiKV() },
-			MemberName: controller.TiKVPeerMemberName,
-		},
+	context := &ComponentContext{
+		tc:           tc,
+		dependencies: m.deps,
+		component:    label.TiKVLabelVal,
 	}
-	for _, svc := range svcList {
-		if err := m.syncServiceForTidbCluster(tc, svc); err != nil {
-			return err
-		}
+
+	if err := ComponentSyncServiceForTidbCluster(context); err != nil {
+		return err
 	}
-	return m.syncStatefulSetForTidbCluster(tc)
+
+	return ComponentSyncStatefulSetForTidbCluster(context)
 }
 
 func (m *tikvMemberManager) syncServiceForTidbCluster(tc *v1alpha1.TidbCluster, svcConfig SvcConfig) error {

@@ -81,18 +81,24 @@ func (m *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	if tc.Spec.TiKV != nil && !tc.TiKVIsAvailable() {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV cluster running", ns, tcName)
 	}
+
 	if tc.Spec.Pump != nil {
 		if !tc.PumpIsAvailable() {
 			return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for Pump cluster running", ns, tcName)
 		}
 	}
-	// Sync TiDB Headless Service
-	if err := m.syncTiDBHeadlessServiceForTidbCluster(tc); err != nil {
+
+	context := &ComponentContext{
+		tc:           tc,
+		dependencies: m.deps,
+		component:    label.TiDBLabelVal,
+	}
+
+	if err := ComponentSyncHeadlessServiceForTidbCluster(context); err != nil {
 		return err
 	}
 
-	// Sync TiDB Service before syncing TiDB StatefulSet
-	if err := m.syncTiDBService(tc); err != nil {
+	if err := ComponentSyncServiceForTidbCluster(context); err != nil {
 		return err
 	}
 
@@ -102,8 +108,7 @@ func (m *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		}
 	}
 
-	// Sync TiDB StatefulSet
-	return m.syncTiDBStatefulSetForTidbCluster(tc)
+	return ComponentSyncStatefulSetForTidbCluster(context)
 }
 
 func (m *tidbMemberManager) checkTLSClientCert(tc *v1alpha1.TidbCluster) error {

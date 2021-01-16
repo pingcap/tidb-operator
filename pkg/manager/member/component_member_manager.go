@@ -48,10 +48,24 @@ type ComponentContext struct {
 func ComponentSyncServiceForTidbCluster(context *ComponentContext) error {
 	tc := context.tc
 	dependencies := context.dependencies
+	component := context.component
 
 	if tc.Spec.Paused {
 		klog.V(4).Infof("tidb cluster %s/%s is paused, skip syncing for pd service", tc.GetNamespace(), tc.GetName())
 		return nil
+	}
+
+	switch component{
+	case label.TiKVLabelVal:
+		svcList := []SvcConfig{
+			{
+				Name:       "peer",
+				Port:       20160,
+				Headless:   true,
+				SvcLabel:   func(l label.Label) label.Label { return l.TiKV() },
+				MemberName: controller.TiKVPeerMemberName,
+			},
+		}
 	}
 
 	ns := tc.GetNamespace()

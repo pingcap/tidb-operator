@@ -54,10 +54,17 @@ func (m *pumpMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	if tc.Spec.Pump == nil {
 		return nil
 	}
-	if err := m.syncHeadlessService(tc); err != nil {
+
+	context := &ComponentContext{
+		tc:           tc,
+		dependencies: m.deps,
+		component:    label.PumpLabelVal,
+	}
+
+	if err := ComponentSyncHeadlessServiceForTidbCluster(context); err != nil {
 		return err
 	}
-	return m.syncPumpStatefulSetForTidbCluster(tc)
+	return ComponentSyncStatefulSetForTidbCluster(context)
 }
 
 //syncPumpStatefulSetForTidbCluster sync statefulset status of pump to tidbcluster
