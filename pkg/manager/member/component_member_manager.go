@@ -22,9 +22,11 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver"
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -128,6 +130,7 @@ func ComponentSyncStatefulSetForTidbCluster(context *ComponentContext) error {
 func ComponentSyncTidbClusterStatus(context *ComponentContext, set *apps.StatefulSet) error {
 	tc := context.tc
 	dependencies := context.dependencies
+	component := context.component
 
 	if set == nil {
 		// skip if not created yet
@@ -137,112 +140,395 @@ func ComponentSyncTidbClusterStatus(context *ComponentContext, set *apps.Statefu
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	tc.Status.PD.StatefulSet = &set.Status
+	switch component {
+	case label.PDLabelVal:
+		componentStatus := &tc.Status.PD
 
-	upgrading, err := ComponentStatefulSetIsUpgrading(set, context)
-	if err != nil {
-		return err
-	}
+		componentStatus.StatefulSet = &set.Status
 
-	// Scaling takes precedence over upgrading.
-	if tc.PDStsDesiredReplicas() != *set.Spec.Replicas {
-		tc.Status.PD.Phase = v1alpha1.ScalePhase
-	} else if upgrading {
-		tc.Status.PD.Phase = v1alpha1.UpgradePhase
-	} else {
-		tc.Status.PD.Phase = v1alpha1.NormalPhase
-	}
-
-	pdClient := controller.GetPDClient(dependencies.PDControl, tc)
-
-	healthInfo, err := pdClient.GetHealth()
-	if err != nil {
-		tc.Status.PD.Synced = false
-		// get endpoints info
-		eps, epErr := dependencies.EndpointLister.Endpoints(ns).Get(controller.PDMemberName(tcName))
-		if epErr != nil {
-			return fmt.Errorf("syncTidbClusterStatus: failed to get endpoints %s for cluster %s/%s, err: %s, epErr %s", controller.PDMemberName(tcName), ns, tcName, err, epErr)
-		}
-		// pd service has no endpoints
-		if eps != nil && len(eps.Subsets) == 0 {
-			return fmt.Errorf("%s, service %s/%s has no endpoints", err, ns, controller.PDMemberName(tcName))
-		}
-		return err
-	}
-
-	cluster, err := pdClient.GetCluster()
-	if err != nil {
-		tc.Status.PD.Synced = false
-		return err
-	}
-	tc.Status.ClusterID = strconv.FormatUint(cluster.Id, 10)
-	leader, err := pdClient.GetPDLeader()
-	if err != nil {
-		tc.Status.PD.Synced = false
-		return err
-	}
-
-	pattern, err := regexp.Compile(fmt.Sprintf(pdMemberLimitPattern, tc.Name, tc.Name, tc.Namespace, controller.FormatClusterDomainForRegex(tc.Spec.ClusterDomain)))
-	if err != nil {
-		return err
-	}
-	pdStatus := map[string]v1alpha1.PDMember{}
-	peerPDStatus := map[string]v1alpha1.PDMember{}
-	for _, memberHealth := range healthInfo.Healths {
-		id := memberHealth.MemberID
-		memberID := fmt.Sprintf("%d", id)
-		var clientURL string
-		if len(memberHealth.ClientUrls) > 0 {
-			clientURL = memberHealth.ClientUrls[0]
-		}
-		name := memberHealth.Name
-		if len(name) == 0 {
-			klog.Warningf("PD member: [%d] doesn't have a name, and can't get it from clientUrls: [%s], memberHealth Info: [%v] in [%s/%s]",
-				id, memberHealth.ClientUrls, memberHealth, ns, tcName)
-			continue
+		upgrading, err := ComponentStatefulSetIsUpgrading(set, context)
+		if err != nil {
+			return err
 		}
 
-		status := v1alpha1.PDMember{
-			Name:      name,
-			ID:        memberID,
-			ClientURL: clientURL,
-			Health:    memberHealth.Health,
-		}
-		status.LastTransitionTime = metav1.Now()
-
-		if pattern.Match([]byte(clientURL)) {
-			oldPDMember, exist := tc.Status.PD.Members[name]
-			if exist && status.Health == oldPDMember.Health {
-				status.LastTransitionTime = oldPDMember.LastTransitionTime
-			}
-			pdStatus[name] = status
+		// Scaling takes precedence over upgrading.
+		if tc.PDStsDesiredReplicas() != *set.Spec.Replicas {
+			componentStatus.Phase = v1alpha1.ScalePhase
+		} else if upgrading {
+			componentStatus.Phase = v1alpha1.UpgradePhase
 		} else {
-			oldPDMember, exist := tc.Status.PD.PeerMembers[name]
-			if exist && status.Health == oldPDMember.Health {
-				status.LastTransitionTime = oldPDMember.LastTransitionTime
+			componentStatus.Phase = v1alpha1.NormalPhase
+		}
+
+		pdClient := controller.GetPDClient(dependencies.PDControl, tc)
+
+		healthInfo, err := pdClient.GetHealth()
+		if err != nil {
+			componentStatus.Synced = false
+			// get endpoints info
+			eps, epErr := dependencies.EndpointLister.Endpoints(ns).Get(controller.PDMemberName(tcName))
+			if epErr != nil {
+				return fmt.Errorf("syncTidbClusterStatus: failed to get endpoints %s for cluster %s/%s, err: %s, epErr %s", controller.PDMemberName(tcName), ns, tcName, err, epErr)
 			}
-			peerPDStatus[name] = status
+			// pd service has no endpoints
+			if eps != nil && len(eps.Subsets) == 0 {
+				return fmt.Errorf("%s, service %s/%s has no endpoints", err, ns, controller.PDMemberName(tcName))
+			}
+			return err
 		}
 
-		if name == leader.GetName() {
-			tc.Status.PD.Leader = status
+		cluster, err := pdClient.GetCluster()
+		if err != nil {
+			componentStatus.Synced = false
+			return err
+		}
+		tc.Status.ClusterID = strconv.FormatUint(cluster.Id, 10)
+		leader, err := pdClient.GetPDLeader()
+		if err != nil {
+			componentStatus.Synced = false
+			return err
+		}
+
+		pattern, err := regexp.Compile(fmt.Sprintf(pdMemberLimitPattern, tc.Name, tc.Name, tc.Namespace, controller.FormatClusterDomainForRegex(tc.Spec.ClusterDomain)))
+		if err != nil {
+			return err
+		}
+		pdStatus := map[string]v1alpha1.PDMember{}
+		peerPDStatus := map[string]v1alpha1.PDMember{}
+		for _, memberHealth := range healthInfo.Healths {
+			id := memberHealth.MemberID
+			memberID := fmt.Sprintf("%d", id)
+			var clientURL string
+			if len(memberHealth.ClientUrls) > 0 {
+				clientURL = memberHealth.ClientUrls[0]
+			}
+			name := memberHealth.Name
+			if len(name) == 0 {
+				klog.Warningf("PD member: [%d] doesn't have a name, and can't get it from clientUrls: [%s], memberHealth Info: [%v] in [%s/%s]",
+					id, memberHealth.ClientUrls, memberHealth, ns, tcName)
+				continue
+			}
+
+			status := v1alpha1.PDMember{
+				Name:      name,
+				ID:        memberID,
+				ClientURL: clientURL,
+				Health:    memberHealth.Health,
+			}
+			status.LastTransitionTime = metav1.Now()
+
+			if pattern.Match([]byte(clientURL)) {
+				oldPDMember, exist := componentStatus.Members[name]
+				if exist && status.Health == oldPDMember.Health {
+					status.LastTransitionTime = oldPDMember.LastTransitionTime
+				}
+				pdStatus[name] = status
+			} else {
+				oldPDMember, exist := componentStatus.PeerMembers[name]
+				if exist && status.Health == oldPDMember.Health {
+					status.LastTransitionTime = oldPDMember.LastTransitionTime
+				}
+				peerPDStatus[name] = status
+			}
+
+			if name == leader.GetName() {
+				componentStatus.Leader = status
+			}
+		}
+		componentStatus.Synced = true
+		componentStatus.Members = pdStatus
+		componentStatus.PeerMembers = peerPDStatus
+		componentStatus.Image = ""
+		c := filterContainer(set, "pd")
+		if c != nil {
+			componentStatus.Image = c.Image
+		}
+
+		// k8s check
+		err = ComponentCollectUnjoinedMembers(context, set, pdStatus)
+		if err != nil {
+			return err
+		}
+	case label.TiKVLabelVal:
+		tc.Status.TiKV.StatefulSet = &set.Status
+		upgrading, err := m.statefulSetIsUpgradingFn(dependencies.PodLister, dependencies.PDControl, set, tc)
+		if err != nil {
+			return err
+		}
+		// Scaling takes precedence over upgrading.
+		if tc.TiKVStsDesiredReplicas() != *set.Spec.Replicas {
+			tc.Status.TiKV.Phase = v1alpha1.ScalePhase
+		} else if upgrading && tc.Status.PD.Phase != v1alpha1.UpgradePhase {
+			tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+		} else {
+			tc.Status.TiKV.Phase = v1alpha1.NormalPhase
+		}
+
+		previousStores := tc.Status.TiKV.Stores
+		previousPeerStores := tc.Status.TiKV.PeerStores
+		stores := map[string]v1alpha1.TiKVStore{}
+		peerStores := map[string]v1alpha1.TiKVStore{}
+		tombstoneStores := map[string]v1alpha1.TiKVStore{}
+
+		pdCli := controller.GetPDClient(dependencies.PDControl, tc)
+		// This only returns Up/Down/Offline stores
+		storesInfo, err := pdCli.GetStores()
+		if err != nil {
+			if pdapi.IsTiKVNotBootstrappedError(err) {
+				klog.Infof("TiKV of Cluster %s/%s not bootstrapped yet", tc.Namespace, tc.Name)
+				tc.Status.TiKV.Synced = true
+				tc.Status.TiKV.BootStrapped = false
+				return nil
+			}
+			tc.Status.TiKV.Synced = false
+			return err
+		}
+
+		pattern, err := regexp.Compile(fmt.Sprintf(tikvStoreLimitPattern, tc.Name, tc.Name, tc.Namespace, controller.FormatClusterDomainForRegex(tc.Spec.ClusterDomain)))
+		if err != nil {
+			return err
+		}
+		for _, store := range storesInfo.Stores {
+			status := getTiKVStore(store)
+			if status == nil {
+				continue
+			}
+
+			oldStore, exist := previousStores[status.ID]
+			if !exist {
+				oldStore, exist = previousPeerStores[status.ID]
+			}
+
+			// avoid LastHeartbeatTime be overwrite by zero time when pd lost LastHeartbeatTime
+			if status.LastHeartbeatTime.IsZero() && exist {
+				klog.V(4).Infof("the pod:%s's store LastHeartbeatTime is zero,so will keep in %v", status.PodName, oldStore.LastHeartbeatTime)
+				status.LastHeartbeatTime = oldStore.LastHeartbeatTime
+			}
+
+			status.LastTransitionTime = metav1.Now()
+			if exist && status.State == oldStore.State {
+				status.LastTransitionTime = oldStore.LastTransitionTime
+			}
+
+			// In theory, the external tikv can join the cluster, and the operator would only manage the internal tikv.
+			// So we check the store owner to make sure it.
+			if store.Store != nil {
+				if pattern.Match([]byte(store.Store.Address)) {
+					stores[status.ID] = *status
+				} else if util.MatchLabelFromStoreLabels(store.Store.Labels, label.TiKVLabelVal) {
+					peerStores[status.ID] = *status
+				}
+			}
+		}
+
+		//this returns all tombstone stores
+		tombstoneStoresInfo, err := pdCli.GetTombStoneStores()
+		if err != nil {
+			tc.Status.TiKV.Synced = false
+			return err
+		}
+		for _, store := range tombstoneStoresInfo.Stores {
+			if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
+				continue
+			}
+			status := getTiKVStore(store)
+			if status == nil {
+				continue
+			}
+			tombstoneStores[status.ID] = *status
+		}
+
+		tc.Status.TiKV.Synced = true
+		tc.Status.TiKV.Stores = stores
+		tc.Status.TiKV.PeerStores = peerStores
+		tc.Status.TiKV.TombstoneStores = tombstoneStores
+		tc.Status.TiKV.BootStrapped = true
+		tc.Status.TiKV.Image = ""
+		c := filterContainer(set, "tikv")
+		if c != nil {
+			tc.Status.TiKV.Image = c.Image
+		}
+	case label.TiFlashLabelVal:
+		tc.Status.TiFlash.StatefulSet = &set.Status
+		upgrading, err := m.statefulSetIsUpgradingFn(dependencies.PodLister, dependencies.PDControl, set, tc)
+		if err != nil {
+			return err
+		}
+		if tc.TiFlashStsDesiredReplicas() != *set.Spec.Replicas {
+			tc.Status.TiFlash.Phase = v1alpha1.ScalePhase
+		} else if upgrading {
+			tc.Status.TiFlash.Phase = v1alpha1.UpgradePhase
+		} else {
+			tc.Status.TiFlash.Phase = v1alpha1.NormalPhase
+		}
+
+		previousStores := tc.Status.TiFlash.Stores
+		previousPeerStores := tc.Status.TiFlash.PeerStores
+		stores := map[string]v1alpha1.TiKVStore{}
+		peerStores := map[string]v1alpha1.TiKVStore{}
+		tombstoneStores := map[string]v1alpha1.TiKVStore{}
+
+		pdCli := controller.GetPDClient(dependencies.PDControl, tc)
+		// This only returns Up/Down/Offline stores
+		storesInfo, err := pdCli.GetStores()
+		if err != nil {
+			tc.Status.TiFlash.Synced = false
+			return err
+		}
+
+		pattern, err := regexp.Compile(fmt.Sprintf(tiflashStoreLimitPattern, tc.Name, tc.Name, tc.Namespace, controller.FormatClusterDomainForRegex(tc.Spec.ClusterDomain)))
+		if err != nil {
+			return err
+		}
+		for _, store := range storesInfo.Stores {
+			status := m.getTiFlashStore(store)
+			if status == nil {
+				continue
+			}
+
+			oldStore, exist := previousStores[status.ID]
+			if !exist {
+				oldStore, exist = previousPeerStores[status.ID]
+			}
+
+			// avoid LastHeartbeatTime be overwrite by zero time when pd lost LastHeartbeatTime
+			if status.LastHeartbeatTime.IsZero() && exist {
+				klog.V(4).Infof("the pod:%s's store LastHeartbeatTime is zero,so will keep in %v", status.PodName, oldStore.LastHeartbeatTime)
+				status.LastHeartbeatTime = oldStore.LastHeartbeatTime
+			}
+
+			status.LastTransitionTime = metav1.Now()
+			if exist && status.State == oldStore.State {
+				status.LastTransitionTime = oldStore.LastTransitionTime
+			}
+
+			if store.Store != nil {
+				if pattern.Match([]byte(store.Store.Address)) {
+					stores[status.ID] = *status
+				} else if util.MatchLabelFromStoreLabels(store.Store.Labels, label.TiFlashLabelVal) {
+					peerStores[status.ID] = *status
+				}
+			}
+		}
+
+		//this returns all tombstone stores
+		tombstoneStoresInfo, err := pdCli.GetTombStoneStores()
+		if err != nil {
+			tc.Status.TiFlash.Synced = false
+			return err
+		}
+		for _, store := range tombstoneStoresInfo.Stores {
+			if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
+				continue
+			}
+			status := m.getTiFlashStore(store)
+			if status == nil {
+				continue
+			}
+			tombstoneStores[status.ID] = *status
+		}
+
+		tc.Status.TiFlash.Synced = true
+		tc.Status.TiFlash.Stores = stores
+		tc.Status.TiFlash.PeerStores = peerStores
+		tc.Status.TiFlash.TombstoneStores = tombstoneStores
+		tc.Status.TiFlash.Image = ""
+		c := filterContainer(set, "tiflash")
+		if c != nil {
+			tc.Status.TiFlash.Image = c.Image
+		}
+	case label.TiDBLabelVal:
+		tc.Status.TiDB.StatefulSet = &set.Status
+
+		upgrading, err := m.tidbStatefulSetIsUpgradingFn(dependencies.PodLister, set, tc)
+		if err != nil {
+			return err
+		}
+		if tc.TiDBStsDesiredReplicas() != *set.Spec.Replicas {
+			tc.Status.TiDB.Phase = v1alpha1.ScalePhase
+		} else if upgrading && tc.Status.TiKV.Phase != v1alpha1.UpgradePhase &&
+			tc.Status.PD.Phase != v1alpha1.UpgradePhase && tc.Status.Pump.Phase != v1alpha1.UpgradePhase {
+			tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
+		} else {
+			tc.Status.TiDB.Phase = v1alpha1.NormalPhase
+		}
+
+		tidbStatus := map[string]v1alpha1.TiDBMember{}
+		for id := range helper.GetPodOrdinals(tc.Status.TiDB.StatefulSet.Replicas, set) {
+			name := fmt.Sprintf("%s-%d", controller.TiDBMemberName(tc.GetName()), id)
+			health, err := dependencies.TiDBControl.GetHealth(tc, int32(id))
+			if err != nil {
+				return err
+			}
+			newTidbMember := v1alpha1.TiDBMember{
+				Name:   name,
+				Health: health,
+			}
+			oldTidbMember, exist := tc.Status.TiDB.Members[name]
+
+			newTidbMember.LastTransitionTime = metav1.Now()
+			if exist {
+				newTidbMember.NodeName = oldTidbMember.NodeName
+				if oldTidbMember.Health == newTidbMember.Health {
+					newTidbMember.LastTransitionTime = oldTidbMember.LastTransitionTime
+				}
+			}
+			pod, err := dependencies.PodLister.Pods(tc.GetNamespace()).Get(name)
+			if err != nil && !errors.IsNotFound(err) {
+				return fmt.Errorf("syncTidbClusterStatus: failed to get pods %s for cluster %s/%s, error: %s", name, tc.GetNamespace(), tc.GetName(), err)
+			}
+			if pod != nil && pod.Spec.NodeName != "" {
+				// Update assiged node if pod exists and is scheduled
+				newTidbMember.NodeName = pod.Spec.NodeName
+			}
+			tidbStatus[name] = newTidbMember
+		}
+		tc.Status.TiDB.Members = tidbStatus
+		tc.Status.TiDB.Image = ""
+		c := filterContainer(set, "tidb")
+		if c != nil {
+			tc.Status.TiDB.Image = c.Image
+		}
+	case label.TiCDCLabelVal:
+		tc.Status.TiCDC.StatefulSet = &set.Status
+		upgrading, err := m.statefulSetIsUpgradingFn(dependencies.PodLister, dependencies.PDControl, set, tc)
+		if err != nil {
+			return err
+		}
+		if upgrading {
+			tc.Status.TiCDC.Phase = v1alpha1.UpgradePhase
+		} else {
+			tc.Status.TiCDC.Phase = v1alpha1.NormalPhase
+		}
+
+		ticdcCaptures := map[string]v1alpha1.TiCDCCapture{}
+		for id := range helper.GetPodOrdinals(tc.Status.TiCDC.StatefulSet.Replicas, set) {
+			podName := fmt.Sprintf("%s-%d", controller.TiCDCMemberName(tc.GetName()), id)
+			capture, err := dependencies.CDCControl.GetStatus(tc, int32(id))
+			if err != nil {
+				return err
+			}
+			ticdcCaptures[podName] = v1alpha1.TiCDCCapture{
+				PodName: podName,
+				ID:      capture.ID,
+			}
+		}
+		tc.Status.TiCDC.Synced = true
+		tc.Status.TiCDC.Captures = ticdcCaptures
+	case label.PumpLabelVal:
+		tc.Status.Pump.StatefulSet = &set.Status
+
+		upgrading, err := m.pumpStatefulSetIsUpgrading(set, tc)
+		if err != nil {
+			return err
+		}
+		if upgrading {
+			tc.Status.Pump.Phase = v1alpha1.UpgradePhase
+		} else {
+			tc.Status.Pump.Phase = v1alpha1.NormalPhase
 		}
 	}
 
-	tc.Status.PD.Synced = true
-	tc.Status.PD.Members = pdStatus
-	tc.Status.PD.PeerMembers = peerPDStatus
-	tc.Status.PD.Image = ""
-	c := filterContainer(set, "pd")
-	if c != nil {
-		tc.Status.PD.Image = c.Image
-	}
-
-	// k8s check
-	err = ComponentCollectUnjoinedMembers(context, set, pdStatus)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -561,7 +847,6 @@ func componentGetNewGeneralServiceForTidbCluster(context *ComponentContext, isHe
 			}
 		}
 	} else {
-
 		switch component {
 		case label.PDLabelVal:
 			svcName := controller.PDMemberName(tcName)
@@ -742,7 +1027,7 @@ func ComponentStatefulSetIsUpgrading(set *apps.StatefulSet, context *ComponentCo
 	}
 	pdPods, err := dependencies.PodLister.Pods(tc.GetNamespace()).List(selector)
 	if err != nil {
-		return false, fmt.Errorf("pdStatefulSetIsUpgrading: failed to list pods for cluster %s/%s, selector %s, error: %v", tc.GetNamespace(), instanceName, selector, err)
+		return false, fmt.Errorf("StatefulSetIsUpgrading: failed to list pods for cluster %s/%s, selector %s, error: %v", tc.GetNamespace(), instanceName, selector, err)
 	}
 	for _, pod := range pdPods {
 		revisionHash, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
