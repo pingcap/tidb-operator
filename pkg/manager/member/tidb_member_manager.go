@@ -199,6 +199,10 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 	if err != nil {
 		return err
 	}
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5bb2395085d1fe4faf150eb0976ef3f11dc94df6
 	if setNotExist {
 		err = SetStatefulSetLastAppliedConfigAnnotation(newTiDBSet)
 		if err != nil {
@@ -744,13 +748,18 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		stsAnnotations[label.AnnRollingUpdateStrategy] = string(b)
 	}
 
+	deleteSlotsNumber, err := util.GetDeleteSlotsNumber(stsAnnotations)
+	if err != nil {
+		return nil, fmt.Errorf("get delete slots number failed, err:%v", err)
+	}
+
 	updateStrategy := apps.StatefulSetUpdateStrategy{}
 	if baseTiDBSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
 		updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
 	} else {
 		updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
 		updateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{
-			Partition: pointer.Int32Ptr(tc.TiDBStsDesiredReplicas()),
+			Partition: pointer.Int32Ptr(tc.TiDBStsDesiredReplicas() + deleteSlotsNumber),
 		}
 	}
 

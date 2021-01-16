@@ -692,6 +692,12 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		}
 		stsAnnotations[label.AnnRollingUpdateStrategy] = string(b)
 	}
+
+	deleteSlotsNumber, err := util.GetDeleteSlotsNumber(stsAnnotations)
+	if err != nil {
+		return nil, fmt.Errorf("get delete slots number failed, err:%v", err)
+	}
+
 	pdContainer := corev1.Container{
 		Name:            v1alpha1.PDMemberType.String(),
 		Image:           tc.PDImage(),
@@ -767,7 +773,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	} else {
 		updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
 		updateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{
-			Partition: pointer.Int32Ptr(tc.PDStsDesiredReplicas()),
+			Partition: pointer.Int32Ptr(tc.PDStsDesiredReplicas() + deleteSlotsNumber),
 		}
 	}
 
