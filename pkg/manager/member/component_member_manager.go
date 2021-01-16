@@ -246,16 +246,50 @@ func ComponentSyncTidbClusterStatus(context *ComponentContext, set *apps.Statefu
 	return nil
 }
 
-// syncPDConfigMap syncs the configmap of PD
+// ComponentSyncConfigMap syncs the configmap
 func ComponentSyncConfigMap(context *ComponentContext, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
 	tc := context.tc
 	dependencies := context.dependencies
+	component := context.component
 
-	// For backward compatibility, only sync tidb configmap when .pd.config is non-nil
-	if tc.Spec.PD.Config == nil {
-		return nil, nil
+	var componentMemberName string
+	var componentConfigUpdateStrategy v1alpha1.ConfigUpdateStrategy
+	// For backward compatibility, only sync tidb configmap when .config is non-nil
+	switch component {
+	case label.PDLabelVal:
+		if tc.Spec.PD.Config == nil {
+			return nil, nil
+		}
+		componentMemberName = controller.PDMemberName(tc.Name)
+		componentConfigUpdateStrategy = tc.BasePDSpec().ConfigUpdateStrategy()
+	case label.TiKVLabelVal:
+		if tc.Spec.TiKV.Config == nil {
+			return nil, nil
+		}
+		componentMemberName = controller.TiKVMemberName(tc.Name)
+		componentConfigUpdateStrategy = tc.BasePDSpec().ConfigUpdateStrategy()
+	case label.TiFlashLabelVal:
+		if tc.Spec.TiFlash.Config == nil {
+			return nil, nil
+		}
+		componentMemberName = controller.TiFlashMemberName(tc.Name)
+		componentConfigUpdateStrategy = tc.BasePDSpec().ConfigUpdateStrategy()
+	case label.TiDBLabelVal:
+		if tc.Spec.TiDB.Config == nil {
+			return nil, nil
+		}
+		componentMemberName = controller.TiDBMemberName(tc.Name)
+		componentConfigUpdateStrategy = tc.BasePDSpec().ConfigUpdateStrategy()
+	case label.PumpLabelVal:
+		basePumpSpec, createPump := tc.BasePumpSpec()
+		if !createPump {
+			return nil, nil
+		}
+		componentMemberName = controller.PumpMemberName(tc.Name)
+		componentConfigUpdateStrategy = basePumpSpec.ConfigUpdateStrategy()
 	}
-	newCm, err := getPDConfigMap(tc)
+
+	newCm, err := ComponentGetConfigMap(context)
 	if err != nil {
 		return nil, err
 	}
@@ -263,11 +297,11 @@ func ComponentSyncConfigMap(context *ComponentContext, set *apps.StatefulSet) (*
 	var inUseName string
 	if set != nil {
 		inUseName = FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
-			return strings.HasPrefix(name, controller.PDMemberName(tc.Name))
+			return strings.HasPrefix(name, componentMemberName)
 		})
 	}
 
-	err = updateConfigMapIfNeed(dependencies.ConfigMapLister, tc.BasePDSpec().ConfigUpdateStrategy(), inUseName, newCm)
+	err = updateConfigMapIfNeed(dependencies.ConfigMapLister, componentConfigUpdateStrategy, inUseName, newCm)
 	if err != nil {
 		return nil, err
 	}
@@ -276,64 +310,187 @@ func ComponentSyncConfigMap(context *ComponentContext, set *apps.StatefulSet) (*
 
 func ComponentGetConfigMap(context *ComponentContext) (*corev1.ConfigMap, error) {
 	tc := context.tc
+	component := context.component
 
-	// For backward compatibility, only sync tidb configmap when .tidb.config is non-nil
-	config := tc.Spec.PD.Config
-	if config == nil {
-		return nil, nil
-	}
+	var cm *corev1.ConfigMap
+	switch component {
+	case label.PDLabelVal:
+		config := tc.Spec.PD.Config
+		if config == nil {
+			return nil, nil
+		}
 
-	clusterVersionGE4, err := clusterVersionGreaterThanOrEqualTo4(tc.PDVersion())
-	if err != nil {
-		klog.V(4).Infof("cluster version: %s is not semantic versioning compatible", tc.PDVersion())
-	}
+		clusterVersionGE4, err := clusterVersionGreaterThanOrEqualTo4(tc.PDVersion())
+		if err != nil {
+			klog.V(4).Infof("cluster version: %s is not semantic versioning compatible", tc.PDVersion())
+		}
 
-	// override CA if tls enabled
-	if tc.IsTLSClusterEnabled() {
-		config.Set("security.cacert-path", path.Join(pdClusterCertPath, tlsSecretRootCAKey))
-		config.Set("security.cert-path", path.Join(pdClusterCertPath, corev1.TLSCertKey))
-		config.Set("security.key-path", path.Join(pdClusterCertPath, corev1.TLSPrivateKeyKey))
-	}
-	// Versions below v4.0 do not support Dashboard
-	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
-		config.Set("dashboard.tidb-cacert-path", path.Join(tidbClientCertPath, tlsSecretRootCAKey))
-		config.Set("dashboard.tidb-cert-path", path.Join(tidbClientCertPath, corev1.TLSCertKey))
-		config.Set("dashboard.tidb-key-path", path.Join(tidbClientCertPath, corev1.TLSPrivateKeyKey))
-	}
+		// override CA if tls enabled
+		if tc.IsTLSClusterEnabled() {
+			config.Set("security.cacert-path", path.Join(pdClusterCertPath, tlsSecretRootCAKey))
+			config.Set("security.cert-path", path.Join(pdClusterCertPath, corev1.TLSCertKey))
+			config.Set("security.key-path", path.Join(pdClusterCertPath, corev1.TLSPrivateKeyKey))
+		}
+		// Versions below v4.0 do not support Dashboard
+		if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
+			config.Set("dashboard.tidb-cacert-path", path.Join(tidbClientCertPath, tlsSecretRootCAKey))
+			config.Set("dashboard.tidb-cert-path", path.Join(tidbClientCertPath, corev1.TLSCertKey))
+			config.Set("dashboard.tidb-key-path", path.Join(tidbClientCertPath, corev1.TLSPrivateKeyKey))
+		}
 
-	if tc.Spec.PD.EnableDashboardInternalProxy != nil {
-		config.Set("dashboard.internal-proxy", *tc.Spec.PD.EnableDashboardInternalProxy)
-	}
+		if tc.Spec.PD.EnableDashboardInternalProxy != nil {
+			config.Set("dashboard.internal-proxy", *tc.Spec.PD.EnableDashboardInternalProxy)
+		}
 
-	confText, err := config.MarshalTOML()
-	if err != nil {
-		return nil, err
-	}
-	startScript, err := RenderPDStartScript(&PDStartScriptModel{
-		Scheme:        tc.Scheme(),
-		DataDir:       filepath.Join(pdDataVolumeMountPath, tc.Spec.PD.DataSubDir),
-		ClusterDomain: tc.Spec.ClusterDomain,
-	})
-	if err != nil {
-		return nil, err
-	}
+		confText, err := config.MarshalTOML()
+		if err != nil {
+			return nil, err
+		}
+		startScript, err := RenderPDStartScript(&PDStartScriptModel{
+			Scheme:        tc.Scheme(),
+			DataDir:       filepath.Join(pdDataVolumeMountPath, tc.Spec.PD.DataSubDir),
+			ClusterDomain: tc.Spec.ClusterDomain,
+		})
+		if err != nil {
+			return nil, err
+		}
 
-	instanceName := tc.GetInstanceName()
-	pdLabel := label.New().Instance(instanceName).PD().Labels()
-	cm := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            controller.PDMemberName(tc.Name),
+		instanceName := tc.GetInstanceName()
+		pdLabel := label.New().Instance(instanceName).PD().Labels()
+		cm = &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            controller.PDMemberName(tc.Name),
+				Namespace:       tc.Namespace,
+				Labels:          pdLabel,
+				OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
+			},
+			Data: map[string]string{
+				"config-file":    string(confText),
+				"startup-script": startScript,
+			},
+		}
+	case label.TiKVLabelVal:
+		config := tc.Spec.TiKV.Config
+		if config == nil {
+			return nil, nil
+		}
+
+		scriptModel := &TiKVStartScriptModel{
+			EnableAdvertiseStatusAddr: false,
+			DataDir:                   filepath.Join(tikvDataVolumeMountPath, tc.Spec.TiKV.DataSubDir),
+			ClusterDomain:             tc.Spec.ClusterDomain,
+		}
+		if tc.Spec.EnableDynamicConfiguration != nil && *tc.Spec.EnableDynamicConfiguration {
+			scriptModel.AdvertiseStatusAddr = "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc" + controller.FormatClusterDomain(tc.Spec.ClusterDomain)
+			scriptModel.EnableAdvertiseStatusAddr = true
+		}
+
+		if tc.IsHeterogeneous() {
+			scriptModel.PDAddress = tc.Scheme() + "://" + controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379"
+		} else {
+			scriptModel.PDAddress = tc.Scheme() + "://${CLUSTER_NAME}-pd:2379"
+		}
+		cm, err := getTikVConfigMapForTiKVSpec(tc.Spec.TiKV, tc, scriptModel)
+		if err != nil {
+			return nil, err
+		}
+		instanceName := tc.GetInstanceName()
+		tikvLabel := label.New().Instance(instanceName).TiKV().Labels()
+		cm.ObjectMeta = metav1.ObjectMeta{
+			Name:            controller.TiKVMemberName(tc.Name),
 			Namespace:       tc.Namespace,
-			Labels:          pdLabel,
+			Labels:          tikvLabel,
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
-		},
-		Data: map[string]string{
+		}
+	case label.TiFlashLabelVal:
+		config := getTiFlashConfig(tc)
+
+		configText, err := config.Common.MarshalTOML()
+		if err != nil {
+			return nil, err
+		}
+		proxyText, err := config.Proxy.MarshalTOML()
+		if err != nil {
+			return nil, err
+		}
+
+		instanceName := tc.GetInstanceName()
+		tiflashLabel := label.New().Instance(instanceName).TiFlash().Labels()
+		cm = &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            controller.TiFlashMemberName(tc.Name),
+				Namespace:       tc.Namespace,
+				Labels:          tiflashLabel,
+				OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
+			},
+			Data: map[string]string{
+				"config_templ.toml": string(configText),
+				"proxy_templ.toml":  string(proxyText),
+			},
+		}
+	case label.TiDBLabelVal:
+		config := tc.Spec.TiDB.Config
+		if config == nil {
+			return nil, nil
+		}
+
+		// override CA if tls enabled
+		if tc.IsTLSClusterEnabled() {
+			config.Set("security.cluster-ssl-ca", path.Join(clusterCertPath, tlsSecretRootCAKey))
+			config.Set("security.cluster-ssl-cert", path.Join(clusterCertPath, corev1.TLSCertKey))
+			config.Set("security.cluster-ssl-key", path.Join(clusterCertPath, corev1.TLSPrivateKeyKey))
+		}
+		if tc.Spec.TiDB.IsTLSClientEnabled() {
+			config.Set("security.ssl-ca", path.Join(serverCertPath, tlsSecretRootCAKey))
+			config.Set("security.ssl-cert", path.Join(serverCertPath, corev1.TLSCertKey))
+			config.Set("security.ssl-key", path.Join(serverCertPath, corev1.TLSPrivateKeyKey))
+		}
+		confText, err := config.MarshalTOML()
+		if err != nil {
+			return nil, err
+		}
+
+		plugins := tc.Spec.TiDB.Plugins
+		tidbStartScriptModel := &TidbStartScriptModel{
+			EnablePlugin:    len(plugins) > 0,
+			PluginDirectory: "/plugins",
+			PluginList:      strings.Join(plugins, ","),
+			ClusterDomain:   tc.Spec.ClusterDomain,
+		}
+
+		if tc.IsHeterogeneous() {
+			tidbStartScriptModel.Path = controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379"
+		} else {
+			tidbStartScriptModel.Path = "${CLUSTER_NAME}-pd:2379"
+		}
+
+		startScript, err := RenderTiDBStartScript(tidbStartScriptModel)
+		if err != nil {
+			return nil, err
+		}
+		data := map[string]string{
 			"config-file":    string(confText),
 			"startup-script": startScript,
-		},
+		}
+		name := controller.TiDBMemberName(tc.Name)
+		instanceName := tc.GetInstanceName()
+		tidbLabels := label.New().Instance(instanceName).TiDB().Labels()
+
+		cm = &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            name,
+				Namespace:       tc.Namespace,
+				Labels:          tidbLabels,
+				OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
+			},
+			Data: data,
+		}
 	}
+
 	return cm, nil
 }
+
+// extras
 
 func ComponentClusterVersionGreaterThanOrEqualTo4(version string) (bool, error) {
 	v, err := semver.NewVersion(version)
@@ -395,7 +552,7 @@ func ComponentCollectUnjoinedMembers(context *ComponentContext, set *apps.Statef
 	return nil
 }
 
-// shouldRecover checks whether we should perform recovery operation.
+// ComponentShouldRecover checks whether we should perform recovery operation.
 func ComponentShouldRecover(context *ComponentContext) bool {
 	tc := context.tc
 	component := context.component
