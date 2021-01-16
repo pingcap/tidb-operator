@@ -36,6 +36,7 @@ import (
 const (
 	DefaultTimeout       = 5 * time.Second
 	evictSchedulerLeader = "evict-leader-scheduler"
+	tiKVNotBootstrapped  = `TiKV cluster not bootstrapped, please start TiKV first"`
 )
 
 // GetTLSConfig returns *tls.Config for given TiDB cluster.
@@ -315,7 +316,14 @@ func (c *pdClient) getStores(apiURL string) (*StoresInfo, error) {
 }
 
 func (c *pdClient) GetStores() (*StoresInfo, error) {
-	return c.getStores(fmt.Sprintf("%s/%s", c.url, storesPrefix))
+	storesInfo, err := c.getStores(fmt.Sprintf("%s/%s", c.url, storesPrefix))
+	if err != nil {
+		if strings.HasSuffix(err.Error(), tiKVNotBootstrapped+"\n") {
+			err = TiKVNotBootstrappedErrorf(err.Error())
+		}
+		return nil, err
+	}
+	return storesInfo, nil
 }
 
 func (c *pdClient) GetTombStoneStores() (*StoresInfo, error) {
@@ -697,4 +705,24 @@ func getLeaderEvictSchedulerInfo(storeID uint64) *schedulerInfo {
 
 func getLeaderEvictSchedulerStr(storeID uint64) string {
 	return fmt.Sprintf("%s-%d", "evict-leader-scheduler", storeID)
+}
+
+// TiKVNotBootstrappedError represents that TiKV cluster is not bootstrapped yet
+type TiKVNotBootstrappedError struct {
+	s string
+}
+
+func (e *TiKVNotBootstrappedError) Error() string {
+	return e.s
+}
+
+// TiKVNotBootstrappedErrorf returns a TiKVNotBootstrappedError
+func TiKVNotBootstrappedErrorf(format string, a ...interface{}) error {
+	return &TiKVNotBootstrappedError{fmt.Sprintf(format, a...)}
+}
+
+// IsTiKVNotBootstrappedError returns whether err is a TiKVNotBootstrappedError
+func IsTiKVNotBootstrappedError(err error) bool {
+	_, ok := err.(*TiKVNotBootstrappedError)
+	return ok
 }
