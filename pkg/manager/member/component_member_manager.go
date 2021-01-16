@@ -42,30 +42,7 @@ import (
 type ComponentContext struct {
 	tc           *v1alpha1.TidbCluster
 	dependencies *controller.Dependencies
-	set          *apps.StatefulSet
 	component    string
-}
-
-func ComponentSync(context *ComponentContext) error {
-	tc := context.tc
-
-	// If pd is not specified return
-	if tc.Spec.PD == nil {
-		return nil
-	}
-
-	// Sync PD Service
-	if err := ComponentSyncServiceForTidbCluster(context); err != nil {
-		return err
-	}
-
-	// Sync PD Headless Service
-	if err := ComponentSyncHeadlessServiceForTidbCluster(context); err != nil {
-		return err
-	}
-
-	// Sync PD StatefulSet
-	return ComponentSyncStatefulSetForTidbCluster(context)
 }
 
 func ComponentSyncServiceForTidbCluster(context *ComponentContext) error {

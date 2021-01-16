@@ -73,19 +73,29 @@ func (m *pdMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
+	context := &ComponentContext{
+		tc:           tc,
+		dependencies: m.deps,
+		component:    label.PDLabelVal,
+	}
+
 	// Sync PD Service
-	if err := m.syncPDServiceForTidbCluster(tc); err != nil {
+	if err := ComponentSyncServiceForTidbCluster(context); err != nil {
 		return err
 	}
 
 	// Sync PD Headless Service
-	if err := m.syncPDHeadlessServiceForTidbCluster(tc); err != nil {
+	if err := ComponentSyncHeadlessServiceForTidbCluster(context); err != nil {
 		return err
 	}
 
 	// Sync PD StatefulSet
-	return m.syncPDStatefulSetForTidbCluster(tc)
+	return ComponentSyncStatefulSetForTidbCluster(context)
 }
+
+// ---
+// The codes below this is all for the compatitable with Unitests
+// ---
 
 func (m *pdMemberManager) syncPDServiceForTidbCluster(tc *v1alpha1.TidbCluster) error {
 	if tc.Spec.Paused {
