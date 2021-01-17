@@ -58,15 +58,15 @@ func ComponentSyncStatefulSetForTidbCluster(context *ComponentContext) error {
 	tcName := tc.GetName()
 	componentMemberName := getComponentMemberName(context)
 
-	oldPDSetTmp, err := dependencies.StatefulSetLister.StatefulSets(ns).Get(componentMemberName)
+	oldSetTmp, err := dependencies.StatefulSetLister.StatefulSets(ns).Get(componentMemberName)
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("syncPDStatefulSetForTidbCluster: fail to get sts %s for cluster %s/%s, error: %s", componentMemberName, ns, tcName, err)
 	}
 	setNotExist := errors.IsNotFound(err)
 
-	oldPDSet := oldPDSetTmp.DeepCopy()
+	oldSet := oldSetTmp.DeepCopy()
 
-	if err := ComponentSyncTidbClusterStatus(context, oldPDSet); err != nil {
+	if err := ComponentSyncTidbClusterStatus(context, oldSet); err != nil {
 		klog.Errorf("failed to sync TidbCluster: [%s/%s]'s status, error: %v", ns, tcName, err)
 	}
 
@@ -75,7 +75,7 @@ func ComponentSyncStatefulSetForTidbCluster(context *ComponentContext) error {
 		return nil
 	}
 
-	cm, err := ComponentSyncConfigMap(context, oldPDSet)
+	cm, err := ComponentSyncConfigMap(context, oldSet)
 	if err != nil {
 		return err
 	}
@@ -87,7 +87,17 @@ func ComponentSyncStatefulSetForTidbCluster(context *ComponentContext) error {
 		}
 		if len(tc.Status.TiKV.FailureStores) > 0 &&
 			tc.Spec.TiKV.RecoverFailover &&
-			shouldRecover(tc, label.TiKVLabelVal, dependencies.PodLister) {
+			ComponentShouldRecover(context) {
+			ComponentRecover(context)
+		}
+	} else if component == label.TiFlashLabelVal {
+		// Recover failed stores if any before generating desired statefulset
+		if len(tc.Status.TiFlash.FailureStores) > 0 {
+			ComponentRemoveUndesiredFailures(context)
+		}
+		if len(tc.Status.TiFlash.FailureStores) > 0 &&
+			tc.Spec.TiFlash.RecoverFailover &&
+			ComponentShouldRecover(context) {
 			ComponentRecover(context)
 		}
 	}
@@ -101,14 +111,18 @@ func ComponentSyncStatefulSetForTidbCluster(context *ComponentContext) error {
 		if err != nil {
 			return err
 		}
+
 		if err := dependencies.StatefulSetControl.CreateStatefulSet(tc, newSet); err != nil {
 			return err
 		}
-		switch component {
-		case label.PDLabelVal:
-			tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{}
+
+		if component != label.TiCDCLabelVal && component != label.PumpLabelVal {
+			if err := syncNewComponentStatefulset(context); err != nil {
+				return err
+			}
 		}
-		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PD cluster running", ns, tcName)
+
+		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for %s cluster running", ns, tcName, component)
 	}
 
 	switch component {
@@ -117,26 +131,19 @@ func ComponentSyncStatefulSetForTidbCluster(context *ComponentContext) error {
 		if !tc.Status.PD.Synced && NeedForceUpgrade(tc.Annotations) {
 			tc.Status.PD.Phase = v1alpha1.UpgradePhase
 			setUpgradePartition(newSet, 0)
-			errSTS := UpdateStatefulSet(dependencies.StatefulSetControl, tc, newSet, oldPDSet)
+			errSTS := UpdateStatefulSet(dependencies.StatefulSetControl, tc, newSet, oldSet)
 			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd needs force upgrade, %v", ns, tcName, errSTS)
 		}
-	case label.TiKVLabelVal:
-		if _, err := setStoreLabelsForTiKV(context); err != nil {
+
+		// Scaling takes precedence over upgrading because:
+		// - if a pd fails in the upgrading, users may want to delete it or add
+		//   new replicas
+		// - it's ok to scale in the middle of upgrading (in statefulset controller
+		//   scaling takes precedence over upgrading too)
+		if err := ComponentScale(context, oldSet, newSet); err != nil {
 			return err
 		}
-	}
 
-	// Scaling takes precedence over upgrading because:
-	// - if a pd fails in the upgrading, users may want to delete it or add
-	//   new replicas
-	// - it's ok to scale in the middle of upgrading (in statefulset controller
-	//   scaling takes precedence over upgrading too)
-	if err := ComponentScale(context, oldPDSet, newSet); err != nil {
-		return err
-	}
-
-	switch component {
-	case label.PDLabelVal:
 		if dependencies.CLIConfig.AutoFailover {
 			if ComponentShouldRecover(context) {
 				ComponentRecover(context)
@@ -146,7 +153,29 @@ func ComponentSyncStatefulSetForTidbCluster(context *ComponentContext) error {
 				}
 			}
 		}
+
+		if !templateEqual(newSet, oldSet) || tc.Status.PD.Phase == v1alpha1.UpgradePhase {
+			if err := ComponentUpgrade(context, oldSet, newSet); err != nil {
+				return err
+			}
+		}
 	case label.TiKVLabelVal:
+		if _, err := setStoreLabelsForTiKV(context); err != nil {
+			return err
+		}
+
+		// Scaling takes precedence over upgrading because:
+		// - if a store fails in the upgrading, users may want to delete it or add
+		//   new replicas
+		// - it's ok to scale in the middle of upgrading (in statefulset controller
+		//   scaling takes precedence over upgrading too)
+		if err := ComponentScale(context, oldSet, newSet); err != nil {
+			return err
+		}
+
+		// Perform failover logic if necessary. Note that this will only update
+		// TidbCluster status. The actual scaling performs in next sync loop (if a
+		// new replica needs to be added).
 		if dependencies.CLIConfig.AutoFailover && tc.Spec.TiKV.MaxFailoverCount != nil {
 			if tc.TiKVAllPodsStarted() && !tc.TiKVAllStoresReady() {
 				if err := ComponentFailover(context); err != nil {
@@ -154,15 +183,53 @@ func ComponentSyncStatefulSetForTidbCluster(context *ComponentContext) error {
 				}
 			}
 		}
-	}
 
-	if !templateEqual(newSet, oldPDSet) || tc.Status.PD.Phase == v1alpha1.UpgradePhase {
-		if err := ComponentUpgrade(context, oldPDSet, newSet); err != nil {
+		if !templateEqual(newSet, oldSet) || tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
+			if err := ComponentUpgrade(context, oldSet, newSet); err != nil {
+				return err
+			}
+		}
+	case label.TiFlashLabelVal:
+		// Scaling takes precedence over upgrading because:
+		// - if a tiflash fails in the upgrading, users may want to delete it or add
+		//   new replicas
+		// - it's ok to scale in the middle of upgrading (in statefulset controller
+		//   scaling takes precedence over upgrading too)
+		if err := ComponentScale(context, oldSet, newSet); err != nil {
 			return err
+		}
+
+		if dependencies.CLIConfig.AutoFailover && tc.Spec.TiFlash.MaxFailoverCount != nil {
+			if tc.TiFlashAllPodsStarted() && !tc.TiFlashAllStoresReady() {
+				if err := ComponentFailover(context); err != nil {
+					return err
+				}
+			}
+		}
+
+		if !templateEqual(newSet, oldSet) {
+			if err := ComponentUpgrade(context, oldSet, newSet); err != nil {
+				return err
+			}
+		}
+	case label.TiDBLabelVal:
+		if dependencies.CLIConfig.AutoFailover {
+			if ComponentShouldRecover(context) {
+				ComponentRecover(context)
+			} else if tc.TiDBAllPodsStarted() && !tc.TiDBAllMembersReady() {
+				if err := ComponentFailover(context); err != nil {
+					return err
+				}
+			}
+		}
+	case label.TiCDCLabelVal, label.PumpLabelVal:
+		if tc.PDUpgrading() || tc.TiKVUpgrading() {
+			klog.Warningf("pd or tikv is upgrading, skipping upgrade ticdc")
+			return nil
 		}
 	}
 
-	return UpdateStatefulSet(dependencies.StatefulSetControl, tc, newSet, oldPDSet)
+	return UpdateStatefulSet(dependencies.StatefulSetControl, tc, newSet, oldSet)
 }
 
 func ComponentSyncTidbClusterStatus(context *ComponentContext, set *apps.StatefulSet) error {
@@ -174,35 +241,19 @@ func ComponentSyncTidbClusterStatus(context *ComponentContext, set *apps.Statefu
 		return nil
 	}
 
-	switch component {
-	case label.PDLabelVal:
-		tc.Status.PD.StatefulSet = &set.Status
-	case label.TiKVLabelVal:
-		tc.Status.TiKV.StatefulSet = &set.Status
-	case label.TiFlashLabelVal:
-		tc.Status.TiFlash.StatefulSet = &set.Status
-	case label.TiDBLabelVal:
-		tc.Status.TiDB.StatefulSet = &set.Status
-	case label.TiCDCLabelVal:
-		tc.Status.TiCDC.StatefulSet = &set.Status
-	case label.PumpLabelVal:
-		tc.Status.Pump.StatefulSet = &set.Status
+	if err := syncExistedComponentStatefulset(context, set); err != nil {
+		return err
 	}
-
-	err := syncComponentPhase(context, set)
-	if err != nil {
+	if err := syncComponentPhase(context, set); err != nil {
 		return err
 	}
 	if component != label.PumpLabelVal {
-		err = syncComponentMembers(context, set)
-		if err != nil {
+		if err := syncComponentMembers(context, set); err != nil {
 			return err
 		}
 	}
-
-	if component != label.TiFlashLabelVal || component != label.TiCDCLabelVal || component != label.PumpLabelVal {
-		err = syncComponentImage(context, set)
-		if err != nil {
+	if component != label.TiFlashLabelVal && component != label.TiCDCLabelVal && component != label.PumpLabelVal {
+		if err := syncComponentImage(context, set); err != nil {
 			return err
 		}
 	}
@@ -211,8 +262,7 @@ func ComponentSyncTidbClusterStatus(context *ComponentContext, set *apps.Statefu
 	case label.PDLabelVal:
 		// k8s check
 		pdStatus := tc.Status.PD.Members
-		err = collectUnjoinedPDMembers(context, set, pdStatus)
-		if err != nil {
+		if err := collectUnjoinedPDMembers(context, set, pdStatus); err != nil {
 			return err
 		}
 	case label.TiKVLabelVal:
@@ -1792,6 +1842,46 @@ func getComponentMemberName(context *ComponentContext) string {
 	return componentMemberName
 }
 
+func syncNewComponentStatefulset(context *ComponentContext) error {
+	tc := context.tc
+	component := context.component
+
+	switch component {
+	case label.PDLabelVal:
+		tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{}
+	case label.TiKVLabelVal:
+		tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{}
+	case label.TiDBLabelVal:
+		tc.Status.TiDB.StatefulSet = &apps.StatefulSetStatus{}
+	case label.TiFlashLabelVal:
+		tc.Status.TiFlash.StatefulSet = &apps.StatefulSetStatus{}
+	case label.TiCDCLabelVal:
+		tc.Status.TiCDC.StatefulSet = &apps.StatefulSetStatus{}
+	case label.PumpLabelVal:
+		tc.Status.Pump.StatefulSet = &apps.StatefulSetStatus{}
+	}
+	return nil
+}
+
+func syncExistedComponentStatefulset(context *ComponentContext, set *apps.StatefulSet) error {
+	tc := context.tc
+	component := context.component
+	switch component {
+	case label.PDLabelVal:
+		tc.Status.PD.StatefulSet = &set.Status
+	case label.TiKVLabelVal:
+		tc.Status.TiKV.StatefulSet = &set.Status
+	case label.TiFlashLabelVal:
+		tc.Status.TiFlash.StatefulSet = &set.Status
+	case label.TiDBLabelVal:
+		tc.Status.TiDB.StatefulSet = &set.Status
+	case label.TiCDCLabelVal:
+		tc.Status.TiCDC.StatefulSet = &set.Status
+	case label.PumpLabelVal:
+		tc.Status.Pump.StatefulSet = &set.Status
+	}
+	return nil
+}
 func syncComponentImage(context *ComponentContext, set *apps.StatefulSet) error {
 	tc := context.tc
 	component := context.component
