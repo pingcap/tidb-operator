@@ -15,15 +15,18 @@ package member
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
 func ComponentScale(context *ComponentContext, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
@@ -38,39 +41,42 @@ func ComponentScale(context *ComponentContext, oldSet *apps.StatefulSet, newSet 
 
 func ComponentScaleOut(context *ComponentContext, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	tc := context.tc
+	component := context.component
 
 	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
 	resetReplicas(newSet, oldSet)
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	klog.Infof("scaling out pd statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
-	_, err := ComponentDeleteDeferDeletingPVC(context, oldSet.GetName(), ordinal)
-	if err != nil {
+	klog.Infof("scaling out %s statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", component, oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
+
+	if _, err := ComponentDeleteDeferDeletingPVC(context, oldSet.GetName(), ordinal); err != nil {
 		return err
 	}
 
-	if !tc.Status.PD.Synced {
-		return fmt.Errorf("TidbCluster: %s/%s's pd status sync failed, can't scale out now", ns, tcName)
-	}
-
-	if len(tc.Status.PD.FailureMembers) != 0 {
-		setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
-		return nil
-	}
-
-	healthCount := 0
-	totalCount := *oldSet.Spec.Replicas
-	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
-	for _, i := range podOrdinals {
-		targetPdName := PdName(tcName, i, tc.Namespace, tc.Spec.ClusterDomain)
-		if member, ok := tc.Status.PD.Members[targetPdName]; ok && member.Health {
-			healthCount++
+	if component == label.PDLabelVal {
+		if !tc.Status.PD.Synced {
+			return fmt.Errorf("TidbCluster: %s/%s's pd status sync failed, can't scale out now", ns, tcName)
 		}
-	}
-	if healthCount < int(totalCount) {
-		return fmt.Errorf("TidbCluster: %s/%s's pd %d/%d is ready, can't scale out now",
-			ns, tcName, healthCount, totalCount)
+
+		if len(tc.Status.PD.FailureMembers) != 0 {
+			setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
+			return nil
+		}
+
+		healthCount := 0
+		totalCount := *oldSet.Spec.Replicas
+		podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
+		for _, i := range podOrdinals {
+			targetPdName := PdName(tcName, i, tc.Namespace, tc.Spec.ClusterDomain)
+			if member, ok := tc.Status.PD.Members[targetPdName]; ok && member.Health {
+				healthCount++
+			}
+		}
+		if healthCount < int(totalCount) {
+			return fmt.Errorf("TidbCluster: %s/%s's pd %d/%d is ready, can't scale out now",
+				ns, tcName, healthCount, totalCount)
+		}
 	}
 
 	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
@@ -80,7 +86,19 @@ func ComponentScaleOut(context *ComponentContext, oldSet *apps.StatefulSet, newS
 // We need remove member from cluster before reducing statefulset replicas
 // only remove one member at a time when scale down
 func ComponentScaleIn(context *ComponentContext, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	// context deserialization
+	component := context.component
+	switch component {
+	case label.PDLabelVal:
+		return componentPDScaleIn(context, oldSet, newSet)
+	case label.TiKVLabelVal:
+		return componentTiKVScaleIn(context, oldSet, newSet)
+	case label.TiFlashLabelVal:
+		return componentTiFlashScaleIn(context, oldSet, newSet)
+	}
+	return nil
+}
+
+func componentPDScaleIn(context *ComponentContext, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	tc := context.tc
 	dependencies := context.dependencies
 
@@ -177,6 +195,223 @@ func ComponentScaleIn(context *ComponentContext, oldSet *apps.StatefulSet, newSe
 	return nil
 }
 
+func componentTiKVScaleIn(context *ComponentContext, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	tc := context.tc
+	dependencies := context.dependencies
+
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	// we can only remove one member at a time when scaling in
+	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
+	resetReplicas(newSet, oldSet)
+	setName := oldSet.GetName()
+
+	klog.Infof("scaling in tikv statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
+	// We need remove member from cluster before reducing statefulset replicas
+	var podName string
+
+	podName = ordinalPodName(v1alpha1.TiKVMemberType, tcName, ordinal)
+	pod, err := dependencies.PodLister.Pods(ns).Get(podName)
+	if err != nil {
+		return fmt.Errorf("tikvScaler.ScaleIn: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
+	}
+
+	if pass, err := componentTiKVPreCheckUpStores(context, podName); !pass {
+		return err
+	}
+
+	if dependencies.CLIConfig.PodWebhookEnabled {
+		setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
+		return nil
+	}
+
+	for _, store := range tc.Status.TiKV.Stores {
+		if store.PodName == podName {
+			state := store.State
+			id, err := strconv.ParseUint(store.ID, 10, 64)
+			if err != nil {
+				return err
+			}
+			if state != v1alpha1.TiKVStateOffline {
+				if err := controller.GetPDClient(dependencies.PDControl, tc).DeleteStore(id); err != nil {
+					klog.Errorf("tikv scale in: failed to delete store %d, %v", id, err)
+					return err
+				}
+				klog.Infof("tikv scale in: delete store %d for tikv %s/%s successfully", id, ns, podName)
+			}
+			return controller.RequeueErrorf("TiKV %s/%s store %d is still in cluster, state: %s", ns, podName, id, state)
+		}
+	}
+	for id, store := range tc.Status.TiKV.TombstoneStores {
+		if store.PodName == podName && pod.Labels[label.StoreIDLabelKey] == id {
+			id, err := strconv.ParseUint(store.ID, 10, 64)
+			if err != nil {
+				return err
+			}
+
+			// TODO: double check if store is really not in Up/Offline/Down state
+			klog.Infof("TiKV %s/%s store %d becomes tombstone", ns, podName, id)
+
+			pvcName := ordinalPVCName(v1alpha1.TiKVMemberType, setName, ordinal)
+			pvc, err := dependencies.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
+			if err != nil {
+				return fmt.Errorf("tikvScaler.ScaleIn: failed to get pvc %s for cluster %s/%s, error: %s", pvcName, ns, tcName, err)
+			}
+			if pvc.Annotations == nil {
+				pvc.Annotations = map[string]string{}
+			}
+			now := time.Now().Format(time.RFC3339)
+			pvc.Annotations[label.AnnPVCDeferDeleting] = now
+			_, err = dependencies.PVCControl.UpdatePVC(tc, pvc)
+			if err != nil {
+				klog.Errorf("tikv scale in: failed to set pvc %s/%s annotation: %s to %s",
+					ns, pvcName, label.AnnPVCDeferDeleting, now)
+				return err
+			}
+			klog.Infof("tikv scale in: set pvc %s/%s annotation: %s to %s",
+				ns, pvcName, label.AnnPVCDeferDeleting, now)
+
+			setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
+			return nil
+		}
+	}
+
+	// When store not found in TidbCluster status, there are two situations as follows:
+	// 1. This can happen when TiKV joins cluster but we haven't synced its status.
+	//    In this situation return error to wait another round for safety.
+	//
+	// 2. This can happen when TiKV pod has not been successfully registered in the cluster, such as always pending.
+	//    In this situation we should delete this TiKV pod immediately to avoid blocking the subsequent operations.
+	if !podutil.IsPodReady(pod) {
+		pvcName := ordinalPVCName(v1alpha1.TiKVMemberType, setName, ordinal)
+		pvc, err := dependencies.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
+		if err != nil {
+			return fmt.Errorf("tikvScaler.ScaleIn: failed to get pvc %s for cluster %s/%s, error: %s", pvcName, ns, tcName, err)
+		}
+		if tc.TiKVBootStrapped() {
+			safeTimeDeadline := pod.CreationTimestamp.Add(5 * dependencies.CLIConfig.ResyncDuration)
+			if time.Now().Before(safeTimeDeadline) {
+				// Wait for 5 resync periods to ensure that the following situation does not occur:
+				//
+				// The tikv pod starts for a while, but has not synced its status, and then the pod becomes not ready.
+				// Here we wait for 5 resync periods to ensure that the status of this tikv pod has been synced.
+				// After this period of time, if there is still no information about this tikv in TidbCluster status,
+				// then we can be sure that this tikv has never been added to the tidb cluster.
+				// So we can scale in this tikv pod safely.
+				resetReplicas(newSet, oldSet)
+				return fmt.Errorf("TiKV %s/%s is not ready, wait for some resync periods to synced its status", ns, podName)
+			}
+		}
+		if pvc.Annotations == nil {
+			pvc.Annotations = map[string]string{}
+		}
+		now := time.Now().Format(time.RFC3339)
+		pvc.Annotations[label.AnnPVCDeferDeleting] = now
+		_, err = dependencies.PVCControl.UpdatePVC(tc, pvc)
+		if err != nil {
+			klog.Errorf("pod %s not ready, tikv scale in: failed to set pvc %s/%s annotation: %s to %s",
+				podName, ns, pvcName, label.AnnPVCDeferDeleting, now)
+			return err
+		}
+		klog.Infof("pod %s not ready, tikv scale in: set pvc %s/%s annotation: %s to %s",
+			podName, ns, pvcName, label.AnnPVCDeferDeleting, now)
+		setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
+		return nil
+	}
+	return fmt.Errorf("TiKV %s/%s not found in cluster", ns, podName)
+}
+
+func componentTiFlashScaleIn(context *ComponentContext, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	tc := context.tc
+	dependencies := context.dependencies
+
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	// we can only remove one member at a time when scaling in
+	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
+	resetReplicas(newSet, oldSet)
+
+	klog.Infof("scaling in tiflash statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
+	// We need delete store from cluster before decreasing the statefulset replicas
+	podName := ordinalPodName(v1alpha1.TiFlashMemberType, tcName, ordinal)
+	pod, err := dependencies.PodLister.Pods(ns).Get(podName)
+	if err != nil {
+		return fmt.Errorf("tiflashScaler.ScaleIn: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
+	}
+
+	// TODO: Update Webhook to support TiFlash
+	// if controller.PodWebhookEnabled {
+	// 	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
+	// 	return nil
+	// }
+
+	for _, store := range tc.Status.TiFlash.Stores {
+		if store.PodName == podName {
+			state := store.State
+			id, err := strconv.ParseUint(store.ID, 10, 64)
+			if err != nil {
+				return err
+			}
+			if state != v1alpha1.TiKVStateOffline {
+				if err := controller.GetPDClient(dependencies.PDControl, tc).DeleteStore(id); err != nil {
+					klog.Errorf("tiflash scale in: failed to delete store %d, %v", id, err)
+					return err
+				}
+				klog.Infof("tiflash scale in: delete store %d for tiflash %s/%s successfully", id, ns, podName)
+			}
+			return controller.RequeueErrorf("TiFlash %s/%s store %d is still in cluster, state: %s", ns, podName, id, state)
+		}
+	}
+	for id, store := range tc.Status.TiFlash.TombstoneStores {
+		if store.PodName == podName && pod.Labels[label.StoreIDLabelKey] == id {
+			id, err := strconv.ParseUint(store.ID, 10, 64)
+			if err != nil {
+				return err
+			}
+
+			// TODO: double check if store is really not in Up/Offline/Down state
+			klog.Infof("TiFlash %s/%s store %d becomes tombstone", ns, podName, id)
+
+			err = ComponentUpdateDeferDeletingPVC(context, ordinal)
+			if err != nil {
+				return err
+			}
+			setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
+			return nil
+		}
+	}
+
+	// When store not found in TidbCluster status, there are two situations as follows:
+	// 1. This can happen when TiFlash joins cluster but we haven't synced its status.
+	//    In this situation return error to wait another round for safety.
+	//
+	// 2. This can happen when TiFlash pod has not been successfully registered in the cluster, such as always pending.
+	//    In this situation we should delete this TiFlash pod immediately to avoid blocking the subsequent operations.
+	if !podutil.IsPodReady(pod) {
+		safeTimeDeadline := pod.CreationTimestamp.Add(5 * dependencies.CLIConfig.ResyncDuration)
+		if time.Now().Before(safeTimeDeadline) {
+			// Wait for 5 resync periods to ensure that the following situation does not occur:
+			//
+			// The tiflash pod starts for a while, but has not synced its status, and then the pod becomes not ready.
+			// Here we wait for 5 resync periods to ensure that the status of this tiflash pod has been synced.
+			// After this period of time, if there is still no information about this tiflash in TidbCluster status,
+			// then we can be sure that this tiflash has never been added to the tidb cluster.
+			// So we can scale in this tiflash pod safely.
+			resetReplicas(newSet, oldSet)
+			return fmt.Errorf("TiFlash %s/%s is not ready, wait for some resync periods to synced its status", ns, podName)
+		}
+		klog.Infof("Pod %s/%s not ready for more than %v and no store for it, scale in it",
+			ns, podName, 5*dependencies.CLIConfig.ResyncDuration)
+		err = ComponentUpdateDeferDeletingPVC(context, ordinal)
+		if err != nil {
+			return err
+		}
+		setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
+		return nil
+	}
+	return fmt.Errorf("tiflash %s/%s no store found in cluster", ns, podName)
+}
+
 func ComponentSyncAutoScalerAnn(context *ComponentContext, actual *apps.StatefulSet) error {
 	return nil
 }
@@ -211,8 +446,9 @@ func ComponentPreCheckUpMembers(context *ComponentContext, podName string) bool 
 func ComponentDeleteDeferDeletingPVC(context *ComponentContext, setName string, ordinal int32) (map[string]string, error) {
 	tc := context.tc
 	dependencies := context.dependencies
-	memberType := v1alpha1.PDMemberType	
-	
+
+	memberType := getComponentMemberType(context)
+
 	ns := tc.GetNamespace()
 	// for unit test
 	skipReason := map[string]string{}
@@ -263,8 +499,8 @@ func ComponentDeleteDeferDeletingPVC(context *ComponentContext, setName string, 
 func ComponentUpdateDeferDeletingPVC(context *ComponentContext, ordinal int32) error {
 	tc := context.tc
 	dependencies := context.dependencies
-	memberType := v1alpha1.PDMemberType
 
+	memberType := getComponentMemberType(context)
 	ns := tc.GetNamespace()
 	podName := ordinalPodName(memberType, tc.Name, ordinal)
 
@@ -304,4 +540,60 @@ func ComponentUpdateDeferDeletingPVC(context *ComponentContext, ordinal int32) e
 			ns, pvcName, label.AnnPVCDeferDeleting, now)
 	}
 	return nil
+}
+
+func componentTiKVPreCheckUpStores(context *ComponentContext, podName string) (bool, error) {
+	tc := context.tc
+	dependencies := context.dependencies
+
+	if !tc.TiKVBootStrapped() {
+		klog.Infof("TiKV of Cluster %s/%s is not bootstrapped yet, skip pre check when scale in TiKV", tc.Namespace, tc.Name)
+		return true, nil
+	}
+
+	pdClient := controller.GetPDClient(dependencies.PDControl, tc)
+	// get the number of stores whose state is up
+	upNumber := 0
+
+	storesInfo, err := pdClient.GetStores()
+	if err != nil {
+		return false, fmt.Errorf("failed to get stores info in TidbCluster %s/%s", tc.GetNamespace(), tc.GetName())
+	}
+	// filter out TiFlash
+	for _, store := range storesInfo.Stores {
+		if store.Store != nil {
+			if store.Store.StateName == v1alpha1.TiKVStateUp && util.MatchLabelFromStoreLabels(store.Store.Labels, label.TiKVLabelVal) {
+				upNumber++
+			}
+		}
+	}
+
+	// get the state of the store which is about to be scaled in
+	storeState := ""
+	for _, store := range tc.Status.TiKV.Stores {
+		if store.PodName == podName {
+			storeState = store.State
+		}
+	}
+
+	config, err := pdClient.GetConfig()
+	if err != nil {
+		return false, err
+	}
+	maxReplicas := *(config.Replication.MaxReplicas)
+	if upNumber < int(maxReplicas) {
+		errMsg := fmt.Sprintf("the number of stores in Up state of TidbCluster [%s/%s] is %d, less than MaxReplicas in PD configuration(%d), can't scale in TiKV, podname %s ", tc.GetNamespace(), tc.GetName(), upNumber, maxReplicas, podName)
+		klog.Error(errMsg)
+		dependencies.Recorder.Event(tc, v1.EventTypeWarning, "FailedScaleIn", errMsg)
+		return false, nil
+	} else if upNumber == int(maxReplicas) {
+		if storeState == v1alpha1.TiKVStateUp {
+			errMsg := fmt.Sprintf("can't scale in TiKV of TidbCluster [%s/%s], cause the number of up stores is equal to MaxReplicas in PD configuration(%d), and the store in Pod %s which is going to be deleted is up too", tc.GetNamespace(), tc.GetName(), maxReplicas, podName)
+			klog.Error(errMsg)
+			dependencies.Recorder.Event(tc, v1.EventTypeWarning, "FailedScaleIn", errMsg)
+			return false, nil
+		}
+	}
+
+	return true, nil
 }
