@@ -2990,3 +2990,21 @@ func componentTiCDCGetNewSetForTiDBCluster(context *ComponentContext, cm *corev1
 	}
 	return ticdcSts, nil
 }
+
+func getComponentDesiredOrdinals(context *ComponentContext) sets.Int32 {
+	tc := context.tc
+	component := context.component
+
+	switch component {
+	case label.PDLabelVal:
+		return tc.PDStsDesiredOrdinals(true)
+	case label.TiKVLabelVal:
+		return tc.TiKVStsDesiredOrdinals(true)
+	case label.TiDBLabelVal:
+		return tc.TiDBStsDesiredOrdinals(true)
+	case label.TiFlashLabelVal:
+		return tc.TiFlashStsDesiredOrdinals(true)
+	}
+
+	return sets.Int32{}
+}

@@ -21,11 +21,14 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apiv1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
 // Failover is used to failover broken pd member
@@ -35,6 +38,23 @@ import (
 // 3. PD member manager will add the count of deleted failure members more replicas
 // If the count of the failure PD member with the deleted state (MemberDeleted=true) is equal or greater than MaxFailoverCount, we will skip failover.
 func ComponentFailover(context *ComponentContext) error {
+	component := context.component
+
+	switch component {
+	case label.PDLabelVal:
+		return componentPDFailover(context)
+	case label.TiKVLabelVal:
+		return componentTiKVFailover(context)
+	case label.TiFlashLabelVal:
+		return componentTiFlashFailover(context)
+	case label.TiDBLabelVal:
+		return componentTiDBFailover(context)
+	}
+
+	return nil
+}
+
+func componentPDFailover(context *ComponentContext) error {
 	tc := context.tc
 
 	ns := tc.GetNamespace()
@@ -70,11 +90,175 @@ func ComponentFailover(context *ComponentContext) error {
 	return ComponentTryToDeleteAFailureMember(context)
 }
 
+func componentTiKVFailover(context *ComponentContext) error {
+	tc := context.tc
+	dependencies := context.dependencies
+
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	for storeID, store := range tc.Status.TiKV.Stores {
+		podName := store.PodName
+		if store.LastTransitionTime.IsZero() {
+			continue
+		}
+		if ComponentIsPodDesired(context, podName) {
+			// we should ignore the store record of deleted pod, otherwise the
+			// record of deleted pod may be added back to failure stores
+			// (before it enters into Offline/Tombstone state)
+			continue
+		}
+		deadline := store.LastTransitionTime.Add(dependencies.CLIConfig.TiKVFailoverPeriod)
+		exist := false
+		for _, failureStore := range tc.Status.TiKV.FailureStores {
+			if failureStore.PodName == podName {
+				exist = true
+				break
+			}
+		}
+		if store.State == v1alpha1.TiKVStateDown && time.Now().After(deadline) && !exist {
+			if tc.Status.TiKV.FailureStores == nil {
+				tc.Status.TiKV.FailureStores = map[string]v1alpha1.TiKVFailureStore{}
+			}
+			if tc.Spec.TiKV.MaxFailoverCount != nil && *tc.Spec.TiKV.MaxFailoverCount > 0 {
+				maxFailoverCount := *tc.Spec.TiKV.MaxFailoverCount
+				if len(tc.Status.TiKV.FailureStores) >= int(maxFailoverCount) {
+					klog.Warningf("%s/%s failure stores count reached the limit: %d", ns, tcName, tc.Spec.TiKV.MaxFailoverCount)
+					return nil
+				}
+				tc.Status.TiKV.FailureStores[storeID] = v1alpha1.TiKVFailureStore{
+					PodName:   podName,
+					StoreID:   store.ID,
+					CreatedAt: metav1.Now(),
+				}
+				msg := fmt.Sprintf("store[%s] is Down", store.ID)
+				dependencies.Recorder.Event(tc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "tikv", podName, msg))
+			}
+		}
+	}
+
+	return nil
+}
+
+func componentTiFlashFailover(context *ComponentContext) error {
+	tc := context.tc
+	dependencies := context.dependencies
+
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	for storeID, store := range tc.Status.TiFlash.Stores {
+		podName := store.PodName
+		if store.LastTransitionTime.IsZero() {
+			continue
+		}
+		if ComponentIsPodDesired(context, podName) {
+			// we should ignore the store record of deleted pod, otherwise the
+			// record of deleted pod may be added back to failure stores
+			// (before it enters into Offline/Tombstone state)
+			continue
+		}
+		deadline := store.LastTransitionTime.Add(dependencies.CLIConfig.TiFlashFailoverPeriod)
+		exist := false
+		for _, failureStore := range tc.Status.TiFlash.FailureStores {
+			if failureStore.PodName == podName {
+				exist = true
+				break
+			}
+		}
+		if store.State == v1alpha1.TiKVStateDown && time.Now().After(deadline) && !exist {
+			if tc.Status.TiFlash.FailureStores == nil {
+				tc.Status.TiFlash.FailureStores = map[string]v1alpha1.TiKVFailureStore{}
+			}
+			if tc.Spec.TiFlash.MaxFailoverCount != nil && *tc.Spec.TiFlash.MaxFailoverCount > 0 {
+				maxFailoverCount := *tc.Spec.TiFlash.MaxFailoverCount
+				if len(tc.Status.TiFlash.FailureStores) >= int(maxFailoverCount) {
+					klog.Warningf("%s/%s TiFlash failure stores count reached the limit: %d", ns, tcName, tc.Spec.TiFlash.MaxFailoverCount)
+					return nil
+				}
+				tc.Status.TiFlash.FailureStores[storeID] = v1alpha1.TiKVFailureStore{
+					PodName:   podName,
+					StoreID:   store.ID,
+					CreatedAt: metav1.Now(),
+				}
+				msg := fmt.Sprintf("store [%s] is Down", store.ID)
+				dependencies.Recorder.Event(tc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "tiflash", podName, msg))
+			}
+		}
+	}
+	return nil
+}
+
+func componentTiDBFailover(context *ComponentContext) error {
+	tc := context.tc
+	dependencies := context.dependencies
+
+	if tc.Status.TiDB.FailureMembers == nil {
+		tc.Status.TiDB.FailureMembers = map[string]v1alpha1.TiDBFailureMember{}
+	}
+
+	for _, tidbMember := range tc.Status.TiDB.Members {
+		_, exist := tc.Status.TiDB.FailureMembers[tidbMember.Name]
+		if exist && tidbMember.Health {
+			delete(tc.Status.TiDB.FailureMembers, tidbMember.Name)
+			klog.Infof("tidb failover: delete %s from tidb failoverMembers", tidbMember.Name)
+		}
+	}
+
+	if tc.Spec.TiDB.MaxFailoverCount == nil || *tc.Spec.TiDB.MaxFailoverCount <= 0 {
+		klog.Infof("tidb failover is disabled for %s/%s, skipped", tc.Namespace, tc.Name)
+		return nil
+	}
+
+	maxFailoverCount := *tc.Spec.TiDB.MaxFailoverCount
+	for _, tidbMember := range tc.Status.TiDB.Members {
+		_, exist := tc.Status.TiDB.FailureMembers[tidbMember.Name]
+		deadline := tidbMember.LastTransitionTime.Add(dependencies.CLIConfig.TiDBFailoverPeriod)
+		if !tidbMember.Health && time.Now().After(deadline) && !exist {
+			if len(tc.Status.TiDB.FailureMembers) >= int(maxFailoverCount) {
+				klog.Warningf("the failover count reaches the limit (%d), no more failover pods will be created", maxFailoverCount)
+				break
+			}
+			pod, err := dependencies.PodLister.Pods(tc.Namespace).Get(tidbMember.Name)
+			if err != nil {
+				return fmt.Errorf("tidbFailover.Failover: failed to get pods %s for cluster %s/%s, error: %s", tidbMember.Name, tc.GetNamespace(), tc.GetName(), err)
+			}
+			_, condition := podutil.GetPodCondition(&pod.Status, corev1.PodScheduled)
+			if condition == nil || condition.Status != corev1.ConditionTrue {
+				// if a member is unheathy because it's not scheduled yet, we
+				// should not create failover pod for it
+				klog.Warningf("pod %s/%s is not scheduled yet, skipping failover", pod.Namespace, pod.Name)
+				continue
+			}
+			tc.Status.TiDB.FailureMembers[tidbMember.Name] = v1alpha1.TiDBFailureMember{
+				PodName:   tidbMember.Name,
+				CreatedAt: metav1.Now(),
+			}
+			msg := fmt.Sprintf("tidb[%s] is unhealthy", tidbMember.Name)
+			dependencies.Recorder.Event(tc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "tidb", tidbMember.Name, msg))
+			break
+		}
+	}
+
+	return nil
+}
+
 func ComponentRecover(context *ComponentContext) {
 	tc := context.tc
+	component := context.component
 
-	tc.Status.PD.FailureMembers = nil
-	klog.Infof("pd failover: clearing pd failoverMembers, %s/%s", tc.GetNamespace(), tc.GetName())
+	switch component {
+	case label.PDLabelVal:
+		tc.Status.PD.FailureMembers = nil
+	case label.TiKVLabelVal:
+		tc.Status.TiKV.FailureStores = nil
+	case label.TiFlashLabelVal:
+		tc.Status.TiFlash.FailureStores = nil
+	case label.TiDBLabelVal:
+		tc.Status.TiDB.FailureMembers = nil
+	}
+
+	klog.Infof("%s failover: clearing failoverMembers, %s/%s", component, tc.GetNamespace(), tc.GetName())
 }
 
 func ComponentTryToMarkAPeerAsFailure(context *ComponentContext) error {
@@ -210,9 +394,7 @@ func ComponentTryToDeleteAFailureMember(context *ComponentContext) error {
 }
 
 func ComponentIsPodDesired(context *ComponentContext, podName string) bool {
-	tc := context.tc
-
-	ordinals := tc.PDStsDesiredOrdinals(true)
+	ordinals := getComponentDesiredOrdinals(context)
 	ordinal, err := util.GetOrdinalFromPodName(podName)
 	if err != nil {
 		klog.Errorf("unexpected pod name %q: %v", podName, err)
@@ -222,6 +404,28 @@ func ComponentIsPodDesired(context *ComponentContext, podName string) bool {
 }
 
 func ComponentRemoveUndesiredFailures(context *ComponentContext) {
+	tc := context.tc
+	component := context.component
+
+	if component == label.TiKVLabelVal {
+		for key, failureStore := range tc.Status.TiKV.FailureStores {
+			if !ComponentIsPodDesired(context, failureStore.PodName) {
+				// If we delete the pods, e.g. by using advanced statefulset delete
+				// slots feature. We should remove the record of undesired pods,
+				// otherwise an extra replacement pod will be created.
+				delete(tc.Status.TiKV.FailureStores, key)
+			}
+		}
+	} else if component == label.TiFlashLabelVal {
+		for key, failureStore := range tc.Status.TiFlash.FailureStores {
+			if !ComponentIsPodDesired(context, failureStore.PodName) {
+				// If we delete the pods, e.g. by using advanced statefulset delete
+				// slots feature. We should remove the record of undesired pods,
+				// otherwise an extra replacement pod will be created.
+				delete(tc.Status.TiFlash.FailureStores, key)
+			}
+		}
+	}
 }
 
 func ComponentSetMemberDeleted(context *ComponentContext, pdName string) {
