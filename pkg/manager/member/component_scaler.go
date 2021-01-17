@@ -208,9 +208,7 @@ func componentTiKVScaleIn(context *ComponentContext, oldSet *apps.StatefulSet, n
 
 	klog.Infof("scaling in tikv statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
 	// We need remove member from cluster before reducing statefulset replicas
-	var podName string
-
-	podName = ordinalPodName(v1alpha1.TiKVMemberType, tcName, ordinal)
+	podName := ordinalPodName(v1alpha1.TiKVMemberType, tcName, ordinal)
 	pod, err := dependencies.PodLister.Pods(ns).Get(podName)
 	if err != nil {
 		return fmt.Errorf("tikvScaler.ScaleIn: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
