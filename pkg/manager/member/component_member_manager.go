@@ -31,6 +31,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -768,272 +769,24 @@ func ComponentStatefulSetIsUpgrading(set *apps.StatefulSet, context *ComponentCo
 }
 
 func ComponentGetNewSetForTidbCluster(context *ComponentContext, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
-	tc := context.tc
+	component := context.component
 
-	ns := tc.Namespace
-	tcName := tc.Name
-	basePDSpec := tc.BasePDSpec()
-	instanceName := tc.GetInstanceName()
-	pdConfigMap := controller.MemberConfigMapName(tc, v1alpha1.PDMemberType)
-	if cm != nil {
-		pdConfigMap = cm.Name
-	}
-
-	clusterVersionGE4, err := clusterVersionGreaterThanOrEqualTo4(tc.PDVersion())
-	if err != nil {
-		klog.V(4).Infof("cluster version: %s is not semantic versioning compatible", tc.PDVersion())
-	}
-
-	annMount, annVolume := annotationsMountVolume()
-	volMounts := []corev1.VolumeMount{
-		annMount,
-		{Name: "config", ReadOnly: true, MountPath: "/etc/pd"},
-		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
-		{Name: v1alpha1.PDMemberType.String(), MountPath: pdDataVolumeMountPath},
-	}
-	if tc.IsTLSClusterEnabled() {
-		volMounts = append(volMounts, corev1.VolumeMount{
-			Name: "pd-tls", ReadOnly: true, MountPath: "/var/lib/pd-tls",
-		})
-		if tc.Spec.PD.MountClusterClientSecret != nil && *tc.Spec.PD.MountClusterClientSecret {
-			volMounts = append(volMounts, corev1.VolumeMount{
-				Name: util.ClusterClientVolName, ReadOnly: true, MountPath: util.ClusterClientTLSPath,
-			})
-		}
-	}
-	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
-		volMounts = append(volMounts, corev1.VolumeMount{
-			Name: "tidb-client-tls", ReadOnly: true, MountPath: tidbClientCertPath,
-		})
+	switch component {
+	case label.PDLabelVal:
+		return componentPDGetNewSetForTiDBCluster(context, cm)
+	case label.TiKVLabelVal:
+		return componentTiKVGetNewSetForTiDBCluster(context, cm)
+	case label.TiFlashLabelVal:
+		return componentTiFlashGetNewSetForTiDBCluster(context, cm)
+	case label.TiDBLabelVal:
+		return componentTiDBGetNewSetForTiDBCluster(context, cm)
+	case label.TiCDCLabelVal:
+		return componentTiCDCGetNewSetForTiDBCluster(context, cm)
+	case label.PumpLabelVal:
+		return componentPumpGetNewSetForTiDBCluster(context, cm)
 	}
 
-	vols := []corev1.Volume{
-		annVolume,
-		{Name: "config",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: pdConfigMap,
-					},
-					Items: []corev1.KeyToPath{{Key: "config-file", Path: "pd.toml"}},
-				},
-			},
-		},
-		{Name: "startup-script",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: pdConfigMap,
-					},
-					Items: []corev1.KeyToPath{{Key: "startup-script", Path: "pd_start_script.sh"}},
-				},
-			},
-		},
-	}
-	if tc.IsTLSClusterEnabled() {
-		vols = append(vols, corev1.Volume{
-			Name: "pd-tls", VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: util.ClusterTLSSecretName(tc.Name, label.PDLabelVal),
-				},
-			},
-		})
-		if tc.Spec.PD.MountClusterClientSecret != nil && *tc.Spec.PD.MountClusterClientSecret {
-			vols = append(vols, corev1.Volume{
-				Name: util.ClusterClientVolName, VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: util.ClusterClientTLSSecretName(tc.Name),
-					},
-				},
-			})
-		}
-	}
-	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
-		clientSecretName := util.TiDBClientTLSSecretName(tc.Name)
-		if tc.Spec.PD.TLSClientSecretName != nil {
-			clientSecretName = *tc.Spec.PD.TLSClientSecretName
-		}
-		vols = append(vols, corev1.Volume{
-			Name: "tidb-client-tls", VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: clientSecretName,
-				},
-			},
-		})
-	}
-	// handle StorageVolumes and AdditionalVolumeMounts in ComponentSpec
-	storageVolMounts, additionalPVCs := util.BuildStorageVolumeAndVolumeMount(tc.Spec.PD.StorageVolumes, tc.Spec.PD.StorageClassName, v1alpha1.PDMemberType)
-	volMounts = append(volMounts, storageVolMounts...)
-	volMounts = append(volMounts, tc.Spec.PD.AdditionalVolumeMounts...)
-
-	sysctls := "sysctl -w"
-	var initContainers []corev1.Container
-	if basePDSpec.Annotations() != nil {
-		init, ok := basePDSpec.Annotations()[label.AnnSysctlInit]
-		if ok && (init == label.AnnSysctlInitVal) {
-			if basePDSpec.PodSecurityContext() != nil && len(basePDSpec.PodSecurityContext().Sysctls) > 0 {
-				for _, sysctl := range basePDSpec.PodSecurityContext().Sysctls {
-					sysctls = sysctls + fmt.Sprintf(" %s=%s", sysctl.Name, sysctl.Value)
-				}
-				privileged := true
-				initContainers = append(initContainers, corev1.Container{
-					Name:  "init",
-					Image: tc.HelperImage(),
-					Command: []string{
-						"sh",
-						"-c",
-						sysctls,
-					},
-					SecurityContext: &corev1.SecurityContext{
-						Privileged: &privileged,
-					},
-					// Init container resourceRequirements should be equal to app container.
-					// Scheduling is done based on effective requests/limits,
-					// which means init containers can reserve resources for
-					// initialization that are not used during the life of the Pod.
-					// ref:https://kubernetes.io/docs/concepts/workloads/pods/init-containers/#resources
-					Resources: controller.ContainerResource(tc.Spec.PD.ResourceRequirements),
-				})
-			}
-		}
-	}
-	// Init container is only used for the case where allowed-unsafe-sysctls
-	// cannot be enabled for kubelet, so clean the sysctl in statefulset
-	// SecurityContext if init container is enabled
-	podSecurityContext := basePDSpec.PodSecurityContext().DeepCopy()
-	if len(initContainers) > 0 {
-		podSecurityContext.Sysctls = []corev1.Sysctl{}
-	}
-
-	storageRequest, err := controller.ParseStorageRequest(tc.Spec.PD.Requests)
-	if err != nil {
-		return nil, fmt.Errorf("cannot parse storage request for PD, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
-	}
-
-	pdLabel := label.New().Instance(instanceName).PD()
-	setName := controller.PDMemberName(tcName)
-	podAnnotations := CombineAnnotations(controller.AnnProm(2379), basePDSpec.Annotations())
-	stsAnnotations := getStsAnnotations(tc.Annotations, label.PDLabelVal)
-
-	pdContainer := corev1.Container{
-		Name:            v1alpha1.PDMemberType.String(),
-		Image:           tc.PDImage(),
-		ImagePullPolicy: basePDSpec.ImagePullPolicy(),
-		Command:         []string{"/bin/sh", "/usr/local/bin/pd_start_script.sh"},
-		Ports: []corev1.ContainerPort{
-			{
-				Name:          "server",
-				ContainerPort: int32(2380),
-				Protocol:      corev1.ProtocolTCP,
-			},
-			{
-				Name:          "client",
-				ContainerPort: int32(2379),
-				Protocol:      corev1.ProtocolTCP,
-			},
-		},
-		VolumeMounts: volMounts,
-		Resources:    controller.ContainerResource(tc.Spec.PD.ResourceRequirements),
-	}
-	env := []corev1.EnvVar{
-		{
-			Name: "NAMESPACE",
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: "metadata.namespace",
-				},
-			},
-		},
-		{
-			Name:  "PEER_SERVICE_NAME",
-			Value: controller.PDPeerMemberName(tcName),
-		},
-		{
-			Name:  "SERVICE_NAME",
-			Value: controller.PDMemberName(tcName),
-		},
-		{
-			Name:  "SET_NAME",
-			Value: setName,
-		},
-		{
-			Name:  "TZ",
-			Value: tc.Spec.Timezone,
-		},
-	}
-
-	podSpec := basePDSpec.BuildPodSpec()
-	if basePDSpec.HostNetwork() {
-		podSpec.DNSPolicy = corev1.DNSClusterFirstWithHostNet
-		env = append(env, corev1.EnvVar{
-			Name: "POD_NAME",
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: "metadata.name",
-				},
-			},
-		})
-	}
-	pdContainer.Env = util.AppendEnv(env, basePDSpec.Env())
-	podSpec.Volumes = append(vols, basePDSpec.AdditionalVolumes()...)
-	podSpec.Containers = append([]corev1.Container{pdContainer}, basePDSpec.AdditionalContainers()...)
-	podSpec.ServiceAccountName = tc.Spec.PD.ServiceAccount
-	if podSpec.ServiceAccountName == "" {
-		podSpec.ServiceAccountName = tc.Spec.ServiceAccount
-	}
-	podSpec.SecurityContext = podSecurityContext
-	podSpec.InitContainers = initContainers
-
-	updateStrategy := apps.StatefulSetUpdateStrategy{}
-	if basePDSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
-		updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
-	} else {
-		updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
-		updateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{
-			Partition: pointer.Int32Ptr(tc.PDStsDesiredReplicas()),
-		}
-	}
-
-	pdSet := &apps.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            setName,
-			Namespace:       ns,
-			Labels:          pdLabel.Labels(),
-			Annotations:     stsAnnotations,
-			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
-		},
-		Spec: apps.StatefulSetSpec{
-			Replicas: pointer.Int32Ptr(tc.PDStsDesiredReplicas()),
-			Selector: pdLabel.LabelSelector(),
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels:      pdLabel.Labels(),
-					Annotations: podAnnotations,
-				},
-				Spec: podSpec,
-			},
-			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: v1alpha1.PDMemberType.String(),
-					},
-					Spec: corev1.PersistentVolumeClaimSpec{
-						AccessModes: []corev1.PersistentVolumeAccessMode{
-							corev1.ReadWriteOnce,
-						},
-						StorageClassName: tc.Spec.PD.StorageClassName,
-						Resources:        storageRequest,
-					},
-				},
-			},
-			ServiceName:         controller.PDPeerMemberName(tcName),
-			PodManagementPolicy: apps.ParallelPodManagement,
-			UpdateStrategy:      updateStrategy,
-		},
-	}
-
-	pdSet.Spec.VolumeClaimTemplates = append(pdSet.Spec.VolumeClaimTemplates, additionalPVCs...)
-	return pdSet, nil
+	return &apps.StatefulSet{}, nil
 }
 
 // ComponentSyncConfigMap syncs the configmap
@@ -1913,4 +1666,1327 @@ func syncComponentImage(context *ComponentContext, set *apps.StatefulSet) error 
 		}
 	}
 	return nil
+}
+
+func componentPDGetNewSetForTiDBCluster(context *ComponentContext, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
+	tc := context.tc
+	ns := tc.Namespace
+	tcName := tc.Name
+	basePDSpec := tc.BasePDSpec()
+	instanceName := tc.GetInstanceName()
+	pdConfigMap := controller.MemberConfigMapName(tc, v1alpha1.PDMemberType)
+	if cm != nil {
+		pdConfigMap = cm.Name
+	}
+
+	clusterVersionGE4, err := clusterVersionGreaterThanOrEqualTo4(tc.PDVersion())
+	if err != nil {
+		klog.V(4).Infof("cluster version: %s is not semantic versioning compatible", tc.PDVersion())
+	}
+
+	annMount, annVolume := annotationsMountVolume()
+	volMounts := []corev1.VolumeMount{
+		annMount,
+		{Name: "config", ReadOnly: true, MountPath: "/etc/pd"},
+		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
+		{Name: v1alpha1.PDMemberType.String(), MountPath: pdDataVolumeMountPath},
+	}
+	if tc.IsTLSClusterEnabled() {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: "pd-tls", ReadOnly: true, MountPath: "/var/lib/pd-tls",
+		})
+		if tc.Spec.PD.MountClusterClientSecret != nil && *tc.Spec.PD.MountClusterClientSecret {
+			volMounts = append(volMounts, corev1.VolumeMount{
+				Name: util.ClusterClientVolName, ReadOnly: true, MountPath: util.ClusterClientTLSPath,
+			})
+		}
+	}
+	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: "tidb-client-tls", ReadOnly: true, MountPath: tidbClientCertPath,
+		})
+	}
+
+	vols := []corev1.Volume{
+		annVolume,
+		{Name: "config",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: pdConfigMap,
+					},
+					Items: []corev1.KeyToPath{{Key: "config-file", Path: "pd.toml"}},
+				},
+			},
+		},
+		{Name: "startup-script",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: pdConfigMap,
+					},
+					Items: []corev1.KeyToPath{{Key: "startup-script", Path: "pd_start_script.sh"}},
+				},
+			},
+		},
+	}
+	if tc.IsTLSClusterEnabled() {
+		vols = append(vols, corev1.Volume{
+			Name: "pd-tls", VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.ClusterTLSSecretName(tc.Name, label.PDLabelVal),
+				},
+			},
+		})
+		if tc.Spec.PD.MountClusterClientSecret != nil && *tc.Spec.PD.MountClusterClientSecret {
+			vols = append(vols, corev1.Volume{
+				Name: util.ClusterClientVolName, VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: util.ClusterClientTLSSecretName(tc.Name),
+					},
+				},
+			})
+		}
+	}
+	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
+		clientSecretName := util.TiDBClientTLSSecretName(tc.Name)
+		if tc.Spec.PD.TLSClientSecretName != nil {
+			clientSecretName = *tc.Spec.PD.TLSClientSecretName
+		}
+		vols = append(vols, corev1.Volume{
+			Name: "tidb-client-tls", VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: clientSecretName,
+				},
+			},
+		})
+	}
+	// handle StorageVolumes and AdditionalVolumeMounts in ComponentSpec
+	storageVolMounts, additionalPVCs := util.BuildStorageVolumeAndVolumeMount(tc.Spec.PD.StorageVolumes, tc.Spec.PD.StorageClassName, v1alpha1.PDMemberType)
+	volMounts = append(volMounts, storageVolMounts...)
+	volMounts = append(volMounts, tc.Spec.PD.AdditionalVolumeMounts...)
+
+	sysctls := "sysctl -w"
+	var initContainers []corev1.Container
+	if basePDSpec.Annotations() != nil {
+		init, ok := basePDSpec.Annotations()[label.AnnSysctlInit]
+		if ok && (init == label.AnnSysctlInitVal) {
+			if basePDSpec.PodSecurityContext() != nil && len(basePDSpec.PodSecurityContext().Sysctls) > 0 {
+				for _, sysctl := range basePDSpec.PodSecurityContext().Sysctls {
+					sysctls = sysctls + fmt.Sprintf(" %s=%s", sysctl.Name, sysctl.Value)
+				}
+				privileged := true
+				initContainers = append(initContainers, corev1.Container{
+					Name:  "init",
+					Image: tc.HelperImage(),
+					Command: []string{
+						"sh",
+						"-c",
+						sysctls,
+					},
+					SecurityContext: &corev1.SecurityContext{
+						Privileged: &privileged,
+					},
+					// Init container resourceRequirements should be equal to app container.
+					// Scheduling is done based on effective requests/limits,
+					// which means init containers can reserve resources for
+					// initialization that are not used during the life of the Pod.
+					// ref:https://kubernetes.io/docs/concepts/workloads/pods/init-containers/#resources
+					Resources: controller.ContainerResource(tc.Spec.PD.ResourceRequirements),
+				})
+			}
+		}
+	}
+	// Init container is only used for the case where allowed-unsafe-sysctls
+	// cannot be enabled for kubelet, so clean the sysctl in statefulset
+	// SecurityContext if init container is enabled
+	podSecurityContext := basePDSpec.PodSecurityContext().DeepCopy()
+	if len(initContainers) > 0 {
+		podSecurityContext.Sysctls = []corev1.Sysctl{}
+	}
+
+	storageRequest, err := controller.ParseStorageRequest(tc.Spec.PD.Requests)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse storage request for PD, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
+	}
+
+	pdLabel := label.New().Instance(instanceName).PD()
+	setName := controller.PDMemberName(tcName)
+	podAnnotations := CombineAnnotations(controller.AnnProm(2379), basePDSpec.Annotations())
+	stsAnnotations := getStsAnnotations(tc.Annotations, label.PDLabelVal)
+
+	pdContainer := corev1.Container{
+		Name:            v1alpha1.PDMemberType.String(),
+		Image:           tc.PDImage(),
+		ImagePullPolicy: basePDSpec.ImagePullPolicy(),
+		Command:         []string{"/bin/sh", "/usr/local/bin/pd_start_script.sh"},
+		Ports: []corev1.ContainerPort{
+			{
+				Name:          "server",
+				ContainerPort: int32(2380),
+				Protocol:      corev1.ProtocolTCP,
+			},
+			{
+				Name:          "client",
+				ContainerPort: int32(2379),
+				Protocol:      corev1.ProtocolTCP,
+			},
+		},
+		VolumeMounts: volMounts,
+		Resources:    controller.ContainerResource(tc.Spec.PD.ResourceRequirements),
+	}
+	env := []corev1.EnvVar{
+		{
+			Name: "NAMESPACE",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.namespace",
+				},
+			},
+		},
+		{
+			Name:  "PEER_SERVICE_NAME",
+			Value: controller.PDPeerMemberName(tcName),
+		},
+		{
+			Name:  "SERVICE_NAME",
+			Value: controller.PDMemberName(tcName),
+		},
+		{
+			Name:  "SET_NAME",
+			Value: setName,
+		},
+		{
+			Name:  "TZ",
+			Value: tc.Spec.Timezone,
+		},
+	}
+
+	podSpec := basePDSpec.BuildPodSpec()
+	if basePDSpec.HostNetwork() {
+		podSpec.DNSPolicy = corev1.DNSClusterFirstWithHostNet
+		env = append(env, corev1.EnvVar{
+			Name: "POD_NAME",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.name",
+				},
+			},
+		})
+	}
+	pdContainer.Env = util.AppendEnv(env, basePDSpec.Env())
+	podSpec.Volumes = append(vols, basePDSpec.AdditionalVolumes()...)
+	podSpec.Containers = append([]corev1.Container{pdContainer}, basePDSpec.AdditionalContainers()...)
+	podSpec.ServiceAccountName = tc.Spec.PD.ServiceAccount
+	if podSpec.ServiceAccountName == "" {
+		podSpec.ServiceAccountName = tc.Spec.ServiceAccount
+	}
+	podSpec.SecurityContext = podSecurityContext
+	podSpec.InitContainers = initContainers
+
+	updateStrategy := apps.StatefulSetUpdateStrategy{}
+	if basePDSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
+		updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
+	} else {
+		updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
+		updateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{
+			Partition: pointer.Int32Ptr(tc.PDStsDesiredReplicas()),
+		}
+	}
+
+	pdSet := &apps.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            setName,
+			Namespace:       ns,
+			Labels:          pdLabel.Labels(),
+			Annotations:     stsAnnotations,
+			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
+		},
+		Spec: apps.StatefulSetSpec{
+			Replicas: pointer.Int32Ptr(tc.PDStsDesiredReplicas()),
+			Selector: pdLabel.LabelSelector(),
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels:      pdLabel.Labels(),
+					Annotations: podAnnotations,
+				},
+				Spec: podSpec,
+			},
+			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: v1alpha1.PDMemberType.String(),
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						AccessModes: []corev1.PersistentVolumeAccessMode{
+							corev1.ReadWriteOnce,
+						},
+						StorageClassName: tc.Spec.PD.StorageClassName,
+						Resources:        storageRequest,
+					},
+				},
+			},
+			ServiceName:         controller.PDPeerMemberName(tcName),
+			PodManagementPolicy: apps.ParallelPodManagement,
+			UpdateStrategy:      updateStrategy,
+		},
+	}
+
+	pdSet.Spec.VolumeClaimTemplates = append(pdSet.Spec.VolumeClaimTemplates, additionalPVCs...)
+	return pdSet, nil
+}
+
+func componentTiKVGetNewSetForTiDBCluster(context *ComponentContext, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
+	tc := context.tc
+
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	baseTiKVSpec := tc.BaseTiKVSpec()
+
+	tikvConfigMap := controller.MemberConfigMapName(tc, v1alpha1.TiKVMemberType)
+	if cm != nil {
+		tikvConfigMap = cm.Name
+	}
+
+	annoMount, annoVolume := annotationsMountVolume()
+	volMounts := []corev1.VolumeMount{
+		annoMount,
+		{Name: v1alpha1.TiKVMemberType.String(), MountPath: tikvDataVolumeMountPath},
+		{Name: "config", ReadOnly: true, MountPath: "/etc/tikv"},
+		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
+	}
+	volMounts = append(volMounts, tc.Spec.TiKV.AdditionalVolumeMounts...)
+	if tc.IsTLSClusterEnabled() {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: "tikv-tls", ReadOnly: true, MountPath: "/var/lib/tikv-tls",
+		})
+		if tc.Spec.TiKV.MountClusterClientSecret != nil && *tc.Spec.TiKV.MountClusterClientSecret {
+			volMounts = append(volMounts, corev1.VolumeMount{
+				Name: util.ClusterClientVolName, ReadOnly: true, MountPath: util.ClusterClientTLSPath,
+			})
+		}
+	}
+
+	vols := []corev1.Volume{
+		annoVolume,
+		{Name: "config", VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: tikvConfigMap,
+				},
+				Items: []corev1.KeyToPath{{Key: "config-file", Path: "tikv.toml"}},
+			}},
+		},
+		{Name: "startup-script", VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: tikvConfigMap,
+				},
+				Items: []corev1.KeyToPath{{Key: "startup-script", Path: "tikv_start_script.sh"}},
+			}},
+		},
+	}
+	if tc.IsTLSClusterEnabled() {
+		vols = append(vols, corev1.Volume{
+			Name: "tikv-tls", VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.ClusterTLSSecretName(tc.Name, label.TiKVLabelVal),
+				},
+			},
+		})
+		if tc.Spec.TiKV.MountClusterClientSecret != nil && *tc.Spec.TiKV.MountClusterClientSecret {
+			vols = append(vols, corev1.Volume{
+				Name: util.ClusterClientVolName, VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: util.ClusterClientTLSSecretName(tc.Name),
+					},
+				},
+			})
+		}
+	}
+	// handle StorageVolumes and AdditionalVolumeMounts in ComponentSpec
+	storageVolMounts, additionalPVCs := util.BuildStorageVolumeAndVolumeMount(tc.Spec.TiKV.StorageVolumes, tc.Spec.TiKV.StorageClassName, v1alpha1.TiKVMemberType)
+	volMounts = append(volMounts, storageVolMounts...)
+
+	sysctls := "sysctl -w"
+	var initContainers []corev1.Container
+	if baseTiKVSpec.Annotations() != nil {
+		init, ok := baseTiKVSpec.Annotations()[label.AnnSysctlInit]
+		if ok && (init == label.AnnSysctlInitVal) {
+			if baseTiKVSpec.PodSecurityContext() != nil && len(baseTiKVSpec.PodSecurityContext().Sysctls) > 0 {
+				for _, sysctl := range baseTiKVSpec.PodSecurityContext().Sysctls {
+					sysctls = sysctls + fmt.Sprintf(" %s=%s", sysctl.Name, sysctl.Value)
+				}
+				privileged := true
+				initContainers = append(initContainers, corev1.Container{
+					Name:  "init",
+					Image: tc.HelperImage(),
+					Command: []string{
+						"sh",
+						"-c",
+						sysctls,
+					},
+					SecurityContext: &corev1.SecurityContext{
+						Privileged: &privileged,
+					},
+					// Init container resourceRequirements should be equal to app container.
+					// Scheduling is done based on effective requests/limits,
+					// which means init containers can reserve resources for
+					// initialization that are not used during the life of the Pod.
+					// ref:https://kubernetes.io/docs/concepts/workloads/pods/init-containers/#resources
+					Resources: controller.ContainerResource(tc.Spec.TiKV.ResourceRequirements),
+				})
+			}
+		}
+	}
+	// Init container is only used for the case where allowed-unsafe-sysctls
+	// cannot be enabled for kubelet, so clean the sysctl in statefulset
+	// SecurityContext if init container is enabled
+	podSecurityContext := baseTiKVSpec.PodSecurityContext().DeepCopy()
+	if len(initContainers) > 0 {
+		podSecurityContext.Sysctls = []corev1.Sysctl{}
+	}
+
+	storageRequest, err := controller.ParseStorageRequest(tc.Spec.TiKV.Requests)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse storage request for tikv, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
+	}
+
+	tikvLabel := labelTiKV(tc)
+	setName := controller.TiKVMemberName(tcName)
+	podAnnotations := CombineAnnotations(controller.AnnProm(20180), baseTiKVSpec.Annotations())
+	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiKVLabelVal)
+	capacity := controller.TiKVCapacity(tc.Spec.TiKV.Limits)
+	headlessSvcName := controller.TiKVPeerMemberName(tcName)
+
+	env := []corev1.EnvVar{
+		{
+			Name: "NAMESPACE",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.namespace",
+				},
+			},
+		},
+		{
+			Name:  "CLUSTER_NAME",
+			Value: tcName,
+		},
+		{
+			Name:  "HEADLESS_SERVICE_NAME",
+			Value: headlessSvcName,
+		},
+		{
+			Name:  "CAPACITY",
+			Value: capacity,
+		},
+		{
+			Name:  "TZ",
+			Value: tc.Spec.Timezone,
+		},
+	}
+	tikvContainer := corev1.Container{
+		Name:            v1alpha1.TiKVMemberType.String(),
+		Image:           tc.TiKVImage(),
+		ImagePullPolicy: baseTiKVSpec.ImagePullPolicy(),
+		Command:         []string{"/bin/sh", "/usr/local/bin/tikv_start_script.sh"},
+		SecurityContext: &corev1.SecurityContext{
+			Privileged: tc.TiKVContainerPrivilege(),
+		},
+		Ports: []corev1.ContainerPort{
+			{
+				Name:          "server",
+				ContainerPort: int32(20160),
+				Protocol:      corev1.ProtocolTCP,
+			},
+		},
+		VolumeMounts: volMounts,
+		Resources:    controller.ContainerResource(tc.Spec.TiKV.ResourceRequirements),
+	}
+	podSpec := baseTiKVSpec.BuildPodSpec()
+	if baseTiKVSpec.HostNetwork() {
+		podSpec.DNSPolicy = corev1.DNSClusterFirstWithHostNet
+		env = append(env, corev1.EnvVar{
+			Name: "POD_NAME",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.name",
+				},
+			},
+		})
+	}
+	tikvContainer.Env = util.AppendEnv(env, baseTiKVSpec.Env())
+	podSpec.Volumes = append(vols, baseTiKVSpec.AdditionalVolumes()...)
+	podSpec.SecurityContext = podSecurityContext
+	podSpec.InitContainers = initContainers
+	podSpec.Containers = append([]corev1.Container{tikvContainer}, baseTiKVSpec.AdditionalContainers()...)
+	podSpec.ServiceAccountName = tc.Spec.TiKV.ServiceAccount
+	if podSpec.ServiceAccountName == "" {
+		podSpec.ServiceAccountName = tc.Spec.ServiceAccount
+	}
+
+	updateStrategy := apps.StatefulSetUpdateStrategy{}
+	if baseTiKVSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
+		updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
+	} else {
+		updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
+		updateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{
+			Partition: pointer.Int32Ptr(tc.TiKVStsDesiredReplicas()),
+		}
+	}
+
+	tikvset := &apps.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            setName,
+			Namespace:       ns,
+			Labels:          tikvLabel.Labels(),
+			Annotations:     stsAnnotations,
+			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
+		},
+		Spec: apps.StatefulSetSpec{
+			Replicas: pointer.Int32Ptr(tc.TiKVStsDesiredReplicas()),
+			Selector: tikvLabel.LabelSelector(),
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels:      tikvLabel.Labels(),
+					Annotations: podAnnotations,
+				},
+				Spec: podSpec,
+			},
+			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+				util.VolumeClaimTemplate(storageRequest, v1alpha1.TiKVMemberType.String(), tc.Spec.TiKV.StorageClassName),
+			},
+			ServiceName:         headlessSvcName,
+			PodManagementPolicy: apps.ParallelPodManagement,
+			UpdateStrategy:      updateStrategy,
+		},
+	}
+
+	tikvset.Spec.VolumeClaimTemplates = append(tikvset.Spec.VolumeClaimTemplates, additionalPVCs...)
+	return tikvset, nil
+}
+
+func componentTiFlashGetNewSetForTiDBCluster(context *ComponentContext, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
+	tc := context.tc
+
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	baseTiFlashSpec := tc.BaseTiFlashSpec()
+	spec := tc.Spec.TiFlash
+
+	tiflashConfigMap := controller.MemberConfigMapName(tc, v1alpha1.TiFlashMemberType)
+	if cm != nil {
+		tiflashConfigMap = cm.Name
+	}
+
+	// This should not happen as we have validaton for this field
+	if len(spec.StorageClaims) < 1 {
+		return nil, fmt.Errorf("storageClaims should be configured at least one item for tiflash, tidbcluster %s/%s", tc.Namespace, tc.Name)
+	}
+	pvcs, err := flashVolumeClaimTemplate(tc.Spec.TiFlash.StorageClaims)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse storage request for tiflash.StorageClaims, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
+	}
+	annoMount, annoVolume := annotationsMountVolume()
+	volMounts := []corev1.VolumeMount{
+		annoMount,
+	}
+	for k := range spec.StorageClaims {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: fmt.Sprintf("data%d", k), MountPath: fmt.Sprintf("/data%d", k)})
+	}
+	volMounts = append(volMounts, tc.Spec.TiFlash.AdditionalVolumeMounts...)
+
+	if tc.IsTLSClusterEnabled() {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: tiflashCertVolumeName, ReadOnly: true, MountPath: tiflashCertPath,
+		})
+	}
+
+	vols := []corev1.Volume{
+		annoVolume,
+		{Name: "config", VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: tiflashConfigMap,
+				},
+			}},
+		},
+	}
+
+	if tc.IsTLSClusterEnabled() {
+		vols = append(vols, corev1.Volume{
+			Name: tiflashCertVolumeName, VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.ClusterTLSSecretName(tc.Name, label.TiFlashLabelVal),
+				},
+			},
+		})
+	}
+
+	sysctls := "sysctl -w"
+	var initContainers []corev1.Container
+	if baseTiFlashSpec.Annotations() != nil {
+		init, ok := baseTiFlashSpec.Annotations()[label.AnnSysctlInit]
+		if ok && (init == label.AnnSysctlInitVal) {
+			if baseTiFlashSpec.PodSecurityContext() != nil && len(baseTiFlashSpec.PodSecurityContext().Sysctls) > 0 {
+				for _, sysctl := range baseTiFlashSpec.PodSecurityContext().Sysctls {
+					sysctls = sysctls + fmt.Sprintf(" %s=%s", sysctl.Name, sysctl.Value)
+				}
+				privileged := true
+				initContainers = append(initContainers, corev1.Container{
+					Name:  "init",
+					Image: tc.HelperImage(),
+					Command: []string{
+						"sh",
+						"-c",
+						sysctls,
+					},
+					SecurityContext: &corev1.SecurityContext{
+						Privileged: &privileged,
+					},
+					// Init container resourceRequirements should be equal to app container.
+					// Scheduling is done based on effective requests/limits,
+					// which means init containers can reserve resources for
+					// initialization that are not used during the life of the Pod.
+					// ref:https://kubernetes.io/docs/concepts/workloads/pods/init-containers/#resources
+					Resources: controller.ContainerResource(tc.Spec.TiFlash.ResourceRequirements),
+				})
+			}
+		}
+	}
+	// Init container is only used for the case where allowed-unsafe-sysctls
+	// cannot be enabled for kubelet, so clean the sysctl in statefulset
+	// SecurityContext if init container is enabled
+	podSecurityContext := baseTiFlashSpec.PodSecurityContext().DeepCopy()
+	if len(initContainers) > 0 {
+		podSecurityContext.Sysctls = []corev1.Sysctl{}
+	}
+
+	// Append init container for config files initialization
+	initVolMounts := []corev1.VolumeMount{
+		{Name: "data0", MountPath: "/data0"},
+		{Name: "config", ReadOnly: true, MountPath: "/etc/tiflash"},
+	}
+	initEnv := []corev1.EnvVar{
+		{
+			Name: "POD_NAME",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.name",
+				},
+			},
+		},
+	}
+	initContainers = append(initContainers, corev1.Container{
+		Name:  "init",
+		Image: tc.HelperImage(),
+		Command: []string{
+			"sh",
+			"-c",
+			"set -ex;ordinal=`echo ${POD_NAME} | awk -F- '{print $NF}'`;sed s/POD_NUM/${ordinal}/g /etc/tiflash/config_templ.toml > /data0/config.toml;sed s/POD_NUM/${ordinal}/g /etc/tiflash/proxy_templ.toml > /data0/proxy.toml",
+		},
+		Env:          initEnv,
+		VolumeMounts: initVolMounts,
+	})
+
+	tiflashLabel := labelTiFlash(tc)
+	setName := controller.TiFlashMemberName(tcName)
+	podAnnotations := CombineAnnotations(controller.AnnProm(8234), baseTiFlashSpec.Annotations())
+	podAnnotations = CombineAnnotations(controller.AnnAdditionalProm("tiflash.proxy", 20292), podAnnotations)
+	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiFlashLabelVal)
+	capacity := controller.TiKVCapacity(tc.Spec.TiFlash.Limits)
+	headlessSvcName := controller.TiFlashPeerMemberName(tcName)
+
+	env := []corev1.EnvVar{
+		{
+			Name: "NAMESPACE",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.namespace",
+				},
+			},
+		},
+		{
+			Name:  "CLUSTER_NAME",
+			Value: tcName,
+		},
+		{
+			Name:  "HEADLESS_SERVICE_NAME",
+			Value: headlessSvcName,
+		},
+		{
+			Name:  "CAPACITY",
+			Value: capacity,
+		},
+		{
+			Name:  "TZ",
+			Value: tc.Timezone(),
+		},
+	}
+	tiflashContainer := corev1.Container{
+		Name:            v1alpha1.TiFlashMemberType.String(),
+		Image:           tc.TiFlashImage(),
+		ImagePullPolicy: baseTiFlashSpec.ImagePullPolicy(),
+		Command:         []string{"/bin/sh", "-c", "/tiflash/tiflash server --config-file /data0/config.toml"},
+		SecurityContext: &corev1.SecurityContext{
+			Privileged: tc.TiFlashContainerPrivilege(),
+		},
+		Ports: []corev1.ContainerPort{
+			{
+				Name:          "tiflash",
+				ContainerPort: int32(3930),
+				Protocol:      corev1.ProtocolTCP,
+			},
+			{
+				Name:          "proxy",
+				ContainerPort: int32(20170),
+				Protocol:      corev1.ProtocolTCP,
+			},
+			{
+				Name:          "tcp",
+				ContainerPort: int32(9000),
+				Protocol:      corev1.ProtocolTCP,
+			},
+			{
+				Name:          "http",
+				ContainerPort: int32(8123),
+				Protocol:      corev1.ProtocolTCP,
+			},
+			{
+				Name:          "internal",
+				ContainerPort: int32(9009),
+				Protocol:      corev1.ProtocolTCP,
+			},
+			{
+				Name:          "metrics",
+				ContainerPort: int32(8234),
+				Protocol:      corev1.ProtocolTCP,
+			},
+		},
+		VolumeMounts: volMounts,
+		Resources:    controller.ContainerResource(tc.Spec.TiFlash.ResourceRequirements),
+	}
+	podSpec := baseTiFlashSpec.BuildPodSpec()
+	if baseTiFlashSpec.HostNetwork() {
+		podSpec.DNSPolicy = corev1.DNSClusterFirstWithHostNet
+		env = append(env, corev1.EnvVar{
+			Name: "POD_NAME",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.name",
+				},
+			},
+		})
+	}
+	tiflashContainer.Env = util.AppendEnv(env, baseTiFlashSpec.Env())
+	podSpec.Volumes = append(vols, baseTiFlashSpec.AdditionalVolumes()...)
+	podSpec.SecurityContext = podSecurityContext
+	podSpec.InitContainers = initContainers
+	containers, err := buildTiFlashSidecarContainers(tc)
+	if err != nil {
+		return nil, err
+	}
+	podSpec.Containers = append([]corev1.Container{tiflashContainer}, containers...)
+	podSpec.Containers = append(podSpec.Containers, baseTiFlashSpec.AdditionalContainers()...)
+	podSpec.ServiceAccountName = tc.Spec.TiFlash.ServiceAccount
+	if podSpec.ServiceAccountName == "" {
+		podSpec.ServiceAccountName = tc.Spec.ServiceAccount
+	}
+
+	tiflashset := &apps.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            setName,
+			Namespace:       ns,
+			Labels:          tiflashLabel.Labels(),
+			Annotations:     stsAnnotations,
+			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
+		},
+		Spec: apps.StatefulSetSpec{
+			Replicas: pointer.Int32Ptr(tc.TiFlashStsDesiredReplicas()),
+			Selector: tiflashLabel.LabelSelector(),
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels:      tiflashLabel.Labels(),
+					Annotations: podAnnotations,
+				},
+				Spec: podSpec,
+			},
+			VolumeClaimTemplates: pvcs,
+			ServiceName:          headlessSvcName,
+			PodManagementPolicy:  apps.ParallelPodManagement,
+			UpdateStrategy: apps.StatefulSetUpdateStrategy{
+				Type: baseTiFlashSpec.StatefulSetUpdateStrategy(),
+			},
+		},
+	}
+	return tiflashset, nil
+}
+
+func componentTiDBGetNewSetForTiDBCluster(context *ComponentContext, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
+	tc := context.tc
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	headlessSvcName := controller.TiDBPeerMemberName(tcName)
+	baseTiDBSpec := tc.BaseTiDBSpec()
+	instanceName := tc.GetInstanceName()
+	tidbConfigMap := controller.MemberConfigMapName(tc, v1alpha1.TiDBMemberType)
+	if cm != nil {
+		tidbConfigMap = cm.Name
+	}
+
+	annoMount, annoVolume := annotationsMountVolume()
+	volMounts := []corev1.VolumeMount{
+		annoMount,
+		{Name: "config", ReadOnly: true, MountPath: "/etc/tidb"},
+		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
+	}
+	if tc.IsTLSClusterEnabled() {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: "tidb-tls", ReadOnly: true, MountPath: clusterCertPath,
+		})
+	}
+	if tc.Spec.TiDB.IsTLSClientEnabled() {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: "tidb-server-tls", ReadOnly: true, MountPath: serverCertPath,
+		})
+	}
+
+	vols := []corev1.Volume{
+		annoVolume,
+		{Name: "config", VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: tidbConfigMap,
+				},
+				Items: []corev1.KeyToPath{{Key: "config-file", Path: "tidb.toml"}},
+			}},
+		},
+		{Name: "startup-script", VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: tidbConfigMap,
+				},
+				Items: []corev1.KeyToPath{{Key: "startup-script", Path: "tidb_start_script.sh"}},
+			}},
+		},
+	}
+	if tc.IsTLSClusterEnabled() {
+		vols = append(vols, corev1.Volume{
+			Name: "tidb-tls", VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.ClusterTLSSecretName(tcName, label.TiDBLabelVal),
+				},
+			},
+		})
+	}
+	if tc.Spec.TiDB.IsTLSClientEnabled() {
+		secretName := tlsClientSecretName(tc)
+		vols = append(vols, corev1.Volume{
+			Name: "tidb-server-tls", VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: secretName,
+				},
+			},
+		})
+	}
+
+	sysctls := "sysctl -w"
+	var initContainers []corev1.Container
+	if baseTiDBSpec.Annotations() != nil {
+		init, ok := baseTiDBSpec.Annotations()[label.AnnSysctlInit]
+		if ok && (init == label.AnnSysctlInitVal) {
+			if baseTiDBSpec.PodSecurityContext() != nil && len(baseTiDBSpec.PodSecurityContext().Sysctls) > 0 {
+				for _, sysctl := range baseTiDBSpec.PodSecurityContext().Sysctls {
+					sysctls = sysctls + fmt.Sprintf(" %s=%s", sysctl.Name, sysctl.Value)
+				}
+				privileged := true
+				initContainers = append(initContainers, corev1.Container{
+					Name:  "init",
+					Image: tc.HelperImage(),
+					Command: []string{
+						"sh",
+						"-c",
+						sysctls,
+					},
+					SecurityContext: &corev1.SecurityContext{
+						Privileged: &privileged,
+					},
+					// Init container resourceRequirements should be equal to app container.
+					// Scheduling is done based on effective requests/limits,
+					// which means init containers can reserve resources for
+					// initialization that are not used during the life of the Pod.
+					// ref:https://kubernetes.io/docs/concepts/workloads/pods/init-containers/#resources
+					Resources: controller.ContainerResource(tc.Spec.TiDB.ResourceRequirements),
+				})
+			}
+		}
+	}
+	// Init container is only used for the case where allowed-unsafe-sysctls
+	// cannot be enabled for kubelet, so clean the sysctl in statefulset
+	// SecurityContext if init container is enabled
+	podSecurityContext := baseTiDBSpec.PodSecurityContext().DeepCopy()
+	if len(initContainers) > 0 {
+		podSecurityContext.Sysctls = []corev1.Sysctl{}
+	}
+
+	var containers []corev1.Container
+	if tc.Spec.TiDB.ShouldSeparateSlowLog() {
+		// mount a shared volume and tail the slow log to STDOUT using a sidecar.
+		vols = append(vols, corev1.Volume{
+			Name: slowQueryLogVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		})
+		volMounts = append(volMounts, corev1.VolumeMount{Name: slowQueryLogVolumeName, MountPath: slowQueryLogDir})
+		containers = append(containers, corev1.Container{
+			Name:            v1alpha1.SlowLogTailerMemberType.String(),
+			Image:           tc.HelperImage(),
+			ImagePullPolicy: tc.HelperImagePullPolicy(),
+			Resources:       controller.ContainerResource(tc.Spec.TiDB.GetSlowLogTailerSpec().ResourceRequirements),
+			VolumeMounts: []corev1.VolumeMount{
+				{Name: slowQueryLogVolumeName, MountPath: slowQueryLogDir},
+			},
+			Command: []string{
+				"sh",
+				"-c",
+				fmt.Sprintf("touch %s; tail -n0 -F %s;", slowQueryLogFile, slowQueryLogFile),
+			},
+		})
+	}
+
+	slowLogFileEnvVal := ""
+	if tc.Spec.TiDB.ShouldSeparateSlowLog() {
+		slowLogFileEnvVal = slowQueryLogFile
+	}
+	envs := []corev1.EnvVar{
+		{
+			Name:  "CLUSTER_NAME",
+			Value: tc.GetName(),
+		},
+		{
+			Name:  "TZ",
+			Value: tc.Spec.Timezone,
+		},
+		{
+			Name:  "BINLOG_ENABLED",
+			Value: strconv.FormatBool(tc.IsTiDBBinlogEnabled()),
+		},
+		{
+			Name:  "SLOW_LOG_FILE",
+			Value: slowLogFileEnvVal,
+		},
+		{
+			Name: "POD_NAME",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.name",
+				},
+			},
+		},
+		{
+			Name: "NAMESPACE",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.namespace",
+				},
+			},
+		},
+		{
+			Name:  "HEADLESS_SERVICE_NAME",
+			Value: headlessSvcName,
+		},
+	}
+
+	// handle StorageVolumes and AdditionalVolumeMounts in ComponentSpec
+	storageVolMounts, additionalPVCs := util.BuildStorageVolumeAndVolumeMount(tc.Spec.TiDB.StorageVolumes, tc.Spec.TiDB.StorageClassName, v1alpha1.TiDBMemberType)
+	volMounts = append(volMounts, storageVolMounts...)
+	volMounts = append(volMounts, tc.Spec.TiDB.AdditionalVolumeMounts...)
+
+	c := corev1.Container{
+		Name:            v1alpha1.TiDBMemberType.String(),
+		Image:           tc.TiDBImage(),
+		Command:         []string{"/bin/sh", "/usr/local/bin/tidb_start_script.sh"},
+		ImagePullPolicy: baseTiDBSpec.ImagePullPolicy(),
+		Ports: []corev1.ContainerPort{
+			{
+				Name:          "server",
+				ContainerPort: int32(4000),
+				Protocol:      corev1.ProtocolTCP,
+			},
+			{
+				Name:          "status", // pprof, status, metrics
+				ContainerPort: int32(10080),
+				Protocol:      corev1.ProtocolTCP,
+			},
+		},
+		VolumeMounts: volMounts,
+		Resources:    controller.ContainerResource(tc.Spec.TiDB.ResourceRequirements),
+		Env:          util.AppendEnv(envs, baseTiDBSpec.Env()),
+		ReadinessProbe: &corev1.Probe{
+			Handler:             buildTiDBReadinessProbHandler(tc),
+			InitialDelaySeconds: int32(10),
+		},
+	}
+	if tc.Spec.TiDB.Lifecycle != nil {
+		c.Lifecycle = tc.Spec.TiDB.Lifecycle
+	}
+
+	containers = append(containers, c)
+
+	podSpec := baseTiDBSpec.BuildPodSpec()
+	podSpec.Containers = append(containers, baseTiDBSpec.AdditionalContainers()...)
+	podSpec.Volumes = append(vols, baseTiDBSpec.AdditionalVolumes()...)
+	podSpec.SecurityContext = podSecurityContext
+	podSpec.InitContainers = initContainers
+	podSpec.ServiceAccountName = tc.Spec.TiDB.ServiceAccount
+	if podSpec.ServiceAccountName == "" {
+		podSpec.ServiceAccountName = tc.Spec.ServiceAccount
+	}
+
+	if baseTiDBSpec.HostNetwork() {
+		podSpec.DNSPolicy = corev1.DNSClusterFirstWithHostNet
+	}
+
+	tidbLabel := label.New().Instance(instanceName).TiDB()
+	podAnnotations := CombineAnnotations(controller.AnnProm(10080), baseTiDBSpec.Annotations())
+	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiDBLabelVal)
+
+	updateStrategy := apps.StatefulSetUpdateStrategy{}
+	if baseTiDBSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
+		updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
+	} else {
+		updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
+		updateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{
+			Partition: pointer.Int32Ptr(tc.TiDBStsDesiredReplicas()),
+		}
+	}
+
+	tidbSet := &apps.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            controller.TiDBMemberName(tcName),
+			Namespace:       ns,
+			Labels:          tidbLabel.Labels(),
+			Annotations:     stsAnnotations,
+			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
+		},
+		Spec: apps.StatefulSetSpec{
+			Replicas: pointer.Int32Ptr(tc.TiDBStsDesiredReplicas()),
+			Selector: tidbLabel.LabelSelector(),
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels:      tidbLabel.Labels(),
+					Annotations: podAnnotations,
+				},
+				Spec: podSpec,
+			},
+			ServiceName:         controller.TiDBPeerMemberName(tcName),
+			PodManagementPolicy: apps.ParallelPodManagement,
+			UpdateStrategy:      updateStrategy,
+		},
+	}
+
+	tidbSet.Spec.VolumeClaimTemplates = append(tidbSet.Spec.VolumeClaimTemplates, additionalPVCs...)
+	return tidbSet, nil
+}
+
+func componentPumpGetNewSetForTiDBCluster(context *ComponentContext, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
+	tc := context.tc
+
+	spec, ok := tc.BasePumpSpec()
+	if !ok {
+		return nil, nil
+	}
+	objMeta, pumpLabel := getPumpMeta(tc, controller.PumpMemberName)
+	replicas := tc.Spec.Pump.Replicas
+	storageClass := tc.Spec.Pump.StorageClassName
+	podAnnos := CombineAnnotations(controller.AnnProm(8250), spec.Annotations())
+	storageRequest, err := controller.ParseStorageRequest(tc.Spec.Pump.Requests)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse storage request for pump, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
+	}
+	startScript, err := getPumpStartScript(tc)
+	if err != nil {
+		return nil, fmt.Errorf("cannot render start-script for pump, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
+	}
+
+	var envs []corev1.EnvVar
+	if tc.Spec.Pump.SetTimeZone != nil && *tc.Spec.Pump.SetTimeZone {
+		envs = append(envs, corev1.EnvVar{
+			Name:  "TZ",
+			Value: tc.Spec.Timezone,
+		})
+	}
+	if spec.HostNetwork() {
+		// For backward compatibility, set HOSTNAME to POD_NAME in hostNetwork mode
+		envs = append(envs, corev1.EnvVar{
+			Name: "HOSTNAME",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.name",
+				},
+			},
+		})
+	}
+	volumeMounts := []corev1.VolumeMount{
+		{
+			Name:      "data",
+			MountPath: "/data",
+		},
+		{
+			Name:      "config",
+			MountPath: "/etc/pump",
+		},
+	}
+	if tc.IsTLSClusterEnabled() {
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name: pumpCertVolumeMount, ReadOnly: true, MountPath: pumpCertPath,
+		})
+	}
+	containers := []corev1.Container{
+		{
+			Name:            "pump",
+			Image:           *tc.PumpImage(),
+			ImagePullPolicy: spec.ImagePullPolicy(),
+			Command: []string{
+				"/bin/sh",
+				"-c",
+				startScript,
+			},
+			Ports: []corev1.ContainerPort{{
+				Name:          "pump",
+				ContainerPort: 8250,
+			}},
+			Resources:    controller.ContainerResource(tc.Spec.Pump.ResourceRequirements),
+			Env:          util.AppendEnv(envs, spec.Env()),
+			VolumeMounts: volumeMounts,
+		},
+	}
+
+	// Keep backward compatibility for pump created by helm
+	volumes := []corev1.Volume{
+		{
+			Name: "config",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: cm.Name,
+					},
+					Items: []corev1.KeyToPath{
+						{
+							Key:  "pump-config",
+							Path: "pump.toml",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	if tc.IsTLSClusterEnabled() {
+		volumes = append(volumes, corev1.Volume{
+			Name: pumpCertVolumeMount, VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.ClusterTLSSecretName(tc.Name, label.PumpLabelVal),
+				},
+			},
+		})
+	}
+
+	volumeClaims := []corev1.PersistentVolumeClaim{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "data",
+			},
+			Spec: corev1.PersistentVolumeClaimSpec{
+				AccessModes: []corev1.PersistentVolumeAccessMode{
+					corev1.ReadWriteOnce,
+				},
+				StorageClassName: storageClass,
+				Resources:        storageRequest,
+			},
+		},
+	}
+
+	serviceAccountName := tc.Spec.Pump.ServiceAccount
+	if serviceAccountName == "" {
+		serviceAccountName = tc.Spec.ServiceAccount
+	}
+
+	podTemplate := corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: podAnnos,
+			Labels:      pumpLabel,
+		},
+		Spec: corev1.PodSpec{
+			Containers:         containers,
+			ServiceAccountName: serviceAccountName,
+			Volumes:            volumes,
+
+			Affinity:         spec.Affinity(),
+			Tolerations:      spec.Tolerations(),
+			NodeSelector:     spec.NodeSelector(),
+			SchedulerName:    spec.SchedulerName(),
+			SecurityContext:  spec.PodSecurityContext(),
+			HostNetwork:      spec.HostNetwork(),
+			DNSPolicy:        spec.DnsPolicy(),
+			ImagePullSecrets: spec.ImagePullSecrets(),
+		},
+	}
+
+	return &appsv1.StatefulSet{
+		ObjectMeta: objMeta,
+		Spec: appsv1.StatefulSetSpec{
+			Selector:    pumpLabel.LabelSelector(),
+			ServiceName: controller.PumpMemberName(tc.Name),
+			Replicas:    &replicas,
+
+			Template:             podTemplate,
+			VolumeClaimTemplates: volumeClaims,
+			UpdateStrategy: apps.StatefulSetUpdateStrategy{
+				Type: spec.StatefulSetUpdateStrategy(),
+			},
+		},
+	}, nil
+}
+
+func componentTiCDCGetNewSetForTiDBCluster(context *ComponentContext, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
+	tc := context.tc
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	baseTiCDCSpec := tc.BaseTiCDCSpec()
+	ticdcLabel := labelTiCDC(tc)
+	stsName := controller.TiCDCMemberName(tcName)
+	podAnnotations := CombineAnnotations(controller.AnnProm(8301), baseTiCDCSpec.Annotations())
+	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiCDCLabelVal)
+	headlessSvcName := controller.TiCDCPeerMemberName(tcName)
+
+	cmdArgs := []string{"/cdc server", "--addr=0.0.0.0:8301", fmt.Sprintf("--advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc%s:8301", controller.FormatClusterDomain(tc.Spec.ClusterDomain))}
+	cmdArgs = append(cmdArgs, fmt.Sprintf("--gc-ttl=%d", tc.TiCDCGCTTL()))
+	cmdArgs = append(cmdArgs, fmt.Sprintf("--log-file=%s", tc.TiCDCLogFile()))
+	cmdArgs = append(cmdArgs, fmt.Sprintf("--log-level=%s", tc.TiCDCLogLevel()))
+
+	if tc.IsTLSClusterEnabled() {
+		cmdArgs = append(cmdArgs, fmt.Sprintf("--ca=%s", path.Join(ticdcCertPath, corev1.ServiceAccountRootCAKey)))
+		cmdArgs = append(cmdArgs, fmt.Sprintf("--cert=%s", path.Join(ticdcCertPath, corev1.TLSCertKey)))
+		cmdArgs = append(cmdArgs, fmt.Sprintf("--key=%s", path.Join(ticdcCertPath, corev1.TLSPrivateKeyKey)))
+		cmdArgs = append(cmdArgs, fmt.Sprintf("--pd=https://%s-pd:2379", tcName))
+	} else {
+		cmdArgs = append(cmdArgs, fmt.Sprintf("--pd=http://%s-pd:2379", tcName))
+	}
+
+	cmd := strings.Join(cmdArgs, " ")
+
+	envs := []corev1.EnvVar{
+		{
+			Name: "POD_NAME",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.name",
+				},
+			},
+		},
+		{
+			Name: "NAMESPACE",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.namespace",
+				},
+			},
+		},
+		{
+			Name:  "HEADLESS_SERVICE_NAME",
+			Value: headlessSvcName,
+		},
+		{
+			Name:  "TZ",
+			Value: tc.TiCDCTimezone(),
+		},
+	}
+
+	ticdcContainer := corev1.Container{
+		Name:            v1alpha1.TiCDCMemberType.String(),
+		Image:           tc.TiCDCImage(),
+		ImagePullPolicy: baseTiCDCSpec.ImagePullPolicy(),
+		Command:         []string{"/bin/sh", "-c", cmd},
+		Ports: []corev1.ContainerPort{
+			{
+				Name:          "ticdc",
+				ContainerPort: int32(8301),
+				Protocol:      corev1.ProtocolTCP,
+			},
+		},
+		Resources: controller.ContainerResource(tc.Spec.TiCDC.ResourceRequirements),
+		Env:       util.AppendEnv(envs, baseTiCDCSpec.Env()),
+	}
+
+	if tc.IsTLSClusterEnabled() {
+		ticdcContainer.VolumeMounts = []corev1.VolumeMount{
+			{
+				Name:      ticdcCertVolumeMount,
+				ReadOnly:  true,
+				MountPath: ticdcCertPath,
+			},
+			{
+				Name:      util.ClusterClientVolName,
+				ReadOnly:  true,
+				MountPath: util.ClusterClientTLSPath,
+			},
+		}
+	}
+
+	podSpec := baseTiCDCSpec.BuildPodSpec()
+	podSpec.Containers = []corev1.Container{ticdcContainer}
+	podSpec.ServiceAccountName = tc.Spec.TiCDC.ServiceAccount
+	if podSpec.ServiceAccountName == "" {
+		podSpec.ServiceAccountName = tc.Spec.ServiceAccount
+	}
+
+	if tc.IsTLSClusterEnabled() {
+		podSpec.Volumes = []corev1.Volume{
+			{
+				Name: ticdcCertVolumeMount, VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: util.ClusterTLSSecretName(tc.Name, label.TiCDCLabelVal),
+					},
+				},
+			},
+			{
+				Name: util.ClusterClientVolName, VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: util.ClusterClientTLSSecretName(tc.Name),
+					},
+				},
+			},
+		}
+	}
+
+	ticdcSts := &apps.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            stsName,
+			Namespace:       ns,
+			Labels:          ticdcLabel.Labels(),
+			Annotations:     stsAnnotations,
+			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
+		},
+		Spec: apps.StatefulSetSpec{
+			Replicas: pointer.Int32Ptr(tc.TiCDCDeployDesiredReplicas()),
+			Selector: ticdcLabel.LabelSelector(),
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels:      ticdcLabel.Labels(),
+					Annotations: podAnnotations,
+				},
+				Spec: podSpec,
+			},
+			ServiceName:         headlessSvcName,
+			PodManagementPolicy: apps.ParallelPodManagement,
+			UpdateStrategy: apps.StatefulSetUpdateStrategy{
+				Type: baseTiCDCSpec.StatefulSetUpdateStrategy(),
+			},
+		},
+	}
+	return ticdcSts, nil
 }
