@@ -17,12 +17,14 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/Masterminds/semver"
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
+	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -50,13 +52,15 @@ type ComponentContext struct {
 func ComponentSyncStatefulSetForTidbCluster(context *ComponentContext) error {
 	tc := context.tc
 	dependencies := context.dependencies
+	component := context.component
 
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
+	componentMemberName := getComponentMemberName(context)
 
-	oldPDSetTmp, err := dependencies.StatefulSetLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
+	oldPDSetTmp, err := dependencies.StatefulSetLister.StatefulSets(ns).Get(componentMemberName)
 	if err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("syncPDStatefulSetForTidbCluster: fail to get sts %s for cluster %s/%s, error: %s", controller.PDMemberName(tcName), ns, tcName, err)
+		return fmt.Errorf("syncPDStatefulSetForTidbCluster: fail to get sts %s for cluster %s/%s, error: %s", componentMemberName, ns, tcName, err)
 	}
 	setNotExist := errors.IsNotFound(err)
 
@@ -67,7 +71,7 @@ func ComponentSyncStatefulSetForTidbCluster(context *ComponentContext) error {
 	}
 
 	if tc.Spec.Paused {
-		klog.V(4).Infof("tidb cluster %s/%s is paused, skip syncing for pd statefulset", tc.GetNamespace(), tc.GetName())
+		klog.V(4).Infof("tidb cluster %s/%s is paused, skip syncing for %s statefulset", tc.GetNamespace(), tc.GetName(), component)
 		return nil
 	}
 
@@ -75,28 +79,51 @@ func ComponentSyncStatefulSetForTidbCluster(context *ComponentContext) error {
 	if err != nil {
 		return err
 	}
-	newPDSet, err := getNewPDSetForTidbCluster(tc, cm)
+
+	if component == label.TiKVLabelVal {
+		// Recover failed stores if any before generating desired statefulset
+		if len(tc.Status.TiKV.FailureStores) > 0 {
+			ComponentRemoveUndesiredFailures(context)
+		}
+		if len(tc.Status.TiKV.FailureStores) > 0 &&
+			tc.Spec.TiKV.RecoverFailover &&
+			shouldRecover(tc, label.TiKVLabelVal, dependencies.PodLister) {
+			ComponentRecover(context)
+		}
+	}
+
+	newSet, err := ComponentGetNewSetForTidbCluster(context, cm)
 	if err != nil {
 		return err
 	}
 	if setNotExist {
-		err = SetStatefulSetLastAppliedConfigAnnotation(newPDSet)
+		err = SetStatefulSetLastAppliedConfigAnnotation(newSet)
 		if err != nil {
 			return err
 		}
-		if err := dependencies.StatefulSetControl.CreateStatefulSet(tc, newPDSet); err != nil {
+		if err := dependencies.StatefulSetControl.CreateStatefulSet(tc, newSet); err != nil {
 			return err
 		}
-		tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{}
+		switch component {
+		case label.PDLabelVal:
+			tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{}
+		}
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PD cluster running", ns, tcName)
 	}
 
-	// Force update takes precedence over scaling because force upgrade won't take effect when cluster gets stuck at scaling
-	if !tc.Status.PD.Synced && NeedForceUpgrade(tc.Annotations) {
-		tc.Status.PD.Phase = v1alpha1.UpgradePhase
-		setUpgradePartition(newPDSet, 0)
-		errSTS := UpdateStatefulSet(dependencies.StatefulSetControl, tc, newPDSet, oldPDSet)
-		return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd needs force upgrade, %v", ns, tcName, errSTS)
+	switch component {
+	case label.PDLabelVal:
+		// Force update takes precedence over scaling because force upgrade won't take effect when cluster gets stuck at scaling
+		if !tc.Status.PD.Synced && NeedForceUpgrade(tc.Annotations) {
+			tc.Status.PD.Phase = v1alpha1.UpgradePhase
+			setUpgradePartition(newSet, 0)
+			errSTS := UpdateStatefulSet(dependencies.StatefulSetControl, tc, newSet, oldPDSet)
+			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd needs force upgrade, %v", ns, tcName, errSTS)
+		}
+	case label.TiKVLabelVal:
+		if _, err := setStoreLabelsForTiKV(context); err != nil {
+			return err
+		}
 	}
 
 	// Scaling takes precedence over upgrading because:
@@ -104,35 +131,46 @@ func ComponentSyncStatefulSetForTidbCluster(context *ComponentContext) error {
 	//   new replicas
 	// - it's ok to scale in the middle of upgrading (in statefulset controller
 	//   scaling takes precedence over upgrading too)
-	if err := ComponentScale(context, oldPDSet, newPDSet); err != nil {
+	if err := ComponentScale(context, oldPDSet, newSet); err != nil {
 		return err
 	}
 
-	if dependencies.CLIConfig.AutoFailover {
-		if ComponentShouldRecover(context) {
-			ComponentRecover(context)
-		} else if tc.PDAllPodsStarted() && !tc.PDAllMembersReady() || tc.PDAutoFailovering() {
-			if err := ComponentFailover(context); err != nil {
-				return err
+	switch component {
+	case label.PDLabelVal:
+		if dependencies.CLIConfig.AutoFailover {
+			if ComponentShouldRecover(context) {
+				ComponentRecover(context)
+			} else if tc.PDAllPodsStarted() && !tc.PDAllMembersReady() || tc.PDAutoFailovering() {
+				if err := ComponentFailover(context); err != nil {
+					return err
+				}
+			}
+		}
+	case label.TiKVLabelVal:
+		if dependencies.CLIConfig.AutoFailover && tc.Spec.TiKV.MaxFailoverCount != nil {
+			if tc.TiKVAllPodsStarted() && !tc.TiKVAllStoresReady() {
+				if err := ComponentFailover(context); err != nil {
+					return err
+				}
 			}
 		}
 	}
 
-	if !templateEqual(newPDSet, oldPDSet) || tc.Status.PD.Phase == v1alpha1.UpgradePhase {
-		if err := ComponentUpgrade(context, oldPDSet, newPDSet); err != nil {
+	if !templateEqual(newSet, oldPDSet) || tc.Status.PD.Phase == v1alpha1.UpgradePhase {
+		if err := ComponentUpgrade(context, oldPDSet, newSet); err != nil {
 			return err
 		}
 	}
 
-	return UpdateStatefulSet(dependencies.StatefulSetControl, tc, newPDSet, oldPDSet)
+	return UpdateStatefulSet(dependencies.StatefulSetControl, tc, newSet, oldPDSet)
 }
 
 func ComponentSyncTidbClusterStatus(context *ComponentContext, set *apps.StatefulSet) error {
 	tc := context.tc
 	component := context.component
 
+	// skip if not created yet
 	if set == nil {
-		// skip if not created yet
 		return nil
 	}
 
@@ -173,7 +211,7 @@ func ComponentSyncTidbClusterStatus(context *ComponentContext, set *apps.Statefu
 	case label.PDLabelVal:
 		// k8s check
 		pdStatus := tc.Status.PD.Members
-		err = ComponentCollectUnjoinedMembers(context, set, pdStatus)
+		err = collectUnjoinedPDMembers(context, set, pdStatus)
 		if err != nil {
 			return err
 		}
@@ -182,8 +220,6 @@ func ComponentSyncTidbClusterStatus(context *ComponentContext, set *apps.Statefu
 	}
 	return nil
 }
-
-// extras
 
 func ComponentClusterVersionGreaterThanOrEqualTo4(version string) (bool, error) {
 	v, err := semver.NewVersion(version)
@@ -194,7 +230,7 @@ func ComponentClusterVersionGreaterThanOrEqualTo4(version string) (bool, error) 
 	return v.Major() >= 4, nil
 }
 
-func ComponentCollectUnjoinedMembers(context *ComponentContext, set *apps.StatefulSet, pdStatus map[string]v1alpha1.PDMember) error {
+func collectUnjoinedPDMembers(context *ComponentContext, set *apps.StatefulSet, pdStatus map[string]v1alpha1.PDMember) error {
 	tc := context.tc
 	dependencies := context.dependencies
 
@@ -654,23 +690,27 @@ func ComponentStatefulSetIsUpgrading(set *apps.StatefulSet, context *ComponentCo
 		return true, nil
 	}
 	instanceName := tc.GetInstanceName()
-	selector, err := label.New().
-		Instance(instanceName).
-		PD().
-		Selector()
+
+	componentLabel := getComponentLabel(context, instanceName)
+	selector, err := componentLabel.Selector()
+
 	if err != nil {
 		return false, err
 	}
-	pdPods, err := dependencies.PodLister.Pods(tc.GetNamespace()).List(selector)
+	componentPods, err := dependencies.PodLister.Pods(tc.GetNamespace()).List(selector)
 	if err != nil {
 		return false, fmt.Errorf("StatefulSetIsUpgrading: failed to list pods for cluster %s/%s, selector %s, error: %v", tc.GetNamespace(), instanceName, selector, err)
 	}
-	for _, pod := range pdPods {
+
+	for _, pod := range componentPods {
 		revisionHash, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
 		if !exist {
 			return false, nil
 		}
-		if revisionHash != tc.Status.PD.StatefulSet.UpdateRevision {
+
+		componentUpdateRevision := getComponentUpdataRevision(context)
+
+		if revisionHash != componentUpdateRevision {
 			return true, nil
 		}
 	}
@@ -1198,6 +1238,8 @@ func syncComponentPhase(context *ComponentContext, set *apps.StatefulSet) error 
 		desiredReplicas = tc.PDStsDesiredReplicas()
 	case label.TiKVLabelVal:
 		desiredReplicas = tc.TiKVStsDesiredReplicas()
+	case label.TiFlashLabelVal:
+		desiredReplicas = tc.TiFlashStsDesiredReplicas()
 	case label.TiDBLabelVal:
 		desiredReplicas = tc.TiDBStsDesiredReplicas()
 	}
@@ -1207,9 +1249,9 @@ func syncComponentPhase(context *ComponentContext, set *apps.StatefulSet) error 
 		return err
 	}
 
+	// Scaling takes precedence over upgrading.
 	switch component {
-	case label.PDLabelVal, label.TiFlashLabelVal:
-		// Scaling takes precedence over upgrading.
+	case label.PDLabelVal:
 		if desiredReplicas != *set.Spec.Replicas {
 			phase = v1alpha1.ScalePhase
 		} else if upgrading {
@@ -1217,11 +1259,16 @@ func syncComponentPhase(context *ComponentContext, set *apps.StatefulSet) error 
 		} else {
 			phase = v1alpha1.NormalPhase
 		}
-		if component == label.PDLabelVal {
-			tc.Status.PD.Phase = phase
-		} else if component == label.TiFlashLabelVal {
-			tc.Status.TiFlash.Phase = phase
+		tc.Status.PD.Phase = phase
+	case label.TiFlashLabelVal:
+		if desiredReplicas != *set.Spec.Replicas {
+			phase = v1alpha1.ScalePhase
+		} else if upgrading {
+			phase = v1alpha1.UpgradePhase
+		} else {
+			phase = v1alpha1.NormalPhase
 		}
+		tc.Status.TiFlash.Phase = phase
 	case label.TiKVLabelVal:
 		if desiredReplicas != *set.Spec.Replicas {
 			phase = v1alpha1.ScalePhase
@@ -1241,17 +1288,20 @@ func syncComponentPhase(context *ComponentContext, set *apps.StatefulSet) error 
 			phase = v1alpha1.NormalPhase
 		}
 		tc.Status.TiDB.Phase = phase
-	case label.TiCDCLabelVal, label.PumpLabelVal:
+	case label.TiCDCLabelVal:
 		if upgrading {
 			phase = v1alpha1.UpgradePhase
 		} else {
 			phase = v1alpha1.NormalPhase
 		}
-		if component == label.TiCDCLabelVal {
-			tc.Status.TiCDC.Phase = phase
-		} else if component == label.PumpLabelVal {
-			tc.Status.Pump.Phase = phase
+		tc.Status.TiCDC.Phase = phase
+	case label.PumpLabelVal:
+		if upgrading {
+			phase = v1alpha1.UpgradePhase
+		} else {
+			phase = v1alpha1.NormalPhase
 		}
+		tc.Status.Pump.Phase = phase
 	}
 
 	return nil
@@ -1443,7 +1493,7 @@ func syncComponentMembers(context *ComponentContext, set *apps.StatefulSet) erro
 			return err
 		}
 		for _, store := range storesInfo.Stores {
-			status := m.getTiFlashStore(store)
+			status := getTiFlashStore(store)
 			if status == nil {
 				continue
 			}
@@ -1483,7 +1533,7 @@ func syncComponentMembers(context *ComponentContext, set *apps.StatefulSet) erro
 			if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
 				continue
 			}
-			status := m.getTiFlashStore(store)
+			status := getTiFlashStore(store)
 			if status == nil {
 				continue
 			}
@@ -1543,6 +1593,180 @@ func syncComponentMembers(context *ComponentContext, set *apps.StatefulSet) erro
 		tc.Status.TiCDC.Captures = ticdcCaptures
 	}
 	return nil
+}
+
+func getTiFlashStore(store *pdapi.StoreInfo) *v1alpha1.TiKVStore {
+	if store.Store == nil || store.Status == nil {
+		return nil
+	}
+	storeID := fmt.Sprintf("%d", store.Store.GetId())
+	ip := strings.Split(store.Store.GetAddress(), ":")[0]
+	podName := strings.Split(ip, ".")[0]
+
+	return &v1alpha1.TiKVStore{
+		ID:                storeID,
+		PodName:           podName,
+		IP:                ip,
+		LeaderCount:       int32(store.Status.LeaderCount),
+		State:             store.Store.StateName,
+		LastHeartbeatTime: metav1.Time{Time: store.Status.LastHeartbeatTS},
+	}
+}
+
+func setStoreLabelsForTiKV(context *ComponentContext) (int, error) {
+	tc := context.tc
+	dependencies := context.dependencies
+
+	ns := tc.GetNamespace()
+	// for unit test
+	setCount := 0
+
+	if !tc.TiKVBootStrapped() {
+		klog.Infof("TiKV of Cluster %s/%s is not bootstrapped yet, no need to set store labels", tc.Namespace, tc.Name)
+		return setCount, nil
+	}
+
+	pdCli := controller.GetPDClient(dependencies.PDControl, tc)
+	storesInfo, err := pdCli.GetStores()
+	if err != nil {
+		return setCount, err
+	}
+
+	config, err := pdCli.GetConfig()
+	if err != nil {
+		return setCount, err
+	}
+
+	locationLabels := []string(config.Replication.LocationLabels)
+	if locationLabels == nil {
+		return setCount, nil
+	}
+
+	pattern, err := regexp.Compile(fmt.Sprintf(tikvStoreLimitPattern, tc.Name, tc.Name, tc.Namespace, controller.FormatClusterDomainForRegex(tc.Spec.ClusterDomain)))
+	if err != nil {
+		return -1, err
+	}
+	for _, store := range storesInfo.Stores {
+		// In theory, the external tikv can join the cluster, and the operator would only manage the internal tikv.
+		// So we check the store owner to make sure it.
+		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
+			continue
+		}
+		status := getTiKVStore(store)
+		if status == nil {
+			continue
+		}
+		podName := status.PodName
+
+		pod, err := dependencies.PodLister.Pods(ns).Get(podName)
+		if err != nil {
+			return setCount, fmt.Errorf("setStoreLabelsForTiKV: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tc.GetName(), err)
+		}
+
+		nodeName := pod.Spec.NodeName
+		ls, err := getNodeLabels(context, nodeName, locationLabels)
+		if err != nil || len(ls) == 0 {
+			klog.Warningf("node: [%s] has no node labels, skipping set store labels for Pod: [%s/%s]", nodeName, ns, podName)
+			continue
+		}
+
+		if !storeLabelsEqualNodeLabels(store.Store.Labels, ls) {
+			set, err := pdCli.SetStoreLabels(store.Store.Id, ls)
+			if err != nil {
+				msg := fmt.Sprintf("failed to set labels %v for store (id: %d, pod: %s/%s): %v ",
+					ls, store.Store.Id, ns, podName, err)
+				dependencies.Recorder.Event(tc, corev1.EventTypeWarning, FailedSetStoreLabels, msg)
+				continue
+			}
+			if set {
+				setCount++
+				klog.Infof("pod: [%s/%s] set labels: %v successfully", ns, podName, ls)
+			}
+		}
+	}
+
+	return setCount, nil
+}
+
+func getNodeLabels(context *ComponentContext, nodeName string, storeLabels []string) (map[string]string, error) {
+	dependencies := context.dependencies
+
+	node, err := dependencies.NodeLister.Get(nodeName)
+	if err != nil {
+		return nil, err
+	}
+	labels := map[string]string{}
+	ls := node.GetLabels()
+	for _, storeLabel := range storeLabels {
+		if value, found := ls[storeLabel]; found {
+			labels[storeLabel] = value
+			continue
+		}
+
+		// TODO after pd supports storeLabel containing slash character, these codes should be deleted
+		if storeLabel == "host" {
+			if host, found := ls[corev1.LabelHostname]; found {
+				labels[storeLabel] = host
+			}
+		}
+
+	}
+	return labels, nil
+}
+
+func storeLabelsEqualNodeLabels(storeLabels []*metapb.StoreLabel, nodeLabels map[string]string) bool {
+	ls := map[string]string{}
+	for _, label := range storeLabels {
+		key := label.GetKey()
+		if _, ok := nodeLabels[key]; ok {
+			val := label.GetValue()
+			ls[key] = val
+		}
+	}
+	return reflect.DeepEqual(ls, nodeLabels)
+}
+
+func getComponentLabel(context *ComponentContext, instanceName string) label.Label {
+	component := context.component
+
+	var componentLabel label.Label
+	switch component {
+	case label.PDLabelVal:
+		componentLabel = label.New().Instance(instanceName).PD()
+	case label.TiKVLabelVal:
+		componentLabel = label.New().Instance(instanceName).TiKV()
+	case label.TiFlashLabelVal:
+		componentLabel = label.New().Instance(instanceName).TiFlash()
+	case label.TiDBLabelVal:
+		componentLabel = label.New().Instance(instanceName).TiDB()
+	case label.TiCDCLabelVal:
+		componentLabel = label.New().Instance(instanceName).TiCDC()
+	case label.PumpLabelVal:
+		componentLabel = label.New().Instance(instanceName).Pump()
+	}
+	return componentLabel
+}
+
+func getComponentUpdataRevision(context *ComponentContext) string {
+	tc := context.tc
+	component := context.component
+
+	var componentUpdateRevision string
+	switch component {
+	case label.PDLabelVal:
+		componentUpdateRevision = tc.Status.PD.StatefulSet.UpdateRevision
+	case label.TiKVLabelVal:
+		componentUpdateRevision = tc.Status.TiKV.StatefulSet.UpdateRevision
+	case label.TiFlashLabelVal:
+		componentUpdateRevision = tc.Status.TiFlash.StatefulSet.UpdateRevision
+	case label.TiDBLabelVal:
+		componentUpdateRevision = tc.Status.TiDB.StatefulSet.UpdateRevision
+	case label.TiCDCLabelVal:
+		componentUpdateRevision = tc.Status.TiCDC.StatefulSet.UpdateRevision
+	case label.PumpLabelVal:
+		componentUpdateRevision = tc.Status.Pump.StatefulSet.UpdateRevision
+	}
+	return componentUpdateRevision
 }
 
 func getComponentMemberName(context *ComponentContext) string {
