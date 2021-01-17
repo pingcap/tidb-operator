@@ -122,7 +122,7 @@ func componentTiKVUpgrade(context *ComponentContext, oldSet *apps.StatefulSet, n
 			setUpgradePartition(newSet, i)
 			return nil
 		}
-		return componentUpgradeTiKVPod(tc, i, newSet)
+		return componentUpgradeTiKVPod(context, i, newSet)
 	}
 
 	return nil
@@ -209,7 +209,7 @@ func componentTiDBUpgrade(context *ComponentContext, oldSet *apps.StatefulSet, n
 			}
 			continue
 		}
-		return componentUpgradeTiDBPod(tc, i, newSet)
+		return componentUpgradeTiDBPod(context, i, newSet)
 	}
 
 	return nil
@@ -347,11 +347,14 @@ func componentGetStoreByOrdinal(name string, status v1alpha1.TiKVStatus, ordinal
 	return nil
 }
 
-func componentUpgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32, newSet *apps.StatefulSet) error {
+func componentUpgradeTiKVPod(context *ComponentContext, ordinal int32, newSet *apps.StatefulSet) error {
+	tc := context.tc
+	dependencies := context.dependencies
+
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	upgradePodName := TikvPodName(tcName, ordinal)
-	upgradePod, err := u.deps.PodLister.Pods(ns).Get(upgradePodName)
+	upgradePod, err := dependencies.PodLister.Pods(ns).Get(upgradePodName)
 	if err != nil {
 		return fmt.Errorf("upgradeTiKVPod: failed to get pods %s for cluster %s/%s, error: %s", upgradePodName, ns, tcName, err)
 	}
@@ -364,11 +367,11 @@ func componentUpgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32, newSet *ap
 			}
 			_, evicting := upgradePod.Annotations[EvictLeaderBeginTime]
 			if !evicting {
-				return u.beginEvictLeader(tc, storeID, upgradePod)
+				return componentTiKVbeginEvictLeader(context, storeID, upgradePod)
 			}
 
-			if u.readyToUpgrade(upgradePod, store, tc.TiKVEvictLeaderTimeout()) {
-				err := u.endEvictLeader(tc, ordinal)
+			if componentTiKVreadyToUpgrade(upgradePod, store, tc.TiKVEvictLeaderTimeout()) {
+				err := componentTiKVendEvictLeader(context, ordinal)
 				if err != nil {
 					return err
 				}
@@ -383,12 +386,12 @@ func componentUpgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32, newSet *ap
 	return controller.RequeueErrorf("tidbcluster: [%s/%s] no store status found for tikv pod: [%s]", ns, tcName, upgradePodName)
 }
 
-func componentUpgradeTiDBPod(tc *v1alpha1.TidbCluster, ordinal int32, newSet *apps.StatefulSet) error {
+func componentUpgradeTiDBPod(context *ComponentContext, ordinal int32, newSet *apps.StatefulSet) error {
 	setUpgradePartition(newSet, ordinal)
 	return nil
 }
 
-func readyToUpgrade(upgradePod *corev1.Pod, store v1alpha1.TiKVStore, evictLeaderTimeout time.Duration) bool {
+func componentTiKVreadyToUpgrade(upgradePod *corev1.Pod, store v1alpha1.TiKVStore, evictLeaderTimeout time.Duration) bool {
 	if store.LeaderCount == 0 {
 		return true
 	}
@@ -405,10 +408,13 @@ func readyToUpgrade(upgradePod *corev1.Pod, store v1alpha1.TiKVStore, evictLeade
 	return false
 }
 
-func beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64, pod *corev1.Pod) error {
+func componentTiKVbeginEvictLeader(context *ComponentContext, storeID uint64, pod *corev1.Pod) error {
+	tc := context.tc
+	dependencies := context.dependencies
+
 	ns := tc.GetNamespace()
 	podName := pod.GetName()
-	err := controller.GetPDClient(u.deps.PDControl, tc).BeginEvictLeader(storeID)
+	err := controller.GetPDClient(dependencies.PDControl, tc).BeginEvictLeader(storeID)
 	if err != nil {
 		klog.Errorf("tikv upgrader: failed to begin evict leader: %d, %s/%s, %v",
 			storeID, ns, podName, err)
@@ -420,7 +426,7 @@ func beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64, pod *corev1.Pod)
 	}
 	now := time.Now().Format(time.RFC3339)
 	pod.Annotations[EvictLeaderBeginTime] = now
-	_, err = u.deps.PodControl.UpdatePod(tc, pod)
+	_, err = dependencies.PodControl.UpdatePod(tc, pod)
 	if err != nil {
 		klog.Errorf("tikv upgrader: failed to set pod %s/%s annotation %s to %s, %v",
 			ns, podName, EvictLeaderBeginTime, now, err)
@@ -431,21 +437,24 @@ func beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64, pod *corev1.Pod)
 	return nil
 }
 
-func endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32) error {
+func componentTiKVendEvictLeader(context *ComponentContext, ordinal int32) error {
+	tc := context.tc
+	dependencies := context.dependencies
+
 	// wait 5 second before delete evict scheduler，it is for auto test can catch these info
-	if u.deps.CLIConfig.TestMode {
+	if dependencies.CLIConfig.TestMode {
 		time.Sleep(5 * time.Second)
 	}
-	store := u.getStoreByOrdinal(tc.GetName(), tc.Status.TiKV, ordinal)
+	store := componentGetStoreByOrdinal(tc.GetName(), tc.Status.TiKV, ordinal)
 	storeID, err := strconv.ParseUint(store.ID, 10, 64)
 	if err != nil {
 		return err
 	}
 
 	if tc.IsHeterogeneous() {
-		err = u.deps.PDControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled()).EndEvictLeader(storeID)
+		err = dependencies.PDControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled()).EndEvictLeader(storeID)
 	} else {
-		err = u.deps.PDControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()).EndEvictLeader(storeID)
+		err = dependencies.PDControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()).EndEvictLeader(storeID)
 	}
 
 	if err != nil {
