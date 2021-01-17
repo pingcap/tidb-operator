@@ -140,22 +140,18 @@ func ComponentSyncTidbClusterStatus(context *ComponentContext, set *apps.Statefu
 	case label.PDLabelVal:
 		tc.Status.PD.StatefulSet = &set.Status
 
-		phase, err := getComponentPhase(context, set)
+		err := syncComponentPhase(context, set)
 		if err != nil {
 			return err
 		}
-
-		tc.Status.PD.Phase = phase
-
 		err = syncComponentMembers(context)
 		if err != nil {
 			return err
 		}
 
-		tc.Status.PD.Image = ""
-		c := filterContainer(set, "pd")
-		if c != nil {
-			tc.Status.PD.Image = c.Image
+		err = syncComponentImage(context, set)
+		if err != nil {
+			return err
 		}
 
 		// k8s check
@@ -167,74 +163,53 @@ func ComponentSyncTidbClusterStatus(context *ComponentContext, set *apps.Statefu
 	case label.TiKVLabelVal:
 		tc.Status.TiKV.StatefulSet = &set.Status
 
-		phase, err := getComponentPhase(context, set)
+		err := syncComponentPhase(context, set)
 		if err != nil {
 			return err
 		}
-
-		tc.Status.TiKV.Phase = phase
-
 		err = syncComponentMembers(context)
+		if err != nil {
+			return err
+		}
+		err = syncComponentImage(context, set)
 		if err != nil {
 			return err
 		}
 
 		tc.Status.TiKV.BootStrapped = true
-		tc.Status.TiKV.Image = ""
-		c := filterContainer(set, "tikv")
-		if c != nil {
-			tc.Status.TiKV.Image = c.Image
-		}
 	case label.TiFlashLabelVal:
 		tc.Status.TiFlash.StatefulSet = &set.Status
 
-		phase, err := getComponentPhase(context, set)
+		err := syncComponentPhase(context, set)
 		if err != nil {
 			return err
 		}
-
-		tc.Status.TiFlash.Phase = phase
-
 		err = syncComponentMembers(context)
 		if err != nil {
 			return err
-		}
-
-		tc.Status.TiFlash.Image = ""
-		c := filterContainer(set, "tiflash")
-		if c != nil {
-			tc.Status.TiFlash.Image = c.Image
 		}
 	case label.TiDBLabelVal:
 		tc.Status.TiDB.StatefulSet = &set.Status
 
-		phase, err := getComponentPhase(context, set)
+		err := syncComponentPhase(context, set)
 		if err != nil {
 			return err
 		}
-
-		tc.Status.TiDB.Phase = phase
-
 		err = syncComponentMembers(context)
 		if err != nil {
 			return err
 		}
-
-		tc.Status.TiDB.Image = ""
-		c := filterContainer(set, "tidb")
-		if c != nil {
-			tc.Status.TiDB.Image = c.Image
+		err = syncComponentMembers(context)
+		if err != nil {
+			return err
 		}
 	case label.TiCDCLabelVal:
 		tc.Status.TiCDC.StatefulSet = &set.Status
 
-		phase, err := getComponentPhase(context, set)
+		err := syncComponentPhase(context, set)
 		if err != nil {
 			return err
 		}
-
-		tc.Status.TiCDC.Phase = phase
-
 		err = syncComponentMembers(context)
 		if err != nil {
 			return err
@@ -243,12 +218,10 @@ func ComponentSyncTidbClusterStatus(context *ComponentContext, set *apps.Statefu
 	case label.PumpLabelVal:
 		tc.Status.Pump.StatefulSet = &set.Status
 
-		phase, err := getComponentPhase(context, set)
+		err := syncComponentPhase(context, set)
 		if err != nil {
 			return err
 		}
-
-		tc.Status.Pump.Phase = phase
 	}
 
 	return nil
@@ -1257,7 +1230,7 @@ func ComponentGetConfigMap(context *ComponentContext) (*corev1.ConfigMap, error)
 	return cm, nil
 }
 
-func getComponentPhase(context *ComponentContext, set *apps.StatefulSet) (v1alpha1.MemberPhase, error) {
+func syncComponentPhase(context *ComponentContext, set *apps.StatefulSet) error {
 	tc := context.tc
 	component := context.component
 
@@ -1275,7 +1248,7 @@ func getComponentPhase(context *ComponentContext, set *apps.StatefulSet) (v1alph
 
 	upgrading, err := ComponentStatefulSetIsUpgrading(set, context)
 	if err != nil {
-		return phase, err
+		return err
 	}
 
 	switch component {
@@ -1288,6 +1261,11 @@ func getComponentPhase(context *ComponentContext, set *apps.StatefulSet) (v1alph
 		} else {
 			phase = v1alpha1.NormalPhase
 		}
+		if component == label.PDLabelVal {
+			tc.Status.PD.Phase = phase
+		} else if component == label.TiFlashLabelVal {
+			tc.Status.TiFlash.Phase = phase
+		}
 	case label.TiKVLabelVal:
 		if desiredReplicas != *set.Spec.Replicas {
 			phase = v1alpha1.ScalePhase
@@ -1296,6 +1274,7 @@ func getComponentPhase(context *ComponentContext, set *apps.StatefulSet) (v1alph
 		} else {
 			phase = v1alpha1.NormalPhase
 		}
+		tc.Status.TiKV.Phase = phase
 	case label.TiDBLabelVal:
 		if desiredReplicas != *set.Spec.Replicas {
 			phase = v1alpha1.ScalePhase
@@ -1305,15 +1284,21 @@ func getComponentPhase(context *ComponentContext, set *apps.StatefulSet) (v1alph
 		} else {
 			phase = v1alpha1.NormalPhase
 		}
+		tc.Status.TiDB.Phase = phase
 	case label.TiCDCLabelVal, label.PumpLabelVal:
 		if upgrading {
 			phase = v1alpha1.UpgradePhase
 		} else {
 			phase = v1alpha1.NormalPhase
 		}
+		if component == label.TiCDCLabelVal {
+			tc.Status.TiCDC.Phase = phase
+		} else if component == label.PumpLabelVal {
+			tc.Status.Pump.Phase = phase
+		}
 	}
 
-	return phase, nil
+	return nil
 }
 
 func syncComponentMembers(context *ComponentContext) error {
@@ -1323,6 +1308,7 @@ func syncComponentMembers(context *ComponentContext) error {
 
 	switch component {
 	case label.PDLabelVal:
+		ns := tc.GetNamespace()
 		pdClient := controller.GetPDClient(dependencies.PDControl, tc)
 
 		healthInfo, err := pdClient.GetHealth()
@@ -1623,4 +1609,37 @@ func getComponentMemberName(context *ComponentContext) string {
 		componentMemberName = controller.PumpMemberName(tcName)
 	}
 	return componentMemberName
+}
+
+func syncComponentImage(context *ComponentContext, set *apps.StatefulSet) error {
+	tc := context.tc
+	component := context.component
+
+	switch component {
+	case label.PDLabelVal:
+		tc.Status.PD.Image = ""
+		c := filterContainer(set, "pd")
+		if c != nil {
+			tc.Status.PD.Image = c.Image
+		}
+	case label.TiKVLabelVal:
+		tc.Status.TiKV.Image = ""
+		c := filterContainer(set, "tikv")
+		if c != nil {
+			tc.Status.TiKV.Image = c.Image
+		}
+	case label.TiFlashLabelVal:
+		tc.Status.TiFlash.Image = ""
+		c := filterContainer(set, "tiflash")
+		if c != nil {
+			tc.Status.TiFlash.Image = c.Image
+		}
+	case label.TiDBLabelVal:
+		tc.Status.TiDB.Image = ""
+		c := filterContainer(set, "tidb")
+		if c != nil {
+			tc.Status.TiDB.Image = c.Image
+		}
+	}
+	return nil
 }
