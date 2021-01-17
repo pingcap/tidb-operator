@@ -139,21 +139,38 @@ func ComponentSyncTidbClusterStatus(context *ComponentContext, set *apps.Statefu
 	switch component {
 	case label.PDLabelVal:
 		tc.Status.PD.StatefulSet = &set.Status
+	case label.TiKVLabelVal:
+		tc.Status.TiKV.StatefulSet = &set.Status
+	case label.TiFlashLabelVal:
+		tc.Status.TiFlash.StatefulSet = &set.Status
+	case label.TiDBLabelVal:
+		tc.Status.TiDB.StatefulSet = &set.Status
+	case label.TiCDCLabelVal:
+		tc.Status.TiCDC.StatefulSet = &set.Status
+	case label.PumpLabelVal:
+		tc.Status.Pump.StatefulSet = &set.Status
+	}
 
-		err := syncComponentPhase(context, set)
+	err := syncComponentPhase(context, set)
+	if err != nil {
+		return err
+	}
+	if component != label.PumpLabelVal {
+		err = syncComponentMembers(context, set)
 		if err != nil {
 			return err
 		}
-		err = syncComponentMembers(context)
-		if err != nil {
-			return err
-		}
+	}
 
+	if component != label.TiFlashLabelVal || component != label.TiCDCLabelVal || component != label.PumpLabelVal {
 		err = syncComponentImage(context, set)
 		if err != nil {
 			return err
 		}
+	}
 
+	switch component {
+	case label.PDLabelVal:
 		// k8s check
 		pdStatus := tc.Status.PD.Members
 		err = ComponentCollectUnjoinedMembers(context, set, pdStatus)
@@ -161,69 +178,8 @@ func ComponentSyncTidbClusterStatus(context *ComponentContext, set *apps.Statefu
 			return err
 		}
 	case label.TiKVLabelVal:
-		tc.Status.TiKV.StatefulSet = &set.Status
-
-		err := syncComponentPhase(context, set)
-		if err != nil {
-			return err
-		}
-		err = syncComponentMembers(context)
-		if err != nil {
-			return err
-		}
-		err = syncComponentImage(context, set)
-		if err != nil {
-			return err
-		}
-
 		tc.Status.TiKV.BootStrapped = true
-	case label.TiFlashLabelVal:
-		tc.Status.TiFlash.StatefulSet = &set.Status
-
-		err := syncComponentPhase(context, set)
-		if err != nil {
-			return err
-		}
-		err = syncComponentMembers(context)
-		if err != nil {
-			return err
-		}
-	case label.TiDBLabelVal:
-		tc.Status.TiDB.StatefulSet = &set.Status
-
-		err := syncComponentPhase(context, set)
-		if err != nil {
-			return err
-		}
-		err = syncComponentMembers(context)
-		if err != nil {
-			return err
-		}
-		err = syncComponentMembers(context)
-		if err != nil {
-			return err
-		}
-	case label.TiCDCLabelVal:
-		tc.Status.TiCDC.StatefulSet = &set.Status
-
-		err := syncComponentPhase(context, set)
-		if err != nil {
-			return err
-		}
-		err = syncComponentMembers(context)
-		if err != nil {
-			return err
-		}
-
-	case label.PumpLabelVal:
-		tc.Status.Pump.StatefulSet = &set.Status
-
-		err := syncComponentPhase(context, set)
-		if err != nil {
-			return err
-		}
 	}
-
 	return nil
 }
 
@@ -1301,14 +1257,15 @@ func syncComponentPhase(context *ComponentContext, set *apps.StatefulSet) error 
 	return nil
 }
 
-func syncComponentMembers(context *ComponentContext) error {
+func syncComponentMembers(context *ComponentContext, set *apps.StatefulSet) error {
 	tc := context.tc
 	component := context.component
 	dependencies := context.dependencies
 
+	ns := tc.GetNamespace()
+	tcName := tc.Name
 	switch component {
 	case label.PDLabelVal:
-		ns := tc.GetNamespace()
 		pdClient := controller.GetPDClient(dependencies.PDControl, tc)
 
 		healthInfo, err := pdClient.GetHealth()
