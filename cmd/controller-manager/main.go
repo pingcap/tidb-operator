@@ -21,6 +21,9 @@ import (
 	"os"
 	"reflect"
 
+	"github.com/pingcap/tidb-operator/pkg/util/conversion"
+
+	kruiseclientset "github.com/openkruise/kruise-api/client/clientset/versioned"
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -102,24 +105,41 @@ func main() {
 	if err != nil {
 		klog.Fatalf("failed to get advanced-statefulset Clientset: %v", err)
 	}
+	kruiseCli, err := kruiseclientset.NewForConfig(cfg)
+	if err != nil {
+		klog.Fatalf("failed to get advanced-statefulset Clientset: %v", err)
+	}
 	// TODO: optimize the read of genericCli with the shared cache
 	genericCli, err := client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	if err != nil {
 		klog.Fatalf("failed to get the generic kube-apiserver client: %v", err)
 	}
 
+	kruiseEnabled := features.DefaultFeatureGate.Enabled(features.KruiseAdvancedStatefulSet)
+	astsEnabled := features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet)
+	if kruiseEnabled && !astsEnabled {
+		klog.Fatalf("can not enable feature KruiseAdvancedStatefulSet without AdvancedStatefulSet enabled")
+	}
+
 	// note that kubeCli here must not be the hijacked one
 	var operatorUpgrader upgrader.Interface
 	if cliCfg.ClusterScoped {
-		operatorUpgrader = upgrader.NewUpgrader(kubeCli, cli, asCli, metav1.NamespaceAll)
+		operatorUpgrader, err = upgrader.NewUpgrader(kubeCli, cli, asCli, kruiseCli, kruiseEnabled, cliCfg.Selector, metav1.NamespaceAll)
 	} else {
-		operatorUpgrader = upgrader.NewUpgrader(kubeCli, cli, asCli, ns)
+		operatorUpgrader, err = upgrader.NewUpgrader(kubeCli, cli, asCli, kruiseCli, kruiseEnabled, cliCfg.Selector, ns)
+	}
+	if err != nil {
+		klog.Fatalf("failed to create Upgrader")
 	}
 
-	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
+	if astsEnabled {
 		// If AdvancedStatefulSet is enabled, we hijack the Kubernetes client to use
 		// AdvancedStatefulSet.
-		kubeCli = helper.NewHijackClient(kubeCli, asCli)
+		if kruiseEnabled {
+			kubeCli = conversion.NewHijackClient(kubeCli, kruiseCli)
+		} else {
+			kubeCli = helper.NewHijackClient(kubeCli, asCli)
+		}
 	}
 
 	deps := controller.NewDependencies(ns, cliCfg, cli, kubeCli, genericCli)

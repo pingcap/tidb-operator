@@ -1152,7 +1152,7 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sts := getNewTiDBSetForTidbCluster(&tt.tc, tt.cm)
+			sts, _ := getNewTiDBSetForTidbCluster(&tt.tc, tt.cm)
 			tt.testSts(sts)
 		})
 	}
@@ -1486,7 +1486,7 @@ func TestTiDBInitContainers(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sts := getNewTiDBSetForTidbCluster(&tt.tc, nil)
+			sts, _ := getNewTiDBSetForTidbCluster(&tt.tc, nil)
 			if diff := cmp.Diff(tt.expectedInit, sts.Spec.Template.Spec.InitContainers); diff != "" {
 				t.Errorf("unexpected InitContainers in Statefulset (-want, +got): %s", diff)
 			}

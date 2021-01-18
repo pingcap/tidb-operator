@@ -19,6 +19,9 @@ import (
 	"sync"
 	"time"
 
+	kruiseclientset "github.com/openkruise/kruise-api/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/util/conversion"
+
 	"github.com/openshift/generic-admission-server/pkg/apiserver"
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
@@ -416,11 +419,19 @@ func (a *PodAdmissionControl) Initialize(cfg *rest.Config, stopCh <-chan struct{
 	if err != nil {
 		return err
 	}
+	kruiseCli, err := kruiseclientset.NewForConfig(cfg)
+	if err != nil {
+		klog.Fatalf("failed to get advanced-statefulset Clientset: %v", err)
+	}
 
 	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
 		// If AdvancedStatefulSet is enabled, we hijack the Kubernetes client to use
 		// AdvancedStatefulSet.
-		kubeCli = helper.NewHijackClient(kubeCli, asCli)
+		if features.DefaultFeatureGate.Enabled(features.KruiseAdvancedStatefulSet) {
+			kubeCli = conversion.NewHijackClient(kubeCli, kruiseCli)
+		} else {
+			kubeCli = helper.NewHijackClient(kubeCli, asCli)
+		}
 	}
 
 	eventBroadcaster := record.NewBroadcaster()

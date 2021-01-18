@@ -73,7 +73,12 @@ func (sc *StatefulSetAdmissionControl) Validate(ar *admission.AdmissionRequest) 
 	namespace := ar.Namespace
 	expectedGroup := "apps"
 	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
-		expectedGroup = asapps.GroupName
+		if features.DefaultFeatureGate.Enabled(features.KruiseAdvancedStatefulSet) {
+			expectedGroup = "apps.kruise.io"
+		} else {
+			expectedGroup = asapps.GroupName
+		}
+
 	}
 	apiVersion := ar.Resource.Version
 	setResource := metav1.GroupVersionResource{Group: expectedGroup, Version: apiVersion, Resource: "statefulsets"}

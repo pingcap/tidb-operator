@@ -280,6 +280,11 @@ func UpdateStatefulSet(setCtl controller.StatefulSetControlInterface, object run
 			}
 			set.Spec.Template.Annotations[LastAppliedConfigAnnotation] = podConfig
 		}
+		// Retain the ReadinessGates
+		if set.Spec.Template.Spec.ReadinessGates == nil &&
+			oldSet.Spec.Template.Spec.ReadinessGates != nil {
+			set.Spec.Template.Spec.ReadinessGates = oldSet.Spec.Template.Spec.ReadinessGates
+		}
 		set.Annotations = newSet.Annotations
 		v, ok := oldSet.Annotations[label.AnnStsLastSyncTimestamp]
 		if ok {

@@ -18,7 +18,10 @@ import (
 	"sort"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/types"
+
 	"github.com/google/go-cmp/cmp"
+	kruiseclientsetfake "github.com/openkruise/kruise-api/client/clientset/versioned/fake"
 	asappsv1 "github.com/pingcap/advanced-statefulset/client/apis/apps/v1"
 	asclientsetfake "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned/fake"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -162,15 +165,24 @@ func TestDeleteSlotAnns(t *testing.T) {
 
 var (
 	ownerTCName    = "foo"
+	ownerTCUid     = types.UID("123-456-7890")
 	validOwnerRefs = []metav1.OwnerReference{
 		{
 			APIVersion: "pingcap.com/v1alpha1",
 			Kind:       "TidbCluster",
 			Name:       ownerTCName,
 			Controller: pointer.BoolPtr(true),
+			UID:        ownerTCUid,
 		},
 	}
-	invalidOwnerRefs = []metav1.OwnerReference{}
+	invalidOwnerRefs   = []metav1.OwnerReference{}
+	generalTidbCluster = v1alpha1.TidbCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      ownerTCName,
+			UID:       ownerTCUid,
+			Namespace: "sts",
+		},
+	}
 )
 
 func TestUpgrade(t *testing.T) {
@@ -181,6 +193,7 @@ func TestUpgrade(t *testing.T) {
 		advancedStatefulsets     []asappsv1.StatefulSet
 		feature                  string
 		ns                       string
+		labelSelector            string
 		apiResourceList          []*metav1.APIResourceList
 		wantAdvancedStatefulsets []asappsv1.StatefulSet
 		wantStatefulsets         []appsv1.StatefulSet
@@ -335,6 +348,7 @@ func TestUpgrade(t *testing.T) {
 						Annotations: map[string]string{
 							label.AnnTiDBDeleteSlots: "[1,2]",
 						},
+						UID: ownerTCUid,
 					},
 				},
 			},
@@ -398,12 +412,14 @@ func TestUpgrade(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      ownerTCName,
 						Namespace: "sts",
+						UID:       ownerTCUid,
 					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "bar",
 						Namespace: "sts",
+						UID:       ownerTCUid,
 						Annotations: map[string]string{
 							label.AnnTiDBDeleteSlots: "[1,2]",
 						},
@@ -580,6 +596,7 @@ func TestUpgrade(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      ownerTCName,
 						Namespace: "sts",
+						UID:       ownerTCUid,
 					},
 				},
 			},
@@ -630,13 +647,18 @@ func TestUpgrade(t *testing.T) {
 		t.Logf("Testing %s", tt.name)
 
 		features.DefaultFeatureGate.Set(tt.feature)
+		kruiseEnabled := features.DefaultFeatureGate.Enabled(features.KruiseAdvancedStatefulSet)
 
 		var err error
 		kubeCli := fake.NewSimpleClientset()
 		kubeCli.Resources = tt.apiResourceList
 		asCli := asclientsetfake.NewSimpleClientset()
 		cli := versionedfake.NewSimpleClientset()
+		kruiseCli := kruiseclientsetfake.NewSimpleClientset()
 
+		if len(tt.tidbClusters) == 0 {
+			tt.tidbClusters = append(tt.tidbClusters, generalTidbCluster)
+		}
 		for _, tc := range tt.tidbClusters {
 			_, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(&tc)
 			if err != nil {
@@ -658,7 +680,7 @@ func TestUpgrade(t *testing.T) {
 			}
 		}
 
-		operatorUpgrader := NewUpgrader(kubeCli, cli, asCli, tt.ns)
+		operatorUpgrader, _ := NewUpgrader(kubeCli, cli, asCli, kruiseCli, kruiseEnabled, tt.labelSelector, tt.ns)
 		err = operatorUpgrader.Upgrade()
 		if tt.wantErr {
 			if err == nil {
