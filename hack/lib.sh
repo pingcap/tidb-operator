@@ -33,7 +33,7 @@ CFSSLJSON_BIN=$OUTPUT_BIN/cfssljson
 JQ_BIN=$OUTPUT_BIN/jq
 CFSSL_VERSION=${CFSSL_VERSION:-1.2}
 JQ_VERSION=${JQ_VERSION:-1.6}
-HELM_VERSION=${HELM_VERSION:-2.17.0}
+HELM_VERSION=${HELM_VERSION:-3.5.0}
 KIND_VERSION=${KIND_VERSION:-0.8.1}
 DOCS_VERSION=${DOCS_VERSION:-0.2.1}
 KIND_BIN=$OUTPUT_BIN/kind
@@ -143,8 +143,8 @@ function hack::ensure_helm() {
         return 0
     fi
     echo "Installing helm ${HELM_VERSION}..."
-    local HELM_URL=http://storage.googleapis.com/kubernetes-helm/helm-v${HELM_VERSION}-${OS}-${ARCH}.tar.gz
-    curl --retry 10 -L -s "$HELM_URL" | tar --strip-components 1 -C $OUTPUT_BIN -zxf - ${OS}-${ARCH}/helm
+    local HELM_URL=https://get.helm.sh/helm-v${HELM_VERSION}-${OS}-${ARCH}.tar.gz
+    curl --retry 3 -L -s "$HELM_URL" | tar --strip-components 1 -C $OUTPUT_BIN -zxf - ${OS}-${ARCH}/helm
 }
 
 function hack::verify_kind() {

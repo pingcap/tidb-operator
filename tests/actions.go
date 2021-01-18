@@ -578,14 +578,15 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 		}
 	}
 
-	cmd := fmt.Sprintf(`helm install %s --name %s --namespace %s %s --set-string %s`,
-		oa.operatorChartPath(info.Tag),
+	cmd := fmt.Sprintf(`helm install %s %s --namespace %s %s --set-string %s`,
 		info.ReleaseName,
+		oa.operatorChartPath(info.Tag),
 		info.Namespace,
 		info.OperatorHelmSetBoolean(),
 		info.OperatorHelmSetString(nil))
 	log.Logf(cmd)
 
+	exec.Command("/bin/sh", "-c", fmt.Sprintf("kubectl create namespace %s", info.Namespace)).Run()
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to deploy operator: %v, %s", err, string(res))
@@ -751,8 +752,12 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 		return fmt.Errorf("failed to create secret of cluster [%s]: %v", info.ClusterName, err)
 	}
 
-	cmd := fmt.Sprintf("helm install %s  --name %s --namespace %s --set-string %s --set %s",
-		oa.tidbClusterChartPath(info.OperatorTag), info.ClusterName, info.Namespace, info.TidbClusterHelmSetString(nil), info.TidbClusterHelmSetBoolean(nil))
+	cmd := fmt.Sprintf("helm install %s %s --namespace %s --set-string %s --set %s",
+		info.ClusterName,
+		oa.tidbClusterChartPath(info.OperatorTag),
+		info.Namespace,
+		info.TidbClusterHelmSetString(nil),
+		info.TidbClusterHelmSetBoolean(nil))
 
 	svFilePath, err := info.BuildSubValues(oa.tidbClusterChartPath(info.OperatorTag))
 	if err != nil {
@@ -2467,7 +2472,7 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 	setString := info.BackupHelmSetString(sets)
 
 	fullbackupName := fmt.Sprintf("%s-backup", info.ClusterName)
-	cmd := fmt.Sprintf("helm install -n %s --namespace %s %s --set-string %s",
+	cmd := fmt.Sprintf("helm install %s --namespace %s %s --set-string %s",
 		fullbackupName, info.Namespace, oa.backupChartPath(info.OperatorTag), setString)
 	log.Logf("install adhoc deployment [%s]", cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
@@ -2559,7 +2564,7 @@ func (oa *operatorActions) Restore(from *TidbClusterConfig, to *TidbClusterConfi
 	setString := to.BackupHelmSetString(sets)
 
 	restoreName := fmt.Sprintf("%s-restore", to.ClusterName)
-	cmd := fmt.Sprintf("helm install -n %s --namespace %s %s --set-string %s",
+	cmd := fmt.Sprintf("helm install %s --namespace %s %s --set-string %s",
 		restoreName, to.Namespace, oa.backupChartPath(to.OperatorTag), setString)
 	log.Logf("install restore [%s]", cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()

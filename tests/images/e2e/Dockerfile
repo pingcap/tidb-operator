@@ -1,7 +1,7 @@
 FROM debian:buster-slim
 
 ENV KUBECTL_VERSION=v1.12.2
-ENV HELM_VERSION=v2.17.0
+ENV HELM_VERSION=v3.5.0
 
 # python is required by gcloud
 RUN apt-get update && \
@@ -13,7 +13,7 @@ RUN apt-get update && \
 RUN curl https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl \
     -o /usr/local/bin/kubectl && \
     chmod +x /usr/local/bin/kubectl && \
-    curl https://storage.googleapis.com/kubernetes-helm/helm-${HELM_VERSION}-linux-amd64.tar.gz \
+    curl https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz \
     -o helm-${HELM_VERSION}-linux-amd64.tar.gz && \
     tar -zxvf helm-${HELM_VERSION}-linux-amd64.tar.gz && \
     mv linux-amd64/helm /usr/local/bin/helm && \
