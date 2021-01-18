@@ -118,7 +118,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 		{
 			name: "tidbmonitor spec remote write",
 			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
-				monitor.Spec.RemoteWrite = []*v1alpha1.RemoteWriteSpec{
+				monitor.Spec.Prometheus.RemoteWrite = []*v1alpha1.RemoteWriteSpec{
 					{URL: "http://localhost:1234",
 						WriteRelabelConfigs: []v1alpha1.RelabelConfig{
 							{

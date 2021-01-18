@@ -2228,19 +2228,6 @@ Defaults to the value of <code>prometheus_replica</code>. External label will
 <em>not</em> be added when value is set to empty string (<code>&quot;&quot;</code>).</p>
 </td>
 </tr>
-<tr>
-<td>
-<code>remoteWrite</code></br>
-<em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.remotewritespec">
-[]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.RemoteWriteSpec
-</a>
-</em>
-</td>
-<td>
-<p>If specified, the remote_write spec. This is an experimental feature, it may change in any upcoming release in a breaking way.</p>
-</td>
-</tr>
 </table>
 </td>
 </tr>
@@ -9775,6 +9762,19 @@ bool
 </td>
 <td>
 <p>Disable prometheus compaction.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>remoteWrite</code></br>
+<em>
+<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.remotewritespec">
+[]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.RemoteWriteSpec
+</a>
+</em>
+</td>
+<td>
+<p>If specified, the remote_write spec. This is an experimental feature, it may change in any upcoming release in a breaking way.</p>
 </td>
 </tr>
 </tbody>
@@ -20185,19 +20185,6 @@ string
 <p>Name of Prometheus external label used to denote replica name.
 Defaults to the value of <code>prometheus_replica</code>. External label will
 <em>not</em> be added when value is set to empty string (<code>&quot;&quot;</code>).</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>remoteWrite</code></br>
-<em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.remotewritespec">
-[]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.RemoteWriteSpec
-</a>
-</em>
-</td>
-<td>
-<p>If specified, the remote_write spec. This is an experimental feature, it may change in any upcoming release in a breaking way.</p>
 </td>
 </tr>
 </tbody>

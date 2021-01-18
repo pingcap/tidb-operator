@@ -3677,6 +3677,17 @@ func (in *PrometheusSpec) DeepCopyInto(out *PrometheusSpec) {
 		*out = new(PrometheusConfiguration)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.RemoteWrite != nil {
+		in, out := &in.RemoteWrite, &out.RemoteWrite
+		*out = make([]*RemoteWriteSpec, len(*in))
+		for i := range *in {
+			if (*in)[i] != nil {
+				in, out := &(*in)[i], &(*out)[i]
+				*out = new(RemoteWriteSpec)
+				(*in).DeepCopyInto(*out)
+			}
+		}
+	}
 	return
 }
 
@@ -8243,17 +8254,6 @@ func (in *TidbMonitorSpec) DeepCopyInto(out *TidbMonitorSpec) {
 		in, out := &in.ReplicaExternalLabelName, &out.ReplicaExternalLabelName
 		*out = new(string)
 		**out = **in
-	}
-	if in.RemoteWrite != nil {
-		in, out := &in.RemoteWrite, &out.RemoteWrite
-		*out = make([]*RemoteWriteSpec, len(*in))
-		for i := range *in {
-			if (*in)[i] != nil {
-				in, out := &(*in)[i], &(*out)[i]
-				*out = new(RemoteWriteSpec)
-				(*in).DeepCopyInto(*out)
-			}
-		}
 	}
 	return
 }

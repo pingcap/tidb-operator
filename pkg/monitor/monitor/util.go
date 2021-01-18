@@ -142,7 +142,7 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monit
 		EnableTLSDMCluster: dc != nil && dc.IsTLSClusterEnabled(),
 	}
 
-	if monitor.Spec.RemoteWrite != nil && len(monitor.Spec.RemoteWrite) > 0 {
+	if monitor.Spec.Prometheus.RemoteWrite != nil && len(monitor.Spec.Prometheus.RemoteWrite) > 0 {
 		model.RemoteWriteConfigs = generateRemoteWrite(monitor)
 	}
 
@@ -1180,7 +1180,7 @@ func buildExternalLabels(monitor *v1alpha1.TidbMonitor) model.LabelSet {
 
 func generateRemoteWrite(monitor *v1alpha1.TidbMonitor) []*config.RemoteWriteConfig {
 	var remoteWriteConfigs []*config.RemoteWriteConfig
-	for _, remoteWrite := range monitor.Spec.RemoteWrite {
+	for _, remoteWrite := range monitor.Spec.Prometheus.RemoteWrite {
 		url, err := client.ParseHostURL(remoteWrite.URL)
 		if err != nil {
 			continue

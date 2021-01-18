@@ -105,8 +105,6 @@ type TidbMonitorSpec struct {
 	// Defaults to the value of `prometheus_replica`. External label will
 	// _not_ be added when value is set to empty string (`""`).
 	ReplicaExternalLabelName *string `json:"replicaExternalLabelName,omitempty"`
-	// If specified, the remote_write spec. This is an experimental feature, it may change in any upcoming release in a breaking way.
-	RemoteWrite []*RemoteWriteSpec `json:"remoteWrite,omitempty"`
 }
 
 // PrometheusSpec is the desired state of prometheus
@@ -126,6 +124,8 @@ type PrometheusSpec struct {
 
 	// Disable prometheus compaction.
 	DisableCompaction bool `json:"disableCompaction,omitempty"`
+	// If specified, the remote_write spec. This is an experimental feature, it may change in any upcoming release in a breaking way.
+	RemoteWrite []*RemoteWriteSpec `json:"remoteWrite,omitempty"`
 }
 
 // +k8s:openapi-gen=true
