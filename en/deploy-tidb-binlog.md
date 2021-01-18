@@ -180,20 +180,10 @@ To deploy multiple drainers using the `tidb-drainer` Helm chart for a TiDB clust
     helm repo update
     ```
 
-    Helm 3:
-
     {{< copyable "shell-regular" >}}
 
     ```shell
     helm search repo tidb-drainer -l
-    ```
-
-    Helm 2:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    helm search tidb-drainer -l
     ```
 
 2. Get the default `values.yaml` file to facilitate customization:
@@ -248,7 +238,7 @@ To deploy multiple drainers using the `tidb-drainer` Helm chart for a TiDB clust
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install pingcap/tidb-drainer --name=${release_name} --namespace=${namespace} --version=${chart_version} -f values.yaml
+    helm install ${release_name} pingcap/tidb-drainer --namespace=${namespace} --version=${chart_version} -f values.yaml
     ```
 
     If the server does not have an external network, refer to [deploy the TiDB cluster](deploy-on-general-kubernetes.md#deploy-the-tidb-cluster) to download the required Docker image on the machine with an external network and upload it to the server.
@@ -457,7 +447,7 @@ The steps are as follows:
 
 2. Delete the corresponding Drainer Pod:
 
-    Execute `helm del --purge ${release_name}` to delete the Drainer Pod.
+    Execute `helm del ${release_name}` to delete the Drainer Pod.
 
     If you no longer need Drainer, execute `kubectl delete pvc data-${drainer_node_id} -n ${namespace}` to delete the PVC resources of Drainer.
 

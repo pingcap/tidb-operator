@@ -35,7 +35,7 @@ You can deploy tikv-importer using the Helm chart. See the following example:
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm search tikv-importer -l
+    helm search repo tikv-importer -l
     ```
 
 2. Get the default `values.yaml` file for easier customization:
@@ -75,7 +75,7 @@ You can deploy tikv-importer using the Helm chart. See the following example:
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install pingcap/tikv-importer --name=${cluster_name} --namespace=${namespace} --version=${chart_version} -f values.yaml
+    helm install ${cluster_name} pingcap/tikv-importer --namespace=${namespace} --version=${chart_version} -f values.yaml
     ```
 
     > **Note:**
@@ -239,7 +239,7 @@ The method of deploying TiDB Lightning varies with different methods of granting
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install pingcap/tidb-lightning --name=${release_name} --namespace=${namespace} --set failFast=true -f tidb-lightning-values.yaml --version=${chart_version}
+    helm install ${release_name} pingcap/tidb-lightning --namespace=${namespace} --set failFast=true -f tidb-lightning-values.yaml --version=${chart_version}
     ```
 
 * If you grant permissions by associating Amazon S3 IAM with Pod, take the following steps:
@@ -255,7 +255,7 @@ The method of deploying TiDB Lightning varies with different methods of granting
         {{< copyable "shell-regular" >}}
 
         ```shell
-        helm install pingcap/tidb-lightning --name=${release_name} --namespace=${namespace} --set failFast=true -f tidb-lightning-values.yaml --version=${chart_version}
+        helm install ${release_name} pingcap/tidb-lightning --namespace=${namespace} --set failFast=true -f tidb-lightning-values.yaml --version=${chart_version}
         ```
 
         > **Note:**
@@ -285,7 +285,7 @@ The method of deploying TiDB Lightning varies with different methods of granting
         {{< copyable "shell-regular" >}}
 
         ```shell
-        helm install pingcap/tidb-lightning --name=${release_name} --namespace=${namespace} --set-string failFast=true,serviceAccount=${servieaccount} -f tidb-lightning-values.yaml --version=${chart_version}
+        helm install ${release_name} pingcap/tidb-lightning --namespace=${namespace} --set-string failFast=true,serviceAccount=${servieaccount} -f tidb-lightning-values.yaml --version=${chart_version}
         ```
 
         > **Note:**
@@ -302,7 +302,7 @@ To destroy tikv-importer, execute the following command:
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm delete ${release_name} --purge
+helm delete ${release_name}
 ```
 
 To destroy tidb-lightning, execute the following command:
@@ -310,7 +310,7 @@ To destroy tidb-lightning, execute the following command:
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm delete ${release_name} --purge
+helm delete ${release_name}
 ```
 
 ## Troubleshoot TiDB Lightning

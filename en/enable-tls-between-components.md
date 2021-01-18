@@ -1399,7 +1399,7 @@ In this step, you need to perform the following operations:
         {{< copyable "shell-regular" >}}
 
         ``` shell
-        helm install pingcap/tidb-drainer --name=${release_name} --namespace=${namespace} --version=${helm_version} -f values.yaml
+        helm install ${release_name} pingcap/tidb-drainer --namespace=${namespace} --version=${helm_version} -f values.yaml
         ```
 
     - Method 2: Do not set `drainerName` when you create Drainer.
@@ -1420,7 +1420,7 @@ In this step, you need to perform the following operations:
         {{< copyable "shell-regular" >}}
 
         ``` shell
-        helm install pingcap/tidb-drainer --name=${release_name} --namespace=${namespace} --version=${helm_version} -f values.yaml
+        helm install ${release_name} pingcap/tidb-drainer --namespace=${namespace} --version=${helm_version} -f values.yaml
         ```
 
 3. Create the Backup/Restore resource object:

@@ -97,7 +97,7 @@ Follow the steps below to perform an ad-hoc full backup task:
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install pingcap/tidb-backup --name=${backup_name} --namespace=${namespace} -f values.yaml --version=${version}
+    helm install ${backup_name} pingcap/tidb-backup --namespace=${namespace} -f values.yaml --version=${version}
     ```
 
 ### View backups
@@ -133,7 +133,7 @@ The `pingcap/tidb-backup` helm chart helps restore a TiDB cluster using backup d
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install pingcap/tidb-backup --namespace=${namespace} --name=${restore_name} -f values.yaml --version=${version}
+    helm install ${restore_name} pingcap/tidb-backup --namespace=${namespace} -f values.yaml --version=${version}
     ```
 
 ## Incremental backup

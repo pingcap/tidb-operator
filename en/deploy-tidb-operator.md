@@ -16,7 +16,7 @@ Before deploying TiDB Operator, make sure the following items are installed on y
 * [DNS addons](https://kubernetes.io/docs/tasks/access-application-cluster/configure-dns-cluster/)
 * [PersistentVolume](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
 * [RBAC](https://kubernetes.io/docs/admin/authorization/rbac) enabled (optional)
-* [Helm](https://helm.sh) version >= 2.11.0 && < 3.0.0 && != [2.16.4](https://github.com/helm/helm/issues/7797)
+* [Helm](https://helm.sh)
 
 ### Deploy the Kubernetes cluster
 
@@ -99,7 +99,7 @@ After creating CRDs in the step above, there are two methods to deploy TiDB Oper
 
     > **Note:**
     >
-    > `${chart_version}` represents the chart version of TiDB Operator. For example, `v1.2.0-alpha.1`. You can view the currently supported versions by running the `helm search -l tidb-operator` command.
+    > `${chart_version}` represents the chart version of TiDB Operator. For example, `v1.2.0-alpha.1`. You can view the currently supported versions by running the `helm search repo -l tidb-operator` command.
 
 2. Configure TiDB Operator
 
@@ -112,7 +112,7 @@ After creating CRDs in the step above, there are two methods to deploy TiDB Oper
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install pingcap/tidb-operator --name=tidb-operator --namespace=tidb-admin --version=${chart_version} -f ${HOME}/tidb-operator/values-tidb-operator.yaml && \
+    helm install tidb-operator pingcap/tidb-operator --namespace=tidb-admin --version=${chart_version} -f ${HOME}/tidb-operator/values-tidb-operator.yaml --create-namespace && \
     kubectl get po -n tidb-admin -l app.kubernetes.io/name=tidb-operator
     ```
 
@@ -123,7 +123,7 @@ After creating CRDs in the step above, there are two methods to deploy TiDB Oper
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm upgrade tidb-operator pingcap/tidb-operator -f  ${HOME}/tidb-operator/values-tidb-operator.yaml
+    helm upgrade tidb-operator pingcap/tidb-operator -f  `${HOME}/tidb-operator/values-tidb-operator.yaml`
     ```
 
 #### Offline installation
@@ -227,7 +227,7 @@ If your server cannot access the Internet, install TiDB Operator offline by the 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install ./tidb-operator --name=tidb-operator --namespace=tidb-admin
+    helm install tidb-operator ./tidb-operator --namespace=tidb-admin --create-namespace
     ```
 
 5. Upgrade TiDB Operator

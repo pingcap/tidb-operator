@@ -29,5 +29,5 @@ To recover the cluster at this time, use the `helm install` command to create a 
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm install pingcap/tidb-cluster -n ${release_name} --namespace=${namespace} --version=${chart_version} -f values.yaml
+helm install ${release_name} pingcap/tidb-cluster --namespace=${namespace} --version=${chart_version} -f values.yaml
 ```

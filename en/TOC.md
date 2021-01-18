@@ -62,6 +62,7 @@
   - [View TiDB Logs](view-logs.md)
   - [Configure Automatic Failover](use-auto-failover.md)
   - [Destroy a TiDB Cluster](destroy-a-tidb-cluster.md)
+  - [Migrate from Helm 2 to Helm 3](migrate-to-helm3.md)
 + Disaster Recovery
   - [Recover PD Cluster](pd-recover.md)
   - [Recover Deleted Cluster](recover-deleted-cluster.md)

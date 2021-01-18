@@ -283,7 +283,7 @@ This document is an overview of the commands used for TiDB cluster management.
     ```
 
     Create Secret of the user id and password:
-    
+
     {{< copyable "shell-regular" >}}
 
     ```shell
@@ -422,14 +422,6 @@ See [kubectl Cheat Sheet](https://kubernetes.io/docs/reference/kubectl/cheatshee
 
 ## Helm
 
-### Install Tiller
-
-{{< copyable "shell-regular" >}}
-
-```shell
-helm init --service-account=tiller --upgrade
-```
-
 ### Add Helm repository
 
 {{< copyable "shell-regular" >}}
@@ -448,19 +440,37 @@ helm repo update
 
 ### View available Helm chart
 
-{{< copyable "shell-regular" >}}
+- View charts in Helm Hub:
 
-```shell
-helm search ${chart_name} -l --devel
-```
+    {{< copyable "shell-regular" >}}
 
-For example:
+    ```shell
+    helm search hub ${chart_name}
+    ```
 
-{{< copyable "shell-regular" >}}
+    For example:
 
-```shell
-helm search tidb-operator -l --devel
-```
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    helm search hub mysql
+    ```
+
+- View charts in other Repos:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    helm search repo ${chart_name} -l --devel
+    ```
+
+    For example:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    helm search repo tidb-operator -l --devel
+    ```
 
 ### Get the default `values.yaml` of the Helm chart
 
@@ -483,7 +493,7 @@ helm inspect values pingcap/tidb-operator --version=v1.2.0-alpha.1 > values-tidb
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm install ${chart_name} --name=${name} --namespace=${namespace} --version=${chart_version} -f ${values_file}
+helm install ${name} ${chart_name} --namespace=${namespace} --version=${chart_version} -f ${values_file}
 ```
 
 For example:
@@ -491,7 +501,7 @@ For example:
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm install pingcap/tidb-operator --name=tidb-operator --namespace=tidb-admin --version=v1.2.0-alpha.1 -f values-tidb-operator.yaml
+helm install tidb-operator pingcap/tidb-operator --namespace=tidb-admin --version=v1.2.0-alpha.1 -f values-tidb-operator.yaml
 ```
 
 ### View the deployed Helm release
@@ -523,7 +533,7 @@ helm upgrade tidb-operator pingcap/tidb-operator --version=v1.2.0-alpha.1 -f val
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm del --purge ${name}
+helm del ${name}
 ```
 
 For example:
@@ -531,9 +541,9 @@ For example:
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm del --purge tidb-operator
+helm del tidb-operator
 ```
 
 ### More
 
-See [Helm Commands](https://v2.helm.sh/docs/helm/#helm) for more Helm usage.
+See [Helm Commands](https://helm.sh/docs/helm/) for more Helm usage.
