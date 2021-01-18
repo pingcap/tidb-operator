@@ -17650,6 +17650,16 @@ MemberPhase
 </tr>
 <tr>
 <td>
+<code>bootStrapped</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
 <code>statefulSet</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#statefulsetstatus-v1-apps">
