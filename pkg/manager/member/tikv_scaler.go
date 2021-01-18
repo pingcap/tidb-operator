@@ -178,17 +178,19 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 		if err != nil {
 			return fmt.Errorf("tikvScaler.ScaleIn: failed to get pvc %s for cluster %s/%s, error: %s", pvcName, ns, tcName, err)
 		}
-		safeTimeDeadline := pod.CreationTimestamp.Add(5 * s.deps.CLIConfig.ResyncDuration)
-		if time.Now().Before(safeTimeDeadline) {
-			// Wait for 5 resync periods to ensure that the following situation does not occur:
-			//
-			// The tikv pod starts for a while, but has not synced its status, and then the pod becomes not ready.
-			// Here we wait for 5 resync periods to ensure that the status of this tikv pod has been synced.
-			// After this period of time, if there is still no information about this tikv in TidbCluster status,
-			// then we can be sure that this tikv has never been added to the tidb cluster.
-			// So we can scale in this tikv pod safely.
-			resetReplicas(newSet, oldSet)
-			return fmt.Errorf("TiKV %s/%s is not ready, wait for some resync periods to synced its status", ns, podName)
+		if tc.TiKVBootStrapped() {
+			safeTimeDeadline := pod.CreationTimestamp.Add(5 * s.deps.CLIConfig.ResyncDuration)
+			if time.Now().Before(safeTimeDeadline) {
+				// Wait for 5 resync periods to ensure that the following situation does not occur:
+				//
+				// The tikv pod starts for a while, but has not synced its status, and then the pod becomes not ready.
+				// Here we wait for 5 resync periods to ensure that the status of this tikv pod has been synced.
+				// After this period of time, if there is still no information about this tikv in TidbCluster status,
+				// then we can be sure that this tikv has never been added to the tidb cluster.
+				// So we can scale in this tikv pod safely.
+				resetReplicas(newSet, oldSet)
+				return fmt.Errorf("TiKV %s/%s is not ready, wait for some resync periods to synced its status", ns, podName)
+			}
 		}
 		if pvc.Annotations == nil {
 			pvc.Annotations = map[string]string{}
@@ -240,9 +242,15 @@ func (s *tikvScaler) SyncAutoScalerAnn(meta metav1.Object, actual *apps.Stateful
 }
 
 func (s *tikvScaler) preCheckUpStores(tc *v1alpha1.TidbCluster, podName string) (bool, error) {
+	if !tc.TiKVBootStrapped() {
+		klog.Infof("TiKV of Cluster %s/%s is not bootstrapped yet, skip pre check when scale in TiKV", tc.Namespace, tc.Name)
+		return true, nil
+	}
+
 	pdClient := controller.GetPDClient(s.deps.PDControl, tc)
 	// get the number of stores whose state is up
 	upNumber := 0
+
 	storesInfo, err := pdClient.GetStores()
 	if err != nil {
 		return false, fmt.Errorf("failed to get stores info in TidbCluster %s/%s", tc.GetNamespace(), tc.GetName())

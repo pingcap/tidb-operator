@@ -17,14 +17,16 @@ import (
 	"strconv"
 	"testing"
 
-	"errors"
-
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	admission "k8s.io/api/admission/v1beta1"
 	core "k8s.io/api/core/v1"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+)
+
+const (
+	tikvNotBootstrapped = `TiKV cluster not bootstrapped, please start TiKV first"`
 )
 
 func TestAdmitCreateTiKVPod(t *testing.T) {
@@ -41,7 +43,7 @@ func TestAdmitCreateTiKVPod(t *testing.T) {
 
 	// success if tikv is not bootstrapped
 	pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
-		return nil, errors.New(tikvNotBootstrapped + "\n")
+		return nil, pdapi.TiKVNotBootstrappedErrorf(tikvNotBootstrapped + "\n")
 	})
 	resp = admitCreateTiKVPod(pod, pdClient)
 	g.Expect(resp.Allowed).Should(BeTrue())
