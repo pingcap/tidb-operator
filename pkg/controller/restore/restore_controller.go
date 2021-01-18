@@ -178,6 +178,7 @@ func (c *Controller) updateRestore(cur interface{}) {
 			}
 		}
 		klog.V(4).Infof("restore %s/%s is already Scheduled, Running or Failed, skipping.", ns, name)
+		return
 	}
 
 	klog.V(4).Infof("restore object %s/%s enqueue", ns, name)
