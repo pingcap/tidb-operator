@@ -59,14 +59,6 @@ func GetRestoreCondition(status *RestoreStatus, conditionType RestoreConditionTy
 	return -1, nil
 }
 
-// GetRestoreLastCondition gets the last RestoreCondition from the given RestoreStatus.
-func GetRestoreLastCondition(status *RestoreStatus) *RestoreCondition {
-	if status == nil || len(status.Conditions) == 0 {
-		return nil
-	}
-	return &status.Conditions[len(status.Conditions)-1]
-}
-
 // UpdateRestoreCondition updates existing Restore condition or creates a new
 // one. Sets LastTransitionTime to now if the status has changed.
 // Returns true if Restore condition has changed or has been added.
@@ -115,8 +107,14 @@ func IsRestoreScheduled(restore *Restore) bool {
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
 
-// IsRestoreLastRunning returns true if a Restore's last condition is Running.
-func IsRestoreLastRunning(restore *Restore) bool {
-	condition := GetRestoreLastCondition(&restore.Status)
-	return condition != nil && condition.Type == RestoreRunning && condition.Status == corev1.ConditionTrue
+// IsRestoreRunning returns true if a Restore is Running
+func IsRestoreRunning(restore *Restore) bool {
+	_, condition := GetRestoreCondition(&restore.Status, RestoreRunning)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// IsRestoreFailed returns true if a Restore is Failed
+func IsRestoreFailed(restore *Restore) bool {
+	_, condition := GetRestoreCondition(&restore.Status, RestoreFailed)
+	return condition != nil && condition.Status == corev1.ConditionTrue
 }

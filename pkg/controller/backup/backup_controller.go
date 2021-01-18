@@ -158,34 +158,39 @@ func (c *Controller) updateBackup(cur interface{}) {
 		return
 	}
 
-	if v1alpha1.IsBackupLastRunning(newBackup) || v1alpha1.IsBackupLastPrepare(newBackup) {
+	if v1alpha1.IsBackupFailed(newBackup) {
+		klog.Infof("backup %s/%s is Failed, skipping.", ns, name)
+		return
+	}
+
+	if v1alpha1.IsBackupScheduled(newBackup) || v1alpha1.IsBackupRunning(newBackup) || v1alpha1.IsBackupPrepare(newBackup) {
 		selector, err := label.NewBackup().Instance(newBackup.GetInstanceName()).BackupJob().Backup(name).Selector()
 		if err == nil {
 			pods, err2 := c.deps.PodLister.Pods(ns).List(selector)
 			if err2 == nil {
 				for _, pod := range pods {
 					if pod.Status.Phase == corev1.PodFailed {
-						klog.V(4).Infof("backup %s/%s has failed pod %s.", ns, name, pod.Name)
+						klog.Infof("backup %s/%s has failed pod %s.", ns, name, pod.Name)
 						err2 = c.control.UpdateCondition(newBackup, &v1alpha1.BackupCondition{
 							Type:    v1alpha1.BackupFailed,
 							Status:  corev1.ConditionTrue,
 							Reason:  "AlreadyFailed",
-							Message: fmt.Sprintf("have failed pod %s", pod.Name),
+							Message: fmt.Sprintf("Pod %s has failed", pod.Name),
 						})
 						if err2 != nil {
-							klog.Errorf("fail to update the condition of backup %s/%s", ns, name)
+							klog.Errorf("Fail to update the condition of backup %s/%s", ns, name)
 						}
 						break
 					}
 				}
 			}
 		}
-		klog.V(4).Infof("backup %s/%s is already Running, Preparing or Failed, skipping.", ns, name)
+		klog.V(4).Infof("backup %s/%s is already Scheduled, Running, Preparing or Failed, skipping.", ns, name)
 		return
 	}
 
 	if v1alpha1.IsBackupScheduled(newBackup) {
-		klog.V(4).Infof("backup %s/%s is already scheduled, skipping", ns, name)
+		klog.V(4).Infof("backup %s/%s is already Scheduled, skipping", ns, name)
 		return
 	}
 

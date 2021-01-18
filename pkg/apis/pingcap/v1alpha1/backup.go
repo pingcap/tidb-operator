@@ -64,14 +64,6 @@ func GetBackupCondition(status *BackupStatus, conditionType BackupConditionType)
 	return -1, nil
 }
 
-// GetBackupLastCondition gets the last BackupCondition from the given BackupStatus.
-func GetBackupLastCondition(status *BackupStatus) *BackupCondition {
-	if status == nil || len(status.Conditions) == 0 {
-		return nil
-	}
-	return &status.Conditions[len(status.Conditions)-1]
-}
-
 // UpdateBackupCondition updates existing Backup condition or creates a new
 // one. Sets LastTransitionTime to now if the status has changed.
 // Returns true if Backup condition has changed or has been added.
@@ -126,6 +118,18 @@ func IsBackupScheduled(backup *Backup) bool {
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
 
+// IsBackupRunning returns true if a Backup is Running.
+func IsBackupRunning(backup *Backup) bool {
+	_, condition := GetBackupCondition(&backup.Status, BackupRunning)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// IsBackupPrepare returns true if a Backup is Prepare.
+func IsBackupPrepare(backup *Backup) bool {
+	_, condition := GetBackupCondition(&backup.Status, BackupPrepare)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
 // IsBackupClean returns true if a Backup has been successfully cleaned up
 func IsBackupClean(backup *Backup) bool {
 	_, condition := GetBackupCondition(&backup.Status, BackupClean)
@@ -140,18 +144,6 @@ func IsCleanCandidate(backup *Backup) bool {
 	default:
 		return false
 	}
-}
-
-// IsBackupLastRunning returns true if a Backup's last condition is Running.
-func IsBackupLastRunning(backup *Backup) bool {
-	condition := GetBackupLastCondition(&backup.Status)
-	return condition != nil && condition.Type == BackupRunning && condition.Status == corev1.ConditionTrue
-}
-
-// IsBackupLastPrepare returns true if a Backup's last condition is Prepare.
-func IsBackupLastPrepare(backup *Backup) bool {
-	condition := GetBackupLastCondition(&backup.Status)
-	return condition != nil && condition.Type == BackupPrepare && condition.Status == corev1.ConditionTrue
 }
 
 // NeedNotClean returns true if a Backup need not to be cleaned up according to cleanPolicy
