@@ -151,7 +151,7 @@ func (c *Controller) updateRestore(cur interface{}) {
 	}
 
 	if v1alpha1.IsRestoreFailed(newRestore) {
-		klog.Infof("restore %s/%s is Failed, skipping.", ns, name)
+		klog.V(4).Infof("restore %s/%s is Failed, skipping.", ns, name)
 		return
 	}
 
@@ -178,11 +178,6 @@ func (c *Controller) updateRestore(cur interface{}) {
 			}
 		}
 		klog.V(4).Infof("restore %s/%s is already Scheduled, Running or Failed, skipping.", ns, name)
-	}
-
-	if v1alpha1.IsRestoreScheduled(newRestore) {
-		klog.V(4).Infof("restore %s/%s is already Scheduled, skipping", ns, name)
-		return
 	}
 
 	klog.V(4).Infof("restore object %s/%s enqueue", ns, name)

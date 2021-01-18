@@ -159,7 +159,7 @@ func (c *Controller) updateBackup(cur interface{}) {
 	}
 
 	if v1alpha1.IsBackupFailed(newBackup) {
-		klog.Infof("backup %s/%s is Failed, skipping.", ns, name)
+		klog.V(4).Infof("backup %s/%s is Failed, skipping.", ns, name)
 		return
 	}
 
@@ -186,11 +186,6 @@ func (c *Controller) updateBackup(cur interface{}) {
 			}
 		}
 		klog.V(4).Infof("backup %s/%s is already Scheduled, Running, Preparing or Failed, skipping.", ns, name)
-		return
-	}
-
-	if v1alpha1.IsBackupScheduled(newBackup) {
-		klog.V(4).Infof("backup %s/%s is already Scheduled, skipping", ns, name)
 		return
 	}
 
