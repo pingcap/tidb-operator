@@ -170,9 +170,7 @@ echo "info: installing crds"
 $KUBECTL_BIN apply -f manifests/crd.yaml
 
 echo "info: deploying tidb-operator"
-helm_args=(
-    template
-    --name tidb-operator-dev
+helm_template_args=(
     --namespace "$NAMESPACE"
     --set-string operatorImage=$DOCKER_REGISTRY/pingcap/tidb-operator:${IMAGE_TAG}
     --set-string tidbBackupManagerImage=$DOCKER_REGISTRY/pingcap/tidb-backup-manager:${IMAGE_TAG}
@@ -180,7 +178,7 @@ helm_args=(
     --set-string scheduler.logLevel=4
 )
  
-$HELM_BIN ${helm_args[@]} ./charts/tidb-operator/ | kubectl -n "$NAMESPACE" apply -f  -
+$HELM_BIN template tidb-operator-dev ./charts/tidb-operator/ ${helm_template_args[@]} | kubectl -n "$NAMESPACE" apply -f  -
 
 deploys=(
     tidb-controller-manager
