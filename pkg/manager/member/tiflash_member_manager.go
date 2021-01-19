@@ -504,7 +504,7 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 	tiflashContainer.Env = util.AppendEnv(env, baseTiFlashSpec.Env())
 	podSpec.Volumes = append(vols, baseTiFlashSpec.AdditionalVolumes()...)
 	podSpec.SecurityContext = podSecurityContext
-	podSpec.InitContainers = initContainers
+	podSpec.InitContainers = append(initContainers, baseTiFlashSpec.InitContainers()...)
 	containers, err := buildTiFlashSidecarContainers(tc)
 	if err != nil {
 		return nil, err
