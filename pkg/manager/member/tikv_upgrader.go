@@ -70,6 +70,8 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 		return fmt.Errorf("cluster[%s/%s] failed to upgrading tikv due to converting", meta.GetNamespace(), meta.GetName())
 	}
 
+	tc, _ := meta.(*v1alpha1.TidbCluster)
+
 	if !status.Synced {
 		return fmt.Errorf("cluster: [%s/%s]'s tikv status sync failed, can not to be upgraded", ns, tcName)
 	}
@@ -121,16 +123,12 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not all ready", ns, tcName, podName)
 			}
 
-			if !u.deps.CLIConfig.PodWebhookEnabled{
-				tc, ok := meta.(*v1alpha1.TidbCluster)
-				if !ok {
-					return fmt.Errorf("cluster[%s/%s] failed to upgrading tikv due to not tidbcluster and not enabled pod webhook", meta.GetNamespace(), meta.GetName())
-				}
+			if !u.deps.CLIConfig.PodWebhookEnabled {
 				if err := u.endEvictLeader(tc, i); err != nil {
 					return err
 				}
 			}
-			
+
 			continue
 		}
 
@@ -138,10 +136,7 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 			setUpgradePartition(newSet, i)
 			return nil
 		}
-		tc, ok := meta.(*v1alpha1.TidbCluster)
-		if !ok {
-			return fmt.Errorf("cluster[%s/%s] failed to upgrading tikv due to not tidbcluster and not enabled pod webhook", meta.GetNamespace(), meta.GetName())
-		}
+
 		return u.upgradeTiKVPod(tc, i, newSet)
 	}
 
