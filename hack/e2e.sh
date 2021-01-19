@@ -302,6 +302,7 @@ EOF
     fi
 }
 
+# TODO: review this
 function e2e::create_kindconfig() {
     local tmpfile=${1}
     cat <<EOF > $tmpfile
