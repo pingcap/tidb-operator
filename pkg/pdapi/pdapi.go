@@ -582,7 +582,7 @@ func (c *pdClient) checkEvictSchedulerExisted(schedulerName string) (bool, error
 	}
 	for _, s := range evictLeaderSchedulers {
 		if s == schedulerName {
-			return true, err
+			return true, nil
 		}
 	}
 	return false, nil
