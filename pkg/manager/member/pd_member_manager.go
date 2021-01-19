@@ -748,7 +748,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		podSpec.ServiceAccountName = tc.Spec.ServiceAccount
 	}
 	podSpec.SecurityContext = podSecurityContext
-	podSpec.InitContainers = initContainers
+	podSpec.InitContainers = append(initContainers, basePDSpec.InitContainers()...)
 
 	updateStrategy := apps.StatefulSetUpdateStrategy{}
 	if basePDSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
