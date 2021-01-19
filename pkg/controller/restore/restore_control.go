@@ -60,6 +60,7 @@ func (c *defaultRestoreControl) UpdateCondition(restore *v1alpha1.Restore, condi
 type FakeRestoreControl struct {
 	backupIndexer        cache.Indexer
 	updateRestoreTracker controller.RequestTracker
+	condition            *v1alpha1.RestoreCondition
 }
 
 // NewFakeRestoreControl returns a FakeRestoreControl
@@ -67,6 +68,7 @@ func NewFakeRestoreControl(restoreInformer informers.RestoreInformer) *FakeResto
 	return &FakeRestoreControl{
 		restoreInformer.Informer().GetIndexer(),
 		controller.RequestTracker{},
+		nil,
 	}
 }
 
@@ -87,7 +89,8 @@ func (c *FakeRestoreControl) UpdateRestore(backup *v1alpha1.Restore) error {
 }
 
 // UpdateCondition updates the condition for a Restore.
-func (c *FakeRestoreControl) UpdateCondition(_ *v1alpha1.Restore, _ *v1alpha1.RestoreCondition) error {
+func (c *FakeRestoreControl) UpdateCondition(_ *v1alpha1.Restore, condition *v1alpha1.RestoreCondition) error {
+	c.condition = condition
 	return nil
 }
 

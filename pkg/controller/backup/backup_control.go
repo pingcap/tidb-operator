@@ -124,6 +124,7 @@ var _ ControlInterface = &defaultBackupControl{}
 type FakeBackupControl struct {
 	backupIndexer       cache.Indexer
 	updateBackupTracker controller.RequestTracker
+	condition           *v1alpha1.BackupCondition
 }
 
 // NewFakeBackupControl returns a FakeBackupControl
@@ -131,6 +132,7 @@ func NewFakeBackupControl(backupInformer informers.BackupInformer) *FakeBackupCo
 	return &FakeBackupControl{
 		backupInformer.Informer().GetIndexer(),
 		controller.RequestTracker{},
+		nil,
 	}
 }
 
@@ -151,7 +153,8 @@ func (c *FakeBackupControl) UpdateBackup(backup *v1alpha1.Backup) error {
 }
 
 // UpdateCondition updates the condition for a Backup.
-func (c *FakeBackupControl) UpdateCondition(_ *v1alpha1.Backup, _ *v1alpha1.BackupCondition) error {
+func (c *FakeBackupControl) UpdateCondition(_ *v1alpha1.Backup, condition *v1alpha1.BackupCondition) error {
+	c.condition = condition
 	return nil
 }
 
