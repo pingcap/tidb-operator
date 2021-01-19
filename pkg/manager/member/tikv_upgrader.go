@@ -121,6 +121,10 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not all ready", ns, tcName, podName)
 			}
 
+			if err := u.endEvictLeader(meta.(*v1alpha1.TidbCluster), i); err != nil {
+				return err
+			}
+
 			continue
 		}
 
@@ -159,10 +163,6 @@ func (u *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32, n
 			}
 
 			if u.readyToUpgrade(upgradePod, store, tc.TiKVEvictLeaderTimeout()) {
-				err := u.endEvictLeader(tc, ordinal)
-				if err != nil {
-					return err
-				}
 				setUpgradePartition(newSet, ordinal)
 				return nil
 			}

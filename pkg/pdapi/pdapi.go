@@ -545,6 +545,13 @@ func (c *pdClient) BeginEvictLeader(storeID uint64) error {
 
 func (c *pdClient) EndEvictLeader(storeID uint64) error {
 	sName := getLeaderEvictSchedulerStr(storeID)
+
+	if schedulerExisted, err := c.checkEvictSchedulerExisted(sName); err != nil {
+		return err
+	} else if !schedulerExisted {
+		return nil
+	}
+
 	apiURL := fmt.Sprintf("%s/%s/%s", c.url, schedulersPrefix, sName)
 	req, err := http.NewRequest("DELETE", apiURL, nil)
 	if err != nil {
@@ -565,24 +572,20 @@ func (c *pdClient) EndEvictLeader(storeID uint64) error {
 		klog.Errorf("call DELETE method: %s failed,statusCode: %v,error: %v", apiURL, res.StatusCode, err2)
 	}
 
-	// pd will return an error with the body contains "scheduler not found" if the scheduler is not found
-	// this is not the standard response.
-	// so these lines are just a workaround for now:
-	//   - make a new request to get all schedulers
-	//   - return nil if the scheduler is not found
-	//
-	// when PD returns standard json response, we should get rid of this verbose code.
+	return nil
+}
+
+func (c *pdClient) checkEvictSchedulerExisted(schedulerName string) (bool, error) {
 	evictLeaderSchedulers, err := c.GetEvictLeaderSchedulers()
 	if err != nil {
-		return err
+		return false, err
 	}
 	for _, s := range evictLeaderSchedulers {
-		if s == sName {
-			return fmt.Errorf("end leader evict scheduler failed,the store:[%d]'s leader evict scheduler is still exist", storeID)
+		if s == schedulerName {
+			return true, err
 		}
 	}
-
-	return nil
+	return false, nil
 }
 
 func (c *pdClient) GetEvictLeaderSchedulers() ([]string, error) {
