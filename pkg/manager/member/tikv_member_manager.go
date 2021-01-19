@@ -486,7 +486,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	tikvContainer.Env = util.AppendEnv(env, baseTiKVSpec.Env())
 	podSpec.Volumes = append(vols, baseTiKVSpec.AdditionalVolumes()...)
 	podSpec.SecurityContext = podSecurityContext
-	podSpec.InitContainers = initContainers
+	podSpec.InitContainers = append(initContainers, baseTiKVSpec.InitContainers()...)
 	podSpec.Containers = append([]corev1.Container{tikvContainer}, baseTiKVSpec.AdditionalContainers()...)
 	podSpec.ServiceAccountName = tc.Spec.TiKV.ServiceAccount
 	if podSpec.ServiceAccountName == "" {
