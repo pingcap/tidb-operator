@@ -3273,6 +3273,20 @@ Note that the following env names cannot be used and will be overridden by TiDB 
 </tr>
 <tr>
 <td>
+<code>initContainers</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#container-v1-core">
+[]Kubernetes core/v1.Container
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Init containers of the components</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>additionalContainers</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#container-v1-core">
@@ -3602,25 +3616,7 @@ CrdKind
 </tr>
 <tr>
 <td>
-<<<<<<< HEAD
 <code>TiDBMonitor</code></br>
-=======
-<code>initContainers</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#container-v1-core">
-[]Kubernetes core/v1.Container
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Init containers of the components</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>additionalContainers</code></br>
->>>>>>> cc744af9... Support configuring init containers for components in TiDB cluster (#3713)
 <em>
 <a href="#crdkind">
 CrdKind
