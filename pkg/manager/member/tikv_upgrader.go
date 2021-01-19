@@ -121,10 +121,16 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not all ready", ns, tcName, podName)
 			}
 
-			if err := u.endEvictLeader(meta.(*v1alpha1.TidbCluster), i); err != nil {
-				return err
+			if !u.deps.CLIConfig.PodWebhookEnabled{
+				tc, ok := meta.(*v1alpha1.TidbCluster)
+				if !ok {
+					return fmt.Errorf("cluster[%s/%s] failed to upgrading tikv due to not tidbcluster and not enabled pod webhook", meta.GetNamespace(), meta.GetName())
+				}
+				if err := u.endEvictLeader(tc, i); err != nil {
+					return err
+				}
 			}
-
+			
 			continue
 		}
 
