@@ -19,7 +19,9 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"os/signal"
 	"reflect"
+	"syscall"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
@@ -213,5 +215,26 @@ func main() {
 		})
 	}, cliCfg.WaitDuration)
 
-	klog.Fatal(http.ListenAndServe(":6060", nil))
+	srv := http.Server{Addr: ":6060"}
+	sc := make(chan os.Signal, 1)
+	signal.Notify(sc,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT,
+	)
+
+	go func() {
+		sig := <-sc
+		klog.Infof("got signal %s to exit", sig)
+		if err2 := srv.Shutdown(context.Background()); err2 != nil {
+			klog.Fatal("fail to shutdown the HTTP server", err2)
+		}
+		close(sc)
+	}()
+
+	if err = srv.ListenAndServe(); err != http.ErrServerClosed {
+		klog.Fatal(err)
+	}
+	klog.Infof("tidb-controller-manager exited")
 }
