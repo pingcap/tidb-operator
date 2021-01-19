@@ -630,19 +630,23 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 	}
 	pods1, err := oa.kubeCli.CoreV1().Pods(metav1.NamespaceAll).List(listOptions)
 	if err != nil {
+		log.Logf("failed to get pods in all namespaces with selector: %+v", listOptions)
 		return err
 	}
 
 	if info.Tag != "e2e" {
 		if err := oa.checkoutTag(info.Tag); err != nil {
+			log.Logf("failed to checkout tag: %s", info.Tag)
 			return err
 		}
 	}
 
 	cmd := fmt.Sprintf("helm upgrade %s %s %s --set-string %s",
-		info.ReleaseName, oa.operatorChartPath(info.Tag),
+		info.ReleaseName,
+		oa.operatorChartPath(info.Tag),
 		info.OperatorHelmSetBoolean(),
 		info.OperatorHelmSetString(nil))
+	log.Logf("running helm upgrade command: %s", cmd)
 
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -2404,7 +2408,7 @@ func (oa *operatorActions) checkoutTag(tagName string) error {
 	if tagName != "v1.0.0" {
 		cmd = cmd + fmt.Sprintf(" && cp -rf charts/tidb-drainer %s", oa.drainerChartPath(tagName))
 	}
-	log.Logf(cmd)
+	log.Logf("running checkout tag commands: %s", cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to check tag: %s, %v, %s", tagName, err, string(res))
