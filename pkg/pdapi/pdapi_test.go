@@ -718,17 +718,6 @@ func TestGeneric(t *testing.T) {
 			checkResult: checkNoError,
 		},
 		{
-			name:   "EndEvictLeader",
-			method: "EndEvictLeader",
-			args: []reflect.Value{
-				reflect.ValueOf(uint64(1)),
-			},
-			statusCode:  http.StatusNotFound,
-			wantMethod:  "DELETE",
-			wantPath:    fmt.Sprintf("/%s/evict-leader-scheduler-1", schedulersPrefix),
-			checkResult: checkNoError,
-		},
-		{
 			name:   "GetEvictLeaderSchedulers",
 			method: "GetEvictLeaderSchedulers",
 			resp: []byte(`
