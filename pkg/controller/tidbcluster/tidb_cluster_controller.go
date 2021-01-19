@@ -64,7 +64,10 @@ func NewController(deps *controller.Dependencies) *Controller {
 			&tidbClusterConditionUpdater{},
 			deps.Recorder,
 		),
-		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "tidbcluster"),
+		queue: workqueue.NewNamedRateLimitingQueue(
+			controller.NewControllerRateLimiter(1*time.Second, 100*time.Second),
+			"tidbcluster",
+		),
 	}
 
 	tidbClusterInformer := deps.InformerFactory.Pingcap().V1alpha1().TidbClusters()

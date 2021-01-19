@@ -492,6 +492,7 @@ func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 	}
 	testFn := func(test *testcase, t *testing.T) {
 		tc := newTidbClusterForPD()
+		tc.Status.TiKV.BootStrapped = true
 		pmm, _, _, pdClient, podIndexer, nodeIndexer := newFakeTiKVMemberManager(tc)
 		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
 			return &pdapi.PDConfigFromAPI{

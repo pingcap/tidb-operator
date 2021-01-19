@@ -157,10 +157,10 @@ func startWebhook(c clientset.Interface, image, ns, svcName string, cert []byte,
 		},
 	}
 	_pod, err = c.CoreV1().Pods(ns).Create(_pod)
-	framework.ExpectNoError(err, "failed to create Pod")
+	framework.ExpectNoError(err, "failed to create webhook pod")
 
 	err = pod.WaitForPodRunningInNamespace(c, _pod)
-	framework.ExpectNoError(err, "failed to wait for pod %s/%s to be running", _pod.Namespace, _pod.Name)
+	framework.ExpectNoError(err, "failed to wait for webhook pod %s/%s to be running", _pod.Namespace, _pod.Name)
 	return _pod, svc
 }
 

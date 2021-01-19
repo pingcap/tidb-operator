@@ -238,7 +238,7 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	config.QPS = 20
 	config.Burst = 50
 	cli, err := versioned.NewForConfig(config)
-	framework.ExpectNoError(err, "failed to create clientset for Pingcap")
+	framework.ExpectNoError(err, "failed to create clientset for pingcap")
 	kubeCli, err := kubernetes.NewForConfig(config)
 	framework.ExpectNoError(err, "failed to create clientset for Kubernetes")
 	aggrCli, err := aggregatorclientset.NewForConfig(config)
