@@ -76,6 +76,7 @@ func TestGetDeleteSlotsNumber(t *testing.T) {
 	}
 	num, err = GetDeleteSlotsNumber(annotations)
 	g.Expect(err).To(HaveOccurred())
+	g.Expect(num).To(Equal(int32(0)))
 }
 
 func TestIsSubMapOf(t *testing.T) {
