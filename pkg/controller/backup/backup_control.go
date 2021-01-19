@@ -99,16 +99,21 @@ func (c *defaultBackupControl) removeProtectionFinalizer(backup *v1alpha1.Backup
 }
 
 func needToAddFinalizer(backup *v1alpha1.Backup) bool {
-	return backup.DeletionTimestamp == nil && v1alpha1.IsCleanCandidate(backup) && !slice.ContainsString(backup.Finalizers, label.BackupProtectionFinalizer, nil)
+	return backup.DeletionTimestamp == nil && // not onDelete
+		!isProtectedByFinalizer(backup) &&
+		v1alpha1.CleanPolicyIsNotRetain(backup)
+
 }
 
 func needToRemoveFinalizer(backup *v1alpha1.Backup) bool {
-	return v1alpha1.IsCleanCandidate(backup) && isDeletionCandidate(backup) &&
-		(v1alpha1.IsBackupClean(backup) || v1alpha1.NeedNotClean(backup))
+	return backup.DeletionTimestamp != nil && // onDelete
+		isProtectedByFinalizer(backup) &&
+		v1alpha1.CleanPolicyIsNotRetain(backup) &&
+		(v1alpha1.IsBackupCleanedUp(backup) || v1alpha1.DontCleanSuccessBackup(backup))
 }
 
-func isDeletionCandidate(backup *v1alpha1.Backup) bool {
-	return backup.DeletionTimestamp != nil && slice.ContainsString(backup.Finalizers, label.BackupProtectionFinalizer, nil)
+func isProtectedByFinalizer(backup *v1alpha1.Backup) bool {
+	return slice.ContainsString(backup.Finalizers, label.BackupProtectionFinalizer, nil)
 }
 
 var _ ControlInterface = &defaultBackupControl{}
