@@ -429,7 +429,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 
 	deleteSlotsNumber, err := util.GetDeleteSlotsNumber(stsAnnotations)
 	if err != nil {
-		return nil, fmt.Errorf("get delete slots number failed, err:%v", err)
+		return nil, fmt.Errorf("get delete slots number of statefulset %s/%s failed, err:%v", ns, setName, err)
 	}
 
 	env := []corev1.EnvVar{
