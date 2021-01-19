@@ -719,7 +719,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	podSpec.Containers = append(containers, baseTiDBSpec.AdditionalContainers()...)
 	podSpec.Volumes = append(vols, baseTiDBSpec.AdditionalVolumes()...)
 	podSpec.SecurityContext = podSecurityContext
-	podSpec.InitContainers = initContainers
+	podSpec.InitContainers = append(initContainers, baseTiDBSpec.InitContainers()...)
 	podSpec.ServiceAccountName = tc.Spec.TiDB.ServiceAccount
 	if podSpec.ServiceAccountName == "" {
 		podSpec.ServiceAccountName = tc.Spec.ServiceAccount
