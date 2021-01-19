@@ -935,7 +935,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 			label.InstanceLabelKey, info.ClusterName)
 		log.Logf(patchPVCmd)
 		if res, err := exec.Command("/bin/sh", "-c", patchPVCmd).CombinedOutput(); err != nil {
-			log.Logf("ERROR: failed to patch pv: %v, %s", err, string(res))
+			log.Logf("failed to patch pv: %v, %s", err, string(res))
 			return false, nil
 		}
 		return true, nil
@@ -986,7 +986,7 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 		var tc *v1alpha1.TidbCluster
 		var err error
 		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
-			log.Logf("ERROR: failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
+			log.Logf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
 			return false, nil
 		}
 
@@ -1011,7 +1011,7 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 		if b, err := oa.metaSyncFn(tc); !b && err == nil {
 			return false, nil
 		} else if err != nil {
-			log.Logf("ERROR: %v", err)
+			log.Logf("%v", err)
 			return false, nil
 		}
 
@@ -1208,20 +1208,20 @@ func (oa *operatorActions) CheckScaleInSafely(info *TidbClusterConfig) error {
 	return wait.Poll(oa.pollInterval, DefaultPollTimeout, func() (done bool, err error) {
 		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(info.Namespace).Get(info.ClusterName, metav1.GetOptions{})
 		if err != nil {
-			log.Logf("ERROR: failed to get tidbcluster when scale in tidbcluster, error: %v", err)
+			log.Logf("failed to get tidbcluster when scale in tidbcluster, error: %v", err)
 			return false, nil
 		}
 
 		tikvSetName := controller.TiKVMemberName(info.ClusterName)
 		tikvSet, err := oa.tcStsGetter.StatefulSets(info.Namespace).Get(tikvSetName, metav1.GetOptions{})
 		if err != nil {
-			log.Logf("ERROR: failed to get tikvSet statefulset: [%s], error: %v", tikvSetName, err)
+			log.Logf("failed to get tikvSet statefulset: [%s], error: %v", tikvSetName, err)
 			return false, nil
 		}
 
 		pdClient, cancel, err := oa.getPDClient(tc)
 		if err != nil {
-			log.Logf("ERROR: failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
+			log.Logf("failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
 			return false, nil
 		}
 		defer cancel()
@@ -1249,7 +1249,7 @@ func (oa *operatorActions) CheckScaledCorrectly(info *TidbClusterConfig, podUIDs
 	return wait.Poll(oa.pollInterval, DefaultPollTimeout, func() (done bool, err error) {
 		podUIDs, err := oa.GetPodUIDMap(info)
 		if err != nil {
-			log.Logf("ERROR: failed to get pd pods's uid, error: %v", err)
+			log.Logf("failed to get pd pods's uid, error: %v", err)
 			return false, nil
 		}
 
@@ -1338,18 +1338,18 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 			scheduler := fmt.Sprintf("evict-leader-scheduler-%s", findStoreFn(tc, podName))
 			pdClient, cancel, err := oa.getPDClient(tc)
 			if err != nil {
-				log.Logf("ERROR: failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
+				log.Logf("failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
 				return false, nil
 			}
 			defer cancel()
 			schedulers, err := pdClient.GetEvictLeaderSchedulers()
 			if err != nil {
-				log.Logf("ERROR: failed to get evict leader schedulers, %v", err)
+				log.Logf("failed to get evict leader schedulers, %v", err)
 				return false, nil
 			}
 			log.Logf("index:%d, schedulers:%v, error:%v", i, schedulers, err)
 			if len(schedulers) > 1 {
-				log.Logf("ERROR: there are too many evict leader schedulers: %v", schedulers)
+				log.Logf("there are too many evict leader schedulers: %v", schedulers)
 				for _, s := range schedulers {
 					if s == scheduler {
 						log.Logf("found scheudler: %s", scheduler)
@@ -1365,7 +1365,7 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 				log.Logf("index: %d, schedulers: %s = %s", i, schedulers[0], scheduler)
 				return true, nil
 			}
-			log.Logf("ERROR: index: %d, scheduler: %s != %s", i, schedulers[0], scheduler)
+			log.Logf("failed to get evict leader scheduler, index: %d, scheduler: %s != %s", i, schedulers[0], scheduler)
 			return false, nil
 		})
 		if err != nil {
@@ -1393,19 +1393,19 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 	return wait.PollImmediate(5*time.Second, 3*time.Minute, func() (done bool, err error) {
 		pdClient, cancel, err := oa.getPDClient(tc)
 		if err != nil {
-			log.Logf("ERROR: failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
+			log.Logf("failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
 			return false, nil
 		}
 		defer cancel()
 		schedulers, err := pdClient.GetEvictLeaderSchedulers()
 		if err != nil {
-			log.Logf("ERROR: failed to get evict leader schedulers, %v", err)
+			log.Logf("failed to get evict leader schedulers, %v", err)
 			return false, nil
 		}
 		if len(schedulers) == 0 {
 			return true, nil
 		}
-		log.Logf("ERROR: schedulers: %v is not empty", schedulers)
+		log.Logf("schedulers: %v is not empty", schedulers)
 		return false, nil
 	})
 }
@@ -1465,7 +1465,7 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 
 	pdSet, err := oa.tcStsGetter.StatefulSets(ns).Get(pdSetName, metav1.GetOptions{})
 	if err != nil {
-		log.Logf("ERROR: failed to get statefulset: %s/%s, %v", ns, pdSetName, err)
+		log.Logf("failed to get statefulset: %s/%s, %v", ns, pdSetName, err)
 		return false, nil
 	}
 
@@ -1529,11 +1529,11 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 	pdServiceName := controller.PDMemberName(tcName)
 	pdPeerServiceName := controller.PDPeerMemberName(tcName)
 	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(pdServiceName, metav1.GetOptions{}); err != nil {
-		log.Logf("ERROR: failed to get service: %s/%s", ns, pdServiceName)
+		log.Logf("failed to get service: %s/%s", ns, pdServiceName)
 		return false, nil
 	}
 	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(pdPeerServiceName, metav1.GetOptions{}); err != nil {
-		log.Logf("ERROR: failed to get peer service: %s/%s", ns, pdPeerServiceName)
+		log.Logf("failed to get peer service: %s/%s", ns, pdPeerServiceName)
 		return false, nil
 	}
 
@@ -1550,7 +1550,7 @@ func (oa *operatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 
 	tikvSet, err := oa.tcStsGetter.StatefulSets(ns).Get(tikvSetName, metav1.GetOptions{})
 	if err != nil {
-		log.Logf("ERROR: failed to get statefulset: %s/%s, %v", ns, tikvSetName, err)
+		log.Logf("failed to get statefulset: %s/%s, %v", ns, tikvSetName, err)
 		return false, nil
 	}
 
@@ -1612,7 +1612,7 @@ func (oa *operatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 
 	tikvPeerServiceName := controller.TiKVPeerMemberName(tcName)
 	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(tikvPeerServiceName, metav1.GetOptions{}); err != nil {
-		log.Logf("ERROR: failed to get peer service: %s/%s", ns, tikvPeerServiceName)
+		log.Logf("failed to get peer service: %s/%s", ns, tikvPeerServiceName)
 		return false, nil
 	}
 
@@ -1626,7 +1626,7 @@ func (oa *operatorActions) tiflashMembersReadyFn(tc *v1alpha1.TidbCluster) (bool
 
 	tiflashSet, err := oa.tcStsGetter.StatefulSets(ns).Get(tiflashSetName, metav1.GetOptions{})
 	if err != nil {
-		log.Logf("ERROR: TiFlash failed to get statefulset: %s/%s, %v", ns, tiflashSetName, err)
+		log.Logf("TiFlash failed to get statefulset: %s/%s, %v", ns, tiflashSetName, err)
 		return false, nil
 	}
 
@@ -1688,7 +1688,7 @@ func (oa *operatorActions) tiflashMembersReadyFn(tc *v1alpha1.TidbCluster) (bool
 
 	tiflashPeerServiceName := controller.TiFlashPeerMemberName(tcName)
 	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(tiflashPeerServiceName, metav1.GetOptions{}); err != nil {
-		log.Logf("ERROR: failed to get peer service: %s/%s", ns, tiflashPeerServiceName)
+		log.Logf("failed to get peer service: %s/%s", ns, tiflashPeerServiceName)
 		return false, nil
 	}
 	log.Logf("TiFlash ready: %s/%s", ns, tcName)
@@ -1705,7 +1705,7 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 
 	tidbSet, err := oa.tcStsGetter.StatefulSets(ns).Get(tidbSetName, metav1.GetOptions{})
 	if err != nil {
-		log.Logf("ERROR: failed to get statefulset: %s/%s, %v", ns, tidbSetName, err)
+		log.Logf("failed to get statefulset: %s/%s, %v", ns, tidbSetName, err)
 		return false, nil
 	}
 
@@ -1760,12 +1760,12 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 
 	_, err = oa.kubeCli.CoreV1().Services(ns).Get(tidbSetName, metav1.GetOptions{})
 	if err != nil {
-		log.Logf("ERROR: failed to get service: %s/%s", ns, tidbSetName)
+		log.Logf("failed to get service: %s/%s", ns, tidbSetName)
 		return false, nil
 	}
 	_, err = oa.kubeCli.CoreV1().Services(ns).Get(controller.TiDBPeerMemberName(tcName), metav1.GetOptions{})
 	if err != nil {
-		log.Logf("ERROR: failed to get peer service: %s/%s", ns, controller.TiDBPeerMemberName(tcName))
+		log.Logf("failed to get peer service: %s/%s", ns, controller.TiDBPeerMemberName(tcName))
 		return false, nil
 	}
 
@@ -1783,17 +1783,17 @@ func (oa *operatorActions) reclaimPolicySyncFn(tc *v1alpha1.TidbCluster) (bool, 
 	var pvcList *corev1.PersistentVolumeClaimList
 	var err error
 	if pvcList, err = oa.kubeCli.CoreV1().PersistentVolumeClaims(ns).List(listOptions); err != nil {
-		log.Logf("ERROR: failed to list pvs for tidbcluster %s/%s, %v", ns, tcName, err)
+		log.Logf("failed to list pvs for tidbcluster %s/%s, %v", ns, tcName, err)
 		return false, nil
 	}
 
 	for _, pvc := range pvcList.Items {
 		pvName := pvc.Spec.VolumeName
 		if pv, err := oa.kubeCli.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{}); err != nil {
-			log.Logf("ERROR: failed to get pv: %s, error: %v", pvName, err)
+			log.Logf("failed to get pv: %s, error: %v", pvName, err)
 			return false, nil
 		} else if pv.Spec.PersistentVolumeReclaimPolicy != *tc.Spec.PVReclaimPolicy {
-			log.Logf("ERROR: pv: %s's reclaimPolicy is not Retain", pvName)
+			log.Logf("pv: %s's reclaimPolicy is not Retain", pvName)
 			return false, nil
 		}
 	}
@@ -1807,13 +1807,13 @@ func (oa *operatorActions) metaSyncFn(tc *v1alpha1.TidbCluster) (bool, error) {
 
 	pdClient, cancel, err := oa.getPDClient(tc)
 	if err != nil {
-		log.Logf("ERROR: failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
+		log.Logf("failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
 		return false, nil
 	}
 	defer cancel()
 	var cluster *metapb.Cluster
 	if cluster, err = pdClient.GetCluster(); err != nil {
-		log.Logf("ERROR: failed to get cluster from pdControl: %s/%s, error: %v", ns, tcName, err)
+		log.Logf("failed to get cluster from pdControl: %s/%s, error: %v", ns, tcName, err)
 		return false, nil
 	}
 
@@ -1826,7 +1826,7 @@ func (oa *operatorActions) metaSyncFn(tc *v1alpha1.TidbCluster) (bool, error) {
 
 	var podList *corev1.PodList
 	if podList, err = oa.kubeCli.CoreV1().Pods(ns).List(listOptions); err != nil {
-		log.Logf("ERROR: failed to list pods for tidbcluster %s/%s, %v", ns, tcName, err)
+		log.Logf("failed to list pods for tidbcluster %s/%s, %v", ns, tcName, err)
 		return false, nil
 	}
 
@@ -1845,7 +1845,7 @@ outerLoop:
 			var memberID string
 			members, err := pdClient.GetMembers()
 			if err != nil {
-				log.Logf("ERROR: failed to get members for tidbcluster %s/%s, %v", ns, tcName, err)
+				log.Logf("failed to get members for tidbcluster %s/%s, %v", ns, tcName, err)
 				return false, nil
 			}
 			for _, member := range members.Members {
@@ -1867,7 +1867,7 @@ outerLoop:
 			var storeID string
 			stores, err := pdClient.GetStores()
 			if err != nil {
-				log.Logf("ERROR: failed to get stores for tidbcluster %s/%s, %v", ns, tcName, err)
+				log.Logf("failed to get stores for tidbcluster %s/%s, %v", ns, tcName, err)
 				return false, nil
 			}
 			for _, store := range stores.Stores {
@@ -1905,7 +1905,7 @@ outerLoop:
 
 		var pvc *corev1.PersistentVolumeClaim
 		if pvc, err = oa.kubeCli.CoreV1().PersistentVolumeClaims(ns).Get(pvcName, metav1.GetOptions{}); err != nil {
-			log.Logf("ERROR: failed to get pvc %s/%s for pod %s/%s", ns, pvcName, ns, podName)
+			log.Logf("failed to get pvc %s/%s for pod %s/%s", ns, pvcName, ns, podName)
 			return false, nil
 		}
 		if pvc.Labels[label.ClusterIDLabelKey] != clusterID {
@@ -1932,7 +1932,7 @@ outerLoop:
 		pvName := pvc.Spec.VolumeName
 		var pv *corev1.PersistentVolume
 		if pv, err = oa.kubeCli.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{}); err != nil {
-			log.Logf("ERROR: failed to get pv for pvc %s/%s, %v", ns, pvcName, err)
+			log.Logf("failed to get pv for pvc %s/%s, %v", ns, pvcName, err)
 			return false, nil
 		}
 		if pv.Labels[label.NamespaceLabelKey] != ns {
@@ -2001,7 +2001,7 @@ func (oa *operatorActions) schedulerHAFn(tc *v1alpha1.TidbCluster) (bool, error)
 		var podList *corev1.PodList
 		var err error
 		if podList, err = oa.kubeCli.CoreV1().Pods(ns).List(listOptions); err != nil {
-			log.Logf("ERROR: failed to list pods for tidbcluster %s/%s, %v", ns, tcName, err)
+			log.Logf("failed to list pods for tidbcluster %s/%s, %v", ns, tcName, err)
 			return false, nil
 		}
 
@@ -2043,7 +2043,7 @@ func (oa *operatorActions) podsScheduleAnnHaveDeleted(tc *v1alpha1.TidbCluster) 
 
 	pvcList, err := oa.kubeCli.CoreV1().PersistentVolumeClaims(ns).List(listOptions)
 	if err != nil {
-		log.Logf("ERROR: failed to list pvcs for tidb cluster %s/%s, err: %v", ns, tcName, err)
+		log.Logf("failed to list pvcs for tidb cluster %s/%s, err: %v", ns, tcName, err)
 		return false, nil
 	}
 
@@ -2066,13 +2066,13 @@ func (oa *operatorActions) podsScheduleAnnHaveDeleted(tc *v1alpha1.TidbCluster) 
 func (oa *operatorActions) checkReclaimPVSuccess(tc *v1alpha1.TidbCluster) (bool, error) {
 	// check pv reclaim	for pd
 	if err := oa.checkComponentReclaimPVSuccess(tc, label.PDLabelVal); err != nil {
-		log.Logf("ERROR: %v", err)
+		log.Logf("%v", err)
 		return false, nil
 	}
 
 	// check pv reclaim for tikv
 	if err := oa.checkComponentReclaimPVSuccess(tc, label.TiKVLabelVal); err != nil {
-		log.Logf("ERROR: %v", err)
+		log.Logf("%v", err)
 		return false, nil
 	}
 	return true, nil
@@ -2150,7 +2150,7 @@ func (oa *operatorActions) getComponentPVList(tc *v1alpha1.TidbCluster, componen
 func (oa *operatorActions) storeLabelsIsSet(tc *v1alpha1.TidbCluster, topologyKey string) (bool, error) {
 	pdClient, cancel, err := oa.getPDClient(tc)
 	if err != nil {
-		log.Logf("ERROR: failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
+		log.Logf("failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
 		return false, nil
 	}
 	defer cancel()
@@ -2183,7 +2183,7 @@ func (oa *operatorActions) passwordIsSet(clusterInfo *TidbClusterConfig) (bool, 
 	var job *batchv1.Job
 	var err error
 	if job, err = oa.kubeCli.BatchV1().Jobs(ns).Get(jobName, metav1.GetOptions{}); err != nil {
-		log.Logf("ERROR: failed to get job %s/%s, %v", ns, jobName, err)
+		log.Logf("failed to get job %s/%s, %v", ns, jobName, err)
 		return false, nil
 	}
 	if job.Status.Succeeded < 1 {
@@ -2194,7 +2194,7 @@ func (oa *operatorActions) passwordIsSet(clusterInfo *TidbClusterConfig) (bool, 
 	var db *sql.DB
 	dsn, cancel, err := oa.getTiDBDSN(ns, tcName, "test", clusterInfo.Password)
 	if err != nil {
-		log.Logf("ERROR: failed to get TiDB DSN: %v", err)
+		log.Logf("failed to get TiDB DSN: %v", err)
 		return false, nil
 	}
 	defer cancel()
@@ -2252,13 +2252,13 @@ func (oa *operatorActions) checkTidbClusterConfigUpdated(tc *v1alpha1.TidbCluste
 func (oa *operatorActions) checkPdConfigUpdated(tc *v1alpha1.TidbCluster, clusterInfo *TidbClusterConfig) bool {
 	pdClient, cancel, err := oa.getPDClient(tc)
 	if err != nil {
-		log.Logf("ERROR: failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
+		log.Logf("failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
 		return false
 	}
 	defer cancel()
 	config, err := pdClient.GetConfig()
 	if err != nil {
-		log.Logf("ERROR: failed to get PD configuraion from tidb cluster [%s/%s]", tc.Namespace, tc.Name)
+		log.Logf("failed to get PD configuraion from tidb cluster [%s/%s]", tc.Namespace, tc.Name)
 		return false
 	}
 	if len(clusterInfo.PDLogLevel) > 0 && clusterInfo.PDLogLevel != config.Log.Level {
@@ -2284,13 +2284,13 @@ func (oa *operatorActions) checkPdConfigUpdated(tc *v1alpha1.TidbCluster, cluste
 func (oa *operatorActions) checkTiDBConfigUpdated(tc *v1alpha1.TidbCluster, clusterInfo *TidbClusterConfig) bool {
 	ordinals, err := util.GetPodOrdinals(tc, v1alpha1.TiDBMemberType)
 	if err != nil {
-		log.Logf("ERROR: failed to get pod ordinals for tidb cluster %s/%s (member: %v)", tc.Namespace, tc.Name, v1alpha1.TiDBMemberType)
+		log.Logf("failed to get pod ordinals for tidb cluster %s/%s (member: %v)", tc.Namespace, tc.Name, v1alpha1.TiDBMemberType)
 		return false
 	}
 	for i := range ordinals {
 		config, err := oa.tidbControl.GetSettings(tc, int32(i))
 		if err != nil {
-			log.Logf("ERROR: failed to get TiDB configuration from cluster [%s/%s], ordinal: %d, error: %v", tc.Namespace, tc.Name, i, err)
+			log.Logf("failed to get TiDB configuration from cluster [%s/%s], ordinal: %d, error: %v", tc.Namespace, tc.Name, i, err)
 			return false
 		}
 		if clusterInfo.TiDBTokenLimit > 0 && uint(clusterInfo.TiDBTokenLimit) != config.TokenLimit {
@@ -2424,7 +2424,7 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 		if oa.fw != nil {
 			localHost, localPort, cancel, err := portforward.ForwardOnePort(oa.fw, info.Namespace, fmt.Sprintf("svc/%s-tidb", info.ClusterName), 4000)
 			if err != nil {
-				log.Logf("ERROR: failed to forward port %d for %s/%s", 4000, info.Namespace, info.ClusterName)
+				log.Logf("failed to forward port %d for %s/%s", 4000, info.Namespace, info.ClusterName)
 				return false, nil
 			}
 			defer cancel()
@@ -2448,7 +2448,7 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 
 		res, err := exec.Command("/bin/bash", "-c", getTSCmd).CombinedOutput()
 		if err != nil {
-			log.Logf("ERROR: failed to get ts %v, %s", err, string(res))
+			log.Logf("failed to get ts %v, %s", err, string(res))
 			return false, nil
 		}
 		tsStr = string(res)
@@ -2492,7 +2492,7 @@ func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterConfig) (string, er
 	fn := func() (bool, error) {
 		job, err := oa.kubeCli.BatchV1().Jobs(info.Namespace).Get(jobName, metav1.GetOptions{})
 		if err != nil {
-			log.Logf("ERROR: failed to get jobs %s ,%v", jobName, err)
+			log.Logf("failed to get jobs %s ,%v", jobName, err)
 			return false, nil
 		}
 		if job.Status.Succeeded == 0 {
@@ -2505,7 +2505,7 @@ func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterConfig) (string, er
 		}
 		podList, err := oa.kubeCli.CoreV1().Pods(ns).List(listOptions)
 		if err != nil {
-			log.Logf("ERROR: failed to list pods: %v", err)
+			log.Logf("failed to list pods: %v", err)
 			return false, nil
 		}
 
@@ -2518,14 +2518,14 @@ func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterConfig) (string, er
 			}
 		}
 		if podName == "" {
-			log.Logf("ERROR: failed to find the ad-hoc backup: %s podName", jobName)
+			log.Logf("failed to find the ad-hoc backup: %s podName", jobName)
 			return false, nil
 		}
 
 		getTsCmd := fmt.Sprintf("kubectl logs -n %s %s | grep 'commitTS = ' | cut -d '=' -f2 | sed 's/ *//g'", ns, podName)
 		tsData, err := exec.Command("/bin/sh", "-c", getTsCmd).CombinedOutput()
 		if err != nil {
-			log.Logf("ERROR: failed to get ts of pod %s, %v", podName, err)
+			log.Logf("failed to get ts of pod %s, %v", podName, err)
 			return false, nil
 		}
 		if string(tsData) == "" {
@@ -2581,7 +2581,7 @@ func (oa *operatorActions) CheckRestore(from *TidbClusterConfig, to *TidbCluster
 	fn := func() (bool, error) {
 		job, err := oa.kubeCli.BatchV1().Jobs(to.Namespace).Get(jobName, metav1.GetOptions{})
 		if err != nil {
-			log.Logf("ERROR: failed to get jobs %s ,%v", jobName, err)
+			log.Logf("failed to get jobs %s ,%v", jobName, err)
 			return false, nil
 		}
 		if job.Status.Succeeded == 0 {
@@ -2779,13 +2779,13 @@ func (oa *operatorActions) CheckScheduledBackup(info *TidbClusterConfig) error {
 	fn := func() (bool, error) {
 		job, err := oa.kubeCli.BatchV1beta1().CronJobs(info.Namespace).Get(jobName, metav1.GetOptions{})
 		if err != nil {
-			log.Logf("ERROR: failed to get cronjobs %s ,%v", jobName, err)
+			log.Logf("failed to get cronjobs %s ,%v", jobName, err)
 			return false, nil
 		}
 
 		jobs, err := oa.kubeCli.BatchV1().Jobs(info.Namespace).List(metav1.ListOptions{})
 		if err != nil {
-			log.Logf("ERROR: failed to list jobs %s ,%v", info.Namespace, err)
+			log.Logf("failed to list jobs %s ,%v", info.Namespace, err)
 			return false, nil
 		}
 
@@ -3027,7 +3027,7 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 	fn := func() (bool, error) {
 		pumpStatefulSet, err := oa.kubeCli.AppsV1().StatefulSets(info.Namespace).Get(pumpStatefulSetName, metav1.GetOptions{})
 		if err != nil {
-			log.Logf("ERROR: failed to get jobs %s ,%v", pumpStatefulSetName, err)
+			log.Logf("failed to get jobs %s ,%v", pumpStatefulSetName, err)
 			return false, nil
 		}
 		if pumpStatefulSet.Status.Replicas != pumpStatefulSet.Status.ReadyReplicas {
@@ -3047,7 +3047,7 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 
 		pods, err := oa.kubeCli.CoreV1().Pods(info.Namespace).List(listOps)
 		if err != nil {
-			log.Logf("ERROR: failed to get pods via pump labels %s ,%v", pumpStatefulSetName, err)
+			log.Logf("failed to get pods via pump labels %s ,%v", pumpStatefulSetName, err)
 			return false, nil
 		}
 
@@ -3089,7 +3089,7 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 		drainerStatefulSetName := fmt.Sprintf("%s-drainer", info.ClusterName)
 		drainerStatefulSet, err := oa.kubeCli.AppsV1().StatefulSets(info.Namespace).Get(drainerStatefulSetName, metav1.GetOptions{})
 		if err != nil {
-			log.Logf("ERROR: failed to get jobs %s ,%v", pumpStatefulSetName, err)
+			log.Logf("failed to get jobs %s ,%v", pumpStatefulSetName, err)
 			return false, nil
 		}
 		if drainerStatefulSet.Status.Replicas != drainerStatefulSet.Status.ReadyReplicas {
@@ -3232,7 +3232,7 @@ func (oa *operatorActions) pumpHealth(tcName, ns, podName string, tlsEnabled boo
 	if oa.fw != nil {
 		localHost, localPort, cancel, err := portforward.ForwardOnePort(oa.fw, ns, fmt.Sprintf("pod/%s", podName), 8250)
 		if err != nil {
-			log.Logf("ERROR: failed to forward port %d for %s/%s", 8250, ns, podName)
+			log.Logf("failed to forward port %d for %s/%s", 8250, ns, podName)
 			return false
 		}
 		defer cancel()
@@ -3296,7 +3296,7 @@ func (oa *operatorActions) drainerHealth(tcName, ns, podName string, tlsEnabled 
 	if oa.fw != nil {
 		localHost, localPort, cancel, err := portforward.ForwardOnePort(oa.fw, ns, fmt.Sprintf("pod/%s", podName), 8249)
 		if err != nil {
-			log.Logf("ERROR: failed to forward port %d for %s/%s", 8249, ns, podName)
+			log.Logf("failed to forward port %d for %s/%s", 8249, ns, podName)
 			return false
 		}
 		defer cancel()
@@ -3449,7 +3449,7 @@ func (oa *operatorActions) checkManualPauseComponent(info *TidbClusterConfig, co
 	fn := func() (bool, error) {
 
 		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(info.ClusterName, metav1.GetOptions{}); err != nil {
-			log.Logf("ERROR: failed to get tidbcluster: [%s/%s], %v", ns, info.ClusterName, err)
+			log.Logf("failed to get tidbcluster: [%s/%s], %v", ns, info.ClusterName, err)
 			return false, nil
 		}
 
@@ -3596,7 +3596,7 @@ func (oa *operatorActions) pumpMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 
 	ss, err := oa.tcStsGetter.StatefulSets(ns).Get(ssName, metav1.GetOptions{})
 	if err != nil {
-		log.Logf("ERROR: failed to get statefulset: %s/%s, %v", ns, ssName, err)
+		log.Logf("failed to get statefulset: %s/%s, %v", ns, ssName, err)
 		return false, nil
 	}
 
@@ -3629,7 +3629,7 @@ func (oa *operatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, tim
 		var local *v1alpha1.TidbCluster
 		var err error
 		if local, err = oa.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{}); err != nil {
-			log.Logf("ERROR: failed to get tidbcluster: %s/%s, %v", tc.Namespace, tc.Name, err)
+			log.Logf("failed to get tidbcluster: %s/%s, %v", tc.Namespace, tc.Name, err)
 			return false, nil
 		}
 
