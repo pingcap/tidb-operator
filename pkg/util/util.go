@@ -131,8 +131,7 @@ func GetDeleteSlotsNumber(annotations map[string]string) (int32, error) {
 		return 0, nil
 	}
 	var slice []int32
-	err := json.Unmarshal([]byte(value), &slice)
-	if err != nil {
+	if err := json.Unmarshal([]byte(value), &slice); err != nil {
 		return 0, err
 	}
 	return int32(len(slice)), nil
