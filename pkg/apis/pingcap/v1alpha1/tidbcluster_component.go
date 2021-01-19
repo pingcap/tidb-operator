@@ -40,6 +40,7 @@ type ComponentAccessor interface {
 	BuildPodSpec() corev1.PodSpec
 	Env() []corev1.EnvVar
 	AdditionalContainers() []corev1.Container
+	InitContainers() []corev1.Container
 	AdditionalVolumes() []corev1.Volume
 	AdditionalVolumeMounts() []corev1.VolumeMount
 	TerminationGracePeriodSeconds() *int64
@@ -198,6 +199,10 @@ func (a *componentAccessorImpl) BuildPodSpec() corev1.PodSpec {
 
 func (a *componentAccessorImpl) Env() []corev1.EnvVar {
 	return a.ComponentSpec.Env
+}
+
+func (a *componentAccessorImpl) InitContainers() []corev1.Container {
+	return a.ComponentSpec.InitContainers
 }
 
 func (a *componentAccessorImpl) AdditionalContainers() []corev1.Container {
