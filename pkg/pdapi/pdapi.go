@@ -570,6 +570,7 @@ func (c *pdClient) EndEvictLeader(storeID uint64) error {
 	} else {
 		err2 := httputil.ReadErrorBody(res.Body)
 		klog.Errorf("call DELETE method: %s failed,statusCode: %v,error: %v", apiURL, res.StatusCode, err2)
+		return err2
 	}
 
 	return nil
