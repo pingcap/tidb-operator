@@ -170,10 +170,8 @@ echo "info: installing crds"
 $KUBECTL_BIN apply -f manifests/crd.yaml
 
 echo "info: deploying tidb-operator"
-KUBE_VERSION=$($KUBECTL_BIN version --short | awk '/Server Version:/ {print $3}')
 helm_args=(
     template
-    --kube-version "$KUBE_VERSION"
     --name tidb-operator-dev
     --namespace "$NAMESPACE"
     --set-string operatorImage=$DOCKER_REGISTRY/pingcap/tidb-operator:${IMAGE_TAG}
