@@ -73,7 +73,7 @@ func (bm *Manager) setOptions(backup *v1alpha1.Backup) {
 
 // ProcessBackup used to process the backup logic
 func (bm *Manager) ProcessBackup() error {
-	ctx, cancel := util.GetContextForSignal(bm.ResourceName)
+	ctx, cancel := util.GetContextForTerminationSignals(bm.ResourceName)
 	defer cancel()
 
 	var errs []error

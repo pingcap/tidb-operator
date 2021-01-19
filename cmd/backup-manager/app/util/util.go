@@ -423,8 +423,8 @@ func ConstructRcloneArgs(conf string, opts []string, command, source, dest strin
 	return args
 }
 
-// GetContextForSignal get a context for some signals, and the context will become done after any of these signals triggered.
-func GetContextForSignal(op string) (context.Context, context.CancelFunc) {
+// GetContextForTerminationSignals get a context for some termination signals, and the context will become done after any of these signals triggered.
+func GetContextForTerminationSignals(op string) (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	sc := make(chan os.Signal, 1)
