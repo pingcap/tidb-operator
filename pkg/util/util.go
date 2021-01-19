@@ -126,9 +126,6 @@ func GetPodOrdinals(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) (s
 }
 
 func GetDeleteSlotsNumber(annotations map[string]string) (int32, error) {
-	if len(annotations) == 0 {
-		return 0, nil
-	}
 	value, ok := annotations[helper.DeleteSlotsAnn]
 	if !ok {
 		return 0, nil
