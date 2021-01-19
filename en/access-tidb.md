@@ -4,47 +4,44 @@ summary: Learn how to access the TiDB cluster in Kubernetes.
 aliases: ['/docs/tidb-in-kubernetes/dev/access-tidb/']
 ---
 
-# Access the TiDB Cluster in Kubernetes
+# Access the TiDB Cluster
 
-This document describes how to access the TiDB cluster in Kubernetes.
+This document describes how to access the TiDB cluster.
 
-+ To access the TiDB cluster within a Kubernetes cluster, use the TiDB service domain name `${cluster_name}-tidb.${namespace}`.
-+ To access the TiDB cluster outside a Kubernetes cluster, expose the TiDB service port by editing the `spec.tidb.service` field configuration in the `TidbCluster` CR.
+You can configure Service with different types according to the scenarios, such as `ClusterIP`, `NodePort`, `LoadBalancer`, etc., and use different access methods for different types. 
 
-    {{< copyable "" >}}
+You can obtain TiDB Service information by running the following command:
 
-    ```yaml
-    spec:
-        ...
-        tidb:
-        service:
-          type: NodePort
-          # externalTrafficPolicy: Cluster
-          # annotations:
-          #   cloud.google.com/load-balancer-type: Internal
-    ```
+{{< copyable "shell-regular" >}}
+
+```shell
+kubectl get svc ${serviceName} -n ${namespace}
+```
+
+For example:
+
+```
+# kubectl get svc basic-tidb -n default
+NAME         TYPE       CLUSTER-IP     EXTERNAL-IP   PORT(S)                          AGE
+basic-tidb   NodePort   10.233.6.240   <none>        4000:32498/TCP,10080:30171/TCP   61d
+```
+
+The above example describes the information of the `basic-tidb` service in the `default` namespace. The type is `NodePort`, ClusterIP is `10.233.6.240`, ServicePort is `4000` and `10080`, and the corresponding NodePort is `32498` and `30171`.
 
 > **Note:**
 >
 > [The default authentication plugin of MySQL 8.0](https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_default_authentication_plugin) is updated from `mysql_native_password` to `caching_sha2_password`. Therefore, if you use MySQL client from MySQL 8.0 to access the TiDB service (TiDB version earlier than v4.0.7), and if the user account has a password, you need to explicitly specify the `--default-auth=mysql_native_password` parameter.
 
+## ClusterIP
+
+`ClusterIP` exposes services through the internal IP of the cluster. When selecting this type of service, you can only access it within the cluster by the following methods:
+
+* ClusterIP + ServicePort
+* Service domain name (`${serviceName}.${namespace}`) + ServicePort
+
 ## NodePort
 
-If there is no LoadBalancer, expose the TiDB service port in the following two modes of NodePort:
-
-- `externalTrafficPolicy=Cluster`: All machines in the Kubernetes cluster assign a NodePort to TiDB Pod, which is the default mode.
-
-    When using the `Cluster` mode, you can access the TiDB service by using the IP address of any machine plus the same port. If there is no TiDB Pod on the machine, the corresponding request is forwarded to the machine with a TiDB Pod.
-
-    > **Note:**
-    >
-    > In this mode, the request's source IP obtained by the TiDB server is the node IP, not the real client's source IP. Therefore, the access control based on the client's source IP is not available in this mode.
-
-- `externalTrafficPolicy=Local`: Only those machines that run TiDB assign NodePort to TiDB Pod so that you can access local TiDB instances.
-
-    When you use the `Local` mode, it is recommended to enable the `StableScheduling` feature of `tidb-scheduler`. `tidb-scheduler` tries to schedule the newly added TiDB instances to the existing machines during the upgrade process. With such scheduling, client outside the Kubernetes cluster does not need to upgrade configuration after TiDB is restarted.
-
-### View the IP/PORT exposed in NodePort mode
+If there is no LoadBalancer, you can choose to expose the service through NodePort. NodePort exposes services through the node's IP and static port. You can access a NodePort service from outside of the cluster by requesting `NodeIP + NodePort`.
 
 To view the Node Port assigned by Service, run the following commands to obtain the Service object of TiDB:
 
@@ -67,59 +64,8 @@ To check you can access TiDB services by using the IP of what nodes, see the fol
 
 ## LoadBalancer
 
-If Kubernetes is run in an environment with LoadBalancer, such as GCP/AWS platform, it is recommended to use the LoadBalancer feature of these cloud platforms by setting `tidb.service.type=LoadBalancer`.
+If the TiDB cluster runs in an environment with LoadBalancer, such as on GCP or AWS, it is recommended to use the LoadBalancer feature of these cloud platforms by setting `tidb.service.type=LoadBalancer`.
+
+To access TiDB Service through LoadBalancer, refer to [EKS](deploy-on-aws-eks.md#install-the-mysql-client-and-connect), [GKE](deploy-on-gcp-gke.md#install-the-mysql-client-and-connect) and [ACK](deploy-on-alibaba-cloud.md#access-the-database).
 
 See [Kubernetes Service Documentation](https://kubernetes.io/docs/concepts/services-networking/service/) to know more about the features of Service and what LoadBalancer in the cloud platform supports.
-
-## Gracefully upgrade the TiDB cluster
-
-When you perform a rolling update to the TiDB cluster, Kubernetes sends a [`TERM`](https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods) signal to the TiDB server before it stops the TiDB pod. When the TiDB server receives the `TERM` signal, it tries to wait for all connections to close. After 15 seconds, the TiDB server forcibly closes all the connections and exits the process.
-
-Starting from v1.1.2, TiDB Operator supports gracefully upgrading the TiDB cluster. You can enable this feature by configuring the following items:
-
-- `spec.tidb.terminationGracePeriodSeconds`: The longest tolerable duration to delete the old TiDB Pod during the rolling upgrade. If this duration is exceeded, the TiDB Pod will be deleted forcibly.
-- `spec.tidb.lifecycle`: Sets the `preStop` hook for the TiDB Pod, which is the operation executed before the TiDB server stops.
-
-```yaml
-apiVersion: pingcap.com/v1alpha1
-kind: TidbCluster
-metadata:
-  name: basic
-spec:
-  version: v4.0.9
-  pvReclaimPolicy: Retain
-  discovery: {}
-  pd:
-    baseImage: pingcap/pd
-    replicas: 1
-    requests:
-      storage: "1Gi"
-    config: {}
-  tikv:
-    baseImage: pingcap/tikv
-    replicas: 1
-    requests:
-      storage: "1Gi"
-    config: {}
-  tidb:
-    baseImage: pingcap/tidb
-    replicas: 1
-    service:
-      type: ClusterIP
-    config: {}
-    terminationGracePeriodSeconds: 60
-    lifecycle:
-      preStop:
-        exec:
-          command:
-          - /bin/sh
-          - -c
-          - "sleep 10 && kill -QUIT 1"
-```
-
-The YAML file above:
-
-- Sets the longest tolerable duration to delete the TiDB Pod to 60 seconds. If the client does not close the connections after 60 seconds, these connections will be closed forcibly. You can adjust the value according to your needs.
-- Sets the value of `preStop` hook to `sleep 10 && kill -QUIT 1`. Here `PID 1` refers to the PID of the TiDB server process in the TiDB Pod. When the TiDB server process receives the signal, it exits only after all the connections are closed by the client.
-
-When Kubernetes deletes the TiDB Pod, it also removes the TiDB node from the service endpoints. This is to ensure that the new connection is not established to this TiDB node. However, because this process is asynchronous, you can make the system sleep for a few seconds before you send the `kill` signal, which makes sure that the TiDB node is removed from the endpoints.
