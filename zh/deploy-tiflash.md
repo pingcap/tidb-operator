@@ -75,6 +75,11 @@ TiFlash 支持挂载多个 PV，如果要为 TiFlash 配置多个 PV，可以在
 >
 > 由于 TiDB Operator 会按照 `storageClaims` 列表中的配置**按顺序**自动挂载 PV，如果需要为 TiFlash 增加磁盘，请确保只在列表原有配置**最后添加**，并且**不能**修改列表中原有配置的顺序。
 
+TiDB Operator 通过创建 [StatefulSet](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/) 管理 TiFlash，由于 `StatefulSet` 创建后不支持修改 `volumeClaimTemplates`，因此直接更新 `storageClaims` 添加磁盘不会为 Pod 挂载上额外的 PV，解决方案有下面两种：
+
+* 第一次部署 TiFlash 集群就规划好使用几个 PV，配置好 `storageClaims`。
+* 如果确实要新增 PV，配置好 `storageClaims` 后，需要手动删除 TiFlash StatefulSet (`kubectl delete sts -n ${namespace} ${cluster_name}-tiflash`)，等待 TiDB Operator 重新创建。
+
 新增部署 TiFlash 需要 PD 配置 `replication.enable-placement-rules: true`，通过上述步骤在 TidbCluster 中增加 TiFlash 配置后，TiDB Operator 会自动为 PD 配置 `replication.enable-placement-rules: true`。
 
 如果服务器没有外网，请参考[部署 TiDB 集群](deploy-on-general-kubernetes.md#部署-tidb-集群)在有外网的机器上将用到的 Docker 镜像下载下来并上传到服务器上。
