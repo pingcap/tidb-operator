@@ -157,24 +157,28 @@ func (c *Controller) updateRestore(cur interface{}) {
 
 	if v1alpha1.IsRestoreScheduled(newRestore) || v1alpha1.IsRestoreRunning(newRestore) {
 		selector, err := label.NewRestore().Instance(newRestore.GetInstanceName()).RestoreJob().Restore(name).Selector()
-		if err == nil {
-			pods, err2 := c.deps.PodLister.Pods(ns).List(selector)
-			if err2 == nil {
-				for _, pod := range pods {
-					if pod.Status.Phase == corev1.PodFailed {
-						klog.Infof("restore %s/%s has failed pod %s.", ns, name, pod.Name)
-						err2 = c.control.UpdateCondition(newRestore, &v1alpha1.RestoreCondition{
-							Type:    v1alpha1.RestoreFailed,
-							Status:  corev1.ConditionTrue,
-							Reason:  "AlreadyFailed",
-							Message: fmt.Sprintf("Pod %s has failed", pod.Name),
-						})
-						if err2 != nil {
-							klog.Errorf("Fail to update the condition of restore %s/%s", ns, name)
-						}
-						break
-					}
+		if err != nil {
+			klog.Errorf("Fail to generate selector for restore %s/%s, %v", ns, name, err)
+			return
+		}
+		pods, err := c.deps.PodLister.Pods(ns).List(selector)
+		if err != nil {
+			klog.Errorf("Fail to list pod for restore %s/%s with selector %s, %v", ns, name, selector, err)
+			return
+		}
+		for _, pod := range pods {
+			if pod.Status.Phase == corev1.PodFailed {
+				klog.Infof("restore %s/%s has failed pod %s.", ns, name, pod.Name)
+				err = c.control.UpdateCondition(newRestore, &v1alpha1.RestoreCondition{
+					Type:    v1alpha1.RestoreFailed,
+					Status:  corev1.ConditionTrue,
+					Reason:  "AlreadyFailed",
+					Message: fmt.Sprintf("Pod %s has failed", pod.Name),
+				})
+				if err != nil {
+					klog.Errorf("Fail to update the condition of restore %s/%s, %v", ns, name, err)
 				}
+				break
 			}
 		}
 		klog.V(4).Infof("restore %s/%s is already Scheduled, Running or Failed, skipping.", ns, name)

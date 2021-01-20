@@ -124,8 +124,8 @@ func IsBackupRunning(backup *Backup) bool {
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
 
-// IsBackupPrepare returns true if a Backup is Prepare.
-func IsBackupPrepare(backup *Backup) bool {
+// IsBackupPrepared returns true if a Backup is Prepare.
+func IsBackupPrepared(backup *Backup) bool {
 	_, condition := GetBackupCondition(&backup.Status, BackupPrepare)
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
