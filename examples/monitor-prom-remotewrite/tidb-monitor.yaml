@@ -11,10 +11,10 @@ spec:
     remoteWrite:
       - url: "http://localhost:1234"
         writeRelabelConfigs:
-          - source_labels: [__test]
+          - sourceLabels: [__test]
             separator: ;
             regex: (.*)
-            target_label: node
+            targetlabel: node
             replacement: $1
             action: replace
   grafana:

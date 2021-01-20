@@ -347,7 +347,7 @@ type BasicAuth struct {
 type RelabelConfig struct {
 	// A list of labels from which values are taken and concatenated
 	// with the configured separator in order.
-	SourceLabels model.LabelNames `json:"source_labels,omitempty"`
+	SourceLabels model.LabelNames `json:"sourceLabels,omitempty"`
 	// Separator is the string between concatenated values from the source labels.
 	Separator string `json:"separator,omitempty"`
 	//Regular expression against which the extracted value is matched. Default is '(.*)'
@@ -356,7 +356,7 @@ type RelabelConfig struct {
 	Modulus uint64 `json:"modulus,omitempty"`
 	// TargetLabel is the label to which the resulting string is written in a replacement.
 	// Regexp interpolation is allowed for the replace action.
-	TargetLabel string `json:"target_label,omitempty"`
+	TargetLabel string `json:"targetLabel,omitempty"`
 	// Replacement is the regex replacement pattern to be used.
 	Replacement string `json:"replacement,omitempty"`
 	// Action is the action to be performed for the relabeling.
@@ -371,18 +371,18 @@ type QueueConfig struct {
 	Capacity int `json:"capacity,omitempty"`
 
 	// Max number of shards, i.e. amount of concurrency.
-	MaxShards int `json:"max_shards,omitempty"`
+	MaxShards int `json:"maxShards,omitempty"`
 
 	// Maximum number of samples per send.
-	MaxSamplesPerSend int `json:"max_samples_per_send,omitempty"`
+	MaxSamplesPerSend int `json:"maxSamplesPperSend,omitempty"`
 
 	// Maximum time sample will wait in buffer.
-	BatchSendDeadline time.Duration `json:"batch_send_deadline,omitempty"`
+	BatchSendDeadline time.Duration `json:"batchSendDeadline,omitempty"`
 
 	// Max number of times to retry a batch on recoverable errors.
-	MaxRetries int `json:"max_retries,omitempty"`
+	MaxRetries int `json:"maxRetries,omitempty"`
 
 	// On recoverable errors, backoff exponentially.
-	MinBackoff time.Duration `json:"min_backoff,omitempty"`
-	MaxBackoff time.Duration `json:"max_backoff,omitempty"`
+	MinBackoff time.Duration `json:"minBackoff,omitempty"`
+	MaxBackoff time.Duration `json:"maxBackoff,omitempty"`
 }

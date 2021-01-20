@@ -10235,7 +10235,7 @@ int
 </tr>
 <tr>
 <td>
-<code>max_shards</code></br>
+<code>maxShards</code></br>
 <em>
 int
 </em>
@@ -10246,7 +10246,7 @@ int
 </tr>
 <tr>
 <td>
-<code>max_samples_per_send</code></br>
+<code>maxSamplesPperSend</code></br>
 <em>
 int
 </em>
@@ -10257,7 +10257,7 @@ int
 </tr>
 <tr>
 <td>
-<code>batch_send_deadline</code></br>
+<code>batchSendDeadline</code></br>
 <em>
 time.Duration
 </em>
@@ -10268,7 +10268,7 @@ time.Duration
 </tr>
 <tr>
 <td>
-<code>max_retries</code></br>
+<code>maxRetries</code></br>
 <em>
 int
 </em>
@@ -10279,7 +10279,7 @@ int
 </tr>
 <tr>
 <td>
-<code>min_backoff</code></br>
+<code>minBackoff</code></br>
 <em>
 time.Duration
 </em>
@@ -10290,7 +10290,7 @@ time.Duration
 </tr>
 <tr>
 <td>
-<code>max_backoff</code></br>
+<code>maxBackoff</code></br>
 <em>
 time.Duration
 </em>
@@ -10347,7 +10347,7 @@ More info: <a href="https://prometheus.io/docs/prometheus/latest/configuration/c
 <tbody>
 <tr>
 <td>
-<code>source_labels</code></br>
+<code>sourceLabels</code></br>
 <em>
 github.com/prometheus/common/model.LabelNames
 </em>
@@ -10392,7 +10392,7 @@ uint64
 </tr>
 <tr>
 <td>
-<code>target_label</code></br>
+<code>targetLabel</code></br>
 <em>
 string
 </em>

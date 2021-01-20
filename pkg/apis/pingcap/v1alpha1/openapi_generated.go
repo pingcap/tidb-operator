@@ -5123,42 +5123,42 @@ func schema_pkg_apis_pingcap_v1alpha1_QueueConfig(ref common.ReferenceCallback) 
 							Format:      "int32",
 						},
 					},
-					"max_shards": {
+					"maxShards": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Max number of shards, i.e. amount of concurrency.",
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},
 					},
-					"max_samples_per_send": {
+					"maxSamplesPperSend": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Maximum number of samples per send.",
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},
 					},
-					"batch_send_deadline": {
+					"batchSendDeadline": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Maximum time sample will wait in buffer.",
 							Type:        []string{"integer"},
 							Format:      "int64",
 						},
 					},
-					"max_retries": {
+					"maxRetries": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Max number of times to retry a batch on recoverable errors.",
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},
 					},
-					"min_backoff": {
+					"minBackoff": {
 						SchemaProps: spec.SchemaProps{
 							Description: "On recoverable errors, backoff exponentially.",
 							Type:        []string{"integer"},
 							Format:      "int64",
 						},
 					},
-					"max_backoff": {
+					"maxBackoff": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
 							Format: "int64",
@@ -5177,7 +5177,7 @@ func schema_pkg_apis_pingcap_v1alpha1_RelabelConfig(ref common.ReferenceCallback
 				Description: "RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion. It defines `<metric_relabel_configs>`-section of Prometheus configuration. More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"source_labels": {
+					"sourceLabels": {
 						SchemaProps: spec.SchemaProps{
 							Description: "A list of labels from which values are taken and concatenated with the configured separator in order.",
 							Type:        []string{"array"},
@@ -5212,7 +5212,7 @@ func schema_pkg_apis_pingcap_v1alpha1_RelabelConfig(ref common.ReferenceCallback
 							Format:      "int64",
 						},
 					},
-					"target_label": {
+					"targetLabel": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TargetLabel is the label to which the resulting string is written in a replacement. Regexp interpolation is allowed for the replace action.",
 							Type:        []string{"string"},
