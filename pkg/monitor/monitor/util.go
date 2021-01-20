@@ -142,7 +142,7 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monit
 		EnableTLSDMCluster: dc != nil && dc.IsTLSClusterEnabled(),
 	}
 
-	if monitor.Spec.Prometheus.RemoteWrite != nil && len(monitor.Spec.Prometheus.RemoteWrite) > 0 {
+	if len(monitor.Spec.Prometheus.RemoteWrite) > 0 {
 		model.RemoteWriteConfigs = generateRemoteWrite(monitor)
 	}
 
@@ -1183,6 +1183,7 @@ func generateRemoteWrite(monitor *v1alpha1.TidbMonitor) []*config.RemoteWriteCon
 	for _, remoteWrite := range monitor.Spec.Prometheus.RemoteWrite {
 		url, err := client.ParseHostURL(remoteWrite.URL)
 		if err != nil {
+			klog.Errorf("remote write url[%s] config fail to parse, err:%v", remoteWrite.URL, err)
 			continue
 		}
 		httpClientConfig := config.HTTPClientConfig{

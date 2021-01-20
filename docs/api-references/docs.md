@@ -10496,7 +10496,7 @@ string
 </tr>
 <tr>
 <td>
-<code>remote_timeout</code></br>
+<code>remoteTimeout</code></br>
 <em>
 github.com/prometheus/common/model.Duration
 </em>
@@ -10585,7 +10585,7 @@ string
 </tr>
 <tr>
 <td>
-<code>queue_config</code></br>
+<code>queueConfig</code></br>
 <em>
 <a href="#queueconfig">
 QueueConfig

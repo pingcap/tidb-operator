@@ -5253,7 +5253,7 @@ func schema_pkg_apis_pingcap_v1alpha1_RemoteWriteSpec(ref common.ReferenceCallba
 							Format:      "",
 						},
 					},
-					"remote_timeout": {
+					"remoteTimeout": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
 							Format: "int64",
@@ -5305,7 +5305,7 @@ func schema_pkg_apis_pingcap_v1alpha1_RemoteWriteSpec(ref common.ReferenceCallba
 							Format:      "",
 						},
 					},
-					"queue_config": {
+					"queueConfig": {
 						SchemaProps: spec.SchemaProps{
 							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.QueueConfig"),
 						},
