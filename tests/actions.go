@@ -606,7 +606,7 @@ func (oa *operatorActions) DeployOperatorOrDie(info *OperatorConfig) {
 func (oa *operatorActions) CleanOperator(info *OperatorConfig) error {
 	log.Logf("cleaning tidb-operator %s", info.ReleaseName)
 
-	res, err := exec.Command("helm", "del", "--purge", info.ReleaseName).CombinedOutput()
+	res, err := exec.Command("helm", "uninstall", info.ReleaseName).CombinedOutput()
 
 	if err == nil || !releaseIsNotFound(err) {
 		return nil
@@ -839,7 +839,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		fmt.Sprintf("%s-%s-drainer", info.ClusterName, DbTypeMySQL),
 	}
 	for _, chartName := range charts {
-		res, err := exec.Command("helm", "del", "--purge", chartName).CombinedOutput()
+		res, err := exec.Command("helm", "uninstall", chartName).CombinedOutput()
 		if err != nil && !notFound(string(res)) {
 			return fmt.Errorf("failed to delete chart: %s/%s, %v, %s",
 				info.Namespace, chartName, err, string(res))
