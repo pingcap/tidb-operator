@@ -19,7 +19,7 @@ Wait for monitor Pods ready:
 watch kubectl -n <namespace> get pod
 ```
 
-If you need to store historical data,you can spec `objectStorageConfig` field and create the corresponding secret.
+If you need to store historical data, you can configure the `objectStorageConfig` field and create the corresponding secret.
 
 ## Install Thanos
 
