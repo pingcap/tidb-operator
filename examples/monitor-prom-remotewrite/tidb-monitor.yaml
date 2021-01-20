@@ -14,7 +14,7 @@ spec:
           - sourceLabels: [__test]
             separator: ;
             regex: (.*)
-            targetlabel: node
+            targetLabel: node
             replacement: $1
             action: replace
   grafana:
