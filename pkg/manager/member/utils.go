@@ -18,11 +18,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
+	"strconv"
+	"time"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/util/toml"
 	apps "k8s.io/api/apps/v1"
@@ -495,5 +498,40 @@ func CreateOrUpdateService(serviceLister corelisters.ServiceLister, serviceContr
 		_, err = serviceControl.UpdateService(obj, &svc)
 		return err
 	}
+	return nil
+}
+
+func getStoreByOrdinal(name string, status v1alpha1.TiKVStatus, ordinal int32) *v1alpha1.TiKVStore {
+	podName := TikvPodName(name, ordinal)
+	for _, store := range status.Stores {
+		if store.PodName == podName {
+			return &store
+		}
+	}
+	return nil
+}
+
+func endEvictLeader(deps *controller.Dependencies, tc *v1alpha1.TidbCluster, ordinal int32) error {
+	// wait 5 second before delete evict scheduler，it is for auto test can catch these info
+	if deps.CLIConfig.TestMode {
+		time.Sleep(5 * time.Second)
+	}
+	store := getStoreByOrdinal(tc.GetName(), tc.Status.TiKV, ordinal)
+	storeID, err := strconv.ParseUint(store.ID, 10, 64)
+	if err != nil {
+		return err
+	}
+
+	if tc.IsHeterogeneous() {
+		err = deps.PDControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled()).EndEvictLeader(storeID)
+	} else {
+		err = deps.PDControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()).EndEvictLeader(storeID)
+	}
+
+	if err != nil {
+		klog.Errorf("tikv upgrader: failed to end evict leader storeID: %d ordinal: %d, %v", storeID, ordinal, err)
+		return err
+	}
+	klog.Infof("tikv upgrader: end evict leader storeID: %d ordinal: %d successfully", storeID, ordinal)
 	return nil
 }

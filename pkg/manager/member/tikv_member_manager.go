@@ -21,6 +21,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -627,6 +628,11 @@ func (m *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	if err != nil {
 		return err
 	}
+
+	if !upgrading && tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
+		endEvictLeader(m.deps, tc, helper.GetMinPodOrdinal(set.Status.Replicas, set))
+	}
+
 	// Scaling takes precedence over upgrading.
 	if tc.TiKVStsDesiredReplicas() != *set.Spec.Replicas {
 		tc.Status.TiKV.Phase = v1alpha1.ScalePhase
