@@ -1,10 +1,6 @@
 # TiDBMonitor with Thanos
 
-> **Note:**
->
-> This document is to show how to integrate tidbmonitor into [thanos](https://thanos.io/design.md/).
->
-The following steps will create a TiDB cluster by default.
+This document is to show how to integrate TidbMonitor with [Thanos](https://thanos.io/design.md/).
 
 
 ## Install
@@ -45,4 +41,3 @@ Browse [localhost:9090](http://localhost:9090).
 ```bash
 > kubectl -n <namespace> delete -f ./
 ```
-
