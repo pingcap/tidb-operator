@@ -8,17 +8,31 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/restore-from-s3/']
 
 本文描述了将 Kubernetes 上通过 TiDB Operator 备份的数据恢复到 TiDB 集群的操作过程。底层通过使用 [TiDB Lightning](https://pingcap.com/docs/stable/how-to/get-started/tidb-lightning/#tidb-lightning-tutorial) 来恢复数据。
 
-本文使用的恢复方式基于 TiDB Operator 新版（v1.1 及以上）的 CustomResourceDefinition (CRD) 实现。基于 Helm Charts 实现的备份和恢复方式可参考[基于 Helm Charts 实现的 TiDB 集群备份恢复](backup-and-restore-using-helm-charts.md)。
-
-## AWS 账号的三种权限授予方式
-
-如果使用 Amazon S3 来备份恢复集群，可以使用三种权限授予方式授予权限，参考[使用 BR 工具备份 AWS 上的 TiDB 集群](backup-to-aws-s3-using-br.md#aws-账号权限授予的三种方式)，使用 Ceph 作为后端存储测试备份恢复时，是通过 AccessKey 和 SecretKey 模式授权。
+本文使用的恢复方式基于 TiDB Operator 新版（v1.1 及以上）的 CustomResourceDefinition (CRD) 实现。
 
 以下示例将兼容 S3 的存储（指定路径）上的备份数据恢复到 TiDB 集群。
 
 ## 环境准备
 
-参考[环境准备](restore-from-aws-s3-using-br.md#环境准备)
+1. 下载文件 [`backup-rbac.yaml`](https://github.com/pingcap/tidb-operator/blob/master/manifests/backup/backup-rbac.yaml)，并执行以下命令在 `test2` 这个 namespace 中创建恢复所需的 RBAC 相关资源：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl apply -f backup-rbac.yaml -n test2
+    ```
+
+2. 远程存储访问授权。
+
+    如果从 Amazon S3 恢复集群数据，可以使用三种权限授予方式授予权限，参考 [AWS 账号授权](grant-permissions-to-remote-storage.md#aws-账号授权)授权访问兼容 S3 的远程存储；使用 Ceph 作为后端存储测试恢复时，是通过 AccessKey 和 SecretKey 模式授权，设置方式可参考[通过 AccessKey 和 SecretKey 授权](grant-permissions-to-remote-storage.md#通过-accesskey-和-secretkey-授权)。
+
+3. 创建 `restore-demo2-tidb-secret` secret，该 secret 存放用来访问 TiDB 集群的 root 账号和密钥：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl create secret generic restore-demo2-tidb-secret --from-literal=user=root --from-literal=password=${password} --namespace=test2
+    ```
 
 ## 数据库账户权限
 
@@ -190,17 +204,9 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/restore-from-s3/']
     kubectl get rt -n test2 -owide
     ```
 
-以上示例将兼容 S3 的存储（`spec.s3.path` 路径下）中的备份数据恢复到 TiDB 集群 (`spec.to.host`)。有关兼容 S3 的存储的配置项，可以参考 [backup-s3.yaml](backup-to-s3.md#备份数据到兼容-s3-的存储)。
+以上示例将兼容 S3 的存储（`spec.s3.path` 路径下）中的备份数据恢复到 TiDB 集群 `spec.to.host`。有关兼容 S3 的存储的配置项，可以参考 [S3 字段介绍](backup-restore-overview.md#s3-存储字段介绍)。
 
-更多 `Restore` CR 字段的详细解释：
-
-* `.spec.metadata.namespace`：`Restore` CR 所在的 namespace。
-* `.spec.to.host`：待恢复 TiDB 集群的访问地址。
-* `.spec.to.port`：待恢复 TiDB 集群的访问端口。
-* `.spec.to.user`：待恢复 TiDB 集群的访问用户。
-* `.spec.to.secretName`：存储 `.spec.to.user` 用户的密码的 secret。
-* `.spec.storageClassName`：指定恢复时所需的 PV 类型。
-* `.spec.storageSize`：指定恢复集群时所需的 PV 大小。该值应大于 TiDB 集群备份的数据大小。
+更多 `Restore` CR 字段的详细解释参考[Restore CR 字段介绍](backup-restore-overview.md#restore-cr-字段介绍)。
 
 > **注意：**
 >

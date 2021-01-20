@@ -133,7 +133,7 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
 
 2. 存储访问授权
 
-    和使用 BR 和 Dumpling 进行数据恢复时一样，使用 Amazon S3 作为后端存储时，同样存在三种权限授予方式，参考[使用 BR 工具备份 AWS 上的 TiDB 集群](backup-to-aws-s3-using-br.md#aws-账号权限授予的三种方式)。在使用不同的权限授予方式时，需要使用不用的配置。使用 Ceph、GCS 作为存储后端时，目前仅支持通过 AccessKey 和 SecretKey 授权。
+    和使用 BR 和 Dumpling 进行数据恢复时一样，使用 Amazon S3 作为后端存储时，同样存在三种权限授予方式，参考 [AWS 账号授权](grant-permissions-to-remote-storage.md#aws-账号授权)。在使用不同的权限授予方式时，需要使用不用的配置。使用 Ceph、GCS 作为存储后端时，目前仅支持通过 AccessKey 和 SecretKey 授权，可参考[通过 AccessKey 和 SecretKey 授权](grant-permissions-to-remote-storage.md#通过-accesskey-和-secretkey-授权)。
 
     * 通过 AccessKey 和 SecretKey 授权
 

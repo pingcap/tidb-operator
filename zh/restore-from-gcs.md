@@ -8,7 +8,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/restore-from-gcs/']
 
 本文描述了将 Kubernetes 上通过 TiDB Operator 备份的数据恢复到 TiDB 集群的操作过程。底层通过使用 [TiDB Lightning](https://pingcap.com/docs/stable/how-to/get-started/tidb-lightning/#tidb-lightning-tutorial) 来进行集群恢复。
 
-本文使用的恢复方式基于 TiDB Operator 新版（v1.1 及以上）的 CustomResourceDefinition (CRD) 实现。基于 Helm Charts 实现的备份和恢复方式可参考[基于 Helm Charts 实现的 TiDB 集群备份与恢复](backup-and-restore-using-helm-charts.md)。
+本文使用的恢复方式基于 TiDB Operator 新版（v1.1 及以上）的 CustomResourceDefinition (CRD) 实现。
 
 以下示例将存储在 [Google Cloud Storage (GCS)](https://cloud.google.com/storage/docs/) 上指定路径上的集群备份数据恢复到 TiDB 集群。
 
@@ -22,7 +22,11 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/restore-from-gcs/']
     kubectl apply -f backup-rbac.yaml -n test2
     ```
 
-2. 创建 `restore-demo2-tidb-secret` secret，该 secret 存放用来访问 TiDB 集群的 root 账号和密钥：
+2. 远程存储访问授权。
+
+    参考 [GCS 账号授权](grant-permissions-to-remote-storage.md#gcs-账号授权)授权访问 GCS 远程存储。
+
+3. 创建 `restore-demo2-tidb-secret` secret，该 secret 存放用来访问 TiDB 集群的 root 账号和密钥：
 
     {{< copyable "shell-regular" >}}
 
@@ -75,6 +79,10 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/restore-from-gcs/']
       storageSize: 1Gi
     ```
 
+    以上示例将存储在 GCS 上指定路径 `spec.gcs.path` 的备份数据恢复到 TiDB 集群 `spec.to.host`。关于 GCS 的配置项可以参考 [GCS 字段介绍](backup-restore-overview.md#gcs-存储字段介绍)。
+
+    更多 `Restore` CR 字段的详细解释参考 [Restore CR 字段介绍](backup-restore-overview.md#restore-cr-字段介绍)。
+
 2. 创建好 `Restore` CR 后可通过以下命令查看恢复的状态：
 
     {{< copyable "shell-regular" >}}
@@ -82,18 +90,6 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/restore-from-gcs/']
      ```shell
      kubectl get rt -n test2 -owide
      ```
-
-以上示例将存储在 GCS 上指定路径 `spec.gcs.path` 的备份数据恢复到 TiDB 集群 `spec.to.host`。关于 GCS 的配置项可以参考 [backup-gcs.yaml](backup-to-gcs.md#备份数据到-gcs) 中的配置。
-
-更多 `Restore` CR 字段的详细解释如下：
-
-* `.spec.metadata.namespace`： `Restore` CR 所在的 namespace。
-* `.spec.to.host`：待恢复 TiDB 集群的访问地址。
-* `.spec.to.port`：待恢复 TiDB 集群访问的端口。
-* `.spec.to.user`：待恢复 TiDB 集群的访问用户。
-* `.spec.to.tidbSecretName`：待恢复 TiDB 集群所需凭证的 secret。
-* `.spec.storageClassName`：指定恢复时所需的 PV 类型。
-* `.spec.storageSize`：恢复集群时指定所需的 PV 大小。该值应大于备份 TiDB 集群数据的大小。
 
 > **注意：**
 >

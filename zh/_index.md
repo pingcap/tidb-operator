@@ -63,7 +63,7 @@ TiDB Operator 与适用的 TiDB 版本的对应关系如下：
 - [升级 TiDB 集群](upgrade-a-tidb-cluster.md)
 - [升级 TiDB Operator](upgrade-tidb-operator.md)
 - [集群扩缩容](scale-a-tidb-cluster.md)
-- [备份与恢复](backup-and-restore-using-helm-charts.md)
+- [备份与恢复](backup-restore-overview.md)
 - [维护 TiDB 集群所在节点](maintain-a-kubernetes-node.md)
 - [集群故障自动转移](use-auto-failover.md)
 

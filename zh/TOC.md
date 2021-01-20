@@ -48,16 +48,19 @@
     - [自动弹性伸缩](enable-tidb-cluster-auto-scaling.md)
   - [使用 DM 迁移 MySQL 数据到 TiDB 集群](deploy-tidb-dm.md)
   + 备份与恢复
-    - [基于 Helm Charts 的备份恢复](backup-and-restore-using-helm-charts.md)
-    + 基于 CRD 的备份恢复
-      - [使用 Dumpling 备份 TiDB 集群数据到 GCS](backup-to-gcs.md)
-      - [使用 TiDB Lightning 恢复 GCS 上的备份数据](restore-from-gcs.md)
+    - [备份与恢复简介](backup-restore-overview.md)
+    - [远程存储访问授权](grant-permissions-to-remote-storage.md)
+    + 使用 S3 兼容存储备份与恢复
       - [使用 Dumpling 备份 TiDB 集群数据到兼容 S3 的存储](backup-to-s3.md)
       - [使用 TiDB Lightning 恢复 S3 兼容存储上的备份数据](restore-from-s3.md)
-      - [使用 BR 备份 TiDB 集群数据到 GCS](backup-to-gcs-using-br.md)
-      - [使用 BR 恢复 GCS 上的备份数据](restore-from-gcs-using-br.md)
       - [使用 BR 备份 TiDB 集群数据到兼容 S3 的存储](backup-to-aws-s3-using-br.md)
       - [使用 BR 恢复 S3 兼容存储上的备份数据](restore-from-aws-s3-using-br.md)
+    + 使用 GCS 备份与恢复
+      - [使用 Dumpling 备份 TiDB 集群数据到 GCS](backup-to-gcs.md)
+      - [使用 TiDB Lightning 恢复 GCS 上的备份数据](restore-from-gcs.md)
+      - [使用 BR 备份 TiDB 集群数据到 GCS](backup-to-gcs-using-br.md)
+      - [使用 BR 恢复 GCS 上的备份数据](restore-from-gcs-using-br.md)
+    + 使用持久卷备份与恢复
       - [使用 BR 备份 TiDB 集群数据到持久卷](backup-to-pv-using-br.md)
       - [使用 BR 恢复持久卷上的备份数据](restore-from-pv-using-br.md)
   - [重启 TiDB 集群](restart-a-tidb-cluster.md)
