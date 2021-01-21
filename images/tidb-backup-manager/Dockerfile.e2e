@@ -27,6 +27,8 @@ RUN \
   && rm -rf tidb-toolkit-${TOOLKIT_V40}-linux-amd64
 
 COPY bin/tidb-backup-manager /tidb-backup-manager
-COPY /e2e-entrypoint.sh //e2e-entrypoint.sh
+
+COPY /e2e-entrypoint.sh /e2e-entrypoint.sh
+RUN chmod 755 /e2e-entrypoint.sh
 
 ENTRYPOINT ["/e2e-entrypoint.sh"]

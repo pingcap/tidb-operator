@@ -23,7 +23,7 @@ func TestRunMain(t *testing.T) {
 	var args []string
 	for _, arg := range os.Args {
 		switch {
-		case arg == "DEVEL":
+		case arg == "E2E":
 		case strings.HasPrefix(arg, "-test."):
 		default:
 			args = append(args, arg)

@@ -10,3 +10,4 @@ ADD bin/tidb-controller-manager /usr/local/bin/tidb-controller-manager
 ADD bin/tidb-admission-webhook /usr/local/bin/tidb-admission-webhook
 
 ADD e2e-entrypoint.sh /e2e-entrypoint.sh
+RUN chmod 755 /e2e-entrypoint.sh
