@@ -1,9 +1,9 @@
-# TiDBMonitor with Thanos
+# TidbMonitor with Thanos
 
 This document is to show how to integrate TidbMonitor with [Thanos](https://thanos.io/design.md/).
 
 
-## Install
+## Install TidbMonitor
 
 The following commands is assumed to be executed in this directory.
 
@@ -13,7 +13,7 @@ Install the monitor with thanos sidecar:
 > kubectl -n <namespace> apply -f tidb-monitor.yaml
 ```
 
-Wait for monitor Pods ready:
+Wait for the monitor Pod ready:
 
 ```bash
 watch kubectl -n <namespace> get pod
