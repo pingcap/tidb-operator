@@ -635,7 +635,7 @@ func (m *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	}
 
 	if !upgrading && tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
-		endEvictLeader(m.deps, tc, helper.GetMinPodOrdinal(set.Status.Replicas, set))
+		endEvictLeader(m.deps, tc, helper.GetMinPodOrdinal(*set.Spec.Replicas, set))
 	}
 
 	// Scaling takes precedence over upgrading.
