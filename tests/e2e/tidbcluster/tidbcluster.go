@@ -133,7 +133,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	})
 
 	// basic deploy, scale out, scale in, change configuration tests
-	ginkgo.Describe(fmt.Sprintf("when using version"), func() {
+	ginkgo.Describe("when using version", func() {
 		versions := []string{utilimage.TiDBV3Version, utilimage.TiDBV4Version}
 		for _, version := range versions {
 			v := version
