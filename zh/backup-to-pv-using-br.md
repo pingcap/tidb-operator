@@ -39,7 +39,22 @@ Ad-hoc 备份支持全量备份与增量备份。Ad-hoc 备份通过创建一个
     kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=<password> --namespace=test1
     ```
 
-3. 确认可以从 Kubernetes 集群中访问用于存储备份数据的 NFS 服务器。
+3. 确认可以从 Kubernetes 集群中访问用于存储备份数据的 NFS 服务器，并且配置了 TiKV 挂载跟备份任务相同的 NFS 共享目录到相同的本地目录。TiKV 挂载 NFS 的具体配置方法可以参考如下配置：
+
+    ```yaml
+    spec:
+      tikv:
+        additionalVolumes:
+        # specify volume types that are supported by Kubernetes, Ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/#types-of-persistent-volumes
+        - name: nfs
+          nfs:
+            server: 192.168.0.2
+            path: /nfs
+        additionalVolumeMounts:
+        # this must match `name` in `additionalVolumes`
+        - name: nfs
+          mountPath: /nfs
+    ```
 
 ### 数据库账户权限
 

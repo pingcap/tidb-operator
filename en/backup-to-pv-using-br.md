@@ -39,7 +39,22 @@ This document provides examples in which the data of the `demo1` TiDB cluster in
     >
     > If TiDB Operator >= v1.1.7 && TiDB >= v4.0.8, `tikv_gc_life_time` will be adjusted by BR automatically, so you can omit this step.
 
-3. Ensure that the NFS server is accessible from your Kubernetes cluster.
+3. Ensure that the NFS server is accessible from your Kubernetes cluster, and TiKV is configured to mount the same NFS server directory to the same local path as in backup jobs. To mount NFS for TiKV, refer to the configuration below:
+
+    ```yaml
+    spec:
+      tikv:
+        additionalVolumes:
+        # specify volume types that are supported by Kubernetes, Ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/#types-of-persistent-volumes
+        - name: nfs
+          nfs:
+            server: 192.168.0.2
+            path: /nfs
+        additionalVolumeMounts:
+        # this must match `name` in `additionalVolumes`
+        - name: nfs
+          mountPath: /nfs
+    ```
 
 ### Required database account privileges
 
