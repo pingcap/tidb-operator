@@ -3,7 +3,7 @@
 This document is to show how to integrate TidbMonitor with [Thanos](https://thanos.io/design.md/).
 
 
-## Install
+## Install TidbMonitor
 
 The following commands is assumed to be executed in this directory.
 
