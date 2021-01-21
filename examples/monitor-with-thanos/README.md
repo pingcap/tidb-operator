@@ -13,7 +13,7 @@ Install the monitor with thanos sidecar:
 > kubectl -n <namespace> apply -f tidb-monitor.yaml
 ```
 
-Wait for monitor Pods ready:
+Wait for the monitor Pod ready:
 
 ```bash
 watch kubectl -n <namespace> get pod
