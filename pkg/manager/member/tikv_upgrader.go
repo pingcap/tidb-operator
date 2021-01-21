@@ -99,7 +99,7 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
 	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
 		i := podOrdinals[_i]
-		store := u.getStoreByOrdinal(meta.GetName(), *status, i)
+		store := getStoreByOrdinal(meta.GetName(), *status, i)
 		if store == nil {
 			setUpgradePartition(newSet, i)
 			continue
