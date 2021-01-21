@@ -124,7 +124,7 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 			}
 
 			if !u.deps.CLIConfig.PodWebhookEnabled {
-				if err := u.endEvictLeader(tc, i); err != nil {
+				if err := endEvictLeader(u.deps, tc, i); err != nil {
 					return err
 				}
 			}
@@ -218,21 +218,21 @@ func (u *tikvUpgrader) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64
 	return nil
 }
 
-func (u *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32) error {
+func endEvictLeader(deps *controller.Dependencies, tc *v1alpha1.TidbCluster, ordinal int32) error {
 	// wait 5 second before delete evict scheduler，it is for auto test can catch these info
-	if u.deps.CLIConfig.TestMode {
+	if deps.CLIConfig.TestMode {
 		time.Sleep(5 * time.Second)
 	}
-	store := u.getStoreByOrdinal(tc.GetName(), tc.Status.TiKV, ordinal)
+	store := getStoreByOrdinal(tc.GetName(), tc.Status.TiKV, ordinal)
 	storeID, err := strconv.ParseUint(store.ID, 10, 64)
 	if err != nil {
 		return err
 	}
 
 	if tc.IsHeterogeneous() {
-		err = u.deps.PDControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled()).EndEvictLeader(storeID)
+		err = deps.PDControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled()).EndEvictLeader(storeID)
 	} else {
-		err = u.deps.PDControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()).EndEvictLeader(storeID)
+		err = deps.PDControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()).EndEvictLeader(storeID)
 	}
 
 	if err != nil {
@@ -243,7 +243,7 @@ func (u *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32) e
 	return nil
 }
 
-func (u *tikvUpgrader) getStoreByOrdinal(name string, status v1alpha1.TiKVStatus, ordinal int32) *v1alpha1.TiKVStore {
+func getStoreByOrdinal(name string, status v1alpha1.TiKVStatus, ordinal int32) *v1alpha1.TiKVStore {
 	podName := TikvPodName(name, ordinal)
 	for _, store := range status.Stores {
 		if store.PodName == podName {
