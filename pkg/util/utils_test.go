@@ -20,6 +20,8 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
+
 	"github.com/google/go-cmp/cmp"
 	fuzz "github.com/google/gofuzz"
 	. "github.com/onsi/gomega"
@@ -44,6 +46,37 @@ func TestGetOrdinalFromPodName(t *testing.T) {
 	i, err = GetOrdinalFromPodName("pod-notint")
 	g.Expect(err).To(HaveOccurred())
 	g.Expect(i).To(Equal(int32(0)))
+}
+
+func TestGetDeleteSlotsNumber(t *testing.T) {
+	g := NewGomegaWithT(t)
+	annotations := map[string]string{
+		"test":                "test",
+		helper.DeleteSlotsAnn: "[0,1,2]",
+	}
+	num, err := GetDeleteSlotsNumber(annotations)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(num).To(Equal(int32(3)))
+
+	annotations = map[string]string{}
+	num, err = GetDeleteSlotsNumber(annotations)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(num).To(Equal(int32(0)))
+
+	annotations = map[string]string{
+		"test": "test",
+	}
+	num, err = GetDeleteSlotsNumber(annotations)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(num).To(Equal(int32(0)))
+
+	annotations = map[string]string{
+		"test":                "test",
+		helper.DeleteSlotsAnn: "[0,1,#]",
+	}
+	num, err = GetDeleteSlotsNumber(annotations)
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(num).To(Equal(int32(0)))
 }
 
 func TestIsSubMapOf(t *testing.T) {
