@@ -24,9 +24,6 @@ COV_FILE=/tmp/coverage.txt
 
 # populate test tags
 COV_TAGS="e2e"
-if [ -n "$COMPONENT" ]; then
-    COV_TAGS="$COV_TAGS,$COMPONENT"
-fi
 
 COV_NAME="tidb-operator.$(date +%s)"
 if [ -n "$COMPONENT" ]; then
@@ -53,9 +50,20 @@ upload_cov() {
     exit 0
   fi
 
+  echo "some env for uploading code coverage"
+  echo "SRC_BRANCH: $SRC_BRANCH"
+  echo "BUILD_NUMBER: $BUILD_NUMBER"
+  echo "GIT_COMMIT: $GIT_COMMIT"
+  echo "PR_ID: $PR_ID"
+  echo "COV_NAME: $COV_NAME"
+
   echo "e2e-entrypoint.sh: uploading code coverage"
   /codecov \
     -t "$CODECOV_TOKEN" \
+    -B "$SRC_BRANCH" \
+    -b "$BUILD_NUMBER" \
+    -C "$GIT_COMMIT" \
+    -P "$PR_ID" \
     -F "$COV_TAGS" \
     -n "$COV_NAME" \
     -f "$COV_FILE" || \
