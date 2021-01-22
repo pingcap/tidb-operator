@@ -641,7 +641,7 @@ func (m *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 		tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
 	} else {
 		if !upgrading && tc.Status.TiKV.Phase != v1alpha1.UpgradePhase {
-			if err = endEvictLeader(m.deps, tc, helper.GetMinPodOrdinal(*set.Spec.Replicas, set));err != nil{
+			if err = endEvictLeader(m.deps, tc, helper.GetMinPodOrdinal(*set.Spec.Replicas, set)); err != nil {
 				return err
 			}
 		}
