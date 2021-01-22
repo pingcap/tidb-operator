@@ -118,6 +118,18 @@ func IsBackupScheduled(backup *Backup) bool {
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
 
+// IsBackupRunning returns true if a Backup is Running.
+func IsBackupRunning(backup *Backup) bool {
+	_, condition := GetBackupCondition(&backup.Status, BackupRunning)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// IsBackupPrepared returns true if a Backup is Prepare.
+func IsBackupPrepared(backup *Backup) bool {
+	_, condition := GetBackupCondition(&backup.Status, BackupPrepare)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
 // IsBackupCleanedUp returns true if a Backup has been successfully cleaned up
 func IsBackupCleanedUp(backup *Backup) bool {
 	_, condition := GetBackupCondition(&backup.Status, BackupClean)

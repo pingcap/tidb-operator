@@ -19,9 +19,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/signal"
 	"path"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/Masterminds/semver"
 	"github.com/gogo/protobuf/proto"
@@ -112,12 +114,12 @@ func GetStoragePath(backup *v1alpha1.Backup) (string, error) {
 }
 
 // OpenDB opens db
-func OpenDB(dsn string) (*sql.DB, error) {
+func OpenDB(ctx context.Context, dsn string) (*sql.DB, error) {
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open datasource failed, err: %v", err)
 	}
-	if err := db.Ping(); err != nil {
+	if err := db.PingContext(ctx); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("cannot connect to mysql, err: %v", err)
 	}
@@ -352,13 +354,12 @@ func GetBRArchiveSize(meta *kvbackup.BackupMeta) uint64 {
 }
 
 // GetBRMetaData get backup metadata from cloud storage
-func GetBRMetaData(provider v1alpha1.StorageProvider) (*kvbackup.BackupMeta, error) {
+func GetBRMetaData(ctx context.Context, provider v1alpha1.StorageProvider) (*kvbackup.BackupMeta, error) {
 	s, err := NewStorageBackend(provider)
 	if err != nil {
 		return nil, err
 	}
 	defer s.Close()
-	ctx := context.Background()
 	exist, err := s.Exists(ctx, constants.MetaFile)
 	if err != nil {
 		return nil, err
@@ -380,8 +381,8 @@ func GetBRMetaData(provider v1alpha1.StorageProvider) (*kvbackup.BackupMeta, err
 }
 
 // GetCommitTsFromBRMetaData get backup position from `EndVersion` in BR backup meta
-func GetCommitTsFromBRMetaData(provider v1alpha1.StorageProvider) (uint64, error) {
-	backupMeta, err := GetBRMetaData(provider)
+func GetCommitTsFromBRMetaData(ctx context.Context, provider v1alpha1.StorageProvider) (uint64, error) {
+	backupMeta, err := GetBRMetaData(ctx, provider)
 	if err != nil {
 		return 0, err
 	}
@@ -420,4 +421,22 @@ func ConstructRcloneArgs(conf string, opts []string, command, source, dest strin
 		args = append(args, dest)
 	}
 	return args
+}
+
+// GetContextForTerminationSignals get a context for some termination signals, and the context will become done after any of these signals triggered.
+func GetContextForTerminationSignals(op string) (context.Context, context.CancelFunc) {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	sc := make(chan os.Signal, 1)
+	signal.Notify(sc,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT)
+	go func() {
+		sig := <-sc
+		klog.Errorf("got signal %s to exit, %s will be canceled", sig, op)
+		cancel() // NOTE: the `Message` in `Status.Conditions` will contain `context canceled`.
+	}()
+	return ctx, cancel
 }
