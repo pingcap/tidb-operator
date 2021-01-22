@@ -6866,6 +6866,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 							Format:      "",
 						},
 					},
+					"slowLogVolumeName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional volume name configuration for slow log.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"slowLogTailer": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The specification of the slow log tailer sidecar",

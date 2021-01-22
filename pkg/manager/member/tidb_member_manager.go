@@ -611,36 +611,54 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		podSecurityContext.Sysctls = []corev1.Sysctl{}
 	}
 
+	// handle StorageVolumes and AdditionalVolumeMounts in ComponentSpec
+	storageVolMounts, additionalPVCs := util.BuildStorageVolumeAndVolumeMount(tc.Spec.TiDB.StorageVolumes, tc.Spec.TiDB.StorageClassName, v1alpha1.TiDBMemberType)
+	volMounts = append(volMounts, storageVolMounts...)
+	volMounts = append(volMounts, tc.Spec.TiDB.AdditionalVolumeMounts...)
+
 	var containers []corev1.Container
+	slowLogFileEnvVal := ""
 	if tc.Spec.TiDB.ShouldSeparateSlowLog() {
 		// mount a shared volume and tail the slow log to STDOUT using a sidecar.
-		vols = append(vols, corev1.Volume{
-			Name: slowQueryLogVolumeName,
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		})
-		volMounts = append(volMounts, corev1.VolumeMount{Name: slowQueryLogVolumeName, MountPath: slowQueryLogDir})
+		var slowLogVolumeMount *corev1.VolumeMount
+		volumeName := tc.Spec.TiDB.SlowLogVolumeName
+		if volumeName == "" {
+			vols = append(vols, corev1.Volume{
+				Name: slowQueryLogVolumeName,
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			})
+			slowLogVolumeMount = &corev1.VolumeMount{Name: slowQueryLogVolumeName, MountPath: slowQueryLogDir}
+			volMounts = append(volMounts, *slowLogVolumeMount)
+			slowLogFileEnvVal = slowQueryLogFile
+		} else {
+			for _, volMount := range storageVolMounts {
+				volMountName := fmt.Sprintf("%s-%s", v1alpha1.TiDBMemberType.String(), volumeName)
+				if volMount.Name == volMountName {
+					slowLogVolumeMount = &volMount
+					break
+				}
+			}
+			if slowLogVolumeMount == nil {
+				return nil, fmt.Errorf("Failed to get slowLogVolume %s for cluster %s/%s", volumeName, ns, tcName)
+			}
+			slowLogFileEnvVal = fmt.Sprintf("%s/%s", slowLogVolumeMount.MountPath, volumeName)
+		}
 		containers = append(containers, corev1.Container{
 			Name:            v1alpha1.SlowLogTailerMemberType.String(),
 			Image:           tc.HelperImage(),
 			ImagePullPolicy: tc.HelperImagePullPolicy(),
 			Resources:       controller.ContainerResource(tc.Spec.TiDB.GetSlowLogTailerSpec().ResourceRequirements),
-			VolumeMounts: []corev1.VolumeMount{
-				{Name: slowQueryLogVolumeName, MountPath: slowQueryLogDir},
-			},
+			VolumeMounts:    []corev1.VolumeMount{*slowLogVolumeMount},
 			Command: []string{
 				"sh",
 				"-c",
-				fmt.Sprintf("touch %s; tail -n0 -F %s;", slowQueryLogFile, slowQueryLogFile),
+				fmt.Sprintf("touch %s; tail -n0 -F %s;", slowLogFileEnvVal, slowLogFileEnvVal),
 			},
 		})
 	}
 
-	slowLogFileEnvVal := ""
-	if tc.Spec.TiDB.ShouldSeparateSlowLog() {
-		slowLogFileEnvVal = slowQueryLogFile
-	}
 	envs := []corev1.EnvVar{
 		{
 			Name:  "CLUSTER_NAME",
@@ -679,11 +697,6 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			Value: headlessSvcName,
 		},
 	}
-
-	// handle StorageVolumes and AdditionalVolumeMounts in ComponentSpec
-	storageVolMounts, additionalPVCs := util.BuildStorageVolumeAndVolumeMount(tc.Spec.TiDB.StorageVolumes, tc.Spec.TiDB.StorageClassName, v1alpha1.TiDBMemberType)
-	volMounts = append(volMounts, storageVolMounts...)
-	volMounts = append(volMounts, tc.Spec.TiDB.AdditionalVolumeMounts...)
 
 	c := corev1.Container{
 		Name:            v1alpha1.TiDBMemberType.String(),
