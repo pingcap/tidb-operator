@@ -161,6 +161,7 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 			klog.Infof("tikv scale in: set pvc %s/%s annotation: %s to %s",
 				ns, pvcName, label.AnnPVCDeferDeleting, now)
 
+			endEvictLeaderbyStoreID(s.deps, tc, id)
 			setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 			return nil
 		}

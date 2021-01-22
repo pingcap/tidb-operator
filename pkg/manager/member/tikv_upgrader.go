@@ -229,6 +229,16 @@ func endEvictLeader(deps *controller.Dependencies, tc *v1alpha1.TidbCluster, ord
 		return err
 	}
 
+	return endEvictLeaderbyStoreID(deps, tc, storeID)
+}
+
+func endEvictLeaderbyStoreID(deps *controller.Dependencies, tc *v1alpha1.TidbCluster, storeID uint64) error {
+	// wait 5 second before delete evict scheduler，it is for auto test can catch these info
+	if deps.CLIConfig.TestMode {
+		time.Sleep(5 * time.Second)
+	}
+	var err error
+
 	if tc.IsHeterogeneous() {
 		err = deps.PDControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled()).EndEvictLeader(storeID)
 	} else {
@@ -236,10 +246,10 @@ func endEvictLeader(deps *controller.Dependencies, tc *v1alpha1.TidbCluster, ord
 	}
 
 	if err != nil {
-		klog.Errorf("tikv upgrader: failed to end evict leader storeID: %d ordinal: %d, %v", storeID, ordinal, err)
+		klog.Errorf("tikv: failed to end evict leader storeID: %d, %v", storeID, err)
 		return err
 	}
-	klog.Infof("tikv upgrader: end evict leader storeID: %d ordinal: %d successfully", storeID, ordinal)
+	klog.Infof("tikv: end evict leader storeID: %d successfully", storeID)
 	return nil
 }
 
