@@ -6,16 +6,19 @@ aliases: ['/docs/tidb-in-kubernetes/dev/enable-tidb-cluster-auto-scaling/']
 
 # Enable TidbCluster Auto-scaling
 
-Kubernetes provides [Horizontal Pod Autoscaler](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/), a native API based on CPU utilization. Based on Kubernetes, TiDB 4.0 has implemented an elastic scheduling mechanism. Correspondingly, in TiDB Operator 1.1 and later versions, you can enable the auto-scaling feature to enable elastic scheduling. This document introduces how to enable and use the auto-scaling feature of `TidbCluster`.
+Kubernetes provides [Horizontal Pod Autoscaler](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/), a native API for elastic scaling. Based on Kubernetes, TiDB 5.0 has implemented an elastic scheduling mechanism. Correspondingly, in TiDB Operator 1.2 and later versions, you can enable the auto-scaling feature to enable elastic scheduling. This document introduces how to enable and use the auto-scaling feature of `TidbCluster`.
 
 ## Enable the auto-scaling feature
 
 > **Warning:**
 >
 > * The auto-scaling feature is in the alpha stage. It is highly **not recommended** to enable this feature in the critical production environment.
-> * It is recommended to try this feature in a test environment on the internal network. PingCAP welcomes your comments and suggestions to help improve this feature.
+> * It is recommended to try this feature in a test environment. PingCAP welcomes your comments and suggestions to help improve this feature.
+> * Currently the auto-scaling feature is based solely on CPU utilization.
 
-To turn this feature on, you need to enable some related configurations in TiDB Operator. The auto-scaling feature is disabled by default. Take the following steps to manually turn it on.
+To turn this feature on, you need to enable some related configurations in TiDB Operator. The auto-scaling feature is disabled by default.
+
+Take the following steps to manually enable auto-scaling:
 
 1. Edit the `values.yaml` file in TiDB Operator.
 
@@ -23,19 +26,8 @@ To turn this feature on, you need to enable some related configurations in TiDB 
 
     ```yaml
     features:
-      - AutoScaling=true
+    - AutoScaling=true
     ```
-
-    Enable the `Operator Webhook` feature:
-
-    ```yaml
-    admissionWebhook:
-      create: true
-      mutation:
-        pods: true
-    ```
-
-    For more information about `Operator Webhook`, see [Enable Admission Controller in TiDB Operator](enable-admission-webhook.md).
 
 2. Install or update TiDB Operator.
 
@@ -57,7 +49,9 @@ To turn this feature on, you need to enable some related configurations in TiDB 
 
 ## `TidbClusterAutoScaler`
 
-The `TidbClusterAutoScaler` CR object is used to control the behavior of the auto-scaling in the TiDB cluster. If you have used [Horizontal Pod Autoscaler](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/), presumably you are familiar with the notion `TidbClusterAutoScaler`. The following is an auto-scaling example in TiKV.
+The `TidbClusterAutoScaler` CR object is used to control the auto-scaling behavior in the TiDB cluster.
+
+The following is an example.
 
 ```yaml
 apiVersion: pingcap.com/v1alpha1
@@ -67,40 +61,65 @@ metadata:
 spec:
   cluster:
     name: auto-scaling-demo
-    namespace: default
-  monitor:
-    name: auto-scaling-demo
-    namespace: default
   tikv:
-    minReplicas: 3
-    maxReplicas: 4
-    metrics:
-      - type: "Resource"
-        resource:
-          name: "cpu"
-          target:
-            type: "Utilization"
-            averageUtilization: 80
+    resources:
+      storage_small:
+        cpu: 1000m
+        memory: 2Gi
+        storage: 10Gi
+        count: 3
+    rules:
+      cpu:
+        max_threshold: 0.8
+        min_threshold: 0.2
+        resource_types:
+        - storage_small
+    scaleInIntervalSeconds: 500
+    scaleOutIntervalSeconds: 300
+  tidb:
+    resources:
+      compute_small:
+        cpu: 1000m
+        memory: 2Gi
+        count: 3
+    rules:
+      cpu:
+        max_threshold: 0.8
+        min_threshold: 0.2
+        resource_types:
+        - compute_small
 ```
 
-The TiDB component can be configured using `spec.tidb`. Currently, the auto-scaling API of TiDB is the same as that of TiKV.
+### Implementation principles
 
-In a `TidbClusterAutoScaler` object, the `cluster` attribute specifies the TiDB clusters to be auto-scaled. These clusters are marked by `name` and `namespace`. You need to provide the metrics collection and query service to `TidbClusterAutoScaler` because it captures resource usage through the metrics collection component. The `monitor` attribute refers to the `TidbMonitor` object. For more information, see [Deploy Monitoring and Alerts for a TiDB Cluster](monitor-a-tidb-cluster.md).
+According to the configuration of the `TidbClusterAutoScaler` CR, TiDB Operator sends requests to PD to query the result of scaling. Based on the result, TiDB Operator makes use of the [heterogeneous cluster](deploy-heterogeneous-tidb-cluster.md) feature to create, update, or delete the heterogeneous TiDB cluster (only the TiDB component or the TiKV component is configured). In this way, the auto-scaling of the TiDB cluster is achieved.
 
-For the external `Prometheus` other than `TidbMonitor`, you can fill in the Host by configuring `spec.metricsUrl` to specify the monitoring metrics collection service for the TiDB cluster. If you deploy the monitoring of the TiDB cluster using `Helm`, take the following steps to specify `spec.metricsUrl`.
+### Related fields
 
-```yaml
-apiVersion: pingcap.com/v1alpha1
-kind: TidbClusterAutoScaler
-metadata:
-  name: auto-scaling-demo
-spec:
-  cluster:
-    name: auto-scaling-demo
-    namespace: default
-  metricsUrl: "http://${release_name}-prometheus.${namespace}.svc:9090"
-  ......
-```
+* `spec.cluster`: the TiDB cluster to be elastically scheduled.
+
+    * `name`: the name of the TiDB cluster.
+    * `namespace`: the namespace of the TiDB cluster. If not configured, this field is set to the same namespace as the `TidbClusterAutoScaler` CR by default.
+
+* `spec.tikv`: the configuration related to TiKV elastic scheduling.
+* `spec.tikv.resources`: the resource types that TiKV can use for elastic scheduling. If not configured, this field is set to the same value as `spec.tikv.requests` in the `TidbCluster` CR corresponding to `spec.cluster`.
+
+    * `cpu`: CPU configuration.
+    * `memory`: memory configuration.
+    * `storage`: storage configuration.
+    * `count`: the number of resources that the current configuration can use. If this field is not configured, there is no limit on resources.
+
+* `spec.tikv.rules`: the rules of TiKV elastic scheduling. Currently only CPU-based rules are supported.
+
+    * `max_threshold`: If the average CPU utilization of all Pods is higher than `max_threshold`, the scaling-out operation is triggered.
+    * `min_threshold`: If the average CPU utilization of all Pods is lower than `min_threshold`, the scaling-in operation is triggered.
+    * `resource_types`: the resource types that can be used for CPU-based elastic scheduling. This field corresponds to `key` in `spec.tikv.resources[]`. If not configured, this field is set to all `key`s in `spec.tikv.resources[]` by default.
+
+* `spec.tikv.scaleInIntervalSeconds`: the interval between this scaling-in operation and the last scaling in/out operation. If not configured, the field is set to `500` by default, which means 500 seconds.
+* `spec.tikv.scaleOutIntervalSeconds`: the interval between this scaling-out operation and the last scaling in/out operation. If not configured, the field is set to `300` by default, which means 300 seconds.
+* `spec.tidb`: the configuration related to TiDB elastic scheduling. Other fields are the same as `spec.tikv`.
+
+For more information about configuration fields, refer to [API references](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.md#basicautoscalerspec).
 
 ## Example
 
@@ -124,38 +143,14 @@ spec:
     kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-cluster-auto-scaler.yaml  -n ${namespace}
     ```
 
-2. After the TiDB cluster is created, expose the TiDB cluster service to the local machine by running the following command:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    kubectl port-forward svc/auto-scaling-demo-tidb 4000:4000 &
-    ```
+2. Prepare data using [sysbench](https://github.com/akopytov/sysbench).
 
     Copy the following content and paste it to the local `sysbench.config` file:
 
     {{< copyable "" >}}
 
     ```config
-    mysql-host=127.0.0.1
-    mysql-port=4000
-    mysql-user=root
-    mysql-password=
-    mysql-db=test
-    time=120
-    threads=20
-    report-interval=5
-    db-driver=mysql
-    ```
-
-3. Prepare data and perform the stress test against the auto-scaling feature using [sysbench](https://github.com/akopytov/sysbench).
-
-    Copy the following content and paste it to the local `sysbench.config` file:
-
-    {{< copyable "" >}}
-
-    ```config
-    mysql-host=127.0.0.1
+    mysql-host=${tidb_service_ip}
     mysql-port=4000
     mysql-user=root
     mysql-password=
@@ -171,15 +166,15 @@ spec:
     {{< copyable "shell-regular" >}}
 
     ```shell
-    sysbench --config-file=${path-to-file}/sysbench.config oltp_point_select --tables=1 --table-size=20000 prepare
+    sysbench --config-file=${path}/sysbench.config oltp_point_select --tables=1 --table-size=20000 prepare
     ```
 
-    Start the stress test:
+3. Start the stress test:
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    sysbench --config-file=${path-to-file}/sysbench.config oltp_point_select --tables=1 --table-size=20000 run
+    sysbench --config-file=${path}/sysbench.config oltp_point_select --tables=1 --table-size=20000 run
     ```
 
     The command above will return the following result:
@@ -226,85 +221,4 @@ spec:
     kubectl delete tidbcluster auto-scaling-demo -n ${namespace}
     kubectl delete tidbmonitor auto-scaling-demo -n ${namespace}
     kubectl delete tidbclusterautoscaler auto-scaling-demo -n ${namespace}
-    ```
-
-## `TidbClusterAutoScaler` configurations
-
-1. Set the auto-scaling interval.
-
-    Compared with the stateless web service, a distributed database software is often sensitive to the instance auto-scaling. You need to make sure that there is a certain interval between each auto-scaling in case scaling operations are too frequent.
-    You can set the interval (in seconds) between each auto-scaling by configuring `spec.tikv.scaleInIntervalSeconds` and `spec.tikv.ScaleOutIntervalSeconds` in TiKV. This also applies to TiDB.
-
-    ```yaml
-    apiVersion: pingcap.com/v1alpha1
-    kind: TidbClusterAutoScaler
-    metadata:
-      name: auto-scaler
-    spec:
-      tidb:
-        scaleInIntervalSeconds: 500
-        ScaleOutIntervalSeconds: 300
-      tikv:
-        scaleInIntervalSeconds: 500
-        ScaleOutIntervalSeconds: 300
-    ```
-
-2. Set the maximum value and the minimum value.
-
-    You can set the maximum value and the minimum value of each component in `TidbClusterAutoScaler` to control the scaling range of `TiDB` and `TiKV`, which is similar to [Horizontal Pod Autoscaler](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/).
-
-    ```yaml
-    apiVersion: pingcap.com/v1alpha1
-    kind: TidbClusterAutoScaler
-    metadata:
-      name: auto-scaling-demo
-    spec:
-      tikv:
-        minReplicas: 3
-        maxReplicas: 4
-      tidb:
-        minReplicas: 2
-        maxReplicas: 3
-    ```
-
-3. Set the CPU auto-scaling configurations.
-
-    Currently, `TidbClusterAutoScaler` only supports CPU utilization based auto-scaling. The descriptive API is as follows. `averageUtilization` refers to the threshold of CPU utilization. If the utilization exceeds 80%, the auto-scaling is triggered.
-
-    ```yaml
-    apiVersion: pingcap.com/v1alpha1
-    kind: TidbClusterAutoScaler
-    metadata:
-      name: auto-scaling-demo
-    spec:
-      tikv:
-        minReplicas: 3
-        maxReplicas: 4
-        metrics:
-          - type: "Resource"
-            resource:
-              name: "cpu"
-              target:
-                type: "Utilization"
-                averageUtilization: 80
-    ```
-
-4. Set the time window configurations.
-
-    The CPU utilization based auto-scaling allows `TidbClusterAutoScaler` to get the CPU metrics of `TiDB` and `TiKV` from the specified monitoring system. You can specify the time window of metrics collection.
-
-    ```yaml
-    apiVersion: pingcap.com/v1alpha1
-    kind: TidbClusterAutoScaler
-    metadata:
-      name: basic
-      tidb:
-        metricsTimeDuration: "1m"
-        metrics:
-          - type: "Resource"
-            resource:
-              name: "cpu"
-              target:
-                type: "Utilization"
-                averageUtilization: 60
     ```
