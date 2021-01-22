@@ -53,7 +53,9 @@ cat << EOF >> $CONTROLLER_MANAGER_DEPLOYMENT
             value: "$CODECOV_TOKEN"
 EOF
 
+# for SCHEDULER_DEPLOYMENT, no `env:` added with default values.
 cat << EOF >> $SCHEDULER_DEPLOYMENT
+        env:
         - name: COMPONENT
           value: "scheduler"
         - name: SRC_BRANCH
