@@ -136,11 +136,12 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	ginkgo.Describe("when using version", func() {
 		versions := []string{utilimage.TiDBV3Version, utilimage.TiDBV4Version}
 		for _, version := range versions {
-			v := version
-			ginkgo.Context(v, func() {
+			version := version
+			versionDashed := strings.ReplaceAll(version, ".", "-")
+			ginkgo.Context(version, func() {
 				ginkgo.It("should scale out tc successfully", func() {
 					ginkgo.By("Deploy a basic tc")
-					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("basic-%s", v), v)
+					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("basic-%s", versionDashed), version)
 					tc.Spec.TiDB.Replicas = 1
 					_, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
 					framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
@@ -166,7 +167,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 				ginkgo.It("should scale in tc successfully", func() {
 					ginkgo.By("Deploy a basic tc")
-					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("basic-%s", v), v)
+					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("basic-%s", versionDashed), version)
 					tc.Spec.TiKV.Replicas = 4
 					tc.Spec.PD.Replicas = 5
 					_, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
@@ -192,7 +193,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 				ginkgo.It("should change configurations successfully", func() {
 					ginkgo.By("Deploy a basic tc")
-					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("basic-%s", v), v)
+					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("basic-%s", versionDashed), version)
 					tc.Spec.TiDB.Replicas = 1
 					_, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
 					framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
