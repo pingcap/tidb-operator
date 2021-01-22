@@ -14,6 +14,7 @@
 package backup
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strconv"
@@ -72,6 +73,9 @@ func (bm *Manager) setOptions(backup *v1alpha1.Backup) {
 
 // ProcessBackup used to process the backup logic
 func (bm *Manager) ProcessBackup() error {
+	ctx, cancel := util.GetContextForTerminationSignals(bm.ResourceName)
+	defer cancel()
+
 	var errs []error
 	backup, err := bm.backupLister.Backups(bm.Namespace).Get(bm.ResourceName)
 	if err != nil {
@@ -93,7 +97,7 @@ func (bm *Manager) ProcessBackup() error {
 
 	if backup.Spec.From == nil {
 		// skip the DB initialization if spec.from is not specified
-		return bm.performBackup(backup.DeepCopy(), nil)
+		return bm.performBackup(ctx, backup.DeepCopy(), nil)
 	}
 
 	bm.setOptions(backup)
@@ -106,9 +110,12 @@ func (bm *Manager) ProcessBackup() error {
 			klog.Errorf("can't get dsn of tidb cluster %s, err: %s", bm, err)
 			return false, err
 		}
-		db, err = util.OpenDB(dsn)
+		db, err = util.OpenDB(ctx, dsn)
 		if err != nil {
 			klog.Warningf("can't connect to tidb cluster %s, err: %s", bm, err)
+			if ctx.Err() != nil {
+				return false, ctx.Err()
+			}
 			return false, nil
 		}
 		return true, nil
@@ -128,10 +135,10 @@ func (bm *Manager) ProcessBackup() error {
 	}
 
 	defer db.Close()
-	return bm.performBackup(backup.DeepCopy(), db)
+	return bm.performBackup(ctx, backup.DeepCopy(), db)
 }
 
-func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
+func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, db *sql.DB) error {
 	started := time.Now()
 
 	var errs []error
@@ -174,7 +181,7 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 
 	// set tikv gc life time to prevent gc when backing up data
 	if db != nil {
-		oldTikvGCTime, err = bm.GetTikvGCLifeTime(db)
+		oldTikvGCTime, err = bm.GetTikvGCLifeTime(ctx, db)
 		if err != nil {
 			errs = append(errs, err)
 			klog.Errorf("cluster %s get %s failed, err: %s", bm, constants.TikvGCVariable, err)
@@ -236,7 +243,7 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 		}
 
 		if oldTikvGCTimeDuration < tikvGCTimeDuration {
-			err = bm.SetTikvGCLifeTime(db, tikvGCLifeTime)
+			err = bm.SetTikvGCLifeTime(ctx, db, tikvGCLifeTime)
 			if err != nil {
 				errs = append(errs, err)
 				klog.Errorf("cluster %s set tikv GC life time to %s failed, err: %s", bm, tikvGCLifeTime, err)
@@ -254,10 +261,14 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 	}
 
 	// run br binary to do the real job
-	backupErr := bm.backupData(backup)
+	backupErr := bm.backupData(ctx, backup)
 
 	if db != nil && oldTikvGCTimeDuration < tikvGCTimeDuration {
-		err = bm.SetTikvGCLifeTime(db, oldTikvGCTime)
+		// use another context to revert `tikv_gc_life_time` back.
+		// `DefaultTerminationGracePeriodSeconds` for a pod is 30, so we use a smaller timeout value here.
+		ctx2, cancel2 := context.WithTimeout(context.Background(), 25*time.Second)
+		defer cancel2()
+		err = bm.SetTikvGCLifeTime(ctx2, db, oldTikvGCTime)
 		if err != nil {
 			if backupErr != nil {
 				errs = append(errs, backupErr)
@@ -290,7 +301,7 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 	}
 	klog.Infof("backup cluster %s data to %s success", bm, backupFullPath)
 
-	backupMeta, err := util.GetBRMetaData(backup.Spec.StorageProvider)
+	backupMeta, err := util.GetBRMetaData(ctx, backup.Spec.StorageProvider)
 	if err != nil {
 		errs = append(errs, err)
 		klog.Errorf("Get backup metadata for backup files in %s of cluster %s failed, err: %s", backupFullPath, bm, err)

@@ -15,6 +15,7 @@ package restore
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -33,7 +34,7 @@ type Options struct {
 	backupUtil.GenericOptions
 }
 
-func (ro *Options) restoreData(restore *v1alpha1.Restore) error {
+func (ro *Options) restoreData(ctx context.Context, restore *v1alpha1.Restore) error {
 	clusterNamespace := restore.Spec.BR.ClusterNamespace
 	if restore.Spec.BR.ClusterNamespace == "" {
 		clusterNamespace = restore.Namespace
@@ -65,7 +66,7 @@ func (ro *Options) restoreData(restore *v1alpha1.Restore) error {
 	fullArgs = append(fullArgs, args...)
 	klog.Infof("Running br command with args: %v", fullArgs)
 	bin := path.Join(util.BRBinPath, "br")
-	cmd := exec.Command(bin, fullArgs...)
+	cmd := exec.CommandContext(ctx, bin, fullArgs...)
 
 	stdOut, err := cmd.StdoutPipe()
 	if err != nil {
