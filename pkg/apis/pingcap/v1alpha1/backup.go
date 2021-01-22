@@ -129,7 +129,7 @@ func CleanPolicyIsNotRetain(backup *Backup) bool {
 	return backup.Spec.CleanPolicy != CleanPolicyTypeRetain
 }
 
-// DontCleanSuccessBackup returns true if a Backup need not to be cleaned up according to cleanPolicy
-func DontCleanSuccessBackup(backup *Backup) bool {
+// ShouldKeepSuccessBackup returns true if a Backup need not to be cleaned up according to cleanPolicy
+func ShouldKeepSuccessBackup(backup *Backup) bool {
 	return backup.Spec.CleanPolicy == CleanPolicyTypeOnFailure && !IsBackupFailed(backup)
 }

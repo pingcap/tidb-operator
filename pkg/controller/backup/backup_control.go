@@ -109,7 +109,7 @@ func needToRemoveFinalizer(backup *v1alpha1.Backup) bool {
 	return backup.DeletionTimestamp != nil && // onDelete
 		isProtectedByFinalizer(backup) &&
 		v1alpha1.CleanPolicyIsNotRetain(backup) &&
-		(v1alpha1.IsBackupCleanedUp(backup) || v1alpha1.DontCleanSuccessBackup(backup))
+		(v1alpha1.IsBackupCleanedUp(backup) || v1alpha1.ShouldKeepSuccessBackup(backup))
 }
 
 func isProtectedByFinalizer(backup *v1alpha1.Backup) bool {
