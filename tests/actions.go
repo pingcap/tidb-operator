@@ -641,9 +641,10 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 		}
 	}
 
-	cmd := fmt.Sprintf("helm upgrade %s %s %s --set-string %s",
+	cmd := fmt.Sprintf("helm upgrade %s %s --namespace %s %s --set-string %s",
 		info.ReleaseName,
 		oa.operatorChartPath(info.Tag),
+		info.Namespace,
 		info.OperatorHelmSetBoolean(),
 		info.OperatorHelmSetString(nil))
 	log.Logf("running helm upgrade command: %s", cmd)
