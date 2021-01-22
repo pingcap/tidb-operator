@@ -21,6 +21,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/restore"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/label"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -148,8 +150,38 @@ func (c *Controller) updateRestore(cur interface{}) {
 		return
 	}
 
-	if v1alpha1.IsRestoreScheduled(newRestore) {
-		klog.V(4).Infof("restore %s/%s is already scheduled, skipping", ns, name)
+	if v1alpha1.IsRestoreFailed(newRestore) {
+		klog.V(4).Infof("restore %s/%s is Failed, skipping.", ns, name)
+		return
+	}
+
+	if v1alpha1.IsRestoreScheduled(newRestore) || v1alpha1.IsRestoreRunning(newRestore) {
+		selector, err := label.NewRestore().Instance(newRestore.GetInstanceName()).RestoreJob().Restore(name).Selector()
+		if err != nil {
+			klog.Errorf("Fail to generate selector for restore %s/%s, %v", ns, name, err)
+			return
+		}
+		pods, err := c.deps.PodLister.Pods(ns).List(selector)
+		if err != nil {
+			klog.Errorf("Fail to list pod for restore %s/%s with selector %s, %v", ns, name, selector, err)
+			return
+		}
+		for _, pod := range pods {
+			if pod.Status.Phase == corev1.PodFailed {
+				klog.Infof("restore %s/%s has failed pod %s.", ns, name, pod.Name)
+				err = c.control.UpdateCondition(newRestore, &v1alpha1.RestoreCondition{
+					Type:    v1alpha1.RestoreFailed,
+					Status:  corev1.ConditionTrue,
+					Reason:  "AlreadyFailed",
+					Message: fmt.Sprintf("Pod %s has failed", pod.Name),
+				})
+				if err != nil {
+					klog.Errorf("Fail to update the condition of restore %s/%s, %v", ns, name, err)
+				}
+				break
+			}
+		}
+		klog.V(4).Infof("restore %s/%s is already Scheduled, Running or Failed, skipping.", ns, name)
 		return
 	}
 
