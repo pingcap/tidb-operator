@@ -633,18 +633,20 @@ func (m *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	if err != nil {
 		return err
 	}
+
+	// If phase changes from UpgradePhase to NormalPhase, try to endEvictLeader for the last store.
+	if !upgrading && tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
+		if err = endEvictLeader(m.deps, tc, helper.GetMinPodOrdinal(*set.Spec.Replicas, set)); err != nil {
+			return err
+		}
+	}
+
 	// Scaling takes precedence over upgrading.
 	if tc.TiKVStsDesiredReplicas() != *set.Spec.Replicas {
 		tc.Status.TiKV.Phase = v1alpha1.ScalePhase
 	} else if upgrading && tc.Status.PD.Phase != v1alpha1.UpgradePhase {
 		tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
 	} else {
-		// If phase changes from UpgradePhase to NormalPhase, try to endEvictLeader for the last store.
-		if !upgrading && tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
-			if err = endEvictLeader(m.deps, tc, helper.GetMinPodOrdinal(*set.Spec.Replicas, set)); err != nil {
-				return err
-			}
-		}
 		tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 	}
 
