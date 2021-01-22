@@ -21,12 +21,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// GetRestoreJobName return the backup job name
+// GetRestoreJobName return the restore job name
 func (rs *Restore) GetRestoreJobName() string {
 	return fmt.Sprintf("restore-%s", rs.GetName())
 }
 
-// GetInstanceName return the backup instance name
+// GetInstanceName return the restore instance name
 func (rs *Restore) GetInstanceName() string {
 	if rs.Labels != nil {
 		if v, ok := rs.Labels[label.InstanceLabelKey]; ok {
@@ -41,7 +41,7 @@ func (rs *Restore) GetTidbEndpointHash() string {
 	return HashContents([]byte(rs.Spec.To.GetTidbEndpoint()))
 }
 
-// GetRestorePVCName return the backup pvc name
+// GetRestorePVCName return the restore pvc name
 func (rs *Restore) GetRestorePVCName() string {
 	return fmt.Sprintf("restore-pvc-%s", rs.GetTidbEndpointHash())
 }
@@ -104,5 +104,17 @@ func IsRestoreComplete(restore *Restore) bool {
 // IsRestoreScheduled returns true if a Restore has successfully scheduled
 func IsRestoreScheduled(restore *Restore) bool {
 	_, condition := GetRestoreCondition(&restore.Status, RestoreScheduled)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// IsRestoreRunning returns true if a Restore is Running
+func IsRestoreRunning(restore *Restore) bool {
+	_, condition := GetRestoreCondition(&restore.Status, RestoreRunning)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// IsRestoreFailed returns true if a Restore is Failed
+func IsRestoreFailed(restore *Restore) bool {
+	_, condition := GetRestoreCondition(&restore.Status, RestoreFailed)
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
