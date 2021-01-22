@@ -1141,7 +1141,7 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 						},
 					},
 				}))
-				index := len(sts.Spec.Template.Spec.Containers[1].VolumeMounts) - 1
+				index := len(sts.Spec.Template.Spec.Containers[1].VolumeMounts) - 2
 				g.Expect(sts.Spec.Template.Spec.Containers[1].VolumeMounts[index]).To(Equal(corev1.VolumeMount{
 					Name: fmt.Sprintf("%s-%s", v1alpha1.TiDBMemberType, "log"), MountPath: "/var/lib/log",
 				}))
