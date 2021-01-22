@@ -330,19 +330,19 @@ try {
 
                     stage("Prepare for e2e") {
                         withCredentials([
-                            usernamePassword(credentialsId: 'TIDB_OPERATOR_HUB_AUTH', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD'),
+                            usernamePassword(credentialsId: 'TIDB_OPERATOR_HUB_DEV_AUTH', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD'),
                             string(credentialsId: "tp-codecov-token", variable: 'CODECOV_TOKEN')
                         ]) {
                             sh """#!/bin/bash
                             set -eu
-                            echo "info: logging into hub.pingcap.net"
-                            docker login -u \$USERNAME --password-stdin hub.pingcap.net <<< \$PASSWORD
+                            echo "info: logging into hub-dev.pingcap.net"
+                            docker login -u \$USERNAME --password-stdin hub-dev.pingcap.net <<< \$PASSWORD
                             echo "info: build and push images for e2e"
                             echo "test: show docker daemon config file"
                             cat /etc/docker/daemon.json
                             echo "info: patch charts to enable coverage profile"
                             BUILD_NUMBER=${BUILD_NUMBER} SRC_BRANCH=${SRC_BRANCH} GIT_COMMIT=${GIT_COMMIT} PR_ID=${PR_ID} CODECOV_TOKEN=${CODECOV_TOKEN} ./hack/e2e-patch-codecov.sh
-                            E2E=y NO_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} make docker-push e2e-docker-push
+                            E2E=y NO_BUILD=y DOCKER_REPO=hub-dev.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} make docker-push e2e-docker-push
                             echo "info: download binaries for e2e"
                             SRC_BRANCH=${SRC_BRANCH} GIT_COMMIT=${GIT_COMMIT} PR_ID=${PR_ID} \
                             E2E=y SKIP_BUILD=y SKIP_IMAGE_BUILD=y SKIP_UP=y SKIP_TEST=y SKIP_DOWN=y ./hack/e2e.sh
@@ -359,7 +359,7 @@ try {
         }
         }
 
-        def GLOBALS = "KIND_ETCD_DATADIR=/mnt/tmpfs/etcd E2E=y SKIP_BUILD=y SKIP_IMAGE_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} DELETE_NAMESPACE_ON_FAILURE=${params.DELETE_NAMESPACE_ON_FAILURE} GINKGO_NO_COLOR=y"
+        def GLOBALS = "KIND_ETCD_DATADIR=/mnt/tmpfs/etcd E2E=y SKIP_BUILD=y SKIP_IMAGE_BUILD=y DOCKER_REPO=hub-dev.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} DELETE_NAMESPACE_ON_FAILURE=${params.DELETE_NAMESPACE_ON_FAILURE} GINKGO_NO_COLOR=y"
         build("tidb-operator", "${GLOBALS} GINKGO_NODES=${params.GINKGO_NODES} ./hack/e2e.sh -- ${params.E2E_ARGS}")
 
         if (GIT_REF ==~ /^(master|)$/ || GIT_REF ==~ /^(release-.*)$/
