@@ -21,6 +21,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/backup"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/label"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -156,8 +158,38 @@ func (c *Controller) updateBackup(cur interface{}) {
 		return
 	}
 
-	if v1alpha1.IsBackupScheduled(newBackup) {
-		klog.V(4).Infof("backup %s/%s is already scheduled, skipping", ns, name)
+	if v1alpha1.IsBackupFailed(newBackup) {
+		klog.V(4).Infof("backup %s/%s is Failed, skipping.", ns, name)
+		return
+	}
+
+	if v1alpha1.IsBackupScheduled(newBackup) || v1alpha1.IsBackupRunning(newBackup) || v1alpha1.IsBackupPrepared(newBackup) {
+		klog.V(4).Infof("backup %s/%s is already Scheduled, Running, Preparing or Failed, skipping.", ns, name)
+		selector, err := label.NewBackup().Instance(newBackup.GetInstanceName()).BackupJob().Backup(name).Selector()
+		if err != nil {
+			klog.Errorf("Fail to generate selector for backup %s/%s, %v", ns, name, err)
+			return
+		}
+		pods, err := c.deps.PodLister.Pods(ns).List(selector)
+		if err != nil {
+			klog.Errorf("Fail to list pod for backup %s/%s with selector %s, %v", ns, name, selector, err)
+			return
+		}
+		for _, pod := range pods {
+			if pod.Status.Phase == corev1.PodFailed {
+				klog.Infof("backup %s/%s has failed pod %s.", ns, name, pod.Name)
+				err = c.control.UpdateCondition(newBackup, &v1alpha1.BackupCondition{
+					Type:    v1alpha1.BackupFailed,
+					Status:  corev1.ConditionTrue,
+					Reason:  "AlreadyFailed",
+					Message: fmt.Sprintf("Pod %s has failed", pod.Name),
+				})
+				if err != nil {
+					klog.Errorf("Fail to update the condition of backup %s/%s, %v", ns, name, err)
+				}
+				break
+			}
+		}
 		return
 	}
 

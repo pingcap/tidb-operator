@@ -14,6 +14,7 @@
 package backup
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -23,6 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -48,12 +50,12 @@ func TestBackupControllerEnqueueBackupFailed(t *testing.T) {
 func TestBackupControllerUpdateBackup(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
-		name                   string
-		backupHasBeenDeleted   bool
-		backupIsInvalid        bool
-		backupHasBeenCompleted bool
-		backupHasBeenScheduled bool
-		expectFn               func(*GomegaWithT, *Controller)
+		name                 string
+		backupHasBeenDeleted bool
+		conditionType        v1alpha1.BackupConditionType // only one condition used now.
+		beforeUpdateFn       func(*GomegaWithT, *Controller, *v1alpha1.Backup)
+		expectFn             func(*GomegaWithT, *Controller)
+		afterUpdateFn        func(*GomegaWithT, *Controller, *v1alpha1.Backup)
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
@@ -62,93 +64,137 @@ func TestBackupControllerUpdateBackup(t *testing.T) {
 		backup := newBackup()
 		bkc, _, _ := newFakeBackupController()
 
+		if len(test.conditionType) > 0 {
+			backup.Status.Conditions = []v1alpha1.BackupCondition{
+				{
+					Type:   test.conditionType,
+					Status: corev1.ConditionTrue,
+				},
+			}
+		}
+
 		if test.backupHasBeenDeleted {
 			backup.DeletionTimestamp = &metav1.Time{Time: time.Now()}
 		}
 
-		if test.backupIsInvalid {
-			backup.Status.Conditions = []v1alpha1.BackupCondition{
-				{
-					Type:   v1alpha1.BackupInvalid,
-					Status: corev1.ConditionTrue,
-				},
-			}
-		}
-
-		if test.backupHasBeenCompleted {
-			backup.Status.Conditions = []v1alpha1.BackupCondition{
-				{
-					Type:   v1alpha1.BackupComplete,
-					Status: corev1.ConditionTrue,
-				},
-			}
-		}
-
-		if test.backupHasBeenScheduled {
-			backup.Status.Conditions = []v1alpha1.BackupCondition{
-				{
-					Type:   v1alpha1.BackupScheduled,
-					Status: corev1.ConditionTrue,
-				},
-			}
+		if test.beforeUpdateFn != nil {
+			test.beforeUpdateFn(g, bkc, backup)
 		}
 
 		bkc.updateBackup(backup)
 		if test.expectFn != nil {
 			test.expectFn(g, bkc)
 		}
+
+		if test.afterUpdateFn != nil {
+			test.afterUpdateFn(g, bkc, backup)
+		}
+	}
+
+	// create a pod with failed status in the pod informer.
+	createFailedPod := func(g *GomegaWithT, rtc *Controller, backup *v1alpha1.Backup) {
+		pod := &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      backup.Name,
+				Namespace: backup.Namespace,
+				Labels:    label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(backup.Name),
+			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+			},
+		}
+		_, err := rtc.deps.KubeClientset.CoreV1().Pods(backup.Namespace).Create(pod)
+		g.Expect(err).To(Succeed())
+		rtc.deps.KubeInformerFactory.Start(context.TODO().Done())
+		cache.WaitForCacheSync(context.TODO().Done(), rtc.deps.KubeInformerFactory.Core().V1().Pods().Informer().HasSynced)
+	}
+
+	updatingToFail := func(g *GomegaWithT, rtc *Controller, backup *v1alpha1.Backup) {
+		control := rtc.control.(*FakeBackupControl)
+		condition := control.condition
+		g.Expect(condition).NotTo(Equal(nil))
+		g.Expect(condition.Type).To(Equal(v1alpha1.BackupFailed))
+		g.Expect(condition.Reason).To(Equal("AlreadyFailed"))
 	}
 
 	tests := []testcase{
 		{
-			name:                   "backup has been deleted",
-			backupHasBeenDeleted:   true,
-			backupIsInvalid:        false,
-			backupHasBeenCompleted: false,
-			backupHasBeenScheduled: false,
+			name:                 "backup has been deleted",
+			backupHasBeenDeleted: true,
+			conditionType:        "", // no condition
 			expectFn: func(g *GomegaWithT, bkc *Controller) {
 				g.Expect(bkc.queue.Len()).To(Equal(1))
 			},
 		},
 		{
-			name:                   "backup is invalid",
-			backupHasBeenDeleted:   false,
-			backupIsInvalid:        true,
-			backupHasBeenCompleted: false,
-			backupHasBeenScheduled: false,
+			name:                 "backup is invalid",
+			backupHasBeenDeleted: false,
+			conditionType:        v1alpha1.BackupInvalid,
 			expectFn: func(g *GomegaWithT, bkc *Controller) {
 				g.Expect(bkc.queue.Len()).To(Equal(0))
 			},
 		},
 		{
-			name:                   "backup has been completed",
-			backupHasBeenDeleted:   false,
-			backupIsInvalid:        false,
-			backupHasBeenCompleted: true,
-			backupHasBeenScheduled: false,
+			name:                 "backup has been completed",
+			backupHasBeenDeleted: false,
+			conditionType:        v1alpha1.BackupComplete,
 			expectFn: func(g *GomegaWithT, bkc *Controller) {
 				g.Expect(bkc.queue.Len()).To(Equal(0))
 			},
 		},
 		{
-			name:                   "backup has been scheduled",
-			backupHasBeenDeleted:   false,
-			backupIsInvalid:        false,
-			backupHasBeenCompleted: false,
-			backupHasBeenScheduled: true,
+			name:                 "backup has been scheduled",
+			backupHasBeenDeleted: false,
+			conditionType:        v1alpha1.BackupScheduled,
 			expectFn: func(g *GomegaWithT, bkc *Controller) {
 				g.Expect(bkc.queue.Len()).To(Equal(0))
 			},
 		},
 		{
-			name:                   "backup is newly created",
-			backupHasBeenDeleted:   false,
-			backupIsInvalid:        false,
-			backupHasBeenCompleted: false,
-			backupHasBeenScheduled: false,
+			name:                 "backup is newly created",
+			backupHasBeenDeleted: false,
+			conditionType:        "", // no condition
 			expectFn: func(g *GomegaWithT, bkc *Controller) {
 				g.Expect(bkc.queue.Len()).To(Equal(1))
 			},
+		},
+		{
+			name:                 "backup has been failed",
+			backupHasBeenDeleted: false,
+			conditionType:        v1alpha1.BackupFailed,
+			expectFn: func(g *GomegaWithT, bkc *Controller) {
+				g.Expect(bkc.queue.Len()).To(Equal(0))
+			},
+		},
+		{
+			name:                 "backup has been scheduled with failed pod",
+			backupHasBeenDeleted: false,
+			conditionType:        v1alpha1.BackupScheduled,
+			beforeUpdateFn:       createFailedPod,
+			expectFn: func(g *GomegaWithT, bkc *Controller) {
+				g.Expect(bkc.queue.Len()).To(Equal(0))
+			},
+			afterUpdateFn: updatingToFail,
+		},
+		{
+			name:                 "backup has is running with failed pod",
+			backupHasBeenDeleted: false,
+			conditionType:        v1alpha1.BackupRunning,
+			beforeUpdateFn:       createFailedPod,
+			expectFn: func(g *GomegaWithT, bkc *Controller) {
+				g.Expect(bkc.queue.Len()).To(Equal(0))
+			},
+			afterUpdateFn: updatingToFail,
+		},
+		{
+			name:                 "backup has is prepared with failed pod",
+			backupHasBeenDeleted: false,
+			conditionType:        v1alpha1.BackupPrepare,
+			beforeUpdateFn:       createFailedPod,
+			expectFn: func(g *GomegaWithT, bkc *Controller) {
+				g.Expect(bkc.queue.Len()).To(Equal(0))
+			},
+			afterUpdateFn: updatingToFail,
 		},
 	}
 
