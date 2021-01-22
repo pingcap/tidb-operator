@@ -17,13 +17,13 @@ env.DEFAULT_E2E_ARGS = env.DEFAULT_E2E_ARGS ?: ''
 env.DEFAULT_DELETE_NAMESPACE_ON_FAILURE = env.DEFAULT_DELETE_NAMESPACE_ON_FAILURE ?: 'true'
 
 if (!env.ghprbSourceBranch) {
-    SRC_BRANCH = ""
+    SRC_BRANCH = "e2e-coverage"
 } else {
     SRC_BRANCH = env.ghprbSourceBranch
 }
 
 if (!env.ghprbActualCommit) {
-    GIT_COMMIT = ""
+    GIT_COMMIT = "ade42d415c8f40d7aef3303ec48799d1e89d7e49"
 } else {
     GIT_COMMIT = env.ghprbActualCommit
 }
