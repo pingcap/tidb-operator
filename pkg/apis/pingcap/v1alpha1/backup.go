@@ -136,9 +136,10 @@ func IsBackupCleanedUp(backup *Backup) bool {
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
 
-// CleanPolicyIsNotRetain returns true if backup's clean policy is not CleanPolicyTypeRetain
-func CleanPolicyIsNotRetain(backup *Backup) bool {
-	return backup.Spec.CleanPolicy != CleanPolicyTypeRetain
+// ShouldDeleteByPolicy returns true if backup's clean policy is not CleanPolicyTypeRetain
+func ShouldDeleteByPolicy(backup *Backup) bool {
+	return backup.Spec.CleanPolicy == CleanPolicyTypeDelete ||
+		backup.Spec.CleanPolicy == CleanPolicyTypeOnFailure
 }
 
 // ShouldKeepSuccessBackup returns true if a Backup need not to be cleaned up according to cleanPolicy

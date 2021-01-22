@@ -50,7 +50,7 @@ func NewBackupCleaner(deps *controller.Dependencies, statusUpdater controller.Ba
 
 func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 	if backup.DeletionTimestamp == nil || // Backup CR is created or updated, not deleted
-		!v1alpha1.CleanPolicyIsNotRetain(backup) || // cleanPolicy is CleanPolicyTypeRetain
+		!v1alpha1.ShouldDeleteByPolicy(backup) || // cleanPolicy is CleanPolicyTypeRetain
 		v1alpha1.ShouldKeepSuccessBackup(backup) { // cleanPolicy is CleanPolicyTypeOnFailure but backup succeeded
 		// The backup object has not been deleted or we need to retain backup data，do nothing
 		return nil
