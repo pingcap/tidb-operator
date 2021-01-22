@@ -162,7 +162,7 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 				ns, pvcName, label.AnnPVCDeferDeleting, now)
 
 			// endEvictLeader for TombStone stores
-			if err = endEvictLeaderbyStoreID(s.deps, tc, id); err != nil{
+			if err = endEvictLeaderbyStoreID(s.deps, tc, id); err != nil {
 				return err
 			}
 
