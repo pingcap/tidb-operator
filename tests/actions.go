@@ -606,7 +606,11 @@ func (oa *operatorActions) DeployOperatorOrDie(info *OperatorConfig) {
 func (oa *operatorActions) CleanOperator(info *OperatorConfig) error {
 	log.Logf("cleaning tidb-operator %s", info.ReleaseName)
 
-	res, err := exec.Command("helm", "uninstall", info.ReleaseName).CombinedOutput()
+	cmd := fmt.Sprintf("helm uninstall %s --namespace %s",
+		info.ReleaseName,
+		info.Namespace)
+	log.Logf(cmd)
+	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 
 	if err == nil || !releaseIsNotFound(err) {
 		return nil
@@ -972,6 +976,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	return wait.PollImmediate(oa.pollInterval, DefaultPollTimeout, pollFn)
 }
 
+// TODO: remove this
 func (oa *operatorActions) CleanTidbClusterOrDie(info *TidbClusterConfig) {
 	if err := oa.CleanTidbCluster(info); err != nil {
 		slack.NotifyAndPanic(err)
