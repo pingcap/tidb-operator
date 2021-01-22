@@ -124,6 +124,7 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 			}
 
 			if !u.deps.CLIConfig.PodWebhookEnabled {
+				// If pods recreated successfully, endEvictLeader for the store on this Pod.
 				if err := endEvictLeader(u.deps, tc, i); err != nil {
 					return err
 				}
