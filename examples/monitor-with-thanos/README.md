@@ -19,10 +19,16 @@ Wait for the monitor Pod ready:
 watch kubectl -n <namespace> get pod
 ```
 
-If you need to store historical data, you can configure the `objectStorageConfig` field and create the corresponding secret:
+If you need to store historical data, you can create the corresponding secret and configure the `objectStorageConfig` field:
 
 ```bash
 > kubectl -n <namespace> apply -f objectstorage-secret.yaml
+```
+
+```
+objectStorageConfig:
+  key: objectstorage.yaml
+  name: thanos-objectstorage
 ```
 
 Of course, you can also not configure it.

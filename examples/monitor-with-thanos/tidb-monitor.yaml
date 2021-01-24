@@ -8,9 +8,6 @@ spec:
   thanos:
     baseImage: thanosio/thanos
     version: v0.17.2
-    objectStorageConfig:
-      key: objectstorage.yaml
-      name: thanos-objectstorage
   prometheus:
     baseImage: prom/prometheus
     version: v2.11.1
