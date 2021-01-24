@@ -15,6 +15,7 @@ package backup
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -35,7 +36,7 @@ type Options struct {
 }
 
 // backupData generates br args and runs br binary to do the real backup work
-func (bo *Options) backupData(backup *v1alpha1.Backup) error {
+func (bo *Options) backupData(ctx context.Context, backup *v1alpha1.Backup) error {
 	clusterNamespace := backup.Spec.BR.ClusterNamespace
 	if backup.Spec.BR.ClusterNamespace == "" {
 		clusterNamespace = backup.Namespace
@@ -67,7 +68,7 @@ func (bo *Options) backupData(backup *v1alpha1.Backup) error {
 	fullArgs = append(fullArgs, args...)
 	klog.Infof("Running br command with args: %v", fullArgs)
 	bin := path.Join(util.BRBinPath, "br")
-	cmd := exec.Command(bin, fullArgs...)
+	cmd := exec.CommandContext(ctx, bin, fullArgs...)
 
 	stdOut, err := cmd.StdoutPipe()
 	if err != nil {
