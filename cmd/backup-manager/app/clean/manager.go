@@ -14,6 +14,7 @@
 package clean
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
@@ -46,15 +47,18 @@ func NewManager(
 
 // ProcessCleanBackup used to clean the specific backup
 func (bm *Manager) ProcessCleanBackup() error {
+	ctx, cancel := util.GetContextForTerminationSignals(fmt.Sprintf("clean %s", bm.BackupName))
+	defer cancel()
+
 	backup, err := bm.backupLister.Backups(bm.Namespace).Get(bm.BackupName)
 	if err != nil {
 		return fmt.Errorf("can't find cluster %s backup %s CRD object, err: %v", bm, bm.BackupName, err)
 	}
 
-	return bm.performCleanBackup(backup.DeepCopy())
+	return bm.performCleanBackup(ctx, backup.DeepCopy())
 }
 
-func (bm *Manager) performCleanBackup(backup *v1alpha1.Backup) error {
+func (bm *Manager) performCleanBackup(ctx context.Context, backup *v1alpha1.Backup) error {
 	if backup.Status.BackupPath == "" {
 		klog.Errorf("cluster %s backup path is empty", bm)
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
@@ -68,10 +72,10 @@ func (bm *Manager) performCleanBackup(backup *v1alpha1.Backup) error {
 	var errs []error
 	var err error
 	if backup.Spec.BR != nil {
-		err = bm.cleanBRRemoteBackupData(backup)
+		err = bm.cleanBRRemoteBackupData(ctx, backup)
 	} else {
 		opts := util.GetOptions(backup.Spec.StorageProvider)
-		err = bm.cleanRemoteBackupData(backup.Status.BackupPath, opts)
+		err = bm.cleanRemoteBackupData(ctx, backup.Status.BackupPath, opts)
 	}
 
 	if err != nil {
