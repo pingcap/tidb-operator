@@ -26,9 +26,19 @@ If you need to store historical data, you can create the corresponding secret an
 ```
 
 ```
-objectStorageConfig:
-  key: objectstorage.yaml
-  name: thanos-objectstorage
+apiVersion: pingcap.com/v1alpha1
+kind: TidbMonitor
+metadata:
+  name: basic
+spec:
+  clusters:
+  - name: basic
+  thanos:
+    baseImage: thanosio/thanos
+    version: v0.17.2
+    objectStorageConfig:
+      key: objectstorage.yaml
+      name: thanos-objectstorage
 ```
 
 Of course, you can also not configure it.
