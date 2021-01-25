@@ -126,11 +126,6 @@ func init() {
 }
 
 type MonitorConfigModel struct {
-<<<<<<< HEAD
-	AlertmanagerURL  string
-	ClusterInfos     []ClusterRegexInfo
-	EnableTLSCluster bool
-=======
 	AlertmanagerURL    string
 	ClusterInfos       []ClusterRegexInfo
 	DMClusterInfos     []ClusterRegexInfo
@@ -138,7 +133,6 @@ type MonitorConfigModel struct {
 	EnableTLSDMCluster bool
 	ExternalLabels     model.LabelSet
 	RemoteWriteConfigs []*config.RemoteWriteConfig
->>>>>>> d4f51454... TidbMonitor add remotewrite configuration (#3679)
 }
 
 // ClusterRegexInfo is the monitor cluster info

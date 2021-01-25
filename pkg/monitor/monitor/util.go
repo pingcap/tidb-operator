@@ -16,20 +16,20 @@ package monitor
 import (
 	"encoding/json"
 	"fmt"
+	"path"
 	"sort"
 	"strconv"
 	"time"
+
+	"k8s.io/klog"
 
 	"github.com/docker/docker/client"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
-<<<<<<< HEAD
-=======
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
->>>>>>> d4f51454... TidbMonitor add remotewrite configuration (#3679)
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -887,8 +887,6 @@ func defaultTidbMonitor(monitor *v1alpha1.TidbMonitor) {
 		monitor.Spec.PVReclaimPolicy = &retainPVP
 	}
 }
-<<<<<<< HEAD
-=======
 
 func getMonitorStatefulSet(sa *core.ServiceAccount, config *core.ConfigMap, secret *core.Secret, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster) (*apps.StatefulSet, error) {
 	statefulSet := getMonitorStatefulSetSkeleton(sa, monitor)
@@ -1213,4 +1211,3 @@ func generateRemoteWrite(monitor *v1alpha1.TidbMonitor) []*config.RemoteWriteCon
 	}
 	return remoteWriteConfigs
 }
->>>>>>> d4f51454... TidbMonitor add remotewrite configuration (#3679)

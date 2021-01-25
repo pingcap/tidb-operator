@@ -106,14 +106,11 @@ type PrometheusSpec struct {
 
 	// +optional
 	Config *PrometheusConfiguration `json:"config,omitempty"`
-<<<<<<< HEAD
-=======
 
 	// Disable prometheus compaction.
 	DisableCompaction bool `json:"disableCompaction,omitempty"`
 	// If specified, the remote_write spec. This is an experimental feature, it may change in any upcoming release in a breaking way.
 	RemoteWrite []*RemoteWriteSpec `json:"remoteWrite,omitempty"`
->>>>>>> d4f51454... TidbMonitor add remotewrite configuration (#3679)
 }
 
 // +k8s:openapi-gen=true
@@ -203,8 +200,6 @@ type TidbMonitorList struct {
 
 	Items []TidbMonitor `json:"items"`
 }
-<<<<<<< HEAD
-=======
 
 // DeploymentStorageStatus is the storage information of the deployment
 type DeploymentStorageStatus struct {
@@ -335,4 +330,3 @@ type QueueConfig struct {
 	MinBackoff time.Duration `json:"minBackoff,omitempty"`
 	MaxBackoff time.Duration `json:"maxBackoff,omitempty"`
 }
->>>>>>> d4f51454... TidbMonitor add remotewrite configuration (#3679)

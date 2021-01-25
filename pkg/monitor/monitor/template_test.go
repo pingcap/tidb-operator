@@ -621,10 +621,6 @@ remote_write:
 		ClusterInfos: []ClusterRegexInfo{
 			{Name: "target", Namespace: "ns1"},
 		},
-<<<<<<< HEAD
-		EnableTLSCluster: false,
-		AlertmanagerURL:  "alert-url",
-=======
 		DMClusterInfos: []ClusterRegexInfo{
 			{Name: "target", Namespace: "ns1"},
 		},
@@ -650,7 +646,6 @@ remote_write:
 				},
 			},
 		},
->>>>>>> d4f51454... TidbMonitor add remotewrite configuration (#3679)
 	}
 	content, err := RenderPrometheusConfig(model)
 	g.Expect(err).NotTo(HaveOccurred())
