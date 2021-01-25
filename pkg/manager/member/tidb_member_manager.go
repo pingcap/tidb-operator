@@ -39,9 +39,9 @@ import (
 )
 
 const (
-	slowQueryLogVolumeName = "slowlog"
-	slowQueryLogDir        = "/var/log/tidb"
-	slowQueryLogFile       = slowQueryLogDir + "/slowlog"
+	defaultSlowLogVolume = "slowlog"
+	defaultSlowLogDir    = "/var/log/tidb"
+	defaultSlowLogFile   = defaultSlowLogDir + "/slowlog"
 	// clusterCertPath is where the cert for inter-cluster communication stored (if any)
 	clusterCertPath = "/var/lib/tidb-tls"
 	// serverCertPath is where the tidb-server cert stored (if any)
@@ -620,37 +620,48 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	slowLogFileEnvVal := ""
 	if tc.Spec.TiDB.ShouldSeparateSlowLog() {
 		// mount a shared volume and tail the slow log to STDOUT using a sidecar.
-		var slowLogVolumeMount *corev1.VolumeMount
-		volumeName := tc.Spec.TiDB.SlowLogVolumeName
-		if volumeName == "" {
+		var slowQueryLogVolumeMount corev1.VolumeMount
+		slowQueryLogVolumeName := tc.Spec.TiDB.SlowLogVolumeName
+		if slowQueryLogVolumeName == "" {
 			vols = append(vols, corev1.Volume{
-				Name: slowQueryLogVolumeName,
+				Name: defaultSlowLogVolume,
 				VolumeSource: corev1.VolumeSource{
 					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				},
 			})
-			slowLogVolumeMount = &corev1.VolumeMount{Name: slowQueryLogVolumeName, MountPath: slowQueryLogDir}
-			volMounts = append(volMounts, *slowLogVolumeMount)
-			slowLogFileEnvVal = slowQueryLogFile
+			slowQueryLogVolumeMount = corev1.VolumeMount{Name: defaultSlowLogVolume, MountPath: defaultSlowLogDir}
+			volMounts = append(volMounts, slowQueryLogVolumeMount)
+			slowLogFileEnvVal = defaultSlowLogFile
 		} else {
+			existVolume := false
 			for _, volMount := range storageVolMounts {
-				volMountName := fmt.Sprintf("%s-%s", v1alpha1.TiDBMemberType.String(), volumeName)
+				volMountName := fmt.Sprintf("%s-%s", v1alpha1.TiDBMemberType.String(), slowQueryLogVolumeName)
 				if volMount.Name == volMountName {
-					slowLogVolumeMount = &volMount
+					slowQueryLogVolumeMount = volMount
+					existVolume = true
 					break
 				}
 			}
-			if slowLogVolumeMount == nil {
-				return nil, fmt.Errorf("Failed to get slowLogVolume %s for cluster %s/%s", volumeName, ns, tcName)
+			if !existVolume {
+				for _, volMount := range tc.Spec.TiDB.AdditionalVolumeMounts {
+					if volMount.Name == slowQueryLogVolumeName {
+						slowQueryLogVolumeMount = volMount
+						existVolume = true
+						break
+					}
+				}
 			}
-			slowLogFileEnvVal = fmt.Sprintf("%s/%s", slowLogVolumeMount.MountPath, volumeName)
+			if !existVolume {
+				return nil, fmt.Errorf("Failed to get slowLogVolume %s for cluster %s/%s", slowQueryLogVolumeName, ns, tcName)
+			}
+			slowLogFileEnvVal = path.Join(slowQueryLogVolumeMount.MountPath, slowQueryLogVolumeName)
 		}
 		containers = append(containers, corev1.Container{
 			Name:            v1alpha1.SlowLogTailerMemberType.String(),
 			Image:           tc.HelperImage(),
 			ImagePullPolicy: tc.HelperImagePullPolicy(),
 			Resources:       controller.ContainerResource(tc.Spec.TiDB.GetSlowLogTailerSpec().ResourceRequirements),
-			VolumeMounts:    []corev1.VolumeMount{*slowLogVolumeMount},
+			VolumeMounts:    []corev1.VolumeMount{slowQueryLogVolumeMount},
 			Command: []string{
 				"sh",
 				"-c",
