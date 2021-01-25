@@ -247,10 +247,10 @@ func endEvictLeaderbyStoreID(deps *controller.Dependencies, tc *v1alpha1.TidbClu
 	}
 
 	if err != nil {
-		klog.Errorf("tikv: failed to end evict leader storeID: %d, %v", storeID, err)
+		klog.Errorf("tikv: failed to end evict leader for store: %d, error: %v", storeID, err)
 		return err
 	}
-	klog.Infof("tikv: end evict leader storeID: %d successfully", storeID)
+	klog.Infof("tikv: end evict leader for store: %d successfully", storeID)
 	return nil
 }
 
