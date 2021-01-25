@@ -23,7 +23,7 @@ if (!env.ghprbSourceBranch) {
 }
 
 if (!env.ghprbActualCommit) {
-    GIT_COMMIT = "ade42d415c8f40d7aef3303ec48799d1e89d7e49"
+    GIT_COMMIT = "1645c9dbd6ea658f184e4738de2c5fab79ce41d5"
 } else {
     GIT_COMMIT = env.ghprbActualCommit
 }
@@ -92,13 +92,13 @@ spec:
       requests:
         cpu: <%= resources.requests.cpu %>
         memory: <%= resources.requests.memory %>
-        ephemeral-storage: 150Gi
+        ephemeral-storage: 250Gi
     <% } %>
     <% if (resources.limits) { %>
       limits:
         cpu: <%= resources.limits.cpu %>
         memory: <%= resources.limits.memory %>
-        ephemeral-storage: 150Gi
+        ephemeral-storage: 250Gi
     <% } %>
 <% } %>
     # kind needs /lib/modules and cgroups from the host
