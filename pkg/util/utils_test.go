@@ -18,12 +18,9 @@ import (
 	"os"
 	"testing"
 
-<<<<<<< HEAD
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
-=======
-	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
->>>>>>> 8b3658a3... The default value of statefulset partition should take `delete-slots` into consideration (#3702)
 
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
