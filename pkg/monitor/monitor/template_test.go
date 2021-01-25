@@ -15,8 +15,12 @@ package monitor
 
 import (
 	"testing"
+	"time"
 
+	"github.com/docker/docker/client"
 	. "github.com/onsi/gomega"
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/config"
 	"gopkg.in/yaml.v2"
 )
 
@@ -503,13 +507,150 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     target_label: component
     action: replace
+<<<<<<< HEAD
+=======
+- job_name: ns1-target-dm-worker
+  honor_labels: true
+  scrape_interval: 15s
+  scheme: http
+  kubernetes_sd_configs:
+  - api_server: null
+    role: pod
+    namespaces:
+      names:
+      - ns1
+  tls_config:
+    insecure_skip_verify: true
+  relabel_configs:
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    regex: target
+    action: keep
+  - source_labels: [__meta_kubernetes_namespace]
+    regex: ns1
+    action: keep
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+    regex: dm-worker
+    action: keep
+  - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+    regex: "true"
+    action: keep
+  - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+    regex: (.+)
+    target_label: __metrics_path__
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
+      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+    regex: (.+);(.+);(.+);(.+)
+    target_label: __address__
+    replacement: $1.$2-dm-worker-peer.$3:$4
+    action: replace
+  - source_labels: [__meta_kubernetes_namespace]
+    target_label: kubernetes_namespace
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    target_label: cluster
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_name]
+    target_label: instance
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+    target_label: component
+    action: replace
+- job_name: ns1-target-dm-master
+  honor_labels: true
+  scrape_interval: 15s
+  scheme: http
+  kubernetes_sd_configs:
+  - api_server: null
+    role: pod
+    namespaces:
+      names:
+      - ns1
+  tls_config:
+    insecure_skip_verify: true
+  relabel_configs:
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    regex: target
+    action: keep
+  - source_labels: [__meta_kubernetes_namespace]
+    regex: ns1
+    action: keep
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+    regex: dm-master
+    action: keep
+  - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+    regex: "true"
+    action: keep
+  - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+    regex: (.+)
+    target_label: __metrics_path__
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
+      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+    regex: (.+);(.+);(.+);(.+)
+    target_label: __address__
+    replacement: $1.$2-dm-master-peer.$3:$4
+    action: replace
+  - source_labels: [__meta_kubernetes_namespace]
+    target_label: kubernetes_namespace
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    target_label: cluster
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_name]
+    target_label: instance
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+    target_label: component
+    action: replace
+remote_write:
+- url: http://localhost:1234
+  remote_timeout: 15s
+  write_relabel_configs:
+  - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+    separator: ;
+    regex: (.+)
+    target_label: node
+    replacement: $1
+    action: replace
+>>>>>>> d4f51454... TidbMonitor add remotewrite configuration (#3679)
 `
+	url, _ := client.ParseHostURL("http://localhost:1234")
+	regex, _ := config.NewRegexp("(.+)")
 	model := &MonitorConfigModel{
 		ClusterInfos: []ClusterRegexInfo{
 			{Name: "target", Namespace: "ns1"},
 		},
+<<<<<<< HEAD
 		EnableTLSCluster: false,
 		AlertmanagerURL:  "alert-url",
+=======
+		DMClusterInfos: []ClusterRegexInfo{
+			{Name: "target", Namespace: "ns1"},
+		},
+		EnableTLSCluster:   false,
+		EnableTLSDMCluster: false,
+		AlertmanagerURL:    "alert-url",
+		RemoteWriteConfigs: []*config.RemoteWriteConfig{
+			{
+				URL:           &config.URL{URL: url},
+				RemoteTimeout: model.Duration(15 * time.Second),
+				WriteRelabelConfigs: []*config.RelabelConfig{
+					{
+						SourceLabels: model.LabelNames{
+							"__address__",
+							portLabel,
+						},
+						Separator:   ";",
+						Regex:       regex,
+						TargetLabel: "node",
+						Replacement: "$1",
+						Action:      "replace",
+					},
+				},
+			},
+		},
+>>>>>>> d4f51454... TidbMonitor add remotewrite configuration (#3679)
 	}
 	content, err := RenderPrometheusConfig(model)
 	g.Expect(err).NotTo(HaveOccurred())

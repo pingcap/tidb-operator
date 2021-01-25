@@ -18,11 +18,18 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"time"
 
+	"github.com/docker/docker/client"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
+<<<<<<< HEAD
+=======
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/config"
+>>>>>>> d4f51454... TidbMonitor add remotewrite configuration (#3679)
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -68,6 +75,10 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor
 		AlertmanagerURL:  "",
 		ClusterInfos:     releaseClusterInfos,
 		EnableTLSCluster: tc.IsTLSClusterEnabled(),
+	}
+
+	if len(monitor.Spec.Prometheus.RemoteWrite) > 0 {
+		model.RemoteWriteConfigs = generateRemoteWrite(monitor)
 	}
 
 	if monitor.Spec.AlertmanagerURL != nil {
@@ -876,3 +887,330 @@ func defaultTidbMonitor(monitor *v1alpha1.TidbMonitor) {
 		monitor.Spec.PVReclaimPolicy = &retainPVP
 	}
 }
+<<<<<<< HEAD
+=======
+
+func getMonitorStatefulSet(sa *core.ServiceAccount, config *core.ConfigMap, secret *core.Secret, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster) (*apps.StatefulSet, error) {
+	statefulSet := getMonitorStatefulSetSkeleton(sa, monitor)
+	initContainer := getMonitorInitContainer(monitor, tc)
+	statefulSet.Spec.Template.Spec.InitContainers = append(statefulSet.Spec.Template.Spec.InitContainers, initContainer)
+	if dc != nil {
+		dmInitContainer := getMonitorDMInitContainer(monitor, dc, tc)
+		statefulSet.Spec.Template.Spec.InitContainers = append(statefulSet.Spec.Template.Spec.InitContainers, dmInitContainer)
+	}
+	prometheusContainer := getMonitorPrometheusContainer(monitor, tc, dc)
+	reloaderContainer := getMonitorReloaderContainer(monitor, tc)
+	statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, prometheusContainer, reloaderContainer)
+	if monitor.Spec.Thanos != nil {
+		thanosSideCarContainer := getThanosSidecarContainer(monitor)
+		statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, thanosSideCarContainer)
+	}
+	additionalContainers := monitor.Spec.AdditionalContainers
+	if len(additionalContainers) > 0 {
+		statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, additionalContainers...)
+	}
+	if monitor.Spec.Grafana != nil {
+		grafanaContainer := getMonitorGrafanaContainer(secret, monitor, tc)
+		statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, grafanaContainer)
+	}
+	volumes := getMonitorVolumes(config, monitor, tc, dc)
+	statefulSet.Spec.Template.Spec.Volumes = volumes
+
+	volumeClaims := getMonitorVolumeClaims(monitor)
+	statefulSet.Spec.VolumeClaimTemplates = volumeClaims
+
+	if statefulSet.Annotations == nil {
+		statefulSet.Annotations = map[string]string{}
+	}
+
+	if monitor.Spec.ImagePullSecrets != nil {
+		statefulSet.Spec.Template.Spec.ImagePullSecrets = monitor.Spec.ImagePullSecrets
+	}
+
+	return statefulSet, nil
+}
+
+func getMonitorStatefulSetSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.TidbMonitor) *apps.StatefulSet {
+	replicas := int32(1)
+	name := GetMonitorObjectName(monitor)
+	statefulset := &apps.StatefulSet{
+		ObjectMeta: meta.ObjectMeta{
+			Name:            name,
+			Namespace:       monitor.Namespace,
+			Labels:          buildTidbMonitorLabel(monitor.Name),
+			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
+			Annotations:     member.CopyAnnotations(monitor.Spec.Annotations),
+		},
+		Spec: apps.StatefulSetSpec{
+			ServiceName: name,
+			Replicas:    &replicas,
+			UpdateStrategy: apps.StatefulSetUpdateStrategy{
+				Type: apps.RollingUpdateStatefulSetStrategyType,
+			},
+			Selector: &meta.LabelSelector{
+				MatchLabels: buildTidbMonitorLabel(monitor.Name),
+			},
+			Template: core.PodTemplateSpec{
+				ObjectMeta: meta.ObjectMeta{
+					Labels:      buildTidbMonitorLabel(monitor.Name),
+					Annotations: member.CopyAnnotations(monitor.Spec.Annotations),
+				},
+
+				Spec: core.PodSpec{
+					ServiceAccountName: sa.Name,
+					InitContainers:     []core.Container{},
+					Containers:         []core.Container{},
+					Volumes:            []core.Volume{},
+					Tolerations:        monitor.Spec.Tolerations,
+					NodeSelector:       monitor.Spec.NodeSelector,
+				},
+			},
+		},
+	}
+	return statefulset
+}
+
+func getMonitorVolumeClaims(monitor *v1alpha1.TidbMonitor) []core.PersistentVolumeClaim {
+	if monitor.Spec.Persistent && len(monitor.Spec.Storage) > 0 {
+		var storageRequest core.ResourceRequirements
+		quantity, err := resource.ParseQuantity(monitor.Spec.Storage)
+		if err != nil {
+			klog.Errorf("Cannot parse storage size %v in TiDBMonitor %s/%s, error: %v", monitor.Spec.Storage, monitor.Namespace, monitor.Name, err)
+			return nil
+		}
+		storageRequest = core.ResourceRequirements{
+			Requests: core.ResourceList{
+				core.ResourceStorage: quantity,
+			},
+		}
+		return []core.PersistentVolumeClaim{
+			util.VolumeClaimTemplate(storageRequest, v1alpha1.TidbMonitorMemberType.String(), monitor.Spec.StorageClassName),
+		}
+	}
+	return nil
+}
+
+func getThanosSidecarContainer(monitor *v1alpha1.TidbMonitor) core.Container {
+	bindAddress := "[$(POD_IP)]"
+	thanos := monitor.Spec.Thanos
+	if thanos.ListenLocal {
+		bindAddress = "127.0.0.1"
+	}
+	thanosArgs := []string{"sidecar",
+		fmt.Sprintf("--prometheus.url=http://%s:9090/%s", "localhost", path.Clean(thanos.RoutePrefix)),
+		fmt.Sprintf("--grpc-address=%s:10901", bindAddress),
+		fmt.Sprintf("--http-address=%s:10902", bindAddress),
+	}
+
+	if thanos.GRPCServerTLSConfig != nil {
+		tls := thanos.GRPCServerTLSConfig
+		if tls.CertFile != "" {
+			thanosArgs = append(thanosArgs, "--grpc-server-tls-cert="+tls.CertFile)
+		}
+		if tls.KeyFile != "" {
+			thanosArgs = append(thanosArgs, "--grpc-server-tls-key="+tls.KeyFile)
+		}
+		if tls.CAFile != "" {
+			thanosArgs = append(thanosArgs, "--grpc-server-tls-client-ca="+tls.CAFile)
+		}
+	}
+
+	container := core.Container{
+		Name:      "thanos-sidecar",
+		Image:     fmt.Sprintf("%s:%s", thanos.BaseImage, thanos.Version),
+		Resources: controller.ContainerResource(thanos.ResourceRequirements),
+		Args:      thanosArgs,
+		Env: []core.EnvVar{
+			{
+				Name: "POD_IP",
+				ValueFrom: &core.EnvVarSource{
+					FieldRef: &core.ObjectFieldSelector{
+						FieldPath: "status.podIP",
+					},
+				},
+			},
+			{
+				Name: "POD_NAME",
+				ValueFrom: &core.EnvVarSource{
+					FieldRef: &core.ObjectFieldSelector{FieldPath: "metadata.name"},
+				},
+			},
+			{
+				Name: "NAMESPACE",
+				ValueFrom: &core.EnvVarSource{
+					FieldRef: &core.ObjectFieldSelector{FieldPath: "metadata.namespace"},
+				},
+			},
+		},
+		Ports: []core.ContainerPort{
+			{
+				Name:          "http",
+				ContainerPort: 10902,
+				Protocol:      "TCP",
+			},
+			{
+				Name:          "grpc",
+				ContainerPort: 10901,
+				Protocol:      "TCP",
+			},
+		},
+	}
+	if thanos.ObjectStorageConfig != nil || thanos.ObjectStorageConfigFile != nil {
+		if thanos.ObjectStorageConfigFile != nil {
+			container.Args = append(container.Args, "--objstore.config-file="+*thanos.ObjectStorageConfigFile)
+		} else {
+			container.Args = append(container.Args, "--objstore.config=$(OBJSTORE_CONFIG)")
+			container.Env = append(container.Env, core.EnvVar{
+				Name: "OBJSTORE_CONFIG",
+				ValueFrom: &core.EnvVarSource{
+					SecretKeyRef: thanos.ObjectStorageConfig,
+				},
+			})
+		}
+		storageDir := "/data/prometheus"
+		container.Args = append(container.Args, fmt.Sprintf("--tsdb.path=%s", storageDir))
+		container.VolumeMounts = append(
+			container.VolumeMounts,
+			core.VolumeMount{
+				Name:      v1alpha1.TidbMonitorMemberType.String(),
+				MountPath: "/data",
+			},
+		)
+	}
+
+	if thanos.TracingConfig != nil || thanos.TracingConfigFile != nil {
+		if thanos.TracingConfigFile != nil {
+			container.Args = append(container.Args, "--tracing.config-file="+*thanos.TracingConfigFile)
+		} else {
+			container.Args = append(container.Args, "--tracing.config=$(TRACING_CONFIG)")
+			container.Env = append(container.Env, core.EnvVar{
+				Name: "TRACING_CONFIG",
+				ValueFrom: &core.EnvVarSource{
+					SecretKeyRef: thanos.TracingConfig,
+				},
+			})
+		}
+	}
+
+	if thanos.LogLevel != "" {
+		container.Args = append(container.Args, "--log.level="+thanos.LogLevel)
+	}
+	if thanos.LogFormat != "" {
+		container.Args = append(container.Args, "--log.format="+thanos.LogFormat)
+	}
+
+	if thanos.MinTime != "" {
+		container.Args = append(container.Args, "--min-time="+thanos.MinTime)
+	}
+	return container
+}
+
+func buildExternalLabels(monitor *v1alpha1.TidbMonitor) model.LabelSet {
+	m := model.LabelSet{}
+	// Use defaultReplicaExternalLabelName constant by default if field is missing.
+	// Do not add external label if field is set to empty string.
+	replicaExternalLabelName := defaultReplicaExternalLabelName
+	if monitor.Spec.ReplicaExternalLabelName != nil {
+		if *monitor.Spec.ReplicaExternalLabelName != "" {
+			replicaExternalLabelName = *monitor.Spec.ReplicaExternalLabelName
+		} else {
+			replicaExternalLabelName = ""
+		}
+	}
+	if replicaExternalLabelName != "" {
+		m[model.LabelName(replicaExternalLabelName)] = "$(NAMESPACE)_$(POD_NAME)"
+	}
+	for n, v := range monitor.Spec.ExternalLabels {
+		m[model.LabelName(n)] = model.LabelValue(v)
+	}
+	return m
+}
+
+func generateRemoteWrite(monitor *v1alpha1.TidbMonitor) []*config.RemoteWriteConfig {
+	var remoteWriteConfigs []*config.RemoteWriteConfig
+	for _, remoteWrite := range monitor.Spec.Prometheus.RemoteWrite {
+		url, err := client.ParseHostURL(remoteWrite.URL)
+		if err != nil {
+			klog.Errorf("remote write url[%s] config fail to parse, err:%v", remoteWrite.URL, err)
+			continue
+		}
+		httpClientConfig := config.HTTPClientConfig{
+			BearerTokenFile: remoteWrite.BearerTokenFile,
+		}
+		if remoteWrite.TLSConfig != nil {
+			httpClientConfig.TLSConfig = config.TLSConfig{
+				CAFile:             remoteWrite.TLSConfig.CAFile,
+				CertFile:           remoteWrite.TLSConfig.CertFile,
+				KeyFile:            remoteWrite.TLSConfig.KeyFile,
+				ServerName:         remoteWrite.TLSConfig.ServerName,
+				InsecureSkipVerify: remoteWrite.TLSConfig.InsecureSkipVerify,
+			}
+		}
+		var writeRelabelConfigs []*config.RelabelConfig
+		for _, writeRelabelConfig := range remoteWrite.WriteRelabelConfigs {
+			relabelConfig := &config.RelabelConfig{}
+			if len(writeRelabelConfig.SourceLabels) > 0 {
+				relabelConfig.SourceLabels = writeRelabelConfig.SourceLabels
+			}
+			if writeRelabelConfig.Separator != "" {
+				relabelConfig.Separator = writeRelabelConfig.Separator
+			}
+			if writeRelabelConfig.TargetLabel != "" {
+				relabelConfig.TargetLabel = writeRelabelConfig.TargetLabel
+			}
+			if writeRelabelConfig.Regex != "" {
+				regex, err := config.NewRegexp(writeRelabelConfig.Regex)
+				if err != nil {
+					continue
+				}
+				relabelConfig.Regex = regex
+			}
+			if writeRelabelConfig.Modulus != uint64(0) {
+				relabelConfig.Modulus = writeRelabelConfig.Modulus
+			}
+			if writeRelabelConfig.Replacement != "" {
+				relabelConfig.Replacement = writeRelabelConfig.Replacement
+			}
+			if writeRelabelConfig.Action != "" {
+				relabelConfig.Action = writeRelabelConfig.Action
+			}
+			writeRelabelConfigs = append(writeRelabelConfigs, relabelConfig)
+		}
+
+		remoteWriteConfig := &config.RemoteWriteConfig{
+			URL:                 &config.URL{URL: url},
+			RemoteTimeout:       remoteWrite.RemoteTimeout,
+			WriteRelabelConfigs: writeRelabelConfigs,
+			HTTPClientConfig:    httpClientConfig,
+		}
+		if remoteWrite.QueueConfig != nil {
+			queueConfig := config.QueueConfig{}
+
+			if remoteWrite.QueueConfig.Capacity != 0 {
+				queueConfig.Capacity = remoteWrite.QueueConfig.Capacity
+			}
+			if remoteWrite.QueueConfig.MaxShards != 0 {
+				queueConfig.MaxShards = remoteWrite.QueueConfig.MaxShards
+			}
+			if remoteWrite.QueueConfig.MaxSamplesPerSend != 0 {
+				queueConfig.MaxSamplesPerSend = remoteWrite.QueueConfig.MaxSamplesPerSend
+			}
+			if remoteWrite.QueueConfig.BatchSendDeadline != time.Duration(0) {
+				queueConfig.BatchSendDeadline = remoteWrite.QueueConfig.BatchSendDeadline
+			}
+			if remoteWrite.QueueConfig.MaxRetries != 0 {
+				queueConfig.MaxRetries = remoteWrite.QueueConfig.MaxRetries
+			}
+			if remoteWrite.QueueConfig.MinBackoff != time.Duration(0) {
+				queueConfig.MinBackoff = remoteWrite.QueueConfig.MinBackoff
+			}
+			if remoteWrite.QueueConfig.MaxBackoff != time.Duration(0) {
+				queueConfig.MaxBackoff = remoteWrite.QueueConfig.MaxBackoff
+			}
+			remoteWriteConfig.QueueConfig = queueConfig
+		}
+		remoteWriteConfigs = append(remoteWriteConfigs, remoteWriteConfig)
+	}
+	return remoteWriteConfigs
+}
+>>>>>>> d4f51454... TidbMonitor add remotewrite configuration (#3679)

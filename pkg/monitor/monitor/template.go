@@ -126,9 +126,19 @@ func init() {
 }
 
 type MonitorConfigModel struct {
+<<<<<<< HEAD
 	AlertmanagerURL  string
 	ClusterInfos     []ClusterRegexInfo
 	EnableTLSCluster bool
+=======
+	AlertmanagerURL    string
+	ClusterInfos       []ClusterRegexInfo
+	DMClusterInfos     []ClusterRegexInfo
+	EnableTLSCluster   bool
+	EnableTLSDMCluster bool
+	ExternalLabels     model.LabelSet
+	RemoteWriteConfigs []*config.RemoteWriteConfig
+>>>>>>> d4f51454... TidbMonitor add remotewrite configuration (#3679)
 }
 
 // ClusterRegexInfo is the monitor cluster info
@@ -157,7 +167,8 @@ func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
 		RuleFiles: []string{
 			"/prometheus-rules/rules/*.rules.yml",
 		},
-		ScrapeConfigs: scrapeJobs,
+		ScrapeConfigs:      scrapeJobs,
+		RemoteWriteConfigs: cmodel.RemoteWriteConfigs,
 	}
 	return &c
 }

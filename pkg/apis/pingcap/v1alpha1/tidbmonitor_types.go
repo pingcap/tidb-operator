@@ -14,6 +14,10 @@
 package v1alpha1
 
 import (
+	"time"
+
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/config"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -102,6 +106,14 @@ type PrometheusSpec struct {
 
 	// +optional
 	Config *PrometheusConfiguration `json:"config,omitempty"`
+<<<<<<< HEAD
+=======
+
+	// Disable prometheus compaction.
+	DisableCompaction bool `json:"disableCompaction,omitempty"`
+	// If specified, the remote_write spec. This is an experimental feature, it may change in any upcoming release in a breaking way.
+	RemoteWrite []*RemoteWriteSpec `json:"remoteWrite,omitempty"`
+>>>>>>> d4f51454... TidbMonitor add remotewrite configuration (#3679)
 }
 
 // +k8s:openapi-gen=true
@@ -191,3 +203,136 @@ type TidbMonitorList struct {
 
 	Items []TidbMonitor `json:"items"`
 }
+<<<<<<< HEAD
+=======
+
+// DeploymentStorageStatus is the storage information of the deployment
+type DeploymentStorageStatus struct {
+	// PV name
+	PvName string `json:"pvName,omitempty"`
+}
+
+// TLSConfig extends the safe TLS configuration with file parameters.
+// +k8s:openapi-gen=true
+type TLSConfig struct {
+	SafeTLSConfig `json:",inline"`
+	// Path to the CA cert in the Prometheus container to use for the targets.
+	CAFile string `json:"caFile,omitempty"`
+	// Path to the client cert file in the Prometheus container for the targets.
+	CertFile string `json:"certFile,omitempty"`
+	// Path to the client key file in the Prometheus container for the targets.
+	KeyFile string `json:"keyFile,omitempty"`
+}
+
+// SafeTLSConfig specifies safe TLS configuration parameters.
+// +k8s:openapi-gen=true
+type SafeTLSConfig struct {
+	// Struct containing the CA cert to use for the targets.
+	CA SecretOrConfigMap `json:"ca,omitempty"`
+	// Struct containing the client cert file for the targets.
+	Cert SecretOrConfigMap `json:"cert,omitempty"`
+	// Secret containing the client key file for the targets.
+	KeySecret *corev1.SecretKeySelector `json:"keySecret,omitempty"`
+	// Used to verify the hostname for the targets.
+	ServerName string `json:"serverName,omitempty"`
+	// Disable target certificate validation.
+	InsecureSkipVerify bool `json:"insecureSkipVerify,omitempty"`
+}
+
+// SecretOrConfigMap allows to specify data as a Secret or ConfigMap. Fields are mutually exclusive.
+type SecretOrConfigMap struct {
+	// Secret containing data to use for the targets.
+	Secret *corev1.SecretKeySelector `json:"secret,omitempty"`
+	// ConfigMap containing data to use for the targets.
+	ConfigMap *corev1.ConfigMapKeySelector `json:"configMap,omitempty"`
+}
+
+// RemoteWriteSpec defines the remote_write configuration for prometheus.
+// +k8s:openapi-gen=true
+type RemoteWriteSpec struct {
+	// The URL of the endpoint to send samples to.
+	URL string `json:"url"`
+	// +optional
+	RemoteTimeout model.Duration `json:"remoteTimeout,omitempty"`
+	// The list of remote write relabel configurations.
+	// +optional
+	WriteRelabelConfigs []RelabelConfig `json:"writeRelabelConfigs,omitempty"`
+	//BasicAuth for the URL.
+	// +optional
+	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
+	// File to read bearer token for remote write.
+	// +optional
+	BearerToken string `json:"bearerToken,omitempty"`
+	// +optional
+	// File to read bearer token for remote write.
+	// +optional
+	BearerTokenFile string `json:"bearerTokenFile,omitempty"`
+	// TLS Config to use for remote write.
+	// +optional
+	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
+	// Proxy url
+	// +optional
+	ProxyURL *string `json:"proxyUrl,omitempty"`
+	// +optional
+	QueueConfig *QueueConfig `json:"queueConfig,omitempty"`
+}
+
+// BasicAuth allow an endpoint to authenticate over basic authentication
+// More info: https://prometheus.io/docs/operating/configuration/#endpoints
+// +k8s:openapi-gen=true
+type BasicAuth struct {
+	// The secret in the service monitor namespace that contains the username
+	// for authentication.
+	Username corev1.SecretKeySelector `json:"username,omitempty"`
+	// The secret in the service monitor namespace that contains the password
+	// for authentication.
+	Password corev1.SecretKeySelector `json:"password,omitempty"`
+}
+
+// RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
+// It defines `<metric_relabel_configs>`-section of Prometheus configuration.
+// More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+// +k8s:openapi-gen=true
+type RelabelConfig struct {
+	// A list of labels from which values are taken and concatenated
+	// with the configured separator in order.
+	SourceLabels model.LabelNames `json:"sourceLabels,omitempty"`
+	// Separator is the string between concatenated values from the source labels.
+	Separator string `json:"separator,omitempty"`
+	//Regular expression against which the extracted value is matched. Default is '(.*)'
+	Regex string `json:"regex,omitempty"`
+	// Modulus to take of the hash of concatenated values from the source labels.
+	Modulus uint64 `json:"modulus,omitempty"`
+	// TargetLabel is the label to which the resulting string is written in a replacement.
+	// Regexp interpolation is allowed for the replace action.
+	TargetLabel string `json:"targetLabel,omitempty"`
+	// Replacement is the regex replacement pattern to be used.
+	Replacement string `json:"replacement,omitempty"`
+	// Action is the action to be performed for the relabeling.
+	Action config.RelabelAction `json:"action,omitempty"`
+}
+
+// QueueConfig allows the tuning of remote_write queue_config parameters. This object
+// is referenced in the RemoteWriteSpec object.
+// +k8s:openapi-gen=true
+type QueueConfig struct {
+	// Number of samples to buffer per shard before we start dropping them.
+	Capacity int `json:"capacity,omitempty"`
+
+	// Max number of shards, i.e. amount of concurrency.
+	MaxShards int `json:"maxShards,omitempty"`
+
+	// Maximum number of samples per send.
+	MaxSamplesPerSend int `json:"maxSamplesPperSend,omitempty"`
+
+	// Maximum time sample will wait in buffer.
+	BatchSendDeadline time.Duration `json:"batchSendDeadline,omitempty"`
+
+	// Max number of times to retry a batch on recoverable errors.
+	MaxRetries int `json:"maxRetries,omitempty"`
+
+	// On recoverable errors, backoff exponentially.
+	MinBackoff time.Duration `json:"minBackoff,omitempty"`
+	MaxBackoff time.Duration `json:"maxBackoff,omitempty"`
+}
+>>>>>>> d4f51454... TidbMonitor add remotewrite configuration (#3679)
