@@ -226,7 +226,8 @@ func (u *tikvUpgrader) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64
 func endEvictLeader(deps *controller.Dependencies, tc *v1alpha1.TidbCluster, ordinal int32) error {
 	store := getStoreByOrdinal(tc.GetName(), tc.Status.TiKV, ordinal)
 	if store == nil {
-		return fmt.Errorf("tikv: failed to end evict for nil store")
+		klog.Errorf("tikv: failed to end evict for nil store")
+		return nil
 	}
 	storeID, err := strconv.ParseUint(store.ID, 10, 64)
 	if err != nil {
