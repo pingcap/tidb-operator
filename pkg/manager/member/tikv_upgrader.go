@@ -226,7 +226,7 @@ func (u *tikvUpgrader) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64
 func endEvictLeader(deps *controller.Dependencies, tc *v1alpha1.TidbCluster, ordinal int32) error {
 	store := getStoreByOrdinal(tc.GetName(), tc.Status.TiKV, ordinal)
 	if store == nil {
-		klog.Errorf("tikv: failed to end evict for nil store")
+		klog.Errorf("tikv: failed to end evict for nil store of %s/%s", tc.Namespace, tc.Name)
 		return nil
 	}
 	storeID, err := strconv.ParseUint(store.ID, 10, 64)
@@ -251,10 +251,10 @@ func endEvictLeaderbyStoreID(deps *controller.Dependencies, tc *v1alpha1.TidbClu
 	}
 
 	if err != nil {
-		klog.Errorf("tikv: failed to end evict leader for store: %d, error: %v", storeID, err)
+		klog.Errorf("tikv: failed to end evict leader for store: %d of %s/%s, error: %v", storeID, tc.Namespace, tc.Name, err)
 		return err
 	}
-	klog.Infof("tikv: end evict leader for store: %d successfully", storeID)
+	klog.Infof("tikv: end evict leader for store: %d of %s/%s successfully", storeID, tc.Namespace, tc.Name)
 	return nil
 }
 
