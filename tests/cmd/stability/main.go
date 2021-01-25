@@ -396,8 +396,8 @@ func newTidbClusterConfig(ns, clusterName string) *tests.TidbClusterConfig {
 	tidbVersion := cfg.GetTiDBVersionOrDie()
 	topologyKey := "rack"
 	tc := fixture.GetTidbCluster(ns, clusterName, tidbVersion)
-	tc.Spec.PD.StorageClassName = pointer.StringPtr("local-storage")
-	tc.Spec.TiKV.StorageClassName = pointer.StringPtr("local-storage")
+	tc.Spec.PD.StorageClassName = pointer.StringPtr("standard")
+	tc.Spec.TiKV.StorageClassName = pointer.StringPtr("standard")
 	tc.Spec.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyRollingUpdate
 	return &tests.TidbClusterConfig{
 		Namespace:        ns,
@@ -407,7 +407,7 @@ func newTidbClusterConfig(ns, clusterName string) *tests.TidbClusterConfig {
 		TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", tidbVersion),
 		TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", tidbVersion),
 		PumpImage:        fmt.Sprintf("pingcap/tidb-binlog:%s", tidbVersion),
-		StorageClassName: "local-storage",
+		StorageClassName: "standard",
 		UserName:         "root",
 		Password:         "",
 		InitSecretName:   fmt.Sprintf("%s-set-secret", clusterName),

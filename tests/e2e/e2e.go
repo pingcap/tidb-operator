@@ -143,12 +143,12 @@ func setupSuite() {
 
 	// By using default storage class in GKE/EKS (aws), network attached storage
 	// which be used and we must clean them later.
-	// We set local-storage class as default for simplicity.
+	// We set standard class as default for simplicity.
 	// The default storage class of kind is local-path-provisioner which
 	// consumes local storage like local-volume-provisioner. However, it's not
 	// stable in our e2e testing.
 	if framework.TestContext.Provider == "gke" || framework.TestContext.Provider == "aws" || framework.TestContext.Provider == "kind" {
-		defaultSCName := "local-storage"
+		defaultSCName := "standard"
 		list, err := c.StorageV1().StorageClasses().List(metav1.ListOptions{})
 		framework.ExpectNoError(err, "list storage class failed")
 		// only one storage class can be marked default
@@ -164,7 +164,7 @@ func setupSuite() {
 			}
 		}
 		if localStorageSC == nil {
-			log.Fail("local-storage storage class not found")
+			log.Fail("standard storage class not found")
 		}
 		if localStorageSC.Annotations == nil {
 			localStorageSC.Annotations = map[string]string{}
@@ -252,7 +252,7 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	pvList, err := kubeCli.CoreV1().PersistentVolumes().List(metav1.ListOptions{})
 	framework.ExpectNoError(err, "failed to list persistent volumes")
 	for _, pv := range pvList.Items {
-		if pv.Spec.StorageClassName != "local-storage" {
+		if pv.Spec.StorageClassName != "standard" {
 			continue
 		}
 		if pv.Spec.PersistentVolumeReclaimPolicy == v1.PersistentVolumeReclaimDelete {
@@ -271,7 +271,7 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 			return false, err
 		}
 		for _, pv := range pvList.Items {
-			if pv.Spec.StorageClassName != "local-storage" {
+			if pv.Spec.StorageClassName != "standard" {
 				continue
 			}
 			if pv.Status.Phase != v1.VolumeAvailable {

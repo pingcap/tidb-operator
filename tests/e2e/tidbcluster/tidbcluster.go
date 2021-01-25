@@ -464,7 +464,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					ConfigUpdateStrategy: &updateStrategy,
 				},
 				Replicas:         1,
-				StorageClassName: pointer.StringPtr("local-storage"),
+				StorageClassName: pointer.StringPtr("standard"),
 				ResourceRequirements: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceStorage: resource.MustParse("10Gi"),
@@ -2057,7 +2057,7 @@ func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tcVersio
 		TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", tcVersion),
 		TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", tcVersion),
 		PumpImage:        fmt.Sprintf("pingcap/tidb-binlog:%s", tcVersion),
-		StorageClassName: "local-storage",
+		StorageClassName: "standard",
 		Password:         password,
 		UserName:         "root",
 		InitSecretName:   fmt.Sprintf("%s-set-secret", clusterName),
