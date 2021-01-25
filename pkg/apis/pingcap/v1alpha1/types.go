@@ -604,7 +604,7 @@ type TiDBSpec struct {
 	// +optional
 	SeparateSlowLog *bool `json:"separateSlowLog,omitempty"`
 
-	// Optional volume name configuration for slow log.
+	// Optional volume name configuration for slow query log.
 	// +optional
 	SlowLogVolumeName string `json:"slowLogVolumeName,omitempty"`
 

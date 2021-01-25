@@ -13119,7 +13119,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Optional volume name configuration for slow log.</p>
+<p>Optional volume name configuration for slow query log.</p>
 </td>
 </tr>
 <tr>
