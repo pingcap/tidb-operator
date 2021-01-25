@@ -100,10 +100,6 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
 		i := podOrdinals[_i]
 		store := getStoreByOrdinal(meta.GetName(), *status, i)
-		storeID, err := strconv.ParseUint(store.ID, 10, 64)
-		if err != nil {
-			return err
-		}
 		if store == nil {
 			setUpgradePartition(newSet, i)
 			continue
@@ -129,6 +125,10 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 
 			if !u.deps.CLIConfig.PodWebhookEnabled {
 				// If pods recreated successfully, endEvictLeader for the store on this Pod.
+				storeID, err := strconv.ParseUint(store.ID, 10, 64)
+				if err != nil {
+					return err
+				}
 				if err := endEvictLeaderbyStoreID(u.deps, tc, storeID); err != nil {
 					return err
 				}
