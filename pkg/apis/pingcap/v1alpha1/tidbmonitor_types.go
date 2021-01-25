@@ -52,8 +52,8 @@ type TidbMonitorSpec struct {
 	Initializer InitializerSpec `json:"initializer"`
 
 	// Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster
-	// +kubebuilder:default=Retain
-	PVReclaimPolicy *corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
+	// +kubebuilder:default=Recycle
+	PVReclaimPolicy corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
 
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
@@ -80,16 +80,6 @@ type TidbMonitorSpec struct {
 	// Ref: https://prometheus.io/docs/alerting/alertmanager/
 	// +optional
 	AlertmanagerURL *string `json:"alertmanagerURL,omitempty"`
-	// alertManagerRulesVersion is the version of the tidb cluster that used for alert rules.
-	// default to current tidb cluster version, for example: v3.0.15
-	// +optional
-	AlertManagerRulesVersion *string `json:"alertManagerRulesVersion,omitempty"`
-
-	// +optional
-	AdditionalContainers []corev1.Container `json:"additionalContainers,omitempty"`
-
-	// ClusterScoped indicates whether this monitor should manage Kubernetes cluster-wide TiDB clusters
-	ClusterScoped bool `json:"clusterScoped,omitempty"`
 }
 
 // PrometheusSpec is the desired state of prometheus
@@ -107,8 +97,6 @@ type PrometheusSpec struct {
 	// +optional
 	Config *PrometheusConfiguration `json:"config,omitempty"`
 
-	// Disable prometheus compaction.
-	DisableCompaction bool `json:"disableCompaction,omitempty"`
 	// If specified, the remote_write spec. This is an experimental feature, it may change in any upcoming release in a breaking way.
 	RemoteWrite []*RemoteWriteSpec `json:"remoteWrite,omitempty"`
 }
@@ -165,7 +153,7 @@ type InitializerSpec struct {
 // +k8s:openapi-gen=true
 // MonitorContainer is the common attributes of the container of monitoring
 type MonitorContainer struct {
-	corev1.ResourceRequirements `json:",inline"`
+	Resources corev1.ResourceRequirements `json:",inline"`
 
 	BaseImage string `json:"baseImage,omitempty"`
 	Version   string `json:"version,omitempty"`
@@ -201,10 +189,34 @@ type TidbMonitorList struct {
 	Items []TidbMonitor `json:"items"`
 }
 
-// DeploymentStorageStatus is the storage information of the deployment
-type DeploymentStorageStatus struct {
-	// PV name
-	PvName string `json:"pvName,omitempty"`
+// RemoteWriteSpec defines the remote_write configuration for prometheus.
+// +k8s:openapi-gen=true
+type RemoteWriteSpec struct {
+	// The URL of the endpoint to send samples to.
+	URL string `json:"url"`
+	// +optional
+	RemoteTimeout model.Duration `json:"remoteTimeout,omitempty"`
+	// The list of remote write relabel configurations.
+	// +optional
+	WriteRelabelConfigs []RelabelConfig `json:"writeRelabelConfigs,omitempty"`
+	//BasicAuth for the URL.
+	// +optional
+	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
+	// File to read bearer token for remote write.
+	// +optional
+	BearerToken string `json:"bearerToken,omitempty"`
+	// +optional
+	// File to read bearer token for remote write.
+	// +optional
+	BearerTokenFile string `json:"bearerTokenFile,omitempty"`
+	// TLS Config to use for remote write.
+	// +optional
+	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
+	// Proxy url
+	// +optional
+	ProxyURL *string `json:"proxyUrl,omitempty"`
+	// +optional
+	QueueConfig *QueueConfig `json:"queueConfig,omitempty"`
 }
 
 // TLSConfig extends the safe TLS configuration with file parameters.
@@ -240,36 +252,6 @@ type SecretOrConfigMap struct {
 	Secret *corev1.SecretKeySelector `json:"secret,omitempty"`
 	// ConfigMap containing data to use for the targets.
 	ConfigMap *corev1.ConfigMapKeySelector `json:"configMap,omitempty"`
-}
-
-// RemoteWriteSpec defines the remote_write configuration for prometheus.
-// +k8s:openapi-gen=true
-type RemoteWriteSpec struct {
-	// The URL of the endpoint to send samples to.
-	URL string `json:"url"`
-	// +optional
-	RemoteTimeout model.Duration `json:"remoteTimeout,omitempty"`
-	// The list of remote write relabel configurations.
-	// +optional
-	WriteRelabelConfigs []RelabelConfig `json:"writeRelabelConfigs,omitempty"`
-	//BasicAuth for the URL.
-	// +optional
-	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
-	// File to read bearer token for remote write.
-	// +optional
-	BearerToken string `json:"bearerToken,omitempty"`
-	// +optional
-	// File to read bearer token for remote write.
-	// +optional
-	BearerTokenFile string `json:"bearerTokenFile,omitempty"`
-	// TLS Config to use for remote write.
-	// +optional
-	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
-	// Proxy url
-	// +optional
-	ProxyURL *string `json:"proxyUrl,omitempty"`
-	// +optional
-	QueueConfig *QueueConfig `json:"queueConfig,omitempty"`
 }
 
 // BasicAuth allow an endpoint to authenticate over basic authentication
