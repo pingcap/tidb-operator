@@ -932,7 +932,8 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		})
 	})
 
-	ginkgo.Context("[Feature: AutoScaling]", func() {
+	// add [Stability] to prevent running auto scaling related cases for now
+	ginkgo.Context("[Stability][Feature: AutoScaling]", func() {
 		setCPUUsageAndQuota := func(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor, usage, quota, memberType string, insts []string) {
 			// TODO: This duration is now hard-coded in PD
 			// It may become configurable in the future
