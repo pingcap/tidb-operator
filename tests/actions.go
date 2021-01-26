@@ -761,7 +761,7 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 		return fmt.Errorf("failed to create secret of cluster [%s]: %v", info.ClusterName, err)
 	}
 
-	cmd := fmt.Sprintf("helm install %s %s --namespace %s --set-string %s --set %s --set-file /etc/tikv.toml",
+	cmd := fmt.Sprintf("helm install %s %s --namespace %s --set-string %s --set %s --set-file tikv.config=/etc/tikv.toml",
 		info.ClusterName,
 		oa.tidbClusterChartPath(info.OperatorTag),
 		info.Namespace,
