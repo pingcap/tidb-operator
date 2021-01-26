@@ -210,7 +210,7 @@ func (u *tikvUpgrader) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64
 }
 
 func endEvictLeader(deps *controller.Dependencies, tc *v1alpha1.TidbCluster, ordinal int32) error {
-	store := getStoreByOrdinal(tc.GetName(), tc.Status.TiKV, ordinal)
+	store := getStoreByOrdinal(tc, ordinal)
 	if store == nil {
 		klog.Errorf("tikv: no store found for TiKV ordinal %v of %s/%s", ordinal, tc.Namespace, tc.Name)
 		return nil
