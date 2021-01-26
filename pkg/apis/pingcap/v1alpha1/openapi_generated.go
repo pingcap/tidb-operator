@@ -10591,12 +10591,38 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 							Format:      "",
 						},
 					},
+					"alertManagerRulesVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "alertManagerRulesVersion is the version of the tidb cluster that used for alert rules. default to current tidb cluster version, for example: v3.0.15",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"additionalContainers": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/api/core/v1.Container"),
+									},
+								},
+							},
+						},
+					},
+					"clusterScoped": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ClusterScoped indicates whether this monitor should manage Kubernetes cluster-wide TiDB clusters",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"clusters", "prometheus", "reloader", "initializer"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GrafanaSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.InitializerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PrometheusSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ReloaderSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterRef", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.Toleration"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GrafanaSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.InitializerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PrometheusSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ReloaderSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterRef", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.Toleration"},
 	}
 }
 

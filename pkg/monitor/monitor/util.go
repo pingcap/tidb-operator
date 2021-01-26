@@ -16,12 +16,13 @@ package monitor
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/docker/docker/client"
-	"github.com/prometheus/prometheus/config"
-	"k8s.io/klog"
 	"sort"
 	"strconv"
 	"time"
+
+	"github.com/docker/docker/client"
+	"github.com/prometheus/prometheus/config"
+	"k8s.io/klog"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -72,6 +73,10 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor
 		AlertmanagerURL:  "",
 		ClusterInfos:     releaseClusterInfos,
 		EnableTLSCluster: tc.IsTLSClusterEnabled(),
+	}
+
+	if len(monitor.Spec.Prometheus.RemoteWrite) > 0 {
+		model.RemoteWriteConfigs = generateRemoteWrite(monitor)
 	}
 
 	if monitor.Spec.AlertmanagerURL != nil {

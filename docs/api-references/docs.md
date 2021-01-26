@@ -1830,6 +1830,43 @@ string
 Ref: <a href="https://prometheus.io/docs/alerting/alertmanager/">https://prometheus.io/docs/alerting/alertmanager/</a></p>
 </td>
 </tr>
+<tr>
+<td>
+<code>alertManagerRulesVersion</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>alertManagerRulesVersion is the version of the tidb cluster that used for alert rules.
+default to current tidb cluster version, for example: v3.0.15</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>additionalContainers</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#container-v1-core">
+[]Kubernetes core/v1.Container
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>clusterScoped</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>ClusterScoped indicates whether this monitor should manage Kubernetes cluster-wide TiDB clusters</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -5516,7 +5553,7 @@ StorageMetricsStatus
 <tbody>
 <tr>
 <td>
-<code>Resources</code></br>
+<code>ResourceRequirements</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#resourcerequirements-v1-core">
 Kubernetes core/v1.ResourceRequirements
@@ -5525,7 +5562,7 @@ Kubernetes core/v1.ResourceRequirements
 </td>
 <td>
 <p>
-(Members of <code>Resources</code> are embedded into this type.)
+(Members of <code>ResourceRequirements</code> are embedded into this type.)
 </p>
 </td>
 </tr>
@@ -18405,6 +18442,43 @@ string
 <em>(Optional)</em>
 <p>alertmanagerURL is where tidb-monitoring push alerts to.
 Ref: <a href="https://prometheus.io/docs/alerting/alertmanager/">https://prometheus.io/docs/alerting/alertmanager/</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>alertManagerRulesVersion</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>alertManagerRulesVersion is the version of the tidb cluster that used for alert rules.
+default to current tidb cluster version, for example: v3.0.15</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>additionalContainers</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#container-v1-core">
+[]Kubernetes core/v1.Container
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>clusterScoped</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>ClusterScoped indicates whether this monitor should manage Kubernetes cluster-wide TiDB clusters</p>
 </td>
 </tr>
 </tbody>
