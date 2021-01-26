@@ -115,6 +115,18 @@ func GetPodOrdinals(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) (s
 	return podOrdinals, nil
 }
 
+func GetDeleteSlotsNumber(annotations map[string]string) (int32, error) {
+	value, ok := annotations[helper.DeleteSlotsAnn]
+	if !ok {
+		return 0, nil
+	}
+	var slice []int32
+	if err := json.Unmarshal([]byte(value), &slice); err != nil {
+		return 0, err
+	}
+	return int32(len(slice)), nil
+}
+
 func OrdinalPVCName(memberType v1alpha1.MemberType, setName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%s-%d", memberType, setName, ordinal)
 }

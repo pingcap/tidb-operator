@@ -14,6 +14,7 @@
 package export
 
 import (
+	"context"
 	"database/sql"
 	"os"
 	"strings"
@@ -79,6 +80,9 @@ func (bm *BackupManager) setOptions(backup *v1alpha1.Backup) (string, error) {
 
 // ProcessBackup used to process the backup logic
 func (bm *BackupManager) ProcessBackup() error {
+	ctx, cancel := util.GetContextForTerminationSignals(bm.ResourceName)
+	defer cancel()
+
 	var errs []error
 	backup, err := bm.backupLister.Backups(bm.Namespace).Get(bm.ResourceName)
 	if err != nil {
@@ -117,9 +121,12 @@ func (bm *BackupManager) ProcessBackup() error {
 			return false, err
 		}
 
-		db, err = util.OpenDB(dsn)
+		db, err = util.OpenDB(ctx, dsn)
 		if err != nil {
 			klog.Warningf("can't connect to tidb cluster %s, err: %s", bm, err)
+			if ctx.Err() != nil {
+				return false, ctx.Err()
+			}
 			return false, nil
 		}
 		return true, nil
@@ -139,11 +146,11 @@ func (bm *BackupManager) ProcessBackup() error {
 	}
 
 	defer db.Close()
-	return bm.performBackup(backup.DeepCopy(), db)
+	return bm.performBackup(ctx, backup.DeepCopy(), db)
 }
 
 // use dumpling to export data
-func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
+func (bm *BackupManager) performBackup(ctx context.Context, backup *v1alpha1.Backup, db *sql.DB) error {
 	started := time.Now()
 
 	err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
@@ -155,7 +162,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 	}
 
 	var errs []error
-	oldTikvGCTime, err := bm.GetTikvGCLifeTime(db)
+	oldTikvGCTime, err := bm.GetTikvGCLifeTime(ctx, db)
 	if err != nil {
 		errs = append(errs, err)
 		klog.Errorf("cluster %s get %s failed, err: %s", bm, constants.TikvGCVariable, err)
@@ -219,7 +226,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 	}
 
 	if oldTikvGCTimeDuration < tikvGCTimeDuration {
-		err = bm.SetTikvGCLifeTime(db, tikvGCLifeTime)
+		err = bm.SetTikvGCLifeTime(ctx, db, tikvGCLifeTime)
 		if err != nil {
 			errs = append(errs, err)
 			klog.Errorf("cluster %s set tikv GC life time to %s failed, err: %s", bm, constants.TikvGCLifeTime, err)
@@ -235,9 +242,13 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 		klog.Infof("set cluster %s %s to %s success", bm, constants.TikvGCVariable, constants.TikvGCLifeTime)
 	}
 
-	backupFullPath, backupErr := bm.dumpTidbClusterData(backup)
+	backupFullPath, backupErr := bm.dumpTidbClusterData(ctx, backup)
 	if oldTikvGCTimeDuration < tikvGCTimeDuration {
-		err = bm.SetTikvGCLifeTime(db, oldTikvGCTime)
+		// use another context to revert `tikv_gc_life_time` back.
+		// `DefaultTerminationGracePeriodSeconds` for a pod is 30, so we use a smaller timeout value here.
+		ctx2, cancel2 := context.WithTimeout(context.Background(), 25*time.Second)
+		defer cancel2()
+		err = bm.SetTikvGCLifeTime(ctx2, db, oldTikvGCTime)
 		if err != nil {
 			if backupErr != nil {
 				errs = append(errs, backupErr)
@@ -303,7 +314,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 	klog.Infof("archive cluster %s backup data %s success", bm, archiveBackupPath)
 
 	opts := util.GetOptions(backup.Spec.StorageProvider)
-	size, err := getBackupSize(archiveBackupPath, opts)
+	size, err := getBackupSize(ctx, archiveBackupPath, opts)
 	if err != nil {
 		errs = append(errs, err)
 		klog.Errorf("get cluster %s archived backup file %s size %d failed, err: %s", bm, archiveBackupPath, size, err)
@@ -334,7 +345,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 		return err
 	}
 
-	err = bm.backupDataToRemote(archiveBackupPath, bucketURI, opts)
+	err = bm.backupDataToRemote(ctx, archiveBackupPath, bucketURI, opts)
 	if err != nil {
 		errs = append(errs, err)
 		klog.Errorf("backup cluster %s data to %s failed, err: %s", bm, bm.StorageType, err)
