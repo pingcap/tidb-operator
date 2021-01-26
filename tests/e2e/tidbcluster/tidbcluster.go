@@ -129,77 +129,88 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		}
 	})
 
-	ginkgo.Context("when deploy, scale, update config", func() {
-		clusterCfgs := []struct {
-			Version string
-			Name    string
-			Values  map[string]string
-		}{
-			{
-				Version: utilimage.TiDBV3Version,
-				Name:    "basic-v3",
-			},
-			{
-				Version: utilimage.TiDBV4Version,
-				Name:    "basic-v4",
-			},
-		}
+	// basic deploy, scale out, scale in, change configuration tests
+	ginkgo.Describe("when using version", func() {
+		versions := []string{utilimage.TiDBV3Version, utilimage.TiDBV4Version}
+		for _, version := range versions {
+			version := version
+			versionDashed := strings.ReplaceAll(version, ".", "-")
+			ginkgo.Context(version, func() {
+				ginkgo.It("should scale out tc successfully", func() {
+					ginkgo.By("Deploy a basic tc")
+					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("basic-%s", versionDashed), version)
+					tc.Spec.TiDB.Replicas = 1
+					_, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
+					framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
+					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 30*time.Second)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+					err = crdUtil.CheckDisasterTolerance(tc)
+					framework.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
 
-		for _, clusterCfg := range clusterCfgs {
-			localCfg := clusterCfg
-			ginkgo.It(fmt.Sprintf("should work in %s", localCfg.Version), func() {
-				ginkgo.By("Deploy a basic tc")
-				tc := fixture.GetTidbCluster(ns, localCfg.Name, localCfg.Version)
-				tc.Spec.TiDB.Replicas = 1
-				// support reclaim pv when scale in tikv or pd component
-				tc.Spec.EnablePVReclaim = pointer.BoolPtr(true)
-				// change tikv data directory to a subdirectory of data volume
-				tc.Spec.TiKV.DataSubDir = "data"
+					ginkgo.By("scale out tidb, tikv, pd")
+					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+						tc.Spec.TiDB.Replicas = 2
+						tc.Spec.TiKV.Replicas = 4
+						// this must be 5, or one pd pod will not be scheduled, reference: https://docs.pingcap.com/tidb-in-kubernetes/stable/tidb-scheduler#pd-component
+						tc.Spec.PD.Replicas = 5
+						return nil
+					})
+					framework.ExpectNoError(err, "failed to scale out TidbCluster: %q", tc.Name)
+					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+					err = crdUtil.CheckDisasterTolerance(tc)
+					framework.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
+				})
 
-				_, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
-				framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
-				err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
-				framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
-				err = crdUtil.CheckDisasterTolerance(tc)
-				framework.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
-
-				ginkgo.By("Scale out tidb, tikv, pd")
-				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-					tc.Spec.TiDB.Replicas = 3
+				ginkgo.It("should scale in tc successfully", func() {
+					ginkgo.By("Deploy a basic tc")
+					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("basic-%s", versionDashed), version)
 					tc.Spec.TiKV.Replicas = 4
 					tc.Spec.PD.Replicas = 5
-					return nil
-				})
-				framework.ExpectNoError(err, "failed to scale out TidbCluster: %q", tc.Name)
-				err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
-				framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
-				err = crdUtil.CheckDisasterTolerance(tc)
-				framework.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
+					_, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
+					framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
+					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 30*time.Second)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+					err = crdUtil.CheckDisasterTolerance(tc)
+					framework.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
 
-				ginkgo.By("Scale in tidb, tikv, pd")
-				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+					ginkgo.By("Scale in tidb, tikv, pd")
+					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+						tc.Spec.TiDB.Replicas = 1
+						tc.Spec.TiKV.Replicas = 3
+						tc.Spec.PD.Replicas = 3
+						return nil
+					})
+					framework.ExpectNoError(err, "failed to scale in TidbCluster: %q", tc.Name)
+					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+					err = crdUtil.CheckDisasterTolerance(tc)
+					framework.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
+				})
+
+				ginkgo.It("should change configurations successfully", func() {
+					ginkgo.By("Deploy a basic tc")
+					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("basic-%s", versionDashed), version)
 					tc.Spec.TiDB.Replicas = 1
-					tc.Spec.TiKV.Replicas = 3
-					tc.Spec.PD.Replicas = 3
-					return nil
-				})
-				framework.ExpectNoError(err, "failed to scale in TidbCluster: %q", tc.Name)
-				err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
-				framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
-				err = crdUtil.CheckDisasterTolerance(tc)
-				framework.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
+					_, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
+					framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
+					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 30*time.Second)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+					err = crdUtil.CheckDisasterTolerance(tc)
+					framework.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
 
-				ginkgo.By("Change configuration")
-				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-					tc.Spec.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyRollingUpdate
-					tc.Spec.PD.MaxFailoverCount = pointer.Int32Ptr(4)
-					tc.Spec.TiKV.MaxFailoverCount = pointer.Int32Ptr(4)
-					tc.Spec.TiDB.MaxFailoverCount = pointer.Int32Ptr(4)
-					return nil
+					ginkgo.By("Change configuration")
+					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+						tc.Spec.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyRollingUpdate
+						tc.Spec.PD.MaxFailoverCount = pointer.Int32Ptr(4)
+						tc.Spec.TiKV.MaxFailoverCount = pointer.Int32Ptr(4)
+						tc.Spec.TiDB.MaxFailoverCount = pointer.Int32Ptr(4)
+						return nil
+					})
+					framework.ExpectNoError(err, "failed to change configuration of TidbCluster: %q", tc.Name)
+					err = crdUtil.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 				})
-				framework.ExpectNoError(err, "failed to change configuration of TidbCluster: %q", tc.Name)
-				err = crdUtil.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
-				framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 			})
 		}
 	})
