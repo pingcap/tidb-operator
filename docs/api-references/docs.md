@@ -10712,18 +10712,6 @@ bool
 </tr>
 <tr>
 <td>
-<code>slowLogVolumeName</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional volume name configuration for slow query log.</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>experimental</code></br>
 <em>
 <a href="#experimental">
@@ -11270,6 +11258,18 @@ bool
 <em>(Optional)</em>
 <p>Whether output the slow log in an separate sidecar container
 Optional: Defaults to true</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>slowLogVolumeName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional volume name configuration for slow query log.</p>
 </td>
 </tr>
 <tr>
