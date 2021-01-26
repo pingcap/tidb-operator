@@ -10712,9 +10712,6 @@ bool
 </tr>
 <tr>
 <td>
-<<<<<<< HEAD
-<code>experimental</code></br>
-=======
 <code>slowLogVolumeName</code></br>
 <em>
 string
@@ -10727,8 +10724,7 @@ string
 </tr>
 <tr>
 <td>
-<code>slowLogTailer</code></br>
->>>>>>> 73303d61... support customizing slowlog storage (#3731)
+<code>experimental</code></br>
 <em>
 <a href="#experimental">
 Experimental
