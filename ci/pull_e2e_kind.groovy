@@ -23,7 +23,7 @@ if (!env.ghprbSourceBranch) {
 }
 
 if (!env.ghprbActualCommit) {
-    GIT_COMMIT = "79733fc20a217c40d992657bb3aeb7e3de51f33a"
+    GIT_COMMIT = "da036492fdf50a5f9bf89ff05a9f000a4cc44f07"
 } else {
     GIT_COMMIT = env.ghprbActualCommit
 }
