@@ -761,7 +761,7 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 		return fmt.Errorf("failed to create secret of cluster [%s]: %v", info.ClusterName, err)
 	}
 
-	cmd := fmt.Sprintf("helm install %s %s --namespace %s --set-string %s --set %s",
+	cmd := fmt.Sprintf("helm install %s %s --namespace %s --set-string %s --set %s --set-file /etc/tikv.toml",
 		info.ClusterName,
 		oa.tidbClusterChartPath(info.OperatorTag),
 		info.Namespace,
@@ -2483,7 +2483,10 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 
 	fullbackupName := fmt.Sprintf("%s-backup", info.ClusterName)
 	cmd := fmt.Sprintf("helm install %s --namespace %s %s --set-string %s",
-		fullbackupName, info.Namespace, oa.backupChartPath(info.OperatorTag), setString)
+		fullbackupName,
+		info.Namespace,
+		oa.backupChartPath(info.OperatorTag),
+		setString)
 	log.Logf("install adhoc deployment [%s]", cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -2575,7 +2578,10 @@ func (oa *operatorActions) Restore(from *TidbClusterConfig, to *TidbClusterConfi
 
 	restoreName := fmt.Sprintf("%s-restore", to.ClusterName)
 	cmd := fmt.Sprintf("helm install %s --namespace %s %s --set-string %s",
-		restoreName, to.Namespace, oa.backupChartPath(to.OperatorTag), setString)
+		restoreName,
+		to.Namespace,
+		oa.backupChartPath(to.OperatorTag),
+		setString)
 	log.Logf("install restore [%s]", cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
