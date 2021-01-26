@@ -128,10 +128,7 @@ func init() {
 type MonitorConfigModel struct {
 	AlertmanagerURL    string
 	ClusterInfos       []ClusterRegexInfo
-	DMClusterInfos     []ClusterRegexInfo
 	EnableTLSCluster   bool
-	EnableTLSDMCluster bool
-	ExternalLabels     model.LabelSet
 	RemoteWriteConfigs []*config.RemoteWriteConfig
 }
 

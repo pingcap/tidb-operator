@@ -52,8 +52,8 @@ type TidbMonitorSpec struct {
 	Initializer InitializerSpec `json:"initializer"`
 
 	// Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster
-	// +kubebuilder:default=Recycle
-	PVReclaimPolicy corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
+	// +kubebuilder:default=Retain
+	PVReclaimPolicy *corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
 
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
@@ -80,6 +80,16 @@ type TidbMonitorSpec struct {
 	// Ref: https://prometheus.io/docs/alerting/alertmanager/
 	// +optional
 	AlertmanagerURL *string `json:"alertmanagerURL,omitempty"`
+	// alertManagerRulesVersion is the version of the tidb cluster that used for alert rules.
+	// default to current tidb cluster version, for example: v3.0.15
+	// +optional
+	AlertManagerRulesVersion *string `json:"alertManagerRulesVersion,omitempty"`
+
+	// +optional
+	AdditionalContainers []corev1.Container `json:"additionalContainers,omitempty"`
+
+	// ClusterScoped indicates whether this monitor should manage Kubernetes cluster-wide TiDB clusters
+	ClusterScoped bool `json:"clusterScoped,omitempty"`
 }
 
 // PrometheusSpec is the desired state of prometheus
@@ -153,7 +163,7 @@ type InitializerSpec struct {
 // +k8s:openapi-gen=true
 // MonitorContainer is the common attributes of the container of monitoring
 type MonitorContainer struct {
-	Resources corev1.ResourceRequirements `json:",inline"`
+	corev1.ResourceRequirements `json:",inline"`
 
 	BaseImage string `json:"baseImage,omitempty"`
 	Version   string `json:"version,omitempty"`
