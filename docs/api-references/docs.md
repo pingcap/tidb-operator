@@ -11832,6 +11832,18 @@ Optional: Defaults to true</p>
 </tr>
 <tr>
 <td>
+<code>slowLogVolumeName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional volume name configuration for slow query log.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>slowLogTailer</code></br>
 <em>
 <a href="#tidbslowlogtailerspec">
