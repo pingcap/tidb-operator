@@ -16,7 +16,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-on-gcp-gke/']
 
 部署前，请确认已完成以下环境准备：
 
-* [Helm](https://helm.sh/docs/intro/install/)：用于安装 TiDB Operator
+* [Helm 3](https://helm.sh/docs/intro/install/)：用于安装 TiDB Operator
 * [gcloud](https://cloud.google.com/sdk/gcloud)：用于创建和管理 GCP 服务的命令行工具
 * 完成 [GKE 快速入门](https://cloud.google.com/kubernetes-engine/docs/quickstart#before-you-begin) 中的**准备工作** (Before you begin)
 

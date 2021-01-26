@@ -23,7 +23,7 @@ kubectl delete tc ${cluster_name} -n ${namespace}
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl delete tidbmonitor ${tidb_monitor_name} -n ${namespace}
+kubectl uninstall tidbmonitor ${tidb_monitor_name} -n ${namespace}
 ```
 
 ## 销毁使用 Helm 管理的 TiDB 集群
@@ -33,7 +33,7 @@ kubectl delete tidbmonitor ${tidb_monitor_name} -n ${namespace}
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm delete ${cluster_name}
+helm uninstall ${cluster_name}
 ```
 
 ## 清除数据

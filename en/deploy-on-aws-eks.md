@@ -14,7 +14,7 @@ To deploy TiDB Operator and the TiDB cluster in a self-managed Kubernetes enviro
 
 Before deploying a TiDB cluster on AWS EKS, make sure the following requirements are satisfied:
 
-* Install [Helm](https://helm.sh/docs/intro/install/): used for deploying TiDB Operator.
+* Install [Helm 3](https://helm.sh/docs/intro/install/): used for deploying TiDB Operator.
 * Complete all operations in [Getting started with eksctl](https://docs.aws.amazon.com/eks/latest/userguide/getting-started-eksctl.html).
 
     This guide includes the following contents:

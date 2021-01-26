@@ -219,7 +219,7 @@ helm repo update
 
 ### Helm common operations
 
-Common Helm operations include `helm install`, `helm upgrade`, and `helm del`. Helm chart usually contains many configurable parameters which could be tedious to configure manually. For convenience, it is recommended that you configure using a YAML file. Based on the conventions in the Helm community, the YAML file used for Helm configuration is named `values.yaml` in this document.
+Common Helm operations include `helm install`, `helm upgrade`, and `helm uninstall`. Helm chart usually contains many configurable parameters which could be tedious to configure manually. For convenience, it is recommended that you configure using a YAML file. Based on the conventions in the Helm community, the YAML file used for Helm configuration is named `values.yaml` in this document.
 
 Before performing the deploy, upgrade and deploy, you can view the deployed applications via `helm ls`:
 
@@ -254,7 +254,7 @@ When performing a deployment or upgrade, you must specify the chart name (`chart
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm del ${release_name}
+    helm uninstall ${release_name}
     ```
 
 For more information on Helm, refer to [Helm Documentation](https://helm.sh/docs/).

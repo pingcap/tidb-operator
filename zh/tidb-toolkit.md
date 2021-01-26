@@ -219,7 +219,7 @@ helm repo update
 
 ### Helm 常用操作
 
-Helm 的常用操作有部署（`helm install`）、升级（`helm upgrade`)、销毁（`helm del`)、查询（`helm ls`）。Helm chart 往往都有很多可配置参数，通过命令行进行配置比较繁琐，因此推荐使用 YAML 文件的形式来编写这些配置项。基于 Helm 社区约定俗称的命名方式，在文档中将用于配置 chart 的 YAML 文件称为 `values.yaml` 文件。
+Helm 的常用操作有部署（`helm install`）、升级（`helm upgrade`)、销毁（`helm uninstall`)、查询（`helm ls`）。Helm chart 往往都有很多可配置参数，通过命令行进行配置比较繁琐，因此推荐使用 YAML 文件的形式来编写这些配置项。基于 Helm 社区约定俗称的命名方式，在文档中将用于配置 chart 的 YAML 文件称为 `values.yaml` 文件。
 
 执行部署、升级、销毁等操作前，可以使用 `helm ls` 查看集群中已部署的应用：
 
@@ -252,7 +252,7 @@ helm ls
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm del ${release_name}
+helm uninstall ${release_name}
 ```
 
 更多 helm 的相关文档，请参考 [Helm 官方文档](https://helm.sh/docs/)。

@@ -15,6 +15,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/prerequisites/']
 | Docker | Docker CE 18.09.6 |
 | Kubernetes | v1.12.5+ |
 | CentOS | CentOS 7.6，内核要求为 3.10.0-957 或之后版本 |
+| Helm | | v3.0.0+ |
 
 ## 配置防火墙
 

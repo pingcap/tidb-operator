@@ -19,7 +19,7 @@ To deploy TiDB Operator and the TiDB cluster in a self-managed Kubernetes enviro
     > The access key must be granted permissions to control the corresponding resources.
 
 - [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) >= 1.12
-- [Helm](https://helm.sh)
+- [Helm 3](https://helm.sh)
 - [jq](https://stedolan.github.io/jq/download/) >= 1.6
 - [terraform](https://learn.hashicorp.com/terraform/getting-started/install.html) 0.12.*
 

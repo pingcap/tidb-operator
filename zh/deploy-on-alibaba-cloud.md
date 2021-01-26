@@ -19,7 +19,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-on-alibaba-cloud/']
     > Access Key 需要具有操作相应资源的权限。
 
 - [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/#install-kubectl) >= 1.12
-- [Helm](https://helm.sh)
+- [Helm 3](https://helm.sh)
 - [jq](https://stedolan.github.io/jq/download/) >= 1.6
 - [terraform](https://learn.hashicorp.com/terraform/getting-started/install.html) 0.12.*
 

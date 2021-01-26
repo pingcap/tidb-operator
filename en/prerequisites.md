@@ -15,6 +15,7 @@ This document introduces the hardware and software prerequisites for deploying a
 | Docker | Docker CE 18.09.6 |
 | Kubernetes | v1.12.5+ |
 | CentOS | 7.6 and kernel 3.10.0-957 or later |
+| Helm | | v3.0.0+ |
 
 ## Configure the firewall
 

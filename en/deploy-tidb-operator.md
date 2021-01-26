@@ -16,7 +16,7 @@ Before deploying TiDB Operator, make sure the following items are installed on y
 * [DNS addons](https://kubernetes.io/docs/tasks/access-application-cluster/configure-dns-cluster/)
 * [PersistentVolume](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
 * [RBAC](https://kubernetes.io/docs/admin/authorization/rbac) enabled (optional)
-* [Helm](https://helm.sh)
+* [Helm 3](https://helm.sh)
 
 ### Deploy the Kubernetes cluster
 

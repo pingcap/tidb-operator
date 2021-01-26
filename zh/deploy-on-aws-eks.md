@@ -14,7 +14,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-on-aws-eks/']
 
 部署前，请确认已完成以下环境准备：
 
-- 安装 [Helm](https://helm.sh/docs/intro/install/)：用于安装 TiDB Operator。
+- 安装 [Helm 3](https://helm.sh/docs/intro/install/)：用于安装 TiDB Operator。
 
 - 完成 AWS [eksctl 入门](https://docs.aws.amazon.com/zh_cn/eks/latest/userguide/getting-started-eksctl.html)中所有操作。
 
