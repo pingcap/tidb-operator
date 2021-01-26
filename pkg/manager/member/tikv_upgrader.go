@@ -70,6 +70,8 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 		return fmt.Errorf("cluster[%s/%s] failed to upgrading tikv due to converting", meta.GetNamespace(), meta.GetName())
 	}
 
+	tc, _ := meta.(*v1alpha1.TidbCluster)
+
 	if !status.Synced {
 		return fmt.Errorf("cluster: [%s/%s]'s tikv status sync failed, can not to be upgraded", ns, tcName)
 	}
@@ -97,7 +99,7 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
 	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
 		i := podOrdinals[_i]
-		store := u.getStoreByOrdinal(meta.GetName(), *status, i)
+		store := getStoreByOrdinal(meta.GetName(), *status, i)
 		if store == nil {
 			setUpgradePartition(newSet, i)
 			continue
@@ -121,6 +123,17 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not all ready", ns, tcName, podName)
 			}
 
+			if !u.deps.CLIConfig.PodWebhookEnabled {
+				// If pods recreated successfully, endEvictLeader for the store on this Pod.
+				storeID, err := strconv.ParseUint(store.ID, 10, 64)
+				if err != nil {
+					return err
+				}
+				if err := endEvictLeaderbyStoreID(u.deps, tc, storeID); err != nil {
+					return err
+				}
+			}
+
 			continue
 		}
 
@@ -128,10 +141,7 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 			setUpgradePartition(newSet, i)
 			return nil
 		}
-		tc, ok := meta.(*v1alpha1.TidbCluster)
-		if !ok {
-			return fmt.Errorf("cluster[%s/%s] failed to upgrading tikv due to not tidbcluster and not enabled pod webhook", meta.GetNamespace(), meta.GetName())
-		}
+
 		return u.upgradeTiKVPod(tc, i, newSet)
 	}
 
@@ -159,10 +169,6 @@ func (u *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32, n
 			}
 
 			if u.readyToUpgrade(upgradePod, store, tc.TiKVEvictLeaderTimeout()) {
-				err := u.endEvictLeader(tc, ordinal)
-				if err != nil {
-					return err
-				}
 				setUpgradePartition(newSet, ordinal)
 				return nil
 			}
@@ -217,32 +223,42 @@ func (u *tikvUpgrader) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64
 	return nil
 }
 
-func (u *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32) error {
-	// wait 5 second before delete evict scheduler，it is for auto test can catch these info
-	if u.deps.CLIConfig.TestMode {
-		time.Sleep(5 * time.Second)
+func endEvictLeader(deps *controller.Dependencies, tc *v1alpha1.TidbCluster, ordinal int32) error {
+	store := getStoreByOrdinal(tc.GetName(), tc.Status.TiKV, ordinal)
+	if store == nil {
+		klog.Errorf("tikv: no store found for TiKV ordinal %v of %s/%s", ordinal, tc.Namespace, tc.Name)
+		return nil
 	}
-	store := u.getStoreByOrdinal(tc.GetName(), tc.Status.TiKV, ordinal)
 	storeID, err := strconv.ParseUint(store.ID, 10, 64)
 	if err != nil {
 		return err
 	}
 
+	return endEvictLeaderbyStoreID(deps, tc, storeID)
+}
+
+func endEvictLeaderbyStoreID(deps *controller.Dependencies, tc *v1alpha1.TidbCluster, storeID uint64) error {
+	// wait 5 second before delete evict scheduler，it is for auto test can catch these info
+	if deps.CLIConfig.TestMode {
+		time.Sleep(5 * time.Second)
+	}
+	var err error
+
 	if tc.IsHeterogeneous() {
-		err = u.deps.PDControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled()).EndEvictLeader(storeID)
+		err = deps.PDControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled()).EndEvictLeader(storeID)
 	} else {
-		err = u.deps.PDControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()).EndEvictLeader(storeID)
+		err = deps.PDControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()).EndEvictLeader(storeID)
 	}
 
 	if err != nil {
-		klog.Errorf("tikv upgrader: failed to end evict leader storeID: %d ordinal: %d, %v", storeID, ordinal, err)
+		klog.Errorf("tikv: failed to end evict leader for store: %d of %s/%s, error: %v", storeID, tc.Namespace, tc.Name, err)
 		return err
 	}
-	klog.Infof("tikv upgrader: end evict leader storeID: %d ordinal: %d successfully", storeID, ordinal)
+	klog.Infof("tikv: end evict leader for store: %d of %s/%s successfully", storeID, tc.Namespace, tc.Name)
 	return nil
 }
 
-func (u *tikvUpgrader) getStoreByOrdinal(name string, status v1alpha1.TiKVStatus, ordinal int32) *v1alpha1.TiKVStore {
+func getStoreByOrdinal(name string, status v1alpha1.TiKVStatus, ordinal int32) *v1alpha1.TiKVStore {
 	podName := TikvPodName(name, ordinal)
 	for _, store := range status.Stores {
 		if store.PodName == podName {
