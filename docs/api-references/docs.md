@@ -3139,6 +3139,53 @@ BackupConditionType
 <p>
 <p>BackupType represents the backup type.</p>
 </p>
+<h3 id="basicauth">BasicAuth</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#remotewritespec">RemoteWriteSpec</a>)
+</p>
+<p>
+<p>BasicAuth allow an endpoint to authenticate over basic authentication
+More info: <a href="https://prometheus.io/docs/operating/configuration/#endpoints">https://prometheus.io/docs/operating/configuration/#endpoints</a></p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>username</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#secretkeyselector-v1-core">
+Kubernetes core/v1.SecretKeySelector
+</a>
+</em>
+</td>
+<td>
+<p>The secret in the service monitor namespace that contains the username
+for authentication.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>password</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#secretkeyselector-v1-core">
+Kubernetes core/v1.SecretKeySelector
+</a>
+</em>
+</td>
+<td>
+<p>The secret in the service monitor namespace that contains the password
+for authentication.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="basicautoscalerspec">BasicAutoScalerSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -9731,6 +9778,19 @@ bool
 <p>Disable prometheus compaction.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>remoteWrite</code></br>
+<em>
+<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.remotewritespec">
+[]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.RemoteWriteSpec
+</a>
+</em>
+</td>
+<td>
+<p>If specified, the remote_write spec. This is an experimental feature, it may change in any upcoming release in a breaking way.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="proxyconfig">ProxyConfig</h3>
@@ -10145,6 +10205,101 @@ Kubernetes apps/v1.StatefulSetStatus
 </tr>
 </tbody>
 </table>
+<h3 id="queueconfig">QueueConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#remotewritespec">RemoteWriteSpec</a>)
+</p>
+<p>
+<p>QueueConfig allows the tuning of remote_write queue_config parameters. This object
+is referenced in the RemoteWriteSpec object.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>capacity</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>Number of samples to buffer per shard before we start dropping them.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>maxShards</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>Max number of shards, i.e. amount of concurrency.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>maxSamplesPperSend</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>Maximum number of samples per send.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>batchSendDeadline</code></br>
+<em>
+time.Duration
+</em>
+</td>
+<td>
+<p>Maximum time sample will wait in buffer.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>maxRetries</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>Max number of times to retry a batch on recoverable errors.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>minBackoff</code></br>
+<em>
+time.Duration
+</em>
+</td>
+<td>
+<p>On recoverable errors, backoff exponentially.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>maxBackoff</code></br>
+<em>
+time.Duration
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="quota">Quota</h3>
 <p>
 <p>Quota is the configuration of [quotas.default] section.</p>
@@ -10168,6 +10323,105 @@ Interval
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="relabelconfig">RelabelConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#remotewritespec">RemoteWriteSpec</a>)
+</p>
+<p>
+<p>RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
+It defines <code>&lt;metric_relabel_configs&gt;</code>-section of Prometheus configuration.
+More info: <a href="https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs">https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs</a></p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>sourceLabels</code></br>
+<em>
+github.com/prometheus/common/model.LabelNames
+</em>
+</td>
+<td>
+<p>A list of labels from which values are taken and concatenated
+with the configured separator in order.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>separator</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Separator is the string between concatenated values from the source labels.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>regex</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Regular expression against which the extracted value is matched. Default is &lsquo;(.*)&rsquo;</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>modulus</code></br>
+<em>
+uint64
+</em>
+</td>
+<td>
+<p>Modulus to take of the hash of concatenated values from the source labels.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>targetLabel</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>TargetLabel is the label to which the resulting string is written in a replacement.
+Regexp interpolation is allowed for the replace action.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>replacement</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Replacement is the regex replacement pattern to be used.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>action</code></br>
+<em>
+github.com/prometheus/prometheus/config.RelabelAction
+</em>
+</td>
+<td>
+<p>Action is the action to be performed for the relabeling.</p>
 </td>
 </tr>
 </tbody>
@@ -10213,6 +10467,133 @@ ServiceSpec
 </em>
 </td>
 <td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="remotewritespec">RemoteWriteSpec</h3>
+<p>
+<p>RemoteWriteSpec defines the remote_write configuration for prometheus.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>url</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>The URL of the endpoint to send samples to.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>remoteTimeout</code></br>
+<em>
+github.com/prometheus/common/model.Duration
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>writeRelabelConfigs</code></br>
+<em>
+<a href="#relabelconfig">
+[]RelabelConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The list of remote write relabel configurations.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>basicAuth</code></br>
+<em>
+<a href="#basicauth">
+BasicAuth
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>BasicAuth for the URL.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>bearerToken</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>File to read bearer token for remote write.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>bearerTokenFile</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>File to read bearer token for remote write.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tlsConfig</code></br>
+<em>
+<a href="#tlsconfig">
+TLSConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TLS Config to use for remote write.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>proxyUrl</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Proxy url</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>queueConfig</code></br>
+<em>
+<a href="#queueconfig">
+QueueConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>
@@ -11518,6 +11899,7 @@ Same for other components.</p>
 <h3 id="tlsconfig">TLSConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#remotewritespec">RemoteWriteSpec</a>, 
 <a href="#thanosspec">ThanosSpec</a>)
 </p>
 <p>
