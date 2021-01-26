@@ -1553,6 +1553,7 @@ func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVers
 			"tidb.resources.limits.memory":        "4Gi",
 			"tidb.resources.requests.cpu":         "20m",
 			"tidb.resources.requests.memory":      "20Mi",
+			"pvReclaimPolicy":                     "Delete",
 			"tidb.initSql":                        strconv.Quote("create database e2e;"),
 			"discovery.image":                     cfg.OperatorImage,
 		},
