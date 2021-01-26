@@ -126,9 +126,10 @@ func init() {
 }
 
 type MonitorConfigModel struct {
-	AlertmanagerURL  string
-	ClusterInfos     []ClusterRegexInfo
-	EnableTLSCluster bool
+	AlertmanagerURL    string
+	ClusterInfos       []ClusterRegexInfo
+	EnableTLSCluster   bool
+	RemoteWriteConfigs []*config.RemoteWriteConfig
 }
 
 // ClusterRegexInfo is the monitor cluster info
@@ -157,7 +158,8 @@ func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
 		RuleFiles: []string{
 			"/prometheus-rules/rules/*.rules.yml",
 		},
-		ScrapeConfigs: scrapeJobs,
+		ScrapeConfigs:      scrapeJobs,
+		RemoteWriteConfigs: cmodel.RemoteWriteConfigs,
 	}
 	return &c
 }

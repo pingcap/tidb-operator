@@ -18,11 +18,14 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"time"
 
+	"github.com/docker/docker/client"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	"github.com/prometheus/prometheus/config"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -31,6 +34,7 @@ import (
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/klog"
 )
 
 func GetMonitorObjectName(monitor *v1alpha1.TidbMonitor) string {
@@ -68,6 +72,10 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor
 		AlertmanagerURL:  "",
 		ClusterInfos:     releaseClusterInfos,
 		EnableTLSCluster: tc.IsTLSClusterEnabled(),
+	}
+
+	if len(monitor.Spec.Prometheus.RemoteWrite) > 0 {
+		model.RemoteWriteConfigs = generateRemoteWrite(monitor)
 	}
 
 	if monitor.Spec.AlertmanagerURL != nil {
@@ -875,4 +883,92 @@ func defaultTidbMonitor(monitor *v1alpha1.TidbMonitor) {
 	if monitor.Spec.PVReclaimPolicy == nil {
 		monitor.Spec.PVReclaimPolicy = &retainPVP
 	}
+}
+
+func generateRemoteWrite(monitor *v1alpha1.TidbMonitor) []*config.RemoteWriteConfig {
+	var remoteWriteConfigs []*config.RemoteWriteConfig
+	for _, remoteWrite := range monitor.Spec.Prometheus.RemoteWrite {
+		url, err := client.ParseHostURL(remoteWrite.URL)
+		if err != nil {
+			klog.Errorf("remote write url[%s] config fail to parse, err:%v", remoteWrite.URL, err)
+			continue
+		}
+		httpClientConfig := config.HTTPClientConfig{
+			BearerTokenFile: remoteWrite.BearerTokenFile,
+		}
+		if remoteWrite.TLSConfig != nil {
+			httpClientConfig.TLSConfig = config.TLSConfig{
+				CAFile:             remoteWrite.TLSConfig.CAFile,
+				CertFile:           remoteWrite.TLSConfig.CertFile,
+				KeyFile:            remoteWrite.TLSConfig.KeyFile,
+				ServerName:         remoteWrite.TLSConfig.ServerName,
+				InsecureSkipVerify: remoteWrite.TLSConfig.InsecureSkipVerify,
+			}
+		}
+		var writeRelabelConfigs []*config.RelabelConfig
+		for _, writeRelabelConfig := range remoteWrite.WriteRelabelConfigs {
+			relabelConfig := &config.RelabelConfig{}
+			if len(writeRelabelConfig.SourceLabels) > 0 {
+				relabelConfig.SourceLabels = writeRelabelConfig.SourceLabels
+			}
+			if writeRelabelConfig.Separator != "" {
+				relabelConfig.Separator = writeRelabelConfig.Separator
+			}
+			if writeRelabelConfig.TargetLabel != "" {
+				relabelConfig.TargetLabel = writeRelabelConfig.TargetLabel
+			}
+			if writeRelabelConfig.Regex != "" {
+				regex, err := config.NewRegexp(writeRelabelConfig.Regex)
+				if err != nil {
+					continue
+				}
+				relabelConfig.Regex = regex
+			}
+			if writeRelabelConfig.Modulus != uint64(0) {
+				relabelConfig.Modulus = writeRelabelConfig.Modulus
+			}
+			if writeRelabelConfig.Replacement != "" {
+				relabelConfig.Replacement = writeRelabelConfig.Replacement
+			}
+			if writeRelabelConfig.Action != "" {
+				relabelConfig.Action = writeRelabelConfig.Action
+			}
+			writeRelabelConfigs = append(writeRelabelConfigs, relabelConfig)
+		}
+
+		remoteWriteConfig := &config.RemoteWriteConfig{
+			URL:                 &config.URL{URL: url},
+			RemoteTimeout:       remoteWrite.RemoteTimeout,
+			WriteRelabelConfigs: writeRelabelConfigs,
+			HTTPClientConfig:    httpClientConfig,
+		}
+		if remoteWrite.QueueConfig != nil {
+			queueConfig := config.QueueConfig{}
+
+			if remoteWrite.QueueConfig.Capacity != 0 {
+				queueConfig.Capacity = remoteWrite.QueueConfig.Capacity
+			}
+			if remoteWrite.QueueConfig.MaxShards != 0 {
+				queueConfig.MaxShards = remoteWrite.QueueConfig.MaxShards
+			}
+			if remoteWrite.QueueConfig.MaxSamplesPerSend != 0 {
+				queueConfig.MaxSamplesPerSend = remoteWrite.QueueConfig.MaxSamplesPerSend
+			}
+			if remoteWrite.QueueConfig.BatchSendDeadline != time.Duration(0) {
+				queueConfig.BatchSendDeadline = remoteWrite.QueueConfig.BatchSendDeadline
+			}
+			if remoteWrite.QueueConfig.MaxRetries != 0 {
+				queueConfig.MaxRetries = remoteWrite.QueueConfig.MaxRetries
+			}
+			if remoteWrite.QueueConfig.MinBackoff != time.Duration(0) {
+				queueConfig.MinBackoff = remoteWrite.QueueConfig.MinBackoff
+			}
+			if remoteWrite.QueueConfig.MaxBackoff != time.Duration(0) {
+				queueConfig.MaxBackoff = remoteWrite.QueueConfig.MaxBackoff
+			}
+			remoteWriteConfig.QueueConfig = queueConfig
+		}
+		remoteWriteConfigs = append(remoteWriteConfigs, remoteWriteConfig)
+	}
+	return remoteWriteConfigs
 }
