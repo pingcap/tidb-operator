@@ -27,10 +27,18 @@ import (
 )
 
 const (
+<<<<<<< HEAD
 	TiDBV3Version                 = "v3.1.1"
 	TiDBV3UpgradeVersion          = "v3.1.2"
 	TiDBV4Version                 = "v4.0.4"
 	TiDBV4UpgradeVersion          = "v4.0.5"
+=======
+	TiDBV3Version                 = "v3.0.19"
+	TiDBV3UpgradeVersion          = "v3.0.20"
+	TiDBV4Version                 = "v4.0.9"
+	TiDBV4UpgradeVersion          = "v4.0.10"
+	TiDBNightlyVersion            = "nightly"
+>>>>>>> 66985952... split basic e2e cases into smaller chunks (#3729)
 	PrometheusImage               = "prom/prometheus"
 	PrometheusVersion             = "v2.18.1"
 	TiDBMonitorReloaderImage      = "pingcap/tidb-monitor-reloader"

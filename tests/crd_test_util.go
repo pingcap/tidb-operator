@@ -103,7 +103,7 @@ func (ctu *CrdTestUtil) CheckDisasterTolerance(cluster *v1alpha1.TidbCluster) er
 	if err != nil {
 		return err
 	}
-	err = checkPodsDisasterTolerance(pds.Items)
+	err = checkPodsAffinity(pds.Items)
 	if err != nil {
 		return err
 	}
@@ -115,7 +115,7 @@ func (ctu *CrdTestUtil) CheckDisasterTolerance(cluster *v1alpha1.TidbCluster) er
 	if err != nil {
 		return err
 	}
-	err = checkPodsDisasterTolerance(tikvs.Items)
+	err = checkPodsAffinity(tikvs.Items)
 	if err != nil {
 		return err
 	}
@@ -127,10 +127,10 @@ func (ctu *CrdTestUtil) CheckDisasterTolerance(cluster *v1alpha1.TidbCluster) er
 	if err != nil {
 		return err
 	}
-	return checkPodsDisasterTolerance(tidbs.Items)
+	return checkPodsAffinity(tidbs.Items)
 }
 
-func checkPodsDisasterTolerance(allPods []corev1.Pod) error {
+func checkPodsAffinity(allPods []corev1.Pod) error {
 	for _, pod := range allPods {
 		if pod.Spec.Affinity == nil {
 			return fmt.Errorf("the pod:[%s/%s] has not Affinity", pod.Namespace, pod.Name)
