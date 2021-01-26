@@ -126,8 +126,8 @@ func getMonitorServiceAccount(monitor *v1alpha1.TidbMonitor) *core.ServiceAccoun
 	return sa
 }
 
-func getMonitorClusterRole(monitor *v1alpha1.TidbMonitor, policyRules []rbac.PolicyRule) *rbac.ClusterRole {
-	return &rbac.ClusterRole{
+func getMonitorRole(monitor *v1alpha1.TidbMonitor, policyRules []rbac.PolicyRule) *rbac.Role {
+	return &rbac.Role{
 		ObjectMeta: meta.ObjectMeta{
 			Name:            GetMonitorObjectName(monitor),
 			Namespace:       monitor.Namespace,
