@@ -259,7 +259,9 @@ function e2e::image_build() {
         echo "info: skip building and pushing images"
         return
     fi
+    echo "DOCKER_REPO=$DOCKER_REPO IMAGE_TAG=$IMAGE_TAG make docker"
     DOCKER_REPO=$DOCKER_REPO IMAGE_TAG=$IMAGE_TAG make docker
+    echo "DOCKER_REPO=$DOCKER_REPO IMAGE_TAG=$IMAGE_TAG make e2e-docker"
     DOCKER_REPO=$DOCKER_REPO IMAGE_TAG=$IMAGE_TAG make e2e-docker
 }
 
@@ -300,6 +302,7 @@ EOF
     fi
 }
 
+# TODO: review this
 function e2e::create_kindconfig() {
     local tmpfile=${1}
     cat <<EOF > $tmpfile
