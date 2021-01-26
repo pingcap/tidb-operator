@@ -58,10 +58,8 @@ func (u *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 		return nil
 	}
 
-	tc, _ := meta.(*v1alpha1.TidbCluster)
-
-	if !status.Synced {
-		return fmt.Errorf("cluster: [%s/%s]'s tikv status sync failed, can not to be upgraded", ns, tcName)
+	if !tc.Status.TiKV.Synced {
+		return fmt.Errorf("Tidbcluster: [%s/%s]'s tikv status sync failed, can not to be upgraded", ns, tcName)
 	}
 
 	tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
@@ -87,7 +85,7 @@ func (u *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
 	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
 		i := podOrdinals[_i]
-		store := getStoreByOrdinal(meta.GetName(), *status, i)
+		store := getStoreByOrdinal(tc, i)
 		if store == nil {
 			setUpgradePartition(newSet, i)
 			continue
@@ -246,9 +244,9 @@ func endEvictLeaderbyStoreID(deps *controller.Dependencies, tc *v1alpha1.TidbClu
 	return nil
 }
 
-func getStoreByOrdinal(name string, status v1alpha1.TiKVStatus, ordinal int32) *v1alpha1.TiKVStore {
-	podName := TikvPodName(name, ordinal)
-	for _, store := range status.Stores {
+func getStoreByOrdinal(tc *v1alpha1.TidbCluster, ordinal int32) *v1alpha1.TiKVStore {
+	podName := TikvPodName(tc.GetName(), ordinal)
+	for _, store := range tc.Status.TiKV.Stores {
 		if store.PodName == podName {
 			return &store
 		}
