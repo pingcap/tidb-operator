@@ -10712,7 +10712,23 @@ bool
 </tr>
 <tr>
 <td>
+<<<<<<< HEAD
 <code>experimental</code></br>
+=======
+<code>slowLogVolumeName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional volume name configuration for slow query log.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>slowLogTailer</code></br>
+>>>>>>> 73303d61... support customizing slowlog storage (#3731)
 <em>
 <a href="#experimental">
 Experimental

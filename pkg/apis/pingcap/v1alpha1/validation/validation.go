@@ -209,6 +209,9 @@ func validateTiDBSpec(spec *v1alpha1.TiDBSpec, fldPath *field.Path) field.ErrorL
 	if len(spec.StorageVolumes) > 0 {
 		allErrs = append(allErrs, validateStorageVolumes(spec.StorageVolumes, fldPath.Child("storageVolumes"))...)
 	}
+	if spec.ShouldSeparateSlowLog() && spec.SlowLogVolumeName != "" {
+		allErrs = append(allErrs, validateSlowQueryLogVolume(spec.SlowLogVolumeName, spec.StorageVolumes, spec.AdditionalVolumes, spec.AdditionalVolumeMounts, fldPath)...)
+	}
 	return allErrs
 }
 
@@ -254,6 +257,27 @@ func validateStorageVolumes(storageVolumes []v1alpha1.StorageVolume, fldPath *fi
 			allErrs = append(allErrs, field.Required(idxPath.Child("mountPath"), "mountPath must not be empty"))
 		}
 	}
+	return allErrs
+}
+
+func validateSlowQueryLogVolume(slowLogVolumeName string, storageVolumes []v1alpha1.StorageVolume, additionalVolumes []corev1.Volume, AdditionalVolumeMounts []corev1.VolumeMount, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	for _, volume := range storageVolumes {
+		if volume.Name == slowLogVolumeName {
+			return allErrs
+		}
+	}
+	for _, volume := range additionalVolumes {
+		if volume.Name == slowLogVolumeName {
+			for _, volumeMount := range AdditionalVolumeMounts {
+				if volumeMount.Name == slowLogVolumeName {
+					return allErrs
+				}
+			}
+		}
+	}
+	errMsg := fmt.Sprintf("Can not find slowLogVolume: %s in storageVolumes or additionalVolumes/additionalVolumeMounts", slowLogVolumeName)
+	allErrs = append(allErrs, field.Invalid(fldPath.Child("slowLogVolumeName"), slowLogVolumeName, errMsg))
 	return allErrs
 }
 
