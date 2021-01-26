@@ -194,7 +194,11 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 		return err
 	}
 
-	newTiDBSet := getNewTiDBSetForTidbCluster(tc, cm)
+	newTiDBSet, err := getNewTiDBSetForTidbCluster(tc, cm)
+	if err != nil {
+		return err
+	}
+
 	if setNotExist {
 		err = SetStatefulSetLastAppliedConfigAnnotation(newTiDBSet)
 		if err != nil {
@@ -499,9 +503,10 @@ func getNewTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.S
 	}
 }
 
-func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) *apps.StatefulSet {
+func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
+	setName := controller.TiDBMemberName(tcName)
 	headlessSvcName := controller.TiDBPeerMemberName(tcName)
 	baseTiDBSpec := tc.BaseTiDBSpec()
 	instanceName := tc.GetInstanceName()
@@ -729,19 +734,24 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 
 	stsAnnotations := getStsAnnotations(tc, label.TiDBLabelVal)
 
+	deleteSlotsNumber, err := util.GetDeleteSlotsNumber(stsAnnotations)
+	if err != nil {
+		return nil, fmt.Errorf("get delete slots number of statefulset %s/%s failed, err:%v", ns, setName, err)
+	}
+
 	updateStrategy := apps.StatefulSetUpdateStrategy{}
 	if baseTiDBSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
 		updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
 	} else {
 		updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
 		updateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{
-			Partition: pointer.Int32Ptr(tc.TiDBStsDesiredReplicas()),
+			Partition: pointer.Int32Ptr(tc.TiDBStsDesiredReplicas() + deleteSlotsNumber),
 		}
 	}
 
 	tidbSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            controller.TiDBMemberName(tcName),
+			Name:            setName,
 			Namespace:       ns,
 			Labels:          tidbLabel.Labels(),
 			Annotations:     stsAnnotations,
@@ -764,7 +774,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	}
 
 	tidbSet.Spec.VolumeClaimTemplates = append(tidbSet.Spec.VolumeClaimTemplates, additionalPVCs...)
-	return tidbSet
+	return tidbSet, nil
 }
 
 func (m *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
