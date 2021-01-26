@@ -58,15 +58,10 @@ func (u *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 		return nil
 	}
 
-<<<<<<< HEAD
-	if !tc.Status.TiKV.Synced {
-		return fmt.Errorf("Tidbcluster: [%s/%s]'s tikv status sync failed, can not to be upgraded", ns, tcName)
-=======
 	tc, _ := meta.(*v1alpha1.TidbCluster)
 
 	if !status.Synced {
 		return fmt.Errorf("cluster: [%s/%s]'s tikv status sync failed, can not to be upgraded", ns, tcName)
->>>>>>> 2fa207de... EndEvictLeader after Pod is recreated in RollingUpdate (#3724)
 	}
 
 	tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
@@ -92,11 +87,7 @@ func (u *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
 	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
 		i := podOrdinals[_i]
-<<<<<<< HEAD
-		store := u.getStoreByOrdinal(tc, i)
-=======
 		store := getStoreByOrdinal(meta.GetName(), *status, i)
->>>>>>> 2fa207de... EndEvictLeader after Pod is recreated in RollingUpdate (#3724)
 		if store == nil {
 			setUpgradePartition(newSet, i)
 			continue
@@ -226,10 +217,6 @@ func endEvictLeader(deps *controller.Dependencies, tc *v1alpha1.TidbCluster, ord
 		klog.Errorf("tikv: no store found for TiKV ordinal %v of %s/%s", ordinal, tc.Namespace, tc.Name)
 		return nil
 	}
-<<<<<<< HEAD
-	store := u.getStoreByOrdinal(tc, ordinal)
-=======
->>>>>>> 2fa207de... EndEvictLeader after Pod is recreated in RollingUpdate (#3724)
 	storeID, err := strconv.ParseUint(store.ID, 10, 64)
 	if err != nil {
 		return err
@@ -259,15 +246,9 @@ func endEvictLeaderbyStoreID(deps *controller.Dependencies, tc *v1alpha1.TidbClu
 	return nil
 }
 
-<<<<<<< HEAD
-func (u *tikvUpgrader) getStoreByOrdinal(tc *v1alpha1.TidbCluster, ordinal int32) *v1alpha1.TiKVStore {
-	podName := TikvPodName(tc.GetName(), ordinal)
-	for _, store := range tc.Status.TiKV.Stores {
-=======
 func getStoreByOrdinal(name string, status v1alpha1.TiKVStatus, ordinal int32) *v1alpha1.TiKVStore {
 	podName := TikvPodName(name, ordinal)
 	for _, store := range status.Stores {
->>>>>>> 2fa207de... EndEvictLeader after Pod is recreated in RollingUpdate (#3724)
 		if store.PodName == podName {
 			return &store
 		}
