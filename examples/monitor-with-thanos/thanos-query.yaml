@@ -39,7 +39,7 @@ spec:
                 "sampler_param": 2
                 "sampler_type": "ratelimiting"
                 "service_name": "thanos-query"
-                "type": "JAEGER"
+              "type": "JAEGER"
           image: quay.io/thanos/thanos:v0.17.2
           livenessProbe:
             failureThreshold: 4
