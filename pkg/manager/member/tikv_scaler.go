@@ -134,6 +134,11 @@ func (s *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 			klog.Infof("tikv scale in: set pvc %s/%s annotation: %s to %s",
 				ns, pvcName, label.AnnPVCDeferDeleting, now)
 
+			// endEvictLeader for TombStone stores
+			if err = endEvictLeaderbyStoreID(s.deps, tc, id); err != nil {
+				return err
+			}
+
 			setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 			return nil
 		}
