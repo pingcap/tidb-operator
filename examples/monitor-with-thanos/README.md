@@ -1,6 +1,6 @@
 # TidbMonitor with Thanos
 
-This document is to show how to integrate TidbMonitor with [Thanos](https://thanos.io/design.md/).
+This document is to show how to integrate TidbMonitor with [Thanos](https://thanos.io/tip/thanos/design.md/).
 
 
 ## Install TidbMonitor
