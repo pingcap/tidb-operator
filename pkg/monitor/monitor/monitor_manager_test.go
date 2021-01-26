@@ -20,6 +20,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/meta"
+	"github.com/prometheus/common/model"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -114,6 +115,78 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 	}
 
 	tests := []testcase{
+		{
+			name: "tidbmonitor spec remote write",
+			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
+				monitor.Spec.Prometheus.RemoteWrite = []*v1alpha1.RemoteWriteSpec{
+					{URL: "http://localhost:1234",
+						WriteRelabelConfigs: []v1alpha1.RelabelConfig{
+							{
+								SourceLabels: model.LabelNames{
+									"__address__",
+									portLabel,
+								},
+								Separator:   ";",
+								Regex:       "(.*)",
+								TargetLabel: "node",
+								Replacement: "$1",
+								Action:      "replace",
+							},
+						},
+					},
+				}
+
+			},
+			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
+
+			},
+			stsCreated:    true,
+			svcCreated:    true,
+			volumeCreated: false,
+		},
+		{
+			name: "tidbmonitor spec thanos sidecar",
+			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
+
+				monitor.Spec.Thanos = &v1alpha1.ThanosSpec{
+					MonitorContainer: v1alpha1.MonitorContainer{
+						BaseImage: "thanosio/thanos",
+						Version:   "v0.17.2",
+					},
+				}
+			},
+			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
+				errExpectRequeuefunc(g, err, tmm, tm)
+				svc, err := tmm.deps.ServiceLister.Services(tm.Namespace).Get(prometheusName(tm))
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(svc.Spec.Ports).To(Equal([]v1.ServicePort{
+					{
+						Name:       "http-prometheus",
+						Port:       9090,
+						Protocol:   v1.ProtocolTCP,
+						TargetPort: intstr.FromInt(9090),
+					}, {
+						Name:       "thanos-grpc",
+						Port:       10901,
+						Protocol:   v1.ProtocolTCP,
+						TargetPort: intstr.FromInt(10901),
+					},
+					{
+						Name:       "thanos-http",
+						Port:       10902,
+						Protocol:   v1.ProtocolTCP,
+						TargetPort: intstr.FromInt(10902),
+					},
+				}))
+
+				sts, err := tmm.deps.StatefulSetLister.StatefulSets(tm.Namespace).Get(GetMonitorObjectName(tm))
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(3))
+			},
+			stsCreated:    true,
+			svcCreated:    true,
+			volumeCreated: false,
+		},
 		{
 			name: "tidbmonitor spec thanos sidecar",
 			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
