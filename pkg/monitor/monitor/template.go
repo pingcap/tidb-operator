@@ -359,14 +359,6 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 				},
 				{
 					SourceLabels: model.LabelNames{
-						metricsPathLabel,
-					},
-					Action:      config.RelabelReplace,
-					TargetLabel: "__metrics_path__",
-					Regex:       allMatchPattern,
-				},
-				{
-					SourceLabels: model.LabelNames{
 						componentLabel,
 					},
 					Action: config.RelabelKeep,
@@ -408,6 +400,14 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 					},
 					Separator:   "-",
 					TargetLabel: "tidb_cluster",
+				},
+				{
+					SourceLabels: model.LabelNames{
+						metricsPathLabel,
+					},
+					Action:      config.RelabelReplace,
+					TargetLabel: "__metrics_path__",
+					Regex:       allMatchPattern,
 				},
 			},
 		}
