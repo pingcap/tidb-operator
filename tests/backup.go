@@ -288,8 +288,12 @@ func (oa *operatorActions) DeployDrainer(info *DrainerConfig, source *TidbCluste
 		override["tlsCluster.enabled"] = "true"
 	}
 
-	cmd := fmt.Sprintf("helm install %s  --name %s --namespace %s --set-string %s -f %s",
-		oa.drainerChartPath(source.OperatorTag), info.DrainerName, source.Namespace, info.DrainerHelmString(override, source), valuesPath)
+	cmd := fmt.Sprintf("helm install %s %s --namespace %s --set-string %s -f %s",
+		info.DrainerName,
+		oa.drainerChartPath(source.OperatorTag),
+		source.Namespace,
+		info.DrainerHelmString(override, source),
+		valuesPath)
 	log.Logf(cmd)
 
 	if res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput(); err != nil {
