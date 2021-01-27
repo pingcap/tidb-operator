@@ -358,10 +358,6 @@ remote_write:
 	expectedContentParsed := template.Must(template.New("relabelConfig").Parse(expectedContentTpl))
 	var expectedContentBytes bytes.Buffer
 	expectedContentParsed.Execute(&expectedContentBytes, promCfgModel)
-	// fmt.Print(len(content))
-	// fmt.Println("==============")
-	// fmt.Println(expectedContentBytes.String())
-	// fmt.Print(len(expectedContentBytes.String()))
 	g.Expect(content).Should(Equal(expectedContentBytes.String()))
 }
 
