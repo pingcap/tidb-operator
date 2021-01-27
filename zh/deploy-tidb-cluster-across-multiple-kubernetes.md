@@ -58,7 +58,7 @@ kind: TidbCluster
 metadata:
   name: "${cluster1_name}"
 spec:
-  version: v4.0.9
+  version: v4.0.10
   timezone: UTC
   pvReclaimPolicy: Delete
   enableDynamicConfiguration: true
@@ -115,7 +115,7 @@ kind: TidbCluster
 metadata:
   name: "${cluster2_name}"
 spec:
-  version: v4.0.9
+  version: v4.0.10
   timezone: UTC
   pvReclaimPolicy: Delete
   enableDynamicConfiguration: true
@@ -440,7 +440,7 @@ kind: TidbCluster
 metadata:
   name: "${cluster1_name}"
 spec:
-  version: v4.0.9
+  version: v4.0.10
   timezone: UTC
   tlsCluster:
    enabled: true
@@ -510,7 +510,7 @@ kind: TidbCluster
 metadata:
   name: "${cluster2_name}"
 spec:
-  version: v4.0.9
+  version: v4.0.10
   timezone: UTC
   tlsCluster:
    enabled: true

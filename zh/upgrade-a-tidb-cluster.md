@@ -26,7 +26,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/upgrade-a-tidb-cluster/']
 
     `version` 字段格式如下：
 
-    - `spec.version`，格式为 `imageTag`，例如 `v4.0.9`
+    - `spec.version`，格式为 `imageTag`，例如 `v4.0.10`
     - `spec.<pd/tidb/tikv/pump/tiflash/ticdc>.version`，格式为 `imageTag`，例如 `v3.1.0`
 
     {{< copyable "shell-regular" >}}
@@ -130,7 +130,7 @@ kubectl annotate --overwrite tc ${cluster_name} -n ${namespace} tidb.pingcap.com
 >
 > 如果需要升级到企业版，需要把 `<tidb/tikv/pd>.image` 的值改为企业版镜像。
 >
-> 例如将 `pd.image` 从 `pingcap/pd:v4.0.9` 修改为 `pingcap/pd-enterprise:v4.0.9`。
+> 例如将 `pd.image` 从 `pingcap/pd:v4.0.10` 修改为 `pingcap/pd-enterprise:v4.0.10`。
 
 ### 强制升级 TiDB 集群
 
