@@ -352,13 +352,6 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 				},
 				{
 					SourceLabels: model.LabelNames{
-						componentLabel,
-					},
-					Action: config.RelabelKeep,
-					Regex:  componentPattern,
-				},
-				{
-					SourceLabels: model.LabelNames{
 						scrapeLabel,
 					},
 					Action: config.RelabelKeep,
@@ -371,6 +364,13 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 					Action:      config.RelabelReplace,
 					TargetLabel: "__metrics_path__",
 					Regex:       allMatchPattern,
+				},
+				{
+					SourceLabels: model.LabelNames{
+						componentLabel,
+					},
+					Action: config.RelabelKeep,
+					Regex:  componentPattern,
 				},
 				addressRelabelConfig,
 				{
