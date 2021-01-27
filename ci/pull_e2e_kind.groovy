@@ -17,13 +17,13 @@ env.DEFAULT_E2E_ARGS = env.DEFAULT_E2E_ARGS ?: ''
 env.DEFAULT_DELETE_NAMESPACE_ON_FAILURE = env.DEFAULT_DELETE_NAMESPACE_ON_FAILURE ?: 'true'
 
 if (!env.ghprbSourceBranch) {
-    SRC_BRANCH = "e2e-coverage"
+    SRC_BRANCH = ""
 } else {
     SRC_BRANCH = env.ghprbSourceBranch
 }
 
 if (!env.ghprbActualCommit) {
-    GIT_COMMIT = "da036492fdf50a5f9bf89ff05a9f000a4cc44f07"
+    GIT_COMMIT = ""
 } else {
     GIT_COMMIT = env.ghprbActualCommit
 }
@@ -92,13 +92,13 @@ spec:
       requests:
         cpu: <%= resources.requests.cpu %>
         memory: <%= resources.requests.memory %>
-        ephemeral-storage: 250Gi
+        ephemeral-storage: 150Gi
     <% } %>
     <% if (resources.limits) { %>
       limits:
         cpu: <%= resources.limits.cpu %>
         memory: <%= resources.limits.memory %>
-        ephemeral-storage: 250Gi
+        ephemeral-storage: 150Gi
     <% } %>
 <% } %>
     # kind needs /lib/modules and cgroups from the host
