@@ -8670,6 +8670,8 @@ spec:
                     requests:
                       type: object
                   type: object
+                slowLogVolumeName:
+                  type: string
                 statefulSetUpdateStrategy:
                   type: string
                 storageClassName:
