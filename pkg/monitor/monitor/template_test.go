@@ -26,11 +26,19 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type relabelConfigsModel struct {
-	KeepLabels, ReplaceLabels string
+type promConfigsModel struct {
+	KubeSDConfigs string
+	KeepLabels    string
+	ReplaceLabels string
 }
 
-var relabels = relabelConfigsModel{
+var promCfgModel = promConfigsModel{
+	KubeSDConfigs: `kubernetes_sd_configs:
+  - api_server: null
+    role: pod
+    namespaces:
+      names:
+      - ns1`,
 	KeepLabels: `- source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     regex: target
     action: keep
@@ -78,12 +86,7 @@ scrape_configs:
   honor_labels: true
   scrape_interval: 15s
   scheme: http
-  kubernetes_sd_configs:
-  - api_server: null
-    role: pod
-    namespaces:
-      names:
-      - ns1
+  {{.KubeSDConfigs}}
   tls_config:
     insecure_skip_verify: true
   relabel_configs:
@@ -102,12 +105,7 @@ scrape_configs:
   honor_labels: true
   scrape_interval: 15s
   scheme: http
-  kubernetes_sd_configs:
-  - api_server: null
-    role: pod
-    namespaces:
-      names:
-      - ns1
+  {{.KubeSDConfigs}}
   tls_config:
     insecure_skip_verify: true
   relabel_configs:
@@ -126,12 +124,7 @@ scrape_configs:
   honor_labels: true
   scrape_interval: 15s
   scheme: http
-  kubernetes_sd_configs:
-  - api_server: null
-    role: pod
-    namespaces:
-      names:
-      - ns1
+  {{.KubeSDConfigs}}
   tls_config:
     insecure_skip_verify: true
   relabel_configs:
@@ -150,12 +143,7 @@ scrape_configs:
   honor_labels: true
   scrape_interval: 15s
   scheme: http
-  kubernetes_sd_configs:
-  - api_server: null
-    role: pod
-    namespaces:
-      names:
-      - ns1
+  {{.KubeSDConfigs}}
   tls_config:
     insecure_skip_verify: true
   relabel_configs:
@@ -174,12 +162,7 @@ scrape_configs:
   honor_labels: true
   scrape_interval: 15s
   scheme: http
-  kubernetes_sd_configs:
-  - api_server: null
-    role: pod
-    namespaces:
-      names:
-      - ns1
+  {{.KubeSDConfigs}}
   tls_config:
     insecure_skip_verify: true
   relabel_configs:
@@ -198,12 +181,7 @@ scrape_configs:
   honor_labels: true
   scrape_interval: 15s
   scheme: http
-  kubernetes_sd_configs:
-  - api_server: null
-    role: pod
-    namespaces:
-      names:
-      - ns1
+  {{.KubeSDConfigs}}
   tls_config:
     insecure_skip_verify: true
   relabel_configs:
@@ -222,12 +200,7 @@ scrape_configs:
   honor_labels: true
   scrape_interval: 15s
   scheme: http
-  kubernetes_sd_configs:
-  - api_server: null
-    role: pod
-    namespaces:
-      names:
-      - ns1
+  {{.KubeSDConfigs}}
   tls_config:
     insecure_skip_verify: true
   relabel_configs:
@@ -246,12 +219,7 @@ scrape_configs:
   honor_labels: true
   scrape_interval: 15s
   scheme: http
-  kubernetes_sd_configs:
-  - api_server: null
-    role: pod
-    namespaces:
-      names:
-      - ns1
+  {{.KubeSDConfigs}}
   tls_config:
     insecure_skip_verify: true
   relabel_configs:
@@ -270,12 +238,7 @@ scrape_configs:
   honor_labels: true
   scrape_interval: 15s
   scheme: http
-  kubernetes_sd_configs:
-  - api_server: null
-    role: pod
-    namespaces:
-      names:
-      - ns1
+  {{.KubeSDConfigs}}
   tls_config:
     insecure_skip_verify: true
   relabel_configs:
@@ -294,12 +257,7 @@ scrape_configs:
   honor_labels: true
   scrape_interval: 15s
   scheme: http
-  kubernetes_sd_configs:
-  - api_server: null
-    role: pod
-    namespaces:
-      names:
-      - ns1
+  {{.KubeSDConfigs}}
   tls_config:
     insecure_skip_verify: true
   relabel_configs:
@@ -318,12 +276,7 @@ scrape_configs:
   honor_labels: true
   scrape_interval: 15s
   scheme: http
-  kubernetes_sd_configs:
-  - api_server: null
-    role: pod
-    namespaces:
-      names:
-      - ns1
+  {{.KubeSDConfigs}}
   tls_config:
     insecure_skip_verify: true
   relabel_configs:
@@ -342,12 +295,7 @@ scrape_configs:
   honor_labels: true
   scrape_interval: 15s
   scheme: http
-  kubernetes_sd_configs:
-  - api_server: null
-    role: pod
-    namespaces:
-      names:
-      - ns1
+  {{.KubeSDConfigs}}
   tls_config:
     insecure_skip_verify: true
   relabel_configs:
@@ -409,7 +357,7 @@ remote_write:
 	g.Expect(err).NotTo(HaveOccurred())
 	expectedContentParsed := template.Must(template.New("relabelConfig").Parse(expectedContentTpl))
 	var expectedContentBytes bytes.Buffer
-	expectedContentParsed.Execute(&expectedContentBytes, relabels)
+	expectedContentParsed.Execute(&expectedContentBytes, promCfgModel)
 	// fmt.Print(len(content))
 	// fmt.Println("==============")
 	// fmt.Println(expectedContentBytes.String())
@@ -429,12 +377,7 @@ scrape_configs:
   honor_labels: true
   scrape_interval: 15s
   scheme: https
-  kubernetes_sd_configs:
-  - api_server: null
-    role: pod
-    namespaces:
-      names:
-      - ns1
+  {{.KubeSDConfigs}}
   tls_config:
     ca_file: /var/lib/cluster-client-tls/ca.crt
     cert_file: /var/lib/cluster-client-tls/tls.crt
@@ -456,12 +399,7 @@ scrape_configs:
   honor_labels: true
   scrape_interval: 15s
   scheme: https
-  kubernetes_sd_configs:
-  - api_server: null
-    role: pod
-    namespaces:
-      names:
-      - ns1
+  {{.KubeSDConfigs}}
   tls_config:
     ca_file: /var/lib/cluster-client-tls/ca.crt
     cert_file: /var/lib/cluster-client-tls/tls.crt
@@ -483,12 +421,7 @@ scrape_configs:
   honor_labels: true
   scrape_interval: 15s
   scheme: https
-  kubernetes_sd_configs:
-  - api_server: null
-    role: pod
-    namespaces:
-      names:
-      - ns1
+  {{.KubeSDConfigs}}
   tls_config:
     ca_file: /var/lib/cluster-client-tls/ca.crt
     cert_file: /var/lib/cluster-client-tls/tls.crt
@@ -510,12 +443,7 @@ scrape_configs:
   honor_labels: true
   scrape_interval: 15s
   scheme: https
-  kubernetes_sd_configs:
-  - api_server: null
-    role: pod
-    namespaces:
-      names:
-      - ns1
+  {{.KubeSDConfigs}}
   tls_config:
     ca_file: /var/lib/cluster-client-tls/ca.crt
     cert_file: /var/lib/cluster-client-tls/tls.crt
@@ -537,12 +465,7 @@ scrape_configs:
   honor_labels: true
   scrape_interval: 15s
   scheme: https
-  kubernetes_sd_configs:
-  - api_server: null
-    role: pod
-    namespaces:
-      names:
-      - ns1
+  {{.KubeSDConfigs}}
   tls_config:
     ca_file: /var/lib/cluster-client-tls/ca.crt
     cert_file: /var/lib/cluster-client-tls/tls.crt
@@ -564,12 +487,7 @@ scrape_configs:
   honor_labels: true
   scrape_interval: 15s
   scheme: https
-  kubernetes_sd_configs:
-  - api_server: null
-    role: pod
-    namespaces:
-      names:
-      - ns1
+  {{.KubeSDConfigs}}
   tls_config:
     ca_file: /var/lib/cluster-client-tls/ca.crt
     cert_file: /var/lib/cluster-client-tls/tls.crt
@@ -591,12 +509,7 @@ scrape_configs:
   honor_labels: true
   scrape_interval: 15s
   scheme: https
-  kubernetes_sd_configs:
-  - api_server: null
-    role: pod
-    namespaces:
-      names:
-      - ns1
+  {{.KubeSDConfigs}}
   tls_config:
     ca_file: /var/lib/cluster-client-tls/ca.crt
     cert_file: /var/lib/cluster-client-tls/tls.crt
@@ -618,12 +531,7 @@ scrape_configs:
   honor_labels: true
   scrape_interval: 15s
   scheme: https
-  kubernetes_sd_configs:
-  - api_server: null
-    role: pod
-    namespaces:
-      names:
-      - ns1
+  {{.KubeSDConfigs}}
   tls_config:
     ca_file: /var/lib/cluster-client-tls/ca.crt
     cert_file: /var/lib/cluster-client-tls/tls.crt
@@ -645,12 +553,7 @@ scrape_configs:
   honor_labels: true
   scrape_interval: 15s
   scheme: https
-  kubernetes_sd_configs:
-  - api_server: null
-    role: pod
-    namespaces:
-      names:
-      - ns1
+  {{.KubeSDConfigs}}
   tls_config:
     ca_file: /var/lib/cluster-client-tls/ca.crt
     cert_file: /var/lib/cluster-client-tls/tls.crt
@@ -672,12 +575,7 @@ scrape_configs:
   honor_labels: true
   scrape_interval: 15s
   scheme: https
-  kubernetes_sd_configs:
-  - api_server: null
-    role: pod
-    namespaces:
-      names:
-      - ns1
+  {{.KubeSDConfigs}}
   tls_config:
     insecure_skip_verify: true
   relabel_configs:
@@ -696,12 +594,7 @@ scrape_configs:
   honor_labels: true
   scrape_interval: 15s
   scheme: https
-  kubernetes_sd_configs:
-  - api_server: null
-    role: pod
-    namespaces:
-      names:
-      - ns1
+  {{.KubeSDConfigs}}
   tls_config:
     ca_file: /var/lib/dm-cluster-client-tls/ca.crt
     cert_file: /var/lib/dm-cluster-client-tls/tls.crt
@@ -723,12 +616,7 @@ scrape_configs:
   honor_labels: true
   scrape_interval: 15s
   scheme: https
-  kubernetes_sd_configs:
-  - api_server: null
-    role: pod
-    namespaces:
-      names:
-      - ns1
+  {{.KubeSDConfigs}}
   tls_config:
     ca_file: /var/lib/dm-cluster-client-tls/ca.crt
     cert_file: /var/lib/dm-cluster-client-tls/tls.crt
@@ -761,7 +649,7 @@ scrape_configs:
 	g.Expect(err).NotTo(HaveOccurred())
 	expectedContentParsed := template.Must(template.New("relabelConfig").Parse(expectedContentTpl))
 	var expectedContentBytes bytes.Buffer
-	expectedContentParsed.Execute(&expectedContentBytes, relabels)
+	expectedContentParsed.Execute(&expectedContentBytes, promCfgModel)
 	g.Expect(content).Should(Equal(expectedContentBytes.String()))
 }
 
