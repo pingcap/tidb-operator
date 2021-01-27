@@ -3,7 +3,7 @@ kind: TidbCluster
 metadata:
   name: auto-scaling-demo
 spec:
-  version: v4.0.9
+  version: v4.0.10
   timezone: UTC
   pvReclaimPolicy: Retain
   enableDynamicConfiguration: true
