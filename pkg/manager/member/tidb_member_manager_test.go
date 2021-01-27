@@ -1141,9 +1141,55 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 						},
 					},
 				}))
-				index := len(sts.Spec.Template.Spec.Containers[1].VolumeMounts) - 1
+				index := len(sts.Spec.Template.Spec.Containers[1].VolumeMounts) - 2
 				g.Expect(sts.Spec.Template.Spec.Containers[1].VolumeMounts[index]).To(Equal(corev1.VolumeMount{
 					Name: fmt.Sprintf("%s-%s", v1alpha1.TiDBMemberType, "log"), MountPath: "/var/lib/log",
+				}))
+			},
+		},
+		{
+			name: "tidb spec slowLogVolume",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: &v1alpha1.PDSpec{},
+					TiDB: &v1alpha1.TiDBSpec{StorageVolumes: []v1alpha1.StorageVolume{
+						{
+							Name:        "slowlogfile",
+							StorageSize: "2Gi",
+							MountPath:   "/var/log/slowlogtest",
+						}},
+						SlowLogVolumeName: "slowlogfile",
+					},
+					TiKV: &v1alpha1.TiKVSpec{},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				q, _ := resource.ParseQuantity("2Gi")
+				g.Expect(sts.Spec.VolumeClaimTemplates).To(Equal([]v1.PersistentVolumeClaim{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: v1alpha1.TiDBMemberType.String() + "-slowlogfile",
+						},
+						Spec: corev1.PersistentVolumeClaimSpec{
+							AccessModes: []corev1.PersistentVolumeAccessMode{
+								corev1.ReadWriteOnce,
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceStorage: q,
+								},
+							},
+						},
+					},
+				}))
+				index := len(sts.Spec.Template.Spec.Containers[1].VolumeMounts) - 1
+				g.Expect(sts.Spec.Template.Spec.Containers[1].VolumeMounts[index]).To(Equal(corev1.VolumeMount{
+					Name: fmt.Sprintf("%s-%s", v1alpha1.TiDBMemberType, "slowlogfile"), MountPath: "/var/log/slowlogtest",
 				}))
 			},
 		},
