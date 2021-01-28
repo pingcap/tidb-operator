@@ -401,6 +401,14 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 					Action:      config.RelabelReplace,
 					TargetLabel: "component",
 				},
+				{
+					SourceLabels: model.LabelNames{
+						namespaceLabel,
+						instanceLabel,
+					},
+					Separator:   "-",
+					TargetLabel: "tidb_cluster",
+				},
 			},
 		}
 

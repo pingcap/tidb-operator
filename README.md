@@ -1,10 +1,9 @@
 # TiDB Operator
 
 - [**Stack Overflow**](https://stackoverflow.com/questions/tagged/tidb)
-- [**Community Slack Channel**](https://pingcap.com/tidbslack/)
+- [**Community Slack Channel**](https://slack.tidb.io/invite?team=tidb-community&channel=sig-k8s&ref=pingcap-tidb-operator)
 - [**Reddit**](https://www.reddit.com/r/TiDB/)
 - **Mailing list**: [Google Group](https://groups.google.com/forum/#!forum/tidb-user)
-- [**Blog**](https://www.pingcap.com/blog/)
 - [**For support, please contact PingCAP**](http://bit.ly/contact_us_via_github)
 
 [![Build Status](https://internal.pingcap.net/idc-jenkins/job/tidb-operator-master/badge/icon)](https://internal.pingcap.net/idc-jenkins/job/tidb-operator-master)
@@ -48,6 +47,7 @@ TiDB Operator manages [TiDB](https://github.com/pingcap/tidb) clusters on [Kuber
 - __Heterogeneous cluster__
 
     Users can deploy a heterogeneous cluster join existing cluster.
+
 ## Quick Start
 
 You can follow our [Get Started](https://docs.pingcap.com/tidb-in-kubernetes/stable/get-started) guide to quickly start a testing Kubernetes cluster and play with TiDB Operator on your own machine.
@@ -61,16 +61,25 @@ You can see our documentation at PingCAP website for more in-depth installation 
 
 All the TiDB Operator documentation is maintained in the [docs-tidb-operator repository](https://github.com/pingcap/docs-tidb-operator). 
 
+## Blog
+
+- [English](https://www.pingcap.com/blog/)
+- [简体中文](https://pingcap.com/blog-cn/)
+
+## TiDB Monthly
+
+[TiDB Monthly](https://pingcap.com/weekly/)
+
 ## Community
 
 Feel free to reach out if you have any questions. The maintainers of this project are reachable via:
 
-- [TiDB Community Slack](https://pingcap.com/tidbslack/) in the [#sig-k8s](https://tidbcommunity.slack.com/archives/CHD0HA3LZ) channel
+- [TiDB Community Slack](https://slack.tidb.io/invite?team=tidb-community&channel=everyone&ref=pingcap-tidb) in the [#sig-k8s](https://slack.tidb.io/invite?team=tidb-community&channel=sig-k8s&ref=pingcap-tidb-operator) channel
 - [Filing an issue](https://github.com/pingcap/tidb-operator/issue) against this repo
 
 Pull Requests are welcome! Check the [issue tracker](https://github.com/pingcap/tidb-operator/issue) for `status/help-wanted` issues if you're unsure where to start.
 
-If you're planning a new feature, please file an issue or join [#sig-k8s](https://tidbcommunity.slack.com/archives/CHD0HA3LZ) channel to discuss first.
+If you're planning a new feature, please file an issue or join [#sig-k8s](https://slack.tidb.io/invite?team=tidb-community&channel=sig-k8s&ref=pingcap-tidb-operator) channel to discuss first.
 
 ## Contributing
 
