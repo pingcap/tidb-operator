@@ -98,6 +98,7 @@
   + v1.2
     - [1.2.0-alpha.1](releases/release-1.2.0-alpha.1.md)
   + v1.1
+    - [1.1.10](releases/release-1.1.10.md)
     - [1.1.9](releases/release-1.1.9.md)
     - [1.1.8](releases/release-1.1.8.md)
     - [1.1.7](releases/release-1.1.7.md)
