@@ -1591,27 +1591,5 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			err = cli.PingcapV1alpha1().TidbClusterAutoScalers(tcas.Namespace).Delete(tcas.Name, &metav1.DeleteOptions{})
 			framework.ExpectNoError(err, "failed to delete auto-scaler")
 		})
-
-		// TODO: remove helm deployed backup/restore, use CR instead
-		ginkgo.It("should backup and restore TiDB Cluster", func() {
-			tcCfgFrom := newTidbClusterConfig(e2econfig.TestConfig, ns, "from", "admin", utilimage.TiDBV3Version)
-			tcCfgFrom.Resources["pd.replicas"] = "1"
-			tcCfgFrom.Resources["tidb.replicas"] = "1"
-			tcCfgFrom.Resources["tikv.replicas"] = "1"
-			tcCfgTo := newTidbClusterConfig(e2econfig.TestConfig, ns, "to", "admin", utilimage.TiDBV3Version)
-			tcCfgTo.Resources["pd.replicas"] = "1"
-			tcCfgTo.Resources["tidb.replicas"] = "1"
-			tcCfgTo.Resources["tikv.replicas"] = "1"
-			oa.DeployTidbClusterOrDie(&tcCfgFrom)
-			oa.DeployTidbClusterOrDie(&tcCfgTo)
-			oa.CheckTidbClusterStatusOrDie(&tcCfgFrom)
-			oa.CheckTidbClusterStatusOrDie(&tcCfgTo)
-			oa.CheckDisasterToleranceOrDie(&tcCfgFrom)
-			oa.CheckDisasterToleranceOrDie(&tcCfgTo)
-
-			// backup and restore
-			ginkgo.By(fmt.Sprintf("Backup %q and restore into %q", tcCfgFrom.ClusterName, tcCfgTo.ClusterName))
-			oa.BackupRestoreOrDie(&tcCfgFrom, &tcCfgTo)
-		})
 	})
 })
