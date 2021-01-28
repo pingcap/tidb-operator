@@ -95,7 +95,7 @@ TiDB Operator 支持为 PD、TiDB、TiKV 挂载多块 PV，可以用于不同用
 
 例子:
 
-{{< copyable "shell-regular" >}}
+{{< copyable "" >}}
 
 ```yaml
   pd:
@@ -504,6 +504,52 @@ spec:
 
 Kubernetes 在删除 TiDB Pod 的同时，也会把该 TiDB 节点从 Service 的 Endpoints 中移除。这样就可以保证新的连接不会连接到该 TiDB 节点，但是由于此过程是异步的，所以可以在发送 Kill 信号之前 sleep 几秒钟，确保该 TiDB 节点从 Endpoints 中去掉。
 
+### 配置 TiDB 慢查询日志持久卷
+
+默认配置下，TiDB Operator 会新建名称为 `slowlog` 的 `EmptyDir` 卷来存储慢查询日志，`slowlog` 卷默认挂载到 `/var/log/tidb`。如果想使用单独的持久卷来存储慢查询日志，可以通过配置 `spec.tidb.slowLogVolumeName` 单独指定存储慢查询日志的持久卷名称，并在 `spec.tidb.storageVolumes` 或 `spec.tidb.additionalVolumes` 配置持久卷信息。下面分别演示使用 `spec.tidb.storageVolumes` 和 `spec.tidb.additionalVolumes` 配置持久卷。
+
+#### Spec.tidb.storageVolumes 配置
+
+按照如下示例配置 `TidbCluster` CR，TiDB Operator 将使用持久卷 `${volumeName}` 存储慢查询日志，日志文件路径为：`${mountPath}/${volumeName}`。`spec.tidb.storageVolumes` 字段的具体配置方式可参考[多盘挂载](#多盘挂载)。
+
+{{< copyable "" >}}
+
+```yaml
+  tidb:
+    ...
+    separateSlowLog: true  # 可省略
+    slowLogVolumeName: ${volumeName}
+    storageVolumes:
+      # name 必须和 slowLogVolumeName 字段的值保持一致
+      - name: ${volumeName}
+        storageClassName: ${storageClass}
+        storageSize: "1Gi"
+        mountPath: ${mountPath}
+```
+
+#### Spec.tidb.additionalVolumes 配置
+
+下面以 NFS 为例配置 `spec.tidb.additionalVolumes`。TiDB Operator 将使用持久卷 `${volumeName}` 存储慢查询日志，日志文件路径为：`${mountPath}/${volumeName}`。具体支持的持久卷类型可参考 [Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#types-of-persistent-volumes)。
+
+{{< copyable "" >}}
+
+```yaml
+  tidb:
+    ...
+    separateSlowLog: true  # 可省略
+    slowLogVolumeName: ${volumeName}
+    additionalVolumes:
+    # name 必须和 slowLogVolumeName 字段的值保持一致
+    - name: ${volumeName}
+      nfs:
+        server: 192.168.0.2
+        path: /nfs
+    additionalVolumeMounts:
+    # name 必须和 slowLogVolumeName 字段的值保持一致
+    - name: ${volumeName}
+      mountPath: ${mountPath}
+```
+
 ### 配置 TiDB 服务
 
 需要配置 `spec.tidb.service`，TiDB Operator 才会为 TiDB 创建 Service。Service 可以根据场景配置不同的类型，比如 `ClusterIP`、`NodePort`、`LoadBalancer` 等。
@@ -520,7 +566,7 @@ spec:
       type: ClusterIP
 ```
 
-### NodePort
+#### NodePort
 
 在没有 LoadBalancer 时，可选择通过 NodePort 暴露。NodePort 是通过节点的 IP 和静态端口暴露服务。通过请求 `NodeIP + NodePort`，可以从集群的外部访问一个 NodePort 服务。
 
@@ -545,7 +591,7 @@ NodePort 有两种模式：
 
 - `externalTrafficPolicy=Local`：只有运行 TiDB 的机器会分配 NodePort 端口，用于访问本地的 TiDB 实例
 
-### LoadBalancer
+#### LoadBalancer
 
 若运行在有 LoadBalancer 的环境，比如 GCP/AWS 平台，建议使用云平台的 LoadBalancer 特性。
 
@@ -576,9 +622,9 @@ TiDB 是分布式数据库，它的高可用需要做到在任一个物理拓扑
 
 下面是一个典型的高可用设置例子：
 
-{{< copyable "shell-regular" >}}
+{{< copyable "" >}}
 
-```shell
+```yaml
 affinity:
  podAntiAffinity:
    preferredDuringSchedulingIgnoredDuringExecution:
