@@ -296,27 +296,6 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		oa.CleanWebHookAndServiceOrDie(ocfg.WebhookConfigName)
 	})
 
-	ginkgo.It("should backup and restore TiDB Cluster", func() {
-		tcCfgFrom := newTidbClusterConfig(e2econfig.TestConfig, ns, "from", "admin", utilimage.TiDBV3Version)
-		tcCfgFrom.Resources["pd.replicas"] = "1"
-		tcCfgFrom.Resources["tidb.replicas"] = "1"
-		tcCfgFrom.Resources["tikv.replicas"] = "1"
-		tcCfgTo := newTidbClusterConfig(e2econfig.TestConfig, ns, "to", "admin", utilimage.TiDBV3Version)
-		tcCfgTo.Resources["pd.replicas"] = "1"
-		tcCfgTo.Resources["tidb.replicas"] = "1"
-		tcCfgTo.Resources["tikv.replicas"] = "1"
-		oa.DeployTidbClusterOrDie(&tcCfgFrom)
-		oa.DeployTidbClusterOrDie(&tcCfgTo)
-		oa.CheckTidbClusterStatusOrDie(&tcCfgFrom)
-		oa.CheckTidbClusterStatusOrDie(&tcCfgTo)
-		oa.CheckDisasterToleranceOrDie(&tcCfgFrom)
-		oa.CheckDisasterToleranceOrDie(&tcCfgTo)
-
-		// backup and restore
-		ginkgo.By(fmt.Sprintf("Backup %q and restore into %q", tcCfgFrom.ClusterName, tcCfgTo.ClusterName))
-		oa.BackupRestoreOrDie(&tcCfgFrom, &tcCfgTo)
-	})
-
 	ginkgo.It("should keep tidb service in sync", func() {
 		ginkgo.By("Deploy initial tc")
 		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "service", "admin", utilimage.TiDBV3Version)
