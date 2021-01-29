@@ -216,7 +216,6 @@ def build(String name, String code, Map resources = e2ePodResources) {
                                 export SRC_BRANCH=${SRC_BRANCH}
                                 export BUILD_NUMBER=${BUILD_NUMBER}
                                 export GIT_COMMIT=${GIT_COMMIT}
-                                export PR_ID="${PR_ID}"
                                 export COV_TAGS=e2e
                                 export COV_NAME="tidb-operator.$(date +%s)"
                                 export COV_FILE=./coverage2.txt
