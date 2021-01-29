@@ -277,6 +277,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.CleanWebHookAndServiceOrDie(ocfg.WebhookConfigName)
 	})
 
+<<<<<<< HEAD
 	ginkgo.It("Backup and restore TiDB Cluster", func() {
 		clusterFrom := newTidbClusterConfig(e2econfig.TestConfig, ns, "from", "admin", utilimage.TiDBV3Version)
 		clusterFrom.Resources["pd.replicas"] = "1"
@@ -305,6 +306,16 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		cluster.Resources["tikv.replicas"] = "1"
 		oa.DeployTidbClusterOrDie(&cluster)
 		oa.CheckTidbClusterStatusOrDie(&cluster)
+=======
+	ginkgo.It("should keep tidb service in sync", func() {
+		ginkgo.By("Deploy initial tc")
+		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "service", "admin", utilimage.TiDBV3Version)
+		tcCfg.Resources["pd.replicas"] = "1"
+		tcCfg.Resources["tidb.replicas"] = "1"
+		tcCfg.Resources["tikv.replicas"] = "1"
+		oa.DeployTidbClusterOrDie(&tcCfg)
+		oa.CheckTidbClusterStatusOrDie(&tcCfg)
+>>>>>>> c30172fc... remove helm deployed backup/restore e2e test case from default test (#3762)
 
 		ns := cluster.Namespace
 		tcName := cluster.ClusterName
