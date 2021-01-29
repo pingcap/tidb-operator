@@ -216,11 +216,8 @@ def build(String name, String code, Map resources = e2ePodResources) {
                                 export SRC_BRANCH=${SRC_BRANCH}
                                 export BUILD_NUMBER=${BUILD_NUMBER}
                                 export GIT_COMMIT=${GIT_COMMIT}
-                                export COV_TAGS=e2e
-                                export COV_NAME="tidb-operator.$(date +%s)"
-                                export COV_FILE=./coverage2.txt
-                                curl -L "https://codecov.io/bash" -o "/codecov" && chmod 755 /codecov
-                                /codecov -t "$CODECOV_TOKEN" -B "$SRC_BRANCH" -b "$BUILD_NUMBER" -C "$GIT_COMMIT" -P "$PR_ID" -F "$COV_TAGS" -n "$COV_NAME" -f "$COV_FILE"
+                                export PR_ID=${PR_ID}
+                                ${code}
                                 """
                             }
                         }
