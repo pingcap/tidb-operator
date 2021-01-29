@@ -75,6 +75,7 @@ kubectl create secret generic s3-secret --from-literal=access_key=xxx --from-lit
     ```
 
 4. 将 ServiceAccount 绑定到 TiKV Pod：
+
     {{< copyable "shell-regular" >}}
 
     ```shell

@@ -6,9 +6,9 @@ aliases: ['/docs/tidb-in-kubernetes/dev/restore-from-gcs/']
 
 # Restore Data from GCS
 
-This document describes how to restore the TiDB cluster data backed up using TiDB Operator in Kubernetes. For the underlying implementation, [TiDB Lightning](https://pingcap.com/docs/stable/how-to/get-started/tidb-lightning/#tidb-lightning-tutorial) is used to perform the restoration.
+This document describes how to restore the TiDB cluster data backed up using TiDB Operator in Kubernetes. For the underlying implementation, [TiDB Lightning](https://pingcap.com/docs/stable/how-to/get-started/tidb-lightning/#tidb-lightning-tutorial) is used to perform the restore.
 
-The restoration method described in this document is implemented based on CustomResourceDefinition (CRD) in TiDB Operator v1.1 or later versions. For the restoration method implemented based on Helm Charts, refer to [Back up and Restore TiDB Cluster Data Based on Helm Charts](backup-and-restore-using-helm-charts.md).
+The restore method described in this document is implemented based on CustomResourceDefinition (CRD) in TiDB Operator v1.1 or later versions.
 
 This document shows an example in which the backup data stored in the specified path on [Google Cloud Storage (GCS)](https://cloud.google.com/storage/docs/) is restored to the TiDB cluster.
 
@@ -22,7 +22,11 @@ This document shows an example in which the backup data stored in the specified 
     kubectl apply -f backup-rbac.yaml -n test2
     ```
 
-2. Create the `restore-demo2-tidb-secret` secret which stores the root account and password needed to access the TiDB cluster:
+2. Grant permissions to the remote storage.
+
+    Refer to [GCS account permissions](grant-permissions-to-remote-storage.md#gcs-account-permissions).
+
+3. Create the `restore-demo2-tidb-secret` secret which stores the root account and password needed to access the TiDB cluster:
 
     {{< copyable "shell-regular" >}}
 
@@ -42,7 +46,7 @@ This document shows an example in which the backup data stored in the specified 
 | DROP | Databases, tables |
 | ALTER | Tables |
 
-## Restoration process
+## Restore process
 
 1. Create the restore custom resource (CR) and restore the backup data to the TiDB cluster:
 
@@ -75,25 +79,17 @@ This document shows an example in which the backup data stored in the specified 
       storageSize: 1Gi
     ```
 
-2. After creating the `Restore` CR, execute the following command to check the restoration status:
+    The example above restores data from the `spec.gcs.path` path on GCS to the `spec.to.host` TiDB cluster. For more information about GCS configuration, refer to [GCS fields](backup-restore-overview.md#gcs-fields).
+
+    For more information about the `Restore` CR fields, refer to [Restore CR fields](backup-restore-overview.md#restore-cr-fields).
+
+2. After creating the `Restore` CR, execute the following command to check the restore status:
 
     {{< copyable "shell-regular" >}}
 
      ```shell
      kubectl get rt -n test2 -owide
      ```
-
-In the above example, the backup data stored in the specified `spec.gcs.path` path on GCS is restored to the `spec.to.host` TiDB cluster. For the configuration of GCS, refer to [backup-gcs.yaml](backup-to-gcs.md#ad-hoc-backup-process).
-
-More `Restore` CRs are described as follows:
-
-* `.spec.metadata.namespace`: the namespace where the `Restore` CR is located.
-* `.spec.to.host`: the address of the TiDB cluster to be restored.
-* `.spec.to.port`: the port of the TiDB cluster to be restored.
-* `.spec.to.user`: the accessing user of the TiDB cluster to be restored.
-* `.spec.to.tidbSecretName`: the secret of the credential needed by the TiDB cluster to be restored.
-* `.spec.storageClassName`: the persistent volume (PV) type specified for the restoration.
-* `.spec.storageSize`: the PV size specified for the restoration. This value must be greater than the size of the backed up TiDB cluster.
 
 > **Note:**
 >

@@ -87,7 +87,7 @@ Ad-hoc 备份支持全量备份与增量备份。Ad-hoc 备份通过创建一个
         # options:
         # - --lastbackupts=420134118382108673
       gcs:
-        projectId: ${project-id}
+        projectId: ${project_id}
         secretName: gcs-secret
         bucket: ${bucket}
         prefix: ${prefix}
@@ -162,7 +162,7 @@ Ad-hoc 备份支持全量备份与增量备份。Ad-hoc 备份通过创建一个
           # sendCredToTikv: true
         gcs:
           secretName: gcs-secret
-          projectId: ${project-id}
+          projectId: ${project_id}
           bucket: ${bucket}
           prefix: ${prefix}
           # location: us-east1

@@ -111,7 +111,7 @@ helm inspect values pingcap/tidb-lightning --version=${chart_version} > tidb-lig
 > **注意：**
 >
 > 如果通过 `tlsCluster.enabled: true` 开启了集群内部的 TLS 支持，但未通过 `tlsClient.enabled: true` 开启 TiDB Lightning 到 TiDB Server 的 TLS 支持，则需要在 `values.yaml` 中的 `config` 内通过如下配置显式地禁用 TiDB Lightning 到 TiDB Server 的 TLS 连接支持。
-> 
+>
 > ```toml
 > [tidb]
 > tls="false"
@@ -133,11 +133,13 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
 
 2. 存储访问授权
 
-    和使用 BR 和 Dumpling 进行数据恢复时一样，使用 Amazon S3 作为后端存储时，同样存在三种权限授予方式，参考 [AWS 账号授权](grant-permissions-to-remote-storage.md#aws-账号授权)。在使用不同的权限授予方式时，需要使用不用的配置。使用 Ceph、GCS 作为存储后端时，目前仅支持通过 AccessKey 和 SecretKey 授权，可参考[通过 AccessKey 和 SecretKey 授权](grant-permissions-to-remote-storage.md#通过-accesskey-和-secretkey-授权)。
+    使用 Amazon S3 作为后端存储时，参考 [AWS 账号授权](grant-permissions-to-remote-storage.md#aws-账号授权)。在使用不同的权限授予方式时，需要使用不用的配置。
+
+    使用 Ceph 作为存储后端时，参考[通过 AccessKey 和 SecretKey 授权](grant-permissions-to-remote-storage.md#通过-accesskey-和-secretkey-授权)。
+
+    使用 GCS 作为存储后端时，参考 [GCS 账号授权](grant-permissions-to-remote-storage.md#gcs-账号授权)。
 
     * 通过 AccessKey 和 SecretKey 授权
-
-        使用 Amazon S3、Ceph 或 GCS 作为存储后端时支持通过 AccessKey 和 SecretKey 授权。
 
         1. 新建一个包含 rclone 配置的 `Secret` 配置文件 `secret.yaml`。rclone 配置示例如下。一般只需要配置一种云存储。
 
@@ -275,7 +277,7 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
         ```shell
         kubectl annotate sa ${servieaccount} -n eks.amazonaws.com/role-arn=arn:aws:iam::123456789012:role/user
         ```
-    
+
     4. 部署 Tidb-Lightning：
 
         {{< copyable "shell-regular" >}}
@@ -306,7 +308,7 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
 当 TiDB Lightning 未能成功恢复数据时，通常不能简单地直接重启进程，必须进行**手动干预**，否则将很容易出现错误。因此，tidb-lightning 的 `Job` 重启策略被设置为 `Never`。
 
 > **注意：**
-> 
+>
 > 如未设置将 checkpoint 信息持久化保存到目标 TiDB 集群、其他 MySQL 协议兼容的数据库或共享存储目录中，发生故障后，需要清理目标集群中已恢复的部分数据，并重新部署 tidb-lightning 进行数据恢复。
 
 如果 TiDB Lightning 未能成功恢复数据，且已配置将 checkpoint 信息存储在源数据所在目录、其他用户配置的数据库或存储目录中，可采用以下步骤进行手动干预：
@@ -326,13 +328,13 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
             - 如果使用本地模式或 Ad hoc 模式，则 `dataSource` 无需修改。
 
             - 如果使用远程模式，则修改 `dataSource` 为 Ad hoc 模式。其中 `dataSource.adhoc.pvcName` 为原 Helm chart 创建的 PVC 名称，`dataSource.adhoc.backupName` 为待恢复数据的 backup 名称。
-        
+
         2. 修改 `values.yaml` 中的 `failFast` 为 `false` 并创建用于使用 tidb-lightning-ctl 的 `Job`。
 
             - TiDB Lightning 会依据 checkpoint 信息检测前一次数据恢复是否发生错误，当检测到错误时会自动中止运行。
-            
+
             - TiDB Lightning 会依据 checkpoint 信息来避免对已恢复数据的重复恢复，因此创建该 `Job` 不会影响数据正确性。
-        
+
         3. 当新 `Job` 对应的 pod 运行后，使用 `kubectl logs -n ${namespace} ${pod_name}` 查看 log 并确认新 `Job` 中的 tidb-lightning 已停止进行数据恢复，即 log 中包含类似以下的任意信息：
 
             - `tidb lightning encountered error`
@@ -346,7 +348,7 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
         6. 根据启动脚本中的命令行参数，参考 [TiDB Lightning 故障排除指南](https://pingcap.com/docs-cn/stable/troubleshoot-tidb-lightning/)并使用 tidb-lightning-ctl 进行故障处理。
 
         7. 故障处理完成后，将 `values.yaml` 中的 `failFast` 设置为 `true` 并再次创建新的 `Job` 用于继续数据恢复。
-    
+
     - 如果不需要使用 tidb-lightning-ctl 进行处理：
 
         1. 参考 [TiDB Lightning 故障排除指南](https://pingcap.com/docs-cn/stable/troubleshoot-tidb-lightning/)进行故障处理。
@@ -356,7 +358,7 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
             - 如果使用本地模式或 Ad hoc 模式，则 `dataSource` 无需修改。
 
             - 如果使用远程模式，则修改 `dataSource` 为 Ad hoc 模式。其中 `dataSource.adhoc.pvcName` 为原 Helm chart 创建的 PVC 名称，`dataSource.adhoc.backupName` 为待恢复数据的 backup 名称。
-        
+
         3. 根据新的 `values.yaml` 创建新的 `Job` 用于继续数据恢复。
-        
+
 4. 故障处理及数据恢复完成后，参考[销毁 TiKV Importer 和 TiDB Lightning](#销毁-tikv-importer-和-tidb-lightning) 删除用于数据恢复的 `Job` 及用于故障处理的 `Job`。

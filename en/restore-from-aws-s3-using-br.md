@@ -1,30 +1,22 @@
 ---
 title: Restore Data from S3-Compatible Storage Using BR
-summary: Learn how to restore data from Amazon S3 using BR.
+summary: Learn how to restore data from Amazon S3-compatible storage using BR.
 aliases: ['/docs/tidb-in-kubernetes/dev/restore-from-aws-s3-using-br/']
 ---
 
 # Restore Data from S3-Compatible Storage Using BR
 
-This document describes how to restore the TiDB cluster data backed up using TiDB Operator in Kubernetes. [BR](https://pingcap.com/docs/stable/br/backup-and-restore-tool/) is used to perform the restoration.
+This document describes how to restore the TiDB cluster data backed up using TiDB Operator in Kubernetes. [BR](https://pingcap.com/docs/stable/br/backup-and-restore-tool/) is used to perform the restore.
 
-The restoration method described in this document is implemented based on Custom Resource Definition (CRD) in TiDB Operator v1.1 or later versions.
+The restore method described in this document is implemented based on Custom Resource Definition (CRD) in TiDB Operator v1.1 or later versions.
 
 This document shows an example in which the backup data stored in the specified path on the Amazon S3 storage is restored to the TiDB cluster.
 
-## Three methods to grant AWS account permissions
-
-Refer to [Back up Data to Amazon S3 using BR](backup-to-aws-s3-using-br.md#three-methods-to-grant-aws-account-permissions).
-
 ## Prerequisites
-
-Before you restore data from Amazon S3 storage, you need to grant AWS account permissions. This section describes three methods to grant AWS account permissions.
 
 > **Note:**
 >
-> If TiDB Operator >= v1.1.7 && TiDB >= v4.0.8, `tikv_gc_life_time` will be adjusted by BR automatically. You can omit the step that creates the secret which stores the account and password needed to access the TiDB cluster.
-
-### Grant permissions by importing AccessKey and SecretKey
+> If TiDB Operator >= v1.1.10 && TiDB >= v4.0.8, BR will automatically adjust `tikv_gc_life_time`. You do not need to configure `spec.to` fields in the `Restore` CR. In addition, you can skip the steps of creating the `restore-demo2-tidb-secret` secret and [configuring database account privileges](#required-database-account-privileges).
 
 1. Download [backup-rbac.yaml](https://github.com/pingcap/tidb-operator/blob/master/manifests/backup/backup-rbac.yaml), and execute the following command to create the role-based access control (RBAC) resources in the `test2` namespace:
 
@@ -34,13 +26,11 @@ Before you restore data from Amazon S3 storage, you need to grant AWS account pe
     kubectl apply -f backup-rbac.yaml -n test2
     ```
 
-2. Create the `s3-secret` secret which stores the credential used to access the S3-compatible storage:
+2. Grant permissions to the remote storage.
 
-    {{< copyable "shell-regular" >}}
+    To grant permissions to access S3-compatible remote storage, refer to [AWS account permissions](grant-permissions-to-remote-storage.md#aws-account-permissions).
 
-    ```shell
-    kubectl create secret generic s3-secret --from-literal=access_key=xxx --from-literal=secret_key=yyy --namespace=test2
-    ```
+    If you use Ceph as the backend storage for testing, you can grant permissions by [using AccessKey and SecretKey](grant-permissions-to-remote-storage.md#grant-permissions-by-accesskey-and-secretkey).
 
 3. Create the `restore-demo2-tidb-secret` secret which stores the account and password needed to access the TiDB cluster:
 
@@ -50,98 +40,11 @@ Before you restore data from Amazon S3 storage, you need to grant AWS account pe
     kubectl create secret generic restore-demo2-tidb-secret --from-literal=password=${password} --namespace=test2
     ```
 
-### Grant permissions by associating IAM with Pod
-
-1. Download [backup-rbac.yaml](https://github.com/pingcap/tidb-operator/blob/master/manifests/backup/backup-rbac.yaml), and execute the following command to create the role-based access control (RBAC) resources in the `test2` namespace:
-
-     {{< copyable "shell-regular" >}}
-
-    ```shell
-    kubectl apply -f backup-rbac.yaml -n test2
-    ```
-
-2. Create the `restore-demo2-tidb-secret` secret which stores the account and password needed to access the TiDB cluster:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    kubectl create secret generic restore-demo2-tidb-secret --from-literal=password=${password} --namespace=test2
-    ```
-
-3. Create the IAM role:
-
-    - To create an IAM role for the account, refer to [Create an IAM User](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html).
-    - Give the required permission to the IAM role you have created  (refer to [access policies manage](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_manage-attach-detach.html) for details). Because `Restore` needs to access the Amazon S3 storage, the IAM here is given the `AmazonS3FullAccess` permission.
-
-4. Associate IAM with TiKV Pod:
-
-    - In the restoration process using BR, both the TiKV Pod and the BR Pod need to perform read and write operations on the S3 storage. Therefore, you need to add the annotation to the TiKV Pod to associate the Pod with the IAM role:
-
-        {{< copyable "shell-regular" >}}
-
-        ```shell
-        kubectl edit tc demo2 -n test2
-        ```
-
-    - Find `spec.tikv.annotations`, append the `arn:aws:iam::123456789012:role/user` annotation, and then exit. After the TiKV Pod is restarted, check whether the annotation is added to the TiKV Pod.
-
-    > **Note:**
-    >
-    > `arn:aws:iam::123456789012:role/user` is the IAM role created in Step 4.
-
-### Grant permissions by associating IAM with ServiceAccount
-
-1. Download [backup-rbac.yaml](https://github.com/pingcap/tidb-operator/blob/master/manifests/backup/backup-rbac.yaml), and execute the following command to create the role-based access control (RBAC) resources in the `test2` namespace:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    kubectl apply -f backup-rbac.yaml -n test2
-    ```
-
-2. Create the `restore-demo2-tidb-secret` secret which stores the account and password needed to access the TiDB cluster:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    kubectl create secret generic restore-demo2-tidb-secret --from-literal=password=${password} --namespace=test2
-    ```
-
-3. Enable the IAM role for the service account on the cluster:
-
-    - To enable the IAM role on your EKS cluster, refer to [Amazon EKS Documentation](https://docs.aws.amazon.com/eks/latest/userguide/enable-iam-roles-for-service-accounts.html).
-
-4. Create the IAM role:
-
-    - Create an IAM role and give the `AmazonS3FullAccess` permission to the role. Modify `Trust relationships` of the role. For details, refer to [Creating an IAM Role and Policy](https://docs.aws.amazon.com/eks/latest/userguide/create-service-account-iam-policy-and-role.html).
-
-5. Associate IAM with the ServiceAccount resources:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    kubectl annotate sa tidb-backup-manager -n eks.amazonaws.com/role-arn=arn:aws:iam::123456789012:role/user --namespace=test2
-    ```
-
-6. Bind ServiceAccount to TiKV Pod:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    kubectl edit tc demo2 -n test2
-    ```
-
-    Modify the value of `spec.tikv.serviceAccount` to `tidb-backup-manager`. After the TiKV Pod is restarted, check whether the `serviceAccountName` of the TiKV Pod has changed.
-
-    > **Note:**
-    >
-    > `arn:aws:iam::123456789012:role/user` is the IAM role created in Step 4.
-
 ## Required database account privileges
 
-* The `SELECT` and `UPDATE` privileges of the `mysql.tidb` table: Before and after the restoration, the `Restore` CR needs a database account with these privileges to adjust the GC time.
+* The `SELECT` and `UPDATE` privileges of the `mysql.tidb` table: Before and after the restore, the `Restore` CR needs a database account with these privileges to adjust the GC time.
 
-## Restoration process
+## Restore process
 
 + If you grant permissions by importing AccessKey and SecretKey, create the `Restore` CR, and restore cluster data as described below:
 
@@ -171,12 +74,12 @@ Before you restore data from Amazon S3 storage, you need to grant AWS account pe
         # timeAgo: ${time}
         # checksum: true
         # sendCredToTikv: true
-      # Only needed for TiDB Operator < v1.1.7 or TiDB < v4.0.8
-      to:
-        host: ${tidb_host}
-        port: ${tidb_port}
-        user: ${tidb_user}
-        secretName: restore-demo2-tidb-secret
+      # # Only needed for TiDB Operator < v1.1.10 or TiDB < v4.0.8
+      # to:
+      #   host: ${tidb_host}
+      #   port: ${tidb_port}
+      #   user: ${tidb_user}
+      #   secretName: restore-demo2-tidb-secret
       s3:
         provider: aws
         secretName: s3-secret
@@ -215,7 +118,7 @@ Before you restore data from Amazon S3 storage, you need to grant AWS account pe
         # rateLimit: 0
         # timeAgo: ${time}
         # checksum: true
-      # Only needed for TiDB Operator < v1.1.7 or TiDB < v4.0.8
+      # Only needed for TiDB Operator < v1.1.10 or TiDB < v4.0.8
       to:
         host: ${tidb_host}
         port: ${tidb_port}
@@ -257,7 +160,7 @@ Before you restore data from Amazon S3 storage, you need to grant AWS account pe
         # rateLimit: 0
         # timeAgo: ${time}
         # checksum: true
-      # Only needed for TiDB Operator < v1.1.7 or TiDB < v4.0.8
+      # Only needed for TiDB Operator < v1.1.10 or TiDB < v4.0.8
       to:
         host: ${tidb_host}
         port: ${tidb_port}
@@ -270,7 +173,7 @@ Before you restore data from Amazon S3 storage, you need to grant AWS account pe
         prefix: my-folder
     ```
 
-After creating the `Restore` CR, execute the following command to check the restoration status:
+After creating the `Restore` CR, execute the following command to check the restore status:
 
 {{< copyable "shell-regular" >}}
 
@@ -278,50 +181,11 @@ After creating the `Restore` CR, execute the following command to check the rest
 kubectl get rt -n test2 -o wide
 ```
 
-More `Restore` CR fields are described as follows:
+The examples above restore data from the `spec.s3.prefix` folder of the `spec.s3.bucket` bucket on Amazon S3 storage to the `demo2` TiDB cluster in the `test2` namespace. For more information about S3-compatible storage configuration, refer to [S3 storage fields](backup-restore-overview.md#s3-storage-fields).
 
-* `.spec.metadata.namespace`: the namespace where the `Restore` CR is located.
-* `.spec.to.host`: the address of the TiDB cluster to be restored.
-* `.spec.to.port`: the port of the TiDB cluster to be restored.
-* `.spec.to.user`: the accessing user of the TiDB cluster to be restored.
-* `.spec.to.tidbSecretName`: the secret of the user password of the `.spec.to.tidbSecretName` TiDB cluster.
-* `.spec.to.tlsClientSecretName`: the secret of the certificate used during the restoration.
+In the examples above, some parameters in `.spec.br` can be ignored, such as `logLevel`, `statusAddr`, `concurrency`, `rateLimit`, `checksum`, `timeAgo`, and `sendCredToTikv`. For more information about BR configuration, refer to [BR fields](backup-restore-overview.md#br-fields).
 
-    If [TLS](enable-tls-between-components.md) is enabled for the TiDB cluster, but you do not want to restore data using the `${cluster_name}-cluster-client-secret` as described in [Enable TLS between TiDB Components](enable-tls-between-components.md), you can use the `.spec.from.tlsClient.tlsSecret` parameter to specify a secret for the restoration. To generate the secret, run the following command:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    kubectl create secret generic ${secret_name} --namespace=${namespace} --from-file=tls.crt=${cert_path} --from-file=tls.key=${key_path} --from-file=ca.crt=${ca_path}
-    ```
-
-    > **Note:**
-    >
-    > If TiDB Operator >= v1.1.7 && TiDB >= v4.0.8, `tikv_gc_life_time` will be adjusted by BR automatically, so you can omit `spec.to`.
-
-* `.spec.tableFilter`: BR only restores tables that match the [table filter rules](https://docs.pingcap.com/tidb/stable/table-filter/). This field can be ignored by default. If the field is not configured, BR restores all schemas except the system schemas.
-
-    > **Note:**
-    >
-    > To use the table filter to exclude `db.table`, you need to add the `*.*` rule to include all tables first. For example:
-
-    ```
-    tableFilter:
-    - "*.*"
-    - "!db.table"
-    ```
-
-In the examples above, some parameters in `.spec.br` can be ignored, such as `logLevel`, `statusAddr`, `concurrency`, `rateLimit`, `checksum`, `timeAgo`, and `sendCredToTikv`.
-
-* `.spec.br.cluster`: The name of the cluster to be backed up.
-* `.spec.br.clusterNamespace`: The `namespace` of the cluster to be backed up.
-* `.spec.br.logLevel`: The log level (`info` by default).
-* `.spec.br.statusAddr`: The listening address through which BR provides statistics. If not specified, BR does not listen on any status address by default.
-* `.spec.br.concurrency`: The number of threads used by each TiKV process during backup. Defaults to `4` for backup and `128` for restore.
-* `.spec.br.rateLimit`: The speed limit, in MB/s. If set to `4`, the speed limit is 4 MB/s. The speed limit is not set by default.
-* `.spec.br.checksum`: Whether to verify the files after the backup is completed. Defaults to `true`.
-* `.spec.br.timeAgo`: Backs up the data before `timeAgo`. If the parameter value is not specified (empty by default), it means backing up the current data. It supports data formats such as "1.5h" and "2h45m". See [ParseDuration](https://golang.org/pkg/time/#ParseDuration) for more information.
-* `.spec.br.sendCredToTikv`: Whether the BR process passes its GCP privileges to the TiKV process. Defaults to `true`.
+For more information about the `Restore` CR fields, refer to [Restore CR fields](backup-restore-overview.md#restore-cr-fields).
 
 ## Troubleshooting
 

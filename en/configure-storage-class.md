@@ -147,7 +147,7 @@ If the components such as monitoring, TiDB Binlog, and `tidb-backup` use local d
 
     >**Note:**
     >
-    > The number of directories you create depends on the planned number of TiDB clusters, the number of Pumps in each cluster, and your backup method. For each directory, a corresponding PV will be created. Each Pump uses one PV and each Drainer uses one PV. Each [Ad-hoc full backup](backup-and-restore-using-helm-charts.md#ad-hoc-full-backup) task uses one PV, and all [scheduled full backup](backup-and-restore-using-helm-charts.md#scheduled-full-backup) tasks share one PV.
+    > The number of directories you create depends on the planned number of TiDB clusters, the number of Pumps in each cluster, and your backup method. For each directory, a corresponding PV will be created. Each Pump uses one PV and each Drainer uses one PV. All [Ad-hoc full backup](backup-to-s3.md#ad-hoc-full-backup-to-s3-compatible-storage) tasks and all [scheduled full backup](backup-to-s3.md#scheduled-full-backup-to-s3-compatible-storage) tasks share one PV.
 
 - For a disk storing data in PD, follow the [steps](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner/blob/master/docs/operations.md#sharing-a-disk-filesystem-by-multiple-filesystem-pvs) to mount the disk. First, create multiple directories in the disk, and bind mount them into `/mnt/sharedssd` directory. Then, create `shared-ssd-storage` `StorageClass` for them to use.
 

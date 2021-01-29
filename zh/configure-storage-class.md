@@ -116,9 +116,9 @@ Kubernetes 当前支持静态分配的本地存储。可使用 [local-static-pro
     ```
 
     `local-volume-provisioner` 会为发现目录 (discovery directory) 下的每一个挂载点创建一个 PV。
-    
+
     > **注意：**
-    > 
+    >
     > - 在 GKE 上，默认只能创建大小为 375 GiB 的本地卷。
     > - 如果发现目录下无任何挂载点，则不会创建任何 PV，`kubectl get pv | grep local-storage` 输出将为空。
     > - 如果 StorageClass 名称不为 `local-storage`，则需按实际 StorageClass 名称替换 `kubectl get pv | grep local-storage` 中的 `local-storage` 来确认 PV 状态。
@@ -147,7 +147,7 @@ Kubernetes 当前支持静态分配的本地存储。可使用 [local-static-pro
 
     > **注意：**
     >
-    > 该步骤中创建的目录个数取决于规划的 TiDB 集群数量、每个集群内的 Pump 数量及备份方式。1 个目录会对应创建 1 个 PV。每个 Pump 会使用 1 个 PV，每个 drainer 会使用 1 个 PV，所有 [Ad-hoc 全量备份](backup-to-aws-s3-using-br.md#ad-hoc-备份)和所有[定时全量备份](backup-to-aws-s3-using-br.md#定时全量备份)会共用 1 个 PV。
+    > 该步骤中创建的目录个数取决于规划的 TiDB 集群数量、每个集群内的 Pump 数量及备份方式。1 个目录会对应创建 1 个 PV。每个 Pump 会使用 1 个 PV，每个 drainer 会使用 1 个 PV，所有 [Ad-hoc 全量备份](backup-to-s3.md#ad-hoc-全量备份)和所有[定时全量备份](backup-to-s3.md#定时全量备份)会共用 1 个 PV。
 
 - 给 PD 数据使用的盘，可以参考[步骤](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner/blob/master/docs/operations.md#sharing-a-disk-filesystem-by-multiple-filesystem-pvs)挂载盘，创建目录，并将新建的目录以 bind mount 方式挂载到 `/mnt/sharedssd` 目录，后续创建 `shared-ssd-storage` `StorageClass`。
 
