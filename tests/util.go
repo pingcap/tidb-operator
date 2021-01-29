@@ -300,18 +300,6 @@ func IntPtr(i int) *int {
 	return &i
 }
 
-func DeployReleasedCRDOrDie(version string) {
-	url := fmt.Sprintf("https://raw.githubusercontent.com/pingcap/tidb-operator/%s/manifests/crd.yaml", version)
-	err := wait.PollImmediate(time.Second*10, time.Minute, func() (bool, error) {
-		_, err := framework.RunKubectl("apply", "-f", url)
-		if err != nil {
-			return false, nil
-		}
-		return true, nil
-	})
-	framework.ExpectNoError(err, "failed to apply CRD of version %s", version)
-}
-
 func CleanReleasedCRDOrDie(version string) {
 	url := fmt.Sprintf("https://raw.githubusercontent.com/pingcap/tidb-operator/%s/manifests/crd.yaml", version)
 	err := wait.PollImmediate(time.Second*10, time.Minute, func() (bool, error) {
