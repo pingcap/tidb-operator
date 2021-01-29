@@ -112,9 +112,13 @@ tidbmonitors.pingcap.com             2020-06-11T07:59:41Z
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install tidb-operator pingcap/tidb-operator --namespace=tidb-admin --version=${chart_version} -f ${HOME}/tidb-operator/values-tidb-operator.yaml --create-namespace && \
+    helm install tidb-operator pingcap/tidb-operator --namespace=tidb-admin --version=${chart_version} -f ${HOME}/tidb-operator/values-tidb-operator.yaml && \
     kubectl get po -n tidb-admin -l app.kubernetes.io/name=tidb-operator
     ```
+
+    > **注意：**
+    >
+    > 如果对应 `tidb-admin` namespace 不存在，则可先使用 `kubectl create namespace tidb-admin` 创建该 namespace。
 
 4. 升级 TiDB Operator
 
@@ -227,8 +231,12 @@ tidbmonitors.pingcap.com             2020-06-11T07:59:41Z
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install tidb-operator ./tidb-operator --namespace=tidb-admin --create-namespace
+    helm install tidb-operator ./tidb-operator --namespace=tidb-admin
     ```
+
+    > **注意：**
+    >
+    > 如果对应 `tidb-admin` namespace 不存在，则可先使用 `kubectl create namespace tidb-admin` 创建该 namespace。
 
 5. 升级 TiDB Operator
 
