@@ -286,7 +286,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 		ginkgo.By("Deploying tidb cluster")
 		clusterName := "webhook-upgrade-cluster"
-		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV3Version)
+		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4Version)
 		tc.Spec.PD.Replicas = 3
 		// Deploy
 		err = genericCli.Create(context.TODO(), tc)
@@ -294,9 +294,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		err = oa.WaitForTidbClusterReady(tc, 6*time.Minute, 5*time.Second)
 		framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
-		ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", tc.Spec.Version, utilimage.TiDBV3UpgradeVersion))
+		ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", tc.Spec.Version, utilimage.TiDBV4UpgradeVersion))
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-			tc.Spec.Version = utilimage.TiDBV3UpgradeVersion
+			tc.Spec.Version = utilimage.TiDBV4UpgradeVersion
 			return nil
 		})
 		framework.ExpectNoError(err, "failed to scale out TidbCluster: %q", tc.Name)
