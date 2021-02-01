@@ -238,12 +238,6 @@ def build(String name, String code, Map resources = e2ePodResources) {
                                 string(credentialsId: "tp-codecov-token", variable: 'CODECOV_TOKEN')
                             ]) {
                                 sh """#!/bin/bash
-                                export CODECOV_TOKEN=${CODECOV_TOKEN}
-                                export SRC_BRANCH=${SRC_BRANCH}
-                                export BUILD_NUMBER=${BUILD_NUMBER}
-                                export GIT_COMMIT=${GIT_COMMIT}
-                                export PR_ID=${PR_ID}
-
                                 echo "info: list all coverage files"
                                 find /kind-data/control-plane/coverage
                                 find /kind-data/worker1/coverage
