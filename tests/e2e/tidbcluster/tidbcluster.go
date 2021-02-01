@@ -273,9 +273,6 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	})
 
 	ginkgo.It("should upgrade TidbCluster with webhook enabled", func() {
-		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "cluster", "admin", utilimage.TiDBV3Version)
-		tcCfg.Resources["pd.replicas"] = "3"
-
 		ginkgo.By("Creating webhook certs and self signing it")
 		svcName := "webhook"
 		certCtx, err := apimachinery.SetupServerCert(ns, svcName)
@@ -287,18 +284,24 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		ginkgo.By("Register webhook")
 		oa.RegisterWebHookAndServiceOrDie(ocfg.WebhookConfigName, ns, svc.Name, certCtx)
 
-		ginkgo.By(fmt.Sprintf("Deploying tidb cluster %s", tcCfg.ClusterVersion))
-		oa.DeployTidbClusterOrDie(&tcCfg)
-		oa.CheckTidbClusterStatusOrDie(&tcCfg)
-		oa.CheckDisasterToleranceOrDie(&tcCfg)
+		ginkgo.By(fmt.Sprintf("Deploying tidb cluster"))
+		clusterName := "webhook-upgrade-cluster"
+		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV3Version)
+		tc.Spec.PD.Replicas = 3
+		// Deploy
+		err = genericCli.Create(context.TODO(), tc)
+		framework.ExpectNoError(err, "Expected TiDB cluster created")
+		err = oa.WaitForTidbClusterReady(tc, 6*time.Minute, 5*time.Second)
+		framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
-		ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", tcCfg.ClusterVersion, utilimage.TiDBV3UpgradeVersion))
-		ctx, cancel := context.WithCancel(context.Background())
-		tcCfg.UpgradeAll(utilimage.TiDBV3UpgradeVersion)
-		oa.UpgradeTidbClusterOrDie(&tcCfg)
-		oa.CheckUpgradeOrDie(ctx, &tcCfg)
-		oa.CheckTidbClusterStatusOrDie(&tcCfg)
-		cancel()
+		ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", tc.Spec.Version, utilimage.TiDBV3UpgradeVersion))
+		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+			tc.Spec.Version = utilimage.TiDBV3UpgradeVersion
+			return nil
+		})
+		framework.ExpectNoError(err, "failed to scale out TidbCluster: %q", tc.Name)
+		err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 5*time.Second)
+		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 
 		ginkgo.By("Check webhook is still running")
 		webhookPod, err = c.CoreV1().Pods(webhookPod.Namespace).Get(webhookPod.Name, metav1.GetOptions{})
