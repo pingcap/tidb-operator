@@ -3040,6 +3040,7 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 		setString["binlog.drainer.initialCommitTs"] = ts
 	}
 
+	setString["storageClassName"] = "standard"
 	cmd, err := oa.getHelmUpgradeClusterCmd(from, setString, setBoolean)
 	if err != nil {
 		return err
