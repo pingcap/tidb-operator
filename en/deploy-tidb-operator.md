@@ -112,9 +112,13 @@ After creating CRDs in the step above, there are two methods to deploy TiDB Oper
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install tidb-operator pingcap/tidb-operator --namespace=tidb-admin --version=${chart_version} -f ${HOME}/tidb-operator/values-tidb-operator.yaml --create-namespace && \
+    helm install tidb-operator pingcap/tidb-operator --namespace=tidb-admin --version=${chart_version} -f ${HOME}/tidb-operator/values-tidb-operator.yaml && \
     kubectl get po -n tidb-admin -l app.kubernetes.io/name=tidb-operator
     ```
+
+    > **Note:**
+    >
+    > If the corresponding `tidb-admin` namespace does not exist, you can create the namespace first by running the `kubectl create namespace tidb-admin` command.
 
 4. Upgrade TiDB Operator
 
@@ -227,8 +231,12 @@ If your server cannot access the Internet, install TiDB Operator offline by the 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install tidb-operator ./tidb-operator --namespace=tidb-admin --create-namespace
+    helm install tidb-operator ./tidb-operator --namespace=tidb-admin
     ```
+
+    > **Note:**
+    >
+    > If the corresponding `tidb-admin` namespace does not exist, you can create the namespace first by running the `kubectl create namespace tidb-admin` command.
 
 5. Upgrade TiDB Operator
 
