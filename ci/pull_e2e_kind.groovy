@@ -234,30 +234,42 @@ def build(String name, String code, Map resources = e2ePodResources) {
                             }
                         }
                         stage('Coverage') {
-                            sh """#!/bin/bash
-                            ls /kind-data/control-plane/coverage
-                            ls /kind-data/worker1/coverage
-                            ls /kind-data/worker2/coverage
-                            ls /kind-data/worker3/coverage
-                            """
+                            withCredentials([
+                                string(credentialsId: "tp-codecov-token", variable: 'CODECOV_TOKEN')
+                            ]) {
+                                sh """#!/bin/bash
+                                echo "info: list all coverage files"
+                                find /kind-data/control-plane/coverage
+                                find /kind-data/worker1/coverage
+                                find /kind-data/worker2/coverage
+                                find /kind-data/worker3/coverage
+                                echo "info: merging coverage files"
+                                ./bin/gocovmerge /kind-data/control-plane/coverage/*.cov /kind-data/worker1/coverage/*.cov /kind-data/worker2/coverage/*.cov /kind-data/worker3/coverage/*.cov > /tmp/coverage.txt
+                                echo "info: uploading coverage to codecov"
+                                curl -L "https://codecov.io/bash" -o "/codecov" && chmod 755 /codecov
+                                /codecov -t ${CODECOV_TOKEN} -B ${SRC_BRANCH} -b ${BUILD_NUMBER} -C ${GIT_COMMIT} -P ${PR_ID} -F e2e -n tidb-operator -f /tmp/coverage.txt
+                                """
+                            }
                         }
                     }
                 } finally {
-                    dir(ARTIFACTS) {
-                        sh """#!/bin/bash
-                        echo "info: change ownerships for jenkins"
-                        chown -R 1000:1000 .
-                        echo "info: print total size of artifacts"
-                        du -sh .
-                        echo "info: list all files"
-                        find .
-                        echo "info: moving all artifacts into a sub-directory"
-                        shopt -s extglob
-                        mkdir ${name}
-                        mv !(${name}) ${name}/
-                        """
-                        archiveArtifacts artifacts: "${name}/**", allowEmptyArchive: true
-                        junit testResults: "${name}/*.xml", allowEmptyResults: true, keepLongStdio: true
+                    stage('Artifacts') {
+                        dir(ARTIFACTS) {
+                            sh """#!/bin/bash
+                            echo "info: change ownerships for jenkins"
+                            chown -R 1000:1000 .
+                            echo "info: print total size of artifacts"
+                            du -sh .
+                            echo "info: list all files"
+                            find .
+                            echo "info: moving all artifacts into a sub-directory"
+                            shopt -s extglob
+                            mkdir ${name}
+                            mv !(${name}) ${name}/
+                            """
+                            archiveArtifacts artifacts: "${name}/**", allowEmptyArchive: true
+                            junit testResults: "${name}/*.xml", allowEmptyResults: true, keepLongStdio: true
+                        }
                     }
                 }
             }
@@ -339,6 +351,7 @@ try {
                             set -eu
                             echo "info: building"
                             E2E=y make build e2e-build
+                            make gocovmerge
                             if [ "${GIT_REF}" == "master" ]; then
                                 echo "info: run unit tests and report coverage results for master branch"
                                 make test GOFLAGS='-race' GO_COVER=y

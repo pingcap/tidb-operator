@@ -125,6 +125,9 @@ e2e:
 e2e-examples:
 	./hack/e2e-examples.sh
 
+gocovmerge:
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o bin/gocovmerge github.com/zhouqiang-cl/gocovmerge
+
 stability-test-build:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/stability-test/bin/blockwriter ./tests/cmd/blockwriter
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/stability-test/bin/stability-test ./tests/cmd/stability
@@ -186,4 +189,4 @@ debug-build-docker: debug-build
 debug-build:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o misc/images/debug-launcher/bin/debug-launcher misc/cmd/debug-launcher/main.go
 
-.PHONY: check check-setup build e2e-build debug-build cli e2e test docker e2e-docker debug-build-docker
+.PHONY: check check-setup build e2e-build debug-build cli e2e gocovmerge test docker e2e-docker debug-build-docker
