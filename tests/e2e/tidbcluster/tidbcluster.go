@@ -946,7 +946,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	})
 
 	ginkgo.Context("[Feature: AutoFailover]", func() {
-		// TODO: explain purpose of this case
+		// Behaviors:
+		// 1. deploy initial tc, set TiDB startScript to exit 1, check if TiDB failure member is 1
+		// 2. scale TiDB to 0, check if scaling in sucessfully.
 		ginkgo.It("should clear TiDB failureMembers when scale TiDB to zero", func() {
 			ginkgo.By("Deploy initial tc with bad tidb pre-start script")
 			tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "tidb-scale", "admin", utilimage.TiDBV3Version)
@@ -1029,6 +1031,17 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
 			framework.ExpectNoError(err, "set %s cpu quota mock metrics error", memberType)
 		}
+
+		// Behaviors:
+		// 1. deploy initial tc
+		// 2. deploy tidb monitor
+		// 3. create tidbcluster autoscaler
+		// 4. create proxied pdclient
+		// 5. No autoscaling cluster and CPU usage over max threshold
+		// 6. Has an autoscaling cluster and CPU usage between max threshold and min threshold
+		// 7. Has an autoscaling cluster and CPU usage over max threshold
+		// 8. CPU usage below min threshold
+		// 9. CPU usage below min threshold for a long time
 		ginkgo.It("should auto scale TiKV pods", func() {
 			ginkgo.By("Deploy initial tc")
 			clusterName := "auto-scaling-tikv"
@@ -1291,6 +1304,16 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			log.Logf("success to check delete autoscaling tikv cluster")
 		})
 
+		// Behaviors:
+		// 1. deploy initial tc
+		// 2. deploy tidb monitor
+		// 3. create tidbcluster autoscaler
+		// 4. create proxied pdclient
+		// 5. No autoscaling cluster and CPU usage over max threshold
+		// 6. Has an autoscaling cluster and CPU usage between max threshold and min threshold
+		// 7. Has an autoscaling cluster and CPU usage over max threshold
+		// 8. CPU usage below min threshold
+		// 9. CPU usage below min threshold for a long time
 		ginkgo.It("should auto scale TiDB pods", func() {
 			ginkgo.By("Deploy initial tc")
 			clusterName := "auto-scaling-tidb"
@@ -1489,6 +1512,23 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	})
 
 	ginkgo.Context("[Feature: TLS]", func() {
+		// Behaviors:
+		// 1. install tidb CA
+		// 2. install tidb server and client certificate
+		// 3. install tidbInitializer client certificate
+		// 4. install dashboard client certificate
+		// 5. install tidb component certificate
+		// 6. create tidb cluster with tls enabled
+		// 7. ensure dashboard use custom secret
+		// 8. create tidb initializer
+		// 9. create target tc
+		// 10. create tls drainer
+		// 11. insert data into db
+		// 12. check tidb-binlog works as expected
+		// 13. connect to tidb server to verify the connection is enabled
+		// 14. scale out tidb cluster
+		// 15. scale in tidb cluster
+		// 16. upgrade tidb cluster
 		ginkgo.It("should enable TLS for MySQL Client and between TiDB components", func() {
 			tcName := "tls"
 
@@ -1638,6 +1678,8 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
 		})
 
+		// Behaviors:
+		// be similar with common TiDB cluster
 		ginkgo.It("should enable TLS for MySQL Client and between Heterogeneous TiDB components", func() {
 			tcName := "origintls"
 			heterogeneousTcName := "heterogeneoustls"
@@ -1815,6 +1857,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	})
 
 	ginkgo.Context("[Feature: Service sync]", func() {
+		// Behaviors:
+		// 1. deploy a initial tidb cluster with NodePort Service, ensure service type and port not changed
+		// 2. change tidb service annotation, ensure nodeport not changed
 		ginkgo.It("should ensure changing TiDB service annotations won't change TiDB service type NodePort", func() {
 			ginkgo.By("Deploy initial tc")
 			// Create TidbCluster with NodePort to check whether node port would change
@@ -1912,6 +1957,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	})
 
 	ginkgo.Context("[Feature: Heterogeneous Cluster]", func() {
+		// Behaviors:
+		// 1. deploy initial tc
+		// 2. deploy heterogeous tc, wait for heterogeous tc joining initial tc
 		ginkgo.It("should join heterogeneous cluster into an existing cluster", func() {
 			// Create TidbCluster with NodePort to check whether node port would change
 			ginkgo.By("Deploy origin tc")
@@ -1972,6 +2020,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	})
 
 	ginkgo.Context("[Feature: CDC]", func() {
+		// Behaviors:
+		// 1. deploy cdc-source cluster
+		// 2. deploy cdc-sink cluster
+		// 3. create cdc change feed task
+		// 4. insert data into cdc-source cluster, check if cdc works as expected
 		ginkgo.It("check if TiCDC works", func() {
 			ginkgo.By("Creating cdc cluster")
 			fromTc := fixture.GetTidbCluster(ns, "cdc-source", utilimage.TiDBV4Version)
@@ -2024,6 +2077,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	})
 
 	ginkgo.Context("[Feature: TiKV Scale in limits]", func() {
+		// Behaviors:
+		// 1. deploy initial tc
+		// 2. scale into 2 replicas, check if TiKV replicas stays in 3
 		ginkgo.It("when stores number is equal to 3, forbid to scale in TiKV and the state of all stores are up", func() {
 			ginkgo.By("Deploy initial tc")
 			tc := fixture.GetTidbCluster(ns, "scale-in-tikv", utilimage.TiDBV4Version)
@@ -2057,6 +2113,10 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	})
 
 	ginkgo.Context("[Feature: Multiple PVC]", func() {
+		// Behaviors:
+		// 1. deploy initial tc with StorageVloumes set
+		// 2. scale out to 4 TiKV
+		// 3. scale in to 3 TiKV
 		ginkgo.It("TiKV should mount multiple pvc", func() {
 			ginkgo.By("Deploy initial tc with addition")
 			clusterName := "tidb-multiple-pvc-scale"
