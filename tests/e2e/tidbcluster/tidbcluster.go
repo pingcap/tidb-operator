@@ -277,36 +277,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.CleanWebHookAndServiceOrDie(ocfg.WebhookConfigName)
 	})
 
-<<<<<<< HEAD
-	ginkgo.It("Backup and restore TiDB Cluster", func() {
-		clusterFrom := newTidbClusterConfig(e2econfig.TestConfig, ns, "from", "admin", utilimage.TiDBV3Version)
-		clusterFrom.Resources["pd.replicas"] = "1"
-		clusterFrom.Resources["tidb.replicas"] = "1"
-		clusterFrom.Resources["tikv.replicas"] = "1"
-		clusterTo := newTidbClusterConfig(e2econfig.TestConfig, ns, "to", "admin", utilimage.TiDBV3Version)
-		clusterTo.Resources["pd.replicas"] = "1"
-		clusterTo.Resources["tidb.replicas"] = "1"
-		clusterTo.Resources["tikv.replicas"] = "1"
-		oa.DeployTidbClusterOrDie(&clusterFrom)
-		oa.DeployTidbClusterOrDie(&clusterTo)
-		oa.CheckTidbClusterStatusOrDie(&clusterFrom)
-		oa.CheckTidbClusterStatusOrDie(&clusterTo)
-		oa.CheckDisasterToleranceOrDie(&clusterFrom)
-		oa.CheckDisasterToleranceOrDie(&clusterTo)
-
-		// backup and restore
-		ginkgo.By(fmt.Sprintf("Backup %q and restore into %q", clusterFrom.ClusterName, clusterTo.ClusterName))
-		oa.BackupRestoreOrDie(&clusterFrom, &clusterTo)
-	})
-
-	ginkgo.It("Service: Sync TiDB service", func() {
-		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "service-it", "admin", utilimage.TiDBV3Version)
-		cluster.Resources["pd.replicas"] = "1"
-		cluster.Resources["tidb.replicas"] = "1"
-		cluster.Resources["tikv.replicas"] = "1"
-		oa.DeployTidbClusterOrDie(&cluster)
-		oa.CheckTidbClusterStatusOrDie(&cluster)
-=======
 	ginkgo.It("should keep tidb service in sync", func() {
 		ginkgo.By("Deploy initial tc")
 		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "service", "admin", utilimage.TiDBV3Version)
@@ -315,15 +285,14 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		tcCfg.Resources["tikv.replicas"] = "1"
 		oa.DeployTidbClusterOrDie(&tcCfg)
 		oa.CheckTidbClusterStatusOrDie(&tcCfg)
->>>>>>> c30172fc... remove helm deployed backup/restore e2e test case from default test (#3762)
 
-		ns := cluster.Namespace
-		tcName := cluster.ClusterName
+		ns := tcCfg.Namespace
+		tcName := tcCfg.ClusterName
 
 		oldSvc, err := c.CoreV1().Services(ns).Get(controller.TiDBMemberName(tcName), metav1.GetOptions{})
-		framework.ExpectNoError(err, "failed to get service for TidbCluster: %v", cluster)
+		framework.ExpectNoError(err, "failed to get service for TidbCluster: %v", tcCfg)
 		tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
-		framework.ExpectNoError(err, "failed to get TidbCluster: %v", cluster)
+		framework.ExpectNoError(err, "failed to get TidbCluster: %v", tcCfg)
 		if isNil, err := gomega.BeNil().Match(metav1.GetControllerOf(oldSvc)); !isNil {
 			log.Failf("Expected TiDB service created by helm chart is orphaned: %v", err)
 		}
