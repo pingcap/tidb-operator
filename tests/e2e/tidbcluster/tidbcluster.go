@@ -1554,7 +1554,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		tc.Spec.TiKV.Config.Set("rocksdb.wal-dir", "/var/lib/wal")
 		tc.Spec.TiKV.Config.Set("titan.dirname", "/var/lib/titan")
 		tc.Spec.PD.Replicas = 1
-		tc.Spec.TiKV.Replicas = 4
+		tc.Spec.TiKV.Replicas = 3
 		tc.Spec.TiDB.Replicas = 1
 
 		err := genericCli.Create(context.TODO(), tc)
@@ -1562,20 +1562,20 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		err = oa.WaitForTidbClusterReady(tc, 6*time.Minute, 5*time.Second)
 		framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
-		ginkgo.By("Scale multiple pvc tidb cluster")
+		ginkgo.By("Scale out multiple pvc tidb cluster")
 		// Scale
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-			tc.Spec.TiKV.Replicas = 3
+			tc.Spec.TiKV.Replicas = 4
 			return nil
 		})
 		framework.ExpectNoError(err, "failed to scale out TidbCluster: %q", tc.Name)
 		err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 5*time.Second)
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 
-		ginkgo.By("Scale out multiple pvc tidb cluster")
+		ginkgo.By("Scale in multiple pvc tidb cluster")
 		// Scale
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-			tc.Spec.TiKV.Replicas = 4
+			tc.Spec.TiKV.Replicas = 3
 			return nil
 		})
 		framework.ExpectNoError(err, "failed to scale out TidbCluster: %q", tc.Name)
