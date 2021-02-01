@@ -51,8 +51,6 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/framework/log"
 	"k8s.io/kubernetes/test/e2e/framework/pod"
-	e2essh "k8s.io/kubernetes/test/e2e/framework/ssh"
-
 	// ensure auth plugins are loaded
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
@@ -319,19 +317,6 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	err = tidbcluster.InstallCertManager(kubeCli)
 	framework.ExpectNoError(err, "failed to install cert-manager")
 
-	// try to list files on all KIND nodes.
-	nodeAddressed, err := e2essh.NodeSSHHosts(kubeCli)
-	if err != nil {
-		log.Logf("fail to get SSH hosts, %v", err)
-	}
-	log.Logf("got SSH hosts, %v", nodeAddressed)
-
-	result, err := e2essh.SSH("ls -l /tmp", nodeAddressed[0]+":22", framework.TestContext.Provider)
-	if err != nil {
-		log.Logf("fail to execute SSH command, %v", err)
-	}
-	log.Logf("got SSH cmd result, %v", result)
-
 	return nil
 }, func(data []byte) {
 	// Run on all Ginkgo nodes
@@ -353,6 +338,11 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 	ginkgo.By("Deleting cert-manager")
 	err := tidbcluster.DeleteCertManager(kubeCli)
 	framework.ExpectNoError(err, "failed to delete cert-manager")
+
+	ginkgo.By("Uninstalling tidb-operator")
+	ocfg := e2econfig.NewDefaultOperatorConfig(e2econfig.TestConfig)
+	err = tests.CleanOperator(ocfg)
+	framework.ExpectNoError(err, "failed to uninstall operator")
 })
 
 // RunE2ETests checks configuration parameters (specified through flags) and then runs
