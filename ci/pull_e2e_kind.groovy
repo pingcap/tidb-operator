@@ -115,6 +115,8 @@ spec:
     - name: docker-graph
       mountPath: /docker-graph
     # use memory storage for etcd hostpath in kind cluster
+    - name: kind-data-dir
+      mountPath: /kind-data
     - name: etcd-data-dir
       mountPath: /mnt/tmpfs/etcd
   volumes:
@@ -129,6 +131,8 @@ spec:
   - name: docker-root
     emptyDir: {}
   - name: docker-graph
+    emptyDir: {}
+  - name: kind-data-dir
     emptyDir: {}
   - name: etcd-data-dir
     emptyDir:
@@ -359,7 +363,7 @@ try {
         }
         }
 
-        def GLOBALS = "KIND_ETCD_DATADIR=/mnt/tmpfs/etcd E2E=y SKIP_BUILD=y SKIP_IMAGE_BUILD=y DOCKER_REPO=hub-dev.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} DELETE_NAMESPACE_ON_FAILURE=${params.DELETE_NAMESPACE_ON_FAILURE} GINKGO_NO_COLOR=y"
+        def GLOBALS = "KIND_DATA_HOSTPATH=/kind-data KIND_ETCD_DATADIR=/mnt/tmpfs/etcd E2E=y SKIP_DOWN=y SKIP_BUILD=y SKIP_IMAGE_BUILD=y DOCKER_REPO=hub-dev.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} DELETE_NAMESPACE_ON_FAILURE=${params.DELETE_NAMESPACE_ON_FAILURE} GINKGO_NO_COLOR=y"
         build("tidb-operator", "${GLOBALS} GINKGO_NODES=${params.GINKGO_NODES} ./hack/e2e.sh -- ${params.E2E_ARGS}")
 
         if (GIT_REF ==~ /^(master|)$/ || GIT_REF ==~ /^(release-.*)$/
