@@ -221,6 +221,10 @@ def build(String name, String code, Map resources = e2ePodResources) {
                                 export BUILD_NUMBER=${BUILD_NUMBER}
                                 export GIT_COMMIT=${GIT_COMMIT}
                                 export PR_ID=${PR_ID}
+
+                                echo "info: create local path for data and coverage"
+                                mount --make-rshared /
+                                mkdir /kind-data
                                 ${code}
                                 """
                             }
@@ -354,9 +358,6 @@ try {
                             # we run as root in our pods, this is required
                             # otherwise jenkins agent will fail because of the lack of permission
                             chown -R 1000:1000 .
-                            echo "info: create local path for data and coverage"
-                            mount --make-rshared /
-                            mkdir /kind-data
                             """
                         }
                         stash excludes: "vendor/**,deploy/**,tests/**", name: "tidb-operator"
