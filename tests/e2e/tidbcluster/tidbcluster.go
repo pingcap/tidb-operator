@@ -888,18 +888,19 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		// TODO: explain purpose of this case
 		ginkgo.It("should clear TiDB failureMembers when scale TiDB to zero", func() {
 			ginkgo.By("Deploy initial tc with bad tidb pre-start script")
-			tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "tidb-scale", "admin", utilimage.TiDBV3Version)
-			tcCfg.Resources["pd.replicas"] = "3"
-			tcCfg.Resources["tikv.replicas"] = "1"
-			tcCfg.Resources["tidb.replicas"] = "1"
-
-			tcCfg.TiDBPreStartScript = strconv.Quote("exit 1")
-			oa.DeployTidbClusterOrDie(&tcCfg)
+			tc := fixture.GetTidbCluster(ns, "tidb-scale", utilimage.TiDBV4Version)
+			tc.Spec.PD.Replicas = 3
+			tc.Spec.TiKV.Replicas = 1
+			tc.Spec.TiDB.Replicas = 1
+			tc.Spec.TiDB.Image = "fake-image"
+			// Deploy
+			err := genericCli.Create(context.TODO(), tc)
+			framework.ExpectNoError(err, "Expected TiDB cluster created")
 
 			ginkgo.By("check tidb failure member count")
-			ns := tcCfg.Namespace
-			tcName := tcCfg.ClusterName
-			err := wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
+			ns := tc.Namespace
+			tcName := tc.ClusterName
+			err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
 				var tc *v1alpha1.TidbCluster
 				var err error
 				if tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
@@ -915,8 +916,13 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "expect tidb failure member count = 1")
 
 			ginkgo.By("Scale tidb to 0")
-			tcCfg.ScaleTiDB(0)
-			oa.ScaleTidbClusterOrDie(&tcCfg)
+			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Spec.TiDB.Replicas = 0
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to scale out TidbCluster: %q", tc.Name)
+			err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 5*time.Second)
+			framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 			err = wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
 				var tc *v1alpha1.TidbCluster
 				var err error
