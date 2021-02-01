@@ -51,6 +51,7 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/framework/log"
 	"k8s.io/kubernetes/test/e2e/framework/pod"
+
 	// ensure auth plugins are loaded
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
