@@ -1544,13 +1544,13 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		}
 
 		tc.Spec.PD.Config.Set("log.file.filename", "/var/log/tidb/tidb.log")
-		// tc.Spec.PD.Config.Set("log.level", "warn")
-		tc.Spec.TiDB.Config.Set("log.file.max-size", "300")
-		tc.Spec.TiDB.Config.Set("log.file.max-days", "1")
+		tc.Spec.PD.Config.Set("log.level", "warn")
+		tc.Spec.TiDB.Config.Set("log.file.max-size", 300)
+		tc.Spec.TiDB.Config.Set("log.file.max-days", 1)
 		tc.Spec.TiDB.Config.Set("log.file.filename", "/var/log/tidb/tidb.log")
-		// tc.Spec.TiDB.Config.Set("log.level", "warn")
-		tc.Spec.TiDB.Config.Set("log.file.max-size", "300")
-		tc.Spec.TiDB.Config.Set("log.file.max-days", "1")
+		tc.Spec.TiDB.Config.Set("log.level", "warn")
+		tc.Spec.TiDB.Config.Set("log.file.max-size", 300)
+		tc.Spec.TiDB.Config.Set("log.file.max-days", 1)
 		tc.Spec.TiKV.Config.Set("rocksdb.wal-dir", "/var/lib/wal")
 		tc.Spec.TiKV.Config.Set("titan.dirname", "/var/lib/titan")
 		tc.Spec.PD.Replicas = 1
