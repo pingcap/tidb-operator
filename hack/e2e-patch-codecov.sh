@@ -24,20 +24,20 @@ CONTROLLER_MANAGER_DEPLOYMENT=charts/tidb-operator/templates/controller-manager-
 SCHEDULER_DEPLOYMENT=charts/tidb-operator/templates/scheduler-deployment.yaml
 DISCOVERY_DEPLOYMENT=charts/tidb-cluster/templates/discovery-deployment.yaml
 
-echo "eplace the entrypoint to generate and upload the coverage profile"
-sed -i 's/\/usr\/local\/bin\/tidb-controller-manager/\/e2e-entrypoint.sh\n          - \/usr\/local\/bin\/tidb-controller-manager\n          - -test.coverprofile=\/tmp\/coverage.txt\n          - E2E/g' \
+echo "replace the entrypoint to generate and upload the coverage profile"
+sed -i 's/\/usr\/local\/bin\/tidb-controller-manager/\/e2e-entrypoint.sh\n          - \/usr\/local\/bin\/tidb-controller-manager\n          - -test.coverprofile=\/coverage\/tidb-controller-manager.cov\n          - E2E/g' \
     $CONTROLLER_MANAGER_DEPLOYMENT
-sed -i 's/\/usr\/local\/bin\/tidb-scheduler/\/e2e-entrypoint.sh\n          - \/usr\/local\/bin\/tidb-scheduler\n          - -test.coverprofile=\/tmp\/coverage.txt\n          - E2E/g' \
+sed -i 's/\/usr\/local\/bin\/tidb-scheduler/\/e2e-entrypoint.sh\n          - \/usr\/local\/bin\/tidb-scheduler\n          - -test.coverprofile=\/coverage\/tidb-scheduler.cov\n          - E2E/g' \
     $SCHEDULER_DEPLOYMENT
-sed -i 's/\/usr\/local\/bin\/tidb-discovery/\/e2e-entrypoint.sh\n          - \/usr\/local\/bin\/tidb-discovery\n          - -test.coverprofile=\/tmp\/coverage.txt\n          - E2E/g' \
+sed -i 's/\/usr\/local\/bin\/tidb-discovery/\/e2e-entrypoint.sh\n          - \/usr\/local\/bin\/tidb-discovery\n          - -test.coverprofile=\/coverage\/tidb-discovery.cov\n          - E2E/g' \
     $DISCOVERY_DEPLOYMENT
 
 # -v is duplicated for operator and go test
 sed -i '/\-v=/d' $CONTROLLER_MANAGER_DEPLOYMENT
 sed -i '/\-v=/d' $SCHEDULER_DEPLOYMENT
 
-# populate needed environment variables
-echo "hack/e2e-patch-codecov.sh: setting environment variables in charts"
+# populate needed environment variables and local-path volumes
+echo "hack/e2e-patch-codecov.sh: setting environment variables and volumes in charts"
 cat << EOF >> $CONTROLLER_MANAGER_DEPLOYMENT
           - name: COMPONENT
             value: "controller-manager"
@@ -51,6 +51,14 @@ cat << EOF >> $CONTROLLER_MANAGER_DEPLOYMENT
             value: "$PR_ID"
           - name: CODECOV_TOKEN
             value: "$CODECOV_TOKEN"
+        volumeMounts:
+          - mountPath: /coverage
+            name: coverage
+      volumes:
+        - name: coverage
+          hostPath:
+            path: /mnt/disks/coverage
+            type: Directory
 EOF
 
 # for SCHEDULER_DEPLOYMENT, no `env:` added with default values.
@@ -68,6 +76,14 @@ cat << EOF >> $SCHEDULER_DEPLOYMENT
           value: "$PR_ID"
         - name: CODECOV_TOKEN
           value: "$CODECOV_TOKEN"
+        volumeMounts:
+          - mountPath: /coverage
+            name: coverage
+      volumes:
+        - name: coverage
+          hostPath:
+            path: /mnt/disks/coverage
+            type: Directory
 EOF
 
 cat << EOF >> $DISCOVERY_DEPLOYMENT
@@ -83,5 +99,13 @@ cat << EOF >> $DISCOVERY_DEPLOYMENT
             value: "$PR_ID"
           - name: CODECOV_TOKEN
             value: "$CODECOV_TOKEN"
+        volumeMounts:
+          - mountPath: /coverage
+            name: coverage
+      volumes:
+        - name: coverage
+          hostPath:
+            path: /mnt/disks/coverage
+            type: Directory
 EOF
 

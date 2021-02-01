@@ -225,9 +225,21 @@ def build(String name, String code, Map resources = e2ePodResources) {
                                 echo "info: create local path for data and coverage"
                                 mount --make-rshared /
                                 mkdir /kind-data
+                                mkdir -p /kind-data/control-plane/coverage
+                                mkdir -p /kind-data/worker1/coverage
+                                mkdir -p /kind-data/worker2/coverage
+                                mkdir -p /kind-data/worker3/coverage
                                 ${code}
                                 """
                             }
+                        }
+                        stage('Coverage') {
+                            sh """#!/bin/bash
+                            ls /kind-data/control-plane/coverage
+                            ls /kind-data/worker1/coverage
+                            ls /kind-data/worker2/coverage
+                            ls /kind-data/worker3/coverage
+                            """
                         }
                     }
                 } finally {
