@@ -952,11 +952,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")
 			oa.CleanCRDOrDie()
-<<<<<<< HEAD
-			tests.DeployReleasedCRDOrDie(version)
-=======
-			oa.DeployReleasedCRDOrDie(operatorVersion)
->>>>>>> dfa647ca... wait for crd established before further operations (#3761)
+			oa.DeployReleasedCRDOrDie(version)
 			ginkgo.By("Installing tidb-operator")
 			oa.CleanOperatorOrDie(ocfg)
 			oa.DeployOperatorOrDie(ocfg)
@@ -1062,11 +1058,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")
 			oa.CleanCRDOrDie()
-<<<<<<< HEAD
-			tests.DeployReleasedCRDOrDie(version)
-=======
-			oa.DeployReleasedCRDOrDie(operatorVersion)
->>>>>>> dfa647ca... wait for crd established before further operations (#3761)
+			oa.DeployReleasedCRDOrDie(version)
 			ginkgo.By("Installing tidb-operator")
 			oa.CleanOperatorOrDie(ocfg)
 			oa.DeployOperatorOrDie(ocfg)
