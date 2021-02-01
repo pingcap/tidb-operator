@@ -2998,8 +2998,8 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 
 	setString := map[string]string{
 		"binlog.pump.storageClassName": "standard",
-		"binlog.pump.storage": "1Gi",
-		"binlog.pump.image":   fmt.Sprintf("pingcap/tidb-binlog:%v", from.ClusterVersion),
+		"binlog.pump.storage":          "1Gi",
+		"binlog.pump.image":            fmt.Sprintf("pingcap/tidb-binlog:%v", from.ClusterVersion),
 	}
 
 	setBoolean := map[string]bool{
