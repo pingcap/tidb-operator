@@ -196,7 +196,7 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	}{
 		{
 			text: "Clear all helm releases",
-			cmd:  "helm ls --all --short | xargs -n 1 -r helm delete --purge",
+			cmd:  "helm ls --all --short | xargs -n 1 -r helm uninstall",
 		},
 		{
 			text: "Clear tidb-operator apiservices",
