@@ -244,7 +244,11 @@ def build(String name, String code, Map resources = e2ePodResources) {
                                 find /kind-data/worker2/coverage
                                 find /kind-data/worker3/coverage
                                 echo "info: merging coverage files"
-                                ./bin/gocovmerge /kind-data/control-plane/coverage/*.cov /kind-data/worker1/coverage/*.cov /kind-data/worker2/coverage/*.cov /kind-data/worker3/coverage/*.cov > /tmp/coverage.txt
+                                cp /kind-data/control-plane/coverage/*.cov /tmp
+                                cp /kind-data/worker1/coverage/*.cov /tmp
+                                cp /kind-data/worker2/coverage/*.cov /tmp
+                                cp /kind-data/worker3/coverage/*.cov /tmp
+                                ./bin/gocovmerge /tmp/*.cov > /tmp/coverage.txt
                                 echo "info: uploading coverage to codecov"
                                 curl -L "https://codecov.io/bash" -o "/codecov" && chmod 755 /codecov
                                 /codecov -t ${CODECOV_TOKEN} -B ${SRC_BRANCH} -b ${BUILD_NUMBER} -C ${GIT_COMMIT} -P ${PR_ID} -F e2e -n tidb-operator -f /tmp/coverage.txt
