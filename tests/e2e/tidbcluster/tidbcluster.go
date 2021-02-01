@@ -237,21 +237,39 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		}
 
 		ginkgo.By("Deploy initial tc")
-		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "host-network", "", utilimage.TiDBV3Version)
-		tcCfg.Resources["pd.replicas"] = "1"
-		tcCfg.Resources["tidb.replicas"] = "1"
-		tcCfg.Resources["tikv.replicas"] = "1"
-		oa.DeployTidbClusterOrDie(&tcCfg)
-
+		clusterName := "host-network"
+		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4Version)
+		// Set some properties
+		tc.Spec.PD.Replicas = 1
+		tc.Spec.TiKV.Replicas = 1
+		tc.Spec.TiDB.Replicas = 1
+		// Create and wait for tidbcluster ready
+		err := genericCli.Create(context.TODO(), tc)
+		framework.ExpectNoError(err, "Expected TiDB cluster created")
+		err = oa.WaitForTidbClusterReady(tc, 6*time.Minute, 5*time.Second)
+		framework.ExpectNoError(err, "Expected TiDB cluster ready")
 		ginkgo.By("Switch to host network")
-		tcCfg.SetHostNetwork(true)
-		oa.UpgradeTidbClusterOrDie(&tcCfg)
-		oa.CheckTidbClusterStatusOrDie(&tcCfg)
+		// TODO: Considering other components?
+		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+			tc.Spec.PD.HostNetwork = pointer.BoolPtr(true)
+			tc.Spec.TiKV.HostNetwork = pointer.BoolPtr(true)
+			tc.Spec.TiDB.HostNetwork = pointer.BoolPtr(true)
+			return nil
+		})
+		framework.ExpectNoError(err, "failed to scale out TidbCluster: %q", tc.Name)
+		err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 5*time.Second)
+		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 
 		ginkgo.By("Switch back to pod network")
-		tcCfg.SetHostNetwork(false)
-		oa.UpgradeTidbClusterOrDie(&tcCfg)
-		oa.CheckTidbClusterStatusOrDie(&tcCfg)
+		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+			tc.Spec.PD.HostNetwork = pointer.BoolPtr(false)
+			tc.Spec.TiKV.HostNetwork = pointer.BoolPtr(false)
+			tc.Spec.TiDB.HostNetwork = pointer.BoolPtr(false)
+			return nil
+		})
+		framework.ExpectNoError(err, "failed to scale out TidbCluster: %q", tc.Name)
+		err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 5*time.Second)
+		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 	})
 
 	ginkgo.It("should upgrade TidbCluster with webhook enabled", func() {
