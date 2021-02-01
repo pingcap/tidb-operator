@@ -329,7 +329,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
 		ns := tc.Namespace
-		tcName := tc.ClusterName
+		tcName := tc.Name
 
 		oldSvc, err := c.CoreV1().Services(ns).Get(controller.TiDBMemberName(tcName), metav1.GetOptions{})
 		framework.ExpectNoError(err, "failed to get service for TidbCluster: %v", tc)
@@ -902,7 +902,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 			ginkgo.By("check tidb failure member count")
 			ns := tc.Namespace
-			tcName := tc.ClusterName
+			tcName := tc.Name
 			err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
 				var tc *v1alpha1.TidbCluster
 				var err error
