@@ -284,7 +284,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		ginkgo.By("Register webhook")
 		oa.RegisterWebHookAndServiceOrDie(ocfg.WebhookConfigName, ns, svc.Name, certCtx)
 
-		ginkgo.By(fmt.Sprintf("Deploying tidb cluster"))
+		ginkgo.By("Deploying tidb cluster")
 		clusterName := "webhook-upgrade-cluster"
 		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV3Version)
 		tc.Spec.PD.Replicas = 3
