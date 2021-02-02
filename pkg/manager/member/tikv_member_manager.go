@@ -438,17 +438,15 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	}
 
 	var containers []corev1.Container
-	if tc.Spec.TiDB.ShouldSeparateRocksDBLog() {
+	if tc.Spec.TiKV.ShouldSeparateRocksDBLog() {
 		// mount a shared volume and tail the RocksDB log to STDOUT using a sidecar.
 		rocksDBLogFilePath := path.Join(tikvDataVol.MountPath, "db/LOG")
 		containers = append(containers, corev1.Container{
 			Name:            v1alpha1.RocksDBLogTailerMemberType.String(),
 			Image:           tc.HelperImage(),
 			ImagePullPolicy: tc.HelperImagePullPolicy(),
-			// we can reuse the SlowLogTailerSpec here
-			// or maybe we should rename SlowLogTailerSpec to LogTailerSpec
-			Resources:    controller.ContainerResource(tc.Spec.TiDB.GetSlowLogTailerSpec().ResourceRequirements),
-			VolumeMounts: []corev1.VolumeMount{tikvDataVol},
+			Resources:       controller.ContainerResource(tc.Spec.TiKV.GetLogTailerSpec().ResourceRequirements),
+			VolumeMounts:    []corev1.VolumeMount{tikvDataVol},
 			Command: []string{
 				"sh",
 				"-c",
@@ -456,17 +454,15 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			},
 		})
 	}
-	if tc.Spec.TiDB.ShouldSeparateRaftLog() {
+	if tc.Spec.TiKV.ShouldSeparateRaftLog() {
 		// mount a shared volume and tail the Raft log to STDOUT using a sidecar.
 		raftLogFilePath := path.Join(tikvDataVol.MountPath, "raft/LOG")
 		containers = append(containers, corev1.Container{
 			Name:            v1alpha1.RaftLogTailerMemberType.String(),
 			Image:           tc.HelperImage(),
 			ImagePullPolicy: tc.HelperImagePullPolicy(),
-			// we can reuse the SlowLogTailerSpec here
-			// or maybe we should rename SlowLogTailerSpec to LogTailerSpec
-			Resources:    controller.ContainerResource(tc.Spec.TiDB.GetSlowLogTailerSpec().ResourceRequirements),
-			VolumeMounts: []corev1.VolumeMount{tikvDataVol},
+			Resources:       controller.ContainerResource(tc.Spec.TiKV.GetLogTailerSpec().ResourceRequirements),
+			VolumeMounts:    []corev1.VolumeMount{tikvDataVol},
 			Command: []string{
 				"sh",
 				"-c",

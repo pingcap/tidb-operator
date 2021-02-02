@@ -418,6 +418,20 @@ type TiKVSpec struct {
 	// +optional
 	MaxFailoverCount *int32 `json:"maxFailoverCount,omitempty"`
 
+	// Whether output the RocksDB log in an separate sidecar container
+	// Optional: Defaults to true
+	// +optional
+	SeparateRocksDBLog *bool `json:"separateRockDBLog,omitempty"`
+
+	// Whether output the Raft log in an separate sidecar container
+	// Optional: Defaults to true
+	// +optional
+	SeparateRaftLog *bool `json:"separateRaftLog,omitempty"`
+
+	// LogTailer is the configurations of the log tailers for TiKV
+	// +optional
+	LogTailer *LogTailerSpec `json:"logTailer,omitempty"`
+
 	// The storageClassName of the persistent volume for TiKV data storage.
 	// Defaults to Kubernetes default storage class.
 	// +optional
@@ -615,16 +629,6 @@ type TiDBSpec struct {
 	// The specification of the slow log tailer sidecar
 	// +optional
 	SlowLogTailer *TiDBSlowLogTailerSpec `json:"slowLogTailer,omitempty"`
-
-	// Whether output the RocksDB log in an separate sidecar container
-	// Optional: Defaults to true
-	// +optional
-	SeparateRocksDBLog *bool `json:"separateRockDBLog,omitempty"`
-
-	// Whether output the Raft log in an separate sidecar container
-	// Optional: Defaults to true
-	// +optional
-	SeparateRaftLog *bool `json:"separateRaftLog,omitempty"`
 
 	// Whether enable the TLS connection between the SQL client and TiDB server
 	// Optional: Defaults to nil
