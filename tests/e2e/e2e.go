@@ -344,14 +344,13 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 	err = tests.CleanOperator(ocfg)
 	framework.ExpectNoError(err, "failed to uninstall operator")
 
-	ginkgo.By("Deleting the namespace for tidb-operator")
-	c, err := framework.LoadClientset()
-	framework.ExpectNoError(err, "failed to load ClientSet")
-	err = c.CoreV1().Namespaces().Delete(ocfg.Namespace, nil)
-	framework.ExpectNoError(err, "failed to delete the namespace for tidb-operator")
-	log.Logf("Waiting for deletion of the namespace for tidb-operator")
-	err = framework.WaitForNamespacesDeleted(c, []string{ocfg.Namespace}, framework.NamespaceCleanupTimeout)
-	framework.ExpectNoError(err, "failed to wait for deletion of the namepsace for tidb-operator")
+	ginkgo.By("Wait for tidb-operator to be uninstalled")
+	err = wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
+		podList, err2 := kubeCli.CoreV1().Pods(ocfg.Namespace).List(metav1.ListOptions{})
+		framework.ExpectNoError(err2, "failed to list pods for tidb-operator")
+		return len(podList.Items) == 0, nil
+	})
+	framework.ExpectNoError(err, "failed to wait for tidb-operator to be uninstalled")
 })
 
 // RunE2ETests checks configuration parameters (specified through flags) and then runs
