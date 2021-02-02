@@ -462,8 +462,8 @@ spec:
     ## if enabled, the slow log will be shown in a separate sidecar container
     # separateSlowLog: true
     # slowLogVolumeName: ""
-    # # configures separate sidecar container, where `image` & `imagePullPolicy` will be overwritten by
-    # # the same field in `TidbCluster.helper`
+    ## configures separate sidecar container, where `image` & `imagePullPolicy` will be overwritten by
+    ## the same field in `TidbCluster.helper`
     # slowLogTailer:
     #   requests:
     #     cpu: 1000m
@@ -644,6 +644,21 @@ spec:
     ## Defaults to false
     ## Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/configure-a-tidb-cluster#mountclusterclientsecret
     mountClusterClientSecret: true
+
+    ## if enabled, the RocksDB log will be shown in a separate sidecar container
+    separateRocksDBLog: true
+
+    ## if enabled, the Raft log will be shown in a separate sidecar container
+    separateRaftLog: true
+
+    ## configures RocksDB/Raft log sidecar container resource requirements
+    # logTailer:
+    #   requests:
+    #     cpu: 1000m
+    #     memory: 1Gi
+    #   limits:
+    #     cpu: 2000m
+    #     memory: 2Gi
 
     ## The storageClassName of the persistent volume for TiKV data storage.
     # storageClassName: ""
