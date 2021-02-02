@@ -945,7 +945,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 			ginkgo.By("Creating tidb cluster with TLS enabled")
 			dashTLSName := fmt.Sprintf("%s-dashboard-tls", tcName)
-			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4)
+			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4Prev)
 			tc.Spec.PD.Replicas = 3
 			tc.Spec.PD.TLSClientSecretName = &dashTLSName
 			tc.Spec.TiKV.Replicas = 3
@@ -955,7 +955,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tc.Spec.Pump = &v1alpha1.PumpSpec{
 				Replicas:             1,
 				BaseImage:            "pingcap/tidb-binlog",
-				ResourceRequirements: fixture.WithStorage(fixture.BurstbleSmall, "1Gi"),
+				ResourceRequirements: fixture.WithStorage(fixture.BurstableSmall, "1Gi"),
 				Config: tcconfig.New(map[string]interface{}{
 					"addr": "0.0.0.0:8250",
 				}),
@@ -1111,7 +1111,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tc.Spec.Pump = &v1alpha1.PumpSpec{
 				Replicas:             1,
 				BaseImage:            "pingcap/tidb-binlog",
-				ResourceRequirements: fixture.WithStorage(fixture.BurstbleSmall, "1Gi"),
+				ResourceRequirements: fixture.WithStorage(fixture.BurstableSmall, "1Gi"),
 				Config: tcconfig.New(map[string]interface{}{
 					"addr": "0.0.0.0:8250",
 				}),

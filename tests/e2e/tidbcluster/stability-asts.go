@@ -438,7 +438,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			oa.CleanCRDOrDie()
 		}()
 
-		tc := fixture.GetTidbCluster(ns, "upgrade-cluster", utilimage.TiDBV4)
+		tc := fixture.GetTidbCluster(ns, "upgrade-cluster", utilimage.TiDBV4Prev)
 		tc.Spec.PD.Replicas = 5
 		tc.Spec.TiKV.Replicas = 4
 		tc.Spec.TiDB.Replicas = 3
@@ -467,12 +467,12 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 
-		ginkgo.By("Upgrding the cluster")
+		ginkgo.By("Upgrading the cluster")
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 			tc.Spec.Version = utilimage.TiDBV4
 			return nil
 		})
-		framework.ExpectNoError(err, "failed to update TidbCluster %s/%s", ns, tc.Name)
+		framework.ExpectNoError(err, "failed to upgrade TidbCluster %s/%s", ns, tc.Name)
 		ginkgo.By("Checking for tidb cluster is ready")
 		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
