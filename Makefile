@@ -124,7 +124,7 @@ test:
 	@go test ./cmd/backup-manager/app/... ./pkg/... && echo -e "\nUnit tests run successfully!"
 endif
 
-ALL_CHECKS = EOF codegen terraform boilerplate openapi-spec crd-groups spelling
+ALL_CHECKS = EOF codegen boilerplate openapi-spec crd-groups spelling
 
 check: $(addprefix check-,$(ALL_CHECKS)) lint tidy 
 
