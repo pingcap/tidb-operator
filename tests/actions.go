@@ -3463,7 +3463,7 @@ func (oa *operatorActions) eventWorker() {
 }
 
 func (oa *operatorActions) getHelmUpgradeClusterCmd(info *TidbClusterConfig, setString map[string]string, setBoolean map[string]bool) (string, error) {
-	cmd := fmt.Sprintf("helm upgrade %s %s --namespace %s --set-string %s --set %s",
+	cmd := fmt.Sprintf("helm upgrade %s %s --namespace %s --set-string %s --set %s --set-file tikv.config=/etc/tikv.toml",
 		info.ClusterName,
 		oa.tidbClusterChartPath(info.OperatorTag),
 		info.Namespace,
