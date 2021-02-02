@@ -209,29 +209,19 @@ def build(String name, String code, Map resources = e2ePodResources) {
                             """
                         }
                         stage('Run') {
-                            withCredentials([
-                                string(credentialsId: "tp-codecov-token", variable: 'CODECOV_TOKEN')
-                            ]) {
-                                sh """#!/bin/bash
-                                export GOPATH=${WORKSPACE}/go
-                                export ARTIFACTS=${ARTIFACTS}
-                                export RUNNER_SUITE_NAME=${name}
-                                export CODECOV_TOKEN=${CODECOV_TOKEN}
-                                export SRC_BRANCH=${SRC_BRANCH}
-                                export BUILD_NUMBER=${BUILD_NUMBER}
-                                export GIT_COMMIT=${GIT_COMMIT}
-                                export PR_ID=${PR_ID}
+                            sh """#!/bin/bash
+                            export GOPATH=${WORKSPACE}/go
+                            export ARTIFACTS=${ARTIFACTS}
+                            export RUNNER_SUITE_NAME=${name}
 
-                                echo "info: create local path for data and coverage"
-                                mount --make-rshared /
-                                mkdir /kind-data
-                                mkdir -p /kind-data/control-plane/coverage
-                                mkdir -p /kind-data/worker1/coverage
-                                mkdir -p /kind-data/worker2/coverage
-                                mkdir -p /kind-data/worker3/coverage
-                                ${code}
-                                """
-                            }
+                            echo "info: create local path for data and coverage"
+                            mount --make-rshared /
+                            mkdir -p /kind-data/control-plane/coverage
+                            mkdir -p /kind-data/worker1/coverage
+                            mkdir -p /kind-data/worker2/coverage
+                            mkdir -p /kind-data/worker3/coverage
+                            ${code}
+                            """
                         }
                         stage('Coverage') {
                             withCredentials([
@@ -371,10 +361,7 @@ try {
                     }
 
                     stage("Prepare for e2e") {
-                        withCredentials([
-                            usernamePassword(credentialsId: 'TIDB_OPERATOR_HUB_DEV_AUTH', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD'),
-                            string(credentialsId: "tp-codecov-token", variable: 'CODECOV_TOKEN')
-                        ]) {
+                        withCredentials([usernamePassword(credentialsId: 'TIDB_OPERATOR_HUB_DEV_AUTH', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
                             sh """#!/bin/bash
                             set -eu
                             echo "info: logging into hub-dev.pingcap.net"
@@ -383,10 +370,9 @@ try {
                             echo "test: show docker daemon config file"
                             cat /etc/docker/daemon.json
                             echo "info: patch charts to enable coverage profile"
-                            BUILD_NUMBER=${BUILD_NUMBER} SRC_BRANCH=${SRC_BRANCH} GIT_COMMIT=${GIT_COMMIT} PR_ID=${PR_ID} CODECOV_TOKEN=${CODECOV_TOKEN} ./hack/e2e-patch-codecov.sh
+                            ./hack/e2e-patch-codecov.sh
                             E2E=y NO_BUILD=y DOCKER_REPO=hub-dev.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} make docker-push e2e-docker-push
                             echo "info: download binaries for e2e"
-                            SRC_BRANCH=${SRC_BRANCH} GIT_COMMIT=${GIT_COMMIT} PR_ID=${PR_ID} \
                             E2E=y SKIP_BUILD=y SKIP_IMAGE_BUILD=y SKIP_UP=y SKIP_TEST=y SKIP_DOWN=y ./hack/e2e.sh
                             echo "info: change ownerships for jenkins"
                             # we run as root in our pods, this is required
@@ -401,7 +387,7 @@ try {
         }
         }
 
-        def GLOBALS = "KIND_DATA_HOSTPATH=/kind-data KIND_ETCD_DATADIR=/mnt/tmpfs/etcd E2E=y SKIP_DOWN=y SKIP_BUILD=y SKIP_IMAGE_BUILD=y DOCKER_REPO=hub-dev.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} DELETE_NAMESPACE_ON_FAILURE=${params.DELETE_NAMESPACE_ON_FAILURE} GINKGO_NO_COLOR=y"
+        def GLOBALS = "KIND_DATA_HOSTPATH=/kind-data KIND_ETCD_DATADIR=/mnt/tmpfs/etcd E2E=y SKIP_BUILD=y SKIP_IMAGE_BUILD=y DOCKER_REPO=hub-dev.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} DELETE_NAMESPACE_ON_FAILURE=${params.DELETE_NAMESPACE_ON_FAILURE} GINKGO_NO_COLOR=y"
         build("tidb-operator", "${GLOBALS} GINKGO_NODES=${params.GINKGO_NODES} ./hack/e2e.sh -- ${params.E2E_ARGS}")
 
         if (GIT_REF ==~ /^(master|)$/ || GIT_REF ==~ /^(release-.*)$/

@@ -208,13 +208,6 @@ QUAY_IO_MIRROR=${QUAY_IO_MIRROR:-}
 SKIP_GINKGO=${SKIP_GINKGO:-}
 RUNNER_SUITE_NAME=${RUNNER_SUITE_NAME:-}
 ARTIFACTS=${ARTIFACTS:-}
-# For uploading code coverage to codecov.
-CODECOV_TOKEN=${CODECOV_TOKEN:-}
-SRC_BRANCH=${SRC_BRANCH:-}
-GITHUB_RUN_ID=${GITHUB_RUN_ID:-}
-BUILD_NUMBER=${BUILD_NUMBER:-$GITHUB_RUN_ID}
-GIT_COMMIT=${GIT_COMMIT:-}
-PR_ID=${PR_ID:-}
 
 echo "starting e2e test at $(date -Iseconds -u)"
 echo "PROVIDER: $PROVIDER"
@@ -245,11 +238,6 @@ echo "DOCKER_IO_MIRROR: $DOCKER_IO_MIRROR"
 echo "GCR_IO_MIRROR: $GCR_IO_MIRROR"
 echo "QUAY_IO_MIRROR: $QUAY_IO_MIRROR"
 echo "ARTIFACTS: $ARTIFACTS"
-
-echo "SRC_BRANCH: $SRC_BRANCH"
-echo "BUILD_NUMBER: $BUILD_NUMBER"
-echo "GIT_COMMIT: $GIT_COMMIT"
-echo "PR_ID: $PR_ID"
 
 # https://github.com/kubernetes-sigs/kind/releases/tag/v0.8.1
 declare -A kind_node_images
@@ -615,12 +603,6 @@ export TIDB_OPERATOR_IMAGE=$DOCKER_REPO/tidb-operator:${IMAGE_TAG}
 export TIDB_BACKUP_MANAGER_IMAGE=$DOCKER_REPO/tidb-backup-manager:${IMAGE_TAG}
 export E2E_IMAGE=$DOCKER_REPO/tidb-operator-e2e:${IMAGE_TAG}
 export PATH=$OUTPUT_BIN:$PATH
-export CODECOV_TOKEN
-export SRC_BRANCH
-export GITHUB_RUN_ID
-export BUILD_NUMBER
-export GIT_COMMIT
-export PR_ID
 
 if [ -n "${ARTIFACTS}" ]; then
     export REPORT_DIR=${ARTIFACTS}

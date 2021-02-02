@@ -52,13 +52,6 @@ GINKGO_UNTILITFAILS=${GINKGO_UNTILITFAILS:-}
 SKIP_GINKGO=${SKIP_GINKGO:-}
 # We don't delete namespace on failure by default for easier debugging in local development.
 DELETE_NAMESPACE_ON_FAILURE=${DELETE_NAMESPACE_ON_FAILURE:-false}
-# For uploading code coverage to codecov.
-CODECOV_TOKEN=${CODECOV_TOKEN:-}
-SRC_BRANCH=${SRC_BRANCH:-}
-GITHUB_RUN_ID=${GITHUB_RUN_ID:-}
-BUILD_NUMBER=${BUILD_NUMBER:-$GITHUB_RUN_ID}
-GIT_COMMIT=${GIT_COMMIT:-}
-PR_ID=${PR_ID:-}
 
 if [ -z "$KUBECONFIG" ]; then
     echo "error: KUBECONFIG is required"
@@ -82,10 +75,6 @@ echo "GINKGO_TRACE: $GINKGO_TRACE"
 echo "GINKGO_FLAKY_ATTEMPTS: $GINKGO_FLAKY_ATTEMPTS"
 echo "GINKGO_UNTILITFAILS: $GINKGO_UNTILITFAILS"
 echo "DELETE_NAMESPACE_ON_FAILURE: $DELETE_NAMESPACE_ON_FAILURE"
-echo "SRC_BRANCH: $SRC_BRANCH"
-echo "BUILD_NUMBER: $BUILD_NUMBER"
-echo "GIT_COMMIT: $GIT_COMMIT"
-echo "PR_ID: $PR_ID"
 
 function e2e::__wait_for_ds() {
     local ns="$1"
@@ -373,11 +362,6 @@ docker_args=(
     --env KUBECONFIG=/etc/kubernetes/admin.conf
     --env KUBECONTEXT=$KUBECONTEXT
     --env KUBE_SSH_USER=$KUBE_SSH_USER
-    --env CODECOV_TOKEN=$CODECOV_TOKEN
-    --env SRC_BRANCH=$SRC_BRANCH
-    --env BUILD_NUMBER=$BUILD_NUMBER
-    --env GIT_COMMIT=$GIT_COMMIT
-    --env PR_ID=$PR_ID
 )
 
 if [ "$PROVIDER" == "eks" ]; then

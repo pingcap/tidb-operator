@@ -41,16 +41,6 @@ echo "hack/e2e-patch-codecov.sh: setting environment variables and volumes in ch
 cat << EOF >> $CONTROLLER_MANAGER_DEPLOYMENT
           - name: COMPONENT
             value: "controller-manager"
-          - name: SRC_BRANCH
-            value: "$SRC_BRANCH"
-          - name: BUILD_NUMBER
-            value: "$BUILD_NUMBER"
-          - name: GIT_COMMIT
-            value: "$GIT_COMMIT"
-          - name: PR_ID
-            value: "$PR_ID"
-          - name: CODECOV_TOKEN
-            value: "$CODECOV_TOKEN"
         volumeMounts:
           - mountPath: /coverage
             name: coverage
@@ -66,16 +56,6 @@ cat << EOF >> $SCHEDULER_DEPLOYMENT
         env:
         - name: COMPONENT
           value: "scheduler"
-        - name: SRC_BRANCH
-          value: "$SRC_BRANCH"
-        - name: BUILD_NUMBER
-          value: "$BUILD_NUMBER"
-        - name: GIT_COMMIT
-          value: "$GIT_COMMIT"
-        - name: PR_ID
-          value: "$PR_ID"
-        - name: CODECOV_TOKEN
-          value: "$CODECOV_TOKEN"
         volumeMounts:
           - mountPath: /coverage
             name: coverage
@@ -89,16 +69,6 @@ EOF
 cat << EOF >> $DISCOVERY_DEPLOYMENT
           - name: COMPONENT
             value: "discovery"
-          - name: SRC_BRANCH
-            value: "$SRC_BRANCH"
-          - name: BUILD_NUMBER
-            value: "$BUILD_NUMBER"
-          - name: GIT_COMMIT
-            value: "$GIT_COMMIT"
-          - name: PR_ID
-            value: "$PR_ID"
-          - name: CODECOV_TOKEN
-            value: "$CODECOV_TOKEN"
         volumeMounts:
           - mountPath: /coverage
             name: coverage

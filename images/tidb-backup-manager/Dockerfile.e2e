@@ -2,9 +2,7 @@ FROM pingcap/tidb-enterprise-tools:latest
 ARG RCLONE_VERSION=v1.51.0
 ARG SHUSH_VERSION=v1.4.0
 ARG TOOLKIT_V40=v4.0.9
-RUN apk update && apk add tzdata ca-certificates curl bash
-
-RUN curl -L "https://codecov.io/bash" -o "/codecov" && chmod 755 /codecov
+RUN apk update && apk add tzdata ca-certificates bash
 
 RUN wget -nv https://github.com/ncw/rclone/releases/download/${RCLONE_VERSION}/rclone-${RCLONE_VERSION}-linux-amd64.zip \
   && unzip rclone-${RCLONE_VERSION}-linux-amd64.zip \
@@ -27,8 +25,7 @@ RUN \
   && rm -rf tidb-toolkit-${TOOLKIT_V40}-linux-amd64
 
 COPY bin/tidb-backup-manager /tidb-backup-manager
+COPY e2e-entrypoint.sh /e2e-entrypoint.sh
 
-COPY /e2e-entrypoint.sh /e2e-entrypoint.sh
-RUN chmod 755 /e2e-entrypoint.sh
 
 ENTRYPOINT ["/e2e-entrypoint.sh"]
