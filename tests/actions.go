@@ -155,6 +155,7 @@ const (
 type OperatorActions interface {
 	CleanCRDOrDie()
 	InstallCRDOrDie(info *OperatorConfig)
+	DeployReleasedCRDOrDie(version string)
 	DeployOperator(info *OperatorConfig) error
 	DeployOperatorOrDie(info *OperatorConfig)
 	CleanOperatorOrDie(info *OperatorConfig)
@@ -553,6 +554,27 @@ func (oa *operatorActions) InstallCRDOrDie(info *OperatorConfig) {
 	log.Logf("force sync kubectl cache")
 	cmdArgs := []string{"sh", "-c", "rm -rf ~/.kube/cache ~/.kube/http-cache"}
 	_, err := exec.Command(cmdArgs[0], cmdArgs[1:]...).CombinedOutput()
+	if err != nil {
+		log.Failf("Failed to run '%s': %v", strings.Join(cmdArgs, " "), err)
+	}
+}
+
+func (oa *operatorActions) DeployReleasedCRDOrDie(version string) {
+	url := fmt.Sprintf("https://raw.githubusercontent.com/pingcap/tidb-operator/%s/manifests/crd.yaml", version)
+	err := wait.PollImmediate(time.Second*10, time.Minute, func() (bool, error) {
+		_, err := framework.RunKubectl("apply", "-f", url)
+		if err != nil {
+			return false, nil
+		}
+		return true, nil
+	})
+	framework.ExpectNoError(err, "failed to apply CRD of version %s", version)
+	log.Logf("Wait for all CRDs are established")
+	e2eutil.WaitForCRDsEstablished(oa.apiExtCli, labels.Everything())
+	// workaround for https://github.com/kubernetes/kubernetes/issues/65517
+	log.Logf("force sync kubectl cache")
+	cmdArgs := []string{"sh", "-c", "rm -rf ~/.kube/cache ~/.kube/http-cache"}
+	_, err = exec.Command(cmdArgs[0], cmdArgs[1:]...).CombinedOutput()
 	if err != nil {
 		log.Failf("Failed to run '%s': %v", strings.Join(cmdArgs, " "), err)
 	}
