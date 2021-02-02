@@ -139,7 +139,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 
 		ginkgo.It("Scaling tidb cluster with advanced statefulset", func() {
 			clusterName := "scaling-with-asts"
-			tc := fixture.GetTidbClusterWithTiFlash(ns, clusterName, utilimage.TiDBV4UpgradeVersion)
+			tc := fixture.GetTidbClusterWithTiFlash(ns, clusterName, utilimage.TiDBV4)
 			tc.Spec.PD.Replicas = 3
 			tc.Spec.TiKV.Replicas = 5
 			tc.Spec.TiDB.Replicas = 5
@@ -346,7 +346,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			oa.CleanCRDOrDie()
 		}()
 
-		tc := fixture.GetTidbCluster(ns, "sts", utilimage.TiDBV4UpgradeVersion)
+		tc := fixture.GetTidbCluster(ns, "sts", utilimage.TiDBV4)
 		err = genericCli.Create(context.TODO(), tc)
 		framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
 		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
@@ -438,7 +438,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			oa.CleanCRDOrDie()
 		}()
 
-		tc := fixture.GetTidbCluster(ns, "upgrade-cluster", utilimage.TiDBV4UpgradeVersion)
+		tc := fixture.GetTidbCluster(ns, "upgrade-cluster", utilimage.TiDBV4)
 		tc.Spec.PD.Replicas = 5
 		tc.Spec.TiKV.Replicas = 4
 		tc.Spec.TiDB.Replicas = 3
@@ -469,7 +469,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 
 		ginkgo.By("Upgrding the cluster")
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-			tc.Spec.Version = utilimage.TiDBV4UpgradeVersion
+			tc.Spec.Version = utilimage.TiDBV4
 			return nil
 		})
 		framework.ExpectNoError(err, "failed to update TidbCluster %s/%s", ns, tc.Name)
