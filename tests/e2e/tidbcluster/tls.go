@@ -370,6 +370,8 @@ func InstallCertManager(cli clientset.Interface) error {
 		return err
 	}
 
+	// It may take a minute or so for the TLS assets required for the webhook to function to be provisioned.
+	time.Sleep(time.Minute)
 	return nil
 }
 

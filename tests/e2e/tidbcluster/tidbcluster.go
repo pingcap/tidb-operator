@@ -920,11 +920,6 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	})
 
 	ginkgo.Context("[Feature: TLS]", func() {
-		ginkgo.BeforeEach(func() {
-			// It may take a minute or so for the TLS assets required for the webhook to function to be provisioned.
-			time.Sleep(time.Minute)
-		})
-
 		ginkgo.It("should enable TLS for MySQL Client and between TiDB components", func() {
 			tcName := "tls"
 
