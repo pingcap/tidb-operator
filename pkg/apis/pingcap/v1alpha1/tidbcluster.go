@@ -27,11 +27,13 @@ import (
 
 const (
 	// defaultHelperImage is default image of helper
-	defaultHelperImage     = "busybox:1.26.2"
-	defaultTimeZone        = "UTC"
-	defaultExposeStatus    = true
-	defaultSeparateSlowLog = true
-	defaultEnablePVReclaim = false
+	defaultHelperImage        = "busybox:1.26.2"
+	defaultTimeZone           = "UTC"
+	defaultExposeStatus       = true
+	defaultSeparateSlowLog    = true
+	defaultSeparateRocksDBLog = true
+	defaultSeparateRaftLog    = true
+	defaultEnablePVReclaim    = false
 	// defaultEvictLeaderTimeout is the timeout limit of evict leader
 	defaultEvictLeaderTimeout = 3 * time.Minute
 )
@@ -621,6 +623,22 @@ func (tidb *TiDBSpec) GetSlowLogTailerSpec() TiDBSlowLogTailerSpec {
 		return defaultTailerSpec
 	}
 	return *tidb.SlowLogTailer
+}
+
+func (tidb *TiDBSpec) ShouldSeparateRocksDBLog() bool {
+	separateRocksDBLog := tidb.SeparateSlowLog
+	if separateRocksDBLog == nil {
+		return defaultSeparateRocksDBLog
+	}
+	return *separateRocksDBLog
+}
+
+func (tidb *TiDBSpec) ShouldSeparateRaftLog() bool {
+	separateRaftLog := tidb.SeparateRaftLog
+	if separateRaftLog == nil {
+		return defaultSeparateRaftLog
+	}
+	return *separateRaftLog
 }
 
 func (tidbSvc *TiDBServiceSpec) ShouldExposeStatus() bool {

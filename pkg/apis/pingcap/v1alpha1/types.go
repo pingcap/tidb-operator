@@ -58,8 +58,12 @@ const (
 	DMMasterMemberType MemberType = "dm-master"
 	// DMWorkerMemberType is dm-worker container type
 	DMWorkerMemberType MemberType = "dm-worker"
-	// SlowLogTailerMemberType is tidb log tailer container type
+	// SlowLogTailerMemberType is tidb slow log tailer container type
 	SlowLogTailerMemberType MemberType = "slowlog"
+	// RocksDBLogTailerMemberType is tikv rocksdb log tailer container type
+	RocksDBLogTailerMemberType MemberType = "rocksdblog"
+	// RaftLogTailerMemeberType is tikv raft log tailer container type
+	RaftLogTailerMemberType MemberType = "raftlog"
 	// TidbMonitorMemberType is tidbmonitor type
 	TidbMonitorMemberType MemberType = "tidbmonitor"
 	// UnknownMemberType is unknown container type
@@ -611,6 +615,16 @@ type TiDBSpec struct {
 	// The specification of the slow log tailer sidecar
 	// +optional
 	SlowLogTailer *TiDBSlowLogTailerSpec `json:"slowLogTailer,omitempty"`
+
+	// Whether output the RocksDB log in an separate sidecar container
+	// Optional: Defaults to true
+	// +optional
+	SeparateRocksDBLog *bool `json:"separateRockDBLog,omitempty"`
+
+	// Whether output the Raft log in an separate sidecar container
+	// Optional: Defaults to true
+	// +optional
+	SeparateRaftLog *bool `json:"separateRaftLog,omitempty"`
 
 	// Whether enable the TLS connection between the SQL client and TiDB server
 	// Optional: Defaults to nil

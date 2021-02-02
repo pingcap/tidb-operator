@@ -461,6 +461,7 @@ spec:
 
     ## if enabled, the slow log will be shown in a separate sidecar container
     # separateSlowLog: true
+    # slowLogVolumeName: ""
     # # configures separate sidecar container, where `image` & `imagePullPolicy` will be overwritten by
     # # the same field in `TidbCluster.helper`
     # slowLogTailer:
