@@ -255,7 +255,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	})
 
 	ginkgo.It("should upgrade TidbCluster with webhook enabled", func() {
-		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "cluster", "admin", utilimage.TiDBV4)
+		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "cluster", "admin", utilimage.TiDBV4Prev)
 		tcCfg.Resources["pd.replicas"] = "3"
 
 		ginkgo.By("Creating webhook certs and self signing it")
@@ -804,7 +804,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	ginkgo.It("can be paused and resumed", func() {
 		ginkgo.By("Deploy initial tc")
 		tcName := "paused"
-		tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4)
+		tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4Prev)
 		tc.Spec.PD.Replicas = 1
 		tc.Spec.TiKV.Replicas = 1
 		tc.Spec.TiDB.Replicas = 1
@@ -823,7 +823,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		})
 		framework.ExpectNoError(err, "failed to pause TidbCluster: %q", tc.Name)
 
-		ginkgo.By(fmt.Sprintf("change tc version to %q", utilimage.TiDBV4))
+		ginkgo.By(fmt.Sprintf("upgrade tc version to %q", utilimage.TiDBV4))
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 			tc.Spec.Version = utilimage.TiDBV4
 			return nil
