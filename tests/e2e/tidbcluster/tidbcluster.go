@@ -140,6 +140,8 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					ginkgo.By("Deploy a basic tc")
 					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("basic-%s", versionDashed), version)
 					tc.Spec.TiDB.Replicas = 1
+					tc.Spec.TiKV.SeparateRocksDBLog = pointer.BoolPtr(true)
+					tc.Spec.TiKV.SeparateRaftLog = pointer.BoolPtr(true)
 					_, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
 					framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
 					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 30*time.Second)
