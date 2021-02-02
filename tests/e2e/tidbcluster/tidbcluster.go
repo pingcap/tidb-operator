@@ -407,7 +407,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	// TODO: Add pump configmap rolling-update case
 	ginkgo.It("should adopt helm created pump with TidbCluster CR", func() {
 		ginkgo.By("Deploy initial tc")
-		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "pump", "admin", utilimage.TiDBV4Version)
+		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "pump", "admin", utilimage.TiDBV3Version)
 		tcCfg.Resources["pd.replicas"] = "1"
 		tcCfg.Resources["tikv.replicas"] = "1"
 		tcCfg.Resources["tidb.replicas"] = "1"
@@ -545,7 +545,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 	ginkgo.It("should migrate from helm to CR", func() {
 		ginkgo.By("Deploy initial tc")
-		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "helm-migration", "admin", utilimage.TiDBV4Version)
+		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "helm-migration", "admin", utilimage.TiDBV3Version)
 		tcCfg.Resources["pd.replicas"] = "1"
 		tcCfg.Resources["tikv.replicas"] = "1"
 		tcCfg.Resources["tidb.replicas"] = "1"
@@ -825,7 +825,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	ginkgo.It("can be paused and resumed", func() {
 		ginkgo.By("Deploy initial tc")
 		tcName := "paused"
-		tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4Version)
+		tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV3Version)
 		tc.Spec.PD.Replicas = 1
 		tc.Spec.TiKV.Replicas = 1
 		tc.Spec.TiDB.Replicas = 1
@@ -844,9 +844,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		})
 		framework.ExpectNoError(err, "failed to pause TidbCluster: %q", tc.Name)
 
-		ginkgo.By(fmt.Sprintf("change tc version to %q", utilimage.TiDBV4UpgradeVersion))
+		ginkgo.By(fmt.Sprintf("change tc version to %q", utilimage.TiDBV3UpgradeVersion))
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-			tc.Spec.Version = utilimage.TiDBV4UpgradeVersion
+			tc.Spec.Version = utilimage.TiDBV3UpgradeVersion
 			return nil
 		})
 		framework.ExpectNoError(err, "failed to upgrade TidbCluster version: %q", tc.Name)
@@ -1275,7 +1275,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	ginkgo.It("should ensure changing TiDB service annotations won't change TiDB service type NodePort", func() {
 		ginkgo.By("Deploy initial tc")
 		// Create TidbCluster with NodePort to check whether node port would change
-		nodeTc := fixture.GetTidbCluster(ns, "nodeport", utilimage.TiDBV4Version)
+		nodeTc := fixture.GetTidbCluster(ns, "nodeport", utilimage.TiDBV3Version)
 		nodeTc.Spec.PD.Replicas = 1
 		nodeTc.Spec.TiKV.Replicas = 1
 		nodeTc.Spec.TiDB.Replicas = 1
