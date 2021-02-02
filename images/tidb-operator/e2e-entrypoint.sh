@@ -33,4 +33,12 @@ for ((i=0; i < $#; i++)); do
 done
 set "${args[@]}"
 
-$@
+eval "($@) &"
+PID=$!
+
+_term() {
+  kill -TERM $PID
+}
+
+trap _term SIGTERM
+wait
