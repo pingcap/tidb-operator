@@ -344,6 +344,7 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 	ocfg := e2econfig.NewDefaultOperatorConfig(e2econfig.TestConfig)
 	err = tests.CleanOperator(ocfg)
 	framework.ExpectNoError(err, "failed to uninstall operator")
+	time.Sleep(5 * time.Minute)
 })
 
 // RunE2ETests checks configuration parameters (specified through flags) and then runs
