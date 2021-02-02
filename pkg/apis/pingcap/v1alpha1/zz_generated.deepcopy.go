@@ -5133,6 +5133,16 @@ func (in *TiDBSpec) DeepCopyInto(out *TiDBSpec) {
 		*out = new(TiDBSlowLogTailerSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.SeparateRocksDBLog != nil {
+		in, out := &in.SeparateRocksDBLog, &out.SeparateRocksDBLog
+		*out = new(bool)
+		**out = **in
+	}
+	if in.SeparateRaftLog != nil {
+		in, out := &in.SeparateRaftLog, &out.SeparateRaftLog
+		*out = new(bool)
+		**out = **in
+	}
 	if in.TLSClient != nil {
 		in, out := &in.TLSClient, &out.TLSClient
 		*out = new(TiDBTLSClient)

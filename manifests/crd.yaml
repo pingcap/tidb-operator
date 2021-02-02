@@ -8625,6 +8625,10 @@ spec:
                   type: object
                 schedulerName:
                   type: string
+                separateRaftLog:
+                  type: boolean
+                separateRockDBLog:
+                  type: boolean
                 separateSlowLog:
                   type: boolean
                 service:

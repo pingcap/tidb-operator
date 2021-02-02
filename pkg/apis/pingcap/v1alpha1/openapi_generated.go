@@ -7120,6 +7120,20 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBSlowLogTailerSpec"),
 						},
 					},
+					"separateRockDBLog": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether output the RocksDB log in an separate sidecar container Optional: Defaults to true",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"separateRaftLog": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether output the Raft log in an separate sidecar container Optional: Defaults to true",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 					"tlsClient": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Whether enable the TLS connection between the SQL client and TiDB server Optional: Defaults to nil",

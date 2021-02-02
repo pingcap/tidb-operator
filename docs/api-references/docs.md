@@ -13520,6 +13520,32 @@ TiDBSlowLogTailerSpec
 </tr>
 <tr>
 <td>
+<code>separateRockDBLog</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether output the RocksDB log in an separate sidecar container
+Optional: Defaults to true</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>separateRaftLog</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether output the Raft log in an separate sidecar container
+Optional: Defaults to true</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>tlsClient</code></br>
 <em>
 <a href="#tidbtlsclient">
