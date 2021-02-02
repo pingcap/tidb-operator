@@ -207,7 +207,7 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 	framework.ExpectNoError(err, "failed to create TidbCluster tcFrom: %v", tcFrom)
 
 	// create restore cluster
-	tcTo := fixture.GetTidbCluster(ns, tcNameTo, utilimage.TiDBV4Version)
+	tcTo := fixture.GetTidbCluster(ns, tcNameTo, utilimage.TiDBV4UpgradeVersion)
 	tcTo.Spec.PD.Replicas = 1
 	tcTo.Spec.TiKV.Replicas = 1
 	tcTo.Spec.TiDB.Replicas = 1
@@ -220,11 +220,11 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 	// wait both tidbcluster ready
 	err = oa.WaitForTidbClusterReady(tcFrom, 30*time.Minute, 15*time.Second)
 	framework.ExpectNoError(err, "failed to wait for TidbCluster tcFrom ready")
-	clusterFrom := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameFrom, "", utilimage.TiDBV4Version)
+	clusterFrom := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameFrom, "", utilimage.TiDBV4UpgradeVersion)
 
 	err = oa.WaitForTidbClusterReady(tcTo, 30*time.Minute, 15*time.Second)
 	framework.ExpectNoError(err, "failed to wait for TidbCluster tcTo ready")
-	clusterTo := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameTo, "", utilimage.TiDBV4Version)
+	clusterTo := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameTo, "", utilimage.TiDBV4UpgradeVersion)
 
 	// import some data to sql with blockwriter
 	ginkgo.By(fmt.Sprintf("Begin inserting data into cluster %q", clusterFrom.ClusterName))
