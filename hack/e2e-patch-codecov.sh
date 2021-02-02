@@ -52,19 +52,25 @@ cat << EOF >> $CONTROLLER_MANAGER_DEPLOYMENT
 EOF
 
 # for SCHEDULER_DEPLOYMENT, no `env:` added with default values.
-cat << EOF >> $SCHEDULER_DEPLOYMENT
+line=$(grep -n 'name: kube-scheduler' $SCHEDULER_DEPLOYMENT | cut -d ":" -f 1)
+head -n $(($line-1)) $SCHEDULER_DEPLOYMENT > /tmp/scheduler-deployment.yaml
+cat >> /tmp/scheduler-deployment.yaml <<EOF
         env:
         - name: COMPONENT
           value: "scheduler"
         volumeMounts:
           - mountPath: /coverage
             name: coverage
+EOF
+tail -n +$line $SCHEDULER_DEPLOYMENT >> /tmp/scheduler-deployment.yaml
+cat << EOF >> /tmp/scheduler-deployment.yaml
       volumes:
         - name: coverage
           hostPath:
             path: /mnt/disks/coverage
             type: Directory
 EOF
+mv -f /tmp/scheduler-deployment.yaml $SCHEDULER_DEPLOYMENT
 
 cat << EOF >> $DISCOVERY_DEPLOYMENT
           - name: COMPONENT
