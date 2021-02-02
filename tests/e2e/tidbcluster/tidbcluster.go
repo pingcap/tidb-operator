@@ -890,12 +890,12 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	ginkgo.Context("[Feature: AutoFailover]", func() {
 		// TODO: explain purpose of this case
 		ginkgo.It("should clear TiDB failureMembers when scale TiDB to zero", func() {
-			ginkgo.By("Deploy initial tc with bad tidb pre-start script")
+			ginkgo.By("Deploy initial tc")
 			tc := fixture.GetTidbCluster(ns, "tidb-scale", utilimage.TiDBV4Version)
-			tc.Spec.PD.Replicas = 3
+			tc.Spec.PD.Replicas = 1
 			tc.Spec.TiKV.Replicas = 1
 			tc.Spec.TiDB.Replicas = 1
-			tc.Spec.TiDB.Image = "fake-image"
+			tc.Spec.TiDB.Config.Set("log.file.max-size", "300")
 			// Deploy
 			err := genericCli.Create(context.TODO(), tc)
 			framework.ExpectNoError(err, "Expected TiDB cluster created")
@@ -903,6 +903,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			ginkgo.By("check tidb failure member count")
 			ns := tc.Namespace
 			tcName := tc.Name
+
 			err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
 				var tc *v1alpha1.TidbCluster
 				var err error
@@ -924,8 +925,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				return nil
 			})
 			framework.ExpectNoError(err, "failed to scale out TidbCluster: %q", tc.Name)
-			err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 5*time.Second)
-			framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+			
 			err = wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
 				var tc *v1alpha1.TidbCluster
 				var err error
