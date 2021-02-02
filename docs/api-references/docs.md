@@ -6335,7 +6335,8 @@ uint32
 <h3 id="logtailerspec">LogTailerSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#tiflashspec">TiFlashSpec</a>)
+<a href="#tiflashspec">TiFlashSpec</a>, 
+<a href="#tikvspec">TiKVSpec</a>)
 </p>
 <p>
 <p>LogTailerSpec represents an optional log tailer sidecar container</p>
@@ -13520,32 +13521,6 @@ TiDBSlowLogTailerSpec
 </tr>
 <tr>
 <td>
-<code>separateRockDBLog</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Whether output the RocksDB log in an separate sidecar container
-Optional: Defaults to true</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>separateRaftLog</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Whether output the Raft log in an separate sidecar container
-Optional: Defaults to true</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>tlsClient</code></br>
 <em>
 <a href="#tidbtlsclient">
@@ -17943,6 +17918,46 @@ int32
 <em>(Optional)</em>
 <p>MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover
 Optional: Defaults to 3</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>separateRockDBLog</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether output the RocksDB log in an separate sidecar container
+Optional: Defaults to true</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>separateRaftLog</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether output the Raft log in an separate sidecar container
+Optional: Defaults to true</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logTailer</code></br>
+<em>
+<a href="#logtailerspec">
+LogTailerSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LogTailer is the configurations of the log tailers for TiKV</p>
 </td>
 </tr>
 <tr>

@@ -8625,10 +8625,6 @@ spec:
                   type: object
                 schedulerName:
                   type: string
-                separateRaftLog:
-                  type: boolean
-                separateRockDBLog:
-                  type: boolean
                 separateSlowLog:
                   type: boolean
                 service:
@@ -12701,6 +12697,13 @@ spec:
                   type: array
                 limits:
                   type: object
+                logTailer:
+                  properties:
+                    limits:
+                      type: object
+                    requests:
+                      type: object
+                  type: object
                 maxFailoverCount:
                   format: int32
                   type: integer
@@ -12772,6 +12775,10 @@ spec:
                   type: object
                 schedulerName:
                   type: string
+                separateRaftLog:
+                  type: boolean
+                separateRockDBLog:
+                  type: boolean
                 serviceAccount:
                   type: string
                 statefulSetUpdateStrategy:

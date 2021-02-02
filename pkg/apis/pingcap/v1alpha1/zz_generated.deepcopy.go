@@ -5133,16 +5133,6 @@ func (in *TiDBSpec) DeepCopyInto(out *TiDBSpec) {
 		*out = new(TiDBSlowLogTailerSpec)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.SeparateRocksDBLog != nil {
-		in, out := &in.SeparateRocksDBLog, &out.SeparateRocksDBLog
-		*out = new(bool)
-		**out = **in
-	}
-	if in.SeparateRaftLog != nil {
-		in, out := &in.SeparateRaftLog, &out.SeparateRaftLog
-		*out = new(bool)
-		**out = **in
-	}
 	if in.TLSClient != nil {
 		in, out := &in.TLSClient, &out.TLSClient
 		*out = new(TiDBTLSClient)
@@ -7171,6 +7161,21 @@ func (in *TiKVSpec) DeepCopyInto(out *TiKVSpec) {
 		in, out := &in.MaxFailoverCount, &out.MaxFailoverCount
 		*out = new(int32)
 		**out = **in
+	}
+	if in.SeparateRocksDBLog != nil {
+		in, out := &in.SeparateRocksDBLog, &out.SeparateRocksDBLog
+		*out = new(bool)
+		**out = **in
+	}
+	if in.SeparateRaftLog != nil {
+		in, out := &in.SeparateRaftLog, &out.SeparateRaftLog
+		*out = new(bool)
+		**out = **in
+	}
+	if in.LogTailer != nil {
+		in, out := &in.LogTailer, &out.LogTailer
+		*out = new(LogTailerSpec)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.StorageClassName != nil {
 		in, out := &in.StorageClassName, &out.StorageClassName

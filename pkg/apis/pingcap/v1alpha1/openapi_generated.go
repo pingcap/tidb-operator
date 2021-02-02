@@ -7120,20 +7120,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBSlowLogTailerSpec"),
 						},
 					},
-					"separateRockDBLog": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Whether output the RocksDB log in an separate sidecar container Optional: Defaults to true",
-							Type:        []string{"boolean"},
-							Format:      "",
-						},
-					},
-					"separateRaftLog": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Whether output the Raft log in an separate sidecar container Optional: Defaults to true",
-							Type:        []string{"boolean"},
-							Format:      "",
-						},
-					},
 					"tlsClient": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Whether enable the TLS connection between the SQL client and TiDB server Optional: Defaults to nil",
@@ -9743,6 +9729,26 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 							Format:      "int32",
 						},
 					},
+					"separateRockDBLog": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether output the RocksDB log in an separate sidecar container Optional: Defaults to true",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"separateRaftLog": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether output the Raft log in an separate sidecar container Optional: Defaults to true",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"logTailer": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LogTailer is the configurations of the log tailers for TiKV",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LogTailerSpec"),
+						},
+					},
 					"storageClassName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The storageClassName of the persistent volume for TiKV data storage. Defaults to Kubernetes default storage class.",
@@ -9802,7 +9808,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolume", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVConfigWraper", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LogTailerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolume", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVConfigWraper", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
