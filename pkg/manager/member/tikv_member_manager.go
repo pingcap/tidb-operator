@@ -319,12 +319,12 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	}
 
 	annoMount, annoVolume := annotationsMountVolume()
-	dbVol := corev1.VolumeMount{
+	tikvDataVol := corev1.VolumeMount{
 		Name:      v1alpha1.TiKVMemberType.String(),
 		MountPath: tikvDataVolumeMountPath}
 	volMounts := []corev1.VolumeMount{
 		annoMount,
-		dbVol,
+		tikvDataVol,
 		{Name: "config", ReadOnly: true, MountPath: "/etc/tikv"},
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
 	}
@@ -440,7 +440,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	var containers []corev1.Container
 	if tc.Spec.TiDB.ShouldSeparateRocksDBLog() {
 		// mount a shared volume and tail the RocksDB log to STDOUT using a sidecar.
-		rocksDBLogFilePath := path.Join(dbVol.MountPath, "db/LOG")
+		rocksDBLogFilePath := path.Join(tikvDataVol.MountPath, "db/LOG")
 		containers = append(containers, corev1.Container{
 			Name:            v1alpha1.RocksDBLogTailerMemberType.String(),
 			Image:           tc.HelperImage(),
@@ -448,7 +448,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			// we can reuse the SlowLogTailerSpec here
 			// or maybe we should rename SlowLogTailerSpec to LogTailerSpec
 			Resources:    controller.ContainerResource(tc.Spec.TiDB.GetSlowLogTailerSpec().ResourceRequirements),
-			VolumeMounts: []corev1.VolumeMount{dbVol},
+			VolumeMounts: []corev1.VolumeMount{tikvDataVol},
 			Command: []string{
 				"sh",
 				"-c",
@@ -458,7 +458,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	}
 	if tc.Spec.TiDB.ShouldSeparateRaftLog() {
 		// mount a shared volume and tail the Raft log to STDOUT using a sidecar.
-		raftLogFilePath := path.Join(dbVol.MountPath, "raft/LOG")
+		raftLogFilePath := path.Join(tikvDataVol.MountPath, "raft/LOG")
 		containers = append(containers, corev1.Container{
 			Name:            v1alpha1.RaftLogTailerMemberType.String(),
 			Image:           tc.HelperImage(),
@@ -466,7 +466,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			// we can reuse the SlowLogTailerSpec here
 			// or maybe we should rename SlowLogTailerSpec to LogTailerSpec
 			Resources:    controller.ContainerResource(tc.Spec.TiDB.GetSlowLogTailerSpec().ResourceRequirements),
-			VolumeMounts: []corev1.VolumeMount{dbVol},
+			VolumeMounts: []corev1.VolumeMount{tikvDataVol},
 			Command: []string{
 				"sh",
 				"-c",

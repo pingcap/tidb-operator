@@ -62,7 +62,7 @@ const (
 	SlowLogTailerMemberType MemberType = "slowlog"
 	// RocksDBLogTailerMemberType is tikv rocksdb log tailer container type
 	RocksDBLogTailerMemberType MemberType = "rocksdblog"
-	// RaftLogTailerMemeberType is tikv raft log tailer container type
+	// RaftLogTailerMemberType is tikv raft log tailer container type
 	RaftLogTailerMemberType MemberType = "raftlog"
 	// TidbMonitorMemberType is tidbmonitor type
 	TidbMonitorMemberType MemberType = "tidbmonitor"
