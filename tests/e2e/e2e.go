@@ -344,7 +344,15 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 	ocfg := e2econfig.NewDefaultOperatorConfig(e2econfig.TestConfig)
 	err = tests.CleanOperator(ocfg)
 	framework.ExpectNoError(err, "failed to uninstall operator")
-	time.Sleep(5 * time.Minute)
+
+	ginkgo.By("Deleting the namespace for tidb-operator")
+	c, err := framework.LoadClientset()
+	framework.ExpectNoError(err, "failed to load ClientSet")
+	err = c.CoreV1().Namespaces().Delete(ocfg.Namespace, nil)
+	framework.ExpectNoError(err, "failed to delete the namespace for tidb-operator")
+	log.Logf("Waiting for deletion of the namespace for tidb-operator")
+	err = framework.WaitForNamespacesDeleted(c, []string{ocfg.Namespace}, framework.NamespaceCleanupTimeout)
+	framework.ExpectNoError(err, "failed to wait for deletion of the namepsace for tidb-operator")
 })
 
 // RunE2ETests checks configuration parameters (specified through flags) and then runs
