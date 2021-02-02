@@ -319,22 +319,20 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 	ginkgo.It("should keep tidb service in sync", func() {
 		ginkgo.By("Deploy initial tc")
-		tc := fixture.GetTidbCluster(ns, "service", utilimage.TiDBV4Version)
-		tc.Spec.PD.Replicas = 1
-		tc.Spec.TiKV.Replicas = 1
-		tc.Spec.TiDB.Replicas = 1
-		err := genericCli.Create(context.TODO(), tc)
-		framework.ExpectNoError(err, "Expected TiDB cluster created")
-		err = oa.WaitForTidbClusterReady(tc, 6*time.Minute, 5*time.Second)
-		framework.ExpectNoError(err, "Expected TiDB cluster ready")
+		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "service", "admin", utilimage.TiDBV3Version)
+		tcCfg.Resources["pd.replicas"] = "1"
+		tcCfg.Resources["tidb.replicas"] = "1"
+		tcCfg.Resources["tikv.replicas"] = "1"
+		oa.DeployTidbClusterOrDie(&tcCfg)
+		oa.CheckTidbClusterStatusOrDie(&tcCfg)
 
-		ns := tc.Namespace
-		tcName := tc.Name
+		ns := tcCfg.Namespace
+		tcName := tcCfg.ClusterName
 
 		oldSvc, err := c.CoreV1().Services(ns).Get(controller.TiDBMemberName(tcName), metav1.GetOptions{})
-		framework.ExpectNoError(err, "failed to get service for TidbCluster: %v", tc)
-		tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
-		framework.ExpectNoError(err, "failed to get TidbCluster: %v", tc)
+		framework.ExpectNoError(err, "failed to get service for TidbCluster: %v", tcCfg)
+		tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+		framework.ExpectNoError(err, "failed to get TidbCluster: %v", tcCfg)
 		if isNil, err := gomega.BeNil().Match(metav1.GetControllerOf(oldSvc)); !isNil {
 			log.Failf("Expected TiDB service created by helm chart is orphaned: %v", err)
 		}
@@ -925,7 +923,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				return nil
 			})
 			framework.ExpectNoError(err, "failed to scale out TidbCluster: %q", tc.Name)
-			
+
 			err = wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
 				var tc *v1alpha1.TidbCluster
 				var err error
