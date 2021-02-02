@@ -21,7 +21,7 @@ DOCKER_REPO ?= ${DOCKER_REGISTRY}/pingcap
 IMAGE_TAG ?= latest
 TEST_COVER_PACKAGES:=go list ./cmd/... ./pkg/... | grep -vE "pkg/client" | grep -vE "pkg/tkctl" | grep -vE "pkg/apis" | sed 's|github.com/pingcap/tidb-operator/|./|' | tr '\n' ','
 
-GO_TEST := $(GO) test -cover -covermode=atomic -coverpkg=$$($(TEST_COVER_PACKAGES))
+GO_TEST := $(GO) test -cover -covermode=atomic
 
 default: build
 
@@ -47,35 +47,36 @@ build: controller-manager scheduler discovery admission-webhook backup-manager
 
 controller-manager:
 ifeq ($(E2E),y)
-	$(GO_TEST) -ldflags '$(LDFLAGS)' -c -o images/tidb-operator/bin/tidb-controller-manager ./cmd/controller-manager
+# "cannot use -c flag with multiple packages"
+	$(GO_TEST) -ldflags '$(LDFLAGS)' -c -o images/tidb-operator/bin/tidb-controller-manager -coverpkg=github.com/pingcap/tidb-operator/... ./cmd/controller-manager
 else
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-controller-manager cmd/controller-manager/main.go
 endif
 
 scheduler:
 ifeq ($(E2E),y)
-	$(GO_TEST) -ldflags '$(LDFLAGS)' -c -o images/tidb-operator/bin/tidb-scheduler ./cmd/scheduler
+	$(GO_TEST) -ldflags '$(LDFLAGS)' -c -o images/tidb-operator/bin/tidb-scheduler -coverpkg=github.com/pingcap/tidb-operator/... ./cmd/scheduler
 else
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-scheduler cmd/scheduler/main.go
 endif
 
 discovery:
 ifeq ($(E2E),y)
-	$(GO_TEST) -ldflags '$(LDFLAGS)' -c -o images/tidb-operator/bin/tidb-discovery ./cmd/discovery
+	$(GO_TEST) -ldflags '$(LDFLAGS)' -c -o images/tidb-operator/bin/tidb-discovery -coverpkg=github.com/pingcap/tidb-operator/... ./cmd/discovery
 else
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-discovery cmd/discovery/main.go
 endif
 
 admission-webhook:
 ifeq ($(E2E),y)
-	$(GO_TEST) -ldflags '$(LDFLAGS)' -c -o images/tidb-operator/bin/tidb-admission-webhook ./cmd/admission-webhook
+	$(GO_TEST) -ldflags '$(LDFLAGS)' -c -o images/tidb-operator/bin/tidb-admission-webhook -coverpkg=github.com/pingcap/tidb-operator/... ./cmd/admission-webhook
 else
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-admission-webhook cmd/admission-webhook/main.go
 endif
 
 backup-manager:
 ifeq ($(E2E),y)
-	$(GO_TEST) -ldflags '$(LDFLAGS)' -c -o images/tidb-backup-manager/bin/tidb-backup-manager ./cmd/backup-manager
+	$(GO_TEST) -ldflags '$(LDFLAGS)' -c -o images/tidb-backup-manager/bin/tidb-backup-manager -coverpkg=github.com/pingcap/tidb-operator/... ./cmd/backup-manager
 else
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-backup-manager/bin/tidb-backup-manager cmd/backup-manager/main.go
 endif
