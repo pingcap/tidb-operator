@@ -370,26 +370,9 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 			},
 		},
 		{
-			name: "enable separate RocksDB log on the fly",
+			name: "enable separate RocksDB and Raft log on the fly",
 			modify: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.TiKV.SeparateRocksDBLog = pointer.BoolPtr(true)
-			},
-			pdStores:                     &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
-			tombstoneStores:              &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
-			errWhenUpdateStatefulSet:     false,
-			errWhenUpdateTiKVPeerService: false,
-			errWhenGetStores:             false,
-			err:                          false,
-			expectTiKVPeerServiceFn:      nil,
-			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
-				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(set.Spec.Template.Spec.Containers).To(HaveLen(2))
-			},
-			expectTidbClusterFn: nil,
-		},
-		{
-			name: "enable separate Raft log on the fly",
-			modify: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.TiKV.SeparateRaftLog = pointer.BoolPtr(true)
 			},
 			pdStores:                     &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
@@ -401,7 +384,7 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 			expectTiKVPeerServiceFn:      nil,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(set.Spec.Template.Spec.Containers).To(HaveLen(2))
+				g.Expect(set.Spec.Template.Spec.Containers).To(HaveLen(3))
 			},
 			expectTidbClusterFn: nil,
 		},
