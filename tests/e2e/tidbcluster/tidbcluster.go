@@ -331,342 +331,343 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		oa.CleanWebHookAndServiceOrDie(ocfg.WebhookConfigName)
 	})
 
-	ginkgo.It("should keep tidb service in sync", func() {
-		ginkgo.By("Deploy initial tc")
-		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "service", "admin", utilimage.TiDBV4)
-		tcCfg.Resources["pd.replicas"] = "1"
-		tcCfg.Resources["tidb.replicas"] = "1"
-		tcCfg.Resources["tikv.replicas"] = "1"
-		oa.DeployTidbClusterOrDie(&tcCfg)
-		oa.CheckTidbClusterStatusOrDie(&tcCfg)
+	ginkgo.Context("[Feature: Helm Chart migrate to CR]", func() {
+		ginkgo.It("should keep tidb service in sync", func() {
+			ginkgo.By("Deploy initial tc")
+			tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "service", "admin", utilimage.TiDBV4)
+			tcCfg.Resources["pd.replicas"] = "1"
+			tcCfg.Resources["tidb.replicas"] = "1"
+			tcCfg.Resources["tikv.replicas"] = "1"
+			oa.DeployTidbClusterOrDie(&tcCfg)
+			oa.CheckTidbClusterStatusOrDie(&tcCfg)
 
-		ns := tcCfg.Namespace
-		tcName := tcCfg.ClusterName
+			ns := tcCfg.Namespace
+			tcName := tcCfg.ClusterName
 
-		oldSvc, err := c.CoreV1().Services(ns).Get(controller.TiDBMemberName(tcName), metav1.GetOptions{})
-		framework.ExpectNoError(err, "failed to get service for TidbCluster: %v", tcCfg)
-		tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
-		framework.ExpectNoError(err, "failed to get TidbCluster: %v", tcCfg)
-		if isNil, err := gomega.BeNil().Match(metav1.GetControllerOf(oldSvc)); !isNil {
-			log.Failf("Expected TiDB service created by helm chart is orphaned: %v", err)
-		}
+			oldSvc, err := c.CoreV1().Services(ns).Get(controller.TiDBMemberName(tcName), metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get service for TidbCluster: %v", tcCfg)
+			tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get TidbCluster: %v", tcCfg)
+			if isNil, err := gomega.BeNil().Match(metav1.GetControllerOf(oldSvc)); !isNil {
+				log.Failf("Expected TiDB service created by helm chart is orphaned: %v", err)
+			}
 
-		ginkgo.By("Adopt orphaned service created by helm")
-		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-			tc.Spec.TiDB.Service = &v1alpha1.TiDBServiceSpec{}
-			return nil
-		})
-		framework.ExpectNoError(err, "failed to update tidb service of TidbCluster: %q", tc.Name)
-		err = wait.PollImmediate(5*time.Second, 2*time.Minute, func() (bool, error) {
-			svc, err := c.CoreV1().Services(ns).Get(controller.TiDBMemberName(tcName), metav1.GetOptions{})
-			if err != nil {
-				if errors.IsNotFound(err) {
-					return false, err
+			ginkgo.By("Adopt orphaned service created by helm")
+			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Spec.TiDB.Service = &v1alpha1.TiDBServiceSpec{}
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to update tidb service of TidbCluster: %q", tc.Name)
+			err = wait.PollImmediate(5*time.Second, 2*time.Minute, func() (bool, error) {
+				svc, err := c.CoreV1().Services(ns).Get(controller.TiDBMemberName(tcName), metav1.GetOptions{})
+				if err != nil {
+					if errors.IsNotFound(err) {
+						return false, err
+					}
+					log.Logf("failed to get TiDB service: %v", err)
+					return false, nil
 				}
-				log.Logf("failed to get TiDB service: %v", err)
-				return false, nil
-			}
-			owner := metav1.GetControllerOf(svc)
-			if owner == nil {
-				log.Logf("tidb service has not been adopted by TidbCluster yet")
-				return false, nil
-			}
-			framework.ExpectEqual(metav1.IsControlledBy(svc, tc), true, "Expected tidb service owner is TidbCluster")
-			framework.ExpectEqual(svc.Spec.ClusterIP, oldSvc.Spec.ClusterIP, "tidb service ClusterIP should be stable across adopting and updating")
-			return true, nil
-		})
-		framework.ExpectNoError(err, "failed to wait for TidbCluster managed svc to be ready: %q", tc.Name)
-
-		ginkgo.By("Updating TiDB service")
-		trafficPolicy := corev1.ServiceExternalTrafficPolicyTypeLocal
-		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-			tc.Spec.TiDB.Service.Type = corev1.ServiceTypeNodePort
-			tc.Spec.TiDB.Service.ExternalTrafficPolicy = &trafficPolicy
-			tc.Spec.TiDB.Service.Annotations = map[string]string{
-				"test": "test",
-			}
-			return nil
-		})
-		framework.ExpectNoError(err, "failed to update tidb service of TidbCluster: %q", tc.Name)
-
-		ginkgo.By("Waiting for the TiDB service to be synced")
-		err = wait.PollImmediate(5*time.Second, 2*time.Minute, func() (bool, error) {
-			svc, err := c.CoreV1().Services(ns).Get(controller.TiDBMemberName(tcName), metav1.GetOptions{})
-			if err != nil {
-				if errors.IsNotFound(err) {
-					return false, err
+				owner := metav1.GetControllerOf(svc)
+				if owner == nil {
+					log.Logf("tidb service has not been adopted by TidbCluster yet")
+					return false, nil
 				}
-				log.Logf("error get TiDB service: %v", err)
-				return false, nil
-			}
-			if isEqual, err := gomega.Equal(corev1.ServiceTypeNodePort).Match(svc.Spec.Type); !isEqual {
-				log.Logf("tidb service type is not %s, %v", corev1.ServiceTypeNodePort, err)
-				return false, nil
-			}
-			if isEqual, err := gomega.Equal(trafficPolicy).Match(svc.Spec.ExternalTrafficPolicy); !isEqual {
-				log.Logf("tidb service traffic policy is not %s, %v", svc.Spec.ExternalTrafficPolicy, err)
-				return false, nil
-			}
-			if haveKV, err := gomega.HaveKeyWithValue("test", "test").Match(svc.Annotations); !haveKV {
-				log.Logf("tidb service has no annotation test=test, %v", err)
-				return false, nil
-			}
-			return true, nil
+				framework.ExpectEqual(metav1.IsControlledBy(svc, tc), true, "Expected tidb service owner is TidbCluster")
+				framework.ExpectEqual(svc.Spec.ClusterIP, oldSvc.Spec.ClusterIP, "tidb service ClusterIP should be stable across adopting and updating")
+				return true, nil
+			})
+			framework.ExpectNoError(err, "failed to wait for TidbCluster managed svc to be ready: %q", tc.Name)
+
+			ginkgo.By("Updating TiDB service")
+			trafficPolicy := corev1.ServiceExternalTrafficPolicyTypeLocal
+			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Spec.TiDB.Service.Type = corev1.ServiceTypeNodePort
+				tc.Spec.TiDB.Service.ExternalTrafficPolicy = &trafficPolicy
+				tc.Spec.TiDB.Service.Annotations = map[string]string{
+					"test": "test",
+				}
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to update tidb service of TidbCluster: %q", tc.Name)
+
+			ginkgo.By("Waiting for the TiDB service to be synced")
+			err = wait.PollImmediate(5*time.Second, 2*time.Minute, func() (bool, error) {
+				svc, err := c.CoreV1().Services(ns).Get(controller.TiDBMemberName(tcName), metav1.GetOptions{})
+				if err != nil {
+					if errors.IsNotFound(err) {
+						return false, err
+					}
+					log.Logf("error get TiDB service: %v", err)
+					return false, nil
+				}
+				if isEqual, err := gomega.Equal(corev1.ServiceTypeNodePort).Match(svc.Spec.Type); !isEqual {
+					log.Logf("tidb service type is not %s, %v", corev1.ServiceTypeNodePort, err)
+					return false, nil
+				}
+				if isEqual, err := gomega.Equal(trafficPolicy).Match(svc.Spec.ExternalTrafficPolicy); !isEqual {
+					log.Logf("tidb service traffic policy is not %s, %v", svc.Spec.ExternalTrafficPolicy, err)
+					return false, nil
+				}
+				if haveKV, err := gomega.HaveKeyWithValue("test", "test").Match(svc.Annotations); !haveKV {
+					log.Logf("tidb service has no annotation test=test, %v", err)
+					return false, nil
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "failed to wait for TidbCluster managed svc to be ready: %q", tc.Name)
 		})
-		framework.ExpectNoError(err, "failed to wait for TidbCluster managed svc to be ready: %q", tc.Name)
-	})
+		// Basic IT for managed in TidbCluster CR
+		// TODO: deploy pump through CR in backup and restore
+		// TODO: Add pump configmap rolling-update case
+		ginkgo.It("should adopt helm created pump with TidbCluster CR", func() {
+			ginkgo.By("Deploy initial tc")
+			tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "pump", "admin", utilimage.TiDBV4)
+			tcCfg.Resources["pd.replicas"] = "1"
+			tcCfg.Resources["tikv.replicas"] = "1"
+			tcCfg.Resources["tidb.replicas"] = "1"
+			oa.DeployTidbClusterOrDie(&tcCfg)
+			oa.CheckTidbClusterStatusOrDie(&tcCfg)
 
-	// Basic IT for managed in TidbCluster CR
-	// TODO: deploy pump through CR in backup and restore
-	// TODO: Add pump configmap rolling-update case
-	ginkgo.It("should adopt helm created pump with TidbCluster CR", func() {
-		ginkgo.By("Deploy initial tc")
-		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "pump", "admin", utilimage.TiDBV4)
-		tcCfg.Resources["pd.replicas"] = "1"
-		tcCfg.Resources["tikv.replicas"] = "1"
-		tcCfg.Resources["tidb.replicas"] = "1"
-		oa.DeployTidbClusterOrDie(&tcCfg)
-		oa.CheckTidbClusterStatusOrDie(&tcCfg)
+			ginkgo.By("Deploy pump using helm")
+			err := oa.DeployAndCheckPump(&tcCfg)
+			framework.ExpectNoError(err, "failed to deploy pump for TidbCluster: %v", tcCfg)
 
-		ginkgo.By("Deploy pump using helm")
-		err := oa.DeployAndCheckPump(&tcCfg)
-		framework.ExpectNoError(err, "failed to deploy pump for TidbCluster: %v", tcCfg)
+			tc, err := cli.PingcapV1alpha1().TidbClusters(tcCfg.Namespace).Get(tcCfg.ClusterName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get TidbCluster: %v", tcCfg)
 
-		tc, err := cli.PingcapV1alpha1().TidbClusters(tcCfg.Namespace).Get(tcCfg.ClusterName, metav1.GetOptions{})
-		framework.ExpectNoError(err, "failed to get TidbCluster: %v", tcCfg)
-
-		// If using advanced statefulset, we must upgrade all Kubernetes statefulsets to advanced statefulsets first.
-		if ocfg.Enabled(features.AdvancedStatefulSet) {
-			log.Logf("advanced statefulset enabled, upgrading all sts to asts")
-			stsList, err := c.AppsV1().StatefulSets(ns).List(metav1.ListOptions{})
-			framework.ExpectNoError(err, "failed to list statefulsets in ns %s", ns)
-			for _, sts := range stsList.Items {
-				_, err = astsHelper.Upgrade(c, asCli, &sts)
-				framework.ExpectNoError(err, "failed to upgrade statefulset %s/%s", sts.Namespace, sts.Name)
+			// If using advanced statefulset, we must upgrade all Kubernetes statefulsets to advanced statefulsets first.
+			if ocfg.Enabled(features.AdvancedStatefulSet) {
+				log.Logf("advanced statefulset enabled, upgrading all sts to asts")
+				stsList, err := c.AppsV1().StatefulSets(ns).List(metav1.ListOptions{})
+				framework.ExpectNoError(err, "failed to list statefulsets in ns %s", ns)
+				for _, sts := range stsList.Items {
+					_, err = astsHelper.Upgrade(c, asCli, &sts)
+					framework.ExpectNoError(err, "failed to upgrade statefulset %s/%s", sts.Namespace, sts.Name)
+				}
 			}
-		}
 
-		oldPumpSet, err := stsGetter.StatefulSets(tc.Namespace).Get(controller.PumpMemberName(tc.Name), metav1.GetOptions{})
-		framework.ExpectNoError(err, "failed to get statefulset for pump: %q", tc.Name)
+			oldPumpSet, err := stsGetter.StatefulSets(tc.Namespace).Get(controller.PumpMemberName(tc.Name), metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get statefulset for pump: %q", tc.Name)
 
-		oldRev := oldPumpSet.Status.CurrentRevision
-		framework.ExpectEqual(oldPumpSet.Status.UpdateRevision, oldRev, "Expected pump is not upgrading")
+			oldRev := oldPumpSet.Status.CurrentRevision
+			framework.ExpectEqual(oldPumpSet.Status.UpdateRevision, oldRev, "Expected pump is not upgrading")
 
-		ginkgo.By("Update tc.spec.pump")
-		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-			pullPolicy := corev1.PullIfNotPresent
-			updateStrategy := v1alpha1.ConfigUpdateStrategyInPlace
-			tc.Spec.Pump = &v1alpha1.PumpSpec{
-				BaseImage: "pingcap/tidb-binlog",
-				ComponentSpec: v1alpha1.ComponentSpec{
-					Version:         &tcCfg.ClusterVersion,
-					ImagePullPolicy: &pullPolicy,
-					Affinity: &corev1.Affinity{
-						PodAntiAffinity: &corev1.PodAntiAffinity{
-							PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
-								{
-									PodAffinityTerm: corev1.PodAffinityTerm{
-										Namespaces:  []string{tcCfg.Namespace},
-										TopologyKey: "rack",
+			ginkgo.By("Update tc.spec.pump")
+			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+				pullPolicy := corev1.PullIfNotPresent
+				updateStrategy := v1alpha1.ConfigUpdateStrategyInPlace
+				tc.Spec.Pump = &v1alpha1.PumpSpec{
+					BaseImage: "pingcap/tidb-binlog",
+					ComponentSpec: v1alpha1.ComponentSpec{
+						Version:         &tcCfg.ClusterVersion,
+						ImagePullPolicy: &pullPolicy,
+						Affinity: &corev1.Affinity{
+							PodAntiAffinity: &corev1.PodAntiAffinity{
+								PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
+									{
+										PodAffinityTerm: corev1.PodAffinityTerm{
+											Namespaces:  []string{tcCfg.Namespace},
+											TopologyKey: "rack",
+										},
+										Weight: 50,
 									},
-									Weight: 50,
 								},
 							},
 						},
+						Tolerations: []corev1.Toleration{
+							{
+								Effect:   corev1.TaintEffectNoSchedule,
+								Key:      "node-role",
+								Operator: corev1.TolerationOpEqual,
+								Value:    "tidb",
+							},
+						},
+						SchedulerName:        pointer.StringPtr("default-scheduler"),
+						ConfigUpdateStrategy: &updateStrategy,
 					},
-					Tolerations: []corev1.Toleration{
-						{
-							Effect:   corev1.TaintEffectNoSchedule,
-							Key:      "node-role",
-							Operator: corev1.TolerationOpEqual,
-							Value:    "tidb",
+					Replicas:         1,
+					StorageClassName: pointer.StringPtr("local-storage"),
+					ResourceRequirements: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceStorage: resource.MustParse("10Gi"),
 						},
 					},
-					SchedulerName:        pointer.StringPtr("default-scheduler"),
-					ConfigUpdateStrategy: &updateStrategy,
-				},
-				Replicas:         1,
-				StorageClassName: pointer.StringPtr("local-storage"),
-				ResourceRequirements: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceStorage: resource.MustParse("10Gi"),
-					},
-				},
-				Config: tcconfig.New(map[string]interface{}{
-					"addr":               "0.0.0.0:8250",
-					"gc":                 7,
-					"data-dir":           "/data",
-					"heartbeat-interval": 2,
-				}),
-			}
-			return nil
-		})
-		framework.ExpectNoError(err, "failed to update TidbCluster: %q", tc.Name)
-
-		ginkgo.By("Wait for pump sts to be controlled by tc")
-		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
-			pumpSet, err := stsGetter.StatefulSets(tc.Namespace).Get(controller.PumpMemberName(tc.Name), metav1.GetOptions{})
-			if errors.IsNotFound(err) {
-				return false, err
-			}
-			if err != nil {
-				log.Logf("error get pump statefulset: %v", err)
-				return false, nil
-			}
-			if !metav1.IsControlledBy(pumpSet, tc) {
-				log.Logf("expect pump statefulset adopted by tidbcluster, still waiting...")
-				return false, nil
-			}
-			// The desired state encoded in CRD should be exactly same with the one created by helm chart
-			framework.ExpectEqual(pumpSet.Status.CurrentRevision, oldRev, "Expected no rolling-update when adopting pump statefulset")
-			framework.ExpectEqual(pumpSet.Status.UpdateRevision, oldRev, "Expected no rolling-update when adopting pump statefulset")
-
-			cmName := member.FindConfigMapVolume(&pumpSet.Spec.Template.Spec, func(name string) bool {
-				return strings.HasPrefix(name, controller.PumpMemberName(tc.Name))
+					Config: tcconfig.New(map[string]interface{}{
+						"addr":               "0.0.0.0:8250",
+						"gc":                 7,
+						"data-dir":           "/data",
+						"heartbeat-interval": 2,
+					}),
+				}
+				return nil
 			})
-			if cmName == "" {
-				log.Fail("cannot find configmap used by pump statefulset")
-			}
-			pumpConfigMap, err := c.CoreV1().ConfigMaps(tc.Namespace).Get(cmName, metav1.GetOptions{})
-			if errors.IsNotFound(err) {
-				return false, err
-			}
-			if err != nil {
-				log.Logf("error get pump configmap: %v", err)
-				return false, nil
-			}
-			if !metav1.IsControlledBy(pumpConfigMap, tc) {
-				log.Logf("expect pump configmap adopted by tidbcluster, still waiting...")
-				return false, nil
-			}
+			framework.ExpectNoError(err, "failed to update TidbCluster: %q", tc.Name)
 
-			pumpPeerSvc, err := c.CoreV1().Services(tc.Namespace).Get(controller.PumpPeerMemberName(tc.Name), metav1.GetOptions{})
-			if errors.IsNotFound(err) {
-				return false, err
-			}
-			if err != nil {
-				log.Logf("error get pump peer service: %v", err)
-				return false, nil
-			}
-			if !metav1.IsControlledBy(pumpPeerSvc, tc) {
-				log.Logf("expect pump peer service adopted by tidbcluster, still waiting...")
-				return false, nil
-			}
-			return true, nil
-		})
-		framework.ExpectNoError(err, "failed to wait for pump to be controlled by TidbCluster: %q", tc.Name)
-	})
-
-	ginkgo.It("should migrate from helm to CR", func() {
-		ginkgo.By("Deploy initial tc")
-		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "helm-migration", "admin", utilimage.TiDBV4)
-		tcCfg.Resources["pd.replicas"] = "1"
-		tcCfg.Resources["tikv.replicas"] = "1"
-		tcCfg.Resources["tidb.replicas"] = "1"
-		oa.DeployTidbClusterOrDie(&tcCfg)
-		oa.CheckTidbClusterStatusOrDie(&tcCfg)
-
-		tc, err := cli.PingcapV1alpha1().TidbClusters(tcCfg.Namespace).Get(tcCfg.ClusterName, metav1.GetOptions{})
-		framework.ExpectNoError(err, "failed to get TidbCluster: %v", tcCfg)
-
-		ginkgo.By("Discovery service should be reconciled by tidb-operator")
-		discoveryName := controller.DiscoveryMemberName(tc.Name)
-		discoveryDeploy, err := c.AppsV1().Deployments(tc.Namespace).Get(discoveryName, metav1.GetOptions{})
-		framework.ExpectNoError(err, "failed to get discovery deployment for TidbCluster: %q", tc.Name)
-		WaitObjectToBeControlledByOrDie(genericCli, discoveryDeploy, tc, 5*time.Minute)
-
-		err = utils.WaitForDeploymentComplete(c, discoveryDeploy, log.Logf, 10*time.Second, 5*time.Minute)
-		framework.ExpectNoError(err, "waiting for discovery deployment timeout, should be healthy after managed by tidb-operator: %v", discoveryDeploy)
-
-		ginkgo.By("Delete the discovery deployment and wait for recreation by tc")
-		err = genericCli.Delete(context.TODO(), discoveryDeploy)
-		framework.ExpectNoError(err, "failed to delete discovery deployment: %v", discoveryDeploy)
-
-		err = wait.PollImmediate(5*time.Second, 2*time.Minute, func() (bool, error) {
-			_, err := c.AppsV1().Deployments(tc.Namespace).Get(discoveryName, metav1.GetOptions{})
-			if err != nil {
-				log.Logf("wait discovery deployment get created again: %v", err)
-				return false, nil
-			}
-			return true, nil
-		})
-		framework.ExpectNoError(err, "Discovery Deployment should be recovered by tidb-operator after deletion")
-
-		ginkgo.By("Change configmaps in TidbCluster CR in-place")
-		// TODO: modify other cases to manage TiDB configmap in CRD by default
-		setNameToRevision := map[string]string{
-			controller.PDMemberName(tc.Name):   "",
-			controller.TiKVMemberName(tc.Name): "",
-			controller.TiDBMemberName(tc.Name): "",
-		}
-
-		for setName := range setNameToRevision {
-			oldSet, err := stsGetter.StatefulSets(tc.Namespace).Get(setName, metav1.GetOptions{})
-			framework.ExpectNoError(err, "Expected to get statefulset %s", setName)
-
-			oldRev := oldSet.Status.CurrentRevision
-			framework.ExpectEqual(oldSet.Status.UpdateRevision, oldRev, "Expected statefulset %s is not upgrading", setName)
-
-			setNameToRevision[setName] = oldRev
-		}
-
-		tc, err = cli.PingcapV1alpha1().TidbClusters(tcCfg.Namespace).Get(tcCfg.ClusterName, metav1.GetOptions{})
-		framework.ExpectNoError(err, "Expected to get tidbcluster")
-		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-			updateStrategy := v1alpha1.ConfigUpdateStrategyInPlace
-			tc.Spec.TiDB.Config = v1alpha1.NewTiDBConfig()
-			tc.Spec.TiDB.ConfigUpdateStrategy = &updateStrategy
-			tc.Spec.TiKV.Config = v1alpha1.NewTiKVConfig()
-			tc.Spec.TiKV.ConfigUpdateStrategy = &updateStrategy
-			tc.Spec.PD.Config = v1alpha1.NewPDConfig()
-			tc.Spec.PD.ConfigUpdateStrategy = &updateStrategy
-			return nil
-		})
-		framework.ExpectNoError(err, "failed to update configs of TidbCluster: %q", tc.Name)
-
-		ginkgo.By("Wait for a while to ensure no rolling-update happens to pd, tikv, tidb sts")
-		err = wait.PollImmediate(10*time.Second, 2*time.Minute, func() (bool, error) {
-			tc, err := cli.PingcapV1alpha1().TidbClusters(tcCfg.Namespace).Get(tcCfg.ClusterName, metav1.GetOptions{})
-			framework.ExpectNoError(err, "Expected get tidbcluster")
-			framework.ExpectEqual(tc.Status.PD.Phase, v1alpha1.NormalPhase, "PD should not be updated")
-			framework.ExpectEqual(tc.Status.TiKV.Phase, v1alpha1.NormalPhase, "TiKV should not be updated")
-			framework.ExpectEqual(tc.Status.TiDB.Phase, v1alpha1.NormalPhase, "TiDB should not be updated")
-
-			for setName, oldRev := range setNameToRevision {
-				newSet, err := stsGetter.StatefulSets(tc.Namespace).Get(setName, metav1.GetOptions{})
-				framework.ExpectNoError(err, "Expected get tidb statefulset")
-				framework.ExpectEqual(newSet.Status.CurrentRevision, oldRev, "Expected no rolling-update of %s when manage config in-place", setName)
-				framework.ExpectEqual(newSet.Status.UpdateRevision, oldRev, "Expected no rolling-update of %s when manage config in-place", setName)
-			}
-			return false, nil
-		})
-		framework.ExpectEqual(err, wait.ErrWaitTimeout, "Unexpected error when checking tidb statefulset will not get rolling-update: %v", err)
-
-		ginkgo.By("Check configmaps controlled by tc")
-		err = wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
-			for setName := range setNameToRevision {
-				newSet, err := stsGetter.StatefulSets(tc.Namespace).Get(setName, metav1.GetOptions{})
-				if err != nil {
+			ginkgo.By("Wait for pump sts to be controlled by tc")
+			err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
+				pumpSet, err := stsGetter.StatefulSets(tc.Namespace).Get(controller.PumpMemberName(tc.Name), metav1.GetOptions{})
+				if errors.IsNotFound(err) {
 					return false, err
 				}
-				cmName := member.FindConfigMapVolume(&newSet.Spec.Template.Spec, func(name string) bool {
-					return strings.HasPrefix(name, setName)
-				})
-				if cmName == "" {
-					log.Failf("cannot find configmap used by sts %s", setName)
-				}
-				usingCm, err := c.CoreV1().ConfigMaps(tc.Namespace).Get(cmName, metav1.GetOptions{})
 				if err != nil {
-					return false, err
-				}
-				if !metav1.IsControlledBy(usingCm, tc) {
-					log.Logf("configmap %q of sts %q not controlled by tc %q, still waiting...", usingCm, setName, tc.Name)
+					log.Logf("error get pump statefulset: %v", err)
 					return false, nil
 				}
-			}
-			return true, nil
+				if !metav1.IsControlledBy(pumpSet, tc) {
+					log.Logf("expect pump statefulset adopted by tidbcluster, still waiting...")
+					return false, nil
+				}
+				// The desired state encoded in CRD should be exactly same with the one created by helm chart
+				framework.ExpectEqual(pumpSet.Status.CurrentRevision, oldRev, "Expected no rolling-update when adopting pump statefulset")
+				framework.ExpectEqual(pumpSet.Status.UpdateRevision, oldRev, "Expected no rolling-update when adopting pump statefulset")
+
+				cmName := member.FindConfigMapVolume(&pumpSet.Spec.Template.Spec, func(name string) bool {
+					return strings.HasPrefix(name, controller.PumpMemberName(tc.Name))
+				})
+				if cmName == "" {
+					log.Fail("cannot find configmap used by pump statefulset")
+				}
+				pumpConfigMap, err := c.CoreV1().ConfigMaps(tc.Namespace).Get(cmName, metav1.GetOptions{})
+				if errors.IsNotFound(err) {
+					return false, err
+				}
+				if err != nil {
+					log.Logf("error get pump configmap: %v", err)
+					return false, nil
+				}
+				if !metav1.IsControlledBy(pumpConfigMap, tc) {
+					log.Logf("expect pump configmap adopted by tidbcluster, still waiting...")
+					return false, nil
+				}
+
+				pumpPeerSvc, err := c.CoreV1().Services(tc.Namespace).Get(controller.PumpPeerMemberName(tc.Name), metav1.GetOptions{})
+				if errors.IsNotFound(err) {
+					return false, err
+				}
+				if err != nil {
+					log.Logf("error get pump peer service: %v", err)
+					return false, nil
+				}
+				if !metav1.IsControlledBy(pumpPeerSvc, tc) {
+					log.Logf("expect pump peer service adopted by tidbcluster, still waiting...")
+					return false, nil
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "failed to wait for pump to be controlled by TidbCluster: %q", tc.Name)
 		})
-		framework.ExpectNoError(err, "failed to wait for configmaps to be controlled by TidbCluster")
+
+		ginkgo.It("should migrate from helm to CR", func() {
+			ginkgo.By("Deploy initial tc")
+			tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "helm-migration", "admin", utilimage.TiDBV4)
+			tcCfg.Resources["pd.replicas"] = "1"
+			tcCfg.Resources["tikv.replicas"] = "1"
+			tcCfg.Resources["tidb.replicas"] = "1"
+			oa.DeployTidbClusterOrDie(&tcCfg)
+			oa.CheckTidbClusterStatusOrDie(&tcCfg)
+
+			tc, err := cli.PingcapV1alpha1().TidbClusters(tcCfg.Namespace).Get(tcCfg.ClusterName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get TidbCluster: %v", tcCfg)
+
+			ginkgo.By("Discovery service should be reconciled by tidb-operator")
+			discoveryName := controller.DiscoveryMemberName(tc.Name)
+			discoveryDeploy, err := c.AppsV1().Deployments(tc.Namespace).Get(discoveryName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get discovery deployment for TidbCluster: %q", tc.Name)
+			WaitObjectToBeControlledByOrDie(genericCli, discoveryDeploy, tc, 5*time.Minute)
+
+			err = utils.WaitForDeploymentComplete(c, discoveryDeploy, log.Logf, 10*time.Second, 5*time.Minute)
+			framework.ExpectNoError(err, "waiting for discovery deployment timeout, should be healthy after managed by tidb-operator: %v", discoveryDeploy)
+
+			ginkgo.By("Delete the discovery deployment and wait for recreation by tc")
+			err = genericCli.Delete(context.TODO(), discoveryDeploy)
+			framework.ExpectNoError(err, "failed to delete discovery deployment: %v", discoveryDeploy)
+
+			err = wait.PollImmediate(5*time.Second, 2*time.Minute, func() (bool, error) {
+				_, err := c.AppsV1().Deployments(tc.Namespace).Get(discoveryName, metav1.GetOptions{})
+				if err != nil {
+					log.Logf("wait discovery deployment get created again: %v", err)
+					return false, nil
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "Discovery Deployment should be recovered by tidb-operator after deletion")
+
+			ginkgo.By("Change configmaps in TidbCluster CR in-place")
+			// TODO: modify other cases to manage TiDB configmap in CRD by default
+			setNameToRevision := map[string]string{
+				controller.PDMemberName(tc.Name):   "",
+				controller.TiKVMemberName(tc.Name): "",
+				controller.TiDBMemberName(tc.Name): "",
+			}
+
+			for setName := range setNameToRevision {
+				oldSet, err := stsGetter.StatefulSets(tc.Namespace).Get(setName, metav1.GetOptions{})
+				framework.ExpectNoError(err, "Expected to get statefulset %s", setName)
+
+				oldRev := oldSet.Status.CurrentRevision
+				framework.ExpectEqual(oldSet.Status.UpdateRevision, oldRev, "Expected statefulset %s is not upgrading", setName)
+
+				setNameToRevision[setName] = oldRev
+			}
+
+			tc, err = cli.PingcapV1alpha1().TidbClusters(tcCfg.Namespace).Get(tcCfg.ClusterName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "Expected to get tidbcluster")
+			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+				updateStrategy := v1alpha1.ConfigUpdateStrategyInPlace
+				tc.Spec.TiDB.Config = v1alpha1.NewTiDBConfig()
+				tc.Spec.TiDB.ConfigUpdateStrategy = &updateStrategy
+				tc.Spec.TiKV.Config = v1alpha1.NewTiKVConfig()
+				tc.Spec.TiKV.ConfigUpdateStrategy = &updateStrategy
+				tc.Spec.PD.Config = v1alpha1.NewPDConfig()
+				tc.Spec.PD.ConfigUpdateStrategy = &updateStrategy
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to update configs of TidbCluster: %q", tc.Name)
+
+			ginkgo.By("Wait for a while to ensure no rolling-update happens to pd, tikv, tidb sts")
+			err = wait.PollImmediate(10*time.Second, 2*time.Minute, func() (bool, error) {
+				tc, err := cli.PingcapV1alpha1().TidbClusters(tcCfg.Namespace).Get(tcCfg.ClusterName, metav1.GetOptions{})
+				framework.ExpectNoError(err, "Expected get tidbcluster")
+				framework.ExpectEqual(tc.Status.PD.Phase, v1alpha1.NormalPhase, "PD should not be updated")
+				framework.ExpectEqual(tc.Status.TiKV.Phase, v1alpha1.NormalPhase, "TiKV should not be updated")
+				framework.ExpectEqual(tc.Status.TiDB.Phase, v1alpha1.NormalPhase, "TiDB should not be updated")
+
+				for setName, oldRev := range setNameToRevision {
+					newSet, err := stsGetter.StatefulSets(tc.Namespace).Get(setName, metav1.GetOptions{})
+					framework.ExpectNoError(err, "Expected get tidb statefulset")
+					framework.ExpectEqual(newSet.Status.CurrentRevision, oldRev, "Expected no rolling-update of %s when manage config in-place", setName)
+					framework.ExpectEqual(newSet.Status.UpdateRevision, oldRev, "Expected no rolling-update of %s when manage config in-place", setName)
+				}
+				return false, nil
+			})
+			framework.ExpectEqual(err, wait.ErrWaitTimeout, "Unexpected error when checking tidb statefulset will not get rolling-update: %v", err)
+
+			ginkgo.By("Check configmaps controlled by tc")
+			err = wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
+				for setName := range setNameToRevision {
+					newSet, err := stsGetter.StatefulSets(tc.Namespace).Get(setName, metav1.GetOptions{})
+					if err != nil {
+						return false, err
+					}
+					cmName := member.FindConfigMapVolume(&newSet.Spec.Template.Spec, func(name string) bool {
+						return strings.HasPrefix(name, setName)
+					})
+					if cmName == "" {
+						log.Failf("cannot find configmap used by sts %s", setName)
+					}
+					usingCm, err := c.CoreV1().ConfigMaps(tc.Namespace).Get(cmName, metav1.GetOptions{})
+					if err != nil {
+						return false, err
+					}
+					if !metav1.IsControlledBy(usingCm, tc) {
+						log.Logf("configmap %q of sts %q not controlled by tc %q, still waiting...", usingCm, setName, tc.Name)
+						return false, nil
+					}
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "failed to wait for configmaps to be controlled by TidbCluster")
+		})
 	})
 
 	ginkgo.It("should manage tidb monitor normally", func() {
