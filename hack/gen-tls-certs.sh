@@ -35,8 +35,8 @@ LOCALITY=${LOCALITY:-"Beijing"}
 STATE_OR_PROVINCE_NAME=${STATE_OR_PROVINCE_NAME:-"Beijing"}
 # paramenters end
 
-TLS_DIR="${OUTPUT}/tls"
-CA_DIR="${TLS_DIR}/ca"
+TLS_DIR=${TLS_DIR:-"${OUTPUT}/tls"}
+CA_DIR=${CA_DIR:-"${TLS_DIR}/ca"}
 
 function usage() {
     cat <<'EOF'
@@ -206,7 +206,7 @@ if [[ $# -eq 1 && $1 = "clean" ]]; then
     exit
 fi
 
-mkdir $TLS_DIR
+mkdir -p $TLS_DIR
 
 gen_ca
 
