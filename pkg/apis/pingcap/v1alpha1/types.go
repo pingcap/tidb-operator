@@ -47,10 +47,6 @@ const (
 	TiFlashMemberType MemberType = "tiflash"
 	// TiCDCMemberType is ticdc container type
 	TiCDCMemberType MemberType = "ticdc"
-<<<<<<< HEAD
-	// SlowLogTailerMemberType is tidb log tailer container type
-	SlowLogTailerMemberType MemberType = "slowlog"
-=======
 	// DMMasterMemberType is dm-master container type
 	DMMasterMemberType MemberType = "dm-master"
 	// DMWorkerMemberType is dm-worker container type
@@ -63,7 +59,6 @@ const (
 	RaftLogTailerMemberType MemberType = "raftlog"
 	// TidbMonitorMemberType is tidbmonitor type
 	TidbMonitorMemberType MemberType = "tidbmonitor"
->>>>>>> 95672c73... support print rocksdb log and raft log to stdout (#3768)
 	// UnknownMemberType is unknown container type
 	UnknownMemberType MemberType = "unknown"
 )

@@ -126,7 +126,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		}
 	})
 
-<<<<<<< HEAD
 	ginkgo.Context("Basic: Deploying, Scaling, Update Configuration", func() {
 		clusterCfgs := []struct {
 			Version string
@@ -142,54 +141,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				Name:    "basic-v4",
 			},
 		}
-=======
-	// basic deploy, scale out, scale in, change configuration tests
-	ginkgo.Describe("when using version", func() {
-		versions := []string{utilimage.TiDBV3, utilimage.TiDBV4}
-		for _, version := range versions {
-			version := version
-			versionDashed := strings.ReplaceAll(version, ".", "-")
-			ginkgo.Context(version, func() {
-				ginkgo.It("should scale out tc successfully", func() {
-					ginkgo.By("Deploy a basic tc")
-					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("basic-%s", versionDashed), version)
-					tc.Spec.TiDB.Replicas = 1
-					tc.Spec.TiKV.SeparateRocksDBLog = pointer.BoolPtr(true)
-					tc.Spec.TiKV.SeparateRaftLog = pointer.BoolPtr(true)
-					tc.Spec.TiKV.LogTailer = &v1alpha1.LogTailerSpec{
-						ResourceRequirements: corev1.ResourceRequirements{
-							Requests: corev1.ResourceList{
-								corev1.ResourceCPU:    resource.MustParse("100m"),
-								corev1.ResourceMemory: resource.MustParse("100Mi"),
-							},
-							Limits: corev1.ResourceList{
-								corev1.ResourceCPU:    resource.MustParse("100m"),
-								corev1.ResourceMemory: resource.MustParse("100Mi"),
-							},
-						},
-					}
-					_, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
-					framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
-					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 30*time.Second)
-					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
-					err = crdUtil.CheckDisasterTolerance(tc)
-					framework.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
-
-					ginkgo.By("scale out tidb, tikv, pd")
-					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-						tc.Spec.TiDB.Replicas = 2
-						tc.Spec.TiKV.Replicas = 4
-						// this must be 5, or one pd pod will not be scheduled, reference: https://docs.pingcap.com/tidb-in-kubernetes/stable/tidb-scheduler#pd-component
-						tc.Spec.PD.Replicas = 5
-						return nil
-					})
-					framework.ExpectNoError(err, "failed to scale out TidbCluster: %q", tc.Name)
-					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
-					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
-					err = crdUtil.CheckDisasterTolerance(tc)
-					framework.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
-				})
->>>>>>> 95672c73... support print rocksdb log and raft log to stdout (#3768)
 
 		for _, clusterCfg := range clusterCfgs {
 			localCfg := clusterCfg
@@ -199,6 +150,21 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				tc.Spec.EnablePVReclaim = pointer.BoolPtr(true)
 				// change tikv data directory to a subdirectory of data volume
 				tc.Spec.TiKV.DataSubDir = "data"
+
+				tc.Spec.TiKV.SeparateRocksDBLog = pointer.BoolPtr(true)
+				tc.Spec.TiKV.SeparateRaftLog = pointer.BoolPtr(true)
+				tc.Spec.TiKV.LogTailer = &v1alpha1.LogTailerSpec{
+					ResourceRequirements: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("100m"),
+							corev1.ResourceMemory: resource.MustParse("100Mi"),
+						},
+						Limits: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("100m"),
+							corev1.ResourceMemory: resource.MustParse("100Mi"),
+						},
+					},
+				}
 
 				_, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
 				framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)

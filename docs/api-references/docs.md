@@ -6166,12 +6166,9 @@ DashboardConfig
 <h3 id="pdconfigwraper">PDConfigWraper</h3>
 <p>
 (<em>Appears on:</em>
-<<<<<<< HEAD
 <a href="#pdspec">PDSpec</a>)
-=======
 <a href="#tiflashspec">TiFlashSpec</a>, 
 <a href="#tikvspec">TiKVSpec</a>)
->>>>>>> 95672c73... support print rocksdb log and raft log to stdout (#3768)
 </p>
 <p>
 </p>
@@ -15891,9 +15888,7 @@ uint
 </tr>
 <tr>
 <td>
-<<<<<<< HEAD
 <code>grpc-concurrent-stream</code></br>
-=======
 <code>separateRocksDBLog</code></br>
 <em>
 bool
@@ -15935,7 +15930,6 @@ LogTailerSpec
 <tr>
 <td>
 <code>storageClassName</code></br>
->>>>>>> 95672c73... support print rocksdb log and raft log to stdout (#3768)
 <em>
 uint
 </em>
