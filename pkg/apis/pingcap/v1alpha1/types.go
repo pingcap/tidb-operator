@@ -421,7 +421,7 @@ type TiKVSpec struct {
 	// Whether output the RocksDB log in a separate sidecar container
 	// Optional: Defaults to false
 	// +optional
-	SeparateRocksDBLog *bool `json:"separateRockDBLog,omitempty"`
+	SeparateRocksDBLog *bool `json:"separateRocksDBLog,omitempty"`
 
 	// Whether output the Raft log in a separate sidecar container
 	// Optional: Defaults to false

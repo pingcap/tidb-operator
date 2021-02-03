@@ -9729,7 +9729,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 							Format:      "int32",
 						},
 					},
-					"separateRockDBLog": {
+					"separateRocksDBLog": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Whether output the RocksDB log in a separate sidecar container Optional: Defaults to false",
 							Type:        []string{"boolean"},

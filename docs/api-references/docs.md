@@ -17922,7 +17922,7 @@ Optional: Defaults to 3</p>
 </tr>
 <tr>
 <td>
-<code>separateRockDBLog</code></br>
+<code>separateRocksDBLog</code></br>
 <em>
 bool
 </em>

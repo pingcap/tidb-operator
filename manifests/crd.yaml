@@ -12777,7 +12777,7 @@ spec:
                   type: string
                 separateRaftLog:
                   type: boolean
-                separateRockDBLog:
+                separateRocksDBLog:
                   type: boolean
                 serviceAccount:
                   type: string
