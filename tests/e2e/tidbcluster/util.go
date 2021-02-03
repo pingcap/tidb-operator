@@ -14,9 +14,11 @@
 package tidbcluster
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,6 +27,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/framework/pod"
+	ctrlCli "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func startWebhook(c clientset.Interface, image, ns, svcName string, cert []byte, key []byte) (*v1.Pod, *v1.Service) {
@@ -170,4 +173,12 @@ func mustToString(set sets.Int32) string {
 		panic(err)
 	}
 	return string(b)
+}
+
+func getSts(cli ctrlCli.Client, ns, name string) *appsv1.StatefulSet {
+	objKey := ctrlCli.ObjectKey{Namespace: ns, Name: name}
+	pdSts := appsv1.StatefulSet{}
+	err := cli.Get(context.TODO(), objKey, &pdSts)
+	framework.ExpectNoError(err, "failed to get pd sts from api-server")
+	return &pdSts
 }

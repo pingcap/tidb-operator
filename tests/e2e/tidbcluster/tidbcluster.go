@@ -41,11 +41,11 @@ import (
 	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
+	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -64,6 +64,7 @@ import (
 	"k8s.io/kubernetes/test/utils"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	ctrlCli "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ = ginkgo.Describe("TiDBCluster", func() {
@@ -79,7 +80,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	var cfg *tests.Config
 	var config *restclient.Config
 	var ocfg *tests.OperatorConfig
-	var genericCli client.Client
+	var genericCli ctrlCli.Client
 	var fwCancel context.CancelFunc
 	var fw portforward.PortForward
 	/**
@@ -299,7 +300,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		ginkgo.By("Check webhook is still running")
 		webhookPod, err = c.CoreV1().Pods(webhookPod.Namespace).Get(webhookPod.Name, metav1.GetOptions{})
 		framework.ExpectNoError(err, "failed to get webhook pod %s/%s", webhookPod.Namespace, webhookPod.Name)
-		if webhookPod.Status.Phase != v1.PodRunning {
+		if webhookPod.Status.Phase != corev1.PodRunning {
 			logs, err := pod.GetPodLogs(c, webhookPod.Namespace, webhookPod.Name, "webhook")
 			framework.ExpectNoError(err, "failed to get pod log %s/%s", webhookPod.Namespace, webhookPod.Name)
 			log.Logf("webhook logs: %s", logs)
@@ -1142,9 +1143,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			heterogeneousTc.Spec.TiDB.Replicas = 1
 			heterogeneousTc.Spec.TiFlash = &v1alpha1.TiFlashSpec{Replicas: 1,
 				BaseImage: "pingcap/tiflash", StorageClaims: []v1alpha1.StorageClaim{
-					{Resources: v1.ResourceRequirements{
-						Requests: v1.ResourceList{
-							v1.ResourceStorage: resource.MustParse("10G"),
+					{Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceStorage: resource.MustParse("10G"),
 						},
 					}},
 				}}
@@ -1374,9 +1375,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			heterogeneousTc.Spec.TiDB.Replicas = 1
 			heterogeneousTc.Spec.TiFlash = &v1alpha1.TiFlashSpec{Replicas: 1,
 				BaseImage: "pingcap/tiflash", StorageClaims: []v1alpha1.StorageClaim{
-					{Resources: v1.ResourceRequirements{
-						Requests: v1.ResourceList{
-							v1.ResourceStorage: resource.MustParse("10G"),
+					{Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceStorage: resource.MustParse("10G"),
 						},
 					}},
 				}}
@@ -1558,8 +1559,47 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		oa.UpgradeTidbClusterOrDie(&tcCfg)
 		oa.CheckTidbClusterStatusOrDie(&tcCfg)
 	})
+
+	ginkgo.Context("when upgrade", func() {
+		ginkgo.It("should work for tc version", func() {
+			var err error
+			ginkgo.By("Deploy initial tc")
+			tc := fixture.GetTidbCluster(ns, "upgrade-version", utilimage.TiDBV4Version)
+			pvDelete := corev1.PersistentVolumeReclaimDelete
+			tc.Spec.PVReclaimPolicy = &pvDelete
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
+
+			ginkgo.By("update tc version")
+			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Spec.Version = utilimage.TiDBV4UpgradeVersion
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to update tc version to %q", utilimage.TiDBV4UpgradeVersion)
+			oa.WaitForTidbClusterReady(tc, 5*time.Minute, 10*time.Second)
+
+			componentVersion := utilimage.TiDBV4Version
+			ginkgo.By("update components version")
+			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Spec.PD.Version = pointer.StringPtr(componentVersion)
+				tc.Spec.TiKV.Version = pointer.StringPtr(componentVersion)
+				tc.Spec.TiDB.Version = pointer.StringPtr(componentVersion)
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to update components version to %q", componentVersion)
+			oa.WaitForTidbClusterReady(tc, 5*time.Minute, 10*time.Second)
+
+			ginkgo.By("check components version")
+			pdSts := getSts(genericCli, ns, controller.PDMemberName(tc.Name))
+			framework.ExpectEqual(pdSts.Spec.Template.Spec.Containers[0].Image, fmt.Sprintf("pingcap/pd:%s", componentVersion))
+			tikvSts := getSts(genericCli, ns, controller.TiKVMemberName(tc.Name))
+			framework.ExpectEqual(tikvSts.Spec.Template.Spec.Containers[0].Image, fmt.Sprintf("pingcap/tikv:%s", componentVersion))
+			tidbSts := getSts(genericCli, ns, controller.TiDBMemberName(tc.Name))
+			framework.ExpectEqual(tidbSts.Spec.Template.Spec.Containers[0].Image, fmt.Sprintf("pingcap/tidb:%s", componentVersion))
+		})
+	})
 })
 
+// TODO: deprecate this
 func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tcVersion string) tests.TidbClusterConfig {
 	return tests.TidbClusterConfig{
 		Namespace:        ns,

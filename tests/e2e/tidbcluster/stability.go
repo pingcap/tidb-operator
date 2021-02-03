@@ -1046,7 +1046,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
 
 			ginkgo.By("Waiting for the tidb cluster to become ready")
-			err = utiltidbcluster.WaitForTidbClusterReady(cli, tc.Namespace, tc.Name, time.Minute*30, 0)
+			err = utiltidbcluster.WaitForTidbClusterConditionReady(cli, tc.Namespace, tc.Name, time.Minute*30, 0)
 			framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 
 			ginkgo.By("Fail a TiKV store")
@@ -1102,7 +1102,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			framework.ExpectNoError(err, "failed to wait for the record of failed pod to be removed from failure stores")
 
 			ginkgo.By("Waiting for the tidb cluster to become ready")
-			err = utiltidbcluster.WaitForTidbClusterReady(cli, tc.Namespace, tc.Name, time.Minute*30, 0)
+			err = utiltidbcluster.WaitForTidbClusterConditionReady(cli, tc.Namespace, tc.Name, time.Minute*30, 0)
 			framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 		})
 	})

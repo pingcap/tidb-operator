@@ -152,6 +152,7 @@ const (
 	statbilityTestTag                         = "stability"
 )
 
+// TODO: need to refactor OperatorActions into struct, and move out functions not related to tidb-operator
 type OperatorActions interface {
 	CleanCRDOrDie()
 	InstallCRDOrDie(info *OperatorConfig)
@@ -238,6 +239,7 @@ type OperatorActions interface {
 	CheckInitSQL(info *TidbClusterConfig) error
 	CheckInitSQLOrDie(info *TidbClusterConfig)
 	DeployAndCheckPump(tc *TidbClusterConfig) error
+	// TODO: rename to WaitForTidbClusterComponentsReady or equivalent
 	WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error
 	WaitPodOnNodeReadyOrDie(clusters []*TidbClusterConfig, faultNode string)
 	DataIsTheSameAs(from, to *TidbClusterConfig) (bool, error)
