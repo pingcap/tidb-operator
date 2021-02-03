@@ -259,13 +259,13 @@ var _ = ginkgo.Describe("[Serial]", func() {
 					TiDB: &v1alpha1.TiDBSpec{
 						Replicas: 1,
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV4),
+							Image: fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV4Prev),
 						},
 					},
 					TiKV: &v1alpha1.TiKVSpec{
 						Replicas: 1,
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: fmt.Sprintf("pingcap/tikv:%s", utilimage.TiDBV4),
+							Image: fmt.Sprintf("pingcap/tikv:%s", utilimage.TiDBV4Prev),
 						},
 						ResourceRequirements: v1.ResourceRequirements{
 							Requests: v1.ResourceList{
@@ -276,7 +276,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 					PD: &v1alpha1.PDSpec{
 						Replicas: 1,
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: fmt.Sprintf("pingcap/pd:%s", utilimage.TiDBV4),
+							Image: fmt.Sprintf("pingcap/pd:%s", utilimage.TiDBV4Prev),
 						},
 						ResourceRequirements: v1.ResourceRequirements{
 							Requests: v1.ResourceList{
