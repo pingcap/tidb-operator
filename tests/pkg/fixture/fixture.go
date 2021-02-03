@@ -30,8 +30,20 @@ import (
 )
 
 var (
-	BestEffort    = corev1.ResourceRequirements{}
-	BurstbleSmall = corev1.ResourceRequirements{
+	tikvConfig = func() *v1alpha1.TiKVConfigWraper {
+		c := v1alpha1.NewTiKVConfig()
+		c.Set("log-level", "info")
+		// Don't reserve space in e2e tests, see
+		// https://github.com/pingcap/tidb-operator/issues/2509.
+		c.Set("storage.reserve-space", "0MB")
+		return c
+	}()
+)
+
+var (
+	BestEffort     = corev1.ResourceRequirements{}
+	BurstableSmall = corev1.ResourceRequirements{
+
 		Requests: corev1.ResourceList{
 			corev1.ResourceCPU:    resource.MustParse("100m"),
 			corev1.ResourceMemory: resource.MustParse("100Mi"),
@@ -41,7 +53,7 @@ var (
 			corev1.ResourceMemory: resource.MustParse("2Gi"),
 		},
 	}
-	BurstbleMedium = corev1.ResourceRequirements{
+	BurstableMedium = corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
 			corev1.ResourceCPU:    resource.MustParse("100m"),
 			corev1.ResourceMemory: resource.MustParse("100Mi"),
@@ -104,7 +116,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 			PD: &v1alpha1.PDSpec{
 				Replicas:             3,
 				BaseImage:            "pingcap/pd",
-				ResourceRequirements: WithStorage(BurstbleSmall, "1Gi"),
+				ResourceRequirements: WithStorage(BurstableSmall, "1Gi"),
 				Config: func() *v1alpha1.PDConfigWraper {
 					c := v1alpha1.NewPDConfig()
 					c.Set("log.level", "info")
@@ -119,7 +131,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 			TiKV: &v1alpha1.TiKVSpec{
 				Replicas:             3,
 				BaseImage:            "pingcap/tikv",
-				ResourceRequirements: WithStorage(BurstbleMedium, "10Gi"),
+				ResourceRequirements: WithStorage(BurstableMedium, "10Gi"),
 				MaxFailoverCount:     pointer.Int32Ptr(3),
 				Config:               tikvConfig,
 				ComponentSpec: v1alpha1.ComponentSpec{
@@ -130,7 +142,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 			TiDB: &v1alpha1.TiDBSpec{
 				Replicas:             2,
 				BaseImage:            "pingcap/tidb",
-				ResourceRequirements: BurstbleMedium,
+				ResourceRequirements: BurstableMedium,
 				Service: &v1alpha1.TiDBServiceSpec{
 					ServiceSpec: v1alpha1.ServiceSpec{
 						Type: corev1.ServiceTypeClusterIP,
@@ -180,7 +192,7 @@ func GetTidbClusterWithTiFlash(ns, name, version string) *v1alpha1.TidbCluster {
 		MaxFailoverCount: pointer.Int32Ptr(3),
 		StorageClaims: []v1alpha1.StorageClaim{
 			{
-				Resources: WithStorage(BurstbleMedium, "10Gi"),
+				Resources: WithStorage(BurstableMedium, "10Gi"),
 			},
 		},
 	}
