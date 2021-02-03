@@ -473,7 +473,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 					if apierrors.IsNotFound(err) {
 						continue
 					}
-					if pvc.Spec.StorageClassName != nil && *pvc.Spec.StorageClassName == "standard" {
+					if pvc.Spec.StorageClassName != nil && *pvc.Spec.StorageClassName == "local-storage" {
 						// TODO check the localPVs as expected in someway?
 						// nolint(staticcheck)
 						// SA4010: this result of append is never used, except maybe in other appends
