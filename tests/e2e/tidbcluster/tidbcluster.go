@@ -299,8 +299,8 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tc.Spec.Version = utilimage.TiDBV4UpgradeVersion
 			return nil
 		})
-		framework.ExpectNoError(err, "failed to scale out TidbCluster: %q", tc.Name)
-		err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 5*time.Second)
+		framework.ExpectNoError(err, "failed to upgrade TidbCluster: %q", tc.Name)
+		err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 
 		ginkgo.By("Check webhook is still running")
