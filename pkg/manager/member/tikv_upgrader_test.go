@@ -681,7 +681,15 @@ func getTiKVPods(set *apps.StatefulSet) []*corev1.Pod {
 				Namespace: corev1.NamespaceDefault,
 				Labels:    l,
 			},
-			Status: corev1.PodStatus{Phase: corev1.PodRunning},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodRunning,
+				Conditions: []corev1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionTrue,
+					},
+				},
+			},
 		})
 	}
 	return pods
