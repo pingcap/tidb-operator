@@ -184,7 +184,7 @@ func main() {
 		}
 	}
 	onStopped := func() {
-		klog.Fatalf("leader election lost")
+		klog.Error("leader election lost")
 	}
 
 	endPointsName := "tidb-controller-manager"
