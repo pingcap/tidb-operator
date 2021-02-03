@@ -857,10 +857,10 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		framework.ExpectNoError(err, "failed to resume TidbCluster: %q", tc.Name)
 
 		ginkgo.By("Check the tidb cluster will be upgraded")
-		listOptions := metav1.ListOptions{
-			LabelSelector: labels.SelectorFromSet(label.New().Instance(tcName).Component(label.TiKVLabelVal).Labels()).String(),
-		}
 		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
+			listOptions := metav1.ListOptions{
+				LabelSelector: labels.SelectorFromSet(label.New().Instance(tcName).Component(label.TiKVLabelVal).Labels()).String(),
+			}
 			podList, err := c.CoreV1().Pods(ns).List(listOptions)
 			if err != nil && !apierrors.IsNotFound(err) {
 				return false, err
@@ -1561,8 +1561,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	})
 
 	ginkgo.Context("when upgrade", func() {
-		ginkgo.It("should work for tc version", func() {
-			var err error
+		ginkgo.It("should work for tc and components version", func() {
 			ginkgo.By("Deploy initial tc")
 			tc := fixture.GetTidbCluster(ns, "upgrade-version", utilimage.TiDBV4Version)
 			pvDelete := corev1.PersistentVolumeReclaimDelete
@@ -1570,15 +1569,15 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
 
 			ginkgo.By("update tc version")
-			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+			err := controller.GuaranteedUpdate(genericCli, tc, func() error {
 				tc.Spec.Version = utilimage.TiDBV4UpgradeVersion
 				return nil
 			})
 			framework.ExpectNoError(err, "failed to update tc version to %q", utilimage.TiDBV4UpgradeVersion)
 			oa.WaitForTidbClusterReady(tc, 5*time.Minute, 10*time.Second)
 
-			componentVersion := utilimage.TiDBV4Version
 			ginkgo.By("update components version")
+			componentVersion := utilimage.TiDBV4Version
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 				tc.Spec.PD.Version = pointer.StringPtr(componentVersion)
 				tc.Spec.TiKV.Version = pointer.StringPtr(componentVersion)
@@ -1590,11 +1589,15 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 			ginkgo.By("check components version")
 			pdSts := getSts(genericCli, ns, controller.PDMemberName(tc.Name))
-			framework.ExpectEqual(pdSts.Spec.Template.Spec.Containers[0].Image, fmt.Sprintf("pingcap/pd:%s", componentVersion))
+			pdImage := fmt.Sprintf("pingcap/pd:%s", componentVersion)
+			framework.ExpectEqual(pdSts.Spec.Template.Spec.Containers[0].Image, pdImage, "pd sts image should be %q", pdImage)
 			tikvSts := getSts(genericCli, ns, controller.TiKVMemberName(tc.Name))
-			framework.ExpectEqual(tikvSts.Spec.Template.Spec.Containers[0].Image, fmt.Sprintf("pingcap/tikv:%s", componentVersion))
+			tikvImage := fmt.Sprintf("pingcap/tikv:%s", componentVersion)
+			framework.ExpectEqual(tikvSts.Spec.Template.Spec.Containers[0].Image, tikvImage, "tikv sts image should be %q", tikvImage)
 			tidbSts := getSts(genericCli, ns, controller.TiDBMemberName(tc.Name))
-			framework.ExpectEqual(tidbSts.Spec.Template.Spec.Containers[0].Image, fmt.Sprintf("pingcap/tidb:%s", componentVersion))
+			tidbImage := fmt.Sprintf("pingcap/tidb:%s", componentVersion)
+			// the 0th container for tidb pod is slowlog, which runs busybox
+			framework.ExpectEqual(tidbSts.Spec.Template.Spec.Containers[1].Image, tidbImage, "tidb sts image should be %q", tidbImage)
 		})
 	})
 })
