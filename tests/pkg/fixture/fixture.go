@@ -30,19 +30,9 @@ import (
 )
 
 var (
-	tikvConfig = func() *v1alpha1.TiKVConfigWraper {
-		c := v1alpha1.NewTiKVConfig()
-		c.Set("log-level", "info")
-		// Don't reserve space in e2e tests, see
-		// https://github.com/pingcap/tidb-operator/issues/2509.
-		c.Set("storage.reserve-space", "0MB")
-		return c
-	}()
-)
-
-var (
 	BestEffort     = corev1.ResourceRequirements{}
 	BurstableSmall = corev1.ResourceRequirements{
+
 		Requests: corev1.ResourceList{
 			corev1.ResourceCPU:    resource.MustParse("100m"),
 			corev1.ResourceMemory: resource.MustParse("100Mi"),
@@ -87,6 +77,11 @@ var (
 func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 	// We assume all unparsable versions are greater or equal to v4.0.0-beta,
 	// e.g. nightly.
+	tikvConfig := v1alpha1.NewTiKVConfig()
+	tikvConfig.Set("log-level", "info")
+	// Don't reserve space in e2e tests, see
+	// https://github.com/pingcap/tidb-operator/issues/2509.
+	tikvConfig.Set("storage.reserve-space", "0MB")
 	if v, err := semver.NewVersion(version); err == nil && v.LessThan(tikvV4Beta) {
 		tikvConfig.Del("storage")
 	}
