@@ -1563,21 +1563,21 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	ginkgo.Context("when upgrade", func() {
 		ginkgo.It("should work for tc and components version", func() {
 			ginkgo.By("Deploy initial tc")
-			tc := fixture.GetTidbCluster(ns, "upgrade-version", utilimage.TiDBV4Version)
+			tc := fixture.GetTidbCluster(ns, "upgrade-version", utilimage.TiDBV4Prev)
 			pvDelete := corev1.PersistentVolumeReclaimDelete
 			tc.Spec.PVReclaimPolicy = &pvDelete
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
 
 			ginkgo.By("update tc version")
 			err := controller.GuaranteedUpdate(genericCli, tc, func() error {
-				tc.Spec.Version = utilimage.TiDBV4UpgradeVersion
+				tc.Spec.Version = utilimage.TiDBV4
 				return nil
 			})
-			framework.ExpectNoError(err, "failed to update tc version to %q", utilimage.TiDBV4UpgradeVersion)
+			framework.ExpectNoError(err, "failed to update tc version to %q", utilimage.TiDBV4)
 			oa.WaitForTidbClusterReady(tc, 5*time.Minute, 10*time.Second)
 
 			ginkgo.By("update components version")
-			componentVersion := utilimage.TiDBV4Version
+			componentVersion := utilimage.TiDBV4Prev
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 				tc.Spec.PD.Version = pointer.StringPtr(componentVersion)
 				tc.Spec.TiKV.Version = pointer.StringPtr(componentVersion)
