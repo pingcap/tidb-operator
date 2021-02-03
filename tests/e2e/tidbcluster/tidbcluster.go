@@ -252,7 +252,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 		ginkgo.By("Deploy initial tc")
 		clusterName := "host-network"
-		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4Version)
+		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4)
 		// Set some properties
 		tc.Spec.PD.Replicas = 1
 		tc.Spec.TiKV.Replicas = 1
@@ -300,7 +300,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 		ginkgo.By("Deploying tidb cluster")
 		clusterName := "webhook-upgrade-cluster"
-		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4Version)
+		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4Prev)
 		tc.Spec.PD.Replicas = 3
 		// Deploy
 		err = genericCli.Create(context.TODO(), tc)
@@ -308,9 +308,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		err = oa.WaitForTidbClusterReady(tc, 6*time.Minute, 5*time.Second)
 		framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
-		ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", tc.Spec.Version, utilimage.TiDBV4UpgradeVersion))
+		ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", tc.Spec.Version, utilimage.TiDBV4))
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-			tc.Spec.Version = utilimage.TiDBV4UpgradeVersion
+			tc.Spec.Version = utilimage.TiDBV4
 			return nil
 		})
 		framework.ExpectNoError(err, "failed to upgrade TidbCluster: %q", tc.Name)
@@ -903,7 +903,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		// TODO: explain purpose of this case
 		ginkgo.It("should clear TiDB failureMembers when scale TiDB to zero", func() {
 			ginkgo.By("Deploy initial tc")
-			tc := fixture.GetTidbCluster(ns, "tidb-scale", utilimage.TiDBV4Version)
+			tc := fixture.GetTidbCluster(ns, "tidb-scale", utilimage.TiDBV4)
 			tc.Spec.PD.Replicas = 1
 			tc.Spec.TiKV.Replicas = 1
 			tc.Spec.TiDB.Replicas = 1
