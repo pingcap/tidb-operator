@@ -16,22 +16,6 @@ env.DEFAULT_GINKGO_NODES = env.DEFAULT_GINKGO_NODES ?: '8'
 env.DEFAULT_E2E_ARGS = env.DEFAULT_E2E_ARGS ?: ''
 env.DEFAULT_DELETE_NAMESPACE_ON_FAILURE = env.DEFAULT_DELETE_NAMESPACE_ON_FAILURE ?: 'true'
 
-if (!env.ghprbSourceBranch) {
-    SRC_BRANCH = ""
-} else {
-    SRC_BRANCH = env.ghprbSourceBranch
-}
-
-if (!env.ghprbActualCommit) {
-    GIT_COMMIT = ""
-} else {
-    GIT_COMMIT = env.ghprbActualCommit
-}
-
-if (env.ghprbPullId) {
-    PR_ID = env.ghprbPullId
-}
-
 properties([
     parameters([
         string(name: 'GIT_URL', defaultValue: 'https://github.com/pingcap/tidb-operator', description: 'git repo url'),
@@ -229,13 +213,13 @@ def build(String name, String code, Map resources = e2ePodResources) {
                             ]) {
                                 sh """#!/bin/bash
                                 echo "info: list all coverage files"
-                                find /kind-data/control-plane/coverage
+                                ls -dla /kind-data/control-plane/coverage/*
                                 cat /kind-data/control-plane/coverage/*.cov
-                                find /kind-data/worker1/coverage
+                                ls -dla /kind-data/worker1/coverage/*
                                 cat /kind-data/worker1/coverage/*.cov
-                                find /kind-data/worker2/coverage
+                                ls -dla /kind-data/worker2/coverage/*
                                 cat /kind-data/worker2/coverage/*.cov
-                                find /kind-data/worker3/coverage
+                                ls -dla /kind-data/worker3/coverage/*
                                 cat /kind-data/worker3/coverage/*.cov
                                 echo "info: merging coverage files"
                                 cp /kind-data/control-plane/coverage/*.cov /tmp
@@ -245,8 +229,7 @@ def build(String name, String code, Map resources = e2ePodResources) {
                                 ./bin/gocovmerge /tmp/*.cov > /tmp/coverage.txt
                                 cat /tmp/coverage.txt
                                 echo "info: uploading coverage to codecov"
-                                curl -L "https://codecov.io/bash" -o "/codecov" && chmod 755 /codecov
-                                /codecov -t ${CODECOV_TOKEN} -B ${SRC_BRANCH} -b ${BUILD_NUMBER} -C ${GIT_COMMIT} -P ${PR_ID} -F e2e -n tidb-operator -f /tmp/coverage.txt
+                                @bash <(curl -s https://codecov.io/bash) -t ${CODECOV_TOKEN} -F e2e -n tidb-operator -f /tmp/coverage.txt
                                 """
                             }
                         }

@@ -21,6 +21,8 @@ DOCKER_REPO ?= ${DOCKER_REGISTRY}/pingcap
 IMAGE_TAG ?= latest
 TEST_COVER_PACKAGES:=go list ./cmd/... ./pkg/... | grep -vE "pkg/client" | grep -vE "pkg/tkctl" | grep -vE "pkg/apis" | sed 's|github.com/pingcap/tidb-operator/|./|' | tr '\n' ','
 
+# NOTE: coverage report generated for E2E tests (with `-c`) may not stable, see
+# https://github.com/golang/go/issues/23883#issuecomment-381766556
 GO_TEST := $(GO) test -cover -covermode=atomic -coverpkg=$$($(TEST_COVER_PACKAGES))
 
 default: build
