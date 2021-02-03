@@ -252,7 +252,7 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	pvList, err := kubeCli.CoreV1().PersistentVolumes().List(metav1.ListOptions{})
 	framework.ExpectNoError(err, "failed to list persistent volumes")
 	for _, pv := range pvList.Items {
-		if pv.Spec.StorageClassName != "standard" {
+		if pv.Spec.StorageClassName != "local-storage" {
 			continue
 		}
 		if pv.Spec.PersistentVolumeReclaimPolicy == v1.PersistentVolumeReclaimDelete {
@@ -271,7 +271,7 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 			return false, err
 		}
 		for _, pv := range pvList.Items {
-			if pv.Spec.StorageClassName != "standard" {
+			if pv.Spec.StorageClassName != "local-storage" {
 				continue
 			}
 			if pv.Status.Phase != v1.VolumeAvailable {
