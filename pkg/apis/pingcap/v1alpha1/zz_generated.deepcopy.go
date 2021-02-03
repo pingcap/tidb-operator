@@ -7162,6 +7162,21 @@ func (in *TiKVSpec) DeepCopyInto(out *TiKVSpec) {
 		*out = new(int32)
 		**out = **in
 	}
+	if in.SeparateRocksDBLog != nil {
+		in, out := &in.SeparateRocksDBLog, &out.SeparateRocksDBLog
+		*out = new(bool)
+		**out = **in
+	}
+	if in.SeparateRaftLog != nil {
+		in, out := &in.SeparateRaftLog, &out.SeparateRaftLog
+		*out = new(bool)
+		**out = **in
+	}
+	if in.LogTailer != nil {
+		in, out := &in.LogTailer, &out.LogTailer
+		*out = new(LogTailerSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.StorageClassName != nil {
 		in, out := &in.StorageClassName, &out.StorageClassName
 		*out = new(string)

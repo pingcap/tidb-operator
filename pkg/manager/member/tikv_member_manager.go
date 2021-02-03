@@ -15,6 +15,7 @@ package member
 
 import (
 	"fmt"
+	"path"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -318,9 +319,12 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	}
 
 	annoMount, annoVolume := annotationsMountVolume()
+	tikvDataVol := corev1.VolumeMount{
+		Name:      v1alpha1.TiKVMemberType.String(),
+		MountPath: tikvDataVolumeMountPath}
 	volMounts := []corev1.VolumeMount{
 		annoMount,
-		{Name: v1alpha1.TiKVMemberType.String(), MountPath: tikvDataVolumeMountPath},
+		tikvDataVol,
 		{Name: "config", ReadOnly: true, MountPath: "/etc/tikv"},
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
 	}
@@ -433,6 +437,40 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		return nil, fmt.Errorf("get delete slots number of statefulset %s/%s failed, err:%v", ns, setName, err)
 	}
 
+	var containers []corev1.Container
+	if tc.Spec.TiKV.ShouldSeparateRocksDBLog() {
+		// mount a shared volume and tail the RocksDB log to STDOUT using a sidecar.
+		rocksDBLogFilePath := path.Join(tikvDataVol.MountPath, "db/LOG")
+		containers = append(containers, corev1.Container{
+			Name:            v1alpha1.RocksDBLogTailerMemberType.String(),
+			Image:           tc.HelperImage(),
+			ImagePullPolicy: tc.HelperImagePullPolicy(),
+			Resources:       controller.ContainerResource(tc.Spec.TiKV.GetLogTailerSpec().ResourceRequirements),
+			VolumeMounts:    []corev1.VolumeMount{tikvDataVol},
+			Command: []string{
+				"sh",
+				"-c",
+				fmt.Sprintf("touch %s; tail -n0 -F %s;", rocksDBLogFilePath, rocksDBLogFilePath),
+			},
+		})
+	}
+	if tc.Spec.TiKV.ShouldSeparateRaftLog() {
+		// mount a shared volume and tail the Raft log to STDOUT using a sidecar.
+		raftLogFilePath := path.Join(tikvDataVol.MountPath, "raft/LOG")
+		containers = append(containers, corev1.Container{
+			Name:            v1alpha1.RaftLogTailerMemberType.String(),
+			Image:           tc.HelperImage(),
+			ImagePullPolicy: tc.HelperImagePullPolicy(),
+			Resources:       controller.ContainerResource(tc.Spec.TiKV.GetLogTailerSpec().ResourceRequirements),
+			VolumeMounts:    []corev1.VolumeMount{tikvDataVol},
+			Command: []string{
+				"sh",
+				"-c",
+				fmt.Sprintf("touch %s; tail -n0 -F %s;", raftLogFilePath, raftLogFilePath),
+			},
+		})
+	}
+
 	env := []corev1.EnvVar{
 		{
 			Name: "NAMESPACE",
@@ -490,10 +528,12 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		})
 	}
 	tikvContainer.Env = util.AppendEnv(env, baseTiKVSpec.Env())
+	containers = append(containers, tikvContainer)
+
 	podSpec.Volumes = append(vols, baseTiKVSpec.AdditionalVolumes()...)
 	podSpec.SecurityContext = podSecurityContext
 	podSpec.InitContainers = append(initContainers, baseTiKVSpec.InitContainers()...)
-	podSpec.Containers = append([]corev1.Container{tikvContainer}, baseTiKVSpec.AdditionalContainers()...)
+	podSpec.Containers = append(containers, baseTiKVSpec.AdditionalContainers()...)
 	podSpec.ServiceAccountName = tc.Spec.TiKV.ServiceAccount
 	if podSpec.ServiceAccountName == "" {
 		podSpec.ServiceAccountName = tc.Spec.ServiceAccount
