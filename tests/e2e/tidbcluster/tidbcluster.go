@@ -142,6 +142,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					tc.Spec.TiDB.Replicas = 1
 					tc.Spec.TiKV.SeparateRocksDBLog = pointer.BoolPtr(true)
 					tc.Spec.TiKV.SeparateRaftLog = pointer.BoolPtr(true)
+					tc.Spec.TiKV.LogTailer = &v1alpha1.LogTailerSpec{
+						ResourceRequirements: corev1.ResourceRequirements{},
+					}
 					_, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
 					framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
 					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 30*time.Second)
