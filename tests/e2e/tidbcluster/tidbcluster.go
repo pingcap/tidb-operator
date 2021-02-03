@@ -143,7 +143,16 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					tc.Spec.TiKV.SeparateRocksDBLog = pointer.BoolPtr(true)
 					tc.Spec.TiKV.SeparateRaftLog = pointer.BoolPtr(true)
 					tc.Spec.TiKV.LogTailer = &v1alpha1.LogTailerSpec{
-						ResourceRequirements: corev1.ResourceRequirements{},
+						ResourceRequirements: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("100m"),
+								corev1.ResourceMemory: resource.MustParse("100Mi"),
+							},
+							Limits: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("100m"),
+								corev1.ResourceMemory: resource.MustParse("100Mi"),
+							},
+						},
 					}
 					_, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
 					framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
