@@ -9731,14 +9731,14 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 					},
 					"separateRockDBLog": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Whether output the RocksDB log in an separate sidecar container Optional: Defaults to true",
+							Description: "Whether output the RocksDB log in a separate sidecar container Optional: Defaults to false",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
 					},
 					"separateRaftLog": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Whether output the Raft log in an separate sidecar container Optional: Defaults to true",
+							Description: "Whether output the Raft log in a separate sidecar container Optional: Defaults to false",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},

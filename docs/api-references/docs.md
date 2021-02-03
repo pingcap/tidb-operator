@@ -17929,8 +17929,8 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>Whether output the RocksDB log in an separate sidecar container
-Optional: Defaults to true</p>
+<p>Whether output the RocksDB log in a separate sidecar container
+Optional: Defaults to false</p>
 </td>
 </tr>
 <tr>
@@ -17942,8 +17942,8 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>Whether output the Raft log in an separate sidecar container
-Optional: Defaults to true</p>
+<p>Whether output the Raft log in a separate sidecar container
+Optional: Defaults to false</p>
 </td>
 </tr>
 <tr>
