@@ -146,10 +146,18 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			oa.CleanCRDOrDie()
 		})
 
+<<<<<<< HEAD
 		ginkgo.It("[PodAdmissionWebhook] able to upgrade TiDB Cluster with pod admission webhook", func() {
 			log.Logf("start to upgrade tidbcluster with pod admission webhook")
 			// deploy new cluster and test upgrade and scale-in/out with pod admission webhook
 			tc := fixture.GetTidbCluster(ns, "admission", utilimage.TiDBV3Version)
+=======
+		ginkgo.It(fmt.Sprintf("should be able to upgrade TiDB Cluster from %s to %s", utilimage.TiDBV4Prev, utilimage.TiDBV4), func() {
+			log.Logf("start to upgrade tidbcluster with pod admission webhook")
+			// deploy new cluster and test upgrade and scale-in/out with pod admission webhook
+			ginkgo.By(fmt.Sprintf("start initial TidbCluster %q", utilimage.TiDBV4Prev))
+			tc := fixture.GetTidbCluster(ns, "admission", utilimage.TiDBV4Prev)
+>>>>>>> 3ff16016... e2e: refactor tidb version (#3770)
 			tc.Spec.PD.Replicas = 3
 			tc.Spec.TiKV.Replicas = 3
 			tc.Spec.TiDB.Replicas = 2
@@ -162,25 +170,41 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			err = setPartitionAnnotation(ns, tc.Name, label.TiKVLabelVal, 1)
 			framework.ExpectNoError(err, "set tikv Partition annotation failed")
 
+<<<<<<< HEAD
 			ginkgo.By("Upgrade TiDB version")
+=======
+			ginkgo.By(fmt.Sprintf("Upgrade TidbCluster version to %q", utilimage.TiDBV4))
+>>>>>>> 3ff16016... e2e: refactor tidb version (#3770)
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-				tc.Spec.Version = utilimage.TiDBV3UpgradeVersion
+				tc.Spec.Version = utilimage.TiDBV4
 				return nil
 			})
-			framework.ExpectNoError(err, "failed to update TidbCluster to upgrade tidb version to %v", utilimage.TiDBV3UpgradeVersion)
+			framework.ExpectNoError(err, "failed to update TidbCluster to upgrade tidb version to %v", utilimage.TiDBV4)
 
+<<<<<<< HEAD
 			err = wait.Poll(5*time.Second, 30*time.Minute, func() (done bool, err error) {
+=======
+			ginkgo.By(fmt.Sprintf("wait for tikv-1 pod upgrading to %q", utilimage.TiDBV4))
+			err = wait.Poll(5*time.Second, 10*time.Minute, func() (done bool, err error) {
+>>>>>>> 3ff16016... e2e: refactor tidb version (#3770)
 				tikvPod, err := c.CoreV1().Pods(ns).Get(fmt.Sprintf("%s-tikv-1", tc.Name), metav1.GetOptions{})
 				if err != nil {
 					return false, nil
 				}
-				if tikvPod.Spec.Containers[0].Image != fmt.Sprintf("pingcap/tikv:%s", utilimage.TiDBV3UpgradeVersion) {
+				if tikvPod.Spec.Containers[0].Image != fmt.Sprintf("pingcap/tikv:%s", utilimage.TiDBV4) {
 					return false, nil
 				}
 				return true, nil
 			})
+<<<<<<< HEAD
 			framework.ExpectNoError(err, "expect tikv upgrade to tikv-1")
 			framework.Logf("tikv have upgraded to tikv-1")
+=======
+			framework.ExpectNoError(err, "failed to upgrade tikv-1 to %q", utilimage.TiDBV4)
+
+			ginkgo.By("Wait to see if tikv sts partition annotation remains 1 for 3 min")
+			// TODO: explain the purpose of this testing
+>>>>>>> 3ff16016... e2e: refactor tidb version (#3770)
 			err = wait.Poll(5*time.Second, 3*time.Minute, func() (done bool, err error) {
 				tikvSts, err := c.AppsV1().StatefulSets(ns).Get(fmt.Sprintf("%s-tikv", tc.Name), metav1.GetOptions{})
 				if err != nil {
@@ -256,13 +280,13 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					TiDB: &v1alpha1.TiDBSpec{
 						Replicas: 1,
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV3Version),
+							Image: fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV4Prev),
 						},
 					},
 					TiKV: &v1alpha1.TiKVSpec{
 						Replicas: 1,
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: fmt.Sprintf("pingcap/tikv:%s", utilimage.TiDBV3Version),
+							Image: fmt.Sprintf("pingcap/tikv:%s", utilimage.TiDBV4Prev),
 						},
 						ResourceRequirements: v1.ResourceRequirements{
 							Requests: v1.ResourceList{
@@ -273,7 +297,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					PD: &v1alpha1.PDSpec{
 						Replicas: 1,
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: fmt.Sprintf("pingcap/pd:%s", utilimage.TiDBV3Version),
+							Image: fmt.Sprintf("pingcap/pd:%s", utilimage.TiDBV4Prev),
 						},
 						ResourceRequirements: v1.ResourceRequirements{
 							Requests: v1.ResourceList{
@@ -291,7 +315,11 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			oa.UpgradeOperatorOrDie(ocfg)
 			// now the webhook enabled
 			err = controller.GuaranteedUpdate(genericCli, legacyTc, func() error {
+<<<<<<< HEAD
 				legacyTc.Spec.TiDB.Image = fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV3Version)
+=======
+				legacyTc.Spec.TiDB.Image = fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV4)
+>>>>>>> 3ff16016... e2e: refactor tidb version (#3770)
 				return nil
 			})
 			framework.ExpectNoError(err, "Update legacy tidbcluster should not be influenced by validating")
@@ -302,7 +330,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				legacyTc.Spec.TiDB.BaseImage = "pingcap/tidb"
 				legacyTc.Spec.TiKV.BaseImage = "pingcap/tikv"
 				legacyTc.Spec.PD.BaseImage = "pingcap/pd"
-				legacyTc.Spec.PD.Version = pointer.StringPtr(utilimage.TiDBV3Version)
+				legacyTc.Spec.PD.Version = pointer.StringPtr(utilimage.TiDBV4)
 				return nil
 			})
 			framework.ExpectNoError(err, "Expected update tidbcluster")
@@ -323,12 +351,12 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: &v1alpha1.TiDBSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV3Version),
+							Image: fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV4),
 						},
 					},
 					TiKV: &v1alpha1.TiKVSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: fmt.Sprintf("pingcap/tikv:%s", utilimage.TiDBV3Version),
+							Image: fmt.Sprintf("pingcap/tikv:%s", utilimage.TiDBV4),
 						},
 						ResourceRequirements: v1.ResourceRequirements{
 							Requests: v1.ResourceList{
@@ -338,7 +366,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					},
 					PD: &v1alpha1.PDSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: fmt.Sprintf("pingcap/pd:%s", utilimage.TiDBV3Version),
+							Image: fmt.Sprintf("pingcap/pd:%s", utilimage.TiDBV4),
 						},
 						ResourceRequirements: v1.ResourceRequirements{
 							Requests: v1.ResourceList{
@@ -359,7 +387,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					Name:      "newly-created",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					Version: utilimage.TiDBV3Version,
+					Version: utilimage.TiDBV4,
 					TiDB: &v1alpha1.TiDBSpec{
 						Replicas: 1,
 					},
@@ -965,6 +993,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			tests.CleanReleasedCRDOrDie(version)
 		})
 
+<<<<<<< HEAD
 		ginkgo.It("Deploy TidbCluster and Upgrade Operator", func() {
 			tcName := "tidbcluster"
 			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "", utilimage.TiDBV3Version)
@@ -975,6 +1004,19 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			cluster.OperatorTag = version
 			oa.DeployTidbClusterOrDie(&cluster)
 			oa.CheckTidbClusterStatusOrDie(&cluster)
+=======
+		ginkgo.It("should not change old TidbCluster", func() {
+			ginkgo.By(fmt.Sprintf("deploy original tc %q", utilimage.TiDBV4))
+			tcName := "tidbcluster"
+			tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "", utilimage.TiDBV4)
+			tcCfg.Resources["pd.replicas"] = "3"
+			tcCfg.Resources["tikv.replicas"] = "3"
+			tcCfg.Resources["tidb.replicas"] = "1"
+			tcCfg.Monitor = false
+			tcCfg.OperatorTag = operatorVersion
+			oa.DeployTidbClusterOrDie(&tcCfg)
+			oa.CheckTidbClusterStatusOrDie(&tcCfg)
+>>>>>>> 3ff16016... e2e: refactor tidb version (#3770)
 
 			getPods := func(ls string) ([]v1.Pod, error) {
 				listOptions := metav1.ListOptions{
@@ -1040,6 +1082,78 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			})
 			framework.ExpectEqual(err, wait.ErrWaitTimeout, "expect pd/tikv/tidb haven't been changed for 5 minutes")
 		})
+<<<<<<< HEAD
+=======
+
+		/*
+		  Release: v1.2.0
+		  new feature in https://github.com/pingcap/tidb-operator/pull/3440
+		  deploy tidbmonitor and upgrade tidb-perator, then tidbmonitor should switch from deployment to statefulset
+		*/
+		ginkgo.It("should migrate tidbmonitor from deployment to sts", func() {
+			ginkgo.By("deploy initial tc")
+			tcName := "smooth-tidbcluster"
+			tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "admin", utilimage.TiDBV4)
+			tcCfg.Resources["pd.replicas"] = "3"
+			tcCfg.Resources["tikv.replicas"] = "3"
+			tcCfg.Resources["tidb.replicas"] = "1"
+			oa.DeployTidbClusterOrDie(&tcCfg)
+			oa.CheckTidbClusterStatusOrDie(&tcCfg)
+
+			ginkgo.By("deploy tidb monitor")
+			monitorName := "smooth-migrate"
+			tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get tidbcluster")
+			tm := fixture.NewTidbMonitor(monitorName, ns, tc, true, true, true)
+			_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(tm)
+			framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
+			err = tests.CheckTidbMonitor(tm, cli, c, fw)
+			framework.ExpectNoError(err, "Expected tidbmonitor checked success")
+
+			deploymentPvcName := fmt.Sprintf("%s-monitor", monitorName)
+			deploymentPvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get(deploymentPvcName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "Expected tidbmonitor deployment pvc success")
+			oldVolumeName := deploymentPvc.Spec.VolumeName
+
+			ginkgo.By("Upgrade tidb-operator and CRDs to the latest version")
+			ocfg.Tag = cfg.OperatorTag
+			ocfg.Image = cfg.OperatorImage
+			oa.InstallCRDOrDie(ocfg)
+			oa.UpgradeOperatorOrDie(ocfg)
+			err = tests.CheckTidbMonitor(tm, cli, c, fw)
+			framework.ExpectNoError(err, "Expected tidbmonitor checked success under migration")
+			err = wait.Poll(5*time.Second, 3*time.Minute, func() (done bool, err error) {
+				tmSet, err := stsGetter.StatefulSets(ns).Get(monitor.GetMonitorObjectName(tm), metav1.GetOptions{})
+				if err != nil {
+					log.Logf("ERROR: failed to get statefulset: %s/%s, %v", ns, tmSet, err)
+					return false, nil
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "Expected tidbmonitor sts success")
+			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+				newStsPvcName := monitor.GetMonitorFirstPVCName(tm.Name)
+				log.Logf("tidbmonitor newStsPvcName:%s", newStsPvcName)
+				stsPvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get(newStsPvcName, metav1.GetOptions{})
+				if err != nil {
+					if errors.IsNotFound(err) {
+						log.Logf("tm[%s/%s]'s first sts pvc not found,tag:%s,image:%s", ns, tm.Name, cfg.OperatorTag, cfg.OperatorImage)
+						return false, nil
+					}
+					log.Logf("ERROR: get tidbmonitor sts pvc err:%v", err)
+					return false, nil
+				}
+				if stsPvc.Spec.VolumeName == oldVolumeName {
+					return true, nil
+				}
+				log.Logf("tidbmonitor sts pv unequal to old deployment pv")
+				return false, nil
+			})
+			framework.ExpectNoError(err, "Expected tidbmonitor sts use pv of old deployment")
+			err = tests.CheckTidbMonitor(tm, cli, c, fw)
+			framework.ExpectNoError(err, "Expected tidbmonitor checked success")
+		})
+>>>>>>> 3ff16016... e2e: refactor tidb version (#3770)
 	})
 
 	ginkgo.Context("upgrading tidb-operator in the same minor series should not trigger rolling-update", func() {
@@ -1072,7 +1186,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		ginkgo.It("basic deployment", func() {
 			framework.Skipf("duplicated test")
 			tcName := "basic"
-			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "", utilimage.TiDBV3Version)
+			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "", utilimage.TiDBV4)
 			cluster.Resources["pd.replicas"] = "1"
 			cluster.Resources["tikv.replicas"] = "1"
 			cluster.Resources["tidb.replicas"] = "1"

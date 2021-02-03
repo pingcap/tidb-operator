@@ -126,6 +126,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		}
 	})
 
+<<<<<<< HEAD
 	ginkgo.Context("Basic: Deploying, Scaling, Update Configuration", func() {
 		clusterCfgs := []struct {
 			Version string
@@ -141,6 +142,40 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				Name:    "basic-v4",
 			},
 		}
+=======
+	// basic deploy, scale out, scale in, change configuration tests
+	ginkgo.Describe("when using version", func() {
+		versions := []string{utilimage.TiDBV3, utilimage.TiDBV4}
+		for _, version := range versions {
+			version := version
+			versionDashed := strings.ReplaceAll(version, ".", "-")
+			ginkgo.Context(version, func() {
+				ginkgo.It("should scale out tc successfully", func() {
+					ginkgo.By("Deploy a basic tc")
+					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("basic-%s", versionDashed), version)
+					tc.Spec.TiDB.Replicas = 1
+					_, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
+					framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
+					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 30*time.Second)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+					err = crdUtil.CheckDisasterTolerance(tc)
+					framework.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
+
+					ginkgo.By("scale out tidb, tikv, pd")
+					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+						tc.Spec.TiDB.Replicas = 2
+						tc.Spec.TiKV.Replicas = 4
+						// this must be 5, or one pd pod will not be scheduled, reference: https://docs.pingcap.com/tidb-in-kubernetes/stable/tidb-scheduler#pd-component
+						tc.Spec.PD.Replicas = 5
+						return nil
+					})
+					framework.ExpectNoError(err, "failed to scale out TidbCluster: %q", tc.Name)
+					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+					err = crdUtil.CheckDisasterTolerance(tc)
+					framework.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
+				})
+>>>>>>> 3ff16016... e2e: refactor tidb version (#3770)
 
 		for _, clusterCfg := range clusterCfgs {
 			localCfg := clusterCfg
@@ -219,6 +254,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			ginkgo.By("Testing HostNetwork feature with Advanced StatefulSet")
 		}
 
+<<<<<<< HEAD
 		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "host-network", "", utilimage.TiDBV3Version)
 		cluster.Resources["pd.replicas"] = "1"
 		cluster.Resources["tidb.replicas"] = "1"
@@ -239,6 +275,29 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	ginkgo.It("Upgrading TiDB Cluster", func() {
 		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "cluster", "admin", utilimage.TiDBV3Version)
 		cluster.Resources["pd.replicas"] = "3"
+=======
+		ginkgo.By("Deploy initial tc")
+		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "host-network", "", utilimage.TiDBV4)
+		tcCfg.Resources["pd.replicas"] = "1"
+		tcCfg.Resources["tidb.replicas"] = "1"
+		tcCfg.Resources["tikv.replicas"] = "1"
+		oa.DeployTidbClusterOrDie(&tcCfg)
+
+		ginkgo.By("Switch to host network")
+		tcCfg.SetHostNetwork(true)
+		oa.UpgradeTidbClusterOrDie(&tcCfg)
+		oa.CheckTidbClusterStatusOrDie(&tcCfg)
+
+		ginkgo.By("Switch back to pod network")
+		tcCfg.SetHostNetwork(false)
+		oa.UpgradeTidbClusterOrDie(&tcCfg)
+		oa.CheckTidbClusterStatusOrDie(&tcCfg)
+	})
+
+	ginkgo.It("should upgrade TidbCluster with webhook enabled", func() {
+		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "cluster", "admin", utilimage.TiDBV4Prev)
+		tcCfg.Resources["pd.replicas"] = "3"
+>>>>>>> 3ff16016... e2e: refactor tidb version (#3770)
 
 		ginkgo.By("Creating webhook certs and self signing it")
 		svcName := "webhook"
@@ -256,12 +315,21 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.CheckTidbClusterStatusOrDie(&cluster)
 		oa.CheckDisasterToleranceOrDie(&cluster)
 
+<<<<<<< HEAD
 		ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", cluster.ClusterVersion, utilimage.TiDBV3UpgradeVersion))
 		ctx, cancel := context.WithCancel(context.Background())
 		cluster.UpgradeAll(utilimage.TiDBV3UpgradeVersion)
 		oa.UpgradeTidbClusterOrDie(&cluster)
 		oa.CheckUpgradeOrDie(ctx, &cluster)
 		oa.CheckTidbClusterStatusOrDie(&cluster)
+=======
+		ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", tcCfg.ClusterVersion, utilimage.TiDBV4))
+		ctx, cancel := context.WithCancel(context.Background())
+		tcCfg.UpgradeAll(utilimage.TiDBV4)
+		oa.UpgradeTidbClusterOrDie(&tcCfg)
+		oa.CheckUpgradeOrDie(ctx, &tcCfg)
+		oa.CheckTidbClusterStatusOrDie(&tcCfg)
+>>>>>>> 3ff16016... e2e: refactor tidb version (#3770)
 		cancel()
 
 		ginkgo.By("Check webhook is still running")
@@ -279,7 +347,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 	ginkgo.It("should keep tidb service in sync", func() {
 		ginkgo.By("Deploy initial tc")
-		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "service", "admin", utilimage.TiDBV3Version)
+		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "service", "admin", utilimage.TiDBV4)
 		tcCfg.Resources["pd.replicas"] = "1"
 		tcCfg.Resources["tidb.replicas"] = "1"
 		tcCfg.Resources["tikv.replicas"] = "1"
@@ -369,6 +437,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 	updateStrategy := v1alpha1.ConfigUpdateStrategyInPlace
 	// Basic IT for managed in TidbCluster CR
+<<<<<<< HEAD
 	// TODO: deploy pump through CR in backup and restore IT
 	ginkgo.It("Pump: Test managing Pump in TidbCluster CRD", func() {
 		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "pump-it", "admin", utilimage.TiDBV3Version)
@@ -384,6 +453,25 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 		tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
 		framework.ExpectNoError(err, "failed to get TidbCluster: %v", cluster)
+=======
+	// TODO: deploy pump through CR in backup and restore
+	// TODO: Add pump configmap rolling-update case
+	ginkgo.It("should adopt helm created pump with TidbCluster CR", func() {
+		ginkgo.By("Deploy initial tc")
+		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "pump", "admin", utilimage.TiDBV4)
+		tcCfg.Resources["pd.replicas"] = "1"
+		tcCfg.Resources["tikv.replicas"] = "1"
+		tcCfg.Resources["tidb.replicas"] = "1"
+		oa.DeployTidbClusterOrDie(&tcCfg)
+		oa.CheckTidbClusterStatusOrDie(&tcCfg)
+
+		ginkgo.By("Deploy pump using helm")
+		err := oa.DeployAndCheckPump(&tcCfg)
+		framework.ExpectNoError(err, "failed to deploy pump for TidbCluster: %v", tcCfg)
+
+		tc, err := cli.PingcapV1alpha1().TidbClusters(tcCfg.Namespace).Get(tcCfg.ClusterName, metav1.GetOptions{})
+		framework.ExpectNoError(err, "failed to get TidbCluster: %v", tcCfg)
+>>>>>>> 3ff16016... e2e: refactor tidb version (#3770)
 
 		// If using advanced statefulset, we must upgrade all Kubernetes statefulsets to advanced statefulsets first.
 		if ocfg.Enabled(features.AdvancedStatefulSet) {
@@ -505,6 +593,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		// TODO: Add pump configmap rolling-update case
 	})
 
+<<<<<<< HEAD
 	ginkgo.It("API: Migrate from helm to CRD", func() {
 		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "helm-migration", "admin", utilimage.TiDBV3Version)
 		cluster.Resources["pd.replicas"] = "1"
@@ -512,6 +601,16 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		cluster.Resources["tidb.replicas"] = "1"
 		oa.DeployTidbClusterOrDie(&cluster)
 		oa.CheckTidbClusterStatusOrDie(&cluster)
+=======
+	ginkgo.It("should migrate from helm to CR", func() {
+		ginkgo.By("Deploy initial tc")
+		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "helm-migration", "admin", utilimage.TiDBV4)
+		tcCfg.Resources["pd.replicas"] = "1"
+		tcCfg.Resources["tikv.replicas"] = "1"
+		tcCfg.Resources["tidb.replicas"] = "1"
+		oa.DeployTidbClusterOrDie(&tcCfg)
+		oa.CheckTidbClusterStatusOrDie(&tcCfg)
+>>>>>>> 3ff16016... e2e: refactor tidb version (#3770)
 
 		tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
 		framework.ExpectNoError(err, "failed to get TidbCluster: %v", cluster)
@@ -617,8 +716,14 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "timeout waiting for statefulsets to be controlled by TidbCluster")
 	})
 
+<<<<<<< HEAD
 	ginkgo.It("TidbMonitor: Deploying and checking monitor", func() {
 		tc := fixture.GetTidbCluster(ns, "monitor-test", utilimage.TiDBV4UpgradeVersion)
+=======
+	ginkgo.It("should manage tidb monitor normally", func() {
+		ginkgo.By("Deploy initial tc")
+		tc := fixture.GetTidbCluster(ns, "monitor-test", utilimage.TiDBV4)
+>>>>>>> 3ff16016... e2e: refactor tidb version (#3770)
 		tc.Spec.PD.Replicas = 1
 		tc.Spec.TiKV.Replicas = 1
 		tc.Spec.TiDB.Replicas = 1
@@ -771,7 +876,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 	ginkgo.It("TiDB cluster can be paused and unpaused", func() {
 		tcName := "paused"
-		tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV3Version)
+		tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4Prev)
 		tc.Spec.PD.Replicas = 1
 		tc.Spec.TiKV.Replicas = 1
 		tc.Spec.TiDB.Replicas = 1
@@ -788,10 +893,16 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			tc.Spec.Paused = true
 			return nil
 		})
+<<<<<<< HEAD
 		framework.ExpectNoError(err, "failed to update TidbCluster: %v", tc)
 		ginkgo.By("Make a change")
+=======
+		framework.ExpectNoError(err, "failed to pause TidbCluster: %q", tc.Name)
+
+		ginkgo.By(fmt.Sprintf("upgrade tc version to %q", utilimage.TiDBV4))
+>>>>>>> 3ff16016... e2e: refactor tidb version (#3770)
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-			tc.Spec.Version = utilimage.TiDBV3UpgradeVersion
+			tc.Spec.Version = utilimage.TiDBV4
 			return nil
 		})
 		framework.ExpectNoError(err, "failed to update TidbCluster: %v", tc)
@@ -830,6 +941,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "wait for tikv upgraded timeout: %v", tc)
 	})
 
+<<<<<<< HEAD
 	ginkgo.It("[Feature: AutoFailover] clear TiDB failureMembers when scale TiDB to zero", func() {
 		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "tidb-scale", "admin", utilimage.TiDBV3Version)
 		cluster.Resources["pd.replicas"] = "3"
@@ -847,6 +959,34 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			var err error
 			if tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
 				log.Logf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
+=======
+	ginkgo.Context("[Feature: AutoFailover]", func() {
+		// TODO: explain purpose of this case
+		ginkgo.It("should clear TiDB failureMembers when scale TiDB to zero", func() {
+			ginkgo.By("Deploy initial tc with bad tidb pre-start script")
+			tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "tidb-scale", "admin", utilimage.TiDBV4)
+			tcCfg.Resources["pd.replicas"] = "3"
+			tcCfg.Resources["tikv.replicas"] = "1"
+			tcCfg.Resources["tidb.replicas"] = "1"
+
+			tcCfg.TiDBPreStartScript = strconv.Quote("exit 1")
+			oa.DeployTidbClusterOrDie(&tcCfg)
+
+			ginkgo.By("check tidb failure member count")
+			ns := tcCfg.Namespace
+			tcName := tcCfg.ClusterName
+			err := wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
+				var tc *v1alpha1.TidbCluster
+				var err error
+				if tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
+					log.Logf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
+					return false, nil
+				}
+				if len(tc.Status.TiDB.FailureMembers) == 1 {
+					return true, nil
+				}
+				log.Logf("the number of failed tidb member is not 1 (current: %d)", len(tc.Status.TiDB.FailureMembers))
+>>>>>>> 3ff16016... e2e: refactor tidb version (#3770)
 				return false, nil
 			}
 			if len(tc.Status.TiDB.FailureMembers) == 0 {
@@ -909,7 +1049,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 			ginkgo.By("Creating tidb cluster")
 			dashTLSName := fmt.Sprintf("%s-dashboard-tls", tcName)
-			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4Version)
+			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4Prev)
 			tc.Spec.PD.Replicas = 3
 			tc.Spec.PD.TLSClientSecretName = &dashTLSName
 			tc.Spec.TiKV.Replicas = 3
@@ -919,7 +1059,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			tc.Spec.Pump = &v1alpha1.PumpSpec{
 				Replicas:             1,
 				BaseImage:            "pingcap/tidb-binlog",
-				ResourceRequirements: fixture.WithStorage(fixture.BurstbleSmall, "1Gi"),
+				ResourceRequirements: fixture.WithStorage(fixture.BurstableSmall, "1Gi"),
 				Config: tcconfig.New(map[string]interface{}{
 					"addr": "0.0.0.0:8250",
 				}),
@@ -958,10 +1098,10 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				Namespace:      ns,
 				ClusterName:    tcName,
 				OperatorTag:    cfg.OperatorTag,
-				ClusterVersion: utilimage.TiDBV4Version,
+				ClusterVersion: utilimage.TiDBV4,
 			}
 			targetTcName := "tls-target"
-			targetTc := fixture.GetTidbCluster(ns, targetTcName, utilimage.TiDBV4Version)
+			targetTc := fixture.GetTidbCluster(ns, targetTcName, utilimage.TiDBV4)
 			targetTc.Spec.PD.Replicas = 1
 			targetTc.Spec.TiKV.Replicas = 1
 			targetTc.Spec.TiDB.Replicas = 1
@@ -1025,7 +1165,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 			ginkgo.By("Upgrading tidb cluster")
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-				tc.Spec.Version = utilimage.TiDBV4UpgradeVersion
+				tc.Spec.Version = utilimage.TiDBV4
 				return nil
 			})
 			framework.ExpectNoError(err, "failed to update TidbCluster: %v", tc)
@@ -1065,7 +1205,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 			ginkgo.By("Creating tidb cluster")
 			dashTLSName := fmt.Sprintf("%s-dashboard-tls", tcName)
-			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4UpgradeVersion)
+			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4)
 			tc.Spec.PD.Replicas = 1
 			tc.Spec.PD.TLSClientSecretName = &dashTLSName
 			tc.Spec.TiKV.Replicas = 1
@@ -1075,7 +1215,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			tc.Spec.Pump = &v1alpha1.PumpSpec{
 				Replicas:             1,
 				BaseImage:            "pingcap/tidb-binlog",
-				ResourceRequirements: fixture.WithStorage(fixture.BurstbleSmall, "1Gi"),
+				ResourceRequirements: fixture.WithStorage(fixture.BurstableSmall, "1Gi"),
 				Config: tcconfig.New(map[string]interface{}{
 					"addr": "0.0.0.0:8250",
 				}),
@@ -1086,7 +1226,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %v", tc)
 
 			ginkgo.By("Creating heterogeneous tidb cluster")
-			heterogeneousTc := fixture.GetTidbCluster(ns, heterogeneousTcName, utilimage.TiDBV4UpgradeVersion)
+			heterogeneousTc := fixture.GetTidbCluster(ns, heterogeneousTcName, utilimage.TiDBV4)
 			heterogeneousTc.Spec.PD = nil
 			heterogeneousTc.Spec.TiKV.Replicas = 1
 			heterogeneousTc.Spec.TiDB.Replicas = 1
@@ -1162,10 +1302,10 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				Namespace:      ns,
 				ClusterName:    tcName,
 				OperatorTag:    cfg.OperatorTag,
-				ClusterVersion: utilimage.TiDBV4Version,
+				ClusterVersion: utilimage.TiDBV4,
 			}
 			targetTcName := "tls-target"
-			targetTc := fixture.GetTidbCluster(ns, targetTcName, utilimage.TiDBV4Version)
+			targetTc := fixture.GetTidbCluster(ns, targetTcName, utilimage.TiDBV4)
 			targetTc.Spec.PD.Replicas = 1
 			targetTc.Spec.TiKV.Replicas = 1
 			targetTc.Spec.TiDB.Replicas = 1
@@ -1210,7 +1350,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 	ginkgo.It("Ensure Service NodePort Not Change", func() {
 		// Create TidbCluster with NodePort to check whether node port would change
-		nodeTc := fixture.GetTidbCluster(ns, "nodeport", utilimage.TiDBV3Version)
+		nodeTc := fixture.GetTidbCluster(ns, "nodeport", utilimage.TiDBV4)
 		nodeTc.Spec.PD.Replicas = 1
 		nodeTc.Spec.TiKV.Replicas = 1
 		nodeTc.Spec.TiDB.Replicas = 1
@@ -1301,6 +1441,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.Logf("tidbcluster tidb service NodePort haven't changed after update")
 	})
 
+<<<<<<< HEAD
 	ginkgo.It("Heterogeneous: Add heterogeneous cluster into an existing cluster  ", func() {
 		// Create TidbCluster with NodePort to check whether node port would change
 		originTc := fixture.GetTidbCluster(ns, "origin", utilimage.TiDBV4Version)
@@ -1311,6 +1452,41 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected TiDB cluster created")
 		err = oa.WaitForTidbClusterReady(originTc, 30*time.Minute, 15*time.Second)
 		framework.ExpectNoError(err, "Expected TiDB cluster ready")
+=======
+	ginkgo.Context("[Feature: Heterogeneous Cluster]", func() {
+		ginkgo.It("should join heterogeneous cluster into an existing cluster", func() {
+			// Create TidbCluster with NodePort to check whether node port would change
+			ginkgo.By("Deploy origin tc")
+			originTc := fixture.GetTidbCluster(ns, "origin", utilimage.TiDBV4)
+			originTc.Spec.PD.Replicas = 1
+			originTc.Spec.TiKV.Replicas = 1
+			originTc.Spec.TiDB.Replicas = 1
+			err := genericCli.Create(context.TODO(), originTc)
+			framework.ExpectNoError(err, "Expected TiDB cluster created")
+			err = oa.WaitForTidbClusterReady(originTc, 30*time.Minute, 5*time.Second)
+			framework.ExpectNoError(err, "Expected TiDB cluster ready")
+
+			ginkgo.By("Deploy heterogeneous tc")
+			heterogeneousTc := fixture.GetTidbCluster(ns, "heterogeneous", utilimage.TiDBV4)
+			heterogeneousTc.Spec.PD = nil
+			heterogeneousTc.Spec.TiKV.Replicas = 1
+			heterogeneousTc.Spec.TiDB.Replicas = 1
+			heterogeneousTc.Spec.TiFlash = &v1alpha1.TiFlashSpec{Replicas: 1,
+				BaseImage: "pingcap/tiflash", StorageClaims: []v1alpha1.StorageClaim{
+					{Resources: v1.ResourceRequirements{
+						Requests: v1.ResourceList{
+							v1.ResourceStorage: resource.MustParse("10G"),
+						},
+					}},
+				}}
+			heterogeneousTc.Spec.Cluster = &v1alpha1.TidbClusterRef{
+				Name: originTc.Name,
+			}
+			err = genericCli.Create(context.TODO(), heterogeneousTc)
+			framework.ExpectNoError(err, "Expected Heterogeneous TiDB cluster created")
+			err = oa.WaitForTidbClusterReady(heterogeneousTc, 30*time.Minute, 15*time.Second)
+			framework.ExpectNoError(err, "Expected Heterogeneous TiDB cluster ready")
+>>>>>>> 3ff16016... e2e: refactor tidb version (#3770)
 
 		heterogeneousTc := fixture.GetTidbCluster(ns, "heterogeneous", utilimage.TiDBV4Version)
 		heterogeneousTc.Spec.PD = nil
@@ -1358,7 +1534,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 	ginkgo.It("[Feature: CDC]", func() {
 		ginkgo.By("Creating cdc cluster")
-		fromTc := fixture.GetTidbCluster(ns, "cdc-source", utilimage.TiDBV4Version)
+		fromTc := fixture.GetTidbCluster(ns, "cdc-source", utilimage.TiDBV4)
 		fromTc.Spec.PD.Replicas = 3
 		fromTc.Spec.TiKV.Replicas = 3
 		fromTc.Spec.TiDB.Replicas = 2
@@ -1372,7 +1548,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
 		ginkgo.By("Creating cdc-sink cluster")
-		toTc := fixture.GetTidbCluster(ns, "cdc-sink", utilimage.TiDBV4Version)
+		toTc := fixture.GetTidbCluster(ns, "cdc-sink", utilimage.TiDBV4)
 		toTc.Spec.PD.Replicas = 1
 		toTc.Spec.TiKV.Replicas = 1
 		toTc.Spec.TiDB.Replicas = 1
@@ -1408,7 +1584,12 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 	ginkgo.Context("when stores number is equal to 3", func() {
 		ginkgo.It("forbid to scale in TiKV and the state of all stores are up", func() {
+<<<<<<< HEAD
 			tc := fixture.GetTidbCluster(ns, "scale-in-tikv-test", utilimage.TiDBV4Version)
+=======
+			ginkgo.By("Deploy initial tc")
+			tc := fixture.GetTidbCluster(ns, "scale-in-tikv", utilimage.TiDBV4)
+>>>>>>> 3ff16016... e2e: refactor tidb version (#3770)
 			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
 			framework.ExpectNoError(err, "Expected create tidbcluster")
 			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
@@ -1440,7 +1621,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	ginkgo.It("TiKV mount multiple pvc", func() {
 
 		clusterName := "tidb-multiple-pvc-scale"
-		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4Version)
+		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4)
 		tc.Spec.TiKV.StorageVolumes = []v1alpha1.StorageVolume{
 			{
 				Name:        "wal",
@@ -1478,6 +1659,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		tc.Spec.TiDB.Config.Set("log.file.max-days", "1")
 		tc.Spec.TiKV.Config.Set("rocksdb.wal-dir", "/var/lib/wal")
 		tc.Spec.TiKV.Config.Set("titan.dirname", "/var/lib/titan")
+<<<<<<< HEAD
 		clusterConfig := newTidbClusterConfig(e2econfig.TestConfig, ns, clusterName, "admin", utilimage.TiDBV4Version)
 		clusterConfig.Resources["pd.replicas"] = "1"
 		clusterConfig.Resources["tikv.replicas"] = "4"
@@ -1497,6 +1679,27 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		clusterConfig.ScaleTiKV(4)
 		oa.UpgradeTidbClusterOrDie(&clusterConfig)
 		oa.CheckTidbClusterStatusOrDie(&clusterConfig)
+=======
+		tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, clusterName, "admin", utilimage.TiDBV4)
+		tcCfg.Resources["pd.replicas"] = "1"
+		tcCfg.Resources["tikv.replicas"] = "4"
+		tcCfg.Resources["tidb.replicas"] = "1"
+		tcCfg.Clustrer = tc
+
+		log.Logf("deploying tidb cluster [%s/%s]", tcCfg.Namespace, tcCfg.ClusterName)
+		oa.DeployTidbClusterOrDie(&tcCfg)
+		oa.CheckTidbClusterStatusOrDie(&tcCfg)
+
+		ginkgo.By("Scale multiple pvc tidb cluster")
+		tcCfg.ScaleTiKV(3)
+		oa.UpgradeTidbClusterOrDie(&tcCfg)
+		oa.CheckTidbClusterStatusOrDie(&tcCfg)
+
+		ginkgo.By("Scale out multiple pvc tidb cluster")
+		tcCfg.ScaleTiKV(4)
+		oa.UpgradeTidbClusterOrDie(&tcCfg)
+		oa.CheckTidbClusterStatusOrDie(&tcCfg)
+>>>>>>> 3ff16016... e2e: refactor tidb version (#3770)
 	})
 })
 

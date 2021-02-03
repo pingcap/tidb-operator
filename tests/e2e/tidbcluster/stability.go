@@ -150,7 +150,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 		for _, test := range testCases {
 			ginkgo.It("tidb cluster should not be affected while "+test.name, func() {
 				clusterName := "test"
-				tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV3Version)
+				tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4)
 				err := genericCli.Create(context.TODO(), tc)
 				framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
 				err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
@@ -276,7 +276,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 
 			ginkgo.By("Deploy a test cluster with 3 pd and tikv replicas")
 			clusterName := "test"
-			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV3Version)
+			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4)
 			tc.Spec.PD.Replicas = 3
 			tc.Spec.PD.MaxFailoverCount = pointer.Int32Ptr(0)
 			tc.Spec.TiDB.Replicas = 1
@@ -490,7 +490,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 		// See docs/design-proposals/tidb-stable-scheduling.md
 		ginkgo.It("[Feature: StableScheduling] TiDB pods should be scheduled to preivous nodes", func() {
 			clusterName := "tidb-scheduling"
-			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV3Version)
+			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4)
 			tc.Spec.PD.Replicas = 1
 			tc.Spec.TiKV.Replicas = 1
 			tc.Spec.TiDB.Replicas = 3
@@ -599,7 +599,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			defer utilcloud.EnableNodeAutoRepair()
 			utilcloud.DisableNodeAutoRepair()
 			clusterName := "failover"
-			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV3Version)
+			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4)
 			tc.Spec.PD.Replicas = 3
 			tc.Spec.TiKV.Replicas = 1
 			tc.Spec.TiDB.Replicas = 1
@@ -690,7 +690,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			gomega.Expect(len(nodeList.Items)).To(gomega.BeNumerically(">=", 3))
 
 			clusterName := "failover"
-			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV3Version)
+			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4)
 			tc.Spec.PD.Replicas = 1
 			tc.Spec.TiKV.Replicas = 1
 			tc.Spec.TiDB.Replicas = 2
@@ -857,9 +857,10 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 		})
 
 		// https://github.com/pingcap/tidb-operator/issues/2739
-		ginkgo.It("[Feature: AutoFailover] Failover can work if a store fails to upgrade", func() {
+		// TODO: this should be a regression type
+		ginkgo.It("[Feature: AutoFailover] Failover can work if a store fails to update", func() {
 			clusterName := "scale"
-			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4Version)
+			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4)
 			tc.Spec.PD.Replicas = 1
 			// By default, PD set the state of disconnected store to Down
 			// after 30 minutes. Use a short time in testing.
@@ -886,14 +887,14 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			})
 			framework.ExpectNoError(err, "failed to wait for ")
 
-			ginkgo.By("Upgrade TiKV configuration")
+			ginkgo.By("Update TiKV configuration")
 			updateStrategy := v1alpha1.ConfigUpdateStrategyRollingUpdate
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 				tc.Spec.TiKV.Config.Set("log-level", "info")
 				tc.Spec.TiKV.ConfigUpdateStrategy = &updateStrategy
 				return nil
 			})
-			framework.ExpectNoError(err, "failed to upgrade tikv configuration")
+			framework.ExpectNoError(err, "failed to update tikv configuration")
 
 			ginkgo.By("Waiting for the store to be put into failure stores")
 			err = utiltidbcluster.WaitForTidbClusterCondition(cli, tc.Namespace, tc.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
@@ -919,9 +920,10 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 		})
 
 		// https://github.com/pingcap/tidb-operator/issues/2739
-		ginkgo.It("[Feature: AutoFailover] Failover can work if a pd fails to upgrade", func() {
+		// TODO: this should be a regression type
+		ginkgo.It("[Feature: AutoFailover] Failover can work if a pd fails to update", func() {
 			clusterName := "scale"
-			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4Version)
+			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4)
 			tc.Spec.PD.Replicas = 3
 			tc.Spec.TiKV.Replicas = 1
 			tc.Spec.TiDB.Replicas = 1
@@ -945,14 +947,14 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			})
 			framework.ExpectNoError(err, "failed to wait for the pd to be in unhealthy state")
 
-			ginkgo.By("Upgrade PD configuration")
+			ginkgo.By("Update PD configuration")
 			updateStrategy := v1alpha1.ConfigUpdateStrategyRollingUpdate
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 				tc.Spec.PD.Config.Set("log.level", "info")
 				tc.Spec.PD.ConfigUpdateStrategy = &updateStrategy
 				return nil
 			})
-			framework.ExpectNoError(err, "failed to upgrade pd configuration")
+			framework.ExpectNoError(err, "failed to update pd configuration")
 
 			ginkgo.By("Waiting for the pd to be put into failure members")
 			err = utiltidbcluster.WaitForTidbClusterCondition(cli, tc.Namespace, tc.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
@@ -1021,7 +1023,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			gomega.Expect(len(nodeList.Items)).To(gomega.BeNumerically(">=", 3))
 
 			clusterName := "failover"
-			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV3Version)
+			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4)
 			tc.Spec.SchedulerName = ""
 			tc.Spec.PD.Replicas = 1
 			tc.Spec.PD.Config.Set("schedule.max-store-down-time", "1m")

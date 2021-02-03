@@ -139,7 +139,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 
 		ginkgo.It("Scaling tidb cluster with advanced statefulset", func() {
 			clusterName := "scaling-with-asts"
-			tc := fixture.GetTidbClusterWithTiFlash(ns, clusterName, utilimage.TiDBV4Version)
+			tc := fixture.GetTidbClusterWithTiFlash(ns, clusterName, utilimage.TiDBV4)
 			tc.Spec.PD.Replicas = 3
 			tc.Spec.TiKV.Replicas = 5
 			tc.Spec.TiDB.Replicas = 5
@@ -346,7 +346,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			oa.CleanCRDOrDie()
 		}()
 
-		tc := fixture.GetTidbCluster(ns, "sts", utilimage.TiDBV3Version)
+		tc := fixture.GetTidbCluster(ns, "sts", utilimage.TiDBV4)
 		err = genericCli.Create(context.TODO(), tc)
 		framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
 		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
@@ -438,7 +438,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			oa.CleanCRDOrDie()
 		}()
 
-		tc := fixture.GetTidbCluster(ns, "upgrade-cluster", utilimage.TiDBV3Version)
+		tc := fixture.GetTidbCluster(ns, "upgrade-cluster", utilimage.TiDBV4Prev)
 		tc.Spec.PD.Replicas = 5
 		tc.Spec.TiKV.Replicas = 4
 		tc.Spec.TiDB.Replicas = 3
@@ -467,12 +467,12 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 
-		ginkgo.By("Upgrding the cluster")
+		ginkgo.By("Upgrading the cluster")
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-			tc.Spec.Version = utilimage.TiDBV3UpgradeVersion
+			tc.Spec.Version = utilimage.TiDBV4
 			return nil
 		})
-		framework.ExpectNoError(err, "failed to update TidbCluster %s/%s", ns, tc.Name)
+		framework.ExpectNoError(err, "failed to upgrade TidbCluster %s/%s", ns, tc.Name)
 		ginkgo.By("Checking for tidb cluster is ready")
 		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)

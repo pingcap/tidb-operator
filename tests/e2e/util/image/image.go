@@ -27,10 +27,17 @@ import (
 )
 
 const (
+<<<<<<< HEAD
 	TiDBV3Version                 = "v3.1.1"
 	TiDBV3UpgradeVersion          = "v3.1.2"
 	TiDBV4Version                 = "v4.0.4"
 	TiDBV4UpgradeVersion          = "v4.0.5"
+=======
+	TiDBV3                        = "v3.0.20"
+	TiDBV4Prev                    = "v4.0.9"
+	TiDBV4                        = "v4.0.10"
+	TiDBNightlyVersion            = "nightly"
+>>>>>>> 3ff16016... e2e: refactor tidb version (#3770)
 	PrometheusImage               = "prom/prometheus"
 	PrometheusVersion             = "v2.18.1"
 	TiDBMonitorReloaderImage      = "pingcap/tidb-monitor-reloader"
@@ -44,10 +51,17 @@ const (
 func ListImages() []string {
 	images := []string{}
 	versions := make([]string, 0)
+<<<<<<< HEAD
 	versions = append(versions, TiDBV3Version)
 	versions = append(versions, TiDBV3UpgradeVersion)
 	versions = append(versions, TiDBV4Version)
 	versions = append(versions, TiDBV4UpgradeVersion)
+=======
+	versions = append(versions, TiDBV3)
+	versions = append(versions, TiDBV4Prev)
+	versions = append(versions, TiDBV4)
+	versions = append(versions, TiDBNightlyVersion)
+>>>>>>> 3ff16016... e2e: refactor tidb version (#3770)
 	for _, v := range versions {
 		images = append(images, fmt.Sprintf("pingcap/pd:%s", v))
 		images = append(images, fmt.Sprintf("pingcap/tidb:%s", v))
