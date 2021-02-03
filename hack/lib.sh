@@ -48,8 +48,8 @@ function hack::verify_cfssl() {
     if test -x "$CFSSL_BIN"; then
         local v_cfssl=$($CFSSL_BIN version | grep -o -E '[0-9]+\.[0-9]+\.[0-9]+')
         local v_jq=$($JQ_BIN --version | grep -o -E '[0-9]+\.[0-9]+')
-        echo "cfssl/cfssljson: ${v_cfssl}"
-        echo "jq: ${v_jq}"
+        echo "info: cfssl/cfssljson: ${v_cfssl}"
+        echo "info: jq: ${v_jq}"
         [[ "$v_cfssl" == "$CFSSL_VERSION.0" && "$v_jq" == "$JQ_VERSION" ]]
         return
     fi
@@ -57,7 +57,7 @@ function hack::verify_cfssl() {
 }
 
 function hack::install_cfssl() {
-    echo "Installing cfssl/cfssljson R${CFSSL_VERSION}"
+    echo "info: Installing cfssl/cfssljson R${CFSSL_VERSION}"
     tmpfile=$(mktemp)
     trap "test -f $tmpfile && rm $tmpfile" RETURN
     
@@ -78,7 +78,7 @@ function hack::ensure_cfssl() {
     if ! hack::verify_cfssl; then
         hack::install_cfssl
     else
-        echo "cfssl tools already installed, skip"
+        echo "info: cfssl tools already installed, skip"
     fi
 }
 
