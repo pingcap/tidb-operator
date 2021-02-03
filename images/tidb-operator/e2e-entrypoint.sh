@@ -39,6 +39,7 @@ PID=$!
 _term() {
   kill -TERM $PID
   wait $PID
+  sleep 10
 }
 
 trap _term SIGTERM

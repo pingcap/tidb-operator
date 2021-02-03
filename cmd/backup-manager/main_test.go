@@ -19,6 +19,11 @@ import (
 	"testing"
 )
 
+var _ = func() bool {
+	testing.Init()
+	return true
+}()
+
 func TestRunMain(t *testing.T) {
 	var args []string
 	for _, arg := range os.Args {
