@@ -418,13 +418,13 @@ type TiKVSpec struct {
 	// +optional
 	MaxFailoverCount *int32 `json:"maxFailoverCount,omitempty"`
 
-	// Whether output the RocksDB log in an separate sidecar container
-	// Optional: Defaults to true
+	// Whether output the RocksDB log in a separate sidecar container
+	// Optional: Defaults to false
 	// +optional
 	SeparateRocksDBLog *bool `json:"separateRockDBLog,omitempty"`
 
-	// Whether output the Raft log in an separate sidecar container
-	// Optional: Defaults to true
+	// Whether output the Raft log in a separate sidecar container
+	// Optional: Defaults to false
 	// +optional
 	SeparateRaftLog *bool `json:"separateRaftLog,omitempty"`
 
