@@ -1574,7 +1574,8 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				return nil
 			})
 			framework.ExpectNoError(err, "failed to update tc version to %q", utilimage.TiDBV4)
-			oa.WaitForTidbClusterReady(tc, 5*time.Minute, 10*time.Second)
+			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
+			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", tc.Namespace, tc.Name)
 
 			ginkgo.By("update components version")
 			componentVersion := utilimage.TiDBV4Prev
@@ -1585,7 +1586,8 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				return nil
 			})
 			framework.ExpectNoError(err, "failed to update components version to %q", componentVersion)
-			oa.WaitForTidbClusterReady(tc, 5*time.Minute, 10*time.Second)
+			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
+			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", tc.Namespace, tc.Name)
 
 			ginkgo.By("check components version")
 			pdSts := getSts(genericCli, ns, controller.PDMemberName(tc.Name))
