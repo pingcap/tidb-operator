@@ -18,9 +18,9 @@ set -e
 # This is a wrapper script used as the entrypoint in E2E tests to
 # replace the coverage filename with a time based part.
 
-COV_NAME="tidb-operator.$(date +%s)"
+COV_NAME="tidb-operator.$(( ( RANDOM % 100000 ) + 1 ))"
 if [ -n "$COMPONENT" ]; then
-    COV_NAME="$COMPONENT.$(date +%s)"
+    COV_NAME="$COMPONENT.$(( ( RANDOM % 100000 ) + 1 ))"
 fi
 
 # add a time part into coverage filename.
@@ -38,7 +38,8 @@ PID=$!
 
 _term() {
   kill -TERM $PID
+  wait $PID
 }
 
 trap _term SIGTERM
-wait
+wait $PID
