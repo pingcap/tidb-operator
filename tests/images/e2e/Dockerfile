@@ -23,7 +23,7 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2
     unzip awscliv2.zip && \
     ./aws/install && \
     rm -r aws awscliv2.zip
-RUN curl -L "https://github.com/jetstack/cert-manager/releases/download/v0.11.1/cert-manager.yaml" -o "/cert-manager.yaml"
+RUN curl -L "https://github.com/jetstack/cert-manager/releases/download/v1.1.0/cert-manager.yaml" -o "/cert-manager.yaml"
 ADD minio /minio
 
 ADD tidb-operator /charts/e2e/tidb-operator
@@ -37,6 +37,8 @@ ADD bin/e2e.test /usr/local/bin/
 ADD bin/webhook /usr/local/bin/
 ADD bin/blockwriter /usr/local/bin/
 ADD bin/mock-prometheus /bin/prometheus
+
+COPY tikv.toml /etc/tikv.toml
 
 ADD entrypoint.sh /usr/local/bin
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
