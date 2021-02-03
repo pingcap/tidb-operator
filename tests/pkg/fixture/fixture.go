@@ -30,17 +30,6 @@ import (
 )
 
 var (
-	tikvConfig = func() *v1alpha1.TiKVConfigWraper {
-		c := v1alpha1.NewTiKVConfig()
-		c.Set("log-level", "info")
-		// Don't reserve space in e2e tests, see
-		// https://github.com/pingcap/tidb-operator/issues/2509.
-		c.Set("storage.reserve-space", "0MB")
-		return c
-	}()
-)
-
-var (
 	BestEffort     = corev1.ResourceRequirements{}
 	BurstableSmall = corev1.ResourceRequirements{
 
