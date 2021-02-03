@@ -214,20 +214,15 @@ def build(String name, String code, Map resources = e2ePodResources) {
                                 sh """#!/bin/bash
                                 echo "info: list all coverage files"
                                 ls -dla /kind-data/control-plane/coverage/*
-                                cat /kind-data/control-plane/coverage/*.cov
                                 ls -dla /kind-data/worker1/coverage/*
-                                cat /kind-data/worker1/coverage/*.cov
                                 ls -dla /kind-data/worker2/coverage/*
-                                cat /kind-data/worker2/coverage/*.cov
                                 ls -dla /kind-data/worker3/coverage/*
-                                cat /kind-data/worker3/coverage/*.cov
                                 echo "info: merging coverage files"
                                 cp /kind-data/control-plane/coverage/*.cov /tmp
                                 cp /kind-data/worker1/coverage/*.cov /tmp
                                 cp /kind-data/worker2/coverage/*.cov /tmp
                                 cp /kind-data/worker3/coverage/*.cov /tmp
                                 ./bin/gocovmerge /tmp/*.cov > /tmp/coverage.txt
-                                cat /tmp/coverage.txt
                                 echo "info: uploading coverage to codecov"
                                 bash <(curl -s https://codecov.io/bash) -t ${CODECOV_TOKEN} -F e2e -n tidb-operator -f /tmp/coverage.txt
                                 """
