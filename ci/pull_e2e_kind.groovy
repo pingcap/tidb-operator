@@ -326,14 +326,16 @@ try {
                         ]) {
                             sh """#!/bin/bash
                             set -eu
-                            echo "info: building"
-                            E2E=y make build e2e-build
-                            make gocovmerge
                             if [ "${GIT_REF}" == "master" ]; then
                                 echo "info: run unit tests and report coverage results for master branch"
                                 make test GOFLAGS='-race' GO_COVER=y
                                 curl -s https://codecov.io/bash | bash -s - -t \${CODECOV_TOKEN} || echo 'Codecov did not collect coverage reports'
                             fi
+                            echo "info: building"
+                            echo "info: patch charts and golang code to enable coverage profile"
+                            ./hack/e2e-patch-codecov.sh
+                            E2E=y make build e2e-build
+                            make gocovmerge
                             """
                         }
                     }
@@ -347,8 +349,6 @@ try {
                             echo "info: build and push images for e2e"
                             echo "test: show docker daemon config file"
                             cat /etc/docker/daemon.json
-                            echo "info: patch charts to enable coverage profile"
-                            ./hack/e2e-patch-codecov.sh
                             E2E=y NO_BUILD=y DOCKER_REPO=hub-dev.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} make docker-push e2e-docker-push
                             echo "info: download binaries for e2e"
                             E2E=y SKIP_BUILD=y SKIP_IMAGE_BUILD=y SKIP_UP=y SKIP_TEST=y SKIP_DOWN=y ./hack/e2e.sh

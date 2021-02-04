@@ -25,6 +25,8 @@ SCHEDULER_DEPLOYMENT=charts/tidb-operator/templates/scheduler-deployment.yaml
 DISCOVERY_DEPLOYMENT=charts/tidb-cluster/templates/discovery-deployment.yaml
 ADMISSION_WEBHOOK_DEPLOYMENT=charts/tidb-operator/templates/admission/admission-webhook-deployment.yaml
 
+DISCOVERY_MANAGER=pkg/manager/member/tidb_discovery_manager.go
+
 echo "replace the entrypoint to generate and upload the coverage profile"
 sed -i 's/\/usr\/local\/bin\/tidb-controller-manager/\/e2e-entrypoint.sh\n          - \/usr\/local\/bin\/tidb-controller-manager\n          - -test.coverprofile=\/coverage\/tidb-controller-manager.cov\n          - E2E/g' \
     $CONTROLLER_MANAGER_DEPLOYMENT
@@ -106,3 +108,36 @@ cat << EOF >> /tmp/admission-webhook-deployment.yaml
             type: Directory
 EOF
 mv -f /tmp/admission-webhook-deployment.yaml $ADMISSION_WEBHOOK_DEPLOYMENT
+
+echo "hack/e2e-patch-codecov.sh: setting command, environment variables and volumes for golang code"
+
+line=$(grep -n 'm.getTidbDiscoveryDeployment(tc)' $DISCOVERY_MANAGER | cut -d ":" -f 1)
+head -n $(($line+3)) $DISCOVERY_MANAGER > /tmp/tidb_discovery_manager.go
+cat >> /tmp/tidb_discovery_manager.go <<EOF
+	d.Spec.Template.Spec.Containers[0].Command = []string{
+		"/e2e-entrypoint.sh",
+		"/usr/local/bin/tidb-discovery",
+		"-test.coverprofile=/coverage/tidb-discovery.cov",
+		"E2E",
+	}
+	d.Spec.Template.Spec.Containers[0].Env = append(d.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+		Name:  "COMPONENT",
+		Value: "discovery",
+	})
+	volType := corev1.HostPathDirectory
+	d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, corev1.Volume{
+		Name: "coverage",
+		VolumeSource: corev1.VolumeSource{
+			HostPath: &corev1.HostPathVolumeSource{
+				Path: "/mnt/disks/coverage",
+				Type: &volType,
+			},
+		},
+	})
+	d.Spec.Template.Spec.Containers[0].VolumeMounts = append(d.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
+		Name:      "coverage",
+		MountPath: "/coverage",
+	})
+EOF
+tail -n +$(($line+4)) $DISCOVERY_MANAGER >> /tmp/tidb_discovery_manager.go
+mv -f /tmp/tidb_discovery_manager.go $DISCOVERY_MANAGER
