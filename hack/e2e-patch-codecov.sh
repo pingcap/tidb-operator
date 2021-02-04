@@ -23,6 +23,7 @@ echo "hack/e2e-patch-codecov.sh: PWD $PWD"
 CONTROLLER_MANAGER_DEPLOYMENT=charts/tidb-operator/templates/controller-manager-deployment.yaml
 SCHEDULER_DEPLOYMENT=charts/tidb-operator/templates/scheduler-deployment.yaml
 DISCOVERY_DEPLOYMENT=charts/tidb-cluster/templates/discovery-deployment.yaml
+ADMISSION_WEBHOOK_DEPLOYMENT=charts/tidb-operator/templates/admission/admission-webhook-deployment.yaml
 
 echo "replace the entrypoint to generate and upload the coverage profile"
 sed -i 's/\/usr\/local\/bin\/tidb-controller-manager/\/e2e-entrypoint.sh\n          - \/usr\/local\/bin\/tidb-controller-manager\n          - -test.coverprofile=\/coverage\/tidb-controller-manager.cov\n          - E2E/g' \
@@ -31,10 +32,13 @@ sed -i 's/\/usr\/local\/bin\/tidb-scheduler/\/e2e-entrypoint.sh\n          - \/u
     $SCHEDULER_DEPLOYMENT
 sed -i 's/\/usr\/local\/bin\/tidb-discovery/\/e2e-entrypoint.sh\n          - \/usr\/local\/bin\/tidb-discovery\n          - -test.coverprofile=\/coverage\/tidb-discovery.cov\n          - E2E/g' \
     $DISCOVERY_DEPLOYMENT
+sed -i 's/\/usr\/local\/bin\/tidb-admission-webhook/\/e2e-entrypoint.sh\n            - \/usr\/local\/bin\/tidb-admission-webhook\n            - -test.coverprofile=\/coverage\/tidb-admission-webhook.cov\n            - E2E/g' \
+    $ADMISSION_WEBHOOK_DEPLOYMENT
 
 # -v is duplicated for operator and go test
 sed -i '/\-v=/d' $CONTROLLER_MANAGER_DEPLOYMENT
 sed -i '/\-v=/d' $SCHEDULER_DEPLOYMENT
+sed -i '/\-v=/d' $ADMISSION_WEBHOOK_DEPLOYMENT
 
 # populate needed environment variables and local-path volumes
 echo "hack/e2e-patch-codecov.sh: setting environment variables and volumes in charts"
@@ -85,3 +89,20 @@ cat << EOF >> $DISCOVERY_DEPLOYMENT
             type: Directory
 EOF
 
+line=$(grep -n 'volumeMounts:' $ADMISSION_WEBHOOK_DEPLOYMENT | cut -d ":" -f 1)
+head -n $(($line-1)) $ADMISSION_WEBHOOK_DEPLOYMENT > /tmp/admission-webhook-deployment.yaml
+cat >> /tmp/admission-webhook-deployment.yaml <<EOF
+          - name: COMPONENT
+            value: "admission-webhook"
+          volumeMounts:
+            - mountPath: /coverage
+              name: coverage
+EOF
+tail -n +$(($line+1)) $ADMISSION_WEBHOOK_DEPLOYMENT >> /tmp/admission-webhook-deployment.yaml
+cat << EOF >> /tmp/admission-webhook-deployment.yaml
+        - name: coverage
+          hostPath:
+            path: /mnt/disks/coverage
+            type: Directory
+EOF
+mv -f /tmp/admission-webhook-deployment.yaml $ADMISSION_WEBHOOK_DEPLOYMENT
