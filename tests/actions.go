@@ -771,17 +771,12 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 		return fmt.Errorf("failed to create secret of cluster [%s]: %v", info.ClusterName, err)
 	}
 
-<<<<<<< HEAD
-	cmd := fmt.Sprintf("helm install %s  --name %s --namespace %s --set-string %s --set %s",
-		oa.tidbClusterChartPath(info.OperatorTag), info.ClusterName, info.Namespace, info.TidbClusterHelmSetString(nil), info.TidbClusterHelmSetBoolean(nil))
-=======
-	cmd := fmt.Sprintf("helm install %s %s --namespace %s --set-string %s --set %s --set-file tikv.config=/etc/tikv.toml",
-		info.ClusterName,
+	cmd := fmt.Sprintf("helm install %s  --name %s --namespace %s --set-string %s --set %s --set-file tikv.config=/etc/tikv.toml",
 		oa.tidbClusterChartPath(info.OperatorTag),
+		info.ClusterName,
 		info.Namespace,
 		info.TidbClusterHelmSetString(nil),
 		info.TidbClusterHelmSetBoolean(nil))
->>>>>>> e840298c... e2e tikv reserve space (#3746)
 
 	svFilePath, err := info.BuildSubValues(oa.tidbClusterChartPath(info.OperatorTag))
 	if err != nil {
@@ -2489,16 +2484,11 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 	setString := info.BackupHelmSetString(sets)
 
 	fullbackupName := fmt.Sprintf("%s-backup", info.ClusterName)
-<<<<<<< HEAD
 	cmd := fmt.Sprintf("helm install -n %s --namespace %s %s --set-string %s",
-		fullbackupName, info.Namespace, oa.backupChartPath(info.OperatorTag), setString)
-=======
-	cmd := fmt.Sprintf("helm install %s --namespace %s %s --set-string %s",
 		fullbackupName,
 		info.Namespace,
 		oa.backupChartPath(info.OperatorTag),
 		setString)
->>>>>>> e840298c... e2e tikv reserve space (#3746)
 	log.Logf("install adhoc deployment [%s]", cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -2589,16 +2579,11 @@ func (oa *operatorActions) Restore(from *TidbClusterConfig, to *TidbClusterConfi
 	setString := to.BackupHelmSetString(sets)
 
 	restoreName := fmt.Sprintf("%s-restore", to.ClusterName)
-<<<<<<< HEAD
 	cmd := fmt.Sprintf("helm install -n %s --namespace %s %s --set-string %s",
-		restoreName, to.Namespace, oa.backupChartPath(to.OperatorTag), setString)
-=======
-	cmd := fmt.Sprintf("helm install %s --namespace %s %s --set-string %s",
 		restoreName,
 		to.Namespace,
 		oa.backupChartPath(to.OperatorTag),
 		setString)
->>>>>>> e840298c... e2e tikv reserve space (#3746)
 	log.Logf("install restore [%s]", cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
@@ -3464,17 +3449,12 @@ func (oa *operatorActions) eventWorker() {
 }
 
 func (oa *operatorActions) getHelmUpgradeClusterCmd(info *TidbClusterConfig, setString map[string]string, setBoolean map[string]bool) (string, error) {
-<<<<<<< HEAD
-	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s --set %s",
-		info.ClusterName, oa.tidbClusterChartPath(info.OperatorTag), info.TidbClusterHelmSetString(setString), info.TidbClusterHelmSetBoolean(setBoolean))
-=======
 	cmd := fmt.Sprintf("helm upgrade %s %s --namespace %s --set-string %s --set %s --set-file tikv.config=/etc/tikv.toml",
 		info.ClusterName,
 		oa.tidbClusterChartPath(info.OperatorTag),
 		info.Namespace,
 		info.TidbClusterHelmSetString(setString),
 		info.TidbClusterHelmSetBoolean(setBoolean))
->>>>>>> e840298c... e2e tikv reserve space (#3746)
 	svFilePath, err := info.BuildSubValues(oa.tidbClusterChartPath(info.OperatorTag))
 	if err != nil {
 		return "", err

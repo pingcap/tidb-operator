@@ -919,7 +919,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			tc.Spec.Pump = &v1alpha1.PumpSpec{
 				Replicas:             1,
 				BaseImage:            "pingcap/tidb-binlog",
-				ResourceRequirements: fixture.WithStorage(fixture.BurstbleSmall, "1Gi"),
+				ResourceRequirements: fixture.WithStorage(fixture.BurstableSmall, "1Gi"),
 				Config: tcconfig.New(map[string]interface{}{
 					"addr": "0.0.0.0:8250",
 				}),
@@ -1075,7 +1075,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			tc.Spec.Pump = &v1alpha1.PumpSpec{
 				Replicas:             1,
 				BaseImage:            "pingcap/tidb-binlog",
-				ResourceRequirements: fixture.WithStorage(fixture.BurstbleSmall, "1Gi"),
+				ResourceRequirements: fixture.WithStorage(fixture.BursatbleSmall, "1Gi"),
 				Config: tcconfig.New(map[string]interface{}{
 					"addr": "0.0.0.0:8250",
 				}),
