@@ -47,10 +47,6 @@ const (
 	TiFlashMemberType MemberType = "tiflash"
 	// TiCDCMemberType is ticdc container type
 	TiCDCMemberType MemberType = "ticdc"
-	// DMMasterMemberType is dm-master container type
-	DMMasterMemberType MemberType = "dm-master"
-	// DMWorkerMemberType is dm-worker container type
-	DMWorkerMemberType MemberType = "dm-worker"
 	// SlowLogTailerMemberType is tidb slow log tailer container type
 	SlowLogTailerMemberType MemberType = "slowlog"
 	// RocksDBLogTailerMemberType is tikv rocksdb log tailer container type
