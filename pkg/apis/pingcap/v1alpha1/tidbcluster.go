@@ -27,17 +27,22 @@ import (
 
 const (
 	// defaultHelperImage is default image of helper
-	defaultHelperImage     = "busybox:1.26.2"
-	defaultTimeZone        = "UTC"
-	defaultExposeStatus    = true
-	defaultSeparateSlowLog = true
-	defaultEnablePVReclaim = false
+	defaultHelperImage        = "busybox:1.26.2"
+	defaultTimeZone           = "UTC"
+	defaultExposeStatus       = true
+	defaultSeparateSlowLog    = true
+	defaultSeparateRocksDBLog = false
+	defaultSeparateRaftLog    = false
+	defaultEnablePVReclaim    = false
 	// defaultEvictLeaderTimeout is the timeout limit of evict leader
 	defaultEvictLeaderTimeout = 3 * time.Minute
 )
 
 var (
-	defaultTailerSpec = TiDBSlowLogTailerSpec{
+	defaultSlowLogTailerSpec = TiDBSlowLogTailerSpec{
+		ResourceRequirements: corev1.ResourceRequirements{},
+	}
+	defaultLogTailerSpec = LogTailerSpec{
 		ResourceRequirements: corev1.ResourceRequirements{},
 	}
 	defaultHelperSpec = HelperSpec{}
@@ -590,9 +595,32 @@ func (tidb *TiDBSpec) ShouldSeparateSlowLog() bool {
 
 func (tidb *TiDBSpec) GetSlowLogTailerSpec() TiDBSlowLogTailerSpec {
 	if tidb.SlowLogTailer == nil {
-		return defaultTailerSpec
+		return defaultSlowLogTailerSpec
 	}
 	return *tidb.SlowLogTailer
+}
+
+func (tikv *TiKVSpec) ShouldSeparateRocksDBLog() bool {
+	separateRocksDBLog := tikv.SeparateRocksDBLog
+	if separateRocksDBLog == nil {
+		return defaultSeparateRocksDBLog
+	}
+	return *separateRocksDBLog
+}
+
+func (tikv *TiKVSpec) ShouldSeparateRaftLog() bool {
+	separateRaftLog := tikv.SeparateRaftLog
+	if separateRaftLog == nil {
+		return defaultSeparateRaftLog
+	}
+	return *separateRaftLog
+}
+
+func (tikv *TiKVSpec) GetLogTailerSpec() LogTailerSpec {
+	if tikv.LogTailer == nil {
+		return defaultLogTailerSpec
+	}
+	return *tikv.LogTailer
 }
 
 func (tidbSvc *TiDBServiceSpec) ShouldExposeStatus() bool {
