@@ -30,9 +30,25 @@ import (
 )
 
 var (
+<<<<<<< HEAD
+	tikvConfig = func() *v1alpha1.TiKVConfigWraper {
+		c := v1alpha1.NewTiKVConfig()
+		c.Set("log-level", "info")
+		// Don't reserve space in e2e tests, see
+		// https://github.com/pingcap/tidb-operator/issues/2509.
+		c.Set("storage.reserve-space", "0MB")
+		return c
+	}()
+)
+
+var (
+	BestEffort    = corev1.ResourceRequirements{}
+	BurstbleSmall = corev1.ResourceRequirements{
+=======
 	BestEffort     = corev1.ResourceRequirements{}
 	BurstableSmall = corev1.ResourceRequirements{
 
+>>>>>>> e840298c... e2e tikv reserve space (#3746)
 		Requests: corev1.ResourceList{
 			corev1.ResourceCPU:    resource.MustParse("100m"),
 			corev1.ResourceMemory: resource.MustParse("100Mi"),
@@ -105,7 +121,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 			PD: &v1alpha1.PDSpec{
 				Replicas:             3,
 				BaseImage:            "pingcap/pd",
-				ResourceRequirements: WithStorage(BurstableSmall, "1Gi"),
+				ResourceRequirements: WithStorage(BurstbleSmall, "1Gi"),
 				Config: func() *v1alpha1.PDConfigWraper {
 					c := v1alpha1.NewPDConfig()
 					c.Set("log.level", "info")
