@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Copyright 2020 PingCAP, Inc.
 #
@@ -52,38 +52,36 @@ else
 fi
 
 BACKUP_BIN=/tidb-backup-manager
-if [[ -n "${AWS_DEFAULT_REGION}"]]; then
-	EXEC_COMMAND="exec"
-else
-	EXEC_COMMAND="/usr/local/bin/shush exec --"
-fi
+
+COV_NAME="backup-manager.$(( ( RANDOM % 100000 ) + 1 ))"
+E2E_ARGS="-test.coverprofile=/coverage/$COV_NAME.cov E2E"
 
 # exec command
 case "$1" in
     backup)
         shift 1
-        echo "$BACKUP_BIN backup $@"
-        $EXEC_COMMAND $BACKUP_BIN backup "$@"
+        echo "$BACKUP_BIN $E2E_ARGS backup $@"
+        exec $BACKUP_BIN $E2E_ARGS backup "$@"
         ;;
     export)
         shift 1
-        echo "$BACKUP_BIN export $@"
-        $EXEC_COMMAND $BACKUP_BIN export "$@"
+        echo "$BACKUP_BIN $E2E_ARGS export $@"
+        exec $BACKUP_BIN $E2E_ARGS export "$@"
         ;;
     restore)
         shift 1
-        echo "$BACKUP_BIN restore $@"
-        $EXEC_COMMAND $BACKUP_BIN restore "$@"
+        echo "$BACKUP_BIN $E2E_ARGS restore $@"
+        exec $BACKUP_BIN $E2E_ARGS restore "$@"
         ;;
     import)
         shift 1
-        echo "$BACKUP_BIN import $@"
-        $EXEC_COMMAND $BACKUP_BIN import "$@"
+        echo "$BACKUP_BIN $E2E_ARGS import $@"
+        exec $BACKUP_BIN $E2E_ARGS import "$@"
         ;;
     clean)
         shift 1
-        echo "$BACKUP_BIN clean $@"
-        $EXEC_COMMAND $BACKUP_BIN clean "$@"
+        echo "$BACKUP_BIN $E2E_ARGS clean $@"
+        exec $BACKUP_BIN $E2E_ARGS clean "$@"
         ;;
     *)
         echo "Usage: $0 {backup|restore|clean}"
