@@ -47,8 +47,12 @@ const (
 	TiFlashMemberType MemberType = "tiflash"
 	// TiCDCMemberType is ticdc container type
 	TiCDCMemberType MemberType = "ticdc"
-	// SlowLogTailerMemberType is tidb log tailer container type
+	// SlowLogTailerMemberType is tidb slow log tailer container type
 	SlowLogTailerMemberType MemberType = "slowlog"
+	// RocksDBLogTailerMemberType is tikv rocksdb log tailer container type
+	RocksDBLogTailerMemberType MemberType = "rocksdblog"
+	// RaftLogTailerMemberType is tikv raft log tailer container type
+	RaftLogTailerMemberType MemberType = "raftlog"
 	// UnknownMemberType is unknown container type
 	UnknownMemberType MemberType = "unknown"
 )
@@ -395,6 +399,20 @@ type TiKVSpec struct {
 	// +kubebuilder:validation:Minimum=0
 	// +optional
 	MaxFailoverCount *int32 `json:"maxFailoverCount,omitempty"`
+
+	// Whether output the RocksDB log in a separate sidecar container
+	// Optional: Defaults to false
+	// +optional
+	SeparateRocksDBLog *bool `json:"separateRocksDBLog,omitempty"`
+
+	// Whether output the Raft log in a separate sidecar container
+	// Optional: Defaults to false
+	// +optional
+	SeparateRaftLog *bool `json:"separateRaftLog,omitempty"`
+
+	// LogTailer is the configurations of the log tailers for TiKV
+	// +optional
+	LogTailer *LogTailerSpec `json:"logTailer,omitempty"`
 
 	// The storageClassName of the persistent volume for TiKV data storage.
 	// Defaults to Kubernetes default storage class.
