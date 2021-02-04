@@ -151,12 +151,12 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			// deploy new cluster and test upgrade and scale-in/out with pod admission webhook
 			ginkgo.By(fmt.Sprintf("start initial TidbCluster %q", utilimage.TiDBV4Prev))
 			tc := fixture.GetTidbCluster(ns, "admission", utilimage.TiDBV4Prev)
-			tc.Spec.PD.Replicas = 3
-			tc.Spec.TiKV.Replicas = 3
-			tc.Spec.TiDB.Replicas = 2
+			tc.Spec.PD.Replicas = 1
+			tc.Spec.TiKV.Replicas = 1
+			tc.Spec.TiDB.Replicas = 1
 			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
 			framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
-			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+			err = oa.WaitForTidbClusterReady(tc, 6*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 
 			ginkgo.By("Set tikv partition annotation to 1")
@@ -207,7 +207,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			framework.ExpectNoError(err, "failed to set TidbCluster annotation to nil: %v", tc)
 
 			// TODO: find a more graceful way to check tidbcluster during upgrading
-			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+			err = oa.WaitForTidbClusterReady(tc, 6*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 		})
 	})
@@ -447,14 +447,15 @@ var _ = ginkgo.Describe("[Serial]", func() {
 		ginkgo.It("should not change old TidbCluster", func() {
 			ginkgo.By(fmt.Sprintf("deploy original tc %q", utilimage.TiDBV4))
 			tcName := "tidbcluster"
-			tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "", utilimage.TiDBV4)
-			tcCfg.Resources["pd.replicas"] = "3"
-			tcCfg.Resources["tikv.replicas"] = "3"
-			tcCfg.Resources["tidb.replicas"] = "1"
-			tcCfg.Monitor = false
-			tcCfg.OperatorTag = operatorVersion
-			oa.DeployTidbClusterOrDie(&tcCfg)
-			oa.CheckTidbClusterStatusOrDie(&tcCfg)
+			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4)
+			tc.Spec.PD.Replicas = 3
+			tc.Spec.TiKV.Replicas = 1
+			tc.Spec.TiDB.Replicas = 1
+
+			err := genericCli.Create(context.TODO(), tc)
+			framework.ExpectNoError(err, "Expected TiDB cluster created")
+			err = oa.WaitForTidbClusterReady(tc, 6*time.Minute, 5*time.Second)
+			framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
 			getPods := func(ls string) ([]v1.Pod, error) {
 				listOptions := metav1.ListOptions{
@@ -525,16 +526,19 @@ var _ = ginkgo.Describe("[Serial]", func() {
 		ginkgo.It("should migrate tidbmonitor from deployment to sts", func() {
 			ginkgo.By("deploy initial tc")
 			tcName := "smooth-tidbcluster"
-			tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "admin", utilimage.TiDBV4)
-			tcCfg.Resources["pd.replicas"] = "3"
-			tcCfg.Resources["tikv.replicas"] = "3"
-			tcCfg.Resources["tidb.replicas"] = "1"
-			oa.DeployTidbClusterOrDie(&tcCfg)
-			oa.CheckTidbClusterStatusOrDie(&tcCfg)
+			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4)
+			tc.Spec.PD.Replicas = 1
+			tc.Spec.TiKV.Replicas = 1
+			tc.Spec.TiDB.Replicas = 1
+
+			err := genericCli.Create(context.TODO(), tc)
+			framework.ExpectNoError(err, "Expected TiDB cluster created")
+			err = oa.WaitForTidbClusterReady(tc, 6*time.Minute, 5*time.Second)
+			framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
 			ginkgo.By("deploy tidb monitor")
 			monitorName := "smooth-migrate"
-			tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+			tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "failed to get tidbcluster")
 			tm := fixture.NewTidbMonitor(monitorName, ns, tc, true, true, true)
 			_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(tm)
@@ -618,14 +622,16 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			// TODO: resolve the duplication
 			framework.Skipf("duplicated test")
 			tcName := "basic"
-			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "", utilimage.TiDBV4)
-			cluster.Resources["pd.replicas"] = "1"
-			cluster.Resources["tikv.replicas"] = "1"
-			cluster.Resources["tidb.replicas"] = "1"
-			cluster.Monitor = false
-			cluster.OperatorTag = operatorVersion
-			oa.DeployTidbClusterOrDie(&cluster)
-			oa.CheckTidbClusterStatusOrDie(&cluster)
+
+			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4)
+			tc.Spec.PD.Replicas = 1
+			tc.Spec.TiKV.Replicas = 1
+			tc.Spec.TiDB.Replicas = 1
+
+			err := genericCli.Create(context.TODO(), tc)
+			framework.ExpectNoError(err, "Expected TiDB cluster created")
+			err = oa.WaitForTidbClusterReady(tc, 6*time.Minute, 5*time.Second)
+			framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
 			listOptions := metav1.ListOptions{
 				LabelSelector: labels.SelectorFromSet(label.New().Instance(tcName).Labels()).String(),
