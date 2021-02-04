@@ -28,6 +28,7 @@ ADMISSION_WEBHOOK_DEPLOYMENT=charts/tidb-operator/templates/admission/admission-
 DISCOVERY_MANAGER=pkg/manager/member/tidb_discovery_manager.go
 RESTORE_MANAGER=pkg/backup/restore/restore_manager.go
 BACKUP_MANAGER=pkg/backup/backup/backup_manager.go
+BACKUP_CLEANER=pkg/backup/backup/backup_cleaner.go
 
 echo "replace the entrypoint to generate and upload the coverage profile"
 sed -i 's/\/usr\/local\/bin\/tidb-controller-manager/\/e2e-entrypoint.sh\n          - \/usr\/local\/bin\/tidb-controller-manager\n          - -test.coverprofile=\/coverage\/tidb-controller-manager.cov\n          - E2E/g' \
@@ -144,9 +145,7 @@ EOF
 tail -n +$(($line+4)) $DISCOVERY_MANAGER >> /tmp/tidb_discovery_manager.go
 mv -f /tmp/tidb_discovery_manager.go $DISCOVERY_MANAGER
 
-line=$(grep -n 'rm.deps.JobControl.CreateJob(restore, job)' $RESTORE_MANAGER | cut -d ":" -f 1)
-head -n $(($line-1)) $RESTORE_MANAGER > /tmp/restore_manager.go
-cat >> /tmp/restore_manager.go <<EOF
+IFS= read -r -d '' PATCH_BR_JOB << EOF || true
 	job.Spec.Template.Spec.Containers[0].Env = append(job.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
 		Name:  "COMPONENT",
 		Value: "backup-manager",
@@ -165,33 +164,22 @@ cat >> /tmp/restore_manager.go <<EOF
 		Name:      "coverage",
 		MountPath: "/coverage",
 	})
-	
 EOF
+
+line=$(grep -n 'rm.deps.JobControl.CreateJob(restore, job)' $RESTORE_MANAGER | cut -d ":" -f 1)
+head -n $(($line-1)) $RESTORE_MANAGER > /tmp/restore_manager.go
+echo "$PATCH_BR_JOB" >> /tmp/restore_manager.go
 tail -n +$line $RESTORE_MANAGER >> /tmp/restore_manager.go
 mv -f /tmp/restore_manager.go $RESTORE_MANAGER
 
 line=$(grep -n 'bm.deps.JobControl.CreateJob(backup, job)' $BACKUP_MANAGER | cut -d ":" -f 1)
 head -n $(($line-1)) $BACKUP_MANAGER > /tmp/backup_manager.go
-cat >> /tmp/backup_manager.go <<EOF
-	job.Spec.Template.Spec.Containers[0].Env = append(job.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
-		Name:  "COMPONENT",
-		Value: "backup-manager",
-	})
-	volType := corev1.HostPathDirectory
-	job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, corev1.Volume{
-		Name: "coverage",
-		VolumeSource: corev1.VolumeSource{
-			HostPath: &corev1.HostPathVolumeSource{
-				Path: "/mnt/disks/coverage",
-				Type: &volType,
-			},
-		},
-	})
-	job.Spec.Template.Spec.Containers[0].VolumeMounts = append(job.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
-		Name:      "coverage",
-		MountPath: "/coverage",
-	})
-
-EOF
+echo "$PATCH_BR_JOB"`` >> /tmp/backup_manager.go
 tail -n +$line $BACKUP_MANAGER >> /tmp/backup_manager.go
 mv -f /tmp/backup_manager.go $BACKUP_MANAGER
+
+line=$(grep -n 'bc.deps.JobControl.CreateJob(backup, job)' $BACKUP_CLEANER | cut -d ":" -f 1)
+head -n $(($line-1)) $BACKUP_CLEANER > /tmp/backup_cleaner.go
+echo "$PATCH_BR_JOB"`` >> /tmp/backup_cleaner.go
+tail -n +$line $BACKUP_CLEANER >> /tmp/backup_cleaner.go
+mv -f /tmp/backup_cleaner.go $BACKUP_CLEANER
