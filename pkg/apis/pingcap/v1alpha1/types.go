@@ -53,8 +53,6 @@ const (
 	RocksDBLogTailerMemberType MemberType = "rocksdblog"
 	// RaftLogTailerMemberType is tikv raft log tailer container type
 	RaftLogTailerMemberType MemberType = "raftlog"
-	// TidbMonitorMemberType is tidbmonitor type
-	TidbMonitorMemberType MemberType = "tidbmonitor"
 	// UnknownMemberType is unknown container type
 	UnknownMemberType MemberType = "unknown"
 )
