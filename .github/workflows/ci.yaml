@@ -30,7 +30,6 @@ jobs:
       with:
         ref: ${{ github.event.pull_request.head.sha }}
         path: go/src/github.com/${{ github.repository }}
-        fetch-depth: 2 # for codecov
 
     - name: ${{ matrix.job }}
       run: |
@@ -52,6 +51,6 @@ jobs:
 
     - name: Upload test coverage
       run: |
-        curl -s https://codecov.io/bash | bash -s - -F unittest
+        curl -s https://codecov.io/bash | bash -s - -F unittest -C ${{ github.event.pull_request.head.sha }}
       working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}
       if: ${{ matrix.job == 'test' }}
