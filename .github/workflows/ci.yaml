@@ -28,8 +28,8 @@ jobs:
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
       with:
-        ref: ${{ github.event.pull_request.head.sha }}
         path: go/src/github.com/${{ github.repository }}
+        fetch-depth: 2
 
     - name: ${{ matrix.job }}
       run: |
