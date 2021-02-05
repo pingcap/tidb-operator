@@ -464,7 +464,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					SchedulerName:        pointer.StringPtr("default-scheduler"),
 					ConfigUpdateStrategy: &updateStrategy,
 				},
-				Replicas:         1,
+				Replicas: 1,
 				ResourceRequirements: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceStorage: resource.MustParse("10Gi"),

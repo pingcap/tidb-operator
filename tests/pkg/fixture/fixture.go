@@ -517,7 +517,7 @@ func AddPumpForTidbCluster(tc *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
 			SchedulerName:        pointer.StringPtr("default-scheduler"),
 			ConfigUpdateStrategy: &tc.Spec.ConfigUpdateStrategy,
 		},
-		Replicas:         1,
+		Replicas: 1,
 		ResourceRequirements: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
 				corev1.ResourceStorage: resource.MustParse("10Gi"),
