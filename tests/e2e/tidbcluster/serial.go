@@ -151,12 +151,12 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			// deploy new cluster and test upgrade and scale-in/out with pod admission webhook
 			ginkgo.By(fmt.Sprintf("start initial TidbCluster %q", utilimage.TiDBV4Prev))
 			tc := fixture.GetTidbCluster(ns, "admission", utilimage.TiDBV4Prev)
-			tc.Spec.PD.Replicas = 1
-			tc.Spec.TiKV.Replicas = 1
-			tc.Spec.TiDB.Replicas = 1
+			tc.Spec.PD.Replicas = 3
+			tc.Spec.TiKV.Replicas = 3
+			tc.Spec.TiDB.Replicas = 2
 			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
 			framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
-			err = oa.WaitForTidbClusterReady(tc, 6*time.Minute, 5*time.Second)
+			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 
 			ginkgo.By("Set tikv partition annotation to 1")
@@ -207,7 +207,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			framework.ExpectNoError(err, "failed to set TidbCluster annotation to nil: %v", tc)
 
 			// TODO: find a more graceful way to check tidbcluster during upgrading
-			err = oa.WaitForTidbClusterReady(tc, 6*time.Minute, 5*time.Second)
+			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 		})
 	})
