@@ -54,5 +54,5 @@ jobs:
       with:
         files: ./coverage.txt
         flags: unittest
-        verbose: true # optional (default = false)
+        directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}
       if: ${{ matrix.job == 'test' }}
