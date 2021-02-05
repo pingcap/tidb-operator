@@ -465,7 +465,6 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					ConfigUpdateStrategy: &updateStrategy,
 				},
 				Replicas:         1,
-				StorageClassName: pointer.StringPtr("standard"),
 				ResourceRequirements: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceStorage: resource.MustParse("10Gi"),
@@ -969,7 +968,6 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tc.Spec.Pump = &v1alpha1.PumpSpec{
 				Replicas:             1,
 				BaseImage:            "pingcap/tidb-binlog",
-				StorageClassName:     pointer.StringPtr("standard"),
 				ResourceRequirements: fixture.WithStorage(fixture.BurstableSmall, "1Gi"),
 				Config: tcconfig.New(map[string]interface{}{
 					"addr": "0.0.0.0:8250",
@@ -1126,7 +1124,6 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tc.Spec.Pump = &v1alpha1.PumpSpec{
 				Replicas:             1,
 				BaseImage:            "pingcap/tidb-binlog",
-				StorageClassName:     pointer.StringPtr("standard"),
 				ResourceRequirements: fixture.WithStorage(fixture.BurstableSmall, "1Gi"),
 				Config: tcconfig.New(map[string]interface{}{
 					"addr": "0.0.0.0:8250",

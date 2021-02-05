@@ -291,8 +291,6 @@ func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 		}
 	}
 	if persist {
-		storageClassName := "standard"
-		monitor.Spec.StorageClassName = &storageClassName
 		monitor.Spec.Storage = "2Gi"
 		monitor.Spec.Persistent = true
 	}
@@ -443,9 +441,7 @@ func GetBackupCRDWithS3(tc *v1alpha1.TidbCluster, fromSecretName, brType string,
 		},
 	}
 	if brType == DumperType {
-		storage := "standard"
 		br.Spec.BR = nil
-		br.Spec.StorageClassName = &storage
 		br.Spec.StorageSize = "1Gi"
 	}
 	return br
@@ -480,9 +476,7 @@ func GetRestoreCRDWithS3(tc *v1alpha1.TidbCluster, toSecretName, restoreType str
 		},
 	}
 	if restoreType == DumperType {
-		storage := "standard"
 		restore.Spec.BR = nil
-		restore.Spec.StorageClassName = &storage
 		restore.Spec.StorageSize = "1Gi"
 		restore.Spec.S3.Path = fmt.Sprintf("s3://%s/%s", s3config.Bucket, s3config.Path)
 	}
@@ -524,7 +518,6 @@ func AddPumpForTidbCluster(tc *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
 			ConfigUpdateStrategy: &tc.Spec.ConfigUpdateStrategy,
 		},
 		Replicas:         1,
-		StorageClassName: pointer.StringPtr("standard"),
 		ResourceRequirements: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
 				corev1.ResourceStorage: resource.MustParse("10Gi"),

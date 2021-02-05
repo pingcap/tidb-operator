@@ -34,7 +34,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/component-base/logs"
 	"k8s.io/kubernetes/test/e2e/framework/log"
-	"k8s.io/utils/pointer"
 )
 
 var cfg *tests.Config
@@ -396,8 +395,6 @@ func newTidbClusterConfig(ns, clusterName string) *tests.TidbClusterConfig {
 	tidbVersion := cfg.GetTiDBVersionOrDie()
 	topologyKey := "rack"
 	tc := fixture.GetTidbCluster(ns, clusterName, tidbVersion)
-	tc.Spec.PD.StorageClassName = pointer.StringPtr("standard")
-	tc.Spec.TiKV.StorageClassName = pointer.StringPtr("standard")
 	tc.Spec.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyRollingUpdate
 	return &tests.TidbClusterConfig{
 		Namespace:        ns,
