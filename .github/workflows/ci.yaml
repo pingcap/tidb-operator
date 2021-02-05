@@ -52,7 +52,6 @@ jobs:
     - name: Upload test coverage
       uses: codecov/codecov-action@v1
       with:
-        files: ./coverage.txt
         flags: unittest
-        directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}
+        working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}
       if: ${{ matrix.job == 'test' }}
