@@ -10760,6 +10760,10 @@ spec:
               type: object
             tikv:
               properties:
+                StoreLabels:
+                  items:
+                    type: string
+                  type: array
                 additionalContainers:
                   items:
                     properties:
