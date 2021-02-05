@@ -100,7 +100,7 @@ The meanings of the related fields are as follows:
 
 For example:
 
-{{< copyable "shell-regular" >}}
+{{< copyable "" >}}
 
 ```yaml
   pd:
@@ -528,6 +528,58 @@ The YAML file above:
 
 When Kubernetes deletes the TiDB Pod, it also removes the TiDB node from the service endpoints. This is to ensure that the new connection is not established to this TiDB node. However, because this process is asynchronous, you can make the system sleep for a few seconds before you send the `kill` signal, which makes sure that the TiDB node is removed from the endpoints.
 
+### Configure PV for TiDB slow logs
+
+TiDB Operator creates an `EmptyDir` volume named `slowlog` by default to store the slow logs and mounts the `slowlog` volume to `/var/log/tidb`. If you want to use a separate PV to store the slow logs, you can specify the name of the PV by configuring `spec.tidb.slowLogVolumeName` and configure the PV in `spec.tidb.storageVolumes` or `spec.tidb.additionalVolumes`.
+
+This section shows how to configure PV using `spec.tidb.storageVolumes` or `spec.tidb.additionalVolumes`.
+
+#### Configure using `spec.tidb.storageVolumes`
+
+Configure the `TidbCluster` CR as the following example. In the example, TiDB Operator uses the `${volumeName}` PV to store slow logs. The log file path is `${mountPath}/${volumeName}`.
+
+For how to configure the `spec.tidb.storageVolumes` field, refer to [Multiple disks mounting](#multiple-disks-mounting).
+
+{{< copyable "" >}}
+
+```yaml
+  tidb:
+    ...
+    separateSlowLog: true  # can be ignored
+    slowLogVolumeName: ${volumeName}
+    storageVolumes:
+      # name must be consistent with slowLogVolumeName
+      - name: ${volumeName}
+        storageClassName: ${storageClass}
+        storageSize: "1Gi"
+        mountPath: ${mountPath}
+```
+
+#### Configure using `spec.tidb.additionalVolumes`
+
+In the following example, NFS is used as the storage, and TiDB Operator uses the `${volumeName}` PV to store slow logs. The log file path is `${mountPath}/${volumeName}`.
+
+For the supported PV types, refer to [Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#types-of-persistent-volumes).
+
+{{< copyable "" >}}
+
+```yaml
+  tidb:
+    ...
+    separateSlowLog: true  # can be ignored
+    slowLogVolumeName: ${volumeName}
+    additionalVolumes:
+    # name must be consistent with slowLogVolumeName
+    - name: ${volumeName}
+      nfs:
+        server: 192.168.0.2
+        path: /nfs
+    additionalVolumeMounts:
+    # name must be consistent with slowLogVolumeName
+    - name: ${volumeName}
+      mountPath: ${mountPath}
+```
+
 ### Configure TiDB service
 
 You need to configure `spec.tidb.service` so that TiDB Operator creates a service for TiDB. You can configure Service with different types according to the scenarios, such as `ClusterIP`, `NodePort`, `LoadBalancer`, etc.
@@ -544,7 +596,7 @@ spec:
       type: ClusterIP
 ```
 
-### NodePort
+#### NodePort
 
 If there is no LoadBalancer, you can choose to expose the service through NodePort. NodePort exposes services through the node's IP and static port. You can access a NodePort service from outside of the cluster by requesting `NodeIP + NodePort`.
 
@@ -569,7 +621,7 @@ NodePort has two modes:
 
 -`externalTrafficPolicy=Local`: Only the machine that TiDB is running on allocates a NodePort port to access the local TiDB instance.
 
-### LoadBalancer
+#### LoadBalancer
 
 If the TiDB cluster runs in an environment with LoadBalancer, such as on GCP or AWS, it is recommended to use the LoadBalancer feature of these cloud platforms by setting `tidb.service.type=LoadBalancer`.
 
@@ -602,7 +654,7 @@ The following is an example of a typical service high availability setup:
 
 {{< copyable "" >}}
 
-```shell
+```yaml
 affinity:
  podAntiAffinity:
    preferredDuringSchedulingIgnoredDuringExecution:

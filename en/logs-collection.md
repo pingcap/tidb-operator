@@ -14,7 +14,7 @@ The TiDB components deployed by TiDB Operator output the logs in the `stdout` an
 
 If you already have a system for collecting logs in your existing infrastructure, you only need to add the `/var/log/containers/*.log` file on the host in which Kubernetes is located in the collection scope by common methods; if there is no available log collection system, or you want to deploy a separate system for collecting relevant logs, you are free to use any system or solution that you are familiar with.
 
-[ElasticSearch](https://kubernetes.io/docs/tasks/debug-application-cluster/logging-elasticsearch-kibana/) and [Stackdriver](https://kubernetes.io/docs/tasks/debug-application-cluster/logging-stackdriver/) are provided as two log collection methods for reference in the Kubernetes official documentation.
+The Kubernetes official documentation provides [Stackdriver](https://kubernetes.io/docs/tasks/debug-application-cluster/logging-stackdriver/) as a log collection method.
 
 Common open source tools that can be used to collect Kubernetes logs are:
 
