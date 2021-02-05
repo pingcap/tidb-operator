@@ -270,7 +270,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tc.Spec.TiDB.HostNetwork = pointer.BoolPtr(true)
 			return nil
 		})
-		framework.ExpectNoError(err, "failed to scale out TidbCluster: %q", tc.Name)
+		framework.ExpectNoError(err, "failed to switch to host network, TidbCluster: %q", tc.Name)
 		err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 5*time.Second)
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 
@@ -281,7 +281,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tc.Spec.TiDB.HostNetwork = pointer.BoolPtr(false)
 			return nil
 		})
-		framework.ExpectNoError(err, "failed to scale out TidbCluster: %q", tc.Name)
+		framework.ExpectNoError(err, "failed to switch to pod network, TidbCluster: %q", tc.Name)
 		err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 5*time.Second)
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 	})
@@ -937,7 +937,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				tc.Spec.TiDB.Replicas = 0
 				return nil
 			})
-			framework.ExpectNoError(err, "failed to scale out TidbCluster: %q", tc.Name)
+			framework.ExpectNoError(err, "failed to scale tidb to 0, TidbCluster: %q", tc.Name)
 
 			err = wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
 				var tc *v1alpha1.TidbCluster
@@ -1578,7 +1578,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tc.Spec.TiKV.Replicas = 4
 			return nil
 		})
-		framework.ExpectNoError(err, "failed to scale out TidbCluster: %q", tc.Name)
+		framework.ExpectNoError(err, "failed to scale out TiKV, TidbCluster: %q", tc.Name)
 		err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 5*time.Second)
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 
@@ -1588,7 +1588,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tc.Spec.TiKV.Replicas = 3
 			return nil
 		})
-		framework.ExpectNoError(err, "failed to scale out TidbCluster: %q", tc.Name)
+		framework.ExpectNoError(err, "failed to scale in TiKV, TidbCluster: %q", tc.Name)
 		err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 5*time.Second)
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 	})
