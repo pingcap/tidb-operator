@@ -428,10 +428,12 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 		Image:     fmt.Sprintf("%s:%s", monitor.Spec.Prometheus.BaseImage, monitor.Spec.Prometheus.Version),
 		Resources: controller.ContainerResource(monitor.Spec.Prometheus.ResourceRequirements),
 		Command: []string{
-			"/bin/prometheus",
+			"/bin/sh",
+			"-c",
+			"sed 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g' /etc/prometheus/prometheus.yml > /data/prometheus.yml &&/bin/prometheus",
 			"--web.enable-admin-api",
 			"--web.enable-lifecycle",
-			"--config.file=/etc/prometheus/prometheus.yml",
+			"--config.file=/data/prometheus.yml",
 			"--storage.tsdb.path=/data/prometheus",
 			fmt.Sprintf("--storage.tsdb.retention=%dd", monitor.Spec.Prometheus.ReserveDays),
 		},
@@ -447,12 +449,24 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 				Name:  "TZ",
 				Value: tc.Timezone(),
 			},
+			{
+				Name: "POD_NAME",
+				ValueFrom: &core.EnvVarSource{
+					FieldRef: &core.ObjectFieldSelector{FieldPath: "metadata.name"},
+				},
+			},
+			{
+				Name: "NAMESPACE",
+				ValueFrom: &core.EnvVarSource{
+					FieldRef: &core.ObjectFieldSelector{FieldPath: "metadata.namespace"},
+				},
+			},
 		},
 		VolumeMounts: []core.VolumeMount{
 			{
 				Name:      "prometheus-config",
 				MountPath: "/etc/prometheus",
-				ReadOnly:  true,
+				ReadOnly:  false,
 			},
 			{
 				Name:      v1alpha1.TidbMonitorMemberType.String(),
@@ -1170,7 +1184,7 @@ func buildExternalLabels(monitor *v1alpha1.TidbMonitor) model.LabelSet {
 		}
 	}
 	if replicaExternalLabelName != "" {
-		m[model.LabelName(replicaExternalLabelName)] = "$(NAMESPACE)_$(POD_NAME)"
+		m[model.LabelName(replicaExternalLabelName)] = "$NAMESPACE_$POD_NAME"
 	}
 	for n, v := range monitor.Spec.ExternalLabels {
 		m[model.LabelName(n)] = model.LabelValue(v)
