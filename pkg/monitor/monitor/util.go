@@ -18,6 +18,7 @@ import (
 	"path"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/client"
@@ -423,6 +424,7 @@ func getMonitorDMInitContainer(monitor *v1alpha1.TidbMonitor, dc *v1alpha1.DMClu
 }
 
 func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster) core.Container {
+	commands := []string{"sed 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g' /etc/prometheus/prometheus.yml > /data/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/data/prometheus.yml --storage.tsdb.path=/data/prometheus " + fmt.Sprintf("--storage.tsdb.retention=%dd", monitor.Spec.Prometheus.ReserveDays)}
 	c := core.Container{
 		Name:      "prometheus",
 		Image:     fmt.Sprintf("%s:%s", monitor.Spec.Prometheus.BaseImage, monitor.Spec.Prometheus.Version),
@@ -430,12 +432,6 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 		Command: []string{
 			"/bin/sh",
 			"-c",
-			"sed 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g' /etc/prometheus/prometheus.yml > /data/prometheus.yml &&/bin/prometheus",
-			"--web.enable-admin-api",
-			"--web.enable-lifecycle",
-			"--config.file=/data/prometheus.yml",
-			"--storage.tsdb.path=/data/prometheus",
-			fmt.Sprintf("--storage.tsdb.retention=%dd", monitor.Spec.Prometheus.ReserveDays),
 		},
 		Ports: []core.ContainerPort{
 			{
@@ -481,16 +477,16 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 	}
 
 	if len(monitor.Spec.Prometheus.LogLevel) > 0 {
-		c.Command = append(c.Command, fmt.Sprintf("--log.level=%s", monitor.Spec.Prometheus.LogLevel))
+		commands = append(commands, fmt.Sprintf("--log.level=%s", monitor.Spec.Prometheus.LogLevel))
 	}
 	if monitor.Spec.Prometheus.Config != nil && len(monitor.Spec.Prometheus.Config.CommandOptions) > 0 {
-		c.Command = append(c.Command, monitor.Spec.Prometheus.Config.CommandOptions...)
+		commands = append(commands, monitor.Spec.Prometheus.Config.CommandOptions...)
 	}
 	if monitor.Spec.Prometheus.DisableCompaction || monitor.Spec.Thanos != nil {
-		c.Command = append(c.Command, "--storage.tsdb.max-block-duration=2h")
-		c.Command = append(c.Command, "--storage.tsdb.min-block-duration=2h")
+		commands = append(commands, "--storage.tsdb.max-block-duration=2h")
+		commands = append(commands, "--storage.tsdb.min-block-duration=2h")
 	}
-
+	c.Command = append(c.Command, strings.Join(commands, " "))
 	if tc.IsTLSClusterEnabled() {
 		c.VolumeMounts = append(c.VolumeMounts, core.VolumeMount{
 			Name:      util.ClusterClientVolName,
