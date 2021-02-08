@@ -937,13 +937,9 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 				Name:  "prometheus",
 				Image: "hub.pingcap.net:latest",
 				Command: []string{
-					"/bin/prometheus",
-					"--web.enable-admin-api",
-					"--web.enable-lifecycle",
-					"--config.file=/etc/prometheus/prometheus.yml",
-					"--storage.tsdb.path=/data/prometheus",
-					"--storage.tsdb.retention=0d",
-					"--web.external-url=https://www.example.com/prometheus/",
+					"/bin/sh",
+					"-c",
+					"sed 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g' /etc/prometheus/prometheus.yml > /data/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/data/prometheus.yml --storage.tsdb.path=/data/prometheus --storage.tsdb.retention=0d --web.external-url=https://www.example.com/prometheus/",
 				},
 				Ports: []corev1.ContainerPort{
 					corev1.ContainerPort{
@@ -957,12 +953,24 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 						Name:  "TZ",
 						Value: "UTC",
 					},
+					{
+						Name: "POD_NAME",
+						ValueFrom: &corev1.EnvVarSource{
+							FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.name"},
+						},
+					},
+					{
+						Name: "NAMESPACE",
+						ValueFrom: &corev1.EnvVarSource{
+							FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.namespace"},
+						},
+					},
 				},
 				Resources: corev1.ResourceRequirements{},
 				VolumeMounts: []corev1.VolumeMount{
 					corev1.VolumeMount{
 						Name:      "prometheus-config",
-						ReadOnly:  true,
+						ReadOnly:  false,
 						MountPath: "/etc/prometheus",
 					},
 					corev1.VolumeMount{
@@ -1270,7 +1278,7 @@ func TestBuildExternalLabels(t *testing.T) {
 				},
 			},
 			expected: &model.LabelSet{
-				defaultReplicaExternalLabelName: "$(NAMESPACE)_$(POD_NAME)",
+				defaultReplicaExternalLabelName: "$NAMESPACE_$POD_NAME",
 			},
 		},
 	}
