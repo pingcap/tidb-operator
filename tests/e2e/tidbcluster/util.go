@@ -177,8 +177,8 @@ func mustToString(set sets.Int32) string {
 
 func getSts(cli ctrlCli.Client, ns, name string) *appsv1.StatefulSet {
 	objKey := ctrlCli.ObjectKey{Namespace: ns, Name: name}
-	pdSts := appsv1.StatefulSet{}
-	err := cli.Get(context.TODO(), objKey, &pdSts)
-	framework.ExpectNoError(err, "failed to get pd sts from api-server")
-	return &pdSts
+	sts := appsv1.StatefulSet{}
+	err := cli.Get(context.TODO(), objKey, &sts)
+	framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, name)
+	return &sts
 }
