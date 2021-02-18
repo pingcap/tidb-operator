@@ -14,25 +14,30 @@
 package tidbcluster
 
 import (
+	"context"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/util/tidbcluster"
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/kubernetes/test/e2e/framework"
 	testutils "k8s.io/kubernetes/test/utils"
+	ctrlCli "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
 	pollInterval = time.Second * 10
 )
 
-type TidbClusterCondition func(tc *v1alpha1.TidbCluster) (bool, error)
+type TidbClusterConditionFn func(tc *v1alpha1.TidbCluster) (bool, error)
 
 // WaitForTidbClusterCondition waits for a TidbCluster to be matched to the given condition.
-func WaitForTidbClusterCondition(c versioned.Interface, ns, name string, timeout time.Duration, condition TidbClusterCondition) error {
+func WaitForTidbClusterCondition(c versioned.Interface, ns, name string, timeout time.Duration, conditionFn TidbClusterConditionFn) error {
 	return wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
 		tc, err := c.PingcapV1alpha1().TidbClusters(ns).Get(name, metav1.GetOptions{})
 		if err != nil {
@@ -41,7 +46,7 @@ func WaitForTidbClusterCondition(c versioned.Interface, ns, name string, timeout
 			}
 			return false, err
 		}
-		return condition(tc)
+		return conditionFn(tc)
 	})
 }
 
@@ -56,8 +61,8 @@ func IsTidbClusterAvaiable(tc *v1alpha1.TidbCluster, minReadyDuration time.Durat
 	if !IsTidbClusterReady(tc) {
 		return false
 	}
-	c := tidbcluster.GetTidbClusterReadyCondition(tc.Status)
-	if minReadyDuration <= 0 || !c.LastTransitionTime.IsZero() && c.LastTransitionTime.Add(minReadyDuration).Before(now) {
+	cond := tidbcluster.GetTidbClusterReadyCondition(tc.Status)
+	if minReadyDuration <= 0 || !cond.LastTransitionTime.IsZero() && cond.LastTransitionTime.Add(minReadyDuration).Before(now) {
 		return true
 	}
 	return false
@@ -68,4 +73,26 @@ func WaitForTidbClusterReady(c versioned.Interface, ns, name string, timeout tim
 	return WaitForTidbClusterCondition(c, ns, name, timeout, func(tc *v1alpha1.TidbCluster) (bool, error) {
 		return IsTidbClusterAvaiable(tc, minReadyDuration, time.Now()), nil
 	})
+}
+
+// GetSts returns the StatefulSet ns/name
+// for test case simplicity, any error will panic
+func GetSts(cli ctrlCli.Client, ns, name string) *appsv1.StatefulSet {
+	objKey := ctrlCli.ObjectKey{Namespace: ns, Name: name}
+	sts := appsv1.StatefulSet{}
+	err := cli.Get(context.TODO(), objKey, &sts)
+	framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, name)
+	return &sts
+}
+
+// ListPods returns the PodList in ns with selector
+func ListPods(cli ctrlCli.Client, ns string, labelSelector labels.Selector) *v1.PodList {
+	options := ctrlCli.ListOptions{
+		Namespace:     ns,
+		LabelSelector: labelSelector,
+	}
+	pods := v1.PodList{}
+	err := cli.List(context.TODO(), &pods, &options)
+	framework.ExpectNoError(err, "failed to list Pod with options: %+v", options)
+	return &pods
 }

@@ -56,8 +56,10 @@ var _ = ginkgo.Describe("[Stability]", func() {
 	var c clientset.Interface
 	var cli versioned.Interface
 	var asCli asclientset.Interface
+	var genericCli client.Client
 	var aggrCli aggregatorclient.Interface
 	var apiExtCli apiextensionsclientset.Interface
+	var crdUtil *tests.CrdTestUtil
 	var hc clientset.Interface
 	var cfg *tests.Config
 	var config *restclient.Config
@@ -74,6 +76,9 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		framework.ExpectNoError(err, "failed to create clientset")
 		asCli, err = asclientset.NewForConfig(config)
 		framework.ExpectNoError(err, "failed to create clientset")
+		genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
+		framework.ExpectNoError(err, "failed to create clientset")
+		crdUtil = tests.NewCrdTestUtil(cli, c, asCli, genericCli, nil)
 		aggrCli, err = aggregatorclient.NewForConfig(config)
 		framework.ExpectNoError(err, "failed to create clientset")
 		apiExtCli, err = apiextensionsclientset.NewForConfig(config)
@@ -98,7 +103,6 @@ var _ = ginkgo.Describe("[Stability]", func() {
 	ginkgo.Context("[Feature: AdvancedStatefulSet][Feature: Webhook]", func() {
 		var ocfg *tests.OperatorConfig
 		var oa tests.OperatorActions
-		var genericCli client.Client
 
 		ginkgo.BeforeEach(func() {
 			ocfg = &tests.OperatorConfig{
@@ -118,16 +122,13 @@ var _ = ginkgo.Describe("[Stability]", func() {
 				PodWebhookEnabled: true,
 				StsWebhookEnabled: false,
 			}
-			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, genericCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")
 			oa.CleanCRDOrDie()
 			oa.InstallCRDOrDie(ocfg)
 			ginkgo.By("Installing tidb-operator")
 			oa.CleanOperatorOrDie(ocfg)
 			oa.DeployOperatorOrDie(ocfg)
-			var err error
-			genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
-			framework.ExpectNoError(err, "failed to create clientset")
 		})
 
 		ginkgo.AfterEach(func() {
@@ -146,7 +147,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			tc.Spec.TiFlash.Replicas = 5
 			err := genericCli.Create(context.TODO(), tc)
 			framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
-			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			err = crdUtil.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 
 			scalingTests := []struct {
@@ -304,7 +305,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 				}
 			}
 
-			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			err = crdUtil.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 		})
 	})
@@ -313,6 +314,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		var ocfg *tests.OperatorConfig
 		var oa tests.OperatorActions
 		var genericCli client.Client
+		var crdUtil *tests.CrdTestUtil
 
 		ocfg = &tests.OperatorConfig{
 			Namespace:      ns,
@@ -328,16 +330,13 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			ImagePullPolicy: v1.PullIfNotPresent,
 			TestMode:        true,
 		}
-		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, genericCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 		ginkgo.By("Installing CRDs")
 		oa.CleanCRDOrDie()
 		oa.InstallCRDOrDie(ocfg)
 		ginkgo.By("Installing tidb-operator without AdvancedStatefulSet feature")
 		oa.CleanOperatorOrDie(ocfg)
 		oa.DeployOperatorOrDie(ocfg)
-		var err error
-		genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
-		framework.ExpectNoError(err, "failed to create clientset")
 
 		defer func() {
 			ginkgo.By("Uninstall tidb-operator")
@@ -347,9 +346,9 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		}()
 
 		tc := fixture.GetTidbCluster(ns, "sts", utilimage.TiDBV4)
-		err = genericCli.Create(context.TODO(), tc)
+		err := genericCli.Create(context.TODO(), tc)
 		framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
-		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+		err = crdUtil.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 
 		listOption := metav1.ListOptions{
@@ -405,6 +404,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		var ocfg *tests.OperatorConfig
 		var oa tests.OperatorActions
 		var genericCli client.Client
+		var crdUtil *tests.CrdTestUtil
 
 		ocfg = &tests.OperatorConfig{
 			Namespace:      ns,
@@ -420,16 +420,13 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			ImagePullPolicy: v1.PullIfNotPresent,
 			TestMode:        true,
 		}
-		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, genericCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 		ginkgo.By("Installing CRDs")
 		oa.CleanCRDOrDie()
 		oa.InstallCRDOrDie(ocfg)
 		ginkgo.By("Installing tidb-operator without AdvancedStatefulSet feature")
 		oa.CleanOperatorOrDie(ocfg)
 		oa.DeployOperatorOrDie(ocfg)
-		var err error
-		genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
-		framework.ExpectNoError(err, "failed to create clientset")
 
 		defer func() {
 			ginkgo.By("Uninstall tidb-operator")
@@ -442,9 +439,9 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		tc.Spec.PD.Replicas = 5
 		tc.Spec.TiKV.Replicas = 4
 		tc.Spec.TiDB.Replicas = 3
-		err = genericCli.Create(context.TODO(), tc)
+		err := genericCli.Create(context.TODO(), tc)
 		framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
-		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+		err = crdUtil.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 
 		ginkgo.By("Scaling in the cluster by deleting some pods not at the end")
@@ -464,7 +461,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		})
 		framework.ExpectNoError(err, "failed to update TidbCluster %s/%s", ns, tc.Name)
 		ginkgo.By("Checking for tidb cluster is ready")
-		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+		err = crdUtil.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 
 		ginkgo.By("Upgrading the cluster")
@@ -474,7 +471,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		})
 		framework.ExpectNoError(err, "failed to upgrade TidbCluster %s/%s", ns, tc.Name)
 		ginkgo.By("Checking for tidb cluster is ready")
-		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+		err = crdUtil.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 	})
 })

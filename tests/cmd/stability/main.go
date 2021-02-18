@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
@@ -33,8 +34,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/component-base/logs"
+	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/framework/log"
 	"k8s.io/utils/pointer"
+	ctrlCli "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var cfg *tests.Config
@@ -120,7 +123,12 @@ func run() {
 	fta := tests.NewFaultTriggerAction(cli, kubeCli, cfg)
 	fta.CheckAndRecoverEnvOrDie()
 
-	oa := tests.NewOperatorActions(cli, kubeCli, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, cfg, allClusters, nil, nil)
+	config, err := framework.LoadConfig()
+	framework.ExpectNoError(err, "failed to load config")
+	genericCli, err := ctrlCli.New(config, ctrlCli.Options{Scheme: scheme.Scheme})
+	framework.ExpectNoError(err, "failed to create clientset for controller-runtime")
+
+	oa := tests.NewOperatorActions(cli, kubeCli, asCli, aggrCli, apiExtCli, genericCli, tests.DefaultPollInterval, ocfg, cfg, allClusters, nil, nil)
 	oa.CheckK8sAvailableOrDie(nil, nil)
 	oa.LabelNodesOrDie()
 
@@ -129,7 +137,7 @@ func run() {
 	oa.CleanOperatorOrDie(ocfg)
 	oa.DeployOperatorOrDie(ocfg)
 
-	crdUtil := tests.NewCrdTestUtil(cli, kubeCli, asCli, kubeCli.AppsV1())
+	crdUtil := tests.NewCrdTestUtil(cli, kubeCli, asCli, genericCli, nil)
 	log.Logf(fmt.Sprintf("allclusters: %v", allClusters))
 	crdUtil.CleanResourcesOrDie("tc", "ns1")
 	crdUtil.CleanResourcesOrDie("tc", "ns2")

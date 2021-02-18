@@ -60,6 +60,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 	var config *restclient.Config
 	var ocfg *tests.OperatorConfig
 	var genericCli client.Client
+	var crdUtil *tests.CrdTestUtil
 	var fwCancel context.CancelFunc
 	var fw portforward.PortForward
 
@@ -75,6 +76,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		framework.ExpectNoError(err, "failed to create clientset")
 		genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
 		framework.ExpectNoError(err, "failed to create clientset")
+		crdUtil = tests.NewCrdTestUtil(cli, c, asCli, genericCli, nil)
 		aggrCli, err = aggregatorclient.NewForConfig(config)
 		framework.ExpectNoError(err, "failed to create clientset")
 		apiExtCli, err = apiextensionsclientset.NewForConfig(config)
@@ -87,7 +89,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		fwCancel = cancel
 		cfg = e2econfig.TestConfig
 		ocfg = e2econfig.NewDefaultOperatorConfig(cfg)
-		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, genericCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 	})
 
 	ginkgo.AfterEach(func() {
@@ -102,7 +104,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			framework.Skipf("provider is not aws or kind, skipping")
 		}
 
-		testBR(provider, ns, fw, c, genericCli, oa, cli, false, fixture.BRType)
+		testBR(provider, ns, fw, c, genericCli, oa, crdUtil, cli, false, fixture.BRType)
 	})
 
 	ginkgo.It("CRD:Backup and restore with Dumper", func() {
@@ -111,7 +113,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			framework.Skipf("provider is not aws or kind, skipping")
 		}
 
-		testBR(provider, ns, fw, c, genericCli, oa, cli, false, fixture.DumperType)
+		testBR(provider, ns, fw, c, genericCli, oa, crdUtil, cli, false, fixture.DumperType)
 	})
 
 	ginkgo.Context("[Feature: TLS]", func() {
@@ -125,7 +127,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			err := InstallCertManager(f.ClientSet)
 			framework.ExpectNoError(err, "failed to install cert-manager")
 
-			testBR(provider, ns, fw, c, genericCli, oa, cli, true, fixture.BRType)
+			testBR(provider, ns, fw, c, genericCli, oa, crdUtil, cli, true, fixture.BRType)
 			ginkgo.By("Deleting cert-manager")
 			err = DeleteCertManager(f.ClientSet)
 			framework.ExpectNoError(err, "failed to delete cert-manager")
@@ -135,7 +137,8 @@ var _ = ginkgo.Describe("[Stability]", func() {
 })
 
 // TODO: rename to something more meaningful
-func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interface, genericCli client.Client, oa tests.OperatorActions, cli versioned.Interface, tlsEnabled bool, brType string) {
+// TODO: clean up args
+func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interface, genericCli client.Client, oa tests.OperatorActions, crdUtil *tests.CrdTestUtil, cli versioned.Interface, tlsEnabled bool, brType string) {
 	backupFolder := time.Now().Format(time.RFC3339)
 	var storage teststorage.TestStorage
 	switch provider {
@@ -218,11 +221,11 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 	framework.ExpectNoError(err, "failed to create TidbCluster tcTo: %v", tcTo)
 
 	// wait both tidbcluster ready
-	err = oa.WaitForTidbClusterReady(tcFrom, 30*time.Minute, 15*time.Second)
+	err = crdUtil.WaitForTidbClusterReady(tcFrom, 30*time.Minute, 15*time.Second)
 	framework.ExpectNoError(err, "failed to wait for TidbCluster tcFrom ready")
 	clusterFrom := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameFrom, "", utilimage.TiDBV4)
 
-	err = oa.WaitForTidbClusterReady(tcTo, 30*time.Minute, 15*time.Second)
+	err = crdUtil.WaitForTidbClusterReady(tcTo, 30*time.Minute, 15*time.Second)
 	framework.ExpectNoError(err, "failed to wait for TidbCluster tcTo ready")
 	clusterTo := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameTo, "", utilimage.TiDBV4)
 

@@ -69,6 +69,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 	var fw portforward.PortForward
 	var fwCancel context.CancelFunc
 	var stsGetter typedappsv1.StatefulSetsGetter
+	var crdUtil *tests.CrdTestUtil
 	/**
 	 * StatefulSet or AdvancedStatefulSet getter interface.
 	 */
@@ -102,6 +103,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 		fwCancel = cancel
 		cfg = e2econfig.TestConfig
 		stsGetter = c.AppsV1()
+		crdUtil = tests.NewCrdTestUtil(cli, c, asCli, genericCli, nil)
 	})
 
 	ginkgo.AfterEach(func() {
@@ -130,7 +132,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				PodWebhookEnabled: true,
 				StsWebhookEnabled: true,
 			}
-			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, genericCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")
 			oa.CleanCRDOrDie()
 			oa.InstallCRDOrDie(ocfg)
@@ -156,7 +158,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			tc.Spec.TiDB.Replicas = 2
 			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
 			framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
-			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+			err = crdUtil.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 
 			ginkgo.By("Set tikv partition annotation to 1")
@@ -207,7 +209,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			framework.ExpectNoError(err, "failed to set TidbCluster annotation to nil: %v", tc)
 
 			// TODO: find a more graceful way to check tidbcluster during upgrading
-			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+			err = crdUtil.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 		})
 	})
@@ -232,7 +234,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				SchedulerReplicas:         tests.IntPtr(0),
 				ControllerManagerReplicas: tests.IntPtr(0),
 			}
-			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, genericCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")
 			oa.CleanCRDOrDie()
 			oa.InstallCRDOrDie(ocfg)
@@ -428,7 +430,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				Image:           fmt.Sprintf("pingcap/tidb-operator:%s", operatorVersion),
 				ImagePullPolicy: v1.PullIfNotPresent,
 			}
-			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, genericCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")
 			oa.CleanCRDOrDie()
 			oa.DeployReleasedCRDOrDie(operatorVersion)
@@ -454,7 +456,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			tcCfg.Monitor = false
 			tcCfg.OperatorTag = operatorVersion
 			oa.DeployTidbClusterOrDie(&tcCfg)
-			oa.CheckTidbClusterStatusOrDie(&tcCfg)
+			crdUtil.CheckTidbClusterStatusOrDie(&tcCfg)
 
 			getPods := func(ls string) ([]v1.Pod, error) {
 				listOptions := metav1.ListOptions{
@@ -530,7 +532,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			tcCfg.Resources["tikv.replicas"] = "3"
 			tcCfg.Resources["tidb.replicas"] = "1"
 			oa.DeployTidbClusterOrDie(&tcCfg)
-			oa.CheckTidbClusterStatusOrDie(&tcCfg)
+			crdUtil.CheckTidbClusterStatusOrDie(&tcCfg)
 
 			ginkgo.By("deploy tidb monitor")
 			monitorName := "smooth-migrate"
@@ -600,7 +602,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				Tag:         operatorVersion,
 				Image:       fmt.Sprintf("pingcap/tidb-operator:%s", operatorVersion),
 			}
-			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, genericCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")
 			oa.CleanCRDOrDie()
 			oa.DeployReleasedCRDOrDie(operatorVersion)
@@ -625,7 +627,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			cluster.Monitor = false
 			cluster.OperatorTag = operatorVersion
 			oa.DeployTidbClusterOrDie(&cluster)
-			oa.CheckTidbClusterStatusOrDie(&cluster)
+			crdUtil.CheckTidbClusterStatusOrDie(&cluster)
 
 			listOptions := metav1.ListOptions{
 				LabelSelector: labels.SelectorFromSet(label.New().Instance(tcName).Labels()).String(),

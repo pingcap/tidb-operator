@@ -80,10 +80,10 @@ var _ = ginkgo.Describe("[Stability]", func() {
 	var asCli asclientset.Interface
 	var aggrCli aggregatorclient.Interface
 	var apiExtCli apiextensionsclientset.Interface
-	var oa tests.OperatorActions
+	var genericCli client.Client
+	var crdUtil *tests.CrdTestUtil
 	var cfg *tests.Config
 	var config *restclient.Config
-	var ocfg *tests.OperatorConfig
 	var fw portforward.PortForward
 	var fwCancel context.CancelFunc
 
@@ -97,6 +97,8 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		framework.ExpectNoError(err, "failed to create clientset")
 		asCli, err = asclientset.NewForConfig(config)
 		framework.ExpectNoError(err, "failed to create clientset")
+		genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
+		framework.ExpectNoError(err, "failed to create clientset for controller-runtime")
 		aggrCli, err = aggregatorclient.NewForConfig(config)
 		framework.ExpectNoError(err, "failed to create clientset")
 		apiExtCli, err = apiextensionsclientset.NewForConfig(config)
@@ -108,8 +110,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		framework.ExpectNoError(err, "failed to create port forwarder")
 		fwCancel = cancel
 		cfg = e2econfig.TestConfig
-		ocfg = e2econfig.NewDefaultOperatorConfig(cfg)
-		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+		crdUtil = tests.NewCrdTestUtil(cli, c, asCli, genericCli, nil)
 	})
 
 	ginkgo.AfterEach(func() {
@@ -121,7 +122,6 @@ var _ = ginkgo.Describe("[Stability]", func() {
 	ginkgo.Context("operator with default values", func() {
 		var ocfg *tests.OperatorConfig
 		var oa tests.OperatorActions
-		var genericCli client.Client
 
 		ginkgo.BeforeEach(func() {
 			ocfg = &tests.OperatorConfig{
@@ -132,16 +132,13 @@ var _ = ginkgo.Describe("[Stability]", func() {
 				LogLevel:    "4",
 				TestMode:    true,
 			}
-			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, genericCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")
 			oa.CleanCRDOrDie()
 			oa.InstallCRDOrDie(ocfg)
 			ginkgo.By("Installing tidb-operator")
 			oa.CleanOperatorOrDie(ocfg)
 			oa.DeployOperatorOrDie(ocfg)
-			var err error
-			genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
-			framework.ExpectNoError(err, "failed to create clientset")
 		})
 
 		testCases := []struct {
@@ -163,7 +160,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 				tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4)
 				err := genericCli.Create(context.TODO(), tc)
 				framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
-				err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+				err = crdUtil.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 				framework.ExpectNoError(err, "failed to wait for TidbCluster ready")
 
 				test.fn()
@@ -295,7 +292,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			tc.Spec.TiKV.MaxFailoverCount = pointer.Int32Ptr(0)
 			err := genericCli.Create(context.TODO(), tc)
 			framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
-			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			err = crdUtil.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err, "failed to wait for TidbCluster ready")
 
 			ginkgo.By("By using tidb-scheduler, 3 TiKV/PD replicas should be on different nodes")
@@ -494,7 +491,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			}
 
 			ginkgo.By("Waiting for tidb cluster to be fully ready")
-			err = oa.WaitForTidbClusterReady(tc, 5*time.Minute, 15*time.Second)
+			err = crdUtil.WaitForTidbClusterReady(tc, 5*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %v", tc)
 		})
 
@@ -509,7 +506,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			tc.Spec.TiDB.Replicas = 3
 			err := genericCli.Create(context.TODO(), tc)
 			framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
-			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			err = crdUtil.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %v", tc)
 
 			listOptions := metav1.ListOptions{
@@ -571,7 +568,6 @@ var _ = ginkgo.Describe("[Stability]", func() {
 	ginkgo.Context("operator with short auto-failover periods", func() {
 		var ocfg *tests.OperatorConfig
 		var oa tests.OperatorActions
-		var genericCli client.Client
 		failoverPeriod := time.Minute
 
 		ginkgo.BeforeEach(func() {
@@ -589,16 +585,13 @@ var _ = ginkgo.Describe("[Stability]", func() {
 					"controllerManager.tiflashFailoverPeriod": failoverPeriod.String(),
 				},
 			}
-			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, genericCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")
 			oa.CleanCRDOrDie()
 			oa.InstallCRDOrDie(ocfg)
 			ginkgo.By("Installing tidb-operator")
 			oa.CleanOperatorOrDie(ocfg)
 			oa.DeployOperatorOrDie(ocfg)
-			var err error
-			genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
-			framework.ExpectNoError(err, "failed to create clientset")
 		})
 
 		ginkgo.It("[Feature: AutoFailover] PD: one replacement for one failed member and replacements should be deleted when failed members are recovered", func() {
@@ -618,7 +611,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			tc.Spec.TiDB.Replicas = 1
 			err := genericCli.Create(context.TODO(), tc)
 			framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
-			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			err = crdUtil.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %v", tc)
 
 			ginkgo.By("Pre-create an invalid PVC to fail the auto-created failover member")
@@ -743,7 +736,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			}
 			err := genericCli.Create(context.TODO(), tc)
 			framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
-			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			err = crdUtil.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %v", tc)
 
 			ginkgo.By("Increase replicas of TiDB from 2 to 3")
@@ -805,7 +798,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			})
 			framework.ExpectNoError(err, "failed to update TidbCluster for tidb affinity")
 
-			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			err = crdUtil.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %v", tc)
 
 			ginkgo.By(fmt.Sprintf("Fail the TiDB pod %q", podName))
@@ -882,7 +875,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			tc.Spec.TiDB.Replicas = 1
 			err := genericCli.Create(context.TODO(), tc)
 			framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
-			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			err = crdUtil.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %v", tc)
 
 			ginkgo.By("Fail a TiKV store")
@@ -942,7 +935,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			tc.Spec.TiDB.Replicas = 1
 			err := genericCli.Create(context.TODO(), tc)
 			framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
-			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			err = crdUtil.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %v", tc)
 
 			ginkgo.By("Fail a PD")
@@ -996,7 +989,6 @@ var _ = ginkgo.Describe("[Stability]", func() {
 	ginkgo.Context("[Feature: AdvancedStatefulSet][Feature: AutoFailover] operator with advanced statefulset and short auto-failover periods", func() {
 		var ocfg *tests.OperatorConfig
 		var oa tests.OperatorActions
-		var genericCli client.Client
 		failoverPeriod := time.Minute
 
 		ginkgo.BeforeEach(func() {
@@ -1017,16 +1009,13 @@ var _ = ginkgo.Describe("[Stability]", func() {
 					"AdvancedStatefulSet=true",
 				},
 			}
-			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, genericCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")
 			oa.CleanCRDOrDie()
 			oa.InstallCRDOrDie(ocfg)
 			ginkgo.By("Installing tidb-operator")
 			oa.CleanOperatorOrDie(ocfg)
 			oa.DeployOperatorOrDie(ocfg)
-			var err error
-			genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
-			framework.ExpectNoError(err, "failed to create clientset")
 		})
 
 		// https://github.com/pingcap/tidb-operator/issues/1464
@@ -1146,7 +1135,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 
 			_, err := cli.PingcapV1alpha1().TidbClusters(ns).Create(tc)
 			framework.ExpectNoError(err, "Create TidbCluster error")
-			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			err = crdUtil.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err, "Check TidbCluster error")
 
 			ginkgo.By("Create tidb monitor with e2e image")
@@ -1409,7 +1398,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 
 			_, err := cli.PingcapV1alpha1().TidbClusters(ns).Create(tc)
 			framework.ExpectNoError(err, "Create TidbCluster error")
-			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			err = crdUtil.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err, "Check TidbCluster error")
 
 			ginkgo.By("Create tidb monitor with e2e image")

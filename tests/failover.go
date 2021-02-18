@@ -135,7 +135,7 @@ func (oa *operatorActions) DeletePDDataThenCheckFailover(info *TidbClusterConfig
 	}
 	log.Logf("pd cluster have been recovered")
 
-	err = oa.CheckTidbClusterStatus(info)
+	err = oa.crdUtil.CheckTidbClusterStatus(info)
 	if err != nil {
 		return err
 	}
@@ -319,7 +319,7 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 	if err != nil {
 		return err
 	}
-	err = oa.CheckTidbClusterStatus(info)
+	err = oa.crdUtil.CheckTidbClusterStatus(info)
 	if err != nil {
 		return err
 	}

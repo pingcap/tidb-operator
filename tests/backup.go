@@ -92,7 +92,7 @@ func (oa *operatorActions) BackupAndRestoreToMultipleClusters(source *TidbCluste
 	}
 
 	prepareIncremental := func(source *TidbClusterConfig, target BackupTarget) error {
-		err = oa.CheckTidbClusterStatus(target.TargetCluster)
+		err = oa.crdUtil.CheckTidbClusterStatus(target.TargetCluster)
 		if err != nil {
 			log.Logf("ERROR: cluster:[%s] deploy faild error: %v", target.TargetCluster.ClusterName, err)
 			return err
