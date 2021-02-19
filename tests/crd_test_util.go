@@ -33,6 +33,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
@@ -290,7 +291,12 @@ func (ctu *CrdTestUtil) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, error)
 	ns := tc.GetNamespace()
 	pdSetName := controller.PDMemberName(tcName)
 
-	pdSet := tcUtil.GetSts(ctu.genericCli, ns, pdSetName)
+	config, err := framework.LoadConfig()
+	framework.ExpectNoError(err, "failed to load config")
+	genericCli, err := ctrlCli.New(config, ctrlCli.Options{Scheme: scheme.Scheme})
+	framework.ExpectNoError(err, "failed to create clientset for controller-runtime")
+	pdSet := tcUtil.GetSts(genericCli, ns, pdSetName)
+	// pdSet := tcUtil.GetSts(ctu.genericCli, ns, pdSetName)
 
 	if pdSet.Status.CurrentRevision != pdSet.Status.UpdateRevision {
 		log.Logf("pd sts .Status.CurrentRevision (%s) != .Status.UpdateRevision (%s)", pdSet.Status.CurrentRevision, pdSet.Status.UpdateRevision)
