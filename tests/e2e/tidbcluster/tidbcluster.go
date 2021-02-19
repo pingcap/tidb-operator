@@ -120,7 +120,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			stsGetter = c.AppsV1()
 		}
 		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, genericCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
-		crdUtil = tests.NewCrdTestUtil(cli, c, asCli, genericCli, nil)
+		crdUtil = tests.NewCrdTestUtil(cli, c, asCli, genericCli, fw)
 	})
 
 	ginkgo.AfterEach(func() {

@@ -110,7 +110,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		framework.ExpectNoError(err, "failed to create port forwarder")
 		fwCancel = cancel
 		cfg = e2econfig.TestConfig
-		crdUtil = tests.NewCrdTestUtil(cli, c, asCli, genericCli, nil)
+		crdUtil = tests.NewCrdTestUtil(cli, c, asCli, genericCli, fw)
 	})
 
 	ginkgo.AfterEach(func() {

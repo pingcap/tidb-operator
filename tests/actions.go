@@ -238,7 +238,7 @@ type OperatorActions interface {
 }
 
 type operatorActions struct {
-	framework          *framework.Framework
+	framework          *framework.Framework // TODO: remove this, seems unused?
 	cli                versioned.Interface
 	kubeCli            kubernetes.Interface
 	asCli              asclientset.Interface

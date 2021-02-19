@@ -103,7 +103,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 		fwCancel = cancel
 		cfg = e2econfig.TestConfig
 		stsGetter = c.AppsV1()
-		crdUtil = tests.NewCrdTestUtil(cli, c, asCli, genericCli, nil)
+		crdUtil = tests.NewCrdTestUtil(cli, c, asCli, genericCli, fw)
 	})
 
 	ginkgo.AfterEach(func() {

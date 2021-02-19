@@ -76,7 +76,6 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		framework.ExpectNoError(err, "failed to create clientset")
 		genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
 		framework.ExpectNoError(err, "failed to create clientset")
-		crdUtil = tests.NewCrdTestUtil(cli, c, asCli, genericCli, nil)
 		aggrCli, err = aggregatorclient.NewForConfig(config)
 		framework.ExpectNoError(err, "failed to create clientset")
 		apiExtCli, err = apiextensionsclientset.NewForConfig(config)
@@ -90,6 +89,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		cfg = e2econfig.TestConfig
 		ocfg = e2econfig.NewDefaultOperatorConfig(cfg)
 		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, genericCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+		crdUtil = tests.NewCrdTestUtil(cli, c, asCli, genericCli, fw)
 	})
 
 	ginkgo.AfterEach(func() {
