@@ -33,7 +33,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
@@ -263,12 +262,21 @@ func (ctu *CrdTestUtil) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeou
 // getMemberContainer gets member container
 func getMemberContainer(genericCli ctrlCli.Client, namespace, tcName, component string) (*corev1.Container, bool) {
 	stsName := fmt.Sprintf("%s-%s", tcName, component)
-	sts := tcUtil.GetSts(genericCli, namespace, stsName)
+	sts, err := tcUtil.GetSts(genericCli, namespace, stsName)
+	if err != nil {
+		log.Logf("failed to get StatefulSet %s/%s", namespace, stsName)
+		return nil, false
+	}
 	return getStsContainer(genericCli, sts, component)
 }
 
 func getStsContainer(genericCli ctrlCli.Client, sts *appsv1.StatefulSet, containerName string) (*corev1.Container, bool) {
-	podList := tcUtil.ListPods(genericCli, sts.Namespace, labels.SelectorFromSet(sts.Spec.Selector.MatchLabels))
+	selector := labels.SelectorFromSet(sts.Spec.Selector.MatchLabels)
+	podList, err := tcUtil.ListPods(genericCli, sts.Namespace, selector)
+	if err != nil {
+		log.Logf("failed to list Pod in ns %q with selector: %+v", sts.Namespace, selector)
+		return nil, false
+	}
 	if len(podList.Items) == 0 {
 		log.Logf("ERROR: no pods found for component %s of cluster %s/%s", containerName, sts.Namespace, sts.Name)
 		return nil, false
@@ -291,12 +299,11 @@ func (ctu *CrdTestUtil) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, error)
 	ns := tc.GetNamespace()
 	pdSetName := controller.PDMemberName(tcName)
 
-	config, err := framework.LoadConfig()
-	framework.ExpectNoError(err, "failed to load config")
-	genericCli, err := ctrlCli.New(config, ctrlCli.Options{Scheme: scheme.Scheme})
-	framework.ExpectNoError(err, "failed to create clientset for controller-runtime")
-	pdSet := tcUtil.GetSts(genericCli, ns, pdSetName)
-	// pdSet := tcUtil.GetSts(ctu.genericCli, ns, pdSetName)
+	pdSet, err := tcUtil.GetSts(ctu.genericCli, ns, pdSetName)
+	if err != nil {
+		log.Logf("failed to get StatefulSet %s/%s", ns, pdSetName)
+		return false, err
+	}
 
 	if pdSet.Status.CurrentRevision != pdSet.Status.UpdateRevision {
 		log.Logf("pd sts .Status.CurrentRevision (%s) != .Status.UpdateRevision (%s)", pdSet.Status.CurrentRevision, pdSet.Status.UpdateRevision)
@@ -383,7 +390,11 @@ func (ctu *CrdTestUtil) tikvMembersReadyFn(obj runtime.Object) (bool, error) {
 		return false, fmt.Errorf("failed to parse obj to TidbCluster")
 	}
 
-	tikvSet := tcUtil.GetSts(ctu.genericCli, ns, tikvSetName)
+	tikvSet, err := tcUtil.GetSts(ctu.genericCli, ns, tikvSetName)
+	if err != nil {
+		log.Logf("failed to get StatefulSet %s/%s", ns, tikvSetName)
+		return false, err
+	}
 
 	if tikvSet.Status.CurrentRevision != tikvSet.Status.UpdateRevision {
 		log.Logf("tikv sts .Status.CurrentRevision (%s) != .Status.UpdateRevision (%s)", tikvSet.Status.CurrentRevision, tikvSet.Status.UpdateRevision)
@@ -464,7 +475,11 @@ func (ctu *CrdTestUtil) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, erro
 	ns := tc.GetNamespace()
 	tidbSetName := controller.TiDBMemberName(tcName)
 
-	tidbSet := tcUtil.GetSts(ctu.genericCli, ns, tidbSetName)
+	tidbSet, err := tcUtil.GetSts(ctu.genericCli, ns, tidbSetName)
+	if err != nil {
+		log.Logf("failed to get StatefulSet %s/%s", ns, tidbSetName)
+		return false, err
+	}
 
 	if tidbSet.Status.CurrentRevision != tidbSet.Status.UpdateRevision {
 		log.Logf("tidb sts .Status.CurrentRevision (%s) != tidb sts .Status.UpdateRevision (%s)", tidbSet.Status.CurrentRevision, tidbSet.Status.UpdateRevision)
@@ -515,7 +530,7 @@ func (ctu *CrdTestUtil) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, erro
 		return false, nil
 	}
 
-	_, err := ctu.kubeCli.CoreV1().Services(ns).Get(tidbSetName, metav1.GetOptions{})
+	_, err = ctu.kubeCli.CoreV1().Services(ns).Get(tidbSetName, metav1.GetOptions{})
 	if err != nil {
 		log.Logf("failed to get service: %s/%s", ns, tidbSetName)
 		return false, nil
@@ -534,7 +549,11 @@ func (ctu *CrdTestUtil) tiflashMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	ns := tc.GetNamespace()
 	tiflashSetName := controller.TiFlashMemberName(tcName)
 
-	tiflashSet := tcUtil.GetSts(ctu.genericCli, ns, tiflashSetName)
+	tiflashSet, err := tcUtil.GetSts(ctu.genericCli, ns, tiflashSetName)
+	if err != nil {
+		log.Logf("failed to get StatefulSet %s/%s", ns, tiflashSetName)
+		return false, err
+	}
 
 	if tiflashSet.Status.CurrentRevision != tiflashSet.Status.UpdateRevision {
 		log.Logf("tiflash sts .Status.CurrentRevision (%s) != .Status.UpdateRevision (%s)", tiflashSet.Status.CurrentRevision, tiflashSet.Status.UpdateRevision)

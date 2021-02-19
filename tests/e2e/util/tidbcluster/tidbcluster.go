@@ -25,7 +25,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/kubernetes/test/e2e/framework"
 	testutils "k8s.io/kubernetes/test/utils"
 	ctrlCli "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -76,23 +75,20 @@ func WaitForTidbClusterReady(c versioned.Interface, ns, name string, timeout tim
 }
 
 // GetSts returns the StatefulSet ns/name
-// for test case simplicity, any error will panic
-func GetSts(cli ctrlCli.Client, ns, name string) *appsv1.StatefulSet {
+func GetSts(cli ctrlCli.Client, ns, name string) (*appsv1.StatefulSet, error) {
 	objKey := ctrlCli.ObjectKey{Namespace: ns, Name: name}
 	sts := appsv1.StatefulSet{}
 	err := cli.Get(context.TODO(), objKey, &sts)
-	framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, name)
-	return &sts
+	return &sts, err
 }
 
 // ListPods returns the PodList in ns with selector
-func ListPods(cli ctrlCli.Client, ns string, labelSelector labels.Selector) *v1.PodList {
+func ListPods(cli ctrlCli.Client, ns string, labelSelector labels.Selector) (*v1.PodList, error) {
 	options := ctrlCli.ListOptions{
 		Namespace:     ns,
 		LabelSelector: labelSelector,
 	}
 	pods := v1.PodList{}
 	err := cli.List(context.TODO(), &pods, &options)
-	framework.ExpectNoError(err, "failed to list Pod with options: %+v", options)
-	return &pods
+	return &pods, err
 }
