@@ -49,7 +49,6 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedtidbclient"
-	utilstatefulset "github.com/pingcap/tidb-operator/tests/e2e/util/statefulset"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
@@ -2408,37 +2407,6 @@ func (oa *operatorActions) CheckInitSQLOrDie(info *TidbClusterConfig) {
 	if err := oa.CheckInitSQL(info); err != nil {
 		slack.NotifyAndPanic(err)
 	}
-}
-
-func (oa *operatorActions) pumpMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, error) {
-	tcName := tc.GetName()
-	ns := tc.GetNamespace()
-	ssName := controller.PumpMemberName(tcName)
-
-	ss, err := oa.tcStsGetter.StatefulSets(ns).Get(ssName, metav1.GetOptions{})
-	if err != nil {
-		log.Logf("failed to get statefulset: %s/%s, %v", ns, ssName, err)
-		return false, nil
-	}
-
-	if ss.Status.CurrentRevision != ss.Status.UpdateRevision {
-		log.Logf("pump sts .Status.CurrentRevision (%s) != .Status.UpdateRevision (%s)", ss.Status.CurrentRevision, ss.Status.UpdateRevision)
-		return false, nil
-	}
-
-	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), ss) {
-		return false, nil
-	}
-
-	// check all pump replicas are online
-	for i := 0; i < int(*ss.Spec.Replicas); i++ {
-		podName := fmt.Sprintf("%s-%d", ssName, i)
-		if !oa.pumpHealth(tc.Name, tc.Namespace, podName, tc.IsTLSClusterEnabled()) {
-			log.Logf("%s is not health yet", podName)
-			return false, nil
-		}
-	}
-	return true, nil
 }
 
 var dummyCancel = func() {}
