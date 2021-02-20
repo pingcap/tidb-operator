@@ -80,7 +80,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 	var asCli asclientset.Interface
 	var aggrCli aggregatorclient.Interface
 	var apiExtCli apiextensionsclientset.Interface
-	var oa tests.OperatorActions
+	var oa *tests.OperatorActions
 	var cfg *tests.Config
 	var config *restclient.Config
 	var ocfg *tests.OperatorConfig
@@ -120,7 +120,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 
 	ginkgo.Context("operator with default values", func() {
 		var ocfg *tests.OperatorConfig
-		var oa tests.OperatorActions
+		var oa *tests.OperatorActions
 		var genericCli client.Client
 
 		ginkgo.BeforeEach(func() {
@@ -570,7 +570,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 
 	ginkgo.Context("operator with short auto-failover periods", func() {
 		var ocfg *tests.OperatorConfig
-		var oa tests.OperatorActions
+		var oa *tests.OperatorActions
 		var genericCli client.Client
 		failoverPeriod := time.Minute
 
@@ -995,7 +995,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 
 	ginkgo.Context("[Feature: AdvancedStatefulSet][Feature: AutoFailover] operator with advanced statefulset and short auto-failover periods", func() {
 		var ocfg *tests.OperatorConfig
-		var oa tests.OperatorActions
+		var oa *tests.OperatorActions
 		var genericCli client.Client
 		failoverPeriod := time.Minute
 

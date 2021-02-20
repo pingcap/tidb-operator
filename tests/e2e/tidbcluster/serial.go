@@ -114,7 +114,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 	ginkgo.Describe("[Feature: PodAdmissionWebhook]", func() {
 
 		var ocfg *tests.OperatorConfig
-		var oa tests.OperatorActions
+		var oa *tests.OperatorActions
 
 		ginkgo.BeforeEach(func() {
 			ocfg = &tests.OperatorConfig{
@@ -214,7 +214,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 
 	ginkgo.Describe("[Feature: Defaulting and Validating]", func() {
 		var ocfg *tests.OperatorConfig
-		var oa tests.OperatorActions
+		var oa *tests.OperatorActions
 
 		ginkgo.BeforeEach(func() {
 			ocfg = &tests.OperatorConfig{
@@ -415,7 +415,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 	})
 
 	ginkgo.Describe("Upgrading Operator from 1.1.7 to latest", func() {
-		var oa tests.OperatorActions
+		var oa *tests.OperatorActions
 		var ocfg *tests.OperatorConfig
 		var operatorVersion string
 
@@ -588,7 +588,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 	})
 
 	ginkgo.Describe("upgrading tidb-operator in the same minor series", func() {
-		var oa tests.OperatorActions
+		var oa *tests.OperatorActions
 		var ocfg *tests.OperatorConfig
 		var operatorVersion string
 
