@@ -1637,10 +1637,6 @@ func (oa *operatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		}
 	}
 
-	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(tikvSetName, metav1.GetOptions{}); err != nil {
-		log.Logf("failed to get service: %s/%s", ns, tikvSetName)
-		return false, nil
-	}
 	tikvPeerServiceName := controller.TiKVPeerMemberName(tcName)
 	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(tikvPeerServiceName, metav1.GetOptions{}); err != nil {
 		log.Logf("failed to get peer service: %s/%s", ns, tikvPeerServiceName)
@@ -1718,10 +1714,6 @@ func (oa *operatorActions) tiflashMembersReadyFn(tc *v1alpha1.TidbCluster) (bool
 		}
 	}
 
-	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(tiflashSetName, metav1.GetOptions{}); err != nil {
-		log.Logf("failed to get service: %s/%s", ns, tiflashSetName)
-		return false, nil
-	}
 	tiflashPeerServiceName := controller.TiFlashPeerMemberName(tcName)
 	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(tiflashPeerServiceName, metav1.GetOptions{}); err != nil {
 		log.Logf("failed to get peer service: %s/%s", ns, tiflashPeerServiceName)
