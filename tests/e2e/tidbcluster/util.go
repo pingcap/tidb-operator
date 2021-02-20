@@ -175,10 +175,18 @@ func mustToString(set sets.Int32) string {
 	return string(b)
 }
 
-func getSts(cli ctrlCli.Client, ns, name string) *appsv1.StatefulSet {
+func mustGetSts(cli ctrlCli.Client, ns, name string) *appsv1.StatefulSet {
 	objKey := ctrlCli.ObjectKey{Namespace: ns, Name: name}
 	sts := appsv1.StatefulSet{}
 	err := cli.Get(context.TODO(), objKey, &sts)
 	framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, name)
 	return &sts
+}
+
+func mustGetCm(cli ctrlCli.Client, ns, name string) *v1.ConfigMap {
+	objKey := ctrlCli.ObjectKey{Namespace: ns, Name: name}
+	cm := v1.ConfigMap{}
+	err := cli.Get(context.TODO(), objKey, &cm)
+	framework.ExpectNoError(err, "failed to get ConfigMap %s/%s", ns, name)
+	return &cm
 }
