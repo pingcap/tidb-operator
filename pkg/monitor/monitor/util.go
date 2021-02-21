@@ -1117,6 +1117,7 @@ func getThanosSidecarContainer(monitor *v1alpha1.TidbMonitor) core.Container {
 			},
 		},
 	}
+
 	if thanos.ObjectStorageConfig != nil || thanos.ObjectStorageConfigFile != nil {
 		if thanos.ObjectStorageConfigFile != nil {
 			container.Args = append(container.Args, "--objstore.config-file="+*thanos.ObjectStorageConfigFile)
