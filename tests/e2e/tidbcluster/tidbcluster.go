@@ -1560,6 +1560,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		oa.CheckTidbClusterStatusOrDie(&tcCfg)
 	})
 
+	// test cases for tc upgrade
 	ginkgo.Context("upgrade works correctly", func() {
 		ginkgo.It("for tc and components version", func() {
 			ginkgo.By("Deploy initial tc")
@@ -1577,7 +1578,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				return nil
 			})
 			framework.ExpectNoError(err, "failed to update tc version to %q", utilimage.TiDBV4)
-			err = oa.WaitForTidbClusterReady(tc, 5*time.Minute, 10*time.Second)
+			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
 			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", tc.Namespace, tc.Name)
 
 			ginkgo.By("Update components version")
@@ -1589,7 +1590,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				return nil
 			})
 			framework.ExpectNoError(err, "failed to update components version to %q", componentVersion)
-			err = oa.WaitForTidbClusterReady(tc, 5*time.Minute, 10*time.Second)
+			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
 			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", tc.Namespace, tc.Name)
 
 			ginkgo.By("Check components version")
@@ -1624,7 +1625,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				return nil
 			})
 			framework.ExpectNoError(err, "failed to update components configuration")
-			err = oa.WaitForTidbClusterReady(tc, 5*time.Minute, 10*time.Second)
+			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
 			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", tc.Namespace, tc.Name)
 
 			ginkgo.By("Check components configuration")
@@ -1774,6 +1775,84 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					}
 				})
 			}
+		})
+
+		ginkgo.It("with bad PD config, then recover after force upgrading PD", func() {
+			ginkgo.By("Deploy initial tc with incorrect PD image")
+			tc := fixture.GetTidbCluster(ns, "force-upgrade-pd", utilimage.TiDBV4Prev)
+			tc.Spec.PD.BaseImage = "wrong-pd-image"
+			err := genericCli.Create(context.TODO(), tc)
+			framework.ExpectNoError(err, "failed to create TidbCluster %s/%s", tc.Namespace, tc.Name)
+
+			ginkgo.By("Wait for PD Pod exist")
+			err = wait.PollImmediate(10*time.Second, 3*time.Minute, func() (bool, error) {
+				_, err := getPod(genericCli, tc.Namespace, tc.Name)
+				if err != nil {
+					log.Logf("failed to get Pod %s/%s: %v", tc.Namespace, tc.Name, err)
+					return false, nil
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "no Pod found for PD")
+
+			ginkgo.By("Wait for 3 min and no PD Pod should be ready")
+			err = wait.PollImmediate(10*time.Second, 3*time.Minute, func() (bool, error) {
+				pdPod, err := getPod(genericCli, tc.Namespace, tc.Name)
+				framework.ExpectNoError(err, "no Pod found for PD")
+				if pdPod.Status.Phase != corev1.PodRunning {
+					log.Logf("pdPod.Status.Phase = %q, not %q yet", pdPod.Status.Phase, corev1.PodRunning)
+					return false, nil
+				}
+				return true, nil
+			})
+			framework.ExpectEqual(err, wait.ErrWaitTimeout, "found PD Pod ready with wrong image")
+
+			ginkgo.By("Update PD Pod to correct image")
+			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Spec.PD.BaseImage = "pingcap/pd"
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to change PD Pod image")
+
+			ginkgo.By("Wait for 3 min and no PD Pod should be ready")
+			err = wait.PollImmediate(10*time.Second, 3*time.Minute, func() (bool, error) {
+				pdPod, err := getPod(genericCli, tc.Namespace, tc.Name)
+				framework.ExpectNoError(err, "no Pod found for PD")
+				if pdPod.Status.Phase != corev1.PodRunning {
+					log.Logf("pdPod.Status.Phase = %q, not %q yet", pdPod.Status.Phase, corev1.PodRunning)
+					return false, nil
+				}
+				return true, nil
+			})
+			framework.ExpectEqual(err, wait.ErrWaitTimeout, "found PD Pod ready with wrong image")
+
+			ginkgo.By("Annotate TidbCluster for force upgrade")
+			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Annotations["tidb.pingcap.com/force-upgrade"] = "true"
+				tc.Spec.PD.BaseImage = "wrong" // we need to make this right later
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to annotate tc for force upgrade")
+			err = wait.PollImmediate(5*time.Second, 1*time.Minute, func() (bool, error) {
+				tc := mustGetTidbCluster(genericCli, tc.Namespace, tc.Name)
+				val, exist := tc.Annotations["tidb.pingcap.com/force-upgrade"]
+				if !exist {
+					log.Logf("annotation tidb.pingcap.com/force-upgrade not exist in tc")
+					return false, nil
+				}
+				framework.ExpectEqual(val, "true", "tc annotation tidb.pingcap.com/force-upgrade is not \"true\", but %q", val)
+				return true, nil
+			})
+			framework.ExpectNoError(err, "failed to wait for annotation tidb.pingcap.com/force-upgrade")
+
+			ginkgo.By("Update PD Pod to correct image")
+			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Spec.PD.BaseImage = "pingcap/pd"
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to change PD Pod image")
+			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
+			framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 		})
 	})
 })

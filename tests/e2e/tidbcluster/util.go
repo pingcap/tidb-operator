@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -189,4 +190,19 @@ func mustGetCm(cli ctrlCli.Client, ns, name string) *v1.ConfigMap {
 	err := cli.Get(context.TODO(), objKey, &cm)
 	framework.ExpectNoError(err, "failed to get ConfigMap %s/%s", ns, name)
 	return &cm
+}
+
+func mustGetTidbCluster(cli ctrlCli.Client, ns, name string) *v1alpha1.TidbCluster {
+	objKey := ctrlCli.ObjectKey{Namespace: ns, Name: name}
+	tc := v1alpha1.TidbCluster{}
+	err := cli.Get(context.TODO(), objKey, &tc)
+	framework.ExpectNoError(err, "failed to get TidbCluster %s/%s", ns, name)
+	return &tc
+}
+
+func getPod(cli ctrlCli.Client, ns, name string) (*v1.Pod, error) {
+	objKey := ctrlCli.ObjectKey{Namespace: ns, Name: name}
+	pod := v1.Pod{}
+	err := cli.Get(context.TODO(), objKey, &pod)
+	return &pod, err
 }
