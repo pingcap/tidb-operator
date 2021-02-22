@@ -1656,9 +1656,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		ginkgo.Context("while concurrently scale PD", func() {
 			operation := []string{"in", "out"}
 			for _, op := range operation {
-				ginkgo.It("in", func() {
+				ginkgo.It(op, func() {
 					ginkgo.By("Deploy initial tc")
-					tcName := fmt.Sprintf("scale-%s-concurrently", op)
+					tcName := fmt.Sprintf("scale-%s-pd-concurrently", op)
 					tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4Prev)
 					if op == "in" {
 						tc.Spec.PD.Replicas = 5
@@ -1674,7 +1674,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					})
 					framework.ExpectNoError(err, "failed to update PD version to %q", utilimage.TiDBV4)
 
-					ginkgo.By("Wait for PD phase is \"Upgrade\"")
+					ginkgo.By(fmt.Sprintf("Wait for PD phase is %q", v1alpha1.UpgradePhase))
 					err = wait.PollImmediate(10*time.Second, 3*time.Minute, func() (bool, error) {
 						tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tcName, metav1.GetOptions{})
 						if err != nil {
@@ -1682,14 +1682,14 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 							return false, nil
 						}
 						if tc.Status.PD.Phase != v1alpha1.UpgradePhase {
-							log.Logf("tc.Status.PD.Phase = %q", tc.Status.PD.Phase)
+							log.Logf("tc.Status.PD.Phase = %q, not %q yet", tc.Status.PD.Phase, v1alpha1.UpgradePhase)
 							return false, nil
 						}
 						return true, nil
 					})
 					framework.ExpectNoError(err, "wait for PD phase failed")
 
-					ginkgo.By(fmt.Sprintf("Scale %s PD while in \"Upgrade\" phase", op))
+					ginkgo.By(fmt.Sprintf("Scale %s PD while in %q phase", op, v1alpha1.UpgradePhase))
 					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 						if op == "in" {
 							tc.Spec.PD.Replicas = 3
@@ -1715,12 +1715,66 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		})
 
 		// similar to PD scale-in/scale-out case above, need to check no evict leader scheduler left
-		// ginkgo.Context("while concurrently scale TiKV", func() {
-		// 	operation := []string{"in", "out"}
-		// 	for _, op := range operation {
+		ginkgo.Context("while concurrently scale TiKV", func() {
+			operation := []string{"in", "out"}
+			for _, op := range operation {
+				ginkgo.It(op, func() {
+					ginkgo.By("Deploy initial tc")
+					tcName := fmt.Sprintf("scale-%s-tikv-concurrently", op)
+					tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4Prev)
+					if op == "in" {
+						tc.Spec.TiKV.Replicas = 4
+					} else {
+						tc.Spec.TiKV.Replicas = 3
+					}
+					utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
 
-		// 	}
-		// })
+					ginkgo.By("Upgrade TiKV version")
+					err := controller.GuaranteedUpdate(genericCli, tc, func() error {
+						tc.Spec.TiKV.Version = pointer.StringPtr(utilimage.TiDBV4)
+						return nil
+					})
+					framework.ExpectNoError(err, "failed to update TiKV version to %q", utilimage.TiDBV4)
+
+					ginkgo.By(fmt.Sprintf("Wait for TiKV phase is %q", v1alpha1.UpgradePhase))
+					err = wait.PollImmediate(10*time.Second, 3*time.Minute, func() (bool, error) {
+						tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tcName, metav1.GetOptions{})
+						if err != nil {
+							log.Logf("failed to get TidbCluster %s/%s: %v", tc.Namespace, tcName, err)
+							return false, nil
+						}
+						if tc.Status.TiKV.Phase != v1alpha1.UpgradePhase {
+							log.Logf("tc.Status.TiKV.Phase = %q, not %q yet", tc.Status.TiKV.Phase, v1alpha1.UpgradePhase)
+							return false, nil
+						}
+						return true, nil
+					})
+					framework.ExpectNoError(err, "wait for TiKV phase failed")
+
+					ginkgo.By(fmt.Sprintf("Scale %s TiKV while in %q phase", op, v1alpha1.UpgradePhase))
+					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+						if op == "in" {
+							tc.Spec.TiKV.Replicas = 3
+						} else {
+							tc.Spec.TiKV.Replicas = 4
+						}
+						return nil
+					})
+					framework.ExpectNoError(err, "failed to scale %s TiKV", op)
+					err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %s/%s", tc.Namespace, tc.Name)
+
+					ginkgo.By("Check TiKV replicas")
+					tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tcName, metav1.GetOptions{})
+					framework.ExpectNoError(err, "failed to get TidbCluster %s/%s: %v", tc.Namespace, tcName, err)
+					if op == "in" {
+						framework.ExpectEqual(int(tc.Spec.TiKV.Replicas), 3)
+					} else {
+						framework.ExpectEqual(int(tc.Spec.TiKV.Replicas), 4)
+					}
+				})
+			}
+		})
 	})
 })
 
