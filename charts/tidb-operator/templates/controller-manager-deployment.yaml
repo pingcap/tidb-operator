@@ -73,6 +73,15 @@ spec:
           {{- $label := join "," .Values.controllerManager.selector }}
           - -selector={{ $label }}
           {{- end }}
+         {{- if .Values.controllerManager.leaderLeaseDuration }}
+          - -leader-lease-duration={{ .Values.controllerManager.leaderLeaseDuration }}
+         {{- end }}
+         {{- if .Values.controllerManager.leaderRenewDeadline }}
+          - -leader-renew-deadline={{ .Values.controllerManager.leaderRenewDeadline }}
+         {{- end }}
+         {{- if .Values.controllerManager.leaderRetryPeriod }}
+          - -leader-retry-period={{ .Values.controllerManager.leaderRetryPeriod }}
+         {{- end }}
         env:
           - name: NAMESPACE
             valueFrom:
