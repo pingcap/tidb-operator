@@ -14,12 +14,9 @@
 package tidbcluster
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,7 +25,6 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/framework/pod"
-	ctrlCli "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func startWebhook(c clientset.Interface, image, ns, svcName string, cert []byte, key []byte) (*v1.Pod, *v1.Service) {
@@ -174,35 +170,4 @@ func mustToString(set sets.Int32) string {
 		panic(err)
 	}
 	return string(b)
-}
-
-func mustGetSts(cli ctrlCli.Client, ns, name string) *appsv1.StatefulSet {
-	objKey := ctrlCli.ObjectKey{Namespace: ns, Name: name}
-	sts := appsv1.StatefulSet{}
-	err := cli.Get(context.TODO(), objKey, &sts)
-	framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, name)
-	return &sts
-}
-
-func mustGetCm(cli ctrlCli.Client, ns, name string) *v1.ConfigMap {
-	objKey := ctrlCli.ObjectKey{Namespace: ns, Name: name}
-	cm := v1.ConfigMap{}
-	err := cli.Get(context.TODO(), objKey, &cm)
-	framework.ExpectNoError(err, "failed to get ConfigMap %s/%s", ns, name)
-	return &cm
-}
-
-func mustGetTidbCluster(cli ctrlCli.Client, ns, name string) *v1alpha1.TidbCluster {
-	objKey := ctrlCli.ObjectKey{Namespace: ns, Name: name}
-	tc := v1alpha1.TidbCluster{}
-	err := cli.Get(context.TODO(), objKey, &tc)
-	framework.ExpectNoError(err, "failed to get TidbCluster %s/%s", ns, name)
-	return &tc
-}
-
-func getPod(cli ctrlCli.Client, ns, name string) (*v1.Pod, error) {
-	objKey := ctrlCli.ObjectKey{Namespace: ns, Name: name}
-	pod := v1.Pod{}
-	err := cli.Get(context.TODO(), objKey, &pod)
-	return &pod, err
 }

@@ -1579,7 +1579,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			})
 			framework.ExpectNoError(err, "failed to update tc version to %q", utilimage.TiDBV4)
 			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
-			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", tc.Namespace, tc.Name)
+			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
 
 			ginkgo.By("Update components version")
 			componentVersion := utilimage.TiDBV4Prev
@@ -1591,7 +1591,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			})
 			framework.ExpectNoError(err, "failed to update components version to %q", componentVersion)
 			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
-			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", tc.Namespace, tc.Name)
+			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
 
 			ginkgo.By("Check components version")
 			pdSts := mustGetSts(genericCli, ns, controller.PDMemberName(tc.Name))
@@ -1626,28 +1626,37 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			})
 			framework.ExpectNoError(err, "failed to update components configuration")
 			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
-			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", tc.Namespace, tc.Name)
+			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
 
 			ginkgo.By("Check components configuration")
-			pdSts := mustGetSts(genericCli, ns, controller.PDMemberName(tc.Name))
+			pdMemberName := controller.PDMemberName(tc.Name)
+			pdSts, err := stsGetter.StatefulSets(ns).Get(pdMemberName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, pdMemberName)
 			pdCmName := member.FindConfigMapVolume(&pdSts.Spec.Template.Spec, func(name string) bool {
 				return strings.HasPrefix(name, controller.PDMemberName(tc.Name))
 			})
-			pdCm := mustGetCm(genericCli, ns, pdCmName)
+			pdCm, err := c.CoreV1().ConfigMaps(ns).Get(pdCmName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get ConfigMap %s/%s", ns, pdCm)
 			gomega.Expect(pdCm.Data["config-file"]).To(gomega.ContainSubstring("level = \"info\""))
 
-			tikvSts := mustGetSts(genericCli, ns, controller.TiKVMemberName(tc.Name))
+			tikvMemberName := controller.TiKVMemberName(tc.Name)
+			tikvSts, err := stsGetter.StatefulSets(ns).Get(tikvMemberName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, tikvMemberName)
 			tikvCmName := member.FindConfigMapVolume(&tikvSts.Spec.Template.Spec, func(name string) bool {
 				return strings.HasPrefix(name, controller.TiKVMemberName(tc.Name))
 			})
-			tikvCm := mustGetCm(genericCli, ns, tikvCmName)
+			tikvCm, err := c.CoreV1().ConfigMaps(ns).Get(tikvCmName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get ConfigMap %s/%s", ns, tikvCmName)
 			gomega.Expect(tikvCm.Data["config-file"]).To(gomega.ContainSubstring("level = \"info\""))
 
-			tidbSts := mustGetSts(genericCli, ns, controller.TiDBMemberName(tc.Name))
+			tidbMemberName := controller.TiDBMemberName(tc.Name)
+			tidbSts, err := stsGetter.StatefulSets(ns).Get(tidbMemberName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, tidbMemberName)
 			tidbCmName := member.FindConfigMapVolume(&tidbSts.Spec.Template.Spec, func(name string) bool {
 				return strings.HasPrefix(name, controller.TiDBMemberName(tc.Name))
 			})
-			tidbCm := mustGetCm(genericCli, ns, tidbCmName)
+			tidbCm, err := c.CoreV1().ConfigMaps(ns).Get(tidbCmName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get ConfigMap %s/%s", ns, tidbCmName)
 			gomega.Expect(tidbCm.Data["config-file"]).To(gomega.ContainSubstring("level = \"info\""))
 		})
 
@@ -1677,9 +1686,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 					ginkgo.By(fmt.Sprintf("Wait for PD phase is %q", v1alpha1.UpgradePhase))
 					err = wait.PollImmediate(10*time.Second, 3*time.Minute, func() (bool, error) {
-						tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tcName, metav1.GetOptions{})
+						tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 						if err != nil {
-							log.Logf("failed to get TidbCluster %s/%s: %v", tc.Namespace, tcName, err)
+							log.Logf("failed to get TidbCluster %s/%s: %v", ns, tcName, err)
 							return false, nil
 						}
 						if tc.Status.PD.Phase != v1alpha1.UpgradePhase {
@@ -1701,11 +1710,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					})
 					framework.ExpectNoError(err, "failed to scale %s PD", op)
 					err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
-					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %s/%s", tc.Namespace, tc.Name)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %s/%s", ns, tc.Name)
 
 					ginkgo.By("Check PD replicas")
-					tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tcName, metav1.GetOptions{})
-					framework.ExpectNoError(err, "failed to get TidbCluster %s/%s: %v", tc.Namespace, tcName, err)
+					tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+					framework.ExpectNoError(err, "failed to get TidbCluster %s/%s: %v", ns, tcName, err)
 					if op == "in" {
 						framework.ExpectEqual(int(tc.Spec.PD.Replicas), 3)
 					} else {
@@ -1739,9 +1748,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 					ginkgo.By(fmt.Sprintf("Wait for TiKV phase is %q", v1alpha1.UpgradePhase))
 					err = wait.PollImmediate(10*time.Second, 3*time.Minute, func() (bool, error) {
-						tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tcName, metav1.GetOptions{})
+						tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 						if err != nil {
-							log.Logf("failed to get TidbCluster %s/%s: %v", tc.Namespace, tcName, err)
+							log.Logf("failed to get TidbCluster %s/%s: %v", ns, tcName, err)
 							return false, nil
 						}
 						if tc.Status.TiKV.Phase != v1alpha1.UpgradePhase {
@@ -1763,11 +1772,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					})
 					framework.ExpectNoError(err, "failed to scale %s TiKV", op)
 					err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
-					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %s/%s", tc.Namespace, tc.Name)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %s/%s", ns, tc.Name)
 
 					ginkgo.By("Check TiKV replicas")
-					tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tcName, metav1.GetOptions{})
-					framework.ExpectNoError(err, "failed to get TidbCluster %s/%s: %v", tc.Namespace, tcName, err)
+					tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+					framework.ExpectNoError(err, "failed to get TidbCluster %s/%s: %v", ns, tcName, err)
 					if op == "in" {
 						framework.ExpectEqual(int(tc.Spec.TiKV.Replicas), 3)
 					} else {
@@ -1782,13 +1791,13 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tc := fixture.GetTidbCluster(ns, "force-upgrade-pd", utilimage.TiDBV4Prev)
 			tc.Spec.PD.BaseImage = "wrong-pd-image"
 			err := genericCli.Create(context.TODO(), tc)
-			framework.ExpectNoError(err, "failed to create TidbCluster %s/%s", tc.Namespace, tc.Name)
+			framework.ExpectNoError(err, "failed to create TidbCluster %s/%s", ns, tc.Name)
 
 			ginkgo.By("Wait for 1 min and ensure no PD Pod exist")
 			err = wait.PollImmediate(5*time.Second, 1*time.Minute, func() (bool, error) {
-				_, err := getPod(genericCli, tc.Namespace, tc.Name)
+				_, err := c.CoreV1().Pods(ns).Get(tc.Name, metav1.GetOptions{})
 				if err != nil {
-					log.Logf("failed to get Pod %s/%s: %v", tc.Namespace, tc.Name, err)
+					log.Logf("failed to get Pod %s/%s: %v", ns, tc.Name, err)
 					return false, nil
 				}
 				return true, nil
@@ -1804,9 +1813,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 			ginkgo.By("Wait for 1 min and ensure no PD Pod exist")
 			err = wait.PollImmediate(5*time.Second, 1*time.Minute, func() (bool, error) {
-				_, err := getPod(genericCli, tc.Namespace, tc.Name)
+				_, err := c.CoreV1().Pods(ns).Get(tc.Name, metav1.GetOptions{})
 				if err != nil {
-					log.Logf("failed to get Pod %s/%s: %v", tc.Namespace, tc.Name, err)
+					log.Logf("failed to get Pod %s/%s: %v", ns, tc.Name, err)
 					return false, nil
 				}
 				return true, nil
@@ -1824,7 +1833,8 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			})
 			framework.ExpectNoError(err, "failed to annotate tc for force upgrade")
 			err = wait.PollImmediate(5*time.Second, 1*time.Minute, func() (bool, error) {
-				tc := mustGetTidbCluster(genericCli, tc.Namespace, tc.Name)
+				tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tc.Name, metav1.GetOptions{})
+				framework.ExpectNoError(err, "failed to get TidbCluster %s/%s", ns, tc.Name)
 				val, exist := tc.Annotations["tidb.pingcap.com/force-upgrade"]
 				if !exist {
 					log.Logf("annotation tidb.pingcap.com/force-upgrade not exist in tc")
