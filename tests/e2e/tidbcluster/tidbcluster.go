@@ -41,6 +41,7 @@ import (
 	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
+	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
@@ -63,7 +64,7 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework/pod"
 	"k8s.io/kubernetes/test/utils"
 	"k8s.io/utils/pointer"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	ctrlCli "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ = ginkgo.Describe("TiDBCluster", func() {
@@ -79,7 +80,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	var cfg *tests.Config
 	var config *restclient.Config
 	var ocfg *tests.OperatorConfig
-	var genericCli client.Client
+	var genericCli ctrlCli.Client
 	var fwCancel context.CancelFunc
 	var fw portforward.PortForward
 	/**
@@ -98,7 +99,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		framework.ExpectNoError(err, "failed to create clientset for pingcap")
 		asCli, err = asclientset.NewForConfig(config)
 		framework.ExpectNoError(err, "failed to create clientset for advanced-statefulset")
-		genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
+		genericCli, err = ctrlCli.New(config, ctrlCli.Options{Scheme: scheme.Scheme})
 		framework.ExpectNoError(err, "failed to create clientset for controller-runtime")
 		aggrCli, err = aggregatorclient.NewForConfig(config)
 		framework.ExpectNoError(err, "failed to create clientset kube-aggregator")
@@ -1557,6 +1558,35 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		tcCfg.ScaleTiKV(4)
 		oa.UpgradeTidbClusterOrDie(&tcCfg)
 		oa.CheckTidbClusterStatusOrDie(&tcCfg)
+	})
+
+	ginkgo.It("Deleted objects controlled by TidbCluster will be recovered by Operator", func() {
+		ginkgo.By("Deploy initial tc")
+		tc := fixture.GetTidbCluster(ns, "delete-objects", utilimage.TiDBV4)
+		utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
+
+		ginkgo.By("Delete StatefulSet/ConfigMap/Service of PD")
+		// TODO: make a local function, variables are pd/tikv/tidb member name
+		deleteResourcesForComponent := func(memberName string) {
+			sts, err := stsGetter.StatefulSets(ns).Get(memberName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, memberName)
+			err = stsGetter.StatefulSets(ns).Delete(memberName, &metav1.DeleteOptions{})
+			framework.ExpectNoError(err, "failed to delete StatefulSet %s/%s", ns, memberName)
+			cmName := member.FindConfigMapVolume(&sts.Spec.Template.Spec, func(name string) bool {
+				return strings.HasPrefix(name, memberName)
+			})
+			err = c.CoreV1().ConfigMaps(ns).Delete(cmName, &metav1.DeleteOptions{})
+			framework.ExpectNoError(err, "failed to delete ConfigMap %s/%s", ns, cmName)
+			err = c.CoreV1().Services(ns).Delete(memberName, &metav1.DeleteOptions{})
+			framework.ExpectNoError(err, "failed to delete Service %s/%s", ns, memberName)
+		}
+		deleteResourcesForComponent(controller.PDMemberName(tc.Name))
+		deleteResourcesForComponent(controller.TiKVMemberName(tc.Name))
+		deleteResourcesForComponent(controller.TiDBMemberName(tc.Name))
+
+		ginkgo.By("Wait for TidbCluster components ready again")
+		err := oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
+		framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", tc.Namespace, tc.Name)
 	})
 })
 

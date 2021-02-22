@@ -14,15 +14,19 @@
 package tidbcluster
 
 import (
+	"context"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/util/tidbcluster"
+	"github.com/pingcap/tidb-operator/tests"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/kubernetes/test/e2e/framework"
 	testutils "k8s.io/kubernetes/test/utils"
+	ctrlCli "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
@@ -68,4 +72,12 @@ func WaitForTidbClusterReady(c versioned.Interface, ns, name string, timeout tim
 	return WaitForTidbClusterCondition(c, ns, name, timeout, func(tc *v1alpha1.TidbCluster) (bool, error) {
 		return IsTidbClusterAvaiable(tc, minReadyDuration, time.Now()), nil
 	})
+}
+
+// MustCreateTCWithComponentsReady create TidbCluster and wait for components ready
+func MustCreateTCWithComponentsReady(cli ctrlCli.Client, oa tests.OperatorActions, tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) {
+	err := cli.Create(context.TODO(), tc)
+	framework.ExpectNoError(err, "failed to create TidbCluster %s/%s", tc.Namespace, tc.Name)
+	err = oa.WaitForTidbClusterReady(tc, timeout, pollInterval)
+	framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", tc.Namespace, tc.Name)
 }
