@@ -49,6 +49,9 @@ ENV GOPATH /go
 ENV GOROOT /usr/local/go
 ENV PATH $GOPATH/bin:$GOROOT/bin:$PATH
 
+# build delve
+RUN go get github.com/go-delve/delve/cmd/dlv
+
 ADD banner /etc/banner
 ADD profile  /etc/profile
 
