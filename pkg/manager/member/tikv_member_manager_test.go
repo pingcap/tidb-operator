@@ -2060,7 +2060,7 @@ func TestTiKVInitContainers(t *testing.T) {
 			expectedInit: []corev1.Container{
 				{
 					Name:  "init",
-					Image: "busybox:1.26.2",
+					Image: "busybox:1.33.0",
 					Command: []string{
 						"sh",
 						"-c",
@@ -2247,7 +2247,7 @@ func TestTiKVInitContainers(t *testing.T) {
 			expectedInit: []corev1.Container{
 				{
 					Name:  "init",
-					Image: "busybox:1.26.2",
+					Image: "busybox:1.33.0",
 					Command: []string{
 						"sh",
 						"-c",
