@@ -1815,6 +1815,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 			ginkgo.By("Annotate TidbCluster for force upgrade")
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+				if tc.Annotations == nil {
+					tc.Annotations = make(map[string]string)
+				}
 				tc.Annotations["tidb.pingcap.com/force-upgrade"] = "true"
 				tc.Spec.PD.BaseImage = "wrong" // we need to make this right later
 				return nil
