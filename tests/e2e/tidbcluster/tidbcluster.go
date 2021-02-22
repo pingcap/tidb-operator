@@ -1561,7 +1561,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	})
 
 	// test cases for tc upgrade
-	ginkgo.Context("upgrade works correctly", func() {
+	ginkgo.Context("upgrade should work correctly", func() {
 		ginkgo.It("for tc and components version", func() {
 			ginkgo.By("Deploy initial tc")
 			tc := fixture.GetTidbCluster(ns, "upgrade-version", utilimage.TiDBV4Prev)
@@ -1688,7 +1688,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 						}
 						return true, nil
 					})
-					framework.ExpectNoError(err, "wait for PD phase failed")
+					framework.ExpectNoError(err, "failed to wait for PD phase")
 
 					ginkgo.By(fmt.Sprintf("Scale %s PD while in %q phase", op, v1alpha1.UpgradePhase))
 					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
@@ -1750,7 +1750,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 						}
 						return true, nil
 					})
-					framework.ExpectNoError(err, "wait for TiKV phase failed")
+					framework.ExpectNoError(err, "failed to wait for TiKV phase")
 
 					ginkgo.By(fmt.Sprintf("Scale %s TiKV while in %q phase", op, v1alpha1.UpgradePhase))
 					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
@@ -1784,8 +1784,8 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			err := genericCli.Create(context.TODO(), tc)
 			framework.ExpectNoError(err, "failed to create TidbCluster %s/%s", tc.Namespace, tc.Name)
 
-			ginkgo.By("Wait for PD Pod exist")
-			err = wait.PollImmediate(10*time.Second, 3*time.Minute, func() (bool, error) {
+			ginkgo.By("Wait for 1 min and ensure no PD Pod exist")
+			err = wait.PollImmediate(5*time.Second, 1*time.Minute, func() (bool, error) {
 				_, err := getPod(genericCli, tc.Namespace, tc.Name)
 				if err != nil {
 					log.Logf("failed to get Pod %s/%s: %v", tc.Namespace, tc.Name, err)
@@ -1793,19 +1793,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				}
 				return true, nil
 			})
-			framework.ExpectNoError(err, "no Pod found for PD")
-
-			ginkgo.By("Wait for 3 min and no PD Pod should be ready")
-			err = wait.PollImmediate(10*time.Second, 3*time.Minute, func() (bool, error) {
-				pdPod, err := getPod(genericCli, tc.Namespace, tc.Name)
-				framework.ExpectNoError(err, "no Pod found for PD")
-				if pdPod.Status.Phase != corev1.PodRunning {
-					log.Logf("pdPod.Status.Phase = %q, not %q yet", pdPod.Status.Phase, corev1.PodRunning)
-					return false, nil
-				}
-				return true, nil
-			})
-			framework.ExpectEqual(err, wait.ErrWaitTimeout, "found PD Pod ready with wrong image")
+			framework.ExpectEqual(err, wait.ErrWaitTimeout, "no Pod should be found for PD")
 
 			ginkgo.By("Update PD Pod to correct image")
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
@@ -1814,17 +1802,16 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			})
 			framework.ExpectNoError(err, "failed to change PD Pod image")
 
-			ginkgo.By("Wait for 3 min and no PD Pod should be ready")
-			err = wait.PollImmediate(10*time.Second, 3*time.Minute, func() (bool, error) {
-				pdPod, err := getPod(genericCli, tc.Namespace, tc.Name)
-				framework.ExpectNoError(err, "no Pod found for PD")
-				if pdPod.Status.Phase != corev1.PodRunning {
-					log.Logf("pdPod.Status.Phase = %q, not %q yet", pdPod.Status.Phase, corev1.PodRunning)
+			ginkgo.By("Wait for 1 min and ensure no PD Pod exist")
+			err = wait.PollImmediate(5*time.Second, 1*time.Minute, func() (bool, error) {
+				_, err := getPod(genericCli, tc.Namespace, tc.Name)
+				if err != nil {
+					log.Logf("failed to get Pod %s/%s: %v", tc.Namespace, tc.Name, err)
 					return false, nil
 				}
 				return true, nil
 			})
-			framework.ExpectEqual(err, wait.ErrWaitTimeout, "found PD Pod ready with wrong image")
+			framework.ExpectEqual(err, wait.ErrWaitTimeout, "no Pod should be found for PD")
 
 			ginkgo.By("Annotate TidbCluster for force upgrade")
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
