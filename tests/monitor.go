@@ -138,7 +138,7 @@ func checkPrometheusCommon(name, namespace string, fw portforward.PortForward) e
 	} else {
 		prometheusAddr = fmt.Sprintf("%s-prometheus.%s:9090", name, namespace)
 	}
-	err := wait.PollImmediate(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+	err := wait.PollImmediate(5*time.Second, 20*time.Minute, func() (done bool, err error) {
 		prometheusSvc := fmt.Sprintf("http://%s/api/v1/query?query=up", prometheusAddr)
 		resp, err := http.Get(prometheusSvc)
 		if err != nil {
