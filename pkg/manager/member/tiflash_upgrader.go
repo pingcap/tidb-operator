@@ -39,7 +39,6 @@ func (u *tiflashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	var status *v1alpha1.TiFlashStatus
 	if tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.Status.TiKV.Phase == v1alpha1.UpgradePhase ||
 		tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
 		_, podSpec, err := GetLastAppliedConfig(oldSet)
@@ -50,16 +49,16 @@ func (u *tiflashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 		return nil
 	}
 
-	if !status.Synced {
+	if !tc.Status.TiFlash.Synced {
 		return fmt.Errorf("cluster: [%s/%s]'s TiFlash status sync failed, can not to be upgraded", ns, tcName)
 	}
 
-	status.Phase = v1alpha1.UpgradePhase
+	tc.Status.TiFlash.Phase = v1alpha1.UpgradePhase
 	if !templateEqual(newSet, oldSet) {
 		return nil
 	}
 
-	if status.StatefulSet.UpdateRevision == status.StatefulSet.CurrentRevision {
+	if tc.Status.TiFlash.StatefulSet.UpdateRevision == tc.Status.TiFlash.StatefulSet.CurrentRevision {
 		return nil
 	}
 
@@ -77,7 +76,7 @@ func (u *tiflashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
 	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
 		i := podOrdinals[_i]
-		store := getTiFlashStoreByOrdinal(tc.GetName(), *status, i)
+		store := getTiFlashStoreByOrdinal(tc.GetName(), tc.Status.TiFlash, i)
 		if store == nil {
 			setUpgradePartition(newSet, i)
 			continue
@@ -92,7 +91,7 @@ func (u *tiflashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s TiFlash pod: [%s] has no label: %s", ns, tcName, podName, apps.ControllerRevisionHashLabelKey)
 		}
 
-		if revision == status.StatefulSet.UpdateRevision {
+		if revision == tc.Status.TiFlash.StatefulSet.UpdateRevision {
 			if !podutil.IsPodReady(pod) {
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded TiFlash pod: [%s] is not ready", ns, tcName, podName)
 			}
