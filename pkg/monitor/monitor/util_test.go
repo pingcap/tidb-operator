@@ -939,7 +939,7 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 				Command: []string{
 					"/bin/sh",
 					"-c",
-					"sed 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g' /etc/prometheus/prometheus.yml > /data/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/data/prometheus.yml --storage.tsdb.path=/data/prometheus --storage.tsdb.retention=0d --web.external-url=https://www.example.com/prometheus/",
+					"sed 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g' /etc/prometheus/prometheus.yml > /tmp/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/tmp/prometheus.yml --storage.tsdb.path=/data/prometheus --storage.tsdb.retention=0d --web.external-url=https://www.example.com/prometheus/",
 				},
 				Ports: []corev1.ContainerPort{
 					corev1.ContainerPort{
@@ -970,7 +970,7 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 				VolumeMounts: []corev1.VolumeMount{
 					corev1.VolumeMount{
 						Name:      "prometheus-config",
-						ReadOnly:  false,
+						ReadOnly:  true,
 						MountPath: "/etc/prometheus",
 					},
 					corev1.VolumeMount{
