@@ -816,7 +816,7 @@ func (m *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (int
 		return setCount, err
 	}
 
-	StoreLabels := append(config.Replication.LocationLabels, tc.Spec.TiKV.StoreLabels...)
+	storeLabels := append(config.Replication.LocationLabels, tc.Spec.TiKV.StoreLabels...)
 	if StoreLabels == nil {
 		return setCount, nil
 	}
