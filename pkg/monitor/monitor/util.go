@@ -462,7 +462,7 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 			{
 				Name:      "prometheus-config",
 				MountPath: "/etc/prometheus",
-				ReadOnly:  true,
+				ReadOnly:  false,
 			},
 			{
 				Name:      v1alpha1.TidbMonitorMemberType.String(),
