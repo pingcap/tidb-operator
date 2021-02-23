@@ -1566,7 +1566,6 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
 
 		ginkgo.By("Delete StatefulSet/ConfigMap/Service of PD")
-		// TODO: make a local function, variables are pd/tikv/tidb member name
 		deleteResourcesForComponent := func(memberName string) {
 			sts, err := stsGetter.StatefulSets(ns).Get(memberName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, memberName)
@@ -1577,8 +1576,12 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			})
 			err = c.CoreV1().ConfigMaps(ns).Delete(cmName, &metav1.DeleteOptions{})
 			framework.ExpectNoError(err, "failed to delete ConfigMap %s/%s", ns, cmName)
-			err = c.CoreV1().Services(ns).Delete(memberName, &metav1.DeleteOptions{})
+			err = c.CoreV1().Services(ns).Delete(memberName+"-peer", &metav1.DeleteOptions{})
 			framework.ExpectNoError(err, "failed to delete Service %s/%s", ns, memberName)
+			if strings.Contains(memberName, "pd") || strings.Contains(memberName, "tidb") {
+				err = c.CoreV1().Services(ns).Delete(memberName, &metav1.DeleteOptions{})
+				framework.ExpectNoError(err, "failed to delete Service %s/%s", ns, memberName)
+			}
 		}
 		deleteResourcesForComponent(controller.PDMemberName(tc.Name))
 		deleteResourcesForComponent(controller.TiKVMemberName(tc.Name))
