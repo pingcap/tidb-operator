@@ -53,6 +53,15 @@ controllerManager:
       memory: 50Mi
 #  # REF: https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
 #  priorityClassName: system-cluster-critical
+#
+
+  # REF: https://pkg.go.dev/k8s.io/client-go/tools/leaderelection#LeaderElectionConfig
+  ## leaderLeaseDuration is the duration that non-leader candidates will wait to force acquire leadership
+  # leaderLeaseDuration: 15s
+  ## leaderRenewDeadline is the duration that the acting master will retry refreshing leadership before giving up
+  # leaderRenewDeadline: 10s
+  ## leaderRetryPeriod is the duration the LeaderElector clients should wait between tries of actions
+  # leaderRetryPeriod: 2s
 
   # autoFailover is whether tidb-operator should auto failover when failure occurs
   autoFailover: true

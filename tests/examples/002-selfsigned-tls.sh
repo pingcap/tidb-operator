@@ -79,7 +79,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-has_ssl=$(mysql -h 127.0.0.1 -P 4000 -uroot --ssl -e "SHOW VARIABLES LIKE '%ssl%';" | awk '/have_ssl/ {print $2}')
+has_ssl=$(mysql -h 127.0.0.1 -P 4000 -uroot -e "SHOW VARIABLES LIKE '%ssl%';" | awk '/have_ssl/ {print $2}')
 if [[ "$has_ssl" != "YES" ]]; then
 	echo "fatal: ssl is not enabled successfully, has_ssl is '$has_ssl'"
 	exit 1
