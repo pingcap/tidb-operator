@@ -1594,13 +1594,21 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
 
 			ginkgo.By("Check components version")
-			pdSts := mustGetSts(genericCli, ns, controller.PDMemberName(tc.Name))
+			pdMemberName := controller.PDMemberName(tc.Name)
+			pdSts, err := stsGetter.StatefulSets(ns).Get(pdMemberName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, pdMemberName)
 			pdImage := fmt.Sprintf("pingcap/pd:%s", componentVersion)
 			framework.ExpectEqual(pdSts.Spec.Template.Spec.Containers[0].Image, pdImage, "pd sts image should be %q", pdImage)
-			tikvSts := mustGetSts(genericCli, ns, controller.TiKVMemberName(tc.Name))
+
+			tikvMemberName := controller.TiKVMemberName(tc.Name)
+			tikvSts, err := stsGetter.StatefulSets(ns).Get(tikvMemberName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, tikvMemberName)
 			tikvImage := fmt.Sprintf("pingcap/tikv:%s", componentVersion)
 			framework.ExpectEqual(tikvSts.Spec.Template.Spec.Containers[0].Image, tikvImage, "tikv sts image should be %q", tikvImage)
-			tidbSts := mustGetSts(genericCli, ns, controller.TiDBMemberName(tc.Name))
+
+			tidbMemberName := controller.TiDBMemberName(tc.Name)
+			tidbSts, err := stsGetter.StatefulSets(ns).Get(tidbMemberName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, tidbMemberName)
 			tidbImage := fmt.Sprintf("pingcap/tidb:%s", componentVersion)
 			// the 0th container for tidb pod is slowlog, which runs busybox
 			framework.ExpectEqual(tidbSts.Spec.Template.Spec.Containers[1].Image, tidbImage, "tidb sts image should be %q", tidbImage)
