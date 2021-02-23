@@ -471,7 +471,7 @@ type TiKVSpec struct {
 
 	// StoreLabels configures additional labels for TiKV stores.
 	// +optional
-	StoreLabels []string `json:"StoreLabels,omitempty"`
+	StoreLabels []string `json:"storeLabels,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members
