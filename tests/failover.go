@@ -73,7 +73,7 @@ func (oa *operatorActions) DeletePDDataThenCheckFailover(info *TidbClusterConfig
 
 	// first we ensured that pd failover new pod, and failure member/pod should be deleted.
 	err = wait.Poll(10*time.Second, 30*time.Minute+failoverTimeout+pdFailoverPeriod, func() (bool, error) {
-		tc, err := oa.pcCli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 		if err != nil {
 			log.Logf("ERROR: %v", err)
 			return false, nil
@@ -108,7 +108,7 @@ func (oa *operatorActions) DeletePDDataThenCheckFailover(info *TidbClusterConfig
 
 	// Then we ensure pd failover recovery
 	err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-		tc, err := oa.pcCli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 		if err != nil {
 			log.Logf("ERROR: %v", err)
 			return false, nil
@@ -153,7 +153,7 @@ func (oa *operatorActions) DeletePDDataThenCheckFailoverOrDie(info *TidbClusterC
 func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterConfig, tikvFailoverPeriod time.Duration) error {
 	const failoverTimeout = 5 * time.Minute
 
-	cli := client.Union(oa.kubeCli, oa.pcCli)
+	cli := client.Union(oa.kubeCli, oa.cli)
 	tikvOps := ops.TiKVOps{ClientOps: ops.ClientOps{Client: cli}}
 
 	// checkout latest tidb cluster
@@ -301,7 +301,7 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 	ns := info.Namespace
 	tcName := info.ClusterName
 	err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-		tc, err := oa.pcCli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 		if err != nil {
 			log.Logf("ERROR: %v", err)
 			return false, nil
@@ -310,7 +310,7 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 			return true, nil
 		}
 		tc.Status.TiKV.FailureStores = nil
-		_, err = oa.pcCli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
+		_, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
 		if err != nil {
 			log.Logf("ERROR: %v", err)
 		}
@@ -340,13 +340,13 @@ func (oa *operatorActions) CheckFailoverPending(info *TidbClusterConfig, node st
 		log.Logf("cluster:[%s] query pods failed,error:%v", info.FullName(), err)
 		return false, nil
 	}
-	tc, err := oa.pcCli.PingcapV1alpha1().TidbClusters(info.Namespace).Get(info.ClusterName, metav1.GetOptions{})
+	tc, err := oa.cli.PingcapV1alpha1().TidbClusters(info.Namespace).Get(info.ClusterName, metav1.GetOptions{})
 	if err != nil {
 		log.Logf("pending failover,failed to get tidbcluster:[%s], error: %v", info.FullName(), err)
 		if strings.Contains(err.Error(), "Client.Timeout exceeded while awaiting headers") {
 			log.Logf("create new client")
 			newCli, _, _, _, _ := client.NewCliOrDie()
-			oa.pcCli = newCli
+			oa.cli = newCli
 		}
 		return false, nil
 	}
@@ -421,7 +421,7 @@ func (oa *operatorActions) CheckFailover(info *TidbClusterConfig, node string) (
 		return true, nil
 	}
 
-	tc, err := oa.pcCli.PingcapV1alpha1().TidbClusters(info.Namespace).Get(info.ClusterName, metav1.GetOptions{})
+	tc, err := oa.cli.PingcapV1alpha1().TidbClusters(info.Namespace).Get(info.ClusterName, metav1.GetOptions{})
 	if err != nil {
 		log.Logf("ERROR: query tidbcluster: [%s] failed, error: %v", info.FullName(), err)
 		return false, nil
@@ -491,7 +491,7 @@ func (oa *operatorActions) CheckFailoverOrDie(clusters []*TidbClusterConfig, fau
 }
 
 func (oa *operatorActions) CheckRecover(cluster *TidbClusterConfig) (bool, error) {
-	tc, err := oa.pcCli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
+	tc, err := oa.cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
 	if err != nil {
 		return false, nil
 	}
@@ -551,7 +551,7 @@ func (oa *operatorActions) CheckRecover(cluster *TidbClusterConfig) (bool, error
 		}
 	}
 
-	tc, err = oa.pcCli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
+	tc, err = oa.cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
 	if err != nil {
 		return false, err
 	}
@@ -559,7 +559,7 @@ func (oa *operatorActions) CheckRecover(cluster *TidbClusterConfig) (bool, error
 	// recover tikv manually
 	if tc.Status.TiKV.FailureStores != nil {
 		tc.Status.TiKV.FailureStores = nil
-		_, err = oa.pcCli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Update(tc)
+		_, err = oa.cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Update(tc)
 		if err != nil {
 			log.Logf("ERROR: failed to set status.tikv.failureStore to nil, %v", err)
 			return false, nil

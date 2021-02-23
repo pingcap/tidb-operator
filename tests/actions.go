@@ -39,7 +39,7 @@ import (
 	pingcapErrors "github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	pcCli "github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -50,7 +50,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedtidbclient"
-	utilSts "github.com/pingcap/tidb-operator/tests/e2e/util/statefulset"
+	utilstatefulset "github.com/pingcap/tidb-operator/tests/e2e/util/statefulset"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
@@ -89,7 +89,7 @@ const (
 	WebhookServiceName = "webhook-service"
 )
 
-func NewOperatorActions(cli pcCli.Interface,
+func NewOperatorActions(cli versioned.Interface,
 	kubeCli kubernetes.Interface,
 	asCli asclientset.Interface,
 	aggrCli aggregatorclientset.Interface,
@@ -109,7 +109,7 @@ func NewOperatorActions(cli pcCli.Interface,
 
 	oa := &operatorActions{
 		framework:    f,
-		pcCli:        cli,
+		cli:          cli,
 		kubeCli:      kubeCli,
 		pdControl:    pdapi.NewDefaultPDControl(kubeCli),
 		asCli:        asCli,
@@ -247,7 +247,7 @@ type OperatorActions interface {
 
 type operatorActions struct {
 	framework          *framework.Framework
-	pcCli              pcCli.Interface
+	cli                versioned.Interface
 	kubeCli            kubernetes.Interface
 	asCli              asclientset.Interface
 	aggrCli            aggregatorclientset.Interface
@@ -762,7 +762,7 @@ func (oa *operatorActions) UpgradeOperatorOrDie(info *OperatorConfig) {
 func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 	ns := info.Namespace
 	tcName := info.ClusterName
-	if _, err := oa.pcCli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err == nil {
+	if _, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err == nil {
 		// already deployed
 		return nil
 	}
@@ -1019,7 +1019,7 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 	if err := wait.Poll(oa.pollInterval, 10*time.Minute, func() (bool, error) {
 		var tc *v1alpha1.TidbCluster
 		var err error
-		if tc, err = oa.pcCli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
+		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
 			log.Logf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
 			return false, nil
 		}
@@ -1240,7 +1240,7 @@ func (oa *operatorActions) ScaleTidbClusterOrDie(info *TidbClusterConfig) {
 
 func (oa *operatorActions) CheckScaleInSafely(info *TidbClusterConfig) error {
 	return wait.Poll(oa.pollInterval, DefaultPollTimeout, func() (done bool, err error) {
-		tc, err := oa.pcCli.PingcapV1alpha1().TidbClusters(info.Namespace).Get(info.ClusterName, metav1.GetOptions{})
+		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(info.Namespace).Get(info.ClusterName, metav1.GetOptions{})
 		if err != nil {
 			log.Logf("failed to get tidbcluster when scale in tidbcluster, error: %v", err)
 			return false, nil
@@ -1359,7 +1359,7 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 		return err
 	}
 
-	tc, err := oa.pcCli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+	tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
 	}
@@ -1511,7 +1511,7 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 		return false, nil
 	}
 
-	if !utilSts.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), pdSet) {
+	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), pdSet) {
 		return false, nil
 	}
 
@@ -1592,7 +1592,7 @@ func (oa *operatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return false, nil
 	}
 
-	if !utilSts.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), tikvSet) {
+	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), tikvSet) {
 		return false, nil
 	}
 
@@ -1669,7 +1669,7 @@ func (oa *operatorActions) tiflashMembersReadyFn(tc *v1alpha1.TidbCluster) (bool
 		return false, nil
 	}
 
-	if !utilSts.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), tiflashSet) {
+	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), tiflashSet) {
 		return false, nil
 	}
 
@@ -1746,7 +1746,7 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return false, nil
 	}
 
-	if !utilSts.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), tidbSet) {
+	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), tidbSet) {
 		return false, nil
 	}
 
@@ -3480,7 +3480,7 @@ func (oa *operatorActions) checkManualPauseComponent(info *TidbClusterConfig, co
 
 	fn := func() (bool, error) {
 
-		if tc, err = oa.pcCli.PingcapV1alpha1().TidbClusters(ns).Get(info.ClusterName, metav1.GetOptions{}); err != nil {
+		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(info.ClusterName, metav1.GetOptions{}); err != nil {
 			log.Logf("failed to get tidbcluster: [%s/%s], %v", ns, info.ClusterName, err)
 			return false, nil
 		}
@@ -3562,7 +3562,7 @@ func (oa *operatorActions) checkManualPauseComponent(info *TidbClusterConfig, co
 func (oa *operatorActions) CheckUpgradeComplete(info *TidbClusterConfig) error {
 	ns, tcName := info.Namespace, info.ClusterName
 	if err := wait.PollImmediate(15*time.Second, 30*time.Minute, func() (done bool, err error) {
-		tc, err := oa.pcCli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 		if err != nil {
 			log.Logf("checkUpgradeComplete, [%s/%s] cannot get tidbcluster, %v", ns, tcName, err)
 			return false, nil
@@ -3643,7 +3643,7 @@ func (oa *operatorActions) pumpMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return false, nil
 	}
 
-	if !utilSts.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), pumpSet) {
+	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), pumpSet) {
 		return false, nil
 	}
 
@@ -3671,7 +3671,7 @@ func (oa *operatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, tim
 		var err error
 		tcID := fmt.Sprintf("%s/%s", tc.Namespace, tc.Name)
 
-		if local, err = oa.pcCli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{}); err != nil {
+		if local, err = oa.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{}); err != nil {
 			log.Logf("failed to get TidbCluster: %q, %v", tcID, err)
 			return false, nil
 		}
