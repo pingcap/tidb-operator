@@ -154,3 +154,5 @@ replace k8s.io/node-api => k8s.io/node-api v0.0.0-20190918163711-2299658ad911
 replace github.com/uber-go/atomic => go.uber.org/atomic v1.5.0
 
 replace github.com/Azure/go-autorest => github.com/Azure/go-autorest v12.2.0+incompatible
+
+replace github.com/prometheus/client_golang => github.com/prometheus/client_golang v0.9.4
