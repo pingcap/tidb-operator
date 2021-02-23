@@ -469,7 +469,7 @@ type TiKVSpec struct {
 	// +optional
 	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
 
-	// StoreLabels configure additional labels for TiKV stores.
+	// StoreLabels configures additional labels for TiKV stores.
 	// +optional
 	StoreLabels []string `json:"StoreLabels,omitempty"`
 }
