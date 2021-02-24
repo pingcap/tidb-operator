@@ -610,11 +610,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 	}
 }
 
-<<<<<<< HEAD
-func newTiKVUpgrader() (Upgrader, *pdapi.FakePDControl, *controller.FakePodControl, podinformers.PodInformer) {
-=======
-func newTiKVUpgrader() (TiKVUpgrader, *pdapi.FakePDControl, *controller.FakePodControl, podinformers.PodInformer, *tikvapi.FakeTiKVControl) {
->>>>>>> 120c41e0... retrieve region leader from tikv (#3801)
+func newTiKVUpgrader() (Upgrader, *pdapi.FakePDControl, *controller.FakePodControl, podinformers.PodInformer, *tikvapi.FakeTiKVControl) {
 	fakeDeps := controller.NewFakeDependencies()
 	pdControl := fakeDeps.PDControl.(*pdapi.FakePDControl)
 	tikvControl := fakeDeps.TiKVControl.(*tikvapi.FakeTiKVControl)

@@ -1000,12 +1000,7 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 
 	ns := info.Namespace
 	tcName := info.ClusterName
-<<<<<<< HEAD
 	if err := wait.Poll(oa.pollInterval, 120*time.Minute, func() (bool, error) {
-=======
-	// TODO: remove redundant checks already in WaitForTidbClusterReady
-	if err := wait.Poll(oa.pollInterval, 20*time.Minute, func() (bool, error) {
->>>>>>> 120c41e0... retrieve region leader from tikv (#3801)
 		var tc *v1alpha1.TidbCluster
 		var err error
 		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
