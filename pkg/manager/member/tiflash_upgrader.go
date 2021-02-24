@@ -50,7 +50,7 @@ func (u *tiflashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 	}
 
 	if !tc.Status.TiFlash.Synced {
-		return fmt.Errorf("cluster: [%s/%s]'s TiFlash status sync failed, can not to be upgraded", ns, tcName)
+		return fmt.Errorf("cluster: [%s/%s]'s TiFlash status is not synced, can not upgrade", ns, tcName)
 	}
 
 	tc.Status.TiFlash.Phase = v1alpha1.UpgradePhase
@@ -96,14 +96,9 @@ func (u *tiflashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded TiFlash pod: [%s] is not ready", ns, tcName, podName)
 			}
 			if store.State != v1alpha1.TiKVStateUp {
-				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded TiFlash pod: [%s] is not all ready", ns, tcName, podName)
+				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded TiFlash pod: [%s], store state is not UP", ns, tcName, podName)
 			}
 			continue
-		}
-
-		if u.deps.CLIConfig.PodWebhookEnabled {
-			setUpgradePartition(newSet, i)
-			return nil
 		}
 
 		setUpgradePartition(newSet, i)
