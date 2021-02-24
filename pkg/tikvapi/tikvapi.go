@@ -49,25 +49,20 @@ func (c *tikvClient) GetLeaderCount() (int, error) {
 	apiURL := fmt.Sprintf("%s/%s", c.url, metricsPrefix)
 	transport := c.httpClient.Transport
 	mfChan := make(chan *dto.MetricFamily, 1024)
+
 	go func() {
 		if err := prom2json.FetchMetricFamilies(apiURL, mfChan, transport); err != nil {
 			klog.Errorf("Fail to get region leader count from %s, error: %v", apiURL, err)
 		}
 	}()
 
-	fms := []*prom2json.Family{}
-
 	for mf := range mfChan {
 		fm := prom2json.NewFamily(mf)
-		fms = append(fms, fm)
-	}
-	for _, fm := range fms {
-		if fm.Name != metricNameRegionCount {
-			continue
-		}
-		for _, m := range fm.Metrics {
-			if m, ok := m.(prom2json.Metric); ok && m.Labels["type"] == labelNameLeaderCount {
-				return strconv.Atoi(m.Value)
+		if fm.Name == metricNameRegionCount {
+			for _, m := range fm.Metrics {
+				if m, ok := m.(prom2json.Metric); ok && m.Labels["type"] == labelNameLeaderCount {
+					return strconv.Atoi(m.Value)
+				}
 			}
 		}
 	}

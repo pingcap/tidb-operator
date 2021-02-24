@@ -20,7 +20,6 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
-
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 )
