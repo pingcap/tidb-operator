@@ -154,7 +154,7 @@ func (u *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32, n
 				return u.beginEvictLeader(tc, storeID, upgradePod)
 			}
 
-			if u.readyToUpgrade(upgradePod, store, tc.TiKVEvictLeaderTimeout()) {
+			if u.readyToUpgrade(upgradePod, tc) {
 				setUpgradePartition(newSet, ordinal)
 				return nil
 			}
@@ -166,10 +166,22 @@ func (u *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32, n
 	return controller.RequeueErrorf("tidbcluster: [%s/%s] no store status found for tikv pod: [%s]", ns, tcName, upgradePodName)
 }
 
-func (u *tikvUpgrader) readyToUpgrade(upgradePod *corev1.Pod, store v1alpha1.TiKVStore, evictLeaderTimeout time.Duration) bool {
-	if store.LeaderCount == 0 {
+func (u *tikvUpgrader) readyToUpgrade(upgradePod *corev1.Pod, tc *v1alpha1.TidbCluster) bool {
+	evictLeaderTimeout := tc.TiKVEvictLeaderTimeout()
+	tlsEnabled := tc.IsTLSClusterEnabled()
+	leaderCount, err := u.deps.TiKVControl.GetTiKVPodClient(tc.Namespace, tc.Name, upgradePod.Name, tlsEnabled).GetLeaderCount()
+	if err != nil {
+		klog.Warningf("Fail to get region leader count for Pod %s/%s, error: %v", upgradePod.Namespace, upgradePod.Name, err)
+		return false
+	}
+
+	if leaderCount == 0 {
+		klog.Infof("Region leader count is 0 for Pod %s/%s", upgradePod.Namespace, upgradePod.Name)
 		return true
 	}
+
+	klog.Infof("Region leader count is %d for Pod %s/%s", leaderCount, upgradePod.Namespace, upgradePod.Name)
+
 	if evictLeaderBeginTimeStr, evicting := upgradePod.Annotations[EvictLeaderBeginTime]; evicting {
 		evictLeaderBeginTime, err := time.Parse(time.RFC3339, evictLeaderBeginTimeStr)
 		if err != nil {
@@ -177,6 +189,7 @@ func (u *tikvUpgrader) readyToUpgrade(upgradePod *corev1.Pod, store v1alpha1.TiK
 			return false
 		}
 		if time.Now().After(evictLeaderBeginTime.Add(evictLeaderTimeout)) {
+			klog.Infof("Evict region leader timeout (threshold: %v) for Pod %s/%s", evictLeaderTimeout, upgradePod.Namespace, upgradePod.Name)
 			return true
 		}
 	}

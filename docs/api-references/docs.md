@@ -15930,7 +15930,12 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+<<<<<<< HEAD
 <p>Optional: Defaults to 2MB</p>
+=======
+<p>EvictLeaderTimeout indicates the timeout to evict tikv leader, in the format of Go Duration.
+Defaults to 10m</p>
+>>>>>>> 120c41e0... retrieve region leader from tikv (#3801)
 </td>
 </tr>
 <tr>

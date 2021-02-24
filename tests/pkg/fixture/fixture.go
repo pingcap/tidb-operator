@@ -126,6 +126,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Affinity: buildAffinity(name, ns, v1alpha1.TiKVMemberType),
 				},
+				EvictLeaderTimeout: pointer.StringPtr("3m"),
 			},
 
 			TiDB: &v1alpha1.TiDBSpec{
