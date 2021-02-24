@@ -35,7 +35,7 @@ const (
 	defaultSeparateRaftLog    = false
 	defaultEnablePVReclaim    = false
 	// defaultEvictLeaderTimeout is the timeout limit of evict leader
-	defaultEvictLeaderTimeout = 3 * time.Minute
+	defaultEvictLeaderTimeout = 10 * time.Minute
 )
 
 var (
