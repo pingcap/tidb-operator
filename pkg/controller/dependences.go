@@ -24,6 +24,7 @@ import (
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
+	"github.com/pingcap/tidb-operator/pkg/tikvapi"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeinformers "k8s.io/client-go/informers"
@@ -137,6 +138,7 @@ type Controls struct {
 	PodControl         PodControlInterface
 	TypedControl       TypedControlInterface
 	PDControl          pdapi.PDControlInterface
+	TiKVControl        tikvapi.TiKVControlInterface
 	TiDBClusterControl TidbClusterControlInterface
 	CDCControl         TiCDCControlInterface
 	TiDBControl        TiDBControlInterface
@@ -194,6 +196,7 @@ func newRealControls(
 	// Shared variables to construct `Dependencies` and some of its fields
 	var (
 		pdControl         = pdapi.NewDefaultPDControl(kubeClientset)
+		tikvControl       = tikvapi.NewDefaultTiKVControl(kubeClientset)
 		genericCtrl       = NewRealGenericControl(genericCli, recorder)
 		tidbClusterLister = informerFactory.Pingcap().V1alpha1().TidbClusters().Lister()
 		statefulSetLister = kubeInformerFactory.Apps().V1().StatefulSets().Lister()
@@ -214,6 +217,7 @@ func newRealControls(
 		PodControl:         NewRealPodControl(kubeClientset, pdControl, podLister, recorder),
 		TypedControl:       NewTypedControl(genericCtrl),
 		PDControl:          pdControl,
+		TiKVControl:        tikvControl,
 		TiDBClusterControl: NewRealTidbClusterControl(clientset, tidbClusterLister, recorder),
 		CDCControl:         NewDefaultTiCDCControl(kubeClientset),
 		TiDBControl:        NewDefaultTiDBControl(kubeClientset),
@@ -320,6 +324,7 @@ func newFakeControl(kubeClientset kubernetes.Interface, informerFactory informer
 		PodControl:         NewFakePodControl(kubeInformerFactory.Core().V1().Pods()),
 		TypedControl:       NewTypedControl(genericCtrl),
 		PDControl:          pdapi.NewFakePDControl(kubeClientset),
+		TiKVControl:        tikvapi.NewFakeTiKVControl(kubeClientset),
 		TiDBClusterControl: NewFakeTidbClusterControl(informerFactory.Pingcap().V1alpha1().TidbClusters()),
 		CDCControl:         NewDefaultTiCDCControl(kubeClientset), // TODO: no fake control?
 		TiDBControl:        NewFakeTiDBControl(),

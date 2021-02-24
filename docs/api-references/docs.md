@@ -16378,7 +16378,7 @@ string
 <td>
 <em>(Optional)</em>
 <p>EvictLeaderTimeout indicates the timeout to evict tikv leader, in the format of Go Duration.
-Defaults to 3m</p>
+Defaults to 10m</p>
 </td>
 </tr>
 <tr>
