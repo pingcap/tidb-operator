@@ -156,6 +156,10 @@ func MemberPodName(tcName string, ordinal int32, memberType v1alpha1.MemberType)
 	return fmt.Sprintf("%s-%s-%d", tcName, memberType.String(), ordinal)
 }
 
+func TiFlashPodName(tcName string, ordinal int32) string {
+	return fmt.Sprintf("%s-%d", controller.TiFlashMemberName(tcName), ordinal)
+}
+
 func TikvPodName(tcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", controller.TiKVMemberName(tcName), ordinal)
 }
