@@ -261,7 +261,7 @@ func TestTiFlashUpgraderUpgrade(t *testing.T) {
 	}
 }
 
-func newTiFlashUpgrader() (TiFlashUpgrader, *pdapi.FakePDControl, *controller.FakePodControl, podinformers.PodInformer) {
+func newTiFlashUpgrader() (Upgrader, *pdapi.FakePDControl, *controller.FakePodControl, podinformers.PodInformer) {
 	fakeDeps := controller.NewFakeDependencies()
 	pdControl := fakeDeps.PDControl.(*pdapi.FakePDControl)
 	podControl := fakeDeps.PodControl.(*controller.FakePodControl)
