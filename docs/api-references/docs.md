@@ -18059,14 +18059,14 @@ Defaults to 10m</p>
 </tr>
 <tr>
 <td>
-<code>StoreLabels</code></br>
+<code>storeLabels</code></br>
 <em>
 []string
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>StoreLabels configure additional labels for TiKV stores.</p>
+<p>StoreLabels configures additional labels for TiKV stores.</p>
 </td>
 </tr>
 </tbody>

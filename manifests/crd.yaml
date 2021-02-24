@@ -10760,10 +10760,6 @@ spec:
               type: object
             tikv:
               properties:
-                StoreLabels:
-                  items:
-                    type: string
-                  type: array
                 additionalContainers:
                   items:
                     properties:
@@ -12791,6 +12787,10 @@ spec:
                   type: string
                 storageVolumes:
                   items: {}
+                  type: array
+                storeLabels:
+                  items:
+                    type: string
                   type: array
                 terminationGracePeriodSeconds:
                   format: int64
