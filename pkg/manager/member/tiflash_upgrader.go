@@ -23,6 +23,7 @@ import (
 	"k8s.io/klog"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
+
 type tiflashUpgrader struct {
 	deps *controller.Dependencies
 }
