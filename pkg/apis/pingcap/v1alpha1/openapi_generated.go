@@ -2558,7 +2558,7 @@ func schema_pkg_apis_pingcap_v1alpha1_HelperSpec(ref common.ReferenceCallback) c
 				Properties: map[string]spec.Schema{
 					"image": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Image used to tail slow log and set kernel parameters if necessary, must have `tail` and `sysctl` installed Optional: Defaults to busybox:1.26.2",
+							Description: "Image used to tail slow log and set kernel parameters if necessary, must have `tail` and `sysctl` installed Optional: Defaults to busybox:1.33.0",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -9785,7 +9785,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 					},
 					"evictLeaderTimeout": {
 						SchemaProps: spec.SchemaProps{
-							Description: "EvictLeaderTimeout indicates the timeout to evict tikv leader, in the format of Go Duration. Defaults to 3m",
+							Description: "EvictLeaderTimeout indicates the timeout to evict tikv leader, in the format of Go Duration. Defaults to 10m",
 							Type:        []string{"string"},
 							Format:      "",
 						},
