@@ -27,7 +27,7 @@ import (
 
 const (
 	// defaultHelperImage is default image of helper
-	defaultHelperImage        = "busybox:1.26.2"
+	defaultHelperImage        = "busybox:1.33.0"
 	defaultTimeZone           = "UTC"
 	defaultExposeStatus       = true
 	defaultSeparateSlowLog    = true
@@ -35,7 +35,7 @@ const (
 	defaultSeparateRaftLog    = false
 	defaultEnablePVReclaim    = false
 	// defaultEvictLeaderTimeout is the timeout limit of evict leader
-	defaultEvictLeaderTimeout = 3 * time.Minute
+	defaultEvictLeaderTimeout = 10 * time.Minute
 )
 
 var (
