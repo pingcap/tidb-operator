@@ -750,6 +750,12 @@ func TestGetMonitorVolumes(t *testing.T) {
 							EmptyDir: &corev1.EmptyDirVolumeSource{},
 						},
 					},
+					{
+						Name: "prometheus-config-out",
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
+					},
 				},
 				))
 			},
@@ -968,6 +974,11 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 				},
 				Resources: corev1.ResourceRequirements{},
 				VolumeMounts: []corev1.VolumeMount{
+					{
+						Name:      "prometheus-config-out",
+						MountPath: "/etc/prometheus/config_out",
+						ReadOnly:  false,
+					},
 					corev1.VolumeMount{
 						Name:      "prometheus-config",
 						ReadOnly:  true,
