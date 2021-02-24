@@ -809,6 +809,12 @@ func TestGetMonitorVolumes(t *testing.T) {
 							EmptyDir: &corev1.EmptyDirVolumeSource{},
 						},
 					},
+					{
+						Name: "prometheus-config-out",
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
+					},
 				},
 				))
 			},
@@ -886,6 +892,12 @@ func TestGetMonitorVolumes(t *testing.T) {
 								SecretName:  "foodm-dm-client-secret",
 								DefaultMode: pointer.Int32Ptr(420),
 							},
+						},
+					},
+					{
+						Name: "prometheus-config-out",
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
 						},
 					},
 				},
