@@ -460,6 +460,11 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 		},
 		VolumeMounts: []core.VolumeMount{
 			{
+				Name:      "prometheus-config-out",
+				MountPath: "/etc/prometheus/config_out",
+				ReadOnly:  false,
+			},
+			{
 				Name:      "prometheus-config",
 				MountPath: "/etc/prometheus/config",
 				ReadOnly:  true,
@@ -724,6 +729,12 @@ func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor, tc
 		}
 		volumes = append(volumes, tlsDMClient)
 	}
+	volumes = append(volumes, core.Volume{
+		Name: "prometheus-config-out",
+		VolumeSource: core.VolumeSource{
+			EmptyDir: &core.EmptyDirVolumeSource{},
+		},
+	})
 	return volumes
 }
 
