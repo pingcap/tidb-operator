@@ -9803,7 +9803,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 							},
 						},
 					},
-					"StoreLabels": {
+					"storeLabels": {
 						SchemaProps: spec.SchemaProps{
 							Description: "StoreLabels configure additional labels for TiKV stores.",
 							Type:        []string{"array"},
