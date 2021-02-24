@@ -424,7 +424,7 @@ func getMonitorDMInitContainer(monitor *v1alpha1.TidbMonitor, dc *v1alpha1.DMClu
 }
 
 func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster) core.Container {
-	commands := []string{"sed 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g' /etc/prometheus/prometheus.yml > /tmp/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/tmp/prometheus.yml --storage.tsdb.path=/data/prometheus " + fmt.Sprintf("--storage.tsdb.retention=%dd", monitor.Spec.Prometheus.ReserveDays)}
+	commands := []string{"sed 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g' /etc/prometheus/config/prometheus.yml > /etc/prometheus/config_out/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/etc/prometheus/config_out/prometheus.yml --storage.tsdb.path=/data/prometheus " + fmt.Sprintf("--storage.tsdb.retention=%dd", monitor.Spec.Prometheus.ReserveDays)}
 	c := core.Container{
 		Name:      "prometheus",
 		Image:     fmt.Sprintf("%s:%s", monitor.Spec.Prometheus.BaseImage, monitor.Spec.Prometheus.Version),
@@ -461,7 +461,7 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 		VolumeMounts: []core.VolumeMount{
 			{
 				Name:      "prometheus-config",
-				MountPath: "/etc/prometheus",
+				MountPath: "/etc/prometheus/config",
 				ReadOnly:  true,
 			},
 			{
