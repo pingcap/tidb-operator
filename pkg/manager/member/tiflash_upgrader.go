@@ -24,6 +24,10 @@ import (
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
+type TiFlashUpgrader interface {
+	Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error
+}
+
 type tiflashUpgrader struct {
 	deps *controller.Dependencies
 }
