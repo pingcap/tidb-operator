@@ -6701,6 +6701,11 @@ func (in *TiKVSpec) DeepCopyInto(out *TiKVSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.StoreLabels != nil {
+		in, out := &in.StoreLabels, &out.StoreLabels
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

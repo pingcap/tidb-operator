@@ -12784,6 +12784,10 @@ spec:
                 storageVolumes:
                   items: {}
                   type: array
+                storeLabels:
+                  items:
+                    type: string
+                  type: array
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
