@@ -15945,33 +15945,6 @@ string
 <p>Optional: Defaults to 10s</p>
 </td>
 </tr>
-<<<<<<< HEAD
-=======
-<tr>
-<td>
-<code>storeLabels</code></br>
-<em>
-[]string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>StoreLabels configures additional labels for TiKV stores.</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="tikvstatus">TiKVStatus</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#tidbclusterstatus">TidbClusterStatus</a>)
-</p>
-<p>
-<p>TiKVStatus is TiKV status</p>
-</p>
-<table>
-<thead>
->>>>>>> a3b0e6c1... add store labels (#3784)
 <tr>
 <td>
 <code>grpc-keepalive-timeout</code></br>
@@ -16420,6 +16393,18 @@ Defaults to 10m</p>
 <td>
 <em>(Optional)</em>
 <p>StorageVolumes configure additional storage for TiKV pods.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storeLabels</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StoreLabels configures additional labels for TiKV stores.</p>
 </td>
 </tr>
 </tbody>
