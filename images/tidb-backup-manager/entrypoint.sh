@@ -52,7 +52,7 @@ else
 fi
 
 BACKUP_BIN=/tidb-backup-manager
-if [[ -n "${AWS_DEFAULT_REGION}"]]; then
+if [[ -n "${AWS_DEFAULT_REGION}" ]]; then
 	EXEC_COMMAND="exec"
 else
 	EXEC_COMMAND="/usr/local/bin/shush exec --"
