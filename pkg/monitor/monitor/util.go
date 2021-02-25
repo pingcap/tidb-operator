@@ -18,6 +18,7 @@ import (
 	"path"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/client"
@@ -423,17 +424,14 @@ func getMonitorDMInitContainer(monitor *v1alpha1.TidbMonitor, dc *v1alpha1.DMClu
 }
 
 func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster) core.Container {
+	commands := []string{"sed 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g' /etc/prometheus/config/prometheus.yml > /etc/prometheus/config_out/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/etc/prometheus/config_out/prometheus.yml --storage.tsdb.path=/data/prometheus " + fmt.Sprintf("--storage.tsdb.retention=%dd", monitor.Spec.Prometheus.ReserveDays)}
 	c := core.Container{
 		Name:      "prometheus",
 		Image:     fmt.Sprintf("%s:%s", monitor.Spec.Prometheus.BaseImage, monitor.Spec.Prometheus.Version),
 		Resources: controller.ContainerResource(monitor.Spec.Prometheus.ResourceRequirements),
 		Command: []string{
-			"/bin/prometheus",
-			"--web.enable-admin-api",
-			"--web.enable-lifecycle",
-			"--config.file=/etc/prometheus/prometheus.yml",
-			"--storage.tsdb.path=/data/prometheus",
-			fmt.Sprintf("--storage.tsdb.retention=%dd", monitor.Spec.Prometheus.ReserveDays),
+			"/bin/sh",
+			"-c",
 		},
 		Ports: []core.ContainerPort{
 			{
@@ -447,11 +445,28 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 				Name:  "TZ",
 				Value: tc.Timezone(),
 			},
+			{
+				Name: "POD_NAME",
+				ValueFrom: &core.EnvVarSource{
+					FieldRef: &core.ObjectFieldSelector{FieldPath: "metadata.name"},
+				},
+			},
+			{
+				Name: "NAMESPACE",
+				ValueFrom: &core.EnvVarSource{
+					FieldRef: &core.ObjectFieldSelector{FieldPath: "metadata.namespace"},
+				},
+			},
 		},
 		VolumeMounts: []core.VolumeMount{
 			{
+				Name:      "prometheus-config-out",
+				MountPath: "/etc/prometheus/config_out",
+				ReadOnly:  false,
+			},
+			{
 				Name:      "prometheus-config",
-				MountPath: "/etc/prometheus",
+				MountPath: "/etc/prometheus/config",
 				ReadOnly:  true,
 			},
 			{
@@ -467,16 +482,16 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 	}
 
 	if len(monitor.Spec.Prometheus.LogLevel) > 0 {
-		c.Command = append(c.Command, fmt.Sprintf("--log.level=%s", monitor.Spec.Prometheus.LogLevel))
+		commands = append(commands, fmt.Sprintf("--log.level=%s", monitor.Spec.Prometheus.LogLevel))
 	}
 	if monitor.Spec.Prometheus.Config != nil && len(monitor.Spec.Prometheus.Config.CommandOptions) > 0 {
-		c.Command = append(c.Command, monitor.Spec.Prometheus.Config.CommandOptions...)
+		commands = append(commands, monitor.Spec.Prometheus.Config.CommandOptions...)
 	}
 	if monitor.Spec.Prometheus.DisableCompaction || monitor.Spec.Thanos != nil {
-		c.Command = append(c.Command, "--storage.tsdb.max-block-duration=2h")
-		c.Command = append(c.Command, "--storage.tsdb.min-block-duration=2h")
+		commands = append(commands, "--storage.tsdb.max-block-duration=2h")
+		commands = append(commands, "--storage.tsdb.min-block-duration=2h")
 	}
-
+	c.Command = append(c.Command, strings.Join(commands, " "))
 	if tc.IsTLSClusterEnabled() {
 		c.VolumeMounts = append(c.VolumeMounts, core.VolumeMount{
 			Name:      util.ClusterClientVolName,
@@ -714,6 +729,12 @@ func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor, tc
 		}
 		volumes = append(volumes, tlsDMClient)
 	}
+	volumes = append(volumes, core.Volume{
+		Name: "prometheus-config-out",
+		VolumeSource: core.VolumeSource{
+			EmptyDir: &core.EmptyDirVolumeSource{},
+		},
+	})
 	return volumes
 }
 
@@ -1107,6 +1128,7 @@ func getThanosSidecarContainer(monitor *v1alpha1.TidbMonitor) core.Container {
 			},
 		},
 	}
+
 	if thanos.ObjectStorageConfig != nil || thanos.ObjectStorageConfigFile != nil {
 		if thanos.ObjectStorageConfigFile != nil {
 			container.Args = append(container.Args, "--objstore.config-file="+*thanos.ObjectStorageConfigFile)
@@ -1170,7 +1192,7 @@ func buildExternalLabels(monitor *v1alpha1.TidbMonitor) model.LabelSet {
 		}
 	}
 	if replicaExternalLabelName != "" {
-		m[model.LabelName(replicaExternalLabelName)] = "$(NAMESPACE)_$(POD_NAME)"
+		m[model.LabelName(replicaExternalLabelName)] = "$NAMESPACE_$POD_NAME"
 	}
 	for n, v := range monitor.Spec.ExternalLabels {
 		m[model.LabelName(n)] = model.LabelValue(v)
