@@ -18057,6 +18057,18 @@ Defaults to 10m</p>
 <p>StorageVolumes configure additional storage for TiKV pods.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>storeLabels</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StoreLabels configures additional labels for TiKV stores.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tikvstatus">TiKVStatus</h3>
