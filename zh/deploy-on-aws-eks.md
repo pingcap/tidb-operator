@@ -524,7 +524,7 @@ AWS 已经支持 [EBS gp3](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/e
 
 ## 使用本地存储
 
-AWS 部分实例类型提供额外的 [NVMe SSD 本地存储卷](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ssd-instance-store.html)。可以为 TiKV 节点池选择这一类型的实例，以便提供更高的 IOPS 和低延迟。
+请使用 AWS EBS 作为生产环境的存储类型。如果需要模拟测试裸机部署的性能，可以使用 AWS 部分实例类型提供的 [NVMe SSD 本地存储卷](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ssd-instance-store.html)。可以为 TiKV 节点池选择这一类型的实例，以便提供更高的 IOPS 和低延迟。
 
 > **注意：**
 >

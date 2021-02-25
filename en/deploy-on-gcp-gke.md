@@ -378,7 +378,7 @@ spec:
 
 ## Use local storage
 
-Some GCP instance types provide additional [local store volumes](https://cloud.google.com/kubernetes-engine/docs/how-to/persistent-volumes/local-ssd). You can choose such instances for the TiKV node pool to achieve higher IOPS and lower latency.
+Use [Zonal Persistent disks](https://cloud.google.com/compute/docs/disks#pdspecs) as a primary production configuration. To simulate bare metal performance, some GCP instance types provide additional [local store volumes](https://cloud.google.com/kubernetes-engine/docs/how-to/persistent-volumes/local-ssd). You can choose such instances for the TiKV node pool to achieve higher IOPS and lower latency.
 
 > **Note:**
 >

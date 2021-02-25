@@ -368,7 +368,7 @@ spec:
 
 ## 使用本地存储
 
-GCP 可以实例类型提供额外的[本地存储卷](https://cloud.google.com/kubernetes-engine/docs/how-to/persistent-volumes/local-ssd)。可以为 TiKV 节点池选择这一类型的实例，以便提供更高的 IOPS 和低延迟。
+请使用[区域永久性磁盘](https://cloud.google.com/compute/docs/disks#pdspecs)作为生产环境的存储类型。如果需要模拟测试裸机部署的性能，可以使用 GCP 部分实例类型提供的[本地存储卷](https://cloud.google.com/kubernetes-engine/docs/how-to/persistent-volumes/local-ssd)。可以为 TiKV 节点池选择这一类型的实例，以便提供更高的 IOPS 和低延迟。
 
 > **警告：**
 >
