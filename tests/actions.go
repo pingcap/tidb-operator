@@ -3003,7 +3003,7 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 	isv1 := from.OperatorTag == "v1.0.0"
 
 	setString := map[string]string{
-		"binlog.pump.storageClassName": "standard",
+		// "binlog.pump.storageClassName": "standard",
 		"binlog.pump.storage":          "1Gi",
 		"binlog.pump.image":            fmt.Sprintf("pingcap/tidb-binlog:%v", from.ClusterVersion),
 	}

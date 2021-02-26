@@ -288,7 +288,7 @@ func (oa *operatorActions) DeployDrainer(info *DrainerConfig, source *TidbCluste
 		override["tlsCluster.enabled"] = "true"
 	}
 
-	override["storageClassName"] = "standard"
+	// override["storageClassName"] = "standard"
 
 	cmd := fmt.Sprintf("helm install %s %s --namespace %s --set-string %s -f %s",
 		info.DrainerName,
