@@ -984,6 +984,9 @@ func getMonitorStatefulSet(sa *core.ServiceAccount, config *core.ConfigMap, secr
 
 func getMonitorStatefulSetSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.TidbMonitor) *apps.StatefulSet {
 	replicas := int32(1)
+	if monitor.Spec.Replicas != nil {
+		replicas = *monitor.Spec.Replicas
+	}
 	name := GetMonitorObjectName(monitor)
 	statefulset := &apps.StatefulSet{
 		ObjectMeta: meta.ObjectMeta{
