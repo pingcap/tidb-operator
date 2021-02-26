@@ -468,6 +468,10 @@ type TiKVSpec struct {
 	// StorageVolumes configure additional storage for TiKV pods.
 	// +optional
 	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
+
+	// StoreLabels configures additional labels for TiKV stores.
+	// +optional
+	StoreLabels []string `json:"storeLabels,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members
