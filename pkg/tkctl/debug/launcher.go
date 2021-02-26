@@ -140,6 +140,12 @@ func (l *Launcher) createContainer(command []string) (*container.ContainerCreate
 		StdinOnce:  true,
 	}
 	hostConfig := &container.HostConfig{
+		// share host debugfs, kernel modules and kernel sources path to container for kernel debugging
+		Binds: []string{
+			"/sys/kernel/debug:/sys/kernel/debug:rw",
+			"/lib/modules/:/lib/modules:ro",
+			"/usr/src:/usr/src:ro",
+		},
 		NetworkMode: container.NetworkMode(containerMode(dockerContainerID)),
 		UsernsMode:  container.UsernsMode(containerMode(dockerContainerID)),
 		IpcMode:     container.IpcMode(containerMode(dockerContainerID)),
