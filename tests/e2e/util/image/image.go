@@ -36,7 +36,7 @@ const (
 	TiDBMonitorReloaderImage      = "pingcap/tidb-monitor-reloader"
 	TiDBMonitorReloaderVersion    = "v1.0.1"
 	TiDBMonitorInitializerImage   = "pingcap/tidb-monitor-initializer"
-	TiDBMonitorInitializerVersion = "v3.0.8"
+	TiDBMonitorInitializerVersion = "v4.0.10"
 	GrafanaImage                  = "grafana/grafana"
 	GrafanaVersion                = "6.1.6"
 	ThanosImage                   = "thanosio/thanos"
