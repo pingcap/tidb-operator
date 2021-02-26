@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
+	"github.com/pingcap/tidb-operator/pkg/tikvapi"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeinformers "k8s.io/client-go/informers"
@@ -60,7 +61,7 @@ type CLIConfig struct {
 	MasterFailoverPeriod  time.Duration
 	WorkerFailoverPeriod  time.Duration
 	LeaseDuration         time.Duration
-	RenewDuration         time.Duration
+	RenewDeadline         time.Duration
 	RetryPeriod           time.Duration
 	WaitDuration          time.Duration
 	// ResyncDuration is the resync time of informer
@@ -91,8 +92,8 @@ func DefaultCLIConfig() *CLIConfig {
 		MasterFailoverPeriod:   5 * time.Minute,
 		WorkerFailoverPeriod:   5 * time.Minute,
 		LeaseDuration:          15 * time.Second,
-		RenewDuration:          5 * time.Second,
-		RetryPeriod:            3 * time.Second,
+		RenewDeadline:          10 * time.Second,
+		RetryPeriod:            2 * time.Second,
 		WaitDuration:           5 * time.Second,
 		ResyncDuration:         30 * time.Second,
 		TiDBBackupManagerImage: "pingcap/tidb-backup-manager:latest",
@@ -121,6 +122,11 @@ func (c *CLIConfig) AddFlag(_ *flag.FlagSet) {
 	flag.StringVar(&c.TiDBDiscoveryImage, "tidb-discovery-image", c.TiDBDiscoveryImage, "The image of the tidb discovery service")
 	flag.BoolVar(&c.PodWebhookEnabled, "pod-webhook-enabled", false, "Whether Pod admission webhook is enabled")
 	flag.StringVar(&c.Selector, "selector", c.Selector, "Selector (label query) to filter on, supports '=', '==', and '!='")
+
+	// see https://pkg.go.dev/k8s.io/client-go/tools/leaderelection#LeaderElectionConfig for the config
+	flag.DurationVar(&c.LeaseDuration, "leader-lease-duration", c.LeaseDuration, "leader-lease-duration is the duration that non-leader candidates will wait to force acquire leadership")
+	flag.DurationVar(&c.RenewDeadline, "leader-renew-deadline", c.RenewDeadline, "leader-renew-deadline is the duration that the acting master will retry refreshing leadership before giving up")
+	flag.DurationVar(&c.RetryPeriod, "leader-retry-period", c.RetryPeriod, "leader-retry-period is the duration the LeaderElector clients should wait between tries of actions")
 }
 
 type Controls struct {
@@ -135,6 +141,7 @@ type Controls struct {
 	PodControl         PodControlInterface
 	TypedControl       TypedControlInterface
 	PDControl          pdapi.PDControlInterface
+	TiKVControl        tikvapi.TiKVControlInterface
 	DMMasterControl    dmapi.MasterControlInterface
 	TiDBClusterControl TidbClusterControlInterface
 	DMClusterControl   DMClusterControlInterface
@@ -195,6 +202,7 @@ func newRealControls(
 	// Shared variables to construct `Dependencies` and some of its fields
 	var (
 		pdControl         = pdapi.NewDefaultPDControl(kubeClientset)
+		tikvControl       = tikvapi.NewDefaultTiKVControl(kubeClientset)
 		masterControl     = dmapi.NewDefaultMasterControl(kubeClientset)
 		genericCtrl       = NewRealGenericControl(genericCli, recorder)
 		tidbClusterLister = informerFactory.Pingcap().V1alpha1().TidbClusters().Lister()
@@ -217,6 +225,7 @@ func newRealControls(
 		PodControl:         NewRealPodControl(kubeClientset, pdControl, podLister, recorder),
 		TypedControl:       NewTypedControl(genericCtrl),
 		PDControl:          pdControl,
+		TiKVControl:        tikvControl,
 		DMMasterControl:    masterControl,
 		TiDBClusterControl: NewRealTidbClusterControl(clientset, tidbClusterLister, recorder),
 		DMClusterControl:   NewRealDMClusterControl(clientset, dmClusterLister, recorder),
@@ -326,6 +335,7 @@ func newFakeControl(kubeClientset kubernetes.Interface, informerFactory informer
 		PodControl:         NewFakePodControl(kubeInformerFactory.Core().V1().Pods()),
 		TypedControl:       NewTypedControl(genericCtrl),
 		PDControl:          pdapi.NewFakePDControl(kubeClientset),
+		TiKVControl:        tikvapi.NewFakeTiKVControl(kubeClientset),
 		DMMasterControl:    dmapi.NewFakeMasterControl(kubeClientset),
 		TiDBClusterControl: NewFakeTidbClusterControl(informerFactory.Pingcap().V1alpha1().TidbClusters()),
 		CDCControl:         NewDefaultTiCDCControl(kubeClientset), // TODO: no fake control?
