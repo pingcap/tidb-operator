@@ -5861,7 +5861,7 @@ string
 <td>
 <em>(Optional)</em>
 <p>Image used to tail slow log and set kernel parameters if necessary, must have <code>tail</code> and <code>sysctl</code> installed
-Optional: Defaults to busybox:1.26.2</p>
+Optional: Defaults to busybox:1.33.0</p>
 </td>
 </tr>
 <tr>
@@ -18040,7 +18040,7 @@ string
 <td>
 <em>(Optional)</em>
 <p>EvictLeaderTimeout indicates the timeout to evict tikv leader, in the format of Go Duration.
-Defaults to 3m</p>
+Defaults to 10m</p>
 </td>
 </tr>
 <tr>
@@ -18055,6 +18055,18 @@ Defaults to 3m</p>
 <td>
 <em>(Optional)</em>
 <p>StorageVolumes configure additional storage for TiKV pods.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storeLabels</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StoreLabels configures additional labels for TiKV stores.</p>
 </td>
 </tr>
 </tbody>
