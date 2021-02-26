@@ -33,7 +33,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/component-base/logs"
-	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
@@ -397,10 +396,6 @@ func newTidbClusterConfig(ns, clusterName string) *tests.TidbClusterConfig {
 	topologyKey := "rack"
 	tc := fixture.GetTidbCluster(ns, clusterName, tidbVersion)
 	tc.Spec.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyRollingUpdate
-	storageclassName := "local-storage"
-	if framework.TestContext.Provider == "kind" {
-		storageclassName = "standard"
-	}
 	return &tests.TidbClusterConfig{
 		Namespace:        ns,
 		ClusterName:      clusterName,
@@ -409,7 +404,6 @@ func newTidbClusterConfig(ns, clusterName string) *tests.TidbClusterConfig {
 		TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", tidbVersion),
 		TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", tidbVersion),
 		PumpImage:        fmt.Sprintf("pingcap/tidb-binlog:%s", tidbVersion),
-		StorageClassName: storageclassName,
 		UserName:         "root",
 		Password:         "",
 		InitSecretName:   fmt.Sprintf("%s-set-secret", clusterName),

@@ -1560,10 +1560,6 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 })
 
 func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tcVersion string) tests.TidbClusterConfig {
-	storageclassName := "local-storage"
-	if framework.TestContext.Provider == "kind" {
-		storageclassName = "standard"
-	}
 	return tests.TidbClusterConfig{
 		Namespace:        ns,
 		ClusterName:      clusterName,
@@ -1573,7 +1569,6 @@ func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tcVersio
 		TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", tcVersion),
 		TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", tcVersion),
 		PumpImage:        fmt.Sprintf("pingcap/tidb-binlog:%s", tcVersion),
-		StorageClassName: storageclassName,
 		Password:         password,
 		UserName:         "root",
 		InitSecretName:   fmt.Sprintf("%s-set-secret", clusterName),
