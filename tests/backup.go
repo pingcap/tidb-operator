@@ -288,9 +288,6 @@ func (oa *operatorActions) DeployDrainer(info *DrainerConfig, source *TidbCluste
 		override["tlsCluster.enabled"] = "true"
 	}
 
-	// Drainer is managed by Helm chart, default to use LocalPV, if we want to use standard in Kind, we need to override this.
-	// override["storageClassName"] = "standard"
-
 	cmd := fmt.Sprintf("helm install %s %s --namespace %s --set-string %s -f %s",
 		info.DrainerName,
 		oa.drainerChartPath(source.OperatorTag),

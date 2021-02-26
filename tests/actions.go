@@ -3003,8 +3003,6 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 	isv1 := from.OperatorTag == "v1.0.0"
 
 	setString := map[string]string{
-		// Pump is managed by Helm chart, default to use LocalPV, if we want to use standard in Kind, we need to override this.
-		// "binlog.pump.storageClassName": "standard",
 		"binlog.pump.storage": "1Gi",
 		"binlog.pump.image":   fmt.Sprintf("pingcap/tidb-binlog:%v", from.ClusterVersion),
 	}
