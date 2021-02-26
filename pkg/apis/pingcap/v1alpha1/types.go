@@ -461,13 +461,17 @@ type TiKVSpec struct {
 	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
 
 	// EvictLeaderTimeout indicates the timeout to evict tikv leader, in the format of Go Duration.
-	// Defaults to 3m
+	// Defaults to 10m
 	// +optional
 	EvictLeaderTimeout *string `json:"evictLeaderTimeout,omitempty"`
 
 	// StorageVolumes configure additional storage for TiKV pods.
 	// +optional
 	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
+
+	// StoreLabels configures additional labels for TiKV stores.
+	// +optional
+	StoreLabels []string `json:"storeLabels,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members
@@ -722,7 +726,7 @@ type PumpSpec struct {
 // +k8s:openapi-gen=true
 type HelperSpec struct {
 	// Image used to tail slow log and set kernel parameters if necessary, must have `tail` and `sysctl` installed
-	// Optional: Defaults to busybox:1.26.2
+	// Optional: Defaults to busybox:1.33.0
 	// +optional
 	Image *string `json:"image,omitempty"`
 
