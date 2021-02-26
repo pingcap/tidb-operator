@@ -1013,7 +1013,7 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 	ns := info.Namespace
 	tcName := info.ClusterName
 	// TODO: remove redundant checks already in WaitForTidbClusterReady
-	if err := wait.Poll(oa.pollInterval, 10*time.Minute, func() (bool, error) {
+	if err := wait.Poll(oa.pollInterval, 20*time.Minute, func() (bool, error) {
 		var tc *v1alpha1.TidbCluster
 		var err error
 		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {

@@ -206,7 +206,7 @@ func main() {
 				},
 			},
 			LeaseDuration: cliCfg.LeaseDuration,
-			RenewDeadline: cliCfg.RenewDuration,
+			RenewDeadline: cliCfg.RenewDeadline,
 			RetryPeriod:   cliCfg.RetryPeriod,
 			Callbacks: leaderelection.LeaderCallbacks{
 				OnStartedLeading: onStarted,

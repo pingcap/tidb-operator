@@ -133,6 +133,10 @@ func MemberPodName(controllerName, controllerKind string, ordinal int32, memberT
 	}
 }
 
+func TiFlashPodName(tcName string, ordinal int32) string {
+	return fmt.Sprintf("%s-%d", controller.TiFlashMemberName(tcName), ordinal)
+}
+
 func TikvPodName(tcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", controller.TiKVMemberName(tcName), ordinal)
 }

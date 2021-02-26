@@ -750,6 +750,12 @@ func TestGetMonitorVolumes(t *testing.T) {
 							EmptyDir: &corev1.EmptyDirVolumeSource{},
 						},
 					},
+					{
+						Name: "prometheus-config-out",
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
+					},
 				},
 				))
 			},
@@ -799,6 +805,12 @@ func TestGetMonitorVolumes(t *testing.T) {
 					},
 					{
 						Name: "prometheus-rules",
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
+					},
+					{
+						Name: "prometheus-config-out",
 						VolumeSource: corev1.VolumeSource{
 							EmptyDir: &corev1.EmptyDirVolumeSource{},
 						},
@@ -882,6 +894,12 @@ func TestGetMonitorVolumes(t *testing.T) {
 							},
 						},
 					},
+					{
+						Name: "prometheus-config-out",
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
+					},
 				},
 				))
 			},
@@ -937,13 +955,9 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 				Name:  "prometheus",
 				Image: "hub.pingcap.net:latest",
 				Command: []string{
-					"/bin/prometheus",
-					"--web.enable-admin-api",
-					"--web.enable-lifecycle",
-					"--config.file=/etc/prometheus/prometheus.yml",
-					"--storage.tsdb.path=/data/prometheus",
-					"--storage.tsdb.retention=0d",
-					"--web.external-url=https://www.example.com/prometheus/",
+					"/bin/sh",
+					"-c",
+					"sed 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g' /etc/prometheus/config/prometheus.yml > /etc/prometheus/config_out/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/etc/prometheus/config_out/prometheus.yml --storage.tsdb.path=/data/prometheus --storage.tsdb.retention=0d --web.external-url=https://www.example.com/prometheus/",
 				},
 				Ports: []corev1.ContainerPort{
 					corev1.ContainerPort{
@@ -957,13 +971,30 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 						Name:  "TZ",
 						Value: "UTC",
 					},
+					{
+						Name: "POD_NAME",
+						ValueFrom: &corev1.EnvVarSource{
+							FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.name"},
+						},
+					},
+					{
+						Name: "NAMESPACE",
+						ValueFrom: &corev1.EnvVarSource{
+							FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.namespace"},
+						},
+					},
 				},
 				Resources: corev1.ResourceRequirements{},
 				VolumeMounts: []corev1.VolumeMount{
+					{
+						Name:      "prometheus-config-out",
+						MountPath: "/etc/prometheus/config_out",
+						ReadOnly:  false,
+					},
 					corev1.VolumeMount{
 						Name:      "prometheus-config",
 						ReadOnly:  true,
-						MountPath: "/etc/prometheus",
+						MountPath: "/etc/prometheus/config",
 					},
 					corev1.VolumeMount{
 						Name:      v1alpha1.TidbMonitorMemberType.String(),
@@ -1270,7 +1301,7 @@ func TestBuildExternalLabels(t *testing.T) {
 				},
 			},
 			expected: &model.LabelSet{
-				defaultReplicaExternalLabelName: "$(NAMESPACE)_$(POD_NAME)",
+				defaultReplicaExternalLabelName: "$NAMESPACE_$POD_NAME",
 			},
 		},
 	}
