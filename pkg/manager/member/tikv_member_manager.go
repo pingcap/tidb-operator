@@ -15,12 +15,14 @@ package member
 
 import (
 	"fmt"
+	"path"
 	"path/filepath"
 	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -313,9 +315,12 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	}
 
 	annoMount, annoVolume := annotationsMountVolume()
+	tikvDataVol := corev1.VolumeMount{
+		Name:      v1alpha1.TiKVMemberType.String(),
+		MountPath: tikvDataVolumeMountPath}
 	volMounts := []corev1.VolumeMount{
 		annoMount,
-		{Name: v1alpha1.TiKVMemberType.String(), MountPath: tikvDataVolumeMountPath},
+		tikvDataVol,
 		{Name: "config", ReadOnly: true, MountPath: "/etc/tikv"},
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
 	}
@@ -423,6 +428,45 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	capacity := controller.TiKVCapacity(tc.Spec.TiKV.Limits)
 	headlessSvcName := controller.TiKVPeerMemberName(tcName)
 
+	deleteSlotsNumber, err := util.GetDeleteSlotsNumber(stsAnnotations)
+	if err != nil {
+		return nil, fmt.Errorf("get delete slots number of statefulset %s/%s failed, err:%v", ns, setName, err)
+	}
+
+	var containers []corev1.Container
+	if tc.Spec.TiKV.ShouldSeparateRocksDBLog() {
+		// mount a shared volume and tail the RocksDB log to STDOUT using a sidecar.
+		rocksDBLogFilePath := path.Join(tikvDataVol.MountPath, "db/LOG")
+		containers = append(containers, corev1.Container{
+			Name:            v1alpha1.RocksDBLogTailerMemberType.String(),
+			Image:           tc.HelperImage(),
+			ImagePullPolicy: tc.HelperImagePullPolicy(),
+			Resources:       controller.ContainerResource(tc.Spec.TiKV.GetLogTailerSpec().ResourceRequirements),
+			VolumeMounts:    []corev1.VolumeMount{tikvDataVol},
+			Command: []string{
+				"sh",
+				"-c",
+				fmt.Sprintf("touch %s; tail -n0 -F %s;", rocksDBLogFilePath, rocksDBLogFilePath),
+			},
+		})
+	}
+	if tc.Spec.TiKV.ShouldSeparateRaftLog() {
+		// mount a shared volume and tail the Raft log to STDOUT using a sidecar.
+		raftLogFilePath := path.Join(tikvDataVol.MountPath, "raft/LOG")
+		containers = append(containers, corev1.Container{
+			Name:            v1alpha1.RaftLogTailerMemberType.String(),
+			Image:           tc.HelperImage(),
+			ImagePullPolicy: tc.HelperImagePullPolicy(),
+			Resources:       controller.ContainerResource(tc.Spec.TiKV.GetLogTailerSpec().ResourceRequirements),
+			VolumeMounts:    []corev1.VolumeMount{tikvDataVol},
+			Command: []string{
+				"sh",
+				"-c",
+				fmt.Sprintf("touch %s; tail -n0 -F %s;", raftLogFilePath, raftLogFilePath),
+			},
+		})
+	}
+
 	env := []corev1.EnvVar{
 		{
 			Name: "NAMESPACE",
@@ -480,10 +524,12 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		})
 	}
 	tikvContainer.Env = util.AppendEnv(env, baseTiKVSpec.Env())
+	containers = append(containers, tikvContainer)
+
 	podSpec.Volumes = append(vols, baseTiKVSpec.AdditionalVolumes()...)
 	podSpec.SecurityContext = podSecurityContext
-	podSpec.InitContainers = initContainers
-	podSpec.Containers = append([]corev1.Container{tikvContainer}, baseTiKVSpec.AdditionalContainers()...)
+	podSpec.InitContainers = append(initContainers, baseTiKVSpec.InitContainers()...)
+	podSpec.Containers = append(containers, baseTiKVSpec.AdditionalContainers()...)
 	podSpec.ServiceAccountName = tc.Spec.TiKV.ServiceAccount
 	if podSpec.ServiceAccountName == "" {
 		podSpec.ServiceAccountName = tc.Spec.ServiceAccount
@@ -495,7 +541,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	} else {
 		updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
 		updateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{
-			Partition: pointer.Int32Ptr(tc.TiKVStsDesiredReplicas()),
+			Partition: pointer.Int32Ptr(tc.TiKVStsDesiredReplicas() + deleteSlotsNumber),
 		}
 	}
 
@@ -623,6 +669,14 @@ func (m *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	if err != nil {
 		return err
 	}
+
+	// If phase changes from UpgradePhase to NormalPhase, try to endEvictLeader for the last store.
+	if !upgrading && tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
+		if err = endEvictLeader(m.deps, tc, helper.GetMinPodOrdinal(*set.Spec.Replicas, set)); err != nil {
+			return err
+		}
+	}
+
 	// Scaling takes precedence over upgrading.
 	if tc.TiKVStsDesiredReplicas() != *set.Spec.Replicas {
 		tc.Status.TiKV.Phase = v1alpha1.ScalePhase
@@ -758,8 +812,8 @@ func (m *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (int
 		return setCount, err
 	}
 
-	locationLabels := []string(config.Replication.LocationLabels)
-	if locationLabels == nil {
+	storeLabels := append(config.Replication.LocationLabels, tc.Spec.TiKV.StoreLabels...)
+	if storeLabels == nil {
 		return setCount, nil
 	}
 
@@ -785,7 +839,7 @@ func (m *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (int
 		}
 
 		nodeName := pod.Spec.NodeName
-		ls, err := m.getNodeLabels(nodeName, locationLabels)
+		ls, err := m.getNodeLabels(nodeName, storeLabels)
 		if err != nil || len(ls) == 0 {
 			klog.Warningf("node: [%s] has no node labels, skipping set store labels for Pod: [%s/%s]", nodeName, ns, podName)
 			continue

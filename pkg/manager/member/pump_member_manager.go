@@ -409,6 +409,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 			HostNetwork:      spec.HostNetwork(),
 			DNSPolicy:        spec.DnsPolicy(),
 			ImagePullSecrets: spec.ImagePullSecrets(),
+			InitContainers:   spec.InitContainers(),
 		},
 	}
 

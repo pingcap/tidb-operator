@@ -39,9 +39,9 @@ import (
 )
 
 const (
-	slowQueryLogVolumeName = "slowlog"
-	slowQueryLogDir        = "/var/log/tidb"
-	slowQueryLogFile       = slowQueryLogDir + "/slowlog"
+	defaultSlowLogVolume = "slowlog"
+	defaultSlowLogDir    = "/var/log/tidb"
+	defaultSlowLogFile   = defaultSlowLogDir + "/slowlog"
 	// clusterCertPath is where the cert for inter-cluster communication stored (if any)
 	clusterCertPath = "/var/lib/tidb-tls"
 	// serverCertPath is where the tidb-server cert stored (if any)
@@ -199,7 +199,11 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 		return err
 	}
 
-	newTiDBSet := getNewTiDBSetForTidbCluster(tc, cm)
+	newTiDBSet, err := getNewTiDBSetForTidbCluster(tc, cm)
+	if err != nil {
+		return err
+	}
+
 	if setNotExist {
 		err = SetStatefulSetLastAppliedConfigAnnotation(newTiDBSet)
 		if err != nil {
@@ -505,9 +509,10 @@ func getNewTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.S
 	}
 }
 
-func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) *apps.StatefulSet {
+func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
+	setName := controller.TiDBMemberName(tcName)
 	headlessSvcName := controller.TiDBPeerMemberName(tcName)
 	baseTiDBSpec := tc.BaseTiDBSpec()
 	instanceName := tc.GetInstanceName()
@@ -611,36 +616,65 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		podSecurityContext.Sysctls = []corev1.Sysctl{}
 	}
 
+	// handle StorageVolumes and AdditionalVolumeMounts in ComponentSpec
+	storageVolMounts, additionalPVCs := util.BuildStorageVolumeAndVolumeMount(tc.Spec.TiDB.StorageVolumes, tc.Spec.TiDB.StorageClassName, v1alpha1.TiDBMemberType)
+	volMounts = append(volMounts, storageVolMounts...)
+	volMounts = append(volMounts, tc.Spec.TiDB.AdditionalVolumeMounts...)
+
 	var containers []corev1.Container
+	slowLogFileEnvVal := ""
 	if tc.Spec.TiDB.ShouldSeparateSlowLog() {
 		// mount a shared volume and tail the slow log to STDOUT using a sidecar.
-		vols = append(vols, corev1.Volume{
-			Name: slowQueryLogVolumeName,
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		})
-		volMounts = append(volMounts, corev1.VolumeMount{Name: slowQueryLogVolumeName, MountPath: slowQueryLogDir})
+		var slowQueryLogVolumeMount corev1.VolumeMount
+		slowQueryLogVolumeName := tc.Spec.TiDB.SlowLogVolumeName
+		if slowQueryLogVolumeName == "" {
+			vols = append(vols, corev1.Volume{
+				Name: defaultSlowLogVolume,
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			})
+			slowQueryLogVolumeMount = corev1.VolumeMount{Name: defaultSlowLogVolume, MountPath: defaultSlowLogDir}
+			volMounts = append(volMounts, slowQueryLogVolumeMount)
+			slowLogFileEnvVal = defaultSlowLogFile
+		} else {
+			existVolume := false
+			for _, volMount := range storageVolMounts {
+				volMountName := fmt.Sprintf("%s-%s", v1alpha1.TiDBMemberType.String(), slowQueryLogVolumeName)
+				if volMount.Name == volMountName {
+					slowQueryLogVolumeMount = volMount
+					existVolume = true
+					break
+				}
+			}
+			if !existVolume {
+				for _, volMount := range tc.Spec.TiDB.AdditionalVolumeMounts {
+					if volMount.Name == slowQueryLogVolumeName {
+						slowQueryLogVolumeMount = volMount
+						existVolume = true
+						break
+					}
+				}
+			}
+			if !existVolume {
+				return nil, fmt.Errorf("Failed to get slowLogVolume %s for cluster %s/%s", slowQueryLogVolumeName, ns, tcName)
+			}
+			slowLogFileEnvVal = path.Join(slowQueryLogVolumeMount.MountPath, slowQueryLogVolumeName)
+		}
 		containers = append(containers, corev1.Container{
 			Name:            v1alpha1.SlowLogTailerMemberType.String(),
 			Image:           tc.HelperImage(),
 			ImagePullPolicy: tc.HelperImagePullPolicy(),
 			Resources:       controller.ContainerResource(tc.Spec.TiDB.GetSlowLogTailerSpec().ResourceRequirements),
-			VolumeMounts: []corev1.VolumeMount{
-				{Name: slowQueryLogVolumeName, MountPath: slowQueryLogDir},
-			},
+			VolumeMounts:    []corev1.VolumeMount{slowQueryLogVolumeMount},
 			Command: []string{
 				"sh",
 				"-c",
-				fmt.Sprintf("touch %s; tail -n0 -F %s;", slowQueryLogFile, slowQueryLogFile),
+				fmt.Sprintf("touch %s; tail -n0 -F %s;", slowLogFileEnvVal, slowLogFileEnvVal),
 			},
 		})
 	}
 
-	slowLogFileEnvVal := ""
-	if tc.Spec.TiDB.ShouldSeparateSlowLog() {
-		slowLogFileEnvVal = slowQueryLogFile
-	}
 	envs := []corev1.EnvVar{
 		{
 			Name:  "CLUSTER_NAME",
@@ -680,11 +714,6 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		},
 	}
 
-	// handle StorageVolumes and AdditionalVolumeMounts in ComponentSpec
-	storageVolMounts, additionalPVCs := util.BuildStorageVolumeAndVolumeMount(tc.Spec.TiDB.StorageVolumes, tc.Spec.TiDB.StorageClassName, v1alpha1.TiDBMemberType)
-	volMounts = append(volMounts, storageVolMounts...)
-	volMounts = append(volMounts, tc.Spec.TiDB.AdditionalVolumeMounts...)
-
 	c := corev1.Container{
 		Name:            v1alpha1.TiDBMemberType.String(),
 		Image:           tc.TiDBImage(),
@@ -720,7 +749,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	podSpec.Containers = append(containers, baseTiDBSpec.AdditionalContainers()...)
 	podSpec.Volumes = append(vols, baseTiDBSpec.AdditionalVolumes()...)
 	podSpec.SecurityContext = podSecurityContext
-	podSpec.InitContainers = initContainers
+	podSpec.InitContainers = append(initContainers, baseTiDBSpec.InitContainers()...)
 	podSpec.ServiceAccountName = tc.Spec.TiDB.ServiceAccount
 	if podSpec.ServiceAccountName == "" {
 		podSpec.ServiceAccountName = tc.Spec.ServiceAccount
@@ -734,19 +763,24 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	podAnnotations := CombineAnnotations(controller.AnnProm(10080), baseTiDBSpec.Annotations())
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiDBLabelVal)
 
+	deleteSlotsNumber, err := util.GetDeleteSlotsNumber(stsAnnotations)
+	if err != nil {
+		return nil, fmt.Errorf("get delete slots number of statefulset %s/%s failed, err:%v", ns, setName, err)
+	}
+
 	updateStrategy := apps.StatefulSetUpdateStrategy{}
 	if baseTiDBSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
 		updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
 	} else {
 		updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
 		updateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{
-			Partition: pointer.Int32Ptr(tc.TiDBStsDesiredReplicas()),
+			Partition: pointer.Int32Ptr(tc.TiDBStsDesiredReplicas() + deleteSlotsNumber),
 		}
 	}
 
 	tidbSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            controller.TiDBMemberName(tcName),
+			Name:            setName,
 			Namespace:       ns,
 			Labels:          tidbLabel.Labels(),
 			Annotations:     stsAnnotations,
@@ -769,7 +803,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	}
 
 	tidbSet.Spec.VolumeClaimTemplates = append(tidbSet.Spec.VolumeClaimTemplates, additionalPVCs...)
-	return tidbSet
+	return tidbSet, nil
 }
 
 func (m *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {

@@ -1,0 +1,29 @@
+apiVersion: pingcap.com/v1alpha1
+kind: TidbMonitor
+metadata:
+  name: basic
+spec:
+  clusters:
+  - name: basic
+  prometheus:
+    baseImage: prom/prometheus
+    version: v2.18.1
+    remoteWrite:
+      - url: "http://localhost:1234"
+        writeRelabelConfigs:
+          - sourceLabels: [__test]
+            separator: ;
+            regex: (.*)
+            targetLabel: node
+            replacement: $1
+            action: replace
+  grafana:
+    baseImage: grafana/grafana
+    version: 6.1.6
+  initializer:
+    baseImage: registry.cn-beijing.aliyuncs.com/tidb/tidb-monitor-initializer
+    version: v4.0.10
+  reloader:
+    baseImage: registry.cn-beijing.aliyuncs.com/tidb/tidb-monitor-reloader
+    version: v1.0.1
+  imagePullPolicy: IfNotPresent

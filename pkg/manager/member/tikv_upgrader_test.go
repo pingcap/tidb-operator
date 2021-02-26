@@ -24,6 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/pkg/tikvapi"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,6 +48,9 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 		changePods          func([]*corev1.Pod)
 		beginEvictLeaderErr bool
 		endEvictLeaderErr   bool
+		getLeaderCountErr   bool
+		leaderCount         int
+		podName             string
 		updatePodErr        bool
 		errExpectFn         func(*GomegaWithT, error)
 		expectFn            func(*GomegaWithT, *v1alpha1.TidbCluster, *apps.StatefulSet, map[string]*corev1.Pod)
@@ -54,7 +58,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
-		upgrader, pdControl, podControl, podInformer := newTiKVUpgrader()
+		upgrader, pdControl, podControl, podInformer, tikvControl := newTiKVUpgrader()
 
 		tc := newTidbClusterForTiKVUpgrader()
 		if test.changeFn != nil {
@@ -75,6 +79,20 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 		} else {
 			pdClient.AddReaction(pdapi.BeginEvictLeaderActionType, func(action *pdapi.Action) (interface{}, error) {
 				return nil, nil
+			})
+		}
+
+		tikvClient := controller.NewFakeTiKVClient(tikvControl, tc, "upgrader-tikv-2")
+		if len(test.podName) > 0 {
+			tikvClient = controller.NewFakeTiKVClient(tikvControl, tc, test.podName)
+		}
+		if test.getLeaderCountErr {
+			tikvClient.AddReaction(tikvapi.GetLeaderCountActionType, func(action *tikvapi.Action) (interface{}, error) {
+				return 0, fmt.Errorf("failed to begin evict leader")
+			})
+		} else {
+			tikvClient.AddReaction(tikvapi.GetLeaderCountActionType, func(action *tikvapi.Action) (interface{}, error) {
+				return test.leaderCount, nil
 			})
 		}
 		if test.endEvictLeaderErr {
@@ -216,6 +234,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			beginEvictLeaderErr: false,
 			endEvictLeaderErr:   false,
 			updatePodErr:        false,
+			podName:             "upgrader-tikv-1",
 			errExpectFn: func(g *GomegaWithT, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 			},
@@ -385,6 +404,44 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			beginEvictLeaderErr: false,
 			endEvictLeaderErr:   false,
 			updatePodErr:        false,
+			podName:             "upgrader-tikv-1",
+			leaderCount:         10,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(err.Error()).To(Equal("tidbcluster: [default/upgrader]'s tikv pod: [upgrader-tikv-1] is evicting leader"))
+			},
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, pods map[string]*corev1.Pod) {
+				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(2)))
+			},
+		},
+		{
+			name:              "get leader count error",
+			getLeaderCountErr: true,
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+				tc.Status.TiKV.Synced = true
+				tc.Status.TiKV.StatefulSet.CurrentReplicas = 2
+				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
+			},
+			changeOldSet: func(oldSet *apps.StatefulSet) {
+				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+				oldSet.Status.CurrentReplicas = 2
+				oldSet.Status.UpdatedReplicas = 1
+				oldSet.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32Ptr(2)
+			},
+			changePods: func(pods []*corev1.Pod) {
+				for _, pod := range pods {
+					if pod.GetName() == TikvPodName(upgradeTcName, 1) {
+						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Format(time.RFC3339)}
+					}
+				}
+			},
+			beginEvictLeaderErr: false,
+			endEvictLeaderErr:   false,
+			updatePodErr:        false,
+			podName:             "upgrader-tikv-1",
+			leaderCount:         10,
 			errExpectFn: func(g *GomegaWithT, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(err.Error()).To(Equal("tidbcluster: [default/upgrader]'s tikv pod: [upgrader-tikv-1] is evicting leader"))
@@ -440,13 +497,15 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			changePods: func(pods []*corev1.Pod) {
 				for _, pod := range pods {
 					if pod.GetName() == TikvPodName(upgradeTcName, 1) {
-						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Add(-5 * time.Minute).Format(time.RFC3339)}
+						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Add(-15 * time.Minute).Format(time.RFC3339)}
 					}
 				}
 			},
 			beginEvictLeaderErr: false,
 			endEvictLeaderErr:   false,
 			updatePodErr:        false,
+			podName:             "upgrader-tikv-1",
+			leaderCount:         10,
 			errExpectFn: func(g *GomegaWithT, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 			},
@@ -551,12 +610,13 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 	}
 }
 
-func newTiKVUpgrader() (TiKVUpgrader, *pdapi.FakePDControl, *controller.FakePodControl, podinformers.PodInformer) {
+func newTiKVUpgrader() (TiKVUpgrader, *pdapi.FakePDControl, *controller.FakePodControl, podinformers.PodInformer, *tikvapi.FakeTiKVControl) {
 	fakeDeps := controller.NewFakeDependencies()
 	pdControl := fakeDeps.PDControl.(*pdapi.FakePDControl)
+	tikvControl := fakeDeps.TiKVControl.(*tikvapi.FakeTiKVControl)
 	podControl := fakeDeps.PodControl.(*controller.FakePodControl)
 	podInformer := fakeDeps.KubeInformerFactory.Core().V1().Pods()
-	return &tikvUpgrader{deps: fakeDeps}, pdControl, podControl, podInformer
+	return &tikvUpgrader{deps: fakeDeps}, pdControl, podControl, podInformer, tikvControl
 }
 
 func newStatefulSetForTiKVUpgrader() *apps.StatefulSet {
@@ -681,7 +741,15 @@ func getTiKVPods(set *apps.StatefulSet) []*corev1.Pod {
 				Namespace: corev1.NamespaceDefault,
 				Labels:    l,
 			},
-			Status: corev1.PodStatus{Phase: corev1.PodRunning},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodRunning,
+				Conditions: []corev1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionTrue,
+					},
+				},
+			},
 		})
 	}
 	return pods

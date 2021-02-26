@@ -30,19 +30,9 @@ import (
 )
 
 var (
-	tikvConfig = func() *v1alpha1.TiKVConfigWraper {
-		c := v1alpha1.NewTiKVConfig()
-		c.Set("log-level", "info")
-		// Don't reserve space in e2e tests, see
-		// https://github.com/pingcap/tidb-operator/issues/2509.
-		c.Set("storage.reserve-space", "0MB")
-		return c
-	}()
-)
+	BestEffort     = corev1.ResourceRequirements{}
+	BurstableSmall = corev1.ResourceRequirements{
 
-var (
-	BestEffort    = corev1.ResourceRequirements{}
-	BurstbleSmall = corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
 			corev1.ResourceCPU:    resource.MustParse("100m"),
 			corev1.ResourceMemory: resource.MustParse("100Mi"),
@@ -52,7 +42,7 @@ var (
 			corev1.ResourceMemory: resource.MustParse("2Gi"),
 		},
 	}
-	BurstbleMedium = corev1.ResourceRequirements{
+	BurstableMedium = corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
 			corev1.ResourceCPU:    resource.MustParse("100m"),
 			corev1.ResourceMemory: resource.MustParse("100Mi"),
@@ -87,6 +77,11 @@ var (
 func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 	// We assume all unparsable versions are greater or equal to v4.0.0-beta,
 	// e.g. nightly.
+	tikvConfig := v1alpha1.NewTiKVConfig()
+	tikvConfig.Set("log-level", "info")
+	// Don't reserve space in e2e tests, see
+	// https://github.com/pingcap/tidb-operator/issues/2509.
+	tikvConfig.Set("storage.reserve-space", "0MB")
 	if v, err := semver.NewVersion(version); err == nil && v.LessThan(tikvV4Beta) {
 		tikvConfig.Del("storage")
 	}
@@ -101,15 +96,16 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 			Namespace: ns,
 		},
 		Spec: v1alpha1.TidbClusterSpec{
-			Version:         version,
-			ImagePullPolicy: corev1.PullIfNotPresent,
-			PVReclaimPolicy: &deletePVP,
-			SchedulerName:   "tidb-scheduler",
-			Timezone:        "Asia/Shanghai",
+			Version:              version,
+			ImagePullPolicy:      corev1.PullIfNotPresent,
+			PVReclaimPolicy:      &deletePVP,
+			ConfigUpdateStrategy: v1alpha1.ConfigUpdateStrategyRollingUpdate,
+			SchedulerName:        "tidb-scheduler",
+			Timezone:             "Asia/Shanghai",
 			PD: &v1alpha1.PDSpec{
 				Replicas:             3,
 				BaseImage:            "pingcap/pd",
-				ResourceRequirements: WithStorage(BurstbleSmall, "1Gi"),
+				ResourceRequirements: WithStorage(BurstableSmall, "1Gi"),
 				Config: func() *v1alpha1.PDConfigWraper {
 					c := v1alpha1.NewPDConfig()
 					c.Set("log.level", "info")
@@ -124,18 +120,19 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 			TiKV: &v1alpha1.TiKVSpec{
 				Replicas:             3,
 				BaseImage:            "pingcap/tikv",
-				ResourceRequirements: WithStorage(BurstbleMedium, "10Gi"),
+				ResourceRequirements: WithStorage(BurstableMedium, "10Gi"),
 				MaxFailoverCount:     pointer.Int32Ptr(3),
 				Config:               tikvConfig,
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Affinity: buildAffinity(name, ns, v1alpha1.TiKVMemberType),
 				},
+				EvictLeaderTimeout: pointer.StringPtr("3m"),
 			},
 
 			TiDB: &v1alpha1.TiDBSpec{
 				Replicas:             2,
 				BaseImage:            "pingcap/tidb",
-				ResourceRequirements: BurstbleMedium,
+				ResourceRequirements: BurstableMedium,
 				Service: &v1alpha1.TiDBServiceSpec{
 					ServiceSpec: v1alpha1.ServiceSpec{
 						Type: corev1.ServiceTypeClusterIP,
@@ -185,7 +182,7 @@ func GetTidbClusterWithTiFlash(ns, name, version string) *v1alpha1.TidbCluster {
 		MaxFailoverCount: pointer.Int32Ptr(3),
 		StorageClaims: []v1alpha1.StorageClaim{
 			{
-				Resources: WithStorage(BurstbleMedium, "10Gi"),
+				Resources: WithStorage(BurstableMedium, "10Gi"),
 			},
 		},
 	}
@@ -295,8 +292,6 @@ func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 		}
 	}
 	if persist {
-		storageClassName := "local-storage"
-		monitor.Spec.StorageClassName = &storageClassName
 		monitor.Spec.Storage = "2Gi"
 		monitor.Spec.Persistent = true
 	}
@@ -447,9 +442,7 @@ func GetBackupCRDWithS3(tc *v1alpha1.TidbCluster, fromSecretName, brType string,
 		},
 	}
 	if brType == DumperType {
-		storage := "local-storage"
 		br.Spec.BR = nil
-		br.Spec.StorageClassName = &storage
 		br.Spec.StorageSize = "1Gi"
 	}
 	return br
@@ -484,9 +477,7 @@ func GetRestoreCRDWithS3(tc *v1alpha1.TidbCluster, toSecretName, restoreType str
 		},
 	}
 	if restoreType == DumperType {
-		storage := "local-storage"
 		restore.Spec.BR = nil
-		restore.Spec.StorageClassName = &storage
 		restore.Spec.StorageSize = "1Gi"
 		restore.Spec.S3.Path = fmt.Sprintf("s3://%s/%s", s3config.Bucket, s3config.Path)
 	}
@@ -527,8 +518,7 @@ func AddPumpForTidbCluster(tc *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
 			SchedulerName:        pointer.StringPtr("default-scheduler"),
 			ConfigUpdateStrategy: &tc.Spec.ConfigUpdateStrategy,
 		},
-		Replicas:         1,
-		StorageClassName: pointer.StringPtr("local-storage"),
+		Replicas: 1,
 		ResourceRequirements: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
 				corev1.ResourceStorage: resource.MustParse("10Gi"),

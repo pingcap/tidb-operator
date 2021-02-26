@@ -18,13 +18,17 @@ import (
 	"path"
 	"sort"
 	"strconv"
+	"strings"
+	"time"
 
+	"github.com/docker/docker/client"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/config"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -137,6 +141,10 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monit
 		EnableTLSCluster:   tc.IsTLSClusterEnabled(),
 		ExternalLabels:     buildExternalLabels(monitor),
 		EnableTLSDMCluster: dc != nil && dc.IsTLSClusterEnabled(),
+	}
+
+	if len(monitor.Spec.Prometheus.RemoteWrite) > 0 {
+		model.RemoteWriteConfigs = generateRemoteWrite(monitor)
 	}
 
 	if monitor.Spec.AlertmanagerURL != nil {
@@ -416,17 +424,14 @@ func getMonitorDMInitContainer(monitor *v1alpha1.TidbMonitor, dc *v1alpha1.DMClu
 }
 
 func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster) core.Container {
+	commands := []string{"sed 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g' /etc/prometheus/config/prometheus.yml > /etc/prometheus/config_out/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/etc/prometheus/config_out/prometheus.yml --storage.tsdb.path=/data/prometheus " + fmt.Sprintf("--storage.tsdb.retention=%dd", monitor.Spec.Prometheus.ReserveDays)}
 	c := core.Container{
 		Name:      "prometheus",
 		Image:     fmt.Sprintf("%s:%s", monitor.Spec.Prometheus.BaseImage, monitor.Spec.Prometheus.Version),
 		Resources: controller.ContainerResource(monitor.Spec.Prometheus.ResourceRequirements),
 		Command: []string{
-			"/bin/prometheus",
-			"--web.enable-admin-api",
-			"--web.enable-lifecycle",
-			"--config.file=/etc/prometheus/prometheus.yml",
-			"--storage.tsdb.path=/data/prometheus",
-			fmt.Sprintf("--storage.tsdb.retention=%dd", monitor.Spec.Prometheus.ReserveDays),
+			"/bin/sh",
+			"-c",
 		},
 		Ports: []core.ContainerPort{
 			{
@@ -440,11 +445,28 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 				Name:  "TZ",
 				Value: tc.Timezone(),
 			},
+			{
+				Name: "POD_NAME",
+				ValueFrom: &core.EnvVarSource{
+					FieldRef: &core.ObjectFieldSelector{FieldPath: "metadata.name"},
+				},
+			},
+			{
+				Name: "NAMESPACE",
+				ValueFrom: &core.EnvVarSource{
+					FieldRef: &core.ObjectFieldSelector{FieldPath: "metadata.namespace"},
+				},
+			},
 		},
 		VolumeMounts: []core.VolumeMount{
 			{
+				Name:      "prometheus-config-out",
+				MountPath: "/etc/prometheus/config_out",
+				ReadOnly:  false,
+			},
+			{
 				Name:      "prometheus-config",
-				MountPath: "/etc/prometheus",
+				MountPath: "/etc/prometheus/config",
 				ReadOnly:  true,
 			},
 			{
@@ -460,16 +482,16 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 	}
 
 	if len(monitor.Spec.Prometheus.LogLevel) > 0 {
-		c.Command = append(c.Command, fmt.Sprintf("--log.level=%s", monitor.Spec.Prometheus.LogLevel))
+		commands = append(commands, fmt.Sprintf("--log.level=%s", monitor.Spec.Prometheus.LogLevel))
 	}
 	if monitor.Spec.Prometheus.Config != nil && len(monitor.Spec.Prometheus.Config.CommandOptions) > 0 {
-		c.Command = append(c.Command, monitor.Spec.Prometheus.Config.CommandOptions...)
+		commands = append(commands, monitor.Spec.Prometheus.Config.CommandOptions...)
 	}
 	if monitor.Spec.Prometheus.DisableCompaction || monitor.Spec.Thanos != nil {
-		c.Command = append(c.Command, "--storage.tsdb.max-block-duration=2h")
-		c.Command = append(c.Command, "--storage.tsdb.min-block-duration=2h")
+		commands = append(commands, "--storage.tsdb.max-block-duration=2h")
+		commands = append(commands, "--storage.tsdb.min-block-duration=2h")
 	}
-
+	c.Command = append(c.Command, strings.Join(commands, " "))
 	if tc.IsTLSClusterEnabled() {
 		c.VolumeMounts = append(c.VolumeMounts, core.VolumeMount{
 			Name:      util.ClusterClientVolName,
@@ -707,6 +729,12 @@ func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor, tc
 		}
 		volumes = append(volumes, tlsDMClient)
 	}
+	volumes = append(volumes, core.Volume{
+		Name: "prometheus-config-out",
+		VolumeSource: core.VolumeSource{
+			EmptyDir: &core.EmptyDirVolumeSource{},
+		},
+	})
 	return volumes
 }
 
@@ -1100,6 +1128,7 @@ func getThanosSidecarContainer(monitor *v1alpha1.TidbMonitor) core.Container {
 			},
 		},
 	}
+
 	if thanos.ObjectStorageConfig != nil || thanos.ObjectStorageConfigFile != nil {
 		if thanos.ObjectStorageConfigFile != nil {
 			container.Args = append(container.Args, "--objstore.config-file="+*thanos.ObjectStorageConfigFile)
@@ -1163,10 +1192,98 @@ func buildExternalLabels(monitor *v1alpha1.TidbMonitor) model.LabelSet {
 		}
 	}
 	if replicaExternalLabelName != "" {
-		m[model.LabelName(replicaExternalLabelName)] = "$(NAMESPACE)_$(POD_NAME)"
+		m[model.LabelName(replicaExternalLabelName)] = "$NAMESPACE_$POD_NAME"
 	}
 	for n, v := range monitor.Spec.ExternalLabels {
 		m[model.LabelName(n)] = model.LabelValue(v)
 	}
 	return m
+}
+
+func generateRemoteWrite(monitor *v1alpha1.TidbMonitor) []*config.RemoteWriteConfig {
+	var remoteWriteConfigs []*config.RemoteWriteConfig
+	for _, remoteWrite := range monitor.Spec.Prometheus.RemoteWrite {
+		url, err := client.ParseHostURL(remoteWrite.URL)
+		if err != nil {
+			klog.Errorf("remote write url[%s] config fail to parse, err:%v", remoteWrite.URL, err)
+			continue
+		}
+		httpClientConfig := config.HTTPClientConfig{
+			BearerTokenFile: remoteWrite.BearerTokenFile,
+		}
+		if remoteWrite.TLSConfig != nil {
+			httpClientConfig.TLSConfig = config.TLSConfig{
+				CAFile:             remoteWrite.TLSConfig.CAFile,
+				CertFile:           remoteWrite.TLSConfig.CertFile,
+				KeyFile:            remoteWrite.TLSConfig.KeyFile,
+				ServerName:         remoteWrite.TLSConfig.ServerName,
+				InsecureSkipVerify: remoteWrite.TLSConfig.InsecureSkipVerify,
+			}
+		}
+		var writeRelabelConfigs []*config.RelabelConfig
+		for _, writeRelabelConfig := range remoteWrite.WriteRelabelConfigs {
+			relabelConfig := &config.RelabelConfig{}
+			if len(writeRelabelConfig.SourceLabels) > 0 {
+				relabelConfig.SourceLabels = writeRelabelConfig.SourceLabels
+			}
+			if writeRelabelConfig.Separator != "" {
+				relabelConfig.Separator = writeRelabelConfig.Separator
+			}
+			if writeRelabelConfig.TargetLabel != "" {
+				relabelConfig.TargetLabel = writeRelabelConfig.TargetLabel
+			}
+			if writeRelabelConfig.Regex != "" {
+				regex, err := config.NewRegexp(writeRelabelConfig.Regex)
+				if err != nil {
+					continue
+				}
+				relabelConfig.Regex = regex
+			}
+			if writeRelabelConfig.Modulus != uint64(0) {
+				relabelConfig.Modulus = writeRelabelConfig.Modulus
+			}
+			if writeRelabelConfig.Replacement != "" {
+				relabelConfig.Replacement = writeRelabelConfig.Replacement
+			}
+			if writeRelabelConfig.Action != "" {
+				relabelConfig.Action = writeRelabelConfig.Action
+			}
+			writeRelabelConfigs = append(writeRelabelConfigs, relabelConfig)
+		}
+
+		remoteWriteConfig := &config.RemoteWriteConfig{
+			URL:                 &config.URL{URL: url},
+			RemoteTimeout:       remoteWrite.RemoteTimeout,
+			WriteRelabelConfigs: writeRelabelConfigs,
+			HTTPClientConfig:    httpClientConfig,
+		}
+		if remoteWrite.QueueConfig != nil {
+			queueConfig := config.QueueConfig{}
+
+			if remoteWrite.QueueConfig.Capacity != 0 {
+				queueConfig.Capacity = remoteWrite.QueueConfig.Capacity
+			}
+			if remoteWrite.QueueConfig.MaxShards != 0 {
+				queueConfig.MaxShards = remoteWrite.QueueConfig.MaxShards
+			}
+			if remoteWrite.QueueConfig.MaxSamplesPerSend != 0 {
+				queueConfig.MaxSamplesPerSend = remoteWrite.QueueConfig.MaxSamplesPerSend
+			}
+			if remoteWrite.QueueConfig.BatchSendDeadline != time.Duration(0) {
+				queueConfig.BatchSendDeadline = remoteWrite.QueueConfig.BatchSendDeadline
+			}
+			if remoteWrite.QueueConfig.MaxRetries != 0 {
+				queueConfig.MaxRetries = remoteWrite.QueueConfig.MaxRetries
+			}
+			if remoteWrite.QueueConfig.MinBackoff != time.Duration(0) {
+				queueConfig.MinBackoff = remoteWrite.QueueConfig.MinBackoff
+			}
+			if remoteWrite.QueueConfig.MaxBackoff != time.Duration(0) {
+				queueConfig.MaxBackoff = remoteWrite.QueueConfig.MaxBackoff
+			}
+			remoteWriteConfig.QueueConfig = queueConfig
+		}
+		remoteWriteConfigs = append(remoteWriteConfigs, remoteWriteConfig)
+	}
+	return remoteWriteConfigs
 }

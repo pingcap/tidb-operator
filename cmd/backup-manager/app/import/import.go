@@ -14,6 +14,7 @@
 package _import
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os/exec"
@@ -42,14 +43,14 @@ func (ro *Options) getRestoreDataPath() string {
 	return filepath.Join(constants.BackupRootPath, backupSuffix)
 }
 
-func (ro *Options) downloadBackupData(localPath string, opts []string) error {
+func (ro *Options) downloadBackupData(ctx context.Context, localPath string, opts []string) error {
 	if err := backupUtil.EnsureDirectoryExist(filepath.Dir(localPath)); err != nil {
 		return err
 	}
 
 	remoteBucket := backupUtil.NormalizeBucketURI(ro.BackupPath)
 	args := backupUtil.ConstructRcloneArgs(constants.RcloneConfigArg, opts, "copyto", remoteBucket, localPath, true)
-	rcCopy := exec.Command("rclone", args...)
+	rcCopy := exec.CommandContext(ctx, "rclone", args...)
 
 	stdOut, err := rcCopy.StdoutPipe()
 	if err != nil {
@@ -82,7 +83,7 @@ func (ro *Options) downloadBackupData(localPath string, opts []string) error {
 	return nil
 }
 
-func (ro *Options) loadTidbClusterData(restorePath string, restore *v1alpha1.Restore) error {
+func (ro *Options) loadTidbClusterData(ctx context.Context, restorePath string, restore *v1alpha1.Restore) error {
 	tableFilter := restore.Spec.TableFilter
 
 	if exist := backupUtil.IsDirExist(restorePath); !exist {
@@ -118,7 +119,7 @@ func (ro *Options) loadTidbClusterData(restorePath string, restore *v1alpha1.Res
 
 	klog.Infof("The lightning process is ready, command \"%s %s\"", binPath, strings.Join(args, " "))
 
-	output, err := exec.Command(binPath, args...).CombinedOutput()
+	output, err := exec.CommandContext(ctx, binPath, args...).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("cluster %s, execute loader command %v failed, output: %s, err: %v", ro, args, string(output), err)
 	}
@@ -126,6 +127,7 @@ func (ro *Options) loadTidbClusterData(restorePath string, restore *v1alpha1.Res
 }
 
 // unarchiveBackupData unarchive backup data to dest dir
+// NOTE: no context/timeout supported for `tarGz.Unarchive`, this may cause to be KILLed when blocking.
 func unarchiveBackupData(backupFile, destDir string) (string, error) {
 	var unarchiveBackupPath string
 	if err := backupUtil.EnsureDirectoryExist(destDir); err != nil {

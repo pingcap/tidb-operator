@@ -10,7 +10,7 @@ spec:
   #######################
 
   ## TiDB cluster version
-  version: "v4.0.9"
+  version: "v4.0.10"
 
   ## Time zone of TiDB cluster Pods
   timezone: UTC
@@ -183,7 +183,7 @@ spec:
     #############################
 
     ## The following block overwrites TiDB cluster-level configurations in `spec`
-    # version: "v4.0.9"
+    # version: "v4.0.10"
     # imagePullPolicy: IfNotPresent
     # imagePullSecrets: secretName
     # hostNetwork: false
@@ -364,7 +364,7 @@ spec:
     ###############################
 
     ## The following block overwrites TiDB cluster-level configurations in `spec`
-    # version: "v4.0.9"
+    # version: "v4.0.10"
     # imagePullPolicy: IfNotPresent
     # imagePullSecrets: secretName
     # hostNetwork: false
@@ -446,7 +446,7 @@ spec:
     ##   - `command`, which uses curl to access the /status path on port 10080 of the pod
     ## This is supported from TiDB Operator v1.1.7
     # readinessProbe:
-    #   # The `command` type is only supported after tidb v4.0.9, ref: https://github.com/pingcap/tidb/pull/20694
+    #   # The `command` type is only supported after tidb v4.0.10, ref: https://github.com/pingcap/tidb/pull/20694
     #   type: command
 
     ## when enabled, TiDB will accept TLS encrypted connections from MySQL client
@@ -461,8 +461,9 @@ spec:
 
     ## if enabled, the slow log will be shown in a separate sidecar container
     # separateSlowLog: true
-    # # configures separate sidecar container, where `image` & `imagePullPolicy` will be overwritten by
-    # # the same field in `TidbCluster.helper`
+    # slowLogVolumeName: ""
+    ## configures separate sidecar container, where `image` & `imagePullPolicy` will be overwritten by
+    ## the same field in `TidbCluster.helper`
     # slowLogTailer:
     #   requests:
     #     cpu: 1000m
@@ -563,7 +564,7 @@ spec:
     ###############################
 
     ## The following block overwrites TiDB cluster-level configurations in `spec`
-    # version: "v4.0.9"
+    # version: "v4.0.10"
     # imagePullPolicy: IfNotPresent
     # imagePullSecrets: secretName
     # hostNetwork: false
@@ -644,6 +645,21 @@ spec:
     ## Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/configure-a-tidb-cluster#mountclusterclientsecret
     mountClusterClientSecret: true
 
+    ## if enabled, the RocksDB log will be shown in a separate sidecar container
+    separateRocksDBLog: true
+
+    ## if enabled, the Raft log will be shown in a separate sidecar container
+    separateRaftLog: true
+
+    ## configures RocksDB/Raft log sidecar container resource requirements
+    # logTailer:
+    #   requests:
+    #     cpu: 1000m
+    #     memory: 1Gi
+    #   limits:
+    #     cpu: 2000m
+    #     memory: 2Gi
+
     ## The storageClassName of the persistent volume for TiKV data storage.
     # storageClassName: ""
 
@@ -709,7 +725,7 @@ spec:
   ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/deploy-tidb-binlog/#deploy-pump
   # pump:
   #   baseImage: pingcap/tidb-binlog
-  #   version: "v4.0.9"
+  #   version: "v4.0.10"
   #   replicas: 1
   #   storageClassName: local-storage
   #   requests:
@@ -746,7 +762,7 @@ spec:
   ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/deploy-ticdc/
   # ticdc:
   #   baseImage: pingcap/ticdc
-  #   version: "v4.0.9"
+  #   version: "v4.0.10"
   #   replicas: 3
   #   storageClassName: local-storage
   #   requests:
@@ -788,7 +804,7 @@ spec:
   #   # Basic TiFlash Configuration #
   #   ###############################
   #   baseImage: pingcap/tiflash
-  #   version: "v4.0.9"
+  #   version: "v4.0.10"
   #   replicas: 1
   #   # limits:
   #   #   cpu: 2000m

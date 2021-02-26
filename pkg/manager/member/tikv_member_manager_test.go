@@ -369,6 +369,25 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 				g.Expect(len(tc.Status.TiKV.Stores)).To(Equal(0))
 			},
 		},
+		{
+			name: "enable separate RocksDB and Raft log on the fly",
+			modify: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.TiKV.SeparateRocksDBLog = pointer.BoolPtr(true)
+				tc.Spec.TiKV.SeparateRaftLog = pointer.BoolPtr(true)
+			},
+			pdStores:                     &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
+			tombstoneStores:              &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
+			errWhenUpdateStatefulSet:     false,
+			errWhenUpdateTiKVPeerService: false,
+			errWhenGetStores:             false,
+			err:                          false,
+			expectTiKVPeerServiceFn:      nil,
+			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(set.Spec.Template.Spec.Containers).To(HaveLen(3))
+			},
+			expectTidbClusterFn: nil,
+		},
 	}
 
 	for i := range tests {
@@ -2041,7 +2060,7 @@ func TestTiKVInitContainers(t *testing.T) {
 			expectedInit: []corev1.Container{
 				{
 					Name:  "init",
-					Image: "busybox:1.26.2",
+					Image: "busybox:1.33.0",
 					Command: []string{
 						"sh",
 						"-c",
@@ -2228,7 +2247,7 @@ func TestTiKVInitContainers(t *testing.T) {
 			expectedInit: []corev1.Container{
 				{
 					Name:  "init",
-					Image: "busybox:1.26.2",
+					Image: "busybox:1.33.0",
 					Command: []string{
 						"sh",
 						"-c",

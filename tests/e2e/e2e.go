@@ -147,7 +147,7 @@ func setupSuite() {
 	// The default storage class of kind is local-path-provisioner which
 	// consumes local storage like local-volume-provisioner. However, it's not
 	// stable in our e2e testing.
-	if framework.TestContext.Provider == "gke" || framework.TestContext.Provider == "aws" || framework.TestContext.Provider == "kind" {
+	if framework.TestContext.Provider == "gke" || framework.TestContext.Provider == "aws" {
 		defaultSCName := "local-storage"
 		list, err := c.StorageV1().StorageClasses().List(metav1.ListOptions{})
 		framework.ExpectNoError(err, "list storage class failed")
@@ -196,7 +196,7 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	}{
 		{
 			text: "Clear all helm releases",
-			cmd:  "helm ls --all --short | xargs -n 1 -r helm delete --purge",
+			cmd:  "helm ls --all --short | xargs -n 1 -r helm uninstall",
 		},
 		{
 			text: "Clear tidb-operator apiservices",

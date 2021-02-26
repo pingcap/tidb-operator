@@ -43,7 +43,7 @@ spec:
     service:
       type: NodePort
     slowLogTailer:
-      image: busybox:1.26.2
+      image: busybox:1.33.0
       imagePullPolicy: IfNotPresent
       limits:
         cpu: 100m
@@ -71,4 +71,4 @@ spec:
       storage: 10Gi
     storageClassName: local-storage
   timezone: UTC
-  version: v4.0.9
+  version: v4.0.10

@@ -5,7 +5,7 @@ metadata:
 spec:
   configUpdateStrategy: RollingUpdate
   helper:
-    image: busybox:1.31.1
+    image: busybox:1.33.0
   hostNetwork: false
   imagePullPolicy: IfNotPresent
   pd:
@@ -109,4 +109,4 @@ spec:
   timezone: UTC
   tlsCluster:
     enabled: false
-  version: v4.0.9
+  version: v4.0.10

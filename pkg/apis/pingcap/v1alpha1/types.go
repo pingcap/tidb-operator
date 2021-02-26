@@ -58,8 +58,12 @@ const (
 	DMMasterMemberType MemberType = "dm-master"
 	// DMWorkerMemberType is dm-worker container type
 	DMWorkerMemberType MemberType = "dm-worker"
-	// SlowLogTailerMemberType is tidb log tailer container type
+	// SlowLogTailerMemberType is tidb slow log tailer container type
 	SlowLogTailerMemberType MemberType = "slowlog"
+	// RocksDBLogTailerMemberType is tikv rocksdb log tailer container type
+	RocksDBLogTailerMemberType MemberType = "rocksdblog"
+	// RaftLogTailerMemberType is tikv raft log tailer container type
+	RaftLogTailerMemberType MemberType = "raftlog"
 	// TidbMonitorMemberType is tidbmonitor type
 	TidbMonitorMemberType MemberType = "tidbmonitor"
 	// UnknownMemberType is unknown container type
@@ -414,6 +418,20 @@ type TiKVSpec struct {
 	// +optional
 	MaxFailoverCount *int32 `json:"maxFailoverCount,omitempty"`
 
+	// Whether output the RocksDB log in a separate sidecar container
+	// Optional: Defaults to false
+	// +optional
+	SeparateRocksDBLog *bool `json:"separateRocksDBLog,omitempty"`
+
+	// Whether output the Raft log in a separate sidecar container
+	// Optional: Defaults to false
+	// +optional
+	SeparateRaftLog *bool `json:"separateRaftLog,omitempty"`
+
+	// LogTailer is the configurations of the log tailers for TiKV
+	// +optional
+	LogTailer *LogTailerSpec `json:"logTailer,omitempty"`
+
 	// The storageClassName of the persistent volume for TiKV data storage.
 	// Defaults to Kubernetes default storage class.
 	// +optional
@@ -443,13 +461,17 @@ type TiKVSpec struct {
 	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
 
 	// EvictLeaderTimeout indicates the timeout to evict tikv leader, in the format of Go Duration.
-	// Defaults to 3m
+	// Defaults to 10m
 	// +optional
 	EvictLeaderTimeout *string `json:"evictLeaderTimeout,omitempty"`
 
 	// StorageVolumes configure additional storage for TiKV pods.
 	// +optional
 	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
+
+	// StoreLabels configures additional labels for TiKV stores.
+	// +optional
+	StoreLabels []string `json:"storeLabels,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members
@@ -604,6 +626,10 @@ type TiDBSpec struct {
 	// +optional
 	SeparateSlowLog *bool `json:"separateSlowLog,omitempty"`
 
+	// Optional volume name configuration for slow query log.
+	// +optional
+	SlowLogVolumeName string `json:"slowLogVolumeName,omitempty"`
+
 	// The specification of the slow log tailer sidecar
 	// +optional
 	SlowLogTailer *TiDBSlowLogTailerSpec `json:"slowLogTailer,omitempty"`
@@ -700,7 +726,7 @@ type PumpSpec struct {
 // +k8s:openapi-gen=true
 type HelperSpec struct {
 	// Image used to tail slow log and set kernel parameters if necessary, must have `tail` and `sysctl` installed
-	// Optional: Defaults to busybox:1.26.2
+	// Optional: Defaults to busybox:1.33.0
 	// +optional
 	Image *string `json:"image,omitempty"`
 
@@ -807,6 +833,10 @@ type ComponentSpec struct {
 	// - SLOW_LOG_FILE
 	// +optional
 	Env []corev1.EnvVar `json:"env,omitempty"`
+
+	// Init containers of the components
+	// +optional
+	InitContainers []corev1.Container `json:"initContainers,omitempty"`
 
 	// Additional containers of the component.
 	// +optional
