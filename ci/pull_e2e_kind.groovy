@@ -107,6 +107,8 @@ spec:
     - name: docker-graph
       mountPath: /docker-graph
     # use memory storage for etcd hostpath in kind cluster
+    - name: kind-data-dir
+      mountPath: /kind-data
     - name: etcd-data-dir
       mountPath: /mnt/tmpfs/etcd
   volumes:
@@ -121,6 +123,8 @@ spec:
   - name: docker-root
     emptyDir: {}
   - name: docker-graph
+    emptyDir: {}
+  - name: kind-data-dir
     emptyDir: {}
   - name: etcd-data-dir
     emptyDir:
@@ -201,26 +205,56 @@ def build(String name, String code, Map resources = e2ePodResources) {
                             export GOPATH=${WORKSPACE}/go
                             export ARTIFACTS=${ARTIFACTS}
                             export RUNNER_SUITE_NAME=${name}
+
+                            echo "info: create local path for data and coverage"
+                            mount --make-rshared /
+                            mkdir -p /kind-data/control-plane/coverage
+                            mkdir -p /kind-data/worker1/coverage
+                            mkdir -p /kind-data/worker2/coverage
+                            mkdir -p /kind-data/worker3/coverage
                             ${code}
                             """
                         }
+                        stage('Coverage') {
+                            withCredentials([
+                                string(credentialsId: "tp-codecov-token", variable: 'CODECOV_TOKEN')
+                            ]) {
+                                sh """#!/bin/bash
+                                echo "info: list all coverage files"
+                                ls -dla /kind-data/control-plane/coverage/*
+                                ls -dla /kind-data/worker1/coverage/*
+                                ls -dla /kind-data/worker2/coverage/*
+                                ls -dla /kind-data/worker3/coverage/*
+                                echo "info: merging coverage files"
+                                cp /kind-data/control-plane/coverage/*.cov /tmp
+                                cp /kind-data/worker1/coverage/*.cov /tmp
+                                cp /kind-data/worker2/coverage/*.cov /tmp
+                                cp /kind-data/worker3/coverage/*.cov /tmp
+                                ./bin/gocovmerge /tmp/*.cov > /tmp/coverage.txt
+                                echo "info: uploading coverage to codecov"
+                                bash <(curl -s https://codecov.io/bash) -t ${CODECOV_TOKEN} -F e2e -n tidb-operator -f /tmp/coverage.txt
+                                """
+                            }
+                        }
                     }
                 } finally {
-                    dir(ARTIFACTS) {
-                        sh """#!/bin/bash
-                        echo "info: change ownerships for jenkins"
-                        chown -R 1000:1000 .
-                        echo "info: print total size of artifacts"
-                        du -sh .
-                        echo "info: list all files"
-                        find .
-                        echo "info: moving all artifacts into a sub-directory"
-                        shopt -s extglob
-                        mkdir ${name}
-                        mv !(${name}) ${name}/
-                        """
-                        archiveArtifacts artifacts: "${name}/**", allowEmptyArchive: true
-                        junit testResults: "${name}/*.xml", allowEmptyResults: true, keepLongStdio: true
+                    stage('Artifacts') {
+                        dir(ARTIFACTS) {
+                            sh """#!/bin/bash
+                            echo "info: change ownerships for jenkins"
+                            chown -R 1000:1000 .
+                            echo "info: print total size of artifacts"
+                            du -sh .
+                            echo "info: list all files"
+                            find .
+                            echo "info: moving all artifacts into a sub-directory"
+                            shopt -s extglob
+                            mkdir ${name}
+                            mv !(${name}) ${name}/
+                            """
+                            archiveArtifacts artifacts: "${name}/**", allowEmptyArchive: true
+                            junit testResults: "${name}/*.xml", allowEmptyResults: true, keepLongStdio: true
+                        }
                     }
                 }
             }
@@ -300,13 +334,16 @@ try {
                         ]) {
                             sh """#!/bin/bash
                             set -eu
-                            echo "info: building"
-                            make build e2e-build
                             if [ "${GIT_REF}" == "master" ]; then
                                 echo "info: run unit tests and report coverage results for master branch"
                                 make test GOFLAGS='-race' GO_COVER=y
                                 curl -s https://codecov.io/bash | bash -s - -t \${CODECOV_TOKEN} || echo 'Codecov did not collect coverage reports'
                             fi
+                            echo "info: building"
+                            echo "info: patch charts and golang code to enable coverage profile"
+                            ./hack/e2e-patch-codecov.sh
+                            E2E=y make build e2e-build
+                            make gocovmerge
                             """
                         }
                     }
@@ -320,9 +357,13 @@ try {
                             echo "info: build and push images for e2e"
                             echo "test: show docker daemon config file"
                             cat /etc/docker/daemon.json
+<<<<<<< HEAD
                             NO_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} make docker-push e2e-docker-push
+=======
+                            E2E=y NO_BUILD=y DOCKER_REPO=hub-dev.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} make docker-push e2e-docker-push
+>>>>>>> 845a716d... e2e: add test coverage (#3725)
                             echo "info: download binaries for e2e"
-                            SKIP_BUILD=y SKIP_IMAGE_BUILD=y SKIP_UP=y SKIP_TEST=y SKIP_DOWN=y ./hack/e2e.sh
+                            E2E=y SKIP_BUILD=y SKIP_IMAGE_BUILD=y SKIP_UP=y SKIP_TEST=y SKIP_DOWN=y ./hack/e2e.sh
                             echo "info: change ownerships for jenkins"
                             # we run as root in our pods, this is required
                             # otherwise jenkins agent will fail because of the lack of permission
@@ -336,7 +377,11 @@ try {
         }
         }
 
+<<<<<<< HEAD
         def GLOBALS = "KIND_ETCD_DATADIR=/mnt/tmpfs/etcd SKIP_BUILD=y SKIP_IMAGE_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} DELETE_NAMESPACE_ON_FAILURE=true GINKGO_NO_COLOR=y"
+=======
+        def GLOBALS = "KIND_DATA_HOSTPATH=/kind-data KIND_ETCD_DATADIR=/mnt/tmpfs/etcd E2E=y SKIP_BUILD=y SKIP_IMAGE_BUILD=y DOCKER_REPO=hub-dev.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} DELETE_NAMESPACE_ON_FAILURE=${params.DELETE_NAMESPACE_ON_FAILURE} GINKGO_NO_COLOR=y"
+>>>>>>> 845a716d... e2e: add test coverage (#3725)
         build("tidb-operator", "${GLOBALS} GINKGO_NODES=${params.GINKGO_NODES} ./hack/e2e.sh -- ${params.E2E_ARGS}")
 
         if (GIT_REF ==~ /^(master|)$/ || GIT_REF ==~ /^(release-.*)$/
