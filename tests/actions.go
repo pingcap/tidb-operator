@@ -532,7 +532,7 @@ func (oa *OperatorActions) DeployOperatorOrDie(info *OperatorConfig) {
 	}
 }
 
-func (oa *OperatorActions) CleanOperator(info *OperatorConfig) error {
+func CleanOperator(info *OperatorConfig) error {
 	log.Logf("cleaning tidb-operator %s", info.ReleaseName)
 
 	cmd := fmt.Sprintf("helm uninstall %s --namespace %s",
