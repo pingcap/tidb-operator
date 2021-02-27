@@ -29,32 +29,22 @@ import (
 )
 
 func ComponentUpgrade(context *ComponentContext, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	component := context.component
-
-	switch component {
-	case label.PDLabelVal:
-		return ComponentGracefulUpgrade(context, oldSet, newSet)
-	case label.TiKVLabelVal:
-		return componentTiKVUpgrade(context, oldSet, newSet)
-	case label.TiFlashLabelVal:
-		return componentTiFlashUpgrade(context, oldSet, newSet)
-	case label.TiDBLabelVal:
-		return componentTiDBUpgrade(context, oldSet, newSet)
-	}
-	return nil
-}
-
-func componentTiKVUpgrade(context *ComponentContext, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	tc := context.tc
 	dependencies := context.dependencies
+	component := context.component
 
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	var status *v1alpha1.TiKVStatus
-	if tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.TiKVScaling() {
-		klog.Infof("TidbCluster: [%s/%s]'s pd status is %v, tikv status is %v, can not upgrade tikv",
-			ns, tcName, tc.Status.PD.Phase, tc.Status.TiKV.Phase)
+	if component == label.TiDBLabelVal {
+		// when scale replica to 0 , all nodes crash and tidb is in upgrade phase, this method will throw error about pod is upgrade.
+		// so  directly return nil when scale replica to 0.
+		if tc.Spec.TiDB.Replicas == int32(0) {
+			return nil
+		}
+	}
+
+	if componentUpgradeCheckPrequisiteBeforeUpgrade(context) {
 		_, podSpec, err := GetLastAppliedConfig(oldSet)
 		if err != nil {
 			return err
@@ -62,18 +52,18 @@ func componentTiKVUpgrade(context *ComponentContext, oldSet *apps.StatefulSet, n
 		newSet.Spec.Template.Spec = *podSpec
 		return nil
 	}
-	status = &tc.Status.TiKV
 
-	if !status.Synced {
-		return fmt.Errorf("cluster: [%s/%s]'s tikv status sync failed, can not to be upgraded", ns, tcName)
+	if err := componentUpgradeCheckPaused(context); err != nil {
+		return err
 	}
 
-	status.Phase = v1alpha1.UpgradePhase
+	componentUpgradeSyncStatusPhase(context)
+
 	if !templateEqual(newSet, oldSet) {
 		return nil
 	}
 
-	if status.StatefulSet.UpdateRevision == status.StatefulSet.CurrentRevision {
+	if componentUpgradeCheckStatefulsetUpdateRevision(context) {
 		return nil
 	}
 
@@ -83,36 +73,37 @@ func componentTiKVUpgrade(context *ComponentContext, oldSet *apps.StatefulSet, n
 		// If we encounter this situation, we will let the native statefulset controller do the upgrade completely, which may be unsafe for upgrading tikv.
 		// Therefore, in the production environment, we should try to avoid modifying the tikv statefulset update strategy directly.
 		newSet.Spec.UpdateStrategy = oldSet.Spec.UpdateStrategy
-		klog.Warningf("tidbcluster: [%s/%s] tikv statefulset %s UpdateStrategy has been modified manually", ns, tcName, oldSet.GetName())
+		klog.Warningf("tidbcluster: [%s/%s] statefulset %s UpdateStrategy has been modified manually", ns, tcName, oldSet.GetName())
 		return nil
 	}
 
 	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
+
 	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
 		i := podOrdinals[_i]
-		store := componentGetStoreByOrdinal(tc.GetName(), *status, i)
-		if store == nil {
+		if componentUpgradeCheckIfPodCanUpgradeWithNilStore(context, i) {
 			setUpgradePartition(newSet, i)
 			continue
 		}
-		podName := TikvPodName(tcName, i)
+		podName := getComponentUpgradePod(context, i)
+
 		pod, err := dependencies.PodLister.Pods(ns).Get(podName)
 		if err != nil {
-			return fmt.Errorf("tikvUpgrader.Upgrade: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
+			return fmt.Errorf("Upgrade: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
 		}
 		revision, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
 		if !exist {
 			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tikv pod: [%s] has no label: %s", ns, tcName, podName, apps.ControllerRevisionHashLabelKey)
 		}
 
-		if revision == status.StatefulSet.UpdateRevision {
-
+		if componentUpgradeCheckPodRevision(context, revision) {
 			if pod.Status.Phase != corev1.PodRunning {
-				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not running", ns, tcName, podName)
+				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded pod: [%s] is not running", ns, tcName, podName)
 			}
-			if store.State != v1alpha1.TiKVStateUp {
-				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not all ready", ns, tcName, podName)
+
+			if err := componentCheckIfPodAvailableAfterPodRestarted(context, i, podName); err != nil {
+				return err
 			}
 
 			continue
@@ -122,167 +113,7 @@ func componentTiKVUpgrade(context *ComponentContext, oldSet *apps.StatefulSet, n
 			setUpgradePartition(newSet, i)
 			return nil
 		}
-		return componentUpgradeTiKVPod(context, i, newSet)
-	}
-
-	return nil
-}
-
-func componentTiFlashUpgrade(context *ComponentContext, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	tc := context.tc
-
-	//  Wait for PD, TiKV and TiDB to finish upgrade
-	if tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.Status.TiKV.Phase == v1alpha1.UpgradePhase ||
-		tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
-		_, podSpec, err := GetLastAppliedConfig(oldSet)
-		if err != nil {
-			return err
-		}
-		newSet.Spec.Template.Spec = *podSpec
-		return nil
-	}
-	return nil
-}
-
-func componentTiDBUpgrade(context *ComponentContext, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	tc := context.tc
-	dependencies := context.dependencies
-
-	// when scale replica to 0 , all nodes crash and tidb is in upgrade phase, this method will throw error about pod is upgrade.
-	// so  directly return nil when scale replica to 0.
-	if tc.Spec.TiDB.Replicas == int32(0) {
-		return nil
-	}
-
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-
-	if tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.Status.TiKV.Phase == v1alpha1.UpgradePhase ||
-		tc.Status.Pump.Phase == v1alpha1.UpgradePhase || tc.TiDBScaling() {
-		klog.Infof("TidbCluster: [%s/%s]'s pd status is %s, tikv status is %s, pump status is %s,"+
-			"tidb status is %s, can not upgrade tidb", ns, tcName, tc.Status.PD.Phase, tc.Status.TiKV.Phase,
-			tc.Status.Pump.Phase, tc.Status.TiDB.Phase)
-		_, podSpec, err := GetLastAppliedConfig(oldSet)
-		if err != nil {
-			return err
-		}
-		newSet.Spec.Template.Spec = *podSpec
-		return nil
-	}
-
-	tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
-	if !templateEqual(newSet, oldSet) {
-		return nil
-	}
-
-	if tc.Status.TiDB.StatefulSet.UpdateRevision == tc.Status.TiDB.StatefulSet.CurrentRevision {
-		return nil
-	}
-
-	if oldSet.Spec.UpdateStrategy.Type == apps.OnDeleteStatefulSetStrategyType || oldSet.Spec.UpdateStrategy.RollingUpdate == nil {
-		// Manually bypass tidb-operator to modify statefulset directly, such as modify tidb statefulset's RollingUpdate strategy to OnDelete strategy,
-		// or set RollingUpdate to nil, skip tidb-operator's rolling update logic in order to speed up the upgrade in the test environment occasionally.
-		// If we encounter this situation, we will let the native statefulset controller do the upgrade completely, which may be unsafe for upgrading tidb.
-		// Therefore, in the production environment, we should try to avoid modifying the tidb statefulset update strategy directly.
-		newSet.Spec.UpdateStrategy = oldSet.Spec.UpdateStrategy
-		klog.Warningf("tidbcluster: [%s/%s] tidb statefulset %s UpdateStrategy has been modified manually", ns, tcName, oldSet.GetName())
-		return nil
-	}
-
-	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
-	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
-	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
-		i := podOrdinals[_i]
-		podName := tidbPodName(tcName, i)
-		pod, err := dependencies.PodLister.Pods(ns).Get(podName)
-		if err != nil {
-			return fmt.Errorf("tidbUpgrader.Upgrade: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
-		}
-		revision, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
-		if !exist {
-			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tidb pod: [%s] has no label: %s", ns, tcName, podName, apps.ControllerRevisionHashLabelKey)
-		}
-
-		if revision == tc.Status.TiDB.StatefulSet.UpdateRevision {
-			if member, exist := tc.Status.TiDB.Members[podName]; !exist || !member.Health {
-				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tidb upgraded pod: [%s] is not ready", ns, tcName, podName)
-			}
-			continue
-		}
-		return componentUpgradeTiDBPod(context, i, newSet)
-	}
-
-	return nil
-}
-
-func ComponentGracefulUpgrade(context *ComponentContext, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	// context deserialization
-	tc := context.tc
-	dependencies := context.dependencies
-
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-	if !tc.Status.PD.Synced {
-		return fmt.Errorf("tidbcluster: [%s/%s]'s pd status sync failed, can not to be upgraded", ns, tcName)
-	}
-	if tc.PDScaling() {
-		klog.Infof("TidbCluster: [%s/%s]'s pd is scaling, can not upgrade pd",
-			ns, tcName)
-		_, podSpec, err := GetLastAppliedConfig(oldSet)
-		if err != nil {
-			return err
-		}
-		newSet.Spec.Template.Spec = *podSpec
-		return nil
-	}
-
-	tc.Status.PD.Phase = v1alpha1.UpgradePhase
-	if !templateEqual(newSet, oldSet) {
-		return nil
-	}
-
-	if tc.Status.PD.StatefulSet.UpdateRevision == tc.Status.PD.StatefulSet.CurrentRevision {
-		return nil
-	}
-
-	if oldSet.Spec.UpdateStrategy.Type == apps.OnDeleteStatefulSetStrategyType || oldSet.Spec.UpdateStrategy.RollingUpdate == nil {
-		// Manually bypass tidb-operator to modify statefulset directly, such as modify pd statefulset's RollingUpdate straregy to OnDelete strategy,
-		// or set RollingUpdate to nil, skip tidb-operator's rolling update logic in order to speed up the upgrade in the test environment occasionally.
-		// If we encounter this situation, we will let the native statefulset controller do the upgrade completely, which may be unsafe for upgrading pd.
-		// Therefore, in the production environment, we should try to avoid modifying the pd statefulset update strategy directly.
-		newSet.Spec.UpdateStrategy = oldSet.Spec.UpdateStrategy
-		klog.Warningf("tidbcluster: [%s/%s] pd statefulset %s UpdateStrategy has been modified manually", ns, tcName, oldSet.GetName())
-		return nil
-	}
-
-	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
-	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
-	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
-		i := podOrdinals[_i]
-		podName := PdPodName(tcName, i)
-		pod, err := dependencies.PodLister.Pods(ns).Get(podName)
-		if err != nil {
-			return fmt.Errorf("gracefulUpgrade: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
-		}
-
-		revision, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
-		if !exist {
-			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd pod: [%s] has no label: %s", ns, tcName, podName, apps.ControllerRevisionHashLabelKey)
-		}
-
-		if revision == tc.Status.PD.StatefulSet.UpdateRevision {
-			if member, exist := tc.Status.PD.Members[PdName(tc.Name, i, tc.Namespace, tc.Spec.ClusterDomain)]; !exist || !member.Health {
-				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd upgraded pod: [%s] is not ready", ns, tcName, podName)
-			}
-			continue
-		}
-
-		if dependencies.CLIConfig.PodWebhookEnabled {
-			setUpgradePartition(newSet, i)
-			return nil
-		}
-
-		return ComponentUpgradePDPod(context, i, newSet)
+		return componentUpgradePod(context, i, newSet)
 	}
 
 	return nil
@@ -462,5 +293,179 @@ func componentTiKVendEvictLeader(context *ComponentContext, ordinal int32) error
 		return err
 	}
 	klog.Infof("tikv upgrader: end evict leader storeID: %d ordinal: %d successfully", storeID, ordinal)
+	return nil
+}
+
+func componentUpgradeCheckPrequisiteBeforeUpgrade(context *ComponentContext) bool {
+	tc := context.tc
+	component := context.component
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	var prequisite bool
+	switch component {
+	case label.PDLabelVal:
+		prequisite = tc.PDScaling()
+		if prequisite {
+			klog.Infof("TidbCluster: [%s/%s]'s pd is scaling, can not upgrade pd",
+				ns, tcName)
+		}
+	case label.TiKVLabelVal:
+		prequisite = tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.TiKVScaling()
+		if prequisite {
+			klog.Infof("TidbCluster: [%s/%s]'s pd status is %v, tikv status is %v, can not upgrade tikv",
+				ns, tcName, tc.Status.PD.Phase, tc.Status.TiKV.Phase)
+		}
+	case label.TiDBLabelVal:
+		prequisite = tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.Status.TiKV.Phase == v1alpha1.UpgradePhase ||
+			tc.Status.Pump.Phase == v1alpha1.UpgradePhase || tc.TiDBScaling()
+		if prequisite {
+			klog.Infof("TidbCluster: [%s/%s]'s pd status is %s, tikv status is %s, pump status is %s,"+
+				"tidb status is %s, can not upgrade tidb", ns, tcName, tc.Status.PD.Phase, tc.Status.TiKV.Phase,
+				tc.Status.Pump.Phase, tc.Status.TiDB.Phase)
+		}
+	}
+
+	return prequisite
+}
+
+func componentUpgradeCheckPaused(context *ComponentContext) error {
+	tc := context.tc
+	component := context.component
+
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	switch component {
+	case label.PDLabelVal:
+		if !tc.Status.PD.Synced {
+			return fmt.Errorf("tidbcluster: [%s/%s]'s pd status sync failed, can not to be upgraded", ns, tcName)
+		}
+	case label.TiKVLabelVal:
+		if !tc.Status.TiKV.Synced {
+			return fmt.Errorf("tidbcluster: [%s/%s]'s tikv status sync failed, can not to be upgraded", ns, tcName)
+		}
+	}
+
+	return nil
+}
+
+func componentUpgradeSyncStatusPhase(context *ComponentContext) {
+	tc := context.tc
+	component := context.component
+
+	switch component {
+	case label.PDLabelVal:
+		tc.Status.PD.Phase = v1alpha1.UpgradePhase
+	case label.TiKVLabelVal:
+		tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+	case label.TiDBLabelVal:
+		tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
+	}
+}
+
+func componentUpgradeCheckStatefulsetUpdateRevision(context *ComponentContext) bool {
+	tc := context.tc
+	component := context.component
+
+	var updateVersionCheck bool
+	switch component {
+	case label.PDLabelVal:
+		updateVersionCheck = tc.Status.PD.StatefulSet.UpdateRevision == tc.Status.PD.StatefulSet.CurrentRevision
+	case label.TiKVLabelVal:
+		updateVersionCheck = tc.Status.TiKV.StatefulSet.UpdateRevision == tc.Status.TiKV.StatefulSet.CurrentRevision
+	case label.TiDBLabelVal:
+		updateVersionCheck = tc.Status.TiDB.StatefulSet.UpdateRevision == tc.Status.TiDB.StatefulSet.CurrentRevision
+	}
+	return updateVersionCheck
+}
+
+func getComponentUpgradePod(context *ComponentContext, ordinal int32) string {
+	component := context.component
+	tc := context.tc
+
+	tcName := tc.Name
+	var podName string
+
+	switch component {
+	case label.PDLabelVal:
+		podName = PdPodName(tcName, ordinal)
+	case label.TiKVLabelVal:
+		podName = TikvPodName(tcName, ordinal)
+	}
+
+	return podName
+}
+
+func componentUpgradeCheckPodRevision(context *ComponentContext, revision string) bool {
+	tc := context.tc
+	component := context.component
+
+	var revisionCheck bool
+	switch component {
+	case label.PDLabelVal:
+		revisionCheck = revision == tc.Status.PD.StatefulSet.UpdateRevision
+	case label.TiKVLabelVal:
+		revisionCheck = tc.Status.TiKV.StatefulSet.UpdateRevision == revision
+	}
+	return revisionCheck
+
+}
+
+func componentUpgradeCheckIfPodCanUpgradeWithNilStore(context *ComponentContext, ordinal int32) bool {
+	tc := context.tc
+	component := context.component
+
+	var directUpgrade bool
+	directUpgrade = false
+
+	switch component {
+	case label.PDLabelVal:
+		directUpgrade = false
+	case label.TiKVLabelVal:
+		store := componentGetStoreByOrdinal(tc.GetName(), tc.Status.TiKV, ordinal)
+		if store == nil {
+			directUpgrade = true
+		}
+	}
+	return directUpgrade
+}
+
+func componentCheckIfPodAvailableAfterPodRestarted(context *ComponentContext, ordinal int32, podName string) error {
+	tc := context.tc
+	component := context.component
+
+	ns := tc.Namespace
+	tcName := tc.Name
+
+	switch component {
+	case label.PDLabelVal:
+		if member, exist := tc.Status.PD.Members[PdName(tc.Name, ordinal, tc.Namespace, tc.Spec.ClusterDomain)]; !exist || !member.Health {
+			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd upgraded pod: [%s] is not ready", ns, tcName, podName)
+		}
+	case label.TiKVLabelVal:
+		store := componentGetStoreByOrdinal(tc.GetName(), tc.Status.TiKV, ordinal)
+		if store.State != v1alpha1.TiKVStateUp {
+			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not all ready", ns, tcName, podName)
+		}
+	case label.TiDBLabelVal:
+		if member, exist := tc.Status.TiDB.Members[podName]; !exist || !member.Health {
+			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tidb upgraded pod: [%s] is not ready", ns, tcName, podName)
+		}
+	}
+
+	return nil
+}
+
+func componentUpgradePod(context *ComponentContext, ordinal int32, newSet *apps.StatefulSet) error {
+	component := context.component
+
+	switch component {
+	case label.PDLabelVal:
+		return ComponentUpgradePDPod(context, ordinal, newSet)
+	case label.TiKVLabelVal:
+		return componentUpgradeTiKVPod(context, ordinal, newSet)
+	}
+
 	return nil
 }
