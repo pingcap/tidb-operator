@@ -2238,9 +2238,7 @@ int32
 <td>
 <em>(Optional)</em>
 <p>Replicas is the number of desired replicas.
-This is a pointer to distinguish between explicit zero and unspecified.
-Defaults to 1.
-More info: <a href="https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller#what-is-a-replicationcontroller">https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller#what-is-a-replicationcontroller</a></p>
+Defaults to 1.</p>
 </td>
 </tr>
 </table>
@@ -20291,9 +20289,7 @@ int32
 <td>
 <em>(Optional)</em>
 <p>Replicas is the number of desired replicas.
-This is a pointer to distinguish between explicit zero and unspecified.
-Defaults to 1.
-More info: <a href="https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller#what-is-a-replicationcontroller">https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller#what-is-a-replicationcontroller</a></p>
+Defaults to 1.</p>
 </td>
 </tr>
 </tbody>
