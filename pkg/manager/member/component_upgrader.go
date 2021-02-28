@@ -86,7 +86,7 @@ func ComponentUpgrade(context *ComponentContext, oldSet *apps.StatefulSet, newSe
 			setUpgradePartition(newSet, i)
 			continue
 		}
-		podName := getComponentUpgradePod(context, i)
+		podName := getComponentUpgradePodName(context, i)
 
 		pod, err := dependencies.PodLister.Pods(ns).Get(podName)
 		if err != nil {
@@ -109,54 +109,13 @@ func ComponentUpgrade(context *ComponentContext, oldSet *apps.StatefulSet, newSe
 			continue
 		}
 
-		if dependencies.CLIConfig.PodWebhookEnabled {
+		if component != label.TiFlashLabelVal && dependencies.CLIConfig.PodWebhookEnabled {
 			setUpgradePartition(newSet, i)
 			return nil
 		}
-		return componentUpgradePod(context, i, newSet)
+		return componentUpgradeToUpgradePod(context, i, newSet)
 	}
 
-	return nil
-}
-
-func ComponentUpgradePDPod(context *ComponentContext, ordinal int32, newSet *apps.StatefulSet) error {
-	// context deserialization
-	tc := context.tc
-
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-	upgradePdName := PdName(tcName, ordinal, tc.Namespace, tc.Spec.ClusterDomain)
-	upgradePodName := PdPodName(tcName, ordinal)
-	if tc.Status.PD.Leader.Name == upgradePdName || tc.Status.PD.Leader.Name == upgradePodName {
-		var targetName string
-		if tc.PDStsActualReplicas() > 1 {
-			targetOrdinal := helper.GetMaxPodOrdinal(*newSet.Spec.Replicas, newSet)
-			if ordinal == targetOrdinal {
-				targetOrdinal = helper.GetMinPodOrdinal(*newSet.Spec.Replicas, newSet)
-			}
-			targetName = PdName(tcName, targetOrdinal, tc.Namespace, tc.Spec.ClusterDomain)
-			if _, exist := tc.Status.PD.Members[targetName]; !exist {
-				targetName = PdPodName(tcName, targetOrdinal)
-			}
-		} else {
-			for _, member := range tc.Status.PD.PeerMembers {
-				if member.Name != upgradePdName && member.Health {
-					targetName = member.Name
-					break
-				}
-			}
-		}
-		if len(targetName) > 0 {
-			err := ComponentTransferPDLeaderTo(context, targetName)
-			if err != nil {
-				klog.Errorf("pd upgrader: failed to transfer pd leader to: %s, %v", targetName, err)
-				return err
-			}
-			klog.Infof("pd upgrader: transfer pd leader to: %s successfully", targetName)
-			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd member: [%s] is transferring leader to pd member: [%s]", ns, tcName, upgradePdName, targetName)
-		}
-	}
-	setUpgradePartition(newSet, ordinal)
 	return nil
 }
 
@@ -176,45 +135,6 @@ func componentGetStoreByOrdinal(name string, status v1alpha1.TiKVStatus, ordinal
 		}
 	}
 	return nil
-}
-
-func componentUpgradeTiKVPod(context *ComponentContext, ordinal int32, newSet *apps.StatefulSet) error {
-	tc := context.tc
-	dependencies := context.dependencies
-
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-	upgradePodName := TikvPodName(tcName, ordinal)
-	upgradePod, err := dependencies.PodLister.Pods(ns).Get(upgradePodName)
-	if err != nil {
-		return fmt.Errorf("upgradeTiKVPod: failed to get pods %s for cluster %s/%s, error: %s", upgradePodName, ns, tcName, err)
-	}
-
-	for _, store := range tc.Status.TiKV.Stores {
-		if store.PodName == upgradePodName {
-			storeID, err := strconv.ParseUint(store.ID, 10, 64)
-			if err != nil {
-				return err
-			}
-			_, evicting := upgradePod.Annotations[EvictLeaderBeginTime]
-			if !evicting {
-				return componentTiKVbeginEvictLeader(context, storeID, upgradePod)
-			}
-
-			if componentTiKVreadyToUpgrade(upgradePod, store, tc.TiKVEvictLeaderTimeout()) {
-				err := componentTiKVendEvictLeader(context, ordinal)
-				if err != nil {
-					return err
-				}
-				setUpgradePartition(newSet, ordinal)
-				return nil
-			}
-
-			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tikv pod: [%s] is evicting leader", ns, tcName, upgradePodName)
-		}
-	}
-
-	return controller.RequeueErrorf("tidbcluster: [%s/%s] no store status found for tikv pod: [%s]", ns, tcName, upgradePodName)
 }
 
 func componentUpgradeTiDBPod(context *ComponentContext, ordinal int32, newSet *apps.StatefulSet) error {
@@ -324,6 +244,9 @@ func componentUpgradeCheckPrequisiteBeforeUpgrade(context *ComponentContext) boo
 				"tidb status is %s, can not upgrade tidb", ns, tcName, tc.Status.PD.Phase, tc.Status.TiKV.Phase,
 				tc.Status.Pump.Phase, tc.Status.TiDB.Phase)
 		}
+	case label.TiFlashLabelVal:
+		prequisite = tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.Status.TiKV.Phase == v1alpha1.UpgradePhase ||
+			tc.Status.TiDB.Phase == v1alpha1.UpgradePhase
 	}
 
 	return prequisite
@@ -345,6 +268,10 @@ func componentUpgradeCheckPaused(context *ComponentContext) error {
 		if !tc.Status.TiKV.Synced {
 			return fmt.Errorf("tidbcluster: [%s/%s]'s tikv status sync failed, can not to be upgraded", ns, tcName)
 		}
+	case label.TiFlashLabelVal:
+		if !tc.Status.TiFlash.Synced {
+			return fmt.Errorf("cluster: [%s/%s]'s TiFlash status is not synced, can not upgrade", ns, tcName)
+		}
 	}
 
 	return nil
@@ -361,6 +288,8 @@ func componentUpgradeSyncStatusPhase(context *ComponentContext) {
 		tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
 	case label.TiDBLabelVal:
 		tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
+	case label.TiFlashLabelVal:
+		tc.Status.TiFlash.Phase = v1alpha1.UpgradePhase
 	}
 }
 
@@ -376,11 +305,13 @@ func componentUpgradeCheckStatefulsetUpdateRevision(context *ComponentContext) b
 		updateVersionCheck = tc.Status.TiKV.StatefulSet.UpdateRevision == tc.Status.TiKV.StatefulSet.CurrentRevision
 	case label.TiDBLabelVal:
 		updateVersionCheck = tc.Status.TiDB.StatefulSet.UpdateRevision == tc.Status.TiDB.StatefulSet.CurrentRevision
+	case label.TiFlashLabelVal:
+		updateVersionCheck = tc.Status.TiFlash.StatefulSet.UpdateRevision == tc.Status.TiFlash.StatefulSet.CurrentRevision
 	}
 	return updateVersionCheck
 }
 
-func getComponentUpgradePod(context *ComponentContext, ordinal int32) string {
+func getComponentUpgradePodName(context *ComponentContext, ordinal int32) string {
 	component := context.component
 	tc := context.tc
 
@@ -392,6 +323,8 @@ func getComponentUpgradePod(context *ComponentContext, ordinal int32) string {
 		podName = PdPodName(tcName, ordinal)
 	case label.TiKVLabelVal:
 		podName = TikvPodName(tcName, ordinal)
+	case label.TiFlashLabelVal:
+		podName = TiFlashPodName(tcName, ordinal)
 	}
 
 	return podName
@@ -427,6 +360,11 @@ func componentUpgradeCheckIfPodCanUpgradeWithNilStore(context *ComponentContext,
 		if store == nil {
 			directUpgrade = true
 		}
+	case label.TiFlashLabelVal:
+		store := getTiFlashStoreByOrdinal(tc.GetName(), tc.Status.TiFlash, ordinal)
+		if store == nil {
+			directUpgrade = true
+		}
 	}
 	return directUpgrade
 }
@@ -452,20 +390,91 @@ func componentCheckIfPodAvailableAfterPodRestarted(context *ComponentContext, or
 		if member, exist := tc.Status.TiDB.Members[podName]; !exist || !member.Health {
 			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tidb upgraded pod: [%s] is not ready", ns, tcName, podName)
 		}
+	case label.TiFlashLabelVal:
+		store := getTiFlashStoreByOrdinal(tc.GetName(), tc.Status.TiFlash, ordinal)
+		if store.State != v1alpha1.TiKVStateUp {
+			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded TiFlash pod: [%s], store state is not UP", ns, tcName, podName)
+		}
 	}
 
 	return nil
 }
 
-func componentUpgradePod(context *ComponentContext, ordinal int32, newSet *apps.StatefulSet) error {
+func componentUpgradeToUpgradePod(context *ComponentContext, ordinal int32, newSet *apps.StatefulSet) error {
 	component := context.component
+	tc := context.tc
+	dependencies := context.dependencies
+
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
 
 	switch component {
 	case label.PDLabelVal:
-		return ComponentUpgradePDPod(context, ordinal, newSet)
+		upgradePdName := PdName(tcName, ordinal, tc.Namespace, tc.Spec.ClusterDomain)
+		upgradePodName := PdPodName(tcName, ordinal)
+		if tc.Status.PD.Leader.Name == upgradePdName || tc.Status.PD.Leader.Name == upgradePodName {
+			var targetName string
+			if tc.PDStsActualReplicas() > 1 {
+				targetOrdinal := helper.GetMaxPodOrdinal(*newSet.Spec.Replicas, newSet)
+				if ordinal == targetOrdinal {
+					targetOrdinal = helper.GetMinPodOrdinal(*newSet.Spec.Replicas, newSet)
+				}
+				targetName = PdName(tcName, targetOrdinal, tc.Namespace, tc.Spec.ClusterDomain)
+				if _, exist := tc.Status.PD.Members[targetName]; !exist {
+					targetName = PdPodName(tcName, targetOrdinal)
+				}
+			} else {
+				for _, member := range tc.Status.PD.PeerMembers {
+					if member.Name != upgradePdName && member.Health {
+						targetName = member.Name
+						break
+					}
+				}
+			}
+			if len(targetName) > 0 {
+				err := ComponentTransferPDLeaderTo(context, targetName)
+				if err != nil {
+					klog.Errorf("pd upgrader: failed to transfer pd leader to: %s, %v", targetName, err)
+					return err
+				}
+				klog.Infof("pd upgrader: transfer pd leader to: %s successfully", targetName)
+				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd member: [%s] is transferring leader to pd member: [%s]", ns, tcName, upgradePdName, targetName)
+			}
+		}
 	case label.TiKVLabelVal:
-		return componentUpgradeTiKVPod(context, ordinal, newSet)
+		upgradePodName := TikvPodName(tcName, ordinal)
+		upgradePod, err := dependencies.PodLister.Pods(ns).Get(upgradePodName)
+		if err != nil {
+			return fmt.Errorf("upgradeTiKVPod: failed to get pods %s for cluster %s/%s, error: %s", upgradePodName, ns, tcName, err)
+		}
+
+		for _, store := range tc.Status.TiKV.Stores {
+			if store.PodName == upgradePodName {
+				storeID, err := strconv.ParseUint(store.ID, 10, 64)
+				if err != nil {
+					return err
+				}
+				_, evicting := upgradePod.Annotations[EvictLeaderBeginTime]
+				if !evicting {
+					return componentTiKVbeginEvictLeader(context, storeID, upgradePod)
+				}
+
+				if componentTiKVreadyToUpgrade(upgradePod, store, tc.TiKVEvictLeaderTimeout()) {
+					err := componentTiKVendEvictLeader(context, ordinal)
+					if err != nil {
+						return err
+					}
+					setUpgradePartition(newSet, ordinal)
+					return nil
+				}
+
+				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tikv pod: [%s] is evicting leader", ns, tcName, upgradePodName)
+			}
+		}
+
+		return controller.RequeueErrorf("tidbcluster: [%s/%s] no store status found for tikv pod: [%s]", ns, tcName, upgradePodName)
 	}
 
+	setUpgradePartition(newSet, ordinal)
 	return nil
 }
