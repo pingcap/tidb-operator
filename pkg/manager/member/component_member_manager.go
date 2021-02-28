@@ -47,6 +47,7 @@ type ComponentContext struct {
 
 // Sync Statefulsets
 // ---
+// ComponentSyncStatefulSetForTidbCluster is used to sync statefulsets for tidbcluster
 func ComponentSyncStatefulSetForTidbCluster(context *ComponentContext) error {
 	tc := context.tc
 	dependencies := context.dependencies
@@ -123,25 +124,39 @@ func ComponentSyncStatefulSetForTidbCluster(context *ComponentContext) error {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for %s cluster running", ns, tcName, component)
 	}
 
-	switch component {
-	case label.PDLabelVal:
-		// Force update takes precedence over scaling because force upgrade won't take effect when cluster gets stuck at scaling
-		if !tc.Status.PD.Synced && NeedForceUpgrade(tc.Annotations) {
-			tc.Status.PD.Phase = v1alpha1.UpgradePhase
-			setUpgradePartition(newSet, 0)
-			errSTS := UpdateStatefulSet(dependencies.StatefulSetControl, tc, newSet, oldSet)
-			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd needs force upgrade, %v", ns, tcName, errSTS)
-		}
+	// Force update takes precedence over scaling because force upgrade won't take effect when cluster gets stuck at scaling
+	if component == label.PDLabelVal && !tc.Status.PD.Synced && NeedForceUpgrade(tc.Annotations) {
+		tc.Status.PD.Phase = v1alpha1.UpgradePhase
+		setUpgradePartition(newSet, 0)
+		errSTS := UpdateStatefulSet(dependencies.StatefulSetControl, tc, newSet, oldSet)
+		return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd needs force upgrade, %v", ns, tcName, errSTS)
+	}
 
-		// Scaling takes precedence over upgrading because:
-		// - if a pd fails in the upgrading, users may want to delete it or add
-		//   new replicas
-		// - it's ok to scale in the middle of upgrading (in statefulset controller
-		//   scaling takes precedence over upgrading too)
+	// setStorelabels for TiKV
+	if component == label.TiKVLabelVal {
+		if _, err := setStoreLabelsForTiKV(context); err != nil {
+			return err
+		}
+	}
+
+	// Scaling takes precedence over upgrading because:
+	// - if a pd fails in the upgrading, users may want to delete it or add
+	//   new replicas
+	// - it's ok to scale in the middle of upgrading (in statefulset controller
+	//   scaling takes precedence over upgrading too)
+	switch component {
+	case label.PDLabelVal, label.TiDBLabelVal, label.TiKVLabelVal, label.TiFlashLabelVal:
 		if err := ComponentScale(context, oldSet, newSet); err != nil {
 			return err
 		}
+	}
 
+	// AutoFailover
+	// Perform failover logic if necessary. Note that this will only update
+	// TidbCluster status. The actual scaling performs in next sync loop (if a
+	// new replica needs to be added).
+	switch component {
+	case label.PDLabelVal:
 		if dependencies.CLIConfig.AutoFailover {
 			if ComponentShouldRecover(context) {
 				ComponentRecover(context)
@@ -151,29 +166,7 @@ func ComponentSyncStatefulSetForTidbCluster(context *ComponentContext) error {
 				}
 			}
 		}
-
-		if !templateEqual(newSet, oldSet) || tc.Status.PD.Phase == v1alpha1.UpgradePhase {
-			if err := ComponentUpgrade(context, oldSet, newSet); err != nil {
-				return err
-			}
-		}
 	case label.TiKVLabelVal:
-		if _, err := setStoreLabelsForTiKV(context); err != nil {
-			return err
-		}
-
-		// Scaling takes precedence over upgrading because:
-		// - if a store fails in the upgrading, users may want to delete it or add
-		//   new replicas
-		// - it's ok to scale in the middle of upgrading (in statefulset controller
-		//   scaling takes precedence over upgrading too)
-		if err := ComponentScale(context, oldSet, newSet); err != nil {
-			return err
-		}
-
-		// Perform failover logic if necessary. Note that this will only update
-		// TidbCluster status. The actual scaling performs in next sync loop (if a
-		// new replica needs to be added).
 		if dependencies.CLIConfig.AutoFailover && tc.Spec.TiKV.MaxFailoverCount != nil {
 			if tc.TiKVAllPodsStarted() && !tc.TiKVAllStoresReady() {
 				if err := ComponentFailover(context); err != nil {
@@ -181,33 +174,12 @@ func ComponentSyncStatefulSetForTidbCluster(context *ComponentContext) error {
 				}
 			}
 		}
-
-		if !templateEqual(newSet, oldSet) || tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
-			if err := ComponentUpgrade(context, oldSet, newSet); err != nil {
-				return err
-			}
-		}
 	case label.TiFlashLabelVal:
-		// Scaling takes precedence over upgrading because:
-		// - if a tiflash fails in the upgrading, users may want to delete it or add
-		//   new replicas
-		// - it's ok to scale in the middle of upgrading (in statefulset controller
-		//   scaling takes precedence over upgrading too)
-		if err := ComponentScale(context, oldSet, newSet); err != nil {
-			return err
-		}
-
 		if dependencies.CLIConfig.AutoFailover && tc.Spec.TiFlash.MaxFailoverCount != nil {
 			if tc.TiFlashAllPodsStarted() && !tc.TiFlashAllStoresReady() {
 				if err := ComponentFailover(context); err != nil {
 					return err
 				}
-			}
-		}
-
-		if !templateEqual(newSet, oldSet) {
-			if err := ComponentUpgrade(context, oldSet, newSet); err != nil {
-				return err
 			}
 		}
 	case label.TiDBLabelVal:
@@ -218,6 +190,28 @@ func ComponentSyncStatefulSetForTidbCluster(context *ComponentContext) error {
 				if err := ComponentFailover(context); err != nil {
 					return err
 				}
+			}
+		}
+	}
+
+	// Upgrader
+	switch component {
+	case label.PDLabelVal:
+		if !templateEqual(newSet, oldSet) || tc.Status.PD.Phase == v1alpha1.UpgradePhase {
+			if err := ComponentUpgrade(context, oldSet, newSet); err != nil {
+				return err
+			}
+		}
+	case label.TiKVLabelVal:
+		if !templateEqual(newSet, oldSet) || tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
+			if err := ComponentUpgrade(context, oldSet, newSet); err != nil {
+				return err
+			}
+		}
+	case label.TiFlashLabelVal:
+		if !templateEqual(newSet, oldSet) || tc.Status.TiFlash.Phase == v1alpha1.UpgradePhase {
+			if err := ComponentUpgrade(context, oldSet, newSet); err != nil {
+				return err
 			}
 		}
 	case label.TiCDCLabelVal, label.PumpLabelVal:
