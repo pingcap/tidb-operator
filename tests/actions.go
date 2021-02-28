@@ -158,7 +158,6 @@ type OperatorActions interface {
 	DeployReleasedCRDOrDie(version string)
 	DeployOperator(info *OperatorConfig) error
 	DeployOperatorOrDie(info *OperatorConfig)
-	CleanOperator(info *OperatorConfig) error
 	CleanOperatorOrDie(info *OperatorConfig)
 	UpgradeOperator(info *OperatorConfig) error
 	UpgradeOperatorOrDie(info *OperatorConfig)
@@ -625,7 +624,7 @@ func (oa *operatorActions) DeployOperatorOrDie(info *OperatorConfig) {
 	}
 }
 
-func (oa *operatorActions) CleanOperator(info *OperatorConfig) error {
+func CleanOperator(info *OperatorConfig) error {
 	log.Logf("cleaning tidb-operator %s", info.ReleaseName)
 
 	cmd := fmt.Sprintf("helm uninstall %s --namespace %s",
@@ -642,7 +641,7 @@ func (oa *operatorActions) CleanOperator(info *OperatorConfig) error {
 }
 
 func (oa *operatorActions) CleanOperatorOrDie(info *OperatorConfig) {
-	if err := oa.CleanOperator(info); err != nil {
+	if err := CleanOperator(info); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }
