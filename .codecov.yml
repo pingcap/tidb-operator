@@ -14,7 +14,7 @@ flags:
   unittest:
     carryforward: false
   e2e:
-    carryforward: true
+    carryforward: false
   discovery:
     carryforward: true
   controller-manager:

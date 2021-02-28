@@ -19,7 +19,11 @@ GO_BUILD := $(GO) build -trimpath
 DOCKER_REGISTRY ?= localhost:5000
 DOCKER_REPO ?= ${DOCKER_REGISTRY}/pingcap
 IMAGE_TAG ?= latest
-TEST_COVER_PACKAGES:=go list ./cmd/backup-manager/app/... ./pkg/... | grep -vE "pkg/client" | grep -vE "pkg/tkctl" | grep -vE "pkg/apis" | sed 's|github.com/pingcap/tidb-operator/|./|' | tr '\n' ','
+TEST_COVER_PACKAGES:=go list ./cmd/... ./pkg/... | grep -vE "pkg/client" | grep -vE "pkg/tkctl" | grep -vE "pkg/apis" | sed 's|github.com/pingcap/tidb-operator/|./|' | tr '\n' ','
+
+# NOTE: coverage report generated for E2E tests (with `-c`) may not stable, see
+# https://github.com/golang/go/issues/23883#issuecomment-381766556
+GO_TEST := $(GO) test -cover -covermode=atomic -coverpkg=$$($(TEST_COVER_PACKAGES))
 
 default: build
 
@@ -33,25 +37,50 @@ docker:
 else
 docker: build
 endif
+ifeq ($(E2E),y)
+	docker build --tag "${DOCKER_REPO}/tidb-operator:${IMAGE_TAG}" -f images/tidb-operator/Dockerfile.e2e images/tidb-operator
+	docker build --tag "${DOCKER_REPO}/tidb-backup-manager:${IMAGE_TAG}" -f images/tidb-backup-manager/Dockerfile.e2e images/tidb-backup-manager
+else
 	docker build --tag "${DOCKER_REPO}/tidb-operator:${IMAGE_TAG}" images/tidb-operator
 	docker build --tag "${DOCKER_REPO}/tidb-backup-manager:${IMAGE_TAG}" images/tidb-backup-manager
+endif
 
 build: controller-manager scheduler discovery admission-webhook backup-manager
 
 controller-manager:
+ifeq ($(E2E),y)
+	$(GO_TEST) -ldflags '$(LDFLAGS)' -c -o images/tidb-operator/bin/tidb-controller-manager ./cmd/controller-manager
+else
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-controller-manager cmd/controller-manager/main.go
+endif
 
 scheduler:
+ifeq ($(E2E),y)
+	$(GO_TEST) -ldflags '$(LDFLAGS)' -c -o images/tidb-operator/bin/tidb-scheduler ./cmd/scheduler
+else
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-scheduler cmd/scheduler/main.go
+endif
 
 discovery:
+ifeq ($(E2E),y)
+	$(GO_TEST) -ldflags '$(LDFLAGS)' -c -o images/tidb-operator/bin/tidb-discovery ./cmd/discovery
+else
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-discovery cmd/discovery/main.go
+endif
 
 admission-webhook:
+ifeq ($(E2E),y)
+	$(GO_TEST) -ldflags '$(LDFLAGS)' -c -o images/tidb-operator/bin/tidb-admission-webhook ./cmd/admission-webhook
+else
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-admission-webhook cmd/admission-webhook/main.go
+endif
 
 backup-manager:
+ifeq ($(E2E),y)
+	$(GO_TEST) -ldflags '$(LDFLAGS)' -c -o images/tidb-backup-manager/bin/tidb-backup-manager ./cmd/backup-manager
+else
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-backup-manager/bin/tidb-backup-manager cmd/backup-manager/main.go
+endif
 
 ifeq ($(NO_BUILD),y)
 backup-docker:
@@ -59,7 +88,11 @@ backup-docker:
 else
 backup-docker: backup-manager
 endif
+ifeq ($(E2E),y)
+	docker build --tag "${DOCKER_REPO}/tidb-backup-manager:${IMAGE_TAG}" -f images/tidb-backup-manager/Dockerfile.e2e images/tidb-backup-manager
+else
 	docker build --tag "${DOCKER_REPO}/tidb-backup-manager:${IMAGE_TAG}" images/tidb-backup-manager
+endif
 
 e2e-docker-push: e2e-docker
 	docker push "${DOCKER_REPO}/tidb-operator-e2e:${IMAGE_TAG}"
@@ -83,7 +116,7 @@ endif
 
 e2e-build:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/ginkgo github.com/onsi/ginkgo/ginkgo
-	$(GO) test -c -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/e2e.test ./tests/e2e
+	$(GO_TEST) -c -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/e2e.test ./tests/e2e
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/webhook ./tests/cmd/webhook
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/blockwriter ./tests/cmd/blockwriter
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/mock-prometheus ./tests/cmd/mock-monitor
@@ -93,6 +126,9 @@ e2e:
 
 e2e-examples:
 	./hack/e2e-examples.sh
+
+gocovmerge:
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o bin/gocovmerge github.com/zhouqiang-cl/gocovmerge
 
 stability-test-build:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/stability-test/bin/blockwriter ./tests/cmd/blockwriter
@@ -155,4 +191,4 @@ debug-build-docker: debug-build
 debug-build:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o misc/images/debug-launcher/bin/debug-launcher misc/cmd/debug-launcher/main.go
 
-.PHONY: check check-setup build e2e-build debug-build cli e2e test docker e2e-docker debug-build-docker
+.PHONY: check check-setup build e2e-build debug-build cli e2e gocovmerge test docker e2e-docker debug-build-docker
