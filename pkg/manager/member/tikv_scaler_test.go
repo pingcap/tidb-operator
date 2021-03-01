@@ -60,7 +60,6 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 		scaler, _, pvcIndexer, _, pvcControl := newFakeTiKVScaler()
 
 		pvc := newPVCForStatefulSet(oldSet, v1alpha1.TiKVMemberType, tc.Name)
-		pvc.Name = ordinalPVCName(v1alpha1.TiKVMemberType, oldSet.GetName(), *oldSet.Spec.Replicas)
 		if !test.annoIsNil {
 			pvc.Annotations = map[string]string{}
 		}

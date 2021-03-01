@@ -29,6 +29,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -436,7 +437,8 @@ func ResolvePVCFromPod(pod *corev1.Pod, pvcLister corelisterv1.PersistentVolumeC
 		}
 	}
 	if len(pvcs) == 0 {
-		return nil, fmt.Errorf("no pvc found for pod %s", pod.Name)
+		klog.Errorf("no pvc found for pod %s", pod.Name)
+		return nil, errors.NewNotFound(corev1.Resource("pvc"), "")
 	}
 	return pvcs, nil
 }
