@@ -22,13 +22,19 @@ echo "hack/e2e-patch-codecov.sh: PWD $PWD"
 
 CONTROLLER_MANAGER_DEPLOYMENT=charts/tidb-operator/templates/controller-manager-deployment.yaml
 SCHEDULER_DEPLOYMENT=charts/tidb-operator/templates/scheduler-deployment.yaml
+TMP_SCHEDULER_DEPLOYMENT=/tmp/scheduler-deployment.yaml
 DISCOVERY_DEPLOYMENT=charts/tidb-cluster/templates/discovery-deployment.yaml
 ADMISSION_WEBHOOK_DEPLOYMENT=charts/tidb-operator/templates/admission/admission-webhook-deployment.yaml
+TMP_ADMISSION_WEBHOOK_DEPLOYMENT=/tmp/admission-webhook-deployment.yaml
 
 DISCOVERY_MANAGER=pkg/manager/member/tidb_discovery_manager.go
+TMP_DISCOVERY_MANAGER=/tmp/tidb_discovery_manager.go
 RESTORE_MANAGER=pkg/backup/restore/restore_manager.go
+TMP_RESTORE_MANAGER=/tmp/restore_manager.go
 BACKUP_MANAGER=pkg/backup/backup/backup_manager.go
+TMP_BACKUP_MANAGER=/tmp/backup_manager.go
 BACKUP_CLEANER=pkg/backup/backup/backup_cleaner.go
+TMP_BACKUP_CLEANER=/tmp/backup_cleaner.go
 
 echo "replace the entrypoint to generate and upload the coverage profile"
 sed -i 's/\/usr\/local\/bin\/tidb-controller-manager/\/e2e-entrypoint.sh\n          - \/usr\/local\/bin\/tidb-controller-manager\n          - -test.coverprofile=\/coverage\/tidb-controller-manager.cov\n          - E2E/g' \
@@ -47,7 +53,8 @@ sed -i '/\-v=/d' $ADMISSION_WEBHOOK_DEPLOYMENT
 
 # populate needed environment variables and local-path volumes
 echo "hack/e2e-patch-codecov.sh: setting environment variables and volumes in charts"
-cat << EOF >> $CONTROLLER_MANAGER_DEPLOYMENT
+sed -i 's/^{{\- end }}$//g' $CONTROLLER_MANAGER_DEPLOYMENT
+cat >> $CONTROLLER_MANAGER_DEPLOYMENT << EOF
           - name: COMPONENT
             value: "controller-manager"
         volumeMounts:
@@ -58,12 +65,13 @@ cat << EOF >> $CONTROLLER_MANAGER_DEPLOYMENT
           hostPath:
             path: /mnt/disks/coverage
             type: Directory
+{{- end }}
 EOF
 
 # for SCHEDULER_DEPLOYMENT, no `env:` added with default values.
 line=$(grep -n 'name: kube-scheduler' $SCHEDULER_DEPLOYMENT | cut -d ":" -f 1)
-head -n $(($line-1)) $SCHEDULER_DEPLOYMENT > /tmp/scheduler-deployment.yaml
-cat >> /tmp/scheduler-deployment.yaml <<EOF
+head -n $(($line-1)) $SCHEDULER_DEPLOYMENT > $TMP_SCHEDULER_DEPLOYMENT
+cat >> $TMP_SCHEDULER_DEPLOYMENT <<EOF
         env:
         - name: COMPONENT
           value: "scheduler"
@@ -71,17 +79,19 @@ cat >> /tmp/scheduler-deployment.yaml <<EOF
           - mountPath: /coverage
             name: coverage
 EOF
-tail -n +$line $SCHEDULER_DEPLOYMENT >> /tmp/scheduler-deployment.yaml
-cat << EOF >> /tmp/scheduler-deployment.yaml
+tail -n +$line $SCHEDULER_DEPLOYMENT >> $TMP_SCHEDULER_DEPLOYMENT
+sed -i 's/^{{\- end }}$//g' $TMP_SCHEDULER_DEPLOYMENT
+cat >> $TMP_SCHEDULER_DEPLOYMENT << EOF
       volumes:
         - name: coverage
           hostPath:
             path: /mnt/disks/coverage
             type: Directory
+{{- end }}
 EOF
-mv -f /tmp/scheduler-deployment.yaml $SCHEDULER_DEPLOYMENT
+mv -f $TMP_SCHEDULER_DEPLOYMENT $SCHEDULER_DEPLOYMENT
 
-cat << EOF >> $DISCOVERY_DEPLOYMENT
+cat >> $DISCOVERY_DEPLOYMENT << EOF
           - name: COMPONENT
             value: "discovery"
         volumeMounts:
@@ -95,28 +105,30 @@ cat << EOF >> $DISCOVERY_DEPLOYMENT
 EOF
 
 line=$(grep -n 'volumeMounts:' $ADMISSION_WEBHOOK_DEPLOYMENT | cut -d ":" -f 1)
-head -n $(($line-1)) $ADMISSION_WEBHOOK_DEPLOYMENT > /tmp/admission-webhook-deployment.yaml
-cat >> /tmp/admission-webhook-deployment.yaml <<EOF
+head -n $(($line-1)) $ADMISSION_WEBHOOK_DEPLOYMENT > $TMP_ADMISSION_WEBHOOK_DEPLOYMENT
+cat >> $TMP_ADMISSION_WEBHOOK_DEPLOYMENT <<EOF
           - name: COMPONENT
             value: "admission-webhook"
           volumeMounts:
             - mountPath: /coverage
               name: coverage
 EOF
-tail -n +$(($line+1)) $ADMISSION_WEBHOOK_DEPLOYMENT >> /tmp/admission-webhook-deployment.yaml
-cat << EOF >> /tmp/admission-webhook-deployment.yaml
+tail -n +$(($line+1)) $ADMISSION_WEBHOOK_DEPLOYMENT >> $TMP_ADMISSION_WEBHOOK_DEPLOYMENT
+sed -i 's/^{{\- end }}$//g' $TMP_ADMISSION_WEBHOOK_DEPLOYMENT
+cat >> $TMP_ADMISSION_WEBHOOK_DEPLOYMENT << EOF
         - name: coverage
           hostPath:
             path: /mnt/disks/coverage
             type: Directory
+{{- end }}
 EOF
-mv -f /tmp/admission-webhook-deployment.yaml $ADMISSION_WEBHOOK_DEPLOYMENT
+mv -f $TMP_ADMISSION_WEBHOOK_DEPLOYMENT $ADMISSION_WEBHOOK_DEPLOYMENT
 
 echo "hack/e2e-patch-codecov.sh: setting command, environment variables and volumes for golang code"
 
 line=$(grep -n 'm.getTidbDiscoveryDeployment(tc)' $DISCOVERY_MANAGER | cut -d ":" -f 1)
-head -n $(($line+3)) $DISCOVERY_MANAGER > /tmp/tidb_discovery_manager.go
-cat >> /tmp/tidb_discovery_manager.go <<EOF
+head -n $(($line+3)) $DISCOVERY_MANAGER > $TMP_DISCOVERY_MANAGER
+cat >> $TMP_DISCOVERY_MANAGER <<EOF
 	d.Spec.Template.Spec.Containers[0].Command = []string{
 		"/e2e-entrypoint.sh",
 		"/usr/local/bin/tidb-discovery",
@@ -142,8 +154,8 @@ cat >> /tmp/tidb_discovery_manager.go <<EOF
 		MountPath: "/coverage",
 	})
 EOF
-tail -n +$(($line+4)) $DISCOVERY_MANAGER >> /tmp/tidb_discovery_manager.go
-mv -f /tmp/tidb_discovery_manager.go $DISCOVERY_MANAGER
+tail -n +$(($line+4)) $DISCOVERY_MANAGER >> $TMP_DISCOVERY_MANAGER
+mv -f $TMP_DISCOVERY_MANAGER $DISCOVERY_MANAGER
 
 IFS= read -r -d '' PATCH_BR_JOB << EOF || true
 	job.Spec.Template.Spec.Containers[0].Env = append(job.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
@@ -167,19 +179,19 @@ IFS= read -r -d '' PATCH_BR_JOB << EOF || true
 EOF
 
 line=$(grep -n 'rm.deps.JobControl.CreateJob(restore, job)' $RESTORE_MANAGER | cut -d ":" -f 1)
-head -n $(($line-1)) $RESTORE_MANAGER > /tmp/restore_manager.go
-echo "$PATCH_BR_JOB" >> /tmp/restore_manager.go
-tail -n +$line $RESTORE_MANAGER >> /tmp/restore_manager.go
-mv -f /tmp/restore_manager.go $RESTORE_MANAGER
+head -n $(($line-1)) $RESTORE_MANAGER > $TMP_RESTORE_MANAGER
+echo "$PATCH_BR_JOB" >> $TMP_RESTORE_MANAGER
+tail -n +$line $RESTORE_MANAGER >> $TMP_RESTORE_MANAGER
+mv -f $TMP_RESTORE_MANAGER $RESTORE_MANAGER
 
 line=$(grep -n 'bm.deps.JobControl.CreateJob(backup, job)' $BACKUP_MANAGER | cut -d ":" -f 1)
-head -n $(($line-1)) $BACKUP_MANAGER > /tmp/backup_manager.go
-echo "$PATCH_BR_JOB"`` >> /tmp/backup_manager.go
-tail -n +$line $BACKUP_MANAGER >> /tmp/backup_manager.go
-mv -f /tmp/backup_manager.go $BACKUP_MANAGER
+head -n $(($line-1)) $BACKUP_MANAGER > $TMP_BACKUP_MANAGER
+echo "$PATCH_BR_JOB"`` >> $TMP_BACKUP_MANAGER
+tail -n +$line $BACKUP_MANAGER >> $TMP_BACKUP_MANAGER
+mv -f $TMP_BACKUP_MANAGER $BACKUP_MANAGER
 
 line=$(grep -n 'bc.deps.JobControl.CreateJob(backup, job)' $BACKUP_CLEANER | cut -d ":" -f 1)
-head -n $(($line-1)) $BACKUP_CLEANER > /tmp/backup_cleaner.go
-echo "$PATCH_BR_JOB"`` >> /tmp/backup_cleaner.go
-tail -n +$line $BACKUP_CLEANER >> /tmp/backup_cleaner.go
-mv -f /tmp/backup_cleaner.go $BACKUP_CLEANER
+head -n $(($line-1)) $BACKUP_CLEANER > $TMP_BACKUP_CLEANER
+echo "$PATCH_BR_JOB"`` >> $TMP_BACKUP_CLEANER
+tail -n +$line $BACKUP_CLEANER >> $TMP_BACKUP_CLEANER
+mv -f $TMP_BACKUP_CLEANER $BACKUP_CLEANER
