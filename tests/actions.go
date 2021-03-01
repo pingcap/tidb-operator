@@ -1556,8 +1556,9 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 		}
 	}
 
-	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(pdSetName, metav1.GetOptions{}); err != nil {
-		log.Logf("failed to get service: %s/%s", ns, pdSetName)
+	pdServiceName := controller.PDMemberName(tcName)
+	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(pdServiceName, metav1.GetOptions{}); err != nil {
+		log.Logf("failed to get service: %s/%s", ns, pdServiceName)
 		return false, nil
 	}
 	pdPeerServiceName := controller.PDPeerMemberName(tcName)
@@ -1784,8 +1785,9 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return false, nil
 	}
 
-	if _, err = oa.kubeCli.CoreV1().Services(ns).Get(tidbSetName, metav1.GetOptions{}); err != nil {
-		log.Logf("failed to get service: %s/%s", ns, tidbSetName)
+	tidbServiceName := controller.TiDBMemberName(tcName)
+	if _, err = oa.kubeCli.CoreV1().Services(ns).Get(tidbServiceName, metav1.GetOptions{}); err != nil {
+		log.Logf("failed to get service: %s/%s", ns, tidbServiceName)
 		return false, nil
 	}
 	tidbPeerServiceName := controller.TiDBPeerMemberName(tcName)

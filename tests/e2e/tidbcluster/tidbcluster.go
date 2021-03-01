@@ -1624,9 +1624,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				pdCfg := v1alpha1.NewPDConfig()
 				tikvCfg := v1alpha1.NewTiKVConfig()
 				tidbCfg := v1alpha1.NewTiDBConfig()
-				pdCfg.Set("level", "info")
-				tikvCfg.Set("level", "info")
-				tidbCfg.Set("level", "info")
+				pdCfg.Set("enable-prevote", "true")
+				tikvCfg.Set("prevote", "true")
+				tidbCfg.Set("enable-timestamp", "true")
 				tc.Spec.PD.Config = pdCfg
 				tc.Spec.TiKV.Config = tikvCfg
 				tc.Spec.TiDB.Config = tidbCfg
@@ -1790,6 +1790,14 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					} else {
 						framework.ExpectEqual(int(tc.Spec.TiKV.Replicas), 4)
 					}
+
+					ginkgo.By("Check no evict leader scheduler left")
+					pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, tc.Name, false)
+					framework.ExpectNoError(err, "create pdClient error")
+					defer cancel()
+					schedulers, err := pdClient.GetEvictLeaderSchedulers()
+					framework.ExpectNoError(err, "failed to get evict leader schedulers")
+					framework.ExpectEqual(len(schedulers), 0, "there are %d evict leader left, expect 0", len(schedulers))
 				})
 			}
 		})
@@ -1803,9 +1811,12 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 			ginkgo.By("Wait for 1 min and ensure no PD Pod exist")
 			err = wait.PollImmediate(5*time.Second, 1*time.Minute, func() (bool, error) {
-				_, err := c.CoreV1().Pods(ns).Get(tc.Name, metav1.GetOptions{})
-				if err != nil {
-					log.Logf("failed to get Pod %s/%s: %v", ns, tc.Name, err)
+				listOptions := metav1.ListOptions{
+					LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Component(label.PDLabelVal).Labels()).String(),
+				}
+				_, err := c.CoreV1().Pods(ns).List(listOptions)
+				if err != nil && apierrors.IsNotFound(err) {
+					log.Logf("failed to get Pods with selector %+v: %v", listOptions, err)
 					return false, nil
 				}
 				return true, nil
@@ -1821,9 +1832,12 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 			ginkgo.By("Wait for 1 min and ensure no PD Pod exist")
 			err = wait.PollImmediate(5*time.Second, 1*time.Minute, func() (bool, error) {
-				_, err := c.CoreV1().Pods(ns).Get(tc.Name, metav1.GetOptions{})
-				if err != nil {
-					log.Logf("failed to get Pod %s/%s: %v", ns, tc.Name, err)
+				listOptions := metav1.ListOptions{
+					LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Component(label.PDLabelVal).Labels()).String(),
+				}
+				_, err := c.CoreV1().Pods(ns).List(listOptions)
+				if err != nil && apierrors.IsNotFound(err) {
+					log.Logf("failed to get Pods with selector %+v: %v", listOptions, err)
 					return false, nil
 				}
 				return true, nil
