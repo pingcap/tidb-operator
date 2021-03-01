@@ -1566,29 +1566,30 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
 
 		ginkgo.By("Delete StatefulSet/ConfigMap/Service of PD")
-		deleteResourcesForComponent := func(memberName string) {
-			sts, err := stsGetter.StatefulSets(ns).Get(memberName, metav1.GetOptions{})
-			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, memberName)
-			err = stsGetter.StatefulSets(ns).Delete(memberName, &metav1.DeleteOptions{})
-			framework.ExpectNoError(err, "failed to delete StatefulSet %s/%s", ns, memberName)
-			cmName := member.FindConfigMapVolume(&sts.Spec.Template.Spec, func(name string) bool {
-				return strings.HasPrefix(name, memberName)
-			})
-			err = c.CoreV1().ConfigMaps(ns).Delete(cmName, &metav1.DeleteOptions{})
-			framework.ExpectNoError(err, "failed to delete ConfigMap %s/%s", ns, cmName)
-			err = c.CoreV1().Services(ns).Delete(memberName+"-peer", &metav1.DeleteOptions{})
-			framework.ExpectNoError(err, "failed to delete Service %s/%s", ns, memberName)
-			if strings.Contains(memberName, "pd") || strings.Contains(memberName, "tidb") {
-				err = c.CoreV1().Services(ns).Delete(memberName, &metav1.DeleteOptions{})
-				framework.ExpectNoError(err, "failed to delete Service %s/%s", ns, memberName)
-			}
+		listOptions := metav1.ListOptions{
+			LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Labels()).String(),
 		}
-		deleteResourcesForComponent(controller.PDMemberName(tc.Name))
-		deleteResourcesForComponent(controller.TiKVMemberName(tc.Name))
-		deleteResourcesForComponent(controller.TiDBMemberName(tc.Name))
+		stsList, err := stsGetter.StatefulSets(ns).List(listOptions)
+		framework.ExpectNoError(err, "failed to list StatefulSet with option: %+v", listOptions)
+		for _, sts := range stsList.Items {
+			err := stsGetter.StatefulSets(ns).Delete(sts.Name, &metav1.DeleteOptions{})
+			framework.ExpectNoError(err, "failed to delete StatefulSet %s/%s", ns, sts.Name)
+		}
+		cmList, err := c.CoreV1().ConfigMaps(ns).List(listOptions)
+		framework.ExpectNoError(err, "failed to list ConfigMap with option: %+v", listOptions)
+		for _, cm := range cmList.Items {
+			err := c.CoreV1().ConfigMaps(ns).Delete(cm.Name, &metav1.DeleteOptions{})
+			framework.ExpectNoError(err, "failed to delete ConfigMap %s/%s", ns, cm.Name)
+		}
+		svcList, err := c.CoreV1().Services(ns).List(listOptions)
+		framework.ExpectNoError(err, "failed to list Service with option: %+v", listOptions)
+		for _, svc := range svcList.Items {
+			err := c.CoreV1().Services(ns).Delete(svc.Name, &metav1.DeleteOptions{})
+			framework.ExpectNoError(err, "failed to delete Service %s/%s", ns, svc.Name)
+		}
 
 		ginkgo.By("Wait for TidbCluster components ready again")
-		err := oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
+		err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
 		framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", tc.Namespace, tc.Name)
 	})
 })
