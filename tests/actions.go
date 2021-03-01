@@ -549,7 +549,7 @@ func CleanOperator(info *OperatorConfig) error {
 }
 
 func (oa *OperatorActions) CleanOperatorOrDie(info *OperatorConfig) {
-	if err := oa.CleanOperator(info); err != nil {
+	if err := CleanOperator(info); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }
