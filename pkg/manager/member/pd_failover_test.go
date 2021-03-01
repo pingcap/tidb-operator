@@ -520,6 +520,7 @@ func TestPDFailoverFailover(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			t.Log(test.name)
 			tc := newTidbClusterForPD()
 			tc.Spec.PD.MaxFailoverCount = pointer.Int32Ptr(test.maxFailoverCount)
 			test.update(tc)

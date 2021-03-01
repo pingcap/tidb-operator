@@ -200,6 +200,13 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 		if test.hasPVC {
 			pvc := newScaleInPVCForStatefulSet(oldSet, v1alpha1.TiKVMemberType, tc.Name)
 			pvcIndexer.Add(pvc)
+			pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: pvc.Name,
+					},
+				},
+			})
 		}
 
 		pod.Labels = map[string]string{}

@@ -570,6 +570,7 @@ func newScaleInPVCForStatefulSet(set *apps.StatefulSet, memberType v1alpha1.Memb
 		l = label.New().Instance(name)
 	}
 	l[label.AnnPodNameKey] = podName
+	fmt.Printf("newScaleInPVCForStatefulSet: pvc %s\n", ordinalPVCName(memberType, set.GetName(), *set.Spec.Replicas-1))
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ordinalPVCName(memberType, set.GetName(), *set.Spec.Replicas-1),

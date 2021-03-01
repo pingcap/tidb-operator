@@ -115,6 +115,7 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 		return nil
 	}
 
+	// call pd to delete store of the will-be-scaled-in tikv pod
 	for _, store := range tc.Status.TiKV.Stores {
 		if store.PodName == podName {
 			state := store.State
@@ -132,8 +133,9 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 			return controller.RequeueErrorf("TiKV %s/%s store %d is still in cluster, state: %s", ns, podName, id, state)
 		}
 	}
-	for id, store := range tc.Status.TiKV.TombstoneStores {
-		if store.PodName == podName && pod.Labels[label.StoreIDLabelKey] == id {
+
+	for storeID, store := range tc.Status.TiKV.TombstoneStores {
+		if store.PodName == podName && pod.Labels[label.StoreIDLabelKey] == storeID {
 			id, err := strconv.ParseUint(store.ID, 10, 64)
 			if err != nil {
 				return err
@@ -142,24 +144,24 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 			// TODO: double check if store is really not in Up/Offline/Down state
 			klog.Infof("TiKV %s/%s store %d becomes tombstone", ns, podName, id)
 
-			pvcName := ordinalPVCName(v1alpha1.TiKVMemberType, setName, ordinal)
-			pvc, err := s.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
+			pvcs, err := util.ResolvePVCFromPod(pod, s.deps.PVCLister)
+			klog.Infof("ResolvePVCFromPod: %+v", pvcs)
 			if err != nil {
-				return fmt.Errorf("tikvScaler.ScaleIn: failed to get pvc %s for cluster %s/%s, error: %s", pvcName, ns, tcName, err)
+				return fmt.Errorf("tikvScaler.ScaleIn: failed to get pvcs for pod %s/%s in tc %s/%s, error: %s", ns, pod.Name, ns, tcName, err)
 			}
-			if pvc.Annotations == nil {
-				pvc.Annotations = map[string]string{}
+			for _, pvc := range pvcs {
+				if pvc.Annotations == nil {
+					pvc.Annotations = map[string]string{}
+				}
+				now := time.Now().Format(time.RFC3339)
+				pvc.Annotations[label.AnnPVCDeferDeleting] = now
+				_, err = s.deps.PVCControl.UpdatePVC(tc, pvc)
+				if err != nil {
+					klog.Errorf("tikv scale in: failed to set pvc %s/%s annotation: %s to %s", ns, pvc.Name, label.AnnPVCDeferDeleting, now)
+					return err
+				}
+				klog.Infof("tikv scale in: set pvc %s/%s annotation: %s to %s", ns, pvc.Name, label.AnnPVCDeferDeleting, now)
 			}
-			now := time.Now().Format(time.RFC3339)
-			pvc.Annotations[label.AnnPVCDeferDeleting] = now
-			_, err = s.deps.PVCControl.UpdatePVC(tc, pvc)
-			if err != nil {
-				klog.Errorf("tikv scale in: failed to set pvc %s/%s annotation: %s to %s",
-					ns, pvcName, label.AnnPVCDeferDeleting, now)
-				return err
-			}
-			klog.Infof("tikv scale in: set pvc %s/%s annotation: %s to %s",
-				ns, pvcName, label.AnnPVCDeferDeleting, now)
 
 			// endEvictLeader for TombStone stores
 			if err = endEvictLeaderbyStoreID(s.deps, tc, id); err != nil {

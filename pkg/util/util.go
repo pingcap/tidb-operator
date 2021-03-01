@@ -29,7 +29,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -418,6 +417,7 @@ func StatefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) bool {
 	return false
 }
 
+// ResolvePVCFromPod parses pod volumes definition, and returns all PVCs mounted by this pod
 func ResolvePVCFromPod(pod *corev1.Pod, pvcLister corelisterv1.PersistentVolumeClaimLister) ([]*corev1.PersistentVolumeClaim, error) {
 	var pvcs []*corev1.PersistentVolumeClaim
 	var pvcName string
@@ -430,13 +430,13 @@ func ResolvePVCFromPod(pod *corev1.Pod, pvcLister corelisterv1.PersistentVolumeC
 			pvc, err := pvcLister.PersistentVolumeClaims(pod.Namespace).Get(pvcName)
 			if err != nil {
 				klog.Errorf("Get PVC %s/%s error: %v", pod.Namespace, pvcName, err)
-				continue
+				return nil, err
 			}
 			pvcs = append(pvcs, pvc)
 		}
 	}
 	if len(pvcs) == 0 {
-		return nil, errors.NewNotFound(corev1.Resource("pvc"), pod.Name)
+		return nil, fmt.Errorf("no pvc found for pod %s", pod.Name)
 	}
 	return pvcs, nil
 }
