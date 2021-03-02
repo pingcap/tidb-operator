@@ -461,13 +461,17 @@ type TiKVSpec struct {
 	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
 
 	// EvictLeaderTimeout indicates the timeout to evict tikv leader, in the format of Go Duration.
-	// Defaults to 3m
+	// Defaults to 10m
 	// +optional
 	EvictLeaderTimeout *string `json:"evictLeaderTimeout,omitempty"`
 
 	// StorageVolumes configure additional storage for TiKV pods.
 	// +optional
 	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
+
+	// StoreLabels configures additional labels for TiKV stores.
+	// +optional
+	StoreLabels []string `json:"storeLabels,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members

@@ -9785,7 +9785,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 					},
 					"evictLeaderTimeout": {
 						SchemaProps: spec.SchemaProps{
-							Description: "EvictLeaderTimeout indicates the timeout to evict tikv leader, in the format of Go Duration. Defaults to 3m",
+							Description: "EvictLeaderTimeout indicates the timeout to evict tikv leader, in the format of Go Duration. Defaults to 10m",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -9798,6 +9798,20 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolume"),
+									},
+								},
+							},
+						},
+					},
+					"storeLabels": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StoreLabels configures additional labels for TiKV stores.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
 									},
 								},
 							},

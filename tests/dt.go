@@ -56,7 +56,7 @@ type RegionsInfo struct {
 	Regions []*RegionInfo `json:"regions"`
 }
 
-func (oa *operatorActions) LabelNodes() error {
+func (oa *OperatorActions) LabelNodes() error {
 	nodes, err := oa.kubeCli.CoreV1().Nodes().List(metav1.ListOptions{})
 	if err != nil {
 		return err
@@ -86,14 +86,14 @@ func (oa *operatorActions) LabelNodes() error {
 	return nil
 }
 
-func (oa *operatorActions) LabelNodesOrDie() {
+func (oa *OperatorActions) LabelNodesOrDie() {
 	err := oa.LabelNodes()
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }
 
-func (oa *operatorActions) CheckDisasterTolerance(cluster *TidbClusterConfig) error {
+func (oa *OperatorActions) CheckDisasterTolerance(cluster *TidbClusterConfig) error {
 	pds, err := oa.kubeCli.CoreV1().Pods(cluster.Namespace).List(
 		metav1.ListOptions{LabelSelector: labels.SelectorFromSet(
 			label.New().Instance(cluster.ClusterName).PD().Labels(),
@@ -128,7 +128,7 @@ func (oa *operatorActions) CheckDisasterTolerance(cluster *TidbClusterConfig) er
 	return oa.checkPodsDisasterTolerance(tidbs.Items)
 }
 
-func (oa *operatorActions) checkPodsDisasterTolerance(allPods []corev1.Pod) error {
+func (oa *OperatorActions) checkPodsDisasterTolerance(allPods []corev1.Pod) error {
 	for _, pod := range allPods {
 		if pod.Spec.Affinity == nil {
 			return fmt.Errorf("the pod:[%s/%s] has not Affinity", pod.Namespace, pod.Name)
@@ -148,7 +148,7 @@ func (oa *operatorActions) checkPodsDisasterTolerance(allPods []corev1.Pod) erro
 	return nil
 }
 
-func (oa *operatorActions) CheckDisasterToleranceOrDie(cluster *TidbClusterConfig) {
+func (oa *OperatorActions) CheckDisasterToleranceOrDie(cluster *TidbClusterConfig) {
 	err := oa.CheckDisasterTolerance(cluster)
 	if err != nil {
 		slack.NotifyAndPanic(err)

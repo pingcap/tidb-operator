@@ -126,6 +126,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Affinity: buildAffinity(name, ns, v1alpha1.TiKVMemberType),
 				},
+				EvictLeaderTimeout: pointer.StringPtr("3m"),
 			},
 
 			TiDB: &v1alpha1.TiDBSpec{
@@ -291,8 +292,6 @@ func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 		}
 	}
 	if persist {
-		storageClassName := "local-storage"
-		monitor.Spec.StorageClassName = &storageClassName
 		monitor.Spec.Storage = "2Gi"
 		monitor.Spec.Persistent = true
 	}
@@ -443,9 +442,7 @@ func GetBackupCRDWithS3(tc *v1alpha1.TidbCluster, fromSecretName, brType string,
 		},
 	}
 	if brType == DumperType {
-		storage := "local-storage"
 		br.Spec.BR = nil
-		br.Spec.StorageClassName = &storage
 		br.Spec.StorageSize = "1Gi"
 	}
 	return br
@@ -480,9 +477,7 @@ func GetRestoreCRDWithS3(tc *v1alpha1.TidbCluster, toSecretName, restoreType str
 		},
 	}
 	if restoreType == DumperType {
-		storage := "local-storage"
 		restore.Spec.BR = nil
-		restore.Spec.StorageClassName = &storage
 		restore.Spec.StorageSize = "1Gi"
 		restore.Spec.S3.Path = fmt.Sprintf("s3://%s/%s", s3config.Bucket, s3config.Path)
 	}
@@ -523,8 +518,7 @@ func AddPumpForTidbCluster(tc *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
 			SchedulerName:        pointer.StringPtr("default-scheduler"),
 			ConfigUpdateStrategy: &tc.Spec.ConfigUpdateStrategy,
 		},
-		Replicas:         1,
-		StorageClassName: pointer.StringPtr("local-storage"),
+		Replicas: 1,
 		ResourceRequirements: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
 				corev1.ResourceStorage: resource.MustParse("10Gi"),

@@ -147,7 +147,7 @@ func setupSuite() {
 	// The default storage class of kind is local-path-provisioner which
 	// consumes local storage like local-volume-provisioner. However, it's not
 	// stable in our e2e testing.
-	if framework.TestContext.Provider == "gke" || framework.TestContext.Provider == "aws" || framework.TestContext.Provider == "kind" {
+	if framework.TestContext.Provider == "gke" || framework.TestContext.Provider == "aws" {
 		defaultSCName := "local-storage"
 		list, err := c.StorageV1().StorageClasses().List(metav1.ListOptions{})
 		framework.ExpectNoError(err, "list storage class failed")
@@ -338,6 +338,19 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 	ginkgo.By("Deleting cert-manager")
 	err := tidbcluster.DeleteCertManager(kubeCli)
 	framework.ExpectNoError(err, "failed to delete cert-manager")
+
+	ginkgo.By("Uninstalling tidb-operator")
+	ocfg := e2econfig.NewDefaultOperatorConfig(e2econfig.TestConfig)
+	err = tests.CleanOperator(ocfg)
+	framework.ExpectNoError(err, "failed to uninstall operator")
+
+	ginkgo.By("Wait for tidb-operator to be uninstalled")
+	err = wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
+		podList, err2 := kubeCli.CoreV1().Pods(ocfg.Namespace).List(metav1.ListOptions{})
+		framework.ExpectNoError(err2, "failed to list pods for tidb-operator")
+		return len(podList.Items) == 0, nil
+	})
+	framework.ExpectNoError(err, "failed to wait for tidb-operator to be uninstalled")
 })
 
 // RunE2ETests checks configuration parameters (specified through flags) and then runs
