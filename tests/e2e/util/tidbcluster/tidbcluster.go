@@ -75,7 +75,7 @@ func WaitForTidbClusterConditionReady(c versioned.Interface, ns, name string, ti
 }
 
 // MustCreateTCWithComponentsReady create TidbCluster and wait for components ready
-func MustCreateTCWithComponentsReady(cli ctrlCli.Client, oa tests.OperatorActions, tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) {
+func MustCreateTCWithComponentsReady(cli ctrlCli.Client, oa *tests.OperatorActions, tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) {
 	err := cli.Create(context.TODO(), tc)
 	framework.ExpectNoError(err, "failed to create TidbCluster %s/%s", tc.Namespace, tc.Name)
 	err = oa.WaitForTidbClusterReady(tc, timeout, pollInterval)
