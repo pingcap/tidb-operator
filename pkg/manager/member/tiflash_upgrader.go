@@ -14,9 +14,14 @@
 package member
 
 import (
+	"fmt"
+
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	apps "k8s.io/api/apps/v1"
+	"k8s.io/klog"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
 type tiflashUpgrader struct {
@@ -30,8 +35,10 @@ func NewTiFlashUpgrader(deps *controller.Dependencies) Upgrader {
 	}
 }
 
-func (tku *tiflashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	//  Wait for PD, TiKV and TiDB to finish upgrade
+func (u *tiflashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
 	if tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.Status.TiKV.Phase == v1alpha1.UpgradePhase ||
 		tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
 		_, podSpec, err := GetLastAppliedConfig(oldSet)
@@ -40,6 +47,73 @@ func (tku *tiflashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.State
 		}
 		newSet.Spec.Template.Spec = *podSpec
 		return nil
+	}
+
+	if !tc.Status.TiFlash.Synced {
+		return fmt.Errorf("cluster: [%s/%s]'s TiFlash status is not synced, can not upgrade", ns, tcName)
+	}
+
+	tc.Status.TiFlash.Phase = v1alpha1.UpgradePhase
+	if !templateEqual(newSet, oldSet) {
+		return nil
+	}
+
+	if tc.Status.TiFlash.StatefulSet.UpdateRevision == tc.Status.TiFlash.StatefulSet.CurrentRevision {
+		return nil
+	}
+
+	if oldSet.Spec.UpdateStrategy.Type == apps.OnDeleteStatefulSetStrategyType || oldSet.Spec.UpdateStrategy.RollingUpdate == nil {
+		// Manually bypass tidb-operator to modify statefulset directly, such as modify tikv statefulset's RollingUpdate strategy to OnDelete strategy,
+		// or set RollingUpdate to nil, skip tidb-operator's rolling update logic in order to speed up the upgrade in the test environment occasionally.
+		// If we encounter this situation, we will let the native statefulset controller do the upgrade completely, which may be unsafe for upgrading tikv.
+		// Therefore, in the production environment, we should try to avoid modifying the tikv statefulset update strategy directly.
+		newSet.Spec.UpdateStrategy = oldSet.Spec.UpdateStrategy
+		klog.Warningf("tidbcluster: [%s/%s] TiFlash statefulset %s UpdateStrategy has been modified manually", ns, tcName, oldSet.GetName())
+		return nil
+	}
+
+	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
+	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
+	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
+		i := podOrdinals[_i]
+		store := getTiFlashStoreByOrdinal(tc.GetName(), tc.Status.TiFlash, i)
+		if store == nil {
+			setUpgradePartition(newSet, i)
+			continue
+		}
+		podName := TiFlashPodName(tcName, i)
+		pod, err := u.deps.PodLister.Pods(ns).Get(podName)
+		if err != nil {
+			return fmt.Errorf("TiFlashUpgrader.Upgrade: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
+		}
+		revision, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
+		if !exist {
+			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s TiFlash pod: [%s] has no label: %s", ns, tcName, podName, apps.ControllerRevisionHashLabelKey)
+		}
+
+		if revision == tc.Status.TiFlash.StatefulSet.UpdateRevision {
+			if !podutil.IsPodReady(pod) {
+				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded TiFlash pod: [%s] is not ready", ns, tcName, podName)
+			}
+			if store.State != v1alpha1.TiKVStateUp {
+				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded TiFlash pod: [%s], store state is not UP", ns, tcName, podName)
+			}
+			continue
+		}
+
+		setUpgradePartition(newSet, i)
+		return nil
+	}
+
+	return nil
+}
+
+func getTiFlashStoreByOrdinal(name string, status v1alpha1.TiFlashStatus, ordinal int32) *v1alpha1.TiKVStore {
+	podName := TiFlashPodName(name, ordinal)
+	for _, store := range status.Stores {
+		if store.PodName == podName {
+			return &store
+		}
 	}
 	return nil
 }

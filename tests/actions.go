@@ -159,7 +159,6 @@ type OperatorActions interface {
 	DeployReleasedCRDOrDie(version string)
 	DeployOperator(info *OperatorConfig) error
 	DeployOperatorOrDie(info *OperatorConfig)
-	CleanOperator(info *OperatorConfig) error
 	CleanOperatorOrDie(info *OperatorConfig)
 	UpgradeOperator(info *OperatorConfig) error
 	UpgradeOperatorOrDie(info *OperatorConfig)
@@ -627,7 +626,7 @@ func (oa *operatorActions) DeployOperatorOrDie(info *OperatorConfig) {
 	}
 }
 
-func (oa *operatorActions) CleanOperator(info *OperatorConfig) error {
+func CleanOperator(info *OperatorConfig) error {
 	log.Logf("cleaning tidb-operator %s", info.ReleaseName)
 
 	cmd := fmt.Sprintf("helm uninstall %s --namespace %s",
@@ -644,7 +643,7 @@ func (oa *operatorActions) CleanOperator(info *OperatorConfig) error {
 }
 
 func (oa *operatorActions) CleanOperatorOrDie(info *OperatorConfig) {
-	if err := oa.CleanOperator(info); err != nil {
+	if err := CleanOperator(info); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }
@@ -1016,7 +1015,7 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 	ns := info.Namespace
 	tcName := info.ClusterName
 	// TODO: remove redundant checks already in WaitForTidbClusterReady
-	if err := wait.Poll(oa.pollInterval, 10*time.Minute, func() (bool, error) {
+	if err := wait.Poll(oa.pollInterval, 20*time.Minute, func() (bool, error) {
 		var tc *v1alpha1.TidbCluster
 		var err error
 		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
