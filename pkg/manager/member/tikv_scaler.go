@@ -211,8 +211,8 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 			}
 			klog.Infof("pod %s not ready, tikv scale in: set pvc %s/%s annotation: %s to %s", podName, ns, pvc.Name, label.AnnPVCDeferDeleting, now)
 			setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
-			return nil
 		}
+		return nil
 	}
 	return fmt.Errorf("TiKV %s/%s not found in cluster", ns, podName)
 }
