@@ -62,7 +62,7 @@ func (t *BackupTarget) GetDrainerConfig(source *TidbClusterConfig, ts string) *D
 	return drainerConfig
 }
 
-func (oa *operatorActions) BackupAndRestoreToMultipleClusters(source *TidbClusterConfig, targets []BackupTarget) error {
+func (oa *OperatorActions) BackupAndRestoreToMultipleClusters(source *TidbClusterConfig, targets []BackupTarget) error {
 	err := oa.DeployAndCheckPump(source)
 	if err != nil {
 		return err
@@ -214,13 +214,13 @@ func (oa *operatorActions) BackupAndRestoreToMultipleClusters(source *TidbCluste
 	return oa.CheckScheduledBackup(source)
 }
 
-func (oa *operatorActions) BackupAndRestoreToMultipleClustersOrDie(source *TidbClusterConfig, targets []BackupTarget) {
+func (oa *OperatorActions) BackupAndRestoreToMultipleClustersOrDie(source *TidbClusterConfig, targets []BackupTarget) {
 	if err := oa.BackupAndRestoreToMultipleClusters(source, targets); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }
 
-func (oa *operatorActions) BackupRestore(from, to *TidbClusterConfig) error {
+func (oa *OperatorActions) BackupRestore(from, to *TidbClusterConfig) error {
 
 	return oa.BackupAndRestoreToMultipleClusters(from, []BackupTarget{
 		{
@@ -231,13 +231,13 @@ func (oa *operatorActions) BackupRestore(from, to *TidbClusterConfig) error {
 	})
 }
 
-func (oa *operatorActions) BackupRestoreOrDie(from, to *TidbClusterConfig) {
+func (oa *OperatorActions) BackupRestoreOrDie(from, to *TidbClusterConfig) {
 	if err := oa.BackupRestore(from, to); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }
 
-func (oa *operatorActions) DeployAndCheckPump(tc *TidbClusterConfig) error {
+func (oa *OperatorActions) DeployAndCheckPump(tc *TidbClusterConfig) error {
 	if err := oa.DeployIncrementalBackup(tc, nil, false, ""); err != nil {
 		return err
 	}
@@ -245,7 +245,7 @@ func (oa *operatorActions) DeployAndCheckPump(tc *TidbClusterConfig) error {
 	return oa.CheckIncrementalBackup(tc, false)
 }
 
-func (oa *operatorActions) DeployAndCheckIncrementalBackup(from, to *TidbClusterConfig, ts string) error {
+func (oa *OperatorActions) DeployAndCheckIncrementalBackup(from, to *TidbClusterConfig, ts string) error {
 	if err := oa.DeployIncrementalBackup(from, to, true, ts); err != nil {
 		return err
 	}
@@ -253,7 +253,7 @@ func (oa *operatorActions) DeployAndCheckIncrementalBackup(from, to *TidbCluster
 	return oa.CheckIncrementalBackup(from, true)
 }
 
-func (oa *operatorActions) CheckDataConsistency(from, to *TidbClusterConfig, timeout time.Duration) error {
+func (oa *OperatorActions) CheckDataConsistency(from, to *TidbClusterConfig, timeout time.Duration) error {
 	fn := func() (bool, error) {
 		b, err := oa.DataIsTheSameAs(to, from)
 		if err != nil {
@@ -269,7 +269,7 @@ func (oa *operatorActions) CheckDataConsistency(from, to *TidbClusterConfig, tim
 	return wait.Poll(DefaultPollInterval, timeout, fn)
 }
 
-func (oa *operatorActions) DeployDrainer(info *DrainerConfig, source *TidbClusterConfig) error {
+func (oa *OperatorActions) DeployDrainer(info *DrainerConfig, source *TidbClusterConfig) error {
 	oa.EmitEvent(source, "DeployDrainer")
 	log.Logf("begin to deploy drainer [%s] namespace[%s], source cluster [%s]", info.DrainerName,
 		source.Namespace, source.ClusterName)
@@ -304,13 +304,13 @@ func (oa *operatorActions) DeployDrainer(info *DrainerConfig, source *TidbCluste
 	return nil
 }
 
-func (oa *operatorActions) DeployDrainerOrDie(info *DrainerConfig, source *TidbClusterConfig) {
+func (oa *OperatorActions) DeployDrainerOrDie(info *DrainerConfig, source *TidbClusterConfig) {
 	if err := oa.DeployDrainer(info, source); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }
 
-func (oa *operatorActions) CheckDrainer(info *DrainerConfig, source *TidbClusterConfig) error {
+func (oa *OperatorActions) CheckDrainer(info *DrainerConfig, source *TidbClusterConfig) error {
 	log.Logf("checking drainer [%s/%s]", info.DrainerName, source.Namespace)
 
 	ns := source.Namespace
@@ -349,7 +349,7 @@ func (oa *operatorActions) CheckDrainer(info *DrainerConfig, source *TidbCluster
 	return nil
 }
 
-func (oa *operatorActions) RestoreIncrementalFiles(from *DrainerConfig, to *TidbClusterConfig, stopTSO int64) error {
+func (oa *OperatorActions) RestoreIncrementalFiles(from *DrainerConfig, to *TidbClusterConfig, stopTSO int64) error {
 	log.Logf("restoring incremental data from drainer [%s/%s] to TiDB cluster [%s/%s]",
 		from.Namespace, from.DrainerName, to.Namespace, to.ClusterName)
 

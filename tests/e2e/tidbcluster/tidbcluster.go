@@ -76,7 +76,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	var asCli asclientset.Interface
 	var aggrCli aggregatorclient.Interface
 	var apiExtCli apiextensionsclientset.Interface
-	var oa tests.OperatorActions
+	var oa *tests.OperatorActions
 	var cfg *tests.Config
 	var config *restclient.Config
 	var ocfg *tests.OperatorConfig
@@ -223,7 +223,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 						return nil
 					})
 					framework.ExpectNoError(err, "failed to change configuration of TidbCluster: %q", tc.Name)
-					err = crdUtil.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
 					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 				})
 			})
