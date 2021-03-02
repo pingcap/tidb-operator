@@ -3576,9 +3576,7 @@ func (oa *OperatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, tim
 	return wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
 		var local *v1alpha1.TidbCluster
 		var err error
-		tcID := fmt.Sprintf("%s/%s", tc.Namespa
-                        
-                        ce, tc.Name)
+		tcID := fmt.Sprintf("%s/%s", tc.Namespace, tc.Name)
 
 		if local, err = oa.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{}); err != nil {
 			log.Logf("failed to get TidbCluster: %q, %v", tcID, err)
