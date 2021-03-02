@@ -21,6 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -106,7 +107,6 @@ func (s *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet 
 	resetReplicas(newSet, oldSet)
 	memberName := PdName(tcName, ordinal, tc.Namespace, tc.Spec.ClusterDomain)
 	pdPodName := PdPodName(tcName, ordinal)
-	setName := oldSet.GetName()
 
 	if !tc.Status.PD.Synced {
 		return fmt.Errorf("TidbCluster: %s/%s's pd status sync failed, can't scale in now", ns, tcName)
@@ -163,31 +163,36 @@ func (s *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet 
 
 	err = pdClient.DeleteMember(memberName)
 	if err != nil {
-		klog.Errorf("pd scale in: failed to delete member %s, %v", memberName, err)
+		klog.Errorf("pdScaler.ScaleIn: failed to delete member %s, %v", memberName, err)
 		return err
 	}
-	klog.Infof("pd scale in: delete member %s successfully", memberName)
+	klog.Infof("pdScaler.ScaleIn: delete member %s successfully", memberName)
 
-	pvcName := ordinalPVCName(v1alpha1.PDMemberType, setName, ordinal)
-	pvc, err := s.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
+	pod, err := s.deps.PodLister.Pods(ns).Get(pdPodName)
 	if err != nil {
-		return fmt.Errorf("pdScaler.ScaleIn: failed to get pvc %s for cluster %s/%s, error: %s", pvcName, ns, tcName, err)
+		return fmt.Errorf("pdScaler.ScaleIn: failed to get pod %s/%s for pd in tc %s/%s, error: %s", ns, pdPodName, ns, tcName, err)
 	}
 
-	if pvc.Annotations == nil {
-		pvc.Annotations = map[string]string{}
-	}
-	now := time.Now().Format(time.RFC3339)
-	pvc.Annotations[label.AnnPVCDeferDeleting] = now
-
-	_, err = s.deps.PVCControl.UpdatePVC(tc, pvc)
+	pvcs, err := util.ResolvePVCFromPod(pod, s.deps.PVCLister)
+	klog.V(4).Infof("ResolvePVCFromPod: %+v", pvcs)
 	if err != nil {
-		klog.Errorf("pd scale in: failed to set pvc %s/%s annotation: %s to %s",
-			ns, pvcName, label.AnnPVCDeferDeleting, now)
-		return err
+		return fmt.Errorf("pdScaler.ScaleIn: failed to get pvcs for pod %s/%s in tc %s/%s, error: %s", ns, pod.Name, ns, tcName, err)
 	}
-	klog.Infof("pd scale in: set pvc %s/%s annotation: %s to %s",
-		ns, pvcName, label.AnnPVCDeferDeleting, now)
+
+	for _, pvc := range pvcs {
+		if pvc.Annotations == nil {
+			pvc.Annotations = map[string]string{}
+		}
+		now := time.Now().Format(time.RFC3339)
+		pvc.Annotations[label.AnnPVCDeferDeleting] = now
+
+		_, err = s.deps.PVCControl.UpdatePVC(tc, pvc)
+		if err != nil {
+			klog.Errorf("pdScaler.ScaleIn: failed to set pvc %s/%s annotation: %s to %s", ns, pvc.Name, label.AnnPVCDeferDeleting, now)
+			return err
+		}
+		klog.Infof("pdScaler.ScaleIn: set pvc %s/%s annotation: %s to %s", ns, pvc.Name, label.AnnPVCDeferDeleting, now)
+	}
 
 	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 	return nil

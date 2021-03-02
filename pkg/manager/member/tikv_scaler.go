@@ -124,10 +124,10 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 			}
 			if state != v1alpha1.TiKVStateOffline {
 				if err := controller.GetPDClient(s.deps.PDControl, tc).DeleteStore(id); err != nil {
-					klog.Errorf("tikv scale in: failed to delete store %d, %v", id, err)
+					klog.Errorf("tikvScaler.ScaleIn: failed to delete store %d, %v", id, err)
 					return err
 				}
-				klog.Infof("tikv scale in: delete store %d for tikv %s/%s successfully", id, ns, podName)
+				klog.Infof("tikvScaler.ScaleIn: delete store %d for tikv %s/%s successfully", id, ns, podName)
 			}
 			return controller.RequeueErrorf("TiKV %s/%s store %d is still in cluster, state: %s", ns, podName, id, state)
 		}
@@ -154,11 +154,11 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 			pvc.Annotations[label.AnnPVCDeferDeleting] = now
 			_, err = s.deps.PVCControl.UpdatePVC(tc, pvc)
 			if err != nil {
-				klog.Errorf("tikv scale in: failed to set pvc %s/%s annotation: %s to %s",
+				klog.Errorf("tikvScaler.ScaleIn: failed to set pvc %s/%s annotation: %s to %s",
 					ns, pvcName, label.AnnPVCDeferDeleting, now)
 				return err
 			}
-			klog.Infof("tikv scale in: set pvc %s/%s annotation: %s to %s",
+			klog.Infof("tikvScaler.ScaleIn: set pvc %s/%s annotation: %s to %s",
 				ns, pvcName, label.AnnPVCDeferDeleting, now)
 
 			// endEvictLeader for TombStone stores
@@ -204,11 +204,11 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 		pvc.Annotations[label.AnnPVCDeferDeleting] = now
 		_, err = s.deps.PVCControl.UpdatePVC(tc, pvc)
 		if err != nil {
-			klog.Errorf("pod %s not ready, tikv scale in: failed to set pvc %s/%s annotation: %s to %s",
+			klog.Errorf("pod %s not ready, tikvScaler.ScaleIn: failed to set pvc %s/%s annotation: %s to %s",
 				podName, ns, pvcName, label.AnnPVCDeferDeleting, now)
 			return err
 		}
-		klog.Infof("pod %s not ready, tikv scale in: set pvc %s/%s annotation: %s to %s",
+		klog.Infof("pod %s not ready, tikvScaler.ScaleIn: set pvc %s/%s annotation: %s to %s",
 			podName, ns, pvcName, label.AnnPVCDeferDeleting, now)
 		setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 		return nil
