@@ -55,7 +55,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 	var asCli asclientset.Interface
 	var aggrCli aggregatorclient.Interface
 	var apiExtCli apiextensionsclientset.Interface
-	var oa tests.OperatorActions
+	var oa *tests.OperatorActions
 	var cfg *tests.Config
 	var config *restclient.Config
 	var ocfg *tests.OperatorConfig
@@ -135,7 +135,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 })
 
 // TODO: rename to something more meaningful
-func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interface, genericCli client.Client, oa tests.OperatorActions, cli versioned.Interface, tlsEnabled bool, brType string) {
+func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interface, genericCli client.Client, oa *tests.OperatorActions, cli versioned.Interface, tlsEnabled bool, brType string) {
 	backupFolder := time.Now().Format(time.RFC3339)
 	var storage teststorage.TestStorage
 	switch provider {
