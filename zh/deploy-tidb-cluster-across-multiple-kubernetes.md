@@ -3,13 +3,17 @@ title: 跨多个 Kubernetes 集群部署 TiDB 集群
 summary: 本文档介绍如何实现跨多个 Kubernetes 集群部署 TiDB 集群
 ---
 
+> **警告：**
+>
+> 当前该功能为实验特性，不建议在生产环境中使用。
+
 # 跨多个 Kubernetes 集群部署 TiDB 集群
 
 跨多个 Kubernetes 集群部署 TiDB 集群，是指在多个网络互通的 Kubernetes 集群上部署**一个** TiDB 集群，集群各个组件分布在多个 Kubernetes 集群上，实现在 Kubernetes 集群间容灾。所谓 Kubernetes 集群网络互通，是指 Pod IP 在任意集群内和集群间可以被互相访问，Pod FQDN 记录在集群内和集群间均可被解析。
 
 ## 前置条件
 
-您需要配置 Kubernetes 的网络和 DNS，使得 Kubernetes 集群满足以下条件：
+需要配置 Kubernetes 的网络和 DNS，使得 Kubernetes 集群满足以下条件：
 
 - 各 Kubernetes 集群上的 TiDB 组件有能力访问集群内和集群间所有 TiDB 组件的 Pod IP。
 - 各 Kubernetes 集群上的 TiDB 组件有能力解析集群内和集群间所有 TiDB 组件的 Pod FQDN。
@@ -31,13 +35,13 @@ summary: 本文档介绍如何实现跨多个 Kubernetes 集群部署 TiDB 集�
 
 ## 跨多个 Kubernetes 集群部署集群
 
-部署跨多个 Kubernetes 集群的 TiDB 集群，默认您已部署好此场景所需要的 Kubernetes 集群，在此基础上进行下面的部署工作。
+部署跨多个 Kubernetes 集群的 TiDB 集群，默认你已部署好此场景所需要的 Kubernetes 集群，在此基础上进行下面的部署工作。
 
 下面以部署两个集群为例进行介绍，其中集群 1 为初始集群，按照下面给出的配置进行创建，集群 1 正常运行后，按照下面给出配置创建集群 2，等集群完成创建和部署工作后，两个集群正常运行。
 
 ### 部署初始集群
 
-根据实际情况设置以下环境变量，实际使用中需要根据您的实际情况设置 `cluster1_name` 和 `cluster1_cluster_domain` 变量的内容，其中 `cluster1_name` 为集群 1 的集群名称，`cluster1_cluster_domain` 为集群 1 的 [Cluster Domain](https://kubernetes.io/docs/tasks/administer-cluster/dns-custom-nameservers/#introduction), `cluster1_namespace` 为集群 1 的命名空间。
+根据实际情况设置以下环境变量，实际使用中需要根据你的实际情况设置 `cluster1_name` 和 `cluster1_cluster_domain` 变量的内容，其中 `cluster1_name` 为集群 1 的集群名称，`cluster1_cluster_domain` 为集群 1 的 [Cluster Domain](https://kubernetes.io/docs/tasks/administer-cluster/dns-custom-nameservers/#introduction), `cluster1_namespace` 为集群 1 的命名空间。
 
 {{< copyable "shell-regular" >}}
 
@@ -88,9 +92,9 @@ EOF
 
 ### 部署新集群加入初始集群
 
-等待集群 1 完成部署后，创建集群 2。在实际使用中，集群 2 可以加入多集群内的任意一个已有集群。
+等待集群 1 完成部署后，创建集群 2。在实际使用中，新创建的集群 2 可以加入多集群内的任意一个已有集群。
 
-您可以参考下面的范例，根据实际情况设置填入集群 1 和集群 2 的 `Name`、`Cluster Domain`、`Namespace` 等相关信息：
+可以参考下面的范例，根据实际情况设置填入集群 1 和集群 2 的 `Name`、`Cluster Domain`、`Namespace` 等相关信息：
 
 {{< copyable "shell-regular" >}}
 
@@ -149,17 +153,17 @@ EOF
 
 ## 跨多个 Kubernetes 集群部署开启组件间 TLS 的 TiDB 集群
 
-您可以按照以下步骤为跨多个 Kubernetes 集群部署的 TiDB 集群开启组件间 TLS。
+可以按照以下步骤为跨多个 Kubernetes 集群部署的 TiDB 集群开启组件间 TLS。
 
 ### 签发根证书
 
 #### 使用 cfssl 系统签发根证书
 
-如果您使用 `cfssl`，签发 CA 证书的过程与一般签发过程没有差别，您需要保存好第一次创建的 CA 证书，并且在后面为 TiDB 组件签发证书时都使用这个 CA 证书，即在为其他集群创建组件证书时，不需要再次创建 CA 证书，您只需要完成一次[为 TiDB 组件间开启 TLS](enable-tls-between-components.md#使用-cfssl-系统颁发证书) 文档中 1 ~ 4 步操作，完成 CA 证书签发，为其他集群组件间证书签发操作从第 5 步开始即可。
+如果你使用 `cfssl`，签发 CA 证书的过程与一般签发过程没有差别，需要保存好第一次创建的 CA 证书，并且在后面为 TiDB 组件签发证书时都使用这个 CA 证书，即在为其他集群创建组件证书时，不需要再次创建 CA 证书，你只需要完成一次[为 TiDB 组件间开启 TLS](enable-tls-between-components.md#使用-cfssl-系统颁发证书) 文档中 1 ~ 4 步操作，完成 CA 证书签发，为其他集群组件间证书签发操作从第 5 步开始即可。
 
 #### 使用 cert-manager 系统签发根证书
 
-如果您使用 `cert-manager`，只需要在初始集群创建 `CA Issuer` 和创建 `CA Certificate`，并导出 `CA Secret` 给其他准备加入的新集群，其他集群只需要创建组件证书签发 `Issuer`（在 [TLS 文档](enable-tls-between-components.md#使用-cert-manager-系统颁发证书)中指名字为 `${cluster_name}-tidb-issuer` 的 `Issuer`），配置 `Issuer` 使用该 CA，具体过程如下：
+如果你使用 `cert-manager`，只需要在初始集群创建 `CA Issuer` 和创建 `CA Certificate`，并导出 `CA Secret` 给其他准备加入的新集群，其他集群只需要创建组件证书签发 `Issuer`（在 [TLS 文档](enable-tls-between-components.md#使用-cert-manager-系统颁发证书)中指名字为 `${cluster_name}-tidb-issuer` 的 `Issuer`），配置 `Issuer` 使用该 CA，具体过程如下：
 
 1. 在初始集群上创建 `CA Issuer` 和创建 `CA Certificate`。
 
@@ -229,7 +233,7 @@ EOF
 
 3. 将导出的 CA 导入到其他集群。
 
-    您需要配置这里的 `namespace` 使得相关组件可以访问到 CA 证书：
+    你需要配置这里的 `namespace` 使得相关组件可以访问到 CA 证书：
 
     {{< copyable "shell-regular" >}}
 
@@ -270,7 +274,7 @@ EOF
 
     2. 在新集群上，创建组件间证书签发 `Issuer`。
 
-       根据实际情况设置以下环境变量，其中 `ca_secret_name` 需要指向您刚才导入的存放 `CA` 的 `Secret`，`cluster_name` 和 `namespace` 在下面的操作中需要用到：
+       根据实际情况设置以下环境变量，其中 `ca_secret_name` 需要指向你刚才导入的存放 `CA` 的 `Secret`，`cluster_name` 和 `namespace` 在下面的操作中需要用到：
 
        {{< copyable "shell-regular" >}}
 
@@ -299,7 +303,7 @@ EOF
 
 ### 为各个 Kubernetes 集群的 TiDB 组件签发证书
 
-您需要为每个 Kubernetes 集群上的 TiDB 组件都签发组件证书。在签发组件证书时，需要在 hosts 中加上以 `.${cluster_domain}` 结尾的授权记录， 例如 `${cluster_name}-pd.${namespace}.svc.${cluster_domain}`。
+你需要为每个 Kubernetes 集群上的 TiDB 组件都签发组件证书。在签发组件证书时，需要在 hosts 中加上以 `.${cluster_domain}` 结尾的授权记录， 例如 `${cluster_name}-pd.${namespace}.svc.${cluster_domain}`。
 
 #### 使用 cfssl 系统为 TiDB 组件签发证书
 
@@ -412,7 +416,7 @@ spec:
 EOF
 ```
 
-您需要参考 TLS 相关文档，为组件签发对应的证书，并在相应 Kubernetes 集群中创建 Secret。
+需要参考 TLS 相关文档，为组件签发对应的证书，并在相应 Kubernetes 集群中创建 Secret。
 
 其他 TLS 相关信息，可参考以下文档：
 
@@ -421,7 +425,7 @@ EOF
 
 ### 部署初始集群
 
-通过如下命令部署初始化集群，实际使用中需要根据您的实际情况设置 `cluster1_name` 和 `cluster1_cluster_domain` 变量的内容，其中 `cluster1_name` 为集群 1 的集群名称，`cluster1_cluster_domain` 为集群 1 的 `Cluster Domain`，`cluster1_namespace` 为集群 1 的命名空间。下面的 YAML 文件已经开启了 TLS 功能，并通过配置 `cert-allowed-cn`，使得各个组件开始验证由 `CN` 为 `TiDB` 的 `CA` 所签发的证书。
+通过如下命令部署初始化集群，实际使用中需要根据你的实际情况设置 `cluster1_name` 和 `cluster1_cluster_domain` 变量的内容，其中 `cluster1_name` 为集群 1 的集群名称，`cluster1_cluster_domain` 为集群 1 的 `Cluster Domain`，`cluster1_namespace` 为集群 1 的命名空间。下面的 YAML 文件已经开启了 TLS 功能，并通过配置 `cert-allowed-cn`，使得各个组件开始验证由 `CN` 为 `TiDB` 的 `CA` 所签发的证书。
 
 根据实际情况设置以下环境变量：
 
@@ -431,9 +435,11 @@ EOF
 cluster1_name="cluster1"
 cluster1_cluster_domain="cluster1.com"
 cluster1_namespace="pingcap"
+```
 
 执行以下指令：
 
+```
 cat << EOF | kubectl apply -f -n ${cluster1_namespace} - 
 apiVersion: pingcap.com/v1alpha1
 kind: TidbCluster
@@ -557,11 +563,11 @@ EOF
 
 ## 退出和回收已加入集群
 
-当您需要让一个集群从所加入的跨 Kubernetes 部署的 TiDB 集群退出并回收资源时，可以通过缩容流程来实现上述需求。在此场景下，需要满足缩容的一些限制，限制如下：
+当你需要让一个集群从所加入的跨 Kubernetes 部署的 TiDB 集群退出并回收资源时，可以通过缩容流程来实现上述需求。在此场景下，需要满足缩容的一些限制，限制如下：
 
 - 缩容后，集群中 TiKV 副本数应大于 PD 中设置的 `max-replicas` 数量，默认情况下 TiKV 副本数量需要大于 3。
 
-我们以上面文档创建的集群 2 为例，先将 PD、TiKV、TiDB 的副本数设置为 0，如果开启了 TiFlash、TiCDC、Pump 等其他组件，也请一并将其副本数设为 0：
+以上面文档创建的集群 2 为例，先将 PD、TiKV、TiDB 的副本数设置为 0，如果开启了 TiFlash、TiCDC、Pump 等其他组件，也请一并将其副本数设为 0：
 
 {{< copyable "shell-regular" >}}
 
@@ -585,7 +591,7 @@ Pod 列表显示为 `No resources found.`，此时 Pod 已经被全部缩容，�
 kubectl get tc cluster2
 ```
 
-结果显示集群 2 为 `Ready` 状态，此时我们可以删除该对象，对相关资源进行回收。
+结果显示集群 2 为 `Ready` 状态，此时可以删除该对象，对相关资源进行回收。
 
 {{< copyable "shell-regular" >}}
 
@@ -593,7 +599,7 @@ kubectl get tc cluster2
 kubectl delete tc cluster2
 ```
 
-通过上述步骤，我们完成了已加入集群的退出和资源回收。
+通过上述步骤完成已加入集群的退出和资源回收。
 
 ## 已有数据集群开启跨多个 Kubernetes 集群功能并作为 TiDB 集群的初始集群
 
@@ -603,11 +609,11 @@ kubectl delete tc cluster2
 
 1. 更新 `.spec.clusterDomain` 配置：
 
-    根据您的 Kubernetes 集群信息中的 `clusterDomain` 配置下面的参数：
+    根据你的 Kubernetes 集群信息中的 `clusterDomain` 配置下面的参数：
 
     > **警告：**
     > 
-    > 目前需要您使用正确的信息配置 `clusterDomain`，配置修改后无法再次修改。
+    > 目前需要你使用正确的信息配置 `clusterDomain`，配置修改后无法再次修改。
 
     {{< copyable "shell-regular" >}}
 
