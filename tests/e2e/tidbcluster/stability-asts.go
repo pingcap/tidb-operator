@@ -97,7 +97,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 	// tidb-operator with AdvancedStatefulSet feature enabled
 	ginkgo.Context("[Feature: AdvancedStatefulSet][Feature: Webhook]", func() {
 		var ocfg *tests.OperatorConfig
-		var oa tests.OperatorActions
+		var oa *tests.OperatorActions
 		var genericCli client.Client
 
 		ginkgo.BeforeEach(func() {
@@ -311,7 +311,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 
 	ginkgo.It("[Feature: AdvancedStatefulSet] Upgrade to advanced statefulset", func() {
 		var ocfg *tests.OperatorConfig
-		var oa tests.OperatorActions
+		var oa *tests.OperatorActions
 		var genericCli client.Client
 
 		ocfg = &tests.OperatorConfig{
@@ -403,7 +403,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 
 	ginkgo.It("[Feature: AdvancedStatefulSet] Upgrading tidb cluster while pods are not consecutive", func() {
 		var ocfg *tests.OperatorConfig
-		var oa tests.OperatorActions
+		var oa *tests.OperatorActions
 		var genericCli client.Client
 
 		ocfg = &tests.OperatorConfig{

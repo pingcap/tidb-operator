@@ -42,7 +42,7 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
-func (oa *operatorActions) DeletePDDataThenCheckFailover(info *TidbClusterConfig, pdFailoverPeriod time.Duration) error {
+func (oa *OperatorActions) DeletePDDataThenCheckFailover(info *TidbClusterConfig, pdFailoverPeriod time.Duration) error {
 	const failoverTimeout = 5 * time.Minute
 	ns := info.Namespace
 	tcName := info.ClusterName
@@ -144,13 +144,13 @@ func (oa *operatorActions) DeletePDDataThenCheckFailover(info *TidbClusterConfig
 	return nil
 }
 
-func (oa *operatorActions) DeletePDDataThenCheckFailoverOrDie(info *TidbClusterConfig, pdFailoverPeriod time.Duration) {
+func (oa *OperatorActions) DeletePDDataThenCheckFailoverOrDie(info *TidbClusterConfig, pdFailoverPeriod time.Duration) {
 	if err := oa.DeletePDDataThenCheckFailover(info, pdFailoverPeriod); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }
 
-func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterConfig, tikvFailoverPeriod time.Duration) error {
+func (oa *OperatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterConfig, tikvFailoverPeriod time.Duration) error {
 	const failoverTimeout = 5 * time.Minute
 
 	cli := client.Union(oa.kubeCli, oa.cli)
@@ -328,13 +328,13 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 	return nil
 }
 
-func (oa *operatorActions) TruncateSSTFileThenCheckFailoverOrDie(info *TidbClusterConfig, tikvFailoverPeriod time.Duration) {
+func (oa *OperatorActions) TruncateSSTFileThenCheckFailoverOrDie(info *TidbClusterConfig, tikvFailoverPeriod time.Duration) {
 	if err := oa.TruncateSSTFileThenCheckFailover(info, tikvFailoverPeriod); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }
 
-func (oa *operatorActions) CheckFailoverPending(info *TidbClusterConfig, node string, faultPoint *time.Time) (bool, error) {
+func (oa *OperatorActions) CheckFailoverPending(info *TidbClusterConfig, node string, faultPoint *time.Time) (bool, error) {
 	affectedPods, err := oa.getPodsByNode(info, node)
 	if err != nil {
 		log.Logf("cluster:[%s] query pods failed,error:%v", info.FullName(), err)
@@ -388,7 +388,7 @@ func (oa *operatorActions) CheckFailoverPending(info *TidbClusterConfig, node st
 	return true, nil
 }
 
-func (oa *operatorActions) CheckFailoverPendingOrDie(clusters []*TidbClusterConfig, node string, faultPoint *time.Time) {
+func (oa *OperatorActions) CheckFailoverPendingOrDie(clusters []*TidbClusterConfig, node string, faultPoint *time.Time) {
 	if err := wait.Poll(1*time.Minute, 30*time.Minute, func() (bool, error) {
 		var passes []bool
 		for i := range clusters {
@@ -409,7 +409,7 @@ func (oa *operatorActions) CheckFailoverPendingOrDie(clusters []*TidbClusterConf
 	}
 }
 
-func (oa *operatorActions) CheckFailover(info *TidbClusterConfig, node string) (bool, error) {
+func (oa *OperatorActions) CheckFailover(info *TidbClusterConfig, node string) (bool, error) {
 	affectedPods, err := oa.getPodsByNode(info, node)
 	if err != nil {
 		log.Logf("cluster:[%s] query pods failed,error:%v", info.FullName(), err)
@@ -448,7 +448,7 @@ func (oa *operatorActions) CheckFailover(info *TidbClusterConfig, node string) (
 	return true, nil
 }
 
-func (oa *operatorActions) getPodsByNode(info *TidbClusterConfig, node string) (map[string]*corev1.Pod, error) {
+func (oa *OperatorActions) getPodsByNode(info *TidbClusterConfig, node string) (map[string]*corev1.Pod, error) {
 	selector, err := label.New().Instance(info.ClusterName).Selector()
 	if err != nil {
 		log.Logf("ERROR: cluster:[%s] create selector failed, error:%v", info.FullName(), err)
@@ -469,7 +469,7 @@ func (oa *operatorActions) getPodsByNode(info *TidbClusterConfig, node string) (
 	return podsOfNode, nil
 }
 
-func (oa *operatorActions) CheckFailoverOrDie(clusters []*TidbClusterConfig, faultNode string) {
+func (oa *OperatorActions) CheckFailoverOrDie(clusters []*TidbClusterConfig, faultNode string) {
 	if err := wait.Poll(1*time.Minute, 60*time.Minute, func() (bool, error) {
 		var passes []bool
 		for i := range clusters {
@@ -490,7 +490,7 @@ func (oa *operatorActions) CheckFailoverOrDie(clusters []*TidbClusterConfig, fau
 	}
 }
 
-func (oa *operatorActions) CheckRecover(cluster *TidbClusterConfig) (bool, error) {
+func (oa *OperatorActions) CheckRecover(cluster *TidbClusterConfig) (bool, error) {
 	tc, err := oa.cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
 	if err != nil {
 		return false, nil
@@ -569,7 +569,7 @@ func (oa *operatorActions) CheckRecover(cluster *TidbClusterConfig) (bool, error
 	return true, nil
 }
 
-func (oa *operatorActions) CheckRecoverOrDie(clusters []*TidbClusterConfig) {
+func (oa *OperatorActions) CheckRecoverOrDie(clusters []*TidbClusterConfig) {
 	if err := wait.Poll(DefaultPollInterval, DefaultPollTimeout, func() (bool, error) {
 		var passes []bool
 		for i := range clusters {
@@ -590,7 +590,7 @@ func (oa *operatorActions) CheckRecoverOrDie(clusters []*TidbClusterConfig) {
 	}
 }
 
-func (oa *operatorActions) pdFailover(pod *corev1.Pod, tc *v1alpha1.TidbCluster) bool {
+func (oa *OperatorActions) pdFailover(pod *corev1.Pod, tc *v1alpha1.TidbCluster) bool {
 	failure := false
 	for _, failureMember := range tc.Status.PD.FailureMembers {
 		if failureMember.PodName == pod.GetName() {
@@ -622,7 +622,7 @@ func (oa *operatorActions) pdFailover(pod *corev1.Pod, tc *v1alpha1.TidbCluster)
 // TODO we should confirm the tombstone exists, important!!!!!!
 // 		for example: offline the same pod again and again, and see it in the tombstone stores
 // 					 offline two pods, and see them in the tombstone stores
-func (oa *operatorActions) tikvFailover(pod *corev1.Pod, tc *v1alpha1.TidbCluster) bool {
+func (oa *OperatorActions) tikvFailover(pod *corev1.Pod, tc *v1alpha1.TidbCluster) bool {
 	failure := false
 	for _, failureStore := range tc.Status.TiKV.FailureStores {
 		if failureStore.PodName == pod.GetName() {
@@ -649,7 +649,7 @@ func (oa *operatorActions) tikvFailover(pod *corev1.Pod, tc *v1alpha1.TidbCluste
 	return false
 }
 
-func (oa *operatorActions) tidbFailover(pod *corev1.Pod, tc *v1alpha1.TidbCluster) bool {
+func (oa *OperatorActions) tidbFailover(pod *corev1.Pod, tc *v1alpha1.TidbCluster) bool {
 	failure := false
 	for _, failureMember := range tc.Status.TiDB.FailureMembers {
 		if failureMember.PodName == pod.GetName() {
@@ -676,7 +676,7 @@ func (oa *operatorActions) tidbFailover(pod *corev1.Pod, tc *v1alpha1.TidbCluste
 	return false
 }
 
-func (oa *operatorActions) GetPodUIDMap(info *TidbClusterConfig) (map[string]types.UID, error) {
+func (oa *OperatorActions) GetPodUIDMap(info *TidbClusterConfig) (map[string]types.UID, error) {
 	result := map[string]types.UID{}
 
 	selector, err := label.New().Instance(info.ClusterName).Selector()
@@ -694,7 +694,7 @@ func (oa *operatorActions) GetPodUIDMap(info *TidbClusterConfig) (map[string]typ
 	return result, nil
 }
 
-func (oa *operatorActions) GetNodeMap(info *TidbClusterConfig, component string) (map[string][]string, error) {
+func (oa *OperatorActions) GetNodeMap(info *TidbClusterConfig, component string) (map[string][]string, error) {
 	nodeMap := make(map[string][]string)
 	selector := label.New().Instance(info.ClusterName).Component(component).Labels()
 	podList, err := oa.kubeCli.CoreV1().Pods(info.Namespace).List(metav1.ListOptions{
@@ -716,7 +716,7 @@ func (oa *operatorActions) GetNodeMap(info *TidbClusterConfig, component string)
 	return nodeMap, nil
 }
 
-func (oa *operatorActions) CheckKubeletDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string) {
+func (oa *OperatorActions) CheckKubeletDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string) {
 	log.Logf("check k8s/operator/tidbCluster status when kubelet down")
 	time.Sleep(10 * time.Minute)
 	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
@@ -739,7 +739,7 @@ func (oa *operatorActions) CheckKubeletDownOrDie(operatorConfig *OperatorConfig,
 	})
 }
 
-func (oa *operatorActions) CheckEtcdDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string) {
+func (oa *OperatorActions) CheckEtcdDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string) {
 	log.Logf("check k8s/operator/tidbCluster status when etcd down")
 	// kube-apiserver may block 15 min
 	time.Sleep(20 * time.Minute)
@@ -763,7 +763,7 @@ func (oa *operatorActions) CheckEtcdDownOrDie(operatorConfig *OperatorConfig, cl
 	})
 }
 
-func (oa *operatorActions) CheckKubeProxyDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig) {
+func (oa *OperatorActions) CheckKubeProxyDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig) {
 	log.Logf("checking k8s/tidbCluster status when kube-proxy down")
 
 	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
@@ -789,7 +789,7 @@ func (oa *operatorActions) CheckKubeProxyDownOrDie(operatorConfig *OperatorConfi
 	})
 }
 
-func (oa *operatorActions) CheckKubeSchedulerDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig) {
+func (oa *OperatorActions) CheckKubeSchedulerDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig) {
 	log.Logf("verify kube-scheduler is not avaiavble")
 
 	if err := waitForComponentStatus(oa.kubeCli, "scheduler", corev1.ComponentHealthy, corev1.ConditionFalse); err != nil {
@@ -814,7 +814,7 @@ func (oa *operatorActions) CheckKubeSchedulerDownOrDie(operatorConfig *OperatorC
 	})
 }
 
-func (oa *operatorActions) CheckKubeControllerManagerDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig) {
+func (oa *OperatorActions) CheckKubeControllerManagerDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig) {
 	log.Logf("verify kube-controller-manager is not avaiavble")
 
 	if err := waitForComponentStatus(oa.kubeCli, "controller-manager", corev1.ComponentHealthy, corev1.ConditionFalse); err != nil {
@@ -839,7 +839,7 @@ func (oa *operatorActions) CheckKubeControllerManagerDownOrDie(operatorConfig *O
 	})
 }
 
-func (oa *operatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string) {
+func (oa *OperatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string) {
 	log.Logf("check k8s/operator/tidbCluster status when one apiserver down")
 	affectedPods := map[string]*corev1.Pod{}
 	apiserverPod, err := GetKubeApiserverPod(oa.kubeCli, faultNode)
@@ -904,7 +904,7 @@ func (oa *operatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorCo
 	})
 }
 
-func (oa *operatorActions) CheckAllApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig) {
+func (oa *OperatorActions) CheckAllApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig) {
 	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
 		err := oa.CheckTidbClustersAvailable(clusters)
 		if err != nil {
@@ -915,7 +915,7 @@ func (oa *operatorActions) CheckAllApiserverDownOrDie(operatorConfig *OperatorCo
 	})
 }
 
-func (oa *operatorActions) CheckOperatorDownOrDie(clusters []*TidbClusterConfig) {
+func (oa *OperatorActions) CheckOperatorDownOrDie(clusters []*TidbClusterConfig) {
 	log.Logf("checking k8s/tidbCluster status when operator down")
 
 	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
@@ -928,13 +928,13 @@ func (oa *operatorActions) CheckOperatorDownOrDie(clusters []*TidbClusterConfig)
 	})
 }
 
-func (oa *operatorActions) CheckK8sAvailableOrDie(excludeNodes map[string]string, excludePods map[string]*corev1.Pod) {
+func (oa *OperatorActions) CheckK8sAvailableOrDie(excludeNodes map[string]string, excludePods map[string]*corev1.Pod) {
 	if err := oa.CheckK8sAvailable(excludeNodes, excludePods); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }
 
-func (oa *operatorActions) CheckK8sAvailable(excludeNodes map[string]string, excludePods map[string]*corev1.Pod) error {
+func (oa *OperatorActions) CheckK8sAvailable(excludeNodes map[string]string, excludePods map[string]*corev1.Pod) error {
 	return wait.Poll(3*time.Second, 10*time.Minute, func() (bool, error) {
 		nodes, err := oa.kubeCli.CoreV1().Nodes().List(metav1.ListOptions{})
 		if err != nil {
@@ -971,7 +971,7 @@ func (oa *operatorActions) CheckK8sAvailable(excludeNodes map[string]string, exc
 	})
 }
 
-func (oa *operatorActions) CheckOperatorAvailable(operatorConfig *OperatorConfig) error {
+func (oa *OperatorActions) CheckOperatorAvailable(operatorConfig *OperatorConfig) error {
 	var errCount int
 	var e error
 	return wait.Poll(10*time.Second, 3*time.Minute, func() (bool, error) {
@@ -1004,7 +1004,7 @@ func (oa *operatorActions) CheckOperatorAvailable(operatorConfig *OperatorConfig
 	})
 }
 
-func (oa *operatorActions) CheckTidbClustersAvailable(infos []*TidbClusterConfig) error {
+func (oa *OperatorActions) CheckTidbClustersAvailable(infos []*TidbClusterConfig) error {
 	return wait.Poll(3*time.Second, DefaultPollTimeout, func() (bool, error) {
 		for _, info := range infos {
 			succ, err := oa.addDataToCluster(info)
@@ -1020,7 +1020,7 @@ func (oa *operatorActions) CheckTidbClustersAvailable(infos []*TidbClusterConfig
 
 }
 
-func (oa *operatorActions) CheckTidbClustersAvailableOrDie(infos []*TidbClusterConfig) {
+func (oa *OperatorActions) CheckTidbClustersAvailableOrDie(infos []*TidbClusterConfig) {
 	if err := oa.CheckTidbClustersAvailable(infos); err != nil {
 		slack.NotifyAndPanic(err)
 	}
@@ -1028,7 +1028,7 @@ func (oa *operatorActions) CheckTidbClustersAvailableOrDie(infos []*TidbClusterC
 
 var testTableName = "testTable"
 
-func (oa *operatorActions) addDataToCluster(info *TidbClusterConfig) (bool, error) {
+func (oa *OperatorActions) addDataToCluster(info *TidbClusterConfig) (bool, error) {
 	dsn, cancel, err := oa.getTiDBDSN(info.Namespace, info.ClusterName, "test", info.Password)
 	if err != nil {
 		log.Logf("ERROR: failed to get TiDB DSN: %v", err)
@@ -1057,7 +1057,7 @@ func (oa *operatorActions) addDataToCluster(info *TidbClusterConfig) (bool, erro
 	return true, nil
 }
 
-func (oa *operatorActions) WaitPodOnNodeReadyOrDie(clusters []*TidbClusterConfig, faultNode string) {
+func (oa *OperatorActions) WaitPodOnNodeReadyOrDie(clusters []*TidbClusterConfig, faultNode string) {
 
 	err := wait.Poll(5*time.Second, 30*time.Minute, func() (done bool, err error) {
 		for _, cluster := range clusters {
