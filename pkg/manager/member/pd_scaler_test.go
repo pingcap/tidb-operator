@@ -62,7 +62,6 @@ func TestPDScalerScaleOut(t *testing.T) {
 		scaler, _, pvcIndexer, _, pvcControl := newFakePDScaler()
 
 		pvc := newPVCForStatefulSet(oldSet, v1alpha1.PDMemberType, tc.Name)
-		pvc.Name = ordinalPVCName(v1alpha1.PDMemberType, oldSet.GetName(), *oldSet.Spec.Replicas)
 		if !test.annoIsNil {
 			pvc.Annotations = map[string]string{}
 		}

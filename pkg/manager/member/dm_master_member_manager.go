@@ -351,7 +351,7 @@ func (m *masterMemberManager) syncDMClusterStatus(dc *v1alpha1.DMCluster, set *a
 	dc.Status.Master.Members = masterStatus
 	dc.Status.Master.Leader = dc.Status.Master.Members[leader.Name]
 	dc.Status.Master.Image = ""
-	c := filterContainer(set, "dm-master")
+	c := findContainerByName(set, "dm-master")
 	if c != nil {
 		dc.Status.Master.Image = c.Image
 	}
