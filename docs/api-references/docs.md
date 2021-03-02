@@ -9073,6 +9073,7 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDMember
 </em>
 </td>
 <td>
+<p>Members contains PDs in current TidbCluster</p>
 </td>
 </tr>
 <tr>
@@ -9085,6 +9086,7 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDMember
 </em>
 </td>
 <td>
+<p>PeerMembers contains PDs NOT in current TidbCluster</p>
 </td>
 </tr>
 <tr>
