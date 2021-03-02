@@ -22,7 +22,7 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
-func (oa *operatorActions) setCabundleFromApiServer(info *OperatorConfig) error {
+func (oa *OperatorActions) setCabundleFromApiServer(info *OperatorConfig) error {
 
 	serverVersion, err := oa.kubeCli.Discovery().ServerVersion()
 	if err != nil {
