@@ -145,22 +145,13 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 			klog.Infof("TiKV %s/%s store %d becomes tombstone", ns, podName, id)
 
 			pvcs, err := util.ResolvePVCFromPod(pod, s.deps.PVCLister)
-			klog.V(4).Infof("ResolvePVCFromPod: %+v", pvcs)
 			if err != nil {
 				return fmt.Errorf("tikvScaler.ScaleIn: failed to get pvcs for pod %s/%s in tc %s/%s, error: %s", ns, pod.Name, ns, tcName, err)
 			}
 			for _, pvc := range pvcs {
-				if pvc.Annotations == nil {
-					pvc.Annotations = map[string]string{}
-				}
-				now := time.Now().Format(time.RFC3339)
-				pvc.Annotations[label.AnnPVCDeferDeleting] = now
-				_, err = s.deps.PVCControl.UpdatePVC(tc, pvc)
-				if err != nil {
-					klog.Errorf("tikv scale in: failed to set pvc %s/%s annotation: %s to %s", ns, pvc.Name, label.AnnPVCDeferDeleting, now)
+				if err := AnnotatePVCDeferDeletingLabel(tc, pvc, s.deps.PVCControl); err != nil {
 					return err
 				}
-				klog.Infof("tikv scale in: set pvc %s/%s annotation: %s to %s", ns, pvc.Name, label.AnnPVCDeferDeleting, now)
 			}
 
 			// endEvictLeader for TombStone stores
@@ -179,11 +170,6 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 	// 2. TiKV pod is not ready, such as in pending state.
 	//    In this situation we should delete this TiKV pod immediately to avoid blocking the subsequent operations.
 	if !podutil.IsPodReady(pod) {
-		pvcs, err := util.ResolvePVCFromPod(pod, s.deps.PVCLister)
-		klog.V(4).Infof("ResolvePVCFromPod: %+v", pvcs)
-		if err != nil {
-			return fmt.Errorf("tikvScaler.ScaleIn: failed to get pvcs for pod %s/%s in tc %s/%s, error: %s", ns, pod.Name, ns, tcName, err)
-		}
 		if tc.TiKVBootStrapped() {
 			safeTimeDeadline := pod.CreationTimestamp.Add(5 * s.deps.CLIConfig.ResyncDuration)
 			if time.Now().Before(safeTimeDeadline) {
@@ -198,20 +184,18 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 				return fmt.Errorf("TiKV %s/%s is not ready, wait for 5 resync periods to sync its status", ns, podName)
 			}
 		}
+
+		pvcs, err := util.ResolvePVCFromPod(pod, s.deps.PVCLister)
+		if err != nil {
+			return fmt.Errorf("tikvScaler.ScaleIn: failed to get pvcs for pod %s/%s in tc %s/%s, error: %s", ns, pod.Name, ns, tcName, err)
+		}
 		for _, pvc := range pvcs {
-			if pvc.Annotations == nil {
-				pvc.Annotations = map[string]string{}
-			}
-			now := time.Now().Format(time.RFC3339)
-			pvc.Annotations[label.AnnPVCDeferDeleting] = now
-			_, err = s.deps.PVCControl.UpdatePVC(tc, pvc)
-			if err != nil {
-				klog.Errorf("pod %s not ready, tikv scale in: failed to set pvc %s/%s annotation: %s to %s", podName, ns, pvc.Name, label.AnnPVCDeferDeleting, now)
+			if err := AnnotatePVCDeferDeletingLabel(tc, pvc, s.deps.PVCControl); err != nil {
 				return err
 			}
-			klog.Infof("pod %s not ready, tikv scale in: set pvc %s/%s annotation: %s to %s", podName, ns, pvc.Name, label.AnnPVCDeferDeleting, now)
-			setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 		}
+
+		setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 		return nil
 	}
 	return fmt.Errorf("TiKV %s/%s not found in cluster", ns, podName)
