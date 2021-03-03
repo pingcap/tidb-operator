@@ -43,7 +43,7 @@ spec:
     service:
       type: NodePort
     slowLogTailer:
-      image: busybox:1.33.0
+      image: busybox:1.26.2
       imagePullPolicy: IfNotPresent
       limits:
         cpu: 100m

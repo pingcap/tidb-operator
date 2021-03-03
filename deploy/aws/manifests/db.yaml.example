@@ -5,7 +5,7 @@ metadata:
 spec:
   configUpdateStrategy: RollingUpdate
   helper:
-    image: busybox:1.33.0
+    image: busybox:1.26.2
   hostNetwork: false
   imagePullPolicy: IfNotPresent
   pd:
