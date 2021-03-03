@@ -114,7 +114,7 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 		return nil
 	}
 
-	// call pd to delete store of the will-be-scaled-in tikv pod
+	// call PD API to delete the store of the TiKV Pod to be scaled in
 	for _, store := range tc.Status.TiKV.Stores {
 		if store.PodName == podName {
 			state := store.State
@@ -133,7 +133,7 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 		}
 	}
 
-	// annotate tikv pods with tomestone store
+	// If the store state turns to Tombstone, add defer deleting annotation to the PVCs of the Pod
 	for storeID, store := range tc.Status.TiKV.TombstoneStores {
 		if store.PodName == podName && pod.Labels[label.StoreIDLabelKey] == storeID {
 			id, err := strconv.ParseUint(store.ID, 10, 64)
