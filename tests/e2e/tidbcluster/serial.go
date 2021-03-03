@@ -519,7 +519,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 		})
 
 		/*
-		  Release: v1.2.0 
+		  Release: v1.2.0
 		  new feature in https://github.com/pingcap/tidb-operator/pull/3440
 		  deploy tidbmonitor and upgrade tidb-perator, then tidbmonitor should switch from deployment to statefulset
 		*/
