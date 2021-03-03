@@ -28,7 +28,11 @@ spec:
         app.kubernetes.io/component: controller-manager
     spec:
     {{- if .Values.controllerManager.serviceAccount }}
+      {{- if eq .Values.appendReleaseSuffix true}}
+      serviceAccount: {{ .Values.controllerManager.serviceAccount }}-{{ .Release.Name }}
+      {{- else }}
       serviceAccount: {{ .Values.controllerManager.serviceAccount }}
+      {{- end }}       
     {{- end }}
     {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
