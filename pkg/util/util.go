@@ -438,7 +438,7 @@ func ResolvePVCFromPod(pod *corev1.Pod, pvcLister corelisterv1.PersistentVolumeC
 	}
 	if len(pvcs) == 0 {
 		klog.Errorf("no pvc found for pod %s", pod.Name)
-		return nil, errors.NewNotFound(corev1.Resource("pvc"), "")
+		return pvcs, errors.NewNotFound(corev1.Resource("pvc"), "")
 	}
 	return pvcs, nil
 }

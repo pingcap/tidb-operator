@@ -168,7 +168,7 @@ func TestPDFailoverFailover(t *testing.T) {
 				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(0))
 				events := collectEvents(recorder.Events)
 				sort.Strings(events)
-				g.Expect(events).To(HaveLen(1))
+				g.Expect(events).To(HaveLen(2))
 				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
 			},
 		},
@@ -192,7 +192,7 @@ func TestPDFailoverFailover(t *testing.T) {
 				g.Expect(pd1.MemberDeleted).To(Equal(true))
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(1))
-				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) deleted from cluster"))
+				g.Expect(events[0]).To(ContainSubstring("failure member test-pd-1(12891273174085095651) deleted from PD cluster"))
 			},
 		},
 		{
@@ -340,7 +340,7 @@ func TestPDFailoverFailover(t *testing.T) {
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(2))
 				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
-				g.Expect(events[1]).To(ContainSubstring("test-pd-1(12891273174085095651) deleted from cluster"))
+				g.Expect(events[1]).To(ContainSubstring("failure member test-pd-1(12891273174085095651) deleted from PD cluster"))
 			},
 		},
 		{
@@ -425,7 +425,7 @@ func TestPDFailoverFailover(t *testing.T) {
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(2))
 				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
-				g.Expect(events[1]).To(ContainSubstring("test-pd-1(12891273174085095651) deleted from cluster"))
+				g.Expect(events[1]).To(ContainSubstring("failure member test-pd-1(12891273174085095651) deleted from PD cluster"))
 			},
 		},
 		{
@@ -452,7 +452,7 @@ func TestPDFailoverFailover(t *testing.T) {
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(2))
 				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
-				g.Expect(events[1]).To(ContainSubstring("test-pd-1(12891273174085095651) deleted from cluster"))
+				g.Expect(events[1]).To(ContainSubstring("failure member test-pd-1(12891273174085095651) deleted from PD cluster"))
 			},
 		},
 		{
@@ -482,7 +482,7 @@ func TestPDFailoverFailover(t *testing.T) {
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(2))
 				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
-				g.Expect(events[1]).To(ContainSubstring("test-pd-1(12891273174085095651) deleted from cluster"))
+				g.Expect(events[1]).To(ContainSubstring("failure member test-pd-1(12891273174085095651) deleted from PD cluster"))
 			},
 		},
 		{
@@ -513,7 +513,7 @@ func TestPDFailoverFailover(t *testing.T) {
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(2))
 				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
-				g.Expect(events[1]).To(ContainSubstring("test-pd-1(12891273174085095651) deleted from cluster"))
+				g.Expect(events[1]).To(ContainSubstring("failure member test-pd-1(12891273174085095651) deleted from PD cluster"))
 			},
 		},
 	}
@@ -535,8 +535,9 @@ func TestPDFailoverFailover(t *testing.T) {
 				return nil, nil
 			})
 
+			var pvc *corev1.PersistentVolumeClaim
 			if test.hasPVC {
-				pvc := newPVCForPDFailover(tc, v1alpha1.PDMemberType, 1)
+				pvc = newPVCForPDFailover(tc, v1alpha1.PDMemberType, 1)
 				if test.pvcWithDeletionTimestamp {
 					pvc.DeletionTimestamp = &metav1.Time{Time: time.Now()}
 				}
@@ -548,6 +549,15 @@ func TestPDFailoverFailover(t *testing.T) {
 					pod.DeletionTimestamp = &metav1.Time{Time: time.Now()}
 				}
 				podIndexer.Add(pod)
+				if test.hasPVC {
+					pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
+						VolumeSource: corev1.VolumeSource{
+							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+								ClaimName: pvc.Name,
+							},
+						},
+					})
+				}
 			}
 			if test.delPodFailed {
 				fakePodControl.SetDeletePodError(errors.NewInternalError(fmt.Errorf("delete pod: API server failed")), 0)

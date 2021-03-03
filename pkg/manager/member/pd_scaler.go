@@ -174,7 +174,6 @@ func (s *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet 
 	}
 
 	pvcs, err := util.ResolvePVCFromPod(pod, s.deps.PVCLister)
-	klog.V(4).Infof("ResolvePVCFromPod: %+v", pvcs)
 	if err != nil {
 		return fmt.Errorf("pdScaler.ScaleIn: failed to get pvcs for pod %s/%s in tc %s/%s, error: %s", ns, pod.Name, ns, tcName, err)
 	}
