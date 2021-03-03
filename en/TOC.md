@@ -33,6 +33,7 @@
   + Deploy Monitoring
     - [Deploy Monitoring and Alerts for TiDB](monitor-a-tidb-cluster.md)
     - [Access TiDB Dashboard](access-dashboard.md)
+    - [Aggregate Monitoring Data of Multiple TiDB Clusters](aggregate-multiple-cluster-monitor-data.md)
 + Secure
   - [Enable TLS for the MySQL Client](enable-tls-for-mysql-client.md)
   - [Enable TLS between TiDB Components](enable-tls-between-components.md)
