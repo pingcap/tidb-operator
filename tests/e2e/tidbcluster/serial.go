@@ -448,14 +448,15 @@ var _ = ginkgo.Describe("[Serial]", func() {
 		ginkgo.It("should not change old TidbCluster", func() {
 			ginkgo.By(fmt.Sprintf("deploy original tc %q", utilimage.TiDBV4))
 			tcName := "tidbcluster"
-			tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "", utilimage.TiDBV4)
-			tcCfg.Resources["pd.replicas"] = "3"
-			tcCfg.Resources["tikv.replicas"] = "3"
-			tcCfg.Resources["tidb.replicas"] = "1"
-			tcCfg.Monitor = false
-			tcCfg.OperatorTag = operatorVersion
-			oa.DeployTidbClusterOrDie(&tcCfg)
-			oa.CheckTidbClusterStatusOrDie(&tcCfg)
+			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4)
+			tc.Spec.PD.Replicas = 3
+			tc.Spec.TiKV.Replicas = 1
+			tc.Spec.TiDB.Replicas = 1
+
+			err := genericCli.Create(context.TODO(), tc)
+			framework.ExpectNoError(err, "Expected TiDB cluster created")
+			err = oa.WaitForTidbClusterReady(tc, 6*time.Minute, 5*time.Second)
+			framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
 			getPods := func(ls string) ([]v1.Pod, error) {
 				listOptions := metav1.ListOptions{
