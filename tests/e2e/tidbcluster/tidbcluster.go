@@ -1643,7 +1643,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			})
 			pdCm, err := c.CoreV1().ConfigMaps(ns).Get(pdCmName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "failed to get ConfigMap %s/%s", ns, pdCm)
-			gomega.Expect(pdCm.Data["config-file"]).To(gomega.ContainSubstring("level = \"info\""))
+			gomega.Expect(pdCm.Data["config-file"]).To(gomega.ContainSubstring("enable-prevote = \"true\""))
 
 			tikvMemberName := controller.TiKVMemberName(tc.Name)
 			tikvSts, err := stsGetter.StatefulSets(ns).Get(tikvMemberName, metav1.GetOptions{})
@@ -1653,7 +1653,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			})
 			tikvCm, err := c.CoreV1().ConfigMaps(ns).Get(tikvCmName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "failed to get ConfigMap %s/%s", ns, tikvCmName)
-			gomega.Expect(tikvCm.Data["config-file"]).To(gomega.ContainSubstring("level = \"info\""))
+			gomega.Expect(tikvCm.Data["config-file"]).To(gomega.ContainSubstring("prevote = \"true\""))
 
 			tidbMemberName := controller.TiDBMemberName(tc.Name)
 			tidbSts, err := stsGetter.StatefulSets(ns).Get(tidbMemberName, metav1.GetOptions{})
@@ -1663,7 +1663,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			})
 			tidbCm, err := c.CoreV1().ConfigMaps(ns).Get(tidbCmName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "failed to get ConfigMap %s/%s", ns, tidbCmName)
-			gomega.Expect(tidbCm.Data["config-file"]).To(gomega.ContainSubstring("level = \"info\""))
+			gomega.Expect(tidbCm.Data["config-file"]).To(gomega.ContainSubstring("enable-timestamp = \"true\""))
 		})
 
 		// this case merge scale-in/scale-out into one case, may seems a little bit dense
