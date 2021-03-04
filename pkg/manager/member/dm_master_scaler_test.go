@@ -391,7 +391,7 @@ func newFakeMasterScaler() (*masterScaler, *dmapi.FakeMasterControl, cache.Index
 func newStatefulSetForDMScale() *apps.StatefulSet {
 	set := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "scaler",
+			Name:      "test",
 			Namespace: metav1.NamespaceDefault,
 		},
 		Spec: apps.StatefulSetSpec{

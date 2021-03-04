@@ -20,12 +20,14 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 )
 
@@ -51,10 +53,9 @@ func TestWorkerScalerScaleOut(t *testing.T) {
 		newSet := oldSet.DeepCopy()
 		newSet.Spec.Replicas = pointer.Int32Ptr(7)
 
-		scaler, _, pvcIndexer, pvcControl := newFakeWorkerScaler()
+		scaler, _, pvcIndexer, _, pvcControl := newFakeWorkerScaler()
 
 		pvc := newPVCForStatefulSet(oldSet, v1alpha1.DMWorkerMemberType, dc.Name)
-		pvc.Name = ordinalPVCName(v1alpha1.DMWorkerMemberType, oldSet.GetName(), *oldSet.Spec.Replicas)
 		if !test.annoIsNil {
 			pvc.Annotations = map[string]string{}
 		}
@@ -169,11 +170,29 @@ func TestWorkerScalerScaleIn(t *testing.T) {
 		newSet := oldSet.DeepCopy()
 		newSet.Spec.Replicas = pointer.Int32Ptr(3)
 
-		scaler, _, pvcIndexer, pvcControl := newFakeWorkerScaler()
+		scaler, _, pvcIndexer, podIndexer, pvcControl := newFakeWorkerScaler()
+
+		pod := &corev1.Pod{
+			TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              DMWorkerPodName(dc.GetName(), 4),
+				Namespace:         corev1.NamespaceDefault,
+				CreationTimestamp: metav1.Time{Time: time.Now().Add(-1 * time.Hour)},
+			},
+		}
+
+		podIndexer.Add(pod)
 
 		if test.hasPVC {
 			pvc := newScaleInPVCForStatefulSet(oldSet, v1alpha1.DMWorkerMemberType, dc.Name)
 			pvcIndexer.Add(pvc)
+			pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: pvc.Name,
+					},
+				},
+			})
 		}
 
 		if test.pvcUpdateErr {
@@ -240,13 +259,14 @@ func TestWorkerScalerScaleIn(t *testing.T) {
 	}
 }
 
-func newFakeWorkerScaler() (*workerScaler, *dmapi.FakeMasterControl, cache.Indexer, *controller.FakePVCControl) {
+func newFakeWorkerScaler() (*workerScaler, *dmapi.FakeMasterControl, cache.Indexer, cache.Indexer, *controller.FakePVCControl) {
 	fakeDeps := controller.NewFakeDependencies()
 	scaler := &workerScaler{generalScaler{deps: fakeDeps}}
 	masterControl := fakeDeps.DMMasterControl.(*dmapi.FakeMasterControl)
 	pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
+	podIndexer := fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer()
 	pvcControl := fakeDeps.PVCControl.(*controller.FakePVCControl)
-	return scaler, masterControl, pvcIndexer, pvcControl
+	return scaler, masterControl, pvcIndexer, podIndexer, pvcControl
 }
 
 func normalWorkerMember(dc *v1alpha1.DMCluster) {

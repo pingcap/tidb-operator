@@ -15,9 +15,8 @@ package member
 
 import (
 	"fmt"
-	"time"
 
-	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -101,26 +100,21 @@ func (s *workerScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, new
 	//	return nil
 	//}
 
-	pvcName := ordinalPVCName(v1alpha1.DMWorkerMemberType, setName, ordinal)
-	pvc, err := s.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
+	podName := ordinalPodName(v1alpha1.DMWorkerMemberType, setName, ordinal)
+	pod, err := s.deps.PodLister.Pods(ns).Get(podName)
 	if err != nil {
-		return fmt.Errorf("dm-worker.ScaleIn: failed to get pvc %s for cluster %s/%s, error: %s", pvcName, ns, dcName, err)
+		return fmt.Errorf("dm-worker.ScaleIn: failed to get pod %s/%s, error: %s", ns, podName, err)
 	}
 
-	if pvc.Annotations == nil {
-		pvc.Annotations = map[string]string{}
-	}
-	now := time.Now().Format(time.RFC3339)
-	pvc.Annotations[label.AnnPVCDeferDeleting] = now
-
-	_, err = s.deps.PVCControl.UpdatePVC(dc, pvc)
+	pvcs, err := util.ResolvePVCFromPod(pod, s.deps.PVCLister)
 	if err != nil {
-		klog.Errorf("dm-worker scale in: failed to set pvc %s/%s annotation: %s to %s",
-			ns, pvcName, label.AnnPVCDeferDeleting, now)
-		return err
+		return fmt.Errorf("dm-worker.ScaleIn: failed to get pvcs for pod %s/%s for dc %s/%s, error: %s", ns, podName, ns, dcName, err)
 	}
-	klog.Infof("dm-worker scale in: set pvc %s/%s annotation: %s to %s",
-		ns, pvcName, label.AnnPVCDeferDeleting, now)
+	for _, pvc := range pvcs {
+		if err := addDeferDeletingAnnoToPVC(dc, pvc, s.deps.PVCControl); err != nil {
+			return err
+		}
+	}
 
 	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 	return nil
