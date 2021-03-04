@@ -259,13 +259,10 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		tc.Spec.TiKV.Replicas = 1
 		tc.Spec.TiDB.Replicas = 1
 		// Create and wait for tidbcluster ready
-		err := genericCli.Create(context.TODO(), tc)
-		framework.ExpectNoError(err, "Expected TiDB cluster created")
-		err = oa.WaitForTidbClusterReady(tc, 6*time.Minute, 5*time.Second)
-		framework.ExpectNoError(err, "Expected TiDB cluster ready")
+		utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 6*time.Minute, 5*time.Second)
 		ginkgo.By("Switch to host network")
 		// TODO: Considering other components?
-		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+		err := controller.GuaranteedUpdate(genericCli, tc, func() error {
 			tc.Spec.PD.HostNetwork = pointer.BoolPtr(true)
 			tc.Spec.TiKV.HostNetwork = pointer.BoolPtr(true)
 			tc.Spec.TiDB.HostNetwork = pointer.BoolPtr(true)
@@ -844,10 +841,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		tc.Spec.PD.Replicas = 1
 		tc.Spec.TiKV.Replicas = 1
 		tc.Spec.TiDB.Replicas = 1
-		err := genericCli.Create(context.TODO(), tc)
-		framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
-		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
-		framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
+		utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 30*time.Minute, 5*time.Second)
 
 		podListBeforePaused, err := c.CoreV1().Pods(ns).List(metav1.ListOptions{})
 		framework.ExpectNoError(err, "failed to list pods in ns %s", ns)
@@ -1567,14 +1561,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		tc.Spec.TiKV.Replicas = 3
 		tc.Spec.TiDB.Replicas = 1
 
-		err := genericCli.Create(context.TODO(), tc)
-		framework.ExpectNoError(err, "Expected TiDB cluster created")
-		err = oa.WaitForTidbClusterReady(tc, 6*time.Minute, 5*time.Second)
-		framework.ExpectNoError(err, "Expected TiDB cluster ready")
+		utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 6*time.Minute, 5*time.Second)
 
 		ginkgo.By("Scale out multiple pvc tidb cluster")
 		// Scale
-		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+		err := controller.GuaranteedUpdate(genericCli, tc, func() error {
 			tc.Spec.TiKV.Replicas = 4
 			return nil
 		})

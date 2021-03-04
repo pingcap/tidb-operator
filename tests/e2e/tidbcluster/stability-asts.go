@@ -33,6 +33,7 @@ import (
 	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	utilstatefulset "github.com/pingcap/tidb-operator/tests/e2e/util/statefulset"
+	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	v1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -144,10 +145,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			tc.Spec.TiKV.Replicas = 5
 			tc.Spec.TiDB.Replicas = 5
 			tc.Spec.TiFlash.Replicas = 5
-			err := genericCli.Create(context.TODO(), tc)
-			framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
-			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
-			framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 30*time.Minute, 15*time.Second)
 
 			scalingTests := []struct {
 				name        string

@@ -35,6 +35,7 @@ import (
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
+	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	v1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -530,14 +531,11 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			tc.Spec.TiKV.Replicas = 1
 			tc.Spec.TiDB.Replicas = 1
 
-			err := genericCli.Create(context.TODO(), tc)
-			framework.ExpectNoError(err, "Expected TiDB cluster created")
-			err = oa.WaitForTidbClusterReady(tc, 6*time.Minute, 5*time.Second)
-			framework.ExpectNoError(err, "Expected TiDB cluster ready")
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 6*time.Minute, 5*time.Second)
 
 			ginkgo.By("deploy tidb monitor")
 			monitorName := "smooth-migrate"
-			tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+			tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "failed to get tidbcluster")
 			tm := fixture.NewTidbMonitor(monitorName, ns, tc, true, true, true)
 			_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(tm)
@@ -627,10 +625,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			tc.Spec.TiKV.Replicas = 1
 			tc.Spec.TiDB.Replicas = 1
 
-			err := genericCli.Create(context.TODO(), tc)
-			framework.ExpectNoError(err, "Expected TiDB cluster created")
-			err = oa.WaitForTidbClusterReady(tc, 6*time.Minute, 5*time.Second)
-			framework.ExpectNoError(err, "Expected TiDB cluster ready")
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 6*time.Minute, 5*time.Second)
 
 			listOptions := metav1.ListOptions{
 				LabelSelector: labels.SelectorFromSet(label.New().Instance(tcName).Labels()).String(),
