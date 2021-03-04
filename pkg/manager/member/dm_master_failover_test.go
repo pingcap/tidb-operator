@@ -450,23 +450,37 @@ func TestMasterFailoverFailover(t *testing.T) {
 				return nil, nil
 			})
 
-			if test.hasPVC {
-				pvc := newPVCForMasterFailover(dc, v1alpha1.DMMasterMemberType, 1)
-				if test.pvcWithDeletionTimestamp {
-					pvc.DeletionTimestamp = &metav1.Time{Time: time.Now()}
-				}
-				pvcIndexer.Add(pvc)
-			}
+			var pod *corev1.Pod
+
 			if test.hasPod {
-				pod := newPodForMasterFailover(dc, v1alpha1.DMMasterMemberType, 1)
+				pod = newPodForMasterFailover(dc, v1alpha1.DMMasterMemberType, 1)
 				if test.podWithDeletionTimestamp {
 					pod.DeletionTimestamp = &metav1.Time{Time: time.Now()}
 				}
 				podIndexer.Add(pod)
 			}
+
+			if test.hasPVC {
+				pvc := newPVCForMasterFailover(dc, v1alpha1.DMMasterMemberType, 1)
+				if test.hasPod {
+					pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
+						VolumeSource: corev1.VolumeSource{
+							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+								ClaimName: pvc.Name,
+							},
+						},
+					})
+				}
+				if test.pvcWithDeletionTimestamp {
+					pvc.DeletionTimestamp = &metav1.Time{Time: time.Now()}
+				}
+				pvcIndexer.Add(pvc)
+			}
+
 			if test.delPodFailed {
 				fakePodControl.SetDeletePodError(errors.NewInternalError(fmt.Errorf("delete pod: API server failed")), 0)
 			}
+
 			if test.delPVCFailed {
 				fakePVCControl.SetDeletePVCError(errors.NewInternalError(fmt.Errorf("delete pvc: API server failed")), 0)
 			}

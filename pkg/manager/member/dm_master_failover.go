@@ -187,29 +187,25 @@ func (f *masterFailover) tryToDeleteAFailureMember(dc *v1alpha1.DMCluster) error
 		return fmt.Errorf("tryToDeleteAFailureMember: failed to get pods %s for dmcluster %s/%s, error: %s", failurePodName, ns, dcName, err)
 	}
 
-	ordinal, err := util.GetOrdinalFromPodName(failurePodName)
-	if err != nil {
-		return err
-	}
-	pvcName := ordinalPVCName(v1alpha1.DMMasterMemberType, controller.DMMasterMemberName(dcName), ordinal)
-	pvc, err := f.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
-	if err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("tryToDeleteAFailureMember: failed to get pvc %s for dmcluster %s/%s, error: %s", pvcName, ns, dcName, err)
-	}
-
-	if pod != nil && pod.DeletionTimestamp == nil {
-		err := f.deps.PodControl.DeletePod(dc, pod)
-		if err != nil {
-			return err
+	if pod != nil {
+		pvcs, err := util.ResolvePVCFromPod(pod, f.deps.PVCLister)
+		if err != nil && !errors.IsNotFound(err) {
+			return fmt.Errorf("tryToDeleteAFailureMember: failed to get pvcs for pod %s/%s in dc %s/%s, error: %s", ns, pod.Name, ns, dcName, err)
 		}
-	}
-	if pvc != nil && pvc.DeletionTimestamp == nil && pvc.GetUID() == failureMember.PVCUID {
-		err = f.deps.PVCControl.DeletePVC(dc, pvc)
-		if err != nil {
-			klog.Errorf("dm-master failover: failed to delete pvc: %s/%s, %v", ns, pvcName, err)
-			return err
+		if pod.DeletionTimestamp == nil {
+			if err := f.deps.PodControl.DeletePod(dc, pod); err != nil {
+				return err
+			}
 		}
-		klog.Infof("dm-master failover: pvc: %s/%s successfully", ns, pvcName)
+		for _, pvc := range pvcs {
+			if pvc.DeletionTimestamp == nil && pvc.GetUID() == failureMember.PVCUID {
+				if err = f.deps.PVCControl.DeletePVC(dc, pvc); err != nil {
+					klog.Errorf("tryToDeleteAFailureMember: failed to delete pvc: %s/%s, error: %s", ns, pvc.Name, err)
+					return err
+				}
+				klog.Infof("tryToDeleteAFailureMember: delete pvc %s/%s successfully", ns, pvc.Name)
+			}
+		}
 	}
 
 	setDMMemberDeleted(dc, failurePodName)
