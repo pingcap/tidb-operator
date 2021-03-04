@@ -503,8 +503,8 @@ func CreateOrUpdateService(serviceLister corelisters.ServiceLister, serviceContr
 	return nil
 }
 
-// AnnotatePVCDeferDeletingLabel set the label
-func AnnotatePVCDeferDeletingLabel(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim, pvcControl controller.PVCControlInterface) error {
+// addDeferDeletingAnnoToPVC set the label
+func addDeferDeletingAnnoToPVC(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim, pvcControl controller.PVCControlInterface) error {
 	if pvc.Annotations == nil {
 		pvc.Annotations = map[string]string{}
 	}

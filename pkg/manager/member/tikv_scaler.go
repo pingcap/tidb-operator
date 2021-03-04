@@ -149,7 +149,7 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 				return fmt.Errorf("tikvScaler.ScaleIn: failed to get pvcs for pod %s/%s in tc %s/%s, error: %s", ns, pod.Name, ns, tcName, err)
 			}
 			for _, pvc := range pvcs {
-				if err := AnnotatePVCDeferDeletingLabel(tc, pvc, s.deps.PVCControl); err != nil {
+				if err := addDeferDeletingAnnoToPVC(tc, pvc, s.deps.PVCControl); err != nil {
 					return err
 				}
 			}
@@ -190,7 +190,7 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 			return fmt.Errorf("tikvScaler.ScaleIn: failed to get pvcs for pod %s/%s in tc %s/%s, error: %s", ns, pod.Name, ns, tcName, err)
 		}
 		for _, pvc := range pvcs {
-			if err := AnnotatePVCDeferDeletingLabel(tc, pvc, s.deps.PVCControl); err != nil {
+			if err := addDeferDeletingAnnoToPVC(tc, pvc, s.deps.PVCControl); err != nil {
 				return err
 			}
 		}
