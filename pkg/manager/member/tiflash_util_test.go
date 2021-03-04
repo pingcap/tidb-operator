@@ -453,7 +453,7 @@ var (
 	defaultSideCarContainers = []corev1.Container{
 		{
 			Name:            "serverlog",
-			Image:           "busybox:1.33.0",
+			Image:           "busybox:1.26.2",
 			ImagePullPolicy: "",
 			Resources:       corev1.ResourceRequirements{},
 			Command: []string{
@@ -467,7 +467,7 @@ var (
 		},
 		{
 			Name:            "errorlog",
-			Image:           "busybox:1.33.0",
+			Image:           "busybox:1.26.2",
 			ImagePullPolicy: "",
 			Resources:       corev1.ResourceRequirements{},
 			Command: []string{
@@ -481,7 +481,7 @@ var (
 		},
 		{
 			Name:            "clusterlog",
-			Image:           "busybox:1.33.0",
+			Image:           "busybox:1.26.2",
 			ImagePullPolicy: "",
 			Resources:       corev1.ResourceRequirements{},
 			Command: []string{
@@ -497,7 +497,7 @@ var (
 	customSideCarContainers = []corev1.Container{
 		{
 			Name:            "serverlog",
-			Image:           "busybox:1.33.0",
+			Image:           "busybox:1.26.2",
 			ImagePullPolicy: "",
 			Resources:       corev1.ResourceRequirements{},
 			Command: []string{
@@ -511,7 +511,7 @@ var (
 		},
 		{
 			Name:            "errorlog",
-			Image:           "busybox:1.33.0",
+			Image:           "busybox:1.26.2",
 			ImagePullPolicy: "",
 			Resources:       corev1.ResourceRequirements{},
 			Command: []string{
@@ -525,7 +525,7 @@ var (
 		},
 		{
 			Name:            "clusterlog",
-			Image:           "busybox:1.33.0",
+			Image:           "busybox:1.26.2",
 			ImagePullPolicy: "",
 			Resources:       corev1.ResourceRequirements{},
 			Command: []string{
@@ -541,7 +541,7 @@ var (
 	customResourceSideCarContainers = []corev1.Container{
 		{
 			Name:            "serverlog",
-			Image:           "busybox:1.33.0",
+			Image:           "busybox:1.26.2",
 			ImagePullPolicy: "",
 			Resources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
@@ -560,7 +560,7 @@ var (
 		},
 		{
 			Name:            "errorlog",
-			Image:           "busybox:1.33.0",
+			Image:           "busybox:1.26.2",
 			ImagePullPolicy: "",
 			Resources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
@@ -579,7 +579,7 @@ var (
 		},
 		{
 			Name:            "clusterlog",
-			Image:           "busybox:1.33.0",
+			Image:           "busybox:1.26.2",
 			ImagePullPolicy: "",
 			Resources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
