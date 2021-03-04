@@ -28,7 +28,11 @@ spec:
         app.kubernetes.io/component: scheduler
     spec:
     {{- if .Values.scheduler.serviceAccount }}
+      {{- if eq .Values.appendReleaseSuffix true}}
+      serviceAccount: {{ .Values.scheduler.serviceAccount }}-{{ .Release.Name }}
+      {{- else }}
       serviceAccount: {{ .Values.scheduler.serviceAccount }}
+      {{- end }}    
     {{- end }}
     {{- if .Values.imagePullSecrets }}
       imagePullSecrets:

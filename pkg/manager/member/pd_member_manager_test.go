@@ -1496,7 +1496,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				g.Expect(sts.Spec.Template.Spec.InitContainers).To(Equal([]corev1.Container{
 					{
 						Name:  "init",
-						Image: "busybox:1.33.0",
+						Image: "busybox:1.26.2",
 						Command: []string{
 							"sh",
 							"-c",
@@ -1569,7 +1569,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				g.Expect(sts.Spec.Template.Spec.InitContainers).To(Equal([]corev1.Container{
 					{
 						Name:  "init",
-						Image: "busybox:1.33.0",
+						Image: "busybox:1.26.2",
 						Command: []string{
 							"sh",
 							"-c",
