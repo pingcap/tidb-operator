@@ -15,12 +15,10 @@ package member
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -179,18 +177,9 @@ func (s *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet 
 	}
 
 	for _, pvc := range pvcs {
-		if pvc.Annotations == nil {
-			pvc.Annotations = map[string]string{}
-		}
-		now := time.Now().Format(time.RFC3339)
-		pvc.Annotations[label.AnnPVCDeferDeleting] = now
-
-		_, err = s.deps.PVCControl.UpdatePVC(tc, pvc)
-		if err != nil {
-			klog.Errorf("pdScaler.ScaleIn: failed to set pvc %s/%s annotation: %s to %s", ns, pvc.Name, label.AnnPVCDeferDeleting, now)
+		if err := addDeferDeletingAnnoToPVC(tc, pvc, s.deps.PVCControl); err != nil {
 			return err
 		}
-		klog.Infof("pdScaler.ScaleIn: set pvc %s/%s annotation: %s to %s", ns, pvc.Name, label.AnnPVCDeferDeleting, now)
 	}
 
 	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
