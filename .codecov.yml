@@ -5,8 +5,6 @@ codecov:
 
 comment:
   layout: "diff, flags"
-<<<<<<< HEAD
-=======
   show_carryforward_flags: true
 
 coverage:
@@ -23,4 +21,3 @@ flags:
     carryforward: true
   scheduler:
     carryforward: true
->>>>>>> 845a716d... e2e: add test coverage (#3725)

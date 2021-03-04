@@ -357,11 +357,7 @@ try {
                             echo "info: build and push images for e2e"
                             echo "test: show docker daemon config file"
                             cat /etc/docker/daemon.json
-<<<<<<< HEAD
-                            NO_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} make docker-push e2e-docker-push
-=======
                             E2E=y NO_BUILD=y DOCKER_REPO=hub-dev.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} make docker-push e2e-docker-push
->>>>>>> 845a716d... e2e: add test coverage (#3725)
                             echo "info: download binaries for e2e"
                             E2E=y SKIP_BUILD=y SKIP_IMAGE_BUILD=y SKIP_UP=y SKIP_TEST=y SKIP_DOWN=y ./hack/e2e.sh
                             echo "info: change ownerships for jenkins"
@@ -377,11 +373,7 @@ try {
         }
         }
 
-<<<<<<< HEAD
-        def GLOBALS = "KIND_ETCD_DATADIR=/mnt/tmpfs/etcd SKIP_BUILD=y SKIP_IMAGE_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} DELETE_NAMESPACE_ON_FAILURE=true GINKGO_NO_COLOR=y"
-=======
         def GLOBALS = "KIND_DATA_HOSTPATH=/kind-data KIND_ETCD_DATADIR=/mnt/tmpfs/etcd E2E=y SKIP_BUILD=y SKIP_IMAGE_BUILD=y DOCKER_REPO=hub-dev.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} DELETE_NAMESPACE_ON_FAILURE=${params.DELETE_NAMESPACE_ON_FAILURE} GINKGO_NO_COLOR=y"
->>>>>>> 845a716d... e2e: add test coverage (#3725)
         build("tidb-operator", "${GLOBALS} GINKGO_NODES=${params.GINKGO_NODES} ./hack/e2e.sh -- ${params.E2E_ARGS}")
 
         if (GIT_REF ==~ /^(master|)$/ || GIT_REF ==~ /^(release-.*)$/
