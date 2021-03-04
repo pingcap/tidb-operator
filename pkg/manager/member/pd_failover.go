@@ -187,15 +187,13 @@ func (f *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error {
 			return fmt.Errorf("tryToDeleteAFailureMember: failed to get pvcs for pod %s/%s in tc %s/%s, error: %s", ns, pod.Name, ns, tcName, err)
 		}
 		if pod.DeletionTimestamp == nil {
-			err := f.deps.PodControl.DeletePod(tc, pod)
-			if err != nil {
+			if err := f.deps.PodControl.DeletePod(tc, pod); err != nil {
 				return err
 			}
 		}
 		for _, pvc := range pvcs {
 			if pvc.DeletionTimestamp == nil && pvc.GetUID() == failureMember.PVCUID {
-				err = f.deps.PVCControl.DeletePVC(tc, pvc)
-				if err != nil {
+				if err := f.deps.PVCControl.DeletePVC(tc, pvc); err != nil {
 					klog.Errorf("tryToDeleteAFailureMember: failed to delete pvc: %s/%s, error: %s", ns, pvc.Name, err)
 					return err
 				}
