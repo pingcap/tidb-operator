@@ -628,7 +628,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 					},
 				},
 			}
-			_, err = c.CoreV1().PersistentVolumeClaims(ns).Create(&invalidPVC)
+			_, err := c.CoreV1().PersistentVolumeClaims(ns).Create(&invalidPVC)
 			framework.ExpectNoError(err, "failed to create persistent volume claims: %v", invalidPVC)
 
 			// We should stop the kubelet after failing the PD. Because
