@@ -155,7 +155,7 @@ func (f *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error {
 		}
 	}
 	if failureMember == nil {
-		klog.Infof("all of tc.Status.PD.FailureMembers are deleted, skip failover")
+		klog.Infof("No PD FailureMembers to delete for tc %s/%s", ns, tcName)
 		return nil
 	}
 
