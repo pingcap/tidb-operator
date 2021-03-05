@@ -8,6 +8,16 @@ title: TiDB Operator 1.1.10 Release Notes
 
 TiDB Operator 版本：1.1.10
 
+## 兼容性改动
+
+- 由于 [#3638](https://github.com/pingcap/tidb-operator/pull/3638) 的改动，TiDB Operator chart 中创建的 ClusterRoleBinding、ClusterRole、RoleBinding、Role 的 `apiVersion` 从 `rbac.authorization.k8s.io/v1beta1` 更改为 `rbac.authorization.k8s.io/v1`，此时通过 `helm upgrade` 升级 TiDB Operator 可能会报下面错误：
+
+    ```
+    Error: UPGRADE FAILED: rendered manifests contain a new resource that already exists. Unable to continue with update: existing resource conflict: namespace: , name: tidb-operator:tidb-controller-manager, existing_kind: rbac.authorization.k8s.io/v1, Kind=ClusterRole, new_kind: rbac.authorization.k8s.io/v1, Kind=ClusterRole
+    ```
+
+    详情可以参考 [helm/helm#7697](https://github.com/helm/helm/issues/7697)，此时需要通过 `helm uninstall` 删除 TiDB Operator 然后重新安装（删除 TiDB Operator 不会影响现有集群）。
+
 ## 滚动升级改动
 
 - 由于 [#3684](https://github.com/pingcap/tidb-operator/pull/3684) 的改动，升级 TiDB Operator 会导致 TidbMonitor Pod 删除重建

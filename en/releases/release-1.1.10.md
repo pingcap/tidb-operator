@@ -8,6 +8,16 @@ Release date: January 28, 2021
 
 TiDB Operator version: 1.1.10
 
+## Compatibility Changes
+
+- Due to the changes of [#3638](https://github.com/pingcap/tidb-operator/pull/3638), the `apiVersion` of ClusterRoleBinding, ClusterRole, RoleBinding, and Role created in the TiDB Operator chart is changed from `rbac.authorization .k8s.io/v1beta1` to `rbac.authorization.k8s.io/v1`. In this case, upgrading TiDB Operator through `helm upgrade` may report the following error:
+
+     ```
+     Error: UPGRADE FAILED: rendered manifests contain a new resource that already exists. Unable to continue with update: existing resource conflict: namespace:, name: tidb-operator:tidb-controller-manager, existing_kind: rbac.authorization.k8s.io/ v1, Kind=ClusterRole, new_kind: rbac.authorization.k8s.io/v1, Kind=ClusterRole
+     ```
+
+     For details, refer to [helm/helm#7697](https://github.com/helm/helm/issues/7697). In this case, you need to delete TiDB Operator through `helm uninstall` and then reinstall it (deleting TiDB Operator will not affect the current TiDB clusters).
+
 ## Rolling Update Changes
 
 - Upgrading TiDB Operator will cause the recreation of the TidbMonitor Pod due to [#3684](https://github.com/pingcap/tidb-operator/pull/3684)
