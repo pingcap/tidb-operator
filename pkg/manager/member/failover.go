@@ -15,6 +15,7 @@ package member
 
 import "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 
+// TODO: move this to a centralized place
 const (
 	unHealthEventReason     = "Unhealthy"
 	unHealthEventMsgPattern = "%s pod[%s] is unhealthy, msg:%s"

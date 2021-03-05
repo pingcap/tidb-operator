@@ -25,6 +25,7 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 )
 
@@ -108,25 +109,42 @@ func (f *pdFailover) tryToMarkAPeerAsFailure(tc *v1alpha1.TidbCluster) error {
 			continue
 		}
 
-		ordinal, err := util.GetOrdinalFromPodName(podName)
-		if err != nil {
-			return err
+		// ordinal, err := util.GetOrdinalFromPodName(podName)
+		// if err != nil {
+		// 	return err
+		// }
+		// pvcName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tcName), ordinal)
+		// pvc, err := f.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
+		// if err != nil {
+		// 	return fmt.Errorf("tryToMarkAPeerAsFailure: failed to get pvc %s for cluster %s/%s, error: %s", pvcName, ns, tcName, err)
+		// }
+
+		pod, err := f.deps.PodLister.Pods(ns).Get(podName)
+		if err != nil && !errors.IsNotFound(err) {
+			return fmt.Errorf("tryToMarkAPeerAsFailure: failed to get pod %s/%s for tc %s/%s, error: %s", ns, podName, ns, tcName, err)
 		}
-		pvcName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tcName), ordinal)
-		pvc, err := f.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
-		if err != nil {
-			return fmt.Errorf("tryToMarkAPeerAsFailure: failed to get pvc %s for cluster %s/%s, error: %s", pvcName, ns, tcName, err)
+		if pod == nil {
+			klog.Infof("tryToMarkAPeerAsFailure: failure pod %s/%s not found, skip", ns, podName)
+			return nil
 		}
 
-		msg := fmt.Sprintf("pd member[%s] is unhealthy", pdMember.ID)
-		f.deps.Recorder.Event(tc, apiv1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "pd", pdName, msg))
+		pvcs, err := util.ResolvePVCFromPod(pod, f.deps.PVCLister)
+		if err != nil {
+			return fmt.Errorf("tryToMarkAPeerAsFailure: failed to get pvcs for pod %s/%s in tc %s/%s, error: %s", ns, pod.Name, ns, tcName, err)
+		}
+
+		f.deps.Recorder.Eventf(tc, apiv1.EventTypeWarning, "PDMemberUnhealthy", "%s/%s(%s) is unhealthy", ns, podName, pdMember.ID)
 
 		// mark a peer member failed and return an error to skip reconciliation
 		// note that status of tidb cluster will be updated always
+		pvcUIDSet := make(map[types.UID]struct{})
+		for _, pvc := range pvcs {
+			pvcUIDSet[pvc.UID] = struct{}{}
+		}
 		tc.Status.PD.FailureMembers[pdName] = v1alpha1.PDFailureMember{
 			PodName:       podName,
 			MemberID:      pdMember.ID,
-			PVCUID:        pvc.UID,
+			PVCUIDSet:     pvcUIDSet,
 			MemberDeleted: false,
 			CreatedAt:     metav1.Now(),
 		}
@@ -165,10 +183,10 @@ func (f *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error {
 	}
 	// invoke deleteMember api to delete a member from the pd cluster
 	if err := controller.GetPDClient(f.deps.PDControl, tc).DeleteMemberByID(memberID); err != nil {
-		klog.Errorf("pd failover: failed to delete member %d, %v", memberID, err)
+		klog.Errorf("tryToDeleteAFailureMember: failed to delete member %d, error: %v", memberID, err)
 		return err
 	}
-	klog.Infof("pd failover: delete member %s/%s(%d) successfully", ns, failurePodName, memberID)
+	klog.Infof("tryToDeleteAFailureMember: delete member %s/%s(%d) successfully", ns, failurePodName, memberID)
 	f.deps.Recorder.Eventf(tc, apiv1.EventTypeWarning, "PDMemberDeleted", "failure member %s/%s(%d) deleted from PD cluster", ns, failurePodName, memberID)
 
 	// The order of old PVC deleting and the new Pod creating is not guaranteed by Kubernetes.
@@ -181,24 +199,30 @@ func (f *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error {
 	//    Please refer to orphan_pods_cleaner.go for details.
 	pod, err := f.deps.PodLister.Pods(ns).Get(failurePodName)
 	if err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("tryToDeleteAFailureMember: failed to get pods %s for cluster %s/%s, error: %s", failurePodName, ns, tcName, err)
+		return fmt.Errorf("tryToDeleteAFailureMember: failed to get pod %s/%s for tc %s/%s, error: %s", ns, failurePodName, ns, tcName, err)
 	}
-
 	if pod == nil {
-		klog.Infof("pd failover: failure pod %s/%s not found, skip", ns, failurePodName)
+		klog.Infof("tryToDeleteAFailureMember: failure pod %s/%s not found, skip", ns, failurePodName)
 		return nil
 	}
 	pvcs, err := util.ResolvePVCFromPod(pod, f.deps.PVCLister)
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("tryToDeleteAFailureMember: failed to get pvcs for pod %s/%s in tc %s/%s, error: %s", ns, pod.Name, ns, tcName, err)
 	}
+
 	if pod.DeletionTimestamp == nil {
 		if err := f.deps.PodControl.DeletePod(tc, pod); err != nil {
 			return err
 		}
 	}
 	for _, pvc := range pvcs {
-		if pvc.DeletionTimestamp == nil && pvc.GetUID() == failureMember.PVCUID {
+		_, pvcUIDExist := failureMember.PVCUIDSet[pvc.GetUID()]
+		// for backward compatibility, if there exists failureMembers and user upgrades operator to newer version
+		// there will be failure member structures with PVCUID set from api server, we should handle this as pvcUIDExist == true
+		if pvc.GetUID() == failureMember.PVCUID {
+			pvcUIDExist = true
+		}
+		if pvc.DeletionTimestamp == nil && pvcUIDExist {
 			if err := f.deps.PVCControl.DeletePVC(tc, pvc); err != nil {
 				klog.Errorf("tryToDeleteAFailureMember: failed to delete pvc: %s/%s, error: %s", ns, pvc.Name, err)
 				return err
@@ -246,7 +270,7 @@ func (f *pdFailover) isPDInQuorum(tc *v1alpha1.TidbCluster) (bool, int) {
 		if pdMember.Health {
 			healthCount++
 		} else {
-			f.deps.Recorder.Eventf(tc, apiv1.EventTypeWarning, "PDPeerMemberUnhealthy", "%s/%s(%s) is unhealthy", pdMember.Name, pdMember.ID)
+			f.deps.Recorder.Eventf(tc, apiv1.EventTypeWarning, "PDPeerMemberUnhealthy", "%s/%s(%s) is unhealthy", ns, pdMember.Name, pdMember.ID)
 		}
 	}
 	return healthCount > (len(tc.Status.PD.Members)+len(tc.Status.PD.PeerMembers))/2, healthCount
