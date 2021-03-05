@@ -192,7 +192,7 @@ func TestPDFailoverFailover(t *testing.T) {
 				g.Expect(pd1.MemberDeleted).To(Equal(true))
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(1))
-				g.Expect(events[0]).To(ContainSubstring("failure member test-pd-1(12891273174085095651) deleted from PD cluster"))
+				g.Expect(events[0]).To(ContainSubstring("failure member default/test-pd-1(12891273174085095651) deleted from PD cluster"))
 			},
 		},
 		{
@@ -340,7 +340,7 @@ func TestPDFailoverFailover(t *testing.T) {
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(2))
 				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
-				g.Expect(events[1]).To(ContainSubstring("failure member test-pd-1(12891273174085095651) deleted from PD cluster"))
+				g.Expect(events[1]).To(ContainSubstring("failure member default/test-pd-1(12891273174085095651) deleted from PD cluster"))
 			},
 		},
 		{
@@ -425,7 +425,7 @@ func TestPDFailoverFailover(t *testing.T) {
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(2))
 				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
-				g.Expect(events[1]).To(ContainSubstring("failure member test-pd-1(12891273174085095651) deleted from PD cluster"))
+				g.Expect(events[1]).To(ContainSubstring("failure member default/test-pd-1(12891273174085095651) deleted from PD cluster"))
 			},
 		},
 		{
@@ -452,7 +452,7 @@ func TestPDFailoverFailover(t *testing.T) {
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(2))
 				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
-				g.Expect(events[1]).To(ContainSubstring("failure member test-pd-1(12891273174085095651) deleted from PD cluster"))
+				g.Expect(events[1]).To(ContainSubstring("failure member default/test-pd-1(12891273174085095651) deleted from PD cluster"))
 			},
 		},
 		{
@@ -482,7 +482,7 @@ func TestPDFailoverFailover(t *testing.T) {
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(2))
 				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
-				g.Expect(events[1]).To(ContainSubstring("failure member test-pd-1(12891273174085095651) deleted from PD cluster"))
+				g.Expect(events[1]).To(ContainSubstring("failure member default/test-pd-1(12891273174085095651) deleted from PD cluster"))
 			},
 		},
 		{
@@ -513,7 +513,7 @@ func TestPDFailoverFailover(t *testing.T) {
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(2))
 				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
-				g.Expect(events[1]).To(ContainSubstring("failure member test-pd-1(12891273174085095651) deleted from PD cluster"))
+				g.Expect(events[1]).To(ContainSubstring("failure member default/test-pd-1(12891273174085095651) deleted from PD cluster"))
 			},
 		},
 	}

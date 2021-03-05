@@ -168,12 +168,11 @@ func (f *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error {
 		klog.Errorf("pd failover: failed to delete member %d, %v", memberID, err)
 		return err
 	}
-	klog.Infof("pd failover: delete member %d successfully", memberID)
-	f.deps.Recorder.Eventf(tc, apiv1.EventTypeWarning, "PDMemberDeleted", "failure member %s(%d) deleted from PD cluster", failurePodName, memberID)
+	klog.Infof("pd failover: delete member %s/%s(%d) successfully", ns, failurePodName, memberID)
+	f.deps.Recorder.Eventf(tc, apiv1.EventTypeWarning, "PDMemberDeleted", "failure member %s/%s(%d) deleted from PD cluster", ns, failurePodName, memberID)
 
 	// The order of old PVC deleting and the new Pod creating is not guaranteed by Kubernetes.
 	// If new Pod is created before old PVC deleted, new Pod will reuse old PVC.
-	// In this case, there is a period during which both new & old Pod is using the same PVC.
 	// So we must try to delete the PVC and Pod of this PD peer over and over again,
 	// and let StatefulSet to create the new PD peer with the same ordinal, but not to use the tombstone PV
 	pod, err := f.deps.PodLister.Pods(ns).Get(failurePodName)
@@ -181,24 +180,26 @@ func (f *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error {
 		return fmt.Errorf("tryToDeleteAFailureMember: failed to get pods %s for cluster %s/%s, error: %s", failurePodName, ns, tcName, err)
 	}
 
-	if pod != nil {
-		pvcs, err := util.ResolvePVCFromPod(pod, f.deps.PVCLister)
-		if err != nil && !errors.IsNotFound(err) {
-			return fmt.Errorf("tryToDeleteAFailureMember: failed to get pvcs for pod %s/%s in tc %s/%s, error: %s", ns, pod.Name, ns, tcName, err)
+	if pod == nil {
+		klog.Infof("pd failover: failure pod %s/%s not found, skip", ns, failurePodName)
+		return nil
+	}
+	pvcs, err := util.ResolvePVCFromPod(pod, f.deps.PVCLister)
+	if err != nil && !errors.IsNotFound(err) {
+		return fmt.Errorf("tryToDeleteAFailureMember: failed to get pvcs for pod %s/%s in tc %s/%s, error: %s", ns, pod.Name, ns, tcName, err)
+	}
+	if pod.DeletionTimestamp == nil {
+		if err := f.deps.PodControl.DeletePod(tc, pod); err != nil {
+			return err
 		}
-		if pod.DeletionTimestamp == nil {
-			if err := f.deps.PodControl.DeletePod(tc, pod); err != nil {
+	}
+	for _, pvc := range pvcs {
+		if pvc.DeletionTimestamp == nil && pvc.GetUID() == failureMember.PVCUID {
+			if err := f.deps.PVCControl.DeletePVC(tc, pvc); err != nil {
+				klog.Errorf("tryToDeleteAFailureMember: failed to delete pvc: %s/%s, error: %s", ns, pvc.Name, err)
 				return err
 			}
-		}
-		for _, pvc := range pvcs {
-			if pvc.DeletionTimestamp == nil && pvc.GetUID() == failureMember.PVCUID {
-				if err := f.deps.PVCControl.DeletePVC(tc, pvc); err != nil {
-					klog.Errorf("tryToDeleteAFailureMember: failed to delete pvc: %s/%s, error: %s", ns, pvc.Name, err)
-					return err
-				}
-				klog.Infof("tryToDeleteAFailureMember: delete pvc %s/%s successfully", ns, pvc.Name)
-			}
+			klog.Infof("tryToDeleteAFailureMember: delete pvc %s/%s successfully", ns, pvc.Name)
 		}
 	}
 
@@ -229,18 +230,19 @@ func setMemberDeleted(tc *v1alpha1.TidbCluster, pdName string) {
 // is healthy PD more than a half
 func (f *pdFailover) isPDInQuorum(tc *v1alpha1.TidbCluster) (bool, int) {
 	healthCount := 0
+	ns := tc.GetNamespace()
 	for podName, pdMember := range tc.Status.PD.Members {
 		if pdMember.Health {
 			healthCount++
 		} else {
-			f.deps.Recorder.Eventf(tc, apiv1.EventTypeWarning, "PDMemberUnhealthy", "%s(%s) is unhealthy", podName, pdMember.ID)
+			f.deps.Recorder.Eventf(tc, apiv1.EventTypeWarning, "PDMemberUnhealthy", "%s/%s(%s) is unhealthy", ns, podName, pdMember.ID)
 		}
 	}
 	for _, pdMember := range tc.Status.PD.PeerMembers {
 		if pdMember.Health {
 			healthCount++
 		} else {
-			f.deps.Recorder.Eventf(tc, apiv1.EventTypeWarning, "PDPeerMemberUnhealthy", "%s(%s) is unhealthy", pdMember.Name, pdMember.ID)
+			f.deps.Recorder.Eventf(tc, apiv1.EventTypeWarning, "PDPeerMemberUnhealthy", "%s/%s(%s) is unhealthy", pdMember.Name, pdMember.ID)
 		}
 	}
 	return healthCount > (len(tc.Status.PD.Members)+len(tc.Status.PD.PeerMembers))/2, healthCount
