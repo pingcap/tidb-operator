@@ -175,8 +175,7 @@ func (f *masterFailover) tryToDeleteAFailureMember(dc *v1alpha1.DMCluster) error
 		return err
 	}
 	klog.Infof("dm-master failover: delete member: [%s/%s] successfully", ns, failurePodName)
-	f.deps.Recorder.Eventf(dc, apiv1.EventTypeWarning, "DMMasterMemberDeleted",
-		"[%s/%s] deleted from dmcluster", ns, failurePodName)
+	f.deps.Recorder.Eventf(dc, apiv1.EventTypeWarning, "DMMasterMemberDeleted", "[%s/%s] deleted from dmcluster", ns, failurePodName)
 
 	// The order of old PVC deleting and the new Pod creating is not guaranteed by Kubernetes.
 	// If new Pod is created before old PVC deleted, new Pod will reuse old PVC.
@@ -187,24 +186,26 @@ func (f *masterFailover) tryToDeleteAFailureMember(dc *v1alpha1.DMCluster) error
 		return fmt.Errorf("tryToDeleteAFailureMember: failed to get pods %s for dmcluster %s/%s, error: %s", failurePodName, ns, dcName, err)
 	}
 
-	if pod != nil {
-		pvcs, err := util.ResolvePVCFromPod(pod, f.deps.PVCLister)
-		if err != nil && !errors.IsNotFound(err) {
-			return fmt.Errorf("tryToDeleteAFailureMember: failed to get pvcs for pod %s/%s in dc %s/%s, error: %s", ns, pod.Name, ns, dcName, err)
+	if pod == nil {
+		klog.Infof("tryToDeleteAFailureMember: failure pod %s/%s not found, skip", ns, failurePodName)
+		return nil
+	}
+	pvcs, err := util.ResolvePVCFromPod(pod, f.deps.PVCLister)
+	if err != nil && !errors.IsNotFound(err) {
+		return fmt.Errorf("tryToDeleteAFailureMember: failed to get pvcs for pod %s/%s in dc %s/%s, error: %s", ns, pod.Name, ns, dcName, err)
+	}
+	if pod.DeletionTimestamp == nil {
+		if err := f.deps.PodControl.DeletePod(dc, pod); err != nil {
+			return err
 		}
-		if pod.DeletionTimestamp == nil {
-			if err := f.deps.PodControl.DeletePod(dc, pod); err != nil {
+	}
+	for _, pvc := range pvcs {
+		if pvc.DeletionTimestamp == nil && pvc.GetUID() == failureMember.PVCUID {
+			if err = f.deps.PVCControl.DeletePVC(dc, pvc); err != nil {
+				klog.Errorf("tryToDeleteAFailureMember: failed to delete pvc: %s/%s, error: %s", ns, pvc.Name, err)
 				return err
 			}
-		}
-		for _, pvc := range pvcs {
-			if pvc.DeletionTimestamp == nil && pvc.GetUID() == failureMember.PVCUID {
-				if err = f.deps.PVCControl.DeletePVC(dc, pvc); err != nil {
-					klog.Errorf("tryToDeleteAFailureMember: failed to delete pvc: %s/%s, error: %s", ns, pvc.Name, err)
-					return err
-				}
-				klog.Infof("tryToDeleteAFailureMember: delete pvc %s/%s successfully", ns, pvc.Name)
-			}
+			klog.Infof("tryToDeleteAFailureMember: delete pvc %s/%s successfully", ns, pvc.Name)
 		}
 	}
 
