@@ -418,6 +418,7 @@ func StatefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) bool {
 	return false
 }
 
+// ResolvePVCFromPod parses pod volumes definition, and returns all PVCs mounted by this pod
 func ResolvePVCFromPod(pod *corev1.Pod, pvcLister corelisterv1.PersistentVolumeClaimLister) ([]*corev1.PersistentVolumeClaim, error) {
 	var pvcs []*corev1.PersistentVolumeClaim
 	var pvcName string
@@ -430,13 +431,15 @@ func ResolvePVCFromPod(pod *corev1.Pod, pvcLister corelisterv1.PersistentVolumeC
 			pvc, err := pvcLister.PersistentVolumeClaims(pod.Namespace).Get(pvcName)
 			if err != nil {
 				klog.Errorf("Get PVC %s/%s error: %v", pod.Namespace, pvcName, err)
-				continue
+				return nil, err
 			}
 			pvcs = append(pvcs, pvc)
 		}
 	}
 	if len(pvcs) == 0 {
-		return nil, errors.NewNotFound(corev1.Resource("pvc"), pod.Name)
+		err := errors.NewNotFound(corev1.Resource("pvc"), "")
+		err.ErrStatus.Message = fmt.Sprintf("no pvc found for pod %s/%s", pod.Namespace, pod.Name)
+		return pvcs, err
 	}
 	return pvcs, nil
 }
