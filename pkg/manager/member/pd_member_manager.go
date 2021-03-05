@@ -907,6 +907,7 @@ func (m *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *
 			if err != nil {
 				return err
 			}
+			// FIXME: this will show empty PVC UID in status, fix according to PDFailureMember
 			pvcName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tc.Name), ordinal)
 			pvc, err := m.deps.PVCLister.PersistentVolumeClaims(tc.Namespace).Get(pvcName)
 			if err != nil {
