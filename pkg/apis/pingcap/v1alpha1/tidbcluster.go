@@ -27,7 +27,7 @@ import (
 
 const (
 	// defaultHelperImage is default image of helper
-	defaultHelperImage        = "busybox:1.33.0"
+	defaultHelperImage        = "busybox:1.26.2"
 	defaultTimeZone           = "UTC"
 	defaultExposeStatus       = true
 	defaultSeparateSlowLog    = true

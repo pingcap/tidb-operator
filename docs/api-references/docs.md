@@ -5861,7 +5861,7 @@ string
 <td>
 <em>(Optional)</em>
 <p>Image used to tail slow log and set kernel parameters if necessary, must have <code>tail</code> and <code>sysctl</code> installed
-Optional: Defaults to busybox:1.33.0</p>
+Optional: Defaults to busybox:1.26.2</p>
 </td>
 </tr>
 <tr>
