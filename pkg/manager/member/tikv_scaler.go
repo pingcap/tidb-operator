@@ -69,7 +69,6 @@ func (s *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 	// we can only remove one member at a time when scaling in
 	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
 	resetReplicas(newSet, oldSet)
-	setName := oldSet.GetName()
 
 	klog.Infof("scaling in tikv statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
 	// We need remove member from cluster before reducing statefulset replicas
@@ -88,6 +87,7 @@ func (s *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 		return nil
 	}
 
+	// call PD API to delete the store of the TiKV Pod to be scaled in
 	for _, store := range tc.Status.TiKV.Stores {
 		if store.PodName == podName {
 			state := store.State
@@ -105,8 +105,10 @@ func (s *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 			return controller.RequeueErrorf("TiKV %s/%s store %d is still in cluster, state: %s", ns, podName, id, state)
 		}
 	}
-	for id, store := range tc.Status.TiKV.TombstoneStores {
-		if store.PodName == podName && pod.Labels[label.StoreIDLabelKey] == id {
+
+	// If the store state turns to Tombstone, add defer deleting annotation to the PVCs of the Pod
+	for storeID, store := range tc.Status.TiKV.TombstoneStores {
+		if store.PodName == podName && pod.Labels[label.StoreIDLabelKey] == storeID {
 			id, err := strconv.ParseUint(store.ID, 10, 64)
 			if err != nil {
 				return err
@@ -115,24 +117,15 @@ func (s *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 			// TODO: double check if store is really not in Up/Offline/Down state
 			klog.Infof("TiKV %s/%s store %d becomes tombstone", ns, podName, id)
 
-			pvcName := ordinalPVCName(v1alpha1.TiKVMemberType, setName, ordinal)
-			pvc, err := s.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
+			pvcs, err := util.ResolvePVCFromPod(pod, s.deps.PVCLister)
 			if err != nil {
-				return fmt.Errorf("tikvScaler.ScaleIn: failed to get pvc %s for cluster %s/%s, error: %s", pvcName, ns, tcName, err)
+				return fmt.Errorf("tikvScaler.ScaleIn: failed to get pvcs for pod %s/%s in tc %s/%s, error: %s", ns, pod.Name, ns, tcName, err)
 			}
-			if pvc.Annotations == nil {
-				pvc.Annotations = map[string]string{}
+			for _, pvc := range pvcs {
+				if err := addDeferDeletingAnnoToPVC(tc, pvc, s.deps.PVCControl); err != nil {
+					return err
+				}
 			}
-			now := time.Now().Format(time.RFC3339)
-			pvc.Annotations[label.AnnPVCDeferDeleting] = now
-			_, err = s.deps.PVCControl.UpdatePVC(tc, pvc)
-			if err != nil {
-				klog.Errorf("tikv scale in: failed to set pvc %s/%s annotation: %s to %s",
-					ns, pvcName, label.AnnPVCDeferDeleting, now)
-				return err
-			}
-			klog.Infof("tikv scale in: set pvc %s/%s annotation: %s to %s",
-				ns, pvcName, label.AnnPVCDeferDeleting, now)
 
 			// endEvictLeader for TombStone stores
 			if err = endEvictLeaderbyStoreID(s.deps, tc, id); err != nil {
@@ -144,18 +137,12 @@ func (s *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 		}
 	}
 
-	// When store not found in TidbCluster status, there are two situations as follows:
-	// 1. This can happen when TiKV joins cluster but we haven't synced its status.
-	//    In this situation return error to wait another round for safety.
-	//
-	// 2. This can happen when TiKV pod has not been successfully registered in the cluster, such as always pending.
+	// When store not found in TidbCluster status, there are two possible situations:
+	// 1. TiKV has already joined cluster but status not synced yet.
+	//    In this situation return error to wait for another round for safety.
+	// 2. TiKV pod is not ready, such as in pending state.
 	//    In this situation we should delete this TiKV pod immediately to avoid blocking the subsequent operations.
 	if !podutil.IsPodReady(pod) {
-		pvcName := ordinalPVCName(v1alpha1.TiKVMemberType, setName, ordinal)
-		pvc, err := s.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
-		if err != nil {
-			return fmt.Errorf("tikvScaler.ScaleIn: failed to get pvc %s for cluster %s/%s, error: %s", pvcName, ns, tcName, err)
-		}
 		if tc.TiKVBootStrapped() {
 			safeTimeDeadline := pod.CreationTimestamp.Add(5 * s.deps.CLIConfig.ResyncDuration)
 			if time.Now().Before(safeTimeDeadline) {
@@ -167,22 +154,20 @@ func (s *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 				// then we can be sure that this tikv has never been added to the tidb cluster.
 				// So we can scale in this tikv pod safely.
 				resetReplicas(newSet, oldSet)
-				return fmt.Errorf("TiKV %s/%s is not ready, wait for some resync periods to synced its status", ns, podName)
+				return fmt.Errorf("TiKV %s/%s is not ready, wait for 5 resync periods to sync its status", ns, podName)
 			}
 		}
-		if pvc.Annotations == nil {
-			pvc.Annotations = map[string]string{}
-		}
-		now := time.Now().Format(time.RFC3339)
-		pvc.Annotations[label.AnnPVCDeferDeleting] = now
-		_, err = s.deps.PVCControl.UpdatePVC(tc, pvc)
+
+		pvcs, err := util.ResolvePVCFromPod(pod, s.deps.PVCLister)
 		if err != nil {
-			klog.Errorf("pod %s not ready, tikv scale in: failed to set pvc %s/%s annotation: %s to %s",
-				podName, ns, pvcName, label.AnnPVCDeferDeleting, now)
-			return err
+			return fmt.Errorf("tikvScaler.ScaleIn: failed to get pvcs for pod %s/%s in tc %s/%s, error: %s", ns, pod.Name, ns, tcName, err)
 		}
-		klog.Infof("pod %s not ready, tikv scale in: set pvc %s/%s annotation: %s to %s",
-			podName, ns, pvcName, label.AnnPVCDeferDeleting, now)
+		for _, pvc := range pvcs {
+			if err := addDeferDeletingAnnoToPVC(tc, pvc, s.deps.PVCControl); err != nil {
+				return err
+			}
+		}
+
 		setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 		return nil
 	}

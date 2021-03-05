@@ -376,3 +376,62 @@ func MatchLabelFromStoreLabels(storeLabels []*metapb.StoreLabel, componentLabel 
 	}
 	return storeKind == componentLabel
 }
+<<<<<<< HEAD
+=======
+
+// statefulSetEqual compares the new Statefulset's spec with old Statefulset's last applied config
+func StatefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) bool {
+	// The annotations in old sts may include LastAppliedConfigAnnotation
+	tmpAnno := map[string]string{}
+	for k, v := range old.Annotations {
+		if k != LastAppliedConfigAnnotation {
+			tmpAnno[k] = v
+		}
+	}
+	if !apiequality.Semantic.DeepEqual(new.Annotations, tmpAnno) {
+		return false
+	}
+	oldConfig := apps.StatefulSetSpec{}
+	if lastAppliedConfig, ok := old.Annotations[LastAppliedConfigAnnotation]; ok {
+		err := json.Unmarshal([]byte(lastAppliedConfig), &oldConfig)
+		if err != nil {
+			klog.Errorf("unmarshal Statefulset: [%s/%s]'s applied config failed,error: %v", old.GetNamespace(), old.GetName(), err)
+			return false
+		}
+		// oldConfig.Template.Annotations may include LastAppliedConfigAnnotation to keep backward compatiability
+		// Please check detail in https://github.com/pingcap/tidb-operator/pull/1489
+		tmpTemplate := oldConfig.Template.DeepCopy()
+		delete(tmpTemplate.Annotations, LastAppliedConfigAnnotation)
+		return apiequality.Semantic.DeepEqual(oldConfig.Replicas, new.Spec.Replicas) &&
+			apiequality.Semantic.DeepEqual(*tmpTemplate, new.Spec.Template) &&
+			apiequality.Semantic.DeepEqual(oldConfig.UpdateStrategy, new.Spec.UpdateStrategy)
+	}
+	return false
+}
+
+// ResolvePVCFromPod parses pod volumes definition, and returns all PVCs mounted by this pod
+func ResolvePVCFromPod(pod *corev1.Pod, pvcLister corelisterv1.PersistentVolumeClaimLister) ([]*corev1.PersistentVolumeClaim, error) {
+	var pvcs []*corev1.PersistentVolumeClaim
+	var pvcName string
+	for _, vol := range pod.Spec.Volumes {
+		if vol.PersistentVolumeClaim != nil {
+			pvcName = vol.PersistentVolumeClaim.ClaimName
+			if len(pvcName) == 0 {
+				continue
+			}
+			pvc, err := pvcLister.PersistentVolumeClaims(pod.Namespace).Get(pvcName)
+			if err != nil {
+				klog.Errorf("Get PVC %s/%s error: %v", pod.Namespace, pvcName, err)
+				return nil, err
+			}
+			pvcs = append(pvcs, pvc)
+		}
+	}
+	if len(pvcs) == 0 {
+		err := errors.NewNotFound(corev1.Resource("pvc"), "")
+		err.ErrStatus.Message = fmt.Sprintf("no pvc found for pod %s/%s", pod.Namespace, pod.Name)
+		return pvcs, err
+	}
+	return pvcs, nil
+}
+>>>>>>> a3f15158... Fix support for multiple pvc for tikv (#3816)
