@@ -1920,11 +1920,12 @@ type MasterMember struct {
 
 // MasterFailureMember is the dm-master failure member information
 type MasterFailureMember struct {
-	PodName       string      `json:"podName,omitempty"`
-	MemberID      string      `json:"memberID,omitempty"`
-	PVCUID        types.UID   `json:"pvcUID,omitempty"`
-	MemberDeleted bool        `json:"memberDeleted,omitempty"`
-	CreatedAt     metav1.Time `json:"createdAt,omitempty"`
+	PodName       string                 `json:"podName,omitempty"`
+	MemberID      string                 `json:"memberID,omitempty"`
+	PVCUID        types.UID              `json:"pvcUID,omitempty"`
+	PVCUIDSet     map[types.UID]struct{} `json:"pvcUIDSet,omitempty"`
+	MemberDeleted bool                   `json:"memberDeleted,omitempty"`
+	CreatedAt     metav1.Time            `json:"createdAt,omitempty"`
 }
 
 // WorkerStatus is dm-worker status

@@ -24,6 +24,7 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 )
 
@@ -113,31 +114,38 @@ func (f *masterFailover) tryToMarkAPeerAsFailure(dc *v1alpha1.DMCluster) error {
 		if dc.Status.Master.FailureMembers == nil {
 			dc.Status.Master.FailureMembers = map[string]v1alpha1.MasterFailureMember{}
 		}
-		deadline := masterMember.LastTransitionTime.Add(f.deps.CLIConfig.MasterFailoverPeriod)
+		failoverDeadline := masterMember.LastTransitionTime.Add(f.deps.CLIConfig.MasterFailoverPeriod)
 		_, exist := dc.Status.Master.FailureMembers[podName]
-		if masterMember.Health || time.Now().Before(deadline) || exist {
+		if masterMember.Health || time.Now().Before(failoverDeadline) || exist {
 			continue
 		}
 
-		ordinal, err := util.GetOrdinalFromPodName(podName)
-		if err != nil {
-			return err
+		pod, err := f.deps.PodLister.Pods(ns).Get(podName)
+		if err != nil && !errors.IsNotFound(err) {
+			return fmt.Errorf("tryToMarkAPeerAsFailure: failed to get pod %s/%s for tc %s/%s, error: %s", ns, podName, ns, dcName, err)
 		}
-		pvcName := ordinalPVCName(v1alpha1.DMMasterMemberType, controller.DMMasterMemberName(dcName), ordinal)
-		pvc, err := f.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
-		if err != nil {
-			return fmt.Errorf("tryToMarkAPeerAsFailure: failed to get pvc %s for dmcluster %s/%s, error: %s", pvcName, ns, dcName, err)
+		if pod == nil {
+			klog.Infof("tryToMarkAPeerAsFailure: failure pod %s/%s not found, skip", ns, podName)
+			return nil
 		}
 
-		msg := fmt.Sprintf("dm-master member[%s] is unhealthy", masterMember.ID)
-		f.deps.Recorder.Event(dc, apiv1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "dm-master", podName, msg))
+		pvcs, err := util.ResolvePVCFromPod(pod, f.deps.PVCLister)
+		if err != nil {
+			return fmt.Errorf("tryToMarkAPeerAsFailure: failed to get pvcs for pod %s/%s in tc %s/%s, error: %s", ns, pod.Name, ns, dcName, err)
+		}
+
+		f.deps.Recorder.Eventf(dc, apiv1.EventTypeWarning, "DMMasterMemberUnhealthy", "%s/%s(%s) is unhealthy", ns, podName, masterMember.ID)
 
 		// mark a peer member failed and return an error to skip reconciliation
 		// note that status of dm cluster will be updated always
+		pvcUIDSet := make(map[types.UID]struct{})
+		for _, pvc := range pvcs {
+			pvcUIDSet[pvc.UID] = struct{}{}
+		}
 		dc.Status.Master.FailureMembers[podName] = v1alpha1.MasterFailureMember{
 			PodName:       podName,
 			MemberID:      masterMember.ID,
-			PVCUID:        pvc.UID,
+			PVCUIDSet:     pvcUIDSet,
 			MemberDeleted: false,
 			CreatedAt:     metav1.Now(),
 		}
@@ -147,10 +155,9 @@ func (f *masterFailover) tryToMarkAPeerAsFailure(dc *v1alpha1.DMCluster) error {
 	return nil
 }
 
-// tryToDeleteAFailureMember tries to delete a dm-master member and associated pod &
-// pvc. If this succeeds, new pod & pvc will be created by Kubernetes.
-// Note that this will fail if the kubelet on the node which failed pod was
-// running on is not responding.
+// tryToDeleteAFailureMember tries to delete a dm-master member and associated Pod & PVC.
+// On success, new Pod & PVC will be created.
+// Note that this will fail if the kubelet on the node on which failed Pod was running is not responding.
 func (f *masterFailover) tryToDeleteAFailureMember(dc *v1alpha1.DMCluster) error {
 	ns := dc.GetNamespace()
 	dcName := dc.GetName()
@@ -165,47 +172,52 @@ func (f *masterFailover) tryToDeleteAFailureMember(dc *v1alpha1.DMCluster) error
 		}
 	}
 	if failureMember == nil {
+		klog.Infof("No DM Master FailureMembers to delete for tc %s/%s", ns, dcName)
 		return nil
 	}
 
 	// invoke deleteMember api to delete a member from the dm-master cluster
-	err := controller.GetMasterClient(f.deps.DMMasterControl, dc).DeleteMaster(failurePodName)
-	if err != nil {
-		klog.Errorf("dm-master failover: failed to delete member: [%s/%s], %v", ns, failurePodName, err)
+	if err := controller.GetMasterClient(f.deps.DMMasterControl, dc).DeleteMaster(failurePodName); err != nil {
+		klog.Errorf("dm-master tryToDeleteAFailureMember: failed to delete member: %s/%s, %v", ns, failurePodName, err)
 		return err
 	}
-	klog.Infof("dm-master failover: delete member: [%s/%s] successfully", ns, failurePodName)
-	f.deps.Recorder.Eventf(dc, apiv1.EventTypeWarning, "DMMasterMemberDeleted", "[%s/%s] deleted from dmcluster", ns, failurePodName)
+	klog.Infof("dm-master tryToDeleteAFailureMember: delete member %s/%s successfully", ns, failurePodName)
+	f.deps.Recorder.Eventf(dc, apiv1.EventTypeWarning, "DMMasterMemberDeleted", "failure member %s/%s deleted from dmcluster", ns, failurePodName)
 
 	// The order of old PVC deleting and the new Pod creating is not guaranteed by Kubernetes.
-	// If new Pod is created before old PVC deleted, new Pod will reuse old PVC.
-	// So we must try to delete the PVC and Pod of this dm-master peer over and over,
-	// and let StatefulSet create the new dm-master peer with the same ordinal, but don't use the tombstone PV
+	// If new Pod is created before old PVCs are deleted, the Statefulset will try to use the old PVCs and skip creating new PVCs.
+	// This could result in 2 possible cases:
+	// 1. If the old PVCs are first mounted successfully by the new Pod, the following pvc deletion will fail and return error.
+	//    We will try to delete the Pod and PVCs again in the next requeued run.
+	// 2. If the old PVCs are first deleted successfully here, the new Pods will try to mount non-existing PVCs, which will pend forever.
+	//    This is where OrphanPodsCleaner kicks in, which will delete the pending Pods in this situation.
+	//    Please refer to orphan_pods_cleaner.go for details.
 	pod, err := f.deps.PodLister.Pods(ns).Get(failurePodName)
 	if err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("tryToDeleteAFailureMember: failed to get pods %s for dmcluster %s/%s, error: %s", failurePodName, ns, dcName, err)
+		return fmt.Errorf("dm-master tryToDeleteAFailureMember: failed to get Pod %s/%s for dmcluster %s/%s, error: %s", ns, failurePodName, ns, dcName, err)
+	}
+	if pod != nil {
+		if pod.DeletionTimestamp == nil {
+			if err := f.deps.PodControl.DeletePod(dc, pod); err != nil {
+				return err
+			}
+		}
+	} else {
+		klog.Infof("dm-master tryToDeleteAFailureMember: failure Pod %s/%s not found, skip deleting Pod", ns, failurePodName)
 	}
 
-	if pod == nil {
-		klog.Infof("tryToDeleteAFailureMember: failure pod %s/%s not found, skip", ns, failurePodName)
-		return nil
-	}
+	// FIXME: change to use label for PVC selection
 	pvcs, err := util.ResolvePVCFromPod(pod, f.deps.PVCLister)
 	if err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("tryToDeleteAFailureMember: failed to get pvcs for pod %s/%s in dc %s/%s, error: %s", ns, pod.Name, ns, dcName, err)
-	}
-	if pod.DeletionTimestamp == nil {
-		if err := f.deps.PodControl.DeletePod(dc, pod); err != nil {
-			return err
-		}
+		return fmt.Errorf("dm-master tryToDeleteAFailureMember: failed to get PVCs for Pod %s/%s in dc %s/%s, error: %s", ns, pod.Name, ns, dcName, err)
 	}
 	for _, pvc := range pvcs {
 		if pvc.DeletionTimestamp == nil && pvc.GetUID() == failureMember.PVCUID {
 			if err = f.deps.PVCControl.DeletePVC(dc, pvc); err != nil {
-				klog.Errorf("tryToDeleteAFailureMember: failed to delete pvc: %s/%s, error: %s", ns, pvc.Name, err)
+				klog.Errorf("dm-master tryToDeleteAFailureMember: failed to delete PVC: %s/%s, error: %s", ns, pvc.Name, err)
 				return err
 			}
-			klog.Infof("tryToDeleteAFailureMember: delete pvc %s/%s successfully", ns, pvc.Name)
+			klog.Infof("dm-master tryToDeleteAFailureMember: delete PVC %s/%s successfully", ns, pvc.Name)
 		}
 	}
 
