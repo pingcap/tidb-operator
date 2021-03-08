@@ -301,10 +301,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4Prev)
 		tc.Spec.PD.Replicas = 3
 		// Deploy
-		err = genericCli.Create(context.TODO(), tc)
-		framework.ExpectNoError(err, "Expected TiDB cluster created")
-		err = oa.WaitForTidbClusterReady(tc, 6*time.Minute, 5*time.Second)
-		framework.ExpectNoError(err, "Expected TiDB cluster ready")
+		utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 6*time.Minute, 5*time.Second)
 
 		ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", tc.Spec.Version, utilimage.TiDBV4))
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
@@ -346,9 +343,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to get service for TidbCluster: %v", tcCfg)
 			tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "failed to get TidbCluster: %v", tcCfg)
-			if isNil, err := gomega.BeNil().Match(metav1.GetControllerOf(oldSvc)); !isNil {
-				log.Failf("Expected TiDB service created by helm chart is orphaned: %v", err)
-			}
+			framework.ExpectEqual(metav1.GetControllerOf(oldSvc), nil, "Expected TiDB service %s/%s created by helm chart is orphaned", ns, oldSvc.Name)
 
 			ginkgo.By("Adopt orphaned service created by helm")
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
