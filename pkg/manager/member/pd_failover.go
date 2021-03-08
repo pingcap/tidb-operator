@@ -102,22 +102,12 @@ func (f *pdFailover) tryToMarkAPeerAsFailure(tc *v1alpha1.TidbCluster) error {
 		if tc.Status.PD.FailureMembers == nil {
 			tc.Status.PD.FailureMembers = map[string]v1alpha1.PDFailureMember{}
 		}
-		deadline := pdMember.LastTransitionTime.Add(f.deps.CLIConfig.PDFailoverPeriod)
+		failoverDeadline := pdMember.LastTransitionTime.Add(f.deps.CLIConfig.PDFailoverPeriod)
 		_, exist := tc.Status.PD.FailureMembers[pdName]
 
-		if pdMember.Health || time.Now().Before(deadline) || exist {
+		if pdMember.Health || time.Now().Before(failoverDeadline) || exist {
 			continue
 		}
-
-		// ordinal, err := util.GetOrdinalFromPodName(podName)
-		// if err != nil {
-		// 	return err
-		// }
-		// pvcName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tcName), ordinal)
-		// pvc, err := f.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
-		// if err != nil {
-		// 	return fmt.Errorf("tryToMarkAPeerAsFailure: failed to get pvc %s for cluster %s/%s, error: %s", pvcName, ns, tcName, err)
-		// }
 
 		pod, err := f.deps.PodLister.Pods(ns).Get(podName)
 		if err != nil && !errors.IsNotFound(err) {
