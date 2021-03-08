@@ -1,5 +1,7 @@
+# The name of a node pool may only contain lowercase alphanumeric characters and must begin with a lowercase letter.
+# For Linux node pools the length must be between 1 and 12 characters
 resource "azurerm_kubernetes_cluster_node_pool" "pd_pool" {
-  name                  = "${var.cluster_name}-pd-pool"
+  name                  = "${var.cluster_name}-pd"
   kubernetes_cluster_id = var.aks_cluster_id
   vm_size               = var.pd_instance_type
   node_count            = var.pd_node_count
@@ -11,7 +13,7 @@ resource "azurerm_kubernetes_cluster_node_pool" "pd_pool" {
 }
 
 resource "azurerm_kubernetes_cluster_node_pool" "tidb_pool" {
-  name                  = "${var.cluster_name}-tidb-pool"
+  name                  = "${var.cluster_name}-tidb"
   kubernetes_cluster_id = var.aks_cluster_id
   vm_size               = var.tidb_instance_type
   node_count            = var.tidb_node_count
@@ -22,7 +24,7 @@ resource "azurerm_kubernetes_cluster_node_pool" "tidb_pool" {
 }
 
 resource "azurerm_kubernetes_cluster_node_pool" "tikv_pool" {
-  name                  = "${var.cluster_name}-tikv-pool"
+  name                  = "${var.cluster_name}-tikv"
   kubernetes_cluster_id = var.aks_cluster_id
   vm_size               = var.tikv_instance_type
   node_count            = var.tikv_node_count

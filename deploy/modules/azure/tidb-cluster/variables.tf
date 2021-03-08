@@ -57,21 +57,6 @@ variable "monitor_instance_type" {
   default = "Standard_B2s"
 }
 
-variable "pd_image_type" {
-  description = "PD image type, available: UBUNTU/COS"
-  default     = "COS"
-}
-
-variable "tidb_image_type" {
-  description = "TiDB image type, available: UBUNTU/COS"
-  default     = "COS"
-}
-
-variable "tikv_image_type" {
-  description = "TiKV image type, available: UBUNTU/COS"
-  default     = "COS"
-}
-
 variable "tikv_local_ssd_count" {
   description = "TiKV node pool local ssd count (cannot be changed after the node pool is created)"
   default     = 1

@@ -55,7 +55,7 @@ variable "create_vpc" {
 
 variable "aks_name" {
   description = "Name of the AKS cluster. Also used as a prefix in names of related resources."
-  default     = "tidb-cluster"
+  default     = "tidb-aks"
 }
 
 variable "aks_version" {
@@ -66,12 +66,12 @@ variable "aks_version" {
 
 variable "default_tidb_cluster_name" {
   description = "The name that will be given to the default tidb cluster created."
-  default     = "tidb-cluster"
+  default     = "tidb"
 }
 
 variable "vpc_name" {
   description = "The name of the VPC network"
-  default     = "tidb-cluster"
+  default     = "tidb-vpc"
 }
 
 variable "pd_count" {
@@ -93,17 +93,12 @@ variable "monitor_count" {
   description = "Number of monitor nodes per availability zone"
   default     = 1
 }
-variable "pd_instance_type" {
-  default = ""
-}
 
-variable "tikv_instance_type" {
-  default = ""
-}
+variable "pd_instance_type" {}
 
-variable "tidb_instance_type" {
-  default = ""
-}
+variable "tikv_instance_type" {}
+
+variable "tidb_instance_type" {}
 
 variable "pd_image_type" {
   description = "PD image type, available: UBUNTU/COS"
