@@ -343,7 +343,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to get service for TidbCluster: %v", tcCfg)
 			tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "failed to get TidbCluster: %v", tcCfg)
-			framework.ExpectEqual(metav1.GetControllerOf(oldSvc), nil, "Expected TiDB service %s/%s created by helm chart is orphaned", ns, oldSvc.Name)
+			if isNil, err := gomega.BeNil().Match(metav1.GetControllerOf(oldSvc)); !isNil {
+				log.Failf("Expected TiDB service created by helm chart is orphaned: %v", err)
+			}
 
 			ginkgo.By("Adopt orphaned service created by helm")
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
