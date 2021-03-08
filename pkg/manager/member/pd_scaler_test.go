@@ -268,15 +268,29 @@ func TestPDScalerScaleIn(t *testing.T) {
 		podIndexer.Add(pod)
 
 		if test.hasPVC {
-			pvc := newScaleInPVCForStatefulSet(oldSet, v1alpha1.PDMemberType, tc.Name)
-			pvcIndexer.Add(pvc)
-			pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
-				VolumeSource: corev1.VolumeSource{
-					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-						ClaimName: pvc.Name,
+			pvc1 := newScaleInPVCForStatefulSet(oldSet, v1alpha1.PDMemberType, tc.Name)
+			pvc2 := pvc1.DeepCopy()
+			pvc1.Name = pvc1.Name + "-1"
+			pvc1.UID = pvc1.UID + "-1"
+			pvc2.Name = pvc2.Name + "-2"
+			pvc2.UID = pvc2.UID + "-2"
+			pvcIndexer.Add(pvc1)
+			pvcIndexer.Add(pvc2)
+			pod.Spec.Volumes = append(pod.Spec.Volumes,
+				corev1.Volume{
+					VolumeSource: corev1.VolumeSource{
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+							ClaimName: pvc1.Name,
+						},
 					},
 				},
-			})
+				corev1.Volume{
+					VolumeSource: corev1.VolumeSource{
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+							ClaimName: pvc2.Name,
+						},
+					},
+				})
 		}
 
 		pdClient := controller.NewFakePDClient(pdControl, tc)
