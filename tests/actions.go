@@ -207,8 +207,10 @@ type OperatorConfig struct {
 	Cabundle                  string
 	BackupImage               string
 	AutoFailover              *bool
+	AppendReleaseSuffix       bool
 	// Additional STRING values, set via --set-string flag.
 	StringValues map[string]string
+	Selector     []string
 }
 
 type TidbClusterConfig struct {
@@ -348,6 +350,7 @@ func (oi *OperatorConfig) OperatorHelmSetBoolean() string {
 		"admissionWebhook.validation.statefulSets":     oi.StsWebhookEnabled,
 		"admissionWebhook.mutation.pingcapResources":   oi.DefaultingEnabled,
 		"admissionWebhook.validation.pingcapResources": oi.ValidatingEnabled,
+		"appendReleaseSuffix":                          oi.AppendReleaseSuffix,
 	}
 	arr := make([]string, 0, len(set))
 	for k, v := range set {
@@ -391,7 +394,10 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 	if oi.AutoFailover != nil {
 		set["controllerManager.autoFailover"] = strconv.FormatBool(*oi.AutoFailover)
 	}
-
+	if len(oi.Selector) > 0 {
+		selector := fmt.Sprintln(strings.Join(oi.Selector, ","))
+		set["controllerManager.selector"] = selector
+	}
 	// merge with additional STRING values
 	for k, v := range oi.StringValues {
 		set[k] = v
