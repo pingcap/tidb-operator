@@ -2,7 +2,7 @@
 # This will create a zonal cluster in zone us-central1-b with one additional zone.
 # Work nodes will be created in primary zone us-central1-b and additional zone us-central1-c.
 #
-gke_name           = "multi-zonal"
+aks_name           = "multi-zonal"
 vpc_name           = "multi-zonal"
 location           = "us-central1-b"
 pd_instance_type   = "n1-standard-2"

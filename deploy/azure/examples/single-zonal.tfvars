@@ -2,7 +2,7 @@
 # This will create a zonal cluster in zone us-central1-b without additional zones.
 # Work nodes will be created in a single zone only.
 #
-gke_name           = "single-zonal"
+aks_name           = "single-zonal"
 vpc_name           = "single-zonal"
 location           = "us-central1-b"
 pd_instance_type   = "n1-standard-2"
