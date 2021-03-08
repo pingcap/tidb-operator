@@ -111,12 +111,12 @@ func (f *pdFailover) tryToMarkAPeerAsFailure(tc *v1alpha1.TidbCluster) error {
 
 		pod, err := f.deps.PodLister.Pods(ns).Get(podName)
 		if err != nil {
-			return fmt.Errorf("tryToMarkAPeerAsFailure: failed to get pod %s/%s for tc %s/%s, error: %s", ns, podName, ns, tcName, err)
+			return fmt.Errorf("tryToMarkAPeerAsFailure: failed to get pod %s/%s, error: %s", ns, podName, err)
 		}
 
 		pvcs, err := util.ResolvePVCFromPod(pod, f.deps.PVCLister)
 		if err != nil {
-			return fmt.Errorf("tryToMarkAPeerAsFailure: failed to get pvcs for pod %s/%s in tc %s/%s, error: %s", ns, pod.Name, ns, tcName, err)
+			return fmt.Errorf("tryToMarkAPeerAsFailure: failed to get pvcs for pod %s/%s, error: %s", ns, pod.Name, err)
 		}
 
 		f.deps.Recorder.Eventf(tc, apiv1.EventTypeWarning, "PDMemberUnhealthy", "%s/%s(%s) is unhealthy", ns, podName, pdMember.ID)
