@@ -31,6 +31,7 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	corelisters "k8s.io/client-go/listers/core/v1"
@@ -516,4 +517,25 @@ func addDeferDeletingAnnoToPVC(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentV
 	}
 	klog.Infof("set PVC %s/%s annotationq %q to %q successfully", tc.Namespace, pvc.Name, label.AnnPVCDeferDeleting, now)
 	return nil
+}
+
+func getPVCSelectorForPod(controller runtime.Object, memberType v1alpha1.MemberType, ordinal int32) (labels.Selector, error) {
+	meta := controller.(metav1.Object)
+	var podName string
+	var l label.Label
+	switch controller.(type) {
+	case *v1alpha1.TidbCluster:
+		podName = ordinalPodName(memberType, meta.GetName(), ordinal)
+		l = label.New().Instance(meta.GetName())
+		l[label.AnnPodNameKey] = podName
+	case *v1alpha1.DMCluster:
+		podName = ordinalPodName(memberType, meta.GetName(), ordinal)
+		l = label.NewDM().Instance(meta.GetName())
+		// just delete all defer Deleting pvc for convenience. Or dm have to support sync meta info labels for pod/pvc which seems unnecessary
+		// l[label.AnnPodNameKey] = podName
+	default:
+		kind := controller.GetObjectKind().GroupVersionKind().Kind
+		return nil, fmt.Errorf("object %s/%s of kind %s has unknown controller", meta.GetNamespace(), meta.GetName(), kind)
+	}
+	return l.Selector()
 }

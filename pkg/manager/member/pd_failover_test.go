@@ -23,6 +23,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -567,6 +568,8 @@ func TestPDFailoverFailover(t *testing.T) {
 					pod.DeletionTimestamp = &metav1.Time{Time: time.Now()}
 				}
 				if test.hasPVC {
+					pvc1.ObjectMeta.Labels[label.AnnPodNameKey] = pod.GetName()
+					pvc2.ObjectMeta.Labels[label.AnnPodNameKey] = pod.GetName()
 					pod.Spec.Volumes = append(pod.Spec.Volumes,
 						corev1.Volume{
 							VolumeSource: corev1.VolumeSource{
@@ -824,6 +827,11 @@ func newPVCForPDFailover(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberTyp
 			Name:      ordinalPVCName(memberType, controller.PDMemberName(tc.GetName()), ordinal),
 			Namespace: metav1.NamespaceDefault,
 			UID:       types.UID("pvc-1-uid"),
+			Labels: map[string]string{
+				label.NameLabelKey:      "tidb-cluster",
+				label.ManagedByLabelKey: label.TiDBOperator,
+				label.InstanceLabelKey:  "test",
+			},
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			VolumeName: fmt.Sprintf("pv-%d", ordinal),

@@ -16,6 +16,8 @@ package member
 import "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 
 // TODO: move this to a centralized place
+// Since the "Unhealthy" is a very universal event reason string, which could apply to all the TiDB/DM cluster components,
+// we should make a global event module, and put event related constants there.
 const (
 	unHealthEventReason     = "Unhealthy"
 	unHealthEventMsgPattern = "%s pod[%s] is unhealthy, msg:%s"

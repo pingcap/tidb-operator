@@ -47,7 +47,6 @@ func TestGeneralScalerDeleteAllDeferDeletingPVC(t *testing.T) {
 	tc := newTidbClusterForPD()
 	setName := controller.PDMemberName(tc.GetName())
 	testFn := func(test *testcase, t *testing.T) {
-		t.Logf(test.name)
 		g := NewGomegaWithT(t)
 
 		gs, pvcIndexer, pvcControl := newFakeGeneralScaler()
@@ -62,7 +61,7 @@ func TestGeneralScalerDeleteAllDeferDeletingPVC(t *testing.T) {
 			pvcControl.SetDeletePVCError(fmt.Errorf("delete pvc failed"), 0)
 		}
 
-		skipReason, err := gs.deleteDeferDeletingPVC(tc, setName, test.memberType, test.ordinal)
+		skipReason, err := gs.deleteDeferDeletingPVC(tc, test.memberType, test.ordinal)
 		if test.pvc != nil {
 			test.expectFn(g, skipReason, err, podName, test.pvc.Name)
 		} else {
@@ -98,6 +97,7 @@ func TestGeneralScalerDeleteAllDeferDeletingPVC(t *testing.T) {
 			expectFn: func(g *GomegaWithT, skipReason map[string]string, err error, podName, pvcName string) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(skipReason)).To(Equal(1))
+				t.Logf("skipReason: %q", skipReason[podName])
 				g.Expect(skipReason[podName]).To(Equal(skipReasonScalerPVCNotFound))
 			},
 		},
@@ -647,7 +647,6 @@ func TestGeneralScalerDeleteMultiDeferDeletingPVC(t *testing.T) {
 		expectFn     func(*GomegaWithT, map[string]string, error, string)
 	}
 	tc := newTidbClusterForPD()
-	setName := controller.PDMemberName(tc.GetName())
 	testFn := func(test *testcase, t *testing.T) {
 		t.Logf(test.name)
 		g := NewGomegaWithT(t)
@@ -666,7 +665,7 @@ func TestGeneralScalerDeleteMultiDeferDeletingPVC(t *testing.T) {
 			pvcControl.SetDeletePVCError(fmt.Errorf("delete pvc failed"), 0)
 		}
 
-		skipReason, err := gs.deleteDeferDeletingPVC(tc, setName, test.memberType, test.ordinal)
+		skipReason, err := gs.deleteDeferDeletingPVC(tc, test.memberType, test.ordinal)
 		test.expectFn(g, skipReason, err, podName)
 	}
 	tests := []testcase{
