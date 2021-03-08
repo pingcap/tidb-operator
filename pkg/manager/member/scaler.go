@@ -213,7 +213,7 @@ func scaleOne(actual *apps.StatefulSet, desired *apps.StatefulSet) (scaling int,
 		// we always do scaling out before scaling in to maintain maximum avaiability
 		scaling = 1
 		ordinal = additions.List()[0]
-		replicas += 1
+		replicas++
 		if !desiredDeleteSlots.Has(ordinal) {
 			// not in desired delete slots, remove it from actual delete slots
 			actualDeleteSlots.Delete(ordinal)
@@ -223,7 +223,7 @@ func scaleOne(actual *apps.StatefulSet, desired *apps.StatefulSet) (scaling int,
 		scaling = -1
 		deletionsList := deletions.List()
 		ordinal = deletionsList[len(deletionsList)-1]
-		replicas -= 1
+		replicas--
 		if desiredDeleteSlots.Has(ordinal) {
 			// in desired delete slots, add it in actual delete slots
 			actualDeleteSlots.Insert(ordinal)

@@ -60,7 +60,6 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 		scaler, _, pvcIndexer, _, pvcControl := newFakeTiKVScaler()
 
 		pvc := newPVCForStatefulSet(oldSet, v1alpha1.TiKVMemberType, tc.Name)
-		pvc.Name = ordinalPVCName(v1alpha1.TiKVMemberType, oldSet.GetName(), *oldSet.Spec.Replicas)
 		if !test.annoIsNil {
 			pvc.Annotations = map[string]string{}
 		}
@@ -198,8 +197,26 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 		scaler, pdControl, pvcIndexer, podIndexer, pvcControl := newFakeTiKVScaler(resyncDuration)
 
 		if test.hasPVC {
-			pvc := newScaleInPVCForStatefulSet(oldSet, v1alpha1.TiKVMemberType, tc.Name)
-			pvcIndexer.Add(pvc)
+			pvc1 := newScaleInPVCForStatefulSet(oldSet, v1alpha1.TiKVMemberType, tc.Name)
+			pvc2 := pvc1.DeepCopy()
+			pvc1.Name = pvc1.Name + "1"
+			pvc2.Name = pvc2.Name + "2"
+			pvcIndexer.Add(pvc1)
+			pvcIndexer.Add(pvc2)
+			pod.Spec.Volumes = append(pod.Spec.Volumes,
+				corev1.Volume{
+					VolumeSource: corev1.VolumeSource{
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+							ClaimName: pvc1.Name,
+						},
+					},
+				}, corev1.Volume{
+					VolumeSource: corev1.VolumeSource{
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+							ClaimName: pvc2.Name,
+						},
+					},
+				})
 		}
 
 		pod.Labels = map[string]string{}
