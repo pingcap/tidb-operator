@@ -4,3 +4,4 @@ terraform {
     azurerm = "~> 2.50"
   }
 }
+
