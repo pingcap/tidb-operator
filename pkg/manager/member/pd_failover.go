@@ -88,7 +88,6 @@ func (f *pdFailover) Recover(tc *v1alpha1.TidbCluster) {
 
 func (f *pdFailover) tryToMarkAPeerAsFailure(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
-	tcName := tc.GetName()
 
 	for pdName, pdMember := range tc.Status.PD.Members {
 		if pdMember.LastTransitionTime.IsZero() {
