@@ -60,7 +60,7 @@ func (f *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 
 	inQuorum, healthCount := f.isPDInQuorum(tc)
 	if !inQuorum {
-		return fmt.Errorf("TidbCluster: %s/%s's pd cluster is not health, health %d / desired %d,"+
+		return fmt.Errorf("TidbCluster: %s/%s's pd cluster is not healthy, healthy %d / desired %d,"+
 			" replicas %d, failureCount %d, can't failover",
 			ns, tcName, healthCount, tc.PDStsDesiredReplicas(), tc.Spec.PD.Replicas, len(tc.Status.PD.FailureMembers))
 	}
@@ -260,7 +260,7 @@ func (f *pdFailover) isPDInQuorum(tc *v1alpha1.TidbCluster) (bool, int) {
 		if pdMember.Health {
 			healthCount++
 		} else {
-			f.deps.Recorder.Eventf(tc, apiv1.EventTypeWarning, "PDPeerMemberUnhealthy", "%s/%s(%s) is unhealthy", ns, pdMember.Name, pdMember.ID)
+			f.deps.Recorder.Eventf(tc, apiv1.EventTypeWarning, "PDPeerMemberUnhealthy", "%s(%s) is unhealthy", pdMember.Name, pdMember.ID)
 		}
 	}
 	return healthCount > (len(tc.Status.PD.Members)+len(tc.Status.PD.PeerMembers))/2, healthCount

@@ -307,7 +307,7 @@ func UpdateStatefulSet(setCtl controller.StatefulSetControlInterface, object run
 	return nil
 }
 
-// find targetContainer by containerName, If not find, then return nil
+// findContainerByName finds targetContainer by containerName, If not find, then return nil
 func findContainerByName(sts *apps.StatefulSet, containerName string) *corev1.Container {
 	for _, c := range sts.Spec.Template.Spec.Containers {
 		if c.Name == containerName {
