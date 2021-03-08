@@ -4,10 +4,10 @@
 #
 aks_name           = "single-zonal"
 vpc_name           = "single-zonal"
-location           = "us-central1-b"
-pd_instance_type   = "n1-standard-2"
-tikv_instance_type = "n1-highmem-4"
-tidb_instance_type = "n1-standard-8"
+location           = "westus2"
+pd_instance_type   = "Standard_B2s"
+tikv_instance_type = "Standard_B2s"
+tidb_instance_type = "Standard_B2s"
 pd_count           = 3
 tikv_count         = 3
 tidb_count         = 3

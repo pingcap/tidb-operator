@@ -4,10 +4,8 @@
 #
 aks_name           = "multi-zonal"
 vpc_name           = "multi-zonal"
-location           = "us-central1-b"
-pd_instance_type   = "n1-standard-2"
-tikv_instance_type = "n1-highmem-4"
-tidb_instance_type = "n1-standard-8"
-node_locations = [
-  "us-central1-c"
-]
+location           = "westus2"
+pd_instance_type   = "Standard_B2s"
+tikv_instance_type = "Standard_B2s"
+tidb_instance_type = "Standard_B2s"
+node_locations = [1,2,3]
