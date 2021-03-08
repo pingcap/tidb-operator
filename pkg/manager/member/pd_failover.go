@@ -110,7 +110,7 @@ func (f *pdFailover) tryToMarkAPeerAsFailure(tc *v1alpha1.TidbCluster) error {
 		}
 
 		pod, err := f.deps.PodLister.Pods(ns).Get(podName)
-		if err != nil && !errors.IsNotFound(err) {
+		if err != nil {
 			return fmt.Errorf("tryToMarkAPeerAsFailure: failed to get pod %s/%s for tc %s/%s, error: %s", ns, podName, ns, tcName, err)
 		}
 
