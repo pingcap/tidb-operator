@@ -35,6 +35,7 @@ import (
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
+	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	v1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -526,12 +527,12 @@ var _ = ginkgo.Describe("[Serial]", func() {
 		ginkgo.It("should migrate tidbmonitor from deployment to sts", func() {
 			ginkgo.By("deploy initial tc")
 			tcName := "smooth-tidbcluster"
-			tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "admin", utilimage.TiDBV4)
-			tcCfg.Resources["pd.replicas"] = "3"
-			tcCfg.Resources["tikv.replicas"] = "3"
-			tcCfg.Resources["tidb.replicas"] = "1"
-			oa.DeployTidbClusterOrDie(&tcCfg)
-			oa.CheckTidbClusterStatusOrDie(&tcCfg)
+			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4)
+			tc.Spec.PD.Replicas = 1
+			tc.Spec.TiKV.Replicas = 1
+			tc.Spec.TiDB.Replicas = 1
+
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 6*time.Minute, 5*time.Second)
 
 			ginkgo.By("deploy tidb monitor")
 			monitorName := "smooth-migrate"
@@ -619,14 +620,13 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			// TODO: resolve the duplication
 			framework.Skipf("duplicated test")
 			tcName := "basic"
-			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "", utilimage.TiDBV4)
-			cluster.Resources["pd.replicas"] = "1"
-			cluster.Resources["tikv.replicas"] = "1"
-			cluster.Resources["tidb.replicas"] = "1"
-			cluster.Monitor = false
-			cluster.OperatorTag = operatorVersion
-			oa.DeployTidbClusterOrDie(&cluster)
-			oa.CheckTidbClusterStatusOrDie(&cluster)
+
+			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4)
+			tc.Spec.PD.Replicas = 1
+			tc.Spec.TiKV.Replicas = 1
+			tc.Spec.TiDB.Replicas = 1
+
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 6*time.Minute, 5*time.Second)
 
 			listOptions := metav1.ListOptions{
 				LabelSelector: labels.SelectorFromSet(label.New().Instance(tcName).Labels()).String(),
