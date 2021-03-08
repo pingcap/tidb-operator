@@ -343,6 +343,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to get service for TidbCluster: %v", tcCfg)
 			tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "failed to get TidbCluster: %v", tcCfg)
+			// TODO: If use framework.ExpectNoError here, will report error: <*v1.OwnerReference | 0x0>: nil to equal <nil>: nil.
 			if isNil, err := gomega.BeNil().Match(metav1.GetControllerOf(oldSvc)); !isNil {
 				log.Failf("Expected TiDB service created by helm chart is orphaned: %v", err)
 			}
