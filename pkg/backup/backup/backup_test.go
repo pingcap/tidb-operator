@@ -109,9 +109,14 @@ func genValidBRBackups() []*v1alpha1.Backup {
 						Name:  fmt.Sprintf("env_name_%d", i),
 						Value: fmt.Sprintf("env_value_%d", i),
 					},
-					// existing env name will not be overwritten
+					// existing env name will not be overwritten for backup
 					{
 						Name:  "BR_LOG_TO_TERM",
+						Value: "value",
+					},
+					// existing env name will not be overwritten for cleaner
+					{
+						Name:  "S3_PROVIDER",
 						Value: "value",
 					},
 				},

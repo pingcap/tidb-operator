@@ -74,7 +74,6 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 	}
 
 	// no found the clean job, we start to create the clean job.
-
 	if backup.Status.BackupPath == "" {
 		// the backup path is empty, so there is no need to clean up backup data
 		return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
@@ -116,9 +115,23 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bc.deps.KubeClientset)
+	envVars, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bc.deps.KubeClientset)
 	if err != nil {
 		return nil, reason, err
+	}
+
+	// set env vars specified in backup.Spec.Env if not present
+	for _, backupEnv := range backup.Spec.Env {
+		present := false
+		for _, e := range envVars {
+			if e.Name == backupEnv.Name {
+				present = true
+				break
+			}
+		}
+		if !present {
+			envVars = append(envVars, backupEnv)
+		}
 	}
 
 	args := []string{
@@ -157,7 +170,7 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 					Image:           bc.deps.CLIConfig.TiDBBackupManagerImage,
 					Args:            args,
 					ImagePullPolicy: corev1.PullIfNotPresent,
-					Env:             util.AppendEnvIfPresent(storageEnv, "TZ"),
+					Env:             util.AppendEnvIfPresent(envVars, "TZ"),
 					Resources:       backup.Spec.ResourceRequirements,
 					VolumeMounts:    volumeMounts,
 				},
