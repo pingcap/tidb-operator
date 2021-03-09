@@ -109,6 +109,11 @@ func genValidBRBackups() []*v1alpha1.Backup {
 						Name:  fmt.Sprintf("env_name_%d", i),
 						Value: fmt.Sprintf("env_value_%d", i),
 					},
+					// existing env name will not be overwritten
+					{
+						Name:  "BR_LOG_TO_TERM",
+						Value: "value",
+					},
 				},
 			},
 		}
@@ -184,12 +189,21 @@ func TestBackupManagerBR(t *testing.T) {
 		g.Expect(err).Should(BeNil())
 
 		// check pod env are set correctly
-		t.Logf("backup job name: %v", job.GetName())
-		env := corev1.EnvVar{
+		env1 := corev1.EnvVar{
 			Name:  fmt.Sprintf("env_name_%d", i),
 			Value: fmt.Sprintf("env_value_%d", i),
 		}
-		g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env))
+		env2No := corev1.EnvVar{
+			Name:  "BR_LOG_TO_TERM",
+			Value: "value",
+		}
+		env2Yes := corev1.EnvVar{
+			Name:  "BR_LOG_TO_TERM",
+			Value: string(rune(1)),
+		}
+		g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env1))
+		g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env2Yes))
+		g.Expect(job.Spec.Template.Spec.Containers[0].Env).NotTo(gomega.ContainElement(env2No))
 	}
 }
 
