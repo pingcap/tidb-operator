@@ -77,6 +77,17 @@ func validDumplingBackup() *v1alpha1.Backup {
 					Prefix: "prefix-",
 				},
 			},
+			Env: []corev1.EnvVar{
+				{
+					Name:  "env_name",
+					Value: "env_value",
+				},
+				// existing env name will not be overwritten for backup
+				{
+					Name:  "S3_PROVIDER",
+					Value: "fake_provider",
+				},
+			},
 		},
 	}
 
@@ -151,8 +162,25 @@ func TestBackupManagerDumpling(t *testing.T) {
 	err = bm.syncBackupJob(backup)
 	g.Expect(err).Should(BeNil())
 	helper.hasCondition(backup.Namespace, backup.Name, v1alpha1.BackupScheduled, "")
-	_, err = deps.KubeClientset.BatchV1().Jobs(backup.Namespace).Get(backup.GetBackupJobName(), metav1.GetOptions{})
+	job, err := deps.KubeClientset.BatchV1().Jobs(backup.Namespace).Get(backup.GetBackupJobName(), metav1.GetOptions{})
 	g.Expect(err).Should(BeNil())
+
+	// check pod env are set correctly
+	env1 := corev1.EnvVar{
+		Name:  "env_name",
+		Value: "env_value",
+	}
+	env2No := corev1.EnvVar{
+		Name:  "S3_PROVIDER",
+		Value: "fake_provider",
+	}
+	env2Yes := corev1.EnvVar{
+		Name:  "S3_PROVIDER",
+		Value: "",
+	}
+	g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env1))
+	g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env2Yes))
+	g.Expect(job.Spec.Template.Spec.Containers[0].Env).NotTo(gomega.ContainElement(env2No))
 }
 
 func TestBackupManagerBR(t *testing.T) {
