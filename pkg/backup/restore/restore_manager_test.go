@@ -80,6 +80,17 @@ var validDumpRestore = &v1alpha1.Restore{
 				Endpoint: "s3://pingcap/",
 			},
 		},
+		Env: []corev1.EnvVar{
+			{
+				Name:  "env_name",
+				Value: "env_value",
+			},
+			// existing env name will be overwritten for backup
+			{
+				Name:  "S3_PROVIDER",
+				Value: "fake_provider",
+			},
+		},
 	},
 }
 
@@ -162,7 +173,25 @@ func TestDumplingRestore(t *testing.T) {
 	err = m.Sync(restore)
 	g.Expect(err).Should(BeNil())
 	helper.hasCondition(restore.Namespace, restore.Name, v1alpha1.RestoreScheduled, "")
-	helper.JobExists(restore)
+	job, err := helper.Deps.KubeClientset.BatchV1().Jobs(restore.Namespace).Get(restore.GetRestoreJobName(), metav1.GetOptions{})
+	g.Expect(err).Should(BeNil())
+
+	// check pod env are set correctly
+	env1 := corev1.EnvVar{
+		Name:  "env_name",
+		Value: "env_value",
+	}
+	env2Yes := corev1.EnvVar{
+		Name:  "S3_PROVIDER",
+		Value: "fake_provider",
+	}
+	env2No := corev1.EnvVar{
+		Name:  "S3_PROVIDER",
+		Value: "",
+	}
+	g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env1))
+	g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env2Yes))
+	g.Expect(job.Spec.Template.Spec.Containers[0].Env).NotTo(gomega.ContainElement(env2No))
 }
 
 func TestBRRestore(t *testing.T) {
