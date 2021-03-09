@@ -4086,6 +4086,13 @@ func (in *RestoreList) DeepCopyObject() runtime.Object {
 func (in *RestoreSpec) DeepCopyInto(out *RestoreSpec) {
 	*out = *in
 	in.ResourceRequirements.DeepCopyInto(&out.ResourceRequirements)
+	if in.Env != nil {
+		in, out := &in.Env, &out.Env
+		*out = make([]v1.EnvVar, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.To != nil {
 		in, out := &in.To, &out.To
 		*out = new(TiDBAccessConfig)

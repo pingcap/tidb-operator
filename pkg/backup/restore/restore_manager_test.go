@@ -155,7 +155,7 @@ func TestInvalid(t *testing.T) {
 	helper.hasCondition(restore.Namespace, restore.Name, v1alpha1.RestoreInvalid, "InvalidSpec")
 }
 
-func TestDumplingRestore(t *testing.T) {
+func TestLightningRestore(t *testing.T) {
 	g := NewGomegaWithT(t)
 	helper := newHelper(t)
 	defer helper.Close()
