@@ -25,8 +25,8 @@ variable "override_values" {
 }
 variable "kubeconfig_path" {}
 variable "aks_resource_group" {}
-// variable "gke_cluster_name" {}
-variable "aks_cluster_location" {}
+// variable "aks_cluster_name" {}
+// variable "aks_cluster_location" {}
 variable "pd_node_count" {
   description = "Number of PD nodes per availability zone"
   default     = 1

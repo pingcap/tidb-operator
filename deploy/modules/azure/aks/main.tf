@@ -30,6 +30,7 @@ resource "azurerm_kubernetes_cluster" "cluster" {
 
   # The default node pool is primary used for hosting critical system pods such as coredns and metrics-server
   default_node_pool {
+    # pool name must start with a lowercase letter, have max length of 12, and only have characters a-z0-9
     name               = var.default_pool_node_name
     node_count         = var.default_pool_node_count
     vm_size            = var.default_pool_instance_type
@@ -51,7 +52,7 @@ resource "local_file" "kubeconfig" {
 
 # aks initialization, right now it just adds local-storage.
 resource "null_resource" "init" {
-  depends_on          = [azurerm_kubernetes_cluster.cluster]
+  depends_on          = [azurerm_kubernetes_cluster.cluster, local_file.kubeconfig]
 
   provisioner "local-exec" {
     command           = "kubectl apply -f ${path.module}/manifests/local-ssd-provision.yaml"

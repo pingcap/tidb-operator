@@ -1,14 +1,20 @@
 module "default-tidb-cluster" {
   source                      = "../modules/azure/tidb-cluster"
+
+  # aks
   aks_cluster_id              = module.aks.aks_cluster_id
-  tidb_operator_id            = module.tidb-operator.tidb_operator_id
-  aks_resource_group          = var.RESOURCE_GROUP
-  aks_cluster_location        = local.location
+  aks_resource_group          = var.resource_group
+  # aks_cluster_location        = local.location
   aks_subnet_id               = module.aks.aks_subnet_id
-  cluster_name                = var.default_tidb_cluster_name
-  cluster_version             = var.tidb_version
   kubeconfig_path             = local.kubeconfig_path
+
+  # tidb operator
+  tidb_operator_id            = module.tidb-operator.tidb_operator_id
   tidb_cluster_chart_version  = coalesce(var.tidb_operator_chart_version, var.tidb_operator_version)
+
+  # tidb
+  cluster_name                = var.tidb_cluster_name
+  cluster_version             = var.tidb_version
   pd_instance_type            = var.pd_instance_type
   tikv_instance_type          = var.tikv_instance_type
   tidb_instance_type          = var.tidb_instance_type
@@ -17,7 +23,6 @@ module "default-tidb-cluster" {
   tikv_node_count             = var.tikv_count
   tidb_node_count             = var.tidb_count
   monitor_node_count          = var.monitor_count
-  tikv_local_ssd_count        = var.tikv_local_ssd_count
   override_values             = var.override_values == "" ? var.override_values_file == "" ? "" : file(var.override_values_file) : var.override_values
   create_tidb_cluster_release = var.create_tidb_cluster_release
 }

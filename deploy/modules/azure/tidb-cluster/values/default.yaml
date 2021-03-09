@@ -1,4 +1,4 @@
-# Basic customization for tidb-cluster chart that is suitable for a GKE cluster
+# Basic customization for tidb-cluster chart that is suitable for a AKS cluster
 timezone: UTC
 
 pd:
@@ -8,7 +8,7 @@ pd:
     sysctls:
     - name: net.core.somaxconn
       value: "32768"
-  storageClassName: pd-ssd
+  storageClassName: "managed-premium"
 tikv:
   annotations:
     tidb.pingcap.com/sysctl-init: "true"
@@ -16,7 +16,7 @@ tikv:
     sysctls:
     - name: net.core.somaxconn
       value: "32768"
-  storageClassName: local-storage
+  storageClassName: "managed-premium"
 tidb:
   annotations:
     tidb.pingcap.com/sysctl-init: "true"
@@ -35,7 +35,7 @@ tidb:
       cloud.google.com/load-balancer-type: "Internal"
   separateSlowLog: true
 monitor:
-  storageClassName: pd-ssd
+  storageClassName: "managed-premium"
   persistent: true
   grafana:
     config:

@@ -2,14 +2,14 @@
 //  description = "A path to to a service account key. See the docs for how to create one with the correct permissions"
 //}
 
-variable "REGION" {
+variable "region" {
   description = "The region in which to create the AKS cluster and associated resources"
-  default = "westus2"
+  default     = "westus2"
 }
 
-variable "RESOURCE_GROUP" {
+variable "resource_group" {
   description = "The Azure resource group in which to create the necessary resources"
-  default = "tidb-k8s"
+  default     = "tidb"
 }
 
 variable "location" {
@@ -64,7 +64,7 @@ variable "aks_version" {
   default     = "1.19.7"
 }
 
-variable "default_tidb_cluster_name" {
+variable "tidb_cluster_name" {
   description = "The name that will be given to the default tidb cluster created."
   default     = "tidb"
 }
@@ -94,43 +94,25 @@ variable "monitor_count" {
   default     = 1
 }
 
-variable "pd_instance_type" {}
-
-variable "tikv_instance_type" {}
-
-variable "tidb_instance_type" {}
-
-variable "pd_image_type" {
-  description = "PD image type, available: UBUNTU/COS"
-  default     = "COS"
+# The VM SKUs chosen for agentpool are restricted by AKS. Please see https://aka.ms/aks/restricted-skus for more details
+variable "pd_instance_type" {
+  default = "Standard_B2s"
 }
 
-variable "tidb_image_type" {
-  description = "TiDB image type, available: UBUNTU/COS"
-  default     = "COS"
+variable "tikv_instance_type" {
+  default = "Standard_B2s"
 }
 
-variable "tikv_image_type" {
-  description = "TiKV image type, available: UBUNTU/COS"
-  default     = "COS"
-}
-
-variable "tikv_local_ssd_count" {
-  description = "TiKV node pool local ssd count (cannot be changed after the node pool is created)"
-  default     = 1
+variable "tidb_instance_type" {
+  default = "Standard_B2s"
 }
 
 variable "monitor_instance_type" {
-  default = "n1-standard-2"
+  default = "Standard_B2s"
 }
 
 variable "bastion_instance_type" {
-  default = "f1-micro"
-}
-
-variable "maintenance_window_start_time" {
-  description = "The time in HH:MM GMT format to define the start of the daily maintenance window"
-  default     = "01:00"
+  default = "Standard_B1s"
 }
 
 variable "override_values" {

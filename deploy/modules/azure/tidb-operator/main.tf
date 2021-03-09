@@ -1,9 +1,3 @@
-provider "helm" {
-  kubernetes {
-    config_path = var.kubeconfig_path
-  }
-}
-
 resource "null_resource" "setup-operator" {
   provisioner "local-exec" {
     command = "kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/${var.tidb_operator_version}/manifests/crd.yaml"
@@ -15,6 +9,7 @@ resource "null_resource" "setup-operator" {
 
 resource "helm_release" "tidb-operator" {
   depends_on         = [null_resource.setup-operator]
+
   name               = "tidb-operator"
   repository         = "https://charts.pingcap.org/"
   chart              = "tidb-operator"

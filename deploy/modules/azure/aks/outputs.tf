@@ -3,13 +3,10 @@ output "aks_cluster_id" {
 }
 
 output "aks_subnet_id" {
-  value = azurerm_kubernetes_cluster.cluster.id
+  value = azurerm_subnet.aks_subnet.id
 }
 
-output "client_certificate" {
-  value = azurerm_kubernetes_cluster.cluster.kube_config.0.client_certificate
+output "kubeconfig_path" {
+  value = local_file.kubeconfig.filename
 }
 
-output "kube_config" {
-  value = azurerm_kubernetes_cluster.cluster.kube_config_raw
-}

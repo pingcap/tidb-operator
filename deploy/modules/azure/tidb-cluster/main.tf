@@ -1,7 +1,6 @@
-# The name of a node pool may only contain lowercase alphanumeric characters and must begin with a lowercase letter.
-# For Linux node pools the length must be between 1 and 12 characters
 resource "azurerm_kubernetes_cluster_node_pool" "pd_pool" {
-  name                  = "${var.cluster_name}-pd"
+  # pool name must start with a lowercase letter, have max length of 12, and only have characters a-z0-9
+  name                  = replace(lower("${var.cluster_name}pd"), "/[^\\w]/", "")
   kubernetes_cluster_id = var.aks_cluster_id
   vm_size               = var.pd_instance_type
   node_count            = var.pd_node_count
@@ -13,7 +12,8 @@ resource "azurerm_kubernetes_cluster_node_pool" "pd_pool" {
 }
 
 resource "azurerm_kubernetes_cluster_node_pool" "tidb_pool" {
-  name                  = "${var.cluster_name}-tidb"
+  # pool name must start with a lowercase letter, have max length of 12, and only have characters a-z0-9
+  name                  = replace(lower("${var.cluster_name}db"), "/[^\\w]/", "")
   kubernetes_cluster_id = var.aks_cluster_id
   vm_size               = var.tidb_instance_type
   node_count            = var.tidb_node_count
@@ -24,7 +24,8 @@ resource "azurerm_kubernetes_cluster_node_pool" "tidb_pool" {
 }
 
 resource "azurerm_kubernetes_cluster_node_pool" "tikv_pool" {
-  name                  = "${var.cluster_name}-tikv"
+  # pool name must start with a lowercase letter, have max length of 12, and only have characters a-z0-9
+  name                  = replace(lower("${var.cluster_name}kv"), "/[^\\w]/", "")
   kubernetes_cluster_id = var.aks_cluster_id
   vm_size               = var.tikv_instance_type
   node_count            = var.tikv_node_count
@@ -39,7 +40,7 @@ resource "azurerm_kubernetes_cluster_node_pool" "monitor_pool" {
   // Setup local SSD on TiKV nodes first (this can take some time)
   // Create the monitor pool next because that is where tiller will be deployed to
   depends_on = [azurerm_kubernetes_cluster_node_pool.tikv_pool]
-  name                  = "${var.cluster_name}-monitor-pool"
+  name                  = replace(lower("${var.cluster_name}mo"), "/[^\\w]/", "")
   kubernetes_cluster_id = var.aks_cluster_id
   vm_size               = var.monitor_instance_type
   node_count            = 3
