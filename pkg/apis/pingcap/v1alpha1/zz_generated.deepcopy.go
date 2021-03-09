@@ -328,6 +328,13 @@ func (in *BackupScheduleStatus) DeepCopy() *BackupScheduleStatus {
 func (in *BackupSpec) DeepCopyInto(out *BackupSpec) {
 	*out = *in
 	in.ResourceRequirements.DeepCopyInto(&out.ResourceRequirements)
+	if in.Env != nil {
+		in, out := &in.Env, &out.Env
+		*out = make([]v1.EnvVar, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.From != nil {
 		in, out := &in.From, &out.From
 		*out = new(TiDBAccessConfig)

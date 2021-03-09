@@ -1282,10 +1282,13 @@ const (
 	CleanPolicyTypeDelete CleanPolicyType = "Delete"
 )
 
-// +k8s:openapi-gen=true
 // BackupSpec contains the backup specification for a tidb cluster.
+// +k8s:openapi-gen=true
 type BackupSpec struct {
 	corev1.ResourceRequirements `json:"resources,omitempty"`
+	// List of environment variables to set in the container, like v1.Container.Env.
+	// +optional
+	Env []corev1.EnvVar `json:"env,omitempty"`
 	// From is the tidb cluster that needs to backup.
 	From *TiDBAccessConfig `json:"from,omitempty"`
 	// Type is the backup type for tidb cluster.

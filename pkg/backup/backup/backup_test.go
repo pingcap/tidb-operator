@@ -19,10 +19,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/testutils"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 )
@@ -102,6 +104,12 @@ func genValidBRBackups() []*v1alpha1.Backup {
 					Cluster:          fmt.Sprintf("tidb_%d", i),
 					DB:               "dbName",
 				},
+				Env: []corev1.EnvVar{
+					{
+						Name:  fmt.Sprintf("env_name_%d", i),
+						Value: fmt.Sprintf("env_value_%d", i),
+					},
+				},
 			},
 		}
 		b.Namespace = "ns"
@@ -155,7 +163,7 @@ func TestBackupManagerBR(t *testing.T) {
 	helper.hasCondition(backup.Namespace, backup.Name, v1alpha1.BackupInvalid, "")
 
 	// test valid backups
-	for _, backup := range genValidBRBackups() {
+	for i, backup := range genValidBRBackups() {
 		_, err := deps.Clientset.PingcapV1alpha1().Backups(backup.Namespace).Create(backup)
 		g.Expect(err).Should(BeNil())
 
@@ -172,8 +180,16 @@ func TestBackupManagerBR(t *testing.T) {
 		err = bm.syncBackupJob(backup)
 		g.Expect(err).Should(BeNil())
 		helper.hasCondition(backup.Namespace, backup.Name, v1alpha1.BackupScheduled, "")
-		_, err = deps.KubeClientset.BatchV1().Jobs(backup.Namespace).Get(backup.GetBackupJobName(), metav1.GetOptions{})
+		job, err := deps.KubeClientset.BatchV1().Jobs(backup.Namespace).Get(backup.GetBackupJobName(), metav1.GetOptions{})
 		g.Expect(err).Should(BeNil())
+
+		// check pod env are set correctly
+		t.Logf("backup job name: %v", job.GetName())
+		env := corev1.EnvVar{
+			Name:  fmt.Sprintf("env_name_%d", i),
+			Value: fmt.Sprintf("env_value_%d", i),
+		}
+		g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env))
 	}
 }
 

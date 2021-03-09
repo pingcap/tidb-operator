@@ -355,6 +355,20 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		Value: string(rune(1)),
 	})
 
+	// set env vars specified in backup.Spec.Env if not present
+	for _, backupEnv := range backup.Spec.Env {
+		present := false
+		for _, e := range envVars {
+			if e.Name == backupEnv.Name {
+				present = true
+				break
+			}
+		}
+		if !present {
+			envVars = append(envVars, backupEnv)
+		}
+	}
+
 	args := []string{
 		"backup",
 		fmt.Sprintf("--namespace=%s", ns),
