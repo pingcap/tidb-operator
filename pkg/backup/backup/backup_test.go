@@ -82,7 +82,7 @@ func validDumplingBackup() *v1alpha1.Backup {
 					Name:  "env_name",
 					Value: "env_value",
 				},
-				// existing env name will not be overwritten for backup
+				// existing env name will be overwritten for backup
 				{
 					Name:  "S3_PROVIDER",
 					Value: "fake_provider",
@@ -120,12 +120,12 @@ func genValidBRBackups() []*v1alpha1.Backup {
 						Name:  fmt.Sprintf("env_name_%d", i),
 						Value: fmt.Sprintf("env_value_%d", i),
 					},
-					// existing env name will not be overwritten for backup
+					// existing env name will be overwritten for backup
 					{
 						Name:  "BR_LOG_TO_TERM",
 						Value: "value",
 					},
-					// existing env name will not be overwritten for cleaner
+					// existing env name will be overwritten for cleaner
 					{
 						Name:  "S3_PROVIDER",
 						Value: "value",
@@ -170,11 +170,11 @@ func TestBackupManagerDumpling(t *testing.T) {
 		Name:  "env_name",
 		Value: "env_value",
 	}
-	env2No := corev1.EnvVar{
+	env2Yes := corev1.EnvVar{
 		Name:  "S3_PROVIDER",
 		Value: "fake_provider",
 	}
-	env2Yes := corev1.EnvVar{
+	env2No := corev1.EnvVar{
 		Name:  "S3_PROVIDER",
 		Value: "",
 	}
@@ -226,11 +226,11 @@ func TestBackupManagerBR(t *testing.T) {
 			Name:  fmt.Sprintf("env_name_%d", i),
 			Value: fmt.Sprintf("env_value_%d", i),
 		}
-		env2No := corev1.EnvVar{
+		env2Yes := corev1.EnvVar{
 			Name:  "BR_LOG_TO_TERM",
 			Value: "value",
 		}
-		env2Yes := corev1.EnvVar{
+		env2No := corev1.EnvVar{
 			Name:  "BR_LOG_TO_TERM",
 			Value: string(rune(1)),
 		}

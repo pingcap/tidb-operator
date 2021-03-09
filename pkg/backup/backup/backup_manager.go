@@ -192,18 +192,7 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	envVars = append(envVars, storageEnv...)
 
 	// set env vars specified in backup.Spec.Env if not present
-	for _, backupEnv := range backup.Spec.Env {
-		present := false
-		for _, e := range envVars {
-			if e.Name == backupEnv.Name {
-				present = true
-				break
-			}
-		}
-		if !present {
-			envVars = append(envVars, backupEnv)
-		}
-	}
+	envVars = util.AppendOverwriteEnv(envVars, backup.Spec.Env)
 
 	// TODO: make pvc request storage size configurable
 	reason, err = bm.ensureBackupPVCExist(backup)
@@ -371,18 +360,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	})
 
 	// set env vars specified in backup.Spec.Env if not present
-	for _, backupEnv := range backup.Spec.Env {
-		present := false
-		for _, e := range envVars {
-			if e.Name == backupEnv.Name {
-				present = true
-				break
-			}
-		}
-		if !present {
-			envVars = append(envVars, backupEnv)
-		}
-	}
+	envVars = util.AppendOverwriteEnv(envVars, backup.Spec.Env)
 
 	args := []string{
 		"backup",
