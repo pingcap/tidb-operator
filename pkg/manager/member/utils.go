@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
-	"time"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -30,6 +29,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
@@ -269,13 +269,8 @@ func MapContainers(podSpec *corev1.PodSpec) map[string]corev1.Container {
 	return m
 }
 
-<<<<<<< HEAD
-// updateStatefulSet is a template function to update the statefulset of components
-func updateStatefulSet(setCtl controller.StatefulSetControlInterface, tc *v1alpha1.TidbCluster, newSet, oldSet *apps.StatefulSet) error {
-=======
 // UpdateStatefulSet is a template function to update the statefulset of components
 func UpdateStatefulSet(setCtl controller.StatefulSetControlInterface, object runtime.Object, newSet, oldSet *apps.StatefulSet) error {
->>>>>>> a3f15158... Fix support for multiple pvc for tikv (#3816)
 	isOrphan := metav1.GetControllerOf(oldSet) == nil
 	if newSet.Annotations == nil {
 		newSet.Annotations = map[string]string{}
@@ -416,117 +411,3 @@ func shouldRecover(tc *v1alpha1.TidbCluster, component string, podLister corelis
 	}
 	return true
 }
-<<<<<<< HEAD
-=======
-
-// shouldRecover checks whether we should perform recovery operation.
-func shouldRecoverDM(dc *v1alpha1.DMCluster, component string, podLister corelisters.PodLister) bool {
-	var members map[string]v1alpha1.WorkerMember
-	var failureMembers map[string]v1alpha1.WorkerFailureMember
-	var ordinals sets.Int32
-	var podPrefix string
-
-	switch component {
-	case label.DMWorkerLabelVal:
-		members = dc.Status.Worker.Members
-		failureMembers = dc.Status.Worker.FailureMembers
-		ordinals = dc.WorkerStsDesiredOrdinals(true)
-		podPrefix = controller.DMWorkerMemberName(dc.Name)
-	default:
-		klog.Warningf("Unexpected component %s for %s/%s in shouldRecover", component, dc.Namespace, dc.Name)
-		return false
-	}
-	if failureMembers == nil {
-		return false
-	}
-	// If all desired replicas (excluding failover pods) of dm cluster are
-	// healthy, we can perform our failover recovery operation.
-	// Note that failover pods may fail (e.g. lack of resources) and we don't care
-	// about them because we're going to delete them.
-	for ordinal := range ordinals {
-		name := fmt.Sprintf("%s-%d", podPrefix, ordinal)
-		pod, err := podLister.Pods(dc.Namespace).Get(name)
-		if err != nil {
-			klog.Errorf("pod %s/%s does not exist: %v", dc.Namespace, name, err)
-			return false
-		}
-		if !podutil.IsPodReady(pod) {
-			return false
-		}
-		var exist bool
-		for _, v := range members {
-			if v.Name == pod.Name {
-				exist = true
-				if v.Stage == v1alpha1.DMWorkerStateOffline {
-					return false
-				}
-			}
-		}
-		if !exist {
-			return false
-		}
-	}
-	return true
-}
-
-func CreateOrUpdateService(serviceLister corelisters.ServiceLister, serviceControl controller.ServiceControlInterface, newSvc *corev1.Service, obj runtime.Object) error {
-	oldSvcTmp, err := serviceLister.Services(newSvc.Namespace).Get(newSvc.Name)
-	if errors.IsNotFound(err) {
-		err = controller.SetServiceLastAppliedConfigAnnotation(newSvc)
-		if err != nil {
-			return err
-		}
-		return serviceControl.CreateService(obj, newSvc)
-	}
-	if err != nil {
-		return fmt.Errorf("createOrUpdateService: fail to get svc %s for obj %v, error: %s", newSvc.Name, obj, err)
-	}
-
-	oldSvc := oldSvcTmp.DeepCopy()
-	util.RetainManagedFields(newSvc, oldSvc)
-
-	equal, err := controller.ServiceEqual(newSvc, oldSvc)
-	if err != nil {
-		return err
-	}
-	annoEqual := util.IsSubMapOf(newSvc.Annotations, oldSvc.Annotations)
-	isOrphan := metav1.GetControllerOf(oldSvc) == nil
-
-	if !equal || !annoEqual || isOrphan {
-		svc := *oldSvc
-		svc.Spec = newSvc.Spec
-		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
-		if err != nil {
-			return err
-		}
-		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
-		// apply change of annotations if any
-		for k, v := range newSvc.Annotations {
-			svc.Annotations[k] = v
-		}
-		// also override labels when adopt orphan
-		if isOrphan {
-			svc.OwnerReferences = newSvc.OwnerReferences
-			svc.Labels = newSvc.Labels
-		}
-		_, err = serviceControl.UpdateService(obj, &svc)
-		return err
-	}
-	return nil
-}
-
-// addDeferDeletingAnnoToPVC set the label
-func addDeferDeletingAnnoToPVC(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim, pvcControl controller.PVCControlInterface) error {
-	if pvc.Annotations == nil {
-		pvc.Annotations = map[string]string{}
-	}
-	now := time.Now().Format(time.RFC3339)
-	pvc.Annotations[label.AnnPVCDeferDeleting] = now
-	if _, err := pvcControl.UpdatePVC(tc, pvc); err != nil {
-		klog.Errorf("failed to set PVC %s/%s annotation %q to %q", tc.Namespace, pvc.Name, label.AnnPVCDeferDeleting, now)
-		return err
-	}
-	klog.Infof("set PVC %s/%s annotationq %q to %q successfully", tc.Namespace, pvc.Name, label.AnnPVCDeferDeleting, now)
-	return nil
-}
->>>>>>> a3f15158... Fix support for multiple pvc for tikv (#3816)

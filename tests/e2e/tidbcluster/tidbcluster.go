@@ -826,11 +826,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		listOptions := metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(label.New().Instance(tcName).Component(label.TiKVLabelVal).Labels()).String(),
 		}
-<<<<<<< HEAD
-		err = wait.PollImmediate(5*time.Second, 15*time.Minute, func() (bool, error) {
-=======
 		err = wait.PollImmediate(10*time.Second, 5*time.Minute, func() (bool, error) {
->>>>>>> a3f15158... Fix support for multiple pvc for tikv (#3816)
 			podList, err := c.CoreV1().Pods(ns).List(listOptions)
 			if err != nil && !apierrors.IsNotFound(err) {
 				log.Logf("failed to list pods: %+v", err)
