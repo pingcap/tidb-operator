@@ -180,6 +180,9 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 	}
 
 	envVars = append(envVars, storageEnv...)
+	// set env vars specified in backup.Spec.Env
+	envVars = util.AppendOverwriteEnv(envVars, restore.Spec.Env)
+
 	args := []string{
 		"import",
 		fmt.Sprintf("--namespace=%s", ns),
@@ -331,6 +334,9 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		Name:  "BR_LOG_TO_TERM",
 		Value: string(rune(1)),
 	})
+	// set env vars specified in backup.Spec.Env
+	envVars = util.AppendOverwriteEnv(envVars, restore.Spec.Env)
+
 	args := []string{
 		"restore",
 		fmt.Sprintf("--namespace=%s", ns),

@@ -1546,6 +1546,9 @@ type RestoreCondition struct {
 // RestoreSpec contains the specification for a restore of a tidb cluster backup.
 type RestoreSpec struct {
 	corev1.ResourceRequirements `json:"resources,omitempty"`
+	// List of environment variables to set in the container, like v1.Container.Env.
+	// +optional
+	Env []corev1.EnvVar `json:"env,omitempty"`
 	// To is the tidb cluster that needs to restore.
 	To *TiDBAccessConfig `json:"to,omitempty"`
 	// Type is the backup type for tidb cluster.

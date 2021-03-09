@@ -120,7 +120,7 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 		return nil, reason, err
 	}
 
-	// set env vars specified in backup.Spec.Env if not present
+	// set env vars specified in backup.Spec.Env
 	envVars = util.AppendOverwriteEnv(envVars, backup.Spec.Env)
 
 	args := []string{
