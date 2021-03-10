@@ -443,8 +443,10 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 					Resources:       restore.Spec.ResourceRequirements,
 				},
 			},
-			Volumes:       volumes,
 			RestartPolicy: corev1.RestartPolicyNever,
+			Affinity:      restore.Spec.Affinity,
+			Tolerations:   restore.Spec.Tolerations,
+			Volumes:       volumes,
 		},
 	}
 

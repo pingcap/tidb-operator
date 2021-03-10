@@ -163,6 +163,8 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 				},
 			},
 			RestartPolicy: corev1.RestartPolicyNever,
+			Affinity:      backup.Spec.Affinity,
+			Tolerations:   backup.Spec.Tolerations,
 			Volumes:       volumes,
 		},
 	}
