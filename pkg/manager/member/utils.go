@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
+	"time"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -409,4 +410,19 @@ func shouldRecover(tc *v1alpha1.TidbCluster, component string, podLister corelis
 		}
 	}
 	return true
+}
+
+// addDeferDeletingAnnoToPVC set the label
+func addDeferDeletingAnnoToPVC(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim, pvcControl controller.PVCControlInterface) error {
+	if pvc.Annotations == nil {
+		pvc.Annotations = map[string]string{}
+	}
+	now := time.Now().Format(time.RFC3339)
+	pvc.Annotations[label.AnnPVCDeferDeleting] = now
+	if _, err := pvcControl.UpdatePVC(tc, pvc); err != nil {
+		klog.Errorf("failed to set PVC %s/%s annotation %q to %q", tc.Namespace, pvc.Name, label.AnnPVCDeferDeleting, now)
+		return err
+	}
+	klog.Infof("set PVC %s/%s annotationq %q to %q successfully", tc.Namespace, pvc.Name, label.AnnPVCDeferDeleting, now)
+	return nil
 }

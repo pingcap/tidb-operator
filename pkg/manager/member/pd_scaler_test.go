@@ -405,30 +405,25 @@ func newStatefulSetForPDScale() *apps.StatefulSet {
 	return set
 }
 
-func newPVCForStatefulSet(set *apps.StatefulSet, memberType v1alpha1.MemberType, name string) *corev1.PersistentVolumeClaim {
-	podName := ordinalPodName(memberType, name, *set.Spec.Replicas)
+func _newPVCForStatefulSet(set *apps.StatefulSet, memberType v1alpha1.MemberType, name string, ordinal int32) *corev1.PersistentVolumeClaim {
+	podName := ordinalPodName(memberType, name, ordinal)
 	l := label.New().Instance(name)
 	l[label.AnnPodNameKey] = podName
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ordinalPVCName(memberType, set.GetName(), *set.Spec.Replicas),
+			Name:      ordinalPVCName(memberType, set.GetName(), ordinal),
 			Namespace: metav1.NamespaceDefault,
 			Labels:    l,
 		},
 	}
 }
 
+func newPVCForStatefulSet(set *apps.StatefulSet, memberType v1alpha1.MemberType, name string) *corev1.PersistentVolumeClaim {
+	return _newPVCForStatefulSet(set, memberType, name, *set.Spec.Replicas)
+}
+
 func newScaleInPVCForStatefulSet(set *apps.StatefulSet, memberType v1alpha1.MemberType, name string) *corev1.PersistentVolumeClaim {
-	podName := ordinalPodName(memberType, name, *set.Spec.Replicas-1)
-	l := label.New().Instance(name)
-	l[label.AnnPodNameKey] = podName
-	return &corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      ordinalPVCName(memberType, set.GetName(), *set.Spec.Replicas-1),
-			Namespace: metav1.NamespaceDefault,
-			Labels:    l,
-		},
-	}
+	return _newPVCForStatefulSet(set, memberType, name, *set.Spec.Replicas-1)
 }
 
 func normalPDMember(tc *v1alpha1.TidbCluster) {

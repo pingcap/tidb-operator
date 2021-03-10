@@ -826,14 +826,16 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		listOptions := metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(label.New().Instance(tcName).Component(label.TiKVLabelVal).Labels()).String(),
 		}
-		err = wait.PollImmediate(5*time.Second, 15*time.Minute, func() (bool, error) {
+		err = wait.PollImmediate(10*time.Second, 5*time.Minute, func() (bool, error) {
 			podList, err := c.CoreV1().Pods(ns).List(listOptions)
 			if err != nil && !apierrors.IsNotFound(err) {
+				log.Logf("failed to list pods: %+v", err)
 				return false, err
 			}
 			for _, pod := range podList.Items {
 				for _, c := range pod.Spec.Containers {
 					if c.Name == v1alpha1.TiKVMemberType.String() {
+						log.Logf("c.Image: %s", c.Image)
 						if c.Image == tc.TiKVImage() {
 							return true, nil
 						}
