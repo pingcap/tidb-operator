@@ -143,6 +143,7 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	}
 
 	// cleaning all orphan pods(pd, tikv or tiflash which don't have a related PVC) managed by operator
+	// this could be useful when failover run into an undesired situation as described in PD failover function
 	skipReasons, err := c.orphanPodsCleaner.Clean(tc)
 	if err != nil {
 		return err

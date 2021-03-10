@@ -23,6 +23,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -168,7 +169,7 @@ func TestPDFailoverFailover(t *testing.T) {
 				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(0))
 				events := collectEvents(recorder.Events)
 				sort.Strings(events)
-				g.Expect(events).To(HaveLen(1))
+				g.Expect(events).To(HaveLen(2))
 				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
 			},
 		},
@@ -192,7 +193,7 @@ func TestPDFailoverFailover(t *testing.T) {
 				g.Expect(pd1.MemberDeleted).To(Equal(true))
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(1))
-				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) deleted from cluster"))
+				g.Expect(events[0]).To(ContainSubstring("failure member default/test-pd-1(12891273174085095651) deleted from PD cluster"))
 			},
 		},
 		{
@@ -260,7 +261,7 @@ func TestPDFailoverFailover(t *testing.T) {
 			statusSyncFailed:         false,
 			errExpectFn: func(g *GomegaWithT, err error) {
 				g.Expect(err).To(HaveOccurred())
-				g.Expect(strings.Contains(err.Error(), "persistentvolumeclaim \"pd-test-pd-1\" not found")).To(Equal(true))
+				g.Expect(err.Error()).To(ContainSubstring("no pvc found for pod default/test-pd-1"))
 			},
 			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
@@ -291,12 +292,14 @@ func TestPDFailoverFailover(t *testing.T) {
 				failureMembers := tc.Status.PD.FailureMembers["test-pd-1"]
 				g.Expect(failureMembers.PodName).To(Equal("test-pd-1"))
 				g.Expect(failureMembers.MemberID).To(Equal("12891273174085095651"))
-				g.Expect(string(failureMembers.PVCUID)).To(Equal("pvc-1-uid"))
+				g.Expect(string(failureMembers.PVCUID)).To(Equal(""))
+				g.Expect(failureMembers.PVCUIDSet).To(HaveKey(types.UID("pvc-1-uid-1")))
+				g.Expect(failureMembers.PVCUIDSet).To(HaveKey(types.UID("pvc-1-uid-2")))
 				g.Expect(failureMembers.MemberDeleted).To(BeFalse())
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(2))
 				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
-				g.Expect(events[1]).To(ContainSubstring("Unhealthy pd pod[test-pd-1] is unhealthy, msg:pd member[12891273174085095651] is unhealthy"))
+				g.Expect(events[1]).To(ContainSubstring("PDMemberUnhealthy default/test-pd-1(12891273174085095651) is unhealthy"))
 			},
 		},
 		{
@@ -340,7 +343,7 @@ func TestPDFailoverFailover(t *testing.T) {
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(2))
 				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
-				g.Expect(events[1]).To(ContainSubstring("test-pd-1(12891273174085095651) deleted from cluster"))
+				g.Expect(events[1]).To(ContainSubstring("failure member default/test-pd-1(12891273174085095651) deleted from PD cluster"))
 			},
 		},
 		{
@@ -425,7 +428,7 @@ func TestPDFailoverFailover(t *testing.T) {
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(2))
 				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
-				g.Expect(events[1]).To(ContainSubstring("test-pd-1(12891273174085095651) deleted from cluster"))
+				g.Expect(events[1]).To(ContainSubstring("failure member default/test-pd-1(12891273174085095651) deleted from PD cluster"))
 			},
 		},
 		{
@@ -452,7 +455,7 @@ func TestPDFailoverFailover(t *testing.T) {
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(2))
 				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
-				g.Expect(events[1]).To(ContainSubstring("test-pd-1(12891273174085095651) deleted from cluster"))
+				g.Expect(events[1]).To(ContainSubstring("failure member default/test-pd-1(12891273174085095651) deleted from PD cluster"))
 			},
 		},
 		{
@@ -462,6 +465,7 @@ func TestPDFailoverFailover(t *testing.T) {
 			hasPVC:                   true,
 			hasPod:                   true,
 			podWithDeletionTimestamp: true,
+			pvcWithDeletionTimestamp: false,
 			delMemberFailed:          false,
 			delPodFailed:             false,
 			delPVCFailed:             false,
@@ -476,13 +480,16 @@ func TestPDFailoverFailover(t *testing.T) {
 				g.Expect(pd1.MemberDeleted).To(Equal(true))
 				_, err := pf.deps.PodLister.Pods(metav1.NamespaceDefault).Get(pd1Name)
 				g.Expect(err).NotTo(HaveOccurred())
-				_, err = pf.deps.PVCLister.PersistentVolumeClaims(metav1.NamespaceDefault).Get(pvcName)
+				_, err = pf.deps.PVCLister.PersistentVolumeClaims(metav1.NamespaceDefault).Get(pvcName + "-1")
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(errors.IsNotFound(err)).To(BeTrue())
+				_, err = pf.deps.PVCLister.PersistentVolumeClaims(metav1.NamespaceDefault).Get(pvcName + "-2")
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(errors.IsNotFound(err)).To(BeTrue())
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(2))
 				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
-				g.Expect(events[1]).To(ContainSubstring("test-pd-1(12891273174085095651) deleted from cluster"))
+				g.Expect(events[1]).To(ContainSubstring("failure member default/test-pd-1(12891273174085095651) deleted from PD cluster"))
 			},
 		},
 		{
@@ -508,12 +515,14 @@ func TestPDFailoverFailover(t *testing.T) {
 				_, err := pf.deps.PodLister.Pods(metav1.NamespaceDefault).Get(pd1Name)
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(errors.IsNotFound(err)).To(BeTrue())
-				_, err = pf.deps.PVCLister.PersistentVolumeClaims(metav1.NamespaceDefault).Get(pvcName)
+				_, err = pf.deps.PVCLister.PersistentVolumeClaims(metav1.NamespaceDefault).Get(pvcName + "-1")
+				g.Expect(err).NotTo(HaveOccurred())
+				_, err = pf.deps.PVCLister.PersistentVolumeClaims(metav1.NamespaceDefault).Get(pvcName + "-2")
 				g.Expect(err).NotTo(HaveOccurred())
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(2))
 				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
-				g.Expect(events[1]).To(ContainSubstring("test-pd-1(12891273174085095651) deleted from cluster"))
+				g.Expect(events[1]).To(ContainSubstring("failure member default/test-pd-1(12891273174085095651) deleted from PD cluster"))
 			},
 		},
 	}
@@ -535,17 +544,47 @@ func TestPDFailoverFailover(t *testing.T) {
 				return nil, nil
 			})
 
+			var pvc1 *corev1.PersistentVolumeClaim
+			var pvc2 *corev1.PersistentVolumeClaim
 			if test.hasPVC {
-				pvc := newPVCForPDFailover(tc, v1alpha1.PDMemberType, 1)
+				pvc1 = newPVCForPDFailover(tc, v1alpha1.PDMemberType, 1)
+				pvc2 = pvc1.DeepCopy()
+				pvc1.Name = pvc1.Name + "-1"
+				pvc1.UID = pvc1.UID + "-1"
+				pvc2.Name = pvc2.Name + "-2"
+				pvc2.UID = pvc2.UID + "-2"
+
 				if test.pvcWithDeletionTimestamp {
-					pvc.DeletionTimestamp = &metav1.Time{Time: time.Now()}
+					pvc1.DeletionTimestamp = &metav1.Time{Time: time.Now()}
+					pvc2.DeletionTimestamp = &metav1.Time{Time: time.Now()}
 				}
-				pvcIndexer.Add(pvc)
+				pvcIndexer.Add(pvc1)
+				pvcIndexer.Add(pvc2)
 			}
+			// TODO: all test cases hasPod==true, should we remove this?
 			if test.hasPod {
 				pod := newPodForPDFailover(tc, v1alpha1.PDMemberType, 1)
 				if test.podWithDeletionTimestamp {
 					pod.DeletionTimestamp = &metav1.Time{Time: time.Now()}
+				}
+				if test.hasPVC {
+					pvc1.ObjectMeta.Labels[label.AnnPodNameKey] = pod.GetName()
+					pvc2.ObjectMeta.Labels[label.AnnPodNameKey] = pod.GetName()
+					pod.Spec.Volumes = append(pod.Spec.Volumes,
+						corev1.Volume{
+							VolumeSource: corev1.VolumeSource{
+								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+									ClaimName: pvc1.Name,
+								},
+							},
+						},
+						corev1.Volume{
+							VolumeSource: corev1.VolumeSource{
+								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+									ClaimName: pvc2.Name,
+								},
+							},
+						})
 				}
 				podIndexer.Add(pod)
 			}
@@ -686,8 +725,12 @@ func oneFailureMember(tc *v1alpha1.TidbCluster) {
 		pd0: {Name: pd0, ID: "0", Health: true},
 		pd2: {Name: pd2, ID: "2", Health: true},
 	}
+
+	pvcUIDSet := make(map[types.UID]struct{})
+	pvcUIDSet[types.UID("pvc-1-uid-1")] = struct{}{}
+	pvcUIDSet[types.UID("pvc-1-uid-2")] = struct{}{}
 	tc.Status.PD.FailureMembers = map[string]v1alpha1.PDFailureMember{
-		pd1: {PodName: pd1, PVCUID: "pvc-1-uid", MemberID: "12891273174085095651"},
+		pd1: {PodName: pd1, PVCUIDSet: pvcUIDSet, MemberID: "12891273174085095651"},
 	}
 }
 
@@ -724,8 +767,12 @@ func oneNotReadyMemberAndAFailureMember(tc *v1alpha1.TidbCluster) {
 		pd1: {Name: pd1, ID: "12891273174085095651", Health: false, LastTransitionTime: metav1.Time{Time: time.Now().Add(-10 * time.Minute)}},
 		pd2: {Name: pd2, ID: "2", Health: true},
 	}
+
+	pvcUIDSet := make(map[types.UID]struct{})
+	pvcUIDSet[types.UID("pvc-1-uid-1")] = struct{}{}
+	pvcUIDSet[types.UID("pvc-1-uid-2")] = struct{}{}
 	tc.Status.PD.FailureMembers = map[string]v1alpha1.PDFailureMember{
-		pd1: {PodName: pd1, PVCUID: "pvc-1-uid", MemberID: "12891273174085095651"},
+		pd1: {PodName: pd1, PVCUIDSet: pvcUIDSet, MemberID: "12891273174085095651"},
 	}
 }
 
@@ -780,6 +827,11 @@ func newPVCForPDFailover(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberTyp
 			Name:      ordinalPVCName(memberType, controller.PDMemberName(tc.GetName()), ordinal),
 			Namespace: metav1.NamespaceDefault,
 			UID:       types.UID("pvc-1-uid"),
+			Labels: map[string]string{
+				label.NameLabelKey:      "tidb-cluster",
+				label.ManagedByLabelKey: label.TiDBOperator,
+				label.InstanceLabelKey:  "test",
+			},
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			VolumeName: fmt.Sprintf("pv-%d", ordinal),
