@@ -54,9 +54,28 @@ func (s *tikvScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet
 	resetReplicas(newSet, oldSet)
 
 	klog.Infof("scaling out tikv statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
+<<<<<<< HEAD
 	_, err := s.deleteDeferDeletingPVC(tc, oldSet.GetName(), v1alpha1.TiKVMemberType, ordinal)
 	if err != nil {
 		return err
+=======
+	var pvcName string
+	switch meta.(type) {
+	case *v1alpha1.TidbCluster:
+		pvcName = fmt.Sprintf("tikv-%s-tikv-%d", meta.GetName(), ordinal)
+	default:
+		return fmt.Errorf("tikv.ScaleOut, failed to convert cluster %s/%s", meta.GetNamespace(), meta.GetName())
+	}
+	_, err := s.deps.PVCLister.PersistentVolumeClaims(meta.GetNamespace()).Get(pvcName)
+	if err == nil {
+		_, err = s.deleteDeferDeletingPVC(obj, v1alpha1.TiKVMemberType, ordinal)
+		if err != nil {
+			return err
+		}
+		return controller.RequeueErrorf("tikv.ScaleOut, cluster %s/%s ready to scale out, wait for next round", meta.GetNamespace(), meta.GetName())
+	} else if !errors.IsNotFound(err) {
+		return fmt.Errorf("tikv.ScaleOut, cluster %s/%s failed to fetch pvc informaiton, err:%v", meta.GetNamespace(), meta.GetName(), err)
+>>>>>>> 52e1f7f4... Fix support for multiple pvc for pd (#3820)
 	}
 
 	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
@@ -97,10 +116,10 @@ func (s *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 			}
 			if state != v1alpha1.TiKVStateOffline {
 				if err := controller.GetPDClient(s.deps.PDControl, tc).DeleteStore(id); err != nil {
-					klog.Errorf("tikv scale in: failed to delete store %d, %v", id, err)
+					klog.Errorf("tikvScaler.ScaleIn: failed to delete store %d, %v", id, err)
 					return err
 				}
-				klog.Infof("tikv scale in: delete store %d for tikv %s/%s successfully", id, ns, podName)
+				klog.Infof("tikvScaler.ScaleIn: delete store %d for tikv %s/%s successfully", id, ns, podName)
 			}
 			return controller.RequeueErrorf("TiKV %s/%s store %d is still in cluster, state: %s", ns, podName, id, state)
 		}

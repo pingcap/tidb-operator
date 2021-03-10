@@ -51,7 +51,7 @@ func (s *tiflashScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 	resetReplicas(newSet, oldSet)
 
 	klog.Infof("scaling out tiflash statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
-	_, err := s.deleteDeferDeletingPVC(tc, oldSet.GetName(), v1alpha1.TiFlashMemberType, ordinal)
+	_, err := s.deleteDeferDeletingPVC(tc, v1alpha1.TiFlashMemberType, ordinal)
 	if err != nil {
 		return err
 	}

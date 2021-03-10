@@ -49,6 +49,7 @@ type generalScaler struct {
 	deps *controller.Dependencies
 }
 
+<<<<<<< HEAD
 func (s *generalScaler) deleteDeferDeletingPVC(tc *v1alpha1.TidbCluster,
 	setName string, memberType v1alpha1.MemberType, ordinal int32) (map[string]string, error) {
 	ns := tc.GetNamespace()
@@ -60,6 +61,17 @@ func (s *generalScaler) deleteDeferDeletingPVC(tc *v1alpha1.TidbCluster,
 	l := label.New().Instance(tc.GetInstanceName())
 	l[label.AnnPodNameKey] = podName
 	selector, err := l.Selector()
+=======
+// TODO: change skipReason to event recorder as in TestPDFailoverFailover
+func (s *generalScaler) deleteDeferDeletingPVC(controller runtime.Object, memberType v1alpha1.MemberType, ordinal int32) (map[string]string, error) {
+	meta := controller.(metav1.Object)
+	ns := meta.GetNamespace()
+	kind := controller.GetObjectKind().GroupVersionKind().Kind
+	// for unit test
+	skipReason := map[string]string{}
+
+	selector, err := getPVCSelectorForPod(controller, memberType, ordinal)
+>>>>>>> 52e1f7f4... Fix support for multiple pvc for pd (#3820)
 	if err != nil {
 		return skipReason, fmt.Errorf("cluster %s/%s assemble label selector failed, err: %v", ns, tc.Name, err)
 	}
@@ -71,7 +83,12 @@ func (s *generalScaler) deleteDeferDeletingPVC(tc *v1alpha1.TidbCluster,
 		return skipReason, fmt.Errorf(msg)
 	}
 	if len(pvcs) == 0 {
+<<<<<<< HEAD
 		klog.Infof("Cluster %s/%s list pvc not found, selector: %s", ns, tc.Name, selector)
+=======
+		klog.Infof("%s %s/%s list pvc not found, selector: %s", kind, ns, meta.GetName(), selector)
+		podName := ordinalPodName(memberType, meta.GetName(), ordinal)
+>>>>>>> 52e1f7f4... Fix support for multiple pvc for pd (#3820)
 		skipReason[podName] = skipReasonScalerPVCNotFound
 		return skipReason, nil
 	}

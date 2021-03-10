@@ -697,7 +697,7 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	tc.Status.TiFlash.Stores = stores
 	tc.Status.TiFlash.TombstoneStores = tombstoneStores
 	tc.Status.TiFlash.Image = ""
-	c := filterContainer(set, "tiflash")
+	c := findContainerByName(set, "tiflash")
 	if c != nil {
 		tc.Status.TiFlash.Image = c.Image
 	}

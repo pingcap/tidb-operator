@@ -323,14 +323,19 @@ func (tc *TidbCluster) PDAutoFailovering() bool {
 	return false
 }
 
+<<<<<<< HEAD
 func (tc *TidbCluster) GetPDFailureReplicas() int32 {
 	var failureReplicas int32 = 0
+=======
+func (tc *TidbCluster) GetPDDeletedFailureReplicas() int32 {
+	var deteledReplicas int32 = 0
+>>>>>>> 52e1f7f4... Fix support for multiple pvc for pd (#3820)
 	for _, failureMember := range tc.Status.PD.FailureMembers {
 		if failureMember.MemberDeleted {
-			failureReplicas++
+			deteledReplicas++
 		}
 	}
-	return failureReplicas
+	return deteledReplicas
 }
 
 func (tc *TidbCluster) PDStsDesiredReplicas() int32 {

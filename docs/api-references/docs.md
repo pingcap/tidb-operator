@@ -7529,7 +7529,21 @@ PDMember
 </tr>
 <tr>
 <td>
+<<<<<<< HEAD
 <code>failureMembers</code></br>
+=======
+<code>pvcUIDSet</code></br>
+<em>
+map[k8s.io/apimachinery/pkg/types.UID]struct{}
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>memberDeleted</code></br>
+>>>>>>> 52e1f7f4... Fix support for multiple pvc for pd (#3820)
 <em>
 <a href="#pdfailuremember">
 map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDFailureMember
@@ -8659,7 +8673,11 @@ int
 </em>
 </td>
 <td>
+<<<<<<< HEAD
 <p>Max number of shards, i.e. amount of concurrency.</p>
+=======
+<p>Members contains PDs in current TidbCluster</p>
+>>>>>>> 52e1f7f4... Fix support for multiple pvc for pd (#3820)
 </td>
 </tr>
 <tr>
@@ -8670,7 +8688,11 @@ int
 </em>
 </td>
 <td>
+<<<<<<< HEAD
 <p>Maximum number of samples per send.</p>
+=======
+<p>PeerMembers contains PDs NOT in current TidbCluster</p>
+>>>>>>> 52e1f7f4... Fix support for multiple pvc for pd (#3820)
 </td>
 </tr>
 <tr>

@@ -59,10 +59,9 @@ func TestPDScalerScaleOut(t *testing.T) {
 		newSet := oldSet.DeepCopy()
 		newSet.Spec.Replicas = pointer.Int32Ptr(7)
 
-		scaler, _, pvcIndexer, pvcControl := newFakePDScaler()
+		scaler, _, pvcIndexer, _, pvcControl := newFakePDScaler()
 
 		pvc := newPVCForStatefulSet(oldSet, v1alpha1.PDMemberType, tc.Name)
-		pvc.Name = ordinalPVCName(v1alpha1.PDMemberType, oldSet.GetName(), *oldSet.Spec.Replicas)
 		if !test.annoIsNil {
 			pvc.Annotations = map[string]string{}
 		}
@@ -255,11 +254,43 @@ func TestPDScalerScaleIn(t *testing.T) {
 		newSet := oldSet.DeepCopy()
 		newSet.Spec.Replicas = pointer.Int32Ptr(3)
 
-		scaler, pdControl, pvcIndexer, pvcControl := newFakePDScaler()
+		pod := &corev1.Pod{
+			TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              PdPodName(tc.GetName(), 4),
+				Namespace:         corev1.NamespaceDefault,
+				CreationTimestamp: metav1.Time{Time: time.Now().Add(-1 * time.Hour)},
+			},
+		}
+
+		scaler, pdControl, pvcIndexer, podIndexer, pvcControl := newFakePDScaler()
+
+		podIndexer.Add(pod)
 
 		if test.hasPVC {
-			pvc := newScaleInPVCForStatefulSet(oldSet, v1alpha1.PDMemberType, tc.Name)
-			pvcIndexer.Add(pvc)
+			pvc1 := newScaleInPVCForStatefulSet(oldSet, v1alpha1.PDMemberType, tc.Name)
+			pvc2 := pvc1.DeepCopy()
+			pvc1.Name = pvc1.Name + "-1"
+			pvc1.UID = pvc1.UID + "-1"
+			pvc2.Name = pvc2.Name + "-2"
+			pvc2.UID = pvc2.UID + "-2"
+			pvcIndexer.Add(pvc1)
+			pvcIndexer.Add(pvc2)
+			pod.Spec.Volumes = append(pod.Spec.Volumes,
+				corev1.Volume{
+					VolumeSource: corev1.VolumeSource{
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+							ClaimName: pvc1.Name,
+						},
+					},
+				},
+				corev1.Volume{
+					VolumeSource: corev1.VolumeSource{
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+							ClaimName: pvc2.Name,
+						},
+					},
+				})
 		}
 
 		pdClient := controller.NewFakePDClient(pdControl, tc)
@@ -383,13 +414,154 @@ func TestPDScalerScaleIn(t *testing.T) {
 	}
 }
 
+<<<<<<< HEAD
 func newFakePDScaler() (*pdScaler, *pdapi.FakePDControl, cache.Indexer, *controller.FakePVCControl) {
+=======
+func TestPDScalerScaleInBlockByOtherComponents(t *testing.T) {
+	// check if PD scale in is blocked when other components are using PD
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name    string
+		tikv    bool
+		tidb    bool
+		tiflash bool
+		ticdc   bool
+		pump    bool
+	}
+
+	testFn := func(test testcase, t *testing.T) {
+		tc := newTidbClusterForPD()
+
+		oldSet := newStatefulSetForPDScale()
+		newSet := oldSet.DeepCopy()
+		newSet.Spec.Replicas = pointer.Int32Ptr(3)
+
+		scaler, _, _, _, _ := newFakePDScaler()
+
+		tc.Spec.PD.Replicas = 0
+
+		if test.tikv {
+			tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
+				"1": {
+					ID:      "1",
+					PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 4),
+					State:   v1alpha1.TiKVStateUp,
+				},
+			}
+		} else {
+			tc.Status.TiKV.Stores = nil
+		}
+
+		if test.tidb {
+			tc.Status.TiDB.Members = map[string]v1alpha1.TiDBMember{
+				"failover-tidb-0": {
+					Name:   "failover-tidb-0",
+					Health: true,
+				},
+			}
+		} else {
+			tc.Status.TiDB.Members = nil
+		}
+
+		if test.tiflash {
+			tc.Status.TiFlash.Stores = map[string]v1alpha1.TiKVStore{
+				"1": {
+					ID:      "1",
+					PodName: ordinalPodName(v1alpha1.TiFlashMemberType, tc.GetName(), 4),
+					State:   v1alpha1.TiKVStateUp,
+				},
+			}
+		} else {
+			tc.Status.TiFlash.Stores = nil
+		}
+
+		if test.ticdc {
+			tc.Status.TiCDC.StatefulSet = &apps.StatefulSetStatus{Replicas: 1}
+		} else {
+			tc.Status.TiCDC.StatefulSet = &apps.StatefulSetStatus{Replicas: 0}
+		}
+
+		if test.pump {
+			tc.Status.Pump.StatefulSet = &apps.StatefulSetStatus{Replicas: 1}
+		} else {
+			tc.Status.Pump.StatefulSet = &apps.StatefulSetStatus{Replicas: 0}
+		}
+
+		result := scaler.preCheckUpMembers(tc, "pd-1")
+		if test.tikv || test.tidb || test.tiflash || test.ticdc || test.pump {
+			g.Expect(result).To(BeFalse())
+		} else {
+			g.Expect(result).To(BeTrue())
+		}
+	}
+
+	tests := []testcase{
+		{
+			name:    "tikv on",
+			tikv:    true,
+			tidb:    false,
+			tiflash: false,
+			ticdc:   false,
+			pump:    false,
+		},
+		{
+			name:    "tidb on",
+			tikv:    false,
+			tidb:    true,
+			tiflash: false,
+			ticdc:   false,
+			pump:    false,
+		},
+		{
+			name:    "tiflash on",
+			tikv:    false,
+			tidb:    false,
+			tiflash: true,
+			ticdc:   false,
+			pump:    false,
+		},
+		{
+			name:    "ticdc on",
+			tikv:    false,
+			tidb:    false,
+			tiflash: false,
+			ticdc:   true,
+			pump:    false,
+		},
+		{
+			name:    "pump on",
+			tikv:    false,
+			tidb:    false,
+			tiflash: false,
+			ticdc:   false,
+			pump:    true,
+		},
+		{
+			name:    "all zero",
+			tikv:    false,
+			tidb:    false,
+			tiflash: false,
+			ticdc:   false,
+			pump:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testFn(tt, t)
+		})
+	}
+}
+
+func newFakePDScaler() (*pdScaler, *pdapi.FakePDControl, cache.Indexer, cache.Indexer, *controller.FakePVCControl) {
+>>>>>>> 52e1f7f4... Fix support for multiple pvc for pd (#3820)
 	fakeDeps := controller.NewFakeDependencies()
 	pdScaler := &pdScaler{generalScaler: generalScaler{deps: fakeDeps}}
 	pdControl := fakeDeps.PDControl.(*pdapi.FakePDControl)
 	pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
+	podIndexer := fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer()
 	pvcControl := fakeDeps.PVCControl.(*controller.FakePVCControl)
-	return pdScaler, pdControl, pvcIndexer, pvcControl
+	return pdScaler, pdControl, pvcIndexer, podIndexer, pvcControl
 }
 
 func newStatefulSetForPDScale() *apps.StatefulSet {
