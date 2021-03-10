@@ -20443,6 +20443,16 @@ k8s.io/apimachinery/pkg/types.UID
 </tr>
 <tr>
 <td>
+<code>pvcUIDSet</code></br>
+<em>
+map[k8s.io/apimachinery/pkg/types.UID]struct{}
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
 <code>createdAt</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
