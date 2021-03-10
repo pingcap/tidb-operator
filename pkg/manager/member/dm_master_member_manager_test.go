@@ -1740,7 +1740,9 @@ func TestMasterMemberManagerSyncMasterStsWhenMasterNotJoinCluster(t *testing.T) 
 		{
 			name: "add dm-master unjoin cluster member info",
 			modify: func(cluster *v1alpha1.DMCluster, podIndexer cache.Indexer, pvcIndexer cache.Indexer) {
-				for ordinal := 0; ordinal < 3; ordinal++ {
+				var pods []*corev1.Pod
+				COUNT := 3
+				for ordinal := 0; ordinal < COUNT; ordinal++ {
 					pod := &corev1.Pod{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:        ordinalPodName(v1alpha1.DMMasterMemberType, cluster.GetName(), int32(ordinal)),
@@ -1750,9 +1752,10 @@ func TestMasterMemberManagerSyncMasterStsWhenMasterNotJoinCluster(t *testing.T) 
 						},
 					}
 					podIndexer.Add(pod)
+					pods = append(pods, pod)
 				}
-				for ordinal := 0; ordinal < 3; ordinal++ {
-					pvc := &corev1.PersistentVolumeClaim{
+				for ordinal := 0; ordinal < COUNT; ordinal++ {
+					pvc1 := &corev1.PersistentVolumeClaim{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:        ordinalPVCName(v1alpha1.DMMasterMemberType, controller.DMMasterMemberName(cluster.GetName()), int32(ordinal)),
 							Namespace:   metav1.NamespaceDefault,
@@ -1760,9 +1763,32 @@ func TestMasterMemberManagerSyncMasterStsWhenMasterNotJoinCluster(t *testing.T) 
 							Labels:      label.NewDM().Instance(cluster.GetInstanceName()).DMMaster().Labels(),
 						},
 					}
-					pvcIndexer.Add(pvc)
+					pvc2 := pvc1.DeepCopy()
+					pvc1.Name = pvc1.Name + "-1"
+					pvc1.UID = pvc1.UID + "-1"
+					pvc2.Name = pvc2.Name + "-2"
+					pvc2.UID = pvc2.UID + "-2"
+					pod := pods[ordinal]
+					pvc1.ObjectMeta.Labels[label.AnnPodNameKey] = pod.GetName()
+					pvc2.ObjectMeta.Labels[label.AnnPodNameKey] = pod.GetName()
+					pod.Spec.Volumes = append(pod.Spec.Volumes,
+						corev1.Volume{
+							VolumeSource: corev1.VolumeSource{
+								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+									ClaimName: pvc1.Name,
+								},
+							},
+						},
+						corev1.Volume{
+							VolumeSource: corev1.VolumeSource{
+								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+									ClaimName: pvc2.Name,
+								},
+							},
+						})
+					pvcIndexer.Add(pvc1)
+					pvcIndexer.Add(pvc2)
 				}
-
 			},
 			leaderInfo: dmapi.MembersLeader{
 				Name: "test-dm-master-0",

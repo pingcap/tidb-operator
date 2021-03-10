@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
@@ -752,6 +753,7 @@ func getMasterConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
 }
 
 func (m *masterMemberManager) collectUnjoinedMembers(dc *v1alpha1.DMCluster, set *apps.StatefulSet, masterStatus map[string]v1alpha1.MasterMember) error {
+	ns := dc.GetNamespace()
 	podSelector, podSelectErr := metav1.LabelSelectorAsSelector(set.Spec.Selector)
 	if podSelectErr != nil {
 		return podSelectErr
@@ -772,18 +774,17 @@ func (m *masterMemberManager) collectUnjoinedMembers(dc *v1alpha1.DMCluster, set
 			if dc.Status.Master.UnjoinedMembers == nil {
 				dc.Status.Master.UnjoinedMembers = map[string]v1alpha1.UnjoinedMember{}
 			}
-			ordinal, err := util.GetOrdinalFromPodName(pod.Name)
+			pvcs, err := util.ResolvePVCFromPod(pod, m.deps.PVCLister)
 			if err != nil {
-				return err
+				return fmt.Errorf("collectUnjoinedMembers: failed to get pvcs for pod %s/%s, error: %s", ns, pod.Name, err)
 			}
-			pvcName := ordinalPVCName(v1alpha1.DMMasterMemberType, controller.DMMasterMemberName(dc.Name), ordinal)
-			pvc, err := m.deps.PVCLister.PersistentVolumeClaims(dc.Namespace).Get(pvcName)
-			if err != nil {
-				return fmt.Errorf("collectUnjoinedMembers: failed to get pvc %s of cluster %s/%s, error %v", pvcName, dc.GetNamespace(), dc.GetName(), err)
+			pvcUIDSet := make(map[types.UID]struct{})
+			for _, pvc := range pvcs {
+				pvcUIDSet[pvc.UID] = struct{}{}
 			}
 			dc.Status.Master.UnjoinedMembers[pod.Name] = v1alpha1.UnjoinedMember{
 				PodName:   pod.Name,
-				PVCUID:    pvc.UID,
+				PVCUIDSet: pvcUIDSet,
 				CreatedAt: metav1.Now(),
 			}
 		} else {
@@ -795,6 +796,7 @@ func (m *masterMemberManager) collectUnjoinedMembers(dc *v1alpha1.DMCluster, set
 	return nil
 }
 
+// TODO: seems not used
 type FakeMasterMemberManager struct {
 	err error
 }
