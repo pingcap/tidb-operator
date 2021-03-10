@@ -31,6 +31,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-on-general-kubernetes/']
     > `namespace` 是[命名空间](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)，可以起一个方便记忆的名字，比如和 `cluster_name` 相同的名称。
 
 2. 部署 TiDB 集群：
+
     {{< copyable "shell-regular" >}}
 
     ``` shell

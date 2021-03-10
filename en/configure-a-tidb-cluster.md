@@ -38,6 +38,7 @@ The cluster name can be configured by changing `metadata.name` in the `TiDBCuste
 ### Version
 
 Usually, components in a cluster are in the same version. It is recommended to configure `spec.<pd/tidb/tikv/pump/tiflash/ticdc>.baseImage` and `spec.version`, if you need to configure different versions for different components, you can configure `spec.<pd/tidb/tikv/pump/tiflash/ticdc>.version`.
+
 Here are the formats of the parameters:
 
 - `spec.version`: the format is `imageTag`, such as `v4.0.10`

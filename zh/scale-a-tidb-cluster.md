@@ -67,7 +67,7 @@ watch kubectl -n ${namespace} get pod -o wide
     ```
 
     输出结果中 `count` 的最大值就是所有数据表的最大副本数 N。
-  
+
 3. 回到 `port-forward` 命令所在窗口，按 <kbd>Ctrl</kbd>+<kbd>C</kbd> 停止 `port-forward`。
 
 4. 如果缩容 TiFlash 后，TiFlash 集群剩余 Pod 数大于等于所有数据表的最大副本数 N，直接进行下面第 6 步。如果缩容 TiFlash 后，TiFlash 集群剩余 Pod 数小于所有数据表的最大副本数 N，参考[访问 TiDB 集群](access-tidb.md)的步骤连接到 TiDB 服务，并针对所有副本数大于集群剩余 TiFlash Pod 数的表执行如下命令：
@@ -87,7 +87,7 @@ watch kubectl -n ${namespace} get pod -o wide
     ```sql
     SELECT * FROM information_schema.tiflash_replica WHERE TABLE_SCHEMA = '<db_name>' and TABLE_NAME = '<table_name>';
     ```
-    
+
 6. 修改 `spec.tiflash.replicas` 对 TiFlash 进行缩容。
 
     你可以通过以下指令查看 Kubernetes 集群中对应的 TiDB 集群中的 TiFlash 是否更新到了你的期望定义。检查以下指令输出内容中，`spec.tiflash.replicas` 的值是否符合预期值。
@@ -128,7 +128,9 @@ watch kubectl -n ${namespace} get pod -o wide
 ### 垂直扩缩容操作
 
 通过 kubectl 修改集群所对应的 `TidbCluster` 对象的 `spec.pd.resources`、`spec.tikv.resources`、`spec.tidb.resources` 至期望值。
+
 如果集群中部署了 TiFlash，可以通过修改 `spec.tiflash.resources` 对 TiFlash 进行垂直扩缩容。
+
 如果集群中部署了 TiCDC，可以通过修改 `spec.ticdc.resources` 对 TiCDC 进行垂直扩缩容。
 
 ### 查看垂直扩缩容进度

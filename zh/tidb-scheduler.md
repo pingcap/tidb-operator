@@ -30,8 +30,7 @@ metadata:
 haTopologyKey: kubernetes.io/hostname
 ```
 
-上述配置按照节点（默认值）维度进行调度，若要按照其他维度调度，比如: `pingcap.com/ha-topology-key: zone`，表示按照 zone 调度，
-还需给各节点打如下标签：
+上述配置按照节点（默认值）维度进行调度，若要按照其他维度调度，比如: `pingcap.com/ha-topology-key: zone`，表示按照 zone 调度，还需给各节点打如下标签：
 
 {{< copyable "shell-regular" >}}
 

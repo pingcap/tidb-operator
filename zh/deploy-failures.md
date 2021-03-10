@@ -71,8 +71,7 @@ kubectl describe po -n ${namespace} ${pod_name}
 3. 使用下述方式更新配置文件：
 
    * 如果是启动 tidbcluster 集群，运行 `kubectl edit tc ${cluster_name} -n ${namespace}` 进行集群更新。
-   * 如果是运行 backup/restore 的备份/恢复任务，首先需要运行 `kubectl delete bk ${backup_name} -n ${namespace}` 删掉老的备份/恢复任务，
-     再运行 `kubectl apply -f backup.yaml` 重新创建新的备份/恢复任务。
+   * 如果是运行 backup/restore 的备份/恢复任务，首先需要运行 `kubectl delete bk ${backup_name} -n ${namespace}` 删掉老的备份/恢复任务，再运行 `kubectl apply -f backup.yaml` 重新创建新的备份/恢复任务。
 
 4. 将 Statefulset 删除，并且将对应的 PVC 也都删除。
 

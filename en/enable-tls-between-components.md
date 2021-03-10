@@ -1200,6 +1200,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
             - `::1`
         - Add the Issuer created above in `issuerRef`.
         - For other attributes, refer to [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec).
+
         After the object is created, `cert-manager` generates a `${cluster_name}-importer-cluster-secret` Secret object to be used by the TiKV Importer component of the TiDB server.
 
     - TiDB Lightning
@@ -1250,6 +1251,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
             - `::1`
         - Add the Issuer created above in `issuerRef`.
         - For other attributes, refer to [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec).
+
         After the object is created, `cert-manager` generates a `${cluster_name}-lightning-cluster-secret` Secret object to be used by the TiDB Lightning component of the TiDB server.
 
 4. Generate the client-side certificate for components of the TiDB cluster.

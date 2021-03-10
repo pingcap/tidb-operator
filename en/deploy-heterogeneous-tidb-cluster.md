@@ -169,8 +169,8 @@ spec:
         storageClassName: standard
 ```
 
-`spec.tlsCluster.enabled`: Determines whether to enable TLS between the components.
-`spec.tidb.tlsClient.enabled`: Determines whether to enable TLS for MySQL client.
+- `spec.tlsCluster.enabled`: Determines whether to enable TLS between the components.
+- `spec.tidb.tlsClient.enabled`: Determines whether to enable TLS for MySQL client.
 
 Execute the following command to create the TLS-enabled heterogeneous cluster:
 

@@ -54,6 +54,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/configure-a-tidb-cluster/','/zh/tidb-
 #### enableDynamicConfiguration
 
 建议设置 `spec.enableDynamicConfiguration: true`，开启动态配置特性。
+
 版本支持：TiDB v4.0.1 及更高版本，TiDB Operator v1.1.1 及更高版本。
 
 #### pvReclaimPolicy
@@ -156,7 +157,7 @@ TiDB Operator 支持为 PD、TiDB、TiKV 挂载多块 PV，可以用于不同用
 >
 > TiDB Operator 默认会使用一些挂载路径，比如会为 TiDB Pod 挂载 `EmptyDir` 到 `/var/log/tidb` 目录。在配置 `storageVolumes` 的时候要避免配置重复的 `mountPath`。
 
-### HostNetwork 
+### HostNetwork
 
 PD、TiKV、TiDB、TiFlash、TiCDC 及 Pump 支持配置 Pod 使用宿主机上的网络命名空间 [`HostNetwork`](https://kubernetes.io/docs/concepts/policy/pod-security-policy/#host-namespaces)。可通过配置 `spec.hostNetwork: true` 为所有受支持的组件开启，或通过为特定组件配置 `hostNetwork: true` 为单个或多个组件开启。
 
