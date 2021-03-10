@@ -162,15 +162,12 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 					VolumeMounts:    volumeMounts,
 				},
 			},
-			RestartPolicy: corev1.RestartPolicyNever,
-			Affinity:      backup.Spec.Affinity,
-			Tolerations:   backup.Spec.Tolerations,
-			Volumes:       volumes,
+			RestartPolicy:    corev1.RestartPolicyNever,
+			Tolerations:      backup.Spec.Tolerations,
+			ImagePullSecrets: backup.Spec.ImagePullSecrets,
+			Affinity:         backup.Spec.Affinity,
+			Volumes:          volumes,
 		},
-	}
-
-	if backup.Spec.ImagePullSecrets != nil {
-		podSpec.Spec.ImagePullSecrets = backup.Spec.ImagePullSecrets
 	}
 
 	job := &batchv1.Job{
