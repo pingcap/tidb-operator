@@ -107,7 +107,11 @@ metadata:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 subjects:
 - kind: ServiceAccount
+  {{- if eq .Values.appendReleaseSuffix true}}
+  name: {{ .Values.controllerManager.serviceAccount }}-{{ .Release.Name }}
+  {{- else }}
   name: {{ .Values.controllerManager.serviceAccount }}
+  {{- end }}
   namespace: {{ .Release.Namespace }}
 roleRef:
   kind: ClusterRole
@@ -188,7 +192,11 @@ metadata:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 subjects:
 - kind: ServiceAccount
+  {{- if eq .Values.appendReleaseSuffix true}} 
+  name: {{ .Values.controllerManager.serviceAccount }}-{{ .Release.Name }}
+  {{- else }}
   name: {{ .Values.controllerManager.serviceAccount }}
+  {{- end }}
 roleRef:
   kind: Role
   name: {{ .Release.Name }}:tidb-controller-manager

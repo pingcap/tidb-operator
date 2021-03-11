@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
+	"time"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -30,6 +31,7 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	corelisters "k8s.io/client-go/listers/core/v1"
@@ -260,7 +262,7 @@ func MapContainers(podSpec *corev1.PodSpec) map[string]corev1.Container {
 	return m
 }
 
-// updateStatefulSet is a template function to update the statefulset of components
+// UpdateStatefulSet is a template function to update the statefulset of components
 func UpdateStatefulSet(setCtl controller.StatefulSetControlInterface, object runtime.Object, newSet, oldSet *apps.StatefulSet) error {
 	isOrphan := metav1.GetControllerOf(oldSet) == nil
 	if newSet.Annotations == nil {
@@ -306,8 +308,8 @@ func UpdateStatefulSet(setCtl controller.StatefulSetControlInterface, object run
 	return nil
 }
 
-// filter targetContainer by  containerName, If not find, then return nil
-func filterContainer(sts *apps.StatefulSet, containerName string) *corev1.Container {
+// findContainerByName finds targetContainer by containerName, If not find, then return nil
+func findContainerByName(sts *apps.StatefulSet, containerName string) *corev1.Container {
 	for _, c := range sts.Spec.Template.Spec.Containers {
 		if c.Name == containerName {
 			return &c
@@ -500,4 +502,40 @@ func CreateOrUpdateService(serviceLister corelisters.ServiceLister, serviceContr
 		return err
 	}
 	return nil
+}
+
+// addDeferDeletingAnnoToPVC set the label
+func addDeferDeletingAnnoToPVC(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim, pvcControl controller.PVCControlInterface) error {
+	if pvc.Annotations == nil {
+		pvc.Annotations = map[string]string{}
+	}
+	now := time.Now().Format(time.RFC3339)
+	pvc.Annotations[label.AnnPVCDeferDeleting] = now
+	if _, err := pvcControl.UpdatePVC(tc, pvc); err != nil {
+		klog.Errorf("failed to set PVC %s/%s annotation %q to %q", tc.Namespace, pvc.Name, label.AnnPVCDeferDeleting, now)
+		return err
+	}
+	klog.Infof("set PVC %s/%s annotationq %q to %q successfully", tc.Namespace, pvc.Name, label.AnnPVCDeferDeleting, now)
+	return nil
+}
+
+func getPVCSelectorForPod(controller runtime.Object, memberType v1alpha1.MemberType, ordinal int32) (labels.Selector, error) {
+	meta := controller.(metav1.Object)
+	var podName string
+	var l label.Label
+	switch controller.(type) {
+	case *v1alpha1.TidbCluster:
+		podName = ordinalPodName(memberType, meta.GetName(), ordinal)
+		l = label.New().Instance(meta.GetName())
+		l[label.AnnPodNameKey] = podName
+	case *v1alpha1.DMCluster:
+		// podName = ordinalPodName(memberType, meta.GetName(), ordinal)
+		l = label.NewDM().Instance(meta.GetName())
+		// just delete all defer Deleting pvc for convenience. Or dm have to support sync meta info labels for pod/pvc which seems unnecessary
+		// l[label.AnnPodNameKey] = podName
+	default:
+		kind := controller.GetObjectKind().GroupVersionKind().Kind
+		return nil, fmt.Errorf("object %s/%s of kind %s has unknown controller", meta.GetNamespace(), meta.GetName(), kind)
+	}
+	return l.Selector()
 }

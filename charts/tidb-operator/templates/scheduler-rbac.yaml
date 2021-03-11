@@ -66,7 +66,11 @@ metadata:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 subjects:
 - kind: ServiceAccount
+  {{- if eq .Values.appendReleaseSuffix true}}
+  name: {{ .Values.scheduler.serviceAccount }}-{{ .Release.Name }}
+  {{- else }}
   name: {{ .Values.scheduler.serviceAccount }}
+  {{- end }}
   namespace: {{ .Release.Namespace }}
 roleRef:
   kind: ClusterRole
@@ -126,7 +130,11 @@ metadata:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 subjects:
 - kind: ServiceAccount
+  {{- if eq .Values.appendReleaseSuffix true}}
+  name: {{ .Values.scheduler.serviceAccount }}-{{ .Release.Name }}
+  {{- else }}
   name: {{ .Values.scheduler.serviceAccount }}
+  {{- end }}
   namespace: {{ .Release.Namespace }}
 roleRef:
   kind: Role
@@ -146,7 +154,11 @@ metadata:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 subjects:
 - kind: ServiceAccount
+  {{- if eq .Values.appendReleaseSuffix true}}
+  name: {{ .Values.scheduler.serviceAccount }}-{{ .Release.Name }}
+  {{- else }}
   name: {{ .Values.scheduler.serviceAccount }}
+  {{- end }}
   namespace: {{ .Release.Namespace }}
 roleRef:
   kind: ClusterRole
@@ -165,7 +177,11 @@ metadata:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 subjects:
 - kind: ServiceAccount
+  {{- if eq .Values.appendReleaseSuffix true}}
+  name: {{ .Values.scheduler.serviceAccount }}-{{ .Release.Name }}
+  {{- else }}
   name: {{ .Values.scheduler.serviceAccount }}
+  {{- end }}
   namespace: {{ .Release.Namespace }}
 roleRef:
   kind: ClusterRole

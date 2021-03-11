@@ -5874,7 +5874,7 @@ string
 <td>
 <em>(Optional)</em>
 <p>Image used to tail slow log and set kernel parameters if necessary, must have <code>tail</code> and <code>sysctl</code> installed
-Optional: Defaults to busybox:1.33.0</p>
+Optional: Defaults to busybox:1.26.2</p>
 </td>
 </tr>
 <tr>
@@ -7812,6 +7812,16 @@ k8s.io/apimachinery/pkg/types.UID
 </tr>
 <tr>
 <td>
+<code>pvcUIDSet</code></br>
+<em>
+map[k8s.io/apimachinery/pkg/types.UID]struct{}
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
 <code>memberDeleted</code></br>
 <em>
 bool
@@ -9086,6 +9096,7 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDMember
 </em>
 </td>
 <td>
+<p>Members contains PDs in current TidbCluster</p>
 </td>
 </tr>
 <tr>
@@ -9098,6 +9109,7 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDMember
 </em>
 </td>
 <td>
+<p>PeerMembers contains PDs NOT in current TidbCluster</p>
 </td>
 </tr>
 <tr>

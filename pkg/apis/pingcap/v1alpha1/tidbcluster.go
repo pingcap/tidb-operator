@@ -27,7 +27,7 @@ import (
 
 const (
 	// defaultHelperImage is default image of helper
-	defaultHelperImage        = "busybox:1.33.0"
+	defaultHelperImage        = "busybox:1.26.2"
 	defaultTimeZone           = "UTC"
 	defaultExposeStatus       = true
 	defaultSeparateSlowLog    = true
@@ -334,13 +334,13 @@ func (tc *TidbCluster) PDAutoFailovering() bool {
 }
 
 func (tc *TidbCluster) GetPDDeletedFailureReplicas() int32 {
-	var failureReplicas int32 = 0
+	var deteledReplicas int32 = 0
 	for _, failureMember := range tc.Status.PD.FailureMembers {
 		if failureMember.MemberDeleted {
-			failureReplicas++
+			deteledReplicas++
 		}
 	}
-	return failureReplicas
+	return deteledReplicas
 }
 
 func (tc *TidbCluster) PDStsDesiredReplicas() int32 {

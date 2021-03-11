@@ -726,7 +726,7 @@ type PumpSpec struct {
 // +k8s:openapi-gen=true
 type HelperSpec struct {
 	// Image used to tail slow log and set kernel parameters if necessary, must have `tail` and `sysctl` installed
-	// Optional: Defaults to busybox:1.33.0
+	// Optional: Defaults to busybox:1.26.2
 	// +optional
 	Image *string `json:"image,omitempty"`
 
@@ -940,10 +940,12 @@ type Service struct {
 
 // PDStatus is PD status
 type PDStatus struct {
-	Synced          bool                       `json:"synced,omitempty"`
-	Phase           MemberPhase                `json:"phase,omitempty"`
-	StatefulSet     *apps.StatefulSetStatus    `json:"statefulSet,omitempty"`
-	Members         map[string]PDMember        `json:"members,omitempty"`
+	Synced      bool                    `json:"synced,omitempty"`
+	Phase       MemberPhase             `json:"phase,omitempty"`
+	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
+	// Members contains PDs in current TidbCluster
+	Members map[string]PDMember `json:"members,omitempty"`
+	// PeerMembers contains PDs NOT in current TidbCluster
 	PeerMembers     map[string]PDMember        `json:"peerMembers,omitempty"`
 	Leader          PDMember                   `json:"leader,omitempty"`
 	FailureMembers  map[string]PDFailureMember `json:"failureMembers,omitempty"`
@@ -965,11 +967,12 @@ type PDMember struct {
 
 // PDFailureMember is the pd failure member information
 type PDFailureMember struct {
-	PodName       string      `json:"podName,omitempty"`
-	MemberID      string      `json:"memberID,omitempty"`
-	PVCUID        types.UID   `json:"pvcUID,omitempty"`
-	MemberDeleted bool        `json:"memberDeleted,omitempty"`
-	CreatedAt     metav1.Time `json:"createdAt,omitempty"`
+	PodName       string                 `json:"podName,omitempty"`
+	MemberID      string                 `json:"memberID,omitempty"`
+	PVCUID        types.UID              `json:"pvcUID,omitempty"`
+	PVCUIDSet     map[types.UID]struct{} `json:"pvcUIDSet,omitempty"`
+	MemberDeleted bool                   `json:"memberDeleted,omitempty"`
+	CreatedAt     metav1.Time            `json:"createdAt,omitempty"`
 }
 
 // UnjoinedMember is the pd unjoin cluster member information

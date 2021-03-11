@@ -51,31 +51,15 @@ type generalScaler struct {
 	deps *controller.Dependencies
 }
 
-func (s *generalScaler) deleteDeferDeletingPVC(controller runtime.Object,
-	setName string, memberType v1alpha1.MemberType, ordinal int32) (map[string]string, error) {
+// TODO: change skipReason to event recorder as in TestPDFailoverFailover
+func (s *generalScaler) deleteDeferDeletingPVC(controller runtime.Object, memberType v1alpha1.MemberType, ordinal int32) (map[string]string, error) {
 	meta := controller.(metav1.Object)
 	ns := meta.GetNamespace()
+	kind := controller.GetObjectKind().GroupVersionKind().Kind
 	// for unit test
 	skipReason := map[string]string{}
-	var podName, kind string
-	var l label.Label
-	switch controller.(type) {
-	case *v1alpha1.TidbCluster:
-		podName = ordinalPodName(memberType, meta.GetName(), ordinal)
-		l = label.New().Instance(meta.GetName())
-		l[label.AnnPodNameKey] = podName
-		kind = v1alpha1.TiDBClusterKind
-	case *v1alpha1.DMCluster:
-		podName = ordinalPodName(memberType, meta.GetName(), ordinal)
-		l = label.NewDM().Instance(meta.GetName())
-		// just delete all defer Deleting pvc for convenience. Or dm have to support sync meta info labels for pod/pvc which seems unnecessary
-		// l[label.AnnPodNameKey] = podName
-		kind = v1alpha1.DMClusterKind
-	default:
-		kind = controller.GetObjectKind().GroupVersionKind().Kind
-		return nil, fmt.Errorf("%s[%s/%s] has unknown controller", kind, ns, meta.GetName())
-	}
-	selector, err := l.Selector()
+
+	selector, err := getPVCSelectorForPod(controller, memberType, ordinal)
 	if err != nil {
 		return skipReason, fmt.Errorf("%s %s/%s assemble label selector failed, err: %v", kind, ns, meta.GetName(), err)
 	}
@@ -88,6 +72,7 @@ func (s *generalScaler) deleteDeferDeletingPVC(controller runtime.Object,
 	}
 	if len(pvcs) == 0 {
 		klog.Infof("%s %s/%s list pvc not found, selector: %s", kind, ns, meta.GetName(), selector)
+		podName := ordinalPodName(memberType, meta.GetName(), ordinal)
 		skipReason[podName] = skipReasonScalerPVCNotFound
 		return skipReason, nil
 	}
@@ -213,7 +198,7 @@ func scaleOne(actual *apps.StatefulSet, desired *apps.StatefulSet) (scaling int,
 		// we always do scaling out before scaling in to maintain maximum avaiability
 		scaling = 1
 		ordinal = additions.List()[0]
-		replicas += 1
+		replicas++
 		if !desiredDeleteSlots.Has(ordinal) {
 			// not in desired delete slots, remove it from actual delete slots
 			actualDeleteSlots.Delete(ordinal)
@@ -223,7 +208,7 @@ func scaleOne(actual *apps.StatefulSet, desired *apps.StatefulSet) (scaling int,
 		scaling = -1
 		deletionsList := deletions.List()
 		ordinal = deletionsList[len(deletionsList)-1]
-		replicas -= 1
+		replicas--
 		if desiredDeleteSlots.Has(ordinal) {
 			// in desired delete slots, add it in actual delete slots
 			actualDeleteSlots.Insert(ordinal)
