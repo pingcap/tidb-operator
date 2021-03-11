@@ -2430,7 +2430,9 @@ func TestPDMemberManagerSyncPDStsWhenPdNotJoinCluster(t *testing.T) {
 		{
 			name: "add pd unjoin cluster member info ",
 			modify: func(cluster *v1alpha1.TidbCluster, podIndexer cache.Indexer, pvcIndexer cache.Indexer) {
-				for ordinal := 0; ordinal < 3; ordinal++ {
+				var pods []*corev1.Pod
+				COUNT := 3
+				for ordinal := 0; ordinal < COUNT; ordinal++ {
 					pod := &corev1.Pod{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:        ordinalPodName(v1alpha1.PDMemberType, cluster.GetName(), int32(ordinal)),
@@ -2440,9 +2442,10 @@ func TestPDMemberManagerSyncPDStsWhenPdNotJoinCluster(t *testing.T) {
 						},
 					}
 					podIndexer.Add(pod)
+					pods = append(pods, pod)
 				}
-				for ordinal := 0; ordinal < 3; ordinal++ {
-					pvc := &corev1.PersistentVolumeClaim{
+				for ordinal := 0; ordinal < COUNT; ordinal++ {
+					pvc1 := &corev1.PersistentVolumeClaim{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:        ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(cluster.GetName()), int32(ordinal)),
 							Namespace:   metav1.NamespaceDefault,
@@ -2450,9 +2453,32 @@ func TestPDMemberManagerSyncPDStsWhenPdNotJoinCluster(t *testing.T) {
 							Labels:      label.New().Instance(cluster.GetInstanceName()).PD().Labels(),
 						},
 					}
-					pvcIndexer.Add(pvc)
+					pvc2 := pvc1.DeepCopy()
+					pvc1.Name = pvc1.Name + "-1"
+					pvc1.UID = pvc1.UID + "-1"
+					pvc2.Name = pvc2.Name + "-2"
+					pvc2.UID = pvc2.UID + "-2"
+					pod := pods[ordinal]
+					pvc1.ObjectMeta.Labels[label.AnnPodNameKey] = pod.GetName()
+					pvc2.ObjectMeta.Labels[label.AnnPodNameKey] = pod.GetName()
+					pod.Spec.Volumes = append(pod.Spec.Volumes,
+						corev1.Volume{
+							VolumeSource: corev1.VolumeSource{
+								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+									ClaimName: pvc1.Name,
+								},
+							},
+						},
+						corev1.Volume{
+							VolumeSource: corev1.VolumeSource{
+								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+									ClaimName: pvc2.Name,
+								},
+							},
+						})
+					pvcIndexer.Add(pvc1)
+					pvcIndexer.Add(pvc2)
 				}
-
 			},
 			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
 				{Name: "test-pd-0", MemberID: uint64(1), ClientUrls: []string{"http://test-pd-0:2379"}, Health: false},

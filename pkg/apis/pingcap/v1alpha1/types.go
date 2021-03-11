@@ -956,9 +956,10 @@ type PDFailureMember struct {
 
 // UnjoinedMember is the pd unjoin cluster member information
 type UnjoinedMember struct {
-	PodName   string      `json:"podName,omitempty"`
-	PVCUID    types.UID   `json:"pvcUID,omitempty"`
-	CreatedAt metav1.Time `json:"createdAt,omitempty"`
+	PodName   string                 `json:"podName,omitempty"`
+	PVCUID    types.UID              `json:"pvcUID,omitempty"`
+	PVCUIDSet map[types.UID]struct{} `json:"pvcUIDSet,omitempty"`
+	CreatedAt metav1.Time            `json:"createdAt,omitempty"`
 }
 
 // TiDBStatus is TiDB status
