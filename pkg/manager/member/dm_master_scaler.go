@@ -61,7 +61,7 @@ func (s *masterScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, ne
 	dcName := dc.GetName()
 
 	klog.Infof("scaling out dm-master statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
-	_, err := s.deleteDeferDeletingPVC(dc, oldSet.GetName(), v1alpha1.DMMasterMemberType, ordinal)
+	_, err := s.deleteDeferDeletingPVC(dc, v1alpha1.DMMasterMemberType, ordinal)
 	if err != nil {
 		return err
 	}

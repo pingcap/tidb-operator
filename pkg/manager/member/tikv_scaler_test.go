@@ -199,8 +199,10 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 		if test.hasPVC {
 			pvc1 := newScaleInPVCForStatefulSet(oldSet, v1alpha1.TiKVMemberType, tc.Name)
 			pvc2 := pvc1.DeepCopy()
-			pvc1.Name = pvc1.Name + "1"
-			pvc2.Name = pvc2.Name + "2"
+			pvc1.Name = pvc1.Name + "-1"
+			pvc1.UID = pvc1.UID + "-1"
+			pvc2.Name = pvc2.Name + "-2"
+			pvc2.UID = pvc2.UID + "-2"
 			pvcIndexer.Add(pvc1)
 			pvcIndexer.Add(pvc2)
 			pod.Spec.Volumes = append(pod.Spec.Volumes,
