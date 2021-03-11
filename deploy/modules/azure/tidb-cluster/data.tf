@@ -1,20 +1,20 @@
 data "external" "tidb_ilb_ip" {
-  depends_on = [null_resource.wait-lb-ip]
+  depends_on = [null_resource.tidb-cluster]
   program    = ["bash", "-c", local.cmd_get_tidb_ilb_ip]
 }
 
 data "external" "monitor_lb_ip" {
-  depends_on = [null_resource.wait-lb-ip]
+  depends_on = [null_resource.tidb-cluster]
   program    = ["bash", "-c", local.cmd_get_monitor_lb_ip]
 }
 
 data "external" "tidb_port" {
-  depends_on = [null_resource.wait-lb-ip]
+  depends_on = [null_resource.tidb-cluster]
   program    = ["bash", "-c", local.cmd_get_tidb_port]
 }
 
 data "external" "monitor_port" {
-  depends_on = [null_resource.wait-lb-ip]
+  depends_on = [null_resource.tidb-cluster]
   program    = ["bash", "-c", local.cmd_get_monitor_port]
 }
 

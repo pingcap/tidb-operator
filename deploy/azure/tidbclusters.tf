@@ -8,10 +8,6 @@ module "default-tidb-cluster" {
   aks_subnet_id               = module.aks.aks_subnet_id
   kubeconfig_path             = local.kubeconfig_path
 
-  # tidb operator
-  tidb_operator_id            = module.tidb-operator.tidb_operator_id
-  tidb_cluster_chart_version  = coalesce(var.tidb_operator_chart_version, var.tidb_operator_version)
-
   # tidb
   cluster_name                = var.tidb_cluster_name
   cluster_version             = var.tidb_version
@@ -23,8 +19,6 @@ module "default-tidb-cluster" {
   tikv_node_count             = var.tikv_count
   tidb_node_count             = var.tidb_count
   monitor_node_count          = var.monitor_count
-  override_values             = var.override_values == "" ? var.override_values_file == "" ? "" : file(var.override_values_file) : var.override_values
-  create_tidb_cluster_release = var.create_tidb_cluster_release
 }
 
 

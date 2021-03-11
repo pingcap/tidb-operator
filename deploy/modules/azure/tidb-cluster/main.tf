@@ -56,44 +56,45 @@ resource "azurerm_kubernetes_cluster_node_pool" "monitor_pool" {
   vnet_subnet_id        = var.aks_subnet_id
 }
 
+resource "local_file" "cluster_yaml" {
+  content             = templatefile("${path.module}/templates/cluster.yaml", {
+    cluster_name        = var.cluster_name,
+    cluster_version     = var.cluster_version,
+    pd_node_count       = var.pd_node_count,
+    tidb_node_count     = var.tidb_node_count,
+    tikv_node_count     = var.tikv_node_count
+  })
+  filename            = "/tmp/${var.cluster_name}-cluster.yaml"
+}
 
-//resource "null_resource" "setup-operator" {
-//  provisioner "local-exec" {
-//    command = "kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/${var.tidb_operator_version}/manifests/crd.yaml"
-//    environment = {
-//      KUBECONFIG = var.kubeconfig_path
-//    }
-//  }
-//}
+resource "local_file" "monitor_yaml" {
+  content             = templatefile("${path.module}/templates/monitor.yaml", {
+    cluster_name        = var.cluster_name,
+    cluster_version     = var.cluster_version
+  })
+  filename            = "/tmp/${var.cluster_name}-monitor.yaml"
+}
 
-//module "tidb-cluster" {
-//  source                     = "../../share/tidb-cluster-release2"
-//
-//  create                     = var.create_tidb_cluster_release
-//  cluster_name               = var.cluster_name
-//  pd_count                   = var.pd_node_count
-//  tikv_count                 = var.tikv_node_count
-//  tidb_count                 = var.tidb_node_count
-//  tidb_cluster_chart_version = var.tidb_cluster_chart_version
-//  cluster_version            = var.cluster_version
-//  override_values            = var.override_values
-//  kubeconfig_filename        = var.kubeconfig_path
-//  base_values                = file("${path.module}/values/default.yaml")
-//  wait_on_resource           = [azurerm_kubernetes_cluster_node_pool.tidb_pool, var.tidb_operator_id]
-//  service_ingress_key        = "ip"
-//}
-//
-resource "null_resource" "wait-lb-ip" {
-  count = var.create_tidb_cluster_release == true ? 1 : 0
+
+resource "null_resource" "tidb-cluster" {
   depends_on = [
-    #module.tidb-cluster
+    azurerm_kubernetes_cluster_node_pool.pd_pool,
+    azurerm_kubernetes_cluster_node_pool.tidb_pool,
+    azurerm_kubernetes_cluster_node_pool.tikv_pool,
+    azurerm_kubernetes_cluster_node_pool.monitor_pool,
+    local_file.cluster_yaml,
+    local_file.monitor_yaml
   ]
+
   provisioner "local-exec" {
     interpreter = ["bash", "-c"]
     working_dir = path.cwd
     command     = <<EOS
 set -euo pipefail
-
+# craete namespace if not exists
+echo -e "apiVersion: v1\nkind: Namespace\nmetadata:\n  name: ${var.cluster_name}" | kubectl apply -f -
+kubectl apply -f /tmp/${var.cluster_name}-cluster.yaml
+kubectl apply -f /tmp/${var.cluster_name}-monitor.yaml
 until kubectl get svc -n ${var.cluster_name} ${var.cluster_name}-tidb -o json | jq '.status.loadBalancer.ingress[0]' | grep ip; do
   echo "Wait for TiDB internal loadbalancer IP"
   sleep 5
