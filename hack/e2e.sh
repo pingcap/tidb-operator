@@ -626,4 +626,4 @@ echo "info: run 'kubetest2 ${kubetest2_args[@]} -- hack/run-e2e.sh $@'"
 #     --verbosity 4 \
 #     -- \
 #     hack/run-e2e.sh --ginkgo.focus=Basic
-$KUBETSTS2_BIN ${kubetest2_args[@]} -- hack/run-e2e.sh "$@"
+$KUBETEST2_BIN ${kubetest2_args[@]} -- hack/run-e2e.sh "$@"
