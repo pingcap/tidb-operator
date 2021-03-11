@@ -326,11 +326,6 @@ try {
                         ]) {
                             sh """#!/bin/bash
                             set -eu
-                            if [ "${GIT_REF}" == "master" ]; then
-                                echo "info: run unit tests and report coverage results for master branch"
-                                make test GOFLAGS='-race' GO_COVER=y
-                                curl -s https://codecov.io/bash | bash -s - -t \${CODECOV_TOKEN} || echo 'Codecov did not collect coverage reports'
-                            fi
                             echo "info: building"
                             echo "info: patch charts and golang code to enable coverage profile"
                             ./hack/e2e-patch-codecov.sh
