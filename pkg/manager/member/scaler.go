@@ -23,6 +23,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	apps "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog"
 )
@@ -49,29 +51,28 @@ type generalScaler struct {
 	deps *controller.Dependencies
 }
 
-func (s *generalScaler) deleteDeferDeletingPVC(tc *v1alpha1.TidbCluster,
-	setName string, memberType v1alpha1.MemberType, ordinal int32) (map[string]string, error) {
-	ns := tc.GetNamespace()
+// TODO: change skipReason to event recorder as in TestPDFailoverFailover
+func (s *generalScaler) deleteDeferDeletingPVC(controller runtime.Object, memberType v1alpha1.MemberType, ordinal int32) (map[string]string, error) {
+	meta := controller.(metav1.Object)
+	ns := meta.GetNamespace()
+	kind := controller.GetObjectKind().GroupVersionKind().Kind
 	// for unit test
 	skipReason := map[string]string{}
 
-	// pvcName := ordinalPVCName(memberType, setName, ordinal)
-	podName := ordinalPodName(memberType, tc.Name, ordinal)
-	l := label.New().Instance(tc.GetInstanceName())
-	l[label.AnnPodNameKey] = podName
-	selector, err := l.Selector()
+	selector, err := getPVCSelectorForPod(controller, memberType, ordinal)
 	if err != nil {
-		return skipReason, fmt.Errorf("cluster %s/%s assemble label selector failed, err: %v", ns, tc.Name, err)
+		return skipReason, fmt.Errorf("cluster %s/%s assemble label selector failed, err: %v", ns, meta.GetName(), err)
 	}
 
 	pvcs, err := s.deps.PVCLister.PersistentVolumeClaims(ns).List(selector)
 	if err != nil {
-		msg := fmt.Sprintf("Cluster %s/%s list pvc failed, selector: %s, err: %v", ns, tc.Name, selector, err)
+		msg := fmt.Sprintf("Cluster %s/%s list pvc failed, selector: %s, err: %v", ns, meta.GetName(), selector, err)
 		klog.Error(msg)
 		return skipReason, fmt.Errorf(msg)
 	}
 	if len(pvcs) == 0 {
-		klog.Infof("Cluster %s/%s list pvc not found, selector: %s", ns, tc.Name, selector)
+		klog.Infof("%s %s/%s list pvc not found, selector: %s", kind, ns, meta.GetName(), selector)
+		podName := ordinalPodName(memberType, meta.GetName(), ordinal)
 		skipReason[podName] = skipReasonScalerPVCNotFound
 		return skipReason, nil
 	}
@@ -87,7 +88,7 @@ func (s *generalScaler) deleteDeferDeletingPVC(tc *v1alpha1.TidbCluster,
 			continue
 		}
 
-		err = s.deps.PVCControl.DeletePVC(tc, pvc)
+		err = s.deps.PVCControl.DeletePVC(controller, pvc)
 		if err != nil {
 			klog.Errorf("Scale out: failed to delete pvc %s/%s, %v", ns, pvcName, err)
 			return skipReason, err

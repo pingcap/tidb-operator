@@ -6239,6 +6239,16 @@ k8s.io/apimachinery/pkg/types.UID
 </tr>
 <tr>
 <td>
+<code>pvcUIDSet</code></br>
+<em>
+map[k8s.io/apimachinery/pkg/types.UID]struct{}
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
 <code>memberDeleted</code></br>
 <em>
 bool

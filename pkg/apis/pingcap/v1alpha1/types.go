@@ -946,11 +946,12 @@ type PDMember struct {
 
 // PDFailureMember is the pd failure member information
 type PDFailureMember struct {
-	PodName       string      `json:"podName,omitempty"`
-	MemberID      string      `json:"memberID,omitempty"`
-	PVCUID        types.UID   `json:"pvcUID,omitempty"`
-	MemberDeleted bool        `json:"memberDeleted,omitempty"`
-	CreatedAt     metav1.Time `json:"createdAt,omitempty"`
+	PodName       string                 `json:"podName,omitempty"`
+	MemberID      string                 `json:"memberID,omitempty"`
+	PVCUID        types.UID              `json:"pvcUID,omitempty"`
+	PVCUIDSet     map[types.UID]struct{} `json:"pvcUIDSet,omitempty"`
+	MemberDeleted bool                   `json:"memberDeleted,omitempty"`
+	CreatedAt     metav1.Time            `json:"createdAt,omitempty"`
 }
 
 // UnjoinedMember is the pd unjoin cluster member information

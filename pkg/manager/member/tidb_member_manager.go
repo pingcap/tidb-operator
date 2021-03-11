@@ -854,7 +854,7 @@ func (m *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	}
 	tc.Status.TiDB.Members = tidbStatus
 	tc.Status.TiDB.Image = ""
-	c := filterContainer(set, "tidb")
+	c := findContainerByName(set, "tidb")
 	if c != nil {
 		tc.Status.TiDB.Image = c.Image
 	}
