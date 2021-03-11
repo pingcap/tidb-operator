@@ -25,7 +25,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/klog"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
@@ -55,16 +54,9 @@ func (s *tikvScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet
 	resetReplicas(newSet, oldSet)
 
 	klog.Infof("scaling out tikv statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
-	var pvcName string
-	_, err := s.deps.PVCLister.PersistentVolumeClaims(tc.GetNamespace()).Get(pvcName)
-	if err == nil {
-		_, err = s.deleteDeferDeletingPVC(tc, v1alpha1.TiKVMemberType, ordinal)
-		if err != nil {
-			return err
-		}
-		return controller.RequeueErrorf("tikv.ScaleOut, cluster %s/%s ready to scale out, wait for next round", tc.GetNamespace(), tc.GetName())
-	} else if !errors.IsNotFound(err) {
-		return fmt.Errorf("tikv.ScaleOut, cluster %s/%s failed to fetch pvc informaiton, err:%v", tc.GetNamespace(), tc.GetName(), err)
+	_, err := s.deleteDeferDeletingPVC(tc, v1alpha1.TiKVMemberType, ordinal)
+	if err != nil {
+		return err
 	}
 
 	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
