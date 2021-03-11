@@ -9,5 +9,3 @@ output "aks_subnet_id" {
 output "kubeconfig_path" {
   value = local_file.kubeconfig.filename
 }
-
-

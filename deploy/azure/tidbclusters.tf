@@ -4,7 +4,7 @@ module "default-tidb-cluster" {
   # aks
   aks_cluster_id              = module.aks.aks_cluster_id
   aks_resource_group          = var.resource_group
-  # aks_cluster_location        = local.location
+  availability_zones          = var.availability_zones
   aks_subnet_id               = module.aks.aks_subnet_id
   kubeconfig_path             = local.kubeconfig_path
 

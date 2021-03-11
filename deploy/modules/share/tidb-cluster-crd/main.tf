@@ -1,8 +1,4 @@
-provider "helm" {
-  kubernetes {
-    config_path = var.kubeconfig_filename
-  }
-}
+
 
 resource "helm_release" "tidb-cluster" {
   count            = var.create ? 1 : 0

@@ -23,6 +23,12 @@ variable "vpc_name" {
   description = "Name of the VPC"
 }
 
+variable "ssh_key_data" {
+  description = "SSH key for login to the cluster nodes"
+  type        = string
+}
+
+
 # see https://docs.microsoft.com/en-us/azure/aks/uptime-sla
 variable "aks_sku_tier" {
   description = "Kubernetes version to use for the GKE cluster"
@@ -30,7 +36,7 @@ variable "aks_sku_tier" {
   default     = "Free"
 }
 
-variable "node_locations" {
+variable "availability_zones" {
   description = "The list of zones in which the cluster's nodes should be located. These must be in the same region as the cluster zone for zonal clusters, or in the region of a regional cluster. In a multi-zonal cluster, the number of nodes specified in initial_node_count is created in all specified zones as well as the primary zone. If specified for a regional cluster, nodes will be created in only these zones."
   type        = list(string)
 }
@@ -52,7 +58,7 @@ variable "default_pool_instance_type" {
 
 variable "dns_service_ip" {
   description = ""
-  default     = "10.0.0.0"
+  default     = "10.0.0.10"
 }
 
 variable "docker_bridge_cidr" {

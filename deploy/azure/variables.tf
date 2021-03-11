@@ -1,7 +1,3 @@
-//variable "GCP_CREDENTIALS_PATH" {
-//  description = "A path to to a service account key. See the docs for how to create one with the correct permissions"
-//}
-
 variable "region" {
   description = "The region in which to create the AKS cluster and associated resources"
   default     = "westus2"
@@ -12,23 +8,37 @@ variable "resource_group" {
   default     = "tidb"
 }
 
-variable "location" {
-  description = "The AKS cluster location. If you specify a zone (such as us-central1-a), the cluster will be a zonal cluster with a single cluster master. If you specify a region (such as us-west1), the cluster will be a regional cluster with multiple masters spread across zones in the region. If not specified, the cluster will be a regional cluster in GCP_REGION."
-  type        = string
-  default     = ""
-}
-
-variable "node_locations" {
+variable "availability_zones" {
   description = "The list of zones in which the cluster's nodes should be located. These must be in the same region as the cluster zone for zonal clusters, or in the region of a regional cluster. In a multi-zonal cluster, the number of nodes specified in initial_node_count is created in all specified zones as well as the primary zone. If specified for a regional cluster, nodes will be created in only these zones."
   type        = list(string)
   default     = []
 }
 
-variable "tidb_version" {
-  description = "TiDB version"
-  default     = "v4.0.10"
+
+########################################### VPC ############################################
+variable "create_vpc" {
+  default = true
 }
 
+variable "vpc_name" {
+  description = "The name of the VPC network"
+  default     = "tidb-vpc"
+}
+
+########################################### AKS ############################################
+
+variable "aks_name" {
+  description = "Name of the AKS cluster. Also used as a prefix in names of related resources."
+  default     = "aks"
+}
+
+variable "aks_version" {
+  description = "Kubernetes version to use for the AKS cluster"
+  type        = string
+  default     = "1.19.7"
+}
+
+####################################### TiDB Operator #######################################
 variable "tidb_operator_version" {
   default = "v1.1.11"
 }
@@ -49,29 +59,16 @@ variable "operator_helm_values_file" {
   default     = ""
 }
 
-variable "create_vpc" {
-  default = true
-}
-
-variable "aks_name" {
-  description = "Name of the AKS cluster. Also used as a prefix in names of related resources."
-  default     = "tidb-aks"
-}
-
-variable "aks_version" {
-  description = "Kubernetes version to use for the AKS cluster"
-  type        = string
-  default     = "1.19.7"
-}
+########################################### TiDB ###########################################
 
 variable "tidb_cluster_name" {
   description = "The name that will be given to the default tidb cluster created."
   default     = "tidb"
 }
 
-variable "vpc_name" {
-  description = "The name of the VPC network"
-  default     = "tidb-vpc"
+variable "tidb_version" {
+  description = "TiDB version"
+  default     = "v4.0.10"
 }
 
 variable "pd_count" {

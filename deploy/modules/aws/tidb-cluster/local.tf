@@ -80,8 +80,7 @@ locals {
       suspended_processes = ["ReplaceUnhealthy"]
     },
     {
-      name             = "${var.cluster_name}-tidb"
-      enable           = true
+      name             = "${var.cluster_name}-tidb"      enable           = true
       key_name         = var.ssh_key_name
       instance_type    = var.tidb_instance_type
       root_volume_type = "gp2"

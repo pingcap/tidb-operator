@@ -28,14 +28,21 @@ resource "azurerm_kubernetes_cluster" "cluster" {
     service_cidr       = var.service_cidr
   }
 
+  linux_profile {
+    admin_username = var.aks_name
+    ssh_key {
+      key_data = var.ssh_key_data
+    }
+  }
+
   # The default node pool is primary used for hosting critical system pods such as coredns and metrics-server
   default_node_pool {
     # pool name must start with a lowercase letter, have max length of 12, and only have characters a-z0-9
     name               = var.default_pool_node_name
+    availability_zones = var.availability_zones
     node_count         = var.default_pool_node_count
     vm_size            = var.default_pool_instance_type
     vnet_subnet_id     = azurerm_subnet.aks_subnet.id
-    type               = "VirtualMachineScaleSets"
   }
 
   identity {

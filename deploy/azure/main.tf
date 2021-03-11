@@ -17,8 +17,17 @@ module "vpc" {
   vpc_name                      = var.vpc_name
 }
 
+module "key-pair" {
+  source                        = "../modules/azure/key-pair"
+
+  name                          = var.aks_name
+  region                        = var.region
+  resource_group                = var.resource_group
+  path                          = local.credential_path
+}
+
 module "aks" {
-  depends_on                    = [module.vpc]
+  depends_on                    = [module.vpc, module.key-pair]
   source                        = "../modules/azure/aks"
 
   aks_name                      = var.aks_name
@@ -26,7 +35,8 @@ module "aks" {
   region                        = var.region
   resource_group                = var.resource_group
   vpc_name                      = module.vpc.vpc_name
-  node_locations                = var.node_locations
+  availability_zones            = var.availability_zones
+  ssh_key_data                  = module.key-pair.public_key_openssh
   kubeconfig_path               = local.kubeconfig_path
 }
 

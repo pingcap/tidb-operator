@@ -27,9 +27,10 @@ resource "local_file" "public_key_openssh" {
 }
 
 resource "local_file" "private_key_pem" {
-  count    = var.path != "" ? 1 : 0
-  content  = tls_private_key.generated.private_key_pem
-  filename = local.private_key_filename
+  count            = var.path != "" ? 1 : 0
+  content          = tls_private_key.generated.private_key_pem
+  filename         = local.private_key_filename
+  file_permission  = "0600"
 }
 
 resource "null_resource" "chmod" {

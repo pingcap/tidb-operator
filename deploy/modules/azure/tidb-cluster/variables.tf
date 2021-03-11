@@ -2,6 +2,12 @@ variable "aks_cluster_id" {
   description = "AKS cluster ID. This module depends on a running cluster. Please create a cluster first and pass ID here."
 }
 
+
+variable "availability_zones" {
+  description = "A list of Availability Zones where the Nodes in this Node Pool should be created in."
+  type        = list(string)
+}
+
 variable "aks_subnet_id" {
   description = "Subnet ID for the AKS cluster"
 }
