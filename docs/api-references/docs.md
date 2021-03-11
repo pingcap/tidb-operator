@@ -18413,21 +18413,7 @@ Kubernetes core/v1.PullPolicy
 </tr>
 <tr>
 <td>
-<<<<<<< HEAD
 <code>imagePullSecrets</code></br>
-=======
-<code>pvcUIDSet</code></br>
-<em>
-map[k8s.io/apimachinery/pkg/types.UID]struct{}
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
-<code>createdAt</code></br>
->>>>>>> bf199d32... fix UnjoinedMembers in PD and DM cluster status (#3836)
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#localobjectreference-v1-core">
 []Kubernetes core/v1.LocalObjectReference
@@ -18717,6 +18703,16 @@ string
 <code>pvcUID</code></br>
 <em>
 k8s.io/apimachinery/pkg/types.UID
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>pvcUIDSet</code></br>
+<em>
+map[k8s.io/apimachinery/pkg/types.UID]struct{}
 </em>
 </td>
 <td>
