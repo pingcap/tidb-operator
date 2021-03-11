@@ -922,20 +922,10 @@ type Service struct {
 
 // PDStatus is PD status
 type PDStatus struct {
-<<<<<<< HEAD
 	Synced          bool                       `json:"synced,omitempty"`
 	Phase           MemberPhase                `json:"phase,omitempty"`
 	StatefulSet     *apps.StatefulSetStatus    `json:"statefulSet,omitempty"`
 	Members         map[string]PDMember        `json:"members,omitempty"`
-=======
-	Synced      bool                    `json:"synced,omitempty"`
-	Phase       MemberPhase             `json:"phase,omitempty"`
-	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
-	// Members contains PDs in current TidbCluster
-	Members map[string]PDMember `json:"members,omitempty"`
-	// PeerMembers contains PDs NOT in current TidbCluster
-	PeerMembers     map[string]PDMember        `json:"peerMembers,omitempty"`
->>>>>>> 52e1f7f4... Fix support for multiple pvc for pd (#3820)
 	Leader          PDMember                   `json:"leader,omitempty"`
 	FailureMembers  map[string]PDFailureMember `json:"failureMembers,omitempty"`
 	UnjoinedMembers map[string]UnjoinedMember  `json:"unjoinedMembers,omitempty"`

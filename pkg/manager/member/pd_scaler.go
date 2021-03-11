@@ -91,13 +91,8 @@ func (s *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, n
 	tcName := tc.GetName()
 	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
 	resetReplicas(newSet, oldSet)
-<<<<<<< HEAD
 	memberName := fmt.Sprintf("%s-pd-%d", tc.GetName(), ordinal)
-	setName := oldSet.GetName()
-=======
-	memberName := PdName(tcName, ordinal, tc.Namespace, tc.Spec.ClusterDomain)
 	pdPodName := PdPodName(tcName, ordinal)
->>>>>>> 52e1f7f4... Fix support for multiple pvc for pd (#3820)
 
 	if !tc.Status.PD.Synced {
 		return fmt.Errorf("TidbCluster: %s/%s's pd status sync failed,can't scale in now", ns, tcName)

@@ -324,14 +324,6 @@ func (m *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *a
 		tc.Status.PD.Synced = false
 		return err
 	}
-<<<<<<< HEAD
-=======
-
-	rePDMembers, err := regexp.Compile(fmt.Sprintf(pdMemberLimitPattern, tc.Name, tc.Name, tc.Namespace, controller.FormatClusterDomainForRegex(tc.Spec.ClusterDomain)))
-	if err != nil {
-		return err
-	}
->>>>>>> 52e1f7f4... Fix support for multiple pvc for pd (#3820)
 	pdStatus := map[string]v1alpha1.PDMember{}
 	for _, memberHealth := range healthInfo.Healths {
 		memberID := memberHealth.MemberID
@@ -353,24 +345,7 @@ func (m *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *a
 			Health:    memberHealth.Health,
 		}
 
-<<<<<<< HEAD
 		oldPDMember, exist := tc.Status.PD.Members[name]
-=======
-		// matching `rePDMembers` means `clientURL` is a PD in current tc
-		if rePDMembers.Match([]byte(clientURL)) {
-			oldPDMember, exist := tc.Status.PD.Members[name]
-			if exist && status.Health == oldPDMember.Health {
-				status.LastTransitionTime = oldPDMember.LastTransitionTime
-			}
-			pdStatus[name] = status
-		} else {
-			oldPDMember, exist := tc.Status.PD.PeerMembers[name]
-			if exist && status.Health == oldPDMember.Health {
-				status.LastTransitionTime = oldPDMember.LastTransitionTime
-			}
-			peerPDStatus[name] = status
-		}
->>>>>>> 52e1f7f4... Fix support for multiple pvc for pd (#3820)
 
 		status.LastTransitionTime = metav1.Now()
 		if exist && status.Health == oldPDMember.Health {
@@ -883,18 +858,8 @@ func (m *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *
 	// check all pods in PD sts to see whether it has already joined the PD cluster
 	for _, pod := range pods {
 		var joined = false
-<<<<<<< HEAD
 		for podName := range pdStatus {
 			if strings.EqualFold(pod.Name, podName) {
-=======
-		// if current PD pod name is in the keys of pdStatus, it has joined the PD cluster
-		for pdName := range pdStatus {
-			ordinal, err := util.GetOrdinalFromPodName(pod.Name)
-			if err != nil {
-				return fmt.Errorf("unexpected pod name %q: %v", pod.Name, err)
-			}
-			if strings.EqualFold(PdName(tc.Name, ordinal, tc.Namespace, tc.Spec.ClusterDomain), pdName) {
->>>>>>> 52e1f7f4... Fix support for multiple pvc for pd (#3820)
 				joined = true
 				break
 			}
@@ -919,16 +884,7 @@ func (m *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *
 				CreatedAt: metav1.Now(),
 			}
 		} else {
-<<<<<<< HEAD
-			if tc.Status.PD.UnjoinedMembers != nil {
-				if _, ok := tc.Status.PD.UnjoinedMembers[pod.Name]; ok {
-					delete(tc.Status.PD.UnjoinedMembers, pod.Name)
-				}
-
-			}
-=======
 			delete(tc.Status.PD.UnjoinedMembers, pod.Name)
->>>>>>> 52e1f7f4... Fix support for multiple pvc for pd (#3820)
 		}
 	}
 	return nil

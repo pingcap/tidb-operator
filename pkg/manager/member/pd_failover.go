@@ -113,16 +113,10 @@ func (f *pdFailover) tryToMarkAPeerAsFailure(tc *v1alpha1.TidbCluster) error {
 		if tc.Status.PD.FailureMembers == nil {
 			tc.Status.PD.FailureMembers = map[string]v1alpha1.PDFailureMember{}
 		}
-<<<<<<< HEAD
-		deadline := pdMember.LastTransitionTime.Add(f.deps.CLIConfig.PDFailoverPeriod)
-		_, exist := tc.Status.PD.FailureMembers[podName]
-		if pdMember.Health || time.Now().Before(deadline) || exist {
-=======
 		failoverDeadline := pdMember.LastTransitionTime.Add(f.deps.CLIConfig.PDFailoverPeriod)
-		_, exist := tc.Status.PD.FailureMembers[pdName]
+		_, exist := tc.Status.PD.FailureMembers[podName]
 
 		if pdMember.Health || time.Now().Before(failoverDeadline) || exist {
->>>>>>> 52e1f7f4... Fix support for multiple pvc for pd (#3820)
 			continue
 		}
 
@@ -136,14 +130,6 @@ func (f *pdFailover) tryToMarkAPeerAsFailure(tc *v1alpha1.TidbCluster) error {
 			return fmt.Errorf("tryToMarkAPeerAsFailure: failed to get pvcs for pod %s/%s, error: %s", ns, pod.Name, err)
 		}
 
-<<<<<<< HEAD
-		msg := fmt.Sprintf("pd member[%s] is unhealthy", pdMember.ID)
-		f.deps.Recorder.Event(tc, apiv1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "pd", podName, msg))
-
-		// mark a peer member failed and return an error to skip reconciliation
-		// note that status of tidb cluster will be updated always
-		tc.Status.PD.FailureMembers[podName] = v1alpha1.PDFailureMember{
-=======
 		f.deps.Recorder.Eventf(tc, apiv1.EventTypeWarning, "PDMemberUnhealthy", "%s/%s(%s) is unhealthy", ns, podName, pdMember.ID)
 
 		// mark a peer member failed and return an error to skip reconciliation
@@ -152,8 +138,7 @@ func (f *pdFailover) tryToMarkAPeerAsFailure(tc *v1alpha1.TidbCluster) error {
 		for _, pvc := range pvcs {
 			pvcUIDSet[pvc.UID] = struct{}{}
 		}
-		tc.Status.PD.FailureMembers[pdName] = v1alpha1.PDFailureMember{
->>>>>>> 52e1f7f4... Fix support for multiple pvc for pd (#3820)
+		tc.Status.PD.FailureMembers[podName] = v1alpha1.PDFailureMember{
 			PodName:       podName,
 			MemberID:      pdMember.ID,
 			PVCUIDSet:     pvcUIDSet,
@@ -174,20 +159,11 @@ func (f *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error {
 	tcName := tc.GetName()
 	var failureMember *v1alpha1.PDFailureMember
 	var failurePodName string
-<<<<<<< HEAD
-=======
-	var failurePDName string
->>>>>>> 52e1f7f4... Fix support for multiple pvc for pd (#3820)
 
 	for podName, pdMember := range tc.Status.PD.FailureMembers {
 		if !pdMember.MemberDeleted {
 			failureMember = &pdMember
-<<<<<<< HEAD
 			failurePodName = podName
-=======
-			failurePodName = strings.Split(pdName, ".")[0]
-			failurePDName = pdName
->>>>>>> 52e1f7f4... Fix support for multiple pvc for pd (#3820)
 			break
 		}
 	}
@@ -259,11 +235,7 @@ func (f *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error {
 		}
 	}
 
-<<<<<<< HEAD
 	setMemberDeleted(tc, failurePodName)
-=======
-	setMemberDeleted(tc, failurePDName)
->>>>>>> 52e1f7f4... Fix support for multiple pvc for pd (#3820)
 	return nil
 }
 
@@ -284,34 +256,8 @@ func (f *pdFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
 func setMemberDeleted(tc *v1alpha1.TidbCluster, podName string) {
 	failureMember := tc.Status.PD.FailureMembers[podName]
 	failureMember.MemberDeleted = true
-<<<<<<< HEAD
 	tc.Status.PD.FailureMembers[podName] = failureMember
 	klog.Infof("pd failover: set pd member: %s/%s deleted", tc.GetName(), podName)
-=======
-	tc.Status.PD.FailureMembers[pdName] = failureMember
-	klog.Infof("pd failover: set pd member: %s/%s deleted", tc.GetName(), pdName)
-}
-
-// is healthy PD more than a half
-func (f *pdFailover) isPDInQuorum(tc *v1alpha1.TidbCluster) (bool, int) {
-	healthCount := 0
-	ns := tc.GetNamespace()
-	for podName, pdMember := range tc.Status.PD.Members {
-		if pdMember.Health {
-			healthCount++
-		} else {
-			f.deps.Recorder.Eventf(tc, apiv1.EventTypeWarning, "PDMemberUnhealthy", "%s/%s(%s) is unhealthy", ns, podName, pdMember.ID)
-		}
-	}
-	for _, pdMember := range tc.Status.PD.PeerMembers {
-		if pdMember.Health {
-			healthCount++
-		} else {
-			f.deps.Recorder.Eventf(tc, apiv1.EventTypeWarning, "PDPeerMemberUnhealthy", "%s(%s) is unhealthy", pdMember.Name, pdMember.ID)
-		}
-	}
-	return healthCount > (len(tc.Status.PD.Members)+len(tc.Status.PD.PeerMembers))/2, healthCount
->>>>>>> 52e1f7f4... Fix support for multiple pvc for pd (#3820)
 }
 
 type fakePDFailover struct{}

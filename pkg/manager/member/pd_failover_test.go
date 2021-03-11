@@ -118,65 +118,6 @@ func TestPDFailoverFailover(t *testing.T) {
 			},
 		},
 		{
-<<<<<<< HEAD
-=======
-			name:                     "two members are not ready while two peermembers ready, cluster in quorum",
-			update:                   twoMembersNotReadyWithPeerMembers,
-			maxFailoverCount:         3,
-			hasPVC:                   true,
-			hasPod:                   true,
-			podWithDeletionTimestamp: false,
-			delMemberFailed:          false,
-			delPodFailed:             false,
-			delPVCFailed:             false,
-			statusSyncFailed:         false,
-			errExpectFn:              errExpectNil,
-			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
-				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
-				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(0))
-				events := collectEvents(recorder.Events)
-				sort.Strings(events)
-				g.Expect(events).To(HaveLen(2))
-				g.Expect(events[0]).To(ContainSubstring("test-pd-0(0) is unhealthy"))
-				g.Expect(events[1]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
-			},
-		},
-		{
-			name: "two members are not ready while two peermembers ready, cluster not in quorum",
-			update: func(tc *v1alpha1.TidbCluster) {
-				pd0 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 0)
-				pd1 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
-				pd2 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 2)
-				tc.Status.PD.Members = map[string]v1alpha1.PDMember{
-					pd0: {Name: pd0, ID: "0", Health: true},
-					pd1: {Name: pd1, ID: "12891273174085095651", Health: false},
-					pd2: {Name: pd2, ID: "2", Health: true},
-				}
-				tc.Status.PD.PeerMembers = map[string]v1alpha1.PDMember{
-					pd0: {Name: pd0, ID: "0", Health: false},
-					pd2: {Name: pd2, ID: "2", Health: true},
-				}
-			},
-			maxFailoverCount:         3,
-			hasPVC:                   true,
-			hasPod:                   true,
-			podWithDeletionTimestamp: false,
-			delMemberFailed:          false,
-			delPodFailed:             false,
-			delPVCFailed:             false,
-			statusSyncFailed:         false,
-			errExpectFn:              errExpectNil,
-			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
-				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
-				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(0))
-				events := collectEvents(recorder.Events)
-				sort.Strings(events)
-				g.Expect(events).To(HaveLen(2))
-				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
-			},
-		},
-		{
->>>>>>> 52e1f7f4... Fix support for multiple pvc for pd (#3820)
 			name:                     "two members are ready and a failure member",
 			update:                   oneFailureMember,
 			maxFailoverCount:         3,
