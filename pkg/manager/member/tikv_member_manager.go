@@ -775,7 +775,7 @@ func (m *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	tc.Status.TiKV.TombstoneStores = tombstoneStores
 	tc.Status.TiKV.BootStrapped = true
 	tc.Status.TiKV.Image = ""
-	c := filterContainer(set, "tikv")
+	c := findContainerByName(set, "tikv")
 	if c != nil {
 		tc.Status.TiKV.Image = c.Image
 	}

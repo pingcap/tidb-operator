@@ -69,7 +69,7 @@ func (s *tikvScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newS
 	}
 	_, err := s.deps.PVCLister.PersistentVolumeClaims(meta.GetNamespace()).Get(pvcName)
 	if err == nil {
-		_, err = s.deleteDeferDeletingPVC(obj, oldSet.GetName(), v1alpha1.TiKVMemberType, ordinal)
+		_, err = s.deleteDeferDeletingPVC(obj, v1alpha1.TiKVMemberType, ordinal)
 		if err != nil {
 			return err
 		}
@@ -124,10 +124,10 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 			}
 			if state != v1alpha1.TiKVStateOffline {
 				if err := controller.GetPDClient(s.deps.PDControl, tc).DeleteStore(id); err != nil {
-					klog.Errorf("tikv scale in: failed to delete store %d, %v", id, err)
+					klog.Errorf("tikvScaler.ScaleIn: failed to delete store %d, %v", id, err)
 					return err
 				}
-				klog.Infof("tikv scale in: delete store %d for tikv %s/%s successfully", id, ns, podName)
+				klog.Infof("tikvScaler.ScaleIn: delete store %d for tikv %s/%s successfully", id, ns, podName)
 			}
 			return controller.RequeueErrorf("TiKV %s/%s store %d is still in cluster, state: %s", ns, podName, id, state)
 		}
