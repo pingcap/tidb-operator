@@ -31,6 +31,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/klog"
@@ -876,6 +877,7 @@ func clusterVersionGreaterThanOrEqualTo4(version string) (bool, error) {
 // find PD pods in set that have not joined the PD cluster yet.
 // pdStatus contains the PD members in the PD cluster.
 func (m *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, pdStatus map[string]v1alpha1.PDMember) error {
+	ns := tc.GetNamespace()
 	podSelector, podSelectErr := metav1.LabelSelectorAsSelector(set.Spec.Selector)
 	if podSelectErr != nil {
 		return podSelectErr
@@ -903,19 +905,17 @@ func (m *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *
 			if tc.Status.PD.UnjoinedMembers == nil {
 				tc.Status.PD.UnjoinedMembers = map[string]v1alpha1.UnjoinedMember{}
 			}
-			ordinal, err := util.GetOrdinalFromPodName(pod.Name)
+			pvcs, err := util.ResolvePVCFromPod(pod, m.deps.PVCLister)
 			if err != nil {
-				return err
+				return fmt.Errorf("collectUnjoinedMembers: failed to get pvcs for pod %s/%s, error: %s", ns, pod.Name, err)
 			}
-			// FIXME: this will only show one PVC UID in status, should use PVCUIDSet according to PDFailureMember
-			pvcName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tc.Name), ordinal)
-			pvc, err := m.deps.PVCLister.PersistentVolumeClaims(tc.Namespace).Get(pvcName)
-			if err != nil {
-				return fmt.Errorf("collectUnjoinedMembers: failed to get pvc %s of cluster %s/%s, error %v", pvcName, tc.GetNamespace(), tc.GetName(), err)
+			pvcUIDSet := make(map[types.UID]struct{})
+			for _, pvc := range pvcs {
+				pvcUIDSet[pvc.UID] = struct{}{}
 			}
 			tc.Status.PD.UnjoinedMembers[pod.Name] = v1alpha1.UnjoinedMember{
 				PodName:   pod.Name,
-				PVCUID:    pvc.UID,
+				PVCUIDSet: pvcUIDSet,
 				CreatedAt: metav1.Now(),
 			}
 		} else {
@@ -925,6 +925,7 @@ func (m *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *
 	return nil
 }
 
+// TODO: seems not used
 type FakePDMemberManager struct {
 	err error
 }
