@@ -2228,6 +2228,19 @@ Defaults to the value of <code>prometheus_replica</code>. External label will
 <em>not</em> be added when value is set to empty string (<code>&quot;&quot;</code>).</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>replicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Replicas is the number of desired replicas.
+Defaults to 1.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -20276,6 +20289,19 @@ string
 <p>Name of Prometheus external label used to denote replica name.
 Defaults to the value of <code>prometheus_replica</code>. External label will
 <em>not</em> be added when value is set to empty string (<code>&quot;&quot;</code>).</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>replicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Replicas is the number of desired replicas.
+Defaults to 1.</p>
 </td>
 </tr>
 </tbody>
