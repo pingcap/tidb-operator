@@ -339,15 +339,14 @@ func (m *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *a
 		return err
 	}
 
-	pattern, err := regexp.Compile(fmt.Sprintf(pdMemberLimitPattern, tc.Name, tc.Name, tc.Namespace, controller.FormatClusterDomainForRegex(tc.Spec.ClusterDomain)))
+	rePDMembers, err := regexp.Compile(fmt.Sprintf(pdMemberLimitPattern, tc.Name, tc.Name, tc.Namespace, controller.FormatClusterDomainForRegex(tc.Spec.ClusterDomain)))
 	if err != nil {
 		return err
 	}
 	pdStatus := map[string]v1alpha1.PDMember{}
 	peerPDStatus := map[string]v1alpha1.PDMember{}
 	for _, memberHealth := range healthInfo.Healths {
-		id := memberHealth.MemberID
-		memberID := fmt.Sprintf("%d", id)
+		memberID := memberHealth.MemberID
 		var clientURL string
 		if len(memberHealth.ClientUrls) > 0 {
 			clientURL = memberHealth.ClientUrls[0]
@@ -355,19 +354,20 @@ func (m *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *a
 		name := memberHealth.Name
 		if len(name) == 0 {
 			klog.Warningf("PD member: [%d] doesn't have a name, and can't get it from clientUrls: [%s], memberHealth Info: [%v] in [%s/%s]",
-				id, memberHealth.ClientUrls, memberHealth, ns, tcName)
+				memberID, memberHealth.ClientUrls, memberHealth, ns, tcName)
 			continue
 		}
 
 		status := v1alpha1.PDMember{
 			Name:      name,
-			ID:        memberID,
+			ID:        fmt.Sprintf("%d", memberID),
 			ClientURL: clientURL,
 			Health:    memberHealth.Health,
 		}
 		status.LastTransitionTime = metav1.Now()
 
-		if pattern.Match([]byte(clientURL)) {
+		// matching `rePDMembers` means `clientURL` is a PD in current tc
+		if rePDMembers.Match([]byte(clientURL)) {
 			oldPDMember, exist := tc.Status.PD.Members[name]
 			if exist && status.Health == oldPDMember.Health {
 				status.LastTransitionTime = oldPDMember.LastTransitionTime
@@ -390,14 +390,11 @@ func (m *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *a
 	tc.Status.PD.Members = pdStatus
 	tc.Status.PD.PeerMembers = peerPDStatus
 	tc.Status.PD.Image = ""
-	c := filterContainer(set, "pd")
-	if c != nil {
+	if c := findContainerByName(set, "pd"); c != nil {
 		tc.Status.PD.Image = c.Image
 	}
 
-	// k8s check
-	err = m.collectUnjoinedMembers(tc, set, pdStatus)
-	if err != nil {
+	if err := m.collectUnjoinedMembers(tc, set, pdStatus); err != nil {
 		return err
 	}
 	return nil
@@ -877,6 +874,8 @@ func clusterVersionGreaterThanOrEqualTo4(version string) (bool, error) {
 	return v.Major() >= 4, nil
 }
 
+// find PD pods in set that have not joined the PD cluster yet.
+// pdStatus contains the PD members in the PD cluster.
 func (m *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, pdStatus map[string]v1alpha1.PDMember) error {
 	ns := tc.GetNamespace()
 	podSelector, podSelectErr := metav1.LabelSelectorAsSelector(set.Spec.Selector)
@@ -887,8 +886,11 @@ func (m *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *
 	if podErr != nil {
 		return fmt.Errorf("collectUnjoinedMembers: failed to list pods for cluster %s/%s, selector %s, error %v", tc.GetNamespace(), tc.GetName(), set.Spec.Selector, podErr)
 	}
+
+	// check all pods in PD sts to see whether it has already joined the PD cluster
 	for _, pod := range pods {
 		var joined = false
+		// if current PD pod name is in the keys of pdStatus, it has joined the PD cluster
 		for pdName := range pdStatus {
 			ordinal, err := util.GetOrdinalFromPodName(pod.Name)
 			if err != nil {
@@ -917,9 +919,7 @@ func (m *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *
 				CreatedAt: metav1.Now(),
 			}
 		} else {
-			if tc.Status.PD.UnjoinedMembers != nil {
-				delete(tc.Status.PD.UnjoinedMembers, pod.Name)
-			}
+			delete(tc.Status.PD.UnjoinedMembers, pod.Name)
 		}
 	}
 	return nil
