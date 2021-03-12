@@ -19,9 +19,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/testutils"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 )
@@ -78,6 +80,17 @@ var validDumpRestore = &v1alpha1.Restore{
 				Endpoint: "s3://pingcap/",
 			},
 		},
+		Env: []corev1.EnvVar{
+			{
+				Name:  "env_name",
+				Value: "env_value",
+			},
+			// existing env name will be overwritten for backup
+			{
+				Name:  "S3_PROVIDER",
+				Value: "fake_provider",
+			},
+		},
 	},
 }
 
@@ -97,6 +110,22 @@ func genValidBRRestores() []*v1alpha1.Restore {
 					ClusterNamespace: "ns",
 					Cluster:          fmt.Sprintf("tidb_%d", i),
 					DB:               "dbName",
+				},
+				Env: []corev1.EnvVar{
+					{
+						Name:  fmt.Sprintf("env_name_%d", i),
+						Value: fmt.Sprintf("env_value_%d", i),
+					},
+					// existing env name will be overwritten for backup
+					{
+						Name:  "BR_LOG_TO_TERM",
+						Value: "value",
+					},
+					// existing env name will be overwritten for cleaner
+					{
+						Name:  "S3_PROVIDER",
+						Value: "value",
+					},
 				},
 			},
 		}
@@ -126,7 +155,7 @@ func TestInvalid(t *testing.T) {
 	helper.hasCondition(restore.Namespace, restore.Name, v1alpha1.RestoreInvalid, "InvalidSpec")
 }
 
-func TestDumplingRestore(t *testing.T) {
+func TestLightningRestore(t *testing.T) {
 	g := NewGomegaWithT(t)
 	helper := newHelper(t)
 	defer helper.Close()
@@ -144,7 +173,25 @@ func TestDumplingRestore(t *testing.T) {
 	err = m.Sync(restore)
 	g.Expect(err).Should(BeNil())
 	helper.hasCondition(restore.Namespace, restore.Name, v1alpha1.RestoreScheduled, "")
-	helper.JobExists(restore)
+	job, err := helper.Deps.KubeClientset.BatchV1().Jobs(restore.Namespace).Get(restore.GetRestoreJobName(), metav1.GetOptions{})
+	g.Expect(err).Should(BeNil())
+
+	// check pod env are set correctly
+	env1 := corev1.EnvVar{
+		Name:  "env_name",
+		Value: "env_value",
+	}
+	env2Yes := corev1.EnvVar{
+		Name:  "S3_PROVIDER",
+		Value: "fake_provider",
+	}
+	env2No := corev1.EnvVar{
+		Name:  "S3_PROVIDER",
+		Value: "",
+	}
+	g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env1))
+	g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env2Yes))
+	g.Expect(job.Spec.Template.Spec.Containers[0].Env).NotTo(gomega.ContainElement(env2No))
 }
 
 func TestBRRestore(t *testing.T) {
@@ -154,7 +201,7 @@ func TestBRRestore(t *testing.T) {
 	deps := helper.Deps
 	var err error
 
-	for _, restore := range genValidBRRestores() {
+	for i, restore := range genValidBRRestores() {
 		helper.createRestore(restore)
 		helper.CreateSecret(restore)
 		helper.CreateTC(restore.Spec.BR.ClusterNamespace, restore.Spec.BR.Cluster)
@@ -163,6 +210,24 @@ func TestBRRestore(t *testing.T) {
 		err = m.Sync(restore)
 		g.Expect(err).Should(BeNil())
 		helper.hasCondition(restore.Namespace, restore.Name, v1alpha1.RestoreScheduled, "")
-		helper.JobExists(restore)
+		job, err := helper.Deps.KubeClientset.BatchV1().Jobs(restore.Namespace).Get(restore.GetRestoreJobName(), metav1.GetOptions{})
+		g.Expect(err).Should(BeNil())
+
+		// check pod env are set correctly
+		env1 := corev1.EnvVar{
+			Name:  fmt.Sprintf("env_name_%d", i),
+			Value: fmt.Sprintf("env_value_%d", i),
+		}
+		env2Yes := corev1.EnvVar{
+			Name:  "BR_LOG_TO_TERM",
+			Value: "value",
+		}
+		env2No := corev1.EnvVar{
+			Name:  "BR_LOG_TO_TERM",
+			Value: string(rune(1)),
+		}
+		g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env1))
+		g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env2Yes))
+		g.Expect(job.Spec.Template.Spec.Containers[0].Env).NotTo(gomega.ContainElement(env2No))
 	}
 }
