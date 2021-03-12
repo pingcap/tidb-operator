@@ -217,7 +217,7 @@ def build(String name, String code, Map resources = e2ePodResources) {
                             withCredentials([
                                 string(credentialsId: "tp-codecov-token", variable: 'CODECOV_TOKEN')
                             ]) {
-                                if GIT_COMMIT == "" {
+                                if (GIT_COMMIT == "") {
                                     // try to fix env after PR merged into a branch.
                                     GIT_COMMIT = sh(returnStdout: true, script: "git rev-parse HEAD").trim()
                                 }
