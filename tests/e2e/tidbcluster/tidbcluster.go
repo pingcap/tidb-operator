@@ -1656,6 +1656,10 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				return nil
 			})
 			framework.ExpectNoError(err, "failed to update components configuration")
+			log.Logf("waiting 30s for operator syncing")
+			wait.Poll(30*time.Second, 30*time.Second, func() (bool, error) {
+				return true, nil
+			})
 			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
 			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
 
