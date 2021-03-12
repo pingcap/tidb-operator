@@ -473,8 +473,8 @@ type TiKVSpec struct {
 	// +optional
 	StoreLabels []string `json:"storeLabels,omitempty"`
 
-	// EnableNamedStatusPort If true, open kv port(20180) pods
-	// If you have an existing cluster, opening it will cause the pods to restart
+	// EnableNamedStatusPort enables status port(20180) in the Pod spec.
+	// If you set it to `true` for an existing cluster, the TiKV cluster will be rolling updated.
 	EnableNamedStatusPort bool `json:"enableNamedStatusPort,omitempty"`
 }
 
