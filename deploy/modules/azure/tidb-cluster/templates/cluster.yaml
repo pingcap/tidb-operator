@@ -151,11 +151,10 @@ spec:
     ## pd-server configuration
     ## Ref: https://docs.pingcap.com/tidb/stable/pd-configuration-file
     config: |
-      data-dir = "/data/pd"
       lease = 3
       enable-prevote = true
       [log.file]
-      filename="/var/log/pdlog/pd.log"
+      #filename="/var/log/pdlog/pd.log"
       [replication]
       location-labels = ["topology.kubernetes.io/region", "topology.kubernetes.io/zone", "kubernetes.io/hostname"]
 
@@ -170,7 +169,7 @@ spec:
     requests:
       #   cpu: 1000m
       #   memory: 1Gi
-      storage: 10Gi
+      storage: 16Gi
     # limits:
     #   cpu: 2000m
     #   memory: 2Gi
@@ -266,8 +265,6 @@ spec:
     ## Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
     podSecurityContext:
       sysctls:
-        - name: vm.swappiness
-          value: "0"
         - name: net.ipv4.tcp_syncookies
           value: "0"
         - name: net.ipv4.tcp_keepalive_time
@@ -295,13 +292,10 @@ spec:
     #   storageSize: 1Gi
     #   # mount path of the PVC
     #   mountPath: /some/path
-    storageVolumes:
-      - name: log
-        storageSize: "4Gi"
-        mountPath: "/var/log/pdlog"
-      - name: data
-        storageSize: "128Gi"
-        mountPath: "/data/pd"
+    #    storageVolumes:
+    #      - name: log
+    #        storageSize: "4Gi"
+    #        mountPath: "/var/log/pdlog"
 
     ## Subdirectory within the volume to store PD Data. By default, the data
     ## is stored in the root directory of volume which is mounted at
@@ -361,7 +355,7 @@ spec:
       level = "info"
       slow-threshold = 5000
       [log.file]
-      filename="/var/log/tidblog/tidb.log"
+      # filename="/var/log/tidblog/tidb.log"
       [performance]
       run-auto-analyze = false
       stats-lease = "2s"
@@ -487,7 +481,7 @@ spec:
     ## Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
     podSecurityContext:
       sysctls:
-        - name: vm.swappiness
+        - name: net.ipv4.tcp_syncookies
           value: "0"
         - name: net.ipv4.tcp_keepalive_time
           value: "300"
@@ -543,10 +537,10 @@ spec:
     #   storageSize: 1Gi
     #   # mount path of the PVC
     #   mountPath: /some/path
-    storageVolumes:
-      - name: log
-        storageSize: "4Gi"
-        mountPath: "/var/log/tidblog"
+    #    storageVolumes:
+    #      - name: log
+    #        storageSize: "4Gi"
+    #        mountPath: "/var/log/tidblog"
 
     ## config Kubernetes container lifecycle hooks for tidb-server pods
     ## Ref: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/
@@ -600,7 +594,6 @@ spec:
     ## Ref: https://docs.pingcap.com/tidb/stable/tikv-configuration-file
     config: |
       [storage]
-      data-dir="/data/tikv"
       reserve-space = "256GB"
       [server]
       # background-thread-count = 8
@@ -608,7 +601,7 @@ spec:
       # wal-dir = ""
       [raftstore]
       prevote = true
-      raftdb-path="/data/raft"
+      raftdb-path="/var/lib/tikv-raft/raftdb"
       store-pool-size = 8
       apply-pool-size = 8
       [gc]
@@ -626,7 +619,7 @@ spec:
     requests:
       #   cpu: 1000m
       #   memory: 1Gi
-      storage: 10Gi
+      storage: 2048Gi
     # limits:
     #   cpu: 2000m
     #   memory: 2Gi
@@ -715,7 +708,7 @@ spec:
     ## Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
     podSecurityContext:
       sysctls:
-        - name: vm.swappiness
+        - name: net.ipv4.tcp_syncookies
           value: "0"
         - name: net.ipv4.tcp_keepalive_time
           value: "300"
@@ -750,20 +743,13 @@ spec:
     ## defines additional volumes for which PVCs will be created by StatefulSet controller
     storageVolumes:
       # this will be suffix of PVC names in VolumeClaimTemplates of TiKV StatefulSet
-      - name: data-volume
-        # specify this to use special storageClass for this volume, default to component-level `storageClassName`
-        # storageClassName: local-storage
-        # storage request of PVC
-        storageSize: 2048Gi
-        # mount path of the PVC
-        mountPath: /data/tikv
       - name: raft-volume
         # specify this to use special storageClass for this volume, default to component-level `storageClassName`
         # storageClassName: local-storage
         # storage request of PVC
         storageSize: 64Gi
         # mount path of the PVC
-        mountPath: /data/raft
+        mountPath: /var/lib/tikv-raft
 
     ## run TiKV container in privileged mode
     ## Processes in privileged containers are essentially equivalent to root on the host
