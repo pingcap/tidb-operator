@@ -12813,6 +12813,8 @@ spec:
                   type: array
                 version:
                   type: string
+                enableNamedStatusPort:
+                  type: boolean
               required:
               - replicas
               type: object
