@@ -1633,6 +1633,12 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				framework.ExpectNoError(err, "failed to scale in PD for TidbCluster %s/%s", ns, tc.Name)
 				err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 10*time.Second)
 				framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale in pd", ns, tc.Name)
+				log.Logf("waiting 30s for operator syncing")
+				wait.Poll(30*time.Second, 30*time.Second, func() (bool, error) {
+					return true, nil
+				})
+				err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 10*time.Second)
+				framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale in pd", ns, tc.Name)
 
 				var pvcUIDs map[string]string
 				ginkgo.By("Check PVC label tidb.pingcap.com/pvc-defer-deleting")
