@@ -242,7 +242,6 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 		serviceAccount = restore.Spec.ServiceAccount
 	}
 
-	// TODO: need add ResourceRequirement for restore job
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      restoreLabel.Labels(),
@@ -264,9 +263,10 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 					Resources: restore.Spec.ResourceRequirements,
 				},
 			},
-			RestartPolicy: corev1.RestartPolicyNever,
-			Affinity:      restore.Spec.Affinity,
-			Tolerations:   restore.Spec.Tolerations,
+			RestartPolicy:    corev1.RestartPolicyNever,
+			Tolerations:      restore.Spec.Tolerations,
+			ImagePullSecrets: restore.Spec.ImagePullSecrets,
+			Affinity:         restore.Spec.Affinity,
 			Volumes: append([]corev1.Volume{
 				{
 					Name: label.RestoreJobLabelVal,
@@ -278,10 +278,6 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 				},
 			}, volumes...),
 		},
-	}
-
-	if restore.Spec.ImagePullSecrets != nil {
-		podSpec.Spec.ImagePullSecrets = restore.Spec.ImagePullSecrets
 	}
 
 	job := &batchv1.Job{
@@ -419,7 +415,6 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		brImage = restore.Spec.ToolImage
 	}
 
-	// TODO: need add ResourceRequirement for restore job
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      restoreLabel.Labels(),
@@ -449,13 +444,12 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 					Resources:       restore.Spec.ResourceRequirements,
 				},
 			},
-			Volumes:       volumes,
-			RestartPolicy: corev1.RestartPolicyNever,
+			RestartPolicy:    corev1.RestartPolicyNever,
+			Tolerations:      restore.Spec.Tolerations,
+			ImagePullSecrets: restore.Spec.ImagePullSecrets,
+			Affinity:         restore.Spec.Affinity,
+			Volumes:          volumes,
 		},
-	}
-
-	if restore.Spec.ImagePullSecrets != nil {
-		podSpec.Spec.ImagePullSecrets = restore.Spec.ImagePullSecrets
 	}
 
 	job := &batchv1.Job{

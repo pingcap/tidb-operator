@@ -105,6 +105,10 @@ type TidbMonitorSpec struct {
 	// Defaults to the value of `prometheus_replica`. External label will
 	// _not_ be added when value is set to empty string (`""`).
 	ReplicaExternalLabelName *string `json:"replicaExternalLabelName,omitempty"`
+	// Replicas is the number of desired replicas.
+	// Defaults to 1.
+	// +optional
+	Replicas *int32 `json:"replicas,omitempty"`
 }
 
 // PrometheusSpec is the desired state of prometheus

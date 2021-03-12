@@ -286,9 +286,10 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 					Resources: backup.Spec.ResourceRequirements,
 				},
 			},
-			RestartPolicy: corev1.RestartPolicyNever,
-			Affinity:      backup.Spec.Affinity,
-			Tolerations:   backup.Spec.Tolerations,
+			RestartPolicy:    corev1.RestartPolicyNever,
+			Tolerations:      backup.Spec.Tolerations,
+			ImagePullSecrets: backup.Spec.ImagePullSecrets,
+			Affinity:         backup.Spec.Affinity,
 			Volumes: append([]corev1.Volume{
 				{
 					Name: label.BackupJobLabelVal,
@@ -300,10 +301,6 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 				},
 			}, volumes...),
 		},
-	}
-
-	if backup.Spec.ImagePullSecrets != nil {
-		podSpec.Spec.ImagePullSecrets = backup.Spec.ImagePullSecrets
 	}
 
 	job := &batchv1.Job{
@@ -474,15 +471,12 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 					Resources:       backup.Spec.ResourceRequirements,
 				},
 			},
-			RestartPolicy: corev1.RestartPolicyNever,
-			Affinity:      backup.Spec.Affinity,
-			Tolerations:   backup.Spec.Tolerations,
-			Volumes:       volumes,
+			RestartPolicy:    corev1.RestartPolicyNever,
+			Tolerations:      backup.Spec.Tolerations,
+			ImagePullSecrets: backup.Spec.ImagePullSecrets,
+			Affinity:         backup.Spec.Affinity,
+			Volumes:          volumes,
 		},
-	}
-
-	if backup.Spec.ImagePullSecrets != nil {
-		podSpec.Spec.ImagePullSecrets = backup.Spec.ImagePullSecrets
 	}
 
 	job := &batchv1.Job{
