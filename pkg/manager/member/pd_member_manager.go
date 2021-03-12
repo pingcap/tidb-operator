@@ -535,7 +535,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			})
 		}
 	}
-	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
+	if tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "tidb-client-tls", ReadOnly: true, MountPath: tidbClientCertPath,
 		})
@@ -582,7 +582,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			})
 		}
 	}
-	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
+	if tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
 		clientSecretName := util.TiDBClientTLSSecretName(tc.Name)
 		if tc.Spec.PD.TLSClientSecretName != nil {
 			clientSecretName = *tc.Spec.PD.TLSClientSecretName
@@ -777,7 +777,6 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 }
 
 func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
-
 	// For backward compatibility, only sync tidb configmap when .tidb.config is non-nil
 	config := tc.Spec.PD.Config
 	if config == nil {
@@ -796,7 +795,7 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		config.Set("security.key-path", path.Join(pdClusterCertPath, corev1.TLSPrivateKeyKey))
 	}
 	// Versions below v4.0 do not support Dashboard
-	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
+	if tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
 		config.Set("dashboard.tidb-cacert-path", path.Join(tidbClientCertPath, tlsSecretRootCAKey))
 		config.Set("dashboard.tidb-cert-path", path.Join(tidbClientCertPath, corev1.TLSCertKey))
 		config.Set("dashboard.tidb-key-path", path.Join(tidbClientCertPath, corev1.TLSPrivateKeyKey))
