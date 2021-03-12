@@ -211,10 +211,10 @@ def build(String name, String code, Map resources = e2ePodResources) {
                             withCredentials([
                                 string(credentialsId: "tp-codecov-token", variable: 'CODECOV_TOKEN')
                             ]) {
-                                // try to read the git HASH back as GIT_COMMIT if not exists (like triggered after a PR merged into a branch).
-                                GIT_HASH = readFile('GIT_HASH').trim()
                                 sh """#!/bin/bash
-                                if [ -z "${GIT_COMMIT}" ]; then export GIT_COMMIT=${GIT_HASH}; fi
+                                # try to read the git SHA back as GIT_COMMIT if not exists (like triggered after a PR merged into a branch).
+                                ls
+                                if [ -z "${GIT_COMMIT}" ]; then source EXPORT_GIT_COMMIT; fi
                                 echo "info: list all coverage files"
                                 ls -dla /kind-data/control-plane/coverage/*
                                 ls -dla /kind-data/worker1/coverage/*
@@ -342,8 +342,8 @@ try {
                         withCredentials([usernamePassword(credentialsId: 'TIDB_OPERATOR_HUB_AUTH', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
                             sh """#!/bin/bash
                             set -eu
-                            echo "save GIT_HASH into file"
-                            git rev-parse HEAD > GIT_HASH
+                            echo "save GTI_COMMIT export script into file"
+                            echo "export GIT_COMMIT=$(git rev-parse HEAD)" > EXPORT_GIT_COMMIT
                             echo "info: logging into hub.pingcap.net"
                             docker login -u \$USERNAME --password-stdin hub.pingcap.net <<< \$PASSWORD
                             echo "info: build and push images for e2e"
@@ -356,6 +356,7 @@ try {
                             # we run as root in our pods, this is required
                             # otherwise jenkins agent will fail because of the lack of permission
                             chown -R 1000:1000 .
+                            ls
                             """
                         }
                         stash excludes: "vendor/**,deploy/**,tests/**", name: "tidb-operator"
