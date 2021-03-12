@@ -181,8 +181,7 @@ def build(String name, String code, Map resources = e2ePodResources) {
                         unstash 'tidb-operator'
                         stage("Debug Info") {
                             sh """
-                            echo "print env"
-                            printenv
+                            echo "GIT_COMMIT=$GIT_COMMIT"
                             """
                             println "debug host: 172.16.5.15"
                             println "debug command: kubectl -n jenkins-ci exec -ti ${NODE_NAME} bash"
@@ -198,8 +197,7 @@ def build(String name, String code, Map resources = e2ePodResources) {
                         }
                         stage('Run') {
                             sh """
-                            echo "print env"
-                            printenv
+                            echo "GIT_COMMIT=$GIT_COMMIT"
                             """
                             sh """#!/bin/bash
                             export GOPATH=${WORKSPACE}/go
@@ -220,10 +218,10 @@ def build(String name, String code, Map resources = e2ePodResources) {
                                 string(credentialsId: "tp-codecov-token", variable: 'CODECOV_TOKEN')
                             ]) {
                                 sh """
-                                echo "print env"
-                                printenv
+                                echo "GIT_COMMIT=$GIT_COMMIT"
                                 """
                                 sh """#!/bin/bash
+                                export GIT_COMMIT=${GIT_COMMIT}
                                 echo "info: list all coverage files"
                                 ls -dla /kind-data/control-plane/coverage/*
                                 ls -dla /kind-data/worker1/coverage/*
@@ -344,8 +342,8 @@ try {
                         }
 
                         sh """
-                        echo "print env"
-                        printenv
+                        export GIT_COMMIT=${GIT_COMMIT}
+                        echo "GIT_COMMIT=$GIT_COMMIT"
                         """
                     }
 
