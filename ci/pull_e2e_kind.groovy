@@ -16,6 +16,12 @@ env.DEFAULT_GINKGO_NODES = env.DEFAULT_GINKGO_NODES ?: '8'
 env.DEFAULT_E2E_ARGS = env.DEFAULT_E2E_ARGS ?: ''
 env.DEFAULT_DELETE_NAMESPACE_ON_FAILURE = env.DEFAULT_DELETE_NAMESPACE_ON_FAILURE ?: 'true'
 
+if (!env.ghprbActualCommit) {
+    GIT_COMMIT = ""
+} else {
+    GIT_COMMIT = env.ghprbActualCommit
+}
+
 properties([
     parameters([
         string(name: 'GIT_URL', defaultValue: 'https://github.com/pingcap/tidb-operator', description: 'git repo url'),
@@ -211,7 +217,12 @@ def build(String name, String code, Map resources = e2ePodResources) {
                             withCredentials([
                                 string(credentialsId: "tp-codecov-token", variable: 'CODECOV_TOKEN')
                             ]) {
+                                if GIT_COMMIT == "" {
+                                    // try to fix env after PR merged into a branch.
+                                    GIT_COMMIT = sh(returnStdout: true, script: "git rev-parse HEAD").trim()
+                                }
                                 sh """#!/bin/bash
+                                export GIT_COMMIT=${GIT_COMMIT}
                                 echo "info: list all coverage files"
                                 ls -dla /kind-data/control-plane/coverage/*
                                 ls -dla /kind-data/worker1/coverage/*
