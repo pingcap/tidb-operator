@@ -16,12 +16,6 @@ env.DEFAULT_GINKGO_NODES = env.DEFAULT_GINKGO_NODES ?: '8'
 env.DEFAULT_E2E_ARGS = env.DEFAULT_E2E_ARGS ?: ''
 env.DEFAULT_DELETE_NAMESPACE_ON_FAILURE = env.DEFAULT_DELETE_NAMESPACE_ON_FAILURE ?: 'true'
 
-if (!env.ghprbActualCommit) {
-    GIT_COMMIT = ""
-} else {
-    GIT_COMMIT = env.ghprbActualCommit
-}
-
 properties([
     parameters([
         string(name: 'GIT_URL', defaultValue: 'https://github.com/pingcap/tidb-operator', description: 'git repo url'),
@@ -186,6 +180,10 @@ def build(String name, String code, Map resources = e2ePodResources) {
                     dir("${WORKSPACE}/go/src/github.com/pingcap/tidb-operator") {
                         unstash 'tidb-operator'
                         stage("Debug Info") {
+                            sh """
+                            echo "print env"
+                            printenv
+                            """
                             println "debug host: 172.16.5.15"
                             println "debug command: kubectl -n jenkins-ci exec -ti ${NODE_NAME} bash"
                             sh """
@@ -199,6 +197,10 @@ def build(String name, String code, Map resources = e2ePodResources) {
                             """
                         }
                         stage('Run') {
+                            sh """
+                            echo "print env"
+                            printenv
+                            """
                             sh """#!/bin/bash
                             export GOPATH=${WORKSPACE}/go
                             export ARTIFACTS=${ARTIFACTS}
@@ -217,12 +219,11 @@ def build(String name, String code, Map resources = e2ePodResources) {
                             withCredentials([
                                 string(credentialsId: "tp-codecov-token", variable: 'CODECOV_TOKEN')
                             ]) {
-                                if (GIT_COMMIT == "") {
-                                    // try to fix env after PR merged into a branch.
-                                    GIT_COMMIT = sh(returnStdout: true, script: "git rev-parse HEAD").trim()
-                                }
+                                sh """
+                                echo "print env"
+                                printenv
+                                """
                                 sh """#!/bin/bash
-                                export GIT_COMMIT=${GIT_COMMIT}
                                 echo "info: list all coverage files"
                                 ls -dla /kind-data/control-plane/coverage/*
                                 ls -dla /kind-data/worker1/coverage/*
@@ -282,6 +283,13 @@ try {
         GIT_REF = env.ghprbActualCommit
     }
 
+    def GIT_COMMIT
+    if (!env.ghprbActualCommit) {
+        GIT_COMMIT = ""
+    } else {
+        GIT_COMMIT = env.ghprbActualCommit
+    }
+
     timeout (time: 2, unit: 'HOURS') {
         // use fixed label, so we can reuse previous workers
         // increase version in pod label when we update pod template
@@ -329,6 +337,16 @@ try {
 
                         GITHASH = sh(returnStdout: true, script: "git rev-parse HEAD").trim()
                         IMAGE_TAG = env.JOB_NAME + "-" + GITHASH.substring(0, 6)
+
+                        if (GIT_COMMIT == "") {
+                            // try to fix env after PR merged into a branch.
+                            GIT_COMMIT = sh(returnStdout: true, script: "git rev-parse HEAD").trim()
+                        }
+
+                        sh """
+                        echo "print env"
+                        printenv
+                        """
                     }
 
                     stage("Build and Test") {
