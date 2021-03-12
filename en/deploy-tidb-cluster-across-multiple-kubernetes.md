@@ -159,13 +159,13 @@ You can follow the steps below to enable TLS between TiDB components for TiDB cl
 
 #### Use `cfssl`
 
-If you use `cfssl`, the CA certificate issue process is the same as the general issue process. You need to save the CA certificate created for the first time, and use this CA certificate when you issue certificates for TiDB components later. 
+If you use `cfssl`, the CA certificate issue process is the same as the general issue process. You need to save the CA certificate created for the first time, and use this CA certificate when you issue certificates for TiDB components later.
 
 In other words, when you create a component certificate in a cluster, you do not need to create a CA certificate again. Complete step 1 ~ 4 in [Enabling TLS between TiDB components](enable-tls-between-components.md#using-cfssl) once to issue the CA certificate. After that, start from step 5 to issue certificates between other cluster components.
 
 #### Use `cert-manager`
 
-If you use `cert-manager`, you only need to create a `CA Issuer` and a `CA Certificate` in the initial cluster, and export the `CA Secret` to other new clusters that want to join. 
+If you use `cert-manager`, you only need to create a `CA Issuer` and a `CA Certificate` in the initial cluster, and export the `CA Secret` to other new clusters that want to join.
 
 For other clusters, you only need to create a component certificate `Issuer` (refers to `${cluster_name}-tidb-issuer` in the [TLS document](enable-tls-between-components.md#using-cert-manager)) and configure the `Issuer` to use the `CA`. The detailed process is as follows:
 
@@ -429,7 +429,7 @@ For other TLS-related information, refer to the following documents:
 
 ### Deploy the initial cluster
 
-This section introduces how to deploy and initialize the cluster. 
+This section introduces how to deploy and initialize the cluster.
 
 In actual use, you need to set the contents of the `cluster1_name` and `cluster1_cluster_domain` variables according to your actual situation, where `cluster1_name` is the cluster name of cluster #1, `cluster1_cluster_domain` is the `Cluster Domain` of cluster #1, and `cluster1_namespace` is the namespace of cluster #1. The following `YAML` file enables the TLS feature, and each component starts to verify the certificates issued by the `CN` for the `CA` of `TiDB` by configuring the `cert-allowed-cn`.
 
