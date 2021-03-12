@@ -105,7 +105,23 @@ Kubernetes core/v1.ResourceRequirements
 </td>
 <td>
 <em>(Optional)</em>
-<p>List of environment variables to set in the container, like v1.Container.Env.</p>
+<p>List of environment variables to set in the container, like v1.Container.Env.
+Note that the following builtin env vars will be overwritten by values set here
+- S3_PROVIDER
+- S3_ENDPOINT
+- AWS_REGION
+- AWS_ACL
+- AWS_STORAGE_CLASS
+- AWS_DEFAULT_REGION
+- AWS_ACCESS_KEY_ID
+- AWS_SECRET_ACCESS_KEY
+- GCS_PROJECT_ID
+- GCS_OBJECT_ACL
+- GCS_BUCKET_ACL
+- GCS_LOCATION
+- GCS_STORAGE_CLASS
+- GCS_SERVICE_ACCOUNT_JSON_KEY
+- BR_LOG_TO_TERM</p>
 </td>
 </tr>
 <tr>
@@ -905,7 +921,23 @@ Kubernetes core/v1.ResourceRequirements
 </td>
 <td>
 <em>(Optional)</em>
-<p>List of environment variables to set in the container, like v1.Container.Env.</p>
+<p>List of environment variables to set in the container, like v1.Container.Env.
+Note that the following builtin env vars will be overwritten by values set here
+- S3_PROVIDER
+- S3_ENDPOINT
+- AWS_REGION
+- AWS_ACL
+- AWS_STORAGE_CLASS
+- AWS_DEFAULT_REGION
+- AWS_ACCESS_KEY_ID
+- AWS_SECRET_ACCESS_KEY
+- GCS_PROJECT_ID
+- GCS_OBJECT_ACL
+- GCS_BUCKET_ACL
+- GCS_LOCATION
+- GCS_STORAGE_CLASS
+- GCS_SERVICE_ACCOUNT_JSON_KEY
+- BR_LOG_TO_TERM</p>
 </td>
 </tr>
 <tr>
@@ -2843,7 +2875,23 @@ Kubernetes core/v1.ResourceRequirements
 </td>
 <td>
 <em>(Optional)</em>
-<p>List of environment variables to set in the container, like v1.Container.Env.</p>
+<p>List of environment variables to set in the container, like v1.Container.Env.
+Note that the following builtin env vars will be overwritten by values set here
+- S3_PROVIDER
+- S3_ENDPOINT
+- AWS_REGION
+- AWS_ACL
+- AWS_STORAGE_CLASS
+- AWS_DEFAULT_REGION
+- AWS_ACCESS_KEY_ID
+- AWS_SECRET_ACCESS_KEY
+- GCS_PROJECT_ID
+- GCS_OBJECT_ACL
+- GCS_BUCKET_ACL
+- GCS_LOCATION
+- GCS_STORAGE_CLASS
+- GCS_SERVICE_ACCOUNT_JSON_KEY
+- BR_LOG_TO_TERM</p>
 </td>
 </tr>
 <tr>
@@ -10763,7 +10811,23 @@ Kubernetes core/v1.ResourceRequirements
 </td>
 <td>
 <em>(Optional)</em>
-<p>List of environment variables to set in the container, like v1.Container.Env.</p>
+<p>List of environment variables to set in the container, like v1.Container.Env.
+Note that the following builtin env vars will be overwritten by values set here
+- S3_PROVIDER
+- S3_ENDPOINT
+- AWS_REGION
+- AWS_ACL
+- AWS_STORAGE_CLASS
+- AWS_DEFAULT_REGION
+- AWS_ACCESS_KEY_ID
+- AWS_SECRET_ACCESS_KEY
+- GCS_PROJECT_ID
+- GCS_OBJECT_ACL
+- GCS_BUCKET_ACL
+- GCS_LOCATION
+- GCS_STORAGE_CLASS
+- GCS_SERVICE_ACCOUNT_JSON_KEY
+- BR_LOG_TO_TERM</p>
 </td>
 </tr>
 <tr>
