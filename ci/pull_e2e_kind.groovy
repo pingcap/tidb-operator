@@ -212,7 +212,6 @@ def build(String name, String code, Map resources = e2ePodResources) {
                                 string(credentialsId: "tp-codecov-token", variable: 'CODECOV_TOKEN')
                             ]) {
                                 sh """#!/bin/bash
-                                # try to read the git SHA back as GIT_COMMIT if not exists (like triggered after a PR merged into a branch).
                                 ls
                                 if [ -z "${GIT_COMMIT}" ]; then source EXPORT_GIT_COMMIT; fi
                                 echo "info: list all coverage files"
