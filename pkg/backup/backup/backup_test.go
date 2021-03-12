@@ -19,10 +19,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/testutils"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 )
@@ -75,6 +77,17 @@ func validDumplingBackup() *v1alpha1.Backup {
 					Prefix: "prefix-",
 				},
 			},
+			Env: []corev1.EnvVar{
+				{
+					Name:  "env_name",
+					Value: "env_value",
+				},
+				// existing env name will be overwritten for backup
+				{
+					Name:  "S3_PROVIDER",
+					Value: "fake_provider",
+				},
+			},
 		},
 	}
 
@@ -101,6 +114,22 @@ func genValidBRBackups() []*v1alpha1.Backup {
 					ClusterNamespace: "ns",
 					Cluster:          fmt.Sprintf("tidb_%d", i),
 					DB:               "dbName",
+				},
+				Env: []corev1.EnvVar{
+					{
+						Name:  fmt.Sprintf("env_name_%d", i),
+						Value: fmt.Sprintf("env_value_%d", i),
+					},
+					// existing env name will be overwritten for backup
+					{
+						Name:  "BR_LOG_TO_TERM",
+						Value: "value",
+					},
+					// existing env name will be overwritten for cleaner
+					{
+						Name:  "S3_PROVIDER",
+						Value: "value",
+					},
 				},
 			},
 		}
@@ -133,8 +162,25 @@ func TestBackupManagerDumpling(t *testing.T) {
 	err = bm.syncBackupJob(backup)
 	g.Expect(err).Should(BeNil())
 	helper.hasCondition(backup.Namespace, backup.Name, v1alpha1.BackupScheduled, "")
-	_, err = deps.KubeClientset.BatchV1().Jobs(backup.Namespace).Get(backup.GetBackupJobName(), metav1.GetOptions{})
+	job, err := deps.KubeClientset.BatchV1().Jobs(backup.Namespace).Get(backup.GetBackupJobName(), metav1.GetOptions{})
 	g.Expect(err).Should(BeNil())
+
+	// check pod env are set correctly
+	env1 := corev1.EnvVar{
+		Name:  "env_name",
+		Value: "env_value",
+	}
+	env2Yes := corev1.EnvVar{
+		Name:  "S3_PROVIDER",
+		Value: "fake_provider",
+	}
+	env2No := corev1.EnvVar{
+		Name:  "S3_PROVIDER",
+		Value: "",
+	}
+	g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env1))
+	g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env2Yes))
+	g.Expect(job.Spec.Template.Spec.Containers[0].Env).NotTo(gomega.ContainElement(env2No))
 }
 
 func TestBackupManagerBR(t *testing.T) {
@@ -155,7 +201,7 @@ func TestBackupManagerBR(t *testing.T) {
 	helper.hasCondition(backup.Namespace, backup.Name, v1alpha1.BackupInvalid, "")
 
 	// test valid backups
-	for _, backup := range genValidBRBackups() {
+	for i, backup := range genValidBRBackups() {
 		_, err := deps.Clientset.PingcapV1alpha1().Backups(backup.Namespace).Create(backup)
 		g.Expect(err).Should(BeNil())
 
@@ -172,8 +218,25 @@ func TestBackupManagerBR(t *testing.T) {
 		err = bm.syncBackupJob(backup)
 		g.Expect(err).Should(BeNil())
 		helper.hasCondition(backup.Namespace, backup.Name, v1alpha1.BackupScheduled, "")
-		_, err = deps.KubeClientset.BatchV1().Jobs(backup.Namespace).Get(backup.GetBackupJobName(), metav1.GetOptions{})
+		job, err := deps.KubeClientset.BatchV1().Jobs(backup.Namespace).Get(backup.GetBackupJobName(), metav1.GetOptions{})
 		g.Expect(err).Should(BeNil())
+
+		// check pod env are set correctly
+		env1 := corev1.EnvVar{
+			Name:  fmt.Sprintf("env_name_%d", i),
+			Value: fmt.Sprintf("env_value_%d", i),
+		}
+		env2Yes := corev1.EnvVar{
+			Name:  "BR_LOG_TO_TERM",
+			Value: "value",
+		}
+		env2No := corev1.EnvVar{
+			Name:  "BR_LOG_TO_TERM",
+			Value: string(rune(1)),
+		}
+		g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env1))
+		g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env2Yes))
+		g.Expect(job.Spec.Template.Spec.Containers[0].Env).NotTo(gomega.ContainElement(env2No))
 	}
 }
 
