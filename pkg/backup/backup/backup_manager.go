@@ -190,6 +190,10 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
 	}
 	envVars = append(envVars, storageEnv...)
+
+	// set env vars specified in backup.Spec.Env
+	envVars = util.AppendOverwriteEnv(envVars, backup.Spec.Env)
+
 	// TODO: make pvc request storage size configurable
 	reason, err = bm.ensureBackupPVCExist(backup)
 	if err != nil {
@@ -351,6 +355,9 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		Name:  "BR_LOG_TO_TERM",
 		Value: fmt.Sprint(1),
 	})
+
+	// set env vars specified in backup.Spec.Env
+	envVars = util.AppendOverwriteEnv(envVars, backup.Spec.Env)
 
 	args := []string{
 		"backup",
