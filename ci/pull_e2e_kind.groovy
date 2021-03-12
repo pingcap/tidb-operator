@@ -180,9 +180,6 @@ def build(String name, String code, Map resources = e2ePodResources) {
                     dir("${WORKSPACE}/go/src/github.com/pingcap/tidb-operator") {
                         unstash 'tidb-operator'
                         stage("Debug Info") {
-                            sh """
-                            echo "GIT_COMMIT=$GIT_COMMIT"
-                            """
                             println "debug host: 172.16.5.15"
                             println "debug command: kubectl -n jenkins-ci exec -ti ${NODE_NAME} bash"
                             sh """
@@ -196,9 +193,6 @@ def build(String name, String code, Map resources = e2ePodResources) {
                             """
                         }
                         stage('Run') {
-                            sh """
-                            echo "GIT_COMMIT=$GIT_COMMIT"
-                            """
                             sh """#!/bin/bash
                             export GOPATH=${WORKSPACE}/go
                             export ARTIFACTS=${ARTIFACTS}
@@ -217,11 +211,10 @@ def build(String name, String code, Map resources = e2ePodResources) {
                             withCredentials([
                                 string(credentialsId: "tp-codecov-token", variable: 'CODECOV_TOKEN')
                             ]) {
-                                sh """
-                                echo "GIT_COMMIT=$GIT_COMMIT"
-                                """
+                                // try to read the git HASH back as GIT_COMMIT if not exists (like triggered after a PR merged into a branch).
+                                GIT_HASH = readFile('GIT_HASH').trim()
                                 sh """#!/bin/bash
-                                export GIT_COMMIT=${GIT_COMMIT}
+                                if [ -z "${GIT_COMMIT}" ]; then export GIT_COMMIT=${GIT_HASH}; fi
                                 echo "info: list all coverage files"
                                 ls -dla /kind-data/control-plane/coverage/*
                                 ls -dla /kind-data/worker1/coverage/*
@@ -281,13 +274,6 @@ try {
         GIT_REF = env.ghprbActualCommit
     }
 
-    def GIT_COMMIT
-    if (!env.ghprbActualCommit) {
-        GIT_COMMIT = ""
-    } else {
-        GIT_COMMIT = env.ghprbActualCommit
-    }
-
     timeout (time: 2, unit: 'HOURS') {
         // use fixed label, so we can reuse previous workers
         // increase version in pod label when we update pod template
@@ -335,19 +321,9 @@ try {
 
                         GITHASH = sh(returnStdout: true, script: "git rev-parse HEAD").trim()
                         IMAGE_TAG = env.JOB_NAME + "-" + GITHASH.substring(0, 6)
-
-                        if (GIT_COMMIT == "") {
-                            // try to fix env after PR merged into a branch.
-                            GIT_COMMIT = sh(returnStdout: true, script: "git rev-parse HEAD").trim()
-                        }
-
-                        sh """
-                        export GIT_COMMIT=${GIT_COMMIT}
-                        echo "GIT_COMMIT=$GIT_COMMIT"
-                        """
                     }
 
-                    stage("Build and Test") {
+                    stage("Build") {
                         withCredentials([
                             string(credentialsId: "tp-codecov-token", variable: 'CODECOV_TOKEN')
                         ]) {
@@ -366,6 +342,8 @@ try {
                         withCredentials([usernamePassword(credentialsId: 'TIDB_OPERATOR_HUB_AUTH', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
                             sh """#!/bin/bash
                             set -eu
+                            echo "save GIT_HASH into file"
+                            git rev-parse HEAD > GIT_HASH
                             echo "info: logging into hub.pingcap.net"
                             docker login -u \$USERNAME --password-stdin hub.pingcap.net <<< \$PASSWORD
                             echo "info: build and push images for e2e"
