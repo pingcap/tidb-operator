@@ -191,9 +191,9 @@ def build(String name, String code, Map resources = e2ePodResources) {
                             println "debug command: kubectl -n jenkins-ci exec -ti ${NODE_NAME} bash"
                             sh """
                             if [ "${env.GIT_COMMIT}" = "" ]; then echo "iffffffffffffffff"; fi
-                            echo "GIT_COMMIT aaaaaaaa $${env.GIT_COMMIT}"
+                            echo "GIT_COMMIT aaaaaaaa ${env.GIT_COMMIT}"
                             if [ "${env.GIT_COMMIT}" = "" ]; then source EXPORT_GIT_COMMIT; fi
-                            echo "GIT_COMMIT bbbbbbbb $${env.GIT_COMMIT}"
+                            echo "GIT_COMMIT bbbbbbbb ${env.GIT_COMMIT}"
                             echo "====== shell env ======"
                             echo "pwd: \$(pwd)"
                             env
