@@ -16,6 +16,13 @@ env.DEFAULT_GINKGO_NODES = env.DEFAULT_GINKGO_NODES ?: '8'
 env.DEFAULT_E2E_ARGS = env.DEFAULT_E2E_ARGS ?: ''
 env.DEFAULT_DELETE_NAMESPACE_ON_FAILURE = env.DEFAULT_DELETE_NAMESPACE_ON_FAILURE ?: 'true'
 
+def GIT_COMMIT
+if (!env.ghprbActualCommit) {
+    GIT_COMMIT = ""
+} else {
+    GIT_COMMIT = env.ghprbActualCommit
+}
+
 properties([
     parameters([
         string(name: 'GIT_URL', defaultValue: 'https://github.com/pingcap/tidb-operator', description: 'git repo url'),
@@ -213,6 +220,7 @@ def build(String name, String code, Map resources = e2ePodResources) {
                             ]) {
                                 sh """#!/bin/bash
                                 # try to read the git SHA back as GIT_COMMIT if not exists (like triggered after a PR merged into a branch).
+                                cat EXPORT_GIT_COMMIT || true
                                 ls
                                 if [ -z "${GIT_COMMIT}" ]; then source EXPORT_GIT_COMMIT; fi
                                 echo "info: list all coverage files"
@@ -344,6 +352,7 @@ try {
                             set -eu
                             echo "save GTI_COMMIT export script into file"
                             echo "export GIT_COMMIT=\$(git rev-parse HEAD)" > EXPORT_GIT_COMMIT
+                            cat EXPORT_GIT_COMMIT || true
                             echo "info: logging into hub.pingcap.net"
                             docker login -u \$USERNAME --password-stdin hub.pingcap.net <<< \$PASSWORD
                             echo "info: build and push images for e2e"
