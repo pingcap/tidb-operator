@@ -280,7 +280,7 @@ spec:
     mountClusterClientSecret: true
 
     ## The storageClassName of the persistent volume for PD data storage.
-    storageClassName: "managed-premium"
+    storageClassName: "fast-premium"
 
     ## defines additional volumes for which PVCs will be created by StatefulSet controller
     # storageVolumes:
@@ -308,30 +308,30 @@ spec:
 
     ## Affinity for pod scheduling
     ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
-    # affinity:
-    #   podAntiAffinity:
-    #     # prefer not to run pd pods on the same node which runs tidb/tikv pods
-    #     preferredDuringSchedulingIgnoredDuringExecution:
-    #     - podAffinityTerm:
-    #         labelSelector:
-    #           matchExpressions:
-    #           - key: app.kubernetes.io/component
-    #             operator: In
-    #             values:
-    #             - tidb
-    #             - tikv
-    #         topologyKey: kubernetes.io/hostname
-    #       weight: 100
-    #     # require not to run PD pods on nodes where there's already a PD pod running
-    #     # if setting this, you must ensure that at least `replicas` nodes are available in the cluster
-    #     requiredDuringSchedulingIgnoredDuringExecution:
-    #     - labelSelector:
-    #         matchExpressions:
-    #         - key: app.kubernetes.io/component
-    #           operator: In
-    #           values:
-    #           - pd
-    #       topologyKey: kubernetes.io/hostname
+    affinity:
+      podAntiAffinity:
+        # prefer not to run pd pods on the same node which runs tidb/tikv pods
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+              - key: app.kubernetes.io/component
+                operator: In
+                values:
+                - tidb
+                - tikv
+            topologyKey: kubernetes.io/hostname
+          weight: 100
+        # require not to run PD pods on nodes where there's already a PD pod running
+        # if setting this, you must ensure that at least `replicas` nodes are available in the cluster
+        requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+            - key: app.kubernetes.io/component
+              operator: In
+              values:
+              - pd
+          topologyKey: kubernetes.io/hostname
 
     ## set a different tidb client TLS cert secret name for TiDB Dashboard than the default ${cluster_name}-tidb-client-secret
     ## only useful when TLS is enabled for TiDB server
@@ -386,8 +386,6 @@ spec:
     ## if you are in a private cloud environment, you can use Ingress or NodePort, or ClusterIP and port forward (only for development/test)
     ## you can set mysqlNodePort and statusNodePort to expose server/status service to the given NodePort
     service:
-      annotations:
-        service.beta.kubernetes.io/azure-load-balancer-internal: "true"
       exposeStatus: true
       externalTrafficPolicy: Local
       type: LoadBalancer
@@ -525,7 +523,7 @@ spec:
     #   imagePullPolicy: IfNotPresent
 
     ## The storageClassName of the persistent volume for TiDB data storage.
-    storageClassName: "managed-premium"
+    storageClassName: "fast-premium"
 
     ## defines additional volumes for which PVCs will be created by StatefulSet controller
     # storageVolumes:
@@ -558,29 +556,29 @@ spec:
 
     ## Affinity for pod scheduling
     ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
-    # affinity:
-    #   podAntiAffinity:
-    #     preferredDuringSchedulingIgnoredDuringExecution:
-    #     - podAffinityTerm:
-    #         labelSelector:
-    #           matchExpressions:
-    #           - key: app.kubernetes.io/component
-    #             operator: In
-    #             values:
-    #             - pd
-    #             - tikv
-    #         topologyKey: kubernetes.io/hostname
-    #       weight: 100
-    #     # require not to run TiDB pods on nodes where there's already a TiDB pod running
-    #     # if setting this, you must ensure that at least `replicas` nodes are available in the cluster
-    #     requiredDuringSchedulingIgnoredDuringExecution:
-    #     - labelSelector:
-    #         matchExpressions:
-    #         - key: app.kubernetes.io/component
-    #           operator: In
-    #           values:
-    #           - tidb
-    #       topologyKey: kubernetes.io/hostname
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+              - key: app.kubernetes.io/component
+                operator: In
+                values:
+                - pd
+                - tikv
+            topologyKey: kubernetes.io/hostname
+          weight: 100
+        # require not to run TiDB pods on nodes where there's already a TiDB pod running
+        # if setting this, you must ensure that at least `replicas` nodes are available in the cluster
+        requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+            - key: app.kubernetes.io/component
+              operator: In
+              values:
+              - tidb
+          topologyKey: kubernetes.io/hostname
 
   tikv:
     ############################
@@ -738,7 +736,7 @@ spec:
     #     memory: 2Gi
 
     ## The storageClassName of the persistent volume for TiKV data storage.
-    storageClassName: "managed-premium"
+    storageClassName: "fast-premium"
 
     ## defines additional volumes for which PVCs will be created by StatefulSet controller
     storageVolumes:
@@ -774,29 +772,29 @@ spec:
 
     ## Affinity for pod scheduling
     ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
-    # affinity:
-    #   podAntiAffinity:
-    #     preferredDuringSchedulingIgnoredDuringExecution:
-    #     - podAffinityTerm:
-    #         labelSelector:
-    #           matchExpressions:
-    #           - key: app.kubernetes.io/component
-    #             operator: In
-    #             values:
-    #             - tidb
-    #             - pd
-    #         topologyKey: kubernetes.io/hostname
-    #       weight: 100
-    #     # require not to run TiKV pods on nodes where there's already a TiKV pod running
-    #     # if setting this, you must ensure that at least `replicas` nodes are available in the cluster
-    #     requiredDuringSchedulingIgnoredDuringExecution:
-    #     - labelSelector:
-    #         matchExpressions:
-    #         - key: app.kubernetes.io/component
-    #           operator: In
-    #           values:
-    #           - tikv
-    #       topologyKey: kubernetes.io/hostname
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+              - key: app.kubernetes.io/component
+                operator: In
+                values:
+                - tidb
+                - pd
+            topologyKey: kubernetes.io/hostname
+          weight: 100
+        # require not to run TiKV pods on nodes where there's already a TiKV pod running
+        # if setting this, you must ensure that at least `replicas` nodes are available in the cluster
+        requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+            - key: app.kubernetes.io/component
+              operator: In
+              values:
+              - tikv
+          topologyKey: kubernetes.io/hostname
 
   ## Deploy TiDB Binlog of a TiDB cluster
   ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/deploy-tidb-binlog/#deploy-pump

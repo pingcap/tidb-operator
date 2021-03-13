@@ -18,6 +18,7 @@ module "vpc" {
 }
 
 module "key-pair" {
+  depends_on = []
   source                        = "../modules/azure/key-pair"
 
   name                          = var.aks_name
@@ -35,8 +36,19 @@ module "aks" {
   region                        = var.region
   resource_group                = var.resource_group
   vpc_name                      = module.vpc.vpc_name
+  aks_sku_tier                  = var.aks_sku_tier
   availability_zones            = var.availability_zones
   ssh_key_data                  = module.key-pair.public_key_openssh
+
+  default_pool_name             = var.default_pool_name
+  default_pool_node_count       = var.default_pool_node_count
+  default_pool_instance_type    = var.default_pool_instance_type
+
+  dns_service_ip                = var.dns_service_ip
+  docker_bridge_cidr            = var.docker_bridge_cidr
+  service_cidr                  = var.service_cidr
+  aks_cidr                      = var.aks_cidr
+
   kubeconfig_path               = local.kubeconfig_path
 }
 

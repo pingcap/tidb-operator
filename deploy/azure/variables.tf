@@ -38,6 +38,49 @@ variable "aks_version" {
   default     = "1.19.7"
 }
 
+# see https://docs.microsoft.com/en-us/azure/aks/uptime-sla
+variable "aks_sku_tier" {
+  description = "Uptime SLA for the AKS cluster"
+  type        = string
+  default     = "Free"
+}
+
+variable "default_pool_name" {
+  description = "Name of the default node pool"
+  default     = "default"
+}
+
+variable "default_pool_node_count" {
+  description = "Number of nodes in default node pool"
+  default     = 1
+}
+
+variable "default_pool_instance_type" {
+  description = "VM type of default node pool"
+  default = "Standard_B2s"
+}
+
+variable "dns_service_ip" {
+  description = ""
+  default     = "10.0.0.10"
+}
+
+variable "docker_bridge_cidr" {
+  description = ""
+  default     = "172.17.0.1/16"
+}
+
+variable "service_cidr" {
+  description = "VPC private subnets, must be set correctly if create_vpc is true"
+  default     = "10.0.0.0/20"
+}
+
+variable "aks_cidr" {
+  description = "VPC private subnets, must be set correctly if create_vpc is true"
+  type        = list(string)
+  default     = ["10.0.16.0/20"]
+}
+
 ####################################### TiDB Operator #######################################
 variable "tidb_operator_version" {
   default = "v1.1.11"
