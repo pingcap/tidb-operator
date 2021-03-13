@@ -230,9 +230,7 @@ def build(String name, String code, Map resources = e2ePodResources) {
                                 cp /kind-data/worker2/coverage/*.cov /tmp
                                 cp /kind-data/worker3/coverage/*.cov /tmp
                                 ./bin/gocovmerge /tmp/*.cov > /tmp/coverage.txt
-                                cat EXPORT_GIT_COMMIT || true
-                                ls
-                                source EXPORT_GIT_COMMIT
+                                if [ ! "$GIT_COMMIT" ]; then source EXPORT_GIT_COMMIT; fi
                                 echo "info: uploading coverage to codecov"
                                 bash <(curl -s https://codecov.io/bash) -t ${CODECOV_TOKEN} -F e2e -n tidb-operator -f /tmp/coverage.txt
                                 """
@@ -351,7 +349,6 @@ try {
                             set -eu
                             echo "save GTI_COMMIT export script into file"
                             echo "export GIT_COMMIT=\$(git rev-parse HEAD)" > EXPORT_GIT_COMMIT
-                            cat EXPORT_GIT_COMMIT || true
                             echo "info: logging into hub.pingcap.net"
                             docker login -u \$USERNAME --password-stdin hub.pingcap.net <<< \$PASSWORD
                             echo "info: build and push images for e2e"
@@ -364,7 +361,6 @@ try {
                             # we run as root in our pods, this is required
                             # otherwise jenkins agent will fail because of the lack of permission
                             chown -R 1000:1000 .
-                            ls
                             """
                         }
                         stash excludes: "vendor/**,deploy/**,tests/**", name: "tidb-operator"
