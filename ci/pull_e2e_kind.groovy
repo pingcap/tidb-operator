@@ -232,6 +232,7 @@ def build(String name, String code, Map resources = e2ePodResources) {
                                 ./bin/gocovmerge /tmp/*.cov > /tmp/coverage.txt
                                 cat EXPORT_GIT_COMMIT || true
                                 ls
+                                source EXPORT_GIT_COMMIT
                                 echo "info: uploading coverage to codecov"
                                 bash <(curl -s https://codecov.io/bash) -t ${CODECOV_TOKEN} -F e2e -n tidb-operator -f /tmp/coverage.txt
                                 """
