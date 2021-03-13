@@ -219,10 +219,6 @@ def build(String name, String code, Map resources = e2ePodResources) {
                                 string(credentialsId: "tp-codecov-token", variable: 'CODECOV_TOKEN')
                             ]) {
                                 sh """#!/bin/bash
-                                # try to read the git SHA back as GIT_COMMIT if not exists (like triggered after a PR merged into a branch).
-                                cat EXPORT_GIT_COMMIT || true
-                                ls
-                                if [ -z "${GIT_COMMIT}" ]; then source EXPORT_GIT_COMMIT; fi
                                 echo "info: list all coverage files"
                                 ls -dla /kind-data/control-plane/coverage/*
                                 ls -dla /kind-data/worker1/coverage/*
@@ -234,6 +230,8 @@ def build(String name, String code, Map resources = e2ePodResources) {
                                 cp /kind-data/worker2/coverage/*.cov /tmp
                                 cp /kind-data/worker3/coverage/*.cov /tmp
                                 ./bin/gocovmerge /tmp/*.cov > /tmp/coverage.txt
+                                cat EXPORT_GIT_COMMIT || true
+                                ls
                                 echo "info: uploading coverage to codecov"
                                 bash <(curl -s https://codecov.io/bash) -t ${CODECOV_TOKEN} -F e2e -n tidb-operator -f /tmp/coverage.txt
                                 """
