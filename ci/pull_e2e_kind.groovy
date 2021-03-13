@@ -190,6 +190,10 @@ def build(String name, String code, Map resources = e2ePodResources) {
                             println "debug host: 172.16.5.15"
                             println "debug command: kubectl -n jenkins-ci exec -ti ${NODE_NAME} bash"
                             sh """
+                            if [ "${env.GIT_COMMIT}" = "" ]; then echo "iffffffffffffffff"; fi
+                            echo "GIT_COMMIT aaaaaaaa $GIT_COMMIT"
+                            if [ "${env.GIT_COMMIT}" = "" ]; then source EXPORT_GIT_COMMIT; fi
+                            echo "GIT_COMMIT bbbbbbbb $GIT_COMMIT"
                             echo "====== shell env ======"
                             echo "pwd: \$(pwd)"
                             env
@@ -230,7 +234,7 @@ def build(String name, String code, Map resources = e2ePodResources) {
                                 cp /kind-data/worker2/coverage/*.cov /tmp
                                 cp /kind-data/worker3/coverage/*.cov /tmp
                                 ./bin/gocovmerge /tmp/*.cov > /tmp/coverage.txt
-                                if [ "${env.GIT_COMMIT}" = "" ]; then source EXPORT_GIT_COMMIT; fi
+                                # if [ "${env.GIT_COMMIT}" = "" ]; then source EXPORT_GIT_COMMIT; fi
                                 echo "info: uploading coverage to codecov"
                                 bash <(curl -s https://codecov.io/bash) -t ${CODECOV_TOKEN} -F e2e -n tidb-operator -f /tmp/coverage.txt
                                 """
