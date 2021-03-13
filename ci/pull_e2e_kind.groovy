@@ -16,13 +16,6 @@ env.DEFAULT_GINKGO_NODES = env.DEFAULT_GINKGO_NODES ?: '8'
 env.DEFAULT_E2E_ARGS = env.DEFAULT_E2E_ARGS ?: ''
 env.DEFAULT_DELETE_NAMESPACE_ON_FAILURE = env.DEFAULT_DELETE_NAMESPACE_ON_FAILURE ?: 'true'
 
-def GIT_COMMIT
-if (!env.ghprbActualCommit) {
-    GIT_COMMIT = ""
-} else {
-    GIT_COMMIT = env.ghprbActualCommit
-}
-
 properties([
     parameters([
         string(name: 'GIT_URL', defaultValue: 'https://github.com/pingcap/tidb-operator', description: 'git repo url'),
@@ -190,10 +183,6 @@ def build(String name, String code, Map resources = e2ePodResources) {
                             println "debug host: 172.16.5.15"
                             println "debug command: kubectl -n jenkins-ci exec -ti ${NODE_NAME} bash"
                             sh """
-                            if [ "${env.GIT_COMMIT}" = "" ]; then echo "iffffffffffffffff"; fi
-                            echo "GIT_COMMIT aaaaaaaa ${env.GIT_COMMIT}"
-                            if [ "${env.GIT_COMMIT}" = "" ]; then source EXPORT_GIT_COMMIT; fi
-                            echo "GIT_COMMIT bbbbbbbb ${env.GIT_COMMIT}"
                             echo "====== shell env ======"
                             echo "pwd: \$(pwd)"
                             env
@@ -234,7 +223,7 @@ def build(String name, String code, Map resources = e2ePodResources) {
                                 cp /kind-data/worker2/coverage/*.cov /tmp
                                 cp /kind-data/worker3/coverage/*.cov /tmp
                                 ./bin/gocovmerge /tmp/*.cov > /tmp/coverage.txt
-                                # if [ "${env.GIT_COMMIT}" = "" ]; then source EXPORT_GIT_COMMIT; fi
+                                source EXPORT_GIT_COMMIT
                                 echo "info: uploading coverage to codecov"
                                 bash <(curl -s https://codecov.io/bash) -t ${CODECOV_TOKEN} -F e2e -n tidb-operator -f /tmp/coverage.txt
                                 """
