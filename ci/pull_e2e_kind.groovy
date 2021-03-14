@@ -223,6 +223,7 @@ def build(String name, String code, Map resources = e2ePodResources) {
                                 cp /kind-data/worker2/coverage/*.cov /tmp
                                 cp /kind-data/worker3/coverage/*.cov /tmp
                                 ./bin/gocovmerge /tmp/*.cov > /tmp/coverage.txt
+                                source EXPORT_GIT_COMMIT
                                 echo "info: uploading coverage to codecov"
                                 bash <(curl -s https://codecov.io/bash) -t ${CODECOV_TOKEN} -F e2e -n tidb-operator -f /tmp/coverage.txt
                                 """
@@ -320,7 +321,7 @@ try {
                         IMAGE_TAG = env.JOB_NAME + "-" + GITHASH.substring(0, 6)
                     }
 
-                    stage("Build and Test") {
+                    stage("Build") {
                         withCredentials([
                             string(credentialsId: "tp-codecov-token", variable: 'CODECOV_TOKEN')
                         ]) {
@@ -339,6 +340,8 @@ try {
                         withCredentials([usernamePassword(credentialsId: 'TIDB_OPERATOR_HUB_AUTH', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
                             sh """#!/bin/bash
                             set -eu
+                            echo "save GTI_COMMIT export script into file"
+                            echo "export GIT_COMMIT=\$(git rev-parse HEAD)" > EXPORT_GIT_COMMIT
                             echo "info: logging into hub.pingcap.net"
                             docker login -u \$USERNAME --password-stdin hub.pingcap.net <<< \$PASSWORD
                             echo "info: build and push images for e2e"
