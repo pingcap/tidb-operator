@@ -169,7 +169,7 @@ func (m *tidbInitManager) syncTiDBInitConfigMap(ti *v1alpha1.TidbInitializer) er
 	}
 
 	tlsClientEnabled := false
-	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
+	if tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
 		tlsClientEnabled = true
 	}
 	newCm, err := getTiDBInitConfigMap(ti, tlsClientEnabled)
@@ -242,7 +242,7 @@ func (m *tidbInitManager) makeTiDBInitJob(ti *v1alpha1.TidbInitializer) (*batchv
 	var vms []corev1.VolumeMount
 	var vs []corev1.Volume
 
-	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
+	if tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
 		secretName := util.TiDBClientTLSSecretName(tcName)
 		if ti.Spec.TLSClientSecretName != nil {
 			secretName = *ti.Spec.TLSClientSecretName
