@@ -183,7 +183,7 @@ func (p *pvcResizer) ResizeDM(dc *v1alpha1.DMCluster) error {
 			key := fmt.Sprintf("%s-%s-%s", dmWorkerMemberType, dc.Name, dmWorkerMemberType)
 			pvcPrefix2Quantity[key] = quantity
 		}
-		if err := p.patchPVCs(ns, selector.Add(*dmMasterRequirement), pvcPrefix2Quantity); err != nil {
+		if err := p.patchPVCs(ns, selector.Add(*dmWorkerRequirement), pvcPrefix2Quantity); err != nil {
 			return err
 		}
 	}
