@@ -1657,8 +1657,8 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			})
 			framework.ExpectNoError(err, "failed to update components configuration")
 			log.Logf("waiting 30s for operator syncing")
-			wait.Poll(30*time.Second, 30*time.Second, func() (bool, error) {
-				return true, nil
+			wait.Poll(1*time.Second, 30*time.Second, func() (bool, error) {
+				return false, nil
 			})
 			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
 			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
@@ -1710,7 +1710,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					} else {
 						tc.Spec.PD.Replicas = 3
 					}
-					utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
+					utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 10*time.Second)
 
 					ginkgo.By("Upgrade PD version")
 					err := controller.GuaranteedUpdate(genericCli, tc, func() error {
@@ -1772,7 +1772,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					} else {
 						tc.Spec.TiKV.Replicas = 3
 					}
-					utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
+					utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 10*time.Second)
 
 					ginkgo.By("Upgrade TiKV version")
 					err := controller.GuaranteedUpdate(genericCli, tc, func() error {
@@ -1841,11 +1841,12 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				listOptions := metav1.ListOptions{
 					LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Component(label.PDLabelVal).Labels()).String(),
 				}
-				_, err := c.CoreV1().Pods(ns).List(listOptions)
+				pods, err := c.CoreV1().Pods(ns).List(listOptions)
 				if err != nil && apierrors.IsNotFound(err) {
 					log.Logf("failed to get Pods with selector %+v: %v", listOptions, err)
 					return false, nil
 				}
+				log.Logf("ERROR: get %d Pods with selector %+v, pods: %+v", len(pods.Items), listOptions, pods.Items)
 				return true, nil
 			})
 			framework.ExpectEqual(err, wait.ErrWaitTimeout, "no Pod should be found for PD")
