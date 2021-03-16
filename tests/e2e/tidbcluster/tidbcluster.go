@@ -1648,6 +1648,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					pvcs, err := c.CoreV1().PersistentVolumeClaims(ns).List(metav1.ListOptions{LabelSelector: pvcSelector.String()})
 					framework.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
 					for _, pvc := range pvcs.Items {
+						log.Logf("pvc labels: %+v", pvc.Labels)
 						_, ok := pvc.Labels["tidb.pingcap.com/pvc-defer-deleting"]
 						framework.ExpectEqual(ok, true, "expect PVC %s/%s to have label tidb.pingcap.com/pvc-defer-deleting", pvc.GetNamespace(), pvc.GetName())
 						pvcUIDs[pvc.Name] = string(pvc.UID)
