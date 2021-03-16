@@ -139,7 +139,7 @@ func (p *pvcResizer) Resize(tc *v1alpha1.TidbCluster) error {
 				pvcPrefix2Quantity[key] = quantity
 			}
 		}
-		if err := p.patchPVCs(ns, selector.Add(*tikvRequirement), pvcPrefix2Quantity); err != nil {
+		if err := p.patchPVCs(ns, selector.Add(*tiflashRequirement), pvcPrefix2Quantity); err != nil {
 			return err
 		}
 	}
@@ -150,7 +150,7 @@ func (p *pvcResizer) Resize(tc *v1alpha1.TidbCluster) error {
 			key := fmt.Sprintf("data-%s-%s", tc.Name, pumpMemberType)
 			pvcPrefix2Quantity[key] = quantity
 		}
-		if err := p.patchPVCs(ns, selector.Add(*tikvRequirement), pvcPrefix2Quantity); err != nil {
+		if err := p.patchPVCs(ns, selector.Add(*pumpRequirement), pvcPrefix2Quantity); err != nil {
 			return err
 		}
 	}
