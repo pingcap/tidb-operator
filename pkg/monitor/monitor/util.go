@@ -1186,8 +1186,8 @@ func getThanosSidecarContainer(monitor *v1alpha1.TidbMonitor) core.Container {
 	if thanos.MinTime != "" {
 		container.Args = append(container.Args, "--min-time="+thanos.MinTime)
 	}
-	if monitor.Spec.Thanos.AdditionalVolumeMounts != nil {
-		container.VolumeMounts = append(container.VolumeMounts, monitor.Spec.Thanos.AdditionalVolumeMounts...)
+	if thanos.AdditionalVolumeMounts != nil {
+		container.VolumeMounts = append(container.VolumeMounts, thanos.AdditionalVolumeMounts...)
 	}
 	return container
 }
