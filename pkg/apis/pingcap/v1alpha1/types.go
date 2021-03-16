@@ -940,10 +940,12 @@ type Service struct {
 
 // PDStatus is PD status
 type PDStatus struct {
-	Synced          bool                       `json:"synced,omitempty"`
-	Phase           MemberPhase                `json:"phase,omitempty"`
-	StatefulSet     *apps.StatefulSetStatus    `json:"statefulSet,omitempty"`
-	Members         map[string]PDMember        `json:"members,omitempty"`
+	Synced      bool                    `json:"synced,omitempty"`
+	Phase       MemberPhase             `json:"phase,omitempty"`
+	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
+	// Members contains PDs in current TidbCluster
+	Members map[string]PDMember `json:"members,omitempty"`
+	// PeerMembers contains PDs NOT in current TidbCluster
 	PeerMembers     map[string]PDMember        `json:"peerMembers,omitempty"`
 	Leader          PDMember                   `json:"leader,omitempty"`
 	FailureMembers  map[string]PDFailureMember `json:"failureMembers,omitempty"`
@@ -965,18 +967,20 @@ type PDMember struct {
 
 // PDFailureMember is the pd failure member information
 type PDFailureMember struct {
-	PodName       string      `json:"podName,omitempty"`
-	MemberID      string      `json:"memberID,omitempty"`
-	PVCUID        types.UID   `json:"pvcUID,omitempty"`
-	MemberDeleted bool        `json:"memberDeleted,omitempty"`
-	CreatedAt     metav1.Time `json:"createdAt,omitempty"`
+	PodName       string                 `json:"podName,omitempty"`
+	MemberID      string                 `json:"memberID,omitempty"`
+	PVCUID        types.UID              `json:"pvcUID,omitempty"`
+	PVCUIDSet     map[types.UID]struct{} `json:"pvcUIDSet,omitempty"`
+	MemberDeleted bool                   `json:"memberDeleted,omitempty"`
+	CreatedAt     metav1.Time            `json:"createdAt,omitempty"`
 }
 
 // UnjoinedMember is the pd unjoin cluster member information
 type UnjoinedMember struct {
-	PodName   string      `json:"podName,omitempty"`
-	PVCUID    types.UID   `json:"pvcUID,omitempty"`
-	CreatedAt metav1.Time `json:"createdAt,omitempty"`
+	PodName   string                 `json:"podName,omitempty"`
+	PVCUID    types.UID              `json:"pvcUID,omitempty"`
+	PVCUIDSet map[types.UID]struct{} `json:"pvcUIDSet,omitempty"`
+	CreatedAt metav1.Time            `json:"createdAt,omitempty"`
 }
 
 // TiDBStatus is TiDB status
@@ -1282,10 +1286,29 @@ const (
 	CleanPolicyTypeDelete CleanPolicyType = "Delete"
 )
 
-// +k8s:openapi-gen=true
 // BackupSpec contains the backup specification for a tidb cluster.
+// +k8s:openapi-gen=true
 type BackupSpec struct {
 	corev1.ResourceRequirements `json:"resources,omitempty"`
+	// List of environment variables to set in the container, like v1.Container.Env.
+	// Note that the following builtin env vars will be overwritten by values set here
+	// - S3_PROVIDER
+	// - S3_ENDPOINT
+	// - AWS_REGION
+	// - AWS_ACL
+	// - AWS_STORAGE_CLASS
+	// - AWS_DEFAULT_REGION
+	// - AWS_ACCESS_KEY_ID
+	// - AWS_SECRET_ACCESS_KEY
+	// - GCS_PROJECT_ID
+	// - GCS_OBJECT_ACL
+	// - GCS_BUCKET_ACL
+	// - GCS_LOCATION
+	// - GCS_STORAGE_CLASS
+	// - GCS_SERVICE_ACCOUNT_JSON_KEY
+	// - BR_LOG_TO_TERM
+	// +optional
+	Env []corev1.EnvVar `json:"env,omitempty"`
 	// From is the tidb cluster that needs to backup.
 	From *TiDBAccessConfig `json:"from,omitempty"`
 	// Type is the backup type for tidb cluster.
@@ -1543,6 +1566,25 @@ type RestoreCondition struct {
 // RestoreSpec contains the specification for a restore of a tidb cluster backup.
 type RestoreSpec struct {
 	corev1.ResourceRequirements `json:"resources,omitempty"`
+	// List of environment variables to set in the container, like v1.Container.Env.
+	// Note that the following builtin env vars will be overwritten by values set here
+	// - S3_PROVIDER
+	// - S3_ENDPOINT
+	// - AWS_REGION
+	// - AWS_ACL
+	// - AWS_STORAGE_CLASS
+	// - AWS_DEFAULT_REGION
+	// - AWS_ACCESS_KEY_ID
+	// - AWS_SECRET_ACCESS_KEY
+	// - GCS_PROJECT_ID
+	// - GCS_OBJECT_ACL
+	// - GCS_BUCKET_ACL
+	// - GCS_LOCATION
+	// - GCS_STORAGE_CLASS
+	// - GCS_SERVICE_ACCOUNT_JSON_KEY
+	// - BR_LOG_TO_TERM
+	// +optional
+	Env []corev1.EnvVar `json:"env,omitempty"`
 	// To is the tidb cluster that needs to restore.
 	To *TiDBAccessConfig `json:"to,omitempty"`
 	// Type is the backup type for tidb cluster.

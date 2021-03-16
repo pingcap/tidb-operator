@@ -74,7 +74,6 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 	}
 
 	// no found the clean job, we start to create the clean job.
-
 	if backup.Status.BackupPath == "" {
 		// the backup path is empty, so there is no need to clean up backup data
 		return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
@@ -116,10 +115,13 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bc.deps.KubeClientset)
+	envVars, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bc.deps.KubeClientset)
 	if err != nil {
 		return nil, reason, err
 	}
+
+	// set env vars specified in backup.Spec.Env
+	envVars = util.AppendOverwriteEnv(envVars, backup.Spec.Env)
 
 	args := []string{
 		"clean",
@@ -157,18 +159,17 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 					Image:           bc.deps.CLIConfig.TiDBBackupManagerImage,
 					Args:            args,
 					ImagePullPolicy: corev1.PullIfNotPresent,
-					Env:             util.AppendEnvIfPresent(storageEnv, "TZ"),
+					Env:             util.AppendEnvIfPresent(envVars, "TZ"),
 					Resources:       backup.Spec.ResourceRequirements,
 					VolumeMounts:    volumeMounts,
 				},
 			},
-			RestartPolicy: corev1.RestartPolicyNever,
-			Volumes:       volumes,
+			RestartPolicy:    corev1.RestartPolicyNever,
+			Tolerations:      backup.Spec.Tolerations,
+			ImagePullSecrets: backup.Spec.ImagePullSecrets,
+			Affinity:         backup.Spec.Affinity,
+			Volumes:          volumes,
 		},
-	}
-
-	if backup.Spec.ImagePullSecrets != nil {
-		podSpec.Spec.ImagePullSecrets = backup.Spec.ImagePullSecrets
 	}
 
 	job := &batchv1.Job{

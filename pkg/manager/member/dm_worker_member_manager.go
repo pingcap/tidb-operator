@@ -280,7 +280,7 @@ func (m *workerMemberManager) syncDMClusterStatus(dc *v1alpha1.DMCluster, set *a
 	dc.Status.Worker.Synced = true
 	dc.Status.Worker.Members = workerStatus
 	dc.Status.Worker.Image = ""
-	c := filterContainer(set, "dm-worker")
+	c := findContainerByName(set, "dm-worker")
 	if c != nil {
 		dc.Status.Worker.Image = c.Image
 	}

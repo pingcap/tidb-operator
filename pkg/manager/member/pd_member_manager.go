@@ -31,6 +31,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/klog"
@@ -338,15 +339,14 @@ func (m *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *a
 		return err
 	}
 
-	pattern, err := regexp.Compile(fmt.Sprintf(pdMemberLimitPattern, tc.Name, tc.Name, tc.Namespace, controller.FormatClusterDomainForRegex(tc.Spec.ClusterDomain)))
+	rePDMembers, err := regexp.Compile(fmt.Sprintf(pdMemberLimitPattern, tc.Name, tc.Name, tc.Namespace, controller.FormatClusterDomainForRegex(tc.Spec.ClusterDomain)))
 	if err != nil {
 		return err
 	}
 	pdStatus := map[string]v1alpha1.PDMember{}
 	peerPDStatus := map[string]v1alpha1.PDMember{}
 	for _, memberHealth := range healthInfo.Healths {
-		id := memberHealth.MemberID
-		memberID := fmt.Sprintf("%d", id)
+		memberID := memberHealth.MemberID
 		var clientURL string
 		if len(memberHealth.ClientUrls) > 0 {
 			clientURL = memberHealth.ClientUrls[0]
@@ -354,19 +354,20 @@ func (m *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *a
 		name := memberHealth.Name
 		if len(name) == 0 {
 			klog.Warningf("PD member: [%d] doesn't have a name, and can't get it from clientUrls: [%s], memberHealth Info: [%v] in [%s/%s]",
-				id, memberHealth.ClientUrls, memberHealth, ns, tcName)
+				memberID, memberHealth.ClientUrls, memberHealth, ns, tcName)
 			continue
 		}
 
 		status := v1alpha1.PDMember{
 			Name:      name,
-			ID:        memberID,
+			ID:        fmt.Sprintf("%d", memberID),
 			ClientURL: clientURL,
 			Health:    memberHealth.Health,
 		}
 		status.LastTransitionTime = metav1.Now()
 
-		if pattern.Match([]byte(clientURL)) {
+		// matching `rePDMembers` means `clientURL` is a PD in current tc
+		if rePDMembers.Match([]byte(clientURL)) {
 			oldPDMember, exist := tc.Status.PD.Members[name]
 			if exist && status.Health == oldPDMember.Health {
 				status.LastTransitionTime = oldPDMember.LastTransitionTime
@@ -389,14 +390,11 @@ func (m *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *a
 	tc.Status.PD.Members = pdStatus
 	tc.Status.PD.PeerMembers = peerPDStatus
 	tc.Status.PD.Image = ""
-	c := filterContainer(set, "pd")
-	if c != nil {
+	if c := findContainerByName(set, "pd"); c != nil {
 		tc.Status.PD.Image = c.Image
 	}
 
-	// k8s check
-	err = m.collectUnjoinedMembers(tc, set, pdStatus)
-	if err != nil {
+	if err := m.collectUnjoinedMembers(tc, set, pdStatus); err != nil {
 		return err
 	}
 	return nil
@@ -567,7 +565,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			})
 		}
 	}
-	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
+	if tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "tidb-client-tls", ReadOnly: true, MountPath: tidbClientCertPath,
 		})
@@ -614,7 +612,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			})
 		}
 	}
-	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
+	if tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
 		clientSecretName := util.TiDBClientTLSSecretName(tc.Name)
 		if tc.Spec.PD.TLSClientSecretName != nil {
 			clientSecretName = *tc.Spec.PD.TLSClientSecretName
@@ -808,7 +806,6 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 }
 
 func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
-
 	// For backward compatibility, only sync tidb configmap when .tidb.config is non-nil
 	config := tc.Spec.PD.Config
 	if config == nil {
@@ -827,7 +824,7 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		config.Set("security.key-path", path.Join(pdClusterCertPath, corev1.TLSPrivateKeyKey))
 	}
 	// Versions below v4.0 do not support Dashboard
-	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
+	if tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
 		config.Set("dashboard.tidb-cacert-path", path.Join(tidbClientCertPath, tlsSecretRootCAKey))
 		config.Set("dashboard.tidb-cert-path", path.Join(tidbClientCertPath, corev1.TLSCertKey))
 		config.Set("dashboard.tidb-key-path", path.Join(tidbClientCertPath, corev1.TLSPrivateKeyKey))
@@ -876,7 +873,10 @@ func clusterVersionGreaterThanOrEqualTo4(version string) (bool, error) {
 	return v.Major() >= 4, nil
 }
 
+// find PD pods in set that have not joined the PD cluster yet.
+// pdStatus contains the PD members in the PD cluster.
 func (m *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, pdStatus map[string]v1alpha1.PDMember) error {
+	ns := tc.GetNamespace()
 	podSelector, podSelectErr := metav1.LabelSelectorAsSelector(set.Spec.Selector)
 	if podSelectErr != nil {
 		return podSelectErr
@@ -885,8 +885,11 @@ func (m *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *
 	if podErr != nil {
 		return fmt.Errorf("collectUnjoinedMembers: failed to list pods for cluster %s/%s, selector %s, error %v", tc.GetNamespace(), tc.GetName(), set.Spec.Selector, podErr)
 	}
+
+	// check all pods in PD sts to see whether it has already joined the PD cluster
 	for _, pod := range pods {
 		var joined = false
+		// if current PD pod name is in the keys of pdStatus, it has joined the PD cluster
 		for pdName := range pdStatus {
 			ordinal, err := util.GetOrdinalFromPodName(pod.Name)
 			if err != nil {
@@ -901,29 +904,27 @@ func (m *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *
 			if tc.Status.PD.UnjoinedMembers == nil {
 				tc.Status.PD.UnjoinedMembers = map[string]v1alpha1.UnjoinedMember{}
 			}
-			ordinal, err := util.GetOrdinalFromPodName(pod.Name)
+			pvcs, err := util.ResolvePVCFromPod(pod, m.deps.PVCLister)
 			if err != nil {
-				return err
+				return fmt.Errorf("collectUnjoinedMembers: failed to get pvcs for pod %s/%s, error: %s", ns, pod.Name, err)
 			}
-			pvcName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tc.Name), ordinal)
-			pvc, err := m.deps.PVCLister.PersistentVolumeClaims(tc.Namespace).Get(pvcName)
-			if err != nil {
-				return fmt.Errorf("collectUnjoinedMembers: failed to get pvc %s of cluster %s/%s, error %v", pvcName, tc.GetNamespace(), tc.GetName(), err)
+			pvcUIDSet := make(map[types.UID]struct{})
+			for _, pvc := range pvcs {
+				pvcUIDSet[pvc.UID] = struct{}{}
 			}
 			tc.Status.PD.UnjoinedMembers[pod.Name] = v1alpha1.UnjoinedMember{
 				PodName:   pod.Name,
-				PVCUID:    pvc.UID,
+				PVCUIDSet: pvcUIDSet,
 				CreatedAt: metav1.Now(),
 			}
 		} else {
-			if tc.Status.PD.UnjoinedMembers != nil {
-				delete(tc.Status.PD.UnjoinedMembers, pod.Name)
-			}
+			delete(tc.Status.PD.UnjoinedMembers, pod.Name)
 		}
 	}
 	return nil
 }
 
+// TODO: seems not used
 type FakePDMemberManager struct {
 	err error
 }
