@@ -254,6 +254,9 @@ func (p *pvcResizer) patchPVCs(ns string, selector labels.Selector, pvcQuantityI
 					},
 				},
 			})
+			if err != nil {
+				return err
+			}
 			_, err = p.deps.KubeClientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Patch(pvc.Name, types.MergePatchType, mergePatch)
 			if err != nil {
 				return err
