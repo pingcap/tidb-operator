@@ -137,20 +137,6 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			version := version
 			versionDashed := strings.ReplaceAll(version, ".", "-")
 			ginkgo.Context(version, func() {
-				ginkgo.It("should deploy tc succcessfullly with full feature enabled", func() {
-					// Behavior:
-					// 1. get a new TiDBCluster
-					// 2. configure TiDBCluster
-					// 3. deploy the cluster, check if it's deployed successfully
-					// Note:
-					// 1. Please add new feature in tidbcluster Spec to this case to make it supported in the later version
-					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("full-feature-%s", versionDashed), version)
-					tc.Spec.TiDB.Replicas = 1
-					tc.Spec.TiKV.SeparateRocksDBLog = pointer.BoolPtr(true)
-					tc.Spec.TiKV.SeparateRaftLog = pointer.BoolPtr(true)
-					utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 6*time.Minute, 5*time.Second)
-				})
-
 				ginkgo.It("should scale out tc successfully", func() {
 					ginkgo.By("Deploy a basic tc")
 					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("basic-%s", versionDashed), version)
