@@ -1842,8 +1842,8 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Component(label.PDLabelVal).Labels()).String(),
 				}
 				pods, err := c.CoreV1().Pods(ns).List(listOptions)
-				if err != nil && apierrors.IsNotFound(err) {
-					log.Logf("failed to get Pods with selector %+v: %v", listOptions, err)
+				if err == nil && len(pods.Items) == 0 {
+					log.Logf("no Pods with selector %+v: %v", listOptions, err)
 					return false, nil
 				}
 				log.Logf("ERROR: get %d Pods with selector %+v\n\tpods: %+v\n\terror: %s", len(pods.Items), listOptions, pods.Items, err)
