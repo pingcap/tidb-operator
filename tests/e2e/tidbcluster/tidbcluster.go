@@ -1631,16 +1631,23 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					return nil
 				})
 				framework.ExpectNoError(err, "failed to scale in PD for TidbCluster %s/%s", ns, tc.Name)
-				err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 10*time.Second)
-				framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale in pd", ns, tc.Name)
-				log.Logf("waiting 30s for operator syncing")
-				wait.Poll(30*time.Second, 30*time.Second, func() (bool, error) {
+
+				ginkgo.By("Wait for PD to be in ScalePhase")
+				wait.Poll(10*time.Second, 3*time.Minute, func() (bool, error) {
+					tc1, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tc.Name, metav1.GetOptions{})
+					framework.ExpectNoError(err, "failed to get TidbCluster: %v", err)
+					if tc1.Status.PD.Phase != v1alpha1.ScalePhase {
+						return false, nil
+					}
 					return true, nil
 				})
+				framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s .Status.PD.Phase to be %q", ns, tc.Name, v1alpha1.ScalePhase)
+
+				ginkgo.By("Wait for tc ready again")
 				err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 10*time.Second)
 				framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale in pd", ns, tc.Name)
 
-				var pvcUIDs map[string]string
+				pvcUIDs := make(map[string]string)
 				ginkgo.By("Check PVC label tidb.pingcap.com/pvc-defer-deleting")
 				for ordinal := 3; ordinal < 5; ordinal++ {
 					pvcSelector, err := member.GetPVCSelectorForPod(tc, v1alpha1.PDMemberType, int32(ordinal))
@@ -1661,6 +1668,19 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					return nil
 				})
 				framework.ExpectNoError(err, "failed to scale out PD for TidbCluster %s/%s", ns, tc.Name)
+
+				ginkgo.By("Wait for PD to be in ScalePhase")
+				wait.Poll(10*time.Second, 3*time.Minute, func() (bool, error) {
+					tc1, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tc.Name, metav1.GetOptions{})
+					framework.ExpectNoError(err, "failed to get TidbCluster: %v", err)
+					if tc1.Status.PD.Phase != v1alpha1.ScalePhase {
+						return false, nil
+					}
+					return true, nil
+				})
+				framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s .Status.PD.Phase to be %q", ns, tc.Name, v1alpha1.ScalePhase)
+
+				ginkgo.By("Wait for tc ready again")
 				err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 10*time.Second)
 				framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale out PD", ns, tc.Name)
 
@@ -1677,6 +1697,33 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 						framework.ExpectEqual(string(pvc.UID), pvcUIDString)
 					}
 				}
+			})
+		})
+
+		ginkgo.Context("while concurrently upgrade should work for", func() {
+			ginkgo.It("PD", func() {
+				ginkgo.By("Deploy initial tc")
+				tc := fixture.GetTidbCluster(ns, "scale-out-scale-in-pd", utilimage.TiDBV4)
+				tc.Spec.PD.Replicas = 5
+				utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
+
+				ginkgo.By("Scale in PD to 3 replicas")
+				err := controller.GuaranteedUpdate(genericCli, tc, func() error {
+					tc.Spec.PD.Replicas = 3
+					return nil
+				})
+				framework.ExpectNoError(err, "failed to scale in PD for TidbCluster %s/%s", ns, tc.Name)
+
+				ginkgo.By("Wait for PD to be in ScalePhase")
+				wait.Poll(10*time.Second, 3*time.Minute, func() (bool, error) {
+					tc1, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tc.Name, metav1.GetOptions{})
+					framework.ExpectNoError(err, "failed to get TidbCluster: %v", err)
+					if tc1.Status.PD.Phase != v1alpha1.ScalePhase {
+						return false, nil
+					}
+					return true, nil
+				})
+				framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s .Status.PD.Phase to be %q", ns, tc.Name, v1alpha1.ScalePhase)
 			})
 		})
 	})
