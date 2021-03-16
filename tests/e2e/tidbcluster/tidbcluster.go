@@ -1633,19 +1633,13 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				framework.ExpectNoError(err, "failed to scale in PD for TidbCluster %s/%s", ns, tc.Name)
 
 				ginkgo.By("Wait for PD to be in ScalePhase")
-				wait.Poll(10*time.Second, 3*time.Minute, func() (bool, error) {
-					tc1, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tc.Name, metav1.GetOptions{})
-					framework.ExpectNoError(err, "failed to get TidbCluster: %v", err)
-					if tc1.Status.PD.Phase != v1alpha1.ScalePhase {
-						return false, nil
-					}
-					return true, nil
-				})
-				framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s .Status.PD.Phase to be %q", ns, tc.Name, v1alpha1.ScalePhase)
+				utiltc.MustWaitForPDPhase(cli, tc, v1alpha1.ScalePhase, 3*time.Minute, 10*time.Second)
+				log.Logf("PD is in ScalePhase")
 
-				ginkgo.By("Wait for tc ready again")
+				ginkgo.By("Wait for tc ready")
 				err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 10*time.Second)
 				framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale in pd", ns, tc.Name)
+				log.Logf("tc is ready")
 
 				pvcUIDs := make(map[string]string)
 				ginkgo.By("Check PVC label tidb.pingcap.com/pvc-defer-deleting")
@@ -1670,17 +1664,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				framework.ExpectNoError(err, "failed to scale out PD for TidbCluster %s/%s", ns, tc.Name)
 
 				ginkgo.By("Wait for PD to be in ScalePhase")
-				wait.Poll(10*time.Second, 3*time.Minute, func() (bool, error) {
-					tc1, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tc.Name, metav1.GetOptions{})
-					framework.ExpectNoError(err, "failed to get TidbCluster: %v", err)
-					if tc1.Status.PD.Phase != v1alpha1.ScalePhase {
-						return false, nil
-					}
-					return true, nil
-				})
-				framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s .Status.PD.Phase to be %q", ns, tc.Name, v1alpha1.ScalePhase)
+				utiltc.MustWaitForPDPhase(cli, tc, v1alpha1.ScalePhase, 3*time.Minute, 10*time.Second)
 
-				ginkgo.By("Wait for tc ready again")
+				ginkgo.By("Wait for tc ready")
 				err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 10*time.Second)
 				framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale out PD", ns, tc.Name)
 
@@ -1703,7 +1689,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		ginkgo.Context("while concurrently upgrade should work for", func() {
 			ginkgo.It("PD", func() {
 				ginkgo.By("Deploy initial tc")
-				tc := fixture.GetTidbCluster(ns, "scale-out-scale-in-pd", utilimage.TiDBV4)
+				tc := fixture.GetTidbCluster(ns, "scale-out-scale-in-pd", utilimage.TiDBV4Prev)
 				tc.Spec.PD.Replicas = 5
 				utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
 
@@ -1715,15 +1701,29 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				framework.ExpectNoError(err, "failed to scale in PD for TidbCluster %s/%s", ns, tc.Name)
 
 				ginkgo.By("Wait for PD to be in ScalePhase")
-				wait.Poll(10*time.Second, 3*time.Minute, func() (bool, error) {
-					tc1, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tc.Name, metav1.GetOptions{})
-					framework.ExpectNoError(err, "failed to get TidbCluster: %v", err)
-					if tc1.Status.PD.Phase != v1alpha1.ScalePhase {
-						return false, nil
-					}
-					return true, nil
+				utiltc.MustWaitForPDPhase(cli, tc, v1alpha1.ScalePhase, 3*time.Minute, 10*time.Second)
+
+				ginkgo.By("Upgrade PD version concurrently")
+				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+					tc.Spec.PD.Version = pointer.StringPtr(utilimage.TiDBV4)
+					return nil
 				})
-				framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s .Status.PD.Phase to be %q", ns, tc.Name, v1alpha1.ScalePhase)
+				framework.ExpectNoError(err, "failed to scale in PD for TidbCluster %s/%s", ns, tc.Name)
+
+				ginkgo.By("Wait for tc ready")
+				err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 10*time.Second)
+				framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale in pd", ns, tc.Name)
+
+				ginkgo.By("Check PD Pods")
+				listOptions := metav1.ListOptions{
+					LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).PD().Labels()).String(),
+				}
+				pods, err := c.CoreV1().Pods(ns).List(listOptions)
+				framework.ExpectNoError(err, "failed to list PD Pods with options: %+v", listOptions)
+				framework.ExpectEqual(len(pods.Items), 3, "there should be 3 PD Pods")
+				for _, pod := range pods.Items {
+					framework.ExpectEqual(fmt.Sprintf("pingcap/pd:%s", utilimage.TiDBV4), pod.Spec.Containers[0].Image, "PD Pod has wrong image")
+				}
 			})
 		})
 	})
