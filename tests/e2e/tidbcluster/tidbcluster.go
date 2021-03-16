@@ -1846,7 +1846,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					log.Logf("failed to get Pods with selector %+v: %v", listOptions, err)
 					return false, nil
 				}
-				log.Logf("ERROR: get %d Pods with selector %+v, pods: %+v", len(pods.Items), listOptions, pods.Items)
+				log.Logf("ERROR: get %d Pods with selector %+v\n\tpods: %+v\n\terror: %s", len(pods.Items), listOptions, pods.Items, err)
 				return true, nil
 			})
 			framework.ExpectEqual(err, wait.ErrWaitTimeout, "no Pod should be found for PD")
