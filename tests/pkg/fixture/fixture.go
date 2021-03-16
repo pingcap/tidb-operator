@@ -90,7 +90,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 	tidbConfig := v1alpha1.NewTiDBConfig()
 	tidbConfig.Set("log.level", "info")
 
-	return &v1alpha1.TidbCluster{
+	tc := &v1alpha1.TidbCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: ns,
@@ -148,6 +148,104 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 			},
 		},
 	}
+
+	// storageVolumes & TOML configs
+	tc.Spec.PD.Config.Set("log.level", "warn")
+	tc.Spec.PD.Config.Set("log.file.filename", "/var/log/pdlog/pd.log")
+	tc.Spec.PD.StorageVolumes = []v1alpha1.StorageVolume{
+		{
+			Name:        "log",
+			StorageSize: "2Gi",
+			MountPath:   "/var/log/pdlog",
+		},
+	}
+
+	tc.Spec.TiDB.Config.Set("log.level", "warn")
+	tc.Spec.TiDB.Config.Set("log.file.filename", "/var/log/tidblog/tidb.log")
+	tc.Spec.TiDB.StorageVolumes = []v1alpha1.StorageVolume{
+		{
+			Name:        "log",
+			StorageSize: "2Gi",
+			MountPath:   "/var/log/tidblog/tidb.log",
+		},
+	}
+
+	tc.Spec.TiKV.Config.Set("storage.reserve-space", "0MB")
+	tc.Spec.TiKV.Config.Set("rocksdb.wal-dir", "/data_sbi/tikv/wal")
+	tc.Spec.TiKV.Config.Set("titan.dirname", "/data_sbj/titan/data")
+	tc.Spec.TiKV.StorageVolumes = []v1alpha1.StorageVolume{
+		{
+			Name:        "wal",
+			StorageSize: "2Gi",
+			MountPath:   "/data_sbi/tikv/wal",
+		},
+		{
+			Name:        "titan",
+			StorageSize: "2Gi",
+			MountPath:   "/data_sbi/titan/data",
+		},
+	}
+
+	// sysctls
+	sysctlsSample := []corev1.Sysctl{
+		{
+			Name:  "net.ipv4.tcp_keepalive_time",
+			Value: "300",
+		},
+		{
+			Name:  "net.ipv4.tcp_keepalive_intvl",
+			Value: "75",
+		},
+		{
+			Name:  "net.core.somaxconn",
+			Value: "32768",
+		},
+	}
+	tc.Spec.PD.PodSecurityContext.Sysctls = sysctlsSample
+	tc.Spec.TiDB.PodSecurityContext.Sysctls = sysctlsSample
+	tc.Spec.TiKV.PodSecurityContext.Sysctls = sysctlsSample
+
+	// Mapping the spec of Statefulset
+	// initContainers
+	// Feature: v1.1.10: Support configuring init containers for components in the TiDB cluster (#3713, @handlerww)
+	initContainerAnnotation := map[string]string{
+		"tidb.pingcap.com/sysctl-init": "true",
+	}
+	initContainerAnnotationSample := []corev1.Container{
+		{
+			Command:         []string{"/bin/sh"},
+			Image:           "busybox",
+			ImagePullPolicy: "ifNotPresent",
+			Name:            "inittest",
+		},
+	}
+	tc.Spec.PD.Annotations = initContainerAnnotation
+	tc.Spec.PD.InitContainers = initContainerAnnotationSample
+
+	tc.Spec.TiKV.Annotations = initContainerAnnotation
+	tc.Spec.TiKV.InitContainers = initContainerAnnotationSample
+
+	tc.Spec.TiDB.Annotations = initContainerAnnotation
+	tc.Spec.TiDB.InitContainers = initContainerAnnotationSample
+
+	// Customized env
+	// v1.1.1-rc.1: Able to configure custom env for components (#2052)
+	customEnv := []corev1.EnvVar{
+		{
+			Name:  "TZ",
+			Value: "ignored",
+		},
+	}
+	tc.Spec.PD.Env = customEnv
+	tc.Spec.TiDB.Env = customEnv
+	tc.Spec.TiKV.Env = customEnv
+
+	// AdditionalVolumeMounts
+	// AdditionalVolumes
+	// AdditionalContainer
+	// v1.1.1: Add the `additionalContainers` and `additionalVolumes` fields so that TiDB Operator can support adding sidecars to `TiDB`, `TiKV`, `PD`, etc. ([#2229](https://github.com/pingcap/tidb-operator/pull/2229), [@yeya24](https://github.com/yeya24))
+
+	return tc
 }
 
 func buildAffinity(name, namespace string, memberType v1alpha1.MemberType) *corev1.Affinity {
