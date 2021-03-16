@@ -211,7 +211,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 	initContainerAnnotation := map[string]string{
 		"tidb.pingcap.com/sysctl-init": "true",
 	}
-	initContainerAnnotationSample := []corev1.Container{
+	initContainerSample := []corev1.Container{
 		{
 			Command:         []string{"/bin/sh"},
 			Image:           "busybox",
@@ -220,13 +220,13 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 		},
 	}
 	tc.Spec.PD.Annotations = initContainerAnnotation
-	tc.Spec.PD.InitContainers = initContainerAnnotationSample
+	tc.Spec.PD.InitContainers = initContainerSample
 
 	tc.Spec.TiKV.Annotations = initContainerAnnotation
-	tc.Spec.TiKV.InitContainers = initContainerAnnotationSample
+	tc.Spec.TiKV.InitContainers = initContainerSample
 
 	tc.Spec.TiDB.Annotations = initContainerAnnotation
-	tc.Spec.TiDB.InitContainers = initContainerAnnotationSample
+	tc.Spec.TiDB.InitContainers = initContainerSample
 
 	// Customized env
 	// v1.1.1-rc.1: Able to configure custom env for components (#2052)
@@ -240,11 +240,22 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 	tc.Spec.TiDB.Env = customEnv
 	tc.Spec.TiKV.Env = customEnv
 
+	// AdditionalContainer
+	additionalContainersSample := []corev1.Container{
+		{
+			Command:         []string{"/bin/sh"},
+			Image:           "busybox",
+			ImagePullPolicy: "ifNotPresent",
+			Name:            "additionalContainertest",
+		},
+	}
+	tc.Spec.PD.AdditionalContainers = additionalContainersSample
+	tc.Spec.TiKV.AdditionalContainers = additionalContainersSample
+	tc.Spec.TiDB.AdditionalContainers = additionalContainersSample
+
 	// AdditionalVolumeMounts
 	// AdditionalVolumes
-	// AdditionalContainer
 	// v1.1.1: Add the `additionalContainers` and `additionalVolumes` fields so that TiDB Operator can support adding sidecars to `TiDB`, `TiKV`, `PD`, etc. ([#2229](https://github.com/pingcap/tidb-operator/pull/2229), [@yeya24](https://github.com/yeya24))
-
 	return tc
 }
 
