@@ -8,9 +8,8 @@ spec:
   thanos:
     baseImage: thanosio/thanos
     version: v0.17.2
-    objectStorageConfig:
-      key: objectstorage.yaml
-      name: thanos-objectstorage-hbase
+    objectStorageConfigFile: /etc/thanos/objectstorage.yaml
+  volume
   prometheus:
     baseImage: prom/prometheus
     version: v2.11.1
@@ -24,3 +23,7 @@ spec:
     baseImage: pingcap/tidb-monitor-reloader
     version: v1.0.1
   imagePullPolicy: IfNotPresent
+  volumes:
+    - name: foo
+      secret:
+        secretName: thanos-objectstorage
