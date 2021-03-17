@@ -9,7 +9,10 @@ spec:
     baseImage: thanosio/thanos
     version: v0.17.2
     objectStorageConfigFile: /etc/thanos/objectstorage.yaml
-  volume
+    additionalVolumeMounts:
+      - name: objectstorage
+        mountPath: "/etc/thanos/"
+        readOnly: true
   prometheus:
     baseImage: prom/prometheus
     version: v2.11.1
@@ -23,7 +26,7 @@ spec:
     baseImage: pingcap/tidb-monitor-reloader
     version: v1.0.1
   imagePullPolicy: IfNotPresent
-  volumes:
+  additionalVolumes:
     - name: foo
       secret:
         secretName: thanos-objectstorage
