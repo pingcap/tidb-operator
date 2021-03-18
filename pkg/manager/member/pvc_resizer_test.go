@@ -95,6 +95,12 @@ func TestPVCResizer(t *testing.T) {
 								v1.ResourceStorage: resource.MustParse("2Gi"),
 							},
 						},
+						StorageVolumes: []v1alpha1.StorageVolume{
+							{
+								Name:        "log",
+								StorageSize: "2Gi",
+							},
+						},
 					},
 					TiKV: &v1alpha1.TiKVSpec{},
 					TiDB: &v1alpha1.TiDBSpec{},
@@ -102,14 +108,20 @@ func TestPVCResizer(t *testing.T) {
 			},
 			sc: newStorageClass("sc", true),
 			pvcs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("pd-0", label.PDLabelVal, "sc", "1Gi"),
-				newPVCWithStorage("pd-1", label.PDLabelVal, "sc", "1Gi"),
-				newPVCWithStorage("pd-2", label.PDLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("pd-tc-pd-0", label.PDLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("pd-tc-pd-1", label.PDLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("pd-tc-pd-2", label.PDLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("pd-log-tc-pd-0", label.PDLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("pd-log-tc-pd-1", label.PDLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("pd-log-tc-pd-2", label.PDLabelVal, "sc", "1Gi"),
 			},
 			wantPVCs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("pd-0", label.PDLabelVal, "sc", "2Gi"),
-				newPVCWithStorage("pd-1", label.PDLabelVal, "sc", "2Gi"),
-				newPVCWithStorage("pd-2", label.PDLabelVal, "sc", "2Gi"),
+				newPVCWithStorage("pd-tc-pd-0", label.PDLabelVal, "sc", "2Gi"),
+				newPVCWithStorage("pd-tc-pd-1", label.PDLabelVal, "sc", "2Gi"),
+				newPVCWithStorage("pd-tc-pd-2", label.PDLabelVal, "sc", "2Gi"),
+				newPVCWithStorage("pd-log-tc-pd-0", label.PDLabelVal, "sc", "2Gi"),
+				newPVCWithStorage("pd-log-tc-pd-1", label.PDLabelVal, "sc", "2Gi"),
+				newPVCWithStorage("pd-log-tc-pd-2", label.PDLabelVal, "sc", "2Gi"),
 			},
 		},
 		{
@@ -128,19 +140,31 @@ func TestPVCResizer(t *testing.T) {
 								v1.ResourceStorage: resource.MustParse("2Gi"),
 							},
 						},
+						StorageVolumes: []v1alpha1.StorageVolume{
+							{
+								Name:        "log",
+								StorageSize: "2Gi",
+							},
+						},
 					},
 				},
 			},
 			sc: newStorageClass("sc", true),
 			pvcs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("tikv-0", label.TiKVLabelVal, "sc", "1Gi"),
-				newPVCWithStorage("tikv-1", label.TiKVLabelVal, "sc", "1Gi"),
-				newPVCWithStorage("tikv-2", label.TiKVLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("tikv-tc-tikv-0", label.TiKVLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("tikv-tc-tikv-1", label.TiKVLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("tikv-tc-tikv-2", label.TiKVLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("tikv-log-tc-tikv-0", label.TiKVLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("tikv-log-tc-tikv-1", label.TiKVLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("tikv-log-tc-tikv-2", label.TiKVLabelVal, "sc", "1Gi"),
 			},
 			wantPVCs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("tikv-0", label.TiKVLabelVal, "sc", "2Gi"),
-				newPVCWithStorage("tikv-1", label.TiKVLabelVal, "sc", "2Gi"),
-				newPVCWithStorage("tikv-2", label.TiKVLabelVal, "sc", "2Gi"),
+				newPVCWithStorage("tikv-tc-tikv-0", label.TiKVLabelVal, "sc", "2Gi"),
+				newPVCWithStorage("tikv-tc-tikv-1", label.TiKVLabelVal, "sc", "2Gi"),
+				newPVCWithStorage("tikv-tc-tikv-2", label.TiKVLabelVal, "sc", "2Gi"),
+				newPVCWithStorage("tikv-log-tc-tikv-0", label.TiKVLabelVal, "sc", "2Gi"),
+				newPVCWithStorage("tikv-log-tc-tikv-1", label.TiKVLabelVal, "sc", "2Gi"),
+				newPVCWithStorage("tikv-log-tc-tikv-2", label.TiKVLabelVal, "sc", "2Gi"),
 			},
 		},
 		{
@@ -208,10 +232,10 @@ func TestPVCResizer(t *testing.T) {
 			},
 			sc: newStorageClass("sc", true),
 			pvcs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("pump-0", label.PumpLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("data-tc-pump-0", label.PumpLabelVal, "sc", "1Gi"),
 			},
 			wantPVCs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("pump-0", label.PumpLabelVal, "sc", "2Gi"),
+				newPVCWithStorage("data-tc-pump-0", label.PumpLabelVal, "sc", "2Gi"),
 			},
 		},
 		{
@@ -234,10 +258,10 @@ func TestPVCResizer(t *testing.T) {
 				},
 			},
 			pvcs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("pd-0", label.PDLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("pd-tc-pd-0", label.PDLabelVal, "sc", "1Gi"),
 			},
 			wantPVCs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("pd-0", label.PDLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("pd-tc-pd-0", label.PDLabelVal, "sc", "1Gi"),
 			},
 			wantErr: apierrors.NewNotFound(storagev1.Resource("storageclass"), "sc"),
 		},
@@ -336,3 +360,112 @@ func TestPVCResizer(t *testing.T) {
 		})
 	}
 }
+<<<<<<< HEAD
+=======
+
+func TestDMPVCResizer(t *testing.T) {
+	tests := []struct {
+		name     string
+		dc       *v1alpha1.DMCluster
+		sc       *storagev1.StorageClass
+		pvcs     []*v1.PersistentVolumeClaim
+		wantPVCs []*v1.PersistentVolumeClaim
+		wantErr  error
+	}{
+		{
+			name: "no PVCs",
+			dc: &v1alpha1.DMCluster{
+				Spec: v1alpha1.DMClusterSpec{},
+			},
+		},
+		{
+			name: "resize dm-master PVCs",
+			dc: &v1alpha1.DMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: v1.NamespaceDefault,
+					Name:      "dc",
+				},
+				Spec: v1alpha1.DMClusterSpec{
+					Master: v1alpha1.MasterSpec{
+						StorageSize: "2Gi",
+					},
+				},
+			},
+			sc: newStorageClass("sc", true),
+			pvcs: []*v1.PersistentVolumeClaim{
+				newDMPVCWithStorage("dm-master-dc-dm-master-0", label.DMMasterLabelVal, "sc", "1Gi"),
+				newDMPVCWithStorage("dm-master-dc-dm-master-1", label.DMMasterLabelVal, "sc", "1Gi"),
+				newDMPVCWithStorage("dm-master-dc-dm-master-2", label.DMMasterLabelVal, "sc", "1Gi"),
+			},
+			wantPVCs: []*v1.PersistentVolumeClaim{
+				newDMPVCWithStorage("dm-master-dc-dm-master-0", label.DMMasterLabelVal, "sc", "2Gi"),
+				newDMPVCWithStorage("dm-master-dc-dm-master-1", label.DMMasterLabelVal, "sc", "2Gi"),
+				newDMPVCWithStorage("dm-master-dc-dm-master-2", label.DMMasterLabelVal, "sc", "2Gi"),
+			},
+		},
+		{
+			name: "resize dm-worker PVCs",
+			dc: &v1alpha1.DMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: v1.NamespaceDefault,
+					Name:      "dc",
+				},
+				Spec: v1alpha1.DMClusterSpec{
+					Worker: &v1alpha1.WorkerSpec{
+						StorageSize: "2Gi",
+					},
+				},
+			},
+			sc: newStorageClass("sc", true),
+			pvcs: []*v1.PersistentVolumeClaim{
+				newDMPVCWithStorage("dm-worker-dc-dm-worker-0", label.DMWorkerLabelVal, "sc", "1Gi"),
+				newDMPVCWithStorage("dm-worker-dc-dm-worker-1", label.DMWorkerLabelVal, "sc", "1Gi"),
+				newDMPVCWithStorage("dm-worker-dc-dm-worker-2", label.DMWorkerLabelVal, "sc", "1Gi"),
+			},
+			wantPVCs: []*v1.PersistentVolumeClaim{
+				newDMPVCWithStorage("dm-worker-dc-dm-worker-0", label.DMWorkerLabelVal, "sc", "2Gi"),
+				newDMPVCWithStorage("dm-worker-dc-dm-worker-1", label.DMWorkerLabelVal, "sc", "2Gi"),
+				newDMPVCWithStorage("dm-worker-dc-dm-worker-2", label.DMWorkerLabelVal, "sc", "2Gi"),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			fakeDeps := controller.NewFakeDependencies()
+
+			for _, pvc := range tt.pvcs {
+				fakeDeps.KubeClientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(pvc)
+			}
+			if tt.sc != nil {
+				fakeDeps.KubeClientset.StorageV1().StorageClasses().Create(tt.sc)
+			}
+
+			informerFactory := fakeDeps.KubeInformerFactory
+			resizer := NewPVCResizer(fakeDeps)
+
+			informerFactory.Start(ctx.Done())
+			informerFactory.WaitForCacheSync(ctx.Done())
+
+			err := resizer.ResizeDM(tt.dc)
+			if !reflect.DeepEqual(tt.wantErr, err) {
+				t.Errorf("want %v, got %v", tt.wantErr, err)
+			}
+
+			for i, pvc := range tt.pvcs {
+				wantPVC := tt.wantPVCs[i]
+				got, err := fakeDeps.KubeClientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(pvc.Name, metav1.GetOptions{})
+				if err != nil {
+					t.Fatal(err)
+				}
+				if diff := cmp.Diff(wantPVC, got); diff != "" {
+					t.Errorf("unexpected (-want, +got): %s", diff)
+				}
+			}
+		})
+	}
+}
+>>>>>>> c32eb87d... Fix PVC resize in multiple PVC setting (#3858)

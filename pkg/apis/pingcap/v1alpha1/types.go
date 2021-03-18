@@ -47,6 +47,15 @@ const (
 	TiFlashMemberType MemberType = "tiflash"
 	// TiCDCMemberType is ticdc container type
 	TiCDCMemberType MemberType = "ticdc"
+<<<<<<< HEAD
+=======
+	// PumpMemberType is pump container type
+	PumpMemberType MemberType = "pump"
+	// DMMasterMemberType is dm-master container type
+	DMMasterMemberType MemberType = "dm-master"
+	// DMWorkerMemberType is dm-worker container type
+	DMWorkerMemberType MemberType = "dm-worker"
+>>>>>>> c32eb87d... Fix PVC resize in multiple PVC setting (#3858)
 	// SlowLogTailerMemberType is tidb slow log tailer container type
 	SlowLogTailerMemberType MemberType = "slowlog"
 	// RocksDBLogTailerMemberType is tikv rocksdb log tailer container type
