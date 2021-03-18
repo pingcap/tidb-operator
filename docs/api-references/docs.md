@@ -12341,6 +12341,16 @@ string
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>health</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="ticdcconfig">TiCDCConfig</h3>

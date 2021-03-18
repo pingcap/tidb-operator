@@ -43,13 +43,15 @@ const (
 // ticdcMemberManager implements manager.Manager.
 type ticdcMemberManager struct {
 	deps                     *controller.Dependencies
+	ticdcUpgrader            Upgrader
 	statefulSetIsUpgradingFn func(corelisters.PodLister, pdapi.PDControlInterface, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 }
 
 // NewTiCDCMemberManager returns a *ticdcMemberManager
-func NewTiCDCMemberManager(deps *controller.Dependencies) manager.Manager {
+func NewTiCDCMemberManager(deps *controller.Dependencies, ticdcUpgrader Upgrader) manager.Manager {
 	m := &ticdcMemberManager{
-		deps: deps,
+		deps:          deps,
+		ticdcUpgrader: ticdcUpgrader,
 	}
 	m.statefulSetIsUpgradingFn = ticdcStatefulSetIsUpgrading
 	return m
@@ -67,9 +69,9 @@ func (m *ticdcMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		klog.Infof("TidbCluster %s/%s is paused, skip syncing ticdc deployment", ns, tcName)
 		return nil
 	}
-	if !tc.PDIsAvailable() {
-		return controller.RequeueErrorf("TidbCluster: %s/%s, waiting for PD cluster running", ns, tcName)
-	}
+	// if !tc.PDIsAvailable() {
+	// 	return controller.RequeueErrorf("TidbCluster: %s/%s, waiting for PD cluster running", ns, tcName)
+	// }
 
 	// Sync CDC Headless Service
 	if err := m.syncCDCHeadlessService(tc); err != nil {
@@ -114,9 +116,10 @@ func (m *ticdcMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
-	if tc.PDUpgrading() || tc.TiKVUpgrading() {
-		klog.Warningf("pd or tikv is upgrading, skipping upgrade ticdc")
-		return nil
+	if !templateEqual(newSts, oldSts) || tc.Status.TiCDC.Phase == v1alpha1.UpgradePhase {
+		if err := m.ticdcUpgrader.Upgrade(tc, oldSts, newSts); err != nil {
+			return err
+		}
 	}
 
 	return UpdateStatefulSet(m.deps.StatefulSetControl, tc, newSts, oldSts)
@@ -127,6 +130,9 @@ func (m *ticdcMemberManager) syncTiCDCStatus(tc *v1alpha1.TidbCluster, sts *apps
 		// skip if not created yet
 		return nil
 	}
+
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
 
 	tc.Status.TiCDC.StatefulSet = &sts.Status
 	upgrading, err := m.statefulSetIsUpgradingFn(m.deps.PodLister, m.deps.PDControl, sts, tc)
@@ -144,14 +150,18 @@ func (m *ticdcMemberManager) syncTiCDCStatus(tc *v1alpha1.TidbCluster, sts *apps
 		podName := fmt.Sprintf("%s-%d", controller.TiCDCMemberName(tc.GetName()), id)
 		capture, err := m.deps.CDCControl.GetStatus(tc, int32(id))
 		if err != nil {
-			return err
-		}
-		ticdcCaptures[podName] = v1alpha1.TiCDCCapture{
-			PodName: podName,
-			ID:      capture.ID,
+			klog.Warningf("Failed to get status for Pod %s of [%s/%s], error: %v", podName, ns, tcName, err)
+		} else {
+			ticdcCaptures[podName] = v1alpha1.TiCDCCapture{
+				PodName: podName,
+				ID:      capture.ID,
+				Health:  true,
+			}
 		}
 	}
-	tc.Status.TiCDC.Synced = true
+	if len(ticdcCaptures) == int(tc.TiCDCDeployDesiredReplicas()) {
+		tc.Status.TiCDC.Synced = true
+	}
 	tc.Status.TiCDC.Captures = ticdcCaptures
 
 	return nil
@@ -337,6 +347,16 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error)
 		}
 	}
 
+	updateStrategy := apps.StatefulSetUpdateStrategy{}
+	if baseTiCDCSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
+		updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
+	} else {
+		updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
+		updateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{
+			Partition: pointer.Int32Ptr(tc.TiCDCDeployDesiredReplicas()),
+		}
+	}
+
 	ticdcSts := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            stsName,
@@ -357,9 +377,7 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error)
 			},
 			ServiceName:         headlessSvcName,
 			PodManagementPolicy: apps.ParallelPodManagement,
-			UpdateStrategy: apps.StatefulSetUpdateStrategy{
-				Type: baseTiCDCSpec.StatefulSetUpdateStrategy(),
-			},
+			UpdateStrategy:      updateStrategy,
 		},
 	}
 	return ticdcSts, nil

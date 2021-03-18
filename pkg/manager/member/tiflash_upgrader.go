@@ -39,8 +39,14 @@ func (u *tiflashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	if tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.Status.TiKV.Phase == v1alpha1.UpgradePhase ||
-		tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
+	if tc.Status.TiCDC.Phase == v1alpha1.UpgradePhase ||
+		tc.Status.PD.Phase == v1alpha1.UpgradePhase ||
+		tc.Status.TiKV.Phase == v1alpha1.UpgradePhase ||
+		tc.TiFlashScaling() {
+		klog.Infof("TidbCluster: [%s/%s]'s ticdc status is %s, pd status is %s, tikv status is %s, "+
+			"tiflash status is %s, can not upgrade tiflash", ns, tcName,
+			tc.Status.TiCDC.Phase, tc.Status.PD.Phase,
+			tc.Status.TiKV.Phase, tc.Status.TiFlash.Phase)
 		_, podSpec, err := GetLastAppliedConfig(oldSet)
 		if err != nil {
 			return err
