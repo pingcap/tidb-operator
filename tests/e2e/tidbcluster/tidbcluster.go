@@ -1647,9 +1647,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				pdCfg := v1alpha1.NewPDConfig()
 				tikvCfg := v1alpha1.NewTiKVConfig()
 				tidbCfg := v1alpha1.NewTiDBConfig()
-				pdCfg.Set("enable-prevote", "true")
-				tikvCfg.Set("prevote", "true")
-				tidbCfg.Set("enable-timestamp", "true")
+				pdCfg.Set("lease", 3)
+				tikvCfg.Set("status-thread-pool-size", 1)
+				tidbCfg.Set("oom-use-tmp-storage", "true")
 				tc.Spec.PD.Config = pdCfg
 				tc.Spec.TiKV.Config = tikvCfg
 				tc.Spec.TiDB.Config = tidbCfg
@@ -1661,6 +1661,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			utiltc.MustWaitForPDPhase(cli, tc, v1alpha1.UpgradePhase, 3*time.Minute, 10*time.Second)
 			log.Logf("PD is in UpgradePhase")
 
+			ginkgo.By("Wait for tc ready")
 			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
 			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
 
@@ -1673,7 +1674,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			})
 			pdCm, err := c.CoreV1().ConfigMaps(ns).Get(pdCmName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "failed to get ConfigMap %s/%s", ns, pdCm)
-			gomega.Expect(pdCm.Data["config-file"]).To(gomega.ContainSubstring("enable-prevote = \"true\""))
+			gomega.Expect(pdCm.Data["config-file"]).To(gomega.ContainSubstring("lease = 3"))
 
 			tikvMemberName := controller.TiKVMemberName(tc.Name)
 			tikvSts, err := stsGetter.StatefulSets(ns).Get(tikvMemberName, metav1.GetOptions{})
@@ -1683,7 +1684,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			})
 			tikvCm, err := c.CoreV1().ConfigMaps(ns).Get(tikvCmName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "failed to get ConfigMap %s/%s", ns, tikvCmName)
-			gomega.Expect(tikvCm.Data["config-file"]).To(gomega.ContainSubstring("prevote = \"true\""))
+			gomega.Expect(tikvCm.Data["config-file"]).To(gomega.ContainSubstring("status-thread-pool-size = 1"))
 
 			tidbMemberName := controller.TiDBMemberName(tc.Name)
 			tidbSts, err := stsGetter.StatefulSets(ns).Get(tidbMemberName, metav1.GetOptions{})
@@ -1693,7 +1694,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			})
 			tidbCm, err := c.CoreV1().ConfigMaps(ns).Get(tidbCmName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "failed to get ConfigMap %s/%s", ns, tidbCmName)
-			gomega.Expect(tidbCm.Data["config-file"]).To(gomega.ContainSubstring("enable-timestamp = \"true\""))
+			gomega.Expect(tidbCm.Data["config-file"]).To(gomega.ContainSubstring("oom-use-tmp-storage = \"true\""))
 		})
 
 		// this case merge scale-in/scale-out into one case, may seems a little bit dense
