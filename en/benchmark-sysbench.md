@@ -84,7 +84,7 @@ For the test in single AZ (Available Zone), the following machine types are chos
 | TiDB     | c2-standard-16 | 3     |
 | Sysbench | c2-standard-30 | 1     |
 
-For the test (2019.08) where the result in multiple Azs is compared with that in single AZ, the c2 machine is not simultaneously available in three AZs within the same GCP Region, so the following machine types are chosen:
+For the test (2019.08) where the result in multiple Azs is compared with that in single AZ, the c2 machine is not simultaneously available in three AZs within the same GCP region, so the following machine types are chosen:
 
 | Component     | Instance type       | Count  |
 | :---     | :---------     | :---- |
@@ -97,7 +97,7 @@ Sysbench, the pressure test platform, has a high demand on CPU in the high concu
 
 > **Note:**
 >
-> The usable machine types vary among GCP Regions. In the test, the disk also performs differently. Therefore, only the machines in us-central1 are applied for test.
+> The usable machine types vary among GCP regions. In the test, the disk also performs differently. Therefore, only the machines in us-central1 are applied for test.
 
 #### Disk
 
@@ -114,7 +114,7 @@ GKE uses a more scalable and powerful [VPC-Native](https://cloud.google.com/kube
 #### CPU
 
 - In the test on a single AZ cluster, the c2-standard-16 machine mode is chosen for TiDB/TiKV.
-- In the comparison test on a single AZ cluster and on multiple AZs cluster, the c2-standard-16 machine type cannot be simultaneously adopted in three AZs within the same GCP Region, so n1-standard-16 machine type is chosen.
+- In the comparison test on a single AZ cluster and on multiple AZs cluster, the c2-standard-16 machine type cannot be simultaneously adopted in three AZs within the same GCP region, so n1-standard-16 machine type is chosen.
 
 ### Operation system and parameters
 

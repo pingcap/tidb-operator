@@ -60,7 +60,7 @@ All the instances except ACK mandatory workers are deployed across availability 
 
 ### Deploy ACK, TiDB Operator and the node pool for TiDB cluster
 
-1. Configure the target Region and Alibaba Cloud key (you can also set these variables in the `terraform` command prompt):
+1. Configure the target region and Alibaba Cloud key (you can also set these variables in the `terraform` command prompt):
 
     {{< copyable "shell-regular" >}}
 
