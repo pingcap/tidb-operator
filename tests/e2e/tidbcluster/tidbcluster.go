@@ -1836,18 +1836,17 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			err := genericCli.Create(context.TODO(), tc)
 			framework.ExpectNoError(err, "failed to create TidbCluster %s/%s", ns, tc.Name)
 
-			ginkgo.By("Wait for 1 min and ensure no PD Pod exist")
+			ginkgo.By("Wait for 1 min and ensure no healthy PD Pod exist")
 			err = wait.PollImmediate(5*time.Second, 1*time.Minute, func() (bool, error) {
 				listOptions := metav1.ListOptions{
 					LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Component(label.PDLabelVal).Labels()).String(),
 				}
 				pods, err := c.CoreV1().Pods(ns).List(listOptions)
-				if err == nil && len(pods.Items) == 0 {
-					log.Logf("no Pods with selector %+v: %v", listOptions, err)
-					return false, nil
+				framework.ExpectNoError(err, "failed to list Pods with selector %+v", listOptions)
+				for _, pod := range pods.Items {
+					framework.ExpectNotEqual(pod.Status.Phase, corev1.PodRunning, "expect PD Pod %s/%s not to be running", ns, pod.Name)
 				}
-				log.Logf("ERROR: get %d Pods with selector %+v\n\tpods: %+v\n\terror: %s", len(pods.Items), listOptions, pods.Items, err)
-				return true, nil
+				return false, nil
 			})
 			framework.ExpectEqual(err, wait.ErrWaitTimeout, "no Pod should be found for PD")
 
