@@ -1711,7 +1711,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				framework.ExpectNoError(err, "failed to scale in PD for TidbCluster %s/%s", ns, tc.Name)
 
 				ginkgo.By("Wait for tc ready")
-				err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 10*time.Second)
+				err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
 				framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale in pd", ns, tc.Name)
 
 				ginkgo.By("Check PD Pods")
