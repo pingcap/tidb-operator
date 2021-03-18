@@ -1726,6 +1726,40 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				}
 			})
 		})
+
+		ginkgo.It("PD to 0 is forbidden while other components are running", func() {
+			ginkgo.By("Deploy initial tc")
+			tc := fixture.GetTidbCluster(ns, "scale-pd-to-0", utilimage.TiDBV4)
+			tc.Spec.PD.Replicas = 1
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
+
+			ginkgo.By("Scale in PD to 0 replicas")
+			err := controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Spec.PD.Replicas = 0
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to scale in PD for TidbCluster %s/%s", ns, tc.Name)
+
+			ginkgo.By("Wait for PD to be in ScalePhase")
+			utiltc.MustWaitForPDPhase(cli, tc, v1alpha1.ScalePhase, 3*time.Minute, 10*time.Second)
+
+			ginkgo.By("Check for FailedScaleIn event")
+			// LAST SEEN   TYPE      REASON          OBJECT              MESSAGE
+			// 25s         Warning   FailedScaleIn   tidbcluster/basic   The PD is in use by TidbCluster [pingcap/basic], can't scale in PD, podname basic-pd-0
+			err = wait.Poll(5*time.Second, 1*time.Minute, func() (done bool, err error) {
+				options := metav1.ListOptions{
+					FieldSelector: fmt.Sprintf("involvedObject.name=%s,involvedObject.kind=TidbCluster", tc.Name),
+				}
+				event, err := c.CoreV1().Events(ns).List(options)
+				if err != nil {
+					log.Logf("failed to list events with options: +%v", options)
+					return false, nil
+				}
+				framework.ExpectEqual(event.Items[0].Reason, "FailedScaleIn", "expect tc event to have reason: FailedScaleIn")
+				return true, nil
+			})
+			framework.ExpectNoError(err, "failed to wait for FailedScaleIn event")
+		})
 	})
 })
 
