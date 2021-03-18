@@ -1857,17 +1857,17 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			})
 			framework.ExpectNoError(err, "failed to change PD Pod image")
 
-			ginkgo.By("Wait for 1 min and ensure no PD Pod exist")
+			ginkgo.By("Wait for 1 min and ensure no healthy PD Pod exist")
 			err = wait.PollImmediate(5*time.Second, 1*time.Minute, func() (bool, error) {
 				listOptions := metav1.ListOptions{
 					LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Component(label.PDLabelVal).Labels()).String(),
 				}
-				_, err := c.CoreV1().Pods(ns).List(listOptions)
-				if err != nil && apierrors.IsNotFound(err) {
-					log.Logf("failed to get Pods with selector %+v: %v", listOptions, err)
-					return false, nil
+				pods, err := c.CoreV1().Pods(ns).List(listOptions)
+				framework.ExpectNoError(err, "failed to list Pods with selector %+v", listOptions)
+				for _, pod := range pods.Items {
+					framework.ExpectNotEqual(pod.Status.Phase, corev1.PodRunning, "expect PD Pod %s/%s not to be running", ns, pod.Name)
 				}
-				return true, nil
+				return false, nil
 			})
 			framework.ExpectEqual(err, wait.ErrWaitTimeout, "no Pod should be found for PD")
 
