@@ -284,6 +284,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 	})
 
+	// TODO: move into Upgrade cases below
 	ginkgo.It("should upgrade TidbCluster with webhook enabled", func() {
 		ginkgo.By("Creating webhook certs and self signing it")
 		svcName := "webhook"
@@ -412,6 +413,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			})
 			framework.ExpectNoError(err, "failed to wait for TidbCluster managed svc to be ready: %q", tc.Name)
 		})
+
 		// Basic IT for managed in TidbCluster CR
 		// TODO: deploy pump through CR in backup and restore
 		// TODO: Add pump configmap rolling-update case
@@ -665,6 +667,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		})
 	})
 
+	// TODO: move into TiDBMonitor specific group
 	ginkgo.It("should manage tidb monitor normally", func() {
 		ginkgo.By("Deploy initial tc")
 		tc := fixture.GetTidbCluster(ns, "monitor-test", utilimage.TiDBV4)
@@ -1281,6 +1284,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		})
 	})
 
+	// TODO: move into TiDB specific group
 	ginkgo.It("should ensure changing TiDB service annotations won't change TiDB service type NodePort", func() {
 		ginkgo.By("Deploy initial tc")
 		// Create TidbCluster with NodePort to check whether node port would change
@@ -1487,36 +1491,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	})
 
 	ginkgo.Context("when stores number is equal to 3", func() {
-		ginkgo.It("forbid to scale in TiKV and the state of all stores are up", func() {
-			ginkgo.By("Deploy initial tc")
-			tc := fixture.GetTidbCluster(ns, "scale-in-tikv", utilimage.TiDBV4)
-			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
-			framework.ExpectNoError(err, "Expected create tidbcluster")
-			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
-			framework.ExpectNoError(err, "Expected get tidbcluster")
 
-			ginkgo.By("Scale in tikv to 2 replicas")
-			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-				tc.Spec.TiKV.Replicas = 2
-				return nil
-			})
-			framework.ExpectNoError(err, "failed to scale in tikv")
-
-			ginkgo.By("Expect up stores number stays 3")
-			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, tc.Name, false)
-			framework.ExpectNoError(err, "create pdClient error")
-			defer cancel()
-			storesInfo, err := pdClient.GetStores()
-			framework.ExpectNoError(err, "get stores info error")
-
-			_ = wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
-				framework.ExpectEqual(storesInfo.Count, 3, "Expect number of stores is 3")
-				for _, store := range storesInfo.Stores {
-					framework.ExpectEqual(store.Store.StateName, "Up", "Expect state of stores are Up")
-				}
-				return false, nil
-			})
-		})
 	})
 
 	ginkgo.It("TiKV should mount multiple pvc", func() {
@@ -1764,6 +1739,37 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				return false, nil
 			})
 			framework.ExpectNoError(err, "failed to wait for FailedScaleIn event")
+		})
+
+		ginkgo.It("TiKV from >=3 replicas to <3 should be forbidden", func() {
+			ginkgo.By("Deploy initial tc")
+			tc := fixture.GetTidbCluster(ns, "scale-in-tikv", utilimage.TiDBV4)
+			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
+			framework.ExpectNoError(err, "Expected create tidbcluster")
+			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+			framework.ExpectNoError(err, "Expected get tidbcluster")
+
+			ginkgo.By("Scale in tikv to 2 replicas")
+			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Spec.TiKV.Replicas = 2
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to scale in tikv")
+
+			ginkgo.By("Expect up stores number stays 3")
+			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, tc.Name, false)
+			framework.ExpectNoError(err, "create pdClient error")
+			defer cancel()
+			storesInfo, err := pdClient.GetStores()
+			framework.ExpectNoError(err, "get stores info error")
+
+			_ = wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
+				framework.ExpectEqual(storesInfo.Count, 3, "Expect number of stores is 3")
+				for _, store := range storesInfo.Stores {
+					framework.ExpectEqual(store.Store.StateName, "Up", "Expect state of stores are Up")
+				}
+				return false, nil
+			})
 		})
 	})
 })
