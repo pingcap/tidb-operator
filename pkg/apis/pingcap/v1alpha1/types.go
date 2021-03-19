@@ -47,6 +47,8 @@ const (
 	TiFlashMemberType MemberType = "tiflash"
 	// TiCDCMemberType is ticdc container type
 	TiCDCMemberType MemberType = "ticdc"
+	// PumpMemberType is pump container type
+	PumpMemberType MemberType = "pump"
 	// SlowLogTailerMemberType is tidb slow log tailer container type
 	SlowLogTailerMemberType MemberType = "slowlog"
 	// RocksDBLogTailerMemberType is tikv rocksdb log tailer container type

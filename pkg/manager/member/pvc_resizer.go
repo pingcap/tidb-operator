@@ -16,7 +16,7 @@ package member
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
+	"regexp"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -72,51 +72,85 @@ type pvcResizer struct {
 	deps *controller.Dependencies
 }
 
+// Resize will resize the PVCs defined in components storage requests in tc.Spec
+// Take PD as an example, there are 2 possible places: tc.Spec.PD.Requests & tc.Spec.PD.StorageVolumes
+// Note: TiFlash is an exception for now, which uses tc.Spec.TiFlash.StorageClaims
 func (p *pvcResizer) Resize(tc *v1alpha1.TidbCluster) error {
+	ns := tc.GetNamespace()
 	selector, err := label.New().Instance(tc.GetInstanceName()).Selector()
 	if err != nil {
 		return err
 	}
+
+	// First we compose a map, with PVC name prefix for current component as keys,
+	// for example "pd-${tcName}-pd" (for tc.Spec.PD.Requests) or "pd-log-${tcName}-pd" (for tc.Spec.PD.storageVolumes elements with name "log").
+	// Reference implementation of BuildStorageVolumeAndVolumeMount().
+	// Note: for TiFlash, it is currently "data0-${tcName}-tiflash" (for tc.Spec.TiFlash.StorageClaims elements, in list definition order)
+	pvcPrefix2Quantity := make(map[string]resource.Quantity)
+
 	// patch PD PVCs
 	if tc.Spec.PD != nil {
-		if storageRequest, ok := tc.Spec.PD.Requests[corev1.ResourceStorage]; ok {
-			err = p.patchPVCs(tc.GetNamespace(), selector.Add(*pdRequirement), storageRequest, "")
-			if err != nil {
-				return err
+		pdMemberType := v1alpha1.PDMemberType.String()
+		if quantity, ok := tc.Spec.PD.Requests[corev1.ResourceStorage]; ok {
+			key := fmt.Sprintf("%s-%s-%s", pdMemberType, tc.Name, pdMemberType)
+			pvcPrefix2Quantity[key] = quantity
+		}
+		for _, sv := range tc.Spec.PD.StorageVolumes {
+			key := fmt.Sprintf("%s-%s-%s-%s", pdMemberType, sv.Name, tc.Name, pdMemberType)
+			if quantity, err := resource.ParseQuantity(sv.StorageSize); err == nil {
+				pvcPrefix2Quantity[key] = quantity
+			} else {
+				klog.Warningf("StorageVolume %q in %s/%s .Spec.PD is invalid", sv.Name, ns, tc.Name)
 			}
+		}
+		if err := p.patchPVCs(ns, selector.Add(*pdRequirement), pvcPrefix2Quantity); err != nil {
+			return err
 		}
 	}
 
 	// patch TiKV PVCs
 	if tc.Spec.TiKV != nil {
-		if storageRequest, ok := tc.Spec.TiKV.Requests[corev1.ResourceStorage]; ok {
-			err = p.patchPVCs(tc.GetNamespace(), selector.Add(*tikvRequirement), storageRequest, "")
-			if err != nil {
-				return err
+		tikvMemberType := v1alpha1.TiKVMemberType.String()
+		if quantity, ok := tc.Spec.TiKV.Requests[corev1.ResourceStorage]; ok {
+			key := fmt.Sprintf("%s-%s-%s", tikvMemberType, tc.Name, tikvMemberType)
+			pvcPrefix2Quantity[key] = quantity
+		}
+		for _, sv := range tc.Spec.TiKV.StorageVolumes {
+			key := fmt.Sprintf("%s-%s-%s-%s", tikvMemberType, sv.Name, tc.Name, tikvMemberType)
+			if quantity, err := resource.ParseQuantity(sv.StorageSize); err == nil {
+				pvcPrefix2Quantity[key] = quantity
+			} else {
+				klog.Warningf("StorageVolume %q in %s/%s .Spec.TiKV is invalid", sv.Name, ns, tc.Name)
 			}
+		}
+		if err := p.patchPVCs(ns, selector.Add(*tikvRequirement), pvcPrefix2Quantity); err != nil {
+			return err
 		}
 	}
 
 	// patch TiFlash PVCs
 	if tc.Spec.TiFlash != nil {
+		tiflashMemberType := v1alpha1.TiFlashMemberType.String()
 		for i, claim := range tc.Spec.TiFlash.StorageClaims {
-			if storageRequest, ok := claim.Resources.Requests[corev1.ResourceStorage]; ok {
-				prefix := fmt.Sprintf("data%d", i)
-				err = p.patchPVCs(tc.GetNamespace(), selector.Add(*tiflashRequirement), storageRequest, prefix)
-				if err != nil {
-					return err
-				}
+			key := fmt.Sprintf("data%d-%s-%s", i, tc.Name, tiflashMemberType)
+			if quantity, ok := claim.Resources.Requests[corev1.ResourceStorage]; ok {
+				pvcPrefix2Quantity[key] = quantity
 			}
+		}
+		if err := p.patchPVCs(ns, selector.Add(*tiflashRequirement), pvcPrefix2Quantity); err != nil {
+			return err
 		}
 	}
 
 	// patch Pump PVCs
 	if tc.Spec.Pump != nil {
-		if storageRequest, ok := tc.Spec.Pump.Requests[corev1.ResourceStorage]; ok {
-			err = p.patchPVCs(tc.GetNamespace(), selector.Add(*pumpRequirement), storageRequest, "")
-			if err != nil {
-				return err
-			}
+		pumpMemberType := v1alpha1.PumpMemberType.String()
+		if quantity, ok := tc.Spec.Pump.Requests[corev1.ResourceStorage]; ok {
+			key := fmt.Sprintf("data-%s-%s", tc.Name, pumpMemberType)
+			pvcPrefix2Quantity[key] = quantity
+		}
+		if err := p.patchPVCs(ns, selector.Add(*pumpRequirement), pvcPrefix2Quantity); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -134,50 +168,70 @@ func (p *pvcResizer) isVolumeExpansionSupported(storageClassName string) (bool, 
 }
 
 // patchPVCs patches PVCs filtered by selector and prefix.
-func (p *pvcResizer) patchPVCs(ns string, selector labels.Selector, storageRequest resource.Quantity, prefix string) error {
+func (p *pvcResizer) patchPVCs(ns string, selector labels.Selector, pvcQuantityInSpec map[string]resource.Quantity) error {
+	if len(pvcQuantityInSpec) == 0 {
+		return nil
+	}
 	pvcs, err := p.deps.PVCLister.PersistentVolumeClaims(ns).List(selector)
 	if err != nil {
 		return err
 	}
-	mergePatch, err := json.Marshal(map[string]interface{}{
-		"spec": map[string]interface{}{
-			"resources": corev1.ResourceRequirements{
-				Requests: corev1.ResourceList{
-					corev1.ResourceStorage: storageRequest,
-				},
-			},
-		},
-	})
+
 	if err != nil {
 		return err
 	}
+	// the PVC name for StatefulSet will be ${pvcNameInTemplate}-${stsName}-${ordinal}, here we want to drop the ordinal
+	rePvcPrefix := regexp.MustCompile(`^(.+)-\d+$`)
 	for _, pvc := range pvcs {
-		if !strings.HasPrefix(pvc.Name, prefix) {
+		match := rePvcPrefix.FindStringSubmatch(pvc.Name)
+		pvcPrefix := match[1]
+		quantityInSpec, ok := pvcQuantityInSpec[pvcPrefix]
+		if !ok {
+			// TODO: PVC not specified in tc.spec, should we deal with it and raise a warning
 			continue
 		}
+
 		if pvc.Spec.StorageClassName == nil {
 			klog.Warningf("PVC %s/%s has no storage class, skipped", pvc.Namespace, pvc.Name)
 			continue
 		}
-		volumeExpansionSupported, err := p.isVolumeExpansionSupported(*pvc.Spec.StorageClassName)
-		if err != nil {
-			return err
+
+		currentRequest, ok := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
+		if !ok {
+			klog.Warningf("PVC %s/%s storage request is empty, skipped", pvc.Namespace, pvc.Name)
+			continue
 		}
 
-		if currentRequest, ok := pvc.Spec.Resources.Requests[corev1.ResourceStorage]; !ok || storageRequest.Cmp(currentRequest) > 0 {
+		if quantityInSpec.Cmp(currentRequest) > 0 {
+			volumeExpansionSupported, err := p.isVolumeExpansionSupported(*pvc.Spec.StorageClassName)
+			if err != nil {
+				return err
+			}
 			if !volumeExpansionSupported {
 				klog.Warningf("Storage Class %q used by PVC %s/%s does not support volume expansion, skipped", *pvc.Spec.StorageClassName, pvc.Namespace, pvc.Name)
 				continue
+			}
+			mergePatch, err := json.Marshal(map[string]interface{}{
+				"spec": map[string]interface{}{
+					"resources": corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceStorage: quantityInSpec,
+						},
+					},
+				},
+			})
+			if err != nil {
+				return err
 			}
 			_, err = p.deps.KubeClientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Patch(pvc.Name, types.MergePatchType, mergePatch)
 			if err != nil {
 				return err
 			}
-			klog.V(2).Infof("PVC %s/%s storage request is updated from %s to %s", pvc.Namespace, pvc.Name, currentRequest.String(), storageRequest.String())
-		} else if storageRequest.Cmp(currentRequest) < 0 {
-			klog.Warningf("PVC %s/%s/ storage request cannot be shrunk (%s to %s), skipped", pvc.Namespace, pvc.Name, currentRequest.String(), storageRequest.String())
+			klog.V(2).Infof("PVC %s/%s storage request is updated from %s to %s", pvc.Namespace, pvc.Name, currentRequest.String(), quantityInSpec.String())
+		} else if quantityInSpec.Cmp(currentRequest) < 0 {
+			klog.Warningf("PVC %s/%s/ storage request cannot be shrunk (%s to %s), skipped", pvc.Namespace, pvc.Name, currentRequest.String(), quantityInSpec.String())
 		} else {
-			klog.V(4).Infof("PVC %s/%s storage request is already %s, skipped", pvc.Namespace, pvc.Name, storageRequest.String())
+			klog.V(4).Infof("PVC %s/%s storage request is already %s, skipped", pvc.Namespace, pvc.Name, quantityInSpec.String())
 		}
 	}
 	return nil

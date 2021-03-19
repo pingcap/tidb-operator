@@ -95,6 +95,12 @@ func TestPVCResizer(t *testing.T) {
 								v1.ResourceStorage: resource.MustParse("2Gi"),
 							},
 						},
+						StorageVolumes: []v1alpha1.StorageVolume{
+							{
+								Name:        "log",
+								StorageSize: "2Gi",
+							},
+						},
 					},
 					TiKV: &v1alpha1.TiKVSpec{},
 					TiDB: &v1alpha1.TiDBSpec{},
@@ -102,14 +108,20 @@ func TestPVCResizer(t *testing.T) {
 			},
 			sc: newStorageClass("sc", true),
 			pvcs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("pd-0", label.PDLabelVal, "sc", "1Gi"),
-				newPVCWithStorage("pd-1", label.PDLabelVal, "sc", "1Gi"),
-				newPVCWithStorage("pd-2", label.PDLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("pd-tc-pd-0", label.PDLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("pd-tc-pd-1", label.PDLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("pd-tc-pd-2", label.PDLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("pd-log-tc-pd-0", label.PDLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("pd-log-tc-pd-1", label.PDLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("pd-log-tc-pd-2", label.PDLabelVal, "sc", "1Gi"),
 			},
 			wantPVCs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("pd-0", label.PDLabelVal, "sc", "2Gi"),
-				newPVCWithStorage("pd-1", label.PDLabelVal, "sc", "2Gi"),
-				newPVCWithStorage("pd-2", label.PDLabelVal, "sc", "2Gi"),
+				newPVCWithStorage("pd-tc-pd-0", label.PDLabelVal, "sc", "2Gi"),
+				newPVCWithStorage("pd-tc-pd-1", label.PDLabelVal, "sc", "2Gi"),
+				newPVCWithStorage("pd-tc-pd-2", label.PDLabelVal, "sc", "2Gi"),
+				newPVCWithStorage("pd-log-tc-pd-0", label.PDLabelVal, "sc", "2Gi"),
+				newPVCWithStorage("pd-log-tc-pd-1", label.PDLabelVal, "sc", "2Gi"),
+				newPVCWithStorage("pd-log-tc-pd-2", label.PDLabelVal, "sc", "2Gi"),
 			},
 		},
 		{
@@ -128,19 +140,31 @@ func TestPVCResizer(t *testing.T) {
 								v1.ResourceStorage: resource.MustParse("2Gi"),
 							},
 						},
+						StorageVolumes: []v1alpha1.StorageVolume{
+							{
+								Name:        "log",
+								StorageSize: "2Gi",
+							},
+						},
 					},
 				},
 			},
 			sc: newStorageClass("sc", true),
 			pvcs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("tikv-0", label.TiKVLabelVal, "sc", "1Gi"),
-				newPVCWithStorage("tikv-1", label.TiKVLabelVal, "sc", "1Gi"),
-				newPVCWithStorage("tikv-2", label.TiKVLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("tikv-tc-tikv-0", label.TiKVLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("tikv-tc-tikv-1", label.TiKVLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("tikv-tc-tikv-2", label.TiKVLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("tikv-log-tc-tikv-0", label.TiKVLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("tikv-log-tc-tikv-1", label.TiKVLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("tikv-log-tc-tikv-2", label.TiKVLabelVal, "sc", "1Gi"),
 			},
 			wantPVCs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("tikv-0", label.TiKVLabelVal, "sc", "2Gi"),
-				newPVCWithStorage("tikv-1", label.TiKVLabelVal, "sc", "2Gi"),
-				newPVCWithStorage("tikv-2", label.TiKVLabelVal, "sc", "2Gi"),
+				newPVCWithStorage("tikv-tc-tikv-0", label.TiKVLabelVal, "sc", "2Gi"),
+				newPVCWithStorage("tikv-tc-tikv-1", label.TiKVLabelVal, "sc", "2Gi"),
+				newPVCWithStorage("tikv-tc-tikv-2", label.TiKVLabelVal, "sc", "2Gi"),
+				newPVCWithStorage("tikv-log-tc-tikv-0", label.TiKVLabelVal, "sc", "2Gi"),
+				newPVCWithStorage("tikv-log-tc-tikv-1", label.TiKVLabelVal, "sc", "2Gi"),
+				newPVCWithStorage("tikv-log-tc-tikv-2", label.TiKVLabelVal, "sc", "2Gi"),
 			},
 		},
 		{
@@ -208,10 +232,10 @@ func TestPVCResizer(t *testing.T) {
 			},
 			sc: newStorageClass("sc", true),
 			pvcs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("pump-0", label.PumpLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("data-tc-pump-0", label.PumpLabelVal, "sc", "1Gi"),
 			},
 			wantPVCs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("pump-0", label.PumpLabelVal, "sc", "2Gi"),
+				newPVCWithStorage("data-tc-pump-0", label.PumpLabelVal, "sc", "2Gi"),
 			},
 		},
 		{
@@ -234,10 +258,10 @@ func TestPVCResizer(t *testing.T) {
 				},
 			},
 			pvcs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("pd-0", label.PDLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("pd-tc-pd-0", label.PDLabelVal, "sc", "1Gi"),
 			},
 			wantPVCs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("pd-0", label.PDLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("pd-tc-pd-0", label.PDLabelVal, "sc", "1Gi"),
 			},
 			wantErr: apierrors.NewNotFound(storagev1.Resource("storageclass"), "sc"),
 		},
