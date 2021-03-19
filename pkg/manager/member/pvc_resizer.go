@@ -156,42 +156,6 @@ func (p *pvcResizer) Resize(tc *v1alpha1.TidbCluster) error {
 	return nil
 }
 
-<<<<<<< HEAD
-=======
-// ResizeDM do things similar to Resize for TidbCluster
-func (p *pvcResizer) ResizeDM(dc *v1alpha1.DMCluster) error {
-	ns := dc.GetNamespace()
-	selector, err := label.NewDM().Instance(dc.GetInstanceName()).Selector()
-	if err != nil {
-		return err
-	}
-	pvcPrefix2Quantity := make(map[string]resource.Quantity)
-
-	// patch dm-master PVCs
-	if quantity, err := resource.ParseQuantity(dc.Spec.Master.StorageSize); err == nil {
-		dmMasterMemberType := v1alpha1.DMMasterMemberType.String()
-		key := fmt.Sprintf("%s-%s-%s", dmMasterMemberType, dc.Name, dmMasterMemberType)
-		pvcPrefix2Quantity[key] = quantity
-	}
-	if err := p.patchPVCs(ns, selector.Add(*dmMasterRequirement), pvcPrefix2Quantity); err != nil {
-		return err
-	}
-
-	// patch dm-worker PVCs
-	if dc.Spec.Worker != nil {
-		if quantity, err := resource.ParseQuantity(dc.Spec.Worker.StorageSize); err == nil {
-			dmWorkerMemberType := v1alpha1.DMWorkerMemberType.String()
-			key := fmt.Sprintf("%s-%s-%s", dmWorkerMemberType, dc.Name, dmWorkerMemberType)
-			pvcPrefix2Quantity[key] = quantity
-		}
-		if err := p.patchPVCs(ns, selector.Add(*dmWorkerRequirement), pvcPrefix2Quantity); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
->>>>>>> c32eb87d... Fix PVC resize in multiple PVC setting (#3858)
 func (p *pvcResizer) isVolumeExpansionSupported(storageClassName string) (bool, error) {
 	sc, err := p.deps.StorageClassLister.Get(storageClassName)
 	if err != nil {
