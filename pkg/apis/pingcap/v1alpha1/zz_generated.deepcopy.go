@@ -3710,6 +3710,13 @@ func (in *PrometheusSpec) DeepCopyInto(out *PrometheusSpec) {
 			}
 		}
 	}
+	if in.AdditionalVolumeMounts != nil {
+		in, out := &in.AdditionalVolumeMounts, &out.AdditionalVolumeMounts
+		*out = make([]v1.VolumeMount, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 
@@ -4600,6 +4607,13 @@ func (in *ThanosSpec) DeepCopyInto(out *ThanosSpec) {
 		in, out := &in.GRPCServerTLSConfig, &out.GRPCServerTLSConfig
 		*out = new(TLSConfig)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.AdditionalVolumeMounts != nil {
+		in, out := &in.AdditionalVolumeMounts, &out.AdditionalVolumeMounts
+		*out = make([]v1.VolumeMount, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
 	}
 	return
 }
@@ -8308,6 +8322,13 @@ func (in *TidbMonitorSpec) DeepCopyInto(out *TidbMonitorSpec) {
 		in, out := &in.Replicas, &out.Replicas
 		*out = new(int32)
 		**out = **in
+	}
+	if in.AdditionalVolumes != nil {
+		in, out := &in.AdditionalVolumes, &out.AdditionalVolumes
+		*out = make([]v1.Volume, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
 	}
 	return
 }
