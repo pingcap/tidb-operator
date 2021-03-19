@@ -1755,8 +1755,13 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					log.Logf("failed to list events with options: +%v", options)
 					return false, nil
 				}
-				framework.ExpectEqual(event.Items[0].Reason, "FailedScaleIn", "expect tc event to have reason: FailedScaleIn")
-				return true, nil
+				for _, event := range event.Items {
+					log.Logf("found event: %+v", event)
+					if event.Reason == "FailedScaleIn" {
+						return true, nil
+					}
+				}
+				return false, nil
 			})
 			framework.ExpectNoError(err, "failed to wait for FailedScaleIn event")
 		})
