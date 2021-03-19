@@ -1674,6 +1674,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			})
 			pdCm, err := c.CoreV1().ConfigMaps(ns).Get(pdCmName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "failed to get ConfigMap %s/%s", ns, pdCm)
+			log.Logf("PD config:\n%s", pdCm.Data["config-file"])
 			gomega.Expect(pdCm.Data["config-file"]).To(gomega.ContainSubstring("lease = 3"))
 
 			tikvMemberName := controller.TiKVMemberName(tc.Name)
@@ -1684,6 +1685,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			})
 			tikvCm, err := c.CoreV1().ConfigMaps(ns).Get(tikvCmName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "failed to get ConfigMap %s/%s", ns, tikvCmName)
+			log.Logf("TiKV config:\n%s", tikvCm.Data["config-file"])
 			gomega.Expect(tikvCm.Data["config-file"]).To(gomega.ContainSubstring("status-thread-pool-size = 1"))
 
 			tidbMemberName := controller.TiDBMemberName(tc.Name)
@@ -1694,6 +1696,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			})
 			tidbCm, err := c.CoreV1().ConfigMaps(ns).Get(tidbCmName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "failed to get ConfigMap %s/%s", ns, tidbCmName)
+			log.Logf("TiDB config:\n%s", tidbCm.Data["config-file"])
 			gomega.Expect(tidbCm.Data["config-file"]).To(gomega.ContainSubstring("oom-use-tmp-storage = \"true\""))
 		})
 
