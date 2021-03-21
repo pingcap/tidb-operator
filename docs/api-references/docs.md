@@ -3563,6 +3563,30 @@ string
 <p>ClusterDomain is the domain of TidbCluster object</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>tlsFileDir</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TlsFileDir is the path of TidbCluster tls files.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enableTls</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>whether enable tls request.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="commonconfig">CommonConfig</h3>
@@ -19330,6 +19354,30 @@ string
 <td>
 <em>(Optional)</em>
 <p>ClusterDomain is the domain of TidbCluster object</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tlsFileDir</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TlsFileDir is the path of TidbCluster tls files.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enableTls</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>whether enable tls request.</p>
 </td>
 </tr>
 </tbody>

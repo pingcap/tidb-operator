@@ -246,6 +246,14 @@ type TidbClusterRef struct {
 	// ClusterDomain is the domain of TidbCluster object
 	// +optional
 	ClusterDomain string `json:"clusterDomain,omitempty"`
+
+	// TlsFileDir is the path of TidbCluster tls files.
+	// +optional
+	TLSFileDir string `json:"tlsFileDir,omitempty"`
+
+	// whether enable tls request.
+	// +optional
+	EnableTLS *bool `json:"enableTls,omitempty"`
 }
 
 // +k8s:openapi-gen=true

@@ -1,0 +1,29 @@
+apiVersion: cert-manager.io/v1alpha2
+kind: Issuer
+metadata:
+  name: ns1-selfsigned-ca-issuer
+  namespace: default
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: ns1-ca
+  namespace: default
+spec:
+  secretName: ns1-ca-secret
+  commonName: "TiDB"
+  isCA: true
+  issuerRef:
+    name: ns1-selfsigned-ca-issuer
+    kind: Issuer
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Issuer
+metadata:
+  name: ns1-tidb-issuer
+  namespace: default
+spec:
+  ca:
+    secretName: ns1-ca-secret

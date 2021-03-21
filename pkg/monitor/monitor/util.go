@@ -118,10 +118,23 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monit
 
 	var releaseClusterInfos []ClusterRegexInfo
 	for _, cluster := range monitor.Spec.Clusters {
-		releaseClusterInfos = append(releaseClusterInfos, ClusterRegexInfo{
+		clusterRegex := ClusterRegexInfo{
 			Name:      cluster.Name,
 			Namespace: cluster.Namespace,
-		})
+		}
+		//  Old logical , firstTc enable tls and use default tls path
+		if cluster.EnableTLS == nil {
+			if tc.IsTLSClusterEnabled() {
+				clusterRegex.EnableTLS = true
+				clusterRegex.TLSFileDir = util.ClusterClientTLSPath
+			}
+		} else {
+			//If user set manually,directly assign value
+			clusterRegex.EnableTLS = *cluster.EnableTLS
+			clusterRegex.TLSFileDir = cluster.TLSFileDir
+		}
+
+		releaseClusterInfos = append(releaseClusterInfos, clusterRegex)
 	}
 
 	var releaseDMClusterInfos []ClusterRegexInfo

@@ -1209,6 +1209,20 @@ func schema_pkg_apis_pingcap_v1alpha1_ClusterRef(ref common.ReferenceCallback) c
 							Format:      "",
 						},
 					},
+					"tlsFileDir": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TlsFileDir is the path of TidbCluster tls files.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"enableTls": {
+						SchemaProps: spec.SchemaProps{
+							Description: "whether enable tls request.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"name"},
 			},
@@ -10517,6 +10531,20 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterRef(ref common.ReferenceCallbac
 						SchemaProps: spec.SchemaProps{
 							Description: "ClusterDomain is the domain of TidbCluster object",
 							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"tlsFileDir": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TlsFileDir is the path of TidbCluster tls files.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"enableTls": {
+						SchemaProps: spec.SchemaProps{
+							Description: "whether enable tls request.",
+							Type:        []string{"boolean"},
 							Format:      "",
 						},
 					},

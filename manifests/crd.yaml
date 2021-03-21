@@ -336,9 +336,13 @@ spec:
               properties:
                 clusterDomain:
                   type: string
+                enableTls:
+                  type: boolean
                 name:
                   type: string
                 namespace:
+                  type: string
+                tlsFileDir:
                   type: string
               required:
               - name
@@ -20033,9 +20037,13 @@ spec:
                 properties:
                   clusterDomain:
                     type: string
+                  enableTls:
+                    type: boolean
                   name:
                     type: string
                   namespace:
+                    type: string
+                  tlsFileDir:
                     type: string
                 required:
                 - name
@@ -20135,9 +20143,13 @@ spec:
               properties:
                 clusterDomain:
                   type: string
+                enableTls:
+                  type: boolean
                 name:
                   type: string
                 namespace:
+                  type: string
+                tlsFileDir:
                   type: string
               required:
               - name
@@ -20225,9 +20237,13 @@ spec:
               properties:
                 clusterDomain:
                   type: string
+                enableTls:
+                  type: boolean
                 name:
                   type: string
                 namespace:
+                  type: string
+                tlsFileDir:
                   type: string
               required:
               - name

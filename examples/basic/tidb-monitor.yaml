@@ -5,6 +5,7 @@ metadata:
 spec:
   clusters:
   - name: basic
+  - name: heterogeneous
   prometheus:
     baseImage: prom/prometheus
     version: v2.18.1
@@ -13,7 +14,7 @@ spec:
     version: 6.1.6
   initializer:
     baseImage: pingcap/tidb-monitor-initializer
-    version: v4.0.10
+    version: v4.0.11
   reloader:
     baseImage: pingcap/tidb-monitor-reloader
     version: v1.0.1
