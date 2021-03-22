@@ -23,6 +23,6 @@ var (
 			Namespace: "tidb_operator",
 			Subsystem: "cluster",
 			Name:      "spec_replicas",
-			Help:      "Number of tidb-cluster spec.replicas",
-		}, []string{LblNamespace, LblName, LblComponent})
+			Help:      "Desired replicas of each component in TidbCluster",
+		}, []string{LabelNamespace, LabelName, LabelComponent})
 )

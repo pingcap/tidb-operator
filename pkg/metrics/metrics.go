@@ -24,7 +24,7 @@ func RegisterMetrics() {
 
 // Label constants.
 const (
-	LblNamespace = "namespace"
-	LblName      = "name"
-	LblComponent = "component"
+	LabelNamespace = "namespace"
+	LabelName      = "name"
+	LabelComponent = "component"
 )
