@@ -54,6 +54,8 @@ const (
 	TiFlashMemberType MemberType = "tiflash"
 	// TiCDCMemberType is ticdc container type
 	TiCDCMemberType MemberType = "ticdc"
+	// PumpMemberType is pump container type
+	PumpMemberType MemberType = "pump"
 	// DMMasterMemberType is dm-master container type
 	DMMasterMemberType MemberType = "dm-master"
 	// DMWorkerMemberType is dm-worker container type

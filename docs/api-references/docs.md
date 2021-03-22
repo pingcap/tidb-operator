@@ -2301,6 +2301,20 @@ int32
 Defaults to 1.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>additionalVolumes</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#volume-v1-core">
+[]Kubernetes core/v1.Volume
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Additional volumes of component pod.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -9907,6 +9921,19 @@ bool
 <p>If specified, the remote_write spec. This is an experimental feature, it may change in any upcoming release in a breaking way.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>additionalVolumeMounts</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#volumemount-v1-core">
+[]Kubernetes core/v1.VolumeMount
+</a>
+</em>
+</td>
+<td>
+<p>Additional volume mounts of prometheus pod.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="proxyconfig">ProxyConfig</h3>
@@ -12261,6 +12288,19 @@ string
 </td>
 <td>
 <p>RoutePrefix is prometheus prefix url</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>additionalVolumeMounts</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#volumemount-v1-core">
+[]Kubernetes core/v1.VolumeMount
+</a>
+</em>
+</td>
+<td>
+<p>Additional volume mounts of thanos pod.</p>
 </td>
 </tr>
 </tbody>
@@ -20434,6 +20474,20 @@ int32
 <em>(Optional)</em>
 <p>Replicas is the number of desired replicas.
 Defaults to 1.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>additionalVolumes</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#volume-v1-core">
+[]Kubernetes core/v1.Volume
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Additional volumes of component pod.</p>
 </td>
 </tr>
 </tbody>
