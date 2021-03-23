@@ -19,7 +19,9 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"os/signal"
 	"reflect"
+	"syscall"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
@@ -215,9 +217,6 @@ func main() {
 		})
 	}, cliCfg.WaitDuration)
 
-<<<<<<< HEAD
-	klog.Fatal(http.ListenAndServe(":6060", nil))
-=======
 	srv := createHTTPServer()
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc,
@@ -240,7 +239,6 @@ func main() {
 		klog.Fatal(err)
 	}
 	klog.Infof("tidb-controller-manager exited")
->>>>>>> d845470d... *: export prometheus metrics for tidb-operator (#3865)
 }
 
 func createHTTPServer() *http.Server {
