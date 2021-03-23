@@ -34,9 +34,11 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbinitializer"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbmonitor"
 	"github.com/pingcap/tidb-operator/pkg/features"
+	"github.com/pingcap/tidb-operator/pkg/metrics"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/pkg/upgrader"
 	"github.com/pingcap/tidb-operator/pkg/version"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -67,6 +69,8 @@ func main() {
 	flag.VisitAll(func(flag *flag.Flag) {
 		klog.V(1).Infof("FLAG: --%s=%q", flag.Name, flag.Value)
 	})
+
+	metrics.RegisterMetrics()
 
 	hostName, err := os.Hostname()
 	if err != nil {
@@ -211,5 +215,41 @@ func main() {
 		})
 	}, cliCfg.WaitDuration)
 
+<<<<<<< HEAD
 	klog.Fatal(http.ListenAndServe(":6060", nil))
+=======
+	srv := createHTTPServer()
+	sc := make(chan os.Signal, 1)
+	signal.Notify(sc,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT,
+	)
+
+	go func() {
+		sig := <-sc
+		klog.Infof("got signal %s to exit", sig)
+		if err2 := srv.Shutdown(context.Background()); err2 != nil {
+			klog.Fatal("fail to shutdown the HTTP server", err2)
+		}
+		close(sc)
+	}()
+
+	if err = srv.ListenAndServe(); err != http.ErrServerClosed {
+		klog.Fatal(err)
+	}
+	klog.Infof("tidb-controller-manager exited")
+>>>>>>> d845470d... *: export prometheus metrics for tidb-operator (#3865)
+}
+
+func createHTTPServer() *http.Server {
+	serverMux := http.NewServeMux()
+	// HTTP path for prometheus.
+	serverMux.Handle("/metrics", promhttp.Handler())
+
+	return &http.Server{
+		Addr:    ":6060",
+		Handler: serverMux,
+	}
 }
