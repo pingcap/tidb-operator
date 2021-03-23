@@ -20,6 +20,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
+	"github.com/pingcap/tidb-operator/pkg/metrics"
 	v1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
@@ -137,6 +138,7 @@ func (c *defaultTidbClusterControl) defaulting(tc *v1alpha1.TidbCluster) {
 }
 
 func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) error {
+	c.recordMetrics(tc)
 	// syncing all PVs managed by operator's reclaim policy to Retain
 	if err := c.reclaimPolicyManager.Sync(tc); err != nil {
 		return err
@@ -251,6 +253,29 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	// syncing the some tidbcluster status attributes
 	// 	- sync tidbmonitor reference
 	return c.tidbClusterStatusManager.Sync(tc)
+}
+
+func (c *defaultTidbClusterControl) recordMetrics(tc *v1alpha1.TidbCluster) {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	if tc.Spec.PD != nil {
+		metrics.ClusterSpecReplicas.WithLabelValues(ns, tcName, "pd").Set(float64(tc.Spec.PD.Replicas))
+	}
+	if tc.Spec.TiKV != nil {
+		metrics.ClusterSpecReplicas.WithLabelValues(ns, tcName, "tikv").Set(float64(tc.Spec.TiKV.Replicas))
+	}
+	if tc.Spec.TiDB != nil {
+		metrics.ClusterSpecReplicas.WithLabelValues(ns, tcName, "tidb").Set(float64(tc.Spec.TiDB.Replicas))
+	}
+	if tc.Spec.TiFlash != nil {
+		metrics.ClusterSpecReplicas.WithLabelValues(ns, tcName, "tiflash").Set(float64(tc.Spec.TiFlash.Replicas))
+	}
+	if tc.Spec.TiCDC != nil {
+		metrics.ClusterSpecReplicas.WithLabelValues(ns, tcName, "ticdc").Set(float64(tc.Spec.TiCDC.Replicas))
+	}
+	if tc.Spec.Pump != nil {
+		metrics.ClusterSpecReplicas.WithLabelValues(ns, tcName, "pump").Set(float64(tc.Spec.Pump.Replicas))
+	}
 }
 
 var _ ControlInterface = &defaultTidbClusterControl{}
