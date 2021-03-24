@@ -515,6 +515,17 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		VolumeMounts: volMounts,
 		Resources:    controller.ContainerResource(tc.Spec.TiKV.ResourceRequirements),
 	}
+
+	if tc.Spec.TiKV.EnableNamedStatusPort {
+		kvStatusPort := corev1.ContainerPort{
+			Name:          "status",
+			ContainerPort: int32(20180),
+			Protocol:      corev1.ProtocolTCP,
+		}
+
+		tikvContainer.Ports = append(tikvContainer.Ports, kvStatusPort)
+	}
+
 	podSpec := baseTiKVSpec.BuildPodSpec()
 	if baseTiKVSpec.HostNetwork() {
 		podSpec.DNSPolicy = corev1.DNSClusterFirstWithHostNet
