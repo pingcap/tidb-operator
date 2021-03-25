@@ -16099,39 +16099,6 @@ uint
 <p>Optional: Defaults to 32</p>
 </td>
 </tr>
-<<<<<<< HEAD
-=======
-<tr>
-<td>
-<code>enableNamedStatusPort</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<p>EnableNamedStatusPort enables status port(20180) in the Pod spec.
-If you set it to <code>true</code> for an existing cluster, the TiKV cluster will be rolling updated.</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="tikvstatus">TiKVStatus</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#tidbclusterstatus">TidbClusterStatus</a>)
-</p>
-<p>
-<p>TiKVStatus is TiKV status</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
->>>>>>> a1c0358c... add tikv status port(20180) (#3872)
 <tr>
 <td>
 <code>concurrent-recv-snap-limit</code></br>
@@ -16568,6 +16535,18 @@ Defaults to 10m</p>
 <td>
 <em>(Optional)</em>
 <p>StoreLabels configures additional labels for TiKV stores.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enableNamedStatusPort</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>EnableNamedStatusPort enables status port(20180) in the Pod spec.
+If you set it to <code>true</code> for an existing cluster, the TiKV cluster will be rolling updated.</p>
 </td>
 </tr>
 </tbody>
