@@ -18278,6 +18278,18 @@ Defaults to 10m</p>
 <p>StoreLabels configures additional labels for TiKV stores.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>enableNamedStatusPort</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>EnableNamedStatusPort enables status port(20180) in the Pod spec.
+If you set it to <code>true</code> for an existing cluster, the TiKV cluster will be rolling updated.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tikvstatus">TiKVStatus</h3>

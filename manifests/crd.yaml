@@ -12126,6 +12126,8 @@ spec:
                   type: string
                 dataSubDir:
                   type: string
+                enableNamedStatusPort:
+                  type: boolean
                 env:
                   items:
                     properties:

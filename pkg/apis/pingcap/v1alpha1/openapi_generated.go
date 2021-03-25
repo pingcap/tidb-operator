@@ -9857,6 +9857,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 							},
 						},
 					},
+					"enableNamedStatusPort": {
+						SchemaProps: spec.SchemaProps{
+							Description: "EnableNamedStatusPort enables status port(20180) in the Pod spec. If you set it to `true` for an existing cluster, the TiKV cluster will be rolling updated.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"replicas"},
 			},
