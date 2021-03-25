@@ -152,7 +152,7 @@ type ClusterRegexInfo struct {
 	Name       string
 	Namespace  string
 	EnableTLS  bool
-	TLSFileDir string
+	TLSCertsDir string
 }
 
 func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
