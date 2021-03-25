@@ -456,6 +456,10 @@ type TiKVSpec struct {
 	// StoreLabels configures additional labels for TiKV stores.
 	// +optional
 	StoreLabels []string `json:"storeLabels,omitempty"`
+
+	// EnableNamedStatusPort enables status port(20180) in the Pod spec.
+	// If you set it to `true` for an existing cluster, the TiKV cluster will be rolling updated.
+	EnableNamedStatusPort bool `json:"enableNamedStatusPort,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members
