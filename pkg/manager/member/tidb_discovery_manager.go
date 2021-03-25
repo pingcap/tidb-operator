@@ -180,6 +180,18 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(tc *v1alpha1.TidbC
 								Value: tc.Name,
 							},
 						},
+						Ports: []corev1.ContainerPort{
+							{
+								Name:          "discovery",
+								Protocol:      corev1.ProtocolTCP,
+								ContainerPort: 10261,
+							},
+							{
+								Name:          "proxy",
+								Protocol:      corev1.ProtocolTCP,
+								ContainerPort: 10262,
+							},
+						},
 					}},
 				},
 			},
