@@ -27,6 +27,6 @@ spec:
     version: v1.0.1
   imagePullPolicy: IfNotPresent
   additionalVolumes:
-    - name: foo
+    - name: objectstorage
       secret:
         secretName: thanos-objectstorage
