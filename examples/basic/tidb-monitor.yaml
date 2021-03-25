@@ -5,7 +5,6 @@ metadata:
 spec:
   clusters:
   - name: basic
-  - name: heterogeneous
   prometheus:
     baseImage: prom/prometheus
     version: v2.18.1
