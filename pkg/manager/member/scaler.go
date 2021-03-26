@@ -179,12 +179,23 @@ func ordinalPodName(memberType v1alpha1.MemberType, tcName string, ordinal int32
 // - ordinal: pod ordinal to create or delete
 // - replicas/deleteSlots: desired replicas and deleteSlots by allowing only one pod to be deleted or created
 func scaleOne(actual *apps.StatefulSet, desired *apps.StatefulSet) (scaling int, ordinal int32, replicas int32, deleteSlots sets.Int32) {
+	var ordinals []int32
+	scaling, ordinals, replicas, deleteSlots = scaleMulti(actual, desired, 1)
+	if len(ordinals) == 0 {
+		ordinal = -1
+	} else {
+		ordinal = ordinals[0]
+	}
+	return
+}
+
+func scaleMulti(actual *apps.StatefulSet, desired *apps.StatefulSet, maxCount int) (scaling int, ordinals []int32, replicas int32, deleteSlots sets.Int32) {
 	actualPodOrdinals := helper.GetPodOrdinals(*actual.Spec.Replicas, actual)
 	desiredPodOrdinals := helper.GetPodOrdinals(*desired.Spec.Replicas, desired)
 	additions := desiredPodOrdinals.Difference(actualPodOrdinals)
 	deletions := actualPodOrdinals.Difference(desiredPodOrdinals)
 	scaling = 0
-	ordinal = -1
+	ordinals = make([]int32, 0, maxCount)
 	replicas = *actual.Spec.Replicas
 	actualDeleteSlots := helper.GetDeleteSlots(actual)
 	desiredDeleteSlots := helper.GetDeleteSlots(desired)
@@ -197,7 +208,8 @@ func scaleOne(actual *apps.StatefulSet, desired *apps.StatefulSet) (scaling int,
 	if additions.Len() > 0 {
 		// we always do scaling out before scaling in to maintain maximum avaiability
 		scaling = 1
-		ordinal = additions.List()[0]
+		ordinal := additions.List()[0]
+		ordinals = append(ordinals, additions.List()[0])
 		replicas++
 		if !desiredDeleteSlots.Has(ordinal) {
 			// not in desired delete slots, remove it from actual delete slots
@@ -207,11 +219,14 @@ func scaleOne(actual *apps.StatefulSet, desired *apps.StatefulSet) (scaling int,
 	} else if deletions.Len() > 0 {
 		scaling = -1
 		deletionsList := deletions.List()
-		ordinal = deletionsList[len(deletionsList)-1]
-		replicas--
-		if desiredDeleteSlots.Has(ordinal) {
-			// in desired delete slots, add it in actual delete slots
-			actualDeleteSlots.Insert(ordinal)
+		for i := 0; i < len(deletionsList) && i < maxCount; i++ {
+			ordinal := deletionsList[len(deletionsList)-i-1]
+			replicas--
+			if desiredDeleteSlots.Has(ordinal) {
+				// in desired delete slots, add it in actual delete slots
+				actualDeleteSlots.Insert(ordinal)
+			}
+			ordinals = append(ordinals, ordinal)
 		}
 		actualDeleteSlots = normalizeDeleteSlots(replicas, actualDeleteSlots, desiredDeleteSlots)
 	}

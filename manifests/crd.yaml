@@ -12779,6 +12779,9 @@ spec:
                 maxFailoverCount:
                   format: int32
                   type: integer
+                maxScaleInReplicas:
+                  format: int32
+                  type: integer
                 mountClusterClientSecret:
                   type: boolean
                 nodeSelector:

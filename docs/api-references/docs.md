@@ -18493,6 +18493,19 @@ bool
 If you set it to <code>true</code> for an existing cluster, the TiKV cluster will be rolling updated.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>maxScaleInReplicas</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MaxScaleInReplicas configures max scale in replicas for TiKV stores.
+Defaults to 1</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tikvstatus">TiKVStatus</h3>

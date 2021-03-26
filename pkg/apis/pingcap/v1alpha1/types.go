@@ -491,6 +491,11 @@ type TiKVSpec struct {
 	// EnableNamedStatusPort enables status port(20180) in the Pod spec.
 	// If you set it to `true` for an existing cluster, the TiKV cluster will be rolling updated.
 	EnableNamedStatusPort bool `json:"enableNamedStatusPort,omitempty"`
+
+	// MaxScaleInReplicas configures max scale in replicas for TiKV stores.
+	// Defaults to 1
+	// +optional
+	MaxScaleInReplicas int `json:"maxScaleInReplicas,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members
