@@ -1,0 +1,32 @@
+apiVersion: pingcap.com/v1alpha1
+kind: TidbMonitor
+metadata:
+  name: basic
+spec:
+  clusters:
+  - name: basic
+  thanos:
+    baseImage: thanosio/thanos
+    version: v0.17.2
+    objectStorageConfigFile: /etc/thanos/objectstorage.yaml
+    additionalVolumeMounts:
+      - name: objectstorage
+        mountPath: "/etc/thanos/"
+        readOnly: true
+  prometheus:
+    baseImage: prom/prometheus
+    version: v2.11.1
+  grafana:
+    baseImage: grafana/grafana
+    version: 6.1.6
+  initializer:
+    baseImage: pingcap/tidb-monitor-initializer
+    version: v4.0.10
+  reloader:
+    baseImage: pingcap/tidb-monitor-reloader
+    version: v1.0.1
+  imagePullPolicy: IfNotPresent
+  additionalVolumes:
+    - name: objectstorage
+      secret:
+        secretName: thanos-objectstorage
