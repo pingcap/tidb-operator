@@ -1,0 +1,40 @@
+name: "Semantic PR Title"
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - edited
+      - synchronize
+
+jobs:
+  main:
+    runs-on: ubuntu-latest
+    steps:
+      # Please look up the latest version from
+      # https://github.com/amannn/action-semantic-pull-request/releases
+      - uses: amannn/action-semantic-pull-request@v3.4.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Configure which types are allowed.
+          # Default: https://github.com/commitizen/conventional-commit-types
+          types: |
+            en
+            zh
+            *
+            media
+            .github
+            scripts
+            hack
+            .circleci
+            chore
+            fix
+            refactor
+          # Configure which scopes are allowed.
+          # scopes: |
+            # core
+            # ui
+          # Configure that a scope must always be provided.
+          requireScope: false
+          wip: true
