@@ -412,15 +412,15 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 			},
 		}
 
-		if cluster.EnableTLS && !isDMJob(jobName) {
+		if cmodel.EnableTLSCluster && !isDMJob(jobName) {
 			scrapeconfig.Scheme = "https"
 			// lightning does not need to authenticate the access of other components,
 			// so there is no need to enable mtls for the time being.
 			if jobName != "lightning" {
 				scrapeconfig.HTTPClientConfig.TLSConfig = config.TLSConfig{
-					CAFile:   path.Join(cluster.TLSFileDir, corev1.ServiceAccountRootCAKey),
-					CertFile: path.Join(cluster.TLSFileDir, corev1.TLSCertKey),
-					KeyFile:  path.Join(cluster.TLSFileDir, corev1.TLSPrivateKeyKey),
+					CAFile:   path.Join(util.ClusterClientTLSPath, corev1.ServiceAccountRootCAKey),
+					CertFile: path.Join(util.ClusterClientTLSPath, corev1.TLSCertKey),
+					KeyFile:  path.Join(util.ClusterClientTLSPath, corev1.TLSPrivateKeyKey),
 				}
 			}
 		}
