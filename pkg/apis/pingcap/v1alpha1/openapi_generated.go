@@ -41,6 +41,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BasicAutoScalerStatus":         schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerStatus(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Binlog":                        schema_pkg_apis_pingcap_v1alpha1_Binlog(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ClusterRef":                    schema_pkg_apis_pingcap_v1alpha1_ClusterRef(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ClusterTLSConfig":              schema_pkg_apis_pingcap_v1alpha1_ClusterTLSConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CommonConfig":                  schema_pkg_apis_pingcap_v1alpha1_CommonConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ComponentSpec":                 schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ConfigMapRef":                  schema_pkg_apis_pingcap_v1alpha1_ConfigMapRef(ref),
@@ -1209,24 +1210,65 @@ func schema_pkg_apis_pingcap_v1alpha1_ClusterRef(ref common.ReferenceCallback) c
 							Format:      "",
 						},
 					},
-					"tlsFileDir": {
+					"tlsConfig": {
 						SchemaProps: spec.SchemaProps{
-							Description: "TlsFileDir is the path of TidbCluster tls files.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"enableTls": {
-						SchemaProps: spec.SchemaProps{
-							Description: "whether enable tls request.",
-							Type:        []string{"boolean"},
-							Format:      "",
+							Description: "TLS configuration to use when scraping the cluster mertric.",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ClusterTLSConfig"),
 						},
 					},
 				},
 				Required: []string{"name"},
 			},
 		},
+		Dependencies: []string{
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ClusterTLSConfig"},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_ClusterTLSConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ProbeTLSConfig specifies TLS configuration parameters.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"ca": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Struct containing the CA cert to use for the targets.",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SecretOrConfigMap"),
+						},
+					},
+					"cert": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Struct containing the client cert file for the targets.",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SecretOrConfigMap"),
+						},
+					},
+					"keySecret": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Secret containing the client key file for the targets.",
+							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
+						},
+					},
+					"serverName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Used to verify the hostname for the targets.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"insecureSkipVerify": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Disable target certificate validation.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SecretOrConfigMap", "k8s.io/api/core/v1.SecretKeySelector"},
 	}
 }
 
@@ -10541,24 +10583,18 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterRef(ref common.ReferenceCallbac
 							Format:      "",
 						},
 					},
-					"tlsFileDir": {
+					"tlsConfig": {
 						SchemaProps: spec.SchemaProps{
-							Description: "TlsFileDir is the path of TidbCluster tls files.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"enableTls": {
-						SchemaProps: spec.SchemaProps{
-							Description: "whether enable tls request.",
-							Type:        []string{"boolean"},
-							Format:      "",
+							Description: "TLS configuration to use when scraping the cluster mertric.",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ClusterTLSConfig"),
 						},
 					},
 				},
 				Required: []string{"name"},
 			},
 		},
+		Dependencies: []string{
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ClusterTLSConfig"},
 	}
 }
 

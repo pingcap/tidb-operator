@@ -336,14 +336,30 @@ spec:
               properties:
                 clusterDomain:
                   type: string
-                enableTls:
-                  type: boolean
                 name:
                   type: string
                 namespace:
                   type: string
-                tlsFileDir:
-                  type: string
+                tlsConfig:
+                  properties:
+                    ca: {}
+                    cert: {}
+                    insecureSkipVerify:
+                      type: boolean
+                    keySecret:
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          type: string
+                        optional:
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                    serverName:
+                      type: string
+                  type: object
               required:
               - name
               type: object
@@ -20039,14 +20055,30 @@ spec:
                 properties:
                   clusterDomain:
                     type: string
-                  enableTls:
-                    type: boolean
                   name:
                     type: string
                   namespace:
                     type: string
-                  tlsFileDir:
-                    type: string
+                  tlsConfig:
+                    properties:
+                      ca: {}
+                      cert: {}
+                      insecureSkipVerify:
+                        type: boolean
+                      keySecret:
+                        properties:
+                          key:
+                            type: string
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        required:
+                        - key
+                        type: object
+                      serverName:
+                        type: string
+                    type: object
                 required:
                 - name
                 type: object
@@ -20145,14 +20177,30 @@ spec:
               properties:
                 clusterDomain:
                   type: string
-                enableTls:
-                  type: boolean
                 name:
                   type: string
                 namespace:
                   type: string
-                tlsFileDir:
-                  type: string
+                tlsConfig:
+                  properties:
+                    ca: {}
+                    cert: {}
+                    insecureSkipVerify:
+                      type: boolean
+                    keySecret:
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          type: string
+                        optional:
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                    serverName:
+                      type: string
+                  type: object
               required:
               - name
               type: object
@@ -20239,14 +20287,30 @@ spec:
               properties:
                 clusterDomain:
                   type: string
-                enableTls:
-                  type: boolean
                 name:
                   type: string
                 namespace:
                   type: string
-                tlsFileDir:
-                  type: string
+                tlsConfig:
+                  properties:
+                    ca: {}
+                    cert: {}
+                    insecureSkipVerify:
+                      type: boolean
+                    keySecret:
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          type: string
+                        optional:
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                    serverName:
+                      type: string
+                  type: object
               required:
               - name
               type: object

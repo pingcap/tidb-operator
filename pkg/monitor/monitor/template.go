@@ -149,10 +149,8 @@ type MonitorConfigModel struct {
 
 // ClusterRegexInfo is the monitor cluster info
 type ClusterRegexInfo struct {
-	Name       string
-	Namespace  string
-	EnableTLS  bool
-	TLSCertsDir string
+	Name      string
+	Namespace string
 }
 
 func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {

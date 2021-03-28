@@ -247,13 +247,8 @@ type TidbClusterRef struct {
 	// +optional
 	ClusterDomain string `json:"clusterDomain,omitempty"`
 
-	// TlsFileDir is the path of TidbCluster tls files.
-	// +optional
-	TLSFileDir string `json:"tlsFileDir,omitempty"`
-
-	// whether enable tls request.
-	// +optional
-	EnableTLS *bool `json:"enableTls,omitempty"`
+	// TLS configuration to use when scraping the cluster mertric.
+	TLSConfig *ClusterTLSConfig `json:"tlsConfig,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -405,4 +400,18 @@ type QueueConfig struct {
 	// On recoverable errors, backoff exponentially.
 	MinBackoff time.Duration `json:"minBackoff,omitempty"`
 	MaxBackoff time.Duration `json:"maxBackoff,omitempty"`
+}
+
+// ProbeTLSConfig specifies TLS configuration parameters.
+// +k8s:openapi-gen=true
+type ClusterTLSConfig struct {
+	SafeTLSConfig `json:",inline"`
+}
+
+// TLSAssetKey is a key for a TLS asset.
+type TLSAssetKey struct {
+	from string
+	ns   string
+	name string
+	key  string
 }

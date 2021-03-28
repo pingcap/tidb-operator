@@ -3565,26 +3565,49 @@ string
 </tr>
 <tr>
 <td>
-<code>tlsFileDir</code></br>
+<code>tlsConfig</code></br>
 <em>
-string
+<a href="#clustertlsconfig">
+ClusterTLSConfig
+</a>
 </em>
 </td>
 <td>
-<em>(Optional)</em>
-<p>TlsFileDir is the path of TidbCluster tls files.</p>
+<p>TLS configuration to use when scraping the cluster mertric.</p>
 </td>
 </tr>
+</tbody>
+</table>
+<h3 id="clustertlsconfig">ClusterTLSConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#clusterref">ClusterRef</a>, 
+<a href="#tidbclusterref">TidbClusterRef</a>)
+</p>
+<p>
+<p>ProbeTLSConfig specifies TLS configuration parameters.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
 <tr>
 <td>
-<code>enableTls</code></br>
+<code>SafeTLSConfig</code></br>
 <em>
-bool
+<a href="#safetlsconfig">
+SafeTLSConfig
+</a>
 </em>
 </td>
 <td>
-<em>(Optional)</em>
-<p>whether enable tls request.</p>
+<p>
+(Members of <code>SafeTLSConfig</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -11322,6 +11345,7 @@ string
 <h3 id="safetlsconfig">SafeTLSConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#clustertlsconfig">ClusterTLSConfig</a>, 
 <a href="#tlsconfig">TLSConfig</a>)
 </p>
 <p>
@@ -12037,6 +12061,60 @@ string
 <tr>
 <td>
 <code>mountPath</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tlsassetkey">TLSAssetKey</h3>
+<p>
+<p>TLSAssetKey is a key for a TLS asset.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>from</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>ns</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>key</code></br>
 <em>
 string
 </em>
@@ -19370,26 +19448,15 @@ string
 </tr>
 <tr>
 <td>
-<code>tlsFileDir</code></br>
+<code>tlsConfig</code></br>
 <em>
-string
+<a href="#clustertlsconfig">
+ClusterTLSConfig
+</a>
 </em>
 </td>
 <td>
-<em>(Optional)</em>
-<p>TlsFileDir is the path of TidbCluster tls files.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>enableTls</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>whether enable tls request.</p>
+<p>TLS configuration to use when scraping the cluster mertric.</p>
 </td>
 </tr>
 </tbody>
