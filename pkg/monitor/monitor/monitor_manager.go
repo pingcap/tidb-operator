@@ -273,7 +273,7 @@ func (m *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, dc *v1a
 		cloned.Spec.Clusters = append(cloned.Spec.Clusters, autoTcRefs...)
 		monitor = cloned
 	}
-
+	assetStore := NewStore(m.deps.ConfigMapLister, m.deps.SecretLister)
 	newCM, err := getMonitorConfigMap(tc, dc, monitor)
 	if err != nil {
 		return nil, err

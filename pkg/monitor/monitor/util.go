@@ -1302,3 +1302,21 @@ func generateRemoteWrite(monitor *v1alpha1.TidbMonitor) []*config.RemoteWriteCon
 	}
 	return remoteWriteConfigs
 }
+
+// TLSAssetKeyFromSelector returns a TLSAssetKey struct from a secret or configmap key selector.
+func TLSAssetKeyFromSelector(ns string, sel v1alpha1.SecretOrConfigMap) TLSAssetKey {
+	if sel.Secret != nil {
+		return TLSAssetKey{
+			from: "secret",
+			ns:   ns,
+			name: sel.Secret.Name,
+			key:  sel.Secret.Key,
+		}
+	}
+	return TLSAssetKey{
+		from: "configmap",
+		ns:   ns,
+		name: sel.ConfigMap.Name,
+		key:  sel.ConfigMap.Key,
+	}
+}

@@ -305,6 +305,26 @@ type SafeTLSConfig struct {
 	InsecureSkipVerify bool `json:"insecureSkipVerify,omitempty"`
 }
 
+// Validate semantically validates the given TLSConfig.
+func (c *SecretOrConfigMap) Validate() error {
+	if c.Secret != nil && c.ConfigMap != nil {
+		return &SecretOrConfigMapValidationError{"SecretOrConfigMap can not specify both Secret and ConfigMap"}
+	}
+
+	return nil
+}
+
+// SecretOrConfigMapValidationError is returned by SecretOrConfigMap.Validate()
+// on semantically invalid configurations.
+// +k8s:openapi-gen=false
+type SecretOrConfigMapValidationError struct {
+	err string
+}
+
+func (e *SecretOrConfigMapValidationError) Error() string {
+	return e.err
+}
+
 // SecretOrConfigMap allows to specify data as a Secret or ConfigMap. Fields are mutually exclusive.
 type SecretOrConfigMap struct {
 	// Secret containing data to use for the targets.
@@ -402,16 +422,33 @@ type QueueConfig struct {
 	MaxBackoff time.Duration `json:"maxBackoff,omitempty"`
 }
 
-// ProbeTLSConfig specifies TLS configuration parameters.
+// ClusterTLSConfig specifies TLS configuration parameters.
 // +k8s:openapi-gen=true
 type ClusterTLSConfig struct {
 	SafeTLSConfig `json:",inline"`
 }
 
-// TLSAssetKey is a key for a TLS asset.
-type TLSAssetKey struct {
-	from string
-	ns   string
-	name string
-	key  string
+// Validate semantically validates the given SafeTLSConfig.
+func (c *SafeTLSConfig) Validate() error {
+	if c.CA != (SecretOrConfigMap{}) {
+		if err := c.CA.Validate(); err != nil {
+			return err
+		}
+	}
+
+	if c.Cert != (SecretOrConfigMap{}) {
+		if err := c.Cert.Validate(); err != nil {
+			return err
+		}
+	}
+
+	if c.Cert != (SecretOrConfigMap{}) && c.KeySecret == nil {
+		return &TLSConfigValidationError{"client cert specified without client key"}
+	}
+
+	if c.KeySecret != nil && c.Cert == (SecretOrConfigMap{}) {
+		return &TLSConfigValidationError{"client key specified without client cert"}
+	}
+
+	return nil
 }
