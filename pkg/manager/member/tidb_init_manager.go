@@ -64,7 +64,18 @@ func NewTiDBInitManager(deps *controller.Dependencies) InitManager {
 }
 
 func (m *tidbInitManager) Sync(ti *v1alpha1.TidbInitializer) error {
-	err := m.syncTiDBInitConfigMap(ti)
+	ns := ti.Namespace
+	tcName := ti.Spec.Clusters.Name
+	tc, err := m.deps.TiDBClusterLister.TidbClusters(ns).Get(tcName)
+	if err != nil {
+		return fmt.Errorf("TidbInitManager.Sync: failed to get tidbcluster %s for TidbInitializer %s/%s, error: %s", tcName, ns, ti.Name, err)
+	}
+	if tc.Spec.TiDB == nil {
+		klog.Infof("TidbInitManager.Sync: Spec.TiDB is nil, stop syncing TidbInitializer")
+		return nil
+	}
+
+	err = m.syncTiDBInitConfigMap(ti)
 	if err != nil {
 		return err
 	}
@@ -169,7 +180,7 @@ func (m *tidbInitManager) syncTiDBInitConfigMap(ti *v1alpha1.TidbInitializer) er
 	}
 
 	tlsClientEnabled := false
-	if tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
+	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
 		tlsClientEnabled = true
 	}
 	newCm, err := getTiDBInitConfigMap(ti, tlsClientEnabled)
@@ -242,7 +253,7 @@ func (m *tidbInitManager) makeTiDBInitJob(ti *v1alpha1.TidbInitializer) (*batchv
 	var vms []corev1.VolumeMount
 	var vs []corev1.Volume
 
-	if tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
+	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
 		secretName := util.TiDBClientTLSSecretName(tcName)
 		if ti.Spec.TLSClientSecretName != nil {
 			secretName = *ti.Spec.TLSClientSecretName
