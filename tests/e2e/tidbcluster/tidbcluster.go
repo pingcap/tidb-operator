@@ -1617,8 +1617,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				log.Logf("tc is ready")
 
 				pvcUIDs := make(map[string]string)
-				// TODO: there may be some time after tc is ready and pvc labels are there, should take a look
-				ginkgo.By("Check PVC label tidb.pingcap.com/pvc-defer-deleting")
+				ginkgo.By("Check PVC annotation tidb.pingcap.com/pvc-defer-deleting")
 				err = wait.Poll(10*time.Second, 3*time.Minute, func() (done bool, err error) {
 					for ordinal := 3; ordinal < 5; ordinal++ {
 						pvcSelector, err := member.GetPVCSelectorForPod(tc, v1alpha1.PDMemberType, int32(ordinal))
@@ -1626,11 +1625,12 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 						pvcs, err := c.CoreV1().PersistentVolumeClaims(ns).List(metav1.ListOptions{LabelSelector: pvcSelector.String()})
 						framework.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
 						for _, pvc := range pvcs.Items {
-							log.Logf("pvc labels: %+v", pvc.Labels)
-							_, ok := pvc.Labels["tidb.pingcap.com/pvc-defer-deleting"]
-							// framework.ExpectEqual(ok, true, "expect PVC %s/%s to have label tidb.pingcap.com/pvc-defer-deleting", pvc.GetNamespace(), pvc.GetName())
+							annotations := pvc.GetObjectMeta().GetAnnotations()
+							log.Logf("pvc annotations: %+v", annotations)
+							_, ok := annotations["tidb.pingcap.com/pvc-defer-deleting"]
+							// framework.ExpectEqual(ok, true, "expect PVC %s/%s to have annotation tidb.pingcap.com/pvc-defer-deleting", pvc.GetNamespace(), pvc.GetName())
 							if !ok {
-								log.Logf("PVC %s/%s does not have label tidb.pingcap.com/pvc-defer-deleting", pvc.GetNamespace(), pvc.GetName())
+								log.Logf("PVC %s/%s does not have annotation tidb.pingcap.com/pvc-defer-deleting", pvc.GetNamespace(), pvc.GetName())
 								return false, nil
 							}
 							pvcUIDs[pvc.Name] = string(pvc.UID)
