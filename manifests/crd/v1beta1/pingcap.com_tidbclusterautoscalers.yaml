@@ -1,0 +1,305 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.5.0
+  creationTimestamp: null
+  name: tidbclusterautoscalers.pingcap.com
+spec:
+  group: pingcap.com
+  names:
+    kind: TidbClusterAutoScaler
+    listKind: TidbClusterAutoScalerList
+    plural: tidbclusterautoscalers
+    singular: tidbclusterautoscaler
+  preserveUnknownFields: false
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      description: TidbClusterAutoScaler is the control script's spec
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: Spec describes the state of the TidbClusterAutoScaler
+          properties:
+            cluster:
+              description: TidbClusterRef describe the target TidbCluster
+              properties:
+                clusterDomain:
+                  description: ClusterDomain is the domain of TidbCluster object
+                  type: string
+                name:
+                  description: Name is the name of TidbCluster object
+                  type: string
+                namespace:
+                  description: Namespace is the namespace that TidbCluster object locates, default to the same namespace with TidbMonitor
+                  type: string
+              required:
+              - name
+              type: object
+            tidb:
+              description: TiDB represents the auto-scaling spec for tidb
+              properties:
+                external:
+                  description: External makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB
+                  properties:
+                    endpoint:
+                      description: ExternalEndpoint makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB
+                      properties:
+                        host:
+                          description: Host indicates the external service's host
+                          type: string
+                        path:
+                          description: Path indicates the external service's path
+                          type: string
+                        port:
+                          description: Port indicates the external service's port
+                          format: int32
+                          type: integer
+                        tlsSecret:
+                          description: TLSSecret indicates the Secret which stores the TLS configuration. If set, the operator will use https to communicate to the external service
+                          properties:
+                            name:
+                              type: string
+                            namespace:
+                              type: string
+                          required:
+                          - name
+                          - namespace
+                          type: object
+                      required:
+                      - host
+                      - path
+                      - port
+                      type: object
+                    maxReplicas:
+                      description: maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out.
+                      format: int32
+                      type: integer
+                  required:
+                  - maxReplicas
+                  type: object
+                resources:
+                  additionalProperties:
+                    description: AutoResource describes the resource type definitions
+                    properties:
+                      count:
+                        description: Count defines the max availabel count of this resource type
+                        format: int32
+                        type: integer
+                      cpu:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: CPU defines the CPU of this resource type
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      memory:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: Memory defines the memory of this resource type
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      storage:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: Storage defines the storage of this resource type
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    required:
+                    - cpu
+                    - memory
+                    type: object
+                  description: Resources represent the resource type definitions that can be used for TiDB/TiKV The key is resource_type name of the resource
+                  type: object
+                rules:
+                  additionalProperties:
+                    description: AutoRule describes the rules for auto-scaling with PD API
+                    properties:
+                      max_threshold:
+                        description: MaxThreshold defines the threshold to scale out
+                        type: number
+                      min_threshold:
+                        description: MinThreshold defines the threshold to scale in, not applicable to `storage` rule
+                        type: number
+                      resource_types:
+                        description: ResourceTypes defines the resource types that can be used for scaling
+                        items:
+                          type: string
+                        type: array
+                    required:
+                    - max_threshold
+                    type: object
+                  description: Rules defines the rules for auto-scaling with PD API
+                  type: object
+                scaleInIntervalSeconds:
+                  description: ScaleInIntervalSeconds represents the duration seconds between each auto-scaling-in If not set, the default ScaleInIntervalSeconds will be set to 500
+                  format: int32
+                  type: integer
+                scaleOutIntervalSeconds:
+                  description: ScaleOutIntervalSeconds represents the duration seconds between each auto-scaling-out If not set, the default ScaleOutIntervalSeconds will be set to 300
+                  format: int32
+                  type: integer
+              type: object
+            tikv:
+              description: TiKV represents the auto-scaling spec for tikv
+              properties:
+                external:
+                  description: External makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB
+                  properties:
+                    endpoint:
+                      description: ExternalEndpoint makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB
+                      properties:
+                        host:
+                          description: Host indicates the external service's host
+                          type: string
+                        path:
+                          description: Path indicates the external service's path
+                          type: string
+                        port:
+                          description: Port indicates the external service's port
+                          format: int32
+                          type: integer
+                        tlsSecret:
+                          description: TLSSecret indicates the Secret which stores the TLS configuration. If set, the operator will use https to communicate to the external service
+                          properties:
+                            name:
+                              type: string
+                            namespace:
+                              type: string
+                          required:
+                          - name
+                          - namespace
+                          type: object
+                      required:
+                      - host
+                      - path
+                      - port
+                      type: object
+                    maxReplicas:
+                      description: maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out.
+                      format: int32
+                      type: integer
+                  required:
+                  - maxReplicas
+                  type: object
+                resources:
+                  additionalProperties:
+                    description: AutoResource describes the resource type definitions
+                    properties:
+                      count:
+                        description: Count defines the max availabel count of this resource type
+                        format: int32
+                        type: integer
+                      cpu:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: CPU defines the CPU of this resource type
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      memory:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: Memory defines the memory of this resource type
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      storage:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: Storage defines the storage of this resource type
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    required:
+                    - cpu
+                    - memory
+                    type: object
+                  description: Resources represent the resource type definitions that can be used for TiDB/TiKV The key is resource_type name of the resource
+                  type: object
+                rules:
+                  additionalProperties:
+                    description: AutoRule describes the rules for auto-scaling with PD API
+                    properties:
+                      max_threshold:
+                        description: MaxThreshold defines the threshold to scale out
+                        type: number
+                      min_threshold:
+                        description: MinThreshold defines the threshold to scale in, not applicable to `storage` rule
+                        type: number
+                      resource_types:
+                        description: ResourceTypes defines the resource types that can be used for scaling
+                        items:
+                          type: string
+                        type: array
+                    required:
+                    - max_threshold
+                    type: object
+                  description: Rules defines the rules for auto-scaling with PD API
+                  type: object
+                scaleInIntervalSeconds:
+                  description: ScaleInIntervalSeconds represents the duration seconds between each auto-scaling-in If not set, the default ScaleInIntervalSeconds will be set to 500
+                  format: int32
+                  type: integer
+                scaleOutIntervalSeconds:
+                  description: ScaleOutIntervalSeconds represents the duration seconds between each auto-scaling-out If not set, the default ScaleOutIntervalSeconds will be set to 300
+                  format: int32
+                  type: integer
+              type: object
+          required:
+          - cluster
+          type: object
+        status:
+          description: Status describe the status of the TidbClusterAutoScaler
+          properties:
+            tidb:
+              additionalProperties:
+                description: TidbAutoScalerStatus describe the auto-scaling status of tidb
+                properties:
+                  lastAutoScalingTimestamp:
+                    description: LastAutoScalingTimestamp describes the last auto-scaling timestamp for the component(tidb/tikv)
+                    format: date-time
+                    type: string
+                type: object
+              description: Tidb describes the status of each group for the tidb in the last auto-scaling reconciliation
+              type: object
+            tikv:
+              additionalProperties:
+                description: TikvAutoScalerStatus describe the auto-scaling status of tikv
+                properties:
+                  lastAutoScalingTimestamp:
+                    description: LastAutoScalingTimestamp describes the last auto-scaling timestamp for the component(tidb/tikv)
+                    format: date-time
+                    type: string
+                type: object
+              description: Tikv describes the status of each group for the tikv in the last auto-scaling reconciliation
+              type: object
+          type: object
+      required:
+      - metadata
+      - spec
+      - status
+      type: object
+  version: v1alpha1
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

@@ -5075,6 +5075,16 @@ Kubernetes core/v1.ResourceRequirements
 </tr>
 </tbody>
 </table>
+<h3 id="emptystruct">EmptyStruct</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pdfailuremember">PDFailureMember</a>, 
+<a href="#unjoinedmember">UnjoinedMember</a>)
+</p>
+<p>
+<p>EmptyStruct is defined to delight controller-gen@v0.5.0 tools
+Only named struct is allowed by controller-gen</p>
+</p>
 <h3 id="experimental">Experimental</h3>
 <p>
 (<em>Appears on:</em>
@@ -7864,6 +7874,9 @@ github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
 </em>
 </td>
 <td>
+<p>
+(Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -7918,7 +7931,9 @@ k8s.io/apimachinery/pkg/types.UID
 <td>
 <code>pvcUIDSet</code></br>
 <em>
-map[k8s.io/apimachinery/pkg/types.UID]struct{}
+<a href="#emptystruct">
+map[k8s.io/apimachinery/pkg/types.UID]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.EmptyStruct
+</a>
 </em>
 </td>
 <td>
@@ -13246,6 +13261,9 @@ github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
 </em>
 </td>
 <td>
+<p>
+(Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -13412,6 +13430,9 @@ ServiceSpec
 </em>
 </td>
 <td>
+<p>
+(Members of <code>ServiceSpec</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 <tr>
@@ -13957,6 +13978,9 @@ github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
 </em>
 </td>
 <td>
+<p>
+(Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -14067,6 +14091,9 @@ github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
 </em>
 </td>
 <td>
+<p>
+(Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -15241,6 +15268,9 @@ github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
 </em>
 </td>
 <td>
+<p>
+(Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -20669,7 +20699,9 @@ k8s.io/apimachinery/pkg/types.UID
 <td>
 <code>pvcUIDSet</code></br>
 <em>
-map[k8s.io/apimachinery/pkg/types.UID]struct{}
+<a href="#emptystruct">
+map[k8s.io/apimachinery/pkg/types.UID]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.EmptyStruct
+</a>
 </em>
 </td>
 <td>
