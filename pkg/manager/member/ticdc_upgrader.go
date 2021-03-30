@@ -89,15 +89,3 @@ func (u *ticdcUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulS
 
 	return nil
 }
-
-type fakeTiCDCUpgrader struct{}
-
-// NewFakeTiCDCUpgrader returns a fake ticdc upgrader
-func NewFakeTiCDCUpgrader() Upgrader {
-	return &fakeTiCDCUpgrader{}
-}
-
-func (u *fakeTiCDCUpgrader) Upgrade(tc *v1alpha1.TidbCluster, _ *apps.StatefulSet, _ *apps.StatefulSet) error {
-	tc.Status.TiCDC.Phase = v1alpha1.UpgradePhase
-	return nil
-}

@@ -69,9 +69,6 @@ func (m *ticdcMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		klog.Infof("TidbCluster %s/%s is paused, skip syncing ticdc deployment", ns, tcName)
 		return nil
 	}
-	// if !tc.PDIsAvailable() {
-	// 	return controller.RequeueErrorf("TidbCluster: %s/%s, waiting for PD cluster running", ns, tcName)
-	// }
 
 	// Sync CDC Headless Service
 	if err := m.syncCDCHeadlessService(tc); err != nil {
@@ -105,6 +102,10 @@ func (m *ticdcMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 	}
 
 	if stsNotExist {
+		if !tc.PDIsAvailable() {
+			klog.Infof("TidbCluster: %s/%s, waiting for PD cluster running", ns, tcName)
+			return nil
+		}
 		err = SetStatefulSetLastAppliedConfigAnnotation(newSts)
 		if err != nil {
 			return err

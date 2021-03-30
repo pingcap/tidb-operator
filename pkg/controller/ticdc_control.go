@@ -84,7 +84,12 @@ func NewFakeTiCDCControl() *FakeTiCDCControl {
 	return &FakeTiCDCControl{}
 }
 
-// SetHealth set health info for FakeTiCDCControl
+// SetStatus set status for FakeTiCDCControl
 func (c *FakeTiCDCControl) SetStatus(status *CaptureStatus) {
 	c.status = status
+}
+
+// GetStatus get status for FakeTiCDCControl
+func (c *FakeTiCDCControl) GetStatus(tc *v1alpha1.TidbCluster, ordinal int32) (*CaptureStatus, error) {
+	return c.status, nil
 }
