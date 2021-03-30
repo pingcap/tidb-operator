@@ -54,6 +54,8 @@ const (
 	TiFlashMemberType MemberType = "tiflash"
 	// TiCDCMemberType is ticdc container type
 	TiCDCMemberType MemberType = "ticdc"
+	// PumpMemberType is pump container type
+	PumpMemberType MemberType = "pump"
 	// DMMasterMemberType is dm-master container type
 	DMMasterMemberType MemberType = "dm-master"
 	// DMWorkerMemberType is dm-worker container type
@@ -472,6 +474,10 @@ type TiKVSpec struct {
 	// StoreLabels configures additional labels for TiKV stores.
 	// +optional
 	StoreLabels []string `json:"storeLabels,omitempty"`
+
+	// EnableNamedStatusPort enables status port(20180) in the Pod spec.
+	// If you set it to `true` for an existing cluster, the TiKV cluster will be rolling updated.
+	EnableNamedStatusPort bool `json:"enableNamedStatusPort,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members
