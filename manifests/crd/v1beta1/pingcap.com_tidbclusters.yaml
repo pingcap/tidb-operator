@@ -8,6 +8,61 @@ metadata:
   creationTimestamp: null
   name: tidbclusters.pingcap.com
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.conditions[?(@.type=="Ready")].status
+    name: Ready
+    type: string
+  - JSONPath: .status.pd.image
+    description: The image for PD cluster
+    name: PD
+    type: string
+  - JSONPath: .spec.pd.requests.storage
+    description: The storage size specified for PD node
+    name: Storage
+    type: string
+  - JSONPath: .status.pd.statefulSet.readyReplicas
+    description: The desired replicas number of PD cluster
+    name: Ready
+    type: integer
+  - JSONPath: .spec.pd.replicas
+    description: The desired replicas number of PD cluster
+    name: Desire
+    type: integer
+  - JSONPath: .status.tikv.image
+    description: The image for TiKV cluster
+    name: TiKV
+    type: string
+  - JSONPath: .spec.tikv.requests.storage
+    description: The storage size specified for TiKV node
+    name: Storage
+    type: string
+  - JSONPath: .status.tikv.statefulSet.readyReplicas
+    description: The ready replicas number of TiKV cluster
+    name: Ready
+    type: integer
+  - JSONPath: .spec.tikv.replicas
+    description: The desired replicas number of TiKV cluster
+    name: Desire
+    type: integer
+  - JSONPath: .status.tidb.image
+    description: The image for TiDB cluster
+    name: TiDB
+    type: string
+  - JSONPath: .status.tidb.statefulSet.readyReplicas
+    description: The ready replicas number of TiDB cluster
+    name: Ready
+    type: integer
+  - JSONPath: .spec.tidb.replicas
+    description: The desired replicas number of TiDB cluster
+    name: Desire
+    type: integer
+  - JSONPath: .status.conditions[?(@.type=="Ready")].message
+    name: Status
+    priority: 1
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
   group: pingcap.com
   names:
     kind: TidbCluster
@@ -16,6 +71,7 @@ spec:
     singular: tidbcluster
   preserveUnknownFields: false
   scope: Namespaced
+  subresources: {}
   validation:
     openAPIV3Schema:
       description: TidbCluster is the control script's spec

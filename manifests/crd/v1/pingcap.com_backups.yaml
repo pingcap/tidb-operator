@@ -16,7 +16,37 @@ spec:
     singular: backup
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - description: The current status of the backup
+      jsonPath: .status.phase
+      name: Status
+      type: string
+    - description: The full path of backup data
+      jsonPath: .status.backupPath
+      name: BackupPath
+      type: string
+    - description: The data size of the backup
+      jsonPath: .status.backupSizeReadable
+      name: BackupSize
+      type: string
+    - description: The commit ts of tidb cluster dump
+      jsonPath: .status.commitTs
+      name: CommitTS
+      type: string
+    - description: The time at which the backup was started
+      jsonPath: .status.timeStarted
+      name: Started
+      priority: 1
+      type: date-time
+    - description: The time at which the backup was completed
+      jsonPath: .status.timeCompleted
+      name: Completed
+      priority: 1
+      type: date-time
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: Backup is a backup of tidb cluster.
@@ -1599,6 +1629,7 @@ spec:
         type: object
     served: true
     storage: true
+    subresources: {}
 status:
   acceptedNames:
     kind: ""

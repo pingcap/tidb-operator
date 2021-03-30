@@ -16,7 +16,62 @@ spec:
     singular: tidbcluster
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .status.conditions[?(@.type=="Ready")].status
+      name: Ready
+      type: string
+    - description: The image for PD cluster
+      jsonPath: .status.pd.image
+      name: PD
+      type: string
+    - description: The storage size specified for PD node
+      jsonPath: .spec.pd.requests.storage
+      name: Storage
+      type: string
+    - description: The desired replicas number of PD cluster
+      jsonPath: .status.pd.statefulSet.readyReplicas
+      name: Ready
+      type: integer
+    - description: The desired replicas number of PD cluster
+      jsonPath: .spec.pd.replicas
+      name: Desire
+      type: integer
+    - description: The image for TiKV cluster
+      jsonPath: .status.tikv.image
+      name: TiKV
+      type: string
+    - description: The storage size specified for TiKV node
+      jsonPath: .spec.tikv.requests.storage
+      name: Storage
+      type: string
+    - description: The ready replicas number of TiKV cluster
+      jsonPath: .status.tikv.statefulSet.readyReplicas
+      name: Ready
+      type: integer
+    - description: The desired replicas number of TiKV cluster
+      jsonPath: .spec.tikv.replicas
+      name: Desire
+      type: integer
+    - description: The image for TiDB cluster
+      jsonPath: .status.tidb.image
+      name: TiDB
+      type: string
+    - description: The ready replicas number of TiDB cluster
+      jsonPath: .status.tidb.statefulSet.readyReplicas
+      name: Ready
+      type: integer
+    - description: The desired replicas number of TiDB cluster
+      jsonPath: .spec.tidb.replicas
+      name: Desire
+      type: integer
+    - jsonPath: .status.conditions[?(@.type=="Ready")].message
+      name: Status
+      priority: 1
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: TidbCluster is the control script's spec
@@ -19089,6 +19144,7 @@ spec:
         type: object
     served: true
     storage: true
+    subresources: {}
 status:
   acceptedNames:
     kind: ""

@@ -8,6 +8,36 @@ metadata:
   creationTimestamp: null
   name: backups.pingcap.com
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.phase
+    description: The current status of the backup
+    name: Status
+    type: string
+  - JSONPath: .status.backupPath
+    description: The full path of backup data
+    name: BackupPath
+    type: string
+  - JSONPath: .status.backupSizeReadable
+    description: The data size of the backup
+    name: BackupSize
+    type: string
+  - JSONPath: .status.commitTs
+    description: The commit ts of tidb cluster dump
+    name: CommitTS
+    type: string
+  - JSONPath: .status.timeStarted
+    description: The time at which the backup was started
+    name: Started
+    priority: 1
+    type: date-time
+  - JSONPath: .status.timeCompleted
+    description: The time at which the backup was completed
+    name: Completed
+    priority: 1
+    type: date-time
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
   group: pingcap.com
   names:
     kind: Backup
@@ -16,6 +46,7 @@ spec:
     singular: backup
   preserveUnknownFields: false
   scope: Namespaced
+  subresources: {}
   validation:
     openAPIV3Schema:
       description: Backup is a backup of tidb cluster.

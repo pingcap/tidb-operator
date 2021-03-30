@@ -8,6 +8,28 @@ metadata:
   creationTimestamp: null
   name: backupschedules.pingcap.com
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .spec.schedule
+    description: The cron format string used for backup scheduling
+    name: Schedule
+    type: string
+  - JSONPath: .spec.maxBackups
+    description: The max number of backups we want to keep
+    name: MaxBackups
+    type: integer
+  - JSONPath: .status.lastBackup
+    description: The last backup CR name
+    name: LastBackup
+    priority: 1
+    type: string
+  - JSONPath: .status.lastBackupTime
+    description: The last time the backup was successfully created
+    name: LastBackupTime
+    priority: 1
+    type: date
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
   group: pingcap.com
   names:
     kind: BackupSchedule
@@ -16,6 +38,7 @@ spec:
     singular: backupschedule
   preserveUnknownFields: false
   scope: Namespaced
+  subresources: {}
   validation:
     openAPIV3Schema:
       description: BackupSchedule is a backup schedule of tidb cluster.

@@ -8,6 +8,28 @@ metadata:
   creationTimestamp: null
   name: restores.pingcap.com
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.phase
+    description: The current status of the restore
+    name: Status
+    type: string
+  - JSONPath: .status.timeStarted
+    description: The time at which the restore was started
+    name: Started
+    priority: 1
+    type: date-time
+  - JSONPath: .status.timeCompleted
+    description: The time at which the restore was completed
+    name: Completed
+    priority: 1
+    type: date-time
+  - JSONPath: .status.commitTs
+    description: The commit ts of tidb cluster restore
+    name: CommitTS
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
   group: pingcap.com
   names:
     kind: Restore
@@ -16,6 +38,7 @@ spec:
     singular: restore
   preserveUnknownFields: false
   scope: Namespaced
+  subresources: {}
   validation:
     openAPIV3Schema:
       description: Restore represents the restoration of backup of a tidb cluster.

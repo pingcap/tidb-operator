@@ -16,7 +16,29 @@ spec:
     singular: backupschedule
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - description: The cron format string used for backup scheduling
+      jsonPath: .spec.schedule
+      name: Schedule
+      type: string
+    - description: The max number of backups we want to keep
+      jsonPath: .spec.maxBackups
+      name: MaxBackups
+      type: integer
+    - description: The last backup CR name
+      jsonPath: .status.lastBackup
+      name: LastBackup
+      priority: 1
+      type: string
+    - description: The last time the backup was successfully created
+      jsonPath: .status.lastBackupTime
+      name: LastBackupTime
+      priority: 1
+      type: date
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: BackupSchedule is a backup schedule of tidb cluster.
@@ -1592,6 +1614,7 @@ spec:
         type: object
     served: true
     storage: true
+    subresources: {}
 status:
   acceptedNames:
     kind: ""

@@ -16,7 +16,50 @@ spec:
     singular: dmcluster
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .status.conditions[?(@.type=="Ready")].status
+      name: Ready
+      type: string
+    - description: The image for dm-master cluster
+      jsonPath: .status.master.image
+      name: Master
+      type: string
+    - description: The storage size specified for dm-master node
+      jsonPath: .spec.master.storageSize
+      name: Storage
+      type: string
+    - description: The ready replicas number of dm-master cluster
+      jsonPath: .status.master.statefulSet.readyReplicas
+      name: Ready
+      type: integer
+    - description: The desired replicas number of dm-master cluster
+      jsonPath: .spec.master.replicas
+      name: Desire
+      type: integer
+    - description: The image for dm-master cluster
+      jsonPath: .status.worker.image
+      name: Worker
+      type: string
+    - description: The storage size specified for dm-worker node
+      jsonPath: .spec.worker.storageSize
+      name: Storage
+      type: string
+    - description: The ready replicas number of dm-worker cluster
+      jsonPath: .status.worker.statefulSet.readyReplicas
+      name: Ready
+      type: string
+    - description: The desired replicas number of dm-worker cluster
+      jsonPath: .spec.worker.replicas
+      name: Desire
+      type: integer
+    - jsonPath: .status.conditions[?(@.type=="Ready")].message
+      name: Status
+      priority: 1
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: DMCluster is the control script's spec
@@ -6607,6 +6650,7 @@ spec:
         type: object
     served: true
     storage: true
+    subresources: {}
 status:
   acceptedNames:
     kind: ""

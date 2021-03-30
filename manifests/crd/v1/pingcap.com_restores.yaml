@@ -16,7 +16,29 @@ spec:
     singular: restore
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - description: The current status of the restore
+      jsonPath: .status.phase
+      name: Status
+      type: string
+    - description: The time at which the restore was started
+      jsonPath: .status.timeStarted
+      name: Started
+      priority: 1
+      type: date-time
+    - description: The time at which the restore was completed
+      jsonPath: .status.timeCompleted
+      name: Completed
+      priority: 1
+      type: date-time
+    - description: The commit ts of tidb cluster restore
+      jsonPath: .status.commitTs
+      name: CommitTS
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: Restore represents the restoration of backup of a tidb cluster.
@@ -1569,6 +1591,7 @@ spec:
         type: object
     served: true
     storage: true
+    subresources: {}
 status:
   acceptedNames:
     kind: ""

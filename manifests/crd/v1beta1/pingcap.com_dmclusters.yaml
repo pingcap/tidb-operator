@@ -8,6 +8,49 @@ metadata:
   creationTimestamp: null
   name: dmclusters.pingcap.com
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.conditions[?(@.type=="Ready")].status
+    name: Ready
+    type: string
+  - JSONPath: .status.master.image
+    description: The image for dm-master cluster
+    name: Master
+    type: string
+  - JSONPath: .spec.master.storageSize
+    description: The storage size specified for dm-master node
+    name: Storage
+    type: string
+  - JSONPath: .status.master.statefulSet.readyReplicas
+    description: The ready replicas number of dm-master cluster
+    name: Ready
+    type: integer
+  - JSONPath: .spec.master.replicas
+    description: The desired replicas number of dm-master cluster
+    name: Desire
+    type: integer
+  - JSONPath: .status.worker.image
+    description: The image for dm-master cluster
+    name: Worker
+    type: string
+  - JSONPath: .spec.worker.storageSize
+    description: The storage size specified for dm-worker node
+    name: Storage
+    type: string
+  - JSONPath: .status.worker.statefulSet.readyReplicas
+    description: The ready replicas number of dm-worker cluster
+    name: Ready
+    type: string
+  - JSONPath: .spec.worker.replicas
+    description: The desired replicas number of dm-worker cluster
+    name: Desire
+    type: integer
+  - JSONPath: .status.conditions[?(@.type=="Ready")].message
+    name: Status
+    priority: 1
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
   group: pingcap.com
   names:
     kind: DMCluster
@@ -16,6 +59,7 @@ spec:
     singular: dmcluster
   preserveUnknownFields: false
   scope: Namespaced
+  subresources: {}
   validation:
     openAPIV3Schema:
       description: DMCluster is the control script's spec
