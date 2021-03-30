@@ -190,6 +190,10 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
 	}
 	envVars = append(envVars, storageEnv...)
+
+	// set env vars specified in backup.Spec.Env
+	envVars = util.AppendOverwriteEnv(envVars, backup.Spec.Env)
+
 	// TODO: make pvc request storage size configurable
 	reason, err = bm.ensureBackupPVCExist(backup)
 	if err != nil {
@@ -282,9 +286,10 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 					Resources: backup.Spec.ResourceRequirements,
 				},
 			},
-			RestartPolicy: corev1.RestartPolicyNever,
-			Affinity:      backup.Spec.Affinity,
-			Tolerations:   backup.Spec.Tolerations,
+			RestartPolicy:    corev1.RestartPolicyNever,
+			Tolerations:      backup.Spec.Tolerations,
+			ImagePullSecrets: backup.Spec.ImagePullSecrets,
+			Affinity:         backup.Spec.Affinity,
 			Volumes: append([]corev1.Volume{
 				{
 					Name: label.BackupJobLabelVal,
@@ -296,10 +301,6 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 				},
 			}, volumes...),
 		},
-	}
-
-	if backup.Spec.ImagePullSecrets != nil {
-		podSpec.Spec.ImagePullSecrets = backup.Spec.ImagePullSecrets
 	}
 
 	job := &batchv1.Job{
@@ -354,6 +355,9 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		Name:  "BR_LOG_TO_TERM",
 		Value: string(rune(1)),
 	})
+
+	// set env vars specified in backup.Spec.Env
+	envVars = util.AppendOverwriteEnv(envVars, backup.Spec.Env)
 
 	args := []string{
 		"backup",
@@ -467,15 +471,12 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 					Resources:       backup.Spec.ResourceRequirements,
 				},
 			},
-			RestartPolicy: corev1.RestartPolicyNever,
-			Affinity:      backup.Spec.Affinity,
-			Tolerations:   backup.Spec.Tolerations,
-			Volumes:       volumes,
+			RestartPolicy:    corev1.RestartPolicyNever,
+			Tolerations:      backup.Spec.Tolerations,
+			ImagePullSecrets: backup.Spec.ImagePullSecrets,
+			Affinity:         backup.Spec.Affinity,
+			Volumes:          volumes,
 		},
-	}
-
-	if backup.Spec.ImagePullSecrets != nil {
-		podSpec.Spec.ImagePullSecrets = backup.Spec.ImagePullSecrets
 	}
 
 	job := &batchv1.Job{

@@ -509,7 +509,9 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 	if monitor.Spec.Prometheus.ImagePullPolicy != nil {
 		c.ImagePullPolicy = *monitor.Spec.Prometheus.ImagePullPolicy
 	}
-
+	if monitor.Spec.Prometheus.AdditionalVolumeMounts != nil {
+		c.VolumeMounts = append(c.VolumeMounts, monitor.Spec.Prometheus.AdditionalVolumeMounts...)
+	}
 	return c
 }
 
@@ -735,6 +737,11 @@ func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor, tc
 			EmptyDir: &core.EmptyDirVolumeSource{},
 		},
 	})
+	// add additional volumes
+	if monitor.Spec.AdditionalVolumes != nil {
+		volumes = append(volumes, monitor.Spec.AdditionalVolumes...)
+	}
+
 	return volumes
 }
 
@@ -1005,6 +1012,9 @@ func getMonitorStatefulSet(sa *core.ServiceAccount, config *core.ConfigMap, secr
 
 func getMonitorStatefulSetSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.TidbMonitor) *apps.StatefulSet {
 	replicas := int32(1)
+	if monitor.Spec.Replicas != nil {
+		replicas = *monitor.Spec.Replicas
+	}
 	name := GetMonitorObjectName(monitor)
 	statefulset := &apps.StatefulSet{
 		ObjectMeta: meta.ObjectMeta{
@@ -1175,6 +1185,9 @@ func getThanosSidecarContainer(monitor *v1alpha1.TidbMonitor) core.Container {
 
 	if thanos.MinTime != "" {
 		container.Args = append(container.Args, "--min-time="+thanos.MinTime)
+	}
+	if thanos.AdditionalVolumeMounts != nil {
+		container.VolumeMounts = append(container.VolumeMounts, thanos.AdditionalVolumeMounts...)
 	}
 	return container
 }

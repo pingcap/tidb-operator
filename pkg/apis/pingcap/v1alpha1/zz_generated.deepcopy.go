@@ -329,6 +329,13 @@ func (in *BackupScheduleStatus) DeepCopy() *BackupScheduleStatus {
 func (in *BackupSpec) DeepCopyInto(out *BackupSpec) {
 	*out = *in
 	in.ResourceRequirements.DeepCopyInto(&out.ResourceRequirements)
+	if in.Env != nil {
+		in, out := &in.Env, &out.Env
+		*out = make([]v1.EnvVar, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.From != nil {
 		in, out := &in.From, &out.From
 		*out = new(TiDBAccessConfig)
@@ -3703,6 +3710,13 @@ func (in *PrometheusSpec) DeepCopyInto(out *PrometheusSpec) {
 			}
 		}
 	}
+	if in.AdditionalVolumeMounts != nil {
+		in, out := &in.AdditionalVolumeMounts, &out.AdditionalVolumeMounts
+		*out = make([]v1.VolumeMount, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 
@@ -4087,6 +4101,13 @@ func (in *RestoreList) DeepCopyObject() runtime.Object {
 func (in *RestoreSpec) DeepCopyInto(out *RestoreSpec) {
 	*out = *in
 	in.ResourceRequirements.DeepCopyInto(&out.ResourceRequirements)
+	if in.Env != nil {
+		in, out := &in.Env, &out.Env
+		*out = make([]v1.EnvVar, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.To != nil {
 		in, out := &in.To, &out.To
 		*out = new(TiDBAccessConfig)
@@ -4586,6 +4607,13 @@ func (in *ThanosSpec) DeepCopyInto(out *ThanosSpec) {
 		in, out := &in.GRPCServerTLSConfig, &out.GRPCServerTLSConfig
 		*out = new(TLSConfig)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.AdditionalVolumeMounts != nil {
+		in, out := &in.AdditionalVolumeMounts, &out.AdditionalVolumeMounts
+		*out = make([]v1.VolumeMount, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
 	}
 	return
 }
@@ -8289,6 +8317,18 @@ func (in *TidbMonitorSpec) DeepCopyInto(out *TidbMonitorSpec) {
 		in, out := &in.ReplicaExternalLabelName, &out.ReplicaExternalLabelName
 		*out = new(string)
 		**out = **in
+	}
+	if in.Replicas != nil {
+		in, out := &in.Replicas, &out.Replicas
+		*out = new(int32)
+		**out = **in
+	}
+	if in.AdditionalVolumes != nil {
+		in, out := &in.AdditionalVolumes, &out.AdditionalVolumes
+		*out = make([]v1.Volume, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
 	}
 	return
 }

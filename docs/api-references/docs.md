@@ -96,6 +96,36 @@ Kubernetes core/v1.ResourceRequirements
 </tr>
 <tr>
 <td>
+<code>env</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#envvar-v1-core">
+[]Kubernetes core/v1.EnvVar
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>List of environment variables to set in the container, like v1.Container.Env.
+Note that the following builtin env vars will be overwritten by values set here
+- S3_PROVIDER
+- S3_ENDPOINT
+- AWS_REGION
+- AWS_ACL
+- AWS_STORAGE_CLASS
+- AWS_DEFAULT_REGION
+- AWS_ACCESS_KEY_ID
+- AWS_SECRET_ACCESS_KEY
+- GCS_PROJECT_ID
+- GCS_OBJECT_ACL
+- GCS_BUCKET_ACL
+- GCS_LOCATION
+- GCS_STORAGE_CLASS
+- GCS_SERVICE_ACCOUNT_JSON_KEY
+- BR_LOG_TO_TERM</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>from</code></br>
 <em>
 <a href="#tidbaccessconfig">
@@ -878,6 +908,36 @@ Kubernetes core/v1.ResourceRequirements
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>env</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#envvar-v1-core">
+[]Kubernetes core/v1.EnvVar
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>List of environment variables to set in the container, like v1.Container.Env.
+Note that the following builtin env vars will be overwritten by values set here
+- S3_PROVIDER
+- S3_ENDPOINT
+- AWS_REGION
+- AWS_ACL
+- AWS_STORAGE_CLASS
+- AWS_DEFAULT_REGION
+- AWS_ACCESS_KEY_ID
+- AWS_SECRET_ACCESS_KEY
+- GCS_PROJECT_ID
+- GCS_OBJECT_ACL
+- GCS_BUCKET_ACL
+- GCS_LOCATION
+- GCS_STORAGE_CLASS
+- GCS_SERVICE_ACCOUNT_JSON_KEY
+- BR_LOG_TO_TERM</p>
 </td>
 </tr>
 <tr>
@@ -2228,6 +2288,33 @@ Defaults to the value of <code>prometheus_replica</code>. External label will
 <em>not</em> be added when value is set to empty string (<code>&quot;&quot;</code>).</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>replicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Replicas is the number of desired replicas.
+Defaults to 1.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>additionalVolumes</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#volume-v1-core">
+[]Kubernetes core/v1.Volume
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Additional volumes of component pod.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -2802,6 +2889,36 @@ Kubernetes core/v1.ResourceRequirements
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>env</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#envvar-v1-core">
+[]Kubernetes core/v1.EnvVar
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>List of environment variables to set in the container, like v1.Container.Env.
+Note that the following builtin env vars will be overwritten by values set here
+- S3_PROVIDER
+- S3_ENDPOINT
+- AWS_REGION
+- AWS_ACL
+- AWS_STORAGE_CLASS
+- AWS_DEFAULT_REGION
+- AWS_ACCESS_KEY_ID
+- AWS_SECRET_ACCESS_KEY
+- GCS_PROJECT_ID
+- GCS_OBJECT_ACL
+- GCS_BUCKET_ACL
+- GCS_LOCATION
+- GCS_STORAGE_CLASS
+- GCS_SERVICE_ACCOUNT_JSON_KEY
+- BR_LOG_TO_TERM</p>
 </td>
 </tr>
 <tr>
@@ -9804,6 +9921,19 @@ bool
 <p>If specified, the remote_write spec. This is an experimental feature, it may change in any upcoming release in a breaking way.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>additionalVolumeMounts</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#volumemount-v1-core">
+[]Kubernetes core/v1.VolumeMount
+</a>
+</em>
+</td>
+<td>
+<p>Additional volume mounts of prometheus pod.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="proxyconfig">ProxyConfig</h3>
@@ -10720,6 +10850,36 @@ Kubernetes core/v1.ResourceRequirements
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>env</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#envvar-v1-core">
+[]Kubernetes core/v1.EnvVar
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>List of environment variables to set in the container, like v1.Container.Env.
+Note that the following builtin env vars will be overwritten by values set here
+- S3_PROVIDER
+- S3_ENDPOINT
+- AWS_REGION
+- AWS_ACL
+- AWS_STORAGE_CLASS
+- AWS_DEFAULT_REGION
+- AWS_ACCESS_KEY_ID
+- AWS_SECRET_ACCESS_KEY
+- GCS_PROJECT_ID
+- GCS_OBJECT_ACL
+- GCS_BUCKET_ACL
+- GCS_LOCATION
+- GCS_STORAGE_CLASS
+- GCS_SERVICE_ACCOUNT_JSON_KEY
+- BR_LOG_TO_TERM</p>
 </td>
 </tr>
 <tr>
@@ -12128,6 +12288,19 @@ string
 </td>
 <td>
 <p>RoutePrefix is prometheus prefix url</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>additionalVolumeMounts</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#volumemount-v1-core">
+[]Kubernetes core/v1.VolumeMount
+</a>
+</em>
+</td>
+<td>
+<p>Additional volume mounts of thanos pod.</p>
 </td>
 </tr>
 </tbody>
@@ -18081,6 +18254,18 @@ Defaults to 10m</p>
 <p>StoreLabels configures additional labels for TiKV stores.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>enableNamedStatusPort</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>EnableNamedStatusPort enables status port(20180) in the Pod spec.
+If you set it to <code>true</code> for an existing cluster, the TiKV cluster will be rolling updated.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tikvstatus">TiKVStatus</h3>
@@ -20276,6 +20461,33 @@ string
 <p>Name of Prometheus external label used to denote replica name.
 Defaults to the value of <code>prometheus_replica</code>. External label will
 <em>not</em> be added when value is set to empty string (<code>&quot;&quot;</code>).</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>replicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Replicas is the number of desired replicas.
+Defaults to 1.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>additionalVolumes</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#volume-v1-core">
+[]Kubernetes core/v1.Volume
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Additional volumes of component pod.</p>
 </td>
 </tr>
 </tbody>
