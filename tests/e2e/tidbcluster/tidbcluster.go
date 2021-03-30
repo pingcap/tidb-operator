@@ -1855,7 +1855,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					err = wait.Poll(5*time.Second, 3*time.Minute, func() (bool, error) {
 						schedulers, err := pdClient.GetEvictLeaderSchedulers()
 						framework.ExpectNoError(err, "failed to get evict leader schedulers")
-						if len(schedulers) == 0 {
+						if len(schedulers) != 0 {
 							log.Logf("there are %d evict leader left, expect 0", len(schedulers))
 							return false, nil
 						}
