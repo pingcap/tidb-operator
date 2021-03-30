@@ -1829,6 +1829,12 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 						return nil
 					})
 					framework.ExpectNoError(err, "failed to scale %s TiKV", op)
+
+					ginkgo.By("Wait for TiKV to be in ScalePhase")
+					utiltc.MustWaitForTiKVPhase(cli, tc, v1alpha1.ScalePhase, 3*time.Minute, 10*time.Second)
+					log.Logf("TiKV is in ScalePhase")
+
+					ginkgo.By("Wait for tc ready")
 					err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
 					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %s/%s", ns, tc.Name)
 
@@ -1846,9 +1852,16 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, tc.Name, false)
 					framework.ExpectNoError(err, "create pdClient error")
 					defer cancel()
-					schedulers, err := pdClient.GetEvictLeaderSchedulers()
-					framework.ExpectNoError(err, "failed to get evict leader schedulers")
-					framework.ExpectEqual(len(schedulers), 0, "there are %d evict leader left, expect 0", len(schedulers))
+					err = wait.Poll(5*time.Second, 3*time.Minute, func() (bool, error) {
+						schedulers, err := pdClient.GetEvictLeaderSchedulers()
+						framework.ExpectNoError(err, "failed to get evict leader schedulers")
+						if len(schedulers) == 0 {
+							log.Logf("there are %d evict leader left, expect 0", len(schedulers))
+							return false, nil
+						}
+						return true, nil
+					})
+					framework.ExpectNoError(err, "failed to wait for evict leader schedulers to become 0")
 				})
 			}
 		})
