@@ -1840,6 +1840,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					} else {
 						framework.ExpectEqual(int(tc.Spec.TiKV.Replicas), 4)
 					}
+					log.Logf("TiKV replicas number is correct")
 
 					ginkgo.By("Check no evict leader scheduler left")
 					pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, tc.Name, false)

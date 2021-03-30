@@ -258,6 +258,7 @@ func endEvictLeaderbyStoreID(deps *controller.Dependencies, tc *v1alpha1.TidbClu
 	}
 	var err error
 
+	klog.Infof("tikv: start calling EndEvictLeader on PD")
 	if tc.IsHeterogeneous() {
 		err = deps.PDControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled()).EndEvictLeader(storeID)
 	} else {
