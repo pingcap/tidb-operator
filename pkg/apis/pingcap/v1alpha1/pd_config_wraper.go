@@ -31,7 +31,7 @@ func NewPDConfig() *PDConfigWraper {
 }
 
 type PDConfigWraper struct {
-	*config.GenericConfig
+	*config.GenericConfig `json:",inline"`
 }
 
 // MarshalJSON implements stdjson.Marshaler interface.

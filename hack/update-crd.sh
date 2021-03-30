@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2020 PingCAP, Inc.
+# Copyright 2021 PingCAP, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,11 +18,5 @@ set -o nounset
 set -o pipefail
 
 ROOT=$(unset CDPATH && cd $(dirname "${BASH_SOURCE[0]}")/.. && pwd)
-cd $ROOT
 
-hack/update-codegen.sh
-hack/update-openapi-spec.sh
-hack/update-crd.sh
-hack/update-api-references.sh
-hack/update-EOF.sh
-hack/update-goimports.sh
+$ROOT/hack/crdgen/run.sh

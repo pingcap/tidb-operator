@@ -193,7 +193,7 @@ type TidbClusterSpec struct {
 	// cluster component is needed to reload the configuration change.
 	// UpdateStrategyRollingUpdate will create a new ConfigMap with the new configuration and rolling-update the
 	// related components to use the new ConfigMap, that is, the new configuration will be applied automatically.
-	// +kubebuilder:validation:Enum=InPlace,RollingUpdate
+	// +kubebuilder:validation:Enum=InPlace;RollingUpdate
 	// +kubebuilder:default=InPlacne
 	ConfigUpdateStrategy ConfigUpdateStrategy `json:"configUpdateStrategy,omitempty"`
 
@@ -373,6 +373,7 @@ type PDSpec struct {
 
 	// Config is the Configuration of pd-servers
 	// +optional
+	// +kubebuilder:validation:Schemaless
 	Config *PDConfigWraper `json:"config,omitempty"`
 
 	// TLSClientSecretName is the name of secret which stores tidb server client certificate
@@ -452,6 +453,7 @@ type TiKVSpec struct {
 
 	// Config is the Configuration of tikv-servers
 	// +optional
+	// +kubebuilder:validation:Schemaless
 	Config *TiKVConfigWraper `json:"config,omitempty"`
 
 	// RecoverFailover indicates that Operator can recover the failed Pods
@@ -653,6 +655,7 @@ type TiDBSpec struct {
 
 	// Config is the Configuration of tidb-servers
 	// +optional
+	// +kubebuilder:validation:Schemaless
 	Config *TiDBConfigWraper `json:"config,omitempty"`
 
 	// Lifecycle describes actions that the management system should take in response to container lifecycle
@@ -691,7 +694,7 @@ type TiDBProbe struct {
 	// "command" will probe the status api of tidb.
 	// This will use curl command to request tidb, before v4.0.9 there is no curl in the image,
 	// So do not use this before v4.0.9.
-	// +kubebuilder:validation:Enum=tcp,command
+	// +kubebuilder:validation:Enum=tcp;command
 	// +optional
 	Type *string `json:"type,omitempty"` // tcp or command
 }
@@ -721,6 +724,7 @@ type PumpSpec struct {
 
 	// The configuration of Pump cluster.
 	// +optional
+	// +kubebuilder:validation:Schemaless
 	Config *config.GenericConfig `json:"config,omitempty"`
 
 	// +k8s:openapi-gen=false
@@ -909,7 +913,7 @@ type ServiceSpec struct {
 // +k8s:openapi-gen=true
 type TiDBServiceSpec struct {
 	// +k8s:openapi-gen=false
-	ServiceSpec
+	ServiceSpec `json:",inline"`
 
 	// ExternalTrafficPolicy of the service
 	// Optional: Defaults to omitted
@@ -971,22 +975,26 @@ type PDMember struct {
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 }
 
+// EmptyStruct is defined to delight controller-gen@v0.5.0 tools
+// Only named struct is allowed by controller-gen
+type EmptyStruct struct{}
+
 // PDFailureMember is the pd failure member information
 type PDFailureMember struct {
-	PodName       string                 `json:"podName,omitempty"`
-	MemberID      string                 `json:"memberID,omitempty"`
-	PVCUID        types.UID              `json:"pvcUID,omitempty"`
-	PVCUIDSet     map[types.UID]struct{} `json:"pvcUIDSet,omitempty"`
-	MemberDeleted bool                   `json:"memberDeleted,omitempty"`
-	CreatedAt     metav1.Time            `json:"createdAt,omitempty"`
+	PodName       string                    `json:"podName,omitempty"`
+	MemberID      string                    `json:"memberID,omitempty"`
+	PVCUID        types.UID                 `json:"pvcUID,omitempty"`
+	PVCUIDSet     map[types.UID]EmptyStruct `json:"pvcUIDSet,omitempty"`
+	MemberDeleted bool                      `json:"memberDeleted,omitempty"`
+	CreatedAt     metav1.Time               `json:"createdAt,omitempty"`
 }
 
 // UnjoinedMember is the pd unjoin cluster member information
 type UnjoinedMember struct {
-	PodName   string                 `json:"podName,omitempty"`
-	PVCUID    types.UID              `json:"pvcUID,omitempty"`
-	PVCUIDSet map[types.UID]struct{} `json:"pvcUIDSet,omitempty"`
-	CreatedAt metav1.Time            `json:"createdAt,omitempty"`
+	PodName   string                    `json:"podName,omitempty"`
+	PVCUID    types.UID                 `json:"pvcUID,omitempty"`
+	PVCUIDSet map[types.UID]EmptyStruct `json:"pvcUIDSet,omitempty"`
+	CreatedAt metav1.Time               `json:"createdAt,omitempty"`
 }
 
 // TiDBStatus is TiDB status
