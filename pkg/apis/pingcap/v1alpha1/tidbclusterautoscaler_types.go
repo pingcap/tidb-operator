@@ -24,6 +24,11 @@ import (
 
 // +k8s:openapi-gen=true
 // TidbClusterAutoScaler is the control script's spec
+// +kubebuiler:printcolums:name="TiDB-MaxReplicas",type=integer,JSONPath=`.spec.tidb.maxReplicas`,description="The maximal replicas of TiDB"
+// +kubebuiler:printcolums:name="TiDB-MinReplicas",type=integer,JSONPath=`.spec.tidb.minReplicas`,description="The minimal replicas of TiDB"
+// +kubebuiler:printcolums:name="TiKV-MaxReplicas",type=integer,JSONPath=`.spec.tikv.maxReplicas`,description="The maximal replicas of TiKV"
+// +kubebuiler:printcolums:name="TiKV-MinReplicas",type=integer,JSONPath=`.spec.tikv.minReplicas`,description="The minimal replicas of TiKV"
+// +kubebuiler:printcolums:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 type TidbClusterAutoScaler struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false

@@ -38,6 +38,8 @@ const (
 
 // +k8s:openapi-gen=true
 // TidbInitializer is a TiDB cluster initializing job
+// +kubebuilder:printcolums:name="Phase",type=string,JSONPath=`.status.phase`,description="The current phase of initialization",priority=1
+// +kubebuilder:printcolums:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 type TidbInitializer struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false

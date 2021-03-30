@@ -14,12 +14,13 @@
 package v1alpha1
 
 import (
-	"github.com/pingcap/tidb-operator/pkg/util/config"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/pingcap/tidb-operator/pkg/util/config"
 )
 
 const (
@@ -100,6 +101,20 @@ const (
 
 // TidbCluster is the control script's spec
 // +k8s:openapi-gen=true
+// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
+// +kubebuilder:printcolumn:name="PD",type=string,JSONPath=`.status.pd.image`,description="The image for PD cluster"
+// +kubebuilder:printcolumn:name="Storage",type=string,JSONPath=`.spec.pd.requests.storage`,description="The storage size specified for PD node"
+// +kubebuilder:printcolumn:name="Ready",type=integer,JSONPath=`.status.pd.statefulSet.readyReplicas`,description="The desired replicas number of PD cluster"
+// +kubebuilder:printcolumn:name="Desire",type=integer,JSONPath=`.spec.pd.replicas`,description="The desired replicas number of PD cluster"
+// +kubebuilder:printcolumn:name="TiKV",type=string,JSONPath=`.status.tikv.image`,description="The image for TiKV cluster"
+// +kubebuilder:printcolumn:name="Storage",type=string,JSONPath=`.spec.tikv.requests.storage`,description="The storage size specified for TiKV node"
+// +kubebuilder:printcolumn:name="Ready",type=integer,JSONPath=`.status.tikv.statefulSet.readyReplicas`,description="The ready replicas number of TiKV cluster"
+// +kubebuilder:printcolumn:name="Desire",type=integer,JSONPath=`.spec.tikv.replicas`,description="The desired replicas number of TiKV cluster"
+// +kubebuilder:printcolumn:name="TiDB",type=string,JSONPath=`.status.tidb.image`,description="The image for TiDB cluster"
+// +kubebuilder:printcolumn:name="Ready",type=integer,JSONPath=`.status.tidb.statefulSet.readyReplicas`,description="The ready replicas number of TiDB cluster"
+// +kubebuilder:printcolumn:name="Desire",type=integer,JSONPath=`.spec.tidb.replicas`,description="The desired replicas number of TiDB cluster"
+// +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].message`,priority=1
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 type TidbCluster struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
@@ -1136,6 +1151,13 @@ type TLSCluster struct {
 
 // +k8s:openapi-gen=true
 // Backup is a backup of tidb cluster.
+// +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.phase`,description="The current status of the backup"
+// +kubebuilder:printcolumn:name="BackupPath",type=string,JSONPath=`.status.backupPath`,description="The full path of backup data"
+// +kubebuilder:printcolumn:name="BackupSize",type=string,JSONPath=`.status.backupSizeReadable`,description="The data size of the backup"
+// +kubebuilder:printcolumn:name="CommitTS",type=string,JSONPath=`.status.commitTs`,description="The commit ts of tidb cluster dump"
+// +kubebuilder:printcolumn:name="Started",type=date-time,JSONPath=`.status.timeStarted`,description="The time at which the backup was started",priority=1
+// +kubebuilder:printcolumn:name="Completed",type=date-time,JSONPath=`.status.timeCompleted`,description="The time at which the backup was completed",priority=1
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 type Backup struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
@@ -1463,6 +1485,11 @@ type BackupStatus struct {
 
 // +k8s:openapi-gen=true
 // BackupSchedule is a backup schedule of tidb cluster.
+// +kubebuilder:printcolumn:name="Schedule",type=string,JSONPath=`.spec.schedule`,description="The cron format string used for backup scheduling"
+// +kubebuilder:printcolumn:name="MaxBackups",type=integer,JSONPath=`.spec.maxBackups`,description="The max number of backups we want to keep"
+// +kubebuilder:printcolumn:name="LastBackup",type=string,JSONPath=`.status.lastBackup`,description="The last backup CR name",priority=1
+// +kubebuilder:printcolumn:name="LastBackupTime",type=date,JSONPath=`.status.lastBackupTime`,description="The last time the backup was successfully created",priority=1
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 type BackupSchedule struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
@@ -1526,6 +1553,11 @@ type BackupScheduleStatus struct {
 
 // +k8s:openapi-gen=true
 // Restore represents the restoration of backup of a tidb cluster.
+// +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.phase`,description="The current status of the restore"
+// +kubebuilder:printcolumn:name="Started",type=date-time,JSONPath=`.status.timeStarted`,description="The time at which the restore was started",priority=1
+// +kubebuilder:printcolumn:name="Completed",type=date-time,JSONPath=`.status.timeCompleted`,description="The time at which the restore was completed",priority=1
+// +kubebuilder:printcolumn:name="CommitTS",type=string,JSONPath=`.status.commitTs`,description="The commit ts of tidb cluster restore"
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 type Restore struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
@@ -1674,6 +1706,17 @@ type IngressSpec struct {
 
 // +k8s:openapi-gen=true
 // DMCluster is the control script's spec
+// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
+// +kubebuilder:printcolumn:name="Master",type=string,JSONPath=`.status.master.image`,description="The image for dm-master cluster"
+// +kubebuilder:printcolumn:name="Storage",type=string,JSONPath=`.spec.master.storageSize`,description="The storage size specified for dm-master node"
+// +kubebuilder:printcolumn:name="Ready",type=integer,JSONPath=`.status.master.statefulSet.readyReplicas`,description="The ready replicas number of dm-master cluster"
+// +kubebuilder:printcolumn:name="Desire",type=integer,JSONPath=`.spec.master.replicas`,description="The desired replicas number of dm-master cluster"
+// +kubebuilder:printcolumn:name="Worker",type=string,JSONPath=`.status.worker.image`,description="The image for dm-master cluster"
+// +kubebuilder:printcolumn:name="Storage",type=string,JSONPath=`.spec.worker.storageSize`,description="The storage size specified for dm-worker node"
+// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.worker.statefulSet.readyReplicas`,description="The ready replicas number of dm-worker cluster"
+// +kubebuilder:printcolumn:name="Desire",type=integer,JSONPath=`.spec.worker.replicas`,description="The desired replicas number of dm-worker cluster"
+// +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].message`,priority=1
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 type DMCluster struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
