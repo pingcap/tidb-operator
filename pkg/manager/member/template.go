@@ -341,11 +341,19 @@ var tidbInitStartScriptTpl = template.Must(template.New("tidb-init-start-script"
 host = '{{ .ClusterName }}-tidb'
 permit_host = '{{ .PermitHost }}'
 port = 4000
+for i in range(0, 10):
+    while True:
+        try:
 {{- if .TLS }}
-conn = MySQLdb.connect(host=host, port=port, user='root', charset='utf8mb4',connect_timeout=5, ssl={'ca': '{{ .CAPath }}', 'cert': '{{ .CertPath }}', 'key': '{{ .KeyPath }}'})
+			conn = MySQLdb.connect(host=host, port=port, user='root', charset='utf8mb4',connect_timeout=5, ssl={'ca': '{{ .CAPath }}', 'cert': '{{ .CertPath }}', 'key': '{{ .KeyPath }}'})
 {{- else }}
-conn = MySQLdb.connect(host=host, port=port, user='root', connect_timeout=5, charset='utf8mb4')
+			conn = MySQLdb.connect(host=host, port=port, user='root', connect_timeout=5, charset='utf8mb4')
 {{- end }}
+        except MySQLdb.OperationalError as e:
+            print(e)
+            time.sleep(3)
+            continue
+        break
 {{- if .PasswordSet }}
 password_dir = '/etc/tidb/password'
 for file in os.listdir(password_dir):
