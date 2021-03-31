@@ -134,8 +134,8 @@ func TestTiFlashMemberManagerSyncCreate(t *testing.T) {
 			},
 			errWhenCreateStatefulSet:    false,
 			errWhenCreateTiFlashService: false,
-			err:                         true,
-			tiflashSvcCreated:           false,
+			err:                         false,
+			tiflashSvcCreated:           true,
 			setCreated:                  false,
 		},
 		{
