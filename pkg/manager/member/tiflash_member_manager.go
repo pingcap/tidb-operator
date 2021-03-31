@@ -641,7 +641,7 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	if err != nil {
 		tc.Status.TiFlash.Synced = false
 		klog.Warningf("Fail to GetStores for TidbCluster %s/%s", tc.Namespace, tc.Name)
-		return nil
+		return err
 	}
 
 	pattern, err := regexp.Compile(fmt.Sprintf(tiflashStoreLimitPattern, tc.Name, tc.Name, tc.Namespace, controller.FormatClusterDomainForRegex(tc.Spec.ClusterDomain)))
@@ -684,7 +684,7 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	if err != nil {
 		tc.Status.TiFlash.Synced = false
 		klog.Warningf("Fail to GetTombStoneStores for TidbCluster %s/%s", tc.Namespace, tc.Name)
-		return nil
+		return err
 	}
 	for _, store := range tombstoneStoresInfo.Stores {
 		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
