@@ -1052,7 +1052,6 @@ type TiCDCStatus struct {
 type TiCDCCapture struct {
 	PodName string `json:"podName,omitempty"`
 	ID      string `json:"id,omitempty"`
-	Health  bool   `json:"health"`
 }
 
 // TiKVStores is either Up/Down/Offline/Tombstone

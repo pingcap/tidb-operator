@@ -60,8 +60,11 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 			meta.Status.TiFlash.Phase == v1alpha1.UpgradePhase ||
 			meta.Status.PD.Phase == v1alpha1.UpgradePhase ||
 			meta.TiKVScaling() {
-			klog.Infof("TidbCluster: [%s/%s]'s ticdc status is %v, pd status is %v, tikv status is %v, can not upgrade tikv",
-				ns, tcName, meta.Status.TiCDC.Phase, meta.Status.PD.Phase, meta.Status.TiKV.Phase)
+			klog.Infof("TidbCluster: [%s/%s]'s ticdc status is %v, "+
+				"tiflash status is %v, pd status is %v, "+
+				"tikv status is %v, can not upgrade tikv",
+				ns, tcName, meta.Status.TiCDC.Phase, meta.Status.TiFlash.Phase,
+				meta.Status.PD.Phase, meta.Status.TiKV.Phase)
 			_, podSpec, err := GetLastAppliedConfig(oldSet)
 			if err != nil {
 				return err

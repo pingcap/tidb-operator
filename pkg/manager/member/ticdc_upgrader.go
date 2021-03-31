@@ -78,7 +78,7 @@ func (u *ticdcUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulS
 		}
 
 		if revision == tc.Status.TiCDC.StatefulSet.UpdateRevision {
-			if member, exist := tc.Status.TiCDC.Captures[podName]; !exist || !member.Health {
+			if _, exist := tc.Status.TiCDC.Captures[podName]; !exist {
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s ticdc upgraded pod: [%s] is not ready", ns, tcName, podName)
 			}
 			continue
