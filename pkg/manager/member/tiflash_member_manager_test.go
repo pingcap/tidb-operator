@@ -721,7 +721,8 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 			errWhenGetTombstoneStores: false,
 			tombstoneStoreInfo:        nil,
 			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).Should(BeNil())
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "failed to get stores")).To(BeTrue())
 			},
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(tc.Status.TiFlash.StatefulSet.Replicas).To(Equal(int32(3)))
@@ -1157,7 +1158,8 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 				Stores: []*pdapi.StoreInfo{},
 			},
 			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).Should(BeNil())
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "failed to get tombstone stores")).To(BeTrue())
 			},
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(len(tc.Status.TiFlash.Stores)).To(Equal(1))

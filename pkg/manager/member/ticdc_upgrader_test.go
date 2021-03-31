@@ -142,10 +142,7 @@ func TestTiCDCUpgrader_Upgrade(t *testing.T) {
 		{
 			name: "upgraded pods are not ready",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.TiCDC.Captures["upgrader-ticdc-1"] = v1alpha1.TiCDCCapture{
-					PodName: "upgrader-ticdc-1",
-					Health:  false,
-				}
+				delete(tc.Status.TiCDC.Captures, "upgrader-ticdc-1")
 			},
 			errorExpect: true,
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
@@ -267,11 +264,9 @@ func newTidbClusterForTiCDCUpgrader() *v1alpha1.TidbCluster {
 				Captures: map[string]v1alpha1.TiCDCCapture{
 					"upgrader-ticdc-0": {
 						PodName: "upgrader-ticdc-0",
-						Health:  true,
 					},
 					"upgrader-ticdc-1": {
 						PodName: "upgrader-ticdc-1",
-						Health:  true,
 					},
 				},
 			},
