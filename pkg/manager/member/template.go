@@ -337,10 +337,11 @@ func RenderPumpStartScript(model *PumpStartScriptModel) (string, error) {
 }
 
 // tidbInitStartScriptTpl is the template string of tidb initializer start script
-var tidbInitStartScriptTpl = template.Must(template.New("tidb-init-start-script").Parse(`import os, MySQLdb
+var tidbInitStartScriptTpl = template.Must(template.New("tidb-init-start-script").Parse(`import os, sys, time, MySQLdb
 host = '{{ .ClusterName }}-tidb'
 permit_host = '{{ .PermitHost }}'
 port = 4000
+retry_count = 0
 for i in range(0, 10):
     try:
 {{- if .TLS }}
@@ -350,9 +351,13 @@ for i in range(0, 10):
 {{- end }}
     except MySQLdb.OperationalError as e:
         print(e)
+        retry_count += 1
         time.sleep(1)
         continue
     break
+if retry_count == 10:
+    sys.exit(1)
+
 {{- if .PasswordSet }}
 password_dir = '/etc/tidb/password'
 for file in os.listdir(password_dir):
