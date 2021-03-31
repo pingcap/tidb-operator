@@ -376,6 +376,8 @@ spec:
                     type: string
                 type: object
               type: array
+            labels:
+              type: object
             nodeSelector:
               type: object
             paused:
@@ -2317,6 +2319,8 @@ spec:
                     - name
                     type: object
                   type: array
+                labels:
+                  type: object
                 limits:
                   type: object
                 maxFailoverCount:
@@ -2392,6 +2396,8 @@ spec:
                       type: object
                     clusterIP:
                       type: string
+                    labels:
+                      type: object
                     loadBalancerIP:
                       type: string
                     loadBalancerSourceRanges:
@@ -4377,6 +4383,8 @@ spec:
                     - name
                     type: object
                   type: array
+                labels:
+                  type: object
                 limits:
                   type: object
                 nodeSelector:
@@ -6423,6 +6431,8 @@ spec:
                     - name
                     type: object
                   type: array
+                labels:
+                  type: object
                 limits:
                   type: object
                 nodeSelector:
@@ -8450,6 +8460,8 @@ spec:
                     - name
                     type: object
                   type: array
+                labels:
+                  type: object
                 lifecycle:
                   properties:
                     postStart:
@@ -10637,6 +10649,8 @@ spec:
                     - name
                     type: object
                   type: array
+                labels:
+                  type: object
                 limits:
                   type: object
                 logTailer:
@@ -12697,6 +12711,8 @@ spec:
                     - name
                     type: object
                   type: array
+                labels:
+                  type: object
                 limits:
                   type: object
                 logTailer:
@@ -13184,6 +13200,8 @@ spec:
                     type: string
                 type: object
               type: array
+            labels:
+              type: object
             master:
               properties:
                 additionalContainers:
@@ -15135,6 +15153,8 @@ spec:
                     - name
                     type: object
                   type: array
+                labels:
+                  type: object
                 limits:
                   type: object
                 maxFailoverCount:
@@ -17224,6 +17244,8 @@ spec:
                     - name
                     type: object
                   type: array
+                labels:
+                  type: object
                 limits:
                   type: object
                 maxFailoverCount:
@@ -17637,6 +17659,8 @@ spec:
                       type: array
                   type: object
               type: object
+            annotations:
+              type: object
             backupType:
               type: string
             br:
@@ -17789,6 +17813,8 @@ spec:
                     type: string
                 type: object
               type: array
+            labels:
+              type: object
             local: {}
             resources:
               properties:
@@ -18160,6 +18186,8 @@ spec:
                       type: array
                   type: object
               type: object
+            annotations:
+              type: object
             backupType:
               type: string
             br:
@@ -18282,6 +18310,8 @@ spec:
                     type: string
                 type: object
               type: array
+            labels:
+              type: object
             local: {}
             resources:
               properties:
@@ -18672,6 +18702,8 @@ spec:
                           type: array
                       type: object
                   type: object
+                annotations:
+                  type: object
                 backupType:
                   type: string
                 br:
@@ -18824,6 +18856,8 @@ spec:
                         type: string
                     type: object
                   type: array
+                labels:
+                  type: object
                 local: {}
                 resources:
                   properties:

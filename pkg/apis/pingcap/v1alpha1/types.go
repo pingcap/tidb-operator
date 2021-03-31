@@ -226,9 +226,15 @@ type TidbClusterSpec struct {
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
-	// Base annotations of TiDB cluster Pods, components may add or override selectors upon this respectively
+	// Base annotations for TiDB cluster, all Pods in the cluster should have these annotations.
+	// Can be overrode by annotations in the specific component spec
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Base labels for TiDB cluster, all Pods in the cluster should have these labels.
+	// Can be overrode by labels in the specific component spec
+	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
 
 	// Base tolerations of TiDB cluster Pods, components may add more tolerations upon this respectively
 	// +optional
@@ -805,10 +811,15 @@ type ComponentSpec struct {
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
-	// Annotations of the component. Merged into the cluster-level annotations if non-empty
+	// Annotations for the component. Merged into and overrode the cluster-level annotations if non-empty
 	// Optional: Defaults to cluster-level setting
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Labels for the component. Merged into and overrode the cluster-level labels if non-empty
+	// Optional: Defaults to cluster-level setting
+	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
 
 	// Tolerations of the component. Override the cluster-level tolerations if non-empty
 	// Optional: Defaults to cluster-level setting
@@ -878,9 +889,13 @@ type ServiceSpec struct {
 	// Type of the real kubernetes service
 	Type corev1.ServiceType `json:"type,omitempty"`
 
-	// Additional annotations of the kubernetes service object
+	// Additional annotations for the kubernetes service object
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Additional labels for the kubernetes service object
+	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
 
 	// LoadBalancerIP is the loadBalancerIP of service
 	// Optional: Defaults to omitted
@@ -1356,6 +1371,14 @@ type BackupSpec struct {
 	ServiceAccount string `json:"serviceAccount,omitempty"`
 	// CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained
 	CleanPolicy CleanPolicyType `json:"cleanPolicy,omitempty"`
+
+	// Additional annotations for the backup pod
+	// +optional
+	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Additional labels the backup pod
+	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -1628,6 +1651,14 @@ type RestoreSpec struct {
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 	// TableFilter means Table filter expression for 'db.table' matching. BR supports this from v4.0.3.
 	TableFilter []string `json:"tableFilter,omitempty"`
+
+	// Additional annotations for the restore pod
+	// +optional
+	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Additional labels for the restore pod
+	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
 }
 
 // RestoreStatus represents the current status of a tidb cluster restore.
@@ -1771,9 +1802,13 @@ type DMClusterSpec struct {
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
-	// Base annotations of DM cluster Pods, components may add or override selectors upon this respectively
+	// Additional annotations for dm pod
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Additional labels for dm pod
+	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
 
 	// Time zone of DM cluster Pods
 	// Optional: Defaults to UTC
