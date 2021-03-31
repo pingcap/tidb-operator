@@ -71,13 +71,6 @@ func (m *tiflashMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-
-	if tc.Spec.PD != nil && !tc.PDIsAvailable() {
-		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PD cluster running", ns, tcName)
-	}
-
 	err := m.enablePlacementRules(tc)
 	if err != nil {
 		klog.Errorf("Enable placement rules failed, error: %v", err)
@@ -191,6 +184,10 @@ func (m *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 		return err
 	}
 	if setNotExist {
+		if !tc.PDIsAvailable() {
+			klog.Infof("TidbCluster: %s/%s, waiting for PD cluster running", ns, tcName)
+			return nil
+		}
 		err = SetStatefulSetLastAppliedConfigAnnotation(newSet)
 		if err != nil {
 			return err
@@ -641,6 +638,7 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	storesInfo, err := pdCli.GetStores()
 	if err != nil {
 		tc.Status.TiFlash.Synced = false
+		klog.Warningf("Fail to GetStores for TidbCluster %s/%s", tc.Namespace, tc.Name)
 		return err
 	}
 
@@ -680,6 +678,7 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	tombstoneStoresInfo, err := pdCli.GetTombStoneStores()
 	if err != nil {
 		tc.Status.TiFlash.Synced = false
+		klog.Warningf("Fail to GetTombStoneStores for TidbCluster %s/%s", tc.Namespace, tc.Name)
 		return err
 	}
 	for _, store := range tombstoneStoresInfo.Stores {
