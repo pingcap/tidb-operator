@@ -161,6 +161,26 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 		return err
 	}
 
+	//   - waiting for the pd cluster available(pd cluster is in quorum)
+	//   - create or update ticdc deployment
+	//   - sync ticdc cluster status from pd to TidbCluster object
+	if err := c.ticdcMemberManager.Sync(tc); err != nil {
+		return err
+	}
+
+	// works that should do to making the tiflash cluster current state match the desired state:
+	//   - waiting for the tidb cluster available
+	//   - create or update tiflash headless service
+	//   - create the tiflash statefulset
+	//   - sync tiflash cluster status from pd to TidbCluster object
+	//   - set scheduler labels to tiflash stores
+	//   - upgrade the tiflash cluster
+	//   - scale out/in the tiflash cluster
+	//   - failover the tiflash cluster
+	if err := c.tiflashMemberManager.Sync(tc); err != nil {
+		return err
+	}
+
 	// works that should do to making the pd cluster current state match the desired state:
 	//   - create or update the pd service
 	//   - create or update the pd headless service
@@ -203,26 +223,6 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	//   - scale out/in the tidb cluster
 	//   - failover the tidb cluster
 	if err := c.tidbMemberManager.Sync(tc); err != nil {
-		return err
-	}
-
-	// works that should do to making the tiflash cluster current state match the desired state:
-	//   - waiting for the tidb cluster available
-	//   - create or update tiflash headless service
-	//   - create the tiflash statefulset
-	//   - sync tiflash cluster status from pd to TidbCluster object
-	//   - set scheduler labels to tiflash stores
-	//   - upgrade the tiflash cluster
-	//   - scale out/in the tiflash cluster
-	//   - failover the tiflash cluster
-	if err := c.tiflashMemberManager.Sync(tc); err != nil {
-		return err
-	}
-
-	//   - waiting for the pd cluster available(pd cluster is in quorum)
-	//   - create or update ticdc deployment
-	//   - sync ticdc cluster status from pd to TidbCluster object
-	if err := c.ticdcMemberManager.Sync(tc); err != nil {
 		return err
 	}
 
