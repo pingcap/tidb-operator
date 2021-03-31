@@ -71,7 +71,7 @@ func (m *tidbInitManager) Sync(ti *v1alpha1.TidbInitializer) error {
 		return fmt.Errorf("TidbInitManager.Sync: failed to get tidbcluster %s for TidbInitializer %s/%s, error: %s", tcName, ns, ti.Name, err)
 	}
 	if tc.Spec.TiDB == nil {
-		klog.Infof("TidbInitManager.Sync: Spec.TiDB is nil, stop syncing TidbInitializer")
+		klog.Infof("TidbInitManager.Sync: Spec.TiDB is nil in tidbcluster %s, skip syncing TidbInitializer %s/%s", tcName, ns, ti.Name)
 		return nil
 	}
 
