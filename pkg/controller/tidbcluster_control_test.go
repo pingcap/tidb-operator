@@ -23,7 +23,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	core "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
@@ -75,8 +74,7 @@ func TestDeepEqualExceptHeartbeatTime(t *testing.T) {
 			Synced: true,
 			Stores: map[string]v1alpha1.TiKVStore{
 				"1": {
-					LastHeartbeatTime: metav1.Now(),
-					ID:                "1",
+					ID: "1",
 				},
 			},
 		},
@@ -87,8 +85,7 @@ func TestDeepEqualExceptHeartbeatTime(t *testing.T) {
 			Synced: true,
 			Stores: map[string]v1alpha1.TiKVStore{
 				"1": {
-					LastHeartbeatTime: metav1.Now(),
-					ID:                "1",
+					ID: "1",
 				},
 			},
 		},

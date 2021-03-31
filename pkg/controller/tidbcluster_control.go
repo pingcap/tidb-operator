@@ -21,7 +21,6 @@ import (
 	tcinformers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
@@ -114,7 +113,6 @@ func deepEqualExceptHeartbeatTime(newStatus *v1alpha1.TidbClusterStatus, oldStat
 
 func sweepHeartbeatTime(stores map[string]v1alpha1.TiKVStore) {
 	for id, store := range stores {
-		store.LastHeartbeatTime = metav1.Time{}
 		stores[id] = store
 	}
 }
