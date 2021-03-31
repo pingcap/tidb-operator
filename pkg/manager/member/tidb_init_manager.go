@@ -64,7 +64,18 @@ func NewTiDBInitManager(deps *controller.Dependencies) InitManager {
 }
 
 func (m *tidbInitManager) Sync(ti *v1alpha1.TidbInitializer) error {
-	err := m.syncTiDBInitConfigMap(ti)
+	ns := ti.Namespace
+	tcName := ti.Spec.Clusters.Name
+	tc, err := m.deps.TiDBClusterLister.TidbClusters(ns).Get(tcName)
+	if err != nil {
+		return fmt.Errorf("TidbInitManager.Sync: failed to get tidbcluster %s for TidbInitializer %s/%s, error: %s", tcName, ns, ti.Name, err)
+	}
+	if tc.Spec.TiDB == nil {
+		klog.Infof("TidbInitManager.Sync: Spec.TiDB is nil in tidbcluster %s, skip syncing TidbInitializer %s/%s", tcName, ns, ti.Name)
+		return nil
+	}
+
+	err = m.syncTiDBInitConfigMap(ti)
 	if err != nil {
 		return err
 	}
