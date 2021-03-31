@@ -43,41 +43,22 @@ func NewTiKVUpgrader(deps *controller.Dependencies) Upgrader {
 	}
 }
 
-<<<<<<< HEAD
 func (u *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	if tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.TiKVScaling() {
-		klog.Infof("TidbCluster: [%s/%s]'s pd status is %v, tikv status is %v, can not upgrade tikv",
-			ns, tcName, tc.Status.PD.Phase, tc.Status.TiKV.Phase)
+	if tc.Status.TiCDC.Phase == v1alpha1.UpgradePhase ||
+		tc.Status.TiFlash.Phase == v1alpha1.UpgradePhase ||
+		tc.Status.PD.Phase == v1alpha1.UpgradePhase ||
+		tc.TiKVScaling() {
+		klog.Infof("TidbCluster: [%s/%s]'s ticdc status is %v, "+
+			"tiflash status is %v, pd status is %v, "+
+			"tikv status is %v, can not upgrade tikv",
+			ns, tcName, tc.Status.TiCDC.Phase, tc.Status.TiFlash.Phase,
+			tc.Status.PD.Phase, tc.Status.TiKV.Phase)
 		_, podSpec, err := GetLastAppliedConfig(oldSet)
 		if err != nil {
 			return err
-=======
-func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	ns := meta.GetNamespace()
-	tcName := meta.GetName()
-
-	var status *v1alpha1.TiKVStatus
-	switch meta := meta.(type) {
-	case *v1alpha1.TidbCluster:
-		if meta.Status.TiCDC.Phase == v1alpha1.UpgradePhase ||
-			meta.Status.TiFlash.Phase == v1alpha1.UpgradePhase ||
-			meta.Status.PD.Phase == v1alpha1.UpgradePhase ||
-			meta.TiKVScaling() {
-			klog.Infof("TidbCluster: [%s/%s]'s ticdc status is %v, "+
-				"tiflash status is %v, pd status is %v, "+
-				"tikv status is %v, can not upgrade tikv",
-				ns, tcName, meta.Status.TiCDC.Phase, meta.Status.TiFlash.Phase,
-				meta.Status.PD.Phase, meta.Status.TiKV.Phase)
-			_, podSpec, err := GetLastAppliedConfig(oldSet)
-			if err != nil {
-				return err
-			}
-			newSet.Spec.Template.Spec = *podSpec
-			return nil
->>>>>>> a456093f... update sync order for the components (#3863)
 		}
 		newSet.Spec.Template.Spec = *podSpec
 		return nil

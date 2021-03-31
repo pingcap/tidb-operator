@@ -29,6 +29,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -37,8 +38,6 @@ import (
 	"k8s.io/utils/pointer"
 )
 
-<<<<<<< HEAD
-=======
 func TestTiFlashMemberManagerSyncCreate(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
@@ -164,7 +163,6 @@ func TestTiFlashMemberManagerSyncCreate(t *testing.T) {
 	}
 }
 
->>>>>>> a456093f... update sync order for the components (#3863)
 func TestTiFlashMemberManagerTiFlashStatefulSetIsUpgrading(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
@@ -1583,4 +1581,27 @@ func TestGetNewTiFlashSetForTidbCluster(t *testing.T) {
 			tt.testSts(sts)
 		})
 	}
+}
+
+func newTidbClusterForTiflash() *v1alpha1.TidbCluster {
+	tc := newTidbClusterForPD()
+	tc.Spec.TiFlash = &v1alpha1.TiFlashSpec{
+		ComponentSpec: v1alpha1.ComponentSpec{
+			Image: "tiflash-test-image",
+		},
+		ResourceRequirements: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:     resource.MustParse("1"),
+				corev1.ResourceMemory:  resource.MustParse("2Gi"),
+				corev1.ResourceStorage: resource.MustParse("100Gi"),
+			},
+		},
+		Replicas: 3,
+		StorageClaims: []v1alpha1.StorageClaim{
+			{
+				StorageClassName: pointer.StringPtr("my-storage-class"),
+			},
+		},
+	}
+	return tc
 }
