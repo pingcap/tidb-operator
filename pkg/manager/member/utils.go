@@ -175,6 +175,10 @@ func tidbPodName(tcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", controller.TiDBMemberName(tcName), ordinal)
 }
 
+func ticdcPodName(tcName string, ordinal int32) string {
+	return fmt.Sprintf("%s-%d", controller.TiCDCMemberName(tcName), ordinal)
+}
+
 // CombineAnnotations merges two annotations maps
 func CombineAnnotations(a, b map[string]string) map[string]string {
 	if a == nil {

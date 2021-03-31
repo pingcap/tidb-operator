@@ -58,7 +58,7 @@ func NewController(deps *controller.Dependencies) *Controller {
 			mm.NewPVCResizer(deps),
 			mm.NewPumpMemberManager(deps),
 			mm.NewTiFlashMemberManager(deps, mm.NewTiFlashFailover(deps), mm.NewTiFlashScaler(deps), mm.NewTiFlashUpgrader(deps)),
-			mm.NewTiCDCMemberManager(deps),
+			mm.NewTiCDCMemberManager(deps, mm.NewTiCDCUpgrader(deps)),
 			mm.NewTidbDiscoveryManager(deps),
 			mm.NewTidbClusterStatusManager(deps),
 			&tidbClusterConditionUpdater{},
