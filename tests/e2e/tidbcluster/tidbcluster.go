@@ -1638,7 +1638,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					}
 					return true, nil
 				})
-				framework.ExpectNoError(err, "expect PVCs of scaled in Pods to have label tidb.pingcap.com/pvc-defer-deleting")
+				framework.ExpectNoError(err, "expect PVCs of scaled in Pods to have annotation tidb.pingcap.com/pvc-defer-deleting")
 
 				ginkgo.By("Scale out PD to 5 replicas")
 				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
