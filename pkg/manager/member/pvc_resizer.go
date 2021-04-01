@@ -115,10 +115,6 @@ func (p *pvcResizer) Resize(tc *v1alpha1.TidbCluster) error {
 	// patch TiDB PVCs
 	if tc.Spec.TiDB != nil {
 		tidbMemberType := v1alpha1.TiDBMemberType.String()
-		if quantity, ok := tc.Spec.TiDB.Requests[corev1.ResourceStorage]; ok {
-			key := fmt.Sprintf("%s-%s-%s", tidbMemberType, tc.Name, tidbMemberType)
-			pvcPrefix2Quantity[key] = quantity
-		}
 		for _, sv := range tc.Spec.TiDB.StorageVolumes {
 			key := fmt.Sprintf("%s-%s-%s-%s", tidbMemberType, sv.Name, tc.Name, tidbMemberType)
 			if quantity, err := resource.ParseQuantity(sv.StorageSize); err == nil {

@@ -135,11 +135,6 @@ func TestPVCResizer(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: &v1alpha1.TiDBSpec{
-						ResourceRequirements: v1.ResourceRequirements{
-							Requests: v1.ResourceList{
-								v1.ResourceStorage: resource.MustParse("2Gi"),
-							},
-						},
 						StorageVolumes: []v1alpha1.StorageVolume{
 							{
 								Name:        "log",
@@ -151,17 +146,11 @@ func TestPVCResizer(t *testing.T) {
 			},
 			sc: newStorageClass("sc", true),
 			pvcs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("tidb-tc-tidb-0", label.TiDBLabelVal, "sc", "1Gi"),
-				newPVCWithStorage("tidb-tc-tidb-1", label.TiDBLabelVal, "sc", "1Gi"),
-				newPVCWithStorage("tidb-tc-tidb-2", label.TiDBLabelVal, "sc", "1Gi"),
 				newPVCWithStorage("tidb-log-tc-tidb-0", label.TiDBLabelVal, "sc", "1Gi"),
 				newPVCWithStorage("tidb-log-tc-tidb-1", label.TiDBLabelVal, "sc", "1Gi"),
 				newPVCWithStorage("tidb-log-tc-tidb-2", label.TiDBLabelVal, "sc", "1Gi"),
 			},
 			wantPVCs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("tidb-tc-tidb-0", label.TiDBLabelVal, "sc", "2Gi"),
-				newPVCWithStorage("tidb-tc-tidb-1", label.TiDBLabelVal, "sc", "2Gi"),
-				newPVCWithStorage("tidb-tc-tidb-2", label.TiDBLabelVal, "sc", "2Gi"),
 				newPVCWithStorage("tidb-log-tc-tidb-0", label.TiDBLabelVal, "sc", "2Gi"),
 				newPVCWithStorage("tidb-log-tc-tidb-1", label.TiDBLabelVal, "sc", "2Gi"),
 				newPVCWithStorage("tidb-log-tc-tidb-2", label.TiDBLabelVal, "sc", "2Gi"),
