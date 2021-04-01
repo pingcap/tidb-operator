@@ -675,8 +675,10 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		return nil, fmt.Errorf("cannot parse storage request for PD, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
 	}
 
-	pdLabel := label.New().Instance(instanceName).PD()
 	setName := controller.PDMemberName(tcName)
+	baseLabels := label.New().Instance(instanceName).PD()
+	stsLabels := baseLabels
+	podLabels := MergeLabels(baseLabels, basePDSpec.Labels())
 	podAnnotations := CombineAnnotations(controller.AnnProm(2379), basePDSpec.Annotations())
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.PDLabelVal)
 
@@ -768,16 +770,16 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            setName,
 			Namespace:       ns,
-			Labels:          pdLabel.Labels(),
+			Labels:          stsLabels.Labels(),
 			Annotations:     stsAnnotations,
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
 			Replicas: pointer.Int32Ptr(tc.PDStsDesiredReplicas()),
-			Selector: pdLabel.LabelSelector(),
+			Selector: stsLabels.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      pdLabel.Labels(),
+					Labels:      podLabels,
 					Annotations: podAnnotations,
 				},
 				Spec: podSpec,

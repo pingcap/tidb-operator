@@ -173,6 +173,29 @@ func CombineAnnotations(a, b map[string]string) map[string]string {
 	return a
 }
 
+func CopyAnnotations(src map[string]string) map[string]string {
+	if src == nil {
+		return nil
+	}
+	dst := map[string]string{}
+	for k, v := range src {
+		dst[k] = v
+	}
+	return dst
+}
+
+// MergeLabels merge additional labelset and base labelset to a new labelset. Additional labelset will override base labelset if conflicts.
+func MergeLabels(base, additional map[string]string) map[string]string {
+	res := make(map[string]string, len(additional)+len(base))
+	for k, v := range base {
+		res[k] = v
+	}
+	for k, v := range additional {
+		res[k] = v
+	}
+	return res
+}
+
 // NeedForceUpgrade check if force upgrade is necessary
 func NeedForceUpgrade(ann map[string]string) bool {
 	// Check if annotation 'pingcap.com/force-upgrade: "true"' is set
@@ -316,29 +339,6 @@ func findContainerByName(sts *apps.StatefulSet, containerName string) *corev1.Co
 		}
 	}
 	return nil
-}
-
-func CopyAnnotations(src map[string]string) map[string]string {
-	if src == nil {
-		return nil
-	}
-	dst := map[string]string{}
-	for k, v := range src {
-		dst[k] = v
-	}
-	return dst
-}
-
-// MergeLabels adds src labelset to base labelset. Src labelset will override base labelset if conflicts.
-func MergeLabels(base map[string]string, src map[string]string) map[string]string {
-	res := make(map[string]string, len(src)+len(base))
-	for k, v := range base {
-		res[k] = v
-	}
-	for k, v := range src {
-		res[k] = v
-	}
-	return res
 }
 
 func getTikVConfigMapForTiKVSpec(tikvSpec *v1alpha1.TiKVSpec, tc *v1alpha1.TidbCluster, scriptModel *TiKVStartScriptModel) (*corev1.ConfigMap, error) {
