@@ -111,12 +111,6 @@ func deepEqualExceptHeartbeatTime(newStatus *v1alpha1.TidbClusterStatus, oldStat
 	return apiequality.Semantic.DeepEqual(newStatus, oldStatus)
 }
 
-func sweepHeartbeatTime(stores map[string]v1alpha1.TiKVStore) {
-	for id, store := range stores {
-		stores[id] = store
-	}
-}
-
 // FakeTidbClusterControl is a fake TidbClusterControlInterface
 type FakeTidbClusterControl struct {
 	TcLister                 listers.TidbClusterLister
