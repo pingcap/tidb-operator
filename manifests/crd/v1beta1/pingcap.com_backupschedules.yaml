@@ -1604,9 +1604,7 @@ spec:
               format: date-time
               type: string
           required:
-          - allBackupCleanTime
           - lastBackup
-          - lastBackupTime
           type: object
       type: object
   version: v1alpha1

@@ -65,6 +65,7 @@ Kubernetes meta/v1.ObjectMeta
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 Refer to the Kubernetes API documentation for the fields of the
 <code>metadata</code> field.
 </td>
@@ -79,6 +80,7 @@ BackupSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <br/>
 <br/>
 <table>
@@ -343,6 +345,7 @@ BackupStatus
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>
@@ -386,6 +389,7 @@ Kubernetes meta/v1.ObjectMeta
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 Refer to the Kubernetes API documentation for the fields of the
 <code>metadata</code> field.
 </td>
@@ -400,6 +404,7 @@ BackupScheduleSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <br/>
 <br/>
 <table>
@@ -557,6 +562,7 @@ Kubernetes meta/v1.ObjectMeta
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 Refer to the Kubernetes API documentation for the fields of the
 <code>metadata</code> field.
 </td>
@@ -571,6 +577,7 @@ DMClusterSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Spec defines the behavior of a dm cluster</p>
 <br/>
 <br/>
@@ -837,6 +844,7 @@ DMClusterStatus
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Most recently observed status of the dm cluster</p>
 </td>
 </tr>
@@ -881,6 +889,7 @@ Kubernetes meta/v1.ObjectMeta
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 Refer to the Kubernetes API documentation for the fields of the
 <code>metadata</code> field.
 </td>
@@ -895,6 +904,7 @@ RestoreSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <br/>
 <br/>
 <table>
@@ -1133,6 +1143,7 @@ RestoreStatus
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>
@@ -1176,6 +1187,7 @@ Kubernetes meta/v1.ObjectMeta
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 Refer to the Kubernetes API documentation for the fields of the
 <code>metadata</code> field.
 </td>
@@ -1190,6 +1202,7 @@ TidbClusterSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Spec defines the behavior of a tidb cluster</p>
 <br/>
 <br/>
@@ -1620,6 +1633,7 @@ TidbClusterStatus
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Most recently observed status of the tidb cluster</p>
 </td>
 </tr>
@@ -2844,6 +2858,7 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>LastBackupTime represents the last time the backup was successfully created.</p>
 </td>
 </tr>
@@ -2857,6 +2872,7 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>AllBackupCleanTime represents the time when all backup entries are cleaned up</p>
 </td>
 </tr>
@@ -3166,7 +3182,9 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<p>TimeStarted is the time at which the backup was started.</p>
+<em>(Optional)</em>
+<p>TimeStarted is the time at which the backup was started.
+TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/86811">https://github.com/kubernetes/kubernetes/issues/86811</a></p>
 </td>
 </tr>
 <tr>
@@ -3179,7 +3197,9 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<p>TimeCompleted is the time at which the backup was completed.</p>
+<em>(Optional)</em>
+<p>TimeCompleted is the time at which the backup was completed.
+TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/86811">https://github.com/kubernetes/kubernetes/issues/86811</a></p>
 </td>
 </tr>
 <tr>
@@ -6866,7 +6886,8 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<p>Last time the health transitioned from one to another.</p>
+<p>Last time the health transitioned from one to another.
+TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/86811">https://github.com/kubernetes/kubernetes/issues/86811</a></p>
 </td>
 </tr>
 </tbody>
@@ -8160,7 +8181,9 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<p>Last time the health transitioned from one to another.</p>
+<em>(Optional)</em>
+<p>Last time the health transitioned from one to another.
+TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/86811">https://github.com/kubernetes/kubernetes/issues/86811</a></p>
 </td>
 </tr>
 </tbody>
@@ -11105,7 +11128,9 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<p>TimeStarted is the time at which the restore was started.</p>
+<em>(Optional)</em>
+<p>TimeStarted is the time at which the restore was started.
+TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/86811">https://github.com/kubernetes/kubernetes/issues/86811</a></p>
 </td>
 </tr>
 <tr>
@@ -11118,7 +11143,9 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<p>TimeCompleted is the time at which the restore was completed.</p>
+<em>(Optional)</em>
+<p>TimeCompleted is the time at which the restore was completed.
+TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/86811">https://github.com/kubernetes/kubernetes/issues/86811</a></p>
 </td>
 </tr>
 <tr>

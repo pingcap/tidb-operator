@@ -1605,12 +1605,14 @@ spec:
               description: Phase is a user readable state inferred from the underlying Backup conditions
               type: string
             timeCompleted:
-              description: TimeCompleted is the time at which the backup was completed.
+              description: 'TimeCompleted is the time at which the backup was completed. TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811'
               format: date-time
+              nullable: true
               type: string
             timeStarted:
-              description: TimeStarted is the time at which the backup was started.
+              description: 'TimeStarted is the time at which the backup was started. TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811'
               format: date-time
+              nullable: true
               type: string
           required:
           - backupPath
@@ -1619,8 +1621,6 @@ spec:
           - commitTs
           - conditions
           - phase
-          - timeCompleted
-          - timeStarted
           type: object
       type: object
   version: v1alpha1

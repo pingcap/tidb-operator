@@ -1570,19 +1570,19 @@ spec:
                 description: Phase is a user readable state inferred from the underlying Restore conditions
                 type: string
               timeCompleted:
-                description: TimeCompleted is the time at which the restore was completed.
+                description: 'TimeCompleted is the time at which the restore was completed. TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811'
                 format: date-time
+                nullable: true
                 type: string
               timeStarted:
-                description: TimeStarted is the time at which the restore was started.
+                description: 'TimeStarted is the time at which the restore was started. TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811'
                 format: date-time
+                nullable: true
                 type: string
             required:
             - commitTs
             - conditions
             - phase
-            - timeCompleted
-            - timeStarted
             type: object
         type: object
     served: true

@@ -994,6 +994,9 @@ type PDMember struct {
 	ClientURL string `json:"clientURL"`
 	Health    bool   `json:"health"`
 	// Last time the health transitioned from one to another.
+	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
+	// +nullable
+	// +optional
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 }
 
@@ -1475,9 +1478,15 @@ type BackupStatus struct {
 	// BackupPath is the location of the backup.
 	BackupPath string `json:"backupPath"`
 	// TimeStarted is the time at which the backup was started.
-	TimeStarted metav1.Time `json:"timeStarted"`
+	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
+	// +nullable
+	// +optional
+	TimeStarted metav1.Time `json:"timeStarted,omitempty"`
 	// TimeCompleted is the time at which the backup was completed.
-	TimeCompleted metav1.Time `json:"timeCompleted"`
+	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
+	// +nullable
+	// +optional
+	TimeCompleted metav1.Time `json:"timeCompleted,omitempty"`
 	// BackupSizeReadable is the data size of the backup.
 	// the difference with BackupSize is that its format is human readable
 	BackupSizeReadable string `json:"backupSizeReadable"`
@@ -1555,9 +1564,11 @@ type BackupScheduleStatus struct {
 	// LastBackup represents the last backup.
 	LastBackup string `json:"lastBackup"`
 	// LastBackupTime represents the last time the backup was successfully created.
-	LastBackupTime *metav1.Time `json:"lastBackupTime"`
+	// +optional
+	LastBackupTime *metav1.Time `json:"lastBackupTime,omitempty"`
 	// AllBackupCleanTime represents the time when all backup entries are cleaned up
-	AllBackupCleanTime *metav1.Time `json:"allBackupCleanTime"`
+	// +optional
+	AllBackupCleanTime *metav1.Time `json:"allBackupCleanTime,omitempty"`
 }
 
 // +genclient
@@ -1688,9 +1699,15 @@ type RestoreSpec struct {
 // RestoreStatus represents the current status of a tidb cluster restore.
 type RestoreStatus struct {
 	// TimeStarted is the time at which the restore was started.
-	TimeStarted metav1.Time `json:"timeStarted"`
+	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
+	// +nullable
+	// +optional
+	TimeStarted metav1.Time `json:"timeStarted,omitempty"`
 	// TimeCompleted is the time at which the restore was completed.
-	TimeCompleted metav1.Time `json:"timeCompleted"`
+	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
+	// +nullable
+	// +optional
+	TimeCompleted metav1.Time `json:"timeCompleted,omitempty"`
 	// CommitTs is the snapshot time point of tidb cluster.
 	CommitTs string `json:"commitTs"`
 	// Phase is a user readable state inferred from the underlying Restore conditions
@@ -2032,6 +2049,8 @@ type MasterMember struct {
 	ClientURL string `json:"clientURL"`
 	Health    bool   `json:"health"`
 	// Last time the health transitioned from one to another.
+	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
+	// +nullable
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 }
 

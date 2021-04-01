@@ -6409,8 +6409,9 @@ spec:
                       description: member id is actually a uint64, but apimachinery's json only treats numbers as int64/float64 so uint64 may overflow int64 and thus convert to float64
                       type: string
                     lastTransitionTime:
-                      description: Last time the health transitioned from one to another.
+                      description: 'Last time the health transitioned from one to another. TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811'
                       format: date-time
+                      nullable: true
                       type: string
                     name:
                       type: string
@@ -6432,8 +6433,9 @@ spec:
                         description: member id is actually a uint64, but apimachinery's json only treats numbers as int64/float64 so uint64 may overflow int64 and thus convert to float64
                         type: string
                       lastTransitionTime:
-                        description: Last time the health transitioned from one to another.
+                        description: 'Last time the health transitioned from one to another. TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811'
                         format: date-time
+                        nullable: true
                         type: string
                       name:
                         type: string

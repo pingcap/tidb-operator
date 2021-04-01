@@ -645,7 +645,6 @@ func schema_pkg_apis_pingcap_v1alpha1_Backup(ref common.ReferenceCallback) commo
 						},
 					},
 				},
-				Required: []string{"spec"},
 			},
 		},
 		Dependencies: []string{
@@ -722,7 +721,6 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSchedule(ref common.ReferenceCallbac
 						},
 					},
 				},
-				Required: []string{"spec"},
 			},
 		},
 		Dependencies: []string{
@@ -1527,7 +1525,6 @@ func schema_pkg_apis_pingcap_v1alpha1_DMCluster(ref common.ReferenceCallback) co
 						},
 					},
 				},
-				Required: []string{"spec"},
 			},
 		},
 		Dependencies: []string{
@@ -5359,7 +5356,6 @@ func schema_pkg_apis_pingcap_v1alpha1_Restore(ref common.ReferenceCallback) comm
 						},
 					},
 				},
-				Required: []string{"spec"},
 			},
 		},
 		Dependencies: []string{
@@ -10262,7 +10258,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbCluster(ref common.ReferenceCallback) 
 						},
 					},
 				},
-				Required: []string{"spec"},
 			},
 		},
 		Dependencies: []string{
