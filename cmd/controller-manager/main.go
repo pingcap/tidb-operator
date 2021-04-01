@@ -237,7 +237,6 @@ func main() {
 		if err2 := srv.Shutdown(context.Background()); err2 != nil {
 			klog.Fatal("fail to shutdown the HTTP server", err2)
 		}
-		close(sc)
 	}()
 
 	if err = srv.ListenAndServe(); err != http.ErrServerClosed {
