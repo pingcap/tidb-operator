@@ -64,6 +64,7 @@ type PVCResizerInterface interface {
 
 var (
 	pdRequirement      = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.PDLabelVal})
+	tidbRequirement    = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiDBLabelVal})
 	tikvRequirement    = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiKVLabelVal})
 	tiflashRequirement = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiFlashLabelVal})
 	pumpRequirement    = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.PumpLabelVal})
@@ -108,6 +109,25 @@ func (p *pvcResizer) Resize(tc *v1alpha1.TidbCluster) error {
 			}
 		}
 		if err := p.patchPVCs(ns, selector.Add(*pdRequirement), pvcPrefix2Quantity); err != nil {
+			return err
+		}
+	}
+	// patch TiDB PVCs
+	if tc.Spec.TiDB != nil {
+		tidbMemberType := v1alpha1.TiDBMemberType.String()
+		if quantity, ok := tc.Spec.TiDB.Requests[corev1.ResourceStorage]; ok {
+			key := fmt.Sprintf("%s-%s-%s", tidbMemberType, tc.Name, tidbMemberType)
+			pvcPrefix2Quantity[key] = quantity
+		}
+		for _, sv := range tc.Spec.TiDB.StorageVolumes {
+			key := fmt.Sprintf("%s-%s-%s-%s", tidbMemberType, sv.Name, tc.Name, tidbMemberType)
+			if quantity, err := resource.ParseQuantity(sv.StorageSize); err == nil {
+				pvcPrefix2Quantity[key] = quantity
+			} else {
+				klog.Warningf("StorageVolume %q in %s/%s .Spec.TiDB is invalid", sv.Name, ns, tc.Name)
+			}
+		}
+		if err := p.patchPVCs(ns, selector.Add(*tidbRequirement), pvcPrefix2Quantity); err != nil {
 			return err
 		}
 	}
@@ -211,9 +231,6 @@ func (p *pvcResizer) patchPVCs(ns string, selector labels.Selector, pvcQuantityI
 		return err
 	}
 
-	if err != nil {
-		return err
-	}
 	// the PVC name for StatefulSet will be ${pvcNameInTemplate}-${stsName}-${ordinal}, here we want to drop the ordinal
 	rePvcPrefix := regexp.MustCompile(`^(.+)-\d+$`)
 	for _, pvc := range pvcs {
