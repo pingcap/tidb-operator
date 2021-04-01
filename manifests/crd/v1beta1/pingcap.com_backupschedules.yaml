@@ -1608,9 +1608,6 @@ spec:
           - lastBackup
           - lastBackupTime
           type: object
-      required:
-      - metadata
-      - spec
       type: object
   version: v1alpha1
   versions:
