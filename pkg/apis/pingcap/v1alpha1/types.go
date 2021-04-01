@@ -118,14 +118,17 @@ const (
 type TidbCluster struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
-	metav1.ObjectMeta `json:"metadata"`
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// Spec defines the behavior of a tidb cluster
-	Spec TidbClusterSpec `json:"spec"`
+	// +optional
+	Spec TidbClusterSpec `json:"spec,omitempty"`
 
 	// +k8s:openapi-gen=false
 	// Most recently observed status of the tidb cluster
-	Status TidbClusterStatus `json:"status"`
+	// +optional
+	Status TidbClusterStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -1165,11 +1168,14 @@ type TLSCluster struct {
 type Backup struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
-	metav1.ObjectMeta `json:"metadata"`
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec BackupSpec `json:"spec"`
+	// +optional
+	Spec BackupSpec `json:"spec,omitempty"`
 	// +k8s:openapi-gen=false
-	Status BackupStatus `json:"status"`
+	// +optional
+	Status BackupStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -1497,9 +1503,11 @@ type BackupStatus struct {
 type BackupSchedule struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
-	metav1.ObjectMeta `json:"metadata"`
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec BackupScheduleSpec `json:"spec"`
+	// +optional
+	Spec BackupScheduleSpec `json:"spec,omitempty"`
 	// +k8s:openapi-gen=false
 	Status BackupScheduleStatus `json:"status,omitempty"`
 }
@@ -1565,11 +1573,14 @@ type BackupScheduleStatus struct {
 type Restore struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
-	metav1.ObjectMeta `json:"metadata"`
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec RestoreSpec `json:"spec"`
+	// +optional
+	Spec RestoreSpec `json:"spec,omitempty"`
 	// +k8s:openapi-gen=false
-	Status RestoreStatus `json:"status"`
+	// +optional
+	Status RestoreStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -1724,14 +1735,17 @@ type IngressSpec struct {
 type DMCluster struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
-	metav1.ObjectMeta `json:"metadata"`
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// Spec defines the behavior of a dm cluster
-	Spec DMClusterSpec `json:"spec"`
+	// +optional
+	Spec DMClusterSpec `json:"spec,omitempty"`
 
 	// +k8s:openapi-gen=false
 	// Most recently observed status of the dm cluster
-	Status DMClusterStatus `json:"status"`
+	// +optional
+	Status DMClusterStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
