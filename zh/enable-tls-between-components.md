@@ -1428,7 +1428,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/enable-tls-between-components/']
             secretName: ${s3_secret}
             bucket: ${my_bucket}
             prefix: ${my_folder}
-        ````
+        ```
 
         然后部署 Backup：
 
@@ -1464,7 +1464,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/enable-tls-between-components/']
             bucket: ${my_bucket}
             prefix: ${my_folder}
 
-        ````
+        ```
 
         然后部署 Restore：
 

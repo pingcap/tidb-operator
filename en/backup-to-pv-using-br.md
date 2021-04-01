@@ -41,6 +41,8 @@ This document provides examples in which the data of the `demo1` TiDB cluster in
 
 3. Ensure that the NFS server is accessible from your Kubernetes cluster, and TiKV is configured to mount the same NFS server directory to the same local path as in backup jobs. To mount NFS for TiKV, refer to the configuration below:
 
+    {{< copyable "" >}}
+
     ```yaml
     spec:
       tikv:
@@ -72,7 +74,7 @@ This document provides examples in which the data of the `demo1` TiDB cluster in
 
     The content of `backup-nfs.yaml` is as follows:
 
-    {{< copyable "shell-regular" >}}
+    {{< copyable "" >}}
 
     ```yaml
     ---
@@ -148,6 +150,8 @@ The prerequisites for the scheduled full backup is the same with the [prerequisi
     ```
 
     The content of `backup-schedule-nfs.yaml` is as follows:
+
+    {{< copyable "" >}}
 
    ```yaml
     ---

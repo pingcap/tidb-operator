@@ -160,7 +160,7 @@ If your server cannot access the Internet, install TiDB Operator offline by the 
 
     The Docker images used by TiDB Operator are:
 
-    {{< copyable "shell-regular" >}}
+    {{< copyable "" >}}
 
     ```shell
     pingcap/tidb-operator:v1.2.0-alpha.1

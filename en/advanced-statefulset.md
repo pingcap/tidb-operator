@@ -36,7 +36,7 @@ The [advanced StatefulSet controller](https://github.com/pingcap/advanced-statef
 
 2. Enable the `AdvancedStatefulSet` feature in `values.yaml` of the TiDB Operator chart:
 
-    {{< copyable "shell-regular" >}}
+    {{< copyable "" >}}
 
     ```yaml
     features:

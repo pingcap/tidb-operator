@@ -36,7 +36,7 @@ Kubernetes 内置 [StatefulSet](https://kubernetes.io/docs/concepts/workloads/co
 
 2. 在 TiDB Operator chart 的 `values.yaml` 中启用 `AdvancedStatefulSet` 特性：
 
-    {{< copyable "shell-regular" >}}
+    {{< copyable "" >}}
 
     ```yaml
     features:

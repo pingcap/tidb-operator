@@ -1454,7 +1454,7 @@ In this step, you need to perform the following operations:
             secretName: ${s3_secret}
             bucket: ${my_bucket}
             prefix: ${my_folder}
-        ````
+        ```
 
         Deploy Backup:
 

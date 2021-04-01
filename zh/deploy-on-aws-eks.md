@@ -34,7 +34,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-on-aws-eks/']
 
 将以下配置存为 cluster.yaml 文件，并替换 `${clusterName}` 为自己想命名的集群名字：
 
-{{< copyable "shell-regular" >}}
+{{< copyable "" >}}
 
 ```yaml
 apiVersion: eksctl.io/v1alpha5

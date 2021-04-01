@@ -33,7 +33,7 @@ According to AWS [Official Blog](https://aws.amazon.com/blogs/containers/amazon-
 
 Save the following configuration as the `cluster.yaml` file. Replace `${clusterName}` with your desired cluster name.
 
-{{< copyable "shell-regular" >}}
+{{< copyable "" >}}
 
 ```yaml
 apiVersion: eksctl.io/v1alpha5

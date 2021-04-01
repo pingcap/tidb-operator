@@ -57,7 +57,7 @@ This document provides examples in which the data of the `demo1` TiDB cluster in
 
     The content of `backup-gcs.yaml` is as follows:
 
-    {{< copyable "shell-regular" >}}
+    {{< copyable "" >}}
 
     ```yaml
     ---
@@ -130,6 +130,8 @@ The prerequisites for the scheduled full backup is the same with the [prerequisi
     ```
 
     The content of `backup-schedule-gcs.yaml` is as follows:
+
+    {{< copyable "" >}}
 
     ```yaml
     ---

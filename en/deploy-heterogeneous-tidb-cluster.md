@@ -19,7 +19,7 @@ A heterogeneous cluster creates differentiated instances for an existing TiDB cl
 
 Save the following configuration as the `cluster.yaml` file. Replace `${heterogeneous_cluster_name}` with the desired name of your heterogeneous cluster, and replace `${origin_cluster_name}` with the name of the existing cluster.
 
-{{< copyable "shell-regular" >}}
+{{< copyable "" >}}
 
 ```yaml
 apiVersion: pingcap.com/v1alpha1
@@ -73,7 +73,7 @@ The configuration of a heterogeneous cluster is mostly the same as a normal TiDB
 
 Save the following configuration as the `tidbmonitor.yaml` file. Replace `${heterogeneous_cluster_name}` with the desired name of your heterogeneous cluster, and replace `${origin_cluster_name}` with the name of the existing cluster.
 
-{{< copyable "shell-regular" >}}
+{{< copyable "" >}}
 
 ```yaml
 apiVersion: pingcap.com/v1alpha1
@@ -122,7 +122,7 @@ For detailed procedures to create certificates for the heterogeneous cluster, re
 
 Save the following configuration as the `cluster.yaml` file. Replace `${heterogeneous_cluster_name}` with the desired name of your heterogeneous cluster, and replace `${origin_cluster_name}` with the name of the existing cluster.
 
-{{< copyable "shell-regular" >}}
+{{< copyable "" >}}
 
 ```yaml
 apiVersion: pingcap.com/v1alpha1

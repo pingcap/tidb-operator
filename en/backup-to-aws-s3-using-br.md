@@ -64,6 +64,8 @@ Before you perform ad-hoc backup, AWS account permissions need to be granted. Th
 
     The content of `backup-aws-s3.yaml` is as follows:
 
+    {{< copyable "" >}}
+
     ```yaml
     ---
     apiVersion: pingcap.com/v1alpha1
@@ -106,6 +108,8 @@ Before you perform ad-hoc backup, AWS account permissions need to be granted. Th
     ```shell
     kubectl apply -f backup-aws-s3.yaml
     ```
+
+    {{< copyable "" >}}
 
     The content of `backup-aws-s3.yaml` is as follows:
 
@@ -154,6 +158,8 @@ Before you perform ad-hoc backup, AWS account permissions need to be granted. Th
     ```
 
     The content of `backup-aws-s3.yaml` is as follows:
+
+    {{< copyable "" >}}
 
     ```yaml
     ---
@@ -226,6 +232,8 @@ The prerequisites for the scheduled full backup is the same as the [prerequisite
 
     The content of `backup-scheduler-aws-s3.yaml` is as follows:
 
+    {{< copyable "" >}}
+
     ```yaml
     ---
     apiVersion: pingcap.com/v1alpha1
@@ -273,6 +281,8 @@ The prerequisites for the scheduled full backup is the same as the [prerequisite
     ```
 
     The content of `backup-scheduler-aws-s3.yaml` is as follows:
+
+    {{< copyable "" >}}
 
     ```yaml
     ---
@@ -322,6 +332,8 @@ The prerequisites for the scheduled full backup is the same as the [prerequisite
     ```
 
     The content of `backup-scheduler-aws-s3.yaml` is as follows:
+
+    {{< copyable "" >}}
 
     ```yaml
     ---

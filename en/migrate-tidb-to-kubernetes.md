@@ -25,9 +25,9 @@ This document describes how to migrate a TiDB cluster deployed in the physical o
 
 2. Modify the `/etc/resolv.conf` configuration of the source cluster node, and add the following content to the configuration file:
 
-    {{< copyable "shell-regular" >}}
+    {{< copyable "" >}}
 
-    ```shell
+    ```
     search default.svc.cluster.local svc.cluster.local cluster.local
     nameserver <CoreDNS Pod_IP_1>
     nameserver <CoreDNS Pod_IP_2>

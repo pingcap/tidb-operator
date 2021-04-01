@@ -21,7 +21,7 @@ summary: 本文档介绍如何为已有的 TiDB 集群部署一个异构集群�
 
 将如下配置存为 `cluster.yaml` 文件，并替换 `${heterogeneous_cluster_name}` 为自己想命名的异构集群名字，`${origin_cluster_name}` 替换为想要加入的已有集群名称:
 
-{{< copyable "shell-regular" >}}
+{{< copyable "" >}}
 
 ```yaml
 apiVersion: pingcap.com/v1alpha1
@@ -75,7 +75,7 @@ kubectl create -f cluster.yaml -n ${namespace}
 
 将如下配置存为 `tidbmonitor.yaml` 文件，并替换 `${origin_cluster_name}` 为想要加入的集群名称，`${heterogeneous_cluster_name}` 替换为异构集群名称：
 
-{{< copyable "shell-regular" >}}
+{{< copyable "" >}}
 
 ```yaml
 apiVersion: pingcap.com/v1alpha1
@@ -122,7 +122,7 @@ kubectl create -f tidbmonitor.yaml -n ${namespace}
 
 将如下配置存为 `cluster.yaml` 文件，并替换 `${heterogeneous_cluster_name}` 为自己想命名的异构集群名字，`${origin_cluster_name}` 替换为想要加入的已有集群名称:
 
-{{< copyable "shell-regular" >}}
+{{< copyable "" >}}
 
 ```yaml
 apiVersion: pingcap.com/v1alpha1

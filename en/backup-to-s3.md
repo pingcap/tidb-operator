@@ -117,6 +117,8 @@ For the current S3-compatible storage types, Ceph and Amazon S3 work normally as
 
     The content of `backup-s3.yaml` is as follows:
 
+    {{< copyable "" >}}
+
     ```yaml
     ---
     apiVersion: pingcap.com/v1alpha1
@@ -155,6 +157,8 @@ For the current S3-compatible storage types, Ceph and Amazon S3 work normally as
     ```
 
     The content of `backup-s3.yaml` is as follows:
+
+    {{< copyable "" >}}
 
     ```yaml
     ---
@@ -199,6 +203,8 @@ For the current S3-compatible storage types, Ceph and Amazon S3 work normally as
     ```
 
     The content of `backup-s3.yaml` is as follows:
+
+    {{< copyable "" >}}
 
     ```yaml
     ---
@@ -288,6 +294,8 @@ The prerequisites for the scheduled backup is the same as the [prerequisites for
 
     The content of `backup-schedule-s3.yaml` is as follows:
 
+    {{< copyable "" >}}
+
     ```yaml
     ---
     apiVersion: pingcap.com/v1alpha1
@@ -335,6 +343,8 @@ The prerequisites for the scheduled backup is the same as the [prerequisites for
 
     The content of `backup-schedule-s3.yaml` is as follows:
 
+    {{< copyable "" >}}
+
     ```yaml
     ---
     apiVersion: pingcap.com/v1alpha1
@@ -378,6 +388,8 @@ The prerequisites for the scheduled backup is the same as the [prerequisites for
     ```
 
     The content of `backup-schedule-s3.yaml` is as follows:
+
+    {{< copyable "" >}}
 
     ```yaml
     ---
@@ -426,6 +438,8 @@ The prerequisites for the scheduled backup is the same as the [prerequisites for
     ```
 
     The content of `backup-schedule-s3.yaml` is as follows:
+
+    {{< copyable "" >}}
 
     ```yaml
     ---
