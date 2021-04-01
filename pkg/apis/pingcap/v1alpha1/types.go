@@ -209,7 +209,7 @@ type TidbClusterSpec struct {
 	// UpdateStrategyRollingUpdate will create a new ConfigMap with the new configuration and rolling-update the
 	// related components to use the new ConfigMap, that is, the new configuration will be applied automatically.
 	// +kubebuilder:validation:Enum=InPlace;RollingUpdate
-	// +kubebuilder:default=InPlacne
+	// +kubebuilder:default=InPlace
 	ConfigUpdateStrategy ConfigUpdateStrategy `json:"configUpdateStrategy,omitempty"`
 
 	// Whether enable PVC reclaim for orphan PVC left by statefulset scale-in
@@ -389,6 +389,7 @@ type PDSpec struct {
 	// Config is the Configuration of pd-servers
 	// +optional
 	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:validation:XPreserveUnknownFields
 	Config *PDConfigWraper `json:"config,omitempty"`
 
 	// TLSClientSecretName is the name of secret which stores tidb server client certificate
@@ -469,6 +470,7 @@ type TiKVSpec struct {
 	// Config is the Configuration of tikv-servers
 	// +optional
 	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:validation:XPreserveUnknownFields
 	Config *TiKVConfigWraper `json:"config,omitempty"`
 
 	// RecoverFailover indicates that Operator can recover the failed Pods
@@ -671,6 +673,7 @@ type TiDBSpec struct {
 	// Config is the Configuration of tidb-servers
 	// +optional
 	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:validation:XPreserveUnknownFields
 	Config *TiDBConfigWraper `json:"config,omitempty"`
 
 	// Lifecycle describes actions that the management system should take in response to container lifecycle
@@ -740,6 +743,7 @@ type PumpSpec struct {
 	// The configuration of Pump cluster.
 	// +optional
 	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:validation:XPreserveUnknownFields
 	Config *config.GenericConfig `json:"config,omitempty"`
 
 	// +k8s:openapi-gen=false

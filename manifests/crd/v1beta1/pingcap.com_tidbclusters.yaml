@@ -2417,6 +2417,7 @@ spec:
                   type: string
                 config:
                   description: Config is the Configuration of pd-servers
+                  x-kubernetes-preserve-unknown-fields: true
                 configUpdateStrategy:
                   description: 'ConfigUpdateStrategy of the component. Override the cluster-level updateStrategy if present Optional: Defaults to cluster-level setting'
                   type: string
@@ -5346,6 +5347,7 @@ spec:
                   type: string
                 config:
                   description: The configuration of Pump cluster.
+                  x-kubernetes-preserve-unknown-fields: true
                 configUpdateStrategy:
                   description: 'ConfigUpdateStrategy of the component. Override the cluster-level updateStrategy if present Optional: Defaults to cluster-level setting'
                   type: string
@@ -11105,6 +11107,7 @@ spec:
                   type: boolean
                 config:
                   description: Config is the Configuration of tidb-servers
+                  x-kubernetes-preserve-unknown-fields: true
                 configUpdateStrategy:
                   description: 'ConfigUpdateStrategy of the component. Override the cluster-level updateStrategy if present Optional: Defaults to cluster-level setting'
                   type: string
@@ -14246,8 +14249,10 @@ spec:
                 config:
                   description: Config is the Configuration of TiFlash
                   properties:
-                    config: {}
-                    proxy: {}
+                    config:
+                      x-kubernetes-preserve-unknown-fields: true
+                    proxy:
+                      x-kubernetes-preserve-unknown-fields: true
                   type: object
                 configUpdateStrategy:
                   description: 'ConfigUpdateStrategy of the component. Override the cluster-level updateStrategy if present Optional: Defaults to cluster-level setting'
@@ -17171,6 +17176,7 @@ spec:
                   type: string
                 config:
                   description: Config is the Configuration of tikv-servers
+                  x-kubernetes-preserve-unknown-fields: true
                 configUpdateStrategy:
                   description: 'ConfigUpdateStrategy of the component. Override the cluster-level updateStrategy if present Optional: Defaults to cluster-level setting'
                   type: string

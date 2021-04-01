@@ -17,14 +17,17 @@ import (
 	stdjson "encoding/json"
 
 	"github.com/pingcap/errors"
-	"github.com/pingcap/tidb-operator/pkg/util/config"
 	"k8s.io/apimachinery/pkg/util/json"
+
+	"github.com/pingcap/tidb-operator/pkg/util/config"
 )
 
 type TiFlashConfigWraper struct {
 	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:validation:XPreserveUnknownFields
 	Common *TiFlashCommonConfigWraper `json:"config,omitempty"`
 	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:validation:XPreserveUnknownFields
 	Proxy *TiFlashProxyConfigWraper `json:"proxy,omitempty"`
 }
 

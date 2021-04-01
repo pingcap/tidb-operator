@@ -452,7 +452,7 @@ spec:
                 description: 'ClusterDomain is the Kubernetes Cluster Domain of TiDB cluster Optional: Defaults to ""'
                 type: string
               configUpdateStrategy:
-                default: InPlacne
+                default: InPlace
                 description: ConfigUpdateStrategy determines how the configuration change is applied to the cluster. UpdateStrategyInPlace will update the ConfigMap of configuration in-place and an extra rolling-update of the cluster component is needed to reload the configuration change. UpdateStrategyRollingUpdate will create a new ConfigMap with the new configuration and rolling-update the related components to use the new ConfigMap, that is, the new configuration will be applied automatically.
                 enum:
                 - InPlace
@@ -2421,6 +2421,7 @@ spec:
                     type: string
                   config:
                     description: Config is the Configuration of pd-servers
+                    x-kubernetes-preserve-unknown-fields: true
                   configUpdateStrategy:
                     description: 'ConfigUpdateStrategy of the component. Override the cluster-level updateStrategy if present Optional: Defaults to cluster-level setting'
                     type: string
@@ -5353,6 +5354,7 @@ spec:
                     type: string
                   config:
                     description: The configuration of Pump cluster.
+                    x-kubernetes-preserve-unknown-fields: true
                   configUpdateStrategy:
                     description: 'ConfigUpdateStrategy of the component. Override the cluster-level updateStrategy if present Optional: Defaults to cluster-level setting'
                     type: string
@@ -11120,6 +11122,7 @@ spec:
                     type: boolean
                   config:
                     description: Config is the Configuration of tidb-servers
+                    x-kubernetes-preserve-unknown-fields: true
                   configUpdateStrategy:
                     description: 'ConfigUpdateStrategy of the component. Override the cluster-level updateStrategy if present Optional: Defaults to cluster-level setting'
                     type: string
@@ -14265,8 +14268,10 @@ spec:
                   config:
                     description: Config is the Configuration of TiFlash
                     properties:
-                      config: {}
-                      proxy: {}
+                      config:
+                        x-kubernetes-preserve-unknown-fields: true
+                      proxy:
+                        x-kubernetes-preserve-unknown-fields: true
                     type: object
                   configUpdateStrategy:
                     description: 'ConfigUpdateStrategy of the component. Override the cluster-level updateStrategy if present Optional: Defaults to cluster-level setting'
@@ -17193,6 +17198,7 @@ spec:
                     type: string
                   config:
                     description: Config is the Configuration of tikv-servers
+                    x-kubernetes-preserve-unknown-fields: true
                   configUpdateStrategy:
                     description: 'ConfigUpdateStrategy of the component. Override the cluster-level updateStrategy if present Optional: Defaults to cluster-level setting'
                     type: string
