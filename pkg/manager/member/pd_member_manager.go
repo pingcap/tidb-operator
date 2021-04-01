@@ -461,6 +461,7 @@ func (m *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbCluster
 			pdService.Spec.Type = svcSpec.Type
 		}
 		pdService.ObjectMeta.Annotations = CopyAnnotations(svcSpec.Annotations)
+		pdService.ObjectMeta.Labels = MergeLabels(pdService.ObjectMeta.Labels, svcSpec.Labels)
 		if svcSpec.LoadBalancerIP != nil {
 			pdService.Spec.LoadBalancerIP = *svcSpec.LoadBalancerIP
 		}

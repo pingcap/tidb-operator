@@ -329,6 +329,18 @@ func CopyAnnotations(src map[string]string) map[string]string {
 	return dst
 }
 
+// MergeLabels adds src labelset to base labelset. Src labelset will override base labelset if conflicts.
+func MergeLabels(base map[string]string, src map[string]string) map[string]string {
+	res := make(map[string]string, len(src)+len(base))
+	for k, v := range base {
+		res[k] = v
+	}
+	for k, v := range src {
+		res[k] = v
+	}
+	return res
+}
+
 func getTikVConfigMapForTiKVSpec(tikvSpec *v1alpha1.TiKVSpec, tc *v1alpha1.TidbCluster, scriptModel *TiKVStartScriptModel) (*corev1.ConfigMap, error) {
 	config := tikvSpec.Config
 	if tc.IsTLSClusterEnabled() {
