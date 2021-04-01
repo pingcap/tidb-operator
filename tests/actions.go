@@ -479,7 +479,7 @@ func (oa *OperatorActions) createOrReplaceCRD(version string, files map[string]s
 			return err
 		}
 		if info.IsDir() {
-			return filepath.SkipDir
+			return nil
 		}
 		if _, ok := files[info.Name()]; ok {
 			oa.runKubectlOrDie("replace", "-f", path)
