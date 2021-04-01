@@ -128,6 +128,7 @@ func main() {
 		kubeCli = helper.NewHijackClient(kubeCli, asCli)
 	}
 
+	srv := createHTTPServer()
 	deps := controller.NewDependencies(ns, cliCfg, cli, kubeCli, genericCli)
 	controllerCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -189,6 +190,9 @@ func main() {
 	}
 	onStopped := func() {
 		klog.Error("leader election lost")
+		if err2 := srv.Shutdown(context.Background()); err2 != nil {
+			klog.Fatal("fail to shutdown the HTTP server", err2)
+		}
 	}
 
 	endPointsName := "tidb-controller-manager"
@@ -196,7 +200,7 @@ func main() {
 		endPointsName += "-" + helmRelease
 	}
 	// leader election for multiple tidb-controller-manager instances
-	go wait.Forever(func() {
+	go func() {
 		leaderelection.RunOrDie(controllerCtx, leaderelection.LeaderElectionConfig{
 			Lock: &resourcelock.EndpointsLock{
 				EndpointsMeta: metav1.ObjectMeta{
@@ -217,9 +221,8 @@ func main() {
 				OnStoppedLeading: onStopped,
 			},
 		})
-	}, cliCfg.WaitDuration)
+	}()
 
-	srv := createHTTPServer()
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc,
 		syscall.SIGHUP,
