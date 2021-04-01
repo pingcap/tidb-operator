@@ -17,12 +17,12 @@ spec:
     description: The time at which the restore was started
     name: Started
     priority: 1
-    type: date-time
+    type: date
   - JSONPath: .status.timeCompleted
     description: The time at which the restore was completed
     name: Completed
     priority: 1
-    type: date-time
+    type: date
   - JSONPath: .status.commitTs
     description: The commit ts of tidb cluster restore
     name: CommitTS

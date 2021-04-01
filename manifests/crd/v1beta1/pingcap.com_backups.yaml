@@ -29,12 +29,12 @@ spec:
     description: The time at which the backup was started
     name: Started
     priority: 1
-    type: date-time
+    type: date
   - JSONPath: .status.timeCompleted
     description: The time at which the backup was completed
     name: Completed
     priority: 1
-    type: date-time
+    type: date
   - JSONPath: .metadata.creationTimestamp
     name: Age
     type: date

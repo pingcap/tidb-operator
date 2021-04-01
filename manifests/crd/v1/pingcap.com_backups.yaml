@@ -37,12 +37,12 @@ spec:
       jsonPath: .status.timeStarted
       name: Started
       priority: 1
-      type: date-time
+      type: date
     - description: The time at which the backup was completed
       jsonPath: .status.timeCompleted
       name: Completed
       priority: 1
-      type: date-time
+      type: date
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
