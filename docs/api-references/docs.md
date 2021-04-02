@@ -18497,7 +18497,7 @@ If you set it to <code>true</code> for an existing cluster, the TiKV cluster wil
 <td>
 <code>maxScaleInReplicas</code></br>
 <em>
-int
+int32
 </em>
 </td>
 <td>
