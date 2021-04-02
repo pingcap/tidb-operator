@@ -87,6 +87,19 @@ func MustWaitForPDPhase(c versioned.Interface, tc *v1alpha1.TidbCluster, phase v
 	framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s .Status.PD.Phase to be %q", tc.Namespace, tc.Name, v1alpha1.ScalePhase)
 }
 
+func MustWaitForTiKVPhase(c versioned.Interface, tc *v1alpha1.TidbCluster, phase v1alpha1.MemberPhase, timeout, pollInterval time.Duration) {
+	var err error
+	wait.Poll(pollInterval, timeout, func() (bool, error) {
+		tc, err := c.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
+		framework.ExpectNoError(err, "failed to get TidbCluster: %v", err)
+		if tc.Status.TiKV.Phase != phase {
+			return false, nil
+		}
+		return true, nil
+	})
+	framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s .Status.TiKV.Phase to be %q", tc.Namespace, tc.Name, v1alpha1.ScalePhase)
+}
+
 // MustCreateTCWithComponentsReady create TidbCluster and wait for components ready
 func MustCreateTCWithComponentsReady(cli ctrlCli.Client, oa *tests.OperatorActions, tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) {
 	err := cli.Create(context.TODO(), tc)
