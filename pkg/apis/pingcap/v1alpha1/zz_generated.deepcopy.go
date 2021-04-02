@@ -7276,6 +7276,11 @@ func (in *TiKVSpec) DeepCopyInto(out *TiKVSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.MaxScaleInReplicas != nil {
+		in, out := &in.MaxScaleInReplicas, &out.MaxScaleInReplicas
+		*out = new(int32)
+		**out = **in
+	}
 	return
 }
 
