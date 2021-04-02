@@ -1490,10 +1490,6 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		log.Logf("CDC works as expected")
 	})
 
-	ginkgo.Context("when stores number is equal to 3", func() {
-
-	})
-
 	ginkgo.It("TiKV should mount multiple pvc", func() {
 		ginkgo.By("Deploy initial tc with addition")
 		clusterName := "tidb-multiple-pvc-scale"
