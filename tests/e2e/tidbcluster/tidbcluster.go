@@ -1591,7 +1591,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	ginkgo.Context("Scale in", func() {
 		ginkgo.Context("and then scale out", func() {
 			components := []string{"PD", "TiKV", "TiDB"}
-			// TODO: refactor fixture.GetTidbCluster to support all the components throught parameters more easily
+			// TODO: refactor fixture.GetTidbCluster to support all the components through parameters more easily
 			// components := []string{"PD", "TiKV", "TiFlash", "TiDB", "TiCDC", "Pump"}
 			for _, comp := range components {
 				comp := comp
