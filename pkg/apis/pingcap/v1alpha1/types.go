@@ -495,7 +495,7 @@ type TiKVSpec struct {
 	// MaxScaleInReplicas configures max scale in replicas for TiKV stores.
 	// Defaults to 1
 	// +optional
-	MaxScaleInReplicas int `json:"maxScaleInReplicas,omitempty"`
+	MaxScaleInReplicas *int32 `json:"maxScaleInReplicas,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members

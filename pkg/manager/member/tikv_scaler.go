@@ -92,10 +92,11 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 		return fmt.Errorf("tikvScaler.ScaleIn: failed to convert cluster %s/%s", meta.GetNamespace(), meta.GetName())
 	}
 
-	maxScaleInReplicas := tc.Spec.TiKV.MaxScaleInReplicas
-	if maxScaleInReplicas == 0 {
-		maxScaleInReplicas = 1
+	maxScaleInReplicas := 1
+	if tc.Spec.TiKV.MaxScaleInReplicas != nil {
+		maxScaleInReplicas = int(*tc.Spec.TiKV.MaxScaleInReplicas)
 	}
+
 	_, ordinals, replicas, deleteSlots := scaleMulti(oldSet, newSet, maxScaleInReplicas)
 	resetReplicas(newSet, oldSet)
 

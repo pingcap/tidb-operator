@@ -24,6 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -555,15 +556,18 @@ func TestTiKVScalerScaleInSimultaneously(t *testing.T) {
 		storeIdLabel  string
 	}
 	type testcase struct {
-		name          string
-		tikvUpgrading bool
-		storeFun      func(tc *v1alpha1.TidbCluster)
-		delStoreErr   bool
-		pvcUpdateErr  bool
-		errExpectFn   func(*GomegaWithT, error)
-		newReplicas   int
-		getStoresFn   func(action *pdapi.Action) (interface{}, error)
-		pods          []podStatus
+		name               string
+		tikvUpgrading      bool
+		storeFun           func(tc *v1alpha1.TidbCluster)
+		delStoreErr        bool
+		pvcUpdateErr       bool
+		errExpectFn        func(*GomegaWithT, error)
+		newReplicas        int
+		getStoresFn        func(action *pdapi.Action) (interface{}, error)
+		pods               []podStatus
+		maxScaleInReplicas int32
+		tikvReplicas       int32
+		extraTestFn        func(g *GomegaWithT, tc *v1alpha1.TidbCluster, scaler *tikvScaler, oldSet *apps.StatefulSet, newSet *apps.StatefulSet)
 	}
 
 	resyncDuration := time.Duration(0)
@@ -572,7 +576,7 @@ func TestTiKVScalerScaleInSimultaneously(t *testing.T) {
 		tc := newTidbClusterForPD()
 		test.storeFun(tc)
 		// set MaxScaleInReplicas to do scale in simultaneously.
-		tc.Spec.TiKV.MaxScaleInReplicas = 2
+		tc.Spec.TiKV.MaxScaleInReplicas = pointer.Int32Ptr(test.maxScaleInReplicas)
 
 		if test.tikvUpgrading {
 			tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
@@ -581,6 +585,9 @@ func TestTiKVScalerScaleInSimultaneously(t *testing.T) {
 		scaler, pdControl, pvcIndexer, podIndexer, pvcControl := newFakeTiKVScaler(resyncDuration)
 
 		oldSet := newStatefulSetForPDScale()
+		if test.tikvReplicas != 0 {
+			oldSet.Spec.Replicas = pointer.Int32Ptr(test.tikvReplicas)
+		}
 		newSet := oldSet.DeepCopy()
 		newSet.Spec.Replicas = pointer.Int32Ptr(3)
 
@@ -673,19 +680,83 @@ func TestTiKVScalerScaleInSimultaneously(t *testing.T) {
 			pdClient.AddReaction(pdapi.DeleteStoreActionType, func(action *pdapi.Action) (interface{}, error) {
 				return nil, fmt.Errorf("delete store error")
 			})
+		} else {
+			pdClient.AddReaction(pdapi.DeleteStoreActionType, func(action *pdapi.Action) (interface{}, error) {
+				pod := tc.Status.TiKV.Stores[fmt.Sprintf("%v", action.ID)]
+				delete(tc.Status.TiKV.Stores, pod.ID)
+				pod.State = v1alpha1.TiKVStateTombstone
+				if tc.Status.TiKV.TombstoneStores == nil {
+					tc.Status.TiKV.TombstoneStores = make(map[string]v1alpha1.TiKVStore)
+				}
+				tc.Status.TiKV.TombstoneStores[pod.ID] = pod
+				return nil, nil
+			})
 		}
 		if test.pvcUpdateErr {
 			pvcControl.SetUpdatePVCError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 
-		err := scaler.ScaleIn(tc, oldSet, newSet)
+		tmpNewSet := newSet.DeepCopy()
+		err := scaler.ScaleIn(tc, oldSet, tmpNewSet)
 		test.errExpectFn(g, err)
-		g.Expect(int(*newSet.Spec.Replicas)).To(Equal(test.newReplicas))
+		g.Expect(int(*tmpNewSet.Spec.Replicas)).To(Equal(test.newReplicas))
+
+		if test.extraTestFn != nil {
+			test.extraTestFn(g, tc, scaler, tmpNewSet, newSet)
+		}
 	}
 
 	tests := []testcase{
 		{
-			name:          "store is up, delete store failed",
+			name:          "1 maxScaleInReplicas, store is up, delete store failed",
+			tikvUpgrading: false,
+			storeFun:      normalStoreFun,
+			delStoreErr:   false,
+			pvcUpdateErr:  false,
+			errExpectFn:   errExpectRequeue,
+			newReplicas:   5,
+			pods: []podStatus{{
+				hasPVC:        true,
+				storeIDSynced: true,
+				isPodReady:    true,
+				hasSynced:     true,
+				ordinal:       4,
+				storeIdLabel:  "1",
+			}, {
+				hasPVC:        true,
+				storeIDSynced: true,
+				isPodReady:    true,
+				hasSynced:     true,
+				ordinal:       3,
+				storeIdLabel:  "13",
+			}},
+			maxScaleInReplicas: 1,
+		}, {
+			name:          "1 maxScaleInReplicas, store state is tombstone",
+			tikvUpgrading: false,
+			storeFun:      multiTombstoneStoreFun,
+			delStoreErr:   false,
+			pvcUpdateErr:  false,
+			errExpectFn:   errExpectNil,
+			newReplicas:   4,
+			pods: []podStatus{{
+				hasPVC:        true,
+				storeIDSynced: true,
+				isPodReady:    true,
+				hasSynced:     true,
+				ordinal:       4,
+				storeIdLabel:  "1",
+			}, {
+				hasPVC:        true,
+				storeIDSynced: true,
+				isPodReady:    true,
+				hasSynced:     true,
+				ordinal:       3,
+				storeIdLabel:  "13",
+			}},
+			maxScaleInReplicas: 1,
+		}, {
+			name:          "2 maxScaleInReplicas, store is up, delete store failed",
 			tikvUpgrading: false,
 			storeFun:      normalStoreFun,
 			delStoreErr:   false,
@@ -707,8 +778,9 @@ func TestTiKVScalerScaleInSimultaneously(t *testing.T) {
 				ordinal:       3,
 				storeIdLabel:  "13",
 			}},
+			maxScaleInReplicas: 2,
 		}, {
-			name:          "store state is tombstone",
+			name:          "2 maxScaleInReplicas, store state is tombstone",
 			tikvUpgrading: false,
 			storeFun:      multiTombstoneStoreFun,
 			delStoreErr:   false,
@@ -730,8 +802,111 @@ func TestTiKVScalerScaleInSimultaneously(t *testing.T) {
 				ordinal:       3,
 				storeIdLabel:  "13",
 			}},
+			maxScaleInReplicas: 2,
 		}, {
-			name:          "able to scale in simultaneously while upgrading",
+			name:          "3 maxScaleInReplicas, store state is tombstone, maxScaleInReplicas is bigger than needed",
+			tikvUpgrading: false,
+			storeFun:      multiTombstoneStoreFun,
+			delStoreErr:   false,
+			pvcUpdateErr:  false,
+			errExpectFn:   errExpectNil,
+			newReplicas:   3,
+			pods: []podStatus{{
+				hasPVC:        true,
+				storeIDSynced: true,
+				isPodReady:    true,
+				hasSynced:     true,
+				ordinal:       4,
+				storeIdLabel:  "1",
+			}, {
+				hasPVC:        true,
+				storeIDSynced: true,
+				isPodReady:    true,
+				hasSynced:     true,
+				ordinal:       3,
+				storeIdLabel:  "13",
+			}},
+			maxScaleInReplicas: 3,
+			extraTestFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, scaler *tikvScaler, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) {
+				for i := 0; i < 3; i++ {
+					podName := ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), int32(i))
+					var found bool
+					for _, s := range tc.Status.TiKV.Stores {
+						found = found || s.PodName == podName
+					}
+					g.Expect(found).To(Equal(true))
+				}
+				g.Expect(len(tc.Status.TiKV.Stores)).To(Equal(3))
+				for i := 4; i < 6; i++ {
+					podName := ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), int32(i))
+					var found bool
+					for _, s := range tc.Status.TiKV.Stores {
+						found = found || s.PodName == podName
+					}
+					g.Expect(found).To(Equal(false))
+				}
+				g.Expect(len(tc.Status.TiKV.TombstoneStores)).To(Equal(2))
+			},
+		}, {
+			name:          "2 maxScaleInReplicas, store state is tombstone, maxScaleInReplicas is smaller than needed",
+			tikvUpgrading: false,
+			storeFun: func(tc *v1alpha1.TidbCluster) {
+				multiTombstoneStoreFun(tc)
+				tc.Status.TiKV.TombstoneStores["14"] = v1alpha1.TiKVStore{
+					ID:      "14",
+					PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 5),
+					State:   v1alpha1.TiKVStateUp,
+				}
+			},
+			delStoreErr:  false,
+			pvcUpdateErr: false,
+			errExpectFn:  errExpectNil,
+			newReplicas:  4,
+			pods: []podStatus{{
+				hasPVC:        true,
+				storeIDSynced: true,
+				isPodReady:    true,
+				hasSynced:     true,
+				ordinal:       5,
+				storeIdLabel:  "14",
+			}, {
+				hasPVC:        true,
+				storeIDSynced: true,
+				isPodReady:    true,
+				hasSynced:     true,
+				ordinal:       4,
+				storeIdLabel:  "1",
+			}, {
+				hasPVC:        true,
+				storeIDSynced: true,
+				isPodReady:    true,
+				hasSynced:     true,
+				ordinal:       3,
+				storeIdLabel:  "13",
+			}},
+			getStoresFn: func(action *pdapi.Action) (interface{}, error) {
+				store := &pdapi.StoreInfo{
+					Store: &pdapi.MetaStore{
+						StateName: v1alpha1.TiKVStateUp,
+						Store: &metapb.Store{
+							Address: fmt.Sprintf("%s-tikv-0", "basic"),
+						},
+					},
+				}
+				return &pdapi.StoresInfo{
+					Count:  6,
+					Stores: []*pdapi.StoreInfo{store, store, store, store, store, store},
+				}, nil
+			},
+			maxScaleInReplicas: 2,
+			tikvReplicas:       6,
+			extraTestFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, scaler *tikvScaler, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) {
+				err := scaler.ScaleIn(tc, oldSet, newSet)
+				errExpectNil(g, err)
+				g.Expect(int(*newSet.Spec.Replicas)).To(Equal(3))
+			},
+		}, {
+			name:          "2 maxScaleInReplicas, able to scale in simultaneously while upgrading",
 			tikvUpgrading: true,
 			storeFun:      multiTombstoneStoreFun,
 			delStoreErr:   false,
@@ -753,8 +928,9 @@ func TestTiKVScalerScaleInSimultaneously(t *testing.T) {
 				ordinal:       3,
 				storeIdLabel:  "13",
 			}},
+			maxScaleInReplicas: 2,
 		}, {
-			name:          "tikv pod is not ready now, not sure if the status has been synced",
+			name:          "2 maxScaleInReplica, stikv pod is not ready now, not sure if the status has been synced",
 			tikvUpgrading: false,
 			storeFun: func(tc *v1alpha1.TidbCluster) {
 				tombstoneStoreFun(tc)
@@ -779,8 +955,9 @@ func TestTiKVScalerScaleInSimultaneously(t *testing.T) {
 				ordinal:       3,
 				storeIdLabel:  "13",
 			}},
+			maxScaleInReplicas: 2,
 		}, {
-			name:          "tikv pod is not ready now, make sure if the status has been synced",
+			name:          "2 maxScaleInReplica, tikv pod is not ready now, make sure if the status has been synced",
 			tikvUpgrading: false,
 			storeFun: func(tc *v1alpha1.TidbCluster) {
 				tombstoneStoreFun(tc)
@@ -805,8 +982,9 @@ func TestTiKVScalerScaleInSimultaneously(t *testing.T) {
 				ordinal:       3,
 				storeIdLabel:  "13",
 			}},
+			maxScaleInReplicas: 2,
 		}, {
-			name:          "store state is tombstone, don't have pvc",
+			name:          "2 maxScaleInReplica, store state is tombstone, don't have pvc",
 			tikvUpgrading: false,
 			storeFun:      multiTombstoneStoreFun,
 			delStoreErr:   false,
@@ -828,12 +1006,17 @@ func TestTiKVScalerScaleInSimultaneously(t *testing.T) {
 				ordinal:       3,
 				storeIdLabel:  "13",
 			}},
+			maxScaleInReplicas: 2,
 		}, {
-			name:          "4 up stores, scale in TiKV simultaneously works but only scales one",
+			name:          "2 maxScaleInReplica, 4 up stores, scale in TiKV simultaneously works but only scales one",
 			tikvUpgrading: false,
 			storeFun: func(tc *v1alpha1.TidbCluster) {
 				normalStoreFun(tc)
-				tc.Status.TiKV.Stores["12"] = v1alpha1.TiKVStore{State: v1alpha1.TiKVStateDown}
+				tc.Status.TiKV.Stores["12"] = v1alpha1.TiKVStore{
+					ID:      "12",
+					PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 2),
+					State:   v1alpha1.TiKVStateDown,
+				}
 			},
 			delStoreErr:  false,
 			pvcUpdateErr: false,
@@ -868,12 +1051,37 @@ func TestTiKVScalerScaleInSimultaneously(t *testing.T) {
 					Stores: []*pdapi.StoreInfo{store, store, store, store},
 				}, nil
 			},
+			maxScaleInReplicas: 2,
+			extraTestFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, scaler *tikvScaler, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) {
+				for i := 0; i < 4; i++ {
+					podName := ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), int32(i))
+					var found bool
+					for _, s := range tc.Status.TiKV.Stores {
+						found = found || s.PodName == podName
+					}
+					g.Expect(found).To(Equal(true))
+				}
+				g.Expect(len(tc.Status.TiKV.Stores)).To(Equal(4))
+				for i := 4; i < 5; i++ {
+					podName := ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), int32(i))
+					var found bool
+					for _, s := range tc.Status.TiKV.Stores {
+						found = found || s.PodName == podName
+					}
+					g.Expect(found).To(Equal(false))
+				}
+				g.Expect(len(tc.Status.TiKV.TombstoneStores)).To(Equal(1))
+			},
 		}, {
-			name:          "5 up stores with tiflash store, scale in TiKV simultaneously works but only scales one",
+			name:          "2 maxScaleInReplica, 5 up stores with tiflash store, scale in TiKV simultaneously works but only scales one",
 			tikvUpgrading: false,
 			storeFun: func(tc *v1alpha1.TidbCluster) {
 				normalStoreFun(tc)
-				tc.Status.TiKV.Stores["12"] = v1alpha1.TiKVStore{State: v1alpha1.TiKVStateDown}
+				tc.Status.TiKV.Stores["12"] = v1alpha1.TiKVStore{
+					ID:      "12",
+					PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 2),
+					State:   v1alpha1.TiKVStateDown,
+				}
 			},
 			delStoreErr:  false,
 			pvcUpdateErr: false,
@@ -918,9 +1126,30 @@ func TestTiKVScalerScaleInSimultaneously(t *testing.T) {
 					},
 				}
 				return &pdapi.StoresInfo{
-					Count:  4,
+					Count:  5,
 					Stores: []*pdapi.StoreInfo{store, store, store, store, tiflashstore},
 				}, nil
+			},
+			maxScaleInReplicas: 2,
+			extraTestFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, scaler *tikvScaler, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) {
+				for i := 0; i < 4; i++ {
+					podName := ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), int32(i))
+					var found bool
+					for _, s := range tc.Status.TiKV.Stores {
+						found = found || s.PodName == podName
+					}
+					g.Expect(found).To(Equal(true))
+				}
+				g.Expect(len(tc.Status.TiKV.Stores)).To(Equal(4))
+				for i := 4; i < 5; i++ {
+					podName := ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), int32(i))
+					var found bool
+					for _, s := range tc.Status.TiKV.Stores {
+						found = found || s.PodName == podName
+					}
+					g.Expect(found).To(Equal(false))
+				}
+				g.Expect(len(tc.Status.TiKV.TombstoneStores)).To(Equal(1))
 			},
 		},
 	}
