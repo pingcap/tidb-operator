@@ -11,6 +11,7 @@ This document describes how to deploy multiple sets of TiDB Operator to manage d
 >
 > - Currently, you can only deploy multiple `tidb-controller-manager`s and `tidb-scheduler`s.
 > - If you have deployed multiple sets of TiDB Operator and only some of them enable [Advanced StatefulSet](advanced-statefulset.md), the same TidbCluster Custom Resource (CR) cannot be switched among these TiDB Operator.
+> - This feature is supported since v1.1.10.
 
 ## Related parameters
 
@@ -92,7 +93,7 @@ To support deploying multiple sets of TiDB Operator, the following parameters ar
 
 3. Deploy the second TiDB Operator.
 
-    Refer to [Deploy TiDB Operator](deploy-tidb-operator.md) to deploy the second TiDB Operator without `tidb-scheduler`. Add the following configuration in the `values.yaml`:
+    Refer to [Deploy TiDB Operator](deploy-tidb-operator.md) to deploy the second TiDB Operator without `tidb-scheduler`. Add the following configuration in the `values.yaml` file, and deploy the second TiDB Operator (without `tidb-scheduler`) **in a different namespace** (such as `tidb-admin-qa`):
 
     ```yaml
     controllerManager:
@@ -105,7 +106,9 @@ To support deploying multiple sets of TiDB Operator, the following parameters ar
 
     > **Note:**
     >
-    > If you configure `scheduler.create: true`, a `tidb-scheduler` named `{{ .scheduler.schedulerName }}-{{.Release.Name}}` is created. To use this `tidb-scheduler`, you need to configure `spec.schedulerName` in the TidbCluster CR to the name of this scheduler.
+    > * It is recommended to deploy the new TiDB Operator in a separate namespace.
+    > * Set `appendReleaseSuffix` to `true`.
+    > * If you configure `scheduler.create: true`, a `tidb-scheduler` named `{{ .scheduler.schedulerName }}-{{.Release.Name}}` is created. To use this `tidb-scheduler`, you need to configure `spec.schedulerName` in the `TidbCluster` CR to the name of this scheduler.
 
 4. Deploy the TiDB cluster.
 
@@ -157,7 +160,7 @@ To support deploying multiple sets of TiDB Operator, the following parameters ar
     View the log of `tidb-controller-manager` of the second TiDB Operator:
 
     ```shell
-    kubectl -n tidb-admin logs tidb-controller-manager-tidb-operator-v2-5dfcd7f9-vll4c
+    kubectl -n tidb-admin-qa logs tidb-controller-manager-qa-5dfcd7f9-vll4c
     ```
 
     <details>
