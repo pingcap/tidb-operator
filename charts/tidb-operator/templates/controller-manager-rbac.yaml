@@ -117,6 +117,58 @@ roleRef:
   name: {{ .Release.Name }}:tidb-controller-manager
   apiGroup: rbac.authorization.k8s.io
 {{- else }}
+{{- if and .Values.clusterPermissions (or .Values.clusterPermissions.nodes .Values.clusterPermissions.persistentvolumes .Values.clusterPermissions.storageclasses) }}
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ .Release.Name }}:tidb-controller-manager
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: controller-manager
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+rules:
+  {{- if and .Values.clusterPermissions .Values.clusterPermissions.nodes }}
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+  {{- end }}
+  {{- if and .Values.clusterPermissions .Values.clusterPermissions.persistentvolumes }}
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "patch","update"]
+  {{- end }}
+  {{- if and .Values.clusterPermissions .Values.clusterPermissions.storageclasses }}
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch"]
+  {{- end }}
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ .Release.Name }}:tidb-controller-manager
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: controller-manager
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+subjects:
+  - kind: ServiceAccount
+    {{- if eq .Values.appendReleaseSuffix true}}
+    name: {{ .Values.controllerManager.serviceAccount }}-{{ .Release.Name }}
+    {{- else }}
+    name: {{ .Values.controllerManager.serviceAccount }}
+    {{- end }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: {{ .Release.Name }}:tidb-controller-manager
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}
 ---
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
@@ -164,21 +216,6 @@ rules:
 - apiGroups: ["pingcap.com"]
   resources: ["*"]
   verbs: ["*"]
-{{- if and .Values.clusterPermissions .Values.clusterPermissions.nodes }}
-- apiGroups: [""]
-  resources: ["nodes"]
-  verbs: ["get", "list", "watch"]
-{{- end }}
-{{- if and .Values.clusterPermissions .Values.clusterPermissions.persistentvolumes }}
-- apiGroups: [""]
-  resources: ["persistentvolumes"]
-  verbs: ["get", "list", "watch", "patch","update"]
-{{- end }}
-{{- if and .Values.clusterPermissions .Values.clusterPermissions.storageclasses }}
-- apiGroups: ["storage.k8s.io"]
-  resources: ["storageclasses"]
-  verbs: ["get", "list", "watch"]
-{{- end }}
 - apiGroups: ["rbac.authorization.k8s.io"]
   resources: ["roles"]
   verbs: ["escalate","create","get","update", "delete"]
