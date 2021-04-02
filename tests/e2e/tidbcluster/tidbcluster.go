@@ -876,7 +876,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		listOptions := metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(label.New().Instance(tcName).Component(label.TiKVLabelVal).Labels()).String(),
 		}
-		err = wait.PollImmediate(10*time.Second, 5*time.Minute, func() (bool, error) {
+		err = wait.PollImmediate(10*time.Second, 10*time.Minute, func() (bool, error) {
 			podList, err := c.CoreV1().Pods(ns).List(listOptions)
 			if err != nil && !apierrors.IsNotFound(err) {
 				log.Logf("failed to list pods: %+v", err)
