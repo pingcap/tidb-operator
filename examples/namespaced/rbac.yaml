@@ -1,0 +1,45 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: namespaced
+
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: namespaced
+rules:
+  - apiGroups: ["", "extensions", "apps", "autoscaling"]
+    resources: ["*"]
+    verbs: ["*"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["*"]
+  # this namespaced user needs to create other users when installing tidb-operator.
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles"]
+    verbs: ["escalate","create","get","update", "delete"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["rolebindings"]
+    verbs: ["create","get","update", "delete"]
+  # this namespaced user will be used to operate CRDs defined in tidb-operator.
+  - apiGroups: ["apps.pingcap.com"]
+    resources: ["statefulsets", "statefulsets/status"]
+    verbs: ["*"]
+  - apiGroups: ["pingcap.com"]
+    resources: ["*"]
+    verbs: ["*"]
+
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: namespaced
+subjects:
+  - kind: ServiceAccount
+    name: namespaced
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: namespaced
