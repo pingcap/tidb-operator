@@ -164,6 +164,21 @@ rules:
 - apiGroups: ["pingcap.com"]
   resources: ["*"]
   verbs: ["*"]
+{{- if and .Values.clusterPermissions .Values.clusterPermissions.nodes }}
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list", "watch"]
+{{- end }}
+{{- if and .Values.clusterPermissions .Values.clusterPermissions.persistentvolumes }}
+- apiGroups: [""]
+  resources: ["persistentvolumes"]
+  verbs: ["get", "list", "watch", "patch","update"]
+{{- end }}
+{{- if and .Values.clusterPermissions .Values.clusterPermissions.storageclasses }}
+- apiGroups: ["storage.k8s.io"]
+  resources: ["storageclasses"]
+  verbs: ["get", "list", "watch"]
+{{- end }}
 - apiGroups: ["rbac.authorization.k8s.io"]
   resources: ["roles"]
   verbs: ["escalate","create","get","update", "delete"]

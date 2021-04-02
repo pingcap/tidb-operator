@@ -1,8 +1,14 @@
 # Default values for tidb-operator
 
 # clusterScoped is whether tidb-operator should manage kubernetes cluster wide tidb clusters
-# Also see rbac.create, controllerManager.serviceAccount and scheduler.create.
+# Also see rbac.create, controllerManager.serviceAccount, scheduler.create and clusterPermissions.
 clusterScoped: true
+
+# clusterPermissions are some cluster scoped permissions that will be used even if `clusterScoped: false`.
+clusterPermissions: {}
+#  nodes: true
+#  persistentvolumes: true
+#  storageclasses: true
 
 # Also see clusterScoped and controllerManager.serviceAccount
 rbac:

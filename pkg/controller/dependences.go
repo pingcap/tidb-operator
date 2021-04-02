@@ -52,7 +52,12 @@ type CLIConfig struct {
 	Workers int
 	// Controls whether operator should manage kubernetes cluster
 	// wide TiDB clusters
-	ClusterScoped         bool
+	ClusterScoped bool
+
+	ClusterPermissionNode bool
+	ClusterPermissionPV   bool
+	ClusterPermissionSC   bool
+
 	AutoFailover          bool
 	PDFailoverPeriod      time.Duration
 	TiKVFailoverPeriod    time.Duration
@@ -108,6 +113,9 @@ func (c *CLIConfig) AddFlag(_ *flag.FlagSet) {
 	flag.BoolVar(&c.PrintVersion, "version", false, "Show version and quit")
 	flag.IntVar(&c.Workers, "workers", c.Workers, "The number of workers that are allowed to sync concurrently. Larger number = more responsive management, but more CPU (and network) load")
 	flag.BoolVar(&c.ClusterScoped, "cluster-scoped", c.ClusterScoped, "Whether tidb-operator should manage kubernetes cluster wide TiDB Clusters")
+	flag.BoolVar(&c.ClusterPermissionNode, "cluster-permission-node", c.ClusterPermissionNode, "Whether tidb-operator should have node permissions even if cluster-scoped is false")
+	flag.BoolVar(&c.ClusterPermissionPV, "cluster-permission-pv", c.ClusterPermissionPV, "Whether tidb-operator should have persistent volume permissions even if cluster-scoped is false")
+	flag.BoolVar(&c.ClusterPermissionSC, "cluster-permission-sc", c.ClusterPermissionSC, "Whether tidb-operator should have storage class permissions even if cluster-scoped is false")
 	flag.BoolVar(&c.AutoFailover, "auto-failover", c.AutoFailover, "Auto failover")
 	flag.DurationVar(&c.PDFailoverPeriod, "pd-failover-period", c.PDFailoverPeriod, "PD failover period default(5m)")
 	flag.DurationVar(&c.TiKVFailoverPeriod, "tikv-failover-period", c.TiKVFailoverPeriod, "TiKV failover period default(5m)")
