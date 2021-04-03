@@ -3585,7 +3585,7 @@ ClusterTLSConfig
 <a href="#tidbclusterref">TidbClusterRef</a>)
 </p>
 <p>
-<p>ProbeTLSConfig specifies TLS configuration parameters.</p>
+<p>ClusterTLSConfig specifies TLS configuration parameters.</p>
 </p>
 <table>
 <thead>
@@ -11466,6 +11466,31 @@ Kubernetes core/v1.ConfigMapKeySelector
 </tr>
 </tbody>
 </table>
+<h3 id="secretorconfigmapvalidationerror">SecretOrConfigMapValidationError</h3>
+<p>
+<p>SecretOrConfigMapValidationError is returned by SecretOrConfigMap.Validate()
+on semantically invalid configurations.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>err</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="secretref">SecretRef</h3>
 <p>
 (<em>Appears on:</em>
@@ -12061,60 +12086,6 @@ string
 <tr>
 <td>
 <code>mountPath</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="tlsassetkey">TLSAssetKey</h3>
-<p>
-<p>TLSAssetKey is a key for a TLS asset.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>from</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
-<code>ns</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
-<code>name</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
-<code>key</code></br>
 <em>
 string
 </em>

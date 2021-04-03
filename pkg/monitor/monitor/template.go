@@ -151,6 +151,7 @@ type MonitorConfigModel struct {
 type ClusterRegexInfo struct {
 	Name      string
 	Namespace string
+	enableTls bool
 }
 
 func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
@@ -417,10 +418,11 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 			// lightning does not need to authenticate the access of other components,
 			// so there is no need to enable mtls for the time being.
 			if jobName != "lightning" {
+				tcTlsSecretName := util.ClusterClientTLSSecretName(cluster.Name)
 				scrapeconfig.HTTPClientConfig.TLSConfig = config.TLSConfig{
-					CAFile:   path.Join(util.ClusterClientTLSPath, corev1.ServiceAccountRootCAKey),
-					CertFile: path.Join(util.ClusterClientTLSPath, corev1.TLSCertKey),
-					KeyFile:  path.Join(util.ClusterClientTLSPath, corev1.TLSPrivateKeyKey),
+					CAFile:   path.Join(util.ClusterAssetsTLSPath, TLSAssetKey{"secret", cluster.Namespace, tcTlsSecretName, corev1.ServiceAccountRootCAKey}.String()),
+					CertFile: path.Join(util.ClusterAssetsTLSPath, TLSAssetKey{"secret", cluster.Namespace, tcTlsSecretName, corev1.TLSCertKey}.String()),
+					KeyFile:  path.Join(util.ClusterAssetsTLSPath, TLSAssetKey{"secret", cluster.Namespace, tcTlsSecretName, corev1.TLSPrivateKeyKey}.String()),
 				}
 			}
 		}

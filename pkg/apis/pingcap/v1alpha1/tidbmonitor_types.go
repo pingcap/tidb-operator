@@ -427,28 +427,3 @@ type QueueConfig struct {
 type ClusterTLSConfig struct {
 	SafeTLSConfig `json:",inline"`
 }
-
-// Validate semantically validates the given SafeTLSConfig.
-func (c *SafeTLSConfig) Validate() error {
-	if c.CA != (SecretOrConfigMap{}) {
-		if err := c.CA.Validate(); err != nil {
-			return err
-		}
-	}
-
-	if c.Cert != (SecretOrConfigMap{}) {
-		if err := c.Cert.Validate(); err != nil {
-			return err
-		}
-	}
-
-	if c.Cert != (SecretOrConfigMap{}) && c.KeySecret == nil {
-		return &TLSConfigValidationError{"client cert specified without client key"}
-	}
-
-	if c.KeySecret != nil && c.Cert == (SecretOrConfigMap{}) {
-		return &TLSConfigValidationError{"client key specified without client cert"}
-	}
-
-	return nil
-}

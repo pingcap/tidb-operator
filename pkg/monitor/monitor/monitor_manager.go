@@ -76,6 +76,7 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 
 	var firstTc *v1alpha1.TidbCluster
 	assetStore := NewStore(m.deps.ConfigMapLister, m.deps.SecretLister)
+
 	for _, tcRef := range monitor.Spec.Clusters {
 		tc, err := m.deps.TiDBClusterLister.TidbClusters(tcRef.Namespace).Get(tcRef.Name)
 		if err != nil {
@@ -290,7 +291,26 @@ func (m *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, dc *v1a
 		cloned.Spec.Clusters = append(cloned.Spec.Clusters, autoTcRefs...)
 		monitor = cloned
 	}
-	newCM, err := getMonitorConfigMap(tc, dc, monitor)
+
+	var monitorClusterInfos []ClusterRegexInfo
+	for _, tcRef := range monitor.Spec.Clusters {
+		tc, err := m.deps.TiDBClusterLister.TidbClusters(tcRef.Namespace).Get(tcRef.Name)
+		if err != nil {
+			rerr := fmt.Errorf("get tm[%s/%s]'s target tc[%s/%s] failed, err: %v", monitor.Namespace, monitor.Name, tcRef.Namespace, tcRef.Name, err)
+			return nil, rerr
+		}
+		clusterRegex := ClusterRegexInfo{
+			Name:      tcRef.Name,
+			Namespace: tcRef.Namespace,
+		}
+		// If cluster enable tls
+		if tc.IsTLSClusterEnabled() {
+			clusterRegex.enableTls = true
+		}
+		monitorClusterInfos = append(monitorClusterInfos, clusterRegex)
+	}
+
+	newCM, err := getMonitorConfigMap(tc, dc, monitor, monitorClusterInfos)
 	if err != nil {
 		return nil, err
 	}
@@ -623,7 +643,7 @@ func (m *MonitorManager) syncAssetSecret(monitor *v1alpha1.TidbMonitor, store *S
 	name := monitor.Name
 	tlsAssetsSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            getTlsAssetsSecretName(monitor.Name),
+			Name:            GetTlsAssetsSecretName(monitor.Name),
 			Labels:          buildTidbMonitorLabel(monitor.Name),
 			OwnerReferences: []metav1.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 		},

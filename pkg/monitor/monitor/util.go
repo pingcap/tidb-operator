@@ -122,18 +122,7 @@ func getAlertManagerRulesVersion(tc *v1alpha1.TidbCluster, monitor *v1alpha1.Tid
 
 // getMonitorConfigMap generate the Prometheus config and Grafana config for TidbMonitor,
 // If the namespace in ClusterRef is empty, we would set the TidbMonitor's namespace in the default
-func getMonitorConfigMap(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monitor *v1alpha1.TidbMonitor) (*core.ConfigMap, error) {
-
-	var releaseClusterInfos []ClusterRegexInfo
-	for _, cluster := range monitor.Spec.Clusters {
-
-		clusterRegex := ClusterRegexInfo{
-			Name:      cluster.Name,
-			Namespace: cluster.Namespace,
-		}
-
-		releaseClusterInfos = append(releaseClusterInfos, clusterRegex)
-	}
+func getMonitorConfigMap(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monitor *v1alpha1.TidbMonitor, monitorClusterInfos []ClusterRegexInfo) (*core.ConfigMap, error) {
 
 	var releaseDMClusterInfos []ClusterRegexInfo
 	if monitor.Spec.DM != nil {
@@ -147,7 +136,7 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monit
 
 	model := &MonitorConfigModel{
 		AlertmanagerURL:    "",
-		ClusterInfos:       releaseClusterInfos,
+		ClusterInfos:       monitorClusterInfos,
 		DMClusterInfos:     releaseDMClusterInfos,
 		EnableTLSCluster:   tc.IsTLSClusterEnabled(),
 		ExternalLabels:     buildExternalLabels(monitor),

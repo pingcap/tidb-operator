@@ -1229,7 +1229,7 @@ func schema_pkg_apis_pingcap_v1alpha1_ClusterTLSConfig(ref common.ReferenceCallb
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "ProbeTLSConfig specifies TLS configuration parameters.",
+				Description: "ClusterTLSConfig specifies TLS configuration parameters.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"ca": {
