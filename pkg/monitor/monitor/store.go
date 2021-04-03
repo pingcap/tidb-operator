@@ -2,17 +2,12 @@ package monitor
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
-	"encoding/pem"
 	"fmt"
-	corelisterv1 "k8s.io/client-go/listers/core/v1"
-
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v12 "k8s.io/client-go/kubernetes/typed/core/v1"
+	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -51,68 +46,11 @@ func assetKeyFunc(obj interface{}) (string, error) {
 	return "", errors.Errorf("unsupported type: %T", obj)
 }
 
-// AddSafeTLSConfig validates the given SafeTLSConfig and adds it to the store.
-func (s *Store) AddSafeTLSConfig(ctx context.Context, ns string, tlsConfig *v1alpha1.SafeTLSConfig) error {
-	if tlsConfig == nil {
-		return nil
-	}
-
-	err := tlsConfig.Validate()
-	if err != nil {
-		return errors.Wrap(err, "failed to validate TLS configuration")
-	}
-
-	return s.addTLSAssets(ctx, ns, *tlsConfig)
-}
-
 // addTLSAssets processes the given SafeTLSConfig and adds the referenced CA, certificate and key to the store.
-func (s *Store) addTLSAssets(ctx context.Context, ns string, tlsConfig v1alpha1.SafeTLSConfig) error {
-	var (
-		err  error
-		ca   string
-		cert string
-		key  string
-	)
-
-	ca, err = s.GetKey(ctx, ns, tlsConfig.CA)
-	if err != nil {
-		return errors.Wrap(err, "failed to get CA")
+func (s *Store) addTLSAssets(secret v1.Secret) {
+	for key, value := range secret.Data {
+		s.TLSAssets[TLSAssetKey{"secret", secret.Namespace, secret.Name, key}] = TLSAsset(value)
 	}
-
-	cert, err = s.GetKey(ctx, ns, tlsConfig.Cert)
-	if err != nil {
-		return errors.Wrap(err, "failed to get cert")
-	}
-
-	if tlsConfig.KeySecret != nil {
-		key, err = s.GetSecretKey(ctx, ns, *tlsConfig.KeySecret)
-		if err != nil {
-			return errors.Wrap(err, "failed to get key")
-		}
-	}
-
-	if ca != "" {
-		block, _ := pem.Decode([]byte(ca))
-		if block == nil {
-			return errors.New("failed to decode CA certificate")
-		}
-		_, err = x509.ParseCertificate(block.Bytes)
-		if err != nil {
-			return errors.Wrap(err, "failed to parse CA certificate")
-		}
-		s.TLSAssets[TLSAssetKeyFromSelector(ns, tlsConfig.CA)] = TLSAsset(ca)
-	}
-
-	if cert != "" && key != "" {
-		_, err = tls.X509KeyPair([]byte(cert), []byte(key))
-		if err != nil {
-			return errors.Wrap(err, "failed to load X509 key pair")
-		}
-		s.TLSAssets[TLSAssetKeyFromSelector(ns, tlsConfig.Cert)] = TLSAsset(cert)
-		s.TLSAssets[TLSAssetKeyFromSelector(ns, v1alpha1.SecretOrConfigMap{Secret: tlsConfig.KeySecret})] = TLSAsset(key)
-	}
-
-	return nil
 }
 
 // GetKey processes the given SecretOrConfigMap selector and returns the referenced data.
@@ -204,3 +142,8 @@ type TLSAsset string
 // BearerToken represents a bearer token, see
 // https://tools.ietf.org/html/rfc6750.
 type BearerToken string
+
+// String implements the fmt.Stringer interface.
+func (k TLSAssetKey) String() string {
+	return fmt.Sprintf("%s_%s_%s_%s", k.from, k.ns, k.name, k.key)
+}

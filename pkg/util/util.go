@@ -42,6 +42,7 @@ import (
 
 var (
 	ClusterClientTLSPath   = "/var/lib/cluster-client-tls"
+	ClusterAssetsTLSPath   = "/var/lib/cluster-assets-tls"
 	DMClusterClientTLSPath = "/var/lib/dm-cluster-client-tls"
 	TiDBClientTLSPath      = "/var/lib/tidb-client-tls"
 	BRBinPath              = "/var/lib/br-bin"

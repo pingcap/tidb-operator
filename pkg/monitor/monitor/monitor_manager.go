@@ -75,12 +75,25 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	}
 
 	var firstTc *v1alpha1.TidbCluster
+	assetStore := NewStore(m.deps.ConfigMapLister, m.deps.SecretLister)
 	for _, tcRef := range monitor.Spec.Clusters {
 		tc, err := m.deps.TiDBClusterLister.TidbClusters(tcRef.Namespace).Get(tcRef.Name)
 		if err != nil {
 			rerr := fmt.Errorf("get tm[%s/%s]'s target tc[%s/%s] failed, err: %v", monitor.Namespace, monitor.Name, tcRef.Namespace, tcRef.Name, err)
 			return rerr
 		}
+
+		// If cluster enable tls
+		if tc.IsTLSClusterEnabled() {
+			tcTlsSecretName := util.ClusterClientTLSSecretName(tc.Name)
+			secret, err := m.deps.SecretLister.Secrets(tc.Namespace).Get(tcTlsSecretName)
+			if err != nil {
+				rerr := fmt.Errorf("get tidb[%s/%s]'s secret [%s/%s] failed, err: %v", tc.Namespace, tc.Name, tc.Namespace, tcTlsSecretName, err)
+				return rerr
+			}
+			assetStore.addTLSAssets(*secret)
+		}
+
 		if firstTc == nil && !tc.IsHeterogeneous() {
 			firstTc = tc
 		}
@@ -103,7 +116,11 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 			}
 		}
 	}
-
+	// create or update tls asset secret
+	err := m.syncAssetSecret(monitor, assetStore)
+	if err != nil {
+		return err
+	}
 	var firstDc *v1alpha1.DMCluster
 	if monitor.Spec.DM != nil {
 		for _, dcRef := range monitor.Spec.DM.Clusters {
@@ -273,7 +290,6 @@ func (m *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, dc *v1a
 		cloned.Spec.Clusters = append(cloned.Spec.Clusters, autoTcRefs...)
 		monitor = cloned
 	}
-	assetStore := NewStore(m.deps.ConfigMapLister, m.deps.SecretLister)
 	newCM, err := getMonitorConfigMap(tc, dc, monitor)
 	if err != nil {
 		return nil, err
@@ -597,6 +613,29 @@ func (m *MonitorManager) patchPVClaimRef(pv *corev1.PersistentVolume, patchPvcNa
 	pv.Spec.ClaimRef.Name = patchPvcName
 	err := m.deps.PVControl.PatchPVClaimRef(monitor, pv, patchPvcName)
 	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *MonitorManager) syncAssetSecret(monitor *v1alpha1.TidbMonitor, store *Store) error {
+	ns := monitor.Namespace
+	name := monitor.Name
+	tlsAssetsSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            getTlsAssetsSecretName(monitor.Name),
+			Labels:          buildTidbMonitorLabel(monitor.Name),
+			OwnerReferences: []metav1.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
+		},
+		Data: make(map[string][]byte, len(store.TLSAssets)),
+	}
+	for key, asset := range store.TLSAssets {
+		tlsAssetsSecret.Data[key.String()] = []byte(asset)
+	}
+
+	_, err := m.deps.TypedControl.CreateOrUpdateSecret(monitor, tlsAssetsSecret)
+	if err != nil {
+		klog.Errorf("tm[%s/%s]'s secret failed to sync,err: %v", ns, name, err)
 		return err
 	}
 	return nil

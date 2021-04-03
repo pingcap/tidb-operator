@@ -44,6 +44,14 @@ const (
 	defaultReplicaExternalLabelName = "prometheus_replica"
 )
 
+func GetTlsAssetsSecretName(name string) string {
+	return fmt.Sprintf("%s-tls-assets", prefixedName(name))
+}
+
+func prefixedName(name string) string {
+	return fmt.Sprintf("tidbmonitor-%s", name)
+}
+
 func GetMonitorObjectName(monitor *v1alpha1.TidbMonitor) string {
 	return fmt.Sprintf("%s-monitor", monitor.Name)
 }
@@ -118,6 +126,7 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monit
 
 	var releaseClusterInfos []ClusterRegexInfo
 	for _, cluster := range monitor.Spec.Clusters {
+
 		clusterRegex := ClusterRegexInfo{
 			Name:      cluster.Name,
 			Namespace: cluster.Namespace,
@@ -480,6 +489,11 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 				MountPath: "/prometheus-rules",
 				ReadOnly:  false,
 			},
+			{
+				Name:      "tls-assets",
+				MountPath: util.ClusterAssetsTLSPath,
+				ReadOnly:  false,
+			},
 		},
 	}
 
@@ -743,6 +757,18 @@ func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor, tc
 	if monitor.Spec.AdditionalVolumes != nil {
 		volumes = append(volumes, monitor.Spec.AdditionalVolumes...)
 	}
+
+	// add asset tls
+	defaultMode := int32(420)
+	volumes = append(volumes, core.Volume{
+		Name: "tls-assets",
+		VolumeSource: core.VolumeSource{
+			Secret: &core.SecretVolumeSource{
+				SecretName:  GetTlsAssetsSecretName(monitor.Name),
+				DefaultMode: &defaultMode,
+			},
+		},
+	})
 
 	return volumes
 }
@@ -1301,22 +1327,4 @@ func generateRemoteWrite(monitor *v1alpha1.TidbMonitor) []*config.RemoteWriteCon
 		remoteWriteConfigs = append(remoteWriteConfigs, remoteWriteConfig)
 	}
 	return remoteWriteConfigs
-}
-
-// TLSAssetKeyFromSelector returns a TLSAssetKey struct from a secret or configmap key selector.
-func TLSAssetKeyFromSelector(ns string, sel v1alpha1.SecretOrConfigMap) TLSAssetKey {
-	if sel.Secret != nil {
-		return TLSAssetKey{
-			from: "secret",
-			ns:   ns,
-			name: sel.Secret.Name,
-			key:  sel.Secret.Key,
-		}
-	}
-	return TLSAssetKey{
-		from: "configmap",
-		ns:   ns,
-		name: sel.ConfigMap.Name,
-		key:  sel.ConfigMap.Key,
-	}
 }
