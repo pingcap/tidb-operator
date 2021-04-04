@@ -373,14 +373,27 @@ scrape_configs:
   honor_labels: true
   scrape_interval: 15s
   scheme: https
-  {{.KubeSDConfigs}}
+  kubernetes_sd_configs:
+  - api_server: null
+    role: pod
+    namespaces:
+      names:
+      - ns1
   tls_config:
-    ca_file: /var/lib/cluster-client-tls/ca.crt
-    cert_file: /var/lib/cluster-client-tls/tls.crt
-    key_file: /var/lib/cluster-client-tls/tls.key
+    ca_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_ca.crt
+    cert_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_tls.crt
+    key_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_tls.key
     insecure_skip_verify: false
   relabel_configs:
-  {{.KeepLabels}}
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    regex: target
+    action: keep
+  - source_labels: [__meta_kubernetes_namespace]
+    regex: ns1
+    action: keep
+  - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+    regex: "true"
+    action: keep
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: pd
     action: keep
@@ -390,19 +403,50 @@ scrape_configs:
     target_label: __address__
     replacement: $1.$2-pd-peer.$3:$4
     action: replace
-  {{.ReplaceLabels}}
+  - source_labels: [__meta_kubernetes_namespace]
+    target_label: kubernetes_namespace
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    target_label: cluster
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_name]
+    target_label: instance
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+    target_label: component
+    action: replace
+  - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    separator: '-'
+    target_label: tidb_cluster
+  - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+    regex: (.+)
+    target_label: __metrics_path__
+    action: replace
 - job_name: ns1-target-tidb
   honor_labels: true
   scrape_interval: 15s
   scheme: https
-  {{.KubeSDConfigs}}
+  kubernetes_sd_configs:
+  - api_server: null
+    role: pod
+    namespaces:
+      names:
+      - ns1
   tls_config:
-    ca_file: /var/lib/cluster-client-tls/ca.crt
-    cert_file: /var/lib/cluster-client-tls/tls.crt
-    key_file: /var/lib/cluster-client-tls/tls.key
+    ca_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_ca.crt
+    cert_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_tls.crt
+    key_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_tls.key
     insecure_skip_verify: false
   relabel_configs:
-  {{.KeepLabels}}
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    regex: target
+    action: keep
+  - source_labels: [__meta_kubernetes_namespace]
+    regex: ns1
+    action: keep
+  - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+    regex: "true"
+    action: keep
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: tidb
     action: keep
@@ -412,19 +456,50 @@ scrape_configs:
     target_label: __address__
     replacement: $1.$2-tidb-peer.$3:$4
     action: replace
-  {{.ReplaceLabels}}
+  - source_labels: [__meta_kubernetes_namespace]
+    target_label: kubernetes_namespace
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    target_label: cluster
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_name]
+    target_label: instance
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+    target_label: component
+    action: replace
+  - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    separator: '-'
+    target_label: tidb_cluster
+  - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+    regex: (.+)
+    target_label: __metrics_path__
+    action: replace
 - job_name: ns1-target-tikv
   honor_labels: true
   scrape_interval: 15s
   scheme: https
-  {{.KubeSDConfigs}}
+  kubernetes_sd_configs:
+  - api_server: null
+    role: pod
+    namespaces:
+      names:
+      - ns1
   tls_config:
-    ca_file: /var/lib/cluster-client-tls/ca.crt
-    cert_file: /var/lib/cluster-client-tls/tls.crt
-    key_file: /var/lib/cluster-client-tls/tls.key
+    ca_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_ca.crt
+    cert_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_tls.crt
+    key_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_tls.key
     insecure_skip_verify: false
   relabel_configs:
-  {{.KeepLabels}}
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    regex: target
+    action: keep
+  - source_labels: [__meta_kubernetes_namespace]
+    regex: ns1
+    action: keep
+  - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+    regex: "true"
+    action: keep
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: tikv
     action: keep
@@ -434,19 +509,50 @@ scrape_configs:
     target_label: __address__
     replacement: $1.$2-tikv-peer.$3:$4
     action: replace
-  {{.ReplaceLabels}}
+  - source_labels: [__meta_kubernetes_namespace]
+    target_label: kubernetes_namespace
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    target_label: cluster
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_name]
+    target_label: instance
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+    target_label: component
+    action: replace
+  - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    separator: '-'
+    target_label: tidb_cluster
+  - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+    regex: (.+)
+    target_label: __metrics_path__
+    action: replace
 - job_name: ns1-target-tiflash
   honor_labels: true
   scrape_interval: 15s
   scheme: https
-  {{.KubeSDConfigs}}
+  kubernetes_sd_configs:
+  - api_server: null
+    role: pod
+    namespaces:
+      names:
+      - ns1
   tls_config:
-    ca_file: /var/lib/cluster-client-tls/ca.crt
-    cert_file: /var/lib/cluster-client-tls/tls.crt
-    key_file: /var/lib/cluster-client-tls/tls.key
+    ca_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_ca.crt
+    cert_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_tls.crt
+    key_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_tls.key
     insecure_skip_verify: false
   relabel_configs:
-  {{.KeepLabels}}
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    regex: target
+    action: keep
+  - source_labels: [__meta_kubernetes_namespace]
+    regex: ns1
+    action: keep
+  - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+    regex: "true"
+    action: keep
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: tiflash
     action: keep
@@ -456,19 +562,50 @@ scrape_configs:
     target_label: __address__
     replacement: $1.$2-tiflash-peer.$3:$4
     action: replace
-  {{.ReplaceLabels}}
+  - source_labels: [__meta_kubernetes_namespace]
+    target_label: kubernetes_namespace
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    target_label: cluster
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_name]
+    target_label: instance
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+    target_label: component
+    action: replace
+  - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    separator: '-'
+    target_label: tidb_cluster
+  - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+    regex: (.+)
+    target_label: __metrics_path__
+    action: replace
 - job_name: ns1-target-tiflash-proxy
   honor_labels: true
   scrape_interval: 15s
   scheme: https
-  {{.KubeSDConfigs}}
+  kubernetes_sd_configs:
+  - api_server: null
+    role: pod
+    namespaces:
+      names:
+      - ns1
   tls_config:
-    ca_file: /var/lib/cluster-client-tls/ca.crt
-    cert_file: /var/lib/cluster-client-tls/tls.crt
-    key_file: /var/lib/cluster-client-tls/tls.key
+    ca_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_ca.crt
+    cert_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_tls.crt
+    key_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_tls.key
     insecure_skip_verify: false
   relabel_configs:
-  {{.KeepLabels}}
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    regex: target
+    action: keep
+  - source_labels: [__meta_kubernetes_namespace]
+    regex: ns1
+    action: keep
+  - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+    regex: "true"
+    action: keep
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: tiflash
     action: keep
@@ -478,19 +615,50 @@ scrape_configs:
     target_label: __address__
     replacement: $1.$2-tiflash-peer.$3:$4
     action: replace
-  {{.ReplaceLabels}}
+  - source_labels: [__meta_kubernetes_namespace]
+    target_label: kubernetes_namespace
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    target_label: cluster
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_name]
+    target_label: instance
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+    target_label: component
+    action: replace
+  - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    separator: '-'
+    target_label: tidb_cluster
+  - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+    regex: (.+)
+    target_label: __metrics_path__
+    action: replace
 - job_name: ns1-target-pump
   honor_labels: true
   scrape_interval: 15s
   scheme: https
-  {{.KubeSDConfigs}}
+  kubernetes_sd_configs:
+  - api_server: null
+    role: pod
+    namespaces:
+      names:
+      - ns1
   tls_config:
-    ca_file: /var/lib/cluster-client-tls/ca.crt
-    cert_file: /var/lib/cluster-client-tls/tls.crt
-    key_file: /var/lib/cluster-client-tls/tls.key
+    ca_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_ca.crt
+    cert_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_tls.crt
+    key_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_tls.key
     insecure_skip_verify: false
   relabel_configs:
-  {{.KeepLabels}}
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    regex: target
+    action: keep
+  - source_labels: [__meta_kubernetes_namespace]
+    regex: ns1
+    action: keep
+  - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+    regex: "true"
+    action: keep
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: pump
     action: keep
@@ -500,19 +668,50 @@ scrape_configs:
     target_label: __address__
     replacement: $1.$2-pump.$3:$4
     action: replace
-  {{.ReplaceLabels}}
+  - source_labels: [__meta_kubernetes_namespace]
+    target_label: kubernetes_namespace
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    target_label: cluster
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_name]
+    target_label: instance
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+    target_label: component
+    action: replace
+  - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    separator: '-'
+    target_label: tidb_cluster
+  - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+    regex: (.+)
+    target_label: __metrics_path__
+    action: replace
 - job_name: ns1-target-drainer
   honor_labels: true
   scrape_interval: 15s
   scheme: https
-  {{.KubeSDConfigs}}
+  kubernetes_sd_configs:
+  - api_server: null
+    role: pod
+    namespaces:
+      names:
+      - ns1
   tls_config:
-    ca_file: /var/lib/cluster-client-tls/ca.crt
-    cert_file: /var/lib/cluster-client-tls/tls.crt
-    key_file: /var/lib/cluster-client-tls/tls.key
+    ca_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_ca.crt
+    cert_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_tls.crt
+    key_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_tls.key
     insecure_skip_verify: false
   relabel_configs:
-  {{.KeepLabels}}
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    regex: target
+    action: keep
+  - source_labels: [__meta_kubernetes_namespace]
+    regex: ns1
+    action: keep
+  - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+    regex: "true"
+    action: keep
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: drainer
     action: keep
@@ -522,19 +721,50 @@ scrape_configs:
     target_label: __address__
     replacement: $1.$2.$3:$4
     action: replace
-  {{.ReplaceLabels}}
+  - source_labels: [__meta_kubernetes_namespace]
+    target_label: kubernetes_namespace
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    target_label: cluster
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_name]
+    target_label: instance
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+    target_label: component
+    action: replace
+  - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    separator: '-'
+    target_label: tidb_cluster
+  - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+    regex: (.+)
+    target_label: __metrics_path__
+    action: replace
 - job_name: ns1-target-ticdc
   honor_labels: true
   scrape_interval: 15s
   scheme: https
-  {{.KubeSDConfigs}}
+  kubernetes_sd_configs:
+  - api_server: null
+    role: pod
+    namespaces:
+      names:
+      - ns1
   tls_config:
-    ca_file: /var/lib/cluster-client-tls/ca.crt
-    cert_file: /var/lib/cluster-client-tls/tls.crt
-    key_file: /var/lib/cluster-client-tls/tls.key
+    ca_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_ca.crt
+    cert_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_tls.crt
+    key_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_tls.key
     insecure_skip_verify: false
   relabel_configs:
-  {{.KeepLabels}}
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    regex: target
+    action: keep
+  - source_labels: [__meta_kubernetes_namespace]
+    regex: ns1
+    action: keep
+  - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+    regex: "true"
+    action: keep
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: ticdc
     action: keep
@@ -544,19 +774,50 @@ scrape_configs:
     target_label: __address__
     replacement: $1.$2-ticdc-peer.$3:$4
     action: replace
-  {{.ReplaceLabels}}
+  - source_labels: [__meta_kubernetes_namespace]
+    target_label: kubernetes_namespace
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    target_label: cluster
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_name]
+    target_label: instance
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+    target_label: component
+    action: replace
+  - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    separator: '-'
+    target_label: tidb_cluster
+  - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+    regex: (.+)
+    target_label: __metrics_path__
+    action: replace
 - job_name: ns1-target-importer
   honor_labels: true
   scrape_interval: 15s
   scheme: https
-  {{.KubeSDConfigs}}
+  kubernetes_sd_configs:
+  - api_server: null
+    role: pod
+    namespaces:
+      names:
+      - ns1
   tls_config:
-    ca_file: /var/lib/cluster-client-tls/ca.crt
-    cert_file: /var/lib/cluster-client-tls/tls.crt
-    key_file: /var/lib/cluster-client-tls/tls.key
+    ca_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_ca.crt
+    cert_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_tls.crt
+    key_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_tls.key
     insecure_skip_verify: false
   relabel_configs:
-  {{.KeepLabels}}
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    regex: target
+    action: keep
+  - source_labels: [__meta_kubernetes_namespace]
+    regex: ns1
+    action: keep
+  - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+    regex: "true"
+    action: keep
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: importer
     action: keep
@@ -566,16 +827,47 @@ scrape_configs:
     target_label: __address__
     replacement: $1.$2-importer.$3:$4
     action: replace
-  {{.ReplaceLabels}}
+  - source_labels: [__meta_kubernetes_namespace]
+    target_label: kubernetes_namespace
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    target_label: cluster
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_name]
+    target_label: instance
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+    target_label: component
+    action: replace
+  - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    separator: '-'
+    target_label: tidb_cluster
+  - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+    regex: (.+)
+    target_label: __metrics_path__
+    action: replace
 - job_name: ns1-target-lightning
   honor_labels: true
   scrape_interval: 15s
   scheme: https
-  {{.KubeSDConfigs}}
+  kubernetes_sd_configs:
+  - api_server: null
+    role: pod
+    namespaces:
+      names:
+      - ns1
   tls_config:
     insecure_skip_verify: true
   relabel_configs:
-  {{.KeepLabels}}
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    regex: target
+    action: keep
+  - source_labels: [__meta_kubernetes_namespace]
+    regex: ns1
+    action: keep
+  - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+    regex: "true"
+    action: keep
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: tidb-lightning
     action: keep
@@ -585,19 +877,50 @@ scrape_configs:
     target_label: __address__
     replacement: $2.$3:$4
     action: replace
-  {{.ReplaceLabels}}
+  - source_labels: [__meta_kubernetes_namespace]
+    target_label: kubernetes_namespace
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    target_label: cluster
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_name]
+    target_label: instance
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+    target_label: component
+    action: replace
+  - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    separator: '-'
+    target_label: tidb_cluster
+  - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+    regex: (.+)
+    target_label: __metrics_path__
+    action: replace
 - job_name: ns1-target-dm-worker
   honor_labels: true
   scrape_interval: 15s
   scheme: https
-  {{.KubeSDConfigs}}
+  kubernetes_sd_configs:
+  - api_server: null
+    role: pod
+    namespaces:
+      names:
+      - ns1
   tls_config:
     ca_file: /var/lib/dm-cluster-client-tls/ca.crt
     cert_file: /var/lib/dm-cluster-client-tls/tls.crt
     key_file: /var/lib/dm-cluster-client-tls/tls.key
     insecure_skip_verify: false
   relabel_configs:
-  {{.KeepLabels}}
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    regex: target
+    action: keep
+  - source_labels: [__meta_kubernetes_namespace]
+    regex: ns1
+    action: keep
+  - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+    regex: "true"
+    action: keep
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: dm-worker
     action: keep
@@ -607,19 +930,50 @@ scrape_configs:
     target_label: __address__
     replacement: $1.$2-dm-worker-peer.$3:$4
     action: replace
-  {{.ReplaceLabels}}
+  - source_labels: [__meta_kubernetes_namespace]
+    target_label: kubernetes_namespace
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    target_label: cluster
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_name]
+    target_label: instance
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+    target_label: component
+    action: replace
+  - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    separator: '-'
+    target_label: tidb_cluster
+  - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+    regex: (.+)
+    target_label: __metrics_path__
+    action: replace
 - job_name: ns1-target-dm-master
   honor_labels: true
   scrape_interval: 15s
   scheme: https
-  {{.KubeSDConfigs}}
+  kubernetes_sd_configs:
+  - api_server: null
+    role: pod
+    namespaces:
+      names:
+      - ns1
   tls_config:
     ca_file: /var/lib/dm-cluster-client-tls/ca.crt
     cert_file: /var/lib/dm-cluster-client-tls/tls.crt
     key_file: /var/lib/dm-cluster-client-tls/tls.key
     insecure_skip_verify: false
   relabel_configs:
-  {{.KeepLabels}}
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    regex: target
+    action: keep
+  - source_labels: [__meta_kubernetes_namespace]
+    regex: ns1
+    action: keep
+  - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+    regex: "true"
+    action: keep
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: dm-master
     action: keep
@@ -629,7 +983,25 @@ scrape_configs:
     target_label: __address__
     replacement: $1.$2-dm-master-peer.$3:$4
     action: replace
-  {{.ReplaceLabels}}
+  - source_labels: [__meta_kubernetes_namespace]
+    target_label: kubernetes_namespace
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    target_label: cluster
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_name]
+    target_label: instance
+    action: replace
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+    target_label: component
+    action: replace
+  - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    separator: '-'
+    target_label: tidb_cluster
+  - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+    regex: (.+)
+    target_label: __metrics_path__
+    action: replace
 `
 	model := &MonitorConfigModel{
 		ClusterInfos: []ClusterRegexInfo{

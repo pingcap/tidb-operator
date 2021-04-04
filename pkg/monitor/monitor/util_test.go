@@ -756,6 +756,15 @@ func TestGetMonitorVolumes(t *testing.T) {
 							EmptyDir: &corev1.EmptyDirVolumeSource{},
 						},
 					},
+					{
+						Name: "tls-assets",
+						VolumeSource: corev1.VolumeSource{
+							Secret: &corev1.SecretVolumeSource{
+								SecretName:  GetTlsAssetsSecretName("foo"),
+								DefaultMode: pointer.Int32Ptr(420),
+							},
+						},
+					},
 				},
 				))
 			},
@@ -813,6 +822,15 @@ func TestGetMonitorVolumes(t *testing.T) {
 						Name: "prometheus-config-out",
 						VolumeSource: corev1.VolumeSource{
 							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
+					},
+					{
+						Name: "tls-assets",
+						VolumeSource: corev1.VolumeSource{
+							Secret: &corev1.SecretVolumeSource{
+								SecretName:  GetTlsAssetsSecretName("foo"),
+								DefaultMode: pointer.Int32Ptr(420),
+							},
 						},
 					},
 				},
@@ -898,6 +916,15 @@ func TestGetMonitorVolumes(t *testing.T) {
 						Name: "prometheus-config-out",
 						VolumeSource: corev1.VolumeSource{
 							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
+					},
+					{
+						Name: "tls-assets",
+						VolumeSource: corev1.VolumeSource{
+							Secret: &corev1.SecretVolumeSource{
+								SecretName:  GetTlsAssetsSecretName("foo"),
+								DefaultMode: pointer.Int32Ptr(420),
+							},
 						},
 					},
 				},
@@ -1005,6 +1032,11 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 						Name:      "prometheus-rules",
 						ReadOnly:  false,
 						MountPath: "/prometheus-rules",
+					},
+					{
+						Name:      "tls-assets",
+						MountPath: "/var/lib/cluster-assets-tls",
+						ReadOnly:  false,
 					},
 					{
 						Name:      "cluster-client-tls",

@@ -47,7 +47,7 @@ func assetKeyFunc(obj interface{}) (string, error) {
 	return "", errors.Errorf("unsupported type: %T", obj)
 }
 
-// addTLSAssets processes the given SafeTLSConfig and adds the referenced CA, certificate and key to the store.
+// addTLSAssets processes the given Secret and adds the referenced CA, certificate and key to the store.
 func (s *Store) addTLSAssets(secret v1.Secret) {
 	for key, value := range secret.Data {
 		s.TLSAssets[TLSAssetKey{"secret", secret.Namespace, secret.Name, key}] = TLSAsset(value)

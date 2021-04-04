@@ -644,6 +644,7 @@ func (m *MonitorManager) syncAssetSecret(monitor *v1alpha1.TidbMonitor, store *S
 	tlsAssetsSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            GetTlsAssetsSecretName(monitor.Name),
+			Namespace:       monitor.Namespace,
 			Labels:          buildTidbMonitorLabel(monitor.Name),
 			OwnerReferences: []metav1.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 		},

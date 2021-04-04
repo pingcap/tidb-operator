@@ -47,7 +47,6 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 		tmm := newFakeTidbMonitorManager()
 		tc := &v1alpha1.TidbCluster{
 			Spec: v1alpha1.TidbClusterSpec{
-				TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
 				TiKV: &v1alpha1.TiKVSpec{
 					BaseImage: "pingcap/tikv",
 				},
@@ -416,7 +415,6 @@ func TestTidbMonitorSyncUpdate(t *testing.T) {
 		tmm := newFakeTidbMonitorManager()
 		tc := &v1alpha1.TidbCluster{
 			Spec: v1alpha1.TidbClusterSpec{
-				TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
 				TiKV: &v1alpha1.TiKVSpec{
 					BaseImage: "pingcap/tikv",
 				},
@@ -545,9 +543,8 @@ func newFakeDMCluster(mm *MonitorManager) {
 			Namespace: "ns",
 		},
 		Spec: v1alpha1.DMClusterSpec{
-			TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
-			Discovery:  v1alpha1.DMDiscoverySpec{Address: "http://foo-discovery.ns:10261"},
-			Master:     v1alpha1.MasterSpec{Replicas: 1},
+			Discovery: v1alpha1.DMDiscoverySpec{Address: "http://foo-discovery.ns:10261"},
+			Master:    v1alpha1.MasterSpec{Replicas: 1},
 		},
 	}
 	dmIndexer.Add(dc)
