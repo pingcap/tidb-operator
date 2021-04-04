@@ -895,15 +895,6 @@ func TestGetMonitorVolumes(t *testing.T) {
 						},
 					},
 					{
-						Name: "cluster-client-tls",
-						VolumeSource: corev1.VolumeSource{
-							Secret: &corev1.SecretVolumeSource{
-								SecretName:  "foo-cluster-client-secret",
-								DefaultMode: pointer.Int32Ptr(420),
-							},
-						},
-					},
-					{
 						Name: "dm-cluster-client-tls",
 						VolumeSource: corev1.VolumeSource{
 							Secret: &corev1.SecretVolumeSource{
@@ -1037,11 +1028,6 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 						Name:      "tls-assets",
 						MountPath: "/var/lib/cluster-assets-tls",
 						ReadOnly:  false,
-					},
-					{
-						Name:      "cluster-client-tls",
-						ReadOnly:  true,
-						MountPath: "/var/lib/cluster-client-tls",
 					},
 				},
 			},
