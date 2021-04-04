@@ -41,7 +41,6 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 		svcCreated    bool
 		volumeCreated bool
 	}
-
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 		tmm := newFakeTidbMonitorManager()

@@ -43,7 +43,7 @@ type TypedControlInterface interface {
 	CreateOrUpdateConfigMap(controller runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error)
 	// CreateOrUpdateClusterRole the desired clusterRole or update the current one to desired state if already existed
 	CreateOrUpdateClusterRole(controller runtime.Object, clusterRole *rbacv1.ClusterRole) (*rbacv1.ClusterRole, error)
-	// CreateOrUpdateClusterRoleBinding create the desired clusterRoleBinding or update the current one to desired state if already existed
+	// CreateOrUpdateClusterRoleBindinag create the desired clusterRoleBinding or update the current one to desired state if already existed
 	CreateOrUpdateClusterRoleBinding(controller runtime.Object, crb *rbacv1.ClusterRoleBinding) (*rbacv1.ClusterRoleBinding, error)
 	// CreateOrUpdateRole create the desired role or update the current one to desired state if already existed
 	CreateOrUpdateRole(controller runtime.Object, role *rbacv1.Role) (*rbacv1.Role, error)

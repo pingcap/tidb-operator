@@ -31,17 +31,18 @@ func TestGetMonitorConfigMap(t *testing.T) {
 	varTrue := true
 
 	testCases := []struct {
-		name      string
-		cluster   v1alpha1.TidbCluster
-		dmCluster v1alpha1.DMCluster
-		monitor   v1alpha1.TidbMonitor
-		expected  *corev1.ConfigMap
+		name                string
+		cluster             v1alpha1.TidbCluster
+		dmCluster           v1alpha1.DMCluster
+		monitor             v1alpha1.TidbMonitor
+		monitorClusterInfos []ClusterRegexInfo
+		expected            *corev1.ConfigMap
 	}{
 		{
-			name: "basic",
+			name: "enable tls",
 			cluster: v1alpha1.TidbCluster{
 				Spec: v1alpha1.TidbClusterSpec{
-					TLSCluster: &v1alpha1.TLSCluster{Enabled: false},
+					TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
 				},
 			},
 			dmCluster: v1alpha1.DMCluster{},
@@ -51,46 +52,8 @@ func TestGetMonitorConfigMap(t *testing.T) {
 					Namespace: "ns",
 				},
 			},
-			expected: &corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo-monitor",
-					Namespace: "ns",
-					Labels: map[string]string{
-						"app.kubernetes.io/name":       "tidb-cluster",
-						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "foo",
-						"app.kubernetes.io/component":  "monitor",
-					},
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion:         "pingcap.com/v1alpha1",
-							Kind:               "TidbMonitor",
-							Name:               "foo",
-							Controller:         &varTrue,
-							BlockOwnerDeletion: &varTrue,
-						},
-					},
-				},
-				Data: nil, // tests are in template_test.go
-			},
-		},
-		{
-			name: "basic",
-			cluster: v1alpha1.TidbCluster{
-				Spec: v1alpha1.TidbClusterSpec{
-					TLSCluster: &v1alpha1.TLSCluster{Enabled: false},
-				},
-			},
-			dmCluster: v1alpha1.DMCluster{
-				Spec: v1alpha1.DMClusterSpec{
-					TLSCluster: &v1alpha1.TLSCluster{Enabled: false},
-				},
-			},
-			monitor: v1alpha1.TidbMonitor{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo",
-					Namespace: "ns",
-				},
+			monitorClusterInfos: []ClusterRegexInfo{
+				{Name: "basic", enableTls: true},
 			},
 			expected: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -119,7 +82,7 @@ func TestGetMonitorConfigMap(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			cm, err := getMonitorConfigMap(&tt.cluster, &tt.dmCluster, &tt.monitor, nil)
+			cm, err := getMonitorConfigMap(&tt.cluster, &tt.dmCluster, &tt.monitor, tt.monitorClusterInfos)
 			g.Expect(err).NotTo(HaveOccurred())
 			if tt.expected == nil {
 				g.Expect(cm).To(BeNil())

@@ -15,6 +15,11 @@ package monitor
 
 import (
 	"bytes"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/util"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"path"
 	"testing"
 	"text/template"
 	"time"
@@ -1080,4 +1085,52 @@ func TestMultipleClusterTlsConfigRender(t *testing.T) {
 	// check scrapeJob number
 	pc := newPrometheusConfig(model)
 	g.Expect(pc.ScrapeConfigs[0].Scheme).Should(Equal("https"))
+}
+
+func TestScrapeJob(t *testing.T) {
+	g := NewGomegaWithT(t)
+	name := "ns1"
+	ns := "ns1"
+	ClusterInfos := []ClusterRegexInfo{
+		{Name: name, Namespace: ns, enableTls: true},
+	}
+
+	tm := &v1alpha1.TidbMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+		},
+		Spec: v1alpha1.TidbMonitorSpec{
+			Clusters: []v1alpha1.TidbClusterRef{
+				{Name: ""},
+			},
+			Prometheus: v1alpha1.PrometheusSpec{
+				MonitorContainer: v1alpha1.MonitorContainer{
+					BaseImage: "hub.pingcap.net",
+					Version:   "latest",
+				},
+				Config: &v1alpha1.PrometheusConfiguration{
+					CommandOptions: []string{
+						"--web.external-url=https://www.example.com/prometheus/",
+					},
+				},
+			},
+		},
+	}
+
+	model := &MonitorConfigModel{
+		AlertmanagerURL:    "",
+		ClusterInfos:       ClusterInfos,
+		DMClusterInfos:     nil,
+		EnableTLSCluster:   true,
+		ExternalLabels:     buildExternalLabels(tm),
+		EnableTLSDMCluster: false,
+	}
+	scrapeJobs := scrapeJob("pd", pdPattern, model, buildAddressRelabelConfigByComponent("pd"))
+	tcTlsSecretName := util.ClusterClientTLSSecretName(name)
+	g.Expect(scrapeJobs[0].HTTPClientConfig.TLSConfig).Should(Equal(config.TLSConfig{
+		CAFile:   path.Join(util.ClusterAssetsTLSPath, TLSAssetKey{"secret", ns, tcTlsSecretName, corev1.ServiceAccountRootCAKey}.String()),
+		CertFile: path.Join(util.ClusterAssetsTLSPath, TLSAssetKey{"secret", ns, tcTlsSecretName, corev1.TLSCertKey}.String()),
+		KeyFile:  path.Join(util.ClusterAssetsTLSPath, TLSAssetKey{"secret", ns, tcTlsSecretName, corev1.TLSPrivateKeyKey}.String()),
+	}))
 }
