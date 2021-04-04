@@ -7,20 +7,11 @@ spec:
   clusters:
     - name: ns1
       namespace: ns1
-      enableTls: true
-      tlsFileDir: "/var/lib/client/ns1/cluster-client-tls"
     - name: ns2
       namespace: ns2
-      enableTls: true
-      tlsFileDir: "/var/lib/client/ns2/cluster-client-tls"
   prometheus:
     baseImage: prom/prometheus
     version: v2.11.1
-    additionalVolumeMounts:
-      - name: ns1-client-secret
-        mountPath: "/var/lib/client/ns1/cluster-client-tls"
-      - name: ns2-client-secret
-        mountPath: "/var/lib/client/ns2/cluster-client-tls"
   grafana:
     baseImage: grafana/grafana
     version: 6.1.6
@@ -31,10 +22,3 @@ spec:
     baseImage: pingcap/tidb-monitor-reloader
     version: v1.0.1
   imagePullPolicy: IfNotPresent
-  additionalVolumes:
-    - name: ns1-client-secret
-      secret:
-        secretName: ns1-cluster-client-secret
-    - name: ns2-client-secret
-      secret:
-        secretName: ns2-cluster-client-secret

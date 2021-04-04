@@ -497,13 +497,6 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 		commands = append(commands, "--storage.tsdb.min-block-duration=2h")
 	}
 	c.Command = append(c.Command, strings.Join(commands, " "))
-	if tc.IsTLSClusterEnabled() {
-		c.VolumeMounts = append(c.VolumeMounts, core.VolumeMount{
-			Name:      util.ClusterClientVolName,
-			MountPath: util.ClusterClientTLSPath,
-			ReadOnly:  true,
-		})
-	}
 	if dc != nil && dc.IsTLSClusterEnabled() {
 		c.VolumeMounts = append(c.VolumeMounts, core.VolumeMount{
 			Name:      util.DMClusterClientVolName,
@@ -710,19 +703,7 @@ func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor, tc
 		},
 	}
 	volumes = append(volumes, prometheusRules)
-	if tc.IsTLSClusterEnabled() {
-		defaultMode := int32(420)
-		tlsPDClient := core.Volume{
-			Name: util.ClusterClientVolName,
-			VolumeSource: core.VolumeSource{
-				Secret: &core.SecretVolumeSource{
-					SecretName:  util.ClusterClientTLSSecretName(tc.Name),
-					DefaultMode: &defaultMode,
-				},
-			},
-		}
-		volumes = append(volumes, tlsPDClient)
-	}
+
 	if dc != nil && dc.IsTLSClusterEnabled() {
 		defaultMode := int32(420)
 		tlsDMClient := core.Volume{
