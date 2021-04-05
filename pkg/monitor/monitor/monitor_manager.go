@@ -87,12 +87,10 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		// If cluster enable tls
 		if tc.IsTLSClusterEnabled() {
 			tcTlsSecretName := util.ClusterClientTLSSecretName(tc.Name)
-			secret, err := m.deps.SecretLister.Secrets(tc.Namespace).Get(tcTlsSecretName)
+			err := assetStore.addTLSAssets(tc.Namespace, tcTlsSecretName)
 			if err != nil {
-				rerr := fmt.Errorf("get tidb[%s/%s]'s secret [%s/%s] failed, err: %v", tc.Namespace, tc.Name, tc.Namespace, tcTlsSecretName, err)
-				return rerr
+				return err
 			}
-			assetStore.addTLSAssets(*secret)
 		}
 
 		if firstTc == nil && !tc.IsHeterogeneous() {
