@@ -17,7 +17,6 @@ import (
 	"fmt"
 
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/tools/cache"
 )
 
 // Store is a store that fetches and caches TLS materials, bearer tokens
@@ -28,7 +27,6 @@ import (
 //
 // Store doesn't support concurrent access.
 type Store struct {
-	objStore     cache.Store
 	cmLister     corelisterv1.ConfigMapLister
 	secretLister corelisterv1.SecretLister
 	TLSAssets    map[TLSAssetKey]TLSAsset
