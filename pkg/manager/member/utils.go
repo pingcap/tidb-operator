@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
@@ -45,7 +46,8 @@ const (
 	// ImagePullBackOff is the pod state of image pull failed
 	ImagePullBackOff = "ImagePullBackOff"
 	// ErrImagePull is the pod state of image pull failed
-	ErrImagePull = "ErrImagePull"
+	ErrImagePull    = "ErrImagePull"
+	helmLabelPrefix = "helm.sh"
 )
 
 func annotationsMountVolume() (corev1.VolumeMount, corev1.Volume) {
@@ -547,4 +549,19 @@ func getPVCSelectorForPod(controller runtime.Object, memberType v1alpha1.MemberT
 		return nil, fmt.Errorf("object %s/%s of kind %s has unknown controller", meta.GetNamespace(), meta.GetName(), kind)
 	}
 	return l.Selector()
+}
+
+// remove useless helm label when migrating operator from helm chart.
+// this method won't modify the original label map
+func removeHelmLabels(ls map[string]string) map[string]string {
+	if len(ls) == 0 {
+		return ls
+	}
+	res := make(map[string]string, len(ls))
+	for k, v := range ls {
+		if !strings.HasPrefix(k, helmLabelPrefix) {
+			res[k] = v
+		}
+	}
+	return res
 }

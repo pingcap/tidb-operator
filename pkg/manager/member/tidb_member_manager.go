@@ -283,6 +283,18 @@ func (m *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
 		return fmt.Errorf("syncTiDBService: failed to get svc %s for cluster %s/%s, error: %s", newSvc.Name, ns, tc.GetName(), err)
 	}
 	oldSvc := oldSvcTmp.DeepCopy()
+	if newSvc.Annotations == nil {
+		newSvc.Annotations = map[string]string{}
+	}
+	if oldSvc.Annotations == nil {
+		oldSvc.Annotations = map[string]string{}
+	}
+	if newSvc.Labels == nil {
+		newSvc.Labels = map[string]string{}
+	}
+	if oldSvc.Labels == nil {
+		oldSvc.Labels = map[string]string{}
+	}
 	util.RetainManagedFields(newSvc, oldSvc)
 
 	equal, err := controller.ServiceEqual(newSvc, oldSvc)
@@ -315,6 +327,7 @@ func (m *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
 	// also override labels when adopt orphan
 	if isOrphan {
 		svc.OwnerReferences = newSvc.OwnerReferences
+		svc.Labels = removeHelmLabels(svc.Labels)
 	}
 	_, err = m.deps.ServiceControl.UpdateService(tc, &svc)
 	return err
