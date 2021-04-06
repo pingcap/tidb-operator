@@ -425,12 +425,11 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		return nil, fmt.Errorf("cannot parse storage request for tikv, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
 	}
 
-	baseLabels := labelTiKV(tc)
-	stsLabels := baseLabels
-	podLabels := CombineKVMap(baseLabels.Labels(), baseTiKVSpec.Labels())
+	stsLabels := labelTiKV(tc)
+	podLabels := CombineKVMap(stsLabels.Labels(), baseTiKVSpec.Labels())
 	setName := controller.TiKVMemberName(tcName)
 	podAnnotations := CombineKVMap(controller.AnnProm(20180), baseTiKVSpec.Annotations())
-	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiKVLabelVal)
+	stsAnnotations := getStsDeleteSlots(tc.Annotations, label.TiKVLabelVal)
 	capacity := controller.TiKVCapacity(tc.Spec.TiKV.Limits)
 	headlessSvcName := controller.TiKVPeerMemberName(tcName)
 

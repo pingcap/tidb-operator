@@ -234,8 +234,8 @@ func AddConfigMapDigestSuffix(cm *corev1.ConfigMap) error {
 	return nil
 }
 
-// getStsAnnotations gets annotations for statefulset of given component.
-func getStsAnnotations(tcAnns map[string]string, component string) map[string]string {
+// getStsDeleteSlots gets the "delete slots" annotation for statefulset of given component.
+func getStsDeleteSlots(tcAnns map[string]string, component string) map[string]string {
 	anns := map[string]string{}
 	if tcAnns == nil {
 		return anns
