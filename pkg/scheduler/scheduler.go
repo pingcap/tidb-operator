@@ -209,6 +209,7 @@ func (s *scheduler) Preempt(args *schedulerapi.ExtenderPreemptionArgs) (*schedul
 	// we need to filter out nodes in Preempt phase
 	kubeNodes := make([]apiv1.Node, 0, len(args.NodeNameToVictims))
 	for nodeName := range args.NodeNameToVictims {
+		// tidb-scheduler must have permission for nodes.
 		// optimize this when we have performance issue
 		node, err := s.kubeCli.CoreV1().Nodes().Get(nodeName, metav1.GetOptions{})
 		if err != nil {
