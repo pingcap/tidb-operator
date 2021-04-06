@@ -101,6 +101,7 @@ const (
 
 // TidbCluster is the control script's spec
 // +k8s:openapi-gen=true
+// +kubebuilder:resource:shortName="tc"
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="PD",type=string,JSONPath=`.status.pd.image`,description="The image for PD cluster"
 // +kubebuilder:printcolumn:name="Storage",type=string,JSONPath=`.spec.pd.requests.storage`,description="The storage size specified for PD node"
@@ -1165,6 +1166,7 @@ type TLSCluster struct {
 
 // +k8s:openapi-gen=true
 // Backup is a backup of tidb cluster.
+// +kubebuilder:resource:shortName="bk"
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.phase`,description="The current status of the backup"
 // +kubebuilder:printcolumn:name="BackupPath",type=string,JSONPath=`.status.backupPath`,description="The full path of backup data"
 // +kubebuilder:printcolumn:name="BackupSize",type=string,JSONPath=`.status.backupSizeReadable`,description="The data size of the backup"
@@ -1509,6 +1511,7 @@ type BackupStatus struct {
 
 // +k8s:openapi-gen=true
 // BackupSchedule is a backup schedule of tidb cluster.
+// +kubebuilder:resource:shortName="bks"
 // +kubebuilder:printcolumn:name="Schedule",type=string,JSONPath=`.spec.schedule`,description="The cron format string used for backup scheduling"
 // +kubebuilder:printcolumn:name="MaxBackups",type=integer,JSONPath=`.spec.maxBackups`,description="The max number of backups we want to keep"
 // +kubebuilder:printcolumn:name="LastBackup",type=string,JSONPath=`.status.lastBackup`,description="The last backup CR name",priority=1
@@ -1581,6 +1584,7 @@ type BackupScheduleStatus struct {
 
 // +k8s:openapi-gen=true
 // Restore represents the restoration of backup of a tidb cluster.
+// +kubebuilder:resource:shortName="rt"
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.phase`,description="The current status of the restore"
 // +kubebuilder:printcolumn:name="Started",type=date,JSONPath=`.status.timeStarted`,description="The time at which the restore was started",priority=1
 // +kubebuilder:printcolumn:name="Completed",type=date,JSONPath=`.status.timeCompleted`,description="The time at which the restore was completed",priority=1
@@ -1744,6 +1748,7 @@ type IngressSpec struct {
 
 // +k8s:openapi-gen=true
 // DMCluster is the control script's spec
+// +kubebuilder:resource:shortName="dc"
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Master",type=string,JSONPath=`.status.master.image`,description="The image for dm-master cluster"
 // +kubebuilder:printcolumn:name="Storage",type=string,JSONPath=`.spec.master.storageSize`,description="The storage size specified for dm-master node"
