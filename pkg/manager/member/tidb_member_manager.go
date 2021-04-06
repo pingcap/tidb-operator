@@ -290,30 +290,34 @@ func (m *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
 		return err
 	}
 	annoEqual := util.IsSubMapOf(newSvc.Annotations, oldSvc.Annotations)
+	labelEqual := util.IsSubMapOf(newSvc.Labels, oldSvc.Labels)
 	isOrphan := metav1.GetControllerOf(oldSvc) == nil
 
-	if !equal || !annoEqual || isOrphan {
-		svc := *oldSvc
-		svc.Spec = newSvc.Spec
-		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
-		if err != nil {
-			return err
-		}
-		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
-		// apply change of annotations if any
-		for k, v := range newSvc.Annotations {
-			svc.Annotations[k] = v
-		}
-		// also override labels when adopt orphan
-		if isOrphan {
-			svc.OwnerReferences = newSvc.OwnerReferences
-			svc.Labels = newSvc.Labels
-		}
-		_, err = m.deps.ServiceControl.UpdateService(tc, &svc)
-		return err
+	if equal && annoEqual && labelEqual && !isOrphan {
+		return nil
 	}
 
-	return nil
+	svc := *oldSvc
+	svc.Spec = newSvc.Spec
+	err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
+	if err != nil {
+		return err
+	}
+	svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
+	// apply change of annotations if any
+	for k, v := range newSvc.Annotations {
+		svc.Annotations[k] = v
+	}
+	// apply change of labels if any
+	for k, v := range newSvc.Labels {
+		svc.Labels[k] = v
+	}
+	// also override labels when adopt orphan
+	if isOrphan {
+		svc.OwnerReferences = newSvc.OwnerReferences
+	}
+	_, err = m.deps.ServiceControl.UpdateService(tc, &svc)
+	return err
 }
 
 // syncTiDBConfigMap syncs the configmap of tidb
@@ -417,7 +421,7 @@ func getNewTiDBServiceOrNil(tc *v1alpha1.TidbCluster) *corev1.Service {
 	instanceName := tc.GetInstanceName()
 	tidbSelector := label.New().Instance(instanceName).TiDB()
 	svcName := controller.TiDBMemberName(tcName)
-	tidbLabels := tidbSelector.Copy().UsedByEndUser().Labels()
+	tidbLabels := CombineKVMap(tidbSelector.Copy().UsedByEndUser().Labels(), svcSpec.Labels)
 	portName := "mysql-client"
 	if svcSpec.PortName != nil {
 		portName = *svcSpec.PortName
@@ -754,7 +758,8 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		podSpec.DNSPolicy = corev1.DNSClusterFirstWithHostNet
 	}
 
-	tidbLabel := label.New().Instance(instanceName).TiDB()
+	stsLabels := label.New().Instance(instanceName).TiDB()
+	podLabels := CombineKVMap(stsLabels, baseTiDBSpec.Labels())
 	podAnnotations := CombineKVMap(controller.AnnProm(10080), baseTiDBSpec.Annotations())
 	stsAnnotations := getStsDeleteSlots(tc.Annotations, label.TiDBLabelVal)
 
@@ -777,16 +782,16 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            setName,
 			Namespace:       ns,
-			Labels:          tidbLabel.Labels(),
+			Labels:          stsLabels.Labels(),
 			Annotations:     stsAnnotations,
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
 			Replicas: pointer.Int32Ptr(tc.TiDBStsDesiredReplicas()),
-			Selector: tidbLabel.LabelSelector(),
+			Selector: stsLabels.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      tidbLabel.Labels(),
+					Labels:      podLabels,
 					Annotations: podAnnotations,
 				},
 				Spec: podSpec,
