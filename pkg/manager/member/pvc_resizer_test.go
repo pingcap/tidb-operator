@@ -125,6 +125,36 @@ func TestPVCResizer(t *testing.T) {
 			},
 		},
 		{
+			name: "resize TiDB PVCs",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: v1.NamespaceDefault,
+					Name:      "tc",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: &v1alpha1.TiDBSpec{
+						StorageVolumes: []v1alpha1.StorageVolume{
+							{
+								Name:        "log",
+								StorageSize: "2Gi",
+							},
+						},
+					},
+				},
+			},
+			sc: newStorageClass("sc", true),
+			pvcs: []*v1.PersistentVolumeClaim{
+				newPVCWithStorage("tidb-log-tc-tidb-0", label.TiDBLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("tidb-log-tc-tidb-1", label.TiDBLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("tidb-log-tc-tidb-2", label.TiDBLabelVal, "sc", "1Gi"),
+			},
+			wantPVCs: []*v1.PersistentVolumeClaim{
+				newPVCWithStorage("tidb-log-tc-tidb-0", label.TiDBLabelVal, "sc", "2Gi"),
+				newPVCWithStorage("tidb-log-tc-tidb-1", label.TiDBLabelVal, "sc", "2Gi"),
+				newPVCWithStorage("tidb-log-tc-tidb-2", label.TiDBLabelVal, "sc", "2Gi"),
+			},
+		},
+		{
 			name: "resize TiKV PVCs",
 			tc: &v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{

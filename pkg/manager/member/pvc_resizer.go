@@ -63,6 +63,7 @@ type PVCResizerInterface interface {
 
 var (
 	pdRequirement      = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.PDLabelVal})
+	tidbRequirement    = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiDBLabelVal})
 	tikvRequirement    = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiKVLabelVal})
 	tiflashRequirement = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiFlashLabelVal})
 	pumpRequirement    = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.PumpLabelVal})
@@ -82,14 +83,14 @@ func (p *pvcResizer) Resize(tc *v1alpha1.TidbCluster) error {
 		return err
 	}
 
-	// First we compose a map, with PVC name prefix for current component as keys,
+	// For each component, we compose a map called pvcPrefix2Quantity, with PVC name prefix for current component as keys,
 	// for example "pd-${tcName}-pd" (for tc.Spec.PD.Requests) or "pd-log-${tcName}-pd" (for tc.Spec.PD.storageVolumes elements with name "log").
 	// Reference implementation of BuildStorageVolumeAndVolumeMount().
 	// Note: for TiFlash, it is currently "data0-${tcName}-tiflash" (for tc.Spec.TiFlash.StorageClaims elements, in list definition order)
-	pvcPrefix2Quantity := make(map[string]resource.Quantity)
 
 	// patch PD PVCs
 	if tc.Spec.PD != nil {
+		pvcPrefix2Quantity := make(map[string]resource.Quantity)
 		pdMemberType := v1alpha1.PDMemberType.String()
 		if quantity, ok := tc.Spec.PD.Requests[corev1.ResourceStorage]; ok {
 			key := fmt.Sprintf("%s-%s-%s", pdMemberType, tc.Name, pdMemberType)
@@ -107,9 +108,25 @@ func (p *pvcResizer) Resize(tc *v1alpha1.TidbCluster) error {
 			return err
 		}
 	}
-
+	// patch TiDB PVCs
+	if tc.Spec.TiDB != nil {
+		pvcPrefix2Quantity := make(map[string]resource.Quantity)
+		tidbMemberType := v1alpha1.TiDBMemberType.String()
+		for _, sv := range tc.Spec.TiDB.StorageVolumes {
+			key := fmt.Sprintf("%s-%s-%s-%s", tidbMemberType, sv.Name, tc.Name, tidbMemberType)
+			if quantity, err := resource.ParseQuantity(sv.StorageSize); err == nil {
+				pvcPrefix2Quantity[key] = quantity
+			} else {
+				klog.Warningf("StorageVolume %q in %s/%s .Spec.TiDB is invalid", sv.Name, ns, tc.Name)
+			}
+		}
+		if err := p.patchPVCs(ns, selector.Add(*tidbRequirement), pvcPrefix2Quantity); err != nil {
+			return err
+		}
+	}
 	// patch TiKV PVCs
 	if tc.Spec.TiKV != nil {
+		pvcPrefix2Quantity := make(map[string]resource.Quantity)
 		tikvMemberType := v1alpha1.TiKVMemberType.String()
 		if quantity, ok := tc.Spec.TiKV.Requests[corev1.ResourceStorage]; ok {
 			key := fmt.Sprintf("%s-%s-%s", tikvMemberType, tc.Name, tikvMemberType)
@@ -130,6 +147,7 @@ func (p *pvcResizer) Resize(tc *v1alpha1.TidbCluster) error {
 
 	// patch TiFlash PVCs
 	if tc.Spec.TiFlash != nil {
+		pvcPrefix2Quantity := make(map[string]resource.Quantity)
 		tiflashMemberType := v1alpha1.TiFlashMemberType.String()
 		for i, claim := range tc.Spec.TiFlash.StorageClaims {
 			key := fmt.Sprintf("data%d-%s-%s", i, tc.Name, tiflashMemberType)
@@ -144,6 +162,7 @@ func (p *pvcResizer) Resize(tc *v1alpha1.TidbCluster) error {
 
 	// patch Pump PVCs
 	if tc.Spec.Pump != nil {
+		pvcPrefix2Quantity := make(map[string]resource.Quantity)
 		pumpMemberType := v1alpha1.PumpMemberType.String()
 		if quantity, ok := tc.Spec.Pump.Requests[corev1.ResourceStorage]; ok {
 			key := fmt.Sprintf("data-%s-%s", tc.Name, pumpMemberType)
@@ -177,9 +196,6 @@ func (p *pvcResizer) patchPVCs(ns string, selector labels.Selector, pvcQuantityI
 		return err
 	}
 
-	if err != nil {
-		return err
-	}
 	// the PVC name for StatefulSet will be ${pvcNameInTemplate}-${stsName}-${ordinal}, here we want to drop the ordinal
 	rePvcPrefix := regexp.MustCompile(`^(.+)-\d+$`)
 	for _, pvc := range pvcs {

@@ -18,6 +18,7 @@ data/
 cscope.files
 tags
 filenametags
+.vscode
 
 # ginkgo test coverage
 *.coverprofile
