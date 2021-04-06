@@ -232,7 +232,7 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error)
 	baseTiCDCSpec := tc.BaseTiCDCSpec()
 	ticdcLabel := labelTiCDC(tc)
 	stsName := controller.TiCDCMemberName(tcName)
-	podAnnotations := CombineAnnotations(controller.AnnProm(8301), baseTiCDCSpec.Annotations())
+	podAnnotations := CombineKVMap(controller.AnnProm(8301), baseTiCDCSpec.Annotations())
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiCDCLabelVal)
 	headlessSvcName := controller.TiCDCPeerMemberName(tcName)
 

@@ -162,8 +162,8 @@ func PdName(tcName string, ordinal int32, namespace string, clusterDomain string
 	return PdPodName(tcName, ordinal)
 }
 
-// CombineAnnotations merges two annotations maps
-func CombineAnnotations(a, b map[string]string) map[string]string {
+// CombineKVMap merges two annotations maps
+func CombineKVMap(a, b map[string]string) map[string]string {
 	if a == nil {
 		a = make(map[string]string)
 	}
@@ -182,18 +182,6 @@ func CopyAnnotations(src map[string]string) map[string]string {
 		dst[k] = v
 	}
 	return dst
-}
-
-// MergeLabels merge additional labelset and base labelset to a new labelset. Additional labelset will override base labelset if conflicts.
-func MergeLabels(base, additional map[string]string) map[string]string {
-	res := make(map[string]string, len(additional)+len(base))
-	for k, v := range base {
-		res[k] = v
-	}
-	for k, v := range additional {
-		res[k] = v
-	}
-	return res
 }
 
 // NeedForceUpgrade check if force upgrade is necessary

@@ -461,7 +461,7 @@ func (m *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbCluster
 			pdService.Spec.Type = svcSpec.Type
 		}
 		pdService.ObjectMeta.Annotations = CopyAnnotations(svcSpec.Annotations)
-		pdService.ObjectMeta.Labels = MergeLabels(pdService.ObjectMeta.Labels, svcSpec.Labels)
+		pdService.ObjectMeta.Labels = CombineKVMap(pdService.ObjectMeta.Labels, svcSpec.Labels)
 		if svcSpec.LoadBalancerIP != nil {
 			pdService.Spec.LoadBalancerIP = *svcSpec.LoadBalancerIP
 		}
@@ -678,8 +678,8 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	setName := controller.PDMemberName(tcName)
 	baseLabels := label.New().Instance(instanceName).PD()
 	stsLabels := baseLabels
-	podLabels := MergeLabels(baseLabels, basePDSpec.Labels())
-	podAnnotations := CombineAnnotations(controller.AnnProm(2379), basePDSpec.Annotations())
+	podLabels := CombineKVMap(baseLabels, basePDSpec.Labels())
+	podAnnotations := CombineKVMap(controller.AnnProm(2379), basePDSpec.Annotations())
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.PDLabelVal)
 
 	deleteSlotsNumber, err := util.GetDeleteSlotsNumber(stsAnnotations)
