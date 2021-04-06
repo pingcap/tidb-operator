@@ -129,8 +129,6 @@ func main() {
 	}
 
 	deps := controller.NewDependencies(ns, cliCfg, cli, kubeCli, genericCli)
-	controllerCtx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	onStarted := func(ctx context.Context) {
 		// Upgrade before running any controller logic. If it fails, we wait
@@ -188,7 +186,7 @@ func main() {
 		}
 	}
 	onStopped := func() {
-		klog.Error("leader election lost")
+		klog.Fatal("leader election lost")
 	}
 
 	endPointsName := "tidb-controller-manager"
@@ -197,7 +195,7 @@ func main() {
 	}
 	// leader election for multiple tidb-controller-manager instances
 	go wait.Forever(func() {
-		leaderelection.RunOrDie(controllerCtx, leaderelection.LeaderElectionConfig{
+		leaderelection.RunOrDie(context.TODO(), leaderelection.LeaderElectionConfig{
 			Lock: &resourcelock.EndpointsLock{
 				EndpointsMeta: metav1.ObjectMeta{
 					Namespace: ns,
@@ -234,7 +232,6 @@ func main() {
 		if err2 := srv.Shutdown(context.Background()); err2 != nil {
 			klog.Fatal("fail to shutdown the HTTP server", err2)
 		}
-		close(sc)
 	}()
 
 	if err = srv.ListenAndServe(); err != http.ErrServerClosed {
