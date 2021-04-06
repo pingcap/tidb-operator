@@ -51,7 +51,11 @@ rules:
   verbs: ["create"]
 - apiGroups: ["coordination.k8s.io"]
   resources: ["leases"]
+  {{- if eq .Values.appendReleaseSuffix true}}
+  resourceNames: ["{{ .Values.scheduler.schedulerName }}-{{ .Release.Name }}"]
+  {{- else }}
   resourceNames: ["{{ .Values.scheduler.schedulerName }}"]
+  {{- end }}
   verbs: ["get", "update"]
 ---
 kind: ClusterRoleBinding
