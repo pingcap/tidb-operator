@@ -1097,6 +1097,10 @@ type TiKVStore struct {
 	State             string      `json:"state"`
 	LastHeartbeatTime metav1.Time `json:"lastHeartbeatTime"`
 	// Last time the health transitioned from one to another.
+	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
+	// TODO: LastTransitionTime is not always set
+	// +nullable
+	// +optional
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 }
 
