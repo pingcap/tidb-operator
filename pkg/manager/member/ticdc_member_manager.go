@@ -230,8 +230,9 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error)
 	tcName := tc.GetName()
 
 	baseTiCDCSpec := tc.BaseTiCDCSpec()
-	ticdcLabel := labelTiCDC(tc)
+	stsLabels := labelTiCDC(tc)
 	stsName := controller.TiCDCMemberName(tcName)
+	podLabels := CombineKVMap(stsLabels, baseTiCDCSpec.Labels())
 	podAnnotations := CombineKVMap(controller.AnnProm(8301), baseTiCDCSpec.Annotations())
 	stsAnnotations := getStsDeleteSlots(tc.Annotations, label.TiCDCLabelVal)
 	headlessSvcName := controller.TiCDCPeerMemberName(tcName)
@@ -341,16 +342,16 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error)
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            stsName,
 			Namespace:       ns,
-			Labels:          ticdcLabel.Labels(),
+			Labels:          stsLabels.Labels(),
 			Annotations:     stsAnnotations,
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
 			Replicas: pointer.Int32Ptr(tc.TiCDCDeployDesiredReplicas()),
-			Selector: ticdcLabel.LabelSelector(),
+			Selector: stsLabels.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      ticdcLabel.Labels(),
+					Labels:      podLabels,
 					Annotations: podAnnotations,
 				},
 				Spec: podSpec,

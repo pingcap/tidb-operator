@@ -412,8 +412,9 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 		VolumeMounts: initVolMounts,
 	})
 
-	tiflashLabel := labelTiFlash(tc)
+	stsLabels := labelTiFlash(tc)
 	setName := controller.TiFlashMemberName(tcName)
+	podLabels := CombineKVMap(stsLabels, baseTiFlashSpec.Labels())
 	podAnnotations := CombineKVMap(controller.AnnProm(8234), baseTiFlashSpec.Annotations())
 	podAnnotations = CombineKVMap(controller.AnnAdditionalProm("tiflash.proxy", 20292), podAnnotations)
 	stsAnnotations := getStsDeleteSlots(tc.Annotations, label.TiFlashLabelVal)
@@ -535,16 +536,16 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            setName,
 			Namespace:       ns,
-			Labels:          tiflashLabel.Labels(),
+			Labels:          stsLabels.Labels(),
 			Annotations:     stsAnnotations,
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
 			Replicas: pointer.Int32Ptr(tc.TiFlashStsDesiredReplicas()),
-			Selector: tiflashLabel.LabelSelector(),
+			Selector: stsLabels.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      tiflashLabel.Labels(),
+					Labels:      podLabels,
 					Annotations: podAnnotations,
 				},
 				Spec: podSpec,
