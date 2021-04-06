@@ -1619,7 +1619,6 @@ spec:
             - backupSize
             - backupSizeReadable
             - commitTs
-            - conditions
             - phase
             type: object
         type: object

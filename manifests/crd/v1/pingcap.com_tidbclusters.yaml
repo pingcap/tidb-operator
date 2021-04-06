@@ -18810,8 +18810,9 @@ spec:
                           format: date-time
                           type: string
                         lastTransitionTime:
-                          description: Last time the health transitioned from one to another.
+                          description: 'Last time the health transitioned from one to another. TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811 TODO: LastTransitionTime is not always set'
                           format: date-time
+                          nullable: true
                           type: string
                         leaderCount:
                           format: int32
@@ -18907,8 +18908,9 @@ spec:
                           format: date-time
                           type: string
                         lastTransitionTime:
-                          description: Last time the health transitioned from one to another.
+                          description: 'Last time the health transitioned from one to another. TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811 TODO: LastTransitionTime is not always set'
                           format: date-time
+                          nullable: true
                           type: string
                         leaderCount:
                           format: int32
@@ -18941,8 +18943,9 @@ spec:
                           format: date-time
                           type: string
                         lastTransitionTime:
-                          description: Last time the health transitioned from one to another.
+                          description: 'Last time the health transitioned from one to another. TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811 TODO: LastTransitionTime is not always set'
                           format: date-time
+                          nullable: true
                           type: string
                         leaderCount:
                           format: int32
@@ -18994,8 +18997,9 @@ spec:
                           format: date-time
                           type: string
                         lastTransitionTime:
-                          description: Last time the health transitioned from one to another.
+                          description: 'Last time the health transitioned from one to another. TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811 TODO: LastTransitionTime is not always set'
                           format: date-time
+                          nullable: true
                           type: string
                         leaderCount:
                           format: int32
@@ -19091,8 +19095,9 @@ spec:
                           format: date-time
                           type: string
                         lastTransitionTime:
-                          description: Last time the health transitioned from one to another.
+                          description: 'Last time the health transitioned from one to another. TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811 TODO: LastTransitionTime is not always set'
                           format: date-time
+                          nullable: true
                           type: string
                         leaderCount:
                           format: int32
@@ -19125,8 +19130,9 @@ spec:
                           format: date-time
                           type: string
                         lastTransitionTime:
-                          description: Last time the health transitioned from one to another.
+                          description: 'Last time the health transitioned from one to another. TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811 TODO: LastTransitionTime is not always set'
                           format: date-time
+                          nullable: true
                           type: string
                         leaderCount:
                           format: int32

@@ -1581,7 +1581,6 @@ spec:
                 type: string
             required:
             - commitTs
-            - conditions
             - phase
             type: object
         type: object
