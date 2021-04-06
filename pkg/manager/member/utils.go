@@ -294,41 +294,50 @@ func UpdateStatefulSet(setCtl controller.StatefulSetControlInterface, object run
 	if oldSet.Annotations == nil {
 		oldSet.Annotations = map[string]string{}
 	}
-	if !util.StatefulSetEqual(*newSet, *oldSet) || isOrphan {
-		set := *oldSet
-		// Retain the deprecated last applied pod template annotation for backward compatibility
-		var podConfig string
-		var hasPodConfig bool
-		if oldSet.Spec.Template.Annotations != nil {
-			podConfig, hasPodConfig = oldSet.Spec.Template.Annotations[LastAppliedConfigAnnotation]
-		}
-		set.Spec.Template = newSet.Spec.Template
-		if hasPodConfig {
-			if set.Spec.Template.Annotations == nil {
-				set.Spec.Template.Annotations = map[string]string{}
-			}
-			set.Spec.Template.Annotations[LastAppliedConfigAnnotation] = podConfig
-		}
-		set.Annotations = newSet.Annotations
-		v, ok := oldSet.Annotations[label.AnnStsLastSyncTimestamp]
-		if ok {
-			set.Annotations[label.AnnStsLastSyncTimestamp] = v
-		}
-		*set.Spec.Replicas = *newSet.Spec.Replicas
-		set.Spec.UpdateStrategy = newSet.Spec.UpdateStrategy
-		if isOrphan {
-			set.OwnerReferences = newSet.OwnerReferences
-			set.Labels = newSet.Labels
-		}
-		err := SetStatefulSetLastAppliedConfigAnnotation(&set)
-		if err != nil {
-			return err
-		}
-		_, err = setCtl.UpdateStatefulSet(object, &set)
+
+	// Check if an upgrade is needed.
+	// If not, early return.
+	if util.StatefulSetEqual(*newSet, *oldSet) && !isOrphan {
+		return nil
+	}
+
+	set := *oldSet
+
+	// update specs for sts
+	*set.Spec.Replicas = *newSet.Spec.Replicas
+	set.Spec.UpdateStrategy = newSet.Spec.UpdateStrategy
+	set.Labels = newSet.Labels
+	set.Annotations = newSet.Annotations
+	set.Spec.Template = newSet.Spec.Template
+	if isOrphan {
+		set.OwnerReferences = newSet.OwnerReferences
+	}
+	err := SetStatefulSetLastAppliedConfigAnnotation(&set)
+	if err != nil {
 		return err
 	}
 
-	return nil
+	// LastAppliedConfigAnnotation and AnnStsLastSyncTimestamp are deprecated.
+	// Keep them here for backward compatibility.
+	var podConfig string
+	var hasPodConfig bool
+	if oldSet.Spec.Template.Annotations != nil {
+		podConfig, hasPodConfig = oldSet.Spec.Template.Annotations[LastAppliedConfigAnnotation]
+	}
+	if hasPodConfig {
+		if set.Spec.Template.Annotations == nil {
+			set.Spec.Template.Annotations = map[string]string{}
+		}
+		set.Spec.Template.Annotations[LastAppliedConfigAnnotation] = podConfig
+	}
+	v, ok := oldSet.Annotations[label.AnnStsLastSyncTimestamp]
+	if ok {
+		set.Annotations[label.AnnStsLastSyncTimestamp] = v
+	}
+
+	// commit to k8s
+	_, err = setCtl.UpdateStatefulSet(object, &set)
+	return err
 }
 
 // findContainerByName finds targetContainer by containerName, If not find, then return nil
