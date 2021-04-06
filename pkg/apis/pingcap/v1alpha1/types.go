@@ -1499,8 +1499,9 @@ type BackupStatus struct {
 	// CommitTs is the snapshot time point of tidb cluster.
 	CommitTs string `json:"commitTs"`
 	// Phase is a user readable state inferred from the underlying Backup conditions
-	Phase      BackupConditionType `json:"phase"`
-	Conditions []BackupCondition   `json:"conditions"`
+	Phase BackupConditionType `json:"phase"`
+	// +optional
+	Conditions []BackupCondition `json:"conditions,omitempty"`
 }
 
 // +genclient
@@ -1715,8 +1716,9 @@ type RestoreStatus struct {
 	// CommitTs is the snapshot time point of tidb cluster.
 	CommitTs string `json:"commitTs"`
 	// Phase is a user readable state inferred from the underlying Restore conditions
-	Phase      RestoreConditionType `json:"phase"`
-	Conditions []RestoreCondition   `json:"conditions"`
+	Phase RestoreConditionType `json:"phase"`
+	// +optional
+	Conditions []RestoreCondition `json:"conditions,omitempty"`
 }
 
 // +k8s:openapi-gen=true
