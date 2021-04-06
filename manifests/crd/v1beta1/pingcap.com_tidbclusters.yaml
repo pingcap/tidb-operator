@@ -68,6 +68,8 @@ spec:
     kind: TidbCluster
     listKind: TidbClusterList
     plural: tidbclusters
+    shortNames:
+    - tc
     singular: tidbcluster
   preserveUnknownFields: false
   scope: Namespaced

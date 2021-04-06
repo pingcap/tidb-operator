@@ -3259,6 +3259,7 @@ BackupConditionType
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>
@@ -11182,6 +11183,7 @@ RestoreConditionType
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>
@@ -18754,7 +18756,10 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<p>Last time the health transitioned from one to another.</p>
+<em>(Optional)</em>
+<p>Last time the health transitioned from one to another.
+TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/86811">https://github.com/kubernetes/kubernetes/issues/86811</a>
+TODO: LastTransitionTime is not always set</p>
 </td>
 </tr>
 </tbody>

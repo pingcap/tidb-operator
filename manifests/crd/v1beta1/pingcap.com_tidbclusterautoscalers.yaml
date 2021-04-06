@@ -13,6 +13,8 @@ spec:
     kind: TidbClusterAutoScaler
     listKind: TidbClusterAutoScalerList
     plural: tidbclusterautoscalers
+    shortNames:
+    - ta
     singular: tidbclusterautoscaler
   preserveUnknownFields: false
   scope: Namespaced

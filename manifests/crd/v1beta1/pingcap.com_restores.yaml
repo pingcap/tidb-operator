@@ -35,6 +35,8 @@ spec:
     kind: Restore
     listKind: RestoreList
     plural: restores
+    shortNames:
+    - rt
     singular: restore
   preserveUnknownFields: false
   scope: Namespaced

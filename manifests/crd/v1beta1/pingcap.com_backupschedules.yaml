@@ -35,6 +35,8 @@ spec:
     kind: BackupSchedule
     listKind: BackupScheduleList
     plural: backupschedules
+    shortNames:
+    - bks
     singular: backupschedule
   preserveUnknownFields: false
   scope: Namespaced

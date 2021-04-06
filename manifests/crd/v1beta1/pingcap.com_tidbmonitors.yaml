@@ -13,6 +13,8 @@ spec:
     kind: TidbMonitor
     listKind: TidbMonitorList
     plural: tidbmonitors
+    shortNames:
+    - tm
     singular: tidbmonitor
   preserveUnknownFields: false
   scope: Namespaced
