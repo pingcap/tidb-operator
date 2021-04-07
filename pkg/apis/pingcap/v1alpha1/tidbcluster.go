@@ -272,6 +272,10 @@ func (tc *TidbCluster) TiFlashUpgrading() bool {
 	return tc.Status.TiFlash.Phase == UpgradePhase
 }
 
+func (tc *TidbCluster) TiFlashScaling() bool {
+	return tc.Status.TiFlash.Phase == ScalePhase
+}
+
 func (tc *TidbCluster) getDeleteSlots(component string) (deleteSlots sets.Int32) {
 	deleteSlots = sets.NewInt32()
 	annotations := tc.GetAnnotations()

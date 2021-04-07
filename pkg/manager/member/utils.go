@@ -153,6 +153,10 @@ func tidbPodName(tcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", controller.TiDBMemberName(tcName), ordinal)
 }
 
+func ticdcPodName(tcName string, ordinal int32) string {
+	return fmt.Sprintf("%s-%d", controller.TiCDCMemberName(tcName), ordinal)
+}
+
 func DMMasterPodName(dcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", controller.DMMasterMemberName(dcName), ordinal)
 }
