@@ -18,6 +18,10 @@ TiDB Operator 版本：1.2.0-beta.1
 
     详情可以参考 [helm/helm#7697](https://github.com/helm/helm/issues/7697)，此时需要通过 `helm uninstall` 删除 TiDB Operator 然后重新安装（删除 TiDB Operator 不会影响现有集群）。
 
+## 滚动升级改动
+
+- 由于 [#3785](https://github.com/pingcap/tidb-operator/pull/3785) 的改动，升级 TiDB Operator 会导致 TidbMonitor Pod 删除重建。
+
 ## 新功能
 
 - 支持为备份和恢复 Job 设置自定义环境变量 ([#3833](https://github.com/pingcap/tidb-operator/pull/3833)，[@dragonly](https://github.com/dragonly))

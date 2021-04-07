@@ -18,6 +18,10 @@ TiDB Operator version: 1.2.0-beta.1
 
      For details, refer to [helm/helm#7697](https://github.com/helm/helm/issues/7697). In this case, you need to delete TiDB Operator through `helm uninstall` and then reinstall it (deleting TiDB Operator will not affect the current TiDB clusters).
 
+## Rolling Update Changes
+
+- Upgrading TiDB Operator will cause the recreation of the TidbMonitor Pod due to [#3785](https://github.com/pingcap/tidb-operator/pull/3785)
+
 ## New Features
 
 - Support setting customized environment variables for backup and restore job containers ([#3833](https://github.com/pingcap/tidb-operator/pull/3833), [@dragonly](https://github.com/dragonly))
