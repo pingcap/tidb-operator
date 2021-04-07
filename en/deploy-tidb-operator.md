@@ -99,7 +99,7 @@ After creating CRDs in the step above, there are two methods to deploy TiDB Oper
 
     > **Note:**
     >
-    > `${chart_version}` represents the chart version of TiDB Operator. For example, `v1.2.0-alpha.1`. You can view the currently supported versions by running the `helm search repo -l tidb-operator` command.
+    > `${chart_version}` represents the chart version of TiDB Operator. For example, `v1.2.0-beta.1`. You can view the currently supported versions by running the `helm search repo -l tidb-operator` command.
 
 2. Configure TiDB Operator
 
@@ -143,15 +143,15 @@ If your server cannot access the Internet, install TiDB Operator offline by the 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    wget http://charts.pingcap.org/tidb-operator-v1.2.0-alpha.1.tgz
+    wget http://charts.pingcap.org/tidb-operator-v1.2.0-beta.1.tgz
     ```
 
-    Copy the `tidb-operator-v1.2.0-alpha.1.tgz` file to the target server and extract it to the current directory:
+    Copy the `tidb-operator-v1.2.0-beta.1.tgz` file to the target server and extract it to the current directory:
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    tar zxvf tidb-operator.v1.2.0-alpha.1.tgz
+    tar zxvf tidb-operator.v1.2.0-beta.1.tgz
     ```
 
 2. Download the Docker images used by TiDB Operator
@@ -163,8 +163,8 @@ If your server cannot access the Internet, install TiDB Operator offline by the 
     {{< copyable "" >}}
 
     ```shell
-    pingcap/tidb-operator:v1.2.0-alpha.1
-    pingcap/tidb-backup-manager:v1.2.0-alpha.1
+    pingcap/tidb-operator:v1.2.0-beta.1
+    pingcap/tidb-backup-manager:v1.2.0-beta.1
     bitnami/kubectl:latest
     pingcap/advanced-statefulset:v0.3.3
     k8s.gcr.io/kube-scheduler:v1.16.9
@@ -177,13 +177,13 @@ If your server cannot access the Internet, install TiDB Operator offline by the 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    docker pull pingcap/tidb-operator:v1.2.0-alpha.1
-    docker pull pingcap/tidb-backup-manager:v1.2.0-alpha.1
+    docker pull pingcap/tidb-operator:v1.2.0-beta.1
+    docker pull pingcap/tidb-backup-manager:v1.2.0-beta.1
     docker pull bitnami/kubectl:latest
     docker pull pingcap/advanced-statefulset:v0.3.3
 
-    docker save -o tidb-operator-v1.2.0-alpha.1.tar pingcap/tidb-operator:v1.2.0-alpha.1
-    docker save -o tidb-backup-manager-v1.2.0-alpha.1.tar pingcap/tidb-backup-manager:v1.2.0-alpha.1
+    docker save -o tidb-operator-v1.2.0-beta.1.tar pingcap/tidb-operator:v1.2.0-beta.1
+    docker save -o tidb-backup-manager-v1.2.0-beta.1.tar pingcap/tidb-backup-manager:v1.2.0-beta.1
     docker save -o bitnami-kubectl.tar bitnami/kubectl:latest
     docker save -o advanced-statefulset-v0.3.3.tar pingcap/advanced-statefulset:v0.3.3
     ```
@@ -193,8 +193,8 @@ If your server cannot access the Internet, install TiDB Operator offline by the 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    docker load -i tidb-operator-v1.2.0-alpha.1.tar
-    docker load -i tidb-backup-manager-v1.2.0-alpha.1.tar
+    docker load -i tidb-operator-v1.2.0-beta.1.tar
+    docker load -i tidb-backup-manager-v1.2.0-beta.1.tar
     docker load -i bitnami-kubectl.tar
     docker load -i advanced-statefulset-v0.3.3.tar
     ```
