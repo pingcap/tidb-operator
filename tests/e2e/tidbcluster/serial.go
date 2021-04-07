@@ -458,21 +458,11 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
-			getPods := func(ls string) ([]v1.Pod, error) {
-				listOptions := metav1.ListOptions{
-					LabelSelector: ls,
-				}
-				podList, err := c.CoreV1().Pods(ns).List(listOptions)
-				if err != nil {
-					return nil, err
-				}
-				return podList.Items, nil
-			}
-			pdPods, err := getPods(labels.SelectorFromSet(label.New().Instance(tcName).PD().Labels()).String())
+			pdPods, err := getPods(labels.SelectorFromSet(label.New().Instance(tcName).PD().Labels()).String(), ns, c)
 			framework.ExpectNoError(err, "failed to get pd pods")
-			tikvPods, err := getPods(labels.SelectorFromSet(label.New().Instance(tcName).TiKV().Labels()).String())
+			tikvPods, err := getPods(labels.SelectorFromSet(label.New().Instance(tcName).TiKV().Labels()).String(), ns, c)
 			framework.ExpectNoError(err, "failed to get tikv pods")
-			tidbPods, err := getPods(labels.SelectorFromSet(label.New().Instance(tcName).TiDB().Labels()).String())
+			tidbPods, err := getPods(labels.SelectorFromSet(label.New().Instance(tcName).TiDB().Labels()).String(), ns, c)
 			framework.ExpectNoError(err, "failed to get tidb pods")
 
 			ginkgo.By("Upgrade tidb-operator and CRDs to the latest version")
@@ -629,18 +619,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
-			getPods := func(ls string) ([]v1.Pod, error) {
-				listOptions := metav1.ListOptions{
-					LabelSelector: ls,
-				}
-				podList, err := c.CoreV1().Pods(ns).List(listOptions)
-				if err != nil {
-					return nil, err
-				}
-				return podList.Items, nil
-			}
-
-			pdPods, err := getPods(labels.SelectorFromSet(label.New().Instance(tcName).PD().Labels()).String())
+			pdPods, err := getPods(labels.SelectorFromSet(label.New().Instance(tcName).PD().Labels()).String(), ns, c)
 			framework.ExpectNoError(err, "failed to get PD pods")
 
 			ginkgo.By("Set --selector=version=old for the default TiDB Operator")
@@ -710,20 +689,9 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			log.Logf("Finished deploying TidbCluster 2 with label version=new")
 
 			ginkgo.By("Wait for 2 minutes and check that no PD Pod is created")
-			getPods = func(ls string) ([]v1.Pod, error) {
-				listOptions := metav1.ListOptions{
-					LabelSelector: ls,
-				}
-				podList, err := c.CoreV1().Pods(ns).List(listOptions)
-				if err != nil {
-					return nil, err
-				}
-				return podList.Items, nil
-			}
-
 			err = wait.Poll(5*time.Second, 2*time.Minute, func() (created bool, err error) {
 				// confirm the Tidbcluster 2 PD Pods don't be created
-				pdPods, err = getPods(labels.SelectorFromSet(label.New().Instance(tc2Name).PD().Labels()).String())
+				pdPods, err = getPods(labels.SelectorFromSet(label.New().Instance(tc2Name).PD().Labels()).String(), ns, c)
 				if err != nil {
 					log.Logf("ERROR: meet error during get PD pods, err:%v", err)
 					return false, nil
@@ -886,4 +854,15 @@ func setPartitionAnnotation(namespace, tcName, component string, ordinal int) er
 		return fmt.Errorf("fail to set annotation for [%s/%s], component: %s, partition: %d, err: %v, output: %s", namespace, tcName, component, ordinal, err, output)
 	}
 	return nil
+}
+
+func getPods(ls string, ns string, c clientset.Interface) ([]v1.Pod, error) {
+	listOptions := metav1.ListOptions{
+		LabelSelector: ls,
+	}
+	podList, err := c.CoreV1().Pods(ns).List(listOptions)
+	if err != nil {
+		return nil, err
+	}
+	return podList.Items, nil
 }
