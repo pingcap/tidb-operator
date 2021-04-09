@@ -620,6 +620,16 @@ func (oa *OperatorActions) UpgradeOperator(info *OperatorConfig) error {
 	return err
 }
 
+func (oa *OperatorActions) DeployDMMySQLOrDie() {
+	if err := DeployDMMySQL(oa.kubeCli); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+
+	if err := CheckDMMySQLReady(oa.fw); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
+
 func ensurePodsUnchanged(pods1, pods2 *corev1.PodList) error {
 	pods1UIDs := getUIDs(pods1)
 	pods2UIDs := getUIDs(pods2)

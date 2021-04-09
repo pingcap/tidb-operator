@@ -16,6 +16,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	_ "net/http/pprof"
 	"os"
@@ -37,6 +38,7 @@ import (
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	utilnode "github.com/pingcap/tidb-operator/tests/e2e/util/node"
 	utiloperator "github.com/pingcap/tidb-operator/tests/e2e/util/operator"
+	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	v1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -247,6 +249,10 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	framework.ExpectNoError(err, "failed to create clientset for apiextensions-apiserver")
 	asCli, err := asclientset.NewForConfig(config)
 	framework.ExpectNoError(err, "failed to create clientset for advanced-statefulset")
+	clientRawConfig, err := e2econfig.LoadClientRawConfig()
+	framework.ExpectNoError(err, "failed to load raw config for tidb operator")
+	fw, err := portforward.NewPortForwarder(context.Background(), e2econfig.NewSimpleRESTClientGetter(clientRawConfig))
+	framework.ExpectNoError(err, "failed to create port forwarder")
 
 	ginkgo.By("Recycle all local PVs")
 	pvList, err := kubeCli.CoreV1().PersistentVolumes().List(metav1.ListOptions{})
@@ -283,7 +289,7 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	framework.ExpectNoError(err, "failed to wait for all PVs to be available")
 
 	ginkgo.By("Labeling nodes")
-	oa := tests.NewOperatorActions(cli, kubeCli, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, nil, e2econfig.TestConfig, nil, nil, nil)
+	oa := tests.NewOperatorActions(cli, kubeCli, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, nil, e2econfig.TestConfig, nil, fw, nil)
 	oa.LabelNodesOrDie()
 	if e2econfig.TestConfig.InstallOperator {
 		OperatorFeatures := map[string]bool{"AutoScaling": true}
@@ -314,6 +320,10 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 		ginkgo.By("Skip installing tidb-operator")
 	}
 
+	// setup upstream MySQL instances for DM testing.
+	// if we can only setup these resource for DM tests with something like `--focus` or `--skip`, that should be better.
+	oa.DeployDMMySQLOrDie()
+
 	ginkgo.By("Installing cert-manager")
 	err = tidbcluster.InstallCertManager(kubeCli)
 	framework.ExpectNoError(err, "failed to install cert-manager")
@@ -338,6 +348,9 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 	ginkgo.By("Deleting cert-manager")
 	err := tidbcluster.DeleteCertManager(kubeCli)
 	framework.ExpectNoError(err, "failed to delete cert-manager")
+
+	err = tests.CleanDMMySQL(kubeCli)
+	framework.ExpectNoError(err, "failed to clean DM MySQL")
 
 	ginkgo.By("Uninstalling tidb-operator")
 	ocfg := e2econfig.NewDefaultOperatorConfig(e2econfig.TestConfig)
