@@ -1590,7 +1590,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 	ginkgo.Context("Scale in", func() {
 		ginkgo.Context("and then scale out", func() {
-			components := []v1alpha1.MemberType{"PD", "TiKV", "TiDB"}
+			components := []v1alpha1.MemberType{"pd", "tikv", "tidb"}
 			// TODO: refactor fixture.GetTidbCluster to support all the components through parameters more easily
 			// components := []string{"PD", "TiKV", "TiFlash", "TiDB", "TiCDC", "Pump"}
 			for _, comp := range components {
@@ -1735,44 +1735,90 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		})
 
 		ginkgo.Context("while concurrently upgrade should work for", func() {
-			ginkgo.It("PD", func() {
-				ginkgo.By("Deploy initial tc")
-				tc := fixture.GetTidbCluster(ns, "scale-out-scale-in-pd", utilimage.TiDBV4Prev)
-				tc.Spec.PD.Replicas = 5
-				utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
-
-				ginkgo.By("Scale in PD to 3 replicas")
-				err := controller.GuaranteedUpdate(genericCli, tc, func() error {
-					tc.Spec.PD.Replicas = 3
-					return nil
-				})
-				framework.ExpectNoError(err, "failed to scale in PD for TidbCluster %s/%s", ns, tc.Name)
-
-				ginkgo.By("Wait for PD to be in ScalePhase")
-				utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.PDMemberType, v1alpha1.ScalePhase, 3*time.Minute, 10*time.Second)
-
-				ginkgo.By("Upgrade PD version concurrently")
-				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-					tc.Spec.PD.Version = pointer.StringPtr(utilimage.TiDBV4)
-					return nil
-				})
-				framework.ExpectNoError(err, "failed to scale in PD for TidbCluster %s/%s", ns, tc.Name)
-
-				ginkgo.By("Wait for tc ready")
-				err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
-				framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale in pd", ns, tc.Name)
-
-				ginkgo.By("Check PD Pods")
-				listOptions := metav1.ListOptions{
-					LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).PD().Labels()).String(),
+			components := []v1alpha1.MemberType{"pd", "tikv", "tidb"}
+			for _, comp := range components {
+				comp := comp
+				var replicasLarge, replicasSmall int32
+				switch comp {
+				case v1alpha1.PDMemberType:
+					replicasLarge = 5
+					replicasSmall = 3
+				case v1alpha1.TiKVMemberType:
+					replicasLarge = 4
+					replicasSmall = 3
+				case v1alpha1.TiDBMemberType:
+					replicasLarge = 3
+					replicasSmall = 2
 				}
-				pods, err := c.CoreV1().Pods(ns).List(listOptions)
-				framework.ExpectNoError(err, "failed to list PD Pods with options: %+v", listOptions)
-				framework.ExpectEqual(len(pods.Items), 3, "there should be 3 PD Pods")
-				for _, pod := range pods.Items {
-					framework.ExpectEqual(fmt.Sprintf("pingcap/pd:%s", utilimage.TiDBV4), pod.Spec.Containers[0].Image, "PD Pod has wrong image")
-				}
-			})
+				ginkgo.It(fmt.Sprintf("should work for %s", comp), func() {
+					ginkgo.By("Deploy initial tc")
+					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("scale-out-scale-in-%s", comp), utilimage.TiDBV4Prev)
+					switch comp {
+					case v1alpha1.PDMemberType:
+						tc.Spec.PD.Replicas = replicasLarge
+					case v1alpha1.TiKVMemberType:
+						tc.Spec.TiKV.Replicas = replicasLarge
+					case v1alpha1.TiDBMemberType:
+						tc.Spec.TiDB.Replicas = replicasLarge
+					}
+					utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
+
+					ginkgo.By(fmt.Sprintf("Scale in %s to %d replicas", comp, replicasSmall))
+					err := controller.GuaranteedUpdate(genericCli, tc, func() error {
+						switch comp {
+						case v1alpha1.PDMemberType:
+							tc.Spec.PD.Replicas = replicasSmall
+						case v1alpha1.TiKVMemberType:
+							tc.Spec.TiKV.Replicas = replicasSmall
+						case v1alpha1.TiDBMemberType:
+							tc.Spec.TiDB.Replicas = replicasSmall
+						}
+						return nil
+					})
+					framework.ExpectNoError(err, "failed to scale in %s for TidbCluster %s/%s", comp, ns, tc.Name)
+
+					ginkgo.By(fmt.Sprintf("Wait for %s to be in ScalePhase", comp))
+					utiltc.MustWaitForComponentPhase(cli, tc, comp, v1alpha1.ScalePhase, 3*time.Minute, 10*time.Second)
+
+					ginkgo.By(fmt.Sprintf("Upgrade %s version concurrently", comp))
+					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+						switch comp {
+						case v1alpha1.PDMemberType:
+							tc.Spec.PD.Version = pointer.StringPtr(utilimage.TiDBV4)
+						case v1alpha1.TiKVMemberType:
+							tc.Spec.TiKV.Version = pointer.StringPtr(utilimage.TiDBV4)
+						case v1alpha1.TiDBMemberType:
+							tc.Spec.TiDB.Version = pointer.StringPtr(utilimage.TiDBV4)
+						}
+						return nil
+					})
+					framework.ExpectNoError(err, "failed to scale in %s for TidbCluster %s/%s", comp, ns, tc.Name)
+
+					ginkgo.By("Wait for tc ready")
+					err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale in %s", ns, tc.Name, comp)
+
+					ginkgo.By(fmt.Sprintf("Check %s Pods", comp))
+					var labelSelector string
+					switch comp {
+					case v1alpha1.PDMemberType:
+						labelSelector = labels.SelectorFromSet(label.New().Instance(tc.Name).PD().Labels()).String()
+					case v1alpha1.TiKVMemberType:
+						labelSelector = labels.SelectorFromSet(label.New().Instance(tc.Name).TiKV().Labels()).String()
+					case v1alpha1.TiDBMemberType:
+						labelSelector = labels.SelectorFromSet(label.New().Instance(tc.Name).TiDB().Labels()).String()
+					}
+					listOptions := metav1.ListOptions{
+						LabelSelector: labelSelector,
+					}
+					pods, err := c.CoreV1().Pods(ns).List(listOptions)
+					framework.ExpectNoError(err, "failed to list %s Pods with options: %+v", comp, listOptions)
+					framework.ExpectEqual(len(pods.Items), 3, "there should be 3 %s Pods", comp)
+					for _, pod := range pods.Items {
+						framework.ExpectEqual(fmt.Sprintf("pingcap/%s:%s", comp, utilimage.TiDBV4), pod.Spec.Containers[0].Image, "%s Pod has wrong image", comp)
+					}
+				})
+			}
 		})
 
 		ginkgo.It("PD to 0 is forbidden while other components are running", func() {
