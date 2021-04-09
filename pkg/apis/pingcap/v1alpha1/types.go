@@ -227,12 +227,12 @@ type TidbClusterSpec struct {
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
 	// Base annotations for TiDB cluster, all Pods in the cluster should have these annotations.
-	// Can be overrode by annotations in the specific component spec
+	// Can be overrode by annotations in the specific component spec.
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`
 
 	// Base labels for TiDB cluster, all Pods in the cluster should have these labels.
-	// Can be overrode by labels in the specific component spec
+	// Can be overrode by labels in the specific component spec.
 	// +optional
 	Labels map[string]string `json:"labels,omitempty"`
 
@@ -811,12 +811,12 @@ type ComponentSpec struct {
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
-	// Annotations for the component. Merged into and overrode the cluster-level annotations if non-empty
+	// Annotations for the component. Merge into the cluster-level annotations if non-empty
 	// Optional: Defaults to cluster-level setting
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`
 
-	// Labels for the component. Merged into and overrode the cluster-level labels if non-empty
+	// Labels for the component. Merge into the cluster-level labels if non-empty
 	// Optional: Defaults to cluster-level setting
 	// +optional
 	Labels map[string]string `json:"labels,omitempty"`
@@ -889,11 +889,11 @@ type ServiceSpec struct {
 	// Type of the real kubernetes service
 	Type corev1.ServiceType `json:"type,omitempty"`
 
-	// Additional annotations for the kubernetes service object
+	// Additional annotations for the service
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`
 
-	// Additional labels for the kubernetes service object
+	// Additional labels for the service
 	// +optional
 	Labels map[string]string `json:"labels,omitempty"`
 
@@ -1372,11 +1372,11 @@ type BackupSpec struct {
 	// CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained
 	CleanPolicy CleanPolicyType `json:"cleanPolicy,omitempty"`
 
-	// Additional annotations for the backup pod
+	// Additional annotations for backup pods
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`
 
-	// Additional labels the backup pod
+	// Additional labels for backup pods
 	// +optional
 	Labels map[string]string `json:"labels,omitempty"`
 }
@@ -1524,6 +1524,14 @@ type BackupScheduleSpec struct {
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
 	// +optional
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+
+	// Additional annotations for backup schedule pods
+	// +optional
+	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Additional labels for backup schedule pods
+	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
 }
 
 // BackupScheduleStatus represents the current state of a BackupSchedule.
@@ -1652,11 +1660,11 @@ type RestoreSpec struct {
 	// TableFilter means Table filter expression for 'db.table' matching. BR supports this from v4.0.3.
 	TableFilter []string `json:"tableFilter,omitempty"`
 
-	// Additional annotations for the restore pod
+	// Additional annotations for restore pods
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`
 
-	// Additional labels for the restore pod
+	// Additional labels for restore pods
 	// +optional
 	Labels map[string]string `json:"labels,omitempty"`
 }
@@ -1802,11 +1810,13 @@ type DMClusterSpec struct {
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
-	// Additional annotations for dm pod
+	// Additional annotations for the dm cluster
+	// Can be overrode by annotations in master spec or worker spec
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`
 
-	// Additional labels for dm pod
+	// Additional labels for the dm cluster
+	// Can be overrode by labels in master spec or worker spec
 	// +optional
 	Labels map[string]string `json:"labels,omitempty"`
 

@@ -339,7 +339,7 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Additional annotations for the backup pod</p>
+<p>Additional annotations for backup pods</p>
 </td>
 </tr>
 <tr>
@@ -351,7 +351,7 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Additional labels the backup pod</p>
+<p>Additional labels for backup pods</p>
 </td>
 </tr>
 </table>
@@ -523,6 +523,30 @@ string
 <td>
 <em>(Optional)</em>
 <p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>annotations</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Additional annotations for backup schedule pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>labels</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Additional labels for backup schedule pods</p>
 </td>
 </tr>
 </table>
@@ -818,7 +842,8 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Additional annotations for dm pod</p>
+<p>Additional annotations for the dm cluster
+Can be overrode by annotations in master spec or worker spec</p>
 </td>
 </tr>
 <tr>
@@ -830,7 +855,8 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Additional labels for dm pod</p>
+<p>Additional labels for the dm cluster
+Can be overrode by labels in master spec or worker spec</p>
 </td>
 </tr>
 <tr>
@@ -1165,7 +1191,7 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Additional annotations for the restore pod</p>
+<p>Additional annotations for restore pods</p>
 </td>
 </tr>
 <tr>
@@ -1177,7 +1203,7 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Additional labels for the restore pod</p>
+<p>Additional labels for restore pods</p>
 </td>
 </tr>
 </table>
@@ -1560,7 +1586,7 @@ map[string]string
 <td>
 <em>(Optional)</em>
 <p>Base annotations for TiDB cluster, all Pods in the cluster should have these annotations.
-Can be overrode by annotations in the specific component spec</p>
+Can be overrode by annotations in the specific component spec.</p>
 </td>
 </tr>
 <tr>
@@ -1573,7 +1599,7 @@ map[string]string
 <td>
 <em>(Optional)</em>
 <p>Base labels for TiDB cluster, all Pods in the cluster should have these labels.
-Can be overrode by labels in the specific component spec</p>
+Can be overrode by labels in the specific component spec.</p>
 </td>
 </tr>
 <tr>
@@ -2879,6 +2905,30 @@ string
 <p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>annotations</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Additional annotations for backup schedule pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>labels</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Additional labels for backup schedule pods</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="backupschedulestatus">BackupScheduleStatus</h3>
@@ -3210,7 +3260,7 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Additional annotations for the backup pod</p>
+<p>Additional annotations for backup pods</p>
 </td>
 </tr>
 <tr>
@@ -3222,7 +3272,7 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Additional labels the backup pod</p>
+<p>Additional labels for backup pods</p>
 </td>
 </tr>
 </tbody>
@@ -3926,7 +3976,7 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Annotations for the component. Merged into and overrode the cluster-level annotations if non-empty
+<p>Annotations for the component. Merge into the cluster-level annotations if non-empty
 Optional: Defaults to cluster-level setting</p>
 </td>
 </tr>
@@ -3939,7 +3989,7 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Labels for the component. Merged into and overrode the cluster-level labels if non-empty
+<p>Labels for the component. Merge into the cluster-level labels if non-empty
 Optional: Defaults to cluster-level setting</p>
 </td>
 </tr>
@@ -4744,7 +4794,8 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Additional annotations for dm pod</p>
+<p>Additional annotations for the dm cluster
+Can be overrode by annotations in master spec or worker spec</p>
 </td>
 </tr>
 <tr>
@@ -4756,7 +4807,8 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Additional labels for dm pod</p>
+<p>Additional labels for the dm cluster
+Can be overrode by labels in master spec or worker spec</p>
 </td>
 </tr>
 <tr>
@@ -11194,7 +11246,7 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Additional annotations for the restore pod</p>
+<p>Additional annotations for restore pods</p>
 </td>
 </tr>
 <tr>
@@ -11206,7 +11258,7 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Additional labels for the restore pod</p>
+<p>Additional labels for restore pods</p>
 </td>
 </tr>
 </tbody>
@@ -11791,7 +11843,7 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Additional annotations for the kubernetes service object</p>
+<p>Additional annotations for the service</p>
 </td>
 </tr>
 <tr>
@@ -11803,7 +11855,7 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Additional labels for the kubernetes service object</p>
+<p>Additional labels for the service</p>
 </td>
 </tr>
 <tr>
@@ -19827,7 +19879,7 @@ map[string]string
 <td>
 <em>(Optional)</em>
 <p>Base annotations for TiDB cluster, all Pods in the cluster should have these annotations.
-Can be overrode by annotations in the specific component spec</p>
+Can be overrode by annotations in the specific component spec.</p>
 </td>
 </tr>
 <tr>
@@ -19840,7 +19892,7 @@ map[string]string
 <td>
 <em>(Optional)</em>
 <p>Base labels for TiDB cluster, all Pods in the cluster should have these labels.
-Can be overrode by labels in the specific component spec</p>
+Can be overrode by labels in the specific component spec.</p>
 </td>
 </tr>
 <tr>

@@ -845,6 +845,36 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupScheduleSpec(ref common.ReferenceCal
 							},
 						},
 					},
+					"annotations": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Additional annotations for backup schedule pods",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
+						},
+					},
+					"labels": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Additional labels for backup schedule pods",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
+						},
+					},
 				},
 				Required: []string{"schedule", "backupTemplate"},
 			},
@@ -1016,7 +1046,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 					},
 					"annotations": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Additional annotations for the backup pod",
+							Description: "Additional annotations for backup pods",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -1031,7 +1061,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 					},
 					"labels": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Additional labels the backup pod",
+							Description: "Additional labels for backup pods",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -1377,7 +1407,7 @@ func schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref common.ReferenceCallback
 					},
 					"annotations": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Annotations for the component. Merged into and overrode the cluster-level annotations if non-empty Optional: Defaults to cluster-level setting",
+							Description: "Annotations for the component. Merge into the cluster-level annotations if non-empty Optional: Defaults to cluster-level setting",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -1392,7 +1422,7 @@ func schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref common.ReferenceCallback
 					},
 					"labels": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Labels for the component. Merged into and overrode the cluster-level labels if non-empty Optional: Defaults to cluster-level setting",
+							Description: "Labels for the component. Merge into the cluster-level labels if non-empty Optional: Defaults to cluster-level setting",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -1759,7 +1789,7 @@ func schema_pkg_apis_pingcap_v1alpha1_DMClusterSpec(ref common.ReferenceCallback
 					},
 					"annotations": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Additional annotations for dm pod",
+							Description: "Additional annotations for the dm cluster Can be overrode by annotations in master spec or worker spec",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -1774,7 +1804,7 @@ func schema_pkg_apis_pingcap_v1alpha1_DMClusterSpec(ref common.ReferenceCallback
 					},
 					"labels": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Additional labels for dm pod",
+							Description: "Additional labels for the dm cluster Can be overrode by labels in master spec or worker spec",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -3081,7 +3111,7 @@ func schema_pkg_apis_pingcap_v1alpha1_MasterSpec(ref common.ReferenceCallback) c
 					},
 					"annotations": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Annotations for the component. Merged into and overrode the cluster-level annotations if non-empty Optional: Defaults to cluster-level setting",
+							Description: "Annotations for the component. Merge into the cluster-level annotations if non-empty Optional: Defaults to cluster-level setting",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -3096,7 +3126,7 @@ func schema_pkg_apis_pingcap_v1alpha1_MasterSpec(ref common.ReferenceCallback) c
 					},
 					"labels": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Labels for the component. Merged into and overrode the cluster-level labels if non-empty Optional: Defaults to cluster-level setting",
+							Description: "Labels for the component. Merge into the cluster-level labels if non-empty Optional: Defaults to cluster-level setting",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -4259,7 +4289,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 					},
 					"annotations": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Annotations for the component. Merged into and overrode the cluster-level annotations if non-empty Optional: Defaults to cluster-level setting",
+							Description: "Annotations for the component. Merge into the cluster-level annotations if non-empty Optional: Defaults to cluster-level setting",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -4274,7 +4304,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 					},
 					"labels": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Labels for the component. Merged into and overrode the cluster-level labels if non-empty Optional: Defaults to cluster-level setting",
+							Description: "Labels for the component. Merge into the cluster-level labels if non-empty Optional: Defaults to cluster-level setting",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -5023,7 +5053,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PumpSpec(ref common.ReferenceCallback) com
 					},
 					"annotations": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Annotations for the component. Merged into and overrode the cluster-level annotations if non-empty Optional: Defaults to cluster-level setting",
+							Description: "Annotations for the component. Merge into the cluster-level annotations if non-empty Optional: Defaults to cluster-level setting",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -5038,7 +5068,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PumpSpec(ref common.ReferenceCallback) com
 					},
 					"labels": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Labels for the component. Merged into and overrode the cluster-level labels if non-empty Optional: Defaults to cluster-level setting",
+							Description: "Labels for the component. Merge into the cluster-level labels if non-empty Optional: Defaults to cluster-level setting",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -5663,7 +5693,7 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 					},
 					"annotations": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Additional annotations for the restore pod",
+							Description: "Additional annotations for restore pods",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -5678,7 +5708,7 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 					},
 					"labels": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Additional labels for the restore pod",
+							Description: "Additional labels for restore pods",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -5941,7 +5971,7 @@ func schema_pkg_apis_pingcap_v1alpha1_ServiceSpec(ref common.ReferenceCallback) 
 					},
 					"annotations": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Additional annotations for the kubernetes service object",
+							Description: "Additional annotations for the service",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -5956,7 +5986,7 @@ func schema_pkg_apis_pingcap_v1alpha1_ServiceSpec(ref common.ReferenceCallback) 
 					},
 					"labels": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Additional labels for the kubernetes service object",
+							Description: "Additional labels for the service",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -6350,7 +6380,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCDCSpec(ref common.ReferenceCallback) co
 					},
 					"annotations": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Annotations for the component. Merged into and overrode the cluster-level annotations if non-empty Optional: Defaults to cluster-level setting",
+							Description: "Annotations for the component. Merge into the cluster-level annotations if non-empty Optional: Defaults to cluster-level setting",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -6365,7 +6395,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCDCSpec(ref common.ReferenceCallback) co
 					},
 					"labels": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Labels for the component. Merged into and overrode the cluster-level labels if non-empty Optional: Defaults to cluster-level setting",
+							Description: "Labels for the component. Merge into the cluster-level labels if non-empty Optional: Defaults to cluster-level setting",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -7104,7 +7134,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 					},
 					"annotations": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Annotations for the component. Merged into and overrode the cluster-level annotations if non-empty Optional: Defaults to cluster-level setting",
+							Description: "Annotations for the component. Merge into the cluster-level annotations if non-empty Optional: Defaults to cluster-level setting",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -7119,7 +7149,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 					},
 					"labels": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Labels for the component. Merged into and overrode the cluster-level labels if non-empty Optional: Defaults to cluster-level setting",
+							Description: "Labels for the component. Merge into the cluster-level labels if non-empty Optional: Defaults to cluster-level setting",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -7498,7 +7528,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiFlashSpec(ref common.ReferenceCallback) 
 					},
 					"annotations": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Annotations for the component. Merged into and overrode the cluster-level annotations if non-empty Optional: Defaults to cluster-level setting",
+							Description: "Annotations for the component. Merge into the cluster-level annotations if non-empty Optional: Defaults to cluster-level setting",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -7513,7 +7543,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiFlashSpec(ref common.ReferenceCallback) 
 					},
 					"labels": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Labels for the component. Merged into and overrode the cluster-level labels if non-empty Optional: Defaults to cluster-level setting",
+							Description: "Labels for the component. Merge into the cluster-level labels if non-empty Optional: Defaults to cluster-level setting",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -9769,7 +9799,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 					},
 					"annotations": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Annotations for the component. Merged into and overrode the cluster-level annotations if non-empty Optional: Defaults to cluster-level setting",
+							Description: "Annotations for the component. Merge into the cluster-level annotations if non-empty Optional: Defaults to cluster-level setting",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -9784,7 +9814,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 					},
 					"labels": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Labels for the component. Merged into and overrode the cluster-level labels if non-empty Optional: Defaults to cluster-level setting",
+							Description: "Labels for the component. Merge into the cluster-level labels if non-empty Optional: Defaults to cluster-level setting",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -10911,7 +10941,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 					},
 					"annotations": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Base annotations for TiDB cluster, all Pods in the cluster should have these annotations. Can be overrode by annotations in the specific component spec",
+							Description: "Base annotations for TiDB cluster, all Pods in the cluster should have these annotations. Can be overrode by annotations in the specific component spec.",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -10926,7 +10956,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 					},
 					"labels": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Base labels for TiDB cluster, all Pods in the cluster should have these labels. Can be overrode by labels in the specific component spec",
+							Description: "Base labels for TiDB cluster, all Pods in the cluster should have these labels. Can be overrode by labels in the specific component spec.",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -11850,7 +11880,7 @@ func schema_pkg_apis_pingcap_v1alpha1_WorkerSpec(ref common.ReferenceCallback) c
 					},
 					"annotations": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Annotations for the component. Merged into and overrode the cluster-level annotations if non-empty Optional: Defaults to cluster-level setting",
+							Description: "Annotations for the component. Merge into the cluster-level annotations if non-empty Optional: Defaults to cluster-level setting",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -11865,7 +11895,7 @@ func schema_pkg_apis_pingcap_v1alpha1_WorkerSpec(ref common.ReferenceCallback) c
 					},
 					"labels": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Labels for the component. Merged into and overrode the cluster-level labels if non-empty Optional: Defaults to cluster-level setting",
+							Description: "Labels for the component. Merge into the cluster-level labels if non-empty Optional: Defaults to cluster-level setting",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,

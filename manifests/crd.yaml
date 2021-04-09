@@ -18446,6 +18446,8 @@ spec:
           type: string
         spec:
           properties:
+            annotations:
+              type: object
             backupTemplate:
               properties:
                 affinity:
@@ -18935,6 +18937,8 @@ spec:
                     type: string
                 type: object
               type: array
+            labels:
+              type: object
             maxBackups:
               format: int32
               type: integer
