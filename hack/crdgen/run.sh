@@ -21,7 +21,7 @@ ROOT=$(unset CDPATH && cd $(dirname "${BASH_SOURCE[0]}")/../.. && pwd)
 
 SCRIPT_DIR=${ROOT}/hack/crdgen
 OUTPUT_DIR=${ROOT}/output
-CONTROLLER_GEN=${OUTPUT_DIR}/controller-gen
+CONTROLLER_GEN=${OUTPUT_DIR}/bin/controller-gen
 API_PACKAGES=${ROOT}/pkg/apis/...
 CRD_OUTPUT_DIR=${ROOT}/manifests/crd
 SKIP_CRD_FILES="pingcap.com_dataresources.yaml"
