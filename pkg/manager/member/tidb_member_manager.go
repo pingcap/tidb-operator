@@ -774,7 +774,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	stsLabels := label.New().Instance(instanceName).TiDB()
 	podLabels := CombineKVMap(stsLabels, baseTiDBSpec.Labels())
 	podAnnotations := CombineKVMap(controller.AnnProm(10080), baseTiDBSpec.Annotations())
-	stsAnnotations := getStsDeleteSlots(tc.Annotations, label.TiDBLabelVal)
+	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiDBLabelVal)
 
 	deleteSlotsNumber, err := util.GetDeleteSlotsNumber(stsAnnotations)
 	if err != nil {

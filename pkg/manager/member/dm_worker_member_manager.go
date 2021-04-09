@@ -412,7 +412,7 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	workerLabel := label.NewDM().Instance(instanceName).DMWorker()
 	setName := controller.DMWorkerMemberName(dcName)
 	podAnnotations := CombineKVMap(controller.AnnProm(8262), baseWorkerSpec.Annotations())
-	stsAnnotations := getStsDeleteSlots(dc.Annotations, label.DMWorkerLabelVal)
+	stsAnnotations := getStsAnnotations(dc.Annotations, label.DMWorkerLabelVal)
 
 	workerContainer := corev1.Container{
 		Name:            v1alpha1.DMWorkerMemberType.String(),

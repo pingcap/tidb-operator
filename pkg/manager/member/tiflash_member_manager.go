@@ -414,7 +414,7 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 	podLabels := CombineKVMap(stsLabels, baseTiFlashSpec.Labels())
 	podAnnotations := CombineKVMap(controller.AnnProm(8234), baseTiFlashSpec.Annotations())
 	podAnnotations = CombineKVMap(controller.AnnAdditionalProm("tiflash.proxy", 20292), podAnnotations)
-	stsAnnotations := getStsDeleteSlots(tc.Annotations, label.TiFlashLabelVal)
+	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiFlashLabelVal)
 	capacity := controller.TiKVCapacity(tc.Spec.TiFlash.Limits)
 	headlessSvcName := controller.TiFlashPeerMemberName(tcName)
 

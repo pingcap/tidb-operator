@@ -588,7 +588,7 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	masterLabel := label.NewDM().Instance(instanceName).DMMaster()
 	setName := controller.DMMasterMemberName(dcName)
 	podAnnotations := CombineKVMap(controller.AnnProm(8261), baseMasterSpec.Annotations())
-	stsAnnotations := getStsDeleteSlots(dc.Annotations, label.DMMasterLabelVal)
+	stsAnnotations := getStsAnnotations(dc.Annotations, label.DMMasterLabelVal)
 	failureReplicas := getDMMasterFailureReplicas(dc)
 
 	deleteSlotsNumber, err := util.GetDeleteSlotsNumber(stsAnnotations)

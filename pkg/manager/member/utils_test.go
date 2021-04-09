@@ -162,7 +162,7 @@ func TestGetStsAnnotations(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := getStsDeleteSlots(tt.tc.Annotations, tt.component)
+			got := getStsAnnotations(tt.tc.Annotations, tt.component)
 			if diff := cmp.Diff(tt.expected, got); diff != "" {
 				t.Errorf("unexpected (-want, +got): %s", diff)
 			}
