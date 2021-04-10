@@ -237,9 +237,11 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 		})
 	}
 
-	jobLabels := label.NewRestore().Instance(restore.GetInstanceName()).RestoreJob().Restore(name)
-	podLabels := member.CombineKVMap(jobLabels, restore.Labels, restore.Spec.Labels)
-	jobPodAnnotations := member.CombineKVMap(restore.Annotations, restore.Spec.Annotations)
+	jobLabels := member.CombineKVMap(label.NewRestore().Instance(restore.GetInstanceName()).RestoreJob().Restore(name), restore.Labels)
+	podLabels := member.CombineKVMap(jobLabels, restore.Spec.Labels)
+	jobAnnotations := restore.Annotations
+	podAnnotations := member.CombineKVMap(jobAnnotations, restore.Spec.Annotations)
+
 	serviceAccount := constants.DefaultServiceAccountName
 	if restore.Spec.ServiceAccount != "" {
 		serviceAccount = restore.Spec.ServiceAccount
@@ -248,7 +250,7 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      podLabels,
-			Annotations: jobPodAnnotations,
+			Annotations: podAnnotations,
 		},
 		Spec: corev1.PodSpec{
 			ServiceAccountName: serviceAccount,
@@ -288,7 +290,7 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 			Name:        restore.GetRestoreJobName(),
 			Namespace:   ns,
 			Labels:      jobLabels,
-			Annotations: jobPodAnnotations,
+			Annotations: jobAnnotations,
 			OwnerReferences: []metav1.OwnerReference{
 				controller.GetRestoreOwnerRef(restore),
 			},
@@ -348,9 +350,11 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		args = append(args, fmt.Sprintf("--tikvVersion=%s", tikvVersion))
 	}
 
-	jobLabels := label.NewRestore().Instance(restore.GetInstanceName()).RestoreJob().Restore(name)
-	podLabels := member.CombineKVMap(jobLabels, restore.Labels, restore.Spec.Labels)
-	jobAndPodAnnotations := member.CombineKVMap(restore.Annotations, restore.Spec.Annotations)
+	jobLabels := member.CombineKVMap(label.NewRestore().Instance(restore.GetInstanceName()).RestoreJob().Restore(name), restore.Labels)
+	podLabels := member.CombineKVMap(jobLabels, restore.Spec.Labels)
+	jobAnnotations := restore.Annotations
+	podAnnotations := member.CombineKVMap(jobAnnotations, restore.Spec.Annotations)
+
 	volumeMounts := []corev1.VolumeMount{}
 	volumes := []corev1.Volume{}
 	if tc.IsTLSClusterEnabled() {
@@ -424,7 +428,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      podLabels,
-			Annotations: jobAndPodAnnotations,
+			Annotations: podAnnotations,
 		},
 		Spec: corev1.PodSpec{
 			ServiceAccountName: serviceAccount,
@@ -463,7 +467,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 			Name:        restore.GetRestoreJobName(),
 			Namespace:   ns,
 			Labels:      jobLabels,
-			Annotations: jobAndPodAnnotations,
+			Annotations: jobAnnotations,
 			OwnerReferences: []metav1.OwnerReference{
 				controller.GetRestoreOwnerRef(restore),
 			},

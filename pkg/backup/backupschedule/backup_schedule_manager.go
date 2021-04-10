@@ -230,15 +230,14 @@ func buildBackup(bs *v1alpha1.BackupSchedule, timestamp time.Time) *v1alpha1.Bac
 		backupSpec.ImagePullSecrets = bs.Spec.ImagePullSecrets
 	}
 
-	bsLabel := member.CombineKVMap(label.NewBackupSchedule().Instance(bsName).BackupSchedule(bsName), bs.Labels, bs.Spec.Labels)
-	bsAnnotations := member.CombineKVMap(bs.Annotations, bs.Spec.Annotations)
+	bsLabel := member.CombineKVMap(label.NewBackupSchedule().Instance(bsName).BackupSchedule(bsName), bs.Labels)
 	backup := &v1alpha1.Backup{
 		Spec: backupSpec,
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:   ns,
 			Name:        bs.GetBackupCRDName(timestamp),
 			Labels:      bsLabel,
-			Annotations: bsAnnotations,
+			Annotations: bs.Annotations,
 			OwnerReferences: []metav1.OwnerReference{
 				controller.GetBackupScheduleOwnerRef(bs),
 			},

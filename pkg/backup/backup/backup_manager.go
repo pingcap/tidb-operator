@@ -264,14 +264,17 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	if backup.Spec.ServiceAccount != "" {
 		serviceAccount = backup.Spec.ServiceAccount
 	}
-	jobLabels := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name)
-	podLabels := member.CombineKVMap(jobLabels, backup.Labels, backup.Spec.Labels)
-	jobPodAnnotations := member.CombineKVMap(backup.Annotations, backup.Spec.Annotations)
+
+	jobLabels := member.CombineKVMap(label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name), backup.Labels)
+	podLabels := member.CombineKVMap(jobLabels, backup.Spec.Labels)
+	jobAnnotations := backup.Annotations
+	podAnnotations := member.CombineKVMap(jobAnnotations, backup.Spec.Annotations)
+
 	// TODO: need add ResourceRequirement for backup job
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      podLabels,
-			Annotations: jobPodAnnotations,
+			Annotations: podAnnotations,
 		},
 		Spec: corev1.PodSpec{
 			ServiceAccountName: serviceAccount,
@@ -311,7 +314,7 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 			Name:        backup.GetBackupJobName(),
 			Namespace:   ns,
 			Labels:      jobLabels,
-			Annotations: jobPodAnnotations,
+			Annotations: jobAnnotations,
 			OwnerReferences: []metav1.OwnerReference{
 				controller.GetBackupOwnerRef(backup),
 			},
@@ -374,9 +377,10 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		args = append(args, fmt.Sprintf("--tikvVersion=%s", tikvVersion))
 	}
 
-	jobLabels := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name)
-	podLabels := member.CombineKVMap(jobLabels, backup.Labels, backup.Spec.Labels)
-	jobPodAnnotations := member.CombineKVMap(backup.Annotations, backup.Spec.Annotations)
+	jobLabels := member.CombineKVMap(label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name), backup.Labels)
+	podLabels := member.CombineKVMap(jobLabels, backup.Spec.Labels)
+	jobAnnotations := backup.Annotations
+	podAnnotations := member.CombineKVMap(jobAnnotations, backup.Spec.Annotations)
 
 	volumeMounts := []corev1.VolumeMount{}
 	volumes := []corev1.Volume{}
@@ -452,7 +456,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      podLabels,
-			Annotations: jobPodAnnotations,
+			Annotations: podAnnotations,
 		},
 		Spec: corev1.PodSpec{
 			ServiceAccountName: serviceAccount,
@@ -491,7 +495,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 			Name:        backup.GetBackupJobName(),
 			Namespace:   ns,
 			Labels:      jobLabels,
-			Annotations: jobPodAnnotations,
+			Annotations: jobAnnotations,
 			OwnerReferences: []metav1.OwnerReference{
 				controller.GetBackupOwnerRef(backup),
 			},
