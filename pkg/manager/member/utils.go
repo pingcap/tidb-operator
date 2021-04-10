@@ -168,13 +168,18 @@ func PdName(tcName string, ordinal int32, namespace string, clusterDomain string
 	return PdPodName(tcName, ordinal)
 }
 
-// CombineKVMap merges two annotations maps
-func CombineKVMap(a, b map[string]string) map[string]string {
+// CombineKVMap merges maps to the left
+func CombineKVMap(a map[string]string, maps ...map[string]string) map[string]string {
+	if len(maps) < 1 {
+		return a
+	}
 	if a == nil {
 		a = make(map[string]string)
 	}
-	for k, v := range b {
-		a[k] = v
+	for _, m := range maps {
+		for k, v := range m {
+			a[k] = v
+		}
 	}
 	return a
 }

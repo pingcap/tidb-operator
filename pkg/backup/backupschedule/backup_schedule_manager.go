@@ -15,6 +15,7 @@ package backupschedule
 
 import (
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	"path"
 	"sort"
 	"strings"
@@ -229,15 +230,15 @@ func buildBackup(bs *v1alpha1.BackupSchedule, timestamp time.Time) *v1alpha1.Bac
 		backupSpec.ImagePullSecrets = bs.Spec.ImagePullSecrets
 	}
 
-	bsLabel := label.NewBackupSchedule().Instance(bsName).BackupSchedule(bsName)
-
+	bsLabel := member.CombineKVMap(label.NewBackupSchedule().Instance(bsName).BackupSchedule(bsName), bs.Labels, bs.Spec.Labels)
+	bsAnnotations := member.CombineKVMap(bs.Annotations, bs.Spec.Annotations)
 	backup := &v1alpha1.Backup{
 		Spec: backupSpec,
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:   ns,
 			Name:        bs.GetBackupCRDName(timestamp),
-			Labels:      bsLabel.Labels(),
-			Annotations: bs.Annotations,
+			Labels:      bsLabel,
+			Annotations: bsAnnotations,
 			OwnerReferences: []metav1.OwnerReference{
 				controller.GetBackupScheduleOwnerRef(bs),
 			},
