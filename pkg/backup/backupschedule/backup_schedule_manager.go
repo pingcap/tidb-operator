@@ -15,7 +15,6 @@ package backupschedule
 
 import (
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	"path"
 	"sort"
 	"strings"
@@ -26,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/robfig/cron"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
