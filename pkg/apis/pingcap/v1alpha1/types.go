@@ -1694,7 +1694,10 @@ type DMClusterList struct {
 // +k8s:openapi-gen=true
 // DMDiscoverySpec contains details of Discovery members for dm
 type DMDiscoverySpec struct {
-	// Address indicates the existed TiDB discovery address
+	corev1.ResourceRequirements `json:",inline"`
+
+	// (Deprecated) Address indicates the existed TiDB discovery address
+	// +k8s:openapi-gen=false
 	Address string `json:"address"`
 }
 

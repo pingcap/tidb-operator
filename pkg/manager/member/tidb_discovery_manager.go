@@ -15,6 +15,7 @@ package member
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -25,6 +26,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/pointer"
 )
@@ -34,7 +36,7 @@ const (
 )
 
 type TidbDiscoveryManager interface {
-	Reconcile(tc *v1alpha1.TidbCluster) error
+	Reconcile(obj runtime.Object) error
 }
 
 type realTidbDiscoveryManager struct {
@@ -45,29 +47,45 @@ func NewTidbDiscoveryManager(deps *controller.Dependencies) TidbDiscoveryManager
 	return &realTidbDiscoveryManager{deps: deps}
 }
 
-func (m *realTidbDiscoveryManager) Reconcile(tc *v1alpha1.TidbCluster) error {
-
-	// If PD is not specified return
-	if tc.Spec.PD == nil {
-		return nil
+func (m *realTidbDiscoveryManager) Reconcile(obj runtime.Object) error {
+	metaObj, ok := obj.(metav1.Object)
+	if !ok {
+		return fmt.Errorf("%T is not a metav1.Object", obj)
 	}
-	meta, _ := getDiscoveryMeta(tc, controller.DiscoveryMemberName)
+
+	meta, _ := getDiscoveryMeta(metaObj, controller.DiscoveryMemberName)
+
+	var (
+		clusterPolicyRule rbacv1.PolicyRule
+	)
+	switch cluster := obj.(type) {
+	case *v1alpha1.TidbCluster:
+		// If PD is not specified return
+		if cluster.Spec.PD == nil {
+			return nil
+		}
+		clusterPolicyRule = rbacv1.PolicyRule{
+			APIGroups:     []string{v1alpha1.GroupName},
+			Resources:     []string{v1alpha1.TiDBClusterName},
+			ResourceNames: []string{metaObj.GetName()},
+			Verbs:         []string{"get"},
+		}
+	case *v1alpha1.DMCluster:
+		clusterPolicyRule = rbacv1.PolicyRule{
+			APIGroups:     []string{v1alpha1.GroupName},
+			Resources:     []string{v1alpha1.DMClusterName},
+			ResourceNames: []string{metaObj.GetName()},
+			Verbs:         []string{"get"},
+		}
+	default:
+		panic(fmt.Sprintf("unsupported type %T for discovery", obj))
+	}
 
 	// Ensure RBAC
-	_, err := m.deps.TypedControl.CreateOrUpdateRole(tc, &rbacv1.Role{
+	_, err := m.deps.TypedControl.CreateOrUpdateRole(obj, &rbacv1.Role{
 		ObjectMeta: meta,
 		Rules: []rbacv1.PolicyRule{
-			{
-				APIGroups:     []string{v1alpha1.GroupName},
-				Resources:     []string{v1alpha1.TiDBClusterName},
-				ResourceNames: []string{tc.Name},
-				Verbs:         []string{"get"},
-			},
-			{
-				APIGroups: []string{v1alpha1.GroupName},
-				Resources: []string{v1alpha1.DMClusterName},
-				Verbs:     []string{"get"},
-			},
+			clusterPolicyRule,
 			{
 				APIGroups: []string{corev1.GroupName},
 				Resources: []string{"secrets"},
@@ -78,13 +96,13 @@ func (m *realTidbDiscoveryManager) Reconcile(tc *v1alpha1.TidbCluster) error {
 	if err != nil {
 		return controller.RequeueErrorf("error creating or updating discovery role: %v", err)
 	}
-	_, err = m.deps.TypedControl.CreateOrUpdateServiceAccount(tc, &corev1.ServiceAccount{
+	_, err = m.deps.TypedControl.CreateOrUpdateServiceAccount(obj, &corev1.ServiceAccount{
 		ObjectMeta: meta,
 	})
 	if err != nil {
 		return controller.RequeueErrorf("error creating or updating discovery serviceaccount: %v", err)
 	}
-	_, err = m.deps.TypedControl.CreateOrUpdateRoleBinding(tc, &rbacv1.RoleBinding{
+	_, err = m.deps.TypedControl.CreateOrUpdateRoleBinding(obj, &rbacv1.RoleBinding{
 		ObjectMeta: meta,
 		Subjects: []rbacv1.Subject{{
 			Kind: rbacv1.ServiceAccountKind,
@@ -99,24 +117,24 @@ func (m *realTidbDiscoveryManager) Reconcile(tc *v1alpha1.TidbCluster) error {
 	if err != nil {
 		return controller.RequeueErrorf("error creating or updating discovery rolebinding: %v", err)
 	}
-	d, err := m.getTidbDiscoveryDeployment(tc)
+	d, err := m.getTidbDiscoveryDeployment(metaObj)
 	if err != nil {
 		return controller.RequeueErrorf("error generating discovery deployment: %v", err)
 	}
-	deploy, err := m.deps.TypedControl.CreateOrUpdateDeployment(tc, d)
+	deploy, err := m.deps.TypedControl.CreateOrUpdateDeployment(obj, d)
 	if err != nil {
 		return controller.RequeueErrorf("error creating or updating discovery service: %v", err)
 	}
 	// RBAC ensured, reconcile
-	_, err = m.deps.TypedControl.CreateOrUpdateService(tc, getTidbDiscoveryService(tc, deploy))
+	_, err = m.deps.TypedControl.CreateOrUpdateService(obj, getTidbDiscoveryService(metaObj, deploy))
 	if err != nil {
 		return controller.RequeueErrorf("error creating or updating discovery service: %v", err)
 	}
 	return nil
 }
 
-func getTidbDiscoveryService(tc *v1alpha1.TidbCluster, deploy *appsv1.Deployment) *corev1.Service {
-	meta, _ := getDiscoveryMeta(tc, controller.DiscoveryMemberName)
+func getTidbDiscoveryService(obj metav1.Object, deploy *appsv1.Deployment) *corev1.Service {
+	meta, _ := getDiscoveryMeta(obj, controller.DiscoveryMemberName)
 	return &corev1.Service{
 		ObjectMeta: meta,
 		Spec: corev1.ServiceSpec{
@@ -140,8 +158,27 @@ func getTidbDiscoveryService(tc *v1alpha1.TidbCluster, deploy *appsv1.Deployment
 	}
 }
 
-func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(tc *v1alpha1.TidbCluster) (*appsv1.Deployment, error) {
-	meta, l := getDiscoveryMeta(tc, controller.DiscoveryMemberName)
+func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object) (*appsv1.Deployment, error) {
+	var (
+		resources        corev1.ResourceRequirements
+		timezone         string
+		imagePullSecrets []corev1.LocalObjectReference
+	)
+
+	switch cluster := obj.(type) {
+	case *v1alpha1.TidbCluster:
+		resources = cluster.Spec.Discovery.ResourceRequirements
+		timezone = cluster.Timezone()
+		imagePullSecrets = cluster.Spec.ImagePullSecrets
+	case *v1alpha1.DMCluster:
+		resources = cluster.Spec.Discovery.ResourceRequirements
+		timezone = cluster.Timezone()
+		imagePullSecrets = cluster.Spec.ImagePullSecrets
+	default:
+		panic(fmt.Sprintf("unsupported type %T for discovery meta", obj))
+	}
+
+	meta, l := getDiscoveryMeta(obj, controller.DiscoveryMemberName)
 	d := &appsv1.Deployment{
 		ObjectMeta: meta,
 		Spec: appsv1.DeploymentSpec{
@@ -156,7 +193,7 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(tc *v1alpha1.TidbC
 					ServiceAccountName: meta.Name,
 					Containers: []corev1.Container{{
 						Name:      "discovery",
-						Resources: controller.ContainerResource(tc.Spec.Discovery.ResourceRequirements),
+						Resources: controller.ContainerResource(resources),
 						Command: []string{
 							"/usr/local/bin/tidb-discovery",
 						},
@@ -173,11 +210,11 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(tc *v1alpha1.TidbC
 							},
 							{
 								Name:  "TZ",
-								Value: tc.Timezone(),
+								Value: timezone,
 							},
 							{
 								Name:  "TC_NAME",
-								Value: tc.Name,
+								Value: obj.GetName(), // for DmCluster, we still name it as TC_NAME because only ProxyServer use it now.
 							},
 						},
 						Ports: []corev1.ContainerPort{
@@ -197,13 +234,14 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(tc *v1alpha1.TidbC
 			},
 		},
 	}
-	if tc.IsTLSClusterEnabled() {
+
+	if tc, ok := obj.(*v1alpha1.TidbCluster); ok && tc.IsTLSClusterEnabled() {
 		d.Spec.Template.Spec.Volumes = []corev1.Volume{
 			{
 				Name: "pd-tls",
 				VolumeSource: corev1.VolumeSource{
 					Secret: &corev1.SecretVolumeSource{
-						SecretName: util.ClusterTLSSecretName(tc.Name, label.PDLabelVal),
+						SecretName: util.ClusterTLSSecretName(obj.GetName(), label.PDLabelVal),
 					},
 				},
 			},
@@ -229,21 +267,40 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(tc *v1alpha1.TidbC
 	}
 	d.Annotations[controller.LastAppliedPodTemplate] = string(b)
 
-	if tc.Spec.ImagePullSecrets != nil {
-		d.Spec.Template.Spec.ImagePullSecrets = tc.Spec.ImagePullSecrets
+	if imagePullSecrets != nil {
+		d.Spec.Template.Spec.ImagePullSecrets = imagePullSecrets
 	}
 	return d, nil
 }
 
-func getDiscoveryMeta(tc *v1alpha1.TidbCluster, nameFunc func(string) string) (metav1.ObjectMeta, label.Label) {
-	instanceName := tc.GetInstanceName()
-	discoveryLabel := label.New().Instance(instanceName).Discovery()
+func getDiscoveryMeta(obj metav1.Object, nameFunc func(string) string) (metav1.ObjectMeta, label.Label) {
+	var (
+		name           string
+		ownerRef       metav1.OwnerReference
+		discoveryLabel label.Label
+	)
+
+	switch cluster := obj.(type) {
+	case *v1alpha1.TidbCluster:
+		name = cluster.GetName()
+		instanceName := cluster.GetInstanceName()
+		ownerRef = controller.GetOwnerRef(cluster)
+		discoveryLabel = label.New().Instance(instanceName).Discovery()
+	case *v1alpha1.DMCluster:
+		// NOTE: for DmCluster, add a `-dm` prefix for discovery to avoid name conflicts.
+		name = fmt.Sprintf("%s-dm", cluster.GetName())
+		instanceName := fmt.Sprintf("%s-dm", cluster.GetInstanceName())
+		ownerRef = controller.GetDMOwnerRef(cluster) // TODO: refactor to unify methods
+		discoveryLabel = label.NewDM().Instance(instanceName).Discovery()
+	default:
+		panic(fmt.Sprintf("unsupported type %T for discovery meta", obj))
+	}
 
 	objMeta := metav1.ObjectMeta{
-		Name:            nameFunc(tc.Name),
-		Namespace:       tc.Namespace,
+		Name:            nameFunc(name),
+		Namespace:       obj.GetNamespace(),
 		Labels:          discoveryLabel,
-		OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
+		OwnerReferences: []metav1.OwnerReference{ownerRef},
 	}
 	return objMeta, discoveryLabel
 }
