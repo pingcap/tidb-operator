@@ -317,7 +317,7 @@ func (m *FakeDiscoveryManager) SetReconcileError(err error) {
 	m.err = err
 }
 
-func (m *FakeDiscoveryManager) Reconcile(_ *v1alpha1.TidbCluster) error {
+func (m *FakeDiscoveryManager) Reconcile(_ runtime.Object) error {
 	if m.err != nil {
 		return m.err
 	}

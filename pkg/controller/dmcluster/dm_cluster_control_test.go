@@ -256,6 +256,7 @@ func newFakeDMClusterControl() (
 	orphanPodCleaner := mm.NewFakeOrphanPodsCleaner()
 	pvcCleaner := mm.NewFakePVCCleaner()
 	pvcResizer := mm.NewFakePVCResizer()
+	discoveryManager := mm.NewFakeDiscoveryManger()
 	control := NewDefaultDMClusterControl(
 		dcControl,
 		masterMemberManager,
@@ -264,6 +265,7 @@ func newFakeDMClusterControl() (
 		orphanPodCleaner,
 		pvcCleaner,
 		pvcResizer,
+		discoveryManager,
 		&dmClusterConditionUpdater{},
 		recorder,
 	)
