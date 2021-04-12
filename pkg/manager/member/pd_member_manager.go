@@ -454,7 +454,8 @@ func (m *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbCluster
 			Selector: pdSelector.Labels(),
 		},
 	}
-	// if set pd service type ,overwrite global variable services
+
+	// override fields with user-defined ServiceSpec
 	svcSpec := tc.Spec.PD.Service
 	if svcSpec != nil {
 		if svcSpec.Type != "" {

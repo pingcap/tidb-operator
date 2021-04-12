@@ -409,8 +409,9 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 		},
 	}
 
-	workerLabel := label.NewDM().Instance(instanceName).DMWorker()
 	setName := controller.DMWorkerMemberName(dcName)
+	stsLabels := label.NewDM().Instance(instanceName).DMWorker()
+	podLabels := CombineKVMap(stsLabels, baseWorkerSpec.Labels())
 	podAnnotations := CombineKVMap(controller.AnnProm(8262), baseWorkerSpec.Annotations())
 	stsAnnotations := getStsAnnotations(dc.Annotations, label.DMWorkerLabelVal)
 
@@ -476,16 +477,16 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            setName,
 			Namespace:       ns,
-			Labels:          workerLabel.Labels(),
+			Labels:          stsLabels,
 			Annotations:     stsAnnotations,
 			OwnerReferences: []metav1.OwnerReference{controller.GetDMOwnerRef(dc)},
 		},
 		Spec: apps.StatefulSetSpec{
 			Replicas: pointer.Int32Ptr(dc.WorkerStsDesiredReplicas()),
-			Selector: workerLabel.LabelSelector(),
+			Selector: stsLabels.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      workerLabel.Labels(),
+					Labels:      podLabels,
 					Annotations: podAnnotations,
 				},
 				Spec: podSpec,
