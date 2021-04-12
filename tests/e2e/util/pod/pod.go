@@ -14,10 +14,8 @@
 package pod
 
 import (
-	"fmt"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	v1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,10 +36,10 @@ func PodsAreChanged(c kubernetes.Interface, pods []v1.Pod) wait.ConditionFunc {
 				return false, err
 			}
 			if podNew.UID != pod.UID {
-				return true, fmt.Errorf("pod %s/%s is recreated (old UID %s, new UID %s)", pod.Namespace, pod.Name, pod.UID, podNew.UID)
+				return true, nil
 			}
 			if !apiequality.Semantic.DeepEqual(pod.Spec, podNew.Spec) {
-				return true, fmt.Errorf("pod %s/%s spec is changed, diff: %s", pod.Namespace, pod.Name, cmp.Diff(pod.Spec, podNew.Spec))
+				return true, nil
 			}
 		}
 		return false, nil
