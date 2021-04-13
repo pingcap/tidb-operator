@@ -20,12 +20,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pingcap/tidb-operator/pkg/util"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
-	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/robfig/cron"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -230,7 +231,7 @@ func buildBackup(bs *v1alpha1.BackupSchedule, timestamp time.Time) *v1alpha1.Bac
 		backupSpec.ImagePullSecrets = bs.Spec.ImagePullSecrets
 	}
 
-	bsLabel := member.CombineKVMap(label.NewBackupSchedule().Instance(bsName).BackupSchedule(bsName), bs.Labels)
+	bsLabel := util.CombineStringMap(label.NewBackupSchedule().Instance(bsName).BackupSchedule(bsName), bs.Labels)
 	backup := &v1alpha1.Backup{
 		Spec: backupSpec,
 		ObjectMeta: metav1.ObjectMeta{

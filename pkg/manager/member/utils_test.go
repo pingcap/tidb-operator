@@ -19,6 +19,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pingcap/tidb-operator/pkg/util"
+
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
@@ -790,7 +792,7 @@ func TestCombineAnnotations(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := CombineKVMap(tt.a, tt.b)
+			got := util.CombineStringMap(tt.a, tt.b)
 			if diff := cmp.Diff(tt.expected, got); diff != "" {
 				t.Errorf("unexpected (-want, +got): %s", diff)
 			}

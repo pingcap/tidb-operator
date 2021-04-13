@@ -410,8 +410,8 @@ func (m *masterMemberManager) getNewMasterServiceForDMCluster(dc *v1alpha1.DMClu
 		if svcSpec.Type != "" {
 			masterSvc.Spec.Type = svcSpec.Type
 		}
-		masterSvc.ObjectMeta.Annotations = CopyAnnotations(svcSpec.Annotations)
-		masterSvc.ObjectMeta.Labels = CombineKVMap(masterSvc.ObjectMeta.Labels, svcSpec.Labels)
+		masterSvc.ObjectMeta.Annotations = util.CopyStringMap(svcSpec.Annotations)
+		masterSvc.ObjectMeta.Labels = util.CombineStringMap(masterSvc.ObjectMeta.Labels, svcSpec.Labels)
 		masterSvc.Spec.Ports[0].NodePort = svcSpec.GetMasterNodePort()
 		if svcSpec.Type == corev1.ServiceTypeLoadBalancer {
 			if svcSpec.LoadBalancerIP != nil {
@@ -590,9 +590,9 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 
 	setName := controller.DMMasterMemberName(dcName)
 	stsLabels := label.NewDM().Instance(instanceName).DMMaster()
-	podLabels := CombineKVMap(stsLabels, baseMasterSpec.Labels())
+	podLabels := util.CombineStringMap(stsLabels, baseMasterSpec.Labels())
 	stsAnnotations := getStsAnnotations(dc.Annotations, label.DMMasterLabelVal)
-	podAnnotations := CombineKVMap(stsAnnotations, controller.AnnProm(8261), baseMasterSpec.Annotations())
+	podAnnotations := util.CombineStringMap(stsAnnotations, controller.AnnProm(8261), baseMasterSpec.Annotations())
 	failureReplicas := getDMMasterFailureReplicas(dc)
 
 	deleteSlotsNumber, err := util.GetDeleteSlotsNumber(stsAnnotations)

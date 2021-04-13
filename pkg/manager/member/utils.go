@@ -168,33 +168,6 @@ func PdName(tcName string, ordinal int32, namespace string, clusterDomain string
 	return PdPodName(tcName, ordinal)
 }
 
-// CombineKVMap merges maps to the left
-func CombineKVMap(a map[string]string, maps ...map[string]string) map[string]string {
-	if len(maps) < 1 {
-		return a
-	}
-	if a == nil {
-		a = make(map[string]string)
-	}
-	for _, m := range maps {
-		for k, v := range m {
-			a[k] = v
-		}
-	}
-	return a
-}
-
-func CopyAnnotations(src map[string]string) map[string]string {
-	if src == nil {
-		return nil
-	}
-	dst := map[string]string{}
-	for k, v := range src {
-		dst[k] = v
-	}
-	return dst
-}
-
 // NeedForceUpgrade check if force upgrade is necessary
 func NeedForceUpgrade(ann map[string]string) bool {
 	// Check if annotation 'pingcap.com/force-upgrade: "true"' is set

@@ -22,7 +22,6 @@ import (
 	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
-	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -265,10 +264,10 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		serviceAccount = backup.Spec.ServiceAccount
 	}
 
-	jobLabels := member.CombineKVMap(label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name), backup.Labels)
-	podLabels := member.CombineKVMap(jobLabels, backup.Spec.Labels)
+	jobLabels := util.CombineStringMap(label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name), backup.Labels)
+	podLabels := util.CombineStringMap(jobLabels, backup.Spec.Labels)
 	jobAnnotations := backup.Annotations
-	podAnnotations := member.CombineKVMap(jobAnnotations, backup.Spec.Annotations)
+	podAnnotations := util.CombineStringMap(jobAnnotations, backup.Spec.Annotations)
 
 	// TODO: need add ResourceRequirement for backup job
 	podSpec := &corev1.PodTemplateSpec{
@@ -377,10 +376,10 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		args = append(args, fmt.Sprintf("--tikvVersion=%s", tikvVersion))
 	}
 
-	jobLabels := member.CombineKVMap(label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name), backup.Labels)
-	podLabels := member.CombineKVMap(jobLabels, backup.Spec.Labels)
+	jobLabels := util.CombineStringMap(label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name), backup.Labels)
+	podLabels := util.CombineStringMap(jobLabels, backup.Spec.Labels)
 	jobAnnotations := backup.Annotations
-	podAnnotations := member.CombineKVMap(jobAnnotations, backup.Spec.Annotations)
+	podAnnotations := util.CombineStringMap(jobAnnotations, backup.Spec.Annotations)
 
 	volumeMounts := []corev1.VolumeMount{}
 	volumes := []corev1.Volume{}

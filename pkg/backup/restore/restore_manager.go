@@ -22,7 +22,6 @@ import (
 	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
-	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -237,10 +236,10 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 		})
 	}
 
-	jobLabels := member.CombineKVMap(label.NewRestore().Instance(restore.GetInstanceName()).RestoreJob().Restore(name), restore.Labels)
-	podLabels := member.CombineKVMap(jobLabels, restore.Spec.Labels)
+	jobLabels := util.CombineStringMap(label.NewRestore().Instance(restore.GetInstanceName()).RestoreJob().Restore(name), restore.Labels)
+	podLabels := util.CombineStringMap(jobLabels, restore.Spec.Labels)
 	jobAnnotations := restore.Annotations
-	podAnnotations := member.CombineKVMap(jobAnnotations, restore.Spec.Annotations)
+	podAnnotations := util.CombineStringMap(jobAnnotations, restore.Spec.Annotations)
 
 	serviceAccount := constants.DefaultServiceAccountName
 	if restore.Spec.ServiceAccount != "" {
@@ -350,10 +349,10 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		args = append(args, fmt.Sprintf("--tikvVersion=%s", tikvVersion))
 	}
 
-	jobLabels := member.CombineKVMap(label.NewRestore().Instance(restore.GetInstanceName()).RestoreJob().Restore(name), restore.Labels)
-	podLabels := member.CombineKVMap(jobLabels, restore.Spec.Labels)
+	jobLabels := util.CombineStringMap(label.NewRestore().Instance(restore.GetInstanceName()).RestoreJob().Restore(name), restore.Labels)
+	podLabels := util.CombineStringMap(jobLabels, restore.Spec.Labels)
 	jobAnnotations := restore.Annotations
-	podAnnotations := member.CombineKVMap(jobAnnotations, restore.Spec.Annotations)
+	podAnnotations := util.CombineStringMap(jobAnnotations, restore.Spec.Annotations)
 
 	volumeMounts := []corev1.VolumeMount{}
 	volumes := []corev1.Volume{}
