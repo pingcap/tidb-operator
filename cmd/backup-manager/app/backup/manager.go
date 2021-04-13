@@ -142,13 +142,6 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 	started := time.Now()
 
 	var errs []error
-	err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-		Type:   v1alpha1.BackupRunning,
-		Status: corev1.ConditionTrue,
-	}, nil)
-	if err != nil {
-		return err
-	}
 
 	backupFullPath, err := util.GetStoragePath(backup)
 	if err != nil {
@@ -166,11 +159,10 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 	updatePathStatus := &controller.BackupUpdateStatus{
 		BackupPath: &backupFullPath,
 	}
-	err = bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+	if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Type:   v1alpha1.BackupPrepare,
 		Status: corev1.ConditionTrue,
-	}, updatePathStatus)
-	if err != nil {
+	}, updatePathStatus); err != nil {
 		return err
 	}
 
@@ -258,6 +250,14 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 			}
 			klog.Infof("set cluster %s %s to %s success", bm, constants.TikvGCVariable, tikvGCLifeTime)
 		}
+	}
+
+	// change Prepare to Running before real backup process start
+	if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		Type:   v1alpha1.BackupRunning,
+		Status: corev1.ConditionTrue,
+	}, nil); err != nil {
+		return err
 	}
 
 	// run br binary to do the real job
