@@ -13166,10 +13166,10 @@ spec:
               type: object
             discovery:
               properties:
-                address:
-                  type: string
-              required:
-              - address
+                limits:
+                  type: object
+                requests:
+                  type: object
               type: object
             enablePVReclaim:
               type: boolean
