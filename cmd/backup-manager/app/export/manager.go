@@ -154,7 +154,7 @@ func (bm *BackupManager) performBackup(ctx context.Context, backup *v1alpha1.Bac
 	started := time.Now()
 
 	err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-		Type:   v1alpha1.BackupRunning,
+		Type:   v1alpha1.BackupPrepare,
 		Status: corev1.ConditionTrue,
 	}, nil)
 	if err != nil {
@@ -242,7 +242,23 @@ func (bm *BackupManager) performBackup(ctx context.Context, backup *v1alpha1.Bac
 		klog.Infof("set cluster %s %s to %s success", bm, constants.TikvGCVariable, constants.TikvGCLifeTime)
 	}
 
-	backupFullPath, backupErr := bm.dumpTidbClusterData(ctx, backup)
+	backupFullPath := bm.getBackupFullPath()
+	// TODO: Concurrent get file size and upload backup data to speed up processing time
+	archiveBackupPath := backupFullPath + constants.DefaultArchiveExtention
+	remotePath := strings.TrimPrefix(archiveBackupPath, constants.BackupRootPath+"/")
+	bucketURI := bm.getDestBucketURI(remotePath)
+	updatePathStatus := &controller.BackupUpdateStatus{
+		BackupPath: &bucketURI,
+	}
+	err = bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		Type:   v1alpha1.BackupRunning,
+		Status: corev1.ConditionTrue,
+	}, updatePathStatus)
+	if err != nil {
+		return err
+	}
+
+	backupErr := bm.dumpTidbClusterData(ctx, backup)
 	if oldTikvGCTimeDuration < tikvGCTimeDuration {
 		// use another context to revert `tikv_gc_life_time` back.
 		// `DefaultTerminationGracePeriodSeconds` for a pod is 30, so we use a smaller timeout value here.
@@ -296,8 +312,6 @@ func (bm *BackupManager) performBackup(ctx context.Context, backup *v1alpha1.Bac
 	}
 	klog.Infof("get cluster %s commitTs %s success", bm, commitTs)
 
-	// TODO: Concurrent get file size and upload backup data to speed up processing time
-	archiveBackupPath := backupFullPath + constants.DefaultArchiveExtention
 	err = archiveBackupData(backupFullPath, archiveBackupPath)
 	if err != nil {
 		errs = append(errs, err)
@@ -331,19 +345,6 @@ func (bm *BackupManager) performBackup(ctx context.Context, backup *v1alpha1.Bac
 
 	// archive backup data successfully, origin dir can be deleted safely
 	os.RemoveAll(backupFullPath)
-
-	remotePath := strings.TrimPrefix(archiveBackupPath, constants.BackupRootPath+"/")
-	bucketURI := bm.getDestBucketURI(remotePath)
-	updatePathStatus := &controller.BackupUpdateStatus{
-		BackupPath: &bucketURI,
-	}
-	err = bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-		Type:   v1alpha1.BackupPrepare,
-		Status: corev1.ConditionTrue,
-	}, updatePathStatus)
-	if err != nil {
-		return err
-	}
 
 	err = bm.backupDataToRemote(ctx, archiveBackupPath, bucketURI, opts)
 	if err != nil {
