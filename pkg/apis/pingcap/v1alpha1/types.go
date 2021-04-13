@@ -1698,14 +1698,14 @@ type DMDiscoverySpec struct {
 
 	// (Deprecated) Address indicates the existed TiDB discovery address
 	// +k8s:openapi-gen=false
-	Address string `json:"address"`
+	Address string `json:"address,omitempty"`
 }
 
 // +k8s:openapi-gen=true
 // DMClusterSpec describes the attributes that a user creates on a dm cluster
 type DMClusterSpec struct {
 	// Discovery spec
-	Discovery DMDiscoverySpec `json:"discovery"`
+	Discovery DMDiscoverySpec `json:"discovery,omitempty"`
 
 	// dm-master cluster spec
 	// +optional

@@ -17323,8 +17323,6 @@ spec:
               required:
               - replicas
               type: object
-          required:
-          - discovery
           type: object
       type: object
   version: v1alpha1
