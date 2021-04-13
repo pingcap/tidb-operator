@@ -120,7 +120,7 @@ rules:
 - apiGroups: ["coordination.k8s.io"]
   resources: ["leases"]
   {{- if eq .Values.appendReleaseSuffix true}}
-  name: {{ .Values.scheduler.serviceAccount }}-{{ .Release.Name }}
+  resourceNames: {{ .Values.scheduler.serviceAccount }}-{{ .Release.Name }}
   {{- else }}
   resourceNames: ["{{ .Values.scheduler.schedulerName }}"]
   {{- end }}
