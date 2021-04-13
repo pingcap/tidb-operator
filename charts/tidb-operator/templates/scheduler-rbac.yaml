@@ -119,7 +119,11 @@ rules:
   verbs: ["create"]
 - apiGroups: ["coordination.k8s.io"]
   resources: ["leases"]
+  {{- if eq .Values.appendReleaseSuffix true}}
+  name: {{ .Values.scheduler.serviceAccount }}-{{ .Release.Name }}
+  {{- else }}
   resourceNames: ["{{ .Values.scheduler.schedulerName }}"]
+  {{- end }}
   verbs: ["get", "update"]
 ---
 kind: RoleBinding

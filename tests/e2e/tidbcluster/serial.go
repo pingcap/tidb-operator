@@ -624,9 +624,6 @@ var _ = ginkgo.Describe("[Serial]", func() {
 
 			ginkgo.By("Set --selector=version=old for the default TiDB Operator")
 			ocfg.Selector = []string{"version=old"}
-			ocfg.Tag = cfg.OperatorTag
-			ocfg.Image = cfg.OperatorImage
-			oa.InstallCRDOrDie(ocfg)
 			oa.UpgradeOperatorOrDie(ocfg)
 			log.Logf("Upgrade operator with --set-string \"selector=version=old\"")
 
