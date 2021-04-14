@@ -99,7 +99,7 @@ func addEvictLeaderAnnotation(kubeCli kubernetes.Interface, pod *core.Pod) error
 }
 
 // TODO: this is basically the same as pkg/manager/member/tikv_upgrader.go:readyToUpgrade. we should melt them into one func, which tells whether the tikv pod contains region leader
-func isTiKVReadyToUpgrade(upgradePod *core.Pod, store *pdapi.StoreInfo, evictLeaderTimeout time.Duration) bool {
+func isTiKVReadyToUpgrade(upgradePod *core.Pod, store *pdapi.StoreInfo, stores *pdapi.StoresInfo, evictLeaderTimeout time.Duration) bool {
 	if store.Status.LeaderCount == 0 {
 		klog.Infof("pod[%s/%s] has no region leader in store[%d]", upgradePod.Namespace, upgradePod.Name, store.Store.Id)
 		return true
@@ -110,6 +110,10 @@ func isTiKVReadyToUpgrade(upgradePod *core.Pod, store *pdapi.StoreInfo, evictLea
 		if err != nil {
 			klog.Errorf("parse annotation:[%s] to time failed.", EvictLeaderBeginTime)
 			return false
+		}
+		if stores.Count < 2 {
+			klog.Infof("TiKV stores are less than 2, skip waiting to evict region leader for Pod %s/%s", upgradePod.Namespace, upgradePod.Name)
+			return true
 		}
 		if time.Now().After(evictLeaderBeginTime.Add(evictLeaderTimeout)) {
 			return true

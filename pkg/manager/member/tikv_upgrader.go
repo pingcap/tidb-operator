@@ -209,6 +209,10 @@ func (u *tikvUpgrader) readyToUpgrade(upgradePod *corev1.Pod, tc *v1alpha1.TidbC
 			klog.Errorf("parse annotation:[%s] to time failed.", EvictLeaderBeginTime)
 			return false
 		}
+		if tc.Status.TiKV.StatefulSet.CurrentReplicas < 2 {
+			klog.Infof("TiKV stores are less than 2, skip waiting to evict region leader for Pod %s/%s", upgradePod.Namespace, upgradePod.Name)
+			return true
+		}
 		if time.Now().After(evictLeaderBeginTime.Add(evictLeaderTimeout)) {
 			klog.Infof("Evict region leader timeout (threshold: %v) for Pod %s/%s", evictLeaderTimeout, upgradePod.Namespace, upgradePod.Name)
 			return true
