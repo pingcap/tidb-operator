@@ -1821,7 +1821,18 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					framework.ExpectNoError(err, "failed to list %s Pods with options: %+v", comp, listOptions)
 					framework.ExpectEqual(len(pods.Items), int(replicasSmall), "there should be %d %s Pods", replicasSmall, comp)
 					for _, pod := range pods.Items {
-						framework.ExpectEqual(fmt.Sprintf("pingcap/%s:%s", comp, utilimage.TiDBV4), pod.Spec.Containers[0].Image, "%s Pod has wrong image", comp)
+						// some pods may have multiple containers
+						wrongImage := true
+						for _, c := range pod.Spec.Containers {
+							log.Logf("container image: %s", c.Image)
+							if fmt.Sprintf("pingcap/%s:%s", comp, utilimage.TiDBV4) == c.Image {
+								wrongImage = false
+								break
+							}
+						}
+						if wrongImage {
+							log.Failf("%s Pod has wrong image, expected %s", comp, utilimage.TiDBV4)
+						}
 					}
 				})
 			}
