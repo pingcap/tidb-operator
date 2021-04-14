@@ -1664,6 +1664,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 							framework.ExpectNoError(err, "failed to get PVC selector for tc %s/%s", tc.GetNamespace(), tc.GetName())
 							pvcs, err := c.CoreV1().PersistentVolumeClaims(ns).List(metav1.ListOptions{LabelSelector: pvcSelector.String()})
 							framework.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
+							if comp == v1alpha1.PDMemberType || comp == v1alpha1.TiKVMemberType {
+								framework.ExpectNotEqual(len(pvcs.Items), 0, "expect at least one PVCs for %s", comp)
+							}
 							for _, pvc := range pvcs.Items {
 								annotations := pvc.GetObjectMeta().GetAnnotations()
 								log.Logf("pvc annotations: %+v", annotations)
@@ -1721,6 +1724,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 						framework.ExpectNoError(err, "failed to get PVC selector for tc %s/%s", tc.GetNamespace(), tc.GetName())
 						pvcs, err := c.CoreV1().PersistentVolumeClaims(ns).List(metav1.ListOptions{LabelSelector: pvcSelector.String()})
 						framework.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
+						if comp == v1alpha1.PDMemberType || comp == v1alpha1.TiKVMemberType {
+							framework.ExpectNotEqual(len(pvcs.Items), 0, "expect at least one PVCs for %s", comp)
+						}
 						for _, pvc := range pvcs.Items {
 							annotations := pvc.GetObjectMeta().GetAnnotations()
 							log.Logf("pvc annotations: %+v", annotations)
