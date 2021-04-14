@@ -639,7 +639,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				changed, err := utilpod.PodsAreChanged(c, pdPods)()
 				if err != nil {
 					log.Logf("ERROR: meet error during verify TidbCluster 1 PD pods, err:%v", err)
-					return true, nil
+					return false, err
 				}
 				if changed {
 					return true, nil
@@ -662,7 +662,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				changed, err := utilpod.PodsAreChanged(c, pdPods)()
 				if err != nil {
 					log.Logf("ERROR: meet error during verify PD pods, err:%v", err)
-					return true, nil
+					return false, err
 				}
 				if changed {
 					return true, nil
