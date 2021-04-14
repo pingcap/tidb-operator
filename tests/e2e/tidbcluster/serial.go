@@ -936,7 +936,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 	})
 
-<<<<<<< HEAD
 	ginkgo.Context("[Verify: Upgrading Operator from 1.1.0", func() {
 		var oa tests.OperatorActions
 		var ocfg *tests.OperatorConfig
@@ -977,36 +976,11 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			oa.DeployTidbClusterOrDie(&cluster)
 			oa.CheckTidbClusterStatusOrDie(&cluster)
 
-			getPods := func(ls string) ([]v1.Pod, error) {
-				listOptions := metav1.ListOptions{
-					LabelSelector: ls,
-				}
-				podList, err := c.CoreV1().Pods(ns).List(listOptions)
-				if err != nil {
-					return nil, err
-				}
-				return podList.Items, nil
-			}
-
-			pdPods, err := getPods(labels.SelectorFromSet(label.New().Instance(tcName).PD().Labels()).String())
-			framework.ExpectNoError(err, "failed to get pd pods")
-
-			tikvPods, err := getPods(labels.SelectorFromSet(label.New().Instance(tcName).TiKV().Labels()).String())
-			framework.ExpectNoError(err, "failed to get tikv pods")
-
-			tidbPods, err := getPods(labels.SelectorFromSet(label.New().Instance(tcName).TiDB().Labels()).String())
-=======
-			err := genericCli.Create(context.TODO(), tc)
-			framework.ExpectNoError(err, "Expected TiDB cluster created")
-			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
-			framework.ExpectNoError(err, "Expected TiDB cluster ready")
-
 			pdPods, err := getPods(labels.SelectorFromSet(label.New().Instance(tcName).PD().Labels()).String(), ns, c)
 			framework.ExpectNoError(err, "failed to get pd pods")
 			tikvPods, err := getPods(labels.SelectorFromSet(label.New().Instance(tcName).TiKV().Labels()).String(), ns, c)
 			framework.ExpectNoError(err, "failed to get tikv pods")
 			tidbPods, err := getPods(labels.SelectorFromSet(label.New().Instance(tcName).TiDB().Labels()).String(), ns, c)
->>>>>>> b5e3ee5f... e2e: tidb-operator canary deployments (#3764)
 			framework.ExpectNoError(err, "failed to get tidb pods")
 
 			ginkgo.By("Upgrade tidb-operator and CRDs to current version")
@@ -1054,12 +1028,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectEqual(err, wait.ErrWaitTimeout, "expect pd/tikv/tidb haven't been changed for 5 minutes")
 		})
 	})
-
-<<<<<<< HEAD
-	ginkgo.Context("upgrading tidb-operator in the same minor series should not trigger rolling-update", func() {
-		var oa tests.OperatorActions
-=======
-	ginkgo.Describe("Canary Deploy TiDB Operator", func() {
+	ginkgo.Context("Canary Deploy TiDB Operator", func() {
 		var oa *tests.OperatorActions
 		var ocfg *tests.OperatorConfig
 
@@ -1266,9 +1235,8 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			log.Logf("Succeed to scale out TiDB of TidbCluster 1")
 		})
 	})
-	ginkgo.Describe("upgrading tidb-operator in the same minor series", func() {
-		var oa *tests.OperatorActions
->>>>>>> b5e3ee5f... e2e: tidb-operator canary deployments (#3764)
+	ginkgo.Context("upgrading tidb-operator in the same minor series should not trigger rolling-update", func() {
+		var oa tests.OperatorActions
 		var ocfg *tests.OperatorConfig
 		var version string
 

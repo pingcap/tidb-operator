@@ -664,15 +664,10 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 		}
 	}
 
-<<<<<<< HEAD
-	cmd := fmt.Sprintf("helm upgrade %s %s %s --set-string %s",
-		info.ReleaseName, oa.operatorChartPath(info.Tag),
-=======
 	cmd := fmt.Sprintf("helm upgrade %s %s --namespace %s %s --set-string %s --wait",
 		info.ReleaseName,
 		oa.operatorChartPath(info.Tag),
 		info.Namespace,
->>>>>>> b5e3ee5f... e2e: tidb-operator canary deployments (#3764)
 		info.OperatorHelmSetBoolean(),
 		info.OperatorHelmSetString(nil))
 
