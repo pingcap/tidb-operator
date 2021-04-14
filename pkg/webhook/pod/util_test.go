@@ -192,10 +192,18 @@ func TestIsTiKVReadyToUpgrade(t *testing.T) {
 		Status: &pdapi.StoreStatus{LeaderCount: 1},
 	}
 
+	storesInfo1 := &pdapi.StoresInfo{
+		Count: 1,
+	}
+	storesInfo2 := &pdapi.StoresInfo{
+		Count: 2,
+	}
+
 	tests := []struct {
 		name    string
 		pod     *core.Pod
 		store   *pdapi.StoreInfo
+		stores  *pdapi.StoresInfo
 		timeout time.Duration
 		result  bool
 	}{
@@ -203,6 +211,7 @@ func TestIsTiKVReadyToUpgrade(t *testing.T) {
 			name:    "leader count is zero should be ready",
 			pod:     &core.Pod{},
 			store:   store0,
+			stores:  storesInfo1,
 			timeout: time.Second,
 			result:  true,
 		},
@@ -210,6 +219,7 @@ func TestIsTiKVReadyToUpgrade(t *testing.T) {
 			name:    "not EvictLeaderBeginTime should be false",
 			pod:     &core.Pod{},
 			store:   store1,
+			stores:  storesInfo2,
 			timeout: time.Second,
 			result:  false,
 		},
@@ -223,6 +233,7 @@ func TestIsTiKVReadyToUpgrade(t *testing.T) {
 				},
 			},
 			store:   store1,
+			stores:  storesInfo2,
 			timeout: time.Hour * 12,
 			result:  true,
 		},
@@ -236,6 +247,7 @@ func TestIsTiKVReadyToUpgrade(t *testing.T) {
 				},
 			},
 			store:   store1,
+			stores:  storesInfo2,
 			timeout: time.Hour * 25,
 			result:  false,
 		},
@@ -243,7 +255,7 @@ func TestIsTiKVReadyToUpgrade(t *testing.T) {
 
 	for _, test := range tests {
 		t.Log("test: ", test.name)
-		get := isTiKVReadyToUpgrade(test.pod, test.store, test.timeout)
+		get := isTiKVReadyToUpgrade(test.pod, test.store, test.stores, test.timeout)
 		g.Expect(get).Should(Equal(test.result))
 	}
 }
