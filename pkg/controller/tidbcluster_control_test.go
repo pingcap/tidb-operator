@@ -16,7 +16,6 @@ package controller
 import (
 	"errors"
 	"testing"
-	"time"
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -64,31 +63,4 @@ func TestTidbClusterControlUpdateTidbClusterConflictSuccess(t *testing.T) {
 	})
 	_, err := control.UpdateTidbCluster(tc, &v1alpha1.TidbClusterStatus{}, &v1alpha1.TidbClusterStatus{})
 	g.Expect(err).To(Succeed())
-}
-
-func TestDeepEqualExceptHeartbeatTime(t *testing.T) {
-	g := NewGomegaWithT(t)
-
-	new := &v1alpha1.TidbClusterStatus{
-		TiKV: v1alpha1.TiKVStatus{
-			Synced: true,
-			Stores: map[string]v1alpha1.TiKVStore{
-				"1": {
-					ID: "1",
-				},
-			},
-		},
-	}
-	time.Sleep(1 * time.Second)
-	old := &v1alpha1.TidbClusterStatus{
-		TiKV: v1alpha1.TiKVStatus{
-			Synced: true,
-			Stores: map[string]v1alpha1.TiKVStore{
-				"1": {
-					ID: "1",
-				},
-			},
-		},
-	}
-	g.Expect(deepEqualExceptHeartbeatTime(new, old)).To(Equal(true))
 }
