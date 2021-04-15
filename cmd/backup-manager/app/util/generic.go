@@ -77,7 +77,8 @@ func (bo *GenericOptions) GetDSN(enabledTLSClient bool) (string, error) {
 
 func (bo *GenericOptions) GetTikvGCLifeTime(ctx context.Context, db *sql.DB) (string, error) {
 	var tikvGCTime string
-	sql := fmt.Sprintf("select variable_value from %s where variable_name= ?", constants.TidbMetaTable)
+	//sql := fmt.Sprintf("select variable_value from %s where variable_name= ?", constants.TidbMetaTable)
+	sql := fmt.Sprintln("SHOW GLOBAL VARIABLES LIKE ?")
 	row := db.QueryRowContext(ctx, sql, constants.TikvGCVariable)
 	err := row.Scan(&tikvGCTime)
 	if err != nil {
@@ -87,8 +88,9 @@ func (bo *GenericOptions) GetTikvGCLifeTime(ctx context.Context, db *sql.DB) (st
 }
 
 func (bo *GenericOptions) SetTikvGCLifeTime(ctx context.Context, db *sql.DB, gcTime string) error {
-	sql := fmt.Sprintf("update %s set variable_value = ? where variable_name = ?", constants.TidbMetaTable)
-	_, err := db.ExecContext(ctx, sql, gcTime, constants.TikvGCVariable)
+	//sql := fmt.Sprintf("update %s set variable_value = ? where variable_name = ?", constants.TidbMetaTable)
+	sql := fmt.Sprintln("SET GLOBAL ? = ?")
+	_, err := db.ExecContext(ctx, sql, constants.TikvGCVariable, gcTime)
 	if err != nil {
 		return fmt.Errorf("set cluster %s %s failed, sql: %s, err: %v", bo, constants.TikvGCVariable, sql, err)
 	}
