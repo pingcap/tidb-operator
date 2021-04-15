@@ -10,7 +10,7 @@ spec:
   #######################
 
   ## TiDB cluster version
-  version: "v4.0.10"
+  version: "v4.0.12"
 
   ## Time zone of TiDB cluster Pods
   timezone: UTC
@@ -183,7 +183,7 @@ spec:
     #############################
 
     ## The following block overwrites TiDB cluster-level configurations in `spec`
-    # version: "v4.0.10"
+    # version: "v4.0.12"
     # imagePullPolicy: IfNotPresent
     # imagePullSecrets: secretName
     # hostNetwork: false
@@ -364,7 +364,7 @@ spec:
     ###############################
 
     ## The following block overwrites TiDB cluster-level configurations in `spec`
-    # version: "v4.0.10"
+    # version: "v4.0.12"
     # imagePullPolicy: IfNotPresent
     # imagePullSecrets: secretName
     # hostNetwork: false
@@ -446,7 +446,7 @@ spec:
     ##   - `command`, which uses curl to access the /status path on port 10080 of the pod
     ## This is supported from TiDB Operator v1.1.7
     # readinessProbe:
-    #   # The `command` type is only supported after tidb v4.0.10, ref: https://github.com/pingcap/tidb/pull/20694
+    #   # The `command` type is only supported after tidb v4.0.9, ref: https://github.com/pingcap/tidb/pull/20802
     #   type: command
 
     ## when enabled, TiDB will accept TLS encrypted connections from MySQL client
@@ -564,7 +564,7 @@ spec:
     ###############################
 
     ## The following block overwrites TiDB cluster-level configurations in `spec`
-    # version: "v4.0.10"
+    # version: "v4.0.12"
     # imagePullPolicy: IfNotPresent
     # imagePullSecrets: secretName
     # hostNetwork: false
@@ -725,7 +725,7 @@ spec:
   ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/deploy-tidb-binlog/#deploy-pump
   # pump:
   #   baseImage: pingcap/tidb-binlog
-  #   version: "v4.0.10"
+  #   version: "v4.0.12"
   #   replicas: 1
   #   storageClassName: local-storage
   #   requests:
@@ -762,7 +762,7 @@ spec:
   ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/deploy-ticdc/
   # ticdc:
   #   baseImage: pingcap/ticdc
-  #   version: "v4.0.10"
+  #   version: "v4.0.12"
   #   replicas: 3
   #   storageClassName: local-storage
   #   requests:
@@ -804,7 +804,7 @@ spec:
   #   # Basic TiFlash Configuration #
   #   ###############################
   #   baseImage: pingcap/tiflash
-  #   version: "v4.0.10"
+  #   version: "v4.0.12"
   #   replicas: 1
   #   # limits:
   #   #   cpu: 2000m
