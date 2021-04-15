@@ -53,10 +53,15 @@ spec:
           {{- end }}
           - -tidb-discovery-image={{ .Values.operatorImage }}
           - -cluster-scoped={{ .Values.clusterScoped }}
-          {{- if .Values.clusterPermissions }}
+          {{- if kindIs "map" .Values.clusterPermissions }}
           - -cluster-permission-node={{ .Values.clusterPermissions.nodes | default false }}
           - -cluster-permission-pv={{ .Values.clusterPermissions.persistentvolumes | default false }}
           - -cluster-permission-sc={{ .Values.clusterPermissions.storageclasses | default false }}
+          {{- else }}
+          {{- /* if `clusterPermissions` is not defined (commented out), we set all following permissions to `true` for back compatibility */}}
+          - -cluster-permission-node=true
+          - -cluster-permission-pv=true
+          - -cluster-permission-sc=true
           {{- end }}
          {{- if eq .Values.controllerManager.autoFailover true }}
           - -auto-failover=true

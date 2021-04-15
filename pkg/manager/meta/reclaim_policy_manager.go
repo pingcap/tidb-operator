@@ -52,7 +52,7 @@ func (m *reclaimPolicyManager) SyncDM(dc *v1alpha1.DMCluster) error {
 
 func (m *reclaimPolicyManager) sync(kind string, obj runtime.Object, isPVReclaimEnabled bool, policy corev1.PersistentVolumeReclaimPolicy) error {
 	if m.deps.PVLister == nil {
-		klog.Warningf("persistent volumes lister is unavailable, skip syncing reclaim policy for %s. this may be caused by no relevant permissions", kind)
+		klog.V(4).Infof("persistent volumes lister is unavailable, skip syncing reclaim policy for %s. this may be caused by no relevant permissions", kind)
 		return nil
 	}
 

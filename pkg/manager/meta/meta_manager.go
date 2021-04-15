@@ -75,7 +75,7 @@ func (m *metaManager) Sync(tc *v1alpha1.TidbCluster) error {
 			}
 
 			if m.deps.PVLister == nil {
-				klog.Warningf("persistent volumes lister is unavailable, skip updating meta info for %s. this may be caused by no relevant permissions", pvc.Spec.VolumeName)
+				klog.V(4).Infof("persistent volumes lister is unavailable, skip updating meta info for %s. this may be caused by no relevant permissions", pvc.Spec.VolumeName)
 				continue
 			}
 			// update meta info for pv

@@ -117,7 +117,16 @@ roleRef:
   name: {{ .Release.Name }}:tidb-controller-manager
   apiGroup: rbac.authorization.k8s.io
 {{- else }}
-{{- if and .Values.clusterPermissions (or .Values.clusterPermissions.nodes .Values.clusterPermissions.persistentvolumes .Values.clusterPermissions.storageclasses) }}
+{{- /*
+It seems that `hasKey` and `ternary` can't handle top level fileds well,
+and the workaround from https://github.com/helm/helm/issues/8026 still can't differ
+"not defined" from empty map (`{}`) well.
+*/}}
+{{- $clusterPermissions := dict "notDefined" true }}
+{{- if kindIs "map" .Values.clusterPermissions }}
+  {{- $clusterPermissions = .Values.clusterPermissions }}
+{{- end }}
+{{- if or (get $clusterPermissions "notDefined") (or $clusterPermissions.nodes $clusterPermissions.persistentvolumes $clusterPermissions.storageclasses) }}
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
@@ -130,17 +139,17 @@ metadata:
     app.kubernetes.io/component: controller-manager
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 rules:
-  {{- if and .Values.clusterPermissions .Values.clusterPermissions.nodes }}
+  {{- if or (get $clusterPermissions "notDefined") $clusterPermissions.nodes }}
   - apiGroups: [""]
     resources: ["nodes"]
     verbs: ["get", "list", "watch"]
   {{- end }}
-  {{- if and .Values.clusterPermissions .Values.clusterPermissions.persistentvolumes }}
+  {{- if or (get $clusterPermissions "notDefined") $clusterPermissions.persistentvolumes }}
   - apiGroups: [""]
     resources: ["persistentvolumes"]
     verbs: ["get", "list", "watch", "patch","update"]
   {{- end }}
-  {{- if and .Values.clusterPermissions .Values.clusterPermissions.storageclasses }}
+  {{- if or (get $clusterPermissions "notDefined") $clusterPermissions.storageclasses }}
   - apiGroups: ["storage.k8s.io"]
     resources: ["storageclasses"]
     verbs: ["get", "list", "watch"]

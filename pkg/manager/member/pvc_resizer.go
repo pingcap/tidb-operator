@@ -227,7 +227,7 @@ func (p *pvcResizer) isVolumeExpansionSupported(storageClassName string) (bool, 
 // patchPVCs patches PVCs filtered by selector and prefix.
 func (p *pvcResizer) patchPVCs(ns string, selector labels.Selector, pvcQuantityInSpec map[string]resource.Quantity) error {
 	if p.deps.StorageClassLister == nil {
-		klog.Warningf("storage classes lister is unavailable, skip resizing PVCs in %s with selector %s. this may be caused by no relevant permissions", ns, selector)
+		klog.V(4).Infof("storage classes lister is unavailable, skip resizing PVCs in %s with selector %s. this may be caused by no relevant permissions", ns, selector)
 		return nil
 	}
 

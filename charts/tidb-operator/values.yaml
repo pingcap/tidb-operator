@@ -5,6 +5,8 @@
 clusterScoped: true
 
 # clusterPermissions are some cluster scoped permissions that will be used even if `clusterScoped: false`.
+# NOTE: `clusterPermissions: {}` means `false` for all following permissions,
+# but not defined `clusterPermissions` (commented out) means `true` for all following permissions for back compatibility.
 clusterPermissions: {}
 #  nodes: true
 #  persistentvolumes: true

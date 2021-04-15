@@ -52,7 +52,7 @@ roleRef:
 #metadata:
 #  name: namespaced
 #rules:
-#  # this namespaced user will be used to crate other users when installing tidb-operator with cluster scoped permissions.
+#  # this namespaced user will be used to create other users when installing tidb-operator with cluster scoped permissions.
 #  - apiGroups: ["rbac.authorization.k8s.io"]
 #    resources: ["clusterroles"]
 #    verbs: ["escalate","create","get","update", "delete"]
