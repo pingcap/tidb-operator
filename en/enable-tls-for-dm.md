@@ -543,7 +543,7 @@ Use `dmctl`:
 
 ``` shell
 cd /var/lib/dm-master-tls
-/dmctl --ssl-ca=ca.crt --ssl-cert=tls.crt --ssl-key=tls.key --master-addr https://127.0.0.1:8261 list-member
+/dmctl --ssl-ca=ca.crt --ssl-cert=tls.crt --ssl-key=tls.key --master-addr 127.0.0.1:8261 list-member
 ```
 
 ## Use DM to migrate data between MySQL/TiDB databases that enable TLS for the MySQL client

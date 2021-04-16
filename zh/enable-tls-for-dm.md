@@ -516,7 +516,7 @@ kubectl exec -it ${cluster_name}-dm-master-0 -n ${namespace} sh
 
 ``` shell
 cd /var/lib/dm-master-tls
-/dmctl --ssl-ca=ca.crt --ssl-cert=tls.crt --ssl-key=tls.key --master-addr https://127.0.0.1:8261 list-member
+/dmctl --ssl-ca=ca.crt --ssl-cert=tls.crt --ssl-key=tls.key --master-addr 127.0.0.1:8261 list-member
 ```
 
 ## 用 DM 集群同步开启了 MySQL 客户端 TLS 验证的 MySQL/TiDB 数据库
