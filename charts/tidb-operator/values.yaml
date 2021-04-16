@@ -7,6 +7,8 @@ clusterScoped: true
 # clusterPermissions are some cluster scoped permissions that will be used even if `clusterScoped: false`.
 # NOTE: `clusterPermissions: {}` means `false` for all following permissions,
 # but not defined `clusterPermissions` (commented out) means `true` for all following permissions for back compatibility.
+# when upgrading from a version of TiDB Operator without `clusterPermissions` config, you need to
+# comment `clusterPermissions` out or set all fields to `true` under `clusterPermissions` explicitly.
 clusterPermissions: {}
 #  nodes: true
 #  persistentvolumes: true
