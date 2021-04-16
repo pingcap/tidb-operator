@@ -226,11 +226,6 @@ func (p *pvcResizer) isVolumeExpansionSupported(storageClassName string) (bool, 
 
 // patchPVCs patches PVCs filtered by selector and prefix.
 func (p *pvcResizer) patchPVCs(ns string, selector labels.Selector, pvcQuantityInSpec map[string]resource.Quantity) error {
-	if p.deps.StorageClassLister == nil {
-		klog.V(4).Infof("storage classes lister is unavailable, skip resizing PVCs in %s with selector %s. this may be caused by no relevant permissions", ns, selector)
-		return nil
-	}
-
 	if len(pvcQuantityInSpec) == 0 {
 		return nil
 	}
@@ -262,13 +257,18 @@ func (p *pvcResizer) patchPVCs(ns string, selector labels.Selector, pvcQuantityI
 		}
 
 		if quantityInSpec.Cmp(currentRequest) > 0 {
-			volumeExpansionSupported, err := p.isVolumeExpansionSupported(*pvc.Spec.StorageClassName)
-			if err != nil {
-				return err
-			}
-			if !volumeExpansionSupported {
-				klog.Warningf("Storage Class %q used by PVC %s/%s does not support volume expansion, skipped", *pvc.Spec.StorageClassName, pvc.Namespace, pvc.Name)
-				continue
+			if p.deps.StorageClassLister != nil {
+				volumeExpansionSupported, err := p.isVolumeExpansionSupported(*pvc.Spec.StorageClassName)
+				if err != nil {
+					return err
+				}
+				if !volumeExpansionSupported {
+					klog.Warningf("Storage Class %q used by PVC %s/%s does not support volume expansion, skipped", *pvc.Spec.StorageClassName, pvc.Namespace, pvc.Name)
+					continue
+				}
+			} else {
+				klog.V(4).Infof("storage classes lister is unavailable, skip checking volume expansion support for PVC %s with storage class %s. this may be caused by no relevant permissions",
+					pvc.Name, pvc.Spec.StorageClassName)
 			}
 			mergePatch, err := json.Marshal(map[string]interface{}{
 				"spec": map[string]interface{}{
