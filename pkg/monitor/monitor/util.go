@@ -44,7 +44,7 @@ const (
 	defaultReplicaExternalLabelName = "prometheus_replica"
 )
 
-func GetTlsAssetsSecretName(name string) string {
+func GetTLSAssetsSecretName(name string) string {
 	return fmt.Sprintf("%s-tls-assets", prefixedName(name))
 }
 
