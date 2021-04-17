@@ -53,7 +53,7 @@ func TestGetMonitorConfigMap(t *testing.T) {
 				},
 			},
 			monitorClusterInfos: []ClusterRegexInfo{
-				{Name: "basic", enableTls: true},
+				{Name: "basic", enableTLS: true},
 			},
 			expected: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -82,7 +82,7 @@ func TestGetMonitorConfigMap(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			cm, err := getMonitorConfigMap(&tt.cluster, &tt.dmCluster, &tt.monitor, tt.monitorClusterInfos)
+			cm, err := getMonitorConfigMap(&tt.dmCluster, &tt.monitor, tt.monitorClusterInfos)
 			g.Expect(err).NotTo(HaveOccurred())
 			if tt.expected == nil {
 				g.Expect(cm).To(BeNil())
@@ -889,7 +889,7 @@ func TestGetMonitorVolumes(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			cm, err := getMonitorConfigMap(&tt.cluster, &tt.dmCluster, &tt.monitor, nil)
+			cm, err := getMonitorConfigMap(&tt.dmCluster, &tt.monitor, nil)
 			g.Expect(err).NotTo(HaveOccurred())
 			sa := getMonitorVolumes(cm, &tt.monitor, &tt.cluster, &tt.dmCluster)
 			tt.expected(sa)

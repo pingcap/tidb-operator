@@ -305,7 +305,7 @@ func (m *MonitorManager) syncTidbMonitorConfig(dc *v1alpha1.DMCluster, monitor *
 		}
 		// If cluster enable tls
 		if tc.IsTLSClusterEnabled() {
-			clusterRegex.enableTls = true
+			clusterRegex.enableTLS = true
 		}
 		monitorClusterInfos = append(monitorClusterInfos, clusterRegex)
 	}

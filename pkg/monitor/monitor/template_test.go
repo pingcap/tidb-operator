@@ -335,7 +335,6 @@ remote_write:
 		DMClusterInfos: []ClusterRegexInfo{
 			{Name: "target", Namespace: "ns1"},
 		},
-		EnableTLSCluster:   false,
 		EnableTLSDMCluster: false,
 		AlertmanagerURL:    "alert-url",
 		RemoteWriteConfigs: []*config.RemoteWriteConfig{
@@ -1010,12 +1009,11 @@ scrape_configs:
 `
 	model := &MonitorConfigModel{
 		ClusterInfos: []ClusterRegexInfo{
-			{Name: "target", Namespace: "ns1"},
+			{Name: "target", Namespace: "ns1", enableTLS: true},
 		},
 		DMClusterInfos: []ClusterRegexInfo{
 			{Name: "target", Namespace: "ns1"},
 		},
-		EnableTLSCluster:   true,
 		EnableTLSDMCluster: true,
 	}
 	content, err := RenderPrometheusConfig(model)
@@ -1052,7 +1050,6 @@ func TestMultipleClusterConfigRender(t *testing.T) {
 			{Name: "ns1", Namespace: "ns1"},
 			{Name: "ns2", Namespace: "ns2"},
 		},
-		EnableTLSCluster:   false,
 		EnableTLSDMCluster: false,
 		AlertmanagerURL:    "alert-url",
 	}
@@ -1068,14 +1065,13 @@ func TestMultipleClusterTlsConfigRender(t *testing.T) {
 	g := NewGomegaWithT(t)
 	model := &MonitorConfigModel{
 		ClusterInfos: []ClusterRegexInfo{
-			{Name: "ns1", Namespace: "ns1"},
-			{Name: "ns2", Namespace: "ns2"},
+			{Name: "ns1", Namespace: "ns1", enableTLS: true},
+			{Name: "ns2", Namespace: "ns2", enableTLS: true},
 		},
 		DMClusterInfos: []ClusterRegexInfo{
 			{Name: "ns1", Namespace: "ns1"},
 			{Name: "ns2", Namespace: "ns2"},
 		},
-		EnableTLSCluster:   true,
 		EnableTLSDMCluster: true,
 		AlertmanagerURL:    "alert-url",
 	}
@@ -1092,7 +1088,7 @@ func TestScrapeJob(t *testing.T) {
 	name := "ns1"
 	ns := "ns1"
 	ClusterInfos := []ClusterRegexInfo{
-		{Name: name, Namespace: ns, enableTls: true},
+		{Name: name, Namespace: ns, enableTLS: true},
 	}
 
 	tm := &v1alpha1.TidbMonitor{
@@ -1122,7 +1118,6 @@ func TestScrapeJob(t *testing.T) {
 		AlertmanagerURL:    "",
 		ClusterInfos:       ClusterInfos,
 		DMClusterInfos:     nil,
-		EnableTLSCluster:   true,
 		ExternalLabels:     buildExternalLabels(tm),
 		EnableTLSDMCluster: false,
 	}

@@ -412,7 +412,7 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 			},
 		}
 
-		if cluster.enableTls && !isDMJob(jobName) {
+		if cluster.enableTLS && !isDMJob(jobName) {
 			scrapeconfig.Scheme = "https"
 			// lightning does not need to authenticate the access of other components,
 			// so there is no need to enable mtls for the time being.
