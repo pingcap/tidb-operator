@@ -247,7 +247,7 @@ type TidbClusterRef struct {
 	// +optional
 	ClusterDomain string `json:"clusterDomain,omitempty"`
 
-	// TLS configuration to use when scraping the cluster mertric.
+	// TLS configuration to use when scraping the cluster metrics.
 	TLSConfig *ClusterTLSConfig `json:"tlsConfig,omitempty"`
 }
 
