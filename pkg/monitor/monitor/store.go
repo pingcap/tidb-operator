@@ -27,7 +27,6 @@ import (
 //
 // Store doesn't support concurrent access.
 type Store struct {
-	cmLister     corelisterv1.ConfigMapLister
 	secretLister corelisterv1.SecretLister
 	TLSAssets    map[TLSAssetKey]TLSAsset
 }
