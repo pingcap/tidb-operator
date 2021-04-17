@@ -3563,53 +3563,6 @@ string
 <p>ClusterDomain is the domain of TidbCluster object</p>
 </td>
 </tr>
-<tr>
-<td>
-<code>tlsConfig</code></br>
-<em>
-<a href="#clustertlsconfig">
-ClusterTLSConfig
-</a>
-</em>
-</td>
-<td>
-<p>TLS configuration to use when scraping the cluster mertric.</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="clustertlsconfig">ClusterTLSConfig</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#clusterref">ClusterRef</a>, 
-<a href="#tidbclusterref">TidbClusterRef</a>)
-</p>
-<p>
-<p>ClusterTLSConfig specifies TLS configuration parameters.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>SafeTLSConfig</code></br>
-<em>
-<a href="#safetlsconfig">
-SafeTLSConfig
-</a>
-</em>
-</td>
-<td>
-<p>
-(Members of <code>SafeTLSConfig</code> are embedded into this type.)
-</p>
-</td>
-</tr>
 </tbody>
 </table>
 <h3 id="commonconfig">CommonConfig</h3>
@@ -11345,7 +11298,6 @@ string
 <h3 id="safetlsconfig">SafeTLSConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#clustertlsconfig">ClusterTLSConfig</a>, 
 <a href="#tlsconfig">TLSConfig</a>)
 </p>
 <p>
@@ -19415,19 +19367,6 @@ string
 <td>
 <em>(Optional)</em>
 <p>ClusterDomain is the domain of TidbCluster object</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>tlsConfig</code></br>
-<em>
-<a href="#clustertlsconfig">
-ClusterTLSConfig
-</a>
-</em>
-</td>
-<td>
-<p>TLS configuration to use when scraping the cluster mertric.</p>
 </td>
 </tr>
 </tbody>

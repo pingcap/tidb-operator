@@ -340,26 +340,6 @@ spec:
                   type: string
                 namespace:
                   type: string
-                tlsConfig:
-                  properties:
-                    ca: {}
-                    cert: {}
-                    insecureSkipVerify:
-                      type: boolean
-                    keySecret:
-                      properties:
-                        key:
-                          type: string
-                        name:
-                          type: string
-                        optional:
-                          type: boolean
-                      required:
-                      - key
-                      type: object
-                    serverName:
-                      type: string
-                  type: object
               required:
               - name
               type: object
@@ -20059,26 +20039,6 @@ spec:
                     type: string
                   namespace:
                     type: string
-                  tlsConfig:
-                    properties:
-                      ca: {}
-                      cert: {}
-                      insecureSkipVerify:
-                        type: boolean
-                      keySecret:
-                        properties:
-                          key:
-                            type: string
-                          name:
-                            type: string
-                          optional:
-                            type: boolean
-                        required:
-                        - key
-                        type: object
-                      serverName:
-                        type: string
-                    type: object
                 required:
                 - name
                 type: object
@@ -20181,26 +20141,6 @@ spec:
                   type: string
                 namespace:
                   type: string
-                tlsConfig:
-                  properties:
-                    ca: {}
-                    cert: {}
-                    insecureSkipVerify:
-                      type: boolean
-                    keySecret:
-                      properties:
-                        key:
-                          type: string
-                        name:
-                          type: string
-                        optional:
-                          type: boolean
-                      required:
-                      - key
-                      type: object
-                    serverName:
-                      type: string
-                  type: object
               required:
               - name
               type: object
@@ -20291,26 +20231,6 @@ spec:
                   type: string
                 namespace:
                   type: string
-                tlsConfig:
-                  properties:
-                    ca: {}
-                    cert: {}
-                    insecureSkipVerify:
-                      type: boolean
-                    keySecret:
-                      properties:
-                        key:
-                          type: string
-                        name:
-                          type: string
-                        optional:
-                          type: boolean
-                      required:
-                      - key
-                      type: object
-                    serverName:
-                      type: string
-                  type: object
               required:
               - name
               type: object
