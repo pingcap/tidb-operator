@@ -75,7 +75,7 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	}
 
 	var firstTc *v1alpha1.TidbCluster
-	assetStore := NewStore(m.deps.ConfigMapLister, m.deps.SecretLister)
+	assetStore := NewStore(m.deps.SecretLister)
 
 	for _, tcRef := range monitor.Spec.Clusters {
 		tc, err := m.deps.TiDBClusterLister.TidbClusters(tcRef.Namespace).Get(tcRef.Name)
@@ -89,6 +89,8 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 			tcTlsSecretName := util.ClusterClientTLSSecretName(tc.Name)
 			err := assetStore.addTLSAssets(tc.Namespace, tcTlsSecretName)
 			if err != nil {
+				message := fmt.Sprintf("get secret[%s/%s] failed, err: %v", tc.Namespace, tcTlsSecretName, err)
+				klog.Error(message)
 				return err
 			}
 		}
@@ -187,7 +189,7 @@ func (m *MonitorManager) syncTidbMonitorService(monitor *v1alpha1.TidbMonitor) e
 func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monitor *v1alpha1.TidbMonitor) error {
 	ns := monitor.Namespace
 	name := monitor.Name
-	cm, err := m.syncTidbMonitorConfig(tc, dc, monitor)
+	cm, err := m.syncTidbMonitorConfig(dc, monitor)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s configmap failed to sync,err: %v", ns, name, err)
 		return err
@@ -246,7 +248,7 @@ func (m *MonitorManager) syncTidbMonitorSecret(monitor *v1alpha1.TidbMonitor) (*
 	return m.deps.TypedControl.CreateOrUpdateSecret(monitor, newSt)
 }
 
-func (m *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monitor *v1alpha1.TidbMonitor) (*corev1.ConfigMap, error) {
+func (m *MonitorManager) syncTidbMonitorConfig(dc *v1alpha1.DMCluster, monitor *v1alpha1.TidbMonitor) (*corev1.ConfigMap, error) {
 	if features.DefaultFeatureGate.Enabled(features.AutoScaling) {
 		// TODO: We need to update the status to tell users we are monitoring extra clusters
 		// Get all autoscaling clusters for TC, and add them to .Spec.Clusters to
@@ -308,7 +310,7 @@ func (m *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, dc *v1a
 		monitorClusterInfos = append(monitorClusterInfos, clusterRegex)
 	}
 
-	newCM, err := getMonitorConfigMap(tc, dc, monitor, monitorClusterInfos)
+	newCM, err := getMonitorConfigMap(dc, monitor, monitorClusterInfos)
 	if err != nil {
 		return nil, err
 	}

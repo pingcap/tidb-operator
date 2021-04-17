@@ -141,7 +141,6 @@ type MonitorConfigModel struct {
 	AlertmanagerURL    string
 	ClusterInfos       []ClusterRegexInfo
 	DMClusterInfos     []ClusterRegexInfo
-	EnableTLSCluster   bool
 	EnableTLSDMCluster bool
 	ExternalLabels     model.LabelSet
 	RemoteWriteConfigs []*config.RemoteWriteConfig
@@ -413,7 +412,7 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 			},
 		}
 
-		if cmodel.EnableTLSCluster && !isDMJob(jobName) {
+		if cluster.enableTls && !isDMJob(jobName) {
 			scrapeconfig.Scheme = "https"
 			// lightning does not need to authenticate the access of other components,
 			// so there is no need to enable mtls for the time being.

@@ -33,9 +33,8 @@ type Store struct {
 }
 
 // NewStore returns an empty assetStore.
-func NewStore(cmLister corelisterv1.ConfigMapLister, secretLister corelisterv1.SecretLister) *Store {
+func NewStore(secretLister corelisterv1.SecretLister) *Store {
 	return &Store{
-		cmLister:     cmLister,
 		secretLister: secretLister,
 		TLSAssets:    make(map[TLSAssetKey]TLSAsset),
 	}

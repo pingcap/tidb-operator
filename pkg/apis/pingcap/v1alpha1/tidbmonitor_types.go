@@ -246,9 +246,6 @@ type TidbClusterRef struct {
 	// ClusterDomain is the domain of TidbCluster object
 	// +optional
 	ClusterDomain string `json:"clusterDomain,omitempty"`
-
-	// TLS configuration to use when scraping the cluster mertric.
-	TLSConfig *ClusterTLSConfig `json:"tlsConfig,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -420,10 +417,4 @@ type QueueConfig struct {
 	// On recoverable errors, backoff exponentially.
 	MinBackoff time.Duration `json:"minBackoff,omitempty"`
 	MaxBackoff time.Duration `json:"maxBackoff,omitempty"`
-}
-
-// ClusterTLSConfig specifies TLS configuration parameters.
-// +k8s:openapi-gen=true
-type ClusterTLSConfig struct {
-	SafeTLSConfig `json:",inline"`
 }
