@@ -150,7 +150,7 @@ type MonitorConfigModel struct {
 type ClusterRegexInfo struct {
 	Name      string
 	Namespace string
-	enableTls bool
+	enableTLS bool
 }
 
 func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
