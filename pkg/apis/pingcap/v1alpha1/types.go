@@ -276,7 +276,6 @@ type TidbClusterStatus struct {
 	Pump       PumpStatus                `json:"pump,omitempty"`
 	TiFlash    TiFlashStatus             `json:"tiflash,omitempty"`
 	TiCDC      TiCDCStatus               `json:"ticdc,omitempty"`
-	Monitor    *TidbMonitorRef           `json:"monitor,omitempty"`
 	AutoScaler *TidbClusterAutoScalerRef `json:"auto-scaler,omitempty"`
 	// Represents the latest available observations of a tidb cluster's state.
 	// +optional
