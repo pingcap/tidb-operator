@@ -540,6 +540,11 @@ type TiCDCSpec struct {
 	// +kubebuilder:validation:Minimum=1
 	Replicas int32 `json:"replicas"`
 
+	// TLSClientSecretNames are the names of secrets which stores mysql/tidb server client certificates
+	// that used by ticdc.
+	// +optional
+	TLSClientSecretNames []string `json:"tlsClientSecretNames,omitempty"`
+
 	// Base image of the component, image tag is now allowed during validation
 	// +kubebuilder:default=pingcap/ticdc
 	// +optional
