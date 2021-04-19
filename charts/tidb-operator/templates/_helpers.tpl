@@ -17,7 +17,7 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 
 {{/*
 Define the default value for cluster permissions variables. They should be `true` by default for back compatibility.
-It seems `ternary` is not short-circuit evaluation, so we can't combine multipe `ternary` into one line here and need to use `if` instead.
+It seems `ternary` is not short-circuit evaluation, so we can't combine multiple `ternary` into one line here and need to use `if` instead.
 */}}
 {{- define "controller-manager.cluster-permissions.nodes" -}}
 {{- if hasKey .Values.controllerManager "clusterPermissions" }}
