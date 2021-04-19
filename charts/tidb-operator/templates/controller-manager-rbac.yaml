@@ -117,16 +117,8 @@ roleRef:
   name: {{ .Release.Name }}:tidb-controller-manager
   apiGroup: rbac.authorization.k8s.io
 {{- else }}
-{{- /*
-It seems that `hasKey` and `ternary` can't handle top level fileds well,
-and the workaround from https://github.com/helm/helm/issues/8026 still can't differ
-"not defined" from empty map (`{}`) well.
-*/}}
-{{- $clusterPermissions := dict "notDefined" true }}
-{{- if kindIs "map" .Values.clusterPermissions }}
-  {{- $clusterPermissions = .Values.clusterPermissions }}
-{{- end }}
-{{- if or (get $clusterPermissions "notDefined") (or $clusterPermissions.nodes $clusterPermissions.persistentvolumes $clusterPermissions.storageclasses) }}
+{{/* when rendering the template inline, this defined templates are "string", so we need to use `eq * true` here */}}
+{{- if or (eq (include "controller-manager.cluster-permissions.nodes" . | trim ) "true") (eq (include "controller-manager.cluster-permissions.persistentvolumes" . | trim) "true") (eq (include "controller-manager.cluster-permissions.storageclasses" . | trim) "true")}}
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
@@ -139,17 +131,17 @@ metadata:
     app.kubernetes.io/component: controller-manager
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 rules:
-  {{- if or (get $clusterPermissions "notDefined") $clusterPermissions.nodes }}
+  {{- if (eq (include "controller-manager.cluster-permissions.nodes" . | trim) "true") }}
   - apiGroups: [""]
     resources: ["nodes"]
     verbs: ["get", "list", "watch"]
   {{- end }}
-  {{- if or (get $clusterPermissions "notDefined") $clusterPermissions.persistentvolumes }}
+  {{- if (eq (include "controller-manager.cluster-permissions.persistentvolumes" . | trim) "true") }}
   - apiGroups: [""]
     resources: ["persistentvolumes"]
     verbs: ["get", "list", "watch", "patch","update"]
   {{- end }}
-  {{- if or (get $clusterPermissions "notDefined") $clusterPermissions.storageclasses }}
+  {{- if (eq (include "controller-manager.cluster-permissions.storageclasses" . | trim) "true") }}
   - apiGroups: ["storage.k8s.io"]
     resources: ["storageclasses"]
     verbs: ["get", "list", "watch"]
