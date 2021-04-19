@@ -43,24 +43,7 @@ func CheckTidbMonitor(monitor *v1alpha1.TidbMonitor, cli versioned.Interface, ku
 		log.Logf("ERROR: tm[%s/%s] failed to check functional:%v", monitor.Namespace, monitor.Name, err)
 		return err
 	}
-	return checkTidbClusterStatus(monitor, cli)
-}
-
-func checkTidbClusterStatus(tm *v1alpha1.TidbMonitor, cli versioned.Interface) error {
-	return wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-		tcRef := tm.Spec.Clusters[0]
-		tc, err := cli.PingcapV1alpha1().TidbClusters(tcRef.Namespace).Get(tcRef.Name, metav1.GetOptions{})
-		if err != nil {
-			return false, err
-		}
-		if tc.Status.Monitor == nil {
-			return false, nil
-		}
-		if tc.Status.Monitor.Name != tm.Name || tc.Status.Monitor.Namespace != tm.Namespace {
-			return false, fmt.Errorf("tidbcluster's monitorRef status is wrong")
-		}
-		return true, nil
-	})
+	return nil
 }
 
 // checkTidbMonitorPod check the pod of TidbMonitor whether it is ready
