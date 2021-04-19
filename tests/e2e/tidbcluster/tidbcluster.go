@@ -1728,6 +1728,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					ginkgo.By("Deploy initial tc")
 					tcName := fmt.Sprintf("scale-%s-pd-concurrently", op)
 					tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4Prev)
+					tc.Spec.PD.StorageClassName = pointer.StringPtr("local-storage")
 					if op == "in" {
 						tc.Spec.PD.Replicas = 5
 					} else {
