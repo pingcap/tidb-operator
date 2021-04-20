@@ -122,9 +122,9 @@ func (f *pdFailover) tryToMarkAPeerAsFailure(tc *v1alpha1.TidbCluster) error {
 
 		// mark a peer member failed and return an error to skip reconciliation
 		// note that status of tidb cluster will be updated always
-		pvcUIDSet := make(map[types.UID]struct{})
+		pvcUIDSet := make(map[types.UID]v1alpha1.EmptyStruct)
 		for _, pvc := range pvcs {
-			pvcUIDSet[pvc.UID] = struct{}{}
+			pvcUIDSet[pvc.UID] = v1alpha1.EmptyStruct{}
 		}
 		tc.Status.PD.FailureMembers[pdName] = v1alpha1.PDFailureMember{
 			PodName:       podName,

@@ -14,12 +14,13 @@
 package v1alpha1
 
 import (
-	"github.com/pingcap/tidb-operator/pkg/util/config"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/pingcap/tidb-operator/pkg/util/config"
 )
 
 const (
@@ -100,17 +101,35 @@ const (
 
 // TidbCluster is the control script's spec
 // +k8s:openapi-gen=true
+// +kubebuilder:resource:shortName="tc"
+// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
+// +kubebuilder:printcolumn:name="PD",type=string,JSONPath=`.status.pd.image`,description="The image for PD cluster"
+// +kubebuilder:printcolumn:name="Storage",type=string,JSONPath=`.spec.pd.requests.storage`,description="The storage size specified for PD node"
+// +kubebuilder:printcolumn:name="Ready",type=integer,JSONPath=`.status.pd.statefulSet.readyReplicas`,description="The desired replicas number of PD cluster"
+// +kubebuilder:printcolumn:name="Desire",type=integer,JSONPath=`.spec.pd.replicas`,description="The desired replicas number of PD cluster"
+// +kubebuilder:printcolumn:name="TiKV",type=string,JSONPath=`.status.tikv.image`,description="The image for TiKV cluster"
+// +kubebuilder:printcolumn:name="Storage",type=string,JSONPath=`.spec.tikv.requests.storage`,description="The storage size specified for TiKV node"
+// +kubebuilder:printcolumn:name="Ready",type=integer,JSONPath=`.status.tikv.statefulSet.readyReplicas`,description="The ready replicas number of TiKV cluster"
+// +kubebuilder:printcolumn:name="Desire",type=integer,JSONPath=`.spec.tikv.replicas`,description="The desired replicas number of TiKV cluster"
+// +kubebuilder:printcolumn:name="TiDB",type=string,JSONPath=`.status.tidb.image`,description="The image for TiDB cluster"
+// +kubebuilder:printcolumn:name="Ready",type=integer,JSONPath=`.status.tidb.statefulSet.readyReplicas`,description="The ready replicas number of TiDB cluster"
+// +kubebuilder:printcolumn:name="Desire",type=integer,JSONPath=`.spec.tidb.replicas`,description="The desired replicas number of TiDB cluster"
+// +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].message`,priority=1
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 type TidbCluster struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
-	metav1.ObjectMeta `json:"metadata"`
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// Spec defines the behavior of a tidb cluster
-	Spec TidbClusterSpec `json:"spec"`
+	// +optional
+	Spec TidbClusterSpec `json:"spec,omitempty"`
 
 	// +k8s:openapi-gen=false
 	// Most recently observed status of the tidb cluster
-	Status TidbClusterStatus `json:"status"`
+	// +optional
+	Status TidbClusterStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -193,8 +212,8 @@ type TidbClusterSpec struct {
 	// cluster component is needed to reload the configuration change.
 	// UpdateStrategyRollingUpdate will create a new ConfigMap with the new configuration and rolling-update the
 	// related components to use the new ConfigMap, that is, the new configuration will be applied automatically.
-	// +kubebuilder:validation:Enum=InPlace,RollingUpdate
-	// +kubebuilder:default=InPlacne
+	// +kubebuilder:validation:Enum=InPlace;RollingUpdate
+	// +kubebuilder:default=InPlace
 	ConfigUpdateStrategy ConfigUpdateStrategy `json:"configUpdateStrategy,omitempty"`
 
 	// Whether enable PVC reclaim for orphan PVC left by statefulset scale-in
@@ -373,6 +392,8 @@ type PDSpec struct {
 
 	// Config is the Configuration of pd-servers
 	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:validation:XPreserveUnknownFields
 	Config *PDConfigWraper `json:"config,omitempty"`
 
 	// TLSClientSecretName is the name of secret which stores tidb server client certificate
@@ -452,6 +473,8 @@ type TiKVSpec struct {
 
 	// Config is the Configuration of tikv-servers
 	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:validation:XPreserveUnknownFields
 	Config *TiKVConfigWraper `json:"config,omitempty"`
 
 	// RecoverFailover indicates that Operator can recover the failed Pods
@@ -653,6 +676,8 @@ type TiDBSpec struct {
 
 	// Config is the Configuration of tidb-servers
 	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:validation:XPreserveUnknownFields
 	Config *TiDBConfigWraper `json:"config,omitempty"`
 
 	// Lifecycle describes actions that the management system should take in response to container lifecycle
@@ -691,7 +716,7 @@ type TiDBProbe struct {
 	// "command" will probe the status api of tidb.
 	// This will use curl command to request tidb, before v4.0.9 there is no curl in the image,
 	// So do not use this before v4.0.9.
-	// +kubebuilder:validation:Enum=tcp,command
+	// +kubebuilder:validation:Enum=tcp;command
 	// +optional
 	Type *string `json:"type,omitempty"` // tcp or command
 }
@@ -721,6 +746,8 @@ type PumpSpec struct {
 
 	// The configuration of Pump cluster.
 	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:validation:XPreserveUnknownFields
 	Config *config.GenericConfig `json:"config,omitempty"`
 
 	// +k8s:openapi-gen=false
@@ -909,7 +936,7 @@ type ServiceSpec struct {
 // +k8s:openapi-gen=true
 type TiDBServiceSpec struct {
 	// +k8s:openapi-gen=false
-	ServiceSpec
+	ServiceSpec `json:",inline"`
 
 	// ExternalTrafficPolicy of the service
 	// Optional: Defaults to omitted
@@ -968,25 +995,32 @@ type PDMember struct {
 	ClientURL string `json:"clientURL"`
 	Health    bool   `json:"health"`
 	// Last time the health transitioned from one to another.
+	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
+	// +nullable
+	// +optional
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 }
 
+// EmptyStruct is defined to delight controller-gen@v0.5.0 tools
+// Only named struct is allowed by controller-gen
+type EmptyStruct struct{}
+
 // PDFailureMember is the pd failure member information
 type PDFailureMember struct {
-	PodName       string                 `json:"podName,omitempty"`
-	MemberID      string                 `json:"memberID,omitempty"`
-	PVCUID        types.UID              `json:"pvcUID,omitempty"`
-	PVCUIDSet     map[types.UID]struct{} `json:"pvcUIDSet,omitempty"`
-	MemberDeleted bool                   `json:"memberDeleted,omitempty"`
-	CreatedAt     metav1.Time            `json:"createdAt,omitempty"`
+	PodName       string                    `json:"podName,omitempty"`
+	MemberID      string                    `json:"memberID,omitempty"`
+	PVCUID        types.UID                 `json:"pvcUID,omitempty"`
+	PVCUIDSet     map[types.UID]EmptyStruct `json:"pvcUIDSet,omitempty"`
+	MemberDeleted bool                      `json:"memberDeleted,omitempty"`
+	CreatedAt     metav1.Time               `json:"createdAt,omitempty"`
 }
 
 // UnjoinedMember is the pd unjoin cluster member information
 type UnjoinedMember struct {
-	PodName   string                 `json:"podName,omitempty"`
-	PVCUID    types.UID              `json:"pvcUID,omitempty"`
-	PVCUIDSet map[types.UID]struct{} `json:"pvcUIDSet,omitempty"`
-	CreatedAt metav1.Time            `json:"createdAt,omitempty"`
+	PodName   string                    `json:"podName,omitempty"`
+	PVCUID    types.UID                 `json:"pvcUID,omitempty"`
+	PVCUIDSet map[types.UID]EmptyStruct `json:"pvcUIDSet,omitempty"`
+	CreatedAt metav1.Time               `json:"createdAt,omitempty"`
 }
 
 // TiDBStatus is TiDB status
@@ -1063,6 +1097,10 @@ type TiKVStore struct {
 	LeaderCount int32  `json:"leaderCount"`
 	State       string `json:"state"`
 	// Last time the health transitioned from one to another.
+	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
+	// TODO: LastTransitionTime is not always set
+	// +nullable
+	// +optional
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 }
 
@@ -1127,14 +1165,25 @@ type TLSCluster struct {
 
 // +k8s:openapi-gen=true
 // Backup is a backup of tidb cluster.
+// +kubebuilder:resource:shortName="bk"
+// +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.phase`,description="The current status of the backup"
+// +kubebuilder:printcolumn:name="BackupPath",type=string,JSONPath=`.status.backupPath`,description="The full path of backup data"
+// +kubebuilder:printcolumn:name="BackupSize",type=string,JSONPath=`.status.backupSizeReadable`,description="The data size of the backup"
+// +kubebuilder:printcolumn:name="CommitTS",type=string,JSONPath=`.status.commitTs`,description="The commit ts of tidb cluster dump"
+// +kubebuilder:printcolumn:name="Started",type=date,JSONPath=`.status.timeStarted`,description="The time at which the backup was started",priority=1
+// +kubebuilder:printcolumn:name="Completed",type=date,JSONPath=`.status.timeCompleted`,description="The time at which the backup was completed",priority=1
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 type Backup struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
-	metav1.ObjectMeta `json:"metadata"`
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec BackupSpec `json:"spec"`
+	// +optional
+	Spec BackupSpec `json:"spec,omitempty"`
 	// +k8s:openapi-gen=false
-	Status BackupStatus `json:"status"`
+	// +optional
+	Status BackupStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -1434,9 +1483,15 @@ type BackupStatus struct {
 	// BackupPath is the location of the backup.
 	BackupPath string `json:"backupPath"`
 	// TimeStarted is the time at which the backup was started.
-	TimeStarted metav1.Time `json:"timeStarted"`
+	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
+	// +nullable
+	// +optional
+	TimeStarted metav1.Time `json:"timeStarted,omitempty"`
 	// TimeCompleted is the time at which the backup was completed.
-	TimeCompleted metav1.Time `json:"timeCompleted"`
+	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
+	// +nullable
+	// +optional
+	TimeCompleted metav1.Time `json:"timeCompleted,omitempty"`
 	// BackupSizeReadable is the data size of the backup.
 	// the difference with BackupSize is that its format is human readable
 	BackupSizeReadable string `json:"backupSizeReadable"`
@@ -1445,8 +1500,9 @@ type BackupStatus struct {
 	// CommitTs is the snapshot time point of tidb cluster.
 	CommitTs string `json:"commitTs"`
 	// Phase is a user readable state inferred from the underlying Backup conditions
-	Phase      BackupConditionType `json:"phase"`
-	Conditions []BackupCondition   `json:"conditions"`
+	Phase BackupConditionType `json:"phase"`
+	// +optional
+	Conditions []BackupCondition `json:"conditions,omitempty"`
 }
 
 // +genclient
@@ -1454,12 +1510,20 @@ type BackupStatus struct {
 
 // +k8s:openapi-gen=true
 // BackupSchedule is a backup schedule of tidb cluster.
+// +kubebuilder:resource:shortName="bks"
+// +kubebuilder:printcolumn:name="Schedule",type=string,JSONPath=`.spec.schedule`,description="The cron format string used for backup scheduling"
+// +kubebuilder:printcolumn:name="MaxBackups",type=integer,JSONPath=`.spec.maxBackups`,description="The max number of backups we want to keep"
+// +kubebuilder:printcolumn:name="LastBackup",type=string,JSONPath=`.status.lastBackup`,description="The last backup CR name",priority=1
+// +kubebuilder:printcolumn:name="LastBackupTime",type=date,JSONPath=`.status.lastBackupTime`,description="The last time the backup was successfully created",priority=1
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 type BackupSchedule struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
-	metav1.ObjectMeta `json:"metadata"`
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec BackupScheduleSpec `json:"spec"`
+	// +optional
+	Spec BackupScheduleSpec `json:"spec,omitempty"`
 	// +k8s:openapi-gen=false
 	Status BackupScheduleStatus `json:"status,omitempty"`
 }
@@ -1507,9 +1571,11 @@ type BackupScheduleStatus struct {
 	// LastBackup represents the last backup.
 	LastBackup string `json:"lastBackup"`
 	// LastBackupTime represents the last time the backup was successfully created.
-	LastBackupTime *metav1.Time `json:"lastBackupTime"`
+	// +optional
+	LastBackupTime *metav1.Time `json:"lastBackupTime,omitempty"`
 	// AllBackupCleanTime represents the time when all backup entries are cleaned up
-	AllBackupCleanTime *metav1.Time `json:"allBackupCleanTime"`
+	// +optional
+	AllBackupCleanTime *metav1.Time `json:"allBackupCleanTime,omitempty"`
 }
 
 // +genclient
@@ -1517,14 +1583,23 @@ type BackupScheduleStatus struct {
 
 // +k8s:openapi-gen=true
 // Restore represents the restoration of backup of a tidb cluster.
+// +kubebuilder:resource:shortName="rt"
+// +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.phase`,description="The current status of the restore"
+// +kubebuilder:printcolumn:name="Started",type=date,JSONPath=`.status.timeStarted`,description="The time at which the restore was started",priority=1
+// +kubebuilder:printcolumn:name="Completed",type=date,JSONPath=`.status.timeCompleted`,description="The time at which the restore was completed",priority=1
+// +kubebuilder:printcolumn:name="CommitTS",type=string,JSONPath=`.status.commitTs`,description="The commit ts of tidb cluster restore"
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 type Restore struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
-	metav1.ObjectMeta `json:"metadata"`
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec RestoreSpec `json:"spec"`
+	// +optional
+	Spec RestoreSpec `json:"spec,omitempty"`
 	// +k8s:openapi-gen=false
-	Status RestoreStatus `json:"status"`
+	// +optional
+	Status RestoreStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -1632,14 +1707,21 @@ type RestoreSpec struct {
 // RestoreStatus represents the current status of a tidb cluster restore.
 type RestoreStatus struct {
 	// TimeStarted is the time at which the restore was started.
-	TimeStarted metav1.Time `json:"timeStarted"`
+	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
+	// +nullable
+	// +optional
+	TimeStarted metav1.Time `json:"timeStarted,omitempty"`
 	// TimeCompleted is the time at which the restore was completed.
-	TimeCompleted metav1.Time `json:"timeCompleted"`
+	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
+	// +nullable
+	// +optional
+	TimeCompleted metav1.Time `json:"timeCompleted,omitempty"`
 	// CommitTs is the snapshot time point of tidb cluster.
 	CommitTs string `json:"commitTs"`
 	// Phase is a user readable state inferred from the underlying Restore conditions
-	Phase      RestoreConditionType `json:"phase"`
-	Conditions []RestoreCondition   `json:"conditions"`
+	Phase RestoreConditionType `json:"phase"`
+	// +optional
+	Conditions []RestoreCondition `json:"conditions,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -1665,17 +1747,32 @@ type IngressSpec struct {
 
 // +k8s:openapi-gen=true
 // DMCluster is the control script's spec
+// +kubebuilder:resource:shortName="dc"
+// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
+// +kubebuilder:printcolumn:name="Master",type=string,JSONPath=`.status.master.image`,description="The image for dm-master cluster"
+// +kubebuilder:printcolumn:name="Storage",type=string,JSONPath=`.spec.master.storageSize`,description="The storage size specified for dm-master node"
+// +kubebuilder:printcolumn:name="Ready",type=integer,JSONPath=`.status.master.statefulSet.readyReplicas`,description="The ready replicas number of dm-master cluster"
+// +kubebuilder:printcolumn:name="Desire",type=integer,JSONPath=`.spec.master.replicas`,description="The desired replicas number of dm-master cluster"
+// +kubebuilder:printcolumn:name="Worker",type=string,JSONPath=`.status.worker.image`,description="The image for dm-master cluster"
+// +kubebuilder:printcolumn:name="Storage",type=string,JSONPath=`.spec.worker.storageSize`,description="The storage size specified for dm-worker node"
+// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.worker.statefulSet.readyReplicas`,description="The ready replicas number of dm-worker cluster"
+// +kubebuilder:printcolumn:name="Desire",type=integer,JSONPath=`.spec.worker.replicas`,description="The desired replicas number of dm-worker cluster"
+// +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].message`,priority=1
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 type DMCluster struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
-	metav1.ObjectMeta `json:"metadata"`
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// Spec defines the behavior of a dm cluster
-	Spec DMClusterSpec `json:"spec"`
+	// +optional
+	Spec DMClusterSpec `json:"spec,omitempty"`
 
 	// +k8s:openapi-gen=false
 	// Most recently observed status of the dm cluster
-	Status DMClusterStatus `json:"status"`
+	// +optional
+	Status DMClusterStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -1962,6 +2059,8 @@ type MasterMember struct {
 	ClientURL string `json:"clientURL"`
 	Health    bool   `json:"health"`
 	// Last time the health transitioned from one to another.
+	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
+	// +nullable
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 }
 

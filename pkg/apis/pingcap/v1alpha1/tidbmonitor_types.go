@@ -27,6 +27,7 @@ import (
 
 // +k8s:openapi-gen=true
 // TidbMonitor encode the spec and status of the monitoring component of a TiDB cluster
+// +kubebuilder:resource:shortName="tm"
 type TidbMonitor struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false

@@ -17,13 +17,18 @@ import (
 	stdjson "encoding/json"
 
 	"github.com/pingcap/errors"
-	"github.com/pingcap/tidb-operator/pkg/util/config"
 	"k8s.io/apimachinery/pkg/util/json"
+
+	"github.com/pingcap/tidb-operator/pkg/util/config"
 )
 
 type TiFlashConfigWraper struct {
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:validation:XPreserveUnknownFields
 	Common *TiFlashCommonConfigWraper `json:"config,omitempty"`
-	Proxy  *TiFlashProxyConfigWraper  `json:"proxy,omitempty"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:validation:XPreserveUnknownFields
+	Proxy *TiFlashProxyConfigWraper `json:"proxy,omitempty"`
 }
 
 func NewTiFlashConfig() *TiFlashConfigWraper {
@@ -43,7 +48,7 @@ func NewTiFlashCommonConfig() *TiFlashCommonConfigWraper {
 }
 
 type TiFlashCommonConfigWraper struct {
-	*config.GenericConfig
+	*config.GenericConfig `json:",inline"`
 }
 
 // MarshalJSON implements stdjson.Marshaler interface.
@@ -85,7 +90,7 @@ func NewTiFlashProxyConfig() *TiFlashProxyConfigWraper {
 }
 
 type TiFlashProxyConfigWraper struct {
-	*config.GenericConfig
+	*config.GenericConfig `json:",inline"`
 }
 
 // MarshalJSON implements stdjson.Marshaler interface.

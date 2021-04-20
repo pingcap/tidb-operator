@@ -31,7 +31,7 @@ func NewTiKVConfig() *TiKVConfigWraper {
 }
 
 type TiKVConfigWraper struct {
-	*config.GenericConfig
+	*config.GenericConfig `json:",inline"`
 }
 
 // MarshalJSON implements stdjson.Marshaler interface.

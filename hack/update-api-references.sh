@@ -22,25 +22,6 @@ cd $ROOT
 
 source "${ROOT}/hack/lib.sh"
 
-crd_target="$ROOT/manifests/crd.yaml"
-
-# Ensure that we find the binaries we build before anything else.
-export GOBIN="${OUTPUT_BIN}"
-PATH="${GOBIN}:${PATH}"
-
-# Enable go modules explicitly.
-export GO111MODULE=on
-go install github.com/pingcap/tidb-operator/cmd/to-crdgen
-
-to-crdgen generate tidbcluster > $crd_target
-to-crdgen generate dmcluster >> $crd_target
-to-crdgen generate backup >> $crd_target
-to-crdgen generate restore >> $crd_target
-to-crdgen generate backupschedule >> $crd_target
-to-crdgen generate tidbmonitor >> $crd_target
-to-crdgen generate tidbinitializer >> $crd_target
-to-crdgen generate tidbclusterautoscaler >> $crd_target
-
 hack::ensure_gen_crd_api_references_docs
 
 DOCS_PATH="$ROOT/docs/api-references"
