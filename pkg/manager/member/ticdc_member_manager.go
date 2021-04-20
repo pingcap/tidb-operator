@@ -36,9 +36,9 @@ import (
 )
 
 const (
-	ticdcCertPath           = "/var/lib/ticdc-tls"
-	ticdcDownstreamCertPath = "/var/lib/downstream-tls"
-	ticdcCertVolumeMount    = "ticdc-tls"
+	ticdcCertPath        = "/var/lib/ticdc-tls"
+	ticdcSinkCertPath    = "/var/lib/sink-tls"
+	ticdcCertVolumeMount = "ticdc-tls"
 )
 
 // ticdcMemberManager implements manager.Manager.
@@ -323,7 +323,7 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error)
 
 	for _, tlsClientSecretName := range tc.Spec.TiCDC.TLSClientSecretNames {
 		ticdcContainer.VolumeMounts = append(ticdcContainer.VolumeMounts, corev1.VolumeMount{
-			Name: tlsClientSecretName, ReadOnly: true, MountPath: fmt.Sprintf("%s/%s", ticdcDownstreamCertPath, tlsClientSecretName),
+			Name: tlsClientSecretName, ReadOnly: true, MountPath: fmt.Sprintf("%s/%s", ticdcSinkCertPath, tlsClientSecretName),
 		})
 	}
 
