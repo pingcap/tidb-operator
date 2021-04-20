@@ -540,8 +540,8 @@ type TiCDCSpec struct {
 	// +kubebuilder:validation:Minimum=1
 	Replicas int32 `json:"replicas"`
 
-	// TLSClientSecretNames are the names of secrets which stores mysql/tidb server client certificates
-	// that used by ticdc.
+	// TLSClientSecretNames are the names of secrets that store the
+	// client certificates for the downstream.
 	// +optional
 	TLSClientSecretNames []string `json:"tlsClientSecretNames,omitempty"`
 
