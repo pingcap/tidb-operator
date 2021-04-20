@@ -394,30 +394,6 @@ func (m *MonitorManager) removeIngressIfExist(monitor *v1alpha1.TidbMonitor, nam
 	return m.deps.TypedControl.Delete(monitor, ingress)
 }
 
-func (m *MonitorManager) patchTidbClusterStatus(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) error {
-	var mergePatch []byte
-	var err error
-	grafanaEnabled := true
-	if monitor.Spec.Grafana == nil {
-		grafanaEnabled = false
-	}
-	mergePatch, err = json.Marshal(map[string]interface{}{
-		"status": map[string]interface{}{
-			"monitor": map[string]interface{}{
-				"name":           monitor.Name,
-				"namespace":      monitor.Namespace,
-				"grafanaEnabled": grafanaEnabled,
-			},
-		},
-	})
-
-	if err != nil {
-		return err
-	}
-	_, err = m.deps.TiDBClusterControl.Patch(tc, mergePatch)
-	return err
-}
-
 func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMonitor) (bool, error) {
 	// determine whether there is an old deployment
 	oldDeploymentName := GetMonitorObjectName(monitor)
@@ -606,12 +582,10 @@ func (m *MonitorManager) syncDashboardMetricStorage(tc *v1alpha1.TidbCluster, tm
 	if tc.IsTLSClusterEnabled() {
 		defer pdEtcdClient.Close()
 	}
-	var prometheusExist bool
-	var grafanaExist bool
 
-	grafanaExist = tm.Spec.Grafana != nil
+	grafanaExist := tm.Spec.Grafana != nil
 	// sync prometheus key
-	err = syncComponent(prometheusExist, tm, prometheusComponent, 9090, pdEtcdClient)
+	err = syncComponent(true, tm, prometheusComponent, 9090, pdEtcdClient)
 	if err != nil {
 		return err
 	}
