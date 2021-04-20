@@ -53,7 +53,10 @@ func (m *realTidbDiscoveryManager) Reconcile(obj runtime.Object) error {
 		return fmt.Errorf("%T is not a metav1.Object", obj)
 	}
 
-	meta, _ := getDiscoveryMeta(metaObj, controller.DiscoveryMemberName)
+	meta, _, err := getDiscoveryMeta(metaObj, controller.DiscoveryMemberName)
+	if err != nil {
+		return controller.RequeueErrorf("error generating discovery meta: %v", err)
+	}
 
 	var (
 		clusterPolicyRule rbacv1.PolicyRule
@@ -78,11 +81,11 @@ func (m *realTidbDiscoveryManager) Reconcile(obj runtime.Object) error {
 			Verbs:         []string{"get"},
 		}
 	default:
-		panic(fmt.Sprintf("unsupported type %T for discovery", obj))
+		return controller.RequeueErrorf("unsupported type %T for discovery", obj)
 	}
 
 	// Ensure RBAC
-	_, err := m.deps.TypedControl.CreateOrUpdateRole(obj, &rbacv1.Role{
+	_, err = m.deps.TypedControl.CreateOrUpdateRole(obj, &rbacv1.Role{
 		ObjectMeta: meta,
 		Rules: []rbacv1.PolicyRule{
 			clusterPolicyRule,
@@ -126,15 +129,22 @@ func (m *realTidbDiscoveryManager) Reconcile(obj runtime.Object) error {
 		return controller.RequeueErrorf("error creating or updating discovery service: %v", err)
 	}
 	// RBAC ensured, reconcile
-	_, err = m.deps.TypedControl.CreateOrUpdateService(obj, getTidbDiscoveryService(metaObj, deploy))
+	svc, err := getTidbDiscoveryService(metaObj, deploy)
+	if err != nil {
+		return controller.RequeueErrorf("error generating discovery service: %v", err)
+	}
+	_, err = m.deps.TypedControl.CreateOrUpdateService(obj, svc)
 	if err != nil {
 		return controller.RequeueErrorf("error creating or updating discovery service: %v", err)
 	}
 	return nil
 }
 
-func getTidbDiscoveryService(obj metav1.Object, deploy *appsv1.Deployment) *corev1.Service {
-	meta, _ := getDiscoveryMeta(obj, controller.DiscoveryMemberName)
+func getTidbDiscoveryService(obj metav1.Object, deploy *appsv1.Deployment) (*corev1.Service, error) {
+	meta, _, err := getDiscoveryMeta(obj, controller.DiscoveryMemberName)
+	if err != nil {
+		return nil, err
+	}
 	return &corev1.Service{
 		ObjectMeta: meta,
 		Spec: corev1.ServiceSpec{
@@ -155,7 +165,7 @@ func getTidbDiscoveryService(obj metav1.Object, deploy *appsv1.Deployment) *core
 			},
 			Selector: deploy.Spec.Template.Labels,
 		},
-	}
+	}, nil
 }
 
 func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object) (*appsv1.Deployment, error) {
@@ -175,10 +185,13 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 		timezone = cluster.Timezone()
 		imagePullSecrets = cluster.Spec.ImagePullSecrets
 	default:
-		panic(fmt.Sprintf("unsupported type %T for discovery meta", obj))
+		return nil, fmt.Errorf("unsupported type %T for discovery meta", obj)
 	}
 
-	meta, l := getDiscoveryMeta(obj, controller.DiscoveryMemberName)
+	meta, l, err := getDiscoveryMeta(obj, controller.DiscoveryMemberName)
+	if err != nil {
+		return nil, err
+	}
 	d := &appsv1.Deployment{
 		ObjectMeta: meta,
 		Spec: appsv1.DeploymentSpec{
@@ -273,7 +286,7 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 	return d, nil
 }
 
-func getDiscoveryMeta(obj metav1.Object, nameFunc func(string) string) (metav1.ObjectMeta, label.Label) {
+func getDiscoveryMeta(obj metav1.Object, nameFunc func(string) string) (metav1.ObjectMeta, label.Label, error) {
 	var (
 		name           string
 		ownerRef       metav1.OwnerReference
@@ -293,7 +306,7 @@ func getDiscoveryMeta(obj metav1.Object, nameFunc func(string) string) (metav1.O
 		ownerRef = controller.GetDMOwnerRef(cluster) // TODO: refactor to unify methods
 		discoveryLabel = label.NewDM().Instance(instanceName).Discovery()
 	default:
-		panic(fmt.Sprintf("unsupported type %T for discovery meta", obj))
+		return metav1.ObjectMeta{}, label.Label{}, fmt.Errorf("unsupported type %T for discovery meta", obj)
 	}
 
 	objMeta := metav1.ObjectMeta{
@@ -302,7 +315,7 @@ func getDiscoveryMeta(obj metav1.Object, nameFunc func(string) string) (metav1.O
 		Labels:          discoveryLabel,
 		OwnerReferences: []metav1.OwnerReference{ownerRef},
 	}
-	return objMeta, discoveryLabel
+	return objMeta, discoveryLabel, nil
 }
 
 type FakeDiscoveryManager struct {
