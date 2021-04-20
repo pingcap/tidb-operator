@@ -55,7 +55,7 @@ func (m *realTidbDiscoveryManager) Reconcile(obj runtime.Object) error {
 
 	meta, _, err := getDiscoveryMeta(metaObj, controller.DiscoveryMemberName)
 	if err != nil {
-		return controller.RequeueErrorf("error generating discovery meta: %v", err)
+		return fmt.Errorf("error generating discovery meta: %v", err)
 	}
 
 	var (
@@ -81,7 +81,7 @@ func (m *realTidbDiscoveryManager) Reconcile(obj runtime.Object) error {
 			Verbs:         []string{"get"},
 		}
 	default:
-		return controller.RequeueErrorf("unsupported type %T for discovery", obj)
+		return fmt.Errorf("unsupported type %T for discovery", obj)
 	}
 
 	// Ensure RBAC
