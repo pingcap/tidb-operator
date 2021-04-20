@@ -167,7 +167,7 @@ func (c *realPVCCleaner) reclaimPV(meta metav1.Object) (map[string]string, error
 				klog.Infof("%s %s/%s patch pv %s to policy %s success", clusterType, ns, metaName, pvName, corev1.PersistentVolumeReclaimDelete)
 			}
 		} else {
-			klog.V(4).Infof("persistent volumes lister is unavailable, skip reclaiming policy for %s. this may be caused by no relevant permissions", pvName)
+			klog.V(4).Infof("Persistent volumes lister is unavailable, skip updating the reclaim policy for %s. This may be caused by no relevant permissions", pvName)
 		}
 
 		apiPVC, err := c.deps.KubeClientset.CoreV1().PersistentVolumeClaims(ns).Get(pvcName, metav1.GetOptions{})

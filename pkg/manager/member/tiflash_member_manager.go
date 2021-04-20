@@ -729,7 +729,7 @@ func (m *tiflashMemberManager) getTiFlashStore(store *pdapi.StoreInfo) *v1alpha1
 
 func (m *tiflashMemberManager) setStoreLabelsForTiFlash(tc *v1alpha1.TidbCluster) (int, error) {
 	if m.deps.NodeLister == nil {
-		klog.V(4).Infof("node lister is unavailable, skip setting store labels for tiflash. this may be caused by no relevant permissions")
+		klog.V(4).Infof("Node lister is unavailable, skip setting store labels for TiFlash of TiDB cluster %s/%s. This may be caused by no relevant permissions", tc.Namespace, tc.Name)
 		return 0, nil
 	}
 

@@ -267,8 +267,8 @@ func (p *pvcResizer) patchPVCs(ns string, selector labels.Selector, pvcQuantityI
 					continue
 				}
 			} else {
-				klog.V(4).Infof("storage classes lister is unavailable, skip checking volume expansion support for PVC %s with storage class %s. this may be caused by no relevant permissions",
-					pvc.Name, *pvc.Spec.StorageClassName)
+				klog.V(4).Infof("Storage classes lister is unavailable, skip checking volume expansion support for PVC %s/%s with storage class %s. This may be caused by no relevant permissions",
+					pvc.Namespace, pvc.Name, *pvc.Spec.StorageClassName)
 			}
 			mergePatch, err := json.Marshal(map[string]interface{}{
 				"spec": map[string]interface{}{

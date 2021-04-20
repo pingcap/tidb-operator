@@ -808,7 +808,7 @@ func getTiKVStore(store *pdapi.StoreInfo) *v1alpha1.TiKVStore {
 
 func (m *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (int, error) {
 	if m.deps.NodeLister == nil {
-		klog.V(4).Infof("node lister is unavailable, skip setting store labels for tikv. this may be caused by no relevant permissions")
+		klog.V(4).Infof("Node lister is unavailable, skip setting store labels for TiKV of TiDB cluster %s/%s. This may be caused by no relevant permissions", tc.Namespace, tc.Name)
 		return 0, nil
 	}
 
