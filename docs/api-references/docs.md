@@ -12490,8 +12490,8 @@ int32
 </td>
 <td>
 <em>(Optional)</em>
-<p>TLSClientSecretNames are the names of secrets which stores mysql/tidb server client certificates
-that used by ticdc.</p>
+<p>TLSClientSecretNames are the names of secrets that store the
+client certificates for the downstream.</p>
 </td>
 </tr>
 <tr>

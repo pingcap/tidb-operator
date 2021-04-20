@@ -6362,7 +6362,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCDCSpec(ref common.ReferenceCallback) co
 					},
 					"tlsClientSecretNames": {
 						SchemaProps: spec.SchemaProps{
-							Description: "TLSClientSecretNames are the names of secrets which stores mysql/tidb server client certificates that used by ticdc.",
+							Description: "TLSClientSecretNames are the names of secrets that store the client certificates for the downstream.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
