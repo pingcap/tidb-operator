@@ -4175,6 +4175,11 @@ func (in *TiCDCSpec) DeepCopyInto(out *TiCDCSpec) {
 	*out = *in
 	in.ComponentSpec.DeepCopyInto(&out.ComponentSpec)
 	in.ResourceRequirements.DeepCopyInto(&out.ResourceRequirements)
+	if in.TLSClientSecretNames != nil {
+		in, out := &in.TLSClientSecretNames, &out.TLSClientSecretNames
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.Config != nil {
 		in, out := &in.Config, &out.Config
 		*out = new(TiCDCConfig)
