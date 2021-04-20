@@ -6360,6 +6360,20 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCDCSpec(ref common.ReferenceCallback) co
 							Format:      "int32",
 						},
 					},
+					"tlsClientSecretNames": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TLSClientSecretNames are the names of secrets that store the client certificates for the downstream.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
+						},
+					},
 					"baseImage": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Base image of the component, image tag is now allowed during validation",

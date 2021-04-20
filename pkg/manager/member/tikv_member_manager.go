@@ -736,12 +736,6 @@ func (m *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 			oldStore, exist = previousPeerStores[status.ID]
 		}
 
-		// avoid LastHeartbeatTime be overwrite by zero time when pd lost LastHeartbeatTime
-		if status.LastHeartbeatTime.IsZero() && exist {
-			klog.V(4).Infof("the pod:%s's store LastHeartbeatTime is zero,so will keep in %v", status.PodName, oldStore.LastHeartbeatTime)
-			status.LastHeartbeatTime = oldStore.LastHeartbeatTime
-		}
-
 		status.LastTransitionTime = metav1.Now()
 		if exist && status.State == oldStore.State {
 			status.LastTransitionTime = oldStore.LastTransitionTime
@@ -797,12 +791,11 @@ func getTiKVStore(store *pdapi.StoreInfo) *v1alpha1.TiKVStore {
 	podName := strings.Split(ip, ".")[0]
 
 	return &v1alpha1.TiKVStore{
-		ID:                storeID,
-		PodName:           podName,
-		IP:                ip,
-		LeaderCount:       int32(store.Status.LeaderCount),
-		State:             store.Store.StateName,
-		LastHeartbeatTime: metav1.Time{Time: store.Status.LastHeartbeatTS},
+		ID:          storeID,
+		PodName:     podName,
+		IP:          ip,
+		LeaderCount: int32(store.Status.LeaderCount),
+		State:       store.Store.StateName,
 	}
 }
 
