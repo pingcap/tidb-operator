@@ -1062,12 +1062,11 @@ type TiCDCCapture struct {
 // TiKVStores is either Up/Down/Offline/Tombstone
 type TiKVStore struct {
 	// store id is also uint64, due to the same reason as pd id, we store id as string
-	ID                string      `json:"id"`
-	PodName           string      `json:"podName"`
-	IP                string      `json:"ip"`
-	LeaderCount       int32       `json:"leaderCount"`
-	State             string      `json:"state"`
-	LastHeartbeatTime metav1.Time `json:"lastHeartbeatTime"`
+	ID          string `json:"id"`
+	PodName     string `json:"podName"`
+	IP          string `json:"ip"`
+	LeaderCount int32  `json:"leaderCount"`
+	State       string `json:"state"`
 	// Last time the health transitioned from one to another.
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 }
