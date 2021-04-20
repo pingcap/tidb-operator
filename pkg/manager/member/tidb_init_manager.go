@@ -74,6 +74,7 @@ func (m *tidbInitManager) Sync(ti *v1alpha1.TidbInitializer) error {
 		klog.Infof("TidbInitManager.Sync: Spec.TiDB is nil in tidbcluster %s, skip syncing TidbInitializer %s/%s", tcName, ns, ti.Name)
 		return nil
 	}
+
 	err = m.syncTiDBInitConfigMap(ti)
 	if err != nil {
 		return err
