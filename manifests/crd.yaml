@@ -6490,6 +6490,10 @@ spec:
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
+                tlsClientSecretNames:
+                  items:
+                    type: string
+                  type: array
                 tolerations:
                   items:
                     properties:
