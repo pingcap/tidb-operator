@@ -36,15 +36,18 @@ type PDControlInterface interface {
 	// GetPeerPDClient provides PD Client of the tidb cluster from peerURL.
 	GetPeerPDClient(namespace Namespace, tcName string, tlsEnabled bool, clientURL string, clientName string) PDClient
 	// GetPDEtcdClient provides PD etcd Client of the tidb cluster.
+	// The return PDEtcdClient should never be closed.
 	GetPDEtcdClient(namespace Namespace, tcName string, tlsEnabled bool) (PDEtcdClient, error)
 }
 
 // defaultPDControl is the default implementation of PDControlInterface.
 type defaultPDControl struct {
-	mutex         sync.Mutex
+	kubeCli kubernetes.Interface
+
+	mutex     sync.Mutex
+	pdClients map[string]PDClient
+
 	etcdmutex     sync.Mutex
-	kubeCli       kubernetes.Interface
-	pdClients     map[string]PDClient
 	pdEtcdClients map[string]PDEtcdClient
 }
 
@@ -66,11 +69,11 @@ func (c *defaultPDControl) GetPDEtcdClient(namespace Namespace, tcName string, t
 			klog.Errorf("Unable to get tls config for tidb cluster %q, pd etcd client may not work: %v", tcName, err)
 			return nil, err
 		}
-		return NewPdEtcdClient(PDEtcdClientURL(namespace, tcName), DefaultTimeout, tlsConfig)
 	}
-	key := pdEtcdClientKey(namespace, tcName)
+
+	key := pdEtcdClientKey(namespace, tcName, tlsEnabled)
 	if _, ok := c.pdEtcdClients[key]; !ok {
-		pdetcdClient, err := NewPdEtcdClient(PDEtcdClientURL(namespace, tcName), DefaultTimeout, nil)
+		pdetcdClient, err := NewPdEtcdClient(PDEtcdClientURL(namespace, tcName), DefaultTimeout, tlsConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -132,8 +135,8 @@ func ClusterRefpdClientKey(scheme string, namespace Namespace, clusterName strin
 	return fmt.Sprintf("%s.%s.%s.%s", scheme, clusterName, string(namespace), clusterDomain)
 }
 
-func pdEtcdClientKey(namespace Namespace, clusterName string) string {
-	return fmt.Sprintf("%s.%s", clusterName, string(namespace))
+func pdEtcdClientKey(namespace Namespace, clusterName string, tlsEnabled bool) string {
+	return fmt.Sprintf("%s.%s.%v", clusterName, string(namespace), tlsEnabled)
 }
 
 // pdClientUrl builds the url of pd client
