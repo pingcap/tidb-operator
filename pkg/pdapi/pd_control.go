@@ -36,7 +36,6 @@ type PDControlInterface interface {
 	// GetPeerPDClient provides PD Client of the tidb cluster from peerURL.
 	GetPeerPDClient(namespace Namespace, tcName string, tlsEnabled bool, clientURL string, clientName string) PDClient
 	// GetPDEtcdClient provides PD etcd Client of the tidb cluster.
-	// The return PDEtcdClient should never be closed.
 	GetPDEtcdClient(namespace Namespace, tcName string, tlsEnabled bool) (PDEtcdClient, error)
 }
 
@@ -49,6 +48,14 @@ type defaultPDControl struct {
 
 	etcdmutex     sync.Mutex
 	pdEtcdClients map[string]PDEtcdClient
+}
+
+type noOpClose struct {
+	PDEtcdClient
+}
+
+func (c *noOpClose) Close() error {
+	return nil
 }
 
 // NewDefaultPDControl returns a defaultPDControl instance
@@ -77,8 +84,17 @@ func (c *defaultPDControl) GetPDEtcdClient(namespace Namespace, tcName string, t
 		if err != nil {
 			return nil, err
 		}
-		c.pdEtcdClients[key] = pdetcdClient
+
+		// For the current behavior to create a new client each time,
+		// it's to cover the case that the secret containing the certs may be rotated to avoid expiration,
+		// in which case, the client may fail and we have to restart the tidb-controller-manager container
+		if tlsEnabled {
+			return pdetcdClient, nil
+		}
+
+		c.pdEtcdClients[key] = &noOpClose{PDEtcdClient: pdetcdClient}
 	}
+
 	return c.pdEtcdClients[key], nil
 }
 

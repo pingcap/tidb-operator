@@ -110,6 +110,8 @@ func (m *TidbClusterStatusManager) syncDashboardMetricStorage(tc *v1alpha1.TidbC
 		return err
 	}
 
+	defer pdEtcdClient.Close()
+
 	var prometheusExist bool
 	var grafanaExist bool
 	if tc.Status.Monitor != nil {
@@ -161,7 +163,7 @@ func getStaleTidbInfoKey(ctx context.Context, client pdapi.PDEtcdClient) (staleK
 			continue
 		}
 
-		noleast = append(noleast, kv)
+		staleKeys = append(staleKeys, kv)
 	}
 
 	return
@@ -183,7 +185,9 @@ func (m *TidbClusterStatusManager) syncTiDBInfoKey(tc *v1alpha1.TidbCluster) err
 		return err
 	}
 
-	kvs, err := getNoLeastTidbInfoKey(context.TODO(), pdEtcdClient)
+	defer pdEtcdClient.Close()
+
+	kvs, err := getStaleTidbInfoKey(context.TODO(), pdEtcdClient)
 	if err != nil {
 		return err
 	}
