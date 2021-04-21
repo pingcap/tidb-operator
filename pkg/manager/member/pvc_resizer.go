@@ -257,13 +257,18 @@ func (p *pvcResizer) patchPVCs(ns string, selector labels.Selector, pvcQuantityI
 		}
 
 		if quantityInSpec.Cmp(currentRequest) > 0 {
-			volumeExpansionSupported, err := p.isVolumeExpansionSupported(*pvc.Spec.StorageClassName)
-			if err != nil {
-				return err
-			}
-			if !volumeExpansionSupported {
-				klog.Warningf("Storage Class %q used by PVC %s/%s does not support volume expansion, skipped", *pvc.Spec.StorageClassName, pvc.Namespace, pvc.Name)
-				continue
+			if p.deps.StorageClassLister != nil {
+				volumeExpansionSupported, err := p.isVolumeExpansionSupported(*pvc.Spec.StorageClassName)
+				if err != nil {
+					return err
+				}
+				if !volumeExpansionSupported {
+					klog.Warningf("Storage Class %q used by PVC %s/%s does not support volume expansion, skipped", *pvc.Spec.StorageClassName, pvc.Namespace, pvc.Name)
+					continue
+				}
+			} else {
+				klog.V(4).Infof("Storage classes lister is unavailable, skip checking volume expansion support for PVC %s/%s with storage class %s. This may be caused by no relevant permissions",
+					pvc.Namespace, pvc.Name, *pvc.Spec.StorageClassName)
 			}
 			mergePatch, err := json.Marshal(map[string]interface{}{
 				"spec": map[string]interface{}{

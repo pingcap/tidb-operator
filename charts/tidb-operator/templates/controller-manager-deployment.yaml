@@ -53,6 +53,9 @@ spec:
           {{- end }}
           - -tidb-discovery-image={{ .Values.operatorImage }}
           - -cluster-scoped={{ .Values.clusterScoped }}
+          - -cluster-permission-node={{ include "controller-manager.cluster-permissions.nodes" . | trim }}
+          - -cluster-permission-pv={{ include "controller-manager.cluster-permissions.persistentvolumes" . | trim }}
+          - -cluster-permission-sc={{ include "controller-manager.cluster-permissions.storageclasses" . | trim }}
          {{- if eq .Values.controllerManager.autoFailover true }}
           - -auto-failover=true
          {{- end }}

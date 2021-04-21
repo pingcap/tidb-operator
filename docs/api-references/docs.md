@@ -12483,6 +12483,19 @@ int32
 </tr>
 <tr>
 <td>
+<code>tlsClientSecretNames</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TLSClientSecretNames are the names of secrets that store the
+client certificates for the downstream.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>baseImage</code></br>
 <em>
 string
@@ -18670,18 +18683,6 @@ int32
 <code>state</code></br>
 <em>
 string
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
-<code>lastHeartbeatTime</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
-Kubernetes meta/v1.Time
-</a>
 </em>
 </td>
 <td>
