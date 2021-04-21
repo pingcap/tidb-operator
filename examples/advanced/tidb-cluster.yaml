@@ -446,7 +446,7 @@ spec:
     ##   - `command`, which uses curl to access the /status path on port 10080 of the pod
     ## This is supported from TiDB Operator v1.1.7
     # readinessProbe:
-    #   # The `command` type is only supported after tidb v5.0.0, ref: https://github.com/pingcap/tidb/pull/20694
+    #   # The `command` type is only supported after tidb v4.0.9, ref: https://github.com/pingcap/tidb/pull/20694
     #   type: command
 
     ## when enabled, TiDB will accept TLS encrypted connections from MySQL client
