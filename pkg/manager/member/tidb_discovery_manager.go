@@ -18,10 +18,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -30,6 +26,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog"
 	"k8s.io/utils/pointer"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util"
 )
 
 const (
@@ -164,22 +165,91 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 		resources        corev1.ResourceRequirements
 		timezone         string
 		imagePullSecrets []corev1.LocalObjectReference
+		baseSpec         v1alpha1.ComponentAccessor
+		podSpec          corev1.PodSpec
 	)
 
 	switch cluster := obj.(type) {
 	case *v1alpha1.TidbCluster:
 		resources = cluster.Spec.Discovery.ResourceRequirements
 		timezone = cluster.Timezone()
-		imagePullSecrets = cluster.Spec.ImagePullSecrets
+		baseSpec = cluster.BaseDiscoverySpec()
+		podSpec = baseSpec.BuildPodSpec()
 	case *v1alpha1.DMCluster:
 		resources = cluster.Spec.Discovery.ResourceRequirements
 		timezone = cluster.Timezone()
-		imagePullSecrets = cluster.Spec.ImagePullSecrets
+		baseSpec = cluster.BaseDiscoverySpec()
+		podSpec = baseSpec.BuildPodSpec()
 	default:
 		panic(fmt.Sprintf("unsupported type %T for discovery meta", obj))
 	}
 
 	meta, l := getDiscoveryMeta(obj, controller.DiscoveryMemberName)
+	podSpec.ServiceAccountName = meta.Name
+	podSpec.Containers = append(podSpec.Containers, corev1.Container{
+		Name:      "discovery",
+		Resources: controller.ContainerResource(resources),
+		Command: []string{
+			"/usr/local/bin/tidb-discovery",
+		},
+		Image:           m.deps.CLIConfig.TiDBDiscoveryImage,
+		ImagePullPolicy: corev1.PullIfNotPresent,
+		Env: []corev1.EnvVar{
+			{
+				Name: "MY_POD_NAMESPACE",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "metadata.namespace",
+					},
+				},
+			},
+			{
+				Name:  "TZ",
+				Value: timezone,
+			},
+			{
+				Name:  "TC_NAME",
+				Value: obj.GetName(), // for DmCluster, we still name it as TC_NAME because only ProxyServer use it now.
+			},
+		},
+		Ports: []corev1.ContainerPort{
+			{
+				Name:          "discovery",
+				Protocol:      corev1.ProtocolTCP,
+				ContainerPort: 10261,
+			},
+			{
+				Name:          "proxy",
+				Protocol:      corev1.ProtocolTCP,
+				ContainerPort: 10262,
+			},
+		},
+	})
+
+	if tc, ok := obj.(*v1alpha1.TidbCluster); ok && tc.IsTLSClusterEnabled() {
+		podSpec.Volumes = []corev1.Volume{
+			{
+				Name: "pd-tls",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: util.ClusterTLSSecretName(obj.GetName(), label.PDLabelVal),
+					},
+				},
+			},
+		}
+		podSpec.Containers[0].VolumeMounts = []corev1.VolumeMount{
+			{
+				Name:      "pd-tls",
+				ReadOnly:  true,
+				MountPath: PdTlsCertPath,
+			},
+		}
+		podSpec.Containers[0].Env = append(podSpec.Containers[0].Env, corev1.EnvVar{
+			Name:  "TC_TLS_ENABLED",
+			Value: strconv.FormatBool(true),
+		})
+	}
+
 	d := &appsv1.Deployment{
 		ObjectMeta: meta,
 		Spec: appsv1.DeploymentSpec{
@@ -190,74 +260,9 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: l.Labels(),
 				},
-				Spec: corev1.PodSpec{
-					ServiceAccountName: meta.Name,
-					Containers: []corev1.Container{{
-						Name:      "discovery",
-						Resources: controller.ContainerResource(resources),
-						Command: []string{
-							"/usr/local/bin/tidb-discovery",
-						},
-						Image:           m.deps.CLIConfig.TiDBDiscoveryImage,
-						ImagePullPolicy: corev1.PullIfNotPresent,
-						Env: []corev1.EnvVar{
-							{
-								Name: "MY_POD_NAMESPACE",
-								ValueFrom: &corev1.EnvVarSource{
-									FieldRef: &corev1.ObjectFieldSelector{
-										FieldPath: "metadata.namespace",
-									},
-								},
-							},
-							{
-								Name:  "TZ",
-								Value: timezone,
-							},
-							{
-								Name:  "TC_NAME",
-								Value: obj.GetName(), // for DmCluster, we still name it as TC_NAME because only ProxyServer use it now.
-							},
-						},
-						Ports: []corev1.ContainerPort{
-							{
-								Name:          "discovery",
-								Protocol:      corev1.ProtocolTCP,
-								ContainerPort: 10261,
-							},
-							{
-								Name:          "proxy",
-								Protocol:      corev1.ProtocolTCP,
-								ContainerPort: 10262,
-							},
-						},
-					}},
-				},
+				Spec: podSpec,
 			},
 		},
-	}
-
-	if tc, ok := obj.(*v1alpha1.TidbCluster); ok && tc.IsTLSClusterEnabled() {
-		d.Spec.Template.Spec.Volumes = []corev1.Volume{
-			{
-				Name: "pd-tls",
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: util.ClusterTLSSecretName(obj.GetName(), label.PDLabelVal),
-					},
-				},
-			},
-		}
-		d.Spec.Template.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{
-			{
-				Name:      "pd-tls",
-				ReadOnly:  true,
-				MountPath: PdTlsCertPath,
-			},
-		}
-		d.Spec.Template.Spec.Containers[0].Env = append(d.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
-			Name:  "TC_TLS_ENABLED",
-			Value: strconv.FormatBool(true),
-		})
 	}
 	b, err := json.Marshal(d.Spec.Template.Spec)
 	if err != nil {
@@ -268,9 +273,6 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 	}
 	d.Annotations[controller.LastAppliedPodTemplate] = string(b)
 
-	if imagePullSecrets != nil {
-		d.Spec.Template.Spec.ImagePullSecrets = imagePullSecrets
-	}
 	return d, nil
 }
 
