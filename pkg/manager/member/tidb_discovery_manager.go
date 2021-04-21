@@ -162,11 +162,10 @@ func getTidbDiscoveryService(obj metav1.Object, deploy *appsv1.Deployment) *core
 
 func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object) (*appsv1.Deployment, error) {
 	var (
-		resources        corev1.ResourceRequirements
-		timezone         string
-		imagePullSecrets []corev1.LocalObjectReference
-		baseSpec         v1alpha1.ComponentAccessor
-		podSpec          corev1.PodSpec
+		resources corev1.ResourceRequirements
+		timezone  string
+		baseSpec  v1alpha1.ComponentAccessor
+		podSpec   corev1.PodSpec
 	)
 
 	switch cluster := obj.(type) {
