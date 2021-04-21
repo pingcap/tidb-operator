@@ -147,7 +147,7 @@ func getStaleTidbInfoKey(ctx context.Context, client pdapi.PDEtcdClient) (staleK
 
 	for _, kv := range kvs {
 		key := kv.Key
-		klog.V(4).Infof("get tidb info key %s", key)
+		klog.V(4).Infof("Get TiDB info key %s", key)
 
 		if strings.HasSuffix(key, "ttl") {
 			ttls[key] = kv
