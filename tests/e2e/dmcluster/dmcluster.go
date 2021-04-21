@@ -13,12 +13,44 @@
 
 package dmcluster
 
-import "github.com/onsi/ginkgo"
+import (
+	"github.com/onsi/ginkgo"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
+	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
+	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
+	restclient "k8s.io/client-go/rest"
+	"k8s.io/kubernetes/test/e2e/framework"
+)
 
 var _ = ginkgo.Describe("DMCluster", func() {
+	f := e2eframework.NewDefaultFramework("dm-cluster")
+
+	var (
+		ns     string
+		config *restclient.Config
+		cli    versioned.Interface
+	)
+
+	ginkgo.BeforeEach(func() {
+		ns = f.Namespace.Name
+		var err error
+		config, err = framework.LoadConfig()
+		framework.ExpectNoError(err, "failed to load config")
+		cli, err = versioned.NewForConfig(config)
+		framework.ExpectNoError(err, "failed to create clientset for pingcap")
+	})
+
+	ginkgo.AfterEach(func() {})
+
 	ginkgo.Context("[Feature:DM]", func() {
-		ginkgo.It("should setup DM", func() {
-			ginkgo.By("hello setup DM")
+		ginkgo.It("setup replication for DM", func() {
+			ginkgo.By("Deploy a basic dc")
+			dc := fixture.GetDMCluster(ns, "basic-dm", utilimage.DMV2)
+			dc.Spec.Master.Replicas = 1
+			dc.Spec.Worker.Replicas = 1
+			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(dc)
+			framework.ExpectNoError(err, "failed to create DmCluster: %q", dc.Name)
 		})
 	})
 })
