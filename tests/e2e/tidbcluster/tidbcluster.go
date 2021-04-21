@@ -132,7 +132,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 	// basic deploy, scale out, scale in, change configuration tests
 	ginkgo.Describe("when using version", func() {
-		versions := []string{utilimage.TiDBV3, utilimage.TiDBV4}
+		versions := []string{utilimage.TiDBV3, utilimage.TiDBV4, utilimage.TiDBV5}
 		for _, version := range versions {
 			version := version
 			versionDashed := strings.ReplaceAll(version, ".", "-")
@@ -253,7 +253,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 		ginkgo.By("Deploy initial tc")
 		clusterName := "host-network"
-		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4)
+		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV5)
 		// Set some properties
 		tc.Spec.PD.Replicas = 1
 		tc.Spec.TiKV.Replicas = 1
@@ -329,7 +329,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	ginkgo.Context("[Feature: Helm Chart migrate to CR]", func() {
 		ginkgo.It("should keep tidb service in sync", func() {
 			ginkgo.By("Deploy initial tc")
-			tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "service", "admin", utilimage.TiDBV4)
+			tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "service", "admin", utilimage.TiDBV5)
 			tcCfg.Resources["pd.replicas"] = "1"
 			tcCfg.Resources["tidb.replicas"] = "1"
 			tcCfg.Resources["tikv.replicas"] = "1"
@@ -417,7 +417,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		// TODO: Add pump configmap rolling-update case
 		ginkgo.It("should adopt helm created pump with TidbCluster CR", func() {
 			ginkgo.By("Deploy initial tc")
-			tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "pump", "admin", utilimage.TiDBV4)
+			tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "pump", "admin", utilimage.TiDBV5)
 			tcCfg.Resources["pd.replicas"] = "1"
 			tcCfg.Resources["tikv.replicas"] = "1"
 			tcCfg.Resources["tidb.replicas"] = "1"
@@ -554,7 +554,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 		ginkgo.It("should migrate from helm to CR", func() {
 			ginkgo.By("Deploy initial tc")
-			tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "helm-migration", "admin", utilimage.TiDBV4)
+			tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "helm-migration", "admin", utilimage.TiDBV5)
 			tcCfg.Resources["pd.replicas"] = "1"
 			tcCfg.Resources["tikv.replicas"] = "1"
 			tcCfg.Resources["tidb.replicas"] = "1"
@@ -667,7 +667,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 	ginkgo.It("should manage tidb monitor normally", func() {
 		ginkgo.By("Deploy initial tc")
-		tc := fixture.GetTidbCluster(ns, "monitor-test", utilimage.TiDBV4)
+		tc := fixture.GetTidbCluster(ns, "monitor-test", utilimage.TiDBV5)
 		tc.Spec.PD.Replicas = 1
 		tc.Spec.TiKV.Replicas = 1
 		tc.Spec.TiDB.Replicas = 1
@@ -898,7 +898,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		// TODO: explain purpose of this case
 		ginkgo.It("should clear TiDB failureMembers when scale TiDB to zero", func() {
 			ginkgo.By("Deploy initial tc")
-			tc := fixture.GetTidbCluster(ns, "tidb-scale", utilimage.TiDBV4)
+			tc := fixture.GetTidbCluster(ns, "tidb-scale", utilimage.TiDBV5)
 			tc.Spec.PD.Replicas = 1
 			tc.Spec.TiKV.Replicas = 1
 			tc.Spec.TiDB.Replicas = 1
@@ -1137,7 +1137,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 			ginkgo.By("Creating tidb cluster")
 			dashTLSName := fmt.Sprintf("%s-dashboard-tls", tcName)
-			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4)
+			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV5)
 			tc.Spec.PD.Replicas = 1
 			tc.Spec.PD.TLSClientSecretName = &dashTLSName
 			tc.Spec.TiKV.Replicas = 1
@@ -1158,7 +1158,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
 
 			ginkgo.By("Creating heterogeneous tidb cluster")
-			heterogeneousTc := fixture.GetTidbCluster(ns, heterogeneousTcName, utilimage.TiDBV4)
+			heterogeneousTc := fixture.GetTidbCluster(ns, heterogeneousTcName, utilimage.TiDBV5)
 			heterogeneousTc.Spec.PD = nil
 			heterogeneousTc.Spec.TiKV.Replicas = 1
 			heterogeneousTc.Spec.TiDB.Replicas = 1
@@ -1236,10 +1236,10 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				Namespace:      ns,
 				ClusterName:    tcName,
 				OperatorTag:    cfg.OperatorTag,
-				ClusterVersion: utilimage.TiDBV4,
+				ClusterVersion: utilimage.TiDBV5,
 			}
 			targetTcName := "tls-target"
-			targetTc := fixture.GetTidbCluster(ns, targetTcName, utilimage.TiDBV4)
+			targetTc := fixture.GetTidbCluster(ns, targetTcName, utilimage.TiDBV5)
 			targetTc.Spec.PD.Replicas = 1
 			targetTc.Spec.TiKV.Replicas = 1
 			targetTc.Spec.TiDB.Replicas = 1
@@ -1284,7 +1284,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	ginkgo.It("should ensure changing TiDB service annotations won't change TiDB service type NodePort", func() {
 		ginkgo.By("Deploy initial tc")
 		// Create TidbCluster with NodePort to check whether node port would change
-		nodeTc := fixture.GetTidbCluster(ns, "nodeport", utilimage.TiDBV4)
+		nodeTc := fixture.GetTidbCluster(ns, "nodeport", utilimage.TiDBV5)
 		nodeTc.Spec.PD.Replicas = 1
 		nodeTc.Spec.TiKV.Replicas = 1
 		nodeTc.Spec.TiDB.Replicas = 1
@@ -1380,7 +1380,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		ginkgo.It("should join heterogeneous cluster into an existing cluster", func() {
 			// Create TidbCluster with NodePort to check whether node port would change
 			ginkgo.By("Deploy origin tc")
-			originTc := fixture.GetTidbCluster(ns, "origin", utilimage.TiDBV4)
+			originTc := fixture.GetTidbCluster(ns, "origin", utilimage.TiDBV5)
 			originTc.Spec.PD.Replicas = 1
 			originTc.Spec.TiKV.Replicas = 1
 			originTc.Spec.TiDB.Replicas = 1
@@ -1390,7 +1390,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
 			ginkgo.By("Deploy heterogeneous tc")
-			heterogeneousTc := fixture.GetTidbCluster(ns, "heterogeneous", utilimage.TiDBV4)
+			heterogeneousTc := fixture.GetTidbCluster(ns, "heterogeneous", utilimage.TiDBV5)
 			heterogeneousTc.Spec.PD = nil
 			heterogeneousTc.Spec.TiKV.Replicas = 1
 			heterogeneousTc.Spec.TiDB.Replicas = 1
@@ -1438,7 +1438,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 	ginkgo.It("[Feature: CDC]", func() {
 		ginkgo.By("Creating cdc cluster")
-		fromTc := fixture.GetTidbCluster(ns, "cdc-source", utilimage.TiDBV4)
+		fromTc := fixture.GetTidbCluster(ns, "cdc-source", utilimage.TiDBV5)
 		fromTc.Spec.PD.Replicas = 3
 		fromTc.Spec.TiKV.Replicas = 3
 		fromTc.Spec.TiDB.Replicas = 2
@@ -1452,7 +1452,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
 		ginkgo.By("Creating cdc-sink cluster")
-		toTc := fixture.GetTidbCluster(ns, "cdc-sink", utilimage.TiDBV4)
+		toTc := fixture.GetTidbCluster(ns, "cdc-sink", utilimage.TiDBV5)
 		toTc.Spec.PD.Replicas = 1
 		toTc.Spec.TiKV.Replicas = 1
 		toTc.Spec.TiDB.Replicas = 1
@@ -1489,7 +1489,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	ginkgo.Context("when stores number is equal to 3", func() {
 		ginkgo.It("forbid to scale in TiKV and the state of all stores are up", func() {
 			ginkgo.By("Deploy initial tc")
-			tc := fixture.GetTidbCluster(ns, "scale-in-tikv", utilimage.TiDBV4)
+			tc := fixture.GetTidbCluster(ns, "scale-in-tikv", utilimage.TiDBV5)
 			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
 			framework.ExpectNoError(err, "Expected create tidbcluster")
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
@@ -1522,7 +1522,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	ginkgo.It("TiKV should mount multiple pvc", func() {
 		ginkgo.By("Deploy initial tc with addition")
 		clusterName := "tidb-multiple-pvc-scale"
-		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4)
+		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV5)
 		tc.Spec.TiKV.StorageVolumes = []v1alpha1.StorageVolume{
 			{
 				Name:        "wal",
@@ -1586,7 +1586,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 	ginkgo.It("Deleted objects controlled by TidbCluster will be recovered by Operator", func() {
 		ginkgo.By("Deploy initial tc")
-		tc := fixture.GetTidbCluster(ns, "delete-objects", utilimage.TiDBV4)
+		tc := fixture.GetTidbCluster(ns, "delete-objects", utilimage.TiDBV5)
 		utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
 
 		ginkgo.By("Delete StatefulSet/ConfigMap/Service of PD")

@@ -446,9 +446,9 @@ var _ = ginkgo.Describe("[Serial]", func() {
 		})
 
 		ginkgo.It("should not change old TidbCluster", func() {
-			ginkgo.By(fmt.Sprintf("deploy original tc %q", utilimage.TiDBV4))
+			ginkgo.By(fmt.Sprintf("deploy original tc %q", utilimage.TiDBV5))
 			tcName := "tidbcluster"
-			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4)
+			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV5)
 			tc.Spec.PD.Replicas = 3
 			tc.Spec.TiKV.Replicas = 1
 			tc.Spec.TiDB.Replicas = 1
@@ -517,7 +517,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 		ginkgo.It("should migrate tidbmonitor from deployment to sts", func() {
 			ginkgo.By("deploy initial tc")
 			tcName := "smooth-tidbcluster"
-			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4)
+			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV5)
 			tc.Spec.PD.Replicas = 1
 			tc.Spec.TiKV.Replicas = 1
 			tc.Spec.TiDB.Replicas = 1
@@ -818,7 +818,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			framework.Skipf("duplicated test")
 			tcName := "basic"
 
-			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4)
+			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV5)
 			tc.Spec.PD.Replicas = 1
 			tc.Spec.TiKV.Replicas = 1
 			tc.Spec.TiDB.Replicas = 1
