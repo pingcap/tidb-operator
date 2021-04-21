@@ -52,7 +52,12 @@ type CLIConfig struct {
 	Workers int
 	// Controls whether operator should manage kubernetes cluster
 	// wide TiDB clusters
-	ClusterScoped         bool
+	ClusterScoped bool
+
+	ClusterPermissionNode bool
+	ClusterPermissionPV   bool
+	ClusterPermissionSC   bool
+
 	AutoFailover          bool
 	PDFailoverPeriod      time.Duration
 	TiKVFailoverPeriod    time.Duration
@@ -108,6 +113,9 @@ func (c *CLIConfig) AddFlag(_ *flag.FlagSet) {
 	flag.BoolVar(&c.PrintVersion, "version", false, "Show version and quit")
 	flag.IntVar(&c.Workers, "workers", c.Workers, "The number of workers that are allowed to sync concurrently. Larger number = more responsive management, but more CPU (and network) load")
 	flag.BoolVar(&c.ClusterScoped, "cluster-scoped", c.ClusterScoped, "Whether tidb-operator should manage kubernetes cluster wide TiDB Clusters")
+	flag.BoolVar(&c.ClusterPermissionNode, "cluster-permission-node", c.ClusterPermissionNode, "Whether tidb-operator should have node permissions even if cluster-scoped is false")
+	flag.BoolVar(&c.ClusterPermissionPV, "cluster-permission-pv", c.ClusterPermissionPV, "Whether tidb-operator should have persistent volume permissions even if cluster-scoped is false")
+	flag.BoolVar(&c.ClusterPermissionSC, "cluster-permission-sc", c.ClusterPermissionSC, "Whether tidb-operator should have storage class permissions even if cluster-scoped is false")
 	flag.BoolVar(&c.AutoFailover, "auto-failover", c.AutoFailover, "Auto failover")
 	flag.DurationVar(&c.PDFailoverPeriod, "pd-failover-period", c.PDFailoverPeriod, "PD failover period default(5m)")
 	flag.DurationVar(&c.TiKVFailoverPeriod, "tikv-failover-period", c.TiKVFailoverPeriod, "TiKV failover period default(5m)")
@@ -127,6 +135,21 @@ func (c *CLIConfig) AddFlag(_ *flag.FlagSet) {
 	flag.DurationVar(&c.LeaseDuration, "leader-lease-duration", c.LeaseDuration, "leader-lease-duration is the duration that non-leader candidates will wait to force acquire leadership")
 	flag.DurationVar(&c.RenewDeadline, "leader-renew-deadline", c.RenewDeadline, "leader-renew-deadline is the duration that the acting master will retry refreshing leadership before giving up")
 	flag.DurationVar(&c.RetryPeriod, "leader-retry-period", c.RetryPeriod, "leader-retry-period is the duration the LeaderElector clients should wait between tries of actions")
+}
+
+// HasNodePermission returns whether the user has permission for node operations.
+func (c *CLIConfig) HasNodePermission() bool {
+	return c.ClusterScoped || c.ClusterPermissionNode
+}
+
+// HasPVPermission returns whether the user has permission for persistent volume operations.
+func (c *CLIConfig) HasPVPermission() bool {
+	return c.ClusterScoped || c.ClusterPermissionPV
+}
+
+// HasSCPermission returns whether the user has permission for storage class operations.
+func (c *CLIConfig) HasSCPermission() bool {
+	return c.ClusterScoped || c.ClusterPermissionSC
 }
 
 type Controls struct {
@@ -193,6 +216,7 @@ type Dependencies struct {
 }
 
 func newRealControls(
+	cliCfg *CLIConfig,
 	clientset versioned.Interface,
 	kubeClientset kubernetes.Interface,
 	genericCli client.Client,
@@ -210,9 +234,13 @@ func newRealControls(
 		statefulSetLister = kubeInformerFactory.Apps().V1().StatefulSets().Lister()
 		serviceLister     = kubeInformerFactory.Core().V1().Services().Lister()
 		pvcLister         = kubeInformerFactory.Core().V1().PersistentVolumeClaims().Lister()
-		pvLister          = kubeInformerFactory.Core().V1().PersistentVolumes().Lister()
 		podLister         = kubeInformerFactory.Core().V1().Pods().Lister()
+		pvLister          corelisterv1.PersistentVolumeLister
 	)
+	if cliCfg.HasPVPermission() {
+		pvLister = kubeInformerFactory.Core().V1().PersistentVolumes().Lister()
+	}
+
 	return Controls{
 		JobControl:         NewRealJobControl(kubeClientset, recorder),
 		ConfigMapControl:   NewRealConfigMapControl(kubeClientset, recorder),
@@ -244,6 +272,28 @@ func newDependencies(
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 	labelFilterKubeInformerFactory kubeinformers.SharedInformerFactory,
 	recorder record.EventRecorder) *Dependencies {
+
+	var (
+		nodeLister corelisterv1.NodeLister
+		pvLister   corelisterv1.PersistentVolumeLister
+		scLister   storagelister.StorageClassLister
+	)
+	if cliCfg.HasNodePermission() {
+		nodeLister = kubeInformerFactory.Core().V1().Nodes().Lister()
+	} else {
+		klog.Info("no permission for nodes, skip creating node lister")
+	}
+	if cliCfg.HasPVPermission() {
+		pvLister = kubeInformerFactory.Core().V1().PersistentVolumes().Lister()
+	} else {
+		klog.Info("no permission for persistent volumes, skip creating pv lister")
+	}
+	if cliCfg.HasSCPermission() {
+		scLister = kubeInformerFactory.Storage().V1().StorageClasses().Lister()
+	} else {
+		klog.Info("no permission for storage classes, skip creating sc lister")
+	}
+
 	return &Dependencies{
 		CLIConfig:                      cliCfg,
 		InformerFactory:                informerFactory,
@@ -258,14 +308,14 @@ func newDependencies(
 		ServiceLister:               kubeInformerFactory.Core().V1().Services().Lister(),
 		EndpointLister:              kubeInformerFactory.Core().V1().Endpoints().Lister(),
 		PVCLister:                   kubeInformerFactory.Core().V1().PersistentVolumeClaims().Lister(),
-		PVLister:                    kubeInformerFactory.Core().V1().PersistentVolumes().Lister(),
+		PVLister:                    pvLister,
 		PodLister:                   kubeInformerFactory.Core().V1().Pods().Lister(),
-		NodeLister:                  kubeInformerFactory.Core().V1().Nodes().Lister(),
+		NodeLister:                  nodeLister,
 		SecretLister:                kubeInformerFactory.Core().V1().Secrets().Lister(),
 		ConfigMapLister:             labelFilterKubeInformerFactory.Core().V1().ConfigMaps().Lister(),
 		StatefulSetLister:           kubeInformerFactory.Apps().V1().StatefulSets().Lister(),
 		DeploymentLister:            kubeInformerFactory.Apps().V1().Deployments().Lister(),
-		StorageClassLister:          kubeInformerFactory.Storage().V1().StorageClasses().Lister(),
+		StorageClassLister:          scLister,
 		JobLister:                   kubeInformerFactory.Batch().V1().Jobs().Lister(),
 		IngressLister:               kubeInformerFactory.Extensions().V1beta1().Ingresses().Lister(),
 		TiDBClusterLister:           informerFactory.Pingcap().V1alpha1().TidbClusters().Lister(),
@@ -316,7 +366,7 @@ func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface
 		Interface: eventv1.New(kubeClientset.CoreV1().RESTClient()).Events("")})
 	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tidb-controller-manager"})
 	deps := newDependencies(cliCfg, clientset, kubeClientset, genericCli, informerFactory, kubeInformerFactory, labelFilterKubeInformerFactory, recorder)
-	deps.Controls = newRealControls(clientset, kubeClientset, genericCli, informerFactory, kubeInformerFactory, recorder)
+	deps.Controls = newRealControls(cliCfg, clientset, kubeClientset, genericCli, informerFactory, kubeInformerFactory, recorder)
 	return deps
 }
 
