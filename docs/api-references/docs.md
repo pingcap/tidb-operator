@@ -4739,13 +4739,28 @@ WorkerStatus
 <tbody>
 <tr>
 <td>
+<code>ResourceRequirements</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ResourceRequirements</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>address</code></br>
 <em>
 string
 </em>
 </td>
 <td>
-<p>Address indicates the existed TiDB discovery address</p>
+<p>(Deprecated) Address indicates the existed TiDB discovery address</p>
 </td>
 </tr>
 </tbody>
