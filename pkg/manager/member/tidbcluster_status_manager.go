@@ -198,7 +198,7 @@ func (m *TidbClusterStatusManager) syncTiDBInfoKey(tc *v1alpha1.TidbCluster) err
 		name := getTidbName(kv.Key)
 
 		if _, ok := expectNames[name]; !ok {
-			klog.V(2).Infof("delete tidb info key %s", kv.Key)
+			klog.V(2).Infof("Delete TiDB info key %s", kv.Key)
 			err := pdEtcdClient.DeleteKey(kv.Key)
 			if err != nil {
 				return err
