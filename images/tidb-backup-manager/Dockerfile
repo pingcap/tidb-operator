@@ -1,7 +1,7 @@
 FROM pingcap/tidb-enterprise-tools:latest
 ARG RCLONE_VERSION=v1.51.0
 ARG SHUSH_VERSION=v1.4.0
-ARG TOOLKIT_V40=v4.0.10
+ARG TOOLKIT_VERSION=v5.0.0
 RUN apk update && apk add ca-certificates
 
 RUN wget -nv https://github.com/ncw/rclone/releases/download/${RCLONE_VERSION}/rclone-${RCLONE_VERSION}-linux-amd64.zip \
@@ -15,14 +15,14 @@ RUN wget -nv https://github.com/realestate-com-au/shush/releases/download/${SHUS
   && chmod 755 /usr/local/bin/shush
 
 RUN \
-  wget -nv https://download.pingcap.org/tidb-toolkit-${TOOLKIT_V40}-linux-amd64.tar.gz \
-  && tar -xzf tidb-toolkit-${TOOLKIT_V40}-linux-amd64.tar.gz \
-  && mv tidb-toolkit-${TOOLKIT_V40}-linux-amd64/bin/tidb-lightning /tidb-lightning \
-  && mv tidb-toolkit-${TOOLKIT_V40}-linux-amd64/bin/tidb-lightning-ctl /tidb-lightning-ctl \
-  && mv tidb-toolkit-${TOOLKIT_V40}-linux-amd64/bin/dumpling /dumpling \
+  wget -nv https://download.pingcap.org/tidb-toolkit-${TOOLKIT_VERSION}-linux-amd64.tar.gz \
+  && tar -xzf tidb-toolkit-${TOOLKIT_VERSION}-linux-amd64.tar.gz \
+  && mv tidb-toolkit-${TOOLKIT_VERSION}-linux-amd64/bin/tidb-lightning /tidb-lightning \
+  && mv tidb-toolkit-${TOOLKIT_VERSION}-linux-amd64/bin/tidb-lightning-ctl /tidb-lightning-ctl \
+  && mv tidb-toolkit-${TOOLKIT_VERSION}-linux-amd64/bin/dumpling /dumpling \
   && chmod 755 /dumpling /tidb-lightning /tidb-lightning-ctl \
-  && rm -rf tidb-toolkit-${TOOLKIT_V40}-linux-amd64.tar.gz \
-  && rm -rf tidb-toolkit-${TOOLKIT_V40}-linux-amd64
+  && rm -rf tidb-toolkit-${TOOLKIT_VERSION}-linux-amd64.tar.gz \
+  && rm -rf tidb-toolkit-${TOOLKIT_VERSION}-linux-amd64
 
 COPY bin/tidb-backup-manager /tidb-backup-manager
 COPY entrypoint.sh /entrypoint.sh
