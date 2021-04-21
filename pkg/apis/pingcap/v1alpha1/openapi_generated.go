@@ -1748,7 +1748,6 @@ func schema_pkg_apis_pingcap_v1alpha1_DMClusterSpec(ref common.ReferenceCallback
 						},
 					},
 				},
-				Required: []string{"discovery"},
 			},
 		},
 		Dependencies: []string{
@@ -1763,17 +1762,39 @@ func schema_pkg_apis_pingcap_v1alpha1_DMDiscoverySpec(ref common.ReferenceCallba
 				Description: "DMDiscoverySpec contains details of Discovery members for dm",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"address": {
+					"limits": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Address indicates the existed TiDB discovery address",
-							Type:        []string{"string"},
-							Format:      "",
+							Description: "Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
+									},
+								},
+							},
+						},
+					},
+					"requests": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
+									},
+								},
+							},
 						},
 					},
 				},
-				Required: []string{"address"},
 			},
 		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
@@ -6358,6 +6379,20 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCDCSpec(ref common.ReferenceCallback) co
 							Description: "The desired ready replicas",
 							Type:        []string{"integer"},
 							Format:      "int32",
+						},
+					},
+					"tlsClientSecretNames": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TLSClientSecretNames are the names of secrets that store the client certificates for the downstream.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
 						},
 					},
 					"baseImage": {

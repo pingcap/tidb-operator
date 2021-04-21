@@ -1,7 +1,7 @@
 # Default values for tidb-operator
 
 # clusterScoped is whether tidb-operator should manage kubernetes cluster wide tidb clusters
-# Also see rbac.create and controllerManager.serviceAccount
+# Also see rbac.create, controllerManager.serviceAccount, scheduler.create and controllerManager.clusterPermissions.
 clusterScoped: true
 
 # Also see clusterScoped and controllerManager.serviceAccount
@@ -12,12 +12,12 @@ rbac:
 timezone: UTC
 
 # operatorImage is TiDB Operator image
-operatorImage: pingcap/tidb-operator:v1.2.0-alpha.1
+operatorImage: pingcap/tidb-operator:v1.2.0-beta.1
 imagePullPolicy: IfNotPresent
 # imagePullSecrets: []
 
 # tidbBackupManagerImage is tidb backup manager image
-tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.2.0-alpha.1
+tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.2.0-beta.1
 
 #
 # Enable or disable tidb-operator features:
@@ -45,6 +45,14 @@ controllerManager:
   # With rbac.create=true, this service account will be created
   # Also see rbac.create and clusterScoped
   serviceAccount: tidb-controller-manager
+
+  # clusterPermissions are some cluster scoped permissions that will be used even if `clusterScoped: false`.
+  # the default value of these fields is `true`. if you want them to be `false`, you MUST set them to `false` explicitly.
+  clusterPermissions:
+    nodes: true
+    persistentvolumes: true
+    storageclasses: true
+
   logLevel: 2
   replicas: 1
   resources:

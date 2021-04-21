@@ -540,6 +540,11 @@ type TiCDCSpec struct {
 	// +kubebuilder:validation:Minimum=1
 	Replicas int32 `json:"replicas"`
 
+	// TLSClientSecretNames are the names of secrets that store the
+	// client certificates for the downstream.
+	// +optional
+	TLSClientSecretNames []string `json:"tlsClientSecretNames,omitempty"`
+
 	// Base image of the component, image tag is now allowed during validation
 	// +kubebuilder:default=pingcap/ticdc
 	// +optional
@@ -1057,12 +1062,11 @@ type TiCDCCapture struct {
 // TiKVStores is either Up/Down/Offline/Tombstone
 type TiKVStore struct {
 	// store id is also uint64, due to the same reason as pd id, we store id as string
-	ID                string      `json:"id"`
-	PodName           string      `json:"podName"`
-	IP                string      `json:"ip"`
-	LeaderCount       int32       `json:"leaderCount"`
-	State             string      `json:"state"`
-	LastHeartbeatTime metav1.Time `json:"lastHeartbeatTime"`
+	ID          string `json:"id"`
+	PodName     string `json:"podName"`
+	IP          string `json:"ip"`
+	LeaderCount int32  `json:"leaderCount"`
+	State       string `json:"state"`
 	// Last time the health transitioned from one to another.
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 }
@@ -1694,15 +1698,18 @@ type DMClusterList struct {
 // +k8s:openapi-gen=true
 // DMDiscoverySpec contains details of Discovery members for dm
 type DMDiscoverySpec struct {
-	// Address indicates the existed TiDB discovery address
-	Address string `json:"address"`
+	corev1.ResourceRequirements `json:",inline"`
+
+	// (Deprecated) Address indicates the existed TiDB discovery address
+	// +k8s:openapi-gen=false
+	Address string `json:"address,omitempty"`
 }
 
 // +k8s:openapi-gen=true
 // DMClusterSpec describes the attributes that a user creates on a dm cluster
 type DMClusterSpec struct {
 	// Discovery spec
-	Discovery DMDiscoverySpec `json:"discovery"`
+	Discovery DMDiscoverySpec `json:"discovery,omitempty"`
 
 	// dm-master cluster spec
 	// +optional
