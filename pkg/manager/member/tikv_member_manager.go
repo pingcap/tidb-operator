@@ -800,6 +800,11 @@ func getTiKVStore(store *pdapi.StoreInfo) *v1alpha1.TiKVStore {
 }
 
 func (m *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (int, error) {
+	if m.deps.NodeLister == nil {
+		klog.V(4).Infof("Node lister is unavailable, skip setting store labels for TiKV of TiDB cluster %s/%s. This may be caused by no relevant permissions", tc.Namespace, tc.Name)
+		return 0, nil
+	}
+
 	ns := tc.GetNamespace()
 	// for unit test
 	setCount := 0
@@ -847,7 +852,7 @@ func (m *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (int
 		}
 
 		nodeName := pod.Spec.NodeName
-		ls, err := m.getNodeLabels(nodeName, storeLabels)
+		ls, err := getNodeLabels(m.deps.NodeLister, nodeName, storeLabels)
 		if err != nil || len(ls) == 0 {
 			klog.Warningf("node: [%s] has no node labels, skipping set store labels for Pod: [%s/%s]", nodeName, ns, podName)
 			continue
@@ -869,30 +874,6 @@ func (m *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (int
 	}
 
 	return setCount, nil
-}
-
-func (m *tikvMemberManager) getNodeLabels(nodeName string, storeLabels []string) (map[string]string, error) {
-	node, err := m.deps.NodeLister.Get(nodeName)
-	if err != nil {
-		return nil, err
-	}
-	labels := map[string]string{}
-	ls := node.GetLabels()
-	for _, storeLabel := range storeLabels {
-		if value, found := ls[storeLabel]; found {
-			labels[storeLabel] = value
-			continue
-		}
-
-		// TODO after pd supports storeLabel containing slash character, these codes should be deleted
-		if storeLabel == "host" {
-			if host, found := ls[corev1.LabelHostname]; found {
-				labels[storeLabel] = host
-			}
-		}
-
-	}
-	return labels, nil
 }
 
 // storeLabelsEqualNodeLabels compares store labels with node labels
