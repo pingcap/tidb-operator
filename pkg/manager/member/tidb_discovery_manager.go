@@ -54,11 +54,6 @@ func (m *realTidbDiscoveryManager) Reconcile(obj runtime.Object) error {
 		return fmt.Errorf("%T is not a metav1.Object", obj)
 	}
 
-	meta, _ := getDiscoveryMeta(metaObj, controller.DiscoveryMemberName)
-	if meta.Name == "" { // not supported type
-		return nil
-	}
-
 	var (
 		clusterPolicyRule rbacv1.PolicyRule
 	)
@@ -86,6 +81,7 @@ func (m *realTidbDiscoveryManager) Reconcile(obj runtime.Object) error {
 		return nil
 	}
 
+	meta, _ := getDiscoveryMeta(metaObj, controller.DiscoveryMemberName)
 	// Ensure RBAC
 	_, err := m.deps.TypedControl.CreateOrUpdateRole(obj, &rbacv1.Role{
 		ObjectMeta: meta,
@@ -125,8 +121,6 @@ func (m *realTidbDiscoveryManager) Reconcile(obj runtime.Object) error {
 	d, err := m.getTidbDiscoveryDeployment(metaObj)
 	if err != nil {
 		return controller.RequeueErrorf("error generating discovery deployment: %v", err)
-	} else if d == nil {
-		return nil
 	}
 	deploy, err := m.deps.TypedControl.CreateOrUpdateDeployment(obj, d)
 	if err != nil {
@@ -142,9 +136,6 @@ func (m *realTidbDiscoveryManager) Reconcile(obj runtime.Object) error {
 
 func getTidbDiscoveryService(obj metav1.Object, deploy *appsv1.Deployment) *corev1.Service {
 	meta, _ := getDiscoveryMeta(obj, controller.DiscoveryMemberName)
-	if meta.Name == "" { // not supported type
-		return nil
-	}
 	return &corev1.Service{
 		ObjectMeta: meta,
 		Spec: corev1.ServiceSpec{
@@ -185,14 +176,10 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 		timezone = cluster.Timezone()
 		imagePullSecrets = cluster.Spec.ImagePullSecrets
 	default:
-		klog.Warningf("unsupported type %T for discovery meta", obj)
-		return nil, nil
+		panic(fmt.Sprintf("unsupported type %T for discovery meta", obj))
 	}
 
 	meta, l := getDiscoveryMeta(obj, controller.DiscoveryMemberName)
-	if meta.Name == "" { // not supported type
-		return nil, nil
-	}
 	d := &appsv1.Deployment{
 		ObjectMeta: meta,
 		Spec: appsv1.DeploymentSpec{
@@ -307,8 +294,7 @@ func getDiscoveryMeta(obj metav1.Object, nameFunc func(string) string) (metav1.O
 		ownerRef = controller.GetDMOwnerRef(cluster) // TODO: refactor to unify methods
 		discoveryLabel = label.NewDM().Instance(instanceName).Discovery()
 	default:
-		klog.Warningf("unsupported type %T for discovery meta", obj)
-		return metav1.ObjectMeta{}, label.Label{}
+		panic(fmt.Sprintf("unsupported type %T for discovery meta", obj))
 	}
 
 	objMeta := metav1.ObjectMeta{
