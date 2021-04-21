@@ -6494,6 +6494,10 @@ spec:
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
+                tlsClientSecretNames:
+                  items:
+                    type: string
+                  type: array
                 tolerations:
                   items:
                     properties:
@@ -13166,10 +13170,10 @@ spec:
               type: object
             discovery:
               properties:
-                address:
-                  type: string
-              required:
-              - address
+                limits:
+                  type: object
+                requests:
+                  type: object
               type: object
             enablePVReclaim:
               type: boolean
@@ -17323,8 +17327,6 @@ spec:
               required:
               - replicas
               type: object
-          required:
-          - discovery
           type: object
       type: object
   version: v1alpha1

@@ -45,6 +45,7 @@ func NewDefaultDMClusterControl(
 	orphanPodsCleaner member.OrphanPodsCleaner,
 	pvcCleaner member.PVCCleanerInterface,
 	pvcResizer member.PVCResizerInterface,
+	discoveryManager member.TidbDiscoveryManager,
 	conditionUpdater DMClusterConditionUpdater,
 	recorder record.EventRecorder) ControlInterface {
 	return &defaultDMClusterControl{
@@ -56,6 +57,7 @@ func NewDefaultDMClusterControl(
 		orphanPodsCleaner,
 		pvcCleaner,
 		pvcResizer,
+		discoveryManager,
 		conditionUpdater,
 		recorder,
 	}
@@ -70,6 +72,7 @@ type defaultDMClusterControl struct {
 	orphanPodsCleaner member.OrphanPodsCleaner
 	pvcCleaner        member.PVCCleanerInterface
 	pvcResizer        member.PVCResizerInterface
+	discoveryManager  member.TidbDiscoveryManager
 	conditionUpdater  DMClusterConditionUpdater
 	recorder          record.EventRecorder
 }
@@ -132,6 +135,11 @@ func (c *defaultDMClusterControl) updateDMCluster(dc *v1alpha1.DMCluster) error 
 		for podName, reason := range skipReasons {
 			klog.Infof("pod %s of cluster %s/%s is skipped, reason %q", podName, dc.Namespace, dc.Name, reason)
 		}
+	}
+
+	// reconcile DM Discovery service
+	if err = c.discoveryManager.Reconcile(dc); err != nil {
+		return err
 	}
 
 	// works that should do to making the dm-master cluster current state match the desired state:
