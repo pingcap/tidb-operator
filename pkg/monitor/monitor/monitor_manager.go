@@ -463,6 +463,12 @@ func (m *MonitorManager) patchTidbClusterStatus(tc *v1alpha1.TidbCluster, monito
 }
 
 func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMonitor) (bool, error) {
+	if m.deps.PVLister == nil {
+		klog.V(4).Infof("Persistent volumes lister is unavailable, skip migrating to statefulset for tm[%s/%s]. This may be caused by no relevant permissions",
+			monitor.Namespace, monitor.Name)
+		return true, nil
+	}
+
 	// determine whether there is an old deployment
 	oldDeploymentName := GetMonitorObjectName(monitor)
 	oldDeployment, err := m.deps.DeploymentLister.Deployments(monitor.Namespace).Get(oldDeploymentName)
@@ -590,6 +596,12 @@ func (c *MonitorManager) validate(tidbmonitor *v1alpha1.TidbMonitor) bool {
 func (m *MonitorManager) syncTidbMonitorPV(tm *v1alpha1.TidbMonitor) error {
 	ns := tm.GetNamespace()
 	instanceName := tm.Name
+
+	if m.deps.PVLister == nil {
+		klog.V(4).Infof("Persistent volumes lister is unavailable, skip syncing TidbMonitor %s/%s PVs. This may be caused by no relevant permissions", ns, instanceName)
+		return nil
+	}
+
 	l, err := label.NewMonitor().Instance(instanceName).Monitor().Selector()
 	if err != nil {
 		return err

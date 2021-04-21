@@ -149,21 +149,25 @@ func (c *realPVCCleaner) reclaimPV(meta metav1.Object) (map[string]string, error
 
 		// Without pod reference this defer delete PVC, start to reclaim PV
 		pvName := pvc.Spec.VolumeName
-		pv, err := c.deps.PVLister.Get(pvName)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				skipReason[pvcName] = skipReasonPVCCleanerNotFoundPV
-				continue
-			}
-			return skipReason, fmt.Errorf("%s %s/%s get pvc %s pv %s failed, err: %v", clusterType, ns, metaName, pvcName, pvName, err)
-		}
-
-		if pv.Spec.PersistentVolumeReclaimPolicy != corev1.PersistentVolumeReclaimDelete {
-			err := c.deps.PVControl.PatchPVReclaimPolicy(runtimeMeta, pv, corev1.PersistentVolumeReclaimDelete)
+		if c.deps.PVLister != nil {
+			pv, err := c.deps.PVLister.Get(pvName)
 			if err != nil {
-				return skipReason, fmt.Errorf("%s %s/%s patch pv %s to %s failed, err: %v", clusterType, ns, metaName, pvName, corev1.PersistentVolumeReclaimDelete, err)
+				if errors.IsNotFound(err) {
+					skipReason[pvcName] = skipReasonPVCCleanerNotFoundPV
+					continue
+				}
+				return skipReason, fmt.Errorf("%s %s/%s get pvc %s pv %s failed, err: %v", clusterType, ns, metaName, pvcName, pvName, err)
 			}
-			klog.Infof("%s %s/%s patch pv %s to policy %s success", clusterType, ns, metaName, pvName, corev1.PersistentVolumeReclaimDelete)
+
+			if pv.Spec.PersistentVolumeReclaimPolicy != corev1.PersistentVolumeReclaimDelete {
+				err := c.deps.PVControl.PatchPVReclaimPolicy(runtimeMeta, pv, corev1.PersistentVolumeReclaimDelete)
+				if err != nil {
+					return skipReason, fmt.Errorf("%s %s/%s patch pv %s to %s failed, err: %v", clusterType, ns, metaName, pvName, corev1.PersistentVolumeReclaimDelete, err)
+				}
+				klog.Infof("%s %s/%s patch pv %s to policy %s success", clusterType, ns, metaName, pvName, corev1.PersistentVolumeReclaimDelete)
+			}
+		} else {
+			klog.V(4).Infof("Persistent volumes lister is unavailable, skip updating the reclaim policy for %s. This may be caused by no relevant permissions", pvName)
 		}
 
 		apiPVC, err := c.deps.KubeClientset.CoreV1().PersistentVolumeClaims(ns).Get(pvcName, metav1.GetOptions{})
