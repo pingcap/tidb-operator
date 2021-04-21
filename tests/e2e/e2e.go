@@ -320,9 +320,10 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 		ginkgo.By("Skip installing tidb-operator")
 	}
 
-	// setup upstream MySQL instances for DM testing.
+	// setup upstream MySQL instances and the downstream TiDB cluster for DM testing.
 	// if we can only setup these resource for DM tests with something like `--focus` or `--skip`, that should be better.
 	oa.DeployDMMySQLOrDie()
+	oa.DeployDMTiDBOrDie()
 
 	ginkgo.By("Installing cert-manager")
 	err = tidbcluster.InstallCertManager(kubeCli)
@@ -344,6 +345,7 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 	config, _ := framework.LoadConfig()
 	config.QPS = 20
 	config.Burst = 50
+	cli, _ := versioned.NewForConfig(config)
 	kubeCli, _ := kubernetes.NewForConfig(config)
 	ginkgo.By("Deleting cert-manager")
 	err := tidbcluster.DeleteCertManager(kubeCli)
@@ -351,6 +353,8 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 
 	err = tests.CleanDMMySQL(kubeCli)
 	framework.ExpectNoError(err, "failed to clean DM MySQL")
+	err = tests.CleanDMTiDB(cli, kubeCli)
+	framework.ExpectNoError(err, "failed to clean DM TiDB")
 
 	ginkgo.By("Uninstalling tidb-operator")
 	ocfg := e2econfig.NewDefaultOperatorConfig(e2econfig.TestConfig)

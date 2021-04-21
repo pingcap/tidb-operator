@@ -20,6 +20,7 @@ import (
 
 	// To register MySQL driver
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"golang.org/x/sync/errgroup"
@@ -51,6 +52,11 @@ const (
 	DMMySQLPort int32 = 3306
 	// DMMySQLStorage is the request storage used by one MySQL instance.
 	DMMySQLStorage = "2Gi"
+
+	// DMTiDBNamespace is the namespace used to install the downstream TiDB cluster for DM E2E tests.
+	DMTiDBNamespace = "dm-tidb"
+	// DMTiDBName is the name of the TiDB cluster for DM E2E tests.
+	DMTiDBName = "dm-tidb"
 )
 
 var (
@@ -189,7 +195,7 @@ func CheckDMMySQLReady(fw portforward.PortForward) error {
 				localHost, localPort, cancel, err := portforward.ForwardOnePort(
 					fw, DMMySQLNamespace, fmt.Sprintf("pod/%s-%d", DMMySQLSvcStsName, ordinal), uint16(DMMySQLPort))
 				if err != nil {
-					log.Logf("failed to forward MySQL[%s] pod: %v", ordinal, err)
+					log.Logf("failed to forward MySQL[%d] pod: %v", ordinal, err)
 					return false, nil
 				}
 				defer cancel()
@@ -234,4 +240,13 @@ func CleanDMMySQL(kubeCli kubernetes.Interface) error {
 		return fmt.Errorf("failed to delete namespace[%s]: %v", DMMySQLNamespace, err)
 	}
 	return nil
+}
+
+// CleanDMTiDB cleans the downstream TiDB cluster for DM E2E tests.
+func CleanDMTiDB(cli *versioned.Clientset, kubeCli kubernetes.Interface) error {
+	if err := cli.PingcapV1alpha1().TidbClusters(DMTiDBNamespace).Delete(DMTiDBName, nil); err != nil {
+		return err
+	}
+
+	return kubeCli.CoreV1().Namespaces().Delete(DMTiDBNamespace, nil)
 }
