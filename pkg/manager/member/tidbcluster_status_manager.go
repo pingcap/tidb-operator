@@ -135,7 +135,7 @@ func (m *TidbClusterStatusManager) syncDashboardMetricStorage(tc *v1alpha1.TidbC
 }
 
 // ref https://github.com/pingcap/tidb/blob/36b04d1aa01db722b3f07af759168c6b8da33801/domain/infosync/info.go#L72
-// search `TopologyInformationPath` about how the key with 'ttl' and 'info' suffix is write in that file.
+// search `TopologyInformationPath` about how the key with 'ttl' and 'info' suffix is updated in that file.
 func getNoLeastTidbInfoKey(ctx context.Context, client pdapi.PDEtcdClient) (noleast []*pdapi.KeyValue, err error) {
 	kvs, err := client.Get(tidbPrefix, true /*prefix*/)
 	if err != nil {
