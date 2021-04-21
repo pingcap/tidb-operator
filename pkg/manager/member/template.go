@@ -468,7 +468,7 @@ POD_NAME=${POD_NAME:-$HOSTNAME}
 cluster_name=` + "`" + `echo ${PEER_SERVICE_NAME} | sed 's/-dm-master-peer//'` + "`" +
 	`
 domain="${POD_NAME}.${PEER_SERVICE_NAME}"
-discovery_url={{ .DiscoveryURL }}
+discovery_url="${cluster_name}-dm-discovery.${NAMESPACE}:10261"
 encoded_domain_url=` + "`" + `echo ${domain}:8291 | base64 | tr "\n" " " | sed "s/ //g"` + "`" +
 	`
 elapseTime=0
@@ -526,9 +526,8 @@ exec /dm-master ${ARGS}
 `))
 
 type DMMasterStartScriptModel struct {
-	Scheme       string
-	DataDir      string
-	DiscoveryURL string
+	Scheme  string
+	DataDir string
 }
 
 func RenderDMMasterStartScript(model *DMMasterStartScriptModel) (string, error) {
