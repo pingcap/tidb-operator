@@ -256,9 +256,6 @@ func validateDMClusterSpec(spec *v1alpha1.DMClusterSpec, fldPath *field.Path) fi
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("version"), spec.Version, "dm cluster version can't set to v1.x.y"))
 		}
 	}
-	if spec.Discovery.Address == "" {
-		allErrs = append(allErrs, field.Required(fldPath.Child("discovery.address"), "discovery.address must not be empty"))
-	}
 	allErrs = append(allErrs, validateMasterSpec(&spec.Master, fldPath.Child("master"))...)
 	if spec.Worker != nil {
 		allErrs = append(allErrs, validateWorkerSpec(spec.Worker, fldPath.Child("worker"))...)
