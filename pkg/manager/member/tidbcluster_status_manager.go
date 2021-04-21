@@ -189,7 +189,7 @@ func (m *TidbClusterStatusManager) syncTiDBInfoKey(tc *v1alpha1.TidbCluster) err
 	}
 
 	expectNames := make(map[string]struct{})
-	for ordinal := range tc.TiDBStsDesiredOrdinals(true) {
+	for ordinal := range tc.TiDBStsDesiredOrdinals(false) {
 		name := fmt.Sprintf("%s-%d", controller.TiDBMemberName(tc.GetName()), ordinal)
 		expectNames[name] = struct{}{}
 	}
