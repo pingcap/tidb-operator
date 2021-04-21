@@ -546,7 +546,6 @@ func newFakeDMCluster(mm *MonitorManager) {
 		},
 		Spec: v1alpha1.DMClusterSpec{
 			TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
-			Discovery:  v1alpha1.DMDiscoverySpec{Address: "http://foo-discovery.ns:10261"},
 			Master:     v1alpha1.MasterSpec{Replicas: 1},
 		},
 	}

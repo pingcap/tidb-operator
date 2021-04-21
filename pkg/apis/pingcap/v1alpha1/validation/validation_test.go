@@ -453,7 +453,6 @@ func TestValidateDMCluster(t *testing.T) {
 	tests := []struct {
 		name              string
 		version           string
-		discoveryAddr     string
 		masterReplicas    int32
 		masterStorageSize string
 		expectedError     string
@@ -461,24 +460,17 @@ func TestValidateDMCluster(t *testing.T) {
 		{
 			name:          "invalid version",
 			version:       "v1.0.6",
-			discoveryAddr: "http://basic-discovery.demo:10261",
 			expectedError: "dm cluster version can't set to v1.x.y",
-		},
-		{
-			name:          "empty discovery address",
-			expectedError: "discovery.address must not be empty",
 		},
 		{
 			name:           "dm-master storageSize not given",
 			version:        "v2.0.0-rc.2",
-			discoveryAddr:  "http://basic-discovery.demo:10261",
 			masterReplicas: 3,
 			expectedError:  "storageSize must not be empty",
 		},
 		{
 			name:              "correct configuration",
 			version:           "nightly",
-			discoveryAddr:     "http://basic-discovery.demo:10261",
 			masterReplicas:    3,
 			masterStorageSize: "10Gi",
 			expectedError:     "",
@@ -488,7 +480,6 @@ func TestValidateDMCluster(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			dc := newDMCluster()
 			dc.Spec.Version = tt.version
-			dc.Spec.Discovery.Address = tt.discoveryAddr
 			dc.Spec.Master.Replicas = tt.masterReplicas
 			dc.Spec.Master.StorageSize = tt.masterStorageSize
 			err := ValidateDMCluster(dc)
