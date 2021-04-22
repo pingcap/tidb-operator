@@ -542,8 +542,7 @@ func newFakeDMCluster(mm *MonitorManager) {
 			Namespace: "ns",
 		},
 		Spec: v1alpha1.DMClusterSpec{
-			Discovery: v1alpha1.DMDiscoverySpec{Address: "http://foo-discovery.ns:10261"},
-			Master:    v1alpha1.MasterSpec{Replicas: 1},
+			Master:     v1alpha1.MasterSpec{Replicas: 1},
 		},
 	}
 	dmIndexer.Add(dc)

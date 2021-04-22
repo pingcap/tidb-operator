@@ -59,78 +59,72 @@ type componentAccessorImpl struct {
 	tolerations               []corev1.Toleration
 	configUpdateStrategy      ConfigUpdateStrategy
 	statefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType
+	podSecurityContext        *corev1.PodSecurityContext
 
 	// ComponentSpec is the Component Spec
 	ComponentSpec *ComponentSpec
 }
 
 func (a *componentAccessorImpl) StatefulSetUpdateStrategy() apps.StatefulSetUpdateStrategyType {
-	strategy := a.ComponentSpec.StatefulSetUpdateStrategy
-	if len(strategy) != 0 {
-		return strategy
+	if a.ComponentSpec == nil || len(a.ComponentSpec.StatefulSetUpdateStrategy) == 0 {
+		if len(a.statefulSetUpdateStrategy) == 0 {
+			return apps.RollingUpdateStatefulSetStrategyType
+		}
+		return a.statefulSetUpdateStrategy
 	}
-
-	strategy = a.statefulSetUpdateStrategy
-	if len(strategy) != 0 {
-		return strategy
-	}
-
-	return apps.RollingUpdateStatefulSetStrategyType
+	return a.ComponentSpec.StatefulSetUpdateStrategy
 }
 
 func (a *componentAccessorImpl) PodSecurityContext() *corev1.PodSecurityContext {
+	if a.ComponentSpec == nil || a.ComponentSpec.PodSecurityContext == nil {
+		return a.podSecurityContext
+	}
 	return a.ComponentSpec.PodSecurityContext
 }
 
 func (a *componentAccessorImpl) ImagePullPolicy() corev1.PullPolicy {
-	pp := a.ComponentSpec.ImagePullPolicy
-	if pp == nil {
+	if a.ComponentSpec == nil || a.ComponentSpec.ImagePullPolicy == nil {
 		return a.imagePullPolicy
 	}
-	return *pp
+	return *a.ComponentSpec.ImagePullPolicy
 }
 
 func (a *componentAccessorImpl) ImagePullSecrets() []corev1.LocalObjectReference {
-	ips := a.ComponentSpec.ImagePullSecrets
-	if ips == nil {
+	if a.ComponentSpec == nil || len(a.ComponentSpec.ImagePullSecrets) == 0 {
 		return a.imagePullSecrets
 	}
-	return ips
+	return a.ComponentSpec.ImagePullSecrets
 }
 
 func (a *componentAccessorImpl) HostNetwork() bool {
-	hostNetwork := a.ComponentSpec.HostNetwork
-	if hostNetwork == nil {
-		hostNetwork = a.hostNetwork
+	if a.ComponentSpec == nil || a.ComponentSpec.HostNetwork == nil {
+		if a.hostNetwork == nil {
+			return defaultHostNetwork
+		}
+		return *a.hostNetwork
 	}
-	if hostNetwork == nil {
-		return defaultHostNetwork
-	}
-	return *hostNetwork
+	return *a.ComponentSpec.HostNetwork
 }
 
 func (a *componentAccessorImpl) Affinity() *corev1.Affinity {
-	affi := a.ComponentSpec.Affinity
-	if affi == nil {
-		affi = a.affinity
+	if a.ComponentSpec == nil || a.ComponentSpec.Affinity == nil {
+		return a.affinity
 	}
-	return affi
+	return a.ComponentSpec.Affinity
 }
 
 func (a *componentAccessorImpl) PriorityClassName() *string {
-	pcn := a.ComponentSpec.PriorityClassName
-	if pcn == nil {
-		pcn = a.priorityClassName
+	if a.ComponentSpec == nil || a.ComponentSpec.PriorityClassName == nil {
+		return a.priorityClassName
 	}
-	return pcn
+	return a.ComponentSpec.PriorityClassName
 }
 
 func (a *componentAccessorImpl) SchedulerName() string {
-	pcn := a.ComponentSpec.SchedulerName
-	if pcn == nil {
-		pcn = &a.schedulerName
+	if a.ComponentSpec == nil || a.ComponentSpec.SchedulerName == nil {
+		return a.schedulerName
 	}
-	return *pcn
+	return *a.ComponentSpec.SchedulerName
 }
 
 func (a *componentAccessorImpl) NodeSelector() map[string]string {
@@ -138,8 +132,10 @@ func (a *componentAccessorImpl) NodeSelector() map[string]string {
 	for k, v := range a.clusterNodeSelector {
 		sel[k] = v
 	}
-	for k, v := range a.ComponentSpec.NodeSelector {
-		sel[k] = v
+	if a.ComponentSpec != nil {
+		for k, v := range a.ComponentSpec.NodeSelector {
+			sel[k] = v
+		}
 	}
 	return sel
 }
@@ -149,18 +145,19 @@ func (a *componentAccessorImpl) Annotations() map[string]string {
 	for k, v := range a.clusterAnnotations {
 		anno[k] = v
 	}
-	for k, v := range a.ComponentSpec.Annotations {
-		anno[k] = v
+	if a.ComponentSpec != nil {
+		for k, v := range a.ComponentSpec.Annotations {
+			anno[k] = v
+		}
 	}
 	return anno
 }
 
 func (a *componentAccessorImpl) Tolerations() []corev1.Toleration {
-	tols := a.ComponentSpec.Tolerations
-	if len(tols) == 0 {
-		tols = a.tolerations
+	if a.ComponentSpec == nil || len(a.ComponentSpec.Tolerations) == 0 {
+		return a.tolerations
 	}
-	return tols
+	return a.ComponentSpec.Tolerations
 }
 
 func (a *componentAccessorImpl) DnsPolicy() corev1.DNSPolicy {
@@ -172,16 +169,18 @@ func (a *componentAccessorImpl) DnsPolicy() corev1.DNSPolicy {
 }
 
 func (a *componentAccessorImpl) ConfigUpdateStrategy() ConfigUpdateStrategy {
-	strategy := a.ComponentSpec.ConfigUpdateStrategy
-	if strategy == nil {
-		strategy = &a.configUpdateStrategy
-	}
 	// defaulting logic will set a default value for configUpdateStrategy field, but if the
 	// object is created in early version without this field being set, we should set a safe default
-	if string(*strategy) == "" {
+	if a.ComponentSpec == nil || a.ComponentSpec.ConfigUpdateStrategy == nil {
+		if a.configUpdateStrategy != "" {
+			return a.configUpdateStrategy
+		}
 		return ConfigUpdateStrategyInPlace
 	}
-	return *strategy
+	if *a.ComponentSpec.ConfigUpdateStrategy == "" {
+		return ConfigUpdateStrategyInPlace
+	}
+	return *a.ComponentSpec.ConfigUpdateStrategy
 }
 
 func (a *componentAccessorImpl) BuildPodSpec() corev1.PodSpec {
@@ -207,26 +206,44 @@ func (a *componentAccessorImpl) BuildPodSpec() corev1.PodSpec {
 }
 
 func (a *componentAccessorImpl) Env() []corev1.EnvVar {
+	if a.ComponentSpec == nil {
+		return nil
+	}
 	return a.ComponentSpec.Env
 }
 
 func (a *componentAccessorImpl) InitContainers() []corev1.Container {
+	if a.ComponentSpec == nil {
+		return nil
+	}
 	return a.ComponentSpec.InitContainers
 }
 
 func (a *componentAccessorImpl) AdditionalContainers() []corev1.Container {
+	if a.ComponentSpec == nil {
+		return nil
+	}
 	return a.ComponentSpec.AdditionalContainers
 }
 
 func (a *componentAccessorImpl) AdditionalVolumes() []corev1.Volume {
+	if a.ComponentSpec == nil {
+		return nil
+	}
 	return a.ComponentSpec.AdditionalVolumes
 }
 
 func (a *componentAccessorImpl) AdditionalVolumeMounts() []corev1.VolumeMount {
+	if a.ComponentSpec == nil {
+		return nil
+	}
 	return a.ComponentSpec.AdditionalVolumeMounts
 }
 
 func (a *componentAccessorImpl) TerminationGracePeriodSeconds() *int64 {
+	if a.ComponentSpec == nil {
+		return nil
+	}
 	return a.ComponentSpec.TerminationGracePeriodSeconds
 }
 
@@ -243,6 +260,7 @@ func buildTidbClusterComponentAccessor(spec *TidbClusterSpec, componentSpec *Com
 		tolerations:               spec.Tolerations,
 		configUpdateStrategy:      spec.ConfigUpdateStrategy,
 		statefulSetUpdateStrategy: spec.StatefulSetUpdateStrategy,
+		podSecurityContext:        spec.PodSecurityContext,
 
 		ComponentSpec: componentSpec,
 	}
@@ -260,9 +278,16 @@ func buildDMClusterComponentAccessor(spec *DMClusterSpec, componentSpec *Compone
 		clusterAnnotations:   spec.Annotations,
 		tolerations:          spec.Tolerations,
 		configUpdateStrategy: ConfigUpdateStrategyRollingUpdate,
+		podSecurityContext:   spec.PodSecurityContext,
 
 		ComponentSpec: componentSpec,
 	}
+}
+
+// BaseDiscoverySpec returns the base spec of discovery component
+func (tc *TidbCluster) BaseDiscoverySpec() ComponentAccessor {
+	// all configs follow global one
+	return buildTidbClusterComponentAccessor(&tc.Spec, nil)
 }
 
 // BaseTiDBSpec returns the base spec of TiDB servers
@@ -298,6 +323,10 @@ func (tc *TidbCluster) BasePumpSpec() (ComponentAccessor, bool) {
 		return nil, false
 	}
 	return buildTidbClusterComponentAccessor(&tc.Spec, &tc.Spec.Pump.ComponentSpec), true
+}
+
+func (dc *DMCluster) BaseDiscoverySpec() ComponentAccessor {
+	return buildDMClusterComponentAccessor(&dc.Spec, nil)
 }
 
 func (dc *DMCluster) BaseMasterSpec() ComponentAccessor {

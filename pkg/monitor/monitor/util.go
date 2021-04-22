@@ -1033,6 +1033,7 @@ func getMonitorStatefulSetSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.Ti
 				},
 
 				Spec: core.PodSpec{
+					SecurityContext:    monitor.Spec.PodSecurityContext,
 					ServiceAccountName: sa.Name,
 					InitContainers:     []core.Container{},
 					Containers:         []core.Container{},
