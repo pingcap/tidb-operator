@@ -666,7 +666,7 @@ func (m *MonitorManager) syncAssetSecret(monitor *v1alpha1.TidbMonitor, store *S
 
 	_, err := m.deps.TypedControl.CreateOrUpdateSecret(monitor, tlsAssetsSecret)
 	if err != nil {
-		klog.Errorf("tm[%s/%s]'s secret failed to sync,err: %v", ns, name, err)
+		klog.Errorf("Fail to sync tm[%s/%s]'s secret assets, err: %v", ns, name, err)
 		return err
 	}
 	return nil
