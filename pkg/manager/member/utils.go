@@ -284,6 +284,7 @@ func updateStatefulSet(setCtl controller.StatefulSetControlInterface, tc *v1alph
 	if oldSet.Annotations == nil {
 		oldSet.Annotations = map[string]string{}
 	}
+
 	if !statefulSetEqual(*newSet, *oldSet) || isOrphan {
 		set := *oldSet
 		// Retain the deprecated last applied pod template annotation for backward compatibility

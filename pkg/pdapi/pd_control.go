@@ -37,11 +37,21 @@ type PDControlInterface interface {
 
 // defaultPDControl is the default implementation of PDControlInterface.
 type defaultPDControl struct {
-	mutex         sync.Mutex
+	kubeCli kubernetes.Interface
+
+	mutex     sync.Mutex
+	pdClients map[string]PDClient
+
 	etcdmutex     sync.Mutex
-	kubeCli       kubernetes.Interface
-	pdClients     map[string]PDClient
 	pdEtcdClients map[string]PDEtcdClient
+}
+
+type noOpClose struct {
+	PDEtcdClient
+}
+
+func (c *noOpClose) Close() error {
+	return nil
 }
 
 // NewDefaultPDControl returns a defaultPDControl instance
@@ -62,16 +72,25 @@ func (c *defaultPDControl) GetPDEtcdClient(namespace Namespace, tcName string, t
 			klog.Errorf("Unable to get tls config for tidb cluster %q, pd etcd client may not work: %v", tcName, err)
 			return nil, err
 		}
-		return NewPdEtcdClient(PDEtcdClientURL(namespace, tcName), DefaultTimeout, tlsConfig)
 	}
-	key := pdEtcdClientKey(namespace, tcName)
+
+	key := pdEtcdClientKey(namespace, tcName, tlsEnabled)
 	if _, ok := c.pdEtcdClients[key]; !ok {
-		pdetcdClient, err := NewPdEtcdClient(PDEtcdClientURL(namespace, tcName), DefaultTimeout, nil)
+		pdetcdClient, err := NewPdEtcdClient(PDEtcdClientURL(namespace, tcName), DefaultTimeout, tlsConfig)
 		if err != nil {
 			return nil, err
 		}
-		c.pdEtcdClients[key] = pdetcdClient
+
+		// For the current behavior to create a new client each time,
+		// it's to cover the case that the secret containing the certs may be rotated to avoid expiration,
+		// in which case, the client may fail and we have to restart the tidb-controller-manager container
+		if tlsEnabled {
+			return pdetcdClient, nil
+		}
+
+		c.pdEtcdClients[key] = &noOpClose{PDEtcdClient: pdetcdClient}
 	}
+
 	return c.pdEtcdClients[key], nil
 }
 
@@ -107,8 +126,8 @@ func pdClientKey(scheme string, namespace Namespace, clusterName string) string 
 	return fmt.Sprintf("%s.%s.%s", scheme, clusterName, string(namespace))
 }
 
-func pdEtcdClientKey(namespace Namespace, clusterName string) string {
-	return fmt.Sprintf("%s.%s", clusterName, string(namespace))
+func pdEtcdClientKey(namespace Namespace, clusterName string, tlsEnabled bool) string {
+	return fmt.Sprintf("%s.%s.%v", clusterName, string(namespace), tlsEnabled)
 }
 
 // pdClientUrl builds the url of pd client
