@@ -55,7 +55,8 @@ type TidbMonitorSpec struct {
 	Grafana     *GrafanaSpec    `json:"grafana,omitempty"`
 	Reloader    ReloaderSpec    `json:"reloader"`
 	Initializer InitializerSpec `json:"initializer"`
-	DM          *DMMonitorSpec  `json:"dm,omitempty"`
+	// +optional
+	DM *DMMonitorSpec `json:"dm,omitempty"`
 	// +optional
 	Thanos *ThanosSpec `json:"thanos,omitempty"`
 
@@ -113,6 +114,10 @@ type TidbMonitorSpec struct {
 	// Additional volumes of component pod.
 	// +optional
 	AdditionalVolumes []corev1.Volume `json:"additionalVolumes,omitempty"`
+
+	// PodSecurityContext of the component
+	// +optional
+	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
 }
 
 // PrometheusSpec is the desired state of prometheus

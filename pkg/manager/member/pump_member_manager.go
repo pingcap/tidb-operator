@@ -391,6 +391,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 		serviceAccountName = tc.Spec.ServiceAccount
 	}
 
+	// TODO: use spec.BuildPodSpec() to generate pod spec
 	podTemplate := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: podAnnos,
