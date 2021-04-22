@@ -190,6 +190,12 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPodDuringUpgrading(payload *admi
 		err := fmt.Errorf("tikv pod[%s/%s]'s controller is not a tidbcluster", namespace, name)
 		return util.ARFail(err)
 	}
+
+	if tc.TiKVStsActualReplicas() < 2 {
+		klog.Infof("TiKV statefulset replicas are less than 2, skip waiting to evict region leader for Pod %s/%s", namespace, name)
+		return util.ARSuccess()
+	}
+
 	controllerName := tc.GetName()
 	controllerKind := payload.controller.GetObjectKind().GroupVersionKind().Kind
 

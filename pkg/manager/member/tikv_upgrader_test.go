@@ -563,6 +563,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
 				tc.Status.TiKV.Synced = true
+				tc.Status.TiKV.StatefulSet.Replicas = 1
 				tc.Status.TiKV.StatefulSet.CurrentReplicas = 1
 				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
 			},
