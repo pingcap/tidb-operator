@@ -169,13 +169,13 @@ func getStaleTidbInfoKey(ctx context.Context, client pdapi.PDEtcdClient) (staleK
 	return
 }
 
-// /topology/tidb/basic-tidb-0.basic-tidb-peer.tidb-cluster.svc:4000/info -> basic-tidb-0
-func getTidbName(key string) (name string) {
+// /topology/tidb/basic-tidb-0.basic-tidb-peer.tidb-cluster.svc:4000/info -> basic-tidb-0.basic-tidb-peer.tidb-cluster.svc
+func getTidbAddr(key string) (addr string) {
 	key = strings.TrimPrefix(key, tidbPrefix)
 	key = strings.TrimPrefix(key, "/")
-	tmp := strings.Split(key, ".")
+	tmp := strings.Split(key, ":")
 
-	name = tmp[0]
+	addr = tmp[0]
 	return
 }
 
@@ -192,16 +192,24 @@ func (m *TidbClusterStatusManager) syncTiDBInfoKey(tc *v1alpha1.TidbCluster) err
 		return err
 	}
 
-	expectNames := make(map[string]struct{})
+	expectAddrs := make(map[string]struct{})
 	for ordinal := range tc.TiDBStsDesiredOrdinals(false) {
-		name := fmt.Sprintf("%s-%d", controller.TiDBMemberName(tc.GetName()), ordinal)
-		expectNames[name] = struct{}{}
+		addr := fmt.Sprintf("%s-%d.%s-tidb-peer.%s.svc",
+			controller.TiDBMemberName(tc.GetName()),
+			ordinal,
+			tc.GetName(),
+			tc.GetNamespace())
+		if tc.Spec.ClusterDomain != "" {
+			addr += "." + tc.Spec.ClusterDomain
+		}
+
+		expectAddrs[addr] = struct{}{}
 	}
 
 	for _, kv := range kvs {
-		name := getTidbName(kv.Key)
+		addr := getTidbAddr(kv.Key)
 
-		if _, ok := expectNames[name]; !ok {
+		if _, ok := expectAddrs[addr]; !ok {
 			klog.V(2).Infof("Delete TiDB info key %s", kv.Key)
 			err := pdEtcdClient.DeleteKey(kv.Key)
 			if err != nil {
