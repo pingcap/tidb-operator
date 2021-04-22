@@ -339,18 +339,25 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 	err := tidbcluster.DeleteCertManager(kubeCli)
 	framework.ExpectNoError(err, "failed to delete cert-manager")
 
-	ginkgo.By("Uninstalling tidb-operator")
-	ocfg := e2econfig.NewDefaultOperatorConfig(e2econfig.TestConfig)
-	err = tests.CleanOperator(ocfg)
-	framework.ExpectNoError(err, "failed to uninstall operator")
+	if !ginkgo.CurrentGinkgoTestDescription().Failed {
+		// kubetest2 can only dump running pods' log (copy from container log directory),
+		// but if we want to get test coverage reports for tidb-operator, we need to shutdown the processes/pods),
+		// so we choose to:
+		// - dump logs if the test failed.
+		// - generate test coverage reports if the test passed.
+		ginkgo.By("Uninstalling tidb-operator")
+		ocfg := e2econfig.NewDefaultOperatorConfig(e2econfig.TestConfig)
+		err = tests.CleanOperator(ocfg)
+		framework.ExpectNoError(err, "failed to uninstall operator")
 
-	ginkgo.By("Wait for tidb-operator to be uninstalled")
-	err = wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
-		podList, err2 := kubeCli.CoreV1().Pods(ocfg.Namespace).List(metav1.ListOptions{})
-		framework.ExpectNoError(err2, "failed to list pods for tidb-operator")
-		return len(podList.Items) == 0, nil
-	})
-	framework.ExpectNoError(err, "failed to wait for tidb-operator to be uninstalled")
+		ginkgo.By("Wait for tidb-operator to be uninstalled")
+		err = wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
+			podList, err2 := kubeCli.CoreV1().Pods(ocfg.Namespace).List(metav1.ListOptions{})
+			framework.ExpectNoError(err2, "failed to list pods for tidb-operator")
+			return len(podList.Items) == 0, nil
+		})
+		framework.ExpectNoError(err, "failed to wait for tidb-operator to be uninstalled")
+	}
 })
 
 // RunE2ETests checks configuration parameters (specified through flags) and then runs
