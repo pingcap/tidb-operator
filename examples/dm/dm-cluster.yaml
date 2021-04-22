@@ -3,10 +3,9 @@ kind: DMCluster
 metadata:
   name: basic
 spec:
-  version: v2.0.0
+  version: v2.0.2
   pvReclaimPolicy: Retain
-  discovery:
-    address: "http://basic-discovery.default:10261"
+  discovery: {}
   master:
     baseImage: pingcap/dm
     replicas: 1

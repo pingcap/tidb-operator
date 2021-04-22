@@ -126,7 +126,7 @@ mv -f $TMP_ADMISSION_WEBHOOK_DEPLOYMENT $ADMISSION_WEBHOOK_DEPLOYMENT
 
 echo "hack/e2e-patch-codecov.sh: setting command, environment variables and volumes for golang code"
 
-line=$(grep -n 'm.getTidbDiscoveryDeployment(tc)' $DISCOVERY_MANAGER | cut -d ":" -f 1)
+line=$(grep -n 'm.getTidbDiscoveryDeployment(metaObj)' $DISCOVERY_MANAGER | cut -d ":" -f 1)
 head -n $(($line+3)) $DISCOVERY_MANAGER > $TMP_DISCOVERY_MANAGER
 cat >> $TMP_DISCOVERY_MANAGER <<EOF
 	d.Spec.Template.Spec.Containers[0].Command = []string{

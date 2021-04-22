@@ -58,6 +58,10 @@ type TidbInitializerSpec struct {
 
 	Clusters TidbClusterRef `json:"cluster"`
 
+	// PodSecurityContext of the component
+	// +optional
+	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
+
 	// +optional
 	ImagePullPolicy *corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 

@@ -14,12 +14,13 @@
 package v1alpha1
 
 import (
-	"github.com/pingcap/tidb-operator/pkg/util/config"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/pingcap/tidb-operator/pkg/util/config"
 )
 
 const (
@@ -265,6 +266,10 @@ type TidbClusterSpec struct {
 	// StatefulSetUpdateStrategy of TiDB cluster StatefulSets
 	// +optional
 	StatefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType `json:"statefulSetUpdateStrategy,omitempty"`
+
+	// PodSecurityContext of the component
+	// +optional
+	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
@@ -1360,6 +1365,10 @@ type BackupSpec struct {
 	ServiceAccount string `json:"serviceAccount,omitempty"`
 	// CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained
 	CleanPolicy CleanPolicyType `json:"cleanPolicy,omitempty"`
+
+	// PodSecurityContext of the component
+	// +optional
+	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -1632,6 +1641,10 @@ type RestoreSpec struct {
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 	// TableFilter means Table filter expression for 'db.table' matching. BR supports this from v4.0.3.
 	TableFilter []string `json:"tableFilter,omitempty"`
+
+	// PodSecurityContext of the component
+	// +optional
+	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
 }
 
 // RestoreStatus represents the current status of a tidb cluster restore.
@@ -1698,15 +1711,18 @@ type DMClusterList struct {
 // +k8s:openapi-gen=true
 // DMDiscoverySpec contains details of Discovery members for dm
 type DMDiscoverySpec struct {
-	// Address indicates the existed TiDB discovery address
-	Address string `json:"address"`
+	corev1.ResourceRequirements `json:",inline"`
+
+	// (Deprecated) Address indicates the existed TiDB discovery address
+	// +k8s:openapi-gen=false
+	Address string `json:"address,omitempty"`
 }
 
 // +k8s:openapi-gen=true
 // DMClusterSpec describes the attributes that a user creates on a dm cluster
 type DMClusterSpec struct {
 	// Discovery spec
-	Discovery DMDiscoverySpec `json:"discovery"`
+	Discovery DMDiscoverySpec `json:"discovery,omitempty"`
 
 	// dm-master cluster spec
 	// +optional
@@ -1787,6 +1803,10 @@ type DMClusterSpec struct {
 	// Base tolerations of DM cluster Pods, components may add more tolerations upon this respectively
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+
+	// PodSecurityContext of the component
+	// +optional
+	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
 }
 
 // DMClusterStatus represents the current status of a dm cluster.
