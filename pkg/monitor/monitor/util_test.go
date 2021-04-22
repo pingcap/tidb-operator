@@ -723,7 +723,7 @@ func TestGetMonitorVolumes(t *testing.T) {
 						Name: "tls-assets",
 						VolumeSource: corev1.VolumeSource{
 							Secret: &corev1.SecretVolumeSource{
-								SecretName:  GetTlsAssetsSecretName("foo"),
+								SecretName:  GetTLSAssetsSecretName("foo"),
 								DefaultMode: pointer.Int32Ptr(420),
 							},
 						},
@@ -791,7 +791,7 @@ func TestGetMonitorVolumes(t *testing.T) {
 						Name: "tls-assets",
 						VolumeSource: corev1.VolumeSource{
 							Secret: &corev1.SecretVolumeSource{
-								SecretName:  GetTlsAssetsSecretName("foo"),
+								SecretName:  GetTLSAssetsSecretName("foo"),
 								DefaultMode: pointer.Int32Ptr(420),
 							},
 						},
@@ -876,7 +876,7 @@ func TestGetMonitorVolumes(t *testing.T) {
 						Name: "tls-assets",
 						VolumeSource: corev1.VolumeSource{
 							Secret: &corev1.SecretVolumeSource{
-								SecretName:  GetTlsAssetsSecretName("foo"),
+								SecretName:  GetTLSAssetsSecretName("foo"),
 								DefaultMode: pointer.Int32Ptr(420),
 							},
 						},
@@ -990,7 +990,7 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 					{
 						Name:      "tls-assets",
 						MountPath: "/var/lib/cluster-assets-tls",
-						ReadOnly:  false,
+						ReadOnly:  true,
 					},
 				},
 			},
