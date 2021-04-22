@@ -11560,31 +11560,6 @@ Kubernetes core/v1.ConfigMapKeySelector
 </tr>
 </tbody>
 </table>
-<h3 id="secretorconfigmapvalidationerror">SecretOrConfigMapValidationError</h3>
-<p>
-<p>SecretOrConfigMapValidationError is returned by SecretOrConfigMap.Validate()
-on semantically invalid configurations.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>err</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="secretref">SecretRef</h3>
 <p>
 (<em>Appears on:</em>
