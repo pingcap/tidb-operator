@@ -89,8 +89,6 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 			tcTlsSecretName := util.ClusterClientTLSSecretName(tc.Name)
 			err := assetStore.addTLSAssets(tc.Namespace, tcTlsSecretName)
 			if err != nil {
-				message := fmt.Sprintf("get secret[%s/%s] failed, err: %v", tc.Namespace, tcTlsSecretName, err)
-				klog.Error(message)
 				return err
 			}
 		}
