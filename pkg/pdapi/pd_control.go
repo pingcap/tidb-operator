@@ -126,20 +126,8 @@ func pdClientKey(scheme string, namespace Namespace, clusterName string) string 
 	return fmt.Sprintf("%s.%s.%s", scheme, clusterName, string(namespace))
 }
 
-<<<<<<< HEAD
-func pdEtcdClientKey(namespace Namespace, clusterName string) string {
-	return fmt.Sprintf("%s.%s", clusterName, string(namespace))
-=======
-func ClusterRefpdClientKey(scheme string, namespace Namespace, clusterName string, clusterDomain string) string {
-	if len(clusterDomain) == 0 {
-		return fmt.Sprintf("%s.%s.%s", scheme, clusterName, string(namespace))
-	}
-	return fmt.Sprintf("%s.%s.%s.%s", scheme, clusterName, string(namespace), clusterDomain)
-}
-
 func pdEtcdClientKey(namespace Namespace, clusterName string, tlsEnabled bool) string {
 	return fmt.Sprintf("%s.%s.%v", clusterName, string(namespace), tlsEnabled)
->>>>>>> c76d162b... delete orphan tidb info key to make dashboard happy (#3929)
 }
 
 // pdClientUrl builds the url of pd client

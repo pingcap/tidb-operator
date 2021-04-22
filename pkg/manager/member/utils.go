@@ -284,12 +284,8 @@ func updateStatefulSet(setCtl controller.StatefulSetControlInterface, tc *v1alph
 	if oldSet.Annotations == nil {
 		oldSet.Annotations = map[string]string{}
 	}
-<<<<<<< HEAD
-	if !statefulSetEqual(*newSet, *oldSet) || isOrphan {
-=======
 
-	if !util.StatefulSetEqual(*newSet, *oldSet) || isOrphan {
->>>>>>> c76d162b... delete orphan tidb info key to make dashboard happy (#3929)
+	if !statefulSetEqual(*newSet, *oldSet) || isOrphan {
 		set := *oldSet
 		// Retain the deprecated last applied pod template annotation for backward compatibility
 		var podConfig string

@@ -210,14 +210,11 @@ func (m *TidbClusterStatusManager) syncTiDBInfoKey(tc *v1alpha1.TidbCluster) err
 			ordinal,
 			tc.GetName(),
 			tc.GetNamespace())
-		if tc.Spec.ClusterDomain != "" {
-			addr += "." + tc.Spec.ClusterDomain
-		}
 
 		expectAddrs[addr] = struct{}{}
 	}
 
-	pattern, err := regexp.Compile(fmt.Sprintf(tidbAddrPattern, tc.Name, tc.Name, tc.Namespace, controller.FormatClusterDomainForRegex(tc.Spec.ClusterDomain)))
+	pattern, err := regexp.Compile(fmt.Sprintf(tidbAddrPattern, tc.Name, tc.Name, tc.Namespace, ""))
 	if err != nil {
 		return err
 	}
