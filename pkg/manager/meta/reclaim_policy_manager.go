@@ -24,6 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/klog"
 )
 
 type reclaimPolicyManager struct {
@@ -50,6 +51,11 @@ func (m *reclaimPolicyManager) SyncDM(dc *v1alpha1.DMCluster) error {
 }
 
 func (m *reclaimPolicyManager) sync(kind string, obj runtime.Object, isPVReclaimEnabled bool, policy corev1.PersistentVolumeReclaimPolicy) error {
+	if m.deps.PVLister == nil {
+		klog.V(4).Infof("Persistent volumes lister is unavailable, skip syncing reclaim policy for %s. This may be caused by no relevant permissions", kind)
+		return nil
+	}
+
 	var (
 		meta         = obj.(metav1.ObjectMetaAccessor).GetObjectMeta()
 		ns           = meta.GetNamespace()

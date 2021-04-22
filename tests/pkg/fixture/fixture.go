@@ -17,16 +17,17 @@ import (
 	"fmt"
 
 	"github.com/Masterminds/semver"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/label"
-	"github.com/pingcap/tidb-operator/pkg/tkctl/util"
-	tcconfig "github.com/pingcap/tidb-operator/pkg/util/config"
-	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1beta1 "k8s.io/api/rbac/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/tkctl/util"
+	tcconfig "github.com/pingcap/tidb-operator/pkg/util/config"
+	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 )
 
 var (
@@ -210,21 +211,6 @@ func buildAffinity(name, namespace string, memberType v1alpha1.MemberType) *core
 			},
 		},
 	}
-}
-
-func GetTidbClusterWithTiFlash(ns, name, version string) *v1alpha1.TidbCluster {
-	tc := GetTidbCluster(ns, name, version)
-	tc.Spec.TiFlash = &v1alpha1.TiFlashSpec{
-		Replicas:         1,
-		BaseImage:        "pingcap/tiflash",
-		MaxFailoverCount: pointer.Int32Ptr(3),
-		StorageClaims: []v1alpha1.StorageClaim{
-			{
-				Resources: WithStorage(BurstableMedium, "10Gi"),
-			},
-		},
-	}
-	return tc
 }
 
 func GetTidbInitializer(ns, tcName, initName, initPassWDName, initTLSName string) *v1alpha1.TidbInitializer {
@@ -520,6 +506,34 @@ func GetRestoreCRDWithS3(tc *v1alpha1.TidbCluster, toSecretName, restoreType str
 		restore.Spec.S3.Path = fmt.Sprintf("s3://%s/%s", s3config.Bucket, s3config.Path)
 	}
 	return restore
+}
+
+func AddTiFlashForTidbCluster(tc *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
+	if tc.Spec.TiFlash != nil {
+		return tc
+	}
+	tc.Spec.TiFlash = &v1alpha1.TiFlashSpec{
+		Replicas:         1,
+		BaseImage:        "pingcap/tiflash",
+		MaxFailoverCount: pointer.Int32Ptr(3),
+		StorageClaims: []v1alpha1.StorageClaim{
+			{
+				Resources: WithStorage(BurstableMedium, "10Gi"),
+			},
+		},
+	}
+	return tc
+}
+
+func AddTiCDCForTidbCluster(tc *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
+	if tc.Spec.TiCDC != nil {
+		return tc
+	}
+	tc.Spec.TiCDC = &v1alpha1.TiCDCSpec{
+		BaseImage: "pingcap/ticdc",
+		Replicas:  1,
+	}
+	return tc
 }
 
 func AddPumpForTidbCluster(tc *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {

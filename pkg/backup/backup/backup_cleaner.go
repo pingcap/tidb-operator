@@ -152,6 +152,7 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 			Annotations: backup.Annotations,
 		},
 		Spec: corev1.PodSpec{
+			SecurityContext:    backup.Spec.PodSecurityContext,
 			ServiceAccountName: serviceAccount,
 			Containers: []corev1.Container{
 				{
