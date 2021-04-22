@@ -120,4 +120,8 @@ spec:
       {{- if .Values.controllerManager.priorityClassName }}
       priorityClassName: {{ .Values.controllerManager.priorityClassName }}
       {{- end }}
+    {{- with .Values.controllerManager.securityContext }}
+      securityContext:
+{{ toYaml . | indent 8 }}
+    {{- end}}
 {{- end }}

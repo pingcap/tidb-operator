@@ -271,6 +271,7 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 			Annotations: backup.Annotations,
 		},
 		Spec: corev1.PodSpec{
+			SecurityContext:    backup.Spec.PodSecurityContext,
 			ServiceAccountName: serviceAccount,
 			InitContainers:     initContainers,
 			Containers: []corev1.Container{
@@ -448,6 +449,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 			Annotations: backup.Annotations,
 		},
 		Spec: corev1.PodSpec{
+			SecurityContext:    backup.Spec.PodSecurityContext,
 			ServiceAccountName: serviceAccount,
 			InitContainers: []corev1.Container{
 				{
