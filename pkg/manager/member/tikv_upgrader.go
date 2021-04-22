@@ -190,6 +190,11 @@ func (u *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32, n
 func (u *tikvUpgrader) readyToUpgrade(upgradePod *corev1.Pod, tc *v1alpha1.TidbCluster) bool {
 	evictLeaderTimeout := tc.TiKVEvictLeaderTimeout()
 	tlsEnabled := tc.IsTLSClusterEnabled()
+	if tc.TiKVStsActualReplicas() < 2 {
+		klog.Infof("TiKV statefulset replicas are less than 2, skip waiting to evict region leader for Pod %s/%s", upgradePod.Namespace, upgradePod.Name)
+		return true
+	}
+
 	leaderCount, err := u.deps.TiKVControl.GetTiKVPodClient(tc.Namespace, tc.Name, upgradePod.Name, tlsEnabled).GetLeaderCount()
 	if err != nil {
 		klog.Warningf("Fail to get region leader count for Pod %s/%s, error: %v", upgradePod.Namespace, upgradePod.Name, err)
@@ -208,10 +213,6 @@ func (u *tikvUpgrader) readyToUpgrade(upgradePod *corev1.Pod, tc *v1alpha1.TidbC
 		if err != nil {
 			klog.Errorf("parse annotation:[%s] to time failed.", EvictLeaderBeginTime)
 			return false
-		}
-		if tc.Status.TiKV.StatefulSet.CurrentReplicas < 2 {
-			klog.Infof("TiKV stores are less than 2, skip waiting to evict region leader for Pod %s/%s", upgradePod.Namespace, upgradePod.Name)
-			return true
 		}
 		if time.Now().After(evictLeaderBeginTime.Add(evictLeaderTimeout)) {
 			klog.Infof("Evict region leader timeout (threshold: %v) for Pod %s/%s", evictLeaderTimeout, upgradePod.Namespace, upgradePod.Name)
