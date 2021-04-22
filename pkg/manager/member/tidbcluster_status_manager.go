@@ -17,6 +17,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 
 	perrors "github.com/pingcap/errors"
@@ -32,6 +33,8 @@ const (
 	grafanaComponent    = "grafana"
 	componentPrefix     = "/topology"
 	tidbPrefix          = "/topology/tidb"
+
+	tidbAddrPattern = `%s-tidb-\d+\.%s-tikv-peer\.%s\.svc%s\:\d+`
 )
 
 type TidbClusterStatusManager struct {
@@ -213,8 +216,17 @@ func (m *TidbClusterStatusManager) syncTiDBInfoKey(tc *v1alpha1.TidbCluster) err
 		expectAddrs[addr] = struct{}{}
 	}
 
+	pattern, err := regexp.Compile(fmt.Sprintf(tidbAddrPattern, tc.Name, tc.Name, tc.Namespace, controller.FormatClusterDomainForRegex(tc.Spec.ClusterDomain)))
+	if err != nil {
+		return err
+	}
+
 	for _, kv := range kvs {
 		addr := getTidbAddr(kv.Key)
+		// skip instance not own by this tc
+		if pattern.Match([]byte(addr)) {
+			continue
+		}
 
 		if _, ok := expectAddrs[addr]; !ok {
 			klog.V(2).Infof("Delete TiDB info key %s", kv.Key)
