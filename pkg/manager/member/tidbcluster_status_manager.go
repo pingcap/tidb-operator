@@ -34,7 +34,7 @@ const (
 	componentPrefix     = "/topology"
 	tidbPrefix          = "/topology/tidb"
 
-	tidbAddrPattern = `%s-tidb-\d+\.%s-tidb-peer\.%s\.svc%s\:\d+`
+	tidbAddrPattern = `%s-tidb-\d+\.%s-tidb-peer\.%s\.svc%s`
 )
 
 type TidbClusterStatusManager struct {
@@ -224,7 +224,7 @@ func (m *TidbClusterStatusManager) syncTiDBInfoKey(tc *v1alpha1.TidbCluster) err
 	for _, kv := range kvs {
 		addr := getTidbAddr(kv.Key)
 		// skip instance not own by this tc
-		if pattern.Match([]byte(addr)) {
+		if !pattern.Match([]byte(addr)) {
 			continue
 		}
 

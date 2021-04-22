@@ -14,6 +14,8 @@
 package member
 
 import (
+	"fmt"
+	"regexp"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -23,6 +25,18 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 )
+
+func TestTidbPattern(t *testing.T) {
+	name := "basic"
+	ns := "tidb-cluster"
+	reg := fmt.Sprintf(tidbAddrPattern, name, name, ns, controller.FormatClusterDomainForRegex(""))
+	pattern, err := regexp.Compile(reg)
+	g := NewGomegaWithT(t)
+	g.Expect(err).Should(BeNil())
+
+	m := pattern.Match([]byte("basic-tidb-0.basic-tidb-peer.tidb-cluster.svc"))
+	g.Expect(m).Should(BeTrue())
+}
 
 func TestSyncAutoScalerRef(t *testing.T) {
 	g := NewGomegaWithT(t)
