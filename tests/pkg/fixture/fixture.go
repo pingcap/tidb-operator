@@ -169,6 +169,7 @@ func GetDMCluster(ns, name, version string) *v1alpha1.DMCluster {
 				Replicas:             3,
 				BaseImage:            "pingcap/dm",
 				MaxFailoverCount:     pointer.Int32Ptr(3),
+				StorageSize:          "1Gi",
 				ResourceRequirements: WithStorage(BurstableSmall, "1Gi"),
 				Config:               &v1alpha1.MasterConfig{},
 				ComponentSpec: v1alpha1.ComponentSpec{

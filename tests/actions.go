@@ -1559,6 +1559,173 @@ func (oa *OperatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	return true, nil
 }
 
+func (oa *OperatorActions) dmMasterMembersReadyFn(dc *v1alpha1.DMCluster) bool {
+	dcName := dc.GetName()
+	ns := dc.GetNamespace()
+	masterSetName := controller.DMMasterMemberName(dcName)
+
+	masterSet, err := oa.tcStsGetter.StatefulSets(ns).Get(masterSetName, metav1.GetOptions{})
+	if err != nil {
+		log.Logf("failed to get statefulset: %s/%s, %v", ns, masterSetName, err)
+		return false
+	}
+
+	if masterSet.Status.CurrentRevision != masterSet.Status.UpdateRevision {
+		log.Logf("dm master .Status.CurrentRevision (%s) != .Status.UpdateRevision (%s)", masterSet.Status.CurrentRevision, masterSet.Status.UpdateRevision)
+		return false
+	}
+
+	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), masterSet) {
+		return false
+	}
+
+	if dc.Status.Master.StatefulSet == nil {
+		log.Logf("DmCluster: %s/%s .status.Master.StatefulSet is nil", ns, dcName)
+		return false
+	}
+
+	failureCount := len(dc.Status.Master.FailureMembers)
+	replicas := dc.Spec.Master.Replicas + int32(failureCount)
+	if *masterSet.Spec.Replicas != replicas {
+		log.Logf("statefulset: %s/%s .spec.Replicas(%d) != %d",
+			ns, masterSetName, *masterSet.Spec.Replicas, replicas)
+		return false
+	}
+	if masterSet.Status.ReadyReplicas != dc.Spec.Master.Replicas {
+		log.Logf("statefulset: %s/%s .status.ReadyReplicas(%d) != %d",
+			ns, masterSetName, masterSet.Status.ReadyReplicas, dc.Spec.Master.Replicas)
+		return false
+	}
+	if len(dc.Status.Master.Members) != int(dc.Spec.Master.Replicas) {
+		log.Logf("DmCluster: %s/%s .status.Master.Members count(%d) != %d",
+			ns, dcName, len(dc.Status.Master.Members), dc.Spec.Master.Replicas)
+		return false
+	}
+	if masterSet.Status.ReadyReplicas != masterSet.Status.Replicas {
+		log.Logf("statefulset: %s/%s .status.ReadyReplicas(%d) != .status.Replicas(%d)",
+			ns, masterSetName, masterSet.Status.ReadyReplicas, masterSet.Status.Replicas)
+		return false
+	}
+
+	c, found := getMemberContainer(oa.kubeCli, oa.tcStsGetter, ns, dcName, label.DMMasterLabelVal)
+	if !found {
+		log.Logf("statefulset: %s/%s not found containers[name=dm-master] or pod %s-0",
+			ns, masterSetName, masterSetName)
+		return false
+	}
+
+	if dc.MasterImage() != c.Image {
+		log.Logf("statefulset: %s/%s .spec.template.spec.containers[name=dm-master].image(%s) != %s",
+			ns, masterSetName, c.Image, dc.MasterImage())
+		return false
+	}
+
+	for _, member := range dc.Status.Master.Members {
+		if !member.Health {
+			log.Logf("DmCluster: %s/%s dm-master member(%s/%s) is not health",
+				ns, dcName, member.ID, member.Name)
+			return false
+		}
+	}
+
+	masterServiceName := controller.DMMasterMemberName(dcName)
+	masterPeerServiceName := controller.DMMasterPeerMemberName(dcName)
+	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(masterServiceName, metav1.GetOptions{}); err != nil {
+		log.Logf("failed to get service: %s/%s", ns, masterServiceName)
+		return false
+	}
+	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(masterPeerServiceName, metav1.GetOptions{}); err != nil {
+		log.Logf("failed to get peer service: %s/%s", ns, masterPeerServiceName)
+		return false
+	}
+
+	return true
+}
+
+// TODO: try to simplify the code with dmMasterMembersReadyFn.
+func (oa *OperatorActions) dmWorkerMembersReadyFn(dc *v1alpha1.DMCluster) bool {
+	dcName := dc.GetName()
+	ns := dc.GetNamespace()
+	workerSetName := controller.DMWorkerMemberName(dcName)
+
+	workerSet, err := oa.tcStsGetter.StatefulSets(ns).Get(workerSetName, metav1.GetOptions{})
+	if err != nil {
+		log.Logf("failed to get statefulset: %s/%s, %v", ns, workerSetName, err)
+		return false
+	}
+
+	if workerSet.Status.CurrentRevision != workerSet.Status.UpdateRevision {
+		log.Logf("dm worker .Status.CurrentRevision (%s) != .Status.UpdateRevision (%s)", workerSet.Status.CurrentRevision, workerSet.Status.UpdateRevision)
+		return false
+	}
+
+	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), workerSet) {
+		return false
+	}
+
+	if dc.Status.Worker.StatefulSet == nil {
+		log.Logf("DmCluster: %s/%s .status.Worker.StatefulSet is nil", ns, dcName)
+		return false
+	}
+
+	failureCount := len(dc.Status.Worker.FailureMembers)
+	replicas := dc.Spec.Worker.Replicas + int32(failureCount)
+	if *workerSet.Spec.Replicas != replicas {
+		log.Logf("statefulset: %s/%s .spec.Replicas(%d) != %d",
+			ns, workerSetName, *workerSet.Spec.Replicas, replicas)
+		return false
+	}
+	if workerSet.Status.ReadyReplicas != dc.Spec.Worker.Replicas {
+		log.Logf("statefulset: %s/%s .status.ReadyReplicas(%d) != %d",
+			ns, workerSetName, workerSet.Status.ReadyReplicas, dc.Spec.Worker.Replicas)
+		return false
+	}
+	if len(dc.Status.Worker.Members) != int(dc.Spec.Worker.Replicas) {
+		log.Logf("DmCluster: %s/%s .status.Worker.Members count(%d) != %d",
+			ns, dcName, len(dc.Status.Worker.Members), dc.Spec.Worker.Replicas)
+		return false
+	}
+	if workerSet.Status.ReadyReplicas != workerSet.Status.Replicas {
+		log.Logf("statefulset: %s/%s .status.ReadyReplicas(%d) != .status.Replicas(%d)",
+			ns, workerSetName, workerSet.Status.ReadyReplicas, workerSet.Status.Replicas)
+		return false
+	}
+
+	c, found := getMemberContainer(oa.kubeCli, oa.tcStsGetter, ns, dcName, label.DMWorkerLabelVal)
+	if !found {
+		log.Logf("statefulset: %s/%s not found containers[name=dm-worker] or pod %s-0",
+			ns, workerSetName, workerSetName)
+		return false
+	}
+
+	if dc.WorkerImage() != c.Image {
+		log.Logf("statefulset: %s/%s .spec.template.spec.containers[name=dm-worker].image(%s) != %s",
+			ns, workerSetName, c.Image, dc.WorkerImage())
+		return false
+	}
+
+	for _, member := range dc.Status.Worker.Members {
+		if member.Stage == "offline" {
+			log.Logf("DmCluster: %s/%s dm-worker member(%s) is offline",
+				ns, dcName, member.Name)
+			return false
+		}
+	}
+
+	workerServiceName := controller.DMWorkerMemberName(dcName)
+	workerPeerServiceName := controller.DMWorkerPeerMemberName(dcName)
+	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(workerServiceName, metav1.GetOptions{}); err != nil {
+		log.Logf("failed to get service: %s/%s", ns, workerServiceName)
+		return false
+	}
+	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(workerPeerServiceName, metav1.GetOptions{}); err != nil {
+		log.Logf("failed to get peer service: %s/%s", ns, workerPeerServiceName)
+		return false
+	}
+
+	return true
+}
+
 func (oa *OperatorActions) reclaimPolicySyncFn(tc *v1alpha1.TidbCluster) (bool, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
@@ -3457,6 +3624,35 @@ func (oa *OperatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, tim
 		}
 
 		log.Logf("TidbCluster is ready")
+		return true, nil
+	})
+}
+
+func (oa *OperatorActions) WaitForDmClusterReady(dc *v1alpha1.DMCluster, timeout, pollInterval time.Duration) error {
+	if dc == nil {
+		return fmt.Errorf("DmCluster is nil, cannot call WaitForDmClusterReady")
+	}
+	return wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
+		var (
+			local *v1alpha1.DMCluster
+			err   error
+		)
+		if local, err = oa.cli.PingcapV1alpha1().DMClusters(dc.Namespace).Get(dc.Name, metav1.GetOptions{}); err != nil {
+			log.Logf("failed to get DmCluster: %s/%s, %v", dc.Namespace, dc.Name, err)
+			return false, nil
+		}
+
+		if b := oa.dmMasterMembersReadyFn(local); !b {
+			log.Logf("dm master members are not ready for dc %q", dc.Name)
+			return false, nil
+		}
+		log.Logf("dm master members are ready for dc %q", dc.Name)
+		if b := oa.dmWorkerMembersReadyFn(local); !b {
+			log.Logf("dm worker memebers are not ready for dc %q", dc.Name)
+		}
+		log.Logf("dm worker members are ready for dc %q", dc.Name)
+
+		log.Logf("DmCluster %q is ready", dc.Name)
 		return true, nil
 	})
 }

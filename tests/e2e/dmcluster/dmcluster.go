@@ -14,34 +14,74 @@
 package dmcluster
 
 import (
+	"context"
+	"time"
+
 	"github.com/onsi/ginkgo"
+	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
+	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	clientset "k8s.io/client-go/kubernetes"
+	restclient "k8s.io/client-go/rest"
+	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
+	"k8s.io/kubernetes/test/e2e/framework"
+
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/tests"
+	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
+	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
-	restclient "k8s.io/client-go/rest"
-	"k8s.io/kubernetes/test/e2e/framework"
 )
 
 var _ = ginkgo.Describe("DMCluster", func() {
 	f := e2eframework.NewDefaultFramework("dm-cluster")
 
 	var (
-		ns     string
-		config *restclient.Config
-		cli    versioned.Interface
+		ns        string
+		c         clientset.Interface
+		config    *restclient.Config
+		cli       versioned.Interface
+		asCli     asclientset.Interface
+		aggrCli   aggregatorclient.Interface
+		apiExtCli apiextensionsclientset.Interface
+		fwCancel  context.CancelFunc
+		fw        portforward.PortForward
+		cfg       *tests.Config
+		ocfg      *tests.OperatorConfig
+		oa        *tests.OperatorActions
 	)
 
 	ginkgo.BeforeEach(func() {
 		ns = f.Namespace.Name
+		c = f.ClientSet
 		var err error
 		config, err = framework.LoadConfig()
 		framework.ExpectNoError(err, "failed to load config")
 		cli, err = versioned.NewForConfig(config)
 		framework.ExpectNoError(err, "failed to create clientset for pingcap")
+		asCli, err = asclientset.NewForConfig(config)
+		framework.ExpectNoError(err, "failed to create clientset for advanced-statefulset")
+		aggrCli, err = aggregatorclient.NewForConfig(config)
+		framework.ExpectNoError(err, "failed to create clientset for kube-aggregator")
+		apiExtCli, err = apiextensionsclientset.NewForConfig(config)
+		framework.ExpectNoError(err, "failed to create clientset for apiextensions-apiserver")
+		ctx, cancel := context.WithCancel(context.Background())
+		clientRawConfig, err := e2econfig.LoadClientRawConfig()
+		framework.ExpectNoError(err, "failed to load raw config for tidb-operator")
+		fw, err = portforward.NewPortForwarder(ctx, e2econfig.NewSimpleRESTClientGetter(clientRawConfig))
+		framework.ExpectNoError(err, "failed to create port forwarder")
+		fwCancel = cancel
+		cfg = e2econfig.TestConfig
+		ocfg = e2econfig.NewDefaultOperatorConfig(cfg)
+		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, cfg, nil, fw, f)
 	})
 
-	ginkgo.AfterEach(func() {})
+	ginkgo.AfterEach(func() {
+		if fwCancel != nil {
+			fwCancel()
+		}
+	})
 
 	ginkgo.Context("[Feature:DM]", func() {
 		ginkgo.It("setup replication for DM", func() {
@@ -51,6 +91,8 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			dc.Spec.Worker.Replicas = 1
 			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(dc)
 			framework.ExpectNoError(err, "failed to create DmCluster: %q", dc.Name)
+			err = oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second)
+			framework.ExpectNoError(err, "failed to wait for DmCluster ready: %q", dc.Name)
 		})
 	})
 })
