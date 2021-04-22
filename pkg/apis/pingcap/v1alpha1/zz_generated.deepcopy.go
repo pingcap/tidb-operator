@@ -384,6 +384,11 @@ func (in *BackupSpec) DeepCopyInto(out *BackupSpec) {
 		*out = new(v1.Affinity)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.PodSecurityContext != nil {
+		in, out := &in.PodSecurityContext, &out.PodSecurityContext
+		*out = new(v1.PodSecurityContext)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 
@@ -1066,6 +1071,11 @@ func (in *DMClusterSpec) DeepCopyInto(out *DMClusterSpec) {
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
+	}
+	if in.PodSecurityContext != nil {
+		in, out := &in.PodSecurityContext, &out.PodSecurityContext
+		*out = new(v1.PodSecurityContext)
+		(*in).DeepCopyInto(*out)
 	}
 	return
 }
@@ -4151,6 +4161,11 @@ func (in *RestoreSpec) DeepCopyInto(out *RestoreSpec) {
 		in, out := &in.TableFilter, &out.TableFilter
 		*out = make([]string, len(*in))
 		copy(*out, *in)
+	}
+	if in.PodSecurityContext != nil {
+		in, out := &in.PodSecurityContext, &out.PodSecurityContext
+		*out = new(v1.PodSecurityContext)
+		(*in).DeepCopyInto(*out)
 	}
 	return
 }
@@ -7963,6 +7978,11 @@ func (in *TidbClusterSpec) DeepCopyInto(out *TidbClusterSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.PodSecurityContext != nil {
+		in, out := &in.PodSecurityContext, &out.PodSecurityContext
+		*out = new(v1.PodSecurityContext)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 
@@ -8080,6 +8100,11 @@ func (in *TidbInitializerList) DeepCopyObject() runtime.Object {
 func (in *TidbInitializerSpec) DeepCopyInto(out *TidbInitializerSpec) {
 	*out = *in
 	out.Clusters = in.Clusters
+	if in.PodSecurityContext != nil {
+		in, out := &in.PodSecurityContext, &out.PodSecurityContext
+		*out = new(v1.PodSecurityContext)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.ImagePullPolicy != nil {
 		in, out := &in.ImagePullPolicy, &out.ImagePullPolicy
 		*out = new(v1.PullPolicy)
@@ -8334,6 +8359,11 @@ func (in *TidbMonitorSpec) DeepCopyInto(out *TidbMonitorSpec) {
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
+	}
+	if in.PodSecurityContext != nil {
+		in, out := &in.PodSecurityContext, &out.PodSecurityContext
+		*out = new(v1.PodSecurityContext)
+		(*in).DeepCopyInto(*out)
 	}
 	return
 }
