@@ -56,7 +56,7 @@ cluster1_namespace="pingcap"
 {{< copyable "shell-regular" >}}
 
 ```bash
-cat << EOF | kubectl apply -f -n ${cluster1_namespace} - 
+cat << EOF | kubectl apply -n ${cluster1_namespace} -f -
 apiVersion: pingcap.com/v1alpha1
 kind: TidbCluster
 metadata:
@@ -113,7 +113,7 @@ cluster2_namespace="pingcap"
 {{< copyable "shell-regular" >}}
 
 ```bash
-cat << EOF | kubectl apply -f -n ${cluster2_namespace} - 
+cat << EOF | kubectl apply -n ${cluster2_namespace} -f -
 apiVersion: pingcap.com/v1alpha1
 kind: TidbCluster
 metadata:
@@ -440,7 +440,7 @@ cluster1_namespace="pingcap"
 执行以下指令：
 
 ```
-cat << EOF | kubectl apply -f -n ${cluster1_namespace} - 
+cat << EOF | kubectl apply -n ${cluster1_namespace} -f -
 apiVersion: pingcap.com/v1alpha1
 kind: TidbCluster
 metadata:
@@ -510,7 +510,7 @@ cluster2_namespace="pingcap"
 {{< copyable "shell-regular" >}}
 
 ```bash
-cat << EOF | kubectl apply -f -n ${cluster2_namespace} - 
+cat << EOF | kubectl apply -n ${cluster2_namespace} -f -
 apiVersion: pingcap.com/v1alpha1
 kind: TidbCluster
 metadata:
