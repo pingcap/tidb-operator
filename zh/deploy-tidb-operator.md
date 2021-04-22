@@ -105,6 +105,12 @@ tidbmonitors.pingcap.com             2020-06-11T07:59:41Z
 
     TiDB Operator 里面会用到 `k8s.gcr.io/kube-scheduler` 镜像，如果无法下载该镜像，可以修改 `${HOME}/tidb-operator/values-tidb-operator.yaml` 文件中的 `scheduler.kubeSchedulerImageName` 为 `registry.cn-hangzhou.aliyuncs.com/google_containers/kube-scheduler`。
 
+    TiDB Operator 默认会管理 Kubernetes 集群中的所有 TiDB 集群，如仅需其管理特定 namespace 下的集群，则可在 `values.yaml` 中设置 `clusterScoped: false`。
+    
+    > **注意：**
+    >
+    > 在设置 `clusterScoped: false` 后，TiDB Operator 默认仍会操作 Kubernetes 集群中的 Nodes、Persistent Volumes 与 Storage Classes。若部署 TiDB Operator 的角色不具备这些资源的操作权限，则可以将 `controllerManager.clusterPermissions` 下的相应权限请求设置为 `false` 以禁用 TiDB Operator 对这些资源的操作。
+
     其他项目例如：`limits`、`requests` 和 `replicas`，请根据需要进行修改。
 
 3. 部署 TiDB Operator
