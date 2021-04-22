@@ -27,15 +27,48 @@ import (
 )
 
 func TestTidbPattern(t *testing.T) {
+	g := NewGomegaWithT(t)
+
 	name := "basic"
 	ns := "tidb-cluster"
+
+	// test no domain
 	reg := fmt.Sprintf(tidbAddrPattern, name, name, ns, controller.FormatClusterDomainForRegex(""))
 	pattern, err := regexp.Compile(reg)
-	g := NewGomegaWithT(t)
 	g.Expect(err).Should(BeNil())
 
 	m := pattern.Match([]byte("basic-tidb-0.basic-tidb-peer.tidb-cluster.svc"))
 	g.Expect(m).Should(BeTrue())
+
+	m = pattern.Match([]byte("basic-tidb-0.basic-tidb-peer.tidb-cluster.svc.other.domain"))
+	g.Expect(m).Should(BeFalse())
+
+	m = pattern.Match([]byte("othername-tidb-0.basic-tidb-peer.tidb-cluster.svc.other.domain"))
+	g.Expect(m).Should(BeFalse())
+
+	m = pattern.Match([]byte("othername-tidb-0.basic-tidb-peer.otherns.svc.other.domain"))
+	g.Expect(m).Should(BeFalse())
+
+	// test with domain
+	reg = fmt.Sprintf(tidbAddrPattern, name, name, ns, controller.FormatClusterDomainForRegex("d1.d2"))
+	pattern, err = regexp.Compile(reg)
+	g.Expect(err).Should(BeNil())
+
+	m = pattern.Match([]byte("basic-tidb-0.basic-tidb-peer.tidb-cluster.svc.d1.d2"))
+	g.Expect(m).Should(BeTrue())
+
+	// domain is optional
+	m = pattern.Match([]byte("basic-tidb-0.basic-tidb-peer.tidb-cluster.svc"))
+	g.Expect(m).Should(BeTrue())
+
+	m = pattern.Match([]byte("basic-tidb-0.basic-tidb-peer.tidb-cluster.svc.other.domain"))
+	g.Expect(m).Should(BeFalse())
+
+	m = pattern.Match([]byte("othername-tidb-0.basic-tidb-peer.tidb-cluster.svc.other.d1.d2"))
+	g.Expect(m).Should(BeFalse())
+
+	m = pattern.Match([]byte("othername-tidb-0.basic-tidb-peer.otherns.svc.other.d1.d2"))
+	g.Expect(m).Should(BeFalse())
 }
 
 func TestSyncAutoScalerRef(t *testing.T) {

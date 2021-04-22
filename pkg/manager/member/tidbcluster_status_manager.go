@@ -34,7 +34,7 @@ const (
 	componentPrefix     = "/topology"
 	tidbPrefix          = "/topology/tidb"
 
-	tidbAddrPattern = `%s-tidb-\d+\.%s-tidb-peer\.%s\.svc%s`
+	tidbAddrPattern = `^%s-tidb-\d+\.%s-tidb-peer\.%s\.svc%s$`
 )
 
 type TidbClusterStatusManager struct {
