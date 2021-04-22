@@ -10,7 +10,6 @@ summary: 了解如何在 Kubernetes 上部署 TiDB DM 集群。
 ## 前置条件
 
 * TiDB Operator [部署](deploy-tidb-operator.md)完成。
-* 一套已经部署好的 TidbCluster 集群。
 
 ## 部署配置
 
@@ -26,29 +25,13 @@ summary: 了解如何在 Kubernetes 上部署 TiDB DM 集群。
 
 相关参数的格式如下：
 
-- `spec.version`，格式为 `imageTag`，例如 `v2.0.0-rc.2`
-- `spec.<master/worker>.baseImage`，格式为 `imageName`，例如 `pingcap/tidb`
-- `spec.<master/worker>.version`，格式为 `imageTag`，例如 `v2.0.0-rc.2`
+- `spec.version`，格式为 `imageTag`，例如 `v2.0.2`
+- `spec.<master/worker>.baseImage`，格式为 `imageName`，例如 `pingcap/dm`
+- `spec.<master/worker>.version`，格式为 `imageTag`，例如 `v2.0.2`
 
 TiDB Operator 仅支持部署 DM 2.0 及更新版本。
 
 ### 集群配置
-
-#### Discovery 配置
-
-DMCluster 部署时需要使用 TidbCluster 的 Discovery 服务，必须填写 `spec.discovery.address`，格式为 `http://${tidb_cluster_name}-discovery.${tidb_namespace}:10261`。
-
-```yaml
-apiVersion: pingcap.com/v1alpha1
-kind: DMCluster
-metadata:
-  name: ${dm_cluster_name}
-  namespace: ${namespace}
-spec:
-  ...
-  discovery:
-    address: "http://${tidb_cluster_name}-discovery.${tidb_namespace}:10261"
-```
 
 #### DM-master 配置
 
@@ -63,10 +46,9 @@ metadata:
   name: ${dm_cluster_name}
   namespace: ${namespace}
 spec:
-  version: v2.0.0-rc.2
+  version: v2.0.2
   pvReclaimPolicy: Retain
-  discovery:
-    address: "http://${tidb_cluster_name}-discovery.${tidb_namespace}:10261"
+  discovery: {}
   master:
     baseImage: pingcap/dm
     imagePullPolicy: IfNotPresent
@@ -114,10 +96,10 @@ kubectl apply -f ${dm_cluster_name}.yaml -n ${namespace}
 
 如果服务器没有外网，需要按下述步骤在有外网的机器上将 DM 集群用到的 Docker 镜像下载下来并上传到服务器上，然后使用 `docker load` 将 Docker 镜像安装到服务器上：
 
-1. 部署一套 DM 集群会用到下面这些 Docker 镜像（假设 DM 集群的版本是 v2.0.0-rc.2）：
+1. 部署一套 DM 集群会用到下面这些 Docker 镜像（假设 DM 集群的版本是 v2.0.2）：
 
     ```shell
-    pingcap/dm:v2.0.0-rc.2
+    pingcap/dm:v2.0.2
     ```
 
 2. 通过下面的命令将所有这些镜像下载下来：
@@ -125,9 +107,9 @@ kubectl apply -f ${dm_cluster_name}.yaml -n ${namespace}
     {{< copyable "shell-regular" >}}
 
     ```shell
-    docker pull pingcap/dm:v2.0.0-rc.2
+    docker pull pingcap/dm:v2.0.2
 
-    docker save -o dm-v2.0.0-rc.2.tar pingcap/dm:v2.0.0-rc.2
+    docker save -o dm-v2.0.2.tar pingcap/dm:v2.0.2
     ```
 
 3. 将这些 Docker 镜像上传到服务器上，并执行 `docker load` 将这些 Docker 镜像安装到服务器上：
@@ -135,7 +117,7 @@ kubectl apply -f ${dm_cluster_name}.yaml -n ${namespace}
     {{< copyable "shell-regular" >}}
 
     ```shell
-    docker load -i dm-v2.0.0-rc.2.tar
+    docker load -i dm-v2.0.2.tar
     ```
 
 部署 DM 集群完成后，通过下面命令查看 Pod 状态：

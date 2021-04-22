@@ -10,7 +10,6 @@ summary: Learn how to deploy and use TiDB DM cluster in Kubernetes.
 ## Prerequisites
 
 * Complete [deploying TiDB Operator](deploy-tidb-operator.md).
-* Complete deploying a TiDB Cluster.
 
 ## Configure DM deployment
 
@@ -26,29 +25,13 @@ Usually, components in a cluster are in the same version. It is recommended to c
 
 The formats of the related parameters are as follows:
 
-- `spec.version`: the format is `imageTag`, such as `v2.0.0-rc.2`.
-- `spec.<master/worker>.baseImage`: the format is `imageName`, such as `pingcap/tidb`.
-- `spec.<master/worker>.version`: the format is `imageTag`, such as `v2.0.0-rc.2`.
+- `spec.version`: the format is `imageTag`, such as `v2.0.2`.
+- `spec.<master/worker>.baseImage`: the format is `imageName`, such as `pingcap/dm`.
+- `spec.<master/worker>.version`: the format is `imageTag`, such as `v2.0.2`.
 
 TiDB Operator only supports deploying DM 2.0 and later versions.
 
 ### Cluster
-
-#### Configure Discovery
-
-To deploy the DM cluster, you need to use the Discovery service of TidbCluster and must fill in the  `spec.discovery.address`. The format is `http://${tidb_cluster_name}-discovery.${tidb_namespace}:10261`.
-
-```yaml
-apiVersion: pingcap.com/v1alpha1
-kind: DMCluster
-metadata:
-  name: ${dm_cluster_name}
-  namespace: ${namespace}
-spec:
-  ...
-  discovery:
-    address: "http://${tidb_cluster_name}-discovery.${tidb_namespace}:10261"
-```
 
 #### Configure DM-master
 
@@ -63,10 +46,9 @@ metadata:
   name: ${dm_cluster_name}
   namespace: ${namespace}
 spec:
-  version: v2.0.0-rc.2
+  version: v2.0.2
   pvReclaimPolicy: Retain
-  discovery:
-    address: "http://${tidb_cluster_name}-discovery.${tidb_namespace}:10261"
+  discovery: {}
   master:
     baseImage: pingcap/dm
     imagePullPolicy: IfNotPresent
@@ -116,10 +98,10 @@ kubectl apply -f ${dm_cluster_name}.yaml -n ${namespace}
 
 If the server does not have an external network, you need to download the Docker image used by the DM cluster and upload the image to the server, and then execute `docker load` to install the Docker image on the server:
 
-1. Deploy a DM cluster requires the following Docker image (assuming the version of the DM cluster is v2.0.0-rc.2):
+1. Deploy a DM cluster requires the following Docker image (assuming the version of the DM cluster is v2.0.2):
 
     ```shell
-    pingcap/dm:v2.0.0-rc.2
+    pingcap/dm:v2.0.2
     ```
 
 2. To download the image, execute the following command:
@@ -127,8 +109,8 @@ If the server does not have an external network, you need to download the Docker
     {{< copyable "shell-regular" >}}
 
     ```shell
-    docker pull pingcap/dm:v2.0.0-rc.2
-    docker save -o dm-v2.0.0-rc.2.tar pingcap/dm:v2.0.0-rc.2
+    docker pull pingcap/dm:v2.0.2
+    docker save -o dm-v2.0.2.tar pingcap/dm:v2.0.2
     ```
 
 3. Upload the Docker image to the server, and execute `docker load` to install the image on the server:
@@ -136,7 +118,7 @@ If the server does not have an external network, you need to download the Docker
     {{< copyable "shell-regular" >}}
 
     ```shell
-    docker load -i dm-v2.0.0-rc.2.tar
+    docker load -i dm-v2.0.2.tar
     ```
 
 After deploying the DM cluster, execute the following command to view the Pod status:
