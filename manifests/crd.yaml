@@ -2433,6 +2433,9 @@ spec:
                         type: string
                     type: object
                   type: array
+                topologySpreadConstraints:
+                  items: {}
+                  type: array
                 version:
                   type: string
               required:
@@ -4517,6 +4520,9 @@ spec:
                         type: string
                     type: object
                   type: array
+                topologySpreadConstraints:
+                  items: {}
+                  type: array
                 version:
                   type: string
               required:
@@ -6564,6 +6570,9 @@ spec:
                       value:
                         type: string
                     type: object
+                  type: array
+                topologySpreadConstraints:
+                  items: {}
                   type: array
                 version:
                   type: string
@@ -8754,6 +8763,9 @@ spec:
                         type: string
                     type: object
                   type: array
+                topologySpreadConstraints:
+                  items: {}
+                  type: array
                 version:
                   type: string
               required:
@@ -10806,6 +10818,9 @@ spec:
                       value:
                         type: string
                     type: object
+                  type: array
+                topologySpreadConstraints:
+                  items: {}
                   type: array
                 version:
                   type: string
@@ -12868,6 +12883,9 @@ spec:
                         type: string
                     type: object
                   type: array
+                topologySpreadConstraints:
+                  items: {}
+                  type: array
                 version:
                   type: string
               required:
@@ -12891,6 +12909,9 @@ spec:
                   value:
                     type: string
                 type: object
+              type: array
+            topologySpreadConstraints:
+              items: {}
               type: array
             version:
               type: string
@@ -15283,6 +15304,9 @@ spec:
                         type: string
                     type: object
                   type: array
+                topologySpreadConstraints:
+                  items: {}
+                  type: array
                 version:
                   type: string
               required:
@@ -15371,6 +15395,9 @@ spec:
                   value:
                     type: string
                 type: object
+              type: array
+            topologySpreadConstraints:
+              items: {}
               type: array
             version:
               type: string
@@ -17423,6 +17450,9 @@ spec:
                       value:
                         type: string
                     type: object
+                  type: array
+                topologySpreadConstraints:
+                  items: {}
                   type: array
                 version:
                   type: string
