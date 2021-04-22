@@ -24,7 +24,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/configure-tidb-binlog-drainer/']
 | `storageClassName` | drainer 所使用的 `storageClass`。`storageClassName` 是 Kubernetes 集群提供的一种存储，可以映射到服务质量级别、备份策略或集群管理员确定的任何策略。详情可参阅 [storage-classes](https://kubernetes.io/docs/concepts/storage/storage-classes) | `local-storage` |
 | `storage` | drainer Pod 的存储限制。请注意，如果 `db-type` 设为 `pd`，则应将本参数值设得大一些 | `10Gi` |
 | `disableDetect` |  决定是否禁用事故检测 | `false` |
-| `initialCommitTs` |  如果 drainer 没有断点，则用于初始化断点 | `0` |
+| `initialCommitTs` |  如果 drainer 没有断点，则用于初始化断点。该参数值为 string 类型，如 `"424364429251444742"` | `"-1"` |
 | `tlsCluster.enabled` |  是否开启集群间 TLS | `false` |
 | `config` | 传递到 drainer 的配置文件。详情可参阅 [drainer.toml](https://github.com/pingcap/tidb-binlog/blob/master/cmd/drainer/drainer.toml) |（见下文）|
 | `resources` | drainer Pod 的资源限制和请求 | `{}` |

@@ -202,6 +202,7 @@ To deploy multiple drainers using the `tidb-drainer` Helm chart for a TiDB clust
     baseImage:pingcap/tidb-binlog
     storageClassName: local-storage
     storage: 10Gi
+    initialCommitTs: "-1"
     config: |
       detect-interval = 10
       [syncer]
@@ -219,6 +220,8 @@ To deploy multiple drainers using the `tidb-drainer` Helm chart for a TiDB clust
     ```
 
     The `clusterName` and `clusterVersion` must match the desired source TiDB cluster.
+
+    The `initialCommitTs` is the starting commit timestamp of data replication when Drainer has no checkpoint. The value must be set as a string type, such as `"424364429251444742"`.
 
     For complete configuration details, refer to [TiDB Binlog Drainer Configurations in Kubernetes](configure-tidb-binlog-drainer.md).
 

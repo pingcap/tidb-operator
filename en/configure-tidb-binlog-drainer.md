@@ -24,7 +24,7 @@ The following table contains all configuration parameters available for the `tid
 | `storageClassName` | `storageClass` used by the drainer. `storageClassName` refers to a type of storage provided by the Kubernetes cluster, which might map to a level of service quality, a backup policy, or to any policy determined by the cluster administrator. Detailed reference: [storage-classes](https://kubernetes.io/docs/concepts/storage/storage-classes) | `local-storage` |
 | `storage` | The storage limit of the drainer Pod. Note that you should set a larger size if `db-type` is set to `pb` | `10Gi` |
 | `disableDetect` |  Determines whether to disable casualty detection | `false` |
-| `initialCommitTs` |  Used to initialize a checkpoint if the drainer does not have one | `0` |
+| `initialCommitTs` |  Used to initialize a checkpoint if the drainer does not have one. The value is a string type, such as `"424364429251444742"` | `"-1"` |
 | `tlsCluster.enabled` | Whether or not to enable TLS between clusters | `false` |
 | `config` | The configuration file passed to the drainer. Detailed reference: [drainer.toml](https://github.com/pingcap/tidb-binlog/blob/master/cmd/drainer/drainer.toml) | (see below) |
 | `resources` | The resource limits and requests of the drainer Pod | `{}` |

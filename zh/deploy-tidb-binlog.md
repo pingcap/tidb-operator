@@ -196,6 +196,7 @@ spec:
     baseImage: pingcap/tidb-binlog
     storageClassName: local-storage
     storage: 10Gi
+    initialCommitTs: "-1"
     config: |
       detect-interval = 10
       [syncer]
@@ -213,6 +214,8 @@ spec:
     ```
 
     `clusterName` 和 `clusterVersion` 必须匹配所需的源 TiDB 集群。
+
+    `initialCommitTs` 为 drainer 没有 checkpoint 时数据同步的起始 commit timestamp。该参数值必须以 string 类型配置，如 `"424364429251444742"`。
 
     有关完整的配置详细信息，请参阅 [Kubernetes 上的 TiDB Binlog Drainer 配置](configure-tidb-binlog-drainer.md)。
 
