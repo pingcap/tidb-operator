@@ -70,7 +70,7 @@ func NewTiDBMemberManager(deps *controller.Dependencies, tidbUpgrader Upgrader, 
 }
 
 func (m *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
-	// If tikv is not specified return
+	// If tidb is not specified return
 	if tc.Spec.TiDB == nil {
 		return nil
 	}
@@ -81,11 +81,13 @@ func (m *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	if tc.Spec.TiKV != nil && !tc.TiKVIsAvailable() {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV cluster running", ns, tcName)
 	}
+
 	if tc.Spec.Pump != nil {
 		if !tc.PumpIsAvailable() {
 			return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for Pump cluster running", ns, tcName)
 		}
 	}
+
 	// Sync TiDB Headless Service
 	if err := m.syncTiDBHeadlessServiceForTidbCluster(tc); err != nil {
 		return err
@@ -813,6 +815,7 @@ func (m *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	if err != nil {
 		return err
 	}
+
 	if tc.TiDBStsDesiredReplicas() != *set.Spec.Replicas {
 		tc.Status.TiDB.Phase = v1alpha1.ScalePhase
 	} else if upgrading && tc.Status.TiKV.Phase != v1alpha1.UpgradePhase &&
@@ -829,6 +832,7 @@ func (m *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 		if err != nil {
 			return err
 		}
+
 		newTidbMember := v1alpha1.TiDBMember{
 			Name:   name,
 			Health: health,
@@ -847,11 +851,12 @@ func (m *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 			return fmt.Errorf("syncTidbClusterStatus: failed to get pods %s for cluster %s/%s, error: %s", name, tc.GetNamespace(), tc.GetName(), err)
 		}
 		if pod != nil && pod.Spec.NodeName != "" {
-			// Update assiged node if pod exists and is scheduled
+			// Update assigned node if pod exists and is scheduled
 			newTidbMember.NodeName = pod.Spec.NodeName
 		}
 		tidbStatus[name] = newTidbMember
 	}
+
 	tc.Status.TiDB.Members = tidbStatus
 	tc.Status.TiDB.Image = ""
 	c := findContainerByName(set, "tidb")
