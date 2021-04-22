@@ -542,7 +542,7 @@ func newFakeDMCluster(mm *MonitorManager) {
 			Namespace: "ns",
 		},
 		Spec: v1alpha1.DMClusterSpec{
-			Master:     v1alpha1.MasterSpec{Replicas: 1},
+			Master: v1alpha1.MasterSpec{Replicas: 1},
 		},
 	}
 	dmIndexer.Add(dc)

@@ -307,26 +307,6 @@ type SafeTLSConfig struct {
 	InsecureSkipVerify bool `json:"insecureSkipVerify,omitempty"`
 }
 
-// Validate semantically validates the given TLSConfig.
-func (c *SecretOrConfigMap) Validate() error {
-	if c.Secret != nil && c.ConfigMap != nil {
-		return &SecretOrConfigMapValidationError{"SecretOrConfigMap can not specify both Secret and ConfigMap"}
-	}
-
-	return nil
-}
-
-// SecretOrConfigMapValidationError is returned by SecretOrConfigMap.Validate()
-// on semantically invalid configurations.
-// +k8s:openapi-gen=false
-type SecretOrConfigMapValidationError struct {
-	err string
-}
-
-func (e *SecretOrConfigMapValidationError) Error() string {
-	return e.err
-}
-
 // SecretOrConfigMap allows to specify data as a Secret or ConfigMap. Fields are mutually exclusive.
 type SecretOrConfigMap struct {
 	// Secret containing data to use for the targets.

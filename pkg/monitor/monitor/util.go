@@ -44,7 +44,7 @@ const (
 	defaultReplicaExternalLabelName = "prometheus_replica"
 )
 
-func GetTlsAssetsSecretName(name string) string {
+func GetTLSAssetsSecretName(name string) string {
 	return fmt.Sprintf("tidbmonitor-%s-tls-assets", name)
 }
 
@@ -476,7 +476,7 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 			{
 				Name:      "tls-assets",
 				MountPath: util.ClusterAssetsTLSPath,
-				ReadOnly:  false,
+				ReadOnly:  true,
 			},
 		},
 	}
@@ -729,7 +729,7 @@ func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor, tc
 		Name: "tls-assets",
 		VolumeSource: core.VolumeSource{
 			Secret: &core.SecretVolumeSource{
-				SecretName:  GetTlsAssetsSecretName(monitor.Name),
+				SecretName:  GetTLSAssetsSecretName(monitor.Name),
 				DefaultMode: &defaultMode,
 			},
 		},
