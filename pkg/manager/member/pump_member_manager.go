@@ -394,6 +394,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 	podSpec := spec.BuildPodSpec()
 	podSpec.Containers = containers
 	podSpec.Volumes = volumes
+	podSpec.ServiceAccountName = serviceAccountName
 
 	podTemplate := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
