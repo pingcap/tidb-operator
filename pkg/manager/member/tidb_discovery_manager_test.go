@@ -110,6 +110,90 @@ func TestTidbDiscoveryManager_Reconcile(t *testing.T) {
 	}
 }
 
+func TestTidbDiscoveryManager_ReconcileDM(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name                string
+		prepare             func(dc *v1alpha1.DMCluster, ctrl *controller.FakeGenericControl)
+		errOnCreateOrUpdate bool
+		expect              func([]appsv1.Deployment, *v1alpha1.DMCluster, error)
+	}
+	testFn := func(tt *testcase) {
+		t.Logf(tt.name)
+
+		dc := newDMClusterForMaster()
+		dm, ctrl := newFakeTidbDiscoveryManager()
+		if tt.prepare != nil {
+			tt.prepare(dc, ctrl)
+		}
+		if tt.errOnCreateOrUpdate {
+			ctrl.SetCreateOrUpdateError(fmt.Errorf("API server down"), 0)
+		}
+		err := dm.Reconcile(dc)
+		deployList := &appsv1.DeploymentList{}
+		_ = ctrl.FakeCli.List(context.TODO(), deployList)
+		tt.expect(deployList.Items, dc, err)
+	}
+
+	cases := []*testcase{
+		{
+			name: "Basic",
+			expect: func(deploys []appsv1.Deployment, dc *v1alpha1.DMCluster, err error) {
+				g.Expect(err).To(Succeed())
+				g.Expect(deploys).To(HaveLen(1))
+				g.Expect(deploys[0].Name).To(Equal("test-dm-discovery"))
+			},
+			errOnCreateOrUpdate: false,
+		},
+		{
+			name: "Setting discovery resource",
+			prepare: func(dc *v1alpha1.DMCluster, ctrl *controller.FakeGenericControl) {
+				dc.Spec.Discovery.ResourceRequirements = corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("1"),
+						corev1.ResourceMemory:           resource.MustParse("2Gi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("10Gi"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("1"),
+						corev1.ResourceMemory:           resource.MustParse("2Gi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("10Gi"),
+					},
+				}
+			},
+			expect: func(deploys []appsv1.Deployment, dc *v1alpha1.DMCluster, err error) {
+				g.Expect(err).To(Succeed())
+				g.Expect(deploys).To(HaveLen(1))
+				g.Expect(deploys[0].Spec.Template.Spec.Containers[0].Resources).To(Equal(corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("1"),
+						corev1.ResourceMemory:           resource.MustParse("2Gi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("10Gi"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("1"),
+						corev1.ResourceMemory:           resource.MustParse("2Gi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("10Gi"),
+					},
+				}))
+				g.Expect(deploys[0].Name).To(Equal("test-dm-discovery"))
+			},
+			errOnCreateOrUpdate: false,
+		},
+		{
+			name: "Create or update resource error",
+			expect: func(deploys []appsv1.Deployment, dc *v1alpha1.DMCluster, err error) {
+				g.Expect(err).NotTo(Succeed())
+				g.Expect(deploys).To(BeEmpty())
+			},
+			errOnCreateOrUpdate: true,
+		},
+	}
+	for _, tt := range cases {
+		testFn(tt)
+	}
+}
+
 func newFakeTidbDiscoveryManager() (*realTidbDiscoveryManager, *controller.FakeGenericControl) {
 	fakeDeps := controller.NewFakeDependencies()
 	ctrl := fakeDeps.GenericControl.(*controller.FakeGenericControl)

@@ -75,12 +75,24 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	}
 
 	var firstTc *v1alpha1.TidbCluster
+	assetStore := NewStore(m.deps.SecretLister)
+
 	for _, tcRef := range monitor.Spec.Clusters {
 		tc, err := m.deps.TiDBClusterLister.TidbClusters(tcRef.Namespace).Get(tcRef.Name)
 		if err != nil {
 			rerr := fmt.Errorf("get tm[%s/%s]'s target tc[%s/%s] failed, err: %v", monitor.Namespace, monitor.Name, tcRef.Namespace, tcRef.Name, err)
 			return rerr
 		}
+
+		// If cluster enable tls
+		if tc.IsTLSClusterEnabled() {
+			tcTlsSecretName := util.ClusterClientTLSSecretName(tc.Name)
+			err := assetStore.addTLSAssets(tc.Namespace, tcTlsSecretName)
+			if err != nil {
+				return err
+			}
+		}
+
 		if firstTc == nil && !tc.IsHeterogeneous() {
 			firstTc = tc
 		}
@@ -103,7 +115,11 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 			}
 		}
 	}
-
+	// create or update tls asset secret
+	err := m.syncAssetSecret(monitor, assetStore)
+	if err != nil {
+		return err
+	}
 	var firstDc *v1alpha1.DMCluster
 	if monitor.Spec.DM != nil {
 		for _, dcRef := range monitor.Spec.DM.Clusters {
@@ -171,7 +187,7 @@ func (m *MonitorManager) syncTidbMonitorService(monitor *v1alpha1.TidbMonitor) e
 func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monitor *v1alpha1.TidbMonitor) error {
 	ns := monitor.Namespace
 	name := monitor.Name
-	cm, err := m.syncTidbMonitorConfig(tc, dc, monitor)
+	cm, err := m.syncTidbMonitorConfig(dc, monitor)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s configmap failed to sync,err: %v", ns, name, err)
 		return err
@@ -230,7 +246,7 @@ func (m *MonitorManager) syncTidbMonitorSecret(monitor *v1alpha1.TidbMonitor) (*
 	return m.deps.TypedControl.CreateOrUpdateSecret(monitor, newSt)
 }
 
-func (m *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monitor *v1alpha1.TidbMonitor) (*corev1.ConfigMap, error) {
+func (m *MonitorManager) syncTidbMonitorConfig(dc *v1alpha1.DMCluster, monitor *v1alpha1.TidbMonitor) (*corev1.ConfigMap, error) {
 	if features.DefaultFeatureGate.Enabled(features.AutoScaling) {
 		// TODO: We need to update the status to tell users we are monitoring extra clusters
 		// Get all autoscaling clusters for TC, and add them to .Spec.Clusters to
@@ -274,7 +290,25 @@ func (m *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, dc *v1a
 		monitor = cloned
 	}
 
-	newCM, err := getMonitorConfigMap(tc, dc, monitor)
+	var monitorClusterInfos []ClusterRegexInfo
+	for _, tcRef := range monitor.Spec.Clusters {
+		tc, err := m.deps.TiDBClusterLister.TidbClusters(tcRef.Namespace).Get(tcRef.Name)
+		if err != nil {
+			rerr := fmt.Errorf("get tm[%s/%s]'s target tc[%s/%s] failed, err: %v", monitor.Namespace, monitor.Name, tcRef.Namespace, tcRef.Name, err)
+			return nil, rerr
+		}
+		clusterRegex := ClusterRegexInfo{
+			Name:      tcRef.Name,
+			Namespace: tcRef.Namespace,
+		}
+		// If cluster enable tls
+		if tc.IsTLSClusterEnabled() {
+			clusterRegex.enableTLS = true
+		}
+		monitorClusterInfos = append(monitorClusterInfos, clusterRegex)
+	}
+
+	newCM, err := getMonitorConfigMap(dc, monitor, monitorClusterInfos)
 	if err != nil {
 		return nil, err
 	}
@@ -427,6 +461,12 @@ func (m *MonitorManager) patchTidbClusterStatus(tc *v1alpha1.TidbCluster, monito
 }
 
 func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMonitor) (bool, error) {
+	if m.deps.PVLister == nil {
+		klog.V(4).Infof("Persistent volumes lister is unavailable, skip migrating to statefulset for tm[%s/%s]. This may be caused by no relevant permissions",
+			monitor.Namespace, monitor.Name)
+		return true, nil
+	}
+
 	// determine whether there is an old deployment
 	oldDeploymentName := GetMonitorObjectName(monitor)
 	oldDeployment, err := m.deps.DeploymentLister.Deployments(monitor.Namespace).Get(oldDeploymentName)
@@ -554,6 +594,12 @@ func (c *MonitorManager) validate(tidbmonitor *v1alpha1.TidbMonitor) bool {
 func (m *MonitorManager) syncTidbMonitorPV(tm *v1alpha1.TidbMonitor) error {
 	ns := tm.GetNamespace()
 	instanceName := tm.Name
+
+	if m.deps.PVLister == nil {
+		klog.V(4).Infof("Persistent volumes lister is unavailable, skip syncing TidbMonitor %s/%s PVs. This may be caused by no relevant permissions", ns, instanceName)
+		return nil
+	}
+
 	l, err := label.NewMonitor().Instance(instanceName).Monitor().Selector()
 	if err != nil {
 		return err
@@ -597,6 +643,30 @@ func (m *MonitorManager) patchPVClaimRef(pv *corev1.PersistentVolume, patchPvcNa
 	pv.Spec.ClaimRef.Name = patchPvcName
 	err := m.deps.PVControl.PatchPVClaimRef(monitor, pv, patchPvcName)
 	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *MonitorManager) syncAssetSecret(monitor *v1alpha1.TidbMonitor, store *Store) error {
+	ns := monitor.Namespace
+	name := monitor.Name
+	tlsAssetsSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            GetTLSAssetsSecretName(monitor.Name),
+			Namespace:       monitor.Namespace,
+			Labels:          buildTidbMonitorLabel(monitor.Name),
+			OwnerReferences: []metav1.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
+		},
+		Data: make(map[string][]byte, len(store.TLSAssets)),
+	}
+	for key, asset := range store.TLSAssets {
+		tlsAssetsSecret.Data[key.String()] = []byte(asset)
+	}
+
+	_, err := m.deps.TypedControl.CreateOrUpdateSecret(monitor, tlsAssetsSecret)
+	if err != nil {
+		klog.Errorf("Fail to sync tm[%s/%s]'s secret assets, err: %v", ns, name, err)
 		return err
 	}
 	return nil

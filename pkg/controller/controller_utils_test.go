@@ -483,7 +483,6 @@ func newDMCluster() *v1alpha1.DMCluster {
 		},
 		Spec: v1alpha1.DMClusterSpec{
 			Version:         "v2.0.0-rc.2",
-			Discovery:       v1alpha1.DMDiscoverySpec{Address: "http://basic-discovery.demo:10261"},
 			Master:          v1alpha1.MasterSpec{},
 			Worker:          &v1alpha1.WorkerSpec{},
 			PVReclaimPolicy: &retainPVP,
