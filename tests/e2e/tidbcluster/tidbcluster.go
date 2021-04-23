@@ -1729,8 +1729,8 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					tikvZone[zoneId]++
 				}
 			}
-			framework.ExpectEqual(tidbZone[0]-tidbZone[1], 0, "Expected pods of tidb are even spreaded")
-			framework.ExpectEqual(tidbZone[0]-tidbZone[1], 0, "Expected pods of tikv are even spreaded")
+			framework.ExpectEqual(tidbZone[0]-tidbZone[1], 0, "Expected pods of tidb are even spread")
+			framework.ExpectEqual(tidbZone[0]-tidbZone[1], 0, "Expected pods of tikv are even spread")
 		})
 	})
 })
