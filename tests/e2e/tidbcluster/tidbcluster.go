@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	utilversion "k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
@@ -66,6 +67,10 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
+)
+
+const (
+	LabelKeyTestingZone = "testing.pingcap.com/zone"
 )
 
 var _ = ginkgo.Describe("TiDBCluster", func() {
@@ -1607,7 +1612,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", tc.Namespace, tc.Name)
 	})
 
-	ginkgo.Describe("All pods controlled by TidbCluster can set pod security context", func() {
+	ginkgo.Describe("[Feature]: PodSecurityContext", func() {
 		ginkgo.It("TidbCluster global pod security context", func() {
 			ginkgo.By("Deploy tidbCluster")
 			userID := int64(1000)
@@ -1636,6 +1641,96 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				framework.ExpectEqual(podList.Items[i].Spec.SecurityContext.RunAsGroup, &groupID, "Expected run as group ", groupID)
 				framework.ExpectEqual(podList.Items[i].Spec.SecurityContext.FSGroup, &groupID, "Expected fs group ", groupID)
 			}
+		})
+	})
+
+	ginkgo.Describe("[Feature]: TopologySpreadConstraint", func() {
+		nodeZoneMap := map[string]string{}
+
+		ginkgo.BeforeEach(func() {
+			ginkgo.By("add or update labels to node workers")
+
+			nodeList, err := c.CoreV1().Nodes().List(metav1.ListOptions{})
+			framework.ExpectNoError(err, "failed to list nodes: %+v")
+			for i := range nodeList.Items {
+				node := &nodeList.Items[i]
+				zone := "zone-" + strconv.Itoa(i%2)
+				patch := []byte(fmt.Sprintf(
+					`{"metadata":{"labels":{"%s":"%s"}}}`,
+					LabelKeyTestingZone,
+					zone,
+				))
+				_, err = c.CoreV1().Nodes().Patch(node.Name, types.StrategicMergePatchType, patch)
+				framework.ExpectNoError(err, "failed to update node labels: %+v")
+				nodeZoneMap[node.Name] = zone
+			}
+		})
+		ginkgo.AfterEach(func() {
+			if !ginkgo.CurrentGinkgoTestDescription().Failed {
+				ginkgo.By("remove labels of node workers")
+
+				nodeList, err := c.CoreV1().Nodes().List(metav1.ListOptions{})
+				framework.ExpectNoError(err, "failed to list nodes: %+v")
+				for i := range nodeList.Items {
+					node := &nodeList.Items[i]
+					patch := []byte(fmt.Sprintf(
+						`{"metadata":{"labels":{"%s":null}}}`,
+						LabelKeyTestingZone),
+					)
+					_, err = c.CoreV1().Nodes().Patch(node.Name, types.StrategicMergePatchType, patch)
+					framework.ExpectNoError(err, "failed to update node labels: %+v")
+				}
+			}
+		})
+
+		ginkgo.It("TidbCluster global pod topology spread contraint", func() {
+			ginkgo.By("Deploy tidbCluster")
+			tc := fixture.GetTidbCluster(ns, "topology-test", utilimage.TiDBV4)
+			tc.Spec.TopologySpreadConstraints = []v1alpha1.TopologySpreadConstraint{
+				{
+					TopologyKey: LabelKeyTestingZone,
+				},
+			}
+			// change to use default scheduler
+			tc.Spec.SchedulerName = "default-scheduler"
+			tc.Spec.PD.Replicas = 1
+			tc.Spec.TiDB.Replicas = 4
+			tc.Spec.TiKV.Replicas = 4
+
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
+			podList, err := c.CoreV1().Pods(ns).List(metav1.ListOptions{})
+			framework.ExpectNoError(err, "failed to list pods: %+v")
+
+			tidbZone := [2]int{}
+			tikvZone := [2]int{}
+
+			for i := range podList.Items {
+				pod := &podList.Items[i]
+				framework.ExpectEqual(len(pod.Spec.TopologySpreadConstraints), 1, "Expected pod topology spread constraints are set")
+
+				c, ok := pod.Labels[label.ComponentLabelKey]
+				framework.ExpectEqual(ok, true, "Expected %s is set", label.ComponentLabelKey)
+
+				zone, ok := nodeZoneMap[pod.Spec.NodeName]
+				framework.ExpectEqual(ok, true, "Expected %s has zone label", pod.Spec.NodeName)
+
+				zoneId := 0
+				switch zone {
+				case "zone-0":
+					zoneId = 0
+				case "zone-1":
+					zoneId = 1
+				}
+
+				switch c {
+				case label.TiDBLabelVal:
+					tidbZone[zoneId]++
+				case label.TiKVLabelVal:
+					tikvZone[zoneId]++
+				}
+			}
+			framework.ExpectEqual(tidbZone[0]-tidbZone[1], 0, "Expected pods of tidb are even spreaded")
+			framework.ExpectEqual(tidbZone[0]-tidbZone[1], 0, "Expected pods of tikv are even spreaded")
 		})
 	})
 })
