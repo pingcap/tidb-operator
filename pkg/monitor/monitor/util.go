@@ -479,24 +479,6 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 		commands = append(commands, "--storage.tsdb.max-block-duration=2h")
 		commands = append(commands, "--storage.tsdb.min-block-duration=2h")
 	}
-	//add readiness probe
-	var readinessProbeHandler core.Handler
-	{
-		readyPath := "/-/ready"
-		readinessProbeHandler.HTTPGet = &core.HTTPGetAction{
-			Path: readyPath,
-			Port: intstr.FromInt(9090),
-		}
-
-	}
-	readinessProbe := &core.Probe{
-		Handler:          readinessProbeHandler,
-		TimeoutSeconds:   3,
-		PeriodSeconds:    5,
-		FailureThreshold: 120, // Allow up to 10m on startup for data recovery
-	}
-	c.ReadinessProbe = readinessProbe
-
 	c.Command = append(c.Command, strings.Join(commands, " "))
 	if monitor.Spec.Prometheus.ImagePullPolicy != nil {
 		c.ImagePullPolicy = *monitor.Spec.Prometheus.ImagePullPolicy
