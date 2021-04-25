@@ -91,7 +91,7 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		}
 		err = m.syncDashboardMetricStorage(tc, monitor)
 		if err != nil {
-			klog.Errorf("tidb[%s/%s] update dashboard pd monitor metrics error: %v", tc.Namespace, tc.Name, err)
+			klog.Errorf("Fail to sync TiDB Dashboard metrics config for TiDB cluster [%s/%s], error: %v", tc.Namespace, tc.Name, err)
 			continue
 		}
 	}
