@@ -136,6 +136,12 @@ spec:
   ## Set this in the case where a TiDB cluster is deployed across multiple Kubernetes clusters. default to empty.
   # clusterDomain: cluster.local
 
+  ## TopologySpreadConstraints for pod scheduling, will be overwritten by each cluster component's specific spread constraints setting
+  ## Can refer to PD/TiDB/TiKV topologySpreadConstraints settings, and ensure only cluster-scope general settings here
+  ## Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
+  # topologySpreadConstraints:
+  # - topologyKey: topology.kubernetes.io/zone
+
   ###########################
   # TiDB Cluster Components #
   ###########################
