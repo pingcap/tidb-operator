@@ -119,13 +119,16 @@ func (u *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newSe
 	if tc.Status.PD.Leader.Name == upgradePdName || tc.Status.PD.Leader.Name == upgradePodName {
 		var targetName string
 		if tc.PDStsActualReplicas() > 1 {
-			targetOrdinal := helper.GetMaxPodOrdinal(*newSet.Spec.Replicas, newSet)
-			if ordinal == targetOrdinal {
-				targetOrdinal = helper.GetMinPodOrdinal(*newSet.Spec.Replicas, newSet)
-			}
-			targetName = PdName(tcName, targetOrdinal, tc.Namespace, tc.Spec.ClusterDomain)
-			if _, exist := tc.Status.PD.Members[targetName]; !exist {
-				targetName = PdPodName(tcName, targetOrdinal)
+			targetOrdinal := GetNextPodOrdinal(*newSet.Spec.Replicas, newSet, ordinal)
+			maxOrdinal := helper.GetMaxPodOrdinal(*newSet.Spec.Replicas, newSet)
+			for o := targetOrdinal; o <= maxOrdinal; o = GetNextPodOrdinal(*newSet.Spec.Replicas, newSet, o) {
+				targetName = PdName(tcName, targetOrdinal, tc.Namespace, tc.Spec.ClusterDomain)
+				if _, exist := tc.Status.PD.Members[targetName]; !exist {
+					targetName = PdPodName(tcName, targetOrdinal)
+				}
+				if tc.Status.PD.Members[targetName].Health {
+					break
+				}
 			}
 		} else {
 			for _, member := range tc.Status.PD.PeerMembers {
