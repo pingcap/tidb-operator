@@ -659,12 +659,6 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 			oldStore, exist = previousPeerStores[status.ID]
 		}
 
-		// avoid LastHeartbeatTime be overwrite by zero time when pd lost LastHeartbeatTime
-		if status.LastHeartbeatTime.IsZero() && exist {
-			klog.V(4).Infof("the pod:%s's store LastHeartbeatTime is zero,so will keep in %v", status.PodName, oldStore.LastHeartbeatTime)
-			status.LastHeartbeatTime = oldStore.LastHeartbeatTime
-		}
-
 		status.LastTransitionTime = metav1.Now()
 		if exist && status.State == oldStore.State {
 			status.LastTransitionTime = oldStore.LastTransitionTime
@@ -718,16 +712,20 @@ func (m *tiflashMemberManager) getTiFlashStore(store *pdapi.StoreInfo) *v1alpha1
 	podName := strings.Split(ip, ".")[0]
 
 	return &v1alpha1.TiKVStore{
-		ID:                storeID,
-		PodName:           podName,
-		IP:                ip,
-		LeaderCount:       int32(store.Status.LeaderCount),
-		State:             store.Store.StateName,
-		LastHeartbeatTime: metav1.Time{Time: store.Status.LastHeartbeatTS},
+		ID:          storeID,
+		PodName:     podName,
+		IP:          ip,
+		LeaderCount: int32(store.Status.LeaderCount),
+		State:       store.Store.StateName,
 	}
 }
 
 func (m *tiflashMemberManager) setStoreLabelsForTiFlash(tc *v1alpha1.TidbCluster) (int, error) {
+	if m.deps.NodeLister == nil {
+		klog.V(4).Infof("Node lister is unavailable, skip setting store labels for TiFlash of TiDB cluster %s/%s. This may be caused by no relevant permissions", tc.Namespace, tc.Name)
+		return 0, nil
+	}
+
 	ns := tc.GetNamespace()
 	// for unit test
 	setCount := 0
@@ -770,7 +768,7 @@ func (m *tiflashMemberManager) setStoreLabelsForTiFlash(tc *v1alpha1.TidbCluster
 		}
 
 		nodeName := pod.Spec.NodeName
-		ls, err := m.getNodeLabels(nodeName, locationLabels)
+		ls, err := getNodeLabels(m.deps.NodeLister, nodeName, locationLabels)
 		if err != nil || len(ls) == 0 {
 			klog.Warningf("node: [%s] has no node labels, skipping set store labels for Pod: [%s/%s]", nodeName, ns, podName)
 			continue
@@ -790,30 +788,6 @@ func (m *tiflashMemberManager) setStoreLabelsForTiFlash(tc *v1alpha1.TidbCluster
 	}
 
 	return setCount, nil
-}
-
-func (m *tiflashMemberManager) getNodeLabels(nodeName string, storeLabels []string) (map[string]string, error) {
-	node, err := m.deps.NodeLister.Get(nodeName)
-	if err != nil {
-		return nil, err
-	}
-	labels := map[string]string{}
-	ls := node.GetLabels()
-	for _, storeLabel := range storeLabels {
-		if value, found := ls[storeLabel]; found {
-			labels[storeLabel] = value
-			continue
-		}
-
-		// TODO after pd supports storeLabel containing slash character, these codes should be deleted
-		if storeLabel == "host" {
-			if host, found := ls[corev1.LabelHostname]; found {
-				labels[storeLabel] = host
-			}
-		}
-
-	}
-	return labels, nil
 }
 
 // storeLabelsEqualNodeLabels compares store labels with node labels

@@ -28,6 +28,10 @@ spec:
 {{ toYaml .Values.imagePullSecrets | indent 6 }}
     {{- end }}
       serviceAccountName: {{ .Values.admissionWebhook.serviceAccount }}
+    {{- with .Values.admissionWebhook.securityContext }}
+      securityContext:
+{{ toYaml . | indent 8 }}
+    {{- end}}
       containers:
         - name: admission-webhook
           image: {{ .Values.operatorImage }}

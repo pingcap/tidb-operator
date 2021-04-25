@@ -37,6 +37,7 @@ import (
 
 const (
 	ticdcCertPath        = "/var/lib/ticdc-tls"
+	ticdcSinkCertPath    = "/var/lib/sink-tls"
 	ticdcCertVolumeMount = "ticdc-tls"
 )
 
@@ -320,6 +321,12 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error)
 		}
 	}
 
+	for _, tlsClientSecretName := range tc.Spec.TiCDC.TLSClientSecretNames {
+		ticdcContainer.VolumeMounts = append(ticdcContainer.VolumeMounts, corev1.VolumeMount{
+			Name: tlsClientSecretName, ReadOnly: true, MountPath: fmt.Sprintf("%s/%s", ticdcSinkCertPath, tlsClientSecretName),
+		})
+	}
+
 	podSpec := baseTiCDCSpec.BuildPodSpec()
 	podSpec.Containers = []corev1.Container{ticdcContainer}
 	podSpec.ServiceAccountName = tc.Spec.TiCDC.ServiceAccount
@@ -345,6 +352,16 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error)
 				},
 			},
 		}
+	}
+
+	for _, tlsClientSecretName := range tc.Spec.TiCDC.TLSClientSecretNames {
+		podSpec.Volumes = append(podSpec.Volumes, corev1.Volume{
+			Name: tlsClientSecretName, VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: tlsClientSecretName,
+				},
+			},
+		})
 	}
 
 	updateStrategy := apps.StatefulSetUpdateStrategy{}

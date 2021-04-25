@@ -353,6 +353,8 @@ func (m *tidbInitManager) makeTiDBInitJob(ti *v1alpha1.TidbInitializer) (*batchv
 			Labels: initLabel.Labels(),
 		},
 		Spec: corev1.PodSpec{
+			ImagePullSecrets: ti.Spec.ImagePullSecrets,
+			SecurityContext:  ti.Spec.PodSecurityContext,
 			InitContainers: []corev1.Container{
 				{
 					Name:    initContainerName,
@@ -390,9 +392,6 @@ func (m *tidbInitManager) makeTiDBInitJob(ti *v1alpha1.TidbInitializer) (*batchv
 	if ti.Spec.Resources != nil {
 		podSpec.Spec.Containers[0].Resources = *ti.Spec.Resources
 		podSpec.Spec.InitContainers[0].Resources = *ti.Spec.Resources
-	}
-	if ti.Spec.ImagePullSecrets != nil {
-		podSpec.Spec.ImagePullSecrets = ti.Spec.ImagePullSecrets
 	}
 
 	job := &batchv1.Job{
