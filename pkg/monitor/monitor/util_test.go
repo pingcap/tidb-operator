@@ -82,7 +82,7 @@ func TestGetMonitorConfigMap(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			cm, err := getMonitorConfigMap(&tt.dmCluster, &tt.monitor, tt.monitorClusterInfos)
+			cm, err := getMonitorConfigMap(&tt.monitor, tt.monitorClusterInfos, nil)
 			g.Expect(err).NotTo(HaveOccurred())
 			if tt.expected == nil {
 				g.Expect(cm).To(BeNil())
@@ -858,15 +858,6 @@ func TestGetMonitorVolumes(t *testing.T) {
 						},
 					},
 					{
-						Name: "dm-cluster-client-tls",
-						VolumeSource: corev1.VolumeSource{
-							Secret: &corev1.SecretVolumeSource{
-								SecretName:  "foodm-dm-client-secret",
-								DefaultMode: pointer.Int32Ptr(420),
-							},
-						},
-					},
-					{
 						Name: "prometheus-config-out",
 						VolumeSource: corev1.VolumeSource{
 							EmptyDir: &corev1.EmptyDirVolumeSource{},
@@ -889,7 +880,7 @@ func TestGetMonitorVolumes(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			cm, err := getMonitorConfigMap(&tt.dmCluster, &tt.monitor, nil)
+			cm, err := getMonitorConfigMap(&tt.monitor, nil, nil)
 			g.Expect(err).NotTo(HaveOccurred())
 			sa := getMonitorVolumes(cm, &tt.monitor, &tt.cluster, &tt.dmCluster)
 			tt.expected(sa)
