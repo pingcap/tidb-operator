@@ -180,11 +180,6 @@ func (m *pumpMemberManager) syncHeadlessService(tc *v1alpha1.TidbCluster) error 
 }
 
 func (m *pumpMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *appsv1.StatefulSet) (*corev1.ConfigMap, error) {
-
-	if tc.Spec.Pump == nil {
-		return nil, nil
-	}
-
 	basePumpSpec := tc.BasePumpSpec()
 
 	newCm, err := getNewPumpConfigMap(tc)
@@ -270,10 +265,6 @@ func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 }
 
 func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*appsv1.StatefulSet, error) {
-	if tc.Spec.Pump == nil {
-		return nil, nil
-	}
-
 	spec := tc.BasePumpSpec()
 	objMeta, pumpLabel := getPumpMeta(tc, controller.PumpMemberName)
 	replicas := tc.Spec.Pump.Replicas
@@ -395,6 +386,10 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 	podSpec.Containers = containers
 	podSpec.Volumes = volumes
 	podSpec.ServiceAccountName = serviceAccountName
+	// TODO: change to set field in BuildPodSpec
+	podSpec.InitContainers = spec.InitContainers()
+	// TODO: change to set field in BuildPodSpec
+	podSpec.DNSPolicy = spec.DnsPolicy()
 
 	podTemplate := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
