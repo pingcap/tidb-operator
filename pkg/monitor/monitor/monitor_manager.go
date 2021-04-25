@@ -705,7 +705,8 @@ func syncComponent(exist bool, tm *v1alpha1.TidbMonitor, componentName string, p
 			klog.Error(err.Error())
 			return err
 		}
-		err = etcdClient.PutKey(key, v)
+		//10 min
+		err = etcdClient.PutTTLKey(key, v, 600)
 		if err != nil {
 			klog.Error(err.Error())
 			return err
