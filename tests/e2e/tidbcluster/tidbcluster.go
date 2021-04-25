@@ -25,26 +25,6 @@ import (
 	"github.com/onsi/gomega"
 	astsHelper "github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/features"
-	"github.com/pingcap/tidb-operator/pkg/label"
-	"github.com/pingcap/tidb-operator/pkg/manager/member"
-	"github.com/pingcap/tidb-operator/pkg/monitor/monitor"
-	"github.com/pingcap/tidb-operator/pkg/scheme"
-	tcconfig "github.com/pingcap/tidb-operator/pkg/util/config"
-	"github.com/pingcap/tidb-operator/tests"
-	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
-	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
-	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
-	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
-	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
-	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
-	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
-	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
-	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
-	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -65,6 +45,27 @@ import (
 	"k8s.io/kubernetes/test/utils"
 	"k8s.io/utils/pointer"
 	ctrlCli "sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/features"
+	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/manager/member"
+	"github.com/pingcap/tidb-operator/pkg/monitor/monitor"
+	"github.com/pingcap/tidb-operator/pkg/scheme"
+	tcconfig "github.com/pingcap/tidb-operator/pkg/util/config"
+	"github.com/pingcap/tidb-operator/tests"
+	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
+	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
+	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
+	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
+	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
+	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
+	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
+	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
+	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
+	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 )
 
 var _ = ginkgo.Describe("TiDBCluster", func() {
@@ -1148,17 +1149,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 			ginkgo.By("Creating heterogeneous tidb cluster")
 			heterogeneousTc := fixture.GetTidbCluster(ns, heterogeneousTcName, utilimage.TiDBV4)
+			heterogeneousTc = fixture.AddTiFlashForTidbCluster(heterogeneousTc)
+
 			heterogeneousTc.Spec.PD = nil
 			heterogeneousTc.Spec.TiKV.Replicas = 1
 			heterogeneousTc.Spec.TiDB.Replicas = 1
-			heterogeneousTc.Spec.TiFlash = &v1alpha1.TiFlashSpec{Replicas: 1,
-				BaseImage: "pingcap/tiflash", StorageClaims: []v1alpha1.StorageClaim{
-					{Resources: v1.ResourceRequirements{
-						Requests: v1.ResourceList{
-							v1.ResourceStorage: resource.MustParse("10G"),
-						},
-					}},
-				}}
 			heterogeneousTc.Spec.Cluster = &v1alpha1.TidbClusterRef{
 				Name: tcName,
 			}
@@ -1380,20 +1375,15 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 			ginkgo.By("Deploy heterogeneous tc")
 			heterogeneousTc := fixture.GetTidbCluster(ns, "heterogeneous", utilimage.TiDBV4)
+			heterogeneousTc = fixture.AddTiFlashForTidbCluster(heterogeneousTc)
+
 			heterogeneousTc.Spec.PD = nil
 			heterogeneousTc.Spec.TiKV.Replicas = 1
 			heterogeneousTc.Spec.TiDB.Replicas = 1
-			heterogeneousTc.Spec.TiFlash = &v1alpha1.TiFlashSpec{Replicas: 1,
-				BaseImage: "pingcap/tiflash", StorageClaims: []v1alpha1.StorageClaim{
-					{Resources: v1.ResourceRequirements{
-						Requests: v1.ResourceList{
-							v1.ResourceStorage: resource.MustParse("10G"),
-						},
-					}},
-				}}
 			heterogeneousTc.Spec.Cluster = &v1alpha1.TidbClusterRef{
 				Name: originTc.Name,
 			}
+
 			err = genericCli.Create(context.TODO(), heterogeneousTc)
 			framework.ExpectNoError(err, "Expected Heterogeneous TiDB cluster created")
 			err = oa.WaitForTidbClusterReady(heterogeneousTc, 30*time.Minute, 15*time.Second)
@@ -1428,13 +1418,13 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	ginkgo.It("[Feature: CDC]", func() {
 		ginkgo.By("Creating cdc cluster")
 		fromTc := fixture.GetTidbCluster(ns, "cdc-source", utilimage.TiDBV4)
+		fromTc = fixture.AddTiCDCForTidbCluster(fromTc)
+
 		fromTc.Spec.PD.Replicas = 3
 		fromTc.Spec.TiKV.Replicas = 3
 		fromTc.Spec.TiDB.Replicas = 2
-		fromTc.Spec.TiCDC = &v1alpha1.TiCDCSpec{
-			BaseImage: "pingcap/ticdc",
-			Replicas:  3,
-		}
+		fromTc.Spec.TiCDC.Replicas = 3
+
 		err := genericCli.Create(context.TODO(), fromTc)
 		framework.ExpectNoError(err, "Expected TiDB cluster created")
 		err = oa.WaitForTidbClusterReady(fromTc, 30*time.Minute, 5*time.Second)
@@ -1604,6 +1594,38 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		ginkgo.By("Wait for TidbCluster components ready again")
 		err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
 		framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", tc.Namespace, tc.Name)
+	})
+
+	ginkgo.Describe("All pods controlled by TidbCluster can set pod security context", func() {
+		ginkgo.It("TidbCluster global pod security context", func() {
+			ginkgo.By("Deploy tidbCluster")
+			userID := int64(1000)
+			groupID := int64(2000)
+			tc := fixture.GetTidbCluster(ns, "run-as-non-root", utilimage.TiDBV4)
+			tc = fixture.AddTiFlashForTidbCluster(tc)
+			tc = fixture.AddTiCDCForTidbCluster(tc)
+			tc = fixture.AddPumpForTidbCluster(tc)
+
+			tc.Spec.PD.Replicas = 1
+			tc.Spec.TiDB.Replicas = 1
+			tc.Spec.TiKV.Replicas = 1
+
+			tc.Spec.PodSecurityContext = &corev1.PodSecurityContext{
+				RunAsUser:  &userID,
+				RunAsGroup: &groupID,
+				FSGroup:    &groupID,
+			}
+
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
+			podList, err := c.CoreV1().Pods(ns).List(metav1.ListOptions{})
+			framework.ExpectNoError(err, "failed to list pods: %+v")
+			for i := range podList.Items {
+				framework.ExpectNotEqual(podList.Items[i].Spec.SecurityContext, nil, "Expected security context is not nil")
+				framework.ExpectEqual(podList.Items[i].Spec.SecurityContext.RunAsUser, &userID, "Expected run as user ", userID)
+				framework.ExpectEqual(podList.Items[i].Spec.SecurityContext.RunAsGroup, &groupID, "Expected run as group ", groupID)
+				framework.ExpectEqual(podList.Items[i].Spec.SecurityContext.FSGroup, &groupID, "Expected fs group ", groupID)
+			}
+		})
 	})
 })
 

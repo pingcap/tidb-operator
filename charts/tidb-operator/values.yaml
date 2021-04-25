@@ -1,7 +1,7 @@
 # Default values for tidb-operator
 
 # clusterScoped is whether tidb-operator should manage kubernetes cluster wide tidb clusters
-# Also see rbac.create and controllerManager.serviceAccount
+# Also see rbac.create, controllerManager.serviceAccount, scheduler.create and controllerManager.clusterPermissions.
 clusterScoped: true
 
 # Also see clusterScoped and controllerManager.serviceAccount
@@ -45,6 +45,14 @@ controllerManager:
   # With rbac.create=true, this service account will be created
   # Also see rbac.create and clusterScoped
   serviceAccount: tidb-controller-manager
+
+  # clusterPermissions are some cluster scoped permissions that will be used even if `clusterScoped: false`.
+  # the default value of these fields is `true`. if you want them to be `false`, you MUST set them to `false` explicitly.
+  clusterPermissions:
+    nodes: true
+    persistentvolumes: true
+    storageclasses: true
+
   logLevel: 2
   replicas: 1
   resources:
@@ -98,6 +106,13 @@ controllerManager:
   # - k1==v1
   # - k2!=v2
 
+  # SecurityContext is security config of this component, it will set template.spec.securityContext
+  # Refer to https://kubernetes.io/docs/tasks/configure-pod-container/security-context
+  securityContext: {}
+  # runAsUser: 1000
+  # runAsGroup: 2000
+  # fsGroup: 2000
+
 scheduler:
   create: true
   # With rbac.create=false, the user is responsible for creating this account
@@ -131,6 +146,13 @@ scheduler:
   #   operator: Equal
   #   value: tidb-operator
   #   effect: "NoSchedule"
+  #
+  # SecurityContext is security config of this component, it will set template.spec.securityContext
+  # Refer to https://kubernetes.io/docs/tasks/configure-pod-container/security-context
+  securityContext: {}
+  # runAsUser: 1000
+  # runAsGroup: 2000
+  # fsGroup: 2000
 
 # When AdvancedStatefulSet feature is enabled, you must install
 # AdvancedStatefulSet controller.
@@ -166,6 +188,13 @@ advancedStatefulset:
   #   operator: Equal
   #   value: tidb-operator
   #   effect: "NoSchedule"
+  #
+  # SecurityContext is security config of this component, it will set template.spec.securityContext
+  # Refer to https://kubernetes.io/docs/tasks/configure-pod-container/security-context
+  securityContext: {}
+  # runAsUser: 1000
+  # runAsGroup: 2000
+  # fsGroup: 2000
 
 admissionWebhook:
   create: false
@@ -225,3 +254,9 @@ admissionWebhook:
   ## or you can get the cabundle by:
   ## kubectl get configmap -n kube-system extension-apiserver-authentication -o=jsonpath='{.data.client-ca-file}' | base64 | tr -d '\n'
   cabundle: ""
+  # SecurityContext is security config of this component, it will set template.spec.securityContext
+  # Refer to https://kubernetes.io/docs/tasks/configure-pod-container/security-context
+  securityContext: {}
+  # runAsUser: 1000
+  # runAsGroup: 2000
+  # fsGroup: 2000

@@ -16,14 +16,12 @@ package controller
 import (
 	"errors"
 	"testing"
-	"time"
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	core "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
@@ -65,33 +63,4 @@ func TestTidbClusterControlUpdateTidbClusterConflictSuccess(t *testing.T) {
 	})
 	_, err := control.UpdateTidbCluster(tc, &v1alpha1.TidbClusterStatus{}, &v1alpha1.TidbClusterStatus{})
 	g.Expect(err).To(Succeed())
-}
-
-func TestDeepEqualExceptHeartbeatTime(t *testing.T) {
-	g := NewGomegaWithT(t)
-
-	new := &v1alpha1.TidbClusterStatus{
-		TiKV: v1alpha1.TiKVStatus{
-			Synced: true,
-			Stores: map[string]v1alpha1.TiKVStore{
-				"1": {
-					LastHeartbeatTime: metav1.Now(),
-					ID:                "1",
-				},
-			},
-		},
-	}
-	time.Sleep(1 * time.Second)
-	old := &v1alpha1.TidbClusterStatus{
-		TiKV: v1alpha1.TiKVStatus{
-			Synced: true,
-			Stores: map[string]v1alpha1.TiKVStore{
-				"1": {
-					LastHeartbeatTime: metav1.Now(),
-					ID:                "1",
-				},
-			},
-		},
-	}
-	g.Expect(deepEqualExceptHeartbeatTime(new, old)).To(Equal(true))
 }

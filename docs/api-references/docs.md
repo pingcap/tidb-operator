@@ -330,6 +330,20 @@ CleanPolicyType
 <p>CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>podSecurityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
+Kubernetes core/v1.PodSecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodSecurityContext of the component</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -824,6 +838,20 @@ Optional: Defaults to UTC</p>
 <p>Base tolerations of DM cluster Pods, components may add more tolerations upon this respectively</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>podSecurityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
+Kubernetes core/v1.PodSecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodSecurityContext of the component</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -1118,6 +1146,20 @@ For examples <code>spec.toolImage: pingcap/br:v4.0.8</code> or <code>spec.toolIm
 </td>
 <td>
 <p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching. BR supports this from v4.0.3.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podSecurityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
+Kubernetes core/v1.PodSecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodSecurityContext of the component</p>
 </td>
 </tr>
 </table>
@@ -1607,6 +1649,20 @@ Kubernetes apps/v1.StatefulSetUpdateStrategyType
 <p>StatefulSetUpdateStrategy of TiDB cluster StatefulSets</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>podSecurityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
+Kubernetes core/v1.PodSecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodSecurityContext of the component</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -1818,6 +1874,20 @@ TidbClusterRef
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>podSecurityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
+Kubernetes core/v1.PodSecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodSecurityContext of the component</p>
 </td>
 </tr>
 <tr>
@@ -2078,6 +2148,7 @@ DMMonitorSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 </td>
 </tr>
 <tr>
@@ -2313,6 +2384,20 @@ Defaults to 1.</p>
 <td>
 <em>(Optional)</em>
 <p>Additional volumes of component pod.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podSecurityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
+Kubernetes core/v1.PodSecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodSecurityContext of the component</p>
 </td>
 </tr>
 </table>
@@ -3125,6 +3210,20 @@ CleanPolicyType
 </td>
 <td>
 <p>CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podSecurityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
+Kubernetes core/v1.PodSecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodSecurityContext of the component</p>
 </td>
 </tr>
 </tbody>
@@ -4663,6 +4762,20 @@ Optional: Defaults to UTC</p>
 <p>Base tolerations of DM cluster Pods, components may add more tolerations upon this respectively</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>podSecurityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
+Kubernetes core/v1.PodSecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodSecurityContext of the component</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="dmclusterstatus">DMClusterStatus</h3>
@@ -4739,13 +4852,28 @@ WorkerStatus
 <tbody>
 <tr>
 <td>
+<code>ResourceRequirements</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ResourceRequirements</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>address</code></br>
 <em>
 string
 </em>
 </td>
 <td>
-<p>Address indicates the existed TiDB discovery address</p>
+<p>(Deprecated) Address indicates the existed TiDB discovery address</p>
 </td>
 </tr>
 </tbody>
@@ -11062,6 +11190,20 @@ For examples <code>spec.toolImage: pingcap/br:v4.0.8</code> or <code>spec.toolIm
 <p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching. BR supports this from v4.0.3.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>podSecurityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
+Kubernetes core/v1.PodSecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodSecurityContext of the component</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="restorestatus">RestoreStatus</h3>
@@ -12479,6 +12621,19 @@ int32
 </td>
 <td>
 <p>The desired ready replicas</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tlsClientSecretNames</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TLSClientSecretNames are the names of secrets that store the
+client certificates for the downstream.</p>
 </td>
 </tr>
 <tr>
@@ -18677,18 +18832,6 @@ string
 </tr>
 <tr>
 <td>
-<code>lastHeartbeatTime</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
-Kubernetes meta/v1.Time
-</a>
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
 <code>lastTransitionTime</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
@@ -19775,6 +19918,20 @@ Kubernetes apps/v1.StatefulSetUpdateStrategyType
 <p>StatefulSetUpdateStrategy of TiDB cluster StatefulSets</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>podSecurityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
+Kubernetes core/v1.PodSecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodSecurityContext of the component</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbclusterstatus">TidbClusterStatus</h3>
@@ -19939,6 +20096,20 @@ TidbClusterRef
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>podSecurityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
+Kubernetes core/v1.PodSecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodSecurityContext of the component</p>
 </td>
 </tr>
 <tr>
@@ -20237,6 +20408,7 @@ DMMonitorSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 </td>
 </tr>
 <tr>
@@ -20472,6 +20644,20 @@ Defaults to 1.</p>
 <td>
 <em>(Optional)</em>
 <p>Additional volumes of component pod.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podSecurityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
+Kubernetes core/v1.PodSecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodSecurityContext of the component</p>
 </td>
 </tr>
 </tbody>
