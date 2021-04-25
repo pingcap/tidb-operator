@@ -966,6 +966,17 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 					},
 				},
 				Resources: corev1.ResourceRequirements{},
+				ReadinessProbe: &corev1.Probe{
+					Handler: corev1.Handler{
+						HTTPGet: &corev1.HTTPGetAction{
+							Path: "/-/ready",
+							Port: intstr.FromInt(9090),
+						},
+					},
+					TimeoutSeconds:   3,
+					PeriodSeconds:    5,
+					FailureThreshold: 120, // Allow up to 10m on startup for data recovery
+				},
 				VolumeMounts: []corev1.VolumeMount{
 					{
 						Name:      "prometheus-config-out",
