@@ -115,11 +115,6 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 			}
 		}
 	}
-	// create or update tls asset secret
-	err := m.syncAssetSecret(monitor, assetStore)
-	if err != nil {
-		return err
-	}
 	var firstDc *v1alpha1.DMCluster
 	if monitor.Spec.DM != nil {
 		for _, dcRef := range monitor.Spec.DM.Clusters {
@@ -127,11 +122,25 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 			if err != nil {
 				rerr := fmt.Errorf("get tm[%s/%s]'s target dc[%s/%s] failed, err: %v", monitor.Namespace, monitor.Name, dcRef.Namespace, dcRef.Name, err)
 				return rerr
-			} else {
+			}
+			if firstDc == nil {
 				firstDc = dc
-				break
+			}
+			// If cluster enable tls
+			if dc.IsTLSClusterEnabled() {
+				dmTlsSecretName := util.DMClientTLSSecretName(dcRef.Name)
+				err := assetStore.addTLSAssets(dcRef.Namespace, dmTlsSecretName)
+				if err != nil {
+					return err
+				}
 			}
 		}
+	}
+
+	// create or update tls asset secret
+	err := m.syncAssetSecret(monitor, assetStore)
+	if err != nil {
+		return err
 	}
 
 	// Sync Service
@@ -187,7 +196,7 @@ func (m *MonitorManager) syncTidbMonitorService(monitor *v1alpha1.TidbMonitor) e
 func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monitor *v1alpha1.TidbMonitor) error {
 	ns := monitor.Namespace
 	name := monitor.Name
-	cm, err := m.syncTidbMonitorConfig(dc, monitor)
+	cm, err := m.syncTidbMonitorConfig(monitor)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s configmap failed to sync,err: %v", ns, name, err)
 		return err
@@ -246,7 +255,7 @@ func (m *MonitorManager) syncTidbMonitorSecret(monitor *v1alpha1.TidbMonitor) (*
 	return m.deps.TypedControl.CreateOrUpdateSecret(monitor, newSt)
 }
 
-func (m *MonitorManager) syncTidbMonitorConfig(dc *v1alpha1.DMCluster, monitor *v1alpha1.TidbMonitor) (*corev1.ConfigMap, error) {
+func (m *MonitorManager) syncTidbMonitorConfig(monitor *v1alpha1.TidbMonitor) (*corev1.ConfigMap, error) {
 	if features.DefaultFeatureGate.Enabled(features.AutoScaling) {
 		// TODO: We need to update the status to tell users we are monitoring extra clusters
 		// Get all autoscaling clusters for TC, and add them to .Spec.Clusters to
@@ -308,7 +317,27 @@ func (m *MonitorManager) syncTidbMonitorConfig(dc *v1alpha1.DMCluster, monitor *
 		monitorClusterInfos = append(monitorClusterInfos, clusterRegex)
 	}
 
-	newCM, err := getMonitorConfigMap(dc, monitor, monitorClusterInfos)
+	var dmClusterInfos []ClusterRegexInfo
+	if monitor.Spec.DM != nil {
+		for _, dmRef := range monitor.Spec.DM.Clusters {
+			dm, err := m.deps.DMClusterLister.DMClusters(dmRef.Namespace).Get(dmRef.Name)
+			if err != nil {
+				rerr := fmt.Errorf("get tm[%s/%s]'s target dm[%s/%s] failed, err: %v", monitor.Namespace, monitor.Name, dmRef.Namespace, dmRef.Name, err)
+				return nil, rerr
+			}
+			clusterRegex := ClusterRegexInfo{
+				Name:      dmRef.Name,
+				Namespace: dmRef.Namespace,
+			}
+			// If cluster enable tls
+			if dm.IsTLSClusterEnabled() {
+				clusterRegex.enableTLS = true
+			}
+			dmClusterInfos = append(dmClusterInfos, clusterRegex)
+		}
+	}
+
+	newCM, err := getMonitorConfigMap(monitor, monitorClusterInfos, dmClusterInfos)
 	if err != nil {
 		return nil, err
 	}
