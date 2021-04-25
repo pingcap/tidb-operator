@@ -33,7 +33,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	utilversion "k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
@@ -67,10 +66,6 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
-)
-
-const (
-	LabelKeyTestingZone = "testing.pingcap.com/zone"
 )
 
 var _ = ginkgo.Describe("TiDBCluster", func() {
@@ -1648,38 +1643,13 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		nodeZoneMap := map[string]string{}
 
 		ginkgo.BeforeEach(func() {
-			ginkgo.By("add or update labels to node workers")
-
 			nodeList, err := c.CoreV1().Nodes().List(metav1.ListOptions{})
 			framework.ExpectNoError(err, "failed to list nodes: %+v")
 			for i := range nodeList.Items {
 				node := &nodeList.Items[i]
-				zone := "zone-" + strconv.Itoa(i%2)
-				patch := []byte(fmt.Sprintf(
-					`{"metadata":{"labels":{"%s":"%s"}}}`,
-					LabelKeyTestingZone,
-					zone,
-				))
-				_, err = c.CoreV1().Nodes().Patch(node.Name, types.StrategicMergePatchType, patch)
-				framework.ExpectNoError(err, "failed to update node labels: %+v")
+				zone, ok := node.Labels[tests.LabelKeyTestingZone]
+				framework.ExpectEqual(ok, true, "label %s should exist", tests.LabelKeyTestingZone)
 				nodeZoneMap[node.Name] = zone
-			}
-		})
-		ginkgo.AfterEach(func() {
-			if !ginkgo.CurrentGinkgoTestDescription().Failed {
-				ginkgo.By("remove labels of node workers")
-
-				nodeList, err := c.CoreV1().Nodes().List(metav1.ListOptions{})
-				framework.ExpectNoError(err, "failed to list nodes: %+v")
-				for i := range nodeList.Items {
-					node := &nodeList.Items[i]
-					patch := []byte(fmt.Sprintf(
-						`{"metadata":{"labels":{"%s":null}}}`,
-						LabelKeyTestingZone),
-					)
-					_, err = c.CoreV1().Nodes().Patch(node.Name, types.StrategicMergePatchType, patch)
-					framework.ExpectNoError(err, "failed to update node labels: %+v")
-				}
 			}
 		})
 
@@ -1688,7 +1658,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tc := fixture.GetTidbCluster(ns, "topology-test", utilimage.TiDBV4)
 			tc.Spec.TopologySpreadConstraints = []v1alpha1.TopologySpreadConstraint{
 				{
-					TopologyKey: LabelKeyTestingZone,
+					TopologyKey: tests.LabelKeyTestingZone,
 				},
 			}
 			// change to use default scheduler
