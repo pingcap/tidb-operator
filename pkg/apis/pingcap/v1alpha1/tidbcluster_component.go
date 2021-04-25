@@ -273,14 +273,13 @@ func (a *componentAccessorImpl) TerminationGracePeriodSeconds() *int64 {
 }
 
 func (a *componentAccessorImpl) TopologySpreadConstraints() []corev1.TopologySpreadConstraint {
-	var tscs []TopologySpreadConstraint
-	if a.ComponentSpec == nil || len(a.ComponentSpec.TopologySpreadConstraints) == 0 {
-		if len(a.topologySpreadConstraints) == 0 {
-			return nil
-		}
-		tscs = a.topologySpreadConstraints
-	} else {
+    tscs := a.topologySpreadConstraints
+	if a.ComponentSpec != nil && len(a.ComponentSpec.TopologySpreadConstraints) > 0 {
 		tscs = a.ComponentSpec.TopologySpreadConstraints
+	}
+
+	if len(tscs) == 0 {
+	    return nil
 	}
 
 	ptscs := make([]corev1.TopologySpreadConstraint, 0, len(tscs))
