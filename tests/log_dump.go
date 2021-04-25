@@ -59,7 +59,7 @@ func (oa *OperatorActions) DumpAllLogs(operatorInfo *OperatorConfig, testCluster
 		return err
 	}
 	for _, pod := range operatorPods.Items {
-		err := dumpPod(logPath, &pod)
+		err := DumpPod(logPath, &pod)
 		if err != nil {
 			return err
 		}
@@ -74,7 +74,7 @@ func (oa *OperatorActions) DumpAllLogs(operatorInfo *OperatorConfig, testCluster
 				return err
 			}
 			for _, pod := range clusterPodList.Items {
-				err := dumpPod(logPath, &pod)
+				err := DumpPod(logPath, &pod)
 				if err != nil {
 					return err
 				}
@@ -86,7 +86,8 @@ func (oa *OperatorActions) DumpAllLogs(operatorInfo *OperatorConfig, testCluster
 	return nil
 }
 
-func dumpPod(logPath string, pod *corev1.Pod) error {
+// DumpPod dumps logs for a pod.
+func DumpPod(logPath string, pod *corev1.Pod) error {
 	logFile, err := os.Create(filepath.Join(logPath, fmt.Sprintf("%s-%s.log", pod.Name, pod.Namespace)))
 	if err != nil {
 		return err
