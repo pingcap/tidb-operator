@@ -593,6 +593,35 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 			},
 		},
 	}
+
+	//add readiness probe
+	var probeHandler core.Handler
+	{
+		readyPath := "/api/health"
+		probeHandler.HTTPGet = &core.HTTPGetAction{
+			Path: readyPath,
+			Port: intstr.FromInt(3000),
+		}
+
+	}
+
+	readinessProbe := &core.Probe{
+		Handler:             probeHandler,
+		TimeoutSeconds:      30,
+		PeriodSeconds:       10,
+		SuccessThreshold:    1,
+		InitialDelaySeconds: 30,
+	}
+	livenessProbe := &core.Probe{
+		Handler:          probeHandler,
+		TimeoutSeconds:   1,
+		PeriodSeconds:    10,
+		SuccessThreshold: 1,
+	}
+
+	c.ReadinessProbe = readinessProbe
+	c.LivenessProbe = livenessProbe
+
 	if monitor.Spec.Grafana.ImagePullPolicy != nil {
 		c.ImagePullPolicy = *monitor.Spec.Grafana.ImagePullPolicy
 	}
