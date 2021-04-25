@@ -724,6 +724,8 @@ The following steps show how to destroy the TiDB cluster, but do not affect the 
 kubectl delete tc basic -n tidb-cluster
 ```
 
+The `tc` in this command is a short name for tidbclusters.
+
 ### Delete TiDB monitoring services
 
 {{< copyable "shell-regular" >}}
