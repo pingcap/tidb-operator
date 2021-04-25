@@ -185,7 +185,6 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					tc.Spec.PD.Replicas = 5
 					_, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
 					framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
-					framework.Failf("injected fail for dumpling container logs")
 					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 30*time.Second)
 					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 					err = crdUtil.CheckDisasterTolerance(tc)
