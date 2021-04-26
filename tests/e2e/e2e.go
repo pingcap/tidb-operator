@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -360,6 +361,31 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 
 	ginkgo.By("Uninstalling tidb-operator")
 	ocfg := e2econfig.NewDefaultOperatorConfig(e2econfig.TestConfig)
+
+	// kubetest2 can only dump running pods' log (copy from container log directory),
+	// but if we want to get test coverage reports for tidb-operator, we need to shutdown the processes/pods),
+	// so we choose to copy logs before uninstall tidb-operator.
+	// NOTE: if we can get the whole test result from all parallel Ginkgo nodes with Ginkgo v2 later, we can also choose to:
+	// - dump logs if the test failed.
+	// - (uninstall tidb-operator and) generate test coverage reports if the test passed.
+	// ref: https://github.com/onsi/ginkgo/issues/361#issuecomment-814203240
+
+	if framework.TestContext.ReportDir != "" {
+		ginkgo.By("Dumping logs for tidb-operator")
+		logPath := filepath.Join(framework.TestContext.ReportDir, "logs", "tidb-operator")
+		// full permission (0777) for the log directory to avoid "permission denied" for later kubetest2 log dump.
+		framework.ExpectNoError(os.MkdirAll(logPath, 0777), "failed to create log directory for tidb-operator components")
+
+		podList, err2 := kubeCli.CoreV1().Pods(ocfg.Namespace).List(metav1.ListOptions{})
+		framework.ExpectNoError(err2, "failed to list pods for tidb-operator")
+		for _, pod := range podList.Items {
+			log.Logf("dumping logs for pod %s/%s", pod.Namespace, pod.Name)
+			err2 = tests.DumpPod(logPath, &pod)
+			framework.ExpectNoError(err2, "failed to dump log for pod %s/%s", pod.Namespace, pod.Name)
+		}
+	}
+
+	ginkgo.By("Uninstalling tidb-operator")
 	err = tests.CleanOperator(ocfg)
 	framework.ExpectNoError(err, "failed to uninstall operator")
 
