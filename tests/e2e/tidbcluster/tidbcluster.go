@@ -1682,7 +1682,13 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			err = validatePodSpread(podList.Items, nodeZoneMap, []string{label.PDLabelVal}, 1)
 			framework.ExpectNoError(err, "failed even spread pd pods: %v")
 
-			err = validatePodSpread(podList.Items, nodeZoneMap, []string{label.TiDBLabelVal, label.TiKVLabelVal, label.TiCDCLabelVal, label.PumpLabelVal}, 0)
+			err = validatePodSpread(podList.Items, nodeZoneMap, []string{
+                label.TiDBLabelVal,
+                label.TiKVLabelVal,
+                label.TiFlashLabelVal,
+                label.TiCDCLabelVal,
+                label.PumpLabelVal,
+            }, 0), 0)
 			framework.ExpectNoError(err, "failed even spread pods: %v")
 		})
 	})
