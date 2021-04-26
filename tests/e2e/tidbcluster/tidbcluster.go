@@ -1653,7 +1653,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			}
 		})
 
-		ginkgo.It("TidbCluster global topology spread contraint for pd", func() {
+		ginkgo.It("TidbCluster global topology spread contraint", func() {
 			ginkgo.By("Deploy tidbCluster")
 			tc := fixture.GetTidbCluster(ns, "topology-test", utilimage.TiDBV4)
 			tc.Spec.TopologySpreadConstraints = []v1alpha1.TopologySpreadConstraint{
@@ -1664,96 +1664,32 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			// change to use default scheduler
 			tc.Spec.SchedulerName = "default-scheduler"
 			tc.Spec.PD.Replicas = 3
-			tc.Spec.TiDB.Replicas = 1
-			tc.Spec.TiKV.Replicas = 1
+			tc.Spec.TiDB.Replicas = 2
+			tc.Spec.TiKV.Replicas = 2
+
+			tc = fixture.AddTiFlashForTidbCluster(tc)
+			tc = fixture.AddTiCDCForTidbCluster(tc)
+			tc = fixture.AddPumpForTidbCluster(tc)
+
+			tc.Spec.TiFlash.Replicas = 2
+			tc.Spec.TiCDC.Replicas = 2
+			tc.Spec.Pump.Replicas = 2
 
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
 			podList, err := c.CoreV1().Pods(ns).List(metav1.ListOptions{})
 			framework.ExpectNoError(err, "failed to list pods: %+v")
 
 			err = validatePodSpread(podList.Items, nodeZoneMap, []string{label.PDLabelVal}, 1)
-			framework.ExpectNoError(err, "failed even spread pods: %v")
-		})
+			framework.ExpectNoError(err, "failed even spread pd pods: %v")
 
-		ginkgo.It("TidbCluster global topology spread contraint for tidb and tikv", func() {
-			ginkgo.By("Deploy tidbCluster")
-			tc := fixture.GetTidbCluster(ns, "topology-test", utilimage.TiDBV4)
-			tc.Spec.TopologySpreadConstraints = []v1alpha1.TopologySpreadConstraint{
-				{
-					TopologyKey: tests.LabelKeyTestingZone,
-				},
-			}
-			// change to use default scheduler
-			tc.Spec.SchedulerName = "default-scheduler"
-			tc.Spec.PD.Replicas = 1
-			tc.Spec.TiDB.Replicas = 4
-			tc.Spec.TiKV.Replicas = 4
-
-			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
-			podList, err := c.CoreV1().Pods(ns).List(metav1.ListOptions{})
-			framework.ExpectNoError(err, "failed to list pods: %+v")
-
-			err = validatePodSpread(podList.Items, nodeZoneMap, []string{label.TiDBLabelVal, label.TiKVLabelVal}, 0)
-			framework.ExpectNoError(err, "failed even spread pods: %v")
-		})
-
-		ginkgo.It("TidbCluster global topology spread contraint for tiflash", func() {
-			ginkgo.By("Deploy tidbCluster")
-			tc := fixture.GetTidbCluster(ns, "topology-test", utilimage.TiDBV4)
-			tc.Spec.TopologySpreadConstraints = []v1alpha1.TopologySpreadConstraint{
-				{
-					TopologyKey: tests.LabelKeyTestingZone,
-				},
-			}
-			// change to use default scheduler
-			tc.Spec.SchedulerName = "default-scheduler"
-			tc.Spec.PD.Replicas = 1
-			tc.Spec.TiDB.Replicas = 1
-			tc.Spec.TiKV.Replicas = 1
-
-			tc = fixture.AddTiFlashForTidbCluster(tc)
-			tc.Spec.TiFlash.Replicas = 4
-
-			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
-			podList, err := c.CoreV1().Pods(ns).List(metav1.ListOptions{})
-			framework.ExpectNoError(err, "failed to list pods: %+v")
-
-			err = validatePodSpread(podList.Items, nodeZoneMap, []string{label.TiFlashLabelVal}, 0)
-			framework.ExpectNoError(err, "failed even spread pods: %v")
-		})
-
-		ginkgo.It("TidbCluster global topology spread contraint for pump and ticdc", func() {
-			ginkgo.By("Deploy tidbCluster")
-			tc := fixture.GetTidbCluster(ns, "topology-test", utilimage.TiDBV4)
-			tc.Spec.TopologySpreadConstraints = []v1alpha1.TopologySpreadConstraint{
-				{
-					TopologyKey: tests.LabelKeyTestingZone,
-				},
-			}
-			// change to use default scheduler
-			tc.Spec.SchedulerName = "default-scheduler"
-			tc.Spec.PD.Replicas = 1
-			tc.Spec.TiDB.Replicas = 1
-			tc.Spec.TiKV.Replicas = 1
-
-			tc = fixture.AddTiCDCForTidbCluster(tc)
-			tc = fixture.AddPumpForTidbCluster(tc)
-
-			tc.Spec.TiCDC.Replicas = 4
-			tc.Spec.Pump.Replicas = 4
-
-			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
-			podList, err := c.CoreV1().Pods(ns).List(metav1.ListOptions{})
-			framework.ExpectNoError(err, "failed to list pods: %+v")
-
-			err = validatePodSpread(podList.Items, nodeZoneMap, []string{label.TiCDCLabelVal, label.PumpLabelVal}, 0)
+			err = validatePodSpread(podList.Items, nodeZoneMap, []string{label.TiDBLabelVal, label.TiKVLabelVal, label.TiCDCLabelVal, label.PumpLabelVal}, 0)
 			framework.ExpectNoError(err, "failed even spread pods: %v")
 		})
 	})
 })
 
 func validatePodSpread(pods []corev1.Pod, nodeZoneMap map[string]string, componentLabels []string, maxSkew int) error {
-	zones := make([][2]int, 0, len(componentLabels))
+	zones := make([][2]int, len(componentLabels))
 	for i := range pods {
 		pod := &pods[i]
 		framework.ExpectEqual(len(pod.Spec.TopologySpreadConstraints), 1, "Expected pod topology spread constraints are set")
