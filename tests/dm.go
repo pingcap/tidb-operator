@@ -244,9 +244,12 @@ func CleanDMMySQL(kubeCli kubernetes.Interface) error {
 
 // CleanDMTiDB cleans the downstream TiDB cluster for DM E2E tests.
 func CleanDMTiDB(cli *versioned.Clientset, kubeCli kubernetes.Interface) error {
-	if err := cli.PingcapV1alpha1().TidbClusters(DMTiDBNamespace).Delete(DMTiDBName, nil); err != nil {
+	if err := cli.PingcapV1alpha1().TidbClusters(DMTiDBNamespace).Delete(DMTiDBName, nil); err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 
-	return kubeCli.CoreV1().Namespaces().Delete(DMTiDBNamespace, nil)
+	if err := kubeCli.CoreV1().Namespaces().Delete(DMTiDBNamespace, nil); err != nil && !errors.IsNotFound(err) {
+		return err
+	}
+	return nil
 }
