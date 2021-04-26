@@ -321,7 +321,7 @@ spec:
     ## Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/enable-tls-for-mysql-client
     # tlsClientSecretName: custom-tidb-client-secret-name
 
-    ## TopologySpreadConstraints for pod scheduling, will be overwritten by each cluster component's specific spread constraints setting
+    ## TopologySpreadConstraints for pod scheduling, will overwrite cluster level spread constraints setting
     ## Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
     # topologySpreadConstraints:
     # - topologyKey: topology.kubernetes.io/zone
@@ -539,7 +539,7 @@ spec:
     #           - tidb
     #       topologyKey: kubernetes.io/hostname
 
-    ## TopologySpreadConstraints for pod scheduling, will be overwritten by each cluster component's specific spread constraints setting
+    ## TopologySpreadConstraints for pod scheduling, will overwrite cluster level spread constraints setting
     ## Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
     # topologySpreadConstraints:
     # - topologyKey: topology.kubernetes.io/zone
@@ -737,7 +737,7 @@ spec:
     #           - tikv
     #       topologyKey: kubernetes.io/hostname
 
-    ## TopologySpreadConstraints for pod scheduling, will be overwritten by each cluster component's specific spread constraints setting
+    ## TopologySpreadConstraints for pod scheduling, will overwrite cluster level spread constraints setting
     ## Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
     # topologySpreadConstraints:
     # - topologyKey: topology.kubernetes.io/zone
@@ -778,7 +778,7 @@ spec:
   #   # Ref: https://docs.pingcap.com/tidb/stable/tidb-binlog-configuration-file#pump
   #   config: |
   #     gc = 7
-  #   # TopologySpreadConstraints for pod scheduling, will be overwritten by each cluster component's specific spread constraints setting
+  #   # TopologySpreadConstraints for pod scheduling, will overwrite cluster level spread constraints setting
   #   # Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
   #   topologySpreadConstraints:
   #   - topologyKey: topology.kubernetes.io/zone
@@ -821,7 +821,7 @@ spec:
   #     gcTTL: 86400
   #     logLevel: info
   #     logFile: /dev/stderr
-  #   # TopologySpreadConstraints for pod scheduling, will be overwritten by each cluster component's specific spread constraints setting
+  #   # TopologySpreadConstraints for pod scheduling, will overwrite cluster level spread constraints setting
   #   # Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
   #   topologySpreadConstraints:
   #   - topologyKey: topology.kubernetes.io/zone
@@ -898,7 +898,7 @@ spec:
   #     proxy: |
   #       [security]
   #         cert-allowed-cn = CNNAME
-  #   # TopologySpreadConstraints for pod scheduling, will be overwritten by each cluster component's specific spread constraints setting
+  #   # TopologySpreadConstraints for pod scheduling, will overwrite the cluster level spread constraints setting
   #   # Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
   #   topologySpreadConstraints:
   #   - topologyKey: topology.kubernetes.io/zone
