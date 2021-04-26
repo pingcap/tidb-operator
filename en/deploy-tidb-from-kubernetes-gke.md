@@ -6,7 +6,7 @@ aliases: ['/docs/tidb-in-kubernetes/dev/deploy-tidb-from-kubernetes-gke/']
 
 # Deploy TiDB on Google Cloud
 
-This tutorial is designed to be directly [run in Google Cloud Shell](https://console.cloud.google.com/cloudshell/open?cloudshell_git_repo=https://github.com/pingcap/docs-tidb-operator&cloudshell_tutorial=en/deploy-tidb-from-kubernetes-gke.md).
+This document is designed to be directly [run in Google Cloud Shell](https://console.cloud.google.com/cloudshell/open?cloudshell_git_repo=https://github.com/pingcap/docs-tidb-operator&cloudshell_tutorial=en/deploy-tidb-from-kubernetes-gke.md).
 
 <a href="https://console.cloud.google.com/cloudshell/open?cloudshell_git_repo=https://github.com/pingcap/docs-tidb-operator&cloudshell_tutorial=en/deploy-tidb-from-kubernetes-gke.md"><img src="https://gstatic.com/cloudssh/images/open-btn.png"/></a>
 
@@ -22,7 +22,7 @@ It takes you through the following steps:
 
 > **Warning:**
 >
-> This is for testing only. DO NOT USE in production!
+> This document is for testing purposes only. **Do not** follow it in production environments. For production environments, see the instructions in [Deploy TiDB on GCP GKE](deploy-on-gcp-gke.md).
 
 ## Select a project
 
@@ -232,7 +232,3 @@ Once you have finished experimenting, you can delete the Kubernetes cluster:
 ```shell
 gcloud container clusters delete tidb
 ```
-
-## More Information
-
-To learn more about creating a deployment on GKE suitable for production use, please consult <https://pingcap.com/docs/tidb-in-kubernetes/stable/deploy-on-gcp-gke/>.
