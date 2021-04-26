@@ -118,24 +118,12 @@ func getAlertManagerRulesVersion(tc *v1alpha1.TidbCluster, monitor *v1alpha1.Tid
 
 // getMonitorConfigMap generate the Prometheus config and Grafana config for TidbMonitor,
 // If the namespace in ClusterRef is empty, we would set the TidbMonitor's namespace in the default
-func getMonitorConfigMap(dc *v1alpha1.DMCluster, monitor *v1alpha1.TidbMonitor, monitorClusterInfos []ClusterRegexInfo) (*core.ConfigMap, error) {
-
-	var releaseDMClusterInfos []ClusterRegexInfo
-	if monitor.Spec.DM != nil {
-		for _, dmcluster := range monitor.Spec.DM.Clusters {
-			releaseDMClusterInfos = append(releaseDMClusterInfos, ClusterRegexInfo{
-				Name:      dmcluster.Name,
-				Namespace: dmcluster.Namespace,
-			})
-		}
-	}
-
+func getMonitorConfigMap(monitor *v1alpha1.TidbMonitor, monitorClusterInfos []ClusterRegexInfo, dmClusterInfos []ClusterRegexInfo) (*core.ConfigMap, error) {
 	model := &MonitorConfigModel{
-		AlertmanagerURL:    "",
-		ClusterInfos:       monitorClusterInfos,
-		DMClusterInfos:     releaseDMClusterInfos,
-		ExternalLabels:     buildExternalLabels(monitor),
-		EnableTLSDMCluster: dc != nil && dc.IsTLSClusterEnabled(),
+		AlertmanagerURL: "",
+		ClusterInfos:    monitorClusterInfos,
+		DMClusterInfos:  dmClusterInfos,
+		ExternalLabels:  buildExternalLabels(monitor),
 	}
 
 	if len(monitor.Spec.Prometheus.RemoteWrite) > 0 {
@@ -511,13 +499,6 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 	c.ReadinessProbe = readinessProbe
 
 	c.Command = append(c.Command, strings.Join(commands, " "))
-	if dc != nil && dc.IsTLSClusterEnabled() {
-		c.VolumeMounts = append(c.VolumeMounts, core.VolumeMount{
-			Name:      util.DMClusterClientVolName,
-			MountPath: util.DMClusterClientTLSPath,
-			ReadOnly:  true,
-		})
-	}
 	if monitor.Spec.Prometheus.ImagePullPolicy != nil {
 		c.ImagePullPolicy = *monitor.Spec.Prometheus.ImagePullPolicy
 	}
@@ -747,19 +728,6 @@ func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor, tc
 	}
 	volumes = append(volumes, prometheusRules)
 
-	if dc != nil && dc.IsTLSClusterEnabled() {
-		defaultMode := int32(420)
-		tlsDMClient := core.Volume{
-			Name: util.DMClusterClientVolName,
-			VolumeSource: core.VolumeSource{
-				Secret: &core.SecretVolumeSource{
-					SecretName:  util.DMClientTLSSecretName(dc.Name),
-					DefaultMode: &defaultMode,
-				},
-			},
-		}
-		volumes = append(volumes, tlsDMClient)
-	}
 	volumes = append(volumes, core.Volume{
 		Name: "prometheus-config-out",
 		VolumeSource: core.VolumeSource{
