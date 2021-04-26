@@ -2331,10 +2331,6 @@ func releaseIsNotFound(err error) bool {
 	return strings.Contains(err.Error(), "not found")
 }
 
-func notFound(res string) bool {
-	return strings.Contains(res, "not found")
-}
-
 func (oa *OperatorActions) cloneOperatorRepo() error {
 	cmd := fmt.Sprintf("git clone %s %s", oa.cfg.OperatorRepoUrl, oa.cfg.OperatorRepoDir)
 	log.Logf(cmd)
