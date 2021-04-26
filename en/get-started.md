@@ -10,7 +10,7 @@ This document explains how to create a simple Kubernetes cluster and use it to d
 
 > **Warning:**
 >
-> These deployments are for demonstration purposes only. **Do not use** for qualification or in production!
+> This document is for demonstration purposes only. **Do not** follow it in production environments. For production environments, see the instructions in **Deploy** > **Deploy TiDB Cluster**.
 
 These are the steps this document follows:
 
