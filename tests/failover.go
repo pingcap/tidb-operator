@@ -165,7 +165,8 @@ func (oa *OperatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 
 	// checkout pd config
 	var pdCfg *pdapi.PDConfigFromAPI
-	if tc.IsHeterogeneous() {
+	// same code in two branch on purpose..?
+	if tc.HeterogeneousWithoutLocalPD() {
 		pdCfg, err = oa.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()).GetConfig()
 	} else {
 		pdCfg, err = oa.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()).GetConfig()
@@ -524,8 +525,8 @@ func (oa *OperatorActions) CheckRecover(cluster *TidbClusterConfig) (bool, error
 	if int32(len(tc.Status.TiKV.Stores)) > tc.Spec.TiKV.Replicas {
 
 		var pdclient pdapi.PDClient
-		if tc.IsHeterogeneous() {
-			pdclient = oa.pdControl.GetPDClient(pdapi.Namespace(tc.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
+		if tc.HeterogeneousWithoutLocalPD() {
+			pdclient = oa.pdControl.GetPDClient(pdapi.Namespace(tc.ExternalClusterNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
 		} else {
 			pdclient = oa.pdControl.GetPDClient(pdapi.Namespace(tc.Namespace), tc.Name, tc.IsTLSClusterEnabled())
 		}

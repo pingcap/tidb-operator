@@ -648,7 +648,8 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		scriptModel.EnableAdvertiseStatusAddr = true
 	}
 
-	if tc.IsHeterogeneous() {
+	if tc.HeterogeneousWithoutLocalPD() {
+		// FIXME: for across k8s cluster, discovery can not get this 'tc.Spec.Cluster.Name' in the local k8s.
 		scriptModel.PDAddress = tc.Scheme() + "://" + controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379"
 	} else {
 		scriptModel.PDAddress = tc.Scheme() + "://${CLUSTER_NAME}-pd:2379"

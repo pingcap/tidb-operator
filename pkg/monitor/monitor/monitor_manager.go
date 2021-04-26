@@ -93,7 +93,7 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 			}
 		}
 
-		if firstTc == nil && !tc.IsHeterogeneous() {
+		if firstTc == nil && !tc.HeterogeneousWithoutLocalPD() {
 			firstTc = tc
 		}
 		if tc.Status.Monitor != nil {
@@ -106,7 +106,7 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		// TODO: Support validating webhook that forbids the tidbmonitor to update the monitorRef for the tidbcluster whose monitorRef has already
 		// been set by another TidbMonitor.
 		// Patch tidbcluster status first to avoid multi tidbmonitor monitoring the same tidbcluster
-		if !tc.IsHeterogeneous() {
+		if !tc.HeterogeneousWithoutLocalPD() {
 			if err := m.patchTidbClusterStatus(tc, monitor); err != nil {
 				message := fmt.Sprintf("Sync TidbMonitorRef into targetCluster[%s/%s] status failed, err:%v", tc.Namespace, tc.Name, err)
 				klog.Error(message)

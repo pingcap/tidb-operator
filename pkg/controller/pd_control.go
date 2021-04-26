@@ -20,8 +20,9 @@ import (
 
 // getPDClientFromService gets the pd client from the TidbCluster
 func getPDClientFromService(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) pdapi.PDClient {
-	if tc.IsHeterogeneous() {
+	if tc.HeterogeneousWithoutLocalPD() {
 		if len(tc.Spec.ClusterDomain) > 0 {
+			// if tls enable tc.Spec.Cluster.Name should be same as tc.Name? because it will query the secret using this name?
 			return pdControl.GetClusterRefPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.Spec.ClusterDomain, tc.IsTLSClusterEnabled())
 		}
 		return pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
