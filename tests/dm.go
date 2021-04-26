@@ -14,15 +14,15 @@
 package tests
 
 import (
+	"bytes"
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"time"
 
 	// To register MySQL driver
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/label"
-	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"golang.org/x/sync/errgroup"
 	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -34,6 +34,11 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework/log"
 	"k8s.io/utils/pointer"
+
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/label"
+	httputil "github.com/pingcap/tidb-operator/pkg/util/http"
+	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 )
 
 const (
@@ -57,6 +62,8 @@ const (
 	DMTiDBNamespace = "dm-tidb"
 	// DMTiDBName is the name of the TiDB cluster for DM E2E tests.
 	DMTiDBName = "dm-tidb"
+
+	dmMasterSvcPort = uint16(8261)
 )
 
 var (
@@ -154,6 +161,28 @@ var (
 			},
 		},
 	}
+
+	dmSources = []string{`
+source-id: "replica-01"
+enable-gtid: true
+enable-relay: true
+
+from:
+  host: "dm-mysql-0.dm-mysql"
+  user: "root"
+  password: ""
+  port: 3306
+`, `
+source-id: "replica-02"
+enable-gtid: true
+enable-relay: true
+
+from:
+host: "dm-mysql-1.dm-mysql"
+user: "root"
+password: ""
+port: 3306
+`}
 )
 
 // GetDMMySQLAddress gets the upstream MySQL address for a replica.
@@ -252,4 +281,43 @@ func CleanDMTiDB(cli *versioned.Clientset, kubeCli kubernetes.Interface) error {
 		return err
 	}
 	return nil
+}
+
+// CreateDMSources creates upstream MySQL sources into DM cluster.
+func CreateDMSources(fw portforward.PortForward, ns, masterSvcName string) error {
+	apiPath := "/apis/v1alpha1/sources"
+
+	type Req struct {
+		Op     int      `json:"op"`
+		Config []string `json:"config"`
+	}
+	var req = Req{
+		Op:     1,
+		Config: dmSources,
+	}
+	data, err := json.Marshal(req)
+	if err != nil {
+		return fmt.Errorf("failed to marshal source create request, %v, %v", req, err)
+	}
+
+	return wait.Poll(5*time.Second, 3*time.Minute, func() (bool, error) {
+		localHost, localPort, cancel, err := portforward.ForwardOnePort(
+			fw, ns, fmt.Sprintf("svc/%s", masterSvcName), dmMasterSvcPort)
+		if err != nil {
+			log.Logf("failed to forward dm-master svc: %v", err)
+			return false, nil
+		}
+		defer cancel()
+
+		body, err := httputil.DoBodyOK(
+			&http.Client{Transport: &http.Transport{}},
+			fmt.Sprintf("http://%s:%d%s", localHost, localPort, apiPath),
+			"PUT",
+			bytes.NewReader(data))
+		if err != nil && !bytes.Contains(body, []byte("already exists")) {
+			log.Logf("failed to create DM sources: %v", err)
+			return false, nil
+		}
+		return true, nil
+	})
 }

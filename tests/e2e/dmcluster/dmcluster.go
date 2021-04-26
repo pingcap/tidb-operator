@@ -26,6 +26,7 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework"
 
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
@@ -86,13 +87,18 @@ var _ = ginkgo.Describe("DMCluster", func() {
 	ginkgo.Context("[Feature:DM]", func() {
 		ginkgo.It("setup replication for DM", func() {
 			ginkgo.By("Deploy a basic dc")
+			dcName := "basic-dm"
 			dc := fixture.GetDMCluster(ns, "basic-dm", utilimage.DMV2)
 			dc.Spec.Master.Replicas = 1
 			dc.Spec.Worker.Replicas = 1
 			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(dc)
-			framework.ExpectNoError(err, "failed to create DmCluster: %q", dc.Name)
+			framework.ExpectNoError(err, "failed to create DmCluster: %q", dcName)
 			err = oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second)
-			framework.ExpectNoError(err, "failed to wait for DmCluster ready: %q", dc.Name)
+			framework.ExpectNoError(err, "failed to wait for DmCluster ready: %q", dcName)
+
+			ginkgo.By("Create MySQL sources")
+			err = tests.CreateDMSources(fw, dc.Namespace, controller.DMMasterMemberName(dcName))
+			framework.ExpectNoError(err, "failed to create sources for DmCluster: %q", dcName)
 		})
 	})
 })
