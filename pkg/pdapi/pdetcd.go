@@ -22,7 +22,15 @@ import (
 	etcdclientv3util "github.com/coreos/etcd/clientv3/clientv3util"
 )
 
+type KeyValue struct {
+	Key   string
+	Value []byte
+}
+
 type PDEtcdClient interface {
+	// Get the specific kvs.
+	// if prefix is true will return all kvs with the specified key as prefix
+	Get(key string, prefix bool) (kvs []*KeyValue, err error)
 	// PutKey will put key to the target pd etcd cluster
 	PutKey(key, value string) error
 	// DeleteKey will delete key from the target pd etcd cluster
@@ -53,6 +61,29 @@ func NewPdEtcdClient(url string, timeout time.Duration, tlsConfig *tls.Config) (
 
 func (c *pdEtcdClient) Close() error {
 	return c.etcdClient.Close()
+}
+
+func (c *pdEtcdClient) Get(key string, prefix bool) (kvs []*KeyValue, err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
+	defer cancel()
+
+	var ops []etcdclientv3.OpOption
+	if prefix {
+		ops = append(ops, etcdclientv3.WithPrefix())
+	}
+	resp, err := c.etcdClient.Get(ctx, key, ops...)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, kv := range resp.Kvs {
+		kvs = append(kvs, &KeyValue{
+			Key:   string(kv.Key),
+			Value: kv.Value,
+		})
+	}
+
+	return
 }
 
 func (c *pdEtcdClient) PutKey(key, value string) error {
