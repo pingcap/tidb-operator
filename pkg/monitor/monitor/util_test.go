@@ -1120,6 +1120,29 @@ func TestGetMonitorGrafanaContainer(t *testing.T) {
 						MountPath: "/grafana-dashboard-definitions/tidb",
 					},
 				},
+				ReadinessProbe: &corev1.Probe{
+					Handler: corev1.Handler{
+						HTTPGet: &corev1.HTTPGetAction{
+							Path: "/api/health",
+							Port: intstr.FromInt(3000),
+						},
+					},
+					TimeoutSeconds:      30,
+					PeriodSeconds:       10,
+					SuccessThreshold:    1,
+					InitialDelaySeconds: 30,
+				},
+				LivenessProbe: &corev1.Probe{
+					Handler: corev1.Handler{
+						HTTPGet: &corev1.HTTPGetAction{
+							Path: "/api/health",
+							Port: intstr.FromInt(3000),
+						},
+					},
+					TimeoutSeconds:   1,
+					PeriodSeconds:    10,
+					SuccessThreshold: 1,
+				},
 			},
 		},
 	}
