@@ -141,7 +141,6 @@ type MonitorConfigModel struct {
 	AlertmanagerURL    string
 	ClusterInfos       []ClusterRegexInfo
 	DMClusterInfos     []ClusterRegexInfo
-	EnableTLSDMCluster bool
 	ExternalLabels     model.LabelSet
 	RemoteWriteConfigs []*config.RemoteWriteConfig
 }
@@ -423,12 +422,13 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 			}
 		}
 
-		if cmodel.EnableTLSDMCluster && isDMJob(jobName) {
+		if cluster.enableTLS && isDMJob(jobName) {
 			scrapeconfig.Scheme = "https"
+			dmTlsSecretName := util.DMClientTLSSecretName(cluster.Name)
 			scrapeconfig.HTTPClientConfig.TLSConfig = config.TLSConfig{
-				CAFile:   path.Join(util.DMClusterClientTLSPath, corev1.ServiceAccountRootCAKey),
-				CertFile: path.Join(util.DMClusterClientTLSPath, corev1.TLSCertKey),
-				KeyFile:  path.Join(util.DMClusterClientTLSPath, corev1.TLSPrivateKeyKey),
+				CAFile:   path.Join(util.DMClusterClientTLSPath, TLSAssetKey{"secret", cluster.Namespace, dmTlsSecretName, corev1.ServiceAccountRootCAKey}.String()),
+				CertFile: path.Join(util.DMClusterClientTLSPath, TLSAssetKey{"secret", cluster.Namespace, dmTlsSecretName, corev1.TLSCertKey}.String()),
+				KeyFile:  path.Join(util.DMClusterClientTLSPath, TLSAssetKey{"secret", cluster.Namespace, dmTlsSecretName, corev1.TLSPrivateKeyKey}.String()),
 			}
 		}
 		scrapeJobs = append(scrapeJobs, scrapeconfig)
