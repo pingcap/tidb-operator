@@ -1118,10 +1118,9 @@ func TestGetMonitorGrafanaContainer(t *testing.T) {
 							Port: intstr.FromInt(3000),
 						},
 					},
-					TimeoutSeconds:      5,
-					PeriodSeconds:       10,
-					SuccessThreshold:    1,
-					InitialDelaySeconds: 30,
+					TimeoutSeconds:   5,
+					PeriodSeconds:    10,
+					SuccessThreshold: 1,
 				},
 				LivenessProbe: &corev1.Probe{
 					Handler: corev1.Handler{
@@ -1131,6 +1130,7 @@ func TestGetMonitorGrafanaContainer(t *testing.T) {
 						},
 					},
 					TimeoutSeconds:      5,
+					FailureThreshold:    10,
 					PeriodSeconds:       10,
 					SuccessThreshold:    1,
 					InitialDelaySeconds: 30,
