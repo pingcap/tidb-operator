@@ -99,6 +99,14 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			ginkgo.By("Create MySQL sources")
 			err = tests.CreateDMSources(fw, dc.Namespace, controller.DMMasterMemberName(dcName))
 			framework.ExpectNoError(err, "failed to create sources for DmCluster: %q", dcName)
+
+			ginkgo.By("Generate full stage date in upstream")
+			err = tests.GenDMFullData(fw, dc.Namespace)
+			framework.ExpectNoError(err, "failed to generate full stage data in upstream")
+
+			ginkgo.By("Start a basic migration task")
+			err = tests.StartDMSingleSourceTask(fw, dc.Namespace, controller.DMMasterMemberName(dcName))
+			framework.ExpectNoError(err, "failed to start single source task")
 		})
 	})
 })

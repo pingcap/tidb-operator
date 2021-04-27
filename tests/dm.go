@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	// To register MySQL driver
@@ -63,7 +64,11 @@ const (
 	// DMTiDBName is the name of the TiDB cluster for DM E2E tests.
 	DMTiDBName = "dm-tidb"
 
+	// the service port for client requests.
 	dmMasterSvcPort = uint16(8261)
+
+	// PK steps for generated data between MySQL replicas.
+	dmPKStepForReplica = 1000000
 )
 
 var (
@@ -183,6 +188,40 @@ user: "root"
 password: ""
 port: 3306
 `}
+
+	dmSingleTask = `
+name: "task_single"
+task-mode: all
+timezone: "UTC"
+
+target-database:
+  host: "dm-tidb-tidb-0.dm-tidb"
+  port: 4000
+  user: "root"
+  password: ""
+
+mysql-instances:
+  -
+    source-id: "replica-01"
+    block-allow-list: "instance"
+
+block-allow-list:
+  instance:
+    do-dbs: ["t1", "t2"] # ref "dmTableNames" below.
+`
+
+	// table names in every database.
+	dmTableNames = []string{"t1", "t2"}
+
+	// the table schema for every table.
+	// NOTE: we use the same schema for all tables now because we are focusing tests on TiDB Operator.
+	dmTableSchema = "(c1 INT PRIMARY KEY, c2 TEXT)"
+
+	// the format string for `INSERT INTO` statement.
+	dmInsertStmtFormat = "INSERT INTO `%s`.`%s` (c1, c2) VALUES (%d, %s)"
+
+	// generated rows for every table in full stage.
+	dmFullRowsInTable = 10
 )
 
 // GetDMMySQLAddress gets the upstream MySQL address for a replica.
@@ -229,16 +268,9 @@ func CheckDMMySQLReady(fw portforward.PortForward) error {
 				}
 				defer cancel()
 
-				addr := fmt.Sprintf("%s:%d", localHost, localPort)
-				dsn := fmt.Sprintf("root:@(%s)/?charset=utf8", addr)
-				db, err := sql.Open("mysql", dsn)
+				_, err = openDB(localHost, localPort)
 				if err != nil {
-					log.Logf("failed to connect to MySQL[%s]: %v", addr, err)
-					return false, nil
-				}
-				err = db.Ping()
-				if err != nil {
-					log.Logf("failed to connect to MySQL[%s]: %v", addr, err)
+					log.Logf("failed to open database connection: %v", err)
 					return false, nil
 				}
 				return true, nil
@@ -320,4 +352,99 @@ func CreateDMSources(fw portforward.PortForward, ns, masterSvcName string) error
 		}
 		return true, nil
 	})
+}
+
+// GenDMFullData generates full stage data for upstream MySQL.
+func GenDMFullData(fw portforward.PortForward, ns string) error {
+	var eg errgroup.Group
+	for i := int32(0); i < DMMySQLReplicas; i++ {
+		ordinal := i
+		eg.Go(func() error {
+			localHost, localPort, cancel, err := portforward.ForwardOnePort(
+				fw, DMMySQLNamespace, fmt.Sprintf("pod/%s-%d", DMMySQLSvcStsName, ordinal), uint16(DMMySQLPort))
+			if err != nil {
+				return fmt.Errorf("failed to forward MySQL[%d] pod: %v", ordinal, err)
+			}
+			defer cancel()
+
+			db, err := openDB(localHost, localPort)
+			if err != nil {
+				return err
+			}
+
+			// use ns as the database name.
+			// NOTE: we don't handle `already exists` or `duplicate entry` error now because we think ns is unqiue and the database instances are re-setup for each running.
+			_, err = db.Exec(fmt.Sprintf("CREATE DATABASE `%s`", ns))
+			if err != nil {
+				return fmt.Errorf("failed to create database `%s`: %v", ns, err)
+			}
+			for j, tbl := range dmTableNames {
+				_, err = db.Exec(fmt.Sprintf("CREATE TABLE `%s`.`%s` %s", ns, tbl, dmTableSchema))
+				if err != nil {
+					return fmt.Errorf("failed to create table `%s`.`%s`: %v", ns, tbl, err)
+				}
+				for k := 1; k <= dmFullRowsInTable; k++ {
+					val := j*dmPKStepForReplica + k
+					_, err = db.Exec(fmt.Sprintf(dmInsertStmtFormat, ns, tbl, val, strconv.Itoa(val))) // must match `dmTableSchema`
+					if err != nil {
+						return fmt.Errorf("failed to insert data into table `%s`.`%s`: %v", ns, tbl, err)
+					}
+				}
+			}
+			return nil
+		})
+	}
+
+	return eg.Wait()
+}
+
+// StartDMSingleSourceTask starts a DM migration task with a single source.
+func StartDMSingleSourceTask(fw portforward.PortForward, ns, masterSvcName string) error {
+	apiPath := "/apis/v1alpha1/tasks"
+
+	type Req struct {
+		Task string `json:"task"`
+	}
+	var req = Req{
+		Task: dmSingleTask,
+	}
+	data, err := json.Marshal(req)
+	if err != nil {
+		return fmt.Errorf("failed to marshal task start request, %v, %v", req, err)
+	}
+
+	return wait.Poll(5*time.Second, time.Minute, func() (bool, error) {
+		localHost, localPort, cancel, err := portforward.ForwardOnePort(
+			fw, ns, fmt.Sprintf("svc/%s", masterSvcName), dmMasterSvcPort)
+		if err != nil {
+			log.Logf("failed to forward dm-master svc: %v", err)
+			return false, nil
+		}
+		defer cancel()
+
+		body, err := httputil.DoBodyOK(
+			&http.Client{Transport: &http.Transport{}},
+			fmt.Sprintf("http://%s:%d%s", localHost, localPort, apiPath),
+			"POST",
+			bytes.NewReader(data))
+		if err != nil && !bytes.Contains(body, []byte("already exists")) {
+			log.Logf("failed to start DM single source task: %v", err)
+			return false, nil
+		}
+		return true, nil
+	})
+}
+
+func openDB(host string, port uint16) (*sql.DB, error) {
+	addr := fmt.Sprintf("%s:%d", host, port)
+	dsn := fmt.Sprintf("root:@(%s)/?charset=utf8", addr)
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to %s: %v", addr, err)
+	}
+	err = db.Ping()
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to %s: %v", addr, err)
+	}
+	return db, nil
 }
