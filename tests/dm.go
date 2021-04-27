@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -178,7 +179,7 @@ enable-gtid: true
 enable-relay: true
 
 from:
-  host: "dm-mysql-0.dm-mysql"
+  host: "dm-mysql-0.dm-mysql.dm-mysql"
   user: "root"
   password: ""
   port: 3306
@@ -188,10 +189,10 @@ enable-gtid: true
 enable-relay: true
 
 from:
-host: "dm-mysql-1.dm-mysql"
-user: "root"
-password: ""
-port: 3306
+  host: "dm-mysql-1.dm-mysql.dm-mysql"
+  user: "root"
+  password: ""
+  port: 3306
 `}
 
 	dmSingleTask = `
@@ -200,7 +201,7 @@ task-mode: all
 timezone: "UTC"
 
 target-database:
-  host: "dm-tidb-tidb-0.dm-tidb"
+  host: "dm-tidb-tidb.dm-tidb"
   port: 4000
   user: "root"
   password: ""
@@ -331,6 +332,11 @@ func CreateDMSources(fw portforward.PortForward, ns, masterSvcName string) error
 		Op     int      `json:"op"`
 		Config []string `json:"config"`
 	}
+	type Resp struct {
+		Result bool   `json:"result"`
+		Msg    string `json:"msg"`
+	}
+
 	var req = Req{
 		Op:     1,
 		Config: dmSources,
@@ -354,8 +360,16 @@ func CreateDMSources(fw portforward.PortForward, ns, masterSvcName string) error
 			fmt.Sprintf("http://%s:%d%s", localHost, localPort, apiPath),
 			"PUT",
 			bytes.NewReader(data))
-		if err != nil && !bytes.Contains(body, []byte("already exists")) {
+		if err != nil {
 			log.Logf("failed to create DM sources: %v", err)
+			return false, nil
+		}
+		var resp Resp
+		if err = json.Unmarshal(body, &resp); err != nil {
+			log.Logf("failed to unmarshal DM source create response, %s: %v", string(body), err)
+			return false, nil
+		} else if !resp.Result && !strings.Contains(resp.Msg, "already exists") {
+			log.Logf("failed to create DM sources, %s: %v", resp.Msg, err)
 			return false, nil
 		}
 		return true, nil
@@ -448,6 +462,11 @@ func StartDMSingleSourceTask(fw portforward.PortForward, ns, masterSvcName strin
 	type Req struct {
 		Task string `json:"task"`
 	}
+	type Resp struct {
+		Result bool   `json:"result"`
+		Msg    string `json:"msg"`
+	}
+
 	var req = Req{
 		Task: dmSingleTask,
 	}
@@ -470,8 +489,16 @@ func StartDMSingleSourceTask(fw portforward.PortForward, ns, masterSvcName strin
 			fmt.Sprintf("http://%s:%d%s", localHost, localPort, apiPath),
 			"POST",
 			bytes.NewReader(data))
-		if err != nil && !bytes.Contains(body, []byte("already exists")) {
+		if err != nil {
 			log.Logf("failed to start DM single source task: %v", err)
+			return false, nil
+		}
+		var resp Resp
+		if err = json.Unmarshal(body, &resp); err != nil {
+			log.Logf("failed to unmarshal DM task start response, %s: %v", string(body), err)
+			return false, nil
+		} else if !resp.Result && !strings.Contains(resp.Msg, "already exists") {
+			log.Logf("failed to start DM single source task, %s: %v", resp.Msg, err)
 			return false, nil
 		}
 		return true, nil
