@@ -162,7 +162,7 @@ endif
 
 ALL_CHECKS = EOF codegen boilerplate openapi-spec crd-groups spelling
 
-check: $(addprefix check-,$(ALL_CHECKS)) lint tidy 
+check: $(addprefix check-,$(ALL_CHECKS)) lint tidy
 
 check-%:
 	./hack/verify-$*.sh
