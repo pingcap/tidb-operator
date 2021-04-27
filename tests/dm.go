@@ -227,6 +227,9 @@ block-allow-list:
 
 	// generated rows for every table in full stage.
 	dmFullRowsInTable = 10
+
+	// generated rows for every table in incremental stage.
+	dmIncrRowsInTable = 20
 )
 
 // GetDMMySQLAddress gets the upstream MySQL address for a replica.
@@ -390,7 +393,42 @@ func GenDMFullData(fw portforward.PortForward, ns string) error {
 				}
 				for k := 1; k <= dmFullRowsInTable; k++ {
 					val := j*dmPKStepForReplica + k
-					_, err = db.Exec(fmt.Sprintf(dmInsertStmtFormat, ns, tbl, val, strconv.Itoa(val))) // must match `dmTableSchema`
+					_, err = db.Exec(fmt.Sprintf(dmInsertStmtFormat, ns, tbl, val, strconv.Itoa(val)))
+					if err != nil {
+						return fmt.Errorf("failed to insert data into table `%s`.`%s`: %v", ns, tbl, err)
+					}
+				}
+			}
+			return nil
+		})
+	}
+
+	return eg.Wait()
+}
+
+// GenDMIncrData generates incremantal stage data for upstream MySQL.
+// NOTE: we can generate incremental data multiple times if needed later.
+func GenDMIncrData(fw portforward.PortForward, ns string) error {
+	var eg errgroup.Group
+	for i := int32(0); i < DMMySQLReplicas; i++ {
+		ordinal := i
+		eg.Go(func() error {
+			localHost, localPort, cancel, err := portforward.ForwardOnePort(
+				fw, DMMySQLNamespace, fmt.Sprintf("pod/%s-%d", DMMySQLSvcStsName, ordinal), uint16(DMMySQLPort))
+			if err != nil {
+				return fmt.Errorf("failed to forward MySQL[%d] pod: %v", ordinal, err)
+			}
+			defer cancel()
+
+			db, err := openDB(localHost, localPort)
+			if err != nil {
+				return err
+			}
+
+			for j, tbl := range dmTableNames {
+				for k := 1; k <= dmIncrRowsInTable; k++ {
+					val := dmFullRowsInTable + j*dmPKStepForReplica + k
+					_, err = db.Exec(fmt.Sprintf(dmInsertStmtFormat, ns, tbl, val, strconv.Itoa(val)))
 					if err != nil {
 						return fmt.Errorf("failed to insert data into table `%s`.`%s`: %v", ns, tbl, err)
 					}
@@ -440,9 +478,9 @@ func StartDMSingleSourceTask(fw portforward.PortForward, ns, masterSvcName strin
 	})
 }
 
-// CheckDMFullData checks data between downstream TiDB cluster and upstream MySQL are equal.
+// CheckDMData checks data between downstream TiDB cluster and upstream MySQL are equal.
 // NOTE: for simplicity, we only check rows count now.
-func CheckDMFullData(fw portforward.PortForward, ns string, sourceCount int) error {
+func CheckDMData(fw portforward.PortForward, ns string, sourceCount int) error {
 	return wait.Poll(10*time.Second, 5*time.Minute, func() (bool, error) {
 		var eg errgroup.Group
 		for i := range dmTableNames {
@@ -510,7 +548,7 @@ func CheckDMFullData(fw portforward.PortForward, ns string, sourceCount int) err
 		}
 		err := eg.Wait()
 		if err != nil {
-			log.Logf("failed to check full data, %v", err)
+			log.Logf("failed to check data, %v", err)
 			return false, nil
 		}
 		return true, nil

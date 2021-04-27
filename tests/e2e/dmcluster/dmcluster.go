@@ -93,24 +93,25 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			dc.Spec.Worker.Replicas = 1
 			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(dc)
 			framework.ExpectNoError(err, "failed to create DmCluster: %q", dcName)
-			err = oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second)
-			framework.ExpectNoError(err, "failed to wait for DmCluster ready: %q", dcName)
+			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster ready: %q", dcName)
 
 			ginkgo.By("Create MySQL sources")
-			err = tests.CreateDMSources(fw, dc.Namespace, controller.DMMasterMemberName(dcName))
-			framework.ExpectNoError(err, "failed to create sources for DmCluster: %q", dcName)
+			framework.ExpectNoError(tests.CreateDMSources(fw, dc.Namespace, controller.DMMasterMemberName(dcName)), "failed to create sources for DmCluster: %q", dcName)
 
-			ginkgo.By("Generate full stage date in upstream")
-			err = tests.GenDMFullData(fw, dc.Namespace)
-			framework.ExpectNoError(err, "failed to generate full stage data in upstream")
+			ginkgo.By("Generate full stage data in upstream")
+			framework.ExpectNoError(tests.GenDMFullData(fw, dc.Namespace), "failed to generate full stage data in upstream")
 
 			ginkgo.By("Start a basic migration task")
-			err = tests.StartDMSingleSourceTask(fw, dc.Namespace, controller.DMMasterMemberName(dcName))
-			framework.ExpectNoError(err, "failed to start single source task")
+			framework.ExpectNoError(tests.StartDMSingleSourceTask(fw, dc.Namespace, controller.DMMasterMemberName(dcName)), "failed to start single source task")
 
 			ginkgo.By("Check data for full stage")
-			err = tests.CheckDMFullData(fw, dc.Namespace, 1)
-			framework.ExpectNoError(err, "failed to check full data")
+			framework.ExpectNoError(tests.CheckDMData(fw, dc.Namespace, 1), "failed to check full data")
+
+			ginkgo.By("Generate incremental stage data in upstream")
+			framework.ExpectNoError(tests.GenDMIncrData(fw, dc.Namespace), "failed to generate incremental stage data in upstream")
+
+			ginkgo.By("Check data for incremental stage")
+			framework.ExpectNoError(tests.CheckDMData(fw, dc.Namespace, 1), "failed to check incremental data")
 		})
 	})
 })
