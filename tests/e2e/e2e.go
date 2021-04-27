@@ -336,6 +336,12 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 	config.QPS = 20
 	config.Burst = 50
 	kubeCli, _ := kubernetes.NewForConfig(config)
+	if !ginkgo.CurrentGinkgoTestDescription().Failed {
+		ginkgo.By("Clean labels")
+		err := tests.CleanNodeLabels(kubeCli)
+		framework.ExpectNoError(err, "failed to clean labels")
+	}
+
 	ginkgo.By("Deleting cert-manager")
 	err := tidbcluster.DeleteCertManager(kubeCli)
 	framework.ExpectNoError(err, "failed to delete cert-manager")
