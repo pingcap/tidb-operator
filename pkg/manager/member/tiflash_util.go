@@ -121,7 +121,9 @@ func getTiFlashConfig(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper {
 	}
 
 	ref := tc.Spec.Cluster.DeepCopy()
-	ref.Namespace = tc.ExternalClusterNamespace()
+	if ref != nil {
+		ref.Namespace = tc.ExternalClusterNamespace()
+	}
 	noLocalPD := tc.HeterogeneousWithoutLocalPD()
 
 	setTiFlashConfigDefault(config, ref, tc.Name, tc.Namespace, tc.Spec.ClusterDomain, noLocalPD)
@@ -200,7 +202,7 @@ func setTiFlashCommonConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, r
 	setTiFlashLoggerConfigDefault(config)
 	setTiFlashApplicationConfigDefault(config)
 
-	setTiFlashRaftConfigDefault(config, ref, clusterName, ns, noLocalPD)
+	setTiFlashRaftConfigDefault(config, ref, clusterName, ns, clusterDomain, noLocalPD)
 
 	config.SetIfNil("status.metrics_port", int64(8234))
 	config.SetIfNil("quotas.default.interval.duration", int64(3600))
@@ -265,15 +267,17 @@ func setTiFlashApplicationConfigDefault(config *v1alpha1.TiFlashCommonConfigWrap
 	config.SetIfNil("application.runAsDaemon", true)
 }
 
-func setTiFlashRaftConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, ref *v1alpha1.TidbClusterRef, clusterName, ns string, noLocalPD bool) {
-	if noLocalPD {
-		config.SetIfNil("raft.pd_addr", fmt.Sprintf("%s.%s.svc%s:2379", controller.PDMemberName(ref.Name), ref.Namespace, controller.FormatClusterDomain(ref.ClusterDomain)))
-		config.SetIfNil("raft.kvstore_path", "/data0/kvstore")
-		config.SetIfNil("raft.storage_engine", "dt")
+func setTiFlashRaftConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, ref *v1alpha1.TidbClusterRef, clusterName, ns string, clusterDomain string, noLocalPD bool) {
+	config.SetIfNil("raft.kvstore_path", "/data0/kvstore")
+	config.SetIfNil("raft.storage_engine", "dt")
+
+	if len(clusterDomain) > 0 {
+		config.SetIfNil("raft.pd_addr", "PD_ADDR")
 	} else {
-		// FIXME: for across k8s cluster, if pd in local k8s is down, tiflash will fail to start/restart, we can use other pd' address to make the local tiflash still work.
-		config.SetIfNil("raft.pd_addr", fmt.Sprintf("%s.%s.svc:2379", controller.PDMemberName(clusterName), ns))
-		config.SetIfNil("raft.kvstore_path", "/data0/kvstore")
-		config.SetIfNil("raft.storage_engine", "dt")
+		if noLocalPD {
+			config.SetIfNil("raft.pd_addr", fmt.Sprintf("%s.%s.svc%s:2379", controller.PDMemberName(ref.Name), ref.Namespace, controller.FormatClusterDomain(ref.ClusterDomain)))
+		} else {
+			config.SetIfNil("raft.pd_addr", fmt.Sprintf("%s.%s.svc:2379", controller.PDMemberName(clusterName), ns))
+		}
 	}
 }
