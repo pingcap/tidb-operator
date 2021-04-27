@@ -766,3 +766,12 @@ pgrep -lfa kubectl
 ```
 
 For more information about destroying a TiDB cluster running in TiDB Operator, consult [Destroy a TiDB Cluster](destroy-a-tidb-cluster.md).
+
+## What’s next
+
+If you are ready to deploy a TiDB cluster in Kubernetes for the production environment, refer to the following documents:
+
+- [Deploy TiDB in General Kubernetes](deploy-on-general-kubernetes.md)
+- [Deploy TiDB on AWS EKS](deploy-on-aws-eks.md)
+- [Deploy TiDB on GCP GKE](deploy-on-gcp-gke.md)
+- [Deploy TiDB on Alibaba Cloud ACK](deploy-on-alibaba-cloud.md)
