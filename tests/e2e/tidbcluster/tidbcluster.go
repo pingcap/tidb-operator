@@ -2098,10 +2098,9 @@ func validatePodSpread(pods []corev1.Pod, nodeZoneMap map[string]string, compone
 // TODO: deprecate this
 func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tcVersion string) tests.TidbClusterConfig {
 	return tests.TidbClusterConfig{
-		Namespace:        ns,
-		ClusterName:      clusterName,
-    
-    
+		Namespace:   ns,
+		ClusterName: clusterName,
+
 		EnablePVReclaim:  false,
 		OperatorTag:      cfg.OperatorTag,
 		PDImage:          fmt.Sprintf("pingcap/pd:%s", tcVersion),
