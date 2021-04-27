@@ -98,6 +98,7 @@ func TestDMMasterIsAvailable(t *testing.T) {
 	}
 }
 
+// TODO: refector test of buildDMClusterComponentAccessor
 func TestDMComponentAccessor(t *testing.T) {
 	g := NewGomegaWithT(t)
 
@@ -110,7 +111,14 @@ func TestDMComponentAccessor(t *testing.T) {
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 
-		accessor := buildDMClusterComponentAccessor(test.cluster, test.component)
+		dc := &DMCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test",
+			},
+			Spec: *test.cluster,
+		}
+
+		accessor := buildDMClusterComponentAccessor(ComponentDMMaster, dc, test.component)
 		test.expectFn(g, accessor)
 	}
 	affinity := &corev1.Affinity{
