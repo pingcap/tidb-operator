@@ -96,7 +96,7 @@ func MustWaitForComponentPhase(c versioned.Interface, tc *v1alpha1.TidbCluster, 
 		}
 		return true, nil
 	})
-	framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s .Status.%s.Phase to be %q", tc.Namespace, tc.Name, strings.ToUpper(string(comp)), v1alpha1.ScalePhase)
+	framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s .Status.%s.Phase to be %q", tc.Namespace, tc.Name, strings.ToUpper(string(comp)), phase)
 }
 
 // MustCreateTCWithComponentsReady create TidbCluster and wait for components ready

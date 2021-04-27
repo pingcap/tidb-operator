@@ -1748,7 +1748,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				}
 				ginkgo.It(fmt.Sprintf("should work for %s", comp), func() {
 					ginkgo.By("Deploy initial tc")
-					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("scale-out-scale-in-%s", comp), utilimage.TiDBV4Prev)
+					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("scale-in-upgrade-%s", comp), utilimage.TiDBV4Prev)
 					switch comp {
 					case v1alpha1.PDMemberType:
 						tc.Spec.PD.Replicas = replicasLarge
@@ -1889,7 +1889,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			storesInfo, err := pdClient.GetStores()
 			framework.ExpectNoError(err, "get stores info error")
 
-			_ = wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
+			_ = wait.PollImmediate(15*time.Second, 3*time.Minute, func() (bool, error) {
 				framework.ExpectEqual(storesInfo.Count, 3, "Expect number of stores is 3")
 				for _, store := range storesInfo.Stores {
 					framework.ExpectEqual(store.Store.StateName, "Up", "Expect state of stores are Up")
