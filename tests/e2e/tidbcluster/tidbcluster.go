@@ -1635,7 +1635,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					log.Logf(fmt.Sprintf("%s is in ScalePhase", comp))
 					ginkgo.By("Wait for tc ready")
 					err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 10*time.Second)
-					framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale in pd", ns, tc.Name)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale in %s", ns, tc.Name, comp)
 					log.Logf("tc is ready")
 
 					pvcUIDs := make(map[string]string)
@@ -1730,7 +1730,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			}
 		})
 
-		ginkgo.Context("while concurrently upgrade should work for", func() {
+		ginkgo.Context("while concurrently upgrade", func() {
 			components := []v1alpha1.MemberType{"pd", "tikv", "tidb"}
 			for _, comp := range components {
 				comp := comp
@@ -1886,10 +1886,10 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, tc.Name, false)
 			framework.ExpectNoError(err, "create pdClient error")
 			defer cancel()
-			storesInfo, err := pdClient.GetStores()
-			framework.ExpectNoError(err, "get stores info error")
 
 			_ = wait.PollImmediate(15*time.Second, 3*time.Minute, func() (bool, error) {
+				storesInfo, err := pdClient.GetStores()
+				framework.ExpectNoError(err, "get stores info error")
 				framework.ExpectEqual(storesInfo.Count, 3, "Expect number of stores is 3")
 				for _, store := range storesInfo.Stores {
 					framework.ExpectEqual(store.Store.StateName, "Up", "Expect state of stores are Up")
