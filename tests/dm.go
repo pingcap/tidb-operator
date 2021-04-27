@@ -213,7 +213,7 @@ mysql-instances:
 
 block-allow-list:
   instance:
-    do-dbs: ["t1", "t2"] # ref "dmTableNames" below.
+    do-dbs: ["%s"] # replace this with the real database name.
 `
 
 	// table names in every database.
@@ -468,7 +468,7 @@ func StartDMSingleSourceTask(fw portforward.PortForward, ns, masterSvcName strin
 	}
 
 	var req = Req{
-		Task: dmSingleTask,
+		Task: fmt.Sprintf(dmSingleTask, ns),
 	}
 	data, err := json.Marshal(req)
 	if err != nil {
