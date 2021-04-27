@@ -1596,7 +1596,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", tc.Namespace, tc.Name)
 	})
 
-	ginkgo.Describe("All pods controlled by TidbCluster can set pod security context", func() {
+	ginkgo.Describe("[Feature]: PodSecurityContext", func() {
 		ginkgo.It("TidbCluster global pod security context", func() {
 			ginkgo.By("Deploy tidbCluster")
 			userID := int64(1000)
@@ -1627,7 +1627,103 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			}
 		})
 	})
+
+	ginkgo.Describe("[Feature]: TopologySpreadConstraint", func() {
+		nodeZoneMap := map[string]string{}
+
+		ginkgo.BeforeEach(func() {
+			nodeList, err := c.CoreV1().Nodes().List(metav1.ListOptions{})
+			framework.ExpectNoError(err, "failed to list nodes: %+v")
+			for i := range nodeList.Items {
+				node := &nodeList.Items[i]
+				zone, ok := node.Labels[tests.LabelKeyTestingZone]
+				framework.ExpectEqual(ok, true, "label %s should exist", tests.LabelKeyTestingZone)
+				nodeZoneMap[node.Name] = zone
+			}
+		})
+
+		ginkgo.It("TidbCluster global topology spread contraint", func() {
+			ginkgo.By("Deploy tidbCluster")
+			tc := fixture.GetTidbCluster(ns, "topology-test", utilimage.TiDBV4)
+			tc.Spec.TopologySpreadConstraints = []v1alpha1.TopologySpreadConstraint{
+				{
+					TopologyKey: tests.LabelKeyTestingZone,
+				},
+			}
+			// change to use default scheduler
+			tc.Spec.SchedulerName = "default-scheduler"
+			tc.Spec.PD.Replicas = 3
+			tc.Spec.TiDB.Replicas = 2
+			tc.Spec.TiKV.Replicas = 2
+
+			tc = fixture.AddTiFlashForTidbCluster(tc)
+			tc = fixture.AddTiCDCForTidbCluster(tc)
+			tc = fixture.AddPumpForTidbCluster(tc)
+
+			tc.Spec.TiFlash.Replicas = 2
+			tc.Spec.TiCDC.Replicas = 2
+			tc.Spec.Pump.Replicas = 2
+
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
+			podList, err := c.CoreV1().Pods(ns).List(metav1.ListOptions{})
+			framework.ExpectNoError(err, "failed to list pods: %+v")
+
+			err = validatePodSpread(podList.Items, nodeZoneMap, []string{label.PDLabelVal}, 1)
+			framework.ExpectNoError(err, "failed even spread pd pods: %v")
+
+			err = validatePodSpread(podList.Items, nodeZoneMap, []string{
+				label.TiDBLabelVal,
+				label.TiKVLabelVal,
+				label.TiFlashLabelVal,
+				label.TiCDCLabelVal,
+				label.PumpLabelVal,
+			}, 0)
+			framework.ExpectNoError(err, "failed even spread pods: %v")
+		})
+	})
 })
+
+func validatePodSpread(pods []corev1.Pod, nodeZoneMap map[string]string, componentLabels []string, maxSkew int) error {
+	zones := make([][2]int, len(componentLabels))
+	for i := range pods {
+		pod := &pods[i]
+		framework.ExpectEqual(len(pod.Spec.TopologySpreadConstraints), 1, "Expected pod topology spread constraints are set")
+
+		c, ok := pod.Labels[label.ComponentLabelKey]
+		if !ok {
+			continue
+		}
+
+		zone, ok := nodeZoneMap[pod.Spec.NodeName]
+		if !ok {
+			return fmt.Errorf("node %s has no zone label", pod.Spec.NodeName)
+		}
+
+		zoneId := 0
+		switch zone {
+		case "zone-0":
+			zoneId = 0
+		case "zone-1":
+			zoneId = 1
+		}
+
+		for i, componentLabel := range componentLabels {
+			if c == componentLabel {
+				zones[i][zoneId]++
+			}
+		}
+	}
+	for i, componentLabel := range componentLabels {
+		skew := zones[i][0] - zones[i][1]
+		if skew < 0 {
+			skew = -skew
+		}
+		if skew > maxSkew {
+			return fmt.Errorf("%s pods are not even spread", componentLabel)
+		}
+	}
+	return nil
+}
 
 func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tcVersion string) tests.TidbClusterConfig {
 	return tests.TidbClusterConfig{
