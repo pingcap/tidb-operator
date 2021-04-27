@@ -68,8 +68,8 @@ func IsTidbClusterAvaiable(tc *v1alpha1.TidbCluster, minReadyDuration time.Durat
 	return false
 }
 
-// WaitForTidbClusterReady waits for a TidbClusterCondition to be ready for at least minReadyDuration duration.
-func WaitForTidbClusterReady(c versioned.Interface, ns, name string, timeout time.Duration, minReadyDuration time.Duration) error {
+// WaitForTidbClusterConditionReady waits for a TidbClusterCondition to be ready for at least minReadyDuration duration.
+func WaitForTidbClusterConditionReady(c versioned.Interface, ns, name string, timeout time.Duration, minReadyDuration time.Duration) error {
 	return WaitForTidbClusterCondition(c, ns, name, timeout, func(tc *v1alpha1.TidbCluster) (bool, error) {
 		return IsTidbClusterAvaiable(tc, minReadyDuration, time.Now()), nil
 	})
@@ -105,4 +105,43 @@ func MustCreateTCWithComponentsReady(cli ctrlCli.Client, oa *tests.OperatorActio
 	framework.ExpectNoError(err, "failed to create TidbCluster %s/%s", tc.Namespace, tc.Name)
 	err = oa.WaitForTidbClusterReady(tc, timeout, pollInterval)
 	framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", tc.Namespace, tc.Name)
+}
+
+func MustWaitForPDPhase(c versioned.Interface, tc *v1alpha1.TidbCluster, phase v1alpha1.MemberPhase, timeout, pollInterval time.Duration) {
+	var err error
+	wait.Poll(pollInterval, timeout, func() (bool, error) {
+		tc, err := c.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
+		framework.ExpectNoError(err, "failed to get TidbCluster: %v", err)
+		if tc.Status.PD.Phase != phase {
+			return false, nil
+		}
+		return true, nil
+	})
+	framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s .Status.PD.Phase to be %q", tc.Namespace, tc.Name, v1alpha1.ScalePhase)
+}
+
+func MustWaitForTiKVPhase(c versioned.Interface, tc *v1alpha1.TidbCluster, phase v1alpha1.MemberPhase, timeout, pollInterval time.Duration) {
+	var err error
+	wait.Poll(pollInterval, timeout, func() (bool, error) {
+		tc, err := c.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
+		framework.ExpectNoError(err, "failed to get TidbCluster: %v", err)
+		if tc.Status.TiKV.Phase != phase {
+			return false, nil
+		}
+		return true, nil
+	})
+	framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s .Status.TiKV.Phase to be %q", tc.Namespace, tc.Name, v1alpha1.ScalePhase)
+}
+
+func MustWaitForTiDBPhase(c versioned.Interface, tc *v1alpha1.TidbCluster, phase v1alpha1.MemberPhase, timeout, pollInterval time.Duration) {
+	var err error
+	wait.Poll(pollInterval, timeout, func() (bool, error) {
+		tc, err := c.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
+		framework.ExpectNoError(err, "failed to get TidbCluster: %v", err)
+		if tc.Status.TiDB.Phase != phase {
+			return false, nil
+		}
+		return true, nil
+	})
+	framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s .Status.TiDB.Phase to be %q", tc.Namespace, tc.Name, v1alpha1.ScalePhase)
 }
