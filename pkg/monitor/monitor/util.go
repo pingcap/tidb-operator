@@ -597,6 +597,7 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 	livenessProbe := &core.Probe{
 		Handler:             probeHandler,
 		TimeoutSeconds:      5,
+		FailureThreshold:    10,
 		PeriodSeconds:       10,
 		SuccessThreshold:    1,
 		InitialDelaySeconds: 30,
