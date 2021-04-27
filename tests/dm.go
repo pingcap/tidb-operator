@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	// To register MySQL driver
@@ -37,6 +38,7 @@ import (
 	"k8s.io/utils/pointer"
 
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	httputil "github.com/pingcap/tidb-operator/pkg/util/http"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
@@ -64,8 +66,11 @@ const (
 	// DMTiDBName is the name of the TiDB cluster for DM E2E tests.
 	DMTiDBName = "dm-tidb"
 
-	// the service port for client requests.
+	// the service port for client requests to DM-master.
 	dmMasterSvcPort = uint16(8261)
+
+	// the service port for client requests to TiDB.
+	dmTiDBSvcPort = uint16(4000)
 
 	// PK steps for generated data between MySQL replicas.
 	dmPKStepForReplica = 1000000
@@ -429,6 +434,83 @@ func StartDMSingleSourceTask(fw portforward.PortForward, ns, masterSvcName strin
 			bytes.NewReader(data))
 		if err != nil && !bytes.Contains(body, []byte("already exists")) {
 			log.Logf("failed to start DM single source task: %v", err)
+			return false, nil
+		}
+		return true, nil
+	})
+}
+
+// CheckDMFullData checks data between downstream TiDB cluster and upstream MySQL are equal.
+// NOTE: for simplicity, we only check rows count now.
+func CheckDMFullData(fw portforward.PortForward, ns string, sourceCount int) error {
+	return wait.Poll(10*time.Second, 5*time.Minute, func() (bool, error) {
+		var eg errgroup.Group
+		for i := range dmTableNames {
+			// check based on table name because no table-routes are used for DM.
+			tbl := dmTableNames[i]
+			eg.Go(func() error {
+				var (
+					upCount   uint64
+					downCount uint64
+					eg2       errgroup.Group
+				)
+				for j := 0; j < sourceCount; j++ {
+					ordinal := j
+					eg2.Go(func() error {
+						localHost, localPort, cancel, err := portforward.ForwardOnePort(
+							fw, DMMySQLNamespace, fmt.Sprintf("pod/%s-%d", DMMySQLSvcStsName, ordinal), uint16(DMMySQLPort))
+						if err != nil {
+							return fmt.Errorf("failed to forward MySQL[%d] pod: %v", ordinal, err)
+						}
+						defer cancel()
+
+						db, err := openDB(localHost, localPort)
+						if err != nil {
+							return err
+						}
+
+						row := db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM `%s`.`%s`", ns, tbl))
+						var count uint64
+						if err = row.Scan(&count); err != nil {
+							return err
+						}
+
+						atomic.AddUint64(&upCount, count)
+						return nil
+					})
+				}
+				eg2.Go(func() error {
+					localHost, localPort, cancel, err := portforward.ForwardOnePort(
+						fw, DMTiDBNamespace, fmt.Sprintf("svc/%s", controller.TiDBMemberName(DMTiDBName)), dmTiDBSvcPort)
+					if err != nil {
+						return fmt.Errorf("failed to forward TiDB: %v", err)
+					}
+					defer cancel()
+
+					db, err := openDB(localHost, localPort)
+					if err != nil {
+						return err
+					}
+
+					row := db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM `%s`.`%s`", ns, tbl))
+					return row.Scan(&downCount)
+				})
+
+				err := eg2.Wait()
+				if err != nil {
+					return err
+				}
+
+				if upCount == downCount {
+					return nil
+				}
+
+				return fmt.Errorf("upstream row count (%d) and downstream row count (%d) for table %s are not equal", upCount, downCount, tbl)
+			})
+		}
+		err := eg.Wait()
+		if err != nil {
+			log.Logf("failed to check full data, %v", err)
 			return false, nil
 		}
 		return true, nil

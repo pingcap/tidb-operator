@@ -107,6 +107,10 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			ginkgo.By("Start a basic migration task")
 			err = tests.StartDMSingleSourceTask(fw, dc.Namespace, controller.DMMasterMemberName(dcName))
 			framework.ExpectNoError(err, "failed to start single source task")
+
+			ginkgo.By("Check data for full stage")
+			err = tests.CheckDMFullData(fw, dc.Namespace, 1)
+			framework.ExpectNoError(err, "failed to check full data")
 		})
 	})
 })
