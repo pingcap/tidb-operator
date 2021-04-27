@@ -249,6 +249,7 @@ func TestTiKVIsAvailable(t *testing.T) {
 	}
 }
 
+// TODO: refector test of buildTidbClusterComponentAccessor
 func TestComponentAccessor(t *testing.T) {
 	g := NewGomegaWithT(t)
 
@@ -261,7 +262,14 @@ func TestComponentAccessor(t *testing.T) {
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 
-		accessor := buildTidbClusterComponentAccessor(test.cluster, test.component)
+		tc := &TidbCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test",
+			},
+			Spec: *test.cluster,
+		}
+
+		accessor := buildTidbClusterComponentAccessor(ComponentTiDB, tc, test.component)
 		test.expectFn(g, accessor)
 	}
 	affinity := &corev1.Affinity{

@@ -14,8 +14,10 @@
 package v1alpha1
 
 import (
+	"github.com/pingcap/tidb-operator/pkg/label"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -45,9 +47,30 @@ type ComponentAccessor interface {
 	AdditionalVolumeMounts() []corev1.VolumeMount
 	TerminationGracePeriodSeconds() *int64
 	StatefulSetUpdateStrategy() apps.StatefulSetUpdateStrategyType
+	TopologySpreadConstraints() []corev1.TopologySpreadConstraint
 }
 
+// Component defines component identity of all components
+type Component int
+
+const (
+	ComponentPD Component = iota
+	ComponentTiDB
+	ComponentTiKV
+	ComponentTiFlash
+	ComponentTiCDC
+	ComponentPump
+	ComponentDiscovery
+	ComponentDMDiscovery
+	ComponentDMMaster
+	ComponentDMWorker
+)
+
 type componentAccessorImpl struct {
+	component Component
+	name      string
+	kind      string
+
 	imagePullPolicy           corev1.PullPolicy
 	imagePullSecrets          []corev1.LocalObjectReference
 	hostNetwork               *bool
@@ -60,6 +83,7 @@ type componentAccessorImpl struct {
 	configUpdateStrategy      ConfigUpdateStrategy
 	statefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType
 	podSecurityContext        *corev1.PodSecurityContext
+	topologySpreadConstraints []TopologySpreadConstraint
 
 	// ComponentSpec is the Component Spec
 	ComponentSpec *ComponentSpec
@@ -185,13 +209,14 @@ func (a *componentAccessorImpl) ConfigUpdateStrategy() ConfigUpdateStrategy {
 
 func (a *componentAccessorImpl) BuildPodSpec() corev1.PodSpec {
 	spec := corev1.PodSpec{
-		SchedulerName:   a.SchedulerName(),
-		Affinity:        a.Affinity(),
-		NodeSelector:    a.NodeSelector(),
-		HostNetwork:     a.HostNetwork(),
-		RestartPolicy:   corev1.RestartPolicyAlways,
-		Tolerations:     a.Tolerations(),
-		SecurityContext: a.PodSecurityContext(),
+		SchedulerName:             a.SchedulerName(),
+		Affinity:                  a.Affinity(),
+		NodeSelector:              a.NodeSelector(),
+		HostNetwork:               a.HostNetwork(),
+		RestartPolicy:             corev1.RestartPolicyAlways,
+		Tolerations:               a.Tolerations(),
+		SecurityContext:           a.PodSecurityContext(),
+		TopologySpreadConstraints: a.TopologySpreadConstraints(),
 	}
 	if a.PriorityClassName() != nil {
 		spec.PriorityClassName = *a.PriorityClassName()
@@ -247,8 +272,73 @@ func (a *componentAccessorImpl) TerminationGracePeriodSeconds() *int64 {
 	return a.ComponentSpec.TerminationGracePeriodSeconds
 }
 
-func buildTidbClusterComponentAccessor(spec *TidbClusterSpec, componentSpec *ComponentSpec) ComponentAccessor {
+func (a *componentAccessorImpl) TopologySpreadConstraints() []corev1.TopologySpreadConstraint {
+	tscs := a.topologySpreadConstraints
+	if a.ComponentSpec != nil && len(a.ComponentSpec.TopologySpreadConstraints) > 0 {
+		tscs = a.ComponentSpec.TopologySpreadConstraints
+	}
+
+	if len(tscs) == 0 {
+		return nil
+	}
+
+	ptscs := make([]corev1.TopologySpreadConstraint, 0, len(tscs))
+	for _, tsc := range tscs {
+		ptsc := corev1.TopologySpreadConstraint{
+			MaxSkew:           1,
+			TopologyKey:       tsc.TopologyKey,
+			WhenUnsatisfiable: corev1.DoNotSchedule,
+		}
+		componentLabelVal := getComponentLabelValue(a.component)
+		var l label.Label
+		switch a.kind {
+		case TiDBClusterKind:
+			l = label.New()
+		case DMClusterKind:
+			l = label.NewDM()
+		}
+		l[label.ComponentLabelKey] = componentLabelVal
+		l[label.InstanceLabelKey] = a.name
+		ptsc.LabelSelector = &metav1.LabelSelector{
+			MatchLabels: map[string]string(l),
+		}
+		ptscs = append(ptscs, ptsc)
+	}
+	return ptscs
+}
+
+func getComponentLabelValue(c Component) string {
+	switch c {
+	case ComponentPD:
+		return label.PDLabelVal
+	case ComponentTiDB:
+		return label.TiDBLabelVal
+	case ComponentTiKV:
+		return label.TiKVLabelVal
+	case ComponentTiFlash:
+		return label.TiFlashLabelVal
+	case ComponentTiCDC:
+		return label.TiCDCLabelVal
+	case ComponentPump:
+		return label.PumpLabelVal
+	case ComponentDiscovery:
+		return label.DiscoveryLabelVal
+	case ComponentDMDiscovery:
+		return label.DiscoveryLabelVal
+	case ComponentDMMaster:
+		return label.DMMasterLabelVal
+	case ComponentDMWorker:
+		return label.DMWorkerLabelVal
+	}
+	return ""
+}
+
+func buildTidbClusterComponentAccessor(c Component, tc *TidbCluster, componentSpec *ComponentSpec) ComponentAccessor {
+	spec := &tc.Spec
 	return &componentAccessorImpl{
+		name:                      tc.Name,
+		kind:                      TiDBClusterKind,
+		component:                 c,
 		imagePullPolicy:           spec.ImagePullPolicy,
 		imagePullSecrets:          spec.ImagePullSecrets,
 		hostNetwork:               spec.HostNetwork,
@@ -261,24 +351,30 @@ func buildTidbClusterComponentAccessor(spec *TidbClusterSpec, componentSpec *Com
 		configUpdateStrategy:      spec.ConfigUpdateStrategy,
 		statefulSetUpdateStrategy: spec.StatefulSetUpdateStrategy,
 		podSecurityContext:        spec.PodSecurityContext,
+		topologySpreadConstraints: spec.TopologySpreadConstraints,
 
 		ComponentSpec: componentSpec,
 	}
 }
 
-func buildDMClusterComponentAccessor(spec *DMClusterSpec, componentSpec *ComponentSpec) ComponentAccessor {
+func buildDMClusterComponentAccessor(c Component, dc *DMCluster, componentSpec *ComponentSpec) ComponentAccessor {
+	spec := &dc.Spec
 	return &componentAccessorImpl{
-		imagePullPolicy:      spec.ImagePullPolicy,
-		imagePullSecrets:     spec.ImagePullSecrets,
-		hostNetwork:          spec.HostNetwork,
-		affinity:             spec.Affinity,
-		priorityClassName:    spec.PriorityClassName,
-		schedulerName:        spec.SchedulerName,
-		clusterNodeSelector:  spec.NodeSelector,
-		clusterAnnotations:   spec.Annotations,
-		tolerations:          spec.Tolerations,
-		configUpdateStrategy: ConfigUpdateStrategyRollingUpdate,
-		podSecurityContext:   spec.PodSecurityContext,
+		name:                      dc.Name,
+		kind:                      DMClusterKind,
+		component:                 c,
+		imagePullPolicy:           spec.ImagePullPolicy,
+		imagePullSecrets:          spec.ImagePullSecrets,
+		hostNetwork:               spec.HostNetwork,
+		affinity:                  spec.Affinity,
+		priorityClassName:         spec.PriorityClassName,
+		schedulerName:             spec.SchedulerName,
+		clusterNodeSelector:       spec.NodeSelector,
+		clusterAnnotations:        spec.Annotations,
+		tolerations:               spec.Tolerations,
+		configUpdateStrategy:      ConfigUpdateStrategyRollingUpdate,
+		podSecurityContext:        spec.PodSecurityContext,
+		topologySpreadConstraints: spec.TopologySpreadConstraints,
 
 		ComponentSpec: componentSpec,
 	}
@@ -287,52 +383,47 @@ func buildDMClusterComponentAccessor(spec *DMClusterSpec, componentSpec *Compone
 // BaseDiscoverySpec returns the base spec of discovery component
 func (tc *TidbCluster) BaseDiscoverySpec() ComponentAccessor {
 	// all configs follow global one
-	return buildTidbClusterComponentAccessor(&tc.Spec, nil)
+	return buildTidbClusterComponentAccessor(ComponentDiscovery, tc, nil)
 }
 
 // BaseTiDBSpec returns the base spec of TiDB servers
 func (tc *TidbCluster) BaseTiDBSpec() ComponentAccessor {
-	return buildTidbClusterComponentAccessor(&tc.Spec, &tc.Spec.TiDB.ComponentSpec)
+	return buildTidbClusterComponentAccessor(ComponentTiDB, tc, &tc.Spec.TiDB.ComponentSpec)
 }
 
 // BaseTiKVSpec returns the base spec of TiKV servers
 func (tc *TidbCluster) BaseTiKVSpec() ComponentAccessor {
-	return buildTidbClusterComponentAccessor(&tc.Spec, &tc.Spec.TiKV.ComponentSpec)
+	return buildTidbClusterComponentAccessor(ComponentTiKV, tc, &tc.Spec.TiKV.ComponentSpec)
 }
 
 // BaseTiFlashSpec returns the base spec of TiFlash servers
 func (tc *TidbCluster) BaseTiFlashSpec() ComponentAccessor {
-	return buildTidbClusterComponentAccessor(&tc.Spec, &tc.Spec.TiFlash.ComponentSpec)
+	return buildTidbClusterComponentAccessor(ComponentTiFlash, tc, &tc.Spec.TiFlash.ComponentSpec)
 }
 
 // BaseTiCDCSpec returns the base spec of TiCDC servers
 func (tc *TidbCluster) BaseTiCDCSpec() ComponentAccessor {
-	return buildTidbClusterComponentAccessor(&tc.Spec, &tc.Spec.TiCDC.ComponentSpec)
+	return buildTidbClusterComponentAccessor(ComponentTiCDC, tc, &tc.Spec.TiCDC.ComponentSpec)
 }
 
 // BasePDSpec returns the base spec of PD servers
 func (tc *TidbCluster) BasePDSpec() ComponentAccessor {
-	return buildTidbClusterComponentAccessor(&tc.Spec, &tc.Spec.PD.ComponentSpec)
+	return buildTidbClusterComponentAccessor(ComponentPD, tc, &tc.Spec.PD.ComponentSpec)
 }
 
-// BasePumpSpec returns two results:
-// 1. the base pump spec, if exists.
-// 2. whether the base pump spec exists.
-func (tc *TidbCluster) BasePumpSpec() (ComponentAccessor, bool) {
-	if tc.Spec.Pump == nil {
-		return nil, false
-	}
-	return buildTidbClusterComponentAccessor(&tc.Spec, &tc.Spec.Pump.ComponentSpec), true
+// BasePumpSpec returns the base spec of Pump:
+func (tc *TidbCluster) BasePumpSpec() ComponentAccessor {
+	return buildTidbClusterComponentAccessor(ComponentPump, tc, &tc.Spec.Pump.ComponentSpec)
 }
 
 func (dc *DMCluster) BaseDiscoverySpec() ComponentAccessor {
-	return buildDMClusterComponentAccessor(&dc.Spec, nil)
+	return buildDMClusterComponentAccessor(ComponentDMDiscovery, dc, nil)
 }
 
 func (dc *DMCluster) BaseMasterSpec() ComponentAccessor {
-	return buildDMClusterComponentAccessor(&dc.Spec, &dc.Spec.Master.ComponentSpec)
+	return buildDMClusterComponentAccessor(ComponentDMMaster, dc, &dc.Spec.Master.ComponentSpec)
 }
 
 func (dc *DMCluster) BaseWorkerSpec() ComponentAccessor {
-	return buildDMClusterComponentAccessor(&dc.Spec, &dc.Spec.Worker.ComponentSpec)
+	return buildDMClusterComponentAccessor(ComponentDMWorker, dc, &dc.Spec.Worker.ComponentSpec)
 }
