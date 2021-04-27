@@ -594,7 +594,6 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 		},
 	}
 
-	//add readiness probe
 	var probeHandler core.Handler
 	{
 		readyPath := "/api/health"
@@ -604,22 +603,25 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 		}
 
 	}
-
+	//add readiness probe
 	readinessProbe := &core.Probe{
 		Handler:             probeHandler,
-		TimeoutSeconds:      30,
+		TimeoutSeconds:      5,
 		PeriodSeconds:       10,
 		SuccessThreshold:    1,
 		InitialDelaySeconds: 30,
 	}
+	c.ReadinessProbe = readinessProbe
+
+	//add liveness probe
 	livenessProbe := &core.Probe{
-		Handler:          probeHandler,
-		TimeoutSeconds:   1,
-		PeriodSeconds:    10,
-		SuccessThreshold: 1,
+		Handler:             probeHandler,
+		TimeoutSeconds:      5,
+		PeriodSeconds:       10,
+		SuccessThreshold:    1,
+		InitialDelaySeconds: 30,
 	}
 
-	c.ReadinessProbe = readinessProbe
 	c.LivenessProbe = livenessProbe
 
 	if monitor.Spec.Grafana.ImagePullPolicy != nil {
