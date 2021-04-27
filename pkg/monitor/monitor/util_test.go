@@ -957,6 +957,17 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 					},
 				},
 				Resources: corev1.ResourceRequirements{},
+				ReadinessProbe: &corev1.Probe{
+					Handler: corev1.Handler{
+						HTTPGet: &corev1.HTTPGetAction{
+							Path: "/-/ready",
+							Port: intstr.FromInt(9090),
+						},
+					},
+					TimeoutSeconds:   3,
+					PeriodSeconds:    5,
+					FailureThreshold: 120, // Allow up to 10m on startup for data recovery
+				},
 				VolumeMounts: []corev1.VolumeMount{
 					{
 						Name:      "prometheus-config-out",
@@ -1099,6 +1110,30 @@ func TestGetMonitorGrafanaContainer(t *testing.T) {
 						Name:      "grafana-dashboard",
 						MountPath: "/grafana-dashboard-definitions/tidb",
 					},
+				},
+				ReadinessProbe: &corev1.Probe{
+					Handler: corev1.Handler{
+						HTTPGet: &corev1.HTTPGetAction{
+							Path: "/api/health",
+							Port: intstr.FromInt(3000),
+						},
+					},
+					TimeoutSeconds:   5,
+					PeriodSeconds:    10,
+					SuccessThreshold: 1,
+				},
+				LivenessProbe: &corev1.Probe{
+					Handler: corev1.Handler{
+						HTTPGet: &corev1.HTTPGetAction{
+							Path: "/api/health",
+							Port: intstr.FromInt(3000),
+						},
+					},
+					TimeoutSeconds:      5,
+					FailureThreshold:    10,
+					PeriodSeconds:       10,
+					SuccessThreshold:    1,
+					InitialDelaySeconds: 30,
 				},
 			},
 		},

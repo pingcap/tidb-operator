@@ -479,6 +479,25 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 		commands = append(commands, "--storage.tsdb.max-block-duration=2h")
 		commands = append(commands, "--storage.tsdb.min-block-duration=2h")
 	}
+
+	//Add readiness probe. LivenessProbe probe will affect prom wal replay,ref: https://github.com/prometheus-operator/prometheus-operator/pull/3502
+	var readinessProbeHandler core.Handler
+	{
+		readyPath := "/-/ready"
+		readinessProbeHandler.HTTPGet = &core.HTTPGetAction{
+			Path: readyPath,
+			Port: intstr.FromInt(9090),
+		}
+
+	}
+	readinessProbe := &core.Probe{
+		Handler:          readinessProbeHandler,
+		TimeoutSeconds:   3,
+		PeriodSeconds:    5,
+		FailureThreshold: 120, // Allow up to 10m on startup for data recovery
+	}
+	c.ReadinessProbe = readinessProbe
+
 	c.Command = append(c.Command, strings.Join(commands, " "))
 	if monitor.Spec.Prometheus.ImagePullPolicy != nil {
 		c.ImagePullPolicy = *monitor.Spec.Prometheus.ImagePullPolicy
@@ -555,6 +574,37 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 			},
 		},
 	}
+
+	var probeHandler core.Handler
+	{
+		readyPath := "/api/health"
+		probeHandler.HTTPGet = &core.HTTPGetAction{
+			Path: readyPath,
+			Port: intstr.FromInt(3000),
+		}
+
+	}
+	//add readiness probe
+	readinessProbe := &core.Probe{
+		Handler:          probeHandler,
+		TimeoutSeconds:   5,
+		PeriodSeconds:    10,
+		SuccessThreshold: 1,
+	}
+	c.ReadinessProbe = readinessProbe
+
+	//add liveness probe
+	livenessProbe := &core.Probe{
+		Handler:             probeHandler,
+		TimeoutSeconds:      5,
+		FailureThreshold:    10,
+		PeriodSeconds:       10,
+		SuccessThreshold:    1,
+		InitialDelaySeconds: 30,
+	}
+
+	c.LivenessProbe = livenessProbe
+
 	if monitor.Spec.Grafana.ImagePullPolicy != nil {
 		c.ImagePullPolicy = *monitor.Spec.Grafana.ImagePullPolicy
 	}
