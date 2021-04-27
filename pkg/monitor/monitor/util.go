@@ -480,7 +480,7 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 		commands = append(commands, "--storage.tsdb.min-block-duration=2h")
 	}
 
-	//Add readiness probe. LivenessProbe probe will affect prom wal replay,ref :prometheus-operator/prometheus-operator#3502
+	//Add readiness probe. LivenessProbe probe will affect prom wal replay,ref: https://github.com/prometheus-operator/prometheus-operator/pull/3502
 	var readinessProbeHandler core.Handler
 	{
 		readyPath := "/-/ready"
