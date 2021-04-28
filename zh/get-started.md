@@ -710,6 +710,8 @@ Check Table Before Drop: false
 kubectl delete tc basic -n tidb-cluster
 ```
 
+此命令中，`tc` 为 tidbclusters 的简称。
+
 ### 删除 TiDB Monitor
 
 {{< copyable "shell-regular" >}}
