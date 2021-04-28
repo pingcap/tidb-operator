@@ -1958,7 +1958,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				}
 				ginkgo.It(fmt.Sprintf("should work for %s", comp), func() {
 					ginkgo.By("Deploy initial tc")
-					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("scale-out-scale-in-%s", strings.ToLower(string(comp))), utilimage.TiDBV4)
+					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("scale-out-scale-in-%s", comp), utilimage.TiDBV4)
 					switch comp {
 					case v1alpha1.PDMemberType:
 						tc.Spec.PD.Replicas = replicasLarge
@@ -1983,14 +1983,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					})
 					framework.ExpectNoError(err, "failed to scale in %s for TidbCluster %s/%s", comp, ns, tc.Name)
 					ginkgo.By(fmt.Sprintf("Wait for %s to be in ScalePhase", comp))
-					switch comp {
-					case v1alpha1.PDMemberType:
-						utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.PDMemberType, v1alpha1.ScalePhase, 3*time.Minute, 10*time.Second)
-					case v1alpha1.TiKVMemberType:
-						utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.TiKVMemberType, v1alpha1.ScalePhase, 3*time.Minute, 10*time.Second)
-					case v1alpha1.TiDBMemberType:
-						utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.TiDBMemberType, v1alpha1.ScalePhase, 3*time.Minute, 10*time.Second)
-					}
+					utiltc.MustWaitForComponentPhase(cli, tc, comp, v1alpha1.ScalePhase, 3*time.Minute, 10*time.Second)
 					log.Logf(fmt.Sprintf("%s is in ScalePhase", comp))
 					ginkgo.By("Wait for tc ready")
 					err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 10*time.Second)
@@ -2002,14 +1995,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					err = wait.Poll(10*time.Second, 3*time.Minute, func() (done bool, err error) {
 						for ordinal := replicasSmall; ordinal < replicasLarge; ordinal++ {
 							var pvcSelector labels.Selector
-							switch comp {
-							case v1alpha1.PDMemberType:
-								pvcSelector, err = member.GetPVCSelectorForPod(tc, v1alpha1.PDMemberType, int32(ordinal))
-							case v1alpha1.TiKVMemberType:
-								pvcSelector, err = member.GetPVCSelectorForPod(tc, v1alpha1.TiKVMemberType, int32(ordinal))
-							case v1alpha1.TiDBMemberType:
-								pvcSelector, err = member.GetPVCSelectorForPod(tc, v1alpha1.TiDBMemberType, int32(ordinal))
-							}
+							pvcSelector, err = member.GetPVCSelectorForPod(tc, comp, int32(ordinal))
 							framework.ExpectNoError(err, "failed to get PVC selector for tc %s/%s", tc.GetNamespace(), tc.GetName())
 							pvcs, err := c.CoreV1().PersistentVolumeClaims(ns).List(metav1.ListOptions{LabelSelector: pvcSelector.String()})
 							framework.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
@@ -2020,7 +2006,6 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 								annotations := pvc.GetObjectMeta().GetAnnotations()
 								log.Logf("pvc annotations: %+v", annotations)
 								_, ok := annotations["tidb.pingcap.com/pvc-defer-deleting"]
-								// framework.ExpectEqual(ok, true, "expect PVC %s/%s to have annotation tidb.pingcap.com/pvc-defer-deleting", pvc.GetNamespace(), pvc.GetName())
 								if !ok {
 									log.Logf("PVC %s/%s does not have annotation tidb.pingcap.com/pvc-defer-deleting", pvc.GetNamespace(), pvc.GetName())
 									return false, nil
@@ -2046,14 +2031,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					})
 					framework.ExpectNoError(err, "failed to scale out %s for TidbCluster %s/%s", comp, ns, tc.Name)
 					ginkgo.By(fmt.Sprintf("Wait for %s to be in ScalePhase", comp))
-					switch comp {
-					case v1alpha1.PDMemberType:
-						utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.PDMemberType, v1alpha1.ScalePhase, 3*time.Minute, 10*time.Second)
-					case v1alpha1.TiKVMemberType:
-						utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.TiKVMemberType, v1alpha1.ScalePhase, 3*time.Minute, 10*time.Second)
-					case v1alpha1.TiDBMemberType:
-						utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.TiDBMemberType, v1alpha1.ScalePhase, 3*time.Minute, 10*time.Second)
-					}
+					utiltc.MustWaitForComponentPhase(cli, tc, comp, v1alpha1.ScalePhase, 3*time.Minute, 10*time.Second)
 					log.Logf(fmt.Sprintf("%s is in ScalePhase", comp))
 					ginkgo.By("Wait for tc ready")
 					err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 10*time.Second)
@@ -2062,14 +2040,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					ginkgo.By(fmt.Sprintf("Check PVCs are recreated for newly scaled out %s", comp))
 					for ordinal := replicasSmall; ordinal < replicasLarge; ordinal++ {
 						var pvcSelector labels.Selector
-						switch comp {
-						case v1alpha1.PDMemberType:
-							pvcSelector, err = member.GetPVCSelectorForPod(tc, v1alpha1.PDMemberType, int32(ordinal))
-						case v1alpha1.TiKVMemberType:
-							pvcSelector, err = member.GetPVCSelectorForPod(tc, v1alpha1.TiKVMemberType, int32(ordinal))
-						case v1alpha1.TiDBMemberType:
-							pvcSelector, err = member.GetPVCSelectorForPod(tc, v1alpha1.TiDBMemberType, int32(ordinal))
-						}
+						pvcSelector, err = member.GetPVCSelectorForPod(tc, comp, int32(ordinal))
 						framework.ExpectNoError(err, "failed to get PVC selector for tc %s/%s", tc.GetNamespace(), tc.GetName())
 						pvcs, err := c.CoreV1().PersistentVolumeClaims(ns).List(metav1.ListOptions{LabelSelector: pvcSelector.String()})
 						framework.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
@@ -2232,7 +2203,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
 			framework.ExpectNoError(err, "Expected create tidbcluster")
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
-			framework.ExpectNoError(err, "Expected get tidbcluster")
+			framework.ExpectNoError(err, "Expected tidbcluster ready")
 
 			ginkgo.By("Scale in tikv to 2 replicas")
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
