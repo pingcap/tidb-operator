@@ -472,7 +472,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/enable-tls-between-components/']
         cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=internal importer-server.json | cfssljson -bare importer-server
         ```
 
-    - TiDB Lightning Server 端证书      
+    - TiDB Lightning Server 端证书
 
         如需要[使用 TiDB Lightning 恢复 Kubernetes 上的集群数据](restore-data-using-tidb-lightning.md)，则需要为其中的 TiDB Lightning 组件生成如下的 Server 端证书。
 
@@ -677,7 +677,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/enable-tls-between-components/']
 
     其中 `${cluster_name}` 为集群的名字，上面的文件创建三个对象：
 
-    - 一个 SelfSigned 类型的 Isser 对象（用于生成 CA 类型 Issuer 所需要的 CA 证书）;
+    - 一个 SelfSigned 类型的 Issuer 对象（用于生成 CA 类型 Issuer 所需要的 CA 证书）;
     - 一个 Certificate 对象，`isCa` 属性设置为 `true`；
     - 一个可以用于颁发 TiDB 组件间 TLS 证书的 Issuer。
 
@@ -693,7 +693,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/enable-tls-between-components/']
 
     在 `cert-manager` 中，Certificate 资源表示证书接口，该证书将由上面创建的 Issuer 颁发并保持更新。
 
-    根据官网文档：[Enable TLS Authentication | TiDB Documentation](https://pingcap.com/docs/v3.0/how-to/secure/enable-tls-between-components/)，我们需要为每个组件创建一个 Server 端证书，并且为他们的 Client 创建一套公用的 Client 端证书。
+    根据官网文档：[Enable TLS Authentication](https://docs.pingcap.com/zh/tidb/stable/enable-tls-between-components)，我们需要为每个组件创建一个 Server 端证书，并且为他们的 Client 创建一套公用的 Client 端证书。
 
     - PD 组件的 Server 端证书。
 

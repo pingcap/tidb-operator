@@ -703,7 +703,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
     In `cert-manager`, the Certificate resource represents the certificate interface. This certificate is issued and updated by the Issuer created in Step 2.
 
-    According to [Enable TLS Authentication | TiDB Documentation](https://pingcap.com/docs/stable/how-to/secure/enable-tls-between-components/), each component needs a server-side certificate, and all components need a shared client-side certificate for their clients.
+    According to [Enable TLS Authentication](https://docs.pingcap.com/tidb/stable/enable-tls-between-components), each component needs a server-side certificate, and all components need a shared client-side certificate for their clients.
 
     - PD
 
