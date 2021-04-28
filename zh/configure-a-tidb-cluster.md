@@ -528,7 +528,7 @@ Kubernetes 在删除 TiDB Pod 的同时，也会把该 TiDB 节点从 Service �
         mountPath: ${mountPath}
 ```
 
-#### Spec.tidb.additionalVolumes 配置
+#### spec.tidb.additionalVolumes 配置（从 v1.1.8 版本开始支持）
 
 下面以 NFS 为例配置 `spec.tidb.additionalVolumes`。TiDB Operator 将使用持久卷 `${volumeName}` 存储慢查询日志，日志文件路径为：`${mountPath}/${volumeName}`。具体支持的持久卷类型可参考 [Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#types-of-persistent-volumes)。
 

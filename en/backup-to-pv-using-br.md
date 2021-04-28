@@ -9,7 +9,9 @@ This document describes how to back up the data of a TiDB cluster in Kubernetes 
 
 PVs in this documentation can be any [Kubernetes supported Persistent Volume types](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#types-of-persistent-volumes). This document uses NFS as an example PV type.
 
-The backup method described in this document is implemented using Custom Resource Definition (CRD) in TiDB Operator v1.1 or later versions.
+> **Note:**
+>
+> The backup method described in this document is supported starting from TiDB Operator v1.1.8.
 
 ## Ad-hoc backup
 

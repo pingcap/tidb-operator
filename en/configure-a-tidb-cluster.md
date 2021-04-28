@@ -556,7 +556,7 @@ For how to configure the `spec.tidb.storageVolumes` field, refer to [Multiple di
         mountPath: ${mountPath}
 ```
 
-#### Configure using `spec.tidb.additionalVolumes`
+#### Configure using `spec.tidb.additionalVolumes` (supported starting from v1.1.8)
 
 In the following example, NFS is used as the storage, and TiDB Operator uses the `${volumeName}` PV to store slow logs. The log file path is `${mountPath}/${volumeName}`.
 
