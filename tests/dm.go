@@ -566,10 +566,10 @@ func CheckDMData(fw portforward.PortForward, ns string, sourceCount int) error {
 					return err
 				}
 
+				log.Logf("got upstream row count (%d) and downstream row count (%d) for table %s", upCount, downCount, tbl)
 				if upCount == downCount {
 					return nil
 				}
-
 				return fmt.Errorf("upstream row count (%d) and downstream row count (%d) for table %s are not equal", upCount, downCount, tbl)
 			})
 		}
