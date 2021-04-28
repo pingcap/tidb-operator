@@ -196,6 +196,14 @@ minikube start --docker-env https_proxy=http://127.0.0.1:1086 \
 
 See [minikube setup](https://kubernetes.io/docs/setup/minikube/) for more options to configure your virtual machine and Kubernetes cluster.
 
+To interact with the cluster, you can use `kubectl`, which is included as a sub-command in `minikube`. To make the `kubectl` command available, you can either add the following alias definition command to your shell profile or execute the following alias definition command after opening a new shell.
+
+{{< copyable "shell-regular" >}}
+
+```
+alias kubectl='minikube kubectl --'
+```
+
 Execute this command to check the status of your Kubernetes and make sure `kubectl` can connect to it:
 
 {{< copyable "shell-regular" >}}
