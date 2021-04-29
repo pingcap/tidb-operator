@@ -75,6 +75,10 @@ Scheduling rule 3: When you perform a rolling update to a TiDB instance, the ins
 
 This ensures stable scheduling and is helpful for the scenario of manually configuring Node IP and NodePort to the LB backend. It can reduce the impact on the cluster during the rolling update because you do not need to adjust the LB configuration when the Node IP is changed after the upgrade.
 
+> **Note:**
+>
+> This rule cannot be implemented by [`topologySpreadConstraints`](configure-a-tidb-cluster.md#use-topologyspreadconstraints-to-make-pods-evenly-spread).
+
 ## How TiDB Scheduler works
 
 ![TiDB Scheduler Overview](/media/tidb-scheduler-overview.png)

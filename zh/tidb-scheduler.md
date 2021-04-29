@@ -75,6 +75,10 @@ kubectl label nodes node1 zone=zone1
 
 这样实现了稳定调度，对于手动将 Node IP + NodePort 挂载在 LB 后端的场景比较有帮助，避免升级集群后 Node IP 发生变更时需要重新调整 LB，这样可以减少滚动更新时对集群的影响。
 
+> **注意：**
+>
+> 该规则 [`topologySpreadConstraints`](configure-a-tidb-cluster.md#通过-topologyspreadconstraints-实现-pod-均匀分布) 无法实现。
+
 ## 工作原理
 
 ![TiDB Scheduler 工作原理](/media/tidb-scheduler-overview.png)
