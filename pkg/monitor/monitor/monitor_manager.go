@@ -19,8 +19,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
-
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	v1alpha1validation "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/validation"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -29,6 +27,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/manager/meta"
 	"github.com/pingcap/tidb-operator/pkg/monitor"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	utildiscovery "github.com/pingcap/tidb-operator/pkg/util/discovery"
 	appsv1 "k8s.io/api/apps/v1"
@@ -678,45 +677,36 @@ func (m *MonitorManager) syncDashboardMetricStorage(tc *v1alpha1.TidbCluster, tm
 	if err != nil {
 		return err
 	}
-	if tc.IsTLSClusterEnabled() {
-		defer pdEtcdClient.Close()
-	}
-
-	grafanaExist := tm.Spec.Grafana != nil
+	defer pdEtcdClient.Close()
 	// sync prometheus key
-	err = syncComponent(true, tm, prometheusComponent, 9090, pdEtcdClient)
+	err = syncComponent(tm, prometheusComponent, 9090, pdEtcdClient)
 	if err != nil {
 		return err
 	}
 
 	// sync grafana key
-	err = syncComponent(grafanaExist, tm, grafanaComponent, 3000, pdEtcdClient)
-	if err != nil {
-		return err
+	if tm.Spec.Grafana != nil {
+		err = syncComponent(tm, grafanaComponent, 3000, pdEtcdClient)
+		if err != nil {
+			return err
+		}
 	}
+
 	return nil
 }
 
-func syncComponent(exist bool, tm *v1alpha1.TidbMonitor, componentName string, port int, etcdClient pdapi.PDEtcdClient) error {
+func syncComponent(tm *v1alpha1.TidbMonitor, componentName string, port int, etcdClient pdapi.PDEtcdClient) error {
 	key := buildComponentKey(componentName)
-	if exist {
-		v, err := buildComponentValue(tm, componentName, port)
-		if err != nil {
-			klog.Error(err.Error())
-			return err
-		}
-		//10 min
-		err = etcdClient.PutTTLKey(key, v, 600)
-		if err != nil {
-			klog.Error(err.Error())
-			return err
-		}
-	} else {
-		err := etcdClient.DeleteKey(key)
-		if err != nil {
-			klog.Error(err.Error())
-			return err
-		}
+	v, err := buildComponentValue(tm, componentName, port)
+	if err != nil {
+		klog.Error(err.Error())
+		return err
+	}
+	//10 min
+	err = etcdClient.PutTTLKey(key, v, 600)
+	if err != nil {
+		klog.Error(err.Error())
+		return err
 	}
 	return nil
 }

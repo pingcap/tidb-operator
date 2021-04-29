@@ -98,8 +98,11 @@ func (c *pdEtcdClient) PutKey(key, value string) error {
 func (c *pdEtcdClient) PutTTLKey(key, value string, ttl int64) error {
 	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
-	lease, _ := c.etcdClient.Grant(ctx, ttl)
-	_, err := c.etcdClient.Put(ctx, key, value, etcdclientv3.WithLease(lease.ID))
+	lease, err := c.etcdClient.Grant(ctx, ttl)
+	if err != nil {
+		return err
+	}
+	_, err = c.etcdClient.Put(ctx, key, value, etcdclientv3.WithLease(lease.ID))
 	return err
 }
 
