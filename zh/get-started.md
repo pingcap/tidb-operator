@@ -196,6 +196,14 @@ minikube start --docker-env https_proxy=http://127.0.0.1:1086 \
 
 参考 [minikube setup](https://kubernetes.io/docs/setup/minikube/) 查看配置虚拟机和 Kubernetes 集群的更多选项。
 
+你可以使用 `minikube` 的子命令 `kubectl` 来进行集群操作。要使 `kubectl` 命令生效，你需要在 shell 配置文件中添加以下别名设置命令，或者在打开一个新的 shell 后执行以下别名设置命令。
+
+{{< copyable "shell-regular" >}}
+
+```
+alias kubectl='minikube kubectl --'
+```
+
 执行以下命令检查集群状态，并确保可以通过 `kubectl` 访问集群:
 
 {{< copyable "shell-regular" >}}
