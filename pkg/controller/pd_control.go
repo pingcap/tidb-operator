@@ -20,16 +20,15 @@ import (
 
 // getPDClientFromService gets the pd client from the TidbCluster
 func getPDClientFromService(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) pdapi.PDClient {
-	if tc.IsHeterogeneous() && len(tc.Spec.ClusterDomain) > 0{
+	if tc.IsHeterogeneous() && len(tc.Spec.ClusterDomain) > 0 {
 		return pdControl.GetClusterRefPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.Spec.Cluster.ClusterDomain, tc.IsTLSClusterEnabled())
-	} else if tc.IsHeterogeneous() && len(tc.Spec.ClusterDomain) == 0{
+	} else if tc.IsHeterogeneous() && len(tc.Spec.ClusterDomain) == 0 {
 		return pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
 	} else if len(tc.Spec.ClusterDomain) > 0 {
 		return pdControl.GetClusterRefPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.ClusterDomain, tc.IsTLSClusterEnabled())
 	}
 	return pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled())
 }
-
 
 // GetPDClient tries to return an available PDClient
 // If the pdClient built from the PD service name is unavailable, try to
