@@ -2118,7 +2118,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 						}
 						return nil
 					})
-					framework.ExpectNoError(err, "failed to scale in %s for TidbCluster %s/%s", comp, ns, tc.Name)
+					framework.ExpectNoError(err, "failed to upgrade %s for TidbCluster %s/%s", comp, ns, tc.Name)
 
 					ginkgo.By("Wait for tc ready")
 					err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
