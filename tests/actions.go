@@ -3637,6 +3637,7 @@ func (oa *OperatorActions) WaitForDmClusterReady(dc *v1alpha1.DMCluster, timeout
 		log.Logf("dm master members are ready for dc %q", dc.Name)
 		if b := oa.dmWorkerMembersReadyFn(local); !b {
 			log.Logf("dm worker memebers are not ready for dc %q", dc.Name)
+			return false, nil
 		}
 		log.Logf("dm worker members are ready for dc %q", dc.Name)
 
