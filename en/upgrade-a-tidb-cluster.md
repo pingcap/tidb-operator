@@ -29,7 +29,7 @@ If the TiDB cluster is deployed directly using TidbCluster CR, or deployed using
 
     The `version` field has following formats:
 
-    - `spec.version`: the format is `imageTag`, such as `v4.0.10`
+    - `spec.version`: the format is `imageTag`, such as `v5.0.1`
 
     - `spec.<pd/tidb/tikv/pump/tiflash/ticdc>.version`: the format is `imageTag`, such as `v3.1.0`
 
@@ -112,7 +112,7 @@ If you continue to manage your cluster using Helm, refer to the following steps 
     >
     > If you want to upgrade to Enterprise Edition, set the value of `<tidb/pd/tikv>.image` to the enterprise image.
     >
-    > For example, change `pd.image` from `pingcap/pd:v4.0.10` to `pingcap/pd-enterprise:v4.0.10`.
+    > For example, change `pd.image` from `pingcap/pd:v5.0.1` to `pingcap/pd-enterprise:v5.0.1`.
 
 2. Run the `helm upgrade` command:
 
