@@ -1706,12 +1706,7 @@ func (oa *OperatorActions) dmWorkerMembersReadyFn(dc *v1alpha1.DMCluster) bool {
 		}
 	}
 
-	workerServiceName := controller.DMWorkerMemberName(dcName)
 	workerPeerServiceName := controller.DMWorkerPeerMemberName(dcName)
-	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(workerServiceName, metav1.GetOptions{}); err != nil {
-		log.Logf("failed to get service: %s/%s", ns, workerServiceName)
-		return false
-	}
 	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(workerPeerServiceName, metav1.GetOptions{}); err != nil {
 		log.Logf("failed to get peer service: %s/%s", ns, workerPeerServiceName)
 		return false
