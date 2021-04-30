@@ -20123,18 +20123,6 @@ TiCDCStatus
 </tr>
 <tr>
 <td>
-<code>monitor</code></br>
-<em>
-<a href="#tidbmonitorref">
-TidbMonitorRef
-</a>
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
 <code>auto-scaler</code></br>
 <em>
 <a href="#tidbclusterautoscalerref">
@@ -20373,10 +20361,6 @@ InitializePhase
 </tbody>
 </table>
 <h3 id="tidbmonitorref">TidbMonitorRef</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#tidbclusterstatus">TidbClusterStatus</a>)
-</p>
 <p>
 <p>TidbMonitorRef reference to a TidbMonitor</p>
 </p>
