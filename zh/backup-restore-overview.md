@@ -43,6 +43,10 @@ TiDB Operator 1.1 及以上版本推荐使用基于 CustomResourceDefinition (CR
 ### 通用字段介绍
 
 * `.spec.metadata.namespace`：`Backup` CR 所在的 namespace。
+* `.spec.toolImage`：用于指定 `Backup` 使用的工具镜像。
+    - 使用 BR 备份时，可以用该字段指定 BR 的版本，例如，`spec.toolImage: pingcap/br:v5.0.1`。如果不指定，默认使用 `pingcap/br:${tikv_version}` 进行备份。
+    - 使用 Dumpling 备份时，可以用该字段指定 Dumpling 的版本，例如， `spec.toolImage: pingcap/dumpling:v5.0.1`。如果不指定，默认使用 [Backup Manager Dockerfile](https://github.com/pingcap/tidb-operator/blob/master/images/tidb-backup-manager/Dockerfile) 文件中 `TOOLKIT_VERSION` 指定的 Dumpling 版本进行备份。           
+    - TiDB Operator 从 v1.1.9 版本起支持这项配置。
 * `.spec.tikvGCLifeTime`：备份中的临时 `tikv_gc_life_time` 时间设置，默认为 72h。
 
     在备份开始之前，若 TiDB 集群的 `tikv_gc_life_time` 小于用户设置的 `spec.tikvGCLifeTime`，为了保证备份的数据不被 TiKV GC 掉，TiDB Operator 会在备份前[调节 `tikv_gc_life_time`](https://docs.pingcap.com/zh/tidb/stable/dumpling-overview#导出大规模数据时的-tidb-gc-设置) 为 `spec.tikvGCLifeTime`。
@@ -112,7 +116,7 @@ TiDB Operator 1.1 及以上版本推荐使用基于 CustomResourceDefinition (CR
 * `.spec.br.concurrency`：备份时每一个 TiKV 进程使用的线程数。备份时默认为 4，恢复时默认为 128。
 * `.spec.br.rateLimit`：是否对流量进行限制。单位为 MB/s，例如设置为 `4` 代表限速 4 MB/s，默认不限速。
 * `.spec.br.checksum`：是否在备份结束之后对文件进行验证。默认为 `true`。
-* `.spec.br.timeAgo`：备份 timeAgo 以前的数据，默认为空（备份当前数据），[支持](https://golang.org/pkg/time/#ParseDuration) "1.5h", "2h45m" 等数据。
+* `.spec.br.timeAgo`：备份 timeAgo 以前的数据，默认为空（备份当前数据），[支持](https://golang.org/pkg/time/#ParseDuration) "1.5h"，"2h45m" 等数据。
 * `.spec.br.sendCredToTikv`：BR 进程是否将自己的 AWS 权限 或者 GCP 权限传输给 TiKV 进程。默认为 `true`。
 * `.spec.br.options`：BR 工具支持的额外参数，需要以字符串数组的形式传入。自 v1.1.6 版本起支持该参数。可用于指定 `lastbackupts` 以进行增量备份。
 
@@ -122,7 +126,7 @@ TiDB Operator 1.1 及以上版本推荐使用基于 CustomResourceDefinition (CR
 
     更多支持的兼容 S3 的 `provider` 如下：
 
-    * `alibaba`：Alibaba Cloud Object Storage System (OSS), formerly Aliyun
+    * `alibaba`：Alibaba Cloud Object Storage System (OSS)，formerly Aliyun
     * `digitalocean`：Digital Ocean Spaces
     * `dreamhost`：Dreamhost DreamObjects
     * `ibmcos`：IBM COS S3
@@ -211,6 +215,10 @@ TiDB Operator 1.1 及以上版本推荐使用基于 CustomResourceDefinition (CR
 为了对 Kubernetes 上的 TiDB 集群进行数据恢复，用户可以通过创建一个自定义的 `Restore` Custom Resource (CR) 对象来描述一次恢复，具体恢复过程可参考 [备份与恢复简介](#备份与恢复简介)中列出的文档。以下介绍 Restore CR 各个字段的具体含义。
 
 * `.spec.metadata.namespace`：`Restore` CR 所在的 namespace。
+* `.spec.toolImage`：用于指定 `Restore` 使用的工具镜像。
+    - 使用 BR 恢复时，可以用该字段指定 BR 的版本。例如，`spec.toolImage: pingcap/br:v5.0.1`。如果不指定，默认使用 `pingcap/br:${tikv_version}` 进行恢复。
+    - 使用 Lightning 恢复时，可以用该字段指定 Lightning 的版本，例如`spec.toolImage: pingcap/lightning:v5.0.1`。如果不指定，默认使用 [Backup Manager Dockerfile](https://github.com/pingcap/tidb-operator/blob/master/images/tidb-backup-manager/Dockerfile) 文件中 `TOOLKIT_VERSION` 指定的 Lightning 版本进行恢复。
+    - TiDB Operator 从 v1.1.9 版本起支持这项配置。
 * `.spec.to.host`：待恢复 TiDB 集群的访问地址。
 * `.spec.to.port`：待恢复 TiDB 集群的访问端口。
 * `.spec.to.user`：待恢复 TiDB 集群的访问用户。
