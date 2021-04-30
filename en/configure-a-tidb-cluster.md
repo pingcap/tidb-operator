@@ -541,6 +541,10 @@ Configure the `TidbCluster` CR as the following example. In the example, TiDB Op
 
 For how to configure the `spec.tidb.storageVolumes` field, refer to [Multiple disks mounting](#multiple-disks-mounting).
 
+> **Warning:
+>
+> You need to configure `storageVolumes` before creating the cluster. After the cluster is created, adding or removing `storageVolumes` is no longer supported. For the `storageVolumes` already configured, except for increasing `storageVolume.storageSize`, other modifications are not supported. To increase `storageVolume.storageSize`, you need to make sure that the corresponding StorageClass supports [dynamic expansion](https://kubernetes.io/blog/2018/07/12/resizing-persistent-volumes-using-kubernetes/).
+
 {{< copyable "" >}}
 
 ```yaml
