@@ -169,9 +169,29 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		m.deps.Recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
 		return err
 	}
+
+	err = m.syncTidbMonitorStatus(monitor)
+	if err != nil {
+		klog.Errorf("tm[%s/%s]'s tidbmonitor failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
+		return err
+	}
+
 	klog.V(4).Infof("tm[%s/%s]'s ingress synced", monitor.Namespace, monitor.Name)
 
 	return nil
+}
+
+func (m *MonitorManager) syncTidbMonitorStatus(monitor *v1alpha1.TidbMonitor) error {
+	sts, err := m.deps.StatefulSetLister.StatefulSets(monitor.Namespace).Get(GetMonitorObjectName(monitor))
+	if err != nil {
+		return err
+	}
+	if sts == nil {
+		return nil
+	}
+	monitor.Status.StatefulSet = &sts.Status
+	return nil
+
 }
 
 func (m *MonitorManager) syncTidbMonitorService(monitor *v1alpha1.TidbMonitor) error {

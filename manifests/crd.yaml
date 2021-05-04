@@ -19214,12 +19214,26 @@ metadata:
   creationTimestamp: null
   name: tidbmonitors.pingcap.com
 spec:
+  additionalPrinterColumns:
+    - JSONPath: .status.statefulSet.conditions[?(@.type=="Ready")].status
+      name: READY
+      type: string
+    - JSONPath: .status.statefulSet.updatedReplicas
+      name: UP-TO-DATE
+      type: string
+    - JSONPath: .spec.replicas
+      description: The desired replicas number of TiKV cluster
+      name: Desire
+      type: integer
+    - JSONPath: .metadata.creationTimestamp
+      name: Age
+      type: date
   group: pingcap.com
   names:
     kind: TidbMonitor
     plural: tidbmonitors
     shortNames:
-    - tm
+      - tm
   scope: Namespaced
   validation:
     openAPIV3Schema:

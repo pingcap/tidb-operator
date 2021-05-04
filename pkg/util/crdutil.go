@@ -296,6 +296,24 @@ var (
 		Type:     "date",
 		JSONPath: ".metadata.creationTimestamp",
 	}
+	tidbMonitorAdditionalPrinterColumns      []extensionsobj.CustomResourceColumnDefinition
+	readyTiDBMonitorAdditionalPrinterColumns = extensionsobj.CustomResourceColumnDefinition{
+		Name:     "READY",
+		Type:     "string",
+		JSONPath: `.status.statefulSet.conditions[?(@.type=="Ready")].status`,
+	}
+
+	tidbMonitorDesireColumn = extensionsobj.CustomResourceColumnDefinition{
+		Name:        "Desire",
+		Type:        "integer",
+		Description: "The desired replicas number of TiKV cluster",
+		JSONPath:    ".spec.replicas",
+	}
+	statusTiDBMonitorAdditionalPrinterColumns = extensionsobj.CustomResourceColumnDefinition{
+		Name:     "UP-TO-DATE",
+		Type:     "string",
+		JSONPath: ".status.statefulSet.updatedReplicas",
+	}
 )
 
 func init() {
@@ -315,6 +333,8 @@ func init() {
 	tidbInitializerPrinterColumns = append(tidbInitializerPrinterColumns, tidbInitializerPhase, ageColumn)
 	autoScalerPrinterColumns = append(autoScalerPrinterColumns, autoScalerTiDBMaxReplicasColumn, autoScalerTiDBMinReplicasColumn,
 		autoScalerTiKVMaxReplicasColumn, autoScalerTiKVMinReplicasColumn, ageColumn)
+	tidbMonitorAdditionalPrinterColumns = append(tidbMonitorAdditionalPrinterColumns, readyTiDBMonitorAdditionalPrinterColumns,
+		statusTiDBMonitorAdditionalPrinterColumns, tidbMonitorDesireColumn, ageColumn)
 }
 
 func NewCustomResourceDefinition(crdKind v1alpha1.CrdKind, group string, labels map[string]string, validation bool) *extensionsobj.CustomResourceDefinition {
@@ -370,7 +390,7 @@ func addAdditionalPrinterColumnsForCRD(crd *extensionsobj.CustomResourceDefiniti
 	case v1alpha1.DefaultCrdKinds.BackupSchedule.Kind:
 		crd.Spec.AdditionalPrinterColumns = bksAdditionalPrinterColumns
 	case v1alpha1.DefaultCrdKinds.TiDBMonitor.Kind:
-		crd.Spec.AdditionalPrinterColumns = []extensionsobj.CustomResourceColumnDefinition{}
+		crd.Spec.AdditionalPrinterColumns = tidbMonitorAdditionalPrinterColumns
 	case v1alpha1.DefaultCrdKinds.TiDBInitializer.Kind:
 		crd.Spec.AdditionalPrinterColumns = tidbInitializerPrinterColumns
 	case v1alpha1.DefaultCrdKinds.TidbClusterAutoScaler.Kind:
