@@ -177,6 +177,8 @@ type GrafanaSpec struct {
 
 	// +optional
 	Ingress *IngressSpec `json:"ingress,omitempty"`
+	// Additional volume mounts of grafana pod.
+	AdditionalVolumeMounts []corev1.VolumeMount `json:"additionalVolumeMounts,omitempty"`
 }
 
 // ReloaderSpec is the desired state of reloader
