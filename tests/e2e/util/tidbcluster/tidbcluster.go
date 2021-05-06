@@ -15,6 +15,7 @@ package tidbcluster
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -72,6 +73,30 @@ func WaitForTidbClusterConditionReady(c versioned.Interface, ns, name string, ti
 	return WaitForTidbClusterCondition(c, ns, name, timeout, func(tc *v1alpha1.TidbCluster) (bool, error) {
 		return IsTidbClusterAvaiable(tc, minReadyDuration, time.Now()), nil
 	})
+}
+
+func MustWaitForComponentPhase(c versioned.Interface, tc *v1alpha1.TidbCluster, comp v1alpha1.MemberType, phase v1alpha1.MemberPhase, timeout, pollInterval time.Duration) {
+	var err error
+	wait.Poll(pollInterval, timeout, func() (bool, error) {
+		tc, err := c.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
+		framework.ExpectNoError(err, "failed to get TidbCluster: %v", err)
+		switch comp {
+		case v1alpha1.PDMemberType:
+			if tc.Status.PD.Phase != phase {
+				return false, nil
+			}
+		case v1alpha1.TiKVMemberType:
+			if tc.Status.TiKV.Phase != phase {
+				return false, nil
+			}
+		case v1alpha1.TiDBMemberType:
+			if tc.Status.TiDB.Phase != phase {
+				return false, nil
+			}
+		}
+		return true, nil
+	})
+	framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s .Status.%s.Phase to be %q", tc.Namespace, tc.Name, strings.ToUpper(string(comp)), phase)
 }
 
 // MustCreateTCWithComponentsReady create TidbCluster and wait for components ready
