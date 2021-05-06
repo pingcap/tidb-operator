@@ -268,7 +268,7 @@ func CheckDMMySQLReady(fw portforward.PortForward) error {
 	for i := int32(0); i < DMMySQLReplicas; i++ {
 		ordinal := i
 		eg.Go(func() error {
-			return wait.Poll(10*time.Second, 10*time.Minute, func() (done bool, err error) {
+			return wait.Poll(10*time.Second, 30*time.Minute, func() (done bool, err error) {
 				localHost, localPort, cancel, err := portforward.ForwardOnePort(
 					fw, DMMySQLNamespace, fmt.Sprintf("pod/%s-%d", DMMySQLSvcStsName, ordinal), uint16(DMMySQLPort))
 				if err != nil {

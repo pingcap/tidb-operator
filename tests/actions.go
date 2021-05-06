@@ -657,7 +657,7 @@ func (oa *OperatorActions) DeployDMTiDBOrDie() {
 		slack.NotifyAndPanic(err)
 	}
 
-	if err := oa.WaitForTidbClusterReady(tc, 10*time.Minute, 30*time.Second); err != nil {
+	if err := oa.WaitForTidbClusterReady(tc, 30*time.Minute, 30*time.Second); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }
