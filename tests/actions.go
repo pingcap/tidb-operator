@@ -1578,26 +1578,14 @@ func (oa *OperatorActions) dmMasterMembersReadyFn(dc *v1alpha1.DMCluster) bool {
 		return false
 	}
 
-	failureCount := len(dc.Status.Master.FailureMembers)
-	replicas := dc.Spec.Master.Replicas + int32(failureCount)
-	if *masterSet.Spec.Replicas != replicas {
-		log.Logf("statefulset: %s/%s .spec.Replicas(%d) != %d",
-			ns, masterSetName, *masterSet.Spec.Replicas, replicas)
+	if !dc.MasterAllPodsStarted() {
+		log.Logf("DmCluster: %s/%s not all master pods started, desired(%d) != started(%d)",
+			ns, dcName, dc.MasterStsDesiredReplicas(), dc.MasterStsActualReplicas())
 		return false
 	}
-	if masterSet.Status.ReadyReplicas != dc.Spec.Master.Replicas {
-		log.Logf("statefulset: %s/%s .status.ReadyReplicas(%d) != %d",
-			ns, masterSetName, masterSet.Status.ReadyReplicas, dc.Spec.Master.Replicas)
-		return false
-	}
-	if len(dc.Status.Master.Members) != int(dc.Spec.Master.Replicas) {
-		log.Logf("DmCluster: %s/%s .status.Master.Members count(%d) != %d",
-			ns, dcName, len(dc.Status.Master.Members), dc.Spec.Master.Replicas)
-		return false
-	}
-	if masterSet.Status.ReadyReplicas != masterSet.Status.Replicas {
-		log.Logf("statefulset: %s/%s .status.ReadyReplicas(%d) != .status.Replicas(%d)",
-			ns, masterSetName, masterSet.Status.ReadyReplicas, masterSet.Status.Replicas)
+
+	if !dc.MasterAllMembersReady() {
+		log.Logf("DmCluster: %s/%s not all master members are healthy", ns, dcName)
 		return false
 	}
 
@@ -1662,26 +1650,14 @@ func (oa *OperatorActions) dmWorkerMembersReadyFn(dc *v1alpha1.DMCluster) bool {
 		return false
 	}
 
-	failureCount := len(dc.Status.Worker.FailureMembers)
-	replicas := dc.Spec.Worker.Replicas + int32(failureCount)
-	if *workerSet.Spec.Replicas != replicas {
-		log.Logf("statefulset: %s/%s .spec.Replicas(%d) != %d",
-			ns, workerSetName, *workerSet.Spec.Replicas, replicas)
+	if !dc.WorkerAllPodsStarted() {
+		log.Logf("DmCluster: %s/%s not all worker pods started, desired(%d) != started(%d)",
+			ns, dcName, dc.WorkerStsDesiredReplicas(), dc.WorkerStsActualReplicas())
 		return false
 	}
-	if workerSet.Status.ReadyReplicas != dc.Spec.Worker.Replicas {
-		log.Logf("statefulset: %s/%s .status.ReadyReplicas(%d) != %d",
-			ns, workerSetName, workerSet.Status.ReadyReplicas, dc.Spec.Worker.Replicas)
-		return false
-	}
-	if len(dc.Status.Worker.Members) != int(dc.Spec.Worker.Replicas) {
-		log.Logf("DmCluster: %s/%s .status.Worker.Members count(%d) != %d",
-			ns, dcName, len(dc.Status.Worker.Members), dc.Spec.Worker.Replicas)
-		return false
-	}
-	if workerSet.Status.ReadyReplicas != workerSet.Status.Replicas {
-		log.Logf("statefulset: %s/%s .status.ReadyReplicas(%d) != .status.Replicas(%d)",
-			ns, workerSetName, workerSet.Status.ReadyReplicas, workerSet.Status.Replicas)
+
+	if !dc.WorkerAllMembersReady() {
+		log.Logf("DmCluster: %s/%s some worker members are offline", ns, dcName)
 		return false
 	}
 
