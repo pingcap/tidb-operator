@@ -24,9 +24,9 @@ func getPDClientFromService(pdControl pdapi.PDControlInterface, tc *v1alpha1.Tid
 		if len(tc.Spec.ClusterDomain) > 0 {
 			// FIXME: across k8s cluster without local pd
 			// if tls enable tc.Spec.Cluster.Name should be same as tc.Name? because it will query the secret using this name?
-			return pdControl.GetClusterRefPDClient(pdapi.Namespace(tc.ExternalClusterNamespace()), tc.Spec.Cluster.Name, tc.Spec.Cluster.ClusterDomain, tc.IsTLSClusterEnabled())
+			return pdControl.GetClusterRefPDClient(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.Spec.Cluster.ClusterDomain, tc.IsTLSClusterEnabled())
 		}
-		return pdControl.GetPDClient(pdapi.Namespace(tc.ExternalClusterNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
+		return pdControl.GetPDClient(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
 	}
 
 	if len(tc.Spec.ClusterDomain) > 0 {

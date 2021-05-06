@@ -121,9 +121,6 @@ func getTiFlashConfig(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper {
 	}
 
 	ref := tc.Spec.Cluster.DeepCopy()
-	if ref != nil {
-		ref.Namespace = tc.ExternalClusterNamespace()
-	}
 	noLocalPD := tc.HeterogeneousWithoutLocalPD()
 
 	setTiFlashConfigDefault(config, ref, tc.Name, tc.Namespace, tc.Spec.ClusterDomain, noLocalPD)

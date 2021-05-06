@@ -260,7 +260,7 @@ func (pc *PodAdmissionControl) processAdmitDeletePDPod(pod *core.Pod, ownerState
 	}
 
 	if tc.HeterogeneousWithoutLocalPD() {
-		payload.pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(tc.ExternalClusterNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
+		payload.pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
 	} else {
 		payload.pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.IsTLSClusterEnabled())
 	}
@@ -294,7 +294,7 @@ func (pc *PodAdmissionControl) processAdmitDeleteTiKVPod(pod *core.Pod, ownerSta
 			return util.ARFail(err)
 		}
 		if tc.HeterogeneousWithoutLocalPD() {
-			payload.pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(tc.ExternalClusterNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
+			payload.pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
 		} else {
 			payload.pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.IsTLSClusterEnabled())
 		}
@@ -360,7 +360,7 @@ func (pc *PodAdmissionControl) admintCreatePods(ar *admission.AdmissionRequest) 
 
 		var pdClient pdapi.PDClient
 		if ownerTc.HeterogeneousWithoutLocalPD() {
-			pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(ownerTc.ExternalClusterNamespace()), ownerTc.Spec.Cluster.Name, ownerTc.IsTLSClusterEnabled())
+			pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(ownerTc.Spec.Cluster.Namespace), ownerTc.Spec.Cluster.Name, ownerTc.IsTLSClusterEnabled())
 		} else {
 			pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), ownerTc.Name, ownerTc.IsTLSClusterEnabled())
 		}

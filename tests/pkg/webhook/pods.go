@@ -72,7 +72,7 @@ func (wh *webhook) admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionRespo
 
 	var pdClient pdapi.PDClient
 	if tc.HeterogeneousWithoutLocalPD() {
-		pdClient = pdapi.NewDefaultPDControl(kubeCli).GetPDClient(pdapi.Namespace(tc.ExternalClusterNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
+		pdClient = pdapi.NewDefaultPDControl(kubeCli).GetPDClient(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
 	} else {
 		pdClient = pdapi.NewDefaultPDControl(kubeCli).GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled())
 	}

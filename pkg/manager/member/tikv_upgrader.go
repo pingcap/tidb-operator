@@ -265,7 +265,7 @@ func endEvictLeaderbyStoreID(deps *controller.Dependencies, tc *v1alpha1.TidbClu
 	var err error
 
 	if tc.HeterogeneousWithoutLocalPD() {
-		err = deps.PDControl.GetPDClient(pdapi.Namespace(tc.ExternalClusterNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled()).EndEvictLeader(storeID)
+		err = deps.PDControl.GetPDClient(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled()).EndEvictLeader(storeID)
 	} else {
 		err = deps.PDControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()).EndEvictLeader(storeID)
 	}

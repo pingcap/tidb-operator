@@ -526,7 +526,7 @@ func (oa *OperatorActions) CheckRecover(cluster *TidbClusterConfig) (bool, error
 
 		var pdclient pdapi.PDClient
 		if tc.HeterogeneousWithoutLocalPD() {
-			pdclient = oa.pdControl.GetPDClient(pdapi.Namespace(tc.ExternalClusterNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
+			pdclient = oa.pdControl.GetPDClient(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
 		} else {
 			pdclient = oa.pdControl.GetPDClient(pdapi.Namespace(tc.Namespace), tc.Name, tc.IsTLSClusterEnabled())
 		}
