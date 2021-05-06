@@ -23,9 +23,9 @@ fi
 
 # parameters
 OPERATOR_OLD="v1\.2\.0-beta\.1"
-OPERATOR_NEW="v1\.2\.0-beta\.1"
-TIDB_OLD="v4\.0\.10"
-TIDB_NEW="v5\.0\.0"
+OPERATOR_NEW="v1\.2\.0-beta\.2"
+TIDB_OLD="v5\.0\.0"
+TIDB_NEW="v5\.0\.1"
 
 find ./deploy -name "*\.tf"| xargs $SED_BIN -i "s/$OPERATOR_OLD/$OPERATOR_NEW/g"
 find ./charts -name "*\.yaml"| xargs $SED_BIN -i "s/$OPERATOR_OLD/$OPERATOR_NEW/g"

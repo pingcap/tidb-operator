@@ -200,7 +200,7 @@ func (f *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error {
 	if err != nil {
 		return fmt.Errorf("pd failover[tryToDeleteAFailureMember]: failed to parse ordinal from Pod name for %s/%s, error: %s", ns, failurePodName, err)
 	}
-	pvcSelector, err := getPVCSelectorForPod(tc, v1alpha1.PDMemberType, ordinal)
+	pvcSelector, err := GetPVCSelectorForPod(tc, v1alpha1.PDMemberType, ordinal)
 	if err != nil {
 		return fmt.Errorf("pd failover[tryToDeleteAFailureMember]: failed to get PVC selector for Pod %s/%s, error: %s", ns, failurePodName, err)
 	}

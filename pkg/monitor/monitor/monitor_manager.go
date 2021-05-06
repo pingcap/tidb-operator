@@ -27,6 +27,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/manager/meta"
 	"github.com/pingcap/tidb-operator/pkg/monitor"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	utildiscovery "github.com/pingcap/tidb-operator/pkg/util/discovery"
 	appsv1 "k8s.io/api/apps/v1"
@@ -48,8 +49,11 @@ type MonitorManager struct {
 }
 
 const (
-	FailedSync  = "FailedSync"
-	SuccessSync = "SuccessSync"
+	FailedSync          = "FailedSync"
+	SuccessSync         = "SuccessSync"
+	prometheusComponent = "prometheus"
+	grafanaComponent    = "grafana"
+	componentPrefix     = "/topology"
 )
 
 func NewMonitorManager(deps *controller.Dependencies) *MonitorManager {
@@ -96,25 +100,13 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		if firstTc == nil && !tc.HeterogeneousWithoutLocalPD() {
 			firstTc = tc
 		}
-		if tc.Status.Monitor != nil {
-			if tc.Status.Monitor.Name != monitor.Name || tc.Status.Monitor.Namespace != monitor.Namespace {
-				err := fmt.Errorf("tm[%s/%s]'s target tc[%s/%s] already referenced by TidbMonitor [%s/%s]", monitor.Namespace, monitor.Name, tc.Namespace, tc.Name, tc.Status.Monitor.Namespace, tc.Status.Monitor.Name)
-				m.deps.Recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, err.Error())
-				return err
-			}
-		}
-		// TODO: Support validating webhook that forbids the tidbmonitor to update the monitorRef for the tidbcluster whose monitorRef has already
-		// been set by another TidbMonitor.
-		// Patch tidbcluster status first to avoid multi tidbmonitor monitoring the same tidbcluster
-		if !tc.HeterogeneousWithoutLocalPD() {
-			if err := m.patchTidbClusterStatus(tc, monitor); err != nil {
-				message := fmt.Sprintf("Sync TidbMonitorRef into targetCluster[%s/%s] status failed, err:%v", tc.Namespace, tc.Name, err)
-				klog.Error(message)
-				m.deps.Recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, err.Error())
-				return err
-			}
+		err = m.syncDashboardMetricStorage(tc, monitor)
+		if err != nil {
+			klog.Errorf("Fail to sync TiDB Dashboard metrics config for TiDB cluster [%s/%s], error: %v", tc.Namespace, tc.Name, err)
+			continue
 		}
 	}
+
 	var firstDc *v1alpha1.DMCluster
 	if monitor.Spec.DM != nil {
 		for _, dcRef := range monitor.Spec.DM.Clusters {
@@ -465,30 +457,6 @@ func (m *MonitorManager) removeIngressIfExist(monitor *v1alpha1.TidbMonitor, nam
 	return m.deps.TypedControl.Delete(monitor, ingress)
 }
 
-func (m *MonitorManager) patchTidbClusterStatus(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) error {
-	var mergePatch []byte
-	var err error
-	grafanaEnabled := true
-	if monitor.Spec.Grafana == nil {
-		grafanaEnabled = false
-	}
-	mergePatch, err = json.Marshal(map[string]interface{}{
-		"status": map[string]interface{}{
-			"monitor": map[string]interface{}{
-				"name":           monitor.Name,
-				"namespace":      monitor.Namespace,
-				"grafanaEnabled": grafanaEnabled,
-			},
-		},
-	})
-
-	if err != nil {
-		return err
-	}
-	_, err = m.deps.TiDBClusterControl.Patch(tc, mergePatch)
-	return err
-}
-
 func (m *MonitorManager) smoothMigrationToStatefulSet(monitor *v1alpha1.TidbMonitor) (bool, error) {
 	if m.deps.PVLister == nil {
 		klog.V(4).Infof("Persistent volumes lister is unavailable, skip migrating to statefulset for tm[%s/%s]. This may be caused by no relevant permissions",
@@ -699,4 +667,72 @@ func (m *MonitorManager) syncAssetSecret(monitor *v1alpha1.TidbMonitor, store *S
 		return err
 	}
 	return nil
+}
+
+func (m *MonitorManager) syncDashboardMetricStorage(tc *v1alpha1.TidbCluster, tm *v1alpha1.TidbMonitor) error {
+	if tc.Spec.PD == nil {
+		return nil
+	}
+	pdEtcdClient, err := m.deps.PDControl.GetPDEtcdClient(pdapi.Namespace(tc.Namespace), tc.Name, tc.IsTLSClusterEnabled())
+
+	if err != nil {
+		return err
+	}
+	defer pdEtcdClient.Close()
+	// sync prometheus key
+	err = syncComponent(tm, prometheusComponent, 9090, pdEtcdClient)
+	if err != nil {
+		return err
+	}
+
+	// sync grafana key
+	if tm.Spec.Grafana != nil {
+		err = syncComponent(tm, grafanaComponent, 3000, pdEtcdClient)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func syncComponent(tm *v1alpha1.TidbMonitor, componentName string, port int, etcdClient pdapi.PDEtcdClient) error {
+	key := buildComponentKey(componentName)
+	v, err := buildComponentValue(tm, componentName, port)
+	if err != nil {
+		klog.Error(err.Error())
+		return err
+	}
+	//10 min
+	err = etcdClient.PutTTLKey(key, v, 600)
+	if err != nil {
+		klog.Error(err.Error())
+		return err
+	}
+	return nil
+}
+
+func buildComponentKey(component string) string {
+	return fmt.Sprintf("%s/%s", componentPrefix, component)
+}
+
+func buildComponentValue(tm *v1alpha1.TidbMonitor, componentName string, port int) (string, error) {
+	return buildEtcdValue(fmt.Sprintf("%s-%s.%s.svc", tm.Name, componentName, tm.Namespace), port)
+}
+
+type componentTopology struct {
+	IP   string `json:"ip"`
+	Port int    `json:"port"`
+}
+
+func buildEtcdValue(host string, port int) (string, error) {
+	topology := componentTopology{
+		IP:   host,
+		Port: port,
+	}
+	data, err := json.Marshal(topology)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
 }

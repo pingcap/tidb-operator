@@ -59,7 +59,7 @@ func (s *generalScaler) deleteDeferDeletingPVC(controller runtime.Object, member
 	// for unit test
 	skipReason := map[string]string{}
 
-	selector, err := getPVCSelectorForPod(controller, memberType, ordinal)
+	selector, err := GetPVCSelectorForPod(controller, memberType, ordinal)
 	if err != nil {
 		return skipReason, fmt.Errorf("%s %s/%s assemble label selector failed, err: %v", kind, ns, meta.GetName(), err)
 	}
