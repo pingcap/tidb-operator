@@ -280,7 +280,8 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error)
 		}
 		formatClusterDomain := controller.FormatClusterDomain(tc.Spec.ClusterDomain)
 
-		str := `pd_url="%s"
+		str := `set -uo pipefail
+pd_url="%s"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="%s-discovery.${NAMESPACE}.svc%s:10261"
 until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
@@ -290,7 +291,7 @@ done
 `
 
 		script += fmt.Sprintf(str, pdAddr, tc.GetName(), formatClusterDomain)
-		script += "\n" + strings.Join(cmdArgs, " ")
+		script += "\n" + strings.Join(append([]string{"exec"}, cmdArgs...), " ")
 	} else {
 		script = strings.Join(cmdArgs, " ")
 	}
