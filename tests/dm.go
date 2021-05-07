@@ -420,7 +420,7 @@ func GenDMFullData(fw portforward.PortForward, ns string) error {
 	return eg.Wait()
 }
 
-// GenDMIncrData generates incremantal stage data for upstream MySQL.
+// GenDMIncrData generates incremental stage data for upstream MySQL.
 // NOTE: we can generate incremental data multiple times if needed later.
 func GenDMIncrData(fw portforward.PortForward, ns string) error {
 	var eg errgroup.Group

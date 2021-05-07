@@ -93,10 +93,10 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			dc.Spec.Worker.Replicas = 1
 			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(dc)
 			framework.ExpectNoError(err, "failed to create DmCluster: %q", dcName)
-			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster ready: %q", dcName)
+			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
 
 			ginkgo.By("Create MySQL sources")
-			framework.ExpectNoError(tests.CreateDMSources(fw, dc.Namespace, controller.DMMasterMemberName(dcName)), "failed to create sources for DmCluster: %q", dcName)
+			framework.ExpectNoError(tests.CreateDMSources(fw, dc.Namespace, controller.DMMasterMemberName(dcName)), "failed to create sources for DmCluster %q", dcName)
 
 			ginkgo.By("Generate full stage data in upstream")
 			framework.ExpectNoError(tests.GenDMFullData(fw, dc.Namespace), "failed to generate full stage data in upstream")
