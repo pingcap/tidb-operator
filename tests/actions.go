@@ -1602,14 +1602,6 @@ func (oa *OperatorActions) dmMasterMembersReadyFn(dc *v1alpha1.DMCluster) bool {
 		return false
 	}
 
-	for _, member := range dc.Status.Master.Members {
-		if !member.Health {
-			log.Logf("DmCluster: %s/%s dm-master member(%s/%s) is not health",
-				ns, dcName, member.ID, member.Name)
-			return false
-		}
-	}
-
 	masterServiceName := controller.DMMasterMemberName(dcName)
 	masterPeerServiceName := controller.DMMasterPeerMemberName(dcName)
 	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(masterServiceName, metav1.GetOptions{}); err != nil {
@@ -1672,14 +1664,6 @@ func (oa *OperatorActions) dmWorkerMembersReadyFn(dc *v1alpha1.DMCluster) bool {
 		log.Logf("statefulset: %s/%s .spec.template.spec.containers[name=dm-worker].image(%s) != %s",
 			ns, workerSetName, c.Image, dc.WorkerImage())
 		return false
-	}
-
-	for _, member := range dc.Status.Worker.Members {
-		if member.Stage == "offline" {
-			log.Logf("DmCluster: %s/%s dm-worker member(%s) is offline",
-				ns, dcName, member.Name)
-			return false
-		}
 	}
 
 	workerPeerServiceName := controller.DMWorkerPeerMemberName(dcName)
