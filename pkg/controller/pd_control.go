@@ -22,7 +22,7 @@ import (
 func getPDClientFromService(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) pdapi.PDClient {
 	if tc.HeterogeneousWithoutLocalPD() {
 		// TODO: to support across k8s cluster without local pd
-		// if tls enable tc.Spec.Cluster.Name should be same as tc.Name? because it will query the secret using this name?
+		// if TLS is enabled, tc.Spec.Cluster.Name should be same as tc.Name? Because it will query the secret using the tc.Spec.Cluster.Name in the following code.
 		return pdControl.GetClusterRefPDClient(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.Spec.Cluster.ClusterDomain, tc.IsTLSClusterEnabled())
 	}
 
