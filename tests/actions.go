@@ -47,6 +47,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/util"
 	utildiscovery "github.com/pingcap/tidb-operator/pkg/util/discovery"
 	e2eutil "github.com/pingcap/tidb-operator/tests/e2e/util"
+	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedtidbclient"
@@ -54,6 +55,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
+	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	"github.com/pingcap/tidb-operator/tests/pkg/metrics"
 	"github.com/pingcap/tidb-operator/tests/pkg/webhook"
 	"github.com/pingcap/tidb-operator/tests/slack"
@@ -626,6 +628,40 @@ func (oa *OperatorActions) UpgradeOperator(info *OperatorConfig) error {
 	return err
 }
 
+func (oa *OperatorActions) DeployDMMySQLOrDie() {
+	if err := DeployDMMySQL(oa.kubeCli); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+
+	if err := CheckDMMySQLReady(oa.fw); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
+
+func (oa *OperatorActions) DeployDMTiDBOrDie() {
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: DMTiDBNamespace,
+		},
+	}
+	_, err := oa.kubeCli.CoreV1().Namespaces().Create(ns)
+	if err != nil && !errors.IsAlreadyExists(err) {
+		slack.NotifyAndPanic(err)
+	}
+
+	tc := fixture.GetTidbCluster(DMTiDBNamespace, DMTiDBName, utilimage.TiDBV4)
+	tc.Spec.PD.Replicas = 1
+	tc.Spec.TiKV.Replicas = 1
+	tc.Spec.TiDB.Replicas = 1
+	if _, err := oa.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+
+	if err := oa.WaitForTidbClusterReady(tc, 30*time.Minute, 30*time.Second); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
+
 func ensurePodsUnchanged(pods1, pods2 *corev1.PodList) error {
 	pods1UIDs := getUIDs(pods1)
 	pods2UIDs := getUIDs(pods2)
@@ -720,200 +756,6 @@ func (oa *OperatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 
 func (oa *OperatorActions) DeployTidbClusterOrDie(info *TidbClusterConfig) {
 	if err := oa.DeployTidbCluster(info); err != nil {
-		slack.NotifyAndPanic(err)
-	}
-}
-
-func (oa *OperatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
-	log.Logf("cleaning tidbcluster %s/%s", info.Namespace, info.ClusterName)
-	oa.EmitEvent(info, "CleanTidbCluster")
-	ns := info.Namespace
-	tcName := info.ClusterName
-
-	oa.StopInsertDataTo(info)
-
-	selector, err := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
-		MatchLabels: map[string]string{
-			label.InstanceLabelKey: tcName,
-		},
-		MatchExpressions: []metav1.LabelSelectorRequirement{
-			{
-				Key:      label.ComponentLabelKey,
-				Operator: metav1.LabelSelectorOpIn,
-				Values:   []string{label.PDLabelVal, label.TiKVLabelVal},
-			},
-		},
-	})
-	if err != nil {
-		return err
-	}
-	pvcList, err := oa.kubeCli.CoreV1().PersistentVolumeClaims(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
-	if err != nil {
-		return err
-	}
-	var beforePVCNames []string
-	for _, pvc := range pvcList.Items {
-		beforePVCNames = append(beforePVCNames, pvc.GetName())
-	}
-	log.Logf("%v", beforePVCNames)
-
-	pvList, err := oa.kubeCli.CoreV1().PersistentVolumes().List(metav1.ListOptions{LabelSelector: selector.String()})
-	if err != nil {
-		return err
-	}
-	var beforePVNames []string
-	for _, pv := range pvList.Items {
-		beforePVNames = append(beforePVNames, pv.GetName())
-		log.Logf("%s, %s, %v", pv.Name, pv.Spec.PersistentVolumeReclaimPolicy, pv.Labels)
-		log.Logf("%v", pv.Spec.ClaimRef)
-	}
-	log.Logf("%v", beforePVNames)
-
-	charts := []string{
-		info.ClusterName,
-		fmt.Sprintf("%s-backup", info.ClusterName),
-		fmt.Sprintf("%s-restore", info.ClusterName),
-		fmt.Sprintf("%s-scheduler-backup", info.ClusterName),
-		fmt.Sprintf("%s-%s-drainer", info.ClusterName, DbTypeFile),
-		fmt.Sprintf("%s-%s-drainer", info.ClusterName, DbTypeTiDB),
-		fmt.Sprintf("%s-%s-drainer", info.ClusterName, DbTypeMySQL),
-	}
-	for _, chartName := range charts {
-		res, err := exec.Command("helm", "uninstall", chartName).CombinedOutput()
-		if err != nil && !notFound(string(res)) {
-			return fmt.Errorf("failed to delete chart: %s/%s, %v, %s",
-				info.Namespace, chartName, err, string(res))
-		}
-	}
-
-	time.Sleep(time.Minute)
-
-	pvcList, err = oa.kubeCli.CoreV1().PersistentVolumeClaims(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
-	if err != nil {
-		return err
-	}
-	var afterPVCNames []string
-	for _, pvc := range pvcList.Items {
-		afterPVCNames = append(afterPVCNames, pvc.GetName())
-	}
-	log.Logf("%v", afterPVCNames)
-	if !reflect.DeepEqual(beforePVCNames, afterPVCNames) {
-		return fmt.Errorf("pvc changed when we delete cluster: %s/%s, before: %v, after: %v",
-			ns, tcName, beforePVCNames, afterPVCNames)
-	}
-
-	waitPVFn := func() (done bool, err error) {
-		pvList, err = oa.kubeCli.CoreV1().PersistentVolumes().List(metav1.ListOptions{LabelSelector: selector.String()})
-		if err != nil {
-			return false, nil
-		}
-		var afterPVNames []string
-		for _, pv := range pvList.Items {
-			afterPVNames = append(afterPVNames, pv.GetName())
-		}
-		log.Logf("%v", afterPVNames)
-
-		if !reflect.DeepEqual(beforePVNames, afterPVNames) {
-			log.Logf("ERROR: pv changed when we delete cluster: %s/%s, before: %v, after: %v",
-				ns, tcName, beforePVNames, afterPVNames)
-			return false, nil
-		}
-
-		return true, nil
-	}
-
-	err = wait.Poll(oa.pollInterval, DefaultPollTimeout, waitPVFn)
-	if err != nil {
-		return err
-	}
-
-	err = oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(info.GenerateBackupDirPodName(), &metav1.DeleteOptions{})
-	if err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("failed to delete dir pod %v", err)
-	}
-
-	err = oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(blockWriterPodName(info), nil)
-	if err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("failed to delete blockwriter pod %v", err)
-	}
-
-	err = oa.kubeCli.CoreV1().Secrets(info.Namespace).Delete(info.InitSecretName, &metav1.DeleteOptions{})
-	if err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("failed to delete secret: %s, %v", info.InitSecretName, err)
-	}
-
-	setStr := label.New().Instance(info.ClusterName).String()
-
-	// delete all jobs
-	allJobsSet := label.Label{}.Instance(info.ClusterName).String()
-	if res, err := exec.Command("kubectl", "delete", "jobs", "-n", info.Namespace, "-l", allJobsSet).CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to delete jobs: %v, %s", err, string(res))
-	}
-
-	resources := []string{"pvc"}
-	for _, resource := range resources {
-		if res, err := exec.Command("kubectl", "delete", resource, "-n", info.Namespace, "-l",
-			setStr).CombinedOutput(); err != nil {
-			return fmt.Errorf("failed to delete %s: %v, %s", resource, err, string(res))
-		}
-	}
-
-	// delete pvc of drainer
-	drainerPvcSet := label.Label{}.Instance(info.ClusterName).Component("drainer").String()
-	if res, err := exec.Command("kubectl", "delete", "pvc", "-n", info.Namespace, "-l",
-		drainerPvcSet).CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to delete drainer pvc: %v, %s", err, string(res))
-	}
-
-	// delete all configmaps
-	allConfigMaps := label.New().Instance(info.ClusterName).String()
-	if res, err := exec.Command("kubectl", "delete", "configmaps", "-n", info.Namespace, "-l", allConfigMaps).CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to delete configmaps: %v, %s", err, string(res))
-	}
-
-	err = wait.Poll(10*time.Second, 5*time.Minute, func() (done bool, err error) {
-		patchPVCmd := fmt.Sprintf("kubectl get pv --no-headers -l %s=%s,%s=%s,%s=%s | awk '{print $1}' | "+
-			"xargs -I {} kubectl patch pv {} -p '{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Delete\"}}'",
-			label.ManagedByLabelKey, "tidb-operator",
-			label.NamespaceLabelKey, info.Namespace,
-			label.InstanceLabelKey, info.ClusterName)
-		log.Logf(patchPVCmd)
-		if res, err := exec.Command("/bin/sh", "-c", patchPVCmd).CombinedOutput(); err != nil {
-			log.Logf("failed to patch pv: %v, %s", err, string(res))
-			return false, nil
-		}
-		return true, nil
-	})
-	if err != nil {
-		return err
-	}
-
-	pollFn := func() (bool, error) {
-		if res, err := exec.Command("kubectl", "get", "po", "--output=name", "-n", info.Namespace, "-l", setStr).
-			CombinedOutput(); err != nil || len(res) != 0 {
-			log.Logf("waiting for tidbcluster: %s/%s pods deleting, %v, [%s]",
-				info.Namespace, info.ClusterName, err, string(res))
-			return false, nil
-		}
-
-		pvCmd := fmt.Sprintf("kubectl get pv | grep %s | grep %s 2>/dev/null|grep Released",
-			info.Namespace, info.ClusterName)
-		log.Logf(pvCmd)
-		if res, err := exec.Command("/bin/sh", "-c", pvCmd).CombinedOutput(); len(res) == 0 {
-			return true, nil
-		} else if err != nil {
-			log.Logf("waiting for tidbcluster: %s/%s pv deleting, %v, %s",
-				info.Namespace, info.ClusterName, err, string(res))
-			return false, nil
-		}
-		return true, nil
-	}
-	return wait.PollImmediate(oa.pollInterval, DefaultPollTimeout, pollFn)
-}
-
-// TODO: remove this
-func (oa *OperatorActions) CleanTidbClusterOrDie(info *TidbClusterConfig) {
-	if err := oa.CleanTidbCluster(info); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }
@@ -1711,6 +1553,128 @@ func (oa *OperatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	return true, nil
 }
 
+func (oa *OperatorActions) dmMasterMembersReadyFn(dc *v1alpha1.DMCluster) bool {
+	dcName := dc.GetName()
+	ns := dc.GetNamespace()
+	masterSetName := controller.DMMasterMemberName(dcName)
+
+	masterSet, err := oa.tcStsGetter.StatefulSets(ns).Get(masterSetName, metav1.GetOptions{})
+	if err != nil {
+		log.Logf("failed to get statefulset: %s/%s, %v", ns, masterSetName, err)
+		return false
+	}
+
+	if masterSet.Status.CurrentRevision != masterSet.Status.UpdateRevision {
+		log.Logf("dm master .Status.CurrentRevision (%s) != .Status.UpdateRevision (%s)", masterSet.Status.CurrentRevision, masterSet.Status.UpdateRevision)
+		return false
+	}
+
+	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), masterSet) {
+		return false
+	}
+
+	if dc.Status.Master.StatefulSet == nil {
+		log.Logf("DmCluster: %s/%s .status.Master.StatefulSet is nil", ns, dcName)
+		return false
+	}
+
+	if !dc.MasterAllPodsStarted() {
+		log.Logf("DmCluster: %s/%s not all master pods started, desired(%d) != started(%d)",
+			ns, dcName, dc.MasterStsDesiredReplicas(), dc.MasterStsActualReplicas())
+		return false
+	}
+
+	if !dc.MasterAllMembersReady() {
+		log.Logf("DmCluster: %s/%s not all master members are healthy", ns, dcName)
+		return false
+	}
+
+	c, found := getMemberContainer(oa.kubeCli, oa.tcStsGetter, ns, dcName, label.DMMasterLabelVal)
+	if !found {
+		log.Logf("statefulset: %s/%s not found containers[name=dm-master] or pod %s-0",
+			ns, masterSetName, masterSetName)
+		return false
+	}
+
+	if dc.MasterImage() != c.Image {
+		log.Logf("statefulset: %s/%s .spec.template.spec.containers[name=dm-master].image(%s) != %s",
+			ns, masterSetName, c.Image, dc.MasterImage())
+		return false
+	}
+
+	masterServiceName := controller.DMMasterMemberName(dcName)
+	masterPeerServiceName := controller.DMMasterPeerMemberName(dcName)
+	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(masterServiceName, metav1.GetOptions{}); err != nil {
+		log.Logf("failed to get service: %s/%s", ns, masterServiceName)
+		return false
+	}
+	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(masterPeerServiceName, metav1.GetOptions{}); err != nil {
+		log.Logf("failed to get peer service: %s/%s", ns, masterPeerServiceName)
+		return false
+	}
+
+	return true
+}
+
+// TODO: try to simplify the code with dmMasterMembersReadyFn.
+func (oa *OperatorActions) dmWorkerMembersReadyFn(dc *v1alpha1.DMCluster) bool {
+	dcName := dc.GetName()
+	ns := dc.GetNamespace()
+	workerSetName := controller.DMWorkerMemberName(dcName)
+
+	workerSet, err := oa.tcStsGetter.StatefulSets(ns).Get(workerSetName, metav1.GetOptions{})
+	if err != nil {
+		log.Logf("failed to get statefulset: %s/%s, %v", ns, workerSetName, err)
+		return false
+	}
+
+	if workerSet.Status.CurrentRevision != workerSet.Status.UpdateRevision {
+		log.Logf("dm worker .Status.CurrentRevision (%s) != .Status.UpdateRevision (%s)", workerSet.Status.CurrentRevision, workerSet.Status.UpdateRevision)
+		return false
+	}
+
+	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), workerSet) {
+		return false
+	}
+
+	if dc.Status.Worker.StatefulSet == nil {
+		log.Logf("DmCluster: %s/%s .status.Worker.StatefulSet is nil", ns, dcName)
+		return false
+	}
+
+	if !dc.WorkerAllPodsStarted() {
+		log.Logf("DmCluster: %s/%s not all worker pods started, desired(%d) != started(%d)",
+			ns, dcName, dc.WorkerStsDesiredReplicas(), dc.WorkerStsActualReplicas())
+		return false
+	}
+
+	if !dc.WorkerAllMembersReady() {
+		log.Logf("DmCluster: %s/%s some worker members are offline", ns, dcName)
+		return false
+	}
+
+	c, found := getMemberContainer(oa.kubeCli, oa.tcStsGetter, ns, dcName, label.DMWorkerLabelVal)
+	if !found {
+		log.Logf("statefulset: %s/%s not found containers[name=dm-worker] or pod %s-0",
+			ns, workerSetName, workerSetName)
+		return false
+	}
+
+	if dc.WorkerImage() != c.Image {
+		log.Logf("statefulset: %s/%s .spec.template.spec.containers[name=dm-worker].image(%s) != %s",
+			ns, workerSetName, c.Image, dc.WorkerImage())
+		return false
+	}
+
+	workerPeerServiceName := controller.DMWorkerPeerMemberName(dcName)
+	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(workerPeerServiceName, metav1.GetOptions{}); err != nil {
+		log.Logf("failed to get peer service: %s/%s", ns, workerPeerServiceName)
+		return false
+	}
+
+	return true
+}
+
 func (oa *OperatorActions) reclaimPolicySyncFn(tc *v1alpha1.TidbCluster) (bool, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
@@ -2316,10 +2280,6 @@ func releaseIsNotFound(err error) bool {
 	return strings.Contains(err.Error(), "not found")
 }
 
-func notFound(res string) bool {
-	return strings.Contains(res, "not found")
-}
-
 func (oa *OperatorActions) cloneOperatorRepo() error {
 	cmd := fmt.Sprintf("git clone %s %s", oa.cfg.OperatorRepoUrl, oa.cfg.OperatorRepoDir)
 	log.Logf(cmd)
@@ -2548,14 +2508,6 @@ func (oa *OperatorActions) CheckRestore(from *TidbClusterConfig, to *TidbCluster
 		return fmt.Errorf("failed to launch restore job: %v", err)
 	}
 	return nil
-}
-
-func (oa *OperatorActions) ForceDeploy(info *TidbClusterConfig) error {
-	if err := oa.CleanTidbCluster(info); err != nil {
-		return err
-	}
-
-	return oa.DeployTidbCluster(info)
 }
 
 func (oa *OperatorActions) DataIsTheSameAs(tc, otherInfo *TidbClusterConfig) (bool, error) {
@@ -3615,6 +3567,36 @@ func (oa *OperatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, tim
 		}
 
 		log.Logf("TidbCluster %q is ready", tcID)
+		return true, nil
+	})
+}
+
+func (oa *OperatorActions) WaitForDmClusterReady(dc *v1alpha1.DMCluster, timeout, pollInterval time.Duration) error {
+	if dc == nil {
+		return fmt.Errorf("DmCluster is nil, cannot call WaitForDmClusterReady")
+	}
+	return wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
+		var (
+			local *v1alpha1.DMCluster
+			err   error
+		)
+		if local, err = oa.cli.PingcapV1alpha1().DMClusters(dc.Namespace).Get(dc.Name, metav1.GetOptions{}); err != nil {
+			log.Logf("failed to get DmCluster: %s/%s, %v", dc.Namespace, dc.Name, err)
+			return false, nil
+		}
+
+		if b := oa.dmMasterMembersReadyFn(local); !b {
+			log.Logf("dm master members are not ready for dc %q", dc.Name)
+			return false, nil
+		}
+		log.Logf("dm master members are ready for dc %q", dc.Name)
+		if b := oa.dmWorkerMembersReadyFn(local); !b {
+			log.Logf("dm worker memebers are not ready for dc %q", dc.Name)
+			return false, nil
+		}
+		log.Logf("dm worker members are ready for dc %q", dc.Name)
+
+		log.Logf("DmCluster %q is ready", dc.Name)
 		return true, nil
 	})
 }
