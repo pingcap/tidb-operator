@@ -14459,6 +14459,19 @@ bool
 <p>RecoverFailover indicates that Operator can recover the failover Pods</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>scaleInParallelism</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ScaleInParallelism configures max scale in replicas for TiKV stores.
+Defaults to 1</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tikvbackupconfig">TiKVBackupConfig</h3>

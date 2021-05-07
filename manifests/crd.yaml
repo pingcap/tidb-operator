@@ -10780,6 +10780,9 @@ spec:
                   type: integer
                 requests:
                   type: object
+                scaleInParallelism:
+                  format: int32
+                  type: integer
                 schedulerName:
                   type: string
                 serviceAccount:
@@ -12779,9 +12782,6 @@ spec:
                 maxFailoverCount:
                   format: int32
                   type: integer
-                scaleInParallelism:
-                  format: int32
-                  type: integer
                 mountClusterClientSecret:
                   type: boolean
                 nodeSelector:
@@ -12848,6 +12848,9 @@ spec:
                   type: integer
                 requests:
                   type: object
+                scaleInParallelism:
+                  format: int32
+                  type: integer
                 schedulerName:
                   type: string
                 separateRaftLog:
