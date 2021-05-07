@@ -92,15 +92,15 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 		return fmt.Errorf("tikvScaler.ScaleIn: failed to convert cluster %s/%s", meta.GetNamespace(), meta.GetName())
 	}
 
-	maxScaleInReplicas := 1
-	if tc.Spec.TiKV.MaxScaleInReplicas != nil {
-		maxScaleInReplicas = int(*tc.Spec.TiKV.MaxScaleInReplicas)
+	scaleInParallelism := 1
+	if tc.Spec.TiKV.ScaleInParallelism != nil {
+		scaleInParallelism = int(*tc.Spec.TiKV.ScaleInParallelism)
 	}
 
-	_, ordinals, replicas, deleteSlots := scaleMulti(oldSet, newSet, maxScaleInReplicas)
+	_, ordinals, replicas, deleteSlots := scaleMulti(oldSet, newSet, scaleInParallelism)
 	resetReplicas(newSet, oldSet)
 
-	klog.Infof("scaling in tikv statefulset %s/%s, ordinals: %v (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinals, replicas, deleteSlots.List())
+	klog.Infof("scaling in tikv statefulset %s/%s, ordinals: %v (replicas: %d, delete slots: %v), scaleInParallelism: %v", oldSet.Namespace, oldSet.Name, ordinals, replicas, deleteSlots.List(), scaleInParallelism)
 
 	var (
 		deleteStoreCount int

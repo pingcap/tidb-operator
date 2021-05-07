@@ -12779,7 +12779,7 @@ spec:
                 maxFailoverCount:
                   format: int32
                   type: integer
-                maxScaleInReplicas:
+                scaleInParallelism:
                   format: int32
                   type: integer
                 mountClusterClientSecret:

@@ -18495,14 +18495,14 @@ If you set it to <code>true</code> for an existing cluster, the TiKV cluster wil
 </tr>
 <tr>
 <td>
-<code>maxScaleInReplicas</code></br>
+<code>scaleInParallelism</code></br>
 <em>
 int32
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>MaxScaleInReplicas configures max scale in replicas for TiKV stores.
+<p>ScaleInParallelism configures max scale in replicas for TiKV stores.
 Defaults to 1</p>
 </td>
 </tr>

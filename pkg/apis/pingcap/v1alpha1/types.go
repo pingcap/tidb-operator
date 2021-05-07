@@ -492,10 +492,10 @@ type TiKVSpec struct {
 	// If you set it to `true` for an existing cluster, the TiKV cluster will be rolling updated.
 	EnableNamedStatusPort bool `json:"enableNamedStatusPort,omitempty"`
 
-	// MaxScaleInReplicas configures max scale in replicas for TiKV stores.
+	// ScaleInParallelism configures max scale in replicas for TiKV stores.
 	// Defaults to 1
 	// +optional
-	MaxScaleInReplicas *int32 `json:"maxScaleInReplicas,omitempty"`
+	ScaleInParallelism *int32 `json:"scaleInParallelism,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members
@@ -543,6 +543,11 @@ type TiFlashSpec struct {
 	// RecoverFailover indicates that Operator can recover the failover Pods
 	// +optional
 	RecoverFailover bool `json:"recoverFailover,omitempty"`
+
+	// ScaleInParallelism configures max scale in replicas for TiKV stores.
+	// Defaults to 1
+	// +optional
+	ScaleInParallelism *int32 `json:"scaleInParallelism,omitempty"`
 }
 
 // TiCDCSpec contains details of TiCDC members
