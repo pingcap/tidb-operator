@@ -165,7 +165,6 @@ func (oa *OperatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 
 	// checkout pd config
 	var pdCfg *pdapi.PDConfigFromAPI
-	// same code in two branch on purpose..?
 	if tc.HeterogeneousWithoutLocalPD() {
 		pdCfg, err = oa.pdControl.GetClusterRefPDClient(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.Spec.Cluster.ClusterDomain, tc.IsTLSClusterEnabled()).GetConfig()
 	} else {
