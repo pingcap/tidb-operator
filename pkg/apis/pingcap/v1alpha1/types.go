@@ -544,7 +544,7 @@ type TiFlashSpec struct {
 	// +optional
 	RecoverFailover bool `json:"recoverFailover,omitempty"`
 
-	// ScaleInParallelism configures max scale in replicas for TiKV stores.
+	// ScaleInParallelism configures max scale in replicas for TiFlash.
 	// Defaults to 1
 	// +optional
 	ScaleInParallelism *int32 `json:"scaleInParallelism,omitempty"`

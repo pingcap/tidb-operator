@@ -643,7 +643,7 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 		}
 	}
 	tests := []testcase{
-		/*{
+		{
 			name:     "whether statefulset is upgrading returns failed",
 			updateTC: nil,
 			upgradingFn: func(lister corelisters.PodLister, controlInterface pdapi.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
@@ -660,7 +660,7 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(tc.Status.TiFlash.StatefulSet.Replicas).To(Equal(int32(3)))
 			},
-		},*/
+		},
 		{
 			name:     "statefulset is upgrading",
 			updateTC: nil,

@@ -209,7 +209,7 @@ func scaleMulti(actual *apps.StatefulSet, desired *apps.StatefulSet, maxCount in
 		// we always do scaling out before scaling in to maintain maximum avaiability
 		scaling = 1
 		ordinal := additions.List()[0]
-		ordinals = append(ordinals, additions.List()[0])
+		ordinals = append(ordinals, ordinal)
 		replicas++
 		if !desiredDeleteSlots.Has(ordinal) {
 			// not in desired delete slots, remove it from actual delete slots

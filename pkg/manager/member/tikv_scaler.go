@@ -209,7 +209,7 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 	}
 
 	var (
-		doSet             bool
+		updateSet         bool
 		errs              []error
 		actualDeleteSlots = sets.NewInt32()
 	)
@@ -220,13 +220,13 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 			// recount replica if fail to scale in.
 			replicas++
 		} else {
-			doSet = true
+			updateSet = true
 			if deleteSlots.Has(ordinal) {
 				actualDeleteSlots.Insert(ordinal)
 			}
 		}
 	}
-	if doSet {
+	if updateSet {
 		setReplicasAndDeleteSlots(newSet, replicas, actualDeleteSlots)
 	}
 
