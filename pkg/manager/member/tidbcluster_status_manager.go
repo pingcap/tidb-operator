@@ -184,6 +184,10 @@ func getTidbAddr(key string) (addr string) {
 }
 
 func (m *TidbClusterStatusManager) syncTiDBInfoKey(tc *v1alpha1.TidbCluster) error {
+	if tc.Spec.TiDB == nil {
+		return nil
+	}
+
 	var pdEtcdClient pdapi.PDEtcdClient
 	var err error
 
