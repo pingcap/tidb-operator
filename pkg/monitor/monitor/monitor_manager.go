@@ -184,10 +184,10 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 func (m *MonitorManager) syncTidbMonitorStatus(monitor *v1alpha1.TidbMonitor) error {
 	sts, err := m.deps.StatefulSetLister.StatefulSets(monitor.Namespace).Get(GetMonitorObjectName(monitor))
 	if err != nil {
+		if !errors.IsNotFound(err) {
+			klog.V(4).Infof("tm[%s/%s]'s sts not found", monitor.Namespace, monitor.Name)
+		}
 		return err
-	}
-	if sts == nil {
-		return nil
 	}
 	monitor.Status.StatefulSet = &sts.Status
 	return nil

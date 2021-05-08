@@ -296,17 +296,12 @@ var (
 		Type:     "date",
 		JSONPath: ".metadata.creationTimestamp",
 	}
-	tidbMonitorAdditionalPrinterColumns      []extensionsobj.CustomResourceColumnDefinition
-	readyTiDBMonitorAdditionalPrinterColumns = extensionsobj.CustomResourceColumnDefinition{
-		Name:     "READY",
-		Type:     "string",
-		JSONPath: `.status.statefulSet.conditions[?(@.type=="Ready")].status`,
-	}
+	tidbMonitorAdditionalPrinterColumns []extensionsobj.CustomResourceColumnDefinition
 
 	tidbMonitorDesireColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "Desire",
 		Type:        "integer",
-		Description: "The desired replicas number of TiKV cluster",
+		Description: "The desired replicas number of tidbMonitor cluster",
 		JSONPath:    ".spec.replicas",
 	}
 	statusTiDBMonitorAdditionalPrinterColumns = extensionsobj.CustomResourceColumnDefinition{
@@ -333,8 +328,7 @@ func init() {
 	tidbInitializerPrinterColumns = append(tidbInitializerPrinterColumns, tidbInitializerPhase, ageColumn)
 	autoScalerPrinterColumns = append(autoScalerPrinterColumns, autoScalerTiDBMaxReplicasColumn, autoScalerTiDBMinReplicasColumn,
 		autoScalerTiKVMaxReplicasColumn, autoScalerTiKVMinReplicasColumn, ageColumn)
-	tidbMonitorAdditionalPrinterColumns = append(tidbMonitorAdditionalPrinterColumns, readyTiDBMonitorAdditionalPrinterColumns,
-		statusTiDBMonitorAdditionalPrinterColumns, tidbMonitorDesireColumn, ageColumn)
+	tidbMonitorAdditionalPrinterColumns = append(tidbMonitorAdditionalPrinterColumns, tidbMonitorDesireColumn, statusTiDBMonitorAdditionalPrinterColumns, ageColumn)
 }
 
 func NewCustomResourceDefinition(crdKind v1alpha1.CrdKind, group string, labels map[string]string, validation bool) *extensionsobj.CustomResourceDefinition {
