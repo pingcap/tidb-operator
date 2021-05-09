@@ -14,12 +14,13 @@
 package v1alpha1
 
 import (
-	"github.com/pingcap/tidb-operator/pkg/util/config"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/pingcap/tidb-operator/pkg/util/config"
 )
 
 const (
@@ -265,6 +266,19 @@ type TidbClusterSpec struct {
 	// StatefulSetUpdateStrategy of TiDB cluster StatefulSets
 	// +optional
 	StatefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType `json:"statefulSetUpdateStrategy,omitempty"`
+
+	// PodSecurityContext of the component
+	// +optional
+	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
+
+	// TopologySpreadConstraints describes how a group of pods ought to spread across topology
+	// domains. Scheduler will schedule pods in a way which abides by the constraints.
+	// This field is is only honored by clusters that enables the EvenPodsSpread feature.
+	// All topologySpreadConstraints are ANDed.
+	// +optional
+	// +listType=map
+	// +listMapKey=topologyKey
+	TopologySpreadConstraints []TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
@@ -276,7 +290,6 @@ type TidbClusterStatus struct {
 	Pump       PumpStatus                `json:"pump,omitempty"`
 	TiFlash    TiFlashStatus             `json:"tiflash,omitempty"`
 	TiCDC      TiCDCStatus               `json:"ticdc,omitempty"`
-	Monitor    *TidbMonitorRef           `json:"monitor,omitempty"`
 	AutoScaler *TidbClusterAutoScalerRef `json:"auto-scaler,omitempty"`
 	// Represents the latest available observations of a tidb cluster's state.
 	// +optional
@@ -875,6 +888,15 @@ type ComponentSpec struct {
 	// Template.
 	// +optional
 	StatefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType `json:"statefulSetUpdateStrategy,omitempty"`
+
+	// TopologySpreadConstraints describes how a group of pods ought to spread across topology
+	// domains. Scheduler will schedule pods in a way which abides by the constraints.
+	// This field is is only honored by clusters that enables the EvenPodsSpread feature.
+	// All topologySpreadConstraints are ANDed.
+	// +optional
+	// +listType=map
+	// +listMapKey=topologyKey
+	TopologySpreadConstraints []TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 }
 
 // ServiceSpec specifies the service object in k8s
@@ -1360,6 +1382,10 @@ type BackupSpec struct {
 	ServiceAccount string `json:"serviceAccount,omitempty"`
 	// CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained
 	CleanPolicy CleanPolicyType `json:"cleanPolicy,omitempty"`
+
+	// PodSecurityContext of the component
+	// +optional
+	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -1632,6 +1658,10 @@ type RestoreSpec struct {
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 	// TableFilter means Table filter expression for 'db.table' matching. BR supports this from v4.0.3.
 	TableFilter []string `json:"tableFilter,omitempty"`
+
+	// PodSecurityContext of the component
+	// +optional
+	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
 }
 
 // RestoreStatus represents the current status of a tidb cluster restore.
@@ -1790,6 +1820,19 @@ type DMClusterSpec struct {
 	// Base tolerations of DM cluster Pods, components may add more tolerations upon this respectively
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+
+	// PodSecurityContext of the component
+	// +optional
+	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
+
+	// TopologySpreadConstraints describes how a group of pods ought to spread across topology
+	// domains. Scheduler will schedule pods in a way which abides by the constraints.
+	// This field is is only honored by clusters that enables the EvenPodsSpread feature.
+	// All topologySpreadConstraints are ANDed.
+	// +optional
+	// +listType=map
+	// +listMapKey=topologyKey
+	TopologySpreadConstraints []TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 }
 
 // DMClusterStatus represents the current status of a dm cluster.
@@ -2014,4 +2057,19 @@ type StorageVolume struct {
 	StorageClassName *string `json:"storageClassName,omitempty"`
 	StorageSize      string  `json:"storageSize"`
 	MountPath        string  `json:"mountPath"`
+}
+
+// TopologySpreadConstraint specifies how to spread matching pods among the given topology.
+// It is a minimal version of corev1.TopologySpreadConstraint to avoid to add too many fields of API
+// Refer to https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints
+type TopologySpreadConstraint struct {
+	// TopologyKey is the key of node labels. Nodes that have a label with this key
+	// and identical values are considered to be in the same topology.
+	// We consider each <key, value> as a "bucket", and try to put balanced number
+	// of pods into each bucket.
+	// MaxSkew is default set to 1
+	// WhenUnsatisfiable is default set to DoNotSchedule
+	// LabelSelector is generated by component type
+	// See pkg/apis/pingcap/v1alpha1/tidbcluster_component.go#TopologySpreadConstraints()
+	TopologyKey string `json:"topologyKey"`
 }

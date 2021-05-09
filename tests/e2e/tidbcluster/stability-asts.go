@@ -22,19 +22,6 @@ import (
 	"github.com/onsi/ginkgo"
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
-	"github.com/pingcap/tidb-operator/pkg/scheme"
-	"github.com/pingcap/tidb-operator/tests"
-	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
-	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
-	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
-	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
-	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
-	utilstatefulset "github.com/pingcap/tidb-operator/tests/e2e/util/statefulset"
-	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
-	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	v1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -48,6 +35,20 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework/log"
 	e2esset "k8s.io/kubernetes/test/e2e/framework/statefulset"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/scheme"
+	"github.com/pingcap/tidb-operator/tests"
+	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
+	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
+	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
+	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
+	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
+	utilstatefulset "github.com/pingcap/tidb-operator/tests/e2e/util/statefulset"
+	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
+	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 )
 
 var _ = ginkgo.Describe("[Stability]", func() {
@@ -140,7 +141,8 @@ var _ = ginkgo.Describe("[Stability]", func() {
 
 		ginkgo.It("Scaling tidb cluster with advanced statefulset", func() {
 			clusterName := "scaling-with-asts"
-			tc := fixture.GetTidbClusterWithTiFlash(ns, clusterName, utilimage.TiDBV5)
+			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4)
+			tc = fixture.AddTiFlashForTidbCluster(tc)
 			tc.Spec.PD.Replicas = 3
 			tc.Spec.TiKV.Replicas = 5
 			tc.Spec.TiDB.Replicas = 5

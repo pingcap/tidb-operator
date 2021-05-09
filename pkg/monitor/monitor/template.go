@@ -141,8 +141,6 @@ type MonitorConfigModel struct {
 	AlertmanagerURL    string
 	ClusterInfos       []ClusterRegexInfo
 	DMClusterInfos     []ClusterRegexInfo
-	EnableTLSCluster   bool
-	EnableTLSDMCluster bool
 	ExternalLabels     model.LabelSet
 	RemoteWriteConfigs []*config.RemoteWriteConfig
 }
@@ -151,6 +149,7 @@ type MonitorConfigModel struct {
 type ClusterRegexInfo struct {
 	Name      string
 	Namespace string
+	enableTLS bool
 }
 
 func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
@@ -409,25 +408,27 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 			},
 		}
 
-		if cmodel.EnableTLSCluster && !isDMJob(jobName) {
+		if cluster.enableTLS && !isDMJob(jobName) {
 			scrapeconfig.Scheme = "https"
 			// lightning does not need to authenticate the access of other components,
 			// so there is no need to enable mtls for the time being.
 			if jobName != "lightning" {
+				tcTlsSecretName := util.ClusterClientTLSSecretName(cluster.Name)
 				scrapeconfig.HTTPClientConfig.TLSConfig = config.TLSConfig{
-					CAFile:   path.Join(util.ClusterClientTLSPath, corev1.ServiceAccountRootCAKey),
-					CertFile: path.Join(util.ClusterClientTLSPath, corev1.TLSCertKey),
-					KeyFile:  path.Join(util.ClusterClientTLSPath, corev1.TLSPrivateKeyKey),
+					CAFile:   path.Join(util.ClusterAssetsTLSPath, TLSAssetKey{"secret", cluster.Namespace, tcTlsSecretName, corev1.ServiceAccountRootCAKey}.String()),
+					CertFile: path.Join(util.ClusterAssetsTLSPath, TLSAssetKey{"secret", cluster.Namespace, tcTlsSecretName, corev1.TLSCertKey}.String()),
+					KeyFile:  path.Join(util.ClusterAssetsTLSPath, TLSAssetKey{"secret", cluster.Namespace, tcTlsSecretName, corev1.TLSPrivateKeyKey}.String()),
 				}
 			}
 		}
 
-		if cmodel.EnableTLSDMCluster && isDMJob(jobName) {
+		if cluster.enableTLS && isDMJob(jobName) {
 			scrapeconfig.Scheme = "https"
+			dmTlsSecretName := util.DMClientTLSSecretName(cluster.Name)
 			scrapeconfig.HTTPClientConfig.TLSConfig = config.TLSConfig{
-				CAFile:   path.Join(util.DMClusterClientTLSPath, corev1.ServiceAccountRootCAKey),
-				CertFile: path.Join(util.DMClusterClientTLSPath, corev1.TLSCertKey),
-				KeyFile:  path.Join(util.DMClusterClientTLSPath, corev1.TLSPrivateKeyKey),
+				CAFile:   path.Join(util.DMClusterClientTLSPath, TLSAssetKey{"secret", cluster.Namespace, dmTlsSecretName, corev1.ServiceAccountRootCAKey}.String()),
+				CertFile: path.Join(util.DMClusterClientTLSPath, TLSAssetKey{"secret", cluster.Namespace, dmTlsSecretName, corev1.TLSCertKey}.String()),
+				KeyFile:  path.Join(util.DMClusterClientTLSPath, TLSAssetKey{"secret", cluster.Namespace, dmTlsSecretName, corev1.TLSPrivateKeyKey}.String()),
 			}
 		}
 		scrapeJobs = append(scrapeJobs, scrapeconfig)

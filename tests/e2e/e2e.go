@@ -16,11 +16,13 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	_ "net/http/pprof"
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -37,6 +39,7 @@ import (
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	utilnode "github.com/pingcap/tidb-operator/tests/e2e/util/node"
 	utiloperator "github.com/pingcap/tidb-operator/tests/e2e/util/operator"
+	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	v1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -247,6 +250,10 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	framework.ExpectNoError(err, "failed to create clientset for apiextensions-apiserver")
 	asCli, err := asclientset.NewForConfig(config)
 	framework.ExpectNoError(err, "failed to create clientset for advanced-statefulset")
+	clientRawConfig, err := e2econfig.LoadClientRawConfig()
+	framework.ExpectNoError(err, "failed to load raw config for tidb operator")
+	fw, err := portforward.NewPortForwarder(context.Background(), e2econfig.NewSimpleRESTClientGetter(clientRawConfig))
+	framework.ExpectNoError(err, "failed to create port forwarder")
 
 	ginkgo.By("Recycle all local PVs")
 	pvList, err := kubeCli.CoreV1().PersistentVolumes().List(metav1.ListOptions{})
@@ -283,7 +290,7 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	framework.ExpectNoError(err, "failed to wait for all PVs to be available")
 
 	ginkgo.By("Labeling nodes")
-	oa := tests.NewOperatorActions(cli, kubeCli, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, nil, e2econfig.TestConfig, nil, nil, nil)
+	oa := tests.NewOperatorActions(cli, kubeCli, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, nil, e2econfig.TestConfig, nil, fw, nil)
 	oa.LabelNodesOrDie()
 	if e2econfig.TestConfig.InstallOperator {
 		OperatorFeatures := map[string]bool{"AutoScaling": true}
@@ -310,8 +317,15 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 			operatorKillerStopCh := make(chan struct{})
 			go operatorKiller.Run(operatorKillerStopCh)
 		}
+
+		// only deploy MySQL and TiDB for DM if CRDs and TiDB Operator installed.
+		// setup upstream MySQL instances and the downstream TiDB cluster for DM testing.
+		// if we can only setup these resource for DM tests with something like `--focus` or `--skip`, that should be better.
+		oa.DeployDMMySQLOrDie()
+		oa.DeployDMTiDBOrDie()
 	} else {
 		ginkgo.By("Skip installing tidb-operator")
+		ginkgo.By("Skip installing MySQL and TiDB for DM tests")
 	}
 
 	ginkgo.By("Installing cert-manager")
@@ -334,13 +348,50 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 	config, _ := framework.LoadConfig()
 	config.QPS = 20
 	config.Burst = 50
+	cli, _ := versioned.NewForConfig(config)
 	kubeCli, _ := kubernetes.NewForConfig(config)
+	if !ginkgo.CurrentGinkgoTestDescription().Failed {
+		ginkgo.By("Clean labels")
+		err := tests.CleanNodeLabels(kubeCli)
+		framework.ExpectNoError(err, "failed to clean labels")
+	}
+
 	ginkgo.By("Deleting cert-manager")
 	err := tidbcluster.DeleteCertManager(kubeCli)
 	framework.ExpectNoError(err, "failed to delete cert-manager")
 
+	err = tests.CleanDMMySQL(kubeCli)
+	framework.ExpectNoError(err, "failed to clean DM MySQL")
+	err = tests.CleanDMTiDB(cli, kubeCli)
+	framework.ExpectNoError(err, "failed to clean DM TiDB")
+
 	ginkgo.By("Uninstalling tidb-operator")
 	ocfg := e2econfig.NewDefaultOperatorConfig(e2econfig.TestConfig)
+
+	// kubetest2 can only dump running pods' log (copy from container log directory),
+	// but if we want to get test coverage reports for tidb-operator, we need to shutdown the processes/pods),
+	// so we choose to copy logs before uninstall tidb-operator.
+	// NOTE: if we can get the whole test result from all parallel Ginkgo nodes with Ginkgo v2 later, we can also choose to:
+	// - dump logs if the test failed.
+	// - (uninstall tidb-operator and) generate test coverage reports if the test passed.
+	// ref: https://github.com/onsi/ginkgo/issues/361#issuecomment-814203240
+
+	if framework.TestContext.ReportDir != "" {
+		ginkgo.By("Dumping logs for tidb-operator")
+		logPath := filepath.Join(framework.TestContext.ReportDir, "logs", "tidb-operator")
+		// full permission (0777) for the log directory to avoid "permission denied" for later kubetest2 log dump.
+		framework.ExpectNoError(os.MkdirAll(logPath, 0777), "failed to create log directory for tidb-operator components")
+
+		podList, err2 := kubeCli.CoreV1().Pods(ocfg.Namespace).List(metav1.ListOptions{})
+		framework.ExpectNoError(err2, "failed to list pods for tidb-operator")
+		for _, pod := range podList.Items {
+			log.Logf("dumping logs for pod %s/%s", pod.Namespace, pod.Name)
+			err2 = tests.DumpPod(logPath, &pod)
+			framework.ExpectNoError(err2, "failed to dump log for pod %s/%s", pod.Namespace, pod.Name)
+		}
+	}
+
+	ginkgo.By("Uninstalling tidb-operator")
 	err = tests.CleanOperator(ocfg)
 	framework.ExpectNoError(err, "failed to uninstall operator")
 

@@ -44,6 +44,10 @@ const (
 	defaultReplicaExternalLabelName = "prometheus_replica"
 )
 
+func GetTLSAssetsSecretName(name string) string {
+	return fmt.Sprintf("tidbmonitor-%s-tls-assets", name)
+}
+
 func GetMonitorObjectName(monitor *v1alpha1.TidbMonitor) string {
 	return fmt.Sprintf("%s-monitor", monitor.Name)
 }
@@ -114,33 +118,12 @@ func getAlertManagerRulesVersion(tc *v1alpha1.TidbCluster, monitor *v1alpha1.Tid
 
 // getMonitorConfigMap generate the Prometheus config and Grafana config for TidbMonitor,
 // If the namespace in ClusterRef is empty, we would set the TidbMonitor's namespace in the default
-func getMonitorConfigMap(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monitor *v1alpha1.TidbMonitor) (*core.ConfigMap, error) {
-
-	var releaseClusterInfos []ClusterRegexInfo
-	for _, cluster := range monitor.Spec.Clusters {
-		releaseClusterInfos = append(releaseClusterInfos, ClusterRegexInfo{
-			Name:      cluster.Name,
-			Namespace: cluster.Namespace,
-		})
-	}
-
-	var releaseDMClusterInfos []ClusterRegexInfo
-	if monitor.Spec.DM != nil {
-		for _, dmcluster := range monitor.Spec.DM.Clusters {
-			releaseDMClusterInfos = append(releaseDMClusterInfos, ClusterRegexInfo{
-				Name:      dmcluster.Name,
-				Namespace: dmcluster.Namespace,
-			})
-		}
-	}
-
+func getMonitorConfigMap(monitor *v1alpha1.TidbMonitor, monitorClusterInfos []ClusterRegexInfo, dmClusterInfos []ClusterRegexInfo) (*core.ConfigMap, error) {
 	model := &MonitorConfigModel{
-		AlertmanagerURL:    "",
-		ClusterInfos:       releaseClusterInfos,
-		DMClusterInfos:     releaseDMClusterInfos,
-		EnableTLSCluster:   tc.IsTLSClusterEnabled(),
-		ExternalLabels:     buildExternalLabels(monitor),
-		EnableTLSDMCluster: dc != nil && dc.IsTLSClusterEnabled(),
+		AlertmanagerURL: "",
+		ClusterInfos:    monitorClusterInfos,
+		DMClusterInfos:  dmClusterInfos,
+		ExternalLabels:  buildExternalLabels(monitor),
 	}
 
 	if len(monitor.Spec.Prometheus.RemoteWrite) > 0 {
@@ -478,6 +461,11 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 				MountPath: "/prometheus-rules",
 				ReadOnly:  false,
 			},
+			{
+				Name:      "tls-assets",
+				MountPath: util.ClusterAssetsTLSPath,
+				ReadOnly:  true,
+			},
 		},
 	}
 
@@ -491,21 +479,26 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 		commands = append(commands, "--storage.tsdb.max-block-duration=2h")
 		commands = append(commands, "--storage.tsdb.min-block-duration=2h")
 	}
+
+	//Add readiness probe. LivenessProbe probe will affect prom wal replay,ref: https://github.com/prometheus-operator/prometheus-operator/pull/3502
+	var readinessProbeHandler core.Handler
+	{
+		readyPath := "/-/ready"
+		readinessProbeHandler.HTTPGet = &core.HTTPGetAction{
+			Path: readyPath,
+			Port: intstr.FromInt(9090),
+		}
+
+	}
+	readinessProbe := &core.Probe{
+		Handler:          readinessProbeHandler,
+		TimeoutSeconds:   3,
+		PeriodSeconds:    5,
+		FailureThreshold: 120, // Allow up to 10m on startup for data recovery
+	}
+	c.ReadinessProbe = readinessProbe
+
 	c.Command = append(c.Command, strings.Join(commands, " "))
-	if tc.IsTLSClusterEnabled() {
-		c.VolumeMounts = append(c.VolumeMounts, core.VolumeMount{
-			Name:      util.ClusterClientVolName,
-			MountPath: util.ClusterClientTLSPath,
-			ReadOnly:  true,
-		})
-	}
-	if dc != nil && dc.IsTLSClusterEnabled() {
-		c.VolumeMounts = append(c.VolumeMounts, core.VolumeMount{
-			Name:      util.DMClusterClientVolName,
-			MountPath: util.DMClusterClientTLSPath,
-			ReadOnly:  true,
-		})
-	}
 	if monitor.Spec.Prometheus.ImagePullPolicy != nil {
 		c.ImagePullPolicy = *monitor.Spec.Prometheus.ImagePullPolicy
 	}
@@ -581,6 +574,37 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 			},
 		},
 	}
+
+	var probeHandler core.Handler
+	{
+		readyPath := "/api/health"
+		probeHandler.HTTPGet = &core.HTTPGetAction{
+			Path: readyPath,
+			Port: intstr.FromInt(3000),
+		}
+
+	}
+	//add readiness probe
+	readinessProbe := &core.Probe{
+		Handler:          probeHandler,
+		TimeoutSeconds:   5,
+		PeriodSeconds:    10,
+		SuccessThreshold: 1,
+	}
+	c.ReadinessProbe = readinessProbe
+
+	//add liveness probe
+	livenessProbe := &core.Probe{
+		Handler:             probeHandler,
+		TimeoutSeconds:      5,
+		FailureThreshold:    10,
+		PeriodSeconds:       10,
+		SuccessThreshold:    1,
+		InitialDelaySeconds: 30,
+	}
+
+	c.LivenessProbe = livenessProbe
+
 	if monitor.Spec.Grafana.ImagePullPolicy != nil {
 		c.ImagePullPolicy = *monitor.Spec.Grafana.ImagePullPolicy
 	}
@@ -705,32 +729,7 @@ func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor, tc
 		},
 	}
 	volumes = append(volumes, prometheusRules)
-	if tc.IsTLSClusterEnabled() {
-		defaultMode := int32(420)
-		tlsPDClient := core.Volume{
-			Name: util.ClusterClientVolName,
-			VolumeSource: core.VolumeSource{
-				Secret: &core.SecretVolumeSource{
-					SecretName:  util.ClusterClientTLSSecretName(tc.Name),
-					DefaultMode: &defaultMode,
-				},
-			},
-		}
-		volumes = append(volumes, tlsPDClient)
-	}
-	if dc != nil && dc.IsTLSClusterEnabled() {
-		defaultMode := int32(420)
-		tlsDMClient := core.Volume{
-			Name: util.DMClusterClientVolName,
-			VolumeSource: core.VolumeSource{
-				Secret: &core.SecretVolumeSource{
-					SecretName:  util.DMClientTLSSecretName(dc.Name),
-					DefaultMode: &defaultMode,
-				},
-			},
-		}
-		volumes = append(volumes, tlsDMClient)
-	}
+
 	volumes = append(volumes, core.Volume{
 		Name: "prometheus-config-out",
 		VolumeSource: core.VolumeSource{
@@ -741,6 +740,18 @@ func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor, tc
 	if monitor.Spec.AdditionalVolumes != nil {
 		volumes = append(volumes, monitor.Spec.AdditionalVolumes...)
 	}
+
+	// add asset tls
+	defaultMode := int32(420)
+	volumes = append(volumes, core.Volume{
+		Name: "tls-assets",
+		VolumeSource: core.VolumeSource{
+			Secret: &core.SecretVolumeSource{
+				SecretName:  GetTLSAssetsSecretName(monitor.Name),
+				DefaultMode: &defaultMode,
+			},
+		},
+	})
 
 	return volumes
 }
@@ -1040,6 +1051,7 @@ func getMonitorStatefulSetSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.Ti
 				},
 
 				Spec: core.PodSpec{
+					SecurityContext:    monitor.Spec.PodSecurityContext,
 					ServiceAccountName: sa.Name,
 					InitContainers:     []core.Container{},
 					Containers:         []core.Container{},

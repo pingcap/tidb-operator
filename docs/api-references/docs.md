@@ -330,6 +330,20 @@ CleanPolicyType
 <p>CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>podSecurityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
+Kubernetes core/v1.PodSecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodSecurityContext of the component</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -824,6 +838,37 @@ Optional: Defaults to UTC</p>
 <p>Base tolerations of DM cluster Pods, components may add more tolerations upon this respectively</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>podSecurityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
+Kubernetes core/v1.PodSecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodSecurityContext of the component</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>topologySpreadConstraints</code></br>
+<em>
+<a href="#topologyspreadconstraint">
+[]TopologySpreadConstraint
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TopologySpreadConstraints describes how a group of pods ought to spread across topology
+domains. Scheduler will schedule pods in a way which abides by the constraints.
+This field is is only honored by clusters that enables the EvenPodsSpread feature.
+All topologySpreadConstraints are ANDed.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -1118,6 +1163,20 @@ For examples <code>spec.toolImage: pingcap/br:v4.0.8</code> or <code>spec.toolIm
 </td>
 <td>
 <p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching. BR supports this from v4.0.3.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podSecurityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
+Kubernetes core/v1.PodSecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodSecurityContext of the component</p>
 </td>
 </tr>
 </table>
@@ -1607,6 +1666,37 @@ Kubernetes apps/v1.StatefulSetUpdateStrategyType
 <p>StatefulSetUpdateStrategy of TiDB cluster StatefulSets</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>podSecurityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
+Kubernetes core/v1.PodSecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodSecurityContext of the component</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>topologySpreadConstraints</code></br>
+<em>
+<a href="#topologyspreadconstraint">
+[]TopologySpreadConstraint
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TopologySpreadConstraints describes how a group of pods ought to spread across topology
+domains. Scheduler will schedule pods in a way which abides by the constraints.
+This field is is only honored by clusters that enables the EvenPodsSpread feature.
+All topologySpreadConstraints are ANDed.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -1818,6 +1908,20 @@ TidbClusterRef
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>podSecurityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
+Kubernetes core/v1.PodSecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodSecurityContext of the component</p>
 </td>
 </tr>
 <tr>
@@ -2078,6 +2182,7 @@ DMMonitorSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 </td>
 </tr>
 <tr>
@@ -2313,6 +2418,20 @@ Defaults to 1.</p>
 <td>
 <em>(Optional)</em>
 <p>Additional volumes of component pod.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podSecurityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
+Kubernetes core/v1.PodSecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodSecurityContext of the component</p>
 </td>
 </tr>
 </table>
@@ -3127,6 +3246,20 @@ CleanPolicyType
 <p>CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>podSecurityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
+Kubernetes core/v1.PodSecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodSecurityContext of the component</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="backupstatus">BackupStatus</h3>
@@ -3670,6 +3803,10 @@ FlashSecurity
 </tr>
 </tbody>
 </table>
+<h3 id="component">Component</h3>
+<p>
+<p>Component defines component identity of all components</p>
+</p>
 <h3 id="componentaccessor">ComponentAccessor</h3>
 <p>
 <p>ComponentAccessor is the interface to access component details, which respects the cluster-level properties
@@ -3989,6 +4126,23 @@ Kubernetes apps/v1.StatefulSetUpdateStrategyType
 <p>StatefulSetUpdateStrategy indicates the StatefulSetUpdateStrategy that will be
 employed to update Pods in the StatefulSet when a revision is made to
 Template.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>topologySpreadConstraints</code></br>
+<em>
+<a href="#topologyspreadconstraint">
+[]TopologySpreadConstraint
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TopologySpreadConstraints describes how a group of pods ought to spread across topology
+domains. Scheduler will schedule pods in a way which abides by the constraints.
+This field is is only honored by clusters that enables the EvenPodsSpread feature.
+All topologySpreadConstraints are ANDed.</p>
 </td>
 </tr>
 </tbody>
@@ -4661,6 +4815,37 @@ Optional: Defaults to UTC</p>
 <td>
 <em>(Optional)</em>
 <p>Base tolerations of DM cluster Pods, components may add more tolerations upon this respectively</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podSecurityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
+Kubernetes core/v1.PodSecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodSecurityContext of the component</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>topologySpreadConstraints</code></br>
+<em>
+<a href="#topologyspreadconstraint">
+[]TopologySpreadConstraint
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TopologySpreadConstraints describes how a group of pods ought to spread across topology
+domains. Scheduler will schedule pods in a way which abides by the constraints.
+This field is is only honored by clusters that enables the EvenPodsSpread feature.
+All topologySpreadConstraints are ANDed.</p>
 </td>
 </tr>
 </tbody>
@@ -11075,6 +11260,20 @@ For examples <code>spec.toolImage: pingcap/br:v4.0.8</code> or <code>spec.toolIm
 </td>
 <td>
 <p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching. BR supports this from v4.0.3.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podSecurityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
+Kubernetes core/v1.PodSecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodSecurityContext of the component</p>
 </td>
 </tr>
 </tbody>
@@ -19791,6 +19990,37 @@ Kubernetes apps/v1.StatefulSetUpdateStrategyType
 <p>StatefulSetUpdateStrategy of TiDB cluster StatefulSets</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>podSecurityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
+Kubernetes core/v1.PodSecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodSecurityContext of the component</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>topologySpreadConstraints</code></br>
+<em>
+<a href="#topologyspreadconstraint">
+[]TopologySpreadConstraint
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TopologySpreadConstraints describes how a group of pods ought to spread across topology
+domains. Scheduler will schedule pods in a way which abides by the constraints.
+This field is is only honored by clusters that enables the EvenPodsSpread feature.
+All topologySpreadConstraints are ANDed.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbclusterstatus">TidbClusterStatus</h3>
@@ -19893,18 +20123,6 @@ TiCDCStatus
 </tr>
 <tr>
 <td>
-<code>monitor</code></br>
-<em>
-<a href="#tidbmonitorref">
-TidbMonitorRef
-</a>
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
 <code>auto-scaler</code></br>
 <em>
 <a href="#tidbclusterautoscalerref">
@@ -19967,6 +20185,20 @@ TidbClusterRef
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>podSecurityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
+Kubernetes core/v1.PodSecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodSecurityContext of the component</p>
 </td>
 </tr>
 <tr>
@@ -20130,10 +20362,6 @@ InitializePhase
 </table>
 <h3 id="tidbmonitorref">TidbMonitorRef</h3>
 <p>
-(<em>Appears on:</em>
-<a href="#tidbclusterstatus">TidbClusterStatus</a>)
-</p>
-<p>
 <p>TidbMonitorRef reference to a TidbMonitor</p>
 </p>
 <table>
@@ -20269,6 +20497,7 @@ DMMonitorSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 </td>
 </tr>
 <tr>
@@ -20506,6 +20735,20 @@ Defaults to 1.</p>
 <p>Additional volumes of component pod.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>podSecurityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
+Kubernetes core/v1.PodSecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodSecurityContext of the component</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbmonitorstatus">TidbMonitorStatus</h3>
@@ -20600,6 +20843,46 @@ BasicAutoScalerStatus
 <p>
 (Members of <code>BasicAutoScalerStatus</code> are embedded into this type.)
 </p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="topologyspreadconstraint">TopologySpreadConstraint</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#componentspec">ComponentSpec</a>, 
+<a href="#dmclusterspec">DMClusterSpec</a>, 
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
+</p>
+<p>
+<p>TopologySpreadConstraint specifies how to spread matching pods among the given topology.
+It is a minimal version of corev1.TopologySpreadConstraint to avoid to add too many fields of API
+Refer to <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints">https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints</a></p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>topologyKey</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>TopologyKey is the key of node labels. Nodes that have a label with this key
+and identical values are considered to be in the same topology.
+We consider each <key, value> as a &ldquo;bucket&rdquo;, and try to put balanced number
+of pods into each bucket.
+MaxSkew is default set to 1
+WhenUnsatisfiable is default set to DoNotSchedule
+LabelSelector is generated by component type
+See pkg/apis/pingcap/v1alpha1/tidbcluster_component.go#TopologySpreadConstraints()</p>
 </td>
 </tr>
 </tbody>
