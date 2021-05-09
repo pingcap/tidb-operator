@@ -98,8 +98,8 @@ func updateConfigMapIfNeed(
 
 // confirmNameByData is used to fix the problem that
 // when configUpdateStrategy is changed from InPlace to RollingUpdate for the first time,
-// the name of desired configmap maybe diffrent from the existing one while
-// the data of them are the same, which can cause rolling update.
+// the name of desired configmap maybe different from the existing one while
+// the data of them are the same, which will cause rolling update.
 func confirmNameByData(existing, desired *corev1.ConfigMap, dataEqual bool) {
 	if dataEqual && existing.Name != desired.Name {
 		desired.Name = existing.Name
