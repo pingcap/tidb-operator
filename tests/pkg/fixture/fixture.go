@@ -17,16 +17,17 @@ import (
 	"fmt"
 
 	"github.com/Masterminds/semver"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/label"
-	"github.com/pingcap/tidb-operator/pkg/tkctl/util"
-	tcconfig "github.com/pingcap/tidb-operator/pkg/util/config"
-	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1beta1 "k8s.io/api/rbac/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/tkctl/util"
+	tcconfig "github.com/pingcap/tidb-operator/pkg/util/config"
+	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 )
 
 var (
@@ -126,7 +127,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Affinity: buildAffinity(name, ns, v1alpha1.TiKVMemberType),
 				},
-				EvictLeaderTimeout: pointer.StringPtr("3m"),
+				EvictLeaderTimeout: pointer.StringPtr("1m"),
 			},
 
 			TiDB: &v1alpha1.TiDBSpec{
@@ -259,6 +260,45 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 	return tc
 }
 
+// GetDMCluster returns a DmCluster resource configured for testing.
+func GetDMCluster(ns, name, version string) *v1alpha1.DMCluster {
+	deletePVP := corev1.PersistentVolumeReclaimDelete
+	return &v1alpha1.DMCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+		},
+		Spec: v1alpha1.DMClusterSpec{
+			Version:         version,
+			ImagePullPolicy: corev1.PullIfNotPresent,
+			PVReclaimPolicy: &deletePVP,
+			SchedulerName:   "tidb-scheduler",
+			Timezone:        "Asia/Shanghai",
+			Master: v1alpha1.MasterSpec{
+				Replicas:             3,
+				BaseImage:            "pingcap/dm",
+				MaxFailoverCount:     pointer.Int32Ptr(3),
+				StorageSize:          "1Gi",
+				ResourceRequirements: WithStorage(BurstableSmall, "1Gi"),
+				Config:               &v1alpha1.MasterConfig{},
+				ComponentSpec: v1alpha1.ComponentSpec{
+					Affinity: buildAffinity(name, ns, v1alpha1.DMMasterMemberType),
+				},
+			},
+			Worker: &v1alpha1.WorkerSpec{
+				Replicas:             3,
+				BaseImage:            "pingcap/dm",
+				MaxFailoverCount:     pointer.Int32Ptr(3),
+				ResourceRequirements: WithStorage(BurstableSmall, "1Gi"),
+				Config:               &v1alpha1.WorkerConfig{},
+				ComponentSpec: v1alpha1.ComponentSpec{
+					Affinity: buildAffinity(name, ns, v1alpha1.DMWorkerMemberType),
+				},
+			},
+		},
+	}
+}
+
 func buildAffinity(name, namespace string, memberType v1alpha1.MemberType) *corev1.Affinity {
 	return &corev1.Affinity{
 		PodAntiAffinity: &corev1.PodAntiAffinity{
@@ -281,21 +321,6 @@ func buildAffinity(name, namespace string, memberType v1alpha1.MemberType) *core
 			},
 		},
 	}
-}
-
-func GetTidbClusterWithTiFlash(ns, name, version string) *v1alpha1.TidbCluster {
-	tc := GetTidbCluster(ns, name, version)
-	tc.Spec.TiFlash = &v1alpha1.TiFlashSpec{
-		Replicas:         1,
-		BaseImage:        "pingcap/tiflash",
-		MaxFailoverCount: pointer.Int32Ptr(3),
-		StorageClaims: []v1alpha1.StorageClaim{
-			{
-				Resources: WithStorage(BurstableMedium, "10Gi"),
-			},
-		},
-	}
-	return tc
 }
 
 func GetTidbInitializer(ns, tcName, initName, initPassWDName, initTLSName string) *v1alpha1.TidbInitializer {
@@ -591,6 +616,34 @@ func GetRestoreCRDWithS3(tc *v1alpha1.TidbCluster, toSecretName, restoreType str
 		restore.Spec.S3.Path = fmt.Sprintf("s3://%s/%s", s3config.Bucket, s3config.Path)
 	}
 	return restore
+}
+
+func AddTiFlashForTidbCluster(tc *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
+	if tc.Spec.TiFlash != nil {
+		return tc
+	}
+	tc.Spec.TiFlash = &v1alpha1.TiFlashSpec{
+		Replicas:         1,
+		BaseImage:        "pingcap/tiflash",
+		MaxFailoverCount: pointer.Int32Ptr(3),
+		StorageClaims: []v1alpha1.StorageClaim{
+			{
+				Resources: WithStorage(BurstableMedium, "10Gi"),
+			},
+		},
+	}
+	return tc
+}
+
+func AddTiCDCForTidbCluster(tc *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
+	if tc.Spec.TiCDC != nil {
+		return tc
+	}
+	tc.Spec.TiCDC = &v1alpha1.TiCDCSpec{
+		BaseImage: "pingcap/ticdc",
+		Replicas:  1,
+	}
+	return tc
 }
 
 func AddPumpForTidbCluster(tc *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {

@@ -177,9 +177,12 @@ var _ = ginkgo.Describe("[Stability]", func() {
 					var err error
 					framework.Logf("check whether pods of cluster %q are changed", clusterName)
 					ok, err = utilpod.PodsAreChanged(c, podList.Items)()
-					if ok || err != nil {
-						// pod changed or some error happened
-						return true, err
+					if err != nil {
+						framework.Logf("ERROR: meet error during check pods of cluster %q are changed, err:%v", clusterName, err)
+						return false, err
+					}
+					if ok {
+						return true, nil
 					}
 					framework.Logf("check whether pods of cluster %q are running", clusterName)
 					newPodList, err := c.CoreV1().Pods(ns).List(listOptions)
@@ -1079,7 +1082,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			framework.ExpectNoError(err, "failed to wait for the record of failed pod to be removed from failure stores")
 
 			ginkgo.By("Waiting for the tidb cluster to become ready")
-			err = utiltidbcluster.WaitForTidbClusterReady(cli, tc.Namespace, tc.Name, time.Minute*30, 0)
+			err = utiltidbcluster.WaitForTidbClusterConditionReady(cli, tc.Namespace, tc.Name, time.Minute*30, 0)
 			framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 		})
 	})

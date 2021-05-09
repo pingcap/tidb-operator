@@ -16,6 +16,7 @@ metadata:
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: controller-manager
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+{{- if .Values.clusterScoped }}
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
@@ -28,7 +29,6 @@ metadata:
     app.kubernetes.io/component: controller-manager
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 rules:
-{{- if .Values.clusterScoped }}
 - apiGroups: [""]
   resources:
   - services
@@ -74,7 +74,6 @@ rules:
   verbs:
   - '*'
 {{- end }}
-{{- end }}
 - apiGroups: [""]
   resources: ["nodes"]
   verbs: ["get", "list", "watch"]
@@ -117,7 +116,60 @@ roleRef:
   kind: ClusterRole
   name: {{ .Release.Name }}:tidb-controller-manager
   apiGroup: rbac.authorization.k8s.io
-{{- if (not .Values.clusterScoped) }}
+{{- else }}
+{{/* when rendering the template inline, this defined templates are "string", so we need to use `eq * true` here */}}
+{{- if or (eq (include "controller-manager.cluster-permissions.nodes" . | trim ) "true") (eq (include "controller-manager.cluster-permissions.persistentvolumes" . | trim) "true") (eq (include "controller-manager.cluster-permissions.storageclasses" . | trim) "true")}}
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ .Release.Name }}:tidb-controller-manager
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: controller-manager
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+rules:
+  {{- if (eq (include "controller-manager.cluster-permissions.nodes" . | trim) "true") }}
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+  {{- end }}
+  {{- if (eq (include "controller-manager.cluster-permissions.persistentvolumes" . | trim) "true") }}
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "patch","update"]
+  {{- end }}
+  {{- if (eq (include "controller-manager.cluster-permissions.storageclasses" . | trim) "true") }}
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch"]
+  {{- end }}
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ .Release.Name }}:tidb-controller-manager
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: controller-manager
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+subjects:
+  - kind: ServiceAccount
+    {{- if eq .Values.appendReleaseSuffix true}}
+    name: {{ .Values.controllerManager.serviceAccount }}-{{ .Release.Name }}
+    {{- else }}
+    name: {{ .Values.controllerManager.serviceAccount }}
+    {{- end }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: {{ .Release.Name }}:tidb-controller-manager
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}
 ---
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
@@ -192,7 +244,7 @@ metadata:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 subjects:
 - kind: ServiceAccount
-  {{- if eq .Values.appendReleaseSuffix true}} 
+  {{- if eq .Values.appendReleaseSuffix true}}
   name: {{ .Values.controllerManager.serviceAccount }}-{{ .Release.Name }}
   {{- else }}
   name: {{ .Values.controllerManager.serviceAccount }}

@@ -337,15 +337,27 @@ func RenderPumpStartScript(model *PumpStartScriptModel) (string, error) {
 }
 
 // tidbInitStartScriptTpl is the template string of tidb initializer start script
-var tidbInitStartScriptTpl = template.Must(template.New("tidb-init-start-script").Parse(`import os, MySQLdb
+var tidbInitStartScriptTpl = template.Must(template.New("tidb-init-start-script").Parse(`import os, sys, time, MySQLdb
 host = '{{ .ClusterName }}-tidb'
 permit_host = '{{ .PermitHost }}'
 port = 4000
+retry_count = 0
+for i in range(0, 10):
+    try:
 {{- if .TLS }}
-conn = MySQLdb.connect(host=host, port=port, user='root', charset='utf8mb4',connect_timeout=5, ssl={'ca': '{{ .CAPath }}', 'cert': '{{ .CertPath }}', 'key': '{{ .KeyPath }}'})
+        conn = MySQLdb.connect(host=host, port=port, user='root', charset='utf8mb4',connect_timeout=5, ssl={'ca': '{{ .CAPath }}', 'cert': '{{ .CertPath }}', 'key': '{{ .KeyPath }}'})
 {{- else }}
-conn = MySQLdb.connect(host=host, port=port, user='root', connect_timeout=5, charset='utf8mb4')
+        conn = MySQLdb.connect(host=host, port=port, user='root', connect_timeout=5, charset='utf8mb4')
 {{- end }}
+    except MySQLdb.OperationalError as e:
+        print(e)
+        retry_count += 1
+        time.sleep(1)
+        continue
+    break
+if retry_count == 10:
+    sys.exit(1)
+
 {{- if .PasswordSet }}
 password_dir = '/etc/tidb/password'
 for file in os.listdir(password_dir):
@@ -456,7 +468,7 @@ POD_NAME=${POD_NAME:-$HOSTNAME}
 cluster_name=` + "`" + `echo ${PEER_SERVICE_NAME} | sed 's/-dm-master-peer//'` + "`" +
 	`
 domain="${POD_NAME}.${PEER_SERVICE_NAME}"
-discovery_url={{ .DiscoveryURL }}
+discovery_url="${cluster_name}-dm-discovery.${NAMESPACE}:10261"
 encoded_domain_url=` + "`" + `echo ${domain}:8291 | base64 | tr "\n" " " | sed "s/ //g"` + "`" +
 	`
 elapseTime=0
@@ -514,9 +526,8 @@ exec /dm-master ${ARGS}
 `))
 
 type DMMasterStartScriptModel struct {
-	Scheme       string
-	DataDir      string
-	DiscoveryURL string
+	Scheme  string
+	DataDir string
 }
 
 func RenderDMMasterStartScript(model *DMMasterStartScriptModel) (string, error) {

@@ -64,7 +64,18 @@ func NewTiDBInitManager(deps *controller.Dependencies) InitManager {
 }
 
 func (m *tidbInitManager) Sync(ti *v1alpha1.TidbInitializer) error {
-	err := m.syncTiDBInitConfigMap(ti)
+	ns := ti.Namespace
+	tcName := ti.Spec.Clusters.Name
+	tc, err := m.deps.TiDBClusterLister.TidbClusters(ns).Get(tcName)
+	if err != nil {
+		return fmt.Errorf("TidbInitManager.Sync: failed to get tidbcluster %s for TidbInitializer %s/%s, error: %s", tcName, ns, ti.Name, err)
+	}
+	if tc.Spec.TiDB == nil {
+		klog.Infof("TidbInitManager.Sync: Spec.TiDB is nil in tidbcluster %s, skip syncing TidbInitializer %s/%s", tcName, ns, ti.Name)
+		return nil
+	}
+
+	err = m.syncTiDBInitConfigMap(ti)
 	if err != nil {
 		return err
 	}
@@ -342,6 +353,8 @@ func (m *tidbInitManager) makeTiDBInitJob(ti *v1alpha1.TidbInitializer) (*batchv
 			Labels: initLabel.Labels(),
 		},
 		Spec: corev1.PodSpec{
+			ImagePullSecrets: ti.Spec.ImagePullSecrets,
+			SecurityContext:  ti.Spec.PodSecurityContext,
 			InitContainers: []corev1.Container{
 				{
 					Name:    initContainerName,
@@ -379,9 +392,6 @@ func (m *tidbInitManager) makeTiDBInitJob(ti *v1alpha1.TidbInitializer) (*batchv
 	if ti.Spec.Resources != nil {
 		podSpec.Spec.Containers[0].Resources = *ti.Spec.Resources
 		podSpec.Spec.InitContainers[0].Resources = *ti.Spec.Resources
-	}
-	if ti.Spec.ImagePullSecrets != nil {
-		podSpec.Spec.ImagePullSecrets = ti.Spec.ImagePullSecrets
 	}
 
 	job := &batchv1.Job{

@@ -55,7 +55,8 @@ type TidbMonitorSpec struct {
 	Grafana     *GrafanaSpec    `json:"grafana,omitempty"`
 	Reloader    ReloaderSpec    `json:"reloader"`
 	Initializer InitializerSpec `json:"initializer"`
-	DM          *DMMonitorSpec  `json:"dm,omitempty"`
+	// +optional
+	DM *DMMonitorSpec `json:"dm,omitempty"`
 	// +optional
 	Thanos *ThanosSpec `json:"thanos,omitempty"`
 
@@ -109,6 +110,14 @@ type TidbMonitorSpec struct {
 	// Defaults to 1.
 	// +optional
 	Replicas *int32 `json:"replicas,omitempty"`
+
+	// Additional volumes of component pod.
+	// +optional
+	AdditionalVolumes []corev1.Volume `json:"additionalVolumes,omitempty"`
+
+	// PodSecurityContext of the component
+	// +optional
+	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
 }
 
 // PrometheusSpec is the desired state of prometheus
@@ -130,6 +139,8 @@ type PrometheusSpec struct {
 	DisableCompaction bool `json:"disableCompaction,omitempty"`
 	// If specified, the remote_write spec. This is an experimental feature, it may change in any upcoming release in a breaking way.
 	RemoteWrite []*RemoteWriteSpec `json:"remoteWrite,omitempty"`
+	// Additional volume mounts of prometheus pod.
+	AdditionalVolumeMounts []corev1.VolumeMount `json:"additionalVolumeMounts,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -211,6 +222,8 @@ type ThanosSpec struct {
 	MinTime string `json:"minTime,omitempty"`
 	// RoutePrefix is prometheus prefix url
 	RoutePrefix string `json:"routePrefix,omitempty"`
+	// Additional volume mounts of thanos pod.
+	AdditionalVolumeMounts []corev1.VolumeMount `json:"additionalVolumeMounts,omitempty"`
 }
 
 // +k8s:openapi-gen=true

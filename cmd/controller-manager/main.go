@@ -37,13 +37,16 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbinitializer"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbmonitor"
 	"github.com/pingcap/tidb-operator/pkg/features"
+	"github.com/pingcap/tidb-operator/pkg/metrics"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/pkg/upgrader"
 	"github.com/pingcap/tidb-operator/pkg/version"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/tools/record"
@@ -53,6 +56,7 @@ import (
 )
 
 func main() {
+	var cfg *rest.Config
 	cliCfg := controller.DefaultCLIConfig()
 	cliCfg.AddFlag(flag.CommandLine)
 	features.DefaultFeatureGate.AddFlag(flag.CommandLine)
@@ -71,6 +75,8 @@ func main() {
 		klog.V(1).Infof("FLAG: --%s=%q", flag.Name, flag.Value)
 	})
 
+	metrics.RegisterMetrics()
+
 	hostName, err := os.Hostname()
 	if err != nil {
 		klog.Fatalf("failed to get hostname: %v", err)
@@ -86,7 +92,12 @@ func main() {
 		klog.Info("HELM_RELEASE environment variable not set")
 	}
 
-	cfg, err := rest.InClusterConfig()
+	kubconfig := os.Getenv("KUBECONFIG")
+	if kubconfig != "" {
+		cfg, err = clientcmd.BuildConfigFromFlags("", kubconfig)
+	} else {
+		cfg, err = rest.InClusterConfig()
+	}
 	if err != nil {
 		klog.Fatalf("failed to get config: %v", err)
 	}
@@ -125,8 +136,6 @@ func main() {
 	}
 
 	deps := controller.NewDependencies(ns, cliCfg, cli, kubeCli, genericCli)
-	controllerCtx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	onStarted := func(ctx context.Context) {
 		// Upgrade before running any controller logic. If it fails, we wait
@@ -184,7 +193,7 @@ func main() {
 		}
 	}
 	onStopped := func() {
-		klog.Error("leader election lost")
+		klog.Fatal("leader election lost")
 	}
 
 	endPointsName := "tidb-controller-manager"
@@ -193,7 +202,7 @@ func main() {
 	}
 	// leader election for multiple tidb-controller-manager instances
 	go wait.Forever(func() {
-		leaderelection.RunOrDie(controllerCtx, leaderelection.LeaderElectionConfig{
+		leaderelection.RunOrDie(context.TODO(), leaderelection.LeaderElectionConfig{
 			Lock: &resourcelock.EndpointsLock{
 				EndpointsMeta: metav1.ObjectMeta{
 					Namespace: ns,
@@ -215,7 +224,7 @@ func main() {
 		})
 	}, cliCfg.WaitDuration)
 
-	srv := http.Server{Addr: ":6060"}
+	srv := createHTTPServer()
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc,
 		syscall.SIGHUP,
@@ -230,11 +239,21 @@ func main() {
 		if err2 := srv.Shutdown(context.Background()); err2 != nil {
 			klog.Fatal("fail to shutdown the HTTP server", err2)
 		}
-		close(sc)
 	}()
 
 	if err = srv.ListenAndServe(); err != http.ErrServerClosed {
 		klog.Fatal(err)
 	}
 	klog.Infof("tidb-controller-manager exited")
+}
+
+func createHTTPServer() *http.Server {
+	serverMux := http.NewServeMux()
+	// HTTP path for prometheus.
+	serverMux.Handle("/metrics", promhttp.Handler())
+
+	return &http.Server{
+		Addr:    ":6060",
+		Handler: serverMux,
+	}
 }

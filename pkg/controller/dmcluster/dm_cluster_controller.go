@@ -54,6 +54,7 @@ func NewController(deps *controller.Dependencies) *Controller {
 			mm.NewOrphanPodsCleaner(deps),
 			mm.NewRealPVCCleaner(deps),
 			mm.NewPVCResizer(deps),
+			mm.NewTidbDiscoveryManager(deps),
 			&dmClusterConditionUpdater{},
 			deps.Recorder,
 		),

@@ -97,7 +97,14 @@ func (m *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 	}
 
 	// Wait for PD & TiKV upgrading done
-	if tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
+	if tc.Status.TiCDC.Phase == v1alpha1.UpgradePhase ||
+		tc.Status.TiFlash.Phase == v1alpha1.UpgradePhase ||
+		tc.Status.PD.Phase == v1alpha1.UpgradePhase ||
+		tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
+		klog.Infof("TidbCluster: [%s/%s]'s ticdc status is %s, tiflash status is %s, "+
+			"pd status is %s, tikv status is %s, can not upgrade pump",
+			tc.Namespace, tc.Name, tc.Status.TiCDC.Phase, tc.Status.TiFlash.Phase,
+			tc.Status.PD.Phase, tc.Status.TiKV.Phase)
 		return nil
 	}
 
@@ -173,11 +180,7 @@ func (m *pumpMemberManager) syncHeadlessService(tc *v1alpha1.TidbCluster) error 
 }
 
 func (m *pumpMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *appsv1.StatefulSet) (*corev1.ConfigMap, error) {
-
-	basePumpSpec, createPump := tc.BasePumpSpec()
-	if !createPump {
-		return nil, nil
-	}
+	basePumpSpec := tc.BasePumpSpec()
 
 	newCm, err := getNewPumpConfigMap(tc)
 	if err != nil {
@@ -225,9 +228,7 @@ func getNewPumpHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {
 
 // getNewPumpConfigMap returns a configMap for pump
 func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
-
-	_, createPump := tc.BasePumpSpec()
-	if !createPump {
+	if tc.Spec.Pump == nil {
 		return nil, nil
 	}
 	spec := tc.Spec.Pump
@@ -264,10 +265,7 @@ func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 }
 
 func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*appsv1.StatefulSet, error) {
-	spec, ok := tc.BasePumpSpec()
-	if !ok {
-		return nil, nil
-	}
+	spec := tc.BasePumpSpec()
 	objMeta, pumpLabel := getPumpMeta(tc, controller.PumpMemberName)
 	replicas := tc.Spec.Pump.Replicas
 	storageClass := tc.Spec.Pump.StorageClassName
@@ -379,31 +377,26 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 		},
 	}
 
+	// TODO: set serviceAccountName in BuildPodSpec
 	serviceAccountName := tc.Spec.Pump.ServiceAccount
 	if serviceAccountName == "" {
 		serviceAccountName = tc.Spec.ServiceAccount
 	}
+	podSpec := spec.BuildPodSpec()
+	podSpec.Containers = containers
+	podSpec.Volumes = volumes
+	podSpec.ServiceAccountName = serviceAccountName
+	// TODO: change to set field in BuildPodSpec
+	podSpec.InitContainers = spec.InitContainers()
+	// TODO: change to set field in BuildPodSpec
+	podSpec.DNSPolicy = spec.DnsPolicy()
 
 	podTemplate := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: podAnnos,
 			Labels:      pumpLabel,
 		},
-		Spec: corev1.PodSpec{
-			Containers:         containers,
-			ServiceAccountName: serviceAccountName,
-			Volumes:            volumes,
-
-			Affinity:         spec.Affinity(),
-			Tolerations:      spec.Tolerations(),
-			NodeSelector:     spec.NodeSelector(),
-			SchedulerName:    spec.SchedulerName(),
-			SecurityContext:  spec.PodSecurityContext(),
-			HostNetwork:      spec.HostNetwork(),
-			DNSPolicy:        spec.DnsPolicy(),
-			ImagePullSecrets: spec.ImagePullSecrets(),
-			InitContainers:   spec.InitContainers(),
-		},
+		Spec: podSpec,
 	}
 
 	return &appsv1.StatefulSet{

@@ -57,16 +57,26 @@ func (f *tidbFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	maxFailoverCount := *tc.Spec.TiDB.MaxFailoverCount
 	for _, tidbMember := range tc.Status.TiDB.Members {
 		_, exist := tc.Status.TiDB.FailureMembers[tidbMember.Name]
+		if exist {
+			continue
+		}
+
+		if tidbMember.Health {
+			continue
+		}
+
 		deadline := tidbMember.LastTransitionTime.Add(f.deps.CLIConfig.TiDBFailoverPeriod)
-		if !tidbMember.Health && time.Now().After(deadline) && !exist {
+		if time.Now().After(deadline) {
 			if len(tc.Status.TiDB.FailureMembers) >= int(maxFailoverCount) {
 				klog.Warningf("the failover count reaches the limit (%d), no more failover pods will be created", maxFailoverCount)
 				break
 			}
+
 			pod, err := f.deps.PodLister.Pods(tc.Namespace).Get(tidbMember.Name)
 			if err != nil {
 				return fmt.Errorf("tidbFailover.Failover: failed to get pods %s for cluster %s/%s, error: %s", tidbMember.Name, tc.GetNamespace(), tc.GetName(), err)
 			}
+
 			_, condition := podutil.GetPodCondition(&pod.Status, corev1.PodScheduled)
 			if condition == nil || condition.Status != corev1.ConditionTrue {
 				// if a member is unheathy because it's not scheduled yet, we
@@ -74,6 +84,7 @@ func (f *tidbFailover) Failover(tc *v1alpha1.TidbCluster) error {
 				klog.Warningf("pod %s/%s is not scheduled yet, skipping failover", pod.Namespace, pod.Name)
 				continue
 			}
+
 			tc.Status.TiDB.FailureMembers[tidbMember.Name] = v1alpha1.TiDBFailureMember{
 				PodName:   tidbMember.Name,
 				CreatedAt: metav1.Now(),

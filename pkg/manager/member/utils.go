@@ -151,6 +151,10 @@ func tidbPodName(tcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", controller.TiDBMemberName(tcName), ordinal)
 }
 
+func ticdcPodName(tcName string, ordinal int32) string {
+	return fmt.Sprintf("%s-%d", controller.TiCDCMemberName(tcName), ordinal)
+}
+
 func DMMasterPodName(dcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", controller.DMMasterMemberName(dcName), ordinal)
 }
@@ -271,6 +275,7 @@ func UpdateStatefulSet(setCtl controller.StatefulSetControlInterface, object run
 	if oldSet.Annotations == nil {
 		oldSet.Annotations = map[string]string{}
 	}
+
 	if !util.StatefulSetEqual(*newSet, *oldSet) || isOrphan {
 		set := *oldSet
 		// Retain the deprecated last applied pod template annotation for backward compatibility
@@ -519,7 +524,8 @@ func addDeferDeletingAnnoToPVC(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentV
 	return nil
 }
 
-func getPVCSelectorForPod(controller runtime.Object, memberType v1alpha1.MemberType, ordinal int32) (labels.Selector, error) {
+// GetPVCSelectorForPod compose a PVC selector from a tc/dm-cluster member pod at ordinal position
+func GetPVCSelectorForPod(controller runtime.Object, memberType v1alpha1.MemberType, ordinal int32) (labels.Selector, error) {
 	meta := controller.(metav1.Object)
 	var podName string
 	var l label.Label
