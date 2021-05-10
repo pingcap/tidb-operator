@@ -42,7 +42,7 @@ func updateConfigMap(old, new *corev1.ConfigMap) (bool, error) {
 
 		equal, err := toml.Equal([]byte(oldData), []byte(newData))
 		if err != nil {
-			return dataEqual, perrors.Annotatef(err, "compare %s/%s %s and %s failed", old.Namespace, old.Name, oldData, newData)
+			return false, perrors.Annotatef(err, "compare %s/%s %s and %s failed", old.Namespace, old.Name, oldData, newData)
 		}
 
 		if equal {

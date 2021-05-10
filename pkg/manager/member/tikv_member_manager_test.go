@@ -835,6 +835,7 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 		Replicas: pointer.Int32Ptr(3),
 	}
 	now := metav1.Time{Time: time.Now()}
+
 	testFn := func(test *testcase, t *testing.T) {
 		tc := newTidbClusterForPD()
 		tc.Status.PD.Phase = v1alpha1.NormalPhase
@@ -877,6 +878,7 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 			test.tcExpectFn(g, tc)
 		}
 	}
+
 	tests := []testcase{
 		{
 			name:     "whether statefulset is upgrading returns failed",
