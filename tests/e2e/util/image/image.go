@@ -30,7 +30,7 @@ const (
 	TiDBV3                        = "v3.0.20"
 	TiDBV4Prev                    = "v4.0.9"
 	TiDBV4                        = "v4.0.10"
-	TiDBV5                        = "v5.0.0"
+	TiDBV5                        = "v5.0.1"
 	TiDBNightlyVersion            = "nightly"
 	PrometheusImage               = "prom/prometheus"
 	PrometheusVersion             = "v2.18.1"
