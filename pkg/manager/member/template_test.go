@@ -773,10 +773,21 @@ fi`,
 			LogLevel:      "INFO",
 			Namespace:     "demo-ns",
 			clusterDomain: "demo.com",
-			result: `set -euo pipefail
+			result: `
+pd_url="http://demo-pd:2379"
+encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
+discovery_url="demo-discovery.demo-ns.svc.demo.com:10261"
+until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
+echo "waiting for the verification of PD endpoints ..."
+sleep $((RANDOM % 5))
+done
+
+pd_url=$result
+
+set -euo pipefail
 
 /pump \
--pd-urls=http://demo-pd:2379 \
+-pd-urls=$pd_url \
 -L=INFO \
 -advertise-addr=` + "`" + `echo ${HOSTNAME}` + "`" + `.demo-pump.demo-ns.svc.demo.com:8250 \
 -config=/etc/pump/pump.toml \
