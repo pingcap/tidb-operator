@@ -10,7 +10,7 @@ spec:
   #######################
 
   ## TiDB cluster version
-  version: "v5.0.0"
+  version: "v5.0.1"
 
   ## Time zone of TiDB cluster Pods
   timezone: UTC
@@ -136,6 +136,12 @@ spec:
   ## Set this in the case where a TiDB cluster is deployed across multiple Kubernetes clusters. default to empty.
   # clusterDomain: cluster.local
 
+  ## TopologySpreadConstraints for pod scheduling, will be overwritten by each cluster component's specific spread constraints setting
+  ## Can refer to PD/TiDB/TiKV/TiCDC/TiFlash/Pump topologySpreadConstraints settings, and ensure only cluster-scope general settings here
+  ## Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
+  # topologySpreadConstraints:
+  # - topologyKey: topology.kubernetes.io/zone
+
   ###########################
   # TiDB Cluster Components #
   ###########################
@@ -183,7 +189,7 @@ spec:
     #############################
 
     ## The following block overwrites TiDB cluster-level configurations in `spec`
-    # version: "v5.0.0"
+    # version: "v5.0.1"
     # imagePullPolicy: IfNotPresent
     # imagePullSecrets: secretName
     # hostNetwork: false
@@ -315,6 +321,11 @@ spec:
     ## Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/enable-tls-for-mysql-client
     # tlsClientSecretName: custom-tidb-client-secret-name
 
+    ## TopologySpreadConstraints for pod scheduling, will overwrite cluster level spread constraints setting
+    ## Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
+    # topologySpreadConstraints:
+    # - topologyKey: topology.kubernetes.io/zone
+
   tidb:
     ############################
     # Basic TiDB Configuration #
@@ -364,7 +375,7 @@ spec:
     ###############################
 
     ## The following block overwrites TiDB cluster-level configurations in `spec`
-    # version: "v5.0.0"
+    # version: "v5.0.1"
     # imagePullPolicy: IfNotPresent
     # imagePullSecrets: secretName
     # hostNetwork: false
@@ -528,6 +539,11 @@ spec:
     #           - tidb
     #       topologyKey: kubernetes.io/hostname
 
+    ## TopologySpreadConstraints for pod scheduling, will overwrite cluster level spread constraints setting
+    ## Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
+    # topologySpreadConstraints:
+    # - topologyKey: topology.kubernetes.io/zone
+
   tikv:
     ############################
     # Basic TiKV Configuration #
@@ -564,7 +580,7 @@ spec:
     ###############################
 
     ## The following block overwrites TiDB cluster-level configurations in `spec`
-    # version: "v5.0.0"
+    # version: "v5.0.1"
     # imagePullPolicy: IfNotPresent
     # imagePullSecrets: secretName
     # hostNetwork: false
@@ -721,11 +737,16 @@ spec:
     #           - tikv
     #       topologyKey: kubernetes.io/hostname
 
+    ## TopologySpreadConstraints for pod scheduling, will overwrite cluster level spread constraints setting
+    ## Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
+    # topologySpreadConstraints:
+    # - topologyKey: topology.kubernetes.io/zone
+
   ## Deploy TiDB Binlog of a TiDB cluster
   ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/deploy-tidb-binlog/#deploy-pump
   # pump:
   #   baseImage: pingcap/tidb-binlog
-  #   version: "v5.0.0"
+  #   version: "v5.0.1"
   #   replicas: 1
   #   storageClassName: local-storage
   #   requests:
@@ -757,12 +778,16 @@ spec:
   #   # Ref: https://docs.pingcap.com/tidb/stable/tidb-binlog-configuration-file#pump
   #   config: |
   #     gc = 7
+  #   # TopologySpreadConstraints for pod scheduling, will overwrite cluster level spread constraints setting
+  #   # Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
+  #   topologySpreadConstraints:
+  #   - topologyKey: topology.kubernetes.io/zone
 
   ## TiCDC is a tool for replicating the incremental data of TiDB
   ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/deploy-ticdc/
   # ticdc:
   #   baseImage: pingcap/ticdc
-  #   version: "v5.0.0"
+  #   version: "v5.0.1"
   #   replicas: 3
   #   storageClassName: local-storage
   #   requests:
@@ -796,6 +821,10 @@ spec:
   #     gcTTL: 86400
   #     logLevel: info
   #     logFile: /dev/stderr
+  #   # TopologySpreadConstraints for pod scheduling, will overwrite cluster level spread constraints setting
+  #   # Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
+  #   topologySpreadConstraints:
+  #   - topologyKey: topology.kubernetes.io/zone
 
   ## TiFlash is the columnar storage extension of TiKV
   ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/deploy-tiflash/
@@ -804,7 +833,7 @@ spec:
   #   # Basic TiFlash Configuration #
   #   ###############################
   #   baseImage: pingcap/tiflash
-  #   version: "v5.0.0"
+  #   version: "v5.0.1"
   #   replicas: 1
   #   # limits:
   #   #   cpu: 2000m
@@ -864,8 +893,12 @@ spec:
   #     # configure the configuration file for TiFlash process
   #     config: |
   #       [logger]
-  #         log = /data0/logs/somelog
+  #         log = "/data0/logs/somelog"
   #     # configure the configuration file for TiFlash Proxy process
   #     proxy: |
   #       [security]
-  #         cert-allowed-cn = CNNAME
+  #         cert-allowed-cn = "CNNAME"
+  #   # TopologySpreadConstraints for pod scheduling, will overwrite the cluster level spread constraints setting
+  #   # Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
+  #   topologySpreadConstraints:
+  #   - topologyKey: topology.kubernetes.io/zone

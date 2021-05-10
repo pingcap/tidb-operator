@@ -335,8 +335,7 @@ remote_write:
 		DMClusterInfos: []ClusterRegexInfo{
 			{Name: "target", Namespace: "ns1"},
 		},
-		EnableTLSDMCluster: false,
-		AlertmanagerURL:    "alert-url",
+		AlertmanagerURL: "alert-url",
 		RemoteWriteConfigs: []*config.RemoteWriteConfig{
 			{
 				URL:           &config.URL{URL: url},
@@ -909,9 +908,9 @@ scrape_configs:
       names:
       - ns1
   tls_config:
-    ca_file: /var/lib/dm-cluster-client-tls/ca.crt
-    cert_file: /var/lib/dm-cluster-client-tls/tls.crt
-    key_file: /var/lib/dm-cluster-client-tls/tls.key
+    ca_file: /var/lib/dm-cluster-client-tls/secret_ns1_target-dm-client-secret_ca.crt
+    cert_file: /var/lib/dm-cluster-client-tls/secret_ns1_target-dm-client-secret_tls.crt
+    key_file: /var/lib/dm-cluster-client-tls/secret_ns1_target-dm-client-secret_tls.key
     insecure_skip_verify: false
   relabel_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
@@ -962,9 +961,9 @@ scrape_configs:
       names:
       - ns1
   tls_config:
-    ca_file: /var/lib/dm-cluster-client-tls/ca.crt
-    cert_file: /var/lib/dm-cluster-client-tls/tls.crt
-    key_file: /var/lib/dm-cluster-client-tls/tls.key
+    ca_file: /var/lib/dm-cluster-client-tls/secret_ns1_target-dm-client-secret_ca.crt
+    cert_file: /var/lib/dm-cluster-client-tls/secret_ns1_target-dm-client-secret_tls.crt
+    key_file: /var/lib/dm-cluster-client-tls/secret_ns1_target-dm-client-secret_tls.key
     insecure_skip_verify: false
   relabel_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
@@ -1010,9 +1009,8 @@ scrape_configs:
 			{Name: "target", Namespace: "ns1", enableTLS: true},
 		},
 		DMClusterInfos: []ClusterRegexInfo{
-			{Name: "target", Namespace: "ns1"},
+			{Name: "target", Namespace: "ns1", enableTLS: true},
 		},
-		EnableTLSDMCluster: true,
 	}
 	content, err := RenderPrometheusConfig(model)
 	g.Expect(err).NotTo(HaveOccurred())
@@ -1048,8 +1046,7 @@ func TestMultipleClusterConfigRender(t *testing.T) {
 			{Name: "ns1", Namespace: "ns1"},
 			{Name: "ns2", Namespace: "ns2"},
 		},
-		EnableTLSDMCluster: false,
-		AlertmanagerURL:    "alert-url",
+		AlertmanagerURL: "alert-url",
 	}
 	// firsrt validate json generate normally
 	_, err := RenderPrometheusConfig(model)
@@ -1067,11 +1064,10 @@ func TestMultipleClusterTlsConfigRender(t *testing.T) {
 			{Name: "ns2", Namespace: "ns2", enableTLS: true},
 		},
 		DMClusterInfos: []ClusterRegexInfo{
-			{Name: "ns1", Namespace: "ns1"},
-			{Name: "ns2", Namespace: "ns2"},
+			{Name: "ns1", Namespace: "ns1", enableTLS: true},
+			{Name: "ns2", Namespace: "ns2", enableTLS: true},
 		},
-		EnableTLSDMCluster: true,
-		AlertmanagerURL:    "alert-url",
+		AlertmanagerURL: "alert-url",
 	}
 	// firsrt validate json generate normally
 	_, err := RenderPrometheusConfig(model)
@@ -1113,11 +1109,10 @@ func TestScrapeJob(t *testing.T) {
 	}
 
 	model := &MonitorConfigModel{
-		AlertmanagerURL:    "",
-		ClusterInfos:       ClusterInfos,
-		DMClusterInfos:     nil,
-		ExternalLabels:     buildExternalLabels(tm),
-		EnableTLSDMCluster: false,
+		AlertmanagerURL: "",
+		ClusterInfos:    ClusterInfos,
+		DMClusterInfos:  nil,
+		ExternalLabels:  buildExternalLabels(tm),
 	}
 	scrapeJobs := scrapeJob("pd", pdPattern, model, buildAddressRelabelConfigByComponent("pd"))
 	tcTlsSecretName := util.ClusterClientTLSSecretName(name)
