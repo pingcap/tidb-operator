@@ -70,6 +70,12 @@ func setTidbClusterSpecDefault(tc *v1alpha1.TidbCluster) {
 	if tc.Spec.PVReclaimPolicy == nil {
 		tc.Spec.PVReclaimPolicy = &retainPVP
 	}
+
+	if tc.Spec.Cluster != nil {
+		if tc.Spec.Cluster.Name != "" && tc.Spec.Cluster.Namespace == "" {
+			tc.Spec.Cluster.Namespace = tc.GetNamespace()
+		}
+	}
 }
 
 func setTidbSpecDefault(tc *v1alpha1.TidbCluster) {
