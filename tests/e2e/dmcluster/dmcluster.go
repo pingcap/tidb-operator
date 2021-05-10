@@ -15,11 +15,14 @@ package dmcluster
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/onsi/ginkgo"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
@@ -95,7 +98,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			dcName := "basic-dm"
 			dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2)
 			dc.Spec.Master.Replicas = 1
-			dc.Spec.Worker.Replicas = 1
+			dc.Spec.Worker.Replicas = 1 // current versions of DM can always bind the first source to this only DM-worker instance.
 			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(dc)
 			framework.ExpectNoError(err, "failed to create DmCluster: %q", dcName)
 			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
@@ -190,6 +193,53 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			})
 			framework.ExpectNoError(err, "failed to scale in DmCluster: %q", dc.Name)
 			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
+
+			ginkgo.By("Generate incremental stage data in upstream")
+			framework.ExpectNoError(tests.GenDMIncrData(fw, dc.Namespace), "failed to generate incremental stage data in upstream")
+
+			ginkgo.By("Check data for incremental stage")
+			framework.ExpectEqual(tests.CheckDMData(fw, dc.Namespace, 2), wait.ErrWaitTimeout, "incremental data should not equal")
+		})
+
+		ginkgo.It("restart pods for DM", func() {
+			ginkgo.By("Deploy a basic dc")
+			dcName := "restart-dm"
+			dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2)
+			dc.Spec.Master.Replicas = 3
+			dc.Spec.Worker.Replicas = 1
+			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(dc)
+			framework.ExpectNoError(err, "failed to create DmCluster: %q", dcName)
+			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
+
+			ginkgo.By("Create MySQL sources")
+			framework.ExpectNoError(tests.CreateDMSources(fw, dc.Namespace, controller.DMMasterMemberName(dcName)), "failed to create sources for DmCluster %q", dcName)
+
+			ginkgo.By("Generate full stage data in upstream")
+			framework.ExpectNoError(tests.GenDMFullData(fw, dc.Namespace), "failed to generate full stage data in upstream")
+
+			ginkgo.By("Start a basic migration task")
+			framework.ExpectNoError(tests.StartDMTask(fw, dc.Namespace, controller.DMMasterMemberName(dcName), tests.DMSingleTask, ""), "failed to start single source task")
+
+			ginkgo.By("Check data for full stage")
+			framework.ExpectNoError(tests.CheckDMData(fw, dc.Namespace, 1), "failed to check full data")
+
+			ginkgo.By("Restart DM-master pods one by one")
+			for i := int32(0); i < dc.Spec.Master.Replicas; i++ {
+				framework.ExpectNoError(c.CoreV1().Pods(ns).Delete(fmt.Sprintf("%s-%d", controller.DMMasterMemberName(dcName), i), &metav1.DeleteOptions{}), "failed to delete DM-master pod %d for DmCluster %q", i, dcName)
+				<-time.After(time.Minute) // wait the previous pod to be deleted
+				framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 5*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
+			}
+
+			ginkgo.By("Restart the DM-worker pod")
+			framework.ExpectNoError(c.CoreV1().Pods(ns).Delete(fmt.Sprintf("%s-0", controller.DMWorkerMemberName(dcName)), &metav1.DeleteOptions{}), "failed to delete the DM-worker pod for DmCluster %q", dcName)
+			<-time.After(time.Minute) // wait the previous pod to be deleted
+			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 5*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
+
+			ginkgo.By("Generate incremental stage data in upstream")
+			framework.ExpectNoError(tests.GenDMIncrData(fw, dc.Namespace), "failed to generate incremental stage data in upstream")
+
+			ginkgo.By("Check data for incremental stage")
+			framework.ExpectNoError(tests.CheckDMData(fw, dc.Namespace, 1), "failed to check incremental data")
 		})
 	})
 })
