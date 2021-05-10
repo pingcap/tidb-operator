@@ -72,10 +72,8 @@ func setTidbClusterSpecDefault(tc *v1alpha1.TidbCluster) {
 	}
 
 	if tc.Spec.Cluster != nil {
-		if tc.Spec.Cluster.Name != "" {
-			if tc.Spec.Cluster.Namespace == "" {
-				tc.Spec.Cluster.Namespace = tc.GetNamespace()
-			}
+		if tc.Spec.Cluster.Name != "" && tc.Spec.Cluster.Namespace == "" {
+			tc.Spec.Cluster.Namespace = tc.GetNamespace()
 		}
 	}
 }
