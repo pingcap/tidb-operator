@@ -508,7 +508,7 @@ then
 #   demo-dm-master-0=http://demo-dm-master-0.demo-dm-master-peer.demo.svc:8291,demo-dm-master-1=http://demo-dm-master-1.demo-dm-master-peer.demo.svc:8291
 # The --join args must be:
 #   --join=http://demo-dm-master-0.demo-dm-master-peer.demo.svc:8261,http://demo-dm-master-1.demo-dm-master-peer.demo.svc:8261
-join=` + "`" + `cat {{ .DataDir }}/join | tr "8291" "8261" | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ","` + "`" + `
+join=` + "`" + `cat {{ .DataDir }}/join | sed -e 's/8291/8261/g' | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ","` + "`" + `
 join=${join%,}
 ARGS="${ARGS} --join=${join}"
 elif [[ ! -d {{ .DataDir }}/member/wal ]]
