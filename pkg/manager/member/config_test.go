@@ -134,6 +134,26 @@ func TestUpdateConfigMap(t *testing.T) {
 			updateKeys: []string{"pump-config", "config_templ.toml"},
 			equal:      false,
 		},
+		{
+			name: "the data of old and new configmaps are the same",
+			old: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "old",
+				},
+				Data: map[string]string{
+					"config-file": "a = \"b\"",
+				},
+			},
+			new: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "new",
+				},
+				Data: map[string]string{
+					"config-file": "a = \"b\"",
+				},
+			},
+			equal: true,
+		},
 	}
 
 	for i := range tests {
