@@ -30,6 +30,7 @@ const (
 	TiDBV3                        = "v3.0.20"
 	TiDBV4Prev                    = "v4.0.9"
 	TiDBV4                        = "v4.0.10"
+	TiDBV5Prev                    = "v5.0.0"
 	TiDBV5                        = "v5.0.1"
 	TiDBNightlyVersion            = "nightly"
 	PrometheusImage               = "prom/prometheus"
@@ -51,6 +52,7 @@ func ListImages() []string {
 	versions = append(versions, TiDBV3)
 	versions = append(versions, TiDBV4Prev)
 	versions = append(versions, TiDBV4)
+	versions = append(versions, TiDBV5Prev)
 	versions = append(versions, TiDBV5)
 	versions = append(versions, TiDBNightlyVersion)
 	for _, v := range versions {
