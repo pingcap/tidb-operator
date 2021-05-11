@@ -172,7 +172,7 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 
 	err = m.syncTidbMonitorStatus(monitor)
 	if err != nil {
-		klog.Errorf("tm[%s/%s]'s tidbmonitor failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
+		klog.Errorf("Fail to sync tm[%s/%s]'s status, err: %v", monitor.Namespace, monitor.Name, err)
 		return err
 	}
 
