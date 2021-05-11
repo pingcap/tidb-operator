@@ -376,7 +376,8 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		ClusterDomain:   tc.Spec.ClusterDomain,
 	}
 
-	if tc.IsHeterogeneous() {
+	if tc.HeterogeneousWithoutLocalPD() {
+		// FIXME: not work for across k8s cluster without local pd
 		tidbStartScriptModel.Path = controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379"
 	} else {
 		tidbStartScriptModel.Path = "${CLUSTER_NAME}-pd:2379"

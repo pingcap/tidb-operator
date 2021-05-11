@@ -97,7 +97,7 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 			}
 		}
 
-		if firstTc == nil && !tc.IsHeterogeneous() {
+		if firstTc == nil && !tc.HeterogeneousWithoutLocalPD() {
 			firstTc = tc
 		}
 		err = m.syncDashboardMetricStorage(tc, monitor)
@@ -106,6 +106,7 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 			continue
 		}
 	}
+
 	var firstDc *v1alpha1.DMCluster
 	if monitor.Spec.DM != nil {
 		for _, dcRef := range monitor.Spec.DM.Clusters {

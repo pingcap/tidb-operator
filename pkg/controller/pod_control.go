@@ -119,8 +119,8 @@ func (c *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Po
 	storeID := labels[label.StoreIDLabelKey]
 
 	var pdClient pdapi.PDClient
-	if tc.IsHeterogeneous() {
-		pdClient = c.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
+	if tc.HeterogeneousWithoutLocalPD() {
+		pdClient = c.pdControl.GetPDClient(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
 	} else {
 		pdClient = c.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tcName, tc.IsTLSClusterEnabled())
 	}
