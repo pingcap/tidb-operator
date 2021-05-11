@@ -28,8 +28,8 @@ import (
 
 const (
 	TiDBV3                        = "v3.0.20"
-	TiDBV4Prev                    = "v4.0.9"
-	TiDBV4                        = "v4.0.10"
+	TiDBV4Prev                    = "v4.0.11"
+	TiDBV4                        = "v4.0.12"
 	TiDBV5Prev                    = "v5.0.0"
 	TiDBV5                        = "v5.0.1"
 	TiDBNightlyVersion            = "nightly"
