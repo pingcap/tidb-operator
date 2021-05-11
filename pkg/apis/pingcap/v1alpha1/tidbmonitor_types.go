@@ -109,7 +109,7 @@ type TidbMonitorSpec struct {
 	ReplicaExternalLabelName *string `json:"replicaExternalLabelName,omitempty"`
 	// Replicas is the number of desired replicas.
 	// Defaults to 1.
-	// +kubebuilder:default=1
+	// +optional
 	Replicas *int32 `json:"replicas,omitempty"`
 
 	// Additional volumes of component pod.

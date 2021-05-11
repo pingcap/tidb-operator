@@ -171,13 +171,13 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		return err
 	}
 
+	klog.V(4).Infof("tm[%s/%s]'s ingress synced", monitor.Namespace, monitor.Name)
+
 	err = m.syncTidbMonitorStatus(monitor)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s tidbmonitor failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return err
 	}
-
-	klog.V(4).Infof("tm[%s/%s]'s ingress synced", monitor.Namespace, monitor.Name)
 
 	return nil
 }

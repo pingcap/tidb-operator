@@ -304,7 +304,12 @@ var (
 		Description: "The desired replicas number of tidbMonitor cluster",
 		JSONPath:    ".spec.replicas",
 	}
-	statusTiDBMonitorAdditionalPrinterColumns = extensionsobj.CustomResourceColumnDefinition{
+	readyTiDBMonitorAdditionalPrinterColumns = extensionsobj.CustomResourceColumnDefinition{
+		Name:     "READY",
+		Type:     "string",
+		JSONPath: ".status.statefulSet.readyReplicas",
+	}
+	updateTiDBMonitorAdditionalPrinterColumns = extensionsobj.CustomResourceColumnDefinition{
 		Name:     "UP-TO-DATE",
 		Type:     "string",
 		JSONPath: ".status.statefulSet.updatedReplicas",
@@ -328,7 +333,7 @@ func init() {
 	tidbInitializerPrinterColumns = append(tidbInitializerPrinterColumns, tidbInitializerPhase, ageColumn)
 	autoScalerPrinterColumns = append(autoScalerPrinterColumns, autoScalerTiDBMaxReplicasColumn, autoScalerTiDBMinReplicasColumn,
 		autoScalerTiKVMaxReplicasColumn, autoScalerTiKVMinReplicasColumn, ageColumn)
-	tidbMonitorAdditionalPrinterColumns = append(tidbMonitorAdditionalPrinterColumns, tidbMonitorDesireColumn, statusTiDBMonitorAdditionalPrinterColumns, ageColumn)
+	tidbMonitorAdditionalPrinterColumns = append(tidbMonitorAdditionalPrinterColumns, tidbMonitorDesireColumn, readyTiDBMonitorAdditionalPrinterColumns, updateTiDBMonitorAdditionalPrinterColumns, ageColumn)
 }
 
 func NewCustomResourceDefinition(crdKind v1alpha1.CrdKind, group string, labels map[string]string, validation bool) *extensionsobj.CustomResourceDefinition {

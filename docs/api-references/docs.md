@@ -2401,6 +2401,7 @@ int32
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Replicas is the number of desired replicas.
 Defaults to 1.</p>
 </td>
@@ -20715,6 +20716,7 @@ int32
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Replicas is the number of desired replicas.
 Defaults to 1.</p>
 </td>
