@@ -1597,6 +1597,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				tikvCfg := v1alpha1.NewTiKVConfig()
 				tidbCfg := v1alpha1.NewTiDBConfig()
 				pdCfg.Set("lease", 3)
+				tikvCfg.Set("storage.reserve-space", "0MB")
 				tikvCfg.Set("status-thread-pool-size", 1)
 				tidbCfg.Set("token-limit", 10000)
 				tc.Spec.PD.Config = pdCfg
