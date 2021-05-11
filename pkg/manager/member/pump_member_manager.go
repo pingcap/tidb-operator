@@ -329,6 +329,13 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 			Resources:    controller.ContainerResource(tc.Spec.Pump.ResourceRequirements),
 			Env:          util.AppendEnv(envs, spec.Env()),
 			VolumeMounts: volumeMounts,
+			ReadinessProbe: &corev1.Probe{
+				Handler: corev1.Handler{
+					TCPSocket: &corev1.TCPSocketAction{
+						Port: intstr.FromInt(8250),
+					},
+				},
+			},
 		},
 	}
 
