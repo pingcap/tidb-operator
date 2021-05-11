@@ -7738,7 +7738,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiFlashSpec(ref common.ReferenceCallback) 
 					},
 					"scaleInParallelism": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ScaleInParallelism configures max scale in replicas for TiKV stores. Defaults to 1",
+							Description: "ScaleInParallelism configures max scale in replicas for TiFlash. Defaults to 1",
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},

@@ -105,7 +105,20 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 	var (
 		deleteStoreCount int
 		storesInfo       *pdapi.StoresInfo
+		skipPreCheck     bool
 	)
+	if !tc.TiKVBootStrapped() {
+		klog.Infof("TiKV of Cluster %s/%s is not bootstrapped yet, skip pre check when scale in TiKV", tc.Namespace, tc.Name)
+		skipPreCheck = true
+	} else {
+		var err error
+		pdClient := controller.GetPDClient(s.deps.PDControl, tc)
+		storesInfo, err = pdClient.GetStores()
+		if err != nil {
+			return fmt.Errorf("failed to get stores info in TidbCluster %s/%s", tc.GetNamespace(), tc.GetName())
+		}
+	}
+
 	scaleInOne := func(ordinal int32) (bool, error) {
 		podName := ordinalPodName(v1alpha1.TiKVMemberType, tcName, ordinal)
 		pod, err := s.deps.PodLister.Pods(ns).Get(podName)
@@ -113,10 +126,10 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 			return false, fmt.Errorf("tikvScaler.ScaleIn: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
 		}
 
-		if pass, info, err := s.preCheckUpStores(tc, podName, storesInfo, deleteStoreCount); !pass {
-			return false, err
-		} else {
-			storesInfo = info
+		if !skipPreCheck {
+			if pass, err := s.preCheckUpStores(tc, podName, storesInfo, deleteStoreCount); !pass {
+				return false, err
+			}
 		}
 
 		if s.deps.CLIConfig.PodWebhookEnabled {
@@ -263,27 +276,13 @@ func (s *tikvScaler) SyncAutoScalerAnn(meta metav1.Object, actual *apps.Stateful
 	return nil
 }
 
-func (s *tikvScaler) preCheckUpStores(tc *v1alpha1.TidbCluster, podName string, storesInfo *pdapi.StoresInfo, deleteStoreCount int) (bool, *pdapi.StoresInfo, error) {
-	if !tc.TiKVBootStrapped() {
-		klog.Infof("TiKV of Cluster %s/%s is not bootstrapped yet, skip pre check when scale in TiKV", tc.Namespace, tc.Name)
-		return true, nil, nil
-	}
+func (s *tikvScaler) preCheckUpStores(tc *v1alpha1.TidbCluster, podName string, storesInfo *pdapi.StoresInfo, deleteStoreCount int) (bool, error) {
 
-	pdClient := controller.GetPDClient(s.deps.PDControl, tc)
 	// get the number of stores whose state is up
 	upNumber := 0
 
-	info := storesInfo
-	if info == nil {
-		var err error
-		info, err = pdClient.GetStores()
-		if err != nil {
-			return false, nil, fmt.Errorf("failed to get stores info in TidbCluster %s/%s", tc.GetNamespace(), tc.GetName())
-		}
-	}
-
 	// filter out TiFlash
-	for _, store := range info.Stores {
+	for _, store := range storesInfo.Stores {
 		if store.Store != nil {
 			if store.Store.StateName == v1alpha1.TiKVStateUp && util.MatchLabelFromStoreLabels(store.Store.Labels, label.TiKVLabelVal) {
 				upNumber++
@@ -302,26 +301,27 @@ func (s *tikvScaler) preCheckUpStores(tc *v1alpha1.TidbCluster, podName string, 
 		}
 	}
 
+	pdClient := controller.GetPDClient(s.deps.PDControl, tc)
 	config, err := pdClient.GetConfig()
 	if err != nil {
-		return false, nil, err
+		return false, err
 	}
 	maxReplicas := *(config.Replication.MaxReplicas)
 	if upNumber < int(maxReplicas) {
 		errMsg := fmt.Sprintf("the number of stores in Up state of TidbCluster [%s/%s] is %d, less than MaxReplicas in PD configuration(%d), can't scale in TiKV, podname %s ", tc.GetNamespace(), tc.GetName(), upNumber, maxReplicas, podName)
 		klog.Error(errMsg)
 		s.deps.Recorder.Event(tc, v1.EventTypeWarning, "FailedScaleIn", errMsg)
-		return false, info, nil
+		return false, nil
 	} else if upNumber == int(maxReplicas) {
 		if storeState == v1alpha1.TiKVStateUp {
 			errMsg := fmt.Sprintf("can't scale in TiKV of TidbCluster [%s/%s], cause the number of up stores is equal to MaxReplicas in PD configuration(%d), and the store in Pod %s which is going to be deleted is up too", tc.GetNamespace(), tc.GetName(), maxReplicas, podName)
 			klog.Error(errMsg)
 			s.deps.Recorder.Event(tc, v1.EventTypeWarning, "FailedScaleIn", errMsg)
-			return false, info, nil
+			return false, nil
 		}
 	}
 
-	return true, info, nil
+	return true, nil
 }
 
 type fakeTiKVScaler struct{}

@@ -14468,7 +14468,7 @@ int32
 </td>
 <td>
 <em>(Optional)</em>
-<p>ScaleInParallelism configures max scale in replicas for TiKV stores.
+<p>ScaleInParallelism configures max scale in replicas for TiFlash.
 Defaults to 1</p>
 </td>
 </tr>
