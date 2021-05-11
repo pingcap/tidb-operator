@@ -89,7 +89,8 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 	tcName := meta.GetName()
 	tc, ok := meta.(*v1alpha1.TidbCluster)
 	if !ok {
-		return fmt.Errorf("tikvScaler.ScaleIn: failed to convert cluster %s/%s", meta.GetNamespace(), meta.GetName())
+		klog.Errorf("tikvScaler.ScaleIn: failed to convert cluster %s/%s, scale in will do nothing", meta.GetNamespace(), meta.GetName())
+		return nil
 	}
 
 	scaleInParallelism := 1
