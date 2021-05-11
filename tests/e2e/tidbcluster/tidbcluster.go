@@ -614,6 +614,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				tc.Spec.TiDB.Config = v1alpha1.NewTiDBConfig()
 				tc.Spec.TiDB.ConfigUpdateStrategy = &updateStrategy
 				tc.Spec.TiKV.Config = v1alpha1.NewTiKVConfig()
+				tc.Spec.TiKV.Config.Set("storage.reserve-space", "0MB")
 				tc.Spec.TiKV.ConfigUpdateStrategy = &updateStrategy
 				tc.Spec.PD.Config = v1alpha1.NewPDConfig()
 				tc.Spec.PD.ConfigUpdateStrategy = &updateStrategy
