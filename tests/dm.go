@@ -173,7 +173,7 @@ var (
 		},
 	}
 
-	dmSources = []string{`
+	DMSources = []string{`
 source-id: "replica-01"
 enable-gtid: true
 enable-relay: true
@@ -339,7 +339,7 @@ func CreateDMSources(fw portforward.PortForward, ns, masterSvcName string) error
 
 	var req = Req{
 		Op:     1,
-		Config: dmSources,
+		Config: DMSources,
 	}
 	data, err := json.Marshal(req)
 	if err != nil {

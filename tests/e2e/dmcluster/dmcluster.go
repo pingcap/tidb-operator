@@ -15,6 +15,9 @@ package dmcluster
 
 import (
 	"context"
+	"fmt"
+	"io/ioutil"
+	"strings"
 	"time"
 
 	"github.com/onsi/ginkgo"
@@ -112,6 +115,56 @@ var _ = ginkgo.Describe("DMCluster", func() {
 
 			ginkgo.By("Check data for incremental stage")
 			framework.ExpectNoError(tests.CheckDMData(fw, dc.Namespace, 1), "failed to check incremental data")
+		})
+
+		ginkgo.It("change config with dmctl for DM", func() {
+			ginkgo.By("Deploy a basic dc")
+			dcName := "change-config-dmctl"
+			dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2)
+			dc.Spec.Master.Replicas = 1
+			dc.Spec.Worker.Replicas = 1
+			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(dc)
+			framework.ExpectNoError(err, "failed to create DmCluster: %q", dcName)
+			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
+
+			ginkgo.By("Create MySQL sources")
+			framework.ExpectNoError(tests.CreateDMSources(fw, dc.Namespace, controller.DMMasterMemberName(dcName)), "failed to create sources for DmCluster %q", dcName)
+
+			ginkgo.By("Check source config before updated")
+			podName := fmt.Sprintf("%s-0", controller.DMMasterMemberName(dcName))
+			sourceName := "replica-01"
+			stdout, err := framework.RunHostCmd(ns, podName,
+				fmt.Sprintf("/dmctl --master-addr=127.0.0.1:8261 get-config source %s", sourceName))
+			framework.ExpectNoError(err, "failed to show source config for DmCluster %q: %v", dcName, err)
+			framework.ExpectEqual(strings.Contains(stdout, "enable-gtid: true"), true, "original source config doesn't contain `enable-gtid: true`")
+			framework.ExpectEqual(strings.Contains(stdout, "enable-relay: true"), true, "original source config doesn't contain `enable-relay: true`")
+
+			ginkgo.By("Update and copy source config file")
+			cfg := tests.DMSources[0]
+			cfg = strings.ReplaceAll(cfg, "enable-gtid: true", "enable-gtid: false")
+			cfg = strings.ReplaceAll(cfg, "enable-relay: true", "enable-relay: false")
+			filename := "/tmp/change-config-dmctl-source.yaml"
+			framework.ExpectNoError(ioutil.WriteFile(filename, []byte(cfg), 0o644), "failed to write updated source config file")
+			_, err = framework.RunKubectl("cp", filename, fmt.Sprintf("%s/%s:%s", ns, podName, filename))
+			framework.ExpectNoError(err, "failed to copy source file into dm-master pod")
+
+			// directly update source config is not supported in DM now, so we choose to stop & re-create again.
+			ginkgo.By("Stop MySQL source")
+			_, err = framework.RunHostCmd(ns, podName,
+				fmt.Sprintf("/dmctl --master-addr=127.0.0.1:8261 operate-source stop %s", filename))
+			framework.ExpectNoError(err, "failed to stop source for DmCluster %q", dcName)
+
+			ginkgo.By("Create MySQL source again")
+			_, err = framework.RunHostCmd(ns, podName,
+				fmt.Sprintf("/dmctl --master-addr=127.0.0.1:8261 operate-source create %s", filename))
+			framework.ExpectNoError(err, "failed to create source again for DmCluster %q", dcName)
+
+			ginkgo.By("Check source config after updated")
+			stdout, err = framework.RunHostCmd(ns, podName,
+				fmt.Sprintf("/dmctl --master-addr=127.0.0.1:8261 get-config source %s", sourceName))
+			framework.ExpectNoError(err, "failed to show source config after updated for DmCluster %q: %v", dcName, err)
+			framework.ExpectEqual(strings.Contains(stdout, "enable-gtid: false"), true, "original source config doesn't contain `enable-gtid: false`")
+			framework.ExpectEqual(strings.Contains(stdout, "enable-relay: false"), true, "original source config doesn't contain `enable-relay: false`")
 		})
 	})
 })
