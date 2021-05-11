@@ -82,7 +82,7 @@ func TestGetMonitorConfigMap(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			cm, err := getMonitorConfigMap(&tt.dmCluster, &tt.monitor, tt.monitorClusterInfos)
+			cm, err := getMonitorConfigMap(&tt.monitor, tt.monitorClusterInfos, nil)
 			g.Expect(err).NotTo(HaveOccurred())
 			if tt.expected == nil {
 				g.Expect(cm).To(BeNil())
@@ -858,15 +858,6 @@ func TestGetMonitorVolumes(t *testing.T) {
 						},
 					},
 					{
-						Name: "dm-cluster-client-tls",
-						VolumeSource: corev1.VolumeSource{
-							Secret: &corev1.SecretVolumeSource{
-								SecretName:  "foodm-dm-client-secret",
-								DefaultMode: pointer.Int32Ptr(420),
-							},
-						},
-					},
-					{
 						Name: "prometheus-config-out",
 						VolumeSource: corev1.VolumeSource{
 							EmptyDir: &corev1.EmptyDirVolumeSource{},
@@ -889,7 +880,7 @@ func TestGetMonitorVolumes(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			cm, err := getMonitorConfigMap(&tt.dmCluster, &tt.monitor, nil)
+			cm, err := getMonitorConfigMap(&tt.monitor, nil, nil)
 			g.Expect(err).NotTo(HaveOccurred())
 			sa := getMonitorVolumes(cm, &tt.monitor, &tt.cluster, &tt.dmCluster)
 			tt.expected(sa)
@@ -966,6 +957,17 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 					},
 				},
 				Resources: corev1.ResourceRequirements{},
+				ReadinessProbe: &corev1.Probe{
+					Handler: corev1.Handler{
+						HTTPGet: &corev1.HTTPGetAction{
+							Path: "/-/ready",
+							Port: intstr.FromInt(9090),
+						},
+					},
+					TimeoutSeconds:   3,
+					PeriodSeconds:    5,
+					FailureThreshold: 120, // Allow up to 10m on startup for data recovery
+				},
 				VolumeMounts: []corev1.VolumeMount{
 					{
 						Name:      "prometheus-config-out",
@@ -1108,6 +1110,30 @@ func TestGetMonitorGrafanaContainer(t *testing.T) {
 						Name:      "grafana-dashboard",
 						MountPath: "/grafana-dashboard-definitions/tidb",
 					},
+				},
+				ReadinessProbe: &corev1.Probe{
+					Handler: corev1.Handler{
+						HTTPGet: &corev1.HTTPGetAction{
+							Path: "/api/health",
+							Port: intstr.FromInt(3000),
+						},
+					},
+					TimeoutSeconds:   5,
+					PeriodSeconds:    10,
+					SuccessThreshold: 1,
+				},
+				LivenessProbe: &corev1.Probe{
+					Handler: corev1.Handler{
+						HTTPGet: &corev1.HTTPGetAction{
+							Path: "/api/health",
+							Port: intstr.FromInt(3000),
+						},
+					},
+					TimeoutSeconds:      5,
+					FailureThreshold:    10,
+					PeriodSeconds:       10,
+					SuccessThreshold:    1,
+					InitialDelaySeconds: 30,
 				},
 			},
 		},

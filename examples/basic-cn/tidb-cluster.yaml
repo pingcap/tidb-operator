@@ -6,14 +6,14 @@ kind: TidbCluster
 metadata:
   name: basic
 spec:
-  version: v5.0.0
+  version: v5.0.1
   timezone: UTC
   pvReclaimPolicy: Retain
   enableDynamicConfiguration: true
   configUpdateStrategy: RollingUpdate
   discovery: {}
   pd:
-    baseImage: registry.cn-beijing.aliyuncs.com/tidb/pd
+    baseImage: uhub.service.ucloud.cn/pingcap/pd
     replicas: 1
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
     # storageClassName: local-storage
@@ -21,7 +21,7 @@ spec:
       storage: "1Gi"
     config: {}
   tikv:
-    baseImage: registry.cn-beijing.aliyuncs.com/tidb/tikv
+    baseImage: uhub.service.ucloud.cn/pingcap/tikv
     replicas: 1
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
     # storageClassName: local-storage
@@ -38,7 +38,7 @@ spec:
       raftdb:
         max-open-files: 256
   tidb:
-    baseImage: registry.cn-beijing.aliyuncs.com/tidb/tidb
+    baseImage: uhub.service.ucloud.cn/pingcap/tidb
     replicas: 1
     service:
       type: ClusterIP
