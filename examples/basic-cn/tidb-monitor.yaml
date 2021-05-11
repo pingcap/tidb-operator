@@ -12,9 +12,9 @@ spec:
     baseImage: grafana/grafana
     version: 6.1.6
   initializer:
-    baseImage: registry.cn-beijing.aliyuncs.com/tidb/tidb-monitor-initializer
+    baseImage: uhub.service.ucloud.cn/pingcap/tidb-monitor-initializer
     version: v5.0.1
   reloader:
-    baseImage: registry.cn-beijing.aliyuncs.com/tidb/tidb-monitor-reloader
+    baseImage: uhub.service.ucloud.cn/pingcap/tidb-monitor-reloader
     version: v1.0.1
   imagePullPolicy: IfNotPresent
