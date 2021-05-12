@@ -1590,11 +1590,6 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		ginkgo.It("for tc and components version upgrade from TiDB V4 to TiDB V5", func() {
 			ginkgo.By("Deploy initial tc")
 			tc := fixture.GetTidbCluster(ns, "upgrade-version-v4-to-v5", utilimage.TiDBV4)
-			pvRetain := corev1.PersistentVolumeReclaimRetain
-			tc.Spec.PVReclaimPolicy = &pvRetain
-			tc.Spec.PD.StorageClassName = pointer.StringPtr("local-storage")
-			tc.Spec.TiKV.StorageClassName = pointer.StringPtr("local-storage")
-			tc.Spec.TiDB.StorageClassName = pointer.StringPtr("local-storage")
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
 
 			ginkgo.By("Update tc version")
