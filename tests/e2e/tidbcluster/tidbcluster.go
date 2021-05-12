@@ -203,6 +203,22 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					framework.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
 				})
 
+				// only test with the latest version for avoid too much cases.
+				if version == versions[len(versions)-1] {
+					ginkgo.It("should enable and disable binlog normal", func() {
+						ginkgo.By("Deploy a basic tc")
+						tc := fixture.GetTidbCluster(ns, fmt.Sprintf("basic-%s", versionDashed), version)
+						_, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
+						framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
+						err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 30*time.Second)
+						framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+						err = crdUtil.CheckDisasterTolerance(tc)
+						framework.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
+
+						testBinlog(oa, tc, genericCli, cli)
+					})
+				}
+
 				ginkgo.It("should change configurations successfully", func() {
 					ginkgo.By("Deploy a basic tc")
 					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("basic-%s", versionDashed), version)
@@ -987,6 +1003,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				ResourceRequirements: fixture.WithStorage(fixture.BurstableSmall, "1Gi"),
 				Config: tcconfig.New(map[string]interface{}{
 					"addr": "0.0.0.0:8250",
+					"storage": map[string]interface{}{
+						"stop-write-at-available-space": 0,
+					},
 				}),
 			}
 			err = genericCli.Create(context.TODO(), tc)
@@ -1071,6 +1090,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				tc.Spec.PD.Replicas = 5
 				tc.Spec.TiKV.Replicas = 5
 				tc.Spec.TiDB.Replicas = 3
+				tc.Spec.Pump.Replicas++
 				return nil
 			})
 			framework.ExpectNoError(err, "failed to update TidbCluster: %q", tc.Name)
@@ -1082,6 +1102,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				tc.Spec.PD.Replicas = 3
 				tc.Spec.TiKV.Replicas = 3
 				tc.Spec.TiDB.Replicas = 2
+				tc.Spec.Pump.Replicas--
 				return nil
 			})
 			framework.ExpectNoError(err, "failed to update TidbCluster: %q", tc.Name)
@@ -2305,6 +2326,109 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		})
 	})
 })
+
+// checkPumpStatus check there are onlineNum online pump instance running now.
+func checkPumpStatus(pcli versioned.Interface, ns string, name string, onlineNum int32) error {
+	var checkErr error
+	err := wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
+		tc, err := pcli.PingcapV1alpha1().TidbClusters(ns).Get(name, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+
+		var onlines int32
+		for _, node := range tc.Status.Pump.Members {
+			if node.State == "online" {
+				onlines++
+			}
+		}
+
+		if onlines == onlineNum {
+			return true, nil
+		}
+
+		checkErr = fmt.Errorf("failed to check %d online pumps, node status: %+v", onlineNum, tc.Status.Pump.Members)
+		return false, nil
+	})
+
+	if err == wait.ErrWaitTimeout {
+		err = checkErr
+	}
+
+	return err
+}
+
+// testBinlog do the flowing step to test enable and disable binlog
+// 1. update tc to deploy pump and enable binlog
+// 2. scale in 1 pump
+// 3. scale out 1 pump
+// 4. remove all pumps and disable binlog
+func testBinlog(oa *tests.OperatorActions, tc *v1alpha1.TidbCluster, cli ctrlCli.Client, pcli versioned.Interface) {
+	config := tcconfig.New(map[string]interface{}{})
+	config.Set("storage.stop-write-at-available-space", 0)
+	config.Set("addr", "0.0.0.0:8250")
+
+	pumpSpec := &v1alpha1.PumpSpec{
+		BaseImage: "pingcap/tidb-binlog",
+		Replicas:  3,
+		Config:    config,
+		ResourceRequirements: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceStorage: resource.MustParse("1Gi"),
+			},
+		},
+	}
+
+	ns := tc.GetNamespace()
+	name := tc.GetName()
+
+	err := controller.GuaranteedUpdate(cli, tc, func() error {
+		tc.Spec.Pump = pumpSpec
+		return nil
+	})
+	framework.ExpectNoError(err)
+	replicas := pumpSpec.Replicas
+	err = checkPumpStatus(pcli, ns, name, replicas)
+	framework.ExpectNoError(err)
+
+	// start scale in and check status
+	err = controller.GuaranteedUpdate(cli, tc, func() error {
+		replicas--
+		tc.Spec.Pump.Replicas = replicas
+		return nil
+	})
+	framework.ExpectNoError(err)
+	err = checkPumpStatus(pcli, ns, name, replicas)
+	framework.ExpectNoError(err)
+
+	// start scale out and check status
+	err = controller.GuaranteedUpdate(cli, tc, func() error {
+		replicas++
+		tc.Spec.Pump.Replicas = replicas
+		return nil
+	})
+	framework.ExpectNoError(err)
+	err = checkPumpStatus(pcli, ns, name, replicas)
+	framework.ExpectNoError(err)
+
+	// start remove all pumps
+	err = controller.GuaranteedUpdate(cli, tc, func() error {
+		tc.Spec.TiDB.BinlogEnabled = pointer.BoolPtr(false)
+		return nil
+	})
+	framework.ExpectNoError(err)
+	err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+	framework.ExpectNoError(err)
+
+	err = controller.GuaranteedUpdate(cli, tc, func() error {
+		replicas = 0
+		tc.Spec.Pump.Replicas = replicas
+		return nil
+	})
+	framework.ExpectNoError(err)
+	err = checkPumpStatus(pcli, ns, name, replicas)
+	framework.ExpectNoError(err)
+}
 
 func validatePodSpread(pods []corev1.Pod, nodeZoneMap map[string]string, componentLabels []string, maxSkew int) error {
 	zones := make([][2]int, len(componentLabels))
