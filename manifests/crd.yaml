@@ -19217,7 +19217,7 @@ spec:
   additionalPrinterColumns:
   - JSONPath: .spec.replicas
     description: The desired replicas number of tidbMonitor cluster
-    name: Desire
+    name: DESIRED
     type: integer
   - JSONPath: .status.statefulSet.readyReplicas
     name: READY
