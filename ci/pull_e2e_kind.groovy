@@ -181,7 +181,7 @@ def build(String name, String code, Map resources = e2ePodResources) {
                         unstash 'tidb-operator'
                         stage("Debug Info") {
                             println "debug host: 172.16.5.15"
-                            println "debug command: kubectl -n jenkins-ci exec -ti ${NODE_NAME} bash"
+                            println "debug command: kubectl -n jenkins-tidb exec -ti ${NODE_NAME} bash"
                             sh """
                             echo "====== shell env ======"
                             echo "pwd: \$(pwd)"
