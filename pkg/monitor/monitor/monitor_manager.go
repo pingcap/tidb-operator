@@ -170,7 +170,6 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		m.deps.Recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
 		return err
 	}
-
 	klog.V(4).Infof("tm[%s/%s]'s ingress synced", monitor.Namespace, monitor.Name)
 
 	err = m.syncTidbMonitorStatus(monitor)
@@ -193,7 +192,6 @@ func (m *MonitorManager) syncTidbMonitorStatus(monitor *v1alpha1.TidbMonitor) er
 	}
 	monitor.Status.StatefulSet = &sts.Status
 	return nil
-
 }
 
 func (m *MonitorManager) syncTidbMonitorService(monitor *v1alpha1.TidbMonitor) error {
