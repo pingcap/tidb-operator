@@ -159,6 +159,10 @@ func DMMasterPodName(dcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", controller.DMMasterMemberName(dcName), ordinal)
 }
 
+func DMWorkerPodName(dcName string, ordinal int32) string {
+	return fmt.Sprintf("%s-%d", controller.DMWorkerMemberName(dcName), ordinal)
+}
+
 func PdName(tcName string, ordinal int32, namespace string, clusterDomain string) string {
 	if len(clusterDomain) > 0 {
 		return fmt.Sprintf("%s.%s-pd-peer.%s.svc.%s", PdPodName(tcName, ordinal), tcName, namespace, clusterDomain)
@@ -510,17 +514,21 @@ func CreateOrUpdateService(serviceLister corelisters.ServiceLister, serviceContr
 }
 
 // addDeferDeletingAnnoToPVC set the label
-func addDeferDeletingAnnoToPVC(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim, pvcControl controller.PVCControlInterface) error {
+func addDeferDeletingAnnoToPVC(controller runtime.Object, pvc *corev1.PersistentVolumeClaim, pvcControl controller.PVCControlInterface) error {
+	controllerMo, ok := controller.(metav1.Object)
+	if !ok {
+		return fmt.Errorf("%T is not a metav1.Object, cannot call addDeferDeletingAnnoToPVC", controller)
+	}
 	if pvc.Annotations == nil {
 		pvc.Annotations = map[string]string{}
 	}
 	now := time.Now().Format(time.RFC3339)
 	pvc.Annotations[label.AnnPVCDeferDeleting] = now
-	if _, err := pvcControl.UpdatePVC(tc, pvc); err != nil {
-		klog.Errorf("failed to set PVC %s/%s annotation %q to %q", tc.Namespace, pvc.Name, label.AnnPVCDeferDeleting, now)
+	if _, err := pvcControl.UpdatePVC(controller, pvc); err != nil {
+		klog.Errorf("failed to set PVC %s/%s annotation %q to %q", controllerMo.GetNamespace(), pvc.Name, label.AnnPVCDeferDeleting, now)
 		return err
 	}
-	klog.Infof("set PVC %s/%s annotationq %q to %q successfully", tc.Namespace, pvc.Name, label.AnnPVCDeferDeleting, now)
+	klog.Infof("set PVC %s/%s annotationq %q to %q successfully", controllerMo.GetNamespace(), pvc.Name, label.AnnPVCDeferDeleting, now)
 	return nil
 }
 
