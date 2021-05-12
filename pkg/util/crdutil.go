@@ -298,18 +298,18 @@ var (
 	}
 	tidbMonitorAdditionalPrinterColumns []extensionsobj.CustomResourceColumnDefinition
 
-	tidbMonitorDesireColumn = extensionsobj.CustomResourceColumnDefinition{
-		Name:        "Desire",
+	tidbMonitorDesiredColumn = extensionsobj.CustomResourceColumnDefinition{
+		Name:        "DESIRED",
 		Type:        "integer",
 		Description: "The desired replicas number of tidbMonitor cluster",
 		JSONPath:    ".spec.replicas",
 	}
-	readyTiDBMonitorAdditionalPrinterColumns = extensionsobj.CustomResourceColumnDefinition{
+	tidbMonitorReadyColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:     "READY",
 		Type:     "string",
 		JSONPath: ".status.statefulSet.readyReplicas",
 	}
-	updateTiDBMonitorAdditionalPrinterColumns = extensionsobj.CustomResourceColumnDefinition{
+	tidbMonitorUpdatedColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:     "UP-TO-DATE",
 		Type:     "string",
 		JSONPath: ".status.statefulSet.updatedReplicas",
