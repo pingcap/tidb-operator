@@ -333,7 +333,7 @@ func init() {
 	tidbInitializerPrinterColumns = append(tidbInitializerPrinterColumns, tidbInitializerPhase, ageColumn)
 	autoScalerPrinterColumns = append(autoScalerPrinterColumns, autoScalerTiDBMaxReplicasColumn, autoScalerTiDBMinReplicasColumn,
 		autoScalerTiKVMaxReplicasColumn, autoScalerTiKVMinReplicasColumn, ageColumn)
-	tidbMonitorAdditionalPrinterColumns = append(tidbMonitorAdditionalPrinterColumns, tidbMonitorDesireColumn, readyTiDBMonitorAdditionalPrinterColumns, updateTiDBMonitorAdditionalPrinterColumns, ageColumn)
+	tidbMonitorAdditionalPrinterColumns = append(tidbMonitorAdditionalPrinterColumns, tidbMonitorDesiredColumn, tidbMonitorReadyColumn, tidbMonitorUpdatedColumn, ageColumn)
 }
 
 func NewCustomResourceDefinition(crdKind v1alpha1.CrdKind, group string, labels map[string]string, validation bool) *extensionsobj.CustomResourceDefinition {
