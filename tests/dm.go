@@ -73,6 +73,9 @@ const (
 	// the service port for client requests to TiDB.
 	dmTiDBSvcPort = uint16(4000)
 
+	// PK steps for generated data between MySQL tables.
+	dmPKStepForTable = 10000
+
 	// PK steps for generated data between MySQL replicas.
 	dmPKStepForReplica = 1000000
 )
@@ -195,7 +198,7 @@ from:
   port: 3306
 `}
 
-	dmSingleTask = `
+	DMSingleTask = `
 name: "task_single"
 task-mode: all
 timezone: "UTC"
@@ -209,6 +212,31 @@ target-database:
 mysql-instances:
   -
     source-id: "replica-01"
+    block-allow-list: "instance"
+
+block-allow-list:
+  instance:
+    do-dbs: ["%s"] # replace this with the real database name.
+`
+
+	DMShardTask = `
+name: "task_shard"
+task-mode: all
+shard-mode: optimistic
+timezone: "UTC"
+
+target-database:
+  host: "dm-tidb-tidb.dm-tidb"
+  port: 4000
+  user: "root"
+  password: ""
+
+mysql-instances:
+  -
+    source-id: "replica-01"
+    block-allow-list: "instance"
+  -
+    source-id: "replica-02"
     block-allow-list: "instance"
 
 block-allow-list:
@@ -406,7 +434,7 @@ func GenDMFullData(fw portforward.PortForward, ns string) error {
 					return fmt.Errorf("failed to create table `%s`.`%s`: %v", ns, tbl, err)
 				}
 				for k := 1; k <= dmFullRowsInTable; k++ {
-					val := j*dmPKStepForReplica + k
+					val := int(ordinal)*dmPKStepForReplica + j*dmPKStepForTable + k
 					_, err = db.Exec(fmt.Sprintf(dmInsertStmtFormat, ns, tbl, val, strconv.Itoa(val)))
 					if err != nil {
 						return fmt.Errorf("failed to insert data into table `%s`.`%s`: %v", ns, tbl, err)
@@ -441,7 +469,7 @@ func GenDMIncrData(fw portforward.PortForward, ns string) error {
 
 			for j, tbl := range dmTableNames {
 				for k := 1; k <= dmIncrRowsInTable; k++ {
-					val := dmFullRowsInTable + j*dmPKStepForReplica + k
+					val := dmFullRowsInTable + int(ordinal)*dmPKStepForReplica + j*dmPKStepForTable + k
 					_, err = db.Exec(fmt.Sprintf(dmInsertStmtFormat, ns, tbl, val, strconv.Itoa(val)))
 					if err != nil {
 						return fmt.Errorf("failed to insert data into table `%s`.`%s`: %v", ns, tbl, err)
@@ -455,8 +483,9 @@ func GenDMIncrData(fw portforward.PortForward, ns string) error {
 	return eg.Wait()
 }
 
-// StartDMSingleSourceTask starts a DM migration task with a single source.
-func StartDMSingleSourceTask(fw portforward.PortForward, ns, masterSvcName string) error {
+// StartDMTask starts a DM migration task with a task config.
+// if `errSubStr` specified and DM cluster response message contain `errSubStr`, nil will returned for this method.
+func StartDMTask(fw portforward.PortForward, ns, masterSvcName, taskConf, errSubStr string) error {
 	apiPath := "/apis/v1alpha1/tasks"
 
 	type Req struct {
@@ -468,7 +497,7 @@ func StartDMSingleSourceTask(fw portforward.PortForward, ns, masterSvcName strin
 	}
 
 	var req = Req{
-		Task: fmt.Sprintf(dmSingleTask, ns),
+		Task: fmt.Sprintf(taskConf, ns),
 	}
 	data, err := json.Marshal(req)
 	if err != nil {
@@ -490,7 +519,7 @@ func StartDMSingleSourceTask(fw portforward.PortForward, ns, masterSvcName strin
 			"POST",
 			bytes.NewReader(data))
 		if err != nil {
-			log.Logf("failed to start DM single source task: %v", err)
+			log.Logf("failed to start DM task: %v", err)
 			return false, nil
 		}
 		var resp Resp
@@ -498,7 +527,11 @@ func StartDMSingleSourceTask(fw portforward.PortForward, ns, masterSvcName strin
 			log.Logf("failed to unmarshal DM task start response, %s: %v", string(body), err)
 			return false, nil
 		} else if !resp.Result && !strings.Contains(resp.Msg, "already exists") {
-			log.Logf("failed to start DM single source task, %s: %v", resp.Msg, err)
+			if errSubStr != "" && strings.Contains(resp.Msg, errSubStr) {
+				log.Logf("start DM task match the error sub string %q: %s", errSubStr, resp.Msg)
+				return true, nil
+			}
+			log.Logf("failed to start DM task, %s: %v", resp.Msg, err)
 			return false, nil
 		}
 		return true, nil
