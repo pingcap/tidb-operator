@@ -147,11 +147,11 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			oa.CleanCRDOrDie()
 		})
 
-		ginkgo.It(fmt.Sprintf("should be able to upgrade TiDB Cluster from %s to %s", utilimage.TiDBV4Prev, utilimage.TiDBV4), func() {
+		ginkgo.It(fmt.Sprintf("should be able to upgrade TiDB Cluster from %s to %s", utilimage.TiDBV5Prev, utilimage.TiDBV5), func() {
 			log.Logf("start to upgrade tidbcluster with pod admission webhook")
 			// deploy new cluster and test upgrade and scale-in/out with pod admission webhook
-			ginkgo.By(fmt.Sprintf("start initial TidbCluster %q", utilimage.TiDBV4Prev))
-			tc := fixture.GetTidbCluster(ns, "admission", utilimage.TiDBV4Prev)
+			ginkgo.By(fmt.Sprintf("start initial TidbCluster %q", utilimage.TiDBV5Prev))
+			tc := fixture.GetTidbCluster(ns, "admission", utilimage.TiDBV5Prev)
 			tc.Spec.PD.Replicas = 3
 			tc.Spec.TiKV.Replicas = 3
 			tc.Spec.TiDB.Replicas = 2
@@ -164,25 +164,25 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			err = setPartitionAnnotation(ns, tc.Name, label.TiKVLabelVal, 1)
 			framework.ExpectNoError(err, "set tikv Partition annotation failed")
 
-			ginkgo.By(fmt.Sprintf("Upgrade TidbCluster version to %q", utilimage.TiDBV4))
+			ginkgo.By(fmt.Sprintf("Upgrade TidbCluster version to %q", utilimage.TiDBV5))
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-				tc.Spec.Version = utilimage.TiDBV4
+				tc.Spec.Version = utilimage.TiDBV5
 				return nil
 			})
-			framework.ExpectNoError(err, "failed to update TidbCluster to upgrade tidb version to %v", utilimage.TiDBV4)
+			framework.ExpectNoError(err, "failed to update TidbCluster to upgrade tidb version to %v", utilimage.TiDBV5)
 
-			ginkgo.By(fmt.Sprintf("wait for tikv-1 pod upgrading to %q", utilimage.TiDBV4))
+			ginkgo.By(fmt.Sprintf("wait for tikv-1 pod upgrading to %q", utilimage.TiDBV5))
 			err = wait.Poll(5*time.Second, 10*time.Minute, func() (done bool, err error) {
 				tikvPod, err := c.CoreV1().Pods(ns).Get(fmt.Sprintf("%s-tikv-1", tc.Name), metav1.GetOptions{})
 				if err != nil {
 					return false, nil
 				}
-				if tikvPod.Spec.Containers[0].Image != fmt.Sprintf("pingcap/tikv:%s", utilimage.TiDBV4) {
+				if tikvPod.Spec.Containers[0].Image != fmt.Sprintf("pingcap/tikv:%s", utilimage.TiDBV5) {
 					return false, nil
 				}
 				return true, nil
 			})
-			framework.ExpectNoError(err, "failed to upgrade tikv-1 to %q", utilimage.TiDBV4)
+			framework.ExpectNoError(err, "failed to upgrade tikv-1 to %q", utilimage.TiDBV5)
 
 			ginkgo.By("Wait to see if tikv sts partition annotation remains 1 for 3 min")
 			// TODO: explain the purpose of this testing
@@ -260,13 +260,13 @@ var _ = ginkgo.Describe("[Serial]", func() {
 					TiDB: &v1alpha1.TiDBSpec{
 						Replicas: 1,
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV4Prev),
+							Image: fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV5Prev),
 						},
 					},
 					TiKV: &v1alpha1.TiKVSpec{
 						Replicas: 1,
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: fmt.Sprintf("pingcap/tikv:%s", utilimage.TiDBV4Prev),
+							Image: fmt.Sprintf("pingcap/tikv:%s", utilimage.TiDBV5Prev),
 						},
 						ResourceRequirements: v1.ResourceRequirements{
 							Requests: v1.ResourceList{
@@ -277,7 +277,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 					PD: &v1alpha1.PDSpec{
 						Replicas: 1,
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: fmt.Sprintf("pingcap/pd:%s", utilimage.TiDBV4Prev),
+							Image: fmt.Sprintf("pingcap/pd:%s", utilimage.TiDBV5Prev),
 						},
 						ResourceRequirements: v1.ResourceRequirements{
 							Requests: v1.ResourceList{
@@ -297,7 +297,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			oa.UpgradeOperatorOrDie(ocfg)
 			// now the webhook enabled
 			err = controller.GuaranteedUpdate(genericCli, legacyTc, func() error {
-				legacyTc.Spec.TiDB.Image = fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV4)
+				legacyTc.Spec.TiDB.Image = fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV5)
 				return nil
 			})
 			framework.ExpectNoError(err, "Update legacy TidbCluster should not be influenced by validating")
@@ -308,7 +308,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				legacyTc.Spec.TiDB.BaseImage = "pingcap/tidb"
 				legacyTc.Spec.TiKV.BaseImage = "pingcap/tikv"
 				legacyTc.Spec.PD.BaseImage = "pingcap/pd"
-				legacyTc.Spec.PD.Version = pointer.StringPtr(utilimage.TiDBV4)
+				legacyTc.Spec.PD.Version = pointer.StringPtr(utilimage.TiDBV5)
 				return nil
 			})
 			framework.ExpectNoError(err, "failed to update TidbCluster")
@@ -331,12 +331,12 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: &v1alpha1.TiDBSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV4),
+							Image: fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV5),
 						},
 					},
 					TiKV: &v1alpha1.TiKVSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: fmt.Sprintf("pingcap/tikv:%s", utilimage.TiDBV4),
+							Image: fmt.Sprintf("pingcap/tikv:%s", utilimage.TiDBV5),
 						},
 						ResourceRequirements: v1.ResourceRequirements{
 							Requests: v1.ResourceList{
@@ -346,7 +346,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 					},
 					PD: &v1alpha1.PDSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: fmt.Sprintf("pingcap/pd:%s", utilimage.TiDBV4),
+							Image: fmt.Sprintf("pingcap/pd:%s", utilimage.TiDBV5),
 						},
 						ResourceRequirements: v1.ResourceRequirements{
 							Requests: v1.ResourceList{
@@ -366,7 +366,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 					Name:      "newly-created",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					Version: utilimage.TiDBV4,
+					Version: utilimage.TiDBV5,
 					TiDB: &v1alpha1.TiDBSpec{
 						Replicas: 1,
 					},
@@ -446,9 +446,9 @@ var _ = ginkgo.Describe("[Serial]", func() {
 		})
 
 		ginkgo.It("should not change old TidbCluster", func() {
-			ginkgo.By(fmt.Sprintf("deploy original tc %q", utilimage.TiDBV4))
+			ginkgo.By(fmt.Sprintf("deploy original tc %q", utilimage.TiDBV5))
 			tcName := "tidbcluster"
-			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4)
+			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV5)
 			tc.Spec.PD.Replicas = 3
 			tc.Spec.TiKV.Replicas = 1
 			tc.Spec.TiDB.Replicas = 1
@@ -517,7 +517,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 		ginkgo.It("should migrate tidbmonitor from deployment to sts", func() {
 			ginkgo.By("deploy initial tc")
 			tcName := "smooth-tidbcluster"
-			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4)
+			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV5)
 			tc.Spec.PD.Replicas = 1
 			tc.Spec.TiKV.Replicas = 1
 			tc.Spec.TiDB.Replicas = 1
@@ -607,9 +607,9 @@ var _ = ginkgo.Describe("[Serial]", func() {
 		})
 
 		ginkgo.It("Deploy TidbCluster and check the result", func() {
-			ginkgo.By(fmt.Sprintf("deploy original tc %q", utilimage.TiDBV4Prev))
+			ginkgo.By(fmt.Sprintf("deploy original tc %q", utilimage.TiDBV5Prev))
 			tcName := "tidbcluster1"
-			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4Prev)
+			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV5Prev)
 			tc.Spec.PD.Replicas = 1
 			tc.Spec.TiKV.Replicas = 1
 			tc.Spec.TiDB.Replicas = 1
@@ -629,10 +629,10 @@ var _ = ginkgo.Describe("[Serial]", func() {
 
 			ginkgo.By("Upgrade TidbCluster 1 version, wait for 2 minutes, check that no rolling update occurs")
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-				tc.Spec.Version = utilimage.TiDBV4
+				tc.Spec.Version = utilimage.TiDBV5
 				return nil
 			})
-			framework.ExpectNoError(err, "failed to update TidbCluster 1 to upgrade PD version to %v", utilimage.TiDBV4)
+			framework.ExpectNoError(err, "failed to update TidbCluster 1 to upgrade PD version to %v", utilimage.TiDBV5)
 
 			err = wait.Poll(5*time.Second, 2*time.Minute, func() (done bool, err error) {
 				// confirm the TidbCluster 1 PD haven't been changed
@@ -675,7 +675,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 
 			ginkgo.By("Deploy TidbCluster 2 with label version=new")
 			tc2Name := "tidbcluster2"
-			tc2 := fixture.GetTidbCluster(ns, tc2Name, utilimage.TiDBV4Prev)
+			tc2 := fixture.GetTidbCluster(ns, tc2Name, utilimage.TiDBV5Prev)
 			tc2.Spec.PD.Replicas = 1
 			tc2.Spec.TiKV.Replicas = 1
 			tc2.Spec.TiDB.Replicas = 1
@@ -726,27 +726,27 @@ var _ = ginkgo.Describe("[Serial]", func() {
 
 			ginkgo.By("Upgrade TiDB version of TidbCluster 2")
 			err = controller.GuaranteedUpdate(genericCli, tc2, func() error {
-				tc2.Spec.Version = utilimage.TiDBV4
+				tc2.Spec.Version = utilimage.TiDBV5
 				return nil
 			})
-			framework.ExpectNoError(err, "failed to update TidbCluster 2 to upgrade tidb version to %v", utilimage.TiDBV4)
+			framework.ExpectNoError(err, "failed to update TidbCluster 2 to upgrade tidb version to %v", utilimage.TiDBV5)
 			log.Logf("Finished upgrading TidbCluster 2")
 
 			err = oa.WaitForTidbClusterReady(tc2, 10*time.Minute, 10*time.Second)
 			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc2.Name)
 
-			ginkgo.By(fmt.Sprintf("wait for TidbCluster 2 pd-0 pod upgrading to %q", utilimage.TiDBV4))
+			ginkgo.By(fmt.Sprintf("wait for TidbCluster 2 pd-0 pod upgrading to %q", utilimage.TiDBV5))
 			err = wait.Poll(5*time.Second, 10*time.Minute, func() (done bool, err error) {
 				pdPod, err := c.CoreV1().Pods(ns).Get(fmt.Sprintf("%s-pd-0", tc2.Name), metav1.GetOptions{})
 				if err != nil {
 					return false, nil
 				}
-				if pdPod.Spec.Containers[0].Image != fmt.Sprintf("pingcap/pd:%s", utilimage.TiDBV4) {
+				if pdPod.Spec.Containers[0].Image != fmt.Sprintf("pingcap/pd:%s", utilimage.TiDBV5) {
 					return false, nil
 				}
 				return true, nil
 			})
-			framework.ExpectNoError(err, "failed to upgrade TidbCluster 2 pd-0 to %q", utilimage.TiDBV4)
+			framework.ExpectNoError(err, "failed to upgrade TidbCluster 2 pd-0 to %q", utilimage.TiDBV5)
 			log.Logf("Finished upgrading TidbCluster 2")
 
 			ginkgo.By("Deploy the default TiDB Operator with --selector=version=old")
@@ -818,7 +818,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			framework.Skipf("duplicated test")
 			tcName := "basic"
 
-			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4)
+			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV5)
 			tc.Spec.PD.Replicas = 1
 			tc.Spec.TiKV.Replicas = 1
 			tc.Spec.TiDB.Replicas = 1
