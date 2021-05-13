@@ -19221,10 +19221,10 @@ spec:
     type: integer
   - JSONPath: .status.statefulSet.readyReplicas
     name: READY
-    type: string
+    type: integer
   - JSONPath: .status.statefulSet.updatedReplicas
     name: UP-TO-DATE
-    type: string
+    type: integer
   - JSONPath: .metadata.creationTimestamp
     name: Age
     type: date

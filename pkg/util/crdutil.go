@@ -306,12 +306,12 @@ var (
 	}
 	tidbMonitorReadyColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:     "READY",
-		Type:     "string",
+		Type:     "integer",
 		JSONPath: ".status.statefulSet.readyReplicas",
 	}
 	tidbMonitorUpdatedColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:     "UP-TO-DATE",
-		Type:     "string",
+		Type:     "integer",
 		JSONPath: ".status.statefulSet.updatedReplicas",
 	}
 )
