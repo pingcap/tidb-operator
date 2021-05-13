@@ -62,6 +62,9 @@ const (
 	// DMMySQLStorage is the request storage used by one MySQL instance.
 	DMMySQLStorage = "2Gi"
 
+	// DMMySQLServerTLSPath is the path to mount the MySQL server TLS certs.
+	DMMySQLServerTLSPath = "/var/lib/server-tls"
+
 	// DMTiDBNamespace is the namespace used to install the downstream TiDB cluster for DM E2E tests.
 	DMTiDBNamespace = "dm-tidb"
 	// DMTiDBName is the name of the TiDB cluster for DM E2E tests.
@@ -268,6 +271,15 @@ func GetDMMySQLAddress(ordinal int32) string {
 
 // DeployDMMySQL deploy upstream MySQL instances for DM E2E tests.
 func DeployDMMySQL(kubeCli kubernetes.Interface) error {
+	return deployDMMySQL(kubeCli, "")
+}
+
+// DeployDMMySQLWithTLSEnabled deploy upstream MySQL instances for DM E2E tests and with TLS enabled.
+func DeployDMMySQLWithTLSEnabled(kubeCli kubernetes.Interface, tlsSecret string) error {
+	return deployDMMySQL(kubeCli, tlsSecret)
+}
+
+func deployDMMySQL(kubeCli kubernetes.Interface, tlsSecret string) error {
 	ns := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: DMMySQLNamespace,
@@ -281,6 +293,24 @@ func DeployDMMySQL(kubeCli kubernetes.Interface) error {
 	_, err = kubeCli.CoreV1().Services(DMMySQLNamespace).Create(dmMySQLSvc)
 	if err != nil && !errors.IsAlreadyExists(err) {
 		return fmt.Errorf("failed to create service[%s]: %v", dmMySQLSvc.Name, err)
+	}
+
+	if tlsSecret != "" {
+		dmMySQLSts.Spec.Template.Spec.Containers[0].VolumeMounts = append(dmMySQLSts.Spec.Template.Spec.Containers[0].VolumeMounts,
+			corev1.VolumeMount{
+				Name:      tlsSecret,
+				ReadOnly:  true,
+				MountPath: DMMySQLServerTLSPath,
+			})
+		dmMySQLSts.Spec.Template.Spec.Volumes = append(dmMySQLSts.Spec.Template.Spec.Volumes,
+			corev1.Volume{
+				Name: tlsSecret,
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: tlsSecret,
+					},
+				},
+			})
 	}
 
 	_, err = kubeCli.AppsV1().StatefulSets(DMMySQLNamespace).Create(dmMySQLSts)

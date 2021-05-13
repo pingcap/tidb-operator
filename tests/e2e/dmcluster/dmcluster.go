@@ -37,6 +37,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
+	"github.com/pingcap/tidb-operator/tests/e2e/tidbcluster"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
@@ -292,6 +293,31 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			framework.ExpectNoError(err, "failed to show source config after updated for DmCluster %q: %v", dcName, err)
 			framework.ExpectEqual(strings.Contains(stdout, "enable-gtid: false"), true, "original source config doesn't contain `enable-gtid: false`")
 			framework.ExpectEqual(strings.Contains(stdout, "enable-relay: false"), true, "original source config doesn't contain `enable-relay: false`")
+		})
+
+		ginkgo.It("deploy DM with TLS enabled", func() {
+			dcName := "tls-dm"
+
+			ginkgo.By("Install CA certificate")
+			framework.ExpectNoError(tidbcluster.InstallTiDBIssuer(ns, dcName), "failed to install CA certificate")
+
+			ginkgo.By("Install MySQL server and client certificate")
+			framework.ExpectNoError(tidbcluster.InstallMySQLCertificates(ns, dcName), "failed to install MySQL server and client certificate")
+
+			cms, err := c.CoreV1().ConfigMaps(ns).List(metav1.ListOptions{})
+			framework.ExpectNoError(err, "failed to list configmap")
+			ginkgo.By(fmt.Sprintf("------------------- %v", cms.Items))
+
+			ginkgo.By("Deploy MySQL with TLS enabled")
+
+			ginkgo.By("Install TiDB server and client certificate")
+
+			ginkgo.By("Deploy TiDB with TLS enabled")
+
+			ginkgo.By("Create MySQL sources")
+
+			//dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2)
+			//ginkgo.By("Deploy a TLS dc")
 		})
 	})
 })

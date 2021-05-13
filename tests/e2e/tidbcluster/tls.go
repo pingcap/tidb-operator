@@ -348,6 +348,46 @@ spec:
     group: cert-manager.io
 `
 
+var mysqlCertificatesTmpl = `
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: {{ .ClusterName }}-mysql-server-secret
+  namespace: {{ .Namespace }}
+spec:
+  secretName: {{ .ClusterName }}-mysql-server-secret
+  duration: 8760h # 365d
+  renewBefore: 360h # 15d
+  organization:
+    - PingCAP
+  commonName: "MySQL Server"
+  usages:
+    - server auth
+  issuerRef:
+    name: {{ .ClusterRef }}-tidb-issuer
+    kind: Issuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: {{ .ClusterName }}-mysql-client-secret
+  namespace: {{ .Namespace }}
+spec:
+  secretName: {{ .ClusterName }}-mysql-client-secret
+  duration: 8760h # 365d
+  renewBefore: 360h # 15d
+  organization:
+    - PingCAP
+  commonName: "MySQL Client"
+  usages:
+    - client auth
+  issuerRef:
+    name: {{ .ClusterRef }}-tidb-issuer
+    kind: Issuer
+    group: cert-manager.io
+`
+
 type tcTmplMeta struct {
 	Namespace   string
 	ClusterName string
@@ -398,7 +438,7 @@ func DeleteCertManager(cli clientset.Interface) error {
 	})
 }
 
-func installTiDBIssuer(ns, tcName string) error {
+func InstallTiDBIssuer(ns, tcName string) error {
 	return installCert(tidbIssuerTmpl, tcTmplMeta{ns, tcName, tcName})
 }
 
@@ -432,6 +472,10 @@ func installBackupCertificates(ns, tcName string) error {
 
 func installRestoreCertificates(ns, tcName string) error {
 	return installCert(tidbClientCertificateTmpl, tcCliTmplMeta{tcTmplMeta{ns, tcName, tcName}, "restore"})
+}
+
+func InstallMySQLCertificates(ns, dcName string) error {
+	return installCert(mysqlCertificatesTmpl, tcTmplMeta{ns, dcName, dcName})
 }
 
 func installCert(tmplStr string, tp interface{}) error {

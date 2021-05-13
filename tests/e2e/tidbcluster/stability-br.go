@@ -177,9 +177,9 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 
 	if tlsEnabled {
 		ginkgo.By("Installing tidb issuer")
-		err := installTiDBIssuer(ns, tcNameFrom)
+		err := InstallTiDBIssuer(ns, tcNameFrom)
 		framework.ExpectNoError(err, "failed to generate tidb issuer template")
-		err = installTiDBIssuer(ns, tcNameTo)
+		err = InstallTiDBIssuer(ns, tcNameTo)
 		framework.ExpectNoError(err, "failed to generate tidb issuer template")
 
 		ginkgo.By("Installing tidb server and client certificate")
