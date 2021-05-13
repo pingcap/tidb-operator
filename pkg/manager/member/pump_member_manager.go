@@ -429,8 +429,6 @@ func getPumpMeta(tc *v1alpha1.TidbCluster, nameFunc func(string) string) (metav1
 }
 
 func getPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
-	// Keep the logic same as helm chart, but pump has not supported tls yet (no cert mounted)
-	// TODO: support tls
 	scheme := "http"
 	if tc.IsTLSClusterEnabled() {
 		scheme = "https"

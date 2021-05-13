@@ -14,6 +14,8 @@
 package member
 
 import (
+	"fmt"
+
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/util/toml"
@@ -22,12 +24,17 @@ import (
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
-func updateConfigMap(old, new *corev1.ConfigMap) error {
+func updateConfigMap(old, new *corev1.ConfigMap) (bool, error) {
 	tomlField := []string{"config-file" /*pd,tikv,tidb */, "pump-config", "config_templ.toml" /*tiflash*/, "proxy_templ.toml" /*tiflash*/}
+	dataEqual := true
 
 	for _, k := range tomlField {
 		oldData, oldOK := old.Data[k]
 		newData, newOK := new.Data[k]
+
+		if oldOK != newOK {
+			dataEqual = false
+		}
 
 		if !oldOK || !newOK {
 			continue
@@ -35,15 +42,17 @@ func updateConfigMap(old, new *corev1.ConfigMap) error {
 
 		equal, err := toml.Equal([]byte(oldData), []byte(newData))
 		if err != nil {
-			return perrors.Annotatef(err, "compare %s/%s %s and %s failed", old.Namespace, old.Name, oldData, newData)
+			return false, perrors.Annotatef(err, "compare %s/%s %s and %s failed", old.Namespace, old.Name, oldData, newData)
 		}
 
 		if equal {
 			new.Data[k] = oldData
+		} else {
+			dataEqual = false
 		}
 	}
 
-	return nil
+	return dataEqual, nil
 }
 
 // updateConfigMap set the toml field as the old one if they are logically equal.
@@ -71,15 +80,31 @@ func updateConfigMapIfNeed(
 			return perrors.AddStack(err)
 		}
 
-		err = updateConfigMap(existing, desired)
+		dataEqual, err := updateConfigMap(existing, desired)
 		if err != nil {
 			return err
 		}
 
 		AddConfigMapDigestSuffix(desired)
+
+		confirmNameByData(existing, desired, dataEqual)
+
 		return nil
 	default:
 		return perrors.Errorf("unknown config update strategy: %v", configUpdateStrategy)
 
+	}
+}
+
+// confirmNameByData is used to fix the problem that
+// when configUpdateStrategy is changed from InPlace to RollingUpdate for the first time,
+// the name of desired configmap maybe different from the existing one while
+// the data of them are the same, which will cause rolling update.
+func confirmNameByData(existing, desired *corev1.ConfigMap, dataEqual bool) {
+	if dataEqual && existing.Name != desired.Name {
+		desired.Name = existing.Name
+	}
+	if !dataEqual && existing.Name == desired.Name {
+		desired.Name = fmt.Sprintf("%s-new", desired.Name)
 	}
 }

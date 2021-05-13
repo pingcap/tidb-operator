@@ -19214,6 +19214,20 @@ metadata:
   creationTimestamp: null
   name: tidbmonitors.pingcap.com
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .spec.replicas
+    description: The desired replicas number of tidbMonitor cluster
+    name: DESIRED
+    type: integer
+  - JSONPath: .status.statefulSet.readyReplicas
+    name: READY
+    type: integer
+  - JSONPath: .status.statefulSet.updatedReplicas
+    name: UP-TO-DATE
+    type: integer
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
   group: pingcap.com
   names:
     kind: TidbMonitor

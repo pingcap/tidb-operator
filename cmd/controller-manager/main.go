@@ -46,6 +46,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/tools/record"
@@ -55,6 +56,7 @@ import (
 )
 
 func main() {
+	var cfg *rest.Config
 	cliCfg := controller.DefaultCLIConfig()
 	cliCfg.AddFlag(flag.CommandLine)
 	features.DefaultFeatureGate.AddFlag(flag.CommandLine)
@@ -90,7 +92,12 @@ func main() {
 		klog.Info("HELM_RELEASE environment variable not set")
 	}
 
-	cfg, err := rest.InClusterConfig()
+	kubconfig := os.Getenv("KUBECONFIG")
+	if kubconfig != "" {
+		cfg, err = clientcmd.BuildConfigFromFlags("", kubconfig)
+	} else {
+		cfg, err = rest.InClusterConfig()
+	}
 	if err != nil {
 		klog.Fatalf("failed to get config: %v", err)
 	}

@@ -259,8 +259,8 @@ func (pc *PodAdmissionControl) processAdmitDeletePDPod(pod *core.Pod, ownerState
 		ownerStatefulSet: ownerStatefulSet,
 	}
 
-	if tc.IsHeterogeneous() {
-		payload.pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
+	if tc.HeterogeneousWithoutLocalPD() {
+		payload.pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
 	} else {
 		payload.pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.IsTLSClusterEnabled())
 	}
@@ -293,8 +293,8 @@ func (pc *PodAdmissionControl) processAdmitDeleteTiKVPod(pod *core.Pod, ownerSta
 			klog.Errorf("failed get tc[%s/%s],refuse to delete pod[%s/%s]", namespace, tcName, namespace, name)
 			return util.ARFail(err)
 		}
-		if tc.IsHeterogeneous() {
-			payload.pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
+		if tc.HeterogeneousWithoutLocalPD() {
+			payload.pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
 		} else {
 			payload.pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.IsTLSClusterEnabled())
 		}
@@ -359,8 +359,8 @@ func (pc *PodAdmissionControl) admintCreatePods(ar *admission.AdmissionRequest) 
 	if l.IsTiKV() {
 
 		var pdClient pdapi.PDClient
-		if ownerTc.IsHeterogeneous() {
-			pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), ownerTc.Spec.Cluster.Name, ownerTc.IsTLSClusterEnabled())
+		if ownerTc.HeterogeneousWithoutLocalPD() {
+			pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(ownerTc.Spec.Cluster.Namespace), ownerTc.Spec.Cluster.Name, ownerTc.IsTLSClusterEnabled())
 		} else {
 			pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), ownerTc.Name, ownerTc.IsTLSClusterEnabled())
 		}

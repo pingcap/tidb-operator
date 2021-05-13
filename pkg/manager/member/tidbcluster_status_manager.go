@@ -96,11 +96,15 @@ func getTidbAddr(key string) (addr string) {
 }
 
 func (m *TidbClusterStatusManager) syncTiDBInfoKey(tc *v1alpha1.TidbCluster) error {
+	if tc.Spec.TiDB == nil {
+		return nil
+	}
+
 	var pdEtcdClient pdapi.PDEtcdClient
 	var err error
 
-	if tc.IsHeterogeneous() {
-		pdEtcdClient, err = m.deps.PDControl.GetPDEtcdClient(pdapi.Namespace(tc.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
+	if tc.HeterogeneousWithoutLocalPD() {
+		pdEtcdClient, err = m.deps.PDControl.GetPDEtcdClient(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
 	} else {
 		pdEtcdClient, err = m.deps.PDControl.GetPDEtcdClient(pdapi.Namespace(tc.Namespace), tc.Name, tc.IsTLSClusterEnabled())
 	}
