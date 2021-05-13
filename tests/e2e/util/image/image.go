@@ -28,7 +28,6 @@ import (
 
 const (
 	TiDBV3                        = "v3.0.20"
-	TiDBV4Prev                    = "v4.0.11"
 	TiDBV4                        = "v4.0.12"
 	TiDBV5Prev                    = "v5.0.0"
 	TiDBV5                        = "v5.0.1"
@@ -50,7 +49,6 @@ func ListImages() []string {
 	images := []string{}
 	versions := make([]string, 0)
 	versions = append(versions, TiDBV3)
-	versions = append(versions, TiDBV4Prev)
 	versions = append(versions, TiDBV4)
 	versions = append(versions, TiDBV5Prev)
 	versions = append(versions, TiDBV5)
