@@ -306,9 +306,16 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			<-time.After(30 * time.Second) // wait for secrets to be created
 
 			ginkgo.By("Deploy MySQL with TLS enabled")
-			mysqlServerSecret := fmt.Sprintf("%s-mysql-server-secret", dcName)
-			framework.ExpectNoError(tests.DeployDMMySQLWithTLSEnabled(c, ns, mysqlServerSecret), "failed to deploy MySQL server with TLS enabled")
-			framework.ExpectNoError(tests.CheckDMMySQLReady(fw, ns), "failed to wait for MySQL ready")
+			mysqlServerSecretName := fmt.Sprintf("%s-mysql-server-secret", dcName)
+			framework.ExpectNoError(tests.DeployDMMySQLWithTLSEnabled(c, ns, mysqlServerSecretName), "failed to deploy MySQL server with TLS enabled")
+
+			ginkgo.By("Get MySQL client TLS secret")
+			mysqlClientSecretName := fmt.Sprintf("%s-mysql-client-secret", dcName)
+			mysqlClientSecret, err := c.CoreV1().Secrets(ns).Get(mysqlClientSecretName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get MySQL client TLS secret")
+
+			ginkgo.By("Check MySQL with TLS enabled ready")
+			framework.ExpectNoError(tests.CheckDMMySQLReadyWithTLSEnabled(fw, ns, mysqlClientSecret), "failed to wait for MySQL ready")
 
 			ginkgo.By("Install TiDB server and client certificate")
 

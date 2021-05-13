@@ -15,6 +15,8 @@ package tests
 
 import (
 	"bytes"
+	"crypto/tls"
+	"crypto/x509"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -26,6 +28,7 @@ import (
 	"time"
 
 	// To register MySQL driver
+	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql"
 	"golang.org/x/sync/errgroup"
 	appv1 "k8s.io/api/apps/v1"
@@ -263,11 +266,6 @@ block-allow-list:
 	dmIncrRowsInTable = 20
 )
 
-// GetDMMySQLAddress gets the upstream MySQL address for a replica.
-func GetDMMySQLAddress(ns, ordinal int32) string {
-	return fmt.Sprintf("%s-%d.%s.%s", DMMySQLSvcStsName, ordinal, DMMySQLSvcStsName, ns)
-}
-
 // DeployDMMySQL deploy upstream MySQL instances for DM E2E tests.
 func DeployDMMySQL(kubeCli kubernetes.Interface, ns string) error {
 	return DeployDMMySQLWithTLSEnabled(kubeCli, ns, "")
@@ -322,6 +320,10 @@ func DeployDMMySQLWithTLSEnabled(kubeCli kubernetes.Interface, namespace, tlsSec
 
 // CheckDMMySQLReady checks whether all upstream MySQL instances are ready.
 func CheckDMMySQLReady(fw portforward.PortForward, ns string) error {
+	return CheckDMMySQLReadyWithTLSEnabled(fw, ns, nil)
+}
+
+func CheckDMMySQLReadyWithTLSEnabled(fw portforward.PortForward, ns string, secret *corev1.Secret) error {
 	var eg errgroup.Group
 	for i := int32(0); i < DMMySQLReplicas; i++ {
 		ordinal := i
@@ -335,7 +337,7 @@ func CheckDMMySQLReady(fw portforward.PortForward, ns string) error {
 				}
 				defer cancel()
 
-				_, err = openDB(localHost, localPort)
+				_, err = openDB(localHost, localPort, secret)
 				if err != nil {
 					log.Logf("failed to open database connection: %v", err)
 					return false, nil
@@ -452,7 +454,7 @@ func GenDMFullDataWithMySQLNamespace(fw portforward.PortForward, nsDM, nsMySQL s
 			}
 			defer cancel()
 
-			db, err := openDB(localHost, localPort)
+			db, err := openDB(localHost, localPort, nil)
 			if err != nil {
 				return err
 			}
@@ -503,7 +505,7 @@ func GenDMIncrDataWithMySQLNamespace(fw portforward.PortForward, nsDM, nsMySQL s
 			}
 			defer cancel()
 
-			db, err := openDB(localHost, localPort)
+			db, err := openDB(localHost, localPort, nil)
 			if err != nil {
 				return err
 			}
@@ -603,7 +605,7 @@ func CheckDMData(fw portforward.PortForward, ns string, sourceCount int) error {
 						}
 						defer cancel()
 
-						db, err := openDB(localHost, localPort)
+						db, err := openDB(localHost, localPort, nil)
 						if err != nil {
 							return err
 						}
@@ -626,7 +628,7 @@ func CheckDMData(fw portforward.PortForward, ns string, sourceCount int) error {
 					}
 					defer cancel()
 
-					db, err := openDB(localHost, localPort)
+					db, err := openDB(localHost, localPort, nil)
 					if err != nil {
 						return err
 					}
@@ -656,9 +658,30 @@ func CheckDMData(fw portforward.PortForward, ns string, sourceCount int) error {
 	})
 }
 
-func openDB(host string, port uint16) (*sql.DB, error) {
+func openDB(host string, port uint16, secret *corev1.Secret) (*sql.DB, error) {
+	var tlsParams string
+	if secret != nil {
+		rootCAs := x509.NewCertPool()
+		rootCAs.AppendCertsFromPEM(secret.Data[corev1.ServiceAccountRootCAKey])
+		cert, err := tls.X509KeyPair(secret.Data[corev1.TLSCertKey], secret.Data[corev1.TLSPrivateKeyKey])
+		if err != nil {
+			return nil, err
+		}
+
+		key := fmt.Sprintf("%s_%s", secret.GetNamespace(), secret.GetName())
+		err = mysql.RegisterTLSConfig(key, &tls.Config{
+			RootCAs:            rootCAs,
+			Certificates:       []tls.Certificate{cert},
+			InsecureSkipVerify: true,
+		})
+		if err != nil {
+			return nil, err
+		}
+		tlsParams = fmt.Sprintf("&tls=%s", key)
+	}
+
 	addr := fmt.Sprintf("%s:%d", host, port)
-	dsn := fmt.Sprintf("root:@(%s)/?charset=utf8", addr)
+	dsn := fmt.Sprintf("root:@(%s)/?charset=utf8%s", addr, tlsParams)
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to %s: %v", addr, err)
