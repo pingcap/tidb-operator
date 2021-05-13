@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -91,9 +92,8 @@ var (
 
 	dmMySQLSvc = &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      DMMySQLSvcStsName,
-			Namespace: DMMySQLNamespace,
-			Labels:    dmMySQLLabels,
+			Name:   DMMySQLSvcStsName,
+			Labels: dmMySQLLabels,
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
@@ -111,9 +111,8 @@ var (
 
 	dmMySQLSts = &appv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      DMMySQLSvcStsName,
-			Namespace: DMMySQLNamespace,
-			Labels:    dmMySQLLabels,
+			Name:   DMMySQLSvcStsName,
+			Labels: dmMySQLLabels,
 		},
 		Spec: appv1.StatefulSetSpec{
 			Replicas:            pointer.Int32Ptr(DMMySQLReplicas),
@@ -265,32 +264,28 @@ block-allow-list:
 )
 
 // GetDMMySQLAddress gets the upstream MySQL address for a replica.
-func GetDMMySQLAddress(ordinal int32) string {
-	return fmt.Sprintf("%s-%d.%s.%s", DMMySQLSvcStsName, ordinal, DMMySQLSvcStsName, DMMySQLNamespace)
+func GetDMMySQLAddress(ns, ordinal int32) string {
+	return fmt.Sprintf("%s-%d.%s.%s", DMMySQLSvcStsName, ordinal, DMMySQLSvcStsName, ns)
 }
 
 // DeployDMMySQL deploy upstream MySQL instances for DM E2E tests.
-func DeployDMMySQL(kubeCli kubernetes.Interface) error {
-	return deployDMMySQL(kubeCli, "")
+func DeployDMMySQL(kubeCli kubernetes.Interface, ns string) error {
+	return DeployDMMySQLWithTLSEnabled(kubeCli, ns, "")
 }
 
 // DeployDMMySQLWithTLSEnabled deploy upstream MySQL instances for DM E2E tests and with TLS enabled.
-func DeployDMMySQLWithTLSEnabled(kubeCli kubernetes.Interface, tlsSecret string) error {
-	return deployDMMySQL(kubeCli, tlsSecret)
-}
-
-func deployDMMySQL(kubeCli kubernetes.Interface, tlsSecret string) error {
+func DeployDMMySQLWithTLSEnabled(kubeCli kubernetes.Interface, namespace, tlsSecret string) error {
 	ns := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: DMMySQLNamespace,
+			Name: namespace,
 		},
 	}
 	_, err := kubeCli.CoreV1().Namespaces().Create(ns)
 	if err != nil && !errors.IsAlreadyExists(err) {
-		return fmt.Errorf("failed to create namespace[%s]: %v", DMMySQLNamespace, err)
+		return fmt.Errorf("failed to create namespace[%s]: %v", namespace, err)
 	}
 
-	_, err = kubeCli.CoreV1().Services(DMMySQLNamespace).Create(dmMySQLSvc)
+	_, err = kubeCli.CoreV1().Services(namespace).Create(dmMySQLSvc)
 	if err != nil && !errors.IsAlreadyExists(err) {
 		return fmt.Errorf("failed to create service[%s]: %v", dmMySQLSvc.Name, err)
 	}
@@ -311,9 +306,14 @@ func deployDMMySQL(kubeCli kubernetes.Interface, tlsSecret string) error {
 					},
 				},
 			})
+		dmMySQLSts.Spec.Template.Spec.Containers[0].Args = append(dmMySQLSts.Spec.Template.Spec.Containers[0].Args,
+			"--require-secure-transport=ON", // require TLS connection from clients, so we can verify TLS exactly worked
+			fmt.Sprintf("--ssl-ca=%s", filepath.Join(DMMySQLServerTLSPath, "ca.crt")),
+			fmt.Sprintf("--ssl-cert=%s", filepath.Join(DMMySQLServerTLSPath, "tls.crt")),
+			fmt.Sprintf("--ssl-key=%s", filepath.Join(DMMySQLServerTLSPath, "tls.key")))
 	}
 
-	_, err = kubeCli.AppsV1().StatefulSets(DMMySQLNamespace).Create(dmMySQLSts)
+	_, err = kubeCli.AppsV1().StatefulSets(namespace).Create(dmMySQLSts)
 	if err != nil && !errors.IsAlreadyExists(err) {
 		return fmt.Errorf("failed to create statefulset[%s]: %v", dmMySQLSts.Name, err)
 	}
@@ -321,14 +321,14 @@ func deployDMMySQL(kubeCli kubernetes.Interface, tlsSecret string) error {
 }
 
 // CheckDMMySQLReady checks whether all upstream MySQL instances are ready.
-func CheckDMMySQLReady(fw portforward.PortForward) error {
+func CheckDMMySQLReady(fw portforward.PortForward, ns string) error {
 	var eg errgroup.Group
 	for i := int32(0); i < DMMySQLReplicas; i++ {
 		ordinal := i
 		eg.Go(func() error {
 			return wait.Poll(10*time.Second, 30*time.Minute, func() (done bool, err error) {
 				localHost, localPort, cancel, err := portforward.ForwardOnePort(
-					fw, DMMySQLNamespace, fmt.Sprintf("pod/%s-%d", DMMySQLSvcStsName, ordinal), uint16(DMMySQLPort))
+					fw, ns, fmt.Sprintf("pod/%s-%d", DMMySQLSvcStsName, ordinal), uint16(DMMySQLPort))
 				if err != nil {
 					log.Logf("failed to forward MySQL[%d] pod: %v", ordinal, err)
 					return false, nil
@@ -352,20 +352,20 @@ func CheckDMMySQLReady(fw portforward.PortForward) error {
 }
 
 // CleanDMMySQL cleans upstream MySQL instances for DM E2E tests.
-func CleanDMMySQL(kubeCli kubernetes.Interface) error {
-	err := kubeCli.AppsV1().StatefulSets(DMMySQLNamespace).Delete(dmMySQLSts.Name, nil)
+func CleanDMMySQL(kubeCli kubernetes.Interface, ns string) error {
+	err := kubeCli.AppsV1().StatefulSets(ns).Delete(dmMySQLSts.Name, nil)
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("failed to delete statefulset[%s]: %v", dmMySQLSts.Name, err)
 	}
 
-	err = kubeCli.CoreV1().Services(DMMySQLNamespace).Delete(dmMySQLSvc.Name, nil)
+	err = kubeCli.CoreV1().Services(ns).Delete(dmMySQLSvc.Name, nil)
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("failed to delete service[%s]: %v", dmMySQLSvc.Name, err)
 	}
 
-	err = kubeCli.CoreV1().Namespaces().Delete(DMMySQLNamespace, nil)
+	err = kubeCli.CoreV1().Namespaces().Delete(ns, nil)
 	if err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("failed to delete namespace[%s]: %v", DMMySQLNamespace, err)
+		return fmt.Errorf("failed to delete namespace[%s]: %v", ns, err)
 	}
 	return nil
 }
@@ -436,12 +436,17 @@ func CreateDMSources(fw portforward.PortForward, ns, masterSvcName string) error
 
 // GenDMFullData generates full stage data for upstream MySQL.
 func GenDMFullData(fw portforward.PortForward, ns string) error {
+	return GenDMFullDataWithMySQLNamespace(fw, ns, DMMySQLNamespace)
+}
+
+// GenDMFullDataWithMySQLNamespace generates full stage data for upstream MySQL in the specified namespace.
+func GenDMFullDataWithMySQLNamespace(fw portforward.PortForward, nsDM, nsMySQL string) error {
 	var eg errgroup.Group
 	for i := int32(0); i < DMMySQLReplicas; i++ {
 		ordinal := i
 		eg.Go(func() error {
 			localHost, localPort, cancel, err := portforward.ForwardOnePort(
-				fw, DMMySQLNamespace, fmt.Sprintf("pod/%s-%d", DMMySQLSvcStsName, ordinal), uint16(DMMySQLPort))
+				fw, nsMySQL, fmt.Sprintf("pod/%s-%d", DMMySQLSvcStsName, ordinal), uint16(DMMySQLPort))
 			if err != nil {
 				return fmt.Errorf("failed to forward MySQL[%d] pod: %v", ordinal, err)
 			}
@@ -454,20 +459,20 @@ func GenDMFullData(fw portforward.PortForward, ns string) error {
 
 			// use ns as the database name.
 			// NOTE: we don't handle `already exists` or `duplicate entry` error now because we think ns is unqiue and the database instances are re-setup for each running.
-			_, err = db.Exec(fmt.Sprintf("CREATE DATABASE `%s`", ns))
+			_, err = db.Exec(fmt.Sprintf("CREATE DATABASE `%s`", nsDM))
 			if err != nil {
-				return fmt.Errorf("failed to create database `%s`: %v", ns, err)
+				return fmt.Errorf("failed to create database `%s`: %v", nsDM, err)
 			}
 			for j, tbl := range dmTableNames {
-				_, err = db.Exec(fmt.Sprintf("CREATE TABLE `%s`.`%s` %s", ns, tbl, dmTableSchema))
+				_, err = db.Exec(fmt.Sprintf("CREATE TABLE `%s`.`%s` %s", nsDM, tbl, dmTableSchema))
 				if err != nil {
-					return fmt.Errorf("failed to create table `%s`.`%s`: %v", ns, tbl, err)
+					return fmt.Errorf("failed to create table `%s`.`%s`: %v", nsDM, tbl, err)
 				}
 				for k := 1; k <= dmFullRowsInTable; k++ {
 					val := int(ordinal)*dmPKStepForReplica + j*dmPKStepForTable + k
-					_, err = db.Exec(fmt.Sprintf(dmInsertStmtFormat, ns, tbl, val, strconv.Itoa(val)))
+					_, err = db.Exec(fmt.Sprintf(dmInsertStmtFormat, nsDM, tbl, val, strconv.Itoa(val)))
 					if err != nil {
-						return fmt.Errorf("failed to insert data into table `%s`.`%s`: %v", ns, tbl, err)
+						return fmt.Errorf("failed to insert data into table `%s`.`%s`: %v", nsDM, tbl, err)
 					}
 				}
 			}
@@ -481,12 +486,18 @@ func GenDMFullData(fw portforward.PortForward, ns string) error {
 // GenDMIncrData generates incremental stage data for upstream MySQL.
 // NOTE: we can generate incremental data multiple times if needed later.
 func GenDMIncrData(fw portforward.PortForward, ns string) error {
+	return GenDMIncrDataWithMySQLNamespace(fw, ns, DMMySQLNamespace)
+}
+
+// GenDMIncrDataWithMySQLNamespace generates incremental stage data for upstream MySQL in the specified namespace.
+// NOTE: we can generate incremental data multiple times if needed later.
+func GenDMIncrDataWithMySQLNamespace(fw portforward.PortForward, nsDM, nsMySQL string) error {
 	var eg errgroup.Group
 	for i := int32(0); i < DMMySQLReplicas; i++ {
 		ordinal := i
 		eg.Go(func() error {
 			localHost, localPort, cancel, err := portforward.ForwardOnePort(
-				fw, DMMySQLNamespace, fmt.Sprintf("pod/%s-%d", DMMySQLSvcStsName, ordinal), uint16(DMMySQLPort))
+				fw, nsMySQL, fmt.Sprintf("pod/%s-%d", DMMySQLSvcStsName, ordinal), uint16(DMMySQLPort))
 			if err != nil {
 				return fmt.Errorf("failed to forward MySQL[%d] pod: %v", ordinal, err)
 			}
@@ -500,9 +511,9 @@ func GenDMIncrData(fw portforward.PortForward, ns string) error {
 			for j, tbl := range dmTableNames {
 				for k := 1; k <= dmIncrRowsInTable; k++ {
 					val := dmFullRowsInTable + int(ordinal)*dmPKStepForReplica + j*dmPKStepForTable + k
-					_, err = db.Exec(fmt.Sprintf(dmInsertStmtFormat, ns, tbl, val, strconv.Itoa(val)))
+					_, err = db.Exec(fmt.Sprintf(dmInsertStmtFormat, nsDM, tbl, val, strconv.Itoa(val)))
 					if err != nil {
-						return fmt.Errorf("failed to insert data into table `%s`.`%s`: %v", ns, tbl, err)
+						return fmt.Errorf("failed to insert data into table `%s`.`%s`: %v", nsDM, tbl, err)
 					}
 				}
 			}
