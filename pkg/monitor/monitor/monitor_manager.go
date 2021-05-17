@@ -172,6 +172,25 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	}
 	klog.V(4).Infof("tm[%s/%s]'s ingress synced", monitor.Namespace, monitor.Name)
 
+	err = m.syncTidbMonitorStatus(monitor)
+	if err != nil {
+		klog.Errorf("Fail to sync tm[%s/%s]'s status, err: %v", monitor.Namespace, monitor.Name, err)
+		return err
+	}
+
+	return nil
+}
+
+func (m *MonitorManager) syncTidbMonitorStatus(monitor *v1alpha1.TidbMonitor) error {
+	sts, err := m.deps.StatefulSetLister.StatefulSets(monitor.Namespace).Get(GetMonitorObjectName(monitor))
+	if err != nil {
+		if errors.IsNotFound(err) {
+			klog.V(4).Infof("tm[%s/%s]'s sts not found", monitor.Namespace, monitor.Name)
+			return nil
+		}
+		return err
+	}
+	monitor.Status.StatefulSet = &sts.Status
 	return nil
 }
 

@@ -520,7 +520,7 @@ func addDeferDeletingAnnoToPVC(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentV
 		klog.Errorf("failed to set PVC %s/%s annotation %q to %q", tc.Namespace, pvc.Name, label.AnnPVCDeferDeleting, now)
 		return err
 	}
-	klog.Infof("set PVC %s/%s annotationq %q to %q successfully", tc.Namespace, pvc.Name, label.AnnPVCDeferDeleting, now)
+	klog.Infof("set PVC %s/%s annotation %q to %q successfully", tc.Namespace, pvc.Name, label.AnnPVCDeferDeleting, now)
 	return nil
 }
 
