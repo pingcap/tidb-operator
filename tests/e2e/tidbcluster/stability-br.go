@@ -183,9 +183,9 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 		framework.ExpectNoError(err, "failed to generate tidb issuer template")
 
 		ginkgo.By("Installing tidb server and client certificate")
-		err = installTiDBCertificates(ns, tcNameFrom)
+		err = InstallTiDBCertificates(ns, tcNameFrom)
 		framework.ExpectNoError(err, "failed to install tidb server and client certificate")
-		err = installTiDBCertificates(ns, tcNameTo)
+		err = InstallTiDBCertificates(ns, tcNameTo)
 		framework.ExpectNoError(err, "failed to install tidb server and client certificate")
 
 		ginkgo.By("Installing backup and restore separate client certificates")

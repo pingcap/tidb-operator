@@ -956,7 +956,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to install CA certificate")
 
 			ginkgo.By("Installing tidb server and client certificate")
-			err = installTiDBCertificates(ns, tcName)
+			err = InstallTiDBCertificates(ns, tcName)
 			framework.ExpectNoError(err, "failed to install tidb server and client certificate")
 
 			ginkgo.By("Installing tidbInitializer client certificate")
@@ -1106,7 +1106,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to generate tidb issuer template")
 
 			ginkgo.By("Installing tidb server and client certificate")
-			err = installTiDBCertificates(ns, tcName)
+			err = InstallTiDBCertificates(ns, tcName)
 			framework.ExpectNoError(err, "failed to install tidb server and client certificate")
 
 			ginkgo.By("Installing heterogeneous tidb server and client certificate")

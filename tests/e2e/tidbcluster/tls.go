@@ -352,10 +352,10 @@ var mysqlCertificatesTmpl = `
 apiVersion: cert-manager.io/v1alpha2
 kind: Certificate
 metadata:
-  name: {{ .ClusterName }}-mysql-server-secret
+  name: {{ .ClusterName }}-mysql-secret
   namespace: {{ .Namespace }}
 spec:
-  secretName: {{ .ClusterName }}-mysql-server-secret
+  secretName: {{ .ClusterName }}-mysql-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
   organization:
@@ -363,27 +363,101 @@ spec:
   commonName: "MySQL Server"
   usages:
     - server auth
+    - client auth
+  dnsNames:
+  - "*.dm-mysql"
+  ipAddresses:
+  - 127.0.0.1
+  - ::1
   issuerRef:
-    name: {{ .ClusterRef }}-tidb-issuer
+    name: {{ .ClusterRef }}-tidb-issuer  # use tidb-issuer in E2E tests
+    kind: Issuer
+    group: cert-manager.io
+`
+
+var dmCertificatesTmp = `
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: {{ .ClusterName }}-dm-master-cluster-secret
+  namespace: {{ .Namespace }}
+spec:
+  secretName: {{ .ClusterName }}-dm-master-cluster-secret
+  duration: 8760h # 365d
+  renewBefore: 360h # 15d
+  organization:
+  - PingCAP
+  commonName: "TiDB"
+  usages:
+    - server auth
+    - client auth
+  dnsNames:
+  - "{{ .ClusterName }}-dm-master"
+  - "{{ .ClusterName }}-dm-master.{{ .Namespace }}"
+  - "{{ .ClusterName }}-dm-master.{{ .Namespace }}.svc"
+  - "{{ .ClusterName }}-dm-master-peer"
+  - "{{ .ClusterName }}-dm-master-peer.{{ .Namespace }}"
+  - "{{ .ClusterName }}-dm-master-peer.{{ .Namespace }}.svc"
+  - "*.{{ .ClusterName }}-dm-master-peer"
+  - "*.{{ .ClusterName }}-dm-master-peer.{{ .Namespace }}"
+  - "*.{{ .ClusterName }}-dm-master-peer.{{ .Namespace }}.svc"
+  ipAddresses:
+  - 127.0.0.1
+  - ::1
+  issuerRef:
+    name: {{ .ClusterRef }}-tidb-issuer # use tidb-issuer in E2E tests
     kind: Issuer
     group: cert-manager.io
 ---
 apiVersion: cert-manager.io/v1alpha2
 kind: Certificate
 metadata:
-  name: {{ .ClusterName }}-mysql-client-secret
+  name: {{ .ClusterName }}-dm-worker-cluster-secret
   namespace: {{ .Namespace }}
 spec:
-  secretName: {{ .ClusterName }}-mysql-client-secret
+  secretName: {{ .ClusterName }}-dm-worker-cluster-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
   organization:
-    - PingCAP
-  commonName: "MySQL Client"
+  - PingCAP
+  commonName: "TiDB"
+  usages:
+    - server auth
+    - client auth
+  dnsNames:
+  - "{{ .ClusterName }}-dm-worker"
+  - "{{ .ClusterName }}-dm-worker.{{ .Namespace }}"
+  - "{{ .ClusterName }}-dm-worker.{{ .Namespace }}.svc"
+  - "{{ .ClusterName }}-dm-worker-peer"
+  - "{{ .ClusterName }}-dm-worker-peer.{{ .Namespace }}"
+  - "{{ .ClusterName }}-dm-worker-peer.{{ .Namespace }}.svc"
+  - "*.{{ .ClusterName }}-dm-worker-peer"
+  - "*.{{ .ClusterName }}-dm-worker-peer.{{ .Namespace }}"
+  - "*.{{ .ClusterName }}-dm-worker-peer.{{ .Namespace }}.svc"
+  ipAddresses:
+  - 127.0.0.1
+  - ::1
+  issuerRef:
+    name: {{ .ClusterRef }}-tidb-issuer # use tidb-issuer in E2E tests
+    kind: Issuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: {{ .ClusterName }}-dm-client-secret
+  namespace: {{ .Namespace }}
+spec:
+  secretName: {{ .ClusterName }}-dm-client-secret
+  duration: 8760h # 365d
+  renewBefore: 360h # 15d
+  organization:
+  - PingCAP
+  commonName: "TiDB"
   usages:
     - client auth
   issuerRef:
-    name: {{ .ClusterRef }}-tidb-issuer
+    name: {{ .ClusterRef }}-tidb-issuer # use tidb-issuer in E2E tests
     kind: Issuer
     group: cert-manager.io
 `
@@ -442,7 +516,7 @@ func InstallTiDBIssuer(ns, tcName string) error {
 	return installCert(tidbIssuerTmpl, tcTmplMeta{ns, tcName, tcName})
 }
 
-func installTiDBCertificates(ns, tcName string) error {
+func InstallTiDBCertificates(ns, tcName string) error {
 	return installCert(tidbCertificatesTmpl, tcTmplMeta{ns, tcName, tcName})
 }
 
@@ -476,6 +550,10 @@ func installRestoreCertificates(ns, tcName string) error {
 
 func InstallMySQLCertificates(ns, dcName string) error {
 	return installCert(mysqlCertificatesTmpl, tcTmplMeta{ns, dcName, dcName})
+}
+
+func InstallDMCertificates(ns, dcName string) error {
+	return installCert(dmCertificatesTmp, tcTmplMeta{ns, dcName, dcName})
 }
 
 func installCert(tmplStr string, tp interface{}) error {

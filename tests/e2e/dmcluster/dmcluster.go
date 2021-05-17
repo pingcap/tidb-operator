@@ -31,6 +31,7 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework"
 	ctrlCli "sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
@@ -40,6 +41,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/tidbcluster"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
+	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 )
 
@@ -301,27 +303,69 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			ginkgo.By("Install CA certificate")
 			framework.ExpectNoError(tidbcluster.InstallTiDBIssuer(ns, dcName), "failed to install CA certificate")
 
-			ginkgo.By("Install MySQL server and client certificate")
-			framework.ExpectNoError(tidbcluster.InstallMySQLCertificates(ns, dcName), "failed to install MySQL server and client certificate")
+			ginkgo.By("Install MySQL certificate")
+			framework.ExpectNoError(tidbcluster.InstallMySQLCertificates(ns, dcName), "failed to install MySQL certificate")
 			<-time.After(30 * time.Second) // wait for secrets to be created
 
 			ginkgo.By("Deploy MySQL with TLS enabled")
-			mysqlServerSecretName := fmt.Sprintf("%s-mysql-server-secret", dcName)
-			framework.ExpectNoError(tests.DeployDMMySQLWithTLSEnabled(c, ns, mysqlServerSecretName), "failed to deploy MySQL server with TLS enabled")
+			mysqlSecretName := fmt.Sprintf("%s-mysql-secret", dcName)
+			framework.ExpectNoError(tests.DeployDMMySQLWithTLSEnabled(c, ns, mysqlSecretName), "failed to deploy MySQL server with TLS enabled")
 
-			ginkgo.By("Get MySQL client TLS secret")
-			mysqlClientSecretName := fmt.Sprintf("%s-mysql-client-secret", dcName)
-			mysqlClientSecret, err := c.CoreV1().Secrets(ns).Get(mysqlClientSecretName, metav1.GetOptions{})
-			framework.ExpectNoError(err, "failed to get MySQL client TLS secret")
+			ginkgo.By("Get MySQL TLS secret")
+			mysqlSecret, err := c.CoreV1().Secrets(ns).Get(mysqlSecretName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get MySQL TLS secret")
 
 			ginkgo.By("Check MySQL with TLS enabled ready")
-			framework.ExpectNoError(tests.CheckDMMySQLReadyWithTLSEnabled(fw, ns, mysqlClientSecret), "failed to wait for MySQL ready")
+			framework.ExpectNoError(tests.CheckDMMySQLReadyWithTLSEnabled(fw, ns, mysqlSecret), "failed to wait for MySQL ready")
 
 			ginkgo.By("Install TiDB server and client certificate")
+			framework.ExpectNoError(tidbcluster.InstallTiDBCertificates(ns, dcName), "failed to install TiDB server and client certificate")
+			<-time.After(30 * time.Second)
 
-			ginkgo.By("Deploy TiDB with TLS enabled")
+			ginkgo.By("Deploy TiDB with client TLS enabled")
+			tc := fixture.GetTidbCluster(ns, dcName, utilimage.TiDBV4)
+			tc.Spec.PD.Replicas = 1
+			tc.Spec.TiKV.Replicas = 1
+			tc.Spec.TiDB.Replicas = 1
+			tc.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
+
+			ginkgo.By("Install DM components certificate")
+			framework.ExpectNoError(tidbcluster.InstallDMCertificates(ns, dcName), "failed to install DM components certificate")
+			<-time.After(30 * time.Second)
+
+			ginkgo.By("Deploy a basic dc with TLS enabled")
+			tidbClientSecretName := fmt.Sprintf("%s-tidb-client-secret", dcName)
+			dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2)
+			dc.Spec.Master.Replicas = 1
+			dc.Spec.Worker.Replicas = 1
+			dc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+			dc.Spec.TLSClientSecretNames = []string{mysqlSecretName, tidbClientSecretName}
+			_, err = cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(dc)
+			framework.ExpectNoError(err, "failed to create DmCluster: %q", dcName)
+			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
 
 			ginkgo.By("Create MySQL sources")
+			podName := fmt.Sprintf("%s-0", controller.DMMasterMemberName(dcName))
+			sourceCfg := tests.DMSources[0] + fmt.Sprintf(`
+  security:
+    ssl-ca: /var/lib/source-tls/%[1]s/ca.crt
+    ssl-cert: /var/lib/source-tls/%[1]s/tls.crt
+    ssl-key: /var/lib/source-tls/%[1]s/tls.key
+`, mysqlSecretName)
+			sourceCfg = strings.ReplaceAll(sourceCfg, "dm-mysql-0.dm-mysql.dm-mysql", "dm-mysql-0.dm-mysql")
+			filename := "/tmp/dm-with-tls-source.yaml"
+			framework.ExpectNoError(ioutil.WriteFile(filename, []byte(sourceCfg), 0o644), "failed to write source config file")
+			_, err = framework.RunKubectl("cp", filename, fmt.Sprintf("%s/%s:%s", ns, podName, filename))
+			framework.ExpectNoError(err, "failed to copy source file into dm-master pod")
+			_, err = framework.RunHostCmd(ns, podName,
+				fmt.Sprintf("/dmctl --master-addr=127.0.0.1:8261 --ssl-ca=%s --ssl-cert=%s --ssl-key=%s operate-source create %s",
+					"/var/lib/dm-master-tls/ca.crt", // use the dm-master TLS certs
+					"/var/lib/dm-master-tls/tls.crt",
+					"/var/lib/dm-master-tls/tls.key",
+					filename))
+			time.After(5 * time.Minute)
+			framework.ExpectNoError(err, "failed to create source for DmCluster %q", dcName)
 
 			//dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2)
 			//ginkgo.By("Deploy a TLS dc")
