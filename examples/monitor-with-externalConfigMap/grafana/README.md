@@ -31,10 +31,10 @@ watch kubectl -n ${namespace} get pod
 Explore the monitoring dashboards:
 
 ```bash
-> kubectl -n  ${namespace} port-forward svc/basic-grafann  3000:3000 &>/tmp/pf-grafana.log &
+> kubectl -n  ${namespace} port-forward svc/basic-grafana  3000:3000
 ```
 
-Browse [localhost:3000](http://localhost:3000), check custom dashboard json file .
+Browse [localhost:3000](http://localhost:3000), and check the custom dashboard.
 
 ## Uninstall
 
