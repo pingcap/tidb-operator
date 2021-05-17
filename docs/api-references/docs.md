@@ -20792,6 +20792,18 @@ DeploymentStorageStatus
 <p>Storage status for deployment</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>statefulSet</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#statefulsetstatus-v1-apps">
+Kubernetes apps/v1.StatefulSetStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tikvautoscalerspec">TikvAutoScalerSpec</h3>
