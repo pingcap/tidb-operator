@@ -8403,6 +8403,11 @@ func (in *TidbMonitorStatus) DeepCopyInto(out *TidbMonitorStatus) {
 		*out = new(DeploymentStorageStatus)
 		**out = **in
 	}
+	if in.StatefulSet != nil {
+		in, out := &in.StatefulSet, &out.StatefulSet
+		*out = new(appsv1.StatefulSetStatus)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 

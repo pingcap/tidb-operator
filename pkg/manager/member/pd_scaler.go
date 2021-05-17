@@ -68,25 +68,6 @@ func (s *pdScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newSet
 		return fmt.Errorf("TidbCluster: %s/%s's pd status sync failed, can't scale out now", ns, tcName)
 	}
 
-	if len(tc.Status.PD.FailureMembers) != 0 {
-		setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
-		return nil
-	}
-
-	healthCount := 0
-	totalCount := *oldSet.Spec.Replicas
-	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
-	for _, i := range podOrdinals {
-		targetPdName := PdName(tcName, i, tc.Namespace, tc.Spec.ClusterDomain)
-		if member, ok := tc.Status.PD.Members[targetPdName]; ok && member.Health {
-			healthCount++
-		}
-	}
-	if healthCount < int(totalCount) {
-		return fmt.Errorf("TidbCluster: %s/%s's pd %d/%d is ready, can't scale out now",
-			ns, tcName, healthCount, totalCount)
-	}
-
 	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 	return nil
 }

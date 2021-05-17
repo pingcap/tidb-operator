@@ -12,7 +12,7 @@ The following commands is assumed to be executed in this directory.
 Create custom dashboard json with configMap:
 
 ```bash
-> kubectl apply -f custom-dashboard.yaml-n ${namespace}
+> kubectl apply -f custom-dashboard.yaml -n ${namespace}
 ```
 
 Install tidb monitor:
@@ -49,4 +49,3 @@ Delete external configMap:
 ```bash
 > kubectl delete -f custom-dashboard.yaml -n ${namespace}
 ```
-
