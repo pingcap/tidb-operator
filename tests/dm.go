@@ -323,6 +323,7 @@ func CheckDMMySQLReady(fw portforward.PortForward, ns string) error {
 	return CheckDMMySQLReadyWithTLSEnabled(fw, ns, nil)
 }
 
+// CheckDMMySQLReadyWithTLSEnabled checks whether all upstream MySQL instances are ready with TLS enabled.
 func CheckDMMySQLReadyWithTLSEnabled(fw portforward.PortForward, ns string, secret *corev1.Secret) error {
 	var eg errgroup.Group
 	for i := int32(0); i < DMMySQLReplicas; i++ {
@@ -443,6 +444,11 @@ func GenDMFullData(fw portforward.PortForward, ns string) error {
 
 // GenDMFullDataWithMySQLNamespace generates full stage data for upstream MySQL in the specified namespace.
 func GenDMFullDataWithMySQLNamespace(fw portforward.PortForward, nsDM, nsMySQL string) error {
+	return GenDMFullDataWithMySQLNamespaceWithTLSEnabled(fw, nsDM, nsMySQL, nil)
+}
+
+// GenDMFullDataWithMySQLNamespaceWithTLSEnabled generates full stage data for upstream MySQL in the specified namespace with DLS enabled.
+func GenDMFullDataWithMySQLNamespaceWithTLSEnabled(fw portforward.PortForward, nsDM, nsMySQL string, secret *corev1.Secret) error {
 	var eg errgroup.Group
 	for i := int32(0); i < DMMySQLReplicas; i++ {
 		ordinal := i
@@ -454,7 +460,7 @@ func GenDMFullDataWithMySQLNamespace(fw portforward.PortForward, nsDM, nsMySQL s
 			}
 			defer cancel()
 
-			db, err := openDB(localHost, localPort, nil)
+			db, err := openDB(localHost, localPort, secret)
 			if err != nil {
 				return err
 			}
@@ -494,6 +500,12 @@ func GenDMIncrData(fw portforward.PortForward, ns string) error {
 // GenDMIncrDataWithMySQLNamespace generates incremental stage data for upstream MySQL in the specified namespace.
 // NOTE: we can generate incremental data multiple times if needed later.
 func GenDMIncrDataWithMySQLNamespace(fw portforward.PortForward, nsDM, nsMySQL string) error {
+	return GenDMIncrDataWithMySQLNamespaceWithTLSEnabled(fw, nsDM, nsMySQL, nil)
+}
+
+// GenDMIncrDataWithMySQLNamespaceWithTLSEnabled generates incremental stage data for upstream MySQL in the specified namespace with TLS enabled.
+// NOTE: we can generate incremental data multiple times if needed later.
+func GenDMIncrDataWithMySQLNamespaceWithTLSEnabled(fw portforward.PortForward, nsDM, nsMySQL string, secret *corev1.Secret) error {
 	var eg errgroup.Group
 	for i := int32(0); i < DMMySQLReplicas; i++ {
 		ordinal := i
@@ -505,7 +517,7 @@ func GenDMIncrDataWithMySQLNamespace(fw portforward.PortForward, nsDM, nsMySQL s
 			}
 			defer cancel()
 
-			db, err := openDB(localHost, localPort, nil)
+			db, err := openDB(localHost, localPort, secret)
 			if err != nil {
 				return err
 			}
@@ -584,6 +596,13 @@ func StartDMTask(fw portforward.PortForward, ns, masterSvcName, taskConf, errSub
 // CheckDMData checks data between downstream TiDB cluster and upstream MySQL are equal.
 // NOTE: for simplicity, we only check rows count now.
 func CheckDMData(fw portforward.PortForward, ns string, sourceCount int) error {
+	return CheckDMDataWithTLSEnabled(fw, ns, DMMySQLNamespace, DMTiDBNamespace, DMTiDBName, sourceCount, nil, nil)
+}
+
+// CheckDMDataWithTLSEnabled checks data between downstream TiDB cluster and upstream MySQL are equal with TLS enabled.
+// NOTE: for simplicity, we only check rows count now.
+func CheckDMDataWithTLSEnabled(fw portforward.PortForward, nsDM, nsMySQL, nsTiDB, tcName string, sourceCount int,
+	upSecret, downSecret *corev1.Secret) error {
 	return wait.Poll(10*time.Second, 5*time.Minute, func() (bool, error) {
 		var eg errgroup.Group
 		for i := range dmTableNames {
@@ -599,18 +618,18 @@ func CheckDMData(fw portforward.PortForward, ns string, sourceCount int) error {
 					ordinal := j
 					eg2.Go(func() error {
 						localHost, localPort, cancel, err := portforward.ForwardOnePort(
-							fw, DMMySQLNamespace, fmt.Sprintf("pod/%s-%d", DMMySQLSvcStsName, ordinal), uint16(DMMySQLPort))
+							fw, nsMySQL, fmt.Sprintf("pod/%s-%d", DMMySQLSvcStsName, ordinal), uint16(DMMySQLPort))
 						if err != nil {
 							return fmt.Errorf("failed to forward MySQL[%d] pod: %v", ordinal, err)
 						}
 						defer cancel()
 
-						db, err := openDB(localHost, localPort, nil)
+						db, err := openDB(localHost, localPort, upSecret)
 						if err != nil {
 							return err
 						}
 
-						row := db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM `%s`.`%s`", ns, tbl))
+						row := db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM `%s`.`%s`", nsDM, tbl))
 						var count uint64
 						if err = row.Scan(&count); err != nil {
 							return err
@@ -622,18 +641,18 @@ func CheckDMData(fw portforward.PortForward, ns string, sourceCount int) error {
 				}
 				eg2.Go(func() error {
 					localHost, localPort, cancel, err := portforward.ForwardOnePort(
-						fw, DMTiDBNamespace, fmt.Sprintf("svc/%s", controller.TiDBMemberName(DMTiDBName)), dmTiDBSvcPort)
+						fw, nsTiDB, fmt.Sprintf("svc/%s", controller.TiDBMemberName(tcName)), dmTiDBSvcPort)
 					if err != nil {
 						return fmt.Errorf("failed to forward TiDB: %v", err)
 					}
 					defer cancel()
 
-					db, err := openDB(localHost, localPort, nil)
+					db, err := openDB(localHost, localPort, downSecret)
 					if err != nil {
 						return err
 					}
 
-					row := db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM `%s`.`%s`", ns, tbl))
+					row := db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM `%s`.`%s`", nsDM, tbl))
 					return row.Scan(&downCount)
 				})
 

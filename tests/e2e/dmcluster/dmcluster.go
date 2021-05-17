@@ -364,11 +364,48 @@ var _ = ginkgo.Describe("DMCluster", func() {
 					"/var/lib/dm-master-tls/tls.crt",
 					"/var/lib/dm-master-tls/tls.key",
 					filename))
-			time.After(5 * time.Minute)
 			framework.ExpectNoError(err, "failed to create source for DmCluster %q", dcName)
 
-			//dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2)
-			//ginkgo.By("Deploy a TLS dc")
+			ginkgo.By("Generate full stage data in upstream")
+			framework.ExpectNoError(tests.GenDMFullDataWithMySQLNamespaceWithTLSEnabled(fw, ns, ns, mysqlSecret), "failed to generate full stage data in upstream")
+
+			ginkgo.By("Start a basic migration task")
+			taskCfg := tests.DMSingleTask
+			taskCfg = strings.ReplaceAll(taskCfg, `
+  password: ""
+`, fmt.Sprintf(`
+  password: ""
+  security:
+    ssl-ca: /var/lib/source-tls/%[1]s/ca.crt
+    ssl-cert: /var/lib/source-tls/%[1]s/tls.crt
+    ssl-key: /var/lib/source-tls/%[1]s/tls.key
+`, tidbClientSecretName))
+			taskCfg = strings.ReplaceAll(taskCfg, "dm-tidb-tidb.dm-tidb", fmt.Sprintf("%s-tidb", dcName))
+			taskCfg = fmt.Sprintf(taskCfg, ns)
+			filename = "/tmp/dm-with-tls-task.yaml"
+			framework.ExpectNoError(ioutil.WriteFile(filename, []byte(taskCfg), 0o644), "failed to write task config file")
+			_, err = framework.RunKubectl("cp", filename, fmt.Sprintf("%s/%s:%s", ns, podName, filename))
+			framework.ExpectNoError(err, "failed to copy task file into dm-master pod")
+			_, err = framework.RunHostCmd(ns, podName,
+				fmt.Sprintf("/dmctl --master-addr=127.0.0.1:8261 --ssl-ca=%s --ssl-cert=%s --ssl-key=%s start-task %s",
+					"/var/lib/dm-master-tls/ca.crt", // use the dm-master TLS certs
+					"/var/lib/dm-master-tls/tls.crt",
+					"/var/lib/dm-master-tls/tls.key",
+					filename))
+			framework.ExpectNoError(err, "failed to start single source task for DmCluster %q", dcName)
+
+			ginkgo.By("Get TiDB client TLS secret")
+			tidbClientSecret, err := c.CoreV1().Secrets(ns).Get(tidbClientSecretName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get TiDB client TLS secret")
+
+			ginkgo.By("Check data for full stage")
+			framework.ExpectNoError(tests.CheckDMDataWithTLSEnabled(fw, ns, ns, ns, dcName, 1, mysqlSecret, tidbClientSecret), "failed to check full data")
+
+			ginkgo.By("Generate incremental stage data in upstream")
+			framework.ExpectNoError(tests.GenDMIncrDataWithMySQLNamespaceWithTLSEnabled(fw, ns, ns, mysqlSecret), "failed to generate incremental stage data in upstream")
+
+			ginkgo.By("Check data for incremental stage")
+			framework.ExpectNoError(tests.CheckDMDataWithTLSEnabled(fw, ns, ns, ns, dcName, 1, mysqlSecret, tidbClientSecret), "failed to check incremental data")
 		})
 	})
 })
