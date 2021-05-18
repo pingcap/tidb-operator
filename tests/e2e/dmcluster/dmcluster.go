@@ -29,6 +29,7 @@ import (
 	restclient "k8s.io/client-go/rest"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 	ctrlCli "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -49,6 +50,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
 	f := e2eframework.NewDefaultFramework("dm-cluster")
 
 	var (
+		dcName     string
 		ns         string
 		c          clientset.Interface
 		config     *restclient.Config
@@ -92,6 +94,24 @@ var _ = ginkgo.Describe("DMCluster", func() {
 	})
 
 	ginkgo.AfterEach(func() {
+		if ginkgo.CurrentGinkgoTestDescription().Failed {
+			// if the case failed, try to log out source and task status of DM.
+			// NOTE: this can't work for the TLS case now.
+			resp, err := tests.ShowDMSource(fw, ns, controller.DMMasterMemberName(dcName))
+			if err != nil {
+				log.Logf("failed to show sources for dc %s: %v", dcName, err)
+			} else {
+				log.Logf("sources for dc %s: %s", dcName, resp)
+			}
+
+			resp, err = tests.QueryDMStatus(fw, ns, controller.DMMasterMemberName(dcName))
+			if err != nil {
+				log.Logf("failed to query status for dc %s: %v", dcName, err)
+			} else {
+				log.Logf("status for dc %s: %s", dcName, resp)
+			}
+		}
+
 		if fwCancel != nil {
 			fwCancel()
 		}
@@ -100,7 +120,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
 	ginkgo.Context("[Feature:DM]", func() {
 		ginkgo.It("setup replication for DM", func() {
 			ginkgo.By("Deploy a basic dc")
-			dcName := "basic-dm"
+			dcName = "basic-dm"
 			dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2)
 			dc.Spec.Master.Replicas = 1
 			dc.Spec.Worker.Replicas = 1 // current versions of DM can always bind the first source to this only DM-worker instance.
@@ -129,7 +149,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
 
 		ginkgo.It("scale out with shard task for DM", func() {
 			ginkgo.By("Deploy a basic dc")
-			dcName := "scale-out-dm"
+			dcName = "scale-out-dm"
 			dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2)
 			dc.Spec.Master.Replicas = 3
 			dc.Spec.Worker.Replicas = 1
@@ -170,7 +190,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
 
 		ginkgo.It("scale in with shard task for DM", func() {
 			ginkgo.By("Deploy a basic dc")
-			dcName := "scale-in-dm"
+			dcName = "scale-in-dm"
 			dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2)
 			dc.Spec.Master.Replicas = 5
 			dc.Spec.Worker.Replicas = 2
@@ -208,7 +228,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
 
 		ginkgo.It("restart pods for DM", func() {
 			ginkgo.By("Deploy a basic dc")
-			dcName := "restart-dm"
+			dcName = "restart-dm"
 			dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2)
 			dc.Spec.Master.Replicas = 3
 			dc.Spec.Worker.Replicas = 1
@@ -249,7 +269,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
 
 		ginkgo.It("change config with dmctl for DM", func() {
 			ginkgo.By("Deploy a basic dc")
-			dcName := "change-config-dmctl"
+			dcName = "change-config-dmctl"
 			dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2)
 			dc.Spec.Master.Replicas = 1
 			dc.Spec.Worker.Replicas = 1
@@ -298,7 +318,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
 		})
 
 		ginkgo.It("deploy DM with TLS enabled", func() {
-			dcName := "tls-dm"
+			dcName = "tls-dm"
 
 			ginkgo.By("Install CA certificate")
 			framework.ExpectNoError(tidbcluster.InstallTiDBIssuer(ns, dcName), "failed to install CA certificate")

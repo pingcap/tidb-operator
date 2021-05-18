@@ -677,6 +677,75 @@ func CheckDMDataWithTLSEnabled(fw portforward.PortForward, nsDM, nsMySQL, nsTiDB
 	})
 }
 
+// ShowDMSource shows the status of DM MySQL sources.
+func ShowDMSource(fw portforward.PortForward, ns, masterSvcName string) (string, error) {
+	apiPath := "/apis/v1alpha1/sources"
+
+	type Req struct {
+		Op       int      `json:"op"`
+		Config   []string `json:"config"`
+		SourceID []string `json:"sourceID"`
+	}
+
+	var req = Req{
+		Op: 4, // SHOW source
+	}
+	data, err := json.Marshal(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal show source request, %v, %v", req, err)
+	}
+
+	localHost, localPort, cancel, err := portforward.ForwardOnePort(
+		fw, ns, fmt.Sprintf("svc/%s", masterSvcName), dmMasterSvcPort)
+	if err != nil {
+		return "", err
+	}
+	defer cancel()
+
+	body, err := httputil.DoBodyOK(
+		&http.Client{Transport: &http.Transport{}},
+		fmt.Sprintf("http://%s:%d%s", localHost, localPort, apiPath),
+		"PUT",
+		bytes.NewReader(data))
+	if err != nil {
+		return "", err
+	}
+	return string(body), nil
+}
+
+// QueryDMStatus queries the status of DM data migration tasks.
+func QueryDMStatus(fw portforward.PortForward, ns, masterSvcName string) (string, error) {
+	apiPath := "/apis/v1alpha1/status/"
+
+	type Req struct {
+		Name    string   `json:"name"`
+		Sources []string `json:"sources"`
+	}
+
+	var req = Req{} // empty request for all status
+	data, err := json.Marshal(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal query status request, %v, %v", req, err)
+	}
+
+	localHost, localPort, cancel, err := portforward.ForwardOnePort(
+		fw, ns, fmt.Sprintf("svc/%s", masterSvcName), dmMasterSvcPort)
+	if err != nil {
+		return "", err
+	}
+	defer cancel()
+
+	body, err := httputil.DoBodyOK(
+		&http.Client{Transport: &http.Transport{}},
+		fmt.Sprintf("http://%s:%d%s", localHost, localPort, apiPath),
+		"GET",
+		bytes.NewReader(data))
+	if err != nil {
+		return "", err
+	}
+	return string(body), nil
+}
+
 func openDB(host string, port uint16, secret *corev1.Secret) (*sql.DB, error) {
 	var tlsParams string
 	if secret != nil {
