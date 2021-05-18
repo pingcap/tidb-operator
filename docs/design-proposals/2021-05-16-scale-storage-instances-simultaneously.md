@@ -35,20 +35,33 @@ Multiple TiKV/TiFlash instances can be scaled simultaneously to speed up schedul
 // - replicas/deleteSlots: desired replicas and deleteSlots by allowing no more than maxCount pods to be deleted or created
 func scaleMulti(actual *apps.StatefulSet, desired *apps.StatefulSet, maxCount int) (scaling int, ordinals []int32, replicas int32, deleteSlots sets.Int32) {
 `````````
-* Call `scaleMulti` to get ordinals to be scaled-in.
+* Call `scaleMulti` to get ordinals to be scaled-in, recorded as A.
 * Call PD API to get stores info, which will be used during this operation round.
 * For all ordinals waited to be scaled-in in this round:
   * Check if number of stores with `up` state (exclude already deleted store in this round) is more than desired replicas.
   * Call PD API to delete store until its state changes to `offline`.
   * When store become tombstone, add defer deleting annotation to the PVCs of the Pod to delete them.
-  * If current store is tombstone and PVCs deleted, mark corresponding ordinal as finished.
+  * If current store is tombstone and add PVCs defer deleted, mark corresponding ordinal as finished, otherwise faled.
 * Call `setReplicasAndDeleteSlots` to delete pod:
   * If without asts enabled:
     * Since native StatefulSet will always scale in pod with the largest order so we should assure when we set replicas the ordinals from largest to smallest __strictly__.
-    * Count the __continuous__ finished ordinal beginning from largest, record it as c, then the final replicas will be ordinal replica - c.
+    * Count the __continuous__ finished ordinal beginning from largest in A, recorded as c, then the final replicas will be ordinal replica - c.
   * If with asts enabled:
     * Since Advanced StatefulSet can scale pod with arbitrary ordinal so we can set replicas and deleteSlots finished in this schedule round.
     * Calculate replicas and deleteSlots from finished and failed ordinals.
+
+### Scale out
+
+* Add `scaleOutParallelism` in `spec.tikv` and `spec.tiflash` to specify the max instances can be scaled-in in one single schedule.
+* Default value of `scaleOutParallelism` would be 1 when it's absent, for backward compatibility.
+* Call `scaleMulti` to get oridnals to be scaled-out, recorded as A.
+* For all oridnals waited to be scaed-out in this round:
+  * Call `deleteDeferDeletingPVC` to clean all PVCs with deleted annotation, mark corresponding original as finished if succeed, otherwise failed.
+* Call `setReplicasAndDeleteSlots` to create pod:
+  * If without asts enabled:
+    * Count the __continuous__ finished original beginning from smallest order in A, recorded as c, then the final replicas will be ordinal  + c.
+  * If with asts enabled:
+    * Calculate replicas and deleteSlots from finished and failed oridnals.
 
 ### Test Plan
 
