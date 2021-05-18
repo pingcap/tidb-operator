@@ -120,3 +120,11 @@ TiDB Operator 调度 Pod 失败的原因可能有三种情况：
     ```shell
     kubectl get deployment --all-namespaces |grep tidb-scheduler
     ```
+
+## TiDB 如何保证数据安全可靠？
+
+TiDB Operator 部署的 TiDB 集群使用 Kubernetes 集群提供的[持久卷](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)作为存储，保证数据的持久化存储。
+
+PD 和 TiKV 使用 [Raft 一致性算法](https://raft.github.io/)将存储的数据在各节点间复制为多副本，以确保某个节点宕机时数据的安全性。
+
+在底层，TiKV 使用复制日志 + 状态机 (State Machine) 的模型来复制数据。对于写入请求，数据被写入 Leader，然后 Leader 以日志的形式将命令复制到它的 Follower 中。当集群中的大多数节点收到此日志时，日志会被提交，状态机会相应作出变更。
