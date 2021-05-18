@@ -401,7 +401,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
     ssl-key: /var/lib/source-tls/%[1]s/tls.key
 `, tidbClientSecretName))
 			taskCfg = strings.ReplaceAll(taskCfg, "dm-tidb-tidb.dm-tidb", fmt.Sprintf("%s-tidb", dcName))
-			taskCfg = fmt.Sprintf(taskCfg, ns)
+			taskCfg = fmt.Sprintf(taskCfg, ns, ns)
 			filename = "/tmp/dm-with-tls-task.yaml"
 			framework.ExpectNoError(ioutil.WriteFile(filename, []byte(taskCfg), 0o644), "failed to write task config file")
 			_, err = framework.RunKubectl("cp", filename, fmt.Sprintf("%s/%s:%s", ns, podName, filename))

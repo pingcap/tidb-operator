@@ -204,7 +204,7 @@ from:
 `}
 
 	DMSingleTask = `
-name: "task_single"
+name: "%s" # should use a unique name
 task-mode: all
 timezone: "UTC"
 
@@ -225,7 +225,7 @@ block-allow-list:
 `
 
 	DMShardTask = `
-name: "task_shard"
+name: "%s" # should use a unique name
 task-mode: all
 shard-mode: optimistic
 timezone: "UTC"
@@ -466,7 +466,7 @@ func GenDMFullDataWithMySQLNamespaceWithTLSEnabled(fw portforward.PortForward, n
 			}
 
 			// use ns as the database name.
-			// NOTE: we don't handle `already exists` or `duplicate entry` error now because we think ns is unqiue and the database instances are re-setup for each running.
+			// NOTE: we don't handle `already exists` or `duplicate entry` error now because we think ns is unique and the database instances are re-setup for each running.
 			_, err = db.Exec(fmt.Sprintf("CREATE DATABASE `%s`", nsDM))
 			if err != nil {
 				return fmt.Errorf("failed to create database `%s`: %v", nsDM, err)
@@ -552,7 +552,7 @@ func StartDMTask(fw portforward.PortForward, ns, masterSvcName, taskConf, errSub
 	}
 
 	var req = Req{
-		Task: fmt.Sprintf(taskConf, ns),
+		Task: fmt.Sprintf(taskConf, ns, ns),
 	}
 	data, err := json.Marshal(req)
 	if err != nil {
