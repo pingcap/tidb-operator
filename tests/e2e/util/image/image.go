@@ -42,7 +42,7 @@ const (
 	GrafanaVersion                = "6.1.6"
 	ThanosImage                   = "thanosio/thanos"
 	ThanosVersion                 = "v0.17.2"
-	DMV2                          = "v2.0.2"
+	DMV2                          = "nightly" // nightly for https://github.com/pingcap/dm/pull/1672, FIXME after v2.0.4 released
 )
 
 func ListImages() []string {
