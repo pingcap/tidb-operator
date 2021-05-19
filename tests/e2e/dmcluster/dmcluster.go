@@ -96,19 +96,25 @@ var _ = ginkgo.Describe("DMCluster", func() {
 	ginkgo.AfterEach(func() {
 		if ginkgo.CurrentGinkgoTestDescription().Failed {
 			// if the case failed, try to log out source and task status of DM.
-			// NOTE: this can't work for the TLS case now.
-			resp, err := tests.ShowDMSource(fw, ns, controller.DMMasterMemberName(dcName))
-			if err != nil {
-				log.Logf("failed to show sources for dc %s: %v", dcName, err)
-			} else {
-				log.Logf("sources for dc %s: %s", dcName, resp)
+			// NOTE: some dc can't be access normally in AfterEach.
+			excludeDCs := map[string]struct{}{
+				"basic-dm": {},
+				"tls-dm":   {},
 			}
+			if _, ok := excludeDCs[dcName]; !ok {
+				resp, err := tests.ShowDMSource(fw, ns, controller.DMMasterMemberName(dcName))
+				if err != nil {
+					log.Logf("failed to show sources for dc %s: %v", dcName, err)
+				} else {
+					log.Logf("sources for dc %s: %s", dcName, resp)
+				}
 
-			resp, err = tests.QueryDMStatus(fw, ns, controller.DMMasterMemberName(dcName))
-			if err != nil {
-				log.Logf("failed to query status for dc %s: %v", dcName, err)
-			} else {
-				log.Logf("status for dc %s: %s", dcName, resp)
+				resp, err = tests.QueryDMStatus(fw, ns, controller.DMMasterMemberName(dcName))
+				if err != nil {
+					log.Logf("failed to query status for dc %s: %v", dcName, err)
+				} else {
+					log.Logf("status for dc %s: %s", dcName, resp)
+				}
 			}
 		}
 
