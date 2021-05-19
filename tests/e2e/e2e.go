@@ -321,7 +321,7 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 		// only deploy MySQL and TiDB for DM if CRDs and TiDB Operator installed.
 		// setup upstream MySQL instances and the downstream TiDB cluster for DM testing.
 		// if we can only setup these resource for DM tests with something like `--focus` or `--skip`, that should be better.
-		oa.DeployDMMySQLOrDie()
+		oa.DeployDMMySQLOrDie(tests.DMMySQLNamespace)
 		oa.DeployDMTiDBOrDie()
 	} else {
 		ginkgo.By("Skip installing tidb-operator")
@@ -360,7 +360,7 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 	err := tidbcluster.DeleteCertManager(kubeCli)
 	framework.ExpectNoError(err, "failed to delete cert-manager")
 
-	err = tests.CleanDMMySQL(kubeCli)
+	err = tests.CleanDMMySQL(kubeCli, tests.DMMySQLNamespace)
 	framework.ExpectNoError(err, "failed to clean DM MySQL")
 	err = tests.CleanDMTiDB(cli, kubeCli)
 	framework.ExpectNoError(err, "failed to clean DM TiDB")
