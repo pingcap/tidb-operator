@@ -25,7 +25,7 @@ Multiple TiKV/TiFlash instances can be scaled simultaneously to speed up the sch
 * Extend `scaleOne` in `scaler.go` to `scaleMulti`, function signature would be like:
 ```go
 // scaleMulti calculates desired replicas and delete slots from actual/desired
-// stateful sets by allowing only one pod to be deleted or created
+// StatefulSets by allowing multiple pods to be deleted or created
 // it returns following values:
 // - scaling:
 //   - 0: no scaling required
