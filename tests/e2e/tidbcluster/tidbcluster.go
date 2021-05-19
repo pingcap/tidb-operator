@@ -1669,6 +1669,53 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			gomega.Expect(tidbCm.Data["config-file"]).To(gomega.ContainSubstring("token-limit = 10000"))
 		})
 
+		ginkgo.It("for tc and components version upgrade from TiDB V4 to TiDB V5", func() {
+			ginkgo.By("Deploy initial tc")
+			tc := fixture.GetTidbCluster(ns, "upgrade-version-v4-to-v5", utilimage.TiDBV4)
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
+
+			ginkgo.By("Update tc version")
+			err := controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Spec.Version = utilimage.TiDBV5
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to update tc version to %q", utilimage.TiDBV5)
+			err = oa.WaitForTidbClusterReady(tc, 15*time.Minute, 10*time.Second)
+			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
+
+			ginkgo.By("Update components version")
+			componentVersion := utilimage.TiDBV4
+			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Spec.PD.Version = pointer.StringPtr(componentVersion)
+				tc.Spec.TiKV.Version = pointer.StringPtr(componentVersion)
+				tc.Spec.TiDB.Version = pointer.StringPtr(componentVersion)
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to update components version to %q", componentVersion)
+			err = oa.WaitForTidbClusterReady(tc, 15*time.Minute, 10*time.Second)
+			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
+
+			ginkgo.By("Check components version")
+			pdMemberName := controller.PDMemberName(tc.Name)
+			pdSts, err := stsGetter.StatefulSets(ns).Get(pdMemberName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, pdMemberName)
+			pdImage := fmt.Sprintf("pingcap/pd:%s", componentVersion)
+			framework.ExpectEqual(pdSts.Spec.Template.Spec.Containers[0].Image, pdImage, "pd sts image should be %q", pdImage)
+
+			tikvMemberName := controller.TiKVMemberName(tc.Name)
+			tikvSts, err := stsGetter.StatefulSets(ns).Get(tikvMemberName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, tikvMemberName)
+			tikvImage := fmt.Sprintf("pingcap/tikv:%s", componentVersion)
+			framework.ExpectEqual(tikvSts.Spec.Template.Spec.Containers[0].Image, tikvImage, "tikv sts image should be %q", tikvImage)
+
+			tidbMemberName := controller.TiDBMemberName(tc.Name)
+			tidbSts, err := stsGetter.StatefulSets(ns).Get(tidbMemberName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, tidbMemberName)
+			tidbImage := fmt.Sprintf("pingcap/tidb:%s", componentVersion)
+			// the 0th container for tidb pod is slowlog, which runs busybox
+			framework.ExpectEqual(tidbSts.Spec.Template.Spec.Containers[1].Image, tidbImage, "tidb sts image should be %q", tidbImage)
+		})
+
 		// this case merge scale-in/scale-out into one case, may seems a little bit dense
 		// when scale-in, replica is first set to 5 and changed to 3
 		// when scale-out, replica is first set to 3 and changed to 5
