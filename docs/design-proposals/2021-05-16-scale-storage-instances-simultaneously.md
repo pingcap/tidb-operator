@@ -24,7 +24,7 @@ Multiple TiKV/TiFlash instances can be scaled simultaneously to speed up the sch
 * Default value of `scaleInParallelism` would be 1 when it's not set, for backward compatibility.
 * Extend `scaleOne` in `scaler.go` to `scaleMulti`, function signature would be like:
 ```go
-// scaleOne calculates desired replicas and delete slots from actual/desired
+// scaleMulti calculates desired replicas and delete slots from actual/desired
 // stateful sets by allowing only one pod to be deleted or created
 // it returns following values:
 // - scaling:
