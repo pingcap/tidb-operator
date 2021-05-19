@@ -447,56 +447,83 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2)
 			dc.Spec.Master.Replicas = 3
 			dc.Spec.Worker.Replicas = 1
+			dc.Spec.Worker.RecoverFailover = false
 			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(dc)
 			framework.ExpectNoError(err, "failed to create DmCluster: %q", dcName)
 			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
 
-			podName := fmt.Sprintf("%s-0", controller.DMMasterMemberName(dcName))
-			ginkgo.By(fmt.Sprintf("Inject failure for %s", podName))
-			// patch an invalid image for dm-master-0 to simulate CrashLoopBackOff
-			patch := []byte(`
+			// patch an invalid image for dm-master-0 and dm-worker-0 to simulate CrashLoopBackOff
+			masterPodName := fmt.Sprintf("%s-0", controller.DMMasterMemberName(dcName))
+			workerPodName := fmt.Sprintf("%s-0", controller.DMWorkerMemberName(dcName))
+			patch := `
 {
 	"spec": {
 		"containers": [
 			{
-				"name": "dm-master",
+				"name": "%s",
 				"image": "pingcap/invalid-image"
 			}
 		]
 	}
 }
-`)
-			_, err = c.CoreV1().Pods(ns).Patch(podName, types.StrategicMergePatchType, patch)
-			framework.ExpectNoError(err, "failed to patch pod %q with invalid image for DmCluster %q", podName, dcName)
+`
+			ginkgo.By(fmt.Sprintf("Inject failure for %s", masterPodName))
+			_, err = c.CoreV1().Pods(ns).Patch(masterPodName, types.StrategicMergePatchType, []byte(fmt.Sprintf(patch, "dm-master")))
+			framework.ExpectNoError(err, "failed to patch pod %q with invalid image for DmCluster %q", masterPodName, dcName)
 
-			ginkgo.By(fmt.Sprintf("Wait for %s become unhealthy", podName))
+			ginkgo.By(fmt.Sprintf("Inject failure for %s", workerPodName))
+			_, err = c.CoreV1().Pods(ns).Patch(workerPodName, types.StrategicMergePatchType, []byte(fmt.Sprintf(patch, "dm-worker")))
+			framework.ExpectNoError(err, "failed to patch pod %q with invalid image for DmCluster %q", workerPodName, dcName)
+
+			ginkgo.By(fmt.Sprintf("Wait for %s become unhealthy", masterPodName))
 			var oldMemberID string
-			err = wait.PollImmediate(5*time.Second, 4*time.Minute, func() (bool, error) {
+			err = wait.PollImmediate(5*time.Second, 2*time.Minute, func() (bool, error) {
 				infos, err2 := tests.GetDMMasters(fw, ns, controller.DMMasterMemberName(dcName))
 				if err2 != nil {
 					log.Logf("failed to get master info: %v", err2)
 					return false, nil
 				}
 				for _, info := range infos {
-					if info.Name == podName {
+					if info.Name == masterPodName {
 						oldMemberID = info.MemberID
 						if !info.Alive {
 							return true, nil
 						}
-						log.Logf("%q is still healthy", podName)
+						log.Logf("%q is still healthy", masterPodName)
 						return false, nil
 					}
 				}
-				log.Logf("%q not exist in dm-master members", podName)
+				log.Logf("%q not exist in dm-master members", masterPodName)
 				return false, nil
 			})
-			framework.ExpectNoError(err, "failed to wait for %q become unhealthy for DmCluster %q", podName, dcName)
+			framework.ExpectNoError(err, "failed to wait for %q become unhealthy for DmCluster %q", masterPodName, dcName)
+
+			ginkgo.By(fmt.Sprintf("Wait for %s become offline", workerPodName))
+			err = wait.PollImmediate(5*time.Second, 2*time.Minute, func() (bool, error) {
+				infos, err2 := tests.GetDMWorkers(fw, ns, controller.DMMasterMemberName(dcName))
+				if err2 != nil {
+					log.Logf("failed to get worker info: %v", err2)
+					return false, nil
+				}
+				for _, info := range infos {
+					if info.Name == workerPodName {
+						if info.Stage == "offline" {
+							return true, nil
+						}
+						log.Logf("%q is still %s", workerPodName, info.Stage)
+						return false, nil
+					}
+				}
+				log.Logf("%q not exist in dm-worker members", workerPodName)
+				return false, nil
+			})
+			framework.ExpectNoError(err, "failed to wait for %q become offline for DmCluster %q", workerPodName, dcName)
 
 			// DM-master will autoFailover then recoverFailover.
 			// we may not observe the pod created for autoFailover,
-			// because it may be deleted after sts re-synced and the original pod's image reverted and then started normally.
+			// because it may be deleted after the original pod deleted and its image reverted and then started normally.
 			// NOTE: current dmMasterFailoverPeriod is 5m, try to decrease dmMasterFailoverPeriod for tidb-operator if necessary.
-			ginkgo.By(fmt.Sprintf("Wait for old member replaced with the new member for %s", podName))
+			ginkgo.By(fmt.Sprintf("Wait for old member replaced with the new member for %s", masterPodName))
 			err = wait.PollImmediate(10*time.Second, 10*time.Minute, func() (bool, error) {
 				infos, err2 := tests.GetDMMasters(fw, ns, controller.DMMasterMemberName(dcName))
 				if err2 != nil {
@@ -504,18 +531,75 @@ var _ = ginkgo.Describe("DMCluster", func() {
 					return false, nil
 				}
 				for _, info := range infos {
-					if info.Name == podName {
+					if info.Name == masterPodName {
 						if info.MemberID != oldMemberID {
 							return true, nil
 						}
-						log.Logf("%q is still not be replaced", podName)
+						log.Logf("%q is still not be replaced", masterPodName)
 						return false, nil
 					}
 				}
-				log.Logf("%q not exist in dm-master members", podName)
+				log.Logf("%q not exist in dm-master members", masterPodName)
 				return false, nil
 			})
-			framework.ExpectNoError(err, "failed to wait for %q to be replaced after auto-failover and recover-failover for DmCluster %q", podName, dcName)
+			framework.ExpectNoError(err, "failed to wait for %q to be replaced after auto-failover and recover-failover for DmCluster %q", masterPodName, dcName)
+
+			// DM-worker will not RecoverFailover, so one more member will be created.
+			ginkgo.By("Wait for one more dm-worker member to be created")
+			err = wait.PollImmediate(10*time.Second, 5*time.Minute, func() (bool, error) {
+				infos, err2 := tests.GetDMWorkers(fw, ns, controller.DMMasterMemberName(dcName))
+				if err2 != nil {
+					log.Logf("failed to get worker info: %v", err2)
+					return false, nil
+				}
+				if len(infos) == 2 {
+					return true, nil
+				}
+				log.Logf("new dm-worker member is still not be created")
+				return false, nil
+			})
+			framework.ExpectNoError(err, "failed to wait for new dm-worker member to be created for DmCluster %q", dcName)
+
+			ginkgo.By("Kill the old dm-worker pod")
+			framework.ExpectNoError(c.CoreV1().Pods(ns).Delete(workerPodName, &metav1.DeleteOptions{}), "failed to delete the pod %q for DmCluster", workerPodName, dcName)
+
+			ginkgo.By("Wait for none of dm-worker members will be deleted")
+			err = wait.PollImmediate(20*time.Second, 2*time.Minute, func() (bool, error) {
+				infos, err2 := tests.GetDMWorkers(fw, ns, controller.DMMasterMemberName(dcName))
+				if err2 != nil {
+					log.Logf("failed to get worker info: %v", err2)
+					return false, nil
+				}
+				if len(infos) != 2 {
+					log.Logf("some dm-worker members have been deleted")
+					return true, nil
+				}
+				return false, nil
+			})
+			framework.ExpectEqual(err, wait.ErrWaitTimeout, "some dm-worker members have been deleted for DmCluster %q", dcName)
+
+			ginkgo.By("Enable RecoverFailover for dm-worker")
+			err = controller.GuaranteedUpdate(genericCli, dc, func() error {
+				dc.Spec.Worker.RecoverFailover = true
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to enable dm-worker RecoverFailover for DmCluster: %q", dc.Name)
+			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
+
+			ginkgo.By("Wait for new created dm-worker for AutoFailover to be deleted")
+			err = wait.PollImmediate(20*time.Second, 2*time.Minute, func() (bool, error) {
+				infos, err2 := tests.GetDMWorkers(fw, ns, controller.DMMasterMemberName(dcName))
+				if err2 != nil {
+					log.Logf("failed to get worker info: %v", err2)
+					return false, nil
+				}
+				if len(infos) != 1 || infos[0].Name != workerPodName {
+					log.Logf("AutoFailover dm-worker members has not been deleted")
+					return false, nil
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "failed to wait for new created dm-worker for AutoFailover to be deleted for DmCluster: %q", dcName)
 		})
 	})
 })
