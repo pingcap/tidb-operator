@@ -120,6 +120,12 @@ var _ = ginkgo.Describe("DMCluster", func() {
 
 			ginkgo.By("Check data for incremental stage")
 			framework.ExpectNoError(tests.CheckDMData(fw, dc.Namespace, 1), "failed to check incremental data")
+
+			ginkgo.By("Delete the dc")
+			framework.ExpectNoError(cli.PingcapV1alpha1().DMClusters(dc.Namespace).Delete(dcName, &metav1.DeleteOptions{}), "failed to delete dc %q", dcName)
+
+			ginkgo.By("Wait for DmCluster to be deleted")
+			framework.ExpectNoError(oa.WaitForDmClusterDeleted(ns, dcName, 5*time.Minute, 10*time.Second), "failed to wait for DmCluster %q to be deleted", dcName)
 		})
 
 		ginkgo.It("scale out with shard task for DM", func() {

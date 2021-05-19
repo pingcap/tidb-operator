@@ -1616,6 +1616,33 @@ func (oa *OperatorActions) dmMasterMembersReadyFn(dc *v1alpha1.DMCluster) bool {
 	return true
 }
 
+func (oa *OperatorActions) dmMasterMembersDeleted(ns, dcName string) bool {
+	stsName := controller.DMMasterMemberName(dcName)
+	_, err := oa.tcStsGetter.StatefulSets(ns).Get(stsName, metav1.GetOptions{})
+	if !errors.IsNotFound(err) {
+		return false
+	}
+	svcName := controller.DMMasterMemberName(dcName)
+	_, err = oa.kubeCli.CoreV1().Services(ns).Get(svcName, metav1.GetOptions{})
+	if !errors.IsNotFound(err) {
+		return false
+	}
+	peerSvcName := controller.DMMasterPeerMemberName(dcName)
+	_, err = oa.kubeCli.CoreV1().Services(ns).Get(peerSvcName, metav1.GetOptions{})
+	return errors.IsNotFound(err)
+}
+
+func (oa *OperatorActions) dmWorkerMembersDeleted(ns, dcName string) bool {
+	stsName := controller.DMWorkerMemberName(dcName)
+	_, err := oa.tcStsGetter.StatefulSets(ns).Get(stsName, metav1.GetOptions{})
+	if !errors.IsNotFound(err) {
+		return false
+	}
+	peerSvcName := controller.DMWorkerPeerMemberName(dcName)
+	_, err = oa.kubeCli.CoreV1().Services(ns).Get(peerSvcName, metav1.GetOptions{})
+	return errors.IsNotFound(err)
+}
+
 // TODO: try to simplify the code with dmMasterMembersReadyFn.
 func (oa *OperatorActions) dmWorkerMembersReadyFn(dc *v1alpha1.DMCluster) bool {
 	dcName := dc.GetName()
@@ -3597,6 +3624,22 @@ func (oa *OperatorActions) WaitForDmClusterReady(dc *v1alpha1.DMCluster, timeout
 		log.Logf("dm worker members are ready for dc %q", dc.Name)
 
 		log.Logf("DmCluster %q is ready", dc.Name)
+		return true, nil
+	})
+}
+
+func (oa *OperatorActions) WaitForDmClusterDeleted(ns, dcName string, timeout, pollInterval time.Duration) error {
+	return wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
+		if b := oa.dmMasterMembersDeleted(ns, dcName); !b {
+			log.Logf("dm master members are not deleted for dc %q", dcName)
+			return false, nil
+		}
+		log.Logf("dm master members are deleted for dc %q", dcName)
+		if b := oa.dmWorkerMembersDeleted(ns, dcName); !b {
+			log.Logf("dm worker members are not deleted for dc %q", dcName)
+			return false, nil
+		}
+		log.Logf("dm worker members are deleted for dc %q", dcName)
 		return true, nil
 	})
 }
