@@ -1,28 +1,28 @@
-# Scale in/out TiKV/TiFlash instances simultaneously
+# Scale in/out multiple TiKV/TiFlash instances simultaneously
 
 ## Summary
 
-This document presents a design to scale in/out tikv/tiflash instances simultaneously in single schedule round.
+This document presents a design to scale in/out multiple TiKV/TiFlash instances simultaneously in one sync loop.
 
 ## Motivation
 
-Multiple TiKV/TiFlash instances can be scaled simultaneously to speed up schedule.
+Multiple TiKV/TiFlash instances can be scaled simultaneously to speed up the schedule.
 
 ### Goals
 
-* Support scale multiple TiKV/TiFlash instances in one single schedule round.
+* Support scale multiple TiKV/TiFlash instances in one sync loop.
 
 ### Non-Goals
 
-* Scale pd or other component simultaneously.
+* Scale PD or other components simultaneously.
 
 ## Proposal
 
 ### Scale in
 
-* Add `scaleInParallelism` in `spec.tikv` and `spec.tiflash` to specify the max instances can be scaled-in in one single schedule.
-* Default value of `scaleInParallelism` would be 1 when it's absent, for backward compatibility.
-* Extend `scaleOne` in `scaler.go` to `scaleMulti`, function signature would like:
+* Add `scaleInParallelism` in `spec.tikv` and `spec.tiflash` to specify the max instances can be scaled-in in one sync loop.
+* Default value of `scaleInParallelism` would be 1 when it's not set, for backward compatibility.
+* Extend `scaleOne` in `scaler.go` to `scaleMulti`, function signature would be like:
 ```javascript
 // scaleOne calculates desired replicas and delete slots from actual/desired
 // stateful sets by allowing only one pod to be deleted or created
