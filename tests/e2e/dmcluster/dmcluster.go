@@ -16,6 +16,8 @@ package dmcluster
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
+	"strings"
 	"time"
 
 	"github.com/onsi/ginkgo"
@@ -27,16 +29,20 @@ import (
 	restclient "k8s.io/client-go/rest"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 	ctrlCli "sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
+	"github.com/pingcap/tidb-operator/tests/e2e/tidbcluster"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
+	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 )
 
@@ -44,6 +50,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
 	f := e2eframework.NewDefaultFramework("dm-cluster")
 
 	var (
+		dcName     string
 		ns         string
 		c          clientset.Interface
 		config     *restclient.Config
@@ -87,6 +94,24 @@ var _ = ginkgo.Describe("DMCluster", func() {
 	})
 
 	ginkgo.AfterEach(func() {
+		if ginkgo.CurrentGinkgoTestDescription().Failed {
+			// if the case failed, try to log out source and task status of DM.
+			// NOTE: this can't work for the TLS case now.
+			resp, err := tests.ShowDMSource(fw, ns, controller.DMMasterMemberName(dcName))
+			if err != nil {
+				log.Logf("failed to show sources for dc %s: %v", dcName, err)
+			} else {
+				log.Logf("sources for dc %s: %s", dcName, resp)
+			}
+
+			resp, err = tests.QueryDMStatus(fw, ns, controller.DMMasterMemberName(dcName))
+			if err != nil {
+				log.Logf("failed to query status for dc %s: %v", dcName, err)
+			} else {
+				log.Logf("status for dc %s: %s", dcName, resp)
+			}
+		}
+
 		if fwCancel != nil {
 			fwCancel()
 		}
@@ -95,7 +120,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
 	ginkgo.Context("[Feature:DM]", func() {
 		ginkgo.It("setup replication for DM", func() {
 			ginkgo.By("Deploy a basic dc")
-			dcName := "basic-dm"
+			dcName = "basic-dm"
 			dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2)
 			dc.Spec.Master.Replicas = 1
 			dc.Spec.Worker.Replicas = 1 // current versions of DM can always bind the first source to this only DM-worker instance.
@@ -124,7 +149,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
 
 		ginkgo.It("scale out with shard task for DM", func() {
 			ginkgo.By("Deploy a basic dc")
-			dcName := "scale-out-dm"
+			dcName = "scale-out-dm"
 			dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2)
 			dc.Spec.Master.Replicas = 3
 			dc.Spec.Worker.Replicas = 1
@@ -165,7 +190,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
 
 		ginkgo.It("scale in with shard task for DM", func() {
 			ginkgo.By("Deploy a basic dc")
-			dcName := "scale-in-dm"
+			dcName = "scale-in-dm"
 			dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2)
 			dc.Spec.Master.Replicas = 5
 			dc.Spec.Worker.Replicas = 2
@@ -203,7 +228,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
 
 		ginkgo.It("restart pods for DM", func() {
 			ginkgo.By("Deploy a basic dc")
-			dcName := "restart-dm"
+			dcName = "restart-dm"
 			dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2)
 			dc.Spec.Master.Replicas = 3
 			dc.Spec.Worker.Replicas = 1
@@ -240,6 +265,167 @@ var _ = ginkgo.Describe("DMCluster", func() {
 
 			ginkgo.By("Check data for incremental stage")
 			framework.ExpectNoError(tests.CheckDMData(fw, dc.Namespace, 1), "failed to check incremental data")
+		})
+
+		ginkgo.It("change config with dmctl for DM", func() {
+			ginkgo.By("Deploy a basic dc")
+			dcName = "change-config-dmctl"
+			dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2)
+			dc.Spec.Master.Replicas = 1
+			dc.Spec.Worker.Replicas = 1
+			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(dc)
+			framework.ExpectNoError(err, "failed to create DmCluster: %q", dcName)
+			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
+
+			ginkgo.By("Create MySQL sources")
+			framework.ExpectNoError(tests.CreateDMSources(fw, dc.Namespace, controller.DMMasterMemberName(dcName)), "failed to create sources for DmCluster %q", dcName)
+
+			ginkgo.By("Check source config before updated")
+			podName := fmt.Sprintf("%s-0", controller.DMMasterMemberName(dcName))
+			sourceName := "replica-01"
+			stdout, err := framework.RunHostCmd(ns, podName,
+				fmt.Sprintf("/dmctl --master-addr=127.0.0.1:8261 get-config source %s", sourceName))
+			framework.ExpectNoError(err, "failed to show source config for DmCluster %q: %v", dcName, err)
+			framework.ExpectEqual(strings.Contains(stdout, "enable-gtid: true"), true, "original source config doesn't contain `enable-gtid: true`")
+			framework.ExpectEqual(strings.Contains(stdout, "enable-relay: true"), true, "original source config doesn't contain `enable-relay: true`")
+
+			ginkgo.By("Update and copy source config file")
+			cfg := tests.DMSources[0]
+			cfg = strings.ReplaceAll(cfg, "enable-gtid: true", "enable-gtid: false")
+			cfg = strings.ReplaceAll(cfg, "enable-relay: true", "enable-relay: false")
+			filename := "/tmp/change-config-dmctl-source.yaml"
+			framework.ExpectNoError(ioutil.WriteFile(filename, []byte(cfg), 0o644), "failed to write updated source config file")
+			_, err = framework.RunKubectl("cp", filename, fmt.Sprintf("%s/%s:%s", ns, podName, filename))
+			framework.ExpectNoError(err, "failed to copy source file into dm-master pod")
+
+			// directly update source config is not supported in DM now, so we choose to stop & re-create again.
+			ginkgo.By("Stop MySQL source")
+			_, err = framework.RunHostCmd(ns, podName,
+				fmt.Sprintf("/dmctl --master-addr=127.0.0.1:8261 operate-source stop %s", filename))
+			framework.ExpectNoError(err, "failed to stop source for DmCluster %q", dcName)
+
+			ginkgo.By("Create MySQL source again")
+			_, err = framework.RunHostCmd(ns, podName,
+				fmt.Sprintf("/dmctl --master-addr=127.0.0.1:8261 operate-source create %s", filename))
+			framework.ExpectNoError(err, "failed to create source again for DmCluster %q", dcName)
+
+			ginkgo.By("Check source config after updated")
+			stdout, err = framework.RunHostCmd(ns, podName,
+				fmt.Sprintf("/dmctl --master-addr=127.0.0.1:8261 get-config source %s", sourceName))
+			framework.ExpectNoError(err, "failed to show source config after updated for DmCluster %q: %v", dcName, err)
+			framework.ExpectEqual(strings.Contains(stdout, "enable-gtid: false"), true, "original source config doesn't contain `enable-gtid: false`")
+			framework.ExpectEqual(strings.Contains(stdout, "enable-relay: false"), true, "original source config doesn't contain `enable-relay: false`")
+		})
+
+		ginkgo.It("deploy DM with TLS enabled", func() {
+			dcName = "tls-dm"
+
+			ginkgo.By("Install CA certificate")
+			framework.ExpectNoError(tidbcluster.InstallTiDBIssuer(ns, dcName), "failed to install CA certificate")
+
+			ginkgo.By("Install MySQL certificate")
+			framework.ExpectNoError(tidbcluster.InstallMySQLCertificates(ns, dcName), "failed to install MySQL certificate")
+			<-time.After(30 * time.Second) // wait for secrets to be created
+
+			ginkgo.By("Deploy MySQL with TLS enabled")
+			mysqlSecretName := fmt.Sprintf("%s-mysql-secret", dcName)
+			framework.ExpectNoError(tests.DeployDMMySQLWithTLSEnabled(c, ns, mysqlSecretName), "failed to deploy MySQL server with TLS enabled")
+
+			ginkgo.By("Get MySQL TLS secret")
+			mysqlSecret, err := c.CoreV1().Secrets(ns).Get(mysqlSecretName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get MySQL TLS secret")
+
+			ginkgo.By("Check MySQL with TLS enabled ready")
+			framework.ExpectNoError(tests.CheckDMMySQLReadyWithTLSEnabled(fw, ns, mysqlSecret), "failed to wait for MySQL ready")
+
+			ginkgo.By("Install TiDB server and client certificate")
+			framework.ExpectNoError(tidbcluster.InstallTiDBCertificates(ns, dcName), "failed to install TiDB server and client certificate")
+			<-time.After(30 * time.Second)
+
+			ginkgo.By("Deploy TiDB with client TLS enabled")
+			tc := fixture.GetTidbCluster(ns, dcName, utilimage.TiDBV4)
+			tc.Spec.PD.Replicas = 1
+			tc.Spec.TiKV.Replicas = 1
+			tc.Spec.TiDB.Replicas = 1
+			tc.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
+
+			ginkgo.By("Install DM components certificate")
+			framework.ExpectNoError(tidbcluster.InstallDMCertificates(ns, dcName), "failed to install DM components certificate")
+			<-time.After(30 * time.Second)
+
+			ginkgo.By("Deploy a basic dc with TLS enabled")
+			tidbClientSecretName := fmt.Sprintf("%s-tidb-client-secret", dcName)
+			dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2)
+			dc.Spec.Master.Replicas = 1
+			dc.Spec.Worker.Replicas = 1
+			dc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+			dc.Spec.TLSClientSecretNames = []string{mysqlSecretName, tidbClientSecretName}
+			_, err = cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(dc)
+			framework.ExpectNoError(err, "failed to create DmCluster: %q", dcName)
+			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
+
+			ginkgo.By("Create MySQL sources")
+			podName := fmt.Sprintf("%s-0", controller.DMMasterMemberName(dcName))
+			sourceCfg := tests.DMSources[0] + fmt.Sprintf(`
+  security:
+    ssl-ca: /var/lib/source-tls/%[1]s/ca.crt
+    ssl-cert: /var/lib/source-tls/%[1]s/tls.crt
+    ssl-key: /var/lib/source-tls/%[1]s/tls.key
+`, mysqlSecretName)
+			sourceCfg = strings.ReplaceAll(sourceCfg, "dm-mysql-0.dm-mysql.dm-mysql", "dm-mysql-0.dm-mysql")
+			filename := "/tmp/dm-with-tls-source.yaml"
+			framework.ExpectNoError(ioutil.WriteFile(filename, []byte(sourceCfg), 0o644), "failed to write source config file")
+			_, err = framework.RunKubectl("cp", filename, fmt.Sprintf("%s/%s:%s", ns, podName, filename))
+			framework.ExpectNoError(err, "failed to copy source file into dm-master pod")
+			_, err = framework.RunHostCmd(ns, podName,
+				fmt.Sprintf("/dmctl --master-addr=127.0.0.1:8261 --ssl-ca=%s --ssl-cert=%s --ssl-key=%s operate-source create %s",
+					"/var/lib/dm-master-tls/ca.crt", // use the dm-master TLS certs
+					"/var/lib/dm-master-tls/tls.crt",
+					"/var/lib/dm-master-tls/tls.key",
+					filename))
+			framework.ExpectNoError(err, "failed to create source for DmCluster %q", dcName)
+
+			ginkgo.By("Generate full stage data in upstream")
+			framework.ExpectNoError(tests.GenDMFullDataWithMySQLNamespaceWithTLSEnabled(fw, ns, ns, mysqlSecret), "failed to generate full stage data in upstream")
+
+			ginkgo.By("Start a basic migration task")
+			taskCfg := tests.DMSingleTask
+			taskCfg = strings.ReplaceAll(taskCfg, `
+  password: ""
+`, fmt.Sprintf(`
+  password: ""
+  security:
+    ssl-ca: /var/lib/source-tls/%[1]s/ca.crt
+    ssl-cert: /var/lib/source-tls/%[1]s/tls.crt
+    ssl-key: /var/lib/source-tls/%[1]s/tls.key
+`, tidbClientSecretName))
+			taskCfg = strings.ReplaceAll(taskCfg, "dm-tidb-tidb.dm-tidb", fmt.Sprintf("%s-tidb", dcName))
+			taskCfg = fmt.Sprintf(taskCfg, ns, ns)
+			filename = "/tmp/dm-with-tls-task.yaml"
+			framework.ExpectNoError(ioutil.WriteFile(filename, []byte(taskCfg), 0o644), "failed to write task config file")
+			_, err = framework.RunKubectl("cp", filename, fmt.Sprintf("%s/%s:%s", ns, podName, filename))
+			framework.ExpectNoError(err, "failed to copy task file into dm-master pod")
+			_, err = framework.RunHostCmd(ns, podName,
+				fmt.Sprintf("/dmctl --master-addr=127.0.0.1:8261 --ssl-ca=%s --ssl-cert=%s --ssl-key=%s start-task %s",
+					"/var/lib/dm-master-tls/ca.crt", // use the dm-master TLS certs
+					"/var/lib/dm-master-tls/tls.crt",
+					"/var/lib/dm-master-tls/tls.key",
+					filename))
+			framework.ExpectNoError(err, "failed to start single source task for DmCluster %q", dcName)
+
+			ginkgo.By("Get TiDB client TLS secret")
+			tidbClientSecret, err := c.CoreV1().Secrets(ns).Get(tidbClientSecretName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get TiDB client TLS secret")
+
+			ginkgo.By("Check data for full stage")
+			framework.ExpectNoError(tests.CheckDMDataWithTLSEnabled(fw, ns, ns, ns, dcName, 1, mysqlSecret, tidbClientSecret), "failed to check full data")
+
+			ginkgo.By("Generate incremental stage data in upstream")
+			framework.ExpectNoError(tests.GenDMIncrDataWithMySQLNamespaceWithTLSEnabled(fw, ns, ns, mysqlSecret), "failed to generate incremental stage data in upstream")
+
+			ginkgo.By("Check data for incremental stage")
+			framework.ExpectNoError(tests.CheckDMDataWithTLSEnabled(fw, ns, ns, ns, dcName, 1, mysqlSecret, tidbClientSecret), "failed to check incremental data")
 		})
 	})
 })
