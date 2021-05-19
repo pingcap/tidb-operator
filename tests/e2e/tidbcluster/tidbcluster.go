@@ -1055,7 +1055,17 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "wait for TidbCluster timeout: %v", targetTc)
 
 			drainerConfig := &tests.DrainerConfig{
-				DrainerName:       "tls-drainer",
+				// Note: DrainerName muse be tcName
+				// oa.DeployDrainer will use DrainerName as release name to run "helm install..."
+				// in InstallTiDBCertificates, we use `tidbComponentsCertificatesTmpl` to render the certs:
+				// ...
+				// dnsNames:
+				// - "*.{{ .ClusterName }}-{{ .ClusterName }}-drainer"
+				// - "*.{{ .ClusterName }}-{{ .ClusterName }}-drainer.{{ .Namespace }}"
+				// - "*.{{ .ClusterName }}-{{ .ClusterName }}-drainer.{{ .Namespace }}.svc"
+				// ...
+				// we will drainer refer to: https://docs.pingcap.com/zh/tidb-in-kubernetes/drainer/enable-tls-between-components
+				DrainerName:       tcName,
 				OperatorTag:       cfg.OperatorTag,
 				SourceClusterName: tcName,
 				Namespace:         ns,
@@ -1164,6 +1174,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				ResourceRequirements: fixture.WithStorage(fixture.BurstableSmall, "1Gi"),
 				Config: tcconfig.New(map[string]interface{}{
 					"addr": "0.0.0.0:8250",
+					"storage": map[string]interface{}{
+						"stop-write-at-available-space": 0,
+					},
 				}),
 			}
 			err = genericCli.Create(context.TODO(), tc)
@@ -1256,7 +1269,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
 
 			drainerConfig := &tests.DrainerConfig{
-				DrainerName:       "origintls-drainer",
+				DrainerName:       tcName,
 				OperatorTag:       cfg.OperatorTag,
 				SourceClusterName: tcName,
 				Namespace:         ns,
