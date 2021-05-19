@@ -38,9 +38,9 @@ func scaleMulti(actual *apps.StatefulSet, desired *apps.StatefulSet, maxCount in
 * Call `scaleMulti` to get ordinals to be scaled-in, recorded as A.
 * Call PD API to get stores info, which will be used during this operation round.
 * For all ordinals waited to be scaled-in in this round:
-  * Check if number of stores with `up` state (exclude already deleted store in this round) is more than desired replicas.
+  * Check if number of stores with `up` state (exclude already deleted store in this round) is more than `Replication.MaxReplicas` in PD config.
   * Call PD API to delete store until its state changes to `offline`.
-  * When store become tombstone, add defer deleting annotation to the PVCs of the Pod to delete them.
+  * When store becomes tombstone, add defer deleting annotation to the PVCs of the corresponding pod to be deleted.
   * If current store is tombstone and add PVCs defer deleted, mark corresponding ordinal as finished, otherwise failed.
 * Call `setReplicasAndDeleteSlots` to delete pod:
   * If without asts enabled:
