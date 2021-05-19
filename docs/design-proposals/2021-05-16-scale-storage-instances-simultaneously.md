@@ -69,4 +69,4 @@ func scaleMulti(actual *apps.StatefulSet, desired *apps.StatefulSet, maxCount in
 
 ## Drawbacks
 
-* Scale in/out multiple instances at the same time may cause region replicas reschedule more frequent.
+* Scale in/out multiple instances simultaneously will cause more region replicas to be rescheduled at the same time.
