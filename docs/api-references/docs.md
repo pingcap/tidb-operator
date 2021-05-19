@@ -6213,6 +6213,19 @@ IngressSpec
 <em>(Optional)</em>
 </td>
 </tr>
+<tr>
+<td>
+<code>additionalVolumeMounts</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#volumemount-v1-core">
+[]Kubernetes core/v1.VolumeMount
+</a>
+</em>
+</td>
+<td>
+<p>Additional volume mounts of grafana pod.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="helperspec">HelperSpec</h3>
