@@ -52,16 +52,16 @@ func scaleMulti(actual *apps.StatefulSet, desired *apps.StatefulSet, maxCount in
 
 ### Scale out
 
-* Add `scaleOutParallelism` in `spec.tikv` and `spec.tiflash` to specify the max instances can be scaled-in in one single schedule.
-* Default value of `scaleOutParallelism` would be 1 when it's absent, for backward compatibility.
-* Call `scaleMulti` to get oridnals to be scaled-out, recorded as A.
-* For all oridnals waited to be scaed-out in this round:
-  * Call `deleteDeferDeletingPVC` to clean all PVCs with deleted annotation, mark corresponding original as finished if succeed, otherwise failed.
+* Add `scaleOutParallelism` in `spec.tikv` and `spec.tiflash` to specify the max instances can be scaled-in in one sync loop.
+* Default value of `scaleOutParallelism` would be 1 when it's not set, for backward compatibility.
+* Call `scaleMulti` to get ordinals to be scaled-out, recorded as A.
+* For all ordinals to be scaled-out in this loop:
+  * Call `deleteDeferDeletingPVC` to clean all PVCs with the defer deleting annotation, mark the corresponding original as finished if succeed, otherwise ongoing.
 * Call `setReplicasAndDeleteSlots` to create pod:
   * If without asts enabled:
-    * Count the __continuous__ finished original beginning from smallest order in A, recorded as c, then the final replicas will be ordinal  + c.
+    * Count the __continuous__ finished original beginning from smallest order in A, recorded as c, then the final replicas will be `replicas  + c`.
   * If with asts enabled:
-    * Calculate replicas and deleteSlots from finished and failed oridnals.
+    * Calculate replicas and deleteSlots from finished and ongoing ordinals and update the StatefulSet.
 
 ### Test Plan
 
