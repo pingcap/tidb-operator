@@ -24,6 +24,7 @@ import (
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
@@ -438,6 +439,83 @@ var _ = ginkgo.Describe("DMCluster", func() {
 
 			ginkgo.By("Check data for incremental stage")
 			framework.ExpectNoError(tests.CheckDMDataWithTLSEnabled(fw, ns, ns, ns, dcName, 1, mysqlSecret, tidbClientSecret), "failed to check incremental data")
+		})
+
+		ginkgo.It("auto failover for DM", func() {
+			ginkgo.By("Deploy a basic dc")
+			dcName := "auto-failover"
+			dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2)
+			dc.Spec.Master.Replicas = 3
+			dc.Spec.Worker.Replicas = 1
+			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(dc)
+			framework.ExpectNoError(err, "failed to create DmCluster: %q", dcName)
+			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
+
+			podName := fmt.Sprintf("%s-0", controller.DMMasterMemberName(dcName))
+			ginkgo.By(fmt.Sprintf("Inject failure for %s", podName))
+			// patch an invalid image for dm-master-0 to simulate CrashLoopBackOff
+			patch := []byte(`
+{
+	"spec": {
+		"containers": [
+			{
+				"name": "dm-master",
+				"image": "pingcap/invalid-image"
+			}
+		]
+	}
+}
+`)
+			_, err = c.CoreV1().Pods(ns).Patch(podName, types.StrategicMergePatchType, patch)
+			framework.ExpectNoError(err, "failed to patch pod %q with invalid image for DmCluster %q", podName, dcName)
+
+			ginkgo.By(fmt.Sprintf("Wait for %s become unhealthy", podName))
+			var oldMemberID string
+			err = wait.PollImmediate(5*time.Second, 4*time.Minute, func() (bool, error) {
+				infos, err2 := tests.GetDMMasters(fw, ns, controller.DMMasterMemberName(dcName))
+				if err2 != nil {
+					log.Logf("failed to get master info: %v", err2)
+					return false, nil
+				}
+				for _, info := range infos {
+					if info.Name == podName {
+						oldMemberID = info.MemberID
+						if !info.Alive {
+							return true, nil
+						}
+						log.Logf("%q is still healthy", podName)
+						return false, nil
+					}
+				}
+				log.Logf("%q not exist in dm-master members", podName)
+				return false, nil
+			})
+			framework.ExpectNoError(err, "failed to wait for %q become unhealthy for DmCluster %q", podName, dcName)
+
+			// DM-master will autoFailover then recoverFailover.
+			// we may not observe the pod created for autoFailover,
+			// because it may be deleted after sts re-synced and the original pod's image reverted and then started normally.
+			// NOTE: current dmMasterFailoverPeriod is 5m, try to decrease dmMasterFailoverPeriod for tidb-operator if necessary.
+			ginkgo.By(fmt.Sprintf("Wait for old member replaced with the new member for %s", podName))
+			err = wait.PollImmediate(10*time.Second, 10*time.Minute, func() (bool, error) {
+				infos, err2 := tests.GetDMMasters(fw, ns, controller.DMMasterMemberName(dcName))
+				if err2 != nil {
+					log.Logf("failed to get master info: %v", err2)
+					return false, nil
+				}
+				for _, info := range infos {
+					if info.Name == podName {
+						if info.MemberID != oldMemberID {
+							return true, nil
+						}
+						log.Logf("%q is still not be replaced", podName)
+						return false, nil
+					}
+				}
+				log.Logf("%q not exist in dm-master members", podName)
+				return false, nil
+			})
+			framework.ExpectNoError(err, "failed to wait for %q to be replaced after auto-failover and recover-failover for DmCluster %q", podName, dcName)
 		})
 	})
 })
