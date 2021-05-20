@@ -595,10 +595,9 @@ var _ = ginkgo.Describe("DMCluster", func() {
 				return nil
 			})
 			framework.ExpectNoError(err, "failed to enable dm-worker RecoverFailover for DmCluster: %q", dc.Name)
-			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
 
 			ginkgo.By("Wait for new created dm-worker for AutoFailover to be deleted")
-			err = wait.PollImmediate(20*time.Second, 2*time.Minute, func() (bool, error) {
+			err = wait.PollImmediate(20*time.Second, 5*time.Minute, func() (bool, error) {
 				infos, err2 := tests.GetDMWorkers(fw, ns, controller.DMMasterMemberName(dcName))
 				if err2 != nil {
 					log.Logf("failed to get worker info: %v", err2)
