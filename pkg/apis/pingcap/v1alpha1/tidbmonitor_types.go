@@ -262,6 +262,7 @@ type ClusterRef TidbClusterRef
 
 type TidbMonitorStatus struct {
 	// Storage status for deployment
+	// Deprecated from v1.2.0
 	DeploymentStorageStatus *DeploymentStorageStatus `json:"deploymentStorageStatus,omitempty"`
 
 	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`

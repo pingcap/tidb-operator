@@ -145,7 +145,7 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 
 	// Sync Statefulset
 	if err := m.syncTidbMonitorStatefulset(firstTc, firstDc, monitor); err != nil {
-		message := fmt.Sprintf("Sync TidbMonitor[%s/%s] Deployment failed,err:%v", monitor.Namespace, monitor.Name, err)
+		message := fmt.Sprintf("Sync TidbMonitor[%s/%s] Statefulset failed,err:%v", monitor.Namespace, monitor.Name, err)
 		m.deps.Recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
 		return err
 	}
@@ -224,15 +224,18 @@ func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, dc
 		return err
 	}
 
-	result, err := m.smoothMigrationToStatefulSet(monitor)
-	if err != nil {
-		klog.Errorf("Fail to migrate from deployment to statefulset for tm [%s/%s], err: %v", ns, name, err)
-		return err
+	if monitor.Status.DeploymentStorageStatus != nil {
+		result, err := m.smoothMigrationToStatefulSet(monitor)
+		if err != nil {
+			klog.Errorf("Fail to migrate from deployment to statefulset for tm [%s/%s], err: %v", ns, name, err)
+			return err
+		}
+		if !result {
+			klog.Infof("Wait for the smooth migration to be done successfully for tm [%s/%s]", ns, name)
+			return nil
+		}
 	}
-	if !result {
-		klog.Infof("Wait for the smooth migration to be done successfully for tm [%s/%s]", ns, name)
-		return nil
-	}
+
 	newMonitorSts, err := getMonitorStatefulSet(sa, cm, secret, monitor, tc, dc)
 	if err != nil {
 		klog.Errorf("Fail to generate statefulset for tm [%s/%s], err: %v", ns, name, err)
