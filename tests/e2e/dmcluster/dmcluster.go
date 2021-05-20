@@ -21,12 +21,14 @@ import (
 	"time"
 
 	"github.com/onsi/ginkgo"
+	astsHelper "github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
+	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	restclient "k8s.io/client-go/rest"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -36,12 +38,14 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
 	"github.com/pingcap/tidb-operator/tests/e2e/tidbcluster"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
+	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
@@ -65,6 +69,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
 		cfg        *tests.Config
 		ocfg       *tests.OperatorConfig
 		oa         *tests.OperatorActions
+		stsGetter  typedappsv1.StatefulSetsGetter
 	)
 
 	ginkgo.BeforeEach(func() {
@@ -92,6 +97,12 @@ var _ = ginkgo.Describe("DMCluster", func() {
 		cfg = e2econfig.TestConfig
 		ocfg = e2econfig.NewDefaultOperatorConfig(cfg)
 		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, cfg, nil, fw, f)
+
+		if ocfg.Enabled(features.AdvancedStatefulSet) {
+			stsGetter = astsHelper.NewHijackClient(c, asCli).AppsV1()
+		} else {
+			stsGetter = c.AppsV1()
+		}
 	})
 
 	ginkgo.AfterEach(func() {
@@ -600,6 +611,87 @@ var _ = ginkgo.Describe("DMCluster", func() {
 				return true, nil
 			})
 			framework.ExpectNoError(err, "failed to wait for new created dm-worker for AutoFailover to be deleted for DmCluster: %q", dcName)
+		})
+
+		ginkgo.It("upgrade for DM", func() {
+			ginkgo.By("Deploy a basic dc")
+			dcName := "upgrade-dm"
+			dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2Prev)
+			dc.Spec.Master.Replicas = 1
+			dc.Spec.Worker.Replicas = 1
+			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(dc)
+			framework.ExpectNoError(err, "failed to create DmCluster: %q", dcName)
+			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
+
+			podListPrev, err := c.CoreV1().Pods(ns).List(metav1.ListOptions{})
+			framework.ExpectNoError(err, "failed to list pods in ns %s", ns)
+
+			ginkgo.By("Create MySQL sources")
+			framework.ExpectNoError(tests.CreateDMSources(fw, dc.Namespace, controller.DMMasterMemberName(dcName)), "failed to create sources for DmCluster %q", dcName)
+
+			ginkgo.By("Generate full stage data in upstream")
+			framework.ExpectNoError(tests.GenDMFullData(fw, dc.Namespace), "failed to generate full stage data in upstream")
+
+			ginkgo.By("Start a basic migration task")
+			framework.ExpectNoError(tests.StartDMTask(fw, dc.Namespace, controller.DMMasterMemberName(dcName), tests.DMSingleTask, ""), "failed to start single source task")
+
+			ginkgo.By("Check data for full stage")
+			framework.ExpectNoError(tests.CheckDMData(fw, dc.Namespace, 1), "failed to check full data")
+
+			checkImage := func(image string) {
+				masterStsName := controller.DMMasterMemberName(dcName)
+				masterSts, err := stsGetter.StatefulSets(ns).Get(masterStsName, metav1.GetOptions{})
+				framework.ExpectNoError(err, "failed to get sts for %s/%s", ns, masterStsName)
+				framework.ExpectEqual(masterSts.Spec.Template.Spec.Containers[0].Image, image, "master sts image should be %q", image)
+				workerStsName := controller.DMWorkerMemberName(dcName)
+				workerSts, err := stsGetter.StatefulSets(ns).Get(workerStsName, metav1.GetOptions{})
+				framework.ExpectNoError(err, "failed to get sts for %s/%s", ns, workerStsName)
+				framework.ExpectEqual(workerSts.Spec.Template.Spec.Containers[0].Image, image, "worker sts image should be %q", image)
+			}
+
+			ginkgo.By("Check components version before upgrade")
+			checkImage(fmt.Sprintf("pingcap/dm:%s", utilimage.DMV2Prev))
+
+			ginkgo.By("Pause the DmCluster before upgrade")
+			err = controller.GuaranteedUpdate(genericCli, dc, func() error {
+				dc.Spec.Paused = true
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to pause DmCluster %q", dcName)
+
+			ginkgo.By("Upgrade DM")
+			err = controller.GuaranteedUpdate(genericCli, dc, func() error {
+				dc.Spec.Version = utilimage.DMV2
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to upgrade DmCluster %q", dcName)
+
+			ginkgo.By("Check pods unchanged")
+			err = utilpod.WaitForPodsAreChanged(c, podListPrev.Items, 3*time.Minute)
+			framework.ExpectEqual(err, wait.ErrWaitTimeout, "pods changed when DmCluster %q is paused", dcName)
+
+			ginkgo.By("Check components version when pausing")
+			checkImage(fmt.Sprintf("pingcap/dm:%s", utilimage.DMV2Prev))
+
+			ginkgo.By("Resume the DmCluster before upgrade")
+			err = controller.GuaranteedUpdate(genericCli, dc, func() error {
+				dc.Spec.Paused = false
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to resume DmCluster %q", dcName)
+
+			ginkgo.By("Check pods changed")
+			err = utilpod.WaitForPodsAreChanged(c, podListPrev.Items, 10*time.Minute)
+			framework.ExpectNoError(err, "failed to wait for pods changed for DmCluster %q", dcName)
+
+			ginkgo.By("Check components version after upgrade")
+			checkImage(fmt.Sprintf("pingcap/dm:%s", utilimage.DMV2))
+
+			ginkgo.By("Generate incremental stage data in upstream")
+			framework.ExpectNoError(tests.GenDMIncrData(fw, dc.Namespace), "failed to generate incremental stage data in upstream")
+
+			ginkgo.By("Check data for incremental stage")
+			framework.ExpectNoError(tests.CheckDMData(fw, dc.Namespace, 1), "failed to check incremental data")
 		})
 	})
 })
