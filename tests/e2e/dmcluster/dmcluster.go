@@ -17,6 +17,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"strings"
 	"time"
 
@@ -435,6 +436,55 @@ var _ = ginkgo.Describe("DMCluster", func() {
 
 			ginkgo.By("Check data for incremental stage")
 			framework.ExpectNoError(tests.CheckDMDataWithTLSEnabled(fw, ns, ns, ns, dcName, 1, mysqlSecret, tidbClientSecret), "failed to check incremental data")
+		})
+
+		ginkgo.It("kill pods for DM", func() {
+			ginkgo.By("Deploy a basic dc")
+			dcName := "kill-dm"
+			dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2)
+			dc.Spec.Master.Replicas = 3
+			dc.Spec.Worker.Replicas = 2
+			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(dc)
+			framework.ExpectNoError(err, "failed to create DmCluster: %q", dcName)
+			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
+
+			// TODO: check all masters are healthy; check all workers are bound (two source and two dm-worker replicas)
+
+			ginkgo.By("Create MySQL sources")
+			framework.ExpectNoError(tests.CreateDMSources(fw, dc.Namespace, controller.DMMasterMemberName(dcName)), "failed to create sources for DmCluster %q", dcName)
+
+			ginkgo.By("Generate full stage data in upstream")
+			framework.ExpectNoError(tests.GenDMFullData(fw, dc.Namespace), "failed to generate full stage data in upstream")
+
+			ginkgo.By("Start a basic migration task")
+			framework.ExpectNoError(tests.StartDMTask(fw, dc.Namespace, controller.DMMasterMemberName(dcName), tests.DMSingleTask, ""), "failed to start single source task")
+
+			ginkgo.By("Check data for full stage")
+			framework.ExpectNoError(tests.CheckDMData(fw, dc.Namespace, 1), "failed to check full data")
+
+			ginkgo.By("Random kill dm-master or dm-worker pods")
+			var podNames []string
+			for i := int32(0); i < dc.Spec.Master.Replicas; i++ {
+				podNames = append(podNames, fmt.Sprintf("%s-%d", controller.DMMasterMemberName(dcName), i))
+			}
+			for i := int32(0); i < dc.Spec.Worker.Replicas; i++ {
+				podNames = append(podNames, fmt.Sprintf("%s-%d", controller.DMWorkerMemberName(dcName), i))
+			}
+			rand.Shuffle(len(podNames), func(i, j int) {
+				podNames[i], podNames[j] = podNames[j], podNames[i]
+			})
+			for _, podName := range podNames {
+				log.Logf("kill pod %s", podName)
+				framework.ExpectNoError(c.CoreV1().Pods(ns).Delete(podName, &metav1.DeleteOptions{}), "failed to kill pod %q", podName)
+				<-time.After(2 * time.Minute)
+				// TODO: check the killed pod become healthy
+			}
+
+			ginkgo.By("Generate incremental stage data in upstream")
+			framework.ExpectNoError(tests.GenDMIncrData(fw, dc.Namespace), "failed to generate incremental stage data in upstream")
+
+			ginkgo.By("Check data for incremental stage")
+			framework.ExpectNoError(tests.CheckDMData(fw, dc.Namespace, 1), "failed to check incremental data")
 		})
 	})
 })
