@@ -80,6 +80,7 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 
 	var firstTc *v1alpha1.TidbCluster
 	assetStore := NewStore(m.deps.SecretLister)
+	dmAssetStore := NewStore(m.deps.SecretLister)
 
 	for _, tcRef := range monitor.Spec.Clusters {
 		tc, err := m.deps.TiDBClusterLister.TidbClusters(tcRef.Namespace).Get(tcRef.Name)
@@ -121,7 +122,7 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 			// If cluster enable tls
 			if dc.IsTLSClusterEnabled() {
 				dmTlsSecretName := util.DMClientTLSSecretName(dcRef.Name)
-				err := assetStore.addTLSAssets(dcRef.Namespace, dmTlsSecretName)
+				err := dmAssetStore.addTLSAssets(dcRef.Namespace, dmTlsSecretName)
 				if err != nil {
 					return err
 				}
@@ -130,7 +131,7 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	}
 
 	// create or update tls asset secret
-	err := m.syncAssetSecret(monitor, assetStore)
+	err := m.syncAssetSecret(monitor, assetStore, dmAssetStore)
 	if err != nil {
 		return err
 	}
@@ -664,7 +665,7 @@ func (m *MonitorManager) patchPVClaimRef(pv *corev1.PersistentVolume, patchPvcNa
 	return nil
 }
 
-func (m *MonitorManager) syncAssetSecret(monitor *v1alpha1.TidbMonitor, store *Store) error {
+func (m *MonitorManager) syncAssetSecret(monitor *v1alpha1.TidbMonitor, store *Store, dmStore *Store) error {
 	ns := monitor.Namespace
 	name := monitor.Name
 	tlsAssetsSecret := &corev1.Secret{
@@ -685,6 +686,26 @@ func (m *MonitorManager) syncAssetSecret(monitor *v1alpha1.TidbMonitor, store *S
 		klog.Errorf("Fail to sync tm[%s/%s]'s secret assets, err: %v", ns, name, err)
 		return err
 	}
+
+	dmTlsAssetsSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            GetDMTLSAssetsSecretName(monitor.Name),
+			Namespace:       monitor.Namespace,
+			Labels:          buildTidbMonitorLabel(monitor.Name),
+			OwnerReferences: []metav1.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
+		},
+		Data: make(map[string][]byte, len(dmStore.TLSAssets)),
+	}
+	for key, asset := range dmStore.TLSAssets {
+		dmTlsAssetsSecret.Data[key.String()] = []byte(asset)
+	}
+
+	_, err = m.deps.TypedControl.CreateOrUpdateSecret(monitor, dmTlsAssetsSecret)
+	if err != nil {
+		klog.Errorf("Fail to sync tm[%s/%s]'s DM secret assets, err: %v", ns, name, err)
+		return err
+	}
+
 	return nil
 }
 

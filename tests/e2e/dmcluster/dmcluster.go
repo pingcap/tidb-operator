@@ -377,6 +377,13 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			framework.ExpectNoError(err, "failed to create DmCluster: %q", dcName)
 			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
 
+			ginkgo.By("Deploy TidbMonitor for DM")
+			tm := fixture.NewTidbMonitor("monitor-dm-test", ns, tc, true, true, false)
+			fixture.UpdateTidbMonitorForDM(tm, dc)
+			_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(tm)
+			framework.ExpectNoError(err, "failed to deploy TidbMonitor for DmCluster %q", dcName)
+			framework.ExpectNoError(tests.CheckTidbMonitor(tm, cli, c, fw), "failed to check TidbMonitor for DmCluster %q", dcName)
+
 			ginkgo.By("Create MySQL sources")
 			podName := fmt.Sprintf("%s-0", controller.DMMasterMemberName(dcName))
 			sourceCfg := tests.DMSources[0] + fmt.Sprintf(`
