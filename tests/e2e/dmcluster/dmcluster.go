@@ -23,6 +23,8 @@ import (
 
 	"github.com/onsi/ginkgo"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
+	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
+	corev1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -474,9 +476,11 @@ var _ = ginkgo.Describe("DMCluster", func() {
 				podNames[i], podNames[j] = podNames[j], podNames[i]
 			})
 			for _, podName := range podNames {
+				pod, err := c.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+				framework.ExpectNoError(err, "failed to get pod %q for DmCluster %q", podName, dcName)
 				log.Logf("kill pod %s", podName)
 				framework.ExpectNoError(c.CoreV1().Pods(ns).Delete(podName, &metav1.DeleteOptions{}), "failed to kill pod %q", podName)
-				<-time.After(2 * time.Minute)
+				framework.ExpectNoError(utilpod.WaitForPodsAreChanged(c, []corev1.Pod{*pod}, 3*time.Minute))
 				// TODO: check the killed pod become healthy
 			}
 
