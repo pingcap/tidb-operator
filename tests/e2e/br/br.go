@@ -15,9 +15,9 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/feature"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/portforward"
-	"github.com/pingcap/tidb-operator/tests/e2e/framework/data"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	utiltidbcluster "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
+	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/test/e2e/framework"
 )
@@ -172,7 +172,7 @@ func getTiDBServiceResourceName(tcName string) string {
 func createTidbCluster(f *e2eframework.Framework, name string, version string, enableTLS bool) error {
 	ns := f.Namespace.Name
 	// TODO: change to use tidbclusterutil like brutil
-	tc := data.GetTidbCluster(ns, name, version)
+	tc := fixture.GetTidbCluster(ns, name, version)
 	tc.Spec.PD.Replicas = 1
 	tc.Spec.TiKV.Replicas = 1
 	tc.Spec.TiDB.Replicas = 1
