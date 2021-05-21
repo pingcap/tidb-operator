@@ -628,12 +628,12 @@ func (oa *OperatorActions) UpgradeOperator(info *OperatorConfig) error {
 	return err
 }
 
-func (oa *OperatorActions) DeployDMMySQLOrDie() {
-	if err := DeployDMMySQL(oa.kubeCli); err != nil {
+func (oa *OperatorActions) DeployDMMySQLOrDie(ns string) {
+	if err := DeployDMMySQL(oa.kubeCli, ns); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 
-	if err := CheckDMMySQLReady(oa.fw); err != nil {
+	if err := CheckDMMySQLReady(oa.fw, ns); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }
@@ -649,7 +649,7 @@ func (oa *OperatorActions) DeployDMTiDBOrDie() {
 		slack.NotifyAndPanic(err)
 	}
 
-	tc := fixture.GetTidbCluster(DMTiDBNamespace, DMTiDBName, utilimage.TiDBV4)
+	tc := fixture.GetTidbCluster(DMTiDBNamespace, DMTiDBName, utilimage.TiDBV5)
 	tc.Spec.PD.Replicas = 1
 	tc.Spec.TiKV.Replicas = 1
 	tc.Spec.TiDB.Replicas = 1
