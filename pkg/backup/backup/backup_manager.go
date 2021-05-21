@@ -264,7 +264,6 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		serviceAccount = backup.Spec.ServiceAccount
 	}
 
-	// TODO: need to forbid overwrite labels we set internal?
 	jobLabels := util.CombineStringMap(label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name), backup.Labels)
 	podLabels := jobLabels
 	jobAnnotations := backup.Annotations
