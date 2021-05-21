@@ -17793,8 +17793,6 @@ spec:
                       type: array
                   type: object
               type: object
-            annotations:
-              type: object
             backupType:
               type: string
             br:
@@ -17947,8 +17945,6 @@ spec:
                     type: string
                 type: object
               type: array
-            labels:
-              type: object
             local: {}
             podSecurityContext:
               properties:
@@ -18371,8 +18367,6 @@ spec:
                       type: array
                   type: object
               type: object
-            annotations:
-              type: object
             backupType:
               type: string
             br:
@@ -18495,8 +18489,6 @@ spec:
                     type: string
                 type: object
               type: array
-            labels:
-              type: object
             local: {}
             podSecurityContext:
               properties:
@@ -18682,8 +18674,6 @@ spec:
           type: string
         spec:
           properties:
-            annotations:
-              type: object
             backupTemplate:
               properties:
                 affinity:
@@ -18940,8 +18930,6 @@ spec:
                           type: array
                       type: object
                   type: object
-                annotations:
-                  type: object
                 backupType:
                   type: string
                 br:
@@ -19094,8 +19082,6 @@ spec:
                         type: string
                     type: object
                   type: array
-                labels:
-                  type: object
                 local: {}
                 podSecurityContext:
                   properties:
@@ -19224,8 +19210,6 @@ spec:
                     type: string
                 type: object
               type: array
-            labels:
-              type: object
             maxBackups:
               format: int32
               type: integer

@@ -237,9 +237,9 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 	}
 
 	jobLabels := util.CombineStringMap(label.NewRestore().Instance(restore.GetInstanceName()).RestoreJob().Restore(name), restore.Labels)
-	podLabels := util.CombineStringMap(jobLabels, restore.Spec.Labels)
+	podLabels := jobLabels
 	jobAnnotations := restore.Annotations
-	podAnnotations := util.CombineStringMap(jobAnnotations, restore.Spec.Annotations)
+	podAnnotations := jobAnnotations
 
 	serviceAccount := constants.DefaultServiceAccountName
 	if restore.Spec.ServiceAccount != "" {
@@ -351,9 +351,9 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 	}
 
 	jobLabels := util.CombineStringMap(label.NewRestore().Instance(restore.GetInstanceName()).RestoreJob().Restore(name), restore.Labels)
-	podLabels := util.CombineStringMap(jobLabels, restore.Spec.Labels)
+	podLabels := jobLabels
 	jobAnnotations := restore.Annotations
-	podAnnotations := util.CombineStringMap(jobAnnotations, restore.Spec.Annotations)
+	podAnnotations := jobAnnotations
 
 	volumeMounts := []corev1.VolumeMount{}
 	volumes := []corev1.Volume{}

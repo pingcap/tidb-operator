@@ -332,30 +332,6 @@ CleanPolicyType
 </tr>
 <tr>
 <td>
-<code>annotations</code></br>
-<em>
-map[string]string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Additional annotations for backup pods</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>labels</code></br>
-<em>
-map[string]string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Additional labels for backup pods</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>podSecurityContext</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
@@ -537,30 +513,6 @@ string
 <td>
 <em>(Optional)</em>
 <p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>annotations</code></br>
-<em>
-map[string]string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Additional annotations for backup schedule pods</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>labels</code></br>
-<em>
-map[string]string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Additional labels for backup schedule pods</p>
 </td>
 </tr>
 </table>
@@ -1225,30 +1177,6 @@ For examples <code>spec.toolImage: pingcap/br:v4.0.8</code> or <code>spec.toolIm
 </td>
 <td>
 <p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching. BR supports this from v4.0.3.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>annotations</code></br>
-<em>
-map[string]string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Additional annotations for restore pods</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>labels</code></br>
-<em>
-map[string]string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Additional labels for restore pods</p>
 </td>
 </tr>
 <tr>
@@ -3024,30 +2952,6 @@ string
 <p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
 </td>
 </tr>
-<tr>
-<td>
-<code>annotations</code></br>
-<em>
-map[string]string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Additional annotations for backup schedule pods</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>labels</code></br>
-<em>
-map[string]string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Additional labels for backup schedule pods</p>
-</td>
-</tr>
 </tbody>
 </table>
 <h3 id="backupschedulestatus">BackupScheduleStatus</h3>
@@ -3368,30 +3272,6 @@ CleanPolicyType
 </td>
 <td>
 <p>CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>annotations</code></br>
-<em>
-map[string]string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Additional annotations for backup pods</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>labels</code></br>
-<em>
-map[string]string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Additional labels for backup pods</p>
 </td>
 </tr>
 <tr>
@@ -11448,30 +11328,6 @@ For examples <code>spec.toolImage: pingcap/br:v4.0.8</code> or <code>spec.toolIm
 </td>
 <td>
 <p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching. BR supports this from v4.0.3.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>annotations</code></br>
-<em>
-map[string]string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Additional annotations for restore pods</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>labels</code></br>
-<em>
-map[string]string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Additional labels for restore pods</p>
 </td>
 </tr>
 <tr>

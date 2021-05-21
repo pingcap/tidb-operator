@@ -1398,14 +1398,6 @@ type BackupSpec struct {
 	// CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained
 	CleanPolicy CleanPolicyType `json:"cleanPolicy,omitempty"`
 
-	// Additional annotations for backup pods
-	// +optional
-	Annotations map[string]string `json:"annotations,omitempty"`
-
-	// Additional labels for backup pods
-	// +optional
-	Labels map[string]string `json:"labels,omitempty"`
-
 	// PodSecurityContext of the component
 	// +optional
 	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
@@ -1554,14 +1546,6 @@ type BackupScheduleSpec struct {
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
 	// +optional
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
-
-	// Additional annotations for backup schedule pods
-	// +optional
-	Annotations map[string]string `json:"annotations,omitempty"`
-
-	// Additional labels for backup schedule pods
-	// +optional
-	Labels map[string]string `json:"labels,omitempty"`
 }
 
 // BackupScheduleStatus represents the current state of a BackupSchedule.
@@ -1689,14 +1673,6 @@ type RestoreSpec struct {
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 	// TableFilter means Table filter expression for 'db.table' matching. BR supports this from v4.0.3.
 	TableFilter []string `json:"tableFilter,omitempty"`
-
-	// Additional annotations for restore pods
-	// +optional
-	Annotations map[string]string `json:"annotations,omitempty"`
-
-	// Additional labels for restore pods
-	// +optional
-	Labels map[string]string `json:"labels,omitempty"`
 
 	// PodSecurityContext of the component
 	// +optional

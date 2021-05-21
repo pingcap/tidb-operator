@@ -264,10 +264,11 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		serviceAccount = backup.Spec.ServiceAccount
 	}
 
+	// TODO: need to forbid overwrite labels we set internal?
 	jobLabels := util.CombineStringMap(label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name), backup.Labels)
-	podLabels := util.CombineStringMap(jobLabels, backup.Spec.Labels)
+	podLabels := jobLabels
 	jobAnnotations := backup.Annotations
-	podAnnotations := util.CombineStringMap(jobAnnotations, backup.Spec.Annotations)
+	podAnnotations := backup.Annotations
 
 	// TODO: need add ResourceRequirement for backup job
 	podSpec := &corev1.PodTemplateSpec{
@@ -378,9 +379,9 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	}
 
 	jobLabels := util.CombineStringMap(label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name), backup.Labels)
-	podLabels := util.CombineStringMap(jobLabels, backup.Spec.Labels)
+	podLabels := jobLabels
 	jobAnnotations := backup.Annotations
-	podAnnotations := util.CombineStringMap(jobAnnotations, backup.Spec.Annotations)
+	podAnnotations := jobAnnotations
 
 	volumeMounts := []corev1.VolumeMount{}
 	volumes := []corev1.Volume{}
