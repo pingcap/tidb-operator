@@ -256,6 +256,7 @@ func newFakeDMClusterControl() (
 	orphanPodCleaner := mm.NewFakeOrphanPodsCleaner()
 	pvcCleaner := mm.NewFakePVCCleaner()
 	pvcResizer := mm.NewFakePVCResizer()
+	discoveryManager := mm.NewFakeDiscoveryManger()
 	control := NewDefaultDMClusterControl(
 		dcControl,
 		masterMemberManager,
@@ -264,6 +265,7 @@ func newFakeDMClusterControl() (
 		orphanPodCleaner,
 		pvcCleaner,
 		pvcResizer,
+		discoveryManager,
 		&dmClusterConditionUpdater{},
 		recorder,
 	)
@@ -283,8 +285,7 @@ func newDMClusterForDMClusterControl() *v1alpha1.DMCluster {
 			UID:       types.UID("test"),
 		},
 		Spec: v1alpha1.DMClusterSpec{
-			Version:   "v2.0.0-rc.2",
-			Discovery: v1alpha1.DMDiscoverySpec{Address: "http://basic-discovery.demo:10261"},
+			Version: "v2.0.0-rc.2",
 			Master: v1alpha1.MasterSpec{
 				Replicas:    3,
 				BaseImage:   "pingcap/dm",

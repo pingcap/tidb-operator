@@ -22,9 +22,19 @@ import (
 	etcdclientv3util "github.com/coreos/etcd/clientv3/clientv3util"
 )
 
+type KeyValue struct {
+	Key   string
+	Value []byte
+}
+
 type PDEtcdClient interface {
+	// Get the specific kvs.
+	// if prefix is true will return all kvs with the specified key as prefix
+	Get(key string, prefix bool) (kvs []*KeyValue, err error)
 	// PutKey will put key to the target pd etcd cluster
 	PutKey(key, value string) error
+	// PutKey will put key with ttl to the target pd etcd cluster
+	PutTTLKey(key, value string, ttl int64) error
 	// DeleteKey will delete key from the target pd etcd cluster
 	DeleteKey(key string) error
 	// Close will close the etcd connection
@@ -55,10 +65,44 @@ func (c *pdEtcdClient) Close() error {
 	return c.etcdClient.Close()
 }
 
+func (c *pdEtcdClient) Get(key string, prefix bool) (kvs []*KeyValue, err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
+	defer cancel()
+
+	var ops []etcdclientv3.OpOption
+	if prefix {
+		ops = append(ops, etcdclientv3.WithPrefix())
+	}
+	resp, err := c.etcdClient.Get(ctx, key, ops...)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, kv := range resp.Kvs {
+		kvs = append(kvs, &KeyValue{
+			Key:   string(kv.Key),
+			Value: kv.Value,
+		})
+	}
+
+	return
+}
+
 func (c *pdEtcdClient) PutKey(key, value string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 	_, err := c.etcdClient.Put(ctx, key, value)
+	return err
+}
+
+func (c *pdEtcdClient) PutTTLKey(key, value string, ttl int64) error {
+	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
+	defer cancel()
+	lease, err := c.etcdClient.Grant(ctx, ttl)
+	if err != nil {
+		return err
+	}
+	_, err = c.etcdClient.Put(ctx, key, value, etcdclientv3.WithLease(lease.ID))
 	return err
 }
 

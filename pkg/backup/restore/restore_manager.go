@@ -252,6 +252,7 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 			Annotations: podAnnotations,
 		},
 		Spec: corev1.PodSpec{
+			SecurityContext:    restore.Spec.PodSecurityContext,
 			ServiceAccountName: serviceAccount,
 			InitContainers:     initContainers,
 			Containers: []corev1.Container{
@@ -430,6 +431,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 			Annotations: podAnnotations,
 		},
 		Spec: corev1.PodSpec{
+			SecurityContext:    restore.Spec.PodSecurityContext,
 			ServiceAccountName: serviceAccount,
 			InitContainers: []corev1.Container{
 				{

@@ -727,9 +727,8 @@ func getMasterConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
 	}
 
 	startScript, err := RenderDMMasterStartScript(&DMMasterStartScriptModel{
-		Scheme:       dc.Scheme(),
-		DataDir:      filepath.Join(dmMasterDataVolumeMountPath, dc.Spec.Master.DataSubDir),
-		DiscoveryURL: dc.Spec.Discovery.Address,
+		Scheme:  dc.Scheme(),
+		DataDir: filepath.Join(dmMasterDataVolumeMountPath, dc.Spec.Master.DataSubDir),
 	})
 	if err != nil {
 		return nil, err

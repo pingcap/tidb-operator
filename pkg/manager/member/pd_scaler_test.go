@@ -176,39 +176,6 @@ func TestPDScalerScaleOut(t *testing.T) {
 			changed:          true,
 		},
 		{
-			name: "don't have members",
-			update: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.PD.Members = nil
-			},
-			pdUpgrading:      false,
-			hasPVC:           true,
-			hasDeferAnn:      true,
-			annoIsNil:        false,
-			pvcDeleteErr:     false,
-			statusSyncFailed: false,
-			err:              true,
-			changed:          false,
-		},
-		{
-			name: "pd member not health",
-			update: func(tc *v1alpha1.TidbCluster) {
-				normalPDMember(tc)
-				tcName := tc.GetName()
-				podName := ordinalPodName(v1alpha1.PDMemberType, tcName, 1)
-				member1 := tc.Status.PD.Members[podName]
-				member1.Health = false
-				tc.Status.PD.Members[podName] = member1
-			},
-			pdUpgrading:      false,
-			hasPVC:           true,
-			hasDeferAnn:      false,
-			annoIsNil:        true,
-			pvcDeleteErr:     false,
-			statusSyncFailed: false,
-			err:              true,
-			changed:          false,
-		},
-		{
 			name:             "pd status sync failed",
 			update:           normalPDMember,
 			pdUpgrading:      false,

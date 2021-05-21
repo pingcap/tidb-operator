@@ -1,0 +1,27 @@
+apiVersion: pingcap.com/v1alpha1
+kind: TidbMonitor
+metadata:
+  name: basic
+spec:
+  clusters:
+  - name: basic
+  prometheus:
+    config:
+      configMapRef:
+        name: external-config
+      commandOptions:
+        - --web.read-timeout=5m
+        - --web.max-connections=512
+        - --storage.remote.read-concurrent-limit=10
+    baseImage: prom/prometheus
+    version: v2.11.1
+  grafana:
+    baseImage: grafana/grafana
+    version: 6.1.6
+  initializer:
+    baseImage: pingcap/tidb-monitor-initializer
+    version: v5.0.1
+  reloader:
+    baseImage: pingcap/tidb-monitor-reloader
+    version: v1.0.1
+  imagePullPolicy: IfNotPresent

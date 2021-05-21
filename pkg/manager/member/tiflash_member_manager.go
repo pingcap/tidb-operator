@@ -397,13 +397,41 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 			},
 		},
 	}
+	script := "set -ex;ordinal=`echo ${POD_NAME} | awk -F- '{print $NF}'`;sed s/POD_NUM/${ordinal}/g /etc/tiflash/config_templ.toml > /data0/config.toml;sed s/POD_NUM/${ordinal}/g /etc/tiflash/proxy_templ.toml > /data0/proxy.toml"
+
+	// TODO: for across k8s cluster without local PD, the script here do not support this now.
+	if len(tc.Spec.ClusterDomain) > 0 {
+		var pdAddr string
+		if tc.IsTLSClusterEnabled() {
+			pdAddr = fmt.Sprintf("https://%s-pd:2379", tcName)
+		} else {
+			pdAddr = fmt.Sprintf("http://%s-pd:2379", tcName)
+		}
+		formatClusterDomain := controller.FormatClusterDomain(tc.Spec.ClusterDomain)
+		str := `pd_url="%s"
+set +e
+encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
+discovery_url="%s-discovery.%s.svc%s:10261"
+until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
+echo "waiting for the verification of PD endpoints ..."
+sleep 2
+done
+
+
+sed -i s/PD_ADDR/${result}/g /data0/config.toml
+sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
+`
+		script += "\n"
+		script += fmt.Sprintf(str, pdAddr, tc.GetName(), tc.GetNamespace(), formatClusterDomain)
+	}
+
 	initContainers = append(initContainers, corev1.Container{
 		Name:  "init",
 		Image: tc.HelperImage(),
 		Command: []string{
 			"sh",
 			"-c",
-			"set -ex;ordinal=`echo ${POD_NAME} | awk -F- '{print $NF}'`;sed s/POD_NUM/${ordinal}/g /etc/tiflash/config_templ.toml > /data0/config.toml;sed s/POD_NUM/${ordinal}/g /etc/tiflash/proxy_templ.toml > /data0/proxy.toml",
+			script,
 		},
 		Env:          initEnv,
 		VolumeMounts: initVolMounts,
@@ -660,12 +688,6 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 			oldStore, exist = previousPeerStores[status.ID]
 		}
 
-		// avoid LastHeartbeatTime be overwrite by zero time when pd lost LastHeartbeatTime
-		if status.LastHeartbeatTime.IsZero() && exist {
-			klog.V(4).Infof("the pod:%s's store LastHeartbeatTime is zero,so will keep in %v", status.PodName, oldStore.LastHeartbeatTime)
-			status.LastHeartbeatTime = oldStore.LastHeartbeatTime
-		}
-
 		status.LastTransitionTime = metav1.Now()
 		if exist && status.State == oldStore.State {
 			status.LastTransitionTime = oldStore.LastTransitionTime
@@ -719,16 +741,20 @@ func (m *tiflashMemberManager) getTiFlashStore(store *pdapi.StoreInfo) *v1alpha1
 	podName := strings.Split(ip, ".")[0]
 
 	return &v1alpha1.TiKVStore{
-		ID:                storeID,
-		PodName:           podName,
-		IP:                ip,
-		LeaderCount:       int32(store.Status.LeaderCount),
-		State:             store.Store.StateName,
-		LastHeartbeatTime: metav1.Time{Time: store.Status.LastHeartbeatTS},
+		ID:          storeID,
+		PodName:     podName,
+		IP:          ip,
+		LeaderCount: int32(store.Status.LeaderCount),
+		State:       store.Store.StateName,
 	}
 }
 
 func (m *tiflashMemberManager) setStoreLabelsForTiFlash(tc *v1alpha1.TidbCluster) (int, error) {
+	if m.deps.NodeLister == nil {
+		klog.V(4).Infof("Node lister is unavailable, skip setting store labels for TiFlash of TiDB cluster %s/%s. This may be caused by no relevant permissions", tc.Namespace, tc.Name)
+		return 0, nil
+	}
+
 	ns := tc.GetNamespace()
 	// for unit test
 	setCount := 0
@@ -771,7 +797,7 @@ func (m *tiflashMemberManager) setStoreLabelsForTiFlash(tc *v1alpha1.TidbCluster
 		}
 
 		nodeName := pod.Spec.NodeName
-		ls, err := m.getNodeLabels(nodeName, locationLabels)
+		ls, err := getNodeLabels(m.deps.NodeLister, nodeName, locationLabels)
 		if err != nil || len(ls) == 0 {
 			klog.Warningf("node: [%s] has no node labels, skipping set store labels for Pod: [%s/%s]", nodeName, ns, podName)
 			continue
@@ -791,30 +817,6 @@ func (m *tiflashMemberManager) setStoreLabelsForTiFlash(tc *v1alpha1.TidbCluster
 	}
 
 	return setCount, nil
-}
-
-func (m *tiflashMemberManager) getNodeLabels(nodeName string, storeLabels []string) (map[string]string, error) {
-	node, err := m.deps.NodeLister.Get(nodeName)
-	if err != nil {
-		return nil, err
-	}
-	labels := map[string]string{}
-	ls := node.GetLabels()
-	for _, storeLabel := range storeLabels {
-		if value, found := ls[storeLabel]; found {
-			labels[storeLabel] = value
-			continue
-		}
-
-		// TODO after pd supports storeLabel containing slash character, these codes should be deleted
-		if storeLabel == "host" {
-			if host, found := ls[corev1.LabelHostname]; found {
-				labels[storeLabel] = host
-			}
-		}
-
-	}
-	return labels, nil
 }
 
 // storeLabelsEqualNodeLabels compares store labels with node labels

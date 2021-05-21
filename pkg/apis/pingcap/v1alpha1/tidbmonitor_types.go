@@ -18,6 +18,7 @@ import (
 
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
+	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -55,7 +56,8 @@ type TidbMonitorSpec struct {
 	Grafana     *GrafanaSpec    `json:"grafana,omitempty"`
 	Reloader    ReloaderSpec    `json:"reloader"`
 	Initializer InitializerSpec `json:"initializer"`
-	DM          *DMMonitorSpec  `json:"dm,omitempty"`
+	// +optional
+	DM *DMMonitorSpec `json:"dm,omitempty"`
 	// +optional
 	Thanos *ThanosSpec `json:"thanos,omitempty"`
 
@@ -113,6 +115,10 @@ type TidbMonitorSpec struct {
 	// Additional volumes of component pod.
 	// +optional
 	AdditionalVolumes []corev1.Volume `json:"additionalVolumes,omitempty"`
+
+	// PodSecurityContext of the component
+	// +optional
+	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
 }
 
 // PrometheusSpec is the desired state of prometheus
@@ -172,6 +178,8 @@ type GrafanaSpec struct {
 
 	// +optional
 	Ingress *IngressSpec `json:"ingress,omitempty"`
+	// Additional volume mounts of grafana pod.
+	AdditionalVolumeMounts []corev1.VolumeMount `json:"additionalVolumeMounts,omitempty"`
 }
 
 // ReloaderSpec is the desired state of reloader
@@ -255,6 +263,8 @@ type ClusterRef TidbClusterRef
 type TidbMonitorStatus struct {
 	// Storage status for deployment
 	DeploymentStorageStatus *DeploymentStorageStatus `json:"deploymentStorageStatus,omitempty"`
+
+	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

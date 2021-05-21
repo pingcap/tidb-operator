@@ -180,11 +180,7 @@ func (m *pumpMemberManager) syncHeadlessService(tc *v1alpha1.TidbCluster) error 
 }
 
 func (m *pumpMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *appsv1.StatefulSet) (*corev1.ConfigMap, error) {
-
-	basePumpSpec, createPump := tc.BasePumpSpec()
-	if !createPump {
-		return nil, nil
-	}
+	basePumpSpec := tc.BasePumpSpec()
 
 	newCm, err := getNewPumpConfigMap(tc)
 	if err != nil {
@@ -232,9 +228,7 @@ func getNewPumpHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {
 
 // getNewPumpConfigMap returns a configMap for pump
 func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
-
-	_, createPump := tc.BasePumpSpec()
-	if !createPump {
+	if tc.Spec.Pump == nil {
 		return nil, nil
 	}
 	spec := tc.Spec.Pump
@@ -271,10 +265,7 @@ func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 }
 
 func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*appsv1.StatefulSet, error) {
-	spec, ok := tc.BasePumpSpec()
-	if !ok {
-		return nil, nil
-	}
+	spec := tc.BasePumpSpec()
 	objMeta, stsLabels := getPumpMeta(tc, controller.PumpMemberName)
 	replicas := tc.Spec.Pump.Replicas
 	storageClass := tc.Spec.Pump.StorageClassName
@@ -387,31 +378,26 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 		},
 	}
 
+	// TODO: set serviceAccountName in BuildPodSpec
 	serviceAccountName := tc.Spec.Pump.ServiceAccount
 	if serviceAccountName == "" {
 		serviceAccountName = tc.Spec.ServiceAccount
 	}
+	podSpec := spec.BuildPodSpec()
+	podSpec.Containers = containers
+	podSpec.Volumes = volumes
+	podSpec.ServiceAccountName = serviceAccountName
+	// TODO: change to set field in BuildPodSpec
+	podSpec.InitContainers = spec.InitContainers()
+	// TODO: change to set field in BuildPodSpec
+	podSpec.DNSPolicy = spec.DnsPolicy()
 
 	podTemplate := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: podAnnos,
 			Labels:      podLabels,
 		},
-		Spec: corev1.PodSpec{
-			Containers:         containers,
-			ServiceAccountName: serviceAccountName,
-			Volumes:            volumes,
-
-			Affinity:         spec.Affinity(),
-			Tolerations:      spec.Tolerations(),
-			NodeSelector:     spec.NodeSelector(),
-			SchedulerName:    spec.SchedulerName(),
-			SecurityContext:  spec.PodSecurityContext(),
-			HostNetwork:      spec.HostNetwork(),
-			DNSPolicy:        spec.DnsPolicy(),
-			ImagePullSecrets: spec.ImagePullSecrets(),
-			InitContainers:   spec.InitContainers(),
-		},
+		Spec: podSpec,
 	}
 
 	return &appsv1.StatefulSet{
@@ -444,8 +430,6 @@ func getPumpMeta(tc *v1alpha1.TidbCluster, nameFunc func(string) string) (metav1
 }
 
 func getPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
-	// Keep the logic same as helm chart, but pump has not supported tls yet (no cert mounted)
-	// TODO: support tls
 	scheme := "http"
 	if tc.IsTLSClusterEnabled() {
 		scheme = "https"

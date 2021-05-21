@@ -15,7 +15,7 @@ package tests
 
 import (
 	"fmt"
-	"time"
+	"strconv"
 
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/kvproto/pkg/pdpb"
@@ -24,13 +24,15 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
 )
 
 const (
 	RackLabel = "rack"
 	RackNum   = 3
+
+	LabelKeyTestingZone = "testing.pingcap.com/zone"
 )
 
 // RegionInfo records detail region info for api usage.
@@ -62,24 +64,18 @@ func (oa *OperatorActions) LabelNodes() error {
 		return err
 	}
 
-	for i, node := range nodes.Items {
-		err := wait.PollImmediate(3*time.Second, time.Minute, func() (bool, error) {
-			n, err := oa.kubeCli.CoreV1().Nodes().Get(node.Name, metav1.GetOptions{})
-			if err != nil {
-				log.Logf("ERROR: get node:[%s] failed! error: %v", node.Name, err)
-				return false, nil
-			}
-			index := i % RackNum
-			n.Labels[RackLabel] = fmt.Sprintf("rack%d", index)
-			_, err = oa.kubeCli.CoreV1().Nodes().Update(n)
-			if err != nil {
-				log.Logf("ERROR: label node:[%s] failed! error: %v", node.Name, err)
-				return false, nil
-			}
-			return true, nil
-		})
-
-		if err != nil {
+	for i := range nodes.Items {
+		node := &nodes.Items[i]
+		zone := "zone-" + strconv.Itoa(i%2)
+		rack := "rack" + strconv.Itoa(i%RackNum)
+		patch := []byte(fmt.Sprintf(
+			`{"metadata":{"labels":{"%s":"%s","%s":"%s"}}}`,
+			LabelKeyTestingZone,
+			zone,
+			RackLabel,
+			rack,
+		))
+		if _, err := oa.kubeCli.CoreV1().Nodes().Patch(node.Name, types.StrategicMergePatchType, patch); err != nil {
 			return fmt.Errorf("label nodes failed, error: %v", err)
 		}
 	}
@@ -91,6 +87,25 @@ func (oa *OperatorActions) LabelNodesOrDie() {
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
+}
+
+func CleanNodeLabels(c kubernetes.Interface) error {
+	nodeList, err := c.CoreV1().Nodes().List(metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+	for i := range nodeList.Items {
+		node := &nodeList.Items[i]
+		patch := []byte(fmt.Sprintf(
+			`{"metadata":{"labels":{"%s":null,"%s":null}}}`,
+			LabelKeyTestingZone,
+			RackLabel,
+		))
+		if _, err = c.CoreV1().Nodes().Patch(node.Name, types.StrategicMergePatchType, patch); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (oa *OperatorActions) CheckDisasterTolerance(cluster *TidbClusterConfig) error {

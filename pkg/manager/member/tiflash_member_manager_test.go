@@ -804,9 +804,7 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 			name: "LastHeartbeatTS is zero, TidbClulster LastHeartbeatTS is not zero",
 			updateTC: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.TiFlash.Stores = map[string]v1alpha1.TiKVStore{}
-				tc.Status.TiFlash.Stores["333"] = v1alpha1.TiKVStore{
-					LastHeartbeatTime: now,
-				}
+				tc.Status.TiFlash.Stores["333"] = v1alpha1.TiKVStore{}
 			},
 
 			upgradingFn: func(lister corelisters.PodLister, controlInterface pdapi.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
@@ -847,7 +845,6 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 			errExpectFn: errExpectNil,
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(time.Time{}.IsZero()).To(BeTrue())
-				g.Expect(tc.Status.TiFlash.Stores["333"].LastHeartbeatTime.Time.IsZero()).To(BeFalse())
 				g.Expect(len(tc.Status.TiFlash.Stores)).To(Equal(1))
 				g.Expect(len(tc.Status.TiFlash.TombstoneStores)).To(Equal(0))
 				g.Expect(tc.Status.TiFlash.Synced).To(BeTrue())
@@ -857,9 +854,7 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 			name: "LastHeartbeatTS is zero, TidbClulster LastHeartbeatTS is zero",
 			updateTC: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.TiFlash.Stores = map[string]v1alpha1.TiKVStore{}
-				tc.Status.TiFlash.Stores["333"] = v1alpha1.TiKVStore{
-					LastHeartbeatTime: metav1.Time{Time: time.Time{}},
-				}
+				tc.Status.TiFlash.Stores["333"] = v1alpha1.TiKVStore{}
 			},
 			upgradingFn: func(lister corelisters.PodLister, controlInterface pdapi.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
 				return false, nil
@@ -899,7 +894,6 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 			errExpectFn: errExpectNil,
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(time.Time{}.IsZero()).To(BeTrue())
-				g.Expect(tc.Status.TiFlash.Stores["333"].LastHeartbeatTime.Time.IsZero()).To(BeTrue())
 				g.Expect(len(tc.Status.TiFlash.Stores)).To(Equal(1))
 				g.Expect(len(tc.Status.TiFlash.TombstoneStores)).To(Equal(0))
 				g.Expect(tc.Status.TiFlash.Synced).To(BeTrue())
@@ -909,9 +903,7 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 			name: "LastHeartbeatTS is not zero, TidbClulster LastHeartbeatTS is zero",
 			updateTC: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.TiFlash.Stores = map[string]v1alpha1.TiKVStore{}
-				tc.Status.TiFlash.Stores["333"] = v1alpha1.TiKVStore{
-					LastHeartbeatTime: metav1.Time{Time: time.Time{}},
-				}
+				tc.Status.TiFlash.Stores["333"] = v1alpha1.TiKVStore{}
 			},
 			upgradingFn: func(lister corelisters.PodLister, controlInterface pdapi.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
 				return false, nil
@@ -951,7 +943,6 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 			errExpectFn: errExpectNil,
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(time.Time{}.IsZero()).To(BeTrue())
-				g.Expect(tc.Status.TiFlash.Stores["333"].LastHeartbeatTime.Time.IsZero()).To(BeFalse())
 				g.Expect(len(tc.Status.TiFlash.Stores)).To(Equal(1))
 				g.Expect(len(tc.Status.TiFlash.TombstoneStores)).To(Equal(0))
 				g.Expect(tc.Status.TiFlash.Synced).To(BeTrue())

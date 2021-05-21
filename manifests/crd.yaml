@@ -2439,6 +2439,9 @@ spec:
                         type: string
                     type: object
                   type: array
+                topologySpreadConstraints:
+                  items: {}
+                  type: array
                 version:
                   type: string
               required:
@@ -2448,6 +2451,57 @@ spec:
               items:
                 type: string
               type: array
+            podSecurityContext:
+              properties:
+                fsGroup:
+                  format: int64
+                  type: integer
+                runAsGroup:
+                  format: int64
+                  type: integer
+                runAsNonRoot:
+                  type: boolean
+                runAsUser:
+                  format: int64
+                  type: integer
+                seLinuxOptions:
+                  properties:
+                    level:
+                      type: string
+                    role:
+                      type: string
+                    type:
+                      type: string
+                    user:
+                      type: string
+                  type: object
+                supplementalGroups:
+                  items:
+                    format: int64
+                    type: integer
+                  type: array
+                sysctls:
+                  items:
+                    properties:
+                      name:
+                        type: string
+                      value:
+                        type: string
+                    required:
+                    - name
+                    - value
+                    type: object
+                  type: array
+                windowsOptions:
+                  properties:
+                    gmsaCredentialSpec:
+                      type: string
+                    gmsaCredentialSpecName:
+                      type: string
+                    runAsUserName:
+                      type: string
+                  type: object
+              type: object
             priorityClassName:
               type: string
             pump:
@@ -4473,6 +4527,9 @@ spec:
                       value:
                         type: string
                     type: object
+                  type: array
+                topologySpreadConstraints:
+                  items: {}
                   type: array
                 version:
                   type: string
@@ -6504,6 +6561,10 @@ spec:
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
+                tlsClientSecretNames:
+                  items:
+                    type: string
+                  type: array
                 tolerations:
                   items:
                     properties:
@@ -6519,6 +6580,9 @@ spec:
                       value:
                         type: string
                     type: object
+                  type: array
+                topologySpreadConstraints:
+                  items: {}
                   type: array
                 version:
                   type: string
@@ -8711,6 +8775,9 @@ spec:
                         type: string
                     type: object
                   type: array
+                topologySpreadConstraints:
+                  items: {}
+                  type: array
                 version:
                   type: string
               required:
@@ -10765,6 +10832,9 @@ spec:
                       value:
                         type: string
                     type: object
+                  type: array
+                topologySpreadConstraints:
+                  items: {}
                   type: array
                 version:
                   type: string
@@ -12829,6 +12899,9 @@ spec:
                         type: string
                     type: object
                   type: array
+                topologySpreadConstraints:
+                  items: {}
+                  type: array
                 version:
                   type: string
               required:
@@ -12852,6 +12925,9 @@ spec:
                   value:
                     type: string
                 type: object
+              type: array
+            topologySpreadConstraints:
+              items: {}
               type: array
             version:
               type: string
@@ -13182,10 +13258,10 @@ spec:
               type: object
             discovery:
               properties:
-                address:
-                  type: string
-              required:
-              - address
+                limits:
+                  type: object
+                requests:
+                  type: object
               type: object
             enablePVReclaim:
               type: boolean
@@ -15248,6 +15324,9 @@ spec:
                         type: string
                     type: object
                   type: array
+                topologySpreadConstraints:
+                  items: {}
+                  type: array
                 version:
                   type: string
               required:
@@ -15257,6 +15336,57 @@ spec:
               type: object
             paused:
               type: boolean
+            podSecurityContext:
+              properties:
+                fsGroup:
+                  format: int64
+                  type: integer
+                runAsGroup:
+                  format: int64
+                  type: integer
+                runAsNonRoot:
+                  type: boolean
+                runAsUser:
+                  format: int64
+                  type: integer
+                seLinuxOptions:
+                  properties:
+                    level:
+                      type: string
+                    role:
+                      type: string
+                    type:
+                      type: string
+                    user:
+                      type: string
+                  type: object
+                supplementalGroups:
+                  items:
+                    format: int64
+                    type: integer
+                  type: array
+                sysctls:
+                  items:
+                    properties:
+                      name:
+                        type: string
+                      value:
+                        type: string
+                    required:
+                    - name
+                    - value
+                    type: object
+                  type: array
+                windowsOptions:
+                  properties:
+                    gmsaCredentialSpec:
+                      type: string
+                    gmsaCredentialSpecName:
+                      type: string
+                    runAsUserName:
+                      type: string
+                  type: object
+              type: object
             priorityClassName:
               type: string
             pvReclaimPolicy:
@@ -15285,6 +15415,9 @@ spec:
                   value:
                     type: string
                 type: object
+              type: array
+            topologySpreadConstraints:
+              items: {}
               type: array
             version:
               type: string
@@ -17340,13 +17473,14 @@ spec:
                         type: string
                     type: object
                   type: array
+                topologySpreadConstraints:
+                  items: {}
+                  type: array
                 version:
                   type: string
               required:
               - replicas
               type: object
-          required:
-          - discovery
           type: object
       type: object
   version: v1alpha1
@@ -17816,6 +17950,57 @@ spec:
             labels:
               type: object
             local: {}
+            podSecurityContext:
+              properties:
+                fsGroup:
+                  format: int64
+                  type: integer
+                runAsGroup:
+                  format: int64
+                  type: integer
+                runAsNonRoot:
+                  type: boolean
+                runAsUser:
+                  format: int64
+                  type: integer
+                seLinuxOptions:
+                  properties:
+                    level:
+                      type: string
+                    role:
+                      type: string
+                    type:
+                      type: string
+                    user:
+                      type: string
+                  type: object
+                supplementalGroups:
+                  items:
+                    format: int64
+                    type: integer
+                  type: array
+                sysctls:
+                  items:
+                    properties:
+                      name:
+                        type: string
+                      value:
+                        type: string
+                    required:
+                    - name
+                    - value
+                    type: object
+                  type: array
+                windowsOptions:
+                  properties:
+                    gmsaCredentialSpec:
+                      type: string
+                    gmsaCredentialSpecName:
+                      type: string
+                    runAsUserName:
+                      type: string
+                  type: object
+              type: object
             resources:
               properties:
                 limits:
@@ -18313,6 +18498,57 @@ spec:
             labels:
               type: object
             local: {}
+            podSecurityContext:
+              properties:
+                fsGroup:
+                  format: int64
+                  type: integer
+                runAsGroup:
+                  format: int64
+                  type: integer
+                runAsNonRoot:
+                  type: boolean
+                runAsUser:
+                  format: int64
+                  type: integer
+                seLinuxOptions:
+                  properties:
+                    level:
+                      type: string
+                    role:
+                      type: string
+                    type:
+                      type: string
+                    user:
+                      type: string
+                  type: object
+                supplementalGroups:
+                  items:
+                    format: int64
+                    type: integer
+                  type: array
+                sysctls:
+                  items:
+                    properties:
+                      name:
+                        type: string
+                      value:
+                        type: string
+                    required:
+                    - name
+                    - value
+                    type: object
+                  type: array
+                windowsOptions:
+                  properties:
+                    gmsaCredentialSpec:
+                      type: string
+                    gmsaCredentialSpecName:
+                      type: string
+                    runAsUserName:
+                      type: string
+                  type: object
+              type: object
             resources:
               properties:
                 limits:
@@ -18861,6 +19097,57 @@ spec:
                 labels:
                   type: object
                 local: {}
+                podSecurityContext:
+                  properties:
+                    fsGroup:
+                      format: int64
+                      type: integer
+                    runAsGroup:
+                      format: int64
+                      type: integer
+                    runAsNonRoot:
+                      type: boolean
+                    runAsUser:
+                      format: int64
+                      type: integer
+                    seLinuxOptions:
+                      properties:
+                        level:
+                          type: string
+                        role:
+                          type: string
+                        type:
+                          type: string
+                        user:
+                          type: string
+                      type: object
+                    supplementalGroups:
+                      items:
+                        format: int64
+                        type: integer
+                      type: array
+                    sysctls:
+                      items:
+                        properties:
+                          name:
+                            type: string
+                          value:
+                            type: string
+                        required:
+                        - name
+                        - value
+                        type: object
+                      type: array
+                    windowsOptions:
+                      properties:
+                        gmsaCredentialSpec:
+                          type: string
+                        gmsaCredentialSpecName:
+                          type: string
+                        runAsUserName:
+                          type: string
+                      type: object
+                  type: object
                 resources:
                   properties:
                     limits:
@@ -18965,6 +19252,20 @@ metadata:
   creationTimestamp: null
   name: tidbmonitors.pingcap.com
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .spec.replicas
+    description: The desired replicas number of tidbMonitor cluster
+    name: DESIRED
+    type: integer
+  - JSONPath: .status.statefulSet.readyReplicas
+    name: READY
+    type: integer
+  - JSONPath: .status.statefulSet.updatedReplicas
+    name: UP-TO-DATE
+    type: integer
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
   group: pingcap.com
   names:
     kind: TidbMonitor
@@ -20101,6 +20402,57 @@ spec:
               type: object
             persistent:
               type: boolean
+            podSecurityContext:
+              properties:
+                fsGroup:
+                  format: int64
+                  type: integer
+                runAsGroup:
+                  format: int64
+                  type: integer
+                runAsNonRoot:
+                  type: boolean
+                runAsUser:
+                  format: int64
+                  type: integer
+                seLinuxOptions:
+                  properties:
+                    level:
+                      type: string
+                    role:
+                      type: string
+                    type:
+                      type: string
+                    user:
+                      type: string
+                  type: object
+                supplementalGroups:
+                  items:
+                    format: int64
+                    type: integer
+                  type: array
+                sysctls:
+                  items:
+                    properties:
+                      name:
+                        type: string
+                      value:
+                        type: string
+                    required:
+                    - name
+                    - value
+                    type: object
+                  type: array
+                windowsOptions:
+                  properties:
+                    gmsaCredentialSpec:
+                      type: string
+                    gmsaCredentialSpecName:
+                      type: string
+                    runAsUserName:
+                      type: string
+                  type: object
+              type: object
             prometheus: {}
             pvReclaimPolicy:
               type: string
@@ -20201,6 +20553,57 @@ spec:
               type: string
             permitHost:
               type: string
+            podSecurityContext:
+              properties:
+                fsGroup:
+                  format: int64
+                  type: integer
+                runAsGroup:
+                  format: int64
+                  type: integer
+                runAsNonRoot:
+                  type: boolean
+                runAsUser:
+                  format: int64
+                  type: integer
+                seLinuxOptions:
+                  properties:
+                    level:
+                      type: string
+                    role:
+                      type: string
+                    type:
+                      type: string
+                    user:
+                      type: string
+                  type: object
+                supplementalGroups:
+                  items:
+                    format: int64
+                    type: integer
+                  type: array
+                sysctls:
+                  items:
+                    properties:
+                      name:
+                        type: string
+                      value:
+                        type: string
+                    required:
+                    - name
+                    - value
+                    type: object
+                  type: array
+                windowsOptions:
+                  properties:
+                    gmsaCredentialSpec:
+                      type: string
+                    gmsaCredentialSpecName:
+                      type: string
+                    runAsUserName:
+                      type: string
+                  type: object
+              type: object
             resources:
               properties:
                 limits:

@@ -890,6 +890,7 @@ func (m *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *
 	}
 
 	// check all pods in PD sts to see whether it has already joined the PD cluster
+	unjoined := map[string]v1alpha1.UnjoinedMember{}
 	for _, pod := range pods {
 		var joined = false
 		// if current PD pod name is in the keys of pdStatus, it has joined the PD cluster
@@ -904,9 +905,6 @@ func (m *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *
 			}
 		}
 		if !joined {
-			if tc.Status.PD.UnjoinedMembers == nil {
-				tc.Status.PD.UnjoinedMembers = map[string]v1alpha1.UnjoinedMember{}
-			}
 			pvcs, err := util.ResolvePVCFromPod(pod, m.deps.PVCLister)
 			if err != nil {
 				return fmt.Errorf("collectUnjoinedMembers: failed to get pvcs for pod %s/%s, error: %s", ns, pod.Name, err)
@@ -915,15 +913,15 @@ func (m *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *
 			for _, pvc := range pvcs {
 				pvcUIDSet[pvc.UID] = struct{}{}
 			}
-			tc.Status.PD.UnjoinedMembers[pod.Name] = v1alpha1.UnjoinedMember{
+			unjoined[pod.Name] = v1alpha1.UnjoinedMember{
 				PodName:   pod.Name,
 				PVCUIDSet: pvcUIDSet,
 				CreatedAt: metav1.Now(),
 			}
-		} else {
-			delete(tc.Status.PD.UnjoinedMembers, pod.Name)
 		}
 	}
+
+	tc.Status.PD.UnjoinedMembers = unjoined
 	return nil
 }
 

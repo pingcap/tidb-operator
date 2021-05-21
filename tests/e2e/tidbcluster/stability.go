@@ -161,7 +161,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		for _, test := range testCases {
 			ginkgo.It("tidb cluster should not be affected while "+test.name, func() {
 				clusterName := "test"
-				tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4)
+				tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV5)
 				utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 30*time.Minute, 15*time.Second)
 
 				test.fn()
@@ -177,9 +177,12 @@ var _ = ginkgo.Describe("[Stability]", func() {
 					var err error
 					framework.Logf("check whether pods of cluster %q are changed", clusterName)
 					ok, err = utilpod.PodsAreChanged(c, podList.Items)()
-					if ok || err != nil {
-						// pod changed or some error happened
-						return true, err
+					if err != nil {
+						framework.Logf("ERROR: meet error during check pods of cluster %q are changed, err:%v", clusterName, err)
+						return false, err
+					}
+					if ok {
+						return true, nil
 					}
 					framework.Logf("check whether pods of cluster %q are running", clusterName)
 					newPodList, err := c.CoreV1().Pods(ns).List(listOptions)
@@ -284,7 +287,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 
 			ginkgo.By("Deploy a test cluster with 3 pd and tikv replicas")
 			clusterName := "test"
-			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4)
+			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV5)
 			tc.Spec.PD.Replicas = 3
 			tc.Spec.PD.MaxFailoverCount = pointer.Int32Ptr(0)
 			tc.Spec.TiDB.Replicas = 1
@@ -498,7 +501,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		// See docs/design-proposals/tidb-stable-scheduling.md
 		ginkgo.It("[Feature: StableScheduling] TiDB pods should be scheduled to preivous nodes", func() {
 			clusterName := "tidb-scheduling"
-			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4)
+			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV5)
 			tc.Spec.PD.Replicas = 1
 			tc.Spec.TiKV.Replicas = 1
 			tc.Spec.TiDB.Replicas = 3
@@ -604,7 +607,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			defer utilcloud.EnableNodeAutoRepair()
 			utilcloud.DisableNodeAutoRepair()
 			clusterName := "failover"
-			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4)
+			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV5)
 			tc.Spec.PD.Replicas = 3
 			tc.Spec.TiKV.Replicas = 1
 			tc.Spec.TiDB.Replicas = 1
@@ -692,7 +695,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			gomega.Expect(len(nodeList.Items)).To(gomega.BeNumerically(">=", 3))
 
 			clusterName := "failover"
-			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4)
+			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV5)
 			tc.Spec.PD.Replicas = 1
 			tc.Spec.TiKV.Replicas = 1
 			tc.Spec.TiDB.Replicas = 2
@@ -859,7 +862,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		// TODO: this should be a regression type
 		ginkgo.It("[Feature: AutoFailover] Failover can work if a store fails to update", func() {
 			clusterName := "scale"
-			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4)
+			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV5)
 			tc.Spec.PD.Replicas = 1
 			// By default, PD set the state of disconnected store to Down
 			// after 30 minutes. Use a short time in testing.
@@ -919,7 +922,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		// TODO: this should be a regression type
 		ginkgo.It("[Feature: AutoFailover] Failover can work if a pd fails to update", func() {
 			clusterName := "scale"
-			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4)
+			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV5)
 			tc.Spec.PD.Replicas = 3
 			tc.Spec.TiKV.Replicas = 1
 			tc.Spec.TiDB.Replicas = 1
@@ -1016,7 +1019,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			gomega.Expect(len(nodeList.Items)).To(gomega.BeNumerically(">=", 3))
 
 			clusterName := "failover"
-			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4)
+			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV5)
 			tc.Spec.SchedulerName = ""
 			tc.Spec.PD.Replicas = 1
 			tc.Spec.PD.Config.Set("schedule.max-store-down-time", "1m")
@@ -1079,7 +1082,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			framework.ExpectNoError(err, "failed to wait for the record of failed pod to be removed from failure stores")
 
 			ginkgo.By("Waiting for the tidb cluster to become ready")
-			err = utiltidbcluster.WaitForTidbClusterReady(cli, tc.Namespace, tc.Name, time.Minute*30, 0)
+			err = utiltidbcluster.WaitForTidbClusterConditionReady(cli, tc.Namespace, tc.Name, time.Minute*30, 0)
 			framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 		})
 	})

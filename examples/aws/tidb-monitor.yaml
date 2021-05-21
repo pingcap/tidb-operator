@@ -22,7 +22,9 @@ spec:
     logLevel: info
     password: admin
     service:
-      portName: http-grafana
+      annotations:
+        service.beta.kubernetes.io/aws-load-balancer-type: nlb
+        service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
       type: LoadBalancer
     username: admin
     version: 6.1.6
@@ -30,7 +32,7 @@ spec:
   initializer:
     baseImage: pingcap/tidb-monitor-initializer
     imagePullPolicy: IfNotPresent
-    version: v4.0.10
+    version: v5.0.1
   kubePrometheusURL: ""
   persistent: true
   prometheus:
