@@ -28,6 +28,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -303,8 +304,9 @@ func (m *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
 	if err != nil {
 		return err
 	}
-	annoEqual := util.IsSubMapOf(newSvc.Annotations, oldSvc.Annotations)
-	labelEqual := util.IsSubMapOf(newSvc.Labels, oldSvc.Labels)
+
+	annoEqual := equality.Semantic.DeepEqual(newSvc.Annotations, oldSvc.Annotations)
+	labelEqual := equality.Semantic.DeepEqual(newSvc.Labels, oldSvc.Labels)
 	isOrphan := metav1.GetControllerOf(oldSvc) == nil
 
 	if equal && annoEqual && labelEqual && !isOrphan {
@@ -318,18 +320,11 @@ func (m *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
 		return err
 	}
 	svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
-	// apply change of annotations if any
-	for k, v := range newSvc.Annotations {
-		svc.Annotations[k] = v
-	}
-	// apply change of labels if any
-	for k, v := range newSvc.Labels {
-		svc.Labels[k] = v
-	}
+	svc.Annotations = newSvc.Annotations
+	svc.Labels = newSvc.Labels
 	// also override labels when adopt orphan
 	if isOrphan {
 		svc.OwnerReferences = newSvc.OwnerReferences
-		svc.Labels = removeHelmLabels(svc.Labels)
 	}
 	_, err = m.deps.ServiceControl.UpdateService(tc, &svc)
 	return err
