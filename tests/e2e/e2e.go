@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/juju/errors"
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
 	"github.com/onsi/ginkgo/reporters"
@@ -74,7 +75,7 @@ var (
 // (such as deleting old namespaces, or verifying that all system pods are running.
 // Because of the way Ginkgo runs tests in parallel, we must use SynchronizedBeforeSuite
 // to ensure that these operations only run on the first parallel Ginkgo node.
-func setupSuite(c kubernetes.Interface, extClient versioned.Interface) {
+func setupSuite(c kubernetes.Interface, extClient versioned.Interface, apiExtClient apiextensionsclientset.Interface) {
 	// Run only on Ginkgo node 1
 
 	// Delete any namespaces except those created by the system. This ensures no
@@ -245,7 +246,7 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	fw, err := portforward.NewPortForwarder(context.Background(), e2econfig.NewSimpleRESTClientGetter(clientRawConfig))
 	framework.ExpectNoError(err, "failed to create port forwarder")
 
-	setupSuite(kubeCli, cli)
+	setupSuite(kubeCli, cli, apiExtCli)
 	// override with hard-coded value
 	e2econfig.TestConfig.ManifestDir = "/manifests"
 	framework.Logf("====== e2e configuration ======")
@@ -408,7 +409,13 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 })
 
 // TODO: refactor it to combine with code in /tests/e2e/br/framework/framework.go
-func ForceCleanBackups(kubeClient kubernetes.Interface, extClient versioned.Interface) error {
+func ForceCleanBackups(kubeClient kubernetes.Interface, extClient versioned.Interface, apiExtClient apiextensionsclientset.Interface) error {
+	if _, err := apiExtClient.ApiextensionsV1().CustomResourceDefinitions().Get("backups.pingcap.com", metav1.GetOptions{}); err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+		return nil
+	}
 	nsList, err := kubeClient.CoreV1().Namespaces().List(metav1.ListOptions{})
 	if err != nil {
 		return err
