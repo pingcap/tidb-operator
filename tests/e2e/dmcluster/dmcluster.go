@@ -121,15 +121,32 @@ var _ = ginkgo.Describe("DMCluster", func() {
 	})
 
 	ginkgo.Context("[Feature:DM]", func() {
-		ginkgo.It("setup replication for DM", func() {
+		ginkgo.It("basic feature for DM", func() {
 			ginkgo.By("Deploy a basic dc")
 			dcName = "basic-dm"
+			userID := int64(1000)
+			groupID := int64(2000)
 			dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2)
 			dc.Spec.Master.Replicas = 1
 			dc.Spec.Worker.Replicas = 1 // current versions of DM can always bind the first source to this only DM-worker instance.
+			dc.Spec.PodSecurityContext = &corev1.PodSecurityContext{
+				RunAsUser:  &userID,
+				RunAsGroup: &groupID,
+				FSGroup:    &groupID,
+			}
 			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(dc)
 			framework.ExpectNoError(err, "failed to create DmCluster: %q", dcName)
 			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
+
+			ginkgo.By("Check security context for DmCluster")
+			podList, err := c.CoreV1().Pods(ns).List(metav1.ListOptions{})
+			framework.ExpectNoError(err, "failed to list pods for DmCluster %q", dcName)
+			for _, pod := range podList.Items {
+				framework.ExpectNotEqual(pod.Spec.SecurityContext, nil, "security context should not be nil")
+				framework.ExpectEqual(pod.Spec.SecurityContext.RunAsUser, &userID, "runAsUser should be %d", userID)
+				framework.ExpectEqual(pod.Spec.SecurityContext.RunAsGroup, &groupID, "runAsGroup should be %d", groupID)
+				framework.ExpectEqual(pod.Spec.SecurityContext.FSGroup, &groupID, "fsGroup should be %d", groupID)
+			}
 
 			ginkgo.By("Deploy TidbMonitor for DM")
 			tc, err := cli.PingcapV1alpha1().TidbClusters(tests.DMTiDBNamespace).Get(tests.DMTiDBName, metav1.GetOptions{})
