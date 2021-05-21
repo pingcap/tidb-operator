@@ -100,7 +100,7 @@ func setupSuite(c kubernetes.Interface, extClient versioned.Interface, apiExtCli
 		}
 
 		// try to clean up backups
-		if err := ForceCleanBackups(c, extClient); err != nil {
+		if err := ForceCleanBackups(c, extClient, apiExtClient); err != nil {
 			log.Failf("Error clean backups: %v", err)
 		}
 
