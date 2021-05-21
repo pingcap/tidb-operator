@@ -20789,7 +20789,8 @@ DeploymentStorageStatus
 </em>
 </td>
 <td>
-<p>Storage status for deployment</p>
+<p>Storage status for deployment
+Deprecated from v1.2.0</p>
 </td>
 </tr>
 <tr>
