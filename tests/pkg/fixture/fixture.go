@@ -74,6 +74,12 @@ var (
 	tikvV4Beta = semver.MustParse("v4.0.0-beta")
 )
 
+// ClusterCustomKey for label and ann to test
+const ClusterCustomKey = "cluster-test-key"
+
+// ComponentCustomKey for label and ann to test
+const ComponentSuctomKey = "component-test-key"
+
 // GetTidbCluster returns a TidbCluster resource configured for testing
 func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 	// We assume all unparsable versions are greater or equal to v4.0.0-beta,
@@ -103,6 +109,12 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 			ConfigUpdateStrategy: v1alpha1.ConfigUpdateStrategyRollingUpdate,
 			SchedulerName:        "tidb-scheduler",
 			Timezone:             "Asia/Shanghai",
+			Labels: map[string]string{
+				ClusterCustomKey: "value",
+			},
+			Annotations: map[string]string{
+				ClusterCustomKey: "value",
+			},
 			PD: &v1alpha1.PDSpec{
 				Replicas:             3,
 				BaseImage:            "pingcap/pd",
@@ -115,6 +127,12 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				}(),
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Affinity: buildAffinity(name, ns, v1alpha1.PDMemberType),
+					Labels: map[string]string{
+						ComponentSuctomKey: "value",
+					},
+					Annotations: map[string]string{
+						ComponentSuctomKey: "value",
+					},
 				},
 			},
 
@@ -126,6 +144,12 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				Config:               tikvConfig,
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Affinity: buildAffinity(name, ns, v1alpha1.TiKVMemberType),
+					Labels: map[string]string{
+						ComponentSuctomKey: "value",
+					},
+					Annotations: map[string]string{
+						ComponentSuctomKey: "value",
+					},
 				},
 				EvictLeaderTimeout: pointer.StringPtr("1m"),
 			},
@@ -137,6 +161,12 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				Service: &v1alpha1.TiDBServiceSpec{
 					ServiceSpec: v1alpha1.ServiceSpec{
 						Type: corev1.ServiceTypeClusterIP,
+						Labels: map[string]string{
+							ComponentSuctomKey: "value",
+						},
+						Annotations: map[string]string{
+							ComponentSuctomKey: "value",
+						},
 					},
 					ExposeStatus: pointer.BoolPtr(true),
 				},
@@ -145,6 +175,12 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				Config:           tidbConfig,
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Affinity: buildAffinity(name, ns, v1alpha1.TiDBMemberType),
+					Labels: map[string]string{
+						ComponentSuctomKey: "value",
+					},
+					Annotations: map[string]string{
+						ComponentSuctomKey: "value",
+					},
 				},
 			},
 		},
