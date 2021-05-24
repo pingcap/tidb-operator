@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
-	"strings"
 	"time"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
@@ -46,8 +45,7 @@ const (
 	// ImagePullBackOff is the pod state of image pull failed
 	ImagePullBackOff = "ImagePullBackOff"
 	// ErrImagePull is the pod state of image pull failed
-	ErrImagePull    = "ErrImagePull"
-	helmLabelPrefix = "helm.sh"
+	ErrImagePull = "ErrImagePull"
 )
 
 func annotationsMountVolume() (corev1.VolumeMount, corev1.Volume) {
@@ -286,13 +284,7 @@ func UpdateStatefulSet(setCtl controller.StatefulSetControlInterface, object run
 	if isOrphan {
 		set.OwnerReferences = newSet.OwnerReferences
 	}
-	err := SetStatefulSetLastAppliedConfigAnnotation(&set)
-	if err != nil {
-		return err
-	}
 
-	// LastAppliedConfigAnnotation and AnnStsLastSyncTimestamp are deprecated.
-	// Keep them here for backward compatibility.
 	var podConfig string
 	var hasPodConfig bool
 	if oldSet.Spec.Template.Annotations != nil {
@@ -307,6 +299,11 @@ func UpdateStatefulSet(setCtl controller.StatefulSetControlInterface, object run
 	v, ok := oldSet.Annotations[label.AnnStsLastSyncTimestamp]
 	if ok {
 		set.Annotations[label.AnnStsLastSyncTimestamp] = v
+	}
+
+	err := SetStatefulSetLastAppliedConfigAnnotation(&set)
+	if err != nil {
+		return err
 	}
 
 	// commit to k8s
@@ -534,19 +531,4 @@ func GetPVCSelectorForPod(controller runtime.Object, memberType v1alpha1.MemberT
 		return nil, fmt.Errorf("object %s/%s of kind %s has unknown controller", meta.GetNamespace(), meta.GetName(), kind)
 	}
 	return l.Selector()
-}
-
-// remove useless helm label when migrating operator from helm chart.
-// this method won't modify the original label map
-func removeHelmLabels(ls map[string]string) map[string]string {
-	if len(ls) == 0 {
-		return ls
-	}
-	res := make(map[string]string, len(ls))
-	for k, v := range ls {
-		if !strings.HasPrefix(k, helmLabelPrefix) {
-			res[k] = v
-		}
-	}
-	return res
 }
