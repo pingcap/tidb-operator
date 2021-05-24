@@ -160,6 +160,14 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			ginkgo.By("Create MySQL sources")
 			framework.ExpectNoError(tests.CreateDMSources(fw, dc.Namespace, controller.DMMasterMemberName(dcName)), "failed to create sources for DmCluster %q", dcName)
 
+			ginkgo.By("Enable relay log")
+			podName := fmt.Sprintf("%s-0", controller.DMMasterMemberName(dcName))
+			workerName := fmt.Sprintf("%s-0", controller.DMWorkerMemberName(dcName))
+			sourceID := "replica-01"
+			_, err = framework.RunHostCmd(ns, podName,
+				fmt.Sprintf("/dmctl --master-addr=127.0.0.1:8261 start-relay -s %s %s", sourceID, workerName))
+			framework.ExpectNoError(err, "failed to enable relay log for DmCluster %q", dcName)
+
 			ginkgo.By("Generate full stage data in upstream")
 			framework.ExpectNoError(tests.GenDMFullData(fw, dc.Namespace), "failed to generate full stage data in upstream")
 
@@ -316,12 +324,10 @@ var _ = ginkgo.Describe("DMCluster", func() {
 				fmt.Sprintf("/dmctl --master-addr=127.0.0.1:8261 get-config source %s", sourceName))
 			framework.ExpectNoError(err, "failed to show source config for DmCluster %q: %v", dcName, err)
 			framework.ExpectEqual(strings.Contains(stdout, "enable-gtid: true"), true, "original source config doesn't contain `enable-gtid: true`")
-			framework.ExpectEqual(strings.Contains(stdout, "enable-relay: true"), true, "original source config doesn't contain `enable-relay: true`")
 
 			ginkgo.By("Update and copy source config file")
 			cfg := tests.DMSources[0]
 			cfg = strings.ReplaceAll(cfg, "enable-gtid: true", "enable-gtid: false")
-			cfg = strings.ReplaceAll(cfg, "enable-relay: true", "enable-relay: false")
 			filename := "/tmp/change-config-dmctl-source.yaml"
 			framework.ExpectNoError(ioutil.WriteFile(filename, []byte(cfg), 0o644), "failed to write updated source config file")
 			_, err = framework.RunKubectl("cp", filename, fmt.Sprintf("%s/%s:%s", ns, podName, filename))
@@ -343,7 +349,6 @@ var _ = ginkgo.Describe("DMCluster", func() {
 				fmt.Sprintf("/dmctl --master-addr=127.0.0.1:8261 get-config source %s", sourceName))
 			framework.ExpectNoError(err, "failed to show source config after updated for DmCluster %q: %v", dcName, err)
 			framework.ExpectEqual(strings.Contains(stdout, "enable-gtid: false"), true, "original source config doesn't contain `enable-gtid: false`")
-			framework.ExpectEqual(strings.Contains(stdout, "enable-relay: false"), true, "original source config doesn't contain `enable-relay: false`")
 		})
 
 		ginkgo.It("deploy DM with TLS enabled", func() {

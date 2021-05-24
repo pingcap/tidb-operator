@@ -184,7 +184,6 @@ var (
 	DMSources = []string{`
 source-id: "replica-01"
 enable-gtid: true
-enable-relay: true
 relay-dir: /var/lib/dm-worker/relay
 
 from:
@@ -195,7 +194,6 @@ from:
 `, `
 source-id: "replica-02"
 enable-gtid: true
-enable-relay: true
 relay-dir: /var/lib/dm-worker/relay
 
 from:
