@@ -23,6 +23,8 @@ Before deploying a TiDB cluster on AWS EKS, make sure the following requirements
     * Install and configure `eksctl` used for creating Kubernetes clusters.
     * Install `kubectl`.
 
+To verify whether AWS CLI is configured correctly, run the `aws configure list` command. If the output shows the values for `access_key` and `secret_key`, AWS CLI is configured correctly. Otherwise, you need to re-configure AWS CLI.
+
 > **Note:**
 >
 > The operations described in this document requires at least the [minimum privileges needed by `eksctl`](https://eksctl.io/usage/minimum-iam-policies/) and the [service privileges needed to create a Linux bastion host](https://docs.aws.amazon.com/quickstart/latest/linux-bastion/architecture.html#aws-services).
@@ -31,7 +33,7 @@ Before deploying a TiDB cluster on AWS EKS, make sure the following requirements
 
 According to AWS [Official Blog](https://aws.amazon.com/blogs/containers/amazon-eks-cluster-multi-zone-auto-scaling-groups/) recommendation and EKS [Best Practice Document](https://aws.github.io/aws-eks-best-practices/reliability/docs/dataplane/#ensure-capacity-in-each-az-when-using-ebs-volumes), since most of the TiDB cluster components use EBS volumes as storage, it is recommended to create a node pool in each availability zone (at least 3 in total) for each component when creating an EKS.
 
-Save the following configuration as the `cluster.yaml` file. Replace `${clusterName}` with your desired cluster name.
+Save the following configuration as the `cluster.yaml` file. Replace `${clusterName}` with your desired cluster name. The cluster and node group names should match the regular expression `[a-zA-Z][-a-zA-Z0-9]*`, so avoid names that contain `_`.
 
 {{< copyable "" >}}
 
@@ -135,7 +137,7 @@ Execute the following command to create the cluster:
 eksctl create cluster -f cluster.yaml
 ```
 
-After executing the command above, you need to wait until the EKS cluster is successfully created and the node group is created and added in the EKS cluster. This process might take 5 to 10 minutes. For more cluster configuration, refer to [`eksctl` documentation](https://eksctl.io/usage/creating-and-managing-clusters/#using-config-files).
+After executing the command above, you need to wait until the EKS cluster is successfully created and the node group is created and added in the EKS cluster. This process might take 5 to 20 minutes. For more cluster configuration, refer to [`eksctl` documentation](https://eksctl.io/usage/creating-and-managing-clusters/#using-config-files).
 
 > **Warning:**
 >

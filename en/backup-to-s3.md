@@ -14,16 +14,16 @@ The backup method described in this document is implemented based on CustomResou
 
 Ad-hoc full backup describes the backup by creating a `Backup` custom resource (CR) object. TiDB Operator performs the specific backup operation based on this `Backup` object. If an error occurs during the backup process, TiDB Operator does not retry and you need to handle this error manually.
 
-For the current S3-compatible storage types, Ceph and Amazon S3 work normally as tested. Therefore, this document shows examples in which the data of the `demo1` TiDB cluster in the `test1` Kubernetes namespace is backed up to Ceph and Amazon S3 respectively.
+For the current S3-compatible storage types, Ceph and Amazon S3 work normally as tested. Therefore, this document shows examples in which the data of the `demo1` TiDB cluster in the `tidb-cluster` Kubernetes namespace is backed up to Ceph and Amazon S3 respectively.
 
 ### Prerequisites for ad-hoc full backup
 
-1. Download [backup-rbac.yaml](https://github.com/pingcap/tidb-operator/blob/master/manifests/backup/backup-rbac.yaml), and execute the following command to create the role-based access control (RBAC) resources in the `test1` namespace:
+1. Execute the following command to create the role-based access control (RBAC) resources in the `tidb-cluster` namespace based on [backup-rbac.yaml](https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/backup/backup-rbac.yaml):
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl apply -f backup-rbac.yaml -n test1
+    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/backup/backup-rbac.yaml -n tidb-cluster
     ```
 
 2. Grant permissions to the remote storage.
@@ -37,16 +37,27 @@ For the current S3-compatible storage types, Ceph and Amazon S3 work normally as
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=${password} --namespace=test1
+    kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=${password} --namespace=tidb-cluster
     ```
 
 ### Required database account privileges
 
 * The `SELECT` and `UPDATE` privileges of the `mysql.tidb` table: Before and after the backup, the `Backup` CR needs a database account with these privileges to adjust the GC time.
-* SELECT
-* RELOAD
-* LOCK TABLES
-* REPLICATION CLIENT
+* The global privileges: `SELECT`, `RELOAD`, `LOCK TABLES` and `REPLICATION CLIENT`
+
+An example for creating a backup user:
+
+```sql
+CREATE USER 'backup'@'%' IDENTIFIED BY '...';
+GRANT
+  SELECT, RELOAD, LOCK TABLES, REPLICATION CLIENT
+  ON *.*
+  TO 'backup'@'%';
+GRANT
+  UPDATE, SELECT
+  ON mysql.tidb
+  TO 'backup'@'%';
+```
 
 ### Ad-hoc backup process
 
@@ -62,6 +73,17 @@ For the current S3-compatible storage types, Ceph and Amazon S3 work normally as
 >     options:
 >     - --ignore-checksum
 > ```
+
+> **Note**
+>
+> This section lists multiple storage access methods. Only follow the method that matches your situation.
+>
+> The methods are as follows:
+> 
+> - Amazon S3 by importing AccessKey and SecretKey
+> - Ceph by importing AccessKey and SecretKey
+> - Amazon S3 by binding IAM with Pod
+> - Amazon S3 by binding IAM with ServiceAccount
 
 + Create the `Backup` CR, and back up cluster data to Amazon S3 by importing AccessKey and SecretKey to grant permissions:
 
@@ -81,7 +103,7 @@ For the current S3-compatible storage types, Ceph and Amazon S3 work normally as
     kind: Backup
     metadata:
       name: demo1-backup-s3
-      namespace: test1
+      namespace: tidb-cluster
     spec:
       from:
         host: ${tidb_host}
@@ -125,7 +147,7 @@ For the current S3-compatible storage types, Ceph and Amazon S3 work normally as
     kind: Backup
     metadata:
       name: demo1-backup-s3
-      namespace: test1
+      namespace: tidb-cluster
     spec:
       from:
         host: ${tidb_host}
@@ -166,7 +188,7 @@ For the current S3-compatible storage types, Ceph and Amazon S3 work normally as
     kind: Backup
     metadata:
     name: demo1-backup-s3
-    namespace: test1
+    namespace: tidb-cluster
     annotations:
         iam.amazonaws.com/role: arn:aws:iam::123456789012:role/user
     spec:
@@ -212,7 +234,7 @@ For the current S3-compatible storage types, Ceph and Amazon S3 work normally as
     kind: Backup
     metadata:
     name: demo1-backup-s3
-    namespace: test1
+    namespace: tidb-cluster
     spec:
     backupType: full
     serviceAccount: tidb-backup-manager
@@ -256,8 +278,18 @@ After creating the `Backup` CR, use the following command to check the backup st
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl get bk -n test1 -owide
+kubectl get bk -n tidb-cluster -owide
 ```
+
+To get detailed information on a backup job, use the following command. For `$backup_job_name` in the command, use the name from the output of the previous command.
+
+{{< copyable "shell-regular" >}}
+
+```shell
+kubectl describe bk -n tidb-cluster $backup_job_name
+```
+
+To run ad-hoc backup again, you need to [delete the backup CR](backup-restore-overview.md#delete-the-backup-cr) and create it again.
 
 ## Scheduled full backup to S3-compatible storage
 
@@ -302,7 +334,7 @@ The prerequisites for the scheduled backup is the same as the [prerequisites for
     kind: BackupSchedule
     metadata:
       name: demo1-backup-schedule-s3
-      namespace: test1
+      namespace: tidb-cluster
     spec:
       #maxBackups: 5
       #pause: true
@@ -351,7 +383,7 @@ The prerequisites for the scheduled backup is the same as the [prerequisites for
     kind: BackupSchedule
     metadata:
       name: demo1-backup-schedule-ceph
-      namespace: test1
+      namespace: tidb-cluster
     spec:
       #maxBackups: 5
       #pause: true
@@ -397,7 +429,7 @@ The prerequisites for the scheduled backup is the same as the [prerequisites for
     kind: BackupSchedule
     metadata:
       name: demo1-backup-schedule-s3
-      namespace: test1
+      namespace: tidb-cluster
       annotations:
         iam.amazonaws.com/role: arn:aws:iam::123456789012:role/user
     spec:
@@ -447,7 +479,7 @@ The prerequisites for the scheduled backup is the same as the [prerequisites for
     kind: BackupSchedule
     metadata:
       name: demo1-backup-schedule-s3
-      namespace: test1
+      namespace: tidb-cluster
     spec:
       #maxBackups: 5
       #pause: true
@@ -483,7 +515,7 @@ After creating the scheduled full backup, you can use the following command to c
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl get bks -n test1 -owide
+kubectl get bks -n tidb-cluster -owide
 ```
 
 You can use the following command to check all the backup items:
@@ -491,7 +523,7 @@ You can use the following command to check all the backup items:
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl get bk -l tidb.pingcap.com/backup-schedule=demo1-backup-schedule-s3 -n test1
+kubectl get bk -l tidb.pingcap.com/backup-schedule=demo1-backup-schedule-s3 -n tidb-cluster
 ```
 
 From the example above, you can see that the `backupSchedule` configuration consists of two parts. One is the unique configuration of `backupSchedule`, and the other is `backupTemplate`.
