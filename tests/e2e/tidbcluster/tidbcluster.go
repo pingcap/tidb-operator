@@ -532,8 +532,8 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				}
 				// The desired state encoded in CRD should be exactly same with the one created by helm chart
 				// After adding Readiness for pump, it will be different and updated.
-				// framework.ExpectEqual(pumpSet.Status.CurrentRevision, oldRev, "Expected no rolling-update when adopting pump statefulset")
-				// framework.ExpectEqual(pumpSet.Status.UpdateRevision, oldRev, "Expected no rolling-update when adopting pump statefulset")
+				framework.ExpectNotEqual(pumpSet.Status.CurrentRevision, oldRev, "Expected rolling-update when adopting pump statefulset")
+				framework.ExpectNotEqual(pumpSet.Status.UpdateRevision, oldRev, "Expected rolling-update when adopting pump statefulset")
 
 				cmName := member.FindConfigMapVolume(&pumpSet.Spec.Template.Spec, func(name string) bool {
 					return strings.HasPrefix(name, controller.PumpMemberName(tc.Name))
@@ -1065,7 +1065,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				// - "*.{{ .ClusterName }}-{{ .ClusterName }}-drainer.{{ .Namespace }}"
 				// - "*.{{ .ClusterName }}-{{ .ClusterName }}-drainer.{{ .Namespace }}.svc"
 				// ...
-				// we will drainer refer to: https://docs.pingcap.com/zh/tidb-in-kubernetes/drainer/enable-tls-between-components
+				// refer to the 'drainer' part in https://docs.pingcap.com/tidb-in-kubernetes/dev/enable-tls-between-components
 				DrainerName:       tcName,
 				OperatorTag:       cfg.OperatorTag,
 				SourceClusterName: tcName,

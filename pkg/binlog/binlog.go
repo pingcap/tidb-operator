@@ -190,7 +190,7 @@ func (c *Client) updateStatus(ctx context.Context, ty string, nodeID string, sta
 	}
 
 	if len(resp.Kvs) == 0 {
-		return errors.Errorf("no pump with node id: %v", nodeID)
+		return errors.Errorf("no %s with node id: %v", ty, nodeID)
 	}
 
 	var nodeStatus NodeStatus
@@ -230,7 +230,7 @@ func (c *Client) nodeStatus(ctx context.Context, ty string) (status []*NodeStatu
 		var s NodeStatus
 		err = json.Unmarshal(kv.Value, &s)
 		if err != nil {
-			return nil, errors.Annotatef(err, "key: %s,data: %s", string(kv.Key), string(kv.Value))
+			return nil, errors.Annotatef(err, "key: %s, data: %s", string(kv.Key), string(kv.Value))
 		}
 
 		status = append(status, &s)
@@ -250,13 +250,13 @@ func (c *Client) offline(addr string, nodeID string) error {
 	if err != nil {
 		return errors.AddStack(err)
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
 		return errors.Errorf("error requesting %s, code: %d",
 			resp.Request.URL, resp.StatusCode)
 	}
 
-	defer resp.Body.Close()
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return errors.AddStack(err)
