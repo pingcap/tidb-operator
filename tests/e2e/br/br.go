@@ -23,7 +23,8 @@ import (
 )
 
 var (
-	tidbReadyTimeout = time.Minute * 5
+	tidbReadyTimeout      = time.Minute * 5
+	backupCompleteTimeout = time.Minute * 2
 )
 
 const (
@@ -226,7 +227,7 @@ func createBackupAndWaitForComplete(f *e2eframework.Framework, name, tcName, typ
 		return err
 	}
 
-	if err := brutil.WaitForBackupComplete(f.ExtClient, ns, name, time.Second*60); err != nil {
+	if err := brutil.WaitForBackupComplete(f.ExtClient, ns, name, backupCompleteTimeout); err != nil {
 		return err
 	}
 	return nil

@@ -17,7 +17,7 @@ var (
 )
 
 func WaitForBackupDeleted(c versioned.Interface, ns, name string, timeout time.Duration) error {
-	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+	if err := wait.PollImmediate(poll, timeout, func() (bool, error) {
 		if _, err := c.PingcapV1alpha1().Backups(ns).Get(name, metav1.GetOptions{}); err != nil {
 			if errors.IsNotFound(err) {
 				return true, nil
@@ -26,11 +26,14 @@ func WaitForBackupDeleted(c versioned.Interface, ns, name string, timeout time.D
 			return false, err
 		}
 		return false, nil
-	})
+	}); err != nil {
+		return fmt.Errorf("can't wait for backup deleted: %v", err)
+	}
+	return nil
 }
 
 func WaitForBackupComplete(c versioned.Interface, ns, name string, timeout time.Duration) error {
-	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+	if err := wait.PollImmediate(poll, timeout, func() (bool, error) {
 		b, err := c.PingcapV1alpha1().Backups(ns).Get(name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
@@ -51,11 +54,14 @@ func WaitForBackupComplete(c versioned.Interface, ns, name string, timeout time.
 		}
 
 		return false, nil
-	})
+	}); err != nil {
+		return fmt.Errorf("can't wait for backup complete: %v", err)
+	}
+	return nil
 }
 
 func WaitForRestoreComplete(c versioned.Interface, ns, name string, timeout time.Duration) error {
-	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+	if err := wait.PollImmediate(poll, timeout, func() (bool, error) {
 		r, err := c.PingcapV1alpha1().Restores(ns).Get(name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
@@ -76,5 +82,8 @@ func WaitForRestoreComplete(c versioned.Interface, ns, name string, timeout time
 		}
 
 		return false, nil
-	})
+	}); err != nil {
+		return fmt.Errorf("can't wait for restore complete: %v", err)
+	}
+	return nil
 }
