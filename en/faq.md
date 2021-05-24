@@ -120,3 +120,11 @@ Three possible reasons:
     ```shell
     kubectl get deployment --all-namespaces |grep tidb-scheduler
     ```
+
+## How does TiDB ensure data safety and reliability? 
+
+To ensure persistent storage of data, TiDB clusters deployed by TiDB Operator use [Persistent Volume](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) provided by Kubernetes cluster as the storage.
+
+To ensure data safety in case one node is down, PD and TiKV use [Raft Consistency Algorithm](https://raft.github.io/) to replicate the stored data as multiple replicas across nodes.
+
+In the bottom layer, TiKV replicates data using the log replication and State Machine model. For write requests, data is written to the Leader node first, and then the Leader node replicates the command to its Follower nodes as a log. When most of the Follower nodes in the cluster receive this log from the Leader node, the log is committed and the State Machine changes accordingly.
