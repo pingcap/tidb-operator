@@ -23,8 +23,9 @@ import (
 )
 
 var (
-	tidbReadyTimeout      = time.Minute * 5
-	backupCompleteTimeout = time.Minute * 2
+	tidbReadyTimeout       = time.Minute * 5
+	backupCompleteTimeout  = time.Minute * 2
+	restoreCompleteTimeout = time.Minute * 2
 )
 
 const (
@@ -286,7 +287,7 @@ func createRestoreAndWaitForComplete(f *e2eframework.Framework, name, tcName, ty
 		return err
 	}
 
-	if err := brutil.WaitForRestoreComplete(f.ExtClient, ns, name, time.Second*30); err != nil {
+	if err := brutil.WaitForRestoreComplete(f.ExtClient, ns, name, restoreCompleteTimeout); err != nil {
 		return err
 	}
 
