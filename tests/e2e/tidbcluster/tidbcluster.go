@@ -2430,7 +2430,8 @@ func checkCustomLabelAndAnn(tc *v1alpha1.TidbCluster, c clientset.Interface) {
 		svcList, err := c.CoreV1().Services(tc.Namespace).List(listOptions)
 		framework.ExpectNoError(err)
 		for _, svc := range svcList.Items {
-			if svc.Spec.Type != corev1.ServiceTypeClusterIP {
+			// skip the headless one
+			if svc.Spec.ClusterIP == "None" {
 				continue
 			}
 
