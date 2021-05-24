@@ -52,19 +52,39 @@ func (s *tiflashScaler) Scale(meta metav1.Object, oldSet *apps.StatefulSet, newS
 func (s *tiflashScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	tc, ok := meta.(*v1alpha1.TidbCluster)
 	if !ok {
+		klog.Errorf("tiflashScaler.ScaleOut: failed to convert cluster %s/%s, scale out will do nothing", meta.GetNamespace(), meta.GetName())
 		return nil
 	}
 
-	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
+	scaleOutParallelism := 1
+	if tc.Spec.TiFlash.ScaleOutParallelism != nil {
+		scaleOutParallelism = int(*tc.Spec.TiFlash.ScaleOutParallelism)
+	}
+	_, ordinals, replicas, deleteSlots := scaleMulti(oldSet, newSet, scaleOutParallelism)
 	resetReplicas(newSet, oldSet)
 
-	klog.Infof("scaling out tiflash statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
-	_, err := s.deleteDeferDeletingPVC(tc, v1alpha1.TiFlashMemberType, ordinal)
-	if err != nil {
-		return err
+	klog.Infof("scaling out tiflash statefulset %s/%s, ordinal: %s (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinals, replicas, deleteSlots.List())
+	scaleOutOne := func(ordinal int32) error {
+		_, err := s.deleteDeferDeletingPVC(tc, v1alpha1.TiFlashMemberType, ordinal)
+		if err != nil {
+			return err
+		}
+		return nil
 	}
 
-	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
+	var (
+		errs             []error
+		finishedOrdinals = sets.NewInt32()
+	)
+	for _, ordinal := range ordinals {
+		err := scaleOutOne(ordinal)
+		if err != nil {
+			errs = append(errs, err)
+		} else {
+			finishedOrdinals.Insert(ordinal)
+		}
+	}
+	setReplicasAndDeleteSlotsByFinished(1, newSet, oldSet, ordinals, finishedOrdinals)
 	return nil
 }
 

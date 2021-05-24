@@ -28,7 +28,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog"
@@ -56,32 +55,49 @@ func (s *tikvScaler) Scale(meta metav1.Object, oldSet *apps.StatefulSet, newSet 
 }
 
 func (s *tikvScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
-	resetReplicas(newSet, oldSet)
-	obj, ok := meta.(runtime.Object)
+	tc, ok := meta.(*v1alpha1.TidbCluster)
 	if !ok {
-		return fmt.Errorf("cluster[%s/%s] can't conver to runtime.Object", meta.GetNamespace(), meta.GetName())
+		klog.Errorf("tikvScaler.ScaleOut: failed to convert cluster %s/%s, scale out will do nothing", meta.GetNamespace(), meta.GetName())
+		return nil
 	}
-	klog.Infof("scaling out tikv statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
-	var pvcName string
-	switch meta.(type) {
-	case *v1alpha1.TidbCluster:
-		pvcName = fmt.Sprintf("tikv-%s-tikv-%d", meta.GetName(), ordinal)
-	default:
-		return fmt.Errorf("tikv.ScaleOut, failed to convert cluster %s/%s", meta.GetNamespace(), meta.GetName())
+
+	scaleOutParallelism := 1
+	if tc.Spec.TiKV.ScaleOutParallelism != nil {
+		scaleOutParallelism = int(*tc.Spec.TiKV.ScaleOutParallelism)
 	}
-	_, err := s.deps.PVCLister.PersistentVolumeClaims(meta.GetNamespace()).Get(pvcName)
-	if err == nil {
-		_, err = s.deleteDeferDeletingPVC(obj, v1alpha1.TiKVMemberType, ordinal)
-		if err != nil {
-			return err
+	_, ordinals, replicas, deleteSlots := scaleMulti(oldSet, newSet, scaleOutParallelism)
+	resetReplicas(newSet, oldSet)
+	klog.Infof("scaling out tikv statefulset %s/%s, ordinal: %v (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinals, replicas, deleteSlots.List())
+
+	scaleOutOne := func(ordinal int32) error {
+		pvcName := fmt.Sprintf("tikv-%s-tikv-%d", meta.GetName(), ordinal)
+		_, err := s.deps.PVCLister.PersistentVolumeClaims(meta.GetNamespace()).Get(pvcName)
+		if err == nil {
+			_, err = s.deleteDeferDeletingPVC(tc, v1alpha1.TiKVMemberType, ordinal)
+			if err != nil {
+				return err
+			}
+			return controller.RequeueErrorf("tikv.ScaleOut, cluster %s/%s ready to scale out, wait for next round", meta.GetNamespace(), meta.GetName())
+		} else if !errors.IsNotFound(err) {
+			return fmt.Errorf("tikv.ScaleOut, cluster %s/%s failed to fetch pvc informaiton, err:%v", meta.GetNamespace(), meta.GetName(), err)
 		}
-		return controller.RequeueErrorf("tikv.ScaleOut, cluster %s/%s ready to scale out, wait for next round", meta.GetNamespace(), meta.GetName())
-	} else if !errors.IsNotFound(err) {
-		return fmt.Errorf("tikv.ScaleOut, cluster %s/%s failed to fetch pvc informaiton, err:%v", meta.GetNamespace(), meta.GetName(), err)
+		return nil
 	}
-	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
-	return nil
+
+	var (
+		errs             []error
+		finishedOrdinals = sets.NewInt32()
+	)
+	for _, ordinal := range ordinals {
+		err := scaleOutOne(ordinal)
+		if err != nil {
+			errs = append(errs, err)
+		} else {
+			finishedOrdinals.Insert(ordinal)
+		}
+	}
+	setReplicasAndDeleteSlotsByFinished(1, newSet, oldSet, ordinals, finishedOrdinals)
+	return errorutils.NewAggregate(errs)
 }
 
 func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
@@ -223,27 +239,19 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 	}
 
 	var (
-		updateSet         bool
-		errs              []error
-		actualDeleteSlots = sets.NewInt32()
+		errs             []error
+		finishedOrdinals = sets.NewInt32()
 	)
 	for _, ordinal := range ordinals {
-		success, err := scaleInOne(ordinal)
-		if !success {
+		finished, err := scaleInOne(ordinal)
+		if !finished {
 			errs = append(errs, err)
-			// recount replica if fail to scale in.
-			replicas++
 		} else {
-			updateSet = true
-			if deleteSlots.Has(ordinal) {
-				actualDeleteSlots.Insert(ordinal)
-			}
+			finishedOrdinals.Insert(ordinal)
 		}
 	}
-	if updateSet {
-		setReplicasAndDeleteSlots(newSet, replicas, actualDeleteSlots)
-	}
 
+	setReplicasAndDeleteSlotsByFinished(-1, newSet, oldSet, ordinals, finishedOrdinals)
 	return errorutils.NewAggregate(errs)
 }
 

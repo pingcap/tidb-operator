@@ -496,6 +496,11 @@ type TiKVSpec struct {
 	// Defaults to 1
 	// +optional
 	ScaleInParallelism *int32 `json:"scaleInParallelism,omitempty"`
+
+	// ScaleOutParallelism configures max scale out replicas for TiKV stores.
+	// Defaults to 1
+	// +optional
+	ScaleOutParallelism *int32 `json:"scaleOutParallelism,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members
@@ -548,6 +553,11 @@ type TiFlashSpec struct {
 	// Defaults to 1
 	// +optional
 	ScaleInParallelism *int32 `json:"scaleInParallelism,omitempty"`
+
+	// ScaleOutParallelism configures max scale out replicas for TiFlash.
+	// Defaults to 1
+	// +optional
+	ScaleOutParallelism *int32 `json:"scaleOutParallelism,omitempty"`
 }
 
 // TiCDCSpec contains details of TiCDC members

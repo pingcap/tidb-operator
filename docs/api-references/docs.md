@@ -14472,6 +14472,19 @@ int32
 Defaults to 1</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>scaleOutParallelism</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ScaleOutParallelism configures max scale out replicas for TiFlash.
+Defaults to 1</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tikvbackupconfig">TiKVBackupConfig</h3>
@@ -18516,6 +18529,19 @@ int32
 <td>
 <em>(Optional)</em>
 <p>ScaleInParallelism configures max scale in replicas for TiKV stores.
+Defaults to 1</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>scaleOutParallelism</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ScaleOutParallelism configures max scale out replicas for TiKV stores.
 Defaults to 1</p>
 </td>
 </tr>

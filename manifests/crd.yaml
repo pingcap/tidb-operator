@@ -10783,6 +10783,9 @@ spec:
                 scaleInParallelism:
                   format: int32
                   type: integer
+                scaleOutParallelism:
+                  format: int32
+                  type: integer
                 schedulerName:
                   type: string
                 serviceAccount:
@@ -12849,6 +12852,9 @@ spec:
                 requests:
                   type: object
                 scaleInParallelism:
+                  format: int32
+                  type: integer
+                scaleOutParallelism:
                   format: int32
                   type: integer
                 schedulerName:

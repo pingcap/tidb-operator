@@ -5430,6 +5430,11 @@ func (in *TiFlashSpec) DeepCopyInto(out *TiFlashSpec) {
 		*out = new(int32)
 		**out = **in
 	}
+	if in.ScaleOutParallelism != nil {
+		in, out := &in.ScaleOutParallelism, &out.ScaleOutParallelism
+		*out = new(int32)
+		**out = **in
+	}
 	return
 }
 
@@ -7283,6 +7288,11 @@ func (in *TiKVSpec) DeepCopyInto(out *TiKVSpec) {
 	}
 	if in.ScaleInParallelism != nil {
 		in, out := &in.ScaleInParallelism, &out.ScaleInParallelism
+		*out = new(int32)
+		**out = **in
+	}
+	if in.ScaleOutParallelism != nil {
+		in, out := &in.ScaleOutParallelism, &out.ScaleOutParallelism
 		*out = new(int32)
 		**out = **in
 	}
