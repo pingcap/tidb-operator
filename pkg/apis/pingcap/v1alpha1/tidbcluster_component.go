@@ -171,8 +171,10 @@ func (a *componentAccessorImpl) Labels() map[string]string {
 	for k, v := range a.clusterLabels {
 		l[k] = v
 	}
-	for k, v := range a.ComponentSpec.Labels {
-		l[k] = v
+	if a.ComponentSpec != nil {
+		for k, v := range a.ComponentSpec.Labels {
+			l[k] = v
+		}
 	}
 	return l
 }
