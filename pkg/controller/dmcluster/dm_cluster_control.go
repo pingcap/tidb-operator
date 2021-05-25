@@ -142,7 +142,7 @@ func (c *defaultDMClusterControl) updateDMCluster(dc *v1alpha1.DMCluster) error 
 		return err
 	}
 
-	// works that should do to making the dm-master cluster current state match the desired state:
+	// works that should be done to make the dm-master cluster current state match the desired state:
 	//   - create or update the dm-master service
 	//   - create or update the dm-master headless service
 	//   - create the dm-master statefulset
@@ -157,7 +157,7 @@ func (c *defaultDMClusterControl) updateDMCluster(dc *v1alpha1.DMCluster) error 
 		errs = append(errs, err)
 	}
 
-	// works that should do to making the dm-worker cluster current state match the desired state:
+	// works that should be done to make the dm-worker cluster current state match the desired state:
 	//   - waiting for the dm-master cluster available(dm-master cluster is in quorum)
 	//   - create or update dm-worker headless service
 	//   - create the dm-worker statefulset
