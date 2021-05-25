@@ -23,7 +23,10 @@ import (
 	"k8s.io/client-go/dynamic"
 )
 
+// Interface is prepared for dealing with custom kubernetes resource in yaml data format.
+// It is defined to avoid to import too many third-party clients.
 type Interface interface {
+	// Create creates object in yaml format
 	Create(yaml []byte) error
 }
 

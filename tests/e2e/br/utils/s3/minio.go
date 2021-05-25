@@ -158,7 +158,8 @@ func (s *minioStorage) accessSecret(ns string) (string, string, error) {
 }
 
 func base64DecodeToString(src []byte) (string, error) {
-	dst := make([]byte, 0, len(src))
+	dstLen := base64.StdEncoding.DecodedLen(len(src))
+	dst := make([]byte, dstLen)
 	if _, err := base64.StdEncoding.Decode(dst, src); err != nil {
 		return "", err
 	}

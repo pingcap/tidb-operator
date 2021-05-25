@@ -72,11 +72,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 	})
 
 	ginkgo.JustAfterEach(func() {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		// do nothing when provider is kind
-		err := f.Storage.Clean(ctx, f.Namespace.Name)
+		err := f.Storage.Clean(context.Background(), f.Namespace.Name)
 		framework.ExpectNoError(err)
 	})
 
@@ -420,7 +416,9 @@ func getTableList(db *sql.DB) ([]string, error) {
 	}
 	for rows.Next() {
 		var table string
-		rows.Scan(&table)
+		if err := rows.Scan(&table); err != nil {
+			return nil, err
+		}
 		tables = append(tables, table)
 	}
 	return tables, nil
