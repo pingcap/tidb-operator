@@ -39,6 +39,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/features"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
@@ -691,6 +692,44 @@ var _ = ginkgo.Describe("DMCluster", func() {
 
 			ginkgo.By("Check data for incremental stage")
 			framework.ExpectNoError(tests.CheckDMData(fw, dc.Namespace, 1), "failed to check incremental data")
+
+			ginkgo.By("List pods after upgraded")
+			workerSelector, err := label.NewDM().Instance(dc.GetInstanceName()).DMWorker().Selector()
+			framework.ExpectNoError(err, "failed to generate selector for dm-worker")
+			workerPods, err := c.CoreV1().Pods(ns).List(metav1.ListOptions{LabelSelector: workerSelector.String()})
+			framework.ExpectNoError(err, "failed to list pods for dm-worker")
+			masterSelector, err := label.NewDM().Instance(dc.GetInstanceName()).DMMaster().Selector()
+			framework.ExpectNoError(err, "failed to generate selector for dm-master")
+			masterPods, err := c.CoreV1().Pods(ns).List(metav1.ListOptions{LabelSelector: masterSelector.String()})
+			framework.ExpectNoError(err, "failed to list pods for dm-master")
+
+			ginkgo.By("Downgrade dm-worker members")
+			err = controller.GuaranteedUpdate(genericCli, dc, func() error {
+				ver := utilimage.DMV2Prev
+				dc.Spec.Worker.Version = &ver
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to downgrade dm-worker for DmCluster %q", dcName)
+
+			ginkgo.By("Check dm-worker pods changed")
+			err = utilpod.WaitForPodsAreChanged(c, workerPods.Items, 10*time.Minute)
+			framework.ExpectNoError(err, "failed to wait for dm-worker pods changed for DmCluster %q", dcName)
+
+			ginkgo.By("Check dm-master pods unchanged")
+			err = utilpod.WaitForPodsAreChanged(c, masterPods.Items, 3*time.Minute)
+			framework.ExpectEqual(err, wait.ErrWaitTimeout, "dm-master pods changed when not upgrading for DmCluster %q", dcName)
+
+			ginkgo.By("Downgrade dm-master members")
+			err = controller.GuaranteedUpdate(genericCli, dc, func() error {
+				ver := utilimage.DMV2Prev
+				dc.Spec.Master.Version = &ver
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to downgrade dm-master for DmCluster %q", dcName)
+
+			ginkgo.By("Check dm-master pods changed")
+			err = utilpod.WaitForPodsAreChanged(c, masterPods.Items, 10*time.Minute)
+			framework.ExpectNoError(err, "failed to wait for dm-master pods changed for DmCluster %q", dcName)
 		})
 	})
 })
