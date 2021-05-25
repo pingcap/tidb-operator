@@ -82,7 +82,7 @@ func TestGetMonitorConfigMap(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			cm, err := getMonitorConfigMap(&tt.monitor, tt.monitorClusterInfos, nil)
+			cm, err := getMonitorConfigMap(&tt.monitor, tt.monitorClusterInfos, nil, 0)
 			g.Expect(err).NotTo(HaveOccurred())
 			if tt.expected == nil {
 				g.Expect(cm).To(BeNil())
@@ -880,7 +880,7 @@ func TestGetMonitorVolumes(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			cm, err := getMonitorConfigMap(&tt.monitor, nil, nil)
+			cm, err := getMonitorConfigMap(&tt.monitor, nil, nil, 0)
 			g.Expect(err).NotTo(HaveOccurred())
 			sa := getMonitorVolumes(cm, &tt.monitor, &tt.cluster, &tt.dmCluster)
 			tt.expected(sa)
@@ -929,7 +929,7 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 				Command: []string{
 					"/bin/sh",
 					"-c",
-					"sed 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g' /etc/prometheus/config/prometheus.yml > /etc/prometheus/config_out/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/etc/prometheus/config_out/prometheus.yml --storage.tsdb.path=/data/prometheus --storage.tsdb.retention=0d --web.external-url=https://www.example.com/prometheus/",
+					"sed 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g';s/$SHARD/'\"$SHARD\"'/g' /etc/prometheus/config/prometheus.yml > /etc/prometheus/config_out/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/etc/prometheus/config_out/prometheus.yml --storage.tsdb.path=/data/prometheus --storage.tsdb.retention=0d --web.external-url=https://www.example.com/prometheus/",
 				},
 				Ports: []corev1.ContainerPort{
 					corev1.ContainerPort{
@@ -954,6 +954,10 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 						ValueFrom: &corev1.EnvVarSource{
 							FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.namespace"},
 						},
+					},
+					{
+						Name:  "SHARD",
+						Value: "0",
 					},
 				},
 				Resources: corev1.ResourceRequirements{},
@@ -1001,7 +1005,7 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			sa := getMonitorPrometheusContainer(&tt.monitor, &tt.cluster, nil)
+			sa := getMonitorPrometheusContainer(&tt.monitor, &tt.cluster, 0)
 			if tt.expected == nil {
 				g.Expect(sa).To(BeNil())
 				return

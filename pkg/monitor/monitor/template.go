@@ -143,6 +143,7 @@ type MonitorConfigModel struct {
 	DMClusterInfos     []ClusterRegexInfo
 	ExternalLabels     model.LabelSet
 	RemoteWriteConfigs []*config.RemoteWriteConfig
+	shards             int32
 }
 
 // ClusterRegexInfo is the monitor cluster info
@@ -407,7 +408,7 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 				},
 			},
 		}
-
+		scrapeconfig.RelabelConfigs = generateAddressShardingRelabelingRules(scrapeconfig.RelabelConfigs, uint64(cmodel.shards))
 		if cluster.enableTLS && !isDMJob(jobName) {
 			scrapeconfig.Scheme = "https"
 			// lightning does not need to authenticate the access of other components,
@@ -477,3 +478,41 @@ func RenderPrometheusConfig(model *MonitorConfigModel) (string, error) {
 	}
 	return string(bs), nil
 }
+
+func generateAddressShardingRelabelingRules(relabelings []*config.RelabelConfig, shards uint64) []*config.RelabelConfig {
+	shardsPattern, err := config.NewRegexp("$(SHARD)")
+	if err != nil {
+		klog.Error("generate shardsPattern err", err)
+		return relabelings
+	}
+	return append(relabelings, &config.RelabelConfig{
+
+		SourceLabels: model.LabelNames{
+			"__address__",
+		},
+		Action:      config.RelabelHashMod,
+		TargetLabel: "__tmp_hash",
+		Modulus:     shards,
+	},
+		&config.RelabelConfig{
+
+			SourceLabels: model.LabelNames{
+				"__tmp_hash",
+			},
+			Regex: shardsPattern,
+
+			Action: config.RelabelKeep,
+		},
+	)
+}
+
+//yaml.MapSlice{
+//	{Key: "source_labels", Value: []string{"__address__"}},
+//	{Key: "target_label", Value: "__tmp_hash"},
+//	{Key: "modulus", Value: shards},
+//	{Key: "action", Value: "hashmod"},
+//}, yaml.MapSlice{
+//	{Key: "source_labels", Value: []string{"__tmp_hash"}},
+//	{Key: "regex", Value: "$(SHARD)"},
+//	{Key: "action", Value: "keep"},
+//})
