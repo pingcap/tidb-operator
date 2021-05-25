@@ -387,6 +387,8 @@ func ticdcClusterCert(tc *v1alpha1.TidbCluster) *TLSCert {
 	}
 }
 
+// nolint
+// NOTE: it is not used now
 func drainerClusterCert(tc *v1alpha1.TidbCluster) *TLSCert {
 	secretName := util.ClusterTLSSecretName(tc.Name, "drainer")
 

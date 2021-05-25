@@ -81,8 +81,8 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 	})
 
 	feats := []feature.Features{
-		// feature.New(featVersionV4, featTypeBR).Build(),
-		// feature.New(featVersionV4, featTypeDumper).Build(),
+		feature.New(featVersionV4, featTypeBR).Build(),
+		feature.New(featVersionV4, featTypeDumper).Build(),
 		// feature.New(featVersionV4, featTypeBR, featTLS).Build(),
 		// feature.New(featVersionV4, featTypeDumper, featTLS).Build(),
 
@@ -247,6 +247,8 @@ func createBackupAndWaitForComplete(f *e2eframework.Framework, name, tcName, typ
 	return nil
 }
 
+// nolint
+// NOTE: it is not used now
 func deleteBackup(f *e2eframework.Framework, name string) error {
 	ns := f.Namespace.Name
 
@@ -260,6 +262,8 @@ func deleteBackup(f *e2eframework.Framework, name string) error {
 	return nil
 }
 
+// nolint
+// NOTE: it is not used
 func cleanBackup(f *e2eframework.Framework) error {
 	ns := f.Namespace.Name
 	bl, err := f.ExtClient.PingcapV1alpha1().Backups(ns).List(metav1.ListOptions{})

@@ -164,7 +164,6 @@ func (f *Framework) ForceCleanBackups(ns string) {
 			return
 		}
 	}
-	return
 }
 
 func (f *Framework) RecycleReleasedPV() {
