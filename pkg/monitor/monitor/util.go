@@ -48,10 +48,6 @@ func GetTLSAssetsSecretName(name string) string {
 	return fmt.Sprintf("tidbmonitor-%s-tls-assets", name)
 }
 
-func GetDMTLSAssetsSecretName(name string) string {
-	return fmt.Sprintf("tidbmonitor-dm-%s-tls-assets", name)
-}
-
 func GetMonitorObjectName(monitor *v1alpha1.TidbMonitor) string {
 	return fmt.Sprintf("%s-monitor", monitor.Name)
 }
@@ -470,11 +466,6 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 				MountPath: util.ClusterAssetsTLSPath,
 				ReadOnly:  true,
 			},
-			{
-				Name:      "dm-tls-assets",
-				MountPath: util.DMClusterClientTLSPath,
-				ReadOnly:  true,
-			},
 		},
 	}
 
@@ -761,14 +752,6 @@ func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor, tc
 		VolumeSource: core.VolumeSource{
 			Secret: &core.SecretVolumeSource{
 				SecretName:  GetTLSAssetsSecretName(monitor.Name),
-				DefaultMode: &defaultMode,
-			},
-		},
-	}, core.Volume{
-		Name: "dm-tls-assets",
-		VolumeSource: core.VolumeSource{
-			Secret: &core.SecretVolumeSource{
-				SecretName:  GetDMTLSAssetsSecretName(monitor.Name),
 				DefaultMode: &defaultMode,
 			},
 		},
