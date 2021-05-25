@@ -168,7 +168,7 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 		return err
 	}
 
-	// works that should do to making the tiflash cluster current state match the desired state:
+	// works that should be done to make the tiflash cluster current state match the desired state:
 	//   - waiting for the tidb cluster available
 	//   - create or update tiflash headless service
 	//   - create the tiflash statefulset
@@ -181,7 +181,7 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 		return err
 	}
 
-	// works that should do to making the pd cluster current state match the desired state:
+	// works that should be done to make the pd cluster current state match the desired state:
 	//   - create or update the pd service
 	//   - create or update the pd headless service
 	//   - create the pd statefulset
@@ -196,7 +196,7 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 		return err
 	}
 
-	// works that should do to making the tikv cluster current state match the desired state:
+	// works that should be done to make the tikv cluster current state match the desired state:
 	//   - waiting for the pd cluster available(pd cluster is in quorum)
 	//   - create or update tikv headless service
 	//   - create the tikv statefulset
@@ -214,7 +214,7 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 		return err
 	}
 
-	// works that should do to making the tidb cluster current state match the desired state:
+	// works that should be done to make the tidb cluster current state match the desired state:
 	//   - waiting for the tikv cluster available(at least one peer works)
 	//   - create or update tidb headless service
 	//   - create the tidb statefulset
