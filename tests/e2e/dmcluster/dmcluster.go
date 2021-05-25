@@ -479,8 +479,6 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			framework.ExpectNoError(err, "failed to create DmCluster: %q", dcName)
 			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
 
-			// TODO: check all masters are healthy; check all workers are bound (two source and two dm-worker replicas)
-
 			ginkgo.By("Create MySQL sources")
 			framework.ExpectNoError(tests.CreateDMSources(fw, dc.Namespace, controller.DMMasterMemberName(dcName)), "failed to create sources for DmCluster %q", dcName)
 
@@ -504,13 +502,45 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			rand.Shuffle(len(podNames), func(i, j int) {
 				podNames[i], podNames[j] = podNames[j], podNames[i]
 			})
+			checkPodHealthy := func(podName string) bool {
+				// check the killed pod become healthy again
+				if strings.HasPrefix(podName, controller.DMMasterMemberName(dcName)) {
+					masters, err := tests.GetDMMasters(fw, ns, controller.DMMasterMemberName(dcName))
+					if err != nil {
+						log.Logf("failed to get master infos for DmCluster %q: %v", dcName, err)
+						return false
+					}
+					for _, master := range masters {
+						if master.Name == podName {
+							return master.Alive
+						}
+					}
+					return false
+				} else {
+					workers, err := tests.GetDMWorkers(fw, ns, controller.DMMasterMemberName(dcName))
+					if err != nil {
+						log.Logf("failed to get worker infos for DmCluster %q: %v", dcName, err)
+						return false
+					}
+					for _, worker := range workers {
+						if worker.Name == podName {
+							return worker.Stage != "offline"
+						}
+					}
+					return false
+				}
+			}
 			for _, podName := range podNames {
 				pod, err := c.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
 				framework.ExpectNoError(err, "failed to get pod %q for DmCluster %q", podName, dcName)
 				log.Logf("kill pod %s", podName)
 				framework.ExpectNoError(c.CoreV1().Pods(ns).Delete(podName, &metav1.DeleteOptions{}), "failed to kill pod %q", podName)
 				framework.ExpectNoError(utilpod.WaitForPodsAreChanged(c, []corev1.Pod{*pod}, 3*time.Minute))
-				// TODO: check the killed pod become healthy
+
+				err = wait.Poll(10*time.Second, 3*time.Minute, func() (done bool, err error) {
+					return checkPodHealthy(podName), nil
+				})
+				framework.ExpectNoError(err, "failed to wait for pod %q become healthy after restarted", podName)
 			}
 
 			ginkgo.By("Generate incremental stage data in upstream")

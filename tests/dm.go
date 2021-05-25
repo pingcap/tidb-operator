@@ -44,6 +44,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	httputil "github.com/pingcap/tidb-operator/pkg/util/http"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
@@ -755,6 +756,58 @@ func QueryDMStatus(fw portforward.PortForward, ns, masterSvcName string) (string
 		return "", err
 	}
 	return string(body), nil
+}
+
+// GetDMMasters gets all DM-master members info.
+func GetDMMasters(fw portforward.PortForward, ns, masterSvcName string) ([]*dmapi.MastersInfo, error) {
+	apiPath := "/apis/v1alpha1/members?master=true"
+	localHost, localPort, cancel, err := portforward.ForwardOnePort(
+		fw, ns, fmt.Sprintf("svc/%s", masterSvcName), dmMasterSvcPort)
+	if err != nil {
+		return nil, err
+	}
+	defer cancel()
+
+	body, err := httputil.GetBodyOK(&http.Client{Transport: &http.Transport{}},
+		fmt.Sprintf("http://%s:%d%s", localHost, localPort, apiPath))
+	if err != nil {
+		return nil, err
+	}
+	var resp dmapi.MastersResp
+	if err = json.Unmarshal(body, &resp); err != nil {
+		return nil, err
+	} else if !resp.Result {
+		return nil, fmt.Errorf("unable to list masters info, err: %s", resp.Msg)
+	} else if len(resp.ListMemberResp) != 1 {
+		return nil, fmt.Errorf("invalid list masters resp: %s", body)
+	}
+	return resp.ListMemberResp[0].Masters, nil
+}
+
+// GetDMWorkers gets all DM-worker members info.
+func GetDMWorkers(fw portforward.PortForward, ns, masterSvcName string) ([]*dmapi.WorkersInfo, error) {
+	apiPath := "/apis/v1alpha1/members?worker=true"
+	localHost, localPort, cancel, err := portforward.ForwardOnePort(
+		fw, ns, fmt.Sprintf("svc/%s", masterSvcName), dmMasterSvcPort)
+	if err != nil {
+		return nil, err
+	}
+	defer cancel()
+
+	body, err := httputil.GetBodyOK(&http.Client{Transport: &http.Transport{}},
+		fmt.Sprintf("http://%s:%d%s", localHost, localPort, apiPath))
+	if err != nil {
+		return nil, err
+	}
+	var resp dmapi.WorkerResp
+	if err = json.Unmarshal(body, &resp); err != nil {
+		return nil, err
+	} else if !resp.Result {
+		return nil, fmt.Errorf("unable to list workers info, err: %s", resp.Msg)
+	} else if len(resp.ListMemberResp) != 1 {
+		return nil, fmt.Errorf("invalid list workers resp: %s", body)
+	}
+	return resp.ListMemberResp[0].Workers, nil
 }
 
 func openDB(host string, port uint16, secret *corev1.Secret) (*sql.DB, error) {
