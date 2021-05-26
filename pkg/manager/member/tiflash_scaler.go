@@ -63,7 +63,7 @@ func (s *tiflashScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, n
 	_, ordinals, replicas, deleteSlots := scaleMulti(oldSet, newSet, scaleOutParallelism)
 	resetReplicas(newSet, oldSet)
 
-	klog.Infof("scaling out tiflash statefulset %s/%s, ordinal: %s (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinals, replicas, deleteSlots.List())
+	klog.Infof("scaling out tiflash statefulset %s/%s, ordinal: %v (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinals, replicas, deleteSlots.List())
 	scaleOutOne := func(ordinal int32) error {
 		_, err := s.deleteDeferDeletingPVC(tc, v1alpha1.TiFlashMemberType, ordinal)
 		if err != nil {
@@ -103,7 +103,6 @@ func (s *tiflashScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, ne
 	}
 
 	_, ordinals, replicas, deleteSlots := scaleMulti(oldSet, newSet, scaleInParallelism)
-	resetReplicas(newSet, oldSet)
 
 	klog.Infof("scaling in tiflash statefulset %s/%s, ordinal: %v (replicas: %d, delete slots: %v), scaleInParallelism: %v", oldSet.Namespace, oldSet.Name, ordinals, replicas, deleteSlots.List(), scaleInParallelism)
 
@@ -185,27 +184,25 @@ func (s *tiflashScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, ne
 	}
 
 	var (
-		updateSet         bool
-		errs              []error
-		actualDeleteSlots = sets.NewInt32()
+		errs                         []error
+		finishedOrdinals             = sets.NewInt32()
+		updateReplicasAndDeleteSlots bool
 	)
 	for _, ordinal := range ordinals {
-		success, err := scaleInOne(ordinal)
-		if !success {
+		finished, err := scaleInOne(ordinal)
+		if !finished {
 			errs = append(errs, err)
-			// recount replica if fail to scale in.
-			replicas++
 		} else {
-			updateSet = true
-			if deleteSlots.Has(ordinal) {
-				actualDeleteSlots.Insert(ordinal)
-			}
+			finishedOrdinals.Insert(ordinal)
+			updateReplicasAndDeleteSlots = true
 		}
 	}
-	if updateSet {
-		setReplicasAndDeleteSlots(newSet, replicas, actualDeleteSlots)
-	}
 
+	if updateReplicasAndDeleteSlots {
+		setReplicasAndDeleteSlotsByFinished(-1, newSet, oldSet, ordinals, finishedOrdinals)
+	} else {
+		resetReplicas(newSet, oldSet)
+	}
 	return errorutils.NewAggregate(errs)
 }
 

@@ -1454,7 +1454,7 @@ func TestScaleMulti(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			target := tt.actual.DeepCopy()
 			for i, op := range tt.wantOps {
-				t.Logf("scaleOne %d", i)
+				t.Logf("scaleMulti %d", i)
 				scaling, ordinals, replicas, deleteSlots := scaleMulti(target, tt.desired, tt.scaleParallelism)
 				if diff := cmp.Diff(op.scaling, scaling); diff != "" {
 					t.Errorf("unexpected (-want, +got): %s", diff)

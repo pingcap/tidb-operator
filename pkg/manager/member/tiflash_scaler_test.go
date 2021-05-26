@@ -18,16 +18,20 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/pointer"
 )
@@ -884,149 +888,387 @@ func TestTiFlashScalerScaleInSimultaneously(t *testing.T) {
 				storeIdLabel:  "13",
 			}},
 			scaleInParallelism: 2,
-		}, /*{
-			name: "2 maxScaleInReplica, 4 up stores, scale in TiFlash simultaneously works but only scales one",
-			storeFun: func(tc *v1alpha1.TidbCluster) {
-				normalTiFlashStoreFun(tc)
-				tc.Status.TiFlash.Stores["12"] = v1alpha1.TiKVStore{
-					ID:      "12",
-					PodName: ordinalPodName(v1alpha1.TiFlashMemberType, tc.GetName(), 2),
-					State:   v1alpha1.TiKVStateDown,
-				}
-			},
-			delStoreErr:  false,
-			pvcUpdateErr: false,
-			errExpectFn:  errExpectRequeue,
-			newReplicas:  5,
-			pods: []podStatus{{
-				hasPVC:        true,
-				storeIDSynced: true,
-				isPodReady:    true,
-				hasSynced:     true,
-				ordinal:       4,
-				storeIdLabel:  "1",
-			}, {
-				hasPVC:        true,
-				storeIDSynced: true,
-				isPodReady:    true,
-				hasSynced:     true,
-				ordinal:       3,
-				storeIdLabel:  "13",
-			}},
-			getStoresFn: func(action *pdapi.Action) (interface{}, error) {
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testFn(tt, t)
+		})
+	}
+}
+
+func TestTiFlashScalerScaleInSimultaneouslyExtra(t *testing.T) {
+	type scaleOp struct {
+		preHandler  func(tc *v1alpha1.TidbCluster)
+		replicas    int32
+		deleteSlots sets.Int32
+	}
+	type testcase struct {
+		name           string
+		enableAsts     bool
+		oldDeleteSlots sets.Int32
+		newDeleteSlots sets.Int32
+		getStoresFn    func(action *pdapi.Action) (interface{}, error)
+		ops            []scaleOp
+	}
+
+	resyncDuration := time.Duration(0)
+
+	testFn := func(test testcase, t *testing.T) {
+		tc := newTidbCluster()
+		allTombstonesTiFlashStoreFun(tc)
+		tc.Spec.TiFlash.ScaleInParallelism = pointer.Int32Ptr(int32(2))
+		scaler, pdControl, pvcIndexer, podIndexer, _ := newFakeTiFlashScaler(resyncDuration)
+
+		oldSet := newStatefulSetForPDScale()
+		oldSet.Spec.Replicas = pointer.Int32Ptr(5)
+		helper.SetDeleteSlots(oldSet, test.oldDeleteSlots)
+		newSet := oldSet.DeepCopy()
+		newSet.Spec.Replicas = pointer.Int32Ptr(3)
+		helper.SetDeleteSlots(newSet, test.newDeleteSlots)
+
+		createPodFn := func(ordinal int, storeIdLabel string) {
+			pod := &corev1.Pod{
+				TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              TiFlashPodName(tc.GetName(), int32(ordinal)),
+					Namespace:         corev1.NamespaceDefault,
+					CreationTimestamp: metav1.Time{Time: time.Now().Add(-1 * time.Hour)},
+				},
+			}
+			readyPodFunc(pod)
+			pvc1 := _newPVCForStatefulSet(oldSet, v1alpha1.TiFlashMemberType, tc.Name, int32(ordinal))
+			pvc2 := pvc1.DeepCopy()
+			pvc1.Name = pvc1.Name + "-1"
+			pvc1.UID = pvc1.UID + "-1"
+			pvc2.Name = pvc2.Name + "-2"
+			pvc2.UID = pvc2.UID + "-2"
+			pvcIndexer.Add(pvc1)
+			pvcIndexer.Add(pvc2)
+			pod.Spec.Volumes = append(pod.Spec.Volumes,
+				corev1.Volume{
+					VolumeSource: corev1.VolumeSource{
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+							ClaimName: pvc1.Name,
+						},
+					},
+				}, corev1.Volume{
+					VolumeSource: corev1.VolumeSource{
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+							ClaimName: pvc2.Name,
+						},
+					},
+				})
+
+			pod.Labels = map[string]string{}
+			pod.Labels[label.StoreIDLabelKey] = storeIdLabel
+			podIndexer.Add(pod)
+		}
+
+		createPodFn(0, "10")
+		createPodFn(1, "11")
+		createPodFn(2, "12")
+		createPodFn(3, "13")
+		createPodFn(4, "1")
+
+		pdClient := controller.NewFakePDClient(pdControl, tc)
+		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
+			var replicas uint64 = 3
+			return &pdapi.PDConfigFromAPI{
+				Replication: &pdapi.PDReplicationConfig{
+					MaxReplicas: &replicas,
+				},
+			}, nil
+		})
+		if test.getStoresFn == nil {
+			test.getStoresFn = func(action *pdapi.Action) (interface{}, error) {
 				store := &pdapi.StoreInfo{
 					Store: &pdapi.MetaStore{
 						StateName: v1alpha1.TiKVStateUp,
 						Store: &metapb.Store{
-							Address: fmt.Sprintf("%s-tiflash-0", "basic"),
-						},
-					},
-				}
-				return &pdapi.StoresInfo{
-					Count:  4,
-					Stores: []*pdapi.StoreInfo{store, store, store, store},
-				}, nil
-			},
-			scaleInParallelism: 2,
-			extraTestFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, scaler *tiflashScaler, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) {
-				for i := 0; i < 4; i++ {
-					podName := ordinalPodName(v1alpha1.TiFlashMemberType, tc.GetName(), int32(i))
-					var found bool
-					for _, s := range tc.Status.TiFlash.Stores {
-						found = found || s.PodName == podName
-					}
-					g.Expect(found).To(Equal(true))
-				}
-				g.Expect(len(tc.Status.TiFlash.Stores)).To(Equal(4))
-				for i := 4; i < 5; i++ {
-					podName := ordinalPodName(v1alpha1.TiFlashMemberType, tc.GetName(), int32(i))
-					var found bool
-					for _, s := range tc.Status.TiFlash.Stores {
-						found = found || s.PodName == podName
-					}
-					g.Expect(found).To(Equal(false))
-				}
-				g.Expect(len(tc.Status.TiFlash.TombstoneStores)).To(Equal(1))
-			},
-		}, {
-			name: "2 maxScaleInReplica, 5 up stores with tiflash store, scale in TiFlash simultaneously works but only scales one",
-			storeFun: func(tc *v1alpha1.TidbCluster) {
-				normalTiFlashStoreFun(tc)
-				tc.Status.TiFlash.Stores["12"] = v1alpha1.TiKVStore{
-					ID:      "12",
-					PodName: ordinalPodName(v1alpha1.TiFlashMemberType, tc.GetName(), 2),
-					State:   v1alpha1.TiKVStateDown,
-				}
-			},
-			delStoreErr:  false,
-			pvcUpdateErr: false,
-			errExpectFn:  errExpectRequeue,
-			newReplicas:  5,
-			pods: []podStatus{{
-				hasPVC:        true,
-				storeIDSynced: true,
-				isPodReady:    true,
-				hasSynced:     true,
-				ordinal:       4,
-				storeIdLabel:  "1",
-			}, {
-				hasPVC:        true,
-				storeIDSynced: true,
-				isPodReady:    true,
-				hasSynced:     true,
-				ordinal:       3,
-				storeIdLabel:  "13",
-			}},
-			getStoresFn: func(action *pdapi.Action) (interface{}, error) {
-				store := &pdapi.StoreInfo{
-					Store: &pdapi.MetaStore{
-						StateName: v1alpha1.TiKVStateUp,
-						Store: &metapb.Store{
-							Address: fmt.Sprintf("%s-tiflash-0", "basic"),
-						},
-					},
-				}
-				tiflashstore := &pdapi.StoreInfo{
-					Store: &pdapi.MetaStore{
-						StateName: v1alpha1.TiKVStateUp,
-						Store: &metapb.Store{
-							Address: fmt.Sprintf("%s-tiflash-0", "basic"),
-							Labels: []*metapb.StoreLabel{
-								{
-									Key:   "engine",
-									Value: "tiflash",
-								},
-							},
+							Address: fmt.Sprintf("%s-tikv-0", "basic"),
 						},
 					},
 				}
 				return &pdapi.StoresInfo{
 					Count:  5,
-					Stores: []*pdapi.StoreInfo{store, store, store, store, tiflashstore},
+					Stores: []*pdapi.StoreInfo{store, store, store, store, store},
 				}, nil
+			}
+		}
+		pdClient.AddReaction(pdapi.GetStoresActionType, test.getStoresFn)
+
+		features.DefaultFeatureGate.Set(fmt.Sprintf("AdvancedStatefulSet=%v", test.enableAsts))
+		actualSet := oldSet.DeepCopy()
+		for _, op := range test.ops {
+			if op.preHandler != nil {
+				op.preHandler(tc)
+			}
+			desiredSet := newSet.DeepCopy()
+			_ = scaler.ScaleIn(tc, actualSet, desiredSet)
+			if diff := cmp.Diff(op.replicas, *desiredSet.Spec.Replicas); diff != "" {
+				t.Errorf("unexpected (-want, +got): %s", diff)
+			}
+			if diff := cmp.Diff(op.deleteSlots, helper.GetDeleteSlots(desiredSet)); diff != "" {
+				t.Errorf("unexpected (-want, +got): %s", diff)
+			}
+			actualSet = desiredSet.DeepCopy()
+		}
+	}
+
+	tests := []testcase{
+		{
+			name:           "scale without deleteSlots disable asts",
+			enableAsts:     false,
+			oldDeleteSlots: sets.NewInt32(),
+			newDeleteSlots: sets.NewInt32(),
+			ops: []scaleOp{
+				{
+					replicas: 3,
+				},
 			},
-			scaleInParallelism: 2,
-			extraTestFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, scaler *tiflashScaler, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) {
-				for i := 0; i < 4; i++ {
-					podName := ordinalPodName(v1alpha1.TiFlashMemberType, tc.GetName(), int32(i))
-					var found bool
-					for _, s := range tc.Status.TiFlash.Stores {
-						found = found || s.PodName == podName
-					}
-					g.Expect(found).To(Equal(true))
-				}
-				g.Expect(len(tc.Status.TiFlash.Stores)).To(Equal(4))
-				for i := 4; i < 5; i++ {
-					podName := ordinalPodName(v1alpha1.TiFlashMemberType, tc.GetName(), int32(i))
-					var found bool
-					for _, s := range tc.Status.TiFlash.Stores {
-						found = found || s.PodName == podName
-					}
-					g.Expect(found).To(Equal(false))
-				}
-				g.Expect(len(tc.Status.TiFlash.TombstoneStores)).To(Equal(1))
+		}, {
+			name:           "scale without deleteSlots endable asts",
+			enableAsts:     true,
+			oldDeleteSlots: sets.NewInt32(),
+			newDeleteSlots: sets.NewInt32(),
+			ops: []scaleOp{
+				{
+					replicas: 3,
+				},
 			},
-		},*/
+		}, {
+			name:           "scale with deleteSlots endable asts",
+			enableAsts:     true,
+			oldDeleteSlots: sets.NewInt32(),
+			newDeleteSlots: sets.NewInt32(3, 2),
+			ops: []scaleOp{
+				{
+					replicas:    3,
+					deleteSlots: sets.NewInt32(3, 2),
+				},
+			},
+		}, {
+			name:           "scale second error without deleteSlots disable asts",
+			enableAsts:     false,
+			oldDeleteSlots: sets.NewInt32(),
+			newDeleteSlots: sets.NewInt32(),
+			ops: []scaleOp{
+				{
+					preHandler: func(tc *v1alpha1.TidbCluster) {
+						// hack ID to mock error during scale one
+						store := tc.Status.TiFlash.TombstoneStores["13"]
+						store.ID = "not integer"
+						tc.Status.TiFlash.TombstoneStores["13"] = store
+					},
+					replicas:    4,
+					deleteSlots: sets.NewInt32(),
+				}, {
+					preHandler: func(tc *v1alpha1.TidbCluster) {
+						// hack ID to mock error during scale one
+						store := tc.Status.TiFlash.TombstoneStores["13"]
+						store.ID = "13"
+						tc.Status.TiFlash.TombstoneStores["13"] = store
+					},
+					replicas:    3,
+					deleteSlots: sets.NewInt32(),
+				},
+			},
+		}, {
+			name:           "scale first error without deleteSlots disable asts",
+			enableAsts:     false,
+			oldDeleteSlots: sets.NewInt32(),
+			newDeleteSlots: sets.NewInt32(),
+			ops: []scaleOp{
+				{
+					preHandler: func(tc *v1alpha1.TidbCluster) {
+						// hack ID to mock error during scale one
+						store := tc.Status.TiFlash.TombstoneStores["1"]
+						store.ID = "not integer"
+						tc.Status.TiFlash.TombstoneStores["1"] = store
+					},
+					replicas:    5,
+					deleteSlots: sets.NewInt32(),
+				}, {
+					preHandler: func(tc *v1alpha1.TidbCluster) {
+						// hack ID to mock error during scale one
+						store := tc.Status.TiFlash.TombstoneStores["1"]
+						store.ID = "1"
+						tc.Status.TiFlash.TombstoneStores["1"] = store
+					},
+					replicas:    3,
+					deleteSlots: sets.NewInt32(),
+				},
+			},
+		}, {
+			name:           "scale second error without deleteSlots enable asts",
+			enableAsts:     true,
+			oldDeleteSlots: sets.NewInt32(),
+			newDeleteSlots: sets.NewInt32(),
+			ops: []scaleOp{
+				{
+					preHandler: func(tc *v1alpha1.TidbCluster) {
+						// hack ID to mock error during scale one
+						store := tc.Status.TiFlash.TombstoneStores["13"]
+						store.ID = "not integer"
+						tc.Status.TiFlash.TombstoneStores["13"] = store
+					},
+					replicas:    4,
+					deleteSlots: sets.NewInt32(),
+				}, {
+					preHandler: func(tc *v1alpha1.TidbCluster) {
+						// hack ID to mock error during scale one
+						store := tc.Status.TiFlash.TombstoneStores["13"]
+						store.ID = "13"
+						tc.Status.TiFlash.TombstoneStores["13"] = store
+					},
+					replicas:    3,
+					deleteSlots: sets.NewInt32(),
+				},
+			},
+		}, {
+			name:           "scale first error without deleteSlots enable asts",
+			enableAsts:     true,
+			oldDeleteSlots: sets.NewInt32(),
+			newDeleteSlots: sets.NewInt32(),
+			ops: []scaleOp{
+				{
+					preHandler: func(tc *v1alpha1.TidbCluster) {
+						// hack ID to mock error during scale one
+						store := tc.Status.TiFlash.TombstoneStores["1"]
+						store.ID = "not integer"
+						tc.Status.TiFlash.TombstoneStores["1"] = store
+					},
+					replicas:    4,
+					deleteSlots: sets.NewInt32(),
+				}, {
+					preHandler: func(tc *v1alpha1.TidbCluster) {
+						// hack ID to mock error during scale one
+						store := tc.Status.TiFlash.TombstoneStores["1"]
+						store.ID = "1"
+						tc.Status.TiFlash.TombstoneStores["1"] = store
+					},
+					replicas:    3,
+					deleteSlots: sets.NewInt32(),
+				},
+			},
+		}, {
+			name:           "scale second error with deleteSlots enable asts",
+			enableAsts:     true,
+			oldDeleteSlots: sets.NewInt32(),
+			newDeleteSlots: sets.NewInt32(3, 2),
+			ops: []scaleOp{
+				{
+					preHandler: func(tc *v1alpha1.TidbCluster) {
+						// hack ID to mock error during scale one
+						store := tc.Status.TiFlash.TombstoneStores["12"]
+						store.ID = "not integer"
+						tc.Status.TiFlash.TombstoneStores["12"] = store
+					},
+					replicas:    4,
+					deleteSlots: sets.NewInt32(3),
+				}, {
+					preHandler: func(tc *v1alpha1.TidbCluster) {
+						// hack ID to mock error during scale one
+						store := tc.Status.TiFlash.TombstoneStores["12"]
+						store.ID = "13"
+						tc.Status.TiFlash.TombstoneStores["12"] = store
+					},
+					replicas:    3,
+					deleteSlots: sets.NewInt32(3, 2),
+				},
+			},
+		}, {
+			name:           "scale first error with deleteSlots enable asts",
+			enableAsts:     true,
+			oldDeleteSlots: sets.NewInt32(),
+			newDeleteSlots: sets.NewInt32(3, 2),
+			ops: []scaleOp{
+				{
+					preHandler: func(tc *v1alpha1.TidbCluster) {
+						// hack ID to mock error during scale one
+						store := tc.Status.TiFlash.TombstoneStores["13"]
+						store.ID = "not integer"
+						tc.Status.TiFlash.TombstoneStores["13"] = store
+					},
+					replicas:    4,
+					deleteSlots: sets.NewInt32(2),
+				}, {
+					preHandler: func(tc *v1alpha1.TidbCluster) {
+						// hack ID to mock error during scale one
+						store := tc.Status.TiFlash.TombstoneStores["13"]
+						store.ID = "13"
+						tc.Status.TiFlash.TombstoneStores["13"] = store
+					},
+					replicas:    3,
+					deleteSlots: sets.NewInt32(3, 2),
+				},
+			},
+		}, {
+			name:           "scale with redundant deleteSlots endable asts",
+			enableAsts:     true,
+			oldDeleteSlots: sets.NewInt32(),
+			newDeleteSlots: sets.NewInt32(2, 5),
+			ops: []scaleOp{
+				{
+					replicas:    3,
+					deleteSlots: sets.NewInt32(2, 5),
+				},
+			},
+		}, {
+			name:           "scale second error with redundant deleteSlots endable asts",
+			enableAsts:     true,
+			oldDeleteSlots: sets.NewInt32(),
+			newDeleteSlots: sets.NewInt32(2, 5),
+			ops: []scaleOp{
+				{
+					preHandler: func(tc *v1alpha1.TidbCluster) {
+						// hack ID to mock error during scale one
+						store := tc.Status.TiFlash.TombstoneStores["12"]
+						store.ID = "not integer"
+						tc.Status.TiFlash.TombstoneStores["12"] = store
+					},
+					replicas:    4,
+					deleteSlots: sets.NewInt32(5),
+				}, {
+					preHandler: func(tc *v1alpha1.TidbCluster) {
+						// hack ID to mock error during scale one
+						store := tc.Status.TiFlash.TombstoneStores["12"]
+						store.ID = "12"
+						tc.Status.TiFlash.TombstoneStores["12"] = store
+					},
+					replicas:    3,
+					deleteSlots: sets.NewInt32(2, 5),
+				},
+			},
+		}, {
+			name:           "scale first error with deleteSlots enable asts",
+			enableAsts:     true,
+			oldDeleteSlots: sets.NewInt32(),
+			newDeleteSlots: sets.NewInt32(2, 5),
+			ops: []scaleOp{
+				{
+					preHandler: func(tc *v1alpha1.TidbCluster) {
+						// hack ID to mock error during scale one
+						store := tc.Status.TiFlash.TombstoneStores["1"]
+						store.ID = "not integer"
+						tc.Status.TiFlash.TombstoneStores["1"] = store
+					},
+					replicas:    4,
+					deleteSlots: sets.NewInt32(2, 5),
+				}, {
+					preHandler: func(tc *v1alpha1.TidbCluster) {
+						// hack ID to mock error during scale one
+						store := tc.Status.TiFlash.TombstoneStores["1"]
+						store.ID = "1"
+						tc.Status.TiFlash.TombstoneStores["1"] = store
+					},
+					replicas:    3,
+					deleteSlots: sets.NewInt32(2, 5),
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -1128,6 +1370,36 @@ func notReadyTiFlashPodFunc(pod *corev1.Pod) {
 		{
 			Type:   corev1.PodReady,
 			Status: corev1.ConditionFalse,
+		},
+	}
+}
+
+func allTombstonesTiFlashStoreFun(tc *v1alpha1.TidbCluster) {
+	tc.Status.TiFlash.TombstoneStores = map[string]v1alpha1.TiKVStore{
+		"1": {
+			ID:      "1",
+			PodName: ordinalPodName(v1alpha1.TiFlashMemberType, tc.GetName(), 4),
+			State:   v1alpha1.TiKVStateTombstone,
+		},
+		"10": {
+			ID:      "10",
+			PodName: ordinalPodName(v1alpha1.TiFlashMemberType, tc.GetName(), 0),
+			State:   v1alpha1.TiKVStateTombstone,
+		},
+		"11": {
+			ID:      "11",
+			PodName: ordinalPodName(v1alpha1.TiFlashMemberType, tc.GetName(), 1),
+			State:   v1alpha1.TiKVStateTombstone,
+		},
+		"12": {
+			ID:      "12",
+			PodName: ordinalPodName(v1alpha1.TiFlashMemberType, tc.GetName(), 2),
+			State:   v1alpha1.TiKVStateTombstone,
+		},
+		"13": {
+			ID:      "13",
+			PodName: ordinalPodName(v1alpha1.TiFlashMemberType, tc.GetName(), 3),
+			State:   v1alpha1.TiKVStateTombstone,
 		},
 	}
 }

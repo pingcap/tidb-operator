@@ -66,7 +66,6 @@ func (s *tikvScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newS
 		scaleOutParallelism = int(*tc.Spec.TiKV.ScaleOutParallelism)
 	}
 	_, ordinals, replicas, deleteSlots := scaleMulti(oldSet, newSet, scaleOutParallelism)
-	resetReplicas(newSet, oldSet)
 	klog.Infof("scaling out tikv statefulset %s/%s, ordinal: %v (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinals, replicas, deleteSlots.List())
 
 	scaleOutOne := func(ordinal int32) error {
@@ -85,8 +84,9 @@ func (s *tikvScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newS
 	}
 
 	var (
-		errs             []error
-		finishedOrdinals = sets.NewInt32()
+		errs                         []error
+		finishedOrdinals             = sets.NewInt32()
+		updateReplicasAndDeleteSlots bool
 	)
 	for _, ordinal := range ordinals {
 		err := scaleOutOne(ordinal)
@@ -94,9 +94,14 @@ func (s *tikvScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newS
 			errs = append(errs, err)
 		} else {
 			finishedOrdinals.Insert(ordinal)
+			updateReplicasAndDeleteSlots = true
 		}
 	}
-	setReplicasAndDeleteSlotsByFinished(1, newSet, oldSet, ordinals, finishedOrdinals)
+	if updateReplicasAndDeleteSlots {
+		setReplicasAndDeleteSlotsByFinished(1, newSet, oldSet, ordinals, finishedOrdinals)
+	} else {
+		resetReplicas(newSet, oldSet)
+	}
 	return errorutils.NewAggregate(errs)
 }
 
@@ -115,7 +120,6 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 	}
 
 	_, ordinals, replicas, deleteSlots := scaleMulti(oldSet, newSet, scaleInParallelism)
-	resetReplicas(newSet, oldSet)
 
 	klog.Infof("scaling in tikv statefulset %s/%s, ordinals: %v (replicas: %d, delete slots: %v), scaleInParallelism: %v", oldSet.Namespace, oldSet.Name, ordinals, replicas, deleteSlots.List(), scaleInParallelism)
 
@@ -239,8 +243,9 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 	}
 
 	var (
-		errs             []error
-		finishedOrdinals = sets.NewInt32()
+		errs                         []error
+		finishedOrdinals             = sets.NewInt32()
+		updateReplicasAndDeleteSlots bool
 	)
 	for _, ordinal := range ordinals {
 		finished, err := scaleInOne(ordinal)
@@ -248,10 +253,15 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 			errs = append(errs, err)
 		} else {
 			finishedOrdinals.Insert(ordinal)
+			updateReplicasAndDeleteSlots = true
 		}
 	}
 
-	setReplicasAndDeleteSlotsByFinished(-1, newSet, oldSet, ordinals, finishedOrdinals)
+	if updateReplicasAndDeleteSlots {
+		setReplicasAndDeleteSlotsByFinished(-1, newSet, oldSet, ordinals, finishedOrdinals)
+	} else {
+		resetReplicas(newSet, oldSet)
+	}
 	return errorutils.NewAggregate(errs)
 }
 
