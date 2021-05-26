@@ -181,6 +181,10 @@ curl -O https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/
 
 Refer to [configure the TiDB cluster](configure-a-tidb-cluster.md) to further customize and configure the CR before applying.
 
+> **Note:**
+>
+> By default, the configuration in `tidb-cluster.yaml` sets up the LoadBalancer for TiDB with the "internal" scheme. This means that the LoadBalancer is only accessible within the VPC, not externally. To access TiDB over the MySQL protocol, you need to use a bastion host or use `kubectl port-forward`. If you want to expose TiDB over the internet and if you are aware of the risks of doing this, you can change the scheme for the LoadBalancer from "internal" to "internet-facing" in the `tidb-cluster.yaml` file.
+
 To deploy the `TidbCluster` and `TidbMonitor` CR in the EKS cluster, run the following command:
 
 {{< copyable "shell-regular" >}}
@@ -301,7 +305,7 @@ After the bastion host is created, you can connect to the bastion host via SSH a
 > * [The default authentication plugin of MySQL 8.0](https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_default_authentication_plugin) is updated from `mysql_native_password` to `caching_sha2_password`. Therefore, if you use MySQL client from MySQL 8.0 to access the TiDB service (cluster version < v4.0.7), and if the user account has a password, you need to explicitly specify the `--default-auth=mysql_native_password` parameter.
 > * By default, TiDB (starting from v4.0.2) periodically shares usage details with PingCAP to help understand how to improve the product. For details about what is shared and how to disable the sharing, see [Telemetry](https://docs.pingcap.com/tidb/stable/telemetry).
 
-### Access the Grafana monitoring dashboard
+## Access the Grafana monitoring dashboard
 
 Obtain the LoadBalancer domain name of Grafana:
 
@@ -326,6 +330,10 @@ You can access the `${grafana-lb}:3000` address using your web browser to view m
 > **Note:**
 >
 > The default Grafana username and password are both `admin`.
+
+## Access the TiDB Dashboard
+
+See [Access TiDB Dashboard](access-dashboard.md) for instructions about how to securely allow access to the TiDB Dashboard.
 
 ## Upgrade
 
