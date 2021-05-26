@@ -685,7 +685,6 @@ func (m *MonitorManager) syncAssetSecret(monitor *v1alpha1.TidbMonitor, store *S
 		klog.Errorf("Fail to sync tm[%s/%s]'s secret assets, err: %v", ns, name, err)
 		return err
 	}
-
 	return nil
 }
 
