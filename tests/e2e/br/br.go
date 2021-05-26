@@ -164,8 +164,6 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			ginkgo.By("Forward restore TiDB cluster service")
 			restoreHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(restoreClusterName), 4000)
 			framework.ExpectNoError(err)
-			err = initDatabase(restoreHost, dbName)
-			framework.ExpectNoError(err)
 
 			ginkgo.By("Validate restore result")
 			restoreDSN := getDefaultDSN(restoreHost, dbName)
