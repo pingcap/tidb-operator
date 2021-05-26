@@ -66,10 +66,6 @@ All the TiDB Operator documentation is maintained in the [docs-tidb-operator rep
 - [English](https://www.pingcap.com/blog/)
 - [简体中文](https://pingcap.com/blog-cn/)
 
-## TiDB Monthly
-
-[TiDB Monthly](https://pingcap.com/weekly/)
-
 ## Community
 
 Feel free to reach out if you have any questions. The maintainers of this project are reachable via:
