@@ -480,7 +480,7 @@ func RenderPrometheusConfig(model *MonitorConfigModel) (string, error) {
 }
 
 func generateAddressShardingRelabelingRules(relabelings []*config.RelabelConfig, shards uint64) []*config.RelabelConfig {
-	shardsPattern, err := config.NewRegexp("$(SHARD)")
+	shardsPattern, err := config.NewRegexp("$SHARD")
 	if err != nil {
 		klog.Error("generate shardsPattern err", err)
 		return relabelings

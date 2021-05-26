@@ -416,7 +416,7 @@ func getMonitorDMInitContainer(monitor *v1alpha1.TidbMonitor, dc *v1alpha1.DMClu
 }
 
 func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster, shard int32) core.Container {
-	commands := []string{"sed 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g';s/$SHARD/'\"$SHARD\"'/g' /etc/prometheus/config/prometheus.yml > /etc/prometheus/config_out/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/etc/prometheus/config_out/prometheus.yml --storage.tsdb.path=/data/prometheus " + fmt.Sprintf("--storage.tsdb.retention=%dd", monitor.Spec.Prometheus.ReserveDays)}
+	commands := []string{"sed 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g;s/$SHARD/'\"$SHARD\"'/g' /etc/prometheus/config/prometheus.yml > /etc/prometheus/config_out/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/etc/prometheus/config_out/prometheus.yml --storage.tsdb.path=/data/prometheus " + fmt.Sprintf("--storage.tsdb.retention=%dd", monitor.Spec.Prometheus.ReserveDays)}
 	c := core.Container{
 		Name:      "prometheus",
 		Image:     fmt.Sprintf("%s:%s", monitor.Spec.Prometheus.BaseImage, monitor.Spec.Prometheus.Version),
@@ -779,150 +779,162 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 	reloaderPortName := "tcp-reloader"
 	prometheusPortName := "http-prometheus"
 	grafanaPortName := "http-grafana"
-
-	// currently monitor label haven't managedBy label due to 1.0 historical problem.
-	// In order to be compatible with 1.0 release monitor, we have removed managedBy label for now.
-	// We would add managedBy label key during released 1.2 version
-	selector := map[string]string{
-		label.InstanceLabelKey:  monitor.Name,
-		label.NameLabelKey:      "tidb-cluster",
-		label.ComponentLabelKey: label.TiDBMonitorVal,
+	shards := int32(1)
+	if monitor.Spec.Shards != nil && *monitor.Spec.Shards > 1 {
+		shards = *monitor.Spec.Shards
 	}
 
-	if monitor.BaseReloaderSpec().PortName() != nil {
-		reloaderPortName = *monitor.BaseReloaderSpec().PortName()
-	}
-	if monitor.BasePrometheusSpec().PortName() != nil {
-		prometheusPortName = *monitor.BasePrometheusSpec().PortName()
-	}
-	if monitor.BaseGrafanaSpec() != nil && monitor.BaseGrafanaSpec().PortName() != nil {
-		grafanaPortName = *monitor.BaseGrafanaSpec().PortName()
-	}
-
-	prometheusName := prometheusName(monitor)
-	monitorLabel := label.NewMonitor().Instance(monitor.Name).Monitor()
-	promeLabel := monitorLabel.Copy().UsedBy("prometheus")
-	grafanaLabel := monitorLabel.Copy().UsedBy("grafana")
-	prometheusService := &core.Service{
-		ObjectMeta: meta.ObjectMeta{
-			Name:            prometheusName,
-			Namespace:       monitor.Namespace,
-			Labels:          promeLabel.Labels(),
-			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
-			Annotations:     monitor.Spec.Prometheus.Service.Annotations,
-		},
-		Spec: core.ServiceSpec{
-			Ports: []core.ServicePort{
-				{
-					Name:       prometheusPortName,
-					Port:       9090,
-					Protocol:   core.ProtocolTCP,
-					TargetPort: intstr.FromInt(9090),
-				},
-			},
-			Type:     monitor.Spec.Prometheus.Service.Type,
-			Selector: selector,
-		},
-	}
-	if monitor.BasePrometheusSpec().ServiceType() == core.ServiceTypeLoadBalancer {
-		if monitor.Spec.Prometheus.Service.LoadBalancerIP != nil {
-			prometheusService.Spec.LoadBalancerIP = *monitor.Spec.Prometheus.Service.LoadBalancerIP
+	for shard := int32(0); shard < shards; shard++ {
+		// currently monitor label haven't managedBy label due to 1.0 historical problem.
+		// In order to be compatible with 1.0 release monitor, we have removed managedBy label for now.
+		// We would add managedBy label key during released 1.2 version
+		var instanceName string
+		if shard == 0 {
+			instanceName = monitor.Name
+		} else {
+			instanceName = fmt.Sprintf("%s-shards-%d", monitor.Name, shard)
 		}
-		if monitor.Spec.Prometheus.Service.LoadBalancerSourceRanges != nil {
-			prometheusService.Spec.LoadBalancerSourceRanges = monitor.Spec.Prometheus.Service.LoadBalancerSourceRanges
+		selector := map[string]string{
+			label.InstanceLabelKey:  instanceName,
+			label.NameLabelKey:      "tidb-cluster",
+			label.ComponentLabelKey: label.TiDBMonitorVal,
 		}
-	}
 
-	if monitor.Spec.Thanos != nil {
-		prometheusService.Spec.Ports = append(prometheusService.Spec.Ports, core.ServicePort{
-			Name:       "thanos-grpc",
-			Protocol:   core.ProtocolTCP,
-			Port:       10901,
-			TargetPort: intstr.FromInt(10901),
-		}, core.ServicePort{
-			Name:       "thanos-http",
-			Protocol:   core.ProtocolTCP,
-			Port:       10902,
-			TargetPort: intstr.FromInt(10902),
-		})
-	}
-	reloaderName := reloaderName(monitor)
-	reloaderService := &core.Service{
-		ObjectMeta: meta.ObjectMeta{
-			Name:            reloaderName,
-			Namespace:       monitor.Namespace,
-			Labels:          buildTidbMonitorLabel(monitor.Name),
-			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
-			Annotations:     monitor.Spec.Prometheus.Service.Annotations,
-		},
-		Spec: core.ServiceSpec{
-			Ports: []core.ServicePort{
-				{
-					Name:       reloaderPortName,
-					Port:       9089,
-					Protocol:   core.ProtocolTCP,
-					TargetPort: intstr.FromInt(9089),
-				},
-			},
-			Type:     monitor.Spec.Reloader.Service.Type,
-			Selector: selector,
-		},
-	}
-
-	if monitor.BaseReloaderSpec().ServiceType() == core.ServiceTypeLoadBalancer {
-		if monitor.Spec.Reloader.Service.LoadBalancerIP != nil {
-			reloaderService.Spec.LoadBalancerIP = *monitor.Spec.Reloader.Service.LoadBalancerIP
+		if monitor.BaseReloaderSpec().PortName() != nil {
+			reloaderPortName = *monitor.BaseReloaderSpec().PortName()
 		}
-		if monitor.Spec.Reloader.Service.LoadBalancerSourceRanges != nil {
-			reloaderService.Spec.LoadBalancerSourceRanges = monitor.Spec.Reloader.Service.LoadBalancerSourceRanges
+		if monitor.BasePrometheusSpec().PortName() != nil {
+			prometheusPortName = *monitor.BasePrometheusSpec().PortName()
 		}
-	}
+		if monitor.BaseGrafanaSpec() != nil && monitor.BaseGrafanaSpec().PortName() != nil {
+			grafanaPortName = *monitor.BaseGrafanaSpec().PortName()
+		}
 
-	services = append(services, prometheusService, reloaderService)
-	if monitor.Spec.Grafana != nil {
-		grafanaService := &core.Service{
+		prometheusName := prometheusName(monitor,shard)
+		monitorLabel := label.NewMonitor().Instance(monitor.Name).Monitor()
+		promeLabel := monitorLabel.Copy().UsedBy("prometheus")
+		grafanaLabel := monitorLabel.Copy().UsedBy("grafana")
+		prometheusService := &core.Service{
 			ObjectMeta: meta.ObjectMeta{
-				Name:            grafanaName(monitor),
+				Name:            prometheusName,
 				Namespace:       monitor.Namespace,
-				Labels:          grafanaLabel.Labels(),
+				Labels:          promeLabel.Labels(),
 				OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
-				Annotations:     monitor.Spec.Grafana.Service.Annotations,
+				Annotations:     monitor.Spec.Prometheus.Service.Annotations,
 			},
 			Spec: core.ServiceSpec{
 				Ports: []core.ServicePort{
 					{
-						Name:       grafanaPortName,
-						Port:       3000,
+						Name:       prometheusPortName,
+						Port:       9090,
 						Protocol:   core.ProtocolTCP,
-						TargetPort: intstr.FromInt(3000),
+						TargetPort: intstr.FromInt(9090),
 					},
 				},
-				Type:     monitor.Spec.Grafana.Service.Type,
+				Type:     monitor.Spec.Prometheus.Service.Type,
+				Selector: selector,
+			},
+		}
+		if monitor.BasePrometheusSpec().ServiceType() == core.ServiceTypeLoadBalancer {
+			if monitor.Spec.Prometheus.Service.LoadBalancerIP != nil {
+				prometheusService.Spec.LoadBalancerIP = *monitor.Spec.Prometheus.Service.LoadBalancerIP
+			}
+			if monitor.Spec.Prometheus.Service.LoadBalancerSourceRanges != nil {
+				prometheusService.Spec.LoadBalancerSourceRanges = monitor.Spec.Prometheus.Service.LoadBalancerSourceRanges
+			}
+		}
+
+		if monitor.Spec.Thanos != nil {
+			prometheusService.Spec.Ports = append(prometheusService.Spec.Ports, core.ServicePort{
+				Name:       "thanos-grpc",
+				Protocol:   core.ProtocolTCP,
+				Port:       10901,
+				TargetPort: intstr.FromInt(10901),
+			}, core.ServicePort{
+				Name:       "thanos-http",
+				Protocol:   core.ProtocolTCP,
+				Port:       10902,
+				TargetPort: intstr.FromInt(10902),
+			})
+		}
+		reloaderName := reloaderName(monitor,shard)
+		reloaderService := &core.Service{
+			ObjectMeta: meta.ObjectMeta{
+				Name:            reloaderName,
+				Namespace:       monitor.Namespace,
+				Labels:          buildTidbMonitorLabel(monitor.Name),
+				OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
+				Annotations:     monitor.Spec.Prometheus.Service.Annotations,
+			},
+			Spec: core.ServiceSpec{
+				Ports: []core.ServicePort{
+					{
+						Name:       reloaderPortName,
+						Port:       9089,
+						Protocol:   core.ProtocolTCP,
+						TargetPort: intstr.FromInt(9089),
+					},
+				},
+				Type:     monitor.Spec.Reloader.Service.Type,
 				Selector: selector,
 			},
 		}
 
-		if monitor.BaseGrafanaSpec().ServiceType() == core.ServiceTypeLoadBalancer {
-			if monitor.Spec.Grafana.Service.LoadBalancerIP != nil {
-				grafanaService.Spec.LoadBalancerIP = *monitor.Spec.Grafana.Service.LoadBalancerIP
+		if monitor.BaseReloaderSpec().ServiceType() == core.ServiceTypeLoadBalancer {
+			if monitor.Spec.Reloader.Service.LoadBalancerIP != nil {
+				reloaderService.Spec.LoadBalancerIP = *monitor.Spec.Reloader.Service.LoadBalancerIP
 			}
-			if monitor.Spec.Grafana.Service.LoadBalancerSourceRanges != nil {
-				grafanaService.Spec.LoadBalancerSourceRanges = monitor.Spec.Grafana.Service.LoadBalancerSourceRanges
+			if monitor.Spec.Reloader.Service.LoadBalancerSourceRanges != nil {
+				reloaderService.Spec.LoadBalancerSourceRanges = monitor.Spec.Reloader.Service.LoadBalancerSourceRanges
 			}
 		}
 
-		services = append(services, grafanaService)
+		services = append(services, prometheusService, reloaderService)
+		if monitor.Spec.Grafana != nil {
+			grafanaService := &core.Service{
+				ObjectMeta: meta.ObjectMeta{
+					Name:            grafanaName(monitor,shard),
+					Namespace:       monitor.Namespace,
+					Labels:          grafanaLabel.Labels(),
+					OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
+					Annotations:     monitor.Spec.Grafana.Service.Annotations,
+				},
+				Spec: core.ServiceSpec{
+					Ports: []core.ServicePort{
+						{
+							Name:       grafanaPortName,
+							Port:       3000,
+							Protocol:   core.ProtocolTCP,
+							TargetPort: intstr.FromInt(3000),
+						},
+					},
+					Type:     monitor.Spec.Grafana.Service.Type,
+					Selector: selector,
+				},
+			}
+
+			if monitor.BaseGrafanaSpec().ServiceType() == core.ServiceTypeLoadBalancer {
+				if monitor.Spec.Grafana.Service.LoadBalancerIP != nil {
+					grafanaService.Spec.LoadBalancerIP = *monitor.Spec.Grafana.Service.LoadBalancerIP
+				}
+				if monitor.Spec.Grafana.Service.LoadBalancerSourceRanges != nil {
+					grafanaService.Spec.LoadBalancerSourceRanges = monitor.Spec.Grafana.Service.LoadBalancerSourceRanges
+				}
+			}
+
+			services = append(services, grafanaService)
+		}
 	}
 
 	return services
 }
 
-func getPrometheusIngress(monitor *v1alpha1.TidbMonitor) *extensionsv1beta1.Ingress {
-	return getIngress(monitor, monitor.Spec.Prometheus.Ingress, prometheusName(monitor), 9090)
+func getPrometheusIngress(monitor *v1alpha1.TidbMonitor,shard int32) *extensionsv1beta1.Ingress {
+	return getIngress(monitor, monitor.Spec.Prometheus.Ingress, prometheusName(monitor,shard), 9090)
 }
 
-func getGrafanaIngress(monitor *v1alpha1.TidbMonitor) *extensionsv1beta1.Ingress {
-	return getIngress(monitor, monitor.Spec.Grafana.Ingress, grafanaName(monitor), 3000)
+func getGrafanaIngress(monitor *v1alpha1.TidbMonitor,shard int32) *extensionsv1beta1.Ingress {
+	return getIngress(monitor, monitor.Spec.Grafana.Ingress, grafanaName(monitor,shard), 3000)
 }
 
 func getIngress(monitor *v1alpha1.TidbMonitor, ingressSpec *v1alpha1.IngressSpec, svcName string, port int) *extensionsv1beta1.Ingress {
@@ -965,16 +977,28 @@ func getIngress(monitor *v1alpha1.TidbMonitor, ingressSpec *v1alpha1.IngressSpec
 	return ingress
 }
 
-func prometheusName(monitor *v1alpha1.TidbMonitor) string {
-	return fmt.Sprintf("%s-prometheus", monitor.Name)
+func prometheusName(monitor *v1alpha1.TidbMonitor,shard int32) string {
+	base := fmt.Sprintf("%s-prometheus", monitor.Name)
+	if shard == 0 {
+		return base
+	}
+	return fmt.Sprintf("%s-prometheus-shards-%d", monitor.Name,shard)
 }
 
-func grafanaName(monitor *v1alpha1.TidbMonitor) string {
-	return fmt.Sprintf("%s-grafana", monitor.Name)
+func grafanaName(monitor *v1alpha1.TidbMonitor,shard int32) string {
+	base := fmt.Sprintf("%s-grafana", monitor.Name)
+	if shard == 0 {
+		return base
+	}
+	return fmt.Sprintf("%s-grafana-shards-%d", monitor.Name,shard)
 }
 
-func reloaderName(monitor *v1alpha1.TidbMonitor) string {
-	return fmt.Sprintf("%s-monitor-reloader", monitor.Name)
+func reloaderName(monitor *v1alpha1.TidbMonitor,shard int32) string {
+	base := fmt.Sprintf("%s-monitor-reloader", monitor.Name)
+	if shard == 0 {
+		return base
+	}
+	return fmt.Sprintf("%s-monitor-reloader-shards-%d", monitor.Name,shard)
 }
 
 func defaultTidbMonitor(monitor *v1alpha1.TidbMonitor) {
@@ -1044,11 +1068,17 @@ func getMonitorStatefulSetSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.Ti
 		replicas = *monitor.Spec.Replicas
 	}
 	name := GetMonitorShardName(monitor, shard)
+	var instanceName string
+	if shard == 0 {
+		instanceName = monitor.Name
+	} else {
+		instanceName = fmt.Sprintf("%s-shards-%d", monitor.Name, shard)
+	}
 	statefulset := &apps.StatefulSet{
 		ObjectMeta: meta.ObjectMeta{
 			Name:            name,
 			Namespace:       monitor.Namespace,
-			Labels:          buildTidbMonitorLabel(monitor.Name),
+			Labels:          buildTidbMonitorLabel(instanceName),
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 			Annotations:     member.CopyAnnotations(monitor.Spec.Annotations),
 		},
@@ -1059,11 +1089,11 @@ func getMonitorStatefulSetSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.Ti
 				Type: apps.RollingUpdateStatefulSetStrategyType,
 			},
 			Selector: &meta.LabelSelector{
-				MatchLabels: buildTidbMonitorLabel(monitor.Name),
+				MatchLabels: buildTidbMonitorLabel(instanceName),
 			},
 			Template: core.PodTemplateSpec{
 				ObjectMeta: meta.ObjectMeta{
-					Labels:      buildTidbMonitorLabel(monitor.Name),
+					Labels:      buildTidbMonitorLabel(instanceName),
 					Annotations: member.CopyAnnotations(monitor.Spec.Annotations),
 				},
 

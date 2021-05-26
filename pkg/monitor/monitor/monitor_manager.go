@@ -460,22 +460,32 @@ func (m *MonitorManager) syncIngress(monitor *v1alpha1.TidbMonitor) error {
 }
 
 func (m *MonitorManager) syncPrometheusIngress(monitor *v1alpha1.TidbMonitor) error {
-	if monitor.Spec.Prometheus.Ingress == nil {
-		return m.removeIngressIfExist(monitor, prometheusName(monitor))
-	}
 
-	ingress := getPrometheusIngress(monitor)
-	_, err := m.deps.TypedControl.CreateOrUpdateIngress(monitor, ingress)
-	return err
+
+	for shard := int32(0); shard < monitor.GetShards(); shard++ {
+
+		if monitor.Spec.Prometheus.Ingress == nil {
+			return m.removeIngressIfExist(monitor, prometheusName(monitor,shard))
+		}
+
+		ingress := getPrometheusIngress(monitor,shard)
+		_, err := m.deps.TypedControl.CreateOrUpdateIngress(monitor, ingress)
+		return err
+	}
+	return nil
 }
 
 func (m *MonitorManager) syncGrafanaIngress(monitor *v1alpha1.TidbMonitor) error {
-	if monitor.Spec.Grafana == nil || monitor.Spec.Grafana.Ingress == nil {
-		return m.removeIngressIfExist(monitor, grafanaName(monitor))
+
+	for shard := int32(0); shard < monitor.GetShards(); shard++ {
+		if monitor.Spec.Grafana == nil || monitor.Spec.Grafana.Ingress == nil {
+			return m.removeIngressIfExist(monitor, grafanaName(monitor,shard))
+		}
+		ingress := getGrafanaIngress(monitor,shard)
+		_, err := m.deps.TypedControl.CreateOrUpdateIngress(monitor, ingress)
+		return err
 	}
-	ingress := getGrafanaIngress(monitor)
-	_, err := m.deps.TypedControl.CreateOrUpdateIngress(monitor, ingress)
-	return err
+	return nil
 }
 
 // removeIngressIfExist removes Ingress if it exists

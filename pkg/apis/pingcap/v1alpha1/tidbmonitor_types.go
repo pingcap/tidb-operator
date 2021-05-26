@@ -418,3 +418,11 @@ type QueueConfig struct {
 	MinBackoff time.Duration `json:"minBackoff,omitempty"`
 	MaxBackoff time.Duration `json:"maxBackoff,omitempty"`
 }
+
+func (tm *TidbMonitor) GetShards() int32 {
+	shards := int32(1)
+	if tm.Spec.Shards != nil && *tm.Spec.Shards > 1 {
+		shards = *tm.Spec.Shards
+	}
+	return shards
+}
