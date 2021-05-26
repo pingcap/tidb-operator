@@ -1675,6 +1675,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		ginkgo.Context("while concurrently scale PD", func() {
 			operation := []string{"in", "out"}
 			for _, op := range operation {
+				op := op
 				ginkgo.It(op, func() {
 					ginkgo.By("Deploy initial tc")
 					tcName := fmt.Sprintf("scale-%s-pd-concurrently", op)
@@ -1738,6 +1739,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		ginkgo.Context("while concurrently scale TiKV", func() {
 			operation := []string{"in", "out"}
 			for _, op := range operation {
+				op := op
 				ginkgo.It(op, func() {
 					ginkgo.By("Deploy initial tc")
 					tcName := fmt.Sprintf("scale-%s-tikv-concurrently", op)
