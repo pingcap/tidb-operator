@@ -3602,46 +3602,51 @@ func (oa *OperatorActions) WaitForDmClusterReady(dc *v1alpha1.DMCluster, timeout
 	if dc == nil {
 		return fmt.Errorf("DmCluster is nil, cannot call WaitForDmClusterReady")
 	}
-	return wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
+	var checkErr error
+	err := wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
 		var (
 			local *v1alpha1.DMCluster
 			err   error
 		)
 		if local, err = oa.cli.PingcapV1alpha1().DMClusters(dc.Namespace).Get(dc.Name, metav1.GetOptions{}); err != nil {
-			log.Logf("failed to get DmCluster: %s/%s, %v", dc.Namespace, dc.Name, err)
+			checkErr = fmt.Errorf("failed to get DmCluster: %s/%s, %v", dc.Namespace, dc.Name, err)
 			return false, nil
 		}
 
 		if b := oa.dmMasterMembersReadyFn(local); !b {
-			log.Logf("dm master members are not ready for dc %q", dc.Name)
+			checkErr = fmt.Errorf("dm master members are not ready for dc %q", dc.Name)
 			return false, nil
 		}
-		log.Logf("dm master members are ready for dc %q", dc.Name)
 		if b := oa.dmWorkerMembersReadyFn(local); !b {
-			log.Logf("dm worker memebers are not ready for dc %q", dc.Name)
+			checkErr = fmt.Errorf("dm worker memebers are not ready for dc %q", dc.Name)
 			return false, nil
 		}
-		log.Logf("dm worker members are ready for dc %q", dc.Name)
 
-		log.Logf("DmCluster %q is ready", dc.Name)
 		return true, nil
 	})
+	if err == wait.ErrWaitTimeout {
+		return checkErr
+	}
+	return err
 }
 
 func (oa *OperatorActions) WaitForDmClusterDeleted(ns, dcName string, timeout, pollInterval time.Duration) error {
-	return wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
+	var checkErr error
+	err := wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
 		if b := oa.dmMasterMembersDeleted(ns, dcName); !b {
-			log.Logf("dm master members are not deleted for dc %q", dcName)
+			checkErr = fmt.Errorf("dm master members are not deleted for dc %q", dcName)
 			return false, nil
 		}
-		log.Logf("dm master members are deleted for dc %q", dcName)
 		if b := oa.dmWorkerMembersDeleted(ns, dcName); !b {
-			log.Logf("dm worker members are not deleted for dc %q", dcName)
+			checkErr = fmt.Errorf("dm worker members are not deleted for dc %q", dcName)
 			return false, nil
 		}
-		log.Logf("dm worker members are deleted for dc %q", dcName)
 		return true, nil
 	})
+	if err == wait.ErrWaitTimeout {
+		return checkErr
+	}
+	return err
 }
 
 var dummyCancel = func() {}
