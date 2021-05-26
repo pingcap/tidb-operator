@@ -185,7 +185,7 @@ var (
 	DMSources = []string{`
 source-id: "replica-01"
 enable-gtid: true
-enable-relay: true
+relay-dir: /var/lib/dm-worker/relay
 
 from:
   host: "dm-mysql-0.dm-mysql.dm-mysql"
@@ -195,7 +195,7 @@ from:
 `, `
 source-id: "replica-02"
 enable-gtid: true
-enable-relay: true
+relay-dir: /var/lib/dm-worker/relay
 
 from:
   host: "dm-mysql-1.dm-mysql.dm-mysql"
@@ -219,10 +219,15 @@ mysql-instances:
   -
     source-id: "replica-01"
     block-allow-list: "instance"
+    loader-config-name: "global"
 
 block-allow-list:
   instance:
     do-dbs: ["%s"] # replace this with the real database name.
+
+loaders:
+  global:
+    dir: "/var/lib/dm-worker/dumped_data"
 `
 
 	DMShardTask = `
@@ -241,13 +246,19 @@ mysql-instances:
   -
     source-id: "replica-01"
     block-allow-list: "instance"
+    loader-config-name: "global"
   -
     source-id: "replica-02"
     block-allow-list: "instance"
+    loader-config-name: "global"
 
 block-allow-list:
   instance:
     do-dbs: ["%s"] # replace this with the real database name.
+
+loaders:
+  global:
+    dir: "/var/lib/dm-worker/dumped_data"
 `
 
 	// table names in every database.

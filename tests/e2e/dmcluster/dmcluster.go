@@ -17,12 +17,14 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"strings"
 	"time"
 
 	"github.com/onsi/ginkgo"
 	astsHelper "github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
+	corev1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -137,18 +139,52 @@ var _ = ginkgo.Describe("DMCluster", func() {
 	})
 
 	ginkgo.Context("[Feature:DM]", func() {
-		ginkgo.It("setup replication for DM", func() {
+		ginkgo.It("basic feature for DM", func() {
 			ginkgo.By("Deploy a basic dc")
 			dcName = "basic-dm"
+			userID := int64(1000)
+			groupID := int64(2000)
 			dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2)
 			dc.Spec.Master.Replicas = 1
 			dc.Spec.Worker.Replicas = 1 // current versions of DM can always bind the first source to this only DM-worker instance.
+			dc.Spec.PodSecurityContext = &corev1.PodSecurityContext{
+				RunAsUser:  &userID,
+				RunAsGroup: &groupID,
+				FSGroup:    &groupID,
+			}
 			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(dc)
 			framework.ExpectNoError(err, "failed to create DmCluster: %q", dcName)
 			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
 
+			ginkgo.By("Check security context for DmCluster")
+			podList, err := c.CoreV1().Pods(ns).List(metav1.ListOptions{})
+			framework.ExpectNoError(err, "failed to list pods for DmCluster %q", dcName)
+			for _, pod := range podList.Items {
+				framework.ExpectNotEqual(pod.Spec.SecurityContext, nil, "security context should not be nil")
+				framework.ExpectEqual(pod.Spec.SecurityContext.RunAsUser, &userID, "runAsUser should be %d", userID)
+				framework.ExpectEqual(pod.Spec.SecurityContext.RunAsGroup, &groupID, "runAsGroup should be %d", groupID)
+				framework.ExpectEqual(pod.Spec.SecurityContext.FSGroup, &groupID, "fsGroup should be %d", groupID)
+			}
+
+			ginkgo.By("Deploy TidbMonitor for DM")
+			tc, err := cli.PingcapV1alpha1().TidbClusters(tests.DMTiDBNamespace).Get(tests.DMTiDBName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get TidbCluster for DM E2E tests")
+			tm := fixture.NewTidbMonitor("monitor-dm-test", ns, tc, true, true, false)
+			fixture.UpdateTidbMonitorForDM(tm, dc)
+			_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(tm)
+			framework.ExpectNoError(err, "failed to deploy TidbMonitor for DmCluster %q", dcName)
+			framework.ExpectNoError(tests.CheckTidbMonitor(tm, cli, c, fw), "failed to check TidbMonitor for DmCluster %q", dcName)
+
 			ginkgo.By("Create MySQL sources")
 			framework.ExpectNoError(tests.CreateDMSources(fw, dc.Namespace, controller.DMMasterMemberName(dcName)), "failed to create sources for DmCluster %q", dcName)
+
+			ginkgo.By("Enable relay log")
+			podName := fmt.Sprintf("%s-0", controller.DMMasterMemberName(dcName))
+			workerName := fmt.Sprintf("%s-0", controller.DMWorkerMemberName(dcName))
+			sourceID := "replica-01"
+			_, err = framework.RunHostCmd(ns, podName,
+				fmt.Sprintf("/dmctl --master-addr=127.0.0.1:8261 start-relay -s %s %s", sourceID, workerName))
+			framework.ExpectNoError(err, "failed to enable relay log for DmCluster %q", dcName)
 
 			ginkgo.By("Generate full stage data in upstream")
 			framework.ExpectNoError(tests.GenDMFullData(fw, dc.Namespace), "failed to generate full stage data in upstream")
@@ -312,12 +348,10 @@ var _ = ginkgo.Describe("DMCluster", func() {
 				fmt.Sprintf("/dmctl --master-addr=127.0.0.1:8261 get-config source %s", sourceName))
 			framework.ExpectNoError(err, "failed to show source config for DmCluster %q: %v", dcName, err)
 			framework.ExpectEqual(strings.Contains(stdout, "enable-gtid: true"), true, "original source config doesn't contain `enable-gtid: true`")
-			framework.ExpectEqual(strings.Contains(stdout, "enable-relay: true"), true, "original source config doesn't contain `enable-relay: true`")
 
 			ginkgo.By("Update and copy source config file")
 			cfg := tests.DMSources[0]
 			cfg = strings.ReplaceAll(cfg, "enable-gtid: true", "enable-gtid: false")
-			cfg = strings.ReplaceAll(cfg, "enable-relay: true", "enable-relay: false")
 			filename := "/tmp/change-config-dmctl-source.yaml"
 			framework.ExpectNoError(ioutil.WriteFile(filename, []byte(cfg), 0o644), "failed to write updated source config file")
 			_, err = framework.RunKubectl("cp", filename, fmt.Sprintf("%s/%s:%s", ns, podName, filename))
@@ -339,7 +373,6 @@ var _ = ginkgo.Describe("DMCluster", func() {
 				fmt.Sprintf("/dmctl --master-addr=127.0.0.1:8261 get-config source %s", sourceName))
 			framework.ExpectNoError(err, "failed to show source config after updated for DmCluster %q: %v", dcName, err)
 			framework.ExpectEqual(strings.Contains(stdout, "enable-gtid: false"), true, "original source config doesn't contain `enable-gtid: false`")
-			framework.ExpectEqual(strings.Contains(stdout, "enable-relay: false"), true, "original source config doesn't contain `enable-relay: false`")
 		})
 
 		ginkgo.It("deploy DM with TLS enabled", func() {
@@ -389,6 +422,13 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			_, err = cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(dc)
 			framework.ExpectNoError(err, "failed to create DmCluster: %q", dcName)
 			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
+
+			ginkgo.By("Deploy TidbMonitor for DM")
+			tm := fixture.NewTidbMonitor("monitor-dm-test", ns, tc, true, true, false)
+			fixture.UpdateTidbMonitorForDM(tm, dc)
+			_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(tm)
+			framework.ExpectNoError(err, "failed to deploy TidbMonitor for DmCluster %q", dcName)
+			framework.ExpectNoError(tests.CheckTidbMonitor(tm, cli, c, fw), "failed to check TidbMonitor for DmCluster %q", dcName)
 
 			ginkgo.By("Create MySQL sources")
 			podName := fmt.Sprintf("%s-0", controller.DMMasterMemberName(dcName))
@@ -451,6 +491,87 @@ var _ = ginkgo.Describe("DMCluster", func() {
 
 			ginkgo.By("Check data for incremental stage")
 			framework.ExpectNoError(tests.CheckDMDataWithTLSEnabled(fw, ns, ns, ns, dcName, 1, mysqlSecret, tidbClientSecret), "failed to check incremental data")
+		})
+
+		ginkgo.It("kill pods for DM", func() {
+			ginkgo.By("Deploy a basic dc")
+			dcName := "kill-dm"
+			dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2)
+			dc.Spec.Master.Replicas = 3
+			dc.Spec.Worker.Replicas = 2
+			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(dc)
+			framework.ExpectNoError(err, "failed to create DmCluster: %q", dcName)
+			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
+
+			ginkgo.By("Create MySQL sources")
+			framework.ExpectNoError(tests.CreateDMSources(fw, dc.Namespace, controller.DMMasterMemberName(dcName)), "failed to create sources for DmCluster %q", dcName)
+
+			ginkgo.By("Generate full stage data in upstream")
+			framework.ExpectNoError(tests.GenDMFullData(fw, dc.Namespace), "failed to generate full stage data in upstream")
+
+			ginkgo.By("Start a basic migration task")
+			framework.ExpectNoError(tests.StartDMTask(fw, dc.Namespace, controller.DMMasterMemberName(dcName), tests.DMSingleTask, ""), "failed to start single source task")
+
+			ginkgo.By("Check data for full stage")
+			framework.ExpectNoError(tests.CheckDMData(fw, dc.Namespace, 1), "failed to check full data")
+
+			ginkgo.By("Random kill dm-master or dm-worker pods")
+			var podNames []string
+			for i := int32(0); i < dc.Spec.Master.Replicas; i++ {
+				podNames = append(podNames, fmt.Sprintf("%s-%d", controller.DMMasterMemberName(dcName), i))
+			}
+			for i := int32(0); i < dc.Spec.Worker.Replicas; i++ {
+				podNames = append(podNames, fmt.Sprintf("%s-%d", controller.DMWorkerMemberName(dcName), i))
+			}
+			rand.Shuffle(len(podNames), func(i, j int) {
+				podNames[i], podNames[j] = podNames[j], podNames[i]
+			})
+			checkPodHealthy := func(podName string) bool {
+				// check the killed pod become healthy again
+				if strings.HasPrefix(podName, controller.DMMasterMemberName(dcName)) {
+					masters, err := tests.GetDMMasters(fw, ns, controller.DMMasterMemberName(dcName))
+					if err != nil {
+						log.Logf("failed to get master infos for DmCluster %q: %v", dcName, err)
+						return false
+					}
+					for _, master := range masters {
+						if master.Name == podName {
+							return master.Alive
+						}
+					}
+					return false
+				} else {
+					workers, err := tests.GetDMWorkers(fw, ns, controller.DMMasterMemberName(dcName))
+					if err != nil {
+						log.Logf("failed to get worker infos for DmCluster %q: %v", dcName, err)
+						return false
+					}
+					for _, worker := range workers {
+						if worker.Name == podName {
+							return worker.Stage != "offline"
+						}
+					}
+					return false
+				}
+			}
+			for _, podName := range podNames {
+				pod, err := c.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+				framework.ExpectNoError(err, "failed to get pod %q for DmCluster %q", podName, dcName)
+				log.Logf("kill pod %s", podName)
+				framework.ExpectNoError(c.CoreV1().Pods(ns).Delete(podName, &metav1.DeleteOptions{}), "failed to kill pod %q", podName)
+				framework.ExpectNoError(utilpod.WaitForPodsAreChanged(c, []corev1.Pod{*pod}, 3*time.Minute))
+
+				err = wait.Poll(10*time.Second, 3*time.Minute, func() (done bool, err error) {
+					return checkPodHealthy(podName), nil
+				})
+				framework.ExpectNoError(err, "failed to wait for pod %q become healthy after restarted", podName)
+			}
+
+			ginkgo.By("Generate incremental stage data in upstream")
+			framework.ExpectNoError(tests.GenDMIncrData(fw, dc.Namespace), "failed to generate incremental stage data in upstream")
+
+			ginkgo.By("Check data for incremental stage")
+			framework.ExpectNoError(tests.CheckDMData(fw, dc.Namespace, 1), "failed to check incremental data")
 		})
 
 		ginkgo.It("auto failover for DM", func() {
