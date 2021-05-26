@@ -233,10 +233,7 @@ func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, dc
 		klog.Infof("Wait for the smooth migration to be done successfully for tm [%s/%s]", ns, name)
 		return nil
 	}
-	shards := int32(1)
-	if monitor.Spec.Shards != nil && *monitor.Spec.Shards > 1 {
-		shards = *monitor.Spec.Shards
-	}
+	shards := monitor.GetShards()
 	for shard := int32(0); shard < shards; shard++ {
 		newMonitorSts, err := getMonitorStatefulSet(sa, cm, secret, monitor, tc, dc, shard)
 		if err != nil {
@@ -358,10 +355,7 @@ func (m *MonitorManager) syncTidbMonitorConfig(monitor *v1alpha1.TidbMonitor) (*
 		}
 	}
 
-	shards := int32(1)
-	if monitor.Spec.Shards != nil && *monitor.Spec.Shards > 1 {
-		shards = *monitor.Spec.Shards
-	}
+	shards := monitor.GetShards()
 	newCM, err := getMonitorConfigMap(monitor, monitorClusterInfos, dmClusterInfos, shards)
 	if err != nil {
 		return nil, err
@@ -461,8 +455,8 @@ func (m *MonitorManager) syncIngress(monitor *v1alpha1.TidbMonitor) error {
 
 func (m *MonitorManager) syncPrometheusIngress(monitor *v1alpha1.TidbMonitor) error {
 
-
-	for shard := int32(0); shard < monitor.GetShards(); shard++ {
+	shards:=monitor.GetShards()
+	for shard := int32(0); shard < shards; shard++ {
 
 		if monitor.Spec.Prometheus.Ingress == nil {
 			return m.removeIngressIfExist(monitor, prometheusName(monitor,shard))
@@ -476,8 +470,8 @@ func (m *MonitorManager) syncPrometheusIngress(monitor *v1alpha1.TidbMonitor) er
 }
 
 func (m *MonitorManager) syncGrafanaIngress(monitor *v1alpha1.TidbMonitor) error {
-
-	for shard := int32(0); shard < monitor.GetShards(); shard++ {
+    shards:=monitor.GetShards()
+	for shard := int32(0); shard < shards; shard++ {
 		if monitor.Spec.Grafana == nil || monitor.Spec.Grafana.Ingress == nil {
 			return m.removeIngressIfExist(monitor, grafanaName(monitor,shard))
 		}
