@@ -226,6 +226,27 @@ func GetDMCluster(ns, name, version string) *v1alpha1.DMCluster {
 	}
 }
 
+func UpdateTidbMonitorForDM(tm *v1alpha1.TidbMonitor, dc *v1alpha1.DMCluster) {
+	imagePullPolicy := *tm.Spec.Initializer.ImagePullPolicy
+	tm.Spec.DM = &v1alpha1.DMMonitorSpec{
+		Clusters: []v1alpha1.ClusterRef{
+			{
+				Name:      dc.Name,
+				Namespace: dc.Namespace,
+			},
+		},
+		Initializer: v1alpha1.InitializerSpec{
+			MonitorContainer: v1alpha1.MonitorContainer{
+				BaseImage:            utilimage.DMMonitorInitializerImage,
+				Version:              utilimage.DMMonitorInitializerVersion,
+				ImagePullPolicy:      &imagePullPolicy,
+				ResourceRequirements: corev1.ResourceRequirements{},
+			},
+			Envs: map[string]string{},
+		},
+	}
+}
+
 func buildAffinity(name, namespace string, memberType v1alpha1.MemberType) *corev1.Affinity {
 	return &corev1.Affinity{
 		PodAntiAffinity: &corev1.PodAntiAffinity{
