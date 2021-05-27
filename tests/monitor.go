@@ -99,7 +99,7 @@ func checkTidbMonitorFunctional(monitor *v1alpha1.TidbMonitor, fw portforward.Po
 	log.Logf("tidbmonitor[%s/%s]'s prometheus is ready", monitor.Name, monitor.Namespace)
 	if monitor.Spec.Grafana != nil {
 		var grafanaClient *metrics.Client
-		if _, err := checkGrafanaDataCommon(monitor.Name, monitor.Namespace, grafanaClient, fw); err != nil {
+		if _, err := checkGrafanaDataCommon(monitor.Name, monitor.Namespace, grafanaClient, fw, monitor.Spec.DM != nil); err != nil {
 			log.Logf("ERROR: tm[%s/%s]'s grafana check error:%v", monitor.Namespace, monitor.Namespace, err)
 			return err
 		}
@@ -195,7 +195,7 @@ func checkPrometheusCommon(name, namespace string, fw portforward.PortForward) e
 }
 
 // checkGrafanaDataCommon check the Grafana working status by sending a query request
-func checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Client, fw portforward.PortForward) (*metrics.Client, error) {
+func checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Client, fw portforward.PortForward, dmMonitor bool) (*metrics.Client, error) {
 	svcName := fmt.Sprintf("%s-grafana", name)
 
 	var addr string
@@ -228,7 +228,11 @@ func checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Clien
 		end := time.Now()
 		start := end.Add(-time.Minute)
 		values := url.Values{}
-		values.Set("query", "histogram_quantile(0.999, sum(rate(tidb_server_handle_query_duration_seconds_bucket[1m])) by (le))")
+		if dmMonitor {
+			values.Set("query", "sum by (worker) (dm_master_worker_state)")
+		} else {
+			values.Set("query", "histogram_quantile(0.999, sum(rate(tidb_server_handle_query_duration_seconds_bucket[1m])) by (le))")
+		}
 		values.Set("start", fmt.Sprintf("%d", start.Unix()))
 		values.Set("end", fmt.Sprintf("%d", end.Unix()))
 		values.Set("step", "30")
