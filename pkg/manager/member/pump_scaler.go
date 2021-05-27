@@ -194,7 +194,7 @@ func (s *pumpScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 				return err
 			}
 			klog.Infof("pumpScaler.ScaleIn: send offline request to pump %s/%s successfully", ns, podName)
-			return nil
+			return controller.RequeueErrorf("Pump %s/%s is still in cluster, state: %s", ns, podName, node.State)
 		} else if node.State == "offline" {
 			klog.Infof("Pump %s/%s becomes offline", ns, podName)
 			pvcs, err := util.ResolvePVCFromPod(pod, s.deps.PVCLister)
