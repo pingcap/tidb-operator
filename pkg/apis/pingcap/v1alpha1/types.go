@@ -297,14 +297,6 @@ type TidbClusterStatus struct {
 	Conditions []TidbClusterCondition `json:"conditions,omitempty"`
 }
 
-type BinlogNodeStatus struct {
-	NodeID      string `json:"nodeId"`
-	Addr        string `json:"host"`
-	State       string `json:"state"`
-	MaxCommitTS int64  `json:"maxCommitTS"`
-	UpdateTS    int64  `json:"updateTS"`
-}
-
 // TidbClusterCondition describes the state of a tidb cluster at a certain point.
 type TidbClusterCondition struct {
 	// Type of the condition.

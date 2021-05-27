@@ -194,6 +194,7 @@ func (s *pumpScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 				return err
 			}
 			klog.Infof("pumpScaler.ScaleIn: send offline request to pump %s/%s successfully", ns, podName)
+			return nil
 		} else if node.State == "offline" {
 			klog.Infof("Pump %s/%s becomes offline", ns, podName)
 			pvcs, err := util.ResolvePVCFromPod(pod, s.deps.PVCLister)
@@ -212,7 +213,7 @@ func (s *pumpScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 		}
 	}
 
-	// When store not found in TidbCluster status, there are two possible situations:
+	// When this pump pod not found in TidbCluster status, there are two possible situations:
 	// 1. Pump has already joined cluster but status not synced yet.
 	//    In this situation return error to wait for another round for safety.
 	// 2. Pump pod is not ready, such as in pending state.

@@ -115,7 +115,7 @@ func (c *Client) IsDrainerTombstone(ctx context.Context, addr string) (bool, err
 	if err != nil {
 		return false, err
 	}
-	return c.isTombstone(ctx, "drainer", nodeID)
+	return c.isTombstone(ctx, "drainers", nodeID)
 }
 
 func (c *Client) isTombstone(ctx context.Context, ty string, nodeID string) (bool, error) {
@@ -156,7 +156,7 @@ func (c *Client) nodeID(ctx context.Context, addr, ty string) (string, error) {
 		if addr == node.Addr {
 			return node.NodeID, nil
 		}
-		addrs = append(addrs, addr)
+		addrs = append(addrs, node.Addr)
 	}
 
 	return "", errors.Errorf("%s node id for address %s not found, found address: %s", ty, addr, addrs)
