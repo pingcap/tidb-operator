@@ -159,6 +159,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		}
 
 		for _, test := range testCases {
+			test := test
 			ginkgo.It("tidb cluster should not be affected while "+test.name, func() {
 				clusterName := "test"
 				tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV5)
