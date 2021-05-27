@@ -455,7 +455,7 @@ func (m *MonitorManager) syncIngress(monitor *v1alpha1.TidbMonitor) error {
 
 func (m *MonitorManager) syncPrometheusIngress(monitor *v1alpha1.TidbMonitor) error {
 
-	shards:=monitor.GetShards()
+	shards := monitor.GetShards()
 	for shard := int32(0); shard < shards; shard++ {
 
 		if monitor.Spec.Prometheus.Ingress == nil {

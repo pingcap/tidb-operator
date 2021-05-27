@@ -810,7 +810,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 			grafanaPortName = *monitor.BaseGrafanaSpec().PortName()
 		}
 
-		prometheusName := prometheusName(monitor,shard)
+		prometheusName := prometheusName(monitor, shard)
 		monitorLabel := label.NewMonitor().Instance(monitor.Name).Monitor()
 		promeLabel := monitorLabel.Copy().UsedBy("prometheus")
 		grafanaLabel := monitorLabel.Copy().UsedBy("grafana")
