@@ -61,7 +61,7 @@ func WaitForBackupComplete(c versioned.Interface, ns, name string, timeout time.
 				}
 			case v1alpha1.BackupFailed, v1alpha1.BackupInvalid:
 				if cond.Status == corev1.ConditionTrue {
-					return false, fmt.Errorf("backup is failed")
+					return false, fmt.Errorf("backup is failed, reason: %s, message: %s", cond.Reason, cond.Message)
 				}
 			default: // do nothing
 			}
@@ -89,7 +89,7 @@ func WaitForRestoreComplete(c versioned.Interface, ns, name string, timeout time
 				}
 			case v1alpha1.RestoreFailed, v1alpha1.RestoreInvalid:
 				if cond.Status == corev1.ConditionTrue {
-					return false, fmt.Errorf("restore is failed")
+					return false, fmt.Errorf("restore is failed, reason: %s, message: %s", cond.Reason, cond.Message)
 				}
 			default: // do nothing
 			}
