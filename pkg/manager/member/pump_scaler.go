@@ -171,7 +171,7 @@ func (s *pumpScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 			return addr
 		}
 
-		suffix := "." + ns + ".svc"
+		suffix := "." + ns
 
 		if strings.Contains(addr, suffix) {
 			return addr
