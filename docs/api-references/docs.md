@@ -808,7 +808,21 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Base annotations of DM cluster Pods, components may add or override selectors upon this respectively</p>
+<p>Additional annotations for the dm cluster
+Can be overrode by annotations in master spec or worker spec</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>labels</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Additional labels for the dm cluster
+Can be overrode by labels in master spec or worker spec</p>
 </td>
 </tr>
 <tr>
@@ -1558,7 +1572,21 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Base annotations of TiDB cluster Pods, components may add or override selectors upon this respectively</p>
+<p>Base annotations for TiDB cluster, all Pods in the cluster should have these annotations.
+Can be overrode by annotations in the specific component spec.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>labels</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Base labels for TiDB cluster, all Pods in the cluster should have these labels.
+Can be overrode by labels in the specific component spec.</p>
 </td>
 </tr>
 <tr>
@@ -3965,7 +3993,20 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Annotations of the component. Merged into the cluster-level annotations if non-empty
+<p>Annotations for the component. Merge into the cluster-level annotations if non-empty
+Optional: Defaults to cluster-level setting</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>labels</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Labels for the component. Merge into the cluster-level labels if non-empty
 Optional: Defaults to cluster-level setting</p>
 </td>
 </tr>
@@ -4787,7 +4828,21 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Base annotations of DM cluster Pods, components may add or override selectors upon this respectively</p>
+<p>Additional annotations for the dm cluster
+Can be overrode by annotations in master spec or worker spec</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>labels</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Additional labels for the dm cluster
+Can be overrode by labels in master spec or worker spec</p>
 </td>
 </tr>
 <tr>
@@ -11881,7 +11936,19 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Additional annotations of the kubernetes service object</p>
+<p>Additional annotations for the service</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>labels</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Additional labels for the service</p>
 </td>
 </tr>
 <tr>
@@ -19905,7 +19972,21 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Base annotations of TiDB cluster Pods, components may add or override selectors upon this respectively</p>
+<p>Base annotations for TiDB cluster, all Pods in the cluster should have these annotations.
+Can be overrode by annotations in the specific component spec.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>labels</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Base labels for TiDB cluster, all Pods in the cluster should have these labels.
+Can be overrode by labels in the specific component spec.</p>
 </td>
 </tr>
 <tr>

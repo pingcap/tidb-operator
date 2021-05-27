@@ -25,7 +25,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
-	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
@@ -1037,7 +1036,7 @@ func getMonitorStatefulSetSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.Ti
 			Namespace:       monitor.Namespace,
 			Labels:          buildTidbMonitorLabel(monitor.Name),
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
-			Annotations:     member.CopyAnnotations(monitor.Spec.Annotations),
+			Annotations:     util.CopyStringMap(monitor.Spec.Annotations),
 		},
 		Spec: apps.StatefulSetSpec{
 			ServiceName: name,
@@ -1051,7 +1050,7 @@ func getMonitorStatefulSetSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.Ti
 			Template: core.PodTemplateSpec{
 				ObjectMeta: meta.ObjectMeta{
 					Labels:      buildTidbMonitorLabel(monitor.Name),
-					Annotations: member.CopyAnnotations(monitor.Spec.Annotations),
+					Annotations: util.CopyStringMap(monitor.Spec.Annotations),
 				},
 
 				Spec: core.PodSpec{

@@ -321,10 +321,11 @@ func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 
 func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*appsv1.StatefulSet, error) {
 	spec := tc.BasePumpSpec()
-	objMeta, pumpLabel := getPumpMeta(tc, controller.PumpMemberName)
+	objMeta, stsLabels := getPumpMeta(tc, controller.PumpMemberName)
 	replicas := tc.Spec.Pump.Replicas
 	storageClass := tc.Spec.Pump.StorageClassName
-	podAnnos := CombineAnnotations(controller.AnnProm(8250), spec.Annotations())
+	podLabels := util.CombineStringMap(stsLabels.Labels(), spec.Labels())
+	podAnnos := util.CombineStringMap(controller.AnnProm(8250), spec.Annotations())
 	storageRequest, err := controller.ParseStorageRequest(tc.Spec.Pump.Requests)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse storage request for pump, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
@@ -456,7 +457,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 	podTemplate := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: podAnnos,
-			Labels:      pumpLabel,
+			Labels:      podLabels,
 		},
 		Spec: podSpec,
 	}
@@ -464,7 +465,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 	return &appsv1.StatefulSet{
 		ObjectMeta: objMeta,
 		Spec: appsv1.StatefulSetSpec{
-			Selector:    pumpLabel.LabelSelector(),
+			Selector:    stsLabels.LabelSelector(),
 			ServiceName: controller.PumpMemberName(tc.Name),
 			Replicas:    &replicas,
 
@@ -506,12 +507,12 @@ func getPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 }
 
 func getPumpLogLevel(tc *v1alpha1.TidbCluster) string {
-	config := tc.Spec.Pump.Config
-	if config == nil {
+	cfg := tc.Spec.Pump.Config
+	if cfg == nil {
 		return defaultPumpLogLevel
 	}
 
-	v := config.Get("log-level")
+	v := cfg.Get("log-level")
 	if v == nil {
 		return defaultPumpLogLevel
 	}
@@ -564,7 +565,7 @@ func (m *FakePumpMemberManager) SetSyncError(err error) {
 	m.err = err
 }
 
-func (m *FakePumpMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
+func (m *FakePumpMemberManager) Sync(*v1alpha1.TidbCluster) error {
 	if m.err != nil {
 		return m.err
 	}
