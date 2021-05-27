@@ -2416,13 +2416,13 @@ func checkCustomLabelAndAnn(tc *v1alpha1.TidbCluster, c clientset.Interface) {
 			_, ok := pod.Labels[fixture.ClusterCustomKey]
 			framework.ExpectEqual(ok, true)
 
-			_, ok = pod.Labels[fixture.ComponentSuctomKey]
+			_, ok = pod.Labels[fixture.ComponentCustomKey]
 			framework.ExpectEqual(ok, true)
 
 			_, ok = pod.Annotations[fixture.ClusterCustomKey]
 			framework.ExpectEqual(ok, true)
 
-			_, ok = pod.Annotations[fixture.ComponentSuctomKey]
+			_, ok = pod.Annotations[fixture.ComponentCustomKey]
 			framework.ExpectEqual(ok, true)
 		}
 
@@ -2435,10 +2435,10 @@ func checkCustomLabelAndAnn(tc *v1alpha1.TidbCluster, c clientset.Interface) {
 				continue
 			}
 
-			_, ok := svc.Labels[fixture.ComponentSuctomKey]
+			_, ok := svc.Labels[fixture.ComponentCustomKey]
 			framework.ExpectEqual(ok, true)
 
-			_, ok = svc.Annotations[fixture.ComponentSuctomKey]
+			_, ok = svc.Annotations[fixture.ComponentCustomKey]
 			framework.ExpectEqual(ok, true)
 		}
 	}
@@ -2453,13 +2453,13 @@ func checkCustomLabelAndAnn(tc *v1alpha1.TidbCluster, c clientset.Interface) {
 			_, ok := pod.Labels[fixture.ClusterCustomKey]
 			framework.ExpectEqual(ok, true)
 
-			_, ok = pod.Labels[fixture.ComponentSuctomKey]
+			_, ok = pod.Labels[fixture.ComponentCustomKey]
 			framework.ExpectEqual(ok, true)
 
 			_, ok = pod.Annotations[fixture.ClusterCustomKey]
 			framework.ExpectEqual(ok, true)
 
-			_, ok = pod.Annotations[fixture.ComponentSuctomKey]
+			_, ok = pod.Annotations[fixture.ComponentCustomKey]
 			framework.ExpectEqual(ok, true)
 		}
 	}
@@ -2474,13 +2474,13 @@ func checkCustomLabelAndAnn(tc *v1alpha1.TidbCluster, c clientset.Interface) {
 			_, ok := pod.Labels[fixture.ClusterCustomKey]
 			framework.ExpectEqual(ok, true)
 
-			_, ok = pod.Labels[fixture.ComponentSuctomKey]
+			_, ok = pod.Labels[fixture.ComponentCustomKey]
 			framework.ExpectEqual(ok, true)
 
 			_, ok = pod.Annotations[fixture.ClusterCustomKey]
 			framework.ExpectEqual(ok, true)
 
-			_, ok = pod.Annotations[fixture.ComponentSuctomKey]
+			_, ok = pod.Annotations[fixture.ComponentCustomKey]
 			framework.ExpectEqual(ok, true)
 		}
 	}

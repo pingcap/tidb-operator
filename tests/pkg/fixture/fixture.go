@@ -78,7 +78,7 @@ var (
 const ClusterCustomKey = "cluster-test-key"
 
 // ComponentCustomKey for label and ann to test
-const ComponentSuctomKey = "component-test-key"
+const ComponentCustomKey = "component-test-key"
 
 // GetTidbCluster returns a TidbCluster resource configured for testing
 func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
@@ -128,10 +128,10 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Affinity: buildAffinity(name, ns, v1alpha1.PDMemberType),
 					Labels: map[string]string{
-						ComponentSuctomKey: "value",
+						ComponentCustomKey: "value",
 					},
 					Annotations: map[string]string{
-						ComponentSuctomKey: "value",
+						ComponentCustomKey: "value",
 					},
 				},
 			},
@@ -145,10 +145,10 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Affinity: buildAffinity(name, ns, v1alpha1.TiKVMemberType),
 					Labels: map[string]string{
-						ComponentSuctomKey: "value",
+						ComponentCustomKey: "value",
 					},
 					Annotations: map[string]string{
-						ComponentSuctomKey: "value",
+						ComponentCustomKey: "value",
 					},
 				},
 				EvictLeaderTimeout: pointer.StringPtr("1m"),
@@ -162,10 +162,10 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 					ServiceSpec: v1alpha1.ServiceSpec{
 						Type: corev1.ServiceTypeClusterIP,
 						Labels: map[string]string{
-							ComponentSuctomKey: "value",
+							ComponentCustomKey: "value",
 						},
 						Annotations: map[string]string{
-							ComponentSuctomKey: "value",
+							ComponentCustomKey: "value",
 						},
 					},
 					ExposeStatus: pointer.BoolPtr(true),
@@ -176,10 +176,10 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Affinity: buildAffinity(name, ns, v1alpha1.TiDBMemberType),
 					Labels: map[string]string{
-						ComponentSuctomKey: "value",
+						ComponentCustomKey: "value",
 					},
 					Annotations: map[string]string{
-						ComponentSuctomKey: "value",
+						ComponentCustomKey: "value",
 					},
 				},
 			},
