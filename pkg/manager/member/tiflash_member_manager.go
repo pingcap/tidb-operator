@@ -437,10 +437,11 @@ sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
 		VolumeMounts: initVolMounts,
 	})
 
-	tiflashLabel := labelTiFlash(tc)
+	stsLabels := labelTiFlash(tc)
 	setName := controller.TiFlashMemberName(tcName)
-	podAnnotations := CombineAnnotations(controller.AnnProm(8234), baseTiFlashSpec.Annotations())
-	podAnnotations = CombineAnnotations(controller.AnnAdditionalProm("tiflash.proxy", 20292), podAnnotations)
+	podLabels := util.CombineStringMap(stsLabels, baseTiFlashSpec.Labels())
+	podAnnotations := util.CombineStringMap(controller.AnnProm(8234), baseTiFlashSpec.Annotations())
+	podAnnotations = util.CombineStringMap(controller.AnnAdditionalProm("tiflash.proxy", 20292), podAnnotations)
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiFlashLabelVal)
 	capacity := controller.TiKVCapacity(tc.Spec.TiFlash.Limits)
 	headlessSvcName := controller.TiFlashPeerMemberName(tcName)
@@ -560,16 +561,16 @@ sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            setName,
 			Namespace:       ns,
-			Labels:          tiflashLabel.Labels(),
+			Labels:          stsLabels.Labels(),
 			Annotations:     stsAnnotations,
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
 			Replicas: pointer.Int32Ptr(tc.TiFlashStsDesiredReplicas()),
-			Selector: tiflashLabel.LabelSelector(),
+			Selector: stsLabels.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      tiflashLabel.Labels(),
+					Labels:      podLabels,
 					Annotations: podAnnotations,
 				},
 				Spec: podSpec,
