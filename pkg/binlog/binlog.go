@@ -69,6 +69,7 @@ func NewBinlogClient(pdEndpoint []string, tlsConfig *tls.Config) (*Client, error
 
 // Close the client.
 func (c *Client) Close() error {
+	c.httpClient.CloseIdleConnections()
 	return c.etcdClient.Close()
 }
 
