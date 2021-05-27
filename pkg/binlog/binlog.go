@@ -60,7 +60,8 @@ func NewBinlogClient(pdEndpoint []string, tlsConfig *tls.Config) (*Client, error
 		tls: tlsConfig,
 		httpClient: &http.Client{
 			Transport: &http.Transport{
-				TLSClientConfig: tlsConfig,
+				TLSClientConfig:   tlsConfig,
+				DisableKeepAlives: false,
 			},
 		},
 		etcdClient: etcdClient,
