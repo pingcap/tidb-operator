@@ -409,6 +409,8 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 })
 
 // TODO: refactor it to combine with code in /tests/e2e/br/framework/framework.go
+// If namespace is deleted directly, all resource in this namespace will be deleted.
+// However, backup finalizer is depend on some resource such as Secret in the namespace, so finalizer will always fail and block namespace deletion.
 func ForceCleanBackups(kubeClient kubernetes.Interface, extClient versioned.Interface, apiExtClient apiextensionsclientset.Interface) error {
 	if _, err := apiExtClient.ApiextensionsV1().CustomResourceDefinitions().Get("backups.pingcap.com", metav1.GetOptions{}); err != nil {
 		if !errors.IsNotFound(err) {
@@ -424,20 +426,17 @@ func ForceCleanBackups(kubeClient kubernetes.Interface, extClient versioned.Inte
 		ns := item.Name
 		bl, err := extClient.PingcapV1alpha1().Backups(ns).List(metav1.ListOptions{})
 		if err != nil {
-			framework.Logf("failed to list backups in namespace %s: %v", ns, err)
-			return err
+			return fmt.Errorf("failed to list backups in namespace %s: %v", ns, err)
 		}
 		for i := range bl.Items {
 			name := bl.Items[i].Name
 			if err := extClient.PingcapV1alpha1().Backups(ns).Delete(name, nil); err != nil {
-				framework.Logf("failed to delete backup(%s) in namespace %s: %v", name, ns, err)
-				return err
+				return fmt.Errorf("failed to delete backup(%s) in namespace %s: %v", name, ns, err)
 			}
 			// use patch to avoid update conflicts
 			patch := []byte(`[{"op":"remove","path":"/metadata/finalizers"}]`)
 			if _, err := extClient.PingcapV1alpha1().Backups(ns).Patch(name, types.JSONPatchType, patch); err != nil {
-				framework.Logf("failed to clean backup(%s) finalizers in namespace %s: %v", name, ns, err)
-				return err
+				return fmt.Errorf("failed to clean backup(%s) finalizers in namespace %s: %v", name, ns, err)
 			}
 		}
 	}
