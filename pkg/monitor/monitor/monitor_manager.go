@@ -224,16 +224,14 @@ func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, dc
 		return err
 	}
 
-	if monitor.Status.DeploymentStorageStatus != nil {
-		result, err := m.smoothMigrationToStatefulSet(monitor)
-		if err != nil {
-			klog.Errorf("Fail to migrate from deployment to statefulset for tm [%s/%s], err: %v", ns, name, err)
-			return err
-		}
-		if !result {
-			klog.Infof("Wait for the smooth migration to be done successfully for tm [%s/%s]", ns, name)
-			return nil
-		}
+	result, err := m.smoothMigrationToStatefulSet(monitor)
+	if err != nil {
+		klog.Errorf("Fail to migrate from deployment to statefulset for tm [%s/%s], err: %v", ns, name, err)
+		return err
+	}
+	if !result {
+		klog.Infof("Wait for the smooth migration to be done successfully for tm [%s/%s]", ns, name)
+		return nil
 	}
 
 	newMonitorSts, err := getMonitorStatefulSet(sa, cm, secret, monitor, tc, dc)
