@@ -184,7 +184,7 @@ func (s *pumpScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 	addr := pumpAdvertiseAddr(pod)
 
 	for _, node := range tc.Status.Pump.Members {
-		if node.Addr != addr {
+		if node.Host != addr {
 			continue
 		}
 

@@ -94,7 +94,7 @@ type StatusResp struct {
 // NodeStatus represents the status saved in etcd.
 type NodeStatus struct {
 	NodeID      string `json:"nodeId"`
-	Addr        string `json:"host"`
+	Host        string `json:"host"`
 	State       string `json:"state"`
 	MaxCommitTS int64  `json:"maxCommitTS"`
 	UpdateTS    int64  `json:"updateTS"`
@@ -153,10 +153,10 @@ func (c *Client) nodeID(ctx context.Context, addr, ty string) (string, error) {
 
 	addrs := []string{}
 	for _, node := range nodes {
-		if addr == node.Addr {
+		if addr == node.Host {
 			return node.NodeID, nil
 		}
-		addrs = append(addrs, node.Addr)
+		addrs = append(addrs, node.Host)
 	}
 
 	return "", errors.Errorf("%s node id for address %s not found, found address: %s", ty, addr, addrs)
