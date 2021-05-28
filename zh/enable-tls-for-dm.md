@@ -562,6 +562,7 @@ spec:
 
     ``` yaml
     source-id: mysql-replica-01
+    relay-dir: /var/lib/dm-worker/relay
     from:
       host: ${mysql_host1}
       user: dm
@@ -579,7 +580,7 @@ spec:
     name: test
     task-mode: all
     is-sharding: false
-    
+
     target-database:
       host: ${tidb_host}
       port: 4000
@@ -589,6 +590,14 @@ spec:
         ssl-ca: /var/lib/source-tls/${tidb_secret_name}/ca.crt
         ssl-cert: /var/lib/source-tls/${tidb_secret_name}/tls.crt
         ssl-key: /var/lib/source-tls/${tidb_secret_name}/tls.key
+
+    mysql-instances:
+    - source-id: "replica-01"
+      loader-config-name: "global"
+
+    loaders:
+      global:
+        dir: "/var/lib/dm-worker/dumped_data"
     ```
 
 ### 第四步：启动同步任务

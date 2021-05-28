@@ -206,15 +206,19 @@ spec:
 
 2. 填写 `source1.yaml` 的 `from.host` 为 Kubernetes 集群内部可以访问的 MySQL host 地址。
 
-3. `source1.yaml` 文件准备好后，通过 `/dmctl --master-addr ${dm_cluster_name}-dm-master:8261 operate-source create source1.yaml` 将 MySQL-1 的数据源加载到 DM 集群中。
+3. 填写 `source1.yaml` 的 `relay-dir` 为持久卷在 Pod 内挂载目录 `/var/lib/dm-worker` 下的子目录，如 `/var/lib/dm-worker/relay`。
 
-4. 对 MySQL-2 及其他数据源，采取同样方式修改配置文件中的相关信息，并执行相同的 dmctl 命令。
+4. 填写好 `source1.yaml` 文件后，运行 `/dmctl --master-addr ${dm_cluster_name}-dm-master:8261 operate-source create source1.yaml` 命令将 MySQL-1 的数据源加载到 DM 集群中。
+
+5. 对 MySQL-2 及其他数据源，采取同样方式填写数据源 `yaml` 文件中的相关信息，并执行 dmctl 命令将对应的数据源加载到 DM 集群中。
 
 ### 配置同步任务
 
 1. 参考[配置同步任务](https://docs.pingcap.com/zh/tidb-data-migration/v2.0/migrate-data-using-dm#第-4-步配置任务)编辑任务配置文件 `task.yaml`。
 
 2. 填写 `task.yaml` 中的 `target-database.host` 为 Kubernetes 集群内部可以访问的 TiDB host 地址。如果是 TiDB Operator 部署的集群，填写 `${tidb_cluster_name}-tidb.${namespace}` 即可。
+
+3. 在 `task.yaml` 文件中，添加 `loaders.${customized_name}.dir` 字段作为全量数据的导入导出目录，其中的 `${customized_name}` 是可以由你自定义的名称，然后将此字段的值填写为持久卷在 Pod 内挂载目录 `/var/lib/dm-worker` 下的子目录，如 `/var/lib/dm-worker/dumped_data`；并在实例配置中进行引用，如 `mysql-instances[0].loader-config-name: "{customized_name}"`。
 
 ### 启动/查询/停止同步任务
 
