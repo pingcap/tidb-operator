@@ -37,6 +37,8 @@ type PDControlInterface interface {
 	GetPeerPDClient(namespace Namespace, tcName string, tlsEnabled bool, clientURL string, clientName string) PDClient
 	// GetPDEtcdClient provides PD etcd Client of the tidb cluster.
 	GetPDEtcdClient(namespace Namespace, tcName string, tlsEnabled bool) (PDEtcdClient, error)
+	// GetEndpoints return the endpoints and client tls.Config to connection pd/etcd.
+	GetEndpoints(namespace Namespace, tcName string, tlsEnabled bool) (endpoints []string, tlsConfig *tls.Config, err error)
 }
 
 // defaultPDControl is the default implementation of PDControlInterface.
@@ -61,6 +63,19 @@ func (c *noOpClose) Close() error {
 // NewDefaultPDControl returns a defaultPDControl instance
 func NewDefaultPDControl(kubeCli kubernetes.Interface) PDControlInterface {
 	return &defaultPDControl{kubeCli: kubeCli, pdClients: map[string]PDClient{}, pdEtcdClients: map[string]PDEtcdClient{}}
+}
+
+func (c *defaultPDControl) GetEndpoints(namespace Namespace, tcName string, tlsEnabled bool) (endpoints []string, tlsConfig *tls.Config, err error) {
+	if tlsEnabled {
+		tlsConfig, err = GetTLSConfig(c.kubeCli, namespace, tcName, util.ClusterClientTLSSecretName(tcName))
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	endpoints = []string{PDEtcdClientURL(namespace, tcName)}
+
+	return
 }
 
 func (c *defaultPDControl) GetPDEtcdClient(namespace Namespace, tcName string, tlsEnabled bool) (PDEtcdClient, error) {
