@@ -431,7 +431,7 @@ spec:
 
 2. 删除对应的 Drainer Pod：
 
-    运行 `helm uninstall ${release_name}` 指令即可删除 Drainer Pod。
+    运行 `helm uninstall ${release_name} -n ${namespace}` 指令即可删除 Drainer Pod。
 
     如果不再使用 Drainer，使用 `kubectl delete pvc data-${drainer_node_id} -n ${namespace}` 指令删除该 Drainer 的 PVC 资源。
 

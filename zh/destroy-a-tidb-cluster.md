@@ -33,7 +33,7 @@ kubectl delete tidbmonitor ${tidb_monitor_name} -n ${namespace}
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm uninstall ${cluster_name}
+helm uninstall ${cluster_name} -n ${namespace}
 ```
 
 ## 清除数据

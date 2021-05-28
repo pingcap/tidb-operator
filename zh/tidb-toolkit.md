@@ -252,7 +252,7 @@ helm ls
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm uninstall ${release_name}
+helm uninstall ${release_name} -n ${namespace}
 ```
 
 更多 helm 的相关文档，请参考 [Helm 官方文档](https://helm.sh/docs/)。

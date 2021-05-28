@@ -6,9 +6,11 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/restore-from-gcs/']
 
 # 使用 TiDB Lightning 恢复 GCS 上的备份数据
 
-本文描述了将 Kubernetes 上通过 TiDB Operator 备份的数据恢复到 TiDB 集群的操作过程。底层通过使用 [TiDB Lightning](https://pingcap.com/docs/stable/how-to/get-started/tidb-lightning/#tidb-lightning-tutorial) 来进行集群恢复。
+本文描述了将 Kubernetes 上通过 TiDB Operator 备份的数据恢复到 TiDB 集群的操作过程。
 
-本文使用的恢复方式基于 TiDB Operator 新版（v1.1 及以上）的 CustomResourceDefinition (CRD) 实现。
+本文使用的恢复方式基于 TiDB Operator v1.1 及以上的 CustomResourceDefinition (CRD) 实现，底层通过使用 [TiDB Lightning TiDB-backend](https://docs.pingcap.com/zh/tidb/stable/tidb-lightning-backends#tidb-lightning-tidb-backend) 来恢复数据。
+
+目前，TiDB Lightning 支持三种后端： `Importer-backend`、`Local-backend` 、`TiDB-backend`。关于这三种后端的区别和选择，请参阅 [TiDB Lightning 文档](https://docs.pingcap.com/zh/tidb/stable/tidb-lightning-backends)。如果要使用 `Importer-backend` 或者 `Local-backend` 导入数据，请参阅[使用 TiDB Lightning 导入集群数据](restore-data-using-tidb-lightning.md)。
 
 以下示例将存储在 [Google Cloud Storage (GCS)](https://cloud.google.com/storage/docs/) 上指定路径上的集群备份数据恢复到 TiDB 集群。
 
