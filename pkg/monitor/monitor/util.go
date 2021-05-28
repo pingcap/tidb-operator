@@ -857,7 +857,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 				TargetPort: intstr.FromInt(10902),
 			})
 		}
-		reloaderName := reloaderName(monitor,shard)
+		reloaderName := reloaderName(monitor, shard)
 		reloaderService := &core.Service{
 			ObjectMeta: meta.ObjectMeta{
 				Name:            reloaderName,
@@ -893,7 +893,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		if monitor.Spec.Grafana != nil {
 			grafanaService := &core.Service{
 				ObjectMeta: meta.ObjectMeta{
-					Name:            grafanaName(monitor,shard),
+					Name:            grafanaName(monitor, shard),
 					Namespace:       monitor.Namespace,
 					Labels:          grafanaLabel.Labels(),
 					OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
@@ -929,12 +929,12 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 	return services
 }
 
-func getPrometheusIngress(monitor *v1alpha1.TidbMonitor,shard int32) *extensionsv1beta1.Ingress {
-	return getIngress(monitor, monitor.Spec.Prometheus.Ingress, prometheusName(monitor,shard), 9090)
+func getPrometheusIngress(monitor *v1alpha1.TidbMonitor, shard int32) *extensionsv1beta1.Ingress {
+	return getIngress(monitor, monitor.Spec.Prometheus.Ingress, prometheusName(monitor, shard), 9090)
 }
 
-func getGrafanaIngress(monitor *v1alpha1.TidbMonitor,shard int32) *extensionsv1beta1.Ingress {
-	return getIngress(monitor, monitor.Spec.Grafana.Ingress, grafanaName(monitor,shard), 3000)
+func getGrafanaIngress(monitor *v1alpha1.TidbMonitor, shard int32) *extensionsv1beta1.Ingress {
+	return getIngress(monitor, monitor.Spec.Grafana.Ingress, grafanaName(monitor, shard), 3000)
 }
 
 func getIngress(monitor *v1alpha1.TidbMonitor, ingressSpec *v1alpha1.IngressSpec, svcName string, port int) *extensionsv1beta1.Ingress {
@@ -977,28 +977,28 @@ func getIngress(monitor *v1alpha1.TidbMonitor, ingressSpec *v1alpha1.IngressSpec
 	return ingress
 }
 
-func prometheusName(monitor *v1alpha1.TidbMonitor,shard int32) string {
+func prometheusName(monitor *v1alpha1.TidbMonitor, shard int32) string {
 	base := fmt.Sprintf("%s-prometheus", monitor.Name)
 	if shard == 0 {
 		return base
 	}
-	return fmt.Sprintf("%s-prometheus-shards-%d", monitor.Name,shard)
+	return fmt.Sprintf("%s-prometheus-shards-%d", monitor.Name, shard)
 }
 
-func grafanaName(monitor *v1alpha1.TidbMonitor,shard int32) string {
+func grafanaName(monitor *v1alpha1.TidbMonitor, shard int32) string {
 	base := fmt.Sprintf("%s-grafana", monitor.Name)
 	if shard == 0 {
 		return base
 	}
-	return fmt.Sprintf("%s-grafana-shards-%d", monitor.Name,shard)
+	return fmt.Sprintf("%s-grafana-shards-%d", monitor.Name, shard)
 }
 
-func reloaderName(monitor *v1alpha1.TidbMonitor,shard int32) string {
+func reloaderName(monitor *v1alpha1.TidbMonitor, shard int32) string {
 	base := fmt.Sprintf("%s-monitor-reloader", monitor.Name)
 	if shard == 0 {
 		return base
 	}
-	return fmt.Sprintf("%s-monitor-reloader-shards-%d", monitor.Name,shard)
+	return fmt.Sprintf("%s-monitor-reloader-shards-%d", monitor.Name, shard)
 }
 
 func defaultTidbMonitor(monitor *v1alpha1.TidbMonitor) {
