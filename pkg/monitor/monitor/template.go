@@ -505,14 +505,3 @@ func generateAddressShardingRelabelingRules(relabelings []*config.RelabelConfig,
 		},
 	)
 }
-
-//yaml.MapSlice{
-//	{Key: "source_labels", Value: []string{"__address__"}},
-//	{Key: "target_label", Value: "__tmp_hash"},
-//	{Key: "modulus", Value: shards},
-//	{Key: "action", Value: "hashmod"},
-//}, yaml.MapSlice{
-//	{Key: "source_labels", Value: []string{"__tmp_hash"}},
-//	{Key: "regex", Value: "$(SHARD)"},
-//	{Key: "action", Value: "keep"},
-//})

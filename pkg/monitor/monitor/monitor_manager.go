@@ -463,6 +463,7 @@ func (m *MonitorManager) syncPrometheusIngress(monitor *v1alpha1.TidbMonitor) er
 			if err != nil {
 				return err
 			}
+			continue
 		}
 
 		ingress := getPrometheusIngress(monitor, shard)
@@ -482,6 +483,7 @@ func (m *MonitorManager) syncGrafanaIngress(monitor *v1alpha1.TidbMonitor) error
 			if err != nil {
 				return err
 			}
+			continue
 		}
 		ingress := getGrafanaIngress(monitor, shard)
 		_, err := m.deps.TypedControl.CreateOrUpdateIngress(monitor, ingress)
