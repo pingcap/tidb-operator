@@ -163,3 +163,7 @@ helm upgrade ${release_name} pingcap/tidb-cluster -f values.yaml --version=${cha
 > ```shell
 > kubectl annotate tc ${release_name} -n ${namespace} tidb.pingcap.com/force-upgrade-
 > ```
+
+> **Note:**
+>
+> By default, TiDB (starting from v4.0.2) periodically shares usage details with PingCAP to help understand how to improve the product. For details about what is shared and how to disable the sharing, see [Telemetry](https://docs.pingcap.com/tidb/stable/telemetry).

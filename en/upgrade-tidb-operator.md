@@ -157,7 +157,3 @@ If your server cannot access the Internet, you can take the following steps to u
 ## Upgrade TiDB Operator from v1.0 to v1.1 or later releases
 
 Since TiDB Operator v1.1.0, PingCAP no longer updates or maintains the tidb-cluster chart. The components and features that have been managed using the tidb-cluster chart will be managed by CR (Custom Resource) or dedicated charts in v1.1. For more details, refer to [TiDB Operator v1.1 Notes](notes-tidb-operator-v1.1.md).
-
-> **Note:**
->
-> By default, TiDB (starting from v4.0.2) periodically shares usage details with PingCAP to help understand how to improve the product. For details about what is shared and how to disable the sharing, see [Telemetry](https://docs.pingcap.com/tidb/stable/telemetry).
