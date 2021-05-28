@@ -11,7 +11,6 @@ TiDB Operator 版本：1.1.11
 ## 新功能
 
 - 优化 LeaderElection，支持用户配置 LeaderElection 时间 ([#3794](https://github.com/pingcap/tidb-operator/pull/3794), [@july2993](https://github.com/july2993))
-- 通过为抓取 Job 添加 `tidb_cluster` 标签来支持多集群监控 ([#3750](https://github.com/pingcap/tidb-operator/pull/3750), [@mikechengwei](https://github.com/mikechengwei))
 - 支持设置自定义 Store 标签并根据 Node 标签获取值  ([#3784](https://github.com/pingcap/tidb-operator/pull/3784), [@L3T](https://github.com/L3T))
 
 ## 优化提升
