@@ -15,16 +15,16 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/backup-to-s3/']
 
 Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 对象来描述一次备份。TiDB Operator 根据这个 `Backup` 对象来完成具体的备份过程。如果备份过程中出现错误，程序不会自动重试，此时需要手动处理。
 
-目前兼容 S3 的存储中，Ceph 和 Amazon S3 经测试可正常工作。下文对 Ceph 和 Amazon S3 这两种存储的使用进行描述。本文档提供如下备份示例。示例假设对部署在 Kubernetes `test1` 这个 namespace 中的 TiDB 集群 `demo1` 进行数据备份，下面是具体操作过程。
+目前兼容 S3 的存储中，Ceph 和 Amazon S3 经测试可正常工作。下文提供了如何将 TiDB 集群的数据备份到 Ceph 和 Amazon S3 这两种存储的示例。示例假设对部署在 Kubernetes `tidb-cluster` 这个 namespace 中的 TiDB 集群 `demo1` 进行数据备份，以下是具体的操作过程。
 
 ### Ad-hoc 全量备份环境准备
 
-1. 下载文件 [backup-rbac.yaml](https://github.com/pingcap/tidb-operator/blob/master/manifests/backup/backup-rbac.yaml)，并执行以下命令在 `test1` 这个 namespace 中创建备份需要的 RBAC 相关资源：
+1. 执行以下命令，根据 [backup-rbac.yaml](https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/backup/backup-rbac.yaml) 在 `tidb-cluster` 命名空间创建基于角色的访问控制 (RBAC) 资源。
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl apply -f backup-rbac.yaml -n test1
+    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/backup/backup-rbac.yaml -n tidb-cluster
     ```
 
 2. 远程存储访问授权。
@@ -36,16 +36,27 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=${password} --namespace=test1
+    kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=${password} --namespace=tidb-cluster
     ```
 
 ### 数据库账户权限
 
-* `mysql.tidb` 表的 `SELECT` 和 `UPDATE` 权限：备份前后，Backup CR 需要一个拥有该权限的数据库账户，用于调整 GC 时间
-* SELECT
-* RELOAD
-* LOCK TABLES
-* REPLICATION CLIENT
+* `mysql.tidb` 表的 `SELECT` 和 `UPDATE` 权限：备份前后，Backup CR 需要一个拥有该权限的数据库账户，用于调整 GC 时间。
+* 全局权限：`SELECT`、`RELOAD`、`LOCK TABLES`、和 `REPLICATION CLIENT`。
+
+以下是如何创建一个备份用户的示例:
+
+```sql
+CREATE USER 'backup'@'%' IDENTIFIED BY '...';
+GRANT
+  SELECT, RELOAD, LOCK TABLES, REPLICATION CLIENT
+  ON *.*
+  TO 'backup'@'%';
+GRANT
+  UPDATE, SELECT
+  ON mysql.tidb
+  TO 'backup'@'%';
+```
 
 ### 备份数据到兼容 S3 的存储
 
@@ -61,6 +72,15 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
 >     options:
 >     - --ignore-checksum
 > ```
+
+> **注意：**
+>
+> 如下所示，本节提供了存储访问的多种方法。只需使用符合你情况的方法即可。
+> 
+> - 通过导入 AccessKey 和 SecretKey 备份到 Amazon S3 的方法
+> - 通过导入 AccessKey 和 SecretKey 备份到 Ceph 的方法
+> - 通过绑定 IAM 与 Pod 的方式备份到 Amazon S3 的方法
+> - 通过绑定 IAM 与 ServiceAccount 的方式备份到 Amazon S3 的方法
 
 + 创建 `Backup` CR，通过 AccessKey 和 SecretKey 授权的方式将数据备份到 Amazon S3：
 
@@ -78,7 +98,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
     kind: Backup
     metadata:
       name: demo1-backup-s3
-      namespace: test1
+      namespace: tidb-cluster
     spec:
       from:
         host: ${tidb_host}
@@ -120,7 +140,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
     kind: Backup
     metadata:
       name: demo1-backup-s3
-      namespace: test1
+      namespace: tidb-cluster
     spec:
       from:
         host: ${tidb_host}
@@ -159,7 +179,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
     kind: Backup
     metadata:
       name: demo1-backup-s3
-      namespace: test1
+      namespace: tidb-cluster
       annotations:
         iam.amazonaws.com/role: arn:aws:iam::123456789012:role/user
     spec:
@@ -203,7 +223,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
     kind: Backup
     metadata:
       name: demo1-backup-s3
-      namespace: test1
+      namespace: tidb-cluster
     spec:
       backupType: full
       serviceAccount: tidb-backup-manager
@@ -247,8 +267,18 @@ options:
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl get bk -n test1 -owide
+kubectl get bk -n tidb-cluster -owide
 ```
+
+要获取一个 Backup job 的详细信息，请使用以下命令。对于此命令中的 `$backup_job_name`，请使用上一条命令输出中的名称。
+
+{{< copyable "shell-regular" >}}
+
+```shell
+kubectl describe bk -n tidb-cluster $backup_job_name
+```
+
+如果要再次运行 Ad-hoc 备份，你需要[删除备份的 Backup CR](backup-restore-overview.md#删除备份的-backup-cr) 并重新创建。
 
 ## 定时全量备份
 
@@ -291,7 +321,7 @@ kubectl get bk -n test1 -owide
     kind: BackupSchedule
     metadata:
       name: demo1-backup-schedule-s3
-      namespace: test1
+      namespace: tidb-cluster
     spec:
       #maxBackups: 5
       #pause: true
@@ -338,7 +368,7 @@ kubectl get bk -n test1 -owide
     kind: BackupSchedule
     metadata:
       name: demo1-backup-schedule-ceph
-      namespace: test1
+      namespace: tidb-cluster
     spec:
       #maxBackups: 5
       #pause: true
@@ -382,7 +412,7 @@ kubectl get bk -n test1 -owide
     kind: BackupSchedule
     metadata:
       name: demo1-backup-schedule-s3
-      namespace: test1
+      namespace: tidb-cluster
       annotations:
         iam.amazonaws.com/role: arn:aws:iam::123456789012:role/user
     spec:
@@ -430,7 +460,7 @@ kubectl get bk -n test1 -owide
     kind: BackupSchedule
     metadata:
       name: demo1-backup-schedule-s3
-      namespace: test1
+      namespace: tidb-cluster
     spec:
       #maxBackups: 5
       #pause: true
@@ -466,7 +496,7 @@ kubectl get bk -n test1 -owide
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl get bks -n test1 -owide
+kubectl get bks -n tidb-cluster -owide
 ```
 
 查看定时全量备份下面所有的备份条目：
@@ -474,7 +504,7 @@ kubectl get bks -n test1 -owide
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl get bk -l tidb.pingcap.com/backup-schedule=demo1-backup-schedule-s3 -n test1
+kubectl get bk -l tidb.pingcap.com/backup-schedule=demo1-backup-schedule-s3 -n tidb-cluster
 ```
 
 从以上示例可知，`backupSchedule` 的配置由两部分组成。一部分是 `backupSchedule` 独有的配置，另一部分是 `backupTemplate`。`backupTemplate` 指定集群及远程存储相关的配置，字段和 Backup CR 中的 `spec` 一样，详细介绍可参考 [Backup CR 字段介绍](backup-restore-overview.md#backup-cr-字段介绍)。`backupSchedule` 独有配置项介绍可参考 [BackupSchedule CR 字段介绍](backup-restore-overview.md#backupschedule-cr-字段介绍)。

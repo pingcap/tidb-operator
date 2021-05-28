@@ -24,6 +24,8 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-on-aws-eks/']
     - 安装并配置创建 Kubernetes 集群的命令行工具 eksctl
     - 安装 Kubernetes 命令行工具 kubectl
 
+要验证 AWS CLI 的配置是否正确，请运行 `aws configure list` 命令。如果此命令的输出显示了 `access_key` 和 `secret_key` 的值，则 AWS CLI 的配置是正确的。否则，你需要重新配置 AWS CLI。
+
 > **注意：**
 >
 > 本文档的操作需要 AWS Access Key 至少具有 [eksctl 所需最少权限](https://eksctl.io/usage/minimum-iam-policies/)和创建 [Linux 堡垒机所涉及的服务权限](https://docs.aws.amazon.com/quickstart/latest/linux-bastion/architecture.html#aws-services)。
@@ -32,7 +34,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-on-aws-eks/']
 
 根据 AWS [官方博客](https://aws.amazon.com/cn/blogs/containers/amazon-eks-cluster-multi-zone-auto-scaling-groups/)推荐和 EKS [最佳实践文档](https://aws.github.io/aws-eks-best-practices/reliability/docs/dataplane/#ensure-capacity-in-each-az-when-using-ebs-volumes)，由于 TiDB 集群大部分组件使用 EBS 卷作为存储，推荐在创建 EKS 的时候针对每个组件在每个可用区（至少 3 个可用区）创建一个节点池。
 
-将以下配置存为 cluster.yaml 文件，并替换 `${clusterName}` 为自己想命名的集群名字：
+将以下配置存为 cluster.yaml 文件，并替换 `${clusterName}` 为自己想命名的集群名字。集群和节点组的命名规则需要与正则表达式 `[a-zA-Z][-a-zA-Z0-9]*` 相匹配，避免包含 `_`。
 
 {{< copyable "" >}}
 
@@ -136,7 +138,7 @@ nodeGroups:
 eksctl create cluster -f cluster.yaml
 ```
 
-该命令需要等待 EKS 集群创建完成，以及节点组创建完成并加入进去，耗时约 5~10 分钟。可参考 [eksctl 文档](https://eksctl.io/usage/creating-and-managing-clusters/#using-config-files)了解更多集群配置选项。
+该命令需要等待 EKS 集群创建完成，以及节点组创建完成并加入进去，耗时约 5~20 分钟。可参考 [eksctl 文档](https://eksctl.io/usage/creating-and-managing-clusters/#using-config-files)了解更多集群配置选项。
 
 > **警告：**
 >
