@@ -459,15 +459,15 @@ func (m *MonitorManager) syncPrometheusIngress(monitor *v1alpha1.TidbMonitor) er
 	for shard := int32(0); shard < shards; shard++ {
 
 		if monitor.Spec.Prometheus.Ingress == nil {
-			err:= m.removeIngressIfExist(monitor, prometheusName(monitor,shard))
-			if err!=nil{
+			err := m.removeIngressIfExist(monitor, prometheusName(monitor, shard))
+			if err != nil {
 				return err
 			}
 		}
 
-		ingress := getPrometheusIngress(monitor,shard)
+		ingress := getPrometheusIngress(monitor, shard)
 		_, err := m.deps.TypedControl.CreateOrUpdateIngress(monitor, ingress)
-		if err!=nil{
+		if err != nil {
 			return err
 		}
 	}
@@ -475,17 +475,17 @@ func (m *MonitorManager) syncPrometheusIngress(monitor *v1alpha1.TidbMonitor) er
 }
 
 func (m *MonitorManager) syncGrafanaIngress(monitor *v1alpha1.TidbMonitor) error {
-    shards:=monitor.GetShards()
+	shards := monitor.GetShards()
 	for shard := int32(0); shard < shards; shard++ {
 		if monitor.Spec.Grafana == nil || monitor.Spec.Grafana.Ingress == nil {
-			err:= m.removeIngressIfExist(monitor, grafanaName(monitor,shard))
-			if err!=nil{
+			err := m.removeIngressIfExist(monitor, grafanaName(monitor, shard))
+			if err != nil {
 				return err
 			}
 		}
-		ingress := getGrafanaIngress(monitor,shard)
+		ingress := getGrafanaIngress(monitor, shard)
 		_, err := m.deps.TypedControl.CreateOrUpdateIngress(monitor, ingress)
-		if err!=nil{
+		if err != nil {
 			return err
 		}
 	}
