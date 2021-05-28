@@ -61,7 +61,6 @@ func (s *tiflashScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, n
 		scaleOutParallelism = int(*tc.Spec.TiFlash.ScaleOutParallelism)
 	}
 	_, ordinals, replicas, deleteSlots := scaleMulti(oldSet, newSet, scaleOutParallelism)
-	resetReplicas(newSet, oldSet)
 
 	klog.Infof("scaling out tiflash statefulset %s/%s, ordinal: %v (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinals, replicas, deleteSlots.List())
 	scaleOutOne := func(ordinal int32) error {
@@ -73,8 +72,9 @@ func (s *tiflashScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, n
 	}
 
 	var (
-		errs             []error
-		finishedOrdinals = sets.NewInt32()
+		errs                         []error
+		finishedOrdinals             = sets.NewInt32()
+		updateReplicasAndDeleteSlots bool
 	)
 	for _, ordinal := range ordinals {
 		err := scaleOutOne(ordinal)
@@ -82,10 +82,15 @@ func (s *tiflashScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, n
 			errs = append(errs, err)
 		} else {
 			finishedOrdinals.Insert(ordinal)
+			updateReplicasAndDeleteSlots = true
 		}
 	}
-	setReplicasAndDeleteSlotsByFinished(1, newSet, oldSet, ordinals, finishedOrdinals)
-	return nil
+	if updateReplicasAndDeleteSlots {
+		setReplicasAndDeleteSlotsByFinished(1, newSet, oldSet, ordinals, finishedOrdinals)
+	} else {
+		resetReplicas(newSet, oldSet)
+	}
+	return errorutils.NewAggregate(errs)
 }
 
 func (s *tiflashScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
