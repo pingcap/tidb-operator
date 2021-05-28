@@ -225,7 +225,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					framework.ExpectNoError(err, "failed to change configuration of TidbCluster: %q", tc.Name)
 					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
 					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+
+					ginkgo.By("Check custom labels and add will not lost")
+					checkCustomLabelAndAnn(tc, c)
 				})
+
 			})
 		}
 	})
@@ -1675,11 +1679,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		ginkgo.Context("while concurrently scale PD", func() {
 			operation := []string{"in", "out"}
 			for _, op := range operation {
+				op := op
 				ginkgo.It(op, func() {
 					ginkgo.By("Deploy initial tc")
 					tcName := fmt.Sprintf("scale-%s-pd-concurrently", op)
 					tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV5Prev)
-					tc.Spec.PD.StorageClassName = pointer.StringPtr("local-storage")
 					if op == "in" {
 						tc.Spec.PD.Replicas = 5
 					} else {
@@ -1738,6 +1742,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		ginkgo.Context("while concurrently scale TiKV", func() {
 			operation := []string{"in", "out"}
 			for _, op := range operation {
+				op := op
 				ginkgo.It(op, func() {
 					ginkgo.By("Deploy initial tc")
 					tcName := fmt.Sprintf("scale-%s-tikv-concurrently", op)
@@ -2397,5 +2402,87 @@ func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tcVersio
 		TopologyKey:            "rack",
 		EnableConfigMapRollout: true,
 		ClusterVersion:         tcVersion,
+	}
+}
+
+// checkCustomLabelAndAnn check the custom set labels and ann set in `GetTidbCluster`
+func checkCustomLabelAndAnn(tc *v1alpha1.TidbCluster, c clientset.Interface) {
+	if tc.Spec.TiDB != nil {
+		listOptions := metav1.ListOptions{
+			LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Component(label.TiDBLabelVal).Labels()).String(),
+		}
+		list, err := c.CoreV1().Pods(tc.Namespace).List(listOptions)
+		framework.ExpectNoError(err)
+		for _, pod := range list.Items {
+			_, ok := pod.Labels[fixture.ClusterCustomKey]
+			framework.ExpectEqual(ok, true)
+
+			_, ok = pod.Labels[fixture.ComponentCustomKey]
+			framework.ExpectEqual(ok, true)
+
+			_, ok = pod.Annotations[fixture.ClusterCustomKey]
+			framework.ExpectEqual(ok, true)
+
+			_, ok = pod.Annotations[fixture.ComponentCustomKey]
+			framework.ExpectEqual(ok, true)
+		}
+
+		// check service
+		svcList, err := c.CoreV1().Services(tc.Namespace).List(listOptions)
+		framework.ExpectNoError(err)
+		for _, svc := range svcList.Items {
+			// skip the headless one
+			if svc.Spec.ClusterIP == "None" {
+				continue
+			}
+
+			_, ok := svc.Labels[fixture.ComponentCustomKey]
+			framework.ExpectEqual(ok, true)
+
+			_, ok = svc.Annotations[fixture.ComponentCustomKey]
+			framework.ExpectEqual(ok, true)
+		}
+	}
+
+	if tc.Spec.TiKV != nil {
+		listOptions := metav1.ListOptions{
+			LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Component(label.TiKVLabelVal).Labels()).String(),
+		}
+		list, err := c.CoreV1().Pods(tc.Namespace).List(listOptions)
+		framework.ExpectNoError(err)
+		for _, pod := range list.Items {
+			_, ok := pod.Labels[fixture.ClusterCustomKey]
+			framework.ExpectEqual(ok, true)
+
+			_, ok = pod.Labels[fixture.ComponentCustomKey]
+			framework.ExpectEqual(ok, true)
+
+			_, ok = pod.Annotations[fixture.ClusterCustomKey]
+			framework.ExpectEqual(ok, true)
+
+			_, ok = pod.Annotations[fixture.ComponentCustomKey]
+			framework.ExpectEqual(ok, true)
+		}
+	}
+
+	if tc.Spec.PD != nil {
+		listOptions := metav1.ListOptions{
+			LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Component(label.PDLabelVal).Labels()).String(),
+		}
+		list, err := c.CoreV1().Pods(tc.Namespace).List(listOptions)
+		framework.ExpectNoError(err)
+		for _, pod := range list.Items {
+			_, ok := pod.Labels[fixture.ClusterCustomKey]
+			framework.ExpectEqual(ok, true)
+
+			_, ok = pod.Labels[fixture.ComponentCustomKey]
+			framework.ExpectEqual(ok, true)
+
+			_, ok = pod.Annotations[fixture.ClusterCustomKey]
+			framework.ExpectEqual(ok, true)
+
+			_, ok = pod.Annotations[fixture.ComponentCustomKey]
+			framework.ExpectEqual(ok, true)
+		}
 	}
 }
