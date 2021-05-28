@@ -304,7 +304,7 @@ This section describes how to install TiDB Operator using Helm 3.
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install --namespace tidb-admin tidb-operator pingcap/tidb-operator --version v1.2.0-beta.2
+    helm install --namespace tidb-admin tidb-operator pingcap/tidb-operator --version v1.2.0-rc.1
     ```
 
     If you have trouble accessing Docker Hub, you can try images hosted in Alibaba Cloud:
@@ -312,9 +312,9 @@ This section describes how to install TiDB Operator using Helm 3.
     {{< copyable "shell-regular" >}}
 
     ```
-    helm install --namespace tidb-admin tidb-operator pingcap/tidb-operator --version v1.2.0-beta.2 \
-        --set operatorImage=registry.cn-beijing.aliyuncs.com/tidb/tidb-operator:v1.2.0-beta.2 \
-        --set tidbBackupManagerImage=registry.cn-beijing.aliyuncs.com/tidb/tidb-backup-manager:v1.2.0-beta.2 \
+    helm install --namespace tidb-admin tidb-operator pingcap/tidb-operator --version v1.2.0-rc.1 \
+        --set operatorImage=registry.cn-beijing.aliyuncs.com/tidb/tidb-operator:v1.2.0-rc.1 \
+        --set tidbBackupManagerImage=registry.cn-beijing.aliyuncs.com/tidb/tidb-backup-manager:v1.2.0-rc.1 \
         --set scheduler.kubeSchedulerImageName=registry.cn-hangzhou.aliyuncs.com/google_containers/kube-scheduler
     ```
 
