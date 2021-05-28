@@ -145,7 +145,7 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 
 	// Sync Statefulset
 	if err := m.syncTidbMonitorStatefulset(firstTc, firstDc, monitor); err != nil {
-		message := fmt.Sprintf("Sync TidbMonitor[%s/%s] Statefulset failed,err:%v", monitor.Namespace, monitor.Name, err)
+		message := fmt.Sprintf("Sync TidbMonitor[%s/%s] Statefulset failed, err:%v", monitor.Namespace, monitor.Name, err)
 		m.deps.Recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
 		return err
 	}
