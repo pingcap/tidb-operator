@@ -534,10 +534,19 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					log.Logf("expect pump statefulset adopted by tidbcluster, still waiting...")
 					return false, nil
 				}
+
 				// The desired state encoded in CRD should be exactly same with the one created by helm chart
 				// After adding Readiness for pump, it will be different and updated.
-				framework.ExpectNotEqual(pumpSet.Status.CurrentRevision, oldRev, "Expected rolling-update when adopting pump statefulset")
-				framework.ExpectNotEqual(pumpSet.Status.UpdateRevision, oldRev, "Expected rolling-update when adopting pump statefulset")
+				// the sts is already adopted by operator and the desired state is changed, but the `.Status` may keep same(it will be update by sts controller).
+				// so we need to re-check it if it's not update yet.
+				if pumpSet.Status.CurrentRevision == oldRev {
+					log.Logf("Expected rolling-update when adopting pump statefulset, old rev: %s CurrentRevision: %s", oldRev, pumpSet.Status.CurrentRevision)
+					return false, nil
+				}
+				if pumpSet.Status.UpdateRevision == oldRev {
+					log.Logf("Expected rolling-update when adopting pump statefulset, old rev: %s UpdateRevision: %s", oldRev, pumpSet.Status.UpdateRevision)
+					return false, nil
+				}
 
 				cmName := member.FindConfigMapVolume(&pumpSet.Spec.Template.Spec, func(name string) bool {
 					return strings.HasPrefix(name, controller.PumpMemberName(tc.Name))
