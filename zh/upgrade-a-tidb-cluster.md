@@ -100,67 +100,6 @@ kubectl annotate --overwrite tc ${cluster_name} -n ${namespace} tidb.pingcap.com
 
     当所有 Pod 都重建完毕进入 `Running` 状态后，配置修改完成。
 
-## 通过 Helm 升级
-
-如果选择继续用 Helm 管理集群，可以参考下面步骤升级 TiDB 集群。
-
-### 升级 TiDB 版本
-
-1. 修改集群的 `values.yaml` 文件中的 `tidb.image`、`tikv.image`、`pd.image` 的值为新版本镜像；
-2. 执行 `helm upgrade` 命令进行升级：
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    helm upgrade ${release_name} pingcap/tidb-cluster -f values.yaml --version=${chart_version}
-    ```
-
-3. 查看升级进度：
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    watch kubectl -n ${namespace} get pod -o wide
-    ```
-
-    当所有 Pod 都重建完毕进入 `Running` 状态后，升级完成。
-
-> **注意：**
->
-> 如果需要升级到企业版，需要把 `<tidb/tikv/pd>.image` 的值改为企业版镜像。
->
-> 例如将 `pd.image` 从 `pingcap/pd:v5.0.1` 修改为 `pingcap/pd-enterprise:v5.0.1`。
-
-### 强制升级 TiDB 集群
-
-如果 PD 集群因为 PD 配置错误、PD 镜像 tag 错误、NodeAffinity 等原因不可用，[TiDB 集群扩缩容](scale-a-tidb-cluster.md)、[升级 TiDB 版本](#升级-tidb-版本)和更新 TiDB 集群配置这三种操作都无法成功执行。
-
-这种情况下，可使用 `force-upgrade`（TiDB Operator 版本 > v1.0.0-beta.3 ）强制升级集群以恢复集群功能。首先为集群设置 `annotation`：
-
-{{< copyable "shell-regular" >}}
-
-```shell
-kubectl annotate --overwrite tc ${release_name} -n ${namespace} tidb.pingcap.com/force-upgrade=true
-```
-
-然后执行对应操作中的 `helm upgrade` 命令：
-
-{{< copyable "shell-regular" >}}
-
-```shell
-helm upgrade ${release_name} pingcap/tidb-cluster -f values.yaml --version=${chart_version}
-```
-
-> **警告：**
->
-> PD 集群恢复后，**必须**执行下面命令禁用强制升级功能，否则下次升级过程可能会出现异常：
->
-> {{< copyable "shell-regular" >}}
->
-> ```shell
-> kubectl annotate tc ${release_name} -n ${namespace} tidb.pingcap.com/force-upgrade-
-> ```
-
 > **注意：**
 >
 > TiDB（v4.0.2 起）默认会定期收集使用情况信息，并将这些信息分享给 PingCAP 用于改善产品。若要了解所收集的信息详情及如何禁用该行为，请参见[遥测](https://docs.pingcap.com/zh/tidb/stable/telemetry)。
