@@ -10632,6 +10632,16 @@ Kubernetes apps/v1.StatefulSetStatus
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>members</code></br>
+<em>
+[]*github.com/pingcap/tidb-operator/pkg/binlog.NodeStatus
+</em>
+</td>
+<td>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="queueconfig">QueueConfig</h3>

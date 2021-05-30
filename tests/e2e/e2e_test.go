@@ -34,6 +34,7 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework/viperconfig"
 
 	// test sources
+	_ "github.com/pingcap/tidb-operator/tests/e2e/br"
 	_ "github.com/pingcap/tidb-operator/tests/e2e/dmcluster"
 	_ "github.com/pingcap/tidb-operator/tests/e2e/tidbcluster"
 )
