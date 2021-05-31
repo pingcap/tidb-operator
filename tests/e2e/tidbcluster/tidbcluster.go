@@ -1476,6 +1476,14 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		fromTc.Spec.TiDB.Replicas = 2
 		fromTc.Spec.TiCDC.Replicas = 3
 
+		fromTc.Spec.TiCDC.StorageVolumes = []v1alpha1.StorageVolume{
+			{
+				Name:        "sort-dir",
+				StorageSize: "1Gi",
+				MountPath:   "/var/lib/sort-dir",
+			},
+		}
+
 		err := genericCli.Create(context.TODO(), fromTc)
 		framework.ExpectNoError(err, "Expected TiDB cluster created")
 		err = oa.WaitForTidbClusterReady(fromTc, 30*time.Minute, 5*time.Second)
@@ -1501,6 +1509,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			"/cdc", "cli", "changefeed", "create",
 			fmt.Sprintf("--sink-uri=tidb://root:@%s:4000/", controller.TiDBMemberName(toTCName)),
 			fmt.Sprintf("--pd=http://%s:2379", controller.PDMemberName(fromTCName)),
+			"--sort-dir=/var/lib/sort-dir",
 		}
 		data, err := framework.RunKubectl(args...)
 		framework.ExpectNoError(err, "failed to create change feed task: %s, %v", string(data), err)

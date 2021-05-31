@@ -173,6 +173,9 @@ func validateTiFlashSpec(spec *v1alpha1.TiFlashSpec, fldPath *field.Path) field.
 func validateTiCDCSpec(spec *v1alpha1.TiCDCSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
+	if len(spec.StorageVolumes) > 0 {
+		allErrs = append(allErrs, validateStorageVolumes(spec.StorageVolumes, fldPath.Child("storageVolumes"))...)
+	}
 	return allErrs
 }
 
