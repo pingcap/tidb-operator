@@ -195,7 +195,7 @@ func scaleOne(actual *apps.StatefulSet, desired *apps.StatefulSet) (scaling int,
 		}
 	}
 	if additions.Len() > 0 {
-		// we always do scaling out before scaling in to maintain maximum avaiability
+		// we always do scaling out before scaling in to maintain maximum availability
 		scaling = 1
 		ordinal = additions.List()[0]
 		replicas++

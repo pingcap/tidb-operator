@@ -20,6 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/pingcap/tidb-operator/pkg/binlog"
 	"github.com/pingcap/tidb-operator/pkg/util/config"
 )
 
@@ -1119,6 +1120,7 @@ type TiKVFailureStore struct {
 type PumpStatus struct {
 	Phase       MemberPhase             `json:"phase,omitempty"`
 	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
+	Members     []*binlog.NodeStatus    `json:"members,omitempty"`
 }
 
 // TiDBTLSClient can enable TLS connection between TiDB server and MySQL client

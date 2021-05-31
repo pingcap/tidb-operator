@@ -20,6 +20,7 @@ package v1alpha1
 import (
 	time "time"
 
+	binlog "github.com/pingcap/tidb-operator/pkg/binlog"
 	model "github.com/prometheus/common/model"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -3928,6 +3929,17 @@ func (in *PumpStatus) DeepCopyInto(out *PumpStatus) {
 		in, out := &in.StatefulSet, &out.StatefulSet
 		*out = new(appsv1.StatefulSetStatus)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.Members != nil {
+		in, out := &in.Members, &out.Members
+		*out = make([]*binlog.NodeStatus, len(*in))
+		for i := range *in {
+			if (*in)[i] != nil {
+				in, out := &(*in)[i], &(*out)[i]
+				*out = new(binlog.NodeStatus)
+				**out = **in
+			}
+		}
 	}
 	return
 }
