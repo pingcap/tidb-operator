@@ -182,6 +182,10 @@ curl -O https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/
 
 如需了解更详细的配置信息或者进行自定义配置，请参考[配置 TiDB 集群](configure-a-tidb-cluster.md)
 
+> **注意：**
+>
+> 默认情况下，`tidb-cluster.yaml` 文件中 TiDB 服务的 LoadBalancer 配置为 "internal"。这意味着 LoadBalancer 只能在 VPC 内部访问，而不能在外部访问。要通过 MySQL 协议访问 TiDB，你需要使用一个堡垒机或使用 `kubectl port-forward`。如果你想在互联网上公开访问 TiDB，并且知晓这样做的风险，你可以在 `tidb-cluster.yaml` 文件中将 LoadBalancer 从 "internal" 改为 "internet-facing"。
+
 执行以下命令，在 EKS 集群中部署 TidbCluster 和 TidbMonitor CR。
 
 {{< copyable "shell-regular" >}}
@@ -302,7 +306,7 @@ MySQL [(none)]> show status;
 > - [MySQL 8.0 默认认证插件](https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_default_authentication_plugin)从 `mysql_native_password` 更新为 `caching_sha2_password`，因此如果使用 MySQL 8.0 客户端访问 TiDB 服务（TiDB 版本 < v4.0.7），并且用户账户有配置密码，需要显示指定 `--default-auth=mysql_native_password` 参数。
 > - TiDB（v4.0.2 起）默认会定期收集使用情况信息，并将这些信息分享给 PingCAP 用于改善产品。若要了解所收集的信息详情及如何禁用该行为，请参见 [TiDB 遥测功能使用文档](https://docs.pingcap.com/zh/tidb/stable/telemetry)。
 
-### 访问 Grafana 监控
+## 访问 Grafana 监控
 
 先获取 Grafana 的 LoadBalancer 域名：
 
@@ -327,6 +331,10 @@ basic-grafana   LoadBalancer   10.100.199.42   a806cfe84c12a4831aa3313e792e3eed-
 > **注意：**
 >
 > Grafana 默认用户名和密码均为 admin。
+
+## 访问 TiDB Dashboard
+
+如果想要安全地访问 TiDB Dashboard，详情可以参见[访问 TiDB Dashboard](access-dashboard.md)。
 
 ## 升级 TiDB 集群
 

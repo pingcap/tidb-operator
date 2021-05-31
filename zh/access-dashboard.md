@@ -6,7 +6,11 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/access-dashboard/']
 
 # TiDB Dashboard 指南
 
-TiDB Dashboard 是 TiDB 4.0 专门用来帮助观察与诊断整个 TiDB 集群的可视化面板，你可以在 [TiDB Dashboard](https://docs.pingcap.com/zh/tidb/stable/dashboard-intro) 了解详情。本篇文章将介绍如何在 Kubernetes 环境下访问 TiDB Dashboard。
+> **警告：**
+>
+> TiDB Dashboard 位于 PD 的 `/dashboard` 路径中。其他路径可能无法访问控制。
+
+TiDB Dashboard 是从 TiDB 4.0 开始引入的专门用来帮助观察与诊断整个 TiDB 集群的可视化面板，你可以在 [TiDB Dashboard](https://docs.pingcap.com/zh/tidb/stable/dashboard-intro) 了解详情。本篇文章将介绍如何在 Kubernetes 环境下访问 TiDB Dashboard。
 
 > **注意：**
 >
@@ -14,7 +18,7 @@ TiDB Dashboard 是 TiDB 4.0 专门用来帮助观察与诊断整个 TiDB 集群�
 
 ## 前置条件
 
-你需要使用 v1.1.1 版本及以上的 TiDB Operator 以及 4.0.1 版本及以上的 TiDB 集群，才能在 Kubernetes 环境中流畅使用 `Dashboard`。 你需要在 `TidbCluster` 对象文件中通过以下方式开启 `Dashboard` 快捷访问:
+你需要使用 v1.1.1 版本及以上的 TiDB Operator 以及 4.0.1 版本及以上的 TiDB 集群，才能在 Kubernetes 环境中流畅使用 `Dashboard`。你需要在 `TidbCluster` 对象文件中通过以下方式开启 `Dashboard` 快捷访问:
 
 ```yaml
 apiVersion: pingcap.com/v1alpha1
@@ -26,7 +30,7 @@ spec:
     enableDashboardInternalProxy: true
 ```
 
-## 快速上手
+## 通过端口转发访问 TiDB Dashboard
 
 > **注意：**
 >
