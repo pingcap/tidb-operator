@@ -302,10 +302,24 @@ func RenderTiKVStartScript(model *TiKVStartScriptModel) (string, error) {
 
 // pumpStartScriptTpl is the template string of pump start script
 // Note: changing this will cause a rolling-update of pump cluster
-var pumpStartScriptTpl = template.Must(template.New("pump-start-script").Parse(`set -euo pipefail
+var pumpStartScriptTpl = template.Must(template.New("pump-start-script").Parse(`{{ if .FormatClusterDomain }}
+pd_url="{{ .Scheme }}://{{ .ClusterName }}-pd:2379"
+encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
+discovery_url="{{ .ClusterName }}-discovery.{{ .Namespace }}.svc{{ .FormatClusterDomain }}:10261"
+until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
+echo "waiting for the verification of PD endpoints ..."
+sleep $((RANDOM % 5))
+done
+
+pd_url=$result
+
+set -euo pipefail
 
 /pump \
--pd-urls={{ .Scheme }}://{{ .ClusterName }}-pd:2379 \
+-pd-urls=$pd_url \{{ else }}set -euo pipefail
+
+/pump \
+-pd-urls={{ .Scheme }}://{{ .ClusterName }}-pd:2379 \{{ end }}
 -L={{ .LogLevel }} \
 -advertise-addr=` + "`" + `echo ${HOSTNAME}` + "`" + `.{{ .ClusterName }}-pump{{ .FormatPumpZone }}:8250 \
 -config=/etc/pump/pump.toml \
@@ -323,6 +337,14 @@ type PumpStartScriptModel struct {
 	LogLevel      string
 	Namespace     string
 	ClusterDomain string
+}
+
+func (pssm *PumpStartScriptModel) FormatClusterDomain() string {
+	if len(pssm.ClusterDomain) > 0 {
+		return "." + pssm.ClusterDomain
+	}
+
+	return ""
 }
 
 func (pssm *PumpStartScriptModel) FormatPumpZone() string {
@@ -508,8 +530,9 @@ then
 #   demo-dm-master-0=http://demo-dm-master-0.demo-dm-master-peer.demo.svc:8291,demo-dm-master-1=http://demo-dm-master-1.demo-dm-master-peer.demo.svc:8291
 # The --join args must be:
 #   --join=http://demo-dm-master-0.demo-dm-master-peer.demo.svc:8261,http://demo-dm-master-1.demo-dm-master-peer.demo.svc:8261
-result=$(cat {{ .DataDir }}/join)
-ARGS="${ARGS} --initial-cluster=${result}"
+join=` + "`" + `cat {{ .DataDir }}/join | sed -e 's/8291/8261/g' | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ","` + "`" + `
+join=${join%,}
+ARGS="${ARGS} --join=${join}"
 elif [[ ! -d {{ .DataDir }}/member/wal ]]
 then
 until result=$(wget -qO- -T 3 ${discovery_url}/new/${encoded_domain_url}/dm 2>/dev/null); do

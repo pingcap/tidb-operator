@@ -20,15 +20,12 @@ import (
 
 // getPDClientFromService gets the pd client from the TidbCluster
 func getPDClientFromService(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) pdapi.PDClient {
-	if tc.IsHeterogeneous() {
-		if len(tc.Spec.ClusterDomain) > 0 {
-			return pdControl.GetClusterRefPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.Spec.ClusterDomain, tc.IsTLSClusterEnabled())
-		}
-		return pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
+	if tc.HeterogeneousWithoutLocalPD() {
+		// TODO: to support across k8s cluster without local pd
+		// if TLS is enabled, tc.Spec.Cluster.Name should be same as tc.Name? Because it will query the secret using the tc.Spec.Cluster.Name in the following code.
+		return pdControl.GetClusterRefPDClient(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.Spec.Cluster.ClusterDomain, tc.IsTLSClusterEnabled())
 	}
-	if len(tc.Spec.ClusterDomain) > 0 {
-		return pdControl.GetClusterRefPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.ClusterDomain, tc.IsTLSClusterEnabled())
-	}
+
 	return pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled())
 }
 
@@ -63,11 +60,11 @@ func GetPDClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) p
 // NewFakePDClient creates a fake pdclient that is set as the pd client
 func NewFakePDClient(pdControl *pdapi.FakePDControl, tc *v1alpha1.TidbCluster) *pdapi.FakePDClient {
 	pdClient := pdapi.NewFakePDClient()
-	if len(tc.Spec.ClusterDomain) > 0 {
-		pdControl.SetPDClientWithClusterDomain(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.ClusterDomain, pdClient)
-	} else {
-		pdControl.SetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), pdClient)
+	if tc.Spec.Cluster != nil {
+		pdControl.SetPDClientWithClusterDomain(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.Spec.Cluster.ClusterDomain, pdClient)
 	}
+	pdControl.SetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), pdClient)
+
 	return pdClient
 }
 

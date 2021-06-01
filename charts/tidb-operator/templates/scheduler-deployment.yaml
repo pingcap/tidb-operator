@@ -26,6 +26,10 @@ spec:
         app.kubernetes.io/name: {{ template "chart.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: scheduler
+{{- if .Values.scheduler.podAnnotations }}
+      annotations:
+{{ toYaml .Values.scheduler.podAnnotations | indent 8 }}
+{{ end }}
     spec:
     {{- if .Values.scheduler.serviceAccount }}
       {{- if eq .Values.appendReleaseSuffix true}}

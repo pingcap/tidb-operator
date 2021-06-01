@@ -14,14 +14,18 @@
 package member
 
 import (
+	"context"
+	"crypto/tls"
 	"fmt"
 	"path"
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/binlog"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/util/config"
 	apps "k8s.io/api/apps/v1"
@@ -39,14 +43,23 @@ const (
 	pumpCertPath        = "/var/lib/pump-tls"
 )
 
+type binlogClient interface {
+	PumpNodeStatus(ctx context.Context) (status []*binlog.NodeStatus, err error)
+	Close() error
+}
+
 type pumpMemberManager struct {
-	deps *controller.Dependencies
+	deps   *controller.Dependencies
+	scaler Scaler
+	// only use for test
+	binlogClient binlogClient
 }
 
 // NewPumpMemberManager returns a controller to reconcile pump clusters
-func NewPumpMemberManager(deps *controller.Dependencies) manager.Manager {
+func NewPumpMemberManager(deps *controller.Dependencies, scaler Scaler) manager.Manager {
 	return &pumpMemberManager{
-		deps: deps,
+		deps:   deps,
+		scaler: scaler,
 	}
 }
 
@@ -67,9 +80,9 @@ func (m *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 		return fmt.Errorf("syncPumpStatefulSetForTidbCluster: failed to get sts %s for cluster %s/%s, error: %s", controller.PumpMemberName(tc.Name), tc.GetNamespace(), tc.GetName(), err)
 	}
 	notFound := errors.IsNotFound(err)
-	oldPumpSet := oldPumpSetTemp.DeepCopy()
+	oldSet := oldPumpSetTemp.DeepCopy()
 
-	if err := m.syncTiDBClusterStatus(tc, oldPumpSet); err != nil {
+	if err := m.syncTiDBClusterStatus(tc, oldSet); err != nil {
 		klog.Errorf("failed to sync TidbCluster: [%s/%s]'s status, error: %v", tc.Namespace, tc.Name, err)
 		return err
 	}
@@ -79,21 +92,25 @@ func (m *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 		return nil
 	}
 
-	cm, err := m.syncConfigMap(tc, oldPumpSet)
+	cm, err := m.syncConfigMap(tc, oldSet)
 	if err != nil {
 		return err
 	}
 
-	newPumpSet, err := getNewPumpStatefulSet(tc, cm)
+	newSet, err := getNewPumpStatefulSet(tc, cm)
 	if err != nil {
 		return err
 	}
 	if notFound {
-		err = SetStatefulSetLastAppliedConfigAnnotation(newPumpSet)
+		err = SetStatefulSetLastAppliedConfigAnnotation(newSet)
 		if err != nil {
 			return err
 		}
-		return m.deps.StatefulSetControl.CreateStatefulSet(tc, newPumpSet)
+		return m.deps.StatefulSetControl.CreateStatefulSet(tc, newSet)
+	}
+
+	if err := m.scaler.Scale(tc, oldSet, newSet); err != nil {
+		return err
 	}
 
 	// Wait for PD & TiKV upgrading done
@@ -108,7 +125,35 @@ func (m *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 		return nil
 	}
 
-	return UpdateStatefulSet(m.deps.StatefulSetControl, tc, newPumpSet, oldPumpSet)
+	return UpdateStatefulSet(m.deps.StatefulSetControl, tc, newSet, oldSet)
+}
+
+func (p *pumpMemberManager) buildBinlogClient(tc *v1alpha1.TidbCluster, control pdapi.PDControlInterface) (client binlogClient, err error) {
+	if p.binlogClient != nil {
+		return p.binlogClient, nil
+	}
+
+	return buildBinlogClient(tc, control)
+}
+
+func buildBinlogClient(tc *v1alpha1.TidbCluster, control pdapi.PDControlInterface) (client *binlog.Client, err error) {
+	var endpoints []string
+	var tlsConfig *tls.Config
+	if tc.HeterogeneousWithoutLocalPD() {
+		endpoints, tlsConfig, err = control.GetEndpoints(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
+	} else {
+		endpoints, tlsConfig, err = control.GetEndpoints(pdapi.Namespace(tc.Namespace), tc.Name, tc.IsTLSClusterEnabled())
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	client, err = binlog.NewBinlogClient(endpoints, tlsConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return
 }
 
 func (m *pumpMemberManager) syncTiDBClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
@@ -123,15 +168,25 @@ func (m *pumpMemberManager) syncTiDBClusterStatus(tc *v1alpha1.TidbCluster, set 
 	if err != nil {
 		return err
 	}
+
 	if upgrading {
 		tc.Status.Pump.Phase = v1alpha1.UpgradePhase
 	} else {
 		tc.Status.Pump.Phase = v1alpha1.NormalPhase
 	}
 
-	//TODO: support sync pump members from PD.
-	// pumpStatus := map[string]v1alpha1.PumpMember{}
-	// tc.Status.Pump.Members = pumpStatus
+	client, err := m.buildBinlogClient(tc, m.deps.PDControl)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	status, err := client.PumpNodeStatus(context.TODO())
+	if err != nil {
+		return err
+	}
+
+	tc.Status.Pump.Members = status
 
 	return nil
 }
@@ -266,10 +321,11 @@ func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 
 func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*appsv1.StatefulSet, error) {
 	spec := tc.BasePumpSpec()
-	objMeta, pumpLabel := getPumpMeta(tc, controller.PumpMemberName)
+	objMeta, stsLabels := getPumpMeta(tc, controller.PumpMemberName)
 	replicas := tc.Spec.Pump.Replicas
 	storageClass := tc.Spec.Pump.StorageClassName
-	podAnnos := CombineAnnotations(controller.AnnProm(8250), spec.Annotations())
+	podLabels := util.CombineStringMap(stsLabels.Labels(), spec.Labels())
+	podAnnos := util.CombineStringMap(controller.AnnProm(8250), spec.Annotations())
 	storageRequest, err := controller.ParseStorageRequest(tc.Spec.Pump.Requests)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse storage request for pump, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
@@ -329,6 +385,13 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 			Resources:    controller.ContainerResource(tc.Spec.Pump.ResourceRequirements),
 			Env:          util.AppendEnv(envs, spec.Env()),
 			VolumeMounts: volumeMounts,
+			ReadinessProbe: &corev1.Probe{
+				Handler: corev1.Handler{
+					TCPSocket: &corev1.TCPSocketAction{
+						Port: intstr.FromInt(8250),
+					},
+				},
+			},
 		},
 	}
 
@@ -394,7 +457,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 	podTemplate := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: podAnnos,
-			Labels:      pumpLabel,
+			Labels:      podLabels,
 		},
 		Spec: podSpec,
 	}
@@ -402,7 +465,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 	return &appsv1.StatefulSet{
 		ObjectMeta: objMeta,
 		Spec: appsv1.StatefulSetSpec{
-			Selector:    pumpLabel.LabelSelector(),
+			Selector:    stsLabels.LabelSelector(),
 			ServiceName: controller.PumpMemberName(tc.Name),
 			Replicas:    &replicas,
 
@@ -429,8 +492,6 @@ func getPumpMeta(tc *v1alpha1.TidbCluster, nameFunc func(string) string) (metav1
 }
 
 func getPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
-	// Keep the logic same as helm chart, but pump has not supported tls yet (no cert mounted)
-	// TODO: support tls
 	scheme := "http"
 	if tc.IsTLSClusterEnabled() {
 		scheme = "https"
@@ -446,12 +507,12 @@ func getPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 }
 
 func getPumpLogLevel(tc *v1alpha1.TidbCluster) string {
-	config := tc.Spec.Pump.Config
-	if config == nil {
+	cfg := tc.Spec.Pump.Config
+	if cfg == nil {
 		return defaultPumpLogLevel
 	}
 
-	v := config.Get("log-level")
+	v := cfg.Get("log-level")
 	if v == nil {
 		return defaultPumpLogLevel
 	}
@@ -504,7 +565,7 @@ func (m *FakePumpMemberManager) SetSyncError(err error) {
 	m.err = err
 }
 
-func (m *FakePumpMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
+func (m *FakePumpMemberManager) Sync(*v1alpha1.TidbCluster) error {
 	if m.err != nil {
 		return m.err
 	}

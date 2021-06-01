@@ -263,12 +263,17 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	if backup.Spec.ServiceAccount != "" {
 		serviceAccount = backup.Spec.ServiceAccount
 	}
-	backupLabel := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name)
+
+	jobLabels := util.CombineStringMap(label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name), backup.Labels)
+	podLabels := jobLabels
+	jobAnnotations := backup.Annotations
+	podAnnotations := backup.Annotations
+
 	// TODO: need add ResourceRequirement for backup job
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels:      backupLabel.Labels(),
-			Annotations: backup.Annotations,
+			Labels:      podLabels,
+			Annotations: podAnnotations,
 		},
 		Spec: corev1.PodSpec{
 			SecurityContext:    backup.Spec.PodSecurityContext,
@@ -306,9 +311,10 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      backup.GetBackupJobName(),
-			Namespace: ns,
-			Labels:    backupLabel,
+			Name:        backup.GetBackupJobName(),
+			Namespace:   ns,
+			Labels:      jobLabels,
+			Annotations: jobAnnotations,
 			OwnerReferences: []metav1.OwnerReference{
 				controller.GetBackupOwnerRef(backup),
 			},
@@ -371,7 +377,11 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		args = append(args, fmt.Sprintf("--tikvVersion=%s", tikvVersion))
 	}
 
-	backupLabel := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name)
+	jobLabels := util.CombineStringMap(label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name), backup.Labels)
+	podLabels := jobLabels
+	jobAnnotations := backup.Annotations
+	podAnnotations := jobAnnotations
+
 	volumeMounts := []corev1.VolumeMount{}
 	volumes := []corev1.Volume{}
 
@@ -445,8 +455,8 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels:      backupLabel.Labels(),
-			Annotations: backup.Annotations,
+			Labels:      podLabels,
+			Annotations: podAnnotations,
 		},
 		Spec: corev1.PodSpec{
 			SecurityContext:    backup.Spec.PodSecurityContext,
@@ -483,9 +493,10 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      backup.GetBackupJobName(),
-			Namespace: ns,
-			Labels:    backupLabel,
+			Name:        backup.GetBackupJobName(),
+			Namespace:   ns,
+			Labels:      jobLabels,
+			Annotations: jobAnnotations,
 			OwnerReferences: []metav1.OwnerReference{
 				controller.GetBackupOwnerRef(backup),
 			},

@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/robfig/cron"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -229,14 +230,13 @@ func buildBackup(bs *v1alpha1.BackupSchedule, timestamp time.Time) *v1alpha1.Bac
 		backupSpec.ImagePullSecrets = bs.Spec.ImagePullSecrets
 	}
 
-	bsLabel := label.NewBackupSchedule().Instance(bsName).BackupSchedule(bsName)
-
+	bsLabel := util.CombineStringMap(label.NewBackupSchedule().Instance(bsName).BackupSchedule(bsName), bs.Labels)
 	backup := &v1alpha1.Backup{
 		Spec: backupSpec,
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:   ns,
 			Name:        bs.GetBackupCRDName(timestamp),
-			Labels:      bsLabel.Labels(),
+			Labels:      bsLabel,
 			Annotations: bs.Annotations,
 			OwnerReferences: []metav1.OwnerReference{
 				controller.GetBackupScheduleOwnerRef(bs),

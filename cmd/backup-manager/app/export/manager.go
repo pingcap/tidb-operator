@@ -258,7 +258,7 @@ func (bm *BackupManager) performBackup(ctx context.Context, backup *v1alpha1.Bac
 		return err
 	}
 
-	backupErr := bm.dumpTidbClusterData(ctx, backup)
+	backupErr := bm.dumpTidbClusterData(ctx, backupFullPath, backup)
 	if oldTikvGCTimeDuration < tikvGCTimeDuration {
 		// use another context to revert `tikv_gc_life_time` back.
 		// `DefaultTerminationGracePeriodSeconds` for a pod is 30, so we use a smaller timeout value here.

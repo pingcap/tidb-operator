@@ -241,9 +241,10 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error)
 	tcName := tc.GetName()
 
 	baseTiCDCSpec := tc.BaseTiCDCSpec()
-	ticdcLabel := labelTiCDC(tc)
+	stsLabels := labelTiCDC(tc)
 	stsName := controller.TiCDCMemberName(tcName)
-	podAnnotations := CombineAnnotations(controller.AnnProm(8301), baseTiCDCSpec.Annotations())
+	podLabels := util.CombineStringMap(stsLabels, baseTiCDCSpec.Labels())
+	podAnnotations := util.CombineStringMap(controller.AnnProm(8301), baseTiCDCSpec.Annotations())
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiCDCLabelVal)
 	headlessSvcName := controller.TiCDCPeerMemberName(tcName)
 
@@ -256,12 +257,45 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error)
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--ca=%s", path.Join(ticdcCertPath, corev1.ServiceAccountRootCAKey)))
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--cert=%s", path.Join(ticdcCertPath, corev1.TLSCertKey)))
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--key=%s", path.Join(ticdcCertPath, corev1.TLSPrivateKeyKey)))
-		cmdArgs = append(cmdArgs, fmt.Sprintf("--pd=https://%s-pd:2379", tcName))
+		if tc.Spec.ClusterDomain == "" {
+			cmdArgs = append(cmdArgs, fmt.Sprintf("--pd=https://%s-pd:2379", tcName))
+		} else {
+			cmdArgs = append(cmdArgs, "--pd=${result}")
+		}
 	} else {
-		cmdArgs = append(cmdArgs, fmt.Sprintf("--pd=http://%s-pd:2379", tcName))
+		if tc.Spec.ClusterDomain == "" {
+			cmdArgs = append(cmdArgs, fmt.Sprintf("--pd=http://%s-pd:2379", tcName))
+		} else {
+			cmdArgs = append(cmdArgs, "--pd=${result}")
+		}
 	}
 
-	cmd := strings.Join(cmdArgs, " ")
+	var script string
+
+	if tc.Spec.ClusterDomain != "" {
+		var pdAddr string
+		if tc.IsTLSClusterEnabled() {
+			pdAddr = fmt.Sprintf("https://%s-pd:2379", tcName)
+		} else {
+			pdAddr = fmt.Sprintf("http://%s-pd:2379", tcName)
+		}
+		formatClusterDomain := controller.FormatClusterDomain(tc.Spec.ClusterDomain)
+
+		str := `set -uo pipefail
+pd_url="%s"
+encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
+discovery_url="%s-discovery.${NAMESPACE}.svc%s:10261"
+until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
+echo "waiting for the verification of PD endpoints ..."
+sleep 2
+done
+`
+
+		script += fmt.Sprintf(str, pdAddr, tc.GetName(), formatClusterDomain)
+		script += "\n" + strings.Join(append([]string{"exec"}, cmdArgs...), " ")
+	} else {
+		script = strings.Join(cmdArgs, " ")
+	}
 
 	envs := []corev1.EnvVar{
 		{
@@ -294,7 +328,7 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error)
 		Name:            v1alpha1.TiCDCMemberType.String(),
 		Image:           tc.TiCDCImage(),
 		ImagePullPolicy: baseTiCDCSpec.ImagePullPolicy(),
-		Command:         []string{"/bin/sh", "-c", cmd},
+		Command:         []string{"/bin/sh", "-c", script},
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          "ticdc",
@@ -378,16 +412,16 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error)
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            stsName,
 			Namespace:       ns,
-			Labels:          ticdcLabel.Labels(),
+			Labels:          stsLabels.Labels(),
 			Annotations:     stsAnnotations,
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
 			Replicas: pointer.Int32Ptr(tc.TiCDCDeployDesiredReplicas()),
-			Selector: ticdcLabel.LabelSelector(),
+			Selector: stsLabels.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      ticdcLabel.Labels(),
+					Labels:      podLabels,
 					Annotations: podAnnotations,
 				},
 				Spec: podSpec,

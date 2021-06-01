@@ -634,7 +634,7 @@ func TestTiDBMemberManagerSyncTidbService(t *testing.T) {
 			expectFn: func(g *GomegaWithT, err error, svc *corev1.Service) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(svc.Annotations).To(HaveKeyWithValue("lb-type", "new-lb"), "Expected updating service will reconcile annotations")
-				g.Expect(svc.Annotations).To(HaveKeyWithValue("k", "v"), "Expected updating service will not affect additional annotations")
+				g.Expect(svc.Annotations).NotTo(HaveKey("k"), "Expected updating service will reconcile annotations")
 			},
 		},
 		{

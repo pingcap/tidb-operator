@@ -26,6 +26,10 @@ spec:
         app.kubernetes.io/name: {{ template "chart.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: controller-manager
+{{- if .Values.controllerManager.podAnnotations }}
+      annotations:
+{{ toYaml .Values.controllerManager.podAnnotations | indent 8 }}
+{{ end }}
     spec:
     {{- if .Values.controllerManager.serviceAccount }}
       {{- if eq .Values.appendReleaseSuffix true}}

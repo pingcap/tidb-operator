@@ -18,6 +18,7 @@ import (
 
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestUpdateConfigMap(t *testing.T) {
@@ -28,6 +29,7 @@ func TestUpdateConfigMap(t *testing.T) {
 		new        *corev1.ConfigMap
 		updateKeys []string
 		err        error
+		equal      bool
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
@@ -35,13 +37,14 @@ func TestUpdateConfigMap(t *testing.T) {
 
 		origOld := test.old.DeepCopy()
 		origNew := test.new.DeepCopy()
-		err := updateConfigMap(test.old, test.new)
+		equal, err := updateConfigMap(test.old, test.new)
 
 		if test.err != nil {
 			g.Expect(err).To(Equal(test.err))
 			return
 		}
 		g.Expect(err).NotTo(HaveOccurred())
+		g.Expect(equal).To(Equal(test.equal))
 
 		// different keys are updated in new
 		if len(test.new.Data) > 0 {
@@ -67,9 +70,10 @@ func TestUpdateConfigMap(t *testing.T) {
 
 	tests := []testcase{
 		{
-			name: "two empty config map",
-			old:  &corev1.ConfigMap{},
-			new:  &corev1.ConfigMap{},
+			name:  "two empty config map",
+			old:   &corev1.ConfigMap{},
+			new:   &corev1.ConfigMap{},
+			equal: true,
 		},
 		{
 			name: "empty new config map",
@@ -80,6 +84,7 @@ func TestUpdateConfigMap(t *testing.T) {
 			},
 			new:        &corev1.ConfigMap{},
 			updateKeys: []string{"config-file"},
+			equal:      false,
 		},
 		{
 			name: "empty old config map",
@@ -90,6 +95,7 @@ func TestUpdateConfigMap(t *testing.T) {
 				},
 			},
 			updateKeys: []string{"config-file"},
+			equal:      false,
 		},
 		{
 			name: "add new key",
@@ -107,6 +113,7 @@ func TestUpdateConfigMap(t *testing.T) {
 				},
 			},
 			updateKeys: []string{"pump-config", "config_templ.toml"},
+			equal:      false,
 		},
 		{
 			name: "some keys are not updated",
@@ -125,6 +132,108 @@ func TestUpdateConfigMap(t *testing.T) {
 				},
 			},
 			updateKeys: []string{"pump-config", "config_templ.toml"},
+			equal:      false,
+		},
+		{
+			name: "the data of old and new configmaps are the same",
+			old: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "old",
+				},
+				Data: map[string]string{
+					"config-file": "a = \"b\"",
+				},
+			},
+			new: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "new",
+				},
+				Data: map[string]string{
+					"config-file": "a = \"b\"",
+				},
+			},
+			equal: true,
+		},
+	}
+
+	for i := range tests {
+		testFn(&tests[i], t)
+	}
+}
+
+func TestConfirmNameByData(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name         string
+		existing     *corev1.ConfigMap
+		desired      *corev1.ConfigMap
+		afterConfirm *corev1.ConfigMap
+	}
+
+	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+
+		dataEqual, err := updateConfigMap(test.existing, test.desired)
+		g.Expect(err).NotTo(HaveOccurred())
+
+		confirmNameByData(test.existing, test.desired, dataEqual)
+		g.Expect(test.afterConfirm).To(Equal(test.desired))
+	}
+
+	tests := []testcase{
+		{
+			name: "data is equal but existing cm name is not equal to desired cm name",
+			existing: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "existing",
+				},
+				Data: map[string]string{
+					"config-file": "a = \"b\"",
+				},
+			},
+			desired: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "desired",
+				},
+				Data: map[string]string{
+					"config-file": "a = \"b\"",
+				},
+			},
+			afterConfirm: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "existing",
+				},
+				Data: map[string]string{
+					"config-file": "a = \"b\"",
+				},
+			},
+		},
+		{
+			name: "data is not equal but existing cm name is equal to desired cm name",
+			existing: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "cm-12345",
+				},
+				Data: map[string]string{
+					"config-file": "a = \"b\"",
+				},
+			},
+			desired: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "cm-12345",
+				},
+				Data: map[string]string{
+					"config-file": "a = \"c\"",
+				},
+			},
+			afterConfirm: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "cm-12345-new",
+				},
+				Data: map[string]string{
+					"config-file": "a = \"c\"",
+				},
+			},
 		},
 	}
 

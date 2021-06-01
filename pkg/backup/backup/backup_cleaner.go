@@ -145,10 +145,14 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 	if backup.Spec.ServiceAccount != "" {
 		serviceAccount = backup.Spec.ServiceAccount
 	}
+
 	backupLabel := label.NewBackup().Instance(backup.GetInstanceName()).CleanJob().Backup(name)
+	jobLabels := util.CombineStringMap(backupLabel, backup.Labels)
+	podLabels := jobLabels
+
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels:      backupLabel.Labels(),
+			Labels:      podLabels,
 			Annotations: backup.Annotations,
 		},
 		Spec: corev1.PodSpec{
@@ -175,9 +179,10 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      backup.GetCleanJobName(),
-			Namespace: ns,
-			Labels:    backupLabel,
+			Name:        backup.GetCleanJobName(),
+			Namespace:   ns,
+			Labels:      jobLabels,
+			Annotations: backup.Annotations,
 			OwnerReferences: []metav1.OwnerReference{
 				controller.GetBackupOwnerRef(backup),
 			},

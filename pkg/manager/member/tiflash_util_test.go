@@ -712,7 +712,7 @@ func TestSetTiFlashConfigDefault(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			// g := NewGomegaWithT(t)
-			setTiFlashConfigDefault(test.config, "", "test", "test", "")
+			setTiFlashConfigDefault(test.config, nil, "test", "test", "", false, false)
 			// g.Expect(test.config).To(Equal(test.expect))
 			if diff := cmp.Diff(*test.expect, *test.config); diff != "" {
 				t.Fatalf("unexpected configuration (-want, +got): %s", diff)

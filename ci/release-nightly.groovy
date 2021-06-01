@@ -87,14 +87,31 @@ try {
                         // clean stale files because we may reuse previous created nodes
                         deleteDir()
 
-                        checkout changelog: false, poll: false, scm: [
-                                $class: 'GitSCM',
-                                branches: [[name: "${GIT_REF}"]],
-                                userRemoteConfigs: [[
-                                    refspec: '+refs/heads/*:refs/remotes/origin/* +refs/pull/*:refs/remotes/origin/pull/*',
-                                    url: "${params.GIT_URL}",
-                                ]]
+                        try {
+                            checkout changelog: false, poll: false, scm: [
+                                    $class: 'GitSCM',
+                                    branches: [[name: "${GIT_REF}"]],
+                                    userRemoteConfigs: [[
+                                            refspec: '+refs/heads/*:refs/remotes/origin/* +refs/pull/*:refs/remotes/origin/pull/*',
+                                            url: "${params.GIT_URL}",
+                                    ]]
                             ]
+                        } catch (info) {
+                            retry(3) {
+                                echo "checkout failed, retry.."
+                                sleep 10
+                                checkout changelog: false, poll: false, scm: [
+                                        $class: 'GitSCM',
+                                        branches: [[name: "${GIT_REF}"]],
+                                        userRemoteConfigs: [[
+                                                refspec: '+refs/heads/*:refs/remotes/origin/* +refs/pull/*:refs/remotes/origin/pull/*',
+                                                url: "${params.GIT_URL}",
+                                        ]]
+                                ]
+                            }
+                        }
+
+
 
                         GITHASH = sh(returnStdout: true, script: "git rev-parse HEAD").trim()
                         IMAGE_TAG = env.JOB_NAME + "-" + GITHASH.substring(0, 6)

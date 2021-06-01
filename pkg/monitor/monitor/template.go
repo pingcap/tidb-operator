@@ -426,9 +426,9 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 			scrapeconfig.Scheme = "https"
 			dmTlsSecretName := util.DMClientTLSSecretName(cluster.Name)
 			scrapeconfig.HTTPClientConfig.TLSConfig = config.TLSConfig{
-				CAFile:   path.Join(util.DMClusterClientTLSPath, TLSAssetKey{"secret", cluster.Namespace, dmTlsSecretName, corev1.ServiceAccountRootCAKey}.String()),
-				CertFile: path.Join(util.DMClusterClientTLSPath, TLSAssetKey{"secret", cluster.Namespace, dmTlsSecretName, corev1.TLSCertKey}.String()),
-				KeyFile:  path.Join(util.DMClusterClientTLSPath, TLSAssetKey{"secret", cluster.Namespace, dmTlsSecretName, corev1.TLSPrivateKeyKey}.String()),
+				CAFile:   path.Join(util.ClusterAssetsTLSPath, TLSAssetKey{"secret", cluster.Namespace, dmTlsSecretName, corev1.ServiceAccountRootCAKey}.String()),
+				CertFile: path.Join(util.ClusterAssetsTLSPath, TLSAssetKey{"secret", cluster.Namespace, dmTlsSecretName, corev1.TLSCertKey}.String()),
+				KeyFile:  path.Join(util.ClusterAssetsTLSPath, TLSAssetKey{"secret", cluster.Namespace, dmTlsSecretName, corev1.TLSPrivateKeyKey}.String()),
 			}
 		}
 		scrapeJobs = append(scrapeJobs, scrapeconfig)

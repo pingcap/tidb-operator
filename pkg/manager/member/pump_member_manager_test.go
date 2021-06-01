@@ -22,6 +22,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/binlog"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util/config"
 	appsv1 "k8s.io/api/apps/v1"
@@ -255,7 +256,7 @@ func TestPumpMemberManagerSyncUpdate(t *testing.T) {
 				g.Expect(r.sync).To(Succeed())
 				g.Expect(r.svc.Spec.Ports[0].Port).NotTo(Equal(int32(8888)))
 				g.Expect(r.cm.Data["pump-config"]).To(ContainSubstring("stop-write-at-available-space"))
-				g.Expect(*r.set.Spec.Replicas).To(Equal(int32(5)))
+				g.Expect(*r.set.Spec.Replicas).To(Equal(int32(4)))
 			},
 		},
 		{
@@ -433,7 +434,11 @@ type pumpFakeControls struct {
 
 func newFakePumpMemberManager() (*pumpMemberManager, *pumpFakeControls, *pumpFakeIndexers) {
 	fakeDeps := controller.NewFakeDependencies()
-	pmm := &pumpMemberManager{deps: fakeDeps}
+	pmm := &pumpMemberManager{
+		deps:         fakeDeps,
+		scaler:       NewFakePumpScaler(),
+		binlogClient: &fakeBinlogClient{},
+	}
 	controls := &pumpFakeControls{
 		svc:     fakeDeps.ServiceControl.(*controller.FakeServiceControl),
 		set:     fakeDeps.StatefulSetControl.(*controller.FakeStatefulSetControl),
@@ -757,4 +762,15 @@ func TestSyncTiDBClusterStatus(t *testing.T) {
 		t.Logf(tests[i].name)
 		testFn(&tests[i], t)
 	}
+}
+
+type fakeBinlogClient struct {
+}
+
+func (c *fakeBinlogClient) PumpNodeStatus(ctx context.Context) (status []*binlog.NodeStatus, err error) {
+	return nil, nil
+}
+
+func (c *fakeBinlogClient) Close() error {
+	return nil
 }

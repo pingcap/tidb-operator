@@ -19,6 +19,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pingcap/tidb-operator/pkg/util"
+
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
@@ -288,7 +290,7 @@ func TestShouldRecover(t *testing.T) {
 		},
 	}
 	podsWithFailover := append(pods, []*v1.Pod{
-		&v1.Pod{
+		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "failover-tikv-2",
 				Namespace: v1.NamespaceDefault,
@@ -302,7 +304,7 @@ func TestShouldRecover(t *testing.T) {
 				},
 			},
 		},
-		&v1.Pod{
+		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "failover-tiflash-2",
 				Namespace: v1.NamespaceDefault,
@@ -790,7 +792,7 @@ func TestCombineAnnotations(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := CombineAnnotations(tt.a, tt.b)
+			got := util.CombineStringMap(tt.a, tt.b)
 			if diff := cmp.Diff(tt.expected, got); diff != "" {
 				t.Errorf("unexpected (-want, +got): %s", diff)
 			}

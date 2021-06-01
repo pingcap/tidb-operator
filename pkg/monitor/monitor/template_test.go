@@ -908,9 +908,9 @@ scrape_configs:
       names:
       - ns1
   tls_config:
-    ca_file: /var/lib/dm-cluster-client-tls/secret_ns1_target-dm-client-secret_ca.crt
-    cert_file: /var/lib/dm-cluster-client-tls/secret_ns1_target-dm-client-secret_tls.crt
-    key_file: /var/lib/dm-cluster-client-tls/secret_ns1_target-dm-client-secret_tls.key
+    ca_file: /var/lib/cluster-assets-tls/secret_ns1_target-dm-client-secret_ca.crt
+    cert_file: /var/lib/cluster-assets-tls/secret_ns1_target-dm-client-secret_tls.crt
+    key_file: /var/lib/cluster-assets-tls/secret_ns1_target-dm-client-secret_tls.key
     insecure_skip_verify: false
   relabel_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
@@ -961,9 +961,9 @@ scrape_configs:
       names:
       - ns1
   tls_config:
-    ca_file: /var/lib/dm-cluster-client-tls/secret_ns1_target-dm-client-secret_ca.crt
-    cert_file: /var/lib/dm-cluster-client-tls/secret_ns1_target-dm-client-secret_tls.crt
-    key_file: /var/lib/dm-cluster-client-tls/secret_ns1_target-dm-client-secret_tls.key
+    ca_file: /var/lib/cluster-assets-tls/secret_ns1_target-dm-client-secret_ca.crt
+    cert_file: /var/lib/cluster-assets-tls/secret_ns1_target-dm-client-secret_tls.crt
+    key_file: /var/lib/cluster-assets-tls/secret_ns1_target-dm-client-secret_tls.key
     insecure_skip_verify: false
   relabel_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]

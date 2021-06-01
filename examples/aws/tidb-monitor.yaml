@@ -22,7 +22,9 @@ spec:
     logLevel: info
     password: admin
     service:
-      portName: http-grafana
+      annotations:
+        service.beta.kubernetes.io/aws-load-balancer-type: nlb
+        service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
       type: LoadBalancer
     username: admin
     version: 6.1.6

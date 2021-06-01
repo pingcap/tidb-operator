@@ -403,12 +403,15 @@ func (m *masterMemberManager) getNewMasterServiceForDMCluster(dc *v1alpha1.DMClu
 			Selector: masterSelector.Labels(),
 		},
 	}
+
+	// override fields with user-defined ServiceSpec
 	svcSpec := dc.Spec.Master.Service
 	if svcSpec != nil {
 		if svcSpec.Type != "" {
 			masterSvc.Spec.Type = svcSpec.Type
 		}
-		masterSvc.ObjectMeta.Annotations = CopyAnnotations(svcSpec.Annotations)
+		masterSvc.ObjectMeta.Annotations = util.CopyStringMap(svcSpec.Annotations)
+		masterSvc.ObjectMeta.Labels = util.CombineStringMap(masterSvc.ObjectMeta.Labels, svcSpec.Labels)
 		masterSvc.Spec.Ports[0].NodePort = svcSpec.GetMasterNodePort()
 		if svcSpec.Type == corev1.ServiceTypeLoadBalancer {
 			if svcSpec.LoadBalancerIP != nil {
@@ -585,10 +588,11 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 		},
 	}
 
-	masterLabel := label.NewDM().Instance(instanceName).DMMaster()
 	setName := controller.DMMasterMemberName(dcName)
-	podAnnotations := CombineAnnotations(controller.AnnProm(8261), baseMasterSpec.Annotations())
+	stsLabels := label.NewDM().Instance(instanceName).DMMaster()
+	podLabels := util.CombineStringMap(stsLabels, baseMasterSpec.Labels())
 	stsAnnotations := getStsAnnotations(dc.Annotations, label.DMMasterLabelVal)
+	podAnnotations := util.CombineStringMap(controller.AnnProm(8261), baseMasterSpec.Annotations())
 	failureReplicas := getDMMasterFailureReplicas(dc)
 
 	deleteSlotsNumber, err := util.GetDeleteSlotsNumber(stsAnnotations)
@@ -663,16 +667,16 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            setName,
 			Namespace:       ns,
-			Labels:          masterLabel.Labels(),
+			Labels:          stsLabels,
 			Annotations:     stsAnnotations,
 			OwnerReferences: []metav1.OwnerReference{controller.GetDMOwnerRef(dc)},
 		},
 		Spec: apps.StatefulSetSpec{
 			Replicas: pointer.Int32Ptr(dc.Spec.Master.Replicas + int32(failureReplicas)),
-			Selector: masterLabel.LabelSelector(),
+			Selector: stsLabels.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      masterLabel.Labels(),
+					Labels:      podLabels,
 					Annotations: podAnnotations,
 				},
 				Spec: podSpec,

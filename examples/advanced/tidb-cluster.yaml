@@ -893,11 +893,11 @@ spec:
   #     # configure the configuration file for TiFlash process
   #     config: |
   #       [logger]
-  #         log = /data0/logs/somelog
+  #         log = "/data0/logs/somelog"
   #     # configure the configuration file for TiFlash Proxy process
   #     proxy: |
   #       [security]
-  #         cert-allowed-cn = CNNAME
+  #         cert-allowed-cn = "CNNAME"
   #   # TopologySpreadConstraints for pod scheduling, will overwrite the cluster level spread constraints setting
   #   # Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
   #   topologySpreadConstraints:

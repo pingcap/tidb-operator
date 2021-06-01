@@ -215,7 +215,7 @@ func scaleMulti(actual *apps.StatefulSet, desired *apps.StatefulSet, maxCount in
 		}
 	}
 	if additions.Len() > 0 {
-		// we always do scaling out before scaling in to maintain maximum avaiability
+		// we always do scaling out before scaling in to maintain maximum availability
 		scaling = 1
 		additionsList := additions.List()
 		for i := 0; i < len(additionsList) && i < maxCount; i++ {

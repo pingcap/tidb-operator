@@ -122,15 +122,33 @@ pipeline {
 
         stage("Checkout") {
             steps {
-                checkout scm: [
-                        $class: 'GitSCM',
-                        branches: [[name: GIT_REF]],
-                        userRemoteConfigs: [[
-                            credentialsId: 'github-sre-bot-ssh',
-                            refspec: '+refs/heads/*:refs/remotes/origin/* +refs/pull/*:refs/remotes/origin/pr/*',
-                            url: "${params.GIT_URL}",
-                        ]]
+                try {
+                    checkout scm: [
+                            $class: 'GitSCM',
+                            branches: [[name: GIT_REF]],
+                            userRemoteConfigs: [[
+                                    credentialsId: 'github-sre-bot-ssh',
+                                    refspec: '+refs/heads/*:refs/remotes/origin/* +refs/pull/*:refs/remotes/origin/pr/*',
+                                    url: "${params.GIT_URL}",
+                            ]]
                     ]
+                } catch (info) {
+                    retry(3) {
+                        echo "checkout failed, retry.."
+                        sleep 10
+                        checkout scm: [
+                                $class: 'GitSCM',
+                                branches: [[name: GIT_REF]],
+                                userRemoteConfigs: [[
+                                        credentialsId: 'github-sre-bot-ssh',
+                                        refspec: '+refs/heads/*:refs/remotes/origin/* +refs/pull/*:refs/remotes/origin/pr/*',
+                                        url: "${params.GIT_URL}",
+                                ]]
+                        ]
+                    }
+                }
+
+
             }
         }
 

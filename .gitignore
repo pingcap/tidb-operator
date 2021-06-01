@@ -15,6 +15,7 @@ tests/images/e2e/manifests/
 tmp/
 data/
 .idea
+*.iml
 cscope.files
 tags
 filenametags
