@@ -405,7 +405,7 @@ func getMonitorDMInitContainer(monitor *v1alpha1.TidbMonitor, dc *v1alpha1.DMClu
 	return container
 }
 
-func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster) core.Container {
+func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) core.Container {
 	commands := []string{"sed 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g' /etc/prometheus/config/prometheus.yml > /etc/prometheus/config_out/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/etc/prometheus/config_out/prometheus.yml --storage.tsdb.path=/data/prometheus " + fmt.Sprintf("--storage.tsdb.retention=%dd", monitor.Spec.Prometheus.ReserveDays)}
 	c := core.Container{
 		Name:      "prometheus",
@@ -666,7 +666,7 @@ func getMonitorReloaderContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.Tid
 	return c
 }
 
-func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster) []core.Volume {
+func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor) []core.Volume {
 	volumes := []core.Volume{}
 	if !monitor.Spec.Persistent {
 		monitorData := core.Volume{
@@ -992,7 +992,7 @@ func getMonitorStatefulSet(sa *core.ServiceAccount, config *core.ConfigMap, secr
 		dmInitContainer := getMonitorDMInitContainer(monitor, dc, tc)
 		statefulSet.Spec.Template.Spec.InitContainers = append(statefulSet.Spec.Template.Spec.InitContainers, dmInitContainer)
 	}
-	prometheusContainer := getMonitorPrometheusContainer(monitor, tc, dc)
+	prometheusContainer := getMonitorPrometheusContainer(monitor, tc)
 	reloaderContainer := getMonitorReloaderContainer(monitor, tc)
 	statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, prometheusContainer, reloaderContainer)
 	if monitor.Spec.Thanos != nil {
@@ -1007,7 +1007,7 @@ func getMonitorStatefulSet(sa *core.ServiceAccount, config *core.ConfigMap, secr
 		grafanaContainer := getMonitorGrafanaContainer(secret, monitor, tc)
 		statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, grafanaContainer)
 	}
-	volumes := getMonitorVolumes(config, monitor, tc, dc)
+	volumes := getMonitorVolumes(config, monitor)
 	statefulSet.Spec.Template.Spec.Volumes = volumes
 
 	volumeClaims := getMonitorVolumeClaims(monitor)
