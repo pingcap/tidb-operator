@@ -166,7 +166,7 @@ func TestTiCDCMemberManagerSyncUpdate(t *testing.T) {
 			status:  v1alpha1.NormalPhase,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(int(*set.Spec.Replicas)).To(Equal(5))
+				g.Expect(int(*set.Spec.Replicas)).To(Equal(4)) // scale out one-by-one now
 			},
 		},
 		{
@@ -486,7 +486,8 @@ func TestGetNewTiCDCStatefulSet(t *testing.T) {
 func newFakeTiCDCMemberManager() (*ticdcMemberManager, *controller.FakeStatefulSetControl, *controller.FakeTiDBControl, *fakeIndexers) {
 	fakeDeps := controller.NewFakeDependencies()
 	tmm := &ticdcMemberManager{
-		deps: fakeDeps,
+		deps:   fakeDeps,
+		scaler: NewTiCDCScaler(fakeDeps),
 	}
 	tmm.statefulSetIsUpgradingFn = ticdcStatefulSetIsUpgrading
 	indexers := &fakeIndexers{
