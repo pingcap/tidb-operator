@@ -180,6 +180,8 @@ func GetAutoScalingOutSlots(tc *v1alpha1.TidbCluster, memberType v1alpha1.Member
 		l = label.AnnTiKVAutoScalingOutOrdinals
 	case v1alpha1.TiDBMemberType:
 		l = label.AnnTiDBAutoScalingOutOrdinals
+	case v1alpha1.TiCDCMemberType:
+		l = label.AnnTiCDCAutoScalingOutOrdinals
 	default:
 		return s
 	}

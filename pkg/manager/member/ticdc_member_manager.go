@@ -44,14 +44,16 @@ const (
 // ticdcMemberManager implements manager.Manager.
 type ticdcMemberManager struct {
 	deps                     *controller.Dependencies
+	scaler                   Scaler
 	ticdcUpgrader            Upgrader
 	statefulSetIsUpgradingFn func(corelisters.PodLister, pdapi.PDControlInterface, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 }
 
 // NewTiCDCMemberManager returns a *ticdcMemberManager
-func NewTiCDCMemberManager(deps *controller.Dependencies, ticdcUpgrader Upgrader) manager.Manager {
+func NewTiCDCMemberManager(deps *controller.Dependencies, scaler Scaler, ticdcUpgrader Upgrader) manager.Manager {
 	m := &ticdcMemberManager{
 		deps:          deps,
+		scaler:        scaler,
 		ticdcUpgrader: ticdcUpgrader,
 	}
 	m.statefulSetIsUpgradingFn = ticdcStatefulSetIsUpgrading
@@ -116,6 +118,15 @@ func (m *ticdcMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 			return err
 		}
 		return nil
+	}
+
+	// Scaling takes precedence over upgrading because:
+	// - if a pod fails in the upgrading, users may want to delete it or add
+	//   new replicas
+	// - it's ok to scale in the middle of upgrading (in statefulset controller
+	//   scaling takes precedence over upgrading too)
+	if err := m.scaler.Scale(tc, oldSts, newSts); err != nil {
+		return err
 	}
 
 	if !templateEqual(newSts, oldSts) || tc.Status.TiCDC.Phase == v1alpha1.UpgradePhase {
