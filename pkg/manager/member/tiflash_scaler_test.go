@@ -254,7 +254,6 @@ func TestTiFlashScalerScaleOutSimultaneouslyExtra(t *testing.T) {
 		enableAsts     bool
 		oldDeleteSlots sets.Int32
 		newDeleteSlots sets.Int32
-		getStoresFn    func(action *pdapi.Action) (interface{}, error)
 		ops            []scaleOp
 	}
 

@@ -270,7 +270,7 @@ func normalizeDeleteSlots(replicas int32, deleteSlots sets.Int32, desiredDeleteS
 func setReplicasAndDeleteSlotsByFinished(scaling int, newSet, oldSet *apps.StatefulSet, ordinals []int32, finishedOrdinals sets.Int32) {
 	klog.Infof("scale statefulset: ordinals: %v, finishedOrdinals: %v", ordinals, finishedOrdinals)
 	if !features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
-		// count the continueous finished ordinal if disable asts.
+		// count the continuous finished ordinal if disable asts.
 		newReplicas := *oldSet.Spec.Replicas
 		if scaling > 0 {
 			for _, ordinal := range ordinals {
