@@ -33,6 +33,7 @@ type ComponentAccessor interface {
 	Affinity() *corev1.Affinity
 	PriorityClassName() *string
 	NodeSelector() map[string]string
+	Labels() map[string]string
 	Annotations() map[string]string
 	Tolerations() []corev1.Toleration
 	PodSecurityContext() *corev1.PodSecurityContext
@@ -79,6 +80,7 @@ type componentAccessorImpl struct {
 	schedulerName             string
 	clusterNodeSelector       map[string]string
 	clusterAnnotations        map[string]string
+	clusterLabels             map[string]string
 	tolerations               []corev1.Toleration
 	configUpdateStrategy      ConfigUpdateStrategy
 	statefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType
@@ -162,6 +164,19 @@ func (a *componentAccessorImpl) NodeSelector() map[string]string {
 		}
 	}
 	return sel
+}
+
+func (a *componentAccessorImpl) Labels() map[string]string {
+	l := map[string]string{}
+	for k, v := range a.clusterLabels {
+		l[k] = v
+	}
+	if a.ComponentSpec != nil {
+		for k, v := range a.ComponentSpec.Labels {
+			l[k] = v
+		}
+	}
+	return l
 }
 
 func (a *componentAccessorImpl) Annotations() map[string]string {
@@ -346,6 +361,7 @@ func buildTidbClusterComponentAccessor(c Component, tc *TidbCluster, componentSp
 		priorityClassName:         spec.PriorityClassName,
 		schedulerName:             spec.SchedulerName,
 		clusterNodeSelector:       spec.NodeSelector,
+		clusterLabels:             spec.Labels,
 		clusterAnnotations:        spec.Annotations,
 		tolerations:               spec.Tolerations,
 		configUpdateStrategy:      spec.ConfigUpdateStrategy,
@@ -370,6 +386,7 @@ func buildDMClusterComponentAccessor(c Component, dc *DMCluster, componentSpec *
 		priorityClassName:         spec.PriorityClassName,
 		schedulerName:             spec.SchedulerName,
 		clusterNodeSelector:       spec.NodeSelector,
+		clusterLabels:             spec.Labels,
 		clusterAnnotations:        spec.Annotations,
 		tolerations:               spec.Tolerations,
 		configUpdateStrategy:      ConfigUpdateStrategyRollingUpdate,

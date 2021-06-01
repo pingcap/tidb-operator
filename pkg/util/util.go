@@ -43,7 +43,6 @@ import (
 var (
 	ClusterClientTLSPath   = "/var/lib/cluster-client-tls"
 	ClusterAssetsTLSPath   = "/var/lib/cluster-assets-tls"
-	DMClusterClientTLSPath = "/var/lib/dm-cluster-client-tls"
 	TiDBClientTLSPath      = "/var/lib/tidb-client-tls"
 	BRBinPath              = "/var/lib/br-bin"
 	DumplingBinPath        = "/var/lib/dumpling-bin"
@@ -219,6 +218,10 @@ func ClusterTLSSecretName(tcName, component string) string {
 
 func TiDBClientTLSSecretName(tcName string) string {
 	return fmt.Sprintf("%s-tidb-client-secret", tcName)
+}
+
+func TiDBServerTLSSecretName(tcName string) string {
+	return fmt.Sprintf("%s-tidb-server-secret", tcName)
 }
 
 // SortEnvByName implements sort.Interface to sort env list by name.

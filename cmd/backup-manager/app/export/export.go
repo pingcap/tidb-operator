@@ -59,8 +59,7 @@ func (bo *Options) getDestBucketURI(remotePath string) string {
 	return fmt.Sprintf("%s://%s", bo.StorageType, remotePath)
 }
 
-func (bo *Options) dumpTidbClusterData(ctx context.Context, backup *v1alpha1.Backup) error {
-	bfPath := bo.getBackupFullPath()
+func (bo *Options) dumpTidbClusterData(ctx context.Context, bfPath string, backup *v1alpha1.Backup) error {
 	err := backupUtil.EnsureDirectoryExist(bfPath)
 	if err != nil {
 		return err
@@ -84,7 +83,16 @@ func (bo *Options) dumpTidbClusterData(ctx context.Context, backup *v1alpha1.Bac
 		binPath = path.Join(util.DumplingBinPath, "dumpling")
 	}
 
-	klog.Infof("The dump process is ready, command \"%s %s\"", binPath, strings.Join(args, " "))
+	args_redacted := []string{}
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "--password=") {
+			args_redacted = append(args_redacted, "--password=******")
+		} else {
+			args_redacted = append(args_redacted, arg)
+		}
+	}
+
+	klog.Infof("The dump process is ready, command \"%s %s\"", binPath, strings.Join(args_redacted, " "))
 
 	output, err := exec.CommandContext(ctx, binPath, args...).CombinedOutput()
 	if err != nil {
