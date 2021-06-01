@@ -59,8 +59,7 @@ func (bo *Options) getDestBucketURI(remotePath string) string {
 	return fmt.Sprintf("%s://%s", bo.StorageType, remotePath)
 }
 
-func (bo *Options) dumpTidbClusterData(ctx context.Context, backup *v1alpha1.Backup) error {
-	bfPath := bo.getBackupFullPath()
+func (bo *Options) dumpTidbClusterData(ctx context.Context, bfPath string, backup *v1alpha1.Backup) error {
 	err := backupUtil.EnsureDirectoryExist(bfPath)
 	if err != nil {
 		return err

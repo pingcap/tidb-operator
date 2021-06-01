@@ -56,7 +56,7 @@ func NewController(deps *controller.Dependencies) *Controller {
 			mm.NewOrphanPodsCleaner(deps),
 			mm.NewRealPVCCleaner(deps),
 			mm.NewPVCResizer(deps),
-			mm.NewPumpMemberManager(deps),
+			mm.NewPumpMemberManager(deps, mm.NewPumpScaler(deps)),
 			mm.NewTiFlashMemberManager(deps, mm.NewTiFlashFailover(deps), mm.NewTiFlashScaler(deps), mm.NewTiFlashUpgrader(deps)),
 			mm.NewTiCDCMemberManager(deps, mm.NewTiCDCUpgrader(deps)),
 			mm.NewTidbDiscoveryManager(deps),
