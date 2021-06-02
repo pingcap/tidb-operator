@@ -591,6 +591,7 @@ After configuring `spec.tlsClientSecretNames`, TiDB Operator will mount the Secr
 
     ``` yaml
     source-id: mysql-replica-01
+    relay-dir: /var/lib/dm-worker/relay
     from:
       host: ${mysql_host1}
       user: dm
@@ -618,6 +619,14 @@ After configuring `spec.tlsClientSecretNames`, TiDB Operator will mount the Secr
         ssl-ca: /var/lib/source-tls/${tidb_secret_name}/ca.crt
         ssl-cert: /var/lib/source-tls/${tidb_secret_name}/tls.crt
         ssl-key: /var/lib/source-tls/${tidb_secret_name}/tls.key
+    
+    mysql-instances:
+    - source-id: "replica-01"
+      loader-config-name: "global"
+      
+    loaders:
+      global:
+        dir: "/var/lib/dm-worker/dumped_data"    
     ```
 
 ### Step 4: Start the migration tasks

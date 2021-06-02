@@ -217,21 +217,29 @@ kubectl exec -ti ${dm_cluster_name}-dm-master-0 -n ${namespace} - /bin/sh
 
 2. Configure the `from.host` in the `source1.yaml` file as the MySQL host address that the Kubernetes cluster can access internally.
 
-3. After you prepare the `source1.yaml` file, load the MySQL-1 data source into the DM cluster by executing the following command:
+3. Configure the `relay-dir` in the `source1.yaml` file as a subdirectory of the persistent volume in the Pod mount `/var/lib/dm-worker` directory. For example, `/var/lib/dm-worker/relay`.
+
+4. After you prepare the `source1.yaml` file, load the MySQL-1 data source into the DM cluster by executing the following command:
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    /dmctl --master-addr ${dm_cluster_name}-dm-master:8261 operate-source create source1.yaml`.
+    /dmctl --master-addr ${dm_cluster_name}-dm-master:8261 operate-source create source1.yaml
     ```
 
-4. For MySQL-2 and other data sources, use the same method to modify the relevant information in the configuration file and execute the same dmctl command.
+5. For MySQL-2 and other data sources, use the same method to modify the relevant information in the data source `yaml` file and execute the same dmctl command to load the corresponding data source into the DM cluster.
 
 ### Configure migration tasks
 
 1. Edit task configuration file `task.yaml`, which can refer to [Configure the data migration task](https://docs.pingcap.com/tidb-data-migration/v2.0/migrate-data-using-dm#step-4-configure-the-data-migration-task).
 
 2. Configure the `target-database.host` in `task.yaml` as the TiDB host address that the Kubernetes cluster can access internally. If the cluster is deployed by TiDB Operator, configure the host as `${tidb_cluster_name}-tidb.${namespace}`.
+
+3. In the `task.yaml` file, take the following steps:
+
+    - Add the `loaders.${customized_name}.dir` field as the import and export directory for the full volume data, where `${customized_name}` is a name that you can customize. 
+    - Configure the `loaders.${customized_name}.dir` field as the subdirectory of the persistent volume in the Pod `/var/lib/dm-worker` directory. For example, `/var/lib/dm-worker/dumped_data`.
+    - Reference `${customized_name}` in the instance configuration. For example, `mysql-instances[0].loader-config-name: "{customized_name}"`.
 
 ### Start/Check/Stop the migration tasks
 
