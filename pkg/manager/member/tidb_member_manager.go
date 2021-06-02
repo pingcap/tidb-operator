@@ -314,7 +314,7 @@ func (m *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
-	klog.V(2).Infof("spec equal: %v, annotations equal: %v, label equal: %v", equal, annoEqual, labelEqual)
+	klog.V(2).Infof("Sync TiDB service %s/%s, spec equal: %v, annotations equal: %v, label equal: %v", newSvc.Namespace, newSvc.Name, equal, annoEqual, labelEqual)
 
 	svc := *oldSvc
 	svc.Annotations = newSvc.Annotations
