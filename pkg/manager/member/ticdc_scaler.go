@@ -94,7 +94,7 @@ func (s *ticdcScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newS
 		return fmt.Errorf("ticdcScaler.ScaleIn: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
 	}
 
-	// when scaling in TiCDC pods, we let the "capture info" in PD's etcd to be deleted automatically after TTL expired.
+	// when scaling in TiCDC pods, we let the "capture info" in PD's etcd to be deleted automatically when shutting down the TiCDC process or after TTL expired.
 	// When the TiCDC pod not found in TidbCluster status, there are two possible situations:
 	// 1. TiCDC has already joined cluster but status not synced yet.
 	//    In this situation return error to wait for another round for safety.
