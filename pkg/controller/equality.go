@@ -83,7 +83,7 @@ func ServiceEqual(newSvc, oldSvc *corev1.Service) (bool, error) {
 		if !equal {
 			if klog.V(2) {
 				diff := cmp.Diff(oldSpec, newSvc.Spec)
-				klog.V(2).Infof("service spec diff: %s", diff)
+				klog.V(2).Infof("Service spec diff for %s/%s: %s", newSvc.Namespace, newSvc.Name, diff)
 			}
 		}
 
