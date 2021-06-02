@@ -99,9 +99,9 @@ type NodeStatus struct {
 	Host   string `json:"host"`
 	State  string `json:"state"`
 
-	// NB: this fields will be updated continuously.
-	// currently we save the whole `NodeStatus` in status of CRD
-	// to avoid CRD updated and re-sync continuously, we exclude this fields.
+	// NB: Currently we save the whole `NodeStatus` in the status of the CR.
+	// However, the following fields will be updated continuously.
+	// To avoid CR being updated and re-synced continuously, we exclude these fields.
 	// MaxCommitTS int64  `json:"maxCommitTS"`
 	// UpdateTS    int64  `json:"updateTS"`
 }
