@@ -95,11 +95,15 @@ type StatusResp struct {
 
 // NodeStatus represents the status saved in etcd.
 type NodeStatus struct {
-	NodeID      string `json:"nodeId"`
-	Host        string `json:"host"`
-	State       string `json:"state"`
-	MaxCommitTS int64  `json:"maxCommitTS"`
-	UpdateTS    int64  `json:"updateTS"`
+	NodeID string `json:"nodeId"`
+	Host   string `json:"host"`
+	State  string `json:"state"`
+
+	// NB: this fields will be updated continuously.
+	// currently we save the whole `NodeStatus` in status of CRD
+	// to avoid CRD updated and re-sync continuously, we exclude this fields.
+	// MaxCommitTS int64  `json:"maxCommitTS"`
+	// UpdateTS    int64  `json:"updateTS"`
 }
 
 // IsPumpTombstone check if drainer is tombstone.
