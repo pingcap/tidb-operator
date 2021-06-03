@@ -11,6 +11,10 @@ summary: 了解如何在 Kubernetes 上部署 TiDB DM 集群。
 
 * TiDB Operator [部署](deploy-tidb-operator.md)完成。
 
+> **注意：**
+>
+> 要求 TiDB Operator 版本 >= 1.2.0。
+
 ## 部署配置
 
 通过配置 DMCluster CR 来配置 DM 集群。参考 DMCluster [示例](https://github.com/pingcap/tidb-operator/blob/master/examples/dm/dm-cluster.yaml)和 [API 文档](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.md#dmcluster)（示例和 API 文档请切换到当前使用的 TiDB Operator 版本）完成 DMCluster CR (Custom Resource)。
