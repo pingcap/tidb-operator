@@ -762,7 +762,7 @@ The following is an example configuration:
 {{< copyable "" >}}
 
 ```yaml
-topologySpreadConstrains:
+topologySpreadConstraints:
 - topologyKey: kubernetes.io/hostname
 - topologyKey: topology.kubernetes.io/zone
 ```
@@ -772,7 +772,7 @@ The example configuration can make pods of the same component evenly spread on d
 Currently, `topologySpreadConstraints` only supports the configuration of the `topologyKey` field. In the pod spec, the above example configuration will be automatically expanded as follows:
 
 ```yaml
-topologySpreadConstrains:
+topologySpreadConstraints:
 - topologyKey: kubernetes.io/hostname
   maxSkew: 1
   whenUnsatisfiable: DoNotSchedule

@@ -736,7 +736,7 @@ affinity:
 {{< copyable "" >}}
 
 ```yaml
-topologySpreadConstrains:
+topologySpreadConstraints:
 - topologyKey: kubernetes.io/hostname
 - topologyKey: topology.kubernetes.io/zone
 ```
@@ -746,7 +746,7 @@ topologySpreadConstrains:
 当前 `topologySpreadConstraints` 仅支持 `topologyKey` 配置。在 Pod spec 中，上述示例配置会自动展开成如下配置：
 
 ```yaml
-topologySpreadConstrains:
+topologySpreadConstraints:
 - topologyKey: kubernetes.io/hostname
   maxSkew: 1
   whenUnsatisfiable: DoNotSchedule
