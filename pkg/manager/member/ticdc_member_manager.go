@@ -48,6 +48,39 @@ type ticdcMemberManager struct {
 	statefulSetIsUpgradingFn func(corelisters.PodLister, pdapi.PDControlInterface, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 }
 
+func getTiCDCConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
+	config := tc.Spec.TiCDC.Config
+	if config == nil {
+		return nil, nil
+	}
+
+	confText, err := config.MarshalTOML()
+	if err != nil {
+		return nil, err
+	}
+
+	data := map[string]string{
+		"config-file": string(confText),
+	}
+
+	name := controller.TiCDCMemberName(tc.Name)
+	instanceName := tc.GetInstanceName()
+	cdcLabels := label.New().Instance(instanceName).TiCDC().Labels()
+
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            name,
+			Namespace:       tc.Namespace,
+			Labels:          cdcLabels,
+			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
+		},
+		Data: data,
+	}
+
+	return cm, nil
+
+}
+
 // NewTiCDCMemberManager returns a *ticdcMemberManager
 func NewTiCDCMemberManager(deps *controller.Dependencies, ticdcUpgrader Upgrader) manager.Manager {
 	m := &ticdcMemberManager{
@@ -56,6 +89,32 @@ func NewTiCDCMemberManager(deps *controller.Dependencies, ticdcUpgrader Upgrader
 	}
 	m.statefulSetIsUpgradingFn = ticdcStatefulSetIsUpgrading
 	return m
+}
+
+func (m *ticdcMemberManager) syncTiCDCConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
+	if tc.Spec.TiCDC.Config == nil || tc.Spec.TiCDC.Config.OnlyOldItems() {
+		return nil, nil
+	}
+
+	newCm, err := getTiCDCConfigMap(tc)
+	if err != nil {
+		return nil, err
+	}
+
+	var inUseName string
+	if set != nil {
+		inUseName = FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
+			return strings.HasPrefix(name, controller.TiCDCMemberName(tc.Name))
+		})
+	}
+
+	klog.V(3).Info("get ticdc in use config map name: ", inUseName)
+
+	err = updateConfigMapIfNeed(m.deps.ConfigMapLister, tc.BaseTiDBSpec().ConfigUpdateStrategy(), inUseName, newCm)
+	if err != nil {
+		return nil, err
+	}
+	return m.deps.TypedControl.CreateOrUpdateConfigMap(tc, newCm)
 }
 
 // Sync fulfills the manager.Manager interface
@@ -97,7 +156,12 @@ func (m *ticdcMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 			ns, tcName, err)
 	}
 
-	newSts, err := getNewTiCDCStatefulSet(tc)
+	cm, err := m.syncTiCDCConfigMap(tc, oldSts)
+	if err != nil {
+		return err
+	}
+
+	newSts, err := getNewTiCDCStatefulSet(tc, cm)
 	if err != nil {
 		return err
 	}
@@ -236,7 +300,8 @@ func getNewCDCHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {
 	return &svc
 }
 
-func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error) {
+// Only Use config file if cm is not nil
+func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -268,6 +333,10 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error)
 		} else {
 			cmdArgs = append(cmdArgs, "--pd=${result}")
 		}
+	}
+
+	if cm != nil {
+		cmdArgs = append(cmdArgs, fmt.Sprintf("--config=%s", "/etc/ticdc/ticdc.toml"))
 	}
 
 	var script string
@@ -354,6 +423,11 @@ done
 			},
 		}
 	}
+	if cm != nil {
+		ticdcContainer.VolumeMounts = append(ticdcContainer.VolumeMounts, corev1.VolumeMount{
+			Name: "config", ReadOnly: true, MountPath: "/etc/ticdc",
+		})
+	}
 
 	for _, tlsClientSecretName := range tc.Spec.TiCDC.TLSClientSecretNames {
 		ticdcContainer.VolumeMounts = append(ticdcContainer.VolumeMounts, corev1.VolumeMount{
@@ -395,6 +469,18 @@ done
 					SecretName: tlsClientSecretName,
 				},
 			},
+		})
+	}
+
+	if cm != nil {
+		podSpec.Volumes = append(podSpec.Volumes, corev1.Volume{
+			Name: "config", VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: cm.Name,
+					},
+					Items: []corev1.KeyToPath{{Key: "config-file", Path: "ticdc.toml"}},
+				}},
 		})
 	}
 

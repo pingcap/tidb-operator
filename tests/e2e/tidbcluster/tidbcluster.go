@@ -1481,6 +1481,14 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		err = oa.WaitForTidbClusterReady(fromTc, 30*time.Minute, 5*time.Second)
 		framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
+		ginkgo.By("Update cdc config to use config file")
+		err = controller.GuaranteedUpdate(genericCli, fromTc, func() error {
+			fromTc.Spec.TiCDC.Config.Set("capture-session-ttl", 10)
+			return nil
+		})
+		err = oa.WaitForTidbClusterReady(fromTc, 3*time.Minute, 5*time.Second)
+		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", fromTc.Name)
+
 		ginkgo.By("Creating cdc-sink cluster")
 		toTc := fixture.GetTidbCluster(ns, "cdc-sink", utilimage.TiDBV5)
 		toTc.Spec.PD.Replicas = 1
