@@ -679,7 +679,7 @@ func getMonitorReloaderContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.Tid
 	return c
 }
 
-func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster) []core.Volume {
+func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor) []core.Volume {
 	volumes := []core.Volume{}
 	if !monitor.Spec.Persistent {
 		monitorData := core.Volume{
@@ -1044,7 +1044,7 @@ func getMonitorStatefulSet(sa *core.ServiceAccount, config *core.ConfigMap, secr
 		grafanaContainer := getMonitorGrafanaContainer(secret, monitor, tc)
 		statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, grafanaContainer)
 	}
-	volumes := getMonitorVolumes(config, monitor, tc, dc)
+	volumes := getMonitorVolumes(config, monitor)
 	statefulSet.Spec.Template.Spec.Volumes = volumes
 
 	volumeClaims := getMonitorVolumeClaims(monitor)

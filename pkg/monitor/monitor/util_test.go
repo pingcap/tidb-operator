@@ -882,7 +882,7 @@ func TestGetMonitorVolumes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cm, err := getMonitorConfigMap(&tt.monitor, nil, nil, 0)
 			g.Expect(err).NotTo(HaveOccurred())
-			sa := getMonitorVolumes(cm, &tt.monitor, &tt.cluster, &tt.dmCluster)
+			sa := getMonitorVolumes(cm, &tt.monitor)
 			tt.expected(sa)
 		})
 	}
