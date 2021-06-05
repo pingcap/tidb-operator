@@ -408,7 +408,7 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 				},
 			},
 		}
-		scrapeconfig.RelabelConfigs = generateAddressShardingRelabelingRules(scrapeconfig.RelabelConfigs, uint64(cmodel.shards))
+		scrapeconfig.RelabelConfigs = appendShardingRelabelConfigRules(scrapeconfig.RelabelConfigs, uint64(cmodel.shards))
 		if cluster.enableTLS && !isDMJob(jobName) {
 			scrapeconfig.Scheme = "https"
 			// lightning does not need to authenticate the access of other components,
@@ -483,16 +483,16 @@ func appendShardingRelabelConfigRules(relabelConfigs []*config.RelabelConfig, sh
 	shardsPattern, err := config.NewRegexp("$SHARD")
 	if err != nil {
 		klog.Errorf("Generate pattern for shard %d error: %v", shard, err)
-		return relabelings
+		return relabelConfigs
 	}
-	return append(relabelings, &config.RelabelConfig{
+	return append(relabelConfigs, &config.RelabelConfig{
 
 		SourceLabels: model.LabelNames{
 			"__address__",
 		},
 		Action:      config.RelabelHashMod,
 		TargetLabel: "__tmp_hash",
-		Modulus:     shards,
+		Modulus:     shard,
 	},
 		&config.RelabelConfig{
 

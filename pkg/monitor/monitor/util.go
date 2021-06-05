@@ -131,7 +131,7 @@ func getMonitorConfigMap(monitor *v1alpha1.TidbMonitor, monitorClusterInfos []Cl
 		ClusterInfos:    monitorClusterInfos,
 		DMClusterInfos:  dmClusterInfos,
 		ExternalLabels:  buildExternalLabels(monitor),
-		Shard:          shard,
+		shards:          shard,
 	}
 
 	if len(monitor.Spec.Prometheus.RemoteWrite) > 0 {
