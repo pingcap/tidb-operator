@@ -791,7 +791,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		if shard == 0 {
 			instanceName = monitor.Name
 		} else {
-			instanceName = fmt.Sprintf("%s-shards-%d", monitor.Name, shard)
+			instanceName = fmt.Sprintf("%s-shard-%d", monitor.Name, shard)
 		}
 		selector := map[string]string{
 			label.InstanceLabelKey:  instanceName,
