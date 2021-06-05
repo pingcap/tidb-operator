@@ -1071,7 +1071,7 @@ func getMonitorStatefulSetSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.Ti
 	if shard == 0 {
 		instanceName = monitor.Name
 	} else {
-		instanceName = fmt.Sprintf("%s-shards-%d", monitor.Name, shard)
+		instanceName = fmt.Sprintf("%s-shard-%d", monitor.Name, shard)
 	}
 	statefulset := &apps.StatefulSet{
 		ObjectMeta: meta.ObjectMeta{
