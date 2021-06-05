@@ -981,7 +981,7 @@ func prometheusName(monitor *v1alpha1.TidbMonitor, shard int32) string {
 	if shard == 0 {
 		return base
 	}
-	return fmt.Sprintf("%s-prometheus-shards-%d", monitor.Name, shard)
+	return fmt.Sprintf("%s-prometheus-shard-%d", monitor.Name, shard)
 }
 
 func grafanaName(monitor *v1alpha1.TidbMonitor, shard int32) string {
