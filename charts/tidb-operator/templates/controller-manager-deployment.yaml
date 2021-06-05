@@ -50,16 +50,12 @@ spec:
         resources:
 {{ toYaml .Values.controllerManager.resources | indent 12 }}
         {{- end }}
-        readinessProbe:
-          tcpSocket:
-            port: 6060
-          initialDelaySeconds: 10
-          periodSeconds: 10
         livenessProbe:
           tcpSocket:
             port: 6060
-          initialDelaySeconds: 15
+          initialDelaySeconds: 30
           periodSeconds: 10
+          failureThreshold: 10
         command:
           - /usr/local/bin/tidb-controller-manager
           {{- if .Values.tidbBackupManagerImage }}
