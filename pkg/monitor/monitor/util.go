@@ -778,11 +778,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 	reloaderPortName := "tcp-reloader"
 	prometheusPortName := "http-prometheus"
 	grafanaPortName := "http-grafana"
-	shards := int32(1)
-	if monitor.Spec.Shards != nil && *monitor.Spec.Shards > 1 {
-		shards = *monitor.Spec.Shards
-	}
-
+	shards := monitor.GetShards()
 	for shard := int32(0); shard < shards; shard++ {
 		// currently monitor label haven't managedBy label due to 1.0 historical problem.
 		// In order to be compatible with 1.0 release monitor, we have removed managedBy label for now.
