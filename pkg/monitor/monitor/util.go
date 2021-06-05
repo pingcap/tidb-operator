@@ -989,7 +989,7 @@ func grafanaName(monitor *v1alpha1.TidbMonitor, shard int32) string {
 	if shard == 0 {
 		return base
 	}
-	return fmt.Sprintf("%s-grafana-shards-%d", monitor.Name, shard)
+	return fmt.Sprintf("%s-grafana-shard-%d", monitor.Name, shard)
 }
 
 func reloaderName(monitor *v1alpha1.TidbMonitor, shard int32) string {
