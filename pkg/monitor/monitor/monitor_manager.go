@@ -234,6 +234,7 @@ func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, dc
 		return nil
 	}
 	shards := monitor.GetShards()
+	var isAllCreated=true
 	for shard := int32(0); shard < shards; shard++ {
 		newMonitorSts, err := getMonitorStatefulSet(sa, cm, secret, monitor, tc, dc, shard)
 		if err != nil {
@@ -254,7 +255,8 @@ func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, dc
 			if err := m.deps.StatefulSetControl.CreateStatefulSet(monitor, newMonitorSts); err != nil {
 				return err
 			}
-			return controller.RequeueErrorf("TidbMonitor: [%s/%s], waiting for tidbmonitor running", ns, name)
+			isAllCreated = false
+			continue
 		}
 		err = member.UpdateStatefulSet(m.deps.StatefulSetControl, monitor, newMonitorSts, oldMonitorSetTmp)
 		if err != nil {
@@ -262,7 +264,11 @@ func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, dc
 			return err
 		}
 	}
-	return nil
+	if !isAllCreated{
+		return controller.RequeueErrorf("TidbMonitor: [%s/%s], waiting for tidbmonitor running", ns, name)
+	}else{
+		return nil
+	}
 }
 
 func (m *MonitorManager) syncTidbMonitorSecret(monitor *v1alpha1.TidbMonitor) (*corev1.Secret, error) {
