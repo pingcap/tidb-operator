@@ -66,7 +66,7 @@ func (c *CDCConfigWraper) MarshalTOML() ([]byte, error) {
 }
 
 func (c *CDCConfigWraper) OnlyOldItems() bool {
-	for k, _ := range c.GenericConfig.Inner() {
+	for k := range c.GenericConfig.Inner() {
 		switch k {
 		case "tz":
 		case "gc-ttl":
