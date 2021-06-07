@@ -44,7 +44,6 @@ func (s *ticdcScaler) Scale(meta metav1.Object, oldSet *apps.StatefulSet, newSet
 	} else if scaling < 0 {
 		return s.ScaleIn(meta, oldSet, newSet)
 	}
-	// we only sync auto scaler annotations when we are finishing syncing scaling
 	return nil
 }
 
@@ -63,7 +62,7 @@ func (s *ticdcScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, new
 		return err
 	} else if len(skipReason) != 1 || skipReason[ordinalPodName(v1alpha1.TiCDCMemberType, meta.GetName(), ordinal)] != skipReasonScalerPVCNotFound {
 		// wait for all PVCs to be deleted
-		return controller.RequeueErrorf("ticdc.ScaleOut, cluster %s/%s ready to scale out, wait for next round", meta.GetNamespace(), meta.GetName())
+		return controller.RequeueErrorf("ticdc.ScaleOut, cluster %s/%s ready to scale out, skip reason %v, wait for next round", meta.GetNamespace(), meta.GetName(), skipReason)
 	}
 	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 	return nil
