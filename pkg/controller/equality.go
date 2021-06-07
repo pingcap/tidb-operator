@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/google/go-cmp/cmp"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -78,7 +79,15 @@ func ServiceEqual(newSvc, oldSvc *corev1.Service) (bool, error) {
 			klog.Errorf("unmarshal ServiceSpec: [%s/%s]'s applied config failed,error: %v", oldSvc.GetNamespace(), oldSvc.GetName(), err)
 			return false, err
 		}
-		return apiequality.Semantic.DeepEqual(oldSpec, newSvc.Spec), nil
+		equal := apiequality.Semantic.DeepEqual(oldSpec, newSvc.Spec)
+		if !equal {
+			if klog.V(2) {
+				diff := cmp.Diff(oldSpec, newSvc.Spec)
+				klog.V(2).Infof("Service spec diff for %s/%s: %s", newSvc.Namespace, newSvc.Name, diff)
+			}
+		}
+
+		return equal, nil
 	}
 	return false, nil
 }
