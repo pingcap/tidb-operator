@@ -234,7 +234,7 @@ func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, dc
 		return nil
 	}
 	shards := monitor.GetShards()
-	var isAllCreated=true
+	var isAllCreated = true
 	for shard := int32(0); shard < shards; shard++ {
 		newMonitorSts, err := getMonitorStatefulSet(sa, cm, secret, monitor, tc, dc, shard)
 		if err != nil {
