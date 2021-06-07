@@ -259,8 +259,8 @@ func TestTiCDCScalerScaleIn(t *testing.T) {
 			isPodReady:     false,
 			hasSynced:      false,
 			pvcUpdateErr:   false,
-			errExpectFn:    errExpectNotNil,
-			changed:        false,
+			errExpectFn:    errExpectNil,
+			changed:        true,
 		},
 		{
 			name:           "ticdc pod is not ready now, make sure the status has been synced",
