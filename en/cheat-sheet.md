@@ -533,7 +533,7 @@ helm upgrade tidb-operator pingcap/tidb-operator --version=v1.2.0-rc.1 -f values
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm uninstall ${name}
+helm uninstall ${name} -n ${namespace}
 ```
 
 For example:
@@ -541,7 +541,7 @@ For example:
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm uninstall tidb-operator
+helm uninstall tidb-operator -n tidb-admin
 ```
 
 ### More

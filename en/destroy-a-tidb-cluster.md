@@ -33,7 +33,7 @@ To destroy a TiDB cluster managed by Helm, run the following command:
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm uninstall ${cluster_name}
+helm uninstall ${cluster_name} -n ${namespace}
 ```
 
 ## Delete data

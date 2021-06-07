@@ -254,7 +254,7 @@ When performing a deployment or upgrade, you must specify the chart name (`chart
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm uninstall ${release_name}
+    helm uninstall ${release_name} -n ${namespace}
     ```
 
 For more information on Helm, refer to [Helm Documentation](https://helm.sh/docs/).

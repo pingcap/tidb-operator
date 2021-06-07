@@ -6,15 +6,15 @@ aliases: ['/docs/tidb-in-kubernetes/dev/restore-data-using-tidb-lightning/']
 
 # Import Data
 
-This document describes how to import data into a TiDB cluster in Kubernetes using [TiDB Lightning](https://github.com/pingcap/tidb-lightning).
+This document describes how to import data into a TiDB cluster in Kubernetes using [TiDB Lightning](https://docs.pingcap.com/tidb/stable/tidb-lightning-overview).
 
 TiDB Lightning contains two components: tidb-lightning and tikv-importer. In Kubernetes, the tikv-importer is inside the separate Helm chart of the TiDB cluster. And tikv-importer is deployed as a `StatefulSet` with `replicas=1` while tidb-lightning is in a separate Helm chart and deployed as a `Job`.
 
-TiDB Lightning supports [three backends](https://docs.pingcap.com/tidb/stable/tidb-lightning-backends): `importer`, `local`, and `tidb`.
+TiDB Lightning supports three backends: `Importer-backend`, `Local-backend`, and `TiDB-backend`. For the differences of these backends and how to choose backends, see [TiDB Lightning Backends](https://docs.pingcap.com/tidb/stable/tidb-lightning-backends).
 
-- For the `importer` backend, both tikv-importer and tidb-lightning need to be deployed.
-- For the `local` or `tidb` backend, only tidb-lightning needs to be deployed.
-- For the `tidb` backend, it is recommended to import data using CustomResourceDefinition (CRD) in TiDB Operator v1.1 and later versions. For details, refer to [Restore Data from GCS Using TiDB Lightning](restore-from-gcs.md) or [Restore Data from S3-Compatible Storage Using TiDB Lightning](restore-from-s3.md)
+- For `Importer-backend`, both tikv-importer and tidb-lightning need to be deployed.
+- For `Local-backend`, only tidb-lightning needs to be deployed.
+- For `TiDB-backend`, only tidb-lightning needs to be deployed, and it is recommended to import data using CustomResourceDefinition (CRD) in TiDB Operator v1.1 and later versions. For details, refer to [Restore Data from GCS Using TiDB Lightning](restore-from-gcs.md) or [Restore Data from S3-Compatible Storage Using TiDB Lightning](restore-from-s3.md)
 
 ## Deploy TiKV Importer
 
@@ -94,7 +94,7 @@ Use the following command to get the default configuration of TiDB Lightning:
 helm inspect values pingcap/tidb-lightning --version=${chart_version} > tidb-lightning-values.yaml
 ```
 
-Configure a `backend` used by TiDB Lightning according to your needs. The options include `importer`, `local`, and `tidb`.
+Configure a `backend` used by TiDB Lightning depending on your needs. To do that, you can set the `backend` value in `values.yaml` to an option in `importer`, `local`, or `tidb`.
 
 > **Note:**
 >
@@ -236,7 +236,7 @@ When restoring data from remote storage, sometimes the restore process is interr
 
 The method of deploying TiDB Lightning varies with different methods of granting permissions and with different storages.
 
-* If you grant permissions by importing Amazon S3 AccessKey and SecretKey, or if you use Ceph or GCS as the storage, run the following command to deploy TiDB Lightning:
+* For [Local Mode](#local), [Ad hoc Mode](#ad-hoc), and [Remote Mode](#remote) (only for remote modes that meet one of the three requirements: using Amazon S3 AccessKey and SecretKey permission granting methods, using Ceph as the storage backend, or using GCS as the storage backend), run the following command to deploy TiDB Lightning.
 
     {{< copyable "shell-regular" >}}
 
@@ -244,7 +244,7 @@ The method of deploying TiDB Lightning varies with different methods of granting
     helm install ${release_name} pingcap/tidb-lightning --namespace=${namespace} --set failFast=true -f tidb-lightning-values.yaml --version=${chart_version}
     ```
 
-* If you grant permissions by associating Amazon S3 IAM with Pod, take the following steps:
+* For [Remote Mode](#remote), if you grant permissions by associating Amazon S3 IAM with Pod, take the following steps:
 
     1. Create the IAM role:
 
@@ -264,7 +264,7 @@ The method of deploying TiDB Lightning varies with different methods of granting
         >
         > `arn:aws:iam::123456789012:role/user` is the IAM role created in Step 1.
 
-* If you grant permissions by associating Amazon S3 with ServiceAccount, take the following steps:
+* For [Remote Mode](#remote), if you grant permissions by associating Amazon S3 with ServiceAccount, take the following steps:
 
     1. Enable the IAM role for the service account on the cluster:
 
@@ -304,7 +304,7 @@ To destroy tikv-importer, execute the following command:
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm uninstall ${release_name}
+helm uninstall ${release_name} -n ${namespace}
 ```
 
 To destroy tidb-lightning, execute the following command:
@@ -312,7 +312,7 @@ To destroy tidb-lightning, execute the following command:
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm uninstall ${release_name}
+helm uninstall ${release_name} -n ${namespace}
 ```
 
 ## Troubleshoot TiDB Lightning

@@ -6,11 +6,11 @@ aliases: ['/docs/tidb-in-kubernetes/dev/restore-from-s3/']
 
 # Restore Data from S3-Compatible Storage Using TiDB Lightning
 
-This document describes how to restore the TiDB cluster data backed up using TiDB Operator in Kubernetes. For the underlying implementation, [`Lightning`](https://pingcap.com/docs/stable/how-to/get-started/tidb-lightning/#tidb-lightning-tutorial) is used to perform the restore.
+This document describes how to restore the TiDB cluster data backed up using TiDB Operator in Kubernetes.
 
-The restore method described in this document is implemented based on CustomResourceDefinition (CRD) in TiDB Operator v1.1 or later versions.
+The restore method described in this document is implemented based on CustomResourceDefinition (CRD) in TiDB Operator v1.1 or later versions. For the underlying implementation, [TiDB Lightning TiDB-backend](https://docs.pingcap.com/tidb/stable/tidb-lightning-backends#tidb-lightning-tidb-backend) is used to perform the restore.
 
-This document shows an example in which the backup data stored in the specified path on the S3-compatible storage is restored to the TiDB cluster.
+TiDB Lightning supports three backends: `Importer-backend`, `Local-backend`, and `TiDB-backend`. For the differences of these backends and how to choose backends, see [TiDB Lightning Backends](https://docs.pingcap.com/tidb/stable/tidb-lightning-backends). To import data using `Importer-backend` or `Local-backend`, see [Import Data](restore-data-using-tidb-lightning.md).
 
 ## Prerequisites
 
