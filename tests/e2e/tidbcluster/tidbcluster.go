@@ -1490,6 +1490,18 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		err = oa.WaitForTidbClusterReady(fromTc, 3*time.Minute, 5*time.Second)
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", fromTc.Name)
 
+		ginkgo.By("Check cdc configuration")
+		cdcMemberName := controller.TiCDCMemberName(fromTc.Name)
+		cdcSts, err := stsGetter.StatefulSets(ns).Get(cdcMemberName, metav1.GetOptions{})
+		framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, cdcMemberName)
+		cdcCmName := member.FindConfigMapVolume(&cdcSts.Spec.Template.Spec, func(name string) bool {
+			return strings.HasPrefix(name, controller.TiCDCMemberName(fromTc.Name))
+		})
+		cdcCm, err := c.CoreV1().ConfigMaps(ns).Get(cdcCmName, metav1.GetOptions{})
+		framework.ExpectNoError(err, "failed to get ConfigMap %s/%s", ns, cdcCm)
+		log.Logf("CDC config:\n%s", cdcCm.Data["config-file"])
+		gomega.Expect(cdcCm.Data["config-file"]).To(gomega.ContainSubstring("capture-session-ttl = 10"))
+
 		ginkgo.By("Creating cdc-sink cluster")
 		toTc := fixture.GetTidbCluster(ns, "cdc-sink", utilimage.TiDBV5)
 		toTc.Spec.PD.Replicas = 1
