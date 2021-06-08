@@ -43,7 +43,7 @@ jobs:
       uses: chaos-mesh/chaos-mesh-actions@master
       env:
         CFG_BASE64: YXBpVmVyc2lvbjogY2hhb3MtbWVzaC5vcmcvdjFhbHBoYTEKa2luZDogU2NoZWR1bGUKbWV0YWRhdGE6CiAgbmFtZTogcG9kLWZhaWx1cmUKICBuYW1lc3BhY2U6IHBpbmdjYXAKc3BlYzoKICBzY2hlZHVsZTogIkBldmVyeSA1bSIKICB0eXBlOiAiUG9kQ2hhb3MiCiAgaGlzdG9yeUxpbWl0OiA1CiAgY29uY3VycmVuY3lQb2xpY3k6IEZvcmJpZAogIHBvZENoYW9zOgogICAgYWN0aW9uOiAicG9kLWZhaWx1cmUiCiAgICBtb2RlOiBvbmUKICAgIHNlbGVjdG9yOgogICAgICBsYWJlbFNlbGVjdG9yczoKICAgICAgICAiYXBwLmt1YmVybmV0ZXMuaW8vY29tcG9uZW50IjogImNvbnRyb2xsZXItbWFuYWdlciI=
-
+        CHAOS_MESH_VERSION: v1.0.0
     - name: Run e2e
       run: |
         SKIP_UP=y ./hack/e2e.sh -- --ginkgo.focus='Restarter'
