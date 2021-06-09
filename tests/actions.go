@@ -3513,6 +3513,35 @@ func (oa *OperatorActions) CheckInitSQLOrDie(info *TidbClusterConfig) {
 	}
 }
 
+func (oa *OperatorActions) cdcMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, error) {
+	if tc.Spec.TiCDC == nil {
+		return true, nil
+	}
+	tcName := tc.GetName()
+	ns := tc.GetNamespace()
+	cdcSetName := controller.TiCDCMemberName(tcName)
+	tcID := fmt.Sprintf("%s/%s", ns, tcName)
+	cdcStsID := fmt.Sprintf("%s/%s", ns, cdcSetName)
+
+	cdcSet, err := oa.tcStsGetter.StatefulSets(ns).Get(cdcSetName, metav1.GetOptions{})
+	if err != nil {
+		log.Logf("failed to get StatefulSet: %q, %v", cdcStsID, err)
+		return false, nil
+	}
+
+	if cdcSet.Status.CurrentRevision != cdcSet.Status.UpdateRevision {
+		log.Logf("cdc sts .Status.CurrentRevision (%s) != .Status.UpdateRevision (%s)", cdcSet.Status.CurrentRevision, cdcSet.Status.UpdateRevision)
+		return false, nil
+	}
+
+	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), cdcSet) {
+		return false, nil
+	}
+
+	log.Logf("cdc members are ready for tc %q", tcID)
+	return true, nil
+}
+
 func (oa *OperatorActions) pumpMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, error) {
 	if tc.Spec.Pump == nil {
 		log.Logf("no pump in tc spec, skip")
@@ -3591,6 +3620,11 @@ func (oa *OperatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, tim
 
 		if b, err := oa.pumpMembersReadyFn(local); !b && err == nil {
 			checkErr = fmt.Errorf("pump members are not ready for tc %q", tcID)
+			return false, nil
+		}
+
+		if b, err := oa.cdcMembersReadyFn(local); !b && err == nil {
+			checkErr = fmt.Errorf("cdc members are not ready for tc %q", tcID)
 			return false, nil
 		}
 
