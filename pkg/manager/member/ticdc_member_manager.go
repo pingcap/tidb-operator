@@ -44,14 +44,16 @@ const (
 // ticdcMemberManager implements manager.Manager.
 type ticdcMemberManager struct {
 	deps                     *controller.Dependencies
+	scaler                   Scaler
 	ticdcUpgrader            Upgrader
 	statefulSetIsUpgradingFn func(corelisters.PodLister, pdapi.PDControlInterface, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 }
 
 // NewTiCDCMemberManager returns a *ticdcMemberManager
-func NewTiCDCMemberManager(deps *controller.Dependencies, ticdcUpgrader Upgrader) manager.Manager {
+func NewTiCDCMemberManager(deps *controller.Dependencies, scaler Scaler, ticdcUpgrader Upgrader) manager.Manager {
 	m := &ticdcMemberManager{
 		deps:          deps,
+		scaler:        scaler,
 		ticdcUpgrader: ticdcUpgrader,
 	}
 	m.statefulSetIsUpgradingFn = ticdcStatefulSetIsUpgrading
@@ -116,6 +118,15 @@ func (m *ticdcMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 			return err
 		}
 		return nil
+	}
+
+	// Scaling takes precedence over upgrading because:
+	// - if a pod fails in the upgrading, users may want to delete it or add
+	//   new replicas
+	// - it's ok to scale in the middle of upgrading (in statefulset controller
+	//   scaling takes precedence over upgrading too)
+	if err := m.scaler.Scale(tc, oldSts, newSts); err != nil {
+		return err
 	}
 
 	if !templateEqual(newSts, oldSts) || tc.Status.TiCDC.Phase == v1alpha1.UpgradePhase {
@@ -253,6 +264,11 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error)
 	cmdArgs = append(cmdArgs, fmt.Sprintf("--log-file=%s", tc.TiCDCLogFile()))
 	cmdArgs = append(cmdArgs, fmt.Sprintf("--log-level=%s", tc.TiCDCLogLevel()))
 
+	var (
+		volMounts []corev1.VolumeMount
+		vols      []corev1.Volume
+	)
+
 	if tc.IsTLSClusterEnabled() {
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--ca=%s", path.Join(ticdcCertPath, corev1.ServiceAccountRootCAKey)))
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--cert=%s", path.Join(ticdcCertPath, corev1.TLSCertKey)))
@@ -262,6 +278,30 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error)
 		} else {
 			cmdArgs = append(cmdArgs, "--pd=${result}")
 		}
+
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name:      ticdcCertVolumeMount,
+			ReadOnly:  true,
+			MountPath: ticdcCertPath,
+		}, corev1.VolumeMount{
+			Name:      util.ClusterClientVolName,
+			ReadOnly:  true,
+			MountPath: util.ClusterClientTLSPath,
+		})
+
+		vols = append(vols, corev1.Volume{
+			Name: ticdcCertVolumeMount, VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.ClusterTLSSecretName(tc.Name, label.TiCDCLabelVal),
+				},
+			},
+		}, corev1.Volume{
+			Name: util.ClusterClientVolName, VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.ClusterClientTLSSecretName(tc.Name),
+				},
+			},
+		})
 	} else {
 		if tc.Spec.ClusterDomain == "" {
 			cmdArgs = append(cmdArgs, fmt.Sprintf("--pd=http://%s-pd:2379", tcName))
@@ -269,6 +309,11 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error)
 			cmdArgs = append(cmdArgs, "--pd=${result}")
 		}
 	}
+
+	// handle StorageVolumes and AdditionalVolumeMounts in ComponentSpec
+	storageVolMounts, additionalPVCs := util.BuildStorageVolumeAndVolumeMount(tc.Spec.TiCDC.StorageVolumes, tc.Spec.TiCDC.StorageClassName, v1alpha1.TiCDCMemberType)
+	volMounts = append(volMounts, storageVolMounts...)
+	volMounts = append(volMounts, tc.Spec.TiCDC.AdditionalVolumeMounts...)
 
 	var script string
 
@@ -336,23 +381,9 @@ done
 				Protocol:      corev1.ProtocolTCP,
 			},
 		},
-		Resources: controller.ContainerResource(tc.Spec.TiCDC.ResourceRequirements),
-		Env:       util.AppendEnv(envs, baseTiCDCSpec.Env()),
-	}
-
-	if tc.IsTLSClusterEnabled() {
-		ticdcContainer.VolumeMounts = []corev1.VolumeMount{
-			{
-				Name:      ticdcCertVolumeMount,
-				ReadOnly:  true,
-				MountPath: ticdcCertPath,
-			},
-			{
-				Name:      util.ClusterClientVolName,
-				ReadOnly:  true,
-				MountPath: util.ClusterClientTLSPath,
-			},
-		}
+		VolumeMounts: volMounts,
+		Resources:    controller.ContainerResource(tc.Spec.TiCDC.ResourceRequirements),
+		Env:          util.AppendEnv(envs, baseTiCDCSpec.Env()),
 	}
 
 	for _, tlsClientSecretName := range tc.Spec.TiCDC.TLSClientSecretNames {
@@ -363,29 +394,11 @@ done
 
 	podSpec := baseTiCDCSpec.BuildPodSpec()
 	podSpec.Containers = []corev1.Container{ticdcContainer}
+	podSpec.Volumes = append(vols, baseTiCDCSpec.AdditionalVolumes()...)
 	podSpec.ServiceAccountName = tc.Spec.TiCDC.ServiceAccount
 	podSpec.InitContainers = append(podSpec.InitContainers, baseTiCDCSpec.InitContainers()...)
 	if podSpec.ServiceAccountName == "" {
 		podSpec.ServiceAccountName = tc.Spec.ServiceAccount
-	}
-
-	if tc.IsTLSClusterEnabled() {
-		podSpec.Volumes = []corev1.Volume{
-			{
-				Name: ticdcCertVolumeMount, VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: util.ClusterTLSSecretName(tc.Name, label.TiCDCLabelVal),
-					},
-				},
-			},
-			{
-				Name: util.ClusterClientVolName, VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: util.ClusterClientTLSSecretName(tc.Name),
-					},
-				},
-			},
-		}
 	}
 
 	for _, tlsClientSecretName := range tc.Spec.TiCDC.TLSClientSecretNames {
@@ -431,6 +444,7 @@ done
 			UpdateStrategy:      updateStrategy,
 		},
 	}
+	ticdcSts.Spec.VolumeClaimTemplates = append(ticdcSts.Spec.VolumeClaimTemplates, additionalPVCs...)
 	return ticdcSts, nil
 }
 
