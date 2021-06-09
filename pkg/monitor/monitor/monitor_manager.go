@@ -264,9 +264,9 @@ func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, dc
 			return err
 		}
 	}
-	if !isAllCreated{
+	if !isAllCreated {
 		return controller.RequeueErrorf("TidbMonitor: [%s/%s], waiting for tidbmonitor running", ns, name)
-	}else{
+	} else {
 		return nil
 	}
 }
