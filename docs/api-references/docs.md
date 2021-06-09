@@ -12297,6 +12297,7 @@ LocalStorageProvider
 <p>
 (<em>Appears on:</em>
 <a href="#pdspec">PDSpec</a>, 
+<a href="#ticdcspec">TiCDCSpec</a>, 
 <a href="#tidbspec">TiDBSpec</a>, 
 <a href="#tikvspec">TiKVSpec</a>)
 </p>
@@ -12847,6 +12848,33 @@ CDCConfigWraper
 <td>
 <em>(Optional)</em>
 <p>Config is the Configuration of tidbcdc servers</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageVolumes</code></br>
+<em>
+<a href="#storagevolume">
+[]StorageVolume
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StorageVolumes configure additional storage for TiCDC pods.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The storageClassName of the persistent volume for TiCDC data storage.
+Defaults to Kubernetes default storage class.</p>
 </td>
 </tr>
 </tbody>

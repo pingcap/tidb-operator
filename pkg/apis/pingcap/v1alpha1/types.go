@@ -573,6 +573,15 @@ type TiCDCSpec struct {
 	// Config is the Configuration of tidbcdc servers
 	// +optional
 	Config *CDCConfigWraper `json:"config,omitempty"`
+
+	// StorageVolumes configure additional storage for TiCDC pods.
+	// +optional
+	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
+
+	// The storageClassName of the persistent volume for TiCDC data storage.
+	// Defaults to Kubernetes default storage class.
+	// +optional
+	StorageClassName *string `json:"storageClassName,omitempty"`
 }
 
 // TiCDCConfig is the configuration of tidbcdc
