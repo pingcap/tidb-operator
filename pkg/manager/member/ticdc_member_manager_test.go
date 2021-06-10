@@ -424,7 +424,7 @@ func TestGetNewTiCDCStatefulSet(t *testing.T) {
 						{
 							Name:        "sort-dir",
 							StorageSize: "2Gi",
-							MountPath:   "/var/lib/sort-dir",
+							MountPath:   pointer.StringPtr("/var/lib/sort-dir"),
 						},
 					}},
 				},
