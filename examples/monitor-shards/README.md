@@ -32,9 +32,9 @@ Wait for Pods ready:
 watch kubectl -n ${namespace} get pod
 ```
 
-We will that the scrape targets are distributed on the two shards.
+We will see that the scrape targets are distributed on the two shards.
 
-And we must use thanos sidecar to query globally.
+And we must use Thanos sidecar to query globally.
 
 
 
