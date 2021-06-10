@@ -2082,8 +2082,8 @@ type WorkerFailureMember struct {
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
 
-// StorageVolume configures additional storage for PD/TiDB/TiKV pods.
-// If `StorageClassName` not set, default to the `spec.[pd|tidb|tikv].storageClassName`
+// StorageVolume configures additional PVC template for statefulsets and volumeMount for pods which mount this pvc .
+// If `StorageClassName` not set, default to the `spec.${component}.storageClassName`
 type StorageVolume struct {
 	Name             string  `json:"name"`
 	StorageClassName *string `json:"storageClassName,omitempty"`
