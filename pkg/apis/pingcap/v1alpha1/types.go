@@ -572,7 +572,7 @@ type TiCDCSpec struct {
 
 	// Config is the Configuration of tidbcdc servers
 	// +optional
-	Config *TiCDCConfig `json:"config,omitempty"`
+	Config *CDCConfigWraper `json:"config,omitempty"`
 
 	// StorageVolumes configure additional storage for TiCDC pods.
 	// +optional
@@ -585,27 +585,28 @@ type TiCDCSpec struct {
 }
 
 // TiCDCConfig is the configuration of tidbcdc
+// ref https://github.com/pingcap/ticdc/blob/a28d9e43532edc4a0380f0ef87314631bf18d866/pkg/config/config.go#L176
 // +k8s:openapi-gen=true
 type TiCDCConfig struct {
 	// Time zone of TiCDC
 	// Optional: Defaults to UTC
 	// +optional
-	Timezone *string `json:"timezone,omitempty"`
+	Timezone *string `toml:"tz,omitempty" json:"timezone,omitempty"`
 
 	// CDC GC safepoint TTL duration, specified in seconds
 	// Optional: Defaults to 86400
 	// +optional
-	GCTTL *int32 `json:"gcTTL,omitempty"`
+	GCTTL *int32 `toml:"gc-ttl,omitempty" json:"gcTTL,omitempty"`
 
 	// LogLevel is the log level
 	// Optional: Defaults to info
 	// +optional
-	LogLevel *string `json:"logLevel,omitempty"`
+	LogLevel *string `toml:"log-level,omitempty" json:"logLevel,omitempty"`
 
 	// LogFile is the log file
 	// Optional: Defaults to /dev/stderr
 	// +optional
-	LogFile *string `json:"logFile,omitempty"`
+	LogFile *string `toml:"log-file,omitempty" json:"logFile,omitempty"`
 }
 
 // LogTailerSpec represents an optional log tailer sidecar container
