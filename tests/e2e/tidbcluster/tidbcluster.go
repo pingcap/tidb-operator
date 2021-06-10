@@ -1502,12 +1502,26 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", fromTc.Name)
 
 			ginkgo.By("Check cdc configuration")
-			cdcMemberName := controller.TiCDCMemberName(fromTc.Name)
-			cdcSts, err := stsGetter.StatefulSets(ns).Get(cdcMemberName, metav1.GetOptions{})
-			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, cdcMemberName)
-			cdcCmName := member.FindConfigMapVolume(&cdcSts.Spec.Template.Spec, func(name string) bool {
-				return strings.HasPrefix(name, controller.TiCDCMemberName(fromTc.Name))
+			var cdcCmName string
+			err = wait.PollImmediate(time.Second*5, time.Minute*5, func() (bool, error) {
+				cdcMemberName := controller.TiCDCMemberName(fromTc.Name)
+				cdcSts, err := stsGetter.StatefulSets(ns).Get(cdcMemberName, metav1.GetOptions{})
+				if err != nil {
+					return false, err
+				}
+
+				cdcCmName = member.FindConfigMapVolume(&cdcSts.Spec.Template.Spec, func(name string) bool {
+					return strings.HasPrefix(name, controller.TiCDCMemberName(fromTc.Name))
+				})
+
+				if cdcCmName != "" {
+					return true, nil
+				}
+
+				return false, nil
 			})
+			framework.ExpectNoError(err, "failed wait to update to use config file")
+
 			cdcCm, err := c.CoreV1().ConfigMaps(ns).Get(cdcCmName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "failed to get ConfigMap %s/%s", ns, cdcCm)
 			log.Logf("CDC config:\n%s", cdcCm.Data["config-file"])
