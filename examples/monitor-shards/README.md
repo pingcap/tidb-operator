@@ -1,12 +1,10 @@
 # Shards and Replicas
 
-If single prometheus can't hold current targets metrics,user can reshard targets on multiple prometheus servers.
-Shards use prometheus `modulus` configuration to implement,which take of the hash of the source label values,split scrape targets based on the number of shards.
+If a single Prometheus can't hold the current target metrics, the user can shard the targets on multiple Prometheus servers.
+Shards use the Prometheus `modulus` configuration, which takes the hash of the `__address__` source label values, and split the scrape targets based on the number of shards.
 
-Prometheus operator will create  number of `shards` multiplied by `replicas` pods.
-
-Note that scaling down shards will not reshard data onto remaining instances,it must be manually moved. Increasing shards will not reshard data either but it will continue to be available from the same instances. 
-To query globally use Thanos sidecar and Thanos querier or remote write data to a central location. Sharding is done on the content of the `__address__` target meta-label.
+Note that scaling down shards will not reshard data onto the remaining instances, the data must be manually moved. Increasing shards will not reshard data neither but it will continue to be available from the same instances. 
+To query globally, use Thanos sidecar and Thanos querier or write data to a remote central location.
 
 ## Install Example
 
@@ -37,7 +35,6 @@ watch kubectl -n ${namespace} get pod
 We will that the scrape targets are distributed on the two shards.
 
 And we must use thanos sidecar to query globally.
-
 
 
 
