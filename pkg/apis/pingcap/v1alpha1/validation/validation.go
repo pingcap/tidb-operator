@@ -314,9 +314,6 @@ func validateStorageVolumes(storageVolumes []v1alpha1.StorageVolume, fldPath *fi
 				Detail: `value of "storageSize" format not supported`,
 			})
 		}
-		if len(storageVolume.MountPath) == 0 {
-			allErrs = append(allErrs, field.Required(idxPath.Child("mountPath"), "mountPath must not be empty"))
-		}
 	}
 	return allErrs
 }
