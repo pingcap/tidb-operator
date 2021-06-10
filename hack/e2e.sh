@@ -62,6 +62,7 @@ Environments:
     KUBE_WORKERS          the number of worker nodes (excludes master nodes), defaults: 3
     DOCKER_IO_MIRROR      configure mirror for docker.io
     GCR_IO_MIRROR         configure mirror for gcr.io
+    K8S_GCR_IO_MIRROR     configure mirror for k8s.gcr.io
     QUAY_IO_MIRROR        configure mirror for quay.io
     KIND_DATA_HOSTPATH    (kind only) the host path of data directory for kind cluster, defaults: none
     KIND_ETCD_DATADIR     (kind only) the host path of etcd data directory for kind cluster, defaults: none
@@ -204,6 +205,7 @@ KUBE_VERSION=${KUBE_VERSION:-v1.18.2}
 KUBE_WORKERS=${KUBE_WORKERS:-3}
 DOCKER_IO_MIRROR=${DOCKER_IO_MIRROR:-}
 GCR_IO_MIRROR=${GCR_IO_MIRROR:-}
+K8S_GCR_IO_MIRROR=${K8S_GCR_IO_MIRROR:-}
 QUAY_IO_MIRROR=${QUAY_IO_MIRROR:-}
 SKIP_GINKGO=${SKIP_GINKGO:-}
 RUNNER_SUITE_NAME=${RUNNER_SUITE_NAME:-}
@@ -236,6 +238,7 @@ echo "KUBE_VERSION: $KUBE_VERSION"
 echo "KUBE_WORKERS: $KUBE_WORKERS"
 echo "DOCKER_IO_MIRROR: $DOCKER_IO_MIRROR"
 echo "GCR_IO_MIRROR: $GCR_IO_MIRROR"
+echo "K8S_GCR_IO_MIRROR: $K8S_GCR_IO_MIRROR"
 echo "QUAY_IO_MIRROR: $QUAY_IO_MIRROR"
 echo "ARTIFACTS: $ARTIFACTS"
 
@@ -336,7 +339,7 @@ kubeadmConfigPatches:
   controllerManagerExtraArgs:
     v: "4"
 EOF
-    if [ -n "$DOCKER_IO_MIRROR" -o -n "$GCR_IO_MIRROR" -o -n "$QUAY_IO_MIRROR" ]; then
+    if [ -n "$DOCKER_IO_MIRROR" -o -n "$GCR_IO_MIRROR" -o -n "$K8S_GCR_IO_MIRROR" -o -n "$QUAY_IO_MIRROR" ]; then
 cat <<EOF >> $tmpfile
 containerdConfigPatches:
 - |-
@@ -351,6 +354,12 @@ EOF
 cat <<EOF >> $tmpfile
   [plugins."io.containerd.grpc.v1.cri".registry.mirrors."gcr.io"]
     endpoint = ["$GCR_IO_MIRROR"]
+EOF
+        fi
+        if [ -n "$K8S_GCR_IO_MIRROR" ]; then
+cat <<EOF >> $tmpfile
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."k8s.gcr.io"]
+    endpoint = ["$K8S_GCR_IO_MIRROR"]
 EOF
         fi
         if [ -n "$QUAY_IO_MIRROR" ]; then
