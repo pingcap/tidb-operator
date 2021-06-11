@@ -201,6 +201,12 @@ func GetDMCluster(ns, name, version string) *v1alpha1.DMCluster {
 			PVReclaimPolicy: &deletePVP,
 			SchedulerName:   "tidb-scheduler",
 			Timezone:        "Asia/Shanghai",
+			Labels: map[string]string{
+				ClusterCustomKey: "value",
+			},
+			Annotations: map[string]string{
+				ClusterCustomKey: "value",
+			},
 			Master: v1alpha1.MasterSpec{
 				Replicas:             3,
 				BaseImage:            "pingcap/dm",
@@ -208,8 +214,25 @@ func GetDMCluster(ns, name, version string) *v1alpha1.DMCluster {
 				StorageSize:          "1Gi",
 				ResourceRequirements: WithStorage(BurstableSmall, "1Gi"),
 				Config:               &v1alpha1.MasterConfig{},
+				Service: &v1alpha1.MasterServiceSpec{
+					ServiceSpec: v1alpha1.ServiceSpec{
+						Type: corev1.ServiceTypeClusterIP,
+						Labels: map[string]string{
+							ComponentCustomKey: "value",
+						},
+						Annotations: map[string]string{
+							ComponentCustomKey: "value",
+						},
+					},
+				},
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Affinity: buildAffinity(name, ns, v1alpha1.DMMasterMemberType),
+					Labels: map[string]string{
+						ComponentCustomKey: "value",
+					},
+					Annotations: map[string]string{
+						ComponentCustomKey: "value",
+					},
 				},
 			},
 			Worker: &v1alpha1.WorkerSpec{
@@ -220,6 +243,12 @@ func GetDMCluster(ns, name, version string) *v1alpha1.DMCluster {
 				Config:               &v1alpha1.WorkerConfig{},
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Affinity: buildAffinity(name, ns, v1alpha1.DMWorkerMemberType),
+					Labels: map[string]string{
+						ComponentCustomKey: "value",
+					},
+					Annotations: map[string]string{
+						ComponentCustomKey: "value",
+					},
 				},
 			},
 		},

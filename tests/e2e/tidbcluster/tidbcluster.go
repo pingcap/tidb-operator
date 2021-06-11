@@ -2718,11 +2718,22 @@ func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tcVersio
 
 // checkCustomLabelAndAnn check the custom set labels and ann set in `GetTidbCluster`
 func checkCustomLabelAndAnn(tc *v1alpha1.TidbCluster, c clientset.Interface) {
+	listOptions := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Discovery().Labels()).String(),
+	}
+	list, err := c.CoreV1().Pods(tc.Namespace).List(listOptions)
+	framework.ExpectNoError(err)
+	framework.ExpectNotEqual(len(list.Items), 0, "expect discovery exists")
+	for _, pod := range list.Items {
+		_, ok := pod.Labels[fixture.ClusterCustomKey]
+		framework.ExpectEqual(ok, true)
+	}
+
 	if tc.Spec.TiDB != nil {
-		listOptions := metav1.ListOptions{
+		listOptions = metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Component(label.TiDBLabelVal).Labels()).String(),
 		}
-		list, err := c.CoreV1().Pods(tc.Namespace).List(listOptions)
+		list, err = c.CoreV1().Pods(tc.Namespace).List(listOptions)
 		framework.ExpectNoError(err)
 		for _, pod := range list.Items {
 			_, ok := pod.Labels[fixture.ClusterCustomKey]
@@ -2756,10 +2767,10 @@ func checkCustomLabelAndAnn(tc *v1alpha1.TidbCluster, c clientset.Interface) {
 	}
 
 	if tc.Spec.TiKV != nil {
-		listOptions := metav1.ListOptions{
+		listOptions = metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Component(label.TiKVLabelVal).Labels()).String(),
 		}
-		list, err := c.CoreV1().Pods(tc.Namespace).List(listOptions)
+		list, err = c.CoreV1().Pods(tc.Namespace).List(listOptions)
 		framework.ExpectNoError(err)
 		for _, pod := range list.Items {
 			_, ok := pod.Labels[fixture.ClusterCustomKey]
@@ -2777,10 +2788,10 @@ func checkCustomLabelAndAnn(tc *v1alpha1.TidbCluster, c clientset.Interface) {
 	}
 
 	if tc.Spec.PD != nil {
-		listOptions := metav1.ListOptions{
+		listOptions = metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Component(label.PDLabelVal).Labels()).String(),
 		}
-		list, err := c.CoreV1().Pods(tc.Namespace).List(listOptions)
+		list, err = c.CoreV1().Pods(tc.Namespace).List(listOptions)
 		framework.ExpectNoError(err)
 		for _, pod := range list.Items {
 			_, ok := pod.Labels[fixture.ClusterCustomKey]
