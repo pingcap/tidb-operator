@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/klog"
 )
 
 const (
@@ -697,38 +698,67 @@ func (tc *TidbCluster) SkipTLSWhenConnectTiDB() bool {
 	return ok
 }
 
+// TODO: We Should better do not specified the default value ourself if user not specified the item.
 func (tc *TidbCluster) TiCDCTimezone() string {
-	if tc.Spec.TiCDC != nil && tc.Spec.TiCDC.Config != nil && tc.Spec.TiCDC.Config.Timezone != nil {
-		return *tc.Spec.TiCDC.Config.Timezone
-	}
+	if tc.Spec.TiCDC != nil && tc.Spec.TiCDC.Config != nil {
+		if v := tc.Spec.TiCDC.Config.Get("tz"); v != nil {
+			tz, err := v.AsString()
+			if err != nil {
+				klog.Warningf("'%s/%s' incorrect tz type %v", tc.Namespace, tc.Name, v.Interface())
+			} else {
+				return tz
+			}
+		}
 
+	}
 	return tc.Timezone()
 }
 
 func (tc *TidbCluster) TiCDCGCTTL() int32 {
-	if tc.Spec.TiCDC != nil && tc.Spec.TiCDC.Config != nil && tc.Spec.TiCDC.Config.GCTTL != nil {
-		return *tc.Spec.TiCDC.Config.GCTTL
+	if tc.Spec.TiCDC != nil && tc.Spec.TiCDC.Config != nil {
+		if v := tc.Spec.TiCDC.Config.Get("gc-ttl"); v != nil {
+			ttl, err := v.AsInt()
+			if err != nil {
+				klog.Warningf("'%s/%s' incorrect gc-ttl type %v", tc.Namespace, tc.Name, v.Interface())
+			} else {
+				return int32(ttl)
+			}
+		}
 	}
 
 	return 86400
 }
 
 func (tc *TidbCluster) TiCDCLogFile() string {
-	if tc.Spec.TiCDC != nil && tc.Spec.TiCDC.Config != nil && tc.Spec.TiCDC.Config.LogFile != nil {
-		return *tc.Spec.TiCDC.Config.LogFile
+	if tc.Spec.TiCDC != nil && tc.Spec.TiCDC.Config != nil {
+		if v := tc.Spec.TiCDC.Config.Get("log-file"); v != nil {
+			file, err := v.AsString()
+			if err != nil {
+				klog.Warningf("'%s/%s' incorrect log-file type %v", tc.Namespace, tc.Name, v.Interface())
+			} else {
+				return file
+			}
+		}
 	}
 
 	return "/dev/stderr"
 }
 
 func (tc *TidbCluster) TiCDCLogLevel() string {
-	if tc.Spec.TiCDC != nil && tc.Spec.TiCDC.Config != nil && tc.Spec.TiCDC.Config.LogLevel != nil {
-		return *tc.Spec.TiCDC.Config.LogLevel
+	if tc.Spec.TiCDC != nil && tc.Spec.TiCDC.Config != nil {
+		if v := tc.Spec.TiCDC.Config.Get("log-level"); v != nil {
+			level, err := v.AsString()
+			if err != nil {
+				klog.Warningf("'%s/%s' incorrect log-level type %v", tc.Namespace, tc.Name, v.Interface())
+			} else {
+				return level
+			}
+		}
 	}
 
 	return "info"
 }
 
-func (tc *TidbCluster) IsHeterogeneous() bool {
+func (tc *TidbCluster) HeterogeneousWithoutLocalPD() bool {
 	return tc.Spec.Cluster != nil && len(tc.Spec.Cluster.Name) > 0 && tc.Spec.PD == nil
 }

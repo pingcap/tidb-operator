@@ -20,6 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/pingcap/tidb-operator/pkg/binlog"
 	"github.com/pingcap/tidb-operator/pkg/util/config"
 )
 
@@ -227,9 +228,15 @@ type TidbClusterSpec struct {
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
-	// Base annotations of TiDB cluster Pods, components may add or override selectors upon this respectively
+	// Base annotations for TiDB cluster, all Pods in the cluster should have these annotations.
+	// Can be overrode by annotations in the specific component spec.
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Base labels for TiDB cluster, all Pods in the cluster should have these labels.
+	// Can be overrode by labels in the specific component spec.
+	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
 
 	// Base tolerations of TiDB cluster Pods, components may add more tolerations upon this respectively
 	// +optional
@@ -565,31 +572,41 @@ type TiCDCSpec struct {
 
 	// Config is the Configuration of tidbcdc servers
 	// +optional
-	Config *TiCDCConfig `json:"config,omitempty"`
+	Config *CDCConfigWraper `json:"config,omitempty"`
+
+	// StorageVolumes configure additional storage for TiCDC pods.
+	// +optional
+	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
+
+	// The storageClassName of the persistent volume for TiCDC data storage.
+	// Defaults to Kubernetes default storage class.
+	// +optional
+	StorageClassName *string `json:"storageClassName,omitempty"`
 }
 
 // TiCDCConfig is the configuration of tidbcdc
+// ref https://github.com/pingcap/ticdc/blob/a28d9e43532edc4a0380f0ef87314631bf18d866/pkg/config/config.go#L176
 // +k8s:openapi-gen=true
 type TiCDCConfig struct {
 	// Time zone of TiCDC
 	// Optional: Defaults to UTC
 	// +optional
-	Timezone *string `json:"timezone,omitempty"`
+	Timezone *string `toml:"tz,omitempty" json:"timezone,omitempty"`
 
 	// CDC GC safepoint TTL duration, specified in seconds
 	// Optional: Defaults to 86400
 	// +optional
-	GCTTL *int32 `json:"gcTTL,omitempty"`
+	GCTTL *int32 `toml:"gc-ttl,omitempty" json:"gcTTL,omitempty"`
 
 	// LogLevel is the log level
 	// Optional: Defaults to info
 	// +optional
-	LogLevel *string `json:"logLevel,omitempty"`
+	LogLevel *string `toml:"log-level,omitempty" json:"logLevel,omitempty"`
 
 	// LogFile is the log file
 	// Optional: Defaults to /dev/stderr
 	// +optional
-	LogFile *string `json:"logFile,omitempty"`
+	LogFile *string `toml:"log-file,omitempty" json:"logFile,omitempty"`
 }
 
 // LogTailerSpec represents an optional log tailer sidecar container
@@ -823,10 +840,15 @@ type ComponentSpec struct {
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
-	// Annotations of the component. Merged into the cluster-level annotations if non-empty
+	// Annotations for the component. Merge into the cluster-level annotations if non-empty
 	// Optional: Defaults to cluster-level setting
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Labels for the component. Merge into the cluster-level labels if non-empty
+	// Optional: Defaults to cluster-level setting
+	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
 
 	// Tolerations of the component. Override the cluster-level tolerations if non-empty
 	// Optional: Defaults to cluster-level setting
@@ -905,9 +927,13 @@ type ServiceSpec struct {
 	// Type of the real kubernetes service
 	Type corev1.ServiceType `json:"type,omitempty"`
 
-	// Additional annotations of the kubernetes service object
+	// Additional annotations for the service
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Additional labels for the service
+	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
 
 	// LoadBalancerIP is the loadBalancerIP of service
 	// Optional: Defaults to omitted
@@ -1104,6 +1130,7 @@ type TiKVFailureStore struct {
 type PumpStatus struct {
 	Phase       MemberPhase             `json:"phase,omitempty"`
 	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
+	Members     []*binlog.NodeStatus    `json:"members,omitempty"`
 }
 
 // TiDBTLSClient can enable TLS connection between TiDB server and MySQL client
@@ -1808,9 +1835,15 @@ type DMClusterSpec struct {
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
-	// Base annotations of DM cluster Pods, components may add or override selectors upon this respectively
+	// Additional annotations for the dm cluster
+	// Can be overrode by annotations in master spec or worker spec
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Additional labels for the dm cluster
+	// Can be overrode by labels in master spec or worker spec
+	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
 
 	// Time zone of DM cluster Pods
 	// Optional: Defaults to UTC

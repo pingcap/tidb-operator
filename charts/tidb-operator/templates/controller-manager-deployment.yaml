@@ -26,6 +26,10 @@ spec:
         app.kubernetes.io/name: {{ template "chart.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: controller-manager
+{{- if .Values.controllerManager.podAnnotations }}
+      annotations:
+{{ toYaml .Values.controllerManager.podAnnotations | indent 8 }}
+{{ end }}
     spec:
     {{- if .Values.controllerManager.serviceAccount }}
       {{- if eq .Values.appendReleaseSuffix true}}
@@ -46,6 +50,12 @@ spec:
         resources:
 {{ toYaml .Values.controllerManager.resources | indent 12 }}
         {{- end }}
+        livenessProbe:
+          tcpSocket:
+            port: 6060
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          failureThreshold: 10
         command:
           - /usr/local/bin/tidb-controller-manager
           {{- if .Values.tidbBackupManagerImage }}

@@ -376,6 +376,8 @@ spec:
                     type: string
                 type: object
               type: array
+            labels:
+              type: object
             nodeSelector:
               type: object
             paused:
@@ -2317,6 +2319,8 @@ spec:
                     - name
                     type: object
                   type: array
+                labels:
+                  type: object
                 limits:
                   type: object
                 maxFailoverCount:
@@ -2392,6 +2396,8 @@ spec:
                       type: object
                     clusterIP:
                       type: string
+                    labels:
+                      type: object
                     loadBalancerIP:
                       type: string
                     loadBalancerSourceRanges:
@@ -4431,6 +4437,8 @@ spec:
                     - name
                     type: object
                   type: array
+                labels:
+                  type: object
                 limits:
                   type: object
                 nodeSelector:
@@ -5895,18 +5903,7 @@ spec:
                   type: object
                 baseImage:
                   type: string
-                config:
-                  properties:
-                    gcTTL:
-                      format: int32
-                      type: integer
-                    logFile:
-                      type: string
-                    logLevel:
-                      type: string
-                    timezone:
-                      type: string
-                  type: object
+                config: {}
                 configUpdateStrategy:
                   type: string
                 env:
@@ -6480,6 +6477,8 @@ spec:
                     - name
                     type: object
                   type: array
+                labels:
+                  type: object
                 limits:
                   type: object
                 nodeSelector:
@@ -6548,6 +6547,11 @@ spec:
                   type: string
                 statefulSetUpdateStrategy:
                   type: string
+                storageClassName:
+                  type: string
+                storageVolumes:
+                  items: {}
+                  type: array
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
@@ -8514,6 +8518,8 @@ spec:
                     - name
                     type: object
                   type: array
+                labels:
+                  type: object
                 lifecycle:
                   properties:
                     postStart:
@@ -10704,6 +10710,8 @@ spec:
                     - name
                     type: object
                   type: array
+                labels:
+                  type: object
                 limits:
                   type: object
                 logTailer:
@@ -12767,6 +12775,8 @@ spec:
                     - name
                     type: object
                   type: array
+                labels:
+                  type: object
                 limits:
                   type: object
                 logTailer:
@@ -13260,6 +13270,8 @@ spec:
                     type: string
                 type: object
               type: array
+            labels:
+              type: object
             master:
               properties:
                 additionalContainers:
@@ -15211,6 +15223,8 @@ spec:
                     - name
                     type: object
                   type: array
+                labels:
+                  type: object
                 limits:
                   type: object
                 maxFailoverCount:
@@ -17357,6 +17371,8 @@ spec:
                     - name
                     type: object
                   type: array
+                labels:
+                  type: object
                 limits:
                   type: object
                 maxFailoverCount:
@@ -19214,6 +19230,20 @@ metadata:
   creationTimestamp: null
   name: tidbmonitors.pingcap.com
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .spec.replicas
+    description: The desired replicas number of tidbMonitor cluster
+    name: DESIRED
+    type: integer
+  - JSONPath: .status.statefulSet.readyReplicas
+    name: READY
+    type: integer
+  - JSONPath: .status.statefulSet.updatedReplicas
+    name: UP-TO-DATE
+    type: integer
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
   group: pingcap.com
   names:
     kind: TidbMonitor

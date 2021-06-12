@@ -397,22 +397,51 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 			},
 		},
 	}
+	script := "set -ex;ordinal=`echo ${POD_NAME} | awk -F- '{print $NF}'`;sed s/POD_NUM/${ordinal}/g /etc/tiflash/config_templ.toml > /data0/config.toml;sed s/POD_NUM/${ordinal}/g /etc/tiflash/proxy_templ.toml > /data0/proxy.toml"
+
+	// TODO: for across k8s cluster without local PD, the script here do not support this now.
+	if len(tc.Spec.ClusterDomain) > 0 {
+		var pdAddr string
+		if tc.IsTLSClusterEnabled() {
+			pdAddr = fmt.Sprintf("https://%s-pd:2379", tcName)
+		} else {
+			pdAddr = fmt.Sprintf("http://%s-pd:2379", tcName)
+		}
+		formatClusterDomain := controller.FormatClusterDomain(tc.Spec.ClusterDomain)
+		str := `pd_url="%s"
+set +e
+encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
+discovery_url="%s-discovery.%s.svc%s:10261"
+until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
+echo "waiting for the verification of PD endpoints ..."
+sleep 2
+done
+
+
+sed -i s/PD_ADDR/${result}/g /data0/config.toml
+sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
+`
+		script += "\n"
+		script += fmt.Sprintf(str, pdAddr, tc.GetName(), tc.GetNamespace(), formatClusterDomain)
+	}
+
 	initContainers = append(initContainers, corev1.Container{
 		Name:  "init",
 		Image: tc.HelperImage(),
 		Command: []string{
 			"sh",
 			"-c",
-			"set -ex;ordinal=`echo ${POD_NAME} | awk -F- '{print $NF}'`;sed s/POD_NUM/${ordinal}/g /etc/tiflash/config_templ.toml > /data0/config.toml;sed s/POD_NUM/${ordinal}/g /etc/tiflash/proxy_templ.toml > /data0/proxy.toml",
+			script,
 		},
 		Env:          initEnv,
 		VolumeMounts: initVolMounts,
 	})
 
-	tiflashLabel := labelTiFlash(tc)
+	stsLabels := labelTiFlash(tc)
 	setName := controller.TiFlashMemberName(tcName)
-	podAnnotations := CombineAnnotations(controller.AnnProm(8234), baseTiFlashSpec.Annotations())
-	podAnnotations = CombineAnnotations(controller.AnnAdditionalProm("tiflash.proxy", 20292), podAnnotations)
+	podLabels := util.CombineStringMap(stsLabels, baseTiFlashSpec.Labels())
+	podAnnotations := util.CombineStringMap(controller.AnnProm(8234), baseTiFlashSpec.Annotations())
+	podAnnotations = util.CombineStringMap(controller.AnnAdditionalProm("tiflash.proxy", 20292), podAnnotations)
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiFlashLabelVal)
 	capacity := controller.TiKVCapacity(tc.Spec.TiFlash.Limits)
 	headlessSvcName := controller.TiFlashPeerMemberName(tcName)
@@ -532,16 +561,16 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            setName,
 			Namespace:       ns,
-			Labels:          tiflashLabel.Labels(),
+			Labels:          stsLabels.Labels(),
 			Annotations:     stsAnnotations,
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
 			Replicas: pointer.Int32Ptr(tc.TiFlashStsDesiredReplicas()),
-			Selector: tiflashLabel.LabelSelector(),
+			Selector: stsLabels.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      tiflashLabel.Labels(),
+					Labels:      podLabels,
 					Annotations: podAnnotations,
 				},
 				Spec: podSpec,
