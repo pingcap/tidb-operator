@@ -1466,54 +1466,218 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		})
 	})
 
-	ginkgo.It("[Feature: CDC]", func() {
-		ginkgo.By("Creating cdc cluster")
-		fromTc := fixture.GetTidbCluster(ns, "cdc-source", utilimage.TiDBV5)
-		fromTc = fixture.AddTiCDCForTidbCluster(fromTc)
+	ginkgo.Context("[Feature: CDC]", func() {
+		ginkgo.It("should sink data without extra volumes correctly", func() {
+			ginkgo.By("Creating cdc cluster")
+			fromTc := fixture.GetTidbCluster(ns, "cdc-source", utilimage.TiDBV5)
+			fromTc = fixture.AddTiCDCForTidbCluster(fromTc)
 
-		fromTc.Spec.PD.Replicas = 3
-		fromTc.Spec.TiKV.Replicas = 3
-		fromTc.Spec.TiDB.Replicas = 2
-		fromTc.Spec.TiCDC.Replicas = 3
+			fromTc.Spec.PD.Replicas = 3
+			fromTc.Spec.TiKV.Replicas = 3
+			fromTc.Spec.TiDB.Replicas = 2
+			fromTc.Spec.TiCDC.Replicas = 3
 
-		err := genericCli.Create(context.TODO(), fromTc)
-		framework.ExpectNoError(err, "Expected TiDB cluster created")
-		err = oa.WaitForTidbClusterReady(fromTc, 30*time.Minute, 5*time.Second)
-		framework.ExpectNoError(err, "Expected TiDB cluster ready")
+			err := genericCli.Create(context.TODO(), fromTc)
+			framework.ExpectNoError(err, "Expected TiDB cluster created")
+			err = oa.WaitForTidbClusterReady(fromTc, 30*time.Minute, 5*time.Second)
+			framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
-		ginkgo.By("Creating cdc-sink cluster")
-		toTc := fixture.GetTidbCluster(ns, "cdc-sink", utilimage.TiDBV5)
-		toTc.Spec.PD.Replicas = 1
-		toTc.Spec.TiKV.Replicas = 1
-		toTc.Spec.TiDB.Replicas = 1
-		err = genericCli.Create(context.TODO(), toTc)
-		framework.ExpectNoError(err, "Expected TiDB cluster created")
-		err = oa.WaitForTidbClusterReady(toTc, 30*time.Minute, 5*time.Second)
-		framework.ExpectNoError(err, "Expected TiDB cluster ready")
+			ginkgo.By("Creating cdc-sink cluster")
+			toTc := fixture.GetTidbCluster(ns, "cdc-sink", utilimage.TiDBV5)
+			toTc.Spec.PD.Replicas = 1
+			toTc.Spec.TiKV.Replicas = 1
+			toTc.Spec.TiDB.Replicas = 1
+			err = genericCli.Create(context.TODO(), toTc)
+			framework.ExpectNoError(err, "Expected TiDB cluster created")
+			err = oa.WaitForTidbClusterReady(toTc, 30*time.Minute, 5*time.Second)
+			framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
-		ginkgo.By("Creating change feed task")
-		fromTCName := fromTc.Name
-		toTCName := toTc.Name
-		args := []string{
-			"exec", "-n", ns,
-			fmt.Sprintf("%s-0", controller.TiCDCMemberName(fromTCName)),
-			"--",
-			"/cdc", "cli", "changefeed", "create",
-			fmt.Sprintf("--sink-uri=tidb://root:@%s:4000/", controller.TiDBMemberName(toTCName)),
-			fmt.Sprintf("--pd=http://%s:2379", controller.PDMemberName(fromTCName)),
-		}
-		data, err := framework.RunKubectl(args...)
-		framework.ExpectNoError(err, "failed to create change feed task: %s, %v", string(data), err)
+			ginkgo.By("Update cdc config to use config file")
+			err = controller.GuaranteedUpdate(genericCli, fromTc, func() error {
+				fromTc.Spec.TiCDC.Config.Set("capture-session-ttl", 10)
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to update cdc config: %q", fromTc.Name)
+			err = oa.WaitForTidbClusterReady(fromTc, 3*time.Minute, 5*time.Second)
+			framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", fromTc.Name)
 
-		ginkgo.By("Inserting data to cdc cluster")
-		err = wait.PollImmediate(time.Second*5, time.Minute*5, insertIntoDataToSourceDB(fw, c, ns, fromTCName, "", false))
-		framework.ExpectNoError(err, "insert data to cdc cluster timeout")
+			ginkgo.By("Check cdc configuration")
+			var cdcCmName string
+			err = wait.PollImmediate(time.Second*5, time.Minute*5, func() (bool, error) {
+				cdcMemberName := controller.TiCDCMemberName(fromTc.Name)
+				cdcSts, err := stsGetter.StatefulSets(ns).Get(cdcMemberName, metav1.GetOptions{})
+				if err != nil {
+					return false, err
+				}
 
-		ginkgo.By("Checking cdc works as expected")
-		err = wait.PollImmediate(time.Second*5, time.Minute*5, dataInClusterIsCorrect(fw, c, ns, toTCName, "", false))
-		framework.ExpectNoError(err, "check cdc timeout")
+				cdcCmName = member.FindConfigMapVolume(&cdcSts.Spec.Template.Spec, func(name string) bool {
+					return strings.HasPrefix(name, controller.TiCDCMemberName(fromTc.Name))
+				})
 
-		log.Logf("CDC works as expected")
+				if cdcCmName != "" {
+					return true, nil
+				}
+
+				return false, nil
+			})
+			framework.ExpectNoError(err, "failed wait to update to use config file")
+
+			cdcCm, err := c.CoreV1().ConfigMaps(ns).Get(cdcCmName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get ConfigMap %s/%s", ns, cdcCm)
+			log.Logf("CDC config:\n%s", cdcCm.Data["config-file"])
+			gomega.Expect(cdcCm.Data["config-file"]).To(gomega.ContainSubstring("capture-session-ttl = 10"))
+
+			ginkgo.By("Creating change feed task")
+			fromTCName := fromTc.Name
+			toTCName := toTc.Name
+			args := []string{
+				"exec", "-n", ns,
+				fmt.Sprintf("%s-0", controller.TiCDCMemberName(fromTCName)),
+				"--",
+				"/cdc", "cli", "changefeed", "create",
+				fmt.Sprintf("--sink-uri=tidb://root:@%s:4000/", controller.TiDBMemberName(toTCName)),
+				fmt.Sprintf("--pd=http://%s:2379", controller.PDMemberName(fromTCName)),
+			}
+			data, err := framework.RunKubectl(args...)
+			framework.ExpectNoError(err, "failed to create change feed task: %s, %v", string(data), err)
+
+			ginkgo.By("Inserting data to cdc cluster")
+			err = wait.PollImmediate(time.Second*5, time.Minute*5, insertIntoDataToSourceDB(fw, c, ns, fromTCName, "", false))
+			framework.ExpectNoError(err, "insert data to cdc cluster timeout")
+
+			ginkgo.By("Checking cdc works as expected")
+			err = wait.PollImmediate(time.Second*5, time.Minute*5, dataInClusterIsCorrect(fw, c, ns, toTCName, "", false))
+			framework.ExpectNoError(err, "check cdc timeout")
+
+			log.Logf("CDC works as expected")
+		})
+
+		ginkgo.It("should scale in-out and mount storage volumes correctly", func() {
+			ginkgo.By("Creating cdc cluster")
+			fromTc := fixture.GetTidbCluster(ns, "cdc-source-advance", utilimage.TiDBV5)
+			fromTc = fixture.AddTiCDCForTidbCluster(fromTc)
+
+			fromTc.Spec.PD.Replicas = 3
+			fromTc.Spec.TiKV.Replicas = 3
+			fromTc.Spec.TiDB.Replicas = 2
+			fromTc.Spec.TiCDC.Replicas = 3
+
+			fromTc.Spec.TiCDC.StorageVolumes = []v1alpha1.StorageVolume{
+				{
+					Name:        "sort-dir",
+					StorageSize: "1Gi",
+					MountPath:   "/var/lib/sort-dir",
+				},
+			}
+
+			err := genericCli.Create(context.TODO(), fromTc)
+			framework.ExpectNoError(err, "Expected TiDB cluster created")
+			err = oa.WaitForTidbClusterReady(fromTc, 30*time.Minute, 5*time.Second)
+			framework.ExpectNoError(err, "Expected TiDB cluster ready")
+
+			ginkgo.By("Creating cdc-sink cluster")
+			toTc := fixture.GetTidbCluster(ns, "cdc-sink-advance", utilimage.TiDBV5)
+			toTc.Spec.PD.Replicas = 1
+			toTc.Spec.TiKV.Replicas = 1
+			toTc.Spec.TiDB.Replicas = 1
+			err = genericCli.Create(context.TODO(), toTc)
+			framework.ExpectNoError(err, "Expected TiDB cluster created")
+			err = oa.WaitForTidbClusterReady(toTc, 30*time.Minute, 5*time.Second)
+			framework.ExpectNoError(err, "Expected TiDB cluster ready")
+
+			ginkgo.By("Scale in TiCDC")
+			err = controller.GuaranteedUpdate(genericCli, fromTc, func() error {
+				fromTc.Spec.TiCDC.Replicas = 2
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to scale in TiCDC for TidbCluster %s/%s", ns, fromTc.Name)
+
+			ginkgo.By("Wait for fromTC ready")
+			err = oa.WaitForTidbClusterReady(fromTc, 3*time.Minute, 10*time.Second)
+			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale in TiCDC", ns, fromTc.Name)
+
+			ginkgo.By("Check PVC annotation tidb.pingcap.com/pvc-defer-deleting")
+			pvcUIDs := make(map[string]string)
+			ordinal := int32(2)
+			pvcSelector, err := member.GetPVCSelectorForPod(fromTc, v1alpha1.TiCDCMemberType, ordinal)
+			framework.ExpectNoError(err, "failed to get PVC selector for tc %s/%s", fromTc.GetNamespace(), fromTc.GetName())
+			err = wait.Poll(10*time.Second, 3*time.Minute, func() (done bool, err error) {
+				pvcs, err := c.CoreV1().PersistentVolumeClaims(ns).List(metav1.ListOptions{LabelSelector: pvcSelector.String()})
+				framework.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
+				if len(pvcs.Items) == 0 {
+					log.Logf("no PVC found")
+					return false, nil
+				}
+				for _, pvc := range pvcs.Items {
+					annotations := pvc.GetObjectMeta().GetAnnotations()
+					log.Logf("pvc annotations: %+v", annotations)
+					_, ok := annotations["tidb.pingcap.com/pvc-defer-deleting"]
+					if !ok {
+						log.Logf("PVC %s/%s does not have annotation tidb.pingcap.com/pvc-defer-deleting", pvc.GetNamespace(), pvc.GetName())
+						return false, nil
+					}
+					pvcUIDs[pvc.Name] = string(pvc.UID)
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "expect PVCs of scaled in Pods to have annotation tidb.pingcap.com/pvc-defer-deleting")
+
+			ginkgo.By("Scale out TiCDC")
+			err = controller.GuaranteedUpdate(genericCli, fromTc, func() error {
+				fromTc.Spec.TiCDC.Replicas = 3
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to scale out TiCDC for TidbCluster %s/%s", ns, fromTc.Name)
+
+			ginkgo.By("Wait for fromTC ready")
+			err = oa.WaitForTidbClusterReady(fromTc, 3*time.Minute, 10*time.Second)
+			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale out TiCDC", ns, fromTc.Name)
+
+			ginkgo.By("Check PVCs are recreated for newly scaled out TiCDC")
+			err = wait.Poll(10*time.Second, 3*time.Minute, func() (done bool, err error) {
+				pvcs, err := c.CoreV1().PersistentVolumeClaims(ns).List(metav1.ListOptions{LabelSelector: pvcSelector.String()})
+				framework.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
+				if len(pvcs.Items) == 0 {
+					log.Logf("no PVC found")
+					return false, nil
+				}
+				for _, pvc := range pvcs.Items {
+					annotations := pvc.GetObjectMeta().GetAnnotations()
+					log.Logf("pvc annotations: %+v", annotations)
+					_, ok := annotations["tidb.pingcap.com/pvc-defer-deleting"]
+					framework.ExpectEqual(ok, false, "expect PVC %s/%s not to have annotation tidb.pingcap.com/pvc-defer-deleting", pvc.GetNamespace(), pvc.GetName())
+					pvcUIDString := pvcUIDs[pvc.Name]
+					framework.ExpectNotEqual(string(pvc.UID), pvcUIDString)
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "expect PVCs of scaled out Pods to be recreated")
+
+			ginkgo.By("Creating change feed task")
+			fromTCName := fromTc.Name
+			toTCName := toTc.Name
+			args := []string{
+				"exec", "-n", ns,
+				fmt.Sprintf("%s-0", controller.TiCDCMemberName(fromTCName)),
+				"--",
+				"/cdc", "cli", "changefeed", "create",
+				fmt.Sprintf("--sink-uri=tidb://root:@%s:4000/", controller.TiDBMemberName(toTCName)),
+				fmt.Sprintf("--pd=http://%s:2379", controller.PDMemberName(fromTCName)),
+				"--sort-dir=/var/lib/sort-dir",
+			}
+			data, err := framework.RunKubectl(args...)
+			framework.ExpectNoError(err, "failed to create change feed task: %s, %v", string(data), err)
+
+			ginkgo.By("Inserting data to cdc cluster")
+			err = wait.PollImmediate(time.Second*5, time.Minute*5, insertIntoDataToSourceDB(fw, c, ns, fromTCName, "", false))
+			framework.ExpectNoError(err, "insert data to cdc cluster timeout")
+
+			ginkgo.By("Checking cdc works as expected")
+			err = wait.PollImmediate(time.Second*5, time.Minute*5, dataInClusterIsCorrect(fw, c, ns, toTCName, "", false))
+			framework.ExpectNoError(err, "check cdc timeout")
+
+			log.Logf("CDC works as expected")
+		})
 	})
 
 	ginkgo.It("TiKV should mount multiple pvc", func() {

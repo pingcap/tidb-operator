@@ -166,7 +166,7 @@ func TestTiCDCMemberManagerSyncUpdate(t *testing.T) {
 			status:  v1alpha1.NormalPhase,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(int(*set.Spec.Replicas)).To(Equal(5))
+				g.Expect(int(*set.Spec.Replicas)).To(Equal(4)) // scale out one-by-one now
 			},
 		},
 		{
@@ -406,10 +406,88 @@ func TestTiCDCMemberManagerSyncTidbClusterStatus(t *testing.T) {
 	}
 }
 
+func TestGetNewTiCDCStatefulSet(t *testing.T) {
+	tests := []struct {
+		name    string
+		tc      v1alpha1.TidbCluster
+		testSts func(sts *apps.StatefulSet)
+	}{
+		{
+			name: "TiCDC spec storageVolumes",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiCDC: &v1alpha1.TiCDCSpec{StorageVolumes: []v1alpha1.StorageVolume{
+						{
+							Name:        "sort-dir",
+							StorageSize: "2Gi",
+							MountPath:   "/var/lib/sort-dir",
+						},
+					}},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				q, _ := resource.ParseQuantity("2Gi")
+				g.Expect(sts.Spec.VolumeClaimTemplates).To(Equal([]corev1.PersistentVolumeClaim{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: v1alpha1.TiCDCMemberType.String() + "-sort-dir",
+						},
+						Spec: corev1.PersistentVolumeClaimSpec{
+							AccessModes: []corev1.PersistentVolumeAccessMode{
+								corev1.ReadWriteOnce,
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceStorage: q,
+								},
+							},
+						},
+					},
+				}))
+				index := 0
+				g.Expect(sts.Spec.Template.Spec.Containers[0].VolumeMounts[index]).To(Equal(corev1.VolumeMount{
+					Name:      fmt.Sprintf("%s-%s", v1alpha1.TiCDCMemberType, "sort-dir"),
+					MountPath: "/var/lib/sort-dir",
+				}))
+			},
+		},
+		{
+			name: "TiCDC additional volumes",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiCDC: &v1alpha1.TiCDCSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							AdditionalVolumes: []corev1.Volume{{Name: "test", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}}},
+						},
+					},
+				},
+			},
+			testSts: testAdditionalVolumes(t, []corev1.Volume{{Name: "test", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}}}),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sts, _ := getNewTiCDCStatefulSet(&tt.tc, nil)
+			tt.testSts(sts)
+		})
+	}
+}
+
 func newFakeTiCDCMemberManager() (*ticdcMemberManager, *controller.FakeStatefulSetControl, *controller.FakeTiDBControl, *fakeIndexers) {
 	fakeDeps := controller.NewFakeDependencies()
 	tmm := &ticdcMemberManager{
-		deps: fakeDeps,
+		deps:   fakeDeps,
+		scaler: NewTiCDCScaler(fakeDeps),
 	}
 	tmm.statefulSetIsUpgradingFn = ticdcStatefulSetIsUpgrading
 	indexers := &fakeIndexers{

@@ -3664,6 +3664,34 @@ Optional: Defaults to range</p>
 </tr>
 </tbody>
 </table>
+<h3 id="cdcconfigwraper">CDCConfigWraper</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#ticdcspec">TiCDCSpec</a>)
+</p>
+<p>
+<p>CDCConfigWraper simply wrapps a GenericConfig</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>GenericConfig</code></br>
+<em>
+github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="cleanpolicytype">CleanPolicyType</h3>
 <p>
 (<em>Appears on:</em>
@@ -12269,6 +12297,7 @@ LocalStorageProvider
 <p>
 (<em>Appears on:</em>
 <a href="#pdspec">PDSpec</a>, 
+<a href="#ticdcspec">TiCDCSpec</a>, 
 <a href="#tidbspec">TiDBSpec</a>, 
 <a href="#tikvspec">TiKVSpec</a>)
 </p>
@@ -12649,11 +12678,8 @@ string
 </table>
 <h3 id="ticdcconfig">TiCDCConfig</h3>
 <p>
-(<em>Appears on:</em>
-<a href="#ticdcspec">TiCDCSpec</a>)
-</p>
-<p>
-<p>TiCDCConfig is the configuration of tidbcdc</p>
+<p>TiCDCConfig is the configuration of tidbcdc
+ref <a href="https://github.com/pingcap/ticdc/blob/a28d9e43532edc4a0380f0ef87314631bf18d866/pkg/config/config.go#L176">https://github.com/pingcap/ticdc/blob/a28d9e43532edc4a0380f0ef87314631bf18d866/pkg/config/config.go#L176</a></p>
 </p>
 <table>
 <thead>
@@ -12814,14 +12840,41 @@ string
 <td>
 <code>config</code></br>
 <em>
-<a href="#ticdcconfig">
-TiCDCConfig
+<a href="#cdcconfigwraper">
+CDCConfigWraper
 </a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
 <p>Config is the Configuration of tidbcdc servers</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageVolumes</code></br>
+<em>
+<a href="#storagevolume">
+[]StorageVolume
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StorageVolumes configure additional storage for TiCDC pods.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The storageClassName of the persistent volume for TiCDC data storage.
+Defaults to Kubernetes default storage class.</p>
 </td>
 </tr>
 </tbody>

@@ -590,6 +590,7 @@ func AddTiCDCForTidbCluster(tc *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
 	tc.Spec.TiCDC = &v1alpha1.TiCDCSpec{
 		BaseImage: "pingcap/ticdc",
 		Replicas:  1,
+		Config:    v1alpha1.NewCDCConfig(),
 	}
 	return tc
 }
