@@ -5903,18 +5903,7 @@ spec:
                   type: object
                 baseImage:
                   type: string
-                config:
-                  properties:
-                    gcTTL:
-                      format: int32
-                      type: integer
-                    logFile:
-                      type: string
-                    logLevel:
-                      type: string
-                    timezone:
-                      type: string
-                  type: object
+                config: {}
                 configUpdateStrategy:
                   type: string
                 env:
@@ -6558,6 +6547,11 @@ spec:
                   type: string
                 statefulSetUpdateStrategy:
                   type: string
+                storageClassName:
+                  type: string
+                storageVolumes:
+                  items: {}
+                  type: array
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer

@@ -238,6 +238,36 @@ func TestPVCResizer(t *testing.T) {
 			},
 		},
 		{
+			name: "resize TiCDC PVCs",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: v1.NamespaceDefault,
+					Name:      "tc",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiCDC: &v1alpha1.TiCDCSpec{
+						StorageVolumes: []v1alpha1.StorageVolume{
+							{
+								Name:        "sort-dir",
+								StorageSize: "2Gi",
+							},
+						},
+					},
+				},
+			},
+			sc: newStorageClass("sc", true),
+			pvcs: []*v1.PersistentVolumeClaim{
+				newPVCWithStorage("ticdc-sort-dir-tc-ticdc-0", label.TiCDCLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("ticdc-sort-dir-tc-ticdc-1", label.TiCDCLabelVal, "sc", "1Gi"),
+				newPVCWithStorage("ticdc-sort-dir-tc-ticdc-2", label.TiCDCLabelVal, "sc", "1Gi"),
+			},
+			wantPVCs: []*v1.PersistentVolumeClaim{
+				newPVCWithStorage("ticdc-sort-dir-tc-ticdc-0", label.TiCDCLabelVal, "sc", "2Gi"),
+				newPVCWithStorage("ticdc-sort-dir-tc-ticdc-1", label.TiCDCLabelVal, "sc", "2Gi"),
+				newPVCWithStorage("ticdc-sort-dir-tc-ticdc-2", label.TiCDCLabelVal, "sc", "2Gi"),
+			},
+		},
+		{
 			name: "resize Pump PVCs",
 			tc: &v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{

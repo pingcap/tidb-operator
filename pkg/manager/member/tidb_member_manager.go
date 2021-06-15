@@ -305,6 +305,7 @@ func (m *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
 		return err
 	}
 
+	delete(oldSvc.Annotations, LastAppliedConfigAnnotation)
 	annoEqual := equality.Semantic.DeepEqual(newSvc.Annotations, oldSvc.Annotations)
 	labelEqual := equality.Semantic.DeepEqual(newSvc.Labels, oldSvc.Labels)
 	isOrphan := metav1.GetControllerOf(oldSvc) == nil
@@ -313,19 +314,22 @@ func (m *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
+	klog.V(2).Infof("Sync TiDB service %s/%s, spec equal: %v, annotations equal: %v, label equal: %v", newSvc.Namespace, newSvc.Name, equal, annoEqual, labelEqual)
+
 	svc := *oldSvc
+	svc.Annotations = newSvc.Annotations
+	svc.Labels = newSvc.Labels
 	svc.Spec = newSvc.Spec
 	err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
 	if err != nil {
 		return err
 	}
 	svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
-	svc.Annotations = newSvc.Annotations
-	svc.Labels = newSvc.Labels
 	// also override labels when adopt orphan
 	if isOrphan {
 		svc.OwnerReferences = newSvc.OwnerReferences
 	}
+
 	_, err = m.deps.ServiceControl.UpdateService(tc, &svc)
 	return err
 }

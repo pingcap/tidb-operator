@@ -67,6 +67,7 @@ var (
 	tidbRequirement    = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiDBLabelVal})
 	tikvRequirement    = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiKVLabelVal})
 	tiflashRequirement = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiFlashLabelVal})
+	ticdcRequirement   = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiCDCLabelVal})
 	pumpRequirement    = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.PumpLabelVal})
 
 	dmMasterRequirement = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.DMMasterLabelVal})
@@ -159,6 +160,22 @@ func (p *pvcResizer) Resize(tc *v1alpha1.TidbCluster) error {
 			}
 		}
 		if err := p.patchPVCs(ns, selector.Add(*tiflashRequirement), pvcPrefix2Quantity); err != nil {
+			return err
+		}
+	}
+	// patch TiCDC PVCs
+	if tc.Spec.TiCDC != nil {
+		pvcPrefix2Quantity := make(map[string]resource.Quantity)
+		ticdcMemberType := v1alpha1.TiCDCMemberType.String()
+		for _, sv := range tc.Spec.TiCDC.StorageVolumes {
+			key := fmt.Sprintf("%s-%s-%s-%s", ticdcMemberType, sv.Name, tc.Name, ticdcMemberType)
+			if quantity, err := resource.ParseQuantity(sv.StorageSize); err == nil {
+				pvcPrefix2Quantity[key] = quantity
+			} else {
+				klog.Warningf("StorageVolume %q in %s/%s .Spec.TiCDC is invalid", sv.Name, ns, tc.Name)
+			}
+		}
+		if err := p.patchPVCs(ns, selector.Add(*ticdcRequirement), pvcPrefix2Quantity); err != nil {
 			return err
 		}
 	}

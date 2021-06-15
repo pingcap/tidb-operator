@@ -812,6 +812,7 @@ spec:
   #   podSecurityContext: {}
   #   env: []
   #   additionalContainers: []
+  #   storageVolumes: []
   #   additionalVolumes: []
   #   additionalVolumeMounts: []
   #   terminationGracePeriodSeconds: 30s
