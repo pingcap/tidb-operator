@@ -398,7 +398,7 @@ func TestTiFlashScalerScaleOutSimultaneouslyExtra(t *testing.T) {
 						pvcIndexer.Add(newPVCWithDeleteAnnotaion(set, v1alpha1.TiFlashMemberType, tc.GetName(), 5))
 						pvcControl.SetDeletePVCError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 					},
-					replicas:    6,
+					replicas:    5,
 					deleteSlots: sets.NewInt32(),
 				}, {
 					preHandler: func(set *apps.StatefulSet, tc *v1alpha1.TidbCluster, pvcIndexer cache.Indexer, pvcControl *controller.FakePVCControl) {
@@ -442,8 +442,8 @@ func TestTiFlashScalerScaleOutSimultaneouslyExtra(t *testing.T) {
 						pvcIndexer.Add(newPVCWithDeleteAnnotaion(set, v1alpha1.TiFlashMemberType, tc.GetName(), 7))
 						pvcControl.SetDeletePVCError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 					},
-					replicas:    6,
-					deleteSlots: sets.NewInt32(5, 6),
+					replicas:    5,
+					deleteSlots: sets.NewInt32(),
 				}, {
 					preHandler: func(set *apps.StatefulSet, tc *v1alpha1.TidbCluster, pvcIndexer cache.Indexer, pvcControl *controller.FakePVCControl) {
 						pvcIndexer.Delete(newPVCWithDeleteAnnotaion(set, v1alpha1.TiFlashMemberType, tc.GetName(), 7))
@@ -1474,7 +1474,7 @@ func TestTiFlashScalerScaleInSimultaneouslyExtra(t *testing.T) {
 						store.ID = "not integer"
 						tc.Status.TiFlash.TombstoneStores["1"] = store
 					},
-					replicas:    4,
+					replicas:    5,
 					deleteSlots: sets.NewInt32(),
 				}, {
 					preHandler: func(tc *v1alpha1.TidbCluster) {
@@ -1526,8 +1526,8 @@ func TestTiFlashScalerScaleInSimultaneouslyExtra(t *testing.T) {
 						store.ID = "not integer"
 						tc.Status.TiFlash.TombstoneStores["13"] = store
 					},
-					replicas:    4,
-					deleteSlots: sets.NewInt32(2),
+					replicas:    5,
+					deleteSlots: sets.NewInt32(),
 				}, {
 					preHandler: func(tc *v1alpha1.TidbCluster) {
 						// hack ID to mock error during scale one
@@ -1589,8 +1589,8 @@ func TestTiFlashScalerScaleInSimultaneouslyExtra(t *testing.T) {
 						store.ID = "not integer"
 						tc.Status.TiFlash.TombstoneStores["1"] = store
 					},
-					replicas:    4,
-					deleteSlots: sets.NewInt32(2, 5),
+					replicas:    5,
+					deleteSlots: sets.NewInt32(),
 				}, {
 					preHandler: func(tc *v1alpha1.TidbCluster) {
 						// hack ID to mock error during scale one

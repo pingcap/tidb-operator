@@ -269,59 +269,42 @@ func normalizeDeleteSlots(replicas int32, deleteSlots sets.Int32, desiredDeleteS
 // - finishedOrdinals: oridnals finished successfully in this round.
 func setReplicasAndDeleteSlotsByFinished(scaling int, newSet, oldSet *apps.StatefulSet, ordinals []int32, finishedOrdinals sets.Int32) {
 	klog.Infof("scale statefulset: ordinals: %v, finishedOrdinals: %v", ordinals, finishedOrdinals)
-	if !features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
-		// count the continuous finished ordinal if disable asts.
-		newReplicas := *oldSet.Spec.Replicas
-		if scaling > 0 {
-			for _, ordinal := range ordinals {
-				if !finishedOrdinals.Has(ordinal) {
-					break
-				}
-				newReplicas++
+	newReplicas := *oldSet.Spec.Replicas
+	actualPodOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet)
+	actualDeleteSlots := helper.GetDeleteSlots(oldSet)
+	desiredDeleteSlots := helper.GetDeleteSlots(newSet)
+	// copy delete slots from desired delete slots if not in actual pod ordinals
+	for i := range desiredDeleteSlots {
+		if !actualPodOrdinals.Has(i) {
+			actualDeleteSlots.Insert(i)
+		}
+	}
+	// we should count ordinal by order strict here.
+	if scaling > 0 {
+		for _, ordinal := range ordinals {
+			if !finishedOrdinals.Has(ordinal) {
+				break
 			}
-		} else {
-			for _, ordinal := range ordinals {
-				if !finishedOrdinals.Has(ordinal) {
-					break
-				}
-				newReplicas--
+			newReplicas++
+			if !desiredDeleteSlots.Has(ordinal) {
+				actualDeleteSlots.Delete(ordinal)
 			}
 		}
-		*newSet.Spec.Replicas = newReplicas
-		klog.Infof("scale statefulset: %s/%s replicas from %d to %d",
-			newSet.GetNamespace(), newSet.GetName(), *oldSet.Spec.Replicas, *newSet.Spec.Replicas)
 	} else {
-		newReplicas := *oldSet.Spec.Replicas
-		actualPodOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet)
-		actualDeleteSlots := helper.GetDeleteSlots(oldSet)
-		desiredDeleteSlots := helper.GetDeleteSlots(newSet)
-		// copy delete slots from desired delete slots if not in actual pod ordinals
-		for i := range desiredDeleteSlots {
-			if !actualPodOrdinals.Has(i) {
-				actualDeleteSlots.Insert(i)
+		for _, ordinal := range ordinals {
+			if !finishedOrdinals.Has(ordinal) {
+				break
+			}
+			newReplicas--
+			if desiredDeleteSlots.Has(ordinal) {
+				actualDeleteSlots.Insert(ordinal)
 			}
 		}
-		if scaling > 0 {
-			for _, ordinal := range ordinals {
-				if !finishedOrdinals.Has(ordinal) {
-					continue
-				}
-				newReplicas++
-				if !desiredDeleteSlots.Has(ordinal) {
-					actualDeleteSlots.Delete(ordinal)
-				}
-			}
-		} else {
-			for _, ordinal := range ordinals {
-				if !finishedOrdinals.Has(ordinal) {
-					continue
-				}
-				newReplicas--
-				if desiredDeleteSlots.Has(ordinal) {
-					actualDeleteSlots.Insert(ordinal)
-				}
-			}
-		}
+	}
+	if newReplicas == *oldSet.Spec.Replicas {
+		// reset if nothing changed.
+		resetReplicas(newSet, oldSet)
+	} else {
 		actualDeleteSlots = normalizeDeleteSlots(newReplicas, actualDeleteSlots, desiredDeleteSlots)
 		*newSet.Spec.Replicas = newReplicas
 		helper.SetDeleteSlots(newSet, actualDeleteSlots)

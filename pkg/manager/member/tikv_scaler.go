@@ -84,9 +84,8 @@ func (s *tikvScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newS
 	}
 
 	var (
-		errs                         []error
-		finishedOrdinals             = sets.NewInt32()
-		updateReplicasAndDeleteSlots bool
+		errs             []error
+		finishedOrdinals = sets.NewInt32()
 	)
 	for _, ordinal := range ordinals {
 		err := scaleOutOne(ordinal)
@@ -94,14 +93,9 @@ func (s *tikvScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newS
 			errs = append(errs, err)
 		} else {
 			finishedOrdinals.Insert(ordinal)
-			updateReplicasAndDeleteSlots = true
 		}
 	}
-	if updateReplicasAndDeleteSlots {
-		setReplicasAndDeleteSlotsByFinished(1, newSet, oldSet, ordinals, finishedOrdinals)
-	} else {
-		resetReplicas(newSet, oldSet)
-	}
+	setReplicasAndDeleteSlotsByFinished(1, newSet, oldSet, ordinals, finishedOrdinals)
 	return errorutils.NewAggregate(errs)
 }
 
