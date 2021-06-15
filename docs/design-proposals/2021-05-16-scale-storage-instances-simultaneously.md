@@ -42,13 +42,9 @@ func scaleMulti(actual *apps.StatefulSet, desired *apps.StatefulSet, maxCount in
   * Call PD API to delete store until its state changes to `offline`.
   * When store becomes tombstone, add defer deleting annotation to the PVCs of the corresponding pod to be deleted.
   * If the current store is `tombstone` and the defer deleting annotation has been added to the PVCs, mark the corresponding ordinal as finished, otherwise ongoing.
-* Call `setReplicasAndDeleteSlots` to delete pod:
-  * If without asts enabled:
-    * Since native StatefulSet will always scale in Pod with the largest order so we should assure the ordinals from largest to smallest __strictly__ are finished.
-    * Count the __continuous__ finished ordinal beginning from largest in A, recorded as c, then the final replicas will be `replicas - c`.
-  * If with asts enabled:
-    * Since Advanced StatefulSet can scale pod with arbitrary ordinal so we can set replicas and deleteSlots finished in this loop.
-    * Calculate replicas and deleteSlots from the finished and ongoing ordinals and update the StatefulSet.
+* Call `setReplicasAndDeleteSlotsByFinished` to delete pod:
+  * Since native StatefulSet will always scale in Pod with the largest order so we should assure the ordinals from largest to smallest __strictly__ are finished.
+  * Count the __continuous__ finished ordinal beginning from largest in A, recorded as c, then the final replicas will be `replicas - c`.
 
 ### Scale out
 
@@ -57,11 +53,8 @@ func scaleMulti(actual *apps.StatefulSet, desired *apps.StatefulSet, maxCount in
 * Call `scaleMulti` to get ordinals to be scaled-out, recorded as A.
 * For all ordinals to be scaled-out in this loop:
   * Call `deleteDeferDeletingPVC` to clean all PVCs with the defer deleting annotation, mark the corresponding original as finished if succeed, otherwise ongoing.
-* Call `setReplicasAndDeleteSlots` to create pod:
-  * If without asts enabled:
-    * Count the __continuous__ finished original beginning from smallest order in A, recorded as c, then the final replicas will be `replicas  + c`.
-  * If with asts enabled:
-    * Calculate replicas and deleteSlots from finished and ongoing ordinals and update the StatefulSet.
+* Call `setReplicasAndDeleteSlotsByFinished` to create pod:
+  * Count the __continuous__ finished original beginning from smallest order in A, recorded as c, then the final replicas will be `replicas  + c`.
 
 ### Test Plan
 
