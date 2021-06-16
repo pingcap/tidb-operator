@@ -362,7 +362,8 @@ func BuildStorageVolumeAndVolumeMount(storageVolumes []v1alpha1.StorageVolume, d
 			volumeClaims = append(volumeClaims, VolumeClaimTemplate(storageRequest, pvcNameInVCT, tmpStorageClass))
 			if storageVolume.MountPath != nil {
 				volMounts = append(volMounts, corev1.VolumeMount{
-					Name: pvcNameInVCT, MountPath: *storageVolume.MountPath, SubPath: storageVolume.SubPath,
+					Name:      pvcNameInVCT,
+					MountPath: *storageVolume.MountPath,
 				})
 			}
 		}

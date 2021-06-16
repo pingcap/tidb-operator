@@ -2084,13 +2084,15 @@ type WorkerFailureMember struct {
 }
 
 // StorageVolume configures additional PVC template for statefulsets and volumeMount for pods which mount this pvc .
-// If `StorageClassName` not set, default to the `spec.${component}.storageClassName`
+// Note:
+// If `MountPath` is not set, no volumeMount will not be generated. (You may not want to set this field when you inject volumeMount
+// in somewhere else such as Mutating Admission Webhook)
+// If `StorageClassName` is not set, default to the `spec.${component}.storageClassName`
 type StorageVolume struct {
 	Name             string  `json:"name"`
 	StorageClassName *string `json:"storageClassName,omitempty"`
 	StorageSize      string  `json:"storageSize"`
 	MountPath        *string `json:"mountPath,omitempty"`
-	SubPath          string  `json:"subPath,omitempty"`
 }
 
 // TopologySpreadConstraint specifies how to spread matching pods among the given topology.
