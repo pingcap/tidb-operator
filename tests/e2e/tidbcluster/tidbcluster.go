@@ -1895,19 +1895,8 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			err = oa.WaitForTidbClusterReady(tc, 15*time.Minute, 10*time.Second)
 			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
 
-			ginkgo.By("Update components version")
-			componentVersion := utilimage.TiDBV4
-			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-				tc.Spec.PD.Version = pointer.StringPtr(componentVersion)
-				tc.Spec.TiKV.Version = pointer.StringPtr(componentVersion)
-				tc.Spec.TiDB.Version = pointer.StringPtr(componentVersion)
-				return nil
-			})
-			framework.ExpectNoError(err, "failed to update components version to %q", componentVersion)
-			err = oa.WaitForTidbClusterReady(tc, 15*time.Minute, 10*time.Second)
-			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
-
 			ginkgo.By("Check components version")
+			componentVersion := utilimage.TiDBV5
 			pdMemberName := controller.PDMemberName(tc.Name)
 			pdSts, err := stsGetter.StatefulSets(ns).Get(pdMemberName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, pdMemberName)
