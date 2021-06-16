@@ -1030,13 +1030,17 @@ func getMonitorStatefulSetSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.Ti
 		replicas = *monitor.Spec.Replicas
 	}
 	name := GetMonitorObjectName(monitor)
+	stsLabels := buildTidbMonitorLabel(monitor.Name)
+	podLabels := util.CombineStringMap(stsLabels, monitor.Spec.Labels)
+	stsAnnotations := util.CopyStringMap(monitor.Spec.Annotations)
+	podAnnotations := util.CopyStringMap(monitor.Spec.Annotations)
 	statefulset := &apps.StatefulSet{
 		ObjectMeta: meta.ObjectMeta{
 			Name:            name,
 			Namespace:       monitor.Namespace,
-			Labels:          buildTidbMonitorLabel(monitor.Name),
+			Labels:          stsLabels,
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
-			Annotations:     util.CopyStringMap(monitor.Spec.Annotations),
+			Annotations:     stsAnnotations,
 		},
 		Spec: apps.StatefulSetSpec{
 			ServiceName: name,
@@ -1045,12 +1049,12 @@ func getMonitorStatefulSetSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.Ti
 				Type: apps.RollingUpdateStatefulSetStrategyType,
 			},
 			Selector: &meta.LabelSelector{
-				MatchLabels: buildTidbMonitorLabel(monitor.Name),
+				MatchLabels: stsLabels,
 			},
 			Template: core.PodTemplateSpec{
 				ObjectMeta: meta.ObjectMeta{
-					Labels:      buildTidbMonitorLabel(monitor.Name),
-					Annotations: util.CopyStringMap(monitor.Spec.Annotations),
+					Labels:      podLabels,
+					Annotations: podAnnotations,
 				},
 
 				Spec: core.PodSpec{

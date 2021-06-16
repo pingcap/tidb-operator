@@ -331,6 +331,12 @@ func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 					Namespace: tc.Namespace,
 				},
 			},
+			Labels: map[string]string{
+				ClusterCustomKey: "value",
+			},
+			Annotations: map[string]string{
+				ClusterCustomKey: "value",
+			},
 			Prometheus: v1alpha1.PrometheusSpec{
 				ReserveDays: 7,
 				LogLevel:    "info",

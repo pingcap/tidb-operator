@@ -850,6 +850,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		})
 		framework.ExpectEqual(err, wait.ErrWaitTimeout, "tidbmonitor and tidbcluster PVReclaimPolicy should not affect each other")
 
+		ginkgo.By("Check custom labels and annotations")
+		checkMonitorCustomLabelAndAnn(tm, c)
+
 		ginkgo.By("Delete tidbmonitor")
 		err = cli.PingcapV1alpha1().TidbMonitors(tm.Namespace).Delete(tm.Name, &metav1.DeleteOptions{})
 		framework.ExpectNoError(err, "delete tidbmonitor failed")
@@ -2806,5 +2809,21 @@ func checkCustomLabelAndAnn(tc *v1alpha1.TidbCluster, c clientset.Interface) {
 			_, ok = pod.Annotations[fixture.ComponentCustomKey]
 			framework.ExpectEqual(ok, true)
 		}
+	}
+}
+
+// checkCustomLabelAndAnn check the custom set labels and ann set in `NewTidbMonitor`
+func checkMonitorCustomLabelAndAnn(tm *v1alpha1.TidbMonitor, c clientset.Interface) {
+	listOptions := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(label.NewMonitor().Instance(tm.Name).Monitor().Labels()).String(),
+	}
+	list, err := c.CoreV1().Pods(tm.Namespace).List(listOptions)
+	framework.ExpectNoError(err)
+	framework.ExpectNotEqual(len(list.Items), 0, "expect monitor exists")
+	for _, pod := range list.Items {
+		_, ok := pod.Labels[fixture.ClusterCustomKey]
+		framework.ExpectEqual(ok, true)
+		_, ok = pod.Annotations[fixture.ClusterCustomKey]
+		framework.ExpectEqual(ok, true)
 	}
 }

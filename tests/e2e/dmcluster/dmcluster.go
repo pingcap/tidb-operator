@@ -870,6 +870,8 @@ func checkCustomLabelAndAnn(dc *v1alpha1.DMCluster, c clientset.Interface) {
 	for _, pod := range list.Items {
 		_, ok := pod.Labels[fixture.ClusterCustomKey]
 		framework.ExpectEqual(ok, true)
+		_, ok = pod.Annotations[fixture.ClusterCustomKey]
+		framework.ExpectEqual(ok, true)
 	}
 
 	listOptions = metav1.ListOptions{
