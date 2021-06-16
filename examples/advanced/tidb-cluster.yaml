@@ -252,7 +252,7 @@ spec:
 
     ## Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request.
     ## Ref: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#hook-handler-execution
-    # terminationGracePeriodSeconds: 30s
+    # terminationGracePeriodSeconds: 30
 
     ## PodSecurityContext holds pod-level security attributes and common container settings.
     ## Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
@@ -438,7 +438,7 @@ spec:
 
     ## Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request.
     ## Ref: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#hook-handler-execution
-    # terminationGracePeriodSeconds: 30s
+    # terminationGracePeriodSeconds: 30
 
     ## PodSecurityContext holds pod-level security attributes and common container settings.
     ## Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
@@ -643,7 +643,7 @@ spec:
 
     ## Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request.
     ## Ref: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#hook-handler-execution
-    # terminationGracePeriodSeconds: 30s
+    # terminationGracePeriodSeconds: 30
 
     ## PodSecurityContext holds pod-level security attributes and common container settings.
     ## Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
@@ -774,7 +774,7 @@ spec:
   #   additionalContainers: []
   #   additionalVolumes: []
   #   additionalVolumeMounts: []
-  #   terminationGracePeriodSeconds: 30s
+  #   terminationGracePeriodSeconds: 30
   #   # Ref: https://docs.pingcap.com/tidb/stable/tidb-binlog-configuration-file#pump
   #   config: |
   #     gc = 7
@@ -815,7 +815,7 @@ spec:
   #   storageVolumes: []
   #   additionalVolumes: []
   #   additionalVolumeMounts: []
-  #   terminationGracePeriodSeconds: 30s
+  #   terminationGracePeriodSeconds: 30
   #   # Ref: https://docs.pingcap.com/tidb/stable/deploy-ticdc#add-ticdc-to-an-existing-tidb-cluster-using-binary-not-recommended
   #   config:
   #     timezone: UTC
@@ -862,7 +862,7 @@ spec:
   #   additionalContainers: []
   #   additionalVolumes: []
   #   additionalVolumeMounts: []
-  #   terminationGracePeriodSeconds: 30s
+  #   terminationGracePeriodSeconds: 30
   #   storageClaims:
   #     - resources:
   #         requests:
