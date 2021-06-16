@@ -313,6 +313,12 @@ func GetTidbInitializer(ns, tcName, initName, initPassWDName, initTLSName string
 			},
 			PasswordSecret:      &initPassWDName,
 			TLSClientSecretName: &initTLSName,
+			Labels: map[string]string{
+				ClusterCustomKey: "value",
+			},
+			Annotations: map[string]string{
+				ClusterCustomKey: "value",
+			},
 		},
 	}
 }

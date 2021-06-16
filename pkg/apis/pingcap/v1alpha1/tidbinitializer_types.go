@@ -85,6 +85,12 @@ type TidbInitializerSpec struct {
 	PasswordSecret *string `json:"passwordSecret,omitempty"`
 
 	// +optional
+	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
+
+	// +optional
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 
 	// Time zone of TiDB initializer Pods

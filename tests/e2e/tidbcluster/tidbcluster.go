@@ -1144,6 +1144,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to update TidbCluster: %q", tc.Name)
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
+
+			ginkgo.By("Check custom labels and annotations for TidbInitializer")
+			checkInitializerCustomLabelAndAnn(ti, c)
 		})
 
 		ginkgo.It("should enable TLS for MySQL Client and between Heterogeneous TiDB components", func() {
@@ -2820,6 +2823,22 @@ func checkMonitorCustomLabelAndAnn(tm *v1alpha1.TidbMonitor, c clientset.Interfa
 	list, err := c.CoreV1().Pods(tm.Namespace).List(listOptions)
 	framework.ExpectNoError(err)
 	framework.ExpectNotEqual(len(list.Items), 0, "expect monitor exists")
+	for _, pod := range list.Items {
+		_, ok := pod.Labels[fixture.ClusterCustomKey]
+		framework.ExpectEqual(ok, true)
+		_, ok = pod.Annotations[fixture.ClusterCustomKey]
+		framework.ExpectEqual(ok, true)
+	}
+}
+
+// checkInitializerCustomLabelAndAnn check the custom set labels and ann set in `NewTidbMonitor`
+func checkInitializerCustomLabelAndAnn(ti *v1alpha1.TidbInitializer, c clientset.Interface) {
+	listOptions := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(label.NewInitializer().Instance(ti.Name).Initializer(ti.Name).Labels()).String(),
+	}
+	list, err := c.CoreV1().Pods(ti.Namespace).List(listOptions)
+	framework.ExpectNoError(err)
+	framework.ExpectNotEqual(len(list.Items), 0, "expect initializer exists")
 	for _, pod := range list.Items {
 		_, ok := pod.Labels[fixture.ClusterCustomKey]
 		framework.ExpectEqual(ok, true)
