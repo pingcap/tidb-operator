@@ -731,30 +731,6 @@ func TestBuildAdditionalVolumeAndVolumeMount(t *testing.T) {
 						},
 					},
 				}))
-
-			},
-		},
-		{
-			name: "test volumeMount with subPath",
-			storageVolumes: []v1alpha1.StorageVolume{
-				{
-					Name:             "wal",
-					StorageSize:      "2Gi",
-					MountPath:        pointer.StringPtr("/var/lib/wal"),
-					StorageClassName: pointer.StringPtr("sc"),
-					SubPath:          "/var/sub",
-				},
-			},
-			memberType: v1alpha1.TiCDCMemberType,
-			testResult: func(volMounts []corev1.VolumeMount, volumeClaims []corev1.PersistentVolumeClaim) {
-				g := NewGomegaWithT(t)
-				g.Expect(volMounts).To(Equal([]corev1.VolumeMount{
-					{
-						Name:      fmt.Sprintf("%s-%s", v1alpha1.TiCDCMemberType, "wal"),
-						MountPath: "/var/lib/wal",
-						SubPath:   "/var/sub",
-					},
-				}))
 			},
 		},
 		{

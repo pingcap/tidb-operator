@@ -12303,7 +12303,10 @@ LocalStorageProvider
 </p>
 <p>
 <p>StorageVolume configures additional PVC template for statefulsets and volumeMount for pods which mount this pvc .
-If <code>StorageClassName</code> not set, default to the <code>spec.${component}.storageClassName</code></p>
+Note:
+If <code>MountPath</code> is not set, no volumeMount will not be generated. (You may not want to set this field when you inject volumeMount
+in somewhere else such as Mutating Admission Webhook)
+If <code>StorageClassName</code> is not set, default to the <code>spec.${component}.storageClassName</code></p>
 </p>
 <table>
 <thead>
@@ -12346,16 +12349,6 @@ string
 <tr>
 <td>
 <code>mountPath</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
-<code>subPath</code></br>
 <em>
 string
 </em>
