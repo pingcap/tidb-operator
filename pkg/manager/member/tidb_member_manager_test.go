@@ -808,6 +808,7 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 	fakeDeps := controller.NewFakeDependencies()
 	tmm := &tidbMemberManager{
 		deps:                         fakeDeps,
+		scaler:                       NewTiDBScaler(fakeDeps),
 		tidbUpgrader:                 NewFakeTiDBUpgrader(),
 		tidbFailover:                 NewFakeTiDBFailover(),
 		tidbStatefulSetIsUpgradingFn: tidbStatefulSetIsUpgrading,
