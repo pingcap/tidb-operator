@@ -166,6 +166,9 @@ func (w *typedWrapper) CreateOrUpdateDeployment(controller runtime.Object, deplo
 			}
 		}
 		// pod selector of deployment is immutable, so we don't mutate the labels of pod
+		if existingDep.Spec.Template.Annotations == nil {
+			existingDep.Spec.Template.Annotations = map[string]string{}
+		}
 		for k, v := range desiredDep.Spec.Template.Annotations {
 			existingDep.Spec.Template.Annotations[k] = v
 		}
