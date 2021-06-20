@@ -232,6 +232,8 @@ func (m *ticdcMemberManager) syncTiCDCStatus(tc *v1alpha1.TidbCluster, sts *apps
 			ticdcCaptures[podName] = v1alpha1.TiCDCCapture{
 				PodName: podName,
 				ID:      capture.ID,
+				Version: capture.Version,
+				IsOwner: capture.IsOwner,
 			}
 		}
 	}
