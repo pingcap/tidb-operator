@@ -22,7 +22,9 @@ import (
 )
 
 type CaptureStatus struct {
-	ID string `json:"id"`
+	ID      string `json:"id"`
+	Version string `json:"version"`
+	IsOwner bool   `json:"is_owner"`
 }
 
 // TiCDCControlInterface is the interface that knows how to manage ticdc captures
