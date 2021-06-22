@@ -1912,12 +1912,30 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tikvImage := fmt.Sprintf("pingcap/tikv:%s", componentVersion)
 			framework.ExpectEqual(tikvSts.Spec.Template.Spec.Containers[0].Image, tikvImage, "tikv sts image should be %q", tikvImage)
 
+			tiflashMemberName := controller.TiFlashMemberName(tc.Name)
+			tiflashSts, err := stsGetter.StatefulSets(ns).Get(tiflashMemberName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, tiflashMemberName)
+			tiflashImage := fmt.Sprintf("pingcap/tiflash:%s", componentVersion)
+			framework.ExpectEqual(tiflashSts.Spec.Template.Spec.Containers[0].Image, tiflashImage, "tiflash sts image should be %q", tiflashImage)
+
 			tidbMemberName := controller.TiDBMemberName(tc.Name)
 			tidbSts, err := stsGetter.StatefulSets(ns).Get(tidbMemberName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, tidbMemberName)
 			tidbImage := fmt.Sprintf("pingcap/tidb:%s", componentVersion)
 			// the 0th container for tidb pod is slowlog, which runs busybox
 			framework.ExpectEqual(tidbSts.Spec.Template.Spec.Containers[1].Image, tidbImage, "tidb sts image should be %q", tidbImage)
+
+			ticdcMemberName := controller.TiCDCMemberName(tc.Name)
+			ticdcSts, err := stsGetter.StatefulSets(ns).Get(ticdcMemberName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, ticdcMemberName)
+			ticdcImage := fmt.Sprintf("pingcap/ticdc:%s", componentVersion)
+			framework.ExpectEqual(ticdcSts.Spec.Template.Spec.Containers[0].Image, ticdcImage, "ticdc sts image should be %q", ticdcImage)
+
+			pumpMemberName := controller.PumpMemberName(tc.Name)
+			pumpSts, err := stsGetter.StatefulSets(ns).Get(pumpMemberName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, pumpMemberName)
+			pumpImage := fmt.Sprintf("pingcap/tidb-binlog:%s", componentVersion)
+			framework.ExpectEqual(pumpSts.Spec.Template.Spec.Containers[0].Image, pumpImage, "pump sts image should be %q", pumpImage)
 		})
 
 		// this case merge scale-in/scale-out into one case, may seems a little bit dense
