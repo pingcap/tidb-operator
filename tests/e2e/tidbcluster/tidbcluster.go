@@ -1487,33 +1487,86 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 		tc.Spec.PD.Config.Set("log.file.filename", "/var/log/tidb/tidb.log")
 		tc.Spec.PD.Config.Set("log.level", "warn")
-		tc.Spec.TiDB.Config.Set("log.file.max-size", "300")
-		tc.Spec.TiDB.Config.Set("log.file.max-days", "1")
+		tc.Spec.TiDB.Config.Set("log.file.max-size", 300)
+		tc.Spec.TiDB.Config.Set("log.file.max-days", 1)
 		tc.Spec.TiDB.Config.Set("log.file.filename", "/var/log/tidb/tidb.log")
 		tc.Spec.TiDB.Config.Set("log.level", "warn")
-		tc.Spec.TiDB.Config.Set("log.file.max-size", "300")
-		tc.Spec.TiDB.Config.Set("log.file.max-days", "1")
 		tc.Spec.TiKV.Config.Set("rocksdb.wal-dir", "/var/lib/wal")
 		tc.Spec.TiKV.Config.Set("titan.dirname", "/var/lib/titan")
-		clusterConfig := newTidbClusterConfig(e2econfig.TestConfig, ns, clusterName, "admin", utilimage.TiDBV4Version)
-		clusterConfig.Resources["pd.replicas"] = "1"
-		clusterConfig.Resources["tikv.replicas"] = "4"
-		clusterConfig.Resources["tidb.replicas"] = "1"
-		clusterConfig.Clustrer = tc
+		tc.Spec.PD.Replicas = 1
+		tc.Spec.TiKV.Replicas = 4
+		tc.Spec.TiDB.Replicas = 2
 
-		log.Logf("deploying tidb cluster [%s/%s]", clusterConfig.Namespace, clusterConfig.ClusterName)
-		oa.DeployTidbClusterOrDie(&clusterConfig)
-		oa.CheckTidbClusterStatusOrDie(&clusterConfig)
+		tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
+		framework.ExpectNoError(err, "Expected create tidbcluster")
+		err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
+		framework.ExpectNoError(err, "Expected get tidbcluster")
 
 		ginkgo.By("scale multiple pvc tidb cluster")
-		clusterConfig.ScaleTiKV(3)
-		oa.UpgradeTidbClusterOrDie(&clusterConfig)
-		oa.CheckTidbClusterStatusOrDie(&clusterConfig)
+		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+			tc.Spec.TiKV.Replicas = 3
+			tc.Spec.TiDB.Replicas = 1
+			return nil
+		})
+		framework.ExpectNoError(err, "failed to update TidbCluster: %v", tc)
+		err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
+		framework.ExpectNoError(err, "Expected get tidbcluster")
+
+		ginkgo.By("Check PVC annotation tidb.pingcap.com/pvc-defer-deleting")
+		pvcUIDs := make(map[string]string)
+		ordinal := int32(1)
+		pvcSelector, err := member.GetPVCSelectorForPod(tc, v1alpha1.TiDBMemberType, ordinal)
+		framework.ExpectNoError(err, "failed to get PVC selector for tc %s/%s", tc.GetNamespace(), tc.GetName())
+		err = wait.Poll(10*time.Second, 3*time.Minute, func() (done bool, err error) {
+			pvcs, err := c.CoreV1().PersistentVolumeClaims(ns).List(metav1.ListOptions{LabelSelector: pvcSelector.String()})
+			framework.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
+			if len(pvcs.Items) == 0 {
+				log.Logf("no PVC found")
+				return false, nil
+			}
+			for _, pvc := range pvcs.Items {
+				annotations := pvc.GetObjectMeta().GetAnnotations()
+				log.Logf("pvc annotations: %+v", annotations)
+				_, ok := annotations["tidb.pingcap.com/pvc-defer-deleting"]
+				if !ok {
+					log.Logf("PVC %s/%s does not have annotation tidb.pingcap.com/pvc-defer-deleting", pvc.GetNamespace(), pvc.GetName())
+					return false, nil
+				}
+				pvcUIDs[pvc.Name] = string(pvc.UID)
+			}
+			return true, nil
+		})
+		framework.ExpectNoError(err, "expect PVCs of scaled in Pods to have annotation tidb.pingcap.com/pvc-defer-deleting")
 
 		ginkgo.By("scale out multiple pvc tidb cluster")
-		clusterConfig.ScaleTiKV(4)
-		oa.UpgradeTidbClusterOrDie(&clusterConfig)
-		oa.CheckTidbClusterStatusOrDie(&clusterConfig)
+		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+			tc.Spec.TiKV.Replicas = 4
+			tc.Spec.TiDB.Replicas = 2
+			return nil
+		})
+		framework.ExpectNoError(err, "failed to update TidbCluster: %v", tc)
+		err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
+		framework.ExpectNoError(err, "Expected get tidbcluster")
+
+		ginkgo.By("Check PVCs are recreated for newly scaled out TiDB")
+		err = wait.Poll(10*time.Second, 3*time.Minute, func() (done bool, err error) {
+			pvcs, err := c.CoreV1().PersistentVolumeClaims(ns).List(metav1.ListOptions{LabelSelector: pvcSelector.String()})
+			framework.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
+			if len(pvcs.Items) == 0 {
+				log.Logf("no PVC found")
+				return false, nil
+			}
+			for _, pvc := range pvcs.Items {
+				annotations := pvc.GetObjectMeta().GetAnnotations()
+				log.Logf("pvc annotations: %+v", annotations)
+				_, ok := annotations["tidb.pingcap.com/pvc-defer-deleting"]
+				framework.ExpectEqual(ok, false, "expect PVC %s/%s not to have annotation tidb.pingcap.com/pvc-defer-deleting", pvc.GetNamespace(), pvc.GetName())
+				pvcUIDString := pvcUIDs[pvc.Name]
+				framework.ExpectNotEqual(string(pvc.UID), pvcUIDString)
+			}
+			return true, nil
+		})
+		framework.ExpectNoError(err, "expect PVCs of scaled out Pods to be recreated")
 	})
 })
 

@@ -15,11 +15,8 @@ package member
 
 import (
 	"fmt"
-
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -37,55 +34,43 @@ func NewTiDBScaler(deps *controller.Dependencies) *tidbScaler {
 }
 
 // Scale scales in or out of the statefulset.
-func (s *tidbScaler) Scale(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (s *tidbScaler) Scale(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	scaling, _, _, _ := scaleOne(oldSet, newSet)
 	if scaling > 0 {
-		return s.ScaleOut(meta, oldSet, newSet)
+		return s.ScaleOut(tc, oldSet, newSet)
 	} else if scaling < 0 {
-		return s.ScaleIn(meta, oldSet, newSet)
+		return s.ScaleIn(tc, oldSet, newSet)
 	}
 	return nil
 }
 
 // ScaleOut scales out of the statefulset.
-func (s *tidbScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (s *tidbScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
 	resetReplicas(newSet, oldSet)
-	obj, ok := meta.(runtime.Object)
-	if !ok {
-		klog.Errorf("cluster[%s/%s] can't convert to runtime.Object", meta.GetNamespace(), meta.GetName())
-		return nil
-	}
 	klog.Infof("scaling out tidb statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
-	skipReason, err := s.deleteDeferDeletingPVC(obj, v1alpha1.TiDBMemberType, ordinal)
+	skipReason, err := s.deleteDeferDeletingPVC(tc, v1alpha1.TiDBMemberType, ordinal)
 	if err != nil {
 		return err
-	} else if len(skipReason) != 1 || skipReason[ordinalPodName(v1alpha1.TiDBMemberType, meta.GetName(), ordinal)] != skipReasonScalerPVCNotFound {
+	} else if len(skipReason) != 1 || skipReason[ordinalPodName(v1alpha1.TiDBMemberType, tc.GetName(), ordinal)] != skipReasonScalerPVCNotFound {
 		// wait for all PVCs to be deleted
-		return controller.RequeueErrorf("tidbScaler.ScaleOut, cluster %s/%s ready to scale out, skip reason %v, wait for next round", meta.GetNamespace(), meta.GetName(), skipReason)
+		return controller.RequeueErrorf("tidbScaler.ScaleOut, cluster %s/%s ready to scale out, skip reason %v, wait for next round", tc.GetNamespace(), tc.GetName(), skipReason)
 	}
 	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 	return nil
 }
 
 // ScaleIn scales in of the statefulset.
-func (s *tidbScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	ns := meta.GetNamespace()
-	tcName := meta.GetName()
+func (s *tidbScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
 	// NOW, we can only remove one member at a time when scaling in
 	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
 	resetReplicas(newSet, oldSet)
 
 	klog.Infof("scaling in tidb statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
 	// We need to remove member from cluster before reducing statefulset replicas
-	var podName string
-	switch meta.(type) {
-	case *v1alpha1.TidbCluster:
-		podName = ordinalPodName(v1alpha1.TiDBMemberType, tcName, ordinal)
-	default:
-		klog.Errorf("tidbScaler.ScaleIn: failed to convert cluster %s/%s", meta.GetNamespace(), meta.GetName())
-		return nil
-	}
+	podName := ordinalPodName(v1alpha1.TiDBMemberType, tcName, ordinal)
 	pod, err := s.deps.PodLister.Pods(ns).Get(podName)
 	if err != nil {
 		return fmt.Errorf("tidbScaler.ScaleIn: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
@@ -95,7 +80,6 @@ func (s *tidbScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("tidbScaler.ScaleIn: failed to get pvcs for pod %s/%s in tc %s/%s, error: %s", ns, pod.Name, ns, tcName, err)
 	}
-	tc, _ := meta.(*v1alpha1.TidbCluster)
 	for _, pvc := range pvcs {
 		if err := addDeferDeletingAnnoToPVC(tc, pvc, s.deps.PVCControl); err != nil {
 			return err
@@ -108,6 +92,6 @@ func (s *tidbScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 
 // SyncAutoScalerAnn would reclaim the auto-scaling out slots if the target pod is no longer existed
 // NOTE: this method should be removed later.
-func (s *tidbScaler) SyncAutoScalerAnn(_ metav1.Object, _ *apps.StatefulSet) error {
+func (s *tidbScaler) SyncAutoScalerAnn(tc *v1alpha1.TidbCluster, actual *apps.StatefulSet) error {
 	return nil
 }
