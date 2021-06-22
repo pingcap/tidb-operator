@@ -2083,7 +2083,7 @@ type WorkerFailureMember struct {
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
 
-// StorageVolume configures additional PVC template for statefulsets and volumeMount for pods which mount this pvc .
+// StorageVolume configures additional PVC template for StatefulSets and volumeMount for pods that mount this PVC.
 // Note:
 // If `MountPath` is not set, no volumeMount will not be generated. (You may not want to set this field when you inject volumeMount
 // in somewhere else such as Mutating Admission Webhook)
