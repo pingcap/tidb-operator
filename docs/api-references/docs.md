@@ -12674,6 +12674,26 @@ string
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>version</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>isOwner</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="ticdcconfig">TiCDCConfig</h3>
