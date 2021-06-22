@@ -2085,7 +2085,7 @@ type WorkerFailureMember struct {
 
 // StorageVolume configures additional PVC template for StatefulSets and volumeMount for pods that mount this PVC.
 // Note:
-// If `MountPath` is not set, no volumeMount will not be generated. (You may not want to set this field when you inject volumeMount
+// If `MountPath` is not set, volumeMount will not be generated. (You may not want to set this field when you inject volumeMount
 // in somewhere else such as Mutating Admission Webhook)
 // If `StorageClassName` is not set, default to the `spec.${component}.storageClassName`
 type StorageVolume struct {
