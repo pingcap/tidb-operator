@@ -66,6 +66,7 @@ var (
             "options": {
                 "path": "/grafana-dashboard-definitions/tidb"
             },
+			"allowUiUpdates":true,
             "orgId": 1,
             "type": "file"
         }
