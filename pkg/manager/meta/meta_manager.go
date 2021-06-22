@@ -58,9 +58,25 @@ func (m *metaManager) Sync(tc *v1alpha1.TidbCluster) error {
 			return err
 		}
 
+<<<<<<< HEAD
 		if component := pod.Labels[label.ComponentLabelKey]; component != label.PDLabelVal && component != label.TiKVLabelVal && component != label.TiFlashLabelVal {
 			// Skip syncing meta info for pod that doesn't use PV
 			// Currently only PD/TiKV/TiFlash uses PV
+=======
+		components := map[string]struct{}{
+			label.PDLabelVal:      {},
+			label.TiKVLabelVal:    {},
+			label.TiDBLabelVal:    {},
+			label.TiFlashLabelVal: {},
+			label.TiCDCLabelVal:   {},
+			label.PumpLabelVal:    {},
+		}
+		component := pod.Labels[label.ComponentLabelKey]
+
+		if _, ok := components[component]; !ok {
+			// Skip syncing meta info for pod that doesn't use PV
+			// Currently only PD/TiKV/TiDB/TiFlash/TiCDC/Pump uses PV
+>>>>>>> 32c84109... Handle the PVC during scaling of TiDB (#4033)
 			continue
 		}
 		// update meta info for pvc
