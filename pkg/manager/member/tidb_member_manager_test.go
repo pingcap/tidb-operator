@@ -209,7 +209,7 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 			err:                      false,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(int(*set.Spec.Replicas)).To(Equal(5))
+				g.Expect(int(*set.Spec.Replicas)).To(Equal(4)) // scale out one-by-one now
 			},
 		},
 		{
@@ -808,6 +808,7 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 	fakeDeps := controller.NewFakeDependencies()
 	tmm := &tidbMemberManager{
 		deps:                         fakeDeps,
+		scaler:                       NewTiDBScaler(fakeDeps),
 		tidbUpgrader:                 NewFakeTiDBUpgrader(),
 		tidbFailover:                 NewFakeTiDBFailover(),
 		tidbStatefulSetIsUpgradingFn: tidbStatefulSetIsUpgrading,
@@ -1993,10 +1994,22 @@ func TestTiDBMemberManagerScaleToZeroReplica(t *testing.T) {
 		ns := tc.GetNamespace()
 		tcName := tc.GetName()
 
-		tmm, fakeSetControl, _, _ := newFakeTiDBMemberManager()
+		tmm, fakeSetControl, _, indexer := newFakeTiDBMemberManager()
 
 		err := tmm.Sync(tc)
 		g.Expect(err).NotTo(HaveOccurred())
+
+		for i := int32(0); i < 5; i++ {
+			// add all 5 (3 + 2 failure) pods
+			indexer.pod.Add(&corev1.Pod{
+				TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              tidbPodName(tc.GetName(), i),
+					Namespace:         corev1.NamespaceDefault,
+					CreationTimestamp: metav1.Time{Time: time.Now().Add(-1 * time.Hour)},
+				},
+			})
+		}
 
 		g.Expect(err).NotTo(HaveOccurred())
 		_, err = tmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
@@ -2009,8 +2022,9 @@ func TestTiDBMemberManagerScaleToZeroReplica(t *testing.T) {
 		if test.errWhenUpdateStatefulSet {
 			fakeSetControl.SetUpdateStatefulSetError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
-		syncTiDBCluster(tmm, tc1, test)
-		syncTiDBCluster(tmm, tc1, test)
+		for i := 0; i < 5; i++ { // scale in 5 members
+			syncTiDBCluster(tmm, tc1, test)
+		}
 
 		if test.expectStatefulSetFn != nil {
 			set, err := tmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
