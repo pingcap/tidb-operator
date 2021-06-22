@@ -1882,7 +1882,7 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 							{
 								Name:        "wal",
 								StorageSize: "2Gi",
-								MountPath:   pointer.StringPtr("/var/lib/wal"),
+								MountPath:   "/var/lib/wal",
 							}},
 						Config: mustTiKVConfig(&v1alpha1.TiKVRaftDBConfig{
 							WalDir: pointer.StringPtr("/var/lib/wal"),

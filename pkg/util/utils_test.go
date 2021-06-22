@@ -576,7 +576,7 @@ func TestBuildAdditionalVolumeAndVolumeMount(t *testing.T) {
 				{
 					Name:        "log",
 					StorageSize: "2Gi",
-					MountPath:   pointer.StringPtr("/var/lib/log"),
+					MountPath:   "/var/lib/log",
 				}},
 			memberType: v1alpha1.TiDBMemberType,
 			testResult: func(volMounts []corev1.VolumeMount, volumeClaims []corev1.PersistentVolumeClaim) {
@@ -612,7 +612,7 @@ func TestBuildAdditionalVolumeAndVolumeMount(t *testing.T) {
 				{
 					Name:        "wal",
 					StorageSize: "2Gi",
-					MountPath:   pointer.StringPtr("/var/lib/wal"),
+					MountPath:   "/var/lib/wal",
 				}},
 			memberType: v1alpha1.TiKVMemberType,
 			testResult: func(volMounts []corev1.VolumeMount, volumeClaims []corev1.PersistentVolumeClaim) {
@@ -648,7 +648,7 @@ func TestBuildAdditionalVolumeAndVolumeMount(t *testing.T) {
 				{
 					Name:        "log",
 					StorageSize: "2Gi",
-					MountPath:   pointer.StringPtr("/var/log"),
+					MountPath:   "/var/log",
 				}},
 			memberType: v1alpha1.PDMemberType,
 			testResult: func(volMounts []corev1.VolumeMount, volumeClaims []corev1.PersistentVolumeClaim) {
@@ -685,13 +685,13 @@ func TestBuildAdditionalVolumeAndVolumeMount(t *testing.T) {
 				{
 					Name:             "wal",
 					StorageSize:      "2Gi",
-					MountPath:        pointer.StringPtr("/var/lib/wal"),
+					MountPath:        "/var/lib/wal",
 					StorageClassName: pointer.StringPtr("ns1"),
 				},
 				{
 					Name:        "log",
 					StorageSize: "2Gi",
-					MountPath:   pointer.StringPtr("/var/lib/log"),
+					MountPath:   "/var/lib/log",
 				}},
 			memberType: v1alpha1.TiKVMemberType,
 			testResult: func(volMounts []corev1.VolumeMount, volumeClaims []corev1.PersistentVolumeClaim) {

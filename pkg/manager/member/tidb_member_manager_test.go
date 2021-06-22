@@ -1110,7 +1110,7 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 						{
 							Name:        "log",
 							StorageSize: "2Gi",
-							MountPath:   pointer.StringPtr("/var/lib/log"),
+							MountPath:   "/var/lib/log",
 						}},
 						Config: mustTiDBConfig(&v1alpha1.TiDBConfig{
 							Log: &v1alpha1.Log{
@@ -1161,7 +1161,7 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 						{
 							Name:        "slowlogfile",
 							StorageSize: "2Gi",
-							MountPath:   pointer.StringPtr("/var/log/slowlogtest"),
+							MountPath:   "/var/log/slowlogtest",
 						}},
 						SlowLogVolumeName: "slowlogfile",
 					},

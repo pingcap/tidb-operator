@@ -2094,7 +2094,7 @@ type StorageVolume struct {
 	Name             string  `json:"name"`
 	StorageClassName *string `json:"storageClassName,omitempty"`
 	StorageSize      string  `json:"storageSize"`
-	MountPath        *string `json:"mountPath,omitempty"`
+	MountPath        string  `json:"mountPath,omitempty"`
 }
 
 // TopologySpreadConstraint specifies how to spread matching pods among the given topology.

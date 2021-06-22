@@ -1566,7 +1566,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				{
 					Name:        "sort-dir",
 					StorageSize: "1Gi",
-					MountPath:   pointer.StringPtr("/var/lib/sort-dir"),
+					MountPath:   "/var/lib/sort-dir",
 				},
 			}
 
@@ -1688,26 +1688,26 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			{
 				Name:        "wal",
 				StorageSize: "2Gi",
-				MountPath:   pointer.StringPtr("/var/lib/wal"),
+				MountPath:   "/var/lib/wal",
 			},
 			{
 				Name:        "titan",
 				StorageSize: "2Gi",
-				MountPath:   pointer.StringPtr("/var/lib/titan"),
+				MountPath:   "/var/lib/titan",
 			},
 		}
 		tc.Spec.TiDB.StorageVolumes = []v1alpha1.StorageVolume{
 			{
 				Name:        "log",
 				StorageSize: "2Gi",
-				MountPath:   pointer.StringPtr("/var/log"),
+				MountPath:   "/var/log",
 			},
 		}
 		tc.Spec.PD.StorageVolumes = []v1alpha1.StorageVolume{
 			{
 				Name:        "log",
 				StorageSize: "2Gi",
-				MountPath:   pointer.StringPtr("/var/log"),
+				MountPath:   "/var/log",
 			},
 		}
 

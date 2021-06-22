@@ -1694,7 +1694,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 							{
 								Name:        "log",
 								StorageSize: "2Gi",
-								MountPath:   pointer.StringPtr("/var/log"),
+								MountPath:   "/var/log",
 							}},
 						Config: mustPDConfig(&v1alpha1.PDConfig{
 							Log: &v1alpha1.PDLogConfig{
