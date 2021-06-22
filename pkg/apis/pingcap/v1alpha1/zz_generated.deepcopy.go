@@ -4619,11 +4619,6 @@ func (in *StorageVolume) DeepCopyInto(out *StorageVolume) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.MountPath != nil {
-		in, out := &in.MountPath, &out.MountPath
-		*out = new(string)
-		**out = **in
-	}
 	return
 }
 

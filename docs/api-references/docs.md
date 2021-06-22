@@ -12302,9 +12302,9 @@ LocalStorageProvider
 <a href="#tikvspec">TiKVSpec</a>)
 </p>
 <p>
-<p>StorageVolume configures additional PVC template for statefulsets and volumeMount for pods which mount this pvc .
+<p>StorageVolume configures additional PVC template for StatefulSets and volumeMount for pods that mount this PVC.
 Note:
-If <code>MountPath</code> is not set, no volumeMount will not be generated. (You may not want to set this field when you inject volumeMount
+If <code>MountPath</code> is not set, volumeMount will not be generated. (You may not want to set this field when you inject volumeMount
 in somewhere else such as Mutating Admission Webhook)
 If <code>StorageClassName</code> is not set, default to the <code>spec.${component}.storageClassName</code></p>
 </p>
