@@ -10,7 +10,7 @@ spec:
     version: v2.18.1
   grafana:
     baseImage: grafana/grafana
-    version: 6.5.3
+    version: 6.7.6
     additionalVolumeMounts:
       - name: customdashboard
         mountPath: /grafana-dashboard-definitions/tidb/dashboards/custom

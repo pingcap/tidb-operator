@@ -19,7 +19,7 @@ spec:
             action: replace
   grafana:
     baseImage: grafana/grafana
-    version: 6.5.3
+    version: 6.7.6
   initializer:
     baseImage: registry.cn-beijing.aliyuncs.com/tidb/tidb-monitor-initializer
     version: v5.0.1
