@@ -174,6 +174,19 @@ func (u *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32, n
 
 func (u *tikvUpgrader) readyToUpgrade(upgradePod *corev1.Pod, tc *v1alpha1.TidbCluster) bool {
 	evictLeaderTimeout := tc.TiKVEvictLeaderTimeout()
+
+	if evictLeaderBeginTimeStr, evicting := upgradePod.Annotations[EvictLeaderBeginTime]; evicting {
+		evictLeaderBeginTime, err := time.Parse(time.RFC3339, evictLeaderBeginTimeStr)
+		if err != nil {
+			klog.Errorf("parse annotation:[%s] to time failed.", EvictLeaderBeginTime)
+			return false
+		}
+		if time.Now().After(evictLeaderBeginTime.Add(evictLeaderTimeout)) {
+			klog.Infof("Evict region leader timeout (threshold: %v) for Pod %s/%s", evictLeaderTimeout, upgradePod.Namespace, upgradePod.Name)
+			return true
+		}
+	}
+
 	tlsEnabled := tc.IsTLSClusterEnabled()
 	leaderCount, err := u.deps.TiKVControl.GetTiKVPodClient(tc.Namespace, tc.Name, upgradePod.Name, tlsEnabled).GetLeaderCount()
 	if err != nil {
@@ -188,17 +201,6 @@ func (u *tikvUpgrader) readyToUpgrade(upgradePod *corev1.Pod, tc *v1alpha1.TidbC
 
 	klog.Infof("Region leader count is %d for Pod %s/%s", leaderCount, upgradePod.Namespace, upgradePod.Name)
 
-	if evictLeaderBeginTimeStr, evicting := upgradePod.Annotations[EvictLeaderBeginTime]; evicting {
-		evictLeaderBeginTime, err := time.Parse(time.RFC3339, evictLeaderBeginTimeStr)
-		if err != nil {
-			klog.Errorf("parse annotation:[%s] to time failed.", EvictLeaderBeginTime)
-			return false
-		}
-		if time.Now().After(evictLeaderBeginTime.Add(evictLeaderTimeout)) {
-			klog.Infof("Evict region leader timeout (threshold: %v) for Pod %s/%s", evictLeaderTimeout, upgradePod.Namespace, upgradePod.Name)
-			return true
-		}
-	}
 	return false
 }
 
