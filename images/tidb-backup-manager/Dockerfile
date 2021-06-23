@@ -1,8 +1,8 @@
-FROM pingcap/tidb-enterprise-tools:latest
+FROM centos:8
 ARG RCLONE_VERSION=v1.51.0
 ARG SHUSH_VERSION=v1.4.0
 ARG TOOLKIT_VERSION=v5.0.1
-RUN apk update && apk add ca-certificates
+RUN yum makecache && yum install ca-certificates wget unzip -y
 
 RUN wget -nv https://github.com/ncw/rclone/releases/download/${RCLONE_VERSION}/rclone-${RCLONE_VERSION}-linux-amd64.zip \
   && unzip rclone-${RCLONE_VERSION}-linux-amd64.zip \
