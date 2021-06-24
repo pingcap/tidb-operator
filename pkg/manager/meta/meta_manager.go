@@ -21,7 +21,12 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+<<<<<<< HEAD
 	corev1 "k8s.io/api/core/v1"
+=======
+	"github.com/pingcap/tidb-operator/pkg/util"
+	"k8s.io/apimachinery/pkg/api/errors"
+>>>>>>> a4207733... Fix blocked main synchronization when TiDB don't use PVC (#4040)
 	"k8s.io/klog"
 )
 
@@ -58,14 +63,35 @@ func (m *metaManager) Sync(tc *v1alpha1.TidbCluster) error {
 			return err
 		}
 
+<<<<<<< HEAD
 		if component := pod.Labels[label.ComponentLabelKey]; component != label.PDLabelVal && component != label.TiKVLabelVal && component != label.TiFlashLabelVal {
 			// Skip syncing meta info for pod that doesn't use PV
 			// Currently only PD/TiKV/TiFlash uses PV
+=======
+		var mustUsePV bool
+		switch pod.Labels[label.ComponentLabelKey] {
+		case label.PDLabelVal,
+			label.TiKVLabelVal,
+			label.TiFlashLabelVal,
+			label.PumpLabelVal:
+			// Currently PD/TiKV/TiFlash/Pump must uses PV
+			mustUsePV = true
+		case label.TiDBLabelVal,
+			label.TiCDCLabelVal:
+			// Currently TiDB/TiCDC maybe uses PV
+			mustUsePV = false
+		default:
+			// Skip syncing meta info for pod that doesn't use PV
+>>>>>>> a4207733... Fix blocked main synchronization when TiDB don't use PVC (#4040)
 			continue
 		}
+
 		// update meta info for pvc
 		pvcs, err := m.resolvePVCFromPod(pod)
 		if err != nil {
+			if errors.IsNotFound(err) && !mustUsePV {
+				continue
+			}
 			return err
 		}
 		for _, pvc := range pvcs {
