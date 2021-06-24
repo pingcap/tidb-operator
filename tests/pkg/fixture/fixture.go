@@ -305,6 +305,12 @@ func GetTidbInitializer(ns, tcName, initName, initPassWDName, initTLSName string
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      initName,
 			Namespace: ns,
+			Labels: map[string]string{
+				ClusterCustomKey: "value",
+			},
+			Annotations: map[string]string{
+				ClusterCustomKey: "value",
+			},
 		},
 		Spec: v1alpha1.TidbInitializerSpec{
 			Image: "tnir/mysqlclient",
@@ -313,12 +319,6 @@ func GetTidbInitializer(ns, tcName, initName, initPassWDName, initTLSName string
 			},
 			PasswordSecret:      &initPassWDName,
 			TLSClientSecretName: &initTLSName,
-			Labels: map[string]string{
-				ClusterCustomKey: "value",
-			},
-			Annotations: map[string]string{
-				ClusterCustomKey: "value",
-			},
 		},
 	}
 }
@@ -347,8 +347,13 @@ func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 				ReserveDays: 7,
 				LogLevel:    "info",
 				Service: v1alpha1.ServiceSpec{
-					Type:        "ClusterIP",
-					Annotations: map[string]string{},
+					Type: "ClusterIP",
+					Labels: map[string]string{
+						ComponentCustomKey: "value",
+					},
+					Annotations: map[string]string{
+						ComponentCustomKey: "value",
+					},
 				},
 				MonitorContainer: v1alpha1.MonitorContainer{
 					BaseImage:            utilimage.PrometheusImage,
@@ -365,8 +370,13 @@ func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 					ResourceRequirements: corev1.ResourceRequirements{},
 				},
 				Service: v1alpha1.ServiceSpec{
-					Type:        "ClusterIP",
-					Annotations: map[string]string{},
+					Type: "ClusterIP",
+					Labels: map[string]string{
+						ComponentCustomKey: "value",
+					},
+					Annotations: map[string]string{
+						ComponentCustomKey: "value",
+					},
 				},
 			},
 			Initializer: v1alpha1.InitializerSpec{
@@ -403,8 +413,13 @@ func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 			Username: "admin",
 			Password: "admin",
 			Service: v1alpha1.ServiceSpec{
-				Type:        corev1.ServiceTypeClusterIP,
-				Annotations: map[string]string{},
+				Type: corev1.ServiceTypeClusterIP,
+				Labels: map[string]string{
+					ComponentCustomKey: "value",
+				},
+				Annotations: map[string]string{
+					ComponentCustomKey: "value",
+				},
 			},
 			Envs: map[string]string{
 				"A":    "B",

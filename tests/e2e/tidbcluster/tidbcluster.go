@@ -242,10 +242,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
 					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 
-					ginkgo.By("Check custom labels and add will not lost")
+					ginkgo.By("Check custom labels and annotations will not lost")
 					checkCustomLabelAndAnn(tc, c)
 				})
-
 			})
 		}
 	})
@@ -2868,13 +2867,28 @@ func checkMonitorCustomLabelAndAnn(tm *v1alpha1.TidbMonitor, c clientset.Interfa
 	listOptions := metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(label.NewMonitor().Instance(tm.Name).Monitor().Labels()).String(),
 	}
-	list, err := c.CoreV1().Pods(tm.Namespace).List(listOptions)
+	pods, err := c.CoreV1().Pods(tm.Namespace).List(listOptions)
 	framework.ExpectNoError(err)
-	framework.ExpectNotEqual(len(list.Items), 0, "expect monitor exists")
-	for _, pod := range list.Items {
+	framework.ExpectNotEqual(len(pods.Items), 0, "expect monitor pod exists")
+	for _, pod := range pods.Items {
 		_, ok := pod.Labels[fixture.ClusterCustomKey]
 		framework.ExpectEqual(ok, true)
 		_, ok = pod.Annotations[fixture.ClusterCustomKey]
+		framework.ExpectEqual(ok, true)
+	}
+
+	svcs, err := c.CoreV1().Services(tm.Namespace).List(listOptions)
+	framework.ExpectNoError(err)
+	framework.ExpectNotEqual(len(pods.Items), 0, "expect monitor svc exists")
+	for _, svc := range svcs.Items {
+		_, ok := svc.Labels[fixture.ClusterCustomKey]
+		framework.ExpectEqual(ok, true)
+		_, ok = svc.Annotations[fixture.ClusterCustomKey]
+		framework.ExpectEqual(ok, true)
+
+		_, ok = svc.Labels[fixture.ComponentCustomKey]
+		framework.ExpectEqual(ok, true)
+		_, ok = svc.Annotations[fixture.ComponentCustomKey]
 		framework.ExpectEqual(ok, true)
 	}
 }

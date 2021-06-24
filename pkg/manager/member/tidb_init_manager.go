@@ -347,13 +347,11 @@ func (m *tidbInitManager) makeTiDBInitJob(ti *v1alpha1.TidbInitializer) (*batchv
 	}
 
 	meta, initLabel := getInitMeta(ti)
-	podLabels := util.CombineStringMap(initLabel, ti.Spec.Labels)
-	podAnnotations := util.CopyStringMap(ti.Spec.Annotations)
 
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels:      podLabels,
-			Annotations: podAnnotations,
+			Labels:      initLabel.Labels(),
+			Annotations: util.CopyStringMap(ti.ObjectMeta.Annotations),
 		},
 		Spec: corev1.PodSpec{
 			ImagePullSecrets: ti.Spec.ImagePullSecrets,
@@ -468,8 +466,8 @@ func getInitMeta(ti *v1alpha1.TidbInitializer) (metav1.ObjectMeta, label.Label) 
 	objMeta := metav1.ObjectMeta{
 		Name:        name,
 		Namespace:   ti.Namespace,
-		Labels:      initLabel,
-		Annotations: util.CopyStringMap(ti.Spec.Annotations),
+		Labels:      util.CombineStringMap(initLabel, ti.ObjectMeta.Labels),
+		Annotations: util.CopyStringMap(ti.ObjectMeta.Annotations),
 	}
 	return objMeta, initLabel
 }
