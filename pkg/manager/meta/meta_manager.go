@@ -21,6 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/klog"
 )
 
@@ -55,24 +56,29 @@ func (m *metaManager) Sync(tc *v1alpha1.TidbCluster) error {
 			return err
 		}
 
-		components := map[string]struct{}{
-			label.PDLabelVal:      {},
-			label.TiKVLabelVal:    {},
-			label.TiDBLabelVal:    {},
-			label.TiFlashLabelVal: {},
-			label.TiCDCLabelVal:   {},
-			label.PumpLabelVal:    {},
-		}
-		component := pod.Labels[label.ComponentLabelKey]
-
-		if _, ok := components[component]; !ok {
+		mustUsePV := true
+		switch pod.Labels[label.ComponentLabelKey] {
+		case label.PDLabelVal,
+			label.TiKVLabelVal,
+			label.TiFlashLabelVal,
+			label.PumpLabelVal:
+			// Currently PD/TiKV/TiFlash/Pump must uses PV
+			mustUsePV = true
+		case label.TiDBLabelVal,
+			label.TiCDCLabelVal:
+			// Currently TiDB/TiCDC maybe uses PV
+			mustUsePV = false
+		default:
 			// Skip syncing meta info for pod that doesn't use PV
-			// Currently only PD/TiKV/TiDB/TiFlash/TiCDC/Pump uses PV
 			continue
 		}
+
 		// update meta info for pvc
 		pvcs, err := util.ResolvePVCFromPod(pod, m.deps.PVCLister)
 		if err != nil {
+			if errors.IsNotFound(err) && !mustUsePV {
+				continue
+			}
 			return err
 		}
 		for _, pvc := range pvcs {
