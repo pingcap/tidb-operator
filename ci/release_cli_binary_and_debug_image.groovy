@@ -73,6 +73,12 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID) {
                                         docker push registry.cn-beijing.aliyuncs.com/tidb/${it}:${RELEASE_TAG}
                                         """
                                     }
+									withDockerRegistry([url: "https://uhub.service.ucloud.cn", credentialsId: "ACR_TIDB_ACCOUNT"]) {
+										sh """
+										docker tag pingcap/${it}:${RELEASE_TAG} uhub.service.ucloud.cn/pingcap/${it}:${RELEASE_TAG}
+										docker push uhub.service.ucloud.cn/pingcap/${it}:${RELEASE_TAG}
+										"""
+									}
 								}
 							}
 						}
