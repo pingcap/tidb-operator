@@ -731,7 +731,40 @@ func TestBuildAdditionalVolumeAndVolumeMount(t *testing.T) {
 						},
 					},
 				}))
-
+			},
+		},
+		{
+			name: "test no volumeMount generate",
+			storageVolumes: []v1alpha1.StorageVolume{
+				{
+					Name:             "wal",
+					StorageSize:      "2Gi",
+					StorageClassName: pointer.StringPtr("sc"),
+				},
+			},
+			memberType: v1alpha1.TiCDCMemberType,
+			testResult: func(volMounts []corev1.VolumeMount, volumeClaims []corev1.PersistentVolumeClaim) {
+				g := NewGomegaWithT(t)
+				q, _ := resource.ParseQuantity("2Gi")
+				g.Expect(len(volMounts)).To(Equal(0))
+				g.Expect(volumeClaims).To(Equal([]corev1.PersistentVolumeClaim{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: v1alpha1.TiCDCMemberType.String() + "-wal",
+						},
+						Spec: corev1.PersistentVolumeClaimSpec{
+							AccessModes: []corev1.PersistentVolumeAccessMode{
+								corev1.ReadWriteOnce,
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceStorage: q,
+								},
+							},
+							StorageClassName: pointer.StringPtr("sc"),
+						},
+					},
+				}))
 			},
 		},
 	}
