@@ -20503,8 +20503,6 @@ spec:
           type: string
         spec:
           properties:
-            annotations:
-              type: object
             cluster:
               properties:
                 clusterDomain:
@@ -20531,8 +20529,6 @@ spec:
               type: string
             initSqlConfigMap:
               type: string
-            labels:
-              type: object
             passwordSecret:
               type: string
             permitHost:
