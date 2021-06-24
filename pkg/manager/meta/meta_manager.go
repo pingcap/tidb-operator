@@ -56,7 +56,7 @@ func (m *metaManager) Sync(tc *v1alpha1.TidbCluster) error {
 			return err
 		}
 
-		mustUsePV := true
+		var mustUsePV bool
 		switch pod.Labels[label.ComponentLabelKey] {
 		case label.PDLabelVal,
 			label.TiKVLabelVal,
