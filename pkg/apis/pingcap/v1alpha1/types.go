@@ -2085,13 +2085,16 @@ type WorkerFailureMember struct {
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
 
-// StorageVolume configures additional storage for PD/TiDB/TiKV pods.
-// If `StorageClassName` not set, default to the `spec.[pd|tidb|tikv].storageClassName`
+// StorageVolume configures additional PVC template for StatefulSets and volumeMount for pods that mount this PVC.
+// Note:
+// If `MountPath` is not set, volumeMount will not be generated. (You may not want to set this field when you inject volumeMount
+// in somewhere else such as Mutating Admission Webhook)
+// If `StorageClassName` is not set, default to the `spec.${component}.storageClassName`
 type StorageVolume struct {
 	Name             string  `json:"name"`
 	StorageClassName *string `json:"storageClassName,omitempty"`
 	StorageSize      string  `json:"storageSize"`
-	MountPath        string  `json:"mountPath"`
+	MountPath        string  `json:"mountPath,omitempty"`
 }
 
 // TopologySpreadConstraint specifies how to spread matching pods among the given topology.
