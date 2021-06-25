@@ -16,6 +16,9 @@ package monitor
 import (
 	"encoding/json"
 	"fmt"
+	perrors "github.com/pingcap/errors"
+	"github.com/pingcap/tidb-operator/pkg/util/toml"
+	corelisters "k8s.io/client-go/listers/core/v1"
 	"sort"
 	"strings"
 
@@ -373,6 +376,23 @@ func (m *MonitorManager) syncTidbMonitorConfig(monitor *v1alpha1.TidbMonitor) (*
 			newCM.Data["prometheus-config"] = externalContent
 		}
 	}
+
+	var inUseName string
+	set, err := m.deps.StatefulSetLister.StatefulSets(monitor.Namespace).Get(monitor.Name)
+	if err != nil && !errors.IsNotFound(err) {
+		return nil, err
+	}
+	if set != nil {
+		inUseName = member.FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
+			return strings.HasPrefix(name, GetMonitorObjectName(monitor))
+		})
+	}
+
+	err = updateConfigMapIfNeed(m.deps.ConfigMapLister,  inUseName, newCM)
+	if err != nil {
+		return nil, err
+	}
+
 	return m.deps.TypedControl.CreateOrUpdateConfigMap(monitor, newCM)
 }
 
@@ -755,4 +775,74 @@ func buildEtcdValue(host string, port int) (string, error) {
 		return "", err
 	}
 	return string(data), nil
+}
+
+// updateConfigMap set the toml field as the old one if they are logically equal.
+func updateConfigMapIfNeed(
+	cmLister corelisters.ConfigMapLister,
+	inUseName string,
+	desired *corev1.ConfigMap,
+) error {
+
+	existing, err := cmLister.ConfigMaps(desired.Namespace).Get(inUseName)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			member.AddConfigMapDigestSuffix(desired)
+			return nil
+		}
+
+		return perrors.AddStack(err)
+	}
+
+	dataEqual, err := updateConfigMap(existing, desired)
+	if err != nil {
+		return err
+	}
+
+	member.AddConfigMapDigestSuffix(desired)
+
+	confirmNameByData(existing, desired, dataEqual)
+
+	return nil
+
+}
+
+func updateConfigMap(old, new *corev1.ConfigMap) (bool, error) {
+	tomlField := []string{"prometheus-config","dashboard-config"}
+	dataEqual := true
+
+	for _, k := range tomlField {
+		oldData, oldOK := old.Data[k]
+		newData, newOK := new.Data[k]
+
+		if oldOK != newOK {
+			dataEqual = false
+		}
+
+		if !oldOK || !newOK {
+			continue
+		}
+
+		equal, err := toml.Equal([]byte(oldData), []byte(newData))
+		if err != nil {
+			return false, perrors.Annotatef(err, "compare %s/%s %s and %s failed", old.Namespace, old.Name, oldData, newData)
+		}
+
+		if equal {
+			new.Data[k] = oldData
+		} else {
+			dataEqual = false
+		}
+	}
+
+	return dataEqual, nil
+}
+
+func confirmNameByData(existing, desired *corev1.ConfigMap, dataEqual bool) {
+	if dataEqual && existing.Name != desired.Name {
+		desired.Name = existing.Name
+	}
+	if !dataEqual && existing.Name == desired.Name {
+		desired.Name = fmt.Sprintf("%s-new", desired.Name)
+	}
 }
