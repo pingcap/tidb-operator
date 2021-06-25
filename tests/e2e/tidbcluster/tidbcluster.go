@@ -1719,30 +1719,78 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		tc.Spec.TiKV.Config.Set("rocksdb.wal-dir", "/var/lib/wal")
 		tc.Spec.TiKV.Config.Set("titan.dirname", "/var/lib/titan")
 		tc.Spec.PD.Replicas = 1
-		tc.Spec.TiKV.Replicas = 3
-		tc.Spec.TiDB.Replicas = 1
+		tc.Spec.TiKV.Replicas = 4
+		tc.Spec.TiDB.Replicas = 2
 
 		utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 6*time.Minute, 5*time.Second)
 
-		ginkgo.By("Scale out multiple pvc tidb cluster")
+		ginkgo.By("Scale in multiple pvc tidb cluster")
 		// Scale
 		err := controller.GuaranteedUpdate(genericCli, tc, func() error {
-			tc.Spec.TiKV.Replicas = 4
+			tc.Spec.TiKV.Replicas = 3
+			tc.Spec.TiDB.Replicas = 1
 			return nil
 		})
-		framework.ExpectNoError(err, "failed to scale out TiKV, TidbCluster: %q", tc.Name)
+		framework.ExpectNoError(err, "failed to scale in TiKV/TiDB, TidbCluster: %q", tc.Name)
 		err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 5*time.Second)
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 
-		ginkgo.By("Scale in multiple pvc tidb cluster")
+		ginkgo.By("Check PVC annotation tidb.pingcap.com/pvc-defer-deleting")
+		pvcUIDs := make(map[string]string)
+		ordinal := int32(1)
+		pvcSelector, err := member.GetPVCSelectorForPod(tc, v1alpha1.TiDBMemberType, ordinal)
+		framework.ExpectNoError(err, "failed to get PVC selector for tc %s/%s", tc.GetNamespace(), tc.GetName())
+		err = wait.Poll(10*time.Second, 3*time.Minute, func() (done bool, err error) {
+			pvcs, err := c.CoreV1().PersistentVolumeClaims(ns).List(metav1.ListOptions{LabelSelector: pvcSelector.String()})
+			framework.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
+			if len(pvcs.Items) == 0 {
+				log.Logf("no PVC found")
+				return false, nil
+			}
+			for _, pvc := range pvcs.Items {
+				annotations := pvc.GetObjectMeta().GetAnnotations()
+				log.Logf("pvc annotations: %+v", annotations)
+				_, ok := annotations["tidb.pingcap.com/pvc-defer-deleting"]
+				if !ok {
+					log.Logf("PVC %s/%s does not have annotation tidb.pingcap.com/pvc-defer-deleting", pvc.GetNamespace(), pvc.GetName())
+					return false, nil
+				}
+				pvcUIDs[pvc.Name] = string(pvc.UID)
+			}
+			return true, nil
+		})
+		framework.ExpectNoError(err, "expect PVCs of scaled in Pods to have annotation tidb.pingcap.com/pvc-defer-deleting")
+
+		ginkgo.By("Scale out multiple pvc tidb cluster")
 		// Scale
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-			tc.Spec.TiKV.Replicas = 3
+			tc.Spec.TiKV.Replicas = 4
+			tc.Spec.TiDB.Replicas = 2
 			return nil
 		})
-		framework.ExpectNoError(err, "failed to scale in TiKV, TidbCluster: %q", tc.Name)
+		framework.ExpectNoError(err, "failed to scale out TiKV/TiDB, TidbCluster: %q", tc.Name)
 		err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 5*time.Second)
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+
+		ginkgo.By("Check PVCs are recreated for newly scaled out TiDB")
+		err = wait.Poll(10*time.Second, 3*time.Minute, func() (done bool, err error) {
+			pvcs, err := c.CoreV1().PersistentVolumeClaims(ns).List(metav1.ListOptions{LabelSelector: pvcSelector.String()})
+			framework.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
+			if len(pvcs.Items) == 0 {
+				log.Logf("no PVC found")
+				return false, nil
+			}
+			for _, pvc := range pvcs.Items {
+				annotations := pvc.GetObjectMeta().GetAnnotations()
+				log.Logf("pvc annotations: %+v", annotations)
+				_, ok := annotations["tidb.pingcap.com/pvc-defer-deleting"]
+				framework.ExpectEqual(ok, false, "expect PVC %s/%s not to have annotation tidb.pingcap.com/pvc-defer-deleting", pvc.GetNamespace(), pvc.GetName())
+				pvcUIDString := pvcUIDs[pvc.Name]
+				framework.ExpectNotEqual(string(pvc.UID), pvcUIDString)
+			}
+			return true, nil
+		})
+		framework.ExpectNoError(err, "expect PVCs of scaled out Pods to be recreated")
 	})
 
 	// test cases for tc upgrade
@@ -1879,6 +1927,63 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to get ConfigMap %s/%s", ns, tidbCmName)
 			log.Logf("TiDB config:\n%s", tidbCm.Data["config-file"])
 			gomega.Expect(tidbCm.Data["config-file"]).To(gomega.ContainSubstring("token-limit = 10000"))
+		})
+
+		ginkgo.It("for tc and components version upgrade from TiDB V4 to TiDB V5", func() {
+			ginkgo.By("Deploy initial tc")
+			tc := fixture.GetTidbCluster(ns, "upgrade-version-v4-to-v5", utilimage.TiDBV4)
+			tc = fixture.AddTiFlashForTidbCluster(tc)
+			tc = fixture.AddTiCDCForTidbCluster(tc)
+			tc = fixture.AddPumpForTidbCluster(tc)
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 15*time.Minute, 10*time.Second)
+
+			ginkgo.By("Update tc version")
+			err := controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Spec.Version = utilimage.TiDBV5
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to update tc version to %q", utilimage.TiDBV5)
+			err = oa.WaitForTidbClusterReady(tc, 15*time.Minute, 10*time.Second)
+			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
+
+			ginkgo.By("Check components version")
+			componentVersion := utilimage.TiDBV5
+			pdMemberName := controller.PDMemberName(tc.Name)
+			pdSts, err := stsGetter.StatefulSets(ns).Get(pdMemberName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, pdMemberName)
+			pdImage := fmt.Sprintf("pingcap/pd:%s", componentVersion)
+			framework.ExpectEqual(pdSts.Spec.Template.Spec.Containers[0].Image, pdImage, "pd sts image should be %q", pdImage)
+
+			tikvMemberName := controller.TiKVMemberName(tc.Name)
+			tikvSts, err := stsGetter.StatefulSets(ns).Get(tikvMemberName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, tikvMemberName)
+			tikvImage := fmt.Sprintf("pingcap/tikv:%s", componentVersion)
+			framework.ExpectEqual(tikvSts.Spec.Template.Spec.Containers[0].Image, tikvImage, "tikv sts image should be %q", tikvImage)
+
+			tiflashMemberName := controller.TiFlashMemberName(tc.Name)
+			tiflashSts, err := stsGetter.StatefulSets(ns).Get(tiflashMemberName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, tiflashMemberName)
+			tiflashImage := fmt.Sprintf("pingcap/tiflash:%s", componentVersion)
+			framework.ExpectEqual(tiflashSts.Spec.Template.Spec.Containers[0].Image, tiflashImage, "tiflash sts image should be %q", tiflashImage)
+
+			tidbMemberName := controller.TiDBMemberName(tc.Name)
+			tidbSts, err := stsGetter.StatefulSets(ns).Get(tidbMemberName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, tidbMemberName)
+			tidbImage := fmt.Sprintf("pingcap/tidb:%s", componentVersion)
+			// the 0th container for tidb pod is slowlog, which runs busybox
+			framework.ExpectEqual(tidbSts.Spec.Template.Spec.Containers[1].Image, tidbImage, "tidb sts image should be %q", tidbImage)
+
+			ticdcMemberName := controller.TiCDCMemberName(tc.Name)
+			ticdcSts, err := stsGetter.StatefulSets(ns).Get(ticdcMemberName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, ticdcMemberName)
+			ticdcImage := fmt.Sprintf("pingcap/ticdc:%s", componentVersion)
+			framework.ExpectEqual(ticdcSts.Spec.Template.Spec.Containers[0].Image, ticdcImage, "ticdc sts image should be %q", ticdcImage)
+
+			pumpMemberName := controller.PumpMemberName(tc.Name)
+			pumpSts, err := stsGetter.StatefulSets(ns).Get(pumpMemberName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, pumpMemberName)
+			pumpImage := fmt.Sprintf("pingcap/tidb-binlog:%s", componentVersion)
+			framework.ExpectEqual(pumpSts.Spec.Template.Spec.Containers[0].Image, pumpImage, "pump sts image should be %q", pumpImage)
 		})
 
 		// this case merge scale-in/scale-out into one case, may seems a little bit dense
