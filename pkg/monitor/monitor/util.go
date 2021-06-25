@@ -56,7 +56,7 @@ func GetMonitorShardName(monitor *v1alpha1.TidbMonitor, shard int32) string {
 	if shard == 0 {
 		return base
 	}
-	return fmt.Sprintf("%s-monitor-shard-%d", base, shard)
+	return fmt.Sprintf("%s-monitor-shard-%d", monitor.Name, shard)
 }
 
 func GetMonitorFirstPVCName(name string) string {
