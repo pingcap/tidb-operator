@@ -16,6 +16,7 @@ package tests
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/monitor/monitor"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -50,60 +51,68 @@ func CheckTidbMonitor(monitor *v1alpha1.TidbMonitor, cli versioned.Interface, ku
 func checkTidbMonitorPod(tm *v1alpha1.TidbMonitor, kubeCli kubernetes.Interface) error {
 	namespace := tm.Namespace
 	svcName := fmt.Sprintf("%s-prometheus", tm.Name)
-	monitorLabel, err := label.NewMonitor().Instance(tm.Name).Monitor().Selector()
-	if err != nil {
-		return err
-	}
+
 
 	return wait.Poll(5*time.Second, 20*time.Minute, func() (done bool, err error) {
+		//validate all shard pods
+		for shard:=int32(0);shard<*tm.Spec.Shards;shard++{
+			instanceName :=monitor.GetMonitorInstanceName(tm,shard)
+			monitorLabel, err := label.NewMonitor().Instance(instanceName).Monitor().Selector()
+			if err != nil {
+				return false,err
+			}
+			pods, err := kubeCli.CoreV1().Pods(namespace).List(metav1.ListOptions{
+				LabelSelector: monitorLabel.String(),
+			})
+			if err != nil {
+				log.Logf("ERROR: tm[%s/%s]'s pod is failed to fetch", tm.Namespace, tm.Name)
+				return false, nil
+			}
+			if len(pods.Items) < 1 || len(pods.Items) > 1 {
+				log.Logf("ERROR: tm[%s/%s] have incorrect count[%d] of pods", tm.Namespace, tm.Name, len(pods.Items))
+				return false, nil
+			}
+			pod := &pods.Items[0]
 
-		pods, err := kubeCli.CoreV1().Pods(namespace).List(metav1.ListOptions{
-			LabelSelector: monitorLabel.String(),
-		})
-		if err != nil {
-			log.Logf("ERROR: tm[%s/%s]'s pod is failed to fetch", tm.Namespace, tm.Name)
-			return false, nil
+			if !podutil.IsPodReady(pod) {
+				log.Logf("ERROR: tm[%s/%s]'s pod[%s/%s] is not ready", tm.Namespace, tm.Name, pod.Namespace, pod.Name)
+				return false, nil
+			}
+			if tm.Spec.Grafana != nil && len(pod.Spec.Containers) != 3 && tm.Spec.Thanos == nil {
+				return false, fmt.Errorf("tm[%s/%s]'s pod didn't have 3 containers with grafana enabled", tm.Namespace, tm.Name)
+			}
+			if tm.Spec.Grafana == nil && len(pod.Spec.Containers) != 2 && tm.Spec.Thanos == nil {
+				return false, fmt.Errorf("tm[%s/%s]'s pod didnt' have 2 containers with grafana disabled", tm.Namespace, tm.Name)
+			}
+			log.Logf("tm[%s/%s]'s pod[%s/%s] is ready", tm.Namespace, tm.Name, pod.Namespace, pod.Name)
+			_, err = kubeCli.CoreV1().Services(namespace).Get(svcName, metav1.GetOptions{})
+			if err != nil {
+				log.Logf("ERROR: tm[%s/%s]'s service[%s/%s] failed to fetch", tm.Namespace, tm.Name, tm.Namespace, svcName)
+				return false, nil
+			}
 		}
-		if len(pods.Items) < 1 || len(pods.Items) > 1 {
-			log.Logf("ERROR: tm[%s/%s] have incorrect count[%d] of pods", tm.Namespace, tm.Name, len(pods.Items))
-			return false, nil
-		}
-		pod := &pods.Items[0]
 
-		if !podutil.IsPodReady(pod) {
-			log.Logf("ERROR: tm[%s/%s]'s pod[%s/%s] is not ready", tm.Namespace, tm.Name, pod.Namespace, pod.Name)
-			return false, nil
-		}
-		if tm.Spec.Grafana != nil && len(pod.Spec.Containers) != 3 && tm.Spec.Thanos == nil {
-			return false, fmt.Errorf("tm[%s/%s]'s pod didn't have 3 containers with grafana enabled", tm.Namespace, tm.Name)
-		}
-		if tm.Spec.Grafana == nil && len(pod.Spec.Containers) != 2 && tm.Spec.Thanos == nil {
-			return false, fmt.Errorf("tm[%s/%s]'s pod didnt' have 2 containers with grafana disabled", tm.Namespace, tm.Name)
-		}
-		log.Logf("tm[%s/%s]'s pod[%s/%s] is ready", tm.Namespace, tm.Name, pod.Namespace, pod.Name)
-		_, err = kubeCli.CoreV1().Services(namespace).Get(svcName, metav1.GetOptions{})
-		if err != nil {
-			log.Logf("ERROR: tm[%s/%s]'s service[%s/%s] failed to fetch", tm.Namespace, tm.Name, tm.Namespace, svcName)
-			return false, nil
-		}
 		return true, err
 	})
 }
 
 // checkTidbMonitorFunctional check whether TidbMonitor's Prometheus and Grafana are working now
-func checkTidbMonitorFunctional(monitor *v1alpha1.TidbMonitor, fw portforward.PortForward) error {
-	if err := checkPrometheusCommon(monitor.Name, monitor.Namespace, fw); err != nil {
-		log.Logf("ERROR: tm[%s/%s]'s prometheus check error:%v", monitor.Namespace, monitor.Namespace, err)
-		return err
-	}
-	log.Logf("tidbmonitor[%s/%s]'s prometheus is ready", monitor.Name, monitor.Namespace)
-	if monitor.Spec.Grafana != nil {
-		var grafanaClient *metrics.Client
-		if _, err := checkGrafanaDataCommon(monitor.Name, monitor.Namespace, grafanaClient, fw, monitor.Spec.DM != nil); err != nil {
-			log.Logf("ERROR: tm[%s/%s]'s grafana check error:%v", monitor.Namespace, monitor.Namespace, err)
+func checkTidbMonitorFunctional(tm *v1alpha1.TidbMonitor, fw portforward.PortForward) error {
+	for shard:=int32(0);shard<*tm.Spec.Shards;shard++ {
+		monitorName:=monitor.GetMonitorShardName(tm, shard)
+		if err := checkPrometheusCommon(monitorName, tm.Namespace, fw); err != nil {
+			log.Logf("ERROR: tm[%s/%s]'s prometheus check error:%v", tm.Namespace, monitorName, err)
 			return err
 		}
-		log.Logf("tidbmonitor[%s/%s]'s grafana is ready", monitor.Name, monitor.Namespace)
+		log.Logf("tidbmonitor[%s/%s]'s prometheus is ready", monitorName, tm.Namespace)
+		if tm.Spec.Grafana != nil {
+			var grafanaClient *metrics.Client
+			if _, err := checkGrafanaDataCommon(monitorName, tm.Namespace, grafanaClient, fw, tm.Spec.DM != nil); err != nil {
+				log.Logf("ERROR: tm[%s/%s]'s grafana check error:%v", tm.Namespace, monitorName, err)
+				return err
+			}
+			log.Logf("tidbmonitor[%s/%s]'s grafana is ready", monitorName, tm.Namespace)
+		}
 	}
 	return nil
 }

@@ -68,6 +68,9 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 		if test.prepare != nil {
 			test.prepare(tmm, tm)
 		}
+		if tm.Spec.Shards==nil{
+			tm.Spec.Shards=pointer.Int32Ptr(0)
+		}
 
 		err = tmm.SyncMonitor(tm)
 		if test.errExpectFn != nil {
@@ -77,15 +80,19 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 		}
 
 		if test.svcCreated {
-			_, err = tmm.deps.ServiceLister.Services(tm.Namespace).Get(prometheusName(tm, 0))
-			g.Expect(err).NotTo(HaveOccurred())
-			_, err = tmm.deps.ServiceLister.Services(tm.Namespace).Get(reloaderName(tm, 0))
-			g.Expect(err).NotTo(HaveOccurred())
+			for shard := int32(0); shard < *tm.Spec.Shards; shard++ {
+				_, err = tmm.deps.ServiceLister.Services(tm.Namespace).Get(prometheusName(tm, shard))
+				g.Expect(err).NotTo(HaveOccurred())
+				_, err = tmm.deps.ServiceLister.Services(tm.Namespace).Get(reloaderName(tm, shard))
+				g.Expect(err).NotTo(HaveOccurred())
+			}
 		}
 
 		if test.stsCreated {
-			_, err := tmm.deps.StatefulSetLister.StatefulSets(tm.Namespace).Get(GetMonitorObjectName(tm))
-			g.Expect(err).NotTo(HaveOccurred())
+			for shard := int32(0); shard < *tm.Spec.Shards; shard++ {
+				_, err := tmm.deps.StatefulSetLister.StatefulSets(tm.Namespace).Get(GetMonitorShardName(tm, shard))
+				g.Expect(err).NotTo(HaveOccurred())
+			}
 		}
 		if test.volumeCreated {
 			sts, err := tmm.deps.StatefulSetLister.StatefulSets(tm.Namespace).Get(GetMonitorObjectName(tm))
@@ -392,6 +399,18 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 			svcCreated:    true,
 			volumeCreated: false,
 		},
+		{
+			name: "create with two shards",
+			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
+				monitor.Spec.Shards=pointer.Int32Ptr(2)
+			},
+			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
+
+			},
+			stsCreated:    true,
+			svcCreated:    true,
+			volumeCreated: false,
+		},
 	}
 
 	for i := range tests {
@@ -578,3 +597,5 @@ func newFakeTidbMonitorManager() *MonitorManager {
 func errExpectRequeuefunc(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
 	g.Expect(controller.IsRequeueError(err)).To(Equal(true))
 }
+
+

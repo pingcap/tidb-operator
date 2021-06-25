@@ -59,6 +59,16 @@ func GetMonitorShardName(monitor *v1alpha1.TidbMonitor, shard int32) string {
 	return fmt.Sprintf("%s-monitor-shard-%d", monitor.Name, shard)
 }
 
+func GetMonitorInstanceName(monitor *v1alpha1.TidbMonitor, shard int32) string {
+	var instanceName string
+	if shard == 0 {
+		instanceName = monitor.Name
+	} else {
+		instanceName = fmt.Sprintf("%s-shard-%d", monitor.Name, shard)
+	}
+	return instanceName
+}
+
 func GetMonitorFirstPVCName(name string) string {
 	return fmt.Sprintf(v1alpha1.TidbMonitorMemberType.String()+"-%s-monitor-0", name)
 }
@@ -1063,12 +1073,7 @@ func getMonitorStatefulSetSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.Ti
 		replicas = *monitor.Spec.Replicas
 	}
 	name := GetMonitorShardName(monitor, shard)
-	var instanceName string
-	if shard == 0 {
-		instanceName = monitor.Name
-	} else {
-		instanceName = fmt.Sprintf("%s-shard-%d", monitor.Name, shard)
-	}
+	instanceName :=GetMonitorInstanceName(monitor,shard)
 	statefulset := &apps.StatefulSet{
 		ObjectMeta: meta.ObjectMeta{
 			Name:            name,
