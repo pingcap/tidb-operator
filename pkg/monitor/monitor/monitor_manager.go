@@ -16,9 +16,6 @@ package monitor
 import (
 	"encoding/json"
 	"fmt"
-	perrors "github.com/pingcap/errors"
-	"github.com/pingcap/tidb-operator/pkg/util/toml"
-	corelisters "k8s.io/client-go/listers/core/v1"
 	"sort"
 	"strings"
 
@@ -43,6 +40,9 @@ import (
 	"k8s.io/client-go/discovery"
 	discoverycachedmemory "k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/klog"
+	perrors "github.com/pingcap/errors"
+	"github.com/pingcap/tidb-operator/pkg/util/toml"
+	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
 type MonitorManager struct {
