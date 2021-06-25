@@ -14,7 +14,6 @@
 package meta
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -22,11 +21,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	corev1 "k8s.io/api/core/v1"
-	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/klog"
 )
-
-var errPVCNotFound = errors.New("PVC is not found")
 
 type metaManager struct {
 	deps *controller.Dependencies
@@ -77,7 +74,7 @@ func (m *metaManager) Sync(tc *v1alpha1.TidbCluster) error {
 		// update meta info for pvc
 		pvcs, err := m.resolvePVCFromPod(pod)
 		if err != nil {
-			if kerrors.IsNotFound(err) && !mustUsePV {
+			if errors.IsNotFound(err) && !mustUsePV {
 				continue
 			}
 			return err
@@ -124,7 +121,9 @@ func (m *metaManager) resolvePVCFromPod(pod *corev1.Pod) ([]*corev1.PersistentVo
 		}
 	}
 	if len(pvcs) == 0 {
-		return nil, errPVCNotFound
+		err := errors.NewNotFound(corev1.Resource("pvc"), "")
+		err.ErrStatus.Message = fmt.Sprintf("no pvc found for pod %s/%s", pod.Namespace, pod.Name)
+		return nil, err
 	}
 	return pvcs, nil
 }
