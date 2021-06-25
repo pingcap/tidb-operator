@@ -241,7 +241,7 @@ func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, dc
 			klog.Errorf("Fail to generate statefulset for tm [%s/%s], err: %v", ns, name, err)
 			return err
 		}
-		stsName := GetMonitorShardName(monitor, shard)
+		stsName := newMonitorSts.Name
 		oldMonitorSetTmp, err := m.deps.StatefulSetLister.StatefulSets(ns).Get(stsName)
 		if err != nil && !errors.IsNotFound(err) {
 			return fmt.Errorf("syncTidbMonitorStatefulset: fail to get sts %s for cluster %s/%s, error: %s", stsName, ns, name, err)
