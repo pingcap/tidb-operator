@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	v1alpha1validation "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/validation"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -388,7 +387,7 @@ func (m *MonitorManager) syncTidbMonitorConfig(monitor *v1alpha1.TidbMonitor) (*
 		})
 	}
 
-	err = updateConfigMapIfNeed(m.deps.ConfigMapLister,  inUseName, newCM)
+	err = updateConfigMapIfNeed(m.deps.ConfigMapLister, inUseName, newCM)
 	if err != nil {
 		return nil, err
 	}
@@ -808,7 +807,7 @@ func updateConfigMapIfNeed(
 }
 
 func updateConfigMap(old, new *corev1.ConfigMap) (bool, error) {
-	tomlField := []string{"prometheus-config","dashboard-config"}
+	tomlField := []string{"prometheus-config", "dashboard-config"}
 	dataEqual := true
 
 	for _, k := range tomlField {
