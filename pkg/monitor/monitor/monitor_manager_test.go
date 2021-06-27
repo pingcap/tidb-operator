@@ -68,8 +68,8 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 		if test.prepare != nil {
 			test.prepare(tmm, tm)
 		}
-		if tm.Spec.Shards==nil{
-			tm.Spec.Shards=pointer.Int32Ptr(0)
+		if tm.Spec.Shards == nil {
+			tm.Spec.Shards = pointer.Int32Ptr(0)
 		}
 
 		err = tmm.SyncMonitor(tm)
@@ -402,7 +402,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 		{
 			name: "create with two shards",
 			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
-				monitor.Spec.Shards=pointer.Int32Ptr(2)
+				monitor.Spec.Shards = pointer.Int32Ptr(2)
 			},
 			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
 
@@ -597,5 +597,3 @@ func newFakeTidbMonitorManager() *MonitorManager {
 func errExpectRequeuefunc(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
 	g.Expect(controller.IsRequeueError(err)).To(Equal(true))
 }
-
-

@@ -16,12 +16,12 @@ package tests
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/monitor/monitor"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"time"
 
+	"github.com/pingcap/tidb-operator/pkg/monitor/monitor"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -52,14 +52,13 @@ func checkTidbMonitorPod(tm *v1alpha1.TidbMonitor, kubeCli kubernetes.Interface)
 	namespace := tm.Namespace
 	svcName := fmt.Sprintf("%s-prometheus", tm.Name)
 
-
 	return wait.Poll(5*time.Second, 20*time.Minute, func() (done bool, err error) {
 		//validate all shard pods
-		for shard:=int32(0);shard<*tm.Spec.Shards;shard++{
-			instanceName :=monitor.GetMonitorInstanceName(tm,shard)
+		for shard := int32(0); shard < *tm.Spec.Shards; shard++ {
+			instanceName := monitor.GetMonitorInstanceName(tm, shard)
 			monitorLabel, err := label.NewMonitor().Instance(instanceName).Monitor().Selector()
 			if err != nil {
-				return false,err
+				return false, err
 			}
 			pods, err := kubeCli.CoreV1().Pods(namespace).List(metav1.ListOptions{
 				LabelSelector: monitorLabel.String(),
@@ -98,8 +97,8 @@ func checkTidbMonitorPod(tm *v1alpha1.TidbMonitor, kubeCli kubernetes.Interface)
 
 // checkTidbMonitorFunctional check whether TidbMonitor's Prometheus and Grafana are working now
 func checkTidbMonitorFunctional(tm *v1alpha1.TidbMonitor, fw portforward.PortForward) error {
-	for shard:=int32(0);shard<*tm.Spec.Shards;shard++ {
-		monitorName:=monitor.GetMonitorShardName(tm, shard)
+	for shard := int32(0); shard < *tm.Spec.Shards; shard++ {
+		monitorName := monitor.GetMonitorShardName(tm, shard)
 		if err := checkPrometheusCommon(monitorName, tm.Namespace, fw); err != nil {
 			log.Logf("ERROR: tm[%s/%s]'s prometheus check error:%v", tm.Namespace, monitorName, err)
 			return err

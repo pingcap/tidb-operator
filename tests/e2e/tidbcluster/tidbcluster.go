@@ -2623,7 +2623,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		})
 	})
 
-	ginkgo.It("deploy tidb monitor specifed shards normally", func() {
+	ginkgo.It("deploy tidb monitor specified shards normally", func() {
 		ginkgo.By("Deploy initial tc")
 		tc := fixture.GetTidbCluster(ns, "monitor-test", utilimage.TiDBV5)
 		tc.Spec.PD.Replicas = 1
@@ -2636,14 +2636,13 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 		ginkgo.By("Deploy tidbmonitor")
 		tm := fixture.NewTidbMonitor("monitor-test", ns, tc, true, true, false)
-		tm.Spec.Shards=pointer.Int32Ptr(2)
+		tm.Spec.Shards = pointer.Int32Ptr(2)
 		pvpDelete := corev1.PersistentVolumeReclaimDelete
 		tm.Spec.PVReclaimPolicy = &pvpDelete
 		_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(tm)
 		framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
 		err = tests.CheckTidbMonitor(tm, cli, c, fw)
 		framework.ExpectNoError(err, "Expected tidbmonitor checked success")
-
 
 		ginkgo.By("Delete tidbmonitor")
 		err = cli.PingcapV1alpha1().TidbMonitors(tm.Namespace).Delete(tm.Name, &metav1.DeleteOptions{})

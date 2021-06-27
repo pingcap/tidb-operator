@@ -1073,7 +1073,7 @@ func getMonitorStatefulSetSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.Ti
 		replicas = *monitor.Spec.Replicas
 	}
 	name := GetMonitorShardName(monitor, shard)
-	instanceName :=GetMonitorInstanceName(monitor,shard)
+	instanceName := GetMonitorInstanceName(monitor, shard)
 	statefulset := &apps.StatefulSet{
 		ObjectMeta: meta.ObjectMeta{
 			Name:            name,
