@@ -21,7 +21,6 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/pingcap/tidb-operator/pkg/monitor/monitor"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -32,6 +31,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/kubernetes/test/e2e/framework/log"
+	"github.com/pingcap/tidb-operator/pkg/monitor/monitor"
 )
 
 func CheckTidbMonitor(monitor *v1alpha1.TidbMonitor, cli versioned.Interface, kubeCli kubernetes.Interface, fw portforward.PortForward) error {
