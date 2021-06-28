@@ -53,7 +53,7 @@ To deploy TiCDC when deploying the TiDB cluster, refer to [Deploy TiDB in Genera
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl exec -it ${pod_name} -n ${namespace} sh
+    kubectl exec -it ${pod_name} -n ${namespace} -- sh
     ```
 
 4. [Manage the cluster and data replication tasks](https://pingcap.com/docs/stable/ticdc/manage-ticdc/#use-cdc-cli-to-manage-cluster-status-and-data-replication-task) by using `cdc cli`.

@@ -50,7 +50,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-ticdc/']
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl exec -it ${pod_name} -n ${namespace} sh
+    kubectl exec -it ${pod_name} -n ${namespace} -- sh
     ```
 
 4. 然后通过 `cdc cli` 进行[管理集群和同步任务](https://pingcap.com/docs-cn/stable/ticdc/manage-ticdc/)。
