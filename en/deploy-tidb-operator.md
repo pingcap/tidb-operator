@@ -133,7 +133,7 @@ After creating CRDs in the step above, there are two methods to deploy TiDB Oper
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm upgrade tidb-operator pingcap/tidb-operator -f  `${HOME}/tidb-operator/values-tidb-operator.yaml`
+    helm upgrade tidb-operator pingcap/tidb-operator --namespace=tidb-admin -f ${HOME}/tidb-operator/values-tidb-operator.yaml
     ```
 
 #### Offline installation
@@ -251,7 +251,7 @@ If your server cannot access the Internet, install TiDB Operator offline by the 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm upgrade tidb-operator ./tidb-operator
+    helm upgrade tidb-operator ./tidb-operator --namespace=tidb-admin
     ```
 
 ## Customize TiDB Operator
@@ -270,5 +270,5 @@ After modifying `values.yaml`, run the following command to apply this modificat
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm upgrade tidb-operator pingcap/tidb-operator --version=${chart_version} -f /home/tidb/tidb-operator/values-tidb-operator.yaml
+helm upgrade tidb-operator pingcap/tidb-operator --version=${chart_version} --namespace=tidb-admin -f /home/tidb/tidb-operator/values-tidb-operator.yaml
 ```
