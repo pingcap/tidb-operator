@@ -50,7 +50,7 @@ func NewController(deps *controller.Dependencies) *Controller {
 			deps.TiDBClusterControl,
 			mm.NewPDMemberManager(deps, mm.NewPDScaler(deps), mm.NewPDUpgrader(deps), mm.NewPDFailover(deps)),
 			mm.NewTiKVMemberManager(deps, mm.NewTiKVFailover(deps), mm.NewTiKVScaler(deps), mm.NewTiKVUpgrader(deps)),
-			mm.NewTiDBMemberManager(deps, mm.NewTiDBUpgrader(deps), mm.NewTiDBFailover(deps)),
+			mm.NewTiDBMemberManager(deps, mm.NewTiDBScaler(deps), mm.NewTiDBUpgrader(deps), mm.NewTiDBFailover(deps)),
 			meta.NewReclaimPolicyManager(deps),
 			meta.NewMetaManager(deps),
 			mm.NewOrphanPodsCleaner(deps),

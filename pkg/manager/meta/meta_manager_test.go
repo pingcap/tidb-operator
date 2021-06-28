@@ -67,8 +67,8 @@ func TestMetaManagerSync(t *testing.T) {
 		}
 
 		if !test.podRefPvc {
-			pod1.Spec = newPodSpec(v1alpha1.TiDBMemberType.String(), pvc1.GetName())
-			pod1.Labels[label.ComponentLabelKey] = v1alpha1.TiDBMemberType.String()
+			pod1.Spec = newPodSpec("no-ref-component", pvc1.GetName())
+			pod1.Labels[label.ComponentLabelKey] = "no-ref-component"
 		}
 
 		nmm, fakePodControl, fakePVCControl, fakePVControl, podIndexer, pvcIndexer, pvIndexer := newFakeMetaManager()
@@ -233,7 +233,7 @@ func TestMetaManagerSync(t *testing.T) {
 			pvChanged:        false,
 		},
 		{
-			name:             "the pod is not tikv and pd",
+			name:             "the pod is skipping syncing meta info",
 			podHasLabels:     true,
 			pvcHasLabels:     true,
 			pvcHasVolumeName: true,
@@ -392,8 +392,8 @@ func TestMetaManagerSyncMultiPVC(t *testing.T) {
 		}
 
 		if !test.podRefPvc {
-			pod1.Spec = newPodSpec(v1alpha1.TiDBMemberType.String(), pvc1.GetName())
-			pod1.Labels[label.ComponentLabelKey] = v1alpha1.TiDBMemberType.String()
+			pod1.Spec = newPodSpec("no-ref-component", pvc1.GetName())
+			pod1.Labels[label.ComponentLabelKey] = "no-ref-component"
 		}
 
 		nmm, fakePodControl, fakePVCControl, fakePVControl, podIndexer, pvcIndexer, pvIndexer := newFakeMetaManager()
@@ -603,7 +603,7 @@ func TestMetaManagerSyncMultiPVC(t *testing.T) {
 			pvChanged:        false,
 		},
 		{
-			name:             "the pod is not tikv and pd",
+			name:             "the pod is skipping syncing meta info",
 			podHasLabels:     true,
 			pvcHasLabels:     true,
 			pvcHasVolumeName: true,
