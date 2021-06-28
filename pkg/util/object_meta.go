@@ -16,19 +16,14 @@ package util
 // Utilities here are used for modifying the ObjectMeta field for k8s object
 
 // CombineStringMap merges maps to the left
-func CombineStringMap(a map[string]string, maps ...map[string]string) map[string]string {
-	if len(maps) < 1 {
-		return a
-	}
-	if a == nil {
-		a = make(map[string]string)
-	}
+func CombineStringMap(maps ...map[string]string) map[string]string {
+	r := make(map[string]string)
 	for _, m := range maps {
 		for k, v := range m {
-			a[k] = v
+			r[k] = v
 		}
 	}
-	return a
+	return r
 }
 
 // CopyStringMap copy annotations to a new string map

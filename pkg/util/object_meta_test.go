@@ -25,6 +25,9 @@ func TestCombineStringMap(t *testing.T) {
 	a := map[string]string{
 		"a": "av",
 	}
+	origA := map[string]string{
+		"a": "av",
+	}
 	b := map[string]string{
 		"b": "bv",
 	}
@@ -43,6 +46,7 @@ func TestCombineStringMap(t *testing.T) {
 
 	res := CombineStringMap(a, b, c, overwrite)
 	g.Expect(res).Should(Equal(expect))
+	g.Expect(a).Should(Equal(origA))
 
 	res = CombineStringMap(nil, b, c, overwrite)
 	g.Expect(res).Should(Equal(expect))
