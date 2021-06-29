@@ -793,7 +793,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		ObjectMeta: meta.ObjectMeta{
 			Name:            prometheusName,
 			Namespace:       monitor.Namespace,
-			Labels:          util.CombineStringMap(promeLabel.Labels(), monitor.Spec.Labels, monitor.Spec.Prometheus.Service.Labels),
+			Labels:          util.CombineStringMap(promeLabel.Labels(), monitor.Spec.Prometheus.Service.Labels, monitor.Spec.Labels),
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 			Annotations:     util.CombineStringMap(monitor.Spec.Prometheus.Service.Annotations, monitor.Spec.Annotations),
 		},
@@ -837,7 +837,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		ObjectMeta: meta.ObjectMeta{
 			Name:            reloaderName,
 			Namespace:       monitor.Namespace,
-			Labels:          util.CombineStringMap(buildTidbMonitorLabel(monitor.Name), monitor.Spec.Labels, monitor.Spec.Reloader.Service.Labels),
+			Labels:          util.CombineStringMap(buildTidbMonitorLabel(monitor.Name), monitor.Spec.Reloader.Service.Labels, monitor.Spec.Labels),
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 			Annotations:     util.CombineStringMap(monitor.Spec.Reloader.Service.Annotations, monitor.Spec.Annotations),
 		},
