@@ -32,7 +32,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-on-aws-eks/']
 
 ## 创建 EKS 集群和节点池
 
-根据 AWS [官方博客](https://aws.amazon.com/cn/blogs/containers/amazon-eks-cluster-multi-zone-auto-scaling-groups/)推荐和 EKS [最佳实践文档](https://aws.github.io/aws-eks-best-practices/reliability/docs/dataplane/#ensure-capacity-in-each-az-when-using-ebs-volumes)，由于 TiDB 集群大部分组件使用 EBS 卷作为存储，推荐在创建 EKS 的时候针对每个组件在每个可用区（至少 3 个可用区）创建一个节点池。
+根据 AWS [官方博客](https://aws.amazon.com/cn/blogs/containers/amazon-eks-cluster-multi-zone-auto-scaling-groups/)推荐和 EKS [最佳实践文档](https://aws.github.io/aws-eks-best-practices/reliability/docs/dataplane.html#ensure-capacity-in-each-az-when-using-ebs-volumes)，由于 TiDB 集群大部分组件使用 EBS 卷作为存储，推荐在创建 EKS 的时候针对每个组件在每个可用区（至少 3 个可用区）创建一个节点池。
 
 将以下配置存为 cluster.yaml 文件，并替换 `${clusterName}` 为自己想命名的集群名字。集群和节点组的命名规则需要与正则表达式 `[a-zA-Z][-a-zA-Z0-9]*` 相匹配，避免包含 `_`。
 

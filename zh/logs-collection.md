@@ -14,8 +14,6 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/logs-collection/','/docs-cn/tidb-in-k
 
 如果在你的现有基础设施中已经有用于收集日志的系统，只需要通过常规方法将 Kubernetes 所在的宿主机上的 `/var/log/containers/*.log` 文件加入采集范围即可；如果没有可用的日志收集系统，或者希望部署一套独立的系统用于收集相关日志，也可以使用你熟悉的任意日志收集系统或方案。
 
-Kubernetes 官方文档中提供了 [Stackdriver](https://kubernetes.io/docs/tasks/debug-application-cluster/logging-stackdriver/) 的日志收集方案可供参考。
-
 常见的可用于收集 Kubernetes 日志的开源工具有：
 
 - [Fluentd](https://www.fluentd.org/)
