@@ -761,7 +761,7 @@ spec:
   #   hostNetwork: false
   #   serviceAccount: advanced-tidb-pump
   #   priorityClassName: system-cluster-critical
-  #   schedulerName: tidb-scheduler
+  #   schedulerName: default-scheduler
   #   nodeSelector:
   #     app.kubernetes.io/component: pump
   #   annotations:
