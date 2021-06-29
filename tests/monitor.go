@@ -54,7 +54,7 @@ func checkTidbMonitorPod(tm *v1alpha1.TidbMonitor, kubeCli kubernetes.Interface)
 
 	return wait.Poll(5*time.Second, 20*time.Minute, func() (done bool, err error) {
 		//validate all shard pods
-		for shard := int32(0); shard < *tm.Spec.Shards; shard++ {
+		for shard := int32(0); shard < tm.GetShards(); shard++ {
 			instanceName := monitor.GetMonitorInstanceName(tm, shard)
 			monitorLabel, err := label.NewMonitor().Instance(instanceName).Monitor().Selector()
 			if err != nil {
