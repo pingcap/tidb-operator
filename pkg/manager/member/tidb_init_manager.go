@@ -350,7 +350,7 @@ func (m *tidbInitManager) makeTiDBInitJob(ti *v1alpha1.TidbInitializer) (*batchv
 
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels:      initLabel.Labels(),
+			Labels:      util.CombineStringMap(initLabel, ti.ObjectMeta.Labels),
 			Annotations: util.CopyStringMap(ti.ObjectMeta.Annotations),
 		},
 		Spec: corev1.PodSpec{
