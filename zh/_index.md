@@ -15,8 +15,8 @@ TiDB Operator 与适用的 TiDB 版本的对应关系如下：
 | TiDB Operator 版本 | 适用的 TiDB 版本 |
 |:---|:---|
 | v1.0 | v2.1, v3.0 |
-| v1.1 | v3.0, v3.1, v4.0, v5.0 |
-| dev | v3.0, v3.1, v4.0, v5.0, dev |
+| v1.1 | v3.0 及以上版本 |
+| dev | v3.0 及以上版本�，dev |
 
 <NavColumns>
 <NavColumn>
