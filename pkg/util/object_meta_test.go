@@ -34,22 +34,27 @@ func TestCombineStringMap(t *testing.T) {
 	c := map[string]string{
 		"c": "cv",
 	}
-	overwrite := map[string]string{
+	dropped := map[string]string{
 		"a": "aov",
 	}
 
-	expect := map[string]string{
+	expect1 := map[string]string{
+		"a": "av",
+		"b": "bv",
+		"c": "cv",
+	}
+	expect2 := map[string]string{
 		"a": "aov",
 		"b": "bv",
 		"c": "cv",
 	}
 
-	res := CombineStringMap(a, b, c, overwrite)
-	g.Expect(res).Should(Equal(expect))
+	res := CombineStringMap(a, b, c, dropped)
+	g.Expect(res).Should(Equal(expect1))
 	g.Expect(a).Should(Equal(origA))
 
-	res = CombineStringMap(nil, b, c, overwrite)
-	g.Expect(res).Should(Equal(expect))
+	res = CombineStringMap(nil, b, c, dropped)
+	g.Expect(res).Should(Equal(expect2))
 
 }
 
