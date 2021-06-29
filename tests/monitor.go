@@ -50,11 +50,11 @@ func CheckTidbMonitor(monitor *v1alpha1.TidbMonitor, cli versioned.Interface, ku
 // checkTidbMonitorPod check the pod of TidbMonitor whether it is ready
 func checkTidbMonitorPod(tm *v1alpha1.TidbMonitor, kubeCli kubernetes.Interface) error {
 	namespace := tm.Namespace
-	svcName := fmt.Sprintf("%s-prometheus", tm.Name)
 
 	return wait.Poll(5*time.Second, 20*time.Minute, func() (done bool, err error) {
 		//validate all shard pods
 		for shard := int32(0); shard < tm.GetShards(); shard++ {
+			svcName := monitor.PrometheusName(tm, shard)
 			instanceName := monitor.GetMonitorInstanceName(tm, shard)
 			monitorLabel, err := label.NewMonitor().Instance(instanceName).Monitor().Selector()
 			if err != nil {

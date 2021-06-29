@@ -465,7 +465,7 @@ func (m *MonitorManager) syncPrometheusIngress(monitor *v1alpha1.TidbMonitor) er
 	for shard := int32(0); shard < shards; shard++ {
 
 		if monitor.Spec.Prometheus.Ingress == nil {
-			err := m.removeIngressIfExist(monitor, prometheusName(monitor, shard))
+			err := m.removeIngressIfExist(monitor, PrometheusName(monitor, shard))
 			if err != nil {
 				return err
 			}

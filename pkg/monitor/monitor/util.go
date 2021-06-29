@@ -815,7 +815,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 			grafanaPortName = *monitor.BaseGrafanaSpec().PortName()
 		}
 
-		prometheusName := prometheusName(monitor, shard)
+		prometheusName := PrometheusName(monitor, shard)
 		monitorLabel := label.NewMonitor().Instance(monitor.Name).Monitor()
 		promeLabel := monitorLabel.Copy().UsedBy("prometheus")
 		grafanaLabel := monitorLabel.Copy().UsedBy("grafana")
@@ -935,7 +935,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 }
 
 func getPrometheusIngress(monitor *v1alpha1.TidbMonitor, shard int32) *extensionsv1beta1.Ingress {
-	return getIngress(monitor, monitor.Spec.Prometheus.Ingress, prometheusName(monitor, shard), 9090)
+	return getIngress(monitor, monitor.Spec.Prometheus.Ingress, PrometheusName(monitor, shard), 9090)
 }
 
 func getGrafanaIngress(monitor *v1alpha1.TidbMonitor, shard int32) *extensionsv1beta1.Ingress {
@@ -982,7 +982,7 @@ func getIngress(monitor *v1alpha1.TidbMonitor, ingressSpec *v1alpha1.IngressSpec
 	return ingress
 }
 
-func prometheusName(monitor *v1alpha1.TidbMonitor, shard int32) string {
+func PrometheusName(monitor *v1alpha1.TidbMonitor, shard int32) string {
 	base := fmt.Sprintf("%s-prometheus", monitor.Name)
 	if shard == 0 {
 		return base
