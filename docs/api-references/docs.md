@@ -2323,6 +2323,17 @@ map[string]string
 </tr>
 <tr>
 <td>
+<code>labels</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
 <code>tolerations</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#toleration-v1-core">
@@ -20781,6 +20792,17 @@ map[string]string
 <tr>
 <td>
 <code>annotations</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>labels</code></br>
 <em>
 map[string]string
 </em>

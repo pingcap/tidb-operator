@@ -27,6 +27,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
@@ -200,6 +201,9 @@ var _ = ginkgo.Describe("DMCluster", func() {
 
 			ginkgo.By("Check data for incremental stage")
 			framework.ExpectNoError(tests.CheckDMData(fw, dc.Namespace, 1), "failed to check incremental data")
+
+			ginkgo.By("Check custom labels and annotations")
+			checkCustomLabelAndAnn(dc, c)
 
 			ginkgo.By("Delete the dc")
 			framework.ExpectNoError(cli.PingcapV1alpha1().DMClusters(dc.Namespace).Delete(dcName, &metav1.DeleteOptions{}), "failed to delete dc %q", dcName)
@@ -854,3 +858,76 @@ var _ = ginkgo.Describe("DMCluster", func() {
 		})
 	})
 })
+
+// checkCustomLabelAndAnn check the custom set labels and ann set in `GetDMCluster`
+func checkCustomLabelAndAnn(dc *v1alpha1.DMCluster, c clientset.Interface) {
+	listOptions := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(label.NewDM().Instance(fmt.Sprintf("%s-dm", dc.GetInstanceName())).Discovery().Labels()).String(),
+	}
+	list, err := c.CoreV1().Pods(dc.Namespace).List(listOptions)
+	framework.ExpectNoError(err)
+	framework.ExpectNotEqual(len(list.Items), 0, "expect discovery exists")
+	for _, pod := range list.Items {
+		_, ok := pod.Labels[fixture.ClusterCustomKey]
+		framework.ExpectEqual(ok, true)
+		_, ok = pod.Annotations[fixture.ClusterCustomKey]
+		framework.ExpectEqual(ok, true)
+	}
+
+	listOptions = metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(label.NewDM().Instance(dc.Name).Component(label.DMMasterLabelVal).Labels()).String(),
+	}
+	list, err = c.CoreV1().Pods(dc.Namespace).List(listOptions)
+	framework.ExpectNoError(err)
+	framework.ExpectNotEqual(len(list.Items), 0, "expect dm-master pod exists")
+	for _, pod := range list.Items {
+		_, ok := pod.Labels[fixture.ClusterCustomKey]
+		framework.ExpectEqual(ok, true)
+
+		_, ok = pod.Labels[fixture.ComponentCustomKey]
+		framework.ExpectEqual(ok, true)
+
+		_, ok = pod.Annotations[fixture.ClusterCustomKey]
+		framework.ExpectEqual(ok, true)
+
+		_, ok = pod.Annotations[fixture.ComponentCustomKey]
+		framework.ExpectEqual(ok, true)
+	}
+
+	// check service
+	svcList, err := c.CoreV1().Services(dc.Namespace).List(listOptions)
+	framework.ExpectNoError(err)
+	framework.ExpectNotEqual(len(svcList.Items), 0, "expect dm-master svc exists")
+	for _, svc := range svcList.Items {
+		// skip the headless one
+		if svc.Spec.ClusterIP == "None" {
+			continue
+		}
+
+		_, ok := svc.Labels[fixture.ComponentCustomKey]
+		framework.ExpectEqual(ok, true)
+
+		_, ok = svc.Annotations[fixture.ComponentCustomKey]
+		framework.ExpectEqual(ok, true)
+	}
+
+	listOptions = metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(label.NewDM().Instance(dc.Name).Component(label.DMWorkerLabelVal).Labels()).String(),
+	}
+	list, err = c.CoreV1().Pods(dc.Namespace).List(listOptions)
+	framework.ExpectNoError(err)
+	framework.ExpectNotEqual(len(list.Items), 0, "expect dm-worker pod exists")
+	for _, pod := range list.Items {
+		_, ok := pod.Labels[fixture.ClusterCustomKey]
+		framework.ExpectEqual(ok, true)
+
+		_, ok = pod.Labels[fixture.ComponentCustomKey]
+		framework.ExpectEqual(ok, true)
+
+		_, ok = pod.Annotations[fixture.ClusterCustomKey]
+		framework.ExpectEqual(ok, true)
+
+		_, ok = pod.Annotations[fixture.ComponentCustomKey]
+		framework.ExpectEqual(ok, true)
+	}
+}
