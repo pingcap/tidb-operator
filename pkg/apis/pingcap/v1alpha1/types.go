@@ -1395,6 +1395,7 @@ type BackupSpec struct {
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 	// ToolImage specifies the tool image used in `Backup`, which supports BR and Dumpling images.
 	// For examples `spec.toolImage: pingcap/br:v4.0.8` or `spec.toolImage: pingcap/dumpling:v4.0.8`
+	// For BR image, if it does not contain tag, Pod will use image 'ToolImage:${TiKV_Version}'.
 	// +optional
 	ToolImage string `json:"toolImage,omitempty"`
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
