@@ -242,6 +242,7 @@ func TestGetMonitorService(t *testing.T) {
 							"app.kubernetes.io/component":  "monitor",
 							"app.kubernetes.io/used-by":    "prometheus",
 						},
+						Annotations: map[string]string{},
 						OwnerReferences: []metav1.OwnerReference{
 							{
 								APIVersion: "pingcap.com/v1alpha1",
@@ -283,6 +284,7 @@ func TestGetMonitorService(t *testing.T) {
 							"app.kubernetes.io/managed-by": "tidb-operator",
 							"app.kubernetes.io/name":       "tidb-cluster",
 						},
+						Annotations: map[string]string{},
 						OwnerReferences: []metav1.OwnerReference{
 							{
 								APIVersion: "pingcap.com/v1alpha1",
@@ -367,6 +369,7 @@ func TestGetMonitorService(t *testing.T) {
 							"app.kubernetes.io/component":  "monitor",
 							"app.kubernetes.io/used-by":    "prometheus",
 						},
+						Annotations: map[string]string{},
 						OwnerReferences: []metav1.OwnerReference{
 							{
 								APIVersion: "pingcap.com/v1alpha1",
@@ -414,6 +417,7 @@ func TestGetMonitorService(t *testing.T) {
 							"app.kubernetes.io/managed-by": "tidb-operator",
 							"app.kubernetes.io/name":       "tidb-cluster",
 						},
+						Annotations: map[string]string{},
 						OwnerReferences: []metav1.OwnerReference{
 							{
 								APIVersion: "pingcap.com/v1alpha1",
@@ -461,6 +465,7 @@ func TestGetMonitorService(t *testing.T) {
 							"app.kubernetes.io/component":  "monitor",
 							"app.kubernetes.io/used-by":    "grafana",
 						},
+						Annotations: map[string]string{},
 						OwnerReferences: []metav1.OwnerReference{
 							{
 								APIVersion: "pingcap.com/v1alpha1",
@@ -527,6 +532,7 @@ func TestGetMonitorService(t *testing.T) {
 							"app.kubernetes.io/component":  "monitor",
 							"app.kubernetes.io/used-by":    "prometheus",
 						},
+						Annotations: map[string]string{},
 						OwnerReferences: []metav1.OwnerReference{
 							{
 								APIVersion: "pingcap.com/v1alpha1",
@@ -568,6 +574,7 @@ func TestGetMonitorService(t *testing.T) {
 							"app.kubernetes.io/managed-by": "tidb-operator",
 							"app.kubernetes.io/name":       "tidb-cluster",
 						},
+						Annotations: map[string]string{},
 						OwnerReferences: []metav1.OwnerReference{
 							{
 								APIVersion: "pingcap.com/v1alpha1",
@@ -622,6 +629,7 @@ func TestGetMonitorService(t *testing.T) {
 							"app.kubernetes.io/name":       "tidb-cluster",
 							"app.kubernetes.io/used-by":    "grafana",
 						},
+						Annotations: map[string]string{},
 					},
 					Spec: corev1.ServiceSpec{
 						Ports: []corev1.ServicePort{

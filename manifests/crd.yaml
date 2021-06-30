@@ -20376,6 +20376,8 @@ spec:
             initializer: {}
             kubePrometheusURL:
               type: string
+            labels:
+              type: object
             nodeSelector:
               type: object
             persistent:
