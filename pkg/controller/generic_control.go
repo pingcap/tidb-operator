@@ -165,7 +165,17 @@ func (w *typedWrapper) CreateOrUpdateDeployment(controller runtime.Object, deplo
 				existingDep.Spec.Strategy.RollingUpdate = desiredDep.Spec.Strategy.RollingUpdate
 			}
 		}
-		// pod selector of deployment is immutable, so we don't mutate the labels of pod
+
+		if existingDep.Spec.Template.Labels == nil {
+			existingDep.Spec.Template.Labels = map[string]string{}
+		}
+		for k, v := range desiredDep.Spec.Template.Labels {
+			existingDep.Spec.Template.Labels[k] = v
+		}
+
+		if existingDep.Spec.Template.Annotations == nil {
+			existingDep.Spec.Template.Annotations = map[string]string{}
+		}
 		for k, v := range desiredDep.Spec.Template.Annotations {
 			existingDep.Spec.Template.Annotations[k] = v
 		}

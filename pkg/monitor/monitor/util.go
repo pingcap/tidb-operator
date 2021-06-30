@@ -793,9 +793,9 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		ObjectMeta: meta.ObjectMeta{
 			Name:            prometheusName,
 			Namespace:       monitor.Namespace,
-			Labels:          promeLabel.Labels(),
+			Labels:          util.CombineStringMap(promeLabel.Labels(), monitor.Spec.Prometheus.Service.Labels, monitor.Spec.Labels),
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
-			Annotations:     monitor.Spec.Prometheus.Service.Annotations,
+			Annotations:     util.CombineStringMap(monitor.Spec.Prometheus.Service.Annotations, monitor.Spec.Annotations),
 		},
 		Spec: core.ServiceSpec{
 			Ports: []core.ServicePort{
@@ -837,9 +837,9 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		ObjectMeta: meta.ObjectMeta{
 			Name:            reloaderName,
 			Namespace:       monitor.Namespace,
-			Labels:          buildTidbMonitorLabel(monitor.Name),
+			Labels:          util.CombineStringMap(buildTidbMonitorLabel(monitor.Name), monitor.Spec.Reloader.Service.Labels, monitor.Spec.Labels),
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
-			Annotations:     monitor.Spec.Prometheus.Service.Annotations,
+			Annotations:     util.CombineStringMap(monitor.Spec.Reloader.Service.Annotations, monitor.Spec.Annotations),
 		},
 		Spec: core.ServiceSpec{
 			Ports: []core.ServicePort{
@@ -870,9 +870,9 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 			ObjectMeta: meta.ObjectMeta{
 				Name:            grafanaName(monitor),
 				Namespace:       monitor.Namespace,
-				Labels:          grafanaLabel.Labels(),
+				Labels:          util.CombineStringMap(grafanaLabel.Labels(), monitor.Spec.Grafana.Service.Labels, monitor.Spec.Labels),
 				OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
-				Annotations:     monitor.Spec.Grafana.Service.Annotations,
+				Annotations:     util.CombineStringMap(monitor.Spec.Grafana.Service.Annotations, monitor.Spec.Annotations),
 			},
 			Spec: core.ServiceSpec{
 				Ports: []core.ServicePort{
@@ -1030,13 +1030,17 @@ func getMonitorStatefulSetSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.Ti
 		replicas = *monitor.Spec.Replicas
 	}
 	name := GetMonitorObjectName(monitor)
+	stsLabels := buildTidbMonitorLabel(monitor.Name)
+	podLabels := util.CombineStringMap(stsLabels, monitor.Spec.Labels)
+	stsAnnotations := util.CopyStringMap(monitor.Spec.Annotations)
+	podAnnotations := util.CopyStringMap(monitor.Spec.Annotations)
 	statefulset := &apps.StatefulSet{
 		ObjectMeta: meta.ObjectMeta{
 			Name:            name,
 			Namespace:       monitor.Namespace,
-			Labels:          buildTidbMonitorLabel(monitor.Name),
+			Labels:          stsLabels,
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
-			Annotations:     util.CopyStringMap(monitor.Spec.Annotations),
+			Annotations:     stsAnnotations,
 		},
 		Spec: apps.StatefulSetSpec{
 			ServiceName: name,
@@ -1045,12 +1049,12 @@ func getMonitorStatefulSetSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.Ti
 				Type: apps.RollingUpdateStatefulSetStrategyType,
 			},
 			Selector: &meta.LabelSelector{
-				MatchLabels: buildTidbMonitorLabel(monitor.Name),
+				MatchLabels: stsLabels,
 			},
 			Template: core.PodTemplateSpec{
 				ObjectMeta: meta.ObjectMeta{
-					Labels:      buildTidbMonitorLabel(monitor.Name),
-					Annotations: util.CopyStringMap(monitor.Spec.Annotations),
+					Labels:      podLabels,
+					Annotations: podAnnotations,
 				},
 
 				Spec: core.PodSpec{
