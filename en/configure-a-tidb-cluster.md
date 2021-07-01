@@ -571,6 +571,10 @@ spec:
     evictLeaderTimeout: 10000m
 ```
 
+> **Warning:**
+>
+> If the TiKV version is earlier than 4.0.14 or 5.0.3, due to [a bug of TiKV](https://github.com/tikv/tikv/pull/10364), you need to configure the timeout `spec.tikv.evictLeaderTimeout` as large as possible to ensure that all Region leaders on the TiKV Pod can be evicted within the timeout. If you are not sure about the proper value, greater than '1500m' is recommended.
+
 ### Configure PV for TiDB slow logs
 
 TiDB Operator creates an `EmptyDir` volume named `slowlog` by default to store the slow logs and mounts the `slowlog` volume to `/var/log/tidb`. If you want to use a separate PV to store the slow logs, you can specify the name of the PV by configuring `spec.tidb.slowLogVolumeName` and configure the PV in `spec.tidb.storageVolumes` or `spec.tidb.additionalVolumes`.
