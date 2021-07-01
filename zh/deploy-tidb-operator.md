@@ -251,3 +251,22 @@ tidbmonitors.pingcap.com             2020-06-11T07:59:41Z
     ```shell
     helm upgrade tidb-operator ./tidb-operator --namespace=tidb-admin
     ```
+
+## 自定义配置 TiDB Operator
+
+可以通过修改 `${HOME}/tidb-operator/values-tidb-operator.yaml` 来配置 TiDB Operator。本节后续使用 `values.yaml` 来代表 `${HOME}/tidb-operator/values-tidb-operator.yaml`。
+
+TiDB Operator 包含两个组件：
+
+* tidb-controller-manager
+* tidb-scheduler
+
+这两个组件都是无状态的，由 `Deployment` 部署。在 `values.yaml` 文件中，你可以配置其中的 `limit`、`request` 与 `replicas` 参数。
+
+修改了 `values.yaml` 文件后，请运行以下命令使更改生效：
+
+{{< copyable "shell-regular" >}}
+
+```shell
+helm upgrade tidb-operator pingcap/tidb-operator --version=${chart_version} --namespace=tidb-admin -f ${HOME}/tidb-operator/values-tidb-operator.yaml
+```

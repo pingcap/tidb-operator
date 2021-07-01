@@ -256,7 +256,7 @@ If your server cannot access the Internet, install TiDB Operator offline by the 
 
 ## Customize TiDB Operator
 
-To customize TiDB Operator, modify `/home/tidb/tidb-operator/values-tidb-operator.yaml`. The rest sections of the document use `values.yaml` to refer to `/home/tidb/tidb-operator/values-tidb-operator.yaml`
+To customize TiDB Operator, modify `${HOME}/tidb-operator/values-tidb-operator.yaml`. The rest sections of the document use `values.yaml` to refer to `${HOME}/tidb-operator/values-tidb-operator.yaml`
 
 TiDB Operator contains two components:
 
@@ -270,5 +270,5 @@ After modifying `values.yaml`, run the following command to apply this modificat
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm upgrade tidb-operator pingcap/tidb-operator --version=${chart_version} --namespace=tidb-admin -f /home/tidb/tidb-operator/values-tidb-operator.yaml
+helm upgrade tidb-operator pingcap/tidb-operator --version=${chart_version} --namespace=tidb-admin -f ${HOME}/tidb-operator/values-tidb-operator.yaml
 ```
