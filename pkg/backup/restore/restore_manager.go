@@ -15,6 +15,7 @@ package restore
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup"
@@ -412,7 +413,12 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 
 	brImage := "pingcap/br:" + tikvVersion
 	if restore.Spec.ToolImage != "" {
-		brImage = restore.Spec.ToolImage
+		toolImage := restore.Spec.ToolImage
+		if !strings.ContainsRune(toolImage, ':') {
+			toolImage = fmt.Sprintf("%s:%s", toolImage, tikvVersion)
+		}
+
+		brImage = toolImage
 	}
 
 	podSpec := &corev1.PodTemplateSpec{
