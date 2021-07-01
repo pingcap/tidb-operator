@@ -116,7 +116,7 @@ func (tc *TidbCluster) TiKVImage() string {
 	return image
 }
 
-// TiKVVersion return the image used by TiKV.
+// TiKVVersion return the image version used by TiKV.
 //
 // If TiKV isn't specified, return empty string.
 func (tc *TidbCluster) TiKVVersion() string {
