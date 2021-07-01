@@ -189,19 +189,36 @@ After the installation, take the following steps:
 
 2. Set `ulimit` for the Docker daemon:
 
-    Edit the file:
+    1. Create the systemd drop-in directory for the docker service:
 
-    {{< copyable "shell-regular" >}}
+        {{< copyable "shell-regular" >}}
 
-    ```shell
-    vim /etc/systemd/system/docker.service
-    ```
+        ```shell
+        mkdir -p /etc/systemd/system/docker.service.d
+        ```
 
-    Set `LimitNOFILE` to `1048576`. Here, you can set `LimitNOFILE` to a number equal to or greater than `1048576`.
+    2. Create a file named as `/etc/systemd/system/docker.service.d/limit-nofile.conf`, and configure the value of the  `LimitNOFILE` parameter. The value must be a number equal to or greater than `1048576`.
 
-    > **Note:**
-    >
-    > `LimitNOFILE` must be explicitly set to `1048576` or a greater value, other than `infinity` by default. Due to [a bug of `systemd`](https://github.com/systemd/systemd/commit/6385cb31ef443be3e0d6da5ea62a267a49174688#diff-108b33cf1bd0765d116dd401376ca356L1186), the `infinity` value in some versions of `systemd` is `65536`.
+        {{< copyable "shell-regular" >}}
+
+        ```shell
+        cat > /etc/systemd/system/docker.service.d/limit-nofile.conf <<EOF
+        [Service]
+        LimitNOFILE=1048576
+        EOF
+        ```
+
+        > **Note:**
+        >
+        > DO NOT set the value of `LimitNOFILE` to `infinity`. Due to [a bug of `systemd`](https://github.com/systemd/systemd/commit/6385cb31ef443be3e0d6da5ea62a267a49174688#diff-108b33cf1bd0765d116dd401376ca356L1186), the `infinity` value of `systemd` in some versions is `65536`.
+
+    3. Reload the configuration.
+
+        {{< copyable "shell-regular" >}}
+
+        ```shell
+        systemctl daemon-reload && systemctl restart docker
+        ```
 
 ## Kubernetes service
 
