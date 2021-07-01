@@ -17,6 +17,21 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/initialize-a-cluster/']
 
 请参考 TidbInitializer [示例](https://github.com/pingcap/tidb-operator/blob/master/manifests/initializer/tidb-initializer.yaml)和 [API 文档](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.md)（示例和 API 文档请切换到当前使用的 TiDB Operator 版本）以及下面的步骤，完成 TidbInitializer CR，保存到文件 `${cluster_name}/tidb-initializer.yaml`。
 
+### 设置集群的命名空间和名称
+
+在 `${cluster_name}/tidb-initializer.yaml` 文件中，修改 `spec.cluster.namespace` 和 `spec.cluster.name` 字段:
+
+{{< copyable "shell-regular" >}}
+
+```yaml
+# ...
+spec:
+  # ...
+  cluster:
+    namespace: ${cluster_namespace}
+    name: ${cluster_name}
+```
+
 ### 初始化账号和密码设置
 
 集群创建时默认会创建 `root` 账号，但是密码为空，这会带来一些安全性问题。可以通过如下步骤为 `root` 账号设置初始密码：
