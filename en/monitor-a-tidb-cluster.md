@@ -144,8 +144,8 @@ metadata:
 spec:
   clusters:
     - name: basic
-  kubePrometheusURL: "your-kube-prometheus-url"
-  alertmanagerURL: "your-alert-manager-url"
+  kubePrometheusURL: http://prometheus-k8s.monitoring:9090
+  alertmanagerURL: alertmanager-main.monitoring:9093
   prometheus:
     baseImage: prom/prometheus
     version: v2.18.1
