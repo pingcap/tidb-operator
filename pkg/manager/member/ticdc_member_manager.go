@@ -58,6 +58,35 @@ func NewTiCDCMemberManager(deps *controller.Dependencies, ticdcUpgrader Upgrader
 	return m
 }
 
+<<<<<<< HEAD
+=======
+func (m *ticdcMemberManager) syncTiCDCConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
+	if tc.Spec.TiCDC.Config == nil || tc.Spec.TiCDC.Config.OnlyOldItems() {
+		return nil, nil
+	}
+
+	newCm, err := getTiCDCConfigMap(tc)
+	if err != nil {
+		return nil, err
+	}
+
+	var inUseName string
+	if set != nil {
+		inUseName = FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
+			return strings.HasPrefix(name, controller.TiCDCMemberName(tc.Name))
+		})
+	}
+
+	klog.V(3).Info("get ticdc in use config map name: ", inUseName)
+
+	err = updateConfigMapIfNeed(m.deps.ConfigMapLister, tc.BaseTiCDCSpec().ConfigUpdateStrategy(), inUseName, newCm)
+	if err != nil {
+		return nil, err
+	}
+	return m.deps.TypedControl.CreateOrUpdateConfigMap(tc, newCm)
+}
+
+>>>>>>> 83a2db04... Fixed potential nil pointer issues (#4054)
 // Sync fulfills the manager.Manager interface
 func (m *ticdcMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()

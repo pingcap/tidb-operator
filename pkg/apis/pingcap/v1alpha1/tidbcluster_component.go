@@ -223,26 +223,63 @@ func (a *componentAccessorImpl) TerminationGracePeriodSeconds() *int64 {
 
 // BaseTiDBSpec returns the base spec of TiDB servers
 func (tc *TidbCluster) BaseTiDBSpec() ComponentAccessor {
+<<<<<<< HEAD
 	return &componentAccessorImpl{&tc.Spec, &tc.Spec.TiDB.ComponentSpec}
+=======
+	var spec *ComponentSpec
+	if tc.Spec.TiDB != nil {
+		spec = &tc.Spec.TiDB.ComponentSpec
+	}
+
+	return buildTidbClusterComponentAccessor(ComponentTiDB, tc, spec)
+>>>>>>> 83a2db04... Fixed potential nil pointer issues (#4054)
 }
 
 // BaseTiKVSpec returns the base spec of TiKV servers
 func (tc *TidbCluster) BaseTiKVSpec() ComponentAccessor {
+<<<<<<< HEAD
 	return &componentAccessorImpl{&tc.Spec, &tc.Spec.TiKV.ComponentSpec}
+=======
+	var spec *ComponentSpec
+	if tc.Spec.TiKV != nil {
+		spec = &tc.Spec.TiKV.ComponentSpec
+	}
+
+	return buildTidbClusterComponentAccessor(ComponentTiKV, tc, spec)
+>>>>>>> 83a2db04... Fixed potential nil pointer issues (#4054)
 }
 
 // BaseTiFlashSpec returns the base spec of TiFlash servers
 func (tc *TidbCluster) BaseTiFlashSpec() ComponentAccessor {
+<<<<<<< HEAD
 	return &componentAccessorImpl{&tc.Spec, &tc.Spec.TiFlash.ComponentSpec}
+=======
+	var spec *ComponentSpec
+	if tc.Spec.TiFlash != nil {
+		spec = &tc.Spec.TiFlash.ComponentSpec
+	}
+
+	return buildTidbClusterComponentAccessor(ComponentTiFlash, tc, spec)
+>>>>>>> 83a2db04... Fixed potential nil pointer issues (#4054)
 }
 
 // BaseTiCDCSpec returns the base spec of TiCDC servers
 func (tc *TidbCluster) BaseTiCDCSpec() ComponentAccessor {
+<<<<<<< HEAD
 	return &componentAccessorImpl{&tc.Spec, &tc.Spec.TiCDC.ComponentSpec}
+=======
+	var spec *ComponentSpec
+	if tc.Spec.TiCDC != nil {
+		spec = &tc.Spec.TiCDC.ComponentSpec
+	}
+
+	return buildTidbClusterComponentAccessor(ComponentTiCDC, tc, spec)
+>>>>>>> 83a2db04... Fixed potential nil pointer issues (#4054)
 }
 
 // BasePDSpec returns the base spec of PD servers
 func (tc *TidbCluster) BasePDSpec() ComponentAccessor {
+<<<<<<< HEAD
 	return &componentAccessorImpl{&tc.Spec, &tc.Spec.PD.ComponentSpec}
 }
 
@@ -254,4 +291,39 @@ func (tc *TidbCluster) BasePumpSpec() (ComponentAccessor, bool) {
 		return nil, false
 	}
 	return &componentAccessorImpl{&tc.Spec, &tc.Spec.Pump.ComponentSpec}, true
+=======
+	var spec *ComponentSpec
+	if tc.Spec.PD != nil {
+		spec = &tc.Spec.PD.ComponentSpec
+	}
+
+	return buildTidbClusterComponentAccessor(ComponentPD, tc, spec)
+}
+
+// BasePumpSpec returns the base spec of Pump:
+func (tc *TidbCluster) BasePumpSpec() ComponentAccessor {
+	var spec *ComponentSpec
+	if tc.Spec.Pump != nil {
+		spec = &tc.Spec.Pump.ComponentSpec
+	}
+
+	return buildTidbClusterComponentAccessor(ComponentPump, tc, spec)
+}
+
+func (dc *DMCluster) BaseDiscoverySpec() ComponentAccessor {
+	return buildDMClusterComponentAccessor(ComponentDMDiscovery, dc, nil)
+}
+
+func (dc *DMCluster) BaseMasterSpec() ComponentAccessor {
+	return buildDMClusterComponentAccessor(ComponentDMMaster, dc, &dc.Spec.Master.ComponentSpec)
+}
+
+func (dc *DMCluster) BaseWorkerSpec() ComponentAccessor {
+	var spec *ComponentSpec
+	if dc.Spec.Worker != nil {
+		spec = &dc.Spec.Worker.ComponentSpec
+	}
+
+	return buildDMClusterComponentAccessor(ComponentDMWorker, dc, spec)
+>>>>>>> 83a2db04... Fixed potential nil pointer issues (#4054)
 }
