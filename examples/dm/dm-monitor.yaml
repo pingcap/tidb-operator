@@ -22,5 +22,5 @@ spec:
     - name: basic
     initializer:
       baseImage: pingcap/dm-monitor-initializer
-      version: v2.0.0
+      version: v2.0.5
   imagePullPolicy: IfNotPresent
