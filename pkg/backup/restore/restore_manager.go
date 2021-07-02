@@ -375,7 +375,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		})
 	}
 
-	if restore.Spec.To != nil && tc.Spec.TiDB.TLSClient != nil && tc.Spec.TiDB.TLSClient.Enabled && !tc.SkipTLSWhenConnectTiDB() {
+	if restore.Spec.To != nil && tc.Spec.TiDB != nil && tc.Spec.TiDB.TLSClient != nil && tc.Spec.TiDB.TLSClient.Enabled && !tc.SkipTLSWhenConnectTiDB() {
 		args = append(args, "--client-tls=true")
 		clientSecretName := util.TiDBClientTLSSecretName(restore.Spec.BR.Cluster)
 		if restore.Spec.To.TLSClientSecretName != nil {
