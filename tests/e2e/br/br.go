@@ -36,7 +36,7 @@ import (
 )
 
 var (
-	tidbReadyTimeout       = time.Minute * 15
+	tidbReadyTimeout       = time.Minute * 5
 	backupCompleteTimeout  = time.Minute * 3
 	restoreCompleteTimeout = time.Minute * 3
 )
