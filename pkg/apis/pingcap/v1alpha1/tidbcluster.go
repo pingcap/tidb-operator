@@ -115,26 +115,6 @@ func (tc *TidbCluster) TiKVImage() string {
 	return image
 }
 
-<<<<<<< HEAD
-=======
-// TiKVVersion return the image version used by TiKV.
-//
-// If TiKV isn't specified, return empty string.
-func (tc *TidbCluster) TiKVVersion() string {
-	if tc.Spec.TiKV == nil {
-		return ""
-	}
-
-	image := tc.TiKVImage()
-	colonIdx := strings.LastIndexByte(image, ':')
-	if colonIdx >= 0 {
-		return image[colonIdx+1:]
-	}
-
-	return "latest"
-}
-
->>>>>>> 83a2db04... Fixed potential nil pointer issues (#4054)
 func (tc *TidbCluster) TiKVContainerPrivilege() *bool {
 	if tc.Spec.TiKV == nil || tc.Spec.TiKV.Privileged == nil {
 		pri := false
