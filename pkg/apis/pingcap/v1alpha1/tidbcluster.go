@@ -397,14 +397,10 @@ func (tc *TidbCluster) GetPDFailureReplicas() int32 {
 }
 
 func (tc *TidbCluster) PDStsDesiredReplicas() int32 {
-<<<<<<< HEAD
-	return tc.Spec.PD.Replicas + tc.GetPDFailureReplicas()
-=======
 	if tc.Spec.PD == nil {
 		return 0
 	}
-	return tc.Spec.PD.Replicas + tc.GetPDDeletedFailureReplicas()
->>>>>>> 83a2db04... Fixed potential nil pointer issues (#4054)
+	return tc.Spec.PD.Replicas + tc.GetPDFailureReplicas()
 }
 
 func (tc *TidbCluster) PDStsActualReplicas() int32 {
@@ -612,14 +608,8 @@ func (tc *TidbCluster) PDIsAvailable() bool {
 	if tc.Spec.PD == nil {
 		return true
 	}
-<<<<<<< HEAD
 	lowerLimit := tc.Spec.PD.Replicas/2 + 1
 	if int32(len(tc.Status.PD.Members)) < lowerLimit {
-=======
-
-	lowerLimit := (tc.Spec.PD.Replicas+int32(len(tc.Status.PD.PeerMembers)))/2 + 1
-	if int32(len(tc.Status.PD.Members)+len(tc.Status.PD.PeerMembers)) < lowerLimit {
->>>>>>> 83a2db04... Fixed potential nil pointer issues (#4054)
 		return false
 	}
 
