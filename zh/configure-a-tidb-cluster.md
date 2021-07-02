@@ -41,9 +41,9 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/configure-a-tidb-cluster/','/zh/tidb-
 
 相关参数的格式如下：
 
-- `spec.version`，格式为 `imageTag`，例如 `v5.0.1`
+- `spec.version`，格式为 `imageTag`，例如 `v5.1.0`
 - `spec.<pd/tidb/tikv/pump/tiflash/ticdc>.baseImage`，格式为 `imageName`，例如 `pingcap/tidb`
-- `spec.<pd/tidb/tikv/pump/tiflash/ticdc>.version`，格式为 `imageTag`，例如 `v5.0.1`
+- `spec.<pd/tidb/tikv/pump/tiflash/ticdc>.version`，格式为 `imageTag`，例如 `v5.1.0`
 
 ### 推荐配置
 
@@ -177,7 +177,7 @@ kind: TidbCluster
 metadata:
   name: basic
 spec:
-  version: v5.0.1
+  version: v5.1.0
   pvReclaimPolicy: Retain
   discovery:
     limits:
@@ -291,7 +291,7 @@ metadata:
 spec:
 ....
   tidb:
-    image: pingcap/tidb:v5.0.1
+    image: pingcap/tidb:v5.1.0
     imagePullPolicy: IfNotPresent
     replicas: 1
     service:
@@ -313,7 +313,7 @@ metadata:
 spec:
 ....
   tidb:
-    image: pingcap/tidb:v5.0.1
+    image: pingcap/tidb:v5.1.0
     imagePullPolicy: IfNotPresent
     replicas: 1
     service:
@@ -343,7 +343,7 @@ metadata:
 spec:
 ....
   tikv:
-    image: pingcap/tikv:v5.0.1
+    image: pingcap/tikv:v5.1.0
     config:
       storage:
         block-cache:
@@ -363,7 +363,7 @@ metadata:
 spec:
 ....
   tikv:
-    image: pingcap/tikv:v5.0.1
+    image: pingcap/tikv:v5.1.0
     config: |
       [storage]
         [storage.block-cache]
@@ -391,7 +391,7 @@ metadata:
 spec:
 .....
   pd:
-    image: pingcap/pd:v5.0.1
+    image: pingcap/pd:v5.1.0
     config:
       lease: 3
       enable-prevote: true
@@ -407,7 +407,7 @@ metadata:
 spec:
 .....
   pd:
-    image: pingcap/pd:v5.0.1
+    image: pingcap/pd:v5.1.0
     config: |
       lease = 3
       enable-prevote = true
@@ -503,7 +503,7 @@ kind: TidbCluster
 metadata:
   name: basic
 spec:
-  version: v5.0.1
+  version: v5.1.0
   pvReclaimPolicy: Retain
   discovery: {}
   pd:

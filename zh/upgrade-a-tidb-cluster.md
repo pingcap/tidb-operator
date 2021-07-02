@@ -26,7 +26,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/upgrade-a-tidb-cluster/']
 
     `version` 字段格式如下：
 
-    - `spec.version`，格式为 `imageTag`，例如 `v5.0.1`
+    - `spec.version`，格式为 `imageTag`，例如 `v5.1.0`
     - `spec.<pd/tidb/tikv/pump/tiflash/ticdc>.version`，格式为 `imageTag`，例如 `v3.1.0`
 
     {{< copyable "shell-regular" >}}
