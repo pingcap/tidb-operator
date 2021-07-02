@@ -157,7 +157,7 @@ func renderTidbCluster(tc *v1alpha1.TidbCluster, svc *v1.Service, podList *v1.Po
 	var pdCPU resource.Quantity
 	var pdMemory resource.Quantity
 	var pdStorage resource.Quantity
-	if tc.Spec.PD.Requests != nil {
+	if tc.Spec.PD != nil && tc.Spec.PD.Requests != nil {
 		if cpu := tc.Spec.PD.Requests.Cpu(); cpu != nil {
 			pdCPU = *cpu
 		}
@@ -171,7 +171,7 @@ func renderTidbCluster(tc *v1alpha1.TidbCluster, svc *v1.Service, podList *v1.Po
 	var tikvCPU resource.Quantity
 	var tikvMemory resource.Quantity
 	var tikvStorage resource.Quantity
-	if tc.Spec.TiKV.Requests != nil {
+	if tc.Spec.TiKV != nil && tc.Spec.TiKV.Requests != nil {
 		if cpu := tc.Spec.TiKV.Requests.Cpu(); cpu != nil {
 			tikvCPU = *cpu
 		}
@@ -185,7 +185,7 @@ func renderTidbCluster(tc *v1alpha1.TidbCluster, svc *v1.Service, podList *v1.Po
 	var tidbCPU resource.Quantity
 	var tidbMemory resource.Quantity
 	var tidbStorage resource.Quantity
-	if tc.Spec.TiDB.Requests != nil {
+	if tc.Spec.TiDB != nil && tc.Spec.TiDB.Requests != nil {
 		if cpu := tc.Spec.TiDB.Requests.Cpu(); cpu != nil {
 			tidbCPU = *cpu
 		}
