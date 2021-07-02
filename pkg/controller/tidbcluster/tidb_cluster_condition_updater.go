@@ -68,7 +68,7 @@ func (u *tidbClusterConditionUpdater) updateReadyCondition(tc *v1alpha1.TidbClus
 	case tc.Spec.TiDB != nil && !tc.TiDBAllMembersReady():
 		reason = utiltidbcluster.TiDBUnhealthy
 		message = "TiDB(s) are not healthy"
-	case !tc.TiFlashAllStoresReady():
+	case tc.Spec.TiFlash != nil && !tc.TiFlashAllStoresReady():
 		reason = utiltidbcluster.TiFlashStoreNotUp
 		message = "TiFlash store(s) are not up"
 	default:
