@@ -19,7 +19,7 @@ variable "cluster_name" {
 
 variable "cluster_version" {
   type    = string
-  default = "v5.0.1"
+  default = "v5.1.0"
 }
 
 variable "ssh_key_name" {
