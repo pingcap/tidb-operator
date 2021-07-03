@@ -112,7 +112,7 @@ func (m *ticdcMemberManager) syncTiCDCConfigMap(tc *v1alpha1.TidbCluster, set *a
 
 	klog.V(3).Info("get ticdc in use config map name: ", inUseName)
 
-	err = updateConfigMapIfNeed(m.deps.ConfigMapLister, tc.BaseTiDBSpec().ConfigUpdateStrategy(), inUseName, newCm)
+	err = updateConfigMapIfNeed(m.deps.ConfigMapLister, tc.BaseTiCDCSpec().ConfigUpdateStrategy(), inUseName, newCm)
 	if err != nil {
 		return nil, err
 	}
