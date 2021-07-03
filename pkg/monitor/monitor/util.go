@@ -898,7 +898,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		if monitor.Spec.Grafana != nil {
 			grafanaService := &core.Service{
 				ObjectMeta: meta.ObjectMeta{
-					Name:            grafanaName(monitor),
+					Name:            grafanaName(monitor, shard),
 					Namespace:       monitor.Namespace,
 					Labels:          util.CombineStringMap(grafanaLabel.Labels(), monitor.Spec.Grafana.Service.Labels, monitor.Spec.Labels),
 					OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
