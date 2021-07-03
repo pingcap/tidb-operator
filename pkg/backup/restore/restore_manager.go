@@ -15,6 +15,7 @@ package restore
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup"
@@ -374,7 +375,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		})
 	}
 
-	if restore.Spec.To != nil && tc.Spec.TiDB.TLSClient != nil && tc.Spec.TiDB.TLSClient.Enabled && !tc.SkipTLSWhenConnectTiDB() {
+	if restore.Spec.To != nil && tc.Spec.TiDB != nil && tc.Spec.TiDB.TLSClient != nil && tc.Spec.TiDB.TLSClient.Enabled && !tc.SkipTLSWhenConnectTiDB() {
 		args = append(args, "--client-tls=true")
 		clientSecretName := util.TiDBClientTLSSecretName(restore.Spec.BR.Cluster)
 		if restore.Spec.To.TLSClientSecretName != nil {
@@ -422,7 +423,12 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 
 	brImage := "pingcap/br:" + tikvVersion
 	if restore.Spec.ToolImage != "" {
-		brImage = restore.Spec.ToolImage
+		toolImage := restore.Spec.ToolImage
+		if !strings.ContainsRune(toolImage, ':') {
+			toolImage = fmt.Sprintf("%s:%s", toolImage, tikvVersion)
+		}
+
+		brImage = toolImage
 	}
 
 	podSpec := &corev1.PodTemplateSpec{

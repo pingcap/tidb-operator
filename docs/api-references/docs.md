@@ -253,7 +253,8 @@ string
 <td>
 <em>(Optional)</em>
 <p>ToolImage specifies the tool image used in <code>Backup</code>, which supports BR and Dumpling images.
-For examples <code>spec.toolImage: pingcap/br:v4.0.8</code> or <code>spec.toolImage: pingcap/dumpling:v4.0.8</code></p>
+For examples <code>spec.toolImage: pingcap/br:v4.0.8</code> or <code>spec.toolImage: pingcap/dumpling:v4.0.8</code>
+For BR image, if it does not contain tag, Pod will use image &lsquo;ToolImage:${TiKV_Version}&rsquo;.</p>
 </td>
 </tr>
 <tr>
@@ -1151,7 +1152,8 @@ string
 <td>
 <em>(Optional)</em>
 <p>ToolImage specifies the tool image used in <code>Restore</code>, which supports BR and TiDB Lightning images.
-For examples <code>spec.toolImage: pingcap/br:v4.0.8</code> or <code>spec.toolImage: pingcap/tidb-lightning:v4.0.8</code></p>
+For examples <code>spec.toolImage: pingcap/br:v4.0.8</code> or <code>spec.toolImage: pingcap/tidb-lightning:v4.0.8</code>
+For BR image, if it does not contain tag, Pod will use image &lsquo;ToolImage:${TiKV_Version}&rsquo;.</p>
 </td>
 </tr>
 <tr>
@@ -2322,6 +2324,17 @@ map[string]string
 </tr>
 <tr>
 <td>
+<code>labels</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
 <code>tolerations</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#toleration-v1-core">
@@ -3215,7 +3228,8 @@ string
 <td>
 <em>(Optional)</em>
 <p>ToolImage specifies the tool image used in <code>Backup</code>, which supports BR and Dumpling images.
-For examples <code>spec.toolImage: pingcap/br:v4.0.8</code> or <code>spec.toolImage: pingcap/dumpling:v4.0.8</code></p>
+For examples <code>spec.toolImage: pingcap/br:v4.0.8</code> or <code>spec.toolImage: pingcap/dumpling:v4.0.8</code>
+For BR image, if it does not contain tag, Pod will use image &lsquo;ToolImage:${TiKV_Version}&rsquo;.</p>
 </td>
 </tr>
 <tr>
@@ -11358,7 +11372,8 @@ string
 <td>
 <em>(Optional)</em>
 <p>ToolImage specifies the tool image used in <code>Restore</code>, which supports BR and TiDB Lightning images.
-For examples <code>spec.toolImage: pingcap/br:v4.0.8</code> or <code>spec.toolImage: pingcap/tidb-lightning:v4.0.8</code></p>
+For examples <code>spec.toolImage: pingcap/br:v4.0.8</code> or <code>spec.toolImage: pingcap/tidb-lightning:v4.0.8</code>
+For BR image, if it does not contain tag, Pod will use image &lsquo;ToolImage:${TiKV_Version}&rsquo;.</p>
 </td>
 </tr>
 <tr>
@@ -20797,6 +20812,17 @@ map[string]string
 <tr>
 <td>
 <code>annotations</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>labels</code></br>
 <em>
 map[string]string
 </em>

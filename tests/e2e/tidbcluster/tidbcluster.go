@@ -242,10 +242,31 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
 					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 
-					ginkgo.By("Check custom labels and add will not lost")
-					checkCustomLabelAndAnn(tc, c)
-				})
+					ginkgo.By("Check custom labels and annotations will not lost")
+					framework.ExpectNoError(checkCustomLabelAndAnn(tc, c, tc.Spec.Labels[fixture.ClusterCustomKey], time.Minute, 10*time.Second), "failed to check labels and annotations")
 
+					ginkgo.By("Change labels and annotations")
+					newValue := "new-value"
+					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+						tc.Spec.Labels[fixture.ClusterCustomKey] = newValue
+						tc.Spec.Annotations[fixture.ClusterCustomKey] = newValue
+						tc.Spec.PD.ComponentSpec.Labels[fixture.ComponentCustomKey] = newValue
+						tc.Spec.PD.ComponentSpec.Annotations[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiKV.ComponentSpec.Labels[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiKV.ComponentSpec.Annotations[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiDB.ComponentSpec.Labels[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiDB.ComponentSpec.Annotations[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiDB.Service.Labels[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiDB.Service.Annotations[fixture.ComponentCustomKey] = newValue
+						return nil
+					})
+					framework.ExpectNoError(err, "failed to change configuration of TidbCluster: %q", tc.Name)
+					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+
+					ginkgo.By("Check custom labels and annotations changed")
+					framework.ExpectNoError(checkCustomLabelAndAnn(tc, c, newValue, 10*time.Minute, 10*time.Second), "failed to check labels and annotations")
+				})
 			})
 		}
 	})
@@ -850,6 +871,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		})
 		framework.ExpectEqual(err, wait.ErrWaitTimeout, "tidbmonitor and tidbcluster PVReclaimPolicy should not affect each other")
 
+		ginkgo.By("Check custom labels and annotations")
+		checkMonitorCustomLabelAndAnn(tm, c)
+
 		ginkgo.By("Delete tidbmonitor")
 		err = cli.PingcapV1alpha1().TidbMonitors(tm.Namespace).Delete(tm.Name, &metav1.DeleteOptions{})
 		framework.ExpectNoError(err, "delete tidbmonitor failed")
@@ -1141,6 +1165,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to update TidbCluster: %q", tc.Name)
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
+
+			ginkgo.By("Check custom labels and annotations for TidbInitializer")
+			checkInitializerCustomLabelAndAnn(ti, c)
 		})
 
 		ginkgo.It("should enable TLS for MySQL Client and between Heterogeneous TiDB components", func() {
@@ -2848,83 +2875,154 @@ func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tcVersio
 }
 
 // checkCustomLabelAndAnn check the custom set labels and ann set in `GetTidbCluster`
-func checkCustomLabelAndAnn(tc *v1alpha1.TidbCluster, c clientset.Interface) {
-	if tc.Spec.TiDB != nil {
+func checkCustomLabelAndAnn(tc *v1alpha1.TidbCluster, c clientset.Interface, expectValue string, timeout, pollInterval time.Duration) error {
+	checkValue := func(k, v1 string, ms ...map[string]string) error {
+		for _, m := range ms {
+			v2, ok := m[k]
+			if !ok {
+				return fmt.Errorf("key %s doesn't exist in %v", k, m)
+			}
+			if v2 != v1 {
+				return fmt.Errorf("value %s doesn't equal %s in map", v2, v1)
+			}
+		}
+		return nil
+	}
+
+	var checkErr error
+	err := wait.PollImmediate(pollInterval, timeout, func() (done bool, err error) {
 		listOptions := metav1.ListOptions{
-			LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Component(label.TiDBLabelVal).Labels()).String(),
+			LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Discovery().Labels()).String(),
 		}
 		list, err := c.CoreV1().Pods(tc.Namespace).List(listOptions)
 		framework.ExpectNoError(err)
+		framework.ExpectNotEqual(len(list.Items), 0, "expect discovery exists")
 		for _, pod := range list.Items {
-			_, ok := pod.Labels[fixture.ClusterCustomKey]
-			framework.ExpectEqual(ok, true)
-
-			_, ok = pod.Labels[fixture.ComponentCustomKey]
-			framework.ExpectEqual(ok, true)
-
-			_, ok = pod.Annotations[fixture.ClusterCustomKey]
-			framework.ExpectEqual(ok, true)
-
-			_, ok = pod.Annotations[fixture.ComponentCustomKey]
-			framework.ExpectEqual(ok, true)
+			checkErr = checkValue(fixture.ClusterCustomKey, expectValue, pod.Labels, pod.Annotations)
+			if checkErr != nil {
+				return false, nil
+			}
 		}
 
-		// check service
-		svcList, err := c.CoreV1().Services(tc.Namespace).List(listOptions)
-		framework.ExpectNoError(err)
-		for _, svc := range svcList.Items {
-			// skip the headless one
-			if svc.Spec.ClusterIP == "None" {
-				continue
+		if tc.Spec.TiDB != nil {
+			listOptions = metav1.ListOptions{
+				LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Component(label.TiDBLabelVal).Labels()).String(),
+			}
+			list, err = c.CoreV1().Pods(tc.Namespace).List(listOptions)
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(len(list.Items), 0, "expect tidb pod exists")
+			for _, pod := range list.Items {
+				for _, k := range []string{fixture.ClusterCustomKey, fixture.ComponentCustomKey} {
+					checkErr = checkValue(k, expectValue, pod.Labels, pod.Annotations)
+					if checkErr != nil {
+						return false, nil
+					}
+				}
 			}
 
-			_, ok := svc.Labels[fixture.ComponentCustomKey]
-			framework.ExpectEqual(ok, true)
+			// check service
+			svcList, err := c.CoreV1().Services(tc.Namespace).List(listOptions)
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(len(list.Items), 0, "expect tidb svc exists")
+			for _, svc := range svcList.Items {
+				// skip the headless one
+				if svc.Spec.ClusterIP == "None" {
+					continue
+				}
 
-			_, ok = svc.Annotations[fixture.ComponentCustomKey]
-			framework.ExpectEqual(ok, true)
+				checkErr = checkValue(fixture.ComponentCustomKey, expectValue, svc.Labels, svc.Annotations)
+				if checkErr != nil {
+					return false, nil
+				}
+			}
 		}
+
+		if tc.Spec.TiKV != nil {
+			listOptions = metav1.ListOptions{
+				LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Component(label.TiKVLabelVal).Labels()).String(),
+			}
+			list, err = c.CoreV1().Pods(tc.Namespace).List(listOptions)
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(len(list.Items), 0, "expect tikv pod exists")
+			for _, pod := range list.Items {
+				for _, k := range []string{fixture.ClusterCustomKey, fixture.ComponentCustomKey} {
+					checkErr = checkValue(k, expectValue, pod.Labels, pod.Annotations)
+					if checkErr != nil {
+						return false, nil
+					}
+				}
+			}
+		}
+
+		if tc.Spec.PD != nil {
+			listOptions = metav1.ListOptions{
+				LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Component(label.PDLabelVal).Labels()).String(),
+			}
+			list, err = c.CoreV1().Pods(tc.Namespace).List(listOptions)
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(len(list.Items), 0, "expect pd pod exists")
+			for _, pod := range list.Items {
+				for _, k := range []string{fixture.ClusterCustomKey, fixture.ComponentCustomKey} {
+					checkErr = checkValue(k, expectValue, pod.Labels, pod.Annotations)
+					if checkErr != nil {
+						return false, nil
+					}
+				}
+			}
+		}
+
+		return true, nil
+	})
+
+	if err == wait.ErrWaitTimeout {
+		err = checkErr
+	}
+	return err
+}
+
+// checkCustomLabelAndAnn check the custom set labels and ann set in `NewTidbMonitor`
+func checkMonitorCustomLabelAndAnn(tm *v1alpha1.TidbMonitor, c clientset.Interface) {
+	listOptions := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(label.NewMonitor().Instance(tm.Name).Monitor().Labels()).String(),
+	}
+	pods, err := c.CoreV1().Pods(tm.Namespace).List(listOptions)
+	framework.ExpectNoError(err)
+	framework.ExpectNotEqual(len(pods.Items), 0, "expect monitor pod exists")
+	for _, pod := range pods.Items {
+		_, ok := pod.Labels[fixture.ClusterCustomKey]
+		framework.ExpectEqual(ok, true)
+		_, ok = pod.Annotations[fixture.ClusterCustomKey]
+		framework.ExpectEqual(ok, true)
 	}
 
-	if tc.Spec.TiKV != nil {
-		listOptions := metav1.ListOptions{
-			LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Component(label.TiKVLabelVal).Labels()).String(),
-		}
-		list, err := c.CoreV1().Pods(tc.Namespace).List(listOptions)
-		framework.ExpectNoError(err)
-		for _, pod := range list.Items {
-			_, ok := pod.Labels[fixture.ClusterCustomKey]
-			framework.ExpectEqual(ok, true)
+	svcs, err := c.CoreV1().Services(tm.Namespace).List(listOptions)
+	framework.ExpectNoError(err)
+	framework.ExpectNotEqual(len(pods.Items), 0, "expect monitor svc exists")
+	for _, svc := range svcs.Items {
+		_, ok := svc.Labels[fixture.ClusterCustomKey]
+		framework.ExpectEqual(ok, true)
+		_, ok = svc.Annotations[fixture.ClusterCustomKey]
+		framework.ExpectEqual(ok, true)
 
-			_, ok = pod.Labels[fixture.ComponentCustomKey]
-			framework.ExpectEqual(ok, true)
-
-			_, ok = pod.Annotations[fixture.ClusterCustomKey]
-			framework.ExpectEqual(ok, true)
-
-			_, ok = pod.Annotations[fixture.ComponentCustomKey]
-			framework.ExpectEqual(ok, true)
-		}
+		_, ok = svc.Labels[fixture.ComponentCustomKey]
+		framework.ExpectEqual(ok, true)
+		_, ok = svc.Annotations[fixture.ComponentCustomKey]
+		framework.ExpectEqual(ok, true)
 	}
+}
 
-	if tc.Spec.PD != nil {
-		listOptions := metav1.ListOptions{
-			LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Component(label.PDLabelVal).Labels()).String(),
-		}
-		list, err := c.CoreV1().Pods(tc.Namespace).List(listOptions)
-		framework.ExpectNoError(err)
-		for _, pod := range list.Items {
-			_, ok := pod.Labels[fixture.ClusterCustomKey]
-			framework.ExpectEqual(ok, true)
-
-			_, ok = pod.Labels[fixture.ComponentCustomKey]
-			framework.ExpectEqual(ok, true)
-
-			_, ok = pod.Annotations[fixture.ClusterCustomKey]
-			framework.ExpectEqual(ok, true)
-
-			_, ok = pod.Annotations[fixture.ComponentCustomKey]
-			framework.ExpectEqual(ok, true)
-		}
+// checkInitializerCustomLabelAndAnn check the custom set labels and ann set in `NewTidbMonitor`
+func checkInitializerCustomLabelAndAnn(ti *v1alpha1.TidbInitializer, c clientset.Interface) {
+	listOptions := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(label.NewInitializer().Instance(ti.Name).Initializer(ti.Name).Labels()).String(),
+	}
+	list, err := c.CoreV1().Pods(ti.Namespace).List(listOptions)
+	framework.ExpectNoError(err)
+	framework.ExpectNotEqual(len(list.Items), 0, "expect initializer exists")
+	for _, pod := range list.Items {
+		_, ok := pod.Labels[fixture.ClusterCustomKey]
+		framework.ExpectEqual(ok, true)
+		_, ok = pod.Annotations[fixture.ClusterCustomKey]
+		framework.ExpectEqual(ok, true)
 	}
 }
