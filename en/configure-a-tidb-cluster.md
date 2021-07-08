@@ -60,7 +60,6 @@ It is recommended that you configure `spec.enableDynamicConfiguration: true` to 
 Versions required:
 
 - TiDB 4.0.1 or later versions
-- TiDB Operator 1.1.1 or later versions
 
 #### pvReclaimPolicy
 
@@ -286,8 +285,6 @@ TiDB parameters can be configured by `spec.tidb.config` in TidbCluster Custom Re
 
 For example:
 
-For TiDB Operator v1.1.6 and later versions, configure the parameters in the TOML format as follows:
-
 ```yaml
 apiVersion: pingcap.com/v1alpha1
 kind: TidbCluster
@@ -308,28 +305,6 @@ spec:
       cpu: 1
 ```
 
-For TiDB Operator versions earlier than v1.1.6, configure the parameters in the YAML format as follows:
-
-```yaml
-apiVersion: pingcap.com/v1alpha1
-kind: TidbCluster
-metadata:
-  name: basic
-spec:
-....
-  tidb:
-    image: pingcap/tidb:v5.1.0
-    imagePullPolicy: IfNotPresent
-    replicas: 1
-    service:
-      type: ClusterIP
-    config:
-      split-table: true
-      oom-action: "log"
-    requests:
-      cpu: 1
-```
-
 For all the configurable parameters of TiDB, refer to [TiDB Configuration File](https://pingcap.com/docs/stable/reference/configuration/tidb-server/configuration-file/).
 
 > **Note:**
@@ -341,8 +316,6 @@ For all the configurable parameters of TiDB, refer to [TiDB Configuration File](
 TiKV parameters can be configured by `spec.tikv.config` in TidbCluster Custom Resource.
 
 For example:
-
-For TiDB Operator v1.1.6 and later versions, configure the parameters in the TOML format as follows:
 
 ```yaml
 apiVersion: pingcap.com/v1alpha1
@@ -362,26 +335,6 @@ spec:
       cpu: 2
 ```
 
-For TiDB Operator versions earlier than v1.1.6, configure the parameters in the YAML format as follows:
-
-```yaml
-apiVersion: pingcap.com/v1alpha1
-kind: TidbCluster
-metadata:
-  name: basic
-spec:
-....
-  tikv:
-    image: pingcap/tikv:v5.0.1
-    config:
-      storage:
-        block-cache:
-          capacity: "16GB"
-    replicas: 1
-    requests:
-      cpu: 2
-```
-
 For all the configurable parameters of TiKV, refer to [TiKV Configuration File](https://pingcap.com/docs/stable/reference/configuration/tikv-server/configuration-file/).
 
 > **Note:**
@@ -393,8 +346,6 @@ For all the configurable parameters of TiKV, refer to [TiKV Configuration File](
 PD parameters can be configured by `spec.pd.config` in TidbCluster Custom Resource.
 
 For example:
-
-For TiDB Operator v1.1.6 and later versions, configure the parameters in the TOML format as follows:
 
 ```yaml
 apiVersion: pingcap.com/v1alpha1
@@ -410,22 +361,6 @@ spec:
       enable-prevote = true
 ```
 
-For TiDB Operator versions earlier than v1.1.6, configure the parameters in the YAML format as follows:
-
-```yaml
-apiVersion: pingcap.com/v1alpha1
-kind: TidbCluster
-metadata:
-  name: basic
-spec:
-.....
-  pd:
-    image: pingcap/pd:v5.0.1
-    config:
-      lease: 3
-      enable-prevote: true
-```
-
 For all the configurable parameters of PD, refer to [PD Configuration File](https://pingcap.com/docs/stable/reference/configuration/pd-server/configuration-file/).
 
 > **Note:**
@@ -438,8 +373,6 @@ For all the configurable parameters of PD, refer to [PD Configuration File](http
 TiFlash parameters can be configured by `spec.tiflash.config` in TidbCluster Custom Resource.
 
 For example:
-
-For TiDB Operator v1.1.6 and later versions, configure the parameters in the TOML format as follows:
 
 ```yaml
 apiVersion: pingcap.com/v1alpha1
@@ -459,28 +392,6 @@ spec:
           level = "information"
           errorlog = "/data0/logs/error.log"
           log = "/data0/logs/server.log"
-```
-
-For TiDB Operator versions earlier than v1.1.6, configure the parameters in the YAML format as follows:
-
-```yaml
-apiVersion: pingcap.com/v1alpha1
-kind: TidbCluster
-metadata:
-  name: basic
-spec:
-  ...
-  tiflash:
-    config:
-      config:
-       flash:
-          flash_cluster:
-            log: "/data0/logs/flash_cluster_manager.log"
-        logger:
-          count: 10
-          level: information
-          errorlog: "/data0/logs/error.log"
-          log: "/data0/logs/server.log"
 ```
 
 For all the configurable parameters of TiFlash, refer to [TiFlash Configuration File](https://pingcap.com/docs/stable/tiflash/tiflash-configuration/).
@@ -528,7 +439,7 @@ For all configurable start parameters of TiCDC, see [TiCDC configuration](https:
 
 When you perform a rolling update to the TiDB cluster, Kubernetes sends a [`TERM`](https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods) signal to the TiDB server before it stops the TiDB Pod. When the TiDB server receives the `TERM` signal, it tries to wait for all connections to close. After 15 seconds, the TiDB server forcibly closes all the connections and exits the process.
 
-Starting from v1.1.2, TiDB Operator supports gracefully upgrading the TiDB cluster. You can enable this feature by configuring the following items:
+You can enable this feature by configuring the following items:
 
 - `spec.tidb.terminationGracePeriodSeconds`: The longest tolerable duration to delete the old TiDB Pod during the rolling upgrade. If this duration is exceeded, the TiDB Pod will be deleted forcibly.
 - `spec.tidb.lifecycle`: Sets the `preStop` hook for the TiDB Pod, which is the operation executed before the TiDB server stops.
@@ -630,7 +541,7 @@ For how to configure the `spec.tidb.storageVolumes` field, refer to [Multiple di
         mountPath: ${mountPath}
 ```
 
-#### Configure using `spec.tidb.additionalVolumes` (supported starting from v1.1.8)
+#### Configure using `spec.tidb.additionalVolumes`
 
 In the following example, NFS is used as the storage, and TiDB Operator uses the `${volumeName}` PV to store slow logs. The log file path is `${mountPath}/${volumeName}`.
 

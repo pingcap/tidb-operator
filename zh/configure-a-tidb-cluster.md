@@ -55,7 +55,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/configure-a-tidb-cluster/','/zh/tidb-
 
 建议通过设置 `spec.enableDynamicConfiguration: true` 配置 TiKV 的 `--advertise-status-addr` 启动参数。
 
-版本支持：TiDB v4.0.1 及更高版本，TiDB Operator v1.1.1 及更高版本。
+版本支持：TiDB v4.0.1 及更高版本。
 
 #### pvReclaimPolicy
 
@@ -278,8 +278,6 @@ spec:
 
 你可以通过 TidbCluster CR 的 `spec.tidb.config` 来配置 TiDB 配置参数。
 
-对于 TiDB Operator v1.1.6 及之后版本，请使用 TOML 格式配置：
-
 ```yaml
 apiVersion: pingcap.com/v1alpha1
 kind: TidbCluster
@@ -300,28 +298,6 @@ spec:
       cpu: 1
 ```
 
-对于 TiDB Operator v1.1.6 之前版本，请使用 YAML 格式配置：
-
-```yaml
-apiVersion: pingcap.com/v1alpha1
-kind: TidbCluster
-metadata:
-  name: basic
-spec:
-....
-  tidb:
-    image: pingcap/tidb:v5.1.0
-    imagePullPolicy: IfNotPresent
-    replicas: 1
-    service:
-      type: ClusterIP
-    config:
-      split-table: true
-      oom-action: "log"
-    requests:
-      cpu: 1
-```
-
 获取所有可以配置的 TiDB 配置参数，请参考 [TiDB 配置文档](https://pingcap.com/docs-cn/stable/tidb-configuration-file/)。
 
 > **注意：**
@@ -331,8 +307,6 @@ spec:
 #### 配置 TiKV 配置参数
 
 你可以通过 TidbCluster CR 的 `spec.tikv.config` 来配置 TiKV 配置参数。
-
-对于 TiDB Operator v1.1.6 及之后版本，请使用 TOML 格式配置：
 
 ```yaml
 apiVersion: pingcap.com/v1alpha1
@@ -352,26 +326,6 @@ spec:
       cpu: 2
 ```
 
-对于 TiDB Operator v1.1.6 之前版本，请使用 YAML 格式配置：
-
-```yaml
-apiVersion: pingcap.com/v1alpha1
-kind: TidbCluster
-metadata:
-  name: basic
-spec:
-....
-  tikv:
-    image: pingcap/tikv:v5.0.1
-    config:
-      storage:
-        block-cache:
-          capacity: "16GB"
-    replicas: 1
-    requests:
-      cpu: 2
-```
-
 获取所有可以配置的 TiKV 配置参数，请参考 [TiKV 配置文档](https://pingcap.com/docs-cn/stable/tikv-configuration-file/)
 
 > **注意：**
@@ -381,8 +335,6 @@ spec:
 #### 配置 PD 配置参数
 
 你可以通过 TidbCluster CR 的 `spec.pd.config` 来配置 PD 配置参数。
-
-对于 TiDB Operator v1.1.6 及之后版本，请使用 TOML 格式配置：
 
 ```yaml
 apiVersion: pingcap.com/v1alpha1
@@ -398,22 +350,6 @@ spec:
       enable-prevote = true
 ```
 
-对于 TiDB Operator v1.1.6 之前版本，请使用 YAML 格式配置：
-
-```yaml
-apiVersion: pingcap.com/v1alpha1
-kind: TidbCluster
-metadata:
-  name: basic
-spec:
-.....
-  pd:
-    image: pingcap/pd:v5.0.1
-    config:
-      lease: 3
-      enable-prevote: true
-```
-
 获取所有可以配置的 PD 配置参数，请参考 [PD 配置文档](https://pingcap.com/docs-cn/stable/pd-configuration-file/)
 
 > **注意：**
@@ -424,8 +360,6 @@ spec:
 #### 配置 TiFlash 配置参数
 
 你可以通过 TidbCluster CR 的 `spec.tiflash.config` 来配置 TiFlash 配置参数。
-
-对于 TiDB Operator v1.1.6 及之后版本，请使用 TOML 格式配置：
 
 ```yaml
 apiVersion: pingcap.com/v1alpha1
@@ -445,28 +379,6 @@ spec:
           level = "information"
           errorlog = "/data0/logs/error.log"
           log = "/data0/logs/server.log"
-```
-
-对于 TiDB Operator v1.1.6 之前版本，请使用 YAML 格式配置：
-
-```yaml
-apiVersion: pingcap.com/v1alpha1
-kind: TidbCluster
-metadata:
-  name: basic
-spec:
-  ...
-  tiflash:
-    config:
-      config:
-        flash:
-          flash_cluster:
-            log: "/data0/logs/flash_cluster_manager.log"
-        logger:
-          count: 10
-          level: information
-          errorlog: "/data0/logs/error.log"
-          log: "/data0/logs/server.log"
 ```
 
 获取所有可以配置的 TiFlash 配置参数，请参考 [TiFlash 配置文档](https://pingcap.com/docs-cn/stable/tiflash/tiflash-configuration/)
@@ -512,7 +424,7 @@ spec:
 
 滚动更新 TiDB 集群的过程中，在停止 TiDB Pod 之前，Kubernetes 会向 TiDB server 进程发送一个 [`TERM`](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination) 信号。在收到 `TERM` 信号后，TiDB server 会尝试等待所有的连接关闭，不过 15 秒后会强制关闭所有连接并退出进程。
 
-从 v1.1.2 版本开始，TiDB Operator 已经支持平滑升级 TiDB 集群。通过配置下面两个属性来实现平滑升级 TiDB 集群：
+通过配置下面两个属性来实现平滑升级 TiDB 集群：
 
 - `spec.tidb.terminationGracePeriodSeconds`：滚动更新的时候，删除旧的 TiDB Pod 最多容忍的时间，即过了这个时间，TiDB Pod 会被强制删除；
 - `spec.tidb.lifecycle`：设置 TiDB Pod 的 `preStop` Hook，在 TiDB server 停止之前执行的操作。
@@ -606,7 +518,7 @@ spec:
         mountPath: ${mountPath}
 ```
 
-#### spec.tidb.additionalVolumes 配置（从 v1.1.8 版本开始支持）
+#### spec.tidb.additionalVolumes 配置
 
 下面以 NFS 为例配置 `spec.tidb.additionalVolumes`。TiDB Operator 将使用持久卷 `${volumeName}` 存储慢查询日志，日志文件路径为：`${mountPath}/${volumeName}`。具体支持的持久卷类型可参考 [Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#types-of-persistent-volumes)。
 
