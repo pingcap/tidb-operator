@@ -48,3 +48,8 @@ jobs:
       run: |
         SKIP_UP=y ./hack/e2e.sh -- --ginkgo.focus='Restarter'
       working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}
+
+    - name: Set up tmate session
+      if: ${{ failure() }}
+      uses: mxschmitt/action-tmate@v3
+      timeout-minutes: 60
