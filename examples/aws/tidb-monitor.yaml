@@ -27,7 +27,7 @@ spec:
         service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
       type: LoadBalancer
     username: admin
-    version: 6.7.6
+    version: 7.5.7
   imagePullPolicy: IfNotPresent
   initializer:
     baseImage: pingcap/tidb-monitor-initializer
