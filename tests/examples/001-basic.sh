@@ -26,8 +26,6 @@ function cleanup() {
     kubectl delete ns $NS
 }
 
-trap cleanup EXIT
-
 kubectl create ns $NS
 hack::wait_for_success 10 3 "t::ns_is_active $NS"
 
