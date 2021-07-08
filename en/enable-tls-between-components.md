@@ -15,6 +15,10 @@ To enable TLS between TiDB components, perform the following steps:
    - A set of server-side certificates for the PD/TiKV/TiDB/Pump/Drainer/TiFlash/TiKV Importer/TiDB Lightning component, saved as the Kubernetes Secret objects: `${cluster_name}-${component_name}-cluster-secret`.
    - A set of shared client-side certificates for the various clients of each component, saved as the Kubernetes Secret objects: `${cluster_name}-cluster-client-secret`.
 
+    > **Note:**
+    >
+    > The Secret objects you created must follow the above naming convention. Otherwise, the deployment of the TiDB components will fail.
+
 2. Deploy the cluster, and set `.spec.tlsCluster.enabled` to `true`.
 3. Configure `pd-ctl` and `tikv-ctl` to connect to the cluster.
 

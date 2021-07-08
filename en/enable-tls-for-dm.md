@@ -15,7 +15,12 @@ To enable TLS between components of the DM cluster, perform the following steps:
 
 1. Generate certificates for each component of the DM cluster to be created:
     - A set of server-side certificates for the DM-master/DM-worker component, saved as the Kubernetes Secret objects: `${cluster_name}-${component_name}-cluster-secret`
-   - A set of shared client-side certificates for the various clients of each component, saved as the Kubernetes Secret objects: `${cluster_name}-dm-client-secret`.
+    - A set of shared client-side certificates for the various clients of each component, saved as the Kubernetes Secret objects: `${cluster_name}-dm-client-secret`.
+
+    > **Note:**
+    >
+    > The Secret objects you created must follow the above naming convention. Otherwise, the deployment of the DM cluster will fail.
+
 2. Deploy the cluster, and set `.spec.tlsCluster.enabled` to `true`.
 3. Configure `dmctl` to connect to the cluster.
 
