@@ -21,6 +21,15 @@ source "${ROOT}/tests/examples/t.sh"
 
 NS=$(basename ${0%.*})
 
+function cleanup_if_succeess() {
+	if [ $? -eq 0 ]; then
+        kubectl -n $NS delete -f examples/basic/tidb-cluster.yaml
+        kubectl delete ns $NS
+    fi
+}
+
+trap cleanup_if_succeess EXIT
+
 kubectl create ns $NS
 hack::wait_for_success 10 3 "t::ns_is_active $NS"
 
