@@ -24,16 +24,6 @@ CERT_MANAGER_VERSION=0.14.1
 
 PORT_FORWARD_PID=
 
-function cleanup() {
-    if [ -n "$PORT_FORWARD_PID" ]; then
-        echo "info: kill port-forward background process (PID: $PORT_FORWARD_PID)"
-        kill $PORT_FORWARD_PID
-    fi
-    kubectl delete -f examples/selfsigned-tls/ --ignore-not-found
-    kubectl delete -f https://github.com/jetstack/cert-manager/releases/download/v${CERT_MANAGER_VERSION}/cert-manager.yaml --ignore-not-found
-    kubectl delete ns $NS
-}
-
 kubectl create ns $NS
 hack::wait_for_success 10 3 "t::ns_is_active $NS"
 
