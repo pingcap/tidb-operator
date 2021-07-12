@@ -29,7 +29,7 @@ import (
 	"k8s.io/klog"
 )
 
-// Controller controls restore.
+// Controller controls backupSchedules.
 type Controller struct {
 	deps *controller.Dependencies
 	// control returns an interface capable of syncing a restore.
@@ -39,7 +39,7 @@ type Controller struct {
 	queue workqueue.RateLimitingInterface
 }
 
-// NewController creates a backup schedule controller.
+// NewController creates a backupSchedule controller.
 func NewController(deps *controller.Dependencies) *Controller {
 	c := &Controller{
 		deps:    deps,
