@@ -541,7 +541,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			changePods: func(pods []*corev1.Pod) {
 				for _, pod := range pods {
 					if pod.GetName() == TikvPodName(upgradeTcName, 1) {
-						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Add(-15 * time.Minute).Format(time.RFC3339)}
+						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Add(-2000 * time.Minute).Format(time.RFC3339)}
 					}
 				}
 			},
