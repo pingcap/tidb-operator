@@ -34,7 +34,7 @@ spec:
   ## You can also set this in service account
   ## Ref: https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod
   # imagePullSecrets:
-  #   - name: secretName
+  # - name: secretName
 
   ## Image used to do miscellaneous tasks as sidecar container, such as:
   ## - execute sysctls when PodSecurityContext is set for some components, requires `sysctl` installed
@@ -193,7 +193,7 @@ spec:
     # version: "v5.1.0"
     # imagePullPolicy: IfNotPresent
     # imagePullSecrets:
-    #   - name: secretName
+    # - name: secretName
     # hostNetwork: false
     # serviceAccount: advanced-tidb-pd
     # priorityClassName: system-cluster-critical
@@ -380,7 +380,7 @@ spec:
     # version: "v5.1.0"
     # imagePullPolicy: IfNotPresent
     # imagePullSecrets:
-    #   - name: secretName
+    # - name: secretName
     # hostNetwork: false
     # serviceAccount: advanced-tidb-tidb
     # priorityClassName: system-cluster-critical
@@ -586,7 +586,7 @@ spec:
     # version: "v5.1.0"
     # imagePullPolicy: IfNotPresent
     # imagePullSecrets:
-    #   - name: secretName
+    # - name: secretName
     # hostNetwork: false
     # serviceAccount: advanced-tidb-tikv
     # priorityClassName: system-cluster-critical
@@ -762,7 +762,7 @@ spec:
   #     memory: 2Gi
   #   imagePullPolicy: IfNotPresent
   #   imagePullSecrets:
-  #     - name: secretName
+  #   - name: secretName
   #   hostNetwork: false
   #   serviceAccount: advanced-tidb-pump
   #   priorityClassName: system-cluster-critical
@@ -803,7 +803,7 @@ spec:
   #     memory: 2Gi
   #   imagePullPolicy: IfNotPresent
   #   imagePullSecrets:
-  #     - name: secretName
+  #   - name: secretName
   #   hostNetwork: false
   #   serviceAccount: advanced-tidb-ticdc
   #   priorityClassName: system-cluster-critical
@@ -847,7 +847,7 @@ spec:
   #   #   memory: 2Gi
   #   imagePullPolicy: IfNotPresent
   #   imagePullSecrets:
-  #     - name: secretName
+  #   - name: secretName
 
   #   ##################################
   #   # Advanced TiFlash Configuration #
