@@ -97,7 +97,7 @@ func checkTidbMonitorPod(tm *v1alpha1.TidbMonitor, kubeCli kubernetes.Interface)
 
 // checkTidbMonitorFunctional check whether TidbMonitor's Prometheus and Grafana are working now
 func checkTidbMonitorFunctional(tm *v1alpha1.TidbMonitor, fw portforward.PortForward) error {
-	for shard := int32(0); shard < *tm.Spec.Shards; shard++ {
+	for shard := int32(0); shard < tm.GetShards(); shard++ {
 		monitorName := monitor.GetMonitorShardName(tm, shard)
 		if err := checkPrometheusCommon(monitorName, tm.Namespace, fw); err != nil {
 			log.Logf("ERROR: tm[%s/%s]'s prometheus check error:%v", tm.Namespace, monitorName, err)
