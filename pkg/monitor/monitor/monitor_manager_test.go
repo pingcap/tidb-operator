@@ -81,7 +81,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 
 		if test.svcCreated {
 			for shard := int32(0); shard < *tm.Spec.Shards; shard++ {
-				_, err = tmm.deps.ServiceLister.Services(tm.Namespace).Get(PrometheusName(tm, shard))
+				_, err = tmm.deps.ServiceLister.Services(tm.Namespace).Get(PrometheusName(tm.Name, shard))
 				g.Expect(err).NotTo(HaveOccurred())
 				_, err = tmm.deps.ServiceLister.Services(tm.Namespace).Get(reloaderName(tm, shard))
 				g.Expect(err).NotTo(HaveOccurred())
@@ -90,7 +90,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 
 		if test.stsCreated {
 			for shard := int32(0); shard < *tm.Spec.Shards; shard++ {
-				_, err := tmm.deps.StatefulSetLister.StatefulSets(tm.Namespace).Get(GetMonitorShardName(tm, shard))
+				_, err := tmm.deps.StatefulSetLister.StatefulSets(tm.Namespace).Get(GetMonitorShardName(tm.Name, shard))
 				g.Expect(err).NotTo(HaveOccurred())
 			}
 		}
@@ -162,7 +162,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 			},
 			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
 				errExpectRequeuefunc(g, err, tmm, tm)
-				svc, err := tmm.deps.ServiceLister.Services(tm.Namespace).Get(PrometheusName(tm, 0))
+				svc, err := tmm.deps.ServiceLister.Services(tm.Namespace).Get(PrometheusName(tm.Name, 0))
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(svc.Spec.Ports).To(Equal([]v1.ServicePort{
 					{
@@ -205,7 +205,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 			},
 			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
 				errExpectRequeuefunc(g, err, tmm, tm)
-				svc, err := tmm.deps.ServiceLister.Services(tm.Namespace).Get(PrometheusName(tm, 0))
+				svc, err := tmm.deps.ServiceLister.Services(tm.Namespace).Get(PrometheusName(tm.Name, 0))
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(svc.Spec.Ports).To(Equal([]v1.ServicePort{
 					{
@@ -262,7 +262,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 			},
 			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
 				errExpectRequeuefunc(g, err, tmm, tm)
-				_, err = tmm.deps.ServiceLister.Services(tm.Namespace).Get(grafanaName(tm, 0))
+				_, err = tmm.deps.ServiceLister.Services(tm.Namespace).Get(GrafanaName(tm.Name, 0))
 				g.Expect(err).NotTo(HaveOccurred())
 				sts, err := tmm.deps.StatefulSetLister.StatefulSets(tm.Namespace).Get(GetMonitorObjectName(tm))
 				g.Expect(err).NotTo(HaveOccurred())
@@ -487,7 +487,7 @@ func TestTidbMonitorSyncUpdate(t *testing.T) {
 			},
 			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
 				errExpectRequeuefunc(g, err, tmm, tm)
-				_, err = tmm.deps.ServiceLister.Services(tm.Namespace).Get(grafanaName(tm, 0))
+				_, err = tmm.deps.ServiceLister.Services(tm.Namespace).Get(GrafanaName(tm.Name, 0))
 				g.Expect(err).NotTo(HaveOccurred())
 				sts, err := tmm.deps.StatefulSetLister.StatefulSets(tm.Namespace).Get(GetMonitorObjectName(tm))
 				g.Expect(err).NotTo(HaveOccurred())
@@ -506,15 +506,15 @@ func TestTidbMonitorSyncUpdate(t *testing.T) {
 			},
 			updateExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
 				g.Expect(err).NotTo(HaveOccurred())
-				grafanaSvc, err := tmm.deps.ServiceLister.Services(tm.Namespace).Get(grafanaName(tm, 0))
+				grafanaSvc, err := tmm.deps.ServiceLister.Services(tm.Namespace).Get(GrafanaName(tm.Name, 0))
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(grafanaSvc.Spec.Type).To(Equal(v1.ServiceTypeLoadBalancer))
 				g.Expect(grafanaSvc.Spec.Ports[0].Name).To(Equal("test"))
-				prometheusSvc, err := tmm.deps.ServiceLister.Services(tm.Namespace).Get(PrometheusName(tm, 0))
+				prometheusSvc, err := tmm.deps.ServiceLister.Services(tm.Namespace).Get(PrometheusName(tm.Name, 0))
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(prometheusSvc.Spec.Type).To(Equal(v1.ServiceTypeLoadBalancer))
 				g.Expect(prometheusSvc.Spec.Ports[0].Name).To(Equal("test"))
-				reloaderSvc, err := tmm.deps.ServiceLister.Services(tm.Namespace).Get(PrometheusName(tm, 0))
+				reloaderSvc, err := tmm.deps.ServiceLister.Services(tm.Namespace).Get(PrometheusName(tm.Name, 0))
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(reloaderSvc.Spec.Type).To(Equal(v1.ServiceTypeLoadBalancer))
 				g.Expect(reloaderSvc.Spec.Ports[0].Name).To(Equal("test"))

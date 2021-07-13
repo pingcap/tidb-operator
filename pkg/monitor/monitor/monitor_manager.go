@@ -465,7 +465,7 @@ func (m *MonitorManager) syncPrometheusIngress(monitor *v1alpha1.TidbMonitor) er
 	for shard := int32(0); shard < shards; shard++ {
 
 		if monitor.Spec.Prometheus.Ingress == nil {
-			err := m.removeIngressIfExist(monitor, PrometheusName(monitor, shard))
+			err := m.removeIngressIfExist(monitor, PrometheusName(monitor.Name, shard))
 			if err != nil {
 				return err
 			}
@@ -485,7 +485,7 @@ func (m *MonitorManager) syncGrafanaIngress(monitor *v1alpha1.TidbMonitor) error
 	shards := monitor.GetShards()
 	for shard := int32(0); shard < shards; shard++ {
 		if monitor.Spec.Grafana == nil || monitor.Spec.Grafana.Ingress == nil {
-			err := m.removeIngressIfExist(monitor, grafanaName(monitor, shard))
+			err := m.removeIngressIfExist(monitor, GrafanaName(monitor.Name, shard))
 			if err != nil {
 				return err
 			}

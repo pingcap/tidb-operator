@@ -51,12 +51,12 @@ func GetMonitorObjectName(monitor *v1alpha1.TidbMonitor) string {
 	return fmt.Sprintf("%s-monitor", monitor.Name)
 }
 
-func GetMonitorShardName(monitor *v1alpha1.TidbMonitor, shard int32) string {
-	base := fmt.Sprintf("%s-monitor", monitor.Name)
+func GetMonitorShardName(name string, shard int32) string {
+	base := fmt.Sprintf("%s-monitor", name)
 	if shard == 0 {
 		return base
 	}
-	return fmt.Sprintf("%s-monitor-shard-%d", monitor.Name, shard)
+	return fmt.Sprintf("%s-monitor-shard-%d", name, shard)
 }
 
 func GetMonitorInstanceName(monitor *v1alpha1.TidbMonitor, shard int32) string {
@@ -793,12 +793,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		// currently monitor label haven't managedBy label due to 1.0 historical problem.
 		// In order to be compatible with 1.0 release monitor, we have removed managedBy label for now.
 		// We would add managedBy label key during released 1.2 version
-		var instanceName string
-		if shard == 0 {
-			instanceName = monitor.Name
-		} else {
-			instanceName = fmt.Sprintf("%s-shard-%d", monitor.Name, shard)
-		}
+		var instanceName = GetMonitorInstanceName(monitor, shard)
 		selector := map[string]string{
 			label.InstanceLabelKey:  instanceName,
 			label.NameLabelKey:      "tidb-cluster",
@@ -815,7 +810,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 			grafanaPortName = *monitor.BaseGrafanaSpec().PortName()
 		}
 
-		prometheusName := PrometheusName(monitor, shard)
+		prometheusName := PrometheusName(monitor.Name, shard)
 		monitorLabel := label.NewMonitor().Instance(monitor.Name).Monitor()
 		promeLabel := monitorLabel.Copy().UsedBy("prometheus")
 		grafanaLabel := monitorLabel.Copy().UsedBy("grafana")
@@ -898,7 +893,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		if monitor.Spec.Grafana != nil {
 			grafanaService := &core.Service{
 				ObjectMeta: meta.ObjectMeta{
-					Name:            grafanaName(monitor, shard),
+					Name:            GrafanaName(monitor.Name, shard),
 					Namespace:       monitor.Namespace,
 					Labels:          util.CombineStringMap(grafanaLabel.Labels(), monitor.Spec.Grafana.Service.Labels, monitor.Spec.Labels),
 					OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
@@ -935,11 +930,11 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 }
 
 func getPrometheusIngress(monitor *v1alpha1.TidbMonitor, shard int32) *extensionsv1beta1.Ingress {
-	return getIngress(monitor, monitor.Spec.Prometheus.Ingress, PrometheusName(monitor, shard), 9090)
+	return getIngress(monitor, monitor.Spec.Prometheus.Ingress, PrometheusName(monitor.Name, shard), 9090)
 }
 
 func getGrafanaIngress(monitor *v1alpha1.TidbMonitor, shard int32) *extensionsv1beta1.Ingress {
-	return getIngress(monitor, monitor.Spec.Grafana.Ingress, grafanaName(monitor, shard), 3000)
+	return getIngress(monitor, monitor.Spec.Grafana.Ingress, GrafanaName(monitor.Name, shard), 3000)
 }
 
 func getIngress(monitor *v1alpha1.TidbMonitor, ingressSpec *v1alpha1.IngressSpec, svcName string, port int) *extensionsv1beta1.Ingress {
@@ -982,20 +977,20 @@ func getIngress(monitor *v1alpha1.TidbMonitor, ingressSpec *v1alpha1.IngressSpec
 	return ingress
 }
 
-func PrometheusName(monitor *v1alpha1.TidbMonitor, shard int32) string {
-	base := fmt.Sprintf("%s-prometheus", monitor.Name)
+func PrometheusName(name string, shard int32) string {
+	base := fmt.Sprintf("%s-prometheus", name)
 	if shard == 0 {
 		return base
 	}
-	return fmt.Sprintf("%s-prometheus-shard-%d", monitor.Name, shard)
+	return fmt.Sprintf("%s-prometheus-shard-%d", name, shard)
 }
 
-func grafanaName(monitor *v1alpha1.TidbMonitor, shard int32) string {
-	base := fmt.Sprintf("%s-grafana", monitor.Name)
+func GrafanaName(name string, shard int32) string {
+	base := fmt.Sprintf("%s-grafana", name)
 	if shard == 0 {
 		return base
 	}
-	return fmt.Sprintf("%s-grafana-shard-%d", monitor.Name, shard)
+	return fmt.Sprintf("%s-grafana-shard-%d", name, shard)
 }
 
 func reloaderName(monitor *v1alpha1.TidbMonitor, shard int32) string {
@@ -1072,7 +1067,7 @@ func getMonitorStatefulSetSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.Ti
 	if monitor.Spec.Replicas != nil {
 		replicas = *monitor.Spec.Replicas
 	}
-	name := GetMonitorShardName(monitor, shard)
+	name := GetMonitorShardName(monitor.Name, shard)
 	instanceName := GetMonitorInstanceName(monitor, shard)
 	stsLabels := buildTidbMonitorLabel(instanceName)
 	podLabels := util.CombineStringMap(stsLabels, monitor.Spec.Labels)
