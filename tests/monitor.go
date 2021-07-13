@@ -121,7 +121,7 @@ func checkPrometheusCommon(name, namespace string, fw portforward.PortForward, s
 	var prometheusAddr string
 	tmName := monitor.GetMonitorShardName(name, shard)
 	if fw != nil {
-		localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, namespace, monitor.PrometheusName(name, shard), 9090)
+		localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, namespace, fmt.Sprintf("svc/%s", monitor.PrometheusName(name, shard)), 9090)
 		if err != nil {
 			return err
 		}
@@ -209,7 +209,7 @@ func checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Clien
 
 	var addr string
 	if fw != nil {
-		localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, namespace, fmt.Sprintf("svc/%s", monitor.GrafanaName(name, shard)), 3000)
+		localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, namespace, fmt.Sprintf("svc/%s", svcName), 3000)
 		if err != nil {
 			return nil, err
 		}
