@@ -27,11 +27,18 @@ import (
 )
 
 const (
-	TiDBV3                        = "v3.0.20"
-	TiDBV4                        = "v4.0.12"
-	TiDBV5Prev                    = "v5.0.0"
-	TiDBV5                        = "v5.0.1"
-	TiDBNightlyVersion            = "nightly"
+	// TiDB Version
+	TiDBV3             = "v3.0.20"
+	TiDBV4             = "v4.0.12"
+	TiDBV5Prev         = "v5.0.0"
+	TiDBV5             = "v5.0.1"
+	TiDBNightlyVersion = "nightly"
+	// specific version
+	TiDBV4x0x9 = "v4.0.9"
+	TiDBV5x0x0 = "v5.0.0"
+	TiDBV5x0x2 = "v5.0.2"
+	TiDBV5x1x0 = "v5.1.0"
+
 	PrometheusImage               = "prom/prometheus"
 	PrometheusVersion             = "v2.18.1"
 	TiDBMonitorReloaderImage      = "pingcap/tidb-monitor-reloader"
@@ -51,11 +58,10 @@ const (
 func ListImages() []string {
 	images := []string{}
 	versions := make([]string, 0)
-	versions = append(versions, TiDBV3)
-	versions = append(versions, TiDBV4)
-	versions = append(versions, TiDBV5Prev)
-	versions = append(versions, TiDBV5)
-	versions = append(versions, TiDBNightlyVersion)
+	versions = append(versions,
+		TiDBV3, TiDBV4, TiDBV5Prev, TiDBV5, TiDBNightlyVersion,
+		TiDBV4x0x9, TiDBV5x0x0, TiDBV5x0x2, TiDBV5x1x0,
+	)
 	for _, v := range versions {
 		images = append(images, fmt.Sprintf("pingcap/pd:%s", v))
 		images = append(images, fmt.Sprintf("pingcap/tidb:%s", v))
