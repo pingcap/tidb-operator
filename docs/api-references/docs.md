@@ -345,6 +345,19 @@ Kubernetes core/v1.PodSecurityContext
 <p>PodSecurityContext of the component</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>priorityClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PriorityClassName of the component. Override the cluster-level one if present
+Optional: Defaults to cluster-level setting</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -3300,6 +3313,19 @@ Kubernetes core/v1.PodSecurityContext
 <td>
 <em>(Optional)</em>
 <p>PodSecurityContext of the component</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>priorityClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PriorityClassName of the component. Override the cluster-level one if present
+Optional: Defaults to cluster-level setting</p>
 </td>
 </tr>
 </tbody>

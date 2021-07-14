@@ -17991,6 +17991,8 @@ spec:
                       type: string
                   type: object
               type: object
+            priorityClassName:
+              type: string
             resources:
               properties:
                 limits:
@@ -19128,6 +19130,8 @@ spec:
                           type: string
                       type: object
                   type: object
+                priorityClassName:
+                  type: string
                 resources:
                   properties:
                     limits:

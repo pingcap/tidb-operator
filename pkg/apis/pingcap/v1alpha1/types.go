@@ -1416,6 +1416,11 @@ type BackupSpec struct {
 	// PodSecurityContext of the component
 	// +optional
 	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
+
+	// PriorityClassName of the component. Override the cluster-level one if present
+	// Optional: Defaults to cluster-level setting
+	// +optional
+	PriorityClassName *string `json:"priorityClassName,omitempty"`
 }
 
 // +k8s:openapi-gen=true
