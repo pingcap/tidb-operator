@@ -280,7 +280,7 @@ func checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Clien
 			return false, nil
 		}
 		if data.Status != "success" || len(data.Data.Result) < 1 {
-			log.Logf("ERROR: invalid response: status: %s, result: %v", data.Status, data.Data.Result)
+			log.Logf("ERROR: tm[%s/%s]'s invalid response: status: %s, result: %v", namespace, monitor.GetMonitorShardName(name, shard), data.Status, data.Data.Result)
 			return false, nil
 		}
 		return true, nil
