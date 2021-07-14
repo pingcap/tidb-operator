@@ -26,7 +26,6 @@ import (
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/br/framework"
 	brutil "github.com/pingcap/tidb-operator/tests/e2e/br/framework/br"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/blockwriter"
-	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/feature"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/portforward"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	utiltidbcluster "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
@@ -42,22 +41,48 @@ var (
 )
 
 const (
-	featKeyVersion   = "Version"
-	versionV4        = "V4"
-	versionV5        = "V5"
-	versionV42V5     = "V4->V5"
-	featVersionV4    = featKeyVersion + ":" + versionV4
-	featVersionV5    = featKeyVersion + ":" + versionV5
-	featVersionV42V5 = featKeyVersion + ":" + versionV42V5
-
-	featKeyType    = "Type"
-	typeBR         = "BR"
-	typeDumper     = "Dumper"
-	featTypeBR     = featKeyType + ":" + typeBR
-	featTypeDumper = featKeyType + ":" + typeDumper
-
-	featTLS = "TLS"
+	typeBR     string = "BR"
+	typeDumper string = "Dumper"
 )
+
+type option func(t *testcase)
+
+func enableTLS(t *testcase) {
+	t.enableTLS = true
+}
+
+type testcase struct {
+	backupVersion  string
+	restoreVersion string
+	typ            string
+	enableTLS      bool
+}
+
+func newTestCase(backupVersion, restoreVersion string, typ string, opts ...option) *testcase {
+	tc := &testcase{
+		backupVersion:  backupVersion,
+		restoreVersion: restoreVersion,
+		typ:            typ,
+	}
+
+	for _, opt := range opts {
+		opt(tc)
+	}
+
+	return tc
+}
+
+func (t *testcase) description() string {
+	builder := &strings.Builder{}
+
+	builder.WriteString(fmt.Sprintf("[%s][%s To %s]", t.typ, t.backupVersion, t.restoreVersion))
+
+	if t.enableTLS {
+		builder.WriteString(fmt.Sprintf("[TLS]"))
+	}
+
+	return builder.String()
+}
 
 var _ = ginkgo.Describe("Backup and Restore", func() {
 	f := e2eframework.NewFramework("br")
@@ -76,27 +101,43 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		framework.ExpectNoError(err)
 	})
 
-	feats := []feature.Features{
-		feature.New(featVersionV4, featTypeBR).Build(),
-		feature.New(featVersionV4, featTypeDumper).Build(),
-		// feature.New(featVersionV4, featTypeBR, featTLS).Build(),
-		// feature.New(featVersionV4, featTypeDumper, featTLS).Build(),
+	cases := []*testcase{
+		// V4 BR
+		newTestCase(utilimage.TiDBV4, utilimage.TiDBV4, typeBR),
+		// V4 Dumper
+		newTestCase(utilimage.TiDBV4, utilimage.TiDBV4, typeDumper),
+		// V5 BR
+		newTestCase(utilimage.TiDBV5, utilimage.TiDBV5, typeBR),
+		// V5 Dumper
+		newTestCase(utilimage.TiDBV5, utilimage.TiDBV5, typeDumper),
+		// V5 BR and enable TLS
+		newTestCase(utilimage.TiDBV5, utilimage.TiDBV5, typeBR, enableTLS),
+		// V5 Dumper and enable TLS
+		newTestCase(utilimage.TiDBV5, utilimage.TiDBV5, typeDumper, enableTLS),
+		// V4 -> V5 BR
+		newTestCase(utilimage.TiDBV4, utilimage.TiDBV5, typeBR),
+		// V4 -> V5 Dumper
+		newTestCase(utilimage.TiDBV4, utilimage.TiDBV5, typeDumper),
 
-		feature.New(featVersionV5, featTypeBR).Build(),
-		feature.New(featVersionV5, featTypeDumper).Build(),
-		feature.New(featVersionV5, featTypeBR, featTLS).Build(),
-		feature.New(featVersionV5, featTypeDumper, featTLS).Build(),
-
-		feature.New(featVersionV42V5, featTypeBR).Build(),
-		feature.New(featVersionV42V5, featTypeDumper).Build(),
+		// Specific Version
+		// V5.1.0 BR
+		newTestCase(utilimage.TiDBV5x1x0, utilimage.TiDBV5x1x0, typeBR),
+		// V4.0.9 -> v5.1.0 BR
+		newTestCase(utilimage.TiDBV4x0x9, utilimage.TiDBV5x1x0, typeBR),
+		// v5.0.0 -> v5.1.0 BR
+		newTestCase(utilimage.TiDBV5x0x0, utilimage.TiDBV5x1x0, typeBR),
+		// v5.0.2 -> v5.1.0 BR
+		newTestCase(utilimage.TiDBV5x0x2, utilimage.TiDBV5x1x0, typeBR),
 	}
 
-	for i := range feats {
-		feat := feats[i]
-		desc := feat.String() + "Backup and Restore"
+	for i := range cases {
+		tcase := cases[i]
 
-		enableTLS := feat.Has(featTLS)
-		typ := strings.ToLower(feat.Value(featKeyType))
+		enableTLS := tcase.enableTLS
+		typ := tcase.typ
+		backupVersion := tcase.backupVersion
+		restoreVersion := tcase.restoreVersion
+
 		// NOTE: mysql and test will be filtered by default
 		dbName := "e2etest"
 		backupClusterName := fmt.Sprintf("backup-with-%s", typ)
@@ -104,20 +145,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		backupName := fmt.Sprintf("%s-backup", backupClusterName)
 		restoreName := fmt.Sprintf("%s-restore", restoreClusterName)
 
-		var backupVersion, restoreVersion string
-		switch feat.Value(featKeyVersion) {
-		case versionV4:
-			backupVersion = utilimage.TiDBV4
-			restoreVersion = utilimage.TiDBV4
-		case versionV5:
-			backupVersion = utilimage.TiDBV5
-			restoreVersion = utilimage.TiDBV5
-		case versionV42V5:
-			backupVersion = utilimage.TiDBV4
-			restoreVersion = utilimage.TiDBV5
-		}
-
-		ginkgo.It(desc, func() {
+		ginkgo.It(tcase.description(), func() {
 			ns := f.Namespace.Name
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -219,7 +247,7 @@ func createRBAC(f *e2eframework.Framework) error {
 	return nil
 }
 
-func createBackupAndWaitForComplete(f *e2eframework.Framework, name, tcName, typ string) error {
+func createBackupAndWaitForComplete(f *e2eframework.Framework, name, tcName string, typ string) error {
 	ns := f.Namespace.Name
 	// secret to visit tidb cluster
 	s := brutil.GetSecret(ns, name, "")
