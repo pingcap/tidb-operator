@@ -78,7 +78,7 @@ func (t *testcase) description() string {
 	builder.WriteString(fmt.Sprintf("[%s][%s To %s]", t.typ, t.backupVersion, t.restoreVersion))
 
 	if t.enableTLS {
-		builder.WriteString(fmt.Sprintf("[TLS]"))
+		builder.WriteString("[TLS]")
 	}
 
 	return builder.String()
