@@ -140,10 +140,10 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 		// NOTE: mysql and test will be filtered by default
 		dbName := "e2etest"
-		backupClusterName := fmt.Sprintf("backup-with-%s", typ)
-		restoreClusterName := fmt.Sprintf("restore-with-%s", typ)
-		backupName := fmt.Sprintf("%s-backup", backupClusterName)
-		restoreName := fmt.Sprintf("%s-restore", restoreClusterName)
+		backupClusterName := fmt.Sprintf("backup-with-%s-%s", typ, strings.ReplaceAll(backupVersion, ".", "x"))
+		restoreClusterName := fmt.Sprintf("restore-with-%s-%s", typ, strings.ReplaceAll(restoreVersion, ".", "x"))
+		backupName := backupClusterName
+		restoreName := restoreClusterName
 
 		ginkgo.It(tcase.description(), func() {
 			ns := f.Namespace.Name
