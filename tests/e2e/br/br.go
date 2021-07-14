@@ -134,7 +134,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		tcase := cases[i]
 
 		enableTLS := tcase.enableTLS
-		typ := tcase.typ
+		typ := strings.ToLower(tcase.typ)
 		backupVersion := tcase.backupVersion
 		restoreVersion := tcase.restoreVersion
 
