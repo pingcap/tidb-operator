@@ -176,13 +176,13 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPod(payload *admitPayload, store
 			klog.Infof("%s[%s/%s]'s tikv pod[%s/%s] failed to delete,%v", controllerKind, namespace, controllerName, namespace, name, err)
 			return util.ARFail(err)
 		}
-		return pc.admitDeleteUpTiKVPodDuringUpgrading(payload, store)
+		return pc.admitDeleteUpTiKVPodDuringUpgrading(payload, store, storesInfo)
 	}
 
 	return util.ARSuccess()
 }
 
-func (pc *PodAdmissionControl) admitDeleteUpTiKVPodDuringUpgrading(payload *admitPayload, store *pdapi.StoreInfo) *admission.AdmissionResponse {
+func (pc *PodAdmissionControl) admitDeleteUpTiKVPodDuringUpgrading(payload *admitPayload, store *pdapi.StoreInfo, stores *pdapi.StoresInfo) *admission.AdmissionResponse {
 	name := payload.pod.Name
 	namespace := payload.pod.Namespace
 	tc, ok := payload.controller.(*v1alpha1.TidbCluster)
@@ -190,6 +190,12 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPodDuringUpgrading(payload *admi
 		err := fmt.Errorf("tikv pod[%s/%s]'s controller is not a tidbcluster", namespace, name)
 		return util.ARFail(err)
 	}
+
+	if tc.TiKVStsActualReplicas() < 2 {
+		klog.Infof("TiKV statefulset replicas are less than 2, skip waiting to evict region leader for Pod %s/%s", namespace, name)
+		return util.ARSuccess()
+	}
+
 	controllerName := tc.GetName()
 	controllerKind := payload.controller.GetObjectKind().GroupVersionKind().Kind
 
@@ -205,7 +211,7 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPodDuringUpgrading(payload *admi
 		}
 	}
 
-	if !isTiKVReadyToUpgrade(payload.pod, store, tc.TiKVEvictLeaderTimeout()) {
+	if !isTiKVReadyToUpgrade(payload.pod, store, stores, tc.TiKVEvictLeaderTimeout()) {
 		return &admission.AdmissionResponse{
 			Allowed: false,
 		}
