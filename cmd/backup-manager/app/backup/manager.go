@@ -176,7 +176,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 		oldTikvGCTime, err = bm.GetTikvGCLifeTime(ctx, db)
 		if err != nil {
 			errs = append(errs, err)
-			klog.Errorf("cluster %s get %s failed, err: %s", bm, constants.TikvGCVariable, err)
+			klog.Errorf("cluster %s get %s failed, err: %s", bm, constants.TidbGCVariable, err)
 			uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 				Type:    v1alpha1.BackupFailed,
 				Status:  corev1.ConditionTrue,
@@ -186,12 +186,12 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 			errs = append(errs, uerr)
 			return errorutils.NewAggregate(errs)
 		}
-		klog.Infof("cluster %s %s is %s", bm, constants.TikvGCVariable, oldTikvGCTime)
+		klog.Infof("cluster %s %s is %s", bm, constants.TidbGCVariable, oldTikvGCTime)
 
 		oldTikvGCTimeDuration, err = time.ParseDuration(oldTikvGCTime)
 		if err != nil {
 			errs = append(errs, err)
-			klog.Errorf("cluster %s parse old %s failed, err: %s", bm, constants.TikvGCVariable, err)
+			klog.Errorf("cluster %s parse old %s failed, err: %s", bm, constants.TidbGCVariable, err)
 			uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 				Type:    v1alpha1.BackupFailed,
 				Status:  corev1.ConditionTrue,
@@ -207,7 +207,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 			tikvGCTimeDuration, err = time.ParseDuration(tikvGCLifeTime)
 			if err != nil {
 				errs = append(errs, err)
-				klog.Errorf("cluster %s parse configured %s failed, err: %s", bm, constants.TikvGCVariable, err)
+				klog.Errorf("cluster %s parse configured %s failed, err: %s", bm, constants.TidbGCVariable, err)
 				uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 					Type:    v1alpha1.BackupFailed,
 					Status:  corev1.ConditionTrue,
@@ -222,7 +222,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 			tikvGCTimeDuration, err = time.ParseDuration(tikvGCLifeTime)
 			if err != nil {
 				errs = append(errs, err)
-				klog.Errorf("cluster %s parse default %s failed, err: %s", bm, constants.TikvGCVariable, err)
+				klog.Errorf("cluster %s parse default %s failed, err: %s", bm, constants.TidbGCVariable, err)
 				uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 					Type:    v1alpha1.BackupFailed,
 					Status:  corev1.ConditionTrue,
@@ -248,7 +248,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 				errs = append(errs, uerr)
 				return errorutils.NewAggregate(errs)
 			}
-			klog.Infof("set cluster %s %s to %s success", bm, constants.TikvGCVariable, tikvGCLifeTime)
+			klog.Infof("set cluster %s %s to %s success", bm, constants.TidbGCVariable, tikvGCLifeTime)
 		}
 	}
 
@@ -284,7 +284,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 			errs = append(errs, uerr)
 			return errorutils.NewAggregate(errs)
 		}
-		klog.Infof("reset cluster %s %s to %s success", bm, constants.TikvGCVariable, oldTikvGCTime)
+		klog.Infof("reset cluster %s %s to %s success", bm, constants.TidbGCVariable, oldTikvGCTime)
 	}
 
 	if backupErr != nil {

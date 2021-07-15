@@ -34,8 +34,13 @@ const (
 	// TikvGCLifeTime is the safe gc life time for dump tidb cluster data
 	TikvGCLifeTime = "72h"
 
-	// TikvGCVariable is the tikv gc life time variable name
-	TikvGCVariable = "tikv_gc_life_time"
+	// LegacyTikvGCVariable is the legacy tikv gc life time variable name before v5.0
+	// Move tikv gc configuration to sysvars
+	// Ref: https://github.com/pingcap/tidb/pull/21988
+	LegacyTikvGCVariable = "tikv_gc_life_time"
+
+	// TidbGCVariable is the tidb gc life time variable name
+	TidbGCVariable = "tidb_gc_life_time"
 
 	// TidbMetaDB is the database name for store meta info
 	TidbMetaDB = "mysql"
