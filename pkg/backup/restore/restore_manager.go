@@ -283,6 +283,7 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 					},
 				},
 			}, volumes...),
+			PriorityClassName: restore.Spec.PriorityClassName,
 		},
 	}
 
@@ -301,8 +302,6 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 			Template:     *podSpec,
 		},
 	}
-
-	job.Spec.Template.Spec.PriorityClassName = restore.Spec.PriorityClassName
 
 	return job, "", nil
 }
@@ -464,11 +463,12 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 					Resources:       restore.Spec.ResourceRequirements,
 				},
 			},
-			RestartPolicy:    corev1.RestartPolicyNever,
-			Tolerations:      restore.Spec.Tolerations,
-			ImagePullSecrets: restore.Spec.ImagePullSecrets,
-			Affinity:         restore.Spec.Affinity,
-			Volumes:          volumes,
+			RestartPolicy:     corev1.RestartPolicyNever,
+			Tolerations:       restore.Spec.Tolerations,
+			ImagePullSecrets:  restore.Spec.ImagePullSecrets,
+			Affinity:          restore.Spec.Affinity,
+			Volumes:           volumes,
+			PriorityClassName: restore.Spec.PriorityClassName,
 		},
 	}
 
@@ -487,8 +487,6 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 			Template:     *podSpec,
 		},
 	}
-
-	job.Spec.Template.Spec.PriorityClassName = restore.Spec.PriorityClassName
 
 	return job, "", nil
 }
