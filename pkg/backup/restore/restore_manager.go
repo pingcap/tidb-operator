@@ -302,9 +302,8 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 		},
 	}
 
-	if len(restore.Spec.PriorityClassName) > 0 {
-		job.Spec.Template.Spec.PriorityClassName = restore.Spec.PriorityClassName
-	}
+	job.Spec.Template.Spec.PriorityClassName = restore.Spec.PriorityClassName
+
 	return job, "", nil
 }
 
