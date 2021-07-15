@@ -865,3 +865,615 @@ func newPVC(tc *v1alpha1.TidbCluster, index string, anno string) *corev1.Persist
 		},
 	}
 }
+
+func TestScaleMulti(t *testing.T) {
+	type scaleOp struct {
+		scaling     int
+		ordinals    []int32
+		replicas    int32
+		deleteSlots sets.Int32
+	}
+	tests := []struct {
+		name             string
+		actual           *apps.StatefulSet
+		desired          *apps.StatefulSet
+		scaleParallelism int
+		wantOps          []scaleOp
+	}{
+		{
+			"scale 2 in one round without delete slots",
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(5),
+				},
+			},
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(3),
+				},
+			},
+			2,
+			[]scaleOp{
+				{
+					-1,
+					[]int32{4, 3},
+					3,
+					sets.NewInt32(),
+				},
+			},
+		},
+		{
+			"scale 2 in one round with delete slots",
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(5),
+				},
+			},
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[1,3]",
+					}},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(3),
+				},
+			},
+			2,
+			[]scaleOp{
+				{
+					-1,
+					[]int32{3, 1},
+					3,
+					sets.NewInt32(1, 3),
+				},
+			},
+		}, {
+			"scale 3 in two round without delete slots",
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(6),
+				},
+			},
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(3),
+				},
+			},
+			2,
+			[]scaleOp{
+				{
+					-1,
+					[]int32{5, 4},
+					4,
+					sets.NewInt32(),
+				}, {
+					-1,
+					[]int32{3},
+					3,
+					sets.NewInt32(),
+				},
+			},
+		},
+		{
+			"scale 3 in two round with delete slots",
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(6),
+				},
+			},
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[1,3,5]",
+					}},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(3),
+				},
+			},
+			2,
+			[]scaleOp{
+				{
+					-1,
+					[]int32{5, 3},
+					4,
+					sets.NewInt32(3, 5),
+				}, {
+					-1,
+					[]int32{1},
+					3,
+					sets.NewInt32(1, 3, 5),
+				},
+			},
+		}, {
+			"scale 2 in one round with previous delete slot withoud new delet slot",
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[1]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(5),
+				},
+			},
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(4),
+				},
+			},
+			2,
+			[]scaleOp{
+				{
+					1,
+					[]int32{1},
+					6,
+					sets.NewInt32(),
+				}, {
+					-1,
+					[]int32{5, 4},
+					4,
+					sets.NewInt32(),
+				},
+			},
+		}, {
+			"scale 3 in two round with previous delete slot withoud new delet slot",
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[1]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(5),
+				},
+			},
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(3),
+				},
+			},
+			2,
+			[]scaleOp{
+				{
+					1,
+					[]int32{1},
+					6,
+					sets.NewInt32(),
+				}, {
+					-1,
+					[]int32{5, 4},
+					4,
+					sets.NewInt32(),
+				}, {
+					-1,
+					[]int32{3},
+					3,
+					sets.NewInt32(),
+				},
+			},
+		}, {
+			"scale 2 in one round with different previous and new delete slot",
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[1]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(5),
+				},
+			},
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[2]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(4),
+				},
+			},
+			2,
+			[]scaleOp{
+				{
+					1,
+					[]int32{1},
+					6,
+					sets.NewInt32(),
+				}, {
+					-1,
+					[]int32{5, 2},
+					4,
+					sets.NewInt32(2),
+				},
+			},
+		}, {
+			"scale 3 in two round with different previous and new delete slot",
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[1]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(5),
+				},
+			},
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[2]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(3),
+				},
+			},
+			2,
+			[]scaleOp{
+				{
+					1,
+					[]int32{1},
+					6,
+					sets.NewInt32(),
+				}, {
+					-1,
+					[]int32{5, 4},
+					4,
+					sets.NewInt32(),
+				}, {
+					-1,
+					[]int32{2},
+					3,
+					sets.NewInt32(2),
+				},
+			},
+		}, {
+			"scale 2 in one round with same previous and new delete slot",
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[1]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(5),
+				},
+			},
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[1]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(3),
+				},
+			},
+			2,
+			[]scaleOp{
+				{
+					-1,
+					[]int32{5, 4},
+					3,
+					sets.NewInt32(1),
+				},
+			},
+		}, {
+			"scale 3 in two round with same previous and new delete slot",
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[1]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(5),
+				},
+			},
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[1]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(2),
+				},
+			},
+			2,
+			[]scaleOp{
+				{
+					-1,
+					[]int32{5, 4},
+					3,
+					sets.NewInt32(1),
+				}, {
+					-1,
+					[]int32{3},
+					2,
+					sets.NewInt32(1),
+				},
+			},
+		}, {
+			"scale 2 in one round without previous redundant and with new redundant delete slot",
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[1]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(5),
+				},
+			},
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[2,6]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(4),
+				},
+			},
+			2,
+			[]scaleOp{
+				{
+					1,
+					[]int32{1},
+					6,
+					sets.NewInt32(6),
+				},
+				{
+					-1,
+					[]int32{5, 2},
+					4,
+					sets.NewInt32(2, 6),
+				},
+			},
+		}, {
+			"scale 3 in two round without previous redundant and with new redundant delete slot",
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[1]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(5),
+				},
+			},
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[2,6]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(3),
+				},
+			},
+			2,
+			[]scaleOp{
+				{
+					1,
+					[]int32{1},
+					6,
+					sets.NewInt32(6),
+				},
+				{
+					-1,
+					[]int32{5, 4},
+					4,
+					sets.NewInt32(6),
+				}, {
+					-1,
+					[]int32{2},
+					3,
+					sets.NewInt32(2, 6),
+				},
+			},
+		}, {
+			"scale 2 in one round with previous redundant and without new redundant delete slot",
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[1,6]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(5),
+				},
+			},
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[2]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(4),
+				},
+			},
+			2,
+			[]scaleOp{
+				{
+					1,
+					[]int32{1},
+					6,
+					sets.NewInt32(),
+				},
+				{
+					-1,
+					[]int32{5, 2},
+					4,
+					sets.NewInt32(2),
+				},
+			},
+		}, {
+			"scale 3 in two round with previous redundant and without new redundant delete slot",
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[1,6]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(5),
+				},
+			},
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[2]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(3),
+				},
+			},
+			2,
+			[]scaleOp{
+				{
+					1,
+					[]int32{1},
+					6,
+					sets.NewInt32(),
+				},
+				{
+					-1,
+					[]int32{5, 4},
+					4,
+					sets.NewInt32(),
+				},
+				{
+					-1,
+					[]int32{2},
+					3,
+					sets.NewInt32(2),
+				},
+			},
+		}, {
+			"scale 2 in one round with previous redundant and with new redundant delete slot",
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[1,6]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(5),
+				},
+			},
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[2,7]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(4),
+				},
+			},
+			2,
+			[]scaleOp{
+				{
+					1,
+					[]int32{1},
+					6,
+					sets.NewInt32(7),
+				},
+				{
+					-1,
+					[]int32{5, 2},
+					4,
+					sets.NewInt32(2, 7),
+				},
+			},
+		}, {
+			"scale 3 in two round with previous redundant and without new redundant delete slot",
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[1,6]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(5),
+				},
+			},
+			&apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						helper.DeleteSlotsAnn: "[2,7]",
+					},
+				},
+				Spec: apps.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(3),
+				},
+			},
+			2,
+			[]scaleOp{
+				{
+					1,
+					[]int32{1},
+					6,
+					sets.NewInt32(7),
+				},
+				{
+					-1,
+					[]int32{5, 4},
+					4,
+					sets.NewInt32(7),
+				},
+				{
+					-1,
+					[]int32{2},
+					3,
+					sets.NewInt32(2, 7),
+				},
+			},
+		},
+	}
+
+	features.DefaultFeatureGate.Set("AdvancedStatefulSet=true")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			target := tt.actual.DeepCopy()
+			for i, op := range tt.wantOps {
+				t.Logf("scaleMulti %d", i)
+				scaling, ordinals, replicas, deleteSlots := scaleMulti(target, tt.desired, tt.scaleParallelism)
+				if diff := cmp.Diff(op.scaling, scaling); diff != "" {
+					t.Errorf("unexpected (-want, +got): %s", diff)
+				}
+				if diff := cmp.Diff(op.ordinals, ordinals); diff != "" {
+					t.Errorf("unexpected (-want, +got): %s", diff)
+				}
+				if diff := cmp.Diff(op.replicas, replicas); diff != "" {
+					t.Errorf("unexpected (-want, +got): %s", diff)
+				}
+				if diff := cmp.Diff(op.deleteSlots, deleteSlots); diff != "" {
+					t.Errorf("unexpected (-want, +got): %s", diff)
+				}
+				setReplicasAndDeleteSlots(target, replicas, deleteSlots)
+			}
+			if diff := cmp.Diff(tt.desired, target); diff != "" {
+				t.Errorf("unexpected (-want, +got): %s", diff)
+			}
+		})
+	}
+
+}

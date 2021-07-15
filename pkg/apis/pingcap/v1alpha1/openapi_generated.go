@@ -7905,6 +7905,20 @@ func schema_pkg_apis_pingcap_v1alpha1_TiFlashSpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
+					"scaleInParallelism": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ScaleInParallelism configures max scale in replicas for TiFlash. Defaults to 1",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"scaleOutParallelism": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ScaleOutParallelism configures max scale out replicas for TiFlash. Defaults to 1",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 				},
 				Required: []string{"replicas", "storageClaims"},
 			},
@@ -10256,6 +10270,20 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 							Description: "EnableNamedStatusPort enables status port(20180) in the Pod spec. If you set it to `true` for an existing cluster, the TiKV cluster will be rolling updated.",
 							Type:        []string{"boolean"},
 							Format:      "",
+						},
+					},
+					"scaleInParallelism": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ScaleInParallelism configures max scale in replicas for TiKV stores. Defaults to 1",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"scaleOutParallelism": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ScaleOutParallelism configures max scale out replicas for TiKV stores. Defaults to 1",
+							Type:        []string{"integer"},
+							Format:      "int32",
 						},
 					},
 				},

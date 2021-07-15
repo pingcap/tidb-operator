@@ -14684,6 +14684,32 @@ bool
 <p>RecoverFailover indicates that Operator can recover the failover Pods</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>scaleInParallelism</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ScaleInParallelism configures max scale in replicas for TiFlash.
+Defaults to 1</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>scaleOutParallelism</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ScaleOutParallelism configures max scale out replicas for TiFlash.
+Defaults to 1</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tikvbackupconfig">TiKVBackupConfig</h3>
@@ -18716,6 +18742,32 @@ bool
 <td>
 <p>EnableNamedStatusPort enables status port(20180) in the Pod spec.
 If you set it to <code>true</code> for an existing cluster, the TiKV cluster will be rolling updated.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>scaleInParallelism</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ScaleInParallelism configures max scale in replicas for TiKV stores.
+Defaults to 1</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>scaleOutParallelism</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ScaleOutParallelism configures max scale out replicas for TiKV stores.
+Defaults to 1</p>
 </td>
 </tr>
 </tbody>
