@@ -325,9 +325,9 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 			Template:     *podSpec,
 		},
 	}
-	if len(backup.Spec.PriorityClassName) >= 0 {
-		job.Spec.Template.Spec.PriorityClassName = backup.Spec.PriorityClassName
-	}
+
+	job.Spec.Template.Spec.PriorityClassName = backup.Spec.PriorityClassName
+
 	return job, "", nil
 }
 
@@ -514,9 +514,9 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 			Template:     *podSpec,
 		},
 	}
-	if len(backup.Spec.PriorityClassName) >= 0 {
-		job.Spec.Template.Spec.PriorityClassName = backup.Spec.PriorityClassName
-	}
+
+	job.Spec.Template.Spec.PriorityClassName = backup.Spec.PriorityClassName
+
 	return job, "", nil
 }
 

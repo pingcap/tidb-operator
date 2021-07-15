@@ -488,9 +488,9 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 			Template:     *podSpec,
 		},
 	}
-	if len(restore.Spec.PriorityClassName) > 0 {
-		job.Spec.Template.Spec.PriorityClassName = restore.Spec.PriorityClassName
-	}
+
+	job.Spec.Template.Spec.PriorityClassName = restore.Spec.PriorityClassName
+
 	return job, "", nil
 }
 
