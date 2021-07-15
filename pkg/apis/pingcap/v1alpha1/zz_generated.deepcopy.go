@@ -4235,6 +4235,11 @@ func (in *RestoreSpec) DeepCopyInto(out *RestoreSpec) {
 		*out = new(v1.PodSecurityContext)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.PriorityClassName != nil {
+		in, out := &in.PriorityClassName, &out.PriorityClassName
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 
