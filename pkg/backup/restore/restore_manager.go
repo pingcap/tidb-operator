@@ -301,6 +301,10 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 			Template:     *podSpec,
 		},
 	}
+
+	if restore.Spec.PriorityClassName != nil {
+		job.Spec.Template.Spec.PriorityClassName = *restore.Spec.PriorityClassName
+	}
 	return job, "", nil
 }
 
@@ -483,6 +487,9 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 			BackoffLimit: pointer.Int32Ptr(0),
 			Template:     *podSpec,
 		},
+	}
+	if restore.Spec.PriorityClassName != nil {
+		job.Spec.Template.Spec.PriorityClassName = *restore.Spec.PriorityClassName
 	}
 	return job, "", nil
 }
