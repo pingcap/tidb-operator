@@ -169,11 +169,12 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 					VolumeMounts:    volumeMounts,
 				},
 			},
-			RestartPolicy:    corev1.RestartPolicyNever,
-			Tolerations:      backup.Spec.Tolerations,
-			ImagePullSecrets: backup.Spec.ImagePullSecrets,
-			Affinity:         backup.Spec.Affinity,
-			Volumes:          volumes,
+			RestartPolicy:     corev1.RestartPolicyNever,
+			Tolerations:       backup.Spec.Tolerations,
+			ImagePullSecrets:  backup.Spec.ImagePullSecrets,
+			Affinity:          backup.Spec.Affinity,
+			Volumes:           volumes,
+			PriorityClassName: backup.Spec.PriorityClassName,
 		},
 	}
 
@@ -192,6 +193,7 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 			Template:     *podSpec,
 		},
 	}
+
 	return job, "", nil
 }
 
