@@ -1418,9 +1418,7 @@ type BackupSpec struct {
 	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
 
 	// PriorityClassName of Backup Job Pods
-	// Optional: Defaults to omitted
-	// +optional
-	PriorityClassName *string `json:"priorityClassName,omitempty"`
+	PriorityClassName string `json:"priorityClassName,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -1700,9 +1698,7 @@ type RestoreSpec struct {
 	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
 
 	// PriorityClassName of Restore Job Pods
-	// Optional: Defaults to omitted
-	// +optional
-	PriorityClassName *string `json:"priorityClassName,omitempty"`
+	PriorityClassName string `json:"priorityClassName,omitempty"`
 }
 
 // RestoreStatus represents the current status of a tidb cluster restore.
