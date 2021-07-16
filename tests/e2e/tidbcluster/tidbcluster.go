@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/onsi/ginkgo"
+	ginkgoconfig "github.com/onsi/ginkgo/config"
 	"github.com/onsi/gomega"
 	astsHelper "github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
@@ -1821,7 +1822,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	})
 
 	// test cases for tc upgrade
-	ginkgo.Context("upgrade should work correctly", func() {
+	ginkgo.Context("[Feature: Upgrade]", func() {
 		ginkgo.It("for tc and components version", func() {
 			ginkgo.By("Deploy initial tc")
 			tc := fixture.GetTidbCluster(ns, "upgrade-version", utilimage.TiDBV5Prev)
@@ -1956,25 +1957,38 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			gomega.Expect(tidbCm.Data["config-file"]).To(gomega.ContainSubstring("token-limit = 10000"))
 		})
 
-		ginkgo.It("for tc and components version upgrade from TiDB V4 to TiDB V5", func() {
+		type upgradeCase struct {
+			oldVersion              string
+			newVersion              string
+			configureOldTiDBCluster func(tc *v1alpha1.TidbCluster)
+			configureNewTiDBCluster func(tc *v1alpha1.TidbCluster)
+		}
+		upgradeTest := func(ucase upgradeCase) {
 			ginkgo.By("Deploy initial tc")
-			tc := fixture.GetTidbCluster(ns, "upgrade-version-v4-to-v5", utilimage.TiDBV4)
+			tcName := fmt.Sprintf("upgrade-%s-to-%s", strings.ReplaceAll(ucase.oldVersion, ".", "x"), strings.ReplaceAll(ucase.newVersion, ".", "x"))
+			tc := fixture.GetTidbCluster(ns, tcName, ucase.oldVersion)
 			tc = fixture.AddTiFlashForTidbCluster(tc)
 			tc = fixture.AddTiCDCForTidbCluster(tc)
 			tc = fixture.AddPumpForTidbCluster(tc)
+			if ucase.configureOldTiDBCluster != nil {
+				ucase.configureOldTiDBCluster(tc)
+			}
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 15*time.Minute, 10*time.Second)
 
 			ginkgo.By("Update tc version")
 			err := controller.GuaranteedUpdate(genericCli, tc, func() error {
-				tc.Spec.Version = utilimage.TiDBV5
+				tc.Spec.Version = ucase.newVersion
+				if ucase.configureNewTiDBCluster != nil {
+					ucase.configureNewTiDBCluster(tc)
+				}
 				return nil
 			})
-			framework.ExpectNoError(err, "failed to update tc version to %q", utilimage.TiDBV5)
+			framework.ExpectNoError(err, "failed to update tc version to %q", ucase.newVersion)
 			err = oa.WaitForTidbClusterReady(tc, 15*time.Minute, 10*time.Second)
 			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
 
 			ginkgo.By("Check components version")
-			componentVersion := utilimage.TiDBV5
+			componentVersion := ucase.newVersion
 			pdMemberName := controller.PDMemberName(tc.Name)
 			pdSts, err := stsGetter.StatefulSets(ns).Get(pdMemberName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, pdMemberName)
@@ -2011,6 +2025,179 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, pumpMemberName)
 			pumpImage := fmt.Sprintf("pingcap/tidb-binlog:%s", componentVersion)
 			framework.ExpectEqual(pumpSts.Spec.Template.Spec.Containers[0].Image, pumpImage, "pump sts image should be %q", pumpImage)
+		}
+
+		// upgrdae testing from v4 to v5
+		ginkgo.It("for tc and components version upgrade from TiDB V4 to TiDB V5", func() {
+			upgradeTest(upgradeCase{
+				oldVersion: utilimage.TiDBV4,
+				newVersion: utilimage.TiDBV5,
+			})
+		})
+
+		// upgrdae testing for specific versions
+		ginkgo.Context("Specific Version", func() {
+			configureV4x0x9 := func(tc *v1alpha1.TidbCluster) {
+				pdCfg := v1alpha1.NewPDConfig()
+				tikvCfg := v1alpha1.NewTiKVConfig()
+				tidbCfg := v1alpha1.NewTiDBConfig()
+				tiflashCfg := v1alpha1.NewTiFlashConfig()
+				pdCfg.Set("log.level", "info")
+				pdCfg.SetTable("replication",
+					"max-replicas", 3,
+					"location-labels", []string{"failure-domain.beta.kubernetes.io/region", "failure-domain.beta.kubernetes.io/zone", "kubernetes.io/hostname"})
+				pdCfg.SetTable("dashboard",
+					"internal-proxy", true,
+					"enable-telemetry", false)
+				tidbCfg.Set("new_collations_enabled_on_first_bootstrap", true)
+				tidbCfg.Set("enable-telemetry", false)
+				tidbCfg.Set("log.level", "info")
+				tidbCfg.SetTable("performance",
+					"max-procs", 0,
+					"tcp-keep-alive", true)
+				tikvCfg.Set("log.level", "info")
+				tikvCfg.Set("readpool.storage.use-unified-pool", true)
+				tikvCfg.Set("readpool.coprocessor.use-unified-pool", true)
+				tiflashCfg.Common.Set("mark_cache_size", 2147483648)
+				tiflashCfg.Common.Set("minmax_index_cache_size", 2147483648)
+				tiflashCfg.Common.Set("max_memory_usage", 10737418240)
+				tiflashCfg.Common.Set("max_memory_usage_for_all_queries", 32212254720)
+				tc.Spec.PD.Config = pdCfg
+				tc.Spec.TiKV.Config = tikvCfg
+				tc.Spec.TiDB.Config = tidbCfg
+				tc.Spec.TiFlash.Config = tiflashCfg
+			}
+			configureV5x0x0 := func(tc *v1alpha1.TidbCluster) {
+				pdCfg := v1alpha1.NewPDConfig()
+				tikvCfg := v1alpha1.NewTiKVConfig()
+				tidbCfg := v1alpha1.NewTiDBConfig()
+				tiflashCfg := v1alpha1.NewTiFlashConfig()
+				pdCfg.Set("log.level", "info")
+				pdCfg.SetTable("replication",
+					"max-replicas", 3,
+					"location-labels", []string{"failure-domain.beta.kubernetes.io/region", "failure-domain.beta.kubernetes.io/zone", "kubernetes.io/hostname"})
+				pdCfg.SetTable("dashboard",
+					"internal-proxy", true,
+					"enable-telemetry", false)
+				tidbCfg.Set("new_collations_enabled_on_first_bootstrap", true)
+				tidbCfg.Set("enable-telemetry", false)
+				tidbCfg.Set("log.level", "info")
+				tidbCfg.SetTable("performance",
+					"max-procs", 0,
+					"tcp-keep-alive", true)
+				tikvCfg.Set("log.level", "info")
+				tikvCfg.Set("readpool.storage.use-unified-pool", true)
+				tikvCfg.Set("readpool.coprocessor.use-unified-pool", true)
+				tiflashCfg.Common.Set("mark_cache_size", 2147483648)
+				tiflashCfg.Common.Set("minmax_index_cache_size", 2147483648)
+				tiflashCfg.Common.Set("max_memory_usage", 10737418240)
+				tiflashCfg.Common.Set("max_memory_usage_for_all_queries", 32212254720)
+				tc.Spec.PD.Config = pdCfg
+				tc.Spec.TiKV.Config = tikvCfg
+				tc.Spec.TiDB.Config = tidbCfg
+				tc.Spec.TiFlash.Config = tiflashCfg
+			}
+			configureV5x0x2 := func(tc *v1alpha1.TidbCluster) {
+				pdCfg := v1alpha1.NewPDConfig()
+				tikvCfg := v1alpha1.NewTiKVConfig()
+				tidbCfg := v1alpha1.NewTiDBConfig()
+				tiflashCfg := v1alpha1.NewTiFlashConfig()
+				pdCfg.Set("log.level", "info")
+				pdCfg.SetTable("replication",
+					"max-replicas", 3,
+					"location-labels", []string{"failure-domain.beta.kubernetes.io/region", "failure-domain.beta.kubernetes.io/zone", "kubernetes.io/hostname"})
+				pdCfg.SetTable("dashboard",
+					"internal-proxy", true,
+					"enable-telemetry", false)
+				tidbCfg.Set("new_collations_enabled_on_first_bootstrap", true)
+				tidbCfg.Set("enable-telemetry", false)
+				tidbCfg.Set("log.level", "info")
+				tidbCfg.SetTable("performance",
+					"max-procs", 0,
+					"tcp-keep-alive", true)
+				tikvCfg.Set("log.level", "info")
+				tikvCfg.Set("readpool.storage.use-unified-pool", true)
+				tikvCfg.Set("readpool.coprocessor.use-unified-pool", true)
+				tiflashCfg.Common.Set("mark_cache_size", 2147483648)
+				tiflashCfg.Common.Set("minmax_index_cache_size", 2147483648)
+				tiflashCfg.Common.Set("max_memory_usage", 10737418240)
+				tiflashCfg.Common.Set("max_memory_usage_for_all_queries", 32212254720)
+				tc.Spec.PD.Config = pdCfg
+				tc.Spec.TiKV.Config = tikvCfg
+				tc.Spec.TiDB.Config = tidbCfg
+				tc.Spec.TiFlash.Config = tiflashCfg
+			}
+			configureV5x1x0 := func(tc *v1alpha1.TidbCluster) {
+				pdCfg := v1alpha1.NewPDConfig()
+				tikvCfg := v1alpha1.NewTiKVConfig()
+				tidbCfg := v1alpha1.NewTiDBConfig()
+				tiflashCfg := v1alpha1.NewTiFlashConfig()
+				pdCfg.Set("replication.location-labels", []string{"failure-domain.beta.kubernetes.io/region", "failure-domain.beta.kubernetes.io/zone", "kubernetes.io/hostname"})
+				pdCfg.SetTable("dashboard",
+					"internal-proxy", true,
+					"enable-telemetry", false)
+				tidbCfg.Set("new_collations_enabled_on_first_bootstrap", true)
+				tidbCfg.Set("enable-telemetry", false)
+				tikvCfg.Set("server.grpc-concurrency", 3)
+				tikvCfg.SetTable("rocksdb.defaultcf",
+					"soft-pending-compaction-bytes-limit", "1024GB",
+					"hard-pending-compaction-bytes-limit", "1024GB",
+					"level0-slowdown-writes-trigger", 64,
+					"level0-stop-writes-trigger", 128,
+					"max-write-buffer-number", 10,
+				)
+				tikvCfg.SetTable("rocksdb.writecf",
+					"soft-pending-compaction-bytes-limit", "1024GB",
+					"hard-pending-compaction-bytes-limit", "1024GB",
+					"level0-slowdown-writes-trigger", 64,
+					"level0-stop-writes-trigger", 128,
+					"max-write-buffer-number", 10,
+				)
+				tikvCfg.SetTable("rocksdb.lockcf",
+					"level0-slowdown-writes-trigger", 64,
+					"level0-stop-writes-trigger", 128,
+					"max-write-buffer-number", 10,
+				)
+				tiflashCfg.Common.Set("mark_cache_size", 2147483648)
+				tiflashCfg.Common.Set("minmax_index_cache_size", 2147483648)
+				tiflashCfg.Common.Set("max_memory_usage", 10737418240)
+				tiflashCfg.Common.Set("max_memory_usage_for_all_queries", 32212254720)
+				tiflashCfg.Common.Set("delta_index_cache_size", 3221225472)
+				tc.Spec.PD.Config = pdCfg
+				tc.Spec.TiKV.Config = tikvCfg
+				tc.Spec.TiDB.Config = tidbCfg
+				tc.Spec.TiFlash.Config = tiflashCfg
+			}
+
+			cases := []upgradeCase{
+				{
+					oldVersion:              utilimage.TiDBV4x0x9,
+					newVersion:              utilimage.TiDBV5x1x0,
+					configureOldTiDBCluster: configureV4x0x9,
+					configureNewTiDBCluster: configureV5x1x0,
+				},
+				{
+					oldVersion:              utilimage.TiDBV5x0x0,
+					newVersion:              utilimage.TiDBV5x1x0,
+					configureOldTiDBCluster: configureV5x0x0,
+					configureNewTiDBCluster: configureV5x1x0,
+				},
+				{
+					oldVersion:              utilimage.TiDBV5x0x2,
+					newVersion:              utilimage.TiDBV5x1x0,
+					configureOldTiDBCluster: configureV5x0x2,
+					configureNewTiDBCluster: configureV5x1x0,
+				},
+			}
+			for i := range cases {
+				ucase := cases[i]
+				ginkgo.It(fmt.Sprintf("for tc and components version upgrade from TiDB %s to TiDB %s", ucase.oldVersion, ucase.newVersion), func() {
+					if ginkgoconfig.GinkgoConfig.FocusString == "" {
+						framework.Skipf("Skip upgrdae testing for specific version")
+					}
+					upgradeTest(ucase)
+				})
+			}
 		})
 
 		// this case merge scale-in/scale-out into one case, may seems a little bit dense
