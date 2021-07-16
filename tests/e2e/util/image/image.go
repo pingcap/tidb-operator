@@ -58,10 +58,11 @@ const (
 func ListImages() []string {
 	images := []string{}
 	versions := make([]string, 0)
-	versions = append(versions,
-		TiDBV3, TiDBV4, TiDBV5Prev, TiDBV5, TiDBNightlyVersion,
-		TiDBV4x0x9, TiDBV5x0x0, TiDBV5x0x2, TiDBV5x1x0,
-	)
+	versions = append(versions, TiDBV3)
+	versions = append(versions, TiDBV4)
+	versions = append(versions, TiDBV5Prev)
+	versions = append(versions, TiDBV5)
+	versions = append(versions, TiDBNightlyVersion)
 	for _, v := range versions {
 		images = append(images, fmt.Sprintf("pingcap/pd:%s", v))
 		images = append(images, fmt.Sprintf("pingcap/tidb:%s", v))
