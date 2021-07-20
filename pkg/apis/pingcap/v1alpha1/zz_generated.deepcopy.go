@@ -3752,6 +3752,11 @@ func (in *PrometheusSpec) DeepCopyInto(out *PrometheusSpec) {
 	*out = *in
 	in.MonitorContainer.DeepCopyInto(&out.MonitorContainer)
 	in.Service.DeepCopyInto(&out.Service)
+	if in.RetentionTime != nil {
+		in, out := &in.RetentionTime, &out.RetentionTime
+		*out = new(string)
+		**out = **in
+	}
 	if in.Ingress != nil {
 		in, out := &in.Ingress, &out.Ingress
 		*out = new(IngressSpec)
