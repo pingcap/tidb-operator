@@ -133,6 +133,9 @@ type PrometheusSpec struct {
 	ReserveDays int `json:"reserveDays,omitempty"`
 
 	// +optional
+	RetentionTime *string `json:"retentionTime,omitempty"`
+
+	// +optional
 	Ingress *IngressSpec `json:"ingress,omitempty"`
 
 	// +optional

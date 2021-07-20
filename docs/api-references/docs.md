@@ -10216,6 +10216,17 @@ int
 </tr>
 <tr>
 <td>
+<code>retentionTime</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
 <code>ingress</code></br>
 <em>
 <a href="#ingressspec">
