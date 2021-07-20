@@ -706,7 +706,7 @@ func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor) []
 			VolumeSource: core.VolumeSource{
 				ConfigMap: &core.ConfigMapVolumeSource{
 					LocalObjectReference: core.LocalObjectReference{
-						Name: GetMonitorObjectName(monitor),
+						Name: config.Name,
 					},
 					Items: []core.KeyToPath{
 						{
