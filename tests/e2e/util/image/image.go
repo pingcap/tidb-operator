@@ -29,9 +29,9 @@ import (
 const (
 	// TiDB Version
 	TiDBV3             = "v3.0.20"
-	TiDBV4             = "v4.0.12"
+	TiDBV4             = "v4.0.13"
 	TiDBV5Prev         = "v5.0.0"
-	TiDBV5             = "v5.0.1"
+	TiDBV5             = "v5.0.3"
 	TiDBNightlyVersion = "nightly"
 	// specific version
 	TiDBV4x0x9 = "v4.0.9"
