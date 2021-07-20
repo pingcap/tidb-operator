@@ -104,13 +104,13 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 	cases := []*testcase{
 		// latest version BR
-		newTestCase(utilimage.TiDBVLatest, utilimage.TiDBVLatest, typeBR),
+		newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeBR),
 		// latest version Dumper
-		newTestCase(utilimage.TiDBVLatest, utilimage.TiDBVLatest, typeDumper),
+		newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeDumper),
 		// latest version BR and enable TLS
-		newTestCase(utilimage.TiDBVLatest, utilimage.TiDBVLatest, typeBR, enableTLS),
+		newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeBR, enableTLS),
 		// latest version Dumper and enable TLS
-		newTestCase(utilimage.TiDBVLatest, utilimage.TiDBVLatest, typeDumper, enableTLS),
+		newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeDumper, enableTLS),
 	}
 	for _, prevVersion := range utilimage.TiDBPreviousVersions {
 		cases = append(cases,
@@ -119,9 +119,9 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			// previous version Dumper
 			newTestCase(prevVersion, prevVersion, typeDumper),
 			// previous version -> latest version BR
-			newTestCase(prevVersion, utilimage.TiDBVLatest, typeBR),
+			newTestCase(prevVersion, utilimage.TiDBLatest, typeBR),
 			// previous version -> latest version Dumper
-			newTestCase(prevVersion, utilimage.TiDBVLatest, typeDumper),
+			newTestCase(prevVersion, utilimage.TiDBLatest, typeDumper),
 		)
 	}
 
@@ -199,7 +199,6 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 	}
 
 	ginkgo.Context("Specific Version", func() {
-		// Specific Version
 		cases := []*testcase{
 			newTestCase(utilimage.TiDBV5x1x0, utilimage.TiDBV5x1x0, typeBR),
 			newTestCase(utilimage.TiDBV4x0x9, utilimage.TiDBV5x1x0, typeBR),
@@ -264,7 +263,7 @@ func createRBAC(f *e2eframework.Framework) error {
 	return nil
 }
 
-func createBackupAndWaitForComplete(f *e2eframework.Framework, name, tcName string, typ string) error {
+func createBackupAndWaitForComplete(f *e2eframework.Framework, name, tcName, typ string) error {
 	ns := f.Namespace.Name
 	// secret to visit tidb cluster
 	s := brutil.GetSecret(ns, name, "")

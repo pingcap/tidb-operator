@@ -649,7 +649,7 @@ func (oa *OperatorActions) DeployDMTiDBOrDie() {
 		slack.NotifyAndPanic(err)
 	}
 
-	tc := fixture.GetTidbCluster(DMTiDBNamespace, DMTiDBName, utilimage.TiDBVLatest)
+	tc := fixture.GetTidbCluster(DMTiDBNamespace, DMTiDBName, utilimage.TiDBLatest)
 	tc.Spec.PD.Replicas = 1
 	tc.Spec.TiKV.Replicas = 1
 	tc.Spec.TiDB.Replicas = 1

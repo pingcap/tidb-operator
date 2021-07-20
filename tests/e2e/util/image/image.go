@@ -33,8 +33,8 @@ var (
 const (
 	// TiDB Version
 	TiDBV3             = "v3.0.20"
-	TiDBVLatestPrev    = "v5.0.3"
-	TiDBVLatest        = "v5.1.0"
+	TiDBLatestPrev     = "v5.0.3"
+	TiDBLatest         = "v5.1.0"
 	TiDBNightlyVersion = "nightly"
 	// specific version
 	TiDBV4x0x9 = "v4.0.9"
@@ -63,8 +63,8 @@ func ListImages() []string {
 	versions := make([]string, 0)
 	versions = append(versions, TiDBV3)
 	versions = append(versions, TiDBPreviousVersions...)
-	versions = append(versions, TiDBVLatestPrev)
-	versions = append(versions, TiDBVLatest)
+	versions = append(versions, TiDBLatestPrev)
+	versions = append(versions, TiDBLatest)
 	versions = append(versions, TiDBNightlyVersion)
 	for _, v := range versions {
 		images = append(images, fmt.Sprintf("pingcap/pd:%s", v))
