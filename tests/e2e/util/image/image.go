@@ -26,12 +26,15 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
+var (
+	TiDBPreviousVersions []string = []string{"v4.0.13", "v5.0.3"}
+)
+
 const (
 	// TiDB Version
 	TiDBV3             = "v3.0.20"
-	TiDBV4             = "v4.0.13"
-	TiDBV5Prev         = "v5.0.0"
-	TiDBV5             = "v5.0.3"
+	TiDBVLatestPrev    = "v5.0.3"
+	TiDBVLatest        = "v5.1.0"
 	TiDBNightlyVersion = "nightly"
 	// specific version
 	TiDBV4x0x9 = "v4.0.9"
@@ -59,9 +62,9 @@ func ListImages() []string {
 	images := []string{}
 	versions := make([]string, 0)
 	versions = append(versions, TiDBV3)
-	versions = append(versions, TiDBV4)
-	versions = append(versions, TiDBV5Prev)
-	versions = append(versions, TiDBV5)
+	versions = append(versions, TiDBPreviousVersions...)
+	versions = append(versions, TiDBVLatestPrev)
+	versions = append(versions, TiDBVLatest)
 	versions = append(versions, TiDBNightlyVersion)
 	for _, v := range versions {
 		images = append(images, fmt.Sprintf("pingcap/pd:%s", v))

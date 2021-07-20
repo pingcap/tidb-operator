@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/onsi/ginkgo"
+	ginkgoconfig "github.com/onsi/ginkgo/config"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/br/framework"
 	brutil "github.com/pingcap/tidb-operator/tests/e2e/br/framework/br"
@@ -102,37 +103,29 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 	})
 
 	cases := []*testcase{
-		// V4 BR
-		newTestCase(utilimage.TiDBV4, utilimage.TiDBV4, typeBR),
-		// V4 Dumper
-		newTestCase(utilimage.TiDBV4, utilimage.TiDBV4, typeDumper),
-		// V5 BR
-		newTestCase(utilimage.TiDBV5, utilimage.TiDBV5, typeBR),
-		// V5 Dumper
-		newTestCase(utilimage.TiDBV5, utilimage.TiDBV5, typeDumper),
-		// V5 BR and enable TLS
-		newTestCase(utilimage.TiDBV5, utilimage.TiDBV5, typeBR, enableTLS),
-		// V5 Dumper and enable TLS
-		newTestCase(utilimage.TiDBV5, utilimage.TiDBV5, typeDumper, enableTLS),
-		// V4 -> V5 BR
-		newTestCase(utilimage.TiDBV4, utilimage.TiDBV5, typeBR),
-		// V4 -> V5 Dumper
-		newTestCase(utilimage.TiDBV4, utilimage.TiDBV5, typeDumper),
-
-		// Specific Version
-		// V5.1.0 BR
-		newTestCase(utilimage.TiDBV5x1x0, utilimage.TiDBV5x1x0, typeBR),
-		// V4.0.9 -> v5.1.0 BR
-		newTestCase(utilimage.TiDBV4x0x9, utilimage.TiDBV5x1x0, typeBR),
-		// v5.0.0 -> v5.1.0 BR
-		newTestCase(utilimage.TiDBV5x0x0, utilimage.TiDBV5x1x0, typeBR),
-		// v5.0.2 -> v5.1.0 BR
-		newTestCase(utilimage.TiDBV5x0x2, utilimage.TiDBV5x1x0, typeBR),
+		// latest version BR
+		newTestCase(utilimage.TiDBVLatest, utilimage.TiDBVLatest, typeBR),
+		// latest version Dumper
+		newTestCase(utilimage.TiDBVLatest, utilimage.TiDBVLatest, typeDumper),
+		// latest version BR and enable TLS
+		newTestCase(utilimage.TiDBVLatest, utilimage.TiDBVLatest, typeBR, enableTLS),
+		// latest version Dumper and enable TLS
+		newTestCase(utilimage.TiDBVLatest, utilimage.TiDBVLatest, typeDumper, enableTLS),
+	}
+	for _, prevVersion := range utilimage.TiDBPreviousVersions {
+		cases = append(cases,
+			// previous version BR
+			newTestCase(prevVersion, prevVersion, typeBR),
+			// previous version Dumper
+			newTestCase(prevVersion, prevVersion, typeDumper),
+			// previous version -> latest version BR
+			newTestCase(prevVersion, utilimage.TiDBVLatest, typeBR),
+			// previous version -> latest version Dumper
+			newTestCase(prevVersion, utilimage.TiDBVLatest, typeDumper),
+		)
 	}
 
-	for i := range cases {
-		tcase := cases[i]
-
+	brTest := func(tcase *testcase) {
 		enableTLS := tcase.enableTLS
 		typ := strings.ToLower(tcase.typ)
 		backupVersion := tcase.backupVersion
@@ -145,60 +138,84 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		backupName := backupClusterName
 		restoreName := restoreClusterName
 
+		ns := f.Namespace.Name
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		ginkgo.By("Create TiDB cluster for backup")
+		err := createTidbCluster(f, backupClusterName, backupVersion, enableTLS)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Create TiDB cluster for restore")
+		err = createTidbCluster(f, restoreClusterName, restoreVersion, enableTLS)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Wait for backup TiDB cluster ready")
+		err = utiltidbcluster.WaitForTidbClusterConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Wait for restore TiDB cluster ready")
+		err = utiltidbcluster.WaitForTidbClusterConditionReady(f.ExtClient, ns, restoreClusterName, tidbReadyTimeout, 0)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Forward backup TiDB cluster service")
+		backupHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(backupClusterName), 4000)
+		framework.ExpectNoError(err)
+		err = initDatabase(backupHost, dbName)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Write data into backup TiDB cluster")
+		backupDSN := getDefaultDSN(backupHost, dbName)
+		err = blockwriter.NewDefault().Write(context.Background(), backupDSN)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Create RBAC for backup and restore")
+		err = createRBAC(f)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Create backup")
+		err = createBackupAndWaitForComplete(f, backupName, backupClusterName, typ)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Create restore")
+		err = createRestoreAndWaitForComplete(f, restoreName, restoreClusterName, typ, backupName)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Forward restore TiDB cluster service")
+		restoreHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(restoreClusterName), 4000)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Validate restore result")
+		restoreDSN := getDefaultDSN(restoreHost, dbName)
+		err = checkDataIsSame(backupDSN, restoreDSN)
+		framework.ExpectNoError(err)
+	}
+
+	for i := range cases {
+		tcase := cases[i]
 		ginkgo.It(tcase.description(), func() {
-			ns := f.Namespace.Name
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
-			ginkgo.By("Create TiDB cluster for backup")
-			err := createTidbCluster(f, backupClusterName, backupVersion, enableTLS)
-			framework.ExpectNoError(err)
-
-			ginkgo.By("Create TiDB cluster for restore")
-			err = createTidbCluster(f, restoreClusterName, restoreVersion, enableTLS)
-			framework.ExpectNoError(err)
-
-			ginkgo.By("Wait for backup TiDB cluster ready")
-			err = utiltidbcluster.WaitForTidbClusterConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
-			framework.ExpectNoError(err)
-
-			ginkgo.By("Wait for restore TiDB cluster ready")
-			err = utiltidbcluster.WaitForTidbClusterConditionReady(f.ExtClient, ns, restoreClusterName, tidbReadyTimeout, 0)
-			framework.ExpectNoError(err)
-
-			ginkgo.By("Forward backup TiDB cluster service")
-			backupHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(backupClusterName), 4000)
-			framework.ExpectNoError(err)
-			err = initDatabase(backupHost, dbName)
-			framework.ExpectNoError(err)
-
-			ginkgo.By("Write data into backup TiDB cluster")
-			backupDSN := getDefaultDSN(backupHost, dbName)
-			err = blockwriter.NewDefault().Write(context.Background(), backupDSN)
-			framework.ExpectNoError(err)
-
-			ginkgo.By("Create RBAC for backup and restore")
-			err = createRBAC(f)
-			framework.ExpectNoError(err)
-
-			ginkgo.By("Create backup")
-			err = createBackupAndWaitForComplete(f, backupName, backupClusterName, typ)
-			framework.ExpectNoError(err)
-
-			ginkgo.By("Create restore")
-			err = createRestoreAndWaitForComplete(f, restoreName, restoreClusterName, typ, backupName)
-			framework.ExpectNoError(err)
-
-			ginkgo.By("Forward restore TiDB cluster service")
-			restoreHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(restoreClusterName), 4000)
-			framework.ExpectNoError(err)
-
-			ginkgo.By("Validate restore result")
-			restoreDSN := getDefaultDSN(restoreHost, dbName)
-			err = checkDataIsSame(backupDSN, restoreDSN)
-			framework.ExpectNoError(err)
+			brTest(tcase)
 		})
 	}
+
+	ginkgo.Context("Specific Version", func() {
+		// Specific Version
+		cases := []*testcase{
+			newTestCase(utilimage.TiDBV5x1x0, utilimage.TiDBV5x1x0, typeBR),
+			newTestCase(utilimage.TiDBV4x0x9, utilimage.TiDBV5x1x0, typeBR),
+			newTestCase(utilimage.TiDBV5x0x0, utilimage.TiDBV5x1x0, typeBR),
+			newTestCase(utilimage.TiDBV5x0x2, utilimage.TiDBV5x1x0, typeBR),
+		}
+		for i := range cases {
+			tcase := cases[i]
+			ginkgo.It(tcase.description(), func() {
+				if ginkgoconfig.GinkgoConfig.FocusString == "" {
+					framework.Skipf("Skip br testing for specific version")
+				}
+				brTest(tcase)
+			})
+		}
+	})
 })
 
 func getTiDBServiceResourceName(tcName string) string {
