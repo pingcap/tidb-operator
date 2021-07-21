@@ -339,7 +339,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 	if tc.Spec.Pump.SetTimeZone != nil && *tc.Spec.Pump.SetTimeZone {
 		envs = append(envs, corev1.EnvVar{
 			Name:  "TZ",
-			Value: tc.Spec.Timezone,
+			Value: tc.Timezone(),
 		})
 	}
 	if spec.HostNetwork() {
