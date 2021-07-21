@@ -495,7 +495,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		},
 		{
 			Name:  "TZ",
-			Value: tc.Spec.Timezone,
+			Value: tc.Timezone(),
 		},
 	}
 	tikvContainer := corev1.Container{
