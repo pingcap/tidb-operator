@@ -15,13 +15,13 @@ package monitor
 
 import (
 	"fmt"
+	"net/url"
 	"path"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/docker/docker/client"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -1235,7 +1235,7 @@ func buildExternalLabels(monitor *v1alpha1.TidbMonitor) model.LabelSet {
 func generateRemoteWrite(monitor *v1alpha1.TidbMonitor) []*config.RemoteWriteConfig {
 	var remoteWriteConfigs []*config.RemoteWriteConfig
 	for _, remoteWrite := range monitor.Spec.Prometheus.RemoteWrite {
-		url, err := client.ParseHostURL(remoteWrite.URL)
+		url, err := url.Parse(remoteWrite.URL)
 		if err != nil {
 			klog.Errorf("remote write url[%s] config fail to parse, err:%v", remoteWrite.URL, err)
 			continue
