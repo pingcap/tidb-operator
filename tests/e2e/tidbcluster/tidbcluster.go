@@ -1692,7 +1692,6 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				"/cdc", "cli", "changefeed", "create",
 				fmt.Sprintf("--sink-uri=tidb://root:@%s:4000/", controller.TiDBMemberName(toTCName)),
 				fmt.Sprintf("--pd=http://%s:2379", controller.PDMemberName(fromTCName)),
-				"--sort-dir=/var/lib/sort-dir",
 			}
 			data, err := framework.RunKubectl(args...)
 			framework.ExpectNoError(err, "failed to create change feed task: %s, %v", string(data), err)
