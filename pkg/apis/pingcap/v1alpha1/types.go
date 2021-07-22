@@ -988,6 +988,10 @@ type TiDBServiceSpec struct {
 	// Optional: Defaults to omitted
 	// +optional
 	AdditionalPorts []corev1.ServicePort `json:"additionalPorts,omitempty"`
+
+	// The additional labels used by tidb service
+	// +optional
+	SelectorLabels map[string]string `json:"selectorLabels,omitempty"`
 }
 
 // (Deprecated) Service represent service type used in TidbCluster

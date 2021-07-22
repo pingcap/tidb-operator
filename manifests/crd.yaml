@@ -8727,6 +8727,8 @@ spec:
                     mysqlNodePort:
                       format: int32
                       type: integer
+                    selectorLabels:
+                      type: object
                     statusNodePort:
                       format: int32
                       type: integer

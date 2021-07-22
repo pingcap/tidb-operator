@@ -437,6 +437,7 @@ func getNewTiDBServiceOrNil(tc *v1alpha1.TidbCluster) *corev1.Service {
 	tidbSelector := label.New().Instance(instanceName).TiDB()
 	svcName := controller.TiDBMemberName(tcName)
 	tidbLabels := util.CombineStringMap(tidbSelector.Copy().UsedByEndUser().Labels(), svcSpec.Labels)
+	tidbSelectorLabels := util.CombineStringMap(tidbSelector.Copy().Labels(), svcSpec.SelectorLabels)
 	portName := "mysql-client"
 	if svcSpec.PortName != nil {
 		portName = *svcSpec.PortName
@@ -472,7 +473,7 @@ func getNewTiDBServiceOrNil(tc *v1alpha1.TidbCluster) *corev1.Service {
 		Spec: corev1.ServiceSpec{
 			Type:     svcSpec.Type,
 			Ports:    ports,
-			Selector: tidbSelector.Labels(),
+			Selector: tidbSelectorLabels,
 		},
 	}
 	if svcSpec.Type == corev1.ServiceTypeLoadBalancer {
