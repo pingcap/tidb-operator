@@ -250,7 +250,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/enable-tls-for-mysql-client/']
 
     上面的文件创建三个对象：
 
-    - 一个 SelfSigned 类型的 Isser 对象（用于生成 CA 类型 Issuer 所需要的 CA 证书）;
+    - 一个 SelfSigned 类型的 Issuer 对象（用于生成 CA 类型 Issuer 所需要的 CA 证书）;
     - 一个 Certificate 对象，`isCa` 属性设置为 `true`；
     - 一个可以用于颁发 TiDB Server TLS 证书的 Issuer。
 
