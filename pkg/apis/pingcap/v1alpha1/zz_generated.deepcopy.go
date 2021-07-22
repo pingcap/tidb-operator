@@ -5202,6 +5202,13 @@ func (in *TiDBServiceSpec) DeepCopyInto(out *TiDBServiceSpec) {
 		*out = make([]v1.ServicePort, len(*in))
 		copy(*out, *in)
 	}
+	if in.SelectorLabels != nil {
+		in, out := &in.SelectorLabels, &out.SelectorLabels
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	return
 }
 

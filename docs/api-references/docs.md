@@ -13853,6 +13853,18 @@ Optional: Defaults to 0</p>
 Optional: Defaults to omitted</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>selectorLabels</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The additional labels used by tidb service</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbslowlogtailerspec">TiDBSlowLogTailerSpec</h3>
