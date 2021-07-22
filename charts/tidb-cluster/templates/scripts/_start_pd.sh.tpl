@@ -33,7 +33,7 @@ POD_NAME=${POD_NAME:-$HOSTNAME}
 # the general form of variable PEER_SERVICE_NAME is: "<clusterName>-pd-peer"
 cluster_name=`echo ${PEER_SERVICE_NAME} | sed 's/-pd-peer//'`
 domain="${POD_NAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc"
-discovery_url="${cluster_name}-discovery.${NAMESPACE}.svc:10261"
+discovery_url="${cluster_name}-discovery.${NAMESPACE}:10261"
 encoded_domain_url=`echo ${domain}:2380 | base64 | tr "\n" " " | sed "s/ //g"`
 
 elapseTime=0
