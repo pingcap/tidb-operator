@@ -10223,6 +10223,8 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+<p>Configuration for <code>--storage.tsdb.retention.time</code>, Units Supported: y, w, d, h, m, s, ms.
+If set to non empty values, it will override the value of <code>ReserveDays</code>.</p>
 </td>
 </tr>
 <tr>
