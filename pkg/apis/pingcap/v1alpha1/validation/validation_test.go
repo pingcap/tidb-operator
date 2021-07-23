@@ -587,6 +587,39 @@ func TestValidateEvictLeaderTimeout(t *testing.T) {
 	}
 }
 
+func TestValidatePromDurationStr(t *testing.T) {
+	successCases := []*string{
+		nil,
+		pointer.StringPtr("2h"),
+		pointer.StringPtr("0d"),
+		pointer.StringPtr("2d"),
+		pointer.StringPtr("2w"),
+		pointer.StringPtr("2y"),
+	}
+
+	for _, c := range successCases {
+		errs := validatePromDurationStr(c, field.NewPath("PromDuration"))
+		if len(errs) > 0 {
+			t.Errorf("expected success: %v", errs)
+		}
+	}
+
+	errorCases := []*string{
+		pointer.StringPtr(""),
+		pointer.StringPtr("prom"),
+		pointer.StringPtr("-2h"),
+		pointer.StringPtr("2ns"),
+		pointer.StringPtr("-5m30s"),
+	}
+
+	for _, c := range errorCases {
+		errs := validatePromDurationStr(c, field.NewPath("PromDuration"))
+		if len(errs) == 0 {
+			t.Errorf("expected failure for %s", *c)
+		}
+	}
+}
+
 func TestValidatePDAddresses(t *testing.T) {
 	successCases := [][]string{
 		{
