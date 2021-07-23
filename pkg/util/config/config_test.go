@@ -128,6 +128,48 @@ func TestGetSet(t *testing.T) {
 	}
 }
 
+func TestSetTable(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	table := "t"
+	kv := map[string]int64{
+		"a.b.c1": 1,
+		"a.b.c2": 2,
+		"a.b1":   1,
+		"a.b2":   2,
+		"a1":     1,
+		"a2":     2,
+	}
+
+	c := New(map[string]interface{}{})
+
+	for k, v := range kv {
+		c.SetTable(table, k, v)
+		c.SetTable(table, "f-"+k, float64(v))
+		c.SetTable(table, "s-"+k, strconv.FormatInt(v, 10))
+	}
+	for k, v := range kv {
+		g.Expect(c.Get(table)).ShouldNot(BeNil())
+		g.Expect(c.Get(table + "." + k).MustInt()).Should(Equal(v))
+		g.Expect(c.Get(table + "." + "f-" + k).MustFloat()).Should(Equal(float64(v)))
+		g.Expect(c.Get(table + "." + "s-" + k).MustString()).Should(Equal(strconv.Itoa(int(v))))
+	}
+
+	c = New(map[string]interface{}{})
+
+	kvs := []interface{}{
+		"a1", 1,
+		"a2", 2,
+		100, 100,
+		"a3",
+	}
+	c.SetTable(table, kvs...)
+	g.Expect(c.Get(table)).ShouldNot(BeNil())
+	g.Expect(c.Get(table + "." + "a1").MustInt()).Should(Equal(int64(1)))
+	g.Expect(c.Get(table + "." + "a2").MustInt()).Should(Equal(int64(2)))
+	g.Expect(c.Get(table + "." + "a3")).Should(BeNil())
+}
+
 func TestSetIfNil(t *testing.T) {
 	g := NewGomegaWithT(t)
 	kv := map[string]int64{
