@@ -26,6 +26,8 @@ import (
 	"k8s.io/utils/pointer"
 )
 
+const defaultNodeCount uint64 = 5
+
 func TestCheckStsAutoScalingInterval(t *testing.T) {
 	g := NewGomegaWithT(t)
 	tests := []struct {
@@ -418,7 +420,9 @@ func TestDefaultTac(t *testing.T) {
 
 func TestAutoscalerToStrategy(t *testing.T) {
 	g := NewGomegaWithT(t)
+	tc := newTidbCluster()
 	tac := newTidbClusterAutoScaler()
+
 	tac.Spec.TiDB.Resources = map[string]v1alpha1.AutoResource{
 		"compute": {
 			CPU:    resource.MustParse("8000m"),
@@ -445,12 +449,12 @@ func TestAutoscalerToStrategy(t *testing.T) {
 		MinThreshold:  pointer.Float64Ptr(0.2),
 		ResourceTypes: []string{"resource_a", "resource_b"},
 	}
-	tidbStrategy := autoscalerToStrategy(tac, v1alpha1.TiDBMemberType)
-	g.Expect(len(tidbStrategy.Resources)).Should(Equal(1))
+	tidbStrategy := autoscalerToStrategy(tc, tac, v1alpha1.TiDBMemberType, defaultNodeCount)
+	g.Expect(len(tidbStrategy.Resources)).Should(Equal(2))
 	g.Expect(len(tidbStrategy.Rules)).Should(Equal(1))
 
-	tikvStrategy := autoscalerToStrategy(tac, v1alpha1.TiKVMemberType)
-	g.Expect(len(tikvStrategy.Resources)).Should(Equal(1))
+	tikvStrategy := autoscalerToStrategy(tc, tac, v1alpha1.TiKVMemberType, defaultNodeCount)
+	g.Expect(len(tikvStrategy.Resources)).Should(Equal(2))
 	g.Expect(len(tikvStrategy.Rules)).Should(Equal(1))
 }
 
