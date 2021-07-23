@@ -52,12 +52,44 @@ func (am *autoScalerManager) getAutoScaledClusters(tac *v1alpha1.TidbClusterAuto
 }
 
 func (am *autoScalerManager) syncPlans(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, plans []pdapi.Plan, component v1alpha1.MemberType) error {
+	if plans != nil {
+		klog.Info("plans are not nil, plans: ", plans)
+	}
+
 	planGroups := sets.String{}
 	groupPlanMap := make(map[string]pdapi.Plan)
 	for _, plan := range plans {
-		groupName := plan.Labels[groupLabelKey]
-		planGroups.Insert(groupName)
-		groupPlanMap[groupName] = plan
+		switch plan.ResourceType {
+		case pdapi.HomogeneousTiKVResourceType:
+			// sync homogeneous tikv plan
+			cloned := tc.DeepCopy()
+			if checkAutoScaling(tac, v1alpha1.TiKVMemberType, pdapi.HomogeneousTiKVResourceType, cloned.Spec.TiDB.Replicas, int32(plan.Count)) {
+				cloned.Spec.TiKV.Replicas = int32(plan.Count)
+				_, err := am.deps.TiDBClusterControl.UpdateTidbCluster(cloned, &cloned.Status, &tc.Status)
+				if err != nil {
+					return err
+				}
+
+				updateLastAutoScalingTimestamp(tac, plan.Component, pdapi.HomogeneousTiKVResourceType)
+			}
+		case pdapi.HomogeneousTiDBResourceType:
+			// sync homogeneous tidb plan
+			cloned := tc.DeepCopy()
+			if checkAutoScaling(tac, v1alpha1.TiDBMemberType, pdapi.HomogeneousTiDBResourceType, cloned.Spec.TiDB.Replicas, int32(plan.Count)) {
+				cloned.Spec.TiDB.Replicas = int32(plan.Count)
+				_, err := am.deps.TiDBClusterControl.UpdateTidbCluster(cloned, &cloned.Status, &tc.Status)
+				if err != nil {
+					return err
+				}
+
+				updateLastAutoScalingTimestamp(tac, plan.Component, pdapi.HomogeneousTiDBResourceType)
+			}
+
+		default:
+			groupName := plan.Labels[groupLabelKey]
+			planGroups.Insert(groupName)
+			groupPlanMap[groupName] = plan
+		}
 	}
 
 	tcList, err := am.getAutoScaledClusters(tac, []v1alpha1.MemberType{component})
@@ -83,7 +115,7 @@ func (am *autoScalerManager) syncPlans(tc *v1alpha1.TidbCluster, tac *v1alpha1.T
 
 	// Calculate difference then update, delete or create
 	toDelete := existedGroups.Difference(planGroups)
-	err = am.deleteAutoscalingClusters(tac, tc, toDelete.UnsortedList(), groupTcMap)
+	err = am.deleteAutoscalingClusters(tac, toDelete.UnsortedList(), groupTcMap)
 	if err != nil {
 		return err
 	}
@@ -103,7 +135,7 @@ func (am *autoScalerManager) syncPlans(tc *v1alpha1.TidbCluster, tac *v1alpha1.T
 	return nil
 }
 
-func (am *autoScalerManager) deleteAutoscalingClusters(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.TidbCluster, groupsToDelete []string, groupTcMap map[string]*v1alpha1.TidbCluster) error {
+func (am *autoScalerManager) deleteAutoscalingClusters(tac *v1alpha1.TidbClusterAutoScaler, groupsToDelete []string, groupTcMap map[string]*v1alpha1.TidbCluster) error {
 	var errs []error
 	for _, group := range groupsToDelete {
 		deleteTc := groupTcMap[group]
@@ -136,6 +168,7 @@ func (am *autoScalerManager) updateAutoscalingClusters(tac *v1alpha1.TidbCluster
 			if !checkAutoScaling(tac, v1alpha1.TiKVMemberType, group, actual.Spec.TiKV.Replicas, int32(plan.Count)) {
 				continue
 			}
+
 			actual.Spec.TiKV.Replicas = int32(plan.Count)
 		case v1alpha1.TiDBMemberType.String():
 			if tac.Spec.TiDB == nil || actual.Spec.TiDB.Replicas == int32(plan.Count) {
@@ -144,6 +177,7 @@ func (am *autoScalerManager) updateAutoscalingClusters(tac *v1alpha1.TidbCluster
 			if !checkAutoScaling(tac, v1alpha1.TiDBMemberType, group, actual.Spec.TiDB.Replicas, int32(plan.Count)) {
 				continue
 			}
+
 			actual.Spec.TiDB.Replicas = int32(plan.Count)
 		default:
 			errs = append(errs, fmt.Errorf("unexpected component %s for group %s in autoscaling plan", plan.Component, group))

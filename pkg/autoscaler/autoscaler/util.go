@@ -225,7 +225,8 @@ func validateBasicAutoScalerSpec(tac *v1alpha1.TidbClusterAutoScaler, component 
 	}
 
 	acceptableResources := map[corev1.ResourceName]struct{}{
-		corev1.ResourceCPU: {},
+		corev1.ResourceCPU:     {},
+		corev1.ResourceStorage: {},
 	}
 
 	checkCommon := func(res corev1.ResourceName, rule v1alpha1.AutoRule) error {
@@ -259,6 +260,13 @@ func validateBasicAutoScalerSpec(tac *v1alpha1.TidbClusterAutoScaler, component 
 			if *rule.MinThreshold > rule.MaxThreshold {
 				return fmt.Errorf("min_threshold (%v) > max_threshold (%v) for cpu rule of %s in %s/%s", *rule.MinThreshold, rule.MaxThreshold, component.String(), tac.Namespace, tac.Name)
 			}
+		case corev1.ResourceStorage:
+			if *rule.MinThreshold > 1.0 || *rule.MinThreshold < 0.0 {
+				return fmt.Errorf("min_threshold (%v) should be between 0 and 1 for rule %s of %s in %s/%s", *rule.MinThreshold, res, component.String(), tac.Namespace, tac.Name)
+			}
+			if *rule.MinThreshold > rule.MaxThreshold {
+				return fmt.Errorf("min_threshold (%v) > max_threshold (%v) for storage rule of %s in %s/%s", *rule.MinThreshold, rule.MaxThreshold, component.String(), tac.Namespace, tac.Name)
+			}
 		}
 	}
 
@@ -291,32 +299,70 @@ func validateTAC(tac *v1alpha1.TidbClusterAutoScaler) error {
 	return nil
 }
 
-func autoscalerToStrategy(tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) *pdapi.Strategy {
+func autoscalerToStrategy(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType, nodeCount uint64) *pdapi.Strategy {
+	var (
+		homogeneousResource  *pdapi.Resource
+		homogeneousTiDBCount *uint64
+		homogeneousTiKVCount *uint64
+	)
+
 	resources := getSpecResources(tac, component)
-	strategy := &pdapi.Strategy{
-		Resources: make([]*pdapi.Resource, 0, len(resources)),
-	}
+	strategy := &pdapi.Strategy{NodeCount: nodeCount}
 
 	for typ, res := range resources {
-		resource := &pdapi.Resource{
-			CPU:          res.CPU.AsDec().UnscaledBig().Uint64(),
-			Memory:       res.Memory.AsDec().UnscaledBig().Uint64(),
-			Storage:      res.Storage.AsDec().UnscaledBig().Uint64(),
-			ResourceType: typ,
+		switch typ {
+		case pdapi.HomogeneousTiDBResourceType:
+			if res.Count != nil {
+				count := uint64(*res.Count)
+				homogeneousTiDBCount = &count
+			}
+		case pdapi.HomogeneousTiKVResourceType:
+			if res.Count != nil {
+				count := uint64(*res.Count)
+				homogeneousTiKVCount = &count
+			}
+		default:
+			r := &pdapi.Resource{
+				CPU:          uint64(res.CPU.MilliValue()),
+				Memory:       uint64(res.Memory.Value()),
+				Storage:      uint64(res.Storage.Value()),
+				ResourceType: typ,
+			}
+			if res.Count != nil {
+				count := uint64(*res.Count)
+				r.Count = &count
+			}
+
+			strategy.Resources = append(strategy.Resources, r)
 		}
-		if res.Count != nil {
-			count := uint64(*res.Count)
-			resource.Count = &count
-		}
-		strategy.Resources = append(strategy.Resources, resource)
 	}
 
 	switch component {
 	case v1alpha1.TiDBMemberType:
+		tidbStorage := tc.Spec.TiDB.Limits[corev1.ResourceStorage]
+		homogeneousResource = &pdapi.Resource{
+			ResourceType: pdapi.HomogeneousTiDBResourceType,
+			CPU:          uint64(tc.Spec.TiDB.Requests.Cpu().MilliValue()),
+			Memory:       uint64(tc.Spec.TiDB.Requests.Memory().Value()),
+			Storage:      uint64((&tidbStorage).Value()),
+			Count:        homogeneousTiDBCount,
+		}
+
 		strategy.Rules = []*pdapi.Rule{autoRulesToStrategyRule(component.String(), tac.Spec.TiDB.Rules)}
 	case v1alpha1.TiKVMemberType:
+		tikvStorage := tc.Spec.TiKV.Limits[corev1.ResourceStorage]
+		homogeneousResource = &pdapi.Resource{
+			ResourceType: pdapi.HomogeneousTiKVResourceType,
+			CPU:          uint64(tc.Spec.TiKV.Requests.Cpu().MilliValue()),
+			Memory:       uint64(tc.Spec.TiKV.Requests.Memory().Value()),
+			Storage:      uint64((&tikvStorage).Value()),
+			Count:        homogeneousTiKVCount,
+		}
+
 		strategy.Rules = []*pdapi.Rule{autoRulesToStrategyRule(component.String(), tac.Spec.TiKV.Rules)}
 	}
+
+	strategy.Resources = append(strategy.Resources, homogeneousResource)
 
 	return strategy
 }
@@ -325,6 +371,17 @@ func autoRulesToStrategyRule(component string, rules map[corev1.ResourceName]v1a
 	result := &pdapi.Rule{
 		Component: component,
 	}
+
+	var homogeneousResourceType string
+	switch component {
+	case v1alpha1.TiKVMemberType.String():
+		homogeneousResourceType = pdapi.HomogeneousTiKVResourceType
+	case v1alpha1.TiDBMemberType.String():
+		homogeneousResourceType = pdapi.HomogeneousTiDBResourceType
+	default:
+		klog.Warningf("unknown component %s", component)
+	}
+
 	for res, rule := range rules {
 		switch res {
 		case corev1.ResourceCPU:
@@ -333,13 +390,13 @@ func autoRulesToStrategyRule(component string, rules map[corev1.ResourceName]v1a
 			result.CPURule = &pdapi.CPURule{
 				MaxThreshold:  rule.MaxThreshold,
 				MinThreshold:  *rule.MinThreshold,
-				ResourceTypes: rule.ResourceTypes,
+				ResourceTypes: append(rule.ResourceTypes, homogeneousResourceType),
 			}
 		case corev1.ResourceStorage:
-			// For storage rule, users need only set the max_threshold and we convert it to min_threshold for PD
 			result.StorageRule = &pdapi.StorageRule{
-				MinThreshold:  1.0 - rule.MaxThreshold,
-				ResourceTypes: rule.ResourceTypes,
+				MaxThreshold:  rule.MaxThreshold,
+				MinThreshold:  *rule.MinThreshold,
+				ResourceTypes: append(rule.ResourceTypes, homogeneousResourceType),
 			}
 		default:
 			klog.Warningf("unknown resource type %v", res.String())
@@ -394,6 +451,8 @@ func newAutoScalingCluster(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAu
 	autoTc.Spec.TiFlash = nil
 	autoTc.Spec.PD = nil
 	autoTc.Spec.Pump = nil
+	t := true
+	autoTc.Spec.EnablePVReclaim = &t
 
 	switch component {
 	case v1alpha1.TiDBMemberType.String():

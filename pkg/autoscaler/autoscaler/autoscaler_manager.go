@@ -20,8 +20,12 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler/query"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/label"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/util/retry"
@@ -96,7 +100,15 @@ func (am *autoScalerManager) syncExternal(tc *v1alpha1.TidbCluster, tac *v1alpha
 }
 
 func (am *autoScalerManager) syncPD(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) error {
-	strategy := autoscalerToStrategy(tac, component)
+	// get available node count, it does not count the master nodes
+	nodeCount, err := am.getAvailableNodesCount()
+	if err != nil {
+		return err
+	}
+
+	// generate strategy
+	strategy := autoscalerToStrategy(tc, tac, component, nodeCount)
+
 	// Request PD for auto-scaling plans
 	plans, err := controller.GetPDClient(am.deps.PDControl, tc).GetAutoscalingPlans(*strategy)
 	if err != nil {
@@ -110,6 +122,30 @@ func (am *autoScalerManager) syncPD(tc *v1alpha1.TidbCluster, tac *v1alpha1.Tidb
 		return err
 	}
 	return nil
+}
+
+func (am *autoScalerManager) getAvailableNodesCount() (uint64, error) {
+	var count uint64
+
+	requirement, err := labels.NewRequirement(label.MasterLabelKey, selection.DoesNotExist, nil)
+	if err != nil {
+		return 0, err
+	}
+	selector := labels.NewSelector().Add(*requirement)
+	nodes, err := am.deps.NodeLister.List(selector)
+	if err != nil {
+		return 0, err
+	}
+
+	for _, node := range nodes {
+		for _, condition := range node.Status.Conditions {
+			if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionTrue {
+				count++
+			}
+		}
+	}
+
+	return count, nil
 }
 
 func (am *autoScalerManager) syncAutoScaling(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler) error {

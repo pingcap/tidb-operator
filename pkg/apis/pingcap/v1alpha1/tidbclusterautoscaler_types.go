@@ -81,7 +81,7 @@ type AutoResource struct {
 type AutoRule struct {
 	// MaxThreshold defines the threshold to scale out
 	MaxThreshold float64 `json:"max_threshold"`
-	// MinThreshold defines the threshold to scale in, not applicable to `storage` rule
+	// MinThreshold defines the threshold to scale in
 	MinThreshold *float64 `json:"min_threshold,omitempty"`
 	// ResourceTypes defines the resource types that can be used for scaling
 	ResourceTypes []string `json:"resource_types,omitempty"`

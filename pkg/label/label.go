@@ -24,6 +24,8 @@ import (
 const (
 	// The following labels are recommended by kubernetes https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/
 
+	MasterLabelKey string = "node-role.kubernetes.io/master"
+
 	// ManagedByLabelKey is Kubernetes recommended label key, it represents the tool being used to manage the operation of an application
 	// For resources managed by TiDB Operator, its value is always tidb-operator
 	ManagedByLabelKey string = "app.kubernetes.io/managed-by"
