@@ -26,6 +26,26 @@ import (
 	"k8s.io/utils/pointer"
 )
 
+func TestGenerateRemoteWrite(t *testing.T) {
+	url := "http://127.0.0.1/a/b/c"
+	monitor := v1alpha1.TidbMonitor{
+		Spec: v1alpha1.TidbMonitorSpec{
+			Prometheus: v1alpha1.PrometheusSpec{
+				RemoteWrite: []*v1alpha1.RemoteWriteSpec{
+					{URL: url},
+				},
+			},
+		},
+	}
+	remoteWriteConfig := generateRemoteWrite(&monitor)
+	if remoteWriteConfig == nil || remoteWriteConfig[0] == nil {
+		t.Errorf("unexpected remoteWriteConfig %v", remoteWriteConfig)
+	}
+	if remoteWriteConfig[0].URL.String() != url {
+		t.Errorf("expect remote url %v, but result %v", url, remoteWriteConfig[0].URL.String())
+	}
+}
+
 func TestGetMonitorConfigMap(t *testing.T) {
 	g := NewGomegaWithT(t)
 	varTrue := true
