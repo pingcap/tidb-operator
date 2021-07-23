@@ -571,6 +571,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 				oldSet.Status.CurrentReplicas = 1
 				oldSet.Status.UpdatedReplicas = 1
+				oldSet.Spec.Replicas = pointer.Int32Ptr(1)
 				oldSet.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32Ptr(0)
 			},
 			changePods: func(pods []*corev1.Pod) {

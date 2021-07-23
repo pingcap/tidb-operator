@@ -149,6 +149,12 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 			return nil
 		}
 
+		if len(podOrdinals) < 2 {
+			klog.Infof("TiKV statefulset replicas are less than 2, skip waiting to evict region leader for Pod %s/%s", ns, podName)
+			setUpgradePartition(newSet, i)
+			return nil
+		}
+
 		return u.upgradeTiKVPod(tc, i, newSet)
 	}
 
@@ -203,10 +209,6 @@ func (u *tikvUpgrader) readyToUpgrade(upgradePod *corev1.Pod, tc *v1alpha1.TidbC
 	}
 
 	tlsEnabled := tc.IsTLSClusterEnabled()
-	if tc.TiKVStsActualReplicas() < 2 {
-		klog.Infof("TiKV statefulset replicas are less than 2, skip waiting to evict region leader for Pod %s/%s", upgradePod.Namespace, upgradePod.Name)
-		return true
-	}
 
 	leaderCount, err := u.deps.TiKVControl.GetTiKVPodClient(tc.Namespace, tc.Name, upgradePod.Name, tlsEnabled).GetLeaderCount()
 	if err != nil {
