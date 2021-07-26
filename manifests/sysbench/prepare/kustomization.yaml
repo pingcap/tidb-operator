@@ -1,0 +1,13 @@
+bases:
+- ../base
+
+patchesStrategicMerge:
+- init.yaml
+- prepare.yaml
+
+nameSuffix: -prepare
+
+images:
+- name: sysbench
+  newName: uhub.ucloud.cn/pingcap/sysbench
+  newTag: latest
