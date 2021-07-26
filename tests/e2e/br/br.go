@@ -174,7 +174,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		framework.ExpectNoError(err)
 
 		ginkgo.By("Create backup")
-		err = createBackupAndWaitForComplete(f, backupName, backupClusterName, typ)
+		_, err = createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, nil)
 		framework.ExpectNoError(err)
 
 		ginkgo.By("Create restore")
@@ -214,6 +214,60 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 				brTest(tcase)
 			})
 		}
+	})
+
+	ginkgo.Context("[Backup Clean]", func() {
+		ginkgo.It("clean bakcup files with policy Delete", func() {
+			backupClusterName := "backup-clean"
+			backupVersion := utilimage.TiDBLatest
+			enableTLS := false
+			dbName := "e2etest"
+			backupName := backupClusterName
+			typ := strings.ToLower(typeBR)
+
+			ns := f.Namespace.Name
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			ginkgo.By("Create TiDB cluster for backup")
+			err := createTidbCluster(f, backupClusterName, backupVersion, enableTLS)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Wait for backup TiDB cluster ready")
+			err = utiltidbcluster.WaitForTidbClusterConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Forward backup TiDB cluster service")
+			backupHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(backupClusterName), 4000)
+			framework.ExpectNoError(err)
+			err = initDatabase(backupHost, dbName)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Write data into backup TiDB cluster")
+			backupDSN := getDefaultDSN(backupHost, dbName)
+			err = blockwriter.NewDefault().Write(context.Background(), backupDSN)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Create RBAC for backup and restore")
+			err = createRBAC(f)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Create backup with clean policy Delete")
+			backup, err := createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+			})
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Delete backup")
+			err = deleteBackup(f, backupName)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Check if all backup files in storage is deleted")
+			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, backup.Spec.S3.Prefix) // now we only use s3
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
+		})
+
 	})
 })
 
@@ -263,30 +317,32 @@ func createRBAC(f *e2eframework.Framework) error {
 	return nil
 }
 
-func createBackupAndWaitForComplete(f *e2eframework.Framework, name, tcName, typ string) error {
+func createBackupAndWaitForComplete(f *e2eframework.Framework, name, tcName, typ string, configure func(*v1alpha1.Backup)) (*v1alpha1.Backup, error) {
 	ns := f.Namespace.Name
 	// secret to visit tidb cluster
 	s := brutil.GetSecret(ns, name, "")
 	if _, err := f.ClientSet.CoreV1().Secrets(ns).Create(s); err != nil {
-		return err
+		return nil, err
 	}
 
 	backupFolder := time.Now().Format(time.RFC3339)
 	cfg := f.Storage.Config(ns, backupFolder)
 	backup := brutil.GetBackup(ns, name, tcName, typ, cfg)
 
+	if configure != nil {
+		configure(backup)
+	}
+
 	if _, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Create(backup); err != nil {
-		return err
+		return backup, err
 	}
 
 	if err := brutil.WaitForBackupComplete(f.ExtClient, ns, name, backupCompleteTimeout); err != nil {
-		return err
+		return backup, err
 	}
-	return nil
+	return backup, nil
 }
 
-// nolint
-// NOTE: it is not used now
 func deleteBackup(f *e2eframework.Framework, name string) error {
 	ns := f.Namespace.Name
 

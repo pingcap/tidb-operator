@@ -18,12 +18,20 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"strings"
 
 	"k8s.io/klog"
 
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+)
+
+const (
+	pageSize             = 10000
+	pageConcurrency      = 10
+	goroutineConcurrency = 100
 )
 
 // Options contains the input arguments to the backup command
@@ -43,22 +51,45 @@ func (bo *Options) cleanBRRemoteBackupData(ctx context.Context, backup *v1alpha1
 		return err
 	}
 	defer s.Close()
-	iter := s.List(nil)
+
+	iter := util.ListPage(s, nil)
 	for {
-		obj, err := iter.Next(ctx)
+		// list one page of object
+		objs, err := iter.Next(ctx, pageSize)
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
 			return err
 		}
-		klog.Infof("Prepare to delete %s for cluster %s", obj.Key, bo)
-		err = s.Delete(context.Background(), obj.Key)
-		if err != nil {
-			return err
+
+		// batch delete objects
+		var s3cli *s3.S3
+		var result *util.BatchDeleteObjectsResult
+		if ok := s.As(&s3cli); ok {
+			klog.Infof("Delete a page of object by S3 batch delete")
+			bucket := backup.Spec.StorageProvider.S3.Bucket
+			prefix := backup.Spec.StorageProvider.S3.Prefix
+			for i := range objs {
+				objs[i].Key = fmt.Sprintf("%s/%s", prefix, objs[i].Key)
+			}
+			result = util.BatchDeleteObjectsOfS3(ctx, s3cli, bucket, objs, pageConcurrency)
+		} else {
+			klog.Infof("Delete a page of object concurrently")
+			result = util.BatchDeleteObjectsConcurrently(ctx, s, objs, goroutineConcurrency)
 		}
-		klog.Infof("Delete %s for cluster %s successfully", obj.Key, bo)
+
+		if len(result.Deleted) != 0 {
+			klog.Infof("Delete these objects for cluster successfully: %s", strings.Join(result.Deleted, ","))
+		}
+		if len(result.Errors) != 0 {
+			for _, oerr := range result.Errors {
+				klog.Errorf("Delete object %s failed: %s", oerr.Key, oerr.Err)
+			}
+			return fmt.Errorf("objects remain to delete")
+		}
 	}
+
 	return nil
 }
 
