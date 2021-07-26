@@ -1132,7 +1132,8 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 					Value: "tc-pd",
 				},
 				{
-					Name: "TZ",
+					Name:  "TZ",
+					Value: "UTC",
 				},
 				{
 					Name: "DASHBOARD_SESSION_SECRET",
