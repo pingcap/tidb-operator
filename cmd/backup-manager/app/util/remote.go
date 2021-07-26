@@ -350,7 +350,6 @@ func BatchDeleteObjectsOfS3(ctx context.Context, s3cli s3iface.S3API, bucket str
 			Bucket: aws.String(bucket),
 			Delete: delete,
 		}
-		// FIXME: 确认 resp 结构
 		resp, err := s3cli.DeleteObjectsWithContext(ctx, input)
 
 		mu.Lock()
