@@ -32,7 +32,7 @@ spec:
       portName: http-grafana
       type: LoadBalancer
     username: admin
-    version: 6.1.6
+    version: 7.5.7
   imagePullPolicy: IfNotPresent
   initializer:
     baseImage: pingcap/tidb-monitor-initializer
@@ -44,7 +44,7 @@ spec:
     #  requests:
     #    cpu: 50m
     #    memory: 64Mi
-    version: v5.0.1
+    version: v5.1.0
   kubePrometheusURL: ""
   nodeSelector: {}
   persistent: true

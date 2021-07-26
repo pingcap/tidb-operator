@@ -14,10 +14,10 @@ spec:
     version: v2.11.1
   grafana:
     baseImage: grafana/grafana
-    version: 6.7.6
+    version: 7.5.7
   initializer:
     baseImage: pingcap/tidb-monitor-initializer
-    version: v5.0.1
+    version: v5.1.0
   reloader:
     baseImage: pingcap/tidb-monitor-reloader
     version: v1.0.1

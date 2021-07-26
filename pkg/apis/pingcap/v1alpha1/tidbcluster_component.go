@@ -405,32 +405,62 @@ func (tc *TidbCluster) BaseDiscoverySpec() ComponentAccessor {
 
 // BaseTiDBSpec returns the base spec of TiDB servers
 func (tc *TidbCluster) BaseTiDBSpec() ComponentAccessor {
-	return buildTidbClusterComponentAccessor(ComponentTiDB, tc, &tc.Spec.TiDB.ComponentSpec)
+	var spec *ComponentSpec
+	if tc.Spec.TiDB != nil {
+		spec = &tc.Spec.TiDB.ComponentSpec
+	}
+
+	return buildTidbClusterComponentAccessor(ComponentTiDB, tc, spec)
 }
 
 // BaseTiKVSpec returns the base spec of TiKV servers
 func (tc *TidbCluster) BaseTiKVSpec() ComponentAccessor {
-	return buildTidbClusterComponentAccessor(ComponentTiKV, tc, &tc.Spec.TiKV.ComponentSpec)
+	var spec *ComponentSpec
+	if tc.Spec.TiKV != nil {
+		spec = &tc.Spec.TiKV.ComponentSpec
+	}
+
+	return buildTidbClusterComponentAccessor(ComponentTiKV, tc, spec)
 }
 
 // BaseTiFlashSpec returns the base spec of TiFlash servers
 func (tc *TidbCluster) BaseTiFlashSpec() ComponentAccessor {
-	return buildTidbClusterComponentAccessor(ComponentTiFlash, tc, &tc.Spec.TiFlash.ComponentSpec)
+	var spec *ComponentSpec
+	if tc.Spec.TiFlash != nil {
+		spec = &tc.Spec.TiFlash.ComponentSpec
+	}
+
+	return buildTidbClusterComponentAccessor(ComponentTiFlash, tc, spec)
 }
 
 // BaseTiCDCSpec returns the base spec of TiCDC servers
 func (tc *TidbCluster) BaseTiCDCSpec() ComponentAccessor {
-	return buildTidbClusterComponentAccessor(ComponentTiCDC, tc, &tc.Spec.TiCDC.ComponentSpec)
+	var spec *ComponentSpec
+	if tc.Spec.TiCDC != nil {
+		spec = &tc.Spec.TiCDC.ComponentSpec
+	}
+
+	return buildTidbClusterComponentAccessor(ComponentTiCDC, tc, spec)
 }
 
 // BasePDSpec returns the base spec of PD servers
 func (tc *TidbCluster) BasePDSpec() ComponentAccessor {
-	return buildTidbClusterComponentAccessor(ComponentPD, tc, &tc.Spec.PD.ComponentSpec)
+	var spec *ComponentSpec
+	if tc.Spec.PD != nil {
+		spec = &tc.Spec.PD.ComponentSpec
+	}
+
+	return buildTidbClusterComponentAccessor(ComponentPD, tc, spec)
 }
 
 // BasePumpSpec returns the base spec of Pump:
 func (tc *TidbCluster) BasePumpSpec() ComponentAccessor {
-	return buildTidbClusterComponentAccessor(ComponentPump, tc, &tc.Spec.Pump.ComponentSpec)
+	var spec *ComponentSpec
+	if tc.Spec.Pump != nil {
+		spec = &tc.Spec.Pump.ComponentSpec
+	}
+
+	return buildTidbClusterComponentAccessor(ComponentPump, tc, spec)
 }
 
 func (dc *DMCluster) BaseDiscoverySpec() ComponentAccessor {
@@ -442,5 +472,10 @@ func (dc *DMCluster) BaseMasterSpec() ComponentAccessor {
 }
 
 func (dc *DMCluster) BaseWorkerSpec() ComponentAccessor {
-	return buildDMClusterComponentAccessor(ComponentDMWorker, dc, &dc.Spec.Worker.ComponentSpec)
+	var spec *ComponentSpec
+	if dc.Spec.Worker != nil {
+		spec = &dc.Spec.Worker.ComponentSpec
+	}
+
+	return buildDMClusterComponentAccessor(ComponentDMWorker, dc, spec)
 }

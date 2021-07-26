@@ -22,11 +22,11 @@ import (
 	"time"
 
 	"github.com/onsi/ginkgo"
+	ginkgoconfig "github.com/onsi/ginkgo/config"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/br/framework"
 	brutil "github.com/pingcap/tidb-operator/tests/e2e/br/framework/br"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/blockwriter"
-	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/feature"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/portforward"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	utiltidbcluster "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
@@ -42,22 +42,48 @@ var (
 )
 
 const (
-	featKeyVersion   = "Version"
-	versionV4        = "V4"
-	versionV5        = "V5"
-	versionV42V5     = "V4->V5"
-	featVersionV4    = featKeyVersion + ":" + versionV4
-	featVersionV5    = featKeyVersion + ":" + versionV5
-	featVersionV42V5 = featKeyVersion + ":" + versionV42V5
-
-	featKeyType    = "Type"
-	typeBR         = "BR"
-	typeDumper     = "Dumper"
-	featTypeBR     = featKeyType + ":" + typeBR
-	featTypeDumper = featKeyType + ":" + typeDumper
-
-	featTLS = "TLS"
+	typeBR     string = "BR"
+	typeDumper string = "Dumper"
 )
+
+type option func(t *testcase)
+
+func enableTLS(t *testcase) {
+	t.enableTLS = true
+}
+
+type testcase struct {
+	backupVersion  string
+	restoreVersion string
+	typ            string
+	enableTLS      bool
+}
+
+func newTestCase(backupVersion, restoreVersion string, typ string, opts ...option) *testcase {
+	tc := &testcase{
+		backupVersion:  backupVersion,
+		restoreVersion: restoreVersion,
+		typ:            typ,
+	}
+
+	for _, opt := range opts {
+		opt(tc)
+	}
+
+	return tc
+}
+
+func (t *testcase) description() string {
+	builder := &strings.Builder{}
+
+	builder.WriteString(fmt.Sprintf("[%s][%s To %s]", t.typ, t.backupVersion, t.restoreVersion))
+
+	if t.enableTLS {
+		builder.WriteString("[TLS]")
+	}
+
+	return builder.String()
+}
 
 var _ = ginkgo.Describe("Backup and Restore", func() {
 	f := e2eframework.NewFramework("br")
@@ -76,101 +102,119 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		framework.ExpectNoError(err)
 	})
 
-	feats := []feature.Features{
-		feature.New(featVersionV4, featTypeBR).Build(),
-		feature.New(featVersionV4, featTypeDumper).Build(),
-		// feature.New(featVersionV4, featTypeBR, featTLS).Build(),
-		// feature.New(featVersionV4, featTypeDumper, featTLS).Build(),
-
-		feature.New(featVersionV5, featTypeBR).Build(),
-		feature.New(featVersionV5, featTypeDumper).Build(),
-		feature.New(featVersionV5, featTypeBR, featTLS).Build(),
-		feature.New(featVersionV5, featTypeDumper, featTLS).Build(),
-
-		feature.New(featVersionV42V5, featTypeBR).Build(),
-		feature.New(featVersionV42V5, featTypeDumper).Build(),
+	cases := []*testcase{
+		// latest version BR
+		newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeBR),
+		// latest version Dumper
+		newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeDumper),
+		// latest version BR and enable TLS
+		newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeBR, enableTLS),
+		// latest version Dumper and enable TLS
+		newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeDumper, enableTLS),
+	}
+	for _, prevVersion := range utilimage.TiDBPreviousVersions {
+		cases = append(cases,
+			// previous version BR
+			newTestCase(prevVersion, prevVersion, typeBR),
+			// previous version Dumper
+			newTestCase(prevVersion, prevVersion, typeDumper),
+			// previous version -> latest version BR
+			newTestCase(prevVersion, utilimage.TiDBLatest, typeBR),
+			// previous version -> latest version Dumper
+			newTestCase(prevVersion, utilimage.TiDBLatest, typeDumper),
+		)
 	}
 
-	for i := range feats {
-		feat := feats[i]
-		desc := feat.String() + "Backup and Restore"
+	brTest := func(tcase *testcase) {
+		enableTLS := tcase.enableTLS
+		typ := strings.ToLower(tcase.typ)
+		backupVersion := tcase.backupVersion
+		restoreVersion := tcase.restoreVersion
 
-		enableTLS := feat.Has(featTLS)
-		typ := strings.ToLower(feat.Value(featKeyType))
 		// NOTE: mysql and test will be filtered by default
 		dbName := "e2etest"
-		backupClusterName := fmt.Sprintf("backup-with-%s", typ)
-		restoreClusterName := fmt.Sprintf("restore-with-%s", typ)
-		backupName := fmt.Sprintf("%s-backup", backupClusterName)
-		restoreName := fmt.Sprintf("%s-restore", restoreClusterName)
+		backupClusterName := fmt.Sprintf("backup-with-%s-%s", typ, strings.ReplaceAll(backupVersion, ".", "x"))
+		restoreClusterName := fmt.Sprintf("restore-with-%s-%s", typ, strings.ReplaceAll(restoreVersion, ".", "x"))
+		backupName := backupClusterName
+		restoreName := restoreClusterName
 
-		var backupVersion, restoreVersion string
-		switch feat.Value(featKeyVersion) {
-		case versionV4:
-			backupVersion = utilimage.TiDBV4
-			restoreVersion = utilimage.TiDBV4
-		case versionV5:
-			backupVersion = utilimage.TiDBV5
-			restoreVersion = utilimage.TiDBV5
-		case versionV42V5:
-			backupVersion = utilimage.TiDBV4
-			restoreVersion = utilimage.TiDBV5
-		}
+		ns := f.Namespace.Name
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 
-		ginkgo.It(desc, func() {
-			ns := f.Namespace.Name
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+		ginkgo.By("Create TiDB cluster for backup")
+		err := createTidbCluster(f, backupClusterName, backupVersion, enableTLS)
+		framework.ExpectNoError(err)
 
-			ginkgo.By("Create TiDB cluster for backup")
-			err := createTidbCluster(f, backupClusterName, backupVersion, enableTLS)
-			framework.ExpectNoError(err)
+		ginkgo.By("Create TiDB cluster for restore")
+		err = createTidbCluster(f, restoreClusterName, restoreVersion, enableTLS)
+		framework.ExpectNoError(err)
 
-			ginkgo.By("Create TiDB cluster for restore")
-			err = createTidbCluster(f, restoreClusterName, restoreVersion, enableTLS)
-			framework.ExpectNoError(err)
+		ginkgo.By("Wait for backup TiDB cluster ready")
+		err = utiltidbcluster.WaitForTidbClusterConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
+		framework.ExpectNoError(err)
 
-			ginkgo.By("Wait for backup TiDB cluster ready")
-			err = utiltidbcluster.WaitForTidbClusterConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
-			framework.ExpectNoError(err)
+		ginkgo.By("Wait for restore TiDB cluster ready")
+		err = utiltidbcluster.WaitForTidbClusterConditionReady(f.ExtClient, ns, restoreClusterName, tidbReadyTimeout, 0)
+		framework.ExpectNoError(err)
 
-			ginkgo.By("Wait for restore TiDB cluster ready")
-			err = utiltidbcluster.WaitForTidbClusterConditionReady(f.ExtClient, ns, restoreClusterName, tidbReadyTimeout, 0)
-			framework.ExpectNoError(err)
+		ginkgo.By("Forward backup TiDB cluster service")
+		backupHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(backupClusterName), 4000)
+		framework.ExpectNoError(err)
+		err = initDatabase(backupHost, dbName)
+		framework.ExpectNoError(err)
 
-			ginkgo.By("Forward backup TiDB cluster service")
-			backupHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(backupClusterName), 4000)
-			framework.ExpectNoError(err)
-			err = initDatabase(backupHost, dbName)
-			framework.ExpectNoError(err)
+		ginkgo.By("Write data into backup TiDB cluster")
+		backupDSN := getDefaultDSN(backupHost, dbName)
+		err = blockwriter.NewDefault().Write(context.Background(), backupDSN)
+		framework.ExpectNoError(err)
 
-			ginkgo.By("Write data into backup TiDB cluster")
-			backupDSN := getDefaultDSN(backupHost, dbName)
-			err = blockwriter.NewDefault().Write(context.Background(), backupDSN)
-			framework.ExpectNoError(err)
+		ginkgo.By("Create RBAC for backup and restore")
+		err = createRBAC(f)
+		framework.ExpectNoError(err)
 
-			ginkgo.By("Create RBAC for backup and restore")
-			err = createRBAC(f)
-			framework.ExpectNoError(err)
+		ginkgo.By("Create backup")
+		err = createBackupAndWaitForComplete(f, backupName, backupClusterName, typ)
+		framework.ExpectNoError(err)
 
-			ginkgo.By("Create backup")
-			err = createBackupAndWaitForComplete(f, backupName, backupClusterName, typ)
-			framework.ExpectNoError(err)
+		ginkgo.By("Create restore")
+		err = createRestoreAndWaitForComplete(f, restoreName, restoreClusterName, typ, backupName)
+		framework.ExpectNoError(err)
 
-			ginkgo.By("Create restore")
-			err = createRestoreAndWaitForComplete(f, restoreName, restoreClusterName, typ, backupName)
-			framework.ExpectNoError(err)
+		ginkgo.By("Forward restore TiDB cluster service")
+		restoreHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(restoreClusterName), 4000)
+		framework.ExpectNoError(err)
 
-			ginkgo.By("Forward restore TiDB cluster service")
-			restoreHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(restoreClusterName), 4000)
-			framework.ExpectNoError(err)
+		ginkgo.By("Validate restore result")
+		restoreDSN := getDefaultDSN(restoreHost, dbName)
+		err = checkDataIsSame(backupDSN, restoreDSN)
+		framework.ExpectNoError(err)
+	}
 
-			ginkgo.By("Validate restore result")
-			restoreDSN := getDefaultDSN(restoreHost, dbName)
-			err = checkDataIsSame(backupDSN, restoreDSN)
-			framework.ExpectNoError(err)
+	for i := range cases {
+		tcase := cases[i]
+		ginkgo.It(tcase.description(), func() {
+			brTest(tcase)
 		})
 	}
+
+	ginkgo.Context("Specific Version", func() {
+		cases := []*testcase{
+			newTestCase(utilimage.TiDBV5x1x0, utilimage.TiDBV5x1x0, typeBR),
+			newTestCase(utilimage.TiDBV4x0x9, utilimage.TiDBV5x1x0, typeBR),
+			newTestCase(utilimage.TiDBV5x0x0, utilimage.TiDBV5x1x0, typeBR),
+			newTestCase(utilimage.TiDBV5x0x2, utilimage.TiDBV5x1x0, typeBR),
+		}
+		for i := range cases {
+			tcase := cases[i]
+			ginkgo.It(tcase.description(), func() {
+				if ginkgoconfig.GinkgoConfig.FocusString == "" {
+					framework.Skipf("Skip br testing for specific version")
+				}
+				brTest(tcase)
+			})
+		}
+	})
 })
 
 func getTiDBServiceResourceName(tcName string) string {

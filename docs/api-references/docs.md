@@ -345,6 +345,17 @@ Kubernetes core/v1.PodSecurityContext
 <p>PodSecurityContext of the component</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>priorityClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PriorityClassName of Backup Job Pods</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -1193,6 +1204,17 @@ Kubernetes core/v1.PodSecurityContext
 <td>
 <em>(Optional)</em>
 <p>PodSecurityContext of the component</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>priorityClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PriorityClassName of Restore Job Pods</p>
 </td>
 </tr>
 </table>
@@ -3300,6 +3322,17 @@ Kubernetes core/v1.PodSecurityContext
 <td>
 <em>(Optional)</em>
 <p>PodSecurityContext of the component</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>priorityClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PriorityClassName of Backup Job Pods</p>
 </td>
 </tr>
 </tbody>
@@ -10183,6 +10216,19 @@ int
 </tr>
 <tr>
 <td>
+<code>retentionTime</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Configuration for <code>--storage.tsdb.retention.time</code>, Units Supported: y, w, d, h, m, s, ms.
+If set to non empty values, it will override the value of <code>ReserveDays</code>.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>ingress</code></br>
 <em>
 <a href="#ingressspec">
@@ -11395,6 +11441,17 @@ Kubernetes core/v1.PodSecurityContext
 <td>
 <em>(Optional)</em>
 <p>PodSecurityContext of the component</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>priorityClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PriorityClassName of Restore Job Pods</p>
 </td>
 </tr>
 </tbody>

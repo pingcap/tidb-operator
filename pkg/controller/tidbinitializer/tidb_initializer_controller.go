@@ -38,7 +38,7 @@ type Controller struct {
 	queue   workqueue.RateLimitingInterface
 }
 
-// NewController creates a backup controller.
+// NewController creates a tidbinitializer controller.
 func NewController(deps *controller.Dependencies) *Controller {
 	c := &Controller{
 		deps:    deps,

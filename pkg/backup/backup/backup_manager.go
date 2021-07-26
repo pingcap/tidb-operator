@@ -307,6 +307,7 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 					},
 				},
 			}, volumes...),
+			PriorityClassName: backup.Spec.PriorityClassName,
 		},
 	}
 
@@ -403,7 +404,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		})
 	}
 
-	if backup.Spec.From != nil && tc.Spec.TiDB.TLSClient != nil && tc.Spec.TiDB.TLSClient.Enabled && !tc.SkipTLSWhenConnectTiDB() {
+	if backup.Spec.From != nil && tc.Spec.TiDB != nil && tc.Spec.TiDB.TLSClient != nil && tc.Spec.TiDB.TLSClient.Enabled && !tc.SkipTLSWhenConnectTiDB() {
 		args = append(args, "--client-tls=true")
 		clientSecretName := util.TiDBClientTLSSecretName(backup.Spec.BR.Cluster)
 		if backup.Spec.From.TLSClientSecretName != nil {
@@ -489,11 +490,12 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 					Resources:       backup.Spec.ResourceRequirements,
 				},
 			},
-			RestartPolicy:    corev1.RestartPolicyNever,
-			Tolerations:      backup.Spec.Tolerations,
-			ImagePullSecrets: backup.Spec.ImagePullSecrets,
-			Affinity:         backup.Spec.Affinity,
-			Volumes:          volumes,
+			RestartPolicy:     corev1.RestartPolicyNever,
+			Tolerations:       backup.Spec.Tolerations,
+			ImagePullSecrets:  backup.Spec.ImagePullSecrets,
+			Affinity:          backup.Spec.Affinity,
+			Volumes:           volumes,
+			PriorityClassName: backup.Spec.PriorityClassName,
 		},
 	}
 

@@ -27,6 +27,7 @@ import (
 	"github.com/Masterminds/semver"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/prometheus/common/model"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
@@ -69,6 +70,7 @@ func ValidateTidbMonitor(monitor *v1alpha1.TidbMonitor) field.ErrorList {
 	}
 
 	allErrs = append(allErrs, validateService(&monitor.Spec.Prometheus.Service, field.NewPath("spec"))...)
+	allErrs = append(allErrs, validatePromDurationStr(monitor.Spec.Prometheus.RetentionTime, field.NewPath("spec"))...)
 	allErrs = append(allErrs, validateService(&monitor.Spec.Reloader.Service, field.NewPath("spec"))...)
 	if monitor.Spec.Persistent {
 		allErrs = append(allErrs, validateStorageInfo(monitor.Spec.Storage, field.NewPath("spec"))...)
@@ -459,25 +461,29 @@ func ValidateUpdateTidbCluster(old, tc *v1alpha1.TidbCluster) field.ErrorList {
 // TODO(aylei): call this in ValidateTidbCluster after we deprecated the old versions of helm chart officially
 func validateNewTidbClusterSpec(spec *v1alpha1.TidbClusterSpec, path *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
+	pdSpecified := spec.PD != nil
+	tidbSpecified := spec.TiDB != nil
+	tikvSpecified := spec.TiKV != nil
+
 	if spec.Version == "" {
 		allErrs = append(allErrs, field.Invalid(path.Child("version"), spec.Version, "version must not be empty"))
 	}
-	if spec.TiDB.BaseImage == "" {
+	if tidbSpecified && spec.TiDB.BaseImage == "" {
 		allErrs = append(allErrs, field.Invalid(path.Child("tidb.baseImage"), spec.TiDB.BaseImage, "baseImage of TiDB must not be empty"))
 	}
-	if spec.PD.BaseImage == "" {
+	if pdSpecified && spec.PD.BaseImage == "" {
 		allErrs = append(allErrs, field.Invalid(path.Child("pd.baseImage"), spec.PD.BaseImage, "baseImage of PD must not be empty"))
 	}
-	if spec.TiKV.BaseImage == "" {
+	if tikvSpecified && spec.TiKV.BaseImage == "" {
 		allErrs = append(allErrs, field.Invalid(path.Child("tikv.baseImage"), spec.TiKV.BaseImage, "baseImage of TiKV must not be empty"))
 	}
-	if spec.TiDB.Image != "" {
+	if tidbSpecified && spec.TiDB.Image != "" {
 		allErrs = append(allErrs, field.Invalid(path.Child("tidb.image"), spec.TiDB.Image, "image has been deprecated, use baseImage instead"))
 	}
-	if spec.TiKV.Image != "" {
+	if tikvSpecified && spec.TiKV.Image != "" {
 		allErrs = append(allErrs, field.Invalid(path.Child("tikv.image"), spec.TiKV.Image, "image has been deprecated, use baseImage instead"))
 	}
-	if spec.PD.Image != "" {
+	if pdSpecified && spec.PD.Image != "" {
 		allErrs = append(allErrs, field.Invalid(path.Child("pd.image"), spec.PD.Image, "image has been deprecated, use baseImage instead"))
 	}
 	return allErrs
@@ -488,25 +494,29 @@ func validateNewTidbClusterSpec(spec *v1alpha1.TidbClusterSpec, path *field.Path
 func disallowUsingLegacyAPIInNewCluster(old, tc *v1alpha1.TidbCluster) field.ErrorList {
 	allErrs := field.ErrorList{}
 	path := field.NewPath("spec")
+	pdSpecified := old.Spec.PD != nil && tc.Spec.PD != nil
+	tidbSpecified := old.Spec.TiDB != nil && tc.Spec.TiDB != nil
+	tikvSpecified := old.Spec.TiKV != nil && tc.Spec.TiKV != nil
+
 	if old.Spec.Version != "" && tc.Spec.Version == "" {
 		allErrs = append(allErrs, field.Invalid(path.Child("version"), tc.Spec.Version, "version must not be empty"))
 	}
-	if old.Spec.TiDB.BaseImage != "" && tc.Spec.TiDB.BaseImage == "" {
+	if tidbSpecified && old.Spec.TiDB.BaseImage != "" && tc.Spec.TiDB.BaseImage == "" {
 		allErrs = append(allErrs, field.Invalid(path.Child("tidb.baseImage"), tc.Spec.TiDB.BaseImage, "baseImage of TiDB must not be empty"))
 	}
-	if old.Spec.PD.BaseImage != "" && tc.Spec.PD.BaseImage == "" {
+	if pdSpecified && old.Spec.PD.BaseImage != "" && tc.Spec.PD.BaseImage == "" {
 		allErrs = append(allErrs, field.Invalid(path.Child("pd.baseImage"), tc.Spec.PD.BaseImage, "baseImage of PD must not be empty"))
 	}
-	if old.Spec.TiKV.BaseImage != "" && tc.Spec.TiKV.BaseImage == "" {
+	if tikvSpecified && old.Spec.TiKV.BaseImage != "" && tc.Spec.TiKV.BaseImage == "" {
 		allErrs = append(allErrs, field.Invalid(path.Child("tikv.baseImage"), tc.Spec.TiKV.BaseImage, "baseImage of TiKV must not be empty"))
 	}
-	if old.Spec.TiDB.Config != nil && tc.Spec.TiDB.Config == nil {
+	if tidbSpecified && old.Spec.TiDB.Config != nil && tc.Spec.TiDB.Config == nil {
 		allErrs = append(allErrs, field.Invalid(path.Child("tidb.config"), tc.Spec.TiDB.Config, "tidb.config must not be nil"))
 	}
-	if old.Spec.TiKV.Config != nil && tc.Spec.TiKV.Config == nil {
+	if tikvSpecified && old.Spec.TiKV.Config != nil && tc.Spec.TiKV.Config == nil {
 		allErrs = append(allErrs, field.Invalid(path.Child("tikv.config"), tc.Spec.TiKV.Config, "TiKV.config must not be nil"))
 	}
-	if old.Spec.PD.Config != nil && tc.Spec.PD.Config == nil {
+	if pdSpecified && old.Spec.PD.Config != nil && tc.Spec.PD.Config == nil {
 		allErrs = append(allErrs, field.Invalid(path.Child("pd.config"), tc.Spec.PD.Config, "PD.config must not be nil"))
 	}
 	return allErrs
@@ -611,6 +621,17 @@ func validateTimeDurationStr(timeStr *string, fldPath *field.Path) field.ErrorLi
 			allErrs = append(allErrs, field.Invalid(fldPath, timeStr, "mush be a valid Go time duration string, e.g. 3m"))
 		} else if d <= 0 {
 			allErrs = append(allErrs, field.Invalid(fldPath, timeStr, "must be a positive Go time duration"))
+		}
+	}
+	return allErrs
+}
+
+// validatePromDurationStr validate prometheus duration, Units Supported: y, w, d, h, m, s, ms.
+func validatePromDurationStr(timeStr *string, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if timeStr != nil {
+		if _, err := model.ParseDuration(*timeStr); err != nil {
+			allErrs = append(allErrs, field.Invalid(fldPath, timeStr, "mush be a valid Prom time duration string, e.g. 2h"))
 		}
 	}
 	return allErrs
