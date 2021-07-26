@@ -405,7 +405,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			<-time.After(30 * time.Second)
 
 			ginkgo.By("Deploy TiDB with client TLS enabled")
-			tc := fixture.GetTidbCluster(ns, dcName, utilimage.TiDBV4)
+			tc := fixture.GetTidbCluster(ns, dcName, utilimage.TiDBLatest)
 			tc.Spec.PD.Replicas = 1
 			tc.Spec.TiKV.Replicas = 1
 			tc.Spec.TiDB.Replicas = 1
