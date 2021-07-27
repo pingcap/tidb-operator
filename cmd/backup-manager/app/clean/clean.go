@@ -28,9 +28,7 @@ import (
 )
 
 const (
-	pageSize             = 10000
-	pageConcurrency      = 10
-	goroutineConcurrency = 100
+	pageSize = 10000
 )
 
 // Options contains the input arguments to the backup command
