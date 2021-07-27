@@ -129,7 +129,8 @@ func TestPageIterator(t *testing.T) {
 	// basic function
 	for _, tcase := range cases {
 		drv := &mockDriver{}
-		bucket := blob.NewBucket(drv)
+		backend := &StorageBackend{}
+		backend.Bucket = blob.NewBucket(drv)
 
 		orginObjs := make([]*driver.ListObject, 0, tcase.size)
 		for i := 0; i < tcase.size; i++ {
@@ -139,7 +140,7 @@ func TestPageIterator(t *testing.T) {
 		}
 		drv.SetListPaged(orginObjs, tcase.rerr)
 
-		iter := ListPage(bucket, nil)
+		iter := backend.ListPage(nil)
 		count := 0
 		maxCount := int(math.Ceil(float64(len(orginObjs)) / float64(tcase.pageSize))) // when it should return io.EOF
 		for {
@@ -176,7 +177,8 @@ func TestPageIterator(t *testing.T) {
 	}
 	for _, tcase := range errcases {
 		drv := &mockDriver{}
-		bucket := blob.NewBucket(drv)
+		backend := &StorageBackend{}
+		backend.Bucket = blob.NewBucket(drv)
 
 		orginObjs := make([]*driver.ListObject, 0, tcase.size)
 		for i := 0; i < tcase.size; i++ {
@@ -186,7 +188,7 @@ func TestPageIterator(t *testing.T) {
 		}
 		drv.SetListPaged(orginObjs, tcase.rerr)
 
-		iter := ListPage(bucket, nil)
+		iter := backend.ListPage(nil)
 		objs, err := iter.Next(context.Background(), tcase.pageSize)
 
 		g.Expect(err.Error()).To(gomega.ContainSubstring(tcase.rerr.Error())) // can't find any func to convert error to gcerr.Error
@@ -279,7 +281,7 @@ func TestBatchDeleteObjectsOfS3(t *testing.T) {
 			return output, nil
 		}
 
-		result := BatchDeleteObjectsOfS3(context.Background(), cli, bucket, objs, tcase.concurrency)
+		result := BatchDeleteObjectsOfS3(context.Background(), cli, objs, bucket, "", tcase.concurrency)
 		g.Expect(result.Errors).To(gomega.HaveLen(len(errMap)))
 		g.Expect(result.Deleted).To(gomega.HaveLen(len(deletedMap)))
 		for key := range errMap {
@@ -379,7 +381,6 @@ func TestBatchDeleteObjectsConcurrently(t *testing.T) {
 			g.Expect(exist1 || exist2).To(gomega.BeTrue()) // check if all key is deleted
 		}
 	}
-
 }
 
 func objects(size int) []*blob.ListObject {

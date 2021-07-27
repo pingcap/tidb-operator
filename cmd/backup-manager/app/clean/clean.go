@@ -22,7 +22,6 @@ import (
 
 	"k8s.io/klog"
 
-	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -52,7 +51,7 @@ func (bo *Options) cleanBRRemoteBackupData(ctx context.Context, backup *v1alpha1
 	}
 	defer s.Close()
 
-	iter := util.ListPage(s, nil)
+	iter := s.ListPage(nil)
 	for {
 		// list one page of object
 		objs, err := iter.Next(ctx, pageSize)
@@ -64,20 +63,7 @@ func (bo *Options) cleanBRRemoteBackupData(ctx context.Context, backup *v1alpha1
 		}
 
 		// batch delete objects
-		var s3cli *s3.S3
-		var result *util.BatchDeleteObjectsResult
-		if ok := s.As(&s3cli); ok {
-			klog.Infof("Delete a page of object by S3 batch delete")
-			bucket := backup.Spec.StorageProvider.S3.Bucket
-			prefix := backup.Spec.StorageProvider.S3.Prefix
-			for i := range objs {
-				objs[i].Key = fmt.Sprintf("%s/%s", prefix, objs[i].Key)
-			}
-			result = util.BatchDeleteObjectsOfS3(ctx, s3cli, bucket, objs, pageConcurrency)
-		} else {
-			klog.Infof("Delete a page of object concurrently")
-			result = util.BatchDeleteObjectsConcurrently(ctx, s, objs, goroutineConcurrency)
-		}
+		result := s.BatchDeleteObjects(ctx, objs, nil)
 
 		if len(result.Deleted) != 0 {
 			klog.Infof("Delete these objects for cluster successfully: %s", strings.Join(result.Deleted, ","))

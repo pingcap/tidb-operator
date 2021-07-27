@@ -7,6 +7,7 @@ module github.com/pingcap/tidb-operator
 go 1.13
 
 require (
+	cloud.google.com/go v0.39.0
 	github.com/Azure/go-autorest/autorest/mocks v0.3.0 // indirect
 	github.com/BurntSushi/toml v0.3.1
 	github.com/MakeNowJust/heredoc v0.0.0-20171113091838-e9091a26100e // indirect
