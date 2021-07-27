@@ -333,6 +333,19 @@ CleanPolicyType
 </tr>
 <tr>
 <td>
+<code>cleanOption</code></br>
+<em>
+<a href="#cleanoption">
+CleanOption
+</a>
+</em>
+</td>
+<td>
+<p>CleanOption control the behavior of clean.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>podSecurityContext</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
@@ -3312,6 +3325,19 @@ CleanPolicyType
 </tr>
 <tr>
 <td>
+<code>cleanOption</code></br>
+<em>
+<a href="#cleanoption">
+CleanOption
+</a>
+</em>
+</td>
+<td>
+<p>CleanOption control the behavior of clean.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>podSecurityContext</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
@@ -3735,6 +3761,61 @@ github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
 </em>
 </td>
 <td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="cleanoption">CleanOption</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#backupspec">BackupSpec</a>)
+</p>
+<p>
+<p>CleanOption defines the configuration for cleanup backup</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>pageSize</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<p>PageSize represents the number of objects to clean at a time.
+default is 10000</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>batchConcurrency</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>BatchConcurrency represents the number of batch deletions in parallel.
+It is used when storage provider support batch delete api.
+default is 10</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>routineConcurrency</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>BatchConcurrency represents the number of goroutine that used to delete objects
+default is 100</p>
 </td>
 </tr>
 </tbody>

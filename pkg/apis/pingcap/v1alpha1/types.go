@@ -1347,6 +1347,22 @@ const (
 	CleanPolicyTypeDelete CleanPolicyType = "Delete"
 )
 
+// +k8s:openapi-gen=true
+// CleanOption defines the configuration for cleanup backup
+type CleanOption struct {
+	// PageSize represents the number of objects to clean at a time.
+	// default is 10000
+	PageSize int64 `json:"pageSize,omitempty"`
+
+	// BatchConcurrency represents the number of batch deletions in parallel.
+	// It is used when storage provider support batch delete api.
+	// default is 10
+	BatchConcurrency int32 `json:"batchConcurrency,omitempty"`
+	// BatchConcurrency represents the number of goroutine that used to delete objects
+	// default is 100
+	RoutineConcurrency int32 `json:"routineConcurrency,omitempty"`
+}
+
 // BackupSpec contains the backup specification for a tidb cluster.
 // +k8s:openapi-gen=true
 type BackupSpec struct {
@@ -1412,6 +1428,8 @@ type BackupSpec struct {
 	ServiceAccount string `json:"serviceAccount,omitempty"`
 	// CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained
 	CleanPolicy CleanPolicyType `json:"cleanPolicy,omitempty"`
+	// CleanOption control the behavior of clean.
+	CleanOption *CleanOption `json:"cleanOption,omitempty"`
 
 	// PodSecurityContext of the component
 	// +optional

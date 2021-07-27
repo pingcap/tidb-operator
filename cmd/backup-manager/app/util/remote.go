@@ -169,13 +169,8 @@ type ObjectError struct {
 }
 
 type BatchDeleteObjectsOption struct {
-	// If StorageBackend suppport batch delete api, delete multi page concurrently.
-	// default is 10.
-	PageConcurrency int
-
-	// If StorageBackend delete multi objects concurrently.
-	// default is 100.
-	GoroutineConcurrency int
+	BatchConcurrency   int
+	RoutineConcurrency int
 }
 
 type BatchDeleteObjectsResult struct {
@@ -192,14 +187,14 @@ func (b *StorageBackend) BatchDeleteObjects(ctx context.Context, objs []*blob.Li
 	s3cli, ok := b.AsS3()
 	if ok {
 		concurrency := 10
-		if opt != nil && opt.PageConcurrency != 0 {
-			concurrency = opt.PageConcurrency
+		if opt != nil && opt.BatchConcurrency != 0 {
+			concurrency = opt.BatchConcurrency
 		}
 		result = BatchDeleteObjectsOfS3(ctx, s3cli, objs, b.GetBucket(), b.GetPrefix(), concurrency)
 	} else {
 		concurrency := 100
-		if opt != nil && opt.GoroutineConcurrency != 0 {
-			concurrency = opt.GoroutineConcurrency
+		if opt != nil && opt.RoutineConcurrency != 0 {
+			concurrency = opt.RoutineConcurrency
 		}
 		result = BatchDeleteObjectsConcurrently(ctx, b.Bucket, objs, concurrency)
 	}
@@ -221,6 +216,10 @@ func BatchDeleteObjectsOfS3(ctx context.Context, s3cli s3iface.S3API, objs []*bl
 		end := (piece + 1) * batchSize
 		if end > len(objs) {
 			end = len(objs)
+		}
+
+		if len(objs[start:end]) == 0 {
+			return
 		}
 
 		delete := &s3.Delete{}

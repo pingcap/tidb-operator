@@ -27,10 +27,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 )
 
-const (
-	pageSize = 10000
-)
-
 // Options contains the input arguments to the backup command
 type Options struct {
 	Namespace  string
@@ -49,10 +45,14 @@ func (bo *Options) cleanBRRemoteBackupData(ctx context.Context, backup *v1alpha1
 	}
 	defer s.Close()
 
+	opt := backup.GetCleanOption()
+
+	klog.Infof("cleanning cluster %s backup data with opt: %+v", bo, opt)
+
 	iter := s.ListPage(nil)
 	for {
 		// list one page of object
-		objs, err := iter.Next(ctx, pageSize)
+		objs, err := iter.Next(ctx, int(opt.PageSize))
 		if err == io.EOF {
 			break
 		}
@@ -61,14 +61,17 @@ func (bo *Options) cleanBRRemoteBackupData(ctx context.Context, backup *v1alpha1
 		}
 
 		// batch delete objects
-		result := s.BatchDeleteObjects(ctx, objs, nil)
+		result := s.BatchDeleteObjects(ctx, objs, &util.BatchDeleteObjectsOption{
+			BatchConcurrency:   int(opt.BatchConcurrency),
+			RoutineConcurrency: int(opt.RoutineConcurrency),
+		})
 
 		if len(result.Deleted) != 0 {
-			klog.Infof("Delete these objects for cluster successfully: %s", strings.Join(result.Deleted, ","))
+			klog.Infof("delete %d objects for cluster %s successfully: %s", len(result.Deleted), bo, strings.Join(result.Deleted, ","))
 		}
 		if len(result.Errors) != 0 {
 			for _, oerr := range result.Errors {
-				klog.Errorf("Delete object %s failed: %s", oerr.Key, oerr.Err)
+				klog.Errorf("delete object %s for cluster %s failed: %s", oerr.Key, bo, oerr.Err)
 			}
 			return fmt.Errorf("objects remain to delete")
 		}

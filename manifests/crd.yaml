@@ -17824,6 +17824,18 @@ spec:
               required:
               - cluster
               type: object
+            cleanOption:
+              properties:
+                batchConcurrency:
+                  format: int32
+                  type: integer
+                pageSize:
+                  format: int64
+                  type: integer
+                routineConcurrency:
+                  format: int32
+                  type: integer
+              type: object
             cleanPolicy:
               type: string
             dumpling:
@@ -18964,6 +18976,18 @@ spec:
                       type: string
                   required:
                   - cluster
+                  type: object
+                cleanOption:
+                  properties:
+                    batchConcurrency:
+                      format: int32
+                      type: integer
+                    pageSize:
+                      format: int64
+                      type: integer
+                    routineConcurrency:
+                      format: int32
+                      type: integer
                   type: object
                 cleanPolicy:
                   type: string

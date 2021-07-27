@@ -28,6 +28,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/onsi/gomega"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/backup/util"
 	"gocloud.dev/blob"
 	"gocloud.dev/blob/driver"
 	"gocloud.dev/gcerrors"
@@ -118,6 +120,10 @@ func TestPageIterator(t *testing.T) {
 			pageSize: 1000,
 		},
 		{
+			size:     12345,
+			pageSize: 987,
+		},
+		{
 			size:     999,
 			pageSize: 1000,
 		},
@@ -133,6 +139,7 @@ func TestPageIterator(t *testing.T) {
 		backend := &StorageBackend{}
 		backend.Bucket = blob.NewBucket(drv)
 
+		traveled := make([]bool, tcase.size)
 		orginObjs := make([]*driver.ListObject, 0, tcase.size)
 		for i := 0; i < tcase.size; i++ {
 			orginObjs = append(orginObjs, &driver.ListObject{
@@ -153,6 +160,7 @@ func TestPageIterator(t *testing.T) {
 				g.Expect(err).To(gomega.Succeed())
 				for index := range objs {
 					g.Expect(objs[index].Key).To(gomega.Equal(orginObjs[count*tcase.pageSize+index].Key))
+					traveled[count*tcase.pageSize+index] = true
 				}
 			}
 
@@ -160,6 +168,10 @@ func TestPageIterator(t *testing.T) {
 				break
 			}
 			count++
+		}
+
+		for _, ok := range traveled {
+			g.Expect(ok).To(gomega.BeTrue())
 		}
 	}
 
@@ -217,8 +229,8 @@ func TestBatchDeleteObjectsOfS3(t *testing.T) {
 			concurrency: 4,
 		},
 		{
-			size:        999,
-			concurrency: 4,
+			size:        1000,
+			concurrency: 9,
 			prefix:      "/",
 		},
 		{
@@ -381,6 +393,66 @@ func TestBatchDeleteObjectsConcurrently(t *testing.T) {
 			g.Expect(exist1 || exist2).To(gomega.BeTrue()) // check if all key is deleted
 		}
 	}
+}
+
+func TestStorageBackend(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	s3provider := v1alpha1.S3StorageProvider{
+		Bucket: "s3-bucket",
+		Prefix: "s3-prefix",
+	}
+	gcsprovider := v1alpha1.GcsStorageProvider{
+		Bucket: "gcs-bucket",
+		Prefix: "gcs-prefix",
+	}
+
+	type testcase struct {
+		provider v1alpha1.StorageProvider
+	}
+
+	cases := []testcase{
+		{
+			provider: v1alpha1.StorageProvider{
+				S3: &s3provider,
+			},
+		},
+		{
+			provider: v1alpha1.StorageProvider{
+				Gcs: &gcsprovider,
+			},
+		},
+	}
+
+	for _, tcase := range cases {
+		provider := tcase.provider
+
+		backend, err := NewStorageBackend(provider)
+		g.Expect(err).To(gomega.Succeed())
+		g.Expect(backend.provider).To(gomega.Equal(provider))
+
+		st := backend.StorageType()
+		g.Expect(st).To(gomega.Equal(util.GetStorageType(provider)))
+
+		s3cli, ok := backend.AsS3()
+		if provider.S3 != nil {
+			g.Expect(ok).To(gomega.BeTrue())
+			g.Expect(s3cli).ToNot(gomega.BeNil())
+		} else {
+			g.Expect(ok).To(gomega.BeFalse())
+			g.Expect(s3cli).To(gomega.BeNil())
+		}
+
+		gcscli, ok := backend.AsGCS()
+		if provider.Gcs != nil {
+			g.Expect(ok).To(gomega.BeTrue())
+			g.Expect(gcscli).ToNot(gomega.BeNil())
+		} else {
+			g.Expect(ok).To(gomega.BeFalse())
+			g.Expect(gcscli).To(gomega.BeNil())
+		}
+	}
+
 }
 
 func objects(size int) []*blob.ListObject {
