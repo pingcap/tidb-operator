@@ -212,7 +212,9 @@ func BatchDeleteObjectsOfS3(ctx context.Context, s3cli s3iface.S3API, objs []*bl
 	mu := &sync.Mutex{}
 	result := &BatchDeleteObjectsResult{}
 	batchSize := 1000
-	prefix = strings.Trim(prefix, "/") + "/"
+	if prefix != "" {
+		prefix = strings.Trim(prefix, "/") + "/"
+	}
 
 	workqueue.ParallelizeUntil(ctx, concurrency, len(objs)/batchSize+1, func(piece int) {
 		start := piece * batchSize
@@ -223,12 +225,8 @@ func BatchDeleteObjectsOfS3(ctx context.Context, s3cli s3iface.S3API, objs []*bl
 
 		delete := &s3.Delete{}
 		for _, obj := range objs[start:end] {
-			key := obj.Key
-			if prefix != "" {
-				key = prefix + key
-			}
 			delete.Objects = append(delete.Objects, &s3.ObjectIdentifier{
-				Key: &key,
+				Key: aws.String(prefix + obj.Key),
 			})
 		}
 		input := &s3.DeleteObjectsInput{

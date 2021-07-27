@@ -19,6 +19,7 @@ import (
 	"io"
 	"math"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 
@@ -202,12 +203,14 @@ func TestBatchDeleteObjectsOfS3(t *testing.T) {
 	type testcase struct {
 		size        int
 		concurrency int
+		prefix      string
 		derr        error
 	}
 	cases := []testcase{
 		{
 			size:        10000,
 			concurrency: 4,
+			prefix:      "/a//",
 		},
 		{
 			size:        12345,
@@ -216,6 +219,7 @@ func TestBatchDeleteObjectsOfS3(t *testing.T) {
 		{
 			size:        999,
 			concurrency: 4,
+			prefix:      "/",
 		},
 		{
 			size:        10000,
@@ -253,16 +257,12 @@ func TestBatchDeleteObjectsOfS3(t *testing.T) {
 
 			// basic case
 			output := &s3.DeleteObjectsOutput{}
-			for _, delObj := range input.Delete.Objects {
+			for i, delObj := range input.Delete.Objects {
 				key := *delObj.Key
-				index, err := strconv.Atoi(key)
-				if err != nil {
-					panic(err)
-				}
 
 				mu.Lock()
 
-				if index%2 == 0 {
+				if i%2 == 0 {
 					errMap[key] = true
 					output.Errors = append(output.Errors, &s3.Error{
 						Key:     &key,
@@ -281,7 +281,7 @@ func TestBatchDeleteObjectsOfS3(t *testing.T) {
 			return output, nil
 		}
 
-		result := BatchDeleteObjectsOfS3(context.Background(), cli, objs, bucket, "", tcase.concurrency)
+		result := BatchDeleteObjectsOfS3(context.Background(), cli, objs, bucket, tcase.prefix, tcase.concurrency)
 		g.Expect(result.Errors).To(gomega.HaveLen(len(errMap)))
 		g.Expect(result.Deleted).To(gomega.HaveLen(len(deletedMap)))
 		for key := range errMap {
@@ -303,9 +303,13 @@ func TestBatchDeleteObjectsOfS3(t *testing.T) {
 			g.Expect(result.Deleted).To(gomega.ContainElement(key)) // check 'Deleted' of result
 		}
 		for _, obj := range objs {
-			_, exist1 := deletedMap[obj.Key]
-			_, exist2 := errMap[obj.Key]
-			g.Expect(exist1 || exist2).To(gomega.BeTrue()) // check if all key is deleted
+			key := obj.Key
+			if tcase.prefix != "" {
+				key = strings.Trim(tcase.prefix, "/") + "/" + key
+			}
+			_, exist1 := deletedMap[key]
+			_, exist2 := errMap[key]
+			g.Expect(exist1 || exist2).To(gomega.BeTrue(), fmt.Sprintf("obj:%s", obj.Key)) // check if all key is deleted
 		}
 	}
 }
@@ -342,15 +346,11 @@ func TestBatchDeleteObjectsConcurrently(t *testing.T) {
 		deletedMap := map[string]bool{} // contain objects that are expected to be deleted
 		errMap := map[string]bool{}     // contain objects that are expected to be failed
 		setedErr := fmt.Errorf("test case err")
-		drv.delete = func(key string) error {
-			index, err := strconv.Atoi(key)
-			if err != nil {
-				panic(err)
-			}
 
+		drv.delete = func(key string) error {
 			mu.Lock()
 			defer mu.Unlock()
-			if index%2 == 0 {
+			if len(key)%2 == 0 {
 				errMap[key] = true
 				return setedErr
 			}
