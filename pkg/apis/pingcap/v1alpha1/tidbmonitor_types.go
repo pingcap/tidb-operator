@@ -132,6 +132,11 @@ type PrometheusSpec struct {
 	// +optional
 	ReserveDays int `json:"reserveDays,omitempty"`
 
+	// Configuration for `--storage.tsdb.retention.time`, Units Supported: y, w, d, h, m, s, ms.
+	// If set to non empty values, it will override the value of `ReserveDays`.
+	// +optional
+	RetentionTime *string `json:"retentionTime,omitempty"`
+
 	// +optional
 	Ingress *IngressSpec `json:"ingress,omitempty"`
 
