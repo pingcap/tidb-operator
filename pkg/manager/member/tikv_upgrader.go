@@ -77,6 +77,12 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 		return fmt.Errorf("cluster[%s/%s] failed to upgrading tikv due to converting", meta.GetNamespace(), meta.GetName())
 	}
 
+	if *oldSet.Spec.Replicas < 2 {
+		klog.Infof("TiKV statefulset replicas are less than 2, skip waiting to evict region leader for tc %s/%s", ns, tcName)
+		setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
+		return nil
+	}
+
 	tc, _ := meta.(*v1alpha1.TidbCluster)
 
 	if !status.Synced {
@@ -145,12 +151,6 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 		}
 
 		if u.deps.CLIConfig.PodWebhookEnabled {
-			setUpgradePartition(newSet, i)
-			return nil
-		}
-
-		if len(podOrdinals) < 2 {
-			klog.Infof("TiKV statefulset replicas are less than 2, skip waiting to evict region leader for Pod %s/%s", ns, podName)
 			setUpgradePartition(newSet, i)
 			return nil
 		}
