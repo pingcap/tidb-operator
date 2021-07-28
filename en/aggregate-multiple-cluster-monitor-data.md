@@ -9,46 +9,100 @@ This document describes how to aggregate the monitoring data of multiple TiDB cl
 
 ## Thanos
 
-[Thanos](https://thanos.io/design.md/) is a high availability solution for Prometheus that simplifies the availability guarantee of Prometheus.
+[Thanos](https://thanos.io/tip/thanos/design.md/) is a high availability solution for Prometheus that simplifies the availability guarantee of Prometheus.
 
 Thanos provides [Thanos Query](https://thanos.io/tip/components/query.md/) component as a unified query solution across multiple Prometheus clusters. You can use this feature to aggregate monitoring data of multiple TiDB clusters.
 
 ## Configure Thanos Query
 
-First, deploy the TidbMonitor with Thanos Sidecar container:
+1. Configure a Thanos Sidecar container for each TidbMonitor.
+
+    A configuration example is as follows.
+
+    {{< copyable "shell-regular" >}}
+
+    ```
+    kubectl -n ${namespace} apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/monitor-with-thanos/tidb-monitor.yaml
+    ```
+
+    > **Note:**
+    >
+    > The `${namespace}` in the command is the namespace where TidbMonitor is deployed, which must be the same namespace where `TidbCluster` is deployed.
+
+2. Deploy the Thanos Query component.
+
+    1. Download the `thanos-query.yaml` file for Thanos Query deployment:
+
+        {{< copyable "shell-regular" >}}
+        
+        ```
+        curl -sl -O https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/monitor-with-thanos/thanos-query.yaml
+        ```
+
+    2. Manually modify the `--store` parameter in the `thanos-query.yaml` file by updating `basic-prometheus:10901` to `basic-prometheus.${namespace}:10901`.
+    
+        `${namespace}` is the namespace where TidbMonitor is deployed.
+
+    3. Execute the `kubectl apply` command for deployment.
+
+        {{< copyable "shell-regular" >}}
+
+        ```
+        kubectl -n ${thanos_namespace} apply -f thanos-query.yaml
+        ```
+
+       In the command above, `${thanos_namespace}` is the namespace where the Thanos Query component is deployed.
+
+In Thanos Query, a Prometheus instance corresponds to a store and also corresponds to a TidbMonitor. After deploying Thanos Query, you can provide a uniform query interface for monitoring data through the Thanos Query's API.
+
+## Access the Thanos Query Panel
+
+To access the Thanos Query panel, execute the following command, and then access <http://127.0.0.1:9090> in your browser:
 
 {{< copyable "shell-regular" >}}
 
-```
-kubectl -n ${namespace} apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/monitor-with-thanos/tidb-monitor.yaml
-```
-
-Then deploy the Thanos Query component:
-
-{{< copyable "shell-regular" >}}
-
-```
-kubectl -n ${namespace} apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/monitor-with-thanos/thanos-query.yaml
+```shell
+kubectl port-forward -n ${thanos_namespace} svc/thanos-query 9090
 ```
 
-In Thanos Query, a Prometheus corresponds to a Store, which corresponds to a TidbMonitor. After deploying Thanos Query, you can provide a unified query interface for monitoring data through Thanos Query's API.
+If you want to access the Thanos Query panel using NodePort or LoadBalancer, refer to the following documents:
+
+- [NodePort method](access-tidb.md#nodeport)
+- [LoadBalancer way](access-tidb.md#loadbalancer)
 
 ## Configure Grafana
 
-After you deploy Thanos Query, change Grafana's DataSource into Thanos to query the monitoring data of multiple `TidbMonitor` CRs.
+After deploying Thanos Query, to query the monitoring data of multiple TidbMonitors, take the following steps:
+
+1. Log in to Grafana. 
+2. In the left navigation bar, select `Configuration` > `Data Sources`. 
+3. Add or modify a DataSource in the Prometheus type. 
+4. Set the URL under HTTP to `http://thanos-query.${thanos_namespace}:9090`.
 
 ## Add or remove TidbMonitor
 
-If you need to add, update, or remove a monitor store from the Thanos Query, update the `--store` configuration of Thanos Query, and perform a rolling update to the Thanos Query component.
+In Thanos Query, a Prometheus instance corresponds to a monitor store and also corresponds to a TidbMonitor. If you need to add, update, or remove a monitor store from the Thanos Query, update the `--store` configuration of the Thanos Query component, and perform a rolling update to the Thanos Query component.
 
-```shell
-- query
-- --http-address=0.0.0.0:9090
-- --store=<store-api>:<grpc-port>
-- --store=<store-api2>:<grpc-port>
+```yaml
+spec:
+ containers:
+   - args:
+       - query
+       - --grpc-address=0.0.0.0:10901
+       - --http-address=0.0.0.0:9090
+       - --log.level=debug
+       - --log.format=logfmt
+       - --query.replica-label=prometheus_replica
+       - --query.replica-label=rule_replica
+       - --store=<TidbMonitorName1>-prometheus.<TidbMonitorNs1>:10901
+       - --store=<TidbMonitorName2>-prometheus.<TidbMonitorNs2>:10901
 ```
 
 ## Configure archives and storage of Thanos Sidecar
+
+> **Note:**
+>
+> To ensure successful configuration, you must first create the S3 bucket. If you choose AWS S3, refer to [AWS documentation - Create AWS S3 Bucket](https://docs.aws.amazon.com/AmazonS3/latest/userguide/create-bucket-overview.html) and [AWS documentation - AWS S3 Endpoint List](https://docs.aws.amazon.com/general/latest/gr/s3.html) for instructions.
 
 Thanos Sidecar supports replicating monitoring data to S3 remote storage.
 
