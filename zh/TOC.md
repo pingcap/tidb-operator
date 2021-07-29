@@ -104,6 +104,7 @@
 + [TiDB Operator Roadmap](roadmap.md)
 + 版本发布历史
   + v1.2
+    - [1.2 GA](releases/release-1.2.0.md)
     - [1.2.0-rc.2](releases/release-1.2.0-rc.2.md)
     - [1.2.0-rc.1](releases/release-1.2.0-rc.1.md)
     - [1.2.0-beta.2](releases/release-1.2.0-beta.2.md)
