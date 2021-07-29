@@ -18,8 +18,7 @@ In TiDB Operator v1.1 or later versions, you can monitor a TiDB cluster on a Kub
 
 > **Note:**
 >
-> * One `TidbMonitor` can only monitor one `TidbCluster`.
-> * `spec.clusters[0].name` should be set to the `TidbCluster` name of the corresponding TiDB cluster.
+> * `spec.clusters[].name` should be set to the `TidbCluster` name of the corresponding TiDB cluster.
 
 ### Persist monitoring data
 
@@ -290,3 +289,57 @@ The default Prometheus and alert configuration do not support sending alert mess
 - If you already have an available AlertManager service in your existing infrastructure, you can set the value of `spec.alertmanagerURL` to the address of `AlertManager`, which will be used by Prometheus. For details, refer to [Set kube-prometheus and AlertManager](#set-kube-prometheus-and-alertmanager).
 
 - If no AlertManager service is available, or if you want to deploy a separate AlertManager service, refer to the [Prometheus official document](https://github.com/prometheus/alertmanager).
+
+## Monitor multiple clusters
+
+Starting from TiDB Operator 1.2, TidbMonitor supports monitoring multiple clusters across namespaces.
+
+### Configure the monitoring of multiple clusters using YAML files
+
+For the clusters to be monitored, regardless of whether `TLS` is enabled or not, you can monitor them by configuring TidbMonitor's YAML file.
+
+A configuration example is as follows:
+
+```yaml
+apiVersion: pingcap.com/v1alpha1
+kind: TidbMonitor
+metadata:
+  name: basic
+spec:
+  clusters:
+    - name: ns1
+      namespace: ns1
+    - name: ns2
+      namespace: ns2
+  persistent: true
+  storage: 5G
+  prometheus:
+    baseImage: prom/prometheus
+    version: v2.18.1
+    service:
+      type: NodePort
+  grafana:
+    baseImage: grafana/grafana
+    version: 6.7.6
+    service:
+      type: NodePort
+  initializer:
+    baseImage: pingcap/tidb-monitor-initializer
+    version: v5.1.0
+  reloader:
+    baseImage: pingcap/tidb-monitor-reloader
+    version: v1.0.1
+  imagePullPolicy: IfNotPresent
+```
+
+For a complete configuration example, refer to [Example](https://github.com/pingcap/tidb-operator/tree/master/examples/monitor-multiple-cluster-non-tls) in the TiDB Operator repository.
+
+### Monitor multiple clusters using Grafana
+
+If the `tidb-monitor-initializer` image is earlier than v4.0.14 or v5.0.3, to monitor multiple clusters, you can take the following steps in each Grafana Dashboard:
+
+1. On Grafana Dashboard, click **Dashboard settings** to open the **Settings** panel. 
+2. On the **Settings** panel, select the **tidb_cluster** variable from **Variables**, and then set the **Hide** property of the **tidb_cluster** variable to the null option in the drop-down list. 
+3. Get back to the current Grafana Dashboard (changes to the **Hide** property cannot be saved currently), and you can see the drop-down list for cluster selection. The cluster name in the drop-down list is in the `${namespace}-${name}` format.
+
+If you need to save changes to the Grafana Dashboard, Grafana must be `6.5` or later, and TiDB Operator must be v1.2.0-rc.2 or later.
