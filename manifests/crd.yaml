@@ -17827,13 +17827,15 @@ spec:
             cleanOption:
               properties:
                 batchConcurrency:
-                  format: int32
+                  format: int64
                   type: integer
+                disableBatchConcurrency:
+                  type: boolean
                 pageSize:
                   format: int64
                   type: integer
                 routineConcurrency:
-                  format: int32
+                  format: int64
                   type: integer
               type: object
             cleanPolicy:
@@ -18980,13 +18982,15 @@ spec:
                 cleanOption:
                   properties:
                     batchConcurrency:
-                      format: int32
+                      format: int64
                       type: integer
+                    disableBatchConcurrency:
+                      type: boolean
                     pageSize:
                       format: int64
                       type: integer
                     routineConcurrency:
-                      format: int32
+                      format: int64
                       type: integer
                   type: object
                 cleanPolicy:

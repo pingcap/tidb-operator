@@ -62,8 +62,9 @@ func (bo *Options) cleanBRRemoteBackupData(ctx context.Context, backup *v1alpha1
 
 		// batch delete objects
 		result := s.BatchDeleteObjects(ctx, objs, &util.BatchDeleteObjectsOption{
-			BatchConcurrency:   int(opt.BatchConcurrency),
-			RoutineConcurrency: int(opt.RoutineConcurrency),
+			DisableBatchConcurrency: opt.DisableBatchConcurrency,
+			BatchConcurrency:        int(opt.BatchConcurrency),
+			RoutineConcurrency:      int(opt.RoutineConcurrency),
 		})
 
 		if len(result.Deleted) != 0 {

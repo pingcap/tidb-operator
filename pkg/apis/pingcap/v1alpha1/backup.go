@@ -60,22 +60,21 @@ func (bk *Backup) GetInstanceName() string {
 }
 
 func (bk *Backup) GetCleanOption() CleanOption {
-	ropt := CleanOption{
-		PageSize:           defaultCleanOption.PageSize,
-		BatchConcurrency:   defaultCleanOption.BatchConcurrency,
-		RoutineConcurrency: defaultCleanOption.RoutineConcurrency,
+	if bk.Spec.CleanOption == nil {
+		return defaultCleanOption
 	}
-	if opt := bk.Spec.CleanOption; opt != nil {
-		if opt.PageSize != 0 {
-			ropt.PageSize = opt.PageSize
-		}
-		if opt.BatchConcurrency != 0 {
-			ropt.BatchConcurrency = opt.BatchConcurrency
-		}
-		if opt.RoutineConcurrency != 0 {
-			ropt.RoutineConcurrency = opt.RoutineConcurrency
-		}
+
+	ropt := *bk.Spec.CleanOption
+	if ropt.PageSize <= 0 {
+		ropt.PageSize = defaultCleanOption.PageSize
 	}
+	if ropt.BatchConcurrency <= 0 {
+		ropt.BatchConcurrency = defaultCleanOption.BatchConcurrency
+	}
+	if ropt.RoutineConcurrency <= 0 {
+		ropt.RoutineConcurrency = defaultCleanOption.RoutineConcurrency
+	}
+
 	return ropt
 }
 

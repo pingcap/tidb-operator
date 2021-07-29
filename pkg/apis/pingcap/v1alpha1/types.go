@@ -1352,15 +1352,17 @@ const (
 type CleanOption struct {
 	// PageSize represents the number of objects to clean at a time.
 	// default is 10000
-	PageSize int64 `json:"pageSize,omitempty"`
+	PageSize uint64 `json:"pageSize,omitempty"`
 
+	// DisableBatchConcurrency disable batch deletions.
+	DisableBatchConcurrency bool `json:"disableBatchConcurrency,omitempty"`
 	// BatchConcurrency represents the number of batch deletions in parallel.
 	// It is used when storage provider support batch delete api.
 	// default is 10
-	BatchConcurrency int32 `json:"batchConcurrency,omitempty"`
+	BatchConcurrency uint32 `json:"batchConcurrency,omitempty"`
 	// BatchConcurrency represents the number of goroutine that used to delete objects
 	// default is 100
-	RoutineConcurrency int32 `json:"routineConcurrency,omitempty"`
+	RoutineConcurrency uint32 `json:"routineConcurrency,omitempty"`
 }
 
 // BackupSpec contains the backup specification for a tidb cluster.

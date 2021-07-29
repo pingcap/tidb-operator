@@ -1215,18 +1215,25 @@ func schema_pkg_apis_pingcap_v1alpha1_CleanOption(ref common.ReferenceCallback) 
 							Format:      "int64",
 						},
 					},
+					"disableBatchConcurrency": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DisableBatchConcurrency disable batch deletions.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 					"batchConcurrency": {
 						SchemaProps: spec.SchemaProps{
 							Description: "BatchConcurrency represents the number of batch deletions in parallel. It is used when storage provider support batch delete api. default is 10",
 							Type:        []string{"integer"},
-							Format:      "int32",
+							Format:      "int64",
 						},
 					},
 					"routineConcurrency": {
 						SchemaProps: spec.SchemaProps{
 							Description: "BatchConcurrency represents the number of goroutine that used to delete objects default is 100",
 							Type:        []string{"integer"},
-							Format:      "int32",
+							Format:      "int64",
 						},
 					},
 				},

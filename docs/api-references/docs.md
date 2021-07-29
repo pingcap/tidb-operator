@@ -3785,7 +3785,7 @@ github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
 <td>
 <code>pageSize</code></br>
 <em>
-int64
+uint64
 </em>
 </td>
 <td>
@@ -3795,9 +3795,20 @@ default is 10000</p>
 </tr>
 <tr>
 <td>
+<code>disableBatchConcurrency</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>DisableBatchConcurrency disable batch deletions.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>batchConcurrency</code></br>
 <em>
-int32
+uint32
 </em>
 </td>
 <td>
@@ -3810,7 +3821,7 @@ default is 10</p>
 <td>
 <code>routineConcurrency</code></br>
 <em>
-int32
+uint32
 </em>
 </td>
 <td>

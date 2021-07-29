@@ -169,8 +169,9 @@ type ObjectError struct {
 }
 
 type BatchDeleteObjectsOption struct {
-	BatchConcurrency   int
-	RoutineConcurrency int
+	DisableBatchConcurrency bool
+	BatchConcurrency        int
+	RoutineConcurrency      int
 }
 
 type BatchDeleteObjectsResult struct {
@@ -185,7 +186,7 @@ func (b *StorageBackend) BatchDeleteObjects(ctx context.Context, objs []*blob.Li
 	var result *BatchDeleteObjectsResult
 
 	s3cli, ok := b.AsS3()
-	if ok {
+	if !opt.DisableBatchConcurrency && ok {
 		concurrency := 10
 		if opt != nil && opt.BatchConcurrency != 0 {
 			concurrency = opt.BatchConcurrency
