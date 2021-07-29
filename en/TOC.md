@@ -7,8 +7,7 @@
 
 + Introduction
   - [Overview](tidb-operator-overview.md)
-  - [What's New in v1.1](whats-new-in-v1.1.md)
-  - [TiDB Operator v1.1 Notice](notes-tidb-operator-v1.1.md)
+  - [What's New in v1.2](whats-new-in-v1.2.md)
 - [Get Started](get-started.md)
 + Deploy
   - Deploy TiDB Cluster
