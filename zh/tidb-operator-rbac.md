@@ -64,7 +64,8 @@ tidb-operator:tidb-scheduler                                           2021-05-0
 
 > **注意：**
 >
-> * 在**非资源 URLs** 列中， `-` 表示该项没有非资源 URLs。在**资源名**列中， `-` 表示该项没有资源名。
+> * 在**非资源 URLs** 列中， `-` 表示该项没有非资源 URLs。
+> * 在**资源名**列中， `-` 表示该项没有资源名。
 > * 在**动作**列中，`*` 表示支持 Kubernetes 集群支持的所有动作。
 
 ### tidb-scheduler ClusterRole 权限
@@ -90,45 +91,45 @@ tidb-operator:tidb-scheduler                                           2021-05-0
 
 如果部署 TiDB Operator 时设置了 `clusterScoped=false`， TiDB Operator 将在 Namespace 级别管理 TiDB 集群。
 
-要查看为 TiDB Operator 创建的 ClusterRole，请使用以下命令：
+- 要查看为 TiDB Operator 创建的 ClusterRole，请使用以下命令：
 
-{{< copyable "shell-regular" >}}
+    {{< copyable "shell-regular" >}}
 
-```shell
-kubectl get clusterrole | grep tidb
-```
+    ```shell
+    kubectl get clusterrole | grep tidb
+    ```
 
-输出结果如下：
+    输出结果如下：
 
-```shell
-tidb-operator:tidb-controller-manager                                  2021-05-04T13:08:55Z
-```
+    ```shell
+    tidb-operator:tidb-controller-manager                                  2021-05-04T13:08:55Z
+    ```
 
-`tidb-operator:tidb-controller-manager` 是为 `tidb-controller-manager` Pod 创建的 ClusterRole。
+    `tidb-operator:tidb-controller-manager` 是为 `tidb-controller-manager` Pod 创建的 ClusterRole。
 
-> **注意：**
->
-> 如果部署 TiDB Operator 时已设置 `controllerManager.clusterPermissions.nodes`、`controllerManager.clusterPermissions.persistentvolumes`、`controllerManager.clusterPermissions.storageclasses` 都为 `false`，则不会创建该 ClusterRole。
+    > **注意：**
+    >
+    > 如果部署 TiDB Operator 时已设置 `controllerManager.clusterPermissions.nodes`、`controllerManager.clusterPermissions.persistentvolumes`、`controllerManager.clusterPermissions.storageclasses` 都为 `false`，则不会创建该 ClusterRole。
 
-{{< copyable "shell-regular" >}}
+- 要查看为 TiDB Operator 创建的 Role，请使用以下命令：
 
-要查看为 TiDB Operator 创建的 Role，请使用以下命令：
+    {{< copyable "shell-regular" >}}
 
-```shell
-kubectl get role -n tidb-admin
-```
+    ```shell
+    kubectl get role -n tidb-admin
+    ```
 
-输出结果如下：
+    输出结果如下：
 
-```shell
-tidb-admin    tidb-operator:tidb-controller-manager            2021-05-04T13:08:55Z
-tidb-admin    tidb-operator:tidb-scheduler                     2021-05-04T13:08:55Z
-```
+    ```shell
+    tidb-admin    tidb-operator:tidb-controller-manager            2021-05-04T13:08:55Z
+    tidb-admin    tidb-operator:tidb-scheduler                     2021-05-04T13:08:55Z
+    ```
 
-其中：
+    其中：
 
-* `tidb-operator:tidb-controller-manager` 是为 `tidb-controller-manager` Pod 创建的 Role。
-* `tidb-operator:tidb-scheduler` 是为 `tidb-scheduler` Pod 创建的 Role。
+    * `tidb-operator:tidb-controller-manager` 是为 `tidb-controller-manager` Pod 创建的 Role。
+    * `tidb-operator:tidb-scheduler` 是为 `tidb-scheduler` Pod 创建的 Role。
 
 ### tidb-controller-manager ClusterRole 权限
 
@@ -142,7 +143,8 @@ tidb-admin    tidb-operator:tidb-scheduler                     2021-05-04T13:08:
 
 > **注意：**
 >
-> * 在**非资源 URLs** 列中， `-` 表示该项没有非资源 URLs。在**资源名**列中， `-` 表示该项没有资源名。
+> * 在**非资源 URLs** 列中， `-` 表示该项没有非资源 URLs。
+> * 在**资源名**列中， `-` 表示该项没有资源名。
 
 ### tidb-controller-manager Role 权限
 
@@ -171,7 +173,8 @@ tidb-admin    tidb-operator:tidb-scheduler                     2021-05-04T13:08:
 
 > **注意：**
 >
-> * 在**非资源 URLs** 列中， `-` 表示该项没有非资源 URLs。在**资源名**列中， `-` 表示该项没有资源名。
+> * 在**非资源 URLs** 列中， `-` 表示该项没有非资源 URLs。
+> * 在**资源名**列中， `-` 表示该项没有资源名。
 > * 在**动作**列中，`*` 表示支持 Kubernetes 集群支持的所有动作。
 
 ### tidb-scheduler Role 权限
@@ -191,4 +194,5 @@ tidb-admin    tidb-operator:tidb-scheduler                     2021-05-04T13:08:
 
 > **注意：**
 >
-> * 在**非资源 URLs** 列中， `-` 表示该项没有非资源 URLs。在**资源名**列中， `-` 表示该项没有资源名。
+> * 在**非资源 URLs** 列中， `-` 表示该项没有非资源 URLs。
+> * 在**资源名**列中， `-` 表示该项没有资源名。
