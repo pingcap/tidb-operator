@@ -7,8 +7,7 @@
 
 + 关于 TiDB Operator
   - [简介](tidb-operator-overview.md)
-  - [What's New in v1.1](whats-new-in-v1.1.md)
-  - [TiDB Operator v1.1 重要注意事项](notes-tidb-operator-v1.1.md)
+  - [What's New in v1.2](whats-new-in-v1.2.md)
 + [快速上手](get-started.md)
 + 部署
   - 部署 TiDB 集群
