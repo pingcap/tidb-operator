@@ -168,20 +168,7 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 		return err
 	}
 
-	// works that should do to making the tiflash cluster current state match the desired state:
-	//   - waiting for the tidb cluster available
-	//   - create or update tiflash headless service
-	//   - create the tiflash statefulset
-	//   - sync tiflash cluster status from pd to TidbCluster object
-	//   - set scheduler labels to tiflash stores
-	//   - upgrade the tiflash cluster
-	//   - scale out/in the tiflash cluster
-	//   - failover the tiflash cluster
-	if err := c.tiflashMemberManager.Sync(tc); err != nil {
-		return err
-	}
-
-	// works that should do to making the pd cluster current state match the desired state:
+	// works that should be done to make the pd cluster current state match the desired state:
 	//   - create or update the pd service
 	//   - create or update the pd headless service
 	//   - create the pd statefulset
@@ -196,7 +183,20 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 		return err
 	}
 
-	// works that should do to making the tikv cluster current state match the desired state:
+	// works that should be done to make the tiflash cluster current state match the desired state:
+	//   - waiting for the tidb cluster available
+	//   - create or update tiflash headless service
+	//   - create the tiflash statefulset
+	//   - sync tiflash cluster status from pd to TidbCluster object
+	//   - set scheduler labels to tiflash stores
+	//   - upgrade the tiflash cluster
+	//   - scale out/in the tiflash cluster
+	//   - failover the tiflash cluster
+	if err := c.tiflashMemberManager.Sync(tc); err != nil {
+		return err
+	}
+
+	// works that should be done to make the tikv cluster current state match the desired state:
 	//   - waiting for the pd cluster available(pd cluster is in quorum)
 	//   - create or update tikv headless service
 	//   - create the tikv statefulset
