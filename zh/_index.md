@@ -15,7 +15,7 @@ TiDB Operator 与适用的 TiDB 版本的对应关系如下：
 | TiDB Operator 版本 | 适用的 TiDB 版本 |
 |:---|:---|
 | v1.0 | v2.1, v3.0 |
-| v1.1 | v3.0 及以上版本 |
+| v1.1，v1.2 | v3.0 及以上版本 |
 | dev | v3.0 及以上版本，dev |
 
 <NavColumns>
@@ -23,8 +23,7 @@ TiDB Operator 与适用的 TiDB 版本的对应关系如下：
 <ColumnTitle>关于 TiDB Operator</ColumnTitle>
 
 - [TiDB Operator 简介](tidb-operator-overview.md)
-- [What's New in v1.1](whats-new-in-v1.1.md)
-- [v1.1 重要注意事项](notes-tidb-operator-v1.1.md)
+- [What's New in v1.2](whats-new-in-v1.2.md)
 
 </NavColumn>
 

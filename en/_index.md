@@ -13,7 +13,7 @@ The corresponding relationship between TiDB Operator and TiDB versions is as fol
 | TiDB Operator version | Compatible TiDB versions |
 |:---|:---|
 | v1.0 | v2.1, v3.0 |
-| v1.1 | v3.0 and later releases |
+| v1.1, v1.2 | v3.0 and later releases |
 | dev | v3.0 and later releases, dev |
 
 <NavColumns>
@@ -21,8 +21,7 @@ The corresponding relationship between TiDB Operator and TiDB versions is as fol
 <ColumnTitle>About TiDB Operator</ColumnTitle>
 
 - [TiDB Operator Overview](tidb-operator-overview.md)
-- [What's New in v1.1](whats-new-in-v1.1.md)
-- [v1.1 Important Notes](notes-tidb-operator-v1.1.md)
+- [What's New in v1.2](whats-new-in-v1.2.md)
 
 </NavColumn>
 
