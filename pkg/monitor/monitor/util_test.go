@@ -687,8 +687,6 @@ func TestGetMonitorService(t *testing.T) {
 }
 
 func TestGetMonitorVolumes(t *testing.T) {
-	g := NewGomegaWithT(t)
-
 	testCases := []struct {
 		name      string
 		cluster   v1alpha1.TidbCluster
@@ -725,12 +723,6 @@ func TestGetMonitorVolumes(t *testing.T) {
 							ConfigMap: &corev1.ConfigMapVolumeSource{
 								LocalObjectReference: corev1.LocalObjectReference{
 									Name: "foo-monitor",
-								},
-								Items: []corev1.KeyToPath{
-									corev1.KeyToPath{
-										Key:  "prometheus-config",
-										Path: "prometheus.yml",
-									},
 								},
 							},
 						},
@@ -793,12 +785,6 @@ func TestGetMonitorVolumes(t *testing.T) {
 							ConfigMap: &corev1.ConfigMapVolumeSource{
 								LocalObjectReference: corev1.LocalObjectReference{
 									Name: "foo-monitor",
-								},
-								Items: []corev1.KeyToPath{
-									corev1.KeyToPath{
-										Key:  "prometheus-config",
-										Path: "prometheus.yml",
-									},
 								},
 							},
 						},
@@ -870,12 +856,6 @@ func TestGetMonitorVolumes(t *testing.T) {
 								LocalObjectReference: corev1.LocalObjectReference{
 									Name: "foo-monitor",
 								},
-								Items: []corev1.KeyToPath{
-									corev1.KeyToPath{
-										Key:  "prometheus-config",
-										Path: "prometheus.yml",
-									},
-								},
 							},
 						},
 					},
@@ -908,9 +888,7 @@ func TestGetMonitorVolumes(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			cm, err := getMonitorConfigMap(&tt.monitor, nil, nil)
-			g.Expect(err).NotTo(HaveOccurred())
-			sa := getMonitorVolumes(cm, &tt.monitor)
+			sa := getMonitorVolumes(&tt.monitor)
 			tt.expected(sa)
 		})
 	}

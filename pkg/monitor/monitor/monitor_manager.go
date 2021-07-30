@@ -373,7 +373,20 @@ func (m *MonitorManager) syncTidbMonitorConfig(monitor *v1alpha1.TidbMonitor) (*
 			newCM.Data["prometheus-config"] = externalContent
 		}
 	}
-	return m.deps.TypedControl.CreateOrUpdateConfigMap(monitor, newCM)
+	_, err = m.deps.TypedControl.CreateOrUpdateConfigMap(monitor, newCM)
+	if err != nil {
+		klog.Errorf("tm[%s/%s]'s configMap failed to createOrUpdate,err: %v", newCM.Namespace, newCM.Name, err)
+		return nil, err
+	}
+	if monitor.Spec.Grafana != nil {
+		grafanaCM := getGrafanaConfigMap(monitor)
+		_, err = m.deps.TypedControl.CreateOrUpdateConfigMap(monitor, grafanaCM)
+		if err != nil {
+			klog.Errorf("tm[%s/%s]'s configMap failed to createOrUpdate,err: %v", newCM.Namespace, grafanaCM.Name, err)
+			return nil, err
+		}
+	}
+	return nil, err
 }
 
 func (m *MonitorManager) syncTidbMonitorRbac(monitor *v1alpha1.TidbMonitor) (*corev1.ServiceAccount, error) {

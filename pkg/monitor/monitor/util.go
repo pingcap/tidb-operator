@@ -51,6 +51,10 @@ func GetMonitorObjectName(monitor *v1alpha1.TidbMonitor) string {
 	return fmt.Sprintf("%s-monitor", monitor.Name)
 }
 
+func GetGrafanaConfigMapName(monitor *v1alpha1.TidbMonitor) string {
+	return fmt.Sprintf("%s-grafana-monitor", monitor.Name)
+}
+
 func GetMonitorFirstPVCName(name string) string {
 	return fmt.Sprintf(v1alpha1.TidbMonitorMemberType.String()+"-%s-monitor-0", name)
 }
@@ -115,7 +119,7 @@ func getAlertManagerRulesVersion(tc *v1alpha1.TidbCluster, monitor *v1alpha1.Tid
 	return alertManagerRulesVersion
 }
 
-// getMonitorConfigMap generate the Prometheus config and Grafana config for TidbMonitor,
+// getMonitorConfigMap generate the Prometheus config for TidbMonitor,
 // If the namespace in ClusterRef is empty, we would set the TidbMonitor's namespace in the default
 func getMonitorConfigMap(monitor *v1alpha1.TidbMonitor, monitorClusterInfos []ClusterRegexInfo, dmClusterInfos []ClusterRegexInfo) (*core.ConfigMap, error) {
 	model := &MonitorConfigModel{
@@ -148,10 +152,23 @@ func getMonitorConfigMap(monitor *v1alpha1.TidbMonitor, monitorClusterInfos []Cl
 			"prometheus-config": content,
 		},
 	}
-	if monitor.Spec.Grafana != nil {
-		cm.Data["dashboard-config"] = dashBoardConfig
-	}
 	return cm, nil
+}
+
+// getMonitorConfigMap generate the Grafana config for TidbMonitor,
+func getGrafanaConfigMap(monitor *v1alpha1.TidbMonitor) *core.ConfigMap {
+	cm := &core.ConfigMap{
+		ObjectMeta: meta.ObjectMeta{
+			Name:            GetGrafanaConfigMapName(monitor),
+			Namespace:       monitor.Namespace,
+			Labels:          buildTidbMonitorLabel(monitor.Name),
+			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
+		},
+		Data: map[string]string{
+			"dashboard-config": dashBoardConfig,
+		},
+	}
+	return cm
 }
 
 func getMonitorSecret(monitor *v1alpha1.TidbMonitor) *core.Secret {
@@ -672,7 +689,7 @@ func getMonitorReloaderContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.Tid
 	return c
 }
 
-func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor) []core.Volume {
+func getMonitorVolumes(monitor *v1alpha1.TidbMonitor) []core.Volume {
 	volumes := []core.Volume{}
 	if !monitor.Spec.Persistent {
 		monitorData := core.Volume{
@@ -688,13 +705,7 @@ func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor) []
 		VolumeSource: core.VolumeSource{
 			ConfigMap: &core.ConfigMapVolumeSource{
 				LocalObjectReference: core.LocalObjectReference{
-					Name: config.Name,
-				},
-				Items: []core.KeyToPath{
-					{
-						Key:  "prometheus-config",
-						Path: "prometheus.yml",
-					},
+					Name: GetMonitorObjectName(monitor),
 				},
 			},
 		},
@@ -712,13 +723,7 @@ func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor) []
 			VolumeSource: core.VolumeSource{
 				ConfigMap: &core.ConfigMapVolumeSource{
 					LocalObjectReference: core.LocalObjectReference{
-						Name: GetMonitorObjectName(monitor),
-					},
-					Items: []core.KeyToPath{
-						{
-							Key:  "dashboard-config",
-							Path: "dashboards.yaml",
-						},
+						Name: GetGrafanaConfigMapName(monitor),
 					},
 				},
 			},
@@ -1013,7 +1018,7 @@ func getMonitorStatefulSet(sa *core.ServiceAccount, config *core.ConfigMap, secr
 		grafanaContainer := getMonitorGrafanaContainer(secret, monitor, tc)
 		statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, grafanaContainer)
 	}
-	volumes := getMonitorVolumes(config, monitor)
+	volumes := getMonitorVolumes(monitor)
 	statefulSet.Spec.Template.Spec.Volumes = volumes
 
 	volumeClaims := getMonitorVolumeClaims(monitor)
