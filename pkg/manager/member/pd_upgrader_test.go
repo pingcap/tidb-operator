@@ -103,6 +103,25 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			},
 		},
 		{
+			name: "force upgrade pd when replicas are less than 2",
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Synced = false
+				tc.Spec.PD.Replicas = 1
+			},
+			changePods: nil,
+			changeOldSet: func(set *apps.StatefulSet) {
+				set.Spec.Replicas = pointer.Int32Ptr(1)
+				set.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32Ptr(0)
+			},
+			transferLeaderErr: false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+			},
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(0)))
+			},
+		},
+		{
 			name: "modify oldSet update strategy to OnDelete",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Synced = true

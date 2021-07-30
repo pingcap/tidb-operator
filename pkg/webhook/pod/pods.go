@@ -248,6 +248,11 @@ func (pc *PodAdmissionControl) processAdmitDeletePDPod(pod *core.Pod, ownerState
 		klog.Errorf("failed get tc[%s/%s],refuse to delete pod[%s/%s]", namespace, tcName, namespace, name)
 		return util.ARFail(err)
 	}
+
+	if tc.PDStsDesiredReplicas() < 2 {
+		klog.Infof("PD statefulset replicas are less than 2, admit to delete pod[%s/%s] ", namespace, name)
+		return util.ARSuccess()
+	}
 	// Force Upgraded,Admit to Upgrade
 	if memberUtils.NeedForceUpgrade(tc.Annotations) {
 		klog.Infof("tc[%s/%s] is force upgraded, admit to delete pod[%s/%s]", namespace, tcName, namespace, name)
