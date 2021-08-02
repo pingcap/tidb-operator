@@ -151,16 +151,16 @@ type ExternalConfig struct {
   * if average storage usage is larger than MaxThreshold defined in the AutoRule, homogeneous scaling out plan will be generated, the goal is that new average storage usage is lower than (MaxThreshold + MinThreshold)/2
   * storage based scaling is always homogeneous, homogeneous instances will not be scaled in by auto scaling, even if the all storage usages are very low
   * users can specify maximum homogeneous auto scale count in the TidbClusterAutoScaler CR, but can not specify the resource requests
-  * if there are not enough k8s nodes left for the scaling, heterogeneous instances will be scaled in
+  * if there are not enough k8s nodes left for the scaling, heterogeneous instances will be scaled in to free k8s nodes
   * only tikv component performs storage based scaling
   
 * cpu based scaling
   * if average cpu usage is larger than MaxThreshold defined in the AutoRule, homogeneous scaling out plan will be generated, the goal is that new average cpu usage is lower than (MaxThreshold + MinThreshold)/2
   * homogeneous instances will not be scaled in by auto scaling, even if all cpu usages are very low
-  * if there are not enough k8s nodes left for the scaling, heterogeneous instances will be scaled in
+  * if there are not enough k8s nodes left for the scaling, heterogeneous instances will be scaled in to free k8s nodes
   * if average cpu usage is not larger than MaxThreshold but cpu usages of partial instances are larger than MaxThreshold, heterogeneous scaling out plans will be generated, the goal is that cpu usages of those partial instances are lower than (MaxThreshold + MinThreshold)/2
   * if there are more than one resource defined in the TidbClusterAutoScaler CR, resources will be sorted by the cpu core number in descending order, the larger one will be used preferentially
-  * if one resource count is not enough for this scaling purpose, the next resource will be used, this process will continue until all resources are used or there is no free k8s node left
+  * if one resource count is not enough for scaling, the next resource will be used, this process will continue until all resources are used or there is no free k8s node left
   * if cpu usages of all instances are smaller than MinThreshold, heterogeneous scale in plan will be generated, for now, only one heterogeneous instance will be scaled in at one time
   * both tikv and tidb components perform cpu based scaling
 
