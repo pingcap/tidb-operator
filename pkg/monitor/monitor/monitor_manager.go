@@ -370,7 +370,7 @@ func (m *MonitorManager) syncTidbMonitorConfig(monitor *v1alpha1.TidbMonitor) (*
 			return nil, err
 		}
 		if externalContent, ok := externalCM.Data["prometheus-config"]; ok {
-			newCM.Data["prometheus-config"] = externalContent
+			newCM.Data["prometheus.yml"] = externalContent
 		}
 	}
 	_, err = m.deps.TypedControl.CreateOrUpdateConfigMap(monitor, newCM)

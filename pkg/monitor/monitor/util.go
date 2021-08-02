@@ -149,7 +149,7 @@ func getMonitorConfigMap(monitor *v1alpha1.TidbMonitor, monitorClusterInfos []Cl
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 		},
 		Data: map[string]string{
-			"prometheus-config": content,
+			"prometheus.yml": content,
 		},
 	}
 	return cm, nil
