@@ -16,6 +16,7 @@ package config
 import (
 	"bytes"
 	stdjson "encoding/json"
+	"fmt"
 	"reflect"
 	"strings"
 
@@ -121,6 +122,25 @@ func (c *GenericConfig) DeepCopyInto(out *GenericConfig) {
 
 func (c *GenericConfig) Set(key string, value interface{}) {
 	set(c.MP, key, value)
+}
+
+// SetTable set multiple KV of a table
+//
+// For example:
+// c.SetTable("root", "key1", "val1", "key2", 10)
+//
+// Invalid KV will will be ignored
+func (c *GenericConfig) SetTable(table string, kvs ...interface{}) {
+	for i := 0; i < len(kvs); {
+		if key, ok := kvs[i].(string); ok {
+			if i+1 < len(kvs) {
+				val := kvs[i+1]
+				set(c.MP, fmt.Sprintf("%s.%s", table, key), val)
+			}
+		}
+
+		i += 2
+	}
 }
 
 func (c *GenericConfig) Del(key string) {
