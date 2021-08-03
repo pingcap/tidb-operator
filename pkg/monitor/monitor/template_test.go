@@ -369,6 +369,8 @@ func TestRenderPrometheusConfigTLSEnabled(t *testing.T) {
 	expectedContentTpl := `global:
   scrape_interval: 15s
   evaluation_interval: 15s
+rule_files:
+- /prometheus-rules/rules/*.rules.yml
 scrape_configs:
 - job_name: ns1-target-pd
   honor_labels: true

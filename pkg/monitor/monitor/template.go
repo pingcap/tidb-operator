@@ -173,6 +173,9 @@ func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
 			EvaluationInterval: model.Duration(15 * time.Second),
 			ExternalLabels:     cmodel.ExternalLabels,
 		},
+		RuleFiles: []string{
+			"/prometheus-rules/rules/*.rules.yml",
+		},
 		ScrapeConfigs:      scrapeJobs,
 		RemoteWriteConfigs: cmodel.RemoteWriteConfigs,
 	}
@@ -468,9 +471,6 @@ func RenderPrometheusConfig(model *MonitorConfigModel) (string, error) {
 	pc := newPrometheusConfig(model)
 	if len(model.AlertmanagerURL) > 0 {
 		addAlertManagerUrl(pc, model)
-		pc.RuleFiles = []string{
-			"/prometheus-rules/rules/*.rules.yml",
-		}
 	}
 	bs, err := yaml.Marshal(pc)
 	if err != nil {
