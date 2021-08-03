@@ -122,7 +122,7 @@ type TidbMonitorSpec struct {
 	// +optional
 	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
 
-	// If not configuring AlertManager , it can can add rule configuration through this switch.
+	// If not configuring AlertManager , it can add rule configuration through this switch.
 	EnableRules bool `json:"enableRules,omitempty"`
 }
 
