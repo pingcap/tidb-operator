@@ -2497,6 +2497,17 @@ Kubernetes core/v1.PodSecurityContext
 <p>PodSecurityContext of the component</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>enableRules</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>If not configuring AlertManager , it can can add rule configuration through this switch.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -21010,6 +21021,17 @@ Kubernetes core/v1.PodSecurityContext
 <td>
 <em>(Optional)</em>
 <p>PodSecurityContext of the component</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enableRules</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>If not configuring AlertManager , it can can add rule configuration through this switch.</p>
 </td>
 </tr>
 </tbody>

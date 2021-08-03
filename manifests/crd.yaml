@@ -20367,6 +20367,8 @@ spec:
                 type: object
               type: array
             dm: {}
+            enableRules:
+              type: boolean
             externalLabels:
               type: object
             grafana: {}

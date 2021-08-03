@@ -123,6 +123,7 @@ func getMonitorConfigMap(monitor *v1alpha1.TidbMonitor, monitorClusterInfos []Cl
 		ClusterInfos:    monitorClusterInfos,
 		DMClusterInfos:  dmClusterInfos,
 		ExternalLabels:  buildExternalLabels(monitor),
+		EnableRules:     monitor.Spec.EnableRules,
 	}
 
 	if len(monitor.Spec.Prometheus.RemoteWrite) > 0 {
