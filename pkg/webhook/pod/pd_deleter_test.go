@@ -19,9 +19,9 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/pdpb"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	pdUtils "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	admission "k8s.io/api/admission/v1beta1"

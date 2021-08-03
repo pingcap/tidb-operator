@@ -19,7 +19,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 
 	"github.com/google/go-cmp/cmp"
 	"k8s.io/apimachinery/pkg/util/intstr"

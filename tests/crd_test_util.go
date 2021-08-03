@@ -23,10 +23,10 @@ import (
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	utilstatefulset "github.com/pingcap/tidb-operator/tests/e2e/util/statefulset"
 	"github.com/pingcap/tidb-operator/tests/slack"
 	corev1 "k8s.io/api/core/v1"

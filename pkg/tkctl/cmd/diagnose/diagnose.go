@@ -30,10 +30,10 @@ import (
 	printersinternal "k8s.io/kubernetes/pkg/printers/internalversion"
 
 	"github.com/ghodss/yaml"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
 	"github.com/spf13/cobra"
 	appv1 "k8s.io/api/apps/v1"

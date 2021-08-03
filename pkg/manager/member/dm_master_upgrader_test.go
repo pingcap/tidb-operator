@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 

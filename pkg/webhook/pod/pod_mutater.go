@@ -18,9 +18,9 @@ import (
 	"fmt"
 
 	"github.com/BurntSushi/toml"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/features"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
