@@ -11827,9 +11827,9 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 							Ref:         ref("k8s.io/api/core/v1.PodSecurityContext"),
 						},
 					},
-					"enableRules": {
+					"enableAlertRules": {
 						SchemaProps: spec.SchemaProps{
-							Description: "If not configuring AlertManager , it can add rule configuration through this switch.",
+							Description: "EnableAlertRules adds alert rules to the Prometheus config even if If `AlertmanagerURL` is not configured.",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},

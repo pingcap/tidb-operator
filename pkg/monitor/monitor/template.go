@@ -144,7 +144,7 @@ type MonitorConfigModel struct {
 	DMClusterInfos     []ClusterRegexInfo
 	ExternalLabels     model.LabelSet
 	RemoteWriteConfigs []*config.RemoteWriteConfig
-	EnableRules        bool
+	EnableAlertRules   bool
 }
 
 // ClusterRegexInfo is the monitor cluster info

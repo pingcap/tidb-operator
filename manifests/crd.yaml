@@ -20367,7 +20367,7 @@ spec:
                 type: object
               type: array
             dm: {}
-            enableRules:
+            enableAlertRules:
               type: boolean
             externalLabels:
               type: object

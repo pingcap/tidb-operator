@@ -2499,13 +2499,15 @@ Kubernetes core/v1.PodSecurityContext
 </tr>
 <tr>
 <td>
-<code>enableRules</code></br>
+<code>enableAlertRules</code></br>
 <em>
 bool
 </em>
 </td>
 <td>
-<p>If not configuring AlertManager , it can add rule configuration through this switch.</p>
+<em>(Optional)</em>
+<p>EnableAlertRules adds alert rules to the Prometheus config even
+if If <code>AlertmanagerURL</code> is not configured.</p>
 </td>
 </tr>
 </table>
@@ -21025,13 +21027,15 @@ Kubernetes core/v1.PodSecurityContext
 </tr>
 <tr>
 <td>
-<code>enableRules</code></br>
+<code>enableAlertRules</code></br>
 <em>
 bool
 </em>
 </td>
 <td>
-<p>If not configuring AlertManager , it can add rule configuration through this switch.</p>
+<em>(Optional)</em>
+<p>EnableAlertRules adds alert rules to the Prometheus config even
+if If <code>AlertmanagerURL</code> is not configured.</p>
 </td>
 </tr>
 </tbody>
