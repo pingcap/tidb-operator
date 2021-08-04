@@ -165,7 +165,7 @@ func getGrafanaConfigMap(monitor *v1alpha1.TidbMonitor) *core.ConfigMap {
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 		},
 		Data: map[string]string{
-			"dashboard-config": dashBoardConfig,
+			"dashboards.yaml": dashBoardConfig,
 		},
 	}
 	return cm
