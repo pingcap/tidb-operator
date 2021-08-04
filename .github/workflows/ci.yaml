@@ -62,3 +62,11 @@ jobs:
         flags: unittest
         working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}
       if: ${{ matrix.job == 'test' }}
+<<<<<<< HEAD
+=======
+
+    - name: Set up tmate session
+      if: ${{ matrix.job == 'e2e-examples' && failure() }}
+      uses: mxschmitt/action-tmate@v3
+      timeout-minutes: 60
+>>>>>>> 18eb91ff... Only open ssh session when job is 'e2e-examples' (#4113)
