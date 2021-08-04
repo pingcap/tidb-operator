@@ -2,6 +2,10 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  {{- if gt (len .Values.scheduler.configmap.annotations) 0 }}
+  annotations:
+{{ toYaml .Values.scheduler.configmap.annotations | indent 4 }}
+  {{- end }}
   {{- if eq .Values.appendReleaseSuffix true}}
   name: {{ .Values.scheduler.schedulerName }}-policy-{{.Release.Name}}
   {{- else }}
