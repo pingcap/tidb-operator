@@ -155,7 +155,7 @@ func getPromConfigMap(monitor *v1alpha1.TidbMonitor, monitorClusterInfos []Clust
 	return cm, nil
 }
 
-// getMonitorConfigMap generate the Grafana config for TidbMonitor,
+// getGrafanaConfigMap generates the Grafana config for TidbMonitor,
 func getGrafanaConfigMap(monitor *v1alpha1.TidbMonitor) *core.ConfigMap {
 	cm := &core.ConfigMap{
 		ObjectMeta: meta.ObjectMeta{
