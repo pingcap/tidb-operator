@@ -55,5 +55,5 @@ When the tidb containers are running, you can connect with a MySQL client.
 
 ``` bash
 kubectl -n $NAMESPACE port-forward db-tidb-0 4000:4000 &
-mysql -u root -P 4000 -h 127.0.0.1
+mysql -u root -P 4000 -h 127.0.0.1 --comments
 ```

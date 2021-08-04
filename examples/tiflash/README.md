@@ -50,7 +50,7 @@ Explore the TiDB SQL interface:
 
 ```bash
 > kubectl -n <namespace> port-forward svc/demo-tidb 4000:4000 &>/tmp/pf-tidb.log &
-> mysql -h 127.0.0.1 -P 4000 -u root
+> mysql -h 127.0.0.1 -P 4000 -u root --comments
 ```
 Refer to the [doc](https://pingcap.com/docs/stable/reference/tiflash/use-tiflash/) to try TiFlash.
 

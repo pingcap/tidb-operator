@@ -55,15 +55,17 @@ const (
 
 type tidbMemberManager struct {
 	deps                         *controller.Dependencies
+	scaler                       Scaler
 	tidbUpgrader                 Upgrader
 	tidbFailover                 Failover
 	tidbStatefulSetIsUpgradingFn func(corelisters.PodLister, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 }
 
 // NewTiDBMemberManager returns a *tidbMemberManager
-func NewTiDBMemberManager(deps *controller.Dependencies, tidbUpgrader Upgrader, tidbFailover Failover) manager.Manager {
+func NewTiDBMemberManager(deps *controller.Dependencies, scaler Scaler, tidbUpgrader Upgrader, tidbFailover Failover) manager.Manager {
 	return &tidbMemberManager{
 		deps:                         deps,
+		scaler:                       scaler,
 		tidbUpgrader:                 tidbUpgrader,
 		tidbFailover:                 tidbFailover,
 		tidbStatefulSetIsUpgradingFn: tidbStatefulSetIsUpgrading,
@@ -213,6 +215,15 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 		}
 		tc.Status.TiDB.StatefulSet = &apps.StatefulSetStatus{}
 		return nil
+	}
+
+	// Scaling takes precedence over upgrading because:
+	// - if a pod fails in the upgrading, users may want to delete it or add
+	//   new replicas
+	// - it's ok to scale in the middle of upgrading (in statefulset controller
+	//   scaling takes precedence over upgrading too)
+	if err := m.scaler.Scale(tc, oldTiDBSet, newTiDBSet); err != nil {
+		return err
 	}
 
 	if m.deps.CLIConfig.AutoFailover {

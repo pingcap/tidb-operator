@@ -360,9 +360,12 @@ func BuildStorageVolumeAndVolumeMount(storageVolumes []v1alpha1.StorageVolume, d
 			}
 			pvcNameInVCT := fmt.Sprintf("%s-%s", memberType.String(), storageVolume.Name)
 			volumeClaims = append(volumeClaims, VolumeClaimTemplate(storageRequest, pvcNameInVCT, tmpStorageClass))
-			volMounts = append(volMounts, corev1.VolumeMount{
-				Name: pvcNameInVCT, MountPath: storageVolume.MountPath,
-			})
+			if storageVolume.MountPath != "" {
+				volMounts = append(volMounts, corev1.VolumeMount{
+					Name:      pvcNameInVCT,
+					MountPath: storageVolume.MountPath,
+				})
+			}
 		}
 	}
 	return volMounts, volumeClaims
@@ -423,6 +426,8 @@ func StatefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) bool {
 }
 
 // ResolvePVCFromPod parses pod volumes definition, and returns all PVCs mounted by this pod
+//
+// If the Pod don't have any PVC, return error 'NotFound'.
 func ResolvePVCFromPod(pod *corev1.Pod, pvcLister corelisterv1.PersistentVolumeClaimLister) ([]*corev1.PersistentVolumeClaim, error) {
 	var pvcs []*corev1.PersistentVolumeClaim
 	var pvcName string
