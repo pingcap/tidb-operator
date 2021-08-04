@@ -2505,7 +2505,7 @@ bool
 </em>
 </td>
 <td>
-<p>If not configuring AlertManager , it can can add rule configuration through this switch.</p>
+<p>If not configuring AlertManager , it can add rule configuration through this switch.</p>
 </td>
 </tr>
 </table>
@@ -21031,7 +21031,7 @@ bool
 </em>
 </td>
 <td>
-<p>If not configuring AlertManager , it can can add rule configuration through this switch.</p>
+<p>If not configuring AlertManager , it can add rule configuration through this switch.</p>
 </td>
 </tr>
 </tbody>
