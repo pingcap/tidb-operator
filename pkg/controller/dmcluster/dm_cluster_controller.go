@@ -42,7 +42,7 @@ type Controller struct {
 	queue workqueue.RateLimitingInterface
 }
 
-// NewController creates a dm controller.
+// NewController creates a dmcluster controller.
 func NewController(deps *controller.Dependencies) *Controller {
 	c := &Controller{
 		deps: deps,

@@ -121,7 +121,7 @@ spec:
         - --log.level={{ .Values.monitor.prometheus.logLevel }}
         - --config.file=/etc/prometheus/prometheus.yml
         - --storage.tsdb.path=/data/prometheus
-        - --storage.tsdb.retention={{ .Values.monitor.prometheus.reserveDays }}d
+        - --storage.tsdb.retention.time={{ .Values.monitor.prometheus.reserveDays }}d
         ports:
         - name: prometheus
           containerPort: 9090

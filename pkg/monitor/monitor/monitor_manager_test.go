@@ -117,7 +117,8 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 			name: "tidbmonitor spec remote write",
 			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
 				monitor.Spec.Prometheus.RemoteWrite = []*v1alpha1.RemoteWriteSpec{
-					{URL: "http://localhost:1234",
+					{
+						URL: "http://localhost:1234/a/b/c",
 						WriteRelabelConfigs: []v1alpha1.RelabelConfig{
 							{
 								SourceLabels: model.LabelNames{
@@ -135,8 +136,8 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 				}
 
 			},
-			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
-
+			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
+				errExpectRequeuefunc(g, err, tmm, tm)
 			},
 			stsCreated:    true,
 			svcCreated:    true,
