@@ -207,7 +207,7 @@ func (m *MonitorManager) syncTidbMonitorService(monitor *v1alpha1.TidbMonitor) e
 func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monitor *v1alpha1.TidbMonitor) error {
 	ns := monitor.Namespace
 	name := monitor.Name
-	cm, err := m.syncTidbMonitorConfig(monitor)
+	err := m.syncTidbMonitorConfig(monitor)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s configmap failed to sync,err: %v", ns, name, err)
 		return err
@@ -234,7 +234,7 @@ func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, dc
 		return nil
 	}
 
-	newMonitorSts, err := getMonitorStatefulSet(sa, cm, secret, monitor, tc, dc)
+	newMonitorSts, err := getMonitorStatefulSet(sa, secret, monitor, tc, dc)
 	if err != nil {
 		klog.Errorf("Fail to generate statefulset for tm [%s/%s], err: %v", ns, name, err)
 		return err
@@ -267,7 +267,7 @@ func (m *MonitorManager) syncTidbMonitorSecret(monitor *v1alpha1.TidbMonitor) (*
 	return m.deps.TypedControl.CreateOrUpdateSecret(monitor, newSt)
 }
 
-func (m *MonitorManager) syncTidbMonitorConfig(monitor *v1alpha1.TidbMonitor) (*corev1.ConfigMap, error) {
+func (m *MonitorManager) syncTidbMonitorConfig(monitor *v1alpha1.TidbMonitor) error {
 	if features.DefaultFeatureGate.Enabled(features.AutoScaling) {
 		// TODO: We need to update the status to tell users we are monitoring extra clusters
 		// Get all autoscaling clusters for TC, and add them to .Spec.Clusters to
@@ -316,7 +316,7 @@ func (m *MonitorManager) syncTidbMonitorConfig(monitor *v1alpha1.TidbMonitor) (*
 		tc, err := m.deps.TiDBClusterLister.TidbClusters(tcRef.Namespace).Get(tcRef.Name)
 		if err != nil {
 			rerr := fmt.Errorf("get tm[%s/%s]'s target tc[%s/%s] failed, err: %v", monitor.Namespace, monitor.Name, tcRef.Namespace, tcRef.Name, err)
-			return nil, rerr
+			return rerr
 		}
 		clusterRegex := ClusterRegexInfo{
 			Name:      tcRef.Name,
@@ -335,7 +335,7 @@ func (m *MonitorManager) syncTidbMonitorConfig(monitor *v1alpha1.TidbMonitor) (*
 			dm, err := m.deps.DMClusterLister.DMClusters(dmRef.Namespace).Get(dmRef.Name)
 			if err != nil {
 				rerr := fmt.Errorf("get tm[%s/%s]'s target dm[%s/%s] failed, err: %v", monitor.Namespace, monitor.Name, dmRef.Namespace, dmRef.Name, err)
-				return nil, rerr
+				return rerr
 			}
 			clusterRegex := ClusterRegexInfo{
 				Name:      dmRef.Name,
@@ -351,7 +351,7 @@ func (m *MonitorManager) syncTidbMonitorConfig(monitor *v1alpha1.TidbMonitor) (*
 
 	newCM, err := getMonitorConfigMap(monitor, monitorClusterInfos, dmClusterInfos)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	config := monitor.Spec.Prometheus.Config
 	if config != nil && config.ConfigMapRef != nil && len(config.ConfigMapRef.Name) > 0 {
@@ -367,7 +367,7 @@ func (m *MonitorManager) syncTidbMonitorConfig(monitor *v1alpha1.TidbMonitor) (*
 		})
 		if err != nil {
 			klog.Errorf("tm[%s/%s]'s configMap failed to get,err: %v", namespace, config.ConfigMapRef.Name, err)
-			return nil, err
+			return err
 		}
 		if externalContent, ok := externalCM.Data["prometheus-config"]; ok {
 			newCM.Data["prometheus.yml"] = externalContent
@@ -376,17 +376,17 @@ func (m *MonitorManager) syncTidbMonitorConfig(monitor *v1alpha1.TidbMonitor) (*
 	_, err = m.deps.TypedControl.CreateOrUpdateConfigMap(monitor, newCM)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s configMap failed to createOrUpdate,err: %v", newCM.Namespace, newCM.Name, err)
-		return nil, err
+		return err
 	}
 	if monitor.Spec.Grafana != nil {
 		grafanaCM := getGrafanaConfigMap(monitor)
 		_, err = m.deps.TypedControl.CreateOrUpdateConfigMap(monitor, grafanaCM)
 		if err != nil {
 			klog.Errorf("tm[%s/%s]'s configMap failed to createOrUpdate,err: %v", newCM.Namespace, grafanaCM.Name, err)
-			return nil, err
+			return err
 		}
 	}
-	return nil, err
+	return err
 }
 
 func (m *MonitorManager) syncTidbMonitorRbac(monitor *v1alpha1.TidbMonitor) (*corev1.ServiceAccount, error) {

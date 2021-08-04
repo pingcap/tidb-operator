@@ -995,7 +995,7 @@ func defaultTidbMonitor(monitor *v1alpha1.TidbMonitor) {
 	}
 }
 
-func getMonitorStatefulSet(sa *core.ServiceAccount, config *core.ConfigMap, secret *core.Secret, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster) (*apps.StatefulSet, error) {
+func getMonitorStatefulSet(sa *core.ServiceAccount, secret *core.Secret, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster) (*apps.StatefulSet, error) {
 	statefulSet := getMonitorStatefulSetSkeleton(sa, monitor)
 	initContainer := getMonitorInitContainer(monitor, tc)
 	statefulSet.Spec.Template.Spec.InitContainers = append(statefulSet.Spec.Template.Spec.InitContainers, initContainer)
