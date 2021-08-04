@@ -52,7 +52,7 @@ func GetMonitorObjectName(monitor *v1alpha1.TidbMonitor) string {
 }
 
 func GetGrafanaConfigMapName(monitor *v1alpha1.TidbMonitor) string {
-	return fmt.Sprintf("%s-grafana-monitor", monitor.Name)
+	return fmt.Sprintf("%s-monitor-grafana", monitor.Name)
 }
 
 func GetMonitorFirstPVCName(name string) string {
