@@ -11,6 +11,7 @@ metadata:
   name: {{ template "cluster.name" . }}:monitor
   {{- else }}
   name: {{ template "cluster.name" . }}-monitor
+  namespace: {{ .Release.Namespace }}
   {{- end }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
@@ -49,6 +50,7 @@ metadata:
   name: {{ template "cluster.name" . }}:monitor
   {{- else }}
   name: {{ template "cluster.name" . }}-monitor
+  namespace: {{ .Release.Namespace }}
   {{- end }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
@@ -81,6 +83,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: {{ template "cluster.name" . }}-monitor
+  namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
