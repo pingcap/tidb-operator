@@ -26,6 +26,26 @@ import (
 	"k8s.io/utils/pointer"
 )
 
+func TestGenerateRemoteWrite(t *testing.T) {
+	url := "http://127.0.0.1/a/b/c"
+	monitor := v1alpha1.TidbMonitor{
+		Spec: v1alpha1.TidbMonitorSpec{
+			Prometheus: v1alpha1.PrometheusSpec{
+				RemoteWrite: []*v1alpha1.RemoteWriteSpec{
+					{URL: url},
+				},
+			},
+		},
+	}
+	remoteWriteConfig := generateRemoteWrite(&monitor)
+	if remoteWriteConfig == nil || remoteWriteConfig[0] == nil {
+		t.Errorf("unexpected remoteWriteConfig %v", remoteWriteConfig)
+	}
+	if remoteWriteConfig[0].URL.String() != url {
+		t.Errorf("expect remote url %v, but result %v", url, remoteWriteConfig[0].URL.String())
+	}
+}
+
 func TestGetMonitorConfigMap(t *testing.T) {
 	g := NewGomegaWithT(t)
 	varTrue := true
@@ -242,6 +262,7 @@ func TestGetMonitorService(t *testing.T) {
 							"app.kubernetes.io/component":  "monitor",
 							"app.kubernetes.io/used-by":    "prometheus",
 						},
+						Annotations: map[string]string{},
 						OwnerReferences: []metav1.OwnerReference{
 							{
 								APIVersion: "pingcap.com/v1alpha1",
@@ -283,6 +304,7 @@ func TestGetMonitorService(t *testing.T) {
 							"app.kubernetes.io/managed-by": "tidb-operator",
 							"app.kubernetes.io/name":       "tidb-cluster",
 						},
+						Annotations: map[string]string{},
 						OwnerReferences: []metav1.OwnerReference{
 							{
 								APIVersion: "pingcap.com/v1alpha1",
@@ -367,6 +389,7 @@ func TestGetMonitorService(t *testing.T) {
 							"app.kubernetes.io/component":  "monitor",
 							"app.kubernetes.io/used-by":    "prometheus",
 						},
+						Annotations: map[string]string{},
 						OwnerReferences: []metav1.OwnerReference{
 							{
 								APIVersion: "pingcap.com/v1alpha1",
@@ -414,6 +437,7 @@ func TestGetMonitorService(t *testing.T) {
 							"app.kubernetes.io/managed-by": "tidb-operator",
 							"app.kubernetes.io/name":       "tidb-cluster",
 						},
+						Annotations: map[string]string{},
 						OwnerReferences: []metav1.OwnerReference{
 							{
 								APIVersion: "pingcap.com/v1alpha1",
@@ -461,6 +485,7 @@ func TestGetMonitorService(t *testing.T) {
 							"app.kubernetes.io/component":  "monitor",
 							"app.kubernetes.io/used-by":    "grafana",
 						},
+						Annotations: map[string]string{},
 						OwnerReferences: []metav1.OwnerReference{
 							{
 								APIVersion: "pingcap.com/v1alpha1",
@@ -527,6 +552,7 @@ func TestGetMonitorService(t *testing.T) {
 							"app.kubernetes.io/component":  "monitor",
 							"app.kubernetes.io/used-by":    "prometheus",
 						},
+						Annotations: map[string]string{},
 						OwnerReferences: []metav1.OwnerReference{
 							{
 								APIVersion: "pingcap.com/v1alpha1",
@@ -568,6 +594,7 @@ func TestGetMonitorService(t *testing.T) {
 							"app.kubernetes.io/managed-by": "tidb-operator",
 							"app.kubernetes.io/name":       "tidb-cluster",
 						},
+						Annotations: map[string]string{},
 						OwnerReferences: []metav1.OwnerReference{
 							{
 								APIVersion: "pingcap.com/v1alpha1",
@@ -622,6 +649,7 @@ func TestGetMonitorService(t *testing.T) {
 							"app.kubernetes.io/name":       "tidb-cluster",
 							"app.kubernetes.io/used-by":    "grafana",
 						},
+						Annotations: map[string]string{},
 					},
 					Spec: corev1.ServiceSpec{
 						Ports: []corev1.ServicePort{
@@ -915,6 +943,8 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 							BaseImage: "hub.pingcap.net",
 							Version:   "latest",
 						},
+						ReserveDays:   8,
+						RetentionTime: pointer.StringPtr("2h"),
 						Config: &v1alpha1.PrometheusConfiguration{
 							CommandOptions: []string{
 								"--web.external-url=https://www.example.com/prometheus/",
@@ -929,7 +959,7 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 				Command: []string{
 					"/bin/sh",
 					"-c",
-					"sed 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g' /etc/prometheus/config/prometheus.yml > /etc/prometheus/config_out/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/etc/prometheus/config_out/prometheus.yml --storage.tsdb.path=/data/prometheus --storage.tsdb.retention=0d --web.external-url=https://www.example.com/prometheus/",
+					"sed 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g' /etc/prometheus/config/prometheus.yml > /etc/prometheus/config_out/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/etc/prometheus/config_out/prometheus.yml --storage.tsdb.path=/data/prometheus --storage.tsdb.retention.time=2h --web.external-url=https://www.example.com/prometheus/",
 				},
 				Ports: []corev1.ContainerPort{
 					corev1.ContainerPort{

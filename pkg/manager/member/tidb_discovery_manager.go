@@ -249,6 +249,8 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 		})
 	}
 
+	podLabels := util.CombineStringMap(l.Labels(), baseSpec.Labels())
+	podAnnotations := baseSpec.Annotations()
 	d := &appsv1.Deployment{
 		ObjectMeta: meta,
 		Spec: appsv1.DeploymentSpec{
@@ -257,7 +259,8 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 			Selector: l.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: l.Labels(),
+					Labels:      podLabels,
+					Annotations: podAnnotations,
 				},
 				Spec: podSpec,
 			},
