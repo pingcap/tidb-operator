@@ -473,7 +473,7 @@ func RenderPrometheusConfig(model *MonitorConfigModel) (string, error) {
 			"/prometheus-rules/rules/*.rules.yml",
 		}
 	} else {
-		// If not configuring AlertManager , it also need to add rules when enabling `EnableRules` switch.
+		// If not configuring AlertManager,it also need to add rules when enabling `EnableRules` switch.
 		if model.EnableRules {
 			pc.RuleFiles = []string{
 				"/prometheus-rules/rules/*.rules.yml",
