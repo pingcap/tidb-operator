@@ -50,7 +50,9 @@ func GetTLSAssetsSecretName(name string) string {
 func GetMonitorObjectName(monitor *v1alpha1.TidbMonitor) string {
 	return fmt.Sprintf("%s-monitor", monitor.Name)
 }
-
+func GetPromConfigMapName(monitor *v1alpha1.TidbMonitor) string {
+	return fmt.Sprintf("%s-monitor", monitor.Name)
+}
 func GetGrafanaConfigMapName(monitor *v1alpha1.TidbMonitor) string {
 	return fmt.Sprintf("%s-grafana-monitor", monitor.Name)
 }
@@ -143,7 +145,7 @@ func getMonitorConfigMap(monitor *v1alpha1.TidbMonitor, monitorClusterInfos []Cl
 
 	cm := &core.ConfigMap{
 		ObjectMeta: meta.ObjectMeta{
-			Name:            GetMonitorObjectName(monitor),
+			Name:            GetPromConfigMapName(monitor),
 			Namespace:       monitor.Namespace,
 			Labels:          buildTidbMonitorLabel(monitor.Name),
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},

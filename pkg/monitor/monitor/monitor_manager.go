@@ -349,7 +349,7 @@ func (m *MonitorManager) syncTidbMonitorConfig(monitor *v1alpha1.TidbMonitor) er
 		}
 	}
 
-	newCM, err := getMonitorConfigMap(monitor, monitorClusterInfos, dmClusterInfos)
+	promCM, err := getMonitorConfigMap(monitor, monitorClusterInfos, dmClusterInfos)
 	if err != nil {
 		return err
 	}
@@ -370,19 +370,19 @@ func (m *MonitorManager) syncTidbMonitorConfig(monitor *v1alpha1.TidbMonitor) er
 			return err
 		}
 		if externalContent, ok := externalCM.Data["prometheus-config"]; ok {
-			newCM.Data["prometheus.yml"] = externalContent
+			promCM.Data["prometheus.yml"] = externalContent
 		}
 	}
-	_, err = m.deps.TypedControl.CreateOrUpdateConfigMap(monitor, newCM)
+	_, err = m.deps.TypedControl.CreateOrUpdateConfigMap(monitor, promCM)
 	if err != nil {
-		klog.Errorf("tm[%s/%s]'s configMap failed to createOrUpdate,err: %v", newCM.Namespace, newCM.Name, err)
+		klog.Errorf("tm[%s/%s]'s configMap failed to createOrUpdate,err: %v", promCM.Namespace, promCM.Name, err)
 		return err
 	}
 	if monitor.Spec.Grafana != nil {
 		grafanaCM := getGrafanaConfigMap(monitor)
 		_, err = m.deps.TypedControl.CreateOrUpdateConfigMap(monitor, grafanaCM)
 		if err != nil {
-			klog.Errorf("tm[%s/%s]'s configMap failed to createOrUpdate,err: %v", newCM.Namespace, grafanaCM.Name, err)
+			klog.Errorf("tm[%s/%s]'s configMap failed to createOrUpdate,err: %v", grafanaCM.Namespace, grafanaCM.Name, err)
 			return err
 		}
 	}
