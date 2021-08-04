@@ -1105,6 +1105,8 @@ type TiCDCStatus struct {
 type TiCDCCapture struct {
 	PodName string `json:"podName,omitempty"`
 	ID      string `json:"id,omitempty"`
+	Version string `json:"version,omitempty"`
+	IsOwner bool   `json:"isOwner,omitempty"`
 }
 
 // TiKVStores is either Up/Down/Offline/Tombstone
@@ -1393,6 +1395,7 @@ type BackupSpec struct {
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 	// ToolImage specifies the tool image used in `Backup`, which supports BR and Dumpling images.
 	// For examples `spec.toolImage: pingcap/br:v4.0.8` or `spec.toolImage: pingcap/dumpling:v4.0.8`
+	// For BR image, if it does not contain tag, Pod will use image 'ToolImage:${TiKV_Version}'.
 	// +optional
 	ToolImage string `json:"toolImage,omitempty"`
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
@@ -1413,6 +1416,9 @@ type BackupSpec struct {
 	// PodSecurityContext of the component
 	// +optional
 	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
+
+	// PriorityClassName of Backup Job Pods
+	PriorityClassName string `json:"priorityClassName,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -1678,6 +1684,7 @@ type RestoreSpec struct {
 	ServiceAccount string `json:"serviceAccount,omitempty"`
 	// ToolImage specifies the tool image used in `Restore`, which supports BR and TiDB Lightning images.
 	// For examples `spec.toolImage: pingcap/br:v4.0.8` or `spec.toolImage: pingcap/tidb-lightning:v4.0.8`
+	// For BR image, if it does not contain tag, Pod will use image 'ToolImage:${TiKV_Version}'.
 	// +optional
 	ToolImage string `json:"toolImage,omitempty"`
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
@@ -1689,6 +1696,9 @@ type RestoreSpec struct {
 	// PodSecurityContext of the component
 	// +optional
 	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
+
+	// PriorityClassName of Restore Job Pods
+	PriorityClassName string `json:"priorityClassName,omitempty"`
 }
 
 // RestoreStatus represents the current status of a tidb cluster restore.
@@ -2083,13 +2093,16 @@ type WorkerFailureMember struct {
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
 
-// StorageVolume configures additional storage for PD/TiDB/TiKV pods.
-// If `StorageClassName` not set, default to the `spec.[pd|tidb|tikv].storageClassName`
+// StorageVolume configures additional PVC template for StatefulSets and volumeMount for pods that mount this PVC.
+// Note:
+// If `MountPath` is not set, volumeMount will not be generated. (You may not want to set this field when you inject volumeMount
+// in somewhere else such as Mutating Admission Webhook)
+// If `StorageClassName` is not set, default to the `spec.${component}.storageClassName`
 type StorageVolume struct {
 	Name             string  `json:"name"`
 	StorageClassName *string `json:"storageClassName,omitempty"`
 	StorageSize      string  `json:"storageSize"`
-	MountPath        string  `json:"mountPath"`
+	MountPath        string  `json:"mountPath,omitempty"`
 }
 
 // TopologySpreadConstraint specifies how to spread matching pods among the given topology.

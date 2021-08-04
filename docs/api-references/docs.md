@@ -253,7 +253,8 @@ string
 <td>
 <em>(Optional)</em>
 <p>ToolImage specifies the tool image used in <code>Backup</code>, which supports BR and Dumpling images.
-For examples <code>spec.toolImage: pingcap/br:v4.0.8</code> or <code>spec.toolImage: pingcap/dumpling:v4.0.8</code></p>
+For examples <code>spec.toolImage: pingcap/br:v4.0.8</code> or <code>spec.toolImage: pingcap/dumpling:v4.0.8</code>
+For BR image, if it does not contain tag, Pod will use image &lsquo;ToolImage:${TiKV_Version}&rsquo;.</p>
 </td>
 </tr>
 <tr>
@@ -342,6 +343,17 @@ Kubernetes core/v1.PodSecurityContext
 <td>
 <em>(Optional)</em>
 <p>PodSecurityContext of the component</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>priorityClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PriorityClassName of Backup Job Pods</p>
 </td>
 </tr>
 </table>
@@ -1151,7 +1163,8 @@ string
 <td>
 <em>(Optional)</em>
 <p>ToolImage specifies the tool image used in <code>Restore</code>, which supports BR and TiDB Lightning images.
-For examples <code>spec.toolImage: pingcap/br:v4.0.8</code> or <code>spec.toolImage: pingcap/tidb-lightning:v4.0.8</code></p>
+For examples <code>spec.toolImage: pingcap/br:v4.0.8</code> or <code>spec.toolImage: pingcap/tidb-lightning:v4.0.8</code>
+For BR image, if it does not contain tag, Pod will use image &lsquo;ToolImage:${TiKV_Version}&rsquo;.</p>
 </td>
 </tr>
 <tr>
@@ -1191,6 +1204,17 @@ Kubernetes core/v1.PodSecurityContext
 <td>
 <em>(Optional)</em>
 <p>PodSecurityContext of the component</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>priorityClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PriorityClassName of Restore Job Pods</p>
 </td>
 </tr>
 </table>
@@ -2322,6 +2346,17 @@ map[string]string
 </tr>
 <tr>
 <td>
+<code>labels</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
 <code>tolerations</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#toleration-v1-core">
@@ -3197,7 +3232,8 @@ string
 <td>
 <em>(Optional)</em>
 <p>ToolImage specifies the tool image used in <code>Backup</code>, which supports BR and Dumpling images.
-For examples <code>spec.toolImage: pingcap/br:v4.0.8</code> or <code>spec.toolImage: pingcap/dumpling:v4.0.8</code></p>
+For examples <code>spec.toolImage: pingcap/br:v4.0.8</code> or <code>spec.toolImage: pingcap/dumpling:v4.0.8</code>
+For BR image, if it does not contain tag, Pod will use image &lsquo;ToolImage:${TiKV_Version}&rsquo;.</p>
 </td>
 </tr>
 <tr>
@@ -3286,6 +3322,17 @@ Kubernetes core/v1.PodSecurityContext
 <td>
 <em>(Optional)</em>
 <p>PodSecurityContext of the component</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>priorityClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PriorityClassName of Backup Job Pods</p>
 </td>
 </tr>
 </tbody>
@@ -10169,6 +10216,19 @@ int
 </tr>
 <tr>
 <td>
+<code>retentionTime</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Configuration for <code>--storage.tsdb.retention.time</code>, Units Supported: y, w, d, h, m, s, ms.
+If set to non empty values, it will override the value of <code>ReserveDays</code>.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>ingress</code></br>
 <em>
 <a href="#ingressspec">
@@ -11340,7 +11400,8 @@ string
 <td>
 <em>(Optional)</em>
 <p>ToolImage specifies the tool image used in <code>Restore</code>, which supports BR and TiDB Lightning images.
-For examples <code>spec.toolImage: pingcap/br:v4.0.8</code> or <code>spec.toolImage: pingcap/tidb-lightning:v4.0.8</code></p>
+For examples <code>spec.toolImage: pingcap/br:v4.0.8</code> or <code>spec.toolImage: pingcap/tidb-lightning:v4.0.8</code>
+For BR image, if it does not contain tag, Pod will use image &lsquo;ToolImage:${TiKV_Version}&rsquo;.</p>
 </td>
 </tr>
 <tr>
@@ -11380,6 +11441,17 @@ Kubernetes core/v1.PodSecurityContext
 <td>
 <em>(Optional)</em>
 <p>PodSecurityContext of the component</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>priorityClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PriorityClassName of Restore Job Pods</p>
 </td>
 </tr>
 </tbody>
@@ -12302,8 +12374,11 @@ LocalStorageProvider
 <a href="#tikvspec">TiKVSpec</a>)
 </p>
 <p>
-<p>StorageVolume configures additional storage for PD/TiDB/TiKV pods.
-If <code>StorageClassName</code> not set, default to the <code>spec.[pd|tidb|tikv].storageClassName</code></p>
+<p>StorageVolume configures additional PVC template for StatefulSets and volumeMount for pods that mount this PVC.
+Note:
+If <code>MountPath</code> is not set, volumeMount will not be generated. (You may not want to set this field when you inject volumeMount
+in somewhere else such as Mutating Admission Webhook)
+If <code>StorageClassName</code> is not set, default to the <code>spec.${component}.storageClassName</code></p>
 </p>
 <table>
 <thead>
@@ -12669,6 +12744,26 @@ string
 <code>id</code></br>
 <em>
 string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>version</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>isOwner</code></br>
+<em>
+bool
 </em>
 </td>
 <td>
@@ -20756,6 +20851,17 @@ map[string]string
 <tr>
 <td>
 <code>annotations</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>labels</code></br>
 <em>
 map[string]string
 </em>

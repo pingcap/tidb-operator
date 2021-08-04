@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/onsi/ginkgo"
+	ginkgoconfig "github.com/onsi/ginkgo/config"
 	"github.com/onsi/gomega"
 	astsHelper "github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
@@ -132,7 +133,8 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 	// basic deploy, scale out, scale in, change configuration tests
 	ginkgo.Describe("when using version", func() {
-		versions := []string{utilimage.TiDBV3, utilimage.TiDBV4, utilimage.TiDBV5}
+		versions := []string{utilimage.TiDBV3, utilimage.TiDBLatest}
+		versions = append(versions, utilimage.TiDBPreviousVersions...)
 		for _, version := range versions {
 			version := version
 			versionDashed := strings.ReplaceAll(version, ".", "-")
@@ -242,10 +244,31 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
 					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 
-					ginkgo.By("Check custom labels and add will not lost")
-					checkCustomLabelAndAnn(tc, c)
-				})
+					ginkgo.By("Check custom labels and annotations will not lost")
+					framework.ExpectNoError(checkCustomLabelAndAnn(tc, c, tc.Spec.Labels[fixture.ClusterCustomKey], time.Minute, 10*time.Second), "failed to check labels and annotations")
 
+					ginkgo.By("Change labels and annotations")
+					newValue := "new-value"
+					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+						tc.Spec.Labels[fixture.ClusterCustomKey] = newValue
+						tc.Spec.Annotations[fixture.ClusterCustomKey] = newValue
+						tc.Spec.PD.ComponentSpec.Labels[fixture.ComponentCustomKey] = newValue
+						tc.Spec.PD.ComponentSpec.Annotations[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiKV.ComponentSpec.Labels[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiKV.ComponentSpec.Annotations[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiDB.ComponentSpec.Labels[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiDB.ComponentSpec.Annotations[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiDB.Service.Labels[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiDB.Service.Annotations[fixture.ComponentCustomKey] = newValue
+						return nil
+					})
+					framework.ExpectNoError(err, "failed to change configuration of TidbCluster: %q", tc.Name)
+					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+
+					ginkgo.By("Check custom labels and annotations changed")
+					framework.ExpectNoError(checkCustomLabelAndAnn(tc, c, newValue, 10*time.Minute, 10*time.Second), "failed to check labels and annotations")
+				})
 			})
 		}
 	})
@@ -273,7 +296,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 		ginkgo.By("Deploy initial tc")
 		clusterName := "host-network"
-		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV5)
+		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBLatest)
 		// Set some properties
 		tc.Spec.PD.Replicas = 1
 		tc.Spec.TiKV.Replicas = 1
@@ -319,14 +342,14 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 		ginkgo.By("Deploying tidb cluster")
 		clusterName := "webhook-upgrade-cluster"
-		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV5Prev)
+		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBLatestPrev)
 		tc.Spec.PD.Replicas = 3
 		// Deploy
 		utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 6*time.Minute, 5*time.Second)
 
-		ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", tc.Spec.Version, utilimage.TiDBV5))
+		ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", tc.Spec.Version, utilimage.TiDBLatest))
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-			tc.Spec.Version = utilimage.TiDBV5
+			tc.Spec.Version = utilimage.TiDBLatest
 			return nil
 		})
 		framework.ExpectNoError(err, "failed to upgrade TidbCluster: %q", tc.Name)
@@ -350,7 +373,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	ginkgo.Context("[Feature: Helm Chart migrate to CR]", func() {
 		ginkgo.It("should keep tidb service in sync", func() {
 			ginkgo.By("Deploy initial tc")
-			tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "service", "admin", utilimage.TiDBV5)
+			tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "service", "admin", utilimage.TiDBLatest)
 			tcCfg.Resources["pd.replicas"] = "1"
 			tcCfg.Resources["tidb.replicas"] = "1"
 			tcCfg.Resources["tikv.replicas"] = "1"
@@ -439,7 +462,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		// TODO: Add pump configmap rolling-update case
 		ginkgo.It("should adopt helm created pump with TidbCluster CR", func() {
 			ginkgo.By("Deploy initial tc")
-			tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "pump", "admin", utilimage.TiDBV5)
+			tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "pump", "admin", utilimage.TiDBLatest)
 			tcCfg.Resources["pd.replicas"] = "1"
 			tcCfg.Resources["tikv.replicas"] = "1"
 			tcCfg.Resources["tidb.replicas"] = "1"
@@ -586,7 +609,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 		ginkgo.It("should migrate from helm to CR", func() {
 			ginkgo.By("Deploy initial tc")
-			tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "helm-migration", "admin", utilimage.TiDBV5)
+			tcCfg := newTidbClusterConfig(e2econfig.TestConfig, ns, "helm-migration", "admin", utilimage.TiDBLatest)
 			tcCfg.Resources["pd.replicas"] = "1"
 			tcCfg.Resources["tikv.replicas"] = "1"
 			tcCfg.Resources["tidb.replicas"] = "1"
@@ -701,7 +724,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	// TODO: move into TiDBMonitor specific group
 	ginkgo.It("should manage tidb monitor normally", func() {
 		ginkgo.By("Deploy initial tc")
-		tc := fixture.GetTidbCluster(ns, "monitor-test", utilimage.TiDBV5)
+		tc := fixture.GetTidbCluster(ns, "monitor-test", utilimage.TiDBLatest)
 		tc.Spec.PD.Replicas = 1
 		tc.Spec.TiKV.Replicas = 1
 		tc.Spec.TiDB.Replicas = 1
@@ -850,6 +873,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		})
 		framework.ExpectEqual(err, wait.ErrWaitTimeout, "tidbmonitor and tidbcluster PVReclaimPolicy should not affect each other")
 
+		ginkgo.By("Check custom labels and annotations")
+		checkMonitorCustomLabelAndAnn(tm, c)
+
 		ginkgo.By("Delete tidbmonitor")
 		err = cli.PingcapV1alpha1().TidbMonitors(tm.Namespace).Delete(tm.Name, &metav1.DeleteOptions{})
 		framework.ExpectNoError(err, "delete tidbmonitor failed")
@@ -858,7 +884,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	ginkgo.It("can be paused and resumed", func() {
 		ginkgo.By("Deploy initial tc")
 		tcName := "paused"
-		tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV5Prev)
+		tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBLatestPrev)
 		tc.Spec.PD.Replicas = 1
 		tc.Spec.TiKV.Replicas = 1
 		tc.Spec.TiDB.Replicas = 1
@@ -874,9 +900,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		})
 		framework.ExpectNoError(err, "failed to pause TidbCluster: %q", tc.Name)
 
-		ginkgo.By(fmt.Sprintf("upgrade tc version to %q", utilimage.TiDBV5))
+		ginkgo.By(fmt.Sprintf("upgrade tc version to %q", utilimage.TiDBLatest))
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-			tc.Spec.Version = utilimage.TiDBV5
+			tc.Spec.Version = utilimage.TiDBLatest
 			return nil
 		})
 		framework.ExpectNoError(err, "failed to upgrade TidbCluster version: %q", tc.Name)
@@ -921,7 +947,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		// TODO: explain purpose of this case
 		ginkgo.It("should clear TiDB failureMembers when scale TiDB to zero", func() {
 			ginkgo.By("Deploy initial tc")
-			tc := fixture.GetTidbCluster(ns, "tidb-scale", utilimage.TiDBV5)
+			tc := fixture.GetTidbCluster(ns, "tidb-scale", utilimage.TiDBLatest)
 			tc.Spec.PD.Replicas = 1
 			tc.Spec.TiKV.Replicas = 1
 			tc.Spec.TiDB.Replicas = 1
@@ -1004,7 +1030,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 			ginkgo.By("Creating tidb cluster with TLS enabled")
 			dashTLSName := fmt.Sprintf("%s-dashboard-tls", tcName)
-			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV5Prev)
+			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBLatestPrev)
 			tc.Spec.PD.Replicas = 3
 			tc.Spec.PD.TLSClientSecretName = &dashTLSName
 			tc.Spec.TiKV.Replicas = 3
@@ -1056,10 +1082,10 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				Namespace:      ns,
 				ClusterName:    tcName,
 				OperatorTag:    cfg.OperatorTag,
-				ClusterVersion: utilimage.TiDBV5,
+				ClusterVersion: utilimage.TiDBLatest,
 			}
 			targetTcName := "tls-target"
-			targetTc := fixture.GetTidbCluster(ns, targetTcName, utilimage.TiDBV5)
+			targetTc := fixture.GetTidbCluster(ns, targetTcName, utilimage.TiDBLatest)
 			targetTc.Spec.PD.Replicas = 1
 			targetTc.Spec.TiKV.Replicas = 1
 			targetTc.Spec.TiDB.Replicas = 1
@@ -1135,12 +1161,15 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 			ginkgo.By("Upgrading tidb cluster")
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-				tc.Spec.Version = utilimage.TiDBV5
+				tc.Spec.Version = utilimage.TiDBLatest
 				return nil
 			})
 			framework.ExpectNoError(err, "failed to update TidbCluster: %q", tc.Name)
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
+
+			ginkgo.By("Check custom labels and annotations for TidbInitializer")
+			checkInitializerCustomLabelAndAnn(ti, c)
 		})
 
 		ginkgo.It("should enable TLS for MySQL Client and between Heterogeneous TiDB components", func() {
@@ -1175,7 +1204,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 			ginkgo.By("Creating tidb cluster")
 			dashTLSName := fmt.Sprintf("%s-dashboard-tls", tcName)
-			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV5)
+			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBLatest)
 			tc.Spec.PD.Replicas = 1
 			tc.Spec.PD.TLSClientSecretName = &dashTLSName
 			tc.Spec.TiKV.Replicas = 1
@@ -1199,7 +1228,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
 
 			ginkgo.By("Creating heterogeneous tidb cluster")
-			heterogeneousTc := fixture.GetTidbCluster(ns, heterogeneousTcName, utilimage.TiDBV5)
+			heterogeneousTc := fixture.GetTidbCluster(ns, heterogeneousTcName, utilimage.TiDBLatest)
 			heterogeneousTc = fixture.AddTiFlashForTidbCluster(heterogeneousTc)
 			heterogeneousTc.Spec.PD = nil
 			heterogeneousTc.Spec.TiKV.Replicas = 1
@@ -1270,10 +1299,10 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				Namespace:      ns,
 				ClusterName:    tcName,
 				OperatorTag:    cfg.OperatorTag,
-				ClusterVersion: utilimage.TiDBV5,
+				ClusterVersion: utilimage.TiDBLatest,
 			}
 			targetTcName := "tls-target"
-			targetTc := fixture.GetTidbCluster(ns, targetTcName, utilimage.TiDBV5)
+			targetTc := fixture.GetTidbCluster(ns, targetTcName, utilimage.TiDBLatest)
 			targetTc.Spec.PD.Replicas = 1
 			targetTc.Spec.TiKV.Replicas = 1
 			targetTc.Spec.TiDB.Replicas = 1
@@ -1319,7 +1348,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	ginkgo.It("should ensure changing TiDB service annotations won't change TiDB service type NodePort", func() {
 		ginkgo.By("Deploy initial tc")
 		// Create TidbCluster with NodePort to check whether node port would change
-		nodeTc := fixture.GetTidbCluster(ns, "nodeport", utilimage.TiDBV5)
+		nodeTc := fixture.GetTidbCluster(ns, "nodeport", utilimage.TiDBLatest)
 		nodeTc.Spec.PD.Replicas = 1
 		nodeTc.Spec.TiKV.Replicas = 1
 		nodeTc.Spec.TiDB.Replicas = 1
@@ -1415,7 +1444,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		ginkgo.It("should join heterogeneous cluster into an existing cluster", func() {
 			// Create TidbCluster with NodePort to check whether node port would change
 			ginkgo.By("Deploy origin tc")
-			originTc := fixture.GetTidbCluster(ns, "origin", utilimage.TiDBV5)
+			originTc := fixture.GetTidbCluster(ns, "origin", utilimage.TiDBLatest)
 			originTc.Spec.PD.Replicas = 1
 			originTc.Spec.TiKV.Replicas = 1
 			originTc.Spec.TiDB.Replicas = 1
@@ -1425,7 +1454,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
 			ginkgo.By("Deploy heterogeneous tc")
-			heterogeneousTc := fixture.GetTidbCluster(ns, "heterogeneous", utilimage.TiDBV5)
+			heterogeneousTc := fixture.GetTidbCluster(ns, "heterogeneous", utilimage.TiDBLatest)
 			heterogeneousTc = fixture.AddTiFlashForTidbCluster(heterogeneousTc)
 
 			heterogeneousTc.Spec.PD = nil
@@ -1469,7 +1498,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	ginkgo.Context("[Feature: CDC]", func() {
 		ginkgo.It("should sink data without extra volumes correctly", func() {
 			ginkgo.By("Creating cdc cluster")
-			fromTc := fixture.GetTidbCluster(ns, "cdc-source", utilimage.TiDBV5)
+			fromTc := fixture.GetTidbCluster(ns, "cdc-source", utilimage.TiDBLatest)
 			fromTc = fixture.AddTiCDCForTidbCluster(fromTc)
 
 			fromTc.Spec.PD.Replicas = 3
@@ -1483,7 +1512,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
 			ginkgo.By("Creating cdc-sink cluster")
-			toTc := fixture.GetTidbCluster(ns, "cdc-sink", utilimage.TiDBV5)
+			toTc := fixture.GetTidbCluster(ns, "cdc-sink", utilimage.TiDBLatest)
 			toTc.Spec.PD.Replicas = 1
 			toTc.Spec.TiKV.Replicas = 1
 			toTc.Spec.TiDB.Replicas = 1
@@ -1554,7 +1583,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 		ginkgo.It("should scale in-out and mount storage volumes correctly", func() {
 			ginkgo.By("Creating cdc cluster")
-			fromTc := fixture.GetTidbCluster(ns, "cdc-source-advance", utilimage.TiDBV5)
+			fromTc := fixture.GetTidbCluster(ns, "cdc-source-advance", utilimage.TiDBLatest)
 			fromTc = fixture.AddTiCDCForTidbCluster(fromTc)
 
 			fromTc.Spec.PD.Replicas = 3
@@ -1576,7 +1605,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
 			ginkgo.By("Creating cdc-sink cluster")
-			toTc := fixture.GetTidbCluster(ns, "cdc-sink-advance", utilimage.TiDBV5)
+			toTc := fixture.GetTidbCluster(ns, "cdc-sink-advance", utilimage.TiDBLatest)
 			toTc.Spec.PD.Replicas = 1
 			toTc.Spec.TiKV.Replicas = 1
 			toTc.Spec.TiDB.Replicas = 1
@@ -1663,7 +1692,6 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				"/cdc", "cli", "changefeed", "create",
 				fmt.Sprintf("--sink-uri=tidb://root:@%s:4000/", controller.TiDBMemberName(toTCName)),
 				fmt.Sprintf("--pd=http://%s:2379", controller.PDMemberName(fromTCName)),
-				"--sort-dir=/var/lib/sort-dir",
 			}
 			data, err := framework.RunKubectl(args...)
 			framework.ExpectNoError(err, "failed to create change feed task: %s, %v", string(data), err)
@@ -1683,7 +1711,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	ginkgo.It("TiKV should mount multiple pvc", func() {
 		ginkgo.By("Deploy initial tc with addition")
 		clusterName := "tidb-multiple-pvc-scale"
-		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV5)
+		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBLatest)
 		tc.Spec.TiKV.StorageVolumes = []v1alpha1.StorageVolume{
 			{
 				Name:        "wal",
@@ -1719,37 +1747,85 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		tc.Spec.TiKV.Config.Set("rocksdb.wal-dir", "/var/lib/wal")
 		tc.Spec.TiKV.Config.Set("titan.dirname", "/var/lib/titan")
 		tc.Spec.PD.Replicas = 1
-		tc.Spec.TiKV.Replicas = 3
-		tc.Spec.TiDB.Replicas = 1
+		tc.Spec.TiKV.Replicas = 4
+		tc.Spec.TiDB.Replicas = 2
 
 		utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 6*time.Minute, 5*time.Second)
 
-		ginkgo.By("Scale out multiple pvc tidb cluster")
+		ginkgo.By("Scale in multiple pvc tidb cluster")
 		// Scale
 		err := controller.GuaranteedUpdate(genericCli, tc, func() error {
-			tc.Spec.TiKV.Replicas = 4
+			tc.Spec.TiKV.Replicas = 3
+			tc.Spec.TiDB.Replicas = 1
 			return nil
 		})
-		framework.ExpectNoError(err, "failed to scale out TiKV, TidbCluster: %q", tc.Name)
+		framework.ExpectNoError(err, "failed to scale in TiKV/TiDB, TidbCluster: %q", tc.Name)
 		err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 5*time.Second)
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 
-		ginkgo.By("Scale in multiple pvc tidb cluster")
+		ginkgo.By("Check PVC annotation tidb.pingcap.com/pvc-defer-deleting")
+		pvcUIDs := make(map[string]string)
+		ordinal := int32(1)
+		pvcSelector, err := member.GetPVCSelectorForPod(tc, v1alpha1.TiDBMemberType, ordinal)
+		framework.ExpectNoError(err, "failed to get PVC selector for tc %s/%s", tc.GetNamespace(), tc.GetName())
+		err = wait.Poll(10*time.Second, 3*time.Minute, func() (done bool, err error) {
+			pvcs, err := c.CoreV1().PersistentVolumeClaims(ns).List(metav1.ListOptions{LabelSelector: pvcSelector.String()})
+			framework.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
+			if len(pvcs.Items) == 0 {
+				log.Logf("no PVC found")
+				return false, nil
+			}
+			for _, pvc := range pvcs.Items {
+				annotations := pvc.GetObjectMeta().GetAnnotations()
+				log.Logf("pvc annotations: %+v", annotations)
+				_, ok := annotations["tidb.pingcap.com/pvc-defer-deleting"]
+				if !ok {
+					log.Logf("PVC %s/%s does not have annotation tidb.pingcap.com/pvc-defer-deleting", pvc.GetNamespace(), pvc.GetName())
+					return false, nil
+				}
+				pvcUIDs[pvc.Name] = string(pvc.UID)
+			}
+			return true, nil
+		})
+		framework.ExpectNoError(err, "expect PVCs of scaled in Pods to have annotation tidb.pingcap.com/pvc-defer-deleting")
+
+		ginkgo.By("Scale out multiple pvc tidb cluster")
 		// Scale
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-			tc.Spec.TiKV.Replicas = 3
+			tc.Spec.TiKV.Replicas = 4
+			tc.Spec.TiDB.Replicas = 2
 			return nil
 		})
-		framework.ExpectNoError(err, "failed to scale in TiKV, TidbCluster: %q", tc.Name)
+		framework.ExpectNoError(err, "failed to scale out TiKV/TiDB, TidbCluster: %q", tc.Name)
 		err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 5*time.Second)
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+
+		ginkgo.By("Check PVCs are recreated for newly scaled out TiDB")
+		err = wait.Poll(10*time.Second, 3*time.Minute, func() (done bool, err error) {
+			pvcs, err := c.CoreV1().PersistentVolumeClaims(ns).List(metav1.ListOptions{LabelSelector: pvcSelector.String()})
+			framework.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
+			if len(pvcs.Items) == 0 {
+				log.Logf("no PVC found")
+				return false, nil
+			}
+			for _, pvc := range pvcs.Items {
+				annotations := pvc.GetObjectMeta().GetAnnotations()
+				log.Logf("pvc annotations: %+v", annotations)
+				_, ok := annotations["tidb.pingcap.com/pvc-defer-deleting"]
+				framework.ExpectEqual(ok, false, "expect PVC %s/%s not to have annotation tidb.pingcap.com/pvc-defer-deleting", pvc.GetNamespace(), pvc.GetName())
+				pvcUIDString := pvcUIDs[pvc.Name]
+				framework.ExpectNotEqual(string(pvc.UID), pvcUIDString)
+			}
+			return true, nil
+		})
+		framework.ExpectNoError(err, "expect PVCs of scaled out Pods to be recreated")
 	})
 
 	// test cases for tc upgrade
-	ginkgo.Context("upgrade should work correctly", func() {
-		ginkgo.It("for tc and components version", func() {
+	ginkgo.Context("[Feature: Upgrade]", func() {
+		ginkgo.It("for components version", func() {
 			ginkgo.By("Deploy initial tc")
-			tc := fixture.GetTidbCluster(ns, "upgrade-version", utilimage.TiDBV5Prev)
+			tc := fixture.GetTidbCluster(ns, "upgrade-version", utilimage.TiDBLatestPrev)
 			pvRetain := corev1.PersistentVolumeReclaimRetain
 			tc.Spec.PVReclaimPolicy = &pvRetain
 			tc.Spec.PD.StorageClassName = pointer.StringPtr("local-storage")
@@ -1757,18 +1833,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tc.Spec.TiDB.StorageClassName = pointer.StringPtr("local-storage")
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
 
-			ginkgo.By("Update tc version")
-			err := controller.GuaranteedUpdate(genericCli, tc, func() error {
-				tc.Spec.Version = utilimage.TiDBV5
-				return nil
-			})
-			framework.ExpectNoError(err, "failed to update tc version to %q", utilimage.TiDBV5)
-			err = oa.WaitForTidbClusterReady(tc, 15*time.Minute, 10*time.Second)
-			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
-
 			ginkgo.By("Update components version")
-			componentVersion := utilimage.TiDBV5Prev
-			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+			componentVersion := utilimage.TiDBLatest
+			err := controller.GuaranteedUpdate(genericCli, tc, func() error {
 				tc.Spec.PD.Version = pointer.StringPtr(componentVersion)
 				tc.Spec.TiKV.Version = pointer.StringPtr(componentVersion)
 				tc.Spec.TiDB.Version = pointer.StringPtr(componentVersion)
@@ -1801,7 +1868,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 		ginkgo.It("for configuration update", func() {
 			ginkgo.By("Deploy initial tc")
-			tc := fixture.GetTidbCluster(ns, "update-config", utilimage.TiDBV5)
+			tc := fixture.GetTidbCluster(ns, "update-config", utilimage.TiDBLatest)
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
 
 			ginkgo.By("Update components configuration")
@@ -1881,6 +1948,251 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			gomega.Expect(tidbCm.Data["config-file"]).To(gomega.ContainSubstring("token-limit = 10000"))
 		})
 
+		type upgradeCase struct {
+			oldVersion              string
+			newVersion              string
+			configureOldTiDBCluster func(tc *v1alpha1.TidbCluster)
+			configureNewTiDBCluster func(tc *v1alpha1.TidbCluster)
+		}
+		upgradeTest := func(ucase upgradeCase) {
+			ginkgo.By("Deploy initial tc")
+			tcName := fmt.Sprintf("upgrade-%s-to-%s", strings.ReplaceAll(ucase.oldVersion, ".", "x"), strings.ReplaceAll(ucase.newVersion, ".", "x"))
+			tc := fixture.GetTidbCluster(ns, tcName, ucase.oldVersion)
+			tc = fixture.AddTiFlashForTidbCluster(tc)
+			tc = fixture.AddTiCDCForTidbCluster(tc)
+			tc = fixture.AddPumpForTidbCluster(tc)
+			if ucase.configureOldTiDBCluster != nil {
+				ucase.configureOldTiDBCluster(tc)
+			}
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 15*time.Minute, 10*time.Second)
+
+			ginkgo.By("Update tc version")
+			err := controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Spec.Version = ucase.newVersion
+				if ucase.configureNewTiDBCluster != nil {
+					ucase.configureNewTiDBCluster(tc)
+				}
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to update tc version to %q", ucase.newVersion)
+			err = oa.WaitForTidbClusterReady(tc, 15*time.Minute, 10*time.Second)
+			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
+
+			ginkgo.By("Check components version")
+			componentVersion := ucase.newVersion
+			pdMemberName := controller.PDMemberName(tc.Name)
+			pdSts, err := stsGetter.StatefulSets(ns).Get(pdMemberName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, pdMemberName)
+			pdImage := fmt.Sprintf("pingcap/pd:%s", componentVersion)
+			framework.ExpectEqual(pdSts.Spec.Template.Spec.Containers[0].Image, pdImage, "pd sts image should be %q", pdImage)
+
+			tikvMemberName := controller.TiKVMemberName(tc.Name)
+			tikvSts, err := stsGetter.StatefulSets(ns).Get(tikvMemberName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, tikvMemberName)
+			tikvImage := fmt.Sprintf("pingcap/tikv:%s", componentVersion)
+			framework.ExpectEqual(tikvSts.Spec.Template.Spec.Containers[0].Image, tikvImage, "tikv sts image should be %q", tikvImage)
+
+			tiflashMemberName := controller.TiFlashMemberName(tc.Name)
+			tiflashSts, err := stsGetter.StatefulSets(ns).Get(tiflashMemberName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, tiflashMemberName)
+			tiflashImage := fmt.Sprintf("pingcap/tiflash:%s", componentVersion)
+			framework.ExpectEqual(tiflashSts.Spec.Template.Spec.Containers[0].Image, tiflashImage, "tiflash sts image should be %q", tiflashImage)
+
+			tidbMemberName := controller.TiDBMemberName(tc.Name)
+			tidbSts, err := stsGetter.StatefulSets(ns).Get(tidbMemberName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, tidbMemberName)
+			tidbImage := fmt.Sprintf("pingcap/tidb:%s", componentVersion)
+			// the 0th container for tidb pod is slowlog, which runs busybox
+			framework.ExpectEqual(tidbSts.Spec.Template.Spec.Containers[1].Image, tidbImage, "tidb sts image should be %q", tidbImage)
+
+			ticdcMemberName := controller.TiCDCMemberName(tc.Name)
+			ticdcSts, err := stsGetter.StatefulSets(ns).Get(ticdcMemberName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, ticdcMemberName)
+			ticdcImage := fmt.Sprintf("pingcap/ticdc:%s", componentVersion)
+			framework.ExpectEqual(ticdcSts.Spec.Template.Spec.Containers[0].Image, ticdcImage, "ticdc sts image should be %q", ticdcImage)
+
+			pumpMemberName := controller.PumpMemberName(tc.Name)
+			pumpSts, err := stsGetter.StatefulSets(ns).Get(pumpMemberName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, pumpMemberName)
+			pumpImage := fmt.Sprintf("pingcap/tidb-binlog:%s", componentVersion)
+			framework.ExpectEqual(pumpSts.Spec.Template.Spec.Containers[0].Image, pumpImage, "pump sts image should be %q", pumpImage)
+		}
+
+		// upgrdae testing from previous version to latest version
+		for _, prevVersion := range utilimage.TiDBPreviousVersions {
+			ginkgo.It(fmt.Sprintf("for tc and components version upgrade from %s to latest version %s", prevVersion, utilimage.TiDBLatest), func() {
+				upgradeTest(upgradeCase{
+					oldVersion: prevVersion,
+					newVersion: utilimage.TiDBLatest,
+				})
+			})
+		}
+
+		// upgrdae testing for specific versions
+		ginkgo.Context("Specific Version", func() {
+			configureV4x0x9 := func(tc *v1alpha1.TidbCluster) {
+				pdCfg := v1alpha1.NewPDConfig()
+				tikvCfg := v1alpha1.NewTiKVConfig()
+				tidbCfg := v1alpha1.NewTiDBConfig()
+				tiflashCfg := v1alpha1.NewTiFlashConfig()
+				pdCfg.Set("log.level", "info")
+				pdCfg.SetTable("replication",
+					"max-replicas", 3,
+					"location-labels", []string{"failure-domain.beta.kubernetes.io/region", "failure-domain.beta.kubernetes.io/zone", "kubernetes.io/hostname"})
+				pdCfg.SetTable("dashboard",
+					"internal-proxy", true,
+					"enable-telemetry", false)
+				tidbCfg.Set("new_collations_enabled_on_first_bootstrap", true)
+				tidbCfg.Set("enable-telemetry", false)
+				tidbCfg.Set("log.level", "info")
+				tidbCfg.SetTable("performance",
+					"max-procs", 0,
+					"tcp-keep-alive", true)
+				tikvCfg.Set("log.level", "info")
+				tikvCfg.Set("readpool.storage.use-unified-pool", true)
+				tikvCfg.Set("readpool.coprocessor.use-unified-pool", true)
+				tiflashCfg.Common.Set("mark_cache_size", 2147483648)
+				tiflashCfg.Common.Set("minmax_index_cache_size", 2147483648)
+				tiflashCfg.Common.Set("max_memory_usage", 10737418240)
+				tiflashCfg.Common.Set("max_memory_usage_for_all_queries", 32212254720)
+				tc.Spec.PD.Config = pdCfg
+				tc.Spec.TiKV.Config = tikvCfg
+				tc.Spec.TiDB.Config = tidbCfg
+				tc.Spec.TiFlash.Config = tiflashCfg
+			}
+			configureV5x0x0 := func(tc *v1alpha1.TidbCluster) {
+				pdCfg := v1alpha1.NewPDConfig()
+				tikvCfg := v1alpha1.NewTiKVConfig()
+				tidbCfg := v1alpha1.NewTiDBConfig()
+				tiflashCfg := v1alpha1.NewTiFlashConfig()
+				pdCfg.Set("log.level", "info")
+				pdCfg.SetTable("replication",
+					"max-replicas", 3,
+					"location-labels", []string{"failure-domain.beta.kubernetes.io/region", "failure-domain.beta.kubernetes.io/zone", "kubernetes.io/hostname"})
+				pdCfg.SetTable("dashboard",
+					"internal-proxy", true,
+					"enable-telemetry", false)
+				tidbCfg.Set("new_collations_enabled_on_first_bootstrap", true)
+				tidbCfg.Set("enable-telemetry", false)
+				tidbCfg.Set("log.level", "info")
+				tidbCfg.SetTable("performance",
+					"max-procs", 0,
+					"tcp-keep-alive", true)
+				tikvCfg.Set("log.level", "info")
+				tikvCfg.Set("readpool.storage.use-unified-pool", true)
+				tikvCfg.Set("readpool.coprocessor.use-unified-pool", true)
+				tiflashCfg.Common.Set("mark_cache_size", 2147483648)
+				tiflashCfg.Common.Set("minmax_index_cache_size", 2147483648)
+				tiflashCfg.Common.Set("max_memory_usage", 10737418240)
+				tiflashCfg.Common.Set("max_memory_usage_for_all_queries", 32212254720)
+				tc.Spec.PD.Config = pdCfg
+				tc.Spec.TiKV.Config = tikvCfg
+				tc.Spec.TiDB.Config = tidbCfg
+				tc.Spec.TiFlash.Config = tiflashCfg
+			}
+			configureV5x0x2 := func(tc *v1alpha1.TidbCluster) {
+				pdCfg := v1alpha1.NewPDConfig()
+				tikvCfg := v1alpha1.NewTiKVConfig()
+				tidbCfg := v1alpha1.NewTiDBConfig()
+				tiflashCfg := v1alpha1.NewTiFlashConfig()
+				pdCfg.Set("log.level", "info")
+				pdCfg.SetTable("replication",
+					"max-replicas", 3,
+					"location-labels", []string{"failure-domain.beta.kubernetes.io/region", "failure-domain.beta.kubernetes.io/zone", "kubernetes.io/hostname"})
+				pdCfg.SetTable("dashboard",
+					"internal-proxy", true,
+					"enable-telemetry", false)
+				tidbCfg.Set("new_collations_enabled_on_first_bootstrap", true)
+				tidbCfg.Set("enable-telemetry", false)
+				tidbCfg.Set("log.level", "info")
+				tidbCfg.SetTable("performance",
+					"max-procs", 0,
+					"tcp-keep-alive", true)
+				tikvCfg.Set("log.level", "info")
+				tikvCfg.Set("readpool.storage.use-unified-pool", true)
+				tikvCfg.Set("readpool.coprocessor.use-unified-pool", true)
+				tiflashCfg.Common.Set("mark_cache_size", 2147483648)
+				tiflashCfg.Common.Set("minmax_index_cache_size", 2147483648)
+				tiflashCfg.Common.Set("max_memory_usage", 10737418240)
+				tiflashCfg.Common.Set("max_memory_usage_for_all_queries", 32212254720)
+				tc.Spec.PD.Config = pdCfg
+				tc.Spec.TiKV.Config = tikvCfg
+				tc.Spec.TiDB.Config = tidbCfg
+				tc.Spec.TiFlash.Config = tiflashCfg
+			}
+			configureV5x1x0 := func(tc *v1alpha1.TidbCluster) {
+				pdCfg := v1alpha1.NewPDConfig()
+				tikvCfg := v1alpha1.NewTiKVConfig()
+				tidbCfg := v1alpha1.NewTiDBConfig()
+				tiflashCfg := v1alpha1.NewTiFlashConfig()
+				pdCfg.Set("replication.location-labels", []string{"failure-domain.beta.kubernetes.io/region", "failure-domain.beta.kubernetes.io/zone", "kubernetes.io/hostname"})
+				pdCfg.SetTable("dashboard",
+					"internal-proxy", true,
+					"enable-telemetry", false)
+				tidbCfg.Set("new_collations_enabled_on_first_bootstrap", true)
+				tidbCfg.Set("enable-telemetry", false)
+				tikvCfg.Set("server.grpc-concurrency", 3)
+				tikvCfg.SetTable("rocksdb.defaultcf",
+					"soft-pending-compaction-bytes-limit", "1024GB",
+					"hard-pending-compaction-bytes-limit", "1024GB",
+					"level0-slowdown-writes-trigger", 64,
+					"level0-stop-writes-trigger", 128,
+					"max-write-buffer-number", 10,
+				)
+				tikvCfg.SetTable("rocksdb.writecf",
+					"soft-pending-compaction-bytes-limit", "1024GB",
+					"hard-pending-compaction-bytes-limit", "1024GB",
+					"level0-slowdown-writes-trigger", 64,
+					"level0-stop-writes-trigger", 128,
+					"max-write-buffer-number", 10,
+				)
+				tikvCfg.SetTable("rocksdb.lockcf",
+					"level0-slowdown-writes-trigger", 64,
+					"level0-stop-writes-trigger", 128,
+					"max-write-buffer-number", 10,
+				)
+				tiflashCfg.Common.Set("mark_cache_size", 2147483648)
+				tiflashCfg.Common.Set("minmax_index_cache_size", 2147483648)
+				tiflashCfg.Common.Set("max_memory_usage", 10737418240)
+				tiflashCfg.Common.Set("max_memory_usage_for_all_queries", 32212254720)
+				tiflashCfg.Common.Set("delta_index_cache_size", 3221225472)
+				tc.Spec.PD.Config = pdCfg
+				tc.Spec.TiKV.Config = tikvCfg
+				tc.Spec.TiDB.Config = tidbCfg
+				tc.Spec.TiFlash.Config = tiflashCfg
+			}
+
+			cases := []upgradeCase{
+				{
+					oldVersion:              utilimage.TiDBV4x0x9,
+					newVersion:              utilimage.TiDBV5x1x0,
+					configureOldTiDBCluster: configureV4x0x9,
+					configureNewTiDBCluster: configureV5x1x0,
+				},
+				{
+					oldVersion:              utilimage.TiDBV5x0x0,
+					newVersion:              utilimage.TiDBV5x1x0,
+					configureOldTiDBCluster: configureV5x0x0,
+					configureNewTiDBCluster: configureV5x1x0,
+				},
+				{
+					oldVersion:              utilimage.TiDBV5x0x2,
+					newVersion:              utilimage.TiDBV5x1x0,
+					configureOldTiDBCluster: configureV5x0x2,
+					configureNewTiDBCluster: configureV5x1x0,
+				},
+			}
+			for i := range cases {
+				ucase := cases[i]
+				ginkgo.It(fmt.Sprintf("for tc and components version upgrade from %s to %s", ucase.oldVersion, ucase.newVersion), func() {
+					if ginkgoconfig.GinkgoConfig.FocusString == "" {
+						framework.Skipf("Skip upgrade testing for specific version")
+					}
+					upgradeTest(ucase)
+				})
+			}
+		})
+
 		// this case merge scale-in/scale-out into one case, may seems a little bit dense
 		// when scale-in, replica is first set to 5 and changed to 3
 		// when scale-out, replica is first set to 3 and changed to 5
@@ -1891,7 +2203,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				ginkgo.It(op, func() {
 					ginkgo.By("Deploy initial tc")
 					tcName := fmt.Sprintf("scale-%s-pd-concurrently", op)
-					tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV5Prev)
+					tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBLatestPrev)
 					if op == "in" {
 						tc.Spec.PD.Replicas = 5
 					} else {
@@ -1901,10 +2213,10 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 					ginkgo.By("Upgrade PD version")
 					err := controller.GuaranteedUpdate(genericCli, tc, func() error {
-						tc.Spec.PD.Version = pointer.StringPtr(utilimage.TiDBV5)
+						tc.Spec.PD.Version = pointer.StringPtr(utilimage.TiDBLatest)
 						return nil
 					})
-					framework.ExpectNoError(err, "failed to update PD version to %q", utilimage.TiDBV5)
+					framework.ExpectNoError(err, "failed to update PD version to %q", utilimage.TiDBLatest)
 
 					ginkgo.By(fmt.Sprintf("Wait for PD phase is %q", v1alpha1.UpgradePhase))
 					err = wait.PollImmediate(10*time.Second, 3*time.Minute, func() (bool, error) {
@@ -1954,7 +2266,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				ginkgo.It(op, func() {
 					ginkgo.By("Deploy initial tc")
 					tcName := fmt.Sprintf("scale-%s-tikv-concurrently", op)
-					tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV5Prev)
+					tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBLatestPrev)
 					if op == "in" {
 						tc.Spec.TiKV.Replicas = 4
 					} else {
@@ -1964,10 +2276,10 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 					ginkgo.By("Upgrade TiKV version")
 					err := controller.GuaranteedUpdate(genericCli, tc, func() error {
-						tc.Spec.TiKV.Version = pointer.StringPtr(utilimage.TiDBV5)
+						tc.Spec.TiKV.Version = pointer.StringPtr(utilimage.TiDBLatest)
 						return nil
 					})
-					framework.ExpectNoError(err, "failed to update TiKV version to %q", utilimage.TiDBV5)
+					framework.ExpectNoError(err, "failed to update TiKV version to %q", utilimage.TiDBLatest)
 
 					ginkgo.By(fmt.Sprintf("Wait for TiKV phase is %q", v1alpha1.UpgradePhase))
 					err = wait.PollImmediate(10*time.Second, 3*time.Minute, func() (bool, error) {
@@ -2033,7 +2345,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 		ginkgo.It("with bad PD config, then recover after force upgrading PD", func() {
 			ginkgo.By("Deploy initial tc with incorrect PD image")
-			tc := fixture.GetTidbCluster(ns, "force-upgrade-pd", utilimage.TiDBV5Prev)
+			tc := fixture.GetTidbCluster(ns, "force-upgrade-pd", utilimage.TiDBLatestPrev)
 			tc.Spec.PD.BaseImage = "wrong-pd-image"
 			err := genericCli.Create(context.TODO(), tc)
 			framework.ExpectNoError(err, "failed to create TidbCluster %s/%s", ns, tc.Name)
@@ -2109,7 +2421,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 	ginkgo.It("Deleted objects controlled by TidbCluster will be recovered by Operator", func() {
 		ginkgo.By("Deploy initial tc")
-		tc := fixture.GetTidbCluster(ns, "delete-objects", utilimage.TiDBV5)
+		tc := fixture.GetTidbCluster(ns, "delete-objects", utilimage.TiDBLatest)
 		utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
 
 		ginkgo.By("Delete StatefulSet/ConfigMap/Service of PD")
@@ -2161,7 +2473,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				}
 				ginkgo.It(fmt.Sprintf("should work for %s", comp), func() {
 					ginkgo.By("Deploy initial tc")
-					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("scale-out-scale-in-%s", comp), utilimage.TiDBV5)
+					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("scale-out-scale-in-%s", comp), utilimage.TiDBLatest)
 					switch comp {
 					case v1alpha1.PDMemberType:
 						tc.Spec.PD.Replicas = replicasLarge
@@ -2281,7 +2593,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				}
 				ginkgo.It(fmt.Sprintf("should work for %s", comp), func() {
 					ginkgo.By("Deploy initial tc")
-					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("scale-in-upgrade-%s", comp), utilimage.TiDBV5Prev)
+					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("scale-in-upgrade-%s", comp), utilimage.TiDBLatestPrev)
 					switch comp {
 					case v1alpha1.PDMemberType:
 						tc.Spec.PD.Replicas = replicasLarge
@@ -2313,11 +2625,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 						switch comp {
 						case v1alpha1.PDMemberType:
-							tc.Spec.PD.Version = pointer.StringPtr(utilimage.TiDBV5)
+							tc.Spec.PD.Version = pointer.StringPtr(utilimage.TiDBLatest)
 						case v1alpha1.TiKVMemberType:
-							tc.Spec.TiKV.Version = pointer.StringPtr(utilimage.TiDBV5)
+							tc.Spec.TiKV.Version = pointer.StringPtr(utilimage.TiDBLatest)
 						case v1alpha1.TiDBMemberType:
-							tc.Spec.TiDB.Version = pointer.StringPtr(utilimage.TiDBV5)
+							tc.Spec.TiDB.Version = pointer.StringPtr(utilimage.TiDBLatest)
 						}
 						return nil
 					})
@@ -2348,13 +2660,13 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 						wrongImage := true
 						for _, c := range pod.Spec.Containers {
 							log.Logf("container image: %s", c.Image)
-							if fmt.Sprintf("pingcap/%s:%s", comp, utilimage.TiDBV5) == c.Image {
+							if fmt.Sprintf("pingcap/%s:%s", comp, utilimage.TiDBLatest) == c.Image {
 								wrongImage = false
 								break
 							}
 						}
 						if wrongImage {
-							log.Failf("%s Pod has wrong image, expected %s", comp, utilimage.TiDBV5)
+							log.Failf("%s Pod has wrong image, expected %s", comp, utilimage.TiDBLatest)
 						}
 					}
 				})
@@ -2363,7 +2675,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 		ginkgo.It("PD to 0 is forbidden while other components are running", func() {
 			ginkgo.By("Deploy initial tc")
-			tc := fixture.GetTidbCluster(ns, "scale-pd-to-0", utilimage.TiDBV5)
+			tc := fixture.GetTidbCluster(ns, "scale-pd-to-0", utilimage.TiDBLatest)
 			tc.Spec.PD.Replicas = 1
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
 
@@ -2402,7 +2714,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 		ginkgo.It("TiKV from >=3 replicas to <3 should be forbidden", func() {
 			ginkgo.By("Deploy initial tc")
-			tc := fixture.GetTidbCluster(ns, "scale-in-tikv", utilimage.TiDBV5)
+			tc := fixture.GetTidbCluster(ns, "scale-in-tikv", utilimage.TiDBLatest)
 			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
 			framework.ExpectNoError(err, "Expected create tidbcluster")
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
@@ -2437,7 +2749,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			ginkgo.By("Deploy tidbCluster")
 			userID := int64(1000)
 			groupID := int64(2000)
-			tc := fixture.GetTidbCluster(ns, "run-as-non-root", utilimage.TiDBV5)
+			tc := fixture.GetTidbCluster(ns, "run-as-non-root", utilimage.TiDBLatest)
 			tc = fixture.AddTiFlashForTidbCluster(tc)
 			tc = fixture.AddTiCDCForTidbCluster(tc)
 			tc = fixture.AddPumpForTidbCluster(tc)
@@ -2480,7 +2792,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 		ginkgo.It("TidbCluster global topology spread contraint", func() {
 			ginkgo.By("Deploy tidbCluster")
-			tc := fixture.GetTidbCluster(ns, "topology-test", utilimage.TiDBV5)
+			tc := fixture.GetTidbCluster(ns, "topology-test", utilimage.TiDBLatest)
 			tc.Spec.TopologySpreadConstraints = []v1alpha1.TopologySpreadConstraint{
 				{
 					TopologyKey: tests.LabelKeyTestingZone,
@@ -2717,83 +3029,154 @@ func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tcVersio
 }
 
 // checkCustomLabelAndAnn check the custom set labels and ann set in `GetTidbCluster`
-func checkCustomLabelAndAnn(tc *v1alpha1.TidbCluster, c clientset.Interface) {
-	if tc.Spec.TiDB != nil {
+func checkCustomLabelAndAnn(tc *v1alpha1.TidbCluster, c clientset.Interface, expectValue string, timeout, pollInterval time.Duration) error {
+	checkValue := func(k, v1 string, ms ...map[string]string) error {
+		for _, m := range ms {
+			v2, ok := m[k]
+			if !ok {
+				return fmt.Errorf("key %s doesn't exist in %v", k, m)
+			}
+			if v2 != v1 {
+				return fmt.Errorf("value %s doesn't equal %s in map", v2, v1)
+			}
+		}
+		return nil
+	}
+
+	var checkErr error
+	err := wait.PollImmediate(pollInterval, timeout, func() (done bool, err error) {
 		listOptions := metav1.ListOptions{
-			LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Component(label.TiDBLabelVal).Labels()).String(),
+			LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Discovery().Labels()).String(),
 		}
 		list, err := c.CoreV1().Pods(tc.Namespace).List(listOptions)
 		framework.ExpectNoError(err)
+		framework.ExpectNotEqual(len(list.Items), 0, "expect discovery exists")
 		for _, pod := range list.Items {
-			_, ok := pod.Labels[fixture.ClusterCustomKey]
-			framework.ExpectEqual(ok, true)
-
-			_, ok = pod.Labels[fixture.ComponentCustomKey]
-			framework.ExpectEqual(ok, true)
-
-			_, ok = pod.Annotations[fixture.ClusterCustomKey]
-			framework.ExpectEqual(ok, true)
-
-			_, ok = pod.Annotations[fixture.ComponentCustomKey]
-			framework.ExpectEqual(ok, true)
+			checkErr = checkValue(fixture.ClusterCustomKey, expectValue, pod.Labels, pod.Annotations)
+			if checkErr != nil {
+				return false, nil
+			}
 		}
 
-		// check service
-		svcList, err := c.CoreV1().Services(tc.Namespace).List(listOptions)
-		framework.ExpectNoError(err)
-		for _, svc := range svcList.Items {
-			// skip the headless one
-			if svc.Spec.ClusterIP == "None" {
-				continue
+		if tc.Spec.TiDB != nil {
+			listOptions = metav1.ListOptions{
+				LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Component(label.TiDBLabelVal).Labels()).String(),
+			}
+			list, err = c.CoreV1().Pods(tc.Namespace).List(listOptions)
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(len(list.Items), 0, "expect tidb pod exists")
+			for _, pod := range list.Items {
+				for _, k := range []string{fixture.ClusterCustomKey, fixture.ComponentCustomKey} {
+					checkErr = checkValue(k, expectValue, pod.Labels, pod.Annotations)
+					if checkErr != nil {
+						return false, nil
+					}
+				}
 			}
 
-			_, ok := svc.Labels[fixture.ComponentCustomKey]
-			framework.ExpectEqual(ok, true)
+			// check service
+			svcList, err := c.CoreV1().Services(tc.Namespace).List(listOptions)
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(len(list.Items), 0, "expect tidb svc exists")
+			for _, svc := range svcList.Items {
+				// skip the headless one
+				if svc.Spec.ClusterIP == "None" {
+					continue
+				}
 
-			_, ok = svc.Annotations[fixture.ComponentCustomKey]
-			framework.ExpectEqual(ok, true)
+				checkErr = checkValue(fixture.ComponentCustomKey, expectValue, svc.Labels, svc.Annotations)
+				if checkErr != nil {
+					return false, nil
+				}
+			}
 		}
+
+		if tc.Spec.TiKV != nil {
+			listOptions = metav1.ListOptions{
+				LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Component(label.TiKVLabelVal).Labels()).String(),
+			}
+			list, err = c.CoreV1().Pods(tc.Namespace).List(listOptions)
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(len(list.Items), 0, "expect tikv pod exists")
+			for _, pod := range list.Items {
+				for _, k := range []string{fixture.ClusterCustomKey, fixture.ComponentCustomKey} {
+					checkErr = checkValue(k, expectValue, pod.Labels, pod.Annotations)
+					if checkErr != nil {
+						return false, nil
+					}
+				}
+			}
+		}
+
+		if tc.Spec.PD != nil {
+			listOptions = metav1.ListOptions{
+				LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Component(label.PDLabelVal).Labels()).String(),
+			}
+			list, err = c.CoreV1().Pods(tc.Namespace).List(listOptions)
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(len(list.Items), 0, "expect pd pod exists")
+			for _, pod := range list.Items {
+				for _, k := range []string{fixture.ClusterCustomKey, fixture.ComponentCustomKey} {
+					checkErr = checkValue(k, expectValue, pod.Labels, pod.Annotations)
+					if checkErr != nil {
+						return false, nil
+					}
+				}
+			}
+		}
+
+		return true, nil
+	})
+
+	if err == wait.ErrWaitTimeout {
+		err = checkErr
+	}
+	return err
+}
+
+// checkCustomLabelAndAnn check the custom set labels and ann set in `NewTidbMonitor`
+func checkMonitorCustomLabelAndAnn(tm *v1alpha1.TidbMonitor, c clientset.Interface) {
+	listOptions := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(label.NewMonitor().Instance(tm.Name).Monitor().Labels()).String(),
+	}
+	pods, err := c.CoreV1().Pods(tm.Namespace).List(listOptions)
+	framework.ExpectNoError(err)
+	framework.ExpectNotEqual(len(pods.Items), 0, "expect monitor pod exists")
+	for _, pod := range pods.Items {
+		_, ok := pod.Labels[fixture.ClusterCustomKey]
+		framework.ExpectEqual(ok, true)
+		_, ok = pod.Annotations[fixture.ClusterCustomKey]
+		framework.ExpectEqual(ok, true)
 	}
 
-	if tc.Spec.TiKV != nil {
-		listOptions := metav1.ListOptions{
-			LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Component(label.TiKVLabelVal).Labels()).String(),
-		}
-		list, err := c.CoreV1().Pods(tc.Namespace).List(listOptions)
-		framework.ExpectNoError(err)
-		for _, pod := range list.Items {
-			_, ok := pod.Labels[fixture.ClusterCustomKey]
-			framework.ExpectEqual(ok, true)
+	svcs, err := c.CoreV1().Services(tm.Namespace).List(listOptions)
+	framework.ExpectNoError(err)
+	framework.ExpectNotEqual(len(pods.Items), 0, "expect monitor svc exists")
+	for _, svc := range svcs.Items {
+		_, ok := svc.Labels[fixture.ClusterCustomKey]
+		framework.ExpectEqual(ok, true)
+		_, ok = svc.Annotations[fixture.ClusterCustomKey]
+		framework.ExpectEqual(ok, true)
 
-			_, ok = pod.Labels[fixture.ComponentCustomKey]
-			framework.ExpectEqual(ok, true)
-
-			_, ok = pod.Annotations[fixture.ClusterCustomKey]
-			framework.ExpectEqual(ok, true)
-
-			_, ok = pod.Annotations[fixture.ComponentCustomKey]
-			framework.ExpectEqual(ok, true)
-		}
+		_, ok = svc.Labels[fixture.ComponentCustomKey]
+		framework.ExpectEqual(ok, true)
+		_, ok = svc.Annotations[fixture.ComponentCustomKey]
+		framework.ExpectEqual(ok, true)
 	}
+}
 
-	if tc.Spec.PD != nil {
-		listOptions := metav1.ListOptions{
-			LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Component(label.PDLabelVal).Labels()).String(),
-		}
-		list, err := c.CoreV1().Pods(tc.Namespace).List(listOptions)
-		framework.ExpectNoError(err)
-		for _, pod := range list.Items {
-			_, ok := pod.Labels[fixture.ClusterCustomKey]
-			framework.ExpectEqual(ok, true)
-
-			_, ok = pod.Labels[fixture.ComponentCustomKey]
-			framework.ExpectEqual(ok, true)
-
-			_, ok = pod.Annotations[fixture.ClusterCustomKey]
-			framework.ExpectEqual(ok, true)
-
-			_, ok = pod.Annotations[fixture.ComponentCustomKey]
-			framework.ExpectEqual(ok, true)
-		}
+// checkInitializerCustomLabelAndAnn check the custom set labels and ann set in `NewTidbMonitor`
+func checkInitializerCustomLabelAndAnn(ti *v1alpha1.TidbInitializer, c clientset.Interface) {
+	listOptions := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(label.NewInitializer().Instance(ti.Name).Initializer(ti.Name).Labels()).String(),
+	}
+	list, err := c.CoreV1().Pods(ti.Namespace).List(listOptions)
+	framework.ExpectNoError(err)
+	framework.ExpectNotEqual(len(list.Items), 0, "expect initializer exists")
+	for _, pod := range list.Items {
+		_, ok := pod.Labels[fixture.ClusterCustomKey]
+		framework.ExpectEqual(ok, true)
+		_, ok = pod.Annotations[fixture.ClusterCustomKey]
+		framework.ExpectEqual(ok, true)
 	}
 }
