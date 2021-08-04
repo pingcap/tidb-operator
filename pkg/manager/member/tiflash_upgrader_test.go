@@ -235,6 +235,26 @@ func TestTiFlashUpgraderUpgrade(t *testing.T) {
 			},
 		},
 		{
+			name: "tiflash can not upgrade when pd is upgrading",
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Phase = v1alpha1.UpgradePhase
+				tc.Status.TiFlash.Phase = v1alpha1.NormalPhase
+				tc.Status.TiFlash.Synced = true
+			},
+			changeOldSet: func(oldSet *apps.StatefulSet) {
+				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+			},
+			changePods:   nil,
+			updatePodErr: false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+			},
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, pods map[string]*corev1.Pod) {
+				g.Expect(tc.Status.TiFlash.Phase).To(Equal(v1alpha1.NormalPhase))
+				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(3)))
+			},
+		},
+		{
 			name: "get last apply config error",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.TiCDC.Phase = v1alpha1.UpgradePhase

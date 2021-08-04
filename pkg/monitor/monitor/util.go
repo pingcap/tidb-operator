@@ -15,13 +15,13 @@ package monitor
 
 import (
 	"fmt"
+	"net/url"
 	"path"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/docker/docker/client"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -406,7 +406,13 @@ func getMonitorDMInitContainer(monitor *v1alpha1.TidbMonitor, dc *v1alpha1.DMClu
 }
 
 func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) core.Container {
-	commands := []string{"sed 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g' /etc/prometheus/config/prometheus.yml > /etc/prometheus/config_out/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/etc/prometheus/config_out/prometheus.yml --storage.tsdb.path=/data/prometheus " + fmt.Sprintf("--storage.tsdb.retention=%dd", monitor.Spec.Prometheus.ReserveDays)}
+	var retention string
+	if monitor.Spec.Prometheus.RetentionTime != nil {
+		retention = *monitor.Spec.Prometheus.RetentionTime
+	} else {
+		retention = fmt.Sprintf("%dd", monitor.Spec.Prometheus.ReserveDays)
+	}
+	commands := []string{"sed 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g' /etc/prometheus/config/prometheus.yml > /etc/prometheus/config_out/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/etc/prometheus/config_out/prometheus.yml --storage.tsdb.path=/data/prometheus --storage.tsdb.retention.time=" + retention}
 	c := core.Container{
 		Name:      "prometheus",
 		Image:     fmt.Sprintf("%s:%s", monitor.Spec.Prometheus.BaseImage, monitor.Spec.Prometheus.Version),
@@ -793,9 +799,9 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		ObjectMeta: meta.ObjectMeta{
 			Name:            prometheusName,
 			Namespace:       monitor.Namespace,
-			Labels:          promeLabel.Labels(),
+			Labels:          util.CombineStringMap(promeLabel.Labels(), monitor.Spec.Prometheus.Service.Labels, monitor.Spec.Labels),
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
-			Annotations:     monitor.Spec.Prometheus.Service.Annotations,
+			Annotations:     util.CombineStringMap(monitor.Spec.Prometheus.Service.Annotations, monitor.Spec.Annotations),
 		},
 		Spec: core.ServiceSpec{
 			Ports: []core.ServicePort{
@@ -837,9 +843,9 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		ObjectMeta: meta.ObjectMeta{
 			Name:            reloaderName,
 			Namespace:       monitor.Namespace,
-			Labels:          buildTidbMonitorLabel(monitor.Name),
+			Labels:          util.CombineStringMap(buildTidbMonitorLabel(monitor.Name), monitor.Spec.Reloader.Service.Labels, monitor.Spec.Labels),
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
-			Annotations:     monitor.Spec.Prometheus.Service.Annotations,
+			Annotations:     util.CombineStringMap(monitor.Spec.Reloader.Service.Annotations, monitor.Spec.Annotations),
 		},
 		Spec: core.ServiceSpec{
 			Ports: []core.ServicePort{
@@ -870,9 +876,9 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 			ObjectMeta: meta.ObjectMeta{
 				Name:            grafanaName(monitor),
 				Namespace:       monitor.Namespace,
-				Labels:          grafanaLabel.Labels(),
+				Labels:          util.CombineStringMap(grafanaLabel.Labels(), monitor.Spec.Grafana.Service.Labels, monitor.Spec.Labels),
 				OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
-				Annotations:     monitor.Spec.Grafana.Service.Annotations,
+				Annotations:     util.CombineStringMap(monitor.Spec.Grafana.Service.Annotations, monitor.Spec.Annotations),
 			},
 			Spec: core.ServiceSpec{
 				Ports: []core.ServicePort{
@@ -1030,13 +1036,17 @@ func getMonitorStatefulSetSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.Ti
 		replicas = *monitor.Spec.Replicas
 	}
 	name := GetMonitorObjectName(monitor)
+	stsLabels := buildTidbMonitorLabel(monitor.Name)
+	podLabels := util.CombineStringMap(stsLabels, monitor.Spec.Labels)
+	stsAnnotations := util.CopyStringMap(monitor.Spec.Annotations)
+	podAnnotations := util.CopyStringMap(monitor.Spec.Annotations)
 	statefulset := &apps.StatefulSet{
 		ObjectMeta: meta.ObjectMeta{
 			Name:            name,
 			Namespace:       monitor.Namespace,
-			Labels:          buildTidbMonitorLabel(monitor.Name),
+			Labels:          stsLabels,
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
-			Annotations:     util.CopyStringMap(monitor.Spec.Annotations),
+			Annotations:     stsAnnotations,
 		},
 		Spec: apps.StatefulSetSpec{
 			ServiceName: name,
@@ -1045,12 +1055,12 @@ func getMonitorStatefulSetSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.Ti
 				Type: apps.RollingUpdateStatefulSetStrategyType,
 			},
 			Selector: &meta.LabelSelector{
-				MatchLabels: buildTidbMonitorLabel(monitor.Name),
+				MatchLabels: stsLabels,
 			},
 			Template: core.PodTemplateSpec{
 				ObjectMeta: meta.ObjectMeta{
-					Labels:      buildTidbMonitorLabel(monitor.Name),
-					Annotations: util.CopyStringMap(monitor.Spec.Annotations),
+					Labels:      podLabels,
+					Annotations: podAnnotations,
 				},
 
 				Spec: core.PodSpec{
@@ -1231,7 +1241,7 @@ func buildExternalLabels(monitor *v1alpha1.TidbMonitor) model.LabelSet {
 func generateRemoteWrite(monitor *v1alpha1.TidbMonitor) []*config.RemoteWriteConfig {
 	var remoteWriteConfigs []*config.RemoteWriteConfig
 	for _, remoteWrite := range monitor.Spec.Prometheus.RemoteWrite {
-		url, err := client.ParseHostURL(remoteWrite.URL)
+		url, err := url.Parse(remoteWrite.URL)
 		if err != nil {
 			klog.Errorf("remote write url[%s] config fail to parse, err:%v", remoteWrite.URL, err)
 			continue

@@ -80,6 +80,8 @@ type TidbMonitorSpec struct {
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`
 	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
+	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 
 	// kubePrometheusURL is where tidb-monitoring get the  common metrics of kube-prometheus.
@@ -129,6 +131,11 @@ type PrometheusSpec struct {
 	Service  ServiceSpec `json:"service,omitempty"`
 	// +optional
 	ReserveDays int `json:"reserveDays,omitempty"`
+
+	// Configuration for `--storage.tsdb.retention.time`, Units Supported: y, w, d, h, m, s, ms.
+	// If set to non empty values, it will override the value of `ReserveDays`.
+	// +optional
+	RetentionTime *string `json:"retentionTime,omitempty"`
 
 	// +optional
 	Ingress *IngressSpec `json:"ingress,omitempty"`

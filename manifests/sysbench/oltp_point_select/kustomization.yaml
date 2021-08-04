@@ -1,0 +1,8 @@
+bases:
+- ../base
+
+patchesStrategicMerge:
+- oltp-point-select.yaml
+
+nameSuffix: -oltp-point-select
+

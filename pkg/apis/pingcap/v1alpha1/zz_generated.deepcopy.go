@@ -3752,6 +3752,11 @@ func (in *PrometheusSpec) DeepCopyInto(out *PrometheusSpec) {
 	*out = *in
 	in.MonitorContainer.DeepCopyInto(&out.MonitorContainer)
 	in.Service.DeepCopyInto(&out.Service)
+	if in.RetentionTime != nil {
+		in, out := &in.RetentionTime, &out.RetentionTime
+		*out = new(string)
+		**out = **in
+	}
 	if in.Ingress != nil {
 		in, out := &in.Ingress, &out.Ingress
 		*out = new(IngressSpec)
@@ -8398,6 +8403,13 @@ func (in *TidbMonitorSpec) DeepCopyInto(out *TidbMonitorSpec) {
 	}
 	if in.Annotations != nil {
 		in, out := &in.Annotations, &out.Annotations
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
+	if in.Labels != nil {
+		in, out := &in.Labels, &out.Labels
 		*out = make(map[string]string, len(*in))
 		for key, val := range *in {
 			(*out)[key] = val
