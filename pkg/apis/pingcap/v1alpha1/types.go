@@ -1133,7 +1133,7 @@ type PumpNodeStatus struct {
 	Host   string `json:"host"`
 	State  string `json:"state"`
 
-	// NB: Currently we save the whole `NodeStatus` in the status of the CR.
+	// NB: Currently we save the whole `PumpNodeStatus` in the status of the CR.
 	// However, the following fields will be updated continuously.
 	// To avoid CR being updated and re-synced continuously, we exclude these fields.
 	// MaxCommitTS int64  `json:"maxCommitTS"`
