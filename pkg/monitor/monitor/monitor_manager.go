@@ -375,14 +375,14 @@ func (m *MonitorManager) syncTidbMonitorConfig(monitor *v1alpha1.TidbMonitor) er
 	}
 	_, err = m.deps.TypedControl.CreateOrUpdateConfigMap(monitor, promCM)
 	if err != nil {
-		klog.Errorf("tm[%s/%s]'s configMap failed to createOrUpdate,err: %v", promCM.Namespace, promCM.Name, err)
+		klog.Errorf("Fail to CreateOrUpdateConfigMap %s for tm[%s/%s]'s, err: %v", newCM.Name, monitor.Namespace, monitor.Name, err)
 		return err
 	}
 	if monitor.Spec.Grafana != nil {
 		grafanaCM := getGrafanaConfigMap(monitor)
 		_, err = m.deps.TypedControl.CreateOrUpdateConfigMap(monitor, grafanaCM)
 		if err != nil {
-			klog.Errorf("tm[%s/%s]'s configMap failed to createOrUpdate,err: %v", grafanaCM.Namespace, grafanaCM.Name, err)
+			klog.Errorf("Fail to CreateOrUpdateConfigMap %s for tm[%s/%s]'s, err: %v", grafanaCM.Name, monitor.Namespace, monitor.Name, err)
 			return err
 		}
 	}
