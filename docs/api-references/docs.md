@@ -10544,6 +10544,50 @@ uint
 </tr>
 </tbody>
 </table>
+<h3 id="pumpnodestatus">PumpNodeStatus</h3>
+<p>
+<p>PumpNodeStatus represents the status saved in etcd.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>nodeId</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>host</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>state</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="pumpspec">PumpSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -10706,7 +10750,9 @@ Kubernetes apps/v1.StatefulSetStatus
 <td>
 <code>members</code></br>
 <em>
-[]*github.com/pingcap/tidb-operator/pkg/binlog.NodeStatus
+<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.pumpnodestatus">
+[]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PumpNodeStatus
+</a>
 </em>
 </td>
 <td>
