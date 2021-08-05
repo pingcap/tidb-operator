@@ -71,6 +71,9 @@ controllerManager:
   ## leaderRetryPeriod is the duration the LeaderElector clients should wait between tries of actions
   # leaderRetryPeriod: 2s
 
+  ## number of workers that are allowed to sync concurrently. default 5
+  # workers: 5
+
   # autoFailover is whether tidb-operator should auto failover when failure occurs
   autoFailover: true
   # pd failover period default(5m)
