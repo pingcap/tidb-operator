@@ -86,6 +86,9 @@ spec:
           {{- if .Values.features }}
           - -features={{ join "," .Values.features }}
           {{- end }}
+          {{- if .Values.controllerManager.workers }}
+          - -workers={{ .Values.controllerManager.workers | default 5 }}
+          {{- end }}
           {{- if and ( .Values.admissionWebhook.create ) ( .Values.admissionWebhook.validation.pods ) }}
           - -pod-webhook-enabled=true
           {{- end }}
