@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"hash/fnv"
 
-	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"k8s.io/apimachinery/pkg/util/rand"
 )
 
@@ -35,7 +34,7 @@ func (tac *TiDBAccessConfig) GetTidbPort() int32 {
 	if tac.Port != 0 {
 		return tac.Port
 	}
-	return constants.DefaultTidbPort
+	return DefaultTidbPort
 }
 
 // GetTidbUser return the tidb user
@@ -43,7 +42,7 @@ func (tac *TiDBAccessConfig) GetTidbUser() string {
 	if len(tac.User) != 0 {
 		return tac.User
 	}
-	return constants.DefaultTidbUser
+	return DefaultTidbUser
 }
 
 // GetTidbEndpoint return the tidb endpoint for access tidb cluster directly
