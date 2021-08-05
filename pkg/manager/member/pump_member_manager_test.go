@@ -22,7 +22,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/binlog"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util/config"
 	appsv1 "k8s.io/api/apps/v1"
@@ -767,7 +766,7 @@ func TestSyncTiDBClusterStatus(t *testing.T) {
 type fakeBinlogClient struct {
 }
 
-func (c *fakeBinlogClient) PumpNodeStatus(ctx context.Context) (status []*binlog.NodeStatus, err error) {
+func (c *fakeBinlogClient) PumpNodeStatus(ctx context.Context) (status []*v1alpha1.PumpNodeStatus, err error) {
 	return nil, nil
 }
 
