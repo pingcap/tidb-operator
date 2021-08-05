@@ -402,7 +402,8 @@ func TestSyncConfigUpdate(t *testing.T) {
 				})
 				g.Expect(using).NotTo(BeEmpty())
 				var usingCm *corev1.ConfigMap
-				for _, cm := range r.cms {
+				for i := range r.cms {
+					cm := r.cms[i]
 					if cm.Name == using {
 						usingCm = &cm
 					}
@@ -711,7 +712,7 @@ func TestSyncTiDBClusterStatus(t *testing.T) {
 		updateTC func(*appsv1.StatefulSet)
 		// TODO check work as expected
 		// `upgradingFn` is unused
-		// nolint(structcheck)
+		// nolint: structcheck
 		upgradingFn func(corelisters.PodLister, *appsv1.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 		errExpectFn func(*GomegaWithT, error)
 		tcExpectFn  func(*GomegaWithT, *v1alpha1.TidbCluster)

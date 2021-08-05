@@ -77,7 +77,7 @@ func (bo *GenericOptions) GetDSN(enabledTLSClient bool) (string, error) {
 
 func (bo *GenericOptions) GetTikvGCLifeTime(ctx context.Context, db *sql.DB) (string, error) {
 	var tikvGCTime string
-	sql := fmt.Sprintf("select variable_value from %s where variable_name= ?", constants.TidbMetaTable)
+	sql := fmt.Sprintf("select variable_value from %s where variable_name= ?", constants.TidbMetaTable) // nolint: gosec
 	row := db.QueryRowContext(ctx, sql, constants.TikvGCVariable)
 	err := row.Scan(&tikvGCTime)
 	if err != nil {

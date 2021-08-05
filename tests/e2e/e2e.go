@@ -172,7 +172,7 @@ func setupSuite(c kubernetes.Interface, extClient versioned.Interface, apiExtCli
 		if localStorageSC == nil {
 			log.Fail("local-storage storage class not found")
 		}
-		if localStorageSC.Annotations == nil {
+		if localStorageSC != nil && localStorageSC.Annotations == nil {
 			localStorageSC.Annotations = map[string]string{}
 		}
 		localStorageSC.Annotations[storageutil.IsDefaultStorageClassAnnotation] = "true"
