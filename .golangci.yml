@@ -7,5 +7,17 @@ linters:
     - goimports
     - gosimple
     - staticcheck
+    - gosec
   disable:
     - errcheck
+
+linters-settings:
+  gosec:
+    excludes:
+      - G108
+
+issues:
+  exclude-rules:
+    - path: tests
+      linters:
+        - gosec
