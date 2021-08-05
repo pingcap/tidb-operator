@@ -51,6 +51,7 @@ func (tac *TiDBAccessConfig) GetTidbEndpoint() string {
 	return fmt.Sprintf("%s_%d", tac.Host, tac.GetTidbPort())
 }
 
+// workaround for removing dependency about package 'advanced-statefulset'
 // copy from https://github.com/pingcap/advanced-statefulset/blob/f94e356d25058396e94d33c3fe7224d5a2ca1517/client/apis/apps/v1/helper/helper.go#L94
 func GetPodOrdinalsFromReplicasAndDeleteSlots(replicas int32, deleteSlots sets.Int32) sets.Int32 {
 	maxReplicaCount, deleteSlots := GetMaxReplicaCountAndDeleteSlots(replicas, deleteSlots)
@@ -65,6 +66,9 @@ func GetPodOrdinalsFromReplicasAndDeleteSlots(replicas int32, deleteSlots sets.I
 
 // GetMaxReplicaCountAndDeleteSlots returns the max replica count and delete
 // slots. The desired slots of this stateful set will be [0, replicaCount) - [delete slots].
+//
+// workaround for removing dependency about package 'advanced-statefulset'
+// copy from https://github.com/pingcap/advanced-statefulset/blob/f94e356d25058396e94d33c3fe7224d5a2ca1517/client/apis/apps/v1/helper/helper.go#L74
 func GetMaxReplicaCountAndDeleteSlots(replicas int32, deleteSlots sets.Int32) (int32, sets.Int32) {
 	replicaCount := replicas
 	deleteSlotsCopy := sets.NewInt32()

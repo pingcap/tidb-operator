@@ -55,6 +55,7 @@ require (
 	github.com/pingcap/kvproto v0.0.0-20200927054727-1290113160f0
 	github.com/pingcap/tidb v2.1.0-beta+incompatible
 	github.com/pingcap/tidb-operator/pkg/apis v0.0.0
+	github.com/pingcap/tidb-operator/pkg/client v0.0.0
 	github.com/prometheus/client_golang v1.0.0
 	github.com/prometheus/client_model v0.1.0
 	github.com/prometheus/common v0.7.0
@@ -97,6 +98,8 @@ require (
 )
 
 replace github.com/pingcap/tidb-operator/pkg/apis => ./pkg/apis
+
+replace github.com/pingcap/tidb-operator/pkg/client => ./pkg/client
 
 replace github.com/renstrom/dedent => github.com/lithammer/dedent v1.1.0
 
