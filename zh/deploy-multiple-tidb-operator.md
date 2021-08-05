@@ -10,7 +10,7 @@ aliases: ['/zh/tidb-in-kubernetes/dev/canary-deployment-tidb-operator/']
 
 > **注意：**
 >
-> - 目前仅支持部署多套 tidb-controller-manager 和 tidb-scheduler。
+> - 目前仅支持部署多套 tidb-controller-manager 和 tidb-scheduler，不支持部署多套 AdvancedStatefulSet controller 和 AdmissionWebhook。
 > - 如果部署了多套 TiDB Operator，有的开启了 [`Advanced StatefulSet`](advanced-statefulset.md)，有的没有开启，那么同一个 TidbCluster Custom Resource (CR) 不能在这些 TiDB Operator 之间切换。
 > - v1.1.10 开始支持此项功能
 
@@ -90,7 +90,7 @@ aliases: ['/zh/tidb-in-kubernetes/dev/canary-deployment-tidb-operator/']
 
 3. 部署第二套 TiDB Operator。
 
-    参考[部署 TiDB Operator 文档](deploy-tidb-operator.md)，在 `values.yaml` 中添加如下配置，**在不同的 namespace** 中（例如 `tidb-admin-qa`）部署第二套 TiDB Operator (没有部署 `tidb-scheduler`)：
+    参考[部署 TiDB Operator 文档](deploy-tidb-operator.md)，在 `values.yaml` 中添加如下配置，在**不同的 namespace** 中（例如 `tidb-admin-qa`）使用**不同的 [Helm Release Name](https://helm.sh/docs/intro/using_helm/#three-big-concepts)**（例如 `helm install tidb-operator-qa ...`）部署第二套 TiDB Operator (没有部署 `tidb-scheduler`)：
 
     ```yaml
     controllerManager:
@@ -99,6 +99,10 @@ aliases: ['/zh/tidb-in-kubernetes/dev/canary-deployment-tidb-operator/']
     appendReleaseSuffix: true
     scheduler:
       create: false
+    advancedStatefulset:
+      create: false
+    admissionWebhook:
+      create: false
     ```
 
     > **注意：**
@@ -106,6 +110,7 @@ aliases: ['/zh/tidb-in-kubernetes/dev/canary-deployment-tidb-operator/']
     > * 建议在单独的 namespace 部署新的 TiDB Operator。
     > * `appendReleaseSuffix` 需要设置为 `true`。
     > * 如果配置 `scheduler.create: true`，会创建一个名字为 `{{ .scheduler.schedulerName }}-{{.Release.Name}}` 的 scheduler，要使用这个 scheduler，需要配置 TidbCluster CR 中的 `spec.schedulerName` 为这个 scheduler。
+    > * 由于不支持部署多套 AdvancedStatefulSet controller 和 AdmissionWebhook，需要配置 `advancedStatefulset.create: false` 和 `admissionWebhook.create: false`。
 
 4. 部署 TiDB 集群。
 
