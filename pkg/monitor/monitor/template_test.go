@@ -620,7 +620,7 @@ remote_write:
 		DMClusterInfos: []ClusterRegexInfo{
 			{Name: "target", Namespace: "ns1"},
 		},
-		EnableRules: true,
+		EnableAlertRules: true,
 		RemoteWriteConfigs: []*config.RemoteWriteConfig{
 			{
 				URL:           &config.URL{URL: url},
