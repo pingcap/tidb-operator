@@ -44,7 +44,7 @@ const (
 )
 
 type binlogClient interface {
-	PumpNodeStatus(ctx context.Context) (status []*binlog.NodeStatus, err error)
+	PumpNodeStatus(ctx context.Context) (status []*v1alpha1.PumpNodeStatus, err error)
 	Close() error
 }
 

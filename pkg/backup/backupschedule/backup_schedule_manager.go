@@ -216,7 +216,7 @@ func buildBackup(bs *v1alpha1.BackupSchedule, timestamp time.Time) *v1alpha1.Bac
 		}
 		pdAddress = fmt.Sprintf("%s-pd.%s:2379", backupSpec.BR.Cluster, clusterNamespace)
 
-		backupPrefix := strings.ReplaceAll(pdAddress, ":", "-") + "-" + timestamp.UTC().Format(constants.TimeFormat)
+		backupPrefix := strings.ReplaceAll(pdAddress, ":", "-") + "-" + timestamp.UTC().Format(v1alpha1.BackupNameTimeFormat)
 		if backupSpec.S3 != nil {
 			backupSpec.S3.Prefix = path.Join(backupSpec.S3.Prefix, backupPrefix)
 		} else if backupSpec.Gcs != nil {

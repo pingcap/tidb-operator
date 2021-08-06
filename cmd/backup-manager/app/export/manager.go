@@ -60,13 +60,13 @@ func (bm *BackupManager) setOptions(backup *v1alpha1.Backup) (string, error) {
 	if backup.Spec.From.Port != 0 {
 		bm.Options.Port = backup.Spec.From.Port
 	} else {
-		bm.Options.Port = bkconstants.DefaultTidbPort
+		bm.Options.Port = v1alpha1.DefaultTidbPort
 	}
 
 	if backup.Spec.From.User != "" {
 		bm.Options.User = backup.Spec.From.User
 	} else {
-		bm.Options.User = bkconstants.DefaultTidbUser
+		bm.Options.User = v1alpha1.DefaultTidbUser
 	}
 	bm.Options.Password = util.GetOptionValueFromEnv(bkconstants.TidbPasswordKey, bkconstants.BackupManagerEnvVarPrefix)
 
