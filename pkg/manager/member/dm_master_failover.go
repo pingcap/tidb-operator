@@ -157,7 +157,8 @@ func (f *masterFailover) tryToDeleteAFailureMember(dc *v1alpha1.DMCluster) error
 	var failureMember *v1alpha1.MasterFailureMember
 	var failurePodName string
 
-	for podName, masterMember := range dc.Status.Master.FailureMembers {
+	for podName := range dc.Status.Master.FailureMembers {
+		masterMember := dc.Status.Master.FailureMembers[podName]
 		if !masterMember.MemberDeleted {
 			failureMember = &masterMember
 			failurePodName = podName
