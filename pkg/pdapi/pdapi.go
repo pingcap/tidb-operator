@@ -34,6 +34,9 @@ import (
 )
 
 const (
+	HomogeneousTiKVResourceType = "default_homogeneous_tikv"
+	HomogeneousTiDBResourceType = "default_homogeneous_tidb"
+
 	DefaultTimeout       = 5 * time.Second
 	evictSchedulerLeader = "evict-leader-scheduler"
 	tiKVNotBootstrapped  = `TiKV cluster not bootstrapped, please start TiKV first"`
@@ -196,6 +199,7 @@ type MembersInfo struct {
 type Strategy struct {
 	Rules     []*Rule     `json:"rules"`
 	Resources []*Resource `json:"resources"`
+	NodeCount uint64      `json:"node_count"`
 }
 
 // Rule is a set of constraints for a kind of component.
@@ -214,6 +218,7 @@ type CPURule struct {
 
 // StorageRule is the constraints about storage.
 type StorageRule struct {
+	MaxThreshold  float64  `json:"max_threshold"`
 	MinThreshold  float64  `json:"min_threshold"`
 	ResourceTypes []string `json:"resource_types"`
 }
@@ -237,6 +242,10 @@ type Plan struct {
 	Count        uint64            `json:"count"`
 	ResourceType string            `json:"resource_type"`
 	Labels       map[string]string `json:"labels"`
+}
+
+func (p *Plan) String() string {
+	return fmt.Sprintf("{Component: %s, Count: %d, ResourceType: %s, Labels: %v}", p.Component, p.Count, p.ResourceType, p.Labels)
 }
 
 type schedulerInfo struct {
