@@ -21,7 +21,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	fuzz "github.com/google/gofuzz"
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/util/toml"
+	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
 )
 
 func TestPDConfigWraper(t *testing.T) {

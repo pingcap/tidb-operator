@@ -2497,6 +2497,19 @@ Kubernetes core/v1.PodSecurityContext
 <p>PodSecurityContext of the component</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>enableAlertRules</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableAlertRules adds alert rules to the Prometheus config even
+if <code>AlertmanagerURL</code> is not configured.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -21056,6 +21069,19 @@ Kubernetes core/v1.PodSecurityContext
 <td>
 <em>(Optional)</em>
 <p>PodSecurityContext of the component</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enableAlertRules</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableAlertRules adds alert rules to the Prometheus config even
+if <code>AlertmanagerURL</code> is not configured.</p>
 </td>
 </tr>
 </tbody>
