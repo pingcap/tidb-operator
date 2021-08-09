@@ -3731,7 +3731,7 @@ Optional: Defaults to range</p>
 <td>
 <code>GenericConfig</code></br>
 <em>
-github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
@@ -8203,7 +8203,7 @@ DashboardConfig
 <td>
 <code>GenericConfig</code></br>
 <em>
-github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
@@ -10685,7 +10685,7 @@ Defaults to Kubernetes default storage class.</p>
 <td>
 <code>config</code></br>
 <em>
-github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
@@ -13753,7 +13753,7 @@ map[string]string
 <td>
 <code>GenericConfig</code></br>
 <em>
-github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
@@ -14464,7 +14464,7 @@ kubectl create secret generic <clusterName>-tidb-client-secret &ndash;namespace=
 <td>
 <code>GenericConfig</code></br>
 <em>
-github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
@@ -14574,7 +14574,7 @@ TiFlashProxyConfigWraper
 <td>
 <code>GenericConfig</code></br>
 <em>
-github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
@@ -15748,7 +15748,7 @@ TiKVBackupConfig
 <td>
 <code>GenericConfig</code></br>
 <em>
-github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
