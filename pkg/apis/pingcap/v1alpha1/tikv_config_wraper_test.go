@@ -20,7 +20,7 @@ import (
 
 	fuzz "github.com/google/gofuzz"
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/util/toml"
+	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
 )
 
 func TestTiKVConfigWraper(t *testing.T) {
