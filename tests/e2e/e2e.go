@@ -169,10 +169,13 @@ func setupSuite(c kubernetes.Interface, extClient versioned.Interface, apiExtCli
 				framework.ExpectNoError(err, "update storage class failed, %v", sc)
 			}
 		}
-		// nolint:staticcheck
+		// nolint: staticcheck
+		// reason: SA5011(related information): this check suggests that the pointer can be nil
 		if localStorageSC == nil {
 			log.Fail("local-storage storage class not found")
 		}
+		// nolint: staticcheck
+		// reason: SA5011: possible nil pointer dereference
 		if localStorageSC.Annotations == nil {
 			localStorageSC.Annotations = map[string]string{}
 		}
