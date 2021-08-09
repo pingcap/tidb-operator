@@ -2510,6 +2510,7 @@ bool
 if <code>AlertmanagerURL</code> is not configured.</p>
 </td>
 </tr>
+<<<<<<< HEAD
 <tr>
 <td>
 <code>prometheusReloader</code></br>
@@ -2524,6 +2525,8 @@ PrometheusReloaderSpec
 <p>PrometheusReloader set prometheus reloader configuration</p>
 </td>
 </tr>
+=======
+>>>>>>> 1e4eba58... Add enableRule switch into tidbmonitor. (#4115)
 </table>
 </td>
 </tr>
@@ -21086,6 +21089,7 @@ bool
 if <code>AlertmanagerURL</code> is not configured.</p>
 </td>
 </tr>
+<<<<<<< HEAD
 <tr>
 <td>
 <code>prometheusReloader</code></br>
@@ -21100,6 +21104,8 @@ PrometheusReloaderSpec
 <p>PrometheusReloader set prometheus reloader configuration</p>
 </td>
 </tr>
+=======
+>>>>>>> 1e4eba58... Add enableRule switch into tidbmonitor. (#4115)
 </tbody>
 </table>
 <h3 id="tidbmonitorstatus">TidbMonitorStatus</h3>
