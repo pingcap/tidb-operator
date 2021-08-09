@@ -123,7 +123,7 @@ type TidbMonitorSpec struct {
 	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
 
 	// EnableAlertRules adds alert rules to the Prometheus config even
-	// if If `AlertmanagerURL` is not configured.
+	// if `AlertmanagerURL` is not configured.
 	// +optional
 	EnableAlertRules bool `json:"enableAlertRules,omitempty"`
 }
