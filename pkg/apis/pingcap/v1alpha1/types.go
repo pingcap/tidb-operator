@@ -20,7 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/pingcap/tidb-operator/pkg/util/config"
+	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 )
 
 const (
