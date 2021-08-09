@@ -2507,7 +2507,7 @@ bool
 <td>
 <em>(Optional)</em>
 <p>EnableAlertRules adds alert rules to the Prometheus config even
-if If <code>AlertmanagerURL</code> is not configured.</p>
+if <code>AlertmanagerURL</code> is not configured.</p>
 </td>
 </tr>
 </table>
@@ -21081,7 +21081,7 @@ bool
 <td>
 <em>(Optional)</em>
 <p>EnableAlertRules adds alert rules to the Prometheus config even
-if If <code>AlertmanagerURL</code> is not configured.</p>
+if <code>AlertmanagerURL</code> is not configured.</p>
 </td>
 </tr>
 </tbody>

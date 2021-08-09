@@ -11829,7 +11829,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 					},
 					"enableAlertRules": {
 						SchemaProps: spec.SchemaProps{
-							Description: "EnableAlertRules adds alert rules to the Prometheus config even if If `AlertmanagerURL` is not configured.",
+							Description: "EnableAlertRules adds alert rules to the Prometheus config even if `AlertmanagerURL` is not configured.",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
