@@ -474,9 +474,8 @@ var _ = ginkgo.Describe("[Stability]", func() {
 					}
 					if pvc.Spec.StorageClassName != nil && *pvc.Spec.StorageClassName == "local-storage" {
 						// TODO check the localPVs as expected in someway?
-						// nolint(staticcheck)
 						// SA4010: this result of append is never used, except maybe in other appends
-						localPVs = append(localPVs, pvc.Spec.VolumeName)
+						localPVs = append(localPVs, pvc.Spec.VolumeName) // nolint: staticcheck
 						err = c.CoreV1().PersistentVolumeClaims(ns).Delete(pvc.Name, &metav1.DeleteOptions{})
 						framework.ExpectNoError(err, "failed to delete pvc %s", pvc.Name)
 					}

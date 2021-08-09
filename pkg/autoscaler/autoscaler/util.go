@@ -166,7 +166,9 @@ func defaultBasicAutoScaler(tac *v1alpha1.TidbClusterAutoScaler, component v1alp
 		return
 	}
 
-	for res, rule := range spec.Rules {
+	for res := range spec.Rules {
+		rule := spec.Rules[res]
+
 		if res == corev1.ResourceCPU {
 			if rule.MinThreshold == nil {
 				rule.MinThreshold = pointer.Float64Ptr(0.1)

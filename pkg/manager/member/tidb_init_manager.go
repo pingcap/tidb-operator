@@ -37,7 +37,7 @@ const (
 	initContainerName   = "wait"
 	containerName       = "mysql-client"
 	passwdKey           = "password"
-	passwdPath          = "/etc/tidb/password"
+	passwdPath          = "/etc/tidb/password" // nolint: gosec
 	sqlKey              = "init-sql"
 	sqlPath             = "init.sql"
 	sqlDir              = "/data"

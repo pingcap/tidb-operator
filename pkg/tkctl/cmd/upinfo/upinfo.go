@@ -217,7 +217,8 @@ func renderTCUpgradeInfo(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, podLis
 				updateReplicas := set.Spec.UpdateStrategy.RollingUpdate.Partition
 
 				if len(podList.Items) != 0 {
-					for _, pod := range podList.Items {
+					for i := range podList.Items {
+						pod := podList.Items[i]
 						var state string
 						ordinal, err := util.GetOrdinalFromPodName(pod.Name)
 						if err != nil {

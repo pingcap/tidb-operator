@@ -58,7 +58,7 @@ const (
 
 func GetOrdinalFromPodName(podName string) (int32, error) {
 	ordinalStr := podName[strings.LastIndex(podName, "-")+1:]
-	ordinalInt, err := strconv.Atoi(ordinalStr)
+	ordinalInt, err := strconv.ParseInt(ordinalStr, 10, 32)
 	if err != nil {
 		return int32(0), err
 	}

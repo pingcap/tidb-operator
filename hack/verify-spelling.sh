@@ -24,8 +24,12 @@ pushd "${ROOT}/hack/tools" >/dev/null
     GO111MODULE=on go install github.com/client9/misspell/cmd/misspell
 popd >/dev/null
 
+ignore_words=(
+    "importas"
+)
+
 ret=0
-git ls-files | xargs misspell -error -o stderr || ret=$?
+git ls-files | xargs misspell -i ${ignore_words[@]} -error -o stderr || ret=$?
 if [ $ret -eq 0 ]; then
     echo "Spellings all good!"
 else

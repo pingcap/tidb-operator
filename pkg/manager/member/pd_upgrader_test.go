@@ -275,8 +275,8 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
-		testFn(&test)
+	for i := range tests {
+		testFn(&tests[i])
 	}
 
 }

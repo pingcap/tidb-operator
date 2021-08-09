@@ -214,7 +214,8 @@ func (o *GetOptions) Run(tkcContext *config.TkcContext, cmd *cobra.Command, args
 
 	multiTidbCluster := len(tcs) > 1
 	var errs []error
-	for i, tc := range tcs {
+	for i := range tcs {
+		tc := tcs[i]
 		if multiTidbCluster {
 			o.Out.Write([]byte(fmt.Sprintf("Cluster: %s/%s\n", tc.Namespace, tc.Name)))
 		}
@@ -266,7 +267,8 @@ func (o *GetOptions) PrintOutput(tc *v1alpha1.TidbCluster, resourceType string, 
 		if err != nil {
 			return err
 		}
-		for _, pod := range podList.Items {
+		for i := range podList.Items {
+			pod := podList.Items[i]
 			pod.GetObjectKind().SetGroupVersionKind(v1.SchemeGroupVersion.WithKind("Pod"))
 			objs = append(objs, &pod)
 		}
@@ -314,7 +316,8 @@ func (o *GetOptions) PrintOutput(tc *v1alpha1.TidbCluster, resourceType string, 
 		if err != nil {
 			return err
 		}
-		for _, volume := range volumeList.Items {
+		for i := range volumeList.Items {
+			volume := volumeList.Items[i]
 			volume.GetObjectKind().SetGroupVersionKind(v1.SchemeGroupVersion.WithKind("PersistentVolume"))
 			objs = append(objs, &volume)
 		}
