@@ -18,8 +18,8 @@ import (
 	"reflect"
 
 	"github.com/pingcap/errors"
+	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
-	"github.com/pingcap/tidb-operator/pkg/util/config"
 	"k8s.io/apimachinery/pkg/util/json"
 )
 
