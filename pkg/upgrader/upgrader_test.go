@@ -637,21 +637,24 @@ func TestUpgrade(t *testing.T) {
 		asCli := asclientsetfake.NewSimpleClientset()
 		cli := versionedfake.NewSimpleClientset()
 
-		for _, tc := range tt.tidbClusters {
+		for i := range tt.tidbClusters {
+			tc := tt.tidbClusters[i]
 			_, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(&tc)
 			if err != nil {
 				t.Fatal(err)
 			}
 		}
 
-		for _, sts := range tt.statefulsets {
+		for i := range tt.statefulsets {
+			sts := tt.statefulsets[i]
 			_, err = kubeCli.AppsV1().StatefulSets(sts.Namespace).Create(&sts)
 			if err != nil {
 				t.Fatal(err)
 			}
 		}
 
-		for _, sts := range tt.advancedStatefulsets {
+		for i := range tt.advancedStatefulsets {
+			sts := tt.advancedStatefulsets[i]
 			_, err = asCli.AppsV1().StatefulSets(sts.Namespace).Create(&sts)
 			if err != nil {
 				t.Fatal(err)

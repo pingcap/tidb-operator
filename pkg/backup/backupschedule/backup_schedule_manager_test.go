@@ -94,7 +94,8 @@ func TestManager(t *testing.T) {
 		g.Expect(err).Should(BeNil())
 		bks := helper.checkBacklist(bs.Namespace, i+10)
 		// complete the backup created
-		for _, bk := range bks.Items {
+		for i := range bks.Items {
+			bk := bks.Items[i]
 			changed := v1alpha1.UpdateBackupCondition(&bk.Status, &v1alpha1.BackupCondition{
 				Type:   v1alpha1.BackupComplete,
 				Status: v1.ConditionTrue,
