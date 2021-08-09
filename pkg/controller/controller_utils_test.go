@@ -34,8 +34,6 @@ func TestRequeueError(t *testing.T) {
 
 	err := RequeueErrorf("i am a requeue %s", "error")
 	g.Expect(IsRequeueError(err)).To(BeTrue())
-	_, ok := err.(error)
-	g.Expect(ok).To(BeTrue())
 	g.Expect(err.Error()).To(Equal("i am a requeue error"))
 	g.Expect(IsRequeueError(fmt.Errorf("i am not a requeue error"))).To(BeFalse())
 }
@@ -45,8 +43,6 @@ func TestIgnoreError(t *testing.T) {
 
 	err := IgnoreErrorf("i am an ignore %s", "error")
 	g.Expect(IsIgnoreError(err)).To(BeTrue())
-	_, ok := err.(error)
-	g.Expect(ok).To(BeTrue())
 	g.Expect(err.Error()).To(Equal("i am an ignore error"))
 	g.Expect(IsIgnoreError(fmt.Errorf("i am not an ignore error"))).To(BeFalse())
 }
