@@ -17,7 +17,7 @@ import (
 	stdjson "encoding/json"
 
 	"github.com/pingcap/errors"
-	"github.com/pingcap/tidb-operator/pkg/util/config"
+	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"k8s.io/apimachinery/pkg/util/json"
 )
 

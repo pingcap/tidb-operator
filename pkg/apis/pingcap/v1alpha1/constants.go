@@ -1,4 +1,4 @@
-// Copyright 2019 PingCAP, Inc.
+// Copyright 2021 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,11 +13,13 @@
 
 package v1alpha1
 
-import (
-	"fmt"
-	"time"
-)
+const (
+	// BackupNameTimeFormat is the time format for generate backup CR name
+	BackupNameTimeFormat = "2006-01-02t15-04-05"
 
-func (bs *BackupSchedule) GetBackupCRDName(timestamp time.Time) string {
-	return fmt.Sprintf("%s-%s", bs.GetName(), timestamp.UTC().Format(BackupNameTimeFormat))
-}
+	// DefaultTidbPort is the default tidb cluster port for connecting
+	DefaultTidbPort = 4000
+
+	// DefaultTidbUser is the default tidb user for login tidb cluster
+	DefaultTidbUser = "root"
+)

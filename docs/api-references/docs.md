@@ -3731,7 +3731,7 @@ Optional: Defaults to range</p>
 <td>
 <code>GenericConfig</code></br>
 <em>
-github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
@@ -8203,7 +8203,7 @@ DashboardConfig
 <td>
 <code>GenericConfig</code></br>
 <em>
-github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
@@ -10544,6 +10544,50 @@ uint
 </tr>
 </tbody>
 </table>
+<h3 id="pumpnodestatus">PumpNodeStatus</h3>
+<p>
+<p>PumpNodeStatus represents the status saved in etcd.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>nodeId</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>host</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>state</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="pumpspec">PumpSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -10641,7 +10685,7 @@ Defaults to Kubernetes default storage class.</p>
 <td>
 <code>config</code></br>
 <em>
-github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
@@ -10706,7 +10750,9 @@ Kubernetes apps/v1.StatefulSetStatus
 <td>
 <code>members</code></br>
 <em>
-[]*github.com/pingcap/tidb-operator/pkg/binlog.NodeStatus
+<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.pumpnodestatus">
+[]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PumpNodeStatus
+</a>
 </em>
 </td>
 <td>
@@ -13707,7 +13753,7 @@ map[string]string
 <td>
 <code>GenericConfig</code></br>
 <em>
-github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
@@ -14418,7 +14464,7 @@ kubectl create secret generic <clusterName>-tidb-client-secret &ndash;namespace=
 <td>
 <code>GenericConfig</code></br>
 <em>
-github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
@@ -14528,7 +14574,7 @@ TiFlashProxyConfigWraper
 <td>
 <code>GenericConfig</code></br>
 <em>
-github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
@@ -15702,7 +15748,7 @@ TiKVBackupConfig
 <td>
 <code>GenericConfig</code></br>
 <em>
-github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
