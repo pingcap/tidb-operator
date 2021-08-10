@@ -192,7 +192,7 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPodDuringUpgrading(payload *admi
 	}
 
 	if tc.TiKVStsDesiredReplicas() < 2 {
-		klog.Infof("TiKV statefulset replicas are less than 2, skip waiting to evict region leader for Pod %s/%s", namespace, name)
+		klog.Infof("TiKV statefulset replicas are less than 2, skip evicting region leader for Pod %s/%s", namespace, name)
 		return util.ARSuccess()
 	}
 

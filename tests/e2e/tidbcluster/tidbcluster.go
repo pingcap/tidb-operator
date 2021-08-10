@@ -327,6 +327,23 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 	})
 
+	ginkgo.It("should direct upgrade tc successfully when TiKV replicas less than 2.", func() {
+		clusterName := "upgrade-cluster-tikv-1"
+		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBLatestPrev)
+		tc.Spec.TiKV.Replicas = 1
+		// Deploy
+		utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 5*time.Second)
+		ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", tc.Spec.Version, utilimage.TiDBLatest))
+		err := controller.GuaranteedUpdate(genericCli, tc, func() error {
+			tc.Spec.Version = utilimage.TiDBLatest
+			return nil
+		})
+		framework.ExpectNoError(err, "failed to upgrade TidbCluster: %q", tc.Name)
+		err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
+
+		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+	})
+
 	// TODO: move into Upgrade cases below
 	ginkgo.It("should upgrade TidbCluster with webhook enabled", func() {
 		ginkgo.By("Creating webhook certs and self signing it")

@@ -572,7 +572,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 				oldSet.Status.CurrentReplicas = 1
 				oldSet.Status.UpdatedReplicas = 1
 				oldSet.Spec.Replicas = pointer.Int32Ptr(1)
-				oldSet.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32Ptr(0)
+				oldSet.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32Ptr(2)
 			},
 			changePods: func(pods []*corev1.Pod) {
 				for _, pod := range pods {

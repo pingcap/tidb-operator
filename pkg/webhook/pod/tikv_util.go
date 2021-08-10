@@ -111,7 +111,6 @@ func isTiKVReadyToUpgrade(upgradePod *core.Pod, store *pdapi.StoreInfo, evictLea
 			klog.Errorf("parse annotation:[%s] to time failed.", EvictLeaderBeginTime)
 			return false
 		}
-
 		if time.Now().After(evictLeaderBeginTime.Add(evictLeaderTimeout)) {
 			return true
 		}

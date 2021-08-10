@@ -78,8 +78,8 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 	}
 
 	if *oldSet.Spec.Replicas < 2 {
-		klog.Infof("TiKV statefulset replicas are less than 2, skip waiting to evict region leader for tc %s/%s", ns, tcName)
-		setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
+		klog.Infof("TiKV statefulset replicas are less than 2, skip evicting region leader for tc %s/%s", ns, tcName)
+		setUpgradePartition(newSet, 0)
 		return nil
 	}
 
