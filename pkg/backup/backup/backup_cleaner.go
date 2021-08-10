@@ -61,11 +61,11 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 
 	klog.Infof("start to ensure that backup %s/%s job %s have finished", ns, name, backupJobName)
 
-	deleted, err := bc.ensureBackupJobFinished(backup)
+	finished, err := bc.ensureBackupJobFinished(backup)
 	if err != nil {
 		return fmt.Errorf("ensure %s/%s job %s finished failed: %s", ns, name, backupJobName, err)
 	}
-	if !deleted {
+	if !finished {
 		klog.Infof("wait for backup %s/%s job %s to finish", ns, name, backupJobName)
 		return nil
 	}
