@@ -158,6 +158,12 @@ const (
 	DMMasterLabelVal string = "dm-master"
 	// DMWorkerLabelVal is dm-worker label value
 	DMWorkerLabelVal string = "dm-worker"
+
+	// PrometheusVal is Prometheus label value
+	PrometheusVal string = "prometheus"
+
+	// GrafanaVal is Grafana label value
+	GrafanaVal string = "grafana"
 )
 
 // Label is the label field in metadata
@@ -355,6 +361,16 @@ func (l Label) IsDMWorker() bool {
 // Monitor assigns monitor to component key in label
 func (l Label) Monitor() Label {
 	return l.Component(TiDBMonitorVal)
+}
+
+// Prometheus assigns prometheus to component key in label
+func (l Label) Prometheus() Label {
+	return l.Component(PrometheusVal)
+}
+
+// Grafana assigns grafana to component key in label
+func (l Label) Grafana() Label {
+	return l.Component(GrafanaVal)
 }
 
 // IsMonitor returns whether label is a Monitor component

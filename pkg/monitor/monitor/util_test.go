@@ -83,7 +83,7 @@ func TestGetMonitorConfigMap(t *testing.T) {
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
-						"app.kubernetes.io/component":  "monitor",
+						"app.kubernetes.io/component":  "prometheus",
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{

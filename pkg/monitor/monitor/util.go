@@ -69,6 +69,14 @@ func buildTidbMonitorLabel(name string) map[string]string {
 	return label.NewMonitor().Instance(name).Monitor().Labels()
 }
 
+func buildTidbMonitorPromLabel(name string) map[string]string {
+	return label.NewMonitor().Instance(name).Prometheus().Labels()
+}
+
+func buildTidbMonitorGrafanaLabel(name string) map[string]string {
+	return label.NewMonitor().Instance(name).Grafana().Labels()
+}
+
 func getInitCommand(monitor *v1alpha1.TidbMonitor) []string {
 	c := `mkdir -p /data/prometheus
 chmod 777 /data/prometheus
@@ -148,7 +156,7 @@ func getPromConfigMap(monitor *v1alpha1.TidbMonitor, monitorClusterInfos []Clust
 		ObjectMeta: meta.ObjectMeta{
 			Name:            GetPromConfigMapName(monitor),
 			Namespace:       monitor.Namespace,
-			Labels:          buildTidbMonitorLabel(monitor.Name),
+			Labels:          buildTidbMonitorPromLabel(monitor.Name),
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 		},
 		Data: map[string]string{
@@ -164,7 +172,7 @@ func getGrafanaConfigMap(monitor *v1alpha1.TidbMonitor) *core.ConfigMap {
 		ObjectMeta: meta.ObjectMeta{
 			Name:            GetGrafanaConfigMapName(monitor),
 			Namespace:       monitor.Namespace,
-			Labels:          buildTidbMonitorLabel(monitor.Name),
+			Labels:          buildTidbMonitorGrafanaLabel(monitor.Name),
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 		},
 		Data: map[string]string{
