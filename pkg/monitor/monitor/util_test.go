@@ -102,7 +102,7 @@ func TestGetMonitorConfigMap(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			cm, err := getMonitorConfigMap(&tt.monitor, tt.monitorClusterInfos, nil)
+			cm, err := getPromConfigMap(&tt.monitor, tt.monitorClusterInfos, nil)
 			g.Expect(err).NotTo(HaveOccurred())
 			if tt.expected == nil {
 				g.Expect(cm).To(BeNil())
