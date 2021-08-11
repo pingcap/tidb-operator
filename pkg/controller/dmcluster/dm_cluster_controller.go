@@ -208,8 +208,6 @@ func (c *Controller) updateStatefulSet(old, cur interface{}) {
 // deleteStatefulSet enqueues the dmcluster for the statefulset accounting for deletion tombstones.
 func (c *Controller) deleteStatefulSet(obj interface{}) {
 	set, ok := obj.(*apps.StatefulSet)
-	ns := set.GetNamespace()
-	setName := set.GetName()
 
 	// When a delete is dropped, the relist will notice a statefuset in the store not
 	// in the list, leading to the insertion of a tombstone object which contains
@@ -226,6 +224,9 @@ func (c *Controller) deleteStatefulSet(obj interface{}) {
 			return
 		}
 	}
+
+	ns := set.GetNamespace()
+	setName := set.GetName()
 
 	// If it has a DMCluster, that's all that matters.
 	dc := c.resolveDMClusterFromSet(ns, set)
