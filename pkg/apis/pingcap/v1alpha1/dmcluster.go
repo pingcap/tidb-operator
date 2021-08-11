@@ -19,7 +19,7 @@ import (
 	"strings"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
-	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 

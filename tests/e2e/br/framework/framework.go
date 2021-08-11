@@ -19,8 +19,8 @@ import (
 
 	"github.com/onsi/ginkgo"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	onceutil "github.com/pingcap/tidb-operator/tests/e2e/br/utils/once"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/portforward"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/s3"
