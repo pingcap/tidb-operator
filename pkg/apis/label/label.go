@@ -164,6 +164,9 @@ const (
 
 	// GrafanaVal is Grafana label value
 	GrafanaVal string = "grafana"
+
+	// ApplicationLabelKey is App label value
+	ApplicationLabelKey string = "app.kubernetes.io/app"
 )
 
 // Label is the label field in metadata
@@ -274,6 +277,12 @@ func (l Label) Component(name string) Label {
 	return l
 }
 
+// Application adds application kv pair to label
+func (l Label) Application(name string) Label {
+	l[ApplicationLabelKey] = name
+	return l
+}
+
 // ComponentType returns component type
 func (l Label) ComponentType() string {
 	return l[ComponentLabelKey]
@@ -365,12 +374,12 @@ func (l Label) Monitor() Label {
 
 // Prometheus assigns prometheus to component key in label
 func (l Label) Prometheus() Label {
-	return l.Component(PrometheusVal)
+	return l.Application(PrometheusVal)
 }
 
 // Grafana assigns grafana to component key in label
 func (l Label) Grafana() Label {
-	return l.Component(GrafanaVal)
+	return l.Application(GrafanaVal)
 }
 
 // IsMonitor returns whether label is a Monitor component

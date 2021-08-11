@@ -70,11 +70,11 @@ func buildTidbMonitorLabel(name string) map[string]string {
 }
 
 func buildTidbMonitorPromLabel(name string) map[string]string {
-	return label.NewMonitor().Instance(name).Prometheus().Labels()
+	return label.NewMonitor().Instance(name).Monitor().Prometheus().Labels()
 }
 
 func buildTidbMonitorGrafanaLabel(name string) map[string]string {
-	return label.NewMonitor().Instance(name).Grafana().Labels()
+	return label.NewMonitor().Instance(name).Monitor().Grafana().Labels()
 }
 
 func getInitCommand(monitor *v1alpha1.TidbMonitor) []string {
@@ -716,7 +716,7 @@ func getMonitorVolumes(monitor *v1alpha1.TidbMonitor) []core.Volume {
 		VolumeSource: core.VolumeSource{
 			ConfigMap: &core.ConfigMapVolumeSource{
 				LocalObjectReference: core.LocalObjectReference{
-					Name: GetMonitorObjectName(monitor),
+					Name: GetPromConfigMapName(monitor),
 				},
 			},
 		},
