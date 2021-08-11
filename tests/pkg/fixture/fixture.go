@@ -23,9 +23,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	tcconfig "github.com/pingcap/tidb-operator/pkg/apis/util/config"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/util"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 )

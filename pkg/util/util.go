@@ -22,9 +22,9 @@ import (
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/kvproto/pkg/metapb"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/features"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	apps "k8s.io/api/apps/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
