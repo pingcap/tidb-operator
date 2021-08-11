@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	. "github.com/onsi/gomega"
