@@ -30,10 +30,10 @@ import (
 	printersinternal "k8s.io/kubernetes/pkg/printers/internalversion"
 
 	"github.com/ghodss/yaml"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
 	"github.com/spf13/cobra"
 	appv1 "k8s.io/api/apps/v1"
@@ -226,7 +226,8 @@ func (o *diagnoseInfoOptions) Run() error {
 
 	// dump detail information and logs of pods.
 	pods := api.PodList{}
-	for _, pod := range podList.Items {
+	for i := range podList.Items {
+		pod := podList.Items[i]
 		if err := NewPodDumper(o.kubeCli, pod, int64(o.since.Seconds()), o.byteReadLimit).Dump(o.logPath, rWriter); err != nil {
 			return err
 		}
@@ -390,7 +391,9 @@ func (d *pvcDumper) Dump(logPath string, resourceWriter io.Writer) error {
 	}
 
 	pvcs := api.PersistentVolumeClaimList{}
-	for _, pvc := range pvcList.Items {
+	for i := range pvcList.Items {
+		pvc := pvcList.Items[i]
+
 		pvc.SetGroupVersionKind(v1.SchemeGroupVersion.WithKind("PersistentVolumeClaim"))
 
 		body, err := yaml.Marshal(pvc)
@@ -451,7 +454,9 @@ func (d *svcDumper) Dump(logPath string, resourceWriter io.Writer) error {
 	}
 
 	svcs := api.ServiceList{}
-	for _, svc := range svcList.Items {
+	for i := range svcList.Items {
+		svc := svcList.Items[i]
+
 		svc.SetGroupVersionKind(v1.SchemeGroupVersion.WithKind("Service"))
 
 		body, err := yaml.Marshal(svc)
@@ -512,7 +517,9 @@ func (d *configMapDumper) Dump(logPath string, resourceWriter io.Writer) error {
 	}
 
 	cfgs := api.ConfigMapList{}
-	for _, cfg := range cfgList.Items {
+	for i := range cfgList.Items {
+		cfg := cfgList.Items[i]
+
 		cfg.SetGroupVersionKind(v1.SchemeGroupVersion.WithKind("ConfigMap"))
 
 		body, err := yaml.Marshal(cfg)
