@@ -111,7 +111,7 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			changePods: nil,
 			changeOldSet: func(set *apps.StatefulSet) {
 				set.Spec.Replicas = pointer.Int32Ptr(1)
-				set.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32Ptr(0)
+				set.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32Ptr(3)
 			},
 			transferLeaderErr: false,
 			errExpectFn: func(g *GomegaWithT, err error) {
