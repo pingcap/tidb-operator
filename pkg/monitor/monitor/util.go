@@ -51,7 +51,7 @@ func GetMonitorObjectName(monitor *v1alpha1.TidbMonitor) string {
 	return fmt.Sprintf("%s-monitor", monitor.Name)
 }
 func GetPromConfigMapName(monitor *v1alpha1.TidbMonitor) string {
-	return fmt.Sprintf("%s-monitor", monitor.Name)
+	return fmt.Sprintf("%s-monitor-prom", monitor.Name)
 }
 func GetGrafanaConfigMapName(monitor *v1alpha1.TidbMonitor) string {
 	return fmt.Sprintf("%s-monitor-grafana", monitor.Name)
