@@ -19,7 +19,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -437,7 +436,7 @@ func (tc *TidbCluster) PDStsDesiredOrdinals(excludeFailover bool) sets.Int32 {
 	if !excludeFailover {
 		replicas = tc.PDStsDesiredReplicas()
 	}
-	return helper.GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, tc.getDeleteSlots(label.PDLabelVal))
+	return GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, tc.getDeleteSlots(label.PDLabelVal))
 }
 
 // TiKVAllPodsStarted return whether all pods of TiKV are started.
@@ -494,7 +493,7 @@ func (tc *TidbCluster) TiKVStsDesiredOrdinals(excludeFailover bool) sets.Int32 {
 	if !excludeFailover {
 		replicas = tc.TiKVStsDesiredReplicas()
 	}
-	return helper.GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, tc.getDeleteSlots(label.TiKVLabelVal))
+	return GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, tc.getDeleteSlots(label.TiKVLabelVal))
 }
 
 // TiFlashAllPodsStarted return whether all pods of TiFlash are started.
@@ -559,7 +558,7 @@ func (tc *TidbCluster) TiFlashStsDesiredOrdinals(excludeFailover bool) sets.Int3
 	if !excludeFailover {
 		replicas = tc.TiFlashStsDesiredReplicas()
 	}
-	return helper.GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, tc.getDeleteSlots(label.TiFlashLabelVal))
+	return GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, tc.getDeleteSlots(label.TiFlashLabelVal))
 }
 
 // TiDBAllPodsStarted return whether all pods of TiDB are started.
@@ -616,7 +615,7 @@ func (tc *TidbCluster) TiDBStsDesiredOrdinals(excludeFailover bool) sets.Int32 {
 	if !excludeFailover {
 		replicas = tc.TiDBStsDesiredReplicas()
 	}
-	return helper.GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, tc.getDeleteSlots(label.TiDBLabelVal))
+	return GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, tc.getDeleteSlots(label.TiDBLabelVal))
 }
 
 // PDIsAvailable return whether PD is available.

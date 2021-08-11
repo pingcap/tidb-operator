@@ -41,6 +41,14 @@ KUBETEST2_VERSION=v0.1.0
 KUBETEST2_BIN=$OUTPUT_BIN/kubetest2
 AWS_K8S_TESTER_VERSION=v1.1.5
 AWS_K8S_TESTER_BIN=$OUTPUT_BIN/aws-k8s-tester
+GO_SUBMODULES=(
+    "github.com/pingcap/tidb-operator/pkg/apis"
+    "github.com/pingcap/tidb-operator/pkg/client"
+)
+GO_SUBMODULE_DIRS=(
+    "pkg/apis"
+    "pkg/client"
+)
 
 test -d "$OUTPUT_BIN" || mkdir -p "$OUTPUT_BIN"
 
