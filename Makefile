@@ -16,7 +16,6 @@ GOENV  := GO15VENDOREXPERIMENT="1" CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH)
 GO     := $(GOENV) go
 GO_BUILD := $(GO) build -trimpath
 GO_SUBMODULES = github.com/pingcap/tidb-operator/pkg/apis github.com/pingcap/tidb-operator/pkg/client
-GO_SUBMODULE_DIRS = pkg/apis pkg/client
 
 DOCKER_REGISTRY ?= localhost:5000
 DOCKER_REPO ?= ${DOCKER_REGISTRY}/pingcap
@@ -178,10 +177,9 @@ lint:
 	./hack/verify-lint.sh
 
 tidy:
-	@echo "go mod tidy"
-	for dir in . $(GO_SUBMODULE_DIRS); do \
-		cd $$dir && go mod tidy && git diff -U --exit-code go.mod go.sum && cd -; \
-	done
+	go mod tidy && git diff -U --exit-code go.mod go.sum
+	cd pkg/apis && go mod tidy && git diff -U --exit-code go.mod go.sum
+	cd pkg/client && go mod tidy && git diff -U --exit-code go.mod go.sum
 
 cli:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tkctl cmd/tkctl/main.go
