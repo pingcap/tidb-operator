@@ -164,8 +164,7 @@ scheduler:
   podAnnotations: {}
 
   # additional annotations for the configmap, mainly to prevent spinnaker versioning the cm
-  configmap:
-    annotations: {}
+  configmapAnnotations: {}
 
 # When AdvancedStatefulSet feature is enabled, you must install
 # AdvancedStatefulSet controller.
