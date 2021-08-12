@@ -1073,6 +1073,12 @@ func TestGetMonitorGrafanaContainer(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbMonitorSpec{
 					Grafana: &v1alpha1.GrafanaSpec{
+						PasswordSecret: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "basic-grafana",
+							},
+							Key: "password",
+						},
 						MonitorContainer: v1alpha1.MonitorContainer{
 							BaseImage: "hub.pingcap.net",
 							Version:   "latest",
@@ -1100,7 +1106,7 @@ func TestGetMonitorGrafanaContainer(t *testing.T) {
 						ValueFrom: &corev1.EnvVarSource{
 							SecretKeyRef: &corev1.SecretKeySelector{
 								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "foo",
+									Name: "basic-grafana",
 								},
 								Key: "password",
 							},

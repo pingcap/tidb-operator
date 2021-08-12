@@ -514,6 +514,23 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 }
 
 func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) core.Container {
+	//PasswordSecret will cover Password
+	var adminPasswordFrom *core.EnvVarSource
+	if monitor.Spec.Grafana.PasswordSecret != nil {
+		adminPasswordFrom = &core.EnvVarSource{
+			SecretKeyRef: monitor.Spec.Grafana.PasswordSecret,
+		}
+	} else {
+		adminPasswordFrom = &core.EnvVarSource{
+			SecretKeyRef: &core.SecretKeySelector{
+				LocalObjectReference: core.LocalObjectReference{
+					Name: secret.Name,
+				},
+				Key: "password",
+			},
+		}
+	}
+
 	c := core.Container{
 		Name:      "grafana",
 		Image:     fmt.Sprintf("%s:%s", monitor.Spec.Grafana.BaseImage, monitor.Spec.Grafana.Version),
@@ -542,15 +559,8 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 				},
 			},
 			{
-				Name: "GF_SECURITY_ADMIN_PASSWORD",
-				ValueFrom: &core.EnvVarSource{
-					SecretKeyRef: &core.SecretKeySelector{
-						LocalObjectReference: core.LocalObjectReference{
-							Name: secret.Name,
-						},
-						Key: "password",
-					},
-				},
+				Name:      "GF_SECURITY_ADMIN_PASSWORD",
+				ValueFrom: adminPasswordFrom,
 			},
 			{
 				Name:  "TZ",

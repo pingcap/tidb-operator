@@ -4,23 +4,20 @@ metadata:
   name: basic
 spec:
   clusters:
-  - name: basic
+    - name: basic
   prometheus:
-    config:
-      configMapRef:
-        name: external-config
-      commandOptions:
-        - --web.read-timeout=5m
-        - --web.max-connections=512
-        - --storage.remote.read-concurrent-limit=10
     baseImage: prom/prometheus
     version: v2.18.1
   grafana:
     baseImage: grafana/grafana
-    version: 7.5.7
+    version: 6.0.1
+    username: "admin"
+    passwordSecret:
+      name: basic-grafana
+      key: password
   initializer:
     baseImage: pingcap/tidb-monitor-initializer
-    version: v5.1.0
+    version: v3.0.13
   reloader:
     baseImage: pingcap/tidb-monitor-reloader
     version: v1.0.1
