@@ -57,8 +57,8 @@ edit_args=(
 )
 
 for repo in ${STAGING_REPOS[@]}; do
-    if version_ge "1.17.0" $VERSION; then
-        echo ">=1.17.0"
+    if version_ge "1.16.3" $VERSION; then
+        echo ">=1.16.3"
         staging_v=${VERSION/#1/0}
 	    edit_args+=(-replace $repo=$repo@v$staging_v)
     else
