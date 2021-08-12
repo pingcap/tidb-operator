@@ -158,6 +158,15 @@ const (
 	DMMasterLabelVal string = "dm-master"
 	// DMWorkerLabelVal is dm-worker label value
 	DMWorkerLabelVal string = "dm-worker"
+
+	// PrometheusVal is Prometheus label value
+	PrometheusVal string = "prometheus"
+
+	// GrafanaVal is Grafana label value
+	GrafanaVal string = "grafana"
+
+	// ApplicationLabelKey is App label key
+	ApplicationLabelKey string = "app.kubernetes.io/app"
 )
 
 // Label is the label field in metadata
@@ -268,6 +277,12 @@ func (l Label) Component(name string) Label {
 	return l
 }
 
+// Application adds application kv pair to label
+func (l Label) Application(name string) Label {
+	l[ApplicationLabelKey] = name
+	return l
+}
+
 // ComponentType returns component type
 func (l Label) ComponentType() string {
 	return l[ComponentLabelKey]
@@ -355,6 +370,16 @@ func (l Label) IsDMWorker() bool {
 // Monitor assigns monitor to component key in label
 func (l Label) Monitor() Label {
 	return l.Component(TiDBMonitorVal)
+}
+
+// Prometheus assigns prometheus to app key in the label
+func (l Label) Prometheus() Label {
+	return l.Application(PrometheusVal)
+}
+
+// Grafana assigns grafana to app key in the label
+func (l Label) Grafana() Label {
+	return l.Application(GrafanaVal)
 }
 
 // IsMonitor returns whether label is a Monitor component
