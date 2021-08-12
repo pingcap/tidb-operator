@@ -6240,7 +6240,7 @@ ServiceSpec
 <td>
 <code>passwordSecret</code></br>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#secretkeyselector-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#secretkeyselector-v1-core">
 Kubernetes core/v1.SecretKeySelector
 </a>
 </em>
@@ -6269,7 +6269,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Deprecated</p>
+<p>Deprecated in v1.2.1 for security concerns, planned for removal in v1.3.0. Use <code>passwordSecret</code> instead.</p>
 </td>
 </tr>
 <tr>
