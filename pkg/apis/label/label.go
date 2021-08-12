@@ -165,7 +165,7 @@ const (
 	// GrafanaVal is Grafana label value
 	GrafanaVal string = "grafana"
 
-	// ApplicationLabelKey is App label value
+	// ApplicationLabelKey is App label key
 	ApplicationLabelKey string = "app.kubernetes.io/app"
 )
 
@@ -372,12 +372,12 @@ func (l Label) Monitor() Label {
 	return l.Component(TiDBMonitorVal)
 }
 
-// Prometheus assigns prometheus to component key in label
+// Prometheus assigns prometheus to app key in the label
 func (l Label) Prometheus() Label {
 	return l.Application(PrometheusVal)
 }
 
-// Grafana assigns grafana to component key in label
+// Grafana assigns grafana to app key in the label
 func (l Label) Grafana() Label {
 	return l.Application(GrafanaVal)
 }
