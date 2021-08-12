@@ -297,6 +297,7 @@ func TestBatchDeleteObjectsOfS3(t *testing.T) {
 		for key := range errMap {
 			var rerr *ObjectError
 			for _, err := range result.Errors {
+				err := result.Errors[i]
 				if err.Key == key {
 					rerr = &err
 					break
