@@ -342,6 +342,14 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
 
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+		pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, tc.Name, false)
+		framework.ExpectNoError(err, "failed to create proxied PD client")
+		defer cancel()
+
+		evictLeaderSchedulers, err := pdClient.GetEvictLeaderSchedulers()
+		framework.ExpectNoError(err, "failed to get EvictLeader")
+		res := utiltc.MustPDHasScheduler(evictLeaderSchedulers, "evict-leader-scheduler")
+		framework.ExpectEqual(res, false)
 	})
 
 	// TODO: move into Upgrade cases below
