@@ -22,9 +22,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
@@ -50,6 +50,12 @@ func GetTLSAssetsSecretName(name string) string {
 func GetMonitorObjectName(monitor *v1alpha1.TidbMonitor) string {
 	return fmt.Sprintf("%s-monitor", monitor.Name)
 }
+func GetPromConfigMapName(monitor *v1alpha1.TidbMonitor) string {
+	return fmt.Sprintf("%s-monitor", monitor.Name)
+}
+func GetGrafanaConfigMapName(monitor *v1alpha1.TidbMonitor) string {
+	return fmt.Sprintf("%s-monitor-grafana", monitor.Name)
+}
 
 func GetMonitorFirstPVCName(name string) string {
 	return fmt.Sprintf(v1alpha1.TidbMonitorMemberType.String()+"-%s-monitor-0", name)
@@ -61,6 +67,14 @@ func GetMonitorObjectNameCrossNamespace(monitor *v1alpha1.TidbMonitor) string {
 
 func buildTidbMonitorLabel(name string) map[string]string {
 	return label.NewMonitor().Instance(name).Monitor().Labels()
+}
+
+func buildTidbMonitorPromLabel(name string) map[string]string {
+	return label.NewMonitor().Instance(name).Monitor().Prometheus().Labels()
+}
+
+func buildTidbMonitorGrafanaLabel(name string) map[string]string {
+	return label.NewMonitor().Instance(name).Monitor().Grafana().Labels()
 }
 
 func getInitCommand(monitor *v1alpha1.TidbMonitor) []string {
@@ -115,9 +129,9 @@ func getAlertManagerRulesVersion(tc *v1alpha1.TidbCluster, monitor *v1alpha1.Tid
 	return alertManagerRulesVersion
 }
 
-// getMonitorConfigMap generate the Prometheus config and Grafana config for TidbMonitor,
+// getPromConfigMap generate the Prometheus config for TidbMonitor,
 // If the namespace in ClusterRef is empty, we would set the TidbMonitor's namespace in the default
-func getMonitorConfigMap(monitor *v1alpha1.TidbMonitor, monitorClusterInfos []ClusterRegexInfo, dmClusterInfos []ClusterRegexInfo) (*core.ConfigMap, error) {
+func getPromConfigMap(monitor *v1alpha1.TidbMonitor, monitorClusterInfos []ClusterRegexInfo, dmClusterInfos []ClusterRegexInfo) (*core.ConfigMap, error) {
 	model := &MonitorConfigModel{
 		AlertmanagerURL:  "",
 		ClusterInfos:     monitorClusterInfos,
@@ -140,19 +154,32 @@ func getMonitorConfigMap(monitor *v1alpha1.TidbMonitor, monitorClusterInfos []Cl
 
 	cm := &core.ConfigMap{
 		ObjectMeta: meta.ObjectMeta{
-			Name:            GetMonitorObjectName(monitor),
+			Name:            GetPromConfigMapName(monitor),
 			Namespace:       monitor.Namespace,
-			Labels:          buildTidbMonitorLabel(monitor.Name),
+			Labels:          buildTidbMonitorPromLabel(monitor.Name),
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 		},
 		Data: map[string]string{
-			"prometheus-config": content,
+			"prometheus.yml": content,
 		},
 	}
-	if monitor.Spec.Grafana != nil {
-		cm.Data["dashboard-config"] = dashBoardConfig
-	}
 	return cm, nil
+}
+
+// getGrafanaConfigMap generates the Grafana config for TidbMonitor,
+func getGrafanaConfigMap(monitor *v1alpha1.TidbMonitor) *core.ConfigMap {
+	cm := &core.ConfigMap{
+		ObjectMeta: meta.ObjectMeta{
+			Name:            GetGrafanaConfigMapName(monitor),
+			Namespace:       monitor.Namespace,
+			Labels:          buildTidbMonitorGrafanaLabel(monitor.Name),
+			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
+		},
+		Data: map[string]string{
+			"dashboards.yaml": dashBoardConfig,
+		},
+	}
+	return cm
 }
 
 func getMonitorSecret(monitor *v1alpha1.TidbMonitor) *core.Secret {
@@ -673,7 +700,7 @@ func getMonitorReloaderContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.Tid
 	return c
 }
 
-func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor) []core.Volume {
+func getMonitorVolumes(monitor *v1alpha1.TidbMonitor) []core.Volume {
 	volumes := []core.Volume{}
 	if !monitor.Spec.Persistent {
 		monitorData := core.Volume{
@@ -689,13 +716,7 @@ func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor) []
 		VolumeSource: core.VolumeSource{
 			ConfigMap: &core.ConfigMapVolumeSource{
 				LocalObjectReference: core.LocalObjectReference{
-					Name: config.Name,
-				},
-				Items: []core.KeyToPath{
-					{
-						Key:  "prometheus-config",
-						Path: "prometheus.yml",
-					},
+					Name: GetPromConfigMapName(monitor),
 				},
 			},
 		},
@@ -713,13 +734,7 @@ func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor) []
 			VolumeSource: core.VolumeSource{
 				ConfigMap: &core.ConfigMapVolumeSource{
 					LocalObjectReference: core.LocalObjectReference{
-						Name: GetMonitorObjectName(monitor),
-					},
-					Items: []core.KeyToPath{
-						{
-							Key:  "dashboard-config",
-							Path: "dashboards.yaml",
-						},
+						Name: GetGrafanaConfigMapName(monitor),
 					},
 				},
 			},
@@ -991,7 +1006,7 @@ func defaultTidbMonitor(monitor *v1alpha1.TidbMonitor) {
 	}
 }
 
-func getMonitorStatefulSet(sa *core.ServiceAccount, config *core.ConfigMap, secret *core.Secret, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster) (*apps.StatefulSet, error) {
+func getMonitorStatefulSet(sa *core.ServiceAccount, secret *core.Secret, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster) (*apps.StatefulSet, error) {
 	statefulSet := getMonitorStatefulSetSkeleton(sa, monitor)
 	initContainer := getMonitorInitContainer(monitor, tc)
 	statefulSet.Spec.Template.Spec.InitContainers = append(statefulSet.Spec.Template.Spec.InitContainers, initContainer)
@@ -1014,7 +1029,7 @@ func getMonitorStatefulSet(sa *core.ServiceAccount, config *core.ConfigMap, secr
 		grafanaContainer := getMonitorGrafanaContainer(secret, monitor, tc)
 		statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, grafanaContainer)
 	}
-	volumes := getMonitorVolumes(config, monitor)
+	volumes := getMonitorVolumes(monitor)
 	statefulSet.Spec.Template.Spec.Volumes = volumes
 
 	volumeClaims := getMonitorVolumeClaims(monitor)
