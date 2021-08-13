@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
 	"github.com/pingcap/tidb-operator/pkg/version"
 	"github.com/spf13/cobra"

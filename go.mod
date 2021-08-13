@@ -27,7 +27,6 @@ require (
 	github.com/emicklei/go-restful v2.9.5+incompatible
 	github.com/fatih/color v1.7.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
-	github.com/go-openapi/spec v0.19.3
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/groupcache v0.0.0-20181024230925-c65c006176ff // indirect
@@ -44,7 +43,6 @@ require (
 	github.com/juju/testing v0.0.0-20180920084828-472a3e8b2073 // indirect
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/minio/minio-go/v6 v6.0.55
-	github.com/mohae/deepcopy v0.0.0-20170603005431-491d3605edfb
 	github.com/nwaples/rardecode v1.0.0 // indirect
 	github.com/onsi/ginkgo v1.10.3
 	github.com/onsi/gomega v1.5.0
@@ -56,6 +54,8 @@ require (
 	github.com/pingcap/errors v0.11.0
 	github.com/pingcap/kvproto v0.0.0-20200927054727-1290113160f0
 	github.com/pingcap/tidb v2.1.0-beta+incompatible
+	github.com/pingcap/tidb-operator/pkg/apis v0.0.0
+	github.com/pingcap/tidb-operator/pkg/client v0.0.0
 	github.com/prometheus/client_golang v1.0.0
 	github.com/prometheus/client_model v0.1.0
 	github.com/prometheus/common v0.7.0
@@ -90,14 +90,16 @@ require (
 	k8s.io/component-base v0.0.0
 	k8s.io/klog v1.0.0
 	k8s.io/kube-aggregator v0.0.0
-	k8s.io/kube-openapi v0.0.0-20190918143330-0270cf2f1c1d
 	k8s.io/kubectl v0.0.0
 	k8s.io/kubernetes v1.16.0
 	k8s.io/utils v0.0.0-20190801114015-581e00157fb1
 	sigs.k8s.io/apiserver-builder-alpha/cmd v0.0.0-20191113095113-4493943d2568
 	sigs.k8s.io/controller-runtime v0.4.0
-	sigs.k8s.io/yaml v1.1.0
 )
+
+replace github.com/pingcap/tidb-operator/pkg/apis => ./pkg/apis
+
+replace github.com/pingcap/tidb-operator/pkg/client => ./pkg/client
 
 replace github.com/renstrom/dedent => github.com/lithammer/dedent v1.1.0
 
