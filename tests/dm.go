@@ -42,10 +42,10 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework/log"
 	"k8s.io/utils/pointer"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	httputil "github.com/pingcap/tidb-operator/pkg/util/http"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 )
