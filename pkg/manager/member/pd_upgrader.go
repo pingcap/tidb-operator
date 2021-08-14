@@ -35,13 +35,6 @@ func NewPDUpgrader(deps *controller.Dependencies) Upgrader {
 }
 
 func (u *pdUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	// force upgrade when replicas less than 2
-	if *oldSet.Spec.Replicas < 2 {
-		klog.Infof("PD statefulset replicas are less than 2, force upgrade PD of tc %s/%s", tc.GetNamespace(), tc.GetName())
-		tc.Status.PD.Phase = v1alpha1.UpgradePhase
-		setUpgradePartition(newSet, 0)
-		return nil
-	}
 	return u.gracefulUpgrade(tc, oldSet, newSet)
 }
 
