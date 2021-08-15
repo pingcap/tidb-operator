@@ -19,7 +19,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 
 	"github.com/google/go-cmp/cmp"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -661,7 +661,8 @@ func TestWorkerSyncConfigUpdate(t *testing.T) {
 				})
 				g.Expect(using).NotTo(BeEmpty())
 				var usingCm *corev1.ConfigMap
-				for _, cm := range r.cms {
+				for i := range r.cms {
+					cm := r.cms[i]
 					if cm.Name == using {
 						usingCm = &cm
 					}

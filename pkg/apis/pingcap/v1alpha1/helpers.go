@@ -17,8 +17,8 @@ import (
 	"fmt"
 	"hash/fnv"
 
-	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"k8s.io/apimachinery/pkg/util/rand"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 // HashContents hashes the contents using FNV hashing. The returned hash will be a safe encoded string to avoid bad words.
@@ -35,7 +35,7 @@ func (tac *TiDBAccessConfig) GetTidbPort() int32 {
 	if tac.Port != 0 {
 		return tac.Port
 	}
-	return constants.DefaultTidbPort
+	return DefaultTidbPort
 }
 
 // GetTidbUser return the tidb user
@@ -43,10 +43,44 @@ func (tac *TiDBAccessConfig) GetTidbUser() string {
 	if len(tac.User) != 0 {
 		return tac.User
 	}
-	return constants.DefaultTidbUser
+	return DefaultTidbUser
 }
 
 // GetTidbEndpoint return the tidb endpoint for access tidb cluster directly
 func (tac *TiDBAccessConfig) GetTidbEndpoint() string {
 	return fmt.Sprintf("%s_%d", tac.Host, tac.GetTidbPort())
+}
+
+// workaround for removing dependency about package 'advanced-statefulset'
+// copy from https://github.com/pingcap/advanced-statefulset/blob/f94e356d25058396e94d33c3fe7224d5a2ca1517/client/apis/apps/v1/helper/helper.go#L94
+func GetPodOrdinalsFromReplicasAndDeleteSlots(replicas int32, deleteSlots sets.Int32) sets.Int32 {
+	maxReplicaCount, deleteSlots := GetMaxReplicaCountAndDeleteSlots(replicas, deleteSlots)
+	podOrdinals := sets.NewInt32()
+	for i := int32(0); i < maxReplicaCount; i++ {
+		if !deleteSlots.Has(i) {
+			podOrdinals.Insert(i)
+		}
+	}
+	return podOrdinals
+}
+
+// GetMaxReplicaCountAndDeleteSlots returns the max replica count and delete
+// slots. The desired slots of this stateful set will be [0, replicaCount) - [delete slots].
+//
+// workaround for removing dependency about package 'advanced-statefulset'
+// copy from https://github.com/pingcap/advanced-statefulset/blob/f94e356d25058396e94d33c3fe7224d5a2ca1517/client/apis/apps/v1/helper/helper.go#L74
+func GetMaxReplicaCountAndDeleteSlots(replicas int32, deleteSlots sets.Int32) (int32, sets.Int32) {
+	replicaCount := replicas
+	deleteSlotsCopy := sets.NewInt32()
+	for k := range deleteSlots {
+		deleteSlotsCopy.Insert(k)
+	}
+	for _, deleteSlot := range deleteSlotsCopy.List() {
+		if deleteSlot < replicaCount {
+			replicaCount++
+		} else {
+			deleteSlotsCopy.Delete(deleteSlot)
+		}
+	}
+	return replicaCount, deleteSlotsCopy
 }

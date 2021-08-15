@@ -23,8 +23,8 @@ import (
 	"k8s.io/client-go/tools/cache"
 
 	. "github.com/onsi/gomega"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/utils/pointer"
 )
