@@ -232,6 +232,7 @@ func (a *componentAccessorImpl) BuildPodSpec() corev1.PodSpec {
 		Tolerations:               a.Tolerations(),
 		SecurityContext:           a.PodSecurityContext(),
 		TopologySpreadConstraints: a.TopologySpreadConstraints(),
+		DNSPolicy:                 a.DnsPolicy(),
 	}
 	if a.PriorityClassName() != nil {
 		spec.PriorityClassName = *a.PriorityClassName()
