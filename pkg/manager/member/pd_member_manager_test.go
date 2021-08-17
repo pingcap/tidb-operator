@@ -899,6 +899,9 @@ func testHostNetwork(t *testing.T, hostNetwork bool, dnsPolicy v1.DNSPolicy) fun
 		if hostNetwork != sts.Spec.Template.Spec.HostNetwork {
 			t.Errorf("unexpected hostNetwork %v, want %v", sts.Spec.Template.Spec.HostNetwork, hostNetwork)
 		}
+		if len(dnsPolicy) == 0 {
+			dnsPolicy = v1.DNSClusterFirst
+		}
 		if dnsPolicy != sts.Spec.Template.Spec.DNSPolicy {
 			t.Errorf("unexpected dnsPolicy %v, want %v", sts.Spec.Template.Spec.DNSPolicy, dnsPolicy)
 		}
