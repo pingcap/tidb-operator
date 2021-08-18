@@ -64,7 +64,7 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
 						done
 						# Generate index.yaml for helm repo if the version is not "latest" (not a valid semantic version)
                         if [ "${RELEASE_TAG}" != "latest" ]; then
-                            wget https://storage.googleapis.com/kubernetes-helm/helm-v2.14.1-linux-amd64.tar.gz
+                            wget https://get.helm.sh/helm-v2.14.1-linux-amd64.tar.gz
                             tar -zxvf helm-v2.14.1-linux-amd64.tar.gz
                             mv linux-amd64/helm /usr/local/bin/helm
                             chmod +x /usr/local/bin/helm
