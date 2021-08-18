@@ -63,13 +63,8 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
 							./upload.py \${chartPrefixName}.sha256 \${chartPrefixName}.sha256
 						done
 						# Generate index.yaml for helm repo if the version is not "latest" (not a valid semantic version)
-<<<<<<< HEAD
                         if [ "${RELEASE_TAG}" != "latest" ]; then
-                            wget https://storage.googleapis.com/kubernetes-helm/helm-v2.14.1-linux-amd64.tar.gz
-=======
-                        if [ "${RELEASE_TAG}" != "latest" -a "${RELEASE_TAG}" != "nightly" ]; then
                             wget https://get.helm.sh/helm-v2.14.1-linux-amd64.tar.gz
->>>>>>> 25ab34d5... update URL of helm (#4146)
                             tar -zxvf helm-v2.14.1-linux-amd64.tar.gz
                             mv linux-amd64/helm /usr/local/bin/helm
                             chmod +x /usr/local/bin/helm
