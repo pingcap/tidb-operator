@@ -228,10 +228,13 @@ func newGcsStorageOption(conf *gcsConfig) []string {
 func makeS3Config(s3 *v1alpha1.S3StorageProvider, fakeRegion bool) *s3Config {
 	conf := s3Config{}
 
-	conf.bucket = s3.Bucket
+	path := strings.Trim(s3.Bucket, "/") + "/" + strings.Trim(s3.Prefix, "/")
+	fields := strings.SplitN(path, "/", 2)
+
+	conf.bucket = fields[0]
 	conf.region = s3.Region
 	conf.provider = string(s3.Provider)
-	conf.prefix = s3.Prefix
+	conf.prefix = fields[1]
 	conf.endpoint = s3.Endpoint
 	conf.sse = s3.SSE
 	conf.acl = s3.Acl
