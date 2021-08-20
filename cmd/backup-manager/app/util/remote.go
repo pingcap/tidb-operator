@@ -258,9 +258,12 @@ func makeS3Config(s3 *v1alpha1.S3StorageProvider, fakeRegion bool) *s3Config {
 func makeGcsConfig(gcs *v1alpha1.GcsStorageProvider, fakeRegion bool) *gcsConfig {
 	conf := gcsConfig{}
 
-	conf.bucket = gcs.Bucket
+	path := strings.Trim(gcs.Bucket, "/") + "/" + strings.Trim(gcs.Prefix, "/")
+	fields := strings.SplitN(path, "/", 2)
+
+	conf.bucket = fields[0]
 	conf.location = gcs.Location
-	conf.path = gcs.Path
+	conf.path = fields[1]
 	conf.projectId = gcs.ProjectId
 	conf.storageClass = gcs.StorageClass
 	conf.objectAcl = gcs.ObjectAcl
