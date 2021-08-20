@@ -263,13 +263,13 @@ func makeGcsConfig(gcs *v1alpha1.GcsStorageProvider, fakeRegion bool) *gcsConfig
 
 	conf.bucket = fields[0]
 	conf.location = gcs.Location
-	conf.path = fields[1]
+	conf.path = gcs.Path
 	conf.projectId = gcs.ProjectId
 	conf.storageClass = gcs.StorageClass
 	conf.objectAcl = gcs.ObjectAcl
 	conf.bucketAcl = gcs.BucketAcl
 	conf.secretName = gcs.SecretName
-	conf.prefix = gcs.Prefix
+	conf.prefix = fields[1]
 
 	return &conf
 }
