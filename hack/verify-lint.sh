@@ -23,15 +23,15 @@ cd $ROOT
 source hack/lib.sh
 
 pushd "${ROOT}/hack/tools" >/dev/null
-    GO111MODULE=on go install github.com/golangci/golangci-lint/cmd/golangci-lint
+    make golangci-lint OUTPUT_DIR=${OUTPUT_BIN}
 popd >/dev/null
 
 # main module
-golangci-lint run --timeout 10m $(go list ./... | sed 's|github.com/pingcap/tidb-operator/||')
+${OUTPUT_BIN}/golangci-lint run --timeout 10m $(go list ./... | sed 's|github.com/pingcap/tidb-operator/||')
 
 # sub modules
 for dir in ${GO_SUBMODULE_DIRS[@]}; do
     pushd "${ROOT}/${dir}" >/dev/null
-        golangci-lint run --timeout 10m
+        ${OUTPUT_BIN}/golangci-lint run --timeout 10m
     popd >/dev/null
 done
