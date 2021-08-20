@@ -50,7 +50,6 @@ type s3Config struct {
 type gcsConfig struct {
 	projectId    string
 	location     string
-	path         string
 	bucket       string
 	storageClass string
 	objectAcl    string
@@ -263,7 +262,6 @@ func makeGcsConfig(gcs *v1alpha1.GcsStorageProvider, fakeRegion bool) *gcsConfig
 
 	conf.bucket = fields[0]
 	conf.location = gcs.Location
-	conf.path = gcs.Path
 	conf.projectId = gcs.ProjectId
 	conf.storageClass = gcs.StorageClass
 	conf.objectAcl = gcs.ObjectAcl
