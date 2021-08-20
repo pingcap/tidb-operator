@@ -20,8 +20,10 @@ set -o pipefail
 ROOT=$(unset CDPATH && cd $(dirname "${BASH_SOURCE[0]}")/.. && pwd)
 cd $ROOT
 
+source hack/lib.sh
+
 pushd "${ROOT}/hack/tools" >/dev/null
-    GO111MODULE=on go install github.com/client9/misspell/cmd/misspell
+    make misspell OUTPUT_DIR=${OUTPUT_BIN}
 popd >/dev/null
 
 ignore_words=(
@@ -29,7 +31,7 @@ ignore_words=(
 )
 
 ret=0
-git ls-files | xargs misspell -i ${ignore_words[@]} -error -o stderr || ret=$?
+git ls-files | xargs ${OUTPUT_BIN}/misspell -i ${ignore_words[@]} -error -o stderr || ret=$?
 if [ $ret -eq 0 ]; then
     echo "Spellings all good!"
 else
