@@ -726,9 +726,9 @@ func oneFailureMember(tc *v1alpha1.TidbCluster) {
 		pd2: {Name: pd2, ID: "2", Health: true},
 	}
 
-	pvcUIDSet := make(map[types.UID]struct{})
-	pvcUIDSet[types.UID("pvc-1-uid-1")] = struct{}{}
-	pvcUIDSet[types.UID("pvc-1-uid-2")] = struct{}{}
+	pvcUIDSet := make(map[types.UID]v1alpha1.EmptyStruct)
+	pvcUIDSet[types.UID("pvc-1-uid-1")] = v1alpha1.EmptyStruct{}
+	pvcUIDSet[types.UID("pvc-1-uid-2")] = v1alpha1.EmptyStruct{}
 	tc.Status.PD.FailureMembers = map[string]v1alpha1.PDFailureMember{
 		pd1: {PodName: pd1, PVCUIDSet: pvcUIDSet, MemberID: "12891273174085095651"},
 	}
@@ -768,9 +768,9 @@ func oneNotReadyMemberAndAFailureMember(tc *v1alpha1.TidbCluster) {
 		pd2: {Name: pd2, ID: "2", Health: true},
 	}
 
-	pvcUIDSet := make(map[types.UID]struct{})
-	pvcUIDSet[types.UID("pvc-1-uid-1")] = struct{}{}
-	pvcUIDSet[types.UID("pvc-1-uid-2")] = struct{}{}
+	pvcUIDSet := make(map[types.UID]v1alpha1.EmptyStruct)
+	pvcUIDSet[types.UID("pvc-1-uid-1")] = v1alpha1.EmptyStruct{}
+	pvcUIDSet[types.UID("pvc-1-uid-2")] = v1alpha1.EmptyStruct{}
 	tc.Status.PD.FailureMembers = map[string]v1alpha1.PDFailureMember{
 		pd1: {PodName: pd1, PVCUIDSet: pvcUIDSet, MemberID: "12891273174085095651"},
 	}

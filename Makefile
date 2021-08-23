@@ -167,8 +167,7 @@ else
 endif
 	@echo -e "\nUnit tests run successfully!"
 
-ALL_CHECKS = EOF codegen boilerplate openapi-spec crd-groups spelling modules
-
+ALL_CHECKS = EOF codegen crd boilerplate openapi-spec api-references spelling modules
 check: $(addprefix check-,$(ALL_CHECKS)) lint tidy
 
 check-%:
@@ -176,6 +175,12 @@ check-%:
 
 lint:
 	./hack/verify-lint.sh
+
+crd:
+	./hack/update-crd.sh
+
+api-references:
+	./hack/update-api-references.sh
 
 tidy:
 	@echo "go mod tidy"
