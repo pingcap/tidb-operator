@@ -13922,6 +13922,7 @@ spec:
                 - status
                 - type
                 type: object
+              nullable: true
               type: array
             pd:
               properties:

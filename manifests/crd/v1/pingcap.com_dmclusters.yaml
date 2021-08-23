@@ -4914,6 +4914,7 @@ spec:
                   - status
                   - type
                   type: object
+                nullable: true
                 type: array
               master:
                 properties:

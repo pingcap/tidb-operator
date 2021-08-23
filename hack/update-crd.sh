@@ -51,5 +51,5 @@ for file in ${SKIP_CRD_FILES[@]}; do
 done
 
 # merge all CRDs
-cat ${CRD_OUTPUT_DIR}/v1/*.yaml > ${ROOT}/manifests/crd_v1.yaml
-cat ${CRD_OUTPUT_DIR}/v1beta1/*.yaml > ${ROOT}/manifests/crd.yaml
+cat ${CRD_OUTPUT_DIR}/v1/*.yaml > ${ROOT}/manifests/crd.yaml
+cat ${CRD_OUTPUT_DIR}/v1beta1/*.yaml > ${ROOT}/manifests/crd_v1beta1.yaml

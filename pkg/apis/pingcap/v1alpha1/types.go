@@ -315,6 +315,7 @@ type TidbClusterStatus struct {
 	AutoScaler *TidbClusterAutoScalerRef `json:"auto-scaler,omitempty"`
 	// Represents the latest available observations of a tidb cluster's state.
 	// +optional
+	// +nullable
 	Conditions []TidbClusterCondition `json:"conditions,omitempty"`
 }
 
@@ -1576,8 +1577,9 @@ type BackupStatus struct {
 	// CommitTs is the snapshot time point of tidb cluster.
 	CommitTs string `json:"commitTs,omitempty"`
 	// Phase is a user readable state inferred from the underlying Backup conditions
-	Phase      BackupConditionType `json:"phase,omitempty"`
-	Conditions []BackupCondition   `json:"conditions,omitempty"`
+	Phase BackupConditionType `json:"phase,omitempty"`
+	// +nullable
+	Conditions []BackupCondition `json:"conditions,omitempty"`
 }
 
 // +genclient
@@ -1795,8 +1797,9 @@ type RestoreStatus struct {
 	// CommitTs is the snapshot time point of tidb cluster.
 	CommitTs string `json:"commitTs,omitempty"`
 	// Phase is a user readable state inferred from the underlying Restore conditions
-	Phase      RestoreConditionType `json:"phase,omitempty"`
-	Conditions []RestoreCondition   `json:"conditions,omitempty"`
+	Phase RestoreConditionType `json:"phase,omitempty"`
+	// +nullable
+	Conditions []RestoreCondition `json:"conditions,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -1983,6 +1986,7 @@ type DMClusterStatus struct {
 
 	// Represents the latest available observations of a dm cluster's state.
 	// +optional
+	// +nullable
 	Conditions []DMClusterCondition `json:"conditions,omitempty"`
 }
 
