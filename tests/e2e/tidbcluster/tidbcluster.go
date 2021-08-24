@@ -297,6 +297,10 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		ginkgo.By("Deploy initial tc")
 		clusterName := "host-network"
 		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBLatest)
+		tc = fixture.AddTiFlashForTidbCluster(tc)
+		tc = fixture.AddTiCDCForTidbCluster(tc)
+		tc = fixture.AddPumpForTidbCluster(tc)
+
 		// Set some properties
 		tc.Spec.PD.Replicas = 1
 		tc.Spec.TiKV.Replicas = 1
@@ -306,6 +310,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		ginkgo.By("Switch to host network")
 		// TODO: Considering other components?
 		err := controller.GuaranteedUpdate(genericCli, tc, func() error {
+			tc.Spec.HostNetwork = pointer.BoolPtr(true)
 			tc.Spec.PD.HostNetwork = pointer.BoolPtr(true)
 			tc.Spec.TiKV.HostNetwork = pointer.BoolPtr(true)
 			tc.Spec.TiDB.HostNetwork = pointer.BoolPtr(true)
@@ -317,6 +322,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 		ginkgo.By("Switch back to pod network")
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+			tc.Spec.HostNetwork = pointer.BoolPtr(false)
 			tc.Spec.PD.HostNetwork = pointer.BoolPtr(false)
 			tc.Spec.TiKV.HostNetwork = pointer.BoolPtr(false)
 			tc.Spec.TiDB.HostNetwork = pointer.BoolPtr(false)
