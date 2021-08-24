@@ -660,13 +660,16 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 func getMonitorReloaderContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) core.Container {
 	c := core.Container{
 		Name:  "reloader",
-		Image: fmt.Sprintf("%s:%s", monitor.Spec.Reloader.BaseImage, monitor.Spec.Reloader.Version),
+		Image: "quay.io/prometheus-operator/prometheus-config-reloader:v0.49.0",
 		Command: []string{
-			"/bin/reload",
-			"--root-store-path=/data",
-			fmt.Sprintf("--sub-store-path=%s", getAlertManagerRulesVersion(tc, monitor)),
-			"--watch-path=/prometheus-rules/rules",
-			"--prometheus-url=http://127.0.0.1:9090",
+			" /bin/prometheus-config-reloader",
+		},
+		Args: []string{
+			"--listen-address=:9089",
+			"--reload-url=http://localhost:9090/-/reload",
+			"--config-file=/etc/prometheus/config/prometheus.yml",
+			"--config-envsubst-file=/etc/prometheus/config_out/prometheus.yml",
+			"--watched-dir=/prometheus-rules/rules /etc/prometheus/config/prometheus.yml",
 		},
 		Ports: []core.ContainerPort{
 			{
@@ -680,10 +683,6 @@ func getMonitorReloaderContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.Tid
 				Name:      "prometheus-rules",
 				MountPath: "/prometheus-rules",
 				ReadOnly:  false,
-			},
-			{
-				Name:      v1alpha1.TidbMonitorMemberType.String(),
-				MountPath: "/data",
 			},
 		},
 		Resources: controller.ContainerResource(monitor.Spec.Reloader.ResourceRequirements),
