@@ -370,7 +370,7 @@ type PDSpec struct {
 	ServiceAccount string `json:"serviceAccount,omitempty"`
 
 	// The desired ready replicas
-	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Minimum=0
 	Replicas int32 `json:"replicas"`
 
 	// Base image of the component, image tag is now allowed during validation

@@ -11746,7 +11746,7 @@ spec:
                   type: string
                 replicas:
                   format: int32
-                  minimum: 1
+                  minimum: 0
                   type: integer
                 requests:
                   additionalProperties:
