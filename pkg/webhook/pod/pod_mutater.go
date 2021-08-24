@@ -18,9 +18,9 @@ import (
 	"fmt"
 
 	"github.com/BurntSushi/toml"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/features"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
@@ -106,7 +106,8 @@ func (pc *PodAdmissionControl) tikvHotRegionSchedule(tc *v1alpha1.TidbCluster, p
 	}
 	// TODO: add document to explain the hot region label
 	config.Server.Labels["specialUse"] = "hotRegion"
-	for id, c := range pod.Spec.Containers {
+	for id := range pod.Spec.Containers {
+		c := pod.Spec.Containers[id]
 		if c.Name == "tikv" {
 			appendExtraLabelsENVForTiKV(config.Server.Labels, &c)
 			pod.Spec.Containers[id] = c

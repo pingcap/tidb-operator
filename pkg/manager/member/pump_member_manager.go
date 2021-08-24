@@ -20,14 +20,14 @@ import (
 	"path"
 	"strings"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/binlog"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
-	"github.com/pingcap/tidb-operator/pkg/util/config"
 	apps "k8s.io/api/apps/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -44,7 +44,7 @@ const (
 )
 
 type binlogClient interface {
-	PumpNodeStatus(ctx context.Context) (status []*binlog.NodeStatus, err error)
+	PumpNodeStatus(ctx context.Context) (status []*v1alpha1.PumpNodeStatus, err error)
 	Close() error
 }
 

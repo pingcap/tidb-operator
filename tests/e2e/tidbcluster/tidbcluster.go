@@ -46,15 +46,15 @@ import (
 	"k8s.io/utils/pointer"
 	ctrlCli "sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	tcconfig "github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/features"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/monitor/monitor"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
-	tcconfig "github.com/pingcap/tidb-operator/pkg/util/config"
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
@@ -297,6 +297,10 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		ginkgo.By("Deploy initial tc")
 		clusterName := "host-network"
 		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBLatest)
+		tc = fixture.AddTiFlashForTidbCluster(tc)
+		tc = fixture.AddTiCDCForTidbCluster(tc)
+		tc = fixture.AddPumpForTidbCluster(tc)
+
 		// Set some properties
 		tc.Spec.PD.Replicas = 1
 		tc.Spec.TiKV.Replicas = 1
@@ -306,6 +310,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		ginkgo.By("Switch to host network")
 		// TODO: Considering other components?
 		err := controller.GuaranteedUpdate(genericCli, tc, func() error {
+			tc.Spec.HostNetwork = pointer.BoolPtr(true)
 			tc.Spec.PD.HostNetwork = pointer.BoolPtr(true)
 			tc.Spec.TiKV.HostNetwork = pointer.BoolPtr(true)
 			tc.Spec.TiDB.HostNetwork = pointer.BoolPtr(true)
@@ -317,6 +322,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 		ginkgo.By("Switch back to pod network")
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+			tc.Spec.HostNetwork = pointer.BoolPtr(false)
 			tc.Spec.PD.HostNetwork = pointer.BoolPtr(false)
 			tc.Spec.TiKV.HostNetwork = pointer.BoolPtr(false)
 			tc.Spec.TiDB.HostNetwork = pointer.BoolPtr(false)

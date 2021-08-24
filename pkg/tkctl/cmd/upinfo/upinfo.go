@@ -17,10 +17,10 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/readable"
 	tkctlUtil "github.com/pingcap/tidb-operator/pkg/tkctl/util"
@@ -217,7 +217,8 @@ func renderTCUpgradeInfo(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, podLis
 				updateReplicas := set.Spec.UpdateStrategy.RollingUpdate.Partition
 
 				if len(podList.Items) != 0 {
-					for _, pod := range podList.Items {
+					for i := range podList.Items {
+						pod := podList.Items[i]
 						var state string
 						ordinal, err := util.GetOrdinalFromPodName(pod.Name)
 						if err != nil {

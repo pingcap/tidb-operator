@@ -18,8 +18,8 @@ import (
 	"io"
 	"time"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/alias"
 	apiv1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
