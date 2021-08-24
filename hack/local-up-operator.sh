@@ -167,18 +167,7 @@ if ! $KUBECTL_BIN get ns "$NAMESPACE" &>/dev/null; then
 fi
 
 echo "info: installing crds"
-for file in `ls manifests/crd/v1`; do
-    name=${file%.yaml}
-    # pingcap.com
-    crd_group=${name%%_*}
-    crd_resource=${name##*_}
-    crd_name=${crd_resource}.${crd_group}
-    if [[ -z `$KUBECTL_BIN get crd $crd_name --ignore-not-found` ]]; then
-        $KUBECTL_BIN create -f manifests/crd/v1/$file
-    else
-        $KUBECTL_BIN replace -f manifests/crd/v1/$file
-    fi
-done
+$KUBECTL_BIN apply -f manifests/crd.yaml
 
 echo "info: deploying tidb-operator"
 helm_template_args=(
