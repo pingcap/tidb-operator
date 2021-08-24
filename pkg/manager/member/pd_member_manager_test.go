@@ -22,11 +22,11 @@ import (
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/metapb"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	"github.com/pingcap/tidb-operator/pkg/util/toml"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -899,6 +899,9 @@ func testHostNetwork(t *testing.T, hostNetwork bool, dnsPolicy v1.DNSPolicy) fun
 		if hostNetwork != sts.Spec.Template.Spec.HostNetwork {
 			t.Errorf("unexpected hostNetwork %v, want %v", sts.Spec.Template.Spec.HostNetwork, hostNetwork)
 		}
+		if len(dnsPolicy) == 0 {
+			dnsPolicy = v1.DNSClusterFirst
+		}
 		if dnsPolicy != sts.Spec.Template.Spec.DNSPolicy {
 			t.Errorf("unexpected dnsPolicy %v, want %v", sts.Spec.Template.Spec.DNSPolicy, dnsPolicy)
 		}
@@ -1132,8 +1135,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 					Value: "tc-pd",
 				},
 				{
-					Name:  "TZ",
-					Value: "UTC",
+					Name: "TZ",
 				},
 				{
 					Name: "DASHBOARD_SESSION_SECRET",

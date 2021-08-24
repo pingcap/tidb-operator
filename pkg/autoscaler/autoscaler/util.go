@@ -19,9 +19,9 @@ import (
 	"sort"
 	"time"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -166,7 +166,9 @@ func defaultBasicAutoScaler(tac *v1alpha1.TidbClusterAutoScaler, component v1alp
 		return
 	}
 
-	for res, rule := range spec.Rules {
+	for res := range spec.Rules {
+		rule := spec.Rules[res]
+
 		if res == corev1.ResourceCPU {
 			if rule.MinThreshold == nil {
 				rule.MinThreshold = pointer.Float64Ptr(0.1)

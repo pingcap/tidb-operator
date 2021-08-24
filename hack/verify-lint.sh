@@ -20,8 +20,18 @@ set -o pipefail
 ROOT=$(unset CDPATH && cd $(dirname "${BASH_SOURCE[0]}")/.. && pwd)
 cd $ROOT
 
+source hack/lib.sh
+
 pushd "${ROOT}/hack/tools" >/dev/null
-    GO111MODULE=on go install github.com/golangci/golangci-lint/cmd/golangci-lint
+    make golangci-lint OUTPUT_DIR=${OUTPUT_BIN}
 popd >/dev/null
 
-golangci-lint run --timeout 10m $(go list ./... | sed 's|github.com/pingcap/tidb-operator/||')
+# main module
+${OUTPUT_BIN}/golangci-lint run --timeout 10m $(go list ./... | sed 's|github.com/pingcap/tidb-operator/||')
+
+# sub modules
+for dir in ${GO_SUBMODULE_DIRS[@]}; do
+    pushd "${ROOT}/${dir}" >/dev/null
+        ${OUTPUT_BIN}/golangci-lint run --timeout 10m
+    popd >/dev/null
+done

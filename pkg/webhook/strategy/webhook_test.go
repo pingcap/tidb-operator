@@ -102,8 +102,8 @@ func TestStrategyAdmissionHook_Admit(t *testing.T) {
 		g.Expect(s.prepareForUpdateTracker.GetRequests()).To(Equal(tt.expectedPrepareForUpdateTimes))
 	}
 
-	for _, tt := range testcases {
-		testFn(&tt)
+	for i := range testcases {
+		testFn(&testcases[i])
 	}
 }
 
@@ -210,10 +210,9 @@ func TestStrategyAdmissionHook_Validate(t *testing.T) {
 		g.Expect(s.validateUpdateTracker.GetRequests()).To(Equal(tt.expectedValidateForUpdateTimes))
 	}
 
-	for _, tt := range testcases {
-		testFn(&tt)
+	for i := range testcases {
+		testFn(&testcases[i])
 	}
-
 }
 
 type FakeStrategy struct {

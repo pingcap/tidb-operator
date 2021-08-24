@@ -21,10 +21,10 @@ import (
 	"github.com/google/go-cmp/cmp"
 	asappsv1 "github.com/pingcap/advanced-statefulset/client/apis/apps/v1"
 	asclientsetfake "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned/fake"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	versionedfake "github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	"github.com/pingcap/tidb-operator/pkg/features"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -637,21 +637,24 @@ func TestUpgrade(t *testing.T) {
 		asCli := asclientsetfake.NewSimpleClientset()
 		cli := versionedfake.NewSimpleClientset()
 
-		for _, tc := range tt.tidbClusters {
+		for i := range tt.tidbClusters {
+			tc := tt.tidbClusters[i]
 			_, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(&tc)
 			if err != nil {
 				t.Fatal(err)
 			}
 		}
 
-		for _, sts := range tt.statefulsets {
+		for i := range tt.statefulsets {
+			sts := tt.statefulsets[i]
 			_, err = kubeCli.AppsV1().StatefulSets(sts.Namespace).Create(&sts)
 			if err != nil {
 				t.Fatal(err)
 			}
 		}
 
-		for _, sts := range tt.advancedStatefulsets {
+		for i := range tt.advancedStatefulsets {
+			sts := tt.advancedStatefulsets[i]
 			_, err = asCli.AppsV1().StatefulSets(sts.Namespace).Create(&sts)
 			if err != nil {
 				t.Fatal(err)
