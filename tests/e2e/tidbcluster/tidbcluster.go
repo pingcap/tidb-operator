@@ -337,6 +337,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		clusterName := "upgrade-cluster-tikv-1"
 		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBLatestPrev)
 		tc.Spec.TiKV.Replicas = 1
+		tc.Spec.TiKV.EvictLeaderTimeout = pointer.StringPtr("10m")
 		// Deploy
 		utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 5*time.Second)
 		ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", tc.Spec.Version, utilimage.TiDBLatest))
@@ -345,7 +346,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			return nil
 		})
 		framework.ExpectNoError(err, "failed to upgrade TidbCluster: %q", tc.Name)
-		err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
+		err = oa.WaitForTidbClusterReady(tc, 5*time.Minute, 5*time.Second)
 
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 		pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, tc.Name, false)
