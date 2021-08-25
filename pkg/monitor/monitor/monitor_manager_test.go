@@ -114,6 +114,26 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 
 	tests := []testcase{
 		{
+			name: "tidbmonitor spec prometheus config reloader",
+			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
+
+				monitor.Spec.PrometheusReloader = &v1alpha1.PrometheusReloaderSpec{
+					MonitorContainer: v1alpha1.MonitorContainer{
+						BaseImage: "quay.io/prometheus-operator/prometheus-config-reloaders",
+						Version:   "v0.49.0",
+					},
+				}
+			},
+			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
+				sts, err := tmm.deps.StatefulSetLister.StatefulSets(tm.Namespace).Get(GetMonitorObjectName(tm))
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(3))
+			},
+			stsCreated:    true,
+			svcCreated:    true,
+			volumeCreated: false,
+		},
+		{
 			name: "tidbmonitor spec remote write",
 			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
 				monitor.Spec.Prometheus.RemoteWrite = []*v1alpha1.RemoteWriteSpec{
@@ -155,29 +175,6 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 				}
 			},
 			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
-				errExpectRequeuefunc(g, err, tmm, tm)
-				svc, err := tmm.deps.ServiceLister.Services(tm.Namespace).Get(prometheusName(tm))
-				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(svc.Spec.Ports).To(Equal([]v1.ServicePort{
-					{
-						Name:       "http-prometheus",
-						Port:       9090,
-						Protocol:   v1.ProtocolTCP,
-						TargetPort: intstr.FromInt(9090),
-					}, {
-						Name:       "thanos-grpc",
-						Port:       10901,
-						Protocol:   v1.ProtocolTCP,
-						TargetPort: intstr.FromInt(10901),
-					},
-					{
-						Name:       "thanos-http",
-						Port:       10902,
-						Protocol:   v1.ProtocolTCP,
-						TargetPort: intstr.FromInt(10902),
-					},
-				}))
-
 				sts, err := tmm.deps.StatefulSetLister.StatefulSets(tm.Namespace).Get(GetMonitorObjectName(tm))
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(3))
