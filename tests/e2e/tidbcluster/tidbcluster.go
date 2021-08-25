@@ -342,7 +342,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		err := genericCli.Create(context.TODO(), tc)
 		framework.ExpectNoError(err, "failed to create TidbCluster %s/%s", tc.Namespace, tc.Name)
 
-		utiltc.WaitForTidbClusterCondition(cli, tc.Namespace, tc.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
+		err = utiltc.WaitForTidbClusterCondition(cli, tc.Namespace, tc.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
 			if len(tc.Status.Conditions) < 1 {
 				return false, nil
 			}
@@ -351,11 +351,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			}
 			return false, nil
 		})
+		framework.ExpectNoError(err)
 
-		ginkgo.By(fmt.Sprintf("Force Upgrading tidb cluster from %s to %s with ignoring PD error", tc.Spec.Version, utilimage.TiDBLatest))
+		ginkgo.By(fmt.Sprintf("Force Upgrading tidb cluster ignoring PD error"))
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 			tc.Spec.PD.BaseImage = "pingcap/pd"
-			tc.Spec.Version = utilimage.TiDBLatest
 			return nil
 		})
 		framework.ExpectNoError(err, "failed to upgrade TidbCluster: %q", tc.Name)
