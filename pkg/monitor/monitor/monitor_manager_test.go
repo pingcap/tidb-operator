@@ -125,6 +125,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 				}
 			},
 			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
+				errExpectRequeuefunc(g, err, tmm, tm)
 				sts, err := tmm.deps.StatefulSetLister.StatefulSets(tm.Namespace).Get(GetMonitorObjectName(tm))
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(3))
@@ -175,6 +176,29 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 				}
 			},
 			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
+				errExpectRequeuefunc(g, err, tmm, tm)
+				svc, err := tmm.deps.ServiceLister.Services(tm.Namespace).Get(prometheusName(tm))
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(svc.Spec.Ports).To(Equal([]v1.ServicePort{
+					{
+						Name:       "http-prometheus",
+						Port:       9090,
+						Protocol:   v1.ProtocolTCP,
+						TargetPort: intstr.FromInt(9090),
+					}, {
+						Name:       "thanos-grpc",
+						Port:       10901,
+						Protocol:   v1.ProtocolTCP,
+						TargetPort: intstr.FromInt(10901),
+					},
+					{
+						Name:       "thanos-http",
+						Port:       10902,
+						Protocol:   v1.ProtocolTCP,
+						TargetPort: intstr.FromInt(10902),
+					},
+				}))
+
 				sts, err := tmm.deps.StatefulSetLister.StatefulSets(tm.Namespace).Get(GetMonitorObjectName(tm))
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(3))
