@@ -19,6 +19,41 @@ spec:
     baseImage: pingcap/tidb-monitor-initializer
     version: v5.1.1
   reloader:
-    baseImage: quay.io/prometheus-operator/prometheus-config-reloader
-    version: v0.49.0
+    baseImage: pingcap/tidb-monitor-reloader
+    version: v1.0.1
+  additionalContainers:
+    - name: prometheus-reloader
+      ports:
+        - containerPort: 9088
+          name: http
+      image: quay.io/prometheus-operator/prometheus-config-reloader:v0.49.0
+      imagePullPolicy: IfNotPresent
+      command:
+        - "/bin/prometheus-config-reloader"
+        - "--listen-address=:9088"
+        - "--reload-url=http://localhost:9090/-/reload"
+        - "--config-file=/etc/prometheus/config/prometheus.yml"
+        - "--config-envsubst-file=/etc/prometheus/config_out/prometheus.yml"
+        - "--watched-dir=/etc/prometheus/config/prometheus.yml"
+      resources:
+        limits:
+          cpu: "1"
+          memory: 1G
+        requests:
+          cpu: "1"
+          memory: 1G
+      volumeMounts:
+        - name: prometheus-config-out
+          mountPath: /etc/prometheus/config_out
+        - name: prometheus-config
+          mountPath: /etc/prometheus/config
+      env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
   imagePullPolicy: IfNotPresent

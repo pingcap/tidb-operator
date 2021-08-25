@@ -440,7 +440,7 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 	} else {
 		retention = fmt.Sprintf("%dd", monitor.Spec.Prometheus.ReserveDays)
 	}
-	commands := []string{"/bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/etc/prometheus/config_out/prometheus.yml --storage.tsdb.path=/data/prometheus --storage.tsdb.retention.time=" + retention}
+	commands := []string{"sed 's/$(NAMESPACE)/'\"$(NAMESPACE)\"'/g;s/$(POD_NAME)/'\"$(POD_NAME)\"'/g' /etc/prometheus/config/prometheus.yml > /etc/prometheus/config_out/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/etc/prometheus/config_out/prometheus.yml --storage.tsdb.path=/data/prometheus --storage.tsdb.retention.time=" + retention}
 	c := core.Container{
 		Name:      "prometheus",
 		Image:     fmt.Sprintf("%s:%s", monitor.Spec.Prometheus.BaseImage, monitor.Spec.Prometheus.Version),
@@ -662,12 +662,11 @@ func getMonitorReloaderContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.Tid
 		Name:  "reloader",
 		Image: fmt.Sprintf("%s:%s", monitor.Spec.Reloader.BaseImage, monitor.Spec.Reloader.Version),
 		Command: []string{
-			"/bin/prometheus-config-reloader",
-			"--listen-address=:9089",
-			"--reload-url=http://localhost:9090/-/reload",
-			"--config-file=/etc/prometheus/config/prometheus.yml",
-			"--config-envsubst-file=/etc/prometheus/config_out/prometheus.yml",
-			"--watched-dir=/etc/prometheus/config/prometheus.yml",
+			"/bin/reload",
+			"--root-store-path=/data",
+			fmt.Sprintf("--sub-store-path=%s", getAlertManagerRulesVersion(tc, monitor)),
+			"--watch-path=/prometheus-rules/rules",
+			"--prometheus-url=http://127.0.0.1:9090",
 		},
 		Ports: []core.ContainerPort{
 			{
@@ -683,13 +682,8 @@ func getMonitorReloaderContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.Tid
 				ReadOnly:  false,
 			},
 			{
-				Name:      "prometheus-config-out",
-				MountPath: "/etc/prometheus/config_out",
-				ReadOnly:  false,
-			},
-			{
-				Name:      "prometheus-config",
-				MountPath: "/etc/prometheus/config",
+				Name:      v1alpha1.TidbMonitorMemberType.String(),
+				MountPath: "/data",
 			},
 		},
 		Resources: controller.ContainerResource(monitor.Spec.Reloader.ResourceRequirements),
@@ -697,18 +691,6 @@ func getMonitorReloaderContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.Tid
 			{
 				Name:  "TZ",
 				Value: tc.Timezone(),
-			},
-			{
-				Name: "POD_NAME",
-				ValueFrom: &core.EnvVarSource{
-					FieldRef: &core.ObjectFieldSelector{FieldPath: "metadata.name"},
-				},
-			},
-			{
-				Name: "NAMESPACE",
-				ValueFrom: &core.EnvVarSource{
-					FieldRef: &core.ObjectFieldSelector{FieldPath: "metadata.namespace"},
-				},
 			},
 		},
 	}
