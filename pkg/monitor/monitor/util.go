@@ -440,7 +440,7 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 	} else {
 		retention = fmt.Sprintf("%dd", monitor.Spec.Prometheus.ReserveDays)
 	}
-	commands := []string{"sed 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g' /etc/prometheus/config/prometheus.yml > /etc/prometheus/config_out/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/etc/prometheus/config_out/prometheus.yml --storage.tsdb.path=/data/prometheus --storage.tsdb.retention.time=" + retention}
+	commands := []string{"/bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/etc/prometheus/config_out/prometheus.yml --storage.tsdb.path=/data/prometheus --storage.tsdb.retention.time=" + retention}
 	c := core.Container{
 		Name:      "prometheus",
 		Image:     fmt.Sprintf("%s:%s", monitor.Spec.Prometheus.BaseImage, monitor.Spec.Prometheus.Version),
@@ -660,16 +660,14 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 func getMonitorReloaderContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) core.Container {
 	c := core.Container{
 		Name:  "reloader",
-		Image: "quay.io/prometheus-operator/prometheus-config-reloader:v0.49.0",
+		Image: fmt.Sprintf("%s:%s", monitor.Spec.Reloader.BaseImage, monitor.Spec.Reloader.Version),
 		Command: []string{
-			" /bin/prometheus-config-reloader",
-		},
-		Args: []string{
+			"/bin/prometheus-config-reloader",
 			"--listen-address=:9089",
 			"--reload-url=http://localhost:9090/-/reload",
 			"--config-file=/etc/prometheus/config/prometheus.yml",
 			"--config-envsubst-file=/etc/prometheus/config_out/prometheus.yml",
-			"--watched-dir=/prometheus-rules/rules /etc/prometheus/config/prometheus.yml",
+			"--watched-dir=/etc/prometheus/config/prometheus.yml",
 		},
 		Ports: []core.ContainerPort{
 			{
@@ -684,12 +682,33 @@ func getMonitorReloaderContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.Tid
 				MountPath: "/prometheus-rules",
 				ReadOnly:  false,
 			},
+			{
+				Name:      "prometheus-config-out",
+				MountPath: "/etc/prometheus/config_out",
+				ReadOnly:  false,
+			},
+			{
+				Name:      "prometheus-config",
+				MountPath: "/etc/prometheus/config",
+			},
 		},
 		Resources: controller.ContainerResource(monitor.Spec.Reloader.ResourceRequirements),
 		Env: []core.EnvVar{
 			{
 				Name:  "TZ",
 				Value: tc.Timezone(),
+			},
+			{
+				Name: "POD_NAME",
+				ValueFrom: &core.EnvVarSource{
+					FieldRef: &core.ObjectFieldSelector{FieldPath: "metadata.name"},
+				},
+			},
+			{
+				Name: "NAMESPACE",
+				ValueFrom: &core.EnvVarSource{
+					FieldRef: &core.ObjectFieldSelector{FieldPath: "metadata.namespace"},
+				},
 			},
 		},
 	}
@@ -1245,7 +1264,7 @@ func buildExternalLabels(monitor *v1alpha1.TidbMonitor) model.LabelSet {
 		}
 	}
 	if replicaExternalLabelName != "" {
-		m[model.LabelName(replicaExternalLabelName)] = "$NAMESPACE_$POD_NAME"
+		m[model.LabelName(replicaExternalLabelName)] = "$(NAMESPACE)_$(POD_NAME)"
 	}
 	for n, v := range monitor.Spec.ExternalLabels {
 		m[model.LabelName(n)] = model.LabelValue(v)
