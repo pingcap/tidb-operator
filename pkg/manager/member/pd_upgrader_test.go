@@ -18,9 +18,9 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -275,8 +275,8 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
-		testFn(&test)
+	for i := range tests {
+		testFn(&tests[i])
 	}
 
 }

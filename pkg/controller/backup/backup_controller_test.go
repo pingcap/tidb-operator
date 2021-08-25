@@ -21,10 +21,9 @@ import (
 	"time"
 
 	. "github.com/onsi/gomega"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -311,8 +310,8 @@ func newBackup() *v1alpha1.Backup {
 		Spec: v1alpha1.BackupSpec{
 			From: &v1alpha1.TiDBAccessConfig{
 				Host:       "10.1.1.2",
-				Port:       constants.DefaultTidbPort,
-				User:       constants.DefaultTidbUser,
+				Port:       v1alpha1.DefaultTidbPort,
+				User:       v1alpha1.DefaultTidbUser,
 				SecretName: "demo1-tidb-secret",
 			},
 			StorageProvider: v1alpha1.StorageProvider{

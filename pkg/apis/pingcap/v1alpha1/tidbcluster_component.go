@@ -14,7 +14,7 @@
 package v1alpha1
 
 import (
-	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -232,6 +232,7 @@ func (a *componentAccessorImpl) BuildPodSpec() corev1.PodSpec {
 		Tolerations:               a.Tolerations(),
 		SecurityContext:           a.PodSecurityContext(),
 		TopologySpreadConstraints: a.TopologySpreadConstraints(),
+		DNSPolicy:                 a.DnsPolicy(),
 	}
 	if a.PriorityClassName() != nil {
 		spec.PriorityClassName = *a.PriorityClassName()

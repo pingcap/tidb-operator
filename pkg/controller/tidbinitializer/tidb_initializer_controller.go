@@ -26,8 +26,8 @@ import (
 	"k8s.io/klog"
 
 	perrors "github.com/pingcap/errors"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
 )
 

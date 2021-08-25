@@ -84,6 +84,7 @@ func TestGetMonitorConfigMap(t *testing.T) {
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "monitor",
+						"app.kubernetes.io/app":        "prometheus",
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
@@ -102,7 +103,7 @@ func TestGetMonitorConfigMap(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			cm, err := getMonitorConfigMap(&tt.monitor, tt.monitorClusterInfos, nil)
+			cm, err := getPromConfigMap(&tt.monitor, tt.monitorClusterInfos, nil)
 			g.Expect(err).NotTo(HaveOccurred())
 			if tt.expected == nil {
 				g.Expect(cm).To(BeNil())
@@ -687,8 +688,6 @@ func TestGetMonitorService(t *testing.T) {
 }
 
 func TestGetMonitorVolumes(t *testing.T) {
-	g := NewGomegaWithT(t)
-
 	testCases := []struct {
 		name      string
 		cluster   v1alpha1.TidbCluster
@@ -725,12 +724,6 @@ func TestGetMonitorVolumes(t *testing.T) {
 							ConfigMap: &corev1.ConfigMapVolumeSource{
 								LocalObjectReference: corev1.LocalObjectReference{
 									Name: "foo-monitor",
-								},
-								Items: []corev1.KeyToPath{
-									corev1.KeyToPath{
-										Key:  "prometheus-config",
-										Path: "prometheus.yml",
-									},
 								},
 							},
 						},
@@ -793,12 +786,6 @@ func TestGetMonitorVolumes(t *testing.T) {
 							ConfigMap: &corev1.ConfigMapVolumeSource{
 								LocalObjectReference: corev1.LocalObjectReference{
 									Name: "foo-monitor",
-								},
-								Items: []corev1.KeyToPath{
-									corev1.KeyToPath{
-										Key:  "prometheus-config",
-										Path: "prometheus.yml",
-									},
 								},
 							},
 						},
@@ -870,12 +857,6 @@ func TestGetMonitorVolumes(t *testing.T) {
 								LocalObjectReference: corev1.LocalObjectReference{
 									Name: "foo-monitor",
 								},
-								Items: []corev1.KeyToPath{
-									corev1.KeyToPath{
-										Key:  "prometheus-config",
-										Path: "prometheus.yml",
-									},
-								},
 							},
 						},
 					},
@@ -908,9 +889,7 @@ func TestGetMonitorVolumes(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			cm, err := getMonitorConfigMap(&tt.monitor, nil, nil)
-			g.Expect(err).NotTo(HaveOccurred())
-			sa := getMonitorVolumes(cm, &tt.monitor)
+			sa := getMonitorVolumes(&tt.monitor)
 			tt.expected(sa)
 		})
 	}

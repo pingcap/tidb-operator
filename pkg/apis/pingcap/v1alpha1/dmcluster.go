@@ -18,8 +18,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
-	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -106,7 +105,7 @@ func (dc *DMCluster) MasterStsDesiredOrdinals(excludeFailover bool) sets.Int32 {
 	if !excludeFailover {
 		replicas = dc.MasterStsDesiredReplicas()
 	}
-	return helper.GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, dc.getDeleteSlots(label.DMMasterLabelVal))
+	return GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, dc.getDeleteSlots(label.DMMasterLabelVal))
 }
 
 func (dc *DMCluster) WorkerStsActualReplicas() int32 {
@@ -133,7 +132,7 @@ func (dc *DMCluster) WorkerStsDesiredOrdinals(excludeFailover bool) sets.Int32 {
 	if !excludeFailover {
 		replicas = dc.WorkerStsDesiredReplicas()
 	}
-	return helper.GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, dc.getDeleteSlots(label.DMWorkerLabelVal))
+	return GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, dc.getDeleteSlots(label.DMWorkerLabelVal))
 }
 
 func (dc *DMCluster) GetInstanceName() string {
