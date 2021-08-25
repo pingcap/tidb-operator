@@ -145,3 +145,12 @@ func MustWaitForTiDBPhase(c versioned.Interface, tc *v1alpha1.TidbCluster, phase
 	})
 	framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s .Status.TiDB.Phase to be %q", tc.Namespace, tc.Name, v1alpha1.ScalePhase)
 }
+
+func MustPDHasScheduler(pdSchedulers []string, scheduler string) bool {
+	for _, s := range pdSchedulers {
+		if strings.Contains(s, scheduler) {
+			return true
+		}
+	}
+	return false
+}
