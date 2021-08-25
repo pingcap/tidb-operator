@@ -353,7 +353,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		})
 		framework.ExpectNoError(err)
 
-		ginkgo.By(fmt.Sprintf("Force Upgrading tidb cluster ignoring PD error"))
+		ginkgo.By("Force Upgrading tidb cluster ignoring PD error")
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 			tc.Spec.PD.BaseImage = "pingcap/pd"
 			return nil
