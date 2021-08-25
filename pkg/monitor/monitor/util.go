@@ -657,6 +657,59 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 	return c
 }
 
+func getMonitorPrometheusReloaderContainer(monitor *v1alpha1.TidbMonitor) core.Container {
+	c := core.Container{
+		Name:  "prometheus-config-reloader",
+		Image: fmt.Sprintf("%s:%s", monitor.Spec.PrometheusReloader.BaseImage, monitor.Spec.PrometheusReloader.Version),
+		Command: []string{
+			"/bin/prometheus-config-reloader",
+			"--listen-address=:9088",
+			"--reload-url=http://localhost:9090/-/reload",
+			"--config-file=/etc/prometheus/config/prometheus.yml",
+			"--config-envsubst-file=/etc/prometheus/config_out/prometheus.yml",
+			"--watched-dir=/etc/prometheus/config/prometheus.yml",
+		},
+		Ports: []core.ContainerPort{
+			{
+				Name:          "reloader",
+				ContainerPort: 9088,
+				Protocol:      core.ProtocolTCP,
+			},
+		},
+		Resources: controller.ContainerResource(monitor.Spec.PrometheusReloader.ResourceRequirements),
+		Env: []core.EnvVar{
+			{
+				Name: "POD_NAME",
+				ValueFrom: &core.EnvVarSource{
+					FieldRef: &core.ObjectFieldSelector{FieldPath: "metadata.name"},
+				},
+			},
+			{
+				Name: "NAMESPACE",
+				ValueFrom: &core.EnvVarSource{
+					FieldRef: &core.ObjectFieldSelector{FieldPath: "metadata.namespace"},
+				},
+			},
+		},
+		VolumeMounts: []core.VolumeMount{
+			{
+				Name:      "prometheus-config-out",
+				MountPath: "/etc/prometheus/config_out",
+				ReadOnly:  false,
+			},
+			{
+				Name:      "prometheus-config",
+				MountPath: "/etc/prometheus/config",
+				ReadOnly:  true,
+			},
+		},
+	}
+	if monitor.Spec.PrometheusReloader.ImagePullPolicy != nil {
+		c.ImagePullPolicy = *monitor.Spec.PrometheusReloader.ImagePullPolicy
+	}
+	return c
+}
+
 func getMonitorReloaderContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) core.Container {
 	c := core.Container{
 		Name:  "reloader",
@@ -1020,6 +1073,11 @@ func getMonitorStatefulSet(sa *core.ServiceAccount, secret *core.Secret, monitor
 	if monitor.Spec.Thanos != nil {
 		thanosSideCarContainer := getThanosSidecarContainer(monitor)
 		statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, thanosSideCarContainer)
+	}
+	if monitor.Spec.PrometheusReloader != nil {
+		prometheusReloaderContainer := getMonitorPrometheusReloaderContainer(monitor)
+		statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, prometheusReloaderContainer)
+
 	}
 	additionalContainers := monitor.Spec.AdditionalContainers
 	if len(additionalContainers) > 0 {

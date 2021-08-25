@@ -126,6 +126,15 @@ type TidbMonitorSpec struct {
 	// if `AlertmanagerURL` is not configured.
 	// +optional
 	EnableAlertRules bool `json:"enableAlertRules,omitempty"`
+
+	//PrometheusReloader set prometheus  reloader configuration
+	//+optional
+	PrometheusReloader *PrometheusReloaderSpec `json:"prometheusReloader"`
+}
+
+// PrometheusReloaderSpec is the desired state of prometheus configuration reloader
+type PrometheusReloaderSpec struct {
+	MonitorContainer `json:",inline"`
 }
 
 // PrometheusSpec is the desired state of prometheus
