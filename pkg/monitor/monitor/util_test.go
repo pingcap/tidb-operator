@@ -1073,6 +1073,12 @@ func TestGetMonitorGrafanaContainer(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbMonitorSpec{
 					Grafana: &v1alpha1.GrafanaSpec{
+						UsernameSecret: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "basic-grafana",
+							},
+							Key: "username",
+						},
 						PasswordSecret: &corev1.SecretKeySelector{
 							LocalObjectReference: corev1.LocalObjectReference{
 								Name: "basic-grafana",
@@ -1117,7 +1123,7 @@ func TestGetMonitorGrafanaContainer(t *testing.T) {
 						ValueFrom: &corev1.EnvVarSource{
 							SecretKeyRef: &corev1.SecretKeySelector{
 								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "foo",
+									Name: "basic-grafana",
 								},
 								Key: "username",
 							},

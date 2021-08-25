@@ -6238,6 +6238,20 @@ ServiceSpec
 </tr>
 <tr>
 <td>
+<code>usernameSecret</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#secretkeyselector-v1-core">
+Kubernetes core/v1.SecretKeySelector
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>if UsernameSecret is omitted, Grafana will use <code>admin</code> as its username by default.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>passwordSecret</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#secretkeyselector-v1-core">
@@ -6247,7 +6261,7 @@ Kubernetes core/v1.SecretKeySelector
 </td>
 <td>
 <em>(Optional)</em>
-<p>if passwordSecret is omitted, Grafana will use <code>admin</code> as its password by default.</p>
+<p>if PasswordSecret is omitted, Grafana will use <code>admin</code> as its password by default.</p>
 </td>
 </tr>
 <tr>
@@ -6258,6 +6272,8 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
+<p>Deprecated in v1.2.1 for security concerns, planned for removal in v1.3.0. Use <code>usernameSecret</code> instead.</p>
 </td>
 </tr>
 <tr>
