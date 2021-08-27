@@ -6251,12 +6251,42 @@ ServiceSpec
 </tr>
 <tr>
 <td>
+<code>usernameSecret</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#secretkeyselector-v1-core">
+Kubernetes core/v1.SecretKeySelector
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>if <code>UsernameSecret</code> is not set, <code>username</code> will be used.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>passwordSecret</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#secretkeyselector-v1-core">
+Kubernetes core/v1.SecretKeySelector
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>if <code>passwordSecret</code> is not set, <code>password</code> will be used.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>username</code></br>
 <em>
 string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
+<p>Deprecated in v1.3.0 for security concerns, planned for removal in v1.4.0. Use <code>usernameSecret</code> instead.</p>
 </td>
 </tr>
 <tr>
@@ -6267,6 +6297,8 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
+<p>Deprecated in v1.3.0 for security concerns, planned for removal in v1.4.0. Use <code>passwordSecret</code> instead.</p>
 </td>
 </tr>
 <tr>
