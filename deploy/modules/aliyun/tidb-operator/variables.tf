@@ -17,7 +17,7 @@ variable "cluster_name" {
 
 variable "k8s_version" {
   description = "Kubernetes cluster version"
-  default     = "1.14.8-aliyun.1"
+  default     = "1.18.8-aliyun.1"
   type        = string
 }
 
