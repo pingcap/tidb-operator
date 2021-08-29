@@ -21,6 +21,12 @@ variable "k8s_version" {
   type        = string
 }
 
+variable "k8s_cluster_spec" {
+  description = "Kubernetes cluster spec"
+  default     = "ack.pro.small"
+  type        = string
+}
+
 variable "cluster_network_type" {
   description = "Kubernetes network plugin, options: [flannel, terway]. Cannot change once created."
   default     = "flannel"
