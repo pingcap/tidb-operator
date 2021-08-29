@@ -53,6 +53,7 @@ resource "alicloud_cs_managed_kubernetes" "k8s" {
   // 'version' is a reserved parameter and it just is used to test. No Recommendation to expose it.
   // https://github.com/terraform-providers/terraform-provider-alicloud/blob/master/alicloud/resource_alicloud_cs_kubernetes.go#L396-L401
   version = var.k8s_version
+  cluster_spec = var.k8s_cluster_spec
 
   // split and join: workaround for terraform's limitation of conditional list choice, similarly hereinafter
   vswitch_ids = [
