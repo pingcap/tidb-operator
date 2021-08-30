@@ -949,6 +949,8 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		ginkgo.By("Delete tidbmonitor")
 		err = cli.PingcapV1alpha1().TidbMonitors(tm.Namespace).Delete(tm.Name, &metav1.DeleteOptions{})
 		framework.ExpectNoError(err, "delete tidbmonitor failed")
+		err = cli.PingcapV1alpha1().TidbMonitors(tm.Namespace).Delete(secondTc.Name, &metav1.DeleteOptions{})
+		framework.ExpectNoError(err, "delete tidbmonitor failed")
 	})
 
 	ginkgo.It("can be paused and resumed", func() {
