@@ -333,6 +333,37 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 	})
 
+	ginkgo.It("should direct upgrade tc successfully when PD replicas less than 2.", func() {
+		clusterName := "upgrade-cluster-pd-1"
+		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBLatestPrev)
+		tc.Spec.PD.Replicas = 1
+		tc.Spec.PD.BaseImage = "pingcap/pd-not-exist"
+		// Deploy
+		err := genericCli.Create(context.TODO(), tc)
+		framework.ExpectNoError(err, "failed to create TidbCluster %s/%s", tc.Namespace, tc.Name)
+
+		err = utiltc.WaitForTidbClusterCondition(cli, tc.Namespace, tc.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
+			if len(tc.Status.Conditions) < 1 {
+				return false, nil
+			}
+			if tc.Status.Conditions[0].Reason == "PDUnhealthy" && tc.Status.PD.StatefulSet.CurrentReplicas == tc.Status.PD.StatefulSet.Replicas {
+				return true, nil
+			}
+			return false, nil
+		})
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Force Upgrading tidb cluster ignoring PD error")
+		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+			tc.Spec.PD.BaseImage = "pingcap/pd"
+			return nil
+		})
+		framework.ExpectNoError(err, "failed to upgrade TidbCluster: %q", tc.Name)
+		err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
+
+		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+	})
+
 	ginkgo.It("should direct upgrade tc successfully when TiKV replicas less than 2.", func() {
 		clusterName := "upgrade-cluster-tikv-1"
 		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBLatestPrev)
