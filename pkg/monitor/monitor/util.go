@@ -542,6 +542,40 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 }
 
 func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) core.Container {
+	var adminUserFrom, adminPasswordFrom *core.EnvVarSource
+
+	//UsernameSecret will cover Username
+	if monitor.Spec.Grafana.UsernameSecret != nil {
+		adminUserFrom = &core.EnvVarSource{
+			SecretKeyRef: monitor.Spec.Grafana.UsernameSecret,
+		}
+	} else {
+		adminUserFrom = &core.EnvVarSource{
+			SecretKeyRef: &core.SecretKeySelector{
+				LocalObjectReference: core.LocalObjectReference{
+					Name: secret.Name,
+				},
+				Key: "username",
+			},
+		}
+	}
+
+	//PasswordSecret will cover Password
+	if monitor.Spec.Grafana.PasswordSecret != nil {
+		adminPasswordFrom = &core.EnvVarSource{
+			SecretKeyRef: monitor.Spec.Grafana.PasswordSecret,
+		}
+	} else {
+		adminPasswordFrom = &core.EnvVarSource{
+			SecretKeyRef: &core.SecretKeySelector{
+				LocalObjectReference: core.LocalObjectReference{
+					Name: secret.Name,
+				},
+				Key: "password",
+			},
+		}
+	}
+
 	c := core.Container{
 		Name:      "grafana",
 		Image:     fmt.Sprintf("%s:%s", monitor.Spec.Grafana.BaseImage, monitor.Spec.Grafana.Version),
@@ -559,26 +593,12 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 				Value: "/data/grafana",
 			},
 			{
-				Name: "GF_SECURITY_ADMIN_USER",
-				ValueFrom: &core.EnvVarSource{
-					SecretKeyRef: &core.SecretKeySelector{
-						LocalObjectReference: core.LocalObjectReference{
-							Name: secret.Name,
-						},
-						Key: "username",
-					},
-				},
+				Name:      "GF_SECURITY_ADMIN_USER",
+				ValueFrom: adminUserFrom,
 			},
 			{
-				Name: "GF_SECURITY_ADMIN_PASSWORD",
-				ValueFrom: &core.EnvVarSource{
-					SecretKeyRef: &core.SecretKeySelector{
-						LocalObjectReference: core.LocalObjectReference{
-							Name: secret.Name,
-						},
-						Key: "password",
-					},
-				},
+				Name:      "GF_SECURITY_ADMIN_PASSWORD",
+				ValueFrom: adminPasswordFrom,
 			},
 			{
 				Name:  "TZ",
