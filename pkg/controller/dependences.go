@@ -225,9 +225,8 @@ func newRealControls(
 	recorder record.EventRecorder) Controls {
 	// Shared variables to construct `Dependencies` and some of its fields
 	var (
-		pdControl         = pdapi.NewDefaultPDControl(kubeClientset)
-		tikvControl       = tikvapi.NewDefaultTiKVControl(kubeClientset)
-		masterControl     = dmapi.NewDefaultMasterControl(kubeClientset)
+		secretLister      = kubeInformerFactory.Core().V1().Secrets().Lister()
+		masterControl     = dmapi.NewDefaultMasterControl(secretLister)
 		genericCtrl       = NewRealGenericControl(genericCli, recorder)
 		tidbClusterLister = informerFactory.Pingcap().V1alpha1().TidbClusters().Lister()
 		dmClusterLister   = informerFactory.Pingcap().V1alpha1().DMClusters().Lister()
@@ -250,15 +249,15 @@ func newRealControls(
 		PVCControl:         NewRealPVCControl(kubeClientset, recorder, pvcLister),
 		GeneralPVCControl:  NewRealGeneralPVCControl(kubeClientset, recorder),
 		GenericControl:     genericCtrl,
-		PodControl:         NewRealPodControl(kubeClientset, pdControl, podLister, recorder),
+		PodControl:         NewRealPodControl(kubeClientset, pdapi.NewDefaultPDControl(secretLister), podLister, recorder),
 		TypedControl:       NewTypedControl(genericCtrl),
-		PDControl:          pdControl,
-		TiKVControl:        tikvControl,
+		PDControl:          pdapi.NewDefaultPDControl(secretLister),
+		TiKVControl:        tikvapi.NewDefaultTiKVControl(secretLister),
 		DMMasterControl:    masterControl,
 		TiDBClusterControl: NewRealTidbClusterControl(clientset, tidbClusterLister, recorder),
 		DMClusterControl:   NewRealDMClusterControl(clientset, dmClusterLister, recorder),
-		CDCControl:         NewDefaultTiCDCControl(kubeClientset),
-		TiDBControl:        NewDefaultTiDBControl(kubeClientset),
+		CDCControl:         NewDefaultTiCDCControl(secretLister),
+		TiDBControl:        NewDefaultTiDBControl(secretLister),
 		BackupControl:      NewRealBackupControl(clientset, recorder),
 	}
 }
@@ -384,12 +383,12 @@ func newFakeControl(kubeClientset kubernetes.Interface, informerFactory informer
 		GenericControl:     genericCtrl,
 		PodControl:         NewFakePodControl(kubeInformerFactory.Core().V1().Pods()),
 		TypedControl:       NewTypedControl(genericCtrl),
-		PDControl:          pdapi.NewFakePDControl(kubeClientset),
-		TiKVControl:        tikvapi.NewFakeTiKVControl(kubeClientset),
-		DMMasterControl:    dmapi.NewFakeMasterControl(kubeClientset),
+		PDControl:          pdapi.NewFakePDControl(kubeInformerFactory.Core().V1().Secrets().Lister()),
+		TiKVControl:        tikvapi.NewFakeTiKVControl(kubeInformerFactory.Core().V1().Secrets().Lister()),
+		DMMasterControl:    dmapi.NewFakeMasterControl(kubeInformerFactory.Core().V1().Secrets().Lister()),
 		TiDBClusterControl: NewFakeTidbClusterControl(informerFactory.Pingcap().V1alpha1().TidbClusters()),
-		CDCControl:         NewDefaultTiCDCControl(kubeClientset), // TODO: no fake control?
-		TiDBControl:        NewFakeTiDBControl(),
+		CDCControl:         NewDefaultTiCDCControl(kubeInformerFactory.Core().V1().Secrets().Lister()), // TODO: no fake control?
+		TiDBControl:        NewFakeTiDBControl(kubeInformerFactory.Core().V1().Secrets().Lister()),
 		BackupControl:      NewFakeBackupControl(informerFactory.Pingcap().V1alpha1().Backups()),
 	}
 }

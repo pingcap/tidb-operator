@@ -18,7 +18,7 @@ import (
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"k8s.io/client-go/kubernetes"
+	corelisterv1 "k8s.io/client-go/listers/core/v1"
 )
 
 type CaptureStatus struct {
@@ -41,8 +41,8 @@ type defaultTiCDCControl struct {
 }
 
 // NewDefaultTiCDCControl returns a defaultTiCDCControl instance
-func NewDefaultTiCDCControl(kubeCli kubernetes.Interface) *defaultTiCDCControl {
-	return &defaultTiCDCControl{httpClient: httpClient{kubeCli: kubeCli}}
+func NewDefaultTiCDCControl(secretLister corelisterv1.SecretLister) *defaultTiCDCControl {
+	return &defaultTiCDCControl{httpClient: httpClient{secretLister: secretLister}}
 }
 
 func (c *defaultTiCDCControl) GetStatus(tc *v1alpha1.TidbCluster, ordinal int32) (*CaptureStatus, error) {

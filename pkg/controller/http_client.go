@@ -22,12 +22,11 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
+	corelisterv1 "k8s.io/client-go/listers/core/v1"
 )
 
 type httpClient struct {
-	kubeCli kubernetes.Interface
+	secretLister corelisterv1.SecretLister
 }
 
 func (c *httpClient) getHTTPClient(tc *v1alpha1.TidbCluster) (*http.Client, error) {
@@ -39,7 +38,7 @@ func (c *httpClient) getHTTPClient(tc *v1alpha1.TidbCluster) (*http.Client, erro
 	tcName := tc.Name
 	ns := tc.Namespace
 	secretName := util.ClusterClientTLSSecretName(tcName)
-	secret, err := c.kubeCli.CoreV1().Secrets(ns).Get(secretName, metav1.GetOptions{})
+	secret, err := c.secretLister.Secrets(ns).Get(secretName)
 	if err != nil {
 		return nil, err
 	}

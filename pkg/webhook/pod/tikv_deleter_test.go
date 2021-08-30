@@ -29,6 +29,7 @@ import (
 	core "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	k8sTesting "k8s.io/client-go/testing"
 )
@@ -274,7 +275,8 @@ func TestTiKVDeleterDelete(t *testing.T) {
 			cli := fake.NewSimpleClientset()
 			kubeCli := kubefake.NewSimpleClientset()
 			podAdmissionControl := newPodAdmissionControl(nil, kubeCli, cli)
-			pdControl := pdapi.NewFakePDControl(kubeCli)
+			informer := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
+			pdControl := pdapi.NewFakePDControl(informer.Core().V1().Secrets().Lister())
 			fakePDClient := controller.NewFakePDClient(pdControl, testcase.ownerTc)
 
 			fakePDClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (i interface{}, e error) {

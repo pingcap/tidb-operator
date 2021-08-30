@@ -20,7 +20,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
-	"k8s.io/client-go/kubernetes"
+	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 )
 
@@ -32,14 +32,14 @@ type TiKVControlInterface interface {
 
 // defaultTiKVControl is the default implementation of TiKVControlInterface.
 type defaultTiKVControl struct {
-	mutex       sync.Mutex
-	kubeCli     kubernetes.Interface
-	tikvClients map[string]TiKVClient
+	mutex        sync.Mutex
+	secretLister corelisterv1.SecretLister
+	tikvClients  map[string]TiKVClient
 }
 
 // NewDefaultTiKVControl returns a defaultTiKVControl instance
-func NewDefaultTiKVControl(kubeCli kubernetes.Interface) TiKVControlInterface {
-	return &defaultTiKVControl{kubeCli: kubeCli, tikvClients: map[string]TiKVClient{}}
+func NewDefaultTiKVControl(secretLister corelisterv1.SecretLister) TiKVControlInterface {
+	return &defaultTiKVControl{secretLister: secretLister, tikvClients: map[string]TiKVClient{}}
 }
 
 func (tc *defaultTiKVControl) GetTiKVPodClient(namespace string, tcName string, podName string, tlsEnabled bool) TiKVClient {
@@ -52,7 +52,7 @@ func (tc *defaultTiKVControl) GetTiKVPodClient(namespace string, tcName string, 
 
 	if tlsEnabled {
 		scheme = "https"
-		tlsConfig, err = pdapi.GetTLSConfig(tc.kubeCli, pdapi.Namespace(namespace), tcName, util.ClusterClientTLSSecretName(tcName))
+		tlsConfig, err = pdapi.GetTLSConfig(tc.secretLister, pdapi.Namespace(namespace), tcName, util.ClusterClientTLSSecretName(tcName))
 		if err != nil {
 			klog.Errorf("Unable to get tls config for TiKV cluster %q, tikv client may not work: %v", tcName, err)
 			return NewTiKVClient(TiKVPodClientURL(namespace, tcName, podName, scheme), DefaultTimeout, tlsConfig, true)
@@ -79,9 +79,9 @@ type FakeTiKVControl struct {
 	tikvPodClients map[string]TiKVClient
 }
 
-func NewFakeTiKVControl(kubeCli kubernetes.Interface) *FakeTiKVControl {
+func NewFakeTiKVControl(secretLister corelisterv1.SecretLister) *FakeTiKVControl {
 	return &FakeTiKVControl{
-		defaultTiKVControl: defaultTiKVControl{kubeCli: kubeCli, tikvClients: map[string]TiKVClient{}},
+		defaultTiKVControl: defaultTiKVControl{secretLister: secretLister, tikvClients: map[string]TiKVClient{}},
 		tikvPodClients:     map[string]TiKVClient{},
 	}
 }

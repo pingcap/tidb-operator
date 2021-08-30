@@ -70,8 +70,10 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
+	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
+	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	aggregatorclientset "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/framework/log"
@@ -103,17 +105,25 @@ func NewOperatorActions(cli versioned.Interface,
 	fw portforward.PortForward, f *framework.Framework) *OperatorActions {
 
 	var tcStsGetter typedappsv1.StatefulSetsGetter
+	var secretLister corelisterv1.SecretLister
 	if operatorConfig != nil && operatorConfig.Enabled(features.AdvancedStatefulSet) {
 		tcStsGetter = helper.NewHijackClient(kubeCli, asCli).AppsV1()
 	} else {
 		tcStsGetter = kubeCli.AppsV1()
 	}
 
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(kubeCli, 10*time.Second)
+	secretLister = kubeInformerFactory.Core().V1().Secrets().Lister()
+	stop := make(chan struct{})
+	defer close(stop)
+	kubeInformerFactory.Start(stop)
+	kubeInformerFactory.WaitForCacheSync(stop)
+
 	oa := &OperatorActions{
 		framework:    f,
 		cli:          cli,
 		kubeCli:      kubeCli,
-		pdControl:    pdapi.NewDefaultPDControl(kubeCli),
+		pdControl:    pdapi.NewDefaultPDControl(secretLister),
 		asCli:        asCli,
 		aggrCli:      aggrCli,
 		apiExtCli:    apiExtCli,
@@ -122,13 +132,14 @@ func NewOperatorActions(cli versioned.Interface,
 		cfg:          cfg,
 		fw:           fw,
 		crdUtil:      NewCrdTestUtil(cli, kubeCli, asCli, tcStsGetter),
+		secretLister: secretLister,
 	}
 	if fw != nil {
 		kubeCfg, err := framework.LoadConfig()
 		framework.ExpectNoError(err, "failed to load config")
 		oa.tidbControl = proxiedtidbclient.NewProxiedTiDBClient(fw, kubeCfg.TLSClientConfig.CAData)
 	} else {
-		oa.tidbControl = controller.NewDefaultTiDBControl(kubeCli)
+		oa.tidbControl = controller.NewDefaultTiDBControl(secretLister)
 	}
 	oa.clusterEvents = make(map[string]*clusterEvent)
 	for _, c := range clusters {
@@ -171,6 +182,7 @@ type OperatorActions struct {
 	eventWorkerRunning bool
 	fw                 portforward.PortForward
 	crdUtil            *CrdTestUtil
+	secretLister       corelisterv1.SecretLister
 }
 
 type clusterEvent struct {
@@ -3167,7 +3179,7 @@ func (oa *OperatorActions) pumpIsHealthy(tcName, ns, podName string, tlsEnabled 
 	var tlsConfig *tls.Config
 	scheme := "http"
 	if tlsEnabled {
-		tlsConfig, err = pdapi.GetTLSConfig(oa.kubeCli, pdapi.Namespace(ns), tcName, util.ClusterTLSSecretName(tcName, label.PumpLabelVal))
+		tlsConfig, err = pdapi.GetTLSConfig(oa.secretLister, pdapi.Namespace(ns), tcName, util.ClusterTLSSecretName(tcName, label.PumpLabelVal))
 		if err != nil {
 			return false
 		}
@@ -3231,7 +3243,7 @@ func (oa *OperatorActions) drainerHealth(tcName, ns, podName string, tlsEnabled 
 	var tlsConfig *tls.Config
 	scheme := "http"
 	if tlsEnabled {
-		tlsConfig, err = pdapi.GetTLSConfig(oa.kubeCli, pdapi.Namespace(ns), tcName, util.ClusterTLSSecretName(tcName, "drainer"))
+		tlsConfig, err = pdapi.GetTLSConfig(oa.secretLister, pdapi.Namespace(ns), tcName, util.ClusterTLSSecretName(tcName, "drainer"))
 		if err != nil {
 			return false
 		}
@@ -3694,7 +3706,7 @@ var dummyCancel = func() {}
 
 func (oa *OperatorActions) getPDClient(tc *v1alpha1.TidbCluster) (pdapi.PDClient, context.CancelFunc, error) {
 	if oa.fw != nil {
-		return proxiedpdclient.NewProxiedPDClientFromTidbCluster(oa.kubeCli, oa.fw, tc)
+		return proxiedpdclient.NewProxiedPDClientFromTidbCluster(oa.fw, oa.secretLister, tc)
 	}
 	return controller.GetPDClient(oa.pdControl, tc), dummyCancel, nil
 }

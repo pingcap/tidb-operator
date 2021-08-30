@@ -21,7 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 
-	"k8s.io/client-go/kubernetes"
+	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 )
 
@@ -35,13 +35,13 @@ type MasterControlInterface interface {
 // defaultMasterControl is the default implementation of MasterControlInterface.
 type defaultMasterControl struct {
 	mutex         sync.Mutex
-	kubeCli       kubernetes.Interface
+	secretLister  corelisterv1.SecretLister
 	masterClients map[string]MasterClient
 }
 
 // NewDefaultMasterControl returns a defaultMasterControl instance
-func NewDefaultMasterControl(kubeCli kubernetes.Interface) MasterControlInterface {
-	return &defaultMasterControl{kubeCli: kubeCli, masterClients: map[string]MasterClient{}}
+func NewDefaultMasterControl(secretLister corelisterv1.SecretLister) MasterControlInterface {
+	return &defaultMasterControl{secretLister: secretLister, masterClients: map[string]MasterClient{}}
 }
 
 // GetMasterClient provides a MasterClient of real dm-master cluster, if the MasterClient not existing, it will create new one.
@@ -55,7 +55,7 @@ func (mc *defaultMasterControl) GetMasterClient(namespace string, dcName string,
 
 	if tlsEnabled {
 		scheme = "https"
-		tlsConfig, err = pdapi.GetTLSConfig(mc.kubeCli, pdapi.Namespace(namespace), dcName, util.DMClientTLSSecretName(dcName))
+		tlsConfig, err = pdapi.GetTLSConfig(mc.secretLister, pdapi.Namespace(namespace), dcName, util.DMClientTLSSecretName(dcName))
 		if err != nil {
 			klog.Errorf("Unable to get tls config for dm cluster %q, master client may not work: %v", dcName, err)
 			return NewMasterClient(MasterClientURL(namespace, dcName, scheme), DefaultTimeout, tlsConfig, true)
@@ -81,7 +81,7 @@ func (mc *defaultMasterControl) GetMasterPeerClient(namespace string, dcName str
 
 	if tlsEnabled {
 		scheme = "https"
-		tlsConfig, err = pdapi.GetTLSConfig(mc.kubeCli, pdapi.Namespace(namespace), dcName, util.DMClientTLSSecretName(dcName))
+		tlsConfig, err = pdapi.GetTLSConfig(mc.secretLister, pdapi.Namespace(namespace), dcName, util.DMClientTLSSecretName(dcName))
 		if err != nil {
 			klog.Errorf("Unable to get tls config for dm cluster %q, master client may not work: %v", dcName, err)
 			return NewMasterClient(MasterPeerClientURL(namespace, dcName, podName, scheme), DefaultTimeout, tlsConfig, true)
@@ -118,9 +118,9 @@ type FakeMasterControl struct {
 	masterPeerClients map[string]MasterClient
 }
 
-func NewFakeMasterControl(kubeCli kubernetes.Interface) *FakeMasterControl {
+func NewFakeMasterControl(secretLister corelisterv1.SecretLister) *FakeMasterControl {
 	return &FakeMasterControl{
-		defaultMasterControl: defaultMasterControl{kubeCli: kubeCli, masterClients: map[string]MasterClient{}},
+		defaultMasterControl: defaultMasterControl{masterClients: map[string]MasterClient{}, secretLister: secretLister},
 		masterPeerClients:    map[string]MasterClient{},
 	}
 }
