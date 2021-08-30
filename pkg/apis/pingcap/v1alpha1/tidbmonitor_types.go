@@ -192,8 +192,25 @@ type GrafanaSpec struct {
 
 	LogLevel string      `json:"logLevel,omitempty"`
 	Service  ServiceSpec `json:"service,omitempty"`
-	Username string      `json:"username,omitempty"`
-	Password string      `json:"password,omitempty"`
+
+	// +optional
+	// if `UsernameSecret` is not set, `username` will be used.
+	UsernameSecret *corev1.SecretKeySelector `json:"usernameSecret,omitempty"`
+
+	// +optional
+	// if `passwordSecret` is not set, `password` will be used.
+	PasswordSecret *corev1.SecretKeySelector `json:"passwordSecret,omitempty"`
+
+	// +optional
+	// Deprecated in v1.3.0 for security concerns, planned for removal in v1.4.0. Use `usernameSecret` instead.
+	// +k8s:openapi-gen=false
+	Username string `json:"username,omitempty"`
+
+	// +optional
+	// Deprecated in v1.3.0 for security concerns, planned for removal in v1.4.0. Use `passwordSecret` instead.
+	// +k8s:openapi-gen=false
+	Password string `json:"password,omitempty"`
+
 	// +optional
 	Envs map[string]string `json:"envs,omitempty"`
 
