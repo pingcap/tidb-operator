@@ -950,8 +950,6 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			return nil
 		})
 		framework.ExpectNoError(err, "enable tidbmonitor dynamic configuration error")
-		err = tests.CheckTidbMonitor(tm, cli, c, fw)
-		framework.ExpectNoError(err, "Expected tidbmonitor checked success")
 
 		secondTc := fixture.GetTidbCluster(ns, "monitor-test-second", utilimage.TiDBLatest)
 		secondTc.Spec.PD.Replicas = 1
@@ -980,7 +978,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		ginkgo.By("Delete tidbmonitor")
 		err = cli.PingcapV1alpha1().TidbMonitors(tm.Namespace).Delete(tm.Name, &metav1.DeleteOptions{})
 		framework.ExpectNoError(err, "delete tidbmonitor failed")
-		err = cli.PingcapV1alpha1().TidbMonitors(tm.Namespace).Delete(secondTc.Name, &metav1.DeleteOptions{})
+		err = cli.PingcapV1alpha1().TidbMonitors(secondTc.Namespace).Delete(secondTc.Name, &metav1.DeleteOptions{})
 		framework.ExpectNoError(err, "delete tidbmonitor failed")
 	})
 
