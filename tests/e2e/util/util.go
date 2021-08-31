@@ -14,6 +14,7 @@
 package util
 
 import (
+	"context"
 	"time"
 
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
@@ -42,7 +43,7 @@ func WaitForAPIServicesAvaiable(client aggregatorclientset.Interface, selector l
 		return false
 	}
 	return wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
-		apiServiceList, err := client.ApiregistrationV1().APIServices().List(metav1.ListOptions{
+		apiServiceList, err := client.ApiregistrationV1().APIServices().List(context.TODO(), metav1.ListOptions{
 			LabelSelector: selector.String(),
 		})
 		if err != nil {
@@ -75,7 +76,7 @@ func WaitForCRDsEstablished(client apiextensionsclientset.Interface, selector la
 		return false
 	}
 	return wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
-		crdList, err := client.ApiextensionsV1beta1().CustomResourceDefinitions().List(metav1.ListOptions{
+		crdList, err := client.ApiextensionsV1beta1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{
 			LabelSelector: selector.String(),
 		})
 		if err != nil {
@@ -97,7 +98,7 @@ func WaitForCRDsEstablished(client apiextensionsclientset.Interface, selector la
 // WaitForCRDNotFound waits for CRD to be not found in apiserver
 func WaitForCRDNotFound(client apiextensionsclientset.Interface, name string) error {
 	return wait.PollImmediate(time.Second, 1*time.Minute, func() (bool, error) {
-		_, err := client.ApiextensionsV1beta1().CustomResourceDefinitions().Get(name, metav1.GetOptions{})
+		_, err := client.ApiextensionsV1beta1().CustomResourceDefinitions().Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			if testutils.IsRetryableAPIError(err) {
 				return false, nil

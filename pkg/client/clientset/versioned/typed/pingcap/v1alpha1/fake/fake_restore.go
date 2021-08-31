@@ -16,6 +16,8 @@
 package fake
 
 import (
+	"context"
+
 	v1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
@@ -36,7 +38,7 @@ var restoresResource = schema.GroupVersionResource{Group: "pingcap.com", Version
 var restoresKind = schema.GroupVersionKind{Group: "pingcap.com", Version: "v1alpha1", Kind: "Restore"}
 
 // Get takes name of the restore, and returns the corresponding restore object, and an error if there is any.
-func (c *FakeRestores) Get(name string, options v1.GetOptions) (result *v1alpha1.Restore, err error) {
+func (c *FakeRestores) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.Restore, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewGetAction(restoresResource, c.ns, name), &v1alpha1.Restore{})
 
@@ -47,7 +49,7 @@ func (c *FakeRestores) Get(name string, options v1.GetOptions) (result *v1alpha1
 }
 
 // List takes label and field selectors, and returns the list of Restores that match those selectors.
-func (c *FakeRestores) List(opts v1.ListOptions) (result *v1alpha1.RestoreList, err error) {
+func (c *FakeRestores) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.RestoreList, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewListAction(restoresResource, restoresKind, c.ns, opts), &v1alpha1.RestoreList{})
 
@@ -69,14 +71,14 @@ func (c *FakeRestores) List(opts v1.ListOptions) (result *v1alpha1.RestoreList, 
 }
 
 // Watch returns a watch.Interface that watches the requested restores.
-func (c *FakeRestores) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakeRestores) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewWatchAction(restoresResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a restore and creates it.  Returns the server's representation of the restore, and an error, if there is any.
-func (c *FakeRestores) Create(restore *v1alpha1.Restore) (result *v1alpha1.Restore, err error) {
+func (c *FakeRestores) Create(ctx context.Context, restore *v1alpha1.Restore, opts v1.CreateOptions) (result *v1alpha1.Restore, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewCreateAction(restoresResource, c.ns, restore), &v1alpha1.Restore{})
 
@@ -87,7 +89,7 @@ func (c *FakeRestores) Create(restore *v1alpha1.Restore) (result *v1alpha1.Resto
 }
 
 // Update takes the representation of a restore and updates it. Returns the server's representation of the restore, and an error, if there is any.
-func (c *FakeRestores) Update(restore *v1alpha1.Restore) (result *v1alpha1.Restore, err error) {
+func (c *FakeRestores) Update(ctx context.Context, restore *v1alpha1.Restore, opts v1.UpdateOptions) (result *v1alpha1.Restore, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateAction(restoresResource, c.ns, restore), &v1alpha1.Restore{})
 
@@ -99,7 +101,7 @@ func (c *FakeRestores) Update(restore *v1alpha1.Restore) (result *v1alpha1.Resto
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeRestores) UpdateStatus(restore *v1alpha1.Restore) (*v1alpha1.Restore, error) {
+func (c *FakeRestores) UpdateStatus(ctx context.Context, restore *v1alpha1.Restore, opts v1.UpdateOptions) (*v1alpha1.Restore, error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateSubresourceAction(restoresResource, "status", c.ns, restore), &v1alpha1.Restore{})
 
@@ -110,7 +112,7 @@ func (c *FakeRestores) UpdateStatus(restore *v1alpha1.Restore) (*v1alpha1.Restor
 }
 
 // Delete takes name of the restore and deletes it. Returns an error if one occurs.
-func (c *FakeRestores) Delete(name string, options *v1.DeleteOptions) error {
+func (c *FakeRestores) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
 		Invokes(testing.NewDeleteAction(restoresResource, c.ns, name), &v1alpha1.Restore{})
 
@@ -118,15 +120,15 @@ func (c *FakeRestores) Delete(name string, options *v1.DeleteOptions) error {
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeRestores) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(restoresResource, c.ns, listOptions)
+func (c *FakeRestores) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	action := testing.NewDeleteCollectionAction(restoresResource, c.ns, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.RestoreList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched restore.
-func (c *FakeRestores) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.Restore, err error) {
+func (c *FakeRestores) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.Restore, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewPatchSubresourceAction(restoresResource, c.ns, name, pt, data, subresources...), &v1alpha1.Restore{})
 

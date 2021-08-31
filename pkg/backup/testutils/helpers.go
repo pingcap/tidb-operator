@@ -14,6 +14,7 @@
 package testutils
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -58,7 +59,7 @@ func (h *Helper) Close() {
 func (h *Helper) JobExists(restore *v1alpha1.Restore) {
 	h.T.Helper()
 	g := NewGomegaWithT(h.T)
-	_, err := h.Deps.KubeClientset.BatchV1().Jobs(restore.Namespace).Get(restore.GetRestoreJobName(), metav1.GetOptions{})
+	_, err := h.Deps.KubeClientset.BatchV1().Jobs(restore.Namespace).Get(context.TODO(), restore.GetRestoreJobName(), metav1.GetOptions{})
 	g.Expect(err).Should(BeNil())
 }
 
@@ -73,7 +74,7 @@ func (h *Helper) createSecret(namespace, secretName string) {
 	}
 	s.Namespace = namespace
 	s.Name = secretName
-	_, err := h.Deps.KubeClientset.CoreV1().Secrets(s.Namespace).Create(s)
+	_, err := h.Deps.KubeClientset.CoreV1().Secrets(s.Namespace).Create(context.TODO(), s, metav1.CreateOptions{})
 	g.Expect(err).Should(BeNil())
 }
 
@@ -116,7 +117,7 @@ func (h *Helper) CreateTC(namespace, clusterName string) {
 	}
 	tc.Namespace = namespace
 	tc.Name = clusterName
-	_, err = h.Deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
+	_, err = h.Deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, metav1.CreateOptions{})
 	g.Expect(err).Should(BeNil())
 	// make sure can read tc from lister
 	g.Eventually(func() error {
