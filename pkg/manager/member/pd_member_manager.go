@@ -423,7 +423,10 @@ func (m *pdMemberManager) syncPDConfigMap(tc *v1alpha1.TidbCluster, set *apps.St
 	if err != nil {
 		return nil, err
 	}
-	return m.deps.TypedControl.CreateOrUpdateConfigMap(tc, newCm)
+	if util.NeedCreateOrUpgradeConfigMap(m.deps.ConfigMapLister, newCm) {
+		return m.deps.TypedControl.CreateOrUpdateConfigMap(tc, newCm)
+	}
+	return newCm, nil
 }
 
 func (m *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {

@@ -264,7 +264,10 @@ func (m *tikvMemberManager) syncTiKVConfigMap(tc *v1alpha1.TidbCluster, set *app
 	if err != nil {
 		return nil, err
 	}
-	return m.deps.TypedControl.CreateOrUpdateConfigMap(tc, newCm)
+	if util.NeedCreateOrUpgradeConfigMap(m.deps.ConfigMapLister, newCm) {
+		return m.deps.TypedControl.CreateOrUpdateConfigMap(tc, newCm)
+	}
+	return newCm, nil
 }
 
 func getNewServiceForTidbCluster(tc *v1alpha1.TidbCluster, svcConfig SvcConfig) *corev1.Service {
