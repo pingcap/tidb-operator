@@ -955,7 +955,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		secondTc.Spec.PD.Replicas = 1
 		secondTc.Spec.TiKV.Replicas = 1
 		secondTc.Spec.TiDB.Replicas = 1
-		secondTc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(secondTc)
+		secondTc, err = cli.PingcapV1alpha1().TidbClusters(secondTc.Namespace).Create(secondTc)
 		framework.ExpectNoError(err, "Expected create tidbcluster")
 		err = oa.WaitForTidbClusterReady(secondTc, 30*time.Minute, 5*time.Second)
 		framework.ExpectNoError(err, "Expected get secondTc tidbcluster")
@@ -977,8 +977,6 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 		ginkgo.By("Delete tidbmonitor")
 		err = cli.PingcapV1alpha1().TidbMonitors(tm.Namespace).Delete(tm.Name, &metav1.DeleteOptions{})
-		framework.ExpectNoError(err, "delete tidbmonitor failed")
-		err = cli.PingcapV1alpha1().TidbMonitors(secondTc.Namespace).Delete(secondTc.Name, &metav1.DeleteOptions{})
 		framework.ExpectNoError(err, "delete tidbmonitor failed")
 	})
 
