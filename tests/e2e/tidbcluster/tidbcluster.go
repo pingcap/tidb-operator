@@ -390,7 +390,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		err = oa.WaitForTidbClusterReady(tc, 5*time.Minute, 5*time.Second)
 
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
-		pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, tc.Name, false)
+		pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(secretLister, fw, ns, tc.Name, false)
 		framework.ExpectNoError(err, "failed to create proxied PD client")
 		defer cancel()
 
