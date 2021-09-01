@@ -20440,6 +20440,7 @@ spec:
                   type: object
               type: object
             prometheus: {}
+            prometheusReloader: {}
             pvReclaimPolicy:
               type: string
             reloader: {}

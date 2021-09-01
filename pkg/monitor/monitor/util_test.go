@@ -959,7 +959,7 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 				Command: []string{
 					"/bin/sh",
 					"-c",
-					"sed 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g' /etc/prometheus/config/prometheus.yml > /etc/prometheus/config_out/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/etc/prometheus/config_out/prometheus.yml --storage.tsdb.path=/data/prometheus --storage.tsdb.retention.time=2h --web.external-url=https://www.example.com/prometheus/",
+					"sed -e '5s/[()]//g'  -e 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g' /etc/prometheus/config/prometheus.yml > /etc/prometheus/config_out/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/etc/prometheus/config_out/prometheus.yml --storage.tsdb.path=/data/prometheus --storage.tsdb.retention.time=2h --web.external-url=https://www.example.com/prometheus/",
 				},
 				Ports: []corev1.ContainerPort{
 					corev1.ContainerPort{
@@ -1338,7 +1338,7 @@ func TestBuildExternalLabels(t *testing.T) {
 				},
 			},
 			expected: &model.LabelSet{
-				defaultReplicaExternalLabelName: "$NAMESPACE_$POD_NAME",
+				defaultReplicaExternalLabelName: "$(NAMESPACE)_$(POD_NAME)",
 			},
 		},
 	}
