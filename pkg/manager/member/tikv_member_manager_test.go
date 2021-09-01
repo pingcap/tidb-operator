@@ -1926,6 +1926,70 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 				}))
 			},
 		},
+		{
+			name: "tikv spec rocksdb Log storageVolumes",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD:   &v1alpha1.PDSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
+					TiKV: &v1alpha1.TiKVSpec{
+						SeparateRocksDBLog:   pointer.BoolPtr(true),
+						SeparateRaftLog:      pointer.BoolPtr(true),
+						RocksDBLogVolumeName: "rocksdblog",
+						StorageVolumes: []v1alpha1.StorageVolume{
+							{
+								Name:        "rocksdblog",
+								StorageSize: "1Gi",
+								MountPath:   "/var/log/rocksdblog",
+							}},
+					},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				q, _ := resource.ParseQuantity("1Gi")
+				g.Expect(sts.Spec.VolumeClaimTemplates).To(Equal([]v1.PersistentVolumeClaim{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: v1alpha1.TiKVMemberType.String(),
+						},
+						Spec: corev1.PersistentVolumeClaimSpec{
+							AccessModes: []corev1.PersistentVolumeAccessMode{
+								corev1.ReadWriteOnce,
+							},
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: v1alpha1.TiKVMemberType.String() + "-rocksdblog",
+						},
+						Spec: corev1.PersistentVolumeClaimSpec{
+							AccessModes: []corev1.PersistentVolumeAccessMode{
+								corev1.ReadWriteOnce,
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceStorage: q,
+								},
+							},
+						},
+					},
+				}))
+				g.Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(3))
+				index := len(sts.Spec.Template.Spec.Containers[0].VolumeMounts) - 1
+				g.Expect(sts.Spec.Template.Spec.Containers[0].VolumeMounts[index]).To(Equal(corev1.VolumeMount{
+					Name: fmt.Sprintf("%s-%s", v1alpha1.TiKVMemberType, "rocksdblog"), MountPath: "/var/log/rocksdblog",
+				}))
+				index = len(sts.Spec.Template.Spec.Containers[1].VolumeMounts) - 1
+				g.Expect(sts.Spec.Template.Spec.Containers[1].VolumeMounts[index]).To(Equal(corev1.VolumeMount{
+					Name: "tikv", MountPath: "/var/lib/tikv",
+				}))
+			},
+		},
 		// TODO add more tests
 	}
 
