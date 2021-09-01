@@ -2228,19 +2228,19 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			cases := []upgradeCase{
 				{
 					oldVersion:              utilimage.TiDBV4x0x9,
-					newVersion:              utilimage.TiDBV5x1x0,
+					newVersion:              utilimage.TiDBLatest,
 					configureOldTiDBCluster: configureV4x0x9,
 					configureNewTiDBCluster: configureV5x1x0,
 				},
 				{
 					oldVersion:              utilimage.TiDBV5x0x0,
-					newVersion:              utilimage.TiDBV5x1x0,
+					newVersion:              utilimage.TiDBLatest,
 					configureOldTiDBCluster: configureV5x0x0,
 					configureNewTiDBCluster: configureV5x1x0,
 				},
 				{
 					oldVersion:              utilimage.TiDBV5x0x2,
-					newVersion:              utilimage.TiDBV5x1x0,
+					newVersion:              utilimage.TiDBLatest,
 					configureOldTiDBCluster: configureV5x0x2,
 					configureNewTiDBCluster: configureV5x1x0,
 				},
