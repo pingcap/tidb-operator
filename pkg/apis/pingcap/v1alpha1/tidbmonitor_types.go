@@ -127,7 +127,7 @@ type TidbMonitorSpec struct {
 	// +optional
 	EnableAlertRules bool `json:"enableAlertRules,omitempty"`
 
-	//PrometheusReloader set prometheus  reloader configuration
+	//PrometheusReloader set prometheus reloader configuration
 	//+optional
 	PrometheusReloader *PrometheusReloaderSpec `json:"prometheusReloader"`
 }
