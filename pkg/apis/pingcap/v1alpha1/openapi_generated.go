@@ -10288,6 +10288,20 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 							Format:      "",
 						},
 					},
+					"rocksDBLogVolumeName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional volume name configuration for rocksdb log.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"raftLogVolumeName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional volume name configuration for raft log.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"logTailer": {
 						SchemaProps: spec.SchemaProps{
 							Description: "LogTailer is the configurations of the log tailers for TiKV",

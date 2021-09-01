@@ -670,6 +670,8 @@ spec:
 
     ## if enabled, the Raft log will be shown in a separate sidecar container
     separateRaftLog: true
+    # rocksDBLogVolumeName: ""
+    # raftLogVolumeName: ""
 
     ## configures RocksDB/Raft log sidecar container resource requirements
     # logTailer:
