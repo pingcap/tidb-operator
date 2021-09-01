@@ -237,7 +237,7 @@ func TestTiFlashUpgraderUpgrade(t *testing.T) {
 		{
 			name: "get last apply config error",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.TiCDC.Phase = v1alpha1.UpgradePhase
+				tc.Status.PD.Phase = v1alpha1.UpgradePhase
 				tc.Status.TiFlash.Phase = v1alpha1.NormalPhase
 				tc.Status.TiFlash.Synced = true
 			},
