@@ -129,7 +129,7 @@ type TidbMonitorSpec struct {
 
 	//PrometheusReloader set prometheus reloader configuration
 	//+optional
-	PrometheusReloader *PrometheusReloaderSpec `json:"prometheusReloader"`
+	PrometheusReloader *PrometheusReloaderSpec `json:"prometheusReloader,omitempty"`
 }
 
 // PrometheusReloaderSpec is the desired state of prometheus configuration reloader
