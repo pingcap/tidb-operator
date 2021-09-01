@@ -2521,7 +2521,7 @@ PrometheusReloaderSpec
 </td>
 <td>
 <em>(Optional)</em>
-<p>PrometheusReloader set prometheus  reloader configuration</p>
+<p>PrometheusReloader set prometheus reloader configuration</p>
 </td>
 </tr>
 </table>
@@ -21175,7 +21175,7 @@ PrometheusReloaderSpec
 </td>
 <td>
 <em>(Optional)</em>
-<p>PrometheusReloader set prometheus  reloader configuration</p>
+<p>PrometheusReloader set prometheus reloader configuration</p>
 </td>
 </tr>
 </tbody>
