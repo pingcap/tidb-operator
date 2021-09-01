@@ -11827,8 +11827,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 							Ref:         ref("k8s.io/api/core/v1.PodSecurityContext"),
 						},
 					},
-<<<<<<< HEAD
-=======
 					"enableAlertRules": {
 						SchemaProps: spec.SchemaProps{
 							Description: "EnableAlertRules adds alert rules to the Prometheus config even if `AlertmanagerURL` is not configured.",
@@ -11842,7 +11840,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PrometheusReloaderSpec"),
 						},
 					},
->>>>>>> 6e986376... tidbmonitor support dynamic reload configuration (#4158)
 				},
 				Required: []string{"clusters", "prometheus", "reloader", "initializer"},
 			},

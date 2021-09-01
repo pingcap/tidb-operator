@@ -2497,8 +2497,6 @@ Kubernetes core/v1.PodSecurityContext
 <p>PodSecurityContext of the component</p>
 </td>
 </tr>
-<<<<<<< HEAD
-=======
 <tr>
 <td>
 <code>enableAlertRules</code></br>
@@ -2526,7 +2524,6 @@ PrometheusReloaderSpec
 <p>PrometheusReloader set prometheus reloader configuration</p>
 </td>
 </tr>
->>>>>>> 6e986376... tidbmonitor support dynamic reload configuration (#4158)
 </table>
 </td>
 </tr>
@@ -21076,8 +21073,6 @@ Kubernetes core/v1.PodSecurityContext
 <p>PodSecurityContext of the component</p>
 </td>
 </tr>
-<<<<<<< HEAD
-=======
 <tr>
 <td>
 <code>enableAlertRules</code></br>
@@ -21105,7 +21100,6 @@ PrometheusReloaderSpec
 <p>PrometheusReloader set prometheus reloader configuration</p>
 </td>
 </tr>
->>>>>>> 6e986376... tidbmonitor support dynamic reload configuration (#4158)
 </tbody>
 </table>
 <h3 id="tidbmonitorstatus">TidbMonitorStatus</h3>
