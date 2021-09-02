@@ -3,7 +3,7 @@ kind: TidbCluster
 metadata:
   name: CLUSTER_NAME
 spec:
-  version: v5.1.1
+  version: v5.2.0
   timezone: UTC
   pvReclaimPolicy: Retain
   schedulerName: tidb-scheduler
