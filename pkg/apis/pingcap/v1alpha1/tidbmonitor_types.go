@@ -121,6 +121,20 @@ type TidbMonitorSpec struct {
 	// PodSecurityContext of the component
 	// +optional
 	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
+
+	// EnableAlertRules adds alert rules to the Prometheus config even
+	// if `AlertmanagerURL` is not configured.
+	// +optional
+	EnableAlertRules bool `json:"enableAlertRules,omitempty"`
+
+	//PrometheusReloader set prometheus reloader configuration
+	//+optional
+	PrometheusReloader *PrometheusReloaderSpec `json:"prometheusReloader,omitempty"`
+}
+
+// PrometheusReloaderSpec is the desired state of prometheus configuration reloader
+type PrometheusReloaderSpec struct {
+	MonitorContainer `json:",inline"`
 }
 
 // PrometheusSpec is the desired state of prometheus

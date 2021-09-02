@@ -20367,6 +20367,8 @@ spec:
                 type: object
               type: array
             dm: {}
+            enableAlertRules:
+              type: boolean
             externalLabels:
               type: object
             grafana: {}
@@ -20440,6 +20442,7 @@ spec:
                   type: object
               type: object
             prometheus: {}
+            prometheusReloader: {}
             pvReclaimPolicy:
               type: string
             reloader: {}
