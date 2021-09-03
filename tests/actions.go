@@ -2252,7 +2252,7 @@ func (oa *OperatorActions) checkTiKVConfigUpdated(tc *v1alpha1.TidbCluster, clus
 func (oa *OperatorActions) checkPrometheus(clusterInfo *TidbClusterConfig) error {
 	ns := clusterInfo.Namespace
 	tcName := clusterInfo.ClusterName
-	return checkPrometheusCommon(tcName, ns, oa.fw)
+	return checkPrometheusCommon(tcName, ns, oa.fw, 1)
 }
 
 func (oa *OperatorActions) checkGrafanaData(clusterInfo *TidbClusterConfig) error {
@@ -3543,6 +3543,17 @@ func (oa *OperatorActions) cdcMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, er
 
 	if cdcSet.Status.CurrentRevision != cdcSet.Status.UpdateRevision {
 		log.Logf("cdc sts .Status.CurrentRevision (%s) != .Status.UpdateRevision (%s)", cdcSet.Status.CurrentRevision, cdcSet.Status.UpdateRevision)
+		return false, nil
+	}
+
+	c, found := getMemberContainer(oa.kubeCli, oa.tcStsGetter, ns, tc.Name, label.TiCDCLabelVal)
+	if !found {
+		log.Logf("StatefulSet: %q not found containers[name=ticdc] or pod %s-0", cdcStsID, cdcSetName)
+		return false, nil
+	}
+
+	if tc.TiCDCImage() != c.Image {
+		log.Logf("StatefulSet: %q .spec.template.spec.containers[name=ticdc].image(%s) != %s", cdcStsID, c.Image, tc.TiCDCImage())
 		return false, nil
 	}
 

@@ -37,8 +37,8 @@ import (
 
 var (
 	tidbReadyTimeout       = time.Minute * 5
-	backupCompleteTimeout  = time.Minute * 3
-	restoreCompleteTimeout = time.Minute * 3
+	backupCompleteTimeout  = time.Minute * 5
+	restoreCompleteTimeout = time.Minute * 5
 )
 
 const (
@@ -200,10 +200,10 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 	ginkgo.Context("Specific Version", func() {
 		cases := []*testcase{
-			newTestCase(utilimage.TiDBV5x1x0, utilimage.TiDBV5x1x0, typeBR),
-			newTestCase(utilimage.TiDBV4x0x9, utilimage.TiDBV5x1x0, typeBR),
-			newTestCase(utilimage.TiDBV5x0x0, utilimage.TiDBV5x1x0, typeBR),
-			newTestCase(utilimage.TiDBV5x0x2, utilimage.TiDBV5x1x0, typeBR),
+			newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeBR),
+			newTestCase(utilimage.TiDBV4x0x9, utilimage.TiDBLatest, typeBR),
+			newTestCase(utilimage.TiDBV5x0x0, utilimage.TiDBLatest, typeBR),
+			newTestCase(utilimage.TiDBV5x0x2, utilimage.TiDBLatest, typeBR),
 		}
 		for i := range cases {
 			tcase := cases[i]

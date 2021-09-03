@@ -949,6 +949,42 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		ginkgo.By("Check custom labels and annotations")
 		checkMonitorCustomLabelAndAnn(tm, c)
 
+		ginkgo.By("enable dynamic configuration update")
+		err = controller.GuaranteedUpdate(genericCli, tm, func() error {
+			tm.Spec.PrometheusReloader = &v1alpha1.PrometheusReloaderSpec{
+				MonitorContainer: v1alpha1.MonitorContainer{
+					BaseImage: "quay.io/prometheus-operator/prometheus-config-reloader",
+					Version:   "v0.49.0",
+				},
+			}
+			return nil
+		})
+		framework.ExpectNoError(err, "enable tidbmonitor dynamic configuration error")
+
+		secondTc := fixture.GetTidbCluster(ns, "monitor-test-second", utilimage.TiDBLatest)
+		secondTc.Spec.PD.Replicas = 1
+		secondTc.Spec.TiKV.Replicas = 1
+		secondTc.Spec.TiDB.Replicas = 1
+		secondTc, err = cli.PingcapV1alpha1().TidbClusters(secondTc.Namespace).Create(secondTc)
+		framework.ExpectNoError(err, "Expected create tidbcluster")
+		err = oa.WaitForTidbClusterReady(secondTc, 30*time.Minute, 5*time.Second)
+		framework.ExpectNoError(err, "Expected get secondTc tidbcluster")
+		ginkgo.By("update tidbmonitor cluster spec")
+		err = controller.GuaranteedUpdate(genericCli, tm, func() error {
+			tm.Spec.Clusters = []v1alpha1.TidbClusterRef{
+				{
+					Name: "monitor-test",
+				},
+				{
+					Name: "monitor-test-second",
+				},
+			}
+			return nil
+		})
+		framework.ExpectNoError(err, "update tidbmonitor cluster spec error")
+		err = tests.CheckTidbMonitorConfigurationUpdate(tm, c, fw, 5)
+		framework.ExpectNoError(err, "Expected tidbmonitor dynamic configuration checked success")
+
 		ginkgo.By("Delete tidbmonitor")
 		err = cli.PingcapV1alpha1().TidbMonitors(tm.Namespace).Delete(tm.Name, &metav1.DeleteOptions{})
 		framework.ExpectNoError(err, "delete tidbmonitor failed")
@@ -2244,19 +2280,19 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			cases := []upgradeCase{
 				{
 					oldVersion:              utilimage.TiDBV4x0x9,
-					newVersion:              utilimage.TiDBV5x1x0,
+					newVersion:              utilimage.TiDBLatest,
 					configureOldTiDBCluster: configureV4x0x9,
 					configureNewTiDBCluster: configureV5x1x0,
 				},
 				{
 					oldVersion:              utilimage.TiDBV5x0x0,
-					newVersion:              utilimage.TiDBV5x1x0,
+					newVersion:              utilimage.TiDBLatest,
 					configureOldTiDBCluster: configureV5x0x0,
 					configureNewTiDBCluster: configureV5x1x0,
 				},
 				{
 					oldVersion:              utilimage.TiDBV5x0x2,
-					newVersion:              utilimage.TiDBV5x1x0,
+					newVersion:              utilimage.TiDBLatest,
 					configureOldTiDBCluster: configureV5x0x2,
 					configureNewTiDBCluster: configureV5x1x0,
 				},
