@@ -44,6 +44,25 @@ func (u *ticdcUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulS
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
+	if tc.Status.PD.Phase == v1alpha1.UpgradePhase ||
+		tc.Status.TiKV.Phase == v1alpha1.UpgradePhase ||
+		tc.Status.TiFlash.Phase == v1alpha1.UpgradePhase ||
+		tc.Status.Pump.Phase == v1alpha1.UpgradePhase ||
+		tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
+		klog.Infof("TidbCluster: [%s/%s]'s pd status is %s, "+
+			"tikv status is %s, tiflash status is %s, pump status is %s, "+
+			"tidb status is %s, can not upgrade ticdc",
+			ns, tcName,
+			tc.Status.PD.Phase, tc.Status.TiKV.Phase, tc.Status.TiFlash.Phase,
+			tc.Status.Pump.Phase, tc.Status.TiDB.Phase)
+		_, podSpec, err := GetLastAppliedConfig(oldSet)
+		if err != nil {
+			return err
+		}
+		newSet.Spec.Template.Spec = *podSpec
+		return nil
+	}
+
 	tc.Status.TiCDC.Phase = v1alpha1.UpgradePhase
 	if !templateEqual(newSet, oldSet) {
 		return nil
