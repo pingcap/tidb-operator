@@ -20,7 +20,7 @@ variable "cluster_name" {
 
 variable "cluster_version" {
   type    = string
-  default = "v5.1.1"
+  default = "v5.2.0"
 }
 
 variable "pd_count" {
