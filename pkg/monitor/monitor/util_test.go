@@ -695,18 +695,32 @@ func TestGetMonitorVolumes(t *testing.T) {
 		monitor   v1alpha1.TidbMonitor
 		expected  func(volumes []corev1.Volume)
 	}{
+
 		{
-			name: "basic",
+			name: "external rules",
 			cluster: v1alpha1.TidbCluster{
-				Spec: v1alpha1.TidbClusterSpec{
-					TLSCluster: &v1alpha1.TLSCluster{Enabled: false},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
 				},
 			},
-			dmCluster: v1alpha1.DMCluster{},
 			monitor: v1alpha1.TidbMonitor{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbMonitorSpec{
+					Clusters: []v1alpha1.TidbClusterRef{
+						{
+							Name:      "foo",
+							Namespace: "ns",
+						},
+					},
+					Prometheus: v1alpha1.PrometheusSpec{Config: &v1alpha1.PrometheusConfiguration{
+						RuleConfigRef: &v1alpha1.ConfigMapRef{
+							Name: "external_rules",
+						},
+					}},
 				},
 			},
 			expected: func(volumes []corev1.Volume) {
@@ -749,135 +763,13 @@ func TestGetMonitorVolumes(t *testing.T) {
 							},
 						},
 					},
-				},
-				))
-			},
-		},
-		{
-			name: "basic",
-			cluster: v1alpha1.TidbCluster{
-				Spec: v1alpha1.TidbClusterSpec{
-					TLSCluster: &v1alpha1.TLSCluster{Enabled: false},
-				},
-			},
-			dmCluster: v1alpha1.DMCluster{
-				Spec: v1alpha1.DMClusterSpec{
-					TLSCluster: &v1alpha1.TLSCluster{Enabled: false},
-				},
-			},
-			monitor: v1alpha1.TidbMonitor{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo",
-					Namespace: "ns",
-				},
-			},
-			expected: func(volumes []corev1.Volume) {
-				g := NewGomegaWithT(t)
-				g.Expect(volumes).To(Equal([]corev1.Volume{
 					{
-						Name: v1alpha1.TidbMonitorMemberType.String(),
-						VolumeSource: corev1.VolumeSource{
-							EmptyDir: &corev1.EmptyDirVolumeSource{},
-						},
-					},
-					{
-						Name: "prometheus-config",
+						Name: "external-rules",
 						VolumeSource: corev1.VolumeSource{
 							ConfigMap: &corev1.ConfigMapVolumeSource{
 								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "foo-monitor",
+									Name: "external_rules",
 								},
-							},
-						},
-					},
-					{
-						Name: "prometheus-rules",
-						VolumeSource: corev1.VolumeSource{
-							EmptyDir: &corev1.EmptyDirVolumeSource{},
-						},
-					},
-					{
-						Name: "prometheus-config-out",
-						VolumeSource: corev1.VolumeSource{
-							EmptyDir: &corev1.EmptyDirVolumeSource{},
-						},
-					},
-					{
-						Name: "tls-assets",
-						VolumeSource: corev1.VolumeSource{
-							Secret: &corev1.SecretVolumeSource{
-								SecretName:  GetTLSAssetsSecretName("foo"),
-								DefaultMode: pointer.Int32Ptr(420),
-							},
-						},
-					},
-				},
-				))
-			},
-		},
-		{
-			name: "tls and persistent",
-			cluster: v1alpha1.TidbCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo",
-					Namespace: "ns",
-				},
-				Spec: v1alpha1.TidbClusterSpec{
-					TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
-				},
-			},
-			dmCluster: v1alpha1.DMCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foodm",
-					Namespace: "ns",
-				},
-				Spec: v1alpha1.DMClusterSpec{
-					TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
-				},
-			},
-			monitor: v1alpha1.TidbMonitor{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo",
-					Namespace: "ns",
-				},
-			},
-			expected: func(volumes []corev1.Volume) {
-				g := NewGomegaWithT(t)
-				g.Expect(volumes).To(Equal([]corev1.Volume{
-					{
-						Name: v1alpha1.TidbMonitorMemberType.String(),
-						VolumeSource: corev1.VolumeSource{
-							EmptyDir: &corev1.EmptyDirVolumeSource{},
-						},
-					},
-					{
-						Name: "prometheus-config",
-						VolumeSource: corev1.VolumeSource{
-							ConfigMap: &corev1.ConfigMapVolumeSource{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "foo-monitor",
-								},
-							},
-						},
-					},
-					{
-						Name: "prometheus-rules",
-						VolumeSource: corev1.VolumeSource{
-							EmptyDir: &corev1.EmptyDirVolumeSource{},
-						},
-					},
-					{
-						Name: "prometheus-config-out",
-						VolumeSource: corev1.VolumeSource{
-							EmptyDir: &corev1.EmptyDirVolumeSource{},
-						},
-					},
-					{
-						Name: "tls-assets",
-						VolumeSource: corev1.VolumeSource{
-							Secret: &corev1.SecretVolumeSource{
-								SecretName:  GetTLSAssetsSecretName("foo"),
-								DefaultMode: pointer.Int32Ptr(420),
 							},
 						},
 					},
