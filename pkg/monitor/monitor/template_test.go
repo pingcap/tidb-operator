@@ -371,6 +371,7 @@ func TestRenderPrometheusConfigWithRulesSwitch(t *testing.T) {
   evaluation_interval: 15s
 rule_files:
 - /prometheus-rules/rules/*.rules.yml
+- /prometheus-external-rules/*.rules.yml
 scrape_configs:
 - job_name: ns1-target-pd
   honor_labels: true
@@ -620,7 +621,8 @@ remote_write:
 		DMClusterInfos: []ClusterRegexInfo{
 			{Name: "target", Namespace: "ns1"},
 		},
-		EnableAlertRules: true,
+		EnableAlertRules:          true,
+		EnableExternalRuleConfigs: true,
 		RemoteWriteConfigs: []*config.RemoteWriteConfig{
 			{
 				URL:           &config.URL{URL: url},
