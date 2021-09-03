@@ -544,7 +544,7 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 	if monitor.Spec.Prometheus.Config != nil && monitor.Spec.Prometheus.Config.RuleConfigRef != nil {
 		c.VolumeMounts = append(c.VolumeMounts, core.VolumeMount{
 			Name:      "external-rules",
-			MountPath: "/prometheus-rules/external",
+			MountPath: "/prometheus-external-rules",
 			ReadOnly:  true,
 		})
 	}
@@ -739,10 +739,10 @@ func getMonitorPrometheusReloaderContainer(monitor *v1alpha1.TidbMonitor) core.C
 	if monitor.Spec.Prometheus.Config != nil && monitor.Spec.Prometheus.Config.RuleConfigRef != nil {
 		c.VolumeMounts = append(c.VolumeMounts, core.VolumeMount{
 			Name:      "external-rules",
-			MountPath: "/prometheus-external-rules/",
+			MountPath: "/prometheus-external-rules",
 			ReadOnly:  true,
 		})
-		c.Command = append(c.Command, "--watched-dir=/prometheus-external-rules/*.rules.yml")
+		c.Command = append(c.Command, "--watched-dir=/prometheus-external-rules")
 	}
 	return c
 }
