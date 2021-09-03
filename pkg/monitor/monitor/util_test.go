@@ -1003,6 +1003,7 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 						MountPath: "/var/lib/cluster-assets-tls",
 						ReadOnly:  true,
 					},
+					{Name: "external-rules", ReadOnly: true, MountPath: "/prometheus-rules/external"},
 				},
 			},
 		},
