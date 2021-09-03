@@ -169,11 +169,14 @@ type PrometheusSpec struct {
 // Config  is the the desired state of Prometheus Configuration
 type PrometheusConfiguration struct {
 
-	// user can mount prometheus rule config with external configMap.If use this feature, the external configMap must contain `prometheus-config` key in data.
+	// user can mount prometheus config with external configMap.If use this feature, the external configMap must contain `prometheus-config` key in data.
 	ConfigMapRef *ConfigMapRef `json:"configMapRef,omitempty"`
 
 	// user can  use it specify prometheus command options
 	CommandOptions []string `json:"commandOptions,omitempty"`
+
+	// user can mount prometheus rule config with external configMap.If use this feature, the external configMap must use *.rules.yml as a suffix.
+	RuleConfigRef *ConfigMapRef `json:"ruleConfigRef,omitempty"`
 }
 
 // ConfigMapRef is the external configMap

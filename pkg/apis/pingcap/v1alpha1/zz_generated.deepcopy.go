@@ -3743,6 +3743,11 @@ func (in *PrometheusConfiguration) DeepCopyInto(out *PrometheusConfiguration) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.RuleConfigRef != nil {
+		in, out := &in.RuleConfigRef, &out.RuleConfigRef
+		*out = new(ConfigMapRef)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 

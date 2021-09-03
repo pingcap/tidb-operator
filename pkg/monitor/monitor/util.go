@@ -147,6 +147,9 @@ func getPromConfigMap(monitor *v1alpha1.TidbMonitor, monitorClusterInfos []Clust
 	if monitor.Spec.AlertmanagerURL != nil {
 		model.AlertmanagerURL = *monitor.Spec.AlertmanagerURL
 	}
+	if monitor.Spec.Prometheus.Config != nil && monitor.Spec.Prometheus.Config.RuleConfigRef != nil {
+		model.EnableExternalRuleConfigs = true
+	}
 	content, err := RenderPrometheusConfig(model)
 	if err != nil {
 		return nil, err
@@ -499,6 +502,11 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 				MountPath: util.ClusterAssetsTLSPath,
 				ReadOnly:  true,
 			},
+			{
+				Name:      "external-rules",
+				MountPath: "/prometheus-rules/external",
+				ReadOnly:  true,
+			},
 		},
 	}
 
@@ -738,7 +746,7 @@ func getMonitorReloaderContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.Tid
 			"/bin/reload",
 			"--root-store-path=/data",
 			fmt.Sprintf("--sub-store-path=%s", getAlertManagerRulesVersion(tc, monitor)),
-			"--watch-path=/prometheus-rules/rules",
+			"--watch-path=/prometheus-rules/external/*.rules.yml",
 			"--prometheus-url=http://127.0.0.1:9090",
 		},
 		Ports: []core.ContainerPort{
@@ -850,6 +858,19 @@ func getMonitorVolumes(monitor *v1alpha1.TidbMonitor) []core.Volume {
 			},
 		},
 	})
+
+	if monitor.Spec.Prometheus.Config != nil && monitor.Spec.Prometheus.Config.RuleConfigRef != nil {
+		volumes = append(volumes, core.Volume{
+			Name: "external-rules",
+			VolumeSource: core.VolumeSource{
+				ConfigMap: &core.ConfigMapVolumeSource{
+					LocalObjectReference: core.LocalObjectReference{
+						Name: monitor.Spec.Prometheus.Config.RuleConfigRef.Name,
+					},
+				},
+			},
+		})
+	}
 
 	return volumes
 }
