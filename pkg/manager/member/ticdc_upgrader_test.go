@@ -168,6 +168,101 @@ func TestTiCDCUpgrader_Upgrade(t *testing.T) {
 				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(1)))
 			},
 		},
+		{
+			name: "ticdc can not upgrade when pd is upgrading",
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Phase = v1alpha1.UpgradePhase
+				tc.Status.TiFlash.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
+				tc.Status.Pump.Phase = v1alpha1.NormalPhase
+				tc.Status.TiDB.Phase = v1alpha1.NormalPhase
+				tc.Status.TiCDC.Synced = true
+			},
+			changeOldSet: func(oldSet *apps.StatefulSet) {
+				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+			},
+			errorExpect: false,
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
+				g.Expect(tc.Status.TiCDC.Phase).To(Equal(v1alpha1.NormalPhase))
+				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(1)))
+			},
+		},
+		{
+			name: "ticdc can not upgrade when tiflash is upgrading",
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiFlash.Phase = v1alpha1.UpgradePhase
+				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
+				tc.Status.Pump.Phase = v1alpha1.NormalPhase
+				tc.Status.TiDB.Phase = v1alpha1.NormalPhase
+				tc.Status.TiCDC.Synced = true
+			},
+			changeOldSet: func(oldSet *apps.StatefulSet) {
+				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+			},
+			errorExpect: false,
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
+				g.Expect(tc.Status.TiCDC.Phase).To(Equal(v1alpha1.NormalPhase))
+				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(1)))
+			},
+		},
+		{
+			name: "ticdc can not upgrade when tikv is upgrading",
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiFlash.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+				tc.Status.Pump.Phase = v1alpha1.NormalPhase
+				tc.Status.TiDB.Phase = v1alpha1.NormalPhase
+				tc.Status.TiCDC.Synced = true
+			},
+			changeOldSet: func(oldSet *apps.StatefulSet) {
+				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+			},
+			errorExpect: false,
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
+				g.Expect(tc.Status.TiCDC.Phase).To(Equal(v1alpha1.NormalPhase))
+				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(1)))
+			},
+		},
+		{
+			name: "ticdc can not upgrade when pump is upgrading",
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiFlash.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
+				tc.Status.Pump.Phase = v1alpha1.UpgradePhase
+				tc.Status.TiDB.Phase = v1alpha1.NormalPhase
+				tc.Status.TiCDC.Synced = true
+			},
+			changeOldSet: func(oldSet *apps.StatefulSet) {
+				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+			},
+			errorExpect: false,
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
+				g.Expect(tc.Status.TiCDC.Phase).To(Equal(v1alpha1.NormalPhase))
+				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(1)))
+			},
+		},
+		{
+			name: "ticdc can not upgrade when tidb is upgrading",
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiFlash.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
+				tc.Status.Pump.Phase = v1alpha1.NormalPhase
+				tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
+				tc.Status.TiCDC.Synced = true
+			},
+			changeOldSet: func(oldSet *apps.StatefulSet) {
+				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+			},
+			errorExpect: false,
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
+				g.Expect(tc.Status.TiCDC.Phase).To(Equal(v1alpha1.NormalPhase))
+				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(1)))
+			},
+		},
 	}
 
 	for _, test := range tests {
