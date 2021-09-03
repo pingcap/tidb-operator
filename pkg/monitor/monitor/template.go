@@ -480,7 +480,7 @@ func RenderPrometheusConfig(model *MonitorConfigModel) (string, error) {
 		}
 	}
 	if model.EnableExternalRuleConfigs {
-		pc.RuleFiles = append(pc.RuleFiles, "/prometheus-rules/external/*.rules.yml")
+		pc.RuleFiles = append(pc.RuleFiles, "/prometheus-external-rules/*.rules.yml")
 	}
 
 	bs, err := yaml.Marshal(pc)
