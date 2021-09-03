@@ -60,14 +60,7 @@ func NewTiCDCMemberManager(deps *controller.Dependencies, ticdcUpgrader Upgrader
 
 // Sync fulfills the manager.Manager interface
 func (m *ticdcMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-
 	if tc.Spec.TiCDC == nil {
-		return nil
-	}
-	if tc.Spec.Paused {
-		klog.Infof("TidbCluster %s/%s is paused, skip syncing ticdc deployment", ns, tcName)
 		return nil
 	}
 
@@ -97,7 +90,21 @@ func (m *ticdcMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 			ns, tcName, err)
 	}
 
+<<<<<<< HEAD
 	newSts, err := getNewTiCDCStatefulSet(tc)
+=======
+	if tc.Spec.Paused {
+		klog.Infof("TidbCluster %s/%s is paused, skip syncing ticdc statefulset", tc.GetNamespace(), tc.GetName())
+		return nil
+	}
+
+	cm, err := m.syncTiCDCConfigMap(tc, oldSts)
+	if err != nil {
+		return err
+	}
+
+	newSts, err := getNewTiCDCStatefulSet(tc, cm)
+>>>>>>> d36e6a99... Sync TiCDC after TiDB (#4171)
 	if err != nil {
 		return err
 	}
@@ -169,6 +176,11 @@ func (m *ticdcMemberManager) syncTiCDCStatus(tc *v1alpha1.TidbCluster, sts *apps
 }
 
 func (m *ticdcMemberManager) syncCDCHeadlessService(tc *v1alpha1.TidbCluster) error {
+	if tc.Spec.Paused {
+		klog.Infof("TidbCluster %s/%s is paused, skip syncing ticdc service", tc.GetNamespace(), tc.GetName())
+		return nil
+	}
+
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 

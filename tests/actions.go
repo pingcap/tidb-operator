@@ -3636,7 +3636,52 @@ func (oa *operatorActions) pumpMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return false, nil
 	}
 
+<<<<<<< HEAD
 	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), ss) {
+=======
+	c, found := getMemberContainer(oa.kubeCli, oa.tcStsGetter, ns, tc.Name, label.TiCDCLabelVal)
+	if !found {
+		log.Logf("StatefulSet: %q not found containers[name=ticdc] or pod %s-0", cdcStsID, cdcSetName)
+		return false, nil
+	}
+
+	if tc.TiCDCImage() != c.Image {
+		log.Logf("StatefulSet: %q .spec.template.spec.containers[name=ticdc].image(%s) != %s", cdcStsID, c.Image, tc.TiCDCImage())
+		return false, nil
+	}
+
+	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), cdcSet) {
+		return false, nil
+	}
+
+	log.Logf("cdc members are ready for tc %q", tcID)
+	return true, nil
+}
+
+func (oa *OperatorActions) pumpMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, error) {
+	if tc.Spec.Pump == nil {
+		log.Logf("no pump in tc spec, skip")
+		return true, nil
+	}
+	tcName := tc.GetName()
+	ns := tc.GetNamespace()
+	pumpSetName := controller.PumpMemberName(tcName)
+	tcID := fmt.Sprintf("%s/%s", ns, tcName)
+	pumpStsID := fmt.Sprintf("%s/%s", ns, pumpSetName)
+
+	pumpSet, err := oa.tcStsGetter.StatefulSets(ns).Get(pumpSetName, metav1.GetOptions{})
+	if err != nil {
+		log.Logf("failed to get StatefulSet: %q, %v", pumpStsID, err)
+		return false, nil
+	}
+
+	if pumpSet.Status.CurrentRevision != pumpSet.Status.UpdateRevision {
+		log.Logf("pump sts .Status.CurrentRevision (%s) != .Status.UpdateRevision (%s)", pumpSet.Status.CurrentRevision, pumpSet.Status.UpdateRevision)
+		return false, nil
+	}
+
+	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), pumpSet) {
+>>>>>>> d36e6a99... Sync TiCDC after TiDB (#4171)
 		return false, nil
 	}
 

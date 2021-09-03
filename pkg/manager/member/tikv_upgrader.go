@@ -43,9 +43,37 @@ func NewTiKVUpgrader(deps *controller.Dependencies) Upgrader {
 	}
 }
 
+<<<<<<< HEAD
 func (u *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
+=======
+func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	ns := meta.GetNamespace()
+	tcName := meta.GetName()
+
+	var status *v1alpha1.TiKVStatus
+	switch meta := meta.(type) {
+	case *v1alpha1.TidbCluster:
+		if meta.Status.TiFlash.Phase == v1alpha1.UpgradePhase ||
+			meta.Status.PD.Phase == v1alpha1.UpgradePhase ||
+			meta.TiKVScaling() {
+			klog.Infof("TidbCluster: [%s/%s]'s tiflash status is %v, pd status is %v, "+
+				"tikv status is %v, can not upgrade tikv",
+				ns, tcName,
+				meta.Status.TiFlash.Phase, meta.Status.PD.Phase, meta.Status.TiKV.Phase)
+			_, podSpec, err := GetLastAppliedConfig(oldSet)
+			if err != nil {
+				return err
+			}
+			newSet.Spec.Template.Spec = *podSpec
+			return nil
+		}
+		status = &meta.Status.TiKV
+	default:
+		return fmt.Errorf("cluster[%s/%s] failed to upgrading tikv due to converting", meta.GetNamespace(), meta.GetName())
+	}
+>>>>>>> d36e6a99... Sync TiCDC after TiDB (#4171)
 
 	if tc.Status.TiCDC.Phase == v1alpha1.UpgradePhase ||
 		tc.Status.TiFlash.Phase == v1alpha1.UpgradePhase ||
