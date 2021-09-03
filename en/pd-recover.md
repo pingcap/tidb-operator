@@ -18,7 +18,7 @@ aliases: ['/docs/tidb-in-kubernetes/dev/pd-recover/']
     wget https://download.pingcap.org/tidb-${version}-linux-amd64.tar.gz
     ```
 
-    In the command above, `${version}` is the version of the TiDB cluster, such as `v5.1.1`.
+    In the command above, `${version}` is the version of the TiDB cluster, such as `v5.2.0`.
 
 2. Unpack the TiDB package for installation:
 

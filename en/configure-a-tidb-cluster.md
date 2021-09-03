@@ -41,11 +41,11 @@ Usually, components in a cluster are in the same version. It is recommended to c
 
 Here are the formats of the parameters:
 
-- `spec.version`: the format is `imageTag`, such as `v5.1.1`
+- `spec.version`: the format is `imageTag`, such as `v5.2.0`
 
 - `spec.<pd/tidb/tikv/pump/tiflash/ticdc>.baseImage`: the format is `imageName`, such as `pingcap/tidb`
 
-- `spec.<pd/tidb/tikv/pump/tiflash/ticdc>.version`: the format is `imageTag`, such as `v5.1.1`
+- `spec.<pd/tidb/tikv/pump/tiflash/ticdc>.version`: the format is `imageTag`, such as `v5.2.0`
 
 ### Recommended configuration
 
@@ -177,7 +177,7 @@ kind: TidbCluster
 metadata:
   name: basic
 spec:
-  version: v5.1.1
+  version: v5.2.0
   pvReclaimPolicy: Retain
   discovery:
     limits:
@@ -293,7 +293,7 @@ metadata:
 spec:
 ....
   tidb:
-    image: pingcap/tidb:v5.1.1
+    image: pingcap/tidb:v5.2.0
     imagePullPolicy: IfNotPresent
     replicas: 1
     service:
@@ -467,7 +467,7 @@ kind: TidbCluster
 metadata:
   name: basic
 spec:
-  version: v5.1.1
+  version: v5.2.0
   pvReclaimPolicy: Retain
   discovery: {}
   pd:
