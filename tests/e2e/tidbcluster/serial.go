@@ -455,6 +455,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			tc.Spec.PD.Replicas = 3
 			tc.Spec.TiKV.Replicas = 1
 			tc.Spec.TiDB.Replicas = 1
+			tc.Spec.TiCDC.Config = nil
 
 			err := genericCli.Create(context.TODO(), tc)
 			framework.ExpectNoError(err, "Expected TiDB cluster created")
