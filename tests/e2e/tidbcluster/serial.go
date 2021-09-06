@@ -471,8 +471,6 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			framework.ExpectNoError(err, "failed to get tiflash pods")
 			ticdcPods, err := getPods(labels.SelectorFromSet(label.New().Instance(tcName).TiCDC().Labels()).String(), ns, c)
 			framework.ExpectNoError(err, "failed to get ticdc pods")
-			pumpPods, err := getPods(labels.SelectorFromSet(label.New().Instance(tcName).Pump().Labels()).String(), ns, c)
-			framework.ExpectNoError(err, "failed to get pump pods")
 
 			ginkgo.By("Upgrade tidb-operator and CRDs to the latest version")
 			ocfg.Tag = cfg.OperatorTag
@@ -535,20 +533,9 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				}
 				log.Logf("confirm ticdc pods haven't been changed this time")
 
-				// confirm the pump haven't been changed
-				changed, err = utilpod.PodsAreChanged(c, pumpPods)()
-				if err != nil {
-					log.Logf("ERROR: meet error during verify pump pods, err:%v", err)
-					return false, err
-				}
-				if changed {
-					return true, nil
-				}
-				log.Logf("confirm pump pods haven't been changed this time")
-
 				return false, nil
 			})
-			framework.ExpectEqual(err, wait.ErrWaitTimeout, "expect pd/tikv/tidb/tiflash/ticdc/pump haven't been changed for 5 minutes")
+			framework.ExpectEqual(err, wait.ErrWaitTimeout, "expect pd/tikv/tidb/tiflash/ticdc haven't been changed for 5 minutes")
 		})
 
 		/*
