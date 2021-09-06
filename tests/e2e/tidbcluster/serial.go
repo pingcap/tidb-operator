@@ -449,9 +449,13 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			ginkgo.By(fmt.Sprintf("deploy original tc %q", utilimage.TiDBLatest))
 			tcName := "tidbcluster"
 			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBLatest)
+			tc = fixture.AddTiFlashForTidbCluster(tc)
+			tc = fixture.AddTiCDCForTidbCluster(tc)
+			tc = fixture.AddPumpForTidbCluster(tc)
 			tc.Spec.PD.Replicas = 3
 			tc.Spec.TiKV.Replicas = 1
 			tc.Spec.TiDB.Replicas = 1
+			tc.Spec.TiCDC.Config = nil
 
 			err := genericCli.Create(context.TODO(), tc)
 			framework.ExpectNoError(err, "Expected TiDB cluster created")
@@ -464,6 +468,10 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			framework.ExpectNoError(err, "failed to get tikv pods")
 			tidbPods, err := getPods(labels.SelectorFromSet(label.New().Instance(tcName).TiDB().Labels()).String(), ns, c)
 			framework.ExpectNoError(err, "failed to get tidb pods")
+			tiflashPods, err := getPods(labels.SelectorFromSet(label.New().Instance(tcName).TiFlash().Labels()).String(), ns, c)
+			framework.ExpectNoError(err, "failed to get tiflash pods")
+			ticdcPods, err := getPods(labels.SelectorFromSet(label.New().Instance(tcName).TiCDC().Labels()).String(), ns, c)
+			framework.ExpectNoError(err, "failed to get ticdc pods")
 
 			ginkgo.By("Upgrade tidb-operator and CRDs to the latest version")
 			ocfg.Tag = cfg.OperatorTag
@@ -504,9 +512,31 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				}
 				log.Logf("confirm tidb pods haven't been changed this time")
 
+				// confirm the tiflash haven't been changed
+				changed, err = utilpod.PodsAreChanged(c, tiflashPods)()
+				if err != nil {
+					log.Logf("ERROR: meet error during verify tiflash pods, err:%v", err)
+					return false, err
+				}
+				if changed {
+					return true, nil
+				}
+				log.Logf("confirm tiflash pods haven't been changed this time")
+
+				// confirm the ticdc haven't been changed
+				changed, err = utilpod.PodsAreChanged(c, ticdcPods)()
+				if err != nil {
+					log.Logf("ERROR: meet error during verify ticdc pods, err:%v", err)
+					return false, err
+				}
+				if changed {
+					return true, nil
+				}
+				log.Logf("confirm ticdc pods haven't been changed this time")
+
 				return false, nil
 			})
-			framework.ExpectEqual(err, wait.ErrWaitTimeout, "expect pd/tikv/tidb haven't been changed for 5 minutes")
+			framework.ExpectEqual(err, wait.ErrWaitTimeout, "expect pd/tikv/tidb/tiflash/ticdc haven't been changed for 5 minutes")
 		})
 
 		/*
