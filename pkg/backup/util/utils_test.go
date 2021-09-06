@@ -209,7 +209,8 @@ func TestGenerateStorageCertEnv(t *testing.T) {
 		s := &corev1.Secret{}
 		s.Namespace = ns
 		s.Name = secretName
-		informer.Core().V1().Secrets().Informer().GetIndexer().Add(s)
+		err = informer.Core().V1().Secrets().Informer().GetIndexer().Add(s)
+		g.Expect(err).Should(BeNil())
 		_, _, err = GenerateStorageCertEnv(ns, false, test.provider, informer.Core().V1().Secrets().Lister())
 		if test.provider.Gcs != nil && test.provider.Gcs.SecretName == "" {
 			g.Expect(err).Should(BeNil())
@@ -223,7 +224,8 @@ func TestGenerateStorageCertEnv(t *testing.T) {
 			constants.S3AccessKey:       []byte("dummy"),
 			constants.S3SecretKey:       []byte("dummy"),
 		}
-		informer.Core().V1().Secrets().Informer().GetIndexer().Update(s)
+		err = informer.Core().V1().Secrets().Informer().GetIndexer().Update(s)
+		g.Expect(err).Should(BeNil())
 		_, _, err = GenerateStorageCertEnv(ns, false, test.provider, informer.Core().V1().Secrets().Lister())
 		g.Expect(err).Should(BeNil())
 	}
@@ -245,7 +247,8 @@ func TestGenerateTidbPasswordEnv(t *testing.T) {
 	s.Name = secretName
 	_, err = client.CoreV1().Secrets(ns).Create(s)
 	g.Expect(err).Should(BeNil())
-	informer.Core().V1().Secrets().Informer().GetIndexer().Add(s)
+	err = informer.Core().V1().Secrets().Informer().GetIndexer().Add(s)
+	g.Expect(err).Should(BeNil())
 	_, _, err = GenerateTidbPasswordEnv(ns, tcName, secretName, false, informer.Core().V1().Secrets().Lister())
 	g.Expect(err.Error()).Should(MatchRegexp(".*missing password key.*"))
 
@@ -255,7 +258,8 @@ func TestGenerateTidbPasswordEnv(t *testing.T) {
 	}
 	_, err = client.CoreV1().Secrets(ns).Update(s)
 	g.Expect(err).Should(BeNil())
-	informer.Core().V1().Secrets().Informer().GetIndexer().Update(s)
+	err = informer.Core().V1().Secrets().Informer().GetIndexer().Update(s)
+	g.Expect(err).Should(BeNil())
 	envs, _, err := GenerateTidbPasswordEnv(ns, tcName, secretName, false, informer.Core().V1().Secrets().Lister())
 	g.Expect(err).Should(BeNil())
 	g.Expect(len(envs)).ShouldNot(Equal(0))

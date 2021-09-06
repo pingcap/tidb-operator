@@ -300,7 +300,7 @@ func TestGetHTTPClient(t *testing.T) {
 		fakeClient := &fake.Clientset{}
 		fakeSecret(fakeClient)
 		informer := kubeinformers.NewSharedInformerFactory(fakeClient, 0)
-		informer.Core().V1().Secrets().Informer().GetIndexer().Add(&corev1.Secret{
+		err := informer.Core().V1().Secrets().Informer().GetIndexer().Add(&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "demo-cluster-client-secret",
 				Namespace: corev1.NamespaceDefault,
@@ -311,6 +311,7 @@ func TestGetHTTPClient(t *testing.T) {
 				corev1.ServiceAccountRootCAKey: []byte(caData),
 			},
 		})
+		g.Expect(err).Should(BeNil())
 		control := NewDefaultTiDBControl(informer.Core().V1().Secrets().Lister())
 		tc := getTidbCluster()
 		c.updateTC(tc)

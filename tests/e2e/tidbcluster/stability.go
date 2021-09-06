@@ -97,6 +97,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		kubeInformerFactory := kubeinformers.NewSharedInformerFactory(c, 30*time.Second)
 		secretLister = kubeInformerFactory.Core().V1().Secrets().Lister()
 		stop := make(chan struct{})
+		defer close(stop)
 		kubeInformerFactory.Start(stop)
 		kubeInformerFactory.WaitForCacheSync(stop)
 

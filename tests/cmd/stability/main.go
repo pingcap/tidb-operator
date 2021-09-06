@@ -118,6 +118,7 @@ func run() {
 	}
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(kubeCli, 30*time.Second)
 	stop := make(chan struct{})
+	defer close(stop)
 	kubeInformerFactory.Start(stop)
 	kubeInformerFactory.WaitForCacheSync(stop)
 
