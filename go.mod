@@ -11,7 +11,6 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/MakeNowJust/heredoc v0.0.0-20171113091838-e9091a26100e // indirect
 	github.com/Masterminds/semver v1.4.2
-	github.com/Microsoft/go-winio v0.4.12 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/aws/aws-sdk-go v1.30.9
 	github.com/chai2010/gettext-go v0.0.0-20170215093142-bf70f2a70fb1 // indirect
@@ -28,14 +27,13 @@ require (
 	github.com/fatih/color v1.7.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/go-sql-driver/mysql v1.5.0
-	github.com/gogo/protobuf v1.3.1
+	github.com/gogo/protobuf v1.3.2
 	github.com/golang/groupcache v0.0.0-20181024230925-c65c006176ff // indirect
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/google/go-cmp v0.3.1
-	github.com/google/gofuzz v1.0.0
+	github.com/google/gofuzz v1.1.0
 	github.com/gophercloud/gophercloud v0.3.0 // indirect
 	github.com/gregjones/httpcache v0.0.0-20190212212710-3befbb6ad0cc // indirect
-	github.com/grpc-ecosystem/go-grpc-middleware v1.0.1-0.20190118093823-f849b5445de4 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.13.0 // indirect
 	github.com/imdario/mergo v0.3.7 // indirect
 	github.com/juju/errors v0.0.0-20180806074554-22422dad46e1
@@ -44,8 +42,8 @@ require (
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/minio/minio-go/v6 v6.0.55
 	github.com/nwaples/rardecode v1.0.0 // indirect
-	github.com/onsi/ginkgo v1.10.3
-	github.com/onsi/gomega v1.5.0
+	github.com/onsi/ginkgo v1.11.0
+	github.com/onsi/gomega v1.7.0
 	github.com/openshift/generic-admission-server v1.14.0
 	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
@@ -57,29 +55,27 @@ require (
 	github.com/pingcap/tidb-operator/pkg/apis v0.0.0
 	github.com/pingcap/tidb-operator/pkg/client v0.0.0
 	github.com/prometheus/client_golang v1.0.0
-	github.com/prometheus/client_model v0.1.0
+	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.7.0
 	github.com/prometheus/prom2json v1.3.0
 	github.com/prometheus/prometheus v1.8.2
 	github.com/robfig/cron v1.1.0
 	github.com/sirupsen/logrus v1.5.0
-	github.com/soheilhy/cmux v0.1.4 // indirect
 	github.com/spf13/cobra v0.0.5
-	github.com/spf13/pflag v1.0.3
+	github.com/spf13/pflag v1.0.5
 	github.com/tikv/pd v2.1.17+incompatible
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20171017195756-830351dc03c6 // indirect
 	github.com/uber-go/atomic v0.0.0-00010101000000-000000000000 // indirect
 	github.com/uber/jaeger-client-go v2.19.0+incompatible // indirect
 	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
-	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2 // indirect
 	github.com/yisaer/crd-validation v0.0.3
 	gocloud.dev v0.18.0
-	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
-	golang.org/x/time v0.0.0-20181108054448-85acf8d2951c
+	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
+	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 	gomodules.xyz/jsonpatch/v2 v2.0.1
 	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce // indirect
-	gopkg.in/yaml.v2 v2.2.4
+	gopkg.in/yaml.v2 v2.2.8
 	k8s.io/api v0.0.0
 	k8s.io/apiextensions-apiserver v0.0.0
 	k8s.io/apimachinery v0.0.0
@@ -91,8 +87,8 @@ require (
 	k8s.io/klog v1.0.0
 	k8s.io/kube-aggregator v0.0.0
 	k8s.io/kubectl v0.0.0
-	k8s.io/kubernetes v1.16.0
-	k8s.io/utils v0.0.0-20190801114015-581e00157fb1
+	k8s.io/kubernetes v1.18.19
+	k8s.io/utils v0.0.0-20200324210504-a9aa75ae1b89
 	sigs.k8s.io/apiserver-builder-alpha/cmd v0.0.0-20191113095113-4493943d2568
 	sigs.k8s.io/controller-runtime v0.4.0
 )
