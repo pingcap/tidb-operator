@@ -333,6 +333,63 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 	})
 
+	ginkgo.It("should direct upgrade tc successfully when PD replicas less than 2.", func() {
+		clusterName := "upgrade-cluster-pd-1"
+		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBLatestPrev)
+		tc.Spec.PD.Replicas = 1
+		tc.Spec.PD.BaseImage = "pingcap/pd-not-exist"
+		// Deploy
+		err := genericCli.Create(context.TODO(), tc)
+		framework.ExpectNoError(err, "failed to create TidbCluster %s/%s", tc.Namespace, tc.Name)
+
+		err = utiltc.WaitForTidbClusterCondition(cli, tc.Namespace, tc.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
+			if len(tc.Status.Conditions) < 1 {
+				return false, nil
+			}
+			if tc.Status.Conditions[0].Reason == "PDUnhealthy" && tc.Status.PD.StatefulSet.CurrentReplicas == tc.Status.PD.StatefulSet.Replicas {
+				return true, nil
+			}
+			return false, nil
+		})
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Force Upgrading tidb cluster ignoring PD error")
+		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+			tc.Spec.PD.BaseImage = "pingcap/pd"
+			return nil
+		})
+		framework.ExpectNoError(err, "failed to upgrade TidbCluster: %q", tc.Name)
+		err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
+
+		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+	})
+
+	ginkgo.It("should direct upgrade tc successfully when TiKV replicas less than 2.", func() {
+		clusterName := "upgrade-cluster-tikv-1"
+		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBLatestPrev)
+		tc.Spec.TiKV.Replicas = 1
+		tc.Spec.TiKV.EvictLeaderTimeout = pointer.StringPtr("10m")
+		// Deploy
+		utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 5*time.Second)
+		ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", tc.Spec.Version, utilimage.TiDBLatest))
+		err := controller.GuaranteedUpdate(genericCli, tc, func() error {
+			tc.Spec.Version = utilimage.TiDBLatest
+			return nil
+		})
+		framework.ExpectNoError(err, "failed to upgrade TidbCluster: %q", tc.Name)
+		err = oa.WaitForTidbClusterReady(tc, 5*time.Minute, 5*time.Second)
+
+		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+		pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, tc.Name, false)
+		framework.ExpectNoError(err, "failed to create proxied PD client")
+		defer cancel()
+
+		evictLeaderSchedulers, err := pdClient.GetEvictLeaderSchedulers()
+		framework.ExpectNoError(err, "failed to get EvictLeader")
+		res := utiltc.MustPDHasScheduler(evictLeaderSchedulers, "evict-leader-scheduler")
+		framework.ExpectEqual(res, false)
+	})
+
 	// TODO: move into Upgrade cases below
 	ginkgo.It("should upgrade TidbCluster with webhook enabled", func() {
 		ginkgo.By("Creating webhook certs and self signing it")
@@ -881,6 +938,42 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 		ginkgo.By("Check custom labels and annotations")
 		checkMonitorCustomLabelAndAnn(tm, c)
+
+		ginkgo.By("enable dynamic configuration update")
+		err = controller.GuaranteedUpdate(genericCli, tm, func() error {
+			tm.Spec.PrometheusReloader = &v1alpha1.PrometheusReloaderSpec{
+				MonitorContainer: v1alpha1.MonitorContainer{
+					BaseImage: "quay.io/prometheus-operator/prometheus-config-reloader",
+					Version:   "v0.49.0",
+				},
+			}
+			return nil
+		})
+		framework.ExpectNoError(err, "enable tidbmonitor dynamic configuration error")
+
+		secondTc := fixture.GetTidbCluster(ns, "monitor-test-second", utilimage.TiDBLatest)
+		secondTc.Spec.PD.Replicas = 1
+		secondTc.Spec.TiKV.Replicas = 1
+		secondTc.Spec.TiDB.Replicas = 1
+		secondTc, err = cli.PingcapV1alpha1().TidbClusters(secondTc.Namespace).Create(secondTc)
+		framework.ExpectNoError(err, "Expected create tidbcluster")
+		err = oa.WaitForTidbClusterReady(secondTc, 30*time.Minute, 5*time.Second)
+		framework.ExpectNoError(err, "Expected get secondTc tidbcluster")
+		ginkgo.By("update tidbmonitor cluster spec")
+		err = controller.GuaranteedUpdate(genericCli, tm, func() error {
+			tm.Spec.Clusters = []v1alpha1.TidbClusterRef{
+				{
+					Name: "monitor-test",
+				},
+				{
+					Name: "monitor-test-second",
+				},
+			}
+			return nil
+		})
+		framework.ExpectNoError(err, "update tidbmonitor cluster spec error")
+		err = tests.CheckTidbMonitorConfigurationUpdate(tm, c, fw, 5)
+		framework.ExpectNoError(err, "Expected tidbmonitor dynamic configuration checked success")
 
 		ginkgo.By("Delete tidbmonitor")
 		err = cli.PingcapV1alpha1().TidbMonitors(tm.Namespace).Delete(tm.Name, &metav1.DeleteOptions{})
@@ -2171,19 +2264,19 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			cases := []upgradeCase{
 				{
 					oldVersion:              utilimage.TiDBV4x0x9,
-					newVersion:              utilimage.TiDBV5x1x0,
+					newVersion:              utilimage.TiDBLatest,
 					configureOldTiDBCluster: configureV4x0x9,
 					configureNewTiDBCluster: configureV5x1x0,
 				},
 				{
 					oldVersion:              utilimage.TiDBV5x0x0,
-					newVersion:              utilimage.TiDBV5x1x0,
+					newVersion:              utilimage.TiDBLatest,
 					configureOldTiDBCluster: configureV5x0x0,
 					configureNewTiDBCluster: configureV5x1x0,
 				},
 				{
 					oldVersion:              utilimage.TiDBV5x0x2,
-					newVersion:              utilimage.TiDBV5x1x0,
+					newVersion:              utilimage.TiDBLatest,
 					configureOldTiDBCluster: configureV5x0x2,
 					configureNewTiDBCluster: configureV5x1x0,
 				},
