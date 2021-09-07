@@ -103,6 +103,7 @@
 + [TiDB Operator Roadmap](roadmap.md)
 + Release Notes
   + v1.2
+    - [1.2.3](releases/release-1.2.3.md)
     - [1.2.2](releases/release-1.2.2.md)
     - [1.2.1](releases/release-1.2.1.md)
     - [1.2 GA](releases/release-1.2.0.md)
