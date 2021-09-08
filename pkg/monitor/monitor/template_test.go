@@ -99,8 +99,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: pd
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2-pd-peer.$3:$4
@@ -118,8 +117,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: tidb
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2-tidb-peer.$3:$4
@@ -137,8 +135,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: tikv
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2-tikv-peer.$3:$4
@@ -156,8 +153,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: tiflash
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2-tiflash-peer.$3:$4
@@ -175,8 +171,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: tiflash
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_tiflash_proxy_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_tiflash_proxy_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2-tiflash-peer.$3:$4
@@ -194,8 +189,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: pump
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2-pump.$3:$4
@@ -213,8 +207,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: drainer
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_name,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_name, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2.$3:$4
@@ -232,8 +225,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: ticdc
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2-ticdc-peer.$3:$4
@@ -251,8 +243,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: importer
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2-importer.$3:$4
@@ -270,8 +261,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: tidb-lightning
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_name,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_name, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $2.$3:$4
@@ -289,8 +279,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: dm-worker
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2-dm-worker-peer.$3:$4
@@ -308,8 +297,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: dm-master
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2-dm-master-peer.$3:$4
@@ -384,8 +372,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: pd
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2-pd-peer.$3:$4
@@ -403,8 +390,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: tidb
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2-tidb-peer.$3:$4
@@ -422,8 +408,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: tikv
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2-tikv-peer.$3:$4
@@ -441,8 +426,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: tiflash
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2-tiflash-peer.$3:$4
@@ -460,8 +444,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: tiflash
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_tiflash_proxy_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_tiflash_proxy_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2-tiflash-peer.$3:$4
@@ -479,8 +462,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: pump
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2-pump.$3:$4
@@ -498,8 +480,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: drainer
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_name,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_name, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2.$3:$4
@@ -517,8 +498,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: ticdc
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2-ticdc-peer.$3:$4
@@ -536,8 +516,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: importer
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2-importer.$3:$4
@@ -555,8 +534,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: tidb-lightning
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_name,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_name, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $2.$3:$4
@@ -574,8 +552,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: dm-worker
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2-dm-worker-peer.$3:$4
@@ -593,8 +570,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: dm-master
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2-dm-master-peer.$3:$4
@@ -684,8 +660,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: pd
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2-pd-peer.$3:$4
@@ -737,8 +712,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: tidb
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2-tidb-peer.$3:$4
@@ -790,8 +764,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: tikv
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2-tikv-peer.$3:$4
@@ -843,8 +816,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: tiflash
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2-tiflash-peer.$3:$4
@@ -896,8 +868,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: tiflash
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_tiflash_proxy_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_tiflash_proxy_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2-tiflash-peer.$3:$4
@@ -949,8 +920,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: pump
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2-pump.$3:$4
@@ -1002,8 +972,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: drainer
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_name,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_name, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2.$3:$4
@@ -1055,8 +1024,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: ticdc
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2-ticdc-peer.$3:$4
@@ -1108,8 +1076,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: importer
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2-importer.$3:$4
@@ -1158,8 +1125,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: tidb-lightning
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_name,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_name, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $2.$3:$4
@@ -1211,8 +1177,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: dm-worker
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2-dm-worker-peer.$3:$4
@@ -1264,8 +1229,7 @@ scrape_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
     regex: dm-master
     action: keep
-  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
     regex: (.+);(.+);(.+);(.+)
     target_label: __address__
     replacement: $1.$2-dm-master-peer.$3:$4

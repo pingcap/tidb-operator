@@ -14,6 +14,7 @@
 package use
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -117,7 +118,7 @@ func (o *UseOptions) Run(tkcContext *config.TkcContext, args []string) error {
 
 	tc, err := o.TcCli.PingcapV1alpha1().
 		TidbClusters(o.Namespace).
-		Get(o.TidbClusterName, metav1.GetOptions{})
+		Get(context.TODO(), o.TidbClusterName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}

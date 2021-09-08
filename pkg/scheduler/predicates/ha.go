@@ -14,6 +14,7 @@
 package predicates
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math"
@@ -341,18 +342,18 @@ func (h *ha) realAcquireLock(pod *apiv1.Pod) (*apiv1.PersistentVolumeClaim, *api
 
 func (h *ha) realPodListFn(ns, instanceName, component string) (*apiv1.PodList, error) {
 	selector := label.New().Instance(instanceName).Component(component).Labels()
-	return h.kubeCli.CoreV1().Pods(ns).List(metav1.ListOptions{
+	return h.kubeCli.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(selector).String(),
 	})
 }
 
 func (h *ha) realPodGetFn(ns, podName string) (*apiv1.Pod, error) {
-	return h.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+	return h.kubeCli.CoreV1().Pods(ns).Get(context.TODO(), podName, metav1.GetOptions{})
 }
 
 func (h *ha) realPVCListFn(ns, instanceName, component string) (*apiv1.PersistentVolumeClaimList, error) {
 	selector := label.New().Instance(instanceName).Component(component).Labels()
-	return h.kubeCli.CoreV1().PersistentVolumeClaims(ns).List(metav1.ListOptions{
+	return h.kubeCli.CoreV1().PersistentVolumeClaims(ns).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(selector).String(),
 	})
 }
@@ -365,7 +366,7 @@ func (h *ha) realUpdatePVCFn(pvc *apiv1.PersistentVolumeClaim) error {
 	labels := pvc.GetLabels()
 	ann := pvc.GetAnnotations()
 	return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		_, updateErr := h.kubeCli.CoreV1().PersistentVolumeClaims(ns).Update(pvc)
+		_, updateErr := h.kubeCli.CoreV1().PersistentVolumeClaims(ns).Update(context.TODO(), pvc, metav1.UpdateOptions{})
 		if updateErr == nil {
 			klog.Infof("update PVC: [%s/%s] successfully, TidbCluster: %s", ns, pvcName, tcName)
 			return nil
@@ -386,15 +387,15 @@ func (h *ha) realUpdatePVCFn(pvc *apiv1.PersistentVolumeClaim) error {
 }
 
 func (h *ha) realPVCGetFn(ns, pvcName string) (*apiv1.PersistentVolumeClaim, error) {
-	return h.kubeCli.CoreV1().PersistentVolumeClaims(ns).Get(pvcName, metav1.GetOptions{})
+	return h.kubeCli.CoreV1().PersistentVolumeClaims(ns).Get(context.TODO(), pvcName, metav1.GetOptions{})
 }
 
 func (h *ha) realTCGetFn(ns, tcName string) (*v1alpha1.TidbCluster, error) {
-	return h.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+	return h.cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), tcName, metav1.GetOptions{})
 }
 
 func (h *ha) realScheduledNodeGetFn(nodeName string) (*apiv1.Node, error) {
-	return h.kubeCli.CoreV1().Nodes().Get(nodeName, metav1.GetOptions{})
+	return h.kubeCli.CoreV1().Nodes().Get(context.TODO(), nodeName, metav1.GetOptions{})
 }
 
 func (h *ha) setCurrentPodScheduling(pvc *apiv1.PersistentVolumeClaim) error {

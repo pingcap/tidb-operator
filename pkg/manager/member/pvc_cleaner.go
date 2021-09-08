@@ -14,6 +14,7 @@
 package member
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
@@ -137,7 +138,7 @@ func (c *realPVCCleaner) reclaimPV(meta metav1.Object) (map[string]string, error
 		}
 
 		// if pod not found in cache, re-check from apiserver directly to make sure the pod really not exist
-		_, err = c.deps.KubeClientset.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+		_, err = c.deps.KubeClientset.CoreV1().Pods(ns).Get(context.TODO(), podName, metav1.GetOptions{})
 		if err == nil {
 			// PVC is still referenced by this pod, can't reclaim PV
 			skipReason[pvcName] = skipReasonPVCCleanerPVCeferencedByPod
@@ -170,7 +171,7 @@ func (c *realPVCCleaner) reclaimPV(meta metav1.Object) (map[string]string, error
 			klog.V(4).Infof("Persistent volumes lister is unavailable, skip updating the reclaim policy for %s. This may be caused by no relevant permissions", pvName)
 		}
 
-		apiPVC, err := c.deps.KubeClientset.CoreV1().PersistentVolumeClaims(ns).Get(pvcName, metav1.GetOptions{})
+		apiPVC, err := c.deps.KubeClientset.CoreV1().PersistentVolumeClaims(ns).Get(context.TODO(), pvcName, metav1.GetOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {
 				skipReason[pvcName] = skipReasonPVCCleanerPVCNotFound

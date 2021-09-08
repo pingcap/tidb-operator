@@ -14,6 +14,7 @@
 package tikv
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 
@@ -22,7 +23,7 @@ import (
 )
 
 func GetStoreIDByPodName(c versioned.Interface, ns, clusterName, podName string) (uint64, error) {
-	tc, err := c.PingcapV1alpha1().TidbClusters(ns).Get(clusterName, metav1.GetOptions{})
+	tc, err := c.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), clusterName, metav1.GetOptions{})
 	if err != nil {
 		return 0, err
 	}

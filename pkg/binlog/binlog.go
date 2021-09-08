@@ -22,9 +22,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"go.etcd.io/etcd/clientv3"
 )
 
 // Client is the client of binlog.

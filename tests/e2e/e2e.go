@@ -51,11 +51,15 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/component-base/logs"
+	"k8s.io/klog"
 	aggregatorclientset "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	storageutil "k8s.io/kubernetes/pkg/apis/storage/v1/util"
 	"k8s.io/kubernetes/test/e2e/framework"
+	e2ekubectl "k8s.io/kubernetes/test/e2e/framework/kubectl"
 	"k8s.io/kubernetes/test/e2e/framework/log"
+	e2enode "k8s.io/kubernetes/test/e2e/framework/node"
 	"k8s.io/kubernetes/test/e2e/framework/pod"
+	utilnet "k8s.io/utils/net"
 
 	// ensure auth plugins are loaded
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -105,7 +109,7 @@ func setupSuite(c kubernetes.Interface, extClient versioned.Interface, apiExtCli
 		}
 
 		log.Logf("Waiting for deletion of the following namespaces: %v", deleted)
-		if err := framework.WaitForNamespacesDeleted(c, deleted, framework.NamespaceCleanupTimeout); err != nil {
+		if err := framework.WaitForNamespacesDeleted(c, deleted, framework.DefaultNamespaceDeletionTimeout); err != nil {
 			log.Failf("Failed to delete orphaned namespaces %v: %v", deleted, err)
 		}
 	}
@@ -117,7 +121,9 @@ func setupSuite(c kubernetes.Interface, extClient versioned.Interface, apiExtCli
 
 	// If NumNodes is not specified then auto-detect how many are scheduleable and not tainted
 	if framework.TestContext.CloudConfig.NumNodes == framework.DefaultNumNodes {
-		framework.TestContext.CloudConfig.NumNodes = len(framework.GetReadySchedulableNodesOrDie(c).Items)
+		nodes, err := e2enode.GetReadySchedulableNodes(c)
+		framework.ExpectNoError(err)
+		framework.TestContext.CloudConfig.NumNodes = len(nodes.Items)
 	}
 
 	// Ensure all pods are running and ready before starting tests (otherwise,
@@ -131,16 +137,16 @@ func setupSuite(c kubernetes.Interface, extClient versioned.Interface, apiExtCli
 	// number equal to the number of allowed not-ready nodes).
 	if err := pod.WaitForPodsRunningReady(c, metav1.NamespaceSystem, int32(framework.TestContext.MinStartupPods), int32(framework.TestContext.AllowedNotReadyNodes), podStartupTimeout, map[string]string{}); err != nil {
 		framework.DumpAllNamespaceInfo(c, metav1.NamespaceSystem)
-		framework.LogFailedContainers(c, metav1.NamespaceSystem, log.Logf)
+		e2ekubectl.LogFailedContainers(c, metav1.NamespaceSystem, log.Logf)
 		log.Failf("Error waiting for all pods to be running and ready: %v", err)
 	}
 
-	if err := framework.WaitForDaemonSets(c, metav1.NamespaceSystem, int32(framework.TestContext.AllowedNotReadyNodes), framework.TestContext.SystemDaemonsetStartupTimeout); err != nil {
+	if err := waitForDaemonSets(c, metav1.NamespaceSystem, int32(framework.TestContext.AllowedNotReadyNodes), framework.TestContext.SystemDaemonsetStartupTimeout); err != nil {
 		log.Logf("WARNING: Waiting for all daemonsets to be ready failed: %v", err)
 	}
 
 	ginkgo.By("Initializing all nodes")
-	nodeList, err := c.CoreV1().Nodes().List(metav1.ListOptions{})
+	nodeList, err := c.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	framework.ExpectNoError(err, "failed to list nodes")
 	for _, node := range nodeList.Items {
 		framework.Logf("Initializing node %q", node.Name)
@@ -155,7 +161,7 @@ func setupSuite(c kubernetes.Interface, extClient versioned.Interface, apiExtCli
 	// stable in our e2e testing.
 	if framework.TestContext.Provider == "gke" || framework.TestContext.Provider == "aws" {
 		defaultSCName := "local-storage"
-		list, err := c.StorageV1().StorageClasses().List(metav1.ListOptions{})
+		list, err := c.StorageV1().StorageClasses().List(context.TODO(), metav1.ListOptions{})
 		framework.ExpectNoError(err, "list storage class failed")
 		// only one storage class can be marked default
 		// https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/#changing-the-default-storageclass
@@ -165,14 +171,14 @@ func setupSuite(c kubernetes.Interface, extClient versioned.Interface, apiExtCli
 				localStorageSC = &list.Items[i]
 			} else if storageutil.IsDefaultAnnotation(sc.ObjectMeta) {
 				delete(sc.ObjectMeta.Annotations, storageutil.IsDefaultStorageClassAnnotation)
-				_, err = c.StorageV1().StorageClasses().Update(&sc)
+				_, err = c.StorageV1().StorageClasses().Update(context.TODO(), &sc, metav1.UpdateOptions{})
 				framework.ExpectNoError(err, "update storage class failed, %v", sc)
 			}
 		}
 		// nolint: staticcheck
 		// reason: SA5011(related information): this check suggests that the pointer can be nil
 		if localStorageSC == nil {
-			log.Fail("local-storage storage class not found")
+			log.Failf("local-storage storage class not found")
 		}
 		// nolint: staticcheck
 		// reason: SA5011: possible nil pointer dereference
@@ -181,7 +187,7 @@ func setupSuite(c kubernetes.Interface, extClient versioned.Interface, apiExtCli
 		}
 		localStorageSC.Annotations[storageutil.IsDefaultStorageClassAnnotation] = "true"
 		log.Logf("Setting %q as the default storage class", localStorageSC.Name)
-		_, err = c.StorageV1().StorageClasses().Update(localStorageSC)
+		_, err = c.StorageV1().StorageClasses().Update(context.TODO(), localStorageSC, metav1.UpdateOptions{})
 		framework.ExpectNoError(err, "update storage class failed, %v", localStorageSC)
 	}
 
@@ -264,7 +270,7 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	}
 
 	ginkgo.By("Recycle all local PVs")
-	pvList, err := kubeCli.CoreV1().PersistentVolumes().List(metav1.ListOptions{})
+	pvList, err := kubeCli.CoreV1().PersistentVolumes().List(context.TODO(), metav1.ListOptions{})
 	framework.ExpectNoError(err, "failed to list persistent volumes")
 	for _, pv := range pvList.Items {
 		if pv.Spec.StorageClassName != "local-storage" {
@@ -275,13 +281,13 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 		}
 		log.Logf("Update reclaim policy of PV %s to %s", pv.Name, v1.PersistentVolumeReclaimDelete)
 		pv.Spec.PersistentVolumeReclaimPolicy = v1.PersistentVolumeReclaimDelete
-		_, err = kubeCli.CoreV1().PersistentVolumes().Update(&pv)
+		_, err = kubeCli.CoreV1().PersistentVolumes().Update(context.TODO(), &pv, metav1.UpdateOptions{})
 		framework.ExpectNoError(err, "failed to update pv %s", pv.Name)
 	}
 
 	ginkgo.By("Wait for all local PVs to be available")
 	err = wait.Poll(time.Second, time.Minute, func() (bool, error) {
-		pvList, err := kubeCli.CoreV1().PersistentVolumes().List(metav1.ListOptions{})
+		pvList, err := kubeCli.CoreV1().PersistentVolumes().List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -312,7 +318,7 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 		oa.DeployOperatorOrDie(ocfg)
 		if e2econfig.TestConfig.OperatorKiller.Enabled {
 			operatorKiller := utiloperator.NewOperatorKiller(e2econfig.TestConfig.OperatorKiller, kubeCli, func() ([]v1.Pod, error) {
-				podList, err := kubeCli.CoreV1().Pods(ocfg.Namespace).List(metav1.ListOptions{
+				podList, err := kubeCli.CoreV1().Pods(ocfg.Namespace).List(context.TODO(), metav1.ListOptions{
 					LabelSelector: labels.SelectorFromSet(map[string]string{
 						"app.kubernetes.io/name": "tidb-operator",
 					}).String(),
@@ -342,14 +348,14 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	return nil
 }, func(data []byte) {
 	// Run on all Ginkgo nodes
-	framework.SetupSuitePerGinkgoNode()
+	setupSuitePerGinkgoNode()
 })
 
 var _ = ginkgo.SynchronizedAfterSuite(func() {
-	framework.CleanupSuite()
+	CleanupSuite()
 
 }, func() {
-	framework.AfterSuiteActions()
+	AfterSuiteActions()
 	if operatorKillerStopCh != nil {
 		close(operatorKillerStopCh)
 	}
@@ -390,7 +396,7 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 		// full permission (0777) for the log directory to avoid "permission denied" for later kubetest2 log dump.
 		framework.ExpectNoError(os.MkdirAll(logPath, 0777), "failed to create log directory for tidb-operator components")
 
-		podList, err2 := kubeCli.CoreV1().Pods(ocfg.Namespace).List(metav1.ListOptions{})
+		podList, err2 := kubeCli.CoreV1().Pods(ocfg.Namespace).List(context.TODO(), metav1.ListOptions{})
 		framework.ExpectNoError(err2, "failed to list pods for tidb-operator")
 		for _, pod := range podList.Items {
 			log.Logf("dumping logs for pod %s/%s", pod.Namespace, pod.Name)
@@ -405,7 +411,7 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 
 	ginkgo.By("Wait for tidb-operator to be uninstalled")
 	err = wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
-		podList, err2 := kubeCli.CoreV1().Pods(ocfg.Namespace).List(metav1.ListOptions{})
+		podList, err2 := kubeCli.CoreV1().Pods(ocfg.Namespace).List(context.TODO(), metav1.ListOptions{})
 		framework.ExpectNoError(err2, "failed to list pods for tidb-operator")
 		return len(podList.Items) == 0, nil
 	})
@@ -416,30 +422,30 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 // If namespace is deleted directly, all resource in this namespace will be deleted.
 // However, backup finalizer is depend on some resource such as Secret in the namespace, so finalizer will always fail and block namespace deletion.
 func ForceCleanBackups(kubeClient kubernetes.Interface, extClient versioned.Interface, apiExtClient apiextensionsclientset.Interface) error {
-	if _, err := apiExtClient.ApiextensionsV1().CustomResourceDefinitions().Get("backups.pingcap.com", metav1.GetOptions{}); err != nil {
+	if _, err := apiExtClient.ApiextensionsV1().CustomResourceDefinitions().Get(context.TODO(), "backups.pingcap.com", metav1.GetOptions{}); err != nil {
 		if !errors.IsNotFound(err) {
 			return err
 		}
 		return nil
 	}
-	nsList, err := kubeClient.CoreV1().Namespaces().List(metav1.ListOptions{})
+	nsList, err := kubeClient.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
 	for _, item := range nsList.Items {
 		ns := item.Name
-		bl, err := extClient.PingcapV1alpha1().Backups(ns).List(metav1.ListOptions{})
+		bl, err := extClient.PingcapV1alpha1().Backups(ns).List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to list backups in namespace %s: %v", ns, err)
 		}
 		for i := range bl.Items {
 			name := bl.Items[i].Name
-			if err := extClient.PingcapV1alpha1().Backups(ns).Delete(name, nil); err != nil {
+			if err := extClient.PingcapV1alpha1().Backups(ns).Delete(context.TODO(), name, metav1.DeleteOptions{}); err != nil {
 				return fmt.Errorf("failed to delete backup(%s) in namespace %s: %v", name, ns, err)
 			}
 			// use patch to avoid update conflicts
 			patch := []byte(`[{"op":"remove","path":"/metadata/finalizers"}]`)
-			if _, err := extClient.PingcapV1alpha1().Backups(ns).Patch(name, types.JSONPatchType, patch); err != nil {
+			if _, err := extClient.PingcapV1alpha1().Backups(ns).Patch(context.TODO(), name, types.JSONPatchType, patch, metav1.PatchOptions{}); err != nil {
 				return fmt.Errorf("failed to clean backup(%s) finalizers in namespace %s: %v", name, ns, err)
 			}
 		}
@@ -457,7 +463,7 @@ func RunE2ETests(t *testing.T) {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	gomega.RegisterFailHandler(log.Fail)
+	gomega.RegisterFailHandler(ginkgo.Fail)
 
 	// Disable serial and stability tests by default unless they are explicitly requested.
 	if config.GinkgoConfig.FocusString == "" && config.GinkgoConfig.SkipString == "" {
@@ -478,4 +484,79 @@ func RunE2ETests(t *testing.T) {
 	log.Logf("Starting e2e run %q on Ginkgo node %d", framework.RunID, config.GinkgoConfig.ParallelNode)
 
 	ginkgo.RunSpecsWithDefaultAndCustomReporters(t, "tidb-operator e2e suite", r)
+}
+
+// getDefaultClusterIPFamily obtains the default IP family of the cluster
+// using the Cluster IP address of the kubernetes service created in the default namespace
+// This unequivocally identifies the default IP family because services are single family
+// TODO: dual-stack may support multiple families per service
+// but we can detect if a cluster is dual stack because pods have two addresses (one per family)
+func getDefaultClusterIPFamily(c kubernetes.Interface) string {
+	// Get the ClusterIP of the kubernetes service created in the default namespace
+	svc, err := c.CoreV1().Services(metav1.NamespaceDefault).Get(context.TODO(), "kubernetes", metav1.GetOptions{})
+	if err != nil {
+		framework.Failf("Failed to get kubernetes service ClusterIP: %v", err)
+	}
+
+	if utilnet.IsIPv6String(svc.Spec.ClusterIP) {
+		return "ipv6"
+	}
+	return "ipv4"
+}
+
+// waitForDaemonSets for all daemonsets in the given namespace to be ready
+// (defined as all but 'allowedNotReadyNodes' pods associated with that
+// daemonset are ready).
+//
+// If allowedNotReadyNodes is -1, this method returns immediately without waiting.
+func waitForDaemonSets(c kubernetes.Interface, ns string, allowedNotReadyNodes int32, timeout time.Duration) error {
+	if allowedNotReadyNodes == -1 {
+		return nil
+	}
+
+	start := time.Now()
+	framework.Logf("Waiting up to %v for all daemonsets in namespace '%s' to start",
+		timeout, ns)
+
+	return wait.PollImmediate(framework.Poll, timeout, func() (bool, error) {
+		dsList, err := c.AppsV1().DaemonSets(ns).List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			framework.Logf("Error getting daemonsets in namespace: '%s': %v", ns, err)
+			return false, err
+		}
+		var notReadyDaemonSets []string
+		for _, ds := range dsList.Items {
+			framework.Logf("%d / %d pods ready in namespace '%s' in daemonset '%s' (%d seconds elapsed)", ds.Status.NumberReady, ds.Status.DesiredNumberScheduled, ns, ds.ObjectMeta.Name, int(time.Since(start).Seconds()))
+			if ds.Status.DesiredNumberScheduled-ds.Status.NumberReady > allowedNotReadyNodes {
+				notReadyDaemonSets = append(notReadyDaemonSets, ds.ObjectMeta.Name)
+			}
+		}
+
+		if len(notReadyDaemonSets) > 0 {
+			framework.Logf("there are not ready daemonsets: %v", notReadyDaemonSets)
+			return false, nil
+		}
+
+		return true, nil
+	})
+}
+
+// setupSuitePerGinkgoNode is the boilerplate that can be used to setup ginkgo test suites, on the SynchronizedBeforeSuite step.
+// There are certain operations we only want to run once per overall test invocation on each Ginkgo node
+// such as making some global variables accessible to all parallel executions
+// Because of the way Ginkgo runs tests in parallel, we must use SynchronizedBeforeSuite
+// Ref: https://onsi.github.io/ginkgo/#parallel-specs
+func setupSuitePerGinkgoNode() {
+	// Obtain the default IP family of the cluster
+	// Some e2e test are designed to work on IPv4 only, this global variable
+	// allows to adapt those tests to work on both IPv4 and IPv6
+	// TODO: dual-stack
+	// the dual stack clusters can be ipv4-ipv6 or ipv6-ipv4, order matters,
+	// and services use the primary IP family by default
+	c, err := framework.LoadClientset()
+	if err != nil {
+		klog.Fatal("Error loading client: ", err)
+	}
+	framework.TestContext.IPFamily = getDefaultClusterIPFamily(c)
+	framework.Logf("Cluster IP family: %s", framework.TestContext.IPFamily)
 }
