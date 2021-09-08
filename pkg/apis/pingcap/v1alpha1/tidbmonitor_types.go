@@ -175,7 +175,7 @@ type PrometheusConfiguration struct {
 	// user can  use it specify prometheus command options
 	CommandOptions []string `json:"commandOptions,omitempty"`
 
-	// user can mount prometheus rule config with external configMap.If use this feature, the external configMap must use *.rules.yml as a suffix.
+	// User can mount prometheus rule config with external configMap. The external configMap must use the key with suffix `.rules.yml`.
 	RuleConfigRef *ConfigMapRef `json:"ruleConfigRef,omitempty"`
 }
 
