@@ -4,17 +4,23 @@ metadata:
   name: basic
 spec:
   clusters:
-  - name: basic
+    - name: basic
   prometheus:
     baseImage: prom/prometheus
     version: v2.18.1
   grafana:
     baseImage: grafana/grafana
     version: 7.5.7
+    UserSecret:
+      name: basic-grafana
+      key: username
+    PasswordSecret:
+      name: basic-grafana
+      key: password
   initializer:
-    baseImage: uhub.service.ucloud.cn/pingcap/tidb-monitor-initializer
-    version: v5.2.0
+    baseImage: pingcap/tidb-monitor-initializer
+    version: v3.0.13
   reloader:
-    baseImage: uhub.service.ucloud.cn/pingcap/tidb-monitor-reloader
+    baseImage: pingcap/tidb-monitor-reloader
     version: v1.0.1
   imagePullPolicy: IfNotPresent
