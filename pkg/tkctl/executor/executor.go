@@ -59,7 +59,7 @@ func NewPodExecutor(kubeCli *kubernetes.Clientset, pod *v1.Pod, restConfig *rest
 }
 
 func (t *PodExecutor) Execute() error {
-	pod, err := t.KubeCli.CoreV1().Pods(t.Pod.Namespace).Create(t.Pod)
+	pod, err := t.KubeCli.CoreV1().Pods(t.Pod.Namespace).Create(context.TODO(), t.Pod, metav1.CreateOptions{})
 	if err != nil {
 		return err
 	}
@@ -126,11 +126,11 @@ func (t *PodExecutor) attachPod(pod *v1.Pod) error {
 func (t *PodExecutor) removePod(pod *v1.Pod) error {
 	return t.KubeCli.CoreV1().
 		Pods(pod.Namespace).
-		Delete(pod.Name, &metav1.DeleteOptions{})
+		Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
 }
 
 func (t *PodExecutor) waitForPod(pod *v1.Pod, timeoutSeconds int64, exitCondition watch.ConditionFunc) (*v1.Pod, error) {
-	w, err := t.KubeCli.CoreV1().Pods(pod.Namespace).Watch(metav1.SingleObject(metav1.ObjectMeta{Name: pod.Name}))
+	w, err := t.KubeCli.CoreV1().Pods(pod.Namespace).Watch(context.TODO(), metav1.SingleObject(metav1.ObjectMeta{Name: pod.Name}))
 	if err != nil {
 		return nil, err
 	}

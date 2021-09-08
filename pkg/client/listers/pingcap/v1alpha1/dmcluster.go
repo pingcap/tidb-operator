@@ -23,8 +23,10 @@ import (
 )
 
 // DMClusterLister helps list DMClusters.
+// All objects returned here must be treated as read-only.
 type DMClusterLister interface {
 	// List lists all DMClusters in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.DMCluster, err error)
 	// DMClusters returns an object that can list and get DMClusters.
 	DMClusters(namespace string) DMClusterNamespaceLister
@@ -55,10 +57,13 @@ func (s *dMClusterLister) DMClusters(namespace string) DMClusterNamespaceLister 
 }
 
 // DMClusterNamespaceLister helps list and get DMClusters.
+// All objects returned here must be treated as read-only.
 type DMClusterNamespaceLister interface {
 	// List lists all DMClusters in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.DMCluster, err error)
 	// Get retrieves the DMCluster from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.DMCluster, error)
 	DMClusterNamespaceListerExpansion
 }

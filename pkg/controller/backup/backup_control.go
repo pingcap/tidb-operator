@@ -14,6 +14,7 @@
 package backup
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
@@ -22,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/kubernetes/pkg/util/slice"
 )
@@ -82,7 +84,7 @@ func (c *defaultBackupControl) addProtectionFinalizer(backup *v1alpha1.Backup) e
 
 	if needToAddFinalizer(backup) {
 		backup.Finalizers = append(backup.Finalizers, label.BackupProtectionFinalizer)
-		_, err := c.cli.PingcapV1alpha1().Backups(ns).Update(backup)
+		_, err := c.cli.PingcapV1alpha1().Backups(ns).Update(context.TODO(), backup, metav1.UpdateOptions{})
 		if err != nil {
 			return fmt.Errorf("add backup %s/%s protection finalizers failed, err: %v", ns, name, err)
 		}
@@ -96,7 +98,7 @@ func (c *defaultBackupControl) removeProtectionFinalizer(backup *v1alpha1.Backup
 
 	if needToRemoveFinalizer(backup) {
 		backup.Finalizers = slice.RemoveString(backup.Finalizers, label.BackupProtectionFinalizer, nil)
-		_, err := c.cli.PingcapV1alpha1().Backups(ns).Update(backup)
+		_, err := c.cli.PingcapV1alpha1().Backups(ns).Update(context.TODO(), backup, metav1.UpdateOptions{})
 		if err != nil {
 			return fmt.Errorf("remove backup %s/%s protection finalizers failed, err: %v", ns, name, err)
 		}

@@ -14,6 +14,7 @@
 package pod
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -185,7 +186,7 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *admissio
 
 	// We would update pod annotations if they were deleted member by admission controller,
 	// so we shall find this pod from apiServer considering getting latest pod info.
-	pod, err := pc.kubeCli.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
+	pod, err := pc.kubeCli.CoreV1().Pods(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		klog.Infof("failed to find pod[%s/%s] during delete it,admit to delete", namespace, name)
 		return util.ARSuccess()

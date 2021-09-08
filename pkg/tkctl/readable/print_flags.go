@@ -18,6 +18,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/cli-runtime/pkg/printers"
 	kubeprinters "k8s.io/kubernetes/pkg/printers"
 )
 
@@ -47,7 +48,7 @@ func (p *PrintFlags) ToPrinter(withKind, withNamespace bool) (kubeprinters.Resou
 		}
 		return printer, nil
 	}
-	printer := kubeprinters.NewTablePrinter(kubeprinters.PrintOptions{
+	printer := printers.NewTablePrinter(printers.PrintOptions{
 		WithNamespace: withNamespace,
 		Wide:          p.OutputFormat == "wide",
 		WithKind:      withKind,
