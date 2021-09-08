@@ -370,7 +370,6 @@ func TestRenderPrometheusConfigWithRulesSwitch(t *testing.T) {
   scrape_interval: 15s
   evaluation_interval: 15s
 rule_files:
-- /prometheus-rules/rules/*.rules.yml
 - /prometheus-external-rules/*.rules.yml
 scrape_configs:
 - job_name: ns1-target-pd

@@ -473,16 +473,16 @@ func RenderPrometheusConfig(model *MonitorConfigModel) (string, error) {
 		pc.RuleFiles = []string{
 			"/prometheus-rules/rules/*.rules.yml",
 		}
-		if model.EnableExternalRuleConfigs {
-			pc.RuleFiles = append(pc.RuleFiles, "/prometheus-external-rules/*.rules.yml")
-		}
 	} else if model.EnableAlertRules {
 		// Add alert rules when `EnableAlertRules` enabled even if AlertManager not configured.
 		pc.RuleFiles = []string{
 			"/prometheus-rules/rules/*.rules.yml",
 		}
-		if model.EnableExternalRuleConfigs {
-			pc.RuleFiles = append(pc.RuleFiles, "/prometheus-external-rules/*.rules.yml")
+
+	}
+	if model.EnableExternalRuleConfigs {
+		pc.RuleFiles = []string{
+			"/prometheus-external-rules/*.rules.yml",
 		}
 	}
 
