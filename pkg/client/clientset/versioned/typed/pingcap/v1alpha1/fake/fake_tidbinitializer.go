@@ -16,6 +16,8 @@
 package fake
 
 import (
+	"context"
+
 	v1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
@@ -36,7 +38,7 @@ var tidbinitializersResource = schema.GroupVersionResource{Group: "pingcap.com",
 var tidbinitializersKind = schema.GroupVersionKind{Group: "pingcap.com", Version: "v1alpha1", Kind: "TidbInitializer"}
 
 // Get takes name of the tidbInitializer, and returns the corresponding tidbInitializer object, and an error if there is any.
-func (c *FakeTidbInitializers) Get(name string, options v1.GetOptions) (result *v1alpha1.TidbInitializer, err error) {
+func (c *FakeTidbInitializers) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.TidbInitializer, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewGetAction(tidbinitializersResource, c.ns, name), &v1alpha1.TidbInitializer{})
 
@@ -47,7 +49,7 @@ func (c *FakeTidbInitializers) Get(name string, options v1.GetOptions) (result *
 }
 
 // List takes label and field selectors, and returns the list of TidbInitializers that match those selectors.
-func (c *FakeTidbInitializers) List(opts v1.ListOptions) (result *v1alpha1.TidbInitializerList, err error) {
+func (c *FakeTidbInitializers) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.TidbInitializerList, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewListAction(tidbinitializersResource, tidbinitializersKind, c.ns, opts), &v1alpha1.TidbInitializerList{})
 
@@ -69,14 +71,14 @@ func (c *FakeTidbInitializers) List(opts v1.ListOptions) (result *v1alpha1.TidbI
 }
 
 // Watch returns a watch.Interface that watches the requested tidbInitializers.
-func (c *FakeTidbInitializers) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakeTidbInitializers) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewWatchAction(tidbinitializersResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a tidbInitializer and creates it.  Returns the server's representation of the tidbInitializer, and an error, if there is any.
-func (c *FakeTidbInitializers) Create(tidbInitializer *v1alpha1.TidbInitializer) (result *v1alpha1.TidbInitializer, err error) {
+func (c *FakeTidbInitializers) Create(ctx context.Context, tidbInitializer *v1alpha1.TidbInitializer, opts v1.CreateOptions) (result *v1alpha1.TidbInitializer, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewCreateAction(tidbinitializersResource, c.ns, tidbInitializer), &v1alpha1.TidbInitializer{})
 
@@ -87,7 +89,7 @@ func (c *FakeTidbInitializers) Create(tidbInitializer *v1alpha1.TidbInitializer)
 }
 
 // Update takes the representation of a tidbInitializer and updates it. Returns the server's representation of the tidbInitializer, and an error, if there is any.
-func (c *FakeTidbInitializers) Update(tidbInitializer *v1alpha1.TidbInitializer) (result *v1alpha1.TidbInitializer, err error) {
+func (c *FakeTidbInitializers) Update(ctx context.Context, tidbInitializer *v1alpha1.TidbInitializer, opts v1.UpdateOptions) (result *v1alpha1.TidbInitializer, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateAction(tidbinitializersResource, c.ns, tidbInitializer), &v1alpha1.TidbInitializer{})
 
@@ -99,7 +101,7 @@ func (c *FakeTidbInitializers) Update(tidbInitializer *v1alpha1.TidbInitializer)
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeTidbInitializers) UpdateStatus(tidbInitializer *v1alpha1.TidbInitializer) (*v1alpha1.TidbInitializer, error) {
+func (c *FakeTidbInitializers) UpdateStatus(ctx context.Context, tidbInitializer *v1alpha1.TidbInitializer, opts v1.UpdateOptions) (*v1alpha1.TidbInitializer, error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateSubresourceAction(tidbinitializersResource, "status", c.ns, tidbInitializer), &v1alpha1.TidbInitializer{})
 
@@ -110,7 +112,7 @@ func (c *FakeTidbInitializers) UpdateStatus(tidbInitializer *v1alpha1.TidbInitia
 }
 
 // Delete takes name of the tidbInitializer and deletes it. Returns an error if one occurs.
-func (c *FakeTidbInitializers) Delete(name string, options *v1.DeleteOptions) error {
+func (c *FakeTidbInitializers) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
 		Invokes(testing.NewDeleteAction(tidbinitializersResource, c.ns, name), &v1alpha1.TidbInitializer{})
 
@@ -118,15 +120,15 @@ func (c *FakeTidbInitializers) Delete(name string, options *v1.DeleteOptions) er
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeTidbInitializers) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(tidbinitializersResource, c.ns, listOptions)
+func (c *FakeTidbInitializers) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	action := testing.NewDeleteCollectionAction(tidbinitializersResource, c.ns, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.TidbInitializerList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched tidbInitializer.
-func (c *FakeTidbInitializers) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.TidbInitializer, err error) {
+func (c *FakeTidbInitializers) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.TidbInitializer, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewPatchSubresourceAction(tidbinitializersResource, c.ns, name, pt, data, subresources...), &v1alpha1.TidbInitializer{})
 

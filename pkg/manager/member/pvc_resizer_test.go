@@ -378,10 +378,10 @@ func TestPVCResizer(t *testing.T) {
 
 			fakeDeps := controller.NewFakeDependencies()
 			for _, pvc := range tt.pvcs {
-				fakeDeps.KubeClientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(pvc)
+				fakeDeps.KubeClientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(context.TODO(), pvc, metav1.CreateOptions{})
 			}
 			if tt.sc != nil {
-				fakeDeps.KubeClientset.StorageV1().StorageClasses().Create(tt.sc)
+				fakeDeps.KubeClientset.StorageV1().StorageClasses().Create(context.TODO(), tt.sc, metav1.CreateOptions{})
 			}
 
 			resizer := NewPVCResizer(fakeDeps)
@@ -397,7 +397,7 @@ func TestPVCResizer(t *testing.T) {
 
 			for i, pvc := range tt.pvcs {
 				wantPVC := tt.wantPVCs[i]
-				got, err := fakeDeps.KubeClientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(pvc.Name, metav1.GetOptions{})
+				got, err := fakeDeps.KubeClientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(context.TODO(), pvc.Name, metav1.GetOptions{})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -484,10 +484,10 @@ func TestDMPVCResizer(t *testing.T) {
 			fakeDeps := controller.NewFakeDependencies()
 
 			for _, pvc := range tt.pvcs {
-				fakeDeps.KubeClientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(pvc)
+				fakeDeps.KubeClientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(context.TODO(), pvc, metav1.CreateOptions{})
 			}
 			if tt.sc != nil {
-				fakeDeps.KubeClientset.StorageV1().StorageClasses().Create(tt.sc)
+				fakeDeps.KubeClientset.StorageV1().StorageClasses().Create(context.TODO(), tt.sc, metav1.CreateOptions{})
 			}
 
 			informerFactory := fakeDeps.KubeInformerFactory
@@ -503,7 +503,7 @@ func TestDMPVCResizer(t *testing.T) {
 
 			for i, pvc := range tt.pvcs {
 				wantPVC := tt.wantPVCs[i]
-				got, err := fakeDeps.KubeClientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(pvc.Name, metav1.GetOptions{})
+				got, err := fakeDeps.KubeClientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(context.TODO(), pvc.Name, metav1.GetOptions{})
 				if err != nil {
 					t.Fatal(err)
 				}

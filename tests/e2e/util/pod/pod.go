@@ -14,6 +14,7 @@
 package pod
 
 import (
+	"context"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -28,7 +29,7 @@ import (
 func PodsAreChanged(c kubernetes.Interface, pods []v1.Pod) wait.ConditionFunc {
 	return func() (bool, error) {
 		for _, pod := range pods {
-			podNew, err := c.CoreV1().Pods(pod.Namespace).Get(pod.Name, metav1.GetOptions{})
+			podNew, err := c.CoreV1().Pods(pod.Namespace).Get(context.TODO(), pod.Name, metav1.GetOptions{})
 			if err != nil {
 				if testutils.IsRetryableAPIError(err) {
 					return false, nil

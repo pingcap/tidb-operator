@@ -533,7 +533,7 @@ func WatchForController(informer cache.SharedIndexInformer, q workqueue.Interfac
 }
 
 // EmptyClone create an clone of the resource with the same name and namespace (if namespace-scoped), with other fields unset
-func EmptyClone(obj runtime.Object) (runtime.Object, error) {
+func EmptyClone(obj client.Object) (client.Object, error) {
 	meta, ok := obj.(metav1.Object)
 	if !ok {
 		return nil, fmt.Errorf("Obj %v is not a metav1.Object, cannot call EmptyClone", obj)
@@ -546,13 +546,19 @@ func EmptyClone(obj runtime.Object) (runtime.Object, error) {
 	if err != nil {
 		return nil, err
 	}
-	instMeta, ok := inst.(metav1.Object)
+	instMeta, ok := inst.(client.Object)
 	if !ok {
 		return nil, fmt.Errorf("New instatnce %v created from scheme is not a metav1.Object, EmptyClone failed", inst)
 	}
 	instMeta.SetName(meta.GetName())
 	instMeta.SetNamespace(meta.GetNamespace())
-	return inst, nil
+	return instMeta, nil
+}
+
+func DeepCopyClientObject(input client.Object) client.Object {
+	robj := input.DeepCopyObject()
+	cobj := robj.(client.Object)
+	return cobj
 }
 
 // InferObjectKind infers the object kind
@@ -569,11 +575,9 @@ func InferObjectKind(obj runtime.Object) (schema.GroupVersionKind, error) {
 
 // GuaranteedUpdate will retry the updateFunc to mutate the object until success, updateFunc is expected to
 // capture the object reference from the caller context to avoid unnecessary type casting.
-func GuaranteedUpdate(cli client.Client, obj runtime.Object, updateFunc func() error) error {
-	key, err := client.ObjectKeyFromObject(obj)
-	if err != nil {
-		return err
-	}
+func GuaranteedUpdate(cli client.Client, obj client.Object, updateFunc func() error) error {
+	key := client.ObjectKeyFromObject(obj)
+
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		if err := cli.Get(context.TODO(), key, obj); err != nil {
 			return err
