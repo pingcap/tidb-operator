@@ -14,6 +14,7 @@
 package statefulset
 
 import (
+	"context"
 	"regexp"
 	"strconv"
 
@@ -75,6 +76,6 @@ func getPodList(c kubernetes.Interface, ss *appsv1.StatefulSet) (*corev1.PodList
 	if err != nil {
 		return nil, err
 	}
-	podList, err := c.CoreV1().Pods(ss.Namespace).List(metav1.ListOptions{LabelSelector: selector.String()})
+	podList, err := c.CoreV1().Pods(ss.Namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: selector.String()})
 	return podList, err
 }

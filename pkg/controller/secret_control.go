@@ -14,6 +14,7 @@
 package controller
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
@@ -46,7 +47,7 @@ func NewRealSecretControl(
 
 // Load loads cert and key from Secret matching the name
 func (c *realSecretControl) Load(ns string, secretName string) ([]byte, []byte, error) {
-	secret, err := c.kubeCli.CoreV1().Secrets(ns).Get(secretName, metav1.GetOptions{})
+	secret, err := c.kubeCli.CoreV1().Secrets(ns).Get(context.TODO(), secretName, metav1.GetOptions{})
 	if err != nil {
 		return nil, nil, err
 	}

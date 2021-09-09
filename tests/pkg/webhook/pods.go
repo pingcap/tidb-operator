@@ -14,6 +14,7 @@
 package webhook
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -56,7 +57,7 @@ func (wh *webhook) admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionRespo
 		return &reviewResponse
 	}
 
-	pod, err := kubeCli.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
+	pod, err := kubeCli.CoreV1().Pods(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		log.Logf("api server send wrong pod info namespace %s name %s err %v", namespace, name, err)
 		return &reviewResponse
@@ -64,7 +65,7 @@ func (wh *webhook) admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionRespo
 
 	log.Logf("delete %s pod [%s]", pod.Labels[label.ComponentLabelKey], pod.GetName())
 
-	tc, err := versionCli.PingcapV1alpha1().TidbClusters(namespace).Get(pod.Labels[label.InstanceLabelKey], metav1.GetOptions{})
+	tc, err := versionCli.PingcapV1alpha1().TidbClusters(namespace).Get(context.TODO(), pod.Labels[label.InstanceLabelKey], metav1.GetOptions{})
 	if err != nil {
 		log.Logf("fail to fetch tidbcluster info namespace %s clustername(instance) %s err %v", namespace, pod.Labels[label.InstanceLabelKey], err)
 		return &reviewResponse

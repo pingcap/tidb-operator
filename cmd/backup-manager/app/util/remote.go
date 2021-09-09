@@ -56,7 +56,6 @@ type s3Config struct {
 type gcsConfig struct {
 	projectId    string
 	location     string
-	path         string
 	bucket       string
 	storageClass string
 	objectAcl    string
@@ -419,10 +418,13 @@ func newGcsStorageOption(conf *gcsConfig) []string {
 func makeS3Config(s3 *v1alpha1.S3StorageProvider, fakeRegion bool) *s3Config {
 	conf := s3Config{}
 
-	conf.bucket = s3.Bucket
+	path := strings.Trim(s3.Bucket, "/") + "/" + strings.Trim(s3.Prefix, "/")
+	fields := strings.SplitN(path, "/", 2)
+
+	conf.bucket = fields[0]
 	conf.region = s3.Region
 	conf.provider = string(s3.Provider)
-	conf.prefix = s3.Prefix
+	conf.prefix = fields[1]
 	conf.endpoint = s3.Endpoint
 	conf.sse = s3.SSE
 	conf.acl = s3.Acl
@@ -446,15 +448,17 @@ func makeS3Config(s3 *v1alpha1.S3StorageProvider, fakeRegion bool) *s3Config {
 func makeGcsConfig(gcs *v1alpha1.GcsStorageProvider, fakeRegion bool) *gcsConfig {
 	conf := gcsConfig{}
 
-	conf.bucket = gcs.Bucket
+	path := strings.Trim(gcs.Bucket, "/") + "/" + strings.Trim(gcs.Prefix, "/")
+	fields := strings.SplitN(path, "/", 2)
+
+	conf.bucket = fields[0]
 	conf.location = gcs.Location
-	conf.path = gcs.Path
 	conf.projectId = gcs.ProjectId
 	conf.storageClass = gcs.StorageClass
 	conf.objectAcl = gcs.ObjectAcl
 	conf.bucketAcl = gcs.BucketAcl
 	conf.secretName = gcs.SecretName
-	conf.prefix = gcs.Prefix
+	conf.prefix = fields[1]
 
 	return &conf
 }

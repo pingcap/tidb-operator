@@ -14,6 +14,7 @@
 package ctop
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -129,7 +130,7 @@ func (o *CtopOptions) Run() error {
 	var filter string
 	switch o.Kind {
 	case CtopPod:
-		pod, err := o.KubeCli.CoreV1().Pods(o.Namespace).Get(o.Target, metav1.GetOptions{})
+		pod, err := o.KubeCli.CoreV1().Pods(o.Namespace).Get(context.TODO(), o.Target, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}

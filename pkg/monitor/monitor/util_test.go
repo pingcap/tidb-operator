@@ -84,6 +84,7 @@ func TestGetMonitorConfigMap(t *testing.T) {
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "monitor",
+						"app.kubernetes.io/app":        "prometheus",
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
@@ -102,7 +103,7 @@ func TestGetMonitorConfigMap(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			cm, err := getMonitorConfigMap(&tt.monitor, tt.monitorClusterInfos, nil)
+			cm, err := getPromConfigMap(&tt.monitor, tt.monitorClusterInfos, nil)
 			g.Expect(err).NotTo(HaveOccurred())
 			if tt.expected == nil {
 				g.Expect(cm).To(BeNil())
@@ -687,8 +688,6 @@ func TestGetMonitorService(t *testing.T) {
 }
 
 func TestGetMonitorVolumes(t *testing.T) {
-	g := NewGomegaWithT(t)
-
 	testCases := []struct {
 		name      string
 		cluster   v1alpha1.TidbCluster
@@ -725,12 +724,6 @@ func TestGetMonitorVolumes(t *testing.T) {
 							ConfigMap: &corev1.ConfigMapVolumeSource{
 								LocalObjectReference: corev1.LocalObjectReference{
 									Name: "foo-monitor",
-								},
-								Items: []corev1.KeyToPath{
-									corev1.KeyToPath{
-										Key:  "prometheus-config",
-										Path: "prometheus.yml",
-									},
 								},
 							},
 						},
@@ -793,12 +786,6 @@ func TestGetMonitorVolumes(t *testing.T) {
 							ConfigMap: &corev1.ConfigMapVolumeSource{
 								LocalObjectReference: corev1.LocalObjectReference{
 									Name: "foo-monitor",
-								},
-								Items: []corev1.KeyToPath{
-									corev1.KeyToPath{
-										Key:  "prometheus-config",
-										Path: "prometheus.yml",
-									},
 								},
 							},
 						},
@@ -870,12 +857,6 @@ func TestGetMonitorVolumes(t *testing.T) {
 								LocalObjectReference: corev1.LocalObjectReference{
 									Name: "foo-monitor",
 								},
-								Items: []corev1.KeyToPath{
-									corev1.KeyToPath{
-										Key:  "prometheus-config",
-										Path: "prometheus.yml",
-									},
-								},
 							},
 						},
 					},
@@ -908,9 +889,7 @@ func TestGetMonitorVolumes(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			cm, err := getMonitorConfigMap(&tt.monitor, nil, nil)
-			g.Expect(err).NotTo(HaveOccurred())
-			sa := getMonitorVolumes(cm, &tt.monitor)
+			sa := getMonitorVolumes(&tt.monitor)
 			tt.expected(sa)
 		})
 	}
@@ -959,7 +938,7 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 				Command: []string{
 					"/bin/sh",
 					"-c",
-					"sed 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g' /etc/prometheus/config/prometheus.yml > /etc/prometheus/config_out/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/etc/prometheus/config_out/prometheus.yml --storage.tsdb.path=/data/prometheus --storage.tsdb.retention.time=2h --web.external-url=https://www.example.com/prometheus/",
+					"sed -e '5s/[()]//g'  -e 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g' /etc/prometheus/config/prometheus.yml > /etc/prometheus/config_out/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/etc/prometheus/config_out/prometheus.yml --storage.tsdb.path=/data/prometheus --storage.tsdb.retention.time=2h --web.external-url=https://www.example.com/prometheus/",
 				},
 				Ports: []corev1.ContainerPort{
 					corev1.ContainerPort{
@@ -1073,6 +1052,18 @@ func TestGetMonitorGrafanaContainer(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbMonitorSpec{
 					Grafana: &v1alpha1.GrafanaSpec{
+						UsernameSecret: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "basic-grafana",
+							},
+							Key: "username",
+						},
+						PasswordSecret: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "basic-grafana",
+							},
+							Key: "password",
+						},
 						MonitorContainer: v1alpha1.MonitorContainer{
 							BaseImage: "hub.pingcap.net",
 							Version:   "latest",
@@ -1100,7 +1091,7 @@ func TestGetMonitorGrafanaContainer(t *testing.T) {
 						ValueFrom: &corev1.EnvVarSource{
 							SecretKeyRef: &corev1.SecretKeySelector{
 								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "foo",
+									Name: "basic-grafana",
 								},
 								Key: "password",
 							},
@@ -1111,7 +1102,7 @@ func TestGetMonitorGrafanaContainer(t *testing.T) {
 						ValueFrom: &corev1.EnvVarSource{
 							SecretKeyRef: &corev1.SecretKeySelector{
 								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "foo",
+									Name: "basic-grafana",
 								},
 								Key: "username",
 							},
@@ -1338,7 +1329,7 @@ func TestBuildExternalLabels(t *testing.T) {
 				},
 			},
 			expected: &model.LabelSet{
-				defaultReplicaExternalLabelName: "$NAMESPACE_$POD_NAME",
+				defaultReplicaExternalLabelName: "$(NAMESPACE)_$(POD_NAME)",
 			},
 		},
 	}
