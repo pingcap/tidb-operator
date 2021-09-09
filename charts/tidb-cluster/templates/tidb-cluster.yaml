@@ -2,6 +2,7 @@ apiVersion: pingcap.com/v1alpha1
 kind: TidbCluster
 metadata:
   name: {{ template "cluster.name" . }}
+  namespace: {{ .Release.Namespace }}
 {{- if .Values.enableConfigMapRollout }}
   annotations:
     pingcap.com/pd.{{ template "cluster.name" . }}-pd.sha: {{ include "pd-configmap.data-digest" . | quote }}
