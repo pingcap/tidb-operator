@@ -22,11 +22,15 @@ import (
 )
 
 var (
-	// defaultCleanOption is default clean option
-	defaultCleanOption = CleanOption{
-		PageSize:           10000,
+	DefaultBatchDeleteOption = BatchDeleteOption{
 		BatchConcurrency:   10,
 		RoutineConcurrency: 100,
+	}
+
+	// defaultCleanOption is default clean option
+	defaultCleanOption = CleanOption{
+		PageSize:          10000,
+		BatchDeleteOption: DefaultBatchDeleteOption,
 	}
 )
 

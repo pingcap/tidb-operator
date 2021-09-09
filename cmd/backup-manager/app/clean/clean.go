@@ -61,11 +61,7 @@ func (bo *Options) cleanBRRemoteBackupData(ctx context.Context, backup *v1alpha1
 		}
 
 		// batch delete objects
-		result := s.BatchDeleteObjects(ctx, objs, &util.BatchDeleteObjectsOption{
-			DisableBatchConcurrency: opt.DisableBatchConcurrency,
-			BatchConcurrency:        int(opt.BatchConcurrency),
-			RoutineConcurrency:      int(opt.RoutineConcurrency),
-		})
+		result := s.BatchDeleteObjects(ctx, objs, opt.BatchDeleteOption)
 
 		if len(result.Deleted) != 0 {
 			klog.Infof("delete %d objects for cluster %s successfully: %s", len(result.Deleted), bo, strings.Join(result.Deleted, ","))

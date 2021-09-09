@@ -23,6 +23,8 @@ import (
 	"sync"
 	"testing"
 
+	"cloud.google.com/go/storage"
+	gomonkey "github.com/agiledragon/gomonkey/v2"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -31,6 +33,8 @@ import (
 	"gocloud.dev/blob"
 	"gocloud.dev/blob/driver"
 	"gocloud.dev/gcerrors"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 )
 
 type mockDriver struct {
@@ -40,6 +44,26 @@ type mockDriver struct {
 
 	delete    func(key string) error
 	listPaged func(opts *driver.ListOptions) (*driver.ListPage, error)
+
+	typ v1alpha1.BackupStorageType
+}
+
+func (d *mockDriver) As(i interface{}) bool {
+	switch d.typ {
+	case v1alpha1.BackupStorageTypeS3:
+		_, ok := i.(**s3.S3)
+		if !ok {
+			return false
+		}
+		return true
+	case v1alpha1.BackupStorageTypeGcs:
+		_, ok := i.(**storage.Client)
+		if !ok {
+			return false
+		}
+		return true
+	}
+	return false
 }
 
 func (d *mockDriver) ErrorCode(err error) gcerrors.ErrorCode {
@@ -204,6 +228,235 @@ func TestPageIterator(t *testing.T) {
 
 		g.Expect(err.Error()).To(gomega.ContainSubstring(tcase.rerr.Error())) // can't find any func to convert error to gcerr.Error
 		g.Expect(objs).To(gomega.BeNil())
+	}
+}
+
+func TestStorageBackendBasic(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	// basic
+	type testcase struct {
+		name     string
+		provider v1alpha1.StorageProvider
+
+		expectStorageType v1alpha1.BackupStorageType
+		expectedBucket    string
+		expectedPrefix    string
+	}
+	cases := []testcase{
+		{
+			name: "basic s3 storage backend",
+			provider: v1alpha1.StorageProvider{
+				S3: &v1alpha1.S3StorageProvider{
+					Provider: v1alpha1.S3StorageProviderTypeAWS,
+					Bucket:   "s3-bucket",
+					Prefix:   "s3-prefix",
+				},
+			},
+			expectStorageType: v1alpha1.BackupStorageTypeS3,
+			expectedBucket:    "s3-bucket",
+			expectedPrefix:    "s3-prefix",
+		},
+		{
+			name: "basic gcs storage backend",
+			provider: v1alpha1.StorageProvider{
+				Gcs: &v1alpha1.GcsStorageProvider{
+					Bucket: "gcs-bucket",
+					Prefix: "gcs-prefix",
+				},
+			},
+			expectStorageType: v1alpha1.BackupStorageTypeGcs,
+			expectedBucket:    "gcs-bucket",
+			expectedPrefix:    "gcs-prefix",
+		},
+		{
+			name: "basic local storage backend",
+			provider: v1alpha1.StorageProvider{
+				Local: &v1alpha1.LocalStorageProvider{
+					Prefix: "local-prefix",
+				},
+			},
+			expectStorageType: v1alpha1.BackupStorageTypeLocal,
+			expectedBucket:    "",
+			expectedPrefix:    "local-prefix",
+		},
+		{
+			name: "s3 storage backend and bucket contains prefix",
+			provider: v1alpha1.StorageProvider{
+				S3: &v1alpha1.S3StorageProvider{
+					Provider: v1alpha1.S3StorageProviderTypeAWS,
+					Bucket:   "s3-bucket/a/b",
+					Prefix:   "s3-prefix/c/d",
+				},
+			},
+			expectStorageType: v1alpha1.BackupStorageTypeS3,
+			expectedBucket:    "s3-bucket",
+			expectedPrefix:    "a/b/s3-prefix/c/d",
+		},
+		{
+			name: "gcs storage backend and bucket contains prefix",
+			provider: v1alpha1.StorageProvider{
+				Gcs: &v1alpha1.GcsStorageProvider{
+					Bucket: "gcs-bucket/a/b",
+					Prefix: "gcs-prefix/c/d",
+				},
+			},
+			expectStorageType: v1alpha1.BackupStorageTypeGcs,
+			expectedBucket:    "gcs-bucket",
+			expectedPrefix:    "a/b/gcs-prefix/c/d",
+		},
+	}
+	for _, tcases := range cases {
+		t.Log(tcases.name)
+		provider := tcases.provider
+
+		// mock funciton
+		s3patches := gomonkey.ApplyFunc(newS3Storage, func(conf *s3Config) (*blob.Bucket, error) {
+			return nil, nil
+		})
+		defer s3patches.Reset()
+		gcsPatches := gomonkey.ApplyFunc(newGcsStorage, func(conf *gcsConfig) (*blob.Bucket, error) {
+			return nil, nil
+		})
+		defer gcsPatches.Reset()
+		localPatches := gomonkey.ApplyFunc(newLocalStorage, func(conf *localConfig) (*blob.Bucket, error) {
+			return nil, nil
+		})
+		defer localPatches.Reset()
+
+		backend, err := NewStorageBackend(provider)
+		g.Expect(err).Should(gomega.Succeed())
+
+		g.Expect(backend.StorageType()).Should(gomega.Equal(tcases.expectStorageType))
+
+		g.Expect(backend.GetBucket()).Should(gomega.Equal(tcases.expectedBucket))
+
+		g.Expect(backend.GetPrefix()).Should(gomega.Equal(tcases.expectedPrefix))
+	}
+}
+
+func TestStorageBackendBatchDeleteObjects(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	type testcase struct {
+		name    string
+		backend *StorageBackend
+		opt     v1alpha1.BatchDeleteOption
+
+		expectedConcurrency       int
+		useBatchDeleteObjectsOfS3 bool
+	}
+
+	s3drv := &mockDriver{
+		typ: v1alpha1.BackupStorageTypeS3,
+	}
+	gcsdrv := &mockDriver{
+		typ: v1alpha1.BackupStorageTypeGcs,
+	}
+	localdrv := &mockDriver{
+		typ: v1alpha1.BackupStorageTypeLocal,
+	}
+
+	cases := []testcase{
+		{
+			name: "s3 with default option",
+			backend: &StorageBackend{
+				Bucket: blob.NewBucket(s3drv),
+			},
+			opt:                       v1alpha1.BatchDeleteOption{},
+			expectedConcurrency:       int(v1alpha1.DefaultBatchDeleteOption.BatchConcurrency),
+			useBatchDeleteObjectsOfS3: true,
+		},
+		{
+			name: "gcs with default option",
+			backend: &StorageBackend{
+				Bucket: blob.NewBucket(gcsdrv),
+			},
+			opt:                       v1alpha1.BatchDeleteOption{},
+			expectedConcurrency:       int(v1alpha1.DefaultBatchDeleteOption.RoutineConcurrency),
+			useBatchDeleteObjectsOfS3: false,
+		},
+		{
+			name: "local with default option",
+			backend: &StorageBackend{
+				Bucket: blob.NewBucket(localdrv),
+			},
+			opt:                       v1alpha1.BatchDeleteOption{},
+			expectedConcurrency:       int(v1alpha1.DefaultBatchDeleteOption.RoutineConcurrency),
+			useBatchDeleteObjectsOfS3: false,
+		},
+		{
+			name: "s3 with option",
+			backend: &StorageBackend{
+				Bucket: blob.NewBucket(s3drv),
+			},
+			opt: v1alpha1.BatchDeleteOption{
+				BatchConcurrency: 10000,
+			},
+			expectedConcurrency:       10000,
+			useBatchDeleteObjectsOfS3: true,
+		},
+		{
+			name: "gcs with option",
+			backend: &StorageBackend{
+				Bucket: blob.NewBucket(gcsdrv),
+			},
+			opt: v1alpha1.BatchDeleteOption{
+				RoutineConcurrency: 10000,
+			},
+			expectedConcurrency:       10000,
+			useBatchDeleteObjectsOfS3: false,
+		},
+		{
+			name: "local with default option",
+			backend: &StorageBackend{
+				Bucket: blob.NewBucket(localdrv),
+			},
+			opt: v1alpha1.BatchDeleteOption{
+				RoutineConcurrency: 10000,
+			},
+			expectedConcurrency:       10000,
+			useBatchDeleteObjectsOfS3: false,
+		},
+		{
+			name: "s3 with disable option",
+			backend: &StorageBackend{
+				Bucket: blob.NewBucket(s3drv),
+			},
+			opt: v1alpha1.BatchDeleteOption{
+				DisableBatchConcurrency: true,
+			},
+			expectedConcurrency:       int(v1alpha1.DefaultBatchDeleteOption.RoutineConcurrency),
+			useBatchDeleteObjectsOfS3: false,
+		},
+	}
+
+	for _, tcase := range cases {
+		t.Log(tcase.name)
+
+		expectedResult := &BatchDeleteObjectsResult{}
+
+		// mock funciton
+		s3patch := gomonkey.ApplyFunc(BatchDeleteObjectsOfS3, func(ctx context.Context, s3cli s3iface.S3API, objs []*blob.ListObject, bucket string, prefix string, concurrency int) *BatchDeleteObjectsResult {
+			if !tcase.useBatchDeleteObjectsOfS3 {
+				t.Fatal("should not use 'BatchDeleteObjectsOfS3'")
+			}
+			g.Expect(concurrency).Should(gomega.Equal(tcase.expectedConcurrency))
+			return expectedResult
+		})
+		defer s3patch.Reset()
+		patch := gomonkey.ApplyFunc(BatchDeleteObjectsConcurrently, func(ctx context.Context, bucket *blob.Bucket, objs []*blob.ListObject, concurrency int) *BatchDeleteObjectsResult {
+			if tcase.useBatchDeleteObjectsOfS3 {
+				t.Fatal("should not use 'BatchDeleteObjectsConcurrently'")
+			}
+			g.Expect(concurrency).Should(gomega.Equal(tcase.expectedConcurrency))
+			return expectedResult
+		})
+		defer patch.Reset()
+
+		result := tcase.backend.BatchDeleteObjects(context.TODO(), nil, tcase.opt)
+		g.Expect(result == expectedResult).Should(gomega.BeTrue())
+
 	}
 }
 

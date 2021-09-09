@@ -69,11 +69,13 @@ type localConfig struct {
 	prefix    string
 }
 
-// StorageBackend wrap blob.Bucket and provide more function
+// StorageBackend provide a generic storage backend
 type StorageBackend struct {
 	*blob.Bucket
 
-	provider v1alpha1.StorageProvider
+	s3    *s3Config
+	gcs   *gcsConfig
+	local *localConfig
 }
 
 // NewStorageBackend creates new storage backend, now supports S3/GCS/Local
@@ -81,35 +83,40 @@ func NewStorageBackend(provider v1alpha1.StorageProvider) (*StorageBackend, erro
 	var bucket *blob.Bucket
 	var err error
 
+	b := &StorageBackend{}
+
 	st := util.GetStorageType(provider)
 	switch st {
 	case v1alpha1.BackupStorageTypeS3:
-		conf := makeS3Config(provider.S3, true)
-		bucket, err = newS3Storage(conf)
+		b.s3 = makeS3Config(provider.S3, true)
+		bucket, err = newS3Storage(b.s3)
 	case v1alpha1.BackupStorageTypeGcs:
-		conf := makeGcsConfig(provider.Gcs, true)
-		bucket, err = newGcsStorage(conf)
+		b.gcs = makeGcsConfig(provider.Gcs, true)
+		bucket, err = newGcsStorage(b.gcs)
 	case v1alpha1.BackupStorageTypeLocal:
-		conf := makeLocalConfig(provider.Local)
-		bucket, err = newLocalStorage(conf)
+		b.local = makeLocalConfig(provider.Local)
+		bucket, err = newLocalStorage(b.local)
 	default:
 		err = fmt.Errorf("storage %s not supported yet", st)
 	}
+	b.Bucket = bucket
 
 	if err != nil {
 		return nil, err
-	}
-
-	b := &StorageBackend{
-		Bucket:   bucket,
-		provider: provider,
 	}
 
 	return b, nil
 }
 
 func (b *StorageBackend) StorageType() v1alpha1.BackupStorageType {
-	return util.GetStorageType(b.provider)
+	if b.s3 != nil {
+		return v1alpha1.BackupStorageTypeS3
+	} else if b.gcs != nil {
+		return v1alpha1.BackupStorageTypeGcs
+	} else if b.local != nil {
+		return v1alpha1.BackupStorageTypeLocal
+	}
+	return v1alpha1.BackupStorageTypeUnknown
 }
 
 func (b *StorageBackend) ListPage(opts *blob.ListOptions) *PageIterator {
@@ -140,10 +147,10 @@ func (b *StorageBackend) AsGCS() (*storage.Client, bool) {
 //
 // If provider is S3/GCS, return bucket. Otherwise return empty string
 func (b *StorageBackend) GetBucket() string {
-	if b.provider.S3 != nil {
-		return b.provider.S3.Bucket
-	} else if b.provider.Gcs != nil {
-		return b.provider.Gcs.Bucket
+	if b.s3 != nil {
+		return b.s3.bucket
+	} else if b.gcs != nil {
+		return b.gcs.bucket
 	}
 
 	return ""
@@ -151,12 +158,12 @@ func (b *StorageBackend) GetBucket() string {
 
 // GetPrefix return prefix
 func (b *StorageBackend) GetPrefix() string {
-	if b.provider.S3 != nil {
-		return b.provider.S3.Prefix
-	} else if b.provider.Gcs != nil {
-		return b.provider.Gcs.Prefix
-	} else if b.provider.Local != nil {
-		return b.provider.Local.Prefix
+	if b.s3 != nil {
+		return b.s3.prefix
+	} else if b.gcs != nil {
+		return b.gcs.prefix
+	} else if b.local != nil {
+		return b.local.prefix
 	}
 
 	return ""
@@ -167,12 +174,6 @@ type ObjectError struct {
 	Err error
 }
 
-type BatchDeleteObjectsOption struct {
-	DisableBatchConcurrency bool
-	BatchConcurrency        int
-	RoutineConcurrency      int
-}
-
 type BatchDeleteObjectsResult struct {
 	Deleted []string
 	Errors  []ObjectError
@@ -181,22 +182,22 @@ type BatchDeleteObjectsResult struct {
 // BatchDeleteObjects delete mutli objects
 //
 // Depending on storage type, it use function 'BatchDeleteObjectsOfS3' or 'BatchDeleteObjectsConcurrently'
-func (b *StorageBackend) BatchDeleteObjects(ctx context.Context, objs []*blob.ListObject, opt *BatchDeleteObjectsOption) *BatchDeleteObjectsResult {
+func (b *StorageBackend) BatchDeleteObjects(ctx context.Context, objs []*blob.ListObject, opt v1alpha1.BatchDeleteOption) *BatchDeleteObjectsResult {
 	var result *BatchDeleteObjectsResult
 
 	s3cli, ok := b.AsS3()
 	if !opt.DisableBatchConcurrency && ok {
-		concurrency := 10
-		if opt != nil && opt.BatchConcurrency != 0 {
+		concurrency := v1alpha1.DefaultBatchDeleteOption.BatchConcurrency
+		if opt.BatchConcurrency != 0 {
 			concurrency = opt.BatchConcurrency
 		}
-		result = BatchDeleteObjectsOfS3(ctx, s3cli, objs, b.GetBucket(), b.GetPrefix(), concurrency)
+		result = BatchDeleteObjectsOfS3(ctx, s3cli, objs, b.GetBucket(), b.GetPrefix(), int(concurrency))
 	} else {
-		concurrency := 100
-		if opt != nil && opt.RoutineConcurrency != 0 {
+		concurrency := v1alpha1.DefaultBatchDeleteOption.RoutineConcurrency
+		if opt.RoutineConcurrency != 0 {
 			concurrency = opt.RoutineConcurrency
 		}
-		result = BatchDeleteObjectsConcurrently(ctx, b.Bucket, objs, concurrency)
+		result = BatchDeleteObjectsConcurrently(ctx, b.Bucket, objs, int(concurrency))
 	}
 
 	return result
@@ -314,7 +315,7 @@ func genStorageArgs(provider v1alpha1.StorageProvider) ([]string, error) {
 }
 
 // newLocalStorageOption constructs `--storage local://$PATH` arg for br
-func newLocalStorageOption(conf localConfig) ([]string, error) {
+func newLocalStorageOption(conf *localConfig) ([]string, error) {
 	return []string{fmt.Sprintf("--storage=local://%s", path.Join(conf.mountPath, conf.prefix))}, nil
 }
 
@@ -344,7 +345,7 @@ func newS3StorageOption(conf *s3Config) []string {
 	return s3options
 }
 
-func newLocalStorage(conf localConfig) (*blob.Bucket, error) {
+func newLocalStorage(conf *localConfig) (*blob.Bucket, error) {
 	dir := path.Join(conf.mountPath, conf.prefix)
 	bucket, err := fileblob.OpenBucket(dir, nil)
 	return bucket, err
@@ -467,8 +468,8 @@ func makeGcsConfig(gcs *v1alpha1.GcsStorageProvider, fakeRegion bool) *gcsConfig
 	return &conf
 }
 
-func makeLocalConfig(local *v1alpha1.LocalStorageProvider) localConfig {
-	return localConfig{
+func makeLocalConfig(local *v1alpha1.LocalStorageProvider) *localConfig {
+	return &localConfig{
 		mountPath: local.VolumeMount.MountPath,
 		prefix:    local.Prefix,
 	}
