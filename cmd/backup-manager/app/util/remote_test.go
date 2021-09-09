@@ -296,7 +296,7 @@ func TestBatchDeleteObjectsOfS3(t *testing.T) {
 		g.Expect(result.Deleted).To(gomega.HaveLen(len(deletedMap)))
 		for key := range errMap {
 			var rerr *ObjectError
-			for _, err := range result.Errors {
+			for i := range result.Errors {
 				err := result.Errors[i]
 				if err.Key == key {
 					rerr = &err

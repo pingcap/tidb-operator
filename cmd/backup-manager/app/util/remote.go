@@ -222,10 +222,11 @@ func BatchDeleteObjectsOfS3(ctx context.Context, s3cli s3iface.S3API, objs []*bl
 			return
 		}
 
+		// delete objects
 		delete := &s3.Delete{}
 		for _, obj := range objs[start:end] {
 			delete.Objects = append(delete.Objects, &s3.ObjectIdentifier{
-				Key: aws.String(prefix + obj.Key),
+				Key: aws.String(prefix + obj.Key), // key must be absolute path
 			})
 		}
 		input := &s3.DeleteObjectsInput{
@@ -234,6 +235,7 @@ func BatchDeleteObjectsOfS3(ctx context.Context, s3cli s3iface.S3API, objs []*bl
 		}
 		resp, err := s3cli.DeleteObjectsWithContext(ctx, input)
 
+		// record result
 		mu.Lock()
 		defer mu.Unlock()
 		if err != nil {
@@ -267,6 +269,8 @@ func BatchDeleteObjectsConcurrently(ctx context.Context, bucket *blob.Bucket, ob
 
 	workqueue.ParallelizeUntil(ctx, concurrency, len(objs), func(piece int) {
 		key := objs[piece].Key
+
+		// delete an object
 		err := bucket.Delete(ctx, key)
 
 		mu.Lock()
@@ -480,6 +484,8 @@ type PageIterator struct {
 // If err == io.EOF, all objects of bucket have been read.
 // If err == nil, a page of objects have been read.
 // Otherwise, err occurs and return objects have been read.
+//
+// TODO: use blob.ListPage after upgrade gocloud.dev denpendency to 0.21
 func (i *PageIterator) Next(ctx context.Context, pageSize int) ([]*blob.ListObject, error) {
 	objs := make([]*blob.ListObject, 0, pageSize)
 

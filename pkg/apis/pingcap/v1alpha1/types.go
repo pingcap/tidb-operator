@@ -1359,14 +1359,15 @@ const (
 	CleanPolicyTypeDelete CleanPolicyType = "Delete"
 )
 
-// +k8s:openapi-gen=true
 // CleanOption defines the configuration for cleanup backup
+//
+// +k8s:openapi-gen=true
 type CleanOption struct {
 	// PageSize represents the number of objects to clean at a time.
 	// default is 10000
 	PageSize uint64 `json:"pageSize,omitempty"`
 
-	// DisableBatchConcurrency disables the batch deletions and the cleanup will be done by goroutines. 
+	// DisableBatchConcurrency disables the batch deletions and the cleanup will be done by goroutines.
 	DisableBatchConcurrency bool `json:"disableBatchConcurrency,omitempty"`
 	// BatchConcurrency represents the number of batch deletions in parallel.
 	// It is used when the storage provider supports the batch delete API, currently, S3 only.

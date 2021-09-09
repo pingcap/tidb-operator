@@ -22,6 +22,7 @@ import (
 )
 
 var (
+	// defaultCleanOption is default clean option
 	defaultCleanOption = CleanOption{
 		PageSize:           10000,
 		BatchConcurrency:   10,
@@ -59,6 +60,7 @@ func (bk *Backup) GetInstanceName() string {
 	return bk.Name
 }
 
+// GetCleanOption return the clean option
 func (bk *Backup) GetCleanOption() CleanOption {
 	if bk.Spec.CleanOption == nil {
 		return defaultCleanOption
