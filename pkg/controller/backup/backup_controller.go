@@ -22,8 +22,10 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/backup"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
@@ -53,12 +55,16 @@ func NewController(deps *controller.Dependencies) *Controller {
 	}
 
 	backupInformer := deps.InformerFactory.Pingcap().V1alpha1().Backups()
+	jobInformer := deps.KubeInformerFactory.Batch().V1().Jobs()
 	backupInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: c.updateBackup,
 		UpdateFunc: func(old, cur interface{}) {
 			c.updateBackup(cur)
 		},
 		DeleteFunc: c.updateBackup,
+	})
+	jobInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		DeleteFunc: c.deleteJob,
 	})
 
 	return c
@@ -195,6 +201,42 @@ func (c *Controller) updateBackup(cur interface{}) {
 
 	klog.V(4).Infof("backup object %s/%s enqueue", ns, name)
 	c.enqueueBackup(newBackup)
+}
+
+func (c *Controller) deleteJob(obj interface{}) {
+	job, ok := obj.(*batchv1.Job)
+	if !ok {
+		return
+	}
+
+	ns := job.GetNamespace()
+	jobName := job.GetName()
+	backup := c.resolveBackupFromJob(ns, job)
+	if backup == nil {
+		return
+	}
+	klog.V(4).Infof("Job %s/%s deleted through %v.", ns, jobName, utilruntime.GetCaller())
+	c.updateBackup(backup)
+}
+
+func (c *Controller) resolveBackupFromJob(namespace string, job *batchv1.Job) *v1alpha1.Backup {
+	owner := metav1.GetControllerOf(job)
+	if owner == nil {
+		return nil
+	}
+
+	if owner.Kind != controller.BackupControllerKind.Kind {
+		return nil
+	}
+
+	backup, err := c.deps.BackupLister.Backups(namespace).Get(owner.Name)
+	if err != nil {
+		return nil
+	}
+	if owner.UID != backup.UID {
+		return nil
+	}
+	return backup
 }
 
 // enqueueBackup enqueues the given backup in the work queue.
