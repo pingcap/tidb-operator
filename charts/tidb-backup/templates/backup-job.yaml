@@ -7,6 +7,7 @@ metadata:
   {{- else }}
   name: {{ .Values.clusterName }}-{{ tpl .Values.name . }}
   {{- end }}
+  namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
