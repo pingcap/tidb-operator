@@ -4894,7 +4894,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PrometheusConfiguration(ref common.Referen
 				Properties: map[string]spec.Schema{
 					"configMapRef": {
 						SchemaProps: spec.SchemaProps{
-							Description: "user can mount prometheus rule config with external configMap.If use this feature, the external configMap must contain `prometheus-config` key in data.",
+							Description: "User can mount prometheus config with external configMap. The external configMap must contain `prometheus-config` key in data.",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ConfigMapRef"),
 						},
 					},
@@ -4910,6 +4910,12 @@ func schema_pkg_apis_pingcap_v1alpha1_PrometheusConfiguration(ref common.Referen
 									},
 								},
 							},
+						},
+					},
+					"ruleConfigRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "User can mount prometheus rule config with external configMap. The external configMap must use the key with suffix `.rules.yml`.",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ConfigMapRef"),
 						},
 					},
 				},

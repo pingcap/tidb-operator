@@ -147,6 +147,9 @@ func getPromConfigMap(monitor *v1alpha1.TidbMonitor, monitorClusterInfos []Clust
 	if monitor.Spec.AlertmanagerURL != nil {
 		model.AlertmanagerURL = *monitor.Spec.AlertmanagerURL
 	}
+	if monitor.Spec.Prometheus.Config != nil && monitor.Spec.Prometheus.Config.RuleConfigRef != nil {
+		model.EnableExternalRuleConfigs = true
+	}
 	content, err := RenderPrometheusConfig(model)
 	if err != nil {
 		return nil, err
@@ -538,6 +541,13 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 	if monitor.Spec.Prometheus.AdditionalVolumeMounts != nil {
 		c.VolumeMounts = append(c.VolumeMounts, monitor.Spec.Prometheus.AdditionalVolumeMounts...)
 	}
+	if monitor.Spec.Prometheus.Config != nil && monitor.Spec.Prometheus.Config.RuleConfigRef != nil {
+		c.VolumeMounts = append(c.VolumeMounts, core.VolumeMount{
+			Name:      "external-rules",
+			MountPath: "/prometheus-external-rules",
+			ReadOnly:  true,
+		})
+	}
 	return c
 }
 
@@ -687,7 +697,6 @@ func getMonitorPrometheusReloaderContainer(monitor *v1alpha1.TidbMonitor) core.C
 			"--reload-url=http://localhost:9090/-/reload",
 			"--config-file=/etc/prometheus/config/prometheus.yml",
 			"--config-envsubst-file=/etc/prometheus/config_out/prometheus.yml",
-			"--watched-dir=/etc/prometheus/config/prometheus.yml",
 		},
 		Ports: []core.ContainerPort{
 			{
@@ -726,6 +735,14 @@ func getMonitorPrometheusReloaderContainer(monitor *v1alpha1.TidbMonitor) core.C
 	}
 	if monitor.Spec.PrometheusReloader.ImagePullPolicy != nil {
 		c.ImagePullPolicy = *monitor.Spec.PrometheusReloader.ImagePullPolicy
+	}
+	if monitor.Spec.Prometheus.Config != nil && monitor.Spec.Prometheus.Config.RuleConfigRef != nil {
+		c.VolumeMounts = append(c.VolumeMounts, core.VolumeMount{
+			Name:      "external-rules",
+			MountPath: "/prometheus-external-rules",
+			ReadOnly:  true,
+		})
+		c.Command = append(c.Command, "--watched-dir=/prometheus-external-rules")
 	}
 	return c
 }
@@ -850,6 +867,19 @@ func getMonitorVolumes(monitor *v1alpha1.TidbMonitor) []core.Volume {
 			},
 		},
 	})
+
+	if monitor.Spec.Prometheus.Config != nil && monitor.Spec.Prometheus.Config.RuleConfigRef != nil {
+		volumes = append(volumes, core.Volume{
+			Name: "external-rules",
+			VolumeSource: core.VolumeSource{
+				ConfigMap: &core.ConfigMapVolumeSource{
+					LocalObjectReference: core.LocalObjectReference{
+						Name: monitor.Spec.Prometheus.Config.RuleConfigRef.Name,
+					},
+				},
+			},
+		})
+	}
 
 	return volumes
 }
