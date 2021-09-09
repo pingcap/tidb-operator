@@ -22,7 +22,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/features"
-	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -75,16 +74,6 @@ func (pc *PodAdmissionControl) mutatePod(ar *admissionv1beta1.AdmissionRequest) 
 }
 
 func (pc *PodAdmissionControl) tikvHotRegionSchedule(tc *v1alpha1.TidbCluster, pod *corev1.Pod) error {
-	podName := pod.Name
-	ordinal, err := operatorUtils.GetOrdinalFromPodName(podName)
-	if err != nil {
-		return err
-	}
-	sets := operatorUtils.GetAutoScalingOutSlots(tc, v1alpha1.TiKVMemberType)
-	if !sets.Has(ordinal) {
-		return nil
-	}
-
 	cm, err := pc.getTikvConfigMap(tc, pod)
 	if err != nil {
 		klog.Infof("tc[%s/%s]'s tikv %s configmap not found, error: %v", tc.Namespace, tc.Name, pod.Name, err)

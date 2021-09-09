@@ -248,10 +248,6 @@ func (s *pumpScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 	return fmt.Errorf("Pump %s/%s not found in cluster", ns, podName)
 }
 
-func (s *pumpScaler) SyncAutoScalerAnn(_ metav1.Object, actual *apps.StatefulSet) error {
-	return nil
-}
-
 type fakePumpScaler struct{}
 
 // NewFakePumpScaler returns a fake pump Scaler
@@ -275,9 +271,5 @@ func (s *fakePumpScaler) ScaleOut(_ metav1.Object, oldSet *apps.StatefulSet, new
 
 func (s *fakePumpScaler) ScaleIn(_ metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	setReplicasAndDeleteSlots(newSet, *oldSet.Spec.Replicas-1, nil)
-	return nil
-}
-
-func (s *fakePumpScaler) SyncAutoScalerAnn(_ metav1.Object, actual *apps.StatefulSet) error {
 	return nil
 }
