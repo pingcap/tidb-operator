@@ -139,11 +139,21 @@ func init() {
 }
 
 type MonitorConfigModel struct {
+<<<<<<< HEAD
 	AlertmanagerURL    string
 	ClusterInfos       []ClusterRegexInfo
 	DMClusterInfos     []ClusterRegexInfo
 	ExternalLabels     model.LabelSet
 	RemoteWriteConfigs []*config.RemoteWriteConfig
+=======
+	AlertmanagerURL           string
+	ClusterInfos              []ClusterRegexInfo
+	DMClusterInfos            []ClusterRegexInfo
+	ExternalLabels            model.LabelSet
+	RemoteWriteConfigs        []*config.RemoteWriteConfig
+	EnableAlertRules          bool
+	EnableExternalRuleConfigs bool
+>>>>>>> da7f77f8... TidbMonitor support dynamic prometheus rule reload and custom external rule (#4180)
 }
 
 // ClusterRegexInfo is the monitor cluster info
@@ -471,6 +481,20 @@ func RenderPrometheusConfig(model *MonitorConfigModel) (string, error) {
 		pc.RuleFiles = []string{
 			"/prometheus-rules/rules/*.rules.yml",
 		}
+<<<<<<< HEAD
+=======
+	} else if model.EnableAlertRules {
+		// Add alert rules when `EnableAlertRules` enabled even if AlertManager not configured.
+		pc.RuleFiles = []string{
+			"/prometheus-rules/rules/*.rules.yml",
+		}
+
+	}
+	if model.EnableExternalRuleConfigs {
+		pc.RuleFiles = []string{
+			"/prometheus-external-rules/*.rules.yml",
+		}
+>>>>>>> da7f77f8... TidbMonitor support dynamic prometheus rule reload and custom external rule (#4180)
 	}
 	bs, err := yaml.Marshal(pc)
 	if err != nil {

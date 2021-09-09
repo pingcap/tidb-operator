@@ -364,6 +364,283 @@ remote_write:
 	g.Expect(content).Should(Equal(expectedContentBytes.String()))
 }
 
+<<<<<<< HEAD
+=======
+func TestRenderPrometheusConfigWithRulesSwitch(t *testing.T) {
+	g := NewGomegaWithT(t)
+	expectedContentTpl := `global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+rule_files:
+- /prometheus-external-rules/*.rules.yml
+scrape_configs:
+- job_name: ns1-target-pd
+  honor_labels: true
+  scrape_interval: 15s
+  scheme: http
+  {{.KubeSDConfigs}}
+  tls_config:
+    insecure_skip_verify: true
+  relabel_configs:
+  {{.KeepLabels}}
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+    regex: pd
+    action: keep
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+    regex: (.+);(.+);(.+);(.+)
+    target_label: __address__
+    replacement: $1.$2-pd-peer.$3:$4
+    action: replace
+  {{.ReplaceLabels}}
+- job_name: ns1-target-tidb
+  honor_labels: true
+  scrape_interval: 15s
+  scheme: http
+  {{.KubeSDConfigs}}
+  tls_config:
+    insecure_skip_verify: true
+  relabel_configs:
+  {{.KeepLabels}}
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+    regex: tidb
+    action: keep
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+    regex: (.+);(.+);(.+);(.+)
+    target_label: __address__
+    replacement: $1.$2-tidb-peer.$3:$4
+    action: replace
+  {{.ReplaceLabels}}
+- job_name: ns1-target-tikv
+  honor_labels: true
+  scrape_interval: 15s
+  scheme: http
+  {{.KubeSDConfigs}}
+  tls_config:
+    insecure_skip_verify: true
+  relabel_configs:
+  {{.KeepLabels}}
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+    regex: tikv
+    action: keep
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+    regex: (.+);(.+);(.+);(.+)
+    target_label: __address__
+    replacement: $1.$2-tikv-peer.$3:$4
+    action: replace
+  {{.ReplaceLabels}}
+- job_name: ns1-target-tiflash
+  honor_labels: true
+  scrape_interval: 15s
+  scheme: http
+  {{.KubeSDConfigs}}
+  tls_config:
+    insecure_skip_verify: true
+  relabel_configs:
+  {{.KeepLabels}}
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+    regex: tiflash
+    action: keep
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+    regex: (.+);(.+);(.+);(.+)
+    target_label: __address__
+    replacement: $1.$2-tiflash-peer.$3:$4
+    action: replace
+  {{.ReplaceLabels}}
+- job_name: ns1-target-tiflash-proxy
+  honor_labels: true
+  scrape_interval: 15s
+  scheme: http
+  {{.KubeSDConfigs}}
+  tls_config:
+    insecure_skip_verify: true
+  relabel_configs:
+  {{.KeepLabels}}
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+    regex: tiflash
+    action: keep
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_tiflash_proxy_prometheus_io_port]
+    regex: (.+);(.+);(.+);(.+)
+    target_label: __address__
+    replacement: $1.$2-tiflash-peer.$3:$4
+    action: replace
+  {{.ReplaceLabels}}
+- job_name: ns1-target-pump
+  honor_labels: true
+  scrape_interval: 15s
+  scheme: http
+  {{.KubeSDConfigs}}
+  tls_config:
+    insecure_skip_verify: true
+  relabel_configs:
+  {{.KeepLabels}}
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+    regex: pump
+    action: keep
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+    regex: (.+);(.+);(.+);(.+)
+    target_label: __address__
+    replacement: $1.$2-pump.$3:$4
+    action: replace
+  {{.ReplaceLabels}}
+- job_name: ns1-target-drainer
+  honor_labels: true
+  scrape_interval: 15s
+  scheme: http
+  {{.KubeSDConfigs}}
+  tls_config:
+    insecure_skip_verify: true
+  relabel_configs:
+  {{.KeepLabels}}
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+    regex: drainer
+    action: keep
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_name, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+    regex: (.+);(.+);(.+);(.+)
+    target_label: __address__
+    replacement: $1.$2.$3:$4
+    action: replace
+  {{.ReplaceLabels}}
+- job_name: ns1-target-ticdc
+  honor_labels: true
+  scrape_interval: 15s
+  scheme: http
+  {{.KubeSDConfigs}}
+  tls_config:
+    insecure_skip_verify: true
+  relabel_configs:
+  {{.KeepLabels}}
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+    regex: ticdc
+    action: keep
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+    regex: (.+);(.+);(.+);(.+)
+    target_label: __address__
+    replacement: $1.$2-ticdc-peer.$3:$4
+    action: replace
+  {{.ReplaceLabels}}
+- job_name: ns1-target-importer
+  honor_labels: true
+  scrape_interval: 15s
+  scheme: http
+  {{.KubeSDConfigs}}
+  tls_config:
+    insecure_skip_verify: true
+  relabel_configs:
+  {{.KeepLabels}}
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+    regex: importer
+    action: keep
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+    regex: (.+);(.+);(.+);(.+)
+    target_label: __address__
+    replacement: $1.$2-importer.$3:$4
+    action: replace
+  {{.ReplaceLabels}}
+- job_name: ns1-target-lightning
+  honor_labels: true
+  scrape_interval: 15s
+  scheme: http
+  {{.KubeSDConfigs}}
+  tls_config:
+    insecure_skip_verify: true
+  relabel_configs:
+  {{.KeepLabels}}
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+    regex: tidb-lightning
+    action: keep
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_name, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+    regex: (.+);(.+);(.+);(.+)
+    target_label: __address__
+    replacement: $2.$3:$4
+    action: replace
+  {{.ReplaceLabels}}
+- job_name: ns1-target-dm-worker
+  honor_labels: true
+  scrape_interval: 15s
+  scheme: http
+  {{.KubeSDConfigs}}
+  tls_config:
+    insecure_skip_verify: true
+  relabel_configs:
+  {{.KeepLabels}}
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+    regex: dm-worker
+    action: keep
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+    regex: (.+);(.+);(.+);(.+)
+    target_label: __address__
+    replacement: $1.$2-dm-worker-peer.$3:$4
+    action: replace
+  {{.ReplaceLabels}}
+- job_name: ns1-target-dm-master
+  honor_labels: true
+  scrape_interval: 15s
+  scheme: http
+  {{.KubeSDConfigs}}
+  tls_config:
+    insecure_skip_verify: true
+  relabel_configs:
+  {{.KeepLabels}}
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+    regex: dm-master
+    action: keep
+  - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_namespace, __meta_kubernetes_pod_annotation_prometheus_io_port]
+    regex: (.+);(.+);(.+);(.+)
+    target_label: __address__
+    replacement: $1.$2-dm-master-peer.$3:$4
+    action: replace
+  {{.ReplaceLabels}}
+remote_write:
+- url: http://localhost:1234
+  remote_timeout: 15s
+  write_relabel_configs:
+  - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+    separator: ;
+    regex: (.+)
+    target_label: node
+    replacement: $1
+    action: replace
+`
+	url, _ := client.ParseHostURL("http://localhost:1234")
+	regex, _ := config.NewRegexp("(.+)")
+	model := &MonitorConfigModel{
+		ClusterInfos: []ClusterRegexInfo{
+			{Name: "target", Namespace: "ns1"},
+		},
+		DMClusterInfos: []ClusterRegexInfo{
+			{Name: "target", Namespace: "ns1"},
+		},
+		EnableAlertRules:          true,
+		EnableExternalRuleConfigs: true,
+		RemoteWriteConfigs: []*config.RemoteWriteConfig{
+			{
+				URL:           &config.URL{URL: url},
+				RemoteTimeout: model.Duration(15 * time.Second),
+				WriteRelabelConfigs: []*config.RelabelConfig{
+					{
+						SourceLabels: model.LabelNames{
+							"__address__",
+							portLabel,
+						},
+						Separator:   ";",
+						Regex:       regex,
+						TargetLabel: "node",
+						Replacement: "$1",
+						Action:      "replace",
+					},
+				},
+			},
+		},
+	}
+	content, err := RenderPrometheusConfig(model)
+	g.Expect(err).NotTo(HaveOccurred())
+	expectedContentParsed := template.Must(template.New("relabelConfig").Parse(expectedContentTpl))
+	var expectedContentBytes bytes.Buffer
+	expectedContentParsed.Execute(&expectedContentBytes, promCfgModel)
+	g.Expect(content).Should(Equal(expectedContentBytes.String()))
+}
+
+>>>>>>> da7f77f8... TidbMonitor support dynamic prometheus rule reload and custom external rule (#4180)
 func TestRenderPrometheusConfigTLSEnabled(t *testing.T) {
 	g := NewGomegaWithT(t)
 	expectedContentTpl := `global:
