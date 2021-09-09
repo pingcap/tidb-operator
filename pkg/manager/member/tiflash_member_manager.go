@@ -410,7 +410,7 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 		str := `pd_url="%s"
 set +e
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
-discovery_url="%s-discovery.%s:10261"
+discovery_url="%s-discovery.%s.svc:10261"
 until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
 echo "waiting for the verification of PD endpoints ..."
 sleep 2

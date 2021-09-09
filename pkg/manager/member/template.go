@@ -52,7 +52,7 @@ fi
 POD_NAME=${POD_NAME:-$HOSTNAME}{{ if .FormatClusterDomain }}
 pd_url="{{ .Path }}"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
-discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}:10261"
+discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}.svc:10261"
 until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
 echo "waiting for the verification of PD endpoints ..."
 sleep $((RANDOM % 5))
@@ -145,7 +145,7 @@ POD_NAME=${POD_NAME:-$HOSTNAME}
 cluster_name=` + "`" + `echo ${PEER_SERVICE_NAME} | sed 's/-pd-peer//'` + "`" +
 	`
 domain="${POD_NAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc{{ .FormatClusterDomain }}"
-discovery_url="${cluster_name}-discovery.${NAMESPACE}:10261"
+discovery_url="${cluster_name}-discovery.${NAMESPACE}.svc:10261"
 encoded_domain_url=` + "`" + `echo ${domain}:2380 | base64 | tr "\n" " " | sed "s/ //g"` + "`" +
 	`
 elapseTime=0
@@ -252,7 +252,7 @@ fi
 POD_NAME=${POD_NAME:-$HOSTNAME}{{ if .FormatClusterDomain }}
 pd_url="{{ .PDAddress }}"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
-discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}:10261"
+discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}.svc:10261"
 
 until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
 echo "waiting for the verification of PD endpoints ..."
@@ -305,7 +305,7 @@ func RenderTiKVStartScript(model *TiKVStartScriptModel) (string, error) {
 var pumpStartScriptTpl = template.Must(template.New("pump-start-script").Parse(`{{ if .FormatClusterDomain }}
 pd_url="{{ .Scheme }}://{{ .ClusterName }}-pd:2379"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
-discovery_url="{{ .ClusterName }}-discovery.{{ .Namespace }}:10261"
+discovery_url="{{ .ClusterName }}-discovery.{{ .Namespace }}.svc:10261"
 until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
 echo "waiting for the verification of PD endpoints ..."
 sleep $((RANDOM % 5))
@@ -490,7 +490,7 @@ POD_NAME=${POD_NAME:-$HOSTNAME}
 cluster_name=` + "`" + `echo ${PEER_SERVICE_NAME} | sed 's/-dm-master-peer//'` + "`" +
 	`
 domain="${POD_NAME}.${PEER_SERVICE_NAME}"
-discovery_url="${cluster_name}-dm-discovery.${NAMESPACE}:10261"
+discovery_url="${cluster_name}-dm-discovery.${NAMESPACE}.svc:10261"
 encoded_domain_url=` + "`" + `echo ${domain}:8291 | base64 | tr "\n" " " | sed "s/ //g"` + "`" +
 	`
 elapseTime=0
