@@ -3,6 +3,7 @@ apiVersion: batch/v1beta1
 kind: CronJob
 metadata:
   name: {{ template "cluster.name" . }}-scheduled-backup
+  namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}

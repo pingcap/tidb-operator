@@ -3,6 +3,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -68,6 +69,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: webhook-del
+  namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
