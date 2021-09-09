@@ -38,7 +38,6 @@ jobs:
     - name: "Check unclosed tags"
       run:
         wget https://raw.githubusercontent.com/CharLotteiu/pingcap-docs-checks/main/check-tags.py;
-        echo "checked files are $(git diff-tree --name-only --no-commit-id -r upstream/master...HEAD -- 'zh/' 'en/' '.md' ':(exclude).github/*')";
         python3 check-tags.py $(git diff-tree --name-only --no-commit-id -r upstream/master...HEAD -- 'zh/' 'en/' '.md' ':(exclude).github/*')
     - name: "Check manual line breaks"
       run:
