@@ -23,8 +23,10 @@ import (
 )
 
 // TidbClusterAutoScalerLister helps list TidbClusterAutoScalers.
+// All objects returned here must be treated as read-only.
 type TidbClusterAutoScalerLister interface {
 	// List lists all TidbClusterAutoScalers in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.TidbClusterAutoScaler, err error)
 	// TidbClusterAutoScalers returns an object that can list and get TidbClusterAutoScalers.
 	TidbClusterAutoScalers(namespace string) TidbClusterAutoScalerNamespaceLister
@@ -55,10 +57,13 @@ func (s *tidbClusterAutoScalerLister) TidbClusterAutoScalers(namespace string) T
 }
 
 // TidbClusterAutoScalerNamespaceLister helps list and get TidbClusterAutoScalers.
+// All objects returned here must be treated as read-only.
 type TidbClusterAutoScalerNamespaceLister interface {
 	// List lists all TidbClusterAutoScalers in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.TidbClusterAutoScaler, err error)
 	// Get retrieves the TidbClusterAutoScaler from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.TidbClusterAutoScaler, error)
 	TidbClusterAutoScalerNamespaceListerExpansion
 }

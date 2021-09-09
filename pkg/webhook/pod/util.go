@@ -14,6 +14,7 @@
 package pod
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -25,6 +26,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -57,7 +59,7 @@ func addDeferDeletingToPVC(pvc *core.PersistentVolumeClaim, kubeCli kubernetes.I
 	}
 	now := time.Now().Format(time.RFC3339)
 	pvc.Annotations[label.AnnPVCDeferDeleting] = now
-	_, err := kubeCli.CoreV1().PersistentVolumeClaims(pvc.Namespace).Update(pvc)
+	_, err := kubeCli.CoreV1().PersistentVolumeClaims(pvc.Namespace).Update(context.TODO(), pvc, metav1.UpdateOptions{})
 	return err
 }
 
@@ -81,7 +83,7 @@ func checkFormerPDPodStatus(kubeCli kubernetes.Interface, pdClient pdapi.PDClien
 			continue
 		}
 		podName := memberUtil.PdPodName(tcName, i)
-		pod, err := kubeCli.CoreV1().Pods(namespace).Get(podName, meta.GetOptions{})
+		pod, err := kubeCli.CoreV1().Pods(namespace).Get(context.TODO(), podName, meta.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -110,7 +112,7 @@ func addDeferDeletingToPDPod(kubeCli kubernetes.Interface, pod *core.Pod) error 
 	}
 	now := time.Now().Format(time.RFC3339)
 	pod.Annotations[label.AnnPDDeferDeleting] = now
-	_, err := kubeCli.CoreV1().Pods(pod.Namespace).Update(pod)
+	_, err := kubeCli.CoreV1().Pods(pod.Namespace).Update(context.TODO(), pod, metav1.UpdateOptions{})
 	return err
 }
 
@@ -137,7 +139,7 @@ func getOwnerStatefulSetForTiDBComponent(pod *core.Pod, kubeCli kubernetes.Inter
 	if len(ownerStatefulSetName) == 0 {
 		return nil, fmt.Errorf(failToFindTidbComponentOwnerStatefulset, namespace, name)
 	}
-	return kubeCli.AppsV1().StatefulSets(namespace).Get(ownerStatefulSetName, meta.GetOptions{})
+	return kubeCli.AppsV1().StatefulSets(namespace).Get(context.TODO(), ownerStatefulSetName, meta.GetOptions{})
 }
 
 func appendExtraLabelsENVForTiKV(labels map[string]string, container *core.Container) {

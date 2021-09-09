@@ -22,6 +22,7 @@ import (
 	"k8s.io/client-go/util/keyutil"
 	"k8s.io/kubernetes/cmd/kubeadm/app/util/pkiutil"
 	"k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/kubernetes/test/utils"
 )
 
 type CertContext struct {
@@ -40,7 +41,7 @@ func SetupServerCert(namespaceName, serviceName string) (*CertContext, error) {
 		return nil, err
 	}
 	defer os.RemoveAll(certDir)
-	signingKey, err := pkiutil.NewPrivateKey()
+	signingKey, err := utils.NewPrivateKey()
 	if err != nil {
 		log.Logf("ERROR: Failed to create CA private key %v", err)
 		return nil, err
@@ -59,12 +60,12 @@ func SetupServerCert(namespaceName, serviceName string) (*CertContext, error) {
 		log.Logf("ERROR: Failed to write CA cert %v", err)
 		return nil, err
 	}
-	key, err := pkiutil.NewPrivateKey()
+	key, err := utils.NewPrivateKey()
 	if err != nil {
 		log.Logf("ERROR: Failed to create private key for %v", err)
 		return nil, err
 	}
-	signedCert, err := pkiutil.NewSignedCert(
+	signedCert, err := utils.NewSignedCert(
 		&cert.Config{
 			CommonName: serviceName + "." + namespaceName + ".svc",
 			Usages:     []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},

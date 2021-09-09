@@ -14,6 +14,7 @@
 package discovery
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -88,7 +89,7 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	if ns != podNamespace {
 		return "", fmt.Errorf("the peer's namespace: %s is not equal to discovery namespace: %s", ns, podNamespace)
 	}
-	tc, err := d.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+	tc, err := d.cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), tcName, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -193,7 +194,7 @@ func (d *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
 	dcName := strings.TrimSuffix(peerServiceName, "-dm-master-peer")
 	ns := os.Getenv("MY_POD_NAMESPACE")
 
-	dc, err := d.cli.PingcapV1alpha1().DMClusters(ns).Get(dcName, metav1.GetOptions{})
+	dc, err := d.cli.PingcapV1alpha1().DMClusters(ns).Get(context.TODO(), dcName, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -240,7 +241,7 @@ func (d *tidbDiscovery) VerifyPDEndpoint(pdURL string) (string, error) {
 	klog.Infof("Get PD endpoint URL: %s, scheme is %s, pdMemberName is %s, pdMemberPort is %s, tcName is %s", pdURL, pdEndpoint.scheme, pdEndpoint.pdMemberName, pdEndpoint.pdMemberPort, pdEndpoint.tcName)
 
 	ns := os.Getenv("MY_POD_NAMESPACE")
-	tc, err := d.cli.PingcapV1alpha1().TidbClusters(ns).Get(pdEndpoint.tcName, metav1.GetOptions{})
+	tc, err := d.cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), pdEndpoint.tcName, metav1.GetOptions{})
 	if err != nil {
 		klog.Errorf("Failed to get the tidbcluster when verifying PD endpoint, tcName: %s , ns: %s", pdEndpoint.tcName, ns)
 		return pdURL, err

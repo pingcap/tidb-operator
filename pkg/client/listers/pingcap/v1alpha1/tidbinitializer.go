@@ -23,8 +23,10 @@ import (
 )
 
 // TidbInitializerLister helps list TidbInitializers.
+// All objects returned here must be treated as read-only.
 type TidbInitializerLister interface {
 	// List lists all TidbInitializers in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.TidbInitializer, err error)
 	// TidbInitializers returns an object that can list and get TidbInitializers.
 	TidbInitializers(namespace string) TidbInitializerNamespaceLister
@@ -55,10 +57,13 @@ func (s *tidbInitializerLister) TidbInitializers(namespace string) TidbInitializ
 }
 
 // TidbInitializerNamespaceLister helps list and get TidbInitializers.
+// All objects returned here must be treated as read-only.
 type TidbInitializerNamespaceLister interface {
 	// List lists all TidbInitializers in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.TidbInitializer, err error)
 	// Get retrieves the TidbInitializer from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.TidbInitializer, error)
 	TidbInitializerNamespaceListerExpansion
 }

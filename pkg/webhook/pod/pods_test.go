@@ -15,6 +15,7 @@ package pod
 
 import (
 	"bytes"
+	"context"
 	"reflect"
 	"strconv"
 	"testing"
@@ -169,11 +170,11 @@ func TestAdmitPod(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cli := fake.NewSimpleClientset()
 			if tt.tc != nil {
-				cli.PingcapV1alpha1().TidbClusters(tt.tc.Namespace).Create(tt.tc)
+				cli.PingcapV1alpha1().TidbClusters(tt.tc.Namespace).Create(context.TODO(), tt.tc, metav1.CreateOptions{})
 			}
 			kubeCli := kubefake.NewSimpleClientset()
 			if tt.cm != nil {
-				kubeCli.CoreV1().ConfigMaps(tt.cm.Namespace).Create(tt.cm)
+				kubeCli.CoreV1().ConfigMaps(tt.cm.Namespace).Create(context.TODO(), tt.cm, metav1.CreateOptions{})
 			}
 			podAdmissionControl := newPodAdmissionControl(nil, kubeCli, cli)
 			ar := &admission.AdmissionRequest{
@@ -448,13 +449,13 @@ func TestValidate(t *testing.T) {
 			cli := fake.NewSimpleClientset()
 			kubeCli := kubefake.NewSimpleClientset()
 			if tt.pod != nil {
-				kubeCli.CoreV1().Pods(tt.pod.Namespace).Create(tt.pod)
+				kubeCli.CoreV1().Pods(tt.pod.Namespace).Create(context.TODO(), tt.pod, metav1.CreateOptions{})
 			}
 			if tt.sts != nil {
-				kubeCli.AppsV1().StatefulSets(tt.sts.Namespace).Create(tt.sts)
+				kubeCli.AppsV1().StatefulSets(tt.sts.Namespace).Create(context.TODO(), tt.sts, metav1.CreateOptions{})
 			}
 			if tt.tc != nil {
-				cli.PingcapV1alpha1().TidbClusters(tt.tc.Namespace).Create(tt.tc)
+				cli.PingcapV1alpha1().TidbClusters(tt.tc.Namespace).Create(context.TODO(), tt.tc, metav1.CreateOptions{})
 			}
 			podAdmissionControl := newPodAdmissionControl(nil, kubeCli, cli)
 			ar := &admission.AdmissionRequest{
