@@ -14,6 +14,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -63,7 +64,7 @@ func (c *realServiceControl) CreateService(controller runtime.Object, svc *corev
 	kind := controller.GetObjectKind().GroupVersionKind().Kind
 	name := controllerMo.GetName()
 	namespace := controllerMo.GetNamespace()
-	_, err := c.kubeCli.CoreV1().Services(namespace).Create(svc)
+	_, err := c.kubeCli.CoreV1().Services(namespace).Create(context.TODO(), svc, metav1.CreateOptions{})
 	c.recordServiceEvent("create", name, kind, controller, svc, err)
 	return err
 }
@@ -82,7 +83,7 @@ func (c *realServiceControl) UpdateService(controller runtime.Object, svc *corev
 	var updateSvc *corev1.Service
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		var updateErr error
-		updateSvc, updateErr = c.kubeCli.CoreV1().Services(namespace).Update(svc)
+		updateSvc, updateErr = c.kubeCli.CoreV1().Services(namespace).Update(context.TODO(), svc, metav1.UpdateOptions{})
 		if updateErr == nil {
 			klog.Infof("update Service: [%s/%s] successfully, kind: %s, name: %s", namespace, svcName, kind, name)
 			return nil
@@ -109,7 +110,7 @@ func (c *realServiceControl) DeleteService(controller runtime.Object, svc *corev
 	name := controllerMo.GetName()
 	namespace := controllerMo.GetNamespace()
 
-	err := c.kubeCli.CoreV1().Services(namespace).Delete(svc.Name, nil)
+	err := c.kubeCli.CoreV1().Services(namespace).Delete(context.TODO(), svc.Name, metav1.DeleteOptions{})
 	c.recordServiceEvent("delete", name, kind, controller, svc, err)
 	return err
 }

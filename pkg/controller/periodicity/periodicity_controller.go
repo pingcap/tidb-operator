@@ -23,12 +23,14 @@
 package periodicity
 
 import (
+	"context"
 	"encoding/json"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -97,7 +99,7 @@ func (c *Controller) syncStatefulSetTimeStamp() error {
 			errs = append(errs, err)
 			continue
 		}
-		_, err = c.deps.KubeClientset.AppsV1().StatefulSets(sts.Namespace).Patch(sts.Name, types.MergePatchType, mergePatch)
+		_, err = c.deps.KubeClientset.AppsV1().StatefulSets(sts.Namespace).Patch(context.TODO(), sts.Name, types.MergePatchType, mergePatch, metav1.PatchOptions{})
 		if err != nil {
 			klog.Errorf("sts[%s/%s] patch timestamp failed, error: %v", sts.Namespace, sts.Name, err.Error())
 			errs = append(errs, err)

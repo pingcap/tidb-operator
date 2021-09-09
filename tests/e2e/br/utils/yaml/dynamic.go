@@ -14,6 +14,7 @@
 package yaml
 
 import (
+	"context"
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -64,7 +65,7 @@ func (c *client) Create(yamlBytes []byte) error {
 
 	ns := u.GetNamespace()
 
-	if _, err := c.dc.Resource(mapping.Resource).Namespace(ns).Create(u, metav1.CreateOptions{}); err != nil {
+	if _, err := c.dc.Resource(mapping.Resource).Namespace(ns).Create(context.TODO(), u, metav1.CreateOptions{}); err != nil {
 		return err
 	}
 

@@ -14,6 +14,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -75,7 +76,7 @@ func (c *realPVControl) PatchPVReclaimPolicy(obj runtime.Object, pv *corev1.Pers
 	patchBytes := []byte(fmt.Sprintf(`{"spec":{"persistentVolumeReclaimPolicy":"%s"}}`, reclaimPolicy))
 
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		_, err := c.kubeCli.CoreV1().PersistentVolumes().Patch(pvName, types.StrategicMergePatchType, patchBytes)
+		_, err := c.kubeCli.CoreV1().PersistentVolumes().Patch(context.TODO(), pvName, types.StrategicMergePatchType, patchBytes, metav1.PatchOptions{})
 		return err
 	})
 	c.recordPVEvent("patch", obj, name, pvName, err)
@@ -94,7 +95,7 @@ func (c *realPVControl) CreatePV(obj runtime.Object, pv *corev1.PersistentVolume
 
 	name := metaObj.GetName()
 	pvName := pv.GetName()
-	_, err := c.kubeCli.CoreV1().PersistentVolumes().Create(pv)
+	_, err := c.kubeCli.CoreV1().PersistentVolumes().Create(context.TODO(), pv, metav1.CreateOptions{})
 	c.recordPVEvent("create", obj, name, pvName, err)
 	return err
 }
@@ -110,7 +111,7 @@ func (c *realPVControl) PatchPVClaimRef(obj runtime.Object, pv *corev1.Persisten
 	patchBytes := []byte(fmt.Sprintf(`{"spec":{"claimRef":{"name":"%s","resourceVersion":"","uid":""}}}`, pvcName))
 
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		_, err := c.kubeCli.CoreV1().PersistentVolumes().Patch(pvName, types.StrategicMergePatchType, patchBytes)
+		_, err := c.kubeCli.CoreV1().PersistentVolumes().Patch(context.TODO(), pvName, types.StrategicMergePatchType, patchBytes, metav1.PatchOptions{})
 		return err
 	})
 	c.recordPVEvent("patch", obj, name, pvName, err)
@@ -186,7 +187,7 @@ func (c *realPVControl) UpdateMetaInfo(obj runtime.Object, pv *corev1.Persistent
 	var updatePV *corev1.PersistentVolume
 	err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		var updateErr error
-		updatePV, updateErr = c.kubeCli.CoreV1().PersistentVolumes().Update(pv)
+		updatePV, updateErr = c.kubeCli.CoreV1().PersistentVolumes().Update(context.TODO(), pv, metav1.UpdateOptions{})
 		if updateErr == nil {
 			klog.Infof("PV: [%s] updated successfully, %s: %s/%s", pvName, kind, ns, name)
 			return nil

@@ -24,11 +24,11 @@ variable "node_locations" {
 
 variable "tidb_version" {
   description = "TiDB version"
-  default     = "v5.1.1"
+  default     = "v5.2.0"
 }
 
 variable "tidb_operator_version" {
-  default = "v1.2.1"
+  default = "v1.2.3"
 }
 
 variable "tidb_operator_chart_version" {

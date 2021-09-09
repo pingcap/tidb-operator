@@ -14,6 +14,7 @@
 package tests
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -46,6 +47,19 @@ func CheckTidbMonitor(monitor *v1alpha1.TidbMonitor, cli versioned.Interface, ku
 	return nil
 }
 
+func CheckTidbMonitorConfigurationUpdate(monitor *v1alpha1.TidbMonitor, kubeCli kubernetes.Interface, fw portforward.PortForward, expectActiveTargets int) error {
+
+	if err := checkTidbMonitorPod(monitor, kubeCli); err != nil {
+		log.Logf("ERROR: tm[%s/%s] failed to check pod:%v", monitor.Namespace, monitor.Name, err)
+		return err
+	}
+	if err := checkPrometheusCommon(monitor.Name, monitor.Namespace, fw, expectActiveTargets); err != nil {
+		log.Logf("ERROR: tm[%s/%s]'s prometheus check error:%v", monitor.Namespace, monitor.Namespace, err)
+		return err
+	}
+	return nil
+}
+
 // checkTidbMonitorPod check the pod of TidbMonitor whether it is ready
 func checkTidbMonitorPod(tm *v1alpha1.TidbMonitor, kubeCli kubernetes.Interface) error {
 	namespace := tm.Namespace
@@ -57,7 +71,7 @@ func checkTidbMonitorPod(tm *v1alpha1.TidbMonitor, kubeCli kubernetes.Interface)
 
 	return wait.Poll(5*time.Second, 20*time.Minute, func() (done bool, err error) {
 
-		pods, err := kubeCli.CoreV1().Pods(namespace).List(metav1.ListOptions{
+		pods, err := kubeCli.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{
 			LabelSelector: monitorLabel.String(),
 		})
 		if err != nil {
@@ -81,7 +95,7 @@ func checkTidbMonitorPod(tm *v1alpha1.TidbMonitor, kubeCli kubernetes.Interface)
 			return false, fmt.Errorf("tm[%s/%s]'s pod didnt' have 2 containers with grafana disabled", tm.Namespace, tm.Name)
 		}
 		log.Logf("tm[%s/%s]'s pod[%s/%s] is ready", tm.Namespace, tm.Name, pod.Namespace, pod.Name)
-		_, err = kubeCli.CoreV1().Services(namespace).Get(svcName, metav1.GetOptions{})
+		_, err = kubeCli.CoreV1().Services(namespace).Get(context.TODO(), svcName, metav1.GetOptions{})
 		if err != nil {
 			log.Logf("ERROR: tm[%s/%s]'s service[%s/%s] failed to fetch", tm.Namespace, tm.Name, tm.Namespace, svcName)
 			return false, nil
@@ -92,7 +106,7 @@ func checkTidbMonitorPod(tm *v1alpha1.TidbMonitor, kubeCli kubernetes.Interface)
 
 // checkTidbMonitorFunctional check whether TidbMonitor's Prometheus and Grafana are working now
 func checkTidbMonitorFunctional(monitor *v1alpha1.TidbMonitor, fw portforward.PortForward) error {
-	if err := checkPrometheusCommon(monitor.Name, monitor.Namespace, fw); err != nil {
+	if err := checkPrometheusCommon(monitor.Name, monitor.Namespace, fw, 1); err != nil {
 		log.Logf("ERROR: tm[%s/%s]'s prometheus check error:%v", monitor.Namespace, monitor.Namespace, err)
 		return err
 	}
@@ -109,7 +123,7 @@ func checkTidbMonitorFunctional(monitor *v1alpha1.TidbMonitor, fw portforward.Po
 }
 
 // checkPrometheusCommon check the Prometheus working status by querying `up` api and `targets` api.
-func checkPrometheusCommon(name, namespace string, fw portforward.PortForward) error {
+func checkPrometheusCommon(name, namespace string, fw portforward.PortForward, expectActiveTargets int) error {
 	var prometheusAddr string
 	if fw != nil {
 		localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, namespace, fmt.Sprintf("svc/%s-prometheus", name), 9090)
@@ -183,7 +197,7 @@ func checkPrometheusCommon(name, namespace string, fw portforward.PortForward) e
 			log.Logf("ERROR: %v", err)
 			return false, nil
 		}
-		if data.Status != "success" || len(data.Data.ActiveTargets) < 1 {
+		if data.Status != "success" || len(data.Data.ActiveTargets) < expectActiveTargets {
 			log.Logf("ERROR: monitor[%s/%s]'s prometheus targets error", namespace, name)
 			return false, nil
 		}

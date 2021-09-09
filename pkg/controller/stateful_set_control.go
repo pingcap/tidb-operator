@@ -14,6 +14,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -60,7 +61,7 @@ func (c *realStatefulSetControl) CreateStatefulSet(controller runtime.Object, se
 	name := controllerMo.GetName()
 	namespace := controllerMo.GetNamespace()
 
-	_, err := c.kubeCli.AppsV1().StatefulSets(namespace).Create(set)
+	_, err := c.kubeCli.AppsV1().StatefulSets(namespace).Create(context.TODO(), set, metav1.CreateOptions{})
 	// sink already exists errors
 	if apierrors.IsAlreadyExists(err) {
 		return err
@@ -86,7 +87,7 @@ func (c *realStatefulSetControl) UpdateStatefulSet(controller runtime.Object, se
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		// TODO: verify if StatefulSet identity(name, namespace, labels) matches TidbCluster
 		var updateErr error
-		updatedSS, updateErr = c.kubeCli.AppsV1().StatefulSets(namespace).Update(set)
+		updatedSS, updateErr = c.kubeCli.AppsV1().StatefulSets(namespace).Update(context.TODO(), set, metav1.UpdateOptions{})
 		if updateErr == nil {
 			klog.Infof("%s: [%s/%s]'s StatefulSet: [%s/%s] updated successfully", kind, namespace, name, namespace, setName)
 			return nil
@@ -116,7 +117,7 @@ func (c *realStatefulSetControl) DeleteStatefulSet(controller runtime.Object, se
 	name := controllerMo.GetName()
 	namespace := controllerMo.GetNamespace()
 
-	err := c.kubeCli.AppsV1().StatefulSets(namespace).Delete(set.Name, nil)
+	err := c.kubeCli.AppsV1().StatefulSets(namespace).Delete(context.TODO(), set.Name, metav1.DeleteOptions{})
 	c.recordStatefulSetEvent("delete", kind, name, controller, set, err)
 	return err
 }

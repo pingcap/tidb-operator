@@ -23,8 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/scheduler"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
-	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
-	schedulerapiv1 "k8s.io/kubernetes/pkg/scheduler/api/v1"
+	schedulerapi "k8s.io/kube-scheduler/extender/v1"
 )
 
 var (
@@ -51,7 +50,7 @@ func StartServer(kubeCli kubernetes.Interface, cli versioned.Interface, port int
 	ws.Route(ws.POST("/filter").To(svr.filterNode).
 		Doc("filter nodes").
 		Operation("filterNodes").
-		Writes(schedulerapiv1.ExtenderFilterResult{}))
+		Writes(schedulerapi.ExtenderFilterResult{}))
 
 	ws.Route(ws.POST("/preempt").To(svr.preemptNode).
 		Doc("preempt nodes").
@@ -61,7 +60,7 @@ func StartServer(kubeCli kubernetes.Interface, cli versioned.Interface, port int
 	ws.Route(ws.POST("/prioritize").To(svr.prioritizeNode).
 		Doc("prioritize nodes").
 		Operation("prioritizeNodes").
-		Writes(schedulerapiv1.HostPriorityList{}))
+		Writes(schedulerapi.HostPriorityList{}))
 	restful.Add(ws)
 
 	klog.Infof("start scheduler extender server, listening on 0.0.0.0:%d", port)
@@ -72,7 +71,7 @@ func (svr *server) filterNode(req *restful.Request, resp *restful.Response) {
 	svr.lock.Lock()
 	defer svr.lock.Unlock()
 
-	args := &schedulerapiv1.ExtenderArgs{}
+	args := &schedulerapi.ExtenderArgs{}
 	if err := req.ReadEntity(args); err != nil {
 		errorResponse(resp, errFailToRead)
 		return
@@ -113,7 +112,7 @@ func (svr *server) preemptNode(req *restful.Request, resp *restful.Response) {
 }
 
 func (svr *server) prioritizeNode(req *restful.Request, resp *restful.Response) {
-	args := &schedulerapiv1.ExtenderArgs{}
+	args := &schedulerapi.ExtenderArgs{}
 	if err := req.ReadEntity(args); err != nil {
 		errorResponse(resp, errFailToRead)
 		return
