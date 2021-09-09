@@ -14,6 +14,7 @@
 package predicates
 
 import (
+	"context"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -166,12 +167,12 @@ func TestStableSchedulingFilter(t *testing.T) {
 		recorder := record.NewFakeRecorder(10)
 		kubeCli := fake.NewSimpleClientset()
 		if tc.pod != nil {
-			_, err := kubeCli.CoreV1().Pods(v1.NamespaceDefault).Create(tc.pod)
+			_, err := kubeCli.CoreV1().Pods(v1.NamespaceDefault).Create(context.TODO(), tc.pod, metav1.CreateOptions{})
 			g.Expect(err).NotTo(HaveOccurred())
 		}
 		cli := pingcapfake.NewSimpleClientset()
 		if tc.tidbCluster != nil {
-			_, err := cli.PingcapV1alpha1().TidbClusters(v1.NamespaceDefault).Create(tc.tidbCluster)
+			_, err := cli.PingcapV1alpha1().TidbClusters(v1.NamespaceDefault).Create(context.TODO(), tc.tidbCluster, metav1.CreateOptions{})
 			g.Expect(err).NotTo(HaveOccurred())
 		}
 		p := stableScheduling{

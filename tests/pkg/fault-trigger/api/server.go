@@ -56,7 +56,7 @@ func (s *Server) StartServer() {
 
 	log.Logf("starting fault-trigger server, listening on 0.0.0.0:%d", s.port)
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", s.port), nil); err != nil {
-		log.Fail(err.Error())
+		log.Failf(err.Error())
 	}
 }
 

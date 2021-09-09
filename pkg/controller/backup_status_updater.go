@@ -14,6 +14,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 
 	"k8s.io/klog"
@@ -79,7 +80,7 @@ func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *
 		updateBackupStatus(&backup.Status, newStatus)
 		isUpdate = v1alpha1.UpdateBackupCondition(&backup.Status, condition)
 		if isUpdate {
-			_, updateErr := u.cli.PingcapV1alpha1().Backups(ns).Update(backup)
+			_, updateErr := u.cli.PingcapV1alpha1().Backups(ns).Update(context.TODO(), backup, metav1.UpdateOptions{})
 			if updateErr == nil {
 				klog.Infof("Backup: [%s/%s] updated successfully", ns, backupName)
 				return nil

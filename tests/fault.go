@@ -14,6 +14,7 @@
 package tests
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"os"
@@ -233,7 +234,7 @@ func (fa *faultTriggerActions) StartNodeOrDie(physicalNode string, node string) 
 
 func (fa *faultTriggerActions) getAllKubeProxyPods() ([]v1.Pod, error) {
 	selector := labels.Set{"k8s-app": "kube-proxy"}.AsSelector()
-	podList, err := fa.kubeCli.CoreV1().Pods(metav1.NamespaceSystem).List(metav1.ListOptions{
+	podList, err := fa.kubeCli.CoreV1().Pods(metav1.NamespaceSystem).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: selector.String(),
 	})
 	if err != nil {
@@ -250,7 +251,7 @@ func (fa *faultTriggerActions) StopKubeProxy() error {
 	if err != nil {
 		return err
 	}
-	ds, err := fa.kubeCli.AppsV1().DaemonSets(metav1.NamespaceSystem).Get("kube-proxy", metav1.GetOptions{})
+	ds, err := fa.kubeCli.AppsV1().DaemonSets(metav1.NamespaceSystem).Get(context.TODO(), "kube-proxy", metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -272,7 +273,7 @@ func (fa *faultTriggerActions) StopKubeProxy() error {
 		},
 	}
 	ds.Spec.Template.Spec.Affinity = &affinity
-	_, err = fa.kubeCli.AppsV1().DaemonSets(metav1.NamespaceSystem).Update(ds)
+	_, err = fa.kubeCli.AppsV1().DaemonSets(metav1.NamespaceSystem).Update(context.TODO(), ds, metav1.UpdateOptions{})
 	if err != nil {
 		return err
 	}
@@ -297,12 +298,12 @@ func (fa *faultTriggerActions) StopKubeProxyOrDie() {
 func (fa *faultTriggerActions) StartKubeProxy() error {
 	log.Logf("starting all kube-proxy pods")
 	nodes := getAllK8sNodes(fa.cfg)
-	ds, err := fa.kubeCli.AppsV1().DaemonSets(metav1.NamespaceSystem).Get("kube-proxy", metav1.GetOptions{})
+	ds, err := fa.kubeCli.AppsV1().DaemonSets(metav1.NamespaceSystem).Get(context.TODO(), "kube-proxy", metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 	ds.Spec.Template.Spec.Affinity = nil
-	_, err = fa.kubeCli.AppsV1().DaemonSets(metav1.NamespaceSystem).Update(ds)
+	_, err = fa.kubeCli.AppsV1().DaemonSets(metav1.NamespaceSystem).Update(context.TODO(), ds, metav1.UpdateOptions{})
 	if err != nil {
 		return err
 	}
@@ -574,7 +575,7 @@ func getFaultNode(kubeCli kubernetes.Interface) (string, error) {
 	var err error
 	var nodes *v1.NodeList
 	err = wait.Poll(2*time.Second, 10*time.Second, func() (bool, error) {
-		nodes, err = kubeCli.CoreV1().Nodes().List(metav1.ListOptions{})
+		nodes, err = kubeCli.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			log.Logf("ERROR: trigger node stop failed when get all nodes, error: %v", err)
 			return false, nil
@@ -598,7 +599,7 @@ func getFaultNode(kubeCli kubernetes.Interface) (string, error) {
 			"name": "tiller",
 		}).String(),
 	}
-	pods, err := kubeCli.CoreV1().Pods("kube-system").List(listOption)
+	pods, err := kubeCli.CoreV1().Pods("kube-system").List(context.TODO(), listOption)
 	if err != nil {
 		return "", err
 	}

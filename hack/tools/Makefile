@@ -13,18 +13,18 @@
 
 export GO111MODULE=on
 
-GOBIN ?= $(shell go env GOPATH)/bin
+OUTPUT_DIR ?= bin
 DEP_PROGS=\
-	$(GOBIN)/misspell\
-	$(GOBIN)/goimports\
-	$(GOBIN)/golangci-lint
+	misspell\
+	goimports\
+	golangci-lint
 
 .PHONY: all
 all: clean build
 
 .PHONY: clean
 clean:
-	rm -f $(DEP_PROGS)
+	$(foreach cmd, $(DEP_PROGS), rm -f $(OUTPUT_DIR)/$(cmd)) \
 	rm -rf vendor/
 
 .PHONY: build
@@ -34,11 +34,14 @@ build: $(DEP_PROGS)
 deps:
 	go mod vendor
 
-$(GOBIN)/golangci-lint: deps
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint
+golangci-lint: CMD_DIR ?= $(shell go list -f "{{ .Dir }}" github.com/golangci/golangci-lint/cmd/golangci-lint)
+golangci-lint: deps
+	go build -o $(OUTPUT_DIR)/golangci-lint $(CMD_DIR)
 
-$(GOBIN)/misspell: deps
-	go install github.com/client9/misspell/cmd/misspell
+misspell: CMD_DIR ?= $(shell go list -f "{{ .Dir }}" github.com/client9/misspell/cmd/misspell)
+misspell: deps
+	go build -o $(OUTPUT_DIR)/misspell $(CMD_DIR)
 
-$(GOBIN)/goimports: deps
-	go install golang.org/x/tools/cmd/goimports
+goimports: CMD_DIR ?= $(shell go list -f "{{ .Dir }}" golang.org/x/tools/cmd/goimports)
+goimports: deps
+	go build -o $(OUTPUT_DIR)/goimports $(CMD_DIR)

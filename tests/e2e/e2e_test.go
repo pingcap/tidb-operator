@@ -14,6 +14,7 @@
 package e2e
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"math/rand"
@@ -31,15 +32,12 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework/config"
 	"k8s.io/kubernetes/test/e2e/framework/log"
 	"k8s.io/kubernetes/test/e2e/framework/testfiles"
-	"k8s.io/kubernetes/test/e2e/framework/viperconfig"
 
 	// test sources
 	_ "github.com/pingcap/tidb-operator/tests/e2e/br"
 	_ "github.com/pingcap/tidb-operator/tests/e2e/dmcluster"
 	_ "github.com/pingcap/tidb-operator/tests/e2e/tidbcluster"
 )
-
-var viperConfig = flag.String("viper-config", "", "The name of a viper config file (https://github.com/spf13/viper#what-is-viper). All e2e command line parameters can also be configured in such a file. May contain a path and may or may not contain the file suffix. The default is to look for an optional file with `e2e` as base name. If a file is specified explicitly, it must be present.")
 
 // handleFlags sets up all flags and parses the command line.
 func handleFlags() {
@@ -83,7 +81,7 @@ func createTestingNS(baseName string, c clientset.Interface, labels map[string]s
 	var got *v1.Namespace
 	if err := wait.PollImmediate(2*time.Second, 30*time.Second, func() (bool, error) {
 		var err error
-		got, err = c.CoreV1().Namespaces().Create(namespaceObj)
+		got, err = c.CoreV1().Namespaces().Create(context.TODO(), namespaceObj, metav1.CreateOptions{})
 		if err != nil {
 			if apierrors.IsAlreadyExists(err) {
 				// regenerate on conflict
@@ -118,14 +116,6 @@ func TestMain(m *testing.M) {
 	flag.CommandLine.VisitAll(func(flag *flag.Flag) {
 		log.Logf("FLAG: --%s=%q", flag.Name, flag.Value)
 	})
-
-	// Now that we know which Viper config (if any) was chosen,
-	// parse it and update those options which weren't already set via command line flags
-	// (which have higher priority).
-	if err := viperconfig.ViperizeFlags(*viperConfig, "e2e", flag.CommandLine); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
 
 	framework.AfterReadingAllFlags(&framework.TestContext)
 	e2econfig.AfterReadingAllFlags()

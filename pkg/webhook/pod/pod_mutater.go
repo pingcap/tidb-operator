@@ -14,6 +14,7 @@
 package pod
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -54,7 +55,7 @@ func (pc *PodAdmissionControl) mutatePod(ar *admissionv1beta1.AdmissionRequest) 
 	}
 	namespace := ar.Namespace
 
-	tc, err := pc.operatorCli.PingcapV1alpha1().TidbClusters(namespace).Get(tcName, metav1.GetOptions{})
+	tc, err := pc.operatorCli.PingcapV1alpha1().TidbClusters(namespace).Get(context.TODO(), tcName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return util.ARSuccess()
@@ -129,5 +130,5 @@ func (pc *PodAdmissionControl) getTikvConfigMap(tc *v1alpha1.TidbCluster, pod *c
 	if cnName == "" {
 		return nil, fmt.Errorf("tc[%s/%s] 's tikv configmap can't find", tc.Namespace, tc.Name)
 	}
-	return pc.kubeCli.CoreV1().ConfigMaps(tc.Namespace).Get(cnName, metav1.GetOptions{})
+	return pc.kubeCli.CoreV1().ConfigMaps(tc.Namespace).Get(context.TODO(), cnName, metav1.GetOptions{})
 }
