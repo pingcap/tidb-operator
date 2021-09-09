@@ -230,11 +230,19 @@ func (bc *backupCleaner) ensureBackupJobFinished(backup *v1alpha1.Backup) (bool,
 		return false, nil
 	}
 
-	// these is no pod running
-	if backupJob.Status.Active == 0 {
+	// check whether job finish
+	finished := false
+	for _, c := range backupJob.Status.Conditions {
+		if (c.Type == batchv1.JobComplete || c.Type == batchv1.JobFailed) && c.Status == corev1.ConditionTrue {
+			finished = true
+			break
+		}
+	}
+	if finished {
 		return true, nil
 	}
 
+	// delete job if job is running
 	klog.Infof("delete backup %s/%s job %s", ns, name, backupJobName)
 	err = bc.deps.JobControl.DeleteJob(backup, backupJob)
 	if err != nil {

@@ -44,7 +44,7 @@ func newHelper(t *testing.T) *helper {
 func (h *helper) createJob(job *batchv1.Job) {
 	g := NewGomegaWithT(h.T)
 	deps := h.Deps
-	_, err := deps.KubeClientset.BatchV1().Jobs(job.GetNamespace()).Create(job)
+	_, err := deps.KubeClientset.BatchV1().Jobs(job.GetNamespace()).Create(context.TODO(), job, metav1.CreateOptions{})
 	g.Expect(err).Should(BeNil())
 
 	g.Eventually(func() error {
@@ -56,7 +56,7 @@ func (h *helper) createJob(job *batchv1.Job) {
 func (h *helper) deleteJob(job *batchv1.Job) {
 	g := NewGomegaWithT(h.T)
 	deps := h.Deps
-	err := deps.KubeClientset.BatchV1().Jobs(job.GetNamespace()).Delete(job.GetName(), nil)
+	err := deps.KubeClientset.BatchV1().Jobs(job.GetNamespace()).Delete(context.TODO(), job.GetName(), metav1.DeleteOptions{})
 	g.Expect(err).Should(BeNil())
 
 	g.Eventually(func() error {
@@ -320,15 +320,21 @@ func TestClean(t *testing.T) {
 			},
 			Status: batchv1.JobStatus{
 				CompletionTime: &metav1.Time{},
+				Conditions: []batchv1.JobCondition{
+					{
+						Type:   batchv1.JobComplete,
+						Status: corev1.ConditionTrue,
+					},
+				},
 			},
 		}
 		helper.createJob(completedJob)
 		err = bc.Clean(backup)
 		g.Expect(err).Should(BeNil())
 		helper.hasCondition(backup.Namespace, backup.Name, v1alpha1.BackupClean, "")
-		_, err = deps.KubeClientset.BatchV1().Jobs(backup.Namespace).Get(backup.GetCleanJobName(), metav1.GetOptions{})
-		g.Expect(err).Should(BeNil())
-		helper.deleteJob(completedJob)
+		_, err = deps.KubeClientset.BatchV1().Jobs(backup.Namespace).Get(context.TODO(), backup.GetCleanJobName(), metav1.GetOptions{})
+		g.Expect(err).Should(BeNil())  // job shouldn't be deleted
+		helper.deleteJob(completedJob) // clean job after test
 
 		// test have a backup job running
 		runningJob := &batchv1.Job{
@@ -336,15 +342,13 @@ func TestClean(t *testing.T) {
 				Name:      backup.GetBackupJobName(),
 				Namespace: backup.Namespace,
 			},
-			Status: batchv1.JobStatus{
-				Active: 1,
-			},
+			Status: batchv1.JobStatus{},
 		}
 		helper.createJob(runningJob)
 		err = bc.Clean(backup)
 		g.Expect(err).Should(BeNil())
 		g.Eventually(func() bool {
-			_, err = deps.KubeClientset.BatchV1().Jobs(backup.Namespace).Get(backup.GetBackupJobName(), metav1.GetOptions{})
+			_, err = deps.KubeClientset.BatchV1().Jobs(backup.Namespace).Get(context.TODO(), backup.GetBackupJobName(), metav1.GetOptions{})
 			return errors.IsNotFound(err)
 		}, time.Second*10).Should(BeTrue()) // job should be deleted
 
