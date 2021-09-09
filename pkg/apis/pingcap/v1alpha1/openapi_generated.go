@@ -11834,15 +11834,12 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 							Format:      "",
 						},
 					},
-<<<<<<< HEAD
 					"prometheusReloader": {
 						SchemaProps: spec.SchemaProps{
 							Description: "PrometheusReloader set prometheus reloader configuration",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PrometheusReloaderSpec"),
 						},
 					},
-=======
->>>>>>> 1e4eba58... Add enableRule switch into tidbmonitor. (#4115)
 				},
 				Required: []string{"clusters", "prometheus", "reloader", "initializer"},
 			},
