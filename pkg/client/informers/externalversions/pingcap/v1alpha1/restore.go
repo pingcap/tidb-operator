@@ -16,6 +16,7 @@
 package v1alpha1
 
 import (
+	"context"
 	time "time"
 
 	pingcapv1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -58,13 +59,13 @@ func NewFilteredRestoreInformer(client versioned.Interface, namespace string, re
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.PingcapV1alpha1().Restores(namespace).List(options)
+				return client.PingcapV1alpha1().Restores(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.PingcapV1alpha1().Restores(namespace).Watch(options)
+				return client.PingcapV1alpha1().Restores(namespace).Watch(context.TODO(), options)
 			},
 		},
 		&pingcapv1alpha1.Restore{},

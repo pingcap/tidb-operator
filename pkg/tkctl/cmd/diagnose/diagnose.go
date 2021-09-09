@@ -15,6 +15,7 @@ package diagnose
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -26,7 +27,8 @@ import (
 
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 
-	"k8s.io/kubernetes/pkg/printers"
+	"k8s.io/cli-runtime/pkg/printers"
+	kubeprinters "k8s.io/kubernetes/pkg/printers"
 	printersinternal "k8s.io/kubernetes/pkg/printers/internalversion"
 
 	"github.com/ghodss/yaml"
@@ -183,7 +185,7 @@ func (o *diagnoseInfoOptions) Run() error {
 
 	tc, err := o.tcCli.PingcapV1alpha1().
 		TidbClusters(o.namespace).
-		Get(o.tidbClusterName, metav1.GetOptions{})
+		Get(context.TODO(), o.tidbClusterName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -215,7 +217,7 @@ func (o *diagnoseInfoOptions) Run() error {
 		return err
 	}
 
-	podList, err := o.kubeCli.CoreV1().Pods(o.namespace).List(o.listOptions)
+	podList, err := o.kubeCli.CoreV1().Pods(o.namespace).List(context.TODO(), o.listOptions)
 	if err != nil {
 		return err
 	}
@@ -319,7 +321,7 @@ func (d *tidbClusterStatefulDumper) Dump(logPath string, resourceWriter io.Write
 		controller.TiKVMemberName(d.tc.Name),
 		controller.PDMemberName(d.tc.Name),
 	} {
-		ps, err := d.kubeCli.AppsV1().StatefulSets(d.tc.Namespace).Get(sn, metav1.GetOptions{})
+		ps, err := d.kubeCli.AppsV1().StatefulSets(d.tc.Namespace).Get(context.TODO(), sn, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -385,7 +387,7 @@ func (d *pvcDumper) Dump(logPath string, resourceWriter io.Writer) error {
 		return err
 	}
 
-	pvcList, err := d.kubeCli.CoreV1().PersistentVolumeClaims(d.tc.Namespace).List(d.options)
+	pvcList, err := d.kubeCli.CoreV1().PersistentVolumeClaims(d.tc.Namespace).List(context.TODO(), d.options)
 	if err != nil {
 		return err
 	}
@@ -448,7 +450,7 @@ func (d *svcDumper) Dump(logPath string, resourceWriter io.Writer) error {
 		return err
 	}
 
-	svcList, err := d.kubeCli.CoreV1().Services(d.tc.Namespace).List(d.options)
+	svcList, err := d.kubeCli.CoreV1().Services(d.tc.Namespace).List(context.TODO(), d.options)
 	if err != nil {
 		return err
 	}
@@ -511,7 +513,7 @@ func (d *configMapDumper) Dump(logPath string, resourceWriter io.Writer) error {
 		return err
 	}
 
-	cfgList, err := d.kubeCli.CoreV1().ConfigMaps(d.tc.Namespace).List(d.options)
+	cfgList, err := d.kubeCli.CoreV1().ConfigMaps(d.tc.Namespace).List(context.TODO(), d.options)
 	if err != nil {
 		return err
 	}
@@ -658,7 +660,7 @@ func mapToLogOptions(container string, sinceSeconds int64, byteReadLimit int64, 
 // getLogStream returns a stream to the log file which can be piped directly to the response. This avoids out of memory
 // issues. Previous indicates to read archived logs created by log rotation or container crash
 func getLogStream(kubeCli *kubernetes.Clientset, pod v1.Pod, logOptions *v1.PodLogOptions) (io.ReadCloser, error) {
-	return kubeCli.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, logOptions).Stream()
+	return kubeCli.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, logOptions).Stream(context.TODO())
 }
 
 // NewPrinter creates a common HumanReadablePrinter.
@@ -669,8 +671,8 @@ func NewPrinter() printers.ResourcePrinter {
 		WithNamespace: false,
 	})
 	// AddHandlers adds print handlers for default Kubernetes types dealing with internal versions.
-	tableGenerator := printers.NewTableGenerator().With(printersinternal.AddHandlers)
-	return readable.NewLocalPrinter(printer, tableGenerator, printers.GenerateOptions{
+	tableGenerator := kubeprinters.NewTableGenerator().With(printersinternal.AddHandlers)
+	return readable.NewLocalPrinter(printer, tableGenerator, kubeprinters.GenerateOptions{
 		Wide: true,
 	})
 }

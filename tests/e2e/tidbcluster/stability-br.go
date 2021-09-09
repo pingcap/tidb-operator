@@ -43,6 +43,7 @@ import (
 	restclient "k8s.io/client-go/rest"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
+	e2eskipper "k8s.io/kubernetes/test/e2e/framework/skipper"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -99,7 +100,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 	ginkgo.It("Backup and restore with BR", func() {
 		provider := framework.TestContext.Provider
 		if provider != "aws" && provider != "kind" {
-			framework.Skipf("provider is not aws or kind, skipping")
+			e2eskipper.Skipf("provider is not aws or kind, skipping")
 		}
 
 		testBR(provider, ns, fw, c, genericCli, oa, cli, false, fixture.BRType)
@@ -108,7 +109,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 	ginkgo.It("CRD:Backup and restore with Dumper", func() {
 		provider := framework.TestContext.Provider
 		if provider != "aws" && provider != "kind" {
-			framework.Skipf("provider is not aws or kind, skipping")
+			e2eskipper.Skipf("provider is not aws or kind, skipping")
 		}
 
 		testBR(provider, ns, fw, c, genericCli, oa, cli, false, fixture.DumperType)
@@ -118,7 +119,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		ginkgo.It("Backup and restore with BR when TLS enabled", func() {
 			provider := framework.TestContext.Provider
 			if provider != "aws" && provider != "kind" {
-				framework.Skipf("provider is not aws or kind, skipping")
+				e2eskipper.Skipf("provider is not aws or kind, skipping")
 			}
 
 			ginkgo.By("Installing cert-manager")
@@ -236,22 +237,22 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 
 	// prepare for create backup/restore CRD
 	backupRole := fixture.GetBackupRole(tcFrom, serviceAccountName)
-	_, err = c.RbacV1beta1().Roles(ns).Create(backupRole)
+	_, err = c.RbacV1beta1().Roles(ns).Create(context.TODO(), backupRole, metav1.CreateOptions{})
 	framework.ExpectNoError(err, "failed to create RBAC roles for backup in ns %s: %v", ns, backupRole)
 	backupServiceAccount := fixture.GetBackupServiceAccount(tcFrom, serviceAccountName)
-	_, err = c.CoreV1().ServiceAccounts(ns).Create(backupServiceAccount)
+	_, err = c.CoreV1().ServiceAccounts(ns).Create(context.TODO(), backupServiceAccount, metav1.CreateOptions{})
 	framework.ExpectNoError(err, "failed to create backup service account in ns %s: %v", ns, backupServiceAccount)
 	backupRoleBinding := fixture.GetBackupRoleBinding(tcFrom, serviceAccountName)
-	_, err = c.RbacV1beta1().RoleBindings(ns).Create(backupRoleBinding)
+	_, err = c.RbacV1beta1().RoleBindings(ns).Create(context.TODO(), backupRoleBinding, metav1.CreateOptions{})
 	framework.ExpectNoError(err, "failed to create RBAC role bindings for backup in ns %s: %v", ns, backupRoleBinding)
 	backupSecret := fixture.GetBackupSecret(tcFrom, "")
-	_, err = c.CoreV1().Secrets(ns).Create(backupSecret)
+	_, err = c.CoreV1().Secrets(ns).Create(context.TODO(), backupSecret, metav1.CreateOptions{})
 	framework.ExpectNoError(err, "failed to create backup secrets in ns %s: %v", ns, backupSecret)
 	restoreSecret := fixture.GetBackupSecret(tcTo, "")
-	_, err = c.CoreV1().Secrets(ns).Create(restoreSecret)
+	_, err = c.CoreV1().Secrets(ns).Create(context.TODO(), restoreSecret, metav1.CreateOptions{})
 	framework.ExpectNoError(err, "failed to create restore secret in ns %s, %v", ns, restoreSecret)
 	storageSecret := storage.ProvideCredential(ns)
-	_, err = c.CoreV1().Secrets(ns).Create(storageSecret)
+	_, err = c.CoreV1().Secrets(ns).Create(context.TODO(), storageSecret, metav1.CreateOptions{})
 	framework.ExpectNoError(err, "failed to create storage secrets in ns %s, %v", ns, storageSecret)
 
 	ginkgo.By(fmt.Sprintf("Begion to backup data cluster %q", clusterFrom.ClusterName))
@@ -261,19 +262,19 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 		backupSecretName := fmt.Sprintf("%s-backup-tls", tcNameFrom)
 		backup.Spec.From.TLSClientSecretName = &backupSecretName
 	}
-	_, err = cli.PingcapV1alpha1().Backups(ns).Create(backup)
+	_, err = cli.PingcapV1alpha1().Backups(ns).Create(context.TODO(), backup, metav1.CreateOptions{})
 	framework.ExpectNoError(err, "failed to create backup in ns %s: %v", ns, backup)
 
 	cleanFunc := func() {
 		// delete backup data in S3
-		err = cli.PingcapV1alpha1().Backups(ns).Delete(backup.Name, &metav1.DeleteOptions{})
+		err = cli.PingcapV1alpha1().Backups(ns).Delete(context.TODO(), backup.Name, metav1.DeleteOptions{})
 		framework.ExpectNoError(err, "failed to delete backup in ns %s: %v", ns, backup)
 
 		err = storage.CheckDataCleaned()
 		framework.ExpectNoError(err, "failed to check data is cleaned")
 
 		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
-			_, err := cli.PingcapV1alpha1().Backups(ns).Get(backup.Name, metav1.GetOptions{})
+			_, err := cli.PingcapV1alpha1().Backups(ns).Get(context.TODO(), backup.Name, metav1.GetOptions{})
 			if err != nil && errors.IsNotFound(err) {
 				return true, nil
 			}
@@ -287,7 +288,7 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 
 	// check backup is successful
 	err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
-		tmpBackup, err := cli.PingcapV1alpha1().Backups(ns).Get(backup.Name, metav1.GetOptions{})
+		tmpBackup, err := cli.PingcapV1alpha1().Backups(ns).Get(context.TODO(), backup.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -312,12 +313,12 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 		restoreSecretName := fmt.Sprintf("%s-restore-tls", tcNameTo)
 		restore.Spec.To.TLSClientSecretName = &restoreSecretName
 	}
-	_, err = cli.PingcapV1alpha1().Restores(ns).Create(restore)
+	_, err = cli.PingcapV1alpha1().Restores(ns).Create(context.TODO(), restore, metav1.CreateOptions{})
 	framework.ExpectNoError(err, "failed to create restore in ns %s: %v", ns, restore)
 
 	// check restore is successful
 	err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
-		tmpRestore, err := cli.PingcapV1alpha1().Restores(ns).Get(restore.Name, metav1.GetOptions{})
+		tmpRestore, err := cli.PingcapV1alpha1().Restores(ns).Get(context.TODO(), restore.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}

@@ -14,6 +14,7 @@
 package tests
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 
@@ -59,7 +60,7 @@ type RegionsInfo struct {
 }
 
 func (oa *OperatorActions) LabelNodes() error {
-	nodes, err := oa.kubeCli.CoreV1().Nodes().List(metav1.ListOptions{})
+	nodes, err := oa.kubeCli.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -75,7 +76,7 @@ func (oa *OperatorActions) LabelNodes() error {
 			RackLabel,
 			rack,
 		))
-		if _, err := oa.kubeCli.CoreV1().Nodes().Patch(node.Name, types.StrategicMergePatchType, patch); err != nil {
+		if _, err := oa.kubeCli.CoreV1().Nodes().Patch(context.TODO(), node.Name, types.StrategicMergePatchType, patch, metav1.PatchOptions{}); err != nil {
 			return fmt.Errorf("label nodes failed, error: %v", err)
 		}
 	}
@@ -90,7 +91,7 @@ func (oa *OperatorActions) LabelNodesOrDie() {
 }
 
 func CleanNodeLabels(c kubernetes.Interface) error {
-	nodeList, err := c.CoreV1().Nodes().List(metav1.ListOptions{})
+	nodeList, err := c.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -101,7 +102,7 @@ func CleanNodeLabels(c kubernetes.Interface) error {
 			LabelKeyTestingZone,
 			RackLabel,
 		))
-		if _, err = c.CoreV1().Nodes().Patch(node.Name, types.StrategicMergePatchType, patch); err != nil {
+		if _, err = c.CoreV1().Nodes().Patch(context.TODO(), node.Name, types.StrategicMergePatchType, patch, metav1.PatchOptions{}); err != nil {
 			return err
 		}
 	}
@@ -109,7 +110,7 @@ func CleanNodeLabels(c kubernetes.Interface) error {
 }
 
 func (oa *OperatorActions) CheckDisasterTolerance(cluster *TidbClusterConfig) error {
-	pds, err := oa.kubeCli.CoreV1().Pods(cluster.Namespace).List(
+	pds, err := oa.kubeCli.CoreV1().Pods(cluster.Namespace).List(context.TODO(),
 		metav1.ListOptions{LabelSelector: labels.SelectorFromSet(
 			label.New().Instance(cluster.ClusterName).PD().Labels(),
 		).String()})
@@ -121,7 +122,7 @@ func (oa *OperatorActions) CheckDisasterTolerance(cluster *TidbClusterConfig) er
 		return err
 	}
 
-	tikvs, err := oa.kubeCli.CoreV1().Pods(cluster.Namespace).List(
+	tikvs, err := oa.kubeCli.CoreV1().Pods(cluster.Namespace).List(context.TODO(),
 		metav1.ListOptions{LabelSelector: labels.SelectorFromSet(
 			label.New().Instance(cluster.ClusterName).TiKV().Labels(),
 		).String()})
@@ -133,7 +134,7 @@ func (oa *OperatorActions) CheckDisasterTolerance(cluster *TidbClusterConfig) er
 		return err
 	}
 
-	tidbs, err := oa.kubeCli.CoreV1().Pods(cluster.Namespace).List(
+	tidbs, err := oa.kubeCli.CoreV1().Pods(cluster.Namespace).List(context.TODO(),
 		metav1.ListOptions{LabelSelector: labels.SelectorFromSet(
 			label.New().Instance(cluster.ClusterName).TiDB().Labels(),
 		).String()})

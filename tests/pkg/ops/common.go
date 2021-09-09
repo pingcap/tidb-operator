@@ -14,6 +14,7 @@
 package ops
 
 import (
+	"context"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -65,18 +66,18 @@ func (cli *ClientOps) PollImmediate(cond wait.ConditionFunc) error {
 
 func (cli *ClientOps) PollPod(ns string, name string, cond func(po *corev1.Pod, err error) (bool, error)) error {
 	return cli.Poll(func() (done bool, err error) {
-		return cond(cli.CoreV1().Pods(ns).Get(name, metav1.GetOptions{}))
+		return cond(cli.CoreV1().Pods(ns).Get(context.TODO(), name, metav1.GetOptions{}))
 	})
 }
 
 func (cli *ClientOps) PollStatefulSet(ns string, name string, cond func(ss *appsv1.StatefulSet, err error) (bool, error)) error {
 	return cli.Poll(func() (done bool, err error) {
-		return cond(cli.AppsV1().StatefulSets(ns).Get(name, metav1.GetOptions{}))
+		return cond(cli.AppsV1().StatefulSets(ns).Get(context.TODO(), name, metav1.GetOptions{}))
 	})
 }
 
 func (cli *ClientOps) PollTiDBCluster(ns string, name string, cond func(tc *v1alpha1.TidbCluster, err error) (bool, error)) error {
 	return cli.Poll(func() (done bool, err error) {
-		return cond(cli.PingcapV1alpha1().TidbClusters(ns).Get(name, metav1.GetOptions{}))
+		return cond(cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), name, metav1.GetOptions{}))
 	})
 }

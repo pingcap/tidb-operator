@@ -14,6 +14,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -58,7 +59,7 @@ func NewRealConfigMapControl(
 }
 
 func (c *realConfigMapControl) CreateConfigMap(owner runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
-	created, err := c.kubeCli.CoreV1().ConfigMaps(cm.Namespace).Create(cm)
+	created, err := c.kubeCli.CoreV1().ConfigMaps(cm.Namespace).Create(context.Background(), cm, metav1.CreateOptions{})
 	c.recordConfigMapEvent("create", owner, cm, err)
 	return created, err
 }
@@ -71,13 +72,13 @@ func (c *realConfigMapControl) UpdateConfigMap(owner runtime.Object, cm *corev1.
 	var updatedCm *corev1.ConfigMap
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		var updateErr error
-		updatedCm, updateErr = c.kubeCli.CoreV1().ConfigMaps(ns).Update(cm)
+		updatedCm, updateErr = c.kubeCli.CoreV1().ConfigMaps(ns).Update(context.Background(), cm, metav1.UpdateOptions{})
 		if updateErr == nil {
 			klog.Infof("update ConfigMap: [%s/%s] successfully", ns, cmName)
 			return nil
 		}
 
-		if updated, err := c.kubeCli.CoreV1().ConfigMaps(cm.Namespace).Get(cmName, metav1.GetOptions{}); err != nil {
+		if updated, err := c.kubeCli.CoreV1().ConfigMaps(cm.Namespace).Get(context.Background(), cmName, metav1.GetOptions{}); err != nil {
 			utilruntime.HandleError(fmt.Errorf("error getting updated ConfigMap %s/%s from lister: %v", ns, cmName, err))
 		} else {
 			cm = updated.DeepCopy()
@@ -90,13 +91,13 @@ func (c *realConfigMapControl) UpdateConfigMap(owner runtime.Object, cm *corev1.
 }
 
 func (c *realConfigMapControl) DeleteConfigMap(owner runtime.Object, cm *corev1.ConfigMap) error {
-	err := c.kubeCli.CoreV1().ConfigMaps(cm.Namespace).Delete(cm.Name, nil)
+	err := c.kubeCli.CoreV1().ConfigMaps(cm.Namespace).Delete(context.TODO(), cm.Name, metav1.DeleteOptions{})
 	c.recordConfigMapEvent("delete", owner, cm, err)
 	return err
 }
 
 func (c *realConfigMapControl) GetConfigMap(owner runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
-	existConfigMap, err := c.kubeCli.CoreV1().ConfigMaps(cm.Namespace).Get(cm.Name, metav1.GetOptions{})
+	existConfigMap, err := c.kubeCli.CoreV1().ConfigMaps(cm.Namespace).Get(context.TODO(), cm.Name, metav1.GetOptions{})
 	return existConfigMap, err
 }
 

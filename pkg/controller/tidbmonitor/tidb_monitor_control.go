@@ -14,12 +14,14 @@
 package tidbmonitor
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/monitor"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/util/retry"
@@ -112,7 +114,7 @@ func (c *defaultTidbMonitorControl) UpdateTidbMonitor(tm *v1alpha1.TidbMonitor) 
 	// don't wait due to limited number of clients, but backoff after the default number of steps
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		var updateErr error
-		update, updateErr = c.deps.Clientset.PingcapV1alpha1().TidbMonitors(ns).Update(tm)
+		update, updateErr = c.deps.Clientset.PingcapV1alpha1().TidbMonitors(ns).Update(context.TODO(), tm, metav1.UpdateOptions{})
 		if updateErr == nil {
 			klog.Infof("TidbMonitor: [%s/%s] updated successfully", ns, tmName)
 			return nil

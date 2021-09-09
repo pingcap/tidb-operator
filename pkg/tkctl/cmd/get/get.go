@@ -14,6 +14,7 @@
 package get
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -197,7 +198,7 @@ func (o *GetOptions) Run(tkcContext *config.TkcContext, cmd *cobra.Command, args
 	if o.AllClusters {
 		tcList, err := o.tcCli.PingcapV1alpha1().
 			TidbClusters(v1.NamespaceAll).
-			List(metav1.ListOptions{})
+			List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			return err
 		}
@@ -205,7 +206,7 @@ func (o *GetOptions) Run(tkcContext *config.TkcContext, cmd *cobra.Command, args
 	} else {
 		tc, err := o.tcCli.PingcapV1alpha1().
 			TidbClusters(o.Namespace).
-			Get(o.TidbClusterName, metav1.GetOptions{})
+			Get(context.TODO(), o.TidbClusterName, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -263,7 +264,7 @@ func (o *GetOptions) PrintOutput(tc *v1alpha1.TidbCluster, resourceType string, 
 			}
 		}
 
-		podList, err := o.kubeCli.CoreV1().Pods(tc.Namespace).List(listOptions)
+		podList, err := o.kubeCli.CoreV1().Pods(tc.Namespace).List(context.TODO(), listOptions)
 		if err != nil {
 			return err
 		}
@@ -285,7 +286,7 @@ func (o *GetOptions) PrintOutput(tc *v1alpha1.TidbCluster, resourceType string, 
 		case kindTiKV:
 			tc, err := o.tcCli.PingcapV1alpha1().
 				TidbClusters(o.Namespace).
-				Get(o.TidbClusterName, metav1.GetOptions{})
+				Get(context.TODO(), o.TidbClusterName, metav1.GetOptions{})
 			tikvList := alias.TikvList{
 				PodList:    podList,
 				TikvStatus: nil,
@@ -312,7 +313,7 @@ func (o *GetOptions) PrintOutput(tc *v1alpha1.TidbCluster, resourceType string, 
 			}
 		}
 
-		volumeList, err := o.kubeCli.CoreV1().PersistentVolumes().List(listOptions)
+		volumeList, err := o.kubeCli.CoreV1().PersistentVolumes().List(context.TODO(), listOptions)
 		if err != nil {
 			return err
 		}
