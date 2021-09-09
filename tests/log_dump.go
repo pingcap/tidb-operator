@@ -15,6 +15,7 @@ package tests
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -54,7 +55,7 @@ func (oa *OperatorActions) DumpAllLogs(operatorInfo *OperatorConfig, testCluster
 	}
 
 	// dump operator components's log
-	operatorPods, err := oa.kubeCli.CoreV1().Pods(operatorInfo.Namespace).List(metav1.ListOptions{})
+	operatorPods, err := oa.kubeCli.CoreV1().Pods(operatorInfo.Namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -69,7 +70,7 @@ func (oa *OperatorActions) DumpAllLogs(operatorInfo *OperatorConfig, testCluster
 	dumpedNamespace = map[string]bool{}
 	for _, testCluster := range testClusters {
 		if _, exist := dumpedNamespace[testCluster.Namespace]; !exist {
-			clusterPodList, err := oa.kubeCli.CoreV1().Pods(testCluster.Namespace).List(metav1.ListOptions{})
+			clusterPodList, err := oa.kubeCli.CoreV1().Pods(testCluster.Namespace).List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
 				return err
 			}

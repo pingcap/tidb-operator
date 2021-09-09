@@ -22,10 +22,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog"
 	"k8s.io/utils/pointer"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -38,7 +38,7 @@ const (
 )
 
 type TidbDiscoveryManager interface {
-	Reconcile(obj runtime.Object) error
+	Reconcile(obj client.Object) error
 }
 
 type realTidbDiscoveryManager struct {
@@ -49,7 +49,7 @@ func NewTidbDiscoveryManager(deps *controller.Dependencies) TidbDiscoveryManager
 	return &realTidbDiscoveryManager{deps: deps}
 }
 
-func (m *realTidbDiscoveryManager) Reconcile(obj runtime.Object) error {
+func (m *realTidbDiscoveryManager) Reconcile(obj client.Object) error {
 	metaObj, ok := obj.(metav1.Object)
 	if !ok {
 		return fmt.Errorf("%T is not a metav1.Object", obj)
@@ -322,7 +322,7 @@ func (m *FakeDiscoveryManager) SetReconcileError(err error) {
 	m.err = err
 }
 
-func (m *FakeDiscoveryManager) Reconcile(_ runtime.Object) error {
+func (m *FakeDiscoveryManager) Reconcile(_ client.Object) error {
 	if m.err != nil {
 		return m.err
 	}

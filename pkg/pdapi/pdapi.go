@@ -15,6 +15,7 @@ package pdapi
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -41,7 +42,7 @@ const (
 
 // GetTLSConfig returns *tls.Config for given TiDB cluster.
 func GetTLSConfig(kubeCli kubernetes.Interface, namespace Namespace, tcName string, secretName string) (*tls.Config, error) {
-	secret, err := kubeCli.CoreV1().Secrets(string(namespace)).Get(secretName, types.GetOptions{})
+	secret, err := kubeCli.CoreV1().Secrets(string(namespace)).Get(context.Background(), secretName, types.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("unable to load certificates from secret %s/%s: %v", namespace, secretName, err)
 	}

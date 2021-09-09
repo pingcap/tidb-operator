@@ -23,8 +23,10 @@ import (
 )
 
 // RestoreLister helps list Restores.
+// All objects returned here must be treated as read-only.
 type RestoreLister interface {
 	// List lists all Restores in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.Restore, err error)
 	// Restores returns an object that can list and get Restores.
 	Restores(namespace string) RestoreNamespaceLister
@@ -55,10 +57,13 @@ func (s *restoreLister) Restores(namespace string) RestoreNamespaceLister {
 }
 
 // RestoreNamespaceLister helps list and get Restores.
+// All objects returned here must be treated as read-only.
 type RestoreNamespaceLister interface {
 	// List lists all Restores in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.Restore, err error)
 	// Get retrieves the Restore from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.Restore, error)
 	RestoreNamespaceListerExpansion
 }

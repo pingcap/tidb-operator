@@ -14,6 +14,7 @@
 package member
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -24,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
@@ -299,7 +301,7 @@ func (p *pvcResizer) patchPVCs(ns string, selector labels.Selector, pvcQuantityI
 			if err != nil {
 				return err
 			}
-			_, err = p.deps.KubeClientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Patch(pvc.Name, types.MergePatchType, mergePatch)
+			_, err = p.deps.KubeClientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Patch(context.TODO(), pvc.Name, types.MergePatchType, mergePatch, metav1.PatchOptions{})
 			if err != nil {
 				return err
 			}

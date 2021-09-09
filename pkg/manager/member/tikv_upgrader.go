@@ -56,15 +56,13 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 	var status *v1alpha1.TiKVStatus
 	switch meta := meta.(type) {
 	case *v1alpha1.TidbCluster:
-		if meta.Status.TiCDC.Phase == v1alpha1.UpgradePhase ||
-			meta.Status.TiFlash.Phase == v1alpha1.UpgradePhase ||
+		if meta.Status.TiFlash.Phase == v1alpha1.UpgradePhase ||
 			meta.Status.PD.Phase == v1alpha1.UpgradePhase ||
 			meta.TiKVScaling() {
-			klog.Infof("TidbCluster: [%s/%s]'s ticdc status is %v, "+
-				"tiflash status is %v, pd status is %v, "+
+			klog.Infof("TidbCluster: [%s/%s]'s tiflash status is %v, pd status is %v, "+
 				"tikv status is %v, can not upgrade tikv",
-				ns, tcName, meta.Status.TiCDC.Phase, meta.Status.TiFlash.Phase,
-				meta.Status.PD.Phase, meta.Status.TiKV.Phase)
+				ns, tcName,
+				meta.Status.TiFlash.Phase, meta.Status.PD.Phase, meta.Status.TiKV.Phase)
 			_, podSpec, err := GetLastAppliedConfig(oldSet)
 			if err != nil {
 				return err
@@ -75,6 +73,13 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 		status = &meta.Status.TiKV
 	default:
 		return fmt.Errorf("cluster[%s/%s] failed to upgrading tikv due to converting", meta.GetNamespace(), meta.GetName())
+	}
+
+	if *oldSet.Spec.Replicas < 2 {
+		klog.Infof("TiKV statefulset replicas are less than 2, skip evicting region leader for tc %s/%s", ns, tcName)
+		status.Phase = v1alpha1.UpgradePhase
+		setUpgradePartition(newSet, 0)
+		return nil
 	}
 
 	tc, _ := meta.(*v1alpha1.TidbCluster)
