@@ -10194,7 +10194,7 @@ ConfigMapRef
 </em>
 </td>
 <td>
-<p>user can mount prometheus rule config with external configMap.If use this feature, the external configMap must contain <code>prometheus-config</code> key in data.</p>
+<p>User can mount prometheus config with external configMap. The external configMap must contain <code>prometheus-config</code> key in data.</p>
 </td>
 </tr>
 <tr>
@@ -10206,6 +10206,19 @@ ConfigMapRef
 </td>
 <td>
 <p>user can  use it specify prometheus command options</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ruleConfigRef</code></br>
+<em>
+<a href="#configmapref">
+ConfigMapRef
+</a>
+</em>
+</td>
+<td>
+<p>User can mount prometheus rule config with external configMap. The external configMap must use the key with suffix <code>.rules.yml</code>.</p>
 </td>
 </tr>
 </tbody>
