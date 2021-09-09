@@ -14,6 +14,7 @@
 package pod
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
@@ -106,7 +107,7 @@ func (pc *PodAdmissionControl) admitDeleteUselessTiKVPod(payload *admitPayload) 
 
 	if !isInOrdinal {
 		pvcName := operatorUtils.OrdinalPVCName(v1alpha1.TiKVMemberType, payload.ownerStatefulSet.Name, ordinal)
-		pvc, err := pc.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Get(pvcName, meta.GetOptions{})
+		pvc, err := pc.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Get(context.TODO(), pvcName, meta.GetOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {
 				pc.recorder.Event(payload.controller, corev1.EventTypeNormal, tikvScaleInReason, podDeleteEventMessage(name))
@@ -190,6 +191,12 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPodDuringUpgrading(payload *admi
 		err := fmt.Errorf("tikv pod[%s/%s]'s controller is not a tidbcluster", namespace, name)
 		return util.ARFail(err)
 	}
+
+	if tc.TiKVStsDesiredReplicas() < 2 {
+		klog.Infof("TiKV statefulset replicas are less than 2, skip evicting region leader for Pod %s/%s", namespace, name)
+		return util.ARSuccess()
+	}
+
 	controllerName := tc.GetName()
 	controllerKind := payload.controller.GetObjectKind().GroupVersionKind().Kind
 

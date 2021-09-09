@@ -14,6 +14,7 @@
 package member
 
 import (
+	"context"
 	"fmt"
 	"path"
 
@@ -134,7 +135,7 @@ func (m *tidbInitManager) updateInitializer(ti *v1alpha1.TidbInitializer) (*v1al
 	// don't wait due to limited number of clients, but backoff after the default number of steps
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		var updateErr error
-		update, updateErr = m.deps.Clientset.PingcapV1alpha1().TidbInitializers(ns).Update(ti)
+		update, updateErr = m.deps.Clientset.PingcapV1alpha1().TidbInitializers(ns).Update(context.TODO(), ti, metav1.UpdateOptions{})
 		if updateErr == nil {
 			klog.Infof("TidbInitializer: [%s/%s] updated successfully", ns, tiName)
 			return nil

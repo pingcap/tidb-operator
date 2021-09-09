@@ -19,9 +19,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/tkctl/readable"
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/klog"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
-	kubeprinters "k8s.io/kubernetes/pkg/printers"
 )
 
 const (
@@ -125,7 +125,7 @@ func (o *ListOptions) Run(tkcContext *config.TkcContext, cmd *cobra.Command, arg
 		return err
 	}
 
-	w := kubeprinters.GetNewTabWriter(o.Out)
+	w := printers.GetNewTabWriter(o.Out)
 	for _, info := range infos {
 		internalObj, err := v1alpha1.Scheme.ConvertToVersion(info.Object, v1alpha1.SchemeGroupVersion)
 		if err != nil {

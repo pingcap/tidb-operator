@@ -14,6 +14,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -58,7 +59,7 @@ func (c *realJobControl) CreateJob(object runtime.Object, job *batchv1.Job) erro
 	instanceName := job.GetLabels()[label.InstanceLabelKey]
 	kind := object.GetObjectKind().GroupVersionKind().Kind
 
-	_, err := c.kubeCli.BatchV1().Jobs(ns).Create(job)
+	_, err := c.kubeCli.BatchV1().Jobs(ns).Create(context.TODO(), job, metav1.CreateOptions{})
 	if err != nil {
 		klog.Errorf("failed to create %s job: [%s/%s], cluster: %s, err: %v", strings.ToLower(kind), ns, jobName, instanceName, err)
 	} else {
@@ -75,10 +76,10 @@ func (c *realJobControl) DeleteJob(object runtime.Object, job *batchv1.Job) erro
 	kind := object.GetObjectKind().GroupVersionKind().Kind
 
 	propForeground := metav1.DeletePropagationForeground
-	opts := &metav1.DeleteOptions{
+	opts := metav1.DeleteOptions{
 		PropagationPolicy: &propForeground,
 	}
-	err := c.kubeCli.BatchV1().Jobs(ns).Delete(jobName, opts)
+	err := c.kubeCli.BatchV1().Jobs(ns).Delete(context.TODO(), jobName, opts)
 	if err != nil {
 		klog.Errorf("failed to delete %s job: [%s/%s], cluster: %s, err: %v", strings.ToLower(kind), ns, jobName, instanceName, err)
 	} else {

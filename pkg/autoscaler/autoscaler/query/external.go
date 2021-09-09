@@ -14,6 +14,7 @@
 package query
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -104,7 +105,7 @@ func getClient(endpoint v1alpha1.ExternalEndpoint, kubecli kubernetes.Interface)
 }
 
 func loadTLSConfig(endpoint v1alpha1.ExternalEndpoint, kubecli kubernetes.Interface) (*tls.Config, error) {
-	secret, err := kubecli.CoreV1().Secrets(endpoint.TLSSecret.Namespace).Get(endpoint.TLSSecret.Name, metav1.GetOptions{})
+	secret, err := kubecli.CoreV1().Secrets(endpoint.TLSSecret.Namespace).Get(context.Background(), endpoint.TLSSecret.Name, metav1.GetOptions{})
 	if err != nil {
 		klog.Error(err)
 		return nil, err
