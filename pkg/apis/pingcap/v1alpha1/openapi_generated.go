@@ -39,6 +39,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BasicAuth":                     schema_pkg_apis_pingcap_v1alpha1_BasicAuth(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BasicAutoScalerSpec":           schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BasicAutoScalerStatus":         schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerStatus(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BatchDeleteOption":             schema_pkg_apis_pingcap_v1alpha1_BatchDeleteOption(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Binlog":                        schema_pkg_apis_pingcap_v1alpha1_Binlog(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CleanOption":                   schema_pkg_apis_pingcap_v1alpha1_CleanOption(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ClusterRef":                    schema_pkg_apis_pingcap_v1alpha1_ClusterRef(ref),
@@ -1021,7 +1022,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 					},
 					"cleanOption": {
 						SchemaProps: spec.SchemaProps{
-							Description: "CleanOption control the behavior of clean.",
+							Description: "CleanOption controls the behavior of clean.",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CleanOption"),
 						},
 					},
@@ -1157,6 +1158,40 @@ func schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerStatus(ref common.Reference
 	}
 }
 
+func schema_pkg_apis_pingcap_v1alpha1_BatchDeleteOption(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "BatchDeleteOption controls delete object in batches for cleanup backup",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"disableBatchConcurrency": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DisableBatchConcurrency disables the batch deletions and the cleanup will be done by goroutines.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"batchConcurrency": {
+						SchemaProps: spec.SchemaProps{
+							Description: "BatchConcurrency represents the number of batch deletions in parallel. It is used when the storage provider supports the batch delete API, currently, S3 only. default is 10",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"routineConcurrency": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RoutineConcurrency represents the number of goroutines that used to delete objects default is 100",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_pingcap_v1alpha1_Binlog(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -1221,21 +1256,21 @@ func schema_pkg_apis_pingcap_v1alpha1_CleanOption(ref common.ReferenceCallback) 
 					},
 					"disableBatchConcurrency": {
 						SchemaProps: spec.SchemaProps{
-							Description: "DisableBatchConcurrency disable batch deletions.",
+							Description: "DisableBatchConcurrency disables the batch deletions and the cleanup will be done by goroutines.",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
 					},
 					"batchConcurrency": {
 						SchemaProps: spec.SchemaProps{
-							Description: "BatchConcurrency represents the number of batch deletions in parallel. It is used when storage provider support batch delete api. default is 10",
+							Description: "BatchConcurrency represents the number of batch deletions in parallel. It is used when the storage provider supports the batch delete API, currently, S3 only. default is 10",
 							Type:        []string{"integer"},
 							Format:      "int64",
 						},
 					},
 					"routineConcurrency": {
 						SchemaProps: spec.SchemaProps{
-							Description: "BatchConcurrency represents the number of goroutine that used to delete objects default is 100",
+							Description: "RoutineConcurrency represents the number of goroutines that used to delete objects default is 100",
 							Type:        []string{"integer"},
 							Format:      "int64",
 						},

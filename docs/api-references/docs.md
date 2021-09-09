@@ -341,7 +341,7 @@ CleanOption
 </em>
 </td>
 <td>
-<p>CleanOption control the behavior of clean.</p>
+<p>CleanOption controls the behavior of clean.</p>
 </td>
 </tr>
 <tr>
@@ -3360,7 +3360,7 @@ CleanOption
 </em>
 </td>
 <td>
-<p>CleanOption control the behavior of clean.</p>
+<p>CleanOption controls the behavior of clean.</p>
 </td>
 </tr>
 <tr>
@@ -3685,6 +3685,60 @@ Kubernetes meta/v1.Time
 </tr>
 </tbody>
 </table>
+<h3 id="batchdeleteoption">BatchDeleteOption</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#cleanoption">CleanOption</a>)
+</p>
+<p>
+<p>BatchDeleteOption controls delete object in batches for cleanup backup</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>disableBatchConcurrency</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>DisableBatchConcurrency disables the batch deletions and the cleanup will be done by goroutines.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>batchConcurrency</code></br>
+<em>
+uint32
+</em>
+</td>
+<td>
+<p>BatchConcurrency represents the number of batch deletions in parallel.
+It is used when the storage provider supports the batch delete API, currently, S3 only.
+default is 10</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>routineConcurrency</code></br>
+<em>
+uint32
+</em>
+</td>
+<td>
+<p>RoutineConcurrency represents the number of goroutines that used to delete objects
+default is 100</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="binlog">Binlog</h3>
 <p>
 (<em>Appears on:</em>
@@ -3822,38 +3876,17 @@ default is 10000</p>
 </tr>
 <tr>
 <td>
-<code>disableBatchConcurrency</code></br>
+<code>BatchDeleteOption</code></br>
 <em>
-bool
+<a href="#batchdeleteoption">
+BatchDeleteOption
+</a>
 </em>
 </td>
 <td>
-<p>DisableBatchConcurrency disable batch deletions.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>batchConcurrency</code></br>
-<em>
-uint32
-</em>
-</td>
-<td>
-<p>BatchConcurrency represents the number of batch deletions in parallel.
-It is used when storage provider support batch delete api.
-default is 10</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>routineConcurrency</code></br>
-<em>
-uint32
-</em>
-</td>
-<td>
-<p>BatchConcurrency represents the number of goroutine that used to delete objects
-default is 100</p>
+<p>
+(Members of <code>BatchDeleteOption</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
