@@ -18,6 +18,7 @@ import (
 	"database/sql"
 	"fmt"
 	"math/rand"
+	"path"
 	"strings"
 	"time"
 
@@ -58,6 +59,10 @@ type testcase struct {
 	restoreVersion string
 	typ            string
 	enableTLS      bool
+
+	// hooks
+	configureBackup func(backup *v1alpha1.Backup)
+	postBackup      func(backup *v1alpha1.Backup)
 }
 
 func newTestCase(backupVersion, restoreVersion string, typ string, opts ...option) *testcase {
@@ -175,8 +180,12 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		framework.ExpectNoError(err)
 
 		ginkgo.By("Create backup")
-		_, err = createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, nil)
+		backup, err := createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, tcase.configureBackup)
 		framework.ExpectNoError(err)
+
+		if tcase.postBackup != nil {
+			tcase.postBackup(backup)
+		}
 
 		ginkgo.By("Create restore")
 		err = createRestoreAndWaitForComplete(f, restoreName, restoreClusterName, typ, backupName)
@@ -214,6 +223,27 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 				}
 				brTest(tcase)
 			})
+		}
+	})
+
+	ginkgo.It("backup and restore with mixed bucket and prefix", func() {
+		middlePath := "mid"
+		expectedPrefix := ""
+
+		ns := f.Namespace.Name
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		tcase := newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeBR)
+		tcase.configureBackup = func(backup *v1alpha1.Backup) {
+			backup.Spec.StorageProvider.S3.Bucket = path.Join(backup.Spec.StorageProvider.S3.Bucket, middlePath) // bucket add suffix
+			expectedPrefix = path.Join(middlePath, backup.Spec.StorageProvider.S3.Prefix)
+		}
+		tcase.postBackup = func(backup *v1alpha1.Backup) {
+			ginkgo.By("Check whether prefix of backup files in storage is right")
+			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, expectedPrefix)
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, false, "storage should have data")
 		}
 	})
 
@@ -323,7 +353,7 @@ func createBackupAndWaitForComplete(f *e2eframework.Framework, name, tcName, typ
 	// secret to visit tidb cluster
 	s := brutil.GetSecret(ns, name, "")
 	if _, err := f.ClientSet.CoreV1().Secrets(ns).Create(context.TODO(), s, metav1.CreateOptions{}); err != nil {
-		return err
+		return nil, err
 	}
 
 	backupFolder := time.Now().Format(time.RFC3339)
@@ -335,7 +365,7 @@ func createBackupAndWaitForComplete(f *e2eframework.Framework, name, tcName, typ
 	}
 
 	if _, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Create(context.TODO(), backup, metav1.CreateOptions{}); err != nil {
-		return err
+		return nil, err
 	}
 
 	if err := brutil.WaitForBackupComplete(f.ExtClient, ns, name, backupCompleteTimeout); err != nil {
