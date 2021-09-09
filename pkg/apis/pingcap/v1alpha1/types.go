@@ -1366,13 +1366,13 @@ type CleanOption struct {
 	// default is 10000
 	PageSize uint64 `json:"pageSize,omitempty"`
 
-	// DisableBatchConcurrency disable batch deletions.
+	// DisableBatchConcurrency disables the batch deletions and the cleanup will be done by goroutines. 
 	DisableBatchConcurrency bool `json:"disableBatchConcurrency,omitempty"`
 	// BatchConcurrency represents the number of batch deletions in parallel.
-	// It is used when storage provider support batch delete api.
+	// It is used when the storage provider supports the batch delete API, currently, S3 only.
 	// default is 10
 	BatchConcurrency uint32 `json:"batchConcurrency,omitempty"`
-	// BatchConcurrency represents the number of goroutine that used to delete objects
+	// RoutineConcurrency represents the number of goroutines that used to delete objects
 	// default is 100
 	RoutineConcurrency uint32 `json:"routineConcurrency,omitempty"`
 }
@@ -1442,7 +1442,7 @@ type BackupSpec struct {
 	ServiceAccount string `json:"serviceAccount,omitempty"`
 	// CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained
 	CleanPolicy CleanPolicyType `json:"cleanPolicy,omitempty"`
-	// CleanOption control the behavior of clean.
+	// CleanOption controls the behavior of clean.
 	CleanOption *CleanOption `json:"cleanOption,omitempty"`
 
 	// PodSecurityContext of the component
