@@ -16,12 +16,20 @@ package member
 import (
 	"fmt"
 
+	"github.com/Masterminds/semver"
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/tiflashapi"
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/klog"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
+)
+
+var (
+	// the first version that tiflash support `tiflash/store-status` api.
+	// https://github.com/pingcap/tidb-operator/issues/4159
+	tiflashV512 = semver.MustParse("v5.1.2")
 )
 
 type tiflashUpgrader struct {
@@ -101,6 +109,17 @@ func (u *tiflashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 			if store.State != v1alpha1.TiKVStateUp {
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded TiFlash pod: [%s], store state is not UP", ns, tcName, podName)
 			}
+			if ver, err := semver.NewVersion(tc.TiFlashVersion()); err == nil && ver.GreaterThan(tiflashV512) {
+				status, err := u.deps.TiFlashControl.GetTiFlashPodClient(tc.Namespace, tc.Name, podName, tc.IsTLSClusterEnabled()).GetStoreStatus()
+				if err != nil {
+					return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded TiFlash pod: [%s], get store status failed: %s", ns, tcName, podName, err)
+				}
+
+				if status != tiflashapi.Running {
+					return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded TiFlash pod: [%s], store status is not Running", ns, tcName, podName, err)
+				}
+			} // NOTE: if parse image version failed, will skip this check
+
 			continue
 		}
 
