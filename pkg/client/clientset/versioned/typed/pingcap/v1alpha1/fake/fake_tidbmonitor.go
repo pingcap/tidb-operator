@@ -16,6 +16,8 @@
 package fake
 
 import (
+	"context"
+
 	v1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
@@ -36,7 +38,7 @@ var tidbmonitorsResource = schema.GroupVersionResource{Group: "pingcap.com", Ver
 var tidbmonitorsKind = schema.GroupVersionKind{Group: "pingcap.com", Version: "v1alpha1", Kind: "TidbMonitor"}
 
 // Get takes name of the tidbMonitor, and returns the corresponding tidbMonitor object, and an error if there is any.
-func (c *FakeTidbMonitors) Get(name string, options v1.GetOptions) (result *v1alpha1.TidbMonitor, err error) {
+func (c *FakeTidbMonitors) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.TidbMonitor, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewGetAction(tidbmonitorsResource, c.ns, name), &v1alpha1.TidbMonitor{})
 
@@ -47,7 +49,7 @@ func (c *FakeTidbMonitors) Get(name string, options v1.GetOptions) (result *v1al
 }
 
 // List takes label and field selectors, and returns the list of TidbMonitors that match those selectors.
-func (c *FakeTidbMonitors) List(opts v1.ListOptions) (result *v1alpha1.TidbMonitorList, err error) {
+func (c *FakeTidbMonitors) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.TidbMonitorList, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewListAction(tidbmonitorsResource, tidbmonitorsKind, c.ns, opts), &v1alpha1.TidbMonitorList{})
 
@@ -69,14 +71,14 @@ func (c *FakeTidbMonitors) List(opts v1.ListOptions) (result *v1alpha1.TidbMonit
 }
 
 // Watch returns a watch.Interface that watches the requested tidbMonitors.
-func (c *FakeTidbMonitors) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakeTidbMonitors) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewWatchAction(tidbmonitorsResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a tidbMonitor and creates it.  Returns the server's representation of the tidbMonitor, and an error, if there is any.
-func (c *FakeTidbMonitors) Create(tidbMonitor *v1alpha1.TidbMonitor) (result *v1alpha1.TidbMonitor, err error) {
+func (c *FakeTidbMonitors) Create(ctx context.Context, tidbMonitor *v1alpha1.TidbMonitor, opts v1.CreateOptions) (result *v1alpha1.TidbMonitor, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewCreateAction(tidbmonitorsResource, c.ns, tidbMonitor), &v1alpha1.TidbMonitor{})
 
@@ -87,7 +89,7 @@ func (c *FakeTidbMonitors) Create(tidbMonitor *v1alpha1.TidbMonitor) (result *v1
 }
 
 // Update takes the representation of a tidbMonitor and updates it. Returns the server's representation of the tidbMonitor, and an error, if there is any.
-func (c *FakeTidbMonitors) Update(tidbMonitor *v1alpha1.TidbMonitor) (result *v1alpha1.TidbMonitor, err error) {
+func (c *FakeTidbMonitors) Update(ctx context.Context, tidbMonitor *v1alpha1.TidbMonitor, opts v1.UpdateOptions) (result *v1alpha1.TidbMonitor, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateAction(tidbmonitorsResource, c.ns, tidbMonitor), &v1alpha1.TidbMonitor{})
 
@@ -99,7 +101,7 @@ func (c *FakeTidbMonitors) Update(tidbMonitor *v1alpha1.TidbMonitor) (result *v1
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeTidbMonitors) UpdateStatus(tidbMonitor *v1alpha1.TidbMonitor) (*v1alpha1.TidbMonitor, error) {
+func (c *FakeTidbMonitors) UpdateStatus(ctx context.Context, tidbMonitor *v1alpha1.TidbMonitor, opts v1.UpdateOptions) (*v1alpha1.TidbMonitor, error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateSubresourceAction(tidbmonitorsResource, "status", c.ns, tidbMonitor), &v1alpha1.TidbMonitor{})
 
@@ -110,7 +112,7 @@ func (c *FakeTidbMonitors) UpdateStatus(tidbMonitor *v1alpha1.TidbMonitor) (*v1a
 }
 
 // Delete takes name of the tidbMonitor and deletes it. Returns an error if one occurs.
-func (c *FakeTidbMonitors) Delete(name string, options *v1.DeleteOptions) error {
+func (c *FakeTidbMonitors) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
 		Invokes(testing.NewDeleteAction(tidbmonitorsResource, c.ns, name), &v1alpha1.TidbMonitor{})
 
@@ -118,15 +120,15 @@ func (c *FakeTidbMonitors) Delete(name string, options *v1.DeleteOptions) error 
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeTidbMonitors) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(tidbmonitorsResource, c.ns, listOptions)
+func (c *FakeTidbMonitors) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	action := testing.NewDeleteCollectionAction(tidbmonitorsResource, c.ns, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.TidbMonitorList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched tidbMonitor.
-func (c *FakeTidbMonitors) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.TidbMonitor, err error) {
+func (c *FakeTidbMonitors) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.TidbMonitor, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewPatchSubresourceAction(tidbmonitorsResource, c.ns, name, pt, data, subresources...), &v1alpha1.TidbMonitor{})
 

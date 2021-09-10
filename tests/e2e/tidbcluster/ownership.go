@@ -28,7 +28,7 @@ import (
 )
 
 // WaitObjectToBeControlledByOrDie wait desired owner become the controller of the object
-func WaitObjectToBeControlledByOrDie(c client.Client, obj runtime.Object, owner runtime.Object, timeout time.Duration) {
+func WaitObjectToBeControlledByOrDie(c client.Client, obj client.Object, owner runtime.Object, timeout time.Duration) {
 	meta, ok := obj.(metav1.Object)
 	if !ok {
 		log.Failf("object is not a metav1.Object, cannot call WaitObjectToBeControlledByOrDie")
@@ -41,12 +41,9 @@ func WaitObjectToBeControlledByOrDie(c client.Client, obj runtime.Object, owner 
 	if !ok {
 		log.Failf("owner is not a metav1.Object, cannot call WaitObjectToBeControlledByOrDie")
 	}
-	fetched := obj.DeepCopyObject()
+	fetched := controller.DeepCopyClientObject(obj)
 	err = wait.PollImmediate(10*time.Second, timeout, func() (bool, error) {
-		key, err := client.ObjectKeyFromObject(obj)
-		if err != nil {
-			return false, err
-		}
+		key := client.ObjectKeyFromObject(obj)
 		err = c.Get(context.TODO(), key, fetched)
 		if err != nil && errors.IsNotFound(err) {
 			return false, err

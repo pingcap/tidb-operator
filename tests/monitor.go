@@ -14,6 +14,7 @@
 package tests
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -70,7 +71,7 @@ func checkTidbMonitorPod(tm *v1alpha1.TidbMonitor, kubeCli kubernetes.Interface)
 
 	return wait.Poll(5*time.Second, 20*time.Minute, func() (done bool, err error) {
 
-		pods, err := kubeCli.CoreV1().Pods(namespace).List(metav1.ListOptions{
+		pods, err := kubeCli.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{
 			LabelSelector: monitorLabel.String(),
 		})
 		if err != nil {
@@ -94,7 +95,7 @@ func checkTidbMonitorPod(tm *v1alpha1.TidbMonitor, kubeCli kubernetes.Interface)
 			return false, fmt.Errorf("tm[%s/%s]'s pod didnt' have 2 containers with grafana disabled", tm.Namespace, tm.Name)
 		}
 		log.Logf("tm[%s/%s]'s pod[%s/%s] is ready", tm.Namespace, tm.Name, pod.Namespace, pod.Name)
-		_, err = kubeCli.CoreV1().Services(namespace).Get(svcName, metav1.GetOptions{})
+		_, err = kubeCli.CoreV1().Services(namespace).Get(context.TODO(), svcName, metav1.GetOptions{})
 		if err != nil {
 			log.Logf("ERROR: tm[%s/%s]'s service[%s/%s] failed to fetch", tm.Namespace, tm.Name, tm.Namespace, svcName)
 			return false, nil

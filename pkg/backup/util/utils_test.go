@@ -14,6 +14,7 @@
 package util
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -21,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
 )
@@ -245,7 +247,7 @@ func TestGenerateTidbPasswordEnv(t *testing.T) {
 	s := &corev1.Secret{}
 	s.Namespace = ns
 	s.Name = secretName
-	_, err = client.CoreV1().Secrets(ns).Create(s)
+	_, err = client.CoreV1().Secrets(ns).Create(context.TODO(), s, metav1.CreateOptions{})
 	g.Expect(err).Should(BeNil())
 	err = informer.Core().V1().Secrets().Informer().GetIndexer().Add(s)
 	g.Expect(err).Should(BeNil())
@@ -256,7 +258,7 @@ func TestGenerateTidbPasswordEnv(t *testing.T) {
 	s.Data = map[string][]byte{
 		constants.TidbPasswordKey: []byte("dummy"),
 	}
-	_, err = client.CoreV1().Secrets(ns).Update(s)
+	_, err = client.CoreV1().Secrets(ns).Update(context.TODO(), s, metav1.UpdateOptions{})
 	g.Expect(err).Should(BeNil())
 	err = informer.Core().V1().Secrets().Informer().GetIndexer().Update(s)
 	g.Expect(err).Should(BeNil())

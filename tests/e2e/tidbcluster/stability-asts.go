@@ -240,13 +240,13 @@ var _ = ginkgo.Describe("[Stability]", func() {
 				replicas := st.replicas
 				stsName := fmt.Sprintf("%s-%s", clusterName, st.component)
 
-				sts, err := hc.AppsV1().StatefulSets(ns).Get(stsName, metav1.GetOptions{})
+				sts, err := hc.AppsV1().StatefulSets(ns).Get(context.TODO(), stsName, metav1.GetOptions{})
 				framework.ExpectNoError(err, "failed to get statefulset %s/%s", ns, stsName)
 
 				oldPodList := e2esset.GetPodList(c, sts)
 
 				ginkgo.By(fmt.Sprintf("Scaling sts %s/%s to replicas %d and setting deleting pods to %v (old replicas: %d, old delete slots: %v)", ns, stsName, replicas, st.deleteSlots.List(), *sts.Spec.Replicas, helper.GetDeleteSlots(sts).List()))
-				tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(clusterName, metav1.GetOptions{})
+				tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), clusterName, metav1.GetOptions{})
 				framework.ExpectNoError(err, "failed to get TidbCluster %s/%s", ns, clusterName)
 				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 					if tc.Annotations == nil {
@@ -274,7 +274,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 				ginkgo.By(fmt.Sprintf("Waiting for all pods of tidb cluster component %s (sts: %s/%s) are in desired state (replicas: %d, delete slots: %v)", st.component, ns, stsName, st.replicas, st.deleteSlots.List()))
 				err = wait.PollImmediate(time.Second*5, time.Minute*15, func() (bool, error) {
 					// check replicas and delete slots are synced
-					sts, err = hc.AppsV1().StatefulSets(ns).Get(stsName, metav1.GetOptions{})
+					sts, err = hc.AppsV1().StatefulSets(ns).Get(context.TODO(), stsName, metav1.GetOptions{})
 					if err != nil {
 						return false, nil
 					}
@@ -357,13 +357,13 @@ var _ = ginkgo.Describe("[Stability]", func() {
 				label.InstanceLabelKey: tc.Name,
 			}).String(),
 		}
-		stsList, err := c.AppsV1().StatefulSets(tc.Namespace).List(listOption)
+		stsList, err := c.AppsV1().StatefulSets(tc.Namespace).List(context.TODO(), listOption)
 		framework.ExpectNoError(err, "failed to list statefulsets in ns %s: %v", tc.Namespace, listOption)
 		if len(stsList.Items) < 3 {
 			log.Failf("at least 3 statefulsets must be created, got %d", len(stsList.Items))
 		}
 
-		podListBeforeUpgrade, err := c.CoreV1().Pods(tc.Namespace).List(listOption)
+		podListBeforeUpgrade, err := c.CoreV1().Pods(tc.Namespace).List(context.TODO(), listOption)
 		framework.ExpectNoError(err, "failed to list pods in ns %s: %v", tc.Namespace, listOption)
 
 		ginkgo.By("Upgrading tidb-operator with AdvancedStatefulSet feature")
@@ -376,7 +376,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 
 		ginkgo.By("Wait for the advanced statefulsets are created and Kubernetes statfulsets are deleted")
 		err = wait.PollImmediate(time.Second*5, time.Minute*5, func() (bool, error) {
-			advancedStsList, err := asCli.AppsV1().StatefulSets(tc.Namespace).List(listOption)
+			advancedStsList, err := asCli.AppsV1().StatefulSets(tc.Namespace).List(context.TODO(), listOption)
 			if err != nil {
 				return false, nil
 			}
@@ -384,7 +384,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 				log.Logf("advanced statefulsets got %d, expect %d", len(advancedStsList.Items), len(stsList.Items))
 				return false, nil
 			}
-			stsListAfterUpgrade, err := c.AppsV1().StatefulSets(tc.Namespace).List(listOption)
+			stsListAfterUpgrade, err := c.AppsV1().StatefulSets(tc.Namespace).List(context.TODO(), listOption)
 			if err != nil {
 				return false, nil
 			}
@@ -448,7 +448,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 
 		ginkgo.By("Scaling in the cluster by deleting some pods not at the end")
-		tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(tc.Name, metav1.GetOptions{})
+		tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), tc.Name, metav1.GetOptions{})
 		framework.ExpectNoError(err, "failed to get TidbCluster %s/%s", ns, tc.Name)
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 			if tc.Annotations == nil {

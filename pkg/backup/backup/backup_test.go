@@ -14,6 +14,7 @@
 package backup
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -24,7 +25,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/testutils"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 )
@@ -38,11 +41,39 @@ func newHelper(t *testing.T) *helper {
 	return &helper{*h}
 }
 
+func (h *helper) createJob(job *batchv1.Job) {
+	g := NewGomegaWithT(h.T)
+	deps := h.Deps
+	_, err := deps.KubeClientset.BatchV1().Jobs(job.GetNamespace()).Create(context.TODO(), job, metav1.CreateOptions{})
+	g.Expect(err).Should(BeNil())
+
+	g.Eventually(func() error {
+		_, err := deps.JobLister.Jobs(job.GetNamespace()).Get(job.GetName())
+		return err
+	}, time.Second*10).Should(BeNil())
+}
+
+func (h *helper) deleteJob(job *batchv1.Job) {
+	g := NewGomegaWithT(h.T)
+	deps := h.Deps
+	err := deps.KubeClientset.BatchV1().Jobs(job.GetNamespace()).Delete(context.TODO(), job.GetName(), metav1.DeleteOptions{})
+	g.Expect(err).Should(BeNil())
+
+	g.Eventually(func() error {
+		_, err := deps.JobLister.Jobs(job.GetNamespace()).Get(job.GetName())
+		if errors.IsNotFound(err) {
+			return nil
+		} else {
+			return fmt.Errorf("err: %v", err)
+		}
+	}, time.Second*10).Should(BeNil())
+}
+
 // TODO: refactor to reduce duplicated code with restore tests
 func (h *helper) hasCondition(ns string, name string, tp v1alpha1.BackupConditionType, reasonSub string) {
 	h.T.Helper()
 	g := NewGomegaWithT(h.T)
-	get, err := h.Deps.Clientset.PingcapV1alpha1().Backups(ns).Get(name, metav1.GetOptions{})
+	get, err := h.Deps.Clientset.PingcapV1alpha1().Backups(ns).Get(context.TODO(), name, metav1.GetOptions{})
 	g.Expect(err).Should(BeNil())
 	for _, c := range get.Status.Conditions {
 		if c.Type == tp {
@@ -153,7 +184,7 @@ func TestBackupManagerDumpling(t *testing.T) {
 
 	// create backup
 	backup := validDumplingBackup()
-	_, err = deps.Clientset.PingcapV1alpha1().Backups(backup.Namespace).Create(backup)
+	_, err = deps.Clientset.PingcapV1alpha1().Backups(backup.Namespace).Create(context.TODO(), backup, metav1.CreateOptions{})
 	g.Expect(err).Should(BeNil())
 
 	// create relate secret
@@ -162,7 +193,7 @@ func TestBackupManagerDumpling(t *testing.T) {
 	err = bm.syncBackupJob(backup)
 	g.Expect(err).Should(BeNil())
 	helper.hasCondition(backup.Namespace, backup.Name, v1alpha1.BackupScheduled, "")
-	job, err := deps.KubeClientset.BatchV1().Jobs(backup.Namespace).Get(backup.GetBackupJobName(), metav1.GetOptions{})
+	job, err := deps.KubeClientset.BatchV1().Jobs(backup.Namespace).Get(context.TODO(), backup.GetBackupJobName(), metav1.GetOptions{})
 	g.Expect(err).Should(BeNil())
 
 	// check pod env are set correctly
@@ -194,7 +225,7 @@ func TestBackupManagerBR(t *testing.T) {
 
 	// test invalid Backup spec
 	backup := invalidBackup()
-	_, err = deps.Clientset.PingcapV1alpha1().Backups(backup.Namespace).Create(backup)
+	_, err = deps.Clientset.PingcapV1alpha1().Backups(backup.Namespace).Create(context.TODO(), backup, metav1.CreateOptions{})
 	g.Expect(err).Should(BeNil())
 	err = bm.syncBackupJob(backup)
 	g.Expect(err).ShouldNot(BeNil())
@@ -202,7 +233,7 @@ func TestBackupManagerBR(t *testing.T) {
 
 	// test valid backups
 	for i, backup := range genValidBRBackups() {
-		_, err := deps.Clientset.PingcapV1alpha1().Backups(backup.Namespace).Create(backup)
+		_, err := deps.Clientset.PingcapV1alpha1().Backups(backup.Namespace).Create(context.TODO(), backup, metav1.CreateOptions{})
 		g.Expect(err).Should(BeNil())
 
 		// create relate secret
@@ -218,7 +249,7 @@ func TestBackupManagerBR(t *testing.T) {
 		err = bm.syncBackupJob(backup)
 		g.Expect(err).Should(BeNil())
 		helper.hasCondition(backup.Namespace, backup.Name, v1alpha1.BackupScheduled, "")
-		job, err := deps.KubeClientset.BatchV1().Jobs(backup.Namespace).Get(backup.GetBackupJobName(), metav1.GetOptions{})
+		job, err := deps.KubeClientset.BatchV1().Jobs(backup.Namespace).Get(context.TODO(), backup.GetBackupJobName(), metav1.GetOptions{})
 		g.Expect(err).Should(BeNil())
 
 		// check pod env are set correctly
@@ -247,7 +278,7 @@ func TestClean(t *testing.T) {
 	deps := helper.Deps
 
 	for _, backup := range genValidBRBackups() {
-		_, err := deps.Clientset.PingcapV1alpha1().Backups(backup.Namespace).Create(backup)
+		_, err := deps.Clientset.PingcapV1alpha1().Backups(backup.Namespace).Create(context.TODO(), backup, metav1.CreateOptions{})
 		g.Expect(err).Should(BeNil())
 		helper.CreateSecret(backup)
 		helper.CreateTC(backup.Spec.BR.ClusterNamespace, backup.Spec.BR.Cluster)
@@ -270,8 +301,9 @@ func TestClean(t *testing.T) {
 		err = bc.Clean(backup)
 		g.Expect(err).Should(BeNil())
 		helper.hasCondition(backup.Namespace, backup.Name, v1alpha1.BackupClean, "")
-		_, err = deps.KubeClientset.BatchV1().Jobs(backup.Namespace).Get(backup.GetCleanJobName(), metav1.GetOptions{})
+		_, err = deps.KubeClientset.BatchV1().Jobs(backup.Namespace).Get(context.TODO(), backup.GetCleanJobName(), metav1.GetOptions{})
 		g.Expect(err).Should(BeNil())
+
 		// test already have a clean job running
 		g.Eventually(func() error {
 			_, err := deps.JobLister.Jobs(backup.Namespace).Get(backup.GetCleanJobName())
@@ -279,5 +311,58 @@ func TestClean(t *testing.T) {
 		}, time.Second*10).Should(BeNil())
 		err = bc.Clean(backup)
 		g.Expect(err).Should(BeNil())
+
+		// test have a backup job completed
+		completedJob := &batchv1.Job{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      backup.GetBackupJobName(),
+				Namespace: backup.Namespace,
+			},
+			Status: batchv1.JobStatus{
+				CompletionTime: &metav1.Time{},
+				Conditions: []batchv1.JobCondition{
+					{
+						Type:   batchv1.JobComplete,
+						Status: corev1.ConditionTrue,
+					},
+				},
+			},
+		}
+		helper.createJob(completedJob)
+		err = bc.Clean(backup)
+		g.Expect(err).Should(BeNil())
+		helper.hasCondition(backup.Namespace, backup.Name, v1alpha1.BackupClean, "")
+		_, err = deps.KubeClientset.BatchV1().Jobs(backup.Namespace).Get(context.TODO(), backup.GetCleanJobName(), metav1.GetOptions{})
+		g.Expect(err).Should(BeNil())  // job shouldn't be deleted
+		helper.deleteJob(completedJob) // clean job after test
+
+		// test have a backup job running
+		runningJob := &batchv1.Job{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      backup.GetBackupJobName(),
+				Namespace: backup.Namespace,
+			},
+			Status: batchv1.JobStatus{},
+		}
+		helper.createJob(runningJob)
+		err = bc.Clean(backup)
+		g.Expect(err).Should(BeNil())
+		g.Eventually(func() bool {
+			_, err = deps.KubeClientset.BatchV1().Jobs(backup.Namespace).Get(context.TODO(), backup.GetBackupJobName(), metav1.GetOptions{})
+			return errors.IsNotFound(err)
+		}, time.Second*10).Should(BeTrue()) // job should be deleted
+
+		// test have a backup job deleting
+		deletingJob := &batchv1.Job{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              backup.GetBackupJobName(),
+				Namespace:         backup.Namespace,
+				DeletionTimestamp: &metav1.Time{},
+			},
+		}
+		helper.createJob(deletingJob)
+		err = bc.Clean(backup)
+		g.Expect(err).Should(BeNil())
 	}
+
 }

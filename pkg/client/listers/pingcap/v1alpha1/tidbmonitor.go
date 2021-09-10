@@ -23,8 +23,10 @@ import (
 )
 
 // TidbMonitorLister helps list TidbMonitors.
+// All objects returned here must be treated as read-only.
 type TidbMonitorLister interface {
 	// List lists all TidbMonitors in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.TidbMonitor, err error)
 	// TidbMonitors returns an object that can list and get TidbMonitors.
 	TidbMonitors(namespace string) TidbMonitorNamespaceLister
@@ -55,10 +57,13 @@ func (s *tidbMonitorLister) TidbMonitors(namespace string) TidbMonitorNamespaceL
 }
 
 // TidbMonitorNamespaceLister helps list and get TidbMonitors.
+// All objects returned here must be treated as read-only.
 type TidbMonitorNamespaceLister interface {
 	// List lists all TidbMonitors in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.TidbMonitor, err error)
 	// Get retrieves the TidbMonitor from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.TidbMonitor, error)
 	TidbMonitorNamespaceListerExpansion
 }

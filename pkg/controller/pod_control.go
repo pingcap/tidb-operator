@@ -14,6 +14,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -81,7 +82,7 @@ func (c *realPodControl) UpdatePod(controller runtime.Object, pod *corev1.Pod) (
 	// don't wait due to limited number of clients, but backoff after the default number of steps
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		var updateErr error
-		updatePod, updateErr = c.kubeCli.CoreV1().Pods(namespace).Update(pod)
+		updatePod, updateErr = c.kubeCli.CoreV1().Pods(namespace).Update(context.TODO(), pod, metav1.UpdateOptions{})
 		if updateErr == nil {
 			klog.Infof("Pod: [%s/%s] updated successfully, %s: [%s/%s]", namespace, podName, kind, namespace, name)
 			return nil
@@ -181,7 +182,7 @@ func (c *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Po
 	var updatePod *corev1.Pod
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		var updateErr error
-		updatePod, updateErr = c.kubeCli.CoreV1().Pods(ns).Update(pod)
+		updatePod, updateErr = c.kubeCli.CoreV1().Pods(ns).Update(context.TODO(), pod, metav1.UpdateOptions{})
 		if updateErr == nil {
 			klog.V(4).Infof("update pod %s/%s with cluster labels %v successfully, TidbCluster: %s", ns, podName, labels, tcName)
 			return nil
@@ -213,7 +214,7 @@ func (c *realPodControl) DeletePod(controller runtime.Object, pod *corev1.Pod) e
 	podName := pod.GetName()
 	preconditions := metav1.Preconditions{UID: &pod.UID, ResourceVersion: &pod.ResourceVersion}
 	deleteOptions := metav1.DeleteOptions{Preconditions: &preconditions}
-	err := c.kubeCli.CoreV1().Pods(namespace).Delete(podName, &deleteOptions)
+	err := c.kubeCli.CoreV1().Pods(namespace).Delete(context.TODO(), podName, deleteOptions)
 	if err != nil {
 		klog.Errorf("failed to delete Pod: [%s/%s], %s: %s, %v", namespace, podName, kind, namespace, err)
 	} else {

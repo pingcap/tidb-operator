@@ -16,6 +16,8 @@
 package fake
 
 import (
+	"context"
+
 	v1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
@@ -36,7 +38,7 @@ var tidbclustersResource = schema.GroupVersionResource{Group: "pingcap.com", Ver
 var tidbclustersKind = schema.GroupVersionKind{Group: "pingcap.com", Version: "v1alpha1", Kind: "TidbCluster"}
 
 // Get takes name of the tidbCluster, and returns the corresponding tidbCluster object, and an error if there is any.
-func (c *FakeTidbClusters) Get(name string, options v1.GetOptions) (result *v1alpha1.TidbCluster, err error) {
+func (c *FakeTidbClusters) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.TidbCluster, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewGetAction(tidbclustersResource, c.ns, name), &v1alpha1.TidbCluster{})
 
@@ -47,7 +49,7 @@ func (c *FakeTidbClusters) Get(name string, options v1.GetOptions) (result *v1al
 }
 
 // List takes label and field selectors, and returns the list of TidbClusters that match those selectors.
-func (c *FakeTidbClusters) List(opts v1.ListOptions) (result *v1alpha1.TidbClusterList, err error) {
+func (c *FakeTidbClusters) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.TidbClusterList, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewListAction(tidbclustersResource, tidbclustersKind, c.ns, opts), &v1alpha1.TidbClusterList{})
 
@@ -69,14 +71,14 @@ func (c *FakeTidbClusters) List(opts v1.ListOptions) (result *v1alpha1.TidbClust
 }
 
 // Watch returns a watch.Interface that watches the requested tidbClusters.
-func (c *FakeTidbClusters) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakeTidbClusters) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewWatchAction(tidbclustersResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a tidbCluster and creates it.  Returns the server's representation of the tidbCluster, and an error, if there is any.
-func (c *FakeTidbClusters) Create(tidbCluster *v1alpha1.TidbCluster) (result *v1alpha1.TidbCluster, err error) {
+func (c *FakeTidbClusters) Create(ctx context.Context, tidbCluster *v1alpha1.TidbCluster, opts v1.CreateOptions) (result *v1alpha1.TidbCluster, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewCreateAction(tidbclustersResource, c.ns, tidbCluster), &v1alpha1.TidbCluster{})
 
@@ -87,7 +89,7 @@ func (c *FakeTidbClusters) Create(tidbCluster *v1alpha1.TidbCluster) (result *v1
 }
 
 // Update takes the representation of a tidbCluster and updates it. Returns the server's representation of the tidbCluster, and an error, if there is any.
-func (c *FakeTidbClusters) Update(tidbCluster *v1alpha1.TidbCluster) (result *v1alpha1.TidbCluster, err error) {
+func (c *FakeTidbClusters) Update(ctx context.Context, tidbCluster *v1alpha1.TidbCluster, opts v1.UpdateOptions) (result *v1alpha1.TidbCluster, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateAction(tidbclustersResource, c.ns, tidbCluster), &v1alpha1.TidbCluster{})
 
@@ -99,7 +101,7 @@ func (c *FakeTidbClusters) Update(tidbCluster *v1alpha1.TidbCluster) (result *v1
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeTidbClusters) UpdateStatus(tidbCluster *v1alpha1.TidbCluster) (*v1alpha1.TidbCluster, error) {
+func (c *FakeTidbClusters) UpdateStatus(ctx context.Context, tidbCluster *v1alpha1.TidbCluster, opts v1.UpdateOptions) (*v1alpha1.TidbCluster, error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateSubresourceAction(tidbclustersResource, "status", c.ns, tidbCluster), &v1alpha1.TidbCluster{})
 
@@ -110,7 +112,7 @@ func (c *FakeTidbClusters) UpdateStatus(tidbCluster *v1alpha1.TidbCluster) (*v1a
 }
 
 // Delete takes name of the tidbCluster and deletes it. Returns an error if one occurs.
-func (c *FakeTidbClusters) Delete(name string, options *v1.DeleteOptions) error {
+func (c *FakeTidbClusters) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
 		Invokes(testing.NewDeleteAction(tidbclustersResource, c.ns, name), &v1alpha1.TidbCluster{})
 
@@ -118,15 +120,15 @@ func (c *FakeTidbClusters) Delete(name string, options *v1.DeleteOptions) error 
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeTidbClusters) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(tidbclustersResource, c.ns, listOptions)
+func (c *FakeTidbClusters) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	action := testing.NewDeleteCollectionAction(tidbclustersResource, c.ns, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.TidbClusterList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched tidbCluster.
-func (c *FakeTidbClusters) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.TidbCluster, err error) {
+func (c *FakeTidbClusters) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.TidbCluster, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewPatchSubresourceAction(tidbclustersResource, c.ns, name, pt, data, subresources...), &v1alpha1.TidbCluster{})
 

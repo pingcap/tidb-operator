@@ -446,7 +446,7 @@ func (oa *OperatorActions) runKubectlOrDie(args ...string) string {
 }
 
 func (oa *OperatorActions) CleanCRDOrDie() {
-	crdList, err := oa.apiExtCli.ApiextensionsV1beta1().CustomResourceDefinitions().List(metav1.ListOptions{})
+	crdList, err := oa.apiExtCli.ApiextensionsV1beta1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
 	framework.ExpectNoError(err, "failed to list CRD")
 	for _, crd := range crdList.Items {
 		if !strings.HasSuffix(crd.Name, ".pingcap.com") {
@@ -454,7 +454,7 @@ func (oa *OperatorActions) CleanCRDOrDie() {
 			continue
 		}
 		framework.Logf("Deleting CRD %q", crd.Name)
-		err = oa.apiExtCli.ApiextensionsV1beta1().CustomResourceDefinitions().Delete(crd.Name, &metav1.DeleteOptions{})
+		err = oa.apiExtCli.ApiextensionsV1beta1().CustomResourceDefinitions().Delete(context.TODO(), crd.Name, metav1.DeleteOptions{})
 		framework.ExpectNoError(err, "failed to delete CRD %q", crd.Name)
 		// Even if DELETE API request succeeds, the CRD object may still exists
 		// in ap server. We should wait for it to be gone.
@@ -467,7 +467,7 @@ func (oa *OperatorActions) CleanCRDOrDie() {
 func (oa *OperatorActions) InstallCRDOrDie(info *OperatorConfig) {
 	if info.Enabled(features.AdvancedStatefulSet) {
 		if isSupported, err := utildiscovery.IsAPIGroupVersionSupported(oa.kubeCli.Discovery(), "apiextensions.k8s.io/v1"); err != nil {
-			log.Fail(err.Error())
+			log.Failf(err.Error())
 		} else if isSupported {
 			oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1.yaml"))
 		} else {
@@ -490,7 +490,7 @@ func (oa *OperatorActions) InstallCRDOrDie(info *OperatorConfig) {
 func (oa *OperatorActions) DeployReleasedCRDOrDie(version string) {
 	url := fmt.Sprintf("https://raw.githubusercontent.com/pingcap/tidb-operator/%s/manifests/crd.yaml", version)
 	err := wait.PollImmediate(time.Second*10, time.Minute, func() (bool, error) {
-		_, err := framework.RunKubectl("apply", "-f", url)
+		_, err := framework.RunKubectl("", "apply", "-f", url)
 		if err != nil {
 			return false, nil
 		}
@@ -581,7 +581,7 @@ func (oa *OperatorActions) UpgradeOperator(info *OperatorConfig) error {
 		LabelSelector: labels.SelectorFromSet(
 			label.New().Labels()).String(),
 	}
-	pods1, err := oa.kubeCli.CoreV1().Pods(metav1.NamespaceAll).List(listOptions)
+	pods1, err := oa.kubeCli.CoreV1().Pods(metav1.NamespaceAll).List(context.TODO(), listOptions)
 	if err != nil {
 		log.Logf("failed to get pods in all namespaces with selector: %+v", listOptions)
 		return err
@@ -619,7 +619,7 @@ func (oa *OperatorActions) UpgradeOperator(info *OperatorConfig) error {
 
 	// ensure pods unchanged when upgrading operator
 	waitFn := func() (done bool, err error) {
-		pods2, err := oa.kubeCli.CoreV1().Pods(metav1.NamespaceAll).List(listOptions)
+		pods2, err := oa.kubeCli.CoreV1().Pods(metav1.NamespaceAll).List(context.TODO(), listOptions)
 		if err != nil {
 			log.Logf("ERROR: %v", err)
 			return false, nil
@@ -656,7 +656,7 @@ func (oa *OperatorActions) DeployDMTiDBOrDie() {
 			Name: DMTiDBNamespace,
 		},
 	}
-	_, err := oa.kubeCli.CoreV1().Namespaces().Create(ns)
+	_, err := oa.kubeCli.CoreV1().Namespaces().Create(context.TODO(), ns, metav1.CreateOptions{})
 	if err != nil && !errors.IsAlreadyExists(err) {
 		slack.NotifyAndPanic(err)
 	}
@@ -665,7 +665,7 @@ func (oa *OperatorActions) DeployDMTiDBOrDie() {
 	tc.Spec.PD.Replicas = 1
 	tc.Spec.TiKV.Replicas = 1
 	tc.Spec.TiDB.Replicas = 1
-	if _, err := oa.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc); err != nil {
+	if _, err := oa.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, metav1.CreateOptions{}); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 
@@ -721,7 +721,7 @@ func (oa *OperatorActions) UpgradeOperatorOrDie(info *OperatorConfig) {
 func (oa *OperatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 	ns := info.Namespace
 	tcName := info.ClusterName
-	if _, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err == nil {
+	if _, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), tcName, metav1.GetOptions{}); err == nil {
 		// already deployed
 		return nil
 	}
@@ -734,7 +734,7 @@ func (oa *OperatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 			Name: info.Namespace,
 		},
 	}
-	_, err := oa.kubeCli.CoreV1().Namespaces().Create(namespace)
+	_, err := oa.kubeCli.CoreV1().Namespaces().Create(context.TODO(), namespace, metav1.CreateOptions{})
 	if err != nil && !errors.IsAlreadyExists(err) {
 		return fmt.Errorf("failed to create namespace[%s]:%v", info.Namespace, err)
 	}
@@ -784,7 +784,7 @@ func (oa *OperatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 	if err := wait.Poll(oa.pollInterval, 20*time.Minute, func() (bool, error) {
 		var tc *v1alpha1.TidbCluster
 		var err error
-		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
+		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), tcName, metav1.GetOptions{}); err != nil {
 			log.Logf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
 			return false, nil
 		}
@@ -913,7 +913,7 @@ func (oa *OperatorActions) BeginInsertDataTo(info *TidbClusterConfig) error {
 	oa.EmitEvent(info, fmt.Sprintf("BeginInsertData: concurrency: %d", info.BlockWriteConfig.Concurrency))
 
 	bwpod := oa.getBlockWriterPod(info, "sbtest")
-	bwpod, err := oa.kubeCli.CoreV1().Pods(info.Namespace).Create(bwpod)
+	bwpod, err := oa.kubeCli.CoreV1().Pods(info.Namespace).Create(context.TODO(), bwpod, metav1.CreateOptions{})
 	if err != nil {
 		log.Logf("ERROR: %v", err)
 		return err
@@ -942,7 +942,7 @@ func (oa *OperatorActions) StopInsertDataTo(info *TidbClusterConfig) {
 
 	err := wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 		pod := info.blockWriterPod
-		err = oa.kubeCli.CoreV1().Pods(pod.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
+		err = oa.kubeCli.CoreV1().Pods(pod.Namespace).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return true, nil
@@ -1005,14 +1005,14 @@ func (oa *OperatorActions) ScaleTidbClusterOrDie(info *TidbClusterConfig) {
 
 func (oa *OperatorActions) CheckScaleInSafely(info *TidbClusterConfig) error {
 	return wait.Poll(oa.pollInterval, DefaultPollTimeout, func() (done bool, err error) {
-		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(info.Namespace).Get(info.ClusterName, metav1.GetOptions{})
+		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(info.Namespace).Get(context.TODO(), info.ClusterName, metav1.GetOptions{})
 		if err != nil {
 			log.Logf("failed to get tidbcluster when scale in tidbcluster, error: %v", err)
 			return false, nil
 		}
 
 		tikvSetName := controller.TiKVMemberName(info.ClusterName)
-		tikvSet, err := oa.tcStsGetter.StatefulSets(info.Namespace).Get(tikvSetName, metav1.GetOptions{})
+		tikvSet, err := oa.tcStsGetter.StatefulSets(info.Namespace).Get(context.TODO(), tikvSetName, metav1.GetOptions{})
 		if err != nil {
 			log.Logf("failed to get tikvSet statefulset: [%s], error: %v", tikvSetName, err)
 			return false, nil
@@ -1124,7 +1124,7 @@ func (oa *OperatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 		return err
 	}
 
-	tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+	tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), tcName, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
 	}
@@ -1220,7 +1220,7 @@ func (oa *OperatorActions) CleanMonitor(info *TidbClusterConfig) error  { return
 
 // getMemberContainer gets member container
 func getMemberContainer(kubeCli kubernetes.Interface, stsGetter typedappsv1.StatefulSetsGetter, namespace, tcName, component string) (*corev1.Container, bool) {
-	sts, err := stsGetter.StatefulSets(namespace).Get(fmt.Sprintf("%s-%s", tcName, component), metav1.GetOptions{})
+	sts, err := stsGetter.StatefulSets(namespace).Get(context.TODO(), fmt.Sprintf("%s-%s", tcName, component), metav1.GetOptions{})
 	if err != nil {
 		log.Logf("ERROR: failed to get sts for component %s of cluster %s/%s", component, namespace, tcName)
 		return nil, false
@@ -1232,7 +1232,7 @@ func getStsContainer(kubeCli kubernetes.Interface, sts *apps.StatefulSet, contai
 	listOption := metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(sts.Spec.Selector.MatchLabels).String(),
 	}
-	podList, err := kubeCli.CoreV1().Pods(sts.Namespace).List(listOption)
+	podList, err := kubeCli.CoreV1().Pods(sts.Namespace).List(context.TODO(), listOption)
 	if err != nil {
 		log.Logf("ERROR: fail to get pods for container %s of sts %s/%s", containerName, sts.Namespace, sts.Name)
 		return nil, false
@@ -1265,7 +1265,7 @@ func (oa *OperatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 	tcID := fmt.Sprintf("%s/%s", ns, tcName)
 	pdStsID := fmt.Sprintf("%s/%s", ns, pdSetName)
 
-	pdSet, err := oa.tcStsGetter.StatefulSets(ns).Get(pdSetName, metav1.GetOptions{})
+	pdSet, err := oa.tcStsGetter.StatefulSets(ns).Get(context.TODO(), pdSetName, metav1.GetOptions{})
 	if err != nil {
 		log.Logf("failed to get StatefulSet: %q, %v", pdStsID, err)
 		return false, nil
@@ -1322,12 +1322,12 @@ func (oa *OperatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 	}
 
 	pdServiceName := controller.PDMemberName(tcName)
-	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(pdServiceName, metav1.GetOptions{}); err != nil {
+	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(context.TODO(), pdServiceName, metav1.GetOptions{}); err != nil {
 		log.Logf("failed to get service: %s/%s", ns, pdServiceName)
 		return false, nil
 	}
 	pdPeerServiceName := controller.PDPeerMemberName(tcName)
-	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(pdPeerServiceName, metav1.GetOptions{}); err != nil {
+	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(context.TODO(), pdPeerServiceName, metav1.GetOptions{}); err != nil {
 		log.Logf("failed to get peer service: %s/%s", ns, pdPeerServiceName)
 		return false, nil
 	}
@@ -1347,7 +1347,7 @@ func (oa *OperatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	tcID := fmt.Sprintf("%s/%s", ns, tcName)
 	tikvStsID := fmt.Sprintf("%s/%s", ns, tikvSetName)
 
-	tikvSet, err := oa.tcStsGetter.StatefulSets(ns).Get(tikvSetName, metav1.GetOptions{})
+	tikvSet, err := oa.tcStsGetter.StatefulSets(ns).Get(context.TODO(), tikvSetName, metav1.GetOptions{})
 	if err != nil {
 		log.Logf("failed to get StatefulSet: %q, %v", tikvStsID, err)
 		return false, nil
@@ -1404,7 +1404,7 @@ func (oa *OperatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	}
 
 	tikvPeerServiceName := controller.TiKVPeerMemberName(tcName)
-	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(tikvPeerServiceName, metav1.GetOptions{}); err != nil {
+	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(context.TODO(), tikvPeerServiceName, metav1.GetOptions{}); err != nil {
 		log.Logf("failed to get peer service: %s/%s", ns, tikvPeerServiceName)
 		return false, nil
 	}
@@ -1424,7 +1424,7 @@ func (oa *OperatorActions) tiflashMembersReadyFn(tc *v1alpha1.TidbCluster) (bool
 	tcID := fmt.Sprintf("%s/%s", ns, tcName)
 	tiflashStsID := fmt.Sprintf("%s/%s", ns, tiflashSetName)
 
-	tiflashSet, err := oa.tcStsGetter.StatefulSets(ns).Get(tiflashSetName, metav1.GetOptions{})
+	tiflashSet, err := oa.tcStsGetter.StatefulSets(ns).Get(context.TODO(), tiflashSetName, metav1.GetOptions{})
 	if err != nil {
 		log.Logf("failed to get StatefulSet: %q, %v", tiflashStsID, err)
 		return false, nil
@@ -1481,7 +1481,7 @@ func (oa *OperatorActions) tiflashMembersReadyFn(tc *v1alpha1.TidbCluster) (bool
 	}
 
 	tiflashPeerServiceName := controller.TiFlashPeerMemberName(tcName)
-	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(tiflashPeerServiceName, metav1.GetOptions{}); err != nil {
+	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(context.TODO(), tiflashPeerServiceName, metav1.GetOptions{}); err != nil {
 		log.Logf("failed to get peer service: %s/%s", ns, tiflashPeerServiceName)
 		return false, nil
 	}
@@ -1501,7 +1501,7 @@ func (oa *OperatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	tcID := fmt.Sprintf("%s/%s", ns, tcName)
 	tidbStsID := fmt.Sprintf("%s/%s", ns, tidbSetName)
 
-	tidbSet, err := oa.tcStsGetter.StatefulSets(ns).Get(tidbSetName, metav1.GetOptions{})
+	tidbSet, err := oa.tcStsGetter.StatefulSets(ns).Get(context.TODO(), tidbSetName, metav1.GetOptions{})
 	if err != nil {
 		log.Logf("failed to get StatefulSet: %q, %v", tidbStsID, err)
 		return false, nil
@@ -1551,12 +1551,12 @@ func (oa *OperatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	}
 
 	tidbServiceName := controller.TiDBMemberName(tcName)
-	if _, err = oa.kubeCli.CoreV1().Services(ns).Get(tidbServiceName, metav1.GetOptions{}); err != nil {
+	if _, err = oa.kubeCli.CoreV1().Services(ns).Get(context.TODO(), tidbServiceName, metav1.GetOptions{}); err != nil {
 		log.Logf("failed to get service: %s/%s", ns, tidbServiceName)
 		return false, nil
 	}
 	tidbPeerServiceName := controller.TiDBPeerMemberName(tcName)
-	if _, err = oa.kubeCli.CoreV1().Services(ns).Get(tidbPeerServiceName, metav1.GetOptions{}); err != nil {
+	if _, err = oa.kubeCli.CoreV1().Services(ns).Get(context.TODO(), tidbPeerServiceName, metav1.GetOptions{}); err != nil {
 		log.Logf("failed to get peer service: %s/%s", ns, tidbPeerServiceName)
 		return false, nil
 	}
@@ -1570,7 +1570,7 @@ func (oa *OperatorActions) dmMasterMembersReadyFn(dc *v1alpha1.DMCluster) bool {
 	ns := dc.GetNamespace()
 	masterSetName := controller.DMMasterMemberName(dcName)
 
-	masterSet, err := oa.tcStsGetter.StatefulSets(ns).Get(masterSetName, metav1.GetOptions{})
+	masterSet, err := oa.tcStsGetter.StatefulSets(ns).Get(context.TODO(), masterSetName, metav1.GetOptions{})
 	if err != nil {
 		log.Logf("failed to get statefulset: %s/%s, %v", ns, masterSetName, err)
 		return false
@@ -1616,11 +1616,11 @@ func (oa *OperatorActions) dmMasterMembersReadyFn(dc *v1alpha1.DMCluster) bool {
 
 	masterServiceName := controller.DMMasterMemberName(dcName)
 	masterPeerServiceName := controller.DMMasterPeerMemberName(dcName)
-	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(masterServiceName, metav1.GetOptions{}); err != nil {
+	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(context.TODO(), masterServiceName, metav1.GetOptions{}); err != nil {
 		log.Logf("failed to get service: %s/%s", ns, masterServiceName)
 		return false
 	}
-	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(masterPeerServiceName, metav1.GetOptions{}); err != nil {
+	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(context.TODO(), masterPeerServiceName, metav1.GetOptions{}); err != nil {
 		log.Logf("failed to get peer service: %s/%s", ns, masterPeerServiceName)
 		return false
 	}
@@ -1630,28 +1630,28 @@ func (oa *OperatorActions) dmMasterMembersReadyFn(dc *v1alpha1.DMCluster) bool {
 
 func (oa *OperatorActions) dmMasterMembersDeleted(ns, dcName string) bool {
 	stsName := controller.DMMasterMemberName(dcName)
-	_, err := oa.tcStsGetter.StatefulSets(ns).Get(stsName, metav1.GetOptions{})
+	_, err := oa.tcStsGetter.StatefulSets(ns).Get(context.TODO(), stsName, metav1.GetOptions{})
 	if !errors.IsNotFound(err) {
 		return false
 	}
 	svcName := controller.DMMasterMemberName(dcName)
-	_, err = oa.kubeCli.CoreV1().Services(ns).Get(svcName, metav1.GetOptions{})
+	_, err = oa.kubeCli.CoreV1().Services(ns).Get(context.TODO(), svcName, metav1.GetOptions{})
 	if !errors.IsNotFound(err) {
 		return false
 	}
 	peerSvcName := controller.DMMasterPeerMemberName(dcName)
-	_, err = oa.kubeCli.CoreV1().Services(ns).Get(peerSvcName, metav1.GetOptions{})
+	_, err = oa.kubeCli.CoreV1().Services(ns).Get(context.TODO(), peerSvcName, metav1.GetOptions{})
 	return errors.IsNotFound(err)
 }
 
 func (oa *OperatorActions) dmWorkerMembersDeleted(ns, dcName string) bool {
 	stsName := controller.DMWorkerMemberName(dcName)
-	_, err := oa.tcStsGetter.StatefulSets(ns).Get(stsName, metav1.GetOptions{})
+	_, err := oa.tcStsGetter.StatefulSets(ns).Get(context.TODO(), stsName, metav1.GetOptions{})
 	if !errors.IsNotFound(err) {
 		return false
 	}
 	peerSvcName := controller.DMWorkerPeerMemberName(dcName)
-	_, err = oa.kubeCli.CoreV1().Services(ns).Get(peerSvcName, metav1.GetOptions{})
+	_, err = oa.kubeCli.CoreV1().Services(ns).Get(context.TODO(), peerSvcName, metav1.GetOptions{})
 	return errors.IsNotFound(err)
 }
 
@@ -1661,7 +1661,7 @@ func (oa *OperatorActions) dmWorkerMembersReadyFn(dc *v1alpha1.DMCluster) bool {
 	ns := dc.GetNamespace()
 	workerSetName := controller.DMWorkerMemberName(dcName)
 
-	workerSet, err := oa.tcStsGetter.StatefulSets(ns).Get(workerSetName, metav1.GetOptions{})
+	workerSet, err := oa.tcStsGetter.StatefulSets(ns).Get(context.TODO(), workerSetName, metav1.GetOptions{})
 	if err != nil {
 		log.Logf("failed to get statefulset: %s/%s, %v", ns, workerSetName, err)
 		return false
@@ -1706,7 +1706,7 @@ func (oa *OperatorActions) dmWorkerMembersReadyFn(dc *v1alpha1.DMCluster) bool {
 	}
 
 	workerPeerServiceName := controller.DMWorkerPeerMemberName(dcName)
-	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(workerPeerServiceName, metav1.GetOptions{}); err != nil {
+	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(context.TODO(), workerPeerServiceName, metav1.GetOptions{}); err != nil {
 		log.Logf("failed to get peer service: %s/%s", ns, workerPeerServiceName)
 		return false
 	}
@@ -1724,14 +1724,14 @@ func (oa *OperatorActions) reclaimPolicySyncFn(tc *v1alpha1.TidbCluster) (bool, 
 	}
 	var pvcList *corev1.PersistentVolumeClaimList
 	var err error
-	if pvcList, err = oa.kubeCli.CoreV1().PersistentVolumeClaims(ns).List(listOptions); err != nil {
+	if pvcList, err = oa.kubeCli.CoreV1().PersistentVolumeClaims(ns).List(context.TODO(), listOptions); err != nil {
 		log.Logf("failed to list pvs for tidbcluster %s/%s, %v", ns, tcName, err)
 		return false, nil
 	}
 
 	for _, pvc := range pvcList.Items {
 		pvName := pvc.Spec.VolumeName
-		if pv, err := oa.kubeCli.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{}); err != nil {
+		if pv, err := oa.kubeCli.CoreV1().PersistentVolumes().Get(context.TODO(), pvName, metav1.GetOptions{}); err != nil {
 			log.Logf("failed to get pv: %s, error: %v", pvName, err)
 			return false, nil
 		} else if pv.Spec.PersistentVolumeReclaimPolicy != *tc.Spec.PVReclaimPolicy {
@@ -1767,7 +1767,7 @@ func (oa *OperatorActions) metaSyncFn(tc *v1alpha1.TidbCluster) (bool, error) {
 	}
 
 	var podList *corev1.PodList
-	if podList, err = oa.kubeCli.CoreV1().Pods(ns).List(listOptions); err != nil {
+	if podList, err = oa.kubeCli.CoreV1().Pods(ns).List(context.TODO(), listOptions); err != nil {
 		log.Logf("failed to list pods for tidbcluster %s/%s, %v", ns, tcName, err)
 		return false, nil
 	}
@@ -1846,7 +1846,7 @@ outerLoop:
 		}
 
 		var pvc *corev1.PersistentVolumeClaim
-		if pvc, err = oa.kubeCli.CoreV1().PersistentVolumeClaims(ns).Get(pvcName, metav1.GetOptions{}); err != nil {
+		if pvc, err = oa.kubeCli.CoreV1().PersistentVolumeClaims(ns).Get(context.TODO(), pvcName, metav1.GetOptions{}); err != nil {
 			log.Logf("failed to get pvc %s/%s for pod %s/%s", ns, pvcName, ns, podName)
 			return false, nil
 		}
@@ -1873,7 +1873,7 @@ outerLoop:
 
 		pvName := pvc.Spec.VolumeName
 		var pv *corev1.PersistentVolume
-		if pv, err = oa.kubeCli.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{}); err != nil {
+		if pv, err = oa.kubeCli.CoreV1().PersistentVolumes().Get(context.TODO(), pvName, metav1.GetOptions{}); err != nil {
 			log.Logf("failed to get pv for pvc %s/%s, %v", ns, pvcName, err)
 			return false, nil
 		}
@@ -1942,7 +1942,7 @@ func (oa *OperatorActions) schedulerHAFn(tc *v1alpha1.TidbCluster) (bool, error)
 		}
 		var podList *corev1.PodList
 		var err error
-		if podList, err = oa.kubeCli.CoreV1().Pods(ns).List(listOptions); err != nil {
+		if podList, err = oa.kubeCli.CoreV1().Pods(ns).List(context.TODO(), listOptions); err != nil {
 			log.Logf("failed to list pods for tidbcluster %s/%s, %v", ns, tcName, err)
 			return false, nil
 		}
@@ -1983,7 +1983,7 @@ func (oa *OperatorActions) podsScheduleAnnHaveDeleted(tc *v1alpha1.TidbCluster) 
 			label.New().Instance(tcName).Labels()).String(),
 	}
 
-	pvcList, err := oa.kubeCli.CoreV1().PersistentVolumeClaims(ns).List(listOptions)
+	pvcList, err := oa.kubeCli.CoreV1().PersistentVolumeClaims(ns).List(context.TODO(), listOptions)
 	if err != nil {
 		log.Logf("failed to list pvcs for tidb cluster %s/%s, err: %v", ns, tcName, err)
 		return false, nil
@@ -2064,7 +2064,7 @@ func (oa *OperatorActions) getComponentPVCList(tc *v1alpha1.TidbCluster, compone
 			label.New().Instance(tcName).Component(component).Labels()).String(),
 	}
 
-	pvcList, err := oa.kubeCli.CoreV1().PersistentVolumeClaims(ns).List(listOptions)
+	pvcList, err := oa.kubeCli.CoreV1().PersistentVolumeClaims(ns).List(context.TODO(), listOptions)
 	if err != nil {
 		err := fmt.Errorf("failed to list pvcs for tidb cluster %s/%s, component: %s, err: %v", ns, tcName, component, err)
 		return nil, err
@@ -2081,7 +2081,7 @@ func (oa *OperatorActions) getComponentPVList(tc *v1alpha1.TidbCluster, componen
 			label.New().Instance(tcName).Component(component).Namespace(ns).Labels()).String(),
 	}
 
-	pvList, err := oa.kubeCli.CoreV1().PersistentVolumes().List(listOptions)
+	pvList, err := oa.kubeCli.CoreV1().PersistentVolumes().List(context.TODO(), listOptions)
 	if err != nil {
 		err := fmt.Errorf("failed to list pvs for tidb cluster %s/%s, component: %s, err: %v", ns, tcName, component, err)
 		return nil, err
@@ -2124,7 +2124,7 @@ func (oa *OperatorActions) passwordIsSet(clusterInfo *TidbClusterConfig) (bool, 
 
 	var job *batchv1.Job
 	var err error
-	if job, err = oa.kubeCli.BatchV1().Jobs(ns).Get(jobName, metav1.GetOptions{}); err != nil {
+	if job, err = oa.kubeCli.BatchV1().Jobs(ns).Get(context.TODO(), jobName, metav1.GetOptions{}); err != nil {
 		log.Logf("failed to get job %s/%s, %v", ns, jobName, err)
 		return false, nil
 	}
@@ -2157,7 +2157,7 @@ func (oa *OperatorActions) monitorNormal(clusterInfo *TidbClusterConfig) (bool, 
 	ns := clusterInfo.Namespace
 	tcName := clusterInfo.ClusterName
 	monitorDeploymentName := fmt.Sprintf("%s-monitor", tcName)
-	monitorDeployment, err := oa.kubeCli.AppsV1().Deployments(ns).Get(monitorDeploymentName, metav1.GetOptions{})
+	monitorDeployment, err := oa.kubeCli.AppsV1().Deployments(ns).Get(context.TODO(), monitorDeploymentName, metav1.GetOptions{})
 	if err != nil {
 		log.Logf("get monitor deployment: [%s/%s] failed", ns, monitorDeploymentName)
 		return false, nil
@@ -2431,7 +2431,7 @@ func (oa *OperatorActions) CheckAdHocBackup(info *TidbClusterConfig) (string, er
 	var ts string
 	jobName := fmt.Sprintf("%s-%s", info.ClusterName, info.BackupName)
 	fn := func() (bool, error) {
-		job, err := oa.kubeCli.BatchV1().Jobs(info.Namespace).Get(jobName, metav1.GetOptions{})
+		job, err := oa.kubeCli.BatchV1().Jobs(info.Namespace).Get(context.TODO(), jobName, metav1.GetOptions{})
 		if err != nil {
 			log.Logf("failed to get jobs %s ,%v", jobName, err)
 			return false, nil
@@ -2444,7 +2444,7 @@ func (oa *OperatorActions) CheckAdHocBackup(info *TidbClusterConfig) (string, er
 		listOptions := metav1.ListOptions{
 			LabelSelector: fmt.Sprintf("%s=%s", label.InstanceLabelKey, jobName),
 		}
-		podList, err := oa.kubeCli.CoreV1().Pods(ns).List(listOptions)
+		podList, err := oa.kubeCli.CoreV1().Pods(ns).List(context.TODO(), listOptions)
 		if err != nil {
 			log.Logf("failed to list pods: %v", err)
 			return false, nil
@@ -2523,7 +2523,7 @@ func (oa *OperatorActions) CheckRestore(from *TidbClusterConfig, to *TidbCluster
 	log.Logf("begin to check restore backup cluster[%s] namespace[%s]", from.ClusterName, from.Namespace)
 	jobName := fmt.Sprintf("%s-restore-%s", to.ClusterName, from.BackupName)
 	fn := func() (bool, error) {
-		job, err := oa.kubeCli.BatchV1().Jobs(to.Namespace).Get(jobName, metav1.GetOptions{})
+		job, err := oa.kubeCli.BatchV1().Jobs(to.Namespace).Get(context.TODO(), jobName, metav1.GetOptions{})
 		if err != nil {
 			log.Logf("failed to get jobs %s ,%v", jobName, err)
 			return false, nil
@@ -2626,7 +2626,7 @@ func (oa *OperatorActions) CreateSecret(info *TidbClusterConfig) error {
 		Type: corev1.SecretTypeOpaque,
 	}
 
-	_, err := oa.kubeCli.CoreV1().Secrets(info.Namespace).Create(&initSecret)
+	_, err := oa.kubeCli.CoreV1().Secrets(info.Namespace).Create(context.TODO(), &initSecret, metav1.CreateOptions{})
 	if err != nil && !releaseIsExist(err) {
 		return err
 	}
@@ -2643,7 +2643,7 @@ func (oa *OperatorActions) CreateSecret(info *TidbClusterConfig) error {
 		Type: corev1.SecretTypeOpaque,
 	}
 
-	_, err = oa.kubeCli.CoreV1().Secrets(info.Namespace).Create(&backupSecret)
+	_, err = oa.kubeCli.CoreV1().Secrets(info.Namespace).Create(context.TODO(), &backupSecret, metav1.CreateOptions{})
 	if err != nil && !releaseIsExist(err) {
 		return err
 	}
@@ -2713,13 +2713,13 @@ func (oa *OperatorActions) CheckScheduledBackup(info *TidbClusterConfig) error {
 
 	jobName := fmt.Sprintf("%s-scheduled-backup", info.ClusterName)
 	fn := func() (bool, error) {
-		job, err := oa.kubeCli.BatchV1beta1().CronJobs(info.Namespace).Get(jobName, metav1.GetOptions{})
+		job, err := oa.kubeCli.BatchV1beta1().CronJobs(info.Namespace).Get(context.TODO(), jobName, metav1.GetOptions{})
 		if err != nil {
 			log.Logf("failed to get cronjobs %s ,%v", jobName, err)
 			return false, nil
 		}
 
-		jobs, err := oa.kubeCli.BatchV1().Jobs(info.Namespace).List(metav1.ListOptions{})
+		jobs, err := oa.kubeCli.BatchV1().Jobs(info.Namespace).List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			log.Logf("failed to list jobs %s ,%v", info.Namespace, err)
 			return false, nil
@@ -2830,7 +2830,7 @@ func (oa *OperatorActions) getBackupDir(info *TidbClusterConfig) ([]string, erro
 	}
 
 	fn := func() (bool, error) {
-		_, err := oa.kubeCli.CoreV1().Pods(info.Namespace).Get(backupDirPodName, metav1.GetOptions{})
+		_, err := oa.kubeCli.CoreV1().Pods(info.Namespace).Get(context.TODO(), backupDirPodName, metav1.GetOptions{})
 		if !errors.IsNotFound(err) {
 			return false, nil
 		}
@@ -2843,14 +2843,14 @@ func (oa *OperatorActions) getBackupDir(info *TidbClusterConfig) ([]string, erro
 		return nil, fmt.Errorf("failed to delete pod %s, err: %v", backupDirPodName, err)
 	}
 
-	_, err = oa.kubeCli.CoreV1().Pods(info.Namespace).Create(pod)
+	_, err = oa.kubeCli.CoreV1().Pods(info.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
 	if err != nil && !errors.IsAlreadyExists(err) {
 		log.Logf("cluster: [%s/%s] create get backup dir pod failed, error :%v", info.Namespace, info.ClusterName, err)
 		return nil, err
 	}
 
 	fn = func() (bool, error) {
-		pod, err := oa.kubeCli.CoreV1().Pods(info.Namespace).Get(backupDirPodName, metav1.GetOptions{})
+		pod, err := oa.kubeCli.CoreV1().Pods(info.Namespace).Get(context.TODO(), backupDirPodName, metav1.GetOptions{})
 		if err == nil && pod.Status.Phase == corev1.PodRunning {
 			return true, nil
 		} else if err != nil && !errors.IsNotFound(err) {
@@ -2961,7 +2961,7 @@ func (oa *OperatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 
 	pumpStatefulSetName := fmt.Sprintf("%s-pump", info.ClusterName)
 	fn := func() (bool, error) {
-		pumpStatefulSet, err := oa.kubeCli.AppsV1().StatefulSets(info.Namespace).Get(pumpStatefulSetName, metav1.GetOptions{})
+		pumpStatefulSet, err := oa.kubeCli.AppsV1().StatefulSets(info.Namespace).Get(context.TODO(), pumpStatefulSetName, metav1.GetOptions{})
 		if err != nil {
 			log.Logf("failed to get jobs %s ,%v", pumpStatefulSetName, err)
 			return false, nil
@@ -2981,7 +2981,7 @@ func (oa *OperatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 			).String(),
 		}
 
-		pods, err := oa.kubeCli.CoreV1().Pods(info.Namespace).List(listOps)
+		pods, err := oa.kubeCli.CoreV1().Pods(info.Namespace).List(context.TODO(), listOps)
 		if err != nil {
 			log.Logf("failed to get pods via pump labels %s ,%v", pumpStatefulSetName, err)
 			return false, nil
@@ -3023,7 +3023,7 @@ func (oa *OperatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 		}
 
 		drainerStatefulSetName := fmt.Sprintf("%s-drainer", info.ClusterName)
-		drainerStatefulSet, err := oa.kubeCli.AppsV1().StatefulSets(info.Namespace).Get(drainerStatefulSetName, metav1.GetOptions{})
+		drainerStatefulSet, err := oa.kubeCli.AppsV1().StatefulSets(info.Namespace).Get(context.TODO(), drainerStatefulSetName, metav1.GetOptions{})
 		if err != nil {
 			log.Logf("failed to get jobs %s ,%v", pumpStatefulSetName, err)
 			return false, nil
@@ -3043,7 +3043,7 @@ func (oa *OperatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 			).String(),
 		}
 
-		pods, err = oa.kubeCli.CoreV1().Pods(info.Namespace).List(listOps)
+		pods, err = oa.kubeCli.CoreV1().Pods(info.Namespace).List(context.TODO(), listOps)
 		if err != nil {
 			return false, nil
 		}
@@ -3093,13 +3093,13 @@ func (oa *OperatorActions) RegisterWebHookAndServiceOrDie(configName, namespace,
 	}
 }
 
-func (oa *OperatorActions) RegisterWebHookAndService(configName, namespace, service string, context *apimachinery.CertContext) error {
+func (oa *OperatorActions) RegisterWebHookAndService(configName, namespace, service string, ctx *apimachinery.CertContext) error {
 	client := oa.kubeCli
 	log.Logf("Registering the webhook via the AdmissionRegistration API")
 
 	failurePolicy := admissionV1beta1.Fail
 
-	_, err := client.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Create(&admissionV1beta1.ValidatingWebhookConfiguration{
+	_, err := client.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Create(context.TODO(), &admissionV1beta1.ValidatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: configName,
 		},
@@ -3121,11 +3121,11 @@ func (oa *OperatorActions) RegisterWebHookAndService(configName, namespace, serv
 						Name:      service,
 						Path:      strPtr("/pods"),
 					},
-					CABundle: context.SigningCert,
+					CABundle: ctx.SigningCert,
 				},
 			},
 		},
-	})
+	}, metav1.CreateOptions{})
 
 	if err != nil {
 		log.Logf("registering webhook config %s with namespace %s error %v", configName, namespace, err)
@@ -3140,7 +3140,7 @@ func (oa *OperatorActions) RegisterWebHookAndService(configName, namespace, serv
 }
 
 func (oa *OperatorActions) CleanWebHookAndService(name string) error {
-	err := oa.kubeCli.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Delete(name, nil)
+	err := oa.kubeCli.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Delete(context.TODO(), name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("failed to delete webhook config %v", err)
 	}
@@ -3384,7 +3384,7 @@ func (oa *OperatorActions) checkManualPauseComponent(info *TidbClusterConfig, co
 
 	fn := func() (bool, error) {
 
-		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(info.ClusterName, metav1.GetOptions{}); err != nil {
+		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), info.ClusterName, metav1.GetOptions{}); err != nil {
 			log.Logf("failed to get tidbcluster: [%s/%s], %v", ns, info.ClusterName, err)
 			return false, nil
 		}
@@ -3393,7 +3393,7 @@ func (oa *OperatorActions) checkManualPauseComponent(info *TidbClusterConfig, co
 		case label.TiDBLabelVal:
 			podName := fmt.Sprintf("%s-%d", controller.TiDBMemberName(tc.Name), 1)
 			setName = controller.TiDBMemberName(info.ClusterName)
-			tidbPod, err := oa.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+			tidbPod, err := oa.kubeCli.CoreV1().Pods(ns).Get(context.TODO(), podName, metav1.GetOptions{})
 			if err != nil {
 				log.Logf("fail to get pod in CheckManualPauseComponent tidb [%s/%s]", ns, podName)
 				return false, nil
@@ -3414,7 +3414,7 @@ func (oa *OperatorActions) checkManualPauseComponent(info *TidbClusterConfig, co
 		case label.TiKVLabelVal:
 			podName := fmt.Sprintf("%s-%d", controller.TiKVMemberName(tc.Name), 1)
 			setName = controller.TiKVMemberName(info.ClusterName)
-			tikvPod, err := oa.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+			tikvPod, err := oa.kubeCli.CoreV1().Pods(ns).Get(context.TODO(), podName, metav1.GetOptions{})
 			if err != nil {
 				log.Logf("fail to get pod in CheckManualPauseComponent tikv [%s/%s]", ns, podName)
 				return false, nil
@@ -3451,7 +3451,7 @@ func (oa *OperatorActions) checkManualPauseComponent(info *TidbClusterConfig, co
 
 	time.Sleep(30 * time.Second)
 
-	if set, err = oa.tcStsGetter.StatefulSets(ns).Get(setName, metav1.GetOptions{}); err != nil {
+	if set, err = oa.tcStsGetter.StatefulSets(ns).Get(context.TODO(), setName, metav1.GetOptions{}); err != nil {
 		return fmt.Errorf("failed to get statefulset: [%s/%s], %v", ns, setName, err)
 	}
 
@@ -3466,7 +3466,7 @@ func (oa *OperatorActions) checkManualPauseComponent(info *TidbClusterConfig, co
 func (oa *OperatorActions) CheckUpgradeComplete(info *TidbClusterConfig) error {
 	ns, tcName := info.Namespace, info.ClusterName
 	if err := wait.PollImmediate(15*time.Second, 30*time.Minute, func() (done bool, err error) {
-		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), tcName, metav1.GetOptions{})
 		if err != nil {
 			log.Logf("checkUpgradeComplete, [%s/%s] cannot get tidbcluster, %v", ns, tcName, err)
 			return false, nil
@@ -3535,7 +3535,7 @@ func (oa *OperatorActions) cdcMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, er
 	tcID := fmt.Sprintf("%s/%s", ns, tcName)
 	cdcStsID := fmt.Sprintf("%s/%s", ns, cdcSetName)
 
-	cdcSet, err := oa.tcStsGetter.StatefulSets(ns).Get(cdcSetName, metav1.GetOptions{})
+	cdcSet, err := oa.tcStsGetter.StatefulSets(ns).Get(context.TODO(), cdcSetName, metav1.GetOptions{})
 	if err != nil {
 		log.Logf("failed to get StatefulSet: %q, %v", cdcStsID, err)
 		return false, nil
@@ -3576,7 +3576,7 @@ func (oa *OperatorActions) pumpMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	tcID := fmt.Sprintf("%s/%s", ns, tcName)
 	pumpStsID := fmt.Sprintf("%s/%s", ns, pumpSetName)
 
-	pumpSet, err := oa.tcStsGetter.StatefulSets(ns).Get(pumpSetName, metav1.GetOptions{})
+	pumpSet, err := oa.tcStsGetter.StatefulSets(ns).Get(context.TODO(), pumpSetName, metav1.GetOptions{})
 	if err != nil {
 		log.Logf("failed to get StatefulSet: %q, %v", pumpStsID, err)
 		return false, nil
@@ -3616,7 +3616,7 @@ func (oa *OperatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, tim
 		var err error
 		tcID := fmt.Sprintf("%s/%s", tc.Namespace, tc.Name)
 
-		if local, err = oa.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{}); err != nil {
+		if local, err = oa.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(context.TODO(), tc.Name, metav1.GetOptions{}); err != nil {
 			checkErr = fmt.Errorf("failed to get TidbCluster: %q, %v", tcID, err)
 			return false, nil
 		}
@@ -3672,7 +3672,7 @@ func (oa *OperatorActions) WaitForDmClusterReady(dc *v1alpha1.DMCluster, timeout
 			local *v1alpha1.DMCluster
 			err   error
 		)
-		if local, err = oa.cli.PingcapV1alpha1().DMClusters(dc.Namespace).Get(dc.Name, metav1.GetOptions{}); err != nil {
+		if local, err = oa.cli.PingcapV1alpha1().DMClusters(dc.Namespace).Get(context.TODO(), dc.Name, metav1.GetOptions{}); err != nil {
 			checkErr = fmt.Errorf("failed to get DmCluster: %s/%s, %v", dc.Namespace, dc.Name, err)
 			return false, nil
 		}
