@@ -310,7 +310,7 @@ func TestStorageBackendBasic(t *testing.T) {
 		t.Log(tcases.name)
 		provider := tcases.provider
 
-		// mock funciton
+		// mock function
 		s3patches := gomonkey.ApplyFunc(newS3Storage, func(conf *s3Config) (*blob.Bucket, error) {
 			return nil, nil
 		})
@@ -436,7 +436,7 @@ func TestStorageBackendBatchDeleteObjects(t *testing.T) {
 
 		expectedResult := &BatchDeleteObjectsResult{}
 
-		// mock funciton
+		// mock function
 		s3patch := gomonkey.ApplyFunc(BatchDeleteObjectsOfS3, func(ctx context.Context, s3cli s3iface.S3API, objs []*blob.ListObject, bucket string, prefix string, concurrency int) *BatchDeleteObjectsResult {
 			if !tcase.useBatchDeleteObjectsOfS3 {
 				t.Fatal("should not use 'BatchDeleteObjectsOfS3'")
