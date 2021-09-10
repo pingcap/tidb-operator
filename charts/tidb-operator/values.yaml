@@ -163,6 +163,9 @@ scheduler:
   # Refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
   podAnnotations: {}
 
+  # additional annotations for the configmap, mainly to prevent spinnaker versioning the cm
+  configmapAnnotations: {}
+
 # When AdvancedStatefulSet feature is enabled, you must install
 # AdvancedStatefulSet controller.
 # Note that AdvancedStatefulSet CRD must be installed manually via the following
