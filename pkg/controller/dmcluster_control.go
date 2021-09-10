@@ -14,12 +14,14 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	tcinformers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
@@ -59,7 +61,7 @@ func (c *realDMClusterControl) UpdateDMCluster(dc *v1alpha1.DMCluster, newStatus
 	// don't wait due to limited number of clients, but backoff after the default number of steps
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		var updateErr error
-		updateDC, updateErr = c.cli.PingcapV1alpha1().DMClusters(ns).Update(dc)
+		updateDC, updateErr = c.cli.PingcapV1alpha1().DMClusters(ns).Update(context.TODO(), dc, metav1.UpdateOptions{})
 		if updateErr == nil {
 			klog.Infof("DMCluster: [%s/%s] updated successfully", ns, dcName)
 			return nil

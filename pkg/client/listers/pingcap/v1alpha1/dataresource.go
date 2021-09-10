@@ -23,8 +23,10 @@ import (
 )
 
 // DataResourceLister helps list DataResources.
+// All objects returned here must be treated as read-only.
 type DataResourceLister interface {
 	// List lists all DataResources in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.DataResource, err error)
 	// DataResources returns an object that can list and get DataResources.
 	DataResources(namespace string) DataResourceNamespaceLister
@@ -55,10 +57,13 @@ func (s *dataResourceLister) DataResources(namespace string) DataResourceNamespa
 }
 
 // DataResourceNamespaceLister helps list and get DataResources.
+// All objects returned here must be treated as read-only.
 type DataResourceNamespaceLister interface {
 	// List lists all DataResources in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.DataResource, err error)
 	// Get retrieves the DataResource from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.DataResource, error)
 	DataResourceNamespaceListerExpansion
 }

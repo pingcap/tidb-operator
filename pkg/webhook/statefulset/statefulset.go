@@ -14,6 +14,7 @@
 package statefulset
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"sync"
@@ -103,7 +104,7 @@ func (sc *StatefulSetAdmissionControl) Validate(ar *admission.AdmissionRequest) 
 	}
 
 	tcName := controllerRef.Name
-	tc, err := sc.operatorCli.PingcapV1alpha1().TidbClusters(namespace).Get(tcName, metav1.GetOptions{})
+	tc, err := sc.operatorCli.PingcapV1alpha1().TidbClusters(namespace).Get(context.TODO(), tcName, metav1.GetOptions{})
 	if err != nil {
 		err := fmt.Errorf("get tidbcluster %s/%s failed, statefulset %s, err %v", namespace, tcName, name, err)
 		klog.Error(err.Error())

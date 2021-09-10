@@ -147,6 +147,9 @@ func getPromConfigMap(monitor *v1alpha1.TidbMonitor, monitorClusterInfos []Clust
 	if monitor.Spec.AlertmanagerURL != nil {
 		model.AlertmanagerURL = *monitor.Spec.AlertmanagerURL
 	}
+	if monitor.Spec.Prometheus.Config != nil && monitor.Spec.Prometheus.Config.RuleConfigRef != nil {
+		model.EnableExternalRuleConfigs = true
+	}
 	content, err := RenderPrometheusConfig(model)
 	if err != nil {
 		return nil, err
@@ -440,7 +443,7 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 	} else {
 		retention = fmt.Sprintf("%dd", monitor.Spec.Prometheus.ReserveDays)
 	}
-	commands := []string{"sed 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g' /etc/prometheus/config/prometheus.yml > /etc/prometheus/config_out/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/etc/prometheus/config_out/prometheus.yml --storage.tsdb.path=/data/prometheus --storage.tsdb.retention.time=" + retention}
+	commands := []string{"sed -e '5s/[()]//g'  -e 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g' /etc/prometheus/config/prometheus.yml > /etc/prometheus/config_out/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/etc/prometheus/config_out/prometheus.yml --storage.tsdb.path=/data/prometheus --storage.tsdb.retention.time=" + retention}
 	c := core.Container{
 		Name:      "prometheus",
 		Image:     fmt.Sprintf("%s:%s", monitor.Spec.Prometheus.BaseImage, monitor.Spec.Prometheus.Version),
@@ -538,10 +541,51 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 	if monitor.Spec.Prometheus.AdditionalVolumeMounts != nil {
 		c.VolumeMounts = append(c.VolumeMounts, monitor.Spec.Prometheus.AdditionalVolumeMounts...)
 	}
+	if monitor.Spec.Prometheus.Config != nil && monitor.Spec.Prometheus.Config.RuleConfigRef != nil {
+		c.VolumeMounts = append(c.VolumeMounts, core.VolumeMount{
+			Name:      "external-rules",
+			MountPath: "/prometheus-external-rules",
+			ReadOnly:  true,
+		})
+	}
 	return c
 }
 
 func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) core.Container {
+	var adminUserFrom, adminPasswordFrom *core.EnvVarSource
+
+	//UsernameSecret will cover Username
+	if monitor.Spec.Grafana.UsernameSecret != nil {
+		adminUserFrom = &core.EnvVarSource{
+			SecretKeyRef: monitor.Spec.Grafana.UsernameSecret,
+		}
+	} else {
+		adminUserFrom = &core.EnvVarSource{
+			SecretKeyRef: &core.SecretKeySelector{
+				LocalObjectReference: core.LocalObjectReference{
+					Name: secret.Name,
+				},
+				Key: "username",
+			},
+		}
+	}
+
+	//PasswordSecret will cover Password
+	if monitor.Spec.Grafana.PasswordSecret != nil {
+		adminPasswordFrom = &core.EnvVarSource{
+			SecretKeyRef: monitor.Spec.Grafana.PasswordSecret,
+		}
+	} else {
+		adminPasswordFrom = &core.EnvVarSource{
+			SecretKeyRef: &core.SecretKeySelector{
+				LocalObjectReference: core.LocalObjectReference{
+					Name: secret.Name,
+				},
+				Key: "password",
+			},
+		}
+	}
+
 	c := core.Container{
 		Name:      "grafana",
 		Image:     fmt.Sprintf("%s:%s", monitor.Spec.Grafana.BaseImage, monitor.Spec.Grafana.Version),
@@ -559,26 +603,12 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 				Value: "/data/grafana",
 			},
 			{
-				Name: "GF_SECURITY_ADMIN_USER",
-				ValueFrom: &core.EnvVarSource{
-					SecretKeyRef: &core.SecretKeySelector{
-						LocalObjectReference: core.LocalObjectReference{
-							Name: secret.Name,
-						},
-						Key: "username",
-					},
-				},
+				Name:      "GF_SECURITY_ADMIN_USER",
+				ValueFrom: adminUserFrom,
 			},
 			{
-				Name: "GF_SECURITY_ADMIN_PASSWORD",
-				ValueFrom: &core.EnvVarSource{
-					SecretKeyRef: &core.SecretKeySelector{
-						LocalObjectReference: core.LocalObjectReference{
-							Name: secret.Name,
-						},
-						Key: "password",
-					},
-				},
+				Name:      "GF_SECURITY_ADMIN_PASSWORD",
+				ValueFrom: adminPasswordFrom,
 			},
 			{
 				Name:  "TZ",
@@ -653,6 +683,66 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 
 	if monitor.Spec.Grafana.AdditionalVolumeMounts != nil {
 		c.VolumeMounts = append(c.VolumeMounts, monitor.Spec.Grafana.AdditionalVolumeMounts...)
+	}
+	return c
+}
+
+func getMonitorPrometheusReloaderContainer(monitor *v1alpha1.TidbMonitor) core.Container {
+	c := core.Container{
+		Name:  "prometheus-config-reloader",
+		Image: fmt.Sprintf("%s:%s", monitor.Spec.PrometheusReloader.BaseImage, monitor.Spec.PrometheusReloader.Version),
+		Command: []string{
+			"/bin/prometheus-config-reloader",
+			"--listen-address=:9088",
+			"--reload-url=http://localhost:9090/-/reload",
+			"--config-file=/etc/prometheus/config/prometheus.yml",
+			"--config-envsubst-file=/etc/prometheus/config_out/prometheus.yml",
+		},
+		Ports: []core.ContainerPort{
+			{
+				Name:          "reloader",
+				ContainerPort: 9088,
+				Protocol:      core.ProtocolTCP,
+			},
+		},
+		Resources: controller.ContainerResource(monitor.Spec.PrometheusReloader.ResourceRequirements),
+		Env: []core.EnvVar{
+			{
+				Name: "POD_NAME",
+				ValueFrom: &core.EnvVarSource{
+					FieldRef: &core.ObjectFieldSelector{FieldPath: "metadata.name"},
+				},
+			},
+			{
+				Name: "NAMESPACE",
+				ValueFrom: &core.EnvVarSource{
+					FieldRef: &core.ObjectFieldSelector{FieldPath: "metadata.namespace"},
+				},
+			},
+		},
+		VolumeMounts: []core.VolumeMount{
+			{
+				Name:      "prometheus-config-out",
+				MountPath: "/etc/prometheus/config_out",
+				ReadOnly:  false,
+			},
+			{
+				Name:      "prometheus-config",
+				MountPath: "/etc/prometheus/config",
+				ReadOnly:  true,
+			},
+		},
+	}
+	if monitor.Spec.PrometheusReloader.ImagePullPolicy != nil {
+		c.ImagePullPolicy = *monitor.Spec.PrometheusReloader.ImagePullPolicy
+	}
+	if monitor.Spec.Prometheus.Config != nil && monitor.Spec.Prometheus.Config.RuleConfigRef != nil {
+		c.VolumeMounts = append(c.VolumeMounts, core.VolumeMount{
+			Name:      "external-rules",
+			MountPath: "/prometheus-external-rules",
+			ReadOnly:  true,
+		})
+		c.Command = append(c.Command, "--watched-dir=/prometheus-external-rules")
 	}
 	return c
 }
@@ -777,6 +867,19 @@ func getMonitorVolumes(monitor *v1alpha1.TidbMonitor) []core.Volume {
 			},
 		},
 	})
+
+	if monitor.Spec.Prometheus.Config != nil && monitor.Spec.Prometheus.Config.RuleConfigRef != nil {
+		volumes = append(volumes, core.Volume{
+			Name: "external-rules",
+			VolumeSource: core.VolumeSource{
+				ConfigMap: &core.ConfigMapVolumeSource{
+					LocalObjectReference: core.LocalObjectReference{
+						Name: monitor.Spec.Prometheus.Config.RuleConfigRef.Name,
+					},
+				},
+			},
+		})
+	}
 
 	return volumes
 }
@@ -1021,6 +1124,11 @@ func getMonitorStatefulSet(sa *core.ServiceAccount, secret *core.Secret, monitor
 		thanosSideCarContainer := getThanosSidecarContainer(monitor)
 		statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, thanosSideCarContainer)
 	}
+	if monitor.Spec.PrometheusReloader != nil {
+		prometheusReloaderContainer := getMonitorPrometheusReloaderContainer(monitor)
+		statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, prometheusReloaderContainer)
+
+	}
 	additionalContainers := monitor.Spec.AdditionalContainers
 	if len(additionalContainers) > 0 {
 		statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, additionalContainers...)
@@ -1246,7 +1354,7 @@ func buildExternalLabels(monitor *v1alpha1.TidbMonitor) model.LabelSet {
 		}
 	}
 	if replicaExternalLabelName != "" {
-		m[model.LabelName(replicaExternalLabelName)] = "$NAMESPACE_$POD_NAME"
+		m[model.LabelName(replicaExternalLabelName)] = "$(NAMESPACE)_$(POD_NAME)"
 	}
 	for n, v := range monitor.Spec.ExternalLabels {
 		m[model.LabelName(n)] = model.LabelValue(v)

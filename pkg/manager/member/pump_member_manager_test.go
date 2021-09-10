@@ -84,8 +84,7 @@ func TestPumpMemberManagerSyncCreate(t *testing.T) {
 		svc, getSvcErr := pmm.deps.ServiceLister.Services(ns).Get(controller.PumpPeerMemberName(tcName))
 		set, getStsErr := pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PumpMemberName(tcName))
 		cm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: controller.PumpMemberName(tcName)}}
-		key, err := client.ObjectKeyFromObject(cm)
-		g.Expect(err).To(Succeed())
+		key := client.ObjectKeyFromObject(cm)
 		getCmErr := ctls.generic.FakeCli.Get(context.TODO(), key, cm)
 		result := result{syncErr, svc, getSvcErr, set, getStsErr, cm, getCmErr}
 		test.expectFn(g, &result)
@@ -229,8 +228,7 @@ func TestPumpMemberManagerSyncUpdate(t *testing.T) {
 		svc, getSvcErr := pmm.deps.ServiceLister.Services(ns).Get(controller.PumpPeerMemberName(tcName))
 		set, getStsErr := pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PumpMemberName(tcName))
 		cm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: controller.PumpMemberName(tcName)}}
-		key, err := client.ObjectKeyFromObject(cm)
-		g.Expect(err).To(Succeed())
+		key := client.ObjectKeyFromObject(cm)
 		getCmErr := ctls.generic.FakeCli.Get(context.TODO(), key, cm)
 		result := result{syncErr, oldSvc, svc, getSvcErr, oldSet, set, getStsErr, oldCm, cm, getCmErr}
 		test.expectFn(g, &result)

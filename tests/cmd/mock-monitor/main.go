@@ -28,6 +28,6 @@ func main() {
 	http.HandleFunc("/api/v1/targets", m.ServeTargets)
 	healthz.InstallHandler(http.DefaultServeMux)
 	if err := http.ListenAndServe(":9090", nil); err != nil {
-		log.Fail(err.Error())
+		log.Failf(err.Error())
 	}
 }

@@ -14,6 +14,7 @@
 package restore
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -42,7 +43,7 @@ func (h *helper) createRestore(restore *v1alpha1.Restore) {
 	g := NewGomegaWithT(h.T)
 	var err error
 
-	_, err = h.Deps.Clientset.PingcapV1alpha1().Restores(restore.Namespace).Create(restore)
+	_, err = h.Deps.Clientset.PingcapV1alpha1().Restores(restore.Namespace).Create(context.TODO(), restore, metav1.CreateOptions{})
 	g.Expect(err).Should(BeNil())
 	g.Eventually(func() error {
 		_, err := h.Deps.RestoreLister.Restores(restore.Namespace).Get(restore.Name)
@@ -53,7 +54,7 @@ func (h *helper) createRestore(restore *v1alpha1.Restore) {
 func (h *helper) hasCondition(ns string, name string, tp v1alpha1.RestoreConditionType, reasonSub string) {
 	h.T.Helper()
 	g := NewGomegaWithT(h.T)
-	get, err := h.Deps.Clientset.PingcapV1alpha1().Restores(ns).Get(name, metav1.GetOptions{})
+	get, err := h.Deps.Clientset.PingcapV1alpha1().Restores(ns).Get(context.TODO(), name, metav1.GetOptions{})
 	g.Expect(err).Should(BeNil())
 	for _, c := range get.Status.Conditions {
 		if c.Type == tp {
@@ -173,7 +174,7 @@ func TestLightningRestore(t *testing.T) {
 	err = m.Sync(restore)
 	g.Expect(err).Should(BeNil())
 	helper.hasCondition(restore.Namespace, restore.Name, v1alpha1.RestoreScheduled, "")
-	job, err := helper.Deps.KubeClientset.BatchV1().Jobs(restore.Namespace).Get(restore.GetRestoreJobName(), metav1.GetOptions{})
+	job, err := helper.Deps.KubeClientset.BatchV1().Jobs(restore.Namespace).Get(context.TODO(), restore.GetRestoreJobName(), metav1.GetOptions{})
 	g.Expect(err).Should(BeNil())
 
 	// check pod env are set correctly
@@ -210,7 +211,7 @@ func TestBRRestore(t *testing.T) {
 		err = m.Sync(restore)
 		g.Expect(err).Should(BeNil())
 		helper.hasCondition(restore.Namespace, restore.Name, v1alpha1.RestoreScheduled, "")
-		job, err := helper.Deps.KubeClientset.BatchV1().Jobs(restore.Namespace).Get(restore.GetRestoreJobName(), metav1.GetOptions{})
+		job, err := helper.Deps.KubeClientset.BatchV1().Jobs(restore.Namespace).Get(context.TODO(), restore.GetRestoreJobName(), metav1.GetOptions{})
 		g.Expect(err).Should(BeNil())
 
 		// check pod env are set correctly

@@ -14,6 +14,7 @@
 package pod
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -55,7 +56,7 @@ func checkFormerTiKVPodStatus(kubeCli kubernetes.Interface, controllerDesc contr
 			// unreachable
 			return fmt.Errorf("unknown controller[%s]", controllerKind)
 		}
-		pod, err := kubeCli.CoreV1().Pods(namespace).Get(podName, meta.GetOptions{})
+		pod, err := kubeCli.CoreV1().Pods(namespace).Get(context.TODO(), podName, meta.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -88,7 +89,7 @@ func addEvictLeaderAnnotation(kubeCli kubernetes.Interface, pod *core.Pod) error
 	}
 	now := time.Now().Format(time.RFC3339)
 	pod.Annotations[EvictLeaderBeginTime] = now
-	_, err := kubeCli.CoreV1().Pods(namespace).Update(pod)
+	_, err := kubeCli.CoreV1().Pods(namespace).Update(context.TODO(), pod, meta.UpdateOptions{})
 	if err != nil {
 		return err
 	}

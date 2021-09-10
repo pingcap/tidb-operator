@@ -15,6 +15,7 @@ package tests
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"database/sql"
@@ -290,12 +291,12 @@ func DeployDMMySQLWithTLSEnabled(kubeCli kubernetes.Interface, namespace, tlsSec
 			Name: namespace,
 		},
 	}
-	_, err := kubeCli.CoreV1().Namespaces().Create(ns)
+	_, err := kubeCli.CoreV1().Namespaces().Create(context.TODO(), ns, metav1.CreateOptions{})
 	if err != nil && !errors.IsAlreadyExists(err) {
 		return fmt.Errorf("failed to create namespace[%s]: %v", namespace, err)
 	}
 
-	_, err = kubeCli.CoreV1().Services(namespace).Create(dmMySQLSvc)
+	_, err = kubeCli.CoreV1().Services(namespace).Create(context.TODO(), dmMySQLSvc, metav1.CreateOptions{})
 	if err != nil && !errors.IsAlreadyExists(err) {
 		return fmt.Errorf("failed to create service[%s]: %v", dmMySQLSvc.Name, err)
 	}
@@ -323,7 +324,7 @@ func DeployDMMySQLWithTLSEnabled(kubeCli kubernetes.Interface, namespace, tlsSec
 			fmt.Sprintf("--ssl-key=%s", filepath.Join(DMMySQLServerTLSPath, "tls.key")))
 	}
 
-	_, err = kubeCli.AppsV1().StatefulSets(namespace).Create(dmMySQLSts)
+	_, err = kubeCli.AppsV1().StatefulSets(namespace).Create(context.TODO(), dmMySQLSts, metav1.CreateOptions{})
 	if err != nil && !errors.IsAlreadyExists(err) {
 		return fmt.Errorf("failed to create statefulset[%s]: %v", dmMySQLSts.Name, err)
 	}
@@ -368,17 +369,17 @@ func CheckDMMySQLReadyWithTLSEnabled(fw portforward.PortForward, ns string, secr
 
 // CleanDMMySQL cleans upstream MySQL instances for DM E2E tests.
 func CleanDMMySQL(kubeCli kubernetes.Interface, ns string) error {
-	err := kubeCli.AppsV1().StatefulSets(ns).Delete(dmMySQLSts.Name, nil)
+	err := kubeCli.AppsV1().StatefulSets(ns).Delete(context.TODO(), dmMySQLSts.Name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("failed to delete statefulset[%s]: %v", dmMySQLSts.Name, err)
 	}
 
-	err = kubeCli.CoreV1().Services(ns).Delete(dmMySQLSvc.Name, nil)
+	err = kubeCli.CoreV1().Services(ns).Delete(context.TODO(), dmMySQLSvc.Name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("failed to delete service[%s]: %v", dmMySQLSvc.Name, err)
 	}
 
-	err = kubeCli.CoreV1().Namespaces().Delete(ns, nil)
+	err = kubeCli.CoreV1().Namespaces().Delete(context.TODO(), ns, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("failed to delete namespace[%s]: %v", ns, err)
 	}
@@ -387,11 +388,11 @@ func CleanDMMySQL(kubeCli kubernetes.Interface, ns string) error {
 
 // CleanDMTiDB cleans the downstream TiDB cluster for DM E2E tests.
 func CleanDMTiDB(cli *versioned.Clientset, kubeCli kubernetes.Interface) error {
-	if err := cli.PingcapV1alpha1().TidbClusters(DMTiDBNamespace).Delete(DMTiDBName, nil); err != nil && !errors.IsNotFound(err) {
+	if err := cli.PingcapV1alpha1().TidbClusters(DMTiDBNamespace).Delete(context.TODO(), DMTiDBName, metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 
-	if err := kubeCli.CoreV1().Namespaces().Delete(DMTiDBNamespace, nil); err != nil && !errors.IsNotFound(err) {
+	if err := kubeCli.CoreV1().Namespaces().Delete(context.TODO(), DMTiDBNamespace, metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 	return nil

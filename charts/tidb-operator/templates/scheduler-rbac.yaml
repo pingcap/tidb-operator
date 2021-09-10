@@ -7,6 +7,7 @@ metadata:
   {{- else }}
   name: {{ .Values.scheduler.serviceAccount }}
   {{- end }}
+  namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -87,6 +88,7 @@ kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: {{ .Release.Name }}:{{ .Values.scheduler.schedulerName }}
+  namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -130,6 +132,7 @@ kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: {{ .Release.Name }}:{{ .Values.scheduler.schedulerName }}
+  namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}

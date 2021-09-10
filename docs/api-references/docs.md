@@ -2510,6 +2510,20 @@ bool
 if <code>AlertmanagerURL</code> is not configured.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>prometheusReloader</code></br>
+<em>
+<a href="#prometheusreloaderspec">
+PrometheusReloaderSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PrometheusReloader set prometheus reloader configuration</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -6251,12 +6265,42 @@ ServiceSpec
 </tr>
 <tr>
 <td>
+<code>usernameSecret</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#secretkeyselector-v1-core">
+Kubernetes core/v1.SecretKeySelector
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>if <code>UsernameSecret</code> is not set, <code>username</code> will be used.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>passwordSecret</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#secretkeyselector-v1-core">
+Kubernetes core/v1.SecretKeySelector
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>if <code>passwordSecret</code> is not set, <code>password</code> will be used.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>username</code></br>
 <em>
 string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
+<p>Deprecated in v1.3.0 for security concerns, planned for removal in v1.4.0. Use <code>usernameSecret</code> instead.</p>
 </td>
 </tr>
 <tr>
@@ -6267,6 +6311,8 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
+<p>Deprecated in v1.3.0 for security concerns, planned for removal in v1.4.0. Use <code>passwordSecret</code> instead.</p>
 </td>
 </tr>
 <tr>
@@ -7570,6 +7616,7 @@ string
 (<em>Appears on:</em>
 <a href="#grafanaspec">GrafanaSpec</a>, 
 <a href="#initializerspec">InitializerSpec</a>, 
+<a href="#prometheusreloaderspec">PrometheusReloaderSpec</a>, 
 <a href="#prometheusspec">PrometheusSpec</a>, 
 <a href="#reloaderspec">ReloaderSpec</a>, 
 <a href="#thanosspec">ThanosSpec</a>)
@@ -10147,7 +10194,7 @@ ConfigMapRef
 </em>
 </td>
 <td>
-<p>user can mount prometheus rule config with external configMap.If use this feature, the external configMap must contain <code>prometheus-config</code> key in data.</p>
+<p>User can mount prometheus config with external configMap. The external configMap must contain <code>prometheus-config</code> key in data.</p>
 </td>
 </tr>
 <tr>
@@ -10159,6 +10206,52 @@ ConfigMapRef
 </td>
 <td>
 <p>user can  use it specify prometheus command options</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ruleConfigRef</code></br>
+<em>
+<a href="#configmapref">
+ConfigMapRef
+</a>
+</em>
+</td>
+<td>
+<p>User can mount prometheus rule config with external configMap. The external configMap must use the key with suffix <code>.rules.yml</code>.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="prometheusreloaderspec">PrometheusReloaderSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbmonitorspec">TidbMonitorSpec</a>)
+</p>
+<p>
+<p>PrometheusReloaderSpec is the desired state of prometheus configuration reloader</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>MonitorContainer</code></br>
+<em>
+<a href="#monitorcontainer">
+MonitorContainer
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>MonitorContainer</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -21082,6 +21175,20 @@ bool
 <em>(Optional)</em>
 <p>EnableAlertRules adds alert rules to the Prometheus config even
 if <code>AlertmanagerURL</code> is not configured.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>prometheusReloader</code></br>
+<em>
+<a href="#prometheusreloaderspec">
+PrometheusReloaderSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PrometheusReloader set prometheus reloader configuration</p>
 </td>
 </tr>
 </tbody>
