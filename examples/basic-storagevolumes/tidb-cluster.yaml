@@ -6,7 +6,7 @@ kind: TidbCluster
 metadata:
   name: basic
 spec:
-  version: v5.1.0
+  version: v5.2.0
   timezone: UTC
   pvReclaimPolicy: Retain
   enableDynamicConfiguration: true
@@ -50,6 +50,17 @@ spec:
       storageClassName: local-storage
       storageSize: 1Gi
       mountPath: /var/lib/rocksdblog
+
+    # additionalVolumes:
+    # - name: raftlog
+    #   emptyDir: {}
+    # - name: rocksdblog
+    #   emptyDir: {}
+    # additionalVolumeMounts:
+    # - name: raftlog
+    #   mountPath: /var/lib/raftlog
+    # - name: rocksdblog
+    #   mountPath: /var/lib/rocksdblog
   tidb:
     baseImage: pingcap/tidb
     replicas: 1
