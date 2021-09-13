@@ -43,8 +43,6 @@ type Scaler interface {
 	ScaleOut(meta metav1.Object, actual *apps.StatefulSet, desired *apps.StatefulSet) error
 	// ScaleIn scales in the cluster
 	ScaleIn(meta metav1.Object, actual *apps.StatefulSet, desired *apps.StatefulSet) error
-	// SyncAutoScalerAnn would sync Ann created by AutoScaler
-	SyncAutoScalerAnn(meta metav1.Object, actual *apps.StatefulSet) error
 }
 
 type generalScaler struct {
