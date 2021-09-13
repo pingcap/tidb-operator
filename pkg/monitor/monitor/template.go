@@ -139,12 +139,13 @@ func init() {
 }
 
 type MonitorConfigModel struct {
-	AlertmanagerURL    string
-	ClusterInfos       []ClusterRegexInfo
-	DMClusterInfos     []ClusterRegexInfo
-	ExternalLabels     model.LabelSet
-	RemoteWriteConfigs []*config.RemoteWriteConfig
-	EnableAlertRules   bool
+	AlertmanagerURL           string
+	ClusterInfos              []ClusterRegexInfo
+	DMClusterInfos            []ClusterRegexInfo
+	ExternalLabels            model.LabelSet
+	RemoteWriteConfigs        []*config.RemoteWriteConfig
+	EnableAlertRules          bool
+	EnableExternalRuleConfigs bool
 }
 
 // ClusterRegexInfo is the monitor cluster info
@@ -478,7 +479,11 @@ func RenderPrometheusConfig(model *MonitorConfigModel) (string, error) {
 			"/prometheus-rules/rules/*.rules.yml",
 		}
 	}
-
+	if model.EnableExternalRuleConfigs {
+		pc.RuleFiles = []string{
+			"/prometheus-external-rules/*.rules.yml",
+		}
+	}
 	bs, err := yaml.Marshal(pc)
 	if err != nil {
 		return "", err
