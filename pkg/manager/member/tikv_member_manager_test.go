@@ -1940,11 +1940,17 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 						SeparateRocksDBLog:   pointer.BoolPtr(true),
 						SeparateRaftLog:      pointer.BoolPtr(true),
 						RocksDBLogVolumeName: "rocksdblog",
+						RaftLogVolumeName:    "raftlog",
 						StorageVolumes: []v1alpha1.StorageVolume{
 							{
 								Name:        "rocksdblog",
 								StorageSize: "1Gi",
 								MountPath:   "/var/log/rocksdblog",
+							},
+							{
+								Name:        "raftlog",
+								StorageSize: "1Gi",
+								MountPath:   "/var/log/raftlog",
 							}},
 					},
 				},
@@ -1978,6 +1984,21 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 							},
 						},
 					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: v1alpha1.TiKVMemberType.String() + "-raftlog",
+						},
+						Spec: corev1.PersistentVolumeClaimSpec{
+							AccessModes: []corev1.PersistentVolumeAccessMode{
+								corev1.ReadWriteOnce,
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceStorage: q,
+								},
+							},
+						},
+					},
 				}))
 				g.Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(3))
 				index := len(sts.Spec.Template.Spec.Containers[0].VolumeMounts) - 1
@@ -1986,7 +2007,7 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 				}))
 				index = len(sts.Spec.Template.Spec.Containers[1].VolumeMounts) - 1
 				g.Expect(sts.Spec.Template.Spec.Containers[1].VolumeMounts[index]).To(Equal(corev1.VolumeMount{
-					Name: "tikv", MountPath: "/var/lib/tikv",
+					Name: fmt.Sprintf("%s-%s", v1alpha1.TiKVMemberType, "raftlog"), MountPath: "/var/log/raftlog",
 				}))
 			},
 		},
