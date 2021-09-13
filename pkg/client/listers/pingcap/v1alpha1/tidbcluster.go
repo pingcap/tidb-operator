@@ -23,8 +23,10 @@ import (
 )
 
 // TidbClusterLister helps list TidbClusters.
+// All objects returned here must be treated as read-only.
 type TidbClusterLister interface {
 	// List lists all TidbClusters in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.TidbCluster, err error)
 	// TidbClusters returns an object that can list and get TidbClusters.
 	TidbClusters(namespace string) TidbClusterNamespaceLister
@@ -55,10 +57,13 @@ func (s *tidbClusterLister) TidbClusters(namespace string) TidbClusterNamespaceL
 }
 
 // TidbClusterNamespaceLister helps list and get TidbClusters.
+// All objects returned here must be treated as read-only.
 type TidbClusterNamespaceLister interface {
 	// List lists all TidbClusters in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.TidbCluster, err error)
 	// Get retrieves the TidbCluster from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.TidbCluster, error)
 	TidbClusterNamespaceListerExpansion
 }

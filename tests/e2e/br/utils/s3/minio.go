@@ -54,15 +54,15 @@ func NewMinio(c kubernetes.Interface, fw portforward.PortForwarder) Interface {
 func (s *minioStorage) Init(ctx context.Context, ns, accessKey, secretKey string) error {
 	ginkgo.By("init minio s3 storage")
 	pod := getMinioPod(ns)
-	if _, err := s.c.CoreV1().Pods(ns).Create(pod); err != nil {
+	if _, err := s.c.CoreV1().Pods(ns).Create(context.TODO(), pod, metav1.CreateOptions{}); err != nil {
 		return err
 	}
 	svc := getMinioService(ns)
-	if _, err := s.c.CoreV1().Services(ns).Create(svc); err != nil {
+	if _, err := s.c.CoreV1().Services(ns).Create(context.TODO(), svc, metav1.CreateOptions{}); err != nil {
 		return err
 	}
 	secret := getMinioSecret(ns, accessKey, secretKey)
-	if _, err := s.c.CoreV1().Secrets(ns).Create(secret); err != nil {
+	if _, err := s.c.CoreV1().Secrets(ns).Create(context.TODO(), secret, metav1.CreateOptions{}); err != nil {
 		return err
 	}
 	ginkgo.By("wait for minio s3 storage ready")
@@ -136,7 +136,7 @@ func (s *minioStorage) IsDataCleaned(ctx context.Context, ns, prefix string) (bo
 }
 
 func (s *minioStorage) accessSecret(ns string) (string, string, error) {
-	secret, err := s.c.CoreV1().Secrets(ns).Get(minioSecret, metav1.GetOptions{})
+	secret, err := s.c.CoreV1().Secrets(ns).Get(context.TODO(), minioSecret, metav1.GetOptions{})
 	if err != nil {
 		return "", "", err
 	}

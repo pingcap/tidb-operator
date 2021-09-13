@@ -27,20 +27,19 @@ import (
 )
 
 var (
-	TiDBPreviousVersions []string = []string{"v4.0.13", "v5.0.3"}
+	TiDBPreviousVersions []string = []string{"v4.0.13", "v5.0.3", "v5.1.1"}
 )
 
 const (
 	// TiDB Version
 	TiDBV3             = "v3.0.20"
-	TiDBLatestPrev     = "v5.0.3"
-	TiDBLatest         = "v5.1.0"
+	TiDBLatestPrev     = "v5.1.1"
+	TiDBLatest         = "v5.2.0"
 	TiDBNightlyVersion = "nightly"
 	// specific version
 	TiDBV4x0x9 = "v4.0.9"
 	TiDBV5x0x0 = "v5.0.0"
 	TiDBV5x0x2 = "v5.0.2"
-	TiDBV5x1x0 = "v5.1.0"
 
 	PrometheusImage               = "prom/prometheus"
 	PrometheusVersion             = "v2.18.1"

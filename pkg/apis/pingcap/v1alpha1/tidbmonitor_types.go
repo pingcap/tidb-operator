@@ -126,6 +126,15 @@ type TidbMonitorSpec struct {
 	// if `AlertmanagerURL` is not configured.
 	// +optional
 	EnableAlertRules bool `json:"enableAlertRules,omitempty"`
+
+	//PrometheusReloader set prometheus reloader configuration
+	//+optional
+	PrometheusReloader *PrometheusReloaderSpec `json:"prometheusReloader,omitempty"`
+}
+
+// PrometheusReloaderSpec is the desired state of prometheus configuration reloader
+type PrometheusReloaderSpec struct {
+	MonitorContainer `json:",inline"`
 }
 
 // PrometheusSpec is the desired state of prometheus
@@ -160,11 +169,14 @@ type PrometheusSpec struct {
 // Config  is the the desired state of Prometheus Configuration
 type PrometheusConfiguration struct {
 
-	// user can mount prometheus rule config with external configMap.If use this feature, the external configMap must contain `prometheus-config` key in data.
+	// User can mount prometheus config with external configMap. The external configMap must contain `prometheus-config` key in data.
 	ConfigMapRef *ConfigMapRef `json:"configMapRef,omitempty"`
 
 	// user can  use it specify prometheus command options
 	CommandOptions []string `json:"commandOptions,omitempty"`
+
+	// User can mount prometheus rule config with external configMap. The external configMap must use the key with suffix `.rules.yml`.
+	RuleConfigRef *ConfigMapRef `json:"ruleConfigRef,omitempty"`
 }
 
 // ConfigMapRef is the external configMap

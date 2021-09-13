@@ -14,6 +14,7 @@
 package framework
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -146,20 +147,20 @@ func (f *Framework) AfterEach() {
 }
 
 func (f *Framework) ForceCleanBackups(ns string) {
-	bl, err := f.ExtClient.PingcapV1alpha1().Backups(ns).List(metav1.ListOptions{})
+	bl, err := f.ExtClient.PingcapV1alpha1().Backups(ns).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		framework.Logf("failed to list backups in namespace %s: %v", ns, err)
 		return
 	}
 	for i := range bl.Items {
 		name := bl.Items[i].Name
-		if err := f.ExtClient.PingcapV1alpha1().Backups(ns).Delete(name, nil); err != nil {
+		if err := f.ExtClient.PingcapV1alpha1().Backups(ns).Delete(context.TODO(), name, metav1.DeleteOptions{}); err != nil {
 			framework.Logf("failed to delete backup(%s) in namespace %s: %v", name, ns, err)
 			return
 		}
 		// use patch to avoid update conflicts
 		patch := []byte(`[{"op":"remove","path":"/metadata/finalizers"}]`)
-		if _, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Patch(name, types.JSONPatchType, patch); err != nil {
+		if _, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Patch(context.TODO(), name, types.JSONPatchType, patch, metav1.PatchOptions{}); err != nil {
 			framework.Logf("failed to clean backup(%s) finalizers in namespace %s: %v", name, ns, err)
 			return
 		}
@@ -171,7 +172,7 @@ func (f *Framework) RecycleReleasedPV() {
 	// users request this. To reduce storage usage, we try to recycle them
 	// if the PVC namespace does not exist anymore.
 	c := f.ClientSet
-	pvList, err := c.CoreV1().PersistentVolumes().List(metav1.ListOptions{})
+	pvList, err := c.CoreV1().PersistentVolumes().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		framework.Logf("failed to list pvs: %v", err)
 		return
@@ -197,7 +198,7 @@ func (f *Framework) RecycleReleasedPV() {
 			failed++
 			continue
 		}
-		_, err := c.CoreV1().Namespaces().Get(pvcNamespaceName, metav1.GetOptions{})
+		_, err := c.CoreV1().Namespaces().Get(context.TODO(), pvcNamespaceName, metav1.GetOptions{})
 		if err != nil && !apierrors.IsNotFound(err) {
 			framework.Logf("failed to get namespace %q: %v", pvcNamespaceName, err)
 			failed++
@@ -209,7 +210,7 @@ func (f *Framework) RecycleReleasedPV() {
 		}
 		// now we can safely recycle the PV
 		pv.Spec.PersistentVolumeReclaimPolicy = v1.PersistentVolumeReclaimDelete
-		_, err = c.CoreV1().PersistentVolumes().Update(&pv)
+		_, err = c.CoreV1().PersistentVolumes().Update(context.TODO(), &pv, metav1.UpdateOptions{})
 		if err != nil {
 			failed++
 			framework.Logf("failed to set PersistentVolumeReclaimPolicy of PV %q to Delete: %v", pv.Name, err)
