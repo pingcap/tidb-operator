@@ -144,6 +144,7 @@ type MonitorConfigModel struct {
 	DMClusterInfos     []ClusterRegexInfo
 	ExternalLabels     model.LabelSet
 	RemoteWriteConfigs []*config.RemoteWriteConfig
+	EnableAlertRules   bool
 }
 
 // ClusterRegexInfo is the monitor cluster info
@@ -471,7 +472,13 @@ func RenderPrometheusConfig(model *MonitorConfigModel) (string, error) {
 		pc.RuleFiles = []string{
 			"/prometheus-rules/rules/*.rules.yml",
 		}
+	} else if model.EnableAlertRules {
+		// Add alert rules when `EnableAlertRules` enabled even if AlertManager not configured.
+		pc.RuleFiles = []string{
+			"/prometheus-rules/rules/*.rules.yml",
+		}
 	}
+
 	bs, err := yaml.Marshal(pc)
 	if err != nil {
 		return "", err
