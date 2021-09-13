@@ -107,9 +107,3 @@ func (s *ticdcScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newS
 	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 	return nil
 }
-
-// SyncAutoScalerAnn would reclaim the auto-scaling out slots if the target pod is no longer existed
-// NOTE: this method should be removed later.
-func (s *ticdcScaler) SyncAutoScalerAnn(_ metav1.Object, _ *apps.StatefulSet) error {
-	return nil
-}
