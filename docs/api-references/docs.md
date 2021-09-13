@@ -2499,6 +2499,19 @@ Kubernetes core/v1.PodSecurityContext
 </tr>
 <tr>
 <td>
+<code>enableAlertRules</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableAlertRules adds alert rules to the Prometheus config even
+if <code>AlertmanagerURL</code> is not configured.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>prometheusReloader</code></br>
 <em>
 <a href="#prometheusreloaderspec">
@@ -2509,19 +2522,6 @@ PrometheusReloaderSpec
 <td>
 <em>(Optional)</em>
 <p>PrometheusReloader set prometheus reloader configuration</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>enableAlertRules</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>EnableAlertRules adds alert rules to the Prometheus config even
-if <code>AlertmanagerURL</code> is not configured.</p>
 </td>
 </tr>
 </table>
@@ -21075,6 +21075,19 @@ Kubernetes core/v1.PodSecurityContext
 </tr>
 <tr>
 <td>
+<code>enableAlertRules</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableAlertRules adds alert rules to the Prometheus config even
+if <code>AlertmanagerURL</code> is not configured.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>prometheusReloader</code></br>
 <em>
 <a href="#prometheusreloaderspec">
@@ -21085,19 +21098,6 @@ PrometheusReloaderSpec
 <td>
 <em>(Optional)</em>
 <p>PrometheusReloader set prometheus reloader configuration</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>enableAlertRules</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>EnableAlertRules adds alert rules to the Prometheus config even
-if <code>AlertmanagerURL</code> is not configured.</p>
 </td>
 </tr>
 </tbody>
