@@ -429,8 +429,6 @@ func NewFakeDependencies() *Dependencies {
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
 	labelFilterKubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
 	recorder := record.NewFakeRecorder(100)
-
-
 	deps := newDependencies(cliCfg, cli, kubeCli, genCli, informerFactory, kubeInformerFactory, labelFilterKubeInformerFactory, recorder)
 	deps.Controls = newFakeControl(kubeCli, informerFactory, kubeInformerFactory)
 	return deps
