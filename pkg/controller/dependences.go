@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/pkg/tikvapi"
+	utildiscovery "github.com/pingcap/tidb-operator/pkg/util/discovery"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeinformers "k8s.io/client-go/informers"
@@ -36,6 +37,7 @@ import (
 	batchlisters "k8s.io/client-go/listers/batch/v1"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	extensionslister "k8s.io/client-go/listers/extensions/v1beta1"
+	networklister "k8s.io/client-go/listers/networking/v1"
 	storagelister "k8s.io/client-go/listers/storage/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
@@ -200,7 +202,8 @@ type Dependencies struct {
 	StatefulSetLister           appslisters.StatefulSetLister
 	DeploymentLister            appslisters.DeploymentLister
 	JobLister                   batchlisters.JobLister
-	IngressLister               extensionslister.IngressLister
+	IngressLister               networklister.IngressLister
+	IngressV1Beta1Lister        extensionslister.IngressLister // in order to be compatibility with kubernetes which less than v1.19
 	StorageClassLister          storagelister.StorageClassLister
 	TiDBClusterLister           listers.TidbClusterLister
 	TiDBClusterAutoScalerLister listers.TidbClusterAutoScalerLister
@@ -274,9 +277,11 @@ func newDependencies(
 	recorder record.EventRecorder) *Dependencies {
 
 	var (
-		nodeLister corelisterv1.NodeLister
-		pvLister   corelisterv1.PersistentVolumeLister
-		scLister   storagelister.StorageClassLister
+		nodeLister       corelisterv1.NodeLister
+		pvLister         corelisterv1.PersistentVolumeLister
+		scLister         storagelister.StorageClassLister
+		ingLister        networklister.IngressLister
+		ingv1beta1Lister extensionslister.IngressLister
 	)
 	if cliCfg.HasNodePermission() {
 		nodeLister = kubeInformerFactory.Core().V1().Nodes().Lister()
@@ -292,6 +297,15 @@ func newDependencies(
 		scLister = kubeInformerFactory.Storage().V1().StorageClasses().Lister()
 	} else {
 		klog.Info("no permission for storage classes, skip creating sc lister")
+	}
+	supported, err := utildiscovery.IsAPIGroupVersionResourceSupported(kubeClientset.Discovery(), "networking.k8s.io/v1", "ingresses")
+	if err != nil {
+		klog.Fatalf("check if networking.k8s.io/v1/ingresses is supported failed: %s", err)
+	}
+	if supported {
+		ingLister = kubeInformerFactory.Networking().V1().Ingresses().Lister()
+	} else {
+		ingv1beta1Lister = kubeInformerFactory.Extensions().V1beta1().Ingresses().Lister()
 	}
 
 	return &Dependencies{
@@ -317,7 +331,8 @@ func newDependencies(
 		DeploymentLister:            kubeInformerFactory.Apps().V1().Deployments().Lister(),
 		StorageClassLister:          scLister,
 		JobLister:                   kubeInformerFactory.Batch().V1().Jobs().Lister(),
-		IngressLister:               kubeInformerFactory.Extensions().V1beta1().Ingresses().Lister(),
+		IngressLister:               ingLister,
+		IngressV1Beta1Lister:        ingv1beta1Lister,
 		TiDBClusterLister:           informerFactory.Pingcap().V1alpha1().TidbClusters().Lister(),
 		TiDBClusterAutoScalerLister: informerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers().Lister(),
 		DMClusterLister:             informerFactory.Pingcap().V1alpha1().DMClusters().Lister(),
@@ -414,6 +429,9 @@ func NewFakeDependencies() *Dependencies {
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
 	labelFilterKubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
 	recorder := record.NewFakeRecorder(100)
+
+	// TODO
+
 	deps := newDependencies(cliCfg, cli, kubeCli, genCli, informerFactory, kubeInformerFactory, labelFilterKubeInformerFactory, recorder)
 	deps.Controls = newFakeControl(kubeCli, informerFactory, kubeInformerFactory)
 	return deps
