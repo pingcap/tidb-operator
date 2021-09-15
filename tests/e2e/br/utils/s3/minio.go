@@ -34,7 +34,7 @@ const (
 	minioName  = "minio"
 	minioImage = "minio/minio:RELEASE.2020-05-08T02-40-49Z"
 
-	minioBucket = "local"
+	minioBucket = "local" // the bucket for e2e test
 	minioSecret = "minio-secret"
 )
 
@@ -111,6 +111,10 @@ func (s *minioStorage) Config(ns, prefix string) *v1alpha1.S3StorageProvider {
 // clean by deleting namespace, so just return
 func (s *minioStorage) Clean(ctx context.Context, ns string) error {
 	return nil
+}
+
+func (s *minioStorage) Bucket() string {
+	return minioBucket
 }
 
 func (s *minioStorage) IsDataCleaned(ctx context.Context, ns, prefix string) (bool, error) {
