@@ -228,7 +228,6 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 	ginkgo.It("backup and restore with mixed bucket and prefix", func() {
 		middlePath := "mid"
-		expectedPrefix := ""
 
 		ns := f.Namespace.Name
 		ctx, cancel := context.WithCancel(context.Background())
@@ -237,10 +236,10 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		tcase := newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeBR)
 		tcase.configureBackup = func(backup *v1alpha1.Backup) {
 			backup.Spec.StorageProvider.S3.Bucket = path.Join(backup.Spec.StorageProvider.S3.Bucket, middlePath) // bucket add suffix
-			expectedPrefix = path.Join(middlePath, backup.Spec.StorageProvider.S3.Prefix)
 		}
 		tcase.postBackup = func(backup *v1alpha1.Backup) {
 			ginkgo.By("Check whether prefix of backup files in storage is right")
+			expectedPrefix := path.Join(middlePath, backup.Spec.StorageProvider.S3.Prefix)
 			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, expectedPrefix)
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(cleaned, false, "storage should have data")
