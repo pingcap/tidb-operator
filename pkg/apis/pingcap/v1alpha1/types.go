@@ -1359,11 +1359,11 @@ const (
 	CleanPolicyTypeDelete CleanPolicyType = "Delete"
 )
 
-// BatchDeleteOption controls delete object in batches for cleanup backup
+// BatchDeleteOption controls the options to delete the objects in batches during the cleanup of backups
 //
 // +k8s:openapi-gen=true
 type BatchDeleteOption struct {
-	// DisableBatchConcurrency disables the batch deletions and the cleanup will be done by goroutines.
+	// DisableBatchConcurrency disables the batch deletions with S3 API and the deletion will be done by goroutines.
 	DisableBatchConcurrency bool `json:"disableBatchConcurrency,omitempty"`
 	// BatchConcurrency represents the number of batch deletions in parallel.
 	// It is used when the storage provider supports the batch delete API, currently, S3 only.
