@@ -350,7 +350,7 @@ func TestTiFlashUpgraderUpgrade(t *testing.T) {
 			},
 		},
 		{
-			name: fmt.Sprintf("tiflash version nightly and tiflash is running"),
+			name: "tiflash version nightly and tiflash is running",
 			changeFn: func(tc *v1alpha1.TidbCluster, tiflashControl *tiflashapi.FakeTiFlashControl) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiFlash.Phase = v1alpha1.NormalPhase
@@ -381,7 +381,7 @@ func TestTiFlashUpgraderUpgrade(t *testing.T) {
 			},
 		},
 		{
-			name: fmt.Sprintf("tiflash version latest and tiflash is running"),
+			name: "tiflash version latest and tiflash is running",
 			changeFn: func(tc *v1alpha1.TidbCluster, tiflashControl *tiflashapi.FakeTiFlashControl) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiFlash.Phase = v1alpha1.NormalPhase
