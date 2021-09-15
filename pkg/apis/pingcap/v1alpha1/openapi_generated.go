@@ -1162,12 +1162,12 @@ func schema_pkg_apis_pingcap_v1alpha1_BatchDeleteOption(ref common.ReferenceCall
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "BatchDeleteOption controls delete object in batches for cleanup backup",
+				Description: "BatchDeleteOption controls the options to delete the objects in batches during the cleanup of backups",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"disableBatchConcurrency": {
 						SchemaProps: spec.SchemaProps{
-							Description: "DisableBatchConcurrency disables the batch deletions and the cleanup will be done by goroutines.",
+							Description: "DisableBatchConcurrency disables the batch deletions with S3 API and the deletion will be done by goroutines.",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
@@ -1256,7 +1256,7 @@ func schema_pkg_apis_pingcap_v1alpha1_CleanOption(ref common.ReferenceCallback) 
 					},
 					"disableBatchConcurrency": {
 						SchemaProps: spec.SchemaProps{
-							Description: "DisableBatchConcurrency disables the batch deletions and the cleanup will be done by goroutines.",
+							Description: "DisableBatchConcurrency disables the batch deletions with S3 API and the deletion will be done by goroutines.",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},

@@ -3691,7 +3691,7 @@ Kubernetes meta/v1.Time
 <a href="#cleanoption">CleanOption</a>)
 </p>
 <p>
-<p>BatchDeleteOption controls delete object in batches for cleanup backup</p>
+<p>BatchDeleteOption controls the options to delete the objects in batches during the cleanup of backups</p>
 </p>
 <table>
 <thead>
@@ -3709,7 +3709,7 @@ bool
 </em>
 </td>
 <td>
-<p>DisableBatchConcurrency disables the batch deletions and the cleanup will be done by goroutines.</p>
+<p>DisableBatchConcurrency disables the batch deletions with S3 API and the deletion will be done by goroutines.</p>
 </td>
 </tr>
 <tr>
