@@ -350,30 +350,20 @@ func createBackupAndWaitForComplete(f *e2eframework.Framework, name, tcName, typ
 	ns := f.Namespace.Name
 	// secret to visit tidb cluster
 	s := brutil.GetSecret(ns, name, "")
-<<<<<<< HEAD
 	if _, err := f.ClientSet.CoreV1().Secrets(ns).Create(s); err != nil {
-		return err
-=======
-	if _, err := f.ClientSet.CoreV1().Secrets(ns).Create(context.TODO(), s, metav1.CreateOptions{}); err != nil {
 		return nil, err
->>>>>>> 7cc504d6... improve performance of cleanup BR (#4095)
 	}
 
 	backupFolder := time.Now().Format(time.RFC3339)
 	cfg := f.Storage.Config(ns, backupFolder)
 	backup := brutil.GetBackup(ns, name, tcName, typ, cfg)
 
-<<<<<<< HEAD
-	if _, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Create(backup); err != nil {
-		return err
-=======
 	if configure != nil {
 		configure(backup)
 	}
 
-	if _, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Create(context.TODO(), backup, metav1.CreateOptions{}); err != nil {
+	if _, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Create(backup); err != nil {
 		return nil, err
->>>>>>> 7cc504d6... improve performance of cleanup BR (#4095)
 	}
 
 	if err := brutil.WaitForBackupComplete(f.ExtClient, ns, name, backupCompleteTimeout); err != nil {

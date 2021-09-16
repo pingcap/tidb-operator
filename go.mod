@@ -7,11 +7,8 @@ module github.com/pingcap/tidb-operator
 go 1.13
 
 require (
-<<<<<<< HEAD
-	github.com/Azure/go-autorest/autorest/mocks v0.3.0 // indirect
-=======
 	cloud.google.com/go/storage v1.0.0
->>>>>>> 7cc504d6... improve performance of cleanup BR (#4095)
+	github.com/Azure/go-autorest/autorest/mocks v0.3.0 // indirect
 	github.com/BurntSushi/toml v0.3.1
 	github.com/MakeNowJust/heredoc v0.0.0-20171113091838-e9091a26100e // indirect
 	github.com/Masterminds/semver v1.4.2
@@ -81,7 +78,7 @@ require (
 	github.com/yisaer/crd-validation v0.0.3
 	gocloud.dev v0.18.0
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
-	golang.org/x/time v0.0.0-20181108054448-85acf8d2951c
+	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 	gomodules.xyz/jsonpatch/v2 v2.0.1
 	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce // indirect
 	gopkg.in/yaml.v2 v2.2.4
