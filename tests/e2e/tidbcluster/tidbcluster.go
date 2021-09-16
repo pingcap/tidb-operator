@@ -2932,7 +2932,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 	ginkgo.It("deploy tidb monitor specified shards normally", func() {
 		ginkgo.By("Deploy initial tc")
-		tc := fixture.GetTidbCluster(ns, "monitor-test", utilimage.TiDBV5)
+		tc := fixture.GetTidbCluster(ns, "monitor-test", utilimage.TiDBLatest)
 		tc.Spec.PD.Replicas = 1
 		tc.Spec.TiKV.Replicas = 1
 		tc.Spec.TiDB.Replicas = 1
