@@ -14,14 +14,15 @@
 package member
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
 	"time"
 
 	. "github.com/onsi/gomega"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -61,7 +62,7 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 		}
 		if test.apiPods != nil {
 			for _, apiPod := range test.apiPods {
-				fakeCli.CoreV1().Pods(apiPod.GetNamespace()).Create(apiPod)
+				fakeCli.CoreV1().Pods(apiPod.GetNamespace()).Create(context.TODO(), apiPod, metav1.CreateOptions{})
 			}
 		}
 		if test.pvcs != nil {
@@ -71,7 +72,7 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 		}
 		if test.apiPvcs != nil {
 			for _, apiPvc := range test.apiPvcs {
-				fakeCli.CoreV1().PersistentVolumeClaims(apiPvc.GetNamespace()).Create(apiPvc)
+				fakeCli.CoreV1().PersistentVolumeClaims(apiPvc.GetNamespace()).Create(context.TODO(), apiPvc, metav1.CreateOptions{})
 			}
 		}
 		if test.pvs != nil {

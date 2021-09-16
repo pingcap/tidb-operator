@@ -131,6 +131,20 @@ type TidbMonitorSpec struct {
 	// PodSecurityContext of the component
 	// +optional
 	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
+
+	// EnableAlertRules adds alert rules to the Prometheus config even
+	// if `AlertmanagerURL` is not configured.
+	// +optional
+	EnableAlertRules bool `json:"enableAlertRules,omitempty"`
+
+	//PrometheusReloader set prometheus reloader configuration
+	//+optional
+	PrometheusReloader *PrometheusReloaderSpec `json:"prometheusReloader,omitempty"`
+}
+
+// PrometheusReloaderSpec is the desired state of prometheus configuration reloader
+type PrometheusReloaderSpec struct {
+	MonitorContainer `json:",inline"`
 }
 
 // PrometheusSpec is the desired state of prometheus
@@ -141,6 +155,11 @@ type PrometheusSpec struct {
 	Service  ServiceSpec `json:"service,omitempty"`
 	// +optional
 	ReserveDays int `json:"reserveDays,omitempty"`
+
+	// Configuration for `--storage.tsdb.retention.time`, Units Supported: y, w, d, h, m, s, ms.
+	// If set to non empty values, it will override the value of `ReserveDays`.
+	// +optional
+	RetentionTime *string `json:"retentionTime,omitempty"`
 
 	// +optional
 	Ingress *IngressSpec `json:"ingress,omitempty"`
@@ -160,11 +179,14 @@ type PrometheusSpec struct {
 // Config  is the the desired state of Prometheus Configuration
 type PrometheusConfiguration struct {
 
-	// user can mount prometheus rule config with external configMap.If use this feature, the external configMap must contain `prometheus-config` key in data.
+	// User can mount prometheus config with external configMap. The external configMap must contain `prometheus-config` key in data.
 	ConfigMapRef *ConfigMapRef `json:"configMapRef,omitempty"`
 
 	// user can  use it specify prometheus command options
 	CommandOptions []string `json:"commandOptions,omitempty"`
+
+	// User can mount prometheus rule config with external configMap. The external configMap must use the key with suffix `.rules.yml`.
+	RuleConfigRef *ConfigMapRef `json:"ruleConfigRef,omitempty"`
 }
 
 // ConfigMapRef is the external configMap
@@ -183,8 +205,25 @@ type GrafanaSpec struct {
 
 	LogLevel string      `json:"logLevel,omitempty"`
 	Service  ServiceSpec `json:"service,omitempty"`
-	Username string      `json:"username,omitempty"`
-	Password string      `json:"password,omitempty"`
+
+	// +optional
+	// if `UsernameSecret` is not set, `username` will be used.
+	UsernameSecret *corev1.SecretKeySelector `json:"usernameSecret,omitempty"`
+
+	// +optional
+	// if `passwordSecret` is not set, `password` will be used.
+	PasswordSecret *corev1.SecretKeySelector `json:"passwordSecret,omitempty"`
+
+	// +optional
+	// Deprecated in v1.3.0 for security concerns, planned for removal in v1.4.0. Use `usernameSecret` instead.
+	// +k8s:openapi-gen=false
+	Username string `json:"username,omitempty"`
+
+	// +optional
+	// Deprecated in v1.3.0 for security concerns, planned for removal in v1.4.0. Use `passwordSecret` instead.
+	// +k8s:openapi-gen=false
+	Password string `json:"password,omitempty"`
+
 	// +optional
 	Envs map[string]string `json:"envs,omitempty"`
 

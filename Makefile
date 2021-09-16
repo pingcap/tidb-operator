@@ -15,11 +15,13 @@ GOARCH := $(if $(GOARCH),$(GOARCH),amd64)
 GOENV  := GO15VENDOREXPERIMENT="1" CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH)
 GO     := $(GOENV) go
 GO_BUILD := $(GO) build -trimpath
+GO_SUBMODULES = github.com/pingcap/tidb-operator/pkg/apis github.com/pingcap/tidb-operator/pkg/client
+GO_SUBMODULE_DIRS = pkg/apis pkg/client
 
 DOCKER_REGISTRY ?= localhost:5000
 DOCKER_REPO ?= ${DOCKER_REGISTRY}/pingcap
 IMAGE_TAG ?= latest
-TEST_COVER_PACKAGES:=go list ./cmd/... ./pkg/... | grep -vE "pkg/client" | grep -vE "pkg/tkctl" | grep -vE "pkg/apis" | sed 's|github.com/pingcap/tidb-operator/|./|' | tr '\n' ','
+TEST_COVER_PACKAGES := go list ./cmd/... ./pkg/... $(foreach mod, $(GO_SUBMODULES), $(mod)/...) | grep -vE "pkg/client" | grep -vE "pkg/tkctl" | grep -vE "pkg/apis/pingcap" | sed 's|github.com/pingcap/tidb-operator/|./|' | tr '\n' ','
 
 # NOTE: coverage report generated for E2E tests (with `-c`) may not stable, see
 # https://github.com/golang/go/issues/23883#issuecomment-381766556
@@ -150,17 +152,22 @@ fault-trigger:
 # 		`-race` for race detector.
 # GO_COVER: Whether to run tests with code coverage. Set to 'y' to enable coverage collection.
 #
+test: TEST_PACKAGES = ./cmd/backup-manager/app ./pkg
+test:
+	@echo "Run unit tests"
 ifeq ($(GO_COVER),y)
-test:
-	@echo "Run unit tests"
-	@go test -cover ./cmd/backup-manager/app/... ./pkg/... -coverpkg=$$($(TEST_COVER_PACKAGES)) -coverprofile=coverage.txt -covermode=atomic && echo -e "\nUnit tests run successfully!"
+	go test -cover \
+		$(foreach pkg, $(TEST_PACKAGES), $(pkg)/...) \
+		$(foreach mod, $(GO_SUBMODULES), $(mod)/...) \
+		-coverpkg=$$($(TEST_COVER_PACKAGES)) -coverprofile=coverage.txt -covermode=atomic
 else
-test:
-	@echo "Run unit tests"
-	@go test ./cmd/backup-manager/app/... ./pkg/... && echo -e "\nUnit tests run successfully!"
+	go test \
+		$(foreach pkg, $(TEST_PACKAGES), $(pkg)/...) \
+		$(foreach mod, $(GO_SUBMODULES), $(mod)/...)
 endif
+	@echo -e "\nUnit tests run successfully!"
 
-ALL_CHECKS = EOF codegen boilerplate openapi-spec crd-groups spelling
+ALL_CHECKS = EOF codegen boilerplate openapi-spec crd-groups spelling modules
 
 check: $(addprefix check-,$(ALL_CHECKS)) lint tidy
 
@@ -172,8 +179,9 @@ lint:
 
 tidy:
 	@echo "go mod tidy"
-	go mod tidy
-	git diff -U --exit-code go.mod go.sum
+	go mod tidy && git diff -U --exit-code go.mod go.sum
+	cd pkg/apis && go mod tidy && git diff -U --exit-code go.mod go.sum
+	cd pkg/client && go mod tidy && git diff -U --exit-code go.mod go.sum
 
 cli:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tkctl cmd/tkctl/main.go

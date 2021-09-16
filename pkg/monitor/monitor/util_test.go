@@ -26,6 +26,26 @@ import (
 	"k8s.io/utils/pointer"
 )
 
+func TestGenerateRemoteWrite(t *testing.T) {
+	url := "http://127.0.0.1/a/b/c"
+	monitor := v1alpha1.TidbMonitor{
+		Spec: v1alpha1.TidbMonitorSpec{
+			Prometheus: v1alpha1.PrometheusSpec{
+				RemoteWrite: []*v1alpha1.RemoteWriteSpec{
+					{URL: url},
+				},
+			},
+		},
+	}
+	remoteWriteConfig := generateRemoteWrite(&monitor)
+	if remoteWriteConfig == nil || remoteWriteConfig[0] == nil {
+		t.Errorf("unexpected remoteWriteConfig %v", remoteWriteConfig)
+	}
+	if remoteWriteConfig[0].URL.String() != url {
+		t.Errorf("expect remote url %v, but result %v", url, remoteWriteConfig[0].URL.String())
+	}
+}
+
 func TestGetMonitorConfigMap(t *testing.T) {
 	g := NewGomegaWithT(t)
 	varTrue := true
@@ -64,6 +84,7 @@ func TestGetMonitorConfigMap(t *testing.T) {
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "monitor",
+						"app.kubernetes.io/app":        "prometheus",
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
@@ -82,7 +103,7 @@ func TestGetMonitorConfigMap(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			cm, err := getMonitorConfigMap(&tt.monitor, tt.monitorClusterInfos, nil, 0)
+			cm, err := getPromConfigMap(&tt.monitor, tt.monitorClusterInfos, nil,0)
 			g.Expect(err).NotTo(HaveOccurred())
 			if tt.expected == nil {
 				g.Expect(cm).To(BeNil())
@@ -667,8 +688,6 @@ func TestGetMonitorService(t *testing.T) {
 }
 
 func TestGetMonitorVolumes(t *testing.T) {
-	g := NewGomegaWithT(t)
-
 	testCases := []struct {
 		name      string
 		cluster   v1alpha1.TidbCluster
@@ -705,12 +724,6 @@ func TestGetMonitorVolumes(t *testing.T) {
 							ConfigMap: &corev1.ConfigMapVolumeSource{
 								LocalObjectReference: corev1.LocalObjectReference{
 									Name: "foo-monitor",
-								},
-								Items: []corev1.KeyToPath{
-									corev1.KeyToPath{
-										Key:  "prometheus-config",
-										Path: "prometheus.yml",
-									},
 								},
 							},
 						},
@@ -773,12 +786,6 @@ func TestGetMonitorVolumes(t *testing.T) {
 							ConfigMap: &corev1.ConfigMapVolumeSource{
 								LocalObjectReference: corev1.LocalObjectReference{
 									Name: "foo-monitor",
-								},
-								Items: []corev1.KeyToPath{
-									corev1.KeyToPath{
-										Key:  "prometheus-config",
-										Path: "prometheus.yml",
-									},
 								},
 							},
 						},
@@ -850,12 +857,6 @@ func TestGetMonitorVolumes(t *testing.T) {
 								LocalObjectReference: corev1.LocalObjectReference{
 									Name: "foo-monitor",
 								},
-								Items: []corev1.KeyToPath{
-									corev1.KeyToPath{
-										Key:  "prometheus-config",
-										Path: "prometheus.yml",
-									},
-								},
 							},
 						},
 					},
@@ -884,13 +885,92 @@ func TestGetMonitorVolumes(t *testing.T) {
 				))
 			},
 		},
+		{
+			name: "external rules",
+			cluster: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+			},
+			monitor: v1alpha1.TidbMonitor{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbMonitorSpec{
+					Clusters: []v1alpha1.TidbClusterRef{
+						{
+							Name:      "foo",
+							Namespace: "ns",
+						},
+					},
+					Prometheus: v1alpha1.PrometheusSpec{Config: &v1alpha1.PrometheusConfiguration{
+						RuleConfigRef: &v1alpha1.ConfigMapRef{
+							Name: "external_rules",
+						},
+					}},
+				},
+			},
+			expected: func(volumes []corev1.Volume) {
+				g := NewGomegaWithT(t)
+				g.Expect(volumes).To(Equal([]corev1.Volume{
+					{
+						Name: v1alpha1.TidbMonitorMemberType.String(),
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
+					},
+					{
+						Name: "prometheus-config",
+						VolumeSource: corev1.VolumeSource{
+							ConfigMap: &corev1.ConfigMapVolumeSource{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "foo-monitor",
+								},
+							},
+						},
+					},
+					{
+						Name: "prometheus-rules",
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
+					},
+					{
+						Name: "prometheus-config-out",
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
+					},
+					{
+						Name: "tls-assets",
+						VolumeSource: corev1.VolumeSource{
+							Secret: &corev1.SecretVolumeSource{
+								SecretName:  GetTLSAssetsSecretName("foo"),
+								DefaultMode: pointer.Int32Ptr(420),
+							},
+						},
+					},
+					{
+						Name: "external-rules",
+						VolumeSource: corev1.VolumeSource{
+							ConfigMap: &corev1.ConfigMapVolumeSource{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "external_rules",
+								},
+							},
+						},
+					},
+				},
+				))
+			},
+		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			cm, err := getMonitorConfigMap(&tt.monitor, nil, nil, 0)
-			g.Expect(err).NotTo(HaveOccurred())
-			sa := getMonitorVolumes(cm, &tt.monitor)
+			sa := getMonitorVolumes(&tt.monitor)
 			tt.expected(sa)
 		})
 	}
@@ -923,6 +1003,8 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 							BaseImage: "hub.pingcap.net",
 							Version:   "latest",
 						},
+						ReserveDays:   8,
+						RetentionTime: pointer.StringPtr("2h"),
 						Config: &v1alpha1.PrometheusConfiguration{
 							CommandOptions: []string{
 								"--web.external-url=https://www.example.com/prometheus/",
@@ -937,7 +1019,7 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 				Command: []string{
 					"/bin/sh",
 					"-c",
-					"sed 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g;s/$SHARD/'\"$SHARD\"'/g' /etc/prometheus/config/prometheus.yml > /etc/prometheus/config_out/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/etc/prometheus/config_out/prometheus.yml --storage.tsdb.path=/data/prometheus --storage.tsdb.retention=0d --web.external-url=https://www.example.com/prometheus/",
+					"sed -e '5s/[()]//g'  -e 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g;s/$SHARD/'\"$SHARD\"'/g' /etc/prometheus/config/prometheus.yml > /etc/prometheus/config_out/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/etc/prometheus/config_out/prometheus.yml --storage.tsdb.path=/data/prometheus --storage.tsdb.retention.time=2h --web.external-url=https://www.example.com/prometheus/",
 				},
 				Ports: []corev1.ContainerPort{
 					corev1.ContainerPort{
@@ -1055,6 +1137,18 @@ func TestGetMonitorGrafanaContainer(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbMonitorSpec{
 					Grafana: &v1alpha1.GrafanaSpec{
+						UsernameSecret: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "basic-grafana",
+							},
+							Key: "username",
+						},
+						PasswordSecret: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "basic-grafana",
+							},
+							Key: "password",
+						},
 						MonitorContainer: v1alpha1.MonitorContainer{
 							BaseImage: "hub.pingcap.net",
 							Version:   "latest",
@@ -1082,7 +1176,7 @@ func TestGetMonitorGrafanaContainer(t *testing.T) {
 						ValueFrom: &corev1.EnvVarSource{
 							SecretKeyRef: &corev1.SecretKeySelector{
 								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "foo",
+									Name: "basic-grafana",
 								},
 								Key: "password",
 							},
@@ -1093,7 +1187,7 @@ func TestGetMonitorGrafanaContainer(t *testing.T) {
 						ValueFrom: &corev1.EnvVarSource{
 							SecretKeyRef: &corev1.SecretKeySelector{
 								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "foo",
+									Name: "basic-grafana",
 								},
 								Key: "username",
 							},
@@ -1320,7 +1414,7 @@ func TestBuildExternalLabels(t *testing.T) {
 				},
 			},
 			expected: &model.LabelSet{
-				defaultReplicaExternalLabelName: "$NAMESPACE_$POD_NAME",
+				defaultReplicaExternalLabelName: "$(NAMESPACE)_$(POD_NAME)",
 			},
 		},
 	}

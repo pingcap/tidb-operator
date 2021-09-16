@@ -20,8 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/pingcap/tidb-operator/pkg/binlog"
-	"github.com/pingcap/tidb-operator/pkg/util/config"
+	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 )
 
 const (
@@ -1128,11 +1127,24 @@ type TiKVFailureStore struct {
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
 
+// PumpNodeStatus represents the status saved in etcd.
+type PumpNodeStatus struct {
+	NodeID string `json:"nodeId"`
+	Host   string `json:"host"`
+	State  string `json:"state"`
+
+	// NB: Currently we save the whole `PumpNodeStatus` in the status of the CR.
+	// However, the following fields will be updated continuously.
+	// To avoid CR being updated and re-synced continuously, we exclude these fields.
+	// MaxCommitTS int64  `json:"maxCommitTS"`
+	// UpdateTS    int64  `json:"updateTS"`
+}
+
 // PumpStatus is Pump status
 type PumpStatus struct {
 	Phase       MemberPhase             `json:"phase,omitempty"`
 	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
-	Members     []*binlog.NodeStatus    `json:"members,omitempty"`
+	Members     []*PumpNodeStatus       `json:"members,omitempty"`
 }
 
 // TiDBTLSClient can enable TLS connection between TiDB server and MySQL client
@@ -1347,6 +1359,32 @@ const (
 	CleanPolicyTypeDelete CleanPolicyType = "Delete"
 )
 
+// BatchDeleteOption controls the options to delete the objects in batches during the cleanup of backups
+//
+// +k8s:openapi-gen=true
+type BatchDeleteOption struct {
+	// DisableBatchConcurrency disables the batch deletions with S3 API and the deletion will be done by goroutines.
+	DisableBatchConcurrency bool `json:"disableBatchConcurrency,omitempty"`
+	// BatchConcurrency represents the number of batch deletions in parallel.
+	// It is used when the storage provider supports the batch delete API, currently, S3 only.
+	// default is 10
+	BatchConcurrency uint32 `json:"batchConcurrency,omitempty"`
+	// RoutineConcurrency represents the number of goroutines that used to delete objects
+	// default is 100
+	RoutineConcurrency uint32 `json:"routineConcurrency,omitempty"`
+}
+
+// CleanOption defines the configuration for cleanup backup
+//
+// +k8s:openapi-gen=true
+type CleanOption struct {
+	// PageSize represents the number of objects to clean at a time.
+	// default is 10000
+	PageSize uint64 `json:"pageSize,omitempty"`
+
+	BatchDeleteOption `json:",inline"`
+}
+
 // BackupSpec contains the backup specification for a tidb cluster.
 // +k8s:openapi-gen=true
 type BackupSpec struct {
@@ -1412,10 +1450,15 @@ type BackupSpec struct {
 	ServiceAccount string `json:"serviceAccount,omitempty"`
 	// CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained
 	CleanPolicy CleanPolicyType `json:"cleanPolicy,omitempty"`
+	// CleanOption controls the behavior of clean.
+	CleanOption *CleanOption `json:"cleanOption,omitempty"`
 
 	// PodSecurityContext of the component
 	// +optional
 	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
+
+	// PriorityClassName of Backup Job Pods
+	PriorityClassName string `json:"priorityClassName,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -1693,6 +1736,9 @@ type RestoreSpec struct {
 	// PodSecurityContext of the component
 	// +optional
 	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
+
+	// PriorityClassName of Restore Job Pods
+	PriorityClassName string `json:"priorityClassName,omitempty"`
 }
 
 // RestoreStatus represents the current status of a tidb cluster restore.

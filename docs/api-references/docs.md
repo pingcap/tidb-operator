@@ -333,6 +333,19 @@ CleanPolicyType
 </tr>
 <tr>
 <td>
+<code>cleanOption</code></br>
+<em>
+<a href="#cleanoption">
+CleanOption
+</a>
+</em>
+</td>
+<td>
+<p>CleanOption controls the behavior of clean.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>podSecurityContext</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
@@ -343,6 +356,17 @@ Kubernetes core/v1.PodSecurityContext
 <td>
 <em>(Optional)</em>
 <p>PodSecurityContext of the component</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>priorityClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PriorityClassName of Backup Job Pods</p>
 </td>
 </tr>
 </table>
@@ -1193,6 +1217,17 @@ Kubernetes core/v1.PodSecurityContext
 <td>
 <em>(Optional)</em>
 <p>PodSecurityContext of the component</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>priorityClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PriorityClassName of Restore Job Pods</p>
 </td>
 </tr>
 </table>
@@ -2493,6 +2528,33 @@ Kubernetes core/v1.PodSecurityContext
 <p>PodSecurityContext of the component</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>enableAlertRules</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableAlertRules adds alert rules to the Prometheus config even
+if <code>AlertmanagerURL</code> is not configured.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>prometheusReloader</code></br>
+<em>
+<a href="#prometheusreloaderspec">
+PrometheusReloaderSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PrometheusReloader set prometheus reloader configuration</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -3308,6 +3370,19 @@ CleanPolicyType
 </tr>
 <tr>
 <td>
+<code>cleanOption</code></br>
+<em>
+<a href="#cleanoption">
+CleanOption
+</a>
+</em>
+</td>
+<td>
+<p>CleanOption controls the behavior of clean.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>podSecurityContext</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
@@ -3318,6 +3393,17 @@ Kubernetes core/v1.PodSecurityContext
 <td>
 <em>(Optional)</em>
 <p>PodSecurityContext of the component</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>priorityClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PriorityClassName of Backup Job Pods</p>
 </td>
 </tr>
 </tbody>
@@ -3617,6 +3703,60 @@ Kubernetes meta/v1.Time
 </tr>
 </tbody>
 </table>
+<h3 id="batchdeleteoption">BatchDeleteOption</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#cleanoption">CleanOption</a>)
+</p>
+<p>
+<p>BatchDeleteOption controls the options to delete the objects in batches during the cleanup of backups</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>disableBatchConcurrency</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>DisableBatchConcurrency disables the batch deletions with S3 API and the deletion will be done by goroutines.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>batchConcurrency</code></br>
+<em>
+uint32
+</em>
+</td>
+<td>
+<p>BatchConcurrency represents the number of batch deletions in parallel.
+It is used when the storage provider supports the batch delete API, currently, S3 only.
+default is 10</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>routineConcurrency</code></br>
+<em>
+uint32
+</em>
+</td>
+<td>
+<p>RoutineConcurrency represents the number of goroutines that used to delete objects
+default is 100</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="binlog">Binlog</h3>
 <p>
 (<em>Appears on:</em>
@@ -3716,10 +3856,55 @@ Optional: Defaults to range</p>
 <td>
 <code>GenericConfig</code></br>
 <em>
-github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="cleanoption">CleanOption</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#backupspec">BackupSpec</a>)
+</p>
+<p>
+<p>CleanOption defines the configuration for cleanup backup</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>pageSize</code></br>
+<em>
+uint64
+</em>
+</td>
+<td>
+<p>PageSize represents the number of objects to clean at a time.
+default is 10000</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>BatchDeleteOption</code></br>
+<em>
+<a href="#batchdeleteoption">
+BatchDeleteOption
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>BatchDeleteOption</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -6223,12 +6408,42 @@ ServiceSpec
 </tr>
 <tr>
 <td>
+<code>usernameSecret</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#secretkeyselector-v1-core">
+Kubernetes core/v1.SecretKeySelector
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>if <code>UsernameSecret</code> is not set, <code>username</code> will be used.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>passwordSecret</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#secretkeyselector-v1-core">
+Kubernetes core/v1.SecretKeySelector
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>if <code>passwordSecret</code> is not set, <code>password</code> will be used.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>username</code></br>
 <em>
 string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
+<p>Deprecated in v1.3.0 for security concerns, planned for removal in v1.4.0. Use <code>usernameSecret</code> instead.</p>
 </td>
 </tr>
 <tr>
@@ -6239,6 +6454,8 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
+<p>Deprecated in v1.3.0 for security concerns, planned for removal in v1.4.0. Use <code>passwordSecret</code> instead.</p>
 </td>
 </tr>
 <tr>
@@ -7542,6 +7759,7 @@ string
 (<em>Appears on:</em>
 <a href="#grafanaspec">GrafanaSpec</a>, 
 <a href="#initializerspec">InitializerSpec</a>, 
+<a href="#prometheusreloaderspec">PrometheusReloaderSpec</a>, 
 <a href="#prometheusspec">PrometheusSpec</a>, 
 <a href="#reloaderspec">ReloaderSpec</a>, 
 <a href="#thanosspec">ThanosSpec</a>)
@@ -8188,7 +8406,7 @@ DashboardConfig
 <td>
 <code>GenericConfig</code></br>
 <em>
-github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
@@ -10119,7 +10337,7 @@ ConfigMapRef
 </em>
 </td>
 <td>
-<p>user can mount prometheus rule config with external configMap.If use this feature, the external configMap must contain <code>prometheus-config</code> key in data.</p>
+<p>User can mount prometheus config with external configMap. The external configMap must contain <code>prometheus-config</code> key in data.</p>
 </td>
 </tr>
 <tr>
@@ -10131,6 +10349,52 @@ ConfigMapRef
 </td>
 <td>
 <p>user can  use it specify prometheus command options</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ruleConfigRef</code></br>
+<em>
+<a href="#configmapref">
+ConfigMapRef
+</a>
+</em>
+</td>
+<td>
+<p>User can mount prometheus rule config with external configMap. The external configMap must use the key with suffix <code>.rules.yml</code>.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="prometheusreloaderspec">PrometheusReloaderSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbmonitorspec">TidbMonitorSpec</a>)
+</p>
+<p>
+<p>PrometheusReloaderSpec is the desired state of prometheus configuration reloader</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>MonitorContainer</code></br>
+<em>
+<a href="#monitorcontainer">
+MonitorContainer
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>MonitorContainer</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -10197,6 +10461,19 @@ int
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>retentionTime</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Configuration for <code>--storage.tsdb.retention.time</code>, Units Supported: y, w, d, h, m, s, ms.
+If set to non empty values, it will override the value of <code>ReserveDays</code>.</p>
 </td>
 </tr>
 <tr>
@@ -10516,6 +10793,50 @@ uint
 </tr>
 </tbody>
 </table>
+<h3 id="pumpnodestatus">PumpNodeStatus</h3>
+<p>
+<p>PumpNodeStatus represents the status saved in etcd.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>nodeId</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>host</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>state</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="pumpspec">PumpSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -10613,7 +10934,7 @@ Defaults to Kubernetes default storage class.</p>
 <td>
 <code>config</code></br>
 <em>
-github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
@@ -10678,7 +10999,9 @@ Kubernetes apps/v1.StatefulSetStatus
 <td>
 <code>members</code></br>
 <em>
-[]*github.com/pingcap/tidb-operator/pkg/binlog.NodeStatus
+<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.pumpnodestatus">
+[]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PumpNodeStatus
+</a>
 </em>
 </td>
 <td>
@@ -11413,6 +11736,17 @@ Kubernetes core/v1.PodSecurityContext
 <td>
 <em>(Optional)</em>
 <p>PodSecurityContext of the component</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>priorityClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PriorityClassName of Restore Job Pods</p>
 </td>
 </tr>
 </tbody>
@@ -13668,7 +14002,7 @@ map[string]string
 <td>
 <code>GenericConfig</code></br>
 <em>
-github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
@@ -14379,7 +14713,7 @@ kubectl create secret generic <clusterName>-tidb-client-secret &ndash;namespace=
 <td>
 <code>GenericConfig</code></br>
 <em>
-github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
@@ -14489,7 +14823,7 @@ TiFlashProxyConfigWraper
 <td>
 <code>GenericConfig</code></br>
 <em>
-github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
@@ -15663,7 +15997,7 @@ TiKVBackupConfig
 <td>
 <code>GenericConfig</code></br>
 <em>
-github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
@@ -20989,6 +21323,33 @@ Kubernetes core/v1.PodSecurityContext
 <td>
 <em>(Optional)</em>
 <p>PodSecurityContext of the component</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enableAlertRules</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableAlertRules adds alert rules to the Prometheus config even
+if <code>AlertmanagerURL</code> is not configured.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>prometheusReloader</code></br>
+<em>
+<a href="#prometheusreloaderspec">
+PrometheusReloaderSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PrometheusReloader set prometheus reloader configuration</p>
 </td>
 </tr>
 </tbody>

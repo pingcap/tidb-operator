@@ -17,8 +17,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -34,8 +35,6 @@ func TestRequeueError(t *testing.T) {
 
 	err := RequeueErrorf("i am a requeue %s", "error")
 	g.Expect(IsRequeueError(err)).To(BeTrue())
-	_, ok := err.(error)
-	g.Expect(ok).To(BeTrue())
 	g.Expect(err.Error()).To(Equal("i am a requeue error"))
 	g.Expect(IsRequeueError(fmt.Errorf("i am not a requeue error"))).To(BeFalse())
 }
@@ -45,8 +44,6 @@ func TestIgnoreError(t *testing.T) {
 
 	err := IgnoreErrorf("i am an ignore %s", "error")
 	g.Expect(IsIgnoreError(err)).To(BeTrue())
-	_, ok := err.(error)
-	g.Expect(ok).To(BeTrue())
 	g.Expect(err.Error()).To(Equal("i am an ignore error"))
 	g.Expect(IsIgnoreError(fmt.Errorf("i am not an ignore error"))).To(BeFalse())
 }
@@ -367,6 +364,93 @@ func TestMemberConfigMapName(t *testing.T) {
 
 	for i := range tests {
 		testFn(&tests[i], t)
+	}
+}
+
+func TestEmptyClone(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name  string
+		obj   client.Object
+		empty client.Object
+	}
+
+	cases := []testcase{
+		{
+			name:  "tidb-cluster",
+			obj:   newTidbCluster(),
+			empty: &v1alpha1.TidbCluster{},
+		},
+		{
+			name:  "dm-cluster",
+			obj:   newDMCluster(),
+			empty: &v1alpha1.DMCluster{},
+		},
+		{
+			name:  "backup",
+			obj:   newBackup(),
+			empty: &v1alpha1.Backup{},
+		},
+		{
+			name:  "stateful-set",
+			obj:   newStatefulSet(newTidbCluster(), ""),
+			empty: &apps.StatefulSet{},
+		},
+		{
+			name:  "service",
+			obj:   newService(newTidbCluster(), ""),
+			empty: &corev1.Service{},
+		},
+	}
+
+	for _, tcase := range cases {
+		t.Log(tcase.name)
+
+		tcase.empty.SetName(tcase.obj.GetName())
+		tcase.empty.SetNamespace(tcase.obj.GetNamespace())
+
+		output, err := EmptyClone(tcase.obj)
+		g.Expect(err).Should(Succeed())
+		g.Expect(output).Should(Equal(tcase.empty))
+	}
+}
+
+func TestDeepCopyClientObject(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name string
+		obj  client.Object
+	}
+
+	cases := []testcase{
+		{
+			name: "tidb-cluster",
+			obj:  newTidbCluster(),
+		},
+		{
+			name: "dm-cluster",
+			obj:  newDMCluster(),
+		},
+		{
+			name: "backup",
+			obj:  newBackup(),
+		},
+		{
+			name: "stateful-set",
+			obj:  newStatefulSet(newTidbCluster(), ""),
+		},
+		{
+			name: "service",
+			obj:  newService(newTidbCluster(), ""),
+		},
+	}
+
+	for _, tcase := range cases {
+		t.Log(tcase.name)
+
+		obj := DeepCopyClientObject(tcase.obj)
+		g.Expect(obj == tcase.obj).Should(BeFalse()) // compare pointer
+		g.Expect(obj).Should(Equal(tcase.obj))       // compare content
 	}
 }
 

@@ -20,14 +20,14 @@ import (
 	"path"
 	"strings"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/binlog"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
-	"github.com/pingcap/tidb-operator/pkg/util/config"
 	apps "k8s.io/api/apps/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -44,7 +44,7 @@ const (
 )
 
 type binlogClient interface {
-	PumpNodeStatus(ctx context.Context) (status []*binlog.NodeStatus, err error)
+	PumpNodeStatus(ctx context.Context) (status []*v1alpha1.PumpNodeStatus, err error)
 	Close() error
 }
 
@@ -114,14 +114,13 @@ func (m *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 	}
 
 	// Wait for PD & TiKV upgrading done
-	if tc.Status.TiCDC.Phase == v1alpha1.UpgradePhase ||
-		tc.Status.TiFlash.Phase == v1alpha1.UpgradePhase ||
+	if tc.Status.TiFlash.Phase == v1alpha1.UpgradePhase ||
 		tc.Status.PD.Phase == v1alpha1.UpgradePhase ||
 		tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
-		klog.Infof("TidbCluster: [%s/%s]'s ticdc status is %s, tiflash status is %s, "+
+		klog.Infof("TidbCluster: [%s/%s]'s tiflash status is %s, "+
 			"pd status is %s, tikv status is %s, can not upgrade pump",
-			tc.Namespace, tc.Name, tc.Status.TiCDC.Phase, tc.Status.TiFlash.Phase,
-			tc.Status.PD.Phase, tc.Status.TiKV.Phase)
+			tc.Namespace, tc.Name,
+			tc.Status.TiFlash.Phase, tc.Status.PD.Phase, tc.Status.TiKV.Phase)
 		return nil
 	}
 

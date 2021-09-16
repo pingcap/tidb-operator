@@ -14,10 +14,11 @@
 package version
 
 import (
+	"context"
 	"fmt"
 	"io"
 
-	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
 	"github.com/pingcap/tidb-operator/pkg/version"
 	"github.com/spf13/cobra"
@@ -79,7 +80,7 @@ func (o *VersionOptions) runVersion(tkcContext *config.TkcContext) error {
 
 	controllers, err := kubeCli.AppsV1().
 		Deployments(core.NamespaceAll).
-		List(v1.ListOptions{
+		List(context.TODO(), v1.ListOptions{
 			LabelSelector: fmt.Sprintf("%s=%s,%s=%s", label.ComponentLabelKey, "controller-manager", label.NameLabelKey, "tidb-operator"),
 		})
 	if err != nil {
@@ -87,7 +88,7 @@ func (o *VersionOptions) runVersion(tkcContext *config.TkcContext) error {
 	}
 	schedulers, err := kubeCli.AppsV1().
 		Deployments(core.NamespaceAll).
-		List(v1.ListOptions{
+		List(context.TODO(), v1.ListOptions{
 			LabelSelector: fmt.Sprintf("%s=%s,%s=%s", label.ComponentLabelKey, "scheduler", label.NameLabelKey, "tidb-operator"),
 		})
 	if err != nil {

@@ -14,6 +14,7 @@
 package tests
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -21,6 +22,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -42,6 +44,19 @@ func CheckTidbMonitor(monitor *v1alpha1.TidbMonitor, cli versioned.Interface, ku
 	}
 	if err := checkTidbMonitorFunctional(monitor, fw); err != nil {
 		log.Logf("ERROR: tm[%s/%s] failed to check functional:%v", monitor.Namespace, monitor.Name, err)
+		return err
+	}
+	return nil
+}
+
+func CheckTidbMonitorConfigurationUpdate(monitor *v1alpha1.TidbMonitor, kubeCli kubernetes.Interface, fw portforward.PortForward, expectActiveTargets int) error {
+
+	if err := checkTidbMonitorPod(monitor, kubeCli); err != nil {
+		log.Logf("ERROR: tm[%s/%s] failed to check pod:%v", monitor.Namespace, monitor.Name, err)
+		return err
+	}
+	if err := checkPrometheusCommon(monitor.Name, monitor.Namespace, fw, expectActiveTargets); err != nil {
+		log.Logf("ERROR: tm[%s/%s]'s prometheus check error:%v", monitor.Namespace, monitor.Namespace, err)
 		return err
 	}
 	return nil
@@ -90,7 +105,6 @@ func checkTidbMonitorPod(tm *v1alpha1.TidbMonitor, kubeCli kubernetes.Interface)
 				return false, nil
 			}
 		}
-
 		return true, err
 	})
 }
@@ -117,7 +131,7 @@ func checkTidbMonitorFunctional(tm *v1alpha1.TidbMonitor, fw portforward.PortFor
 }
 
 // checkPrometheusCommon check the Prometheus working status by querying `up` api and `targets` api.
-func checkPrometheusCommon(name, namespace string, fw portforward.PortForward, shard int32) error {
+func checkPrometheusCommon(name, namespace string, fw portforward.PortForward, expectActiveTargets int, shard int32) error {
 	var prometheusAddr string
 	tmName := monitor.GetMonitorShardName(name, shard)
 	if fw != nil {
@@ -192,8 +206,8 @@ func checkPrometheusCommon(name, namespace string, fw portforward.PortForward, s
 			log.Logf("ERROR: %v", err)
 			return false, nil
 		}
-		if data.Status != "success" || len(data.Data.ActiveTargets) < 1 {
-			log.Logf("ERROR: monitor[%s/%s]'s prometheus targets error", namespace, tmName)
+		if data.Status != "success" || len(data.Data.ActiveTargets) < expectActiveTargets {
+			log.Logf("ERROR: monitor[%s/%s]'s prometheus targets error", namespace, name)
 			return false, nil
 		}
 		for _, target := range data.Data.ActiveTargets {

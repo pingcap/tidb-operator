@@ -22,9 +22,9 @@ import (
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/kvproto/pkg/metapb"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/features"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	apps "k8s.io/api/apps/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -58,7 +58,7 @@ const (
 
 func GetOrdinalFromPodName(podName string) (int32, error) {
 	ordinalStr := podName[strings.LastIndex(podName, "-")+1:]
-	ordinalInt, err := strconv.Atoi(ordinalStr)
+	ordinalInt, err := strconv.ParseInt(ordinalStr, 10, 32)
 	if err != nil {
 		return int32(0), err
 	}
@@ -168,32 +168,6 @@ func IsStatefulSetScaling(set *appsv1.StatefulSet) bool {
 
 func GetStatefulSetName(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) string {
 	return fmt.Sprintf("%s-%s", tc.Name, memberType.String())
-}
-
-func GetAutoScalingOutSlots(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) sets.Int32 {
-	s := sets.Int32{}
-	l := ""
-	switch memberType {
-	case v1alpha1.PDMemberType:
-		return s
-	case v1alpha1.TiKVMemberType:
-		l = label.AnnTiKVAutoScalingOutOrdinals
-	case v1alpha1.TiDBMemberType:
-		l = label.AnnTiDBAutoScalingOutOrdinals
-	default:
-		return s
-	}
-	v, existed := tc.Annotations[l]
-	if !existed {
-		return s
-	}
-	var slice []int32
-	err := json.Unmarshal([]byte(v), &slice)
-	if err != nil {
-		return s
-	}
-	s.Insert(slice...)
-	return s
 }
 
 func Encode(obj interface{}) (string, error) {

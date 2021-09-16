@@ -22,9 +22,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/binlog"
+	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/util/config"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -85,8 +84,7 @@ func TestPumpMemberManagerSyncCreate(t *testing.T) {
 		svc, getSvcErr := pmm.deps.ServiceLister.Services(ns).Get(controller.PumpPeerMemberName(tcName))
 		set, getStsErr := pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PumpMemberName(tcName))
 		cm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: controller.PumpMemberName(tcName)}}
-		key, err := client.ObjectKeyFromObject(cm)
-		g.Expect(err).To(Succeed())
+		key := client.ObjectKeyFromObject(cm)
 		getCmErr := ctls.generic.FakeCli.Get(context.TODO(), key, cm)
 		result := result{syncErr, svc, getSvcErr, set, getStsErr, cm, getCmErr}
 		test.expectFn(g, &result)
@@ -230,8 +228,7 @@ func TestPumpMemberManagerSyncUpdate(t *testing.T) {
 		svc, getSvcErr := pmm.deps.ServiceLister.Services(ns).Get(controller.PumpPeerMemberName(tcName))
 		set, getStsErr := pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PumpMemberName(tcName))
 		cm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: controller.PumpMemberName(tcName)}}
-		key, err := client.ObjectKeyFromObject(cm)
-		g.Expect(err).To(Succeed())
+		key := client.ObjectKeyFromObject(cm)
 		getCmErr := ctls.generic.FakeCli.Get(context.TODO(), key, cm)
 		result := result{syncErr, oldSvc, svc, getSvcErr, oldSet, set, getStsErr, oldCm, cm, getCmErr}
 		test.expectFn(g, &result)
@@ -403,7 +400,8 @@ func TestSyncConfigUpdate(t *testing.T) {
 				})
 				g.Expect(using).NotTo(BeEmpty())
 				var usingCm *corev1.ConfigMap
-				for _, cm := range r.cms {
+				for i := range r.cms {
+					cm := r.cms[i]
 					if cm.Name == using {
 						usingCm = &cm
 					}
@@ -712,7 +710,7 @@ func TestSyncTiDBClusterStatus(t *testing.T) {
 		updateTC func(*appsv1.StatefulSet)
 		// TODO check work as expected
 		// `upgradingFn` is unused
-		// nolint(structcheck)
+		// nolint: structcheck
 		upgradingFn func(corelisters.PodLister, *appsv1.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 		errExpectFn func(*GomegaWithT, error)
 		tcExpectFn  func(*GomegaWithT, *v1alpha1.TidbCluster)
@@ -767,7 +765,7 @@ func TestSyncTiDBClusterStatus(t *testing.T) {
 type fakeBinlogClient struct {
 }
 
-func (c *fakeBinlogClient) PumpNodeStatus(ctx context.Context) (status []*binlog.NodeStatus, err error) {
+func (c *fakeBinlogClient) PumpNodeStatus(ctx context.Context) (status []*v1alpha1.PumpNodeStatus, err error) {
 	return nil, nil
 }
 

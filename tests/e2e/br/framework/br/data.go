@@ -14,9 +14,9 @@
 package backup
 
 import (
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/util"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -101,6 +101,7 @@ func GetSecret(ns, name, password string) *corev1.Secret {
 	}
 }
 
+// GetBackup return a basic backup
 func GetBackup(ns, name, tcName, typ string, s3Config *v1alpha1.S3StorageProvider) *v1alpha1.Backup {
 	if typ != BRType && typ != DumperType {
 		return nil

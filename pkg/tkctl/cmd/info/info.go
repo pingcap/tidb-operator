@@ -14,12 +14,13 @@
 package info
 
 import (
+	"context"
 	"fmt"
 	"io"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/readable"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/util"
@@ -128,16 +129,16 @@ func (o *InfoOptions) Run() error {
 
 	tc, err := o.TcCli.PingcapV1alpha1().
 		TidbClusters(o.Namespace).
-		Get(o.TidbClusterName, metav1.GetOptions{})
+		Get(context.TODO(), o.TidbClusterName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 	svcName := util.GetTidbServiceName(tc.Name)
-	svc, err := o.KubeCli.CoreV1().Services(o.Namespace).Get(svcName, metav1.GetOptions{})
+	svc, err := o.KubeCli.CoreV1().Services(o.Namespace).Get(context.TODO(), svcName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
-	podList, err := o.KubeCli.CoreV1().Pods(o.Namespace).List(metav1.ListOptions{
+	podList, err := o.KubeCli.CoreV1().Pods(o.Namespace).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s,%s=%s", label.InstanceLabelKey, tc.Name, label.ComponentLabelKey, "tidb"),
 	})
 	if err != nil {

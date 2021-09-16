@@ -14,13 +14,14 @@
 package member
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
 
 	. "github.com/onsi/gomega"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -611,18 +612,18 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 			podControl := fakeDeps.PodControl.(*controller.FakePodControl)
 			if tt.pods != nil {
 				for _, pod := range tt.pods {
-					client.CoreV1().Pods(pod.Namespace).Create(pod)
+					client.CoreV1().Pods(pod.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
 					podIndexer.Add(pod)
 				}
 			}
 			if tt.apiPods != nil {
 				for _, pod := range tt.apiPods {
-					client.CoreV1().Pods(pod.Namespace).Update(pod)
+					client.CoreV1().Pods(pod.Namespace).Update(context.TODO(), pod, metav1.UpdateOptions{})
 				}
 			}
 			if tt.pvcs != nil {
 				for _, pvc := range tt.pvcs {
-					client.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(pvc)
+					client.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(context.TODO(), pvc, metav1.CreateOptions{})
 					pvcIndexer.Add(pvc)
 				}
 			}

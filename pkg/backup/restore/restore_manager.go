@@ -17,12 +17,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -283,6 +283,7 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 					},
 				},
 			}, volumes...),
+			PriorityClassName: restore.Spec.PriorityClassName,
 		},
 	}
 
@@ -301,6 +302,7 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 			Template:     *podSpec,
 		},
 	}
+
 	return job, "", nil
 }
 
@@ -461,11 +463,12 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 					Resources:       restore.Spec.ResourceRequirements,
 				},
 			},
-			RestartPolicy:    corev1.RestartPolicyNever,
-			Tolerations:      restore.Spec.Tolerations,
-			ImagePullSecrets: restore.Spec.ImagePullSecrets,
-			Affinity:         restore.Spec.Affinity,
-			Volumes:          volumes,
+			RestartPolicy:     corev1.RestartPolicyNever,
+			Tolerations:       restore.Spec.Tolerations,
+			ImagePullSecrets:  restore.Spec.ImagePullSecrets,
+			Affinity:          restore.Spec.Affinity,
+			Volumes:           volumes,
+			PriorityClassName: restore.Spec.PriorityClassName,
 		},
 	}
 
@@ -484,6 +487,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 			Template:     *podSpec,
 		},
 	}
+
 	return job, "", nil
 }
 

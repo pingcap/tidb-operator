@@ -14,12 +14,13 @@
 package predicates
 
 import (
+	"context"
 	"testing"
 
 	. "github.com/onsi/gomega"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	pingcapfake "github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
@@ -166,12 +167,12 @@ func TestStableSchedulingFilter(t *testing.T) {
 		recorder := record.NewFakeRecorder(10)
 		kubeCli := fake.NewSimpleClientset()
 		if tc.pod != nil {
-			_, err := kubeCli.CoreV1().Pods(v1.NamespaceDefault).Create(tc.pod)
+			_, err := kubeCli.CoreV1().Pods(v1.NamespaceDefault).Create(context.TODO(), tc.pod, metav1.CreateOptions{})
 			g.Expect(err).NotTo(HaveOccurred())
 		}
 		cli := pingcapfake.NewSimpleClientset()
 		if tc.tidbCluster != nil {
-			_, err := cli.PingcapV1alpha1().TidbClusters(v1.NamespaceDefault).Create(tc.tidbCluster)
+			_, err := cli.PingcapV1alpha1().TidbClusters(v1.NamespaceDefault).Create(context.TODO(), tc.tidbCluster, metav1.CreateOptions{})
 			g.Expect(err).NotTo(HaveOccurred())
 		}
 		p := stableScheduling{

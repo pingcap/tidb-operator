@@ -3,6 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ template "cluster.name" . }}-monitor
+  namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -120,7 +121,7 @@ spec:
         - --log.level={{ .Values.monitor.prometheus.logLevel }}
         - --config.file=/etc/prometheus/prometheus.yml
         - --storage.tsdb.path=/data/prometheus
-        - --storage.tsdb.retention={{ .Values.monitor.prometheus.reserveDays }}d
+        - --storage.tsdb.retention.time={{ .Values.monitor.prometheus.reserveDays }}d
         ports:
         - name: prometheus
           containerPort: 9090

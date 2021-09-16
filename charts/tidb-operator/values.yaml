@@ -12,12 +12,12 @@ rbac:
 timezone: UTC
 
 # operatorImage is TiDB Operator image
-operatorImage: pingcap/tidb-operator:v1.2.0-rc.2
+operatorImage: pingcap/tidb-operator:v1.2.3
 imagePullPolicy: IfNotPresent
 # imagePullSecrets: []
 
 # tidbBackupManagerImage is tidb backup manager image
-tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.2.0-rc.2
+tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.2.3
 
 #
 # Enable or disable tidb-operator features:
@@ -70,6 +70,9 @@ controllerManager:
   # leaderRenewDeadline: 10s
   ## leaderRetryPeriod is the duration the LeaderElector clients should wait between tries of actions
   # leaderRetryPeriod: 2s
+
+  ## number of workers that are allowed to sync concurrently. default 5
+  # workers: 5
 
   # autoFailover is whether tidb-operator should auto failover when failure occurs
   autoFailover: true
@@ -159,6 +162,9 @@ scheduler:
   # PodAnnotations will set template.metadata.annotations
   # Refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
   podAnnotations: {}
+
+  # additional annotations for the configmap, mainly to prevent spinnaker versioning the cm
+  configmapAnnotations: {}
 
 # When AdvancedStatefulSet feature is enabled, you must install
 # AdvancedStatefulSet controller.

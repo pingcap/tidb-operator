@@ -7,6 +7,7 @@ metadata:
   {{- else }}
   name: tidb-controller-manager
   {{- end }}
+  namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -36,7 +37,7 @@ spec:
       serviceAccount: {{ .Values.controllerManager.serviceAccount }}-{{ .Release.Name }}
       {{- else }}
       serviceAccount: {{ .Values.controllerManager.serviceAccount }}
-      {{- end }}       
+      {{- end }}
     {{- end }}
     {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -84,6 +85,9 @@ spec:
           {{- end}}
           {{- if .Values.features }}
           - -features={{ join "," .Values.features }}
+          {{- end }}
+          {{- if .Values.controllerManager.workers }}
+          - -workers={{ .Values.controllerManager.workers | default 5 }}
           {{- end }}
           {{- if and ( .Values.admissionWebhook.create ) ( .Values.admissionWebhook.validation.pods ) }}
           - -pod-webhook-enabled=true

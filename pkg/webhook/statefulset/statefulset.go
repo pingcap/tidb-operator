@@ -14,16 +14,17 @@
 package statefulset
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"sync"
 
 	"github.com/openshift/generic-admission-server/pkg/apiserver"
 	asapps "github.com/pingcap/advanced-statefulset/client/apis/apps/v1"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/features"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	admission "k8s.io/api/admission/v1beta1"
 	apps "k8s.io/api/apps/v1"
@@ -103,7 +104,7 @@ func (sc *StatefulSetAdmissionControl) Validate(ar *admission.AdmissionRequest) 
 	}
 
 	tcName := controllerRef.Name
-	tc, err := sc.operatorCli.PingcapV1alpha1().TidbClusters(namespace).Get(tcName, metav1.GetOptions{})
+	tc, err := sc.operatorCli.PingcapV1alpha1().TidbClusters(namespace).Get(context.TODO(), tcName, metav1.GetOptions{})
 	if err != nil {
 		err := fmt.Errorf("get tidbcluster %s/%s failed, statefulset %s, err %v", namespace, tcName, name, err)
 		klog.Error(err.Error())

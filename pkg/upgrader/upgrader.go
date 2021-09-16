@@ -14,15 +14,16 @@
 package upgrader
 
 import (
+	"context"
 	"fmt"
 
 	asappsv1 "github.com/pingcap/advanced-statefulset/client/apis/apps/v1"
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/features"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	utildiscovery "github.com/pingcap/tidb-operator/pkg/util/discovery"
 	appsv1 "k8s.io/api/apps/v1"
@@ -59,16 +60,17 @@ var _ Interface = &upgrader{}
 func (u *upgrader) Upgrade() error {
 	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
 		klog.Infof("Upgrader: migrating Kubernetes StatefulSets to Advanced StatefulSets")
-		stsList, err := u.kubeCli.AppsV1().StatefulSets(u.ns).List(metav1.ListOptions{})
+		stsList, err := u.kubeCli.AppsV1().StatefulSets(u.ns).List(context.Background(), metav1.ListOptions{})
 		if err != nil {
 			return err
 		}
 		stsToMigrate := make([]appsv1.StatefulSet, 0)
 		tidbClusters := make([]*v1alpha1.TidbCluster, 0)
-		for _, sts := range stsList.Items {
+		for i := range stsList.Items {
+			sts := stsList.Items[i]
 			if ok, tcRef := util.IsOwnedByTidbCluster(&sts); ok {
 				stsToMigrate = append(stsToMigrate, sts)
-				tc, err := u.cli.PingcapV1alpha1().TidbClusters(sts.Namespace).Get(tcRef.Name, metav1.GetOptions{})
+				tc, err := u.cli.PingcapV1alpha1().TidbClusters(sts.Namespace).Get(context.Background(), tcRef.Name, metav1.GetOptions{})
 				if err != nil && !apierrors.IsNotFound(err) {
 					return err
 				}
@@ -92,8 +94,9 @@ func (u *upgrader) Upgrade() error {
 			}
 		}
 		klog.Infof("Upgrader: found %d Kubernetes StatefulSets owned by TidbCluster, trying to migrate one by one", len(stsToMigrate))
-		for _, sts := range stsToMigrate {
-			_, err := helper.Upgrade(u.kubeCli, u.asCli, &sts)
+		for i := range stsToMigrate {
+			sts := stsToMigrate[i]
+			_, err := helper.Upgrade(context.Background(), u.kubeCli, u.asCli, &sts)
 			if err != nil {
 				return err
 			}
@@ -106,12 +109,13 @@ func (u *upgrader) Upgrade() error {
 			klog.Infof("Upgrader: APIGroup %s is not registered, skip checking Advanced Statfulset", asappsv1.GroupName)
 			return nil
 		}
-		stsList, err := u.asCli.AppsV1().StatefulSets(u.ns).List(metav1.ListOptions{})
+		stsList, err := u.asCli.AppsV1().StatefulSets(u.ns).List(context.Background(), metav1.ListOptions{})
 		if err != nil {
 			return err
 		}
 		stsToMigrate := make([]asappsv1.StatefulSet, 0)
-		for _, sts := range stsList.Items {
+		for i := range stsList.Items {
+			sts := stsList.Items[i]
 			if ok, _ := util.IsOwnedByTidbCluster(&sts); ok {
 				stsToMigrate = append(stsToMigrate, sts)
 			}

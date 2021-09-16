@@ -19,9 +19,9 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -215,9 +215,9 @@ func TestTiFlashUpgraderUpgrade(t *testing.T) {
 			},
 		},
 		{
-			name: "tiflash can not upgrade when cdc is upgrading",
+			name: "tiflash can not upgrade when pd is upgrading",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.TiCDC.Phase = v1alpha1.UpgradePhase
+				tc.Status.PD.Phase = v1alpha1.UpgradePhase
 				tc.Status.TiFlash.Phase = v1alpha1.NormalPhase
 				tc.Status.TiFlash.Synced = true
 			},
@@ -237,7 +237,7 @@ func TestTiFlashUpgraderUpgrade(t *testing.T) {
 		{
 			name: "get last apply config error",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.TiCDC.Phase = v1alpha1.UpgradePhase
+				tc.Status.PD.Phase = v1alpha1.UpgradePhase
 				tc.Status.TiFlash.Phase = v1alpha1.NormalPhase
 				tc.Status.TiFlash.Synced = true
 			},

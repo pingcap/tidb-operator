@@ -22,8 +22,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
 	"github.com/pingcap/errors"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"go.etcd.io/etcd/clientv3"
 )
 
 // Client is the client of binlog.
@@ -93,19 +94,6 @@ type StatusResp struct {
 	Message string `json:"message"`
 }
 
-// NodeStatus represents the status saved in etcd.
-type NodeStatus struct {
-	NodeID string `json:"nodeId"`
-	Host   string `json:"host"`
-	State  string `json:"state"`
-
-	// NB: Currently we save the whole `NodeStatus` in the status of the CR.
-	// However, the following fields will be updated continuously.
-	// To avoid CR being updated and re-synced continuously, we exclude these fields.
-	// MaxCommitTS int64  `json:"maxCommitTS"`
-	// UpdateTS    int64  `json:"updateTS"`
-}
-
 // IsPumpTombstone check if drainer is tombstone.
 func (c *Client) IsPumpTombstone(ctx context.Context, addr string) (bool, error) {
 	nodeID, err := c.nodeID(ctx, addr, "pumps")
@@ -142,12 +130,12 @@ func (c *Client) isTombstone(ctx context.Context, ty string, nodeID string) (boo
 	return false, errors.Errorf("node not exist: %s", nodeID)
 }
 
-func (c *Client) PumpNodeStatus(ctx context.Context) (status []*NodeStatus, err error) {
+func (c *Client) PumpNodeStatus(ctx context.Context) (status []*v1alpha1.PumpNodeStatus, err error) {
 	return c.nodeStatus(ctx, "pumps")
 }
 
 // nolint (unused)
-func (c *Client) drainerNodeStatus(ctx context.Context) (status []*NodeStatus, err error) {
+func (c *Client) drainerNodeStatus(ctx context.Context) (status []*v1alpha1.PumpNodeStatus, err error) {
 	return c.nodeStatus(ctx, "drainers")
 }
 
@@ -199,7 +187,7 @@ func (c *Client) updateStatus(ctx context.Context, ty string, nodeID string, sta
 		return errors.Errorf("no %s with node id: %v", ty, nodeID)
 	}
 
-	var nodeStatus NodeStatus
+	var nodeStatus v1alpha1.PumpNodeStatus
 	err = json.Unmarshal(resp.Kvs[0].Value, &nodeStatus)
 	if err != nil {
 		return errors.AddStack(err)
@@ -224,7 +212,7 @@ func (c *Client) updateStatus(ctx context.Context, ty string, nodeID string, sta
 	return nil
 }
 
-func (c *Client) nodeStatus(ctx context.Context, ty string) (status []*NodeStatus, err error) {
+func (c *Client) nodeStatus(ctx context.Context, ty string) (status []*v1alpha1.PumpNodeStatus, err error) {
 	key := fmt.Sprintf("/tidb-binlog/v1/%s", ty)
 
 	resp, err := c.etcdClient.KV.Get(ctx, key, clientv3.WithPrefix())
@@ -233,7 +221,7 @@ func (c *Client) nodeStatus(ctx context.Context, ty string) (status []*NodeStatu
 	}
 
 	for _, kv := range resp.Kvs {
-		var s NodeStatus
+		var s v1alpha1.PumpNodeStatus
 		err = json.Unmarshal(kv.Value, &s)
 		if err != nil {
 			return nil, errors.Annotatef(err, "key: %s, data: %s", string(kv.Key), string(kv.Value))

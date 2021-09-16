@@ -14,6 +14,7 @@
 package upgrader
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"testing"
@@ -21,10 +22,10 @@ import (
 	"github.com/google/go-cmp/cmp"
 	asappsv1 "github.com/pingcap/advanced-statefulset/client/apis/apps/v1"
 	asclientsetfake "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned/fake"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	versionedfake "github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	"github.com/pingcap/tidb-operator/pkg/features"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -637,22 +638,25 @@ func TestUpgrade(t *testing.T) {
 		asCli := asclientsetfake.NewSimpleClientset()
 		cli := versionedfake.NewSimpleClientset()
 
-		for _, tc := range tt.tidbClusters {
-			_, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(&tc)
+		for i := range tt.tidbClusters {
+			tc := tt.tidbClusters[i]
+			_, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), &tc, metav1.CreateOptions{})
 			if err != nil {
 				t.Fatal(err)
 			}
 		}
 
-		for _, sts := range tt.statefulsets {
-			_, err = kubeCli.AppsV1().StatefulSets(sts.Namespace).Create(&sts)
+		for i := range tt.statefulsets {
+			sts := tt.statefulsets[i]
+			_, err = kubeCli.AppsV1().StatefulSets(sts.Namespace).Create(context.TODO(), &sts, metav1.CreateOptions{})
 			if err != nil {
 				t.Fatal(err)
 			}
 		}
 
-		for _, sts := range tt.advancedStatefulsets {
-			_, err = asCli.AppsV1().StatefulSets(sts.Namespace).Create(&sts)
+		for i := range tt.advancedStatefulsets {
+			sts := tt.advancedStatefulsets[i]
+			_, err = asCli.AppsV1().StatefulSets(sts.Namespace).Create(context.TODO(), &sts, metav1.CreateOptions{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -670,7 +674,7 @@ func TestUpgrade(t *testing.T) {
 			}
 		}
 
-		gotAdvancedStatfulSetsList, err := asCli.AppsV1().StatefulSets(metav1.NamespaceAll).List(metav1.ListOptions{})
+		gotAdvancedStatfulSetsList, err := asCli.AppsV1().StatefulSets(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -680,7 +684,7 @@ func TestUpgrade(t *testing.T) {
 			t.Errorf("unexpected (-want, +got): %s", diff)
 		}
 
-		gotStatfulSetsList, err := kubeCli.AppsV1().StatefulSets(metav1.NamespaceAll).List(metav1.ListOptions{})
+		gotStatfulSetsList, err := kubeCli.AppsV1().StatefulSets(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			t.Fatal(err)
 		}

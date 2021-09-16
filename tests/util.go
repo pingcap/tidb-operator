@@ -15,6 +15,7 @@ package tests
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math/rand"
 	"text/template"
@@ -76,7 +77,7 @@ func GetKubeProxyPod(kubeCli kubernetes.Interface, node string) (*corev1.Pod, er
 func GetPodsByLabels(kubeCli kubernetes.Interface, node string, lables map[string]string) (*corev1.Pod, error) {
 	selector := labels.Set(lables).AsSelector()
 	options := metav1.ListOptions{LabelSelector: selector.String()}
-	componentPods, err := kubeCli.CoreV1().Pods("kube-system").List(options)
+	componentPods, err := kubeCli.CoreV1().Pods("kube-system").List(context.TODO(), options)
 	if err != nil {
 		return nil, err
 	}
@@ -268,7 +269,7 @@ const (
 
 func waitForPodNotFoundInNamespace(c kubernetes.Interface, podName, ns string, timeout time.Duration) error {
 	return wait.PollImmediate(PodPollInterval, timeout, func() (bool, error) {
-		_, err := c.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+		_, err := c.CoreV1().Pods(ns).Get(context.TODO(), podName, metav1.GetOptions{})
 		if apierrors.IsNotFound(err) {
 			return true, nil // done
 		}
@@ -281,7 +282,7 @@ func waitForPodNotFoundInNamespace(c kubernetes.Interface, podName, ns string, t
 
 func waitForComponentStatus(c kubernetes.Interface, component string, statusType corev1.ComponentConditionType, status corev1.ConditionStatus) error {
 	return wait.PollImmediate(time.Second, 5*time.Minute, func() (bool, error) {
-		componentStatus, err := c.CoreV1().ComponentStatuses().Get(component, metav1.GetOptions{})
+		componentStatus, err := c.CoreV1().ComponentStatuses().Get(context.TODO(), component, metav1.GetOptions{})
 		if err != nil {
 			return true, err // stop wait with error
 		}
@@ -303,7 +304,7 @@ func IntPtr(i int) *int {
 func CleanReleasedCRDOrDie(version string) {
 	url := fmt.Sprintf("https://raw.githubusercontent.com/pingcap/tidb-operator/%s/manifests/crd.yaml", version)
 	err := wait.PollImmediate(time.Second*10, time.Minute, func() (bool, error) {
-		_, err := framework.RunKubectl("delete", "-f", url)
+		_, err := framework.RunKubectl("", "delete", "-f", url)
 		if err != nil {
 			return false, nil
 		}

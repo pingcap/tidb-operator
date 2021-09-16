@@ -17,9 +17,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
 
 	apps "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,7 +46,7 @@ func (s *masterScaler) Scale(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 	} else if scaling < 0 {
 		return s.ScaleIn(meta, oldSet, newSet)
 	}
-	return s.SyncAutoScalerAnn(meta, oldSet)
+	return nil
 }
 
 func (s *masterScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
@@ -167,10 +167,6 @@ func (s *masterScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, new
 	return nil
 }
 
-func (s *masterScaler) SyncAutoScalerAnn(meta metav1.Object, oldSet *apps.StatefulSet) error {
-	return nil
-}
-
 type fakeMasterScaler struct{}
 
 // NewFakeMasterScaler returns a fake Scaler
@@ -194,9 +190,5 @@ func (s *fakeMasterScaler) ScaleOut(_ metav1.Object, oldSet *apps.StatefulSet, n
 
 func (s *fakeMasterScaler) ScaleIn(_ metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	setReplicasAndDeleteSlots(newSet, *oldSet.Spec.Replicas-1, nil)
-	return nil
-}
-
-func (s *fakeMasterScaler) SyncAutoScalerAnn(dc metav1.Object, actual *apps.StatefulSet) error {
 	return nil
 }

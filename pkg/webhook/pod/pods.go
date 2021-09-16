@@ -14,6 +14,7 @@
 package pod
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -22,12 +23,12 @@ import (
 	"github.com/openshift/generic-admission-server/pkg/apiserver"
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/features"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	memberUtils "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
@@ -185,7 +186,7 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *admissio
 
 	// We would update pod annotations if they were deleted member by admission controller,
 	// so we shall find this pod from apiServer considering getting latest pod info.
-	pod, err := pc.kubeCli.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
+	pod, err := pc.kubeCli.CoreV1().Pods(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		klog.Infof("failed to find pod[%s/%s] during delete it,admit to delete", namespace, name)
 		return util.ARSuccess()
@@ -247,6 +248,11 @@ func (pc *PodAdmissionControl) processAdmitDeletePDPod(pod *core.Pod, ownerState
 		}
 		klog.Errorf("failed get tc[%s/%s],refuse to delete pod[%s/%s]", namespace, tcName, namespace, name)
 		return util.ARFail(err)
+	}
+
+	if tc.PDStsDesiredReplicas() < 2 {
+		klog.Infof("PD statefulset replicas are less than 2, admit to delete pod[%s/%s] ", namespace, name)
+		return util.ARSuccess()
 	}
 	// Force Upgraded,Admit to Upgrade
 	if memberUtils.NeedForceUpgrade(tc.Annotations) {

@@ -14,13 +14,14 @@
 package upinfo
 
 import (
+	"context"
 	"fmt"
 	"io"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/readable"
 	tkctlUtil "github.com/pingcap/tidb-operator/pkg/tkctl/util"
@@ -133,23 +134,23 @@ func (o *UpInfoOptions) Run() error {
 
 	tc, err := o.TcCli.PingcapV1alpha1().
 		TidbClusters(o.Namespace).
-		Get(o.TidbClusterName, metav1.GetOptions{})
+		Get(context.TODO(), o.TidbClusterName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 	setName := controller.TiDBMemberName(tc.Name)
-	set, err := o.KubeCli.AppsV1().StatefulSets(o.Namespace).Get(setName, metav1.GetOptions{})
+	set, err := o.KubeCli.AppsV1().StatefulSets(o.Namespace).Get(context.TODO(), setName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
-	podList, err := o.KubeCli.CoreV1().Pods(o.Namespace).List(metav1.ListOptions{
+	podList, err := o.KubeCli.CoreV1().Pods(o.Namespace).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: label.New().Instance(tc.Name).TiDB().String(),
 	})
 	if err != nil {
 		return err
 	}
 	svcName := tkctlUtil.GetTidbServiceName(tc.Name)
-	svc, err := o.KubeCli.CoreV1().Services(o.Namespace).Get(svcName, metav1.GetOptions{})
+	svc, err := o.KubeCli.CoreV1().Services(o.Namespace).Get(context.TODO(), svcName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -217,7 +218,8 @@ func renderTCUpgradeInfo(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, podLis
 				updateReplicas := set.Spec.UpdateStrategy.RollingUpdate.Partition
 
 				if len(podList.Items) != 0 {
-					for _, pod := range podList.Items {
+					for i := range podList.Items {
+						pod := podList.Items[i]
 						var state string
 						ordinal, err := util.GetOrdinalFromPodName(pod.Name)
 						if err != nil {

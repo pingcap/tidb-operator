@@ -22,9 +22,9 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
@@ -214,7 +214,7 @@ func (m *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 	}
 
 	// Force update takes precedence over scaling because force upgrade won't take effect when cluster gets stuck at scaling
-	if !tc.Status.PD.Synced && NeedForceUpgrade(tc.Annotations) {
+	if !tc.Status.PD.Synced && !templateEqual(newPDSet, oldPDSet) && (NeedForceUpgrade(tc.Annotations) || *oldPDSet.Spec.Replicas < 2) {
 		tc.Status.PD.Phase = v1alpha1.UpgradePhase
 		setUpgradePartition(newPDSet, 0)
 		errSTS := UpdateStatefulSet(m.deps.StatefulSetControl, tc, newPDSet, oldPDSet)

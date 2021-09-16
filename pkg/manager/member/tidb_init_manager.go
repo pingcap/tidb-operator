@@ -14,12 +14,13 @@
 package member
 
 import (
+	"context"
 	"fmt"
 	"path"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -37,7 +38,7 @@ const (
 	initContainerName   = "wait"
 	containerName       = "mysql-client"
 	passwdKey           = "password"
-	passwdPath          = "/etc/tidb/password"
+	passwdPath          = "/etc/tidb/password" // nolint: gosec
 	sqlKey              = "init-sql"
 	sqlPath             = "init.sql"
 	sqlDir              = "/data"
@@ -134,7 +135,7 @@ func (m *tidbInitManager) updateInitializer(ti *v1alpha1.TidbInitializer) (*v1al
 	// don't wait due to limited number of clients, but backoff after the default number of steps
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		var updateErr error
-		update, updateErr = m.deps.Clientset.PingcapV1alpha1().TidbInitializers(ns).Update(ti)
+		update, updateErr = m.deps.Clientset.PingcapV1alpha1().TidbInitializers(ns).Update(context.TODO(), ti, metav1.UpdateOptions{})
 		if updateErr == nil {
 			klog.Infof("TidbInitializer: [%s/%s] updated successfully", ns, tiName)
 			return nil

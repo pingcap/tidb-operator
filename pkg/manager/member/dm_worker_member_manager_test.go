@@ -19,7 +19,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 
 	"github.com/google/go-cmp/cmp"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -95,8 +95,7 @@ func TestWorkerMemberManagerSyncCreate(t *testing.T) {
 			g.Expect(strings.HasPrefix(cmName, controller.DMWorkerMemberName(dcName))).To(BeTrue())
 		}
 		cm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: cmName}}
-		key, err := client.ObjectKeyFromObject(cm)
-		g.Expect(err).To(Succeed())
+		key := client.ObjectKeyFromObject(cm)
 		getCmErr := ctls.generic.FakeCli.Get(context.TODO(), key, cm)
 		result := result{syncErr, svc, getSvcErr, set, getStsErr, cm, getCmErr}
 		test.expectFn(g, &result)
@@ -260,8 +259,7 @@ func TestWorkerMemberManagerSyncUpdate(t *testing.T) {
 			g.Expect(strings.HasPrefix(cmName, controller.DMWorkerMemberName(dcName))).To(BeTrue())
 		}
 		cm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: cmName}}
-		key, err := client.ObjectKeyFromObject(cm)
-		g.Expect(err).To(Succeed())
+		key := client.ObjectKeyFromObject(cm)
 		getCmErr := ctls.generic.FakeCli.Get(context.TODO(), key, cm)
 		result := result{syncErr, oldSvc, svc, getSvcErr, oldSet, set, getStsErr, oldCm, cm, getCmErr, triggerDeleteWorker}
 		test.expectFn(g, &result)
@@ -661,7 +659,8 @@ func TestWorkerSyncConfigUpdate(t *testing.T) {
 				})
 				g.Expect(using).NotTo(BeEmpty())
 				var usingCm *corev1.ConfigMap
-				for _, cm := range r.cms {
+				for i := range r.cms {
+					cm := r.cms[i]
 					if cm.Name == using {
 						usingCm = &cm
 					}

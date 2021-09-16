@@ -14,14 +14,14 @@
 package pod
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
 	"github.com/BurntSushi/toml"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/features"
-	"github.com/pingcap/tidb-operator/pkg/label"
-	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -54,7 +54,7 @@ func (pc *PodAdmissionControl) mutatePod(ar *admissionv1beta1.AdmissionRequest) 
 	}
 	namespace := ar.Namespace
 
-	tc, err := pc.operatorCli.PingcapV1alpha1().TidbClusters(namespace).Get(tcName, metav1.GetOptions{})
+	tc, err := pc.operatorCli.PingcapV1alpha1().TidbClusters(namespace).Get(context.TODO(), tcName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return util.ARSuccess()
@@ -74,16 +74,6 @@ func (pc *PodAdmissionControl) mutatePod(ar *admissionv1beta1.AdmissionRequest) 
 }
 
 func (pc *PodAdmissionControl) tikvHotRegionSchedule(tc *v1alpha1.TidbCluster, pod *corev1.Pod) error {
-	podName := pod.Name
-	ordinal, err := operatorUtils.GetOrdinalFromPodName(podName)
-	if err != nil {
-		return err
-	}
-	sets := operatorUtils.GetAutoScalingOutSlots(tc, v1alpha1.TiKVMemberType)
-	if !sets.Has(ordinal) {
-		return nil
-	}
-
 	cm, err := pc.getTikvConfigMap(tc, pod)
 	if err != nil {
 		klog.Infof("tc[%s/%s]'s tikv %s configmap not found, error: %v", tc.Namespace, tc.Name, pod.Name, err)
@@ -106,7 +96,8 @@ func (pc *PodAdmissionControl) tikvHotRegionSchedule(tc *v1alpha1.TidbCluster, p
 	}
 	// TODO: add document to explain the hot region label
 	config.Server.Labels["specialUse"] = "hotRegion"
-	for id, c := range pod.Spec.Containers {
+	for id := range pod.Spec.Containers {
+		c := pod.Spec.Containers[id]
 		if c.Name == "tikv" {
 			appendExtraLabelsENVForTiKV(config.Server.Labels, &c)
 			pod.Spec.Containers[id] = c
@@ -128,5 +119,5 @@ func (pc *PodAdmissionControl) getTikvConfigMap(tc *v1alpha1.TidbCluster, pod *c
 	if cnName == "" {
 		return nil, fmt.Errorf("tc[%s/%s] 's tikv configmap can't find", tc.Namespace, tc.Name)
 	}
-	return pc.kubeCli.CoreV1().ConfigMaps(tc.Namespace).Get(cnName, metav1.GetOptions{})
+	return pc.kubeCli.CoreV1().ConfigMaps(tc.Namespace).Get(context.TODO(), cnName, metav1.GetOptions{})
 }

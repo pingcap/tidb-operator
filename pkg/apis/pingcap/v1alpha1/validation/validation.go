@@ -25,8 +25,9 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/prometheus/common/model"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
@@ -69,6 +70,7 @@ func ValidateTidbMonitor(monitor *v1alpha1.TidbMonitor) field.ErrorList {
 	}
 
 	allErrs = append(allErrs, validateService(&monitor.Spec.Prometheus.Service, field.NewPath("spec"))...)
+	allErrs = append(allErrs, validatePromDurationStr(monitor.Spec.Prometheus.RetentionTime, field.NewPath("spec"))...)
 	allErrs = append(allErrs, validateService(&monitor.Spec.Reloader.Service, field.NewPath("spec"))...)
 	if monitor.Spec.Persistent {
 		allErrs = append(allErrs, validateStorageInfo(monitor.Spec.Storage, field.NewPath("spec"))...)
@@ -619,6 +621,17 @@ func validateTimeDurationStr(timeStr *string, fldPath *field.Path) field.ErrorLi
 			allErrs = append(allErrs, field.Invalid(fldPath, timeStr, "mush be a valid Go time duration string, e.g. 3m"))
 		} else if d <= 0 {
 			allErrs = append(allErrs, field.Invalid(fldPath, timeStr, "must be a positive Go time duration"))
+		}
+	}
+	return allErrs
+}
+
+// validatePromDurationStr validate prometheus duration, Units Supported: y, w, d, h, m, s, ms.
+func validatePromDurationStr(timeStr *string, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if timeStr != nil {
+		if _, err := model.ParseDuration(*timeStr); err != nil {
+			allErrs = append(allErrs, field.Invalid(fldPath, timeStr, "mush be a valid Prom time duration string, e.g. 2h"))
 		}
 	}
 	return allErrs

@@ -18,46 +18,78 @@ import (
 	"database/sql"
 	"fmt"
 	"math/rand"
+	"path"
 	"strings"
 	"time"
 
 	"github.com/onsi/ginkgo"
+	ginkgoconfig "github.com/onsi/ginkgo/config"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/br/framework"
 	brutil "github.com/pingcap/tidb-operator/tests/e2e/br/framework/br"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/blockwriter"
-	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/feature"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/portforward"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	utiltidbcluster "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/test/e2e/framework"
+	e2eskipper "k8s.io/kubernetes/test/e2e/framework/skipper"
 )
 
 var (
 	tidbReadyTimeout       = time.Minute * 5
-	backupCompleteTimeout  = time.Minute * 3
-	restoreCompleteTimeout = time.Minute * 3
+	backupCompleteTimeout  = time.Minute * 5
+	restoreCompleteTimeout = time.Minute * 5
 )
 
 const (
-	featKeyVersion   = "Version"
-	versionV4        = "V4"
-	versionV5        = "V5"
-	versionV42V5     = "V4->V5"
-	featVersionV4    = featKeyVersion + ":" + versionV4
-	featVersionV5    = featKeyVersion + ":" + versionV5
-	featVersionV42V5 = featKeyVersion + ":" + versionV42V5
-
-	featKeyType    = "Type"
-	typeBR         = "BR"
-	typeDumper     = "Dumper"
-	featTypeBR     = featKeyType + ":" + typeBR
-	featTypeDumper = featKeyType + ":" + typeDumper
-
-	featTLS = "TLS"
+	typeBR     string = "BR"
+	typeDumper string = "Dumper"
 )
+
+type option func(t *testcase)
+
+func enableTLS(t *testcase) {
+	t.enableTLS = true
+}
+
+type testcase struct {
+	backupVersion  string
+	restoreVersion string
+	typ            string
+	enableTLS      bool
+
+	// hooks
+	configureBackup func(backup *v1alpha1.Backup)
+	postBackup      func(backup *v1alpha1.Backup)
+}
+
+func newTestCase(backupVersion, restoreVersion string, typ string, opts ...option) *testcase {
+	tc := &testcase{
+		backupVersion:  backupVersion,
+		restoreVersion: restoreVersion,
+		typ:            typ,
+	}
+
+	for _, opt := range opts {
+		opt(tc)
+	}
+
+	return tc
+}
+
+func (t *testcase) description() string {
+	builder := &strings.Builder{}
+
+	builder.WriteString(fmt.Sprintf("[%s][%s To %s]", t.typ, t.backupVersion, t.restoreVersion))
+
+	if t.enableTLS {
+		builder.WriteString("[TLS]")
+	}
+
+	return builder.String()
+}
 
 var _ = ginkgo.Describe("Backup and Restore", func() {
 	f := e2eframework.NewFramework("br")
@@ -76,48 +108,153 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		framework.ExpectNoError(err)
 	})
 
-	feats := []feature.Features{
-		feature.New(featVersionV4, featTypeBR).Build(),
-		feature.New(featVersionV4, featTypeDumper).Build(),
-		// feature.New(featVersionV4, featTypeBR, featTLS).Build(),
-		// feature.New(featVersionV4, featTypeDumper, featTLS).Build(),
-
-		feature.New(featVersionV5, featTypeBR).Build(),
-		feature.New(featVersionV5, featTypeDumper).Build(),
-		feature.New(featVersionV5, featTypeBR, featTLS).Build(),
-		feature.New(featVersionV5, featTypeDumper, featTLS).Build(),
-
-		feature.New(featVersionV42V5, featTypeBR).Build(),
-		feature.New(featVersionV42V5, featTypeDumper).Build(),
+	cases := []*testcase{
+		// latest version BR
+		newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeBR),
+		// latest version Dumper
+		newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeDumper),
+		// latest version BR and enable TLS
+		newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeBR, enableTLS),
+		// latest version Dumper and enable TLS
+		newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeDumper, enableTLS),
+	}
+	for _, prevVersion := range utilimage.TiDBPreviousVersions {
+		cases = append(cases,
+			// previous version BR
+			newTestCase(prevVersion, prevVersion, typeBR),
+			// previous version Dumper
+			newTestCase(prevVersion, prevVersion, typeDumper),
+			// previous version -> latest version BR
+			newTestCase(prevVersion, utilimage.TiDBLatest, typeBR),
+			// previous version -> latest version Dumper
+			newTestCase(prevVersion, utilimage.TiDBLatest, typeDumper),
+		)
 	}
 
-	for i := range feats {
-		feat := feats[i]
-		desc := feat.String() + "Backup and Restore"
+	brTest := func(tcase *testcase) {
+		enableTLS := tcase.enableTLS
+		typ := strings.ToLower(tcase.typ)
+		backupVersion := tcase.backupVersion
+		restoreVersion := tcase.restoreVersion
 
-		enableTLS := feat.Has(featTLS)
-		typ := strings.ToLower(feat.Value(featKeyType))
 		// NOTE: mysql and test will be filtered by default
 		dbName := "e2etest"
-		backupClusterName := fmt.Sprintf("backup-with-%s", typ)
-		restoreClusterName := fmt.Sprintf("restore-with-%s", typ)
-		backupName := fmt.Sprintf("%s-backup", backupClusterName)
-		restoreName := fmt.Sprintf("%s-restore", restoreClusterName)
+		backupClusterName := fmt.Sprintf("backup-with-%s-%s", typ, strings.ReplaceAll(backupVersion, ".", "x"))
+		restoreClusterName := fmt.Sprintf("restore-with-%s-%s", typ, strings.ReplaceAll(restoreVersion, ".", "x"))
+		backupName := backupClusterName
+		restoreName := restoreClusterName
 
-		var backupVersion, restoreVersion string
-		switch feat.Value(featKeyVersion) {
-		case versionV4:
-			backupVersion = utilimage.TiDBV4
-			restoreVersion = utilimage.TiDBV4
-		case versionV5:
-			backupVersion = utilimage.TiDBV5
-			restoreVersion = utilimage.TiDBV5
-		case versionV42V5:
-			backupVersion = utilimage.TiDBV4
-			restoreVersion = utilimage.TiDBV5
+		ns := f.Namespace.Name
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		ginkgo.By("Create TiDB cluster for backup")
+		err := createTidbCluster(f, backupClusterName, backupVersion, enableTLS)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Create TiDB cluster for restore")
+		err = createTidbCluster(f, restoreClusterName, restoreVersion, enableTLS)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Wait for backup TiDB cluster ready")
+		err = utiltidbcluster.WaitForTidbClusterConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Wait for restore TiDB cluster ready")
+		err = utiltidbcluster.WaitForTidbClusterConditionReady(f.ExtClient, ns, restoreClusterName, tidbReadyTimeout, 0)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Forward backup TiDB cluster service")
+		backupHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(backupClusterName), 4000)
+		framework.ExpectNoError(err)
+		err = initDatabase(backupHost, dbName)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Write data into backup TiDB cluster")
+		backupDSN := getDefaultDSN(backupHost, dbName)
+		err = blockwriter.NewDefault().Write(context.Background(), backupDSN)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Create RBAC for backup and restore")
+		err = createRBAC(f)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Create backup")
+		backup, err := createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, tcase.configureBackup)
+		framework.ExpectNoError(err)
+
+		if tcase.postBackup != nil {
+			tcase.postBackup(backup)
 		}
 
-		ginkgo.It(desc, func() {
+		ginkgo.By("Create restore")
+		err = createRestoreAndWaitForComplete(f, restoreName, restoreClusterName, typ, backupName)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Forward restore TiDB cluster service")
+		restoreHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(restoreClusterName), 4000)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Validate restore result")
+		restoreDSN := getDefaultDSN(restoreHost, dbName)
+		err = checkDataIsSame(backupDSN, restoreDSN)
+		framework.ExpectNoError(err)
+	}
+
+	for i := range cases {
+		tcase := cases[i]
+		ginkgo.It(tcase.description(), func() {
+			brTest(tcase)
+		})
+	}
+
+	ginkgo.Context("Specific Version", func() {
+		cases := []*testcase{
+			newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeBR),
+			newTestCase(utilimage.TiDBV4x0x9, utilimage.TiDBLatest, typeBR),
+			newTestCase(utilimage.TiDBV5x0x0, utilimage.TiDBLatest, typeBR),
+			newTestCase(utilimage.TiDBV5x0x2, utilimage.TiDBLatest, typeBR),
+		}
+		for i := range cases {
+			tcase := cases[i]
+			ginkgo.It(tcase.description(), func() {
+				if ginkgoconfig.GinkgoConfig.FocusString == "" {
+					e2eskipper.Skipf("Skip br testing for specific version")
+				}
+				brTest(tcase)
+			})
+		}
+	})
+
+	ginkgo.It("backup and restore with mixed bucket and prefix", func() {
+		middlePath := "mid"
+
+		ns := f.Namespace.Name
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		tcase := newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeBR)
+		tcase.configureBackup = func(backup *v1alpha1.Backup) {
+			backup.Spec.StorageProvider.S3.Bucket = path.Join(backup.Spec.StorageProvider.S3.Bucket, middlePath) // bucket add suffix
+		}
+		tcase.postBackup = func(backup *v1alpha1.Backup) {
+			ginkgo.By("Check whether prefix of backup files in storage is right")
+			expectedPrefix := path.Join(middlePath, backup.Spec.StorageProvider.S3.Prefix)
+			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, expectedPrefix)
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, false, "storage should have data")
+		}
+	})
+
+	ginkgo.Context("[Backup Clean]", func() {
+		ginkgo.It("clean bakcup files with policy Delete", func() {
+			backupClusterName := "backup-clean"
+			backupVersion := utilimage.TiDBLatest
+			enableTLS := false
+			dbName := "e2etest"
+			backupName := backupClusterName
+			typ := strings.ToLower(typeBR)
+
 			ns := f.Namespace.Name
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -126,16 +263,8 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			err := createTidbCluster(f, backupClusterName, backupVersion, enableTLS)
 			framework.ExpectNoError(err)
 
-			ginkgo.By("Create TiDB cluster for restore")
-			err = createTidbCluster(f, restoreClusterName, restoreVersion, enableTLS)
-			framework.ExpectNoError(err)
-
 			ginkgo.By("Wait for backup TiDB cluster ready")
 			err = utiltidbcluster.WaitForTidbClusterConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
-			framework.ExpectNoError(err)
-
-			ginkgo.By("Wait for restore TiDB cluster ready")
-			err = utiltidbcluster.WaitForTidbClusterConditionReady(f.ExtClient, ns, restoreClusterName, tidbReadyTimeout, 0)
 			framework.ExpectNoError(err)
 
 			ginkgo.By("Forward backup TiDB cluster service")
@@ -153,24 +282,23 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			err = createRBAC(f)
 			framework.ExpectNoError(err)
 
-			ginkgo.By("Create backup")
-			err = createBackupAndWaitForComplete(f, backupName, backupClusterName, typ)
+			ginkgo.By("Create backup with clean policy Delete")
+			backup, err := createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+			})
 			framework.ExpectNoError(err)
 
-			ginkgo.By("Create restore")
-			err = createRestoreAndWaitForComplete(f, restoreName, restoreClusterName, typ, backupName)
+			ginkgo.By("Delete backup")
+			err = deleteBackup(f, backupName)
 			framework.ExpectNoError(err)
 
-			ginkgo.By("Forward restore TiDB cluster service")
-			restoreHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(restoreClusterName), 4000)
+			ginkgo.By("Check if all backup files in storage is deleted")
+			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, backup.Spec.S3.Prefix) // now we only use s3
 			framework.ExpectNoError(err)
-
-			ginkgo.By("Validate restore result")
-			restoreDSN := getDefaultDSN(restoreHost, dbName)
-			err = checkDataIsSame(backupDSN, restoreDSN)
-			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
 		})
-	}
+
+	})
 })
 
 func getTiDBServiceResourceName(tcName string) string {
@@ -194,7 +322,7 @@ func createTidbCluster(f *e2eframework.Framework, name string, version string, e
 		}
 	}
 
-	if _, err := f.ExtClient.PingcapV1alpha1().TidbClusters(ns).Create(tc); err != nil {
+	if _, err := f.ExtClient.PingcapV1alpha1().TidbClusters(ns).Create(context.TODO(), tc, metav1.CreateOptions{}); err != nil {
 		return err
 	}
 
@@ -204,49 +332,51 @@ func createTidbCluster(f *e2eframework.Framework, name string, version string, e
 func createRBAC(f *e2eframework.Framework) error {
 	ns := f.Namespace.Name
 	sa := brutil.GetServiceAccount(ns)
-	if _, err := f.ClientSet.CoreV1().ServiceAccounts(ns).Create(sa); err != nil {
+	if _, err := f.ClientSet.CoreV1().ServiceAccounts(ns).Create(context.TODO(), sa, metav1.CreateOptions{}); err != nil {
 		return err
 	}
 
 	role := brutil.GetRole(ns)
-	if _, err := f.ClientSet.RbacV1().Roles(ns).Create(role); err != nil {
+	if _, err := f.ClientSet.RbacV1().Roles(ns).Create(context.TODO(), role, metav1.CreateOptions{}); err != nil {
 		return err
 	}
 	rb := brutil.GetRoleBinding(ns)
-	if _, err := f.ClientSet.RbacV1().RoleBindings(ns).Create(rb); err != nil {
+	if _, err := f.ClientSet.RbacV1().RoleBindings(ns).Create(context.TODO(), rb, metav1.CreateOptions{}); err != nil {
 		return err
 	}
 	return nil
 }
 
-func createBackupAndWaitForComplete(f *e2eframework.Framework, name, tcName, typ string) error {
+func createBackupAndWaitForComplete(f *e2eframework.Framework, name, tcName, typ string, configure func(*v1alpha1.Backup)) (*v1alpha1.Backup, error) {
 	ns := f.Namespace.Name
 	// secret to visit tidb cluster
 	s := brutil.GetSecret(ns, name, "")
-	if _, err := f.ClientSet.CoreV1().Secrets(ns).Create(s); err != nil {
-		return err
+	if _, err := f.ClientSet.CoreV1().Secrets(ns).Create(context.TODO(), s, metav1.CreateOptions{}); err != nil {
+		return nil, err
 	}
 
 	backupFolder := time.Now().Format(time.RFC3339)
 	cfg := f.Storage.Config(ns, backupFolder)
 	backup := brutil.GetBackup(ns, name, tcName, typ, cfg)
 
-	if _, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Create(backup); err != nil {
-		return err
+	if configure != nil {
+		configure(backup)
+	}
+
+	if _, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Create(context.TODO(), backup, metav1.CreateOptions{}); err != nil {
+		return nil, err
 	}
 
 	if err := brutil.WaitForBackupComplete(f.ExtClient, ns, name, backupCompleteTimeout); err != nil {
-		return err
+		return backup, err
 	}
-	return nil
+	return backup, nil
 }
 
-// nolint
-// NOTE: it is not used now
 func deleteBackup(f *e2eframework.Framework, name string) error {
 	ns := f.Namespace.Name
 
-	if err := f.ExtClient.PingcapV1alpha1().Backups(ns).Delete(name, nil); err != nil {
+	if err := f.ExtClient.PingcapV1alpha1().Backups(ns).Delete(context.TODO(), name, metav1.DeleteOptions{}); err != nil {
 		return err
 	}
 
@@ -260,7 +390,7 @@ func deleteBackup(f *e2eframework.Framework, name string) error {
 // NOTE: it is not used
 func cleanBackup(f *e2eframework.Framework) error {
 	ns := f.Namespace.Name
-	bl, err := f.ExtClient.PingcapV1alpha1().Backups(ns).List(metav1.ListOptions{})
+	bl, err := f.ExtClient.PingcapV1alpha1().Backups(ns).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -277,11 +407,11 @@ func createRestoreAndWaitForComplete(f *e2eframework.Framework, name, tcName, ty
 
 	// secret to visit tidb cluster
 	s := brutil.GetSecret(ns, name, "")
-	if _, err := f.ClientSet.CoreV1().Secrets(ns).Create(s); err != nil {
+	if _, err := f.ClientSet.CoreV1().Secrets(ns).Create(context.TODO(), s, metav1.CreateOptions{}); err != nil {
 		return err
 	}
 
-	backup, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Get(backupName, metav1.GetOptions{})
+	backup, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Get(context.TODO(), backupName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -294,7 +424,7 @@ func createRestoreAndWaitForComplete(f *e2eframework.Framework, name, tcName, ty
 	}
 
 	restore := brutil.GetRestore(ns, name, tcName, typ, cfg)
-	if _, err := f.ExtClient.PingcapV1alpha1().Restores(ns).Create(restore); err != nil {
+	if _, err := f.ExtClient.PingcapV1alpha1().Restores(ns).Create(context.TODO(), restore, metav1.CreateOptions{}); err != nil {
 		return err
 	}
 

@@ -121,10 +121,32 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 
 	tests := []testcase{
 		{
+			name: "tidbmonitor spec prometheus config reloader",
+			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
+
+				monitor.Spec.PrometheusReloader = &v1alpha1.PrometheusReloaderSpec{
+					MonitorContainer: v1alpha1.MonitorContainer{
+						BaseImage: "quay.io/prometheus-operator/prometheus-config-reloaders",
+						Version:   "v0.49.0",
+					},
+				}
+			},
+			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
+				errExpectRequeuefunc(g, err, tmm, tm)
+				sts, err := tmm.deps.StatefulSetLister.StatefulSets(tm.Namespace).Get(GetMonitorObjectName(tm))
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(3))
+			},
+			stsCreated:    true,
+			svcCreated:    true,
+			volumeCreated: false,
+		},
+		{
 			name: "tidbmonitor spec remote write",
 			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
 				monitor.Spec.Prometheus.RemoteWrite = []*v1alpha1.RemoteWriteSpec{
-					{URL: "http://localhost:1234",
+					{
+						URL: "http://localhost:1234/a/b/c",
 						WriteRelabelConfigs: []v1alpha1.RelabelConfig{
 							{
 								SourceLabels: model.LabelNames{
@@ -142,8 +164,8 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 				}
 
 			},
-			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
-
+			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
+				errExpectRequeuefunc(g, err, tmm, tm)
 			},
 			stsCreated:    true,
 			svcCreated:    true,
