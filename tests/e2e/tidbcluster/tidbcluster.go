@@ -2936,7 +2936,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		tc.Spec.PD.Replicas = 1
 		tc.Spec.TiKV.Replicas = 1
 		tc.Spec.TiDB.Replicas = 1
-		tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
+		tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, metav1.CreateOptions{})
 		framework.ExpectNoError(err, "Expected create tidbcluster")
 		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
 		framework.ExpectNoError(err, "Expected get tidbcluster")
@@ -2946,13 +2946,13 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		tm.Spec.Shards = pointer.Int32Ptr(2)
 		pvpDelete := corev1.PersistentVolumeReclaimDelete
 		tm.Spec.PVReclaimPolicy = &pvpDelete
-		_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(tm)
+		_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(context.TODO(), tm, metav1.CreateOptions{})
 		framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
 		err = tests.CheckTidbMonitor(tm, cli, c, fw)
 		framework.ExpectNoError(err, "Expected tidbmonitor checked success")
 
 		ginkgo.By("Delete tidbmonitor")
-		err = cli.PingcapV1alpha1().TidbMonitors(tm.Namespace).Delete(tm.Name, &metav1.DeleteOptions{})
+		err = cli.PingcapV1alpha1().TidbMonitors(tm.Namespace).Delete(context.TODO(), tm.Name, metav1.DeleteOptions{})
 		framework.ExpectNoError(err, "delete tidbmonitor failed")
 	})
 })
