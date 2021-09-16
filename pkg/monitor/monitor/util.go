@@ -156,7 +156,7 @@ func getPromConfigMap(monitor *v1alpha1.TidbMonitor, monitorClusterInfos []Clust
 		DMClusterInfos:   dmClusterInfos,
 		ExternalLabels:   buildExternalLabels(monitor),
 		EnableAlertRules: monitor.Spec.EnableAlertRules,
-		shards:          shard,
+		shards:           shard,
 	}
 
 	if len(monitor.Spec.Prometheus.RemoteWrite) > 0 {
@@ -455,7 +455,7 @@ func getMonitorDMInitContainer(monitor *v1alpha1.TidbMonitor, dc *v1alpha1.DMClu
 	return container
 }
 
-func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster,shard int32) core.Container {
+func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster, shard int32) core.Container {
 	var retention string
 	if monitor.Spec.Prometheus.RetentionTime != nil {
 		retention = *monitor.Spec.Prometheus.RetentionTime

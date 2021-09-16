@@ -25,7 +25,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/monitor/monitor"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"github.com/pingcap/tidb-operator/tests/pkg/metrics"
@@ -55,7 +54,7 @@ func CheckTidbMonitorConfigurationUpdate(monitor *v1alpha1.TidbMonitor, kubeCli 
 		log.Logf("ERROR: tm[%s/%s] failed to check pod:%v", monitor.Namespace, monitor.Name, err)
 		return err
 	}
-	if err := checkPrometheusCommon(monitor.Name, monitor.Namespace, fw, expectActiveTargets); err != nil {
+	if err := checkPrometheusCommon(monitor.Name, monitor.Namespace, fw, expectActiveTargets, 1); err != nil {
 		log.Logf("ERROR: tm[%s/%s]'s prometheus check error:%v", monitor.Namespace, monitor.Namespace, err)
 		return err
 	}
@@ -75,7 +74,7 @@ func checkTidbMonitorPod(tm *v1alpha1.TidbMonitor, kubeCli kubernetes.Interface)
 			if err != nil {
 				return false, err
 			}
-			pods, err := kubeCli.CoreV1().Pods(namespace).List(metav1.ListOptions{
+			pods, err := kubeCli.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{
 				LabelSelector: monitorLabel.String(),
 			})
 			if err != nil {
@@ -99,7 +98,7 @@ func checkTidbMonitorPod(tm *v1alpha1.TidbMonitor, kubeCli kubernetes.Interface)
 				return false, fmt.Errorf("tm[%s/%s]'s pod didnt' have 2 containers with grafana disabled", tm.Namespace, tm.Name)
 			}
 			log.Logf("tm[%s/%s]'s pod[%s/%s] is ready", tm.Namespace, tm.Name, pod.Namespace, pod.Name)
-			_, err = kubeCli.CoreV1().Services(namespace).Get(svcName, metav1.GetOptions{})
+			_, err = kubeCli.CoreV1().Services(namespace).Get(context.TODO(), svcName, metav1.GetOptions{})
 			if err != nil {
 				log.Logf("ERROR: tm[%s/%s]'s service[%s/%s] failed to fetch", tm.Namespace, tm.Name, tm.Namespace, svcName)
 				return false, nil
@@ -113,7 +112,7 @@ func checkTidbMonitorPod(tm *v1alpha1.TidbMonitor, kubeCli kubernetes.Interface)
 func checkTidbMonitorFunctional(tm *v1alpha1.TidbMonitor, fw portforward.PortForward) error {
 	for shard := int32(0); shard < tm.GetShards(); shard++ {
 		stsName := monitor.GetMonitorShardName(tm.Name, shard)
-		if err := checkPrometheusCommon(tm.Name, tm.Namespace, fw, shard); err != nil {
+		if err := checkPrometheusCommon(tm.Name, tm.Namespace, fw, 1, shard); err != nil {
 			log.Logf("ERROR: tm[%s/%s]'s prometheus check error:%v", tm.Namespace, stsName, err)
 			return err
 		}

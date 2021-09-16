@@ -362,7 +362,7 @@ func (m *MonitorManager) syncTidbMonitorConfig(monitor *v1alpha1.TidbMonitor) er
 	}
 
 	shards := monitor.GetShards()
-	promCM, err := getPromConfigMap(monitor, monitorClusterInfos, dmClusterInfos,shards)
+	promCM, err := getPromConfigMap(monitor, monitorClusterInfos, dmClusterInfos, shards)
 	if err != nil {
 		return err
 	}

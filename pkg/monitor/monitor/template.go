@@ -146,7 +146,7 @@ type MonitorConfigModel struct {
 	RemoteWriteConfigs        []*config.RemoteWriteConfig
 	EnableAlertRules          bool
 	EnableExternalRuleConfigs bool
-	shards             int32
+	shards                    int32
 }
 
 // ClusterRegexInfo is the monitor cluster info
