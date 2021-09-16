@@ -54,7 +54,7 @@ func CheckTidbMonitorConfigurationUpdate(monitor *v1alpha1.TidbMonitor, kubeCli 
 		log.Logf("ERROR: tm[%s/%s] failed to check pod:%v", monitor.Namespace, monitor.Name, err)
 		return err
 	}
-	if err := checkPrometheusCommon(monitor.Name, monitor.Namespace, fw, expectActiveTargets, 1); err != nil {
+	if err := checkPrometheusCommon(monitor.Name, monitor.Namespace, fw, expectActiveTargets, 0); err != nil {
 		log.Logf("ERROR: tm[%s/%s]'s prometheus check error:%v", monitor.Namespace, monitor.Namespace, err)
 		return err
 	}
