@@ -466,10 +466,11 @@ func (m *MonitorManager) syncPrometheusIngress(monitor *v1alpha1.TidbMonitor) er
 	}
 
 	var err error
-	ing, ingv1beta1 := getPrometheusIngress(monitor)
 	if m.deps.IngressV1Beta1Lister != nil {
-		_, err = m.deps.TypedControl.CreateOrUpdateIngressV1beta1(monitor, ingv1beta1)
+		ing := getIngressV1beta1(monitor, monitor.Spec.Prometheus.Ingress, prometheusName(monitor), 9090)
+		_, err = m.deps.TypedControl.CreateOrUpdateIngressV1beta1(monitor, ing)
 	} else {
+		ing := getIngress(monitor, monitor.Spec.Prometheus.Ingress, prometheusName(monitor), 9090)
 		_, err = m.deps.TypedControl.CreateOrUpdateIngress(monitor, ing)
 	}
 	return err
@@ -481,10 +482,11 @@ func (m *MonitorManager) syncGrafanaIngress(monitor *v1alpha1.TidbMonitor) error
 	}
 
 	var err error
-	ing, ingv1beta1 := getGrafanaIngress(monitor)
 	if m.deps.IngressV1Beta1Lister != nil {
-		_, err = m.deps.TypedControl.CreateOrUpdateIngressV1beta1(monitor, ingv1beta1)
+		ing := getIngressV1beta1(monitor, monitor.Spec.Grafana.Ingress, grafanaName(monitor), 3000)
+		_, err = m.deps.TypedControl.CreateOrUpdateIngressV1beta1(monitor, ing)
 	} else {
+		ing := getIngress(monitor, monitor.Spec.Grafana.Ingress, grafanaName(monitor), 3000)
 		_, err = m.deps.TypedControl.CreateOrUpdateIngress(monitor, ing)
 	}
 	return err
