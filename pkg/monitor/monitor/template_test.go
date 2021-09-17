@@ -140,7 +140,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-tidb
   honor_labels: true
@@ -195,7 +195,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-tikv
   honor_labels: true
@@ -250,7 +250,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-tiflash
   honor_labels: true
@@ -305,7 +305,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-tiflash-proxy
   honor_labels: true
@@ -360,7 +360,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-pump
   honor_labels: true
@@ -415,7 +415,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-drainer
   honor_labels: true
@@ -470,7 +470,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-ticdc
   honor_labels: true
@@ -525,7 +525,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-importer
   honor_labels: true
@@ -580,7 +580,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-lightning
   honor_labels: true
@@ -635,7 +635,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-dm-worker
   honor_labels: true
@@ -690,7 +690,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-dm-master
   honor_labels: true
@@ -745,7 +745,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 remote_write:
 - url: http://localhost:1234
@@ -857,7 +857,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-tidb
   honor_labels: true
@@ -912,7 +912,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-tikv
   honor_labels: true
@@ -967,7 +967,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-tiflash
   honor_labels: true
@@ -1022,7 +1022,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-tiflash-proxy
   honor_labels: true
@@ -1077,7 +1077,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-pump
   honor_labels: true
@@ -1132,7 +1132,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-drainer
   honor_labels: true
@@ -1187,7 +1187,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-ticdc
   honor_labels: true
@@ -1242,7 +1242,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-importer
   honor_labels: true
@@ -1297,7 +1297,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-lightning
   honor_labels: true
@@ -1352,7 +1352,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-dm-worker
   honor_labels: true
@@ -1407,7 +1407,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-dm-master
   honor_labels: true
@@ -1462,7 +1462,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 remote_write:
 - url: http://localhost:1234
@@ -1576,7 +1576,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-tidb
   honor_labels: true
@@ -1634,7 +1634,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-tikv
   honor_labels: true
@@ -1692,7 +1692,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-tiflash
   honor_labels: true
@@ -1750,7 +1750,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-tiflash-proxy
   honor_labels: true
@@ -1808,7 +1808,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-pump
   honor_labels: true
@@ -1866,7 +1866,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-drainer
   honor_labels: true
@@ -1924,7 +1924,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-ticdc
   honor_labels: true
@@ -1982,7 +1982,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-importer
   honor_labels: true
@@ -2040,7 +2040,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-lightning
   honor_labels: true
@@ -2095,7 +2095,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-dm-worker
   honor_labels: true
@@ -2153,7 +2153,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 - job_name: ns1-target-dm-master
   honor_labels: true
@@ -2211,7 +2211,7 @@ scrape_configs:
     target_label: __tmp_hash
     action: hashmod
   - source_labels: [__tmp_hash]
-    regex: $SHARD
+    regex: $(SHARD)
     action: keep
 `
 	model := &MonitorConfigModel{
