@@ -462,7 +462,7 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 	} else {
 		retention = fmt.Sprintf("%dd", monitor.Spec.Prometheus.ReserveDays)
 	}
-	commands := []string{"sed -e '5s/[()]//g'  -e 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g;s/$SHARD/'\"$SHARD\"'/g' /etc/prometheus/config/prometheus.yml > /etc/prometheus/config_out/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/etc/prometheus/config_out/prometheus.yml --storage.tsdb.path=/data/prometheus --storage.tsdb.retention.time=" + retention}
+	commands := []string{"sed -e '5s/[()]//g' -e 's/SHARD//g'  -e 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g;s/$()/'$(SHARD)'/g' /etc/prometheus/config/prometheus.yml > /etc/prometheus/config_out/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/etc/prometheus/config_out/prometheus.yml --storage.tsdb.path=/data/prometheus --storage.tsdb.retention.time=" + retention}
 	c := core.Container{
 		Name:      "prometheus",
 		Image:     fmt.Sprintf("%s:%s", monitor.Spec.Prometheus.BaseImage, monitor.Spec.Prometheus.Version),
@@ -710,7 +710,7 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 	return c
 }
 
-func getMonitorPrometheusReloaderContainer(monitor *v1alpha1.TidbMonitor) core.Container {
+func getMonitorPrometheusReloaderContainer(monitor *v1alpha1.TidbMonitor, shard int32) core.Container {
 	c := core.Container{
 		Name:  "prometheus-config-reloader",
 		Image: fmt.Sprintf("%s:%s", monitor.Spec.PrometheusReloader.BaseImage, monitor.Spec.PrometheusReloader.Version),
@@ -741,6 +741,10 @@ func getMonitorPrometheusReloaderContainer(monitor *v1alpha1.TidbMonitor) core.C
 				ValueFrom: &core.EnvVarSource{
 					FieldRef: &core.ObjectFieldSelector{FieldPath: "metadata.namespace"},
 				},
+			},
+			{
+				Name:  "SHARD",
+				Value: strconv.Itoa(int(shard)),
 			},
 		},
 		VolumeMounts: []core.VolumeMount{
@@ -1163,7 +1167,7 @@ func getMonitorStatefulSet(sa *core.ServiceAccount, secret *core.Secret, monitor
 		statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, thanosSideCarContainer)
 	}
 	if monitor.Spec.PrometheusReloader != nil {
-		prometheusReloaderContainer := getMonitorPrometheusReloaderContainer(monitor)
+		prometheusReloaderContainer := getMonitorPrometheusReloaderContainer(monitor, shard)
 		statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, prometheusReloaderContainer)
 
 	}
