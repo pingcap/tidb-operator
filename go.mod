@@ -7,12 +7,14 @@ module github.com/pingcap/tidb-operator
 go 1.13
 
 require (
+	cloud.google.com/go/storage v1.0.0
 	github.com/Azure/go-autorest/autorest/mocks v0.3.0 // indirect
 	github.com/BurntSushi/toml v0.3.1
 	github.com/MakeNowJust/heredoc v0.0.0-20171113091838-e9091a26100e // indirect
 	github.com/Masterminds/semver v1.4.2
 	github.com/Microsoft/go-winio v0.4.12 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
+	github.com/agiledragon/gomonkey/v2 v2.2.0
 	github.com/aws/aws-sdk-go v1.30.9
 	github.com/chai2010/gettext-go v0.0.0-20170215093142-bf70f2a70fb1 // indirect
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
@@ -76,7 +78,7 @@ require (
 	github.com/yisaer/crd-validation v0.0.3
 	gocloud.dev v0.18.0
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
-	golang.org/x/time v0.0.0-20181108054448-85acf8d2951c
+	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 	gomodules.xyz/jsonpatch/v2 v2.0.1
 	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce // indirect
 	gopkg.in/yaml.v2 v2.2.4

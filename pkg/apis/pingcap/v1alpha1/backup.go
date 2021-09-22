@@ -21,6 +21,19 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+var (
+	DefaultBatchDeleteOption = BatchDeleteOption{
+		BatchConcurrency:   10,
+		RoutineConcurrency: 100,
+	}
+
+	// defaultCleanOption is default clean option
+	defaultCleanOption = CleanOption{
+		PageSize:          10000,
+		BatchDeleteOption: DefaultBatchDeleteOption,
+	}
+)
+
 // GetCleanJobName return the clean job name
 func (bk *Backup) GetCleanJobName() string {
 	return fmt.Sprintf("clean-%s", bk.GetName())
@@ -49,6 +62,26 @@ func (bk *Backup) GetInstanceName() string {
 		}
 	}
 	return bk.Name
+}
+
+// GetCleanOption return the clean option
+func (bk *Backup) GetCleanOption() CleanOption {
+	if bk.Spec.CleanOption == nil {
+		return defaultCleanOption
+	}
+
+	ropt := *bk.Spec.CleanOption
+	if ropt.PageSize <= 0 {
+		ropt.PageSize = defaultCleanOption.PageSize
+	}
+	if ropt.BatchConcurrency <= 0 {
+		ropt.BatchConcurrency = defaultCleanOption.BatchConcurrency
+	}
+	if ropt.RoutineConcurrency <= 0 {
+		ropt.RoutineConcurrency = defaultCleanOption.RoutineConcurrency
+	}
+
+	return ropt
 }
 
 // GetBackupCondition get the specify type's BackupCondition from the given BackupStatus
