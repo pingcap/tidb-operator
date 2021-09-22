@@ -1058,12 +1058,12 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 	return services
 }
 
-func getPrometheusIngress(monitor *v1alpha1.TidbMonitor, shard int32) *extensionsv1beta1.Ingress {
-	return getIngress(monitor, monitor.Spec.Prometheus.Ingress, PrometheusName(monitor.Name, shard), 9090)
+func getPrometheusIngress(monitor *v1alpha1.TidbMonitor) *extensionsv1beta1.Ingress {
+	return getIngress(monitor, monitor.Spec.Prometheus.Ingress, PrometheusName(monitor.Name, 0), 9090)
 }
 
-func getGrafanaIngress(monitor *v1alpha1.TidbMonitor, shard int32) *extensionsv1beta1.Ingress {
-	return getIngress(monitor, monitor.Spec.Grafana.Ingress, GrafanaName(monitor.Name, shard), 3000)
+func getGrafanaIngress(monitor *v1alpha1.TidbMonitor) *extensionsv1beta1.Ingress {
+	return getIngress(monitor, monitor.Spec.Grafana.Ingress, GrafanaName(monitor.Name, 0), 3000)
 }
 
 func getIngress(monitor *v1alpha1.TidbMonitor, ingressSpec *v1alpha1.IngressSpec, svcName string, port int) *extensionsv1beta1.Ingress {

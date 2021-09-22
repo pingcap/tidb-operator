@@ -508,15 +508,14 @@ func appendShardingRelabelConfigRules(relabelConfigs []*config.RelabelConfig, sh
 		Action:      config.RelabelHashMod,
 		TargetLabel: "__tmp_hash",
 		Modulus:     shard,
-	},
-		&config.RelabelConfig{
+	}, &config.RelabelConfig{
 
-			SourceLabels: model.LabelNames{
-				"__tmp_hash",
-			},
-			Regex: shardsPattern,
-
-			Action: config.RelabelKeep,
+		SourceLabels: model.LabelNames{
+			"__tmp_hash",
 		},
+		Regex: shardsPattern,
+
+		Action: config.RelabelKeep,
+	},
 	)
 }

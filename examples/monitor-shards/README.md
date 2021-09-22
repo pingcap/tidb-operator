@@ -6,6 +6,7 @@ Shards use the Prometheus `modulus` configuration, which takes the hash of the `
 Note that scaling down shards will not reshard data onto the remaining instances, the data must be manually moved. Increasing shards will not reshard data neither but it will continue to be available from the same instances. 
 To query globally, use Thanos sidecar and Thanos querier or write data to a remote central location.
 
+* The ingress will only create for first shard of prometheus and grafana when using multiple shards.
 ## Install Example
 
 Install TiDB:
