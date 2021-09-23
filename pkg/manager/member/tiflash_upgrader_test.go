@@ -437,7 +437,7 @@ func TestTiFlashUpgraderUpgrade(t *testing.T) {
 			updatePodErr: false,
 			errExpectFn: func(g *GomegaWithT, err error) {
 				g.Expect(err).To(HaveOccurred())
-				g.Expect(err.Error()).To(ContainSubstring("store status is not Running")) // compare error
+				g.Expect(err.Error()).To(ContainSubstring("store status is Stopping instead of Running")) // compare error
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, pods map[string]*corev1.Pod) {
 				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(3)))
