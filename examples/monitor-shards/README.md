@@ -1,12 +1,12 @@
 # Shards and Replicas
 
 If a single Prometheus can't hold the current target metrics, the user can shard the targets on multiple Prometheus servers.
-Shards use the Prometheus `modulus` configuration, which takes the hash of the `__address__` source label values, and split the scrape targets based on the number of shards.
+Shards use the Prometheus `modulus` configuration, which takes the hash of the `__address__` source label values, and splits the scrape targets based on the number of shards.
 
-Note that scaling down shards will not reshard data onto the remaining instances, the data must be manually moved. Increasing shards will not reshard data neither but it will continue to be available from the same instances. 
-To query globally,we can use Thanos framework.
+Note that decreasing shards will not reshard data onto the remaining instances, the data must be manually moved. Increasing shards will not reshard data either but it will continue to be available from the original instances. 
 
-* The ingress will only create for first shard of prometheus and grafana when using multiple shards.
+It’s not recommended to configure `spec.prometheus.ingress` and `spec.grafana` in the TidbMonitor CR when using multiple shards. And we recommend using Thanos to query the metrics globally.
+
 ## Install Example
 
 Install TiDB:
@@ -34,10 +34,3 @@ watch kubectl -n ${namespace} get pod
 ```
 
 We will see that the scrape targets are distributed on the two shards.
-
-And we must use Thanos sidecar to query globally.
-
-
-
-
-
