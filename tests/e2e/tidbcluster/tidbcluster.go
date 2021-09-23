@@ -35,7 +35,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	utilversion "k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/apimachinery/pkg/util/wait"
-	kubeinformers "k8s.io/client-go/informers"
 	clientset "k8s.io/client-go/kubernetes"
 	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	restclient "k8s.io/client-go/rest"
@@ -57,7 +56,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/monitor/monitor"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
@@ -98,12 +96,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	ginkgo.BeforeEach(func() {
 		ns = f.Namespace.Name
 		c = f.ClientSet
-		kubeInformerFactory := kubeinformers.NewSharedInformerFactory(c, 10*time.Second)
-		secretLister = kubeInformerFactory.Core().V1().Secrets().Lister()
-		stop := make(chan struct{})
-		defer close(stop)
-		kubeInformerFactory.Start(stop)
-		kubeInformerFactory.WaitForCacheSync(stop)
+		secretLister = tests.GetSecretListerWithCacheSynced(c, 10*time.Second)
 
 		var err error
 		config, err = framework.LoadConfig()
@@ -1285,16 +1278,10 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 		ginkgo.It("should enable TLS for MySQL Client and between Heterogeneous TiDB components", func() {
 			tcName := "origintls"
-			secret, err := secretLister.Secrets(string(ns)).Get(util.ClusterClientTLSSecretName(tcName))
-			if err != nil {
-				ginkgo.By(fmt.Sprintf("Checking secret secretLister err:+%v", err))
-			}
-			ginkgo.By(fmt.Sprintf("Checking secret secretLister:+%v", secret))
-
 			heterogeneousTcName := "heterogeneoustls"
 
 			ginkgo.By("Installing tidb CA certificate")
-			err = InstallTiDBIssuer(ns, tcName)
+			err := InstallTiDBIssuer(ns, tcName)
 			framework.ExpectNoError(err, "failed to generate tidb issuer template")
 
 			ginkgo.By("Installing tidb server and client certificate")
@@ -1371,6 +1358,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					return false, nil
 				}
 				log.Logf("start check heterogeneous cluster storeInfo: %s/%s", ns, heterogeneousTc.Name)
+				secretLister = tests.GetSecretListerWithCacheSynced(c, 5*time.Second)
 				pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(secretLister, fw, ns, tcName, true)
 				framework.ExpectNoError(err, "create pdClient error")
 				defer cancel()

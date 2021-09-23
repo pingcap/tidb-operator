@@ -55,7 +55,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
-	kubeinformers "k8s.io/client-go/informers"
 	clientset "k8s.io/client-go/kubernetes"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	restclient "k8s.io/client-go/rest"
@@ -96,12 +95,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 	ginkgo.BeforeEach(func() {
 		ns = f.Namespace.Name
 		c = f.ClientSet
-		kubeInformerFactory := kubeinformers.NewSharedInformerFactory(c, 30*time.Second)
-		secretLister = kubeInformerFactory.Core().V1().Secrets().Lister()
-		stop := make(chan struct{})
-		defer close(stop)
-		kubeInformerFactory.Start(stop)
-		kubeInformerFactory.WaitForCacheSync(stop)
+		secretLister = tests.GetSecretListerWithCacheSynced(c, 10*time.Second)
 
 		var err error
 		config, err = framework.LoadConfig()
