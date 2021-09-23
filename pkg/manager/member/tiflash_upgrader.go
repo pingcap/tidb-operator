@@ -126,7 +126,7 @@ func (u *tiflashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 				}
 
 				if status != tiflashapi.Running {
-					return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded TiFlash pod: [%s], store status is not Running", ns, tcName, podName)
+					return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded TiFlash pod: [%s], store status is %s instead of Running", ns, tcName, podName, status)
 				}
 			}
 

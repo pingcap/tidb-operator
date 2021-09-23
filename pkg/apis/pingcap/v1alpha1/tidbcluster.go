@@ -175,7 +175,7 @@ func (tc *TidbCluster) TiFlashImage() string {
 	return image
 }
 
-// TiFlashVersion return the image version used by TiKV.
+// TiFlashVersion returns the image version used by TiFlash.
 //
 // If TiFlash isn't specified, return empty string.
 func (tc *TidbCluster) TiFlashVersion() string {
