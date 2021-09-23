@@ -296,10 +296,6 @@ func UpdateStatefulSet(setCtl controller.StatefulSetControlInterface, object run
 		}
 		set.Spec.Template.Annotations[LastAppliedConfigAnnotation] = podConfig
 	}
-	v, ok := oldSet.Annotations[label.AnnStsLastSyncTimestamp]
-	if ok {
-		set.Annotations[label.AnnStsLastSyncTimestamp] = v
-	}
 
 	err := SetStatefulSetLastAppliedConfigAnnotation(&set)
 	if err != nil {
