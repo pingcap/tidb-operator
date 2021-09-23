@@ -1,4 +1,4 @@
-{{- if (hasKey .Values.scheduler "create" | ternary .Values.scheduler.create true) | and (semverCompare "<1.19.0-0" .Capabilities.KubeVersion.GitVersion)  }}
+{{- if (hasKey .Values.scheduler "create" | ternary .Values.scheduler.create true) | and (semverCompare ">=1.19.0-0" .Capabilities.KubeVersion.GitVersion) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -8,9 +8,9 @@ metadata:
 {{ toYaml $annotations | indent 4 }}
   {{- end }}
   {{- if eq .Values.appendReleaseSuffix true}}
-  name: {{ .Values.scheduler.schedulerName }}-policy-{{.Release.Name}}
+  name: {{ .Values.scheduler.schedulerName }}-config-{{.Release.Name}}
   {{- else }}
-  name: {{ .Values.scheduler.schedulerName }}-policy
+  name: {{ .Values.scheduler.schedulerName }}-config
   {{- end }}
   namespace: {{ .Release.Namespace }}
   labels:
@@ -20,6 +20,6 @@ metadata:
     app.kubernetes.io/component: scheduler
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 data:
-  policy.cfg: |-
-{{ tuple "config/_scheduler-policy-json.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  scheduler-config.yaml: |-
+{{ tuple "config/_scheduler-config-yaml.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
 {{- end }}
