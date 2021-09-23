@@ -175,6 +175,23 @@ func (tc *TidbCluster) TiFlashImage() string {
 	return image
 }
 
+// TiFlashVersion returns the image version used by TiFlash.
+//
+// If TiFlash isn't specified, return empty string.
+func (tc *TidbCluster) TiFlashVersion() string {
+	if tc.Spec.TiFlash == nil {
+		return ""
+	}
+
+	image := tc.TiFlashImage()
+	colonIdx := strings.LastIndexByte(image, ':')
+	if colonIdx >= 0 {
+		return image[colonIdx+1:]
+	}
+
+	return "latest"
+}
+
 // TiCDCImage return the image used by TiCDC.
 //
 // If TiCDC isn't specified, return empty string.
