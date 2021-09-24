@@ -44,6 +44,7 @@ TiDB Operator manages [TiDB](https://github.com/pingcap/tidb) clusters on [Kuber
 
     Automatically deploy Prometheus, Grafana for TiDB cluster monitoring, support the following features:
       - Monitoring multiple clusters across multiple namespaces.
+      - Multiple replicas.
       - Targets sharding.
       - Configuration dynamic update.
       - Thanos framework integration.
