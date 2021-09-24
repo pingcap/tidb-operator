@@ -233,30 +233,42 @@ func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, dc
 		klog.Infof("Wait for the smooth migration to be done successfully for tm [%s/%s]", ns, name)
 		return nil
 	}
-
-	newMonitorSts, err := getMonitorStatefulSet(sa, secret, monitor, tc, dc)
-	if err != nil {
-		klog.Errorf("Fail to generate statefulset for tm [%s/%s], err: %v", ns, name, err)
-		return err
-	}
-
-	oldMonitorSetTmp, err := m.deps.StatefulSetLister.StatefulSets(ns).Get(GetMonitorObjectName(monitor))
-	if err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("syncTidbMonitorStatefulset: fail to get sts %s for cluster %s/%s, error: %s", GetMonitorObjectName(monitor), ns, name, err)
-	}
-	setNotExist := errors.IsNotFound(err)
-	if setNotExist {
-		err = member.SetStatefulSetLastAppliedConfigAnnotation(newMonitorSts)
+	shards := monitor.GetShards()
+	var isAllCreated = true
+	for shard := int32(0); shard < shards; shard++ {
+		newMonitorSts, err := getMonitorStatefulSet(sa, secret, monitor, tc, dc, shard)
 		if err != nil {
+			klog.Errorf("Fail to generate statefulset for tm [%s/%s], err: %v", ns, name, err)
 			return err
 		}
-		if err := m.deps.StatefulSetControl.CreateStatefulSet(monitor, newMonitorSts); err != nil {
+		stsName := newMonitorSts.Name
+		oldMonitorSetTmp, err := m.deps.StatefulSetLister.StatefulSets(ns).Get(stsName)
+		if err != nil && !errors.IsNotFound(err) {
+			return fmt.Errorf("syncTidbMonitorStatefulset: fail to get sts %s for cluster %s/%s, error: %s", stsName, ns, name, err)
+		}
+		setNotExist := errors.IsNotFound(err)
+		if setNotExist {
+			err = member.SetStatefulSetLastAppliedConfigAnnotation(newMonitorSts)
+			if err != nil {
+				return err
+			}
+			if err := m.deps.StatefulSetControl.CreateStatefulSet(monitor, newMonitorSts); err != nil {
+				return err
+			}
+			isAllCreated = false
+			continue
+		}
+		err = member.UpdateStatefulSet(m.deps.StatefulSetControl, monitor, newMonitorSts, oldMonitorSetTmp)
+		if err != nil {
+			klog.Errorf("Fail to update statefulset[%s/%s] for tm [%s/%s], err: %v", ns, stsName, ns, name, err)
 			return err
 		}
-		return controller.RequeueErrorf("TidbMonitor: [%s/%s], waiting for tidbmonitor running", ns, name)
 	}
-
-	return member.UpdateStatefulSet(m.deps.StatefulSetControl, monitor, newMonitorSts, oldMonitorSetTmp)
+	if !isAllCreated {
+		return controller.RequeueErrorf("TidbMonitor: [%s/%s], waiting for tidbmonitor running", ns, name)
+	} else {
+		return nil
+	}
 }
 
 func (m *MonitorManager) syncTidbMonitorSecret(monitor *v1alpha1.TidbMonitor) (*corev1.Secret, error) {
@@ -349,7 +361,8 @@ func (m *MonitorManager) syncTidbMonitorConfig(monitor *v1alpha1.TidbMonitor) er
 		}
 	}
 
-	promCM, err := getPromConfigMap(monitor, monitorClusterInfos, dmClusterInfos)
+	shards := monitor.GetShards()
+	promCM, err := getPromConfigMap(monitor, monitorClusterInfos, dmClusterInfos, shards)
 	if err != nil {
 		return err
 	}
@@ -461,7 +474,7 @@ func (m *MonitorManager) syncIngress(monitor *v1alpha1.TidbMonitor) error {
 
 func (m *MonitorManager) syncPrometheusIngress(monitor *v1alpha1.TidbMonitor) error {
 	if monitor.Spec.Prometheus.Ingress == nil {
-		return m.removeIngressIfExist(monitor, prometheusName(monitor))
+		return m.removeIngressIfExist(monitor, PrometheusName(monitor.Name, 0))
 	}
 
 	ingress := getPrometheusIngress(monitor)
@@ -471,7 +484,7 @@ func (m *MonitorManager) syncPrometheusIngress(monitor *v1alpha1.TidbMonitor) er
 
 func (m *MonitorManager) syncGrafanaIngress(monitor *v1alpha1.TidbMonitor) error {
 	if monitor.Spec.Grafana == nil || monitor.Spec.Grafana.Ingress == nil {
-		return m.removeIngressIfExist(monitor, grafanaName(monitor))
+		return m.removeIngressIfExist(monitor, GrafanaName(monitor.Name, 0))
 	}
 	ingress := getGrafanaIngress(monitor)
 	_, err := m.deps.TypedControl.CreateOrUpdateIngress(monitor, ingress)

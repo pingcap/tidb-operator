@@ -2240,13 +2240,13 @@ func (oa *OperatorActions) checkTiKVConfigUpdated(tc *v1alpha1.TidbCluster, clus
 func (oa *OperatorActions) checkPrometheus(clusterInfo *TidbClusterConfig) error {
 	ns := clusterInfo.Namespace
 	tcName := clusterInfo.ClusterName
-	return checkPrometheusCommon(tcName, ns, oa.fw, 1)
+	return checkPrometheusCommon(tcName, ns, oa.fw, 1, 0)
 }
 
 func (oa *OperatorActions) checkGrafanaData(clusterInfo *TidbClusterConfig) error {
 	ns := clusterInfo.Namespace
 	tcName := clusterInfo.ClusterName
-	grafanaClient, err := checkGrafanaDataCommon(tcName, ns, clusterInfo.GrafanaClient, oa.fw, false)
+	grafanaClient, err := checkGrafanaDataCommon(tcName, ns, clusterInfo.GrafanaClient, oa.fw, false, 0)
 	if err != nil {
 		return err
 	}
