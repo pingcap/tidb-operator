@@ -47,7 +47,7 @@ TiDB Operator manages [TiDB](https://github.com/pingcap/tidb) clusters on [Kuber
     - Monitoring multiple clusters across multiple namespaces.
     - Multiple replicas.
     - Targets sharding.
-    - Configuration dynamic update.
+    - Configuration and rules dynamic update.
     - Thanos framework integration.
 
 - __Heterogeneous cluster__
