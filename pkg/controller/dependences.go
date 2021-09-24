@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
+	"github.com/pingcap/tidb-operator/pkg/tiflashapi"
 	"github.com/pingcap/tidb-operator/pkg/tikvapi"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -165,6 +166,7 @@ type Controls struct {
 	TypedControl       TypedControlInterface
 	PDControl          pdapi.PDControlInterface
 	TiKVControl        tikvapi.TiKVControlInterface
+	TiFlashControl     tiflashapi.TiFlashControlInterface
 	DMMasterControl    dmapi.MasterControlInterface
 	TiDBClusterControl TidbClusterControlInterface
 	DMClusterControl   DMClusterControlInterface
@@ -226,6 +228,9 @@ func newRealControls(
 	// Shared variables to construct `Dependencies` and some of its fields
 	var (
 		secretLister      = kubeInformerFactory.Core().V1().Secrets().Lister()
+		pdControl         = pdapi.NewDefaultPDControl(secretLister)
+		tikvControl       = tikvapi.NewDefaultTiKVControl(secretLister)
+		tiflashControl    = tiflashapi.NewDefaultTiFlashControl(secretLister)
 		masterControl     = dmapi.NewDefaultMasterControl(secretLister)
 		genericCtrl       = NewRealGenericControl(genericCli, recorder)
 		tidbClusterLister = informerFactory.Pingcap().V1alpha1().TidbClusters().Lister()
@@ -251,8 +256,9 @@ func newRealControls(
 		GenericControl:     genericCtrl,
 		PodControl:         NewRealPodControl(kubeClientset, pdapi.NewDefaultPDControl(secretLister), podLister, recorder),
 		TypedControl:       NewTypedControl(genericCtrl),
-		PDControl:          pdapi.NewDefaultPDControl(secretLister),
-		TiKVControl:        tikvapi.NewDefaultTiKVControl(secretLister),
+		PDControl:          pdControl,
+		TiKVControl:        tikvControl,
+		TiFlashControl:     tiflashControl,
 		DMMasterControl:    masterControl,
 		TiDBClusterControl: NewRealTidbClusterControl(clientset, tidbClusterLister, recorder),
 		DMClusterControl:   NewRealDMClusterControl(clientset, dmClusterLister, recorder),
@@ -386,6 +392,7 @@ func newFakeControl(kubeClientset kubernetes.Interface, informerFactory informer
 		PDControl:          pdapi.NewFakePDControl(kubeInformerFactory.Core().V1().Secrets().Lister()),
 		TiKVControl:        tikvapi.NewFakeTiKVControl(kubeInformerFactory.Core().V1().Secrets().Lister()),
 		DMMasterControl:    dmapi.NewFakeMasterControl(kubeInformerFactory.Core().V1().Secrets().Lister()),
+		TiFlashControl:     tiflashapi.NewFakeTiFlashControl(kubeInformerFactory.Core().V1().Secrets().Lister()),
 		TiDBClusterControl: NewFakeTidbClusterControl(informerFactory.Pingcap().V1alpha1().TidbClusters()),
 		CDCControl:         NewDefaultTiCDCControl(kubeInformerFactory.Core().V1().Secrets().Lister()), // TODO: no fake control?
 		TiDBControl:        NewFakeTiDBControl(kubeInformerFactory.Core().V1().Secrets().Lister()),

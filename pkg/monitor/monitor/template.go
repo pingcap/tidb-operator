@@ -146,6 +146,7 @@ type MonitorConfigModel struct {
 	RemoteWriteConfigs        []*config.RemoteWriteConfig
 	EnableAlertRules          bool
 	EnableExternalRuleConfigs bool
+	shards                    int32
 }
 
 // ClusterRegexInfo is the monitor cluster info
@@ -410,7 +411,7 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 				},
 			},
 		}
-
+		scrapeconfig.RelabelConfigs = appendShardingRelabelConfigRules(scrapeconfig.RelabelConfigs, uint64(cmodel.shards))
 		if cluster.enableTLS && !isDMJob(jobName) {
 			scrapeconfig.Scheme = "https"
 			// lightning does not need to authenticate the access of other components,
@@ -491,4 +492,30 @@ func RenderPrometheusConfig(model *MonitorConfigModel) (string, error) {
 		return "", err
 	}
 	return string(bs), nil
+}
+
+func appendShardingRelabelConfigRules(relabelConfigs []*config.RelabelConfig, shard uint64) []*config.RelabelConfig {
+	shardsPattern, err := config.NewRegexp("$(SHARD)")
+	if err != nil {
+		klog.Errorf("Generate pattern for shard %d error: %v", shard, err)
+		return relabelConfigs
+	}
+	return append(relabelConfigs, &config.RelabelConfig{
+
+		SourceLabels: model.LabelNames{
+			"__address__",
+		},
+		Action:      config.RelabelHashMod,
+		TargetLabel: "__tmp_hash",
+		Modulus:     shard,
+	}, &config.RelabelConfig{
+
+		SourceLabels: model.LabelNames{
+			"__tmp_hash",
+		},
+		Regex: shardsPattern,
+
+		Action: config.RelabelKeep,
+	},
+	)
 }
