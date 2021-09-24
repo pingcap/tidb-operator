@@ -8541,6 +8541,11 @@ func (in *TidbMonitorSpec) DeepCopyInto(out *TidbMonitorSpec) {
 		*out = new(int32)
 		**out = **in
 	}
+	if in.Shards != nil {
+		in, out := &in.Shards, &out.Shards
+		*out = new(int32)
+		**out = **in
+	}
 	if in.AdditionalVolumes != nil {
 		in, out := &in.AdditionalVolumes, &out.AdditionalVolumes
 		*out = make([]v1.Volume, len(*in))
