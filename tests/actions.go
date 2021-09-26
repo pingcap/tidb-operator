@@ -455,7 +455,7 @@ func (oa *OperatorActions) CleanCRDOrDie() {
 func (oa *OperatorActions) CreateOrReplaceCRD(isCRDV1Supported bool) {
 	files := map[string]struct{}{}
 	if isCRDV1Supported {
-		crdList, err := oa.apiExtCli.ApiextensionsV1().CustomResourceDefinitions().List(metav1.ListOptions{})
+		crdList, err := oa.apiExtCli.ApiextensionsV1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
 		framework.ExpectNoError(err, "failed to list CRD")
 		for _, crd := range crdList.Items {
 			if !strings.HasSuffix(crd.Name, ".pingcap.com") {
@@ -466,7 +466,7 @@ func (oa *OperatorActions) CreateOrReplaceCRD(isCRDV1Supported bool) {
 		}
 		oa.createOrReplaceCRD("v1", files)
 	} else {
-		crdList, err := oa.apiExtCli.ApiextensionsV1beta1().CustomResourceDefinitions().List(metav1.ListOptions{})
+		crdList, err := oa.apiExtCli.ApiextensionsV1beta1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
 		framework.ExpectNoError(err, "failed to list CRD")
 		for _, crd := range crdList.Items {
 			if !strings.HasSuffix(crd.Name, ".pingcap.com") {
