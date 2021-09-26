@@ -500,7 +500,7 @@ func (oa *OperatorActions) createOrReplaceCRD(version string, files map[string]s
 func (oa *OperatorActions) InstallCRDOrDie(info *OperatorConfig) {
 	isSupported, err := utildiscovery.IsAPIGroupVersionSupported(oa.kubeCli.Discovery(), "apiextensions.k8s.io/v1")
 	if err != nil {
-		log.Fail(err.Error())
+		log.Failf(err.Error())
 	}
 	if info.Enabled(features.AdvancedStatefulSet) {
 		if isSupported {
