@@ -257,7 +257,7 @@ func TestTiFlashUpgraderUpgrade(t *testing.T) {
 			},
 		},
 		{
-			name: fmt.Sprintf("tiflash version less than v5.1.2"),
+			name: fmt.Sprint("tiflash version less than v5.1.2"),
 			changeFn: func(tc *v1alpha1.TidbCluster, tiflashControl *tiflashapi.FakeTiFlashControl) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiFlash.Phase = v1alpha1.NormalPhase
@@ -319,7 +319,7 @@ func TestTiFlashUpgraderUpgrade(t *testing.T) {
 			},
 		},
 		{
-			name: fmt.Sprintf("tiflash version greater than v5.1.2 and tiflash is running"),
+			name: fmt.Sprint("tiflash version greater than v5.1.2 and tiflash is running"),
 			changeFn: func(tc *v1alpha1.TidbCluster, tiflashControl *tiflashapi.FakeTiFlashControl) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiFlash.Phase = v1alpha1.NormalPhase
@@ -412,7 +412,7 @@ func TestTiFlashUpgraderUpgrade(t *testing.T) {
 			},
 		},
 		{
-			name: fmt.Sprintf("tiflash version greater than v5.1.2 and tiflash isn't running"),
+			name: fmt.Sprint("tiflash version greater than v5.1.2 and tiflash isn't running"),
 			changeFn: func(tc *v1alpha1.TidbCluster, tiflashControl *tiflashapi.FakeTiFlashControl) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiFlash.Phase = v1alpha1.NormalPhase
@@ -444,7 +444,7 @@ func TestTiFlashUpgraderUpgrade(t *testing.T) {
 			},
 		},
 		{
-			name: fmt.Sprintf("tiflash version greater than v5.1.2, version is dirty-release and tiflash isn't running"),
+			name: fmt.Sprint("tiflash version greater than v5.1.2, version is dirty-release and tiflash isn't running"),
 			changeFn: func(tc *v1alpha1.TidbCluster, tiflashControl *tiflashapi.FakeTiFlashControl) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiFlash.Phase = v1alpha1.NormalPhase
@@ -476,7 +476,7 @@ func TestTiFlashUpgraderUpgrade(t *testing.T) {
 			},
 		},
 		{
-			name: fmt.Sprintf("tiflash version greater than v5.1.2 and get store status failed"),
+			name: fmt.Sprint("tiflash version greater than v5.1.2 and get store status failed"),
 			changeFn: func(tc *v1alpha1.TidbCluster, tiflashControl *tiflashapi.FakeTiFlashControl) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiFlash.Phase = v1alpha1.NormalPhase
