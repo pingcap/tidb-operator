@@ -24,7 +24,7 @@ import (
 )
 
 // DEPRECATED: use controller-gen to generate CRD
-// See https://github.com/pingcap/tidb-operator/pull/3878
+// See https://github.com/pingcap/tidb-operator/pull/4151
 func main() {
 	flags := pflag.NewFlagSet("to-crdgen", pflag.ExitOnError)
 	flag.CommandLine.Parse([]string{})
