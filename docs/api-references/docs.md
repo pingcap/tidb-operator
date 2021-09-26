@@ -333,6 +333,19 @@ CleanPolicyType
 </tr>
 <tr>
 <td>
+<code>cleanOption</code></br>
+<em>
+<a href="#cleanoption">
+CleanOption
+</a>
+</em>
+</td>
+<td>
+<p>CleanOption controls the behavior of clean.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>podSecurityContext</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
@@ -2471,6 +2484,24 @@ Defaults to 1.</p>
 </tr>
 <tr>
 <td>
+<code>shards</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>EXPERIMENTAL: Number of shards to distribute targets onto. Number of
+replicas multiplied by shards is the total number of Pods created. Note
+that scaling down shards will not reshard data onto remaining instances,
+it must be manually moved. Increasing shards will not reshard data
+either but it will continue to be available from the same instances. To
+query globally use Thanos sidecar and Thanos querier or remote write
+data to a central location. Sharding is done on the content of the
+<code>__address__</code> target meta-label.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>additionalVolumes</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#volume-v1-core">
@@ -2508,6 +2539,20 @@ bool
 <em>(Optional)</em>
 <p>EnableAlertRules adds alert rules to the Prometheus config even
 if <code>AlertmanagerURL</code> is not configured.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>prometheusReloader</code></br>
+<em>
+<a href="#prometheusreloaderspec">
+PrometheusReloaderSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PrometheusReloader set prometheus reloader configuration</p>
 </td>
 </tr>
 </table>
@@ -3325,6 +3370,19 @@ CleanPolicyType
 </tr>
 <tr>
 <td>
+<code>cleanOption</code></br>
+<em>
+<a href="#cleanoption">
+CleanOption
+</a>
+</em>
+</td>
+<td>
+<p>CleanOption controls the behavior of clean.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>podSecurityContext</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
@@ -3647,6 +3705,60 @@ Kubernetes meta/v1.Time
 </tr>
 </tbody>
 </table>
+<h3 id="batchdeleteoption">BatchDeleteOption</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#cleanoption">CleanOption</a>)
+</p>
+<p>
+<p>BatchDeleteOption controls the options to delete the objects in batches during the cleanup of backups</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>disableBatchConcurrency</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>DisableBatchConcurrency disables the batch deletions with S3 API and the deletion will be done by goroutines.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>batchConcurrency</code></br>
+<em>
+uint32
+</em>
+</td>
+<td>
+<p>BatchConcurrency represents the number of batch deletions in parallel.
+It is used when the storage provider supports the batch delete API, currently, S3 only.
+default is 10</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>routineConcurrency</code></br>
+<em>
+uint32
+</em>
+</td>
+<td>
+<p>RoutineConcurrency represents the number of goroutines that used to delete objects
+default is 100</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="binlog">Binlog</h3>
 <p>
 (<em>Appears on:</em>
@@ -3752,6 +3864,51 @@ github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 <td>
 <p>
 (Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="cleanoption">CleanOption</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#backupspec">BackupSpec</a>)
+</p>
+<p>
+<p>CleanOption defines the configuration for cleanup backup</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>pageSize</code></br>
+<em>
+uint64
+</em>
+</td>
+<td>
+<p>PageSize represents the number of objects to clean at a time.
+default is 10000</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>BatchDeleteOption</code></br>
+<em>
+<a href="#batchdeleteoption">
+BatchDeleteOption
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>BatchDeleteOption</code> are embedded into this type.)
 </p>
 </td>
 </tr>
@@ -6266,12 +6423,42 @@ ServiceSpec
 </tr>
 <tr>
 <td>
+<code>usernameSecret</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#secretkeyselector-v1-core">
+Kubernetes core/v1.SecretKeySelector
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>if <code>UsernameSecret</code> is not set, <code>username</code> will be used.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>passwordSecret</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#secretkeyselector-v1-core">
+Kubernetes core/v1.SecretKeySelector
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>if <code>passwordSecret</code> is not set, <code>password</code> will be used.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>username</code></br>
 <em>
 string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
+<p>Deprecated in v1.3.0 for security concerns, planned for removal in v1.4.0. Use <code>usernameSecret</code> instead.</p>
 </td>
 </tr>
 <tr>
@@ -6282,6 +6469,8 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
+<p>Deprecated in v1.3.0 for security concerns, planned for removal in v1.4.0. Use <code>passwordSecret</code> instead.</p>
 </td>
 </tr>
 <tr>
@@ -7585,6 +7774,7 @@ string
 (<em>Appears on:</em>
 <a href="#grafanaspec">GrafanaSpec</a>, 
 <a href="#initializerspec">InitializerSpec</a>, 
+<a href="#prometheusreloaderspec">PrometheusReloaderSpec</a>, 
 <a href="#prometheusspec">PrometheusSpec</a>, 
 <a href="#reloaderspec">ReloaderSpec</a>, 
 <a href="#thanosspec">ThanosSpec</a>)
@@ -10168,7 +10358,7 @@ ConfigMapRef
 </em>
 </td>
 <td>
-<p>user can mount prometheus rule config with external configMap.If use this feature, the external configMap must contain <code>prometheus-config</code> key in data.</p>
+<p>User can mount prometheus config with external configMap. The external configMap must contain <code>prometheus-config</code> key in data.</p>
 </td>
 </tr>
 <tr>
@@ -10180,6 +10370,52 @@ ConfigMapRef
 </td>
 <td>
 <p>user can  use it specify prometheus command options</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ruleConfigRef</code></br>
+<em>
+<a href="#configmapref">
+ConfigMapRef
+</a>
+</em>
+</td>
+<td>
+<p>User can mount prometheus rule config with external configMap. The external configMap must use the key with suffix <code>.rules.yml</code>.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="prometheusreloaderspec">PrometheusReloaderSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbmonitorspec">TidbMonitorSpec</a>)
+</p>
+<p>
+<p>PrometheusReloaderSpec is the desired state of prometheus configuration reloader</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>MonitorContainer</code></br>
+<em>
+<a href="#monitorcontainer">
+MonitorContainer
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>MonitorContainer</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -21082,6 +21318,24 @@ Defaults to 1.</p>
 </tr>
 <tr>
 <td>
+<code>shards</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>EXPERIMENTAL: Number of shards to distribute targets onto. Number of
+replicas multiplied by shards is the total number of Pods created. Note
+that scaling down shards will not reshard data onto remaining instances,
+it must be manually moved. Increasing shards will not reshard data
+either but it will continue to be available from the same instances. To
+query globally use Thanos sidecar and Thanos querier or remote write
+data to a central location. Sharding is done on the content of the
+<code>__address__</code> target meta-label.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>additionalVolumes</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#volume-v1-core">
@@ -21119,6 +21373,20 @@ bool
 <em>(Optional)</em>
 <p>EnableAlertRules adds alert rules to the Prometheus config even
 if <code>AlertmanagerURL</code> is not configured.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>prometheusReloader</code></br>
+<em>
+<a href="#prometheusreloaderspec">
+PrometheusReloaderSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PrometheusReloader set prometheus reloader configuration</p>
 </td>
 </tr>
 </tbody>

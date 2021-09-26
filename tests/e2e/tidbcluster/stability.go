@@ -62,7 +62,9 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/framework/log"
 	"k8s.io/kubernetes/test/e2e/framework/node"
+	e2enode "k8s.io/kubernetes/test/e2e/framework/node"
 	"k8s.io/kubernetes/test/e2e/framework/pod"
+	e2eskipper "k8s.io/kubernetes/test/e2e/framework/skipper"
 	storageutils "k8s.io/kubernetes/test/e2e/storage/utils"
 	testutils "k8s.io/kubernetes/test/utils"
 	"k8s.io/utils/pointer"
@@ -171,7 +173,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 				listOptions := metav1.ListOptions{
 					LabelSelector: labels.SelectorFromSet(label.New().Instance(clusterName).Labels()).String(),
 				}
-				podList, err := c.CoreV1().Pods(ns).List(listOptions)
+				podList, err := c.CoreV1().Pods(ns).List(context.TODO(), listOptions)
 				framework.ExpectNoError(err, "failed to list pods in ns %s", ns)
 				err = wait.PollImmediate(time.Second*30, time.Minute*5, func() (bool, error) {
 					var ok bool
@@ -186,7 +188,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 						return true, nil
 					}
 					framework.Logf("check whether pods of cluster %q are running", clusterName)
-					newPodList, err := c.CoreV1().Pods(ns).List(listOptions)
+					newPodList, err := c.CoreV1().Pods(ns).List(context.TODO(), listOptions)
 					if err != nil {
 						return false, err
 					}
@@ -279,11 +281,12 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		ginkgo.It("recover tidb cluster from node deletion", func() {
 			supportedProviders := sets.NewString("aws", "gke")
 			if !supportedProviders.Has(framework.TestContext.Provider) {
-				framework.Skipf("current provider is not supported list %v, skipping", supportedProviders.List())
+				e2eskipper.Skipf("current provider is not supported list %v, skipping", supportedProviders.List())
 			}
 
 			ginkgo.By("Make sure we have at least 3 schedulable nodes")
-			nodeList := framework.GetReadySchedulableNodesOrDie(f.ClientSet)
+			nodeList, err := e2enode.GetReadySchedulableNodes(c)
+			framework.ExpectNoError(err)
 			gomega.Expect(len(nodeList.Items)).To(gomega.BeNumerically(">=", 3))
 
 			ginkgo.By("Deploy a test cluster with 3 pd and tikv replicas")
@@ -307,7 +310,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			listOptions := metav1.ListOptions{
 				LabelSelector: labels.SelectorFromSet(label.New().Instance(clusterName).Labels()).String(),
 			}
-			podList, err := c.CoreV1().Pods(ns).List(listOptions)
+			podList, err := c.CoreV1().Pods(ns).List(context.TODO(), listOptions)
 			framework.ExpectNoError(err, "failed to list pods in ns %s", ns)
 			for _, pod := range podList.Items {
 				if v, ok := pod.Labels[label.ComponentLabelKey]; !ok {
@@ -352,7 +355,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 				}
 			}
 			gomega.Expect(len(tikvPodsOnDeletedNode)).To(gomega.BeNumerically(">=", 1), "the number of affected tikvs must be equal or greater than 1")
-			err = framework.DeleteNodeOnCloudProvider(nodeToDelete)
+			err = framework.TestContext.CloudConfig.Provider.DeleteNode(nodeToDelete)
 			framework.ExpectNoError(err, fmt.Sprintf("failed to delete node %q", nodeToDelete.Name))
 			framework.Logf("Node %q deleted", nodeToDelete.Name)
 
@@ -360,7 +363,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 				// The node object will be gone with physical machine.
 				ginkgo.By(fmt.Sprintf("[AWS/EKS] Wait for the node object %q to be deleted", nodeToDelete.Name))
 				err = wait.PollImmediate(time.Second*5, time.Minute*5, func() (bool, error) {
-					_, err = c.CoreV1().Nodes().Get(nodeToDelete.Name, metav1.GetOptions{})
+					_, err = c.CoreV1().Nodes().Get(context.TODO(), nodeToDelete.Name, metav1.GetOptions{})
 					if err == nil || !apierrors.IsNotFound(err) {
 						return false, nil
 					}
@@ -373,7 +376,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 				framework.ExpectNoError(err, "failed to check node ready state")
 
 				ginkgo.By("[AWS/EKS] Initialize newly created node")
-				nodeList, err = c.CoreV1().Nodes().List(metav1.ListOptions{})
+				nodeList, err = c.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 				framework.ExpectNoError(err, "failed to list nodes")
 				initialized := 0
 				for _, node := range nodeList.Items {
@@ -392,7 +395,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 
 				ginkgo.By("[GCP/GKE] Wait for instance ID to be updated")
 				err = wait.PollImmediate(time.Second*5, time.Minute*10, func() (bool, error) {
-					node, err := c.CoreV1().Nodes().Get(nodeToDelete.Name, metav1.GetOptions{})
+					node, err := c.CoreV1().Nodes().Get(context.TODO(), nodeToDelete.Name, metav1.GetOptions{})
 					if err != nil {
 						return false, nil
 					}
@@ -412,7 +415,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 				node.WaitForNodeToBeReady(c, nodeToDelete.Name, time.Minute*5)
 
 				ginkgo.By(fmt.Sprintf("[GCP/GKE] Initialize underlying machine of node %s", nodeToDelete.Name))
-				node, err := c.CoreV1().Nodes().Get(nodeToDelete.Name, metav1.GetOptions{})
+				node, err := c.CoreV1().Nodes().Get(context.TODO(), nodeToDelete.Name, metav1.GetOptions{})
 				framework.ExpectNoError(err, "failed to get node %s", nodeToDelete.Name)
 				framework.ExpectNoError(utilnode.InitNode(node))
 			}
@@ -465,7 +468,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 				ginkgo.By("[AWS/EKS] Delete associated PVCs if they are bound with local PVs")
 				localPVs := make([]string, 0)
 				for _, pvcName := range pvcNamesOnDeletedNode {
-					pvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get(pvcName, metav1.GetOptions{})
+					pvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get(context.TODO(), pvcName, metav1.GetOptions{})
 					if err != nil && !apierrors.IsNotFound(err) {
 						framework.Failf("apiserver error: %v", err)
 					}
@@ -476,7 +479,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 						// TODO check the localPVs as expected in someway?
 						// SA4010: this result of append is never used, except maybe in other appends
 						localPVs = append(localPVs, pvc.Spec.VolumeName) // nolint: staticcheck
-						err = c.CoreV1().PersistentVolumeClaims(ns).Delete(pvc.Name, &metav1.DeleteOptions{})
+						err = c.CoreV1().PersistentVolumeClaims(ns).Delete(context.TODO(), pvc.Name, metav1.DeleteOptions{})
 						framework.ExpectNoError(err, "failed to delete pvc %s", pvc.Name)
 					}
 				}
@@ -487,7 +490,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 				// Note that this is optional.
 				ginkgo.By("Deleting the failed pods")
 				for _, pod := range append(tikvPodsOnDeletedNode, pdPodsOnDeletedNode...) {
-					framework.ExpectNoError(c.CoreV1().Pods(ns).Delete(pod.Name, &metav1.DeleteOptions{}))
+					framework.ExpectNoError(c.CoreV1().Pods(ns).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{}))
 				}
 			}
 
@@ -511,7 +514,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 				LabelSelector: labels.SelectorFromSet(
 					label.New().Instance(clusterName).Component(label.TiDBLabelVal).Labels()).String(),
 			}
-			oldPodList, err := c.CoreV1().Pods(ns).List(listOptions)
+			oldPodList, err := c.CoreV1().Pods(ns).List(context.TODO(), listOptions)
 			framework.ExpectNoError(err, "failed to list pods in ns %s", ns)
 
 			ginkgo.By("Update tidb configuration")
@@ -533,7 +536,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 				return nil
 			}
 			err = wait.PollImmediate(time.Second*5, time.Minute*15, func() (bool, error) {
-				newPodList, err := c.CoreV1().Pods(ns).List(listOptions)
+				newPodList, err := c.CoreV1().Pods(ns).List(context.TODO(), listOptions)
 				if err != nil && !apierrors.IsNotFound(err) {
 					return false, err
 				}
@@ -600,7 +603,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			// TODO support aws (eks), kind
 			supportedProviders := sets.NewString("gke")
 			if !supportedProviders.Has(framework.TestContext.Provider) {
-				framework.Skipf("current provider is not supported list %v, skipping", supportedProviders.List())
+				e2eskipper.Skipf("current provider is not supported list %v, skipping", supportedProviders.List())
 			}
 			// Disable node auto repair, otherwise the node on which the
 			// kubelet is not running will be recreated.
@@ -631,7 +634,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 					},
 				},
 			}
-			_, err := c.CoreV1().PersistentVolumeClaims(ns).Create(&invalidPVC)
+			_, err := c.CoreV1().PersistentVolumeClaims(ns).Create(context.TODO(), &invalidPVC, metav1.CreateOptions{})
 			framework.ExpectNoError(err, "failed to create persistent volume claims: %v", invalidPVC)
 
 			// We should stop the kubelet after failing the PD. Because
@@ -642,7 +645,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 				LabelSelector: labels.SelectorFromSet(
 					label.New().Instance(clusterName).Component(label.PDLabelVal).Labels()).String(),
 			}
-			pdPodList, err := c.CoreV1().Pods(ns).List(listOptions)
+			pdPodList, err := c.CoreV1().Pods(ns).List(context.TODO(), listOptions)
 			framework.ExpectNoError(err, "failed to list pods in ns %s with selector %v", ns, listOptions)
 			gomega.Expect(len(pdPodList.Items)).To(gomega.BeNumerically("==", 3), "the number of pd nodes should be 3")
 			pod0 := pdPodList.Items[0]
@@ -656,7 +659,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			ginkgo.By("Wait for a replacement to be created")
 			podName := controller.PDMemberName(clusterName) + "-3"
 			err = wait.PollImmediate(time.Second*10, 2*failoverPeriod, func() (bool, error) {
-				_, err := c.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+				_, err := c.CoreV1().Pods(ns).Get(context.TODO(), podName, metav1.GetOptions{})
 				if err != nil && !apierrors.IsNotFound(err) {
 					return false, nil
 				}
@@ -666,7 +669,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 
 			ginkgo.By("Wait for only one replacement to be created")
 			err = wait.PollImmediate(time.Second*10, 1*time.Minute, func() (bool, error) {
-				pdPodList, err := c.CoreV1().Pods(ns).List(listOptions)
+				pdPodList, err := c.CoreV1().Pods(ns).List(context.TODO(), listOptions)
 				if err != nil && !apierrors.IsNotFound(err) {
 					return false, nil
 				}
@@ -691,7 +694,8 @@ var _ = ginkgo.Describe("[Stability]", func() {
 
 		ginkgo.It("[Feature: AutoFailover] TiDB: one replacement for one failed member and replacements should be deleted when failed members are recovered", func() {
 			ginkgo.By("Make sure we have at least 3 schedulable nodes")
-			nodeList := framework.GetReadySchedulableNodesOrDie(f.ClientSet)
+			nodeList, err := e2enode.GetReadySchedulableNodes(c)
+			framework.ExpectNoError(err)
 			gomega.Expect(len(nodeList.Items)).To(gomega.BeNumerically(">=", 3))
 
 			clusterName := "failover"
@@ -736,7 +740,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 30*time.Minute, 15*time.Second)
 
 			ginkgo.By("Increase replicas of TiDB from 2 to 3")
-			err := controller.GuaranteedUpdate(genericCli, tc, func() error {
+			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 				tc.Spec.TiDB.Replicas = 3
 				return nil
 			})
@@ -745,7 +749,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			ginkgo.By("Wait for the new pod to be created")
 			podName := controller.TiDBMemberName(clusterName) + "-2"
 			err = wait.PollImmediate(time.Second*10, 1*time.Minute, func() (bool, error) {
-				_, err := c.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+				_, err := c.CoreV1().Pods(ns).Get(context.TODO(), podName, metav1.GetOptions{})
 				if err != nil && !apierrors.IsNotFound(err) {
 					return false, nil
 				}
@@ -755,7 +759,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 
 			ginkgo.By("Make sure the new pod will not be scheduled")
 			err = wait.PollImmediate(time.Second*10, 1*time.Minute, func() (bool, error) {
-				pod, err := c.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+				pod, err := c.CoreV1().Pods(ns).Get(context.TODO(), podName, metav1.GetOptions{})
 				if err != nil {
 					if testutils.IsRetryableAPIError(err) {
 						return false, nil
@@ -776,7 +780,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			}
 			ginkgo.By("Wait for no new replacement will be created for non-scheduled TiDB pod")
 			err = wait.PollImmediate(time.Second*10, 2*time.Minute, func() (bool, error) {
-				pdPodList, err := c.CoreV1().Pods(ns).List(listOptions)
+				pdPodList, err := c.CoreV1().Pods(ns).List(context.TODO(), listOptions)
 				if err != nil && !apierrors.IsNotFound(err) {
 					return false, nil
 				}
@@ -809,11 +813,11 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		]
 	}
 }`)
-			_, err = c.CoreV1().Pods(ns).Patch(podName, types.StrategicMergePatchType, patch)
+			_, err = c.CoreV1().Pods(ns).Patch(context.TODO(), podName, types.StrategicMergePatchType, patch, metav1.PatchOptions{})
 			framework.ExpectNoError(err, "failed to patch pod with patch: %v", patch)
 
 			err = wait.PollImmediate(time.Second*10, 1*time.Minute, func() (bool, error) {
-				pod, err := c.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+				pod, err := c.CoreV1().Pods(ns).Get(context.TODO(), podName, metav1.GetOptions{})
 				if err != nil {
 					// TODO: should do this in wait.Poll and wait.PollImmediate
 					if testutils.IsRetryableAPIError(err) {
@@ -828,7 +832,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			ginkgo.By("Wait for a replacement to be created")
 			newPodName := controller.TiDBMemberName(clusterName) + "-3"
 			err = wait.PollImmediate(time.Second*10, 2*failoverPeriod, func() (bool, error) {
-				_, err := c.CoreV1().Pods(ns).Get(newPodName, metav1.GetOptions{})
+				_, err := c.CoreV1().Pods(ns).Get(context.TODO(), newPodName, metav1.GetOptions{})
 				if err != nil && !apierrors.IsNotFound(err) {
 					return false, nil
 				}
@@ -838,7 +842,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 
 			ginkgo.By("Wait for only one replacement to be created")
 			err = wait.PollImmediate(time.Second*10, 1*time.Minute, func() (bool, error) {
-				podList, err := c.CoreV1().Pods(ns).List(listOptions)
+				podList, err := c.CoreV1().Pods(ns).List(context.TODO(), listOptions)
 				if err != nil && !apierrors.IsNotFound(err) {
 					return false, nil
 				}
@@ -850,7 +854,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			framework.ExpectEqual(err, wait.ErrWaitTimeout, "only one replacement should be created")
 
 			ginkgo.By(fmt.Sprintf("Fix the TiDB pod %q", podName))
-			err = c.CoreV1().Pods(ns).Delete(podName, &metav1.DeleteOptions{})
+			err = c.CoreV1().Pods(ns).Delete(context.TODO(), podName, metav1.DeleteOptions{})
 			framework.ExpectNoError(err, "failed to delete tidb pod %s/%s", ns, podName)
 
 			ginkgo.By("Wait for the replacement to be gone")
@@ -909,7 +913,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			ginkgo.By("Waiting for the new pod to be created")
 			newPodName := controller.TiKVMemberName(clusterName) + "-3"
 			err = wait.PollImmediate(time.Second*10, 1*time.Minute, func() (bool, error) {
-				_, err := c.CoreV1().Pods(ns).Get(newPodName, metav1.GetOptions{})
+				_, err := c.CoreV1().Pods(ns).Get(context.TODO(), newPodName, metav1.GetOptions{})
 				if err != nil && !apierrors.IsNotFound(err) {
 					return false, nil
 				}
@@ -966,7 +970,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			ginkgo.By("Waiting for the new pod to be created")
 			newPodName := controller.PDMemberName(clusterName) + "-3"
 			err = wait.PollImmediate(time.Second*10, 1*time.Minute, func() (bool, error) {
-				_, err := c.CoreV1().Pods(ns).Get(newPodName, metav1.GetOptions{})
+				_, err := c.CoreV1().Pods(ns).Get(context.TODO(), newPodName, metav1.GetOptions{})
 				if err != nil && !apierrors.IsNotFound(err) {
 					return false, nil
 				}
@@ -1015,7 +1019,8 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		// https://github.com/pingcap/tidb-operator/issues/1464
 		ginkgo.It("delete the failed pod via delete-slots feature of Advanced Statefulset after failover", func() {
 			ginkgo.By("Make sure we have at least 3 schedulable nodes")
-			nodeList := framework.GetReadySchedulableNodesOrDie(f.ClientSet)
+			nodeList, err := e2enode.GetReadySchedulableNodes(c)
+			framework.ExpectNoError(err)
 			gomega.Expect(len(nodeList.Items)).To(gomega.BeNumerically(">=", 3))
 
 			clusterName := "failover"
@@ -1034,7 +1039,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			f.ExecCommandInContainer(podName, "tikv", "sh", "-c", "rm -rf /var/lib/tikv/*")
 
 			ginkgo.By("Waiting for the store to be put into failure stores")
-			err := utiltidbcluster.WaitForTidbClusterCondition(cli, tc.Namespace, tc.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
+			err = utiltidbcluster.WaitForTidbClusterCondition(cli, tc.Namespace, tc.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
 				for _, failureStore := range tc.Status.TiKV.FailureStores {
 					if failureStore.PodName == podName {
 						return true, nil
@@ -1047,7 +1052,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			ginkgo.By("Waiting for the new pod to be created")
 			newPodName := controller.TiKVMemberName(clusterName) + "-3"
 			err = wait.PollImmediate(time.Second*10, 1*time.Minute, func() (bool, error) {
-				_, err := c.CoreV1().Pods(ns).Get(newPodName, metav1.GetOptions{})
+				_, err := c.CoreV1().Pods(ns).Get(context.TODO(), newPodName, metav1.GetOptions{})
 				if err != nil && !apierrors.IsNotFound(err) {
 					return false, nil
 				}
@@ -1124,7 +1129,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			tc.Spec.TiKV.Replicas = 3
 			tc.Spec.PD.Config.Set("pd-server.metric-storage", "http://monitor-prometheus:9090")
 
-			_, err := cli.PingcapV1alpha1().TidbClusters(ns).Create(tc)
+			_, err := cli.PingcapV1alpha1().TidbClusters(ns).Create(context.TODO(), tc, metav1.CreateOptions{})
 			framework.ExpectNoError(err, "Create TidbCluster error")
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err, "Check TidbCluster error")
@@ -1138,7 +1143,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			monitor.Spec.Prometheus.BaseImage = image
 			monitor.Spec.Prometheus.Version = tag
 
-			_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(monitor)
+			_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(context.TODO(), monitor, metav1.CreateOptions{})
 			framework.ExpectNoError(err, "Create TidbMonitor error")
 			err = tests.CheckTidbMonitor(monitor, cli, c, fw)
 			framework.ExpectNoError(err, "Check TidbMonitor error")
@@ -1163,7 +1168,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 					ResourceTypes: []string{"storage"},
 				},
 			}
-			_, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Create(tcas)
+			_, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Create(context.TODO(), tcas, metav1.CreateOptions{})
 			framework.ExpectNoError(err, "Create TidbClusterAutoScaler error")
 
 			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, clusterName, false)
@@ -1188,7 +1193,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			setCPUUsageAndQuota(tc, monitor, "35.0", "1.0", v1alpha1.TiKVMemberType.String(), baseTiKVs)
 			// A new cluster should be created and all TiKV stores are up
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-				tcList, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).List(autoTcListOption)
+				tcList, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).List(context.TODO(), autoTcListOption)
 				if err != nil {
 					log.Logf("failed to list tc %q with selector %+v", tc.Name, autoTcListOption)
 					return false, err
@@ -1267,7 +1272,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			setCPUUsageAndQuota(tc, monitor, "20.0", "1.0", v1alpha1.TiKVMemberType.String(), append(baseTiKVs, autoTiKV))
 			// The TiKV replicas should remain unchanged
 			err = wait.Poll(10*time.Second, 3*time.Minute, func() (done bool, err error) {
-				tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
+				tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(context.TODO(), autoTc.Name, metav1.GetOptions{})
 				if err != nil {
 					log.Logf("failed to get tc %q", tcPtr.Name)
 					return false, err
@@ -1289,7 +1294,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			setCPUUsageAndQuota(tc, monitor, "35.0", "1.0", v1alpha1.TiKVMemberType.String(), append(baseTiKVs, autoTiKV))
 			// The existing autoscaling cluster should be scaled out
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-				tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
+				tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(context.TODO(), autoTc.Name, metav1.GetOptions{})
 				if err != nil {
 					log.Logf("failed to get tc %q", tcPtr.Name)
 					return false, err
@@ -1329,7 +1334,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			setCPUUsageAndQuota(tc, monitor, "0.0", "1.0", v1alpha1.TiKVMemberType.String(), pods)
 			// The autoscaling cluster should be scaled in
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-				tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
+				tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(context.TODO(), autoTc.Name, metav1.GetOptions{})
 				if err != nil {
 					if errors.IsNotFound(err) {
 						log.Logf("tc %q not found", tcPtr.Name)
@@ -1360,7 +1365,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			ginkgo.By("Case 5: CPU usage below min threshold for a long time")
 			// The autoscaling cluster should be deleted
 			err = wait.Poll(5*time.Second, 10*time.Minute, func() (done bool, err error) {
-				tcList, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).List(autoTcListOption)
+				tcList, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).List(context.TODO(), autoTcListOption)
 				if err != nil {
 					log.Logf("failed to list tc %q with selector %+v", tc.Name, autoTcListOption)
 					return false, err
@@ -1387,7 +1392,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			tc.Spec.TiKV.Replicas = 3
 			tc.Spec.PD.Config.Set("pd-server.metric-storage", "http://monitor-prometheus:9090")
 
-			_, err := cli.PingcapV1alpha1().TidbClusters(ns).Create(tc)
+			_, err := cli.PingcapV1alpha1().TidbClusters(ns).Create(context.TODO(), tc, metav1.CreateOptions{})
 			framework.ExpectNoError(err, "Create TidbCluster error")
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err, "Check TidbCluster error")
@@ -1401,7 +1406,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			monitor.Spec.Prometheus.BaseImage = image
 			monitor.Spec.Prometheus.Version = tag
 
-			_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(monitor)
+			_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(context.TODO(), monitor, metav1.CreateOptions{})
 			framework.ExpectNoError(err, "Create TidbMonitor error")
 			err = tests.CheckTidbMonitor(monitor, cli, c, fw)
 			framework.ExpectNoError(err, "Check TidbMonitor error")
@@ -1425,7 +1430,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 					ResourceTypes: []string{"compute"},
 				},
 			}
-			_, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Create(tcas)
+			_, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Create(context.TODO(), tcas, metav1.CreateOptions{})
 			framework.ExpectNoError(err, "Create TidbClusterAutoScaler error")
 
 			var autoTc v1alpha1.TidbCluster
@@ -1447,7 +1452,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			setCPUUsageAndQuota(tc, monitor, "35.0", "1.0", v1alpha1.TiDBMemberType.String(), baseTiDBs)
 			// A new cluster should be created
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-				tcList, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).List(autoTcListOption)
+				tcList, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).List(context.TODO(), autoTcListOption)
 				if err != nil {
 					log.Logf("failed to list tc with selector %+v", autoTcListOption)
 					return false, err
@@ -1471,7 +1476,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			setCPUUsageAndQuota(tc, monitor, "20.0", "1.0", v1alpha1.TiDBMemberType.String(), append(baseTiDBs, autoTiDB))
 			// The TiDB replicas should remain unchanged
 			err = wait.Poll(5*time.Second, 3*time.Minute, func() (done bool, err error) {
-				tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
+				tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(context.TODO(), autoTc.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
@@ -1492,7 +1497,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			setCPUUsageAndQuota(tc, monitor, "35.0", "1.0", v1alpha1.TiDBMemberType.String(), append(baseTiDBs, autoTiDB))
 			// The existing autoscaling cluster should be scaled out
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-				tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
+				tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(context.TODO(), autoTc.Name, metav1.GetOptions{})
 				if err != nil {
 					log.Logf("failed to get tc %q", tcPtr.Name)
 					return false, err
@@ -1520,7 +1525,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			setCPUUsageAndQuota(tc, monitor, "0.0", "1.0", v1alpha1.TiDBMemberType.String(), pods)
 			// The autoscaling cluster should be scaled in
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-				tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(autoTc.Name, metav1.GetOptions{})
+				tcPtr, err := cli.PingcapV1alpha1().TidbClusters(autoTc.Namespace).Get(context.TODO(), autoTc.Name, metav1.GetOptions{})
 
 				if err != nil {
 					if errors.IsNotFound(err) {
@@ -1552,7 +1557,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			ginkgo.By("Case 5: CPU usage below min threshold for a long time")
 			// The autoscaling cluster should be deleted
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-				tcList, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).List(autoTcListOption)
+				tcList, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).List(context.TODO(), autoTcListOption)
 				if err != nil {
 					log.Logf("failed to list tc with selector %+v", autoTcListOption)
 					return false, err
@@ -1570,7 +1575,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			log.Logf("success to check delete autoscaling tidb cluster")
 
 			// Clean autoscaler
-			err = cli.PingcapV1alpha1().TidbClusterAutoScalers(tcas.Namespace).Delete(tcas.Name, &metav1.DeleteOptions{})
+			err = cli.PingcapV1alpha1().TidbClusterAutoScalers(tcas.Namespace).Delete(context.TODO(), tcas.Name, metav1.DeleteOptions{})
 			framework.ExpectNoError(err, "failed to delete auto-scaler")
 		})
 	})

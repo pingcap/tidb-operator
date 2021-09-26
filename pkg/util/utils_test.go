@@ -14,7 +14,6 @@
 package util
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
@@ -176,32 +175,6 @@ func TestGetPodOrdinals(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestGetAutoScalingOutSlots(t *testing.T) {
-	g := NewGomegaWithT(t)
-	slice := []int32{1, 2}
-	sliceData, err := json.Marshal(slice)
-	sliceString := string(sliceData)
-	g.Expect(err).Should(BeNil())
-	tc := &v1alpha1.TidbCluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Annotations: map[string]string{
-				label.AnnTiKVAutoScalingOutOrdinals: sliceString,
-				label.AnnTiDBAutoScalingOutOrdinals: sliceString,
-			},
-		},
-	}
-
-	var get sets.Int32
-	get = GetAutoScalingOutSlots(tc, v1alpha1.PDMemberType)
-	g.Expect(get).Should(Equal(sets.Int32{}))
-
-	get = GetAutoScalingOutSlots(tc, v1alpha1.TiKVMemberType)
-	g.Expect(get).Should(Equal(sets.NewInt32(slice...)))
-
-	get = GetAutoScalingOutSlots(tc, v1alpha1.TiDBMemberType)
-	g.Expect(get).Should(Equal(sets.NewInt32(slice...)))
 }
 
 func TestName(t *testing.T) {

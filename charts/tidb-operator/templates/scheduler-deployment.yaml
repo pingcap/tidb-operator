@@ -7,6 +7,7 @@ metadata:
   {{- else }}
   name: {{ .Values.scheduler.schedulerName }}
   {{- end }}
+  namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -36,7 +37,7 @@ spec:
       serviceAccount: {{ .Values.scheduler.serviceAccount }}-{{ .Release.Name }}
       {{- else }}
       serviceAccount: {{ .Values.scheduler.serviceAccount }}
-      {{- end }}    
+      {{- end }}
     {{- end }}
     {{- if .Values.imagePullSecrets }}
       imagePullSecrets:

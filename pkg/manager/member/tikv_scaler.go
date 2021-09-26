@@ -18,7 +18,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -49,7 +48,7 @@ func (s *tikvScaler) Scale(meta metav1.Object, oldSet *apps.StatefulSet, newSet 
 		return s.ScaleIn(meta, oldSet, newSet)
 	}
 	// we only sync auto scaler annotations when we are finishing syncing scaling
-	return s.SyncAutoScalerAnn(meta, oldSet)
+	return nil
 }
 
 func (s *tikvScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
@@ -201,36 +200,6 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 	return fmt.Errorf("TiKV %s/%s not found in cluster", ns, podName)
 }
 
-// SyncAutoScalerAnn would reclaim the auto-scaling out slots if the target pod is no longer existed
-func (s *tikvScaler) SyncAutoScalerAnn(meta metav1.Object, actual *apps.StatefulSet) error {
-	tc, ok := meta.(*v1alpha1.TidbCluster)
-	if !ok {
-		return nil
-	}
-	currentScalingSlots := util.GetAutoScalingOutSlots(tc, v1alpha1.TiKVMemberType)
-	if currentScalingSlots.Len() < 1 {
-		return nil
-	}
-	currentOrdinals := helper.GetPodOrdinals(tc.Spec.TiKV.Replicas, actual)
-
-	// reclaim the auto-scaling out slots if the target pod is no longer existed
-	if !currentOrdinals.HasAll(currentScalingSlots.List()...) {
-		reclaimedSlots := currentScalingSlots.Difference(currentOrdinals)
-		currentScalingSlots = currentScalingSlots.Delete(reclaimedSlots.List()...)
-		if currentScalingSlots.Len() < 1 {
-			delete(tc.Annotations, label.AnnTiKVAutoScalingOutOrdinals)
-			return nil
-		}
-		v, err := util.Encode(currentScalingSlots.List())
-		if err != nil {
-			return err
-		}
-		tc.Annotations[label.AnnTiKVAutoScalingOutOrdinals] = v
-		return nil
-	}
-	return nil
-}
-
 func (s *tikvScaler) preCheckUpStores(tc *v1alpha1.TidbCluster, podName string) (bool, error) {
 	if !tc.TiKVBootStrapped() {
 		klog.Infof("TiKV of Cluster %s/%s is not bootstrapped yet, skip pre check when scale in TiKV", tc.Namespace, tc.Name)
@@ -307,9 +276,5 @@ func (s *fakeTiKVScaler) ScaleOut(_ metav1.Object, oldSet *apps.StatefulSet, new
 
 func (s *fakeTiKVScaler) ScaleIn(_ metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	setReplicasAndDeleteSlots(newSet, *oldSet.Spec.Replicas-1, nil)
-	return nil
-}
-
-func (s *fakeTiKVScaler) SyncAutoScalerAnn(_ metav1.Object, actual *apps.StatefulSet) error {
 	return nil
 }

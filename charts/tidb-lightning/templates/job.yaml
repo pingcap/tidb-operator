@@ -6,6 +6,7 @@ metadata:
   {{- else}}
   name: {{ include "tidb-lightning.name" . }}
   {{- end }}
+  namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: {{ include "tidb-lightning.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}

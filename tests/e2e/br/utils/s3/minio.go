@@ -34,7 +34,7 @@ const (
 	minioName  = "minio"
 	minioImage = "minio/minio:RELEASE.2020-05-08T02-40-49Z"
 
-	minioBucket = "local"
+	minioBucket = "local" // the bucket for e2e test
 	minioSecret = "minio-secret"
 )
 
@@ -54,15 +54,15 @@ func NewMinio(c kubernetes.Interface, fw portforward.PortForwarder) Interface {
 func (s *minioStorage) Init(ctx context.Context, ns, accessKey, secretKey string) error {
 	ginkgo.By("init minio s3 storage")
 	pod := getMinioPod(ns)
-	if _, err := s.c.CoreV1().Pods(ns).Create(pod); err != nil {
+	if _, err := s.c.CoreV1().Pods(ns).Create(context.TODO(), pod, metav1.CreateOptions{}); err != nil {
 		return err
 	}
 	svc := getMinioService(ns)
-	if _, err := s.c.CoreV1().Services(ns).Create(svc); err != nil {
+	if _, err := s.c.CoreV1().Services(ns).Create(context.TODO(), svc, metav1.CreateOptions{}); err != nil {
 		return err
 	}
 	secret := getMinioSecret(ns, accessKey, secretKey)
-	if _, err := s.c.CoreV1().Secrets(ns).Create(secret); err != nil {
+	if _, err := s.c.CoreV1().Secrets(ns).Create(context.TODO(), secret, metav1.CreateOptions{}); err != nil {
 		return err
 	}
 	ginkgo.By("wait for minio s3 storage ready")
@@ -113,6 +113,10 @@ func (s *minioStorage) Clean(ctx context.Context, ns string) error {
 	return nil
 }
 
+func (s *minioStorage) Bucket() string {
+	return minioBucket
+}
+
 func (s *minioStorage) IsDataCleaned(ctx context.Context, ns, prefix string) (bool, error) {
 	accessKey, secretKey, err := s.accessSecret(ns)
 	if err != nil {
@@ -136,7 +140,7 @@ func (s *minioStorage) IsDataCleaned(ctx context.Context, ns, prefix string) (bo
 }
 
 func (s *minioStorage) accessSecret(ns string) (string, string, error) {
-	secret, err := s.c.CoreV1().Secrets(ns).Get(minioSecret, metav1.GetOptions{})
+	secret, err := s.c.CoreV1().Secrets(ns).Get(context.TODO(), minioSecret, metav1.GetOptions{})
 	if err != nil {
 		return "", "", err
 	}
