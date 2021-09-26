@@ -137,7 +137,7 @@ func main() {
 
 	deps, err := controller.NewDependencies(ns, cliCfg, cli, kubeCli, genericCli)
 	if err != nil {
-		klog.Fatal("failed to create Dependencies: %s", err)
+		klog.Fatalf("failed to create Dependencies: %s", err)
 	}
 
 	onStarted := func(ctx context.Context) {
