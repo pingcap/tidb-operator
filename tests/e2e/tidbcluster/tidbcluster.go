@@ -2935,7 +2935,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		tc := fixture.GetTidbCluster(ns, "monitor-test", utilimage.TiDBLatest)
 		tc.Spec.PD.Replicas = 1
 		tc.Spec.TiKV.Replicas = 1
-		tc.Spec.TiDB.Replicas = 2
+		tc.Spec.TiDB.Replicas = 3
 		tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, metav1.CreateOptions{})
 		framework.ExpectNoError(err, "Expected create tidbcluster")
 		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
