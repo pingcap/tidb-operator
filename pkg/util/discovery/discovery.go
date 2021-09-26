@@ -14,6 +14,7 @@
 package discovery
 
 import (
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
 )
@@ -59,23 +60,17 @@ func IsAPIGroupSupported(discoveryCli discovery.DiscoveryInterface, group string
 //
 // you can exec `kubectl api-resoures` to find groupVersion and resource.
 func IsAPIGroupVersionResourceSupported(discoveryCli discovery.DiscoveryInterface, groupversion string, resource string) (bool, error) {
-	gv, err := schema.ParseGroupVersion(groupversion)
+	apiResourceList, err := discoveryCli.ServerResourcesForGroupVersion(groupversion)
 	if err != nil {
+		if errors.IsNotFound(err) {
+			return false, nil
+		}
 		return false, err
 	}
 
-	apiResourceList, err := discoveryCli.ServerResources()
-	if err != nil {
-		return false, err
-	}
-
-	for _, apiResourceList := range apiResourceList {
-		if gv.String() == apiResourceList.GroupVersion {
-			for _, apiResource := range apiResourceList.APIResources {
-				if resource == apiResource.Name {
-					return true, nil
-				}
-			}
+	for _, apiResource := range apiResourceList.APIResources {
+		if resource == apiResource.Name {
+			return true, nil
 		}
 	}
 	return false, nil
