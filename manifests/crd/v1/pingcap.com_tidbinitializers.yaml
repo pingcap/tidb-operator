@@ -65,6 +65,8 @@ spec:
                   fsGroup:
                     format: int64
                     type: integer
+                  fsGroupChangePolicy:
+                    type: string
                   runAsGroup:
                     format: int64
                     type: integer
@@ -83,6 +85,15 @@ spec:
                         type: string
                       user:
                         type: string
+                    type: object
+                  seccompProfile:
+                    properties:
+                      localhostProfile:
+                        type: string
+                      type:
+                        type: string
+                    required:
+                    - type
                     type: object
                   supplementalGroups:
                     items:
