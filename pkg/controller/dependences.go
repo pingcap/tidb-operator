@@ -15,6 +15,7 @@ package controller
 
 import (
 	"flag"
+	"fmt"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -278,7 +279,7 @@ func newDependencies(
 	informerFactory informers.SharedInformerFactory,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 	labelFilterKubeInformerFactory kubeinformers.SharedInformerFactory,
-	recorder record.EventRecorder) *Dependencies {
+	recorder record.EventRecorder) (*Dependencies, error) {
 
 	var (
 		nodeLister       corelisterv1.NodeLister
@@ -302,9 +303,10 @@ func newDependencies(
 	} else {
 		klog.Info("no permission for storage classes, skip creating sc lister")
 	}
+
 	supported, err := utildiscovery.IsAPIGroupVersionResourceSupported(kubeClientset.Discovery(), "networking.k8s.io/v1", "ingresses")
 	if err != nil {
-		klog.Fatalf("check if networking.k8s.io/v1/ingresses is supported failed: %s", err)
+		return nil, fmt.Errorf("failed to check resource networking.k8s.io/v1/ingresses: %s", err)
 	}
 	if supported {
 		ingLister = kubeInformerFactory.Networking().V1().Ingresses().Lister()
@@ -345,11 +347,11 @@ func newDependencies(
 		BackupScheduleLister:        informerFactory.Pingcap().V1alpha1().BackupSchedules().Lister(),
 		TiDBInitializerLister:       informerFactory.Pingcap().V1alpha1().TidbInitializers().Lister(),
 		TiDBMonitorLister:           informerFactory.Pingcap().V1alpha1().TidbMonitors().Lister(),
-	}
+	}, nil
 }
 
 // NewDependencies is used to construct the dependencies
-func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface, kubeClientset kubernetes.Interface, genericCli client.Client) *Dependencies {
+func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface, kubeClientset kubernetes.Interface, genericCli client.Client) (*Dependencies, error) {
 	var (
 		options     []informers.SharedInformerOption
 		kubeoptions []kubeinformers.SharedInformerOption
@@ -384,9 +386,12 @@ func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface
 	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
 		Interface: eventv1.New(kubeClientset.CoreV1().RESTClient()).Events("")})
 	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tidb-controller-manager"})
-	deps := newDependencies(cliCfg, clientset, kubeClientset, genericCli, informerFactory, kubeInformerFactory, labelFilterKubeInformerFactory, recorder)
+	deps, err := newDependencies(cliCfg, clientset, kubeClientset, genericCli, informerFactory, kubeInformerFactory, labelFilterKubeInformerFactory, recorder)
+	if err != nil {
+		return nil, err
+	}
 	deps.Controls = newRealControls(cliCfg, clientset, kubeClientset, genericCli, informerFactory, kubeInformerFactory, recorder)
-	return deps
+	return deps, nil
 }
 
 func newFakeControl(kubeClientset kubernetes.Interface, informerFactory informers.SharedInformerFactory, kubeInformerFactory kubeinformers.SharedInformerFactory) Controls {
@@ -444,7 +449,10 @@ func NewFakeDependencies() *Dependencies {
 		},
 	})
 
-	deps := newDependencies(cliCfg, cli, kubeCli, genCli, informerFactory, kubeInformerFactory, labelFilterKubeInformerFactory, recorder)
+	deps, err := newDependencies(cliCfg, cli, kubeCli, genCli, informerFactory, kubeInformerFactory, labelFilterKubeInformerFactory, recorder)
+	if err != nil {
+		klog.Fatalf("failed to create Dependencies: %s", err)
+	}
 	deps.Controls = newFakeControl(kubeCli, informerFactory, kubeInformerFactory)
 	return deps
 }
