@@ -444,7 +444,7 @@ func NewFakeDependencies() *Dependencies {
 		GroupVersion: "networking.k8s.io/v1",
 		APIResources: []metav1.APIResource{
 			{
-				Name: "ingressclasses",
+				Name: "ingresses",
 			},
 		},
 	})
