@@ -39,7 +39,7 @@ return errorutils.NewAggregate(errs)
 ### Test Plan
 
 - Add more e2e-test with syncing components error.
-- Test Upgrade components.Be not able to sync subsequent components when component is upgrading. 
+- Test Upgrade components. Be not able to sync subsequent components when a component is upgrading. 
 - Test Sync components with one component occurs error and other component success. Be able to sync subsequent components when component occurs error and is not upgrading.this may contains many cases:
   1. With PD and TiKV Sepc changed.Sync PD error, sync TiKV success
   2. With PD and TiKV TiDB changed.Sync PD error, sync TiDB success. 
