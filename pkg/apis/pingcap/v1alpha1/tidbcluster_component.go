@@ -400,8 +400,12 @@ func buildDMClusterComponentAccessor(c Component, dc *DMCluster, componentSpec *
 
 // BaseDiscoverySpec returns the base spec of discovery component
 func (tc *TidbCluster) BaseDiscoverySpec() ComponentAccessor {
-	// all configs follow global one
-	return buildTidbClusterComponentAccessor(ComponentDiscovery, tc, nil)
+	var spec *ComponentSpec
+	if tc.Spec.Discovery.ComponentSpec != nil {
+		spec = tc.Spec.Discovery.ComponentSpec
+	}
+
+	return buildTidbClusterComponentAccessor(ComponentDiscovery, tc, spec)
 }
 
 // BaseTiDBSpec returns the base spec of TiDB servers
@@ -465,7 +469,12 @@ func (tc *TidbCluster) BasePumpSpec() ComponentAccessor {
 }
 
 func (dc *DMCluster) BaseDiscoverySpec() ComponentAccessor {
-	return buildDMClusterComponentAccessor(ComponentDMDiscovery, dc, nil)
+	var spec *ComponentSpec
+	if dc.Spec.Discovery.ComponentSpec != nil {
+		spec = dc.Spec.Discovery.ComponentSpec
+	}
+
+	return buildDMClusterComponentAccessor(ComponentDMDiscovery, dc, spec)
 }
 
 func (dc *DMCluster) BaseMasterSpec() ComponentAccessor {
