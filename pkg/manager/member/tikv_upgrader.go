@@ -135,23 +135,7 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not all ready", ns, tcName, podName)
 			}
 
-			if !u.deps.CLIConfig.PodWebhookEnabled {
-				// If pods recreated successfully, endEvictLeader for the store on this Pod.
-				storeID, err := strconv.ParseUint(store.ID, 10, 64)
-				if err != nil {
-					return err
-				}
-				if err := endEvictLeaderbyStoreID(u.deps, tc, storeID); err != nil {
-					return err
-				}
-			}
-
 			continue
-		}
-
-		if u.deps.CLIConfig.PodWebhookEnabled {
-			setUpgradePartition(newSet, i)
-			return nil
 		}
 
 		return u.upgradeTiKVPod(tc, i, newSet)

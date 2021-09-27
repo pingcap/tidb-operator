@@ -215,10 +215,6 @@ admissionWebhook:
   logLevel: 2
   rbac:
     create: true
-  ## jobImage is to indicate the image used in `pre-delete-job.yaml`
-  ## if admissionWebhook.create and admissionWebhook.validation.pods are both enabled,
-  ## The pre-delete-job would delete the validationWebhookConfiguration using this image
-  jobImage: "bitnami/kubectl:latest"
   ## validation webhook would check the given request for the specific resource and operation
   validation:
     ## statefulsets hook would check requests for updating tidbcluster's statefulsets

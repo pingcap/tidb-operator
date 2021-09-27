@@ -96,11 +96,6 @@ func (s *workerScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, new
 
 	klog.Infof("scaling in dm-worker statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
 
-	//if controller.PodWebhookEnabled {
-	//	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
-	//	return nil
-	//}
-
 	pvcName := ordinalPVCName(v1alpha1.DMWorkerMemberType, setName, ordinal)
 	pvc, err := s.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
 	if err != nil {

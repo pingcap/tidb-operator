@@ -106,7 +106,6 @@ func NewDefaultOperatorConfig(cfg *tests.Config) *tests.OperatorConfig {
 		TestMode:                  true,
 		WebhookEnabled:            true,
 		StsWebhookEnabled:         true,
-		PodWebhookEnabled:         false,
 		Cabundle:                  "",
 		BackupImage:               cfg.BackupImage,
 		StringValues: map[string]string{
