@@ -8,7 +8,6 @@ go 1.13
 
 require (
 	cloud.google.com/go/storage v1.0.0
-	github.com/BurntSushi/toml v0.3.1
 	github.com/MakeNowJust/heredoc v0.0.0-20171113091838-e9091a26100e // indirect
 	github.com/Masterminds/semver v1.4.2
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
