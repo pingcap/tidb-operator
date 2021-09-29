@@ -89,6 +89,9 @@ spec:
           {{- if .Values.controllerManager.workers }}
           - -workers={{ .Values.controllerManager.workers | default 5 }}
           {{- end }}
+          {{- if and ( .Values.admissionWebhook.create ) ( .Values.admissionWebhook.validation.pods ) }}
+          - -pod-webhook-enabled=true
+          {{- end }}
           {{- if .Values.controllerManager.selector }}
           {{- $label := join "," .Values.controllerManager.selector }}
           - -selector={{ $label }}

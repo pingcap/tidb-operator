@@ -76,6 +76,10 @@ type CLIConfig struct {
 	TestMode               bool
 	TiDBBackupManagerImage string
 	TiDBDiscoveryImage     string
+	// PodWebhookEnabled is the key to indicate whether pod admission
+	// webhook is set up.
+	// PodWebhookEnabled will be deprecated in
+	PodWebhookEnabled bool
 	// Selector is used to filter CR labels to decide
 	// what resources should be watched and synced by controller
 	Selector string
@@ -125,6 +129,7 @@ func (c *CLIConfig) AddFlag(_ *flag.FlagSet) {
 	flag.StringVar(&c.TiDBBackupManagerImage, "tidb-backup-manager-image", c.TiDBBackupManagerImage, "The image of backup manager tool")
 	// TODO: actually we just want to use the same image with tidb-controller-manager, but DownwardAPI cannot get image ID, see if there is any better solution
 	flag.StringVar(&c.TiDBDiscoveryImage, "tidb-discovery-image", c.TiDBDiscoveryImage, "The image of the tidb discovery service")
+	flag.BoolVar(&c.PodWebhookEnabled, "pod-webhook-enabled", false, "Whether Pod admission webhook is enabled")
 	flag.StringVar(&c.Selector, "selector", c.Selector, "Selector (label query) to filter on, supports '=', '==', and '!='")
 
 	// see https://pkg.go.dev/k8s.io/client-go/tools/leaderelection#LeaderElectionConfig for the config
