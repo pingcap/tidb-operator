@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -41,6 +42,8 @@ type TypedControlInterface interface {
 	CreateOrUpdateSecret(controller runtime.Object, secret *corev1.Secret) (*corev1.Secret, error)
 	// CreateOrUpdateConfigMap create the desired configmap or update the current one to desired state if already existed
 	CreateOrUpdateConfigMap(controller runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error)
+	// CheckAndUpdateConfigMap check configmap before create or update the desired configmap
+	CheckAndUpdateConfigMap(configMapLister corelisterv1.ConfigMapLister, controller runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error)
 	// CreateOrUpdateClusterRole the desired clusterRole or update the current one to desired state if already existed
 	CreateOrUpdateClusterRole(controller runtime.Object, clusterRole *rbacv1.ClusterRole) (*rbacv1.ClusterRole, error)
 	// CreateOrUpdateClusterRoleBinding create the desired clusterRoleBinding or update the current one to desired state if already existed
@@ -254,6 +257,41 @@ func (w *typedWrapper) CreateOrUpdateConfigMap(controller runtime.Object, cm *co
 		}
 		return nil
 	}, true)
+	if err != nil {
+		return nil, err
+	}
+	return result.(*corev1.ConfigMap), nil
+}
+
+func NeedCreateOrUpgradeConfigMap(cmLister corelisterv1.ConfigMapLister, newCm *corev1.ConfigMap, mergeFn MergeFn) (*corev1.ConfigMap, bool) {
+	// check if need CreateOrUpgrade
+	oldCm, err := cmLister.ConfigMaps(newCm.Namespace).Get(newCm.Name)
+	if err != nil {
+		return oldCm, true
+	}
+	if err := mergeFn(newCm, oldCm); err != nil {
+		return oldCm, true
+	}
+	return oldCm, false
+}
+
+func (w *typedWrapper) CheckAndUpdateConfigMap(cmLister corelisterv1.ConfigMapLister, controller runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
+	mergeFn := func(existing, desired runtime.Object) error {
+		existingCm := existing.(*corev1.ConfigMap)
+		desiredCm := desired.(*corev1.ConfigMap)
+
+		existingCm.Data = desiredCm.Data
+		existingCm.Labels = desiredCm.Labels
+		for k, v := range desiredCm.Annotations {
+			existingCm.Annotations[k] = v
+		}
+		return nil
+	}
+
+	if cf, ok := NeedCreateOrUpgradeConfigMap(cmLister, cm, mergeFn); !ok {
+		return cf, nil
+	}
+	result, err := w.GenericControlInterface.CreateOrUpdate(controller, cm, mergeFn, true)
 	if err != nil {
 		return nil, err
 	}

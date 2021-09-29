@@ -371,10 +371,7 @@ func (m *masterMemberManager) syncMasterConfigMap(dc *v1alpha1.DMCluster, set *a
 	if err != nil {
 		return nil, err
 	}
-	if util.NeedCreateOrUpgradeConfigMap(m.deps.ConfigMapLister, newCm) {
-		return m.deps.TypedControl.CreateOrUpdateConfigMap(dc, newCm)
-	}
-	return newCm, nil
+	return m.deps.TypedControl.CheckAndUpdateConfigMap(m.deps.ConfigMapLister, dc, newCm)
 }
 
 func (m *masterMemberManager) getNewMasterServiceForDMCluster(dc *v1alpha1.DMCluster) *corev1.Service {

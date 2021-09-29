@@ -17,7 +17,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"reflect"
 	"strconv"
 	"strings"
 
@@ -452,16 +451,4 @@ func ResolvePVCFromPod(pod *corev1.Pod, pvcLister corelisterv1.PersistentVolumeC
 		return pvcs, err
 	}
 	return pvcs, nil
-}
-
-// NeedCreateOrUpgradeConfigMap check if CreateOrUpgradeConfigMap is necessary
-func NeedCreateOrUpgradeConfigMap(cmLister corelisterv1.ConfigMapLister, newCm *corev1.ConfigMap) bool {
-	cf, err := cmLister.ConfigMaps(newCm.Namespace).Get(newCm.Name)
-	if err != nil {
-		return true
-	}
-	if reflect.DeepEqual(cf.Data, newCm.Data) && reflect.DeepEqual(cf.Labels, newCm.Labels) {
-		return false
-	}
-	return true
 }
