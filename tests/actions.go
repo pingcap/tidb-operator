@@ -54,8 +54,10 @@ import (
 	utilstatefulset "github.com/pingcap/tidb-operator/tests/e2e/util/statefulset"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
+	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	"github.com/pingcap/tidb-operator/tests/pkg/metrics"
+	"github.com/pingcap/tidb-operator/tests/pkg/webhook"
 	"github.com/pingcap/tidb-operator/tests/slack"
 	admissionV1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	apps "k8s.io/api/apps/v1"
@@ -3716,29 +3718,29 @@ func (oa *OperatorActions) getTiDBDSN(ns, tcName, databaseName, password string)
 	return fmt.Sprintf("root:%s@(%s-tidb.%s:4000)/%s?charset=utf8", password, tcName, ns, databaseName), dummyCancel, nil
 }
 
-// func StartValidatingAdmissionWebhookServerOrDie(context *apimachinery.CertContext, namespaces ...string) {
-// 	sCert, err := tls.X509KeyPair(context.Cert, context.Key)
-// 	if err != nil {
-// 		panic(err)
-// 	}
+func StartValidatingAdmissionWebhookServerOrDie(context *apimachinery.CertContext, namespaces ...string) {
+	sCert, err := tls.X509KeyPair(context.Cert, context.Key)
+	if err != nil {
+		panic(err)
+	}
 
-// 	versionCli, kubeCli, _, _, _ := client.NewCliOrDie()
-// 	wh := webhook.NewWebhook(kubeCli, versionCli, namespaces)
-// 	http.HandleFunc("/pods", wh.ServePods)
-// 	server := &http.Server{
-// 		Addr: ":443",
-// 		TLSConfig: &tls.Config{
-// 			Certificates: []tls.Certificate{sCert},
-// 		},
-// 	}
-// 	if err := server.ListenAndServeTLS("", ""); err != nil {
-// 		sendErr := slack.SendErrMsg(err.Error())
-// 		if sendErr != nil {
-// 			log.Logf(sendErr.Error())
-// 		}
-// 		panic(fmt.Sprintf("failed to start webhook server %v", err))
-// 	}
-// }
+	versionCli, kubeCli, _, _, _ := client.NewCliOrDie()
+	wh := webhook.NewWebhook(kubeCli, versionCli, namespaces)
+	http.HandleFunc("/pods", wh.ServePods)
+	server := &http.Server{
+		Addr: ":443",
+		TLSConfig: &tls.Config{
+			Certificates: []tls.Certificate{sCert},
+		},
+	}
+	if err := server.ListenAndServeTLS("", ""); err != nil {
+		sendErr := slack.SendErrMsg(err.Error())
+		if sendErr != nil {
+			log.Logf(sendErr.Error())
+		}
+		panic(fmt.Sprintf("failed to start webhook server %v", err))
+	}
+}
 
 func blockWriterPodName(info *TidbClusterConfig) string {
 	return fmt.Sprintf("%s-blockwriter", info.ClusterName)
