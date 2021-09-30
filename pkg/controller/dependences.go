@@ -78,7 +78,7 @@ type CLIConfig struct {
 	TiDBDiscoveryImage     string
 	// PodWebhookEnabled is the key to indicate whether pod admission
 	// webhook is set up.
-	// PodWebhookEnabled will be deprecated in
+	// PodWebhookEnabled will be deprecated in v1.3.0
 	PodWebhookEnabled bool
 	// Selector is used to filter CR labels to decide
 	// what resources should be watched and synced by controller
