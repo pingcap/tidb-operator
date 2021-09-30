@@ -496,7 +496,7 @@ func DeleteCertManager(cli clientset.Interface) error {
 	}
 
 	return wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
-		podList, err := cli.CoreV1().Pods("cert-manager").List(metav1.ListOptions{})
+		podList, err := cli.CoreV1().Pods("cert-manager").List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			return false, nil
 		}
@@ -682,7 +682,7 @@ func connectToTiDBWithTLSSupport(fw portforward.PortForward, c clientset.Interfa
 	if tlsEnabled {
 		tlsKey := "tidb-server-tls"
 		secretName := util.TiDBClientTLSSecretName(tcName)
-		secret, err := c.CoreV1().Secrets(ns).Get(secretName, metav1.GetOptions{})
+		secret, err := c.CoreV1().Secrets(ns).Get(context.TODO(), secretName, metav1.GetOptions{})
 		if err != nil {
 			return nil, nil, err
 		}

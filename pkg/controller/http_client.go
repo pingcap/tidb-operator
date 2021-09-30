@@ -14,6 +14,7 @@
 package controller
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -39,7 +40,7 @@ func (c *httpClient) getHTTPClient(tc *v1alpha1.TidbCluster) (*http.Client, erro
 	tcName := tc.Name
 	ns := tc.Namespace
 	secretName := util.ClusterClientTLSSecretName(tcName)
-	secret, err := c.kubeCli.CoreV1().Secrets(ns).Get(secretName, metav1.GetOptions{})
+	secret, err := c.kubeCli.CoreV1().Secrets(ns).Get(context.TODO(), secretName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}

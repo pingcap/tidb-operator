@@ -10,7 +10,8 @@ for file in os.listdir(password_dir):
         continue
     user = file
     with open(os.path.join(password_dir, file), 'r') as f:
-        password = f.read()
+        lines = f.read().splitlines()
+        password = lines[0] if len(lines) > 0 else ""
     if user == 'root':
         conn.cursor().execute("set password for 'root'@'%%' = %s;", (password,))
     else:

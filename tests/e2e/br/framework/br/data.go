@@ -101,6 +101,7 @@ func GetSecret(ns, name, password string) *corev1.Secret {
 	}
 }
 
+// GetBackup return a basic backup
 func GetBackup(ns, name, tcName, typ string, s3Config *v1alpha1.S3StorageProvider) *v1alpha1.Backup {
 	if typ != BRType && typ != DumperType {
 		return nil

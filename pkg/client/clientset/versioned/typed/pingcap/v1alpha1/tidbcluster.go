@@ -16,6 +16,7 @@
 package v1alpha1
 
 import (
+	"context"
 	"time"
 
 	v1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -34,15 +35,15 @@ type TidbClustersGetter interface {
 
 // TidbClusterInterface has methods to work with TidbCluster resources.
 type TidbClusterInterface interface {
-	Create(*v1alpha1.TidbCluster) (*v1alpha1.TidbCluster, error)
-	Update(*v1alpha1.TidbCluster) (*v1alpha1.TidbCluster, error)
-	UpdateStatus(*v1alpha1.TidbCluster) (*v1alpha1.TidbCluster, error)
-	Delete(name string, options *v1.DeleteOptions) error
-	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
-	Get(name string, options v1.GetOptions) (*v1alpha1.TidbCluster, error)
-	List(opts v1.ListOptions) (*v1alpha1.TidbClusterList, error)
-	Watch(opts v1.ListOptions) (watch.Interface, error)
-	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.TidbCluster, err error)
+	Create(ctx context.Context, tidbCluster *v1alpha1.TidbCluster, opts v1.CreateOptions) (*v1alpha1.TidbCluster, error)
+	Update(ctx context.Context, tidbCluster *v1alpha1.TidbCluster, opts v1.UpdateOptions) (*v1alpha1.TidbCluster, error)
+	UpdateStatus(ctx context.Context, tidbCluster *v1alpha1.TidbCluster, opts v1.UpdateOptions) (*v1alpha1.TidbCluster, error)
+	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
+	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.TidbCluster, error)
+	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.TidbClusterList, error)
+	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.TidbCluster, err error)
 	TidbClusterExpansion
 }
 
@@ -61,20 +62,20 @@ func newTidbClusters(c *PingcapV1alpha1Client, namespace string) *tidbClusters {
 }
 
 // Get takes name of the tidbCluster, and returns the corresponding tidbCluster object, and an error if there is any.
-func (c *tidbClusters) Get(name string, options v1.GetOptions) (result *v1alpha1.TidbCluster, err error) {
+func (c *tidbClusters) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.TidbCluster, err error) {
 	result = &v1alpha1.TidbCluster{}
 	err = c.client.Get().
 		Namespace(c.ns).
 		Resource("tidbclusters").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // List takes label and field selectors, and returns the list of TidbClusters that match those selectors.
-func (c *tidbClusters) List(opts v1.ListOptions) (result *v1alpha1.TidbClusterList, err error) {
+func (c *tidbClusters) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.TidbClusterList, err error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -85,13 +86,13 @@ func (c *tidbClusters) List(opts v1.ListOptions) (result *v1alpha1.TidbClusterLi
 		Resource("tidbclusters").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Watch returns a watch.Interface that watches the requested tidbClusters.
-func (c *tidbClusters) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *tidbClusters) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -102,87 +103,90 @@ func (c *tidbClusters) Watch(opts v1.ListOptions) (watch.Interface, error) {
 		Resource("tidbclusters").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Watch()
+		Watch(ctx)
 }
 
 // Create takes the representation of a tidbCluster and creates it.  Returns the server's representation of the tidbCluster, and an error, if there is any.
-func (c *tidbClusters) Create(tidbCluster *v1alpha1.TidbCluster) (result *v1alpha1.TidbCluster, err error) {
+func (c *tidbClusters) Create(ctx context.Context, tidbCluster *v1alpha1.TidbCluster, opts v1.CreateOptions) (result *v1alpha1.TidbCluster, err error) {
 	result = &v1alpha1.TidbCluster{}
 	err = c.client.Post().
 		Namespace(c.ns).
 		Resource("tidbclusters").
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(tidbCluster).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Update takes the representation of a tidbCluster and updates it. Returns the server's representation of the tidbCluster, and an error, if there is any.
-func (c *tidbClusters) Update(tidbCluster *v1alpha1.TidbCluster) (result *v1alpha1.TidbCluster, err error) {
+func (c *tidbClusters) Update(ctx context.Context, tidbCluster *v1alpha1.TidbCluster, opts v1.UpdateOptions) (result *v1alpha1.TidbCluster, err error) {
 	result = &v1alpha1.TidbCluster{}
 	err = c.client.Put().
 		Namespace(c.ns).
 		Resource("tidbclusters").
 		Name(tidbCluster.Name).
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(tidbCluster).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-
-func (c *tidbClusters) UpdateStatus(tidbCluster *v1alpha1.TidbCluster) (result *v1alpha1.TidbCluster, err error) {
+func (c *tidbClusters) UpdateStatus(ctx context.Context, tidbCluster *v1alpha1.TidbCluster, opts v1.UpdateOptions) (result *v1alpha1.TidbCluster, err error) {
 	result = &v1alpha1.TidbCluster{}
 	err = c.client.Put().
 		Namespace(c.ns).
 		Resource("tidbclusters").
 		Name(tidbCluster.Name).
 		SubResource("status").
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(tidbCluster).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Delete takes name of the tidbCluster and deletes it. Returns an error if one occurs.
-func (c *tidbClusters) Delete(name string, options *v1.DeleteOptions) error {
+func (c *tidbClusters) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	return c.client.Delete().
 		Namespace(c.ns).
 		Resource("tidbclusters").
 		Name(name).
-		Body(options).
-		Do().
+		Body(&opts).
+		Do(ctx).
 		Error()
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *tidbClusters) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
+func (c *tidbClusters) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
 	var timeout time.Duration
-	if listOptions.TimeoutSeconds != nil {
-		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
+	if listOpts.TimeoutSeconds != nil {
+		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
 		Namespace(c.ns).
 		Resource("tidbclusters").
-		VersionedParams(&listOptions, scheme.ParameterCodec).
+		VersionedParams(&listOpts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Body(options).
-		Do().
+		Body(&opts).
+		Do(ctx).
 		Error()
 }
 
 // Patch applies the patch and returns the patched tidbCluster.
-func (c *tidbClusters) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.TidbCluster, err error) {
+func (c *tidbClusters) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.TidbCluster, err error) {
 	result = &v1alpha1.TidbCluster{}
 	err = c.client.Patch(pt).
 		Namespace(c.ns).
 		Resource("tidbclusters").
-		SubResource(subresources...).
 		Name(name).
+		SubResource(subresources...).
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(data).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }

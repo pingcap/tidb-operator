@@ -28,6 +28,7 @@ type Interface interface {
 	Clean(ctx context.Context, ns string) error
 
 	Config(ns, prefix string) *v1alpha1.S3StorageProvider
+	Bucket() string
 }
 
 func New(provider string, c kubernetes.Interface, fw portforward.PortForwarder) (Interface, error) {

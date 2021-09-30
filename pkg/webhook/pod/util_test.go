@@ -14,6 +14,7 @@
 package pod
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -94,7 +95,7 @@ func TestCheckPDFormerPodStatus(t *testing.T) {
 				})
 				pod := buildPod(tc, v1alpha1.PDMemberType, i)
 				pod.Labels[apps.ControllerRevisionHashLabelKey] = sts.Status.UpdateRevision
-				kubeCli.CoreV1().Pods(tc.Namespace).Create(pod)
+				kubeCli.CoreV1().Pods(tc.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
 			}
 			fakePDClient.AddReaction(pdapi.GetHealthActionType, func(action *pdapi.Action) (interface{}, error) {
 				return healthInfo, nil
@@ -161,7 +162,7 @@ func TestCheckTiKVFormerPodStatus(t *testing.T) {
 		for i := range helper.GetPodOrdinals(test.stsReplicas, sts) {
 			pod := buildPod(tc, v1alpha1.TiKVMemberType, i)
 			pod.Labels[apps.ControllerRevisionHashLabelKey] = sts.Status.UpdateRevision
-			kubeCli.CoreV1().Pods(tc.Namespace).Create(pod)
+			kubeCli.CoreV1().Pods(tc.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
 		}
 		desc := controllerDesc{
 			name:      tc.Name,
@@ -254,7 +255,7 @@ func TestEvictLeader(t *testing.T) {
 	pod := &core.Pod{}
 	pod.Namespace = "ns"
 	pod.Name = "name"
-	_, err := kubeCli.CoreV1().Pods(pod.Namespace).Create(pod)
+	_, err := kubeCli.CoreV1().Pods(pod.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
 	g.Expect(err).Should(BeNil())
 	store := &pdapi.StoreInfo{
 		Store: &pdapi.MetaStore{
@@ -283,7 +284,7 @@ func TestAddEvictLeaderAnnotation(t *testing.T) {
 	g.Expect(err).ShouldNot(BeNil()) // not exist
 
 	// create first and add again should success.
-	_, err = kubeCli.CoreV1().Pods(pod.Namespace).Create(pod)
+	_, err = kubeCli.CoreV1().Pods(pod.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
 	g.Expect(err).Should(BeNil())
 	err = addEvictLeaderAnnotation(kubeCli, pod)
 	g.Expect(err).Should(BeNil())

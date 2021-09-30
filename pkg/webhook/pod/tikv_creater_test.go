@@ -14,6 +14,7 @@
 package pod
 
 import (
+	"context"
 	"strconv"
 	"testing"
 
@@ -22,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	admission "k8s.io/api/admission/v1beta1"
 	core "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
@@ -35,7 +37,7 @@ func TestAdmitCreateTiKVPod(t *testing.T) {
 	pod := &core.Pod{}
 	pod.Namespace = "ns"
 	pod.Name = "name"
-	_, err := kubeCli.CoreV1().Pods(pod.Namespace).Create(pod)
+	_, err := kubeCli.CoreV1().Pods(pod.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
 	g.Expect(err).Should(BeNil())
 	pdClient := pdapi.NewFakePDClient()
 

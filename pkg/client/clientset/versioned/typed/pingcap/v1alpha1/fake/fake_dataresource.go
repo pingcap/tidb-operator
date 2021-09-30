@@ -16,6 +16,8 @@
 package fake
 
 import (
+	"context"
+
 	v1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
@@ -36,7 +38,7 @@ var dataresourcesResource = schema.GroupVersionResource{Group: "pingcap.com", Ve
 var dataresourcesKind = schema.GroupVersionKind{Group: "pingcap.com", Version: "v1alpha1", Kind: "DataResource"}
 
 // Get takes name of the dataResource, and returns the corresponding dataResource object, and an error if there is any.
-func (c *FakeDataResources) Get(name string, options v1.GetOptions) (result *v1alpha1.DataResource, err error) {
+func (c *FakeDataResources) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.DataResource, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewGetAction(dataresourcesResource, c.ns, name), &v1alpha1.DataResource{})
 
@@ -47,7 +49,7 @@ func (c *FakeDataResources) Get(name string, options v1.GetOptions) (result *v1a
 }
 
 // List takes label and field selectors, and returns the list of DataResources that match those selectors.
-func (c *FakeDataResources) List(opts v1.ListOptions) (result *v1alpha1.DataResourceList, err error) {
+func (c *FakeDataResources) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.DataResourceList, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewListAction(dataresourcesResource, dataresourcesKind, c.ns, opts), &v1alpha1.DataResourceList{})
 
@@ -69,14 +71,14 @@ func (c *FakeDataResources) List(opts v1.ListOptions) (result *v1alpha1.DataReso
 }
 
 // Watch returns a watch.Interface that watches the requested dataResources.
-func (c *FakeDataResources) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakeDataResources) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewWatchAction(dataresourcesResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a dataResource and creates it.  Returns the server's representation of the dataResource, and an error, if there is any.
-func (c *FakeDataResources) Create(dataResource *v1alpha1.DataResource) (result *v1alpha1.DataResource, err error) {
+func (c *FakeDataResources) Create(ctx context.Context, dataResource *v1alpha1.DataResource, opts v1.CreateOptions) (result *v1alpha1.DataResource, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewCreateAction(dataresourcesResource, c.ns, dataResource), &v1alpha1.DataResource{})
 
@@ -87,7 +89,7 @@ func (c *FakeDataResources) Create(dataResource *v1alpha1.DataResource) (result 
 }
 
 // Update takes the representation of a dataResource and updates it. Returns the server's representation of the dataResource, and an error, if there is any.
-func (c *FakeDataResources) Update(dataResource *v1alpha1.DataResource) (result *v1alpha1.DataResource, err error) {
+func (c *FakeDataResources) Update(ctx context.Context, dataResource *v1alpha1.DataResource, opts v1.UpdateOptions) (result *v1alpha1.DataResource, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateAction(dataresourcesResource, c.ns, dataResource), &v1alpha1.DataResource{})
 
@@ -98,7 +100,7 @@ func (c *FakeDataResources) Update(dataResource *v1alpha1.DataResource) (result 
 }
 
 // Delete takes name of the dataResource and deletes it. Returns an error if one occurs.
-func (c *FakeDataResources) Delete(name string, options *v1.DeleteOptions) error {
+func (c *FakeDataResources) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
 		Invokes(testing.NewDeleteAction(dataresourcesResource, c.ns, name), &v1alpha1.DataResource{})
 
@@ -106,15 +108,15 @@ func (c *FakeDataResources) Delete(name string, options *v1.DeleteOptions) error
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeDataResources) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(dataresourcesResource, c.ns, listOptions)
+func (c *FakeDataResources) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	action := testing.NewDeleteCollectionAction(dataresourcesResource, c.ns, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.DataResourceList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched dataResource.
-func (c *FakeDataResources) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.DataResource, err error) {
+func (c *FakeDataResources) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.DataResource, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewPatchSubresourceAction(dataresourcesResource, c.ns, name, pt, data, subresources...), &v1alpha1.DataResource{})
 

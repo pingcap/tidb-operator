@@ -14,6 +14,7 @@
 package backupschedule
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -253,7 +254,7 @@ func (h *helper) checkBacklist(ns string, num int) (bks *v1alpha1.BackupList) {
 	t.Helper()
 	g.Eventually(func() error {
 		var err error
-		bks, err = deps.Clientset.PingcapV1alpha1().Backups(ns).List(metav1.ListOptions{})
+		bks, err = deps.Clientset.PingcapV1alpha1().Backups(ns).List(context.TODO(), metav1.ListOptions{})
 		g.Expect(err).Should(BeNil())
 		if len(bks.Items) != num {
 			var names []string
@@ -281,7 +282,7 @@ func (h *helper) updateBackup(bk *v1alpha1.Backup) {
 	t := h.t
 	deps := h.deps
 	g := NewGomegaWithT(t)
-	_, err := deps.Clientset.PingcapV1alpha1().Backups(bk.Namespace).Update(bk)
+	_, err := deps.Clientset.PingcapV1alpha1().Backups(bk.Namespace).Update(context.TODO(), bk, metav1.UpdateOptions{})
 	g.Expect(err).Should(BeNil())
 
 	g.Eventually(func() error {
@@ -303,7 +304,7 @@ func (h *helper) createBackup(bk *v1alpha1.Backup) {
 	t := h.t
 	deps := h.deps
 	g := NewGomegaWithT(t)
-	_, err := deps.Clientset.PingcapV1alpha1().Backups(bk.Namespace).Create(bk)
+	_, err := deps.Clientset.PingcapV1alpha1().Backups(bk.Namespace).Create(context.TODO(), bk, metav1.CreateOptions{})
 	g.Expect(err).Should(BeNil())
 	g.Eventually(func() error {
 		_, err := deps.BackupLister.Backups(bk.Namespace).Get(bk.Name)
@@ -315,7 +316,7 @@ func (h *helper) deleteBackup(bk *v1alpha1.Backup) {
 	t := h.t
 	deps := h.deps
 	g := NewGomegaWithT(t)
-	err := deps.Clientset.PingcapV1alpha1().Backups(bk.Namespace).Delete(bk.Name, nil)
+	err := deps.Clientset.PingcapV1alpha1().Backups(bk.Namespace).Delete(context.TODO(), bk.Name, metav1.DeleteOptions{})
 	g.Expect(err).Should(BeNil())
 	g.Eventually(func() error {
 		_, err := deps.BackupLister.Backups(bk.Namespace).Get(bk.Name)

@@ -14,11 +14,13 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
@@ -54,7 +56,7 @@ func (u *realBackupScheduleStatusUpdater) UpdateBackupScheduleStatus(
 	bsName := bs.GetName()
 	// don't wait due to limited number of clients, but backoff after the default number of steps
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		_, updateErr := u.deps.Clientset.PingcapV1alpha1().BackupSchedules(ns).Update(bs)
+		_, updateErr := u.deps.Clientset.PingcapV1alpha1().BackupSchedules(ns).Update(context.TODO(), bs, metav1.UpdateOptions{})
 		if updateErr == nil {
 			klog.Infof("BackupSchedule: [%s/%s] updated successfully", ns, bsName)
 			return nil

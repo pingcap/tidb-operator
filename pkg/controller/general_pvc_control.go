@@ -14,11 +14,13 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -55,7 +57,7 @@ func (c *realGeneralPVCControl) CreatePVC(object runtime.Object, pvc *corev1.Per
 	instanceName := pvc.GetLabels()[label.InstanceLabelKey]
 	kind := object.GetObjectKind().GroupVersionKind().Kind
 
-	_, err := c.kubeCli.CoreV1().PersistentVolumeClaims(ns).Create(pvc)
+	_, err := c.kubeCli.CoreV1().PersistentVolumeClaims(ns).Create(context.TODO(), pvc, metav1.CreateOptions{})
 	if err != nil {
 		klog.Errorf("failed to create pvc: [%s/%s], %s: %s, %v", ns, pvcName, kind, instanceName, err)
 	} else {

@@ -122,14 +122,7 @@ func (m *ticdcMemberManager) syncTiCDCConfigMap(tc *v1alpha1.TidbCluster, set *a
 
 // Sync fulfills the manager.Manager interface
 func (m *ticdcMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-
 	if tc.Spec.TiCDC == nil {
-		return nil
-	}
-	if tc.Spec.Paused {
-		klog.Infof("TidbCluster %s/%s is paused, skip syncing ticdc deployment", ns, tcName)
 		return nil
 	}
 
@@ -157,6 +150,11 @@ func (m *ticdcMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 	if err := m.syncTiCDCStatus(tc, oldSts); err != nil {
 		klog.Errorf("failed to sync TidbCluster: [%s/%s]'s ticdc status, error: %v",
 			ns, tcName, err)
+	}
+
+	if tc.Spec.Paused {
+		klog.Infof("TidbCluster %s/%s is paused, skip syncing ticdc statefulset", tc.GetNamespace(), tc.GetName())
+		return nil
 	}
 
 	cm, err := m.syncTiCDCConfigMap(tc, oldSts)
@@ -247,6 +245,11 @@ func (m *ticdcMemberManager) syncTiCDCStatus(tc *v1alpha1.TidbCluster, sts *apps
 }
 
 func (m *ticdcMemberManager) syncCDCHeadlessService(tc *v1alpha1.TidbCluster) error {
+	if tc.Spec.Paused {
+		klog.Infof("TidbCluster %s/%s is paused, skip syncing ticdc service", tc.GetNamespace(), tc.GetName())
+		return nil
+	}
+
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -396,19 +399,18 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 		} else {
 			pdAddr = fmt.Sprintf("http://%s-pd:2379", tcName)
 		}
-		formatClusterDomain := controller.FormatClusterDomain(tc.Spec.ClusterDomain)
 
 		str := `set -uo pipefail
 pd_url="%s"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
-discovery_url="%s-discovery.${NAMESPACE}.svc%s:10261"
+discovery_url="%s-discovery.${NAMESPACE}:10261"
 until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
 echo "waiting for the verification of PD endpoints ..."
 sleep 2
 done
 `
 
-		script += fmt.Sprintf(str, pdAddr, tc.GetName(), formatClusterDomain)
+		script += fmt.Sprintf(str, pdAddr, tc.GetName())
 		script += "\n" + strings.Join(append([]string{"exec"}, cmdArgs...), " ")
 	} else {
 		script = strings.Join(cmdArgs, " ")

@@ -25,7 +25,6 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -60,7 +59,7 @@ func TestGenericControlInterface_CreateOrUpdate(t *testing.T) {
 		result, err := control.CreateOrUpdate(controller, tt.desired, tt.mergeFn, true)
 		tt.expectFn(g, withTracker, result.(*appsv1.Deployment), err)
 	}
-	mergeFn := func(existing, desired runtime.Object) error {
+	mergeFn := func(existing, desired client.Object) error {
 		e := existing.(*appsv1.Deployment)
 		d := desired.(*appsv1.Deployment)
 		e.Spec.Replicas = d.Spec.Replicas
@@ -735,12 +734,12 @@ func NewFakeClientWithTracker(cli client.Client) *FakeClientWithTracker {
 	}
 }
 
-func (c *FakeClientWithTracker) Create(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) error {
+func (c *FakeClientWithTracker) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
 	c.CreateTracker.Inc()
 	return c.Client.Create(ctx, obj, opts...)
 }
 
-func (c *FakeClientWithTracker) Update(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error {
+func (c *FakeClientWithTracker) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
 	c.UpdateTracker.Inc()
 	return c.Client.Update(ctx, obj, opts...)
 }

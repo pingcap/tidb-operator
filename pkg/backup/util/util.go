@@ -14,6 +14,7 @@
 package util
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
@@ -184,7 +185,7 @@ func GenerateStorageCertEnv(ns string, useKMS bool, provider v1alpha1.StoragePro
 	case v1alpha1.BackupStorageTypeS3:
 		s3SecretName := provider.S3.SecretName
 		if s3SecretName != "" {
-			secret, err := kubeCli.CoreV1().Secrets(ns).Get(s3SecretName, metav1.GetOptions{})
+			secret, err := kubeCli.CoreV1().Secrets(ns).Get(context.TODO(), s3SecretName, metav1.GetOptions{})
 			if err != nil {
 				err := fmt.Errorf("get s3 secret %s/%s failed, err: %v", ns, s3SecretName, err)
 				return certEnv, "GetS3SecretFailed", err
@@ -204,7 +205,7 @@ func GenerateStorageCertEnv(ns string, useKMS bool, provider v1alpha1.StoragePro
 	case v1alpha1.BackupStorageTypeGcs:
 		gcsSecretName := provider.Gcs.SecretName
 		if gcsSecretName != "" {
-			secret, err := kubeCli.CoreV1().Secrets(ns).Get(gcsSecretName, metav1.GetOptions{})
+			secret, err := kubeCli.CoreV1().Secrets(ns).Get(context.TODO(), gcsSecretName, metav1.GetOptions{})
 			if err != nil {
 				err := fmt.Errorf("get gcs secret %s/%s failed, err: %v", ns, gcsSecretName, err)
 				return certEnv, "GetGcsSecretFailed", err
@@ -243,7 +244,7 @@ func getPasswordKey(useKMS bool) string {
 func GenerateTidbPasswordEnv(ns, tcName, tidbSecretName string, useKMS bool, kubeCli kubernetes.Interface) ([]corev1.EnvVar, string, error) {
 	var certEnv []corev1.EnvVar
 	var passwordKey string
-	secret, err := kubeCli.CoreV1().Secrets(ns).Get(tidbSecretName, metav1.GetOptions{})
+	secret, err := kubeCli.CoreV1().Secrets(ns).Get(context.TODO(), tidbSecretName, metav1.GetOptions{})
 	if err != nil {
 		err = fmt.Errorf("backup %s/%s get tidb secret %s failed, err: %v", ns, tcName, tidbSecretName, err)
 		return certEnv, "GetTidbSecretFailed", err

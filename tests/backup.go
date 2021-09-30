@@ -15,6 +15,7 @@ package tests
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -316,7 +317,7 @@ func (oa *OperatorActions) CheckDrainer(info *DrainerConfig, source *TidbCluster
 	ns := source.Namespace
 	stsName := fmt.Sprintf("%s-%s-drainer", source.ClusterName, info.DrainerName)
 	fn := func() (bool, error) {
-		sts, err := oa.kubeCli.AppsV1().StatefulSets(source.Namespace).Get(stsName, v1.GetOptions{})
+		sts, err := oa.kubeCli.AppsV1().StatefulSets(source.Namespace).Get(context.TODO(), stsName, v1.GetOptions{})
 		if err != nil {
 			log.Logf("ERROR: failed to get drainer StatefulSet %s ,%v", sts, err)
 			return false, nil

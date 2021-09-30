@@ -53,6 +53,6 @@ func main() {
 	}, 5*time.Second)
 
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", pprofPort), nil); err != nil {
-		log.Fail(err.Error())
+		log.Failf(err.Error())
 	}
 }

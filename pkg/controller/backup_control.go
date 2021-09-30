@@ -27,6 +27,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -36,6 +37,7 @@ import (
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
@@ -68,7 +70,7 @@ func (c *realBackupControl) CreateBackup(backup *v1alpha1.Backup) (*v1alpha1.Bac
 	backupName := backup.GetName()
 
 	bsName := backup.GetLabels()[label.BackupScheduleLabelKey]
-	backup, err := c.cli.PingcapV1alpha1().Backups(ns).Create(backup)
+	backup, err := c.cli.PingcapV1alpha1().Backups(ns).Create(context.TODO(), backup, metav1.CreateOptions{})
 	if err != nil {
 		klog.Errorf("failed to create Backup: [%s/%s] for backupSchedule/%s, err: %v", ns, backupName, bsName, err)
 	} else {
@@ -83,7 +85,7 @@ func (c *realBackupControl) DeleteBackup(backup *v1alpha1.Backup) error {
 	backupName := backup.GetName()
 
 	bsName := backup.GetLabels()[label.BackupScheduleLabelKey]
-	err := c.cli.PingcapV1alpha1().Backups(ns).Delete(backupName, nil)
+	err := c.cli.PingcapV1alpha1().Backups(ns).Delete(context.TODO(), backupName, metav1.DeleteOptions{})
 	if err != nil {
 		klog.Errorf("failed to delete Backup: [%s/%s] for backupSchedule/%s, err: %v", ns, backupName, bsName, err)
 	} else {

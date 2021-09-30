@@ -314,7 +314,7 @@ func TestTiDBFailoverFailover(t *testing.T) {
 
 			fakeDeps := controller.NewFakeDependencies()
 			for _, pod := range test.pods {
-				fakeDeps.KubeClientset.CoreV1().Pods(pod.Namespace).Create(pod)
+				fakeDeps.KubeClientset.CoreV1().Pods(pod.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
 			}
 			tidbFailover := NewTiDBFailover(fakeDeps)
 			fakeDeps.KubeInformerFactory.Start(ctx.Done())

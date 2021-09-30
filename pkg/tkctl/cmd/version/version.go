@@ -14,6 +14,7 @@
 package version
 
 import (
+	"context"
 	"fmt"
 	"io"
 
@@ -79,7 +80,7 @@ func (o *VersionOptions) runVersion(tkcContext *config.TkcContext) error {
 
 	controllers, err := kubeCli.AppsV1().
 		Deployments(core.NamespaceAll).
-		List(v1.ListOptions{
+		List(context.TODO(), v1.ListOptions{
 			LabelSelector: fmt.Sprintf("%s=%s,%s=%s", label.ComponentLabelKey, "controller-manager", label.NameLabelKey, "tidb-operator"),
 		})
 	if err != nil {
@@ -87,7 +88,7 @@ func (o *VersionOptions) runVersion(tkcContext *config.TkcContext) error {
 	}
 	schedulers, err := kubeCli.AppsV1().
 		Deployments(core.NamespaceAll).
-		List(v1.ListOptions{
+		List(context.TODO(), v1.ListOptions{
 			LabelSelector: fmt.Sprintf("%s=%s,%s=%s", label.ComponentLabelKey, "scheduler", label.NameLabelKey, "tidb-operator"),
 		})
 	if err != nil {

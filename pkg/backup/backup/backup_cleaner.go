@@ -30,6 +30,8 @@ import (
 	"k8s.io/utils/pointer"
 )
 
+var _ BackupCleaner = &backupCleaner{}
+
 // BackupCleaner implements the logic for cleaning backup
 type BackupCleaner interface {
 	Clean(backup *v1alpha1.Backup) error
@@ -55,11 +57,23 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 	}
 	ns := backup.GetNamespace()
 	name := backup.GetName()
+	backupJobName := backup.GetBackupJobName()
+
+	klog.Infof("start to ensure that backup %s/%s job %s have finished", ns, name, backupJobName)
+
+	finished, err := bc.ensureBackupJobFinished(backup)
+	if err != nil {
+		return fmt.Errorf("ensure %s/%s job %s finished failed: %s", ns, name, backupJobName, err)
+	}
+	if !finished {
+		klog.Infof("wait for backup %s/%s job %s to finish", ns, name, backupJobName)
+		return nil
+	}
 
 	klog.Infof("start to clean backup %s/%s", ns, name)
 
 	cleanJobName := backup.GetCleanJobName()
-	_, err := bc.deps.JobLister.Jobs(ns).Get(cleanJobName)
+	_, err = bc.deps.JobLister.Jobs(ns).Get(cleanJobName)
 	if err == nil {
 		// already have a clean job running，return directly
 		return nil
@@ -197,4 +211,43 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 	return job, "", nil
 }
 
-var _ BackupCleaner = &backupCleaner{}
+// ensureBackupJobDeleted ensure that backup Job have finished, it will delete the job if it is running
+func (bc *backupCleaner) ensureBackupJobFinished(backup *v1alpha1.Backup) (bool, error) {
+	ns := backup.GetNamespace()
+	name := backup.GetName()
+	backupJobName := backup.GetBackupJobName()
+
+	backupJob, err := bc.deps.JobLister.Jobs(ns).Get(backupJobName)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return true, nil
+		}
+		return false, err
+	}
+
+	// job is being deleted
+	if backupJob.DeletionTimestamp != nil {
+		return false, nil
+	}
+
+	// check whether job finish
+	finished := false
+	for _, c := range backupJob.Status.Conditions {
+		if (c.Type == batchv1.JobComplete || c.Type == batchv1.JobFailed) && c.Status == corev1.ConditionTrue {
+			finished = true
+			break
+		}
+	}
+	if finished {
+		return true, nil
+	}
+
+	// delete job if job is running
+	klog.Infof("delete backup %s/%s job %s", ns, name, backupJobName)
+	err = bc.deps.JobControl.DeleteJob(backup, backupJob)
+	if err != nil {
+		return false, err
+	}
+
+	return false, nil
+}

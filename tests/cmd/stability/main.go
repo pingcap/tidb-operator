@@ -49,7 +49,7 @@ func main() {
 	defer logs.FlushLogs()
 	go func() {
 		if err := http.ListenAndServe(":6060", nil); err != nil {
-			log.Fail(err.Error())
+			log.Failf(err.Error())
 		}
 	}()
 	metrics.StartServer()

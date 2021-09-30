@@ -14,6 +14,7 @@
 package tests
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 
@@ -34,7 +35,7 @@ func (oa *OperatorActions) setCabundleFromApiServer(info *OperatorConfig) error 
 	if sv.LessThan(utilversion.MustParseSemantic("v1.13.0")) && len(info.Cabundle) < 1 {
 		namespace := "kube-system"
 		name := "extension-apiserver-authentication"
-		cm, err := oa.kubeCli.CoreV1().ConfigMaps(namespace).Get(name, metav1.GetOptions{})
+		cm, err := oa.kubeCli.CoreV1().ConfigMaps(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}

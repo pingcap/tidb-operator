@@ -114,6 +114,16 @@ type TidbMonitorSpec struct {
 	// +optional
 	Replicas *int32 `json:"replicas,omitempty"`
 
+	// EXPERIMENTAL: Number of shards to distribute targets onto. Number of
+	// replicas multiplied by shards is the total number of Pods created. Note
+	// that scaling down shards will not reshard data onto remaining instances,
+	// it must be manually moved. Increasing shards will not reshard data
+	// either but it will continue to be available from the same instances. To
+	// query globally use Thanos sidecar and Thanos querier or remote write
+	// data to a central location. Sharding is done on the content of the
+	// `__address__` target meta-label.
+	Shards *int32 `json:"shards,omitempty"`
+
 	// Additional volumes of component pod.
 	// +optional
 	AdditionalVolumes []corev1.Volume `json:"additionalVolumes,omitempty"`
@@ -126,6 +136,15 @@ type TidbMonitorSpec struct {
 	// if `AlertmanagerURL` is not configured.
 	// +optional
 	EnableAlertRules bool `json:"enableAlertRules,omitempty"`
+
+	//PrometheusReloader set prometheus reloader configuration
+	//+optional
+	PrometheusReloader *PrometheusReloaderSpec `json:"prometheusReloader,omitempty"`
+}
+
+// PrometheusReloaderSpec is the desired state of prometheus configuration reloader
+type PrometheusReloaderSpec struct {
+	MonitorContainer `json:",inline"`
 }
 
 // PrometheusSpec is the desired state of prometheus
@@ -160,11 +179,14 @@ type PrometheusSpec struct {
 // Config  is the the desired state of Prometheus Configuration
 type PrometheusConfiguration struct {
 
-	// user can mount prometheus rule config with external configMap.If use this feature, the external configMap must contain `prometheus-config` key in data.
+	// User can mount prometheus config with external configMap. The external configMap must contain `prometheus-config` key in data.
 	ConfigMapRef *ConfigMapRef `json:"configMapRef,omitempty"`
 
 	// user can  use it specify prometheus command options
 	CommandOptions []string `json:"commandOptions,omitempty"`
+
+	// User can mount prometheus rule config with external configMap. The external configMap must use the key with suffix `.rules.yml`.
+	RuleConfigRef *ConfigMapRef `json:"ruleConfigRef,omitempty"`
 }
 
 // ConfigMapRef is the external configMap
@@ -436,4 +458,12 @@ type QueueConfig struct {
 	// On recoverable errors, backoff exponentially.
 	MinBackoff time.Duration `json:"minBackoff,omitempty"`
 	MaxBackoff time.Duration `json:"maxBackoff,omitempty"`
+}
+
+func (tm *TidbMonitor) GetShards() int32 {
+	shards := int32(1)
+	if tm.Spec.Shards != nil && *tm.Spec.Shards > 1 {
+		shards = *tm.Spec.Shards
+	}
+	return shards
 }

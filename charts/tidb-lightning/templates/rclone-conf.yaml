@@ -3,6 +3,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: rclone-{{ include "tidb-lightning.name" . }}
+  namespace: {{ .Release.Namespace }}
 data:
   config-file: |-
 {{ .Values.dataSource.remote.rcloneConfig | indent 4 }}

@@ -14,6 +14,7 @@
 package upgrader
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"testing"
@@ -639,7 +640,7 @@ func TestUpgrade(t *testing.T) {
 
 		for i := range tt.tidbClusters {
 			tc := tt.tidbClusters[i]
-			_, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(&tc)
+			_, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), &tc, metav1.CreateOptions{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -647,7 +648,7 @@ func TestUpgrade(t *testing.T) {
 
 		for i := range tt.statefulsets {
 			sts := tt.statefulsets[i]
-			_, err = kubeCli.AppsV1().StatefulSets(sts.Namespace).Create(&sts)
+			_, err = kubeCli.AppsV1().StatefulSets(sts.Namespace).Create(context.TODO(), &sts, metav1.CreateOptions{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -655,7 +656,7 @@ func TestUpgrade(t *testing.T) {
 
 		for i := range tt.advancedStatefulsets {
 			sts := tt.advancedStatefulsets[i]
-			_, err = asCli.AppsV1().StatefulSets(sts.Namespace).Create(&sts)
+			_, err = asCli.AppsV1().StatefulSets(sts.Namespace).Create(context.TODO(), &sts, metav1.CreateOptions{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -673,7 +674,7 @@ func TestUpgrade(t *testing.T) {
 			}
 		}
 
-		gotAdvancedStatfulSetsList, err := asCli.AppsV1().StatefulSets(metav1.NamespaceAll).List(metav1.ListOptions{})
+		gotAdvancedStatfulSetsList, err := asCli.AppsV1().StatefulSets(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -683,7 +684,7 @@ func TestUpgrade(t *testing.T) {
 			t.Errorf("unexpected (-want, +got): %s", diff)
 		}
 
-		gotStatfulSetsList, err := kubeCli.AppsV1().StatefulSets(metav1.NamespaceAll).List(metav1.ListOptions{})
+		gotStatfulSetsList, err := kubeCli.AppsV1().StatefulSets(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			t.Fatal(err)
 		}

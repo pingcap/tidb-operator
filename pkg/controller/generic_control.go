@@ -39,35 +39,35 @@ import (
 // GenericControlInterface is a wrapper to manage typed object that managed by an arbitrary controller
 type TypedControlInterface interface {
 	// CreateOrUpdateSecret create the desired secret or update the current one to desired state if already existed
-	CreateOrUpdateSecret(controller runtime.Object, secret *corev1.Secret) (*corev1.Secret, error)
+	CreateOrUpdateSecret(controller client.Object, secret *corev1.Secret) (*corev1.Secret, error)
 	// CheckAndUpdateConfigMap check configmap before create or update the desired configmap
-	CheckAndUpdateConfigMap(configMapLister corelisterv1.ConfigMapLister, controller runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error)
+	CheckAndUpdateConfigMap(configMapLister corelisterv1.ConfigMapLister, controller client.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error)
 	// CreateOrUpdateClusterRole the desired clusterRole or update the current one to desired state if already existed
-	CreateOrUpdateClusterRole(controller runtime.Object, clusterRole *rbacv1.ClusterRole) (*rbacv1.ClusterRole, error)
+	CreateOrUpdateClusterRole(controller client.Object, clusterRole *rbacv1.ClusterRole) (*rbacv1.ClusterRole, error)
 	// CreateOrUpdateClusterRoleBinding create the desired clusterRoleBinding or update the current one to desired state if already existed
-	CreateOrUpdateClusterRoleBinding(controller runtime.Object, crb *rbacv1.ClusterRoleBinding) (*rbacv1.ClusterRoleBinding, error)
+	CreateOrUpdateClusterRoleBinding(controller client.Object, crb *rbacv1.ClusterRoleBinding) (*rbacv1.ClusterRoleBinding, error)
 	// CreateOrUpdateRole create the desired role or update the current one to desired state if already existed
-	CreateOrUpdateRole(controller runtime.Object, role *rbacv1.Role) (*rbacv1.Role, error)
+	CreateOrUpdateRole(controller client.Object, role *rbacv1.Role) (*rbacv1.Role, error)
 	// CreateOrUpdateRoleBinding create the desired rolebinding or update the current one to desired state if already existed
-	CreateOrUpdateRoleBinding(controller runtime.Object, cr *rbacv1.RoleBinding) (*rbacv1.RoleBinding, error)
+	CreateOrUpdateRoleBinding(controller client.Object, cr *rbacv1.RoleBinding) (*rbacv1.RoleBinding, error)
 	// CreateOrUpdateServiceAccount create the desired serviceaccount or update the current one to desired state if already existed
-	CreateOrUpdateServiceAccount(controller runtime.Object, sa *corev1.ServiceAccount) (*corev1.ServiceAccount, error)
+	CreateOrUpdateServiceAccount(controller client.Object, sa *corev1.ServiceAccount) (*corev1.ServiceAccount, error)
 	// CreateOrUpdateService create the desired service or update the current one to desired state if already existed
-	CreateOrUpdateService(controller runtime.Object, svc *corev1.Service) (*corev1.Service, error)
+	CreateOrUpdateService(controller client.Object, svc *corev1.Service) (*corev1.Service, error)
 	// CreateOrUpdateDeployment create the desired deployment or update the current one to desired state if already existed
-	CreateOrUpdateDeployment(controller runtime.Object, deploy *appsv1.Deployment) (*appsv1.Deployment, error)
+	CreateOrUpdateDeployment(controller client.Object, deploy *appsv1.Deployment) (*appsv1.Deployment, error)
 	// CreateOrUpdatePVC create the desired pvc or update the current one to desired state if already existed
-	CreateOrUpdatePVC(controller runtime.Object, pvc *corev1.PersistentVolumeClaim, setOwnerFlag bool) (*corev1.PersistentVolumeClaim, error)
+	CreateOrUpdatePVC(controller client.Object, pvc *corev1.PersistentVolumeClaim, setOwnerFlag bool) (*corev1.PersistentVolumeClaim, error)
 	// CreateOrUpdateIngress create the desired ingress or update the current one to desired state if already existed
-	CreateOrUpdateIngress(controller runtime.Object, ingress *extensionsv1beta1.Ingress) (*extensionsv1beta1.Ingress, error)
+	CreateOrUpdateIngress(controller client.Object, ingress *extensionsv1beta1.Ingress) (*extensionsv1beta1.Ingress, error)
 	// UpdateStatus update the /status subresource of the object
-	UpdateStatus(newStatus runtime.Object) error
+	UpdateStatus(newStatus client.Object) error
 	// Delete delete the given object from the cluster
-	Delete(controller, obj runtime.Object) error
+	Delete(controller, obj client.Object) error
 	// Create create the given object for the controller
-	Create(controller, obj runtime.Object) error
+	Create(controller, obj client.Object) error
 	// Exist check whether object exists
-	Exist(key client.ObjectKey, obj runtime.Object) (bool, error)
+	Exist(key client.ObjectKey, obj client.Object) (bool, error)
 }
 type typedWrapper struct {
 	GenericControlInterface
@@ -78,8 +78,8 @@ func NewTypedControl(control GenericControlInterface) TypedControlInterface {
 	return &typedWrapper{control}
 }
 
-func (w *typedWrapper) CreateOrUpdatePVC(controller runtime.Object, pvc *corev1.PersistentVolumeClaim, setOwnerFlag bool) (*corev1.PersistentVolumeClaim, error) {
-	result, err := w.GenericControlInterface.CreateOrUpdate(controller, pvc, func(existing, desired runtime.Object) error {
+func (w *typedWrapper) CreateOrUpdatePVC(controller client.Object, pvc *corev1.PersistentVolumeClaim, setOwnerFlag bool) (*corev1.PersistentVolumeClaim, error) {
+	result, err := w.GenericControlInterface.CreateOrUpdate(controller, pvc, func(existing, desired client.Object) error {
 		existingPVC := existing.(*corev1.PersistentVolumeClaim)
 		desiredPVC := desired.(*corev1.PersistentVolumeClaim)
 
@@ -92,8 +92,8 @@ func (w *typedWrapper) CreateOrUpdatePVC(controller runtime.Object, pvc *corev1.
 	return result.(*corev1.PersistentVolumeClaim), err
 }
 
-func (w *typedWrapper) CreateOrUpdateClusterRoleBinding(controller runtime.Object, crb *rbacv1.ClusterRoleBinding) (*rbacv1.ClusterRoleBinding, error) {
-	result, err := w.GenericControlInterface.CreateOrUpdate(controller, crb, func(existing, desired runtime.Object) error {
+func (w *typedWrapper) CreateOrUpdateClusterRoleBinding(controller client.Object, crb *rbacv1.ClusterRoleBinding) (*rbacv1.ClusterRoleBinding, error) {
+	result, err := w.GenericControlInterface.CreateOrUpdate(controller, crb, func(existing, desired client.Object) error {
 		existingCRB := existing.(*rbacv1.ClusterRoleBinding)
 		desiredCRB := desired.(*rbacv1.ClusterRoleBinding)
 
@@ -108,8 +108,8 @@ func (w *typedWrapper) CreateOrUpdateClusterRoleBinding(controller runtime.Objec
 	return result.(*rbacv1.ClusterRoleBinding), err
 }
 
-func (w *typedWrapper) CreateOrUpdateClusterRole(controller runtime.Object, clusterRole *rbacv1.ClusterRole) (*rbacv1.ClusterRole, error) {
-	result, err := w.GenericControlInterface.CreateOrUpdate(controller, clusterRole, func(existing, desired runtime.Object) error {
+func (w *typedWrapper) CreateOrUpdateClusterRole(controller client.Object, clusterRole *rbacv1.ClusterRole) (*rbacv1.ClusterRole, error) {
+	result, err := w.GenericControlInterface.CreateOrUpdate(controller, clusterRole, func(existing, desired client.Object) error {
 		existingCRole := existing.(*rbacv1.ClusterRole)
 		desiredCRole := desired.(*rbacv1.ClusterRole)
 
@@ -123,8 +123,8 @@ func (w *typedWrapper) CreateOrUpdateClusterRole(controller runtime.Object, clus
 	return result.(*rbacv1.ClusterRole), err
 }
 
-func (w *typedWrapper) CreateOrUpdateSecret(controller runtime.Object, secret *corev1.Secret) (*corev1.Secret, error) {
-	result, err := w.GenericControlInterface.CreateOrUpdate(controller, secret, func(existing, desired runtime.Object) error {
+func (w *typedWrapper) CreateOrUpdateSecret(controller client.Object, secret *corev1.Secret) (*corev1.Secret, error) {
+	result, err := w.GenericControlInterface.CreateOrUpdate(controller, secret, func(existing, desired client.Object) error {
 		existingSecret := existing.(*corev1.Secret)
 		desiredSecret := desired.(*corev1.Secret)
 
@@ -141,12 +141,12 @@ func (w *typedWrapper) CreateOrUpdateSecret(controller runtime.Object, secret *c
 	return result.(*corev1.Secret), nil
 }
 
-func (w *typedWrapper) Delete(controller, obj runtime.Object) error {
+func (w *typedWrapper) Delete(controller, obj client.Object) error {
 	return w.GenericControlInterface.Delete(controller, obj)
 }
 
-func (w *typedWrapper) CreateOrUpdateDeployment(controller runtime.Object, deploy *appsv1.Deployment) (*appsv1.Deployment, error) {
-	result, err := w.GenericControlInterface.CreateOrUpdate(controller, deploy, func(existing, desired runtime.Object) error {
+func (w *typedWrapper) CreateOrUpdateDeployment(controller client.Object, deploy *appsv1.Deployment) (*appsv1.Deployment, error) {
+	result, err := w.GenericControlInterface.CreateOrUpdate(controller, deploy, func(existing, desired client.Object) error {
 		existingDep := existing.(*appsv1.Deployment)
 		desiredDep := desired.(*appsv1.Deployment)
 
@@ -198,8 +198,8 @@ func (w *typedWrapper) CreateOrUpdateDeployment(controller runtime.Object, deplo
 	return result.(*appsv1.Deployment), err
 }
 
-func (w *typedWrapper) CreateOrUpdateRole(controller runtime.Object, role *rbacv1.Role) (*rbacv1.Role, error) {
-	result, err := w.GenericControlInterface.CreateOrUpdate(controller, role, func(existing, desired runtime.Object) error {
+func (w *typedWrapper) CreateOrUpdateRole(controller client.Object, role *rbacv1.Role) (*rbacv1.Role, error) {
+	result, err := w.GenericControlInterface.CreateOrUpdate(controller, role, func(existing, desired client.Object) error {
 		existingRole := existing.(*rbacv1.Role)
 		desiredCRole := desired.(*rbacv1.Role)
 
@@ -213,8 +213,8 @@ func (w *typedWrapper) CreateOrUpdateRole(controller runtime.Object, role *rbacv
 	return result.(*rbacv1.Role), err
 }
 
-func (w *typedWrapper) CreateOrUpdateRoleBinding(controller runtime.Object, rb *rbacv1.RoleBinding) (*rbacv1.RoleBinding, error) {
-	result, err := w.GenericControlInterface.CreateOrUpdate(controller, rb, func(existing, desired runtime.Object) error {
+func (w *typedWrapper) CreateOrUpdateRoleBinding(controller client.Object, rb *rbacv1.RoleBinding) (*rbacv1.RoleBinding, error) {
+	result, err := w.GenericControlInterface.CreateOrUpdate(controller, rb, func(existing, desired client.Object) error {
 		existingRB := existing.(*rbacv1.RoleBinding)
 		desiredRB := desired.(*rbacv1.RoleBinding)
 
@@ -229,8 +229,8 @@ func (w *typedWrapper) CreateOrUpdateRoleBinding(controller runtime.Object, rb *
 	return result.(*rbacv1.RoleBinding), err
 }
 
-func (w *typedWrapper) CreateOrUpdateServiceAccount(controller runtime.Object, sa *corev1.ServiceAccount) (*corev1.ServiceAccount, error) {
-	result, err := w.GenericControlInterface.CreateOrUpdate(controller, sa, func(existing, desired runtime.Object) error {
+func (w *typedWrapper) CreateOrUpdateServiceAccount(controller client.Object, sa *corev1.ServiceAccount) (*corev1.ServiceAccount, error) {
+	result, err := w.GenericControlInterface.CreateOrUpdate(controller, sa, func(existing, desired client.Object) error {
 		existingSA := existing.(*corev1.ServiceAccount)
 		desiredSA := desired.(*corev1.ServiceAccount)
 
@@ -255,8 +255,8 @@ func NeedCreateOrUpgradeConfigMap(cmLister corelisterv1.ConfigMapLister, newCm *
 	return oldCm, false
 }
 
-func (w *typedWrapper) CheckAndUpdateConfigMap(cmLister corelisterv1.ConfigMapLister, controller runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
-	mergeFn := func(existing, desired runtime.Object) error {
+func (w *typedWrapper) CheckAndUpdateConfigMap(cmLister corelisterv1.ConfigMapLister, controller client.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
+	mergeFn := func(existing, desired client.Object) error {
 		existingCm := existing.(*corev1.ConfigMap)
 		desiredCm := desired.(*corev1.ConfigMap)
 
@@ -278,8 +278,8 @@ func (w *typedWrapper) CheckAndUpdateConfigMap(cmLister corelisterv1.ConfigMapLi
 	return result.(*corev1.ConfigMap), nil
 }
 
-func (w *typedWrapper) CreateOrUpdateService(controller runtime.Object, svc *corev1.Service) (*corev1.Service, error) {
-	result, err := w.GenericControlInterface.CreateOrUpdate(controller, svc, func(existing, desired runtime.Object) error {
+func (w *typedWrapper) CreateOrUpdateService(controller client.Object, svc *corev1.Service) (*corev1.Service, error) {
+	result, err := w.GenericControlInterface.CreateOrUpdate(controller, svc, func(existing, desired client.Object) error {
 		existingSvc := existing.(*corev1.Service)
 		desiredSvc := desired.(*corev1.Service)
 
@@ -332,8 +332,8 @@ func (w *typedWrapper) CreateOrUpdateService(controller runtime.Object, svc *cor
 	return result.(*corev1.Service), nil
 }
 
-func (w *typedWrapper) CreateOrUpdateIngress(controller runtime.Object, ingress *extensionsv1beta1.Ingress) (*extensionsv1beta1.Ingress, error) {
-	result, err := w.GenericControlInterface.CreateOrUpdate(controller, ingress, func(existing, desired runtime.Object) error {
+func (w *typedWrapper) CreateOrUpdateIngress(controller client.Object, ingress *extensionsv1beta1.Ingress) (*extensionsv1beta1.Ingress, error) {
+	result, err := w.GenericControlInterface.CreateOrUpdate(controller, ingress, func(existing, desired client.Object) error {
 		existingIngress := existing.(*extensionsv1beta1.Ingress)
 		desiredIngress := desired.(*extensionsv1beta1.Ingress)
 
@@ -365,20 +365,20 @@ func (w *typedWrapper) CreateOrUpdateIngress(controller runtime.Object, ingress 
 	return result.(*extensionsv1beta1.Ingress), nil
 }
 
-func (w *typedWrapper) Create(controller, obj runtime.Object) error {
+func (w *typedWrapper) Create(controller, obj client.Object) error {
 	return w.GenericControlInterface.Create(controller, obj, true)
 }
-func (w *typedWrapper) Exist(key client.ObjectKey, obj runtime.Object) (bool, error) {
+func (w *typedWrapper) Exist(key client.ObjectKey, obj client.Object) (bool, error) {
 	return w.GenericControlInterface.Exist(key, obj)
 }
 
 // GenericControlInterface manages generic object that managed by an arbitrary controller
 type GenericControlInterface interface {
-	CreateOrUpdate(controller, obj runtime.Object, mergeFn MergeFn, setOwnerFlag bool) (runtime.Object, error)
-	Create(controller, obj runtime.Object, setOwnerFlag bool) error
-	UpdateStatus(obj runtime.Object) error
-	Exist(key client.ObjectKey, obj runtime.Object) (bool, error)
-	Delete(controller, obj runtime.Object) error
+	CreateOrUpdate(controller, obj client.Object, mergeFn MergeFn, setOwnerFlag bool) (runtime.Object, error)
+	Create(controller, obj client.Object, setOwnerFlag bool) error
+	UpdateStatus(obj client.Object) error
+	Exist(key client.ObjectKey, obj client.Object) (bool, error)
+	Delete(controller, obj client.Object) error
 }
 
 // MergeFn knows how to merge a desired object into the current object.
@@ -396,7 +396,7 @@ type GenericControlInterface interface {
 // override. Note that aggressive override usually causes unnecessary updates because the object will be mutated
 // after POST/PUT to api-server (e.g. Defaulting), an annotation based technique could be used to avoid such
 // updating: set a last-applied-config annotation and diff the annotation instead of the real spec.
-type MergeFn func(existing, desired runtime.Object) error
+type MergeFn func(existing, desired client.Object) error
 
 type realGenericControlInterface struct {
 	client   client.Client
@@ -408,12 +408,12 @@ func NewRealGenericControl(client client.Client, recorder record.EventRecorder) 
 }
 
 // UpdateStatus update the /status subresource of object
-func (c *realGenericControlInterface) UpdateStatus(obj runtime.Object) error {
+func (c *realGenericControlInterface) UpdateStatus(obj client.Object) error {
 	return c.client.Status().Update(context.TODO(), obj)
 }
 
 // Exist checks whether object exists
-func (c *realGenericControlInterface) Exist(key client.ObjectKey, obj runtime.Object) (bool, error) {
+func (c *realGenericControlInterface) Exist(key client.ObjectKey, obj client.Object) (bool, error) {
 	err := c.client.Get(context.TODO(), key, obj)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -427,12 +427,12 @@ func (c *realGenericControlInterface) Exist(key client.ObjectKey, obj runtime.Ob
 // CreateOrUpdate create an object to the Kubernetes cluster for controller, if the object to create is existed,
 // call mergeFn to merge the change in new object to the existing object, then update the existing object.
 // The object will also be adopted by the given controller.
-func (c *realGenericControlInterface) CreateOrUpdate(controller, obj runtime.Object, mergeFn MergeFn, setOwnerFlag bool) (runtime.Object, error) {
+func (c *realGenericControlInterface) CreateOrUpdate(controller, obj client.Object, mergeFn MergeFn, setOwnerFlag bool) (runtime.Object, error) {
 
 	// controller-runtime/client will mutate the object pointer in-place,
 	// to be consistent with other methods in our controller, we copy the object
 	// to avoid the in-place mutation here and hereafter.
-	desired := obj.DeepCopyObject()
+	desired := DeepCopyClientObject(obj)
 	if setOwnerFlag {
 		if err := setControllerReference(controller, desired); err != nil {
 			return desired, err
@@ -448,10 +448,7 @@ func (c *realGenericControlInterface) CreateOrUpdate(controller, obj runtime.Obj
 		if err != nil {
 			return nil, err
 		}
-		key, err := client.ObjectKeyFromObject(existing)
-		if err != nil {
-			return nil, err
-		}
+		key := client.ObjectKeyFromObject(existing)
 		err = c.client.Get(context.TODO(), key, existing)
 		if err != nil {
 			return nil, err
@@ -464,7 +461,7 @@ func (c *realGenericControlInterface) CreateOrUpdate(controller, obj runtime.Obj
 			}
 		}
 
-		mutated := existing.DeepCopyObject()
+		mutated := DeepCopyClientObject(existing)
 		// 4. invoke mergeFn to mutate a copy of the existing object
 		if err := mergeFn(mutated, desired); err != nil {
 			return nil, err
@@ -487,11 +484,11 @@ func (c *realGenericControlInterface) CreateOrUpdate(controller, obj runtime.Obj
 }
 
 // Create create an object to the Kubernetes cluster for controller
-func (c *realGenericControlInterface) Create(controller, obj runtime.Object, setOwnerFlag bool) error {
+func (c *realGenericControlInterface) Create(controller, obj client.Object, setOwnerFlag bool) error {
 	// controller-runtime/client will mutate the object pointer in-place,
 	// to be consistent with other methods in our controller, we copy the object
 	// to avoid the in-place mutation here and hereafter.
-	desired := obj.DeepCopyObject()
+	desired := DeepCopyClientObject(obj)
 	if setOwnerFlag {
 		if err := setControllerReference(controller, desired); err != nil {
 			return err
@@ -503,7 +500,7 @@ func (c *realGenericControlInterface) Create(controller, obj runtime.Object, set
 	return err
 }
 
-func (c *realGenericControlInterface) Delete(controller, obj runtime.Object) error {
+func (c *realGenericControlInterface) Delete(controller, obj client.Object) error {
 	err := c.client.Delete(context.TODO(), obj)
 	c.RecordControllerEvent("delete", controller, obj, err)
 	return err
@@ -582,7 +579,7 @@ func NewFakeGenericControl(initObjects ...runtime.Object) *FakeGenericControl {
 		RequestTracker{},
 	}
 }
-func (c *FakeGenericControl) Create(controller, obj runtime.Object, setOwnerFlag bool) error {
+func (c *FakeGenericControl) Create(controller, obj client.Object, setOwnerFlag bool) error {
 	defer c.createTracker.Inc()
 	if c.createTracker.ErrorReady() {
 		defer c.createTracker.Reset()
@@ -592,7 +589,7 @@ func (c *FakeGenericControl) Create(controller, obj runtime.Object, setOwnerFlag
 	return c.control.Create(controller, obj, setOwnerFlag)
 }
 
-func (c *FakeGenericControl) Exist(key client.ObjectKey, obj runtime.Object) (bool, error) {
+func (c *FakeGenericControl) Exist(key client.ObjectKey, obj client.Object) (bool, error) {
 	defer c.existTracker.Inc()
 	if c.existTracker.ErrorReady() {
 		defer c.existTracker.Reset()
@@ -621,12 +618,12 @@ func (c *FakeGenericControl) SetDeleteError(err error, after int) {
 }
 
 // AddObject is used to prepare the indexer for fakeGenericControl
-func (c *FakeGenericControl) AddObject(object runtime.Object) error {
-	return c.FakeCli.Create(context.TODO(), object.DeepCopyObject())
+func (c *FakeGenericControl) AddObject(object client.Object) error {
+	return c.FakeCli.Create(context.TODO(), DeepCopyClientObject(object))
 }
 
 // UpdateStatus update the /status subresource of object
-func (c *FakeGenericControl) UpdateStatus(obj runtime.Object) error {
+func (c *FakeGenericControl) UpdateStatus(obj client.Object) error {
 	defer c.updateStatusTracker.Inc()
 	if c.updateStatusTracker.ErrorReady() {
 		defer c.updateStatusTracker.Reset()
@@ -636,7 +633,7 @@ func (c *FakeGenericControl) UpdateStatus(obj runtime.Object) error {
 	return c.FakeCli.Status().Update(context.TODO(), obj)
 }
 
-func (c *FakeGenericControl) CreateOrUpdate(controller, obj runtime.Object, fn MergeFn, setOwnerFlag bool) (runtime.Object, error) {
+func (c *FakeGenericControl) CreateOrUpdate(controller, obj client.Object, fn MergeFn, setOwnerFlag bool) (runtime.Object, error) {
 	defer c.createOrUpdateTracker.Inc()
 	if c.createOrUpdateTracker.ErrorReady() {
 		defer c.createOrUpdateTracker.Reset()
@@ -646,7 +643,7 @@ func (c *FakeGenericControl) CreateOrUpdate(controller, obj runtime.Object, fn M
 	return c.control.CreateOrUpdate(controller, obj, fn, setOwnerFlag)
 }
 
-func (c *FakeGenericControl) Delete(controller, obj runtime.Object) error {
+func (c *FakeGenericControl) Delete(controller, obj client.Object) error {
 	defer c.deleteTracker.Inc()
 	if c.deleteTracker.ErrorReady() {
 		defer c.deleteTracker.Reset()

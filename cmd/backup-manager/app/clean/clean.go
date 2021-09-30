@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"strings"
 
 	"k8s.io/klog"
 
@@ -43,22 +44,36 @@ func (bo *Options) cleanBRRemoteBackupData(ctx context.Context, backup *v1alpha1
 		return err
 	}
 	defer s.Close()
-	iter := s.List(nil)
+
+	opt := backup.GetCleanOption()
+
+	klog.Infof("cleanning cluster %s backup data with opt: %+v", bo, opt)
+
+	iter := s.ListPage(nil)
 	for {
-		obj, err := iter.Next(ctx)
+		// list one page of object
+		objs, err := iter.Next(ctx, int(opt.PageSize))
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
 			return err
 		}
-		klog.Infof("Prepare to delete %s for cluster %s", obj.Key, bo)
-		err = s.Delete(context.Background(), obj.Key)
-		if err != nil {
-			return err
+
+		// batch delete objects
+		result := s.BatchDeleteObjects(ctx, objs, opt.BatchDeleteOption)
+
+		if len(result.Deleted) != 0 {
+			klog.Infof("delete %d objects for cluster %s successfully: %s", len(result.Deleted), bo, strings.Join(result.Deleted, ","))
 		}
-		klog.Infof("Delete %s for cluster %s successfully", obj.Key, bo)
+		if len(result.Errors) != 0 {
+			for _, oerr := range result.Errors {
+				klog.Errorf("delete object %s for cluster %s failed: %s", oerr.Key, bo, oerr.Err)
+			}
+			return fmt.Errorf("objects remain to delete")
+		}
 	}
+
 	return nil
 }
 

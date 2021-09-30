@@ -114,14 +114,13 @@ func (m *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 	}
 
 	// Wait for PD & TiKV upgrading done
-	if tc.Status.TiCDC.Phase == v1alpha1.UpgradePhase ||
-		tc.Status.TiFlash.Phase == v1alpha1.UpgradePhase ||
+	if tc.Status.TiFlash.Phase == v1alpha1.UpgradePhase ||
 		tc.Status.PD.Phase == v1alpha1.UpgradePhase ||
 		tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
-		klog.Infof("TidbCluster: [%s/%s]'s ticdc status is %s, tiflash status is %s, "+
+		klog.Infof("TidbCluster: [%s/%s]'s tiflash status is %s, "+
 			"pd status is %s, tikv status is %s, can not upgrade pump",
-			tc.Namespace, tc.Name, tc.Status.TiCDC.Phase, tc.Status.TiFlash.Phase,
-			tc.Status.PD.Phase, tc.Status.TiKV.Phase)
+			tc.Namespace, tc.Name,
+			tc.Status.TiFlash.Phase, tc.Status.PD.Phase, tc.Status.TiKV.Phase)
 		return nil
 	}
 

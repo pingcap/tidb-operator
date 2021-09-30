@@ -14,6 +14,7 @@
 package debug
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
@@ -158,7 +159,7 @@ func (o *DebugOptions) Complete(tkcContext *config.TkcContext, cmd *cobra.Comman
 func (o *DebugOptions) Run() error {
 
 	// 0.Prepare debug context: get Pod and verify state
-	pod, err := o.KubeCli.CoreV1().Pods(o.Namespace).Get(o.PodName, metav1.GetOptions{})
+	pod, err := o.KubeCli.CoreV1().Pods(o.Namespace).Get(context.TODO(), o.PodName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}

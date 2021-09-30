@@ -16,6 +16,7 @@
 package v1alpha1
 
 import (
+	"context"
 	time "time"
 
 	pingcapv1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -58,13 +59,13 @@ func NewFilteredDMClusterInformer(client versioned.Interface, namespace string, 
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.PingcapV1alpha1().DMClusters(namespace).List(options)
+				return client.PingcapV1alpha1().DMClusters(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.PingcapV1alpha1().DMClusters(namespace).Watch(options)
+				return client.PingcapV1alpha1().DMClusters(namespace).Watch(context.TODO(), options)
 			},
 		},
 		&pingcapv1alpha1.DMCluster{},

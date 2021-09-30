@@ -14,6 +14,8 @@
 package pod
 
 import (
+	"context"
+
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	pdutil "github.com/pingcap/tidb-operator/pkg/manager/member"
@@ -124,7 +126,7 @@ func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(payload *admitPayload) 
 		// And the pvc can be deleted during upgrading if we use create pod webhook in future.
 		if !isInOrdinal {
 			pvcName := operatorUtils.OrdinalPVCName(v1alpha1.PDMemberType, payload.ownerStatefulSet.Name, ordinal)
-			pvc, err := pc.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Get(pvcName, meta.GetOptions{})
+			pvc, err := pc.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Get(context.TODO(), pvcName, meta.GetOptions{})
 			if err != nil {
 				if errors.IsNotFound(err) {
 					pc.recorder.Event(tc, corev1.EventTypeNormal, pdScaleInReason, podDeleteEventMessage(name))

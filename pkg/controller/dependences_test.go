@@ -14,6 +14,7 @@
 package controller
 
 import (
+	"context"
 	"strconv"
 	"testing"
 	"time"
@@ -37,10 +38,10 @@ func TestFakeTidbCluster(t *testing.T) {
 		tc.Namespace = "ns"
 		tc.Name = "tcName" + strconv.Itoa(i)
 
-		_, err := deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
+		_, err := deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, v1.CreateOptions{})
 		g.Expect(err).Should(BeNil())
 
-		_, err = deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, v1.GetOptions{})
+		_, err = deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(context.TODO(), tc.Name, v1.GetOptions{})
 		g.Expect(err).Should(BeNil())
 
 		g.Eventually(func() error {

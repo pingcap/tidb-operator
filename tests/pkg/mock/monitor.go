@@ -43,7 +43,7 @@ func NewMockPrometheus() MonitorInterface {
 	upResp := buildPrometheusResponse(params)
 	b, err := json.Marshal(upResp)
 	if err != nil {
-		log.Fail(err.Error())
+		log.Failf(err.Error())
 	}
 	mp.responses["up"] = string(b)
 	return mp

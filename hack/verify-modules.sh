@@ -35,6 +35,7 @@ ignored_modules=(
 
 # check if all packages in submodule is same as main module
 for sub_mod in ${GO_SUBMODULE_DIRS[@]}; do
+    echo "verifying submodule ${sub_mod} ..."
     dir="$ROOT/$sub_mod"
 
     pushd $dir >/dev/null

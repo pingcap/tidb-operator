@@ -14,6 +14,7 @@
 package ops
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"strconv"
@@ -43,7 +44,7 @@ type TiKVOps struct {
 func (ops *TiKVOps) TruncateSSTFile(opts TruncateOptions) error {
 	logHdr := fmt.Sprintf("store: %s cluster: [%s/%s] ", opts.Store, opts.Namespace, opts.Cluster)
 
-	tc, err := ops.PingcapV1alpha1().TidbClusters(opts.Namespace).Get(opts.Cluster, metav1.GetOptions{})
+	tc, err := ops.PingcapV1alpha1().TidbClusters(opts.Namespace).Get(context.TODO(), opts.Cluster, metav1.GetOptions{})
 	if err != nil {
 		return errors.Trace(err)
 	}
