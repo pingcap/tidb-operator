@@ -40,8 +40,6 @@ import (
 type TypedControlInterface interface {
 	// CreateOrUpdateSecret create the desired secret or update the current one to desired state if already existed
 	CreateOrUpdateSecret(controller runtime.Object, secret *corev1.Secret) (*corev1.Secret, error)
-	// CreateOrUpdateConfigMap create the desired configmap or update the current one to desired state if already existed
-	CreateOrUpdateConfigMap(controller runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error)
 	// CheckAndUpdateConfigMap check configmap before create or update the desired configmap
 	CheckAndUpdateConfigMap(configMapLister corelisterv1.ConfigMapLister, controller runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error)
 	// CreateOrUpdateClusterRole the desired clusterRole or update the current one to desired state if already existed
@@ -243,24 +241,6 @@ func (w *typedWrapper) CreateOrUpdateServiceAccount(controller runtime.Object, s
 		return nil, err
 	}
 	return result.(*corev1.ServiceAccount), err
-}
-
-func (w *typedWrapper) CreateOrUpdateConfigMap(controller runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
-	result, err := w.GenericControlInterface.CreateOrUpdate(controller, cm, func(existing, desired runtime.Object) error {
-		existingCm := existing.(*corev1.ConfigMap)
-		desiredCm := desired.(*corev1.ConfigMap)
-
-		existingCm.Data = desiredCm.Data
-		existingCm.Labels = desiredCm.Labels
-		for k, v := range desiredCm.Annotations {
-			existingCm.Annotations[k] = v
-		}
-		return nil
-	}, true)
-	if err != nil {
-		return nil, err
-	}
-	return result.(*corev1.ConfigMap), nil
 }
 
 func NeedCreateOrUpgradeConfigMap(cmLister corelisterv1.ConfigMapLister, newCm *corev1.ConfigMap, mergeFn MergeFn) (*corev1.ConfigMap, bool) {
