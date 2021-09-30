@@ -48,6 +48,7 @@ type ComponentAccessor interface {
 	AdditionalVolumeMounts() []corev1.VolumeMount
 	TerminationGracePeriodSeconds() *int64
 	StatefulSetUpdateStrategy() apps.StatefulSetUpdateStrategyType
+	PodManagementPolicy() apps.PodManagementPolicyType
 	TopologySpreadConstraints() []corev1.TopologySpreadConstraint
 }
 
@@ -84,6 +85,7 @@ type componentAccessorImpl struct {
 	tolerations               []corev1.Toleration
 	configUpdateStrategy      ConfigUpdateStrategy
 	statefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType
+	podManagementPolicy       apps.PodManagementPolicyType
 	podSecurityContext        *corev1.PodSecurityContext
 	topologySpreadConstraints []TopologySpreadConstraint
 
@@ -99,6 +101,22 @@ func (a *componentAccessorImpl) StatefulSetUpdateStrategy() apps.StatefulSetUpda
 		return a.statefulSetUpdateStrategy
 	}
 	return a.ComponentSpec.StatefulSetUpdateStrategy
+}
+
+func (a *componentAccessorImpl) PodManagementPolicy() apps.PodManagementPolicyType {
+	var policy apps.PodManagementPolicyType
+	if a.ComponentSpec == nil || len(a.ComponentSpec.PodManagementPolicy) == 0 {
+		if len(a.podManagementPolicy) != 0 {
+			policy = a.podManagementPolicy
+		}
+	} else {
+		policy = a.ComponentSpec.PodManagementPolicy
+	}
+	// unified podManagementPolicy check to avoid check everywhere
+	if len(policy) == 0 || policy == apps.OrderedReadyPodManagement {
+		return apps.OrderedReadyPodManagement
+	}
+	return apps.ParallelPodManagement
 }
 
 func (a *componentAccessorImpl) PodSecurityContext() *corev1.PodSecurityContext {
@@ -367,6 +385,7 @@ func buildTidbClusterComponentAccessor(c Component, tc *TidbCluster, componentSp
 		tolerations:               spec.Tolerations,
 		configUpdateStrategy:      spec.ConfigUpdateStrategy,
 		statefulSetUpdateStrategy: spec.StatefulSetUpdateStrategy,
+		podManagementPolicy:       spec.PodManagementPolicy,
 		podSecurityContext:        spec.PodSecurityContext,
 		topologySpreadConstraints: spec.TopologySpreadConstraints,
 

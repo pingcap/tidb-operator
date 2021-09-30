@@ -114,6 +114,10 @@ spec:
   ## If specified, the pods will be scheduled by the specified scheduler.
   ## Can be overwritten by component settings.
   schedulerName: tidb-scheduler
+  
+  ## PodManagementPolicy default OrderedReady.
+  ## Ref: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#pod-management-policies
+  podManagementPolicy: OrderedReady
 
   ## Affinity for pod scheduling, will be overwritten by each cluster component's specific affinity setting
   ## Can refer to PD/TiDB/TiKV affinity settings, and ensure only cluster-scope general settings here

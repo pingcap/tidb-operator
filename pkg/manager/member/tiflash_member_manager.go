@@ -576,7 +576,7 @@ sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
 			},
 			VolumeClaimTemplates: pvcs,
 			ServiceName:          headlessSvcName,
-			PodManagementPolicy:  apps.ParallelPodManagement,
+			PodManagementPolicy:  baseTiFlashSpec.PodManagementPolicy(),
 			UpdateStrategy:       updateStrategy,
 		},
 	}
