@@ -103,7 +103,7 @@ func getClient(endpoint v1alpha1.ExternalEndpoint, secretLister corelisterv1.Sec
 }
 
 func loadTLSConfig(endpoint v1alpha1.ExternalEndpoint, secretLister corelisterv1.SecretLister) (*tls.Config, error) {
-	secret, err := secretLister.Secrets(string(endpoint.TLSSecret.Namespace)).Get(endpoint.TLSSecret.Name)
+	secret, err := secretLister.Secrets(endpoint.TLSSecret.Namespace).Get(endpoint.TLSSecret.Name)
 	if err != nil {
 		klog.Error(err)
 		return nil, err
