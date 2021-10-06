@@ -39,27 +39,25 @@ const (
 	additionalPortLabelPattern = "__meta_kubernetes_pod_annotation_%s_prometheus_io_port"
 	dmWorker                   = "dm-worker"
 	dmMaster                   = "dm-master"
-	heterogeneousCluster       = "(.*)(-\bheterogeneous\b)"
 )
 
 var (
-	truePattern          config.Regexp
-	allMatchPattern      config.Regexp
-	portPattern          config.Regexp
-	tikvPattern          config.Regexp
-	pdPattern            config.Regexp
-	tidbPattern          config.Regexp
-	addressPattern       config.Regexp
-	tiflashPattern       config.Regexp
-	pumpPattern          config.Regexp
-	drainerPattern       config.Regexp
-	cdcPattern           config.Regexp
-	importerPattern      config.Regexp
-	lightningPattern     config.Regexp
-	dmWorkerPattern      config.Regexp
-	dmMasterPattern      config.Regexp
-	heterogeneousPattern config.Regexp
-	dashBoardConfig      = `{
+	truePattern      config.Regexp
+	allMatchPattern  config.Regexp
+	portPattern      config.Regexp
+	tikvPattern      config.Regexp
+	pdPattern        config.Regexp
+	tidbPattern      config.Regexp
+	addressPattern   config.Regexp
+	tiflashPattern   config.Regexp
+	pumpPattern      config.Regexp
+	drainerPattern   config.Regexp
+	cdcPattern       config.Regexp
+	importerPattern  config.Regexp
+	lightningPattern config.Regexp
+	dmWorkerPattern  config.Regexp
+	dmMasterPattern  config.Regexp
+	dashBoardConfig  = `{
     "apiVersion": 1,
     "providers": [
         {
@@ -135,10 +133,6 @@ func init() {
 		klog.Fatalf("monitor regex template parse error,%v", err)
 	}
 	dmMasterPattern, err = config.NewRegexp(dmMaster)
-	if err != nil {
-		klog.Fatalf("monitor regex template parse error,%v", err)
-	}
-	heterogeneousPattern, err = config.NewRegexp(heterogeneousCluster)
 	if err != nil {
 		klog.Fatalf("monitor regex template parse error,%v", err)
 	}
@@ -404,8 +398,6 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 						namespaceLabel,
 						instanceLabel,
 					},
-					Regex:       heterogeneousPattern,
-					Replacement: "${1}",
 					Separator:   "-",
 					TargetLabel: "tidb_cluster",
 				},
