@@ -40,8 +40,8 @@ import (
 type TypedControlInterface interface {
 	// CreateOrUpdateSecret create the desired secret or update the current one to desired state if already existed
 	CreateOrUpdateSecret(controller client.Object, secret *corev1.Secret) (*corev1.Secret, error)
-	// CheckAndUpdateConfigMap check configmap before create or update the desired configmap
-	CheckAndUpdateConfigMap(configMapLister corelisterv1.ConfigMapLister, controller client.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error)
+	// CreateOrUpdateConfigMap check configmap before create or update the desired configmap
+	CreateOrUpdateConfigMap(configMapLister corelisterv1.ConfigMapLister, controller client.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error)
 	// CreateOrUpdateClusterRole the desired clusterRole or update the current one to desired state if already existed
 	CreateOrUpdateClusterRole(controller client.Object, clusterRole *rbacv1.ClusterRole) (*rbacv1.ClusterRole, error)
 	// CreateOrUpdateClusterRoleBinding create the desired clusterRoleBinding or update the current one to desired state if already existed
@@ -243,19 +243,7 @@ func (w *typedWrapper) CreateOrUpdateServiceAccount(controller client.Object, sa
 	return result.(*corev1.ServiceAccount), err
 }
 
-func NeedCreateOrUpgradeConfigMap(cmLister corelisterv1.ConfigMapLister, newCm *corev1.ConfigMap, mergeFn MergeFn) (*corev1.ConfigMap, bool) {
-	// check if need CreateOrUpgrade
-	oldCm, err := cmLister.ConfigMaps(newCm.Namespace).Get(newCm.Name)
-	if err != nil {
-		return oldCm, true
-	}
-	if err := mergeFn(newCm, oldCm); err != nil {
-		return oldCm, true
-	}
-	return oldCm, false
-}
-
-func (w *typedWrapper) CheckAndUpdateConfigMap(cmLister corelisterv1.ConfigMapLister, controller client.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
+func (w *typedWrapper) CreateOrUpdateConfigMap(cmLister corelisterv1.ConfigMapLister, controller client.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
 	mergeFn := func(existing, desired client.Object) error {
 		existingCm := existing.(*corev1.ConfigMap)
 		desiredCm := desired.(*corev1.ConfigMap)
@@ -268,14 +256,28 @@ func (w *typedWrapper) CheckAndUpdateConfigMap(cmLister corelisterv1.ConfigMapLi
 		return nil
 	}
 
-	if cf, ok := NeedCreateOrUpgradeConfigMap(cmLister, cm, mergeFn); !ok {
-		return cf, nil
+	oldCm, err := cmLister.ConfigMaps(cm.Namespace).Get(cm.Name)
+	if err != nil && !errors.IsNotFound(err) {
+		return nil, fmt.Errorf("failed to get configMap %s/%s, error: %s", cm.Namespace, cm.Name, err)
 	}
-	result, err := w.GenericControlInterface.CreateOrUpdate(controller, cm, mergeFn, true)
-	if err != nil {
-		return nil, err
+	configMapNotExist := errors.IsNotFound(err)
+	configMapNeedUpdate := false
+
+	if !configMapNotExist {
+		if err := mergeFn(cm, oldCm); err != nil {
+			configMapNeedUpdate = true
+		}
 	}
-	return result.(*corev1.ConfigMap), nil
+
+	if configMapNotExist || configMapNeedUpdate {
+		result, err := w.GenericControlInterface.CreateOrUpdate(controller, cm, mergeFn, true)
+		if err != nil {
+			return nil, err
+		}
+		return result.(*corev1.ConfigMap), nil
+	}
+	return oldCm, nil
+
 }
 
 func (w *typedWrapper) CreateOrUpdateService(controller client.Object, svc *corev1.Service) (*corev1.Service, error) {
