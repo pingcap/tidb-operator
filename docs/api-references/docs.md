@@ -2484,6 +2484,24 @@ Defaults to 1.</p>
 </tr>
 <tr>
 <td>
+<code>shards</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>EXPERIMENTAL: Number of shards to distribute targets onto. Number of
+replicas multiplied by shards is the total number of Pods created. Note
+that scaling down shards will not reshard data onto remaining instances,
+it must be manually moved. Increasing shards will not reshard data
+either but it will continue to be available from the same instances. To
+query globally use Thanos sidecar and Thanos querier or remote write
+data to a central location. Sharding is done on the content of the
+<code>__address__</code> target meta-label.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>additionalVolumes</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#volume-v1-core">
@@ -21259,6 +21277,24 @@ int32
 <em>(Optional)</em>
 <p>Replicas is the number of desired replicas.
 Defaults to 1.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>shards</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>EXPERIMENTAL: Number of shards to distribute targets onto. Number of
+replicas multiplied by shards is the total number of Pods created. Note
+that scaling down shards will not reshard data onto remaining instances,
+it must be manually moved. Increasing shards will not reshard data
+either but it will continue to be available from the same instances. To
+query globally use Thanos sidecar and Thanos querier or remote write
+data to a central location. Sharding is done on the content of the
+<code>__address__</code> target meta-label.</p>
 </td>
 </tr>
 <tr>
