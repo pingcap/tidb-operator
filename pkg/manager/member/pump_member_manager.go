@@ -252,7 +252,7 @@ func (m *pumpMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *appsv1.
 	if err != nil {
 		return nil, err
 	}
-	return m.deps.TypedControl.CheckAndUpdateConfigMap(m.deps.ConfigMapLister, tc, newCm)
+	return m.deps.TypedControl.CreateOrUpdateConfigMap(m.deps.ConfigMapLister, tc, newCm)
 }
 
 func getNewPumpHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {

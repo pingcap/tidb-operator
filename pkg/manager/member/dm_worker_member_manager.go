@@ -321,7 +321,7 @@ func (m *workerMemberManager) syncWorkerConfigMap(dc *v1alpha1.DMCluster, set *a
 	if err != nil {
 		return nil, err
 	}
-	return m.deps.TypedControl.CheckAndUpdateConfigMap(m.deps.ConfigMapLister, dc, newCm)
+	return m.deps.TypedControl.CreateOrUpdateConfigMap(m.deps.ConfigMapLister, dc, newCm)
 }
 
 func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {

@@ -386,17 +386,17 @@ func (m *MonitorManager) syncTidbMonitorConfig(monitor *v1alpha1.TidbMonitor) er
 			promCM.Data["prometheus.yml"] = externalContent
 		}
 	}
-	_, err = m.deps.TypedControl.CheckAndUpdateConfigMap(m.deps.ConfigMapLister, monitor, promCM)
+	_, err = m.deps.TypedControl.CreateOrUpdateConfigMap(m.deps.ConfigMapLister, monitor, promCM)
 	if err != nil {
-		klog.Errorf("Fail to CheckAndUpdateConfigMap %s for tm[%s/%s]'s, err: %v", promCM.Name, monitor.Namespace, monitor.Name, err)
+		klog.Errorf("Fail to CreateOrUpdateConfigMap %s for tm[%s/%s]'s, err: %v", promCM.Name, monitor.Namespace, monitor.Name, err)
 		return err
 	}
 
 	if monitor.Spec.Grafana != nil {
 		grafanaCM := getGrafanaConfigMap(monitor)
-		_, err = m.deps.TypedControl.CheckAndUpdateConfigMap(m.deps.ConfigMapLister, monitor, grafanaCM)
+		_, err = m.deps.TypedControl.CreateOrUpdateConfigMap(m.deps.ConfigMapLister, monitor, grafanaCM)
 		if err != nil {
-			klog.Errorf("Fail to CheckAndUpdateConfigMap %s for tm[%s/%s]'s, err: %v", grafanaCM.Name, monitor.Namespace, monitor.Name, err)
+			klog.Errorf("Fail to CreateOrUpdateConfigMap %s for tm[%s/%s]'s, err: %v", grafanaCM.Name, monitor.Namespace, monitor.Name, err)
 			return err
 		}
 	}
