@@ -506,7 +506,7 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 				},
 			},
 			ServiceName:         controller.DMWorkerPeerMemberName(dcName),
-			PodManagementPolicy: apps.OrderedReadyPodManagement,
+			PodManagementPolicy: apps.ParallelPodManagement,
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{
 				Type: apps.RollingUpdateStatefulSetStrategyType,
 			},

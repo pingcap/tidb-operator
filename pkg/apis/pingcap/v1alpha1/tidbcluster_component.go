@@ -106,14 +106,16 @@ func (a *componentAccessorImpl) StatefulSetUpdateStrategy() apps.StatefulSetUpda
 func (a *componentAccessorImpl) PodManagementPolicy() apps.PodManagementPolicyType {
 	var policy apps.PodManagementPolicyType
 	if a.ComponentSpec == nil || len(a.ComponentSpec.PodManagementPolicy) == 0 {
-		if len(a.podManagementPolicy) != 0 {
-			policy = a.podManagementPolicy
+		if len(a.podManagementPolicy) == 0 {
+			return apps.ParallelPodManagement
 		}
+		policy = a.podManagementPolicy
 	} else {
 		policy = a.ComponentSpec.PodManagementPolicy
 	}
+
 	// unified podManagementPolicy check to avoid check everywhere
-	if len(policy) == 0 || policy == apps.OrderedReadyPodManagement {
+	if policy == apps.OrderedReadyPodManagement {
 		return apps.OrderedReadyPodManagement
 	}
 	return apps.ParallelPodManagement

@@ -696,7 +696,7 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 				},
 			},
 			ServiceName:         controller.DMMasterPeerMemberName(dcName),
-			PodManagementPolicy: apps.OrderedReadyPodManagement,
+			PodManagementPolicy: apps.ParallelPodManagement,
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{
 				Type: apps.RollingUpdateStatefulSetStrategyType,
 				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
