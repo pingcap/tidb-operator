@@ -1,6 +1,6 @@
 FROM alpine:3.14
 
-RUN apk add tzdata bash --no-cache
+RUN apk add tzdata bash bind-tools --no-cache
 
 ADD bin/tidb-scheduler /usr/local/bin/tidb-scheduler
 ADD bin/tidb-discovery /usr/local/bin/tidb-discovery
