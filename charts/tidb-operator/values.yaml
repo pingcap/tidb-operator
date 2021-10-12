@@ -272,7 +272,7 @@ admissionWebhook:
   # runAsUser: 1000
   # runAsGroup: 2000
   # fsGroup: 2000
-  ## nodeSelector ensure pods only assigning to nodes which have each of the indicated key-value pairs as labels
+  ## nodeSelector ensures that pods are only scheduled to nodes that have each of the indicated key-value pairs as labels
   ## ref:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector
   nodeSelector: {}
   ## Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
