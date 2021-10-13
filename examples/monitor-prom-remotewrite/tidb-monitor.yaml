@@ -9,7 +9,7 @@ spec:
     baseImage: prom/prometheus
     version: v2.18.1
     remoteWrite:
-      - url: "http://thanos-receive-default:19291/api/v1/receive"
+      - url: "http://thanos-receive:19291/api/v1/receive"
         queue_config:
           max_samples_per_send: 100
           max_shards: 100
