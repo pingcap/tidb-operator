@@ -14,7 +14,11 @@ spec:
         - --web.max-connections=512
         - --storage.remote.read-concurrent-limit=10
     baseImage: prom/prometheus
+<<<<<<< HEAD
     version: v2.11.1
+=======
+    version: v2.27.1
+>>>>>>> 312df46f... Upgrade prometheus to v2.27.1 (#4222)
   grafana:
     baseImage: grafana/grafana
     version: 7.5.7

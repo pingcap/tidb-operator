@@ -1,19 +1,25 @@
 apiVersion: pingcap.com/v1alpha1
 kind: TidbMonitor
 metadata:
-  name: basic-tls
+  name: basic
 spec:
   clusters:
-  - name: basic-tls
+    - name: basic
   prometheus:
     baseImage: prom/prometheus
     version: v2.27.1
   grafana:
     baseImage: grafana/grafana
     version: 7.5.7
+    UserSecret:
+      name: basic-grafana
+      key: username
+    PasswordSecret:
+      name: basic-grafana
+      key: password
   initializer:
     baseImage: pingcap/tidb-monitor-initializer
-    version: v5.2.0
+    version: v3.0.13
   reloader:
     baseImage: pingcap/tidb-monitor-reloader
     version: v1.0.1
