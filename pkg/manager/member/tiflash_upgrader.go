@@ -30,8 +30,8 @@ import (
 var (
 	// the first version that tiflash support `tiflash/store-status` api.
 	// https://github.com/pingcap/tidb-operator/issues/4159
-	tiflashV512Constraints, _      = semver.NewConstraint(">=5.1.2-0")
-	tiflashVersionsNeedCheckStatus = map[string]struct{}{"lastest": {}, "nightly": {}}
+	tiflashEqualOrGreaterThanV512, _ = semver.NewConstraint(">=5.1.2-0")
+	tiflashVersionsNeedCheckStatus   = map[string]struct{}{"lastest": {}, "nightly": {}}
 )
 
 type tiflashUpgrader struct {
@@ -116,7 +116,7 @@ func (u *tiflashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 			tiflashVersion := tc.TiFlashVersion()
 			if _, ok := tiflashVersionsNeedCheckStatus[tiflashVersion]; ok {
 				needCheckStatus = true
-			} else if ver, err := semver.NewVersion(tiflashVersion); err == nil && tiflashV512Constraints.Check(ver) { // NOTE: if parse image version failed, will skip this check
+			} else if ver, err := semver.NewVersion(tiflashVersion); err == nil && tiflashEqualOrGreaterThanV512.Check(ver) { // NOTE: if parse image version failed, will skip this check
 				needCheckStatus = true
 			}
 			if needCheckStatus {
