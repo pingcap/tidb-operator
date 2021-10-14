@@ -42,7 +42,7 @@ const (
 	TiDBV5x0x2 = "v5.0.2"
 
 	PrometheusImage               = "prom/prometheus"
-	PrometheusVersion             = "v2.18.1"
+	PrometheusVersion             = "v2.27.1"
 	TiDBMonitorReloaderImage      = "pingcap/tidb-monitor-reloader"
 	TiDBMonitorReloaderVersion    = "v1.0.1"
 	TiDBMonitorInitializerImage   = "pingcap/tidb-monitor-initializer"
