@@ -294,6 +294,11 @@ func TestSuffix(t *testing.T) {
 			version: "v4.0.x",
 			expect:  "40",
 		},
+		{
+			name:    "dirty version",
+			version: "v4.0.0-20200909",
+			expect:  "40",
+		},
 	}
 
 	for _, tt := range tests {
