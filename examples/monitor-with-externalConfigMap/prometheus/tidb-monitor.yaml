@@ -14,7 +14,7 @@ spec:
         - --web.max-connections=512
         - --storage.remote.read-concurrent-limit=10
     baseImage: prom/prometheus
-    version: v2.18.1
+    version: v2.27.1
   grafana:
     baseImage: grafana/grafana
     version: 7.5.11
