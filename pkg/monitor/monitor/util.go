@@ -1022,7 +1022,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		if monitor.Spec.Grafana != nil {
 			grafanaService := &core.Service{
 				ObjectMeta: meta.ObjectMeta{
-					Name:            GrafanaName(monitor.Name, shard),
+					Name:            GrafanaName(monitor.Name),
 					Namespace:       monitor.Namespace,
 					Labels:          util.CombineStringMap(grafanaLabel.Labels(), monitor.Spec.Grafana.Service.Labels, monitor.Spec.Labels),
 					OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
@@ -1063,7 +1063,7 @@ func getPrometheusIngress(monitor *v1alpha1.TidbMonitor) *extensionsv1beta1.Ingr
 }
 
 func getGrafanaIngress(monitor *v1alpha1.TidbMonitor) *extensionsv1beta1.Ingress {
-	return getIngress(monitor, monitor.Spec.Grafana.Ingress, GrafanaName(monitor.Name, 0), 3000)
+	return getIngress(monitor, monitor.Spec.Grafana.Ingress, GrafanaName(monitor.Name), 3000)
 }
 
 func getIngress(monitor *v1alpha1.TidbMonitor, ingressSpec *v1alpha1.IngressSpec, svcName string, port int) *extensionsv1beta1.Ingress {
