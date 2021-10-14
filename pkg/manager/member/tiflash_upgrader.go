@@ -30,7 +30,7 @@ import (
 var (
 	// the first version that tiflash support `tiflash/store-status` api.
 	// https://github.com/pingcap/tidb-operator/issues/4159
-	tiflashEqualOrGreaterThanV512, _ = semver.NewConstraint(">=5.1.2-0")
+	tiflashEqualOrGreaterThanV512, _ = semver.NewConstraint(">=v5.1.2-0")
 	tiflashVersionsNeedCheckStatus   = map[string]struct{}{"lastest": {}, "nightly": {}}
 )
 
