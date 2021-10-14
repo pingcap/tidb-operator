@@ -2246,7 +2246,7 @@ func (oa *OperatorActions) checkPrometheus(clusterInfo *TidbClusterConfig) error
 func (oa *OperatorActions) checkGrafanaData(clusterInfo *TidbClusterConfig) error {
 	ns := clusterInfo.Namespace
 	tcName := clusterInfo.ClusterName
-	grafanaClient, err := checkGrafanaDataCommon(tcName, ns, clusterInfo.GrafanaClient, oa.fw, false, 0)
+	grafanaClient, err := checkGrafanaDataCommon(tcName, ns, clusterInfo.GrafanaClient, oa.fw, false)
 	if err != nil {
 		return err
 	}
