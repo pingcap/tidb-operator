@@ -259,7 +259,7 @@ func checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Clien
 		values.Set("end", fmt.Sprintf("%d", end.Unix()))
 		values.Set("step", "30")
 		u := fmt.Sprintf("http://%s/api/datasources/proxy/%d/api/v1/query_range?%s", addr, datasourceID, values.Encode())
-		log.Logf("tm[%s/%s]'s grafana query url is %s", namespace, monitor.GetMonitorShardName(name, 0), u)
+		log.Logf("tm[%s/%s]'s grafana query url is %s", namespace, name, u)
 
 		req, err := http.NewRequest(http.MethodGet, u, nil)
 		if err != nil {
@@ -269,7 +269,7 @@ func checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Clien
 		client := &http.Client{}
 		resp, err := client.Do(req)
 		if err != nil {
-			log.Logf("ERROR: tm[%s/%s]'s grafana response error:%v", namespace, monitor.GetMonitorShardName(name, 0), err)
+			log.Logf("ERROR: tm[%s/%s]'s grafana response error:%v", namespace, name, err)
 			return false, nil
 		}
 		defer resp.Body.Close()
@@ -293,7 +293,7 @@ func checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Clien
 			return false, nil
 		}
 		if data.Status != "success" || len(data.Data.Result) < 1 {
-			log.Logf("ERROR: tm[%s/%s]'s invalid response: status: %s, result: %v", namespace, monitor.GetMonitorShardName(name, 0), data.Status, data.Data.Result)
+			log.Logf("ERROR: tm[%s/%s]'s invalid response: status: %s, result: %v", namespace, name, data.Status, data.Data.Result)
 			return false, nil
 		}
 		return true, nil
