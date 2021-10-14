@@ -1114,12 +1114,8 @@ func PrometheusName(name string, shard int32) string {
 	return fmt.Sprintf("%s-prometheus-shard-%d", name, shard)
 }
 
-func GrafanaName(name string, shard int32) string {
-	base := fmt.Sprintf("%s-grafana", name)
-	if shard == 0 {
-		return base
-	}
-	return fmt.Sprintf("%s-grafana-shard-%d", name, shard)
+func GrafanaName(name string) string {
+	return fmt.Sprintf("%s-grafana", name)
 }
 
 func reloaderName(monitor *v1alpha1.TidbMonitor, shard int32) string {
