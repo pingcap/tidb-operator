@@ -284,7 +284,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 			},
 			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
 				errExpectRequeuefunc(g, err, tmm, tm)
-				_, err = tmm.deps.ServiceLister.Services(tm.Namespace).Get(GrafanaName(tm.Name))
+				_, err = tmm.deps.ServiceLister.Services(tm.Namespace).Get(GrafanaName(tm.Name, 0))
 				g.Expect(err).NotTo(HaveOccurred())
 				sts, err := tmm.deps.StatefulSetLister.StatefulSets(tm.Namespace).Get(GetMonitorObjectName(tm))
 				g.Expect(err).NotTo(HaveOccurred())
@@ -509,7 +509,7 @@ func TestTidbMonitorSyncUpdate(t *testing.T) {
 			},
 			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
 				errExpectRequeuefunc(g, err, tmm, tm)
-				_, err = tmm.deps.ServiceLister.Services(tm.Namespace).Get(GrafanaName(tm.Name))
+				_, err = tmm.deps.ServiceLister.Services(tm.Namespace).Get(GrafanaName(tm.Name, 0))
 				g.Expect(err).NotTo(HaveOccurred())
 				sts, err := tmm.deps.StatefulSetLister.StatefulSets(tm.Namespace).Get(GetMonitorObjectName(tm))
 				g.Expect(err).NotTo(HaveOccurred())
@@ -528,7 +528,7 @@ func TestTidbMonitorSyncUpdate(t *testing.T) {
 			},
 			updateExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
 				g.Expect(err).NotTo(HaveOccurred())
-				grafanaSvc, err := tmm.deps.ServiceLister.Services(tm.Namespace).Get(GrafanaName(tm.Name))
+				grafanaSvc, err := tmm.deps.ServiceLister.Services(tm.Namespace).Get(GrafanaName(tm.Name, 0))
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(grafanaSvc.Spec.Type).To(Equal(v1.ServiceTypeLoadBalancer))
 				g.Expect(grafanaSvc.Spec.Ports[0].Name).To(Equal("test"))

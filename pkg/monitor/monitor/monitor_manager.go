@@ -484,7 +484,7 @@ func (m *MonitorManager) syncPrometheusIngress(monitor *v1alpha1.TidbMonitor) er
 
 func (m *MonitorManager) syncGrafanaIngress(monitor *v1alpha1.TidbMonitor) error {
 	if monitor.Spec.Grafana == nil || monitor.Spec.Grafana.Ingress == nil {
-		return m.removeIngressIfExist(monitor, GrafanaName(monitor.Name))
+		return m.removeIngressIfExist(monitor, GrafanaName(monitor.Name, 0))
 	}
 	ingress := getGrafanaIngress(monitor)
 	_, err := m.deps.TypedControl.CreateOrUpdateIngress(monitor, ingress)

@@ -13,6 +13,9 @@ spec:
   initializer:
     baseImage: pingcap/tidb-monitor-initializer
     version: v5.2.1
+  grafana:
+    baseImage: grafana/grafana
+    version: 7.5.7
   reloader:
     baseImage: pingcap/tidb-monitor-reloader
     version: v1.0.1
