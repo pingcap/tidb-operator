@@ -106,6 +106,26 @@ spec:
   #   limits:
   #     cpu: 2000m
   #     memory: 1Gi
+  #   ## The following block overwrites TiDB cluster-level configurations in `spec`
+  #   imagePullPolicy: IfNotPresent
+  #   imagePullSecrets: secretName
+  #   hostNetwork: false
+  #   priorityClassName: system-cluster-critical
+  #   schedulerName: tidb-scheduler
+  #   nodeSelector:
+  #     app.kubernetes.io/component: discovery
+  #   annotations:
+  #     node.kubernetes.io/instance-type: some-vm-type
+  #   labels: {}
+  #   env:
+  #     - name: MY_ENV_1
+  #       value: value1
+  #   affinity: {}
+  #   tolerations:
+  #     - effect: NoSchedule
+  #       key: dedicated
+  #       operator: Equal
+  #       value: discovery
 
   ## if true, this tidb cluster is paused and will not be synced by the controller
   # paused: false
