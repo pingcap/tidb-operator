@@ -25,7 +25,7 @@ spec:
       portName: http-grafana
       type: LoadBalancer
     username: admin
-    version: 7.5.7
+    version: 7.5.11
   imagePullPolicy: IfNotPresent
   initializer:
     baseImage: pingcap/tidb-monitor-initializer
