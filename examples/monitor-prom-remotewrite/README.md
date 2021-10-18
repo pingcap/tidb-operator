@@ -16,8 +16,6 @@ watch kubectl -n ${namespace} get pod
 
 ## Install TidbMonitor
 
-The following commands is assumed to be executed in this directory.
-
 Install the monitor with remotewrite configuration:
 
 ```bash
