@@ -10,7 +10,7 @@ Install Thanos receiver to receive data from the TidbMonitor Prometheus:
 > kubectl -n <namespace> apply -f thanos-receiver.yaml
 ```
 
-Install thanos query to integrate receiver:
+Install Thanos query to integrate with receiver:
 
 ```bash
 > kubectl -n <namespace> apply -f thanos-query.yaml
