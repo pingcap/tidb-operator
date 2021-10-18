@@ -5,7 +5,7 @@ This document is to show how to integrate TidbMonitor with [Thanos Receiver](htt
 ## Install TiDB:
 
 ```bash
-kubectl apply -f tidb-cluster.yaml -n ${namespace}
+kubectl -n <namespace> apply -f tidb-cluster.yaml 
 ```
 
 Wait for Pods ready:
