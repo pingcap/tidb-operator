@@ -16,7 +16,7 @@ Install Thanos query to integrate with receiver:
 > kubectl -n <namespace> apply -f thanos-query.yaml
 ```
 
-Explore the thanos query dashboards:
+Explore the Thanos query dashboards:
 
 ```bash
 > kubectl port-forward svc/thanos-query 9090:9090
