@@ -31,7 +31,7 @@ spec:
             - --log.format=logfmt
             - --query.replica-label=prometheus_replica
             - --query.replica-label=rule_replica
-            - --store=thanos-receive:10901
+            - --store=thanos-receiver:10901
             - --query.timeout=5m
             - --query.lookback-delta=15m
             - |-
