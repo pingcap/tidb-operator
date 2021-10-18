@@ -2,7 +2,7 @@
 
 This document is to show how to integrate TidbMonitor with [Thanos Receiver](https://thanos.io/tip/components/receive.md/).
 
-## Install TiDB:
+## Install TiDB Cluster
 
 ```bash
 kubectl apply -f tidb-cluster.yaml -n ${namespace}
