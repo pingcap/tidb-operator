@@ -40,7 +40,7 @@ Wait for the monitor Pod ready:
 watch kubectl -n <namespace> get pod
 ```
 
-Then we can view metric data by thanos query ui.
+Then we can view the metrics with Thanos query UI.
 
 ## Destroy
 
