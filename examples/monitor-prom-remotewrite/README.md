@@ -4,7 +4,7 @@ This document is to show how to integrate TidbMonitor with [Thanos Receiver](htt
 
 ## Install Thanos Receiver and Thanos Query
 
-Install thanos receiver to receiver tidbmonitor prometheus data:
+Install Thanos receiver to receive data from the TidbMonitor Prometheus:
 
 ```bash
 > kubectl -n <namespace> apply -f thanos-receive.yaml
