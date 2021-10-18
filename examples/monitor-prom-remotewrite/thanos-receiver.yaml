@@ -3,27 +3,27 @@ kind: StatefulSet
 metadata:
   labels:
     app.kubernetes.io/component: database-write-hashring
-    app.kubernetes.io/instance: thanos-receive
-    app.kubernetes.io/name: thanos-receive
+    app.kubernetes.io/instance: thanos-receiver
+    app.kubernetes.io/name: thanos-receiver
     app.kubernetes.io/version: v0.22.0
-    controller.receive.thanos.io: thanos-receive-controller
+    controller.receive.thanos.io: thanos-receiver-controller
     controller.receive.thanos.io/hashring: default
-  name: thanos-receive
+  name: thanos-receiver
 spec:
   replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/component: database-write-hashring
-      app.kubernetes.io/instance: thanos-receive
-      app.kubernetes.io/name: thanos-receive
+      app.kubernetes.io/instance: thanos-receiver
+      app.kubernetes.io/name: thanos-receiver
       controller.receive.thanos.io/hashring: default
-  serviceName: thanos-receive
+  serviceName: thanos-receiver
   template:
     metadata:
       labels:
         app.kubernetes.io/component: database-write-hashring
-        app.kubernetes.io/instance: thanos-receive
-        app.kubernetes.io/name: thanos-receive
+        app.kubernetes.io/instance: thanos-receiver
+        app.kubernetes.io/name: thanos-receiver
         app.kubernetes.io/version: v0.22.0
         controller.receive.thanos.io/hashring: default
     spec:
@@ -36,11 +36,11 @@ spec:
                     - key: app.kubernetes.io/name
                       operator: In
                       values:
-                        - thanos-receive
+                        - thanos-receiver
                     - key: app.kubernetes.io/instance
                       operator: In
                       values:
-                        - thanos-receive
+                        - thanos-receiver
                 namespaces:
                   - thanos
                 topologyKey: kubernetes.io/hostname
@@ -51,11 +51,11 @@ spec:
                     - key: app.kubernetes.io/name
                       operator: In
                       values:
-                        - thanos-receive
+                        - thanos-receiver
                     - key: app.kubernetes.io/instance
                       operator: In
                       values:
-                        - thanos-receive
+                        - thanos-receiver
                 namespaces:
                   - thanos
                 topologyKey: topology.kubernetes.io/zone
@@ -73,12 +73,12 @@ spec:
             - --tsdb.retention=15d
             - --label=replica="$(NAME)"
             - --label=receive="true"
-            - --receive.local-endpoint=$(NAME).thanos-receive.$(NAMESPACE).svc.cluster.local:10901
+            - --receive.local-endpoint=$(NAME).thanos-receiver.$(NAMESPACE).svc.cluster.local:10901
             - |-
               --tracing.config="config":
                 "sampler_param": 2
                 "sampler_type": "ratelimiting"
-                "service_name": "thanos-receive"
+                "service_name": "thanos-receiver"
               "type": "JAEGER"
           env:
             - name: NAME
@@ -101,7 +101,7 @@ spec:
               port: 10902
               scheme: HTTP
             periodSeconds: 30
-          name: thanos-receive
+          name: thanos-receiver
           ports:
             - containerPort: 10901
               name: grpc
@@ -128,7 +128,7 @@ spec:
             - mountPath: /var/thanos/receive
               name: data
               readOnly: false
-            - mountPath: /var/lib/thanos-receive
+            - mountPath: /var/lib/thanos-receiver
               name: hashring-config
       nodeSelector:
         kubernetes.io/os: linux
@@ -144,8 +144,8 @@ spec:
     - metadata:
         labels:
           app.kubernetes.io/component: database-write-hashring
-          app.kubernetes.io/instance: thanos-receive
-          app.kubernetes.io/name: thanos-receive
+          app.kubernetes.io/instance: thanos-receiver
+          app.kubernetes.io/name: thanos-receiver
           controller.receive.thanos.io/hashring: default
         name: data
       spec:
@@ -160,10 +160,10 @@ kind: Service
 metadata:
   labels:
     app.kubernetes.io/component: database-write-hashring
-    app.kubernetes.io/instance: thanos-receive
-    app.kubernetes.io/name: thanos-receive
+    app.kubernetes.io/instance: thanos-receiver
+    app.kubernetes.io/name: thanos-receiver
     app.kubernetes.io/version: v0.22.0
-  name: thanos-receive
+  name: thanos-receiver
 spec:
   clusterIP: None
   ports:
@@ -178,5 +178,5 @@ spec:
       targetPort: 19291
   selector:
     app.kubernetes.io/component: database-write-hashring
-    app.kubernetes.io/instance: thanos-receive
-    app.kubernetes.io/name: thanos-receive
+    app.kubernetes.io/instance: thanos-receiver
+    app.kubernetes.io/name: thanos-receiver
