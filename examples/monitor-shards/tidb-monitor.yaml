@@ -9,7 +9,7 @@ spec:
   - name: basic
   prometheus:
     baseImage: prom/prometheus
-    version: v2.18.1
+    version: v2.27.1
   initializer:
     baseImage: pingcap/tidb-monitor-initializer
     version: v5.2.1

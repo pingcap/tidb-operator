@@ -27,7 +27,7 @@ spec:
         service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
       type: LoadBalancer
     username: admin
-    version: 7.5.7
+    version: 7.5.11
   imagePullPolicy: IfNotPresent
   initializer:
     baseImage: pingcap/tidb-monitor-initializer
@@ -43,7 +43,7 @@ spec:
     service:
       portName: http-prometheus
       type: NodePort
-    version: v2.18.1
+    version: v2.27.1
   reloader:
     baseImage: pingcap/tidb-monitor-reloader
     imagePullPolicy: IfNotPresent
