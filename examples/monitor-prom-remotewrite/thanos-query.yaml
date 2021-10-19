@@ -20,7 +20,7 @@ spec:
         app.kubernetes.io/component: query-layer
         app.kubernetes.io/instance: thanos-query
         app.kubernetes.io/name: thanos-query
-        app.kubernetes.io/version: v0.17.2
+        app.kubernetes.io/version: v0.22.0
     spec:
       containers:
         - args:
@@ -73,7 +73,7 @@ metadata:
     app.kubernetes.io/component: query-layer
     app.kubernetes.io/instance: thanos-query
     app.kubernetes.io/name: thanos-query
-    app.kubernetes.io/version: v0.17.2
+    app.kubernetes.io/version: v0.22.0
   name: thanos-query
 spec:
   ports:
