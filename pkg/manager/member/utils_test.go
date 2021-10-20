@@ -717,7 +717,7 @@ func TestShouldRecover(t *testing.T) {
 			defer cancel()
 			client := kubefake.NewSimpleClientset()
 			for _, pod := range tt.pods {
-				client.CoreV1().Pods(pod.Namespace).Create(pod)
+				client.CoreV1().Pods(pod.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
 			}
 			kubeInformerFactory := kubeinformers.NewSharedInformerFactory(client, 0)
 			podLister := kubeInformerFactory.Core().V1().Pods().Lister()

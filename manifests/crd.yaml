@@ -768,6 +768,15 @@ spec:
                               user:
                                 type: string
                             type: object
+                          seccompProfile:
+                            properties:
+                              localhostProfile:
+                                type: string
+                              type:
+                                type: string
+                            required:
+                            - type
+                            type: object
                           windowsOptions:
                             properties:
                               gmsaCredentialSpec:
@@ -1079,6 +1088,146 @@ spec:
                           medium:
                             type: string
                           sizeLimit: {}
+                        type: object
+                      ephemeral:
+                        properties:
+                          readOnly:
+                            type: boolean
+                          volumeClaimTemplate:
+                            properties:
+                              metadata:
+                                properties:
+                                  annotations:
+                                    type: object
+                                  clusterName:
+                                    type: string
+                                  creationTimestamp:
+                                    format: date-time
+                                    type: string
+                                  deletionGracePeriodSeconds:
+                                    format: int64
+                                    type: integer
+                                  deletionTimestamp:
+                                    format: date-time
+                                    type: string
+                                  finalizers:
+                                    items:
+                                      type: string
+                                    type: array
+                                  generateName:
+                                    type: string
+                                  generation:
+                                    format: int64
+                                    type: integer
+                                  labels:
+                                    type: object
+                                  managedFields:
+                                    items:
+                                      properties:
+                                        apiVersion:
+                                          type: string
+                                        fieldsType:
+                                          type: string
+                                        fieldsV1:
+                                          type: object
+                                        manager:
+                                          type: string
+                                        operation:
+                                          type: string
+                                        time:
+                                          format: date-time
+                                          type: string
+                                      type: object
+                                    type: array
+                                  name:
+                                    type: string
+                                  namespace:
+                                    type: string
+                                  ownerReferences:
+                                    items:
+                                      properties:
+                                        apiVersion:
+                                          type: string
+                                        blockOwnerDeletion:
+                                          type: boolean
+                                        controller:
+                                          type: boolean
+                                        kind:
+                                          type: string
+                                        name:
+                                          type: string
+                                        uid:
+                                          type: string
+                                      required:
+                                      - apiVersion
+                                      - kind
+                                      - name
+                                      - uid
+                                      type: object
+                                    type: array
+                                  resourceVersion:
+                                    type: string
+                                  selfLink:
+                                    type: string
+                                  uid:
+                                    type: string
+                                type: object
+                              spec:
+                                properties:
+                                  accessModes:
+                                    items:
+                                      type: string
+                                    type: array
+                                  dataSource:
+                                    properties:
+                                      apiGroup:
+                                        type: string
+                                      kind:
+                                        type: string
+                                      name:
+                                        type: string
+                                    required:
+                                    - kind
+                                    - name
+                                    type: object
+                                  resources:
+                                    properties:
+                                      limits:
+                                        type: object
+                                      requests:
+                                        type: object
+                                    type: object
+                                  selector:
+                                    properties:
+                                      matchExpressions:
+                                        items:
+                                          properties:
+                                            key:
+                                              type: string
+                                            operator:
+                                              type: string
+                                            values:
+                                              items:
+                                                type: string
+                                              type: array
+                                          required:
+                                          - key
+                                          - operator
+                                          type: object
+                                        type: array
+                                      matchLabels:
+                                        type: object
+                                    type: object
+                                  storageClassName:
+                                    type: string
+                                  volumeMode:
+                                    type: string
+                                  volumeName:
+                                    type: string
+                                type: object
+                            required:
+                            - spec
+                            type: object
                         type: object
                       fc:
                         properties:
@@ -2198,6 +2347,15 @@ spec:
                               user:
                                 type: string
                             type: object
+                          seccompProfile:
+                            properties:
+                              localhostProfile:
+                                type: string
+                              type:
+                                type: string
+                            required:
+                            - type
+                            type: object
                           windowsOptions:
                             properties:
                               gmsaCredentialSpec:
@@ -2335,6 +2493,8 @@ spec:
                     fsGroup:
                       format: int64
                       type: integer
+                    fsGroupChangePolicy:
+                      type: string
                     runAsGroup:
                       format: int64
                       type: integer
@@ -2353,6 +2513,15 @@ spec:
                           type: string
                         user:
                           type: string
+                      type: object
+                    seccompProfile:
+                      properties:
+                        localhostProfile:
+                          type: string
+                        type:
+                          type: string
+                      required:
+                      - type
                       type: object
                     supplementalGroups:
                       items:
@@ -2456,6 +2625,8 @@ spec:
                 fsGroup:
                   format: int64
                   type: integer
+                fsGroupChangePolicy:
+                  type: string
                 runAsGroup:
                   format: int64
                   type: integer
@@ -2474,6 +2645,15 @@ spec:
                       type: string
                     user:
                       type: string
+                  type: object
+                seccompProfile:
+                  properties:
+                    localhostProfile:
+                      type: string
+                    type:
+                      type: string
+                  required:
+                  - type
                   type: object
                 supplementalGroups:
                   items:
@@ -2890,6 +3070,15 @@ spec:
                               user:
                                 type: string
                             type: object
+                          seccompProfile:
+                            properties:
+                              localhostProfile:
+                                type: string
+                              type:
+                                type: string
+                            required:
+                            - type
+                            type: object
                           windowsOptions:
                             properties:
                               gmsaCredentialSpec:
@@ -3201,6 +3390,146 @@ spec:
                           medium:
                             type: string
                           sizeLimit: {}
+                        type: object
+                      ephemeral:
+                        properties:
+                          readOnly:
+                            type: boolean
+                          volumeClaimTemplate:
+                            properties:
+                              metadata:
+                                properties:
+                                  annotations:
+                                    type: object
+                                  clusterName:
+                                    type: string
+                                  creationTimestamp:
+                                    format: date-time
+                                    type: string
+                                  deletionGracePeriodSeconds:
+                                    format: int64
+                                    type: integer
+                                  deletionTimestamp:
+                                    format: date-time
+                                    type: string
+                                  finalizers:
+                                    items:
+                                      type: string
+                                    type: array
+                                  generateName:
+                                    type: string
+                                  generation:
+                                    format: int64
+                                    type: integer
+                                  labels:
+                                    type: object
+                                  managedFields:
+                                    items:
+                                      properties:
+                                        apiVersion:
+                                          type: string
+                                        fieldsType:
+                                          type: string
+                                        fieldsV1:
+                                          type: object
+                                        manager:
+                                          type: string
+                                        operation:
+                                          type: string
+                                        time:
+                                          format: date-time
+                                          type: string
+                                      type: object
+                                    type: array
+                                  name:
+                                    type: string
+                                  namespace:
+                                    type: string
+                                  ownerReferences:
+                                    items:
+                                      properties:
+                                        apiVersion:
+                                          type: string
+                                        blockOwnerDeletion:
+                                          type: boolean
+                                        controller:
+                                          type: boolean
+                                        kind:
+                                          type: string
+                                        name:
+                                          type: string
+                                        uid:
+                                          type: string
+                                      required:
+                                      - apiVersion
+                                      - kind
+                                      - name
+                                      - uid
+                                      type: object
+                                    type: array
+                                  resourceVersion:
+                                    type: string
+                                  selfLink:
+                                    type: string
+                                  uid:
+                                    type: string
+                                type: object
+                              spec:
+                                properties:
+                                  accessModes:
+                                    items:
+                                      type: string
+                                    type: array
+                                  dataSource:
+                                    properties:
+                                      apiGroup:
+                                        type: string
+                                      kind:
+                                        type: string
+                                      name:
+                                        type: string
+                                    required:
+                                    - kind
+                                    - name
+                                    type: object
+                                  resources:
+                                    properties:
+                                      limits:
+                                        type: object
+                                      requests:
+                                        type: object
+                                    type: object
+                                  selector:
+                                    properties:
+                                      matchExpressions:
+                                        items:
+                                          properties:
+                                            key:
+                                              type: string
+                                            operator:
+                                              type: string
+                                            values:
+                                              items:
+                                                type: string
+                                              type: array
+                                          required:
+                                          - key
+                                          - operator
+                                          type: object
+                                        type: array
+                                      matchLabels:
+                                        type: object
+                                    type: object
+                                  storageClassName:
+                                    type: string
+                                  volumeMode:
+                                    type: string
+                                  volumeName:
+                                    type: string
+                                type: object
+                            required:
+                            - spec
+                            type: object
                         type: object
                       fc:
                         properties:
@@ -4316,6 +4645,15 @@ spec:
                               user:
                                 type: string
                             type: object
+                          seccompProfile:
+                            properties:
+                              localhostProfile:
+                                type: string
+                              type:
+                                type: string
+                            required:
+                            - type
+                            type: object
                           windowsOptions:
                             properties:
                               gmsaCredentialSpec:
@@ -4448,6 +4786,8 @@ spec:
                     fsGroup:
                       format: int64
                       type: integer
+                    fsGroupChangePolicy:
+                      type: string
                     runAsGroup:
                       format: int64
                       type: integer
@@ -4466,6 +4806,15 @@ spec:
                           type: string
                         user:
                           type: string
+                      type: object
+                    seccompProfile:
+                      properties:
+                        localhostProfile:
+                          type: string
+                        type:
+                          type: string
+                      required:
+                      - type
                       type: object
                     supplementalGroups:
                       items:
@@ -4930,6 +5279,15 @@ spec:
                               user:
                                 type: string
                             type: object
+                          seccompProfile:
+                            properties:
+                              localhostProfile:
+                                type: string
+                              type:
+                                type: string
+                            required:
+                            - type
+                            type: object
                           windowsOptions:
                             properties:
                               gmsaCredentialSpec:
@@ -5241,6 +5599,146 @@ spec:
                           medium:
                             type: string
                           sizeLimit: {}
+                        type: object
+                      ephemeral:
+                        properties:
+                          readOnly:
+                            type: boolean
+                          volumeClaimTemplate:
+                            properties:
+                              metadata:
+                                properties:
+                                  annotations:
+                                    type: object
+                                  clusterName:
+                                    type: string
+                                  creationTimestamp:
+                                    format: date-time
+                                    type: string
+                                  deletionGracePeriodSeconds:
+                                    format: int64
+                                    type: integer
+                                  deletionTimestamp:
+                                    format: date-time
+                                    type: string
+                                  finalizers:
+                                    items:
+                                      type: string
+                                    type: array
+                                  generateName:
+                                    type: string
+                                  generation:
+                                    format: int64
+                                    type: integer
+                                  labels:
+                                    type: object
+                                  managedFields:
+                                    items:
+                                      properties:
+                                        apiVersion:
+                                          type: string
+                                        fieldsType:
+                                          type: string
+                                        fieldsV1:
+                                          type: object
+                                        manager:
+                                          type: string
+                                        operation:
+                                          type: string
+                                        time:
+                                          format: date-time
+                                          type: string
+                                      type: object
+                                    type: array
+                                  name:
+                                    type: string
+                                  namespace:
+                                    type: string
+                                  ownerReferences:
+                                    items:
+                                      properties:
+                                        apiVersion:
+                                          type: string
+                                        blockOwnerDeletion:
+                                          type: boolean
+                                        controller:
+                                          type: boolean
+                                        kind:
+                                          type: string
+                                        name:
+                                          type: string
+                                        uid:
+                                          type: string
+                                      required:
+                                      - apiVersion
+                                      - kind
+                                      - name
+                                      - uid
+                                      type: object
+                                    type: array
+                                  resourceVersion:
+                                    type: string
+                                  selfLink:
+                                    type: string
+                                  uid:
+                                    type: string
+                                type: object
+                              spec:
+                                properties:
+                                  accessModes:
+                                    items:
+                                      type: string
+                                    type: array
+                                  dataSource:
+                                    properties:
+                                      apiGroup:
+                                        type: string
+                                      kind:
+                                        type: string
+                                      name:
+                                        type: string
+                                    required:
+                                    - kind
+                                    - name
+                                    type: object
+                                  resources:
+                                    properties:
+                                      limits:
+                                        type: object
+                                      requests:
+                                        type: object
+                                    type: object
+                                  selector:
+                                    properties:
+                                      matchExpressions:
+                                        items:
+                                          properties:
+                                            key:
+                                              type: string
+                                            operator:
+                                              type: string
+                                            values:
+                                              items:
+                                                type: string
+                                              type: array
+                                          required:
+                                          - key
+                                          - operator
+                                          type: object
+                                        type: array
+                                      matchLabels:
+                                        type: object
+                                    type: object
+                                  storageClassName:
+                                    type: string
+                                  volumeMode:
+                                    type: string
+                                  volumeName:
+                                    type: string
+                                type: object
+                            required:
+                            - spec
+                            type: object
                         type: object
                       fc:
                         properties:
@@ -6356,6 +6854,15 @@ spec:
                               user:
                                 type: string
                             type: object
+                          seccompProfile:
+                            properties:
+                              localhostProfile:
+                                type: string
+                              type:
+                                type: string
+                            required:
+                            - type
+                            type: object
                           windowsOptions:
                             properties:
                               gmsaCredentialSpec:
@@ -6488,6 +6995,8 @@ spec:
                     fsGroup:
                       format: int64
                       type: integer
+                    fsGroupChangePolicy:
+                      type: string
                     runAsGroup:
                       format: int64
                       type: integer
@@ -6506,6 +7015,15 @@ spec:
                           type: string
                         user:
                           type: string
+                      type: object
+                    seccompProfile:
+                      properties:
+                        localhostProfile:
+                          type: string
+                        type:
+                          type: string
+                      required:
+                      - type
                       type: object
                     supplementalGroups:
                       items:
@@ -6969,6 +7487,15 @@ spec:
                               user:
                                 type: string
                             type: object
+                          seccompProfile:
+                            properties:
+                              localhostProfile:
+                                type: string
+                              type:
+                                type: string
+                            required:
+                            - type
+                            type: object
                           windowsOptions:
                             properties:
                               gmsaCredentialSpec:
@@ -7280,6 +7807,146 @@ spec:
                           medium:
                             type: string
                           sizeLimit: {}
+                        type: object
+                      ephemeral:
+                        properties:
+                          readOnly:
+                            type: boolean
+                          volumeClaimTemplate:
+                            properties:
+                              metadata:
+                                properties:
+                                  annotations:
+                                    type: object
+                                  clusterName:
+                                    type: string
+                                  creationTimestamp:
+                                    format: date-time
+                                    type: string
+                                  deletionGracePeriodSeconds:
+                                    format: int64
+                                    type: integer
+                                  deletionTimestamp:
+                                    format: date-time
+                                    type: string
+                                  finalizers:
+                                    items:
+                                      type: string
+                                    type: array
+                                  generateName:
+                                    type: string
+                                  generation:
+                                    format: int64
+                                    type: integer
+                                  labels:
+                                    type: object
+                                  managedFields:
+                                    items:
+                                      properties:
+                                        apiVersion:
+                                          type: string
+                                        fieldsType:
+                                          type: string
+                                        fieldsV1:
+                                          type: object
+                                        manager:
+                                          type: string
+                                        operation:
+                                          type: string
+                                        time:
+                                          format: date-time
+                                          type: string
+                                      type: object
+                                    type: array
+                                  name:
+                                    type: string
+                                  namespace:
+                                    type: string
+                                  ownerReferences:
+                                    items:
+                                      properties:
+                                        apiVersion:
+                                          type: string
+                                        blockOwnerDeletion:
+                                          type: boolean
+                                        controller:
+                                          type: boolean
+                                        kind:
+                                          type: string
+                                        name:
+                                          type: string
+                                        uid:
+                                          type: string
+                                      required:
+                                      - apiVersion
+                                      - kind
+                                      - name
+                                      - uid
+                                      type: object
+                                    type: array
+                                  resourceVersion:
+                                    type: string
+                                  selfLink:
+                                    type: string
+                                  uid:
+                                    type: string
+                                type: object
+                              spec:
+                                properties:
+                                  accessModes:
+                                    items:
+                                      type: string
+                                    type: array
+                                  dataSource:
+                                    properties:
+                                      apiGroup:
+                                        type: string
+                                      kind:
+                                        type: string
+                                      name:
+                                        type: string
+                                    required:
+                                    - kind
+                                    - name
+                                    type: object
+                                  resources:
+                                    properties:
+                                      limits:
+                                        type: object
+                                      requests:
+                                        type: object
+                                    type: object
+                                  selector:
+                                    properties:
+                                      matchExpressions:
+                                        items:
+                                          properties:
+                                            key:
+                                              type: string
+                                            operator:
+                                              type: string
+                                            values:
+                                              items:
+                                                type: string
+                                              type: array
+                                          required:
+                                          - key
+                                          - operator
+                                          type: object
+                                        type: array
+                                      matchLabels:
+                                        type: object
+                                    type: object
+                                  storageClassName:
+                                    type: string
+                                  volumeMode:
+                                    type: string
+                                  volumeName:
+                                    type: string
+                                type: object
+                            required:
+                            - spec
+                            type: object
                         type: object
                       fc:
                         properties:
@@ -8397,6 +9064,15 @@ spec:
                               user:
                                 type: string
                             type: object
+                          seccompProfile:
+                            properties:
+                              localhostProfile:
+                                type: string
+                              type:
+                                type: string
+                            required:
+                            - type
+                            type: object
                           windowsOptions:
                             properties:
                               gmsaCredentialSpec:
@@ -8635,6 +9311,8 @@ spec:
                     fsGroup:
                       format: int64
                       type: integer
+                    fsGroupChangePolicy:
+                      type: string
                     runAsGroup:
                       format: int64
                       type: integer
@@ -8653,6 +9331,15 @@ spec:
                           type: string
                         user:
                           type: string
+                      type: object
+                    seccompProfile:
+                      properties:
+                        localhostProfile:
+                          type: string
+                        type:
+                          type: string
+                      required:
+                      - type
                       type: object
                     supplementalGroups:
                       items:
@@ -8702,6 +9389,8 @@ spec:
                     additionalPorts:
                       items:
                         properties:
+                          appProtocol:
+                            type: string
                           name:
                             type: string
                           nodePort:
@@ -9163,6 +9852,15 @@ spec:
                               user:
                                 type: string
                             type: object
+                          seccompProfile:
+                            properties:
+                              localhostProfile:
+                                type: string
+                              type:
+                                type: string
+                            required:
+                            - type
+                            type: object
                           windowsOptions:
                             properties:
                               gmsaCredentialSpec:
@@ -9474,6 +10172,146 @@ spec:
                           medium:
                             type: string
                           sizeLimit: {}
+                        type: object
+                      ephemeral:
+                        properties:
+                          readOnly:
+                            type: boolean
+                          volumeClaimTemplate:
+                            properties:
+                              metadata:
+                                properties:
+                                  annotations:
+                                    type: object
+                                  clusterName:
+                                    type: string
+                                  creationTimestamp:
+                                    format: date-time
+                                    type: string
+                                  deletionGracePeriodSeconds:
+                                    format: int64
+                                    type: integer
+                                  deletionTimestamp:
+                                    format: date-time
+                                    type: string
+                                  finalizers:
+                                    items:
+                                      type: string
+                                    type: array
+                                  generateName:
+                                    type: string
+                                  generation:
+                                    format: int64
+                                    type: integer
+                                  labels:
+                                    type: object
+                                  managedFields:
+                                    items:
+                                      properties:
+                                        apiVersion:
+                                          type: string
+                                        fieldsType:
+                                          type: string
+                                        fieldsV1:
+                                          type: object
+                                        manager:
+                                          type: string
+                                        operation:
+                                          type: string
+                                        time:
+                                          format: date-time
+                                          type: string
+                                      type: object
+                                    type: array
+                                  name:
+                                    type: string
+                                  namespace:
+                                    type: string
+                                  ownerReferences:
+                                    items:
+                                      properties:
+                                        apiVersion:
+                                          type: string
+                                        blockOwnerDeletion:
+                                          type: boolean
+                                        controller:
+                                          type: boolean
+                                        kind:
+                                          type: string
+                                        name:
+                                          type: string
+                                        uid:
+                                          type: string
+                                      required:
+                                      - apiVersion
+                                      - kind
+                                      - name
+                                      - uid
+                                      type: object
+                                    type: array
+                                  resourceVersion:
+                                    type: string
+                                  selfLink:
+                                    type: string
+                                  uid:
+                                    type: string
+                                type: object
+                              spec:
+                                properties:
+                                  accessModes:
+                                    items:
+                                      type: string
+                                    type: array
+                                  dataSource:
+                                    properties:
+                                      apiGroup:
+                                        type: string
+                                      kind:
+                                        type: string
+                                      name:
+                                        type: string
+                                    required:
+                                    - kind
+                                    - name
+                                    type: object
+                                  resources:
+                                    properties:
+                                      limits:
+                                        type: object
+                                      requests:
+                                        type: object
+                                    type: object
+                                  selector:
+                                    properties:
+                                      matchExpressions:
+                                        items:
+                                          properties:
+                                            key:
+                                              type: string
+                                            operator:
+                                              type: string
+                                            values:
+                                              items:
+                                                type: string
+                                              type: array
+                                          required:
+                                          - key
+                                          - operator
+                                          type: object
+                                        type: array
+                                      matchLabels:
+                                        type: object
+                                    type: object
+                                  storageClassName:
+                                    type: string
+                                  volumeMode:
+                                    type: string
+                                  volumeName:
+                                    type: string
+                                type: object
+                            required:
+                            - spec
+                            type: object
                         type: object
                       fc:
                         properties:
@@ -10589,6 +11427,15 @@ spec:
                               user:
                                 type: string
                             type: object
+                          seccompProfile:
+                            properties:
+                              localhostProfile:
+                                type: string
+                              type:
+                                type: string
+                            required:
+                            - type
+                            type: object
                           windowsOptions:
                             properties:
                               gmsaCredentialSpec:
@@ -10731,6 +11578,8 @@ spec:
                     fsGroup:
                       format: int64
                       type: integer
+                    fsGroupChangePolicy:
+                      type: string
                     runAsGroup:
                       format: int64
                       type: integer
@@ -10749,6 +11598,15 @@ spec:
                           type: string
                         user:
                           type: string
+                      type: object
+                    seccompProfile:
+                      properties:
+                        localhostProfile:
+                          type: string
+                        type:
+                          type: string
+                      required:
+                      - type
                       type: object
                     supplementalGroups:
                       items:
@@ -11222,6 +12080,15 @@ spec:
                               user:
                                 type: string
                             type: object
+                          seccompProfile:
+                            properties:
+                              localhostProfile:
+                                type: string
+                              type:
+                                type: string
+                            required:
+                            - type
+                            type: object
                           windowsOptions:
                             properties:
                               gmsaCredentialSpec:
@@ -11533,6 +12400,146 @@ spec:
                           medium:
                             type: string
                           sizeLimit: {}
+                        type: object
+                      ephemeral:
+                        properties:
+                          readOnly:
+                            type: boolean
+                          volumeClaimTemplate:
+                            properties:
+                              metadata:
+                                properties:
+                                  annotations:
+                                    type: object
+                                  clusterName:
+                                    type: string
+                                  creationTimestamp:
+                                    format: date-time
+                                    type: string
+                                  deletionGracePeriodSeconds:
+                                    format: int64
+                                    type: integer
+                                  deletionTimestamp:
+                                    format: date-time
+                                    type: string
+                                  finalizers:
+                                    items:
+                                      type: string
+                                    type: array
+                                  generateName:
+                                    type: string
+                                  generation:
+                                    format: int64
+                                    type: integer
+                                  labels:
+                                    type: object
+                                  managedFields:
+                                    items:
+                                      properties:
+                                        apiVersion:
+                                          type: string
+                                        fieldsType:
+                                          type: string
+                                        fieldsV1:
+                                          type: object
+                                        manager:
+                                          type: string
+                                        operation:
+                                          type: string
+                                        time:
+                                          format: date-time
+                                          type: string
+                                      type: object
+                                    type: array
+                                  name:
+                                    type: string
+                                  namespace:
+                                    type: string
+                                  ownerReferences:
+                                    items:
+                                      properties:
+                                        apiVersion:
+                                          type: string
+                                        blockOwnerDeletion:
+                                          type: boolean
+                                        controller:
+                                          type: boolean
+                                        kind:
+                                          type: string
+                                        name:
+                                          type: string
+                                        uid:
+                                          type: string
+                                      required:
+                                      - apiVersion
+                                      - kind
+                                      - name
+                                      - uid
+                                      type: object
+                                    type: array
+                                  resourceVersion:
+                                    type: string
+                                  selfLink:
+                                    type: string
+                                  uid:
+                                    type: string
+                                type: object
+                              spec:
+                                properties:
+                                  accessModes:
+                                    items:
+                                      type: string
+                                    type: array
+                                  dataSource:
+                                    properties:
+                                      apiGroup:
+                                        type: string
+                                      kind:
+                                        type: string
+                                      name:
+                                        type: string
+                                    required:
+                                    - kind
+                                    - name
+                                    type: object
+                                  resources:
+                                    properties:
+                                      limits:
+                                        type: object
+                                      requests:
+                                        type: object
+                                    type: object
+                                  selector:
+                                    properties:
+                                      matchExpressions:
+                                        items:
+                                          properties:
+                                            key:
+                                              type: string
+                                            operator:
+                                              type: string
+                                            values:
+                                              items:
+                                                type: string
+                                              type: array
+                                          required:
+                                          - key
+                                          - operator
+                                          type: object
+                                        type: array
+                                      matchLabels:
+                                        type: object
+                                    type: object
+                                  storageClassName:
+                                    type: string
+                                  volumeMode:
+                                    type: string
+                                  volumeName:
+                                    type: string
+                                type: object
+                            required:
+                            - spec
+                            type: object
                         type: object
                       fc:
                         properties:
@@ -12654,6 +13661,15 @@ spec:
                               user:
                                 type: string
                             type: object
+                          seccompProfile:
+                            properties:
+                              localhostProfile:
+                                type: string
+                              type:
+                                type: string
+                            required:
+                            - type
+                            type: object
                           windowsOptions:
                             properties:
                               gmsaCredentialSpec:
@@ -12798,6 +13814,8 @@ spec:
                     fsGroup:
                       format: int64
                       type: integer
+                    fsGroupChangePolicy:
+                      type: string
                     runAsGroup:
                       format: int64
                       type: integer
@@ -12816,6 +13834,15 @@ spec:
                           type: string
                         user:
                           type: string
+                      type: object
+                    seccompProfile:
+                      properties:
+                        localhostProfile:
+                          type: string
+                        type:
+                          type: string
+                      required:
+                      - type
                       type: object
                     supplementalGroups:
                       items:
@@ -13658,6 +14685,15 @@ spec:
                               user:
                                 type: string
                             type: object
+                          seccompProfile:
+                            properties:
+                              localhostProfile:
+                                type: string
+                              type:
+                                type: string
+                            required:
+                            - type
+                            type: object
                           windowsOptions:
                             properties:
                               gmsaCredentialSpec:
@@ -13969,6 +15005,146 @@ spec:
                           medium:
                             type: string
                           sizeLimit: {}
+                        type: object
+                      ephemeral:
+                        properties:
+                          readOnly:
+                            type: boolean
+                          volumeClaimTemplate:
+                            properties:
+                              metadata:
+                                properties:
+                                  annotations:
+                                    type: object
+                                  clusterName:
+                                    type: string
+                                  creationTimestamp:
+                                    format: date-time
+                                    type: string
+                                  deletionGracePeriodSeconds:
+                                    format: int64
+                                    type: integer
+                                  deletionTimestamp:
+                                    format: date-time
+                                    type: string
+                                  finalizers:
+                                    items:
+                                      type: string
+                                    type: array
+                                  generateName:
+                                    type: string
+                                  generation:
+                                    format: int64
+                                    type: integer
+                                  labels:
+                                    type: object
+                                  managedFields:
+                                    items:
+                                      properties:
+                                        apiVersion:
+                                          type: string
+                                        fieldsType:
+                                          type: string
+                                        fieldsV1:
+                                          type: object
+                                        manager:
+                                          type: string
+                                        operation:
+                                          type: string
+                                        time:
+                                          format: date-time
+                                          type: string
+                                      type: object
+                                    type: array
+                                  name:
+                                    type: string
+                                  namespace:
+                                    type: string
+                                  ownerReferences:
+                                    items:
+                                      properties:
+                                        apiVersion:
+                                          type: string
+                                        blockOwnerDeletion:
+                                          type: boolean
+                                        controller:
+                                          type: boolean
+                                        kind:
+                                          type: string
+                                        name:
+                                          type: string
+                                        uid:
+                                          type: string
+                                      required:
+                                      - apiVersion
+                                      - kind
+                                      - name
+                                      - uid
+                                      type: object
+                                    type: array
+                                  resourceVersion:
+                                    type: string
+                                  selfLink:
+                                    type: string
+                                  uid:
+                                    type: string
+                                type: object
+                              spec:
+                                properties:
+                                  accessModes:
+                                    items:
+                                      type: string
+                                    type: array
+                                  dataSource:
+                                    properties:
+                                      apiGroup:
+                                        type: string
+                                      kind:
+                                        type: string
+                                      name:
+                                        type: string
+                                    required:
+                                    - kind
+                                    - name
+                                    type: object
+                                  resources:
+                                    properties:
+                                      limits:
+                                        type: object
+                                      requests:
+                                        type: object
+                                    type: object
+                                  selector:
+                                    properties:
+                                      matchExpressions:
+                                        items:
+                                          properties:
+                                            key:
+                                              type: string
+                                            operator:
+                                              type: string
+                                            values:
+                                              items:
+                                                type: string
+                                              type: array
+                                          required:
+                                          - key
+                                          - operator
+                                          type: object
+                                        type: array
+                                      matchLabels:
+                                        type: object
+                                    type: object
+                                  storageClassName:
+                                    type: string
+                                  volumeMode:
+                                    type: string
+                                  volumeName:
+                                    type: string
+                                type: object
+                            required:
+                            - spec
+                            type: object
                         type: object
                       fc:
                         properties:
@@ -15102,6 +16278,15 @@ spec:
                               user:
                                 type: string
                             type: object
+                          seccompProfile:
+                            properties:
+                              localhostProfile:
+                                type: string
+                              type:
+                                type: string
+                            required:
+                            - type
+                            type: object
                           windowsOptions:
                             properties:
                               gmsaCredentialSpec:
@@ -15237,6 +16422,8 @@ spec:
                     fsGroup:
                       format: int64
                       type: integer
+                    fsGroupChangePolicy:
+                      type: string
                     runAsGroup:
                       format: int64
                       type: integer
@@ -15255,6 +16442,15 @@ spec:
                           type: string
                         user:
                           type: string
+                      type: object
+                    seccompProfile:
+                      properties:
+                        localhostProfile:
+                          type: string
+                        type:
+                          type: string
+                      required:
+                      - type
                       type: object
                     supplementalGroups:
                       items:
@@ -15335,6 +16531,8 @@ spec:
                 fsGroup:
                   format: int64
                   type: integer
+                fsGroupChangePolicy:
+                  type: string
                 runAsGroup:
                   format: int64
                   type: integer
@@ -15353,6 +16551,15 @@ spec:
                       type: string
                     user:
                       type: string
+                  type: object
+                seccompProfile:
+                  properties:
+                    localhostProfile:
+                      type: string
+                    type:
+                      type: string
+                  required:
+                  - type
                   type: object
                 supplementalGroups:
                   items:
@@ -15801,6 +17008,15 @@ spec:
                               user:
                                 type: string
                             type: object
+                          seccompProfile:
+                            properties:
+                              localhostProfile:
+                                type: string
+                              type:
+                                type: string
+                            required:
+                            - type
+                            type: object
                           windowsOptions:
                             properties:
                               gmsaCredentialSpec:
@@ -16112,6 +17328,146 @@ spec:
                           medium:
                             type: string
                           sizeLimit: {}
+                        type: object
+                      ephemeral:
+                        properties:
+                          readOnly:
+                            type: boolean
+                          volumeClaimTemplate:
+                            properties:
+                              metadata:
+                                properties:
+                                  annotations:
+                                    type: object
+                                  clusterName:
+                                    type: string
+                                  creationTimestamp:
+                                    format: date-time
+                                    type: string
+                                  deletionGracePeriodSeconds:
+                                    format: int64
+                                    type: integer
+                                  deletionTimestamp:
+                                    format: date-time
+                                    type: string
+                                  finalizers:
+                                    items:
+                                      type: string
+                                    type: array
+                                  generateName:
+                                    type: string
+                                  generation:
+                                    format: int64
+                                    type: integer
+                                  labels:
+                                    type: object
+                                  managedFields:
+                                    items:
+                                      properties:
+                                        apiVersion:
+                                          type: string
+                                        fieldsType:
+                                          type: string
+                                        fieldsV1:
+                                          type: object
+                                        manager:
+                                          type: string
+                                        operation:
+                                          type: string
+                                        time:
+                                          format: date-time
+                                          type: string
+                                      type: object
+                                    type: array
+                                  name:
+                                    type: string
+                                  namespace:
+                                    type: string
+                                  ownerReferences:
+                                    items:
+                                      properties:
+                                        apiVersion:
+                                          type: string
+                                        blockOwnerDeletion:
+                                          type: boolean
+                                        controller:
+                                          type: boolean
+                                        kind:
+                                          type: string
+                                        name:
+                                          type: string
+                                        uid:
+                                          type: string
+                                      required:
+                                      - apiVersion
+                                      - kind
+                                      - name
+                                      - uid
+                                      type: object
+                                    type: array
+                                  resourceVersion:
+                                    type: string
+                                  selfLink:
+                                    type: string
+                                  uid:
+                                    type: string
+                                type: object
+                              spec:
+                                properties:
+                                  accessModes:
+                                    items:
+                                      type: string
+                                    type: array
+                                  dataSource:
+                                    properties:
+                                      apiGroup:
+                                        type: string
+                                      kind:
+                                        type: string
+                                      name:
+                                        type: string
+                                    required:
+                                    - kind
+                                    - name
+                                    type: object
+                                  resources:
+                                    properties:
+                                      limits:
+                                        type: object
+                                      requests:
+                                        type: object
+                                    type: object
+                                  selector:
+                                    properties:
+                                      matchExpressions:
+                                        items:
+                                          properties:
+                                            key:
+                                              type: string
+                                            operator:
+                                              type: string
+                                            values:
+                                              items:
+                                                type: string
+                                              type: array
+                                          required:
+                                          - key
+                                          - operator
+                                          type: object
+                                        type: array
+                                      matchLabels:
+                                        type: object
+                                    type: object
+                                  storageClassName:
+                                    type: string
+                                  volumeMode:
+                                    type: string
+                                  volumeName:
+                                    type: string
+                                type: object
+                            required:
+                            - spec
+                            type: object
                         type: object
                       fc:
                         properties:
@@ -17250,6 +18606,15 @@ spec:
                               user:
                                 type: string
                             type: object
+                          seccompProfile:
+                            properties:
+                              localhostProfile:
+                                type: string
+                              type:
+                                type: string
+                            required:
+                            - type
+                            type: object
                           windowsOptions:
                             properties:
                               gmsaCredentialSpec:
@@ -17385,6 +18750,8 @@ spec:
                     fsGroup:
                       format: int64
                       type: integer
+                    fsGroupChangePolicy:
+                      type: string
                     runAsGroup:
                       format: int64
                       type: integer
@@ -17403,6 +18770,15 @@ spec:
                           type: string
                         user:
                           type: string
+                      type: object
+                    seccompProfile:
+                      properties:
+                        localhostProfile:
+                          type: string
+                        type:
+                          type: string
+                      required:
+                      - type
                       type: object
                     supplementalGroups:
                       items:
@@ -17824,6 +19200,20 @@ spec:
               required:
               - cluster
               type: object
+            cleanOption:
+              properties:
+                batchConcurrency:
+                  format: int64
+                  type: integer
+                disableBatchConcurrency:
+                  type: boolean
+                pageSize:
+                  format: int64
+                  type: integer
+                routineConcurrency:
+                  format: int64
+                  type: integer
+              type: object
             cleanPolicy:
               type: string
             dumpling:
@@ -17945,6 +19335,8 @@ spec:
                 fsGroup:
                   format: int64
                   type: integer
+                fsGroupChangePolicy:
+                  type: string
                 runAsGroup:
                   format: int64
                   type: integer
@@ -17963,6 +19355,15 @@ spec:
                       type: string
                     user:
                       type: string
+                  type: object
+                seccompProfile:
+                  properties:
+                    localhostProfile:
+                      type: string
+                    type:
+                      type: string
+                  required:
+                  - type
                   type: object
                 supplementalGroups:
                   items:
@@ -18491,6 +19892,8 @@ spec:
                 fsGroup:
                   format: int64
                   type: integer
+                fsGroupChangePolicy:
+                  type: string
                 runAsGroup:
                   format: int64
                   type: integer
@@ -18509,6 +19912,15 @@ spec:
                       type: string
                     user:
                       type: string
+                  type: object
+                seccompProfile:
+                  properties:
+                    localhostProfile:
+                      type: string
+                    type:
+                      type: string
+                  required:
+                  - type
                   type: object
                 supplementalGroups:
                   items:
@@ -18965,6 +20377,20 @@ spec:
                   required:
                   - cluster
                   type: object
+                cleanOption:
+                  properties:
+                    batchConcurrency:
+                      format: int64
+                      type: integer
+                    disableBatchConcurrency:
+                      type: boolean
+                    pageSize:
+                      format: int64
+                      type: integer
+                    routineConcurrency:
+                      format: int64
+                      type: integer
+                  type: object
                 cleanPolicy:
                   type: string
                 dumpling:
@@ -19086,6 +20512,8 @@ spec:
                     fsGroup:
                       format: int64
                       type: integer
+                    fsGroupChangePolicy:
+                      type: string
                     runAsGroup:
                       format: int64
                       type: integer
@@ -19104,6 +20532,15 @@ spec:
                           type: string
                         user:
                           type: string
+                      type: object
+                    seccompProfile:
+                      properties:
+                        localhostProfile:
+                          type: string
+                        type:
+                          type: string
+                      required:
+                      - type
                       type: object
                     supplementalGroups:
                       items:
@@ -19650,6 +21087,15 @@ spec:
                           user:
                             type: string
                         type: object
+                      seccompProfile:
+                        properties:
+                          localhostProfile:
+                            type: string
+                          type:
+                            type: string
+                        required:
+                        - type
+                        type: object
                       windowsOptions:
                         properties:
                           gmsaCredentialSpec:
@@ -19941,6 +21387,146 @@ spec:
                       medium:
                         type: string
                       sizeLimit: {}
+                    type: object
+                  ephemeral:
+                    properties:
+                      readOnly:
+                        type: boolean
+                      volumeClaimTemplate:
+                        properties:
+                          metadata:
+                            properties:
+                              annotations:
+                                type: object
+                              clusterName:
+                                type: string
+                              creationTimestamp:
+                                format: date-time
+                                type: string
+                              deletionGracePeriodSeconds:
+                                format: int64
+                                type: integer
+                              deletionTimestamp:
+                                format: date-time
+                                type: string
+                              finalizers:
+                                items:
+                                  type: string
+                                type: array
+                              generateName:
+                                type: string
+                              generation:
+                                format: int64
+                                type: integer
+                              labels:
+                                type: object
+                              managedFields:
+                                items:
+                                  properties:
+                                    apiVersion:
+                                      type: string
+                                    fieldsType:
+                                      type: string
+                                    fieldsV1:
+                                      type: object
+                                    manager:
+                                      type: string
+                                    operation:
+                                      type: string
+                                    time:
+                                      format: date-time
+                                      type: string
+                                  type: object
+                                type: array
+                              name:
+                                type: string
+                              namespace:
+                                type: string
+                              ownerReferences:
+                                items:
+                                  properties:
+                                    apiVersion:
+                                      type: string
+                                    blockOwnerDeletion:
+                                      type: boolean
+                                    controller:
+                                      type: boolean
+                                    kind:
+                                      type: string
+                                    name:
+                                      type: string
+                                    uid:
+                                      type: string
+                                  required:
+                                  - apiVersion
+                                  - kind
+                                  - name
+                                  - uid
+                                  type: object
+                                type: array
+                              resourceVersion:
+                                type: string
+                              selfLink:
+                                type: string
+                              uid:
+                                type: string
+                            type: object
+                          spec:
+                            properties:
+                              accessModes:
+                                items:
+                                  type: string
+                                type: array
+                              dataSource:
+                                properties:
+                                  apiGroup:
+                                    type: string
+                                  kind:
+                                    type: string
+                                  name:
+                                    type: string
+                                required:
+                                - kind
+                                - name
+                                type: object
+                              resources:
+                                properties:
+                                  limits:
+                                    type: object
+                                  requests:
+                                    type: object
+                                type: object
+                              selector:
+                                properties:
+                                  matchExpressions:
+                                    items:
+                                      properties:
+                                        key:
+                                          type: string
+                                        operator:
+                                          type: string
+                                        values:
+                                          items:
+                                            type: string
+                                          type: array
+                                      required:
+                                      - key
+                                      - operator
+                                      type: object
+                                    type: array
+                                  matchLabels:
+                                    type: object
+                                type: object
+                              storageClassName:
+                                type: string
+                              volumeMode:
+                                type: string
+                              volumeName:
+                                type: string
+                            type: object
+                        required:
+                        - spec
+                        type: object
                     type: object
                   fc:
                     properties:
@@ -20395,6 +21981,8 @@ spec:
                 fsGroup:
                   format: int64
                   type: integer
+                fsGroupChangePolicy:
+                  type: string
                 runAsGroup:
                   format: int64
                   type: integer
@@ -20413,6 +22001,15 @@ spec:
                       type: string
                     user:
                       type: string
+                  type: object
+                seccompProfile:
+                  properties:
+                    localhostProfile:
+                      type: string
+                    type:
+                      type: string
+                  required:
+                  - type
                   type: object
                 supplementalGroups:
                   items:
@@ -20442,12 +22039,16 @@ spec:
                   type: object
               type: object
             prometheus: {}
+            prometheusReloader: {}
             pvReclaimPolicy:
               type: string
             reloader: {}
             replicaExternalLabelName:
               type: string
             replicas:
+              format: int32
+              type: integer
+            shards:
               format: int32
               type: integer
             storage:
@@ -20546,6 +22147,8 @@ spec:
                 fsGroup:
                   format: int64
                   type: integer
+                fsGroupChangePolicy:
+                  type: string
                 runAsGroup:
                   format: int64
                   type: integer
@@ -20564,6 +22167,15 @@ spec:
                       type: string
                     user:
                       type: string
+                  type: object
+                seccompProfile:
+                  properties:
+                    localhostProfile:
+                      type: string
+                    type:
+                      type: string
+                  required:
+                  - type
                   type: object
                 supplementalGroups:
                   items:

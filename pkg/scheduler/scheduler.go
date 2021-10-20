@@ -14,6 +14,7 @@
 package scheduler
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -28,8 +29,7 @@ import (
 	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
-	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
-	schedulerapiv1 "k8s.io/kubernetes/pkg/scheduler/api/v1"
+	schedulerapi "k8s.io/kube-scheduler/extender/v1"
 )
 
 // Scheduler is an interface for external processes to influence scheduling
@@ -38,7 +38,7 @@ import (
 type Scheduler interface {
 	// Filter based on extender-implemented predicate functions. The filtered list is
 	// expected to be a subset of the supplied list.
-	Filter(*schedulerapiv1.ExtenderArgs) (*schedulerapiv1.ExtenderFilterResult, error)
+	Filter(*schedulerapi.ExtenderArgs) (*schedulerapi.ExtenderFilterResult, error)
 
 	// Preempt implements scheduler extender preempt verb.
 	Preempt(args *schedulerapi.ExtenderPreemptionArgs) (*schedulerapi.ExtenderPreemptionResult, error)
@@ -46,7 +46,7 @@ type Scheduler interface {
 	// Prioritize based on extender-implemented priority functions. The returned scores & weight
 	// are used to compute the weighted score for an extender. The weighted scores are added to
 	// the scores computed  by kubernetes scheduler. The total scores are used to do the host selection.
-	Priority(*schedulerapiv1.ExtenderArgs) (schedulerapiv1.HostPriorityList, error)
+	Priority(*schedulerapi.ExtenderArgs) (schedulerapi.HostPriorityList, error)
 }
 
 type scheduler struct {
@@ -84,9 +84,9 @@ func NewScheduler(kubeCli kubernetes.Interface, cli versioned.Interface) Schedul
 	}
 }
 
-// Filter selects a set of nodes from *schedulerapiv1.ExtenderArgs.Nodes when this is a pd or tikv pod
+// Filter selects a set of nodes from *schedulerapi.ExtenderArgs.Nodes when this is a pd or tikv pod
 // otherwise, returns the original nodes.
-func (s *scheduler) Filter(args *schedulerapiv1.ExtenderArgs) (*schedulerapiv1.ExtenderFilterResult, error) {
+func (s *scheduler) Filter(args *schedulerapi.ExtenderArgs) (*schedulerapi.ExtenderFilterResult, error) {
 	pod := args.Pod
 	ns := pod.GetNamespace()
 	podName := pod.GetName()
@@ -102,7 +102,7 @@ func (s *scheduler) Filter(args *schedulerapiv1.ExtenderArgs) (*schedulerapiv1.E
 	var exist bool
 	if instanceName, exist = pod.Labels[label.InstanceLabelKey]; !exist {
 		klog.Warningf("can't find instanceName in pod labels: %s/%s", ns, podName)
-		return &schedulerapiv1.ExtenderFilterResult{
+		return &schedulerapi.ExtenderFilterResult{
 			Nodes: args.Nodes,
 		}, nil
 	}
@@ -110,7 +110,7 @@ func (s *scheduler) Filter(args *schedulerapiv1.ExtenderArgs) (*schedulerapiv1.E
 	component, ok := pod.Labels[label.ComponentLabelKey]
 	if !ok {
 		klog.Warningf("can't find component label in pod labels: %s/%s", ns, podName)
-		return &schedulerapiv1.ExtenderFilterResult{
+		return &schedulerapi.ExtenderFilterResult{
 			Nodes: args.Nodes,
 		}, nil
 	}
@@ -118,7 +118,7 @@ func (s *scheduler) Filter(args *schedulerapiv1.ExtenderArgs) (*schedulerapiv1.E
 	predicatesByComponent, ok := s.predicates[component]
 	if !ok {
 		klog.Warningf("no predicate for component %q, ignored", component)
-		return &schedulerapiv1.ExtenderFilterResult{
+		return &schedulerapi.ExtenderFilterResult{
 			Nodes: args.Nodes,
 		}, nil
 	}
@@ -137,7 +137,7 @@ func (s *scheduler) Filter(args *schedulerapiv1.ExtenderArgs) (*schedulerapiv1.E
 		}
 	}
 
-	return &schedulerapiv1.ExtenderFilterResult{
+	return &schedulerapi.ExtenderFilterResult{
 		Nodes: &apiv1.NodeList{Items: kubeNodes},
 	}, nil
 }
@@ -211,7 +211,7 @@ func (s *scheduler) Preempt(args *schedulerapi.ExtenderPreemptionArgs) (*schedul
 	for nodeName := range args.NodeNameToVictims {
 		// tidb-scheduler must have permission for nodes.
 		// optimize this when we have performance issue
-		node, err := s.kubeCli.CoreV1().Nodes().Get(nodeName, metav1.GetOptions{})
+		node, err := s.kubeCli.CoreV1().Nodes().Get(context.TODO(), nodeName, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -251,12 +251,12 @@ func (ferr FailureError) Error() string {
 }
 
 // We don't pass `prioritizeVerb` to kubernetes scheduler extender's config file, this method will not be called.
-func (s *scheduler) Priority(args *schedulerapiv1.ExtenderArgs) (schedulerapiv1.HostPriorityList, error) {
-	result := schedulerapiv1.HostPriorityList{}
+func (s *scheduler) Priority(args *schedulerapi.ExtenderArgs) (schedulerapi.HostPriorityList, error) {
+	result := schedulerapi.HostPriorityList{}
 
 	if args.Nodes != nil {
 		for _, node := range args.Nodes.Items {
-			result = append(result, schedulerapiv1.HostPriority{
+			result = append(result, schedulerapi.HostPriority{
 				Host:  node.Name,
 				Score: 0,
 			})

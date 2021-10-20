@@ -153,12 +153,12 @@ var _ = ginkgo.Describe("DMCluster", func() {
 				RunAsGroup: &groupID,
 				FSGroup:    &groupID,
 			}
-			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(dc)
+			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(context.TODO(), dc, metav1.CreateOptions{})
 			framework.ExpectNoError(err, "failed to create DmCluster: %q", dcName)
 			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
 
 			ginkgo.By("Check security context for DmCluster")
-			podList, err := c.CoreV1().Pods(ns).List(metav1.ListOptions{})
+			podList, err := c.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
 			framework.ExpectNoError(err, "failed to list pods for DmCluster %q", dcName)
 			for _, pod := range podList.Items {
 				framework.ExpectNotEqual(pod.Spec.SecurityContext, nil, "security context should not be nil")
@@ -168,11 +168,11 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			}
 
 			ginkgo.By("Deploy TidbMonitor for DM")
-			tc, err := cli.PingcapV1alpha1().TidbClusters(tests.DMTiDBNamespace).Get(tests.DMTiDBName, metav1.GetOptions{})
+			tc, err := cli.PingcapV1alpha1().TidbClusters(tests.DMTiDBNamespace).Get(context.TODO(), tests.DMTiDBName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "failed to get TidbCluster for DM E2E tests")
 			tm := fixture.NewTidbMonitor("monitor-dm-test", ns, tc, true, true, false)
 			fixture.UpdateTidbMonitorForDM(tm, dc)
-			_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(tm)
+			_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(context.TODO(), tm, metav1.CreateOptions{})
 			framework.ExpectNoError(err, "failed to deploy TidbMonitor for DmCluster %q", dcName)
 			framework.ExpectNoError(tests.CheckTidbMonitor(tm, cli, c, fw), "failed to check TidbMonitor for DmCluster %q", dcName)
 
@@ -206,7 +206,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			checkCustomLabelAndAnn(dc, c)
 
 			ginkgo.By("Delete the dc")
-			framework.ExpectNoError(cli.PingcapV1alpha1().DMClusters(dc.Namespace).Delete(dcName, &metav1.DeleteOptions{}), "failed to delete dc %q", dcName)
+			framework.ExpectNoError(cli.PingcapV1alpha1().DMClusters(dc.Namespace).Delete(context.TODO(), dcName, metav1.DeleteOptions{}), "failed to delete dc %q", dcName)
 
 			ginkgo.By("Wait for DmCluster to be deleted")
 			framework.ExpectNoError(oa.WaitForDmClusterDeleted(ns, dcName, 5*time.Minute, 10*time.Second), "failed to wait for DmCluster %q to be deleted", dcName)
@@ -218,7 +218,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2)
 			dc.Spec.Master.Replicas = 3
 			dc.Spec.Worker.Replicas = 1
-			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(dc)
+			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(context.TODO(), dc, metav1.CreateOptions{})
 			framework.ExpectNoError(err, "failed to create DmCluster: %q", dcName)
 			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
 
@@ -259,7 +259,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2)
 			dc.Spec.Master.Replicas = 5
 			dc.Spec.Worker.Replicas = 2
-			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(dc)
+			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(context.TODO(), dc, metav1.CreateOptions{})
 			framework.ExpectNoError(err, "failed to create DmCluster: %q", dcName)
 			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
 
@@ -297,7 +297,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2)
 			dc.Spec.Master.Replicas = 3
 			dc.Spec.Worker.Replicas = 1
-			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(dc)
+			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(context.TODO(), dc, metav1.CreateOptions{})
 			framework.ExpectNoError(err, "failed to create DmCluster: %q", dcName)
 			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
 
@@ -315,13 +315,13 @@ var _ = ginkgo.Describe("DMCluster", func() {
 
 			ginkgo.By("Restart DM-master pods one by one")
 			for i := int32(0); i < dc.Spec.Master.Replicas; i++ {
-				framework.ExpectNoError(c.CoreV1().Pods(ns).Delete(fmt.Sprintf("%s-%d", controller.DMMasterMemberName(dcName), i), &metav1.DeleteOptions{}), "failed to delete DM-master pod %d for DmCluster %q", i, dcName)
+				framework.ExpectNoError(c.CoreV1().Pods(ns).Delete(context.TODO(), fmt.Sprintf("%s-%d", controller.DMMasterMemberName(dcName), i), metav1.DeleteOptions{}), "failed to delete DM-master pod %d for DmCluster %q", i, dcName)
 				<-time.After(time.Minute) // wait the previous pod to be deleted
 				framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 5*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
 			}
 
 			ginkgo.By("Restart the DM-worker pod")
-			framework.ExpectNoError(c.CoreV1().Pods(ns).Delete(fmt.Sprintf("%s-0", controller.DMWorkerMemberName(dcName)), &metav1.DeleteOptions{}), "failed to delete the DM-worker pod for DmCluster %q", dcName)
+			framework.ExpectNoError(c.CoreV1().Pods(ns).Delete(context.TODO(), fmt.Sprintf("%s-0", controller.DMWorkerMemberName(dcName)), metav1.DeleteOptions{}), "failed to delete the DM-worker pod for DmCluster %q", dcName)
 			<-time.After(time.Minute) // wait the previous pod to be deleted
 			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 5*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
 
@@ -338,7 +338,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2)
 			dc.Spec.Master.Replicas = 1
 			dc.Spec.Worker.Replicas = 1
-			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(dc)
+			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(context.TODO(), dc, metav1.CreateOptions{})
 			framework.ExpectNoError(err, "failed to create DmCluster: %q", dcName)
 			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
 
@@ -358,7 +358,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			cfg = strings.ReplaceAll(cfg, "enable-gtid: true", "enable-gtid: false")
 			filename := "/tmp/change-config-dmctl-source.yaml"
 			framework.ExpectNoError(ioutil.WriteFile(filename, []byte(cfg), 0o644), "failed to write updated source config file")
-			_, err = framework.RunKubectl("cp", filename, fmt.Sprintf("%s/%s:%s", ns, podName, filename))
+			_, err = framework.RunKubectl(ns, "cp", filename, fmt.Sprintf("%s/%s:%s", ns, podName, filename))
 			framework.ExpectNoError(err, "failed to copy source file into dm-master pod")
 
 			// directly update source config is not supported in DM now, so we choose to stop & re-create again.
@@ -394,7 +394,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			framework.ExpectNoError(tests.DeployDMMySQLWithTLSEnabled(c, ns, mysqlSecretName), "failed to deploy MySQL server with TLS enabled")
 
 			ginkgo.By("Get MySQL TLS secret")
-			mysqlSecret, err := c.CoreV1().Secrets(ns).Get(mysqlSecretName, metav1.GetOptions{})
+			mysqlSecret, err := c.CoreV1().Secrets(ns).Get(context.TODO(), mysqlSecretName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "failed to get MySQL TLS secret")
 
 			ginkgo.By("Check MySQL with TLS enabled ready")
@@ -423,14 +423,14 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			dc.Spec.Worker.Replicas = 1
 			dc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
 			dc.Spec.TLSClientSecretNames = []string{mysqlSecretName, tidbClientSecretName}
-			_, err = cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(dc)
+			_, err = cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(context.TODO(), dc, metav1.CreateOptions{})
 			framework.ExpectNoError(err, "failed to create DmCluster: %q", dcName)
 			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
 
 			ginkgo.By("Deploy TidbMonitor for DM")
 			tm := fixture.NewTidbMonitor("monitor-dm-test", ns, tc, true, true, false)
 			fixture.UpdateTidbMonitorForDM(tm, dc)
-			_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(tm)
+			_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(context.TODO(), tm, metav1.CreateOptions{})
 			framework.ExpectNoError(err, "failed to deploy TidbMonitor for DmCluster %q", dcName)
 			framework.ExpectNoError(tests.CheckTidbMonitor(tm, cli, c, fw), "failed to check TidbMonitor for DmCluster %q", dcName)
 
@@ -445,7 +445,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			sourceCfg = strings.ReplaceAll(sourceCfg, "dm-mysql-0.dm-mysql.dm-mysql", "dm-mysql-0.dm-mysql")
 			filename := "/tmp/dm-with-tls-source.yaml"
 			framework.ExpectNoError(ioutil.WriteFile(filename, []byte(sourceCfg), 0o644), "failed to write source config file")
-			_, err = framework.RunKubectl("cp", filename, fmt.Sprintf("%s/%s:%s", ns, podName, filename))
+			_, err = framework.RunKubectl(ns, "cp", filename, fmt.Sprintf("%s/%s:%s", ns, podName, filename))
 			framework.ExpectNoError(err, "failed to copy source file into dm-master pod")
 			_, err = framework.RunHostCmd(ns, podName,
 				fmt.Sprintf("/dmctl --master-addr=127.0.0.1:8261 --ssl-ca=%s --ssl-cert=%s --ssl-key=%s operate-source create %s",
@@ -473,7 +473,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			taskCfg = fmt.Sprintf(taskCfg, ns, ns)
 			filename = "/tmp/dm-with-tls-task.yaml"
 			framework.ExpectNoError(ioutil.WriteFile(filename, []byte(taskCfg), 0o644), "failed to write task config file")
-			_, err = framework.RunKubectl("cp", filename, fmt.Sprintf("%s/%s:%s", ns, podName, filename))
+			_, err = framework.RunKubectl(ns, "cp", filename, fmt.Sprintf("%s/%s:%s", ns, podName, filename))
 			framework.ExpectNoError(err, "failed to copy task file into dm-master pod")
 			_, err = framework.RunHostCmd(ns, podName,
 				fmt.Sprintf("/dmctl --master-addr=127.0.0.1:8261 --ssl-ca=%s --ssl-cert=%s --ssl-key=%s start-task %s",
@@ -484,7 +484,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			framework.ExpectNoError(err, "failed to start single source task for DmCluster %q", dcName)
 
 			ginkgo.By("Get TiDB client TLS secret")
-			tidbClientSecret, err := c.CoreV1().Secrets(ns).Get(tidbClientSecretName, metav1.GetOptions{})
+			tidbClientSecret, err := c.CoreV1().Secrets(ns).Get(context.TODO(), tidbClientSecretName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "failed to get TiDB client TLS secret")
 
 			ginkgo.By("Check data for full stage")
@@ -503,7 +503,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2)
 			dc.Spec.Master.Replicas = 3
 			dc.Spec.Worker.Replicas = 2
-			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(dc)
+			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(context.TODO(), dc, metav1.CreateOptions{})
 			framework.ExpectNoError(err, "failed to create DmCluster: %q", dcName)
 			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
 
@@ -559,10 +559,10 @@ var _ = ginkgo.Describe("DMCluster", func() {
 				}
 			}
 			for _, podName := range podNames {
-				pod, err := c.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+				pod, err := c.CoreV1().Pods(ns).Get(context.TODO(), podName, metav1.GetOptions{})
 				framework.ExpectNoError(err, "failed to get pod %q for DmCluster %q", podName, dcName)
 				log.Logf("kill pod %s", podName)
-				framework.ExpectNoError(c.CoreV1().Pods(ns).Delete(podName, &metav1.DeleteOptions{}), "failed to kill pod %q", podName)
+				framework.ExpectNoError(c.CoreV1().Pods(ns).Delete(context.TODO(), podName, metav1.DeleteOptions{}), "failed to kill pod %q", podName)
 				framework.ExpectNoError(utilpod.WaitForPodsAreChanged(c, []corev1.Pod{*pod}, 3*time.Minute))
 
 				err = wait.Poll(10*time.Second, 3*time.Minute, func() (done bool, err error) {
@@ -585,7 +585,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			dc.Spec.Master.Replicas = 3
 			dc.Spec.Worker.Replicas = 1
 			dc.Spec.Worker.RecoverFailover = false
-			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(dc)
+			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(context.TODO(), dc, metav1.CreateOptions{})
 			framework.ExpectNoError(err, "failed to create DmCluster: %q", dcName)
 			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
 
@@ -605,11 +605,11 @@ var _ = ginkgo.Describe("DMCluster", func() {
 }
 `
 			ginkgo.By(fmt.Sprintf("Inject failure for %s", masterPodName))
-			_, err = c.CoreV1().Pods(ns).Patch(masterPodName, types.StrategicMergePatchType, []byte(fmt.Sprintf(patch, "dm-master")))
+			_, err = c.CoreV1().Pods(ns).Patch(context.TODO(), masterPodName, types.StrategicMergePatchType, []byte(fmt.Sprintf(patch, "dm-master")), metav1.PatchOptions{})
 			framework.ExpectNoError(err, "failed to patch pod %q with invalid image for DmCluster %q", masterPodName, dcName)
 
 			ginkgo.By(fmt.Sprintf("Inject failure for %s", workerPodName))
-			_, err = c.CoreV1().Pods(ns).Patch(workerPodName, types.StrategicMergePatchType, []byte(fmt.Sprintf(patch, "dm-worker")))
+			_, err = c.CoreV1().Pods(ns).Patch(context.TODO(), workerPodName, types.StrategicMergePatchType, []byte(fmt.Sprintf(patch, "dm-worker")), metav1.PatchOptions{})
 			framework.ExpectNoError(err, "failed to patch pod %q with invalid image for DmCluster %q", workerPodName, dcName)
 
 			ginkgo.By(fmt.Sprintf("Wait for %s become unhealthy", masterPodName))
@@ -698,7 +698,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			framework.ExpectNoError(err, "failed to wait for new dm-worker member to be created for DmCluster %q", dcName)
 
 			ginkgo.By("Kill the old dm-worker pod")
-			framework.ExpectNoError(c.CoreV1().Pods(ns).Delete(workerPodName, &metav1.DeleteOptions{}), "failed to delete the pod %q for DmCluster", workerPodName, dcName)
+			framework.ExpectNoError(c.CoreV1().Pods(ns).Delete(context.TODO(), workerPodName, metav1.DeleteOptions{}), "failed to delete the pod %q for DmCluster", workerPodName, dcName)
 
 			ginkgo.By("Wait for none of dm-worker members will be deleted")
 			err = wait.PollImmediate(20*time.Second, 2*time.Minute, func() (bool, error) {
@@ -744,11 +744,11 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2Prev)
 			dc.Spec.Master.Replicas = 1
 			dc.Spec.Worker.Replicas = 1
-			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(dc)
+			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(context.TODO(), dc, metav1.CreateOptions{})
 			framework.ExpectNoError(err, "failed to create DmCluster: %q", dcName)
 			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
 
-			podListPrev, err := c.CoreV1().Pods(ns).List(metav1.ListOptions{})
+			podListPrev, err := c.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
 			framework.ExpectNoError(err, "failed to list pods in ns %s", ns)
 
 			ginkgo.By("Create MySQL sources")
@@ -765,11 +765,11 @@ var _ = ginkgo.Describe("DMCluster", func() {
 
 			checkImage := func(image string) {
 				masterStsName := controller.DMMasterMemberName(dcName)
-				masterSts, err := stsGetter.StatefulSets(ns).Get(masterStsName, metav1.GetOptions{})
+				masterSts, err := stsGetter.StatefulSets(ns).Get(context.TODO(), masterStsName, metav1.GetOptions{})
 				framework.ExpectNoError(err, "failed to get sts for %s/%s", ns, masterStsName)
 				framework.ExpectEqual(masterSts.Spec.Template.Spec.Containers[0].Image, image, "master sts image should be %q", image)
 				workerStsName := controller.DMWorkerMemberName(dcName)
-				workerSts, err := stsGetter.StatefulSets(ns).Get(workerStsName, metav1.GetOptions{})
+				workerSts, err := stsGetter.StatefulSets(ns).Get(context.TODO(), workerStsName, metav1.GetOptions{})
 				framework.ExpectNoError(err, "failed to get sts for %s/%s", ns, workerStsName)
 				framework.ExpectEqual(workerSts.Spec.Template.Spec.Containers[0].Image, image, "worker sts image should be %q", image)
 			}
@@ -821,11 +821,11 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			ginkgo.By("List pods after upgraded")
 			workerSelector, err := label.NewDM().Instance(dc.GetInstanceName()).DMWorker().Selector()
 			framework.ExpectNoError(err, "failed to generate selector for dm-worker")
-			workerPods, err := c.CoreV1().Pods(ns).List(metav1.ListOptions{LabelSelector: workerSelector.String()})
+			workerPods, err := c.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{LabelSelector: workerSelector.String()})
 			framework.ExpectNoError(err, "failed to list pods for dm-worker")
 			masterSelector, err := label.NewDM().Instance(dc.GetInstanceName()).DMMaster().Selector()
 			framework.ExpectNoError(err, "failed to generate selector for dm-master")
-			masterPods, err := c.CoreV1().Pods(ns).List(metav1.ListOptions{LabelSelector: masterSelector.String()})
+			masterPods, err := c.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{LabelSelector: masterSelector.String()})
 			framework.ExpectNoError(err, "failed to list pods for dm-master")
 
 			ginkgo.By("Downgrade dm-worker members")
@@ -864,7 +864,7 @@ func checkCustomLabelAndAnn(dc *v1alpha1.DMCluster, c clientset.Interface) {
 	listOptions := metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(label.NewDM().Instance(fmt.Sprintf("%s-dm", dc.GetInstanceName())).Discovery().Labels()).String(),
 	}
-	list, err := c.CoreV1().Pods(dc.Namespace).List(listOptions)
+	list, err := c.CoreV1().Pods(dc.Namespace).List(context.TODO(), listOptions)
 	framework.ExpectNoError(err)
 	framework.ExpectNotEqual(len(list.Items), 0, "expect discovery exists")
 	for _, pod := range list.Items {
@@ -877,7 +877,7 @@ func checkCustomLabelAndAnn(dc *v1alpha1.DMCluster, c clientset.Interface) {
 	listOptions = metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(label.NewDM().Instance(dc.Name).Component(label.DMMasterLabelVal).Labels()).String(),
 	}
-	list, err = c.CoreV1().Pods(dc.Namespace).List(listOptions)
+	list, err = c.CoreV1().Pods(dc.Namespace).List(context.TODO(), listOptions)
 	framework.ExpectNoError(err)
 	framework.ExpectNotEqual(len(list.Items), 0, "expect dm-master pod exists")
 	for _, pod := range list.Items {
@@ -895,7 +895,7 @@ func checkCustomLabelAndAnn(dc *v1alpha1.DMCluster, c clientset.Interface) {
 	}
 
 	// check service
-	svcList, err := c.CoreV1().Services(dc.Namespace).List(listOptions)
+	svcList, err := c.CoreV1().Services(dc.Namespace).List(context.TODO(), listOptions)
 	framework.ExpectNoError(err)
 	framework.ExpectNotEqual(len(svcList.Items), 0, "expect dm-master svc exists")
 	for _, svc := range svcList.Items {
@@ -914,7 +914,7 @@ func checkCustomLabelAndAnn(dc *v1alpha1.DMCluster, c clientset.Interface) {
 	listOptions = metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(label.NewDM().Instance(dc.Name).Component(label.DMWorkerLabelVal).Labels()).String(),
 	}
-	list, err = c.CoreV1().Pods(dc.Namespace).List(listOptions)
+	list, err = c.CoreV1().Pods(dc.Namespace).List(context.TODO(), listOptions)
 	framework.ExpectNoError(err)
 	framework.ExpectNotEqual(len(list.Items), 0, "expect dm-worker pod exists")
 	for _, pod := range list.Items {

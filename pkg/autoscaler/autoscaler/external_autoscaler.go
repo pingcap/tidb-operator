@@ -14,10 +14,12 @@
 package autoscaler
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 )
 
@@ -75,7 +77,7 @@ func (am *autoScalerManager) createExternalAutoCluster(tc *v1alpha1.TidbCluster,
 		autoTc.Spec.TiKV.Config.Set("server.labels."+specialUseLabelKey, specialUseHotRegion)
 	}
 
-	_, err := am.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(autoTc)
+	_, err := am.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), autoTc, metav1.CreateOptions{})
 	if err != nil {
 		klog.Errorf("tac[%s/%s] failed to create external tc[%s/%s], err: %v", tac.Namespace, tac.Name, tc.Namespace, externalTcName, err)
 		return err

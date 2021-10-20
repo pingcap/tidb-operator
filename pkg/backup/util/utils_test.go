@@ -14,6 +14,7 @@
 package util
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -21,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 )
 
@@ -204,7 +206,7 @@ func TestGenerateStorageCertEnv(t *testing.T) {
 		s := &corev1.Secret{}
 		s.Namespace = ns
 		s.Name = secretName
-		_, err = client.CoreV1().Secrets(ns).Create(s)
+		_, err = client.CoreV1().Secrets(ns).Create(context.TODO(), s, metav1.CreateOptions{})
 		g.Expect(err).Should(BeNil())
 		_, _, err = GenerateStorageCertEnv(ns, false, test.provider, client)
 		if test.provider.Gcs != nil && test.provider.Gcs.SecretName == "" {
@@ -219,7 +221,7 @@ func TestGenerateStorageCertEnv(t *testing.T) {
 			constants.S3AccessKey:       []byte("dummy"),
 			constants.S3SecretKey:       []byte("dummy"),
 		}
-		_, err = client.CoreV1().Secrets(ns).Update(s)
+		_, err = client.CoreV1().Secrets(ns).Update(context.TODO(), s, metav1.UpdateOptions{})
 		g.Expect(err).Should(BeNil())
 		_, _, err = GenerateStorageCertEnv(ns, false, test.provider, client)
 		g.Expect(err).Should(BeNil())
@@ -241,7 +243,7 @@ func TestGenerateTidbPasswordEnv(t *testing.T) {
 	s := &corev1.Secret{}
 	s.Namespace = ns
 	s.Name = secretName
-	_, err = client.CoreV1().Secrets(ns).Create(s)
+	_, err = client.CoreV1().Secrets(ns).Create(context.TODO(), s, metav1.CreateOptions{})
 	g.Expect(err).Should(BeNil())
 	_, _, err = GenerateTidbPasswordEnv(ns, tcName, secretName, false, client)
 	g.Expect(err.Error()).Should(MatchRegexp(".*missing password key.*"))
@@ -250,7 +252,7 @@ func TestGenerateTidbPasswordEnv(t *testing.T) {
 	s.Data = map[string][]byte{
 		constants.TidbPasswordKey: []byte("dummy"),
 	}
-	_, err = client.CoreV1().Secrets(ns).Update(s)
+	_, err = client.CoreV1().Secrets(ns).Update(context.TODO(), s, metav1.UpdateOptions{})
 	g.Expect(err).Should(BeNil())
 	envs, _, err := GenerateTidbPasswordEnv(ns, tcName, secretName, false, client)
 	g.Expect(err).Should(BeNil())

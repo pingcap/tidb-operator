@@ -14,6 +14,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -71,7 +72,7 @@ func (u *realRestoreConditionUpdater) Update(restore *v1alpha1.Restore, conditio
 		updateRestoreStatus(&restore.Status, newStatus)
 		isUpdate = v1alpha1.UpdateRestoreCondition(&restore.Status, condition)
 		if isUpdate {
-			_, updateErr := u.cli.PingcapV1alpha1().Restores(ns).Update(restore)
+			_, updateErr := u.cli.PingcapV1alpha1().Restores(ns).Update(context.TODO(), restore, metav1.UpdateOptions{})
 			if updateErr == nil {
 				klog.Infof("Restore: [%s/%s] updated successfully", ns, restoreName)
 				return nil

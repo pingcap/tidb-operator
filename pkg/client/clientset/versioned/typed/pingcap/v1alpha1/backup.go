@@ -16,6 +16,7 @@
 package v1alpha1
 
 import (
+	"context"
 	"time"
 
 	v1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -34,15 +35,15 @@ type BackupsGetter interface {
 
 // BackupInterface has methods to work with Backup resources.
 type BackupInterface interface {
-	Create(*v1alpha1.Backup) (*v1alpha1.Backup, error)
-	Update(*v1alpha1.Backup) (*v1alpha1.Backup, error)
-	UpdateStatus(*v1alpha1.Backup) (*v1alpha1.Backup, error)
-	Delete(name string, options *v1.DeleteOptions) error
-	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
-	Get(name string, options v1.GetOptions) (*v1alpha1.Backup, error)
-	List(opts v1.ListOptions) (*v1alpha1.BackupList, error)
-	Watch(opts v1.ListOptions) (watch.Interface, error)
-	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.Backup, err error)
+	Create(ctx context.Context, backup *v1alpha1.Backup, opts v1.CreateOptions) (*v1alpha1.Backup, error)
+	Update(ctx context.Context, backup *v1alpha1.Backup, opts v1.UpdateOptions) (*v1alpha1.Backup, error)
+	UpdateStatus(ctx context.Context, backup *v1alpha1.Backup, opts v1.UpdateOptions) (*v1alpha1.Backup, error)
+	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
+	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.Backup, error)
+	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.BackupList, error)
+	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.Backup, err error)
 	BackupExpansion
 }
 
@@ -61,20 +62,20 @@ func newBackups(c *PingcapV1alpha1Client, namespace string) *backups {
 }
 
 // Get takes name of the backup, and returns the corresponding backup object, and an error if there is any.
-func (c *backups) Get(name string, options v1.GetOptions) (result *v1alpha1.Backup, err error) {
+func (c *backups) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.Backup, err error) {
 	result = &v1alpha1.Backup{}
 	err = c.client.Get().
 		Namespace(c.ns).
 		Resource("backups").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // List takes label and field selectors, and returns the list of Backups that match those selectors.
-func (c *backups) List(opts v1.ListOptions) (result *v1alpha1.BackupList, err error) {
+func (c *backups) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.BackupList, err error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -85,13 +86,13 @@ func (c *backups) List(opts v1.ListOptions) (result *v1alpha1.BackupList, err er
 		Resource("backups").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Watch returns a watch.Interface that watches the requested backups.
-func (c *backups) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *backups) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -102,87 +103,90 @@ func (c *backups) Watch(opts v1.ListOptions) (watch.Interface, error) {
 		Resource("backups").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Watch()
+		Watch(ctx)
 }
 
 // Create takes the representation of a backup and creates it.  Returns the server's representation of the backup, and an error, if there is any.
-func (c *backups) Create(backup *v1alpha1.Backup) (result *v1alpha1.Backup, err error) {
+func (c *backups) Create(ctx context.Context, backup *v1alpha1.Backup, opts v1.CreateOptions) (result *v1alpha1.Backup, err error) {
 	result = &v1alpha1.Backup{}
 	err = c.client.Post().
 		Namespace(c.ns).
 		Resource("backups").
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(backup).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Update takes the representation of a backup and updates it. Returns the server's representation of the backup, and an error, if there is any.
-func (c *backups) Update(backup *v1alpha1.Backup) (result *v1alpha1.Backup, err error) {
+func (c *backups) Update(ctx context.Context, backup *v1alpha1.Backup, opts v1.UpdateOptions) (result *v1alpha1.Backup, err error) {
 	result = &v1alpha1.Backup{}
 	err = c.client.Put().
 		Namespace(c.ns).
 		Resource("backups").
 		Name(backup.Name).
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(backup).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-
-func (c *backups) UpdateStatus(backup *v1alpha1.Backup) (result *v1alpha1.Backup, err error) {
+func (c *backups) UpdateStatus(ctx context.Context, backup *v1alpha1.Backup, opts v1.UpdateOptions) (result *v1alpha1.Backup, err error) {
 	result = &v1alpha1.Backup{}
 	err = c.client.Put().
 		Namespace(c.ns).
 		Resource("backups").
 		Name(backup.Name).
 		SubResource("status").
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(backup).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Delete takes name of the backup and deletes it. Returns an error if one occurs.
-func (c *backups) Delete(name string, options *v1.DeleteOptions) error {
+func (c *backups) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	return c.client.Delete().
 		Namespace(c.ns).
 		Resource("backups").
 		Name(name).
-		Body(options).
-		Do().
+		Body(&opts).
+		Do(ctx).
 		Error()
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *backups) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
+func (c *backups) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
 	var timeout time.Duration
-	if listOptions.TimeoutSeconds != nil {
-		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
+	if listOpts.TimeoutSeconds != nil {
+		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
 		Namespace(c.ns).
 		Resource("backups").
-		VersionedParams(&listOptions, scheme.ParameterCodec).
+		VersionedParams(&listOpts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Body(options).
-		Do().
+		Body(&opts).
+		Do(ctx).
 		Error()
 }
 
 // Patch applies the patch and returns the patched backup.
-func (c *backups) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.Backup, err error) {
+func (c *backups) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.Backup, err error) {
 	result = &v1alpha1.Backup{}
 	err = c.client.Patch(pt).
 		Namespace(c.ns).
 		Resource("backups").
-		SubResource(subresources...).
 		Name(name).
+		SubResource(subresources...).
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(data).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }

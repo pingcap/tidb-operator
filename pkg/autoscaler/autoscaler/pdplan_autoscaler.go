@@ -14,12 +14,14 @@
 package autoscaler
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
@@ -224,7 +226,7 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 			}
 		}
 
-		_, err = am.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(autoTc)
+		_, err = am.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), autoTc, metav1.CreateOptions{})
 		if err != nil {
 			klog.Errorf("tac[%s/%s] failed to create autoscaling tc for group %s, err: %v", tac.Namespace, tac.Name, group, err)
 			errs = append(errs, err)

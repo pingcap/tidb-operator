@@ -4,10 +4,10 @@
 apiVersion: pingcap.com/v1alpha1
 kind: TidbCluster
 metadata:
-  name: heterogeneous
+  name: basic-heterogeneous
 spec:
   configUpdateStrategy: RollingUpdate
-  version: v5.1.1
+  version: v5.2.0
   timezone: UTC
   pvReclaimPolicy: Retain
   enableDynamicConfiguration: true

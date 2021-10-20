@@ -232,9 +232,9 @@ func setTiFlashCommonConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, r
 func setTiFlashFlashConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, ref *v1alpha1.TidbClusterRef, clusterName, ns, clusterDomain string, noLocalTiDB bool) {
 	var tidbStatusAddr string
 	if noLocalTiDB {
-		tidbStatusAddr = fmt.Sprintf("%s.%s.svc%s:10080", controller.TiDBPeerMemberName(ref.Name), ref.Namespace, controller.FormatClusterDomain(ref.ClusterDomain))
+		tidbStatusAddr = fmt.Sprintf("%s.%s.svc%s:10080", controller.TiDBMemberName(ref.Name), ref.Namespace, controller.FormatClusterDomain(ref.ClusterDomain))
 	} else {
-		tidbStatusAddr = fmt.Sprintf("%s.%s.svc:10080", controller.TiDBPeerMemberName(clusterName), ns)
+		tidbStatusAddr = fmt.Sprintf("%s.%s.svc:10080", controller.TiDBMemberName(clusterName), ns)
 	}
 
 	config.SetIfNil("flash.tidb_status_addr", tidbStatusAddr)

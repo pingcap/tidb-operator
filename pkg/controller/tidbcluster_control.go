@@ -14,12 +14,14 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	tcinformers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
@@ -62,7 +64,7 @@ func (c *realTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, new
 	// don't wait due to limited number of clients, but backoff after the default number of steps
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		var updateErr error
-		updateTC, updateErr = c.cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
+		updateTC, updateErr = c.cli.PingcapV1alpha1().TidbClusters(ns).Update(context.TODO(), tc, metav1.UpdateOptions{})
 		if updateErr == nil {
 			klog.Infof("TidbCluster: [%s/%s] updated successfully", ns, tcName)
 			return nil
@@ -92,7 +94,7 @@ func (c *realTidbClusterControl) Create(*v1alpha1.TidbCluster) error {
 func (c *realTidbClusterControl) Patch(tc *v1alpha1.TidbCluster, data []byte, subresources ...string) (result *v1alpha1.TidbCluster, err error) {
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		var patchErr error
-		_, patchErr = c.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Patch(tc.Name, types.MergePatchType, data)
+		_, patchErr = c.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Patch(context.TODO(), tc.Name, types.MergePatchType, data, metav1.PatchOptions{})
 		return patchErr
 	})
 	if err != nil {

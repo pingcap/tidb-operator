@@ -14,6 +14,7 @@
 package info
 
 import (
+	"context"
 	"fmt"
 	"io"
 
@@ -128,16 +129,16 @@ func (o *InfoOptions) Run() error {
 
 	tc, err := o.TcCli.PingcapV1alpha1().
 		TidbClusters(o.Namespace).
-		Get(o.TidbClusterName, metav1.GetOptions{})
+		Get(context.TODO(), o.TidbClusterName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 	svcName := util.GetTidbServiceName(tc.Name)
-	svc, err := o.KubeCli.CoreV1().Services(o.Namespace).Get(svcName, metav1.GetOptions{})
+	svc, err := o.KubeCli.CoreV1().Services(o.Namespace).Get(context.TODO(), svcName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
-	podList, err := o.KubeCli.CoreV1().Pods(o.Namespace).List(metav1.ListOptions{
+	podList, err := o.KubeCli.CoreV1().Pods(o.Namespace).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s,%s=%s", label.InstanceLabelKey, tc.Name, label.ComponentLabelKey, "tidb"),
 	})
 	if err != nil {

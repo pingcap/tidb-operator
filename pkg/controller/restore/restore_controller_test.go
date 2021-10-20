@@ -59,7 +59,7 @@ func TestRestoreControllerUpdateRestore(t *testing.T) {
 				Phase: corev1.PodFailed,
 			},
 		}
-		_, err := rtc.deps.KubeClientset.CoreV1().Pods(restore.Namespace).Create(pod)
+		_, err := rtc.deps.KubeClientset.CoreV1().Pods(restore.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
 		g.Expect(err).To(Succeed())
 		rtc.deps.KubeInformerFactory.Start(context.TODO().Done())
 		cache.WaitForCacheSync(context.TODO().Done(), rtc.deps.KubeInformerFactory.Core().V1().Pods().Informer().HasSynced)

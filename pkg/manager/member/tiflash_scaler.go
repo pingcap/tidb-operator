@@ -44,7 +44,7 @@ func (s *tiflashScaler) Scale(meta metav1.Object, oldSet *apps.StatefulSet, newS
 		return s.ScaleIn(meta, oldSet, newSet)
 	}
 	// we only sync auto scaler annotations when we are finishing syncing scaling
-	return s.SyncAutoScalerAnn(meta, oldSet)
+	return nil
 }
 
 func (s *tiflashScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
@@ -159,11 +159,6 @@ func (s *tiflashScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, ne
 	return fmt.Errorf("tiflash %s/%s no store found in cluster", ns, podName)
 }
 
-// SyncAutoScalerAnn reclaims the auto-scaling-out slots if the target pods no longer exist
-func (s *tiflashScaler) SyncAutoScalerAnn(meta metav1.Object, actual *apps.StatefulSet) error {
-	return nil
-}
-
 type fakeTiFlashScaler struct{}
 
 // NewFakeTiFlashScaler returns a fake tiflash Scaler
@@ -187,9 +182,5 @@ func (s *fakeTiFlashScaler) ScaleOut(_ metav1.Object, oldSet *apps.StatefulSet, 
 
 func (s *fakeTiFlashScaler) ScaleIn(_ metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	setReplicasAndDeleteSlots(newSet, *oldSet.Spec.Replicas-1, nil)
-	return nil
-}
-
-func (s *fakeTiFlashScaler) SyncAutoScalerAnn(meta metav1.Object, actual *apps.StatefulSet) error {
 	return nil
 }

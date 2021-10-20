@@ -7,7 +7,7 @@ spec:
   - name: basic
   prometheus:
     baseImage: prom/prometheus
-    version: v2.18.1
+    version: v2.27.1
     remoteWrite:
       - url: "http://localhost:1234"
         writeRelabelConfigs:
@@ -19,10 +19,10 @@ spec:
             action: replace
   grafana:
     baseImage: grafana/grafana
-    version: 7.5.7
+    version: 7.5.11
   initializer:
     baseImage: registry.cn-beijing.aliyuncs.com/tidb/tidb-monitor-initializer
-    version: v5.1.1
+    version: v5.2.0
   reloader:
     baseImage: registry.cn-beijing.aliyuncs.com/tidb/tidb-monitor-reloader
     version: v1.0.1

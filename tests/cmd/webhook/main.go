@@ -51,32 +51,32 @@ func main() {
 
 	kubeConfig, err := clientcmd.BuildConfigFromFlags("", optKubeconfig)
 	if err != nil {
-		log.Fail(err.Error())
+		log.Failf(err.Error())
 	}
 
 	kubeCli, err := kubernetes.NewForConfig(kubeConfig)
 	if err != nil {
-		log.Fail(err.Error())
+		log.Failf(err.Error())
 	}
 
 	versionedCli, err := versioned.NewForConfig(kubeConfig)
 	if err != nil {
-		log.Fail(err.Error())
+		log.Failf(err.Error())
 	}
 
 	certBytes, err := ioutil.ReadFile(optCert)
 	if err != nil {
-		log.Fail(err.Error())
+		log.Failf(err.Error())
 	}
 
 	keyBytes, err := ioutil.ReadFile(optKey)
 	if err != nil {
-		log.Fail(err.Error())
+		log.Failf(err.Error())
 	}
 
 	cert, err := tls.X509KeyPair(certBytes, keyBytes)
 	if err != nil {
-		log.Fail(err.Error())
+		log.Failf(err.Error())
 	}
 
 	wh := webhook.NewWebhook(kubeCli, versionedCli, optWatchNamespaces)
@@ -89,6 +89,6 @@ func main() {
 	}
 	healthz.InstallHandler(http.DefaultServeMux)
 	if err := server.ListenAndServeTLS("", ""); err != nil {
-		log.Fail(err.Error())
+		log.Failf(err.Error())
 	}
 }

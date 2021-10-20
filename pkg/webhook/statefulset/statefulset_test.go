@@ -15,6 +15,7 @@ package statefulset
 
 import (
 	"bytes"
+	"context"
 	"reflect"
 	"testing"
 
@@ -260,7 +261,7 @@ func runTest(t *testing.T, tt testcase, asts bool) {
 		}
 	}
 	if tt.tc != nil {
-		cli.PingcapV1alpha1().TidbClusters(tt.tc.Namespace).Create(tt.tc)
+		cli.PingcapV1alpha1().TidbClusters(tt.tc.Namespace).Create(context.TODO(), tt.tc, metav1.CreateOptions{})
 	}
 	resp := ac.Validate(ar)
 	if resp.Allowed != tt.wantAllowed {

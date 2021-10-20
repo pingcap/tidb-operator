@@ -14,6 +14,7 @@
 package upinfo
 
 import (
+	"context"
 	"fmt"
 	"io"
 
@@ -133,23 +134,23 @@ func (o *UpInfoOptions) Run() error {
 
 	tc, err := o.TcCli.PingcapV1alpha1().
 		TidbClusters(o.Namespace).
-		Get(o.TidbClusterName, metav1.GetOptions{})
+		Get(context.TODO(), o.TidbClusterName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 	setName := controller.TiDBMemberName(tc.Name)
-	set, err := o.KubeCli.AppsV1().StatefulSets(o.Namespace).Get(setName, metav1.GetOptions{})
+	set, err := o.KubeCli.AppsV1().StatefulSets(o.Namespace).Get(context.TODO(), setName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
-	podList, err := o.KubeCli.CoreV1().Pods(o.Namespace).List(metav1.ListOptions{
+	podList, err := o.KubeCli.CoreV1().Pods(o.Namespace).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: label.New().Instance(tc.Name).TiDB().String(),
 	})
 	if err != nil {
 		return err
 	}
 	svcName := tkctlUtil.GetTidbServiceName(tc.Name)
-	svc, err := o.KubeCli.CoreV1().Services(o.Namespace).Get(svcName, metav1.GetOptions{})
+	svc, err := o.KubeCli.CoreV1().Services(o.Namespace).Get(context.TODO(), svcName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}

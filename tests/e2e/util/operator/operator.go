@@ -14,6 +14,7 @@
 package operator
 
 import (
+	"context"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -79,7 +80,7 @@ func (k *OperatorKiller) Run(stopCh <-chan struct{}) {
 				framework.Logf("pod %s/%s is not ready or crashed before, skip deleting", pod.Namespace, pod.Name)
 				continue
 			}
-			err = k.client.CoreV1().Pods(pod.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
+			err = k.client.CoreV1().Pods(pod.Namespace).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
 			if err != nil {
 				framework.Logf("failed to delete pod %s/%s: %v", pod.Namespace, pod.Name, err)
 			} else {

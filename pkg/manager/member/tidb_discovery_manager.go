@@ -22,10 +22,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog"
 	"k8s.io/utils/pointer"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -38,7 +38,7 @@ const (
 )
 
 type TidbDiscoveryManager interface {
-	Reconcile(obj runtime.Object) error
+	Reconcile(obj client.Object) error
 }
 
 type realTidbDiscoveryManager struct {
@@ -49,7 +49,7 @@ func NewTidbDiscoveryManager(deps *controller.Dependencies) TidbDiscoveryManager
 	return &realTidbDiscoveryManager{deps: deps}
 }
 
-func (m *realTidbDiscoveryManager) Reconcile(obj runtime.Object) error {
+func (m *realTidbDiscoveryManager) Reconcile(obj client.Object) error {
 	metaObj, ok := obj.(metav1.Object)
 	if !ok {
 		return fmt.Errorf("%T is not a metav1.Object", obj)
@@ -184,7 +184,28 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 	}
 
 	meta, l := getDiscoveryMeta(obj, controller.DiscoveryMemberName)
-	podSpec.ServiceAccountName = meta.Name
+
+	envs := []corev1.EnvVar{
+		{
+			Name: "MY_POD_NAMESPACE",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.namespace",
+				},
+			},
+		},
+		{
+			Name:  "TZ",
+			Value: timezone,
+		},
+		{
+			Name:  "TC_NAME",
+			Value: obj.GetName(), // for DmCluster, we still name it as TC_NAME because only ProxyServer use it now.
+		},
+	}
+	envs = util.AppendEnv(envs, baseSpec.Env())
+	volMounts := []corev1.VolumeMount{}
+	volMounts = append(volMounts, baseSpec.AdditionalVolumeMounts()...)
 	podSpec.Containers = append(podSpec.Containers, corev1.Container{
 		Name:      "discovery",
 		Resources: controller.ContainerResource(resources),
@@ -192,25 +213,9 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 			"/usr/local/bin/tidb-discovery",
 		},
 		Image:           m.deps.CLIConfig.TiDBDiscoveryImage,
-		ImagePullPolicy: corev1.PullIfNotPresent,
-		Env: []corev1.EnvVar{
-			{
-				Name: "MY_POD_NAMESPACE",
-				ValueFrom: &corev1.EnvVarSource{
-					FieldRef: &corev1.ObjectFieldSelector{
-						FieldPath: "metadata.namespace",
-					},
-				},
-			},
-			{
-				Name:  "TZ",
-				Value: timezone,
-			},
-			{
-				Name:  "TC_NAME",
-				Value: obj.GetName(), // for DmCluster, we still name it as TC_NAME because only ProxyServer use it now.
-			},
-		},
+		ImagePullPolicy: baseSpec.ImagePullPolicy(),
+		Env:             envs,
+		VolumeMounts:    volMounts,
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          "discovery",
@@ -224,25 +229,27 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 			},
 		},
 	})
+	podSpec.Containers = append(podSpec.Containers, baseSpec.AdditionalContainers()...)
 
+	podSpec.InitContainers = append(podSpec.InitContainers, baseSpec.InitContainers()...)
+
+	podSpec.ServiceAccountName = meta.Name
+
+	podSpec.Volumes = append(podSpec.Volumes, baseSpec.AdditionalVolumes()...)
 	if tc, ok := obj.(*v1alpha1.TidbCluster); ok && tc.IsTLSClusterEnabled() {
-		podSpec.Volumes = []corev1.Volume{
-			{
-				Name: "pd-tls",
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: util.ClusterTLSSecretName(obj.GetName(), label.PDLabelVal),
-					},
+		podSpec.Volumes = append(podSpec.Volumes, corev1.Volume{
+			Name: "pd-tls",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.ClusterTLSSecretName(obj.GetName(), label.PDLabelVal),
 				},
 			},
-		}
-		podSpec.Containers[0].VolumeMounts = []corev1.VolumeMount{
-			{
-				Name:      "pd-tls",
-				ReadOnly:  true,
-				MountPath: PdTlsCertPath,
-			},
-		}
+		})
+		podSpec.Containers[0].VolumeMounts = append(podSpec.Containers[0].VolumeMounts, corev1.VolumeMount{
+			Name:      "pd-tls",
+			ReadOnly:  true,
+			MountPath: PdTlsCertPath,
+		})
 		podSpec.Containers[0].Env = append(podSpec.Containers[0].Env, corev1.EnvVar{
 			Name:  "TC_TLS_ENABLED",
 			Value: strconv.FormatBool(true),
@@ -266,6 +273,7 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 			},
 		},
 	}
+
 	b, err := json.Marshal(d.Spec.Template.Spec)
 	if err != nil {
 		return nil, err
@@ -322,7 +330,7 @@ func (m *FakeDiscoveryManager) SetReconcileError(err error) {
 	m.err = err
 }
 
-func (m *FakeDiscoveryManager) Reconcile(_ runtime.Object) error {
+func (m *FakeDiscoveryManager) Reconcile(_ client.Object) error {
 	if m.err != nil {
 		return m.err
 	}

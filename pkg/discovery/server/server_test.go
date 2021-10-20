@@ -87,7 +87,7 @@ func TestServer(t *testing.T) {
 		ret := *pdMemberInfos
 		return &ret, nil
 	})
-	cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
+	cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, metav1.CreateOptions{})
 	fakePDControl.SetPDClient(pdapi.Namespace(tc.Namespace), tc.Name, pdClient)
 
 	var (
@@ -169,7 +169,7 @@ func TestDMServer(t *testing.T) {
 		ret := append([]*dmapi.MastersInfo{}, masterMemberInfos...)
 		return ret, nil
 	})
-	cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(dc)
+	cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(context.TODO(), dc, metav1.CreateOptions{})
 	faleMasterControl.SetMasterClient(dc.Namespace, dc.Name, masterClient)
 
 	var (

@@ -14,6 +14,7 @@
 package pod
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
@@ -106,7 +107,7 @@ func (pc *PodAdmissionControl) admitDeleteUselessTiKVPod(payload *admitPayload) 
 
 	if !isInOrdinal {
 		pvcName := operatorUtils.OrdinalPVCName(v1alpha1.TiKVMemberType, payload.ownerStatefulSet.Name, ordinal)
-		pvc, err := pc.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Get(pvcName, meta.GetOptions{})
+		pvc, err := pc.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Get(context.TODO(), pvcName, meta.GetOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {
 				pc.recorder.Event(payload.controller, corev1.EventTypeNormal, tikvScaleInReason, podDeleteEventMessage(name))

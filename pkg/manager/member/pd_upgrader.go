@@ -44,12 +44,9 @@ func (u *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stat
 	if !tc.Status.PD.Synced {
 		return fmt.Errorf("tidbcluster: [%s/%s]'s pd status sync failed, can not to be upgraded", ns, tcName)
 	}
-	if tc.Status.TiCDC.Phase == v1alpha1.UpgradePhase ||
-		tc.PDScaling() {
-		klog.Infof("TidbCluster: [%s/%s]'s ticdc status is %v, "+
-			"pd status is %v, can not upgrade pd",
-			ns, tcName, tc.Status.TiCDC.Phase,
-			tc.Status.PD.Phase)
+	if tc.PDScaling() {
+		klog.Infof("TidbCluster: [%s/%s]'s pd status is %v, can not upgrade pd",
+			ns, tcName, tc.Status.PD.Phase)
 		_, podSpec, err := GetLastAppliedConfig(oldSet)
 		if err != nil {
 			return err

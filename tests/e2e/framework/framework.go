@@ -14,6 +14,8 @@
 package framework
 
 import (
+	"context"
+
 	"github.com/onsi/ginkgo"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	v1 "k8s.io/api/core/v1"
@@ -33,7 +35,7 @@ func NewDefaultFramework(baseName string) *framework.Framework {
 		// tidb-operator may set persistentVolumeReclaimPolicy to Retain if
 		// users request this. To reduce storage usage, we try to recycle them
 		// if the PVC namespace does not exist anymore.
-		pvList, err := c.CoreV1().PersistentVolumes().List(metav1.ListOptions{})
+		pvList, err := c.CoreV1().PersistentVolumes().List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			framework.Logf("failed to list pvs: %v", err)
 			return
@@ -59,7 +61,7 @@ func NewDefaultFramework(baseName string) *framework.Framework {
 				failed++
 				continue
 			}
-			_, err := c.CoreV1().Namespaces().Get(pvcNamespaceName, metav1.GetOptions{})
+			_, err := c.CoreV1().Namespaces().Get(context.TODO(), pvcNamespaceName, metav1.GetOptions{})
 			if err != nil && !apierrors.IsNotFound(err) {
 				framework.Logf("failed to get namespace %q: %v", pvcNamespaceName, err)
 				failed++
@@ -71,7 +73,7 @@ func NewDefaultFramework(baseName string) *framework.Framework {
 			}
 			// now we can safely recycle the PV
 			pv.Spec.PersistentVolumeReclaimPolicy = v1.PersistentVolumeReclaimDelete
-			_, err = c.CoreV1().PersistentVolumes().Update(&pv)
+			_, err = c.CoreV1().PersistentVolumes().Update(context.TODO(), &pv, metav1.UpdateOptions{})
 			if err != nil {
 				failed++
 				framework.Logf("failed to set PersistentVolumeReclaimPolicy of PV %q to Delete: %v", pv.Name, err)

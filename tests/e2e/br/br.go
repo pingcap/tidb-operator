@@ -18,6 +18,7 @@ import (
 	"database/sql"
 	"fmt"
 	"math/rand"
+	"path"
 	"strings"
 	"time"
 
@@ -33,12 +34,13 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/test/e2e/framework"
+	e2eskipper "k8s.io/kubernetes/test/e2e/framework/skipper"
 )
 
 var (
 	tidbReadyTimeout       = time.Minute * 5
-	backupCompleteTimeout  = time.Minute * 3
-	restoreCompleteTimeout = time.Minute * 3
+	backupCompleteTimeout  = time.Minute * 5
+	restoreCompleteTimeout = time.Minute * 5
 )
 
 const (
@@ -57,6 +59,10 @@ type testcase struct {
 	restoreVersion string
 	typ            string
 	enableTLS      bool
+
+	// hooks
+	configureBackup func(backup *v1alpha1.Backup)
+	postBackup      func(backup *v1alpha1.Backup)
 }
 
 func newTestCase(backupVersion, restoreVersion string, typ string, opts ...option) *testcase {
@@ -174,8 +180,12 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		framework.ExpectNoError(err)
 
 		ginkgo.By("Create backup")
-		err = createBackupAndWaitForComplete(f, backupName, backupClusterName, typ)
+		backup, err := createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, tcase.configureBackup)
 		framework.ExpectNoError(err)
+
+		if tcase.postBackup != nil {
+			tcase.postBackup(backup)
+		}
 
 		ginkgo.By("Create restore")
 		err = createRestoreAndWaitForComplete(f, restoreName, restoreClusterName, typ, backupName)
@@ -200,20 +210,94 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 	ginkgo.Context("Specific Version", func() {
 		cases := []*testcase{
-			newTestCase(utilimage.TiDBV5x1x0, utilimage.TiDBV5x1x0, typeBR),
-			newTestCase(utilimage.TiDBV4x0x9, utilimage.TiDBV5x1x0, typeBR),
-			newTestCase(utilimage.TiDBV5x0x0, utilimage.TiDBV5x1x0, typeBR),
-			newTestCase(utilimage.TiDBV5x0x2, utilimage.TiDBV5x1x0, typeBR),
+			newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeBR),
+			newTestCase(utilimage.TiDBV4x0x9, utilimage.TiDBLatest, typeBR),
+			newTestCase(utilimage.TiDBV5x0x0, utilimage.TiDBLatest, typeBR),
+			newTestCase(utilimage.TiDBV5x0x2, utilimage.TiDBLatest, typeBR),
 		}
 		for i := range cases {
 			tcase := cases[i]
 			ginkgo.It(tcase.description(), func() {
 				if ginkgoconfig.GinkgoConfig.FocusString == "" {
-					framework.Skipf("Skip br testing for specific version")
+					e2eskipper.Skipf("Skip br testing for specific version")
 				}
 				brTest(tcase)
 			})
 		}
+	})
+
+	ginkgo.It("backup and restore with mixed bucket and prefix", func() {
+		middlePath := "mid"
+
+		ns := f.Namespace.Name
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		tcase := newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeBR)
+		tcase.configureBackup = func(backup *v1alpha1.Backup) {
+			backup.Spec.StorageProvider.S3.Bucket = path.Join(backup.Spec.StorageProvider.S3.Bucket, middlePath) // bucket add suffix
+		}
+		tcase.postBackup = func(backup *v1alpha1.Backup) {
+			ginkgo.By("Check whether prefix of backup files in storage is right")
+			expectedPrefix := path.Join(middlePath, backup.Spec.StorageProvider.S3.Prefix)
+			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, expectedPrefix)
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, false, "storage should have data")
+		}
+	})
+
+	ginkgo.Context("[Backup Clean]", func() {
+		ginkgo.It("clean bakcup files with policy Delete", func() {
+			backupClusterName := "backup-clean"
+			backupVersion := utilimage.TiDBLatest
+			enableTLS := false
+			dbName := "e2etest"
+			backupName := backupClusterName
+			typ := strings.ToLower(typeBR)
+
+			ns := f.Namespace.Name
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			ginkgo.By("Create TiDB cluster for backup")
+			err := createTidbCluster(f, backupClusterName, backupVersion, enableTLS)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Wait for backup TiDB cluster ready")
+			err = utiltidbcluster.WaitForTidbClusterConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Forward backup TiDB cluster service")
+			backupHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(backupClusterName), 4000)
+			framework.ExpectNoError(err)
+			err = initDatabase(backupHost, dbName)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Write data into backup TiDB cluster")
+			backupDSN := getDefaultDSN(backupHost, dbName)
+			err = blockwriter.NewDefault().Write(context.Background(), backupDSN)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Create RBAC for backup and restore")
+			err = createRBAC(f)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Create backup with clean policy Delete")
+			backup, err := createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+			})
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Delete backup")
+			err = deleteBackup(f, backupName)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Check if all backup files in storage is deleted")
+			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, backup.Spec.S3.Prefix) // now we only use s3
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
+		})
+
 	})
 })
 
@@ -238,7 +322,7 @@ func createTidbCluster(f *e2eframework.Framework, name string, version string, e
 		}
 	}
 
-	if _, err := f.ExtClient.PingcapV1alpha1().TidbClusters(ns).Create(tc); err != nil {
+	if _, err := f.ExtClient.PingcapV1alpha1().TidbClusters(ns).Create(context.TODO(), tc, metav1.CreateOptions{}); err != nil {
 		return err
 	}
 
@@ -248,49 +332,51 @@ func createTidbCluster(f *e2eframework.Framework, name string, version string, e
 func createRBAC(f *e2eframework.Framework) error {
 	ns := f.Namespace.Name
 	sa := brutil.GetServiceAccount(ns)
-	if _, err := f.ClientSet.CoreV1().ServiceAccounts(ns).Create(sa); err != nil {
+	if _, err := f.ClientSet.CoreV1().ServiceAccounts(ns).Create(context.TODO(), sa, metav1.CreateOptions{}); err != nil {
 		return err
 	}
 
 	role := brutil.GetRole(ns)
-	if _, err := f.ClientSet.RbacV1().Roles(ns).Create(role); err != nil {
+	if _, err := f.ClientSet.RbacV1().Roles(ns).Create(context.TODO(), role, metav1.CreateOptions{}); err != nil {
 		return err
 	}
 	rb := brutil.GetRoleBinding(ns)
-	if _, err := f.ClientSet.RbacV1().RoleBindings(ns).Create(rb); err != nil {
+	if _, err := f.ClientSet.RbacV1().RoleBindings(ns).Create(context.TODO(), rb, metav1.CreateOptions{}); err != nil {
 		return err
 	}
 	return nil
 }
 
-func createBackupAndWaitForComplete(f *e2eframework.Framework, name, tcName, typ string) error {
+func createBackupAndWaitForComplete(f *e2eframework.Framework, name, tcName, typ string, configure func(*v1alpha1.Backup)) (*v1alpha1.Backup, error) {
 	ns := f.Namespace.Name
 	// secret to visit tidb cluster
 	s := brutil.GetSecret(ns, name, "")
-	if _, err := f.ClientSet.CoreV1().Secrets(ns).Create(s); err != nil {
-		return err
+	if _, err := f.ClientSet.CoreV1().Secrets(ns).Create(context.TODO(), s, metav1.CreateOptions{}); err != nil {
+		return nil, err
 	}
 
 	backupFolder := time.Now().Format(time.RFC3339)
 	cfg := f.Storage.Config(ns, backupFolder)
 	backup := brutil.GetBackup(ns, name, tcName, typ, cfg)
 
-	if _, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Create(backup); err != nil {
-		return err
+	if configure != nil {
+		configure(backup)
+	}
+
+	if _, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Create(context.TODO(), backup, metav1.CreateOptions{}); err != nil {
+		return nil, err
 	}
 
 	if err := brutil.WaitForBackupComplete(f.ExtClient, ns, name, backupCompleteTimeout); err != nil {
-		return err
+		return backup, err
 	}
-	return nil
+	return backup, nil
 }
 
-// nolint
-// NOTE: it is not used now
 func deleteBackup(f *e2eframework.Framework, name string) error {
 	ns := f.Namespace.Name
 
-	if err := f.ExtClient.PingcapV1alpha1().Backups(ns).Delete(name, nil); err != nil {
+	if err := f.ExtClient.PingcapV1alpha1().Backups(ns).Delete(context.TODO(), name, metav1.DeleteOptions{}); err != nil {
 		return err
 	}
 
@@ -304,7 +390,7 @@ func deleteBackup(f *e2eframework.Framework, name string) error {
 // NOTE: it is not used
 func cleanBackup(f *e2eframework.Framework) error {
 	ns := f.Namespace.Name
-	bl, err := f.ExtClient.PingcapV1alpha1().Backups(ns).List(metav1.ListOptions{})
+	bl, err := f.ExtClient.PingcapV1alpha1().Backups(ns).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -321,11 +407,11 @@ func createRestoreAndWaitForComplete(f *e2eframework.Framework, name, tcName, ty
 
 	// secret to visit tidb cluster
 	s := brutil.GetSecret(ns, name, "")
-	if _, err := f.ClientSet.CoreV1().Secrets(ns).Create(s); err != nil {
+	if _, err := f.ClientSet.CoreV1().Secrets(ns).Create(context.TODO(), s, metav1.CreateOptions{}); err != nil {
 		return err
 	}
 
-	backup, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Get(backupName, metav1.GetOptions{})
+	backup, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Get(context.TODO(), backupName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -338,7 +424,7 @@ func createRestoreAndWaitForComplete(f *e2eframework.Framework, name, tcName, ty
 	}
 
 	restore := brutil.GetRestore(ns, name, tcName, typ, cfg)
-	if _, err := f.ExtClient.PingcapV1alpha1().Restores(ns).Create(restore); err != nil {
+	if _, err := f.ExtClient.PingcapV1alpha1().Restores(ns).Create(context.TODO(), restore, metav1.CreateOptions{}); err != nil {
 		return err
 	}
 

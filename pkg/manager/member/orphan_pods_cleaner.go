@@ -14,6 +14,7 @@
 package member
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
@@ -128,7 +129,7 @@ func (c *orphanPodsCleaner) Clean(meta metav1.Object) (map[string]string, error)
 				return skipReason, fmt.Errorf("clean: failed to get pvc %s for cluster %s/%s, error: %s", p, ns, meta.GetName(), err)
 			}
 			// if PVC not found in cache, re-check from apiserver directly to make sure the PVC really not exist
-			_, err = c.deps.KubeClientset.CoreV1().PersistentVolumeClaims(ns).Get(p, metav1.GetOptions{})
+			_, err = c.deps.KubeClientset.CoreV1().PersistentVolumeClaims(ns).Get(context.TODO(), p, metav1.GetOptions{})
 			if err == nil {
 				continue
 			}
@@ -147,7 +148,7 @@ func (c *orphanPodsCleaner) Clean(meta metav1.Object) (map[string]string, error)
 		// if the PVC is not found in apiserver (also informer cache) and the
 		// pod has not been scheduled, delete it and let the stateful
 		// controller to create the pod and its PVC(s) again
-		apiPod, err := c.deps.KubeClientset.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+		apiPod, err := c.deps.KubeClientset.CoreV1().Pods(ns).Get(context.TODO(), podName, metav1.GetOptions{})
 		if errors.IsNotFound(err) {
 			skipReason[podName] = skipReasonOrphanPodsCleanerPodIsNotFound
 			continue

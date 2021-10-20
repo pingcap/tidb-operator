@@ -18,8 +18,8 @@ import (
 	"crypto/tls"
 	"time"
 
-	etcdclientv3 "github.com/coreos/etcd/clientv3"
-	etcdclientv3util "github.com/coreos/etcd/clientv3/clientv3util"
+	etcdclientv3 "go.etcd.io/etcd/clientv3"
+	etcdclientv3util "go.etcd.io/etcd/clientv3/clientv3util"
 )
 
 type KeyValue struct {

@@ -116,7 +116,7 @@ fi
 POD_NAME=${POD_NAME:-$HOSTNAME}
 pd_url="cluster01-pd:2379"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
-discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}.svc.test.com:10261"
+discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}:10261"
 until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
 echo "waiting for the verification of PD endpoints ..."
 sleep $((RANDOM % 5))
@@ -375,7 +375,7 @@ fi
 POD_NAME=${POD_NAME:-$HOSTNAME}
 pd_url="http://${CLUSTER_NAME}-pd:2379"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
-discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}.svc.cluster.local:10261"
+discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}:10261"
 
 until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
 echo "waiting for the verification of PD endpoints ..."
@@ -658,7 +658,7 @@ POD_NAME=${POD_NAME:-$HOSTNAME}
 # the general form of variable PEER_SERVICE_NAME is: "<clusterName>-pd-peer"
 cluster_name=` + "`" + `echo ${PEER_SERVICE_NAME} | sed 's/-pd-peer//'` + "`" + `
 domain="${POD_NAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc.cluster.local"
-discovery_url="${cluster_name}-discovery.${NAMESPACE}.svc.cluster.local:10261"
+discovery_url="${cluster_name}-discovery.${NAMESPACE}.svc:10261"
 encoded_domain_url=` + "`" + `echo ${domain}:2380 | base64 | tr "\n" " " | sed "s/ //g"` + "`" + `
 elapseTime=0
 period=1
@@ -776,7 +776,7 @@ fi`,
 			result: `
 pd_url="http://demo-pd:2379"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
-discovery_url="demo-discovery.demo-ns.svc.demo.com:10261"
+discovery_url="demo-discovery.demo-ns:10261"
 until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
 echo "waiting for the verification of PD endpoints ..."
 sleep $((RANDOM % 5))

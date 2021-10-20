@@ -3,6 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: tidb-admission-webhook
+  namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -89,5 +90,13 @@ spec:
         # rootfs maybe read-only, we need to an empty dir volume to store self-signed certifiates, etc.
         - name: apiserver-local-config
           emptyDir: {}
+      {{- end }}
+      {{- with .Values.admissionWebhook.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+      {{- with .Values.admissionWebhook.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
       {{- end }}
 {{- end }}

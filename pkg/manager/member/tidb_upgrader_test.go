@@ -152,16 +152,6 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 			},
 		},
 		{
-			name: "cdc is upgrading",
-			changeFn: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.TiCDC.Phase = v1alpha1.UpgradePhase
-			},
-			getLastAppliedConfigErr: false,
-			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(1)))
-			},
-		},
-		{
 			name: "pump is upgrading",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.Pump.Phase = v1alpha1.UpgradePhase

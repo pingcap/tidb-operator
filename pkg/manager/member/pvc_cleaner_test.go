@@ -14,6 +14,7 @@
 package member
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -61,7 +62,7 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 		}
 		if test.apiPods != nil {
 			for _, apiPod := range test.apiPods {
-				fakeCli.CoreV1().Pods(apiPod.GetNamespace()).Create(apiPod)
+				fakeCli.CoreV1().Pods(apiPod.GetNamespace()).Create(context.TODO(), apiPod, metav1.CreateOptions{})
 			}
 		}
 		if test.pvcs != nil {
@@ -71,7 +72,7 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 		}
 		if test.apiPvcs != nil {
 			for _, apiPvc := range test.apiPvcs {
-				fakeCli.CoreV1().PersistentVolumeClaims(apiPvc.GetNamespace()).Create(apiPvc)
+				fakeCli.CoreV1().PersistentVolumeClaims(apiPvc.GetNamespace()).Create(context.TODO(), apiPvc, metav1.CreateOptions{})
 			}
 		}
 		if test.pvs != nil {

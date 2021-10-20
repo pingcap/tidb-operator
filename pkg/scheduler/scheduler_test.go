@@ -14,6 +14,7 @@
 package scheduler
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -27,17 +28,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/record"
-	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
-	schedulerapiv1 "k8s.io/kubernetes/pkg/scheduler/api/v1"
+	schedulerapi "k8s.io/kube-scheduler/extender/v1"
 )
 
 func TestSchedulerFilter(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name      string
-		args      *schedulerapiv1.ExtenderArgs
+		args      *schedulerapi.ExtenderArgs
 		predicate predicates.Predicate
-		expectFn  func(*GomegaWithT, *schedulerapiv1.ExtenderFilterResult, error)
+		expectFn  func(*GomegaWithT, *schedulerapi.ExtenderFilterResult, error)
 	}
 
 	recorder := record.NewFakeRecorder(10)
@@ -67,7 +67,7 @@ func TestSchedulerFilter(t *testing.T) {
 	tests := []testcase{
 		{
 			name: "pod instance label is empty",
-			args: &schedulerapiv1.ExtenderArgs{
+			args: &schedulerapi.ExtenderArgs{
 				Pod: &apiv1.Pod{
 					TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
 					ObjectMeta: metav1.ObjectMeta{
@@ -82,7 +82,7 @@ func TestSchedulerFilter(t *testing.T) {
 				},
 			},
 			predicate: &predicates.FakePredicate{},
-			expectFn: func(g *GomegaWithT, result *schedulerapiv1.ExtenderFilterResult, err error) {
+			expectFn: func(g *GomegaWithT, result *schedulerapi.ExtenderFilterResult, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(result.Nodes.ResourceVersion).To(Equal("9999"))
 				g.Expect(len(result.Nodes.Items)).To(Equal(0))
@@ -90,7 +90,7 @@ func TestSchedulerFilter(t *testing.T) {
 		},
 		{
 			name: "pod is not pd or tikv or tidb",
-			args: &schedulerapiv1.ExtenderArgs{
+			args: &schedulerapi.ExtenderArgs{
 				Pod: &apiv1.Pod{
 					TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
 					ObjectMeta: metav1.ObjectMeta{
@@ -109,7 +109,7 @@ func TestSchedulerFilter(t *testing.T) {
 				},
 			},
 			predicate: &predicates.FakePredicate{},
-			expectFn: func(g *GomegaWithT, result *schedulerapiv1.ExtenderFilterResult, err error) {
+			expectFn: func(g *GomegaWithT, result *schedulerapi.ExtenderFilterResult, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(result.Nodes.ResourceVersion).To(Equal("9999"))
 				g.Expect(len(result.Nodes.Items)).To(Equal(0))
@@ -117,7 +117,7 @@ func TestSchedulerFilter(t *testing.T) {
 		},
 		{
 			name: "predicate returns error",
-			args: &schedulerapiv1.ExtenderArgs{
+			args: &schedulerapi.ExtenderArgs{
 				Pod: &apiv1.Pod{
 					TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
 					ObjectMeta: metav1.ObjectMeta{
@@ -136,7 +136,7 @@ func TestSchedulerFilter(t *testing.T) {
 				},
 			},
 			predicate: &predicates.FakePredicate{Err: fmt.Errorf("predicate error")},
-			expectFn: func(g *GomegaWithT, result *schedulerapiv1.ExtenderFilterResult, err error) {
+			expectFn: func(g *GomegaWithT, result *schedulerapi.ExtenderFilterResult, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				events := predicates.CollectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(1))
@@ -146,7 +146,7 @@ func TestSchedulerFilter(t *testing.T) {
 		},
 		{
 			name: "predicate success",
-			args: &schedulerapiv1.ExtenderArgs{
+			args: &schedulerapi.ExtenderArgs{
 				Pod: &apiv1.Pod{
 					TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
 					ObjectMeta: metav1.ObjectMeta{
@@ -172,7 +172,7 @@ func TestSchedulerFilter(t *testing.T) {
 				},
 			},
 			predicate: &predicates.FakePredicate{},
-			expectFn: func(g *GomegaWithT, result *schedulerapiv1.ExtenderFilterResult, err error) {
+			expectFn: func(g *GomegaWithT, result *schedulerapi.ExtenderFilterResult, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(result.Nodes.Items[0].Name).To(Equal("node-1"))
 			},
@@ -188,8 +188,8 @@ func TestSchedulerPriority(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name     string
-		args     *schedulerapiv1.ExtenderArgs
-		expectFn func(*GomegaWithT, schedulerapiv1.HostPriorityList, error)
+		args     *schedulerapi.ExtenderArgs
+		expectFn func(*GomegaWithT, schedulerapi.HostPriorityList, error)
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
@@ -203,17 +203,17 @@ func TestSchedulerPriority(t *testing.T) {
 	tests := []testcase{
 		{
 			name: "nodes is nil",
-			args: &schedulerapiv1.ExtenderArgs{
+			args: &schedulerapi.ExtenderArgs{
 				Nodes: nil,
 			},
-			expectFn: func(g *GomegaWithT, result schedulerapiv1.HostPriorityList, err error) {
+			expectFn: func(g *GomegaWithT, result schedulerapi.HostPriorityList, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(result)).To(Equal(0))
 			},
 		},
 		{
 			name: "have 1 node",
-			args: &schedulerapiv1.ExtenderArgs{
+			args: &schedulerapi.ExtenderArgs{
 				Nodes: &apiv1.NodeList{
 					TypeMeta: metav1.TypeMeta{Kind: "NodeList", APIVersion: "v1"},
 					ListMeta: metav1.ListMeta{},
@@ -227,16 +227,16 @@ func TestSchedulerPriority(t *testing.T) {
 					},
 				},
 			},
-			expectFn: func(g *GomegaWithT, result schedulerapiv1.HostPriorityList, err error) {
+			expectFn: func(g *GomegaWithT, result schedulerapi.HostPriorityList, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(result)).To(Equal(1))
 				g.Expect(result[0].Host).To(Equal("node-1"))
-				g.Expect(result[0].Score).To(Equal(0))
+				g.Expect(result[0].Score).To(Equal(int64(0)))
 			},
 		},
 		{
 			name: "have 2 nodes",
-			args: &schedulerapiv1.ExtenderArgs{
+			args: &schedulerapi.ExtenderArgs{
 				Nodes: &apiv1.NodeList{
 					TypeMeta: metav1.TypeMeta{Kind: "NodeList", APIVersion: "v1"},
 					ListMeta: metav1.ListMeta{},
@@ -256,13 +256,13 @@ func TestSchedulerPriority(t *testing.T) {
 					},
 				},
 			},
-			expectFn: func(g *GomegaWithT, result schedulerapiv1.HostPriorityList, err error) {
+			expectFn: func(g *GomegaWithT, result schedulerapi.HostPriorityList, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(result)).To(Equal(2))
 				g.Expect(result[0].Host).To(Equal("node-1"))
-				g.Expect(result[0].Score).To(Equal(0))
+				g.Expect(result[0].Score).To(Equal(int64(0)))
 				g.Expect(result[1].Host).To(Equal("node-2"))
-				g.Expect(result[1].Score).To(Equal(0))
+				g.Expect(result[1].Score).To(Equal(int64(0)))
 			},
 		},
 	}
@@ -448,10 +448,10 @@ func TestSchedulerPreempt(t *testing.T) {
 			}
 			if tt.nodes != nil {
 				for _, node := range tt.nodes {
-					kubeCli.CoreV1().Nodes().Create(node)
+					kubeCli.CoreV1().Nodes().Create(context.TODO(), node, metav1.CreateOptions{})
 				}
 			}
-			kubeCli.CoreV1().Pods(apiv1.NamespaceDefault).Create(tt.args.Pod)
+			kubeCli.CoreV1().Pods(apiv1.NamespaceDefault).Create(context.TODO(), tt.args.Pod, metav1.CreateOptions{})
 			result, err := s.Preempt(tt.args)
 			if diff := cmp.Diff(tt.wantResult, result); diff != "" {
 				t.Errorf("unexpected (-want, +got): %s", diff)

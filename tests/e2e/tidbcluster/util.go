@@ -14,6 +14,7 @@
 package tidbcluster
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -39,7 +40,7 @@ func startWebhook(c clientset.Interface, image, ns, svcName string, cert []byte,
 			"webhook.key":  key,
 		},
 	}
-	cm, err = c.CoreV1().ConfigMaps(ns).Create(cm)
+	cm, err = c.CoreV1().ConfigMaps(ns).Create(context.TODO(), cm, metav1.CreateOptions{})
 	framework.ExpectNoError(err, "failed to create ConfigMap")
 
 	sa := &v1.ServiceAccount{
@@ -48,7 +49,7 @@ func startWebhook(c clientset.Interface, image, ns, svcName string, cert []byte,
 			Name:      "webhook",
 		},
 	}
-	sa, err = c.CoreV1().ServiceAccounts(ns).Create(sa)
+	sa, err = c.CoreV1().ServiceAccounts(ns).Create(context.TODO(), sa, metav1.CreateOptions{})
 	framework.ExpectNoError(err, "failed to create ServiceAccount")
 
 	role := &rbacv1.Role{
@@ -69,7 +70,7 @@ func startWebhook(c clientset.Interface, image, ns, svcName string, cert []byte,
 			},
 		},
 	}
-	role, err = c.RbacV1().Roles(ns).Create(role)
+	role, err = c.RbacV1().Roles(ns).Create(context.TODO(), role, metav1.CreateOptions{})
 	framework.ExpectNoError(err, "failed to create Role")
 
 	roleBinding := &rbacv1.RoleBinding{
@@ -89,7 +90,7 @@ func startWebhook(c clientset.Interface, image, ns, svcName string, cert []byte,
 			Name:     role.Name,
 		},
 	}
-	_, err = c.RbacV1().RoleBindings(ns).Create(roleBinding)
+	_, err = c.RbacV1().RoleBindings(ns).Create(context.TODO(), roleBinding, metav1.CreateOptions{})
 	framework.ExpectNoError(err, "failed to create RoleBinding")
 
 	svc := &v1.Service{
@@ -109,7 +110,7 @@ func startWebhook(c clientset.Interface, image, ns, svcName string, cert []byte,
 			},
 		},
 	}
-	svc, err = c.CoreV1().Services(ns).Create(svc)
+	svc, err = c.CoreV1().Services(ns).Create(context.TODO(), svc, metav1.CreateOptions{})
 	framework.ExpectNoError(err, "failed to create Service")
 
 	_pod := &v1.Pod{
@@ -156,7 +157,7 @@ func startWebhook(c clientset.Interface, image, ns, svcName string, cert []byte,
 			RestartPolicy:      v1.RestartPolicyNever,
 		},
 	}
-	_pod, err = c.CoreV1().Pods(ns).Create(_pod)
+	_pod, err = c.CoreV1().Pods(ns).Create(context.TODO(), _pod, metav1.CreateOptions{})
 	framework.ExpectNoError(err, "failed to create webhook pod")
 
 	err = pod.WaitForPodRunningInNamespace(c, _pod)

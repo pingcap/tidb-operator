@@ -634,6 +634,7 @@ func TestPDMemberManagerSyncPDSts(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name                string
+		preModify           func(cluster *v1alpha1.TidbCluster)
 		modify              func(cluster *v1alpha1.TidbCluster)
 		pdHealth            *pdapi.HealthInfo
 		err                 bool
@@ -644,6 +645,9 @@ func TestPDMemberManagerSyncPDSts(t *testing.T) {
 
 	testFn := func(test *testcase, t *testing.T) {
 		tc := newTidbClusterForPD()
+		if test.preModify != nil {
+			test.preModify(tc)
+		}
 		ns := tc.Namespace
 		tcName := tc.Name
 
@@ -703,6 +707,35 @@ func TestPDMemberManagerSyncPDSts(t *testing.T) {
 				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://pd1:2379"}, Health: false},
 				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://pd2:2379"}, Health: false},
 				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://pd3:2379"}, Health: false},
+			}},
+			err: true,
+			statusChange: func(set *apps.StatefulSet) {
+				set.Status.Replicas = *set.Spec.Replicas
+				set.Status.CurrentRevision = "pd-1"
+				set.Status.UpdateRevision = "pd-1"
+				observedGeneration := int64(1)
+				set.Status.ObservedGeneration = observedGeneration
+			},
+			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(set.Spec.Template.Spec.Containers[0].Image).To(Equal("pd-test-image:v2"))
+				g.Expect(*set.Spec.Replicas).To(Equal(int32(1)))
+				g.Expect(*set.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(0)))
+			},
+			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
+			},
+		},
+		{
+			name: "force upgrade when PD replicas less than 2",
+			preModify: func(cluster *v1alpha1.TidbCluster) {
+				cluster.Spec.PD.Replicas = 1
+			},
+			modify: func(cluster *v1alpha1.TidbCluster) {
+				cluster.Spec.PD.Image = "pd-test-image:v2"
+			},
+			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
+				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://pd1:2379"}, Health: false},
 			}},
 			err: true,
 			statusChange: func(set *apps.StatefulSet) {
@@ -2878,7 +2911,7 @@ func TestPDShouldRecover(t *testing.T) {
 			defer cancel()
 			fakeDeps := controller.NewFakeDependencies()
 			for _, pod := range tt.pods {
-				fakeDeps.KubeClientset.CoreV1().Pods(pod.Namespace).Create(pod)
+				fakeDeps.KubeClientset.CoreV1().Pods(pod.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
 			}
 			kubeInformerFactory := fakeDeps.KubeInformerFactory
 			kubeInformerFactory.Start(ctx.Done())

@@ -14,6 +14,7 @@
 package predicates
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -79,7 +80,7 @@ func (p *stableScheduling) Filter(instanceName string, pod *apiv1.Pod, nodes []a
 		return nodes, nil
 	}
 
-	tc, err := p.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+	tc, err := p.cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), tcName, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// However tidb-operator will delete pods when tidb cluster does

@@ -14,6 +14,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -74,7 +75,7 @@ func (c *realPVCControl) DeletePVC(controller runtime.Object, pvc *corev1.Persis
 	namespace := controllerMo.GetNamespace()
 
 	pvcName := pvc.GetName()
-	err := c.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Delete(pvcName, nil)
+	err := c.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Delete(context.TODO(), pvcName, metav1.DeleteOptions{})
 	if err != nil {
 		klog.Errorf("failed to delete PVC: [%s/%s], %s: %s, %v", namespace, pvcName, kind, name, err)
 	}
@@ -94,7 +95,7 @@ func (c *realPVCControl) CreatePVC(controller runtime.Object, pvc *corev1.Persis
 	namespace := controllerMo.GetNamespace()
 
 	pvcName := pvc.GetName()
-	_, err := c.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Create(pvc)
+	_, err := c.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Create(context.TODO(), pvc, metav1.CreateOptions{})
 	if err != nil {
 		klog.Errorf("failed to create PVC: [%s/%s], %s: %s, %v", namespace, pvcName, kind, name, err)
 	}
@@ -119,7 +120,7 @@ func (c *realPVCControl) UpdatePVC(controller runtime.Object, pvc *corev1.Persis
 	var updatePVC *corev1.PersistentVolumeClaim
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		var updateErr error
-		updatePVC, updateErr = c.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Update(pvc)
+		updatePVC, updateErr = c.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Update(context.TODO(), pvc, metav1.UpdateOptions{})
 		if updateErr == nil {
 			klog.Infof("update PVC: [%s/%s] successfully, %s: %s", namespace, pvcName, kind, name)
 			return nil
@@ -184,7 +185,7 @@ func (c *realPVCControl) UpdateMetaInfo(controller runtime.Object, pvc *corev1.P
 	var updatePVC *corev1.PersistentVolumeClaim
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		var updateErr error
-		updatePVC, updateErr = c.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Update(pvc)
+		updatePVC, updateErr = c.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Update(context.TODO(), pvc, metav1.UpdateOptions{})
 		if updateErr == nil {
 			klog.V(4).Infof("update PVC: [%s/%s] successfully, %s: %s", namespace, pvcName, kind, name)
 			return nil

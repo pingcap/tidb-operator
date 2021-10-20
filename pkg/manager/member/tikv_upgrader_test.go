@@ -308,28 +308,6 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 		},
 		{
-			name: "tikv can not upgrade when cdc is upgrading",
-			changeFn: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.TiCDC.Phase = v1alpha1.UpgradePhase
-				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
-				tc.Status.TiKV.Synced = true
-			},
-			changeOldSet: func(oldSet *apps.StatefulSet) {
-				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
-			},
-			changePods:          nil,
-			beginEvictLeaderErr: false,
-			endEvictLeaderErr:   false,
-			updatePodErr:        false,
-			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).NotTo(HaveOccurred())
-			},
-			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, pods map[string]*corev1.Pod) {
-				g.Expect(tc.Status.TiKV.Phase).To(Equal(v1alpha1.NormalPhase))
-				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(3)))
-			},
-		},
-		{
 			name: "tikv can not upgrade when tiflash is upgrading",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.TiFlash.Phase = v1alpha1.UpgradePhase
