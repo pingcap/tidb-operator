@@ -29,7 +29,7 @@ import (
 var (
 	// the first version which allows skipping setting tikv_gc_life_time
 	// https://github.com/pingcap/br/pull/553
-	tikvV408 = semver.MustParse("v4.0.8")
+	tikvLessThanV408, _ = semver.NewConstraint("<v4.0.8-0")
 )
 
 // CheckAllKeysExistInSecret check if all keys are included in the specific secret
@@ -534,7 +534,7 @@ func canSkipSetGCLifeTime(image string) bool {
 		klog.Errorf("Parse version %s failure, error: %v", version, err)
 		return true
 	}
-	if v.LessThan(tikvV408) {
+	if tikvLessThanV408.Check(v) {
 		return false
 	}
 	return true
