@@ -4,7 +4,7 @@ metadata:
   name: basic
   namespace: demo
 spec:
-  version: v2.0.4
+  version: v2.0.7
   pvReclaimPolicy: Retain
   discovery:
     address: "http://basic-discovery.demo:10261"

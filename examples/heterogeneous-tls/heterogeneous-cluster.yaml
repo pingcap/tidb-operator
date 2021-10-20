@@ -10,7 +10,7 @@ spec:
     enabled: true
   configUpdateStrategy: RollingUpdate
   enableDynamicConfiguration: true
-  version: v4.0.13
+  version: v5.0.4
   timezone: UTC
   pvReclaimPolicy: Retain
   discovery: {}
@@ -38,7 +38,7 @@ spec:
       enabled: true
   tiflash:
     baseImage: pingcap/tiflash
-    version: v4.0.13
+    version: v5.0.4
     maxFailoverCount: 1
     replicas: 1
     storageClaims:
