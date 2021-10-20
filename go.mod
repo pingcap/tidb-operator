@@ -34,15 +34,9 @@ require (
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/groupcache v0.0.0-20181024230925-c65c006176ff // indirect
 	github.com/golang/snappy v0.0.1 // indirect
-<<<<<<< HEAD
 	github.com/google/go-cmp v0.3.1
 	github.com/google/gofuzz v1.0.0
 	github.com/gophercloud/gophercloud v0.3.0 // indirect
-=======
-	github.com/google/go-cmp v0.5.5
-	github.com/google/gofuzz v1.1.0
-	github.com/gorilla/websocket v1.4.1 // indirect
->>>>>>> 0065beaf... Fix the security vulnerabilities in the images (#4217)
 	github.com/gregjones/httpcache v0.0.0-20190212212710-3befbb6ad0cc // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.1-0.20190118093823-f849b5445de4 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.13.0 // indirect
@@ -163,22 +157,8 @@ replace github.com/uber-go/atomic => go.uber.org/atomic v1.5.0
 
 replace github.com/Azure/go-autorest => github.com/Azure/go-autorest v12.2.0+incompatible
 
-<<<<<<< HEAD
 replace github.com/prometheus/client_golang => github.com/prometheus/client_golang v0.9.4
-=======
-replace github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.11.0
-
-replace k8s.io/controller-manager => k8s.io/controller-manager v0.19.14
-
-replace k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.19.14
-
-// workaround for https://github.com/kubernetes/apiserver/issues/65
-// controller-rutime v0.7.2 use github.com/googleapis/gnostic v0.5.0, kube-apiserver v1.19 use github.com/googleapis/gnostic v0.4.1
-// so downgrade github.com/googleapis/gnostic to v0.4.1
-// TODO: remove it after upgrading kubernetes dependency to v1.22
-replace github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.4.1
 
 // workaround for avd.aquasec.com/nvd/cve-2020-29652
 // TODO: remove it after upgrading
 replace golang.org/x/crypto => golang.org/x/crypto v0.0.0-20201216223049-8b5274cf687f
->>>>>>> 0065beaf... Fix the security vulnerabilities in the images (#4217)
