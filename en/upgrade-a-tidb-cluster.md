@@ -29,7 +29,7 @@ If the TiDB cluster is deployed directly using TidbCluster CR, or deployed using
 
     The `version` field has following formats:
 
-    - `spec.version`: the format is `imageTag`, such as `v5.2.0`
+    - `spec.version`: the format is `imageTag`, such as `v5.2.1`
 
     - `spec.<pd/tidb/tikv/pump/tiflash/ticdc>.version`: the format is `imageTag`, such as `v3.1.0`
 

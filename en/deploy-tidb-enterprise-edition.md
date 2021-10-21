@@ -21,7 +21,7 @@ Currently, the difference between the deployment of TiDB Operator Enterprise Edi
 
 ```yaml
 spec:
-  version: v5.2.0
+  version: v5.2.1
   ...
   pd:
     baseImage: pingcap/pd-enterprise
@@ -56,7 +56,7 @@ spec:
 
 ```yaml
 spec:
-  version: v5.2.0
+  version: v5.2.1
   ...
   pd:
     baseImage: pingcap/pd
