@@ -13,7 +13,7 @@ spec:
     version: 6.1.6
   initializer:
     baseImage: pingcap/tidb-monitor-initializer
-    version: v4.0.13
+    version: v5.0.4
   reloader:
     baseImage: pingcap/tidb-monitor-reloader
     version: v1.0.1
@@ -22,5 +22,5 @@ spec:
     - name: basic
     initializer:
       baseImage: pingcap/dm-monitor-initializer
-      version: v2.0.4
+      version: v2.0.7
   imagePullPolicy: IfNotPresent

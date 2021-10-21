@@ -4,7 +4,7 @@ metadata:
   name: cluster1
   namespace: pingcap
 spec:
-  version: v4.0.13
+  version: v5.0.4
   timezone: UTC
   pvReclaimPolicy: Delete
   discovery: {}

@@ -1,7 +1,7 @@
 FROM pingcap/alpine-glibc:alpine-3.14
 ARG RCLONE_VERSION=v1.51.0
 ARG SHUSH_VERSION=v1.4.0
-ARG TOOLKIT_V40=v4.0.13
+ARG TOOLKIT_V40=v5.0.4
 RUN apk update && apk add ca-certificates wget unzip bind-tools --no-cache && rm -rf /var/cache/apk/*
 
 RUN wget -nv https://github.com/ncw/rclone/releases/download/${RCLONE_VERSION}/rclone-${RCLONE_VERSION}-linux-amd64.zip \

@@ -51,7 +51,7 @@ spec:
           value: dm-master
         - name: TZ
           value: UTC
-        image: pingcap/dm:v2.0.4
+        image: pingcap/dm:v2.0.7
         imagePullPolicy: IfNotPresent
         livenessProbe:
           failureThreshold: 8
