@@ -21,8 +21,13 @@ spec:
     baseImage: grafana/grafana
     version: 7.5.7
   initializer:
+<<<<<<< HEAD
     baseImage: registry.cn-beijing.aliyuncs.com/tidb/tidb-monitor-initializer
     version: v5.2.0
+=======
+    baseImage: pingcap/tidb-monitor-initializer
+    version: v5.2.1
+>>>>>>> 48ae8298... Bump operator to v1.2.4, tidb to v5.2.1, dm to v2.0.7 (#4233)
   reloader:
     baseImage: registry.cn-beijing.aliyuncs.com/tidb/tidb-monitor-reloader
     version: v1.0.1
