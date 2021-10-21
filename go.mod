@@ -156,3 +156,7 @@ replace github.com/uber-go/atomic => go.uber.org/atomic v1.5.0
 replace github.com/Azure/go-autorest => github.com/Azure/go-autorest v12.2.0+incompatible
 
 replace github.com/prometheus/client_golang => github.com/prometheus/client_golang v0.9.4
+
+// workaround for avd.aquasec.com/nvd/cve-2020-29652
+// TODO: remove it after upgrading
+replace golang.org/x/crypto => golang.org/x/crypto v0.0.0-20201216223049-8b5274cf687f
