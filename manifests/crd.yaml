@@ -21044,8 +21044,14 @@ spec:
                     properties:
                       limits:
                         type: object
+                        additionalProperties:
+                          type: string
+                          pattern: "^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$"
                       requests:
                         type: object
+                        additionalProperties:
+                          type: string
+                          pattern: "^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$"
                     type: object
                   securityContext:
                     properties:
@@ -21957,7 +21963,19 @@ spec:
               type: boolean
             externalLabels:
               type: object
-            grafana: {}
+            grafana:
+              type: object
+              properties:
+                limits:
+                  type: object
+                  additionalProperties:
+                    type: string
+                    pattern: "^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$"
+                requests:
+                  type: object
+                  additionalProperties:
+                    type: string
+                    pattern: "^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$"
             imagePullPolicy:
               type: string
             imagePullSecrets:
@@ -21967,7 +21985,19 @@ spec:
                     type: string
                 type: object
               type: array
-            initializer: {}
+            initializer:
+              type: object
+              properties:
+                limits:
+                  type: object
+                  additionalProperties:
+                    type: string
+                    pattern: "^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$"
+                requests:
+                  type: object
+                  additionalProperties:
+                    type: string
+                    pattern: "^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$"
             kubePrometheusURL:
               type: string
             labels:
@@ -22038,11 +22068,47 @@ spec:
                       type: string
                   type: object
               type: object
-            prometheus: {}
-            prometheusReloader: {}
+            prometheus:
+              type: object
+              properties:
+                limits:
+                  type: object
+                  additionalProperties:
+                    type: string
+                    pattern: "^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$"
+                requests:
+                  type: object
+                  additionalProperties:
+                    type: string
+                    pattern: "^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$"
+            prometheusReloader:
+              type: object
+              properties:
+                limits:
+                  type: object
+                  additionalProperties:
+                    type: string
+                    pattern: "^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$"
+                requests:
+                  type: object
+                  additionalProperties:
+                    type: string
+                    pattern: "^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$"
             pvReclaimPolicy:
               type: string
-            reloader: {}
+            reloader:
+              type: object
+              properties:
+                limits:
+                  type: object
+                  additionalProperties:
+                    type: string
+                    pattern: "^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$"
+                requests:
+                  type: object
+                  additionalProperties:
+                    type: string
+                    pattern: "^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$"
             replicaExternalLabelName:
               type: string
             replicas:
@@ -22055,7 +22121,19 @@ spec:
               type: string
             storageClassName:
               type: string
-            thanos: {}
+            thanos:
+              type: object
+              properties:
+                limits:
+                  type: object
+                  additionalProperties:
+                    type: string
+                    pattern: "^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$"
+                requests:
+                  type: object
+                  additionalProperties:
+                    type: string
+                    pattern: "^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$"
             tolerations:
               items:
                 properties:
