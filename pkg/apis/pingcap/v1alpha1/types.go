@@ -357,6 +357,7 @@ const (
 // +k8s:openapi-gen=true
 // DiscoverySpec contains details of Discovery members
 type DiscoverySpec struct {
+	*ComponentSpec              `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
 }
 
@@ -1894,6 +1895,7 @@ type DMClusterList struct {
 // +k8s:openapi-gen=true
 // DMDiscoverySpec contains details of Discovery members for dm
 type DMDiscoverySpec struct {
+	*ComponentSpec              `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
 
 	// (Deprecated) Address indicates the existed TiDB discovery address
