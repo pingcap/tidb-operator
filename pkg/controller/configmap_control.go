@@ -160,6 +160,7 @@ func (c *FakeConfigMapControl) SetDeleteConfigMapError(err error, after int) {
 
 // CreateConfigMap adds the ConfigMap to ConfigMapIndexer
 func (c *FakeConfigMapControl) CreateConfigMap(_ runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
+	fmt.Println("begin CreateConfigMap:", cm.Name)
 	defer c.createConfigMapTracker.Inc()
 	if c.createConfigMapTracker.ErrorReady() {
 		defer c.createConfigMapTracker.Reset()

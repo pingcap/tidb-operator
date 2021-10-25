@@ -203,6 +203,7 @@ func TestPumpMemberManagerSyncUpdate(t *testing.T) {
 			ctls.svc.SetUpdateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 		if test.errOnUpdateCm {
+			ctls.cm.SetCreateConfigMapError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 			ctls.cm.SetUpdateConfigMapError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 

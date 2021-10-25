@@ -498,18 +498,20 @@ func CreateOrUpdateService(serviceLister corelisters.ServiceLister, serviceContr
 
 // CreateOrUpdateConfigMap check configmap before create or update the new configmap
 func CreateOrUpdateConfigMap(configMapLister corelisters.ConfigMapLister, controller controller.ConfigMapControlInterface, newCm *corev1.ConfigMap, obj runtime.Object) (*corev1.ConfigMap, error) {
-	oldConfigMap, err := configMapLister.ConfigMaps(newCm.Namespace).Get(newCm.Name)
+	oldCm, err := configMapLister.ConfigMaps(newCm.Namespace).Get(newCm.Name)
 	if err != nil && !errors.IsNotFound(err) {
 		return nil, fmt.Errorf("CreateOrUpdateConfigMap error: failed to get configMap %s/%s, error: %s", newCm.Namespace, newCm.Name, err)
 	}
 	if errors.IsNotFound(err) {
+		fmt.Println("get cm not found")
 		cm, err := controller.CreateConfigMap(obj, newCm)
 		if err != nil && !errors.IsAlreadyExists(err) {
 			return nil, err
 		}
 		return cm, nil
 	}
-	equal, err := updateConfigMap(oldConfigMap, newCm)
+	fmt.Printf("get cm:%+v\n", oldCm)
+	equal, err := updateConfigMap(oldCm, newCm)
 	if err != nil {
 		return nil, err
 	}
