@@ -713,6 +713,17 @@ func (tc *TidbCluster) PumpIsAvailable() bool {
 		return false
 	}
 
+	availableNum := 0
+	for _, member := range tc.Status.Pump.Members {
+		if member.State == PumpStateOnline {
+			availableNum++
+		}
+	}
+
+	if availableNum < lowerLimit {
+		return false
+	}
+
 	return true
 }
 
