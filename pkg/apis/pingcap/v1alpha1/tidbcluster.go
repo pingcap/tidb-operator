@@ -720,11 +720,7 @@ func (tc *TidbCluster) PumpIsAvailable() bool {
 		}
 	}
 
-	if availableNum < lowerLimit {
-		return false
-	}
-
-	return true
+	return availableNum >= lowerLimit
 }
 
 func (tc *TidbCluster) GetClusterID() string {
