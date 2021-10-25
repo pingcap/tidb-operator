@@ -41,7 +41,7 @@ const (
 	DMWorkerStateOffline string = "offline"
 
 	// PumpStateOnline represents status of online of Pump
-	PumpStateOnline  string = "online"
+	PumpStateOnline string = "online"
 	// PumpStateOffline represents status of offline of Pump
 	PumpStateOffline string = "offline"
 )
