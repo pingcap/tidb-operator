@@ -85,10 +85,8 @@ func (m *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV cluster running", ns, tcName)
 	}
 
-	if tc.Spec.Pump != nil {
-		if !tc.PumpIsAvailable() {
-			return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for Pump cluster running", ns, tcName)
-		}
+	if tc.Spec.Pump != nil && !tc.PumpIsAvailable() {
+		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for Pump cluster running", ns, tcName)
 	}
 
 	// Sync TiDB Headless Service

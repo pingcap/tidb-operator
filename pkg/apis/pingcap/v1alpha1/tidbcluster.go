@@ -708,8 +708,8 @@ func (tc *TidbCluster) TiKVIsAvailable() bool {
 }
 
 func (tc *TidbCluster) PumpIsAvailable() bool {
-	var lowerLimit int32 = 1
-	if tc.Status.Pump.StatefulSet == nil || tc.Status.Pump.StatefulSet.ReadyReplicas < lowerLimit {
+	lowerLimit := 1
+	if len(tc.Status.Pump.Members) < lowerLimit {
 		return false
 	}
 
