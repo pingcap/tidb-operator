@@ -4102,6 +4102,8 @@ and component-level overrides</p>
 <h3 id="componentspec">ComponentSpec</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#dmdiscoveryspec">DMDiscoverySpec</a>, 
+<a href="#discoveryspec">DiscoverySpec</a>, 
 <a href="#masterspec">MasterSpec</a>, 
 <a href="#pdspec">PDSpec</a>, 
 <a href="#pumpspec">PumpSpec</a>, 
@@ -5252,6 +5254,21 @@ WorkerStatus
 <tbody>
 <tr>
 <td>
+<code>ComponentSpec</code></br>
+<em>
+<a href="#componentspec">
+ComponentSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ComponentSpec</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>ResourceRequirements</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#resourcerequirements-v1-core">
@@ -5546,6 +5563,21 @@ string
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>
+<code>ComponentSpec</code></br>
+<em>
+<a href="#componentspec">
+ComponentSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ComponentSpec</code> are embedded into this type.)
+</p>
+</td>
+</tr>
 <tr>
 <td>
 <code>ResourceRequirements</code></br>

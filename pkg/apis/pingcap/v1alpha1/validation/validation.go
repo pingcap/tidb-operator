@@ -98,6 +98,8 @@ func validateDMAnnotations(anns map[string]string, fldPath *field.Path) field.Er
 
 func validateTiDBClusterSpec(spec *v1alpha1.TidbClusterSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
+
+	allErrs = append(allErrs, validateDiscoverySpec(spec.Discovery, fldPath.Child("discovery"))...)
 	if spec.PD != nil {
 		allErrs = append(allErrs, validatePDSpec(spec.PD, fldPath.Child("pd"))...)
 	}
@@ -118,6 +120,14 @@ func validateTiDBClusterSpec(spec *v1alpha1.TidbClusterSpec, fldPath *field.Path
 	}
 	if spec.PDAddresses != nil {
 		allErrs = append(allErrs, validatePDAddresses(spec.PDAddresses, fldPath.Child("pdAddresses"))...)
+	}
+	return allErrs
+}
+
+func validateDiscoverySpec(spec v1alpha1.DiscoverySpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if spec.ComponentSpec != nil {
+		allErrs = append(allErrs, validateComponentSpec(spec.ComponentSpec, fldPath)...)
 	}
 	return allErrs
 }
@@ -261,9 +271,18 @@ func validateDMClusterSpec(spec *v1alpha1.DMClusterSpec, fldPath *field.Path) fi
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("version"), spec.Version, "dm cluster version can't set to v1.x.y"))
 		}
 	}
+	allErrs = append(allErrs, validateDMDiscoverySpec(spec.Discovery, fldPath.Child("discovery"))...)
 	allErrs = append(allErrs, validateMasterSpec(&spec.Master, fldPath.Child("master"))...)
 	if spec.Worker != nil {
 		allErrs = append(allErrs, validateWorkerSpec(spec.Worker, fldPath.Child("worker"))...)
+	}
+	return allErrs
+}
+
+func validateDMDiscoverySpec(spec v1alpha1.DMDiscoverySpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if spec.ComponentSpec != nil {
+		allErrs = append(allErrs, validateComponentSpec(spec.ComponentSpec, fldPath)...)
 	}
 	return allErrs
 }
