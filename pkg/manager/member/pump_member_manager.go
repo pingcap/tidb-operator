@@ -470,6 +470,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 
 			Template:             podTemplate,
 			VolumeClaimTemplates: volumeClaims,
+			PodManagementPolicy:  spec.PodManagementPolicy(),
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{
 				Type: spec.StatefulSetUpdateStrategy(),
 			},
