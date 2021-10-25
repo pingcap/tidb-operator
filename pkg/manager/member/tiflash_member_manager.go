@@ -247,7 +247,7 @@ func (m *tiflashMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *apps
 	if err != nil {
 		return nil, err
 	}
-	return m.deps.TypedControl.CreateOrUpdateConfigMap(m.deps.ConfigMapLister, tc, newCm)
+	return CreateOrUpdateConfigMap(m.deps.ConfigMapLister, m.deps.ConfigMapControl, newCm, tc)
 }
 
 func getNewHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {

@@ -14,7 +14,6 @@
 package member
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -22,6 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 
 	"github.com/google/go-cmp/cmp"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	. "github.com/onsi/gomega"
@@ -37,7 +37,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/pointer"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func TestWorkerMemberManagerSyncCreate(t *testing.T) {
@@ -80,7 +79,7 @@ func TestWorkerMemberManagerSyncCreate(t *testing.T) {
 			ctls.svc.SetCreateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 		if test.errOnCreateCm {
-			ctls.generic.SetCreateOrUpdateError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
+			ctls.cm.SetCreateConfigMapError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 
 		syncErr := wmm.SyncDM(dc)
@@ -94,9 +93,7 @@ func TestWorkerMemberManagerSyncCreate(t *testing.T) {
 			cmName = cmGen.Name
 			g.Expect(strings.HasPrefix(cmName, controller.DMWorkerMemberName(dcName))).To(BeTrue())
 		}
-		cm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: cmName}}
-		key := client.ObjectKeyFromObject(cm)
-		getCmErr := ctls.generic.FakeCli.Get(context.TODO(), key, cm)
+		cm, getCmErr := wmm.deps.ConfigMapLister.ConfigMaps(ns).Get(cmName)
 		result := result{syncErr, svc, getSvcErr, set, getStsErr, cm, getCmErr}
 		test.expectFn(g, &result)
 	}
@@ -228,7 +225,7 @@ func TestWorkerMemberManagerSyncUpdate(t *testing.T) {
 			ctls.svc.SetUpdateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 		if test.errOnUpdateCm {
-			ctls.generic.SetCreateOrUpdateError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
+			ctls.cm.SetCreateConfigMapError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 
 		oldCm, err := getWorkerConfigMap(dc)
@@ -240,8 +237,7 @@ func TestWorkerMemberManagerSyncUpdate(t *testing.T) {
 
 		g.Expect(indexers.set.Add(oldSet)).To(Succeed())
 		g.Expect(indexers.svc.Add(oldSvc)).To(Succeed())
-
-		g.Expect(ctls.generic.AddObject(oldCm)).To(Succeed())
+		g.Expect(indexers.cm.Add(oldCm)).To(Succeed())
 
 		if test.prepare != nil {
 			test.prepare(dc, indexers)
@@ -258,9 +254,10 @@ func TestWorkerMemberManagerSyncUpdate(t *testing.T) {
 			cmName = cmGen.Name
 			g.Expect(strings.HasPrefix(cmName, controller.DMWorkerMemberName(dcName))).To(BeTrue())
 		}
-		cm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: cmName}}
-		key := client.ObjectKeyFromObject(cm)
-		getCmErr := ctls.generic.FakeCli.Get(context.TODO(), key, cm)
+		cm, getCmErr := mmm.deps.ConfigMapLister.ConfigMaps(ns).Get(cmName)
+		if getCmErr != nil {
+			cm = &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: cmName}}
+		}
 		result := result{syncErr, oldSvc, svc, getSvcErr, oldSet, set, getStsErr, oldCm, cm, getCmErr, triggerDeleteWorker}
 		test.expectFn(g, &result)
 	}
@@ -593,7 +590,7 @@ func TestWorkerSyncConfigUpdate(t *testing.T) {
 		set    *appsv1.StatefulSet
 		getSet error
 		oldCm  *corev1.ConfigMap
-		cms    []corev1.ConfigMap
+		cms    []*corev1.ConfigMap
 		listCm error
 	}
 	type testcase struct {
@@ -610,7 +607,7 @@ func TestWorkerSyncConfigUpdate(t *testing.T) {
 		ns := dc.Namespace
 		dcName := dc.Name
 
-		mmm, controls, indexers, fakeMasterControl := newFakeWorkerMemberManager()
+		mmm, _, indexers, fakeMasterControl := newFakeWorkerMemberManager()
 		masterClient := controller.NewFakeMasterClient(fakeMasterControl, dc)
 		masterClient.AddReaction(dmapi.GetWorkersActionType, func(action *dmapi.Action) (interface{}, error) {
 			return test.workerInfos, nil
@@ -625,7 +622,7 @@ func TestWorkerSyncConfigUpdate(t *testing.T) {
 
 		g.Expect(indexers.set.Add(oldSet)).To(Succeed())
 		g.Expect(indexers.svc.Add(oldSvc)).To(Succeed())
-		g.Expect(controls.generic.AddObject(oldCm)).To(Succeed())
+		g.Expect(indexers.cm.Add(oldCm)).To(Succeed())
 
 		if test.prepare != nil {
 			test.prepare(dc, indexers)
@@ -633,10 +630,9 @@ func TestWorkerSyncConfigUpdate(t *testing.T) {
 
 		syncErr := mmm.SyncDM(dc)
 		set, getStsErr := mmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.DMWorkerMemberName(dcName))
-		cmList := &corev1.ConfigMapList{}
+		cmList, listCmErr := mmm.deps.ConfigMapLister.ConfigMaps(ns).List(labels.Everything())
 		g.Expect(err).To(Succeed())
-		listCmErr := controls.generic.FakeCli.List(context.TODO(), cmList)
-		result := result{syncErr, oldSet, set, getStsErr, oldCm, cmList.Items, listCmErr}
+		result := result{syncErr, oldSet, set, getStsErr, oldCm, cmList, listCmErr}
 		test.expectFn(g, &result)
 	}
 
@@ -662,7 +658,7 @@ func TestWorkerSyncConfigUpdate(t *testing.T) {
 				for i := range r.cms {
 					cm := r.cms[i]
 					if cm.Name == using {
-						usingCm = &cm
+						usingCm = cm
 					}
 				}
 				g.Expect(usingCm).NotTo(BeNil(), "The configmap used by statefulset must be created")
@@ -685,13 +681,14 @@ func TestWorkerSyncConfigUpdate(t *testing.T) {
 type workerFakeIndexers struct {
 	svc cache.Indexer
 	set cache.Indexer
+	cm  cache.Indexer
 	pod cache.Indexer
 }
 
 type workerFakeControls struct {
-	svc     *controller.FakeServiceControl
-	set     *controller.FakeStatefulSetControl
-	generic *controller.FakeGenericControl
+	svc *controller.FakeServiceControl
+	set *controller.FakeStatefulSetControl
+	cm  *controller.FakeConfigMapControl
 }
 
 func newFakeWorkerMemberManager() (*workerMemberManager, *workerFakeControls, *workerFakeIndexers, *dmapi.FakeMasterControl) {
@@ -704,13 +701,14 @@ func newFakeWorkerMemberManager() (*workerMemberManager, *workerFakeControls, *w
 		failover: NewFakeWorkerFailover(),
 	}
 	controls := &workerFakeControls{
-		svc:     fakeDeps.ServiceControl.(*controller.FakeServiceControl),
-		set:     fakeDeps.StatefulSetControl.(*controller.FakeStatefulSetControl),
-		generic: fakeDeps.GenericControl.(*controller.FakeGenericControl),
+		svc: fakeDeps.ServiceControl.(*controller.FakeServiceControl),
+		set: fakeDeps.StatefulSetControl.(*controller.FakeStatefulSetControl),
+		cm:  fakeDeps.ConfigMapControl.(*controller.FakeConfigMapControl),
 	}
 	indexers := &workerFakeIndexers{
 		svc: fakeDeps.KubeInformerFactory.Core().V1().Services().Informer().GetIndexer(),
 		set: fakeDeps.KubeInformerFactory.Apps().V1().StatefulSets().Informer().GetIndexer(),
+		cm:  fakeDeps.KubeInformerFactory.Core().V1().ConfigMaps().Informer().GetIndexer(),
 		pod: fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer(),
 	}
 	return pmm, controls, indexers, masterControl

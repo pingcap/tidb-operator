@@ -29,12 +29,12 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/pointer"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func TestPumpMemberManagerSyncCreate(t *testing.T) {
@@ -77,15 +77,13 @@ func TestPumpMemberManagerSyncCreate(t *testing.T) {
 			ctls.svc.SetCreateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 		if test.errOnCreateCm {
-			ctls.generic.SetCreateOrUpdateError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
+			ctls.cm.SetCreateConfigMapError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 
 		syncErr := pmm.Sync(tc)
 		svc, getSvcErr := pmm.deps.ServiceLister.Services(ns).Get(controller.PumpPeerMemberName(tcName))
 		set, getStsErr := pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PumpMemberName(tcName))
-		cm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: controller.PumpMemberName(tcName)}}
-		key := client.ObjectKeyFromObject(cm)
-		getCmErr := ctls.generic.FakeCli.Get(context.TODO(), key, cm)
+		cm, getCmErr := pmm.deps.ConfigMapLister.ConfigMaps(ns).Get(controller.PumpMemberName(tcName))
 		result := result{syncErr, svc, getSvcErr, set, getStsErr, cm, getCmErr}
 		test.expectFn(g, &result)
 	}
@@ -205,7 +203,7 @@ func TestPumpMemberManagerSyncUpdate(t *testing.T) {
 			ctls.svc.SetUpdateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 		if test.errOnUpdateCm {
-			ctls.generic.SetCreateOrUpdateError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
+			ctls.cm.SetUpdateConfigMapError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 
 		oldCm, err := getNewPumpConfigMap(tc)
@@ -217,8 +215,7 @@ func TestPumpMemberManagerSyncUpdate(t *testing.T) {
 
 		g.Expect(indexers.set.Add(oldSet)).To(Succeed())
 		g.Expect(indexers.svc.Add(oldSvc)).To(Succeed())
-
-		g.Expect(ctls.generic.AddObject(oldCm)).To(Succeed())
+		g.Expect(indexers.cm.Add(oldCm)).To(Succeed())
 
 		if test.prepare != nil {
 			test.prepare(tc, indexers)
@@ -227,9 +224,7 @@ func TestPumpMemberManagerSyncUpdate(t *testing.T) {
 		syncErr := pmm.Sync(tc)
 		svc, getSvcErr := pmm.deps.ServiceLister.Services(ns).Get(controller.PumpPeerMemberName(tcName))
 		set, getStsErr := pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PumpMemberName(tcName))
-		cm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: controller.PumpMemberName(tcName)}}
-		key := client.ObjectKeyFromObject(cm)
-		getCmErr := ctls.generic.FakeCli.Get(context.TODO(), key, cm)
+		cm, getCmErr := pmm.deps.ConfigMapLister.ConfigMaps(ns).Get(controller.PumpMemberName(tcName))
 		result := result{syncErr, oldSvc, svc, getSvcErr, oldSet, set, getStsErr, oldCm, cm, getCmErr}
 		test.expectFn(g, &result)
 	}
@@ -335,7 +330,7 @@ func TestSyncConfigUpdate(t *testing.T) {
 		set    *appsv1.StatefulSet
 		getSet error
 		oldCm  *corev1.ConfigMap
-		cms    []corev1.ConfigMap
+		cms    []*corev1.ConfigMap
 		listCm error
 	}
 	type testcase struct {
@@ -353,7 +348,7 @@ func TestSyncConfigUpdate(t *testing.T) {
 		updateStrategy := v1alpha1.ConfigUpdateStrategyRollingUpdate
 		tc.Spec.Pump.ConfigUpdateStrategy = &updateStrategy
 
-		pmm, controls, indexers := newFakePumpMemberManager()
+		pmm, _, indexers := newFakePumpMemberManager()
 
 		oldCm, err := getNewPumpConfigMap(tc)
 		g.Expect(err).To(Succeed())
@@ -364,7 +359,7 @@ func TestSyncConfigUpdate(t *testing.T) {
 
 		g.Expect(indexers.set.Add(oldSet)).To(Succeed())
 		g.Expect(indexers.svc.Add(oldSvc)).To(Succeed())
-		g.Expect(controls.generic.AddObject(oldCm)).To(Succeed())
+		g.Expect(indexers.cm.Add(oldCm)).To(Succeed())
 
 		if test.prepare != nil {
 			test.prepare(tc, indexers)
@@ -372,10 +367,8 @@ func TestSyncConfigUpdate(t *testing.T) {
 
 		syncErr := pmm.Sync(tc)
 		set, getStsErr := pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PumpMemberName(tcName))
-		cmList := &corev1.ConfigMapList{}
-		g.Expect(err).To(Succeed())
-		listCmErr := controls.generic.FakeCli.List(context.TODO(), cmList)
-		result := result{syncErr, oldSet, set, getStsErr, oldCm, cmList.Items, listCmErr}
+		cmList, listCmErr := pmm.deps.ConfigMapLister.ConfigMaps(ns).List(labels.Everything())
+		result := result{syncErr, oldSet, set, getStsErr, oldCm, cmList, listCmErr}
 		test.expectFn(g, &result)
 	}
 
@@ -403,7 +396,7 @@ func TestSyncConfigUpdate(t *testing.T) {
 				for i := range r.cms {
 					cm := r.cms[i]
 					if cm.Name == using {
-						usingCm = &cm
+						usingCm = cm
 					}
 				}
 				g.Expect(usingCm).NotTo(BeNil(), "The configmap used by statefulset must be created")
@@ -422,12 +415,13 @@ type pumpFakeIndexers struct {
 	tc  cache.Indexer
 	svc cache.Indexer
 	set cache.Indexer
+	cm  cache.Indexer
 }
 
 type pumpFakeControls struct {
-	svc     *controller.FakeServiceControl
-	set     *controller.FakeStatefulSetControl
-	generic *controller.FakeGenericControl
+	svc *controller.FakeServiceControl
+	set *controller.FakeStatefulSetControl
+	cm  *controller.FakeConfigMapControl
 }
 
 func newFakePumpMemberManager() (*pumpMemberManager, *pumpFakeControls, *pumpFakeIndexers) {
@@ -438,14 +432,15 @@ func newFakePumpMemberManager() (*pumpMemberManager, *pumpFakeControls, *pumpFak
 		binlogClient: &fakeBinlogClient{},
 	}
 	controls := &pumpFakeControls{
-		svc:     fakeDeps.ServiceControl.(*controller.FakeServiceControl),
-		set:     fakeDeps.StatefulSetControl.(*controller.FakeStatefulSetControl),
-		generic: fakeDeps.GenericControl.(*controller.FakeGenericControl),
+		svc: fakeDeps.ServiceControl.(*controller.FakeServiceControl),
+		set: fakeDeps.StatefulSetControl.(*controller.FakeStatefulSetControl),
+		cm:  fakeDeps.ConfigMapControl.(*controller.FakeConfigMapControl),
 	}
 	indexers := &pumpFakeIndexers{
 		tc:  fakeDeps.InformerFactory.Pingcap().V1alpha1().TidbClusters().Informer().GetIndexer(),
 		svc: fakeDeps.KubeInformerFactory.Core().V1().Services().Informer().GetIndexer(),
 		set: fakeDeps.KubeInformerFactory.Apps().V1().StatefulSets().Informer().GetIndexer(),
+		cm:  fakeDeps.KubeInformerFactory.Core().V1().ConfigMaps().Informer().GetIndexer(),
 	}
 	return pmm, controls, indexers
 }

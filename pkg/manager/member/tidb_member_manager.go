@@ -370,7 +370,7 @@ func (m *tidbMemberManager) syncTiDBConfigMap(tc *v1alpha1.TidbCluster, set *app
 	if err != nil {
 		return nil, err
 	}
-	return m.deps.TypedControl.CreateOrUpdateConfigMap(m.deps.ConfigMapLister, tc, newCm)
+	return CreateOrUpdateConfigMap(m.deps.ConfigMapLister, m.deps.ConfigMapControl, newCm, tc)
 }
 
 func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {

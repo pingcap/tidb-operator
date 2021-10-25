@@ -316,7 +316,7 @@ func newDependencies(
 		PodLister:                   kubeInformerFactory.Core().V1().Pods().Lister(),
 		NodeLister:                  nodeLister,
 		SecretLister:                kubeInformerFactory.Core().V1().Secrets().Lister(),
-		ConfigMapLister:             labelFilterKubeInformerFactory.Core().V1().ConfigMaps().Lister(),
+		ConfigMapLister:             kubeInformerFactory.Core().V1().ConfigMaps().Lister(),
 		StatefulSetLister:           kubeInformerFactory.Apps().V1().StatefulSets().Lister(),
 		DeploymentLister:            kubeInformerFactory.Apps().V1().Deployments().Lister(),
 		StorageClassLister:          scLister,

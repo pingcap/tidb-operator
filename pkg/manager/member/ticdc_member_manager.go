@@ -116,7 +116,7 @@ func (m *ticdcMemberManager) syncTiCDCConfigMap(tc *v1alpha1.TidbCluster, set *a
 	if err != nil {
 		return nil, err
 	}
-	return m.deps.TypedControl.CreateOrUpdateConfigMap(m.deps.ConfigMapLister, tc, newCm)
+	return CreateOrUpdateConfigMap(m.deps.ConfigMapLister, m.deps.ConfigMapControl, newCm, tc)
 
 }
 
