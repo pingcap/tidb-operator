@@ -101,7 +101,6 @@
     - [tidb-backup chart 配置](configure-backup.md)
   - [日志收集](logs-collection.md)
   - [Kubernetes 监控与告警](monitor-kubernetes.md)
-+ [TiDB Operator Roadmap](roadmap.md)
 + 版本发布历史
   + v1.2
     - [1.2.4](releases/release-1.2.4.md)
