@@ -503,14 +503,12 @@ func CreateOrUpdateConfigMap(configMapLister corelisters.ConfigMapLister, contro
 		return nil, fmt.Errorf("CreateOrUpdateConfigMap error: failed to get configMap %s/%s, error: %s", newCm.Namespace, newCm.Name, err)
 	}
 	if errors.IsNotFound(err) {
-		fmt.Println("get cm not found")
 		cm, err := controller.CreateConfigMap(obj, newCm)
 		if err != nil && !errors.IsAlreadyExists(err) {
 			return nil, err
 		}
 		return cm, nil
 	}
-	fmt.Printf("get cm:%+v\n", oldCm)
 	equal, err := updateConfigMap(oldCm, newCm)
 	if err != nil {
 		return nil, err
