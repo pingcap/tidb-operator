@@ -10,7 +10,7 @@ spec:
   #######################
 
   ## TiDB cluster version
-  version: "v5.2.0"
+  version: "v5.2.1"
 
   ## Time zone of TiDB cluster Pods
   timezone: UTC
@@ -210,7 +210,7 @@ spec:
     #############################
 
     ## The following block overwrites TiDB cluster-level configurations in `spec`
-    # version: "v5.2.0"
+    # version: "v5.2.1"
     # imagePullPolicy: IfNotPresent
     # imagePullSecrets:
     # - name: secretName
@@ -397,7 +397,7 @@ spec:
     ###############################
 
     ## The following block overwrites TiDB cluster-level configurations in `spec`
-    # version: "v5.2.0"
+    # version: "v5.2.1"
     # imagePullPolicy: IfNotPresent
     # imagePullSecrets:
     # - name: secretName
@@ -603,7 +603,7 @@ spec:
     ###############################
 
     ## The following block overwrites TiDB cluster-level configurations in `spec`
-    # version: "v5.2.0"
+    # version: "v5.2.1"
     # imagePullPolicy: IfNotPresent
     # imagePullSecrets:
     # - name: secretName
@@ -770,7 +770,7 @@ spec:
   ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/deploy-tidb-binlog/#deploy-pump
   # pump:
   #   baseImage: pingcap/tidb-binlog
-  #   version: "v5.2.0"
+  #   version: "v5.2.1"
   #   replicas: 1
   #   storageClassName: local-storage
   #   requests:
@@ -812,7 +812,7 @@ spec:
   ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/deploy-ticdc/
   # ticdc:
   #   baseImage: pingcap/ticdc
-  #   version: "v5.2.0"
+  #   version: "v5.2.1"
   #   replicas: 3
   #   storageClassName: local-storage
   #   requests:
@@ -860,7 +860,7 @@ spec:
   #   # Basic TiFlash Configuration #
   #   ###############################
   #   baseImage: pingcap/tiflash
-  #   version: "v5.2.0"
+  #   version: "v5.2.1"
   #   replicas: 1
   #   # limits:
   #   #   cpu: 2000m

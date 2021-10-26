@@ -71,4 +71,4 @@ spec:
       storage: 10Gi
     storageClassName: local-storage
   timezone: UTC
-  version: v5.2.0
+  version: v5.2.1
