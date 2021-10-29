@@ -11961,7 +11961,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 						},
 					},
 				},
-				Required: []string{"clusters", "prometheus", "reloader", "initializer"},
+				Required: []string{"prometheus", "reloader", "initializer"},
 			},
 		},
 		Dependencies: []string{

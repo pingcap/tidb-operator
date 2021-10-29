@@ -22073,7 +22073,6 @@ spec:
                 type: object
               type: array
           required:
-          - clusters
           - prometheus
           - reloader
           - initializer

@@ -2186,6 +2186,7 @@ TidbMonitorSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 </td>
 </tr>
 <tr>
@@ -21015,6 +21016,7 @@ bool
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 </td>
 </tr>
 <tr>

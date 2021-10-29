@@ -66,9 +66,11 @@ func (c *defaultTidbMonitorControl) reconcileTidbMonitor(tm *v1alpha1.TidbMonito
 	if apiequality.Semantic.DeepEqual(&tm.Status, oldStatus) {
 		return errorutils.NewAggregate(errs)
 	}
+	klog.Error("test dm monitor --------333333")
 	if _, err := c.UpdateTidbMonitor(tm.DeepCopy()); err != nil {
 		errs = append(errs, err)
 	}
+	klog.Error("test dm monitor --------444444")
 
 	return errorutils.NewAggregate(errs)
 }
