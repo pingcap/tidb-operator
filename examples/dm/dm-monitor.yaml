@@ -3,8 +3,6 @@ kind: TidbMonitor
 metadata:
   name: basic
 spec:
-  clusters:
-
   prometheus:
     baseImage: prom/prometheus
     version: v2.27.1
