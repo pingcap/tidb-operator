@@ -9,21 +9,19 @@ spec:
     baseImage: prom/prometheus
     version: v2.27.1
     remoteWrite:
-      - url: "http://localhost:1234"
-        writeRelabelConfigs:
-          - sourceLabels: [__test]
-            separator: ;
-            regex: (.*)
-            targetLabel: node
-            replacement: $1
-            action: replace
+      - url: "http://thanos-receive:19291/api/v1/receive"
+        queue_config:
+          max_samples_per_send: 100
+          max_shards: 100
+        metadata_config:
+          send_interval: 10s
   grafana:
     baseImage: grafana/grafana
-    version: 7.5.7
+    version: 7.5.11
   initializer:
-    baseImage: registry.cn-beijing.aliyuncs.com/tidb/tidb-monitor-initializer
-    version: v5.2.0
+    baseImage: pingcap/tidb-monitor-initializer
+    version: v5.2.1
   reloader:
-    baseImage: registry.cn-beijing.aliyuncs.com/tidb/tidb-monitor-reloader
+    baseImage: pingcap/tidb-monitor-reloader
     version: v1.0.1
   imagePullPolicy: IfNotPresent
