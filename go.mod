@@ -7,10 +7,12 @@ module github.com/pingcap/tidb-operator
 go 1.13
 
 require (
+	cloud.google.com/go/storage v1.0.0
 	github.com/BurntSushi/toml v0.3.1
 	github.com/MakeNowJust/heredoc v0.0.0-20171113091838-e9091a26100e // indirect
 	github.com/Masterminds/semver v1.4.2
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
+	github.com/agiledragon/gomonkey/v2 v2.2.0
 	github.com/aws/aws-sdk-go v1.30.9
 	github.com/chai2010/gettext-go v0.0.0-20170215093142-bf70f2a70fb1 // indirect
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
@@ -28,6 +30,7 @@ require (
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/google/go-cmp v0.5.5
 	github.com/google/gofuzz v1.1.0
+	github.com/gorilla/websocket v1.4.1 // indirect
 	github.com/gregjones/httpcache v0.0.0-20190212212710-3befbb6ad0cc // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.13.0 // indirect
 	github.com/juju/errors v0.0.0-20180806074554-22422dad46e1
@@ -157,3 +160,7 @@ replace k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.19.14
 // so downgrade github.com/googleapis/gnostic to v0.4.1
 // TODO: remove it after upgrading kubernetes dependency to v1.22
 replace github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.4.1
+
+// workaround for avd.aquasec.com/nvd/cve-2020-29652
+// TODO: remove it after upgrading
+replace golang.org/x/crypto => golang.org/x/crypto v0.0.0-20201216223049-8b5274cf687f

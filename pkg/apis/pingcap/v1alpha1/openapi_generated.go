@@ -39,7 +39,9 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BasicAuth":                     schema_pkg_apis_pingcap_v1alpha1_BasicAuth(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BasicAutoScalerSpec":           schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BasicAutoScalerStatus":         schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerStatus(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BatchDeleteOption":             schema_pkg_apis_pingcap_v1alpha1_BatchDeleteOption(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Binlog":                        schema_pkg_apis_pingcap_v1alpha1_Binlog(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CleanOption":                   schema_pkg_apis_pingcap_v1alpha1_CleanOption(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ClusterRef":                    schema_pkg_apis_pingcap_v1alpha1_ClusterRef(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CommonConfig":                  schema_pkg_apis_pingcap_v1alpha1_CommonConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ComponentSpec":                 schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref),
@@ -1018,6 +1020,12 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 							Format:      "",
 						},
 					},
+					"cleanOption": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CleanOption controls the behavior of clean.",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CleanOption"),
+						},
+					},
 					"podSecurityContext": {
 						SchemaProps: spec.SchemaProps{
 							Description: "PodSecurityContext of the component",
@@ -1035,7 +1043,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DumplingConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LocalStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/api/core/v1.Toleration"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CleanOption", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DumplingConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LocalStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/api/core/v1.Toleration"},
 	}
 }
 
@@ -1150,6 +1158,40 @@ func schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerStatus(ref common.Reference
 	}
 }
 
+func schema_pkg_apis_pingcap_v1alpha1_BatchDeleteOption(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "BatchDeleteOption controls the options to delete the objects in batches during the cleanup of backups",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"disableBatchConcurrency": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DisableBatchConcurrency disables the batch deletions with S3 API and the deletion will be done by goroutines.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"batchConcurrency": {
+						SchemaProps: spec.SchemaProps{
+							Description: "BatchConcurrency represents the number of batch deletions in parallel. It is used when the storage provider supports the batch delete API, currently, S3 only. default is 10",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"routineConcurrency": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RoutineConcurrency represents the number of goroutines that used to delete objects default is 100",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_pingcap_v1alpha1_Binlog(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -1190,6 +1232,47 @@ func schema_pkg_apis_pingcap_v1alpha1_Binlog(ref common.ReferenceCallback) commo
 							Description: "The strategy for sending binlog to pump, value can be \"range,omitempty\" or \"hash,omitempty\" now. Optional: Defaults to range",
 							Type:        []string{"string"},
 							Format:      "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_CleanOption(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "CleanOption defines the configuration for cleanup backup",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"pageSize": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PageSize represents the number of objects to clean at a time. default is 10000",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"disableBatchConcurrency": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DisableBatchConcurrency disables the batch deletions with S3 API and the deletion will be done by goroutines.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"batchConcurrency": {
+						SchemaProps: spec.SchemaProps{
+							Description: "BatchConcurrency represents the number of batch deletions in parallel. It is used when the storage provider supports the batch delete API, currently, S3 only. default is 10",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"routineConcurrency": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RoutineConcurrency represents the number of goroutines that used to delete objects default is 100",
+							Type:        []string{"integer"},
+							Format:      "int64",
 						},
 					},
 				},
@@ -11848,6 +11931,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 					"replicas": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Replicas is the number of desired replicas. Defaults to 1.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"shards": {
+						SchemaProps: spec.SchemaProps{
+							Description: "EXPERIMENTAL: Number of shards to distribute targets onto. Number of replicas multiplied by shards is the total number of Pods created. Note that scaling down shards will not reshard data onto remaining instances, it must be manually moved. Increasing shards will not reshard data either but it will continue to be available from the same instances. To query globally use Thanos sidecar and Thanos querier or remote write data to a central location. Sharding is done on the content of the `__address__` target meta-label.",
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},

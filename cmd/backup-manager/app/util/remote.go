@@ -16,16 +16,22 @@ package util
 import (
 	"context"
 	"fmt"
+	"io"
 	"path"
 	"strings"
+	"sync"
 
+	"cloud.google.com/go/storage"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"gocloud.dev/blob"
 	"gocloud.dev/blob/fileblob"
 	"gocloud.dev/blob/gcsblob"
 	"gocloud.dev/blob/s3blob"
 	"gocloud.dev/gcp"
+	"k8s.io/client-go/util/workqueue"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/util"
@@ -63,34 +69,224 @@ type localConfig struct {
 	prefix    string
 }
 
+// StorageBackend provide a generic storage backend
+type StorageBackend struct {
+	*blob.Bucket
+
+	s3    *s3Config
+	gcs   *gcsConfig
+	local *localConfig
+}
+
 // NewStorageBackend creates new storage backend, now supports S3/GCS/Local
-func NewStorageBackend(provider v1alpha1.StorageProvider) (*blob.Bucket, error) {
+func NewStorageBackend(provider v1alpha1.StorageProvider) (*StorageBackend, error) {
+	var bucket *blob.Bucket
+	var err error
+
+	b := &StorageBackend{}
+
 	st := util.GetStorageType(provider)
 	switch st {
 	case v1alpha1.BackupStorageTypeS3:
-		conf := makeS3Config(provider.S3, true)
-		bucket, err := newS3Storage(conf)
-		if err != nil {
-			return nil, err
-		}
-		return bucket, nil
+		b.s3 = makeS3Config(provider.S3, true)
+		bucket, err = newS3Storage(b.s3)
 	case v1alpha1.BackupStorageTypeGcs:
-		conf := makeGcsConfig(provider.Gcs, true)
-		bucket, err := newGcsStorage(conf)
-		if err != nil {
-			return nil, err
-		}
-		return bucket, nil
+		b.gcs = makeGcsConfig(provider.Gcs, true)
+		bucket, err = newGcsStorage(b.gcs)
 	case v1alpha1.BackupStorageTypeLocal:
-		conf := makeLocalConfig(provider.Local)
-		bucket, err := newLocalStorage(conf)
-		if err != nil {
-			return nil, err
-		}
-		return bucket, nil
+		b.local = makeLocalConfig(provider.Local)
+		bucket, err = newLocalStorage(b.local)
 	default:
-		return nil, fmt.Errorf("storage %s not supported yet", st)
+		err = fmt.Errorf("storage %s not supported yet", st)
 	}
+	b.Bucket = bucket
+
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}
+
+func (b *StorageBackend) StorageType() v1alpha1.BackupStorageType {
+	if b.s3 != nil {
+		return v1alpha1.BackupStorageTypeS3
+	} else if b.gcs != nil {
+		return v1alpha1.BackupStorageTypeGcs
+	} else if b.local != nil {
+		return v1alpha1.BackupStorageTypeLocal
+	}
+	return v1alpha1.BackupStorageTypeUnknown
+}
+
+func (b *StorageBackend) ListPage(opts *blob.ListOptions) *PageIterator {
+	return &PageIterator{
+		iter: b.Bucket.List(opts),
+	}
+}
+
+func (b *StorageBackend) AsS3() (*s3.S3, bool) {
+	var s3cli *s3.S3
+	if ok := b.Bucket.As(&s3cli); !ok {
+		return nil, false
+	}
+
+	return s3cli, true
+}
+
+func (b *StorageBackend) AsGCS() (*storage.Client, bool) {
+	var gcsClient *storage.Client
+	if ok := b.As(&gcsClient); !ok {
+		return nil, false
+	}
+
+	return gcsClient, true
+}
+
+// GetBucket return bucket name
+//
+// If provider is S3/GCS, return bucket. Otherwise return empty string
+func (b *StorageBackend) GetBucket() string {
+	if b.s3 != nil {
+		return b.s3.bucket
+	} else if b.gcs != nil {
+		return b.gcs.bucket
+	}
+
+	return ""
+}
+
+// GetPrefix return prefix
+func (b *StorageBackend) GetPrefix() string {
+	if b.s3 != nil {
+		return b.s3.prefix
+	} else if b.gcs != nil {
+		return b.gcs.prefix
+	} else if b.local != nil {
+		return b.local.prefix
+	}
+
+	return ""
+}
+
+type ObjectError struct {
+	Key string
+	Err error
+}
+
+type BatchDeleteObjectsResult struct {
+	Deleted []string
+	Errors  []ObjectError
+}
+
+// BatchDeleteObjects delete mutli objects
+//
+// Depending on storage type, it use function 'BatchDeleteObjectsOfS3' or 'BatchDeleteObjectsConcurrently'
+func (b *StorageBackend) BatchDeleteObjects(ctx context.Context, objs []*blob.ListObject, opt v1alpha1.BatchDeleteOption) *BatchDeleteObjectsResult {
+	var result *BatchDeleteObjectsResult
+
+	s3cli, ok := b.AsS3()
+	if !opt.DisableBatchConcurrency && ok {
+		concurrency := v1alpha1.DefaultBatchDeleteOption.BatchConcurrency
+		if opt.BatchConcurrency != 0 {
+			concurrency = opt.BatchConcurrency
+		}
+		result = BatchDeleteObjectsOfS3(ctx, s3cli, objs, b.GetBucket(), b.GetPrefix(), int(concurrency))
+	} else {
+		concurrency := v1alpha1.DefaultBatchDeleteOption.RoutineConcurrency
+		if opt.RoutineConcurrency != 0 {
+			concurrency = opt.RoutineConcurrency
+		}
+		result = BatchDeleteObjectsConcurrently(ctx, b.Bucket, objs, int(concurrency))
+	}
+
+	return result
+}
+
+// BatchDeleteObjectsOfS3 delete objects by batch delete api
+func BatchDeleteObjectsOfS3(ctx context.Context, s3cli s3iface.S3API, objs []*blob.ListObject, bucket string, prefix string, concurrency int) *BatchDeleteObjectsResult {
+	mu := &sync.Mutex{}
+	result := &BatchDeleteObjectsResult{}
+	batchSize := 1000
+	if prefix != "" {
+		prefix = strings.Trim(prefix, "/") + "/"
+	}
+
+	workqueue.ParallelizeUntil(ctx, concurrency, len(objs)/batchSize+1, func(piece int) {
+		start := piece * batchSize
+		end := (piece + 1) * batchSize
+		if end > len(objs) {
+			end = len(objs)
+		}
+
+		if len(objs[start:end]) == 0 {
+			return
+		}
+
+		// delete objects
+		delete := &s3.Delete{}
+		for _, obj := range objs[start:end] {
+			delete.Objects = append(delete.Objects, &s3.ObjectIdentifier{
+				Key: aws.String(prefix + obj.Key), // key must be absolute path
+			})
+		}
+		input := &s3.DeleteObjectsInput{
+			Bucket: aws.String(bucket),
+			Delete: delete,
+		}
+		resp, err := s3cli.DeleteObjectsWithContext(ctx, input)
+
+		// record result
+		mu.Lock()
+		defer mu.Unlock()
+		if err != nil {
+			// send request failed, consider that all deletion is failed
+			for _, obj := range objs[start:end] {
+				result.Errors = append(result.Errors, ObjectError{
+					Key: obj.Key,
+					Err: err,
+				})
+			}
+		} else {
+			for _, deleted := range resp.Deleted {
+				result.Deleted = append(result.Deleted, *deleted.Key)
+			}
+			for _, rerr := range resp.Errors {
+				result.Errors = append(result.Errors, ObjectError{
+					Key: *rerr.Key,
+					Err: fmt.Errorf("code:%s msg:%s", *rerr.Code, *rerr.Message),
+				})
+			}
+		}
+	})
+
+	return result
+}
+
+// BatchDeleteObjectsConcurrently delete objects by multiple goroutine concurrently
+func BatchDeleteObjectsConcurrently(ctx context.Context, bucket *blob.Bucket, objs []*blob.ListObject, concurrency int) *BatchDeleteObjectsResult {
+	mu := &sync.Mutex{}
+	result := &BatchDeleteObjectsResult{}
+
+	workqueue.ParallelizeUntil(ctx, concurrency, len(objs), func(piece int) {
+		key := objs[piece].Key
+
+		// delete an object
+		err := bucket.Delete(ctx, key)
+
+		mu.Lock()
+		defer mu.Unlock()
+		if err != nil {
+			result.Errors = append(result.Errors, ObjectError{
+				Key: key,
+				Err: err,
+			})
+		} else {
+			result.Deleted = append(result.Deleted, key)
+		}
+	})
+
+	return result
 }
 
 // genStorageArgs returns the arg for --storage option and the remote/local path for br
@@ -119,7 +315,7 @@ func genStorageArgs(provider v1alpha1.StorageProvider) ([]string, error) {
 }
 
 // newLocalStorageOption constructs `--storage local://$PATH` arg for br
-func newLocalStorageOption(conf localConfig) ([]string, error) {
+func newLocalStorageOption(conf *localConfig) ([]string, error) {
 	return []string{fmt.Sprintf("--storage=local://%s", path.Join(conf.mountPath, conf.prefix))}, nil
 }
 
@@ -149,7 +345,7 @@ func newS3StorageOption(conf *s3Config) []string {
 	return s3options
 }
 
-func newLocalStorage(conf localConfig) (*blob.Bucket, error) {
+func newLocalStorage(conf *localConfig) (*blob.Bucket, error) {
 	dir := path.Join(conf.mountPath, conf.prefix)
 	bucket, err := fileblob.OpenBucket(dir, nil)
 	return bucket, err
@@ -272,9 +468,42 @@ func makeGcsConfig(gcs *v1alpha1.GcsStorageProvider, fakeRegion bool) *gcsConfig
 	return &conf
 }
 
-func makeLocalConfig(local *v1alpha1.LocalStorageProvider) localConfig {
-	return localConfig{
+func makeLocalConfig(local *v1alpha1.LocalStorageProvider) *localConfig {
+	return &localConfig{
 		mountPath: local.VolumeMount.MountPath,
 		prefix:    local.Prefix,
 	}
+}
+
+// PageIterator iterates a page of objects via 'ListIterator'
+type PageIterator struct {
+	iter *blob.ListIterator
+}
+
+// Next list a page of objects
+//
+// If err == io.EOF, all objects of bucket have been read.
+// If err == nil, a page of objects have been read.
+// Otherwise, err occurs and return objects have been read.
+//
+// TODO: use blob.ListPage after upgrade gocloud.dev denpendency to 0.21
+func (i *PageIterator) Next(ctx context.Context, pageSize int) ([]*blob.ListObject, error) {
+	objs := make([]*blob.ListObject, 0, pageSize)
+
+	for len(objs) < pageSize {
+		obj, err := i.iter.Next(ctx)
+		if err == io.EOF && len(objs) != 0 {
+			// if err is EOF, but objects has been read, return nil.
+			// and the next call will return io.EOF.
+			break
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		objs = append(objs, obj)
+	}
+
+	return objs, nil
 }

@@ -114,6 +114,16 @@ type TidbMonitorSpec struct {
 	// +optional
 	Replicas *int32 `json:"replicas,omitempty"`
 
+	// EXPERIMENTAL: Number of shards to distribute targets onto. Number of
+	// replicas multiplied by shards is the total number of Pods created. Note
+	// that scaling down shards will not reshard data onto remaining instances,
+	// it must be manually moved. Increasing shards will not reshard data
+	// either but it will continue to be available from the same instances. To
+	// query globally use Thanos sidecar and Thanos querier or remote write
+	// data to a central location. Sharding is done on the content of the
+	// `__address__` target meta-label.
+	Shards *int32 `json:"shards,omitempty"`
+
 	// Additional volumes of component pod.
 	// +optional
 	AdditionalVolumes []corev1.Volume `json:"additionalVolumes,omitempty"`
@@ -448,4 +458,12 @@ type QueueConfig struct {
 	// On recoverable errors, backoff exponentially.
 	MinBackoff time.Duration `json:"minBackoff,omitempty"`
 	MaxBackoff time.Duration `json:"maxBackoff,omitempty"`
+}
+
+func (tm *TidbMonitor) GetShards() int32 {
+	shards := int32(1)
+	if tm.Spec.Shards != nil && *tm.Spec.Shards > 1 {
+		shards = *tm.Spec.Shards
+	}
+	return shards
 }

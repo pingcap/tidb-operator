@@ -16,12 +16,22 @@ package member
 import (
 	"fmt"
 
-	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/controller"
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/klog"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
+
+	"github.com/Masterminds/semver"
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/tiflashapi"
+)
+
+var (
+	// the first version that tiflash support `tiflash/store-status` api.
+	// https://github.com/pingcap/tidb-operator/issues/4159
+	tiflashEqualOrGreaterThanV512, _ = semver.NewConstraint(">=v5.1.2-0")
+	tiflashVersionsNeedCheckStatus   = map[string]struct{}{"lastest": {}, "nightly": {}}
 )
 
 type tiflashUpgrader struct {
@@ -101,6 +111,25 @@ func (u *tiflashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 			if store.State != v1alpha1.TiKVStateUp {
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded TiFlash pod: [%s], store state is not UP", ns, tcName, podName)
 			}
+
+			needCheckStatus := false
+			tiflashVersion := tc.TiFlashVersion()
+			if _, ok := tiflashVersionsNeedCheckStatus[tiflashVersion]; ok {
+				needCheckStatus = true
+			} else if ver, err := semver.NewVersion(tiflashVersion); err == nil && tiflashEqualOrGreaterThanV512.Check(ver) { // NOTE: if parse image version failed, will skip this check
+				needCheckStatus = true
+			}
+			if needCheckStatus {
+				status, err := u.deps.TiFlashControl.GetTiFlashPodClient(tc.Namespace, tc.Name, podName, tc.IsTLSClusterEnabled()).GetStoreStatus()
+				if err != nil {
+					return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded TiFlash pod: [%s], get store status failed: %s", ns, tcName, podName, err)
+				}
+
+				if status != tiflashapi.Running {
+					return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded TiFlash pod: [%s], store status is %s instead of Running", ns, tcName, podName, status)
+				}
+			}
+
 			continue
 		}
 
