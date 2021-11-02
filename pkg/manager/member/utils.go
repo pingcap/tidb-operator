@@ -514,7 +514,13 @@ func CreateOrUpdateConfigMap(configMapLister corelisters.ConfigMapLister, contro
 		return nil, err
 	}
 	if !equal {
-		return controller.UpdateConfigMap(obj, newCm)
+		mutateCm := oldCm.DeepCopyObject().(*corev1.ConfigMap)
+		mutateCm.Data = newCm.Data
+		mutateCm.Labels = newCm.Labels
+		for k, v := range newCm.Annotations {
+			mutateCm.Annotations[k] = v
+		}
+		return controller.UpdateConfigMap(obj, mutateCm)
 	}
 	return newCm, nil
 }
