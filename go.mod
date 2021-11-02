@@ -14,6 +14,7 @@ require (
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/agiledragon/gomonkey/v2 v2.2.0
 	github.com/aws/aws-sdk-go v1.30.9
+	github.com/blang/semver/v4 v4.0.0
 	github.com/chai2010/gettext-go v0.0.0-20170215093142-bf70f2a70fb1 // indirect
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
 	github.com/docker/docker v1.4.2-0.20200309214505-aa6a9891b09c

@@ -377,7 +377,7 @@ type RemoteWriteSpec struct {
 	// The URL of the endpoint to send samples to.
 	URL string `json:"url"`
 	// +optional
-	RemoteTimeout model.Duration `json:"remoteTimeout,omitempty"`
+	RemoteTimeout *model.Duration `json:"remoteTimeout,omitempty"`
 	// The list of remote write relabel configurations.
 	// +optional
 	WriteRelabelConfigs []RelabelConfig `json:"writeRelabelConfigs,omitempty"`
@@ -399,6 +399,22 @@ type RemoteWriteSpec struct {
 	ProxyURL *string `json:"proxyUrl,omitempty"`
 	// +optional
 	QueueConfig *QueueConfig `json:"queueConfig,omitempty"`
+	// MetadataConfig configures the sending of series metadata to remote storage.
+	// +optional
+	MetadataConfig *MetadataConfig `json:"metadataConfig,omitempty"`
+	// Custom HTTP headers to be sent along with each remote write request.
+	// Be aware that headers that are set by Prometheus itself can't be overwritten.
+	// Only valid in Prometheus versions 2.25.0 and newer.
+	Headers map[string]string `json:"headers,omitempty"`
+}
+
+// Configures the sending of series metadata to remote storage.
+// +k8s:openapi-gen=true
+type MetadataConfig struct {
+	// Whether metric metadata is sent to remote storage or not.
+	Send bool `json:"send,omitempty"`
+	// How frequently metric metadata is sent to remote storage.
+	SendInterval string `json:"sendInterval,omitempty"`
 }
 
 // BasicAuth allow an endpoint to authenticate over basic authentication
