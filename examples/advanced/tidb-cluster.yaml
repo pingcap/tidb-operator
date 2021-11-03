@@ -690,6 +690,7 @@ spec:
     ## if separateRocksDBLog enabled, rocksDBLogVolumeName can be set or not.
     ## if rocksDBLogVolumeName not set, separated rocksdblog will use PV of tikv, which may increase IO pressure of data disk.
     ## if rocksDBLogVolumeName set, rocksDBLogVolumeName should be defined storageVolumes or additionalVolumes to use another PV.
+    ## if rocksDBLo path changed, you should also change the rocksdb.info-log-dir.ref: https://github.com/tikv/tikv/blob/master/etc/config-template.toml
     # rocksDBLogVolumeName: ""
 
     ## if enabled, the Raft log will be shown in a separate sidecar container
@@ -697,6 +698,7 @@ spec:
     ## if separateRaftLog enabled, raftLogVolumeName can be set or not.
     ## if raftLogVolumeName not set, separated rocksdblog will use PV of tikv, which may increase IO pressure of data disk.
     ## if raftLogVolumeName set, raftLogVolumeName should be defined storageVolumes or additionalVolumes to use another PV.
+    ## if raftLog path changed, you should also change the raftdb.info-log-dir.ref: https://github.com/tikv/tikv/blob/master/etc/config-template.toml
     # raftLogVolumeName: ""
 
     ## configures RocksDB/Raft log sidecar container resource requirements

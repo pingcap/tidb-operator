@@ -440,12 +440,16 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 
 	var containers []corev1.Container
 	if tc.Spec.TiKV.ShouldSeparateRocksDBLog() {
+		logFile := "rocksdb.info"
+		if ShouldMoveTiKVLogPath(tc.TiKVImage()) {
+			logFile = "db/LOG"
+		}
 		var rocksDBLogVolumeMount corev1.VolumeMount
 		rocksDBLogFilePath := ""
 		rocksDBLogVolumeName := tc.Spec.TiKV.RocksDBLogVolumeName
 		if rocksDBLogVolumeName == "" {
 			rocksDBLogVolumeMount = tikvDataVol
-			rocksDBLogFilePath = path.Join(tikvDataVol.MountPath, "db/LOG")
+			rocksDBLogFilePath = path.Join(tikvDataVol.MountPath, logFile)
 		} else {
 			existVolume := false
 			volMountName := fmt.Sprintf("%s-%s", v1alpha1.TiKVMemberType.String(), rocksDBLogVolumeName)
@@ -468,7 +472,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			if !existVolume {
 				return nil, fmt.Errorf("failed to get rocksDBLogVolumeName %s for cluster %s/%s", rocksDBLogVolumeName, ns, tcName)
 			}
-			rocksDBLogFilePath = path.Join(rocksDBLogVolumeMount.MountPath, "db/LOG")
+			rocksDBLogFilePath = path.Join(rocksDBLogVolumeMount.MountPath, logFile)
 		}
 		// mount a shared volume and tail the RocksDB log to STDOUT using a sidecar.
 		containers = append(containers, corev1.Container{
@@ -485,12 +489,16 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		})
 	}
 	if tc.Spec.TiKV.ShouldSeparateRaftLog() {
+		raftdbLogFile := "raftdb.info"
+		if ShouldMoveTiKVLogPath(tc.TiKVImage()) {
+			raftdbLogFile = "raft/LOG"
+		}
 		var raftLogVolumeMount corev1.VolumeMount
 		raftLogFilePath := ""
 		raftLogVolumeName := tc.Spec.TiKV.RaftLogVolumeName
 		if raftLogVolumeName == "" {
 			raftLogVolumeMount = tikvDataVol
-			raftLogFilePath = path.Join(tikvDataVol.MountPath, "raft/LOG")
+			raftLogFilePath = path.Join(tikvDataVol.MountPath, raftdbLogFile)
 		} else {
 			existVolume := false
 			volMountName := fmt.Sprintf("%s-%s", v1alpha1.TiKVMemberType.String(), raftLogVolumeName)
@@ -513,7 +521,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			if !existVolume {
 				return nil, fmt.Errorf("failed to get raftLogVolume %s for cluster %s/%s", raftLogVolumeName, ns, tcName)
 			}
-			raftLogFilePath = path.Join(raftLogVolumeMount.MountPath, "raft/LOG")
+			raftLogFilePath = path.Join(raftLogVolumeMount.MountPath, raftdbLogFile)
 		}
 		// mount a shared volume and tail the Raft log to STDOUT using a sidecar.
 		containers = append(containers, corev1.Container{

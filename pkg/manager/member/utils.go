@@ -18,8 +18,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
+	"strings"
 	"time"
 
+	"github.com/Masterminds/semver"
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -46,6 +48,12 @@ const (
 	ImagePullBackOff = "ImagePullBackOff"
 	// ErrImagePull is the pod state of image pull failed
 	ErrImagePull = "ErrImagePull"
+)
+
+var (
+	// the first version which move rocksdb info log to store and rotate as tikv log
+	// https://github.com/tikv/tikv/pull/7358
+	tikvLessThanV500, _ = semver.NewConstraint("<v5.0.0-0")
 )
 
 func annotationsMountVolume() (corev1.VolumeMount, corev1.Volume) {
@@ -531,4 +539,37 @@ func GetPVCSelectorForPod(controller runtime.Object, memberType v1alpha1.MemberT
 		return nil, fmt.Errorf("object %s/%s of kind %s has unknown controller", meta.GetNamespace(), meta.GetName(), kind)
 	}
 	return l.Selector()
+}
+
+// ShouldMoveTiKVLogPath returns if rocksdb log path move from db/LOG to rocksdb.info and raft log move from raft/LOG to raftdb.info
+func ShouldMoveTiKVLogPath(image string) bool {
+	_, version := parseImage(image)
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		klog.Errorf("Parse version %s failure, error: %v", version, err)
+		return false
+	}
+	if tikvLessThanV500.Check(v) {
+		return true
+	}
+	return false
+}
+
+// parseImage returns the image name and the tag from the input image string
+func parseImage(image string) (string, string) {
+	var name, tag string
+	colonIdx := strings.LastIndexByte(image, ':')
+	if colonIdx >= 0 {
+		name = image[:colonIdx]
+		tag = image[colonIdx+1:]
+	} else {
+		name = image
+	}
+
+	// check dirty version like: v5.1.1-20210926
+	idx := strings.LastIndexByte(tag, '-')
+	if idx >= 0 {
+		tag = tag[:idx]
+	}
+	return name, tag
 }

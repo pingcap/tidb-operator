@@ -2005,10 +2005,12 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 				g.Expect(sts.Spec.Template.Spec.Containers[0].VolumeMounts[index]).To(Equal(corev1.VolumeMount{
 					Name: fmt.Sprintf("%s-%s", v1alpha1.TiKVMemberType, "rocksdblog"), MountPath: "/var/log/rocksdblog",
 				}))
+				g.Expect(sts.Spec.Template.Spec.Containers[0].Command[2]).To(ContainSubstring("rocksdb.info"))
 				index = len(sts.Spec.Template.Spec.Containers[1].VolumeMounts) - 1
 				g.Expect(sts.Spec.Template.Spec.Containers[1].VolumeMounts[index]).To(Equal(corev1.VolumeMount{
 					Name: fmt.Sprintf("%s-%s", v1alpha1.TiKVMemberType, "raftlog"), MountPath: "/var/log/raftlog",
 				}))
+				g.Expect(sts.Spec.Template.Spec.Containers[1].Command[2]).To(ContainSubstring("raftdb.info"))
 			},
 		},
 		// TODO add more tests

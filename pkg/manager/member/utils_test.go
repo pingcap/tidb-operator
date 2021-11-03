@@ -839,3 +839,78 @@ func TestMemberPodName(t *testing.T) {
 		})
 	}
 }
+
+func TestShouldMoveTiKVLogPath(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	type testcase struct {
+		name   string
+		image  string
+		expect bool
+	}
+
+	tests := []*testcase{
+		{
+			name:   "normal version less than v5.0.0",
+			image:  "pingcap/tikv:v4.0.13",
+			expect: true,
+		},
+		{
+			name:   "normal version more than v5.0.0",
+			image:  "pingcap/tikv:v5.2.1",
+			expect: false,
+		},
+		{
+			name:   "invalid version",
+			image:  "pingcap/tikv:v5.0.x",
+			expect: false,
+		},
+		{
+			name:   "dirty version less than v5.0.0",
+			image:  "pingcap/tikv:v4.0.0-20200909",
+			expect: true,
+		},
+		{
+			name:   "dirty version more than v5.0.0",
+			image:  "pingcap/tikv:v5.1.1-20210926",
+			expect: false,
+		},
+		{
+			name:   "alpha version more than v5.0.0",
+			image:  "pingcap/tikv:v4.0.0-alpha",
+			expect: true,
+		},
+		{
+			name:   "alpha version more than v5.0.0",
+			image:  "pingcap/tikv:v5.2.0-alpha",
+			expect: false,
+		},
+		{
+			name:   "nightly version more than v5.0.0",
+			image:  "pingcap/tikv:v4.0.0-nightly",
+			expect: true,
+		},
+		{
+			name:   "nightly version more than v5.0.0",
+			image:  "pingcap/tikv:v5.2.0-nightly",
+			expect: false,
+		},
+		{
+			name:   "rc version more than v5.0.0",
+			image:  "pingcap/tikv:v4.0.0-rc",
+			expect: true,
+		},
+		{
+			name:   "rc version more than v5.0.0",
+			image:  "pingcap/tikv:v5.2.0-rc",
+			expect: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ok := ShouldMoveTiKVLogPath(tt.image)
+			g.Expect(ok).To(Equal(tt.expect))
+		})
+	}
+}
