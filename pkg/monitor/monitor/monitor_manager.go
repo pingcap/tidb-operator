@@ -68,7 +68,7 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	if monitor.DeletionTimestamp != nil {
 		return nil
 	}
-	if (monitor.Spec.Clusters == nil || len(monitor.Spec.Clusters) < 1) && (monitor.Spec.DM == nil || len(monitor.Spec.DM.Clusters) < 1) {
+	if len(monitor.Spec.Clusters) < 1 && (monitor.Spec.DM == nil || len(monitor.Spec.DM.Clusters) < 1) {
 		klog.Errorf("tm[%s/%s] does not configure the target tidbcluster", monitor.Namespace, monitor.Name)
 		return nil
 	}
