@@ -171,7 +171,7 @@ func getPromConfigMap(monitor *v1alpha1.TidbMonitor, monitorClusterInfos []Clust
 	if err != nil {
 		return nil, err
 	}
-	model.RemoteWriteCfg = remoteWriteCfg
+	model.RemoteWriteCfg = &remoteWriteCfg
 	content, err := RenderPrometheusConfig(model)
 	if err != nil {
 		return nil, err

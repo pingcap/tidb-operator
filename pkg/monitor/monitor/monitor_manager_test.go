@@ -562,7 +562,7 @@ func newTidbMonitor(cluster v1alpha1.TidbClusterRef) *v1alpha1.TidbMonitor {
 			Prometheus: v1alpha1.PrometheusSpec{
 				MonitorContainer: v1alpha1.MonitorContainer{
 					BaseImage: "hub.pingcap.net",
-					Version:   "latest",
+					Version:   "v2.22.2",
 				},
 				Config: &v1alpha1.PrometheusConfiguration{
 					CommandOptions: []string{

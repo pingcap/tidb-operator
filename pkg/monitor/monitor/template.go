@@ -143,7 +143,7 @@ type MonitorConfigModel struct {
 	ClusterInfos              []ClusterRegexInfo
 	DMClusterInfos            []ClusterRegexInfo
 	ExternalLabels            model.LabelSet
-	RemoteWriteCfg            yaml.MapItem
+	RemoteWriteCfg            *yaml.MapItem
 	EnableAlertRules          bool
 	EnableExternalRuleConfigs bool
 	shards                    int32
@@ -178,7 +178,10 @@ func newPrometheusConfig(cmodel *MonitorConfigModel) yaml.MapSlice {
 	}
 	cfg = append(cfg, yaml.MapItem{Key: "global", Value: globalItems})
 	cfg = append(cfg, yaml.MapItem{Key: "scrape_configs", Value: scrapeJobs})
-	cfg = append(cfg, cmodel.RemoteWriteCfg)
+	if cmodel.RemoteWriteCfg != nil {
+		cfg = append(cfg, *cmodel.RemoteWriteCfg)
+	}
+
 	return cfg
 }
 
@@ -483,7 +486,7 @@ func RenderPrometheusConfig(model *MonitorConfigModel) (yaml.MapSlice, error) {
 				"/prometheus-rules/rules/*.rules.yml",
 			},
 		})
-		addAlertManagerUrl(cfg, model)
+		cfg = addAlertManagerUrl(cfg, model)
 
 	} else if model.EnableAlertRules {
 		// Add alert rules when `EnableAlertRules` enabled even if AlertManager not configured.

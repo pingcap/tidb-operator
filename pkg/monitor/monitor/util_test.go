@@ -34,16 +34,17 @@ func TestGenerateRemoteWrite(t *testing.T) {
 				RemoteWrite: []*v1alpha1.RemoteWriteSpec{
 					{URL: url},
 				},
+				MonitorContainer: v1alpha1.MonitorContainer{
+					Version: "v2.22.2",
+				},
 			},
 		},
 	}
-	remoteWriteConfig := generateRemoteWrite(&monitor)
-	if remoteWriteConfig == nil || remoteWriteConfig[0] == nil {
+	remoteWriteConfig, err := generateRemoteWrite(&monitor, nil)
+	if err != nil {
 		t.Errorf("unexpected remoteWriteConfig %v", remoteWriteConfig)
 	}
-	if remoteWriteConfig[0].URL.String() != url {
-		t.Errorf("expect remote url %v, but result %v", url, remoteWriteConfig[0].URL.String())
-	}
+
 }
 
 func TestGetMonitorConfigMap(t *testing.T) {
@@ -71,6 +72,11 @@ func TestGetMonitorConfigMap(t *testing.T) {
 					Name:      "foo",
 					Namespace: "ns",
 				},
+				Spec: v1alpha1.TidbMonitorSpec{
+					Prometheus: v1alpha1.PrometheusSpec{MonitorContainer: v1alpha1.MonitorContainer{
+						Version: "v2.22.2",
+					},
+					}},
 			},
 			monitorClusterInfos: []ClusterRegexInfo{
 				{Name: "basic", enableTLS: true},
@@ -103,7 +109,7 @@ func TestGetMonitorConfigMap(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			cm, err := getPromConfigMap(&tt.monitor, tt.monitorClusterInfos, nil, 0)
+			cm, err := getPromConfigMap(&tt.monitor, tt.monitorClusterInfos, nil, 0, nil)
 			g.Expect(err).NotTo(HaveOccurred())
 			if tt.expected == nil {
 				g.Expect(cm).To(BeNil())

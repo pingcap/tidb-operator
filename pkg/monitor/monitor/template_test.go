@@ -77,15 +77,9 @@ var promCfgModel = promConfigsModel{
 func TestRenderPrometheusConfig(t *testing.T) {
 	g := NewGomegaWithT(t)
 	expectedContentTpl := `global:
-  scrape_interval: 15s
   evaluation_interval: 15s
-alerting:
-  alertmanagers:
-  - static_configs:
-    - targets:
-      - alert-url
-rule_files:
-- /prometheus-rules/rules/*.rules.yml
+  scrape_interval: 15s
+  external_labels: {}
 scrape_configs:
 - job_name: ns1-target-pd
   honor_labels: true
@@ -757,6 +751,13 @@ remote_write:
     target_label: node
     replacement: $1
     action: replace
+rule_files:
+- /prometheus-rules/rules/*.rules.yml
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets:
+      - alert-url
 `
 	url, _ := client.ParseHostURL("http://localhost:1234")
 	regex, _ := config.NewRegexp("(.+)")
@@ -768,21 +769,24 @@ remote_write:
 			{Name: "target", Namespace: "ns1"},
 		},
 		AlertmanagerURL: "alert-url",
-		RemoteWriteConfigs: []*config.RemoteWriteConfig{
-			{
-				URL:           &config.URL{URL: url},
-				RemoteTimeout: model.Duration(15 * time.Second),
-				WriteRelabelConfigs: []*config.RelabelConfig{
-					{
-						SourceLabels: model.LabelNames{
-							"__address__",
-							portLabel,
+		RemoteWriteCfg: &yaml.MapItem{
+			Key: "remote_write",
+			Value: []*config.RemoteWriteConfig{
+				{
+					URL:           &config.URL{URL: url},
+					RemoteTimeout: model.Duration(15 * time.Second),
+					WriteRelabelConfigs: []*config.RelabelConfig{
+						{
+							SourceLabels: model.LabelNames{
+								"__address__",
+								portLabel,
+							},
+							Separator:   ";",
+							Regex:       regex,
+							TargetLabel: "node",
+							Replacement: "$1",
+							Action:      "replace",
 						},
-						Separator:   ";",
-						Regex:       regex,
-						TargetLabel: "node",
-						Replacement: "$1",
-						Action:      "replace",
 					},
 				},
 			},
@@ -790,19 +794,21 @@ remote_write:
 	}
 	content, err := RenderPrometheusConfig(model)
 	g.Expect(err).NotTo(HaveOccurred())
+	prometheusYaml, err := yaml.Marshal(content)
+	g.Expect(err).NotTo(HaveOccurred())
+	yaml := string(prometheusYaml)
 	expectedContentParsed := template.Must(template.New("relabelConfig").Parse(expectedContentTpl))
 	var expectedContentBytes bytes.Buffer
 	expectedContentParsed.Execute(&expectedContentBytes, promCfgModel)
-	g.Expect(content).Should(Equal(expectedContentBytes.String()))
+	g.Expect(yaml).Should(Equal(expectedContentBytes.String()))
 }
 
 func TestRenderPrometheusConfigWithRulesSwitch(t *testing.T) {
 	g := NewGomegaWithT(t)
 	expectedContentTpl := `global:
-  scrape_interval: 15s
   evaluation_interval: 15s
-rule_files:
-- /prometheus-external-rules/*.rules.yml
+  scrape_interval: 15s
+  external_labels: {}
 scrape_configs:
 - job_name: ns1-target-pd
   honor_labels: true
@@ -1474,6 +1480,10 @@ remote_write:
     target_label: node
     replacement: $1
     action: replace
+rule_files:
+- /prometheus-rules/rules/*.rules.yml
+rule_files:
+- /prometheus-external-rules/*.rules.yml
 `
 	url, _ := client.ParseHostURL("http://localhost:1234")
 	regex, _ := config.NewRegexp("(.+)")
@@ -1486,21 +1496,24 @@ remote_write:
 		},
 		EnableAlertRules:          true,
 		EnableExternalRuleConfigs: true,
-		RemoteWriteConfigs: []*config.RemoteWriteConfig{
-			{
-				URL:           &config.URL{URL: url},
-				RemoteTimeout: model.Duration(15 * time.Second),
-				WriteRelabelConfigs: []*config.RelabelConfig{
-					{
-						SourceLabels: model.LabelNames{
-							"__address__",
-							portLabel,
+		RemoteWriteCfg: &yaml.MapItem{
+			Key: "remote_write",
+			Value: []*config.RemoteWriteConfig{
+				{
+					URL:           &config.URL{URL: url},
+					RemoteTimeout: model.Duration(15 * time.Second),
+					WriteRelabelConfigs: []*config.RelabelConfig{
+						{
+							SourceLabels: model.LabelNames{
+								"__address__",
+								portLabel,
+							},
+							Separator:   ";",
+							Regex:       regex,
+							TargetLabel: "node",
+							Replacement: "$1",
+							Action:      "replace",
 						},
-						Separator:   ";",
-						Regex:       regex,
-						TargetLabel: "node",
-						Replacement: "$1",
-						Action:      "replace",
 					},
 				},
 			},
@@ -1508,17 +1521,21 @@ remote_write:
 	}
 	content, err := RenderPrometheusConfig(model)
 	g.Expect(err).NotTo(HaveOccurred())
+	prometheusYaml, err := yaml.Marshal(content)
+	g.Expect(err).NotTo(HaveOccurred())
+	yaml := string(prometheusYaml)
 	expectedContentParsed := template.Must(template.New("relabelConfig").Parse(expectedContentTpl))
 	var expectedContentBytes bytes.Buffer
 	expectedContentParsed.Execute(&expectedContentBytes, promCfgModel)
-	g.Expect(content).Should(Equal(expectedContentBytes.String()))
+	g.Expect(yaml).Should(Equal(expectedContentBytes.String()))
 }
 
 func TestRenderPrometheusConfigTLSEnabled(t *testing.T) {
 	g := NewGomegaWithT(t)
 	expectedContentTpl := `global:
-  scrape_interval: 15s
   evaluation_interval: 15s
+  scrape_interval: 15s
+  external_labels: {}
 scrape_configs:
 - job_name: ns1-target-pd
   honor_labels: true
@@ -2224,10 +2241,13 @@ scrape_configs:
 	}
 	content, err := RenderPrometheusConfig(model)
 	g.Expect(err).NotTo(HaveOccurred())
+	prometheusYaml, err := yaml.Marshal(content)
+	g.Expect(err).NotTo(HaveOccurred())
+	yaml := string(prometheusYaml)
 	expectedContentParsed := template.Must(template.New("relabelConfig").Parse(expectedContentTpl))
 	var expectedContentBytes bytes.Buffer
 	expectedContentParsed.Execute(&expectedContentBytes, promCfgModel)
-	g.Expect(content).Should(Equal(expectedContentBytes.String()))
+	g.Expect(yaml).Should(Equal(expectedContentBytes.String()))
 }
 
 func TestBuildAddressRelabelConfigByComponent(t *testing.T) {
@@ -2263,7 +2283,13 @@ func TestMultipleClusterConfigRender(t *testing.T) {
 	g.Expect(err).NotTo(HaveOccurred())
 	// check scrapeJob number
 	pc := newPrometheusConfig(model)
-	g.Expect(len(pc.ScrapeConfigs)).Should(Equal(24))
+	for _, item := range pc {
+		key := item.Key
+		if key == "scrape_configs" {
+			g.Expect(len(item.Value.([]*config.ScrapeConfig))).Should(Equal(24))
+		}
+	}
+
 }
 
 func TestMultipleClusterTlsConfigRender(t *testing.T) {
@@ -2284,7 +2310,12 @@ func TestMultipleClusterTlsConfigRender(t *testing.T) {
 	g.Expect(err).NotTo(HaveOccurred())
 	// check scrapeJob number
 	pc := newPrometheusConfig(model)
-	g.Expect(pc.ScrapeConfigs[0].Scheme).Should(Equal("https"))
+	for _, item := range pc {
+		key := item.Key
+		if key == "scrape_configs" {
+			g.Expect(item.Value.([]*config.ScrapeConfig)[0].Scheme).Should(Equal("https"))
+		}
+	}
 }
 
 func TestScrapeJob(t *testing.T) {
