@@ -1165,10 +1165,7 @@ func defaultTidbMonitor(monitor *v1alpha1.TidbMonitor) {
 	if monitor.Spec.PVReclaimPolicy == nil {
 		monitor.Spec.PVReclaimPolicy = &retainPVP
 	}
-	// If tidb clusters is null,we set a zero slice.
-	if monitor.Spec.Clusters == nil {
-		monitor.Spec.Clusters = []v1alpha1.TidbClusterRef{}
-	}
+
 }
 
 func getMonitorStatefulSet(sa *core.ServiceAccount, secret *core.Secret, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, shard int32) (*apps.StatefulSet, error) {
