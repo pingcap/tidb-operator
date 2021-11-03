@@ -316,7 +316,7 @@ func newDependencies(
 		PodLister:                   kubeInformerFactory.Core().V1().Pods().Lister(),
 		NodeLister:                  nodeLister,
 		SecretLister:                kubeInformerFactory.Core().V1().Secrets().Lister(),
-		ConfigMapLister:             kubeInformerFactory.Core().V1().ConfigMaps().Lister(),
+		ConfigMapLister:             labelFilterKubeInformerFactory.Core().V1().ConfigMaps().Lister(),
 		StatefulSetLister:           kubeInformerFactory.Apps().V1().StatefulSets().Lister(),
 		DeploymentLister:            kubeInformerFactory.Apps().V1().Deployments().Lister(),
 		StorageClassLister:          scLister,
@@ -374,12 +374,12 @@ func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface
 	return deps
 }
 
-func newFakeControl(kubeClientset kubernetes.Interface, informerFactory informers.SharedInformerFactory, kubeInformerFactory kubeinformers.SharedInformerFactory) Controls {
+func newFakeControl(kubeClientset kubernetes.Interface, informerFactory informers.SharedInformerFactory, kubeInformerFactory kubeinformers.SharedInformerFactory, labelFilterKubeInformerFactory kubeinformers.SharedInformerFactory) Controls {
 	genericCtrl := NewFakeGenericControl()
 	// Shared variables to construct `Dependencies` and some of its fields
 	return Controls{
 		JobControl:         NewFakeJobControl(kubeInformerFactory.Batch().V1().Jobs()),
-		ConfigMapControl:   NewFakeConfigMapControl(kubeInformerFactory.Core().V1().ConfigMaps()),
+		ConfigMapControl:   NewFakeConfigMapControl(labelFilterKubeInformerFactory.Core().V1().ConfigMaps()),
 		StatefulSetControl: NewFakeStatefulSetControl(kubeInformerFactory.Apps().V1().StatefulSets()),
 		ServiceControl:     NewFakeServiceControl(kubeInformerFactory.Core().V1().Services(), kubeInformerFactory.Core().V1().Endpoints()),
 		PVControl:          NewFakePVControl(kubeInformerFactory.Core().V1().PersistentVolumes(), kubeInformerFactory.Core().V1().PersistentVolumeClaims()),
@@ -420,6 +420,6 @@ func NewFakeDependencies() *Dependencies {
 	labelFilterKubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
 	recorder := record.NewFakeRecorder(100)
 	deps := newDependencies(cliCfg, cli, kubeCli, genCli, informerFactory, kubeInformerFactory, labelFilterKubeInformerFactory, recorder)
-	deps.Controls = newFakeControl(kubeCli, informerFactory, kubeInformerFactory)
+	deps.Controls = newFakeControl(kubeCli, informerFactory, kubeInformerFactory, labelFilterKubeInformerFactory)
 	return deps
 }

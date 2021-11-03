@@ -708,7 +708,7 @@ func newFakeWorkerMemberManager() (*workerMemberManager, *workerFakeControls, *w
 	indexers := &workerFakeIndexers{
 		svc: fakeDeps.KubeInformerFactory.Core().V1().Services().Informer().GetIndexer(),
 		set: fakeDeps.KubeInformerFactory.Apps().V1().StatefulSets().Informer().GetIndexer(),
-		cm:  fakeDeps.KubeInformerFactory.Core().V1().ConfigMaps().Informer().GetIndexer(),
+		cm:  fakeDeps.LabelFilterKubeInformerFactory.Core().V1().ConfigMaps().Informer().GetIndexer(),
 		pod: fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer(),
 	}
 	return pmm, controls, indexers, masterControl
