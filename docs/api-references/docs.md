@@ -7783,6 +7783,46 @@ string
 <p>
 <p>MemberType represents member type</p>
 </p>
+<h3 id="metadataconfig">MetadataConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#remotewritespec">RemoteWriteSpec</a>)
+</p>
+<p>
+<p>Configures the sending of series metadata to remote storage.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>send</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Whether metric metadata is sent to remote storage or not.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sendInterval</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>How frequently metric metadata is sent to remote storage.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="monitorcomponentaccessor">MonitorComponentAccessor</h3>
 <p>
 </p>
@@ -11071,6 +11111,17 @@ int
 </tr>
 <tr>
 <td>
+<code>minShards</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>MinShards is the minimum number of shards, i.e. amount of concurrency.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>maxShards</code></br>
 <em>
 int
@@ -11095,11 +11146,11 @@ int
 <td>
 <code>batchSendDeadline</code></br>
 <em>
-time.Duration
+string
 </em>
 </td>
 <td>
-<p>Maximum time sample will wait in buffer.</p>
+<p>BatchSendDeadline is the maximum time a sample will wait in buffer.</p>
 </td>
 </tr>
 <tr>
@@ -11110,28 +11161,29 @@ int
 </em>
 </td>
 <td>
-<p>Max number of times to retry a batch on recoverable errors.</p>
+<p>MaxRetries is the maximum number of times to retry a batch on recoverable errors.</p>
 </td>
 </tr>
 <tr>
 <td>
 <code>minBackoff</code></br>
 <em>
-time.Duration
+string
 </em>
 </td>
 <td>
-<p>On recoverable errors, backoff exponentially.</p>
+<p>MinBackoff is the initial retry delay. Gets doubled for every retry.</p>
 </td>
 </tr>
 <tr>
 <td>
 <code>maxBackoff</code></br>
 <em>
-time.Duration
+string
 </em>
 </td>
 <td>
+<p>MaxBackoff is the maximum retry delay.</p>
 </td>
 </tr>
 </tbody>
@@ -11332,6 +11384,19 @@ string
 </tr>
 <tr>
 <td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>The name of the remote write queue, must be unique if specified. The
+name is used in metrics and logging in order to differentiate queues.
+Only valid in Prometheus versions 2.15.0 and newer.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>remoteTimeout</code></br>
 <em>
 github.com/prometheus/common/model.Duration
@@ -11430,6 +11495,33 @@ QueueConfig
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>metadataConfig</code></br>
+<em>
+<a href="#metadataconfig">
+MetadataConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MetadataConfig configures the sending of series metadata to remote storage.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>headers</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>Custom HTTP headers to be sent along with each remote write request.
+Be aware that headers that are set by Prometheus itself can&rsquo;t be overwritten.
+Only valid in Prometheus versions 2.25.0 and newer.</p>
 </td>
 </tr>
 </tbody>

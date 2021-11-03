@@ -143,7 +143,7 @@ type MonitorConfigModel struct {
 	ClusterInfos              []ClusterRegexInfo
 	DMClusterInfos            []ClusterRegexInfo
 	ExternalLabels            model.LabelSet
-	RemoteWriteConfigs        []*config.RemoteWriteConfig
+	RemoteWriteCfg            yaml.MapItem
 	EnableAlertRules          bool
 	EnableExternalRuleConfigs bool
 	shards                    int32
@@ -156,7 +156,7 @@ type ClusterRegexInfo struct {
 	enableTLS bool
 }
 
-func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
+func newPrometheusConfig(cmodel *MonitorConfigModel) yaml.MapSlice {
 	var scrapeJobs []*config.ScrapeConfig
 	scrapeJobs = append(scrapeJobs, scrapeJob("pd", pdPattern, cmodel, buildAddressRelabelConfigByComponent("pd"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("tidb", tidbPattern, cmodel, buildAddressRelabelConfigByComponent("tidb"))...)
@@ -170,16 +170,16 @@ func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
 	scrapeJobs = append(scrapeJobs, scrapeJob("lightning", lightningPattern, cmodel, buildAddressRelabelConfigByComponent("lightning"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob(dmWorker, dmWorkerPattern, cmodel, buildAddressRelabelConfigByComponent(dmWorker))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob(dmMaster, dmMasterPattern, cmodel, buildAddressRelabelConfigByComponent(dmMaster))...)
-	var c = config.Config{
-		GlobalConfig: config.GlobalConfig{
-			ScrapeInterval:     model.Duration(15 * time.Second),
-			EvaluationInterval: model.Duration(15 * time.Second),
-			ExternalLabels:     cmodel.ExternalLabels,
-		},
-		ScrapeConfigs:      scrapeJobs,
-		RemoteWriteConfigs: cmodel.RemoteWriteConfigs,
+	cfg := yaml.MapSlice{}
+	globalItems := yaml.MapSlice{
+		{Key: "evaluation_interval", Value: "15s"},
+		{Key: "scrape_interval", Value: "15s"},
+		{Key: "external_labels", Value: cmodel.ExternalLabels},
 	}
-	return &c
+	cfg = append(cfg, yaml.MapItem{Key: "global", Value: globalItems})
+	cfg = append(cfg, yaml.MapItem{Key: "scrape_configs", Value: scrapeJobs})
+	cfg = append(cfg, cmodel.RemoteWriteCfg)
+	return cfg
 }
 
 func buildAddressRelabelConfigByComponent(kind string) *config.RelabelConfig {
@@ -449,49 +449,62 @@ func isDMJob(jobName string) bool {
 	return false
 }
 
-func addAlertManagerUrl(pc *config.Config, cmodel *MonitorConfigModel) {
-	pc.AlertingConfig = config.AlertingConfig{
-		AlertmanagerConfigs: []*config.AlertmanagerConfig{
+func addAlertManagerUrl(cfg yaml.MapSlice, cmodel *MonitorConfigModel) yaml.MapSlice {
+	cfg = append(cfg, yaml.MapItem{
+		Key: "alerting",
+		Value: yaml.MapSlice{
 			{
-				ServiceDiscoveryConfig: config.ServiceDiscoveryConfig{
-					StaticConfigs: []*config.TargetGroup{
-						{
-							Targets: []model.LabelSet{
-								{model.AddressLabel: model.LabelValue(cmodel.AlertmanagerURL)},
+				Key: "alertmanagers",
+				Value: []*config.AlertmanagerConfig{
+					{
+						ServiceDiscoveryConfig: config.ServiceDiscoveryConfig{
+							StaticConfigs: []*config.TargetGroup{
+								{
+									Targets: []model.LabelSet{
+										{model.AddressLabel: model.LabelValue(cmodel.AlertmanagerURL)},
+									},
+								},
 							},
 						},
 					},
 				},
 			},
 		},
-	}
+	})
+	return cfg
 }
 
-func RenderPrometheusConfig(model *MonitorConfigModel) (string, error) {
-	pc := newPrometheusConfig(model)
+func RenderPrometheusConfig(model *MonitorConfigModel) (yaml.MapSlice, error) {
+	cfg := newPrometheusConfig(model)
 	if len(model.AlertmanagerURL) > 0 {
-		addAlertManagerUrl(pc, model)
-		pc.RuleFiles = []string{
-			"/prometheus-rules/rules/*.rules.yml",
-		}
+		cfg = append(cfg, yaml.MapItem{
+			Key: "rule_files",
+			Value: []string{
+				"/prometheus-rules/rules/*.rules.yml",
+			},
+		})
+		addAlertManagerUrl(cfg, model)
+
 	} else if model.EnableAlertRules {
 		// Add alert rules when `EnableAlertRules` enabled even if AlertManager not configured.
-		pc.RuleFiles = []string{
-			"/prometheus-rules/rules/*.rules.yml",
-		}
+		cfg = append(cfg, yaml.MapItem{
+			Key: "rule_files",
+			Value: []string{
+				"/prometheus-rules/rules/*.rules.yml",
+			},
+		})
 
 	}
 	if model.EnableExternalRuleConfigs {
-		pc.RuleFiles = []string{
-			"/prometheus-external-rules/*.rules.yml",
-		}
+		cfg = append(cfg, yaml.MapItem{
+			Key: "rule_files",
+			Value: []string{
+				"/prometheus-external-rules/*.rules.yml",
+			},
+		})
 	}
 
-	bs, err := yaml.Marshal(pc)
-	if err != nil {
-		return "", err
-	}
-	return string(bs), nil
+	return cfg, nil
 }
 
 func appendShardingRelabelConfigRules(relabelConfigs []*config.RelabelConfig, shard uint64) []*config.RelabelConfig {

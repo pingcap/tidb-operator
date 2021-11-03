@@ -14,8 +14,6 @@
 package v1alpha1
 
 import (
-	"time"
-
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	apps "k8s.io/api/apps/v1"
@@ -376,6 +374,10 @@ type SecretOrConfigMap struct {
 type RemoteWriteSpec struct {
 	// The URL of the endpoint to send samples to.
 	URL string `json:"url"`
+	// The name of the remote write queue, must be unique if specified. The
+	// name is used in metrics and logging in order to differentiate queues.
+	// Only valid in Prometheus versions 2.15.0 and newer.
+	Name string `json:"name,omitempty"`
 	// +optional
 	RemoteTimeout *model.Duration `json:"remoteTimeout,omitempty"`
 	// The list of remote write relabel configurations.
@@ -459,21 +461,26 @@ type QueueConfig struct {
 	// Number of samples to buffer per shard before we start dropping them.
 	Capacity int `json:"capacity,omitempty"`
 
+	// MinShards is the minimum number of shards, i.e. amount of concurrency.
+	MinShards int `json:"minShards,omitempty"`
+
 	// Max number of shards, i.e. amount of concurrency.
 	MaxShards int `json:"maxShards,omitempty"`
 
 	// Maximum number of samples per send.
 	MaxSamplesPerSend int `json:"maxSamplesPperSend,omitempty"`
 
-	// Maximum time sample will wait in buffer.
-	BatchSendDeadline time.Duration `json:"batchSendDeadline,omitempty"`
+	// BatchSendDeadline is the maximum time a sample will wait in buffer.
+	BatchSendDeadline string `json:"batchSendDeadline,omitempty"`
 
-	// Max number of times to retry a batch on recoverable errors.
+	// MaxRetries is the maximum number of times to retry a batch on recoverable errors.
 	MaxRetries int `json:"maxRetries,omitempty"`
 
-	// On recoverable errors, backoff exponentially.
-	MinBackoff time.Duration `json:"minBackoff,omitempty"`
-	MaxBackoff time.Duration `json:"maxBackoff,omitempty"`
+	// MinBackoff is the initial retry delay. Gets doubled for every retry.
+	MinBackoff string `json:"minBackoff,omitempty"`
+
+	// MaxBackoff is the maximum retry delay.
+	MaxBackoff string `json:"maxBackoff,omitempty"`
 }
 
 func (tm *TidbMonitor) GetShards() int32 {

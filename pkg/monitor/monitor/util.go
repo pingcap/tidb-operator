@@ -15,14 +15,13 @@ package monitor
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
-	"net/url"
 	"path"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"gopkg.in/yaml.v2"
 
 	"github.com/blang/semver/v4"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
@@ -30,7 +29,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/config"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -162,24 +160,26 @@ func getPromConfigMap(monitor *v1alpha1.TidbMonitor, monitorClusterInfos []Clust
 		shards:           shard,
 	}
 
-	if len(monitor.Spec.Prometheus.RemoteWrite) > 0 {
-		_, err := generateRemoteWrite(monitor, store)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	if monitor.Spec.AlertmanagerURL != nil {
 		model.AlertmanagerURL = *monitor.Spec.AlertmanagerURL
 	}
 	if monitor.Spec.Prometheus.Config != nil && monitor.Spec.Prometheus.Config.RuleConfigRef != nil {
 		model.EnableExternalRuleConfigs = true
 	}
+
+	remoteWriteCfg, err := generateRemoteWrite(monitor, store)
+	if err != nil {
+		return nil, err
+	}
+	model.RemoteWriteCfg = remoteWriteCfg
 	content, err := RenderPrometheusConfig(model)
 	if err != nil {
 		return nil, err
 	}
-
+	prometheusYaml, err := yaml.Marshal(content)
+	if err != nil {
+		return nil, err
+	}
 	cm := &core.ConfigMap{
 		ObjectMeta: meta.ObjectMeta{
 			Name:            GetPromConfigMapName(monitor),
@@ -188,7 +188,7 @@ func getPromConfigMap(monitor *v1alpha1.TidbMonitor, monitorClusterInfos []Clust
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 		},
 		Data: map[string]string{
-			"prometheus.yml": content,
+			"prometheus.yml": string(prometheusYaml),
 		},
 	}
 	return cm, nil
@@ -1415,7 +1415,7 @@ func generateRemoteWrite(monitor *v1alpha1.TidbMonitor, store *Store) (yaml.MapI
 	cfgs := []yaml.MapSlice{}
 	version, err := semver.ParseTolerant(monitor.Spec.Prometheus.Version)
 	if err != nil {
-		return yaml.MapItem{}, errors.Wrap(err, "parse version")
+		return yaml.MapItem{}, err
 	}
 	for i, spec := range monitor.Spec.Prometheus.RemoteWrite {
 		//defaults
@@ -1476,6 +1476,17 @@ func generateRemoteWrite(monitor *v1alpha1.TidbMonitor, store *Store) (yaml.MapI
 
 		}
 
+		if spec.BasicAuth != nil {
+			if s, ok := store.BasicAuthAssets[fmt.Sprintf("remoteWrite/%d", i)]; ok {
+				cfg = append(cfg, yaml.MapItem{
+					Key: "basic_auth", Value: yaml.MapSlice{
+						{Key: "username", Value: s.Username},
+						{Key: "password", Value: s.Password},
+					},
+				})
+			}
+		}
+
 		if spec.BearerToken != "" {
 			cfg = append(cfg, yaml.MapItem{Key: "bearer_token", Value: spec.BearerToken})
 		}
@@ -1484,9 +1495,7 @@ func generateRemoteWrite(monitor *v1alpha1.TidbMonitor, store *Store) (yaml.MapI
 			cfg = append(cfg, yaml.MapItem{Key: "bearer_token_file", Value: spec.BearerTokenFile})
 		}
 
-		cfg = addTLStoYaml(cfg, p.ObjectMeta.Namespace, spec.TLSConfig, store)
-
-		if spec.ProxyURL != "" {
+		if spec.ProxyURL != nil {
 			cfg = append(cfg, yaml.MapItem{Key: "proxy_url", Value: spec.ProxyURL})
 		}
 
@@ -1562,44 +1571,4 @@ func stringMapToMapSlice(m map[string]string) yaml.MapSlice {
 	}
 
 	return res
-}
-
-func addTLStoYaml(cfg yaml.MapSlice, namespace string, tls *config.TLSConfig, store *Store) yaml.MapSlice {
-	if tls != nil {
-		tlsConfig := addSafeTLStoYaml(yaml.MapSlice{}, namespace, tls.SafeTLSConfig, store)[0].Value.(yaml.MapSlice)
-		if tls.CAFile != "" {
-			tlsConfig = append(tlsConfig, yaml.MapItem{Key: "ca_file", Value: tls.CAFile})
-		}
-		if tls.CertFile != "" {
-			tlsConfig = append(tlsConfig, yaml.MapItem{Key: "cert_file", Value: tls.CertFile})
-		}
-		if tls.KeyFile != "" {
-			tlsConfig = append(tlsConfig, yaml.MapItem{Key: "key_file", Value: tls.KeyFile})
-		}
-		cfg = append(cfg, yaml.MapItem{Key: "tls_config", Value: tlsConfig})
-	}
-	return cfg
-}
-
-func addSafeTLStoYaml(cfg yaml.MapSlice, namespace string, tls v1alpha1.SafeTLSConfig, store *Store) yaml.MapSlice {
-	pathForSelector := func(sel v1alpha1.SecretOrConfigMap) string {
-		return path.Join(tlsAssetsDir, assets.TLSAssetKeyFromSelector(namespace, sel).String())
-	}
-	tlsConfig := yaml.MapSlice{
-		{Key: "insecure_skip_verify", Value: tls.InsecureSkipVerify},
-	}
-	if tls.CA.Secret != nil || tls.CA.ConfigMap != nil {
-		tlsConfig = append(tlsConfig, yaml.MapItem{Key: "ca_file", Value: pathForSelector(tls.CA)})
-	}
-	if tls.Cert.Secret != nil || tls.Cert.ConfigMap != nil {
-		tlsConfig = append(tlsConfig, yaml.MapItem{Key: "cert_file", Value: pathForSelector(tls.Cert)})
-	}
-	if tls.KeySecret != nil {
-		tlsConfig = append(tlsConfig, yaml.MapItem{Key: "key_file", Value: pathForSelector(v1alpha1.SecretOrConfigMap{Secret: tls.KeySecret})})
-	}
-	if tls.ServerName != "" {
-		tlsConfig = append(tlsConfig, yaml.MapItem{Key: "server_name", Value: tls.ServerName})
-	}
-	cfg = append(cfg, yaml.MapItem{Key: "tls_config", Value: tlsConfig})
-	return cfg
 }

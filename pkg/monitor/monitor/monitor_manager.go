@@ -134,6 +134,11 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	if err != nil {
 		return err
 	}
+	// sync basicAuth
+	err = m.syncBasicAuth(monitor, assetStore)
+	if err != nil {
+		return err
+	}
 
 	// Sync Service
 	if err := m.syncTidbMonitorService(monitor); err != nil {
@@ -781,4 +786,17 @@ func buildEtcdValue(host string, port int) (string, error) {
 		return "", err
 	}
 	return string(data), nil
+}
+
+func (m *MonitorManager) syncBasicAuth(monitor *v1alpha1.TidbMonitor, store *Store) error {
+	if monitor.Spec.Prometheus.RemoteWrite != nil {
+
+		for i, remoteWrite := range monitor.Spec.Prometheus.RemoteWrite {
+			if err := store.AddBasicAuth(monitor.Namespace, remoteWrite.BasicAuth, fmt.Sprintf("remoteRead/%d", i)); err != nil {
+				return err
+			}
+
+		}
+	}
+	return nil
 }

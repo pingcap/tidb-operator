@@ -73,6 +73,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MasterKeyFileConfig":           schema_pkg_apis_pingcap_v1alpha1_MasterKeyFileConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MasterKeyKMSConfig":            schema_pkg_apis_pingcap_v1alpha1_MasterKeyKMSConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MasterSpec":                    schema_pkg_apis_pingcap_v1alpha1_MasterSpec(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MetadataConfig":                schema_pkg_apis_pingcap_v1alpha1_MetadataConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MonitorContainer":              schema_pkg_apis_pingcap_v1alpha1_MonitorContainer(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.OpenTracing":                   schema_pkg_apis_pingcap_v1alpha1_OpenTracing(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.OpenTracingReporter":           schema_pkg_apis_pingcap_v1alpha1_OpenTracingReporter(ref),
@@ -3465,6 +3466,33 @@ func schema_pkg_apis_pingcap_v1alpha1_MasterSpec(ref common.ReferenceCallback) c
 	}
 }
 
+func schema_pkg_apis_pingcap_v1alpha1_MetadataConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Configures the sending of series metadata to remote storage.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"send": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether metric metadata is sent to remote storage or not.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"sendInterval": {
+						SchemaProps: spec.SchemaProps{
+							Description: "How frequently metric metadata is sent to remote storage.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_pingcap_v1alpha1_MonitorContainer(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -5449,6 +5477,13 @@ func schema_pkg_apis_pingcap_v1alpha1_QueueConfig(ref common.ReferenceCallback) 
 							Format:      "int32",
 						},
 					},
+					"minShards": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MinShards is the minimum number of shards, i.e. amount of concurrency.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 					"maxShards": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Max number of shards, i.e. amount of concurrency.",
@@ -5465,29 +5500,30 @@ func schema_pkg_apis_pingcap_v1alpha1_QueueConfig(ref common.ReferenceCallback) 
 					},
 					"batchSendDeadline": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Maximum time sample will wait in buffer.",
-							Type:        []string{"integer"},
-							Format:      "int64",
+							Description: "BatchSendDeadline is the maximum time a sample will wait in buffer.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"maxRetries": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Max number of times to retry a batch on recoverable errors.",
+							Description: "MaxRetries is the maximum number of times to retry a batch on recoverable errors.",
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},
 					},
 					"minBackoff": {
 						SchemaProps: spec.SchemaProps{
-							Description: "On recoverable errors, backoff exponentially.",
-							Type:        []string{"integer"},
-							Format:      "int64",
+							Description: "MinBackoff is the initial retry delay. Gets doubled for every retry.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"maxBackoff": {
 						SchemaProps: spec.SchemaProps{
-							Type:   []string{"integer"},
-							Format: "int64",
+							Description: "MaxBackoff is the maximum retry delay.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},
@@ -5579,6 +5615,13 @@ func schema_pkg_apis_pingcap_v1alpha1_RemoteWriteSpec(ref common.ReferenceCallba
 							Format:      "",
 						},
 					},
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The name of the remote write queue, must be unique if specified. The name is used in metrics and logging in order to differentiate queues. Only valid in Prometheus versions 2.15.0 and newer.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"remoteTimeout": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
@@ -5636,12 +5679,33 @@ func schema_pkg_apis_pingcap_v1alpha1_RemoteWriteSpec(ref common.ReferenceCallba
 							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.QueueConfig"),
 						},
 					},
+					"metadataConfig": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MetadataConfig configures the sending of series metadata to remote storage.",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MetadataConfig"),
+						},
+					},
+					"headers": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Custom HTTP headers to be sent along with each remote write request. Be aware that headers that are set by Prometheus itself can't be overwritten. Only valid in Prometheus versions 2.25.0 and newer.",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
+						},
+					},
 				},
 				Required: []string{"url"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BasicAuth", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.QueueConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.RelabelConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TLSConfig"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BasicAuth", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MetadataConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.QueueConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.RelabelConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TLSConfig"},
 	}
 }
 

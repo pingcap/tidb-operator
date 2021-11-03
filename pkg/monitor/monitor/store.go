@@ -16,6 +16,7 @@ package monitor
 import (
 	"fmt"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
 )
 
@@ -27,8 +28,9 @@ import (
 //
 // Store doesn't support concurrent access.
 type Store struct {
-	secretLister corelisterv1.SecretLister
-	TLSAssets    map[TLSAssetKey]TLSAsset
+	secretLister    corelisterv1.SecretLister
+	TLSAssets       map[TLSAssetKey]TLSAsset
+	BasicAuthAssets map[string]BasicAuthCredentials
 }
 
 // NewStore returns an empty assetStore.
@@ -52,6 +54,29 @@ func (s *Store) addTLSAssets(ns string, secretName string) error {
 	return nil
 }
 
+// AddBasicAuth processes the given *BasicAuth and adds the referenced credentials to the store.
+func (s *Store) AddBasicAuth(ns string, ba *v1alpha1.BasicAuth, key string) error {
+	if ba == nil {
+		return nil
+	}
+
+	password, err := s.secretLister.Secrets(ns).Get(ba.Password.Name)
+	if err != nil {
+		return fmt.Errorf("get secret [%s/%s] failed, err: %v", ns, ba.Password.Name, err)
+	}
+	username, err := s.secretLister.Secrets(ns).Get(ba.Username.Name)
+	if err != nil {
+		return fmt.Errorf("get secret [%s/%s] failed, err: %v", ns, ba.Username.Name, err)
+	}
+
+	s.BasicAuthAssets[key] = BasicAuthCredentials{
+		Username: string(password.Data[ba.Username.Name]),
+		Password: string(username.Data[ba.Password.Key]),
+	}
+
+	return nil
+}
+
 // TLSAssetKey is a key for a TLS asset.
 type TLSAssetKey struct {
 	from string
@@ -67,4 +92,9 @@ type TLSAsset string
 // String implements the fmt.Stringer interface.
 func (k TLSAssetKey) String() string {
 	return fmt.Sprintf("%s_%s_%s_%s", k.from, k.ns, k.name, k.key)
+}
+
+type BasicAuthCredentials struct {
+	Username string
+	Password string
 }
