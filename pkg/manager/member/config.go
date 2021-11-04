@@ -24,7 +24,6 @@ import (
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
-// updateConfigMap check if ConfigMap is has actually been updated
 func updateConfigMap(old, new *corev1.ConfigMap) (bool, error) {
 	dataEqual := true
 
