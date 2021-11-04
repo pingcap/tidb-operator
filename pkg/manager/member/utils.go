@@ -504,10 +504,12 @@ func CreateOrUpdateConfigMap(configMapLister corelisters.ConfigMapLister, contro
 	}
 	if errors.IsNotFound(err) {
 		cm, err := controller.CreateConfigMap(owner, newCm)
-		if err != nil && !errors.IsAlreadyExists(err) {
+		if err == nil {
+			return cm, nil
+		}
+		if !errors.IsAlreadyExists(err) {
 			return nil, err
 		}
-		return cm, nil
 	}
 	equal, err := updateConfigMap(oldCm, newCm)
 	if err != nil {
