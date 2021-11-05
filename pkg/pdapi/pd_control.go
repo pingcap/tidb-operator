@@ -90,6 +90,24 @@ func (c *clientConfig) applyOptions(opts ...Option) {
 	}
 }
 
+func (c *clientConfig) complete(namespace Namespace, tcName string) {
+	scheme := "http"
+	if c.tlsEnable {
+		scheme = "https"
+		if c.tlsSecretName == "" {
+			c.tlsSecretNamespace = namespace
+			c.tlsSecretName = util.ClusterClientTLSSecretName(tcName)
+		}
+	}
+
+	if c.clientURL == "" {
+		c.clientURL = genClientUrl(namespace, tcName, scheme, c.clusterDomain)
+	}
+	if c.clientName == "" {
+		c.clientName = genClientKey(scheme, namespace, tcName, c.clusterDomain)
+	}
+}
+
 // defaultPDControl is the default implementation of PDControlInterface.
 type defaultPDControl struct {
 	kubeCli kubernetes.Interface
@@ -169,17 +187,7 @@ func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tls
 	config.tlsEnable = tlsEnabled
 	config.applyOptions(opts...)
 
-	scheme := "http"
-	if config.tlsEnable {
-		scheme = "https"
-	}
-
-	if config.clientURL == "" {
-		config.clientURL = genClientUrl(namespace, tcName, scheme, config.clusterDomain)
-	}
-	if config.clientName == "" {
-		config.clientName = genClientKey(scheme, namespace, tcName, config.clusterDomain)
-	}
+	config.complete(namespace, tcName)
 
 	pdc.mutex.Lock()
 	defer pdc.mutex.Unlock()
