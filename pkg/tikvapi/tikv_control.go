@@ -52,7 +52,7 @@ func (tc *defaultTiKVControl) GetTiKVPodClient(namespace string, tcName string, 
 
 	if tlsEnabled {
 		scheme = "https"
-		tlsConfig, err = pdapi.GetTLSConfig(tc.kubeCli, pdapi.Namespace(namespace), tcName, util.ClusterClientTLSSecretName(tcName))
+		tlsConfig, err = pdapi.GetTLSConfig(tc.kubeCli, pdapi.Namespace(namespace), util.ClusterClientTLSSecretName(tcName))
 		if err != nil {
 			klog.Errorf("Unable to get tls config for TiKV cluster %q, tikv client may not work: %v", tcName, err)
 			return NewTiKVClient(TiKVPodClientURL(namespace, tcName, podName, scheme), DefaultTimeout, tlsConfig, true)

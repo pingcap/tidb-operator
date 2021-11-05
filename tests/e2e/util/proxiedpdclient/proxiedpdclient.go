@@ -45,7 +45,7 @@ func NewProxiedPDClient(kubeCli kubernetes.Interface, fw utilportforward.PortFor
 	scheme := "http"
 	if tlsEnabled {
 		scheme = "https"
-		tlsConfig, err = pdapi.GetTLSConfig(kubeCli, pdapi.Namespace(namespace), tcName, util.ClusterClientTLSSecretName(tcName))
+		tlsConfig, err = pdapi.GetTLSConfig(kubeCli, pdapi.Namespace(namespace), util.ClusterClientTLSSecretName(tcName))
 		if err != nil {
 			return nil, nil, err
 		}

@@ -56,7 +56,7 @@ func (tc *defaultTiFlashControl) GetTiFlashPodClient(namespace string, tcName st
 
 	if tlsEnabled {
 		scheme = "https"
-		tlsConfig, err = pdapi.GetTLSConfig(tc.kubeCli, pdapi.Namespace(namespace), tcName, util.ClusterClientTLSSecretName(tcName))
+		tlsConfig, err = pdapi.GetTLSConfig(tc.kubeCli, pdapi.Namespace(namespace), util.ClusterClientTLSSecretName(tcName))
 		if err != nil {
 			klog.Errorf("Unable to get tls config for TiFlash cluster %q, tiflash client may not work: %v", tcName, err)
 			return NewTiFlashClient(TiFlashPodClientURL(namespace, tcName, podName, scheme), DefaultTimeout, tlsConfig, true)

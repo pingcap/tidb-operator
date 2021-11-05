@@ -24,6 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 
@@ -71,12 +72,7 @@ func (wh *webhook) admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionRespo
 		return &reviewResponse
 	}
 
-	var pdClient pdapi.PDClient
-	if tc.HeterogeneousWithoutLocalPD() {
-		pdClient = pdapi.NewDefaultPDControl(kubeCli).GetPDClient(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
-	} else {
-		pdClient = pdapi.NewDefaultPDControl(kubeCli).GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled())
-	}
+	pdClient := controller.GetPDClientFromService(pdapi.NewDefaultPDControl(kubeCli), tc)
 
 	// if pod is already deleting, return Allowed
 	if pod.DeletionTimestamp != nil {

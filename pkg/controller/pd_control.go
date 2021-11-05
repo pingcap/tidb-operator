@@ -18,15 +18,16 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 )
 
-// getPDClientFromService gets the pd client from the TidbCluster
-func getPDClientFromService(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) pdapi.PDClient {
+// GetPDClientFromService gets the pd client from the TidbCluster
+func GetPDClientFromService(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) pdapi.PDClient {
+	opts := make([]pdapi.Option, 0)
 	if tc.HeterogeneousWithoutLocalPD() {
-		// TODO: to support across k8s cluster without local pd
-		// if TLS is enabled, tc.Spec.Cluster.Name should be same as tc.Name? Because it will query the secret using the tc.Spec.Cluster.Name in the following code.
-		return pdControl.GetClusterRefPDClient(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.Spec.Cluster.ClusterDomain, tc.IsTLSClusterEnabled())
+		opts = append(opts,
+			pdapi.TLSCertFromTC(pdapi.Namespace(tc.Namespace), tc.Name),
+			pdapi.ClusterRef(tc.Spec.Cluster.ClusterDomain),
+		)
 	}
-
-	return pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled())
+	return pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled(), opts...)
 }
 
 // GetPDClient tries to return an available PDClient
@@ -35,7 +36,7 @@ func getPDClientFromService(pdControl pdapi.PDControlInterface, tc *v1alpha1.Tid
 // ClientURL example:
 // ClientURL: https://cluster2-pd-0.cluster2-pd-peer.pingcap.svc.cluster2.local
 func GetPDClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) pdapi.PDClient {
-	pdClient := getPDClientFromService(pdControl, tc)
+	pdClient := GetPDClientFromService(pdControl, tc)
 
 	if len(tc.Status.PD.PeerMembers) == 0 {
 		return pdClient
@@ -47,7 +48,7 @@ func GetPDClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) p
 	}
 
 	for _, pdMember := range tc.Status.PD.PeerMembers {
-		pdPeerClient := pdControl.GetPeerPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled(), pdMember.ClientURL, pdMember.Name)
+		pdPeerClient := pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled(), pdapi.SpecifyClient(pdMember.ClientURL, pdMember.Name))
 		_, err := pdPeerClient.GetHealth()
 		if err == nil {
 			return pdPeerClient
