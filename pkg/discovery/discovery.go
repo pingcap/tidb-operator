@@ -134,7 +134,7 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 		}
 		pdClients = append(pdClients,
 			d.pdControl.GetPDClient(pdapi.Namespace(namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled(),
-				pdapi.TLSCertFromTC(pdapi.Namespace(namespace), tc.Name),
+				pdapi.TLSCertFromTC(pdapi.Namespace(tc.GetNamespace()), tc.GetName()),
 				pdapi.ClusterRef(tc.Spec.Cluster.ClusterDomain),
 			),
 		)

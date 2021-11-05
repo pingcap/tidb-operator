@@ -45,7 +45,6 @@ func TLSCertFromTC(ns Namespace, tcName string) Option {
 
 func TLSCertFromSecret(ns Namespace, secret string) Option {
 	return func(c *clientConfig) {
-		c.tlsEnable = true
 		c.tlsSecretNamespace = ns
 		c.tlsSecretName = secret
 	}
@@ -60,6 +59,7 @@ func SpecifyClient(clientURL, clientName string) Option {
 
 // PDControlInterface is an interface that knows how to manage and get tidb cluster's PD client
 type PDControlInterface interface {
+	// GetPDClient provides PDClient of the tidb cluster.
 	GetPDClient(namespace Namespace, tcName string, tlsEnabled bool, opts ...Option) PDClient
 	// GetPDEtcdClient provides PD etcd Client of the tidb cluster.
 	GetPDEtcdClient(namespace Namespace, tcName string, tlsEnabled bool) (PDEtcdClient, error)

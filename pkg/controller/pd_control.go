@@ -23,7 +23,7 @@ func GetPDClientFromService(pdControl pdapi.PDControlInterface, tc *v1alpha1.Tid
 	opts := make([]pdapi.Option, 0)
 	if tc.HeterogeneousWithoutLocalPD() {
 		opts = append(opts,
-			pdapi.TLSCertFromTC(pdapi.Namespace(tc.Namespace), tc.Name),
+			pdapi.TLSCertFromTC(pdapi.Namespace(tc.GetNamespace()), tc.GetName()),
 			pdapi.ClusterRef(tc.Spec.Cluster.ClusterDomain),
 		)
 	}
