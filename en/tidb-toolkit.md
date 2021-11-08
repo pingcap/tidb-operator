@@ -105,7 +105,7 @@ pd-ctl -u 127.0.0.1:${local_port} -d config show
         {{< copyable "shell-regular" >}}
 
         ```shell
-        tikv-ctl --db /var/lib/tikv/db size -r 2
+        ./tikv-ctl --data-dir /var/lib/tikv size -r 2
         ```
 
 ## Use TiDB Control in Kubernetes
