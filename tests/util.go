@@ -27,7 +27,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
+	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	corelisterv1 "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/kubernetes/test/e2e/framework"
 )
 
@@ -311,4 +314,19 @@ func CleanReleasedCRDOrDie(version string) {
 		return true, nil
 	})
 	framework.ExpectNoError(err, "failed to delete CRD of version %s", version)
+}
+
+// GetSecretListerWithCacheSynced return SecretLister with cache synced
+func GetSecretListerWithCacheSynced(c kubernetes.Interface, resync time.Duration) corelisterv1.SecretLister {
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(c, resync)
+	secretInformer := kubeInformerFactory.Core().V1().Secrets()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go kubeInformerFactory.Start(ctx.Done())
+
+	// waiting for the shared informer's store has synced.
+	cache.WaitForCacheSync(ctx.Done(), secretInformer.Informer().HasSynced)
+
+	return secretInformer.Lister()
 }
