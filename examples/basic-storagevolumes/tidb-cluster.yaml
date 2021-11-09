@@ -6,7 +6,7 @@ kind: TidbCluster
 metadata:
   name: basic
 spec:
-  version: v5.2.0
+  version: v5.2.1
   timezone: UTC
   pvReclaimPolicy: Retain
   enableDynamicConfiguration: true
@@ -32,11 +32,9 @@ spec:
         # In basic examples, we set this to avoid using too much storage.
         reserve-space: "0MB"
       rocksdb:
-        # In basic examples, we set this to avoid the following error in some Kubernetes clusters:
-        # "the maximum number of open file descriptors is too small, got 1024, expect greater or equal to 82920"
-        max-open-files: 256
+        info-log-dir: /var/lib/rocksdblog
       raftdb:
-        max-open-files: 256
+        info-log-dir: /var/lib/raftlog
     separateRocksDBLog: true
     separateRaftLog: true
     raftLogVolumeName: raftlog

@@ -441,7 +441,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	var containers []corev1.Container
 	if tc.Spec.TiKV.ShouldSeparateRocksDBLog() {
 		logFile := "rocksdb.info"
-		if ShouldMoveTiKVLogPath(tc.TiKVImage()) {
+		if TiKVLessThanV50(tc.TiKVImage()) {
 			logFile = "db/LOG"
 		}
 		var rocksDBLogVolumeMount corev1.VolumeMount
@@ -490,7 +490,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	}
 	if tc.Spec.TiKV.ShouldSeparateRaftLog() {
 		raftdbLogFile := "raftdb.info"
-		if ShouldMoveTiKVLogPath(tc.TiKVImage()) {
+		if TiKVLessThanV50(tc.TiKVImage()) {
 			raftdbLogFile = "raft/LOG"
 		}
 		var raftLogVolumeMount corev1.VolumeMount

@@ -840,7 +840,7 @@ func TestMemberPodName(t *testing.T) {
 	}
 }
 
-func TestShouldMoveTiKVLogPath(t *testing.T) {
+func TestTiKVLessThanV50(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	type testcase struct {
@@ -909,7 +909,7 @@ func TestShouldMoveTiKVLogPath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ok := ShouldMoveTiKVLogPath(tt.image)
+			ok := TiKVLessThanV50(tt.image)
 			g.Expect(ok).To(Equal(tt.expect))
 		})
 	}

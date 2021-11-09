@@ -541,8 +541,8 @@ func GetPVCSelectorForPod(controller runtime.Object, memberType v1alpha1.MemberT
 	return l.Selector()
 }
 
-// ShouldMoveTiKVLogPath returns if rocksdb log path move from db/LOG to rocksdb.info and raft log move from raft/LOG to raftdb.info
-func ShouldMoveTiKVLogPath(image string) bool {
+// TiKVLessThanV50 returns if rocksdb log path move from db/LOG to rocksdb.info and raft log move from raft/LOG to raftdb.info
+func TiKVLessThanV50(image string) bool {
 	_, version := parseImage(image)
 	v, err := semver.NewVersion(version)
 	if err != nil {
@@ -564,12 +564,6 @@ func parseImage(image string) (string, string) {
 		tag = image[colonIdx+1:]
 	} else {
 		name = image
-	}
-
-	// check dirty version like: v5.1.1-20210926
-	idx := strings.LastIndexByte(tag, '-')
-	if idx >= 0 {
-		tag = tag[:idx]
 	}
 	return name, tag
 }
