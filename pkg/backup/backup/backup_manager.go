@@ -181,12 +181,12 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 
-	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, backup.Spec.UseKMS, bm.deps.KubeClientset)
+	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, backup.Spec.UseKMS, bm.deps.SecretLister)
 	if err != nil {
 		return nil, reason, err
 	}
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bm.deps.KubeClientset)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bm.deps.SecretLister)
 	if err != nil {
 		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
 	}
@@ -348,13 +348,13 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		reason  string
 	)
 	if backup.Spec.From != nil {
-		envVars, reason, err = backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, backup.Spec.UseKMS, bm.deps.KubeClientset)
+		envVars, reason, err = backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, backup.Spec.UseKMS, bm.deps.SecretLister)
 		if err != nil {
 			return nil, reason, err
 		}
 	}
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bm.deps.KubeClientset)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bm.deps.SecretLister)
 	if err != nil {
 		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
 	}

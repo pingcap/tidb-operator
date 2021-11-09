@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
@@ -79,11 +80,11 @@ type FaultTriggerActions interface {
 	// DockerCrash(nodeName string) error
 }
 
-func NewFaultTriggerAction(cli versioned.Interface, kubeCli kubernetes.Interface, cfg *Config) FaultTriggerActions {
+func NewFaultTriggerAction(cli versioned.Interface, kubeCli kubernetes.Interface, secretLister corelisterv1.SecretLister, cfg *Config) FaultTriggerActions {
 	return &faultTriggerActions{
 		cli:       cli,
 		kubeCli:   kubeCli,
-		pdControl: pdapi.NewDefaultPDControl(kubeCli),
+		pdControl: pdapi.NewDefaultPDControl(secretLister),
 		cfg:       cfg,
 	}
 }
