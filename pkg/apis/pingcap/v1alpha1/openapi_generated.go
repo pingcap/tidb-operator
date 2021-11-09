@@ -5456,7 +5456,7 @@ func schema_pkg_apis_pingcap_v1alpha1_QueueConfig(ref common.ReferenceCallback) 
 							Format:      "int32",
 						},
 					},
-					"maxSamplesPperSend": {
+					"maxSamplesPerSend": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Maximum number of samples per send.",
 							Type:        []string{"integer"},
@@ -11728,7 +11728,8 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 				Properties: map[string]spec.Schema{
 					"clusters": {
 						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
+							Description: "monitored TiDB cluster info",
+							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
@@ -11740,32 +11741,44 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 					},
 					"prometheus": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PrometheusSpec"),
+							Description: "Prometheus spec",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PrometheusSpec"),
 						},
 					},
 					"grafana": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GrafanaSpec"),
+							Description: "Grafana spec",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GrafanaSpec"),
 						},
 					},
 					"reloader": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ReloaderSpec"),
+							Description: "Reloader spec",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ReloaderSpec"),
 						},
 					},
 					"initializer": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.InitializerSpec"),
+							Description: "Initializer spec",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.InitializerSpec"),
 						},
 					},
 					"dm": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DMMonitorSpec"),
+							Description: "monitored DM cluster spec",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DMMonitorSpec"),
 						},
 					},
 					"thanos": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ThanosSpec"),
+							Description: "Thanos spec",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ThanosSpec"),
+						},
+					},
+					"prometheusReloader": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PrometheusReloader set prometheus reloader configuration",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PrometheusReloaderSpec"),
 						},
 					},
 					"pvReclaimPolicy": {
@@ -11777,8 +11790,9 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 					},
 					"imagePullPolicy": {
 						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
+							Description: "ImagePullPolicy of TidbMonitor Pods",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"imagePullSecrets": {
@@ -11796,25 +11810,29 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 					},
 					"persistent": {
 						SchemaProps: spec.SchemaProps{
-							Type:   []string{"boolean"},
-							Format: "",
+							Description: "If Persistent enabled, storageClassName must be set to an existing storage. Defaults to false.",
+							Type:        []string{"boolean"},
+							Format:      "",
 						},
 					},
 					"storageClassName": {
 						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
+							Description: "The storageClassName of the persistent volume for TidbMonitor data storage. Defaults to Kubernetes default storage class.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"storage": {
 						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
+							Description: "Size of the persistent volume.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"nodeSelector": {
 						SchemaProps: spec.SchemaProps{
-							Type: []string{"object"},
+							Description: "NodeSelector of the TidbMonitor.",
+							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
 								Schema: &spec.Schema{
@@ -11828,7 +11846,8 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 					},
 					"annotations": {
 						SchemaProps: spec.SchemaProps{
-							Type: []string{"object"},
+							Description: "Annotations for the TidbMonitor. Optional: Defaults to cluster-level setting",
+							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
 								Schema: &spec.Schema{
@@ -11842,7 +11861,8 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 					},
 					"labels": {
 						SchemaProps: spec.SchemaProps{
-							Type: []string{"object"},
+							Description: "Labels for the TidbMonitor.",
+							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
 								Schema: &spec.Schema{
@@ -11856,7 +11876,8 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 					},
 					"tolerations": {
 						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
+							Description: "Tolerations of the TidbMonitor.",
+							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
@@ -11889,7 +11910,8 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 					},
 					"additionalContainers": {
 						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
+							Description: "Additional containers of the TidbMonitor.",
+							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
@@ -11944,7 +11966,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 					},
 					"additionalVolumes": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Additional volumes of component pod.",
+							Description: "Additional volumes of TidbMonitor pod.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -11957,7 +11979,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 					},
 					"podSecurityContext": {
 						SchemaProps: spec.SchemaProps{
-							Description: "PodSecurityContext of the component",
+							Description: "PodSecurityContext of TidbMonitor pod.",
 							Ref:         ref("k8s.io/api/core/v1.PodSecurityContext"),
 						},
 					},
@@ -11966,12 +11988,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 							Description: "EnableAlertRules adds alert rules to the Prometheus config even if `AlertmanagerURL` is not configured.",
 							Type:        []string{"boolean"},
 							Format:      "",
-						},
-					},
-					"prometheusReloader": {
-						SchemaProps: spec.SchemaProps{
-							Description: "PrometheusReloader set prometheus reloader configuration",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PrometheusReloaderSpec"),
 						},
 					},
 				},

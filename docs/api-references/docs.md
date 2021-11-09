@@ -2186,6 +2186,7 @@ TidbMonitorSpec
 </em>
 </td>
 <td>
+<p>monitored TiDB cluster info</p>
 </td>
 </tr>
 <tr>
@@ -2198,6 +2199,7 @@ PrometheusSpec
 </em>
 </td>
 <td>
+<p>Prometheus spec</p>
 </td>
 </tr>
 <tr>
@@ -2211,6 +2213,7 @@ GrafanaSpec
 </td>
 <td>
 <em>(Optional)</em>
+<p>Grafana spec</p>
 </td>
 </tr>
 <tr>
@@ -2223,6 +2226,7 @@ ReloaderSpec
 </em>
 </td>
 <td>
+<p>Reloader spec</p>
 </td>
 </tr>
 <tr>
@@ -2235,6 +2239,7 @@ InitializerSpec
 </em>
 </td>
 <td>
+<p>Initializer spec</p>
 </td>
 </tr>
 <tr>
@@ -2248,6 +2253,7 @@ DMMonitorSpec
 </td>
 <td>
 <em>(Optional)</em>
+<p>monitored DM cluster spec</p>
 </td>
 </tr>
 <tr>
@@ -2261,6 +2267,21 @@ ThanosSpec
 </td>
 <td>
 <em>(Optional)</em>
+<p>Thanos spec</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>prometheusReloader</code></br>
+<em>
+<a href="#prometheusreloaderspec">
+PrometheusReloaderSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PrometheusReloader set prometheus reloader configuration</p>
 </td>
 </tr>
 <tr>
@@ -2286,6 +2307,7 @@ Kubernetes core/v1.PullPolicy
 </em>
 </td>
 <td>
+<p>ImagePullPolicy of TidbMonitor Pods</p>
 </td>
 </tr>
 <tr>
@@ -2311,6 +2333,8 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
+<p>If Persistent enabled, storageClassName must be set to an existing storage.
+Defaults to false.</p>
 </td>
 </tr>
 <tr>
@@ -2322,6 +2346,8 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+<p>The storageClassName of the persistent volume for TidbMonitor data storage.
+Defaults to Kubernetes default storage class.</p>
 </td>
 </tr>
 <tr>
@@ -2333,6 +2359,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+<p>Size of the persistent volume.</p>
 </td>
 </tr>
 <tr>
@@ -2344,6 +2371,7 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
+<p>NodeSelector of the TidbMonitor.</p>
 </td>
 </tr>
 <tr>
@@ -2355,6 +2383,8 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
+<p>Annotations for the TidbMonitor.
+Optional: Defaults to cluster-level setting</p>
 </td>
 </tr>
 <tr>
@@ -2366,6 +2396,7 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
+<p>Labels for the TidbMonitor.</p>
 </td>
 </tr>
 <tr>
@@ -2379,6 +2410,7 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
+<p>Tolerations of the TidbMonitor.</p>
 </td>
 </tr>
 <tr>
@@ -2431,6 +2463,7 @@ default to current tidb cluster version, for example: v3.0.15</p>
 </td>
 <td>
 <em>(Optional)</em>
+<p>Additional containers of the TidbMonitor.</p>
 </td>
 </tr>
 <tr>
@@ -2511,7 +2544,7 @@ data to a central location. Sharding is done on the content of the
 </td>
 <td>
 <em>(Optional)</em>
-<p>Additional volumes of component pod.</p>
+<p>Additional volumes of TidbMonitor pod.</p>
 </td>
 </tr>
 <tr>
@@ -2525,7 +2558,7 @@ Kubernetes core/v1.PodSecurityContext
 </td>
 <td>
 <em>(Optional)</em>
-<p>PodSecurityContext of the component</p>
+<p>PodSecurityContext of TidbMonitor pod.</p>
 </td>
 </tr>
 <tr>
@@ -2539,20 +2572,6 @@ bool
 <em>(Optional)</em>
 <p>EnableAlertRules adds alert rules to the Prometheus config even
 if <code>AlertmanagerURL</code> is not configured.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>prometheusReloader</code></br>
-<em>
-<a href="#prometheusreloaderspec">
-PrometheusReloaderSpec
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>PrometheusReloader set prometheus reloader configuration</p>
 </td>
 </tr>
 </table>
@@ -6424,6 +6443,7 @@ string
 </em>
 </td>
 <td>
+<p>Grafana log level</p>
 </td>
 </tr>
 <tr>
@@ -6436,6 +6456,7 @@ ServiceSpec
 </em>
 </td>
 <td>
+<p>Service defines a Kubernetes service of Grafana.</p>
 </td>
 </tr>
 <tr>
@@ -6512,6 +6533,7 @@ IngressSpec
 </td>
 <td>
 <em>(Optional)</em>
+<p>Ingress configuration of Prometheus</p>
 </td>
 </tr>
 <tr>
@@ -10470,6 +10492,7 @@ string
 </em>
 </td>
 <td>
+<p>Prometheus log level</p>
 </td>
 </tr>
 <tr>
@@ -10482,6 +10505,7 @@ ServiceSpec
 </em>
 </td>
 <td>
+<p>Service defines a Kubernetes service of Prometheus.</p>
 </td>
 </tr>
 <tr>
@@ -10493,6 +10517,8 @@ int
 </td>
 <td>
 <em>(Optional)</em>
+<p>ReserveDays defines Prometheus Configuration for <code>--storage.tsdb.retention.time</code> of units d.
+reserveDays will be used if retentionTime not defined.</p>
 </td>
 </tr>
 <tr>
@@ -10519,6 +10545,7 @@ IngressSpec
 </td>
 <td>
 <em>(Optional)</em>
+<p>Ingress configuration of Prometheus</p>
 </td>
 </tr>
 <tr>
@@ -10532,6 +10559,7 @@ PrometheusConfiguration
 </td>
 <td>
 <em>(Optional)</em>
+<p>Config is the Configuration of Prometheus include Prometheus config/Cli options/custom rules.</p>
 </td>
 </tr>
 <tr>
@@ -10542,7 +10570,8 @@ bool
 </em>
 </td>
 <td>
-<p>Disable prometheus compaction.</p>
+<p>Disable prometheus compaction.
+Defaults to false.</p>
 </td>
 </tr>
 <tr>
@@ -11082,7 +11111,7 @@ int
 </tr>
 <tr>
 <td>
-<code>maxSamplesPperSend</code></br>
+<code>maxSamplesPerSend</code></br>
 <em>
 int
 </em>
@@ -21039,6 +21068,7 @@ bool
 </em>
 </td>
 <td>
+<p>monitored TiDB cluster info</p>
 </td>
 </tr>
 <tr>
@@ -21051,6 +21081,7 @@ PrometheusSpec
 </em>
 </td>
 <td>
+<p>Prometheus spec</p>
 </td>
 </tr>
 <tr>
@@ -21064,6 +21095,7 @@ GrafanaSpec
 </td>
 <td>
 <em>(Optional)</em>
+<p>Grafana spec</p>
 </td>
 </tr>
 <tr>
@@ -21076,6 +21108,7 @@ ReloaderSpec
 </em>
 </td>
 <td>
+<p>Reloader spec</p>
 </td>
 </tr>
 <tr>
@@ -21088,6 +21121,7 @@ InitializerSpec
 </em>
 </td>
 <td>
+<p>Initializer spec</p>
 </td>
 </tr>
 <tr>
@@ -21101,6 +21135,7 @@ DMMonitorSpec
 </td>
 <td>
 <em>(Optional)</em>
+<p>monitored DM cluster spec</p>
 </td>
 </tr>
 <tr>
@@ -21114,6 +21149,21 @@ ThanosSpec
 </td>
 <td>
 <em>(Optional)</em>
+<p>Thanos spec</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>prometheusReloader</code></br>
+<em>
+<a href="#prometheusreloaderspec">
+PrometheusReloaderSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PrometheusReloader set prometheus reloader configuration</p>
 </td>
 </tr>
 <tr>
@@ -21139,6 +21189,7 @@ Kubernetes core/v1.PullPolicy
 </em>
 </td>
 <td>
+<p>ImagePullPolicy of TidbMonitor Pods</p>
 </td>
 </tr>
 <tr>
@@ -21164,6 +21215,8 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
+<p>If Persistent enabled, storageClassName must be set to an existing storage.
+Defaults to false.</p>
 </td>
 </tr>
 <tr>
@@ -21175,6 +21228,8 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+<p>The storageClassName of the persistent volume for TidbMonitor data storage.
+Defaults to Kubernetes default storage class.</p>
 </td>
 </tr>
 <tr>
@@ -21186,6 +21241,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+<p>Size of the persistent volume.</p>
 </td>
 </tr>
 <tr>
@@ -21197,6 +21253,7 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
+<p>NodeSelector of the TidbMonitor.</p>
 </td>
 </tr>
 <tr>
@@ -21208,6 +21265,8 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
+<p>Annotations for the TidbMonitor.
+Optional: Defaults to cluster-level setting</p>
 </td>
 </tr>
 <tr>
@@ -21219,6 +21278,7 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
+<p>Labels for the TidbMonitor.</p>
 </td>
 </tr>
 <tr>
@@ -21232,6 +21292,7 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
+<p>Tolerations of the TidbMonitor.</p>
 </td>
 </tr>
 <tr>
@@ -21284,6 +21345,7 @@ default to current tidb cluster version, for example: v3.0.15</p>
 </td>
 <td>
 <em>(Optional)</em>
+<p>Additional containers of the TidbMonitor.</p>
 </td>
 </tr>
 <tr>
@@ -21364,7 +21426,7 @@ data to a central location. Sharding is done on the content of the
 </td>
 <td>
 <em>(Optional)</em>
-<p>Additional volumes of component pod.</p>
+<p>Additional volumes of TidbMonitor pod.</p>
 </td>
 </tr>
 <tr>
@@ -21378,7 +21440,7 @@ Kubernetes core/v1.PodSecurityContext
 </td>
 <td>
 <em>(Optional)</em>
-<p>PodSecurityContext of the component</p>
+<p>PodSecurityContext of TidbMonitor pod.</p>
 </td>
 </tr>
 <tr>
@@ -21392,20 +21454,6 @@ bool
 <em>(Optional)</em>
 <p>EnableAlertRules adds alert rules to the Prometheus config even
 if <code>AlertmanagerURL</code> is not configured.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>prometheusReloader</code></br>
-<em>
-<a href="#prometheusreloaderspec">
-PrometheusReloaderSpec
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>PrometheusReloader set prometheus reloader configuration</p>
 </td>
 </tr>
 </tbody>
