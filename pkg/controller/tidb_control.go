@@ -23,7 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	httputil "github.com/pingcap/tidb-operator/pkg/util/http"
 	"github.com/pingcap/tidb/config"
-	"k8s.io/client-go/kubernetes"
+	corelisterv1 "k8s.io/client-go/listers/core/v1"
 )
 
 const (
@@ -55,8 +55,8 @@ type defaultTiDBControl struct {
 }
 
 // NewDefaultTiDBControl returns a defaultTiDBControl instance
-func NewDefaultTiDBControl(kubeCli kubernetes.Interface) *defaultTiDBControl {
-	return &defaultTiDBControl{httpClient: httpClient{kubeCli: kubeCli}}
+func NewDefaultTiDBControl(secretLister corelisterv1.SecretLister) *defaultTiDBControl {
+	return &defaultTiDBControl{httpClient: httpClient{secretLister: secretLister}}
 }
 
 func (c *defaultTiDBControl) GetHealth(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
@@ -177,7 +177,7 @@ type FakeTiDBControl struct {
 }
 
 // NewFakeTiDBControl returns a FakeTiDBControl instance
-func NewFakeTiDBControl() *FakeTiDBControl {
+func NewFakeTiDBControl(secretLister corelisterv1.SecretLister) *FakeTiDBControl {
 	return &FakeTiDBControl{}
 }
 
