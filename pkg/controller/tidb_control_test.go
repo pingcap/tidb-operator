@@ -26,6 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
 	core "k8s.io/client-go/testing"
 )
@@ -132,8 +133,8 @@ func TestHealth(t *testing.T) {
 
 		fakeClient := &fake.Clientset{}
 		tc := getTidbCluster()
-
-		control := NewDefaultTiDBControl(fakeClient)
+		informer := kubeinformers.NewSharedInformerFactory(fakeClient, 0)
+		control := NewDefaultTiDBControl(informer.Core().V1().Secrets().Lister())
 		control.testURL = svc.URL
 		result, err := control.GetHealth(tc, 0)
 		g.Expect(err).NotTo(HaveOccurred())
@@ -195,7 +196,8 @@ func TestInfo(t *testing.T) {
 		defer svc.Close()
 
 		fakeClient := &fake.Clientset{}
-		control := NewDefaultTiDBControl(fakeClient)
+		informer := kubeinformers.NewSharedInformerFactory(fakeClient, 0)
+		control := NewDefaultTiDBControl(informer.Core().V1().Secrets().Lister())
 		control.testURL = svc.URL
 		tc := getTidbCluster()
 		result, err := control.GetInfo(tc, 0)
@@ -254,7 +256,8 @@ func TestSettings(t *testing.T) {
 		defer svc.Close()
 
 		fakeClient := &fake.Clientset{}
-		control := NewDefaultTiDBControl(fakeClient)
+		informer := kubeinformers.NewSharedInformerFactory(fakeClient, 0)
+		control := NewDefaultTiDBControl(informer.Core().V1().Secrets().Lister())
 		control.testURL = svc.URL
 		tc := getTidbCluster()
 		result, err := control.GetSettings(tc, 0)
@@ -296,7 +299,20 @@ func TestGetHTTPClient(t *testing.T) {
 	for _, c := range cases {
 		fakeClient := &fake.Clientset{}
 		fakeSecret(fakeClient)
-		control := NewDefaultTiDBControl(fakeClient)
+		informer := kubeinformers.NewSharedInformerFactory(fakeClient, 0)
+		err := informer.Core().V1().Secrets().Informer().GetIndexer().Add(&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "demo-cluster-client-secret",
+				Namespace: corev1.NamespaceDefault,
+			},
+			Data: map[string][]byte{
+				corev1.TLSCertKey:              []byte(certData),
+				corev1.TLSPrivateKeyKey:        []byte(keyData),
+				corev1.ServiceAccountRootCAKey: []byte(caData),
+			},
+		})
+		g.Expect(err).Should(BeNil())
+		control := NewDefaultTiDBControl(informer.Core().V1().Secrets().Lister())
 		tc := getTidbCluster()
 		c.updateTC(tc)
 		httpClient, err := control.getHTTPClient(tc)

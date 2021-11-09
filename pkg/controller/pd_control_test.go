@@ -20,6 +20,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
@@ -28,7 +29,8 @@ func TestGetPDClient(t *testing.T) {
 
 	tc := newTidbCluster()
 	kubeCli := kubefake.NewSimpleClientset()
-	pdControl := pdapi.NewFakePDControl(kubeCli)
+	informer := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
+	pdControl := pdapi.NewFakePDControl(informer.Core().V1().Secrets().Lister())
 
 	type testcase struct {
 		name     string
