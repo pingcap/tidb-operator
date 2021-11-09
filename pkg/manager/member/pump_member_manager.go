@@ -461,6 +461,18 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 		Spec: podSpec,
 	}
 
+	// To compatible with default podManagementPolicy of pump is "OrderedReady"
+	podManagementPolicy := apps.OrderedReadyPodManagement
+	if len(tc.Spec.Pump.PodManagementPolicy) != 0 {
+		podManagementPolicy = tc.Spec.Pump.PodManagementPolicy
+	} else if len(tc.Spec.PodManagementPolicy) != 0 {
+		podManagementPolicy = tc.Spec.PodManagementPolicy
+	}
+
+	if podManagementPolicy != apps.OrderedReadyPodManagement && podManagementPolicy != apps.ParallelPodManagement {
+		podManagementPolicy = apps.OrderedReadyPodManagement
+	}
+
 	return &appsv1.StatefulSet{
 		ObjectMeta: objMeta,
 		Spec: appsv1.StatefulSetSpec{
@@ -470,7 +482,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 
 			Template:             podTemplate,
 			VolumeClaimTemplates: volumeClaims,
-			PodManagementPolicy:  spec.PodManagementPolicy(),
+			PodManagementPolicy:  podManagementPolicy,
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{
 				Type: spec.StatefulSetUpdateStrategy(),
 			},
