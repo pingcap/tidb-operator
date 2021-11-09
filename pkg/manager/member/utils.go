@@ -51,7 +51,7 @@ const (
 )
 
 var (
-	// the first version which move rocksdb info log to store and rotate as tikv log
+	// The first version that moves the rocksdb info and raft info log to store and rotate as the TiKV log is v5.0.0
 	// https://github.com/tikv/tikv/pull/7358
 	tikvLessThanV500, _ = semver.NewConstraint("<v5.0.0-0")
 )
@@ -541,7 +541,7 @@ func GetPVCSelectorForPod(controller runtime.Object, memberType v1alpha1.MemberT
 	return l.Selector()
 }
 
-// TiKVLessThanV50 returns if rocksdb log path move from db/LOG to rocksdb.info and raft log move from raft/LOG to raftdb.info
+// TiKVLessThanV50 checks whether the `image` is less than v5.0.0
 func TiKVLessThanV50(image string) bool {
 	_, version := parseImage(image)
 	v, err := semver.NewVersion(version)
