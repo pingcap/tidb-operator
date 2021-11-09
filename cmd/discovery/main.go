@@ -95,7 +95,7 @@ func main() {
 		informers.WithNamespace(os.Getenv("MY_POD_NAMESPACE")),
 	}
 
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(kubeCli, 30*time.Second, options...)
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(kubeCli, 30*time.Minute, options...)
 	secretInformer := kubeInformerFactory.Core().V1().Secrets()
 
 	ctx, cancel := context.WithCancel(context.Background())
