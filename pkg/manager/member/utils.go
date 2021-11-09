@@ -17,6 +17,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"math"
 	"path"
 	"time"
 
@@ -531,4 +532,20 @@ func GetPVCSelectorForPod(controller runtime.Object, memberType v1alpha1.MemberT
 		return nil, fmt.Errorf("object %s/%s of kind %s has unknown controller", meta.GetNamespace(), meta.GetName(), kind)
 	}
 	return l.Selector()
+}
+
+func GetNextPodOrdinal(replicas int32, set metav1.Object, ordinal int32) int32 {
+	var next int32
+	next = math.MaxInt32
+	o := helper.GetPodOrdinals(replicas, set)
+	if ordinal == helper.GetMaxPodOrdinal(replicas, set) || !o.Has(ordinal) {
+		next = helper.GetMinPodOrdinal(replicas, set)
+	} else {
+		for i, k := range o.List() {
+			if k == ordinal {
+				next = o.List()[i+1]
+			}
+		}
+	}
+	return next
 }
