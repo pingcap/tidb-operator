@@ -241,6 +241,7 @@ func (w *typedWrapper) CreateOrUpdateServiceAccount(controller client.Object, sa
 	}
 	return result.(*corev1.ServiceAccount), err
 }
+
 func (w *typedWrapper) CreateOrUpdateConfigMap(controller client.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
 	result, err := w.GenericControlInterface.CreateOrUpdate(controller, cm, func(existing, desired client.Object) error {
 		existingCm := existing.(*corev1.ConfigMap)
