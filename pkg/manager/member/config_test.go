@@ -210,7 +210,7 @@ func TestUpdateConfigMap(t *testing.T) {
 					"startup-script": "script-new",
 				},
 			},
-			equal: true,
+			equal: false,
 		},
 	}
 
