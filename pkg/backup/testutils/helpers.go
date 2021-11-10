@@ -81,19 +81,44 @@ func (h *Helper) createSecret(namespace, secretName string) {
 // CreateSecret creates secrets based on backup/restore spec
 func (h *Helper) CreateSecret(obj interface{}) {
 	h.T.Helper()
+	g := NewGomegaWithT(h.T)
 	if obj1, ok := obj.(*v1alpha1.Backup); ok {
 		h.createSecret(obj1.Namespace, obj1.Spec.From.SecretName)
+		g.Eventually(func() error {
+			_, err := h.Deps.SecretLister.Secrets(obj1.Namespace).Get(obj1.Spec.From.SecretName)
+			return err
+		}, time.Second*10).Should(BeNil())
 		if obj1.Spec.StorageProvider.S3 != nil && obj1.Spec.StorageProvider.S3.SecretName != "" {
 			h.createSecret(obj1.Namespace, obj1.Spec.StorageProvider.S3.SecretName)
+			g.Eventually(func() error {
+				_, err := h.Deps.SecretLister.Secrets(obj1.Namespace).Get(obj1.Spec.StorageProvider.S3.SecretName)
+				return err
+			}, time.Second*10).Should(BeNil())
 		} else if obj1.Spec.StorageProvider.Gcs != nil && obj1.Spec.StorageProvider.Gcs.SecretName != "" {
 			h.createSecret(obj1.Namespace, obj1.Spec.StorageProvider.Gcs.SecretName)
+			g.Eventually(func() error {
+				_, err := h.Deps.SecretLister.Secrets(obj1.Namespace).Get(obj1.Spec.StorageProvider.Gcs.SecretName)
+				return err
+			}, time.Second*10).Should(BeNil())
 		}
 	} else if obj2, ok := obj.(*v1alpha1.Restore); ok {
 		h.createSecret(obj2.Namespace, obj2.Spec.To.SecretName)
+		g.Eventually(func() error {
+			_, err := h.Deps.SecretLister.Secrets(obj2.Namespace).Get(obj2.Spec.To.SecretName)
+			return err
+		}, time.Second*10).Should(BeNil())
 		if obj2.Spec.StorageProvider.S3 != nil && obj2.Spec.StorageProvider.S3.SecretName != "" {
 			h.createSecret(obj2.Namespace, obj2.Spec.StorageProvider.S3.SecretName)
+			g.Eventually(func() error {
+				_, err := h.Deps.SecretLister.Secrets(obj2.Namespace).Get(obj2.Spec.StorageProvider.S3.SecretName)
+				return err
+			}, time.Second*10).Should(BeNil())
 		} else if obj2.Spec.StorageProvider.Gcs != nil && obj2.Spec.StorageProvider.Gcs.SecretName != "" {
 			h.createSecret(obj2.Namespace, obj2.Spec.StorageProvider.Gcs.SecretName)
+			g.Eventually(func() error {
+				_, err := h.Deps.SecretLister.Secrets(obj2.Namespace).Get(obj2.Spec.StorageProvider.Gcs.SecretName)
+				return err
+			}, time.Second*10).Should(BeNil())
 		}
 	}
 }

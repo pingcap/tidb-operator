@@ -56,6 +56,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
+	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	restclient "k8s.io/client-go/rest"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
@@ -89,10 +90,13 @@ var _ = ginkgo.Describe("[Stability]", func() {
 	var ocfg *tests.OperatorConfig
 	var fw portforward.PortForward
 	var fwCancel context.CancelFunc
+	var secretLister corelisterv1.SecretLister
 
 	ginkgo.BeforeEach(func() {
 		ns = f.Namespace.Name
 		c = f.ClientSet
+		secretLister = tests.GetSecretListerWithCacheSynced(c, 10*time.Second)
+
 		var err error
 		config, err = framework.LoadConfig()
 		framework.ExpectNoError(err, "failed to load config")
@@ -421,7 +425,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			}
 
 			ginkgo.By("Mark stores of failed tikv pods as tombstone")
-			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, clusterName, false)
+			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(secretLister, fw, ns, clusterName, false)
 			framework.ExpectNoError(err, "failed to create proxied PD client")
 			defer func() {
 				if cancel != nil {
@@ -1171,7 +1175,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			_, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Create(context.TODO(), tcas, metav1.CreateOptions{})
 			framework.ExpectNoError(err, "Create TidbClusterAutoScaler error")
 
-			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, clusterName, false)
+			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(secretLister, fw, ns, clusterName, false)
 			framework.ExpectNoError(err, "create pdapi error")
 			defer cancel()
 

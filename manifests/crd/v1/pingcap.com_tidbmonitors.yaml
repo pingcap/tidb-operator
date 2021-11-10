@@ -1690,7 +1690,7 @@ spec:
                               type: integer
                             maxRetries:
                               type: integer
-                            maxSamplesPperSend:
+                            maxSamplesPerSend:
                               type: integer
                             maxShards:
                               type: integer

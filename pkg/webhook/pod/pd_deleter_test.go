@@ -29,6 +29,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	k8sTesting "k8s.io/client-go/testing"
 )
@@ -82,7 +83,8 @@ func TestPDDeleterDelete(t *testing.T) {
 
 		cli := fake.NewSimpleClientset()
 		podAdmissionControl := newPodAdmissionControl(nil, kubeCli, cli)
-		pdControl := pdapi.NewFakePDControl(kubeCli)
+		informer := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
+		pdControl := pdapi.NewFakePDControl(informer.Core().V1().Secrets().Lister())
 		fakePDClient := controller.NewFakePDClient(pdControl, tc)
 
 		if test.isMember {
