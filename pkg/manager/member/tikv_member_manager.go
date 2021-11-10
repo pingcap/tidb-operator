@@ -649,7 +649,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 				util.VolumeClaimTemplate(storageRequest, v1alpha1.TiKVMemberType.String(), tc.Spec.TiKV.StorageClassName),
 			},
 			ServiceName:         headlessSvcName,
-			PodManagementPolicy: apps.ParallelPodManagement,
+			PodManagementPolicy: baseTiKVSpec.PodManagementPolicy(),
 			UpdateStrategy:      updateStrategy,
 		},
 	}

@@ -823,7 +823,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 				Spec: podSpec,
 			},
 			ServiceName:         controller.TiDBPeerMemberName(tcName),
-			PodManagementPolicy: apps.ParallelPodManagement,
+			PodManagementPolicy: baseTiDBSpec.PodManagementPolicy(),
 			UpdateStrategy:      updateStrategy,
 		},
 	}

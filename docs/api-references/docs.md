@@ -1733,6 +1733,20 @@ Kubernetes apps/v1.StatefulSetUpdateStrategyType
 </tr>
 <tr>
 <td>
+<code>podManagementPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podmanagementpolicytype-v1-apps">
+Kubernetes apps/v1.PodManagementPolicyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodManagementPolicy of TiDB cluster StatefulSets</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>podSecurityContext</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
@@ -4433,6 +4447,20 @@ Kubernetes apps/v1.StatefulSetUpdateStrategyType
 <p>StatefulSetUpdateStrategy indicates the StatefulSetUpdateStrategy that will be
 employed to update Pods in the StatefulSet when a revision is made to
 Template.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podManagementPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podmanagementpolicytype-v1-apps">
+Kubernetes apps/v1.PodManagementPolicyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodManagementPolicy of TiDB cluster StatefulSets</p>
 </td>
 </tr>
 <tr>
@@ -20620,6 +20648,20 @@ Kubernetes apps/v1.StatefulSetUpdateStrategyType
 <td>
 <em>(Optional)</em>
 <p>StatefulSetUpdateStrategy of TiDB cluster StatefulSets</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podManagementPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podmanagementpolicytype-v1-apps">
+Kubernetes apps/v1.PodManagementPolicyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodManagementPolicy of TiDB cluster StatefulSets</p>
 </td>
 </tr>
 <tr>
