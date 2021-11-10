@@ -433,7 +433,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")
 			oa.CleanCRDOrDie()
-			oa.DeployReleasedCRDOrDie(operatorVersion)
+			oa.InstallReleasedCRDOrDie(operatorVersion)
 			ginkgo.By("Installing tidb-operator")
 			oa.CleanOperatorOrDie(ocfg)
 			oa.DeployOperatorOrDie(ocfg)
@@ -817,6 +817,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			log.Logf("Succeed to scale out TiDB of TidbCluster 1")
 		})
 	})
+
 	ginkgo.Describe("upgrading tidb-operator in the same minor series", func() {
 		var oa *tests.OperatorActions
 		var ocfg *tests.OperatorConfig
@@ -833,7 +834,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")
 			oa.CleanCRDOrDie()
-			oa.DeployReleasedCRDOrDie(operatorVersion)
+			oa.InstallReleasedCRDOrDie(operatorVersion)
 			ginkgo.By("Installing tidb-operator")
 			oa.CleanOperatorOrDie(ocfg)
 			oa.DeployOperatorOrDie(ocfg)
@@ -872,6 +873,10 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			err = utilpod.WaitForPodsAreChanged(c, podList.Items, time.Minute*5)
 			framework.ExpectEqual(err, wait.ErrWaitTimeout, "pods should not change in 5 minutes")
 		})
+	})
+
+	ginkgo.Describe("Upgrade CRDs v1beta1 to v1", func() {
+
 	})
 })
 
