@@ -170,7 +170,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 		version := utilimage.TiDBLatest
 		clusterDomain := defaultClusterDomain
 
-		ginkgo.It("Deploy cluster with existing data accross kubernetes", func() {
+		ginkgo.It("Deploy cluster with existing data across kubernetes", func() {
 			ns1 := namespaces[0]
 			ns2 := namespaces[1]
 			ns3 := namespaces[2]
