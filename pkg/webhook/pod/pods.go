@@ -42,6 +42,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
+	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
@@ -364,25 +365,32 @@ func (pc *PodAdmissionControl) admintCreatePods(ar *admission.AdmissionRequest) 
 	return util.ARSuccess()
 }
 
-func (a *PodAdmissionControl) initialize(cli versioned.Interface, kubeCli kubernetes.Interface, pdControl pdapi.PDControlInterface, recorder record.EventRecorder, stopCh <-chan struct{}) error {
+func (a *PodAdmissionControl) initialize(cli versioned.Interface, kubeCli kubernetes.Interface, recorder record.EventRecorder, stopCh <-chan struct{}) error {
 	a.operatorCli = cli
 	a.kubeCli = kubeCli
-	a.pdControl = pdControl
 	a.recorder = recorder
-
 	// informer factory
 	informerFactory := informers.NewSharedInformerFactoryWithOptions(cli, a.resyncDuration)
+	kubeinformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(kubeCli, a.resyncDuration)
 
 	// initialize listers
 	a.tcLister = informerFactory.Pingcap().V1alpha1().TidbClusters().Lister()
+	a.pdControl = pdapi.NewDefaultPDControl(kubeinformerFactory.Core().V1().Secrets().Lister())
 
 	// Start informer factories after all controller are initialized.
 	informerFactory.Start(stopCh)
+	kubeinformerFactory.Start(stopCh)
 
 	// Wait for all started informers' cache were synced.
 	for v, synced := range informerFactory.WaitForCacheSync(wait.NeverStop) {
 		if !synced {
 			klog.Fatalf("error syncing informer for %v", v)
+		}
+	}
+
+	for v, synced := range kubeinformerFactory.WaitForCacheSync(wait.NeverStop) {
+		if !synced {
+			klog.Fatalf("error syncing kubeinformer for %v", v)
 		}
 	}
 
@@ -422,6 +430,5 @@ func (a *PodAdmissionControl) Initialize(cfg *rest.Config, stopCh <-chan struct{
 	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
 		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
 	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, core.EventSource{Component: "tidb-admission-controller"})
-
-	return a.initialize(cli, kubeCli, pdapi.NewDefaultPDControl(kubeCli), recorder, stopCh)
+	return a.initialize(cli, kubeCli, recorder, stopCh)
 }

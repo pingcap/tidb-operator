@@ -15,7 +15,6 @@ package pdapi
 
 import (
 	"bytes"
-	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -29,8 +28,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/util/crypto"
 	httputil "github.com/pingcap/tidb-operator/pkg/util/http"
 	"github.com/tikv/pd/pkg/typeutil"
-	types "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
+	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 )
 
@@ -41,8 +39,8 @@ const (
 )
 
 // GetTLSConfig returns *tls.Config for given TiDB cluster.
-func GetTLSConfig(kubeCli kubernetes.Interface, namespace Namespace, secretName string) (*tls.Config, error) {
-	secret, err := kubeCli.CoreV1().Secrets(string(namespace)).Get(context.Background(), secretName, types.GetOptions{})
+func GetTLSConfig(secretLister corelisterv1.SecretLister, namespace Namespace, secretName string) (*tls.Config, error) {
+	secret, err := secretLister.Secrets(string(namespace)).Get(secretName)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load certificates from secret %s/%s: %v", namespace, secretName, err)
 	}

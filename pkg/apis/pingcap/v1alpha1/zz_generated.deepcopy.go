@@ -8469,6 +8469,11 @@ func (in *TidbMonitorSpec) DeepCopyInto(out *TidbMonitorSpec) {
 		*out = new(ThanosSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.PrometheusReloader != nil {
+		in, out := &in.PrometheusReloader, &out.PrometheusReloader
+		*out = new(PrometheusReloaderSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.PVReclaimPolicy != nil {
 		in, out := &in.PVReclaimPolicy, &out.PVReclaimPolicy
 		*out = new(v1.PersistentVolumeReclaimPolicy)
@@ -8566,11 +8571,6 @@ func (in *TidbMonitorSpec) DeepCopyInto(out *TidbMonitorSpec) {
 	if in.PodSecurityContext != nil {
 		in, out := &in.PodSecurityContext, &out.PodSecurityContext
 		*out = new(v1.PodSecurityContext)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.PrometheusReloader != nil {
-		in, out := &in.PrometheusReloader, &out.PrometheusReloader
-		*out = new(PrometheusReloaderSpec)
 		(*in).DeepCopyInto(*out)
 	}
 	return

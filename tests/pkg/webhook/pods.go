@@ -29,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 
 	"k8s.io/api/admission/v1beta1"
+	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
@@ -71,6 +72,11 @@ func (wh *webhook) admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionRespo
 		log.Logf("fail to fetch tidbcluster info namespace %s clustername(instance) %s err %v", namespace, pod.Labels[label.InstanceLabelKey], err)
 		return &reviewResponse
 	}
+	stop := make(chan struct{})
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
+	kubeInformerFactory.Start(stop)
+	kubeInformerFactory.WaitForCacheSync(stop)
+	defer close(stop)
 
 	pdClient := controller.GetPDClientFromService(pdapi.NewDefaultPDControl(kubeCli), tc)
 

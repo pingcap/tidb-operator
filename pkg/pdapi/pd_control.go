@@ -21,6 +21,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"k8s.io/client-go/kubernetes"
+	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 )
 
@@ -110,7 +111,7 @@ func (c *clientConfig) complete(namespace Namespace, tcName string) {
 
 // defaultPDControl is the default implementation of PDControlInterface.
 type defaultPDControl struct {
-	kubeCli kubernetes.Interface
+	secretLister corelisterv1.SecretLister
 
 	mutex     sync.Mutex
 	pdClients map[string]PDClient
@@ -128,13 +129,18 @@ func (c *noOpClose) Close() error {
 }
 
 // NewDefaultPDControl returns a defaultPDControl instance
-func NewDefaultPDControl(kubeCli kubernetes.Interface) PDControlInterface {
-	return &defaultPDControl{kubeCli: kubeCli, pdClients: map[string]PDClient{}, pdEtcdClients: map[string]PDEtcdClient{}}
+func NewDefaultPDControl(secretLister corelisterv1.SecretLister) PDControlInterface {
+	return &defaultPDControl{secretLister: secretLister, pdClients: map[string]PDClient{}, pdEtcdClients: map[string]PDEtcdClient{}}
+}
+
+// NewDefaultPDControl returns a defaultPDControl instance
+func NewDefaultPDControlByCli(kubeCli kubernetes.Interface) PDControlInterface {
+	return &defaultPDControl{pdClients: map[string]PDClient{}, pdEtcdClients: map[string]PDEtcdClient{}}
 }
 
 func (c *defaultPDControl) GetEndpoints(namespace Namespace, tcName string, tlsEnabled bool) (endpoints []string, tlsConfig *tls.Config, err error) {
 	if tlsEnabled {
-		tlsConfig, err = GetTLSConfig(c.kubeCli, namespace, util.ClusterClientTLSSecretName(tcName))
+		tlsConfig, err = GetTLSConfig(c.secretLister, namespace, util.ClusterClientTLSSecretName(tcName))
 		if err != nil {
 			return nil, nil, err
 		}
@@ -153,7 +159,7 @@ func (c *defaultPDControl) GetPDEtcdClient(namespace Namespace, tcName string, t
 	var err error
 
 	if tlsEnabled {
-		tlsConfig, err = GetTLSConfig(c.kubeCli, namespace, util.ClusterClientTLSSecretName(tcName))
+		tlsConfig, err = GetTLSConfig(c.secretLister, namespace, util.ClusterClientTLSSecretName(tcName))
 		if err != nil {
 			klog.Errorf("Unable to get tls config for tidb cluster %q, pd etcd client may not work: %v", tcName, err)
 			return nil, err
@@ -193,7 +199,7 @@ func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tls
 	defer pdc.mutex.Unlock()
 
 	if config.tlsEnable {
-		tlsConfig, err := GetTLSConfig(pdc.kubeCli, config.tlsSecretNamespace, config.tlsSecretName)
+		tlsConfig, err := GetTLSConfig(pdc.secretLister, config.tlsSecretNamespace, config.tlsSecretName)
 		if err != nil {
 			klog.Errorf("Unable to get tls config for tidb cluster %q in %s, pd client may not work: %v", tcName, namespace, err)
 			return &pdClient{url: config.clientURL, httpClient: &http.Client{Timeout: DefaultTimeout}}
@@ -238,9 +244,9 @@ type FakePDControl struct {
 	defaultPDControl
 }
 
-func NewFakePDControl(kubeCli kubernetes.Interface) *FakePDControl {
+func NewFakePDControl(secretLister corelisterv1.SecretLister) *FakePDControl {
 	return &FakePDControl{
-		defaultPDControl{kubeCli: kubeCli, pdClients: map[string]PDClient{}},
+		defaultPDControl{secretLister: secretLister, pdClients: map[string]PDClient{}},
 	}
 }
 
