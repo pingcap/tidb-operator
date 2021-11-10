@@ -47,38 +47,73 @@ type DMMonitorSpec struct {
 // +k8s:openapi-gen=true
 // TidbMonitor spec encode the desired state of tidb monitoring component
 type TidbMonitorSpec struct {
+	// monitored TiDB cluster info
 	Clusters []TidbClusterRef `json:"clusters"`
 
+	// Prometheus spec
 	Prometheus PrometheusSpec `json:"prometheus"`
+
+	// Grafana spec
 	// +optional
-	Grafana     *GrafanaSpec    `json:"grafana,omitempty"`
-	Reloader    ReloaderSpec    `json:"reloader"`
+	Grafana *GrafanaSpec `json:"grafana,omitempty"`
+
+	// Reloader spec
+	Reloader ReloaderSpec `json:"reloader"`
+
+	// Initializer spec
 	Initializer InitializerSpec `json:"initializer"`
+
+	// monitored DM cluster spec
 	// +optional
 	DM *DMMonitorSpec `json:"dm,omitempty"`
+
+	// Thanos spec
 	// +optional
 	Thanos *ThanosSpec `json:"thanos,omitempty"`
+
+	//PrometheusReloader set prometheus reloader configuration
+	//+optional
+	PrometheusReloader *PrometheusReloaderSpec `json:"prometheusReloader,omitempty"`
 
 	// Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster
 	// +kubebuilder:default=Retain
 	PVReclaimPolicy *corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
 
+	// ImagePullPolicy of TidbMonitor Pods
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
+
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
 	// +optional
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+
+	// If Persistent enabled, storageClassName must be set to an existing storage.
+	// Defaults to false.
 	// +optional
 	Persistent bool `json:"persistent,omitempty"`
+
+	// The storageClassName of the persistent volume for TidbMonitor data storage.
+	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
+
+	// Size of the persistent volume.
 	// +optional
 	Storage string `json:"storage,omitempty"`
+
+	// NodeSelector of the TidbMonitor.
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+
+	// Annotations for the TidbMonitor.
+	// Optional: Defaults to cluster-level setting
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Labels for the TidbMonitor.
 	// +optional
 	Labels map[string]string `json:"labels,omitempty"`
+
+	// Tolerations of the TidbMonitor.
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 
@@ -86,27 +121,33 @@ type TidbMonitorSpec struct {
 	// Ref: https://github.com/coreos/kube-prometheus
 	// +optional
 	KubePrometheusURL *string `json:"kubePrometheusURL,omitempty"`
+
 	// alertmanagerURL is where tidb-monitoring push alerts to.
 	// Ref: https://prometheus.io/docs/alerting/alertmanager/
 	// +optional
 	AlertmanagerURL *string `json:"alertmanagerURL,omitempty"`
+
 	// alertManagerRulesVersion is the version of the tidb cluster that used for alert rules.
 	// default to current tidb cluster version, for example: v3.0.15
 	// +optional
 	AlertManagerRulesVersion *string `json:"alertManagerRulesVersion,omitempty"`
 
+	// Additional containers of the TidbMonitor.
 	// +optional
 	AdditionalContainers []corev1.Container `json:"additionalContainers,omitempty"`
 
 	// ClusterScoped indicates whether this monitor should manage Kubernetes cluster-wide TiDB clusters
 	ClusterScoped bool `json:"clusterScoped,omitempty"`
+
 	// The labels to add to any time series or alerts when communicating with
 	// external systems (federation, remote storage, Alertmanager).
 	ExternalLabels map[string]string `json:"externalLabels,omitempty"`
+
 	// Name of Prometheus external label used to denote replica name.
 	// Defaults to the value of `prometheus_replica`. External label will
 	// _not_ be added when value is set to empty string (`""`).
 	ReplicaExternalLabelName *string `json:"replicaExternalLabelName,omitempty"`
+
 	// Replicas is the number of desired replicas.
 	// Defaults to 1.
 	// +optional
@@ -122,11 +163,11 @@ type TidbMonitorSpec struct {
 	// `__address__` target meta-label.
 	Shards *int32 `json:"shards,omitempty"`
 
-	// Additional volumes of component pod.
+	// Additional volumes of TidbMonitor pod.
 	// +optional
 	AdditionalVolumes []corev1.Volume `json:"additionalVolumes,omitempty"`
 
-	// PodSecurityContext of the component
+	// PodSecurityContext of TidbMonitor pod.
 	// +optional
 	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
 
@@ -134,10 +175,6 @@ type TidbMonitorSpec struct {
 	// if `AlertmanagerURL` is not configured.
 	// +optional
 	EnableAlertRules bool `json:"enableAlertRules,omitempty"`
-
-	//PrometheusReloader set prometheus reloader configuration
-	//+optional
-	PrometheusReloader *PrometheusReloaderSpec `json:"prometheusReloader,omitempty"`
 }
 
 // PrometheusReloaderSpec is the desired state of prometheus configuration reloader
@@ -149,8 +186,14 @@ type PrometheusReloaderSpec struct {
 type PrometheusSpec struct {
 	MonitorContainer `json:",inline"`
 
-	LogLevel string      `json:"logLevel,omitempty"`
-	Service  ServiceSpec `json:"service,omitempty"`
+	// Prometheus log level
+	LogLevel string `json:"logLevel,omitempty"`
+
+	// Service defines a Kubernetes service of Prometheus.
+	Service ServiceSpec `json:"service,omitempty"`
+
+	// ReserveDays defines Prometheus Configuration for `--storage.tsdb.retention.time` of units d.
+	// reserveDays will be used if retentionTime not defined.
 	// +optional
 	ReserveDays int `json:"reserveDays,omitempty"`
 
@@ -159,16 +202,21 @@ type PrometheusSpec struct {
 	// +optional
 	RetentionTime *string `json:"retentionTime,omitempty"`
 
+	// Ingress configuration of Prometheus
 	// +optional
 	Ingress *IngressSpec `json:"ingress,omitempty"`
 
+	// Config is the Configuration of Prometheus include Prometheus config/Cli options/custom rules.
 	// +optional
 	Config *PrometheusConfiguration `json:"config,omitempty"`
 
 	// Disable prometheus compaction.
+	// Defaults to false.
 	DisableCompaction bool `json:"disableCompaction,omitempty"`
+
 	// If specified, the remote_write spec. This is an experimental feature, it may change in any upcoming release in a breaking way.
 	RemoteWrite []*RemoteWriteSpec `json:"remoteWrite,omitempty"`
+
 	// Additional volume mounts of prometheus pod.
 	AdditionalVolumeMounts []corev1.VolumeMount `json:"additionalVolumeMounts,omitempty"`
 }
@@ -201,8 +249,11 @@ type ConfigMapRef struct {
 type GrafanaSpec struct {
 	MonitorContainer `json:",inline"`
 
-	LogLevel string      `json:"logLevel,omitempty"`
-	Service  ServiceSpec `json:"service,omitempty"`
+	// Grafana log level
+	LogLevel string `json:"logLevel,omitempty"`
+
+	// Service defines a Kubernetes service of Grafana.
+	Service ServiceSpec `json:"service,omitempty"`
 
 	// +optional
 	// if `UsernameSecret` is not set, `username` will be used.
@@ -225,8 +276,10 @@ type GrafanaSpec struct {
 	// +optional
 	Envs map[string]string `json:"envs,omitempty"`
 
+	// Ingress configuration of Prometheus
 	// +optional
 	Ingress *IngressSpec `json:"ingress,omitempty"`
+
 	// Additional volume mounts of grafana pod.
 	AdditionalVolumeMounts []corev1.VolumeMount `json:"additionalVolumeMounts,omitempty"`
 }
@@ -468,7 +521,7 @@ type QueueConfig struct {
 	MaxShards int `json:"maxShards,omitempty"`
 
 	// Maximum number of samples per send.
-	MaxSamplesPerSend int `json:"maxSamplesPperSend,omitempty"`
+	MaxSamplesPerSend int `json:"maxSamplesPerSend,omitempty"`
 
 	// BatchSendDeadline is the maximum time a sample will wait in buffer.
 	BatchSendDeadline string `json:"batchSendDeadline,omitempty"`
