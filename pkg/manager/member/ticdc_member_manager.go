@@ -530,7 +530,7 @@ done
 				Spec: podSpec,
 			},
 			ServiceName:         headlessSvcName,
-			PodManagementPolicy: apps.ParallelPodManagement,
+			PodManagementPolicy: baseTiCDCSpec.PodManagementPolicy(),
 			UpdateStrategy:      updateStrategy,
 		},
 	}

@@ -278,6 +278,10 @@ type TidbClusterSpec struct {
 	// +optional
 	StatefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType `json:"statefulSetUpdateStrategy,omitempty"`
 
+	// PodManagementPolicy of TiDB cluster StatefulSets
+	// +optional
+	PodManagementPolicy apps.PodManagementPolicyType `json:"podManagementPolicy,omitempty"`
+
 	// PodSecurityContext of the component
 	// +optional
 	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
@@ -915,6 +919,10 @@ type ComponentSpec struct {
 	// Template.
 	// +optional
 	StatefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType `json:"statefulSetUpdateStrategy,omitempty"`
+
+	// PodManagementPolicy of TiDB cluster StatefulSets
+	// +optional
+	PodManagementPolicy apps.PodManagementPolicyType `json:"podManagementPolicy,omitempty"`
 
 	// TopologySpreadConstraints describes how a group of pods ought to spread across topology
 	// domains. Scheduler will schedule pods in a way which abides by the constraints.
