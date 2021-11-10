@@ -18982,6 +18982,30 @@ Optional: Defaults to false</p>
 </tr>
 <tr>
 <td>
+<code>rocksDBLogVolumeName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional volume name configuration for rocksdb log.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>raftLogVolumeName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional volume name configuration for raft log.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>logTailer</code></br>
 <em>
 <a href="#logtailerspec">
