@@ -13889,6 +13889,8 @@ spec:
                   type: string
                 privileged:
                   type: boolean
+                raftLogVolumeName:
+                  type: string
                 recoverFailover:
                   type: boolean
                 replicas:
@@ -13896,6 +13898,8 @@ spec:
                   type: integer
                 requests:
                   type: object
+                rocksDBLogVolumeName:
+                  type: string
                 schedulerName:
                   type: string
                 separateRaftLog:
