@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
 )
 
@@ -183,20 +184,24 @@ func TestGenerateStorageCertEnv(t *testing.T) {
 			provider: v1alpha1.StorageProvider{},
 		},
 	}
-
 	for _, test := range tests {
 		tmp := v1alpha1.StorageProvider{}
 		client := fake.NewSimpleClientset()
+		informer := kubeinformers.NewSharedInformerFactory(client, 0)
+		stop := make(chan struct{})
+		informer.Start(stop)
+		informer.WaitForCacheSync(stop)
+		defer close(stop)
 
 		// handle unsupported storage type
 		if test.provider == tmp {
-			_, _, err := GenerateStorageCertEnv(ns, false, test.provider, client)
+			_, _, err := GenerateStorageCertEnv(ns, false, test.provider, informer.Core().V1().Secrets().Lister())
 			g.Expect(err.Error()).Should(MatchRegexp(".*unsupported storage type.*"))
 			continue
 		}
 
 		// start normal storage type
-		_, _, err := GenerateStorageCertEnv(ns, false, test.provider, client)
+		_, _, err := GenerateStorageCertEnv(ns, false, test.provider, informer.Core().V1().Secrets().Lister())
 		if test.provider.Gcs != nil && test.provider.Gcs.SecretName == "" {
 			g.Expect(err).Should(BeNil())
 		} else {
@@ -206,9 +211,9 @@ func TestGenerateStorageCertEnv(t *testing.T) {
 		s := &corev1.Secret{}
 		s.Namespace = ns
 		s.Name = secretName
-		_, err = client.CoreV1().Secrets(ns).Create(context.TODO(), s, metav1.CreateOptions{})
+		err = informer.Core().V1().Secrets().Informer().GetIndexer().Add(s)
 		g.Expect(err).Should(BeNil())
-		_, _, err = GenerateStorageCertEnv(ns, false, test.provider, client)
+		_, _, err = GenerateStorageCertEnv(ns, false, test.provider, informer.Core().V1().Secrets().Lister())
 		if test.provider.Gcs != nil && test.provider.Gcs.SecretName == "" {
 			g.Expect(err).Should(BeNil())
 		} else {
@@ -221,9 +226,9 @@ func TestGenerateStorageCertEnv(t *testing.T) {
 			constants.S3AccessKey:       []byte("dummy"),
 			constants.S3SecretKey:       []byte("dummy"),
 		}
-		_, err = client.CoreV1().Secrets(ns).Update(context.TODO(), s, metav1.UpdateOptions{})
+		err = informer.Core().V1().Secrets().Informer().GetIndexer().Update(s)
 		g.Expect(err).Should(BeNil())
-		_, _, err = GenerateStorageCertEnv(ns, false, test.provider, client)
+		_, _, err = GenerateStorageCertEnv(ns, false, test.provider, informer.Core().V1().Secrets().Lister())
 		g.Expect(err).Should(BeNil())
 	}
 }
@@ -234,9 +239,8 @@ func TestGenerateTidbPasswordEnv(t *testing.T) {
 	tcName := "tctest"
 	secretName := "secretName"
 	client := fake.NewSimpleClientset()
-
-	// test fail to get secret
-	_, _, err := GenerateTidbPasswordEnv(ns, tcName, secretName, false, client)
+	informer := kubeinformers.NewSharedInformerFactory(client, 0)
+	_, _, err := GenerateTidbPasswordEnv(ns, tcName, secretName, false, informer.Core().V1().Secrets().Lister())
 	g.Expect(err.Error()).Should(MatchRegexp(".*get tidb secret.*"))
 
 	// create secret and not exist constants.TidbPasswordKey key in secret
@@ -245,7 +249,9 @@ func TestGenerateTidbPasswordEnv(t *testing.T) {
 	s.Name = secretName
 	_, err = client.CoreV1().Secrets(ns).Create(context.TODO(), s, metav1.CreateOptions{})
 	g.Expect(err).Should(BeNil())
-	_, _, err = GenerateTidbPasswordEnv(ns, tcName, secretName, false, client)
+	err = informer.Core().V1().Secrets().Informer().GetIndexer().Add(s)
+	g.Expect(err).Should(BeNil())
+	_, _, err = GenerateTidbPasswordEnv(ns, tcName, secretName, false, informer.Core().V1().Secrets().Lister())
 	g.Expect(err.Error()).Should(MatchRegexp(".*missing password key.*"))
 
 	// update secret with need key
@@ -254,7 +260,9 @@ func TestGenerateTidbPasswordEnv(t *testing.T) {
 	}
 	_, err = client.CoreV1().Secrets(ns).Update(context.TODO(), s, metav1.UpdateOptions{})
 	g.Expect(err).Should(BeNil())
-	envs, _, err := GenerateTidbPasswordEnv(ns, tcName, secretName, false, client)
+	err = informer.Core().V1().Secrets().Informer().GetIndexer().Update(s)
+	g.Expect(err).Should(BeNil())
+	envs, _, err := GenerateTidbPasswordEnv(ns, tcName, secretName, false, informer.Core().V1().Secrets().Lister())
 	g.Expect(err).Should(BeNil())
 	g.Expect(len(envs)).ShouldNot(Equal(0))
 }

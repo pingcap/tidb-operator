@@ -27,7 +27,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	admission "k8s.io/api/admission/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -199,7 +198,7 @@ func TestAdmitPod(t *testing.T) {
 
 func newPodAdmissionControl(serviceAccount []string, kubeCli kubernetes.Interface, cli versioned.Interface) *PodAdmissionControl {
 	ah := NewPodAdmissionControl(serviceAccount, time.Minute)
-	ah.initialize(cli, kubeCli, pdapi.NewFakePDControl(kubeCli), record.NewFakeRecorder(10), wait.NeverStop)
+	ah.initialize(cli, kubeCli, record.NewFakeRecorder(10), wait.NeverStop)
 	return ah
 }
 
