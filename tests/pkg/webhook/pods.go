@@ -78,7 +78,7 @@ func (wh *webhook) admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionRespo
 	kubeInformerFactory.WaitForCacheSync(stop)
 	defer close(stop)
 
-	pdClient := controller.GetPDClientFromService(pdapi.NewDefaultPDControl(kubeCli), tc)
+	pdClient := controller.GetPDClientFromService(pdapi.NewDefaultPDControl(kubeInformerFactory.Core().V1().Secrets().Lister()), tc)
 
 	// if pod is already deleting, return Allowed
 	if pod.DeletionTimestamp != nil {
