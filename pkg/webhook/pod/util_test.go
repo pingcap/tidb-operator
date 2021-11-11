@@ -80,7 +80,8 @@ func TestCheckPDFormerPodStatus(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			kubeCli, _ := newFakeComponent()
-			pdControl := pdapi.NewFakePDControl(kubeCli)
+			informer := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
+			pdControl := pdapi.NewFakePDControl(informer.Core().V1().Secrets().Lister())
 			slots := sets.NewInt32(test.deleteSlots...)
 			tc := newTidbClusterForPodAdmissionControl(test.stsReplicas, test.stsReplicas)
 			fakePDClient := controller.NewFakePDClient(pdControl, tc)

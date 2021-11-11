@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: query-layer
+    app.kubernetes.io/instance: thanos-query
+    app.kubernetes.io/name: thanos-query
+    app.kubernetes.io/version: v0.22.0
+  name: thanos-query
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: query-layer
+      app.kubernetes.io/instance: thanos-query
+      app.kubernetes.io/name: thanos-query
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: query-layer
+        app.kubernetes.io/instance: thanos-query
+        app.kubernetes.io/name: thanos-query
+        app.kubernetes.io/version: v0.22.0
+    spec:
+      containers:
+        - args:
+            - query
+            - --grpc-address=0.0.0.0:10901
+            - --http-address=0.0.0.0:9090
+            - --log.level=debug
+            - --log.format=logfmt
+            - --query.replica-label=prometheus_replica
+            - --query.replica-label=rule_replica
+            - --store=thanos-receiver:10901
+            - --query.timeout=5m
+            - --query.lookback-delta=15m
+            - |-
+              --tracing.config="config":
+                "sampler_param": 2
+                "sampler_type": "ratelimiting"
+                "service_name": "thanos-query"
+              "type": "JAEGER"
+          image: quay.io/thanos/thanos:v0.22.0
+          livenessProbe:
+            failureThreshold: 4
+            httpGet:
+              path: /-/healthy
+              port: 9090
+              scheme: HTTP
+            periodSeconds: 30
+          name: thanos-query
+          ports:
+            - containerPort: 10901
+              name: grpc
+            - containerPort: 9090
+              name: http
+          readinessProbe:
+            failureThreshold: 20
+            httpGet:
+              path: /-/ready
+              port: 9090
+              scheme: HTTP
+            periodSeconds: 5
+          resources: {}
+          terminationMessagePolicy: FallbackToLogsOnError
+      terminationGracePeriodSeconds: 120
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: query-layer
+    app.kubernetes.io/instance: thanos-query
+    app.kubernetes.io/name: thanos-query
+    app.kubernetes.io/version: v0.22.0
+  name: thanos-query
+spec:
+  ports:
+    - name: grpc
+      port: 10901
+      targetPort: 10901
+    - name: http
+      port: 9090
+      targetPort: 9090
+  selector:
+    app.kubernetes.io/component: query-layer
+    app.kubernetes.io/instance: thanos-query
+    app.kubernetes.io/name: thanos-query

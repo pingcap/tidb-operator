@@ -682,7 +682,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 				}
 			}
 			if !existVolume {
-				return nil, fmt.Errorf("Failed to get slowLogVolume %s for cluster %s/%s", slowQueryLogVolumeName, ns, tcName)
+				return nil, fmt.Errorf("failed to get slowLogVolume %s for cluster %s/%s", slowQueryLogVolumeName, ns, tcName)
 			}
 			slowLogFileEnvVal = path.Join(slowQueryLogVolumeMount.MountPath, slowQueryLogVolumeName)
 		}
@@ -823,7 +823,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 				Spec: podSpec,
 			},
 			ServiceName:         controller.TiDBPeerMemberName(tcName),
-			PodManagementPolicy: apps.ParallelPodManagement,
+			PodManagementPolicy: baseTiDBSpec.PodManagementPolicy(),
 			UpdateStrategy:      updateStrategy,
 		},
 	}
