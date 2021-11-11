@@ -31,8 +31,13 @@ require (
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/go-openapi/spec v0.19.3
 	github.com/go-sql-driver/mysql v1.5.0
+<<<<<<< HEAD
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/groupcache v0.0.0-20181024230925-c65c006176ff // indirect
+=======
+	github.com/gogo/protobuf v1.3.2
+	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
+>>>>>>> d2f6d3bd... fix high security issues (#4240)
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/google/go-cmp v0.3.1
 	github.com/google/gofuzz v1.0.0
@@ -162,3 +167,11 @@ replace github.com/prometheus/client_golang => github.com/prometheus/client_gola
 // workaround for avd.aquasec.com/nvd/cve-2020-29652
 // TODO: remove it after upgrading
 replace golang.org/x/crypto => golang.org/x/crypto v0.0.0-20201216223049-8b5274cf687f
+
+// workaround for github.com/advisories/GHSA-25xm-hr59-7c27
+// TODO: remove it after upgrading github.com/mholt/archiver greater than v3.5.0
+replace github.com/ulikunitz/xz => github.com/ulikunitz/xz v0.5.8
+
+// workaround for github.com/advisories/GHSA-w73w-5m7g-f7qc
+// TODO: remove it after upgrading k8s.io/client-go equal or greater than v0.20.0
+replace github.com/dgrijalva/jwt-go => github.com/golang-jwt/jwt v3.2.1+incompatible
