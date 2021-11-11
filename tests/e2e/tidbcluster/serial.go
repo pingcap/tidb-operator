@@ -624,7 +624,6 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			}
 			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")
-			oa.CleanCRDOrDie()
 			oa.InstallCRDOrDie(ocfg)
 			ginkgo.By("Installing tidb-operator")
 			oa.CleanOperatorOrDie(ocfg)
