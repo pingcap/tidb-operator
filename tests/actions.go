@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
@@ -455,33 +456,68 @@ func (oa *OperatorActions) CleanCRDOrDie() {
 	}
 }
 
-// InstallCRDOrDie install CRDs firstly and wait for them to be established in Kubernetes.
-func (oa *OperatorActions) InstallCRDOrDie(info *OperatorConfig) {
-	isCRDV1Supported, err := utildiscovery.IsAPIGroupVersionSupported(oa.kubeCli.Discovery(), "apiextensions.k8s.io/v1")
-	framework.ExpectNoError(err, "failed to discovery api \"apiextensions.k8s.io/v1\"")
+func (oa *OperatorActions) CreateOrReplaceCRD(isCRDV1Supported bool) {
+	files := map[string]struct{}{}
+	if isCRDV1Supported {
+		crdList, err := oa.apiExtCli.ApiextensionsV1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
+		framework.ExpectNoError(err, "failed to list CRD")
+		for _, crd := range crdList.Items {
+			if !strings.HasSuffix(crd.Name, ".pingcap.com") {
+				framework.Logf("CRD %q ignored", crd.Name)
+				continue
+			}
+			files[crd.Spec.Group+"_"+crd.Spec.Names.Plural+".yaml"] = struct{}{}
+		}
+		oa.createOrReplaceCRD("v1", files)
+	} else {
+		crdList, err := oa.apiExtCli.ApiextensionsV1beta1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
+		framework.ExpectNoError(err, "failed to list CRD")
+		for _, crd := range crdList.Items {
+			if !strings.HasSuffix(crd.Name, ".pingcap.com") {
+				framework.Logf("CRD %q ignored", crd.Name)
+				continue
+			}
+			files[crd.Spec.Group+"_"+crd.Spec.Names.Plural+".yaml"] = struct{}{}
+		}
+		oa.createOrReplaceCRD("v1beta1", files)
+	}
+}
 
-	// advanced-statefulset CRD
-	if info.Enabled(features.AdvancedStatefulSet) {
-		if isCRDV1Supported {
-			oa.runKubectlOrDie("create", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1.yaml"))
+func (oa *OperatorActions) createOrReplaceCRD(version string, files map[string]struct{}) {
+	filepath.Walk(oa.manifestPath(filepath.Join("e2e/crd", version)), func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		if _, ok := files[info.Name()]; ok {
+			oa.runKubectlOrDie("replace", "-f", path)
 		} else {
-			oa.runKubectlOrDie("create", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1beta1.yaml"))
+			oa.runKubectlOrDie("create", "-f", path)
+		}
+		return nil
+	})
+}
+
+// InstallCRDOrDie install CRDs and wait for them to be established in Kubernetes.
+func (oa *OperatorActions) InstallCRDOrDie(info *OperatorConfig) {
+	isSupported, err := utildiscovery.IsAPIGroupVersionSupported(oa.kubeCli.Discovery(), "apiextensions.k8s.io/v1")
+	if err != nil {
+		log.Failf(err.Error())
+	}
+	if info.Enabled(features.AdvancedStatefulSet) {
+		if isSupported {
+			oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1.yaml"))
+		} else {
+			oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1beta1.yaml"))
 		}
 	}
-
-	// tidbcluster CRD
-	if isCRDV1Supported {
-		oa.runKubectlOrDie("create", "-f", oa.manifestPath("e2e/crd.yaml"))
-	} else {
-		oa.runKubectlOrDie("create", "-f", oa.manifestPath("e2e/crd.v1beta1.yaml"))
-	}
-
-	// data resource
-	oa.runKubectlOrDie("create", "-f", oa.manifestPath("e2e/data-resource-crd.yaml"))
-
+	// replace crd to avoid problem of too big annotation
+	oa.CreateOrReplaceCRD(isSupported)
+	oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/data-resource-crd.yaml"))
 	log.Logf("Wait for all CRDs are established")
 	e2eutil.WaitForCRDsEstablished(oa.apiExtCli, labels.Everything())
-
 	// workaround for https://github.com/kubernetes/kubernetes/issues/65517
 	log.Logf("force sync kubectl cache")
 	cmdArgs := []string{"sh", "-c", "rm -rf ~/.kube/cache ~/.kube/http-cache"}
@@ -490,10 +526,10 @@ func (oa *OperatorActions) InstallCRDOrDie(info *OperatorConfig) {
 	}
 }
 
-func (oa *OperatorActions) InstallReleasedCRDOrDie(version string) {
+func (oa *OperatorActions) DeployReleasedCRDOrDie(version string) {
 	url := fmt.Sprintf("https://raw.githubusercontent.com/pingcap/tidb-operator/%s/manifests/crd.yaml", version)
 	err := wait.PollImmediate(time.Second*10, time.Minute, func() (bool, error) {
-		_, err := framework.RunKubectl("", "create", "-f", url)
+		_, err := framework.RunKubectl("", "apply", "-f", url)
 		if err != nil {
 			return false, nil
 		}
