@@ -14595,47 +14595,11 @@ spec:
                       required:
                       - topologyKey
                       type: object
-<<<<<<< HEAD
                     type: array
                     x-kubernetes-list-map-keys:
                     - topologyKey
                     x-kubernetes-list-type: map
                   version:
-=======
-                  type: object
-                priorityClassName:
-                  type: string
-                privileged:
-                  type: boolean
-                raftLogVolumeName:
-                  type: string
-                recoverFailover:
-                  type: boolean
-                replicas:
-                  format: int32
-                  type: integer
-                requests:
-                  type: object
-                rocksDBLogVolumeName:
-                  type: string
-                schedulerName:
-                  type: string
-                separateRaftLog:
-                  type: boolean
-                separateRocksDBLog:
-                  type: boolean
-                serviceAccount:
-                  type: string
-                statefulSetUpdateStrategy:
-                  type: string
-                storageClassName:
-                  type: string
-                storageVolumes:
-                  items: {}
-                  type: array
-                storeLabels:
-                  items:
->>>>>>> master-upstream
                     type: string
                 type: object
               enableDynamicConfiguration:
@@ -28712,6 +28676,8 @@ spec:
                     type: string
                   privileged:
                     type: boolean
+                  raftLogVolumeName:
+                    type: string
                   recoverFailover:
                     type: boolean
                   replicas:
@@ -28726,6 +28692,8 @@ spec:
                       pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                       x-kubernetes-int-or-string: true
                     type: object
+                  rocksDBLogVolumeName:
+                    type: string
                   schedulerName:
                     type: string
                   separateRaftLog:

@@ -16674,6 +16674,8 @@ spec:
                   type: string
                 privileged:
                   type: boolean
+                raftLogVolumeName:
+                  type: string
                 recoverFailover:
                   type: boolean
                 replicas:
@@ -16688,6 +16690,8 @@ spec:
                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                     x-kubernetes-int-or-string: true
                   type: object
+                rocksDBLogVolumeName:
+                  type: string
                 schedulerName:
                   type: string
                 separateRaftLog:
