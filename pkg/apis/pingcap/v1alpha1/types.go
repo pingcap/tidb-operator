@@ -475,6 +475,14 @@ type TiKVSpec struct {
 	// +optional
 	SeparateRaftLog *bool `json:"separateRaftLog,omitempty"`
 
+	// Optional volume name configuration for rocksdb log.
+	// +optional
+	RocksDBLogVolumeName string `json:"rocksDBLogVolumeName,omitempty"`
+
+	// Optional volume name configuration for raft log.
+	// +optional
+	RaftLogVolumeName string `json:"raftLogVolumeName,omitempty"`
+
 	// LogTailer is the configurations of the log tailers for TiKV
 	// +optional
 	LogTailer *LogTailerSpec `json:"logTailer,omitempty"`
