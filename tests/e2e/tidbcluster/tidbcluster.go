@@ -333,66 +333,6 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 	})
 
-<<<<<<< HEAD
-=======
-	ginkgo.It("should direct upgrade tc successfully when PD replicas less than 2.", func() {
-		clusterName := "upgrade-cluster-pd-1"
-		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBLatestPrev)
-		tc.Spec.PD.Replicas = 1
-		tc.Spec.PD.BaseImage = "pingcap/pd-not-exist"
-		// Deploy
-		err := genericCli.Create(context.TODO(), tc)
-		framework.ExpectNoError(err, "failed to create TidbCluster %s/%s", tc.Namespace, tc.Name)
-
-		err = utiltc.WaitForTidbClusterCondition(cli, tc.Namespace, tc.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
-			if len(tc.Status.Conditions) < 1 {
-				return false, nil
-			}
-			if tc.Status.Conditions[0].Reason == "PDUnhealthy" && tc.Status.PD.StatefulSet.CurrentReplicas == tc.Status.PD.StatefulSet.Replicas {
-				return true, nil
-			}
-			return false, nil
-		})
-		framework.ExpectNoError(err)
-
-		ginkgo.By("Force Upgrading tidb cluster ignoring PD error")
-		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-			tc.Spec.PD.BaseImage = "pingcap/pd"
-			return nil
-		})
-		framework.ExpectNoError(err, "failed to upgrade TidbCluster: %q", tc.Name)
-		err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
-
-		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
-	})
-
-	ginkgo.It("should direct upgrade tc successfully when TiKV replicas less than 2.", func() {
-		clusterName := "upgrade-cluster-tikv-1"
-		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBLatestPrev)
-		tc.Spec.TiKV.Replicas = 1
-		tc.Spec.TiKV.EvictLeaderTimeout = pointer.StringPtr("10m")
-		// Deploy
-		utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 5*time.Second)
-		ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", tc.Spec.Version, utilimage.TiDBLatest))
-		err := controller.GuaranteedUpdate(genericCli, tc, func() error {
-			tc.Spec.Version = utilimage.TiDBLatest
-			return nil
-		})
-		framework.ExpectNoError(err, "failed to upgrade TidbCluster: %q", tc.Name)
-		err = oa.WaitForTidbClusterReady(tc, 7*time.Minute, 5*time.Second)
-
-		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
-		pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(secretLister, fw, ns, tc.Name, false)
-		framework.ExpectNoError(err, "failed to create proxied PD client")
-		defer cancel()
-
-		evictLeaderSchedulers, err := pdClient.GetEvictLeaderSchedulers()
-		framework.ExpectNoError(err, "failed to get EvictLeader")
-		res := utiltc.MustPDHasScheduler(evictLeaderSchedulers, "evict-leader-scheduler")
-		framework.ExpectEqual(res, false)
-	})
-
->>>>>>> ba438ac2... Check startup script when check if configmap has beed updated (#4248)
 	// TODO: move into Upgrade cases below
 	ginkgo.It("should upgrade TidbCluster with webhook enabled", func() {
 		ginkgo.By("Creating webhook certs and self signing it")
