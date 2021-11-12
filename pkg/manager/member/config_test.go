@@ -154,6 +154,64 @@ func TestUpdateConfigMap(t *testing.T) {
 			},
 			equal: true,
 		},
+		{
+			name: "the startup script of old is empty, and new is setted",
+			old: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "old",
+				},
+				Data: map[string]string{},
+			},
+			new: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "new",
+				},
+				Data: map[string]string{
+					"startup-script": "script",
+				},
+			},
+			equal: false,
+		},
+		{
+			name: "the startup script of old is same",
+			old: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "old",
+				},
+				Data: map[string]string{
+					"startup-script": "script",
+				},
+			},
+			new: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "new",
+				},
+				Data: map[string]string{
+					"startup-script": "script",
+				},
+			},
+			equal: true,
+		},
+		{
+			name: "the startup script of old and new configmaps are different",
+			old: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "old",
+				},
+				Data: map[string]string{
+					"startup-script": "script-old",
+				},
+			},
+			new: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "new",
+				},
+				Data: map[string]string{
+					"startup-script": "script-new",
+				},
+			},
+			equal: false,
+		},
 	}
 
 	for i := range tests {
