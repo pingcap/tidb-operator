@@ -30,7 +30,7 @@ Fix issues:
 - Add an admission controller named resource to admission server just like pod/statefulset/strategy.
 - Create resource package in pkg/webhook, the directory tree may like this:
 
-```Go
+```text
 pkg/webhook/resource/
 |- resource.go                        // resource register and resource interface 
 |- tidbcluster_resource.go            // validate or admit logic of TidbCluster
