@@ -38,9 +38,9 @@ import (
 )
 
 var (
-	tidbReadyTimeout       = time.Minute * 5
-	backupCompleteTimeout  = time.Minute * 5
-	restoreCompleteTimeout = time.Minute * 5
+	tidbReadyTimeout       = time.Minute * 7
+	backupCompleteTimeout  = time.Minute * 7
+	restoreCompleteTimeout = time.Minute * 7
 )
 
 const (
