@@ -38,9 +38,9 @@ import (
 )
 
 var (
-	tidbReadyTimeout       = time.Minute * 5
-	backupCompleteTimeout  = time.Minute * 5
-	restoreCompleteTimeout = time.Minute * 5
+	tidbReadyTimeout       = time.Minute * 7
+	backupCompleteTimeout  = time.Minute * 7
+	restoreCompleteTimeout = time.Minute * 7
 )
 
 const (
@@ -91,7 +91,7 @@ func (t *testcase) description() string {
 	return builder.String()
 }
 
-var _ = ginkgo.Describe("Backup and Restore", func() {
+var _ = ginkgo.Describe("[Backup and Restore]", func() {
 	f := e2eframework.NewFramework("br")
 
 	ginkgo.BeforeEach(func() {
