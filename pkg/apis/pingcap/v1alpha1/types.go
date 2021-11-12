@@ -273,6 +273,10 @@ type TidbClusterSpec struct {
 	// +optional
 	StatefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType `json:"statefulSetUpdateStrategy,omitempty"`
 
+	// PodManagementPolicy of TiDB cluster StatefulSets
+	// +optional
+	PodManagementPolicy apps.PodManagementPolicyType `json:"podManagementPolicy,omitempty"`
+
 	// PodSecurityContext of the component
 	// +optional
 	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
@@ -449,6 +453,14 @@ type TiKVSpec struct {
 	// Optional: Defaults to false
 	// +optional
 	SeparateRaftLog *bool `json:"separateRaftLog,omitempty"`
+
+	// Optional volume name configuration for rocksdb log.
+	// +optional
+	RocksDBLogVolumeName string `json:"rocksDBLogVolumeName,omitempty"`
+
+	// Optional volume name configuration for raft log.
+	// +optional
+	RaftLogVolumeName string `json:"raftLogVolumeName,omitempty"`
 
 	// LogTailer is the configurations of the log tailers for TiKV
 	// +optional
@@ -910,6 +922,10 @@ type ComponentSpec struct {
 	// Template.
 	// +optional
 	StatefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType `json:"statefulSetUpdateStrategy,omitempty"`
+
+	// PodManagementPolicy of TiDB cluster StatefulSets
+	// +optional
+	PodManagementPolicy apps.PodManagementPolicyType `json:"podManagementPolicy,omitempty"`
 
 	// TopologySpreadConstraints describes how a group of pods ought to spread across topology
 	// domains. Scheduler will schedule pods in a way which abides by the constraints.

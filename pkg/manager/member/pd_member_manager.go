@@ -799,7 +799,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 				},
 			},
 			ServiceName:         controller.PDPeerMemberName(tcName),
-			PodManagementPolicy: apps.ParallelPodManagement,
+			PodManagementPolicy: basePDSpec.PodManagementPolicy(),
 			UpdateStrategy:      updateStrategy,
 		},
 	}

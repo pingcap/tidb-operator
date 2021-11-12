@@ -1580,6 +1580,13 @@ func schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref common.ReferenceCallback
 							Format:      "",
 						},
 					},
+					"podManagementPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PodManagementPolicy of TiDB cluster StatefulSets",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"topologySpreadConstraints": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
@@ -3353,6 +3360,13 @@ func schema_pkg_apis_pingcap_v1alpha1_MasterSpec(ref common.ReferenceCallback) c
 							Format:      "",
 						},
 					},
+					"podManagementPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PodManagementPolicy of TiDB cluster StatefulSets",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"topologySpreadConstraints": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
@@ -4552,6 +4566,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 							Format:      "",
 						},
 					},
+					"podManagementPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PodManagementPolicy of TiDB cluster StatefulSets",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"topologySpreadConstraints": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
@@ -5339,6 +5360,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PumpSpec(ref common.ReferenceCallback) com
 					"statefulSetUpdateStrategy": {
 						SchemaProps: spec.SchemaProps{
 							Description: "StatefulSetUpdateStrategy indicates the StatefulSetUpdateStrategy that will be employed to update Pods in the StatefulSet when a revision is made to Template.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"podManagementPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PodManagementPolicy of TiDB cluster StatefulSets",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -6674,6 +6702,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCDCSpec(ref common.ReferenceCallback) co
 							Format:      "",
 						},
 					},
+					"podManagementPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PodManagementPolicy of TiDB cluster StatefulSets",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"topologySpreadConstraints": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
@@ -7483,6 +7518,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 							Format:      "",
 						},
 					},
+					"podManagementPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PodManagementPolicy of TiDB cluster StatefulSets",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"topologySpreadConstraints": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
@@ -7894,6 +7936,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiFlashSpec(ref common.ReferenceCallback) 
 					"statefulSetUpdateStrategy": {
 						SchemaProps: spec.SchemaProps{
 							Description: "StatefulSetUpdateStrategy indicates the StatefulSetUpdateStrategy that will be employed to update Pods in the StatefulSet when a revision is made to Template.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"podManagementPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PodManagementPolicy of TiDB cluster StatefulSets",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -10190,6 +10239,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 							Format:      "",
 						},
 					},
+					"podManagementPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PodManagementPolicy of TiDB cluster StatefulSets",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"topologySpreadConstraints": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
@@ -10285,6 +10341,20 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 						SchemaProps: spec.SchemaProps{
 							Description: "Whether output the Raft log in a separate sidecar container Optional: Defaults to false",
 							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"rocksDBLogVolumeName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional volume name configuration for rocksdb log.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"raftLogVolumeName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional volume name configuration for raft log.",
+							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
@@ -11305,6 +11375,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 					"statefulSetUpdateStrategy": {
 						SchemaProps: spec.SchemaProps{
 							Description: "StatefulSetUpdateStrategy of TiDB cluster StatefulSets",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"podManagementPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PodManagementPolicy of TiDB cluster StatefulSets",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -12377,6 +12454,13 @@ func schema_pkg_apis_pingcap_v1alpha1_WorkerSpec(ref common.ReferenceCallback) c
 					"statefulSetUpdateStrategy": {
 						SchemaProps: spec.SchemaProps{
 							Description: "StatefulSetUpdateStrategy indicates the StatefulSetUpdateStrategy that will be employed to update Pods in the StatefulSet when a revision is made to Template.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"podManagementPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PodManagementPolicy of TiDB cluster StatefulSets",
 							Type:        []string{"string"},
 							Format:      "",
 						},
