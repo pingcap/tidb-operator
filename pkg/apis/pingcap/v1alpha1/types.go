@@ -39,6 +39,11 @@ const (
 	DMWorkerStateBound string = "bound"
 	// DMWorkerStateOffline represents status of offline of dm-worker
 	DMWorkerStateOffline string = "offline"
+
+	// PumpStateOnline represents status of online of Pump
+	PumpStateOnline string = "online"
+	// PumpStateOffline represents status of offline of Pump
+	PumpStateOffline string = "offline"
 )
 
 // MemberType represents member type
