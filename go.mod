@@ -83,9 +83,9 @@ require (
 	k8s.io/code-generator v0.19.16
 	k8s.io/component-base v0.19.16
 	k8s.io/klog v1.0.0
-	k8s.io/kube-aggregator v0.0.0
-	k8s.io/kube-scheduler v0.19.14
-	k8s.io/kubectl v0.0.0
+	k8s.io/kube-aggregator v0.19.16
+	k8s.io/kube-scheduler v0.19.16
+	k8s.io/kubectl v0.19.16
 	k8s.io/kubernetes v1.19.16
 	k8s.io/utils v0.0.0-20200912215256-4140de9c8800
 	sigs.k8s.io/apiserver-builder-alpha/cmd v0.0.0-20191113095113-4493943d2568
