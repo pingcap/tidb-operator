@@ -74,7 +74,7 @@ The corresponding relationship between TiDB Operator and TiDB versions is as fol
 - [TiDB Scheduler](tidb-scheduler.md)
 - [API Docs](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.md)
 - [Use tkctl](use-tkctl.md)
-- [Confiure TiDB Binlog Drainer](configure-tidb-binlog-drainer.md)
+- [Configure TiDB Binlog Drainer](configure-tidb-binlog-drainer.md)
 
 </NavColumn>
 
