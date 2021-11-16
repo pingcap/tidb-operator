@@ -692,9 +692,23 @@ spec:
 
     ## if enabled, the RocksDB log will be shown in a separate sidecar container
     separateRocksDBLog: true
+    ## rocksDBLogVolumeName is only applicable when separateRocksDBLog is enabled.
+    ## if separateRocksDBLog is enabled, rocksDBLogVolumeName can be set or not.
+    ## if rocksDBLogVolumeName is not set, the rocksdb log is saved in the PV of TiKV data, which may increase the IO pressure of the data disk.
+    ## if rocksDBLogVolumeName is set, rocksDBLogVolumeName should be defined in storageVolumes or additionalVolumes to use another PV.
+    ## you may need to change the `rocksdb.info-log-dir` to save the logs in the separate PV.
+    ## Ref: https://github.com/tikv/tikv/blob/master/etc/config-template.toml
+    # rocksDBLogVolumeName: ""
 
     ## if enabled, the Raft log will be shown in a separate sidecar container
     separateRaftLog: true
+    ## raftLogVolumeName is only applicable when separateRaftLog is enabled.
+    ## if separateRaftLog is enabled, raftLogVolumeName can be set or not.
+    ## if raftLogVolumeName is not set, the separated raftdb log is saved in the PV of TiKV data, which may increase the IO pressure of the data disk.
+    ## if raftLogVolumeName is set, raftLogVolumeName should be defined in storageVolumes or additionalVolumes to use another PV.
+    ## you may need to change the `raftdb.info-log-dir` to save the logs in the separate PV.
+    ## Ref: https://github.com/tikv/tikv/blob/master/etc/config-template.toml
+    # raftLogVolumeName: ""
 
     ## configures RocksDB/Raft log sidecar container resource requirements
     # logTailer:

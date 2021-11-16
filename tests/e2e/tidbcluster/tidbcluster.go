@@ -382,7 +382,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			return nil
 		})
 		framework.ExpectNoError(err, "failed to upgrade TidbCluster: %q", tc.Name)
-		err = oa.WaitForTidbClusterReady(tc, 5*time.Minute, 5*time.Second)
+		err = oa.WaitForTidbClusterReady(tc, 7*time.Minute, 5*time.Second)
 
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 		pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(secretLister, fw, ns, tc.Name, false)

@@ -85,10 +85,8 @@ func (m *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV cluster running", ns, tcName)
 	}
 
-	if tc.Spec.Pump != nil {
-		if !tc.PumpIsAvailable() {
-			return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for Pump cluster running", ns, tcName)
-		}
+	if tc.Spec.Pump != nil && !tc.PumpIsAvailable() {
+		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for Pump cluster running", ns, tcName)
 	}
 
 	// Sync TiDB Headless Service
@@ -682,7 +680,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 				}
 			}
 			if !existVolume {
-				return nil, fmt.Errorf("Failed to get slowLogVolume %s for cluster %s/%s", slowQueryLogVolumeName, ns, tcName)
+				return nil, fmt.Errorf("failed to get slowLogVolume %s for cluster %s/%s", slowQueryLogVolumeName, ns, tcName)
 			}
 			slowLogFileEnvVal = path.Join(slowQueryLogVolumeMount.MountPath, slowQueryLogVolumeName)
 		}

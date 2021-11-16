@@ -39,6 +39,11 @@ const (
 	DMWorkerStateBound string = "bound"
 	// DMWorkerStateOffline represents status of offline of dm-worker
 	DMWorkerStateOffline string = "offline"
+
+	// PumpStateOnline represents status of online of Pump
+	PumpStateOnline string = "online"
+	// PumpStateOffline represents status of offline of Pump
+	PumpStateOffline string = "offline"
 )
 
 // MemberType represents member type
@@ -453,6 +458,14 @@ type TiKVSpec struct {
 	// Optional: Defaults to false
 	// +optional
 	SeparateRaftLog *bool `json:"separateRaftLog,omitempty"`
+
+	// Optional volume name configuration for rocksdb log.
+	// +optional
+	RocksDBLogVolumeName string `json:"rocksDBLogVolumeName,omitempty"`
+
+	// Optional volume name configuration for raft log.
+	// +optional
+	RaftLogVolumeName string `json:"raftLogVolumeName,omitempty"`
 
 	// LogTailer is the configurations of the log tailers for TiKV
 	// +optional
