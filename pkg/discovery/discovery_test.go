@@ -29,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
@@ -47,8 +48,9 @@ func TestDiscoveryDiscovery(t *testing.T) {
 	testFn := func(test testcase, t *testing.T) {
 		cli := fake.NewSimpleClientset()
 		kubeCli := kubefake.NewSimpleClientset()
-		fakePDControl := pdapi.NewFakePDControl(kubeCli)
-		fakeMasterControl := dmapi.NewFakeMasterControl(kubeCli)
+		informer := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
+		fakePDControl := pdapi.NewFakePDControl(informer.Core().V1().Secrets().Lister())
+		fakeMasterControl := dmapi.NewFakeMasterControl(informer.Core().V1().Secrets().Lister())
 		pdClient := pdapi.NewFakePDClient()
 		if test.tc != nil {
 			cli.PingcapV1alpha1().TidbClusters(test.tc.Namespace).Create(context.TODO(), test.tc, metav1.CreateOptions{})
@@ -548,8 +550,9 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 	testFn := func(test testcase, t *testing.T) {
 		cli := fake.NewSimpleClientset()
 		kubeCli := kubefake.NewSimpleClientset()
-		fakePDControl := pdapi.NewFakePDControl(kubeCli)
-		fakeMasterControl := dmapi.NewFakeMasterControl(kubeCli)
+		informer := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
+		fakePDControl := pdapi.NewFakePDControl(informer.Core().V1().Secrets().Lister())
+		fakeMasterControl := dmapi.NewFakeMasterControl(informer.Core().V1().Secrets().Lister())
 		masterClient := dmapi.NewFakeMasterClient()
 		if test.dc != nil {
 			cli.PingcapV1alpha1().DMClusters(test.dc.Namespace).Create(context.TODO(), test.dc, metav1.CreateOptions{})
@@ -897,8 +900,9 @@ func TestDiscoveryVerifyPDEndpoint(t *testing.T) {
 	testFn := func(test testcase, t *testing.T) {
 		cli := fake.NewSimpleClientset()
 		kubeCli := kubefake.NewSimpleClientset()
-		fakePDControl := pdapi.NewFakePDControl(kubeCli)
-		fakeMasterControl := dmapi.NewFakeMasterControl(kubeCli)
+		informer := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
+		fakePDControl := pdapi.NewFakePDControl(informer.Core().V1().Secrets().Lister())
+		fakeMasterControl := dmapi.NewFakeMasterControl(informer.Core().V1().Secrets().Lister())
 		tc := newTC()
 
 		ns := "default"

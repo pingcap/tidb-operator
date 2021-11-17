@@ -83,7 +83,7 @@ func (am *autoScalerManager) syncExternal(tc *v1alpha1.TidbCluster, tac *v1alpha
 		cfg = tac.Spec.TiKV.External
 	}
 
-	targetReplicas, err := query.ExternalService(tc, component, cfg.Endpoint, am.deps.KubeClientset)
+	targetReplicas, err := query.ExternalService(tc, component, cfg.Endpoint, am.deps.SecretLister)
 	if err != nil {
 		klog.Errorf("tac[%s/%s]'s query to the external endpoint for component %s got error: %v", tac.Namespace, tac.Name, component.String(), err)
 		return err
