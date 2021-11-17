@@ -16,7 +16,7 @@ package v1alpha1
 import (
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -1791,7 +1791,7 @@ type IngressSpec struct {
 	// through the SNI TLS extension, if the ingress controller fulfilling the
 	// ingress supports SNI.
 	// +optional
-	TLS []extensionsv1beta1.IngressTLS `json:"tls,omitempty"`
+	TLS []networkingv1.IngressTLS `json:"tls,omitempty"`
 }
 
 // +genclient
