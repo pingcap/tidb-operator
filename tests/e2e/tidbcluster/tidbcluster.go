@@ -2227,12 +2227,6 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			for i := range cases {
 				ucase := cases[i]
 				ginkgo.It(fmt.Sprintf("for tc and components version upgrade from %s to %s", ucase.oldVersion, ucase.newVersion), func() {
-<<<<<<< HEAD
-					if ginkgoconfig.GinkgoConfig.FocusString == "" {
-						framework.Skipf("Skip upgrade testing for specific version")
-					}
-=======
->>>>>>> b0ae9f24... Fix issue run unexpected e2e case (#4265)
 					upgradeTest(ucase)
 				})
 			}

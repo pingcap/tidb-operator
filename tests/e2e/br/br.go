@@ -218,12 +218,6 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		for i := range cases {
 			tcase := cases[i]
 			ginkgo.It(tcase.description(), func() {
-<<<<<<< HEAD
-				if ginkgoconfig.GinkgoConfig.FocusString == "" {
-					framework.Skipf("Skip br testing for specific version")
-				}
-=======
->>>>>>> b0ae9f24... Fix issue run unexpected e2e case (#4265)
 				brTest(tcase)
 			})
 		}
