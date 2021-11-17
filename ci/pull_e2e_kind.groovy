@@ -82,7 +82,7 @@ spec:
       limits:
         cpu: <%= resources.limits.cpu %>
         memory: <%= resources.limits.memory %>
-        ephemeral-storage: 250Gi
+        ephemeral-storage: 500Gi
     <% } %>
 <% } %>
     # kind needs /lib/modules and cgroups from the host
