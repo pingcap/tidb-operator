@@ -14,6 +14,7 @@
 package discovery
 
 import (
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
 )
@@ -49,6 +50,26 @@ func IsAPIGroupSupported(discoveryCli discovery.DiscoveryInterface, group string
 	}
 	for _, apiGroup := range apiGroupList.Groups {
 		if apiGroup.Name == group {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// IsAPIGroupVersionSupported checks if given groupVersion and resource is supported by the cluster.
+//
+// you can exec `kubectl api-resoures` to find groupVersion and resource.
+func IsAPIGroupVersionResourceSupported(discoveryCli discovery.DiscoveryInterface, groupversion string, resource string) (bool, error) {
+	apiResourceList, err := discoveryCli.ServerResourcesForGroupVersion(groupversion)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	for _, apiResource := range apiResourceList.APIResources {
+		if resource == apiResource.Name {
 			return true, nil
 		}
 	}
