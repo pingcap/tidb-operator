@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/onsi/ginkgo"
-	ginkgoconfig "github.com/onsi/ginkgo/config"
 	"github.com/onsi/gomega"
 	astsHelper "github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
@@ -58,6 +57,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
+	utilginkgo "github.com/pingcap/tidb-operator/tests/e2e/util/ginkgo"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
@@ -2071,7 +2071,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		}
 
 		// upgrdae testing for specific versions
-		ginkgo.Context("Specific Version", func() {
+		utilginkgo.ContextWhenFocus("Specific Version", func() {
 			configureV4x0x9 := func(tc *v1alpha1.TidbCluster) {
 				pdCfg := v1alpha1.NewPDConfig()
 				tikvCfg := v1alpha1.NewTiKVConfig()
@@ -2227,9 +2227,6 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			for i := range cases {
 				ucase := cases[i]
 				ginkgo.It(fmt.Sprintf("for tc and components version upgrade from %s to %s", ucase.oldVersion, ucase.newVersion), func() {
-					if ginkgoconfig.GinkgoConfig.FocusString == "" {
-						framework.Skipf("Skip upgrade testing for specific version")
-					}
 					upgradeTest(ucase)
 				})
 			}
