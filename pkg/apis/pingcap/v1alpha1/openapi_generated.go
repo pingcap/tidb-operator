@@ -2838,7 +2838,7 @@ func schema_pkg_apis_pingcap_v1alpha1_IngressSpec(ref common.ReferenceCallback) 
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Ref: ref("k8s.io/api/extensions/v1beta1.IngressTLS"),
+										Ref: ref("k8s.io/api/networking/v1.IngressTLS"),
 									},
 								},
 							},
@@ -2849,7 +2849,7 @@ func schema_pkg_apis_pingcap_v1alpha1_IngressSpec(ref common.ReferenceCallback) 
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/api/extensions/v1beta1.IngressTLS"},
+			"k8s.io/api/networking/v1.IngressTLS"},
 	}
 }
 
