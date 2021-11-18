@@ -206,7 +206,6 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 	envs = util.AppendEnv(envs, baseSpec.Env())
 	volMounts := []corev1.VolumeMount{}
 	volMounts = append(volMounts, baseSpec.AdditionalVolumeMounts()...)
-	podSpec.SecurityContext = baseSpec.PodSecurityContext().DeepCopy()
 	podSpec.Containers = append(podSpec.Containers, corev1.Container{
 		Name:      "discovery",
 		Resources: controller.ContainerResource(resources),
