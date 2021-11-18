@@ -8,6 +8,8 @@ spec:
   pvReclaimPolicy: Retain
   enableDynamicConfiguration: true
   configUpdateStrategy: RollingUpdate
+  helper:
+    image: busybox:1.34.1
   pd:
     baseImage: pingcap/pd
     replicas: 3
