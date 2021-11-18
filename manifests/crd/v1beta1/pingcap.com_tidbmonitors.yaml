@@ -1370,6 +1370,7 @@ spec:
                             items:
                               type: string
                             type: array
+                            x-kubernetes-list-type: atomic
                           secretName:
                             type: string
                         type: object
@@ -1625,6 +1626,7 @@ spec:
                             items:
                               type: string
                             type: array
+                            x-kubernetes-list-type: atomic
                           secretName:
                             type: string
                         type: object
@@ -2098,7 +2100,6 @@ spec:
                 type: object
               type: array
           required:
-          - clusters
           - initializer
           - prometheus
           - reloader
