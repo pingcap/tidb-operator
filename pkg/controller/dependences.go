@@ -15,6 +15,7 @@ package controller
 
 import (
 	"flag"
+	"fmt"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -27,6 +28,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/pkg/tiflashapi"
 	"github.com/pingcap/tidb-operator/pkg/tikvapi"
+	utildiscovery "github.com/pingcap/tidb-operator/pkg/util/discovery"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeinformers "k8s.io/client-go/informers"
@@ -37,6 +39,7 @@ import (
 	batchlisters "k8s.io/client-go/listers/batch/v1"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	extensionslister "k8s.io/client-go/listers/extensions/v1beta1"
+	networklister "k8s.io/client-go/listers/networking/v1"
 	storagelister "k8s.io/client-go/listers/storage/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
@@ -202,7 +205,8 @@ type Dependencies struct {
 	StatefulSetLister           appslisters.StatefulSetLister
 	DeploymentLister            appslisters.DeploymentLister
 	JobLister                   batchlisters.JobLister
-	IngressLister               extensionslister.IngressLister
+	IngressLister               networklister.IngressLister
+	IngressV1Beta1Lister        extensionslister.IngressLister // in order to be compatibility with kubernetes which less than v1.19
 	StorageClassLister          storagelister.StorageClassLister
 	TiDBClusterLister           listers.TidbClusterLister
 	TiDBClusterAutoScalerLister listers.TidbClusterAutoScalerLister
@@ -276,12 +280,14 @@ func newDependencies(
 	informerFactory informers.SharedInformerFactory,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 	labelFilterKubeInformerFactory kubeinformers.SharedInformerFactory,
-	recorder record.EventRecorder) *Dependencies {
+	recorder record.EventRecorder) (*Dependencies, error) {
 
 	var (
-		nodeLister corelisterv1.NodeLister
-		pvLister   corelisterv1.PersistentVolumeLister
-		scLister   storagelister.StorageClassLister
+		nodeLister       corelisterv1.NodeLister
+		pvLister         corelisterv1.PersistentVolumeLister
+		scLister         storagelister.StorageClassLister
+		ingLister        networklister.IngressLister
+		ingv1beta1Lister extensionslister.IngressLister
 	)
 	if cliCfg.HasNodePermission() {
 		nodeLister = kubeInformerFactory.Core().V1().Nodes().Lister()
@@ -297,6 +303,16 @@ func newDependencies(
 		scLister = kubeInformerFactory.Storage().V1().StorageClasses().Lister()
 	} else {
 		klog.Info("no permission for storage classes, skip creating sc lister")
+	}
+
+	supported, err := utildiscovery.IsAPIGroupVersionResourceSupported(kubeClientset.Discovery(), "networking.k8s.io/v1", "ingresses")
+	if err != nil {
+		return nil, fmt.Errorf("failed to check resource networking.k8s.io/v1/ingresses: %s", err)
+	}
+	if supported {
+		ingLister = kubeInformerFactory.Networking().V1().Ingresses().Lister()
+	} else {
+		ingv1beta1Lister = kubeInformerFactory.Extensions().V1beta1().Ingresses().Lister()
 	}
 
 	return &Dependencies{
@@ -322,7 +338,8 @@ func newDependencies(
 		DeploymentLister:            kubeInformerFactory.Apps().V1().Deployments().Lister(),
 		StorageClassLister:          scLister,
 		JobLister:                   kubeInformerFactory.Batch().V1().Jobs().Lister(),
-		IngressLister:               kubeInformerFactory.Extensions().V1beta1().Ingresses().Lister(),
+		IngressLister:               ingLister,
+		IngressV1Beta1Lister:        ingv1beta1Lister,
 		TiDBClusterLister:           informerFactory.Pingcap().V1alpha1().TidbClusters().Lister(),
 		TiDBClusterAutoScalerLister: informerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers().Lister(),
 		DMClusterLister:             informerFactory.Pingcap().V1alpha1().DMClusters().Lister(),
@@ -331,11 +348,11 @@ func newDependencies(
 		BackupScheduleLister:        informerFactory.Pingcap().V1alpha1().BackupSchedules().Lister(),
 		TiDBInitializerLister:       informerFactory.Pingcap().V1alpha1().TidbInitializers().Lister(),
 		TiDBMonitorLister:           informerFactory.Pingcap().V1alpha1().TidbMonitors().Lister(),
-	}
+	}, nil
 }
 
 // NewDependencies is used to construct the dependencies
-func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface, kubeClientset kubernetes.Interface, genericCli client.Client) *Dependencies {
+func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface, kubeClientset kubernetes.Interface, genericCli client.Client) (*Dependencies, error) {
 	var (
 		options     []informers.SharedInformerOption
 		kubeoptions []kubeinformers.SharedInformerOption
@@ -370,9 +387,12 @@ func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface
 	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
 		Interface: eventv1.New(kubeClientset.CoreV1().RESTClient()).Events("")})
 	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tidb-controller-manager"})
-	deps := newDependencies(cliCfg, clientset, kubeClientset, genericCli, informerFactory, kubeInformerFactory, labelFilterKubeInformerFactory, recorder)
+	deps, err := newDependencies(cliCfg, clientset, kubeClientset, genericCli, informerFactory, kubeInformerFactory, labelFilterKubeInformerFactory, recorder)
+	if err != nil {
+		return nil, err
+	}
 	deps.Controls = newRealControls(cliCfg, clientset, kubeClientset, genericCli, informerFactory, kubeInformerFactory, recorder)
-	return deps
+	return deps, nil
 }
 
 func newFakeControl(kubeClientset kubernetes.Interface, informerFactory informers.SharedInformerFactory, kubeInformerFactory kubeinformers.SharedInformerFactory) Controls {
@@ -420,7 +440,20 @@ func NewFakeDependencies() *Dependencies {
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
 	labelFilterKubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
 	recorder := record.NewFakeRecorder(100)
-	deps := newDependencies(cliCfg, cli, kubeCli, genCli, informerFactory, kubeInformerFactory, labelFilterKubeInformerFactory, recorder)
+
+	kubeCli.Fake.Resources = append(kubeCli.Fake.Resources, &metav1.APIResourceList{
+		GroupVersion: "networking.k8s.io/v1",
+		APIResources: []metav1.APIResource{
+			{
+				Name: "ingresses",
+			},
+		},
+	})
+
+	deps, err := newDependencies(cliCfg, cli, kubeCli, genCli, informerFactory, kubeInformerFactory, labelFilterKubeInformerFactory, recorder)
+	if err != nil {
+		klog.Fatalf("failed to create Dependencies: %s", err)
+	}
 	deps.Controls = newFakeControl(kubeCli, informerFactory, kubeInformerFactory)
 	return deps
 }

@@ -31,6 +31,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
+	networkingv1 "k8s.io/api/networking/v1"
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1058,19 +1059,65 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 	return services
 }
 
-func getPrometheusIngress(monitor *v1alpha1.TidbMonitor) *extensionsv1beta1.Ingress {
-	return getIngress(monitor, monitor.Spec.Prometheus.Ingress, PrometheusName(monitor.Name, 0), 9090)
+func getIngress(monitor *v1alpha1.TidbMonitor, ingressSpec *v1alpha1.IngressSpec, svcName string, port int) *networkingv1.Ingress {
+	monitorLabel := buildTidbMonitorLabel(monitor.Name)
+	backend := networkingv1.IngressBackend{
+		Service: &networkingv1.IngressServiceBackend{
+			Name: svcName,
+			Port: networkingv1.ServiceBackendPort{
+				Number: int32(port),
+			},
+		},
+	}
+
+	ingress := &networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            svcName,
+			Namespace:       monitor.Namespace,
+			Labels:          monitorLabel,
+			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
+			Annotations:     ingressSpec.Annotations,
+		},
+		Spec: networkingv1.IngressSpec{
+			TLS:   ingressSpec.TLS,
+			Rules: []networkingv1.IngressRule{},
+		},
+	}
+
+	pathType := networkingv1.PathTypeImplementationSpecific
+
+	for _, host := range ingressSpec.Hosts {
+		rule := networkingv1.IngressRule{
+			Host: host,
+			IngressRuleValue: networkingv1.IngressRuleValue{
+				HTTP: &networkingv1.HTTPIngressRuleValue{
+					Paths: []networkingv1.HTTPIngressPath{
+						{
+							PathType: &pathType,
+							Path:     "/",
+							Backend:  backend,
+						},
+					},
+				},
+			},
+		}
+		ingress.Spec.Rules = append(ingress.Spec.Rules, rule)
+	}
+	return ingress
 }
 
-func getGrafanaIngress(monitor *v1alpha1.TidbMonitor) *extensionsv1beta1.Ingress {
-	return getIngress(monitor, monitor.Spec.Grafana.Ingress, GrafanaName(monitor.Name, 0), 3000)
-}
-
-func getIngress(monitor *v1alpha1.TidbMonitor, ingressSpec *v1alpha1.IngressSpec, svcName string, port int) *extensionsv1beta1.Ingress {
+func getIngressV1beta1(monitor *v1alpha1.TidbMonitor, ingressSpec *v1alpha1.IngressSpec, svcName string, port int) *extensionsv1beta1.Ingress {
 	monitorLabel := buildTidbMonitorLabel(monitor.Name)
 	backend := extensionsv1beta1.IngressBackend{
 		ServiceName: svcName,
 		ServicePort: intstr.FromInt(port),
+	}
+	tlslist := []extensionsv1beta1.IngressTLS{}
+	for _, tls := range ingressSpec.TLS {
+		tlslist = append(tlslist, extensionsv1beta1.IngressTLS{
+			Hosts:      tls.Hosts,
+			SecretName: tls.SecretName,
+		})
 	}
 
 	ingress := &extensionsv1beta1.Ingress{
@@ -1082,7 +1129,7 @@ func getIngress(monitor *v1alpha1.TidbMonitor, ingressSpec *v1alpha1.IngressSpec
 			Annotations:     ingressSpec.Annotations,
 		},
 		Spec: extensionsv1beta1.IngressSpec{
-			TLS:   ingressSpec.TLS,
+			TLS:   tlslist,
 			Rules: []extensionsv1beta1.IngressRule{},
 		},
 	}
