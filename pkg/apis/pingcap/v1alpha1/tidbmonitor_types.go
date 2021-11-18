@@ -49,8 +49,9 @@ type DMMonitorSpec struct {
 // +k8s:openapi-gen=true
 // TidbMonitor spec encode the desired state of tidb monitoring component
 type TidbMonitorSpec struct {
+	// +optional
 	// monitored TiDB cluster info
-	Clusters []TidbClusterRef `json:"clusters"`
+	Clusters []TidbClusterRef `json:"clusters,omitempty"`
 
 	// Prometheus spec
 	Prometheus PrometheusSpec `json:"prometheus"`

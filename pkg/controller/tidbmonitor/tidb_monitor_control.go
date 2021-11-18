@@ -66,6 +66,7 @@ func (c *defaultTidbMonitorControl) reconcileTidbMonitor(tm *v1alpha1.TidbMonito
 	if apiequality.Semantic.DeepEqual(&tm.Status, oldStatus) {
 		return errorutils.NewAggregate(errs)
 	}
+
 	if _, err := c.UpdateTidbMonitor(tm.DeepCopy()); err != nil {
 		errs = append(errs, err)
 	}
