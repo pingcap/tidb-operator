@@ -31,12 +31,14 @@ type Namespace string
 // Option configure PDClient
 type Option func(c *clientConfig)
 
+// ClusterRef set cluster domain of TC, it is used when generating PD addr from TC.
 func ClusterRef(clusterDomain string) Option {
 	return func(c *clientConfig) {
 		c.clusterDomain = clusterDomain
 	}
 }
 
+// TLSCertFromTC indicate that the client use certs from specified TC's secret.
 func TLSCertFromTC(ns Namespace, tcName string) Option {
 	return func(c *clientConfig) {
 		c.tlsSecretNamespace = ns
@@ -44,6 +46,7 @@ func TLSCertFromTC(ns Namespace, tcName string) Option {
 	}
 }
 
+// TLSCertFromTC indicate that client use certs from specified secret.
 func TLSCertFromSecret(ns Namespace, secret string) Option {
 	return func(c *clientConfig) {
 		c.tlsSecretNamespace = ns
@@ -51,6 +54,7 @@ func TLSCertFromSecret(ns Namespace, secret string) Option {
 	}
 }
 
+// SpecifyClient specify PD addr without generating
 func SpecifyClient(clientURL, clientName string) Option {
 	return func(c *clientConfig) {
 		c.clientURL = clientURL
@@ -71,18 +75,14 @@ type PDControlInterface interface {
 type clientConfig struct {
 	clusterDomain string
 
-	// clientURl is pd http(s) url. If it is empty, will generate from target TC
+	// clientURL is PD addr. If it is empty, will generate from target TC
 	clientURL string
-	// clientURl is client name. If it is empty, will generate from target TC
-	clientName string // pd name
+	// clientName is client name. If it is empty, will generate from target TC
+	clientName string
 
 	tlsEnable          bool
 	tlsSecretNamespace Namespace
 	tlsSecretName      string
-}
-
-func defaultPDClientConfig() *clientConfig {
-	return &clientConfig{}
 }
 
 func (c *clientConfig) applyOptions(opts ...Option) {
@@ -91,6 +91,7 @@ func (c *clientConfig) applyOptions(opts ...Option) {
 	}
 }
 
+// complete populate and correct config
 func (c *clientConfig) complete(namespace Namespace, tcName string) {
 	scheme := "http"
 	if c.tlsEnable {
@@ -188,7 +189,7 @@ func (c *defaultPDControl) GetPDEtcdClient(namespace Namespace, tcName string, t
 
 // GetPDClient provides a PDClient of real pd cluster, if the PDClient not existing, it will create new one.
 func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tlsEnabled bool, opts ...Option) PDClient {
-	config := defaultPDClientConfig()
+	config := &clientConfig{}
 
 	config.tlsEnable = tlsEnabled
 	config.applyOptions(opts...)
