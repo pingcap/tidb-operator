@@ -2200,6 +2200,7 @@ TidbMonitorSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>monitored TiDB cluster info</p>
 </td>
 </tr>
@@ -21147,6 +21148,7 @@ bool
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>monitored TiDB cluster info</p>
 </td>
 </tr>
