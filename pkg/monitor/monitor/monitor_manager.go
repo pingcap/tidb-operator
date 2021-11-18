@@ -69,7 +69,7 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	if monitor.DeletionTimestamp != nil {
 		return nil
 	}
-	if monitor.Spec.Clusters == nil || len(monitor.Spec.Clusters) < 1 {
+	if len(monitor.Spec.Clusters) < 1 && (monitor.Spec.DM == nil || len(monitor.Spec.DM.Clusters) < 1) {
 		klog.Errorf("tm[%s/%s] does not configure the target tidbcluster", monitor.Namespace, monitor.Name)
 		return nil
 	}
@@ -162,7 +162,6 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		}
 		klog.V(4).Infof("tm[%s/%s]'s pv synced", monitor.Namespace, monitor.Name)
 	}
-
 	klog.V(4).Infof("tm[%s/%s]'s StatefulSet synced", monitor.Namespace, monitor.Name)
 
 	// Sync Ingress
@@ -265,6 +264,7 @@ func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, dc
 			return err
 		}
 	}
+
 	if !isAllCreated {
 		return controller.RequeueErrorf("TidbMonitor: [%s/%s], waiting for tidbmonitor running", ns, name)
 	} else {
