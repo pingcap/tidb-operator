@@ -184,33 +184,8 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 	}
 
 	meta, l := getDiscoveryMeta(obj, controller.DiscoveryMemberName)
-<<<<<<< HEAD
 	podSpec.ServiceAccountName = meta.Name
-=======
-
-	envs := []corev1.EnvVar{
-		{
-			Name: "MY_POD_NAMESPACE",
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: "metadata.namespace",
-				},
-			},
-		},
-		{
-			Name:  "TZ",
-			Value: timezone,
-		},
-		{
-			Name:  "TC_NAME",
-			Value: obj.GetName(), // for DmCluster, we still name it as TC_NAME because only ProxyServer use it now.
-		},
-	}
-	envs = util.AppendEnv(envs, baseSpec.Env())
-	volMounts := []corev1.VolumeMount{}
-	volMounts = append(volMounts, baseSpec.AdditionalVolumeMounts()...)
 	podSpec.SecurityContext = baseSpec.PodSecurityContext().DeepCopy()
->>>>>>> 4396deab... support PodSecurityContext for Discovery (#4259)
 	podSpec.Containers = append(podSpec.Containers, corev1.Container{
 		Name:      "discovery",
 		Resources: controller.ContainerResource(resources),
