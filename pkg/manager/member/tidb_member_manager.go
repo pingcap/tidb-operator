@@ -384,7 +384,10 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		config.Set("security.cluster-ssl-key", path.Join(clusterCertPath, corev1.TLSPrivateKeyKey))
 	}
 	if tc.Spec.TiDB.IsTLSClientEnabled() {
-		config.Set("security.ssl-ca", path.Join(serverCertPath, tlsSecretRootCAKey))
+		// we won't configure the ssl-ca parameter when client authentication are disabled.
+		if !tc.Spec.TiDB.TLSClient.DisableClientAuthn {
+			config.Set("security.ssl-ca", path.Join(serverCertPath, tlsSecretRootCAKey))
+		}
 		config.Set("security.ssl-cert", path.Join(serverCertPath, corev1.TLSCertKey))
 		config.Set("security.ssl-key", path.Join(serverCertPath, corev1.TLSPrivateKeyKey))
 	}

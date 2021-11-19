@@ -1187,6 +1187,11 @@ type TiDBTLSClient struct {
 	//   4. Set Enabled to `true`.
 	// +optional
 	Enabled bool `json:"enabled,omitempty"`
+
+	// DisableClientAuthn will skip client authentication from the TiDB server.
+	// Optional: defaults to false
+	// +optional
+	DisableClientAuthn bool `json:"disableClientAuthn,omitempty"`
 }
 
 // TLSCluster can enable mutual TLS connection between TiDB cluster components
