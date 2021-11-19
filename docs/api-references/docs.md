@@ -13154,6 +13154,16 @@ bool
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>ready</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="ticdcconfig">TiCDCConfig</h3>
