@@ -1170,6 +1170,7 @@ type PumpStatus struct {
 }
 
 // TiDBTLSClient can enable TLS connection between TiDB server and MySQL client
+// +k8s:openapi-gen=true
 type TiDBTLSClient struct {
 	// When enabled, TiDB will accept TLS encrypted connections from MySQL client
 	// The steps to enable this feature:
