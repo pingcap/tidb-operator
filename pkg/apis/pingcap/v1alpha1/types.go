@@ -784,7 +784,7 @@ type PumpSpec struct {
 // +k8s:openapi-gen=true
 type HelperSpec struct {
 	// Image used to tail slow log and set kernel parameters if necessary, must have `tail` and `sysctl` installed
-	// Optional: Defaults to busybox:1.26.2
+	// Optional: Defaults to busybox:1.26.2. Recommended to set to 1.34.1 for new installations.
 	// +optional
 	Image *string `json:"image,omitempty"`
 
