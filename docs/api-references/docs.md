@@ -14809,6 +14809,19 @@ kubectl create secret generic <clusterName>-tidb-client-secret &ndash;namespace=
 4. Set Enabled to <code>true</code>.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>disableClientAuthn</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DisableClientAuthn will skip client authentication from the TiDB server.
+Optional: defaults to false</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tiflashcommonconfigwraper">TiFlashCommonConfigWraper</h3>

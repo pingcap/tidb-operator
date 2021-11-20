@@ -10859,6 +10859,7 @@ spec:
                         - diskName
                         - diskURI
                         type: object
+<<<<<<< HEAD
                       azureFile:
                         properties:
                           readOnly:
@@ -10875,6 +10876,89 @@ spec:
                         properties:
                           monitors:
                             items:
+=======
+                      type: array
+                    exposeStatus:
+                      type: boolean
+                    externalTrafficPolicy:
+                      type: string
+                    mysqlNodePort:
+                      format: int32
+                      type: integer
+                    statusNodePort:
+                      format: int32
+                      type: integer
+                  type: object
+                serviceAccount:
+                  type: string
+                slowLogTailer:
+                  properties:
+                    limits:
+                      type: object
+                    requests:
+                      type: object
+                  type: object
+                slowLogVolumeName:
+                  type: string
+                statefulSetUpdateStrategy:
+                  type: string
+                storageClassName:
+                  type: string
+                storageVolumes:
+                  items: {}
+                  type: array
+                terminationGracePeriodSeconds:
+                  format: int64
+                  type: integer
+                tlsClient:
+                  properties:
+                    disableClientAuthn:
+                      type: boolean
+                    enabled:
+                      type: boolean
+                  type: object
+                tolerations:
+                  items:
+                    properties:
+                      effect:
+                        type: string
+                      key:
+                        type: string
+                      operator:
+                        type: string
+                      tolerationSeconds:
+                        format: int64
+                        type: integer
+                      value:
+                        type: string
+                    type: object
+                  type: array
+                topologySpreadConstraints:
+                  items: {}
+                  type: array
+                version:
+                  type: string
+              required:
+              - replicas
+              type: object
+            tiflash:
+              properties:
+                additionalContainers:
+                  items:
+                    properties:
+                      args:
+                        items:
+                          type: string
+                        type: array
+                      command:
+                        items:
+                          type: string
+                        type: array
+                      env:
+                        items:
+                          properties:
+                            name:
+>>>>>>> master-upstream
                               type: string
                             type: array
                           path:
