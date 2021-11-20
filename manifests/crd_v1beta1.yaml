@@ -24046,6 +24046,8 @@ spec:
                   type: integer
                 tlsClient:
                   properties:
+                    disableClientAuthn:
+                      type: boolean
                     enabled:
                       type: boolean
                   type: object
