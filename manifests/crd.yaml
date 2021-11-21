@@ -22084,6 +22084,8 @@ spec:
             storageClassName:
               type: string
             thanos: {}
+            timezone:
+              type: string
             tolerations:
               items:
                 properties:

@@ -8573,6 +8573,11 @@ func (in *TidbMonitorSpec) DeepCopyInto(out *TidbMonitorSpec) {
 		*out = new(v1.PodSecurityContext)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.Timezone != nil {
+		in, out := &in.Timezone, &out.Timezone
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 

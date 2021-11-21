@@ -178,6 +178,11 @@ type TidbMonitorSpec struct {
 	// if `AlertmanagerURL` is not configured.
 	// +optional
 	EnableAlertRules bool `json:"enableAlertRules,omitempty"`
+
+	// Time zone of TidbMonitor
+	// Optional: Defaults to UTC
+	// +optional
+	Timezone *string `toml:"tz,omitempty" json:"timezone,omitempty"`
 }
 
 // PrometheusReloaderSpec is the desired state of prometheus configuration reloader
@@ -520,4 +525,12 @@ func (tm *TidbMonitor) GetShards() int32 {
 		shards = *tm.Spec.Shards
 	}
 	return shards
+}
+
+func (tm *TidbMonitor) Timezone() string {
+	tz := tm.Spec.Timezone
+	if tz == nil {
+		return defaultTimeZone
+	}
+	return *tz
 }
