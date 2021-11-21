@@ -303,7 +303,7 @@ func getMonitorRoleBinding(sa *core.ServiceAccount, role *rbac.Role, monitor *v1
 	}
 }
 
-func getMonitorInitContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) core.Container {
+func getMonitorInitContainer(monitor *v1alpha1.TidbMonitor) core.Container {
 	command := getInitCommand(monitor)
 	container := core.Container{
 		Name:  "monitor-initializer",
@@ -1151,9 +1151,9 @@ func defaultTidbMonitor(monitor *v1alpha1.TidbMonitor) {
 	}
 }
 
-func getMonitorStatefulSet(sa *core.ServiceAccount, secret *core.Secret, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, shard int32) (*apps.StatefulSet, error) {
+func getMonitorStatefulSet(sa *core.ServiceAccount, secret *core.Secret, monitor *v1alpha1.TidbMonitor, shard int32) (*apps.StatefulSet, error) {
 	statefulSet := getMonitorStatefulSetSkeleton(sa, monitor, shard)
-	initContainer := getMonitorInitContainer(monitor, tc)
+	initContainer := getMonitorInitContainer(monitor)
 	statefulSet.Spec.Template.Spec.InitContainers = append(statefulSet.Spec.Template.Spec.InitContainers, initContainer)
 	if dc != nil {
 		dmInitContainer := getMonitorDMInitContainer(monitor, dc, tc)
