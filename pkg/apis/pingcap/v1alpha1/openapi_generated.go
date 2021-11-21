@@ -121,6 +121,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBServiceSpec":               schema_pkg_apis_pingcap_v1alpha1_TiDBServiceSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBSlowLogTailerSpec":         schema_pkg_apis_pingcap_v1alpha1_TiDBSlowLogTailerSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBSpec":                      schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBTLSClient":                 schema_pkg_apis_pingcap_v1alpha1_TiDBTLSClient(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiFlashConfig":                 schema_pkg_apis_pingcap_v1alpha1_TiFlashConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiFlashSpec":                   schema_pkg_apis_pingcap_v1alpha1_TiFlashSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVBackupConfig":              schema_pkg_apis_pingcap_v1alpha1_TiKVBackupConfig(ref),
@@ -1580,6 +1581,13 @@ func schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref common.ReferenceCallback
 							Format:      "",
 						},
 					},
+					"podManagementPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PodManagementPolicy of TiDB cluster StatefulSets",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"topologySpreadConstraints": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
@@ -2831,7 +2839,7 @@ func schema_pkg_apis_pingcap_v1alpha1_IngressSpec(ref common.ReferenceCallback) 
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Ref: ref("k8s.io/api/extensions/v1beta1.IngressTLS"),
+										Ref: ref("k8s.io/api/networking/v1.IngressTLS"),
 									},
 								},
 							},
@@ -2842,7 +2850,7 @@ func schema_pkg_apis_pingcap_v1alpha1_IngressSpec(ref common.ReferenceCallback) 
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/api/extensions/v1beta1.IngressTLS"},
+			"k8s.io/api/networking/v1.IngressTLS"},
 	}
 }
 
@@ -3349,6 +3357,13 @@ func schema_pkg_apis_pingcap_v1alpha1_MasterSpec(ref common.ReferenceCallback) c
 					"statefulSetUpdateStrategy": {
 						SchemaProps: spec.SchemaProps{
 							Description: "StatefulSetUpdateStrategy indicates the StatefulSetUpdateStrategy that will be employed to update Pods in the StatefulSet when a revision is made to Template.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"podManagementPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PodManagementPolicy of TiDB cluster StatefulSets",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -4552,6 +4567,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 							Format:      "",
 						},
 					},
+					"podManagementPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PodManagementPolicy of TiDB cluster StatefulSets",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"topologySpreadConstraints": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
@@ -5339,6 +5361,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PumpSpec(ref common.ReferenceCallback) com
 					"statefulSetUpdateStrategy": {
 						SchemaProps: spec.SchemaProps{
 							Description: "StatefulSetUpdateStrategy indicates the StatefulSetUpdateStrategy that will be employed to update Pods in the StatefulSet when a revision is made to Template.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"podManagementPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PodManagementPolicy of TiDB cluster StatefulSets",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -6674,6 +6703,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCDCSpec(ref common.ReferenceCallback) co
 							Format:      "",
 						},
 					},
+					"podManagementPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PodManagementPolicy of TiDB cluster StatefulSets",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"topologySpreadConstraints": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
@@ -7483,6 +7519,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 							Format:      "",
 						},
 					},
+					"podManagementPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PodManagementPolicy of TiDB cluster StatefulSets",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"topologySpreadConstraints": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
@@ -7657,6 +7700,33 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 		},
 		Dependencies: []string{
 			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolume", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBConfigWraper", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBProbe", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBServiceSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBSlowLogTailerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBTLSClient", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.Lifecycle", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_TiDBTLSClient(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "TiDBTLSClient can enable TLS connection between TiDB server and MySQL client",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"enabled": {
+						SchemaProps: spec.SchemaProps{
+							Description: "When enabled, TiDB will accept TLS encrypted connections from MySQL client The steps to enable this feature:\n  1. Generate a TiDB server-side certificate and a client-side certifiacete for the TiDB cluster.\n     There are multiple ways to generate certificates:\n       - user-provided certificates: https://pingcap.com/docs/stable/how-to/secure/enable-tls-clients/\n       - use the K8s built-in certificate signing system signed certificates: https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/\n       - or use cert-manager signed certificates: https://cert-manager.io/\n  2. Create a K8s Secret object which contains the TiDB server-side certificate created above.\n     The name of this Secret must be: <clusterName>-tidb-server-secret.\n       kubectl create secret generic <clusterName>-tidb-server-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>\n  3. Create a K8s Secret object which contains the TiDB client-side certificate created above which will be used by TiDB Operator.\n     The name of this Secret must be: <clusterName>-tidb-client-secret.\n       kubectl create secret generic <clusterName>-tidb-client-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>\n  4. Set Enabled to `true`.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"disableClientAuthn": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DisableClientAuthn will skip client authentication from the TiDB server. Optional: defaults to false",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -7894,6 +7964,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiFlashSpec(ref common.ReferenceCallback) 
 					"statefulSetUpdateStrategy": {
 						SchemaProps: spec.SchemaProps{
 							Description: "StatefulSetUpdateStrategy indicates the StatefulSetUpdateStrategy that will be employed to update Pods in the StatefulSet when a revision is made to Template.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"podManagementPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PodManagementPolicy of TiDB cluster StatefulSets",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -10190,6 +10267,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 							Format:      "",
 						},
 					},
+					"podManagementPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PodManagementPolicy of TiDB cluster StatefulSets",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"topologySpreadConstraints": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
@@ -10285,6 +10369,20 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 						SchemaProps: spec.SchemaProps{
 							Description: "Whether output the Raft log in a separate sidecar container Optional: Defaults to false",
 							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"rocksDBLogVolumeName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional volume name configuration for rocksdb log.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"raftLogVolumeName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional volume name configuration for raft log.",
+							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
@@ -11309,6 +11407,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 							Format:      "",
 						},
 					},
+					"podManagementPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PodManagementPolicy of TiDB cluster StatefulSets",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"podSecurityContext": {
 						SchemaProps: spec.SchemaProps{
 							Description: "PodSecurityContext of the component",
@@ -11977,7 +12082,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 						},
 					},
 				},
-				Required: []string{"clusters", "prometheus", "reloader", "initializer"},
+				Required: []string{"prometheus", "reloader", "initializer"},
 			},
 		},
 		Dependencies: []string{
@@ -12377,6 +12482,13 @@ func schema_pkg_apis_pingcap_v1alpha1_WorkerSpec(ref common.ReferenceCallback) c
 					"statefulSetUpdateStrategy": {
 						SchemaProps: spec.SchemaProps{
 							Description: "StatefulSetUpdateStrategy indicates the StatefulSetUpdateStrategy that will be employed to update Pods in the StatefulSet when a revision is made to Template.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"podManagementPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PodManagementPolicy of TiDB cluster StatefulSets",
 							Type:        []string{"string"},
 							Format:      "",
 						},

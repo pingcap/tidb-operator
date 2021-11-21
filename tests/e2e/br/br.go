@@ -22,25 +22,25 @@ import (
 	"strings"
 	"time"
 
-	"github.com/onsi/ginkgo"
-	ginkgoconfig "github.com/onsi/ginkgo/config"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/br/framework"
 	brutil "github.com/pingcap/tidb-operator/tests/e2e/br/framework/br"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/portforward"
+	utilginkgo "github.com/pingcap/tidb-operator/tests/e2e/util/ginkgo"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	utiltidbcluster "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
+
+	"github.com/onsi/ginkgo"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/test/e2e/framework"
-	e2eskipper "k8s.io/kubernetes/test/e2e/framework/skipper"
 )
 
 var (
-	tidbReadyTimeout       = time.Minute * 5
-	backupCompleteTimeout  = time.Minute * 5
-	restoreCompleteTimeout = time.Minute * 5
+	tidbReadyTimeout       = time.Minute * 7
+	backupCompleteTimeout  = time.Minute * 7
+	restoreCompleteTimeout = time.Minute * 7
 )
 
 const (
@@ -208,7 +208,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		})
 	}
 
-	ginkgo.Context("Specific Version", func() {
+	utilginkgo.ContextWhenFocus("Specific Version", func() {
 		cases := []*testcase{
 			newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeBR),
 			newTestCase(utilimage.TiDBV4x0x9, utilimage.TiDBLatest, typeBR),
@@ -218,9 +218,6 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		for i := range cases {
 			tcase := cases[i]
 			ginkgo.It(tcase.description(), func() {
-				if ginkgoconfig.GinkgoConfig.FocusString == "" {
-					e2eskipper.Skipf("Skip br testing for specific version")
-				}
 				brTest(tcase)
 			})
 		}

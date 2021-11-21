@@ -3,6 +3,8 @@ kind: TidbMonitor
 metadata:
   name: basic
 spec:
+  clusters:
+  - name: basic
   prometheus:
     baseImage: prom/prometheus
     version: v2.27.1
@@ -10,15 +12,9 @@ spec:
     baseImage: grafana/grafana
     version: 7.5.11
   initializer:
-    baseImage: pingcap/tidb-monitor-initializer
+    baseImage: uhub.service.ucloud.cn/pingcap/tidb-monitor-initializer
     version: v5.2.1
   reloader:
-    baseImage: pingcap/tidb-monitor-reloader
+    baseImage: uhub.service.ucloud.cn/pingcap/tidb-monitor-reloader
     version: v1.0.1
-  dm:
-    clusters:
-    - name: basic
-    initializer:
-      baseImage: pingcap/dm-monitor-initializer
-      version: v2.0.7
   imagePullPolicy: IfNotPresent

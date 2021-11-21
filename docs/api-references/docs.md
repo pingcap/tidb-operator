@@ -1733,6 +1733,20 @@ Kubernetes apps/v1.StatefulSetUpdateStrategyType
 </tr>
 <tr>
 <td>
+<code>podManagementPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podmanagementpolicytype-v1-apps">
+Kubernetes apps/v1.PodManagementPolicyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodManagementPolicy of TiDB cluster StatefulSets</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>podSecurityContext</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
@@ -2186,6 +2200,7 @@ TidbMonitorSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>monitored TiDB cluster info</p>
 </td>
 </tr>
@@ -4437,6 +4452,20 @@ Template.</p>
 </tr>
 <tr>
 <td>
+<code>podManagementPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podmanagementpolicytype-v1-apps">
+Kubernetes apps/v1.PodManagementPolicyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodManagementPolicy of TiDB cluster StatefulSets</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>topologySpreadConstraints</code></br>
 <em>
 <a href="#topologyspreadconstraint">
@@ -6641,8 +6670,8 @@ map[string]string
 <td>
 <code>tls</code></br>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#ingresstls-v1beta1-extensions">
-[]Kubernetes extensions/v1beta1.IngressTLS
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#ingresstls-v1-networking">
+[]Kubernetes networking/v1.IngressTLS
 </a>
 </em>
 </td>
@@ -14753,6 +14782,19 @@ kubectl create secret generic <clusterName>-tidb-client-secret &ndash;namespace=
 4. Set Enabled to <code>true</code>.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>disableClientAuthn</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DisableClientAuthn will skip client authentication from the TiDB server.
+Optional: defaults to false</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tiflashcommonconfigwraper">TiFlashCommonConfigWraper</h3>
@@ -18954,6 +18996,30 @@ Optional: Defaults to false</p>
 </tr>
 <tr>
 <td>
+<code>rocksDBLogVolumeName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional volume name configuration for rocksdb log.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>raftLogVolumeName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional volume name configuration for raft log.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>logTailer</code></br>
 <em>
 <a href="#logtailerspec">
@@ -20600,6 +20666,20 @@ Kubernetes apps/v1.StatefulSetUpdateStrategyType
 </tr>
 <tr>
 <td>
+<code>podManagementPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podmanagementpolicytype-v1-apps">
+Kubernetes apps/v1.PodManagementPolicyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodManagementPolicy of TiDB cluster StatefulSets</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>podSecurityContext</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
@@ -21044,6 +21124,7 @@ bool
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>monitored TiDB cluster info</p>
 </td>
 </tr>

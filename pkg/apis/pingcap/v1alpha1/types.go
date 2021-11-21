@@ -16,7 +16,7 @@ package v1alpha1
 import (
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -39,6 +39,11 @@ const (
 	DMWorkerStateBound string = "bound"
 	// DMWorkerStateOffline represents status of offline of dm-worker
 	DMWorkerStateOffline string = "offline"
+
+	// PumpStateOnline represents status of online of Pump
+	PumpStateOnline string = "online"
+	// PumpStateOffline represents status of offline of Pump
+	PumpStateOffline string = "offline"
 )
 
 // MemberType represents member type
@@ -273,6 +278,10 @@ type TidbClusterSpec struct {
 	// +optional
 	StatefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType `json:"statefulSetUpdateStrategy,omitempty"`
 
+	// PodManagementPolicy of TiDB cluster StatefulSets
+	// +optional
+	PodManagementPolicy apps.PodManagementPolicyType `json:"podManagementPolicy,omitempty"`
+
 	// PodSecurityContext of the component
 	// +optional
 	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
@@ -449,6 +458,14 @@ type TiKVSpec struct {
 	// Optional: Defaults to false
 	// +optional
 	SeparateRaftLog *bool `json:"separateRaftLog,omitempty"`
+
+	// Optional volume name configuration for rocksdb log.
+	// +optional
+	RocksDBLogVolumeName string `json:"rocksDBLogVolumeName,omitempty"`
+
+	// Optional volume name configuration for raft log.
+	// +optional
+	RaftLogVolumeName string `json:"raftLogVolumeName,omitempty"`
 
 	// LogTailer is the configurations of the log tailers for TiKV
 	// +optional
@@ -911,6 +928,10 @@ type ComponentSpec struct {
 	// +optional
 	StatefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType `json:"statefulSetUpdateStrategy,omitempty"`
 
+	// PodManagementPolicy of TiDB cluster StatefulSets
+	// +optional
+	PodManagementPolicy apps.PodManagementPolicyType `json:"podManagementPolicy,omitempty"`
+
 	// TopologySpreadConstraints describes how a group of pods ought to spread across topology
 	// domains. Scheduler will schedule pods in a way which abides by the constraints.
 	// This field is is only honored by clusters that enables the EvenPodsSpread feature.
@@ -1149,6 +1170,7 @@ type PumpStatus struct {
 }
 
 // TiDBTLSClient can enable TLS connection between TiDB server and MySQL client
+// +k8s:openapi-gen=true
 type TiDBTLSClient struct {
 	// When enabled, TiDB will accept TLS encrypted connections from MySQL client
 	// The steps to enable this feature:
@@ -1166,6 +1188,11 @@ type TiDBTLSClient struct {
 	//   4. Set Enabled to `true`.
 	// +optional
 	Enabled bool `json:"enabled,omitempty"`
+
+	// DisableClientAuthn will skip client authentication from the TiDB server.
+	// Optional: defaults to false
+	// +optional
+	DisableClientAuthn bool `json:"disableClientAuthn,omitempty"`
 }
 
 // TLSCluster can enable mutual TLS connection between TiDB cluster components
@@ -1770,7 +1797,7 @@ type IngressSpec struct {
 	// through the SNI TLS extension, if the ingress controller fulfilling the
 	// ingress supports SNI.
 	// +optional
-	TLS []extensionsv1beta1.IngressTLS `json:"tls,omitempty"`
+	TLS []networkingv1.IngressTLS `json:"tls,omitempty"`
 }
 
 // +genclient

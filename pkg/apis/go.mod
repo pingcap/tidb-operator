@@ -14,9 +14,9 @@ require (
 	github.com/pingcap/errors v0.11.0
 	github.com/prometheus/common v0.26.0
 	github.com/prometheus/prometheus v1.8.2
-	k8s.io/api v0.19.14
-	k8s.io/apiextensions-apiserver v0.19.14
-	k8s.io/apimachinery v0.19.14
+	k8s.io/api v0.19.16
+	k8s.io/apiextensions-apiserver v0.19.16
+	k8s.io/apimachinery v0.19.16
 	k8s.io/klog v1.0.0
 	k8s.io/kube-openapi v0.0.0-20200805222855-6aeccd4b50c6
 	k8s.io/utils v0.0.0-20200912215256-4140de9c8800

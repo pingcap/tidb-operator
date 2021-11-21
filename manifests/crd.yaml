@@ -2488,6 +2488,8 @@ spec:
                   type: boolean
                 nodeSelector:
                   type: object
+                podManagementPolicy:
+                  type: string
                 podSecurityContext:
                   properties:
                     fsGroup:
@@ -2620,6 +2622,8 @@ spec:
               items:
                 type: string
               type: array
+            podManagementPolicy:
+              type: string
             podSecurityContext:
               properties:
                 fsGroup:
@@ -4781,6 +4785,8 @@ spec:
                   type: object
                 nodeSelector:
                   type: object
+                podManagementPolicy:
+                  type: string
                 podSecurityContext:
                   properties:
                     fsGroup:
@@ -6990,6 +6996,8 @@ spec:
                   type: object
                 nodeSelector:
                   type: object
+                podManagementPolicy:
+                  type: string
                 podSecurityContext:
                   properties:
                     fsGroup:
@@ -9306,6 +9314,8 @@ spec:
                   items:
                     type: string
                   type: array
+                podManagementPolicy:
+                  type: string
                 podSecurityContext:
                   properties:
                     fsGroup:
@@ -9441,7 +9451,13 @@ spec:
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
-                tlsClient: {}
+                tlsClient:
+                  properties:
+                    disableClientAuthn:
+                      type: boolean
+                    enabled:
+                      type: boolean
+                  type: object
                 tolerations:
                   items:
                     properties:
@@ -11573,6 +11589,8 @@ spec:
                   type: integer
                 nodeSelector:
                   type: object
+                podManagementPolicy:
+                  type: string
                 podSecurityContext:
                   properties:
                     fsGroup:
@@ -13809,6 +13827,8 @@ spec:
                   type: boolean
                 nodeSelector:
                   type: object
+                podManagementPolicy:
+                  type: string
                 podSecurityContext:
                   properties:
                     fsGroup:
@@ -13875,6 +13895,8 @@ spec:
                   type: string
                 privileged:
                   type: boolean
+                raftLogVolumeName:
+                  type: string
                 recoverFailover:
                   type: boolean
                 replicas:
@@ -13882,6 +13904,8 @@ spec:
                   type: integer
                 requests:
                   type: object
+                rocksDBLogVolumeName:
+                  type: string
                 schedulerName:
                   type: string
                 separateRaftLog:
@@ -16417,6 +16441,8 @@ spec:
                   type: integer
                 nodeSelector:
                   type: object
+                podManagementPolicy:
+                  type: string
                 podSecurityContext:
                   properties:
                     fsGroup:
@@ -18745,6 +18771,8 @@ spec:
                   type: integer
                 nodeSelector:
                   type: object
+                podManagementPolicy:
+                  type: string
                 podSecurityContext:
                   properties:
                     fsGroup:
@@ -22073,7 +22101,6 @@ spec:
                 type: object
               type: array
           required:
-          - clusters
           - prometheus
           - reloader
           - initializer
