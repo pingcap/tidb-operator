@@ -23,6 +23,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
+	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -58,7 +59,9 @@ type TypedControlInterface interface {
 	// CreateOrUpdatePVC create the desired pvc or update the current one to desired state if already existed
 	CreateOrUpdatePVC(controller client.Object, pvc *corev1.PersistentVolumeClaim, setOwnerFlag bool) (*corev1.PersistentVolumeClaim, error)
 	// CreateOrUpdateIngress create the desired ingress or update the current one to desired state if already existed
-	CreateOrUpdateIngress(controller client.Object, ingress *extensionsv1beta1.Ingress) (*extensionsv1beta1.Ingress, error)
+	CreateOrUpdateIngress(controller client.Object, ingress *networkingv1.Ingress) (*networkingv1.Ingress, error)
+	// CreateOrUpdateIngressV1beta1 create the desired v1beta1 ingress or update the current one to desired state if already existed
+	CreateOrUpdateIngressV1beta1(controller client.Object, ingress *extensionsv1beta1.Ingress) (*extensionsv1beta1.Ingress, error)
 	// UpdateStatus update the /status subresource of the object
 	UpdateStatus(newStatus client.Object) error
 	// Delete delete the given object from the cluster
@@ -314,10 +317,43 @@ func (w *typedWrapper) CreateOrUpdateService(controller client.Object, svc *core
 	return result.(*corev1.Service), nil
 }
 
-func (w *typedWrapper) CreateOrUpdateIngress(controller client.Object, ingress *extensionsv1beta1.Ingress) (*extensionsv1beta1.Ingress, error) {
+func (w *typedWrapper) CreateOrUpdateIngressV1beta1(controller client.Object, ingress *extensionsv1beta1.Ingress) (*extensionsv1beta1.Ingress, error) {
 	result, err := w.GenericControlInterface.CreateOrUpdate(controller, ingress, func(existing, desired client.Object) error {
 		existingIngress := existing.(*extensionsv1beta1.Ingress)
 		desiredIngress := desired.(*extensionsv1beta1.Ingress)
+
+		if existingIngress.Annotations == nil {
+			existingIngress.Annotations = map[string]string{}
+		}
+		for k, v := range desiredIngress.Annotations {
+			existingIngress.Annotations[k] = v
+		}
+		existingIngress.Labels = desiredIngress.Labels
+		equal, err := IngressV1beta1Equal(desiredIngress, existingIngress)
+		if err != nil {
+			return err
+		}
+		if !equal {
+			// record desiredIngress Spec in annotations in favor of future equality checks
+			b, err := json.Marshal(desiredIngress.Spec)
+			if err != nil {
+				return err
+			}
+			existingIngress.Annotations[LastAppliedConfigAnnotation] = string(b)
+			existingIngress.Spec = desiredIngress.Spec
+		}
+		return nil
+	}, true)
+	if err != nil {
+		return nil, err
+	}
+	return result.(*extensionsv1beta1.Ingress), nil
+}
+
+func (w *typedWrapper) CreateOrUpdateIngress(controller client.Object, ingress *networkingv1.Ingress) (*networkingv1.Ingress, error) {
+	result, err := w.GenericControlInterface.CreateOrUpdate(controller, ingress, func(existing, desired client.Object) error {
+		existingIngress := existing.(*networkingv1.Ingress)
+		desiredIngress := desired.(*networkingv1.Ingress)
 
 		if existingIngress.Annotations == nil {
 			existingIngress.Annotations = map[string]string{}
@@ -344,7 +380,7 @@ func (w *typedWrapper) CreateOrUpdateIngress(controller client.Object, ingress *
 	if err != nil {
 		return nil, err
 	}
-	return result.(*extensionsv1beta1.Ingress), nil
+	return result.(*networkingv1.Ingress), nil
 }
 
 func (w *typedWrapper) Create(controller, obj client.Object) error {

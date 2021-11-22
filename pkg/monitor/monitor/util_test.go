@@ -1035,10 +1035,6 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 					},
 				},
 				Env: []corev1.EnvVar{
-					corev1.EnvVar{
-						Name:  "TZ",
-						Value: "UTC",
-					},
 					{
 						Name: "POD_NAME",
 						ValueFrom: &corev1.EnvVarSource{
@@ -1054,6 +1050,10 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 					{
 						Name:  "SHARD",
 						Value: "0",
+					},
+					corev1.EnvVar{
+						Name:  "TZ",
+						Value: "UTC",
 					},
 				},
 				Resources: corev1.ResourceRequirements{},

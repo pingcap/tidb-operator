@@ -40,6 +40,7 @@ import (
 	"k8s.io/client-go/discovery"
 	discoverycachedmemory "k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/klog"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type MonitorManager struct {
@@ -68,7 +69,7 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	if monitor.DeletionTimestamp != nil {
 		return nil
 	}
-	if monitor.Spec.Clusters == nil || len(monitor.Spec.Clusters) < 1 {
+	if len(monitor.Spec.Clusters) < 1 && (monitor.Spec.DM == nil || len(monitor.Spec.DM.Clusters) < 1) {
 		klog.Errorf("tm[%s/%s] does not configure the target tidbcluster", monitor.Namespace, monitor.Name)
 		return nil
 	}
@@ -166,7 +167,6 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		}
 		klog.V(4).Infof("tm[%s/%s]'s pv synced", monitor.Namespace, monitor.Name)
 	}
-
 	klog.V(4).Infof("tm[%s/%s]'s StatefulSet synced", monitor.Namespace, monitor.Name)
 
 	// Sync Ingress
@@ -269,6 +269,7 @@ func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, dc
 			return err
 		}
 	}
+
 	if !isAllCreated {
 		return controller.RequeueErrorf("TidbMonitor: [%s/%s], waiting for tidbmonitor running", ns, name)
 	} else {
@@ -482,8 +483,14 @@ func (m *MonitorManager) syncPrometheusIngress(monitor *v1alpha1.TidbMonitor) er
 		return m.removeIngressIfExist(monitor, PrometheusName(monitor.Name, 0))
 	}
 
-	ingress := getPrometheusIngress(monitor)
-	_, err := m.deps.TypedControl.CreateOrUpdateIngress(monitor, ingress)
+	var err error
+	if m.deps.IngressV1Beta1Lister != nil {
+		ing := getIngressV1beta1(monitor, monitor.Spec.Prometheus.Ingress, PrometheusName(monitor.Name, 0), 9090)
+		_, err = m.deps.TypedControl.CreateOrUpdateIngressV1beta1(monitor, ing)
+	} else {
+		ing := getIngress(monitor, monitor.Spec.Prometheus.Ingress, PrometheusName(monitor.Name, 0), 9090)
+		_, err = m.deps.TypedControl.CreateOrUpdateIngress(monitor, ing)
+	}
 	return err
 }
 
@@ -491,14 +498,31 @@ func (m *MonitorManager) syncGrafanaIngress(monitor *v1alpha1.TidbMonitor) error
 	if monitor.Spec.Grafana == nil || monitor.Spec.Grafana.Ingress == nil {
 		return m.removeIngressIfExist(monitor, GrafanaName(monitor.Name, 0))
 	}
-	ingress := getGrafanaIngress(monitor)
-	_, err := m.deps.TypedControl.CreateOrUpdateIngress(monitor, ingress)
+
+	var err error
+	if m.deps.IngressV1Beta1Lister != nil {
+		ing := getIngressV1beta1(monitor, monitor.Spec.Grafana.Ingress, GrafanaName(monitor.Name, 0), 3000)
+		_, err = m.deps.TypedControl.CreateOrUpdateIngressV1beta1(monitor, ing)
+	} else {
+		ing := getIngress(monitor, monitor.Spec.Grafana.Ingress, GrafanaName(monitor.Name, 0), 3000)
+		_, err = m.deps.TypedControl.CreateOrUpdateIngress(monitor, ing)
+	}
 	return err
 }
 
 // removeIngressIfExist removes Ingress if it exists
 func (m *MonitorManager) removeIngressIfExist(monitor *v1alpha1.TidbMonitor, name string) error {
-	ingress, err := m.deps.IngressLister.Ingresses(monitor.Namespace).Get(name)
+	var (
+		err     error
+		ingress client.Object
+	)
+
+	if m.deps.IngressV1Beta1Lister != nil {
+		ingress, err = m.deps.IngressV1Beta1Lister.Ingresses(monitor.Namespace).Get(name)
+	} else {
+		ingress, err = m.deps.IngressLister.Ingresses(monitor.Namespace).Get(name)
+	}
+
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil
