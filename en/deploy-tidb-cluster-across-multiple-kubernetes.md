@@ -566,6 +566,35 @@ spec:
 EOF
 ```
 
+## Upgrade TiDB Cluster
+
+For a TiDB cluster deployed across Kubernetes clusters, to perform a rolling upgrade for each component Pod of the TiDB cluster, take the following steps in sequence to modify the version configuration of each component in the TidbCluster spec for each Kubernetes cluster.
+
+1. Upgrade PD versions for all Kubernetes clusters.
+
+   1. Modify the `spec.pd.version` field in the spec for cluster #1.
+
+      ```yaml
+      apiVersion: pingcap.com/v1alpha1
+      kind: TidbCluster
+      # ...
+      spec:
+        pd:
+          version: ${version}
+      ```
+
+    2. Watch the status of PD Pods and wait for PD Pods in cluster #1 to finish recreation and become `Running`.
+
+    3. Repeat the first two substeps to upgrade all PD Pods in other clusters.
+
+2. Take step 1 as an example, perform the following upgrade operations in sequence:
+
+    1. If TiFlash is deployed in clusters, upgrade the TiFlash versions for all the Kubernetes clusters that have TiFlash deployed.
+    2. Upgrade TiKV versions for all Kubernetes clusters.
+    3. If Pump is deployed in clusters, upgrade the Pump versions for all the Kubernetes clusters that have Pump deployed.
+    4. Upgrade TiDM versions for all Kubernetes clusters.
+    5. If TiCDC is deployed in clusters, upgrade the TiCDC versions for all the Kubernetes clusters that have TiCDC deployed.
+
 ## Exit and reclaim clusters that already join a cross-Kubernetes cluster
 
 When you need to make a cluster exit from the joined TiDB cluster deployed across Kubernetes and reclaim resources, you can perform the operation by scaling in the cluster. In this scenario, the following requirements of scaling-in need to be met.
