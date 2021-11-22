@@ -18,10 +18,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/pingcap/tidb-operator/pkg/to-crdgen/cmd"
 	"github.com/spf13/pflag"
+
+	"github.com/pingcap/tidb-operator/pkg/to-crdgen/cmd"
 )
 
+// DEPRECATED: use controller-gen to generate CRD
+// See https://github.com/pingcap/tidb-operator/pull/4151
 func main() {
 	flags := pflag.NewFlagSet("to-crdgen", pflag.ExitOnError)
 	flag.CommandLine.Parse([]string{})

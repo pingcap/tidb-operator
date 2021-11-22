@@ -20,33 +20,19 @@ set -o pipefail
 ROOT=$(unset CDPATH && cd $(dirname "${BASH_SOURCE[0]}")/.. && pwd)
 cd $ROOT
 
-target="manifests/crd.yaml"
-verify_tmp=$(mktemp)
-trap "rm -f $verify_tmp" EXIT
-
 targetDocs="$ROOT/docs/api-references/docs.md"
 verifyDocs_tmp=$(mktemp)
 trap "rm -f $verifyDocs_tmp" EXIT
 
-cp "$target" "${verify_tmp}"
 cp "$targetDocs" "${verifyDocs_tmp}"
 
-hack/update-crd-groups.sh
-
-echo "diffing $target with $verify_tmp" >&2
-diff=$(diff "$target" "$verify_tmp") || true
-if [[ -n "${diff}" ]]; then
-    echo "${diff}" >&2
-    echo >&2
-    echo "Run ./hack/update-crd-groups.sh" >&2
-    exit 1
-fi
+hack/update-api-references.sh
 
 echo "diffing $targetDocs with $verifyDocs_tmp" >&2
 diff=$(diff "$targetDocs" "$verifyDocs_tmp") || true
 if [[ -n "${diff}" ]]; then
     echo "${diff}" >&2
     echo >&2
-    echo "Run ./hack/update-crd-groups.sh" >&2
+    echo "Run ./hack/update-api-references.sh" >&2
     exit 1
 fi
