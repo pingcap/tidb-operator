@@ -8752,7 +8752,13 @@ spec:
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
-                tlsClient: {}
+                tlsClient:
+                  properties:
+                    disableClientAuthn:
+                      type: boolean
+                    enabled:
+                      type: boolean
+                  type: object
                 tolerations:
                   items:
                     properties:

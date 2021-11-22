@@ -1136,6 +1136,7 @@ type PumpStatus struct {
 }
 
 // TiDBTLSClient can enable TLS connection between TiDB server and MySQL client
+// +k8s:openapi-gen=true
 type TiDBTLSClient struct {
 	// When enabled, TiDB will accept TLS encrypted connections from MySQL client
 	// The steps to enable this feature:
@@ -1153,6 +1154,11 @@ type TiDBTLSClient struct {
 	//   4. Set Enabled to `true`.
 	// +optional
 	Enabled bool `json:"enabled,omitempty"`
+
+	// DisableClientAuthn will skip client authentication from the TiDB server.
+	// Optional: defaults to false
+	// +optional
+	DisableClientAuthn bool `json:"disableClientAuthn,omitempty"`
 }
 
 // TLSCluster can enable mutual TLS connection between TiDB cluster components
