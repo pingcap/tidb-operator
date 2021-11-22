@@ -35,7 +35,7 @@ func NewTiDBConfig() *TiDBConfigWraper {
 
 // TiDBConfigWraper simply wrapps a GenericConfig
 type TiDBConfigWraper struct {
-	*config.GenericConfig
+	*config.GenericConfig `json:",inline"`
 }
 
 // MarshalJSON implements stdjson.Marshaler interface.

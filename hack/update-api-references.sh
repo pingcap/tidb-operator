@@ -20,9 +20,14 @@ set -o pipefail
 ROOT=$(unset CDPATH && cd $(dirname "${BASH_SOURCE[0]}")/.. && pwd)
 cd $ROOT
 
-hack/update-codegen.sh
-hack/update-openapi-spec.sh
-hack/update-crd.sh
-hack/update-api-references.sh
-hack/update-EOF.sh
-hack/update-goimports.sh
+source hack/lib.sh
+
+hack::ensure_gen_crd_api_references_docs
+
+DOCS_PATH="$ROOT/docs/api-references"
+
+GOROOT=$(go env GOROOT) ${DOCS_BIN} \
+    -config "$DOCS_PATH/config.json" \
+    -template-dir "$DOCS_PATH/template" \
+    -api-dir "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1" \
+    -out-file "$DOCS_PATH/docs.md"
