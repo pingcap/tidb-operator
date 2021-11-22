@@ -3492,7 +3492,8 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<p>TimeStarted is the time at which the backup was started.</p>
+<p>TimeStarted is the time at which the backup was started.
+TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/86811">https://github.com/kubernetes/kubernetes/issues/86811</a></p>
 </td>
 </tr>
 <tr>
@@ -3505,7 +3506,8 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<p>TimeCompleted is the time at which the backup was completed.</p>
+<p>TimeCompleted is the time at which the backup was completed.
+TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/86811">https://github.com/kubernetes/kubernetes/issues/86811</a></p>
 </td>
 </tr>
 <tr>
@@ -3907,6 +3909,9 @@ github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
+<p>
+(Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -5668,6 +5673,16 @@ Kubernetes core/v1.ResourceRequirements
 </tr>
 </tbody>
 </table>
+<h3 id="emptystruct">EmptyStruct</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pdfailuremember">PDFailureMember</a>, 
+<a href="#unjoinedmember">UnjoinedMember</a>)
+</p>
+<p>
+<p>EmptyStruct is defined to delight controller-gen tools
+Only named struct is allowed by controller-gen</p>
+</p>
 <h3 id="experimental">Experimental</h3>
 <p>
 (<em>Appears on:</em>
@@ -8506,6 +8521,9 @@ github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
+<p>
+(Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -8560,7 +8578,9 @@ k8s.io/apimachinery/pkg/types.UID
 <td>
 <code>pvcUIDSet</code></br>
 <em>
-map[k8s.io/apimachinery/pkg/types.UID]struct{}
+<a href="#emptystruct">
+map[k8s.io/apimachinery/pkg/types.UID]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.EmptyStruct
+</a>
 </em>
 </td>
 <td>
@@ -8787,7 +8807,8 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<p>Last time the health transitioned from one to another.</p>
+<p>Last time the health transitioned from one to another.
+TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/86811">https://github.com/kubernetes/kubernetes/issues/86811</a></p>
 </td>
 </tr>
 </tbody>
@@ -14109,6 +14130,9 @@ github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
+<p>
+(Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -14275,6 +14299,9 @@ ServiceSpec
 </em>
 </td>
 <td>
+<p>
+(Members of <code>ServiceSpec</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 <tr>
@@ -14833,6 +14860,9 @@ github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
+<p>
+(Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -14943,6 +14973,9 @@ github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
+<p>
+(Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -16117,6 +16150,9 @@ github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
+<p>
+(Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -19585,7 +19621,8 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<p>Last time the health transitioned from one to another.</p>
+<p>Last time the health transitioned from one to another.
+TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/86811">https://github.com/kubernetes/kubernetes/issues/86811</a></p>
 </td>
 </tr>
 </tbody>
@@ -21770,7 +21807,9 @@ k8s.io/apimachinery/pkg/types.UID
 <td>
 <code>pvcUIDSet</code></br>
 <em>
-map[k8s.io/apimachinery/pkg/types.UID]struct{}
+<a href="#emptystruct">
+map[k8s.io/apimachinery/pkg/types.UID]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.EmptyStruct
+</a>
 </em>
 </td>
 <td>
