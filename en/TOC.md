@@ -1,20 +1,16 @@
-# TiDB in Kubernetes Documentation
-
 <!-- markdownlint-disable MD007 -->
-<!-- markdownlint-disable MD032 -->
+<!-- markdownlint-disable MD041 -->
 
-## TOC
-
-+ Introduction
+- Introduction
   - [Overview](tidb-operator-overview.md)
   - [What's New in v1.2](whats-new-in-v1.2.md)
 - [Get Started](get-started.md)
-+ Deploy
+- Deploy
   - Deploy TiDB Cluster
     - [On AWS EKS](deploy-on-aws-eks.md)
     - [On GCP GKE](deploy-on-gcp-gke.md)
     - [On Alibaba Cloud ACK](deploy-on-alibaba-cloud.md)
-    + In Self-managed Kubernetes
+    - In Self-managed Kubernetes
       - [Prerequisites](prerequisites.md)
       - [Configure Storage Class](configure-storage-class.md)
       - [Deploy TiDB Operator](deploy-tidb-operator.md)
@@ -29,41 +25,41 @@
   - [Deploy TiDB Binlog](deploy-tidb-binlog.md)
   - [Deploy TiDB Enterprise Edition](deploy-tidb-enterprise-edition.md)
   - [Deploy Multiple Sets of TiDB Operator](deploy-multiple-tidb-operator.md)
-  + Deploy Monitoring
+  - Deploy Monitoring
     - [Deploy Monitoring and Alerts for TiDB](monitor-a-tidb-cluster.md)
     - [Access TiDB Dashboard](access-dashboard.md)
     - [Aggregate Monitoring Data of Multiple TiDB Clusters](aggregate-multiple-cluster-monitor-data.md)
-+ Secure
+- Secure
   - [Enable TLS for the MySQL Client](enable-tls-for-mysql-client.md)
   - [Enable TLS between TiDB Components](enable-tls-between-components.md)
   - [Enable TLS for DM](enable-tls-for-dm.md)
   - [Replicate Data to TLS-enabled Downstream Services Using TiCDC Components](enable-tls-for-ticdc-sink.md)
   - [Renew and Replace TLS Certificate](renew-tls-certificate.md)
   - [Run TiDB Operator and TiDB Clusters as a Non-root User](containers-run-as-non-root-user.md)
-+ Operate
+- Operate
   - [Migrate TiDB to Kubernetes](migrate-tidb-to-kubernetes.md)
   - [Upgrade TiDB Cluster](upgrade-a-tidb-cluster.md)
   - [Upgrade TiDB Operator](upgrade-tidb-operator.md)
   - [Perform a Canary Upgrade](canary-upgrade-tidb-operator.md)
   - [Pause Sync of TiDB Cluster](pause-sync-of-tidb-cluster.md)
-  + Scale TiDB Cluster
+  - Scale TiDB Cluster
     - [Manually Scale](scale-a-tidb-cluster.md)
     - [Automatically Scale](enable-tidb-cluster-auto-scaling.md)
   - [Migrate MySQL Data to TiDB Cluster Using DM](deploy-tidb-dm.md)
-  + Backup and Restore
+  - Backup and Restore
     - [Overview](backup-restore-overview.md)
     - [Grant Permissions to Remote Storage](grant-permissions-to-remote-storage.md)
-    + Backup and Restore with S3-Compatible Storage
+    - Backup and Restore with S3-Compatible Storage
       - [Back up Data Using BR](backup-to-aws-s3-using-br.md)
       - [Restore Data Using BR](restore-from-aws-s3-using-br.md)
       - [Back up Data Using Dumpling](backup-to-s3.md)
       - [Restore Data Using TiDB Lightning](restore-from-s3.md)
-    + Backup and Restore with GCS
+    - Backup and Restore with GCS
       - [Back up Data Using BR](backup-to-gcs-using-br.md)
       - [Restore Data Using BR](restore-from-gcs-using-br.md)
       - [Back up Data Using Dumpling](backup-to-gcs.md)
       - [Restore Data Using TiDB Lightning](restore-from-gcs.md)
-    + Backup and Restore with Persistent Volumes
+    - Backup and Restore with Persistent Volumes
       - [Back up Data Using BR](backup-to-pv-using-br.md)
       - [Restore Data Using BR](restore-from-pv-using-br.md)
   - [Restart a TiDB Cluster](restart-a-tidb-cluster.md)
@@ -72,18 +68,18 @@
   - [Configure Automatic Failover](use-auto-failover.md)
   - [Destroy a TiDB Cluster](destroy-a-tidb-cluster.md)
   - [Migrate from Helm 2 to Helm 3](migrate-to-helm3.md)
-+ Disaster Recovery
+- Disaster Recovery
   - [Recover PD Cluster](pd-recover.md)
   - [Recover Deleted Cluster](recover-deleted-cluster.md)
 - [Import Data](restore-data-using-tidb-lightning.md)
-+ Troubleshoot
+- Troubleshoot
   - [Troubleshooting Tips](tips.md)
   - [Deployment Failures](deploy-failures.md)
   - [Cluster Exceptions](exceptions.md)
   - [Network Issues](network-issues.md)
 - [FAQs](faq.md)
-+ Reference
-  + Architecture
+- Reference
+  - Architecture
     - [TiDB Operator](architecture.md)
     - [TiDB Scheduler](tidb-scheduler.md)
     - [Advanced StatefulSet Controller](advanced-statefulset.md)
@@ -91,17 +87,17 @@
   - [Sysbench Performance Test](benchmark-sysbench.md)
   - [API References](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.md)
   - [Cheat Sheet](cheat-sheet.md)
-  + Tools
+  - Tools
     - [tkctl](use-tkctl.md)
     - [TiDB Toolkit](tidb-toolkit.md)
-  + Configure
+  - Configure
     - [Configure tidb-drainer Chart](configure-tidb-binlog-drainer.md)
     - [Configure tidb-cluster Chart](tidb-cluster-chart-config.md)
     - [Configure tidb-backup Chart](configure-backup.md)
   - [Log Collection](logs-collection.md)
   - [Monitoring and Alert on Kubernetes](monitor-kubernetes.md)
-+ Release Notes
-  + v1.2
+- Release Notes
+  - v1.2
     - [1.2.4](releases/release-1.2.4.md)
     - [1.2.3](releases/release-1.2.3.md)
     - [1.2.2](releases/release-1.2.2.md)
@@ -112,7 +108,7 @@
     - [1.2.0-beta.2](releases/release-1.2.0-beta.2.md)
     - [1.2.0-beta.1](releases/release-1.2.0-beta.1.md)
     - [1.2.0-alpha.1](releases/release-1.2.0-alpha.1.md)
-  + v1.1
+  - v1.1
     - [1.1.14](releases/release-1.1.14.md)
     - [1.1.13](releases/release-1.1.13.md)
     - [1.1.12](releases/release-1.1.12.md)
@@ -134,7 +130,7 @@
     - [1.1.0-rc.1](releases/release-1.1.0-rc.1.md)
     - [1.1.0-beta.2](releases/release-1.1.0-beta.2.md)
     - [1.1.0-beta.1](releases/release-1.1.0-beta.1.md)
-  + v1.0
+  - v1.0
     - [1.0.7](releases/release-1.0.7.md)
     - [1.0.6](releases/release-1.0.6.md)
     - [1.0.5](releases/release-1.0.5.md)
@@ -150,7 +146,7 @@
     - [1.0.0-beta.1-p1](releases/release-1.0.0-beta.1-p1.md)
     - [1.0.0-beta.1](releases/release-1.0.0-beta.1.md)
     - [1.0.0-beta.0](releases/release-1.0.0-beta.0.md)
-  + v0
+  - v0
     - [0.4.0](releases/release-0.4.0.md)
     - [0.3.1](releases/release-0.3.1.md)
     - [0.3.0](releases/release-0.3.0.md)
