@@ -10921,7 +10921,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScaler(ref common.Reference
 						},
 					},
 				},
-				Required: []string{"spec", "status"},
+				Required: []string{"spec"},
 			},
 		},
 		Dependencies: []string{
