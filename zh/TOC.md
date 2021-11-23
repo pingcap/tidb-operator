@@ -18,6 +18,7 @@
       - [部署 TiDB 集群](deploy-on-general-kubernetes.md)
       - [初始化 TiDB 集群](initialize-a-cluster.md)
       - [访问 TiDB 集群](access-tidb.md)
+    - [在 ARM64 机器上部署 TiDB 集群](deploy-cluster-on-arm64.md)
   - [跨多个 Kubernetes 集群部署 TiDB 集群](deploy-tidb-cluster-across-multiple-kubernetes.md)
   - [部署异构集群](deploy-heterogeneous-tidb-cluster.md)
   - [部署 TiFlash](deploy-tiflash.md)

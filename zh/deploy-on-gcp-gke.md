@@ -111,6 +111,10 @@ kubectl create -f tidb-monitor.yaml -n tidb-cluster
 
 当上述 yaml 文件被应用到 Kubernetes 集群后，TiDB Operator 会负责根据 yaml 文件描述，创建对应配置的 TiDB 集群。
 
+> **注意：**
+>
+> 如果要将 TiDB 集群部署到 ARM64 机器上，可以参考[在 ARM64 机器上部署 TiDB 集群](deploy-cluster-on-arm64.md)。
+
 ### 查看 TiDB 集群启动状态
 
 使用以下命令查看 TiDB 集群启动状态：

@@ -259,6 +259,10 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-on-alibaba-cloud/']
   kubectl --kubeconfig credentials/kubeconfig create -f db-monitor.yaml -n ${namespace}
   ```
 
+> **注意：**
+>
+> 如果要将 TiDB 集群部署到 ARM64 机器上，可以参考[在 ARM64 机器上部署 TiDB 集群](deploy-cluster-on-arm64.md)。
+
 ## 连接数据库
 
 通过堡垒机可连接 TiDB 集群进行测试，相关信息在安装完成后的输出中均可找到：

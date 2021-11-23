@@ -375,6 +375,10 @@ namespace/tidb-cluster created
 tidbcluster.pingcap.com/basic created
 ```
 
+> **注意：**
+>
+> 如果要将 TiDB 集群部署到 ARM64 机器上，可以参考[在 ARM64 机器上部署 TiDB 集群](deploy-cluster-on-arm64.md)。
+
 ### 部署 TiDB 集群监控
 
 {{< copyable "shell-regular" >}}
