@@ -1,9 +1,9 @@
 name: e2e
 
 on:
-  push:
-    branches:
-      - multicluster-e2e
+  # push:
+  #   branches:
+  #     - multicluster-e2e
   workflow_dispatch:
 
 jobs:
@@ -97,7 +97,7 @@ jobs:
       - name: Get matrix jobs
         id: set-matrix
         run: |
-          echo "::set-output name=matrix::{\"include\":[{\"job\":\"Multicluster\"}]}"
+          echo "::set-output name=matrix::{\"include\":[{\"job\":\"Across Kubernetes\"}]}"
   e2e-cases:
     needs: ["image-build"]
     runs-on: ubuntu-latest
