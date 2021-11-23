@@ -21,6 +21,7 @@
   - [Deploy a TiDB Cluster across Multiple Kubernetes Clusters](deploy-tidb-cluster-across-multiple-kubernetes.md)
   - [Deploy Heterogeneous Cluster](deploy-heterogeneous-tidb-cluster.md)
   - [Deploy TiFlash](deploy-tiflash.md)
+  - [Deploy DM](deploy-tidb-dm.md)
   - [Deploy TiCDC](deploy-ticdc.md)
   - [Deploy TiDB Binlog](deploy-tidb-binlog.md)
   - [Deploy TiDB Enterprise Edition](deploy-tidb-enterprise-edition.md)
@@ -45,7 +46,7 @@
   - Scale TiDB Cluster
     - [Manually Scale](scale-a-tidb-cluster.md)
     - [Automatically Scale](enable-tidb-cluster-auto-scaling.md)
-  - [Migrate MySQL Data to TiDB Cluster Using DM](deploy-tidb-dm.md)
+  - [Migrate MySQL Data to TiDB Cluster Using DM](use-tidb-dm.md)
   - Backup and Restore
     - [Overview](backup-restore-overview.md)
     - [Grant Permissions to Remote Storage](grant-permissions-to-remote-storage.md)

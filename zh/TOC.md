@@ -22,6 +22,7 @@
   - [跨多个 Kubernetes 集群部署 TiDB 集群](deploy-tidb-cluster-across-multiple-kubernetes.md)
   - [部署异构集群](deploy-heterogeneous-tidb-cluster.md)
   - [部署 TiFlash](deploy-tiflash.md)
+  - [部署 DM](deploy-tidb-dm.md)
   - [部署 TiCDC](deploy-ticdc.md)
   - [部署 TiDB Binlog](deploy-tidb-binlog.md)
   - [部署 TiDB 企业版集群](deploy-tidb-enterprise-edition.md)
@@ -46,7 +47,7 @@
   - TiDB 集群伸缩
     - [手动扩缩容](scale-a-tidb-cluster.md)
     - [自动弹性伸缩](enable-tidb-cluster-auto-scaling.md)
-  - [使用 DM 迁移 MySQL 数据到 TiDB 集群](deploy-tidb-dm.md)
+  - [使用 DM 迁移 MySQL 数据到 TiDB 集群](use-tidb-dm.md)
   - 备份与恢复
     - [备份与恢复简介](backup-restore-overview.md)
     - [远程存储访问授权](grant-permissions-to-remote-storage.md)

@@ -563,7 +563,7 @@ spec:
 
 设置 `spec.tlsClientSecretNames` 选项后，TiDB Operator 会将 Secret 对象 ${secret_name} 挂载到 `/var/lib/source-tls/${secret_name}` 路径。
 
-1. 填写[数据源配置](deploy-tidb-dm.md#创建数据源) `source1.yaml` 的 `from.security` 选项：
+1. 填写[数据源配置](use-tidb-dm.md#创建数据源) `source1.yaml` 的 `from.security` 选项：
 
     ``` yaml
     source-id: mysql-replica-01
@@ -579,7 +579,7 @@ spec:
         ssl-key: /var/lib/source-tls/${mysql_secret_name1}/tls.key
     ```
 
-2. 填写[同步任务配置](deploy-tidb-dm.md#配置同步任务) `task.yaml` 的 `target-database.security` 选项：
+2. 填写[同步任务配置](use-tidb-dm.md#配置同步任务) `task.yaml` 的 `target-database.security` 选项：
 
     ``` yaml
     name: test
@@ -607,4 +607,4 @@ spec:
 
 ### 第四步：启动同步任务
 
-参考[启动同步任务](deploy-tidb-dm.md#启动查询停止同步任务)。
+参考[启动同步任务](use-tidb-dm.md#启动查询停止同步任务)。

@@ -1,9 +1,9 @@
 ---
-title: Deploy and Use DM in Kubernetes
-summary: Learn how to deploy and use TiDB DM cluster in Kubernetes.
+title: Deploy DM in Kubernetes
+summary: Learn how to deploy TiDB DM cluster in Kubernetes.
 ---
 
-# Deploy and Use DM in Kubernetes
+# Deploy DM in Kubernetes
 
 [TiDB Data Migration](https://docs.pingcap.com/tidb-data-migration/v2.0) (DM) is an integrated data migration task management platform that supports the full data migration and the incremental data replication from MySQL/MariaDB into TiDB. This document describes how to deploy DM in Kubernetes using TiDB Operator and how to migrate MySQL data to TiDB cluster using DM.
 
@@ -193,58 +193,7 @@ You can access the DM-master service via the address of `${kubernetes_node_ip}:$
 
 For more service exposure methods, refer to [Access the TiDB Cluster](access-tidb.md).
 
-## Enable DM data migration tasks
+## What’s next
 
-You can access the DM-master service using dmctl in the following two methods:
-
-**Method #1**: Attach to the DM-master or DM-worker Pod to use the built-in `dmctl` in the image.
-
-**Method #2**: Expose the DM-master service by [accessing the DM cluster in Kubernetes](#access-the-dm-cluster-in-kubernetes) and use `dmctl` outside the pods to access the exposed DM-master service.
-
-It is recommended to use **Method #1** for migration. The following steps take **Method #1** as an example to introduce how to start a DM data migration task.
-
-The differences between Method #1 and Method #2 are that the file locations of `source.yaml` and `task.yaml` are different, and that in Method #2 you need to configure the exposed DM-master service address in the `master-addr` configuration item of `dmctl`.
-
-### Get into the Pod
-
-Attach to the DM-master Pod by executing the following command:
-
-{{< copyable "shell-regular" >}}
-
-```shell
-kubectl exec -ti ${dm_cluster_name}-dm-master-0 -n ${namespace} - /bin/sh
-```
-
-### Create data source
-
-1. Write MySQL-1 related information to `source1.yaml` file, which can refer to [Create data source](https://docs.pingcap.com/tidb-data-migration/v2.0/migrate-data-using-dm#step-3-create-data-source).
-
-2. Configure the `from.host` in the `source1.yaml` file as the MySQL host address that the Kubernetes cluster can access internally.
-
-3. Configure the `relay-dir` in the `source1.yaml` file as a subdirectory of the persistent volume in the Pod mount `/var/lib/dm-worker` directory. For example, `/var/lib/dm-worker/relay`.
-
-4. After you prepare the `source1.yaml` file, load the MySQL-1 data source into the DM cluster by executing the following command:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    /dmctl --master-addr ${dm_cluster_name}-dm-master:8261 operate-source create source1.yaml
-    ```
-
-5. For MySQL-2 and other data sources, use the same method to modify the relevant information in the data source `yaml` file and execute the same dmctl command to load the corresponding data source into the DM cluster.
-
-### Configure migration tasks
-
-1. Edit task configuration file `task.yaml`, which can refer to [Configure the data migration task](https://docs.pingcap.com/tidb-data-migration/v2.0/migrate-data-using-dm#step-4-configure-the-data-migration-task).
-
-2. Configure the `target-database.host` in `task.yaml` as the TiDB host address that the Kubernetes cluster can access internally. If the cluster is deployed by TiDB Operator, configure the host as `${tidb_cluster_name}-tidb.${namespace}`.
-
-3. In the `task.yaml` file, take the following steps:
-
-    - Add the `loaders.${customized_name}.dir` field as the import and export directory for the full volume data, where `${customized_name}` is a name that you can customize. 
-    - Configure the `loaders.${customized_name}.dir` field as the subdirectory of the persistent volume in the Pod `/var/lib/dm-worker` directory. For example, `/var/lib/dm-worker/dumped_data`.
-    - Reference `${customized_name}` in the instance configuration. For example, `mysql-instances[0].loader-config-name: "{customized_name}"`.
-
-### Start/Check/Stop the migration tasks
-
-Refer to the Steps 5-7 in [Migrate Data Using DM](https://docs.pingcap.com/tidb-data-migration/v2.0/migrate-data-using-dm#step-5-start-the-data-migration-task) and fill in the master-addr as `${dm_cluster_name}-dm-master:8261`.
+- To migrate MySQL data to your TiDB cluster using DM in Kubernetes, see [Migrate MySQL Data to TiDB Cluster Using DM](use-tidb-dm.md).
+- To enable TLS between components of the DM cluster in Kubernetes, see [Enable TLS for DM](enable-tls-for-dm.md).
