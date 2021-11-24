@@ -27,7 +27,7 @@ Support gracefully reschedule a tikv pod. The implemtation is necessarrily the c
 
 #### Story 1
 
-suppost `tikv-0` is running at node `node0`,  there are many free resource at other nodes, I would like to make tikv-0 run at other node and shutdown `node0` to reduce the cost. I may apply the flowing operations:
+suppose `tikv-0` is running at node `node0`,  there are many free resource at other nodes, I would like to make tikv-0 run at other node and shutdown `node0` to reduce the cost. I may apply the flowing operations:
 
 1. run `kubectl cordon node0` to mark `node0`as unschedulable.
 2. delete pod `tikv-0` to let it re-create and reschedule to other nodes.
