@@ -4,7 +4,7 @@ TiDB-Operator issue: [#4215](https://github.com/pingcap/tidb-operator/issues/421
 
 ## Summary
 
-Support gracefully reschedule a tikv pod. The implemtation is necessarrily the combination of three operations:
+Support gracefully reschedule a tikv pod. The implantation is neccessarrily the combination of three operations:
 
 1. Add a PD evict-leader-scheduler to transfer the leader.
 2. When leader count drop down to zero, delete the pod to let it re-create and reschedule.
@@ -15,7 +15,7 @@ Support gracefully reschedule a tikv pod. The implemtation is necessarrily the c
 ### Goals
 
 - Provide a way for user to gracefully reschedule a tikv pod.
-- The pod must be gracefully stop, to be specify, evict leaders before delete the pod and must work nomal when recreate the pod.
+- The pod must be gracefully stop, to be specify, evict leaders before delete the pod and must work normal when recreate the pod.
 
 ### Non-Goals
 
@@ -27,11 +27,11 @@ Support gracefully reschedule a tikv pod. The implemtation is necessarrily the c
 
 #### Story 1
 
-suppost `tikv-0` is running at node `node0`,  there are many free resource at other nodes, I would like to make tikv-0 run at other node and shutdown `node0` to reduce the cost. I may apply the flowing operations:
+suppose `tikv-0` is running at node `node0`,  there are many free resource at other nodes, I would like to make tikv-0 run at other node and shutdown `node0` to reduce the cost. I may apply the flowing operations:
 
-1. run `kubectl cordon node0` to mark `node0`as unschedulable.
+1. run `kubectl cordon node0` to mark `node0` as `unschedulable`.
 2. delete pod `tikv-0` to let it re-create and reschedule to other nodes.
-3. draine `node-0` in the nomal way as [safely drain a node](https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/) and shotdown `node0`
+3. drain `node-0` in the normal way as [safely drain a node](https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/) and shotdown `node0`
 
 ### Risks and Mitigations
 
@@ -39,7 +39,7 @@ suppost `tikv-0` is running at node `node0`,  there are many free resource at ot
 
 ## Design Details
 
-Support user to add an annotation to CRD `TidbCluster` to trigger an gracefule reschedule.
+Support user to add an annotation to CRD `TidbCluster` to trigger an graceful reschedule.
 
 annotation key: `tikv.tidb.pingcap.com/reschedule`
 
@@ -65,9 +65,9 @@ RunningSlot struct {
 }
 ```
 
-One of `NodeName` and `Slots` is required, user is able to specify all pods in a node or specifiy the pods directly.
+One of `NodeName` and `Slots` is required, user is able to specify all pods in a node or specify the pods directly.
 
-At controller side, when ever observe this annotation is set, it will do the flowing step to handle an un finished action:
+At controller side, when ever observe this annotation is set, it will do the flowing step to handle an unfinished action:
 
 ```go
 if RunningSlot is set {
@@ -103,5 +103,5 @@ when user observe that statue is `Finished`, it can assume that `tikv-0` is alre
 
 ## Drawbacks
 
-- The are still no way to stop tikv gracefully in nomal way(graceful stop when receive a `SIGTERM` signal.TiKV issue [10296](https://github.com/tikv/tikv/issues/10296). So user may need do some special operaion as this document describe when doing some operations that need to evict ot re-create tikv pod like take down a node.
+- The are still no way to stop tikv gracefully in normal way(graceful stop when receive a `SIGTERM` signal.TiKV issue [10296](https://github.com/tikv/tikv/issues/10296). So user may need do some special operations as this document describe when doing some operations that need to evict or re-create tikv pod like take down a node.
 
