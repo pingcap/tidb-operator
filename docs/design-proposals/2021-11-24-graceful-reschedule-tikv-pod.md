@@ -30,7 +30,10 @@ Support gracefully reschedule a tikv pod. The implantation is neccessarrily the 
 suppose `tikv-0` is running at node `node0`,  there are many free resource at other nodes, I would like to make tikv-0 run at other node and shutdown `node0` to reduce the cost. I may apply the flowing operations:
 
 1. run `kubectl cordon node0` to mark `node0` as `unschedulable`.
-2. delete pod `tikv-0` to let it re-create and reschedule to other nodes.
+2. delete pod `tikv-0` to let it re-create and reschedule to other nodes, to mitigate the impact of unavailability of some region, I will do the flowing operations insted of delete the pod directly:
+   1. add evict-leader-scheduler by `pd-ctl`.
+   2. delete `tikv-0` pod when leader count drop down to 0.
+   3. remove the evict-leader-scheduler by `pd-ctl`
 3. drain `node-0` in the normal way as [safely drain a node](https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/) and shotdown `node0`
 
 ### Risks and Mitigations
@@ -39,67 +42,94 @@ suppose `tikv-0` is running at node `node0`,  there are many free resource at ot
 
 ## Design Details
 
-Support user to add an annotation to CRD `TidbCluster` to trigger an graceful reschedule.
+Support user to add an annotation to tikv pod to trigger an graceful reschedule.
 
-annotation key: `tikv.tidb.pingcap.com/reschedule`
+Annotation key `EvictLeaderAnnKey`: `tikv.tidb.pingcap.com/evict-leader`
 
-annotation value is JSON in the flowing struct:
+the value controler the behavier when the leander count drop to zero, valid value is one of:
 
-```go
-{
-  // the flowing field set by user.
-  NodeName *string
-  Slots []int 
-  
-  // the flowing filed set by controller.
-  RunningSlot *RunningSlot
-  FinishedSlots []int
-  Status string // Running|Finished
-  Message string // optial message of the current status for human readible 
-}
+- `none`: doing nothing
+- `delete-pod`: delete pod and remove the evict-leader scheduler from PD.
 
-RunningSlot struct {
-  Slot int
-  Status string // Evicting|ReCreating
-  StartTimestamp metav1.Time // etc. 2021-11-23T13:09:32Z
-}
-```
 
-One of `NodeName` and `Slots` is required, user is able to specify all pods in a node or specify the pods directly.
 
-At controller side, when ever observe this annotation is set, it will do the flowing step to handle an unfinished action:
+An EvictLeader status willbe added to the `TiKVStatus`:
 
 ```go
-if RunningSlot is set {
-   switch RunningSlotStatus {
-     case "Evicting"
-       // 1. make sure evict-scheduler is added
-       // 2. update RunningSlot.Status as ReCreating if leader-count is 0
-     case "ReCreating"
-     if the creationTimestamp of pod is less than RunningSlot.startTimestamp {
-        delete the pod.
-     }
-     if the pod is already running normal {
-        append RunningSlot.Slot in RunningSlot and set RunningSlot as nil
-     }
-   }
-} else {
-  // Find a slot to hanle by comaring `FinishedSlots` and `Slots` or slots belong to the specify NodeName.
-  // set RunningSlot or mark Status as Finished
++type EvictLeaderStatus struct {
++       PodCreateTime metav1.Time `json:"podCreateTime,omitempty"`
++       Value         string      `json:"value,omitempty"`
++}
+
+ // TiKVStatus is TiKV status
+ type TiKVStatus struct {
+        Synced          bool                        `json:"synced,omitempty"`
+@@ -1139,6 +1151,7 @@ type TiKVStatus struct {
+        TombstoneStores map[string]TiKVStore        `json:"tombstoneStores,omitempty"`
+        FailureStores   map[string]TiKVFailureStore `json:"failureStores,omitempty"`
+        Image           string                      `json:"image,omitempty"`
++       EvictLeader     *EvictLeaderStatus           `json:"evictLeaderStatus,omitempty"`
+ }
+```
+
+
+
+At controller side, the reconciler to handle pod will be like:
+
+```go
+func sync(pod *corev1.Pod, tc *v1alpha1.TidbCluster) (ctrl.Result, error) {
+        value, ok := pod.Annotations[v1alpha1.EvictLeaderAnnKey]
+
+        if ok {
+                evictStatus := &v1alpha1.EvictLeaderStatus{
+                        PodCreateTime: pod.CreationTimestamp,
+                        Value:         value,
+                }
+                if tc.Status.TiKV.EvictLeader == nil || tc.Status.TiKV.EvictLeader != evictStatus {
+                        tc.Status.TiKV.EvictLeader = evictStatus
+                        // TODO update tc.Status to api-server
+                }
+
+                // TODO:
+                // 1. add evict-leader scheduler if not added yet.
+
+                if value == v1alpha1.EvictLeaderAnnValueDeletePod {
+                        leaderCount := getLeaderCount(pod)
+                        if leaderCount == 0 {
+                                // TODO: delete the pod
+                        } else {
+                                // re-check leader count next time
+                                return ctrl.Result{RequeueAfter: time.Second * 15}, nil
+                        }
+                }
+        } else {
+                evictStatus := tc.Status.TiKV.EvictLeader
+                if evictStatus != nil {
+                        if evictStatus.Value == v1alpha1.EvictLeaderAnnValueDeletePod {
+                                if IsPodReady(pod) {
+                                        // TODO:
+                                        // 1. delete evict-leader scheduler
+                                        // 2. set tc.Status.TiKV.EvictLeader = nil and update it to api-server
+                                }
+                        } else if evictStatus.Value == v1alpha1.EvictLeaderAnnValueNone {
+                                // TODO:
+                                // 1. delete evict-leader scheduler
+                                // 2. tc.Status.TiKV.EvictLeader = nil and update it to api-server
+                        }
+                }
+        }
+
+        return ctrl.Result{}, nil
 }
-
-
 ```
 
-An example for Story 1 step 2, user might add annotation with the flowing value for key `tikv.tidb.pingcap.com/reschedule`:
+An example for Story 1 at step 2, user might add annotation with the flowing value for key `tikv.tidb.pingcap.com/reschedule`:
 
 ```
-{
-	nodeName: "node0",
-}
+kubectl annotate pods <tikv-pod-name> tikv.tidb.pingcap.com/evict-leader=delete-pod
 ```
 
-when user observe that statue is `Finished`, it can assume that `tikv-0` is already gracefully reschedule to other node and forward to step 3.
+when user observe that pod is re-create and ready again, it can assume that `tikv-0` is already gracefully reschedule to other node and forward to step 3.
 
 ## Drawbacks
 
