@@ -53,7 +53,7 @@ the value controler the behavier when the leander count drop to zero, valid valu
 
 
 
-An EvictLeader status willbe added to the `TiKVStatus`:
+An EvictLeader status will be added to the `TiKVStatus`:
 
 ```go
 +type EvictLeaderStatus struct {
