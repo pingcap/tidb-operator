@@ -18,6 +18,8 @@ Resource Types:
 </li><li>
 <a href="#restore">Restore</a>
 </li><li>
+<a href="#tidbngmonitoring">TiDBNGMonitoring</a>
+</li><li>
 <a href="#tidbcluster">TidbCluster</a>
 </li><li>
 <a href="#tidbclusterautoscaler">TidbClusterAutoScaler</a>
@@ -1243,6 +1245,122 @@ RestoreStatus
 </em>
 </td>
 <td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tidbngmonitoring">TiDBNGMonitoring</h3>
+<p>
+<p>TidbMonitor contains the spec and status of tidb ng monitor</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code></br>
+string</td>
+<td>
+<code>
+pingcap.com/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code></br>
+string
+</td>
+<td><code>TiDBNGMonitoring</code></td>
+</tr>
+<tr>
+<td>
+<code>metadata</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#objectmeta-v1-meta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code></br>
+<em>
+<a href="#tidbngmonitoringspec">
+TiDBNGMonitoringSpec
+</a>
+</em>
+</td>
+<td>
+<p>Spec contains all spec about tidb ng monitor</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>ComponentSpec</code></br>
+<em>
+<a href="#componentspec">
+ComponentSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ComponentSpec</code> are embedded into this type.)
+</p>
+<p>ComponentSpec is common spec.
+NOTE: the same field will be overridden by component&rsquo;s spec.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>clusters</code></br>
+<em>
+<a href="#tidbclusterref">
+[]TidbClusterRef
+</a>
+</em>
+</td>
+<td>
+<p>Clusters reference TiDB cluster</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>paused</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Paused pause controller if it is true</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code></br>
+<em>
+<a href="#tidbngmonitoringstatus">
+TiDBNGMonitoringStatus
+</a>
+</em>
+</td>
+<td>
+<p>Status is most recently observed status of tidb ng monitor</p>
 </td>
 </tr>
 </tbody>
@@ -4130,11 +4248,11 @@ and component-level overrides</p>
 <a href="#dmdiscoveryspec">DMDiscoverySpec</a>, 
 <a href="#discoveryspec">DiscoverySpec</a>, 
 <a href="#masterspec">MasterSpec</a>, 
-<a href="#monitorspec">MonitorSpec</a>, 
+<a href="#ngmonitoringspec">NGMonitoringSpec</a>, 
 <a href="#pdspec">PDSpec</a>, 
 <a href="#pumpspec">PumpSpec</a>, 
 <a href="#ticdcspec">TiCDCSpec</a>, 
-<a href="#tidbngmonitorspec">TiDBNGMonitorSpec</a>, 
+<a href="#tidbngmonitoringspec">TiDBNGMonitoringSpec</a>, 
 <a href="#tidbspec">TiDBSpec</a>, 
 <a href="#tiflashspec">TiFlashSpec</a>, 
 <a href="#tikvspec">TiKVSpec</a>, 
@@ -7837,7 +7955,7 @@ string
 <p>
 (<em>Appears on:</em>
 <a href="#masterstatus">MasterStatus</a>, 
-<a href="#monitorstatus">MonitorStatus</a>, 
+<a href="#ngmonitoringstatus">NGMonitoringStatus</a>, 
 <a href="#pdstatus">PDStatus</a>, 
 <a href="#pumpstatus">PumpStatus</a>, 
 <a href="#ticdcstatus">TiCDCStatus</a>, 
@@ -7926,9 +8044,9 @@ Kubernetes core/v1.PullPolicy
 </tr>
 </tbody>
 </table>
-<h3 id="monitorspec">MonitorSpec</h3>
+<h3 id="ngmonitoringspec">NGMonitoringSpec</h3>
 <p>
-<p>MonitorSpec is spec of ng monitor</p>
+<p>NGMonitoringSpec is spec of ng monitoring</p>
 </p>
 <table>
 <thead>
@@ -7970,17 +8088,6 @@ Kubernetes core/v1.ResourceRequirements
 </tr>
 <tr>
 <td>
-<code>replicas</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<p>The desired ready replicas</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>baseImage</code></br>
 <em>
 string
@@ -7998,19 +8105,19 @@ string
 </em>
 </td>
 <td>
-<p>StorageClassName is the persistent volume for ng monitor.
+<p>StorageClassName is the persistent volume for ng monitoring.
 Defaults to Kubernetes default storage class.</p>
 </td>
 </tr>
 </tbody>
 </table>
-<h3 id="monitorstatus">MonitorStatus</h3>
+<h3 id="ngmonitoringstatus">NGMonitoringStatus</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#tidbngmonitorstatus">TiDBNGMonitorStatus</a>)
+<a href="#tidbngmonitoringstatus">TiDBNGMonitoringStatus</a>)
 </p>
 <p>
-<p>MonitorStatus is latest status of ng monitor</p>
+<p>NGMonitoringStatus is latest status of ng monitoring</p>
 </p>
 <table>
 <thead>
@@ -14359,100 +14466,13 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="tidbngmonitor">TiDBNGMonitor</h3>
-<p>
-<p>TidbMonitor contains the spec and status of tidb ng monitor</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>metadata</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#objectmeta-v1-meta">
-Kubernetes meta/v1.ObjectMeta
-</a>
-</em>
-</td>
-<td>
-Refer to the Kubernetes API documentation for the fields of the
-<code>metadata</code> field.
-</td>
-</tr>
-<tr>
-<td>
-<code>spec</code></br>
-<em>
-<a href="#tidbngmonitorspec">
-TiDBNGMonitorSpec
-</a>
-</em>
-</td>
-<td>
-<p>Spec contains all spec about tidb ng monitor</p>
-<br/>
-<br/>
-<table>
-<tr>
-<td>
-<code>ComponentSpec</code></br>
-<em>
-<a href="#componentspec">
-ComponentSpec
-</a>
-</em>
-</td>
-<td>
-<p>
-(Members of <code>ComponentSpec</code> are embedded into this type.)
-</p>
-<p>ComponentSpec is common spec.
-NOTE: the same field will be overridden by component&rsquo;s spec.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>clusters</code></br>
-<em>
-<a href="#tidbclusterref">
-[]TidbClusterRef
-</a>
-</em>
-</td>
-<td>
-<p>Clusters reference TiDB cluster</p>
-</td>
-</tr>
-</table>
-</td>
-</tr>
-<tr>
-<td>
-<code>status</code></br>
-<em>
-<a href="#tidbngmonitorstatus">
-TiDBNGMonitorStatus
-</a>
-</em>
-</td>
-<td>
-<p>Status is most recently observed status of tidb ng monitor</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="tidbngmonitorspec">TiDBNGMonitorSpec</h3>
+<h3 id="tidbngmonitoringspec">TiDBNGMonitoringSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#tidbngmonitor">TiDBNGMonitor</a>)
+<a href="#tidbngmonitoring">TiDBNGMonitoring</a>)
 </p>
 <p>
+<p>TiDBNGMonitoringSpec is spec of tidb ng monitoring</p>
 </p>
 <table>
 <thead>
@@ -14492,14 +14512,26 @@ NOTE: the same field will be overridden by component&rsquo;s spec.</p>
 <p>Clusters reference TiDB cluster</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>paused</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Paused pause controller if it is true</p>
+</td>
+</tr>
 </tbody>
 </table>
-<h3 id="tidbngmonitorstatus">TiDBNGMonitorStatus</h3>
+<h3 id="tidbngmonitoringstatus">TiDBNGMonitoringStatus</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#tidbngmonitor">TiDBNGMonitor</a>)
+<a href="#tidbngmonitoring">TiDBNGMonitoring</a>)
 </p>
 <p>
+<p>TiDBNGMonitoringStatus is status of tidb ng monitoring</p>
 </p>
 <table>
 <thead>
@@ -14511,14 +14543,15 @@ NOTE: the same field will be overridden by component&rsquo;s spec.</p>
 <tbody>
 <tr>
 <td>
-<code>monitor</code></br>
+<code>ngMonitoring</code></br>
 <em>
-<a href="#monitorstatus">
-MonitorStatus
+<a href="#ngmonitoringstatus">
+NGMonitoringStatus
 </a>
 </em>
 </td>
 <td>
+<p>NGMonitoring is status of ng monitoring</p>
 </td>
 </tr>
 </tbody>
@@ -20501,7 +20534,7 @@ string
 <h3 id="tidbclusterref">TidbClusterRef</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#tidbngmonitorspec">TiDBNGMonitorSpec</a>, 
+<a href="#tidbngmonitoringspec">TiDBNGMonitoringSpec</a>, 
 <a href="#tidbclusterautoscalerspec">TidbClusterAutoScalerSpec</a>, 
 <a href="#tidbclusterspec">TidbClusterSpec</a>, 
 <a href="#tidbinitializerspec">TidbInitializerSpec</a>, 

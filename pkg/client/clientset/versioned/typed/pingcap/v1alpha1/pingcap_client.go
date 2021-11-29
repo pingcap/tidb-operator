@@ -28,6 +28,7 @@ type PingcapV1alpha1Interface interface {
 	DMClustersGetter
 	DataResourcesGetter
 	RestoresGetter
+	TiDBNGMonitoringsGetter
 	TidbClustersGetter
 	TidbClusterAutoScalersGetter
 	TidbInitializersGetter
@@ -57,6 +58,10 @@ func (c *PingcapV1alpha1Client) DataResources(namespace string) DataResourceInte
 
 func (c *PingcapV1alpha1Client) Restores(namespace string) RestoreInterface {
 	return newRestores(c, namespace)
+}
+
+func (c *PingcapV1alpha1Client) TiDBNGMonitorings(namespace string) TiDBNGMonitoringInterface {
+	return newTiDBNGMonitorings(c, namespace)
 }
 
 func (c *PingcapV1alpha1Client) TidbClusters(namespace string) TidbClusterInterface {

@@ -31,6 +31,8 @@ type Interface interface {
 	DataResources() DataResourceInformer
 	// Restores returns a RestoreInformer.
 	Restores() RestoreInformer
+	// TiDBNGMonitorings returns a TiDBNGMonitoringInformer.
+	TiDBNGMonitorings() TiDBNGMonitoringInformer
 	// TidbClusters returns a TidbClusterInformer.
 	TidbClusters() TidbClusterInformer
 	// TidbClusterAutoScalers returns a TidbClusterAutoScalerInformer.
@@ -75,6 +77,11 @@ func (v *version) DataResources() DataResourceInformer {
 // Restores returns a RestoreInformer.
 func (v *version) Restores() RestoreInformer {
 	return &restoreInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// TiDBNGMonitorings returns a TiDBNGMonitoringInformer.
+func (v *version) TiDBNGMonitorings() TiDBNGMonitoringInformer {
+	return &tiDBNGMonitoringInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // TidbClusters returns a TidbClusterInformer.

@@ -74,7 +74,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MasterKeyKMSConfig":            schema_pkg_apis_pingcap_v1alpha1_MasterKeyKMSConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MasterSpec":                    schema_pkg_apis_pingcap_v1alpha1_MasterSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MonitorContainer":              schema_pkg_apis_pingcap_v1alpha1_MonitorContainer(ref),
-		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MonitorSpec":                   schema_pkg_apis_pingcap_v1alpha1_MonitorSpec(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.NGMonitoringSpec":              schema_pkg_apis_pingcap_v1alpha1_NGMonitoringSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.OpenTracing":                   schema_pkg_apis_pingcap_v1alpha1_OpenTracing(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.OpenTracingReporter":           schema_pkg_apis_pingcap_v1alpha1_OpenTracingReporter(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.OpenTracingSampler":            schema_pkg_apis_pingcap_v1alpha1_OpenTracingSampler(ref),
@@ -118,8 +118,8 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCDCSpec":                     schema_pkg_apis_pingcap_v1alpha1_TiCDCSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig":              schema_pkg_apis_pingcap_v1alpha1_TiDBAccessConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBConfig":                    schema_pkg_apis_pingcap_v1alpha1_TiDBConfig(ref),
-		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBNGMonitor":                 schema_pkg_apis_pingcap_v1alpha1_TiDBNGMonitor(ref),
-		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBNGMonitorSpec":             schema_pkg_apis_pingcap_v1alpha1_TiDBNGMonitorSpec(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBNGMonitoring":              schema_pkg_apis_pingcap_v1alpha1_TiDBNGMonitoring(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBNGMonitoringSpec":          schema_pkg_apis_pingcap_v1alpha1_TiDBNGMonitoringSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBProbe":                     schema_pkg_apis_pingcap_v1alpha1_TiDBProbe(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBServiceSpec":               schema_pkg_apis_pingcap_v1alpha1_TiDBServiceSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBSlowLogTailerSpec":         schema_pkg_apis_pingcap_v1alpha1_TiDBSlowLogTailerSpec(ref),
@@ -3544,11 +3544,11 @@ func schema_pkg_apis_pingcap_v1alpha1_MonitorContainer(ref common.ReferenceCallb
 	}
 }
 
-func schema_pkg_apis_pingcap_v1alpha1_MonitorSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_pkg_apis_pingcap_v1alpha1_NGMonitoringSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "MonitorSpec is spec of ng monitor",
+				Description: "NGMonitoringSpec is spec of ng monitoring",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"version": {
@@ -3811,13 +3811,6 @@ func schema_pkg_apis_pingcap_v1alpha1_MonitorSpec(ref common.ReferenceCallback) 
 							},
 						},
 					},
-					"replicas": {
-						SchemaProps: spec.SchemaProps{
-							Description: "The desired ready replicas",
-							Type:        []string{"integer"},
-							Format:      "int32",
-						},
-					},
 					"baseImage": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Base image of the component, image tag is now allowed during validation",
@@ -3827,13 +3820,13 @@ func schema_pkg_apis_pingcap_v1alpha1_MonitorSpec(ref common.ReferenceCallback) 
 					},
 					"storageClassName": {
 						SchemaProps: spec.SchemaProps{
-							Description: "StorageClassName is the persistent volume for ng monitor. Defaults to Kubernetes default storage class.",
+							Description: "StorageClassName is the persistent volume for ng monitoring. Defaults to Kubernetes default storage class.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
 				},
-				Required: []string{"replicas", "baseImage"},
+				Required: []string{"baseImage"},
 			},
 		},
 		Dependencies: []string{
@@ -7489,7 +7482,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBConfig(ref common.ReferenceCallback) c
 	}
 }
 
-func schema_pkg_apis_pingcap_v1alpha1_TiDBNGMonitor(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_pkg_apis_pingcap_v1alpha1_TiDBNGMonitoring(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
@@ -7513,7 +7506,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBNGMonitor(ref common.ReferenceCallback
 					"spec": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Spec contains all spec about tidb ng monitor",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBNGMonitorSpec"),
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBNGMonitoringSpec"),
 						},
 					},
 				},
@@ -7521,15 +7514,16 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBNGMonitor(ref common.ReferenceCallback
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBNGMonitorSpec"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBNGMonitoringSpec"},
 	}
 }
 
-func schema_pkg_apis_pingcap_v1alpha1_TiDBNGMonitorSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_pkg_apis_pingcap_v1alpha1_TiDBNGMonitoringSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
+				Description: "TiDBNGMonitoringSpec is spec of tidb ng monitoring",
+				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"version": {
 						SchemaProps: spec.SchemaProps{
@@ -7774,6 +7768,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBNGMonitorSpec(ref common.ReferenceCall
 									},
 								},
 							},
+						},
+					},
+					"paused": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Paused pause controller if it is true",
+							Type:        []string{"boolean"},
+							Format:      "",
 						},
 					},
 				},
