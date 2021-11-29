@@ -63,12 +63,12 @@ An EvictLeader status willbe added to the `TiKVStatus`:
 
  // TiKVStatus is TiKV status
  type TiKVStatus struct {
-        Synced          bool                        `json:"synced,omitempty"`
+        Synced          bool                            `json:"synced,omitempty"`
 @@ -1139,6 +1151,7 @@ type TiKVStatus struct {
-        TombstoneStores map[string]TiKVStore        `json:"tombstoneStores,omitempty"`
-        FailureStores   map[string]TiKVFailureStore `json:"failureStores,omitempty"`
-        Image           string                      `json:"image,omitempty"`
-+       EvictLeader     *EvictLeaderStatus           `json:"evictLeaderStatus,omitempty"`
+        TombstoneStores map[string]TiKVStore            `json:"tombstoneStores,omitempty"`
+        FailureStores   map[string]TiKVFailureStore     `json:"failureStores,omitempty"`
+        Image           string                          `json:"image,omitempty"`
++       EvictLeader     map[string]*EvictLeaderStatus   `json:"evictLeaderStatus,omitempty"`
  }
 ```
 
@@ -85,8 +85,9 @@ func sync(pod *corev1.Pod, tc *v1alpha1.TidbCluster) (ctrl.Result, error) {
                         PodCreateTime: pod.CreationTimestamp,
                         Value:         value,
                 }
-                if tc.Status.TiKV.EvictLeader == nil || tc.Status.TiKV.EvictLeader != evictStatus {
-                        tc.Status.TiKV.EvictLeader = evictStatus
+                nowStatus := tc.Status.TiKV.EvictLeader[pod.Name]
+                if nowStatus == nil || *nowStatus != evictStatus {
+                        tc.Status.TiKV.EvictLeader[pod.Name] = evictStatus
                         // TODO update tc.Status to api-server
                 }
 
@@ -103,18 +104,18 @@ func sync(pod *corev1.Pod, tc *v1alpha1.TidbCluster) (ctrl.Result, error) {
                         }
                 }
         } else {
-                evictStatus := tc.Status.TiKV.EvictLeader
+                evictStatus := tc.Status.TiKV.EvictLeader[pod.Name]
                 if evictStatus != nil {
                         if evictStatus.Value == v1alpha1.EvictLeaderAnnValueDeletePod {
                                 if IsPodReady(pod) {
                                         // TODO:
                                         // 1. delete evict-leader scheduler
-                                        // 2. set tc.Status.TiKV.EvictLeader = nil and update it to api-server
+                                        // 2. delete pod from tc.Status.TiKV.EvictLeader and update it to api-server
                                 }
                         } else if evictStatus.Value == v1alpha1.EvictLeaderAnnValueNone {
                                 // TODO:
                                 // 1. delete evict-leader scheduler
-                                // 2. tc.Status.TiKV.EvictLeader = nil and update it to api-server
+                                // 2. delete pod from tc.Status.TiKV.EvictLeader and update it to api-server
                         }
                 }
         }
