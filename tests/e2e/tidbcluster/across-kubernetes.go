@@ -123,7 +123,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 		}
 	})
 
-	ginkgo.Describe("[Basic]", func() {
+	ginkgo.Describe("[Deploy and delete Cluster]", func() {
 
 		// create three namespace
 		ginkgo.BeforeEach(func() {
@@ -140,7 +140,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 		cluster2Cli := genericCli
 		cluster3Cli := genericCli
 
-		ginkgo.It("Deploy and delete cluster across kubernetes", func() {
+		ginkgo.It("Deploy and delete cluster across kubernetes without TLS", func() {
 			ns1 := namespaces[0]
 			ns2 := namespaces[1]
 			ns3 := namespaces[2]
@@ -158,30 +158,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			ginkgo.By("Deploy the basic cluster-3")
 			utiltc.MustCreateTCWithComponentsReady(cluster3Cli, oa, tc3, 5*time.Minute, 10*time.Second)
 
-			ginkgo.By("Deploy status of all clusters")
-			err := CheckClusterDomainEffect(cli, []*v1alpha1.TidbCluster{tc1, tc2, tc3})
-			framework.ExpectNoError(err, "failed to check status")
-		})
-
-		ginkgo.It("Deploy and delete cluster across kubernetes with TLS", func() {
-			ns1 := namespaces[0]
-			ns2 := namespaces[1]
-			ns3 := namespaces[2]
-
-			tc1 := GetTCForAcrossKubernetes(ns1, "basic-1", version, cluster1Domain, nil)
-			tc2 := GetTCForAcrossKubernetes(ns2, "basic-2", version, cluster2Domain, tc1)
-			tc3 := GetTCForAcrossKubernetes(ns3, "basic-3", version, cluster3Domain, tc1)
-
-			ginkgo.By("Deploy the basic cluster-1")
-			utiltc.MustCreateTCWithComponentsReady(cluster1Cli, oa, tc1, 5*time.Minute, 10*time.Second)
-
-			ginkgo.By("Deploy the basic cluster-2")
-			utiltc.MustCreateTCWithComponentsReady(cluster2Cli, oa, tc2, 5*time.Minute, 10*time.Second)
-
-			ginkgo.By("Deploy the basic cluster-3")
-			utiltc.MustCreateTCWithComponentsReady(cluster3Cli, oa, tc3, 5*time.Minute, 10*time.Second)
-
-			ginkgo.By("Deploy status of all clusters")
+			ginkgo.By("Check status of all clusters")
 			err := CheckClusterDomainEffect(cli, []*v1alpha1.TidbCluster{tc1, tc2, tc3})
 			framework.ExpectNoError(err, "failed to check status")
 		})
