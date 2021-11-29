@@ -1,4 +1,4 @@
-// Copyright 2020 PingCAP, Inc.
+// Copyright 2021 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,71 +19,77 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 // TidbMonitor contains the spec and status of tidb ng monitor
 //
 // +k8s:openapi-gen=true
 // +kubebuilder:resource:shortName="tnm"
-type TiDBNGMonitor struct {
+type TiDBNGMonitoring struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
 	metav1.ObjectMeta `json:"metadata"`
 
 	// Spec contains all spec about tidb ng monitor
-	Spec TiDBNGMonitorSpec `json:"spec"`
+	Spec TiDBNGMonitoringSpec `json:"spec"`
 
 	// Status is most recently observed status of tidb ng monitor
 	//
 	// +k8s:openapi-gen=false
-	Status TiDBNGMonitorStatus `json:"status,omitempty"`
+	Status TiDBNGMonitoringStatus `json:"status,omitempty"`
 }
 
-type TiDBNGMonitorList struct {
+type TiDBNGMonitoringList struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
 	metav1.ListMeta `json:"metadata"`
 
-	Items []TiDBNGMonitor `json:"items"`
+	Items []TiDBNGMonitoring `json:"items"`
 }
 
+// TiDBNGMonitoringSpec is spec of tidb ng monitoring
+//
 // +k8s:openapi-gen=true
-type TiDBNGMonitorSpec struct {
+type TiDBNGMonitoringSpec struct {
 	// ComponentSpec is common spec.
 	// NOTE: the same field will be overridden by component's spec.
 	ComponentSpec `json:",inline"`
 
 	// Clusters reference TiDB cluster
+	//
+	// +kubebuilder:validation:MaxItems=1
 	Clusters []TidbClusterRef `json:"clusters"`
+
+	// Paused pause controller if it is true
+	Paused bool `json:"paused,omitempty"`
 }
 
-type TiDBNGMonitorStatus struct {
-	Monitor MonitorStatus `json:"monitor,omitempty"`
+// TiDBNGMonitoringStatus is status of tidb ng monitoring
+type TiDBNGMonitoringStatus struct {
+	// NGMonitoring is status of ng monitoring
+	NGMonitoring NGMonitoringStatus `json:"ngMonitoring,omitempty"`
 }
 
-// MonitorSpec is spec of ng monitor
+// NGMonitoringSpec is spec of ng monitoring
 //
 // +k8s:openapi-gen=true
-type MonitorSpec struct {
+type NGMonitoringSpec struct {
 	ComponentSpec               `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
 
-	// The desired ready replicas
-	//
-	// +kubebuilder:validation:Minimum=0
-	// +kubebuilder:validation:Maximum=1
-	Replicas int32 `json:"replicas"`
-
 	// Base image of the component, image tag is now allowed during validation
 	//
-	// +kubebuilder:default=pingcap/ng-monitor
+	// +kubebuilder:default=pingcap/ng-monitoring
 	BaseImage string `json:"baseImage"`
 
-	// StorageClassName is the persistent volume for ng monitor.
+	// StorageClassName is the persistent volume for ng monitoring.
 	// Defaults to Kubernetes default storage class.
 	StorageClassName *string `json:"storageClassName,omitempty"`
 }
 
-// MonitorStatus is latest status of ng monitor
-type MonitorStatus struct {
+// NGMonitoringStatus is latest status of ng monitoring
+type NGMonitoringStatus struct {
 	Synced bool        `json:"synced,omitempty"`
 	Phase  MemberPhase `json:"phase,omitempty"`
 
