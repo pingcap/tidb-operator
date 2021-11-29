@@ -167,7 +167,7 @@ if ! $KUBECTL_BIN get ns "$NAMESPACE" &>/dev/null; then
 fi
 
 echo "info: installing crds"
-$KUBECTL_BIN create -f manifests/crd.yaml
+$KUBECTL_BIN replace -f manifests/crd.yaml
 
 echo "info: deploying tidb-operator"
 helm_template_args=(

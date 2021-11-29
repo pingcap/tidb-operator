@@ -17388,6 +17388,16 @@ spec:
                 properties:
                   bootStrapped:
                     type: boolean
+                  evictLeaderStatus:
+                    additionalProperties:
+                      properties:
+                        podCreateTime:
+                          format: date-time
+                          type: string
+                        value:
+                          type: string
+                      type: object
+                    type: object
                   failureStores:
                     additionalProperties:
                       properties:

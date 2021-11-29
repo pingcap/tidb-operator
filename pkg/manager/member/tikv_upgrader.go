@@ -160,6 +160,22 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 	return nil
 }
 
+var ErrNotFoundStoreID = fmt.Errorf("not found")
+
+func TiKVStoreIDFromStatus(tc *v1alpha1.TidbCluster, podName string) (uint64, error) {
+	for _, store := range tc.Status.TiKV.Stores {
+		if store.PodName == podName {
+			storeID, err := strconv.ParseUint(store.ID, 10, 64)
+			if err != nil {
+				return 0, err
+			}
+
+			return storeID, nil
+		}
+	}
+	return 0, ErrNotFoundStoreID
+}
+
 func (u *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32, newSet *apps.StatefulSet) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
@@ -169,27 +185,25 @@ func (u *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32, n
 		return fmt.Errorf("upgradeTiKVPod: failed to get pods %s for cluster %s/%s, error: %s", upgradePodName, ns, tcName, err)
 	}
 
-	for _, store := range tc.Status.TiKV.Stores {
-		if store.PodName == upgradePodName {
-			storeID, err := strconv.ParseUint(store.ID, 10, 64)
-			if err != nil {
-				return err
-			}
-			_, evicting := upgradePod.Annotations[EvictLeaderBeginTime]
-			if !evicting {
-				return u.beginEvictLeader(tc, storeID, upgradePod)
-			}
-
-			if u.readyToUpgrade(upgradePod, tc) {
-				setUpgradePartition(newSet, ordinal)
-				return nil
-			}
-
-			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tikv pod: [%s] is evicting leader", ns, tcName, upgradePodName)
+	storeID, err := TiKVStoreIDFromStatus(tc, upgradePodName)
+	if err != nil {
+		if err == ErrNotFoundStoreID {
+			return controller.RequeueErrorf("tidbcluster: [%s/%s] no store status found for tikv pod: [%s]", ns, tcName, upgradePodName)
 		}
+		return err
 	}
 
-	return controller.RequeueErrorf("tidbcluster: [%s/%s] no store status found for tikv pod: [%s]", ns, tcName, upgradePodName)
+	_, evicting := upgradePod.Annotations[EvictLeaderBeginTime]
+	if !evicting {
+		return u.beginEvictLeader(tc, storeID, upgradePod)
+	}
+
+	if u.readyToUpgrade(upgradePod, tc) {
+		setUpgradePartition(newSet, ordinal)
+		return nil
+	}
+
+	return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tikv pod: [%s] is evicting leader", ns, tcName, upgradePodName)
 }
 
 func (u *tikvUpgrader) readyToUpgrade(upgradePod *corev1.Pod, tc *v1alpha1.TidbCluster) bool {
