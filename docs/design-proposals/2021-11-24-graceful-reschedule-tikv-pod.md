@@ -66,7 +66,7 @@ The controller will do the flowing operations:
 
 
 
-An EvictLeader status willbe added to the `TiKVStatus`:
+An EvictLeader status will be added to the `TiKVStatus`:
 
 ```go
 +type EvictLeaderStatus struct {
@@ -112,7 +112,7 @@ func sync(pod *corev1.Pod, tc *v1alpha1.TidbCluster) (ctrl.Result, error) {
                     Value:         value,
             }
             nowStatus := tc.Status.TiKV.EvictLeader[pod.Name]
-            if nowStatus == nil || *nowStatus != evictStatus {
+            if nowStatus == nil || *nowStatus != *evictStatus {
                     tc.Status.TiKV.EvictLeader[pod.Name] = evictStatus
                     // TODO update tc.Status to api-server
             }
