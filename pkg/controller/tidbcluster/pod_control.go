@@ -34,7 +34,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
-	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 const (
@@ -154,19 +154,19 @@ func (c *PodController) processNextWorkItem() bool {
 	return true
 }
 
-func (c *PodController) sync(key string) (ctrl.Result, error) {
+func (c *PodController) sync(key string) (reconcile.Result, error) {
 	ns, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
-		return ctrl.Result{}, err
+		return reconcile.Result{}, err
 	}
 
 	pod, err := c.deps.PodLister.Pods(ns).Get(name)
 	if errors.IsNotFound(err) {
 		klog.Infof("pod has been deleted %v", key)
-		return ctrl.Result{}, nil
+		return reconcile.Result{}, nil
 	}
 	if err != nil {
-		return ctrl.Result{}, err
+		return reconcile.Result{}, err
 	}
 	pod = pod.DeepCopy()
 
@@ -174,7 +174,7 @@ func (c *PodController) sync(key string) (ctrl.Result, error) {
 	// app.kubernetes.io/component=tikv,app.kubernetes.io/instance=db1369682775200135879,app.kubernetes.io/managed-by=tidb-operator ...
 	managedBy := pod.Labels[label.ManagedByLabelKey]
 	if managedBy != "tidb-operator" {
-		return ctrl.Result{}, nil
+		return reconcile.Result{}, nil
 	}
 
 	startTime := time.Now()
@@ -189,13 +189,13 @@ func (c *PodController) sync(key string) (ctrl.Result, error) {
 		tcName := pod.Labels[label.InstanceLabelKey]
 		tc, err := c.deps.TiDBClusterLister.TidbClusters(ns).Get(tcName)
 		if err != nil {
-			return ctrl.Result{}, perrors.Annotatef(err, "failed to get tc %q", tcName)
+			return reconcile.Result{}, perrors.Annotatef(err, "failed to get tc %q", tcName)
 		}
 		tc = tc.DeepCopy()
 
 		return c.syncTiKVPod(ctx, pod, tc)
 	default:
-		return ctrl.Result{}, nil
+		return reconcile.Result{}, nil
 	}
 }
 
@@ -208,7 +208,7 @@ func (c *PodController) getPDClient(tc *v1alpha1.TidbCluster) pdapi.PDClient {
 	return pdClient
 }
 
-func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (ctrl.Result, error) {
+func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
 	var value string
 	_, ok := pod.Annotations[v1alpha1.EvictLeaderAnnKey]
 	if ok {
@@ -236,7 +236,7 @@ func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1
 			key := fmt.Sprintf("%s/%s", tc.Namespace, tc.Name)
 			tc, err = c.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Update(ctx, tc, metav1.UpdateOptions{})
 			if err != nil {
-				return ctrl.Result{}, perrors.Annotatef(err, "failed to update tc %q status", key)
+				return reconcile.Result{}, perrors.Annotatef(err, "failed to update tc %q status", key)
 			}
 
 			stat := c.getPodStat(pod)
@@ -247,11 +247,11 @@ func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1
 		pdClient := c.getPDClient(tc)
 		storeID, err := member.TiKVStoreIDFromStatus(tc, pod.Name)
 		if err != nil {
-			return ctrl.Result{}, perrors.Annotatef(err, "failed to get tikv store id from status for pod %q", pod.Name)
+			return reconcile.Result{}, perrors.Annotatef(err, "failed to get tikv store id from status for pod %q", pod.Name)
 		}
 		err = pdClient.BeginEvictLeader(storeID)
 		if err != nil {
-			return ctrl.Result{}, perrors.Annotatef(err, "failed to evict leader for store %d", storeID)
+			return reconcile.Result{}, perrors.Annotatef(err, "failed to evict leader for store %d", storeID)
 		}
 
 		if value == EvictLeaderValueDeletePod {
@@ -259,7 +259,7 @@ func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1
 			kvClient := c.deps.TiKVControl.GetTiKVPodClient(tc.Namespace, tc.Name, pod.Name, tlsEnabled)
 			leaderCount, err := kvClient.GetLeaderCount()
 			if err != nil {
-				return ctrl.Result{}, perrors.Annotatef(err, "failed to get leader count for pod %q", pod.Name)
+				return reconcile.Result{}, perrors.Annotatef(err, "failed to get leader count for pod %q", pod.Name)
 			}
 
 			klog.Infof("Region leader count is %d for Pod %s/%s", leaderCount, pod.Namespace, pod.Name)
@@ -267,11 +267,11 @@ func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1
 			if leaderCount == 0 {
 				err = c.deps.KubeClientset.CoreV1().Pods(pod.Namespace).Delete(ctx, pod.Name, metav1.DeleteOptions{})
 				if err != nil && !errors.IsNotFound(err) {
-					return ctrl.Result{}, perrors.Annotatef(err, "failed to delete pod %q", pod.Name)
+					return reconcile.Result{}, perrors.Annotatef(err, "failed to delete pod %q", pod.Name)
 				}
 			} else {
 				// re-check leader count next time
-				return ctrl.Result{RequeueAfter: c.recheckLeaderCountDuration}, nil
+				return reconcile.Result{RequeueAfter: c.recheckLeaderCountDuration}, nil
 			}
 		}
 	} else {
@@ -304,13 +304,13 @@ func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1
 				if podutil.IsPodReady(pod) {
 					err := endEvict()
 					if err != nil {
-						return ctrl.Result{}, err
+						return reconcile.Result{}, err
 					}
 				}
 			} else if evictStatus.Value == EvictLeaderValueNone {
 				err := endEvict()
 				if err != nil {
-					return ctrl.Result{}, err
+					return reconcile.Result{}, err
 				}
 			}
 			stat := c.getPodStat(pod)
@@ -319,5 +319,5 @@ func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1
 		}
 	}
 
-	return ctrl.Result{}, nil
+	return reconcile.Result{}, nil
 }
