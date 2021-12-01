@@ -178,7 +178,8 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectNoError(err, "failed to scale in cluster 3")
 			err = cluster3Cli.Delete(context.TODO(), tc3)
 			framework.ExpectNoError(err, "failed to delete cluster 3")
-			framework.ExpectNoError(CheckPeerMembersAndClusterStatus(), "tc1 and tc2 are not all healthy")
+			framework.ExpectNoError(CheckPeerMembersAndClusterStatus(cluster1Cli, tc1), "tc1 are not all healthy")
+			framework.ExpectNoError(CheckPeerMembersAndClusterStatus(cluster2Cli, tc2), "tc2 are not all healthy")
 		})
 
 		ginkgo.It("Make a cluster with existing data become a cluster supporting across kubernetes", func() {
@@ -235,7 +236,25 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 	})
 })
 
-func CheckPeerMembersAndClusterStatus()
+func CheckIfSQLWorkingAsExpected() error {
+	return nil
+}
+
+func CheckPeerMembersAndClusterStatus(clusterCli ctrlCli.Client, tc *v1alpha1.TidbCluster) error {
+	clusterCli.Get(context.TODO(), tc)
+	if tc.Status.Phase != "Normal" {
+		return err
+	}
+	for _, peerMember := range tc.Status.PD.PeerMembers {
+		// if tc3 member in peerMember
+		return err
+	}
+	for _, peerStore := range tc.Status.TiKV.PeerStores {
+		// if tc3 member in peerStores
+		// return err
+	}
+	return nil
+}
 
 func GetTCForAcrossKubernetes(ns, name, version, clusterDomain string, joinTC *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
 	tc := fixture.GetTidbCluster(ns, name, version)
