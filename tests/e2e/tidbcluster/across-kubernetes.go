@@ -164,54 +164,21 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectNoError(err, "failed to check status")
 
 			ginkgo.By("Scale in cluster-3, and delete the cluster-3")
-			tc3.Spec.PD.Replicas = 0
-			tc3.Spec.TiDB.Replicas = 0
-			tc3.Spec.TiKV.Replicas = 0
-			tc3.Spec.TiFlash.Replicas = 0
-			tc3.Spec.TiCDC.Replicas = 0
-			tc3.Spec.Pump.Replicas = 0
-			cluster3Cli.Update(tc3)
-			// TODO: apply changes and check the result
-			// TODO: delete tc3
-			framework.ExpectNoError(cluster3Cli.Delete(tc3), "failed to check status")
-		})
 
-		ginkgo.It("Deploy and delete cluster across kubernetes with TLS", func() {
-			ns1 := namespaces[0]
-			ns2 := namespaces[1]
-			ns3 := namespaces[2]
-
-			tc1 := GetTCForAcrossKubernetes(ns1, "basic-1", version, cluster1Domain, nil)
-			tc2 := GetTCForAcrossKubernetes(ns2, "basic-2", version, cluster2Domain, tc1)
-			tc3 := GetTCForAcrossKubernetes(ns3, "basic-3", version, cluster3Domain, tc1)
-
-			// TODO: add configuration for TLS
-			ginkgo.By("Deploy the basic cluster-1")
-			// To support scale in tc2, tc3
-			tc1.Spec.TiKV.Replicas = 3
-			tc1.Spec.PD.Replicas = 3
-			utiltc.MustCreateTCWithComponentsReady(cluster1Cli, oa, tc1, 5*time.Minute, 10*time.Second)
-
-			ginkgo.By("Deploy the basic cluster-2")
-			utiltc.MustCreateTCWithComponentsReady(cluster2Cli, oa, tc2, 5*time.Minute, 10*time.Second)
-
-			ginkgo.By("Deploy the basic cluster-3")
-			utiltc.MustCreateTCWithComponentsReady(cluster3Cli, oa, tc3, 5*time.Minute, 10*time.Second)
-
-			ginkgo.By("Check status of all clusters")
-			framework.ExpectNoError(CheckClusterDomainEffect(cli, []*v1alpha1.TidbCluster{tc1, tc2, tc3}), "failed to check status")
-
-			ginkgo.By("Scale in cluster-3, and delete the cluster-3")
-			tc3.Spec.PD.Replicas = 0
-			tc3.Spec.TiDB.Replicas = 0
-			tc3.Spec.TiKV.Replicas = 0
-			tc3.Spec.TiFlash.Replicas = 0
-			tc3.Spec.TiCDC.Replicas = 0
-			tc3.Spec.Pump.Replicas = 0
-			framework.ExpectNoError(cluster3Cli.Update(context.TODO(), tc3), "failed to scale in cluster 3")
-			// TODO: apply changes and check the result
-			// TODO: delete tc3
-			framework.ExpectNoError(cluster3Cli.Delete(context.TODO(), tc3), "failed to delete cluster 3")
+			_ = cluster3Cli.Get(context.TODO(), tc3)
+			err = controller.GuaranteedUpdate(cluster3Cli, tc3, func() error {
+				tc3.Spec.PD.Replicas = 0
+				tc3.Spec.TiDB.Replicas = 0
+				tc3.Spec.TiKV.Replicas = 0
+				tc3.Spec.TiFlash.Replicas = 0
+				tc3.Spec.TiCDC.Replicas = 0
+				tc3.Spec.Pump.Replicas = 0
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to scale in cluster 3")
+			err = cluster3Cli.Delete(context.TODO(), tc3)
+			framework.ExpectNoError(err, "failed to delete cluster 3")
+			framework.ExpectNoError(CheckPeerMembersAndClusterStatus(), "tc1 and tc2 are not all healthy")
 		})
 
 		ginkgo.It("Make a cluster with existing data become a cluster supporting across kubernetes", func() {
@@ -266,8 +233,9 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectNoError(err, "failed to check status")
 		})
 	})
-
 })
+
+func CheckPeerMembersAndClusterStatus()
 
 func GetTCForAcrossKubernetes(ns, name, version, clusterDomain string, joinTC *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
 	tc := fixture.GetTidbCluster(ns, name, version)
