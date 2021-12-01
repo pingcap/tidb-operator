@@ -10,7 +10,7 @@ spec:
   #######################
 
   ## TiDB cluster version
-  version: "v5.2.0"
+  version: "v5.2.1"
 
   ## Time zone of TiDB cluster Pods
   timezone: UTC
@@ -106,6 +106,26 @@ spec:
   #   limits:
   #     cpu: 2000m
   #     memory: 1Gi
+  #   ## The following block overwrites TiDB cluster-level configurations in `spec`
+  #   imagePullPolicy: IfNotPresent
+  #   imagePullSecrets: secretName
+  #   hostNetwork: false
+  #   priorityClassName: system-cluster-critical
+  #   schedulerName: tidb-scheduler
+  #   nodeSelector:
+  #     app.kubernetes.io/component: discovery
+  #   annotations:
+  #     node.kubernetes.io/instance-type: some-vm-type
+  #   labels: {}
+  #   env:
+  #     - name: MY_ENV_1
+  #       value: value1
+  #   affinity: {}
+  #   tolerations:
+  #     - effect: NoSchedule
+  #       key: dedicated
+  #       operator: Equal
+  #       value: discovery
 
   ## if true, this tidb cluster is paused and will not be synced by the controller
   # paused: false
@@ -114,6 +134,11 @@ spec:
   ## If specified, the pods will be scheduled by the specified scheduler.
   ## Can be overwritten by component settings.
   schedulerName: tidb-scheduler
+  
+  ## PodManagementPolicy default `OrderedReady` for Pump
+  ## and default `Parallel` for the other components.
+  ## Ref: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#pod-management-policies
+  # podManagementPolicy: Parallel
 
   ## Affinity for pod scheduling, will be overwritten by each cluster component's specific affinity setting
   ## Can refer to PD/TiDB/TiKV affinity settings, and ensure only cluster-scope general settings here
@@ -190,7 +215,7 @@ spec:
     #############################
 
     ## The following block overwrites TiDB cluster-level configurations in `spec`
-    # version: "v5.2.0"
+    # version: "v5.2.1"
     # imagePullPolicy: IfNotPresent
     # imagePullSecrets:
     # - name: secretName
@@ -377,7 +402,7 @@ spec:
     ###############################
 
     ## The following block overwrites TiDB cluster-level configurations in `spec`
-    # version: "v5.2.0"
+    # version: "v5.2.1"
     # imagePullPolicy: IfNotPresent
     # imagePullSecrets:
     # - name: secretName
@@ -583,7 +608,7 @@ spec:
     ###############################
 
     ## The following block overwrites TiDB cluster-level configurations in `spec`
-    # version: "v5.2.0"
+    # version: "v5.2.1"
     # imagePullPolicy: IfNotPresent
     # imagePullSecrets:
     # - name: secretName
@@ -667,9 +692,23 @@ spec:
 
     ## if enabled, the RocksDB log will be shown in a separate sidecar container
     separateRocksDBLog: true
+    ## rocksDBLogVolumeName is only applicable when separateRocksDBLog is enabled.
+    ## if separateRocksDBLog is enabled, rocksDBLogVolumeName can be set or not.
+    ## if rocksDBLogVolumeName is not set, the rocksdb log is saved in the PV of TiKV data, which may increase the IO pressure of the data disk.
+    ## if rocksDBLogVolumeName is set, rocksDBLogVolumeName should be defined in storageVolumes or additionalVolumes to use another PV.
+    ## you may need to change the `rocksdb.info-log-dir` to save the logs in the separate PV.
+    ## Ref: https://github.com/tikv/tikv/blob/master/etc/config-template.toml
+    # rocksDBLogVolumeName: ""
 
     ## if enabled, the Raft log will be shown in a separate sidecar container
     separateRaftLog: true
+    ## raftLogVolumeName is only applicable when separateRaftLog is enabled.
+    ## if separateRaftLog is enabled, raftLogVolumeName can be set or not.
+    ## if raftLogVolumeName is not set, the separated raftdb log is saved in the PV of TiKV data, which may increase the IO pressure of the data disk.
+    ## if raftLogVolumeName is set, raftLogVolumeName should be defined in storageVolumes or additionalVolumes to use another PV.
+    ## you may need to change the `raftdb.info-log-dir` to save the logs in the separate PV.
+    ## Ref: https://github.com/tikv/tikv/blob/master/etc/config-template.toml
+    # raftLogVolumeName: ""
 
     ## configures RocksDB/Raft log sidecar container resource requirements
     # logTailer:
@@ -750,7 +789,7 @@ spec:
   ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/deploy-tidb-binlog/#deploy-pump
   # pump:
   #   baseImage: pingcap/tidb-binlog
-  #   version: "v5.2.0"
+  #   version: "v5.2.1"
   #   replicas: 1
   #   storageClassName: local-storage
   #   requests:
@@ -792,7 +831,7 @@ spec:
   ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/deploy-ticdc/
   # ticdc:
   #   baseImage: pingcap/ticdc
-  #   version: "v5.2.0"
+  #   version: "v5.2.1"
   #   replicas: 3
   #   storageClassName: local-storage
   #   requests:
@@ -840,7 +879,7 @@ spec:
   #   # Basic TiFlash Configuration #
   #   ###############################
   #   baseImage: pingcap/tiflash
-  #   version: "v5.2.0"
+  #   version: "v5.2.1"
   #   replicas: 1
   #   # limits:
   #   #   cpu: 2000m

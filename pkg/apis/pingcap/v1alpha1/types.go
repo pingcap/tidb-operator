@@ -39,6 +39,11 @@ const (
 	DMWorkerStateBound string = "bound"
 	// DMWorkerStateOffline represents status of offline of dm-worker
 	DMWorkerStateOffline string = "offline"
+
+	// PumpStateOnline represents status of online of Pump
+	PumpStateOnline string = "online"
+	// PumpStateOffline represents status of offline of Pump
+	PumpStateOffline string = "offline"
 )
 
 // MemberType represents member type
@@ -273,6 +278,10 @@ type TidbClusterSpec struct {
 	// +optional
 	StatefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType `json:"statefulSetUpdateStrategy,omitempty"`
 
+	// PodManagementPolicy of TiDB cluster StatefulSets
+	// +optional
+	PodManagementPolicy apps.PodManagementPolicyType `json:"podManagementPolicy,omitempty"`
+
 	// PodSecurityContext of the component
 	// +optional
 	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
@@ -338,6 +347,7 @@ const (
 // +k8s:openapi-gen=true
 // DiscoverySpec contains details of Discovery members
 type DiscoverySpec struct {
+	*ComponentSpec              `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
 }
 
@@ -448,6 +458,14 @@ type TiKVSpec struct {
 	// Optional: Defaults to false
 	// +optional
 	SeparateRaftLog *bool `json:"separateRaftLog,omitempty"`
+
+	// Optional volume name configuration for rocksdb log.
+	// +optional
+	RocksDBLogVolumeName string `json:"rocksDBLogVolumeName,omitempty"`
+
+	// Optional volume name configuration for raft log.
+	// +optional
+	RaftLogVolumeName string `json:"raftLogVolumeName,omitempty"`
 
 	// LogTailer is the configurations of the log tailers for TiKV
 	// +optional
@@ -909,6 +927,10 @@ type ComponentSpec struct {
 	// Template.
 	// +optional
 	StatefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType `json:"statefulSetUpdateStrategy,omitempty"`
+
+	// PodManagementPolicy of TiDB cluster StatefulSets
+	// +optional
+	PodManagementPolicy apps.PodManagementPolicyType `json:"podManagementPolicy,omitempty"`
 
 	// TopologySpreadConstraints describes how a group of pods ought to spread across topology
 	// domains. Scheduler will schedule pods in a way which abides by the constraints.
@@ -1805,6 +1827,7 @@ type DMClusterList struct {
 // +k8s:openapi-gen=true
 // DMDiscoverySpec contains details of Discovery members for dm
 type DMDiscoverySpec struct {
+	*ComponentSpec              `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
 
 	// (Deprecated) Address indicates the existed TiDB discovery address

@@ -27,9 +27,11 @@ import (
 )
 
 func updateConfigMap(old, new *corev1.ConfigMap) (bool, error) {
+	dataEqual := true
+
+	// check config
 	tomlField := []string{"config-file" /*pd,tikv,tidb */, "pump-config", "config_templ.toml" /*tiflash*/, "proxy_templ.toml" /*tiflash*/}
 	yamlField := []string{"prometheus-config", "prometheus.yml" /*prometheus*/}
-	dataEqual := true
 
 	for _, k := range tomlField {
 		oldData, oldOK := old.Data[k]
@@ -79,6 +81,18 @@ func updateConfigMap(old, new *corev1.ConfigMap) (bool, error) {
 		if reflect.DeepEqual(m1, m2) {
 			new.Data[k] = oldData
 		} else {
+			dataEqual = false
+		}
+	}
+
+	// check startup script
+	field := "startup-script"
+	oldScript, oldExist := old.Data[field]
+	newScript, newExist := new.Data[field]
+	if oldExist != newExist {
+		dataEqual = false
+	} else if oldExist && newExist {
+		if oldScript != newScript {
 			dataEqual = false
 		}
 	}

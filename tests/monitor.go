@@ -206,7 +206,7 @@ func checkPrometheusCommon(name, namespace string, fw portforward.PortForward, e
 			return false, nil
 		}
 		if data.Status != "success" || len(data.Data.ActiveTargets) < expectActiveTargets {
-			log.Logf("ERROR: monitor[%s/%s]'s prometheus targets error %s", namespace, name, prometheusAddr)
+			log.Logf("ERROR: monitor[%s/%s]'s prometheus targets error %s, ActiveTargets:%d", namespace, name, prometheusAddr, data.Data.ActiveTargets)
 			return false, nil
 		}
 		for _, target := range data.Data.ActiveTargets {
