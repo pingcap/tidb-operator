@@ -22,6 +22,7 @@ cd $ROOT
 
 hack/update-codegen.sh
 hack/update-openapi-spec.sh
-hack/update-crd-groups.sh
+hack/update-crd.sh
+hack/update-api-references.sh
 hack/update-EOF.sh
 hack/update-goimports.sh

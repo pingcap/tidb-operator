@@ -2200,6 +2200,7 @@ TidbMonitorSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>monitored TiDB cluster info</p>
 </td>
 </tr>
@@ -3478,7 +3479,8 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<p>TimeStarted is the time at which the backup was started.</p>
+<p>TimeStarted is the time at which the backup was started.
+TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/86811">https://github.com/kubernetes/kubernetes/issues/86811</a></p>
 </td>
 </tr>
 <tr>
@@ -3491,7 +3493,8 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<p>TimeCompleted is the time at which the backup was completed.</p>
+<p>TimeCompleted is the time at which the backup was completed.
+TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/86811">https://github.com/kubernetes/kubernetes/issues/86811</a></p>
 </td>
 </tr>
 <tr>
@@ -3893,6 +3896,9 @@ github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
+<p>
+(Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -5654,6 +5660,16 @@ Kubernetes core/v1.ResourceRequirements
 </tr>
 </tbody>
 </table>
+<h3 id="emptystruct">EmptyStruct</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pdfailuremember">PDFailureMember</a>, 
+<a href="#unjoinedmember">UnjoinedMember</a>)
+</p>
+<p>
+<p>EmptyStruct is defined to delight controller-gen tools
+Only named struct is allowed by controller-gen</p>
+</p>
 <h3 id="experimental">Experimental</h3>
 <p>
 (<em>Appears on:</em>
@@ -6669,8 +6685,8 @@ map[string]string
 <td>
 <code>tls</code></br>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#ingresstls-v1beta1-extensions">
-[]Kubernetes extensions/v1beta1.IngressTLS
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#ingresstls-v1-networking">
+[]Kubernetes networking/v1.IngressTLS
 </a>
 </em>
 </td>
@@ -8492,6 +8508,9 @@ github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
+<p>
+(Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -8546,7 +8565,9 @@ k8s.io/apimachinery/pkg/types.UID
 <td>
 <code>pvcUIDSet</code></br>
 <em>
-map[k8s.io/apimachinery/pkg/types.UID]struct{}
+<a href="#emptystruct">
+map[k8s.io/apimachinery/pkg/types.UID]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.EmptyStruct
+</a>
 </em>
 </td>
 <td>
@@ -8773,7 +8794,8 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<p>Last time the health transitioned from one to another.</p>
+<p>Last time the health transitioned from one to another.
+TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/86811">https://github.com/kubernetes/kubernetes/issues/86811</a></p>
 </td>
 </tr>
 </tbody>
@@ -14095,6 +14117,9 @@ github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
+<p>
+(Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -14261,6 +14286,9 @@ ServiceSpec
 </em>
 </td>
 <td>
+<p>
+(Members of <code>ServiceSpec</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 <tr>
@@ -14781,6 +14809,19 @@ kubectl create secret generic <clusterName>-tidb-client-secret &ndash;namespace=
 4. Set Enabled to <code>true</code>.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>disableClientAuthn</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DisableClientAuthn will skip client authentication from the TiDB server.
+Optional: defaults to false</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tiflashcommonconfigwraper">TiFlashCommonConfigWraper</h3>
@@ -14806,6 +14847,9 @@ github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
+<p>
+(Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -14916,6 +14960,9 @@ github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
+<p>
+(Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -16090,6 +16137,9 @@ github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </em>
 </td>
 <td>
+<p>
+(Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -19558,7 +19608,8 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<p>Last time the health transitioned from one to another.</p>
+<p>Last time the health transitioned from one to another.
+TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/86811">https://github.com/kubernetes/kubernetes/issues/86811</a></p>
 </td>
 </tr>
 </tbody>
@@ -21110,6 +21161,7 @@ bool
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>monitored TiDB cluster info</p>
 </td>
 </tr>
@@ -21729,7 +21781,9 @@ k8s.io/apimachinery/pkg/types.UID
 <td>
 <code>pvcUIDSet</code></br>
 <em>
-map[k8s.io/apimachinery/pkg/types.UID]struct{}
+<a href="#emptystruct">
+map[k8s.io/apimachinery/pkg/types.UID]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.EmptyStruct
+</a>
 </em>
 </td>
 <td>

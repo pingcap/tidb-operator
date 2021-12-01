@@ -26,8 +26,10 @@ import (
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// +k8s:openapi-gen=true
 // TidbMonitor encode the spec and status of the monitoring component of a TiDB cluster
+//
+// +k8s:openapi-gen=true
+// +kubebuilder:resource:shortName="tm"
 type TidbMonitor struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
@@ -38,7 +40,7 @@ type TidbMonitor struct {
 
 	// +k8s:openapi-gen=false
 	// Most recently observed status of the TidbMonitor
-	Status TidbMonitorStatus `json:"status"`
+	Status TidbMonitorStatus `json:"status,omitempty"`
 }
 
 type DMMonitorSpec struct {
@@ -49,8 +51,9 @@ type DMMonitorSpec struct {
 // +k8s:openapi-gen=true
 // TidbMonitor spec encode the desired state of tidb monitoring component
 type TidbMonitorSpec struct {
+	// +optional
 	// monitored TiDB cluster info
-	Clusters []TidbClusterRef `json:"clusters"`
+	Clusters []TidbClusterRef `json:"clusters,omitempty"`
 
 	// Prometheus spec
 	Prometheus PrometheusSpec `json:"prometheus"`

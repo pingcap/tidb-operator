@@ -31,6 +31,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
+	networkingv1 "k8s.io/api/networking/v1"
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -139,7 +140,7 @@ func getGrafanaEnvs() []core.EnvVar {
 	}
 }
 
-func getAlertManagerRulesVersion(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) string {
+func getAlertManagerRulesVersion(monitor *v1alpha1.TidbMonitor) string {
 	alertManagerRulesVersion := fmt.Sprintf("tidb:%s", monitor.Spec.Initializer.Version)
 	if monitor.Spec.AlertManagerRulesVersion != nil {
 		alertManagerRulesVersion = fmt.Sprintf("tidb:%s", *monitor.Spec.AlertManagerRulesVersion)
@@ -310,14 +311,6 @@ func getMonitorInitContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbClu
 		Image: fmt.Sprintf("%s:%s", monitor.Spec.Initializer.BaseImage, monitor.Spec.Initializer.Version),
 		Env: []core.EnvVar{
 			{
-				Name:  "TIDB_CLUSTER_NAME",
-				Value: tc.Name,
-			},
-			{
-				Name:  "TIDB_ENABLE_BINLOG",
-				Value: strconv.FormatBool(tc.IsTiDBBinlogEnabled()),
-			},
-			{
 				Name:  "PROM_CONFIG_PATH",
 				Value: "/prometheus-rules",
 			},
@@ -326,20 +319,12 @@ func getMonitorInitContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbClu
 				Value: "/data",
 			},
 			{
-				Name:  "TIDB_VERSION",
-				Value: getAlertManagerRulesVersion(tc, monitor),
-			},
-			{
 				Name:  "GF_TIDB_PROMETHEUS_URL",
 				Value: "http://127.0.0.1:9090",
 			},
 			{
-				Name:  "TIDB_CLUSTER_NAMESPACE",
-				Value: tc.Namespace,
-			},
-			{
-				Name:  "TZ",
-				Value: tc.Timezone(),
+				Name:  "TIDB_VERSION",
+				Value: getAlertManagerRulesVersion(monitor),
 			},
 		},
 		Command: command,
@@ -355,6 +340,26 @@ func getMonitorInitContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbClu
 			},
 		},
 		Resources: controller.ContainerResource(monitor.Spec.Initializer.ResourceRequirements),
+	}
+	if tc != nil {
+		container.Env = append(container.Env, []core.EnvVar{
+			{
+				Name:  "TZ",
+				Value: tc.Timezone(),
+			},
+			{
+				Name:  "TIDB_ENABLE_BINLOG",
+				Value: strconv.FormatBool(tc.IsTiDBBinlogEnabled()),
+			},
+			{
+				Name:  "TIDB_CLUSTER_NAME",
+				Value: tc.Name,
+			},
+			{
+				Name:  "TIDB_CLUSTER_NAMESPACE",
+				Value: tc.Namespace,
+			},
+		}...)
 	}
 
 	if monitor.Spec.Initializer.ImagePullPolicy != nil {
@@ -384,7 +389,7 @@ func getMonitorInitContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbClu
 	return container
 }
 
-func getMonitorDMInitContainer(monitor *v1alpha1.TidbMonitor, dc *v1alpha1.DMCluster, tc *v1alpha1.TidbCluster) core.Container {
+func getMonitorDMInitContainer(monitor *v1alpha1.TidbMonitor, dc *v1alpha1.DMCluster) core.Container {
 	// TODO: Support dm in reloader. Currently dm cluster shares the same persistent rules dir with tidb cluster
 	command := getInitCommand(monitor)
 	container := core.Container{
@@ -405,7 +410,7 @@ func getMonitorDMInitContainer(monitor *v1alpha1.TidbMonitor, dc *v1alpha1.DMClu
 			},
 			{
 				Name:  "DM_VERSION",
-				Value: getAlertManagerRulesVersion(tc, monitor),
+				Value: getAlertManagerRulesVersion(monitor),
 			},
 			{
 				Name:  "GF_DM_PROMETHEUS_URL",
@@ -479,10 +484,7 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 			},
 		},
 		Env: []core.EnvVar{
-			{
-				Name:  "TZ",
-				Value: tc.Timezone(),
-			},
+
 			{
 				Name: "POD_NAME",
 				ValueFrom: &core.EnvVarSource{
@@ -526,6 +528,15 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 				ReadOnly:  true,
 			},
 		},
+	}
+
+	if tc != nil {
+		c.Env = append(c.Env, []core.EnvVar{
+			{
+				Name:  "TZ",
+				Value: tc.Timezone(),
+			},
+		}...)
 	}
 
 	if len(monitor.Spec.Prometheus.LogLevel) > 0 {
@@ -633,10 +644,6 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 				Name:      "GF_SECURITY_ADMIN_PASSWORD",
 				ValueFrom: adminPasswordFrom,
 			},
-			{
-				Name:  "TZ",
-				Value: tc.Timezone(),
-			},
 		},
 		VolumeMounts: []core.VolumeMount{
 			{
@@ -659,6 +666,14 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 				ReadOnly:  false,
 			},
 		},
+	}
+	if tc != nil {
+		c.Env = append(c.Env, []core.EnvVar{
+			{
+				Name:  "TZ",
+				Value: tc.Timezone(),
+			},
+		}...)
 	}
 
 	var probeHandler core.Handler
@@ -781,7 +796,7 @@ func getMonitorReloaderContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.Tid
 		Command: []string{
 			"/bin/reload",
 			"--root-store-path=/data",
-			fmt.Sprintf("--sub-store-path=%s", getAlertManagerRulesVersion(tc, monitor)),
+			fmt.Sprintf("--sub-store-path=%s", getAlertManagerRulesVersion(monitor)),
 			"--watch-path=/prometheus-rules/rules",
 			"--prometheus-url=http://127.0.0.1:9090",
 		},
@@ -804,12 +819,14 @@ func getMonitorReloaderContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.Tid
 			},
 		},
 		Resources: controller.ContainerResource(monitor.Spec.Reloader.ResourceRequirements),
-		Env: []core.EnvVar{
+	}
+	if tc != nil {
+		c.Env = append(c.Env, []core.EnvVar{
 			{
 				Name:  "TZ",
 				Value: tc.Timezone(),
 			},
-		},
+		}...)
 	}
 	if monitor.Spec.Reloader.ImagePullPolicy != nil {
 		c.ImagePullPolicy = *monitor.Spec.Reloader.ImagePullPolicy
@@ -1058,19 +1075,65 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 	return services
 }
 
-func getPrometheusIngress(monitor *v1alpha1.TidbMonitor) *extensionsv1beta1.Ingress {
-	return getIngress(monitor, monitor.Spec.Prometheus.Ingress, PrometheusName(monitor.Name, 0), 9090)
+func getIngress(monitor *v1alpha1.TidbMonitor, ingressSpec *v1alpha1.IngressSpec, svcName string, port int) *networkingv1.Ingress {
+	monitorLabel := buildTidbMonitorLabel(monitor.Name)
+	backend := networkingv1.IngressBackend{
+		Service: &networkingv1.IngressServiceBackend{
+			Name: svcName,
+			Port: networkingv1.ServiceBackendPort{
+				Number: int32(port),
+			},
+		},
+	}
+
+	ingress := &networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            svcName,
+			Namespace:       monitor.Namespace,
+			Labels:          monitorLabel,
+			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
+			Annotations:     ingressSpec.Annotations,
+		},
+		Spec: networkingv1.IngressSpec{
+			TLS:   ingressSpec.TLS,
+			Rules: []networkingv1.IngressRule{},
+		},
+	}
+
+	pathType := networkingv1.PathTypeImplementationSpecific
+
+	for _, host := range ingressSpec.Hosts {
+		rule := networkingv1.IngressRule{
+			Host: host,
+			IngressRuleValue: networkingv1.IngressRuleValue{
+				HTTP: &networkingv1.HTTPIngressRuleValue{
+					Paths: []networkingv1.HTTPIngressPath{
+						{
+							PathType: &pathType,
+							Path:     "/",
+							Backend:  backend,
+						},
+					},
+				},
+			},
+		}
+		ingress.Spec.Rules = append(ingress.Spec.Rules, rule)
+	}
+	return ingress
 }
 
-func getGrafanaIngress(monitor *v1alpha1.TidbMonitor) *extensionsv1beta1.Ingress {
-	return getIngress(monitor, monitor.Spec.Grafana.Ingress, GrafanaName(monitor.Name, 0), 3000)
-}
-
-func getIngress(monitor *v1alpha1.TidbMonitor, ingressSpec *v1alpha1.IngressSpec, svcName string, port int) *extensionsv1beta1.Ingress {
+func getIngressV1beta1(monitor *v1alpha1.TidbMonitor, ingressSpec *v1alpha1.IngressSpec, svcName string, port int) *extensionsv1beta1.Ingress {
 	monitorLabel := buildTidbMonitorLabel(monitor.Name)
 	backend := extensionsv1beta1.IngressBackend{
 		ServiceName: svcName,
 		ServicePort: intstr.FromInt(port),
+	}
+	tlslist := []extensionsv1beta1.IngressTLS{}
+	for _, tls := range ingressSpec.TLS {
+		tlslist = append(tlslist, extensionsv1beta1.IngressTLS{
+			Hosts:      tls.Hosts,
+			SecretName: tls.SecretName,
+		})
 	}
 
 	ingress := &extensionsv1beta1.Ingress{
@@ -1082,7 +1145,7 @@ func getIngress(monitor *v1alpha1.TidbMonitor, ingressSpec *v1alpha1.IngressSpec
 			Annotations:     ingressSpec.Annotations,
 		},
 		Spec: extensionsv1beta1.IngressSpec{
-			TLS:   ingressSpec.TLS,
+			TLS:   tlslist,
 			Rules: []extensionsv1beta1.IngressRule{},
 		},
 	}
@@ -1149,6 +1212,7 @@ func defaultTidbMonitor(monitor *v1alpha1.TidbMonitor) {
 	if monitor.Spec.PVReclaimPolicy == nil {
 		monitor.Spec.PVReclaimPolicy = &retainPVP
 	}
+
 }
 
 func getMonitorStatefulSet(sa *core.ServiceAccount, secret *core.Secret, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, shard int32) (*apps.StatefulSet, error) {
@@ -1156,7 +1220,7 @@ func getMonitorStatefulSet(sa *core.ServiceAccount, secret *core.Secret, monitor
 	initContainer := getMonitorInitContainer(monitor, tc)
 	statefulSet.Spec.Template.Spec.InitContainers = append(statefulSet.Spec.Template.Spec.InitContainers, initContainer)
 	if dc != nil {
-		dmInitContainer := getMonitorDMInitContainer(monitor, dc, tc)
+		dmInitContainer := getMonitorDMInitContainer(monitor, dc)
 		statefulSet.Spec.Template.Spec.InitContainers = append(statefulSet.Spec.Template.Spec.InitContainers, dmInitContainer)
 	}
 	prometheusContainer := getMonitorPrometheusContainer(monitor, tc, shard)

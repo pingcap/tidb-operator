@@ -781,9 +781,9 @@ func (m *masterMemberManager) collectUnjoinedMembers(dc *v1alpha1.DMCluster, set
 			if err != nil {
 				return fmt.Errorf("collectUnjoinedMembers: failed to get pvcs for pod %s/%s, error: %s", ns, pod.Name, err)
 			}
-			pvcUIDSet := make(map[types.UID]struct{})
+			pvcUIDSet := make(map[types.UID]v1alpha1.EmptyStruct)
 			for _, pvc := range pvcs {
-				pvcUIDSet[pvc.UID] = struct{}{}
+				pvcUIDSet[pvc.UID] = v1alpha1.EmptyStruct{}
 			}
 			dc.Status.Master.UnjoinedMembers[pod.Name] = v1alpha1.UnjoinedMember{
 				PodName:   pod.Name,
