@@ -15,10 +15,12 @@ package member
 
 import (
 	"fmt"
+	"reflect"
 
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
+	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	corelisters "k8s.io/client-go/listers/core/v1"
@@ -26,6 +28,7 @@ import (
 
 func updateConfigMap(old, new *corev1.ConfigMap) (bool, error) {
 	tomlField := []string{"config-file" /*pd,tikv,tidb */, "pump-config", "config_templ.toml" /*tiflash*/, "proxy_templ.toml" /*tiflash*/}
+	yamlField := []string{"prometheus-config", "prometheus.yml" /*prometheus*/}
 	dataEqual := true
 
 	for _, k := range tomlField {
@@ -46,6 +49,34 @@ func updateConfigMap(old, new *corev1.ConfigMap) (bool, error) {
 		}
 
 		if equal {
+			new.Data[k] = oldData
+		} else {
+			dataEqual = false
+		}
+	}
+
+	for _, k := range yamlField {
+		oldData, oldOK := old.Data[k]
+		newData, newOK := new.Data[k]
+
+		if oldOK != newOK {
+			dataEqual = false
+		}
+
+		if !oldOK || !newOK {
+			continue
+		}
+		m1 := map[string]interface{}{}
+		m2 := map[string]interface{}{}
+		err := yaml.Unmarshal([]byte(oldData), &m1)
+		if err != nil {
+			dataEqual = false
+		}
+		err = yaml.Unmarshal([]byte(newData), &m2)
+		if err != nil {
+			dataEqual = false
+		}
+		if reflect.DeepEqual(m1, m2) {
 			new.Data[k] = oldData
 		} else {
 			dataEqual = false

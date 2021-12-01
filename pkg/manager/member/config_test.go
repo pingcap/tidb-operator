@@ -135,6 +135,22 @@ func TestUpdateConfigMap(t *testing.T) {
 			equal:      false,
 		},
 		{
+			name: "add some yaml keys",
+			old: &corev1.ConfigMap{
+				Data: map[string]string{
+					"dashboard-config":  "foo",
+					"prometheus-config": "a = \"b\"",
+				},
+			},
+			new: &corev1.ConfigMap{
+				Data: map[string]string{
+					"prometheus.yml": "# comment \nc = \"d\"",
+				},
+			},
+			updateKeys: []string{"prometheus.yml"},
+			equal:      false,
+		},
+		{
 			name: "the data of old and new configmaps are the same",
 			old: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
