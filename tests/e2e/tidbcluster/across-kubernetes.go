@@ -37,6 +37,7 @@ import (
 	"github.com/onsi/ginkgo"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
@@ -165,7 +166,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 
 			ginkgo.By("Scale in cluster-3, and delete the cluster-3")
 
-			_ = cluster3Cli.Get(context.TODO(), tc3.Namespace, tc3)
+			_ = cluster3Cli.Get(context.TODO(), types.NamespacedName{Namespace: tc3.Namespace, Name: tc3.Name}, tc3)
 			framework.ExpectNoError(controller.GuaranteedUpdate(cluster3Cli, tc3, func() error {
 				tc3.Spec.PD.Replicas = 0
 				tc3.Spec.TiDB.Replicas = 0
@@ -239,9 +240,10 @@ func CheckIfSQLWorkingAsExpected() error {
 }
 
 func CheckPeerMembersAndClusterStatus(clusterCli ctrlCli.Client, tc *v1alpha1.TidbCluster, expectNonExistedTc *v1alpha1.TidbCluster) error {
-	clusterCli.Get(context.TODO(), tc.Namespace, tc)
-	if tc.Status.Phase != "Normal" {
-		return fmt.Errorf("the tc %s is not healthy", tc.Metadata.Name)
+	clusterCli.Get(context.TODO(), types.NamespacedName{Namespace: tc.Namespace, Name: tc.Name}, tc)
+
+	if tc.Status.PD.Phase != v1alpha1.NormalPhase || tc.Status.TiKV.Phase != v1alpha1.NormalPhase || tc.Status.TiDB.Phase != v1alpha1.NormalPhase || tc.Status.TiFlash.Phase != v1alpha1.NormalPhase {
+		return fmt.Errorf("the tc %s is not healthy", tc.Name)
 	}
 
 	for _, peerMember := range tc.Status.PD.PeerMembers {
@@ -250,7 +252,7 @@ func CheckPeerMembersAndClusterStatus(clusterCli ctrlCli.Client, tc *v1alpha1.Ti
 		}
 	}
 	for _, peerStore := range tc.Status.TiKV.PeerStores {
-		if strings.Contains(peerStore.Name, expectNonExistedTc.Name) {
+		if strings.Contains(peerStore.PodName, expectNonExistedTc.Name) {
 			return fmt.Errorf("the TiKV peer stores contain the store belonging to the deleted tc")
 		}
 	}
