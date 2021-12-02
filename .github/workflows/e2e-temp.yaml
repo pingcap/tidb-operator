@@ -140,6 +140,8 @@ jobs:
           kubectl create ns pingcap
         working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}
 
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
       - name: e2e(${{ matrix.job }})
         run: |
           SKIP_BUILD=y SKIP_IMAGE_BUILD=y SKIP_UP=y DOCKER_REPO=ghcr.io/handlerww/tidb-operator IMAGE_TAG=${{ github.sha }} ./hack/e2e.sh -- --ginkgo.focus='${{ matrix.job }}'
