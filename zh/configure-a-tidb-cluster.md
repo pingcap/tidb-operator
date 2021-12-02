@@ -220,7 +220,7 @@ spec:
       storageClassName: local-storage
 ```
 
-TiFlash 支持挂载多个 PV，如果要为 TiFlash 配置多个 PV，可以在 `tiflash.storageClaims` 下面配置多项，每一项可以分别配置 `storage reqeust` 和 `storageClassName`，例如：
+TiFlash 支持挂载多个 PV，如果要为 TiFlash 配置多个 PV，可以在 `tiflash.storageClaims` 下面配置多项，每一项可以分别配置 `storage request` 和 `storageClassName`，例如：
 
 ```yaml
   tiflash:

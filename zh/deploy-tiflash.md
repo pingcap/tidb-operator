@@ -53,7 +53,7 @@ spec:
     baseImage: pingcap/tiflash-enterprise
 ```
 
-TiFlash 支持挂载多个 PV，如果要为 TiFlash 配置多个 PV，可以在 `tiflash.storageClaims` 下面配置多项，每一项可以分别配置 `storage reqeust` 和 `storageClassName`，例如：
+TiFlash 支持挂载多个 PV，如果要为 TiFlash 配置多个 PV，可以在 `tiflash.storageClaims` 下面配置多项，每一项可以分别配置 `storage request` 和 `storageClassName`，例如：
 
 ```yaml
   tiflash:
@@ -89,7 +89,7 @@ TiDB Operator 通过创建 [StatefulSet](https://kubernetes.io/docs/concepts/wor
 1. 调整同步到 TiFlash 集群中的数据表的副本数。
 
     需要将集群中所有同步到 TiFlash 的数据表的副本数都设置为 0，才能完全移除 TiFlash。
-    
+
     1. 参考[访问 TiDB 集群](access-tidb.md)的步骤连接到 TiDB 服务。
 
     2. 使用以下命令，调整同步到 TiFlash 集群中的数据表的副本数：
