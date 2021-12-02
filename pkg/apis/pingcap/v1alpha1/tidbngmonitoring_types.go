@@ -14,20 +14,22 @@
 package v1alpha1
 
 import (
+	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// TidbMonitor contains the spec and status of tidb ng monitor
+// TiDBNGMonitoring contains the spec and status of tidb ng monitor
 //
+// +genclient
+// +genclient:noStatus
 // +k8s:openapi-gen=true
-// +kubebuilder:resource:shortName="tnm"
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:resource:shortName="tngm"
 type TiDBNGMonitoring struct {
 	metav1.TypeMeta `json:",inline"`
+
 	// +k8s:openapi-gen=false
 	metav1.ObjectMeta `json:"metadata"`
 
@@ -40,8 +42,13 @@ type TiDBNGMonitoring struct {
 	Status TiDBNGMonitoringStatus `json:"status,omitempty"`
 }
 
+// TiDBNGMonitoringList is TiDBNGMonitoring list
+//
+// +k8s:openapi-gen=true
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type TiDBNGMonitoringList struct {
 	metav1.TypeMeta `json:",inline"`
+
 	// +k8s:openapi-gen=false
 	metav1.ListMeta `json:"metadata"`
 
@@ -59,10 +66,19 @@ type TiDBNGMonitoringSpec struct {
 	// Clusters reference TiDB cluster
 	//
 	// +kubebuilder:validation:MaxItems=1
+	// +kubebuilder:validation:MinItems=1
 	Clusters []TidbClusterRef `json:"clusters"`
 
 	// Paused pause controller if it is true
 	Paused bool `json:"paused,omitempty"`
+
+	// Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster
+	//
+	// +kubebuilder:default=Retain
+	PVReclaimPolicy *corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
+
+	// NGMonitoring is spec of ng monitoring
+	NGMonitoring NGMonitoringSpec `json:"ngMonitoring"`
 }
 
 // TiDBNGMonitoringStatus is status of tidb ng monitoring
@@ -81,11 +97,20 @@ type NGMonitoringSpec struct {
 	// Base image of the component, image tag is now allowed during validation
 	//
 	// +kubebuilder:default=pingcap/ng-monitoring
-	BaseImage string `json:"baseImage"`
+	BaseImage string `json:"baseImage,omitempty"`
 
 	// StorageClassName is the persistent volume for ng monitoring.
 	// Defaults to Kubernetes default storage class.
 	StorageClassName *string `json:"storageClassName,omitempty"`
+
+	// StorageVolumes configure additional storage for NG Monitoring pods.
+	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
+
+	// Config is the configuration of ng monitoring
+	//
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:validation:XPreserveUnknownFields
+	Config *config.GenericConfig `json:"config,omitempty"`
 }
 
 // NGMonitoringStatus is latest status of ng monitoring

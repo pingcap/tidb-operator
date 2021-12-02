@@ -57,6 +57,9 @@ var (
 
 	// tidbClusterAutoScalerKind cotnains the schema.GroupVersionKind for TidbClusterAutoScaler controller type.
 	tidbClusterAutoScalerKind = v1alpha1.SchemeGroupVersion.WithKind("TidbClusterAutoScaler")
+
+	// tidbNGMonitoringKind cotnains the schema.GroupVersionKind for TiDBNGMonitoring controller type.
+	tidbNGMonitoringKind = v1alpha1.SchemeGroupVersion.WithKind("TiDBNGMonitoring")
 )
 
 // RequeueError is used to requeue the item, this error type should't be considered as a real error
@@ -195,6 +198,19 @@ func GetTiDBClusterAutoScalerOwnerRef(tac *v1alpha1.TidbClusterAutoScaler) metav
 	}
 }
 
+func GetTiDBNGMonitoringOwnerRef(tngm *v1alpha1.TiDBNGMonitoring) metav1.OwnerReference {
+	controller := true
+	blockOwnerDeletion := true
+	return metav1.OwnerReference{
+		APIVersion:         tidbNGMonitoringKind.GroupVersion().String(),
+		Kind:               tidbNGMonitoringKind.Kind,
+		Name:               tngm.GetName(),
+		UID:                tngm.GetUID(),
+		Controller:         &controller,
+		BlockOwnerDeletion: &blockOwnerDeletion,
+	}
+}
+
 // GetServiceType returns member's service type
 func GetServiceType(services []v1alpha1.Service, serviceName string) corev1.ServiceType {
 	for _, svc := range services {
@@ -327,6 +343,10 @@ func DMWorkerMemberName(clusterName string) string {
 // DMWorkerPeerMemberName returns dm-worker peer service name
 func DMWorkerPeerMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-dm-worker-peer", clusterName)
+}
+
+func NGMonitoringName(monitorName string) string {
+	return fmt.Sprintf("%s-ng-monitoring", monitorName)
 }
 
 // AnnProm adds annotations for prometheus scraping metrics

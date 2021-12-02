@@ -62,6 +62,8 @@ func ValidateDMCluster(dc *v1alpha1.DMCluster) field.ErrorList {
 	return allErrs
 }
 
+// FIXME: TiDBNGMonitoring
+
 func ValidateTidbMonitor(monitor *v1alpha1.TidbMonitor) field.ErrorList {
 	allErrs := field.ErrorList{}
 	// validate monitor service

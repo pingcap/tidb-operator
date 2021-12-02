@@ -216,6 +216,7 @@ type Dependencies struct {
 	BackupScheduleLister        listers.BackupScheduleLister
 	TiDBInitializerLister       listers.TidbInitializerLister
 	TiDBMonitorLister           listers.TidbMonitorLister
+	TiDBNGMonitoringLister      listers.TiDBNGMonitoringLister
 
 	// Controls
 	Controls
@@ -348,6 +349,7 @@ func newDependencies(
 		BackupScheduleLister:        informerFactory.Pingcap().V1alpha1().BackupSchedules().Lister(),
 		TiDBInitializerLister:       informerFactory.Pingcap().V1alpha1().TidbInitializers().Lister(),
 		TiDBMonitorLister:           informerFactory.Pingcap().V1alpha1().TidbMonitors().Lister(),
+		TiDBNGMonitoringLister:      informerFactory.Pingcap().V1alpha1().TiDBNGMonitorings().Lister(),
 	}, nil
 }
 
