@@ -97,7 +97,7 @@ jobs:
       - name: Get matrix jobs
         id: set-matrix
         run: |
-          echo "::set-output name=matrix::{\"include\":[{\"job\":\"Across Kubernetes\"}]}"
+          echo "::set-output name=matrix::{\"include\":[{\"job\":\"Deploy and delete cluster across kubernetes\"}]}"
   e2e-cases:
     needs: ["image-build"]
     runs-on: ubuntu-latest
