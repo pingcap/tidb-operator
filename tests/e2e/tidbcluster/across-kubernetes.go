@@ -218,7 +218,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			for _, member := range resp.Members {
 				peerURLs := []string{}
 				for _, url := range member.PeerURLs {
-					// url ex: http://cluster-1-pd-0.cluster-1-pd-peer.default.svc:23801
+					// url ex: http://cluster-1-pd-0.cluster-1-pd-peer.default.svc:2380
 					fields := strings.Split(url, ":")
 					fields[1] = fmt.Sprintf("%s.%s", fields[1], cluster1Domain)
 					peerURLs = append(peerURLs, strings.Join(fields, ":"))
