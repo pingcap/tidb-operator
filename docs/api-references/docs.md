@@ -1251,7 +1251,7 @@ RestoreStatus
 </table>
 <h3 id="tidbngmonitoring">TiDBNGMonitoring</h3>
 <p>
-<p>TidbMonitor contains the spec and status of tidb ng monitor</p>
+<p>TiDBNGMonitoring contains the spec and status of tidb ng monitor</p>
 </p>
 <table>
 <thead>
@@ -1345,6 +1345,32 @@ bool
 </td>
 <td>
 <p>Paused pause controller if it is true</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pvReclaimPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#persistentvolumereclaimpolicy-v1-core">
+Kubernetes core/v1.PersistentVolumeReclaimPolicy
+</a>
+</em>
+</td>
+<td>
+<p>Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ngMonitoring</code></br>
+<em>
+<a href="#ngmonitoringspec">
+NGMonitoringSpec
+</a>
+</em>
+</td>
+<td>
+<p>NGMonitoring is spec of ng monitoring</p>
 </td>
 </tr>
 </table>
@@ -4908,6 +4934,18 @@ CrdKind
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>TiDBNGMonitoring</code></br>
+<em>
+<a href="#crdkind">
+CrdKind
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="dmclustercondition">DMClusterCondition</h3>
@@ -8046,6 +8084,10 @@ Kubernetes core/v1.PullPolicy
 </table>
 <h3 id="ngmonitoringspec">NGMonitoringSpec</h3>
 <p>
+(<em>Appears on:</em>
+<a href="#tidbngmonitoringspec">TiDBNGMonitoringSpec</a>)
+</p>
+<p>
 <p>NGMonitoringSpec is spec of ng monitoring</p>
 </p>
 <table>
@@ -8107,6 +8149,30 @@ string
 <td>
 <p>StorageClassName is the persistent volume for ng monitoring.
 Defaults to Kubernetes default storage class.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageVolumes</code></br>
+<em>
+<a href="#storagevolume">
+[]StorageVolume
+</a>
+</em>
+</td>
+<td>
+<p>StorageVolumes configure additional storage for NG Monitoring pods.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>config</code></br>
+<em>
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
+</em>
+</td>
+<td>
+<p>Config is the configuration of ng monitoring</p>
 </td>
 </tr>
 </tbody>
@@ -13014,6 +13080,7 @@ LocalStorageProvider
 <h3 id="storagevolume">StorageVolume</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#ngmonitoringspec">NGMonitoringSpec</a>, 
 <a href="#pdspec">PDSpec</a>, 
 <a href="#ticdcspec">TiCDCSpec</a>, 
 <a href="#tidbspec">TiDBSpec</a>, 
@@ -14521,6 +14588,32 @@ bool
 </td>
 <td>
 <p>Paused pause controller if it is true</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pvReclaimPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#persistentvolumereclaimpolicy-v1-core">
+Kubernetes core/v1.PersistentVolumeReclaimPolicy
+</a>
+</em>
+</td>
+<td>
+<p>Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ngMonitoring</code></br>
+<em>
+<a href="#ngmonitoringspec">
+NGMonitoringSpec
+</a>
+</em>
+</td>
+<td>
+<p>NGMonitoring is spec of ng monitoring</p>
 </td>
 </tr>
 </tbody>
