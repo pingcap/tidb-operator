@@ -166,7 +166,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			ginkgo.By("Scale in cluster-3, and delete the cluster-3")
 
 			_ = cluster3Cli.Get(context.TODO(), tc3)
-			err = controller.GuaranteedUpdate(cluster3Cli, tc3, func() error {
+			framework.ExpectNoError(controller.GuaranteedUpdate(cluster3Cli, tc3, func() error {
 				tc3.Spec.PD.Replicas = 0
 				tc3.Spec.TiDB.Replicas = 0
 				tc3.Spec.TiKV.Replicas = 0
@@ -174,12 +174,10 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 				tc3.Spec.TiCDC.Replicas = 0
 				tc3.Spec.Pump.Replicas = 0
 				return nil
-			})
-			framework.ExpectNoError(err, "failed to scale in cluster 3")
-			err = cluster3Cli.Delete(context.TODO(), tc3)
-			framework.ExpectNoError(err, "failed to delete cluster 3")
-			framework.ExpectNoError(CheckPeerMembersAndClusterStatus(cluster1Cli, tc1), "tc1 are not all healthy")
-			framework.ExpectNoError(CheckPeerMembersAndClusterStatus(cluster2Cli, tc2), "tc2 are not all healthy")
+			}), "failed to scale in cluster 3")
+			framework.ExpectNoError(cluster3Cli.Delete(context.TODO(), tc3), "failed to delete cluster 3")
+			framework.ExpectNoError(CheckPeerMembersAndClusterStatus(cluster1Cli, tc1, tc3), "tc1 are not all healthy")
+			framework.ExpectNoError(CheckPeerMembersAndClusterStatus(cluster2Cli, tc2, tc3), "tc2 are not all healthy")
 		})
 
 		ginkgo.It("Make a cluster with existing data become a cluster supporting across kubernetes", func() {
@@ -240,18 +238,21 @@ func CheckIfSQLWorkingAsExpected() error {
 	return nil
 }
 
-func CheckPeerMembersAndClusterStatus(clusterCli ctrlCli.Client, tc *v1alpha1.TidbCluster) error {
+func CheckPeerMembersAndClusterStatus(clusterCli ctrlCli.Client, tc *v1alpha1.TidbCluster, expectNonExistedTc *v1alpha1.TidbCluster) error {
 	clusterCli.Get(context.TODO(), tc)
 	if tc.Status.Phase != "Normal" {
-		return err
+		return fmt.Errorf("the tc %s is not healthy", tc.Metadata.Name)
 	}
+
 	for _, peerMember := range tc.Status.PD.PeerMembers {
-		// if tc3 member in peerMember
-		return err
+		if strings.Contains(peerMember.Name, expectNonExistedTc.Name) {
+			return fmt.Errorf("the PD peer members contain the member belonging to the deleted tc")
+		}
 	}
 	for _, peerStore := range tc.Status.TiKV.PeerStores {
-		// if tc3 member in peerStores
-		// return err
+		if strings.Contains(peerStore.Name, expectNonExistedTc.Name) {
+			return fmt.Errorf("the TiKV peer stores contain the store belonging to the deleted tc")
+		}
 	}
 	return nil
 }
