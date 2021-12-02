@@ -140,6 +140,9 @@ jobs:
           kubectl create ns pingcap
         working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}
 
+      - name: continue in tmate
+        run: |
+          sudo touch /continue
       - name: Setup tmate session
         uses: mxschmitt/action-tmate@v3
       - name: e2e(${{ matrix.job }})
