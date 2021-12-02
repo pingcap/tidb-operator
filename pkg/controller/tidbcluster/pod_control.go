@@ -37,11 +37,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-const (
-	EvictLeaderValueNone      = "none"
-	EvictLeaderValueDeletePod = "delete-pod"
-)
-
 // PodController control pods of tidb cluster.
 // see docs/design-proposals/2021-11-24-graceful-reschedule-tikv-pod.md
 type PodController struct {
@@ -209,19 +204,19 @@ func (c *PodController) getPDClient(tc *v1alpha1.TidbCluster) pdapi.PDClient {
 }
 
 func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
-	var value string
-	_, ok := pod.Annotations[v1alpha1.EvictLeaderAnnKey]
+	value, ok := pod.Annotations[v1alpha1.EvictLeaderAnnKey]
+
 	if ok {
-		value = EvictLeaderValueNone
+		switch value {
+		case v1alpha1.EvictLeaderValueNone:
+		case v1alpha1.EvictLeaderValueDeletePod:
+		default:
+			klog.Warningf("ignore unknown value %q of annotation %q", value, v1alpha1.EvictLeaderAnnKey)
+			return reconcile.Result{}, nil
+		}
 	}
 
-	// ignore v1alpha1.EvictLeaderAnnKey if v1alpha1.RestartAnnKey is set since we will delete pod after evicting leader.
-	_, ok = pod.Annotations[v1alpha1.RestartAnnKey]
 	if ok {
-		value = EvictLeaderValueDeletePod
-	}
-
-	if value != "" {
 		evictStatus := &v1alpha1.EvictLeaderStatus{
 			PodCreateTime: pod.CreationTimestamp,
 			Value:         value,
@@ -254,7 +249,7 @@ func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1
 			return reconcile.Result{}, perrors.Annotatef(err, "failed to evict leader for store %d", storeID)
 		}
 
-		if value == EvictLeaderValueDeletePod {
+		if value == v1alpha1.EvictLeaderValueDeletePod {
 			tlsEnabled := tc.IsTLSClusterEnabled()
 			kvClient := c.deps.TiKVControl.GetTiKVPodClient(tc.Namespace, tc.Name, pod.Name, tlsEnabled)
 			leaderCount, err := kvClient.GetLeaderCount()
@@ -300,14 +295,14 @@ func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1
 
 		evictStatus := tc.Status.TiKV.EvictLeader[pod.Name]
 		if evictStatus != nil {
-			if evictStatus.Value == EvictLeaderValueDeletePod {
+			if evictStatus.Value == v1alpha1.EvictLeaderValueDeletePod {
 				if podutil.IsPodReady(pod) {
 					err := endEvict()
 					if err != nil {
 						return reconcile.Result{}, err
 					}
 				}
-			} else if evictStatus.Value == EvictLeaderValueNone {
+			} else if evictStatus.Value == v1alpha1.EvictLeaderValueNone {
 				err := endEvict()
 				if err != nil {
 					return reconcile.Result{}, err

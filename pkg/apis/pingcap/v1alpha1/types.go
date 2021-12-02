@@ -1129,7 +1129,15 @@ type TiDBFailureMember struct {
 }
 
 const EvictLeaderAnnKey = "tidb.pingcap.com/evict-leader"
-const RestartAnnKey = "tidb.pingcap.com/restart"
+
+// The `Value` of annotation controls the behavior when the leader count drops to zero, the valid value is one of:
+//
+// - `none`: doing nothing.
+// - `delete-pod`: delete pod and remove the evict-leader scheduler from PD.
+const (
+	EvictLeaderValueNone      = "none"
+	EvictLeaderValueDeletePod = "delete-pod"
+)
 
 type EvictLeaderStatus struct {
 	PodCreateTime metav1.Time `json:"podCreateTime,omitempty"`

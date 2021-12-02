@@ -99,7 +99,7 @@ func TestPodControllerSync(t *testing.T) {
 	if pod.Annotations == nil {
 		pod.Annotations = make(map[string]string)
 	}
-	pod.Annotations[v1alpha1.RestartAnnKey] = ""
+	pod.Annotations[v1alpha1.EvictLeaderAnnKey] = v1alpha1.EvictLeaderValueDeletePod
 	pod, err = deps.KubeClientset.CoreV1().Pods(pod.Namespace).Update(ctx, pod, metav1.UpdateOptions{})
 	g.Expect(err).Should(Succeed())
 
