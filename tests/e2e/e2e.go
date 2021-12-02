@@ -91,10 +91,10 @@ func setupSuite(c kubernetes.Interface, extClient versioned.Interface, apiExtCli
 			metav1.NamespacePublic,
 			v1.NamespaceNodeLease,
 		}
+		reservedNamespaces = append(reservedNamespaces, "local-path-storage")
 		if framework.TestContext.Provider == "kind" {
 			// kind local path provisioner namespace since 0.7.0
 			// https://github.com/kubernetes-sigs/kind/blob/v0.7.0/pkg/build/node/storage.go#L35
-			reservedNamespaces = append(reservedNamespaces, "local-path-storage")
 		} else if framework.TestContext.Provider == "openshift" {
 			reservedNamespaces = append(reservedNamespaces, "openshift")
 		}
