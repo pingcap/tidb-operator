@@ -35,7 +35,6 @@ import (
 
 	// test sources
 	_ "github.com/pingcap/tidb-operator/tests/e2e/br"
-	_ "github.com/pingcap/tidb-operator/tests/e2e/dmcluster"
 	_ "github.com/pingcap/tidb-operator/tests/e2e/tidbcluster"
 )
 
