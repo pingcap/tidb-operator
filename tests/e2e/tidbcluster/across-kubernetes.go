@@ -31,6 +31,7 @@ import (
 	nsutil "github.com/pingcap/tidb-operator/tests/e2e/util/ns"
 	pdutil "github.com/pingcap/tidb-operator/tests/e2e/util/pd"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
+	utiltidb "github.com/pingcap/tidb-operator/tests/e2e/util/tidb"
 	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 
@@ -164,9 +165,9 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			err := CheckClusterDomainEffect(cli, []*v1alpha1.TidbCluster{tc1, tc2, tc3})
 			framework.ExpectNoError(err, "failed to check status")
 
-			// // connectable test
-			// _, err = utiltidb.TiDBIsConnectable(fw, tc1.Namespace, tc1.Name, "root", "")()
-			// framework.ExpectNoError(err, "tc1 are not connectable")
+			// connectable test
+			_, err = utiltidb.TiDBIsConnectable(fw, tc1.Namespace, tc1.Name, "root", "")()
+			framework.ExpectNoError(err, "tc1 are not connectable")
 
 			ginkgo.By("Scale in cluster-3, and delete the cluster-3")
 

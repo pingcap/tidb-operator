@@ -48,7 +48,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/util"
 	utildiscovery "github.com/pingcap/tidb-operator/pkg/util/discovery"
 	e2eutil "github.com/pingcap/tidb-operator/tests/e2e/util"
-	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedtidbclient"
@@ -56,7 +55,6 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
-	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	"github.com/pingcap/tidb-operator/tests/pkg/metrics"
 	"github.com/pingcap/tidb-operator/tests/pkg/webhook"
 	"github.com/pingcap/tidb-operator/tests/slack"
@@ -677,40 +675,6 @@ func (oa *OperatorActions) UpgradeOperator(info *OperatorConfig) error {
 		return nil
 	}
 	return err
-}
-
-func (oa *OperatorActions) DeployDMMySQLOrDie(ns string) {
-	if err := DeployDMMySQL(oa.kubeCli, ns); err != nil {
-		slack.NotifyAndPanic(err)
-	}
-
-	if err := CheckDMMySQLReady(oa.fw, ns); err != nil {
-		slack.NotifyAndPanic(err)
-	}
-}
-
-func (oa *OperatorActions) DeployDMTiDBOrDie() {
-	ns := &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: DMTiDBNamespace,
-		},
-	}
-	_, err := oa.kubeCli.CoreV1().Namespaces().Create(context.TODO(), ns, metav1.CreateOptions{})
-	if err != nil && !errors.IsAlreadyExists(err) {
-		slack.NotifyAndPanic(err)
-	}
-
-	tc := fixture.GetTidbCluster(DMTiDBNamespace, DMTiDBName, utilimage.TiDBLatest)
-	tc.Spec.PD.Replicas = 1
-	tc.Spec.TiKV.Replicas = 1
-	tc.Spec.TiDB.Replicas = 1
-	if _, err := oa.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, metav1.CreateOptions{}); err != nil {
-		slack.NotifyAndPanic(err)
-	}
-
-	if err := oa.WaitForTidbClusterReady(tc, 30*time.Minute, 30*time.Second); err != nil {
-		slack.NotifyAndPanic(err)
-	}
 }
 
 func ensurePodsUnchanged(pods1, pods2 *corev1.PodList) error {
