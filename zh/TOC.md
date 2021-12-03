@@ -9,6 +9,7 @@
   - 部署 TiDB 集群
     - [部署到 AWS EKS](deploy-on-aws-eks.md)
     - [部署到 GCP GKE](deploy-on-gcp-gke.md)
+    - [部署到 Azure AKS](deploy-on-azure-aks.md)
     - [部署到阿里云 ACK](deploy-on-alibaba-cloud.md)
     - 部署到自托管的 Kubernetes
       - [集群环境要求](prerequisites.md)

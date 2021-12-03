@@ -9,6 +9,7 @@
   - Deploy TiDB Cluster
     - [On AWS EKS](deploy-on-aws-eks.md)
     - [On GCP GKE](deploy-on-gcp-gke.md)
+    - [On Azure AKS](deploy-on-azure-aks.md)
     - [On Alibaba Cloud ACK](deploy-on-alibaba-cloud.md)
     - In Self-managed Kubernetes
       - [Prerequisites](prerequisites.md)
