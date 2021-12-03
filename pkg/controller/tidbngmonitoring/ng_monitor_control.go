@@ -100,7 +100,7 @@ func (c *defaultTiDBNGMonitoringControl) reconcile(tngm *v1alpha1.TiDBNGMonitori
 		return nil
 	}
 
-	// reoncile recliam policy of pvc
+	// reoncile reclaim policy of pvc
 	err := c.reclaimPolicyManager.SyncTiDBNGMonitoring(tngm)
 	if err != nil {
 		return err
