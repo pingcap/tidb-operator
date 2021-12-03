@@ -21,8 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
-	"github.com/pingcap/tidb-operator/pkg/manager/utils"
-	stsutils "github.com/pingcap/tidb-operator/pkg/manager/utils/statefulset"
+	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
 
 	apps "k8s.io/api/apps/v1"
@@ -163,7 +162,7 @@ func (m *ngMonitoringManager) syncCore(tngm *v1alpha1.TiDBNGMonitoring) error {
 
 	// first creation
 	if stsNotFound {
-		err = stsutils.SetStatefulSetLastAppliedConfigAnnotation(newSts)
+		err = mngerutils.SetStatefulSetLastAppliedConfigAnnotation(newSts)
 		if err != nil {
 			return err
 		}
@@ -171,7 +170,7 @@ func (m *ngMonitoringManager) syncCore(tngm *v1alpha1.TiDBNGMonitoring) error {
 	}
 
 	// update existing statefulset if needed
-	return stsutils.UpdateStatefulSet(m.deps.StatefulSetControl, tngm, oldSts, newSts)
+	return mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tngm, newSts, oldSts)
 }
 
 func (m *ngMonitoringManager) syncConfigMap(tngm *v1alpha1.TiDBNGMonitoring, sts *apps.StatefulSet) (*corev1.ConfigMap, error) {
@@ -184,12 +183,12 @@ func (m *ngMonitoringManager) syncConfigMap(tngm *v1alpha1.TiDBNGMonitoring, sts
 
 	var inUseName string
 	if sts != nil {
-		inUseName = stsutils.FindConfigMapVolume(&sts.Spec.Template.Spec, func(name string) bool {
+		inUseName = mngerutils.FindConfigMapVolume(&sts.Spec.Template.Spec, func(name string) bool {
 			return strings.HasPrefix(name, controller.NGMonitoringName(tngm.Name))
 		})
 	}
 
-	err = utils.UpdateConfigMapIfNeed(m.deps.ConfigMapLister, spec.ConfigUpdateStrategy(), inUseName, newCM)
+	err = mngerutils.UpdateConfigMapIfNeed(m.deps.ConfigMapLister, spec.ConfigUpdateStrategy(), inUseName, newCM)
 	if err != nil {
 		return nil, err
 	}
@@ -221,7 +220,7 @@ func (m *ngMonitoringManager) populateStatus(tngm *v1alpha1.TiDBNGMonitoring, st
 }
 
 func (m *ngMonitoringManager) confirmStatefulSetIsUpgrading(tngm *v1alpha1.TiDBNGMonitoring, oldSts *apps.StatefulSet) (bool, error) {
-	if stsutils.StatefulSetIsUpgrading(oldSts) {
+	if mngerutils.StatefulSetIsUpgrading(oldSts) {
 		return true, nil
 	}
 
@@ -370,7 +369,7 @@ func GenerateNGMonitoringStatefulSet(tngm *v1alpha1.TiDBNGMonitoring, cm *corev1
 		},
 	}
 
-	builder := stsutils.NewStatefulSetBuilder(baseSts)
+	builder := mngerutils.NewStatefulSetBuilder(baseSts)
 
 	// features
 
@@ -458,5 +457,22 @@ func GenerateNGMonitoringHeadlessService(tngm *v1alpha1.TiDBNGMonitoring) *corev
 }
 
 func GenerateNGMonitoringStartScript(tngm *v1alpha1.TiDBNGMonitoring) (string, error) {
-	return "sleep 3600", nil
+	if len(tngm.Spec.Clusters) < 1 {
+		return "", fmt.Errorf("tidb cluster ref is empty")
+	}
+
+	tcRef := tngm.Spec.Clusters[0]
+
+	model := &NGMonitoringStartScriptModel{
+		TCName:          tcRef.Name,
+		TCNamespace:     tcRef.Namespace,
+		TCClusterDomain: tcRef.ClusterDomain,
+	}
+
+	script, err := model.RenderStartScript()
+	if err != nil {
+		return "", err
+	}
+
+	return script, nil
 }

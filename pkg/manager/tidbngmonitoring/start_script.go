@@ -14,6 +14,7 @@
 package tidbngmonitoring
 
 import (
+	"bytes"
 	"fmt"
 	"html/template"
 
@@ -21,8 +22,6 @@ import (
 )
 
 type NGMonitoringStartScriptModel struct {
-	Scheme string
-
 	TCName          string // name of tidb cluster
 	TCNamespace     string // namespace of tidb cluster's namespace
 	TCClusterDomain string // cluster domain of tidb cluster
@@ -43,6 +42,10 @@ func (m *NGMonitoringStartScriptModel) PDAddress() string {
 	return fmt.Sprintf("%s.%s:2379", controller.PDMemberName(m.TCName), m.TCNamespace)
 }
 
+func (m *NGMonitoringStartScriptModel) RenderStartScript() (string, error) {
+	return renderTemplateFunc(ngMonitoringStartScriptTpl, m)
+}
+
 // TODO: Find a better method to start
 var ngMonitoringStartScriptTpl = template.Must(template.New("ng-monitoring-start-script").Parse(`/ng-monitoring-server \
 	--pd.endpoints {{ .PDAddress }} \
@@ -50,3 +53,12 @@ var ngMonitoringStartScriptTpl = template.Must(template.New("ng-monitoring-start
 	--config /etc/ng-monitoring/ng-monitoring.toml \
 	--storage.path /var/lib/ng-monitoring
 `))
+
+func renderTemplateFunc(tpl *template.Template, model interface{}) (string, error) {
+	buff := new(bytes.Buffer)
+	err := tpl.Execute(buff, model)
+	if err != nil {
+		return "", err
+	}
+	return buff.String(), nil
+}

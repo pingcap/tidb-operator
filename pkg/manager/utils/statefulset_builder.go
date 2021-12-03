@@ -66,9 +66,8 @@ func (pb *PodTemplateSpecBuilder) Clone() *corev1.PodTemplateSpec {
 
 func (pb *PodTemplateSpecBuilder) ContainerBuilder(name string) *ContainerBuilder {
 	for i := range pb.prototype.Spec.Containers {
-		container := pb.prototype.Spec.Containers[i]
-		if container.Name == name {
-			return NewContainerBuilder(&container)
+		if pb.prototype.Spec.Containers[i].Name == name {
+			return NewContainerBuilder(&pb.prototype.Spec.Containers[i])
 		}
 	}
 	return nil

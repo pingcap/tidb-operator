@@ -141,7 +141,7 @@ func (c *defaultTiDBNGMonitoringControl) Update(tngm *v1alpha1.TiDBNGMonitoring)
 		return updateErr
 	})
 	if err != nil {
-		klog.Errorf("failed to update TidbMonTiDBNGMonitoringitor: [%s/%s], error: %v", ns, tngm, err)
+		klog.Errorf("failed to update TidbMonTiDBNGMonitoringitor: [%s/%s], error: %v", ns, name, err)
 	}
 	return update, err
 }

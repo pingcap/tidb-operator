@@ -28,7 +28,13 @@ func updateConfigMap(old, new *corev1.ConfigMap) (bool, error) {
 	dataEqual := true
 
 	// check config
-	tomlField := []string{"config-file" /*pd,tikv,tidb */, "pump-config", "config_templ.toml" /*tiflash*/, "proxy_templ.toml" /*tiflash*/}
+	tomlField := []string{
+		"config-file",          // pd,tikv,tidb
+		"pump-config",          // pump
+		"config_templ.toml",    // tiflash
+		"proxy_templ.toml",     // tiflash
+		"ng-monitoring-config", // ng-monitoring
+	}
 	for _, k := range tomlField {
 		oldData, oldOK := old.Data[k]
 		newData, newOK := new.Data[k]
