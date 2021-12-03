@@ -3846,7 +3846,6 @@ func schema_pkg_apis_pingcap_v1alpha1_NGMonitoringSpec(ref common.ReferenceCallb
 						},
 					},
 				},
-				Required: []string{"baseImage"},
 			},
 		},
 		Dependencies: []string{

@@ -4451,8 +4451,6 @@ spec:
                     x-kubernetes-list-type: map
                   version:
                     type: string
-                required:
-                - baseImage
                 type: object
               nodeSelector:
                 additionalProperties:
