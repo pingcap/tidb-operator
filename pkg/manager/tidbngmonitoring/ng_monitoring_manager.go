@@ -39,10 +39,6 @@ const (
 
 	ngmConfigMapConfigKey = "ng-monitoring-config" // the key for config data in config map
 
-	// pdClusterCertPath is where the cert for inter-cluster communication stored (if any)
-	pdClusterCertPath  = "/var/lib/pd-tls"
-	tidbClientCertPath = "/var/lib/tidb-client-tls"
-
 	ngmServicePort = 12020
 )
 
