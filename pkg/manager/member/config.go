@@ -31,7 +31,7 @@ func updateConfigMap(old, new *corev1.ConfigMap) (bool, error) {
 
 	// check config
 	tomlField := []string{"config-file" /*pd,tikv,tidb */, "pump-config", "config_templ.toml" /*tiflash*/, "proxy_templ.toml" /*tiflash*/}
-	yamlField := []string{"prometheus-config", "prometheus.yml" /*prometheus*/}
+	yamlField := []string{"prometheus.yml" /*prometheus*/, "dashboards.yml" /*dashboards*/}
 
 	for _, k := range tomlField {
 		oldData, oldOK := old.Data[k]
