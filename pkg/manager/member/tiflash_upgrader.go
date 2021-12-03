@@ -16,15 +16,17 @@ package member
 import (
 	"fmt"
 
-	apps "k8s.io/api/apps/v1"
-	"k8s.io/klog"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
+	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 
-	"github.com/Masterminds/semver"
-	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/tiflashapi"
+
+	"github.com/Masterminds/semver"
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
+	apps "k8s.io/api/apps/v1"
+	"k8s.io/klog"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
 var (
@@ -85,13 +87,13 @@ func (u *tiflashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 		return nil
 	}
 
-	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
+	mngerutils.SetUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
 	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
 		i := podOrdinals[_i]
 		store := getTiFlashStoreByOrdinal(tc.GetName(), tc.Status.TiFlash, i)
 		if store == nil {
-			setUpgradePartition(newSet, i)
+			mngerutils.SetUpgradePartition(newSet, i)
 			continue
 		}
 		podName := TiFlashPodName(tcName, i)
@@ -133,7 +135,7 @@ func (u *tiflashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 			continue
 		}
 
-		setUpgradePartition(newSet, i)
+		mngerutils.SetUpgradePartition(newSet, i)
 		return nil
 	}
 

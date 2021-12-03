@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
+	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -79,7 +80,7 @@ func TestMasterUpgraderUpgrade(t *testing.T) {
 		if test.changeOldSet != nil {
 			test.changeOldSet(oldSet)
 		}
-		SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+		mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 
 		newSet.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32Ptr(3)
 

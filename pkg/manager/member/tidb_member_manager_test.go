@@ -21,12 +21,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
-	. "github.com/onsi/gomega"
+	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+
+	"github.com/google/go-cmp/cmp"
+	. "github.com/onsi/gomega"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -1009,7 +1012,7 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 				},
 			},
 			testSts: func(sts *apps.StatefulSet) {
-				cmName := FindConfigMapVolume(&sts.Spec.Template.Spec, func(name string) bool {
+				cmName := mngerutils.FindConfigMapVolume(&sts.Spec.Template.Spec, func(name string) bool {
 					return strings.HasPrefix(name, controller.TiDBMemberName("tc"))
 				})
 				g := NewGomegaWithT(t)

@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package statefulset
+package utils
 
 import (
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
@@ -19,9 +19,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/util"
 
 	apps "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/klog"
 )
 
 const (
@@ -107,12 +107,8 @@ func UpdateStatefulSet(setCtl controller.StatefulSetControlInterface, object run
 	return err
 }
 
-// FindConfigMapVolume returns the configmap which's name matches the predicate in a PodSpec, empty indicates not found
-func FindConfigMapVolume(podSpec *corev1.PodSpec, pred func(string) bool) string {
-	for _, vol := range podSpec.Volumes {
-		if vol.ConfigMap != nil && pred(vol.ConfigMap.LocalObjectReference.Name) {
-			return vol.ConfigMap.LocalObjectReference.Name
-		}
-	}
-	return ""
+// SetUpgradePartition set statefulSet's rolling update partition
+func SetUpgradePartition(set *apps.StatefulSet, upgradeOrdinal int32) {
+	set.Spec.UpdateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{Partition: &upgradeOrdinal}
+	klog.Infof("set %s/%s partition to %d", set.GetNamespace(), set.GetName(), upgradeOrdinal)
 }

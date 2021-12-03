@@ -14,14 +14,11 @@
 package utils
 
 import (
-	"crypto/sha256"
-	"encoding/json"
 	"fmt"
 
+	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
-
-	perrors "github.com/pingcap/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	corelisters "k8s.io/client-go/listers/core/v1"
@@ -108,6 +105,7 @@ func UpdateConfigMapIfNeed(
 		return nil
 	default:
 		return perrors.Errorf("unknown config update strategy: %v", configUpdateStrategy)
+
 	}
 }
 
@@ -122,23 +120,4 @@ func confirmNameByData(existing, desired *corev1.ConfigMap, dataEqual bool) {
 	if !dataEqual && existing.Name == desired.Name {
 		desired.Name = fmt.Sprintf("%s-new", desired.Name)
 	}
-}
-
-func AddConfigMapDigestSuffix(cm *corev1.ConfigMap) error {
-	sum, err := Sha256Sum(cm.Data)
-	if err != nil {
-		return err
-	}
-	suffix := fmt.Sprintf("%x", sum)[0:7]
-	cm.Name = fmt.Sprintf("%s-%s", cm.Name, suffix)
-	return nil
-}
-
-func Sha256Sum(v interface{}) (string, error) {
-	data, err := json.Marshal(v)
-	if err != nil {
-		return "", err
-	}
-	sum := sha256.Sum256(data)
-	return fmt.Sprintf("%x", sum), nil
 }
