@@ -13,7 +13,9 @@ Thanos 是 Prometheus 高可用的解决方案，用于简化 Prometheus 的可�
 
 Thanos 提供了跨 Prometheus 的统一查询方案 [Thanos Query](https://thanos.io/tip/components/query.md/) 组件，可以利用这个功能解决 TiDB 多集群监控数据聚合的问题。
 
-## 配置 Thanos Query
+## 通过 Thanos Query 聚合监控数据
+
+### 配置 Thanos Query
 
 1. 为每个 TidbMonitor 配置一个 Thanos Sidecar 容器。
 
@@ -24,10 +26,6 @@ Thanos 提供了跨 Prometheus 的统一查询方案 [Thanos Query](https://than
     ```
     kubectl -n ${namespace} apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/monitor-with-thanos/tidb-monitor.yaml
     ```
-
-    > **注意：**
-    >
-    > 此命令中的 `${namespace}` 表示 TidbMonitor 部署的命名空间，必须与部署 `TidbCluster` 的 namespace 相同。
 
 2. 部署 Thanos Query 组件。
 
@@ -55,7 +53,7 @@ Thanos 提供了跨 Prometheus 的统一查询方案 [Thanos Query](https://than
 
 在 Thanos Query 中，一个 Prometheus 对应一个 Store，也就对应一个 TidbMonitor。部署完 Thanos Query，就可以通过 Thanos Query 的 API 提供监控数据的统一查询接口。
 
-## 访问 Thanos Query 面板
+### 访问 Thanos Query 面板
 
 要访问 Thanos Query 面板，请执行以下命令，然后通过浏览器访问 <http://127.0.0.1:9090>
 
@@ -70,7 +68,7 @@ kubectl port-forward -n ${thanos_namespace} svc/thanos-query 9090
 - [NodePort 方式](access-tidb.md#nodeport)
 - [LoadBalancer 方式](access-tidb.md#loadbalancer)
 
-## 配置 Grafana
+### 配置 Grafana
 
 部署 Thanos Query 之后，要查询多个 TidbMonitor 的监控数据，请进行以下操作：
 
@@ -79,7 +77,7 @@ kubectl port-forward -n ${thanos_namespace} svc/thanos-query 9090
 3. 添加或修改一个 Prometheus 类型的 DataSource。
 4. 将 HTTP 下面的 URL 设置为 `http://thanos-query.${thanos_namespace}:9090`
 
-## 增加或者减少 TidbMonitor
+### 增加或者减少 TidbMonitor
 
 在 Thanos Query 中，一个 Prometheus 对应一个 Monitor Store，也就对应一个 TidbMonitor。当需要从 Thanos Query 增加、更新或者下线 Monitor Store 时，需要更新 Thanos Query 组件的命令参数 `--store`，滚动更新 Thanos Query 组件。
 
@@ -98,7 +96,7 @@ spec:
        - --store=<TidbMonitorName2>-prometheus.<TidbMonitorNs2>:10901
 ```
 
-## 配置 Thanos Sidecar 归档存储
+### 配置 Thanos Sidecar 归档存储
 
 > **注意：**
 >
@@ -145,3 +143,38 @@ stringData:
         enable: true
       part_size: 41943040
 ```
+
+## RemoteWrite 模式
+
+除了 Thanos Query 监控聚合模式，也可以通过 Prometheus RemoteWrite 推送监控数据到 Thanos。
+
+在启动 TiDBMonitor 时可以指定 Prometheus RemoteWrite 配置，示例如下:
+
+```yaml
+apiVersion: pingcap.com/v1alpha1
+kind: TidbMonitor
+metadata:
+  name: basic
+spec:
+  clusters:
+  - name: basic
+  prometheus:
+    baseImage: prom/prometheus
+    version: v2.27.1
+    remoteWrite:
+      - url: "http://thanos-receiver:19291/api/v1/receive"
+  grafana:
+    baseImage: grafana/grafana
+    version: 7.5.11
+  initializer:
+    baseImage: registry.cn-beijing.aliyuncs.com/tidb/tidb-monitor-initializer
+    version: v5.2.1
+  reloader:
+    baseImage: registry.cn-beijing.aliyuncs.com/tidb/tidb-monitor-reloader
+    version: v1.0.1
+  imagePullPolicy: IfNotPresent
+```
+
+Prometheus 将会把数据推送到 [Thanos Receiver](https://thanos.io/tip/components/receive.md/) 服务，详情可以参考 [Receiver 架构设计](https://thanos.io/v0.8/proposals/201812_thanos-remote-receive/)。
+
+部署方案可以参考 [Example](https://github.com/pingcap/tidb-operator/tree/master/examples/monitor-prom-remotewrite)。
