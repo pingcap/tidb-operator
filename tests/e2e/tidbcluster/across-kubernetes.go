@@ -31,12 +31,15 @@ import (
 	nsutil "github.com/pingcap/tidb-operator/tests/e2e/util/ns"
 	pdutil "github.com/pingcap/tidb-operator/tests/e2e/util/pd"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
+	utiltidb "github.com/pingcap/tidb-operator/tests/e2e/util/tidb"
 	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/onsi/ginkgo"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
@@ -123,27 +126,30 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 		}
 	})
 
-	ginkgo.Describe("[Basic]", func() {
-
-		// create three namespace
+	ginkgo.Describe("[Deploy]", func() {
 		ginkgo.BeforeEach(func() {
 			ns1 := namespaces[0]
 			namespaces = append(namespaces, ns1+"-1", ns1+"-2")
 		})
 
 		version := utilimage.TiDBLatest
-		clusterDomain := defaultClusterDomain
+		cluster1Domain := defaultClusterDomain
+		cluster2Domain := defaultClusterDomain
+		cluster3Domain := defaultClusterDomain
 
-		ginkgo.It("Deploy cluster across kubernetes", func() {
+		ginkgo.It("Deploy and delete cluster across kubernetes", func() {
 			ns1 := namespaces[0]
 			ns2 := namespaces[1]
 			ns3 := namespaces[2]
 
-			tc1 := GetTCForAcrossKubernetes(ns1, "basic-1", version, clusterDomain, nil)
-			tc2 := GetTCForAcrossKubernetes(ns2, "basic-2", version, clusterDomain, tc1)
-			tc3 := GetTCForAcrossKubernetes(ns3, "basic-3", version, clusterDomain, tc1)
+			tc1 := GetTCForAcrossKubernetes(ns1, "basic-1", version, cluster1Domain, nil)
+			tc2 := GetTCForAcrossKubernetes(ns2, "basic-2", version, cluster2Domain, tc1)
+			tc3 := GetTCForAcrossKubernetes(ns3, "basic-3", version, cluster3Domain, tc1)
 
 			ginkgo.By("Deploy the basic cluster-1")
+			// To support scale in tc2, tc3
+			tc1.Spec.TiKV.Replicas = 3
+			tc1.Spec.PD.Replicas = 3
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc1, 5*time.Minute, 10*time.Second)
 
 			ginkgo.By("Deploy the basic cluster-2")
@@ -152,35 +158,53 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			ginkgo.By("Deploy the basic cluster-3")
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc3, 5*time.Minute, 10*time.Second)
 
-			ginkgo.By("Deploy status of all clusters")
+			ginkgo.By("Check status of all clusters")
 			err := CheckClusterDomainEffect(cli, []*v1alpha1.TidbCluster{tc1, tc2, tc3})
 			framework.ExpectNoError(err, "failed to check status")
+
+			// connectable test
+			_, err = utiltidb.TiDBIsConnectable(fw, tc1.Namespace, tc1.Name, "root", "")()
+			framework.ExpectNoError(err, "tc1 are not connectable")
+
+			ginkgo.By("Scale in cluster-3, and delete the cluster-3")
+
+			_ = genericCli.Get(context.TODO(), types.NamespacedName{Namespace: tc3.Namespace, Name: tc3.Name}, tc3)
+			framework.ExpectNoError(controller.GuaranteedUpdate(genericCli, tc3, func() error {
+				tc3.Spec.PD.Replicas = 0
+				tc3.Spec.TiDB.Replicas = 0
+				tc3.Spec.TiKV.Replicas = 0
+				tc3.Spec.TiFlash.Replicas = 0
+				tc3.Spec.TiCDC.Replicas = 0
+				tc3.Spec.Pump.Replicas = 0
+				return nil
+			}), "failed to scale in cluster 3")
+			framework.ExpectNoError(genericCli.Delete(context.TODO(), tc3), "failed to delete cluster 3")
+			err = wait.PollImmediate(10*time.Second, 3*time.Minute, func() (bool, error) {
+				if err := CheckPeerMembersAndClusterStatus(genericCli, tc1, tc3); err != nil {
+					return false, nil
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "tc1 are not all healthy")
+			err = wait.PollImmediate(10*time.Second, 3*time.Minute, func() (bool, error) {
+				if err := CheckPeerMembersAndClusterStatus(genericCli, tc2, tc3); err != nil {
+					return false, nil
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "tc2 are not all healthy")
 		})
 
-	})
-
-	ginkgo.Describe("[Advanced]", func() {
-
-		// create three namespace
-		ginkgo.BeforeEach(func() {
-			ns1 := namespaces[0]
-			namespaces = append(namespaces, ns1+"-1", ns1+"-2")
-		})
-
-		version := utilimage.TiDBLatest
-		clusterDomain := defaultClusterDomain
-
-		ginkgo.It("Deploy cluster with existing data across kubernetes", func() {
+		ginkgo.It("Make a cluster with existing data become a cluster supporting across kubernetes", func() {
 			ns1 := namespaces[0]
 			ns2 := namespaces[1]
 			ns3 := namespaces[2]
 
-			tc1 := GetTCForAcrossKubernetes(ns1, "update-1", version, clusterDomain, nil)
-			tc2 := GetTCForAcrossKubernetes(ns2, "update-2", version, clusterDomain, tc1)
-			tc3 := GetTCForAcrossKubernetes(ns3, "update-3", version, clusterDomain, tc2)
+			tc1 := GetTCForAcrossKubernetes(ns1, "basic-1", version, cluster1Domain, nil)
+			tc2 := GetTCForAcrossKubernetes(ns2, "basic-2", version, cluster2Domain, tc1)
+			tc3 := GetTCForAcrossKubernetes(ns3, "basic-3", version, cluster3Domain, tc1)
 
 			ginkgo.By("Deploy the basic cluster-1 with empty cluster domain")
-			tc1.Spec.ClusterDomain = ""
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc1, 5*time.Minute, 10*time.Second)
 
 			ginkgo.By("Update cluster domain of cluster-1")
@@ -205,7 +229,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 				for _, url := range member.PeerURLs {
 					// url ex: http://cluster-1-pd-0.cluster-1-pd-peer.default.svc:2380
 					fields := strings.Split(url, ":")
-					fields[1] = fmt.Sprintf("%s.%s", fields[1], clusterDomain)
+					fields[1] = fmt.Sprintf("%s.%s", fields[1], cluster1Domain)
 					peerURLs = append(peerURLs, strings.Join(fields, ":"))
 				}
 				err := pdutil.UpdateMembePeerURLs(pdAddr, member.ID, peerURLs)
@@ -222,9 +246,28 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			err = CheckClusterDomainEffect(cli, []*v1alpha1.TidbCluster{tc1, tc2, tc3})
 			framework.ExpectNoError(err, "failed to check status")
 		})
-
 	})
 })
+
+func CheckPeerMembersAndClusterStatus(clusterCli ctrlCli.Client, tc *v1alpha1.TidbCluster, expectNonExistedTc *v1alpha1.TidbCluster) error {
+	clusterCli.Get(context.TODO(), types.NamespacedName{Namespace: tc.Namespace, Name: tc.Name}, tc)
+
+	if tc.Status.PD.Phase != v1alpha1.NormalPhase || tc.Status.TiKV.Phase != v1alpha1.NormalPhase || tc.Status.TiDB.Phase != v1alpha1.NormalPhase || tc.Status.TiFlash.Phase != v1alpha1.NormalPhase {
+		return fmt.Errorf("the tc %s is not healthy", tc.Name)
+	}
+
+	for _, peerMember := range tc.Status.PD.PeerMembers {
+		if strings.Contains(peerMember.Name, expectNonExistedTc.Name) {
+			return fmt.Errorf("the PD peer members contain the member belonging to the deleted tc")
+		}
+	}
+	for _, peerStore := range tc.Status.TiKV.PeerStores {
+		if strings.Contains(peerStore.PodName, expectNonExistedTc.Name) {
+			return fmt.Errorf("the TiKV peer stores contain the store belonging to the deleted tc")
+		}
+	}
+	return nil
+}
 
 func GetTCForAcrossKubernetes(ns, name, version, clusterDomain string, joinTC *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
 	tc := fixture.GetTidbCluster(ns, name, version)
@@ -232,6 +275,7 @@ func GetTCForAcrossKubernetes(ns, name, version, clusterDomain string, joinTC *v
 	tc = fixture.AddTiCDCForTidbCluster(tc)
 	tc = fixture.AddPumpForTidbCluster(tc)
 
+	tc.Spec.SchedulerName = "default-scheduler"
 	tc.Spec.PD.Replicas = 1
 	tc.Spec.TiDB.Replicas = 1
 	tc.Spec.TiKV.Replicas = 1
