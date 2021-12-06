@@ -168,7 +168,7 @@ func (c *PodController) sync(key string) (reconcile.Result, error) {
 	// labels of tikv:
 	// app.kubernetes.io/component=tikv,app.kubernetes.io/instance=db1369682775200135879,app.kubernetes.io/managed-by=tidb-operator ...
 	managedBy := pod.Labels[label.ManagedByLabelKey]
-	if managedBy != "tidb-operator" {
+	if managedBy != label.TiDBOperator {
 		return reconcile.Result{}, nil
 	}
 
@@ -180,11 +180,11 @@ func (c *PodController) sync(key string) (reconcile.Result, error) {
 	component := pod.Labels[label.ComponentLabelKey]
 	ctx := context.Background()
 	switch component {
-	case "tikv":
+	case label.TiKVLabelVal:
 		tcName := pod.Labels[label.InstanceLabelKey]
 		tc, err := c.deps.TiDBClusterLister.TidbClusters(ns).Get(tcName)
 		if err != nil {
-			return reconcile.Result{}, perrors.Annotatef(err, "failed to get tc %q", tcName)
+			return reconcile.Result{}, perrors.Annotatef(err, "failed to get tc %q", ns+"/"+tcName)
 		}
 		tc = tc.DeepCopy()
 
