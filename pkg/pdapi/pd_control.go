@@ -28,7 +28,7 @@ import (
 // Namespace is a newtype of a string
 type Namespace string
 
-// Option configure PDClient
+// Option configures the PDClient
 type Option func(c *clientConfig)
 
 // ClusterRef set cluster domain of TC, it is used when generating PD addr from TC.
@@ -38,7 +38,7 @@ func ClusterRef(clusterDomain string) Option {
 	}
 }
 
-// TLSCertFromTC indicate that the client use certs from specified TC's secret.
+// TLSCertFromTC indicates that the clients use certs from specified TC's secret.
 func TLSCertFromTC(ns Namespace, tcName string) Option {
 	return func(c *clientConfig) {
 		c.tlsSecretNamespace = ns
@@ -46,7 +46,7 @@ func TLSCertFromTC(ns Namespace, tcName string) Option {
 	}
 }
 
-// TLSCertFromTC indicate that client use certs from specified secret.
+// TLSCertFromTC indicates that clients use certs from specified secret.
 func TLSCertFromSecret(ns Namespace, secret string) Option {
 	return func(c *clientConfig) {
 		c.tlsSecretNamespace = ns
@@ -55,10 +55,10 @@ func TLSCertFromSecret(ns Namespace, secret string) Option {
 }
 
 // SpecifyClient specify PD addr without generating
-func SpecifyClient(clientURL, clientName string) Option {
+func SpecifyClient(clientURL, clientKey string) Option {
 	return func(c *clientConfig) {
 		c.clientURL = clientURL
-		c.clientName = clientName
+		c.clientKey = clientKey
 	}
 }
 
@@ -77,8 +77,8 @@ type clientConfig struct {
 
 	// clientURL is PD addr. If it is empty, will generate from target TC
 	clientURL string
-	// clientName is client name. If it is empty, will generate from target TC
-	clientName string
+	// clientKey is client name. If it is empty, will generate from target TC
+	clientKey string
 
 	tlsEnable          bool
 	tlsSecretNamespace Namespace
@@ -105,8 +105,8 @@ func (c *clientConfig) complete(namespace Namespace, tcName string) {
 	if c.clientURL == "" {
 		c.clientURL = genClientUrl(namespace, tcName, scheme, c.clusterDomain)
 	}
-	if c.clientName == "" {
-		c.clientName = genClientKey(scheme, namespace, tcName, c.clusterDomain)
+	if c.clientKey == "" {
+		c.clientKey = genClientKey(scheme, namespace, tcName, c.clusterDomain)
 	}
 }
 
@@ -208,10 +208,10 @@ func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tls
 
 		return NewPDClient(config.clientURL, DefaultTimeout, tlsConfig)
 	}
-	if _, ok := pdc.pdClients[config.clientName]; !ok {
-		pdc.pdClients[config.clientName] = NewPDClient(config.clientURL, DefaultTimeout, nil)
+	if _, ok := pdc.pdClients[config.clientKey]; !ok {
+		pdc.pdClients[config.clientKey] = NewPDClient(config.clientURL, DefaultTimeout, nil)
 	}
-	return pdc.pdClients[config.clientName]
+	return pdc.pdClients[config.clientKey]
 }
 
 func genClientKey(scheme string, namespace Namespace, clusterName string, clusterDomain string) string {
