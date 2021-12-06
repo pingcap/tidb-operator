@@ -275,7 +275,6 @@ func GetTCForAcrossKubernetes(ns, name, version, clusterDomain string, joinTC *v
 	tc = fixture.AddTiCDCForTidbCluster(tc)
 	tc = fixture.AddPumpForTidbCluster(tc)
 
-	tc.Spec.SchedulerName = "default-scheduler"
 	tc.Spec.PD.Replicas = 1
 	tc.Spec.TiDB.Replicas = 1
 	tc.Spec.TiKV.Replicas = 1
