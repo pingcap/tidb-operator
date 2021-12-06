@@ -1938,6 +1938,66 @@ func TestGetTiDBConfigMap(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "TiDB config with tls enabled and client auth disabled",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
+					TiDB: &v1alpha1.TiDBSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							ConfigUpdateStrategy: &updateStrategy,
+						},
+						TLSClient: &v1alpha1.TiDBTLSClient{
+							Enabled:            true,
+							DisableClientAuthn: true,
+						},
+						Config: v1alpha1.NewTiDBConfig(),
+					},
+					PD:   &v1alpha1.PDSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
+				},
+			},
+			expected: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo-tidb",
+					Namespace: "ns",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "foo",
+						"app.kubernetes.io/component":  "tidb",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "pingcap.com/v1alpha1",
+							Kind:       "TidbCluster",
+							Name:       "foo",
+							UID:        "",
+							Controller: func(b bool) *bool {
+								return &b
+							}(true),
+							BlockOwnerDeletion: func(b bool) *bool {
+								return &b
+							}(true),
+						},
+					},
+				},
+				Data: map[string]string{
+					"startup-script": "",
+					"config-file": `[security]
+  cluster-ssl-ca = "/var/lib/tidb-tls/ca.crt"
+  cluster-ssl-cert = "/var/lib/tidb-tls/tls.crt"
+  cluster-ssl-key = "/var/lib/tidb-tls/tls.key"
+  ssl-cert = "/var/lib/tidb-server-tls/tls.crt"
+  ssl-key = "/var/lib/tidb-server-tls/tls.key"
+`,
+				},
+			},
+		},
 	}
 
 	for _, tt := range testCases {

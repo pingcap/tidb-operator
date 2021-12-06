@@ -48,6 +48,7 @@ type ComponentAccessor interface {
 	AdditionalVolumeMounts() []corev1.VolumeMount
 	TerminationGracePeriodSeconds() *int64
 	StatefulSetUpdateStrategy() apps.StatefulSetUpdateStrategyType
+	PodManagementPolicy() apps.PodManagementPolicyType
 	TopologySpreadConstraints() []corev1.TopologySpreadConstraint
 }
 
@@ -84,6 +85,7 @@ type componentAccessorImpl struct {
 	tolerations               []corev1.Toleration
 	configUpdateStrategy      ConfigUpdateStrategy
 	statefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType
+	podManagementPolicy       apps.PodManagementPolicyType
 	podSecurityContext        *corev1.PodSecurityContext
 	topologySpreadConstraints []TopologySpreadConstraint
 
@@ -99,6 +101,21 @@ func (a *componentAccessorImpl) StatefulSetUpdateStrategy() apps.StatefulSetUpda
 		return a.statefulSetUpdateStrategy
 	}
 	return a.ComponentSpec.StatefulSetUpdateStrategy
+}
+
+func (a *componentAccessorImpl) PodManagementPolicy() apps.PodManagementPolicyType {
+	policy := apps.ParallelPodManagement
+	if a.ComponentSpec != nil && len(a.ComponentSpec.PodManagementPolicy) != 0 {
+		policy = a.ComponentSpec.PodManagementPolicy
+	} else if len(a.podManagementPolicy) != 0 {
+		policy = a.podManagementPolicy
+	}
+
+	// unified podManagementPolicy check to avoid check everywhere
+	if policy == apps.OrderedReadyPodManagement {
+		return apps.OrderedReadyPodManagement
+	}
+	return apps.ParallelPodManagement
 }
 
 func (a *componentAccessorImpl) PodSecurityContext() *corev1.PodSecurityContext {
@@ -367,6 +384,7 @@ func buildTidbClusterComponentAccessor(c Component, tc *TidbCluster, componentSp
 		tolerations:               spec.Tolerations,
 		configUpdateStrategy:      spec.ConfigUpdateStrategy,
 		statefulSetUpdateStrategy: spec.StatefulSetUpdateStrategy,
+		podManagementPolicy:       spec.PodManagementPolicy,
 		podSecurityContext:        spec.PodSecurityContext,
 		topologySpreadConstraints: spec.TopologySpreadConstraints,
 
@@ -400,8 +418,7 @@ func buildDMClusterComponentAccessor(c Component, dc *DMCluster, componentSpec *
 
 // BaseDiscoverySpec returns the base spec of discovery component
 func (tc *TidbCluster) BaseDiscoverySpec() ComponentAccessor {
-	// all configs follow global one
-	return buildTidbClusterComponentAccessor(ComponentDiscovery, tc, nil)
+	return buildTidbClusterComponentAccessor(ComponentDiscovery, tc, tc.Spec.Discovery.ComponentSpec)
 }
 
 // BaseTiDBSpec returns the base spec of TiDB servers
@@ -465,7 +482,7 @@ func (tc *TidbCluster) BasePumpSpec() ComponentAccessor {
 }
 
 func (dc *DMCluster) BaseDiscoverySpec() ComponentAccessor {
-	return buildDMClusterComponentAccessor(ComponentDMDiscovery, dc, nil)
+	return buildDMClusterComponentAccessor(ComponentDMDiscovery, dc, dc.Spec.Discovery.ComponentSpec)
 }
 
 func (dc *DMCluster) BaseMasterSpec() ComponentAccessor {

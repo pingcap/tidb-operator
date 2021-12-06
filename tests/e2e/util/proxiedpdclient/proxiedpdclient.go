@@ -25,7 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	utilportforward "github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
-	"k8s.io/client-go/kubernetes"
+	corelisterv1 "k8s.io/client-go/listers/core/v1"
 )
 
 // NewProxiedPDClient creates an PD client which can be used outside of the
@@ -39,13 +39,13 @@ import (
 //	  }
 //    defer cancel()
 //
-func NewProxiedPDClient(kubeCli kubernetes.Interface, fw utilportforward.PortForward, namespace string, tcName string, tlsEnabled bool) (pdapi.PDClient, context.CancelFunc, error) {
+func NewProxiedPDClient(secretLister corelisterv1.SecretLister, fw utilportforward.PortForward, namespace string, tcName string, tlsEnabled bool) (pdapi.PDClient, context.CancelFunc, error) {
 	var tlsConfig *tls.Config
 	var err error
 	scheme := "http"
 	if tlsEnabled {
 		scheme = "https"
-		tlsConfig, err = pdapi.GetTLSConfig(kubeCli, pdapi.Namespace(namespace), tcName, util.ClusterClientTLSSecretName(tcName))
+		tlsConfig, err = pdapi.GetTLSConfig(secretLister, pdapi.Namespace(namespace), util.ClusterClientTLSSecretName(tcName))
 		if err != nil {
 			return nil, nil, err
 		}
@@ -61,6 +61,6 @@ func NewProxiedPDClient(kubeCli kubernetes.Interface, fw utilportforward.PortFor
 	return pdapi.NewPDClient(u.String(), pdapi.DefaultTimeout, tlsConfig), cancel, nil
 }
 
-func NewProxiedPDClientFromTidbCluster(kubeCli kubernetes.Interface, fw utilportforward.PortForward, tc *v1alpha1.TidbCluster) (pdapi.PDClient, context.CancelFunc, error) {
-	return NewProxiedPDClient(kubeCli, fw, tc.GetNamespace(), tc.GetName(), tc.IsTLSClusterEnabled())
+func NewProxiedPDClientFromTidbCluster(fw utilportforward.PortForward, secretLister corelisterv1.SecretLister, tc *v1alpha1.TidbCluster) (pdapi.PDClient, context.CancelFunc, error) {
+	return NewProxiedPDClient(secretLister, fw, tc.GetNamespace(), tc.GetName(), tc.IsTLSClusterEnabled())
 }

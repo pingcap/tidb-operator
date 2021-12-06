@@ -21,7 +21,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
-	"k8s.io/client-go/kubernetes"
+	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 )
 
@@ -37,13 +37,13 @@ type TiFlashControlInterface interface {
 
 // defaultTiFlashControl is the default implementation of TiFlashControlInterface.
 type defaultTiFlashControl struct {
-	mutex   sync.Mutex
-	kubeCli kubernetes.Interface
+	mutex        sync.Mutex
+	secretLister corelisterv1.SecretLister
 }
 
 // NewDefaultTiFlashControl returns a defaultTiFlashControl instance
-func NewDefaultTiFlashControl(kubeCli kubernetes.Interface) TiFlashControlInterface {
-	return &defaultTiFlashControl{kubeCli: kubeCli}
+func NewDefaultTiFlashControl(secretLister corelisterv1.SecretLister) TiFlashControlInterface {
+	return &defaultTiFlashControl{secretLister: secretLister}
 }
 
 func (tc *defaultTiFlashControl) GetTiFlashPodClient(namespace string, tcName string, podName string, tlsEnabled bool) TiFlashClient {
@@ -56,7 +56,7 @@ func (tc *defaultTiFlashControl) GetTiFlashPodClient(namespace string, tcName st
 
 	if tlsEnabled {
 		scheme = "https"
-		tlsConfig, err = pdapi.GetTLSConfig(tc.kubeCli, pdapi.Namespace(namespace), tcName, util.ClusterClientTLSSecretName(tcName))
+		tlsConfig, err = pdapi.GetTLSConfig(tc.secretLister, pdapi.Namespace(namespace), util.ClusterClientTLSSecretName(tcName))
 		if err != nil {
 			klog.Errorf("Unable to get tls config for TiFlash cluster %q, tiflash client may not work: %v", tcName, err)
 			return NewTiFlashClient(TiFlashPodClientURL(namespace, tcName, podName, scheme), DefaultTimeout, tlsConfig, true)
@@ -83,9 +83,9 @@ type FakeTiFlashControl struct {
 	tiflashPodClients map[string]TiFlashClient
 }
 
-func NewFakeTiFlashControl(kubeCli kubernetes.Interface) *FakeTiFlashControl {
+func NewFakeTiFlashControl(secretLister corelisterv1.SecretLister) *FakeTiFlashControl {
 	return &FakeTiFlashControl{
-		defaultTiFlashControl: defaultTiFlashControl{kubeCli: kubeCli},
+		defaultTiFlashControl: defaultTiFlashControl{secretLister: secretLister},
 		tiflashPodClients:     map[string]TiFlashClient{},
 	}
 }

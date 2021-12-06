@@ -134,7 +134,10 @@ func main() {
 		kubeCli = helper.NewHijackClient(kubeCli, asCli)
 	}
 
-	deps := controller.NewDependencies(ns, cliCfg, cli, kubeCli, genericCli)
+	deps, err := controller.NewDependencies(ns, cliCfg, cli, kubeCli, genericCli)
+	if err != nil {
+		klog.Fatalf("failed to create Dependencies: %s", err)
+	}
 
 	onStarted := func(ctx context.Context) {
 		// Upgrade before running any controller logic. If it fails, we wait

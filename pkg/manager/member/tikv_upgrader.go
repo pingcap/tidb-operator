@@ -21,7 +21,6 @@ import (
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -261,14 +260,8 @@ func endEvictLeaderbyStoreID(deps *controller.Dependencies, tc *v1alpha1.TidbClu
 	if deps.CLIConfig.TestMode {
 		time.Sleep(5 * time.Second)
 	}
-	var err error
 
-	if tc.HeterogeneousWithoutLocalPD() {
-		err = deps.PDControl.GetPDClient(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled()).EndEvictLeader(storeID)
-	} else {
-		err = deps.PDControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()).EndEvictLeader(storeID)
-	}
-
+	err := controller.GetPDClientFromService(deps.PDControl, tc).EndEvictLeader(storeID)
 	if err != nil {
 		klog.Errorf("tikv: failed to end evict leader for store: %d of %s/%s, error: %v", storeID, tc.Namespace, tc.Name, err)
 		return err

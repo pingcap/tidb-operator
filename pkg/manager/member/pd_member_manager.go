@@ -799,7 +799,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 				},
 			},
 			ServiceName:         controller.PDPeerMemberName(tcName),
-			PodManagementPolicy: apps.ParallelPodManagement,
+			PodManagementPolicy: basePDSpec.PodManagementPolicy(),
 			UpdateStrategy:      updateStrategy,
 		},
 	}
@@ -909,9 +909,9 @@ func (m *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *
 			if err != nil {
 				return fmt.Errorf("collectUnjoinedMembers: failed to get pvcs for pod %s/%s, error: %s", ns, pod.Name, err)
 			}
-			pvcUIDSet := make(map[types.UID]struct{})
+			pvcUIDSet := make(map[types.UID]v1alpha1.EmptyStruct)
 			for _, pvc := range pvcs {
-				pvcUIDSet[pvc.UID] = struct{}{}
+				pvcUIDSet[pvc.UID] = v1alpha1.EmptyStruct{}
 			}
 			unjoined[pod.Name] = v1alpha1.UnjoinedMember{
 				PodName:   pod.Name,

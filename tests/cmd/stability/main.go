@@ -32,6 +32,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/component-base/logs"
 	"k8s.io/kubernetes/test/e2e/framework/log"
 )
@@ -115,8 +116,13 @@ func run() {
 		}
 		deployedClusters = append(deployedClusters, cluster)
 	}
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(kubeCli, 30*time.Second)
+	stop := make(chan struct{})
+	defer close(stop)
+	kubeInformerFactory.Start(stop)
+	kubeInformerFactory.WaitForCacheSync(stop)
 
-	fta := tests.NewFaultTriggerAction(cli, kubeCli, cfg)
+	fta := tests.NewFaultTriggerAction(cli, kubeCli, kubeInformerFactory.Core().V1().Secrets().Lister(), cfg)
 	fta.CheckAndRecoverEnvOrDie()
 
 	oa := tests.NewOperatorActions(cli, kubeCli, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, cfg, allClusters, nil, nil)

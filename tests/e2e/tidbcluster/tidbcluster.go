@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/onsi/ginkgo"
-	ginkgoconfig "github.com/onsi/ginkgo/config"
 	"github.com/onsi/gomega"
 	astsHelper "github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
@@ -58,6 +57,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
+	utilginkgo "github.com/pingcap/tidb-operator/tests/e2e/util/ginkgo"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
@@ -65,6 +65,7 @@ import (
 	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
+	corelisterv1 "k8s.io/client-go/listers/core/v1"
 )
 
 var _ = ginkgo.Describe("TiDBCluster", func() {
@@ -83,6 +84,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	var genericCli ctrlCli.Client
 	var fwCancel context.CancelFunc
 	var fw portforward.PortForward
+	var secretLister corelisterv1.SecretLister
 	/**
 	 * StatefulSet or AdvancedStatefulSet getter interface.
 	 */
@@ -92,6 +94,8 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	ginkgo.BeforeEach(func() {
 		ns = f.Namespace.Name
 		c = f.ClientSet
+		secretLister = tests.GetSecretListerWithCacheSynced(c, 10*time.Second)
+
 		var err error
 		config, err = framework.LoadConfig()
 		framework.ExpectNoError(err, "failed to load config")
@@ -376,10 +380,10 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			return nil
 		})
 		framework.ExpectNoError(err, "failed to upgrade TidbCluster: %q", tc.Name)
-		err = oa.WaitForTidbClusterReady(tc, 5*time.Minute, 5*time.Second)
+		err = oa.WaitForTidbClusterReady(tc, 7*time.Minute, 5*time.Second)
 
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
-		pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, tc.Name, false)
+		pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(secretLister, fw, ns, tc.Name, false)
 		framework.ExpectNoError(err, "failed to create proxied PD client")
 		defer cancel()
 
@@ -1309,7 +1313,8 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					return false, nil
 				}
 				log.Logf("start check heterogeneous cluster storeInfo: %s/%s", ns, heterogeneousTc.Name)
-				pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, tcName, true)
+				secretLister = tests.GetSecretListerWithCacheSynced(c, 5*time.Second)
+				pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(secretLister, fw, ns, tcName, true)
 				framework.ExpectNoError(err, "create pdClient error")
 				defer cancel()
 				storeInfo, err := pdClient.GetStores()
@@ -1532,7 +1537,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					return false, nil
 				}
 				log.Logf("start check heterogeneous cluster storeInfo: %s/%s", ns, heterogeneousTc.Name)
-				pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, originTc.Name, false)
+				pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(secretLister, fw, ns, originTc.Name, false)
 				framework.ExpectNoError(err, "create pdClient error")
 				defer cancel()
 				storeInfo, err := pdClient.GetStores()
@@ -2084,7 +2089,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		}
 
 		// upgrdae testing for specific versions
-		ginkgo.Context("Specific Version", func() {
+		utilginkgo.ContextWhenFocus("Specific Version", func() {
 			configureV4x0x9 := func(tc *v1alpha1.TidbCluster) {
 				pdCfg := v1alpha1.NewPDConfig()
 				tikvCfg := v1alpha1.NewTiKVConfig()
@@ -2240,9 +2245,6 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			for i := range cases {
 				ucase := cases[i]
 				ginkgo.It(fmt.Sprintf("for tc and components version upgrade from %s to %s", ucase.oldVersion, ucase.newVersion), func() {
-					if ginkgoconfig.GinkgoConfig.FocusString == "" {
-						e2eskipper.Skipf("Skip upgrade testing for specific version")
-					}
 					upgradeTest(ucase)
 				})
 			}
@@ -2381,7 +2383,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					log.Logf("TiKV replicas number is correct")
 
 					ginkgo.By("Check no evict leader scheduler left")
-					pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, tc.Name, false)
+					pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(secretLister, fw, ns, tc.Name, false)
 					framework.ExpectNoError(err, "create pdClient error")
 					defer cancel()
 					err = wait.Poll(5*time.Second, 3*time.Minute, func() (bool, error) {
@@ -2783,7 +2785,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to scale in tikv")
 
 			ginkgo.By("Expect up stores number stays 3")
-			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, tc.Name, false)
+			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(secretLister, fw, ns, tc.Name, false)
 			framework.ExpectNoError(err, "create pdClient error")
 			defer cancel()
 
@@ -2890,7 +2892,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		tc := fixture.GetTidbCluster(ns, "monitor-test", utilimage.TiDBLatest)
 		tc.Spec.PD.Replicas = 1
 		tc.Spec.TiKV.Replicas = 1
-		tc.Spec.TiDB.Replicas = 3
+		tc.Spec.TiDB.Replicas = 5
 		tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, metav1.CreateOptions{})
 		framework.ExpectNoError(err, "Expected create tidbcluster")
 		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
