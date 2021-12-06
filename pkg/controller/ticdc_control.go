@@ -78,7 +78,7 @@ func (c *defaultTiCDCControl) getBaseURL(tc *v1alpha1.TidbCluster, ordinal int32
 
 // FakeTiCDCControl is a fake implementation of TiCDCControlInterface.
 type FakeTiCDCControl struct {
-	status *CaptureStatus
+	getStatus func(tc *v1alpha1.TidbCluster, ordinal int32) (*CaptureStatus, error)
 }
 
 // NewFakeTiCDCControl returns a FakeTiCDCControl instance
@@ -87,6 +87,13 @@ func NewFakeTiCDCControl() *FakeTiCDCControl {
 }
 
 // SetHealth set health info for FakeTiCDCControl
-func (c *FakeTiCDCControl) SetStatus(status *CaptureStatus) {
-	c.status = status
+func (c *FakeTiCDCControl) MockGetStatus(mockfunc func(tc *v1alpha1.TidbCluster, ordinal int32) (*CaptureStatus, error)) {
+	c.getStatus = mockfunc
+}
+
+func (c *FakeTiCDCControl) GetStatus(tc *v1alpha1.TidbCluster, ordinal int32) (*CaptureStatus, error) {
+	if c.getStatus == nil {
+		return nil, fmt.Errorf("undefined")
+	}
+	return c.getStatus(tc, ordinal)
 }
