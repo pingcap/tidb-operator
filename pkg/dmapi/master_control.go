@@ -55,7 +55,7 @@ func (mc *defaultMasterControl) GetMasterClient(namespace string, dcName string,
 
 	if tlsEnabled {
 		scheme = "https"
-		tlsConfig, err = pdapi.GetTLSConfig(mc.secretLister, pdapi.Namespace(namespace), dcName, util.DMClientTLSSecretName(dcName))
+		tlsConfig, err = pdapi.GetTLSConfig(mc.secretLister, pdapi.Namespace(namespace), util.DMClientTLSSecretName(dcName))
 		if err != nil {
 			klog.Errorf("Unable to get tls config for dm cluster %q, master client may not work: %v", dcName, err)
 			return NewMasterClient(MasterClientURL(namespace, dcName, scheme), DefaultTimeout, tlsConfig, true)
@@ -81,7 +81,7 @@ func (mc *defaultMasterControl) GetMasterPeerClient(namespace string, dcName str
 
 	if tlsEnabled {
 		scheme = "https"
-		tlsConfig, err = pdapi.GetTLSConfig(mc.secretLister, pdapi.Namespace(namespace), dcName, util.DMClientTLSSecretName(dcName))
+		tlsConfig, err = pdapi.GetTLSConfig(mc.secretLister, pdapi.Namespace(namespace), util.DMClientTLSSecretName(dcName))
 		if err != nil {
 			klog.Errorf("Unable to get tls config for dm cluster %q, master client may not work: %v", dcName, err)
 			return NewMasterClient(MasterPeerClientURL(namespace, dcName, podName, scheme), DefaultTimeout, tlsConfig, true)

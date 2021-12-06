@@ -29,7 +29,7 @@ import (
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	"github.com/pingcap/tidb-operator/tests/pkg/ops"
@@ -165,13 +165,7 @@ func (oa *OperatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 	}
 
 	// checkout pd config
-	var pdCfg *pdapi.PDConfigFromAPI
-	if tc.HeterogeneousWithoutLocalPD() {
-		pdCfg, err = oa.pdControl.GetClusterRefPDClient(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.Spec.Cluster.ClusterDomain, tc.IsTLSClusterEnabled()).GetConfig()
-	} else {
-		pdCfg, err = oa.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()).GetConfig()
-	}
-
+	pdCfg, err := controller.GetPDClientFromService(oa.pdControl, tc).GetConfig()
 	if err != nil {
 		log.Logf("ERROR: failed to get the pd config: tc=%s err=%s", info.ClusterName, err.Error())
 		return err
@@ -524,13 +518,7 @@ func (oa *OperatorActions) CheckRecover(cluster *TidbClusterConfig) (bool, error
 	// delete failover member store manually
 	if int32(len(tc.Status.TiKV.Stores)) > tc.Spec.TiKV.Replicas {
 
-		var pdclient pdapi.PDClient
-		if tc.HeterogeneousWithoutLocalPD() {
-			pdclient = oa.pdControl.GetPDClient(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
-		} else {
-			pdclient = oa.pdControl.GetPDClient(pdapi.Namespace(tc.Namespace), tc.Name, tc.IsTLSClusterEnabled())
-		}
-
+		pdclient := controller.GetPDClientFromService(oa.pdControl, tc)
 		for _, v := range tc.Status.TiKV.Stores {
 			ordinal, err := util.GetOrdinalFromPodName(v.PodName)
 			if err != nil {
