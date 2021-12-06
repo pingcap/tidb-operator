@@ -29339,7 +29339,7 @@ spec:
               properties:
                 bootStrapped:
                   type: boolean
-                evictLeaderStatus:
+                evictLeader:
                   additionalProperties:
                     properties:
                       podCreateTime:

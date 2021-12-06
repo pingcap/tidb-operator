@@ -1155,7 +1155,7 @@ type TiKVStatus struct {
 	TombstoneStores map[string]TiKVStore          `json:"tombstoneStores,omitempty"`
 	FailureStores   map[string]TiKVFailureStore   `json:"failureStores,omitempty"`
 	Image           string                        `json:"image,omitempty"`
-	EvictLeader     map[string]*EvictLeaderStatus `json:"evictLeaderStatus,omitempty"`
+	EvictLeader     map[string]*EvictLeaderStatus `json:"evictLeader,omitempty"`
 }
 
 // TiFlashStatus is TiFlash status

@@ -19346,7 +19346,7 @@ string
 </tr>
 <tr>
 <td>
-<code>evictLeaderStatus</code></br>
+<code>evictLeader</code></br>
 <em>
 <a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.evictleaderstatus">
 map[string]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.EvictLeaderStatus
