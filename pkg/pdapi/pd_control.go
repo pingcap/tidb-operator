@@ -31,7 +31,7 @@ type Namespace string
 // Option configures the PDClient
 type Option func(c *clientConfig)
 
-// ClusterRef set cluster domain of TC, it is used when generating PD addr from TC.
+// ClusterRef sets the cluster domain of TC, it is used when generating the PD address from TC.
 func ClusterRef(clusterDomain string) Option {
 	return func(c *clientConfig) {
 		c.clusterDomain = clusterDomain
