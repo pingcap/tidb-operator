@@ -122,6 +122,7 @@ const (
 // +kubebuilder:printcolumn:name="Desire",type=integer,JSONPath=`.spec.tidb.replicas`,description="The desired replicas number of TiDB cluster"
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].message`,priority=1
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
+// +genclient:noStatus
 type TidbCluster struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false

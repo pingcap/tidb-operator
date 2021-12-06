@@ -37,7 +37,6 @@ type TidbClustersGetter interface {
 type TidbClusterInterface interface {
 	Create(ctx context.Context, tidbCluster *v1alpha1.TidbCluster, opts v1.CreateOptions) (*v1alpha1.TidbCluster, error)
 	Update(ctx context.Context, tidbCluster *v1alpha1.TidbCluster, opts v1.UpdateOptions) (*v1alpha1.TidbCluster, error)
-	UpdateStatus(ctx context.Context, tidbCluster *v1alpha1.TidbCluster, opts v1.UpdateOptions) (*v1alpha1.TidbCluster, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
 	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.TidbCluster, error)
@@ -126,22 +125,6 @@ func (c *tidbClusters) Update(ctx context.Context, tidbCluster *v1alpha1.TidbClu
 		Namespace(c.ns).
 		Resource("tidbclusters").
 		Name(tidbCluster.Name).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(tidbCluster).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *tidbClusters) UpdateStatus(ctx context.Context, tidbCluster *v1alpha1.TidbCluster, opts v1.UpdateOptions) (result *v1alpha1.TidbCluster, err error) {
-	result = &v1alpha1.TidbCluster{}
-	err = c.client.Put().
-		Namespace(c.ns).
-		Resource("tidbclusters").
-		Name(tidbCluster.Name).
-		SubResource("status").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(tidbCluster).
 		Do(ctx).

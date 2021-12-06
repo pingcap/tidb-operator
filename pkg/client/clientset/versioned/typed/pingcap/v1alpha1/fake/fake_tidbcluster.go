@@ -99,18 +99,6 @@ func (c *FakeTidbClusters) Update(ctx context.Context, tidbCluster *v1alpha1.Tid
 	return obj.(*v1alpha1.TidbCluster), err
 }
 
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeTidbClusters) UpdateStatus(ctx context.Context, tidbCluster *v1alpha1.TidbCluster, opts v1.UpdateOptions) (*v1alpha1.TidbCluster, error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(tidbclustersResource, "status", c.ns, tidbCluster), &v1alpha1.TidbCluster{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.TidbCluster), err
-}
-
 // Delete takes name of the tidbCluster and deletes it. Returns an error if one occurs.
 func (c *FakeTidbClusters) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
