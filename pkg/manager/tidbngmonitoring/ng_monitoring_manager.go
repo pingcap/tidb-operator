@@ -297,6 +297,14 @@ func GenerateNGMonitoringStatefulSet(tngm *v1alpha1.TiDBNGMonitoring, cm *corev1
 				Name:  "HEADLESS_SERVICE_NAME",
 				Value: headlessServiceName,
 			},
+			{
+				Name: "POD_NAME",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "metadata.name",
+					},
+				},
+			},
 		},
 	})
 	baseVolumes := []corev1.Volume{

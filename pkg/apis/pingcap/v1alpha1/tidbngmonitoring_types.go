@@ -103,7 +103,7 @@ type NGMonitoringSpec struct {
 	// Defaults to Kubernetes default storage class.
 	StorageClassName *string `json:"storageClassName,omitempty"`
 
-	// StorageVolumes configure additional storage for NG Monitoring pods.
+	// StorageVolumes configures additional storage for NG Monitoring pods.
 	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
 
 	// Config is the configuration of ng monitoring
