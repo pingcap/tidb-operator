@@ -1170,6 +1170,7 @@ type TiCDCCapture struct {
 	ID      string `json:"id,omitempty"`
 	Version string `json:"version,omitempty"`
 	IsOwner bool   `json:"isOwner,omitempty"`
+	Ready   bool   `json:"ready,omitempty"`
 }
 
 // TiKVStores is either Up/Down/Offline/Tombstone
