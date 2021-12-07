@@ -16785,7 +16785,6 @@ spec:
                     cert-allowed-cn:
                       items:
                         type: string
-<<<<<<< HEAD
                       type: array
                     keepalive-ttl:
                       format: int64
@@ -16809,35 +16808,6 @@ spec:
                   type: string
                 env:
                   items:
-=======
-                      updatedReplicas:
-                        format: int32
-                        type: integer
-                    required:
-                    - replicas
-                    type: object
-                type: object
-              ticdc:
-                properties:
-                  captures:
-                    additionalProperties:
-                      properties:
-                        id:
-                          type: string
-                        isOwner:
-                          type: boolean
-                        podName:
-                          type: string
-                        ready:
-                          type: boolean
-                        version:
-                          type: string
-                      type: object
-                    type: object
-                  phase:
-                    type: string
-                  statefulSet:
->>>>>>> b339f41b... Add `ready` field for ticdc's status (#4273)
                     properties:
                       name:
                         type: string

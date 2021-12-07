@@ -393,13 +393,8 @@ func newFakeControl(kubeClientset kubernetes.Interface, informerFactory informer
 		TiFlashControl:     tiflashapi.NewFakeTiFlashControl(kubeClientset),
 		DMMasterControl:    dmapi.NewFakeMasterControl(kubeClientset),
 		TiDBClusterControl: NewFakeTidbClusterControl(informerFactory.Pingcap().V1alpha1().TidbClusters()),
-<<<<<<< HEAD
-		CDCControl:         NewDefaultTiCDCControl(kubeClientset), // TODO: no fake control?
+		CDCControl:         NewFakeTiCDCControl(), // TODO: no fake control?
 		TiDBControl:        NewFakeTiDBControl(),
-=======
-		CDCControl:         NewFakeTiCDCControl(),
-		TiDBControl:        NewFakeTiDBControl(kubeInformerFactory.Core().V1().Secrets().Lister()),
->>>>>>> b339f41b... Add `ready` field for ticdc's status (#4273)
 		BackupControl:      NewFakeBackupControl(informerFactory.Pingcap().V1alpha1().Backups()),
 	}
 }
