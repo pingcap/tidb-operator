@@ -1184,7 +1184,7 @@ func getMonitorStatefulSet(sa *core.ServiceAccount, secret *core.Secret, monitor
 	statefulSet := getMonitorStatefulSetSkeleton(sa, monitor, shard)
 	initContainer := getMonitorInitContainer(monitor)
 	statefulSet.Spec.Template.Spec.InitContainers = append(statefulSet.Spec.Template.Spec.InitContainers, initContainer)
-	if monitor.Spec.DM != nil {
+	if monitor.Spec.DM != nil && len(monitor.Spec.DM.Clusters) > 0 {
 		dmInitContainer := getMonitorDMInitContainer(monitor)
 		statefulSet.Spec.Template.Spec.InitContainers = append(statefulSet.Spec.Template.Spec.InitContainers, dmInitContainer)
 	}
