@@ -31793,6 +31793,8 @@ spec:
                 version:
                   type: string
               type: object
+            timezone:
+              type: string
             tolerations:
               items:
                 properties:
