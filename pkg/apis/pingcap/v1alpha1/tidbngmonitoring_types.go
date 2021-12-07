@@ -77,6 +77,9 @@ type TiDBNGMonitoringSpec struct {
 	// +kubebuilder:default=Retain
 	PVReclaimPolicy *corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
 
+	// ClusterDomain is the Kubernetes Cluster Domain of tidb ng monitoring
+	ClusterDomain string `json:"clusterDomain,omitempty"`
+
 	// NGMonitoring is spec of ng monitoring
 	NGMonitoring NGMonitoringSpec `json:"ngMonitoring"`
 }

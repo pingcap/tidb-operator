@@ -462,9 +462,12 @@ func GenerateNGMonitoringStartScript(tngm *v1alpha1.TiDBNGMonitoring) (string, e
 	tcRef := tngm.Spec.Clusters[0]
 
 	model := &NGMonitoringStartScriptModel{
-		TCName:          tcRef.Name,
-		TCNamespace:     tcRef.Namespace,
-		TCClusterDomain: tcRef.ClusterDomain,
+		TCName:            tcRef.Name,
+		TCNamespace:       tcRef.Namespace,
+		TCClusterDomain:   tcRef.ClusterDomain,
+		TNGMName:          tngm.Name,
+		TNGMNamespace:     tngm.Namespace,
+		TNGMClusterDomain: tngm.Spec.ClusterDomain,
 	}
 
 	script, err := model.RenderStartScript()

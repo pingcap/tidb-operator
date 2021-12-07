@@ -26,8 +26,9 @@ type NGMonitoringStartScriptModel struct {
 	TCNamespace     string // namespace of tidb cluster's namespace
 	TCClusterDomain string // cluster domain of tidb cluster
 
-	TNGMName      string // name of tidb ng monitoring
-	TNGMNamespace string // namespace of tidb ng monitoring
+	TNGMName          string // name of tidb ng monitoring
+	TNGMNamespace     string // namespace of tidb ng monitoring
+	TNGMClusterDomain string // cluster domain of tidb ng monitoring
 }
 
 func (m *NGMonitoringStartScriptModel) FormatClusterDomain() string {
@@ -39,6 +40,7 @@ func (m *NGMonitoringStartScriptModel) FormatClusterDomain() string {
 
 func (m *NGMonitoringStartScriptModel) PDAddress() string {
 	// don't need add scheme, ng monitoring will use https if cert is configured
+	// TODO: support across kubernetes
 	return fmt.Sprintf("%s.%s:2379", controller.PDMemberName(m.TCName), m.TCNamespace)
 }
 
@@ -46,10 +48,20 @@ func (m *NGMonitoringStartScriptModel) RenderStartScript() (string, error) {
 	return renderTemplateFunc(ngMonitoringStartScriptTpl, m)
 }
 
-// TODO: Find a better method to start
+func (m *NGMonitoringStartScriptModel) NGMPeerAddress() string {
+	headlessSvc := NGMonitoringHeadlessServiceName(m.TNGMName)
+	ns := m.TNGMNamespace
+	clusterDomain := m.TNGMClusterDomain
+
+	if clusterDomain == "" {
+		return fmt.Sprintf("${POD_NAME}.%s.%s:12020", headlessSvc, ns)
+	}
+	return fmt.Sprintf("${POD_NAME}.%s.%s.svc.%s:12020", headlessSvc, m.TNGMNamespace, clusterDomain)
+}
+
 var ngMonitoringStartScriptTpl = template.Must(template.New("ng-monitoring-start-script").Parse(`/ng-monitoring-server \
 	--pd.endpoints {{ .PDAddress }} \
-	--advertise-address ${POD_NAME}.${HEADLESS_SERVICE_NAME}:12020 \
+	--advertise-address {{ .NGMPeerAddress }} \
 	--config /etc/ng-monitoring/ng-monitoring.toml \
 	--storage.path /var/lib/ng-monitoring
 `))
