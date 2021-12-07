@@ -414,7 +414,7 @@ func newFakeControl(kubeClientset kubernetes.Interface, informerFactory informer
 		DMMasterControl:    dmapi.NewFakeMasterControl(kubeInformerFactory.Core().V1().Secrets().Lister()),
 		TiFlashControl:     tiflashapi.NewFakeTiFlashControl(kubeInformerFactory.Core().V1().Secrets().Lister()),
 		TiDBClusterControl: NewFakeTidbClusterControl(informerFactory.Pingcap().V1alpha1().TidbClusters()),
-		CDCControl:         NewDefaultTiCDCControl(kubeInformerFactory.Core().V1().Secrets().Lister()), // TODO: no fake control?
+		CDCControl:         NewFakeTiCDCControl(),
 		TiDBControl:        NewFakeTiDBControl(kubeInformerFactory.Core().V1().Secrets().Lister()),
 		BackupControl:      NewFakeBackupControl(informerFactory.Pingcap().V1alpha1().Backups()),
 	}

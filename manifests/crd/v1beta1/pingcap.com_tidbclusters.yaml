@@ -17073,6 +17073,8 @@ spec:
                         type: boolean
                       podName:
                         type: string
+                      ready:
+                        type: boolean
                       version:
                         type: string
                     type: object
