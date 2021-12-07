@@ -24,5 +24,3 @@ func NGMonitoringName(monitorName string) string {
 func NGMonitoringHeadlessServiceName(tngm string) string {
 	return fmt.Sprintf("%s-ng-monitoring", tngm)
 }
-
-
