@@ -31,8 +31,6 @@ type Interface interface {
 	DataResources() DataResourceInformer
 	// Restores returns a RestoreInformer.
 	Restores() RestoreInformer
-	// TiDBNGMonitorings returns a TiDBNGMonitoringInformer.
-	TiDBNGMonitorings() TiDBNGMonitoringInformer
 	// TidbClusters returns a TidbClusterInformer.
 	TidbClusters() TidbClusterInformer
 	// TidbClusterAutoScalers returns a TidbClusterAutoScalerInformer.
@@ -41,6 +39,8 @@ type Interface interface {
 	TidbInitializers() TidbInitializerInformer
 	// TidbMonitors returns a TidbMonitorInformer.
 	TidbMonitors() TidbMonitorInformer
+	// TidbNGMonitorings returns a TidbNGMonitoringInformer.
+	TidbNGMonitorings() TidbNGMonitoringInformer
 }
 
 type version struct {
@@ -79,11 +79,6 @@ func (v *version) Restores() RestoreInformer {
 	return &restoreInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
-// TiDBNGMonitorings returns a TiDBNGMonitoringInformer.
-func (v *version) TiDBNGMonitorings() TiDBNGMonitoringInformer {
-	return &tiDBNGMonitoringInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
-}
-
 // TidbClusters returns a TidbClusterInformer.
 func (v *version) TidbClusters() TidbClusterInformer {
 	return &tidbClusterInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
@@ -102,4 +97,9 @@ func (v *version) TidbInitializers() TidbInitializerInformer {
 // TidbMonitors returns a TidbMonitorInformer.
 func (v *version) TidbMonitors() TidbMonitorInformer {
 	return &tidbMonitorInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// TidbNGMonitorings returns a TidbNGMonitoringInformer.
+func (v *version) TidbNGMonitorings() TidbNGMonitoringInformer {
+	return &tidbNGMonitoringInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

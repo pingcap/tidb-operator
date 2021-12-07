@@ -25,8 +25,6 @@ type DataResourceExpansion interface{}
 
 type RestoreExpansion interface{}
 
-type TiDBNGMonitoringExpansion interface{}
-
 type TidbClusterExpansion interface{}
 
 type TidbClusterAutoScalerExpansion interface{}
@@ -34,3 +32,5 @@ type TidbClusterAutoScalerExpansion interface{}
 type TidbInitializerExpansion interface{}
 
 type TidbMonitorExpansion interface{}
+
+type TidbNGMonitoringExpansion interface{}

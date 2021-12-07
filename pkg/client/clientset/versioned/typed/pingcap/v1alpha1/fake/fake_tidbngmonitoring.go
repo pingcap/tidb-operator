@@ -27,31 +27,31 @@ import (
 	testing "k8s.io/client-go/testing"
 )
 
-// FakeTiDBNGMonitorings implements TiDBNGMonitoringInterface
-type FakeTiDBNGMonitorings struct {
+// FakeTidbNGMonitorings implements TidbNGMonitoringInterface
+type FakeTidbNGMonitorings struct {
 	Fake *FakePingcapV1alpha1
 	ns   string
 }
 
 var tidbngmonitoringsResource = schema.GroupVersionResource{Group: "pingcap.com", Version: "v1alpha1", Resource: "tidbngmonitorings"}
 
-var tidbngmonitoringsKind = schema.GroupVersionKind{Group: "pingcap.com", Version: "v1alpha1", Kind: "TiDBNGMonitoring"}
+var tidbngmonitoringsKind = schema.GroupVersionKind{Group: "pingcap.com", Version: "v1alpha1", Kind: "TidbNGMonitoring"}
 
-// Get takes name of the tiDBNGMonitoring, and returns the corresponding tiDBNGMonitoring object, and an error if there is any.
-func (c *FakeTiDBNGMonitorings) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.TiDBNGMonitoring, err error) {
+// Get takes name of the tidbNGMonitoring, and returns the corresponding tidbNGMonitoring object, and an error if there is any.
+func (c *FakeTidbNGMonitorings) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.TidbNGMonitoring, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(tidbngmonitoringsResource, c.ns, name), &v1alpha1.TiDBNGMonitoring{})
+		Invokes(testing.NewGetAction(tidbngmonitoringsResource, c.ns, name), &v1alpha1.TidbNGMonitoring{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha1.TiDBNGMonitoring), err
+	return obj.(*v1alpha1.TidbNGMonitoring), err
 }
 
-// List takes label and field selectors, and returns the list of TiDBNGMonitorings that match those selectors.
-func (c *FakeTiDBNGMonitorings) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.TiDBNGMonitoringList, err error) {
+// List takes label and field selectors, and returns the list of TidbNGMonitorings that match those selectors.
+func (c *FakeTidbNGMonitorings) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.TidbNGMonitoringList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(tidbngmonitoringsResource, tidbngmonitoringsKind, c.ns, opts), &v1alpha1.TiDBNGMonitoringList{})
+		Invokes(testing.NewListAction(tidbngmonitoringsResource, tidbngmonitoringsKind, c.ns, opts), &v1alpha1.TidbNGMonitoringList{})
 
 	if obj == nil {
 		return nil, err
@@ -61,8 +61,8 @@ func (c *FakeTiDBNGMonitorings) List(ctx context.Context, opts v1.ListOptions) (
 	if label == nil {
 		label = labels.Everything()
 	}
-	list := &v1alpha1.TiDBNGMonitoringList{ListMeta: obj.(*v1alpha1.TiDBNGMonitoringList).ListMeta}
-	for _, item := range obj.(*v1alpha1.TiDBNGMonitoringList).Items {
+	list := &v1alpha1.TidbNGMonitoringList{ListMeta: obj.(*v1alpha1.TidbNGMonitoringList).ListMeta}
+	for _, item := range obj.(*v1alpha1.TidbNGMonitoringList).Items {
 		if label.Matches(labels.Set(item.Labels)) {
 			list.Items = append(list.Items, item)
 		}
@@ -70,58 +70,58 @@ func (c *FakeTiDBNGMonitorings) List(ctx context.Context, opts v1.ListOptions) (
 	return list, err
 }
 
-// Watch returns a watch.Interface that watches the requested tiDBNGMonitorings.
-func (c *FakeTiDBNGMonitorings) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
+// Watch returns a watch.Interface that watches the requested tidbNGMonitorings.
+func (c *FakeTidbNGMonitorings) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewWatchAction(tidbngmonitoringsResource, c.ns, opts))
 
 }
 
-// Create takes the representation of a tiDBNGMonitoring and creates it.  Returns the server's representation of the tiDBNGMonitoring, and an error, if there is any.
-func (c *FakeTiDBNGMonitorings) Create(ctx context.Context, tiDBNGMonitoring *v1alpha1.TiDBNGMonitoring, opts v1.CreateOptions) (result *v1alpha1.TiDBNGMonitoring, err error) {
+// Create takes the representation of a tidbNGMonitoring and creates it.  Returns the server's representation of the tidbNGMonitoring, and an error, if there is any.
+func (c *FakeTidbNGMonitorings) Create(ctx context.Context, tidbNGMonitoring *v1alpha1.TidbNGMonitoring, opts v1.CreateOptions) (result *v1alpha1.TidbNGMonitoring, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(tidbngmonitoringsResource, c.ns, tiDBNGMonitoring), &v1alpha1.TiDBNGMonitoring{})
+		Invokes(testing.NewCreateAction(tidbngmonitoringsResource, c.ns, tidbNGMonitoring), &v1alpha1.TidbNGMonitoring{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha1.TiDBNGMonitoring), err
+	return obj.(*v1alpha1.TidbNGMonitoring), err
 }
 
-// Update takes the representation of a tiDBNGMonitoring and updates it. Returns the server's representation of the tiDBNGMonitoring, and an error, if there is any.
-func (c *FakeTiDBNGMonitorings) Update(ctx context.Context, tiDBNGMonitoring *v1alpha1.TiDBNGMonitoring, opts v1.UpdateOptions) (result *v1alpha1.TiDBNGMonitoring, err error) {
+// Update takes the representation of a tidbNGMonitoring and updates it. Returns the server's representation of the tidbNGMonitoring, and an error, if there is any.
+func (c *FakeTidbNGMonitorings) Update(ctx context.Context, tidbNGMonitoring *v1alpha1.TidbNGMonitoring, opts v1.UpdateOptions) (result *v1alpha1.TidbNGMonitoring, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(tidbngmonitoringsResource, c.ns, tiDBNGMonitoring), &v1alpha1.TiDBNGMonitoring{})
+		Invokes(testing.NewUpdateAction(tidbngmonitoringsResource, c.ns, tidbNGMonitoring), &v1alpha1.TidbNGMonitoring{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha1.TiDBNGMonitoring), err
+	return obj.(*v1alpha1.TidbNGMonitoring), err
 }
 
-// Delete takes name of the tiDBNGMonitoring and deletes it. Returns an error if one occurs.
-func (c *FakeTiDBNGMonitorings) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
+// Delete takes name of the tidbNGMonitoring and deletes it. Returns an error if one occurs.
+func (c *FakeTidbNGMonitorings) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(tidbngmonitoringsResource, c.ns, name), &v1alpha1.TiDBNGMonitoring{})
+		Invokes(testing.NewDeleteAction(tidbngmonitoringsResource, c.ns, name), &v1alpha1.TidbNGMonitoring{})
 
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeTiDBNGMonitorings) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+func (c *FakeTidbNGMonitorings) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
 	action := testing.NewDeleteCollectionAction(tidbngmonitoringsResource, c.ns, listOpts)
 
-	_, err := c.Fake.Invokes(action, &v1alpha1.TiDBNGMonitoringList{})
+	_, err := c.Fake.Invokes(action, &v1alpha1.TidbNGMonitoringList{})
 	return err
 }
 
-// Patch applies the patch and returns the patched tiDBNGMonitoring.
-func (c *FakeTiDBNGMonitorings) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.TiDBNGMonitoring, err error) {
+// Patch applies the patch and returns the patched tidbNGMonitoring.
+func (c *FakeTidbNGMonitorings) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.TidbNGMonitoring, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(tidbngmonitoringsResource, c.ns, name, pt, data, subresources...), &v1alpha1.TiDBNGMonitoring{})
+		Invokes(testing.NewPatchSubresourceAction(tidbngmonitoringsResource, c.ns, name, pt, data, subresources...), &v1alpha1.TidbNGMonitoring{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha1.TiDBNGMonitoring), err
+	return obj.(*v1alpha1.TidbNGMonitoring), err
 }

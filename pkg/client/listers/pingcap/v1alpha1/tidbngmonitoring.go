@@ -22,69 +22,69 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-// TiDBNGMonitoringLister helps list TiDBNGMonitorings.
+// TidbNGMonitoringLister helps list TidbNGMonitorings.
 // All objects returned here must be treated as read-only.
-type TiDBNGMonitoringLister interface {
-	// List lists all TiDBNGMonitorings in the indexer.
+type TidbNGMonitoringLister interface {
+	// List lists all TidbNGMonitorings in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.TiDBNGMonitoring, err error)
-	// TiDBNGMonitorings returns an object that can list and get TiDBNGMonitorings.
-	TiDBNGMonitorings(namespace string) TiDBNGMonitoringNamespaceLister
-	TiDBNGMonitoringListerExpansion
+	List(selector labels.Selector) (ret []*v1alpha1.TidbNGMonitoring, err error)
+	// TidbNGMonitorings returns an object that can list and get TidbNGMonitorings.
+	TidbNGMonitorings(namespace string) TidbNGMonitoringNamespaceLister
+	TidbNGMonitoringListerExpansion
 }
 
-// tiDBNGMonitoringLister implements the TiDBNGMonitoringLister interface.
-type tiDBNGMonitoringLister struct {
+// tidbNGMonitoringLister implements the TidbNGMonitoringLister interface.
+type tidbNGMonitoringLister struct {
 	indexer cache.Indexer
 }
 
-// NewTiDBNGMonitoringLister returns a new TiDBNGMonitoringLister.
-func NewTiDBNGMonitoringLister(indexer cache.Indexer) TiDBNGMonitoringLister {
-	return &tiDBNGMonitoringLister{indexer: indexer}
+// NewTidbNGMonitoringLister returns a new TidbNGMonitoringLister.
+func NewTidbNGMonitoringLister(indexer cache.Indexer) TidbNGMonitoringLister {
+	return &tidbNGMonitoringLister{indexer: indexer}
 }
 
-// List lists all TiDBNGMonitorings in the indexer.
-func (s *tiDBNGMonitoringLister) List(selector labels.Selector) (ret []*v1alpha1.TiDBNGMonitoring, err error) {
+// List lists all TidbNGMonitorings in the indexer.
+func (s *tidbNGMonitoringLister) List(selector labels.Selector) (ret []*v1alpha1.TidbNGMonitoring, err error) {
 	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.TiDBNGMonitoring))
+		ret = append(ret, m.(*v1alpha1.TidbNGMonitoring))
 	})
 	return ret, err
 }
 
-// TiDBNGMonitorings returns an object that can list and get TiDBNGMonitorings.
-func (s *tiDBNGMonitoringLister) TiDBNGMonitorings(namespace string) TiDBNGMonitoringNamespaceLister {
-	return tiDBNGMonitoringNamespaceLister{indexer: s.indexer, namespace: namespace}
+// TidbNGMonitorings returns an object that can list and get TidbNGMonitorings.
+func (s *tidbNGMonitoringLister) TidbNGMonitorings(namespace string) TidbNGMonitoringNamespaceLister {
+	return tidbNGMonitoringNamespaceLister{indexer: s.indexer, namespace: namespace}
 }
 
-// TiDBNGMonitoringNamespaceLister helps list and get TiDBNGMonitorings.
+// TidbNGMonitoringNamespaceLister helps list and get TidbNGMonitorings.
 // All objects returned here must be treated as read-only.
-type TiDBNGMonitoringNamespaceLister interface {
-	// List lists all TiDBNGMonitorings in the indexer for a given namespace.
+type TidbNGMonitoringNamespaceLister interface {
+	// List lists all TidbNGMonitorings in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.TiDBNGMonitoring, err error)
-	// Get retrieves the TiDBNGMonitoring from the indexer for a given namespace and name.
+	List(selector labels.Selector) (ret []*v1alpha1.TidbNGMonitoring, err error)
+	// Get retrieves the TidbNGMonitoring from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.TiDBNGMonitoring, error)
-	TiDBNGMonitoringNamespaceListerExpansion
+	Get(name string) (*v1alpha1.TidbNGMonitoring, error)
+	TidbNGMonitoringNamespaceListerExpansion
 }
 
-// tiDBNGMonitoringNamespaceLister implements the TiDBNGMonitoringNamespaceLister
+// tidbNGMonitoringNamespaceLister implements the TidbNGMonitoringNamespaceLister
 // interface.
-type tiDBNGMonitoringNamespaceLister struct {
+type tidbNGMonitoringNamespaceLister struct {
 	indexer   cache.Indexer
 	namespace string
 }
 
-// List lists all TiDBNGMonitorings in the indexer for a given namespace.
-func (s tiDBNGMonitoringNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.TiDBNGMonitoring, err error) {
+// List lists all TidbNGMonitorings in the indexer for a given namespace.
+func (s tidbNGMonitoringNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.TidbNGMonitoring, err error) {
 	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.TiDBNGMonitoring))
+		ret = append(ret, m.(*v1alpha1.TidbNGMonitoring))
 	})
 	return ret, err
 }
 
-// Get retrieves the TiDBNGMonitoring from the indexer for a given namespace and name.
-func (s tiDBNGMonitoringNamespaceLister) Get(name string) (*v1alpha1.TiDBNGMonitoring, error) {
+// Get retrieves the TidbNGMonitoring from the indexer for a given namespace and name.
+func (s tidbNGMonitoringNamespaceLister) Get(name string) (*v1alpha1.TidbNGMonitoring, error) {
 	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
@@ -92,5 +92,5 @@ func (s tiDBNGMonitoringNamespaceLister) Get(name string) (*v1alpha1.TiDBNGMonit
 	if !exists {
 		return nil, errors.NewNotFound(v1alpha1.Resource("tidbngmonitoring"), name)
 	}
-	return obj.(*v1alpha1.TiDBNGMonitoring), nil
+	return obj.(*v1alpha1.TidbNGMonitoring), nil
 }

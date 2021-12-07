@@ -29,59 +29,59 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-// TiDBNGMonitoringInformer provides access to a shared informer and lister for
-// TiDBNGMonitorings.
-type TiDBNGMonitoringInformer interface {
+// TidbNGMonitoringInformer provides access to a shared informer and lister for
+// TidbNGMonitorings.
+type TidbNGMonitoringInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.TiDBNGMonitoringLister
+	Lister() v1alpha1.TidbNGMonitoringLister
 }
 
-type tiDBNGMonitoringInformer struct {
+type tidbNGMonitoringInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 	namespace        string
 }
 
-// NewTiDBNGMonitoringInformer constructs a new informer for TiDBNGMonitoring type.
+// NewTidbNGMonitoringInformer constructs a new informer for TidbNGMonitoring type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewTiDBNGMonitoringInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredTiDBNGMonitoringInformer(client, namespace, resyncPeriod, indexers, nil)
+func NewTidbNGMonitoringInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredTidbNGMonitoringInformer(client, namespace, resyncPeriod, indexers, nil)
 }
 
-// NewFilteredTiDBNGMonitoringInformer constructs a new informer for TiDBNGMonitoring type.
+// NewFilteredTidbNGMonitoringInformer constructs a new informer for TidbNGMonitoring type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredTiDBNGMonitoringInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredTidbNGMonitoringInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.PingcapV1alpha1().TiDBNGMonitorings(namespace).List(context.TODO(), options)
+				return client.PingcapV1alpha1().TidbNGMonitorings(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.PingcapV1alpha1().TiDBNGMonitorings(namespace).Watch(context.TODO(), options)
+				return client.PingcapV1alpha1().TidbNGMonitorings(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&pingcapv1alpha1.TiDBNGMonitoring{},
+		&pingcapv1alpha1.TidbNGMonitoring{},
 		resyncPeriod,
 		indexers,
 	)
 }
 
-func (f *tiDBNGMonitoringInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredTiDBNGMonitoringInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+func (f *tidbNGMonitoringInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+	return NewFilteredTidbNGMonitoringInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
-func (f *tiDBNGMonitoringInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&pingcapv1alpha1.TiDBNGMonitoring{}, f.defaultInformer)
+func (f *tidbNGMonitoringInformer) Informer() cache.SharedIndexInformer {
+	return f.factory.InformerFor(&pingcapv1alpha1.TidbNGMonitoring{}, f.defaultInformer)
 }
 
-func (f *tiDBNGMonitoringInformer) Lister() v1alpha1.TiDBNGMonitoringLister {
-	return v1alpha1.NewTiDBNGMonitoringLister(f.Informer().GetIndexer())
+func (f *tidbNGMonitoringInformer) Lister() v1alpha1.TidbNGMonitoringLister {
+	return v1alpha1.NewTidbNGMonitoringLister(f.Informer().GetIndexer())
 }

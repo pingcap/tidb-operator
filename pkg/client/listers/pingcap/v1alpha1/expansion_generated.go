@@ -55,14 +55,6 @@ type RestoreListerExpansion interface{}
 // RestoreNamespaceLister.
 type RestoreNamespaceListerExpansion interface{}
 
-// TiDBNGMonitoringListerExpansion allows custom methods to be added to
-// TiDBNGMonitoringLister.
-type TiDBNGMonitoringListerExpansion interface{}
-
-// TiDBNGMonitoringNamespaceListerExpansion allows custom methods to be added to
-// TiDBNGMonitoringNamespaceLister.
-type TiDBNGMonitoringNamespaceListerExpansion interface{}
-
 // TidbClusterListerExpansion allows custom methods to be added to
 // TidbClusterLister.
 type TidbClusterListerExpansion interface{}
@@ -94,3 +86,11 @@ type TidbMonitorListerExpansion interface{}
 // TidbMonitorNamespaceListerExpansion allows custom methods to be added to
 // TidbMonitorNamespaceLister.
 type TidbMonitorNamespaceListerExpansion interface{}
+
+// TidbNGMonitoringListerExpansion allows custom methods to be added to
+// TidbNGMonitoringLister.
+type TidbNGMonitoringListerExpansion interface{}
+
+// TidbNGMonitoringNamespaceListerExpansion allows custom methods to be added to
+// TidbNGMonitoringNamespaceLister.
+type TidbNGMonitoringNamespaceListerExpansion interface{}

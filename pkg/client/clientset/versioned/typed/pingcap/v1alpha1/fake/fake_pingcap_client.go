@@ -45,10 +45,6 @@ func (c *FakePingcapV1alpha1) Restores(namespace string) v1alpha1.RestoreInterfa
 	return &FakeRestores{c, namespace}
 }
 
-func (c *FakePingcapV1alpha1) TiDBNGMonitorings(namespace string) v1alpha1.TiDBNGMonitoringInterface {
-	return &FakeTiDBNGMonitorings{c, namespace}
-}
-
 func (c *FakePingcapV1alpha1) TidbClusters(namespace string) v1alpha1.TidbClusterInterface {
 	return &FakeTidbClusters{c, namespace}
 }
@@ -63,6 +59,10 @@ func (c *FakePingcapV1alpha1) TidbInitializers(namespace string) v1alpha1.TidbIn
 
 func (c *FakePingcapV1alpha1) TidbMonitors(namespace string) v1alpha1.TidbMonitorInterface {
 	return &FakeTidbMonitors{c, namespace}
+}
+
+func (c *FakePingcapV1alpha1) TidbNGMonitorings(namespace string) v1alpha1.TidbNGMonitoringInterface {
+	return &FakeTidbNGMonitorings{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

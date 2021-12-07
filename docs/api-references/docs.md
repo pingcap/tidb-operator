@@ -4134,10 +4134,10 @@ and component-level overrides</p>
 <a href="#pdspec">PDSpec</a>, 
 <a href="#pumpspec">PumpSpec</a>, 
 <a href="#ticdcspec">TiCDCSpec</a>, 
-<a href="#tidbngmonitoringspec">TiDBNGMonitoringSpec</a>, 
 <a href="#tidbspec">TiDBSpec</a>, 
 <a href="#tiflashspec">TiFlashSpec</a>, 
 <a href="#tikvspec">TiKVSpec</a>, 
+<a href="#tidbngmonitoringspec">TidbNGMonitoringSpec</a>, 
 <a href="#workerspec">WorkerSpec</a>)
 </p>
 <p>
@@ -7941,7 +7941,7 @@ Kubernetes core/v1.PullPolicy
 <h3 id="ngmonitoringspec">NGMonitoringSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#tidbngmonitoringspec">TiDBNGMonitoringSpec</a>)
+<a href="#tidbngmonitoringspec">TidbNGMonitoringSpec</a>)
 </p>
 <p>
 <p>NGMonitoringSpec is spec of ng monitoring</p>
@@ -8017,7 +8017,7 @@ Defaults to Kubernetes default storage class.</p>
 </em>
 </td>
 <td>
-<p>StorageVolumes configure additional storage for NG Monitoring pods.</p>
+<p>StorageVolumes configures additional storage for NG Monitoring pods.</p>
 </td>
 </tr>
 <tr>
@@ -8036,7 +8036,7 @@ github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 <h3 id="ngmonitoringstatus">NGMonitoringStatus</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#tidbngmonitoringstatus">TiDBNGMonitoringStatus</a>)
+<a href="#tidbngmonitoringstatus">TidbNGMonitoringStatus</a>)
 </p>
 <p>
 <p>NGMonitoringStatus is latest status of ng monitoring</p>
@@ -14389,247 +14389,6 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="tidbngmonitoring">TiDBNGMonitoring</h3>
-<p>
-<p>TiDBNGMonitoring contains the spec and status of tidb ng monitor</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>metadata</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#objectmeta-v1-meta">
-Kubernetes meta/v1.ObjectMeta
-</a>
-</em>
-</td>
-<td>
-Refer to the Kubernetes API documentation for the fields of the
-<code>metadata</code> field.
-</td>
-</tr>
-<tr>
-<td>
-<code>spec</code></br>
-<em>
-<a href="#tidbngmonitoringspec">
-TiDBNGMonitoringSpec
-</a>
-</em>
-</td>
-<td>
-<p>Spec contains all spec about tidb ng monitor</p>
-<br/>
-<br/>
-<table>
-<tr>
-<td>
-<code>ComponentSpec</code></br>
-<em>
-<a href="#componentspec">
-ComponentSpec
-</a>
-</em>
-</td>
-<td>
-<p>
-(Members of <code>ComponentSpec</code> are embedded into this type.)
-</p>
-<p>ComponentSpec is common spec.
-NOTE: the same field will be overridden by component&rsquo;s spec.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>clusters</code></br>
-<em>
-<a href="#tidbclusterref">
-[]TidbClusterRef
-</a>
-</em>
-</td>
-<td>
-<p>Clusters reference TiDB cluster</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>paused</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<p>Paused pause controller if it is true</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>pvReclaimPolicy</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#persistentvolumereclaimpolicy-v1-core">
-Kubernetes core/v1.PersistentVolumeReclaimPolicy
-</a>
-</em>
-</td>
-<td>
-<p>Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>ngMonitoring</code></br>
-<em>
-<a href="#ngmonitoringspec">
-NGMonitoringSpec
-</a>
-</em>
-</td>
-<td>
-<p>NGMonitoring is spec of ng monitoring</p>
-</td>
-</tr>
-</table>
-</td>
-</tr>
-<tr>
-<td>
-<code>status</code></br>
-<em>
-<a href="#tidbngmonitoringstatus">
-TiDBNGMonitoringStatus
-</a>
-</em>
-</td>
-<td>
-<p>Status is most recently observed status of tidb ng monitor</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="tidbngmonitoringspec">TiDBNGMonitoringSpec</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#tidbngmonitoring">TiDBNGMonitoring</a>)
-</p>
-<p>
-<p>TiDBNGMonitoringSpec is spec of tidb ng monitoring</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>ComponentSpec</code></br>
-<em>
-<a href="#componentspec">
-ComponentSpec
-</a>
-</em>
-</td>
-<td>
-<p>
-(Members of <code>ComponentSpec</code> are embedded into this type.)
-</p>
-<p>ComponentSpec is common spec.
-NOTE: the same field will be overridden by component&rsquo;s spec.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>clusters</code></br>
-<em>
-<a href="#tidbclusterref">
-[]TidbClusterRef
-</a>
-</em>
-</td>
-<td>
-<p>Clusters reference TiDB cluster</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>paused</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<p>Paused pause controller if it is true</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>pvReclaimPolicy</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#persistentvolumereclaimpolicy-v1-core">
-Kubernetes core/v1.PersistentVolumeReclaimPolicy
-</a>
-</em>
-</td>
-<td>
-<p>Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>ngMonitoring</code></br>
-<em>
-<a href="#ngmonitoringspec">
-NGMonitoringSpec
-</a>
-</em>
-</td>
-<td>
-<p>NGMonitoring is spec of ng monitoring</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="tidbngmonitoringstatus">TiDBNGMonitoringStatus</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#tidbngmonitoring">TiDBNGMonitoring</a>)
-</p>
-<p>
-<p>TiDBNGMonitoringStatus is status of tidb ng monitoring</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>ngMonitoring</code></br>
-<em>
-<a href="#ngmonitoringstatus">
-NGMonitoringStatus
-</a>
-</em>
-</td>
-<td>
-<p>NGMonitoring is status of ng monitoring</p>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="tidbprobe">TiDBProbe</h3>
 <p>
 (<em>Appears on:</em>
@@ -20608,11 +20367,11 @@ string
 <h3 id="tidbclusterref">TidbClusterRef</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#tidbngmonitoringspec">TiDBNGMonitoringSpec</a>, 
 <a href="#tidbclusterautoscalerspec">TidbClusterAutoScalerSpec</a>, 
 <a href="#tidbclusterspec">TidbClusterSpec</a>, 
 <a href="#tidbinitializerspec">TidbInitializerSpec</a>, 
-<a href="#tidbmonitorspec">TidbMonitorSpec</a>)
+<a href="#tidbmonitorspec">TidbMonitorSpec</a>, 
+<a href="#tidbngmonitoringspec">TidbNGMonitoringSpec</a>)
 </p>
 <p>
 <p>TidbClusterRef reference to a TidbCluster</p>
@@ -21995,6 +21754,269 @@ Kubernetes apps/v1.StatefulSetStatus
 </em>
 </td>
 <td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tidbngmonitoring">TidbNGMonitoring</h3>
+<p>
+<p>TidbNGMonitoring contains the spec and status of tidb ng monitor</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>metadata</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#objectmeta-v1-meta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code></br>
+<em>
+<a href="#tidbngmonitoringspec">
+TidbNGMonitoringSpec
+</a>
+</em>
+</td>
+<td>
+<p>Spec contains all spec about tidb ng monitor</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>ComponentSpec</code></br>
+<em>
+<a href="#componentspec">
+ComponentSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ComponentSpec</code> are embedded into this type.)
+</p>
+<p>ComponentSpec is common spec.
+NOTE: the same field will be overridden by component&rsquo;s spec.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>clusters</code></br>
+<em>
+<a href="#tidbclusterref">
+[]TidbClusterRef
+</a>
+</em>
+</td>
+<td>
+<p>Clusters reference TiDB cluster</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>paused</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Paused pause controller if it is true</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pvReclaimPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#persistentvolumereclaimpolicy-v1-core">
+Kubernetes core/v1.PersistentVolumeReclaimPolicy
+</a>
+</em>
+</td>
+<td>
+<p>Persistent volume reclaim policy applied to the PVs that consumed by tidb ng monitoring</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>clusterDomain</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>ClusterDomain is the Kubernetes Cluster Domain of tidb ng monitoring</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ngMonitoring</code></br>
+<em>
+<a href="#ngmonitoringspec">
+NGMonitoringSpec
+</a>
+</em>
+</td>
+<td>
+<p>NGMonitoring is spec of ng monitoring</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code></br>
+<em>
+<a href="#tidbngmonitoringstatus">
+TidbNGMonitoringStatus
+</a>
+</em>
+</td>
+<td>
+<p>Status is most recently observed status of tidb ng monitor</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tidbngmonitoringspec">TidbNGMonitoringSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbngmonitoring">TidbNGMonitoring</a>)
+</p>
+<p>
+<p>TidbNGMonitoringSpec is spec of tidb ng monitoring</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ComponentSpec</code></br>
+<em>
+<a href="#componentspec">
+ComponentSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ComponentSpec</code> are embedded into this type.)
+</p>
+<p>ComponentSpec is common spec.
+NOTE: the same field will be overridden by component&rsquo;s spec.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>clusters</code></br>
+<em>
+<a href="#tidbclusterref">
+[]TidbClusterRef
+</a>
+</em>
+</td>
+<td>
+<p>Clusters reference TiDB cluster</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>paused</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Paused pause controller if it is true</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pvReclaimPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#persistentvolumereclaimpolicy-v1-core">
+Kubernetes core/v1.PersistentVolumeReclaimPolicy
+</a>
+</em>
+</td>
+<td>
+<p>Persistent volume reclaim policy applied to the PVs that consumed by tidb ng monitoring</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>clusterDomain</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>ClusterDomain is the Kubernetes Cluster Domain of tidb ng monitoring</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ngMonitoring</code></br>
+<em>
+<a href="#ngmonitoringspec">
+NGMonitoringSpec
+</a>
+</em>
+</td>
+<td>
+<p>NGMonitoring is spec of ng monitoring</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tidbngmonitoringstatus">TidbNGMonitoringStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbngmonitoring">TidbNGMonitoring</a>)
+</p>
+<p>
+<p>TidbNGMonitoringStatus is status of tidb ng monitoring</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ngMonitoring</code></br>
+<em>
+<a href="#ngmonitoringstatus">
+NGMonitoringStatus
+</a>
+</em>
+</td>
+<td>
+<p>NGMonitoring is status of ng monitoring</p>
 </td>
 </tr>
 </tbody>

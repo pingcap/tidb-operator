@@ -27,42 +27,42 @@ import (
 	rest "k8s.io/client-go/rest"
 )
 
-// TiDBNGMonitoringsGetter has a method to return a TiDBNGMonitoringInterface.
+// TidbNGMonitoringsGetter has a method to return a TidbNGMonitoringInterface.
 // A group's client should implement this interface.
-type TiDBNGMonitoringsGetter interface {
-	TiDBNGMonitorings(namespace string) TiDBNGMonitoringInterface
+type TidbNGMonitoringsGetter interface {
+	TidbNGMonitorings(namespace string) TidbNGMonitoringInterface
 }
 
-// TiDBNGMonitoringInterface has methods to work with TiDBNGMonitoring resources.
-type TiDBNGMonitoringInterface interface {
-	Create(ctx context.Context, tiDBNGMonitoring *v1alpha1.TiDBNGMonitoring, opts v1.CreateOptions) (*v1alpha1.TiDBNGMonitoring, error)
-	Update(ctx context.Context, tiDBNGMonitoring *v1alpha1.TiDBNGMonitoring, opts v1.UpdateOptions) (*v1alpha1.TiDBNGMonitoring, error)
+// TidbNGMonitoringInterface has methods to work with TidbNGMonitoring resources.
+type TidbNGMonitoringInterface interface {
+	Create(ctx context.Context, tidbNGMonitoring *v1alpha1.TidbNGMonitoring, opts v1.CreateOptions) (*v1alpha1.TidbNGMonitoring, error)
+	Update(ctx context.Context, tidbNGMonitoring *v1alpha1.TidbNGMonitoring, opts v1.UpdateOptions) (*v1alpha1.TidbNGMonitoring, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.TiDBNGMonitoring, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.TiDBNGMonitoringList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.TidbNGMonitoring, error)
+	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.TidbNGMonitoringList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.TiDBNGMonitoring, err error)
-	TiDBNGMonitoringExpansion
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.TidbNGMonitoring, err error)
+	TidbNGMonitoringExpansion
 }
 
-// tiDBNGMonitorings implements TiDBNGMonitoringInterface
-type tiDBNGMonitorings struct {
+// tidbNGMonitorings implements TidbNGMonitoringInterface
+type tidbNGMonitorings struct {
 	client rest.Interface
 	ns     string
 }
 
-// newTiDBNGMonitorings returns a TiDBNGMonitorings
-func newTiDBNGMonitorings(c *PingcapV1alpha1Client, namespace string) *tiDBNGMonitorings {
-	return &tiDBNGMonitorings{
+// newTidbNGMonitorings returns a TidbNGMonitorings
+func newTidbNGMonitorings(c *PingcapV1alpha1Client, namespace string) *tidbNGMonitorings {
+	return &tidbNGMonitorings{
 		client: c.RESTClient(),
 		ns:     namespace,
 	}
 }
 
-// Get takes name of the tiDBNGMonitoring, and returns the corresponding tiDBNGMonitoring object, and an error if there is any.
-func (c *tiDBNGMonitorings) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.TiDBNGMonitoring, err error) {
-	result = &v1alpha1.TiDBNGMonitoring{}
+// Get takes name of the tidbNGMonitoring, and returns the corresponding tidbNGMonitoring object, and an error if there is any.
+func (c *tidbNGMonitorings) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.TidbNGMonitoring, err error) {
+	result = &v1alpha1.TidbNGMonitoring{}
 	err = c.client.Get().
 		Namespace(c.ns).
 		Resource("tidbngmonitorings").
@@ -73,13 +73,13 @@ func (c *tiDBNGMonitorings) Get(ctx context.Context, name string, options v1.Get
 	return
 }
 
-// List takes label and field selectors, and returns the list of TiDBNGMonitorings that match those selectors.
-func (c *tiDBNGMonitorings) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.TiDBNGMonitoringList, err error) {
+// List takes label and field selectors, and returns the list of TidbNGMonitorings that match those selectors.
+func (c *tidbNGMonitorings) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.TidbNGMonitoringList, err error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
-	result = &v1alpha1.TiDBNGMonitoringList{}
+	result = &v1alpha1.TidbNGMonitoringList{}
 	err = c.client.Get().
 		Namespace(c.ns).
 		Resource("tidbngmonitorings").
@@ -90,8 +90,8 @@ func (c *tiDBNGMonitorings) List(ctx context.Context, opts v1.ListOptions) (resu
 	return
 }
 
-// Watch returns a watch.Interface that watches the requested tiDBNGMonitorings.
-func (c *tiDBNGMonitorings) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
+// Watch returns a watch.Interface that watches the requested tidbNGMonitorings.
+func (c *tidbNGMonitorings) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -105,35 +105,35 @@ func (c *tiDBNGMonitorings) Watch(ctx context.Context, opts v1.ListOptions) (wat
 		Watch(ctx)
 }
 
-// Create takes the representation of a tiDBNGMonitoring and creates it.  Returns the server's representation of the tiDBNGMonitoring, and an error, if there is any.
-func (c *tiDBNGMonitorings) Create(ctx context.Context, tiDBNGMonitoring *v1alpha1.TiDBNGMonitoring, opts v1.CreateOptions) (result *v1alpha1.TiDBNGMonitoring, err error) {
-	result = &v1alpha1.TiDBNGMonitoring{}
+// Create takes the representation of a tidbNGMonitoring and creates it.  Returns the server's representation of the tidbNGMonitoring, and an error, if there is any.
+func (c *tidbNGMonitorings) Create(ctx context.Context, tidbNGMonitoring *v1alpha1.TidbNGMonitoring, opts v1.CreateOptions) (result *v1alpha1.TidbNGMonitoring, err error) {
+	result = &v1alpha1.TidbNGMonitoring{}
 	err = c.client.Post().
 		Namespace(c.ns).
 		Resource("tidbngmonitorings").
 		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(tiDBNGMonitoring).
+		Body(tidbNGMonitoring).
 		Do(ctx).
 		Into(result)
 	return
 }
 
-// Update takes the representation of a tiDBNGMonitoring and updates it. Returns the server's representation of the tiDBNGMonitoring, and an error, if there is any.
-func (c *tiDBNGMonitorings) Update(ctx context.Context, tiDBNGMonitoring *v1alpha1.TiDBNGMonitoring, opts v1.UpdateOptions) (result *v1alpha1.TiDBNGMonitoring, err error) {
-	result = &v1alpha1.TiDBNGMonitoring{}
+// Update takes the representation of a tidbNGMonitoring and updates it. Returns the server's representation of the tidbNGMonitoring, and an error, if there is any.
+func (c *tidbNGMonitorings) Update(ctx context.Context, tidbNGMonitoring *v1alpha1.TidbNGMonitoring, opts v1.UpdateOptions) (result *v1alpha1.TidbNGMonitoring, err error) {
+	result = &v1alpha1.TidbNGMonitoring{}
 	err = c.client.Put().
 		Namespace(c.ns).
 		Resource("tidbngmonitorings").
-		Name(tiDBNGMonitoring.Name).
+		Name(tidbNGMonitoring.Name).
 		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(tiDBNGMonitoring).
+		Body(tidbNGMonitoring).
 		Do(ctx).
 		Into(result)
 	return
 }
 
-// Delete takes name of the tiDBNGMonitoring and deletes it. Returns an error if one occurs.
-func (c *tiDBNGMonitorings) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
+// Delete takes name of the tidbNGMonitoring and deletes it. Returns an error if one occurs.
+func (c *tidbNGMonitorings) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	return c.client.Delete().
 		Namespace(c.ns).
 		Resource("tidbngmonitorings").
@@ -144,7 +144,7 @@ func (c *tiDBNGMonitorings) Delete(ctx context.Context, name string, opts v1.Del
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *tiDBNGMonitorings) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+func (c *tidbNGMonitorings) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
 	var timeout time.Duration
 	if listOpts.TimeoutSeconds != nil {
 		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
@@ -159,9 +159,9 @@ func (c *tiDBNGMonitorings) DeleteCollection(ctx context.Context, opts v1.Delete
 		Error()
 }
 
-// Patch applies the patch and returns the patched tiDBNGMonitoring.
-func (c *tiDBNGMonitorings) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.TiDBNGMonitoring, err error) {
-	result = &v1alpha1.TiDBNGMonitoring{}
+// Patch applies the patch and returns the patched tidbNGMonitoring.
+func (c *tidbNGMonitorings) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.TidbNGMonitoring, err error) {
+	result = &v1alpha1.TidbNGMonitoring{}
 	err = c.client.Patch(pt).
 		Namespace(c.ns).
 		Resource("tidbngmonitorings").

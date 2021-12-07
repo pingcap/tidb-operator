@@ -31915,8 +31915,8 @@ metadata:
 spec:
   group: pingcap.com
   names:
-    kind: TiDBNGMonitoring
-    listKind: TiDBNGMonitoringList
+    kind: TidbNGMonitoring
+    listKind: TidbNGMonitoringList
     plural: tidbngmonitorings
     shortNames:
     - tngm
@@ -33439,6 +33439,8 @@ spec:
                 additionalProperties:
                   type: string
                 type: object
+              clusterDomain:
+                type: string
               clusters:
                 items:
                   properties:
