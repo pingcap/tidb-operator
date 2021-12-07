@@ -17,7 +17,8 @@ OUTPUT_DIR ?= bin
 DEP_PROGS=\
 	misspell\
 	goimports\
-	golangci-lint
+	golangci-lint\
+	controller-gen
 
 .PHONY: all
 all: clean build
@@ -45,3 +46,7 @@ misspell: deps
 goimports: CMD_DIR ?= $(shell go list -f "{{ .Dir }}" golang.org/x/tools/cmd/goimports)
 goimports: deps
 	go build -o $(OUTPUT_DIR)/goimports $(CMD_DIR)
+
+controller-gen: CMD_DIR ?= $(shell go list -f "{{ .Dir }}" sigs.k8s.io/controller-tools/cmd/controller-gen)
+controller-gen: deps
+	go build -o $(OUTPUT_DIR)/controller-gen $(CMD_DIR)

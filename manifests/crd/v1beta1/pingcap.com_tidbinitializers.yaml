@@ -1,0 +1,207 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.6.2
+  creationTimestamp: null
+  name: tidbinitializers.pingcap.com
+spec:
+  group: pingcap.com
+  names:
+    kind: TidbInitializer
+    listKind: TidbInitializerList
+    plural: tidbinitializers
+    shortNames:
+    - ti
+    singular: tidbinitializer
+  preserveUnknownFields: false
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          type: string
+        kind:
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            cluster:
+              properties:
+                clusterDomain:
+                  type: string
+                name:
+                  type: string
+                namespace:
+                  type: string
+              required:
+              - name
+              type: object
+            image:
+              type: string
+            imagePullPolicy:
+              type: string
+            imagePullSecrets:
+              items:
+                properties:
+                  name:
+                    type: string
+                type: object
+              type: array
+            initSql:
+              type: string
+            initSqlConfigMap:
+              type: string
+            passwordSecret:
+              type: string
+            permitHost:
+              type: string
+            podSecurityContext:
+              properties:
+                fsGroup:
+                  format: int64
+                  type: integer
+                fsGroupChangePolicy:
+                  type: string
+                runAsGroup:
+                  format: int64
+                  type: integer
+                runAsNonRoot:
+                  type: boolean
+                runAsUser:
+                  format: int64
+                  type: integer
+                seLinuxOptions:
+                  properties:
+                    level:
+                      type: string
+                    role:
+                      type: string
+                    type:
+                      type: string
+                    user:
+                      type: string
+                  type: object
+                seccompProfile:
+                  properties:
+                    localhostProfile:
+                      type: string
+                    type:
+                      type: string
+                  required:
+                  - type
+                  type: object
+                supplementalGroups:
+                  items:
+                    format: int64
+                    type: integer
+                  type: array
+                sysctls:
+                  items:
+                    properties:
+                      name:
+                        type: string
+                      value:
+                        type: string
+                    required:
+                    - name
+                    - value
+                    type: object
+                  type: array
+                windowsOptions:
+                  properties:
+                    gmsaCredentialSpec:
+                      type: string
+                    gmsaCredentialSpecName:
+                      type: string
+                    runAsUserName:
+                      type: string
+                  type: object
+              type: object
+            resources:
+              properties:
+                limits:
+                  additionalProperties:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
+                  type: object
+                requests:
+                  additionalProperties:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
+                  type: object
+              type: object
+            timezone:
+              type: string
+            tlsClientSecretName:
+              type: string
+          required:
+          - cluster
+          - image
+          type: object
+        status:
+          properties:
+            active:
+              format: int32
+              type: integer
+            completionTime:
+              format: date-time
+              type: string
+            conditions:
+              items:
+                properties:
+                  lastProbeTime:
+                    format: date-time
+                    type: string
+                  lastTransitionTime:
+                    format: date-time
+                    type: string
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                  status:
+                    type: string
+                  type:
+                    type: string
+                required:
+                - status
+                - type
+                type: object
+              type: array
+            failed:
+              format: int32
+              type: integer
+            phase:
+              type: string
+            startTime:
+              format: date-time
+              type: string
+            succeeded:
+              format: int32
+              type: integer
+          type: object
+      required:
+      - metadata
+      - spec
+      type: object
+  version: v1alpha1
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
