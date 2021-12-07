@@ -3218,7 +3218,7 @@ func (oa *OperatorActions) pumpIsHealthy(tcName, ns, podName string, tlsEnabled 
 	var tlsConfig *tls.Config
 	scheme := "http"
 	if tlsEnabled {
-		tlsConfig, err = pdapi.GetTLSConfig(GetSecretListerWithCacheSynced(oa.kubeCli, 1*time.Second), pdapi.Namespace(ns), tcName, util.ClusterTLSSecretName(tcName, label.PumpLabelVal))
+		tlsConfig, err = pdapi.GetTLSConfig(GetSecretListerWithCacheSynced(oa.kubeCli, 1*time.Second), pdapi.Namespace(ns), util.ClusterTLSSecretName(tcName, label.PumpLabelVal))
 		if err != nil {
 			return false
 		}
@@ -3282,7 +3282,7 @@ func (oa *OperatorActions) drainerHealth(tcName, ns, podName string, tlsEnabled 
 	var tlsConfig *tls.Config
 	scheme := "http"
 	if tlsEnabled {
-		tlsConfig, err = pdapi.GetTLSConfig(GetSecretListerWithCacheSynced(oa.kubeCli, 1*time.Second), pdapi.Namespace(ns), tcName, util.ClusterTLSSecretName(tcName, "drainer"))
+		tlsConfig, err = pdapi.GetTLSConfig(GetSecretListerWithCacheSynced(oa.kubeCli, 1*time.Second), pdapi.Namespace(ns), util.ClusterTLSSecretName(tcName, "drainer"))
 		if err != nil {
 			return false
 		}
