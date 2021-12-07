@@ -72,7 +72,7 @@ type TiDBNGMonitoringSpec struct {
 	// Paused pause controller if it is true
 	Paused bool `json:"paused,omitempty"`
 
-	// Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster
+	// Persistent volume reclaim policy applied to the PVs that consumed by tidb ng monitoring
 	//
 	// +kubebuilder:default=Retain
 	PVReclaimPolicy *corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`

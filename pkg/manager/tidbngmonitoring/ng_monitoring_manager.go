@@ -73,7 +73,7 @@ func (m *ngMonitoringManager) syncService(tngm *v1alpha1.TiDBNGMonitoring) error
 	name := tngm.GetName()
 
 	if tngm.Spec.Paused {
-		klog.V(4).Infof("tikv cluster %s/%s is paused, skip syncing for ng monitoring headless service", ns, name)
+		klog.V(4).Infof("tidb ng monitoring %s/%s is paused, skip syncing for ng monitoring headless service", ns, name)
 		return nil
 	}
 
@@ -99,18 +99,12 @@ func (m *ngMonitoringManager) syncService(tngm *v1alpha1.TiDBNGMonitoring) error
 	if err != nil {
 		return err
 	}
-	isOrphan := metav1.GetControllerOf(oldSvc) == nil
-	if !equal || isOrphan {
+	if !equal {
 		svc := *oldSvc
 		svc.Spec = newSvc.Spec
 		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
 		if err != nil {
 			return err
-		}
-		// Adopt headless-service created by helm
-		if isOrphan {
-			svc.OwnerReferences = newSvc.OwnerReferences
-			svc.Labels = newSvc.Labels
 		}
 		_, err = m.deps.ServiceControl.UpdateService(tngm, &svc)
 		return err
