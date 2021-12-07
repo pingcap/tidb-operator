@@ -1678,18 +1678,29 @@ spec:
                           type: string
                         bearerTokenFile:
                           type: string
+                        headers:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        metadataConfig:
+                          properties:
+                            send:
+                              type: boolean
+                            sendInterval:
+                              type: string
+                          type: object
+                        name:
+                          type: string
                         proxyUrl:
                           type: string
                         queueConfig:
                           properties:
                             batchSendDeadline:
-                              format: int64
-                              type: integer
+                              type: string
                             capacity:
                               type: integer
                             maxBackoff:
-                              format: int64
-                              type: integer
+                              type: string
                             maxRetries:
                               type: integer
                             maxSamplesPerSend:
@@ -1697,7 +1708,8 @@ spec:
                             maxShards:
                               type: integer
                             minBackoff:
-                              format: int64
+                              type: string
+                            minShards:
                               type: integer
                           type: object
                         remoteTimeout:

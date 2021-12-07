@@ -458,6 +458,7 @@ type RemoteWriteSpec struct {
 	// +optional
 	QueueConfig *QueueConfig `json:"queueConfig,omitempty"`
 	// MetadataConfig configures the sending of series metadata to remote storage.
+	// Only valid in Prometheus versions 2.23.0 and newer.
 	// +optional
 	MetadataConfig *MetadataConfig `json:"metadataConfig,omitempty"`
 	// Custom HTTP headers to be sent along with each remote write request.
@@ -518,6 +519,7 @@ type QueueConfig struct {
 	Capacity int `json:"capacity,omitempty"`
 
 	// MinShards is the minimum number of shards, i.e. amount of concurrency.
+	// Only valid in Prometheus versions 2.6.0 and newer.
 	MinShards int `json:"minShards,omitempty"`
 
 	// Max number of shards, i.e. amount of concurrency.

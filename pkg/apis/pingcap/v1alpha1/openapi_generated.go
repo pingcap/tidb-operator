@@ -5508,7 +5508,7 @@ func schema_pkg_apis_pingcap_v1alpha1_QueueConfig(ref common.ReferenceCallback) 
 					},
 					"minShards": {
 						SchemaProps: spec.SchemaProps{
-							Description: "MinShards is the minimum number of shards, i.e. amount of concurrency.",
+							Description: "MinShards is the minimum number of shards, i.e. amount of concurrency. Only valid in Prometheus versions 2.6.0 and newer.",
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},
@@ -5710,7 +5710,7 @@ func schema_pkg_apis_pingcap_v1alpha1_RemoteWriteSpec(ref common.ReferenceCallba
 					},
 					"metadataConfig": {
 						SchemaProps: spec.SchemaProps{
-							Description: "MetadataConfig configures the sending of series metadata to remote storage.",
+							Description: "MetadataConfig configures the sending of series metadata to remote storage. Only valid in Prometheus versions 2.23.0 and newer.",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MetadataConfig"),
 						},
 					},

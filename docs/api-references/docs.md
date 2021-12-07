@@ -11196,7 +11196,8 @@ int
 </em>
 </td>
 <td>
-<p>MinShards is the minimum number of shards, i.e. amount of concurrency.</p>
+<p>MinShards is the minimum number of shards, i.e. amount of concurrency.
+Only valid in Prometheus versions 2.6.0 and newer.</p>
 </td>
 </tr>
 <tr>
@@ -11587,7 +11588,8 @@ MetadataConfig
 </td>
 <td>
 <em>(Optional)</em>
-<p>MetadataConfig configures the sending of series metadata to remote storage.</p>
+<p>MetadataConfig configures the sending of series metadata to remote storage.
+Only valid in Prometheus versions 2.23.0 and newer.</p>
 </td>
 </tr>
 <tr>

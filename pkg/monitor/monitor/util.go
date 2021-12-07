@@ -15,20 +15,20 @@ package monitor
 
 import (
 	"fmt"
+
 	"path"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
-	"gopkg.in/yaml.v2"
-
-	"github.com/blang/semver/v4"
+	semver "github.com/Masterminds/semver"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/prometheus/common/model"
+	"gopkg.in/yaml.v2"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -1477,7 +1477,7 @@ func buildExternalLabels(monitor *v1alpha1.TidbMonitor) model.LabelSet {
 
 func generateRemoteWrite(monitor *v1alpha1.TidbMonitor, store *Store) (yaml.MapItem, error) {
 	cfgs := []yaml.MapSlice{}
-	version, err := semver.ParseTolerant(monitor.Spec.Prometheus.Version)
+	version, err := semver.NewVersion(monitor.Spec.Prometheus.Version)
 	if err != nil {
 		return yaml.MapItem{}, err
 	}
@@ -1493,11 +1493,11 @@ func generateRemoteWrite(monitor *v1alpha1.TidbMonitor, store *Store) (yaml.MapI
 			{Key: "remote_timeout", Value: spec.RemoteTimeout},
 		}
 
-		if len(spec.Headers) > 0 && version.GTE(semver.MustParse("2.25.0")) {
+		if len(spec.Headers) > 0 && version.GreaterThan(semver.MustParse("2.25.0")) {
 			cfg = append(cfg, yaml.MapItem{Key: "headers", Value: stringMapToMapSlice(spec.Headers)})
 		}
 
-		if spec.Name != "" && version.GTE(semver.MustParse("2.15.0")) {
+		if spec.Name != "" && version.GreaterThan(semver.MustParse("2.15.0")) {
 			cfg = append(cfg, yaml.MapItem{Key: "name", Value: spec.Name})
 		}
 
@@ -1570,10 +1570,8 @@ func generateRemoteWrite(monitor *v1alpha1.TidbMonitor, store *Store) (yaml.MapI
 				queueConfig = append(queueConfig, yaml.MapItem{Key: "capacity", Value: spec.QueueConfig.Capacity})
 			}
 
-			if version.GTE(semver.MustParse("2.6.0")) {
-				if spec.QueueConfig.MinShards != int(0) {
-					queueConfig = append(queueConfig, yaml.MapItem{Key: "min_shards", Value: spec.QueueConfig.MinShards})
-				}
+			if version.GreaterThan(semver.MustParse("2.6.0")) && spec.QueueConfig.MinShards != int(0) {
+				queueConfig = append(queueConfig, yaml.MapItem{Key: "min_shards", Value: spec.QueueConfig.MinShards})
 			}
 
 			if spec.QueueConfig.MaxShards != int(0) {
@@ -1603,7 +1601,7 @@ func generateRemoteWrite(monitor *v1alpha1.TidbMonitor, store *Store) (yaml.MapI
 			cfg = append(cfg, yaml.MapItem{Key: "queue_config", Value: queueConfig})
 		}
 
-		if spec.MetadataConfig != nil && version.GTE(semver.MustParse("2.23.0")) {
+		if spec.MetadataConfig != nil && version.GreaterThan(semver.MustParse("2.23.0")) {
 			metadataConfig := yaml.MapSlice{}
 			metadataConfig = append(metadataConfig, yaml.MapItem{Key: "send", Value: spec.MetadataConfig.Send})
 			if spec.MetadataConfig.SendInterval != "" {
