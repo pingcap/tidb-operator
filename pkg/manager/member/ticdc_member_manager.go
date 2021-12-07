@@ -212,6 +212,7 @@ func (m *ticdcMemberManager) syncTiCDCStatus(tc *v1alpha1.TidbCluster, sts *apps
 	tc.Status.TiCDC.StatefulSet = &sts.Status
 	upgrading, err := m.statefulSetIsUpgradingFn(m.deps.PodLister, m.deps.PDControl, sts, tc)
 	if err != nil {
+		tc.Status.TiCDC.Synced = false
 		return err
 	}
 	if upgrading {
@@ -221,23 +222,35 @@ func (m *ticdcMemberManager) syncTiCDCStatus(tc *v1alpha1.TidbCluster, sts *apps
 	}
 
 	ticdcCaptures := map[string]v1alpha1.TiCDCCapture{}
+	allCapturesReady := true
 	for id := range helper.GetPodOrdinals(tc.Status.TiCDC.StatefulSet.Replicas, sts) {
 		podName := fmt.Sprintf("%s-%d", controller.TiCDCMemberName(tc.GetName()), id)
-		capture, err := m.deps.CDCControl.GetStatus(tc, int32(id))
+
+		_, err := m.deps.PodLister.Pods(tc.GetNamespace()).Get(podName)
+		if err != nil {
+			klog.Warningf("Failed to get Pod %s of [%s/%s], error: %v", podName, ns, tcName, err)
+			continue
+		}
+
+		capture := v1alpha1.TiCDCCapture{
+			PodName: podName,
+			Ready:   false,
+		}
+		status, err := m.deps.CDCControl.GetStatus(tc, int32(id))
 		if err != nil {
 			klog.Warningf("Failed to get status for Pod %s of [%s/%s], error: %v", podName, ns, tcName, err)
+			allCapturesReady = false
 		} else {
-			ticdcCaptures[podName] = v1alpha1.TiCDCCapture{
-				PodName: podName,
-				ID:      capture.ID,
-				Version: capture.Version,
-				IsOwner: capture.IsOwner,
-			}
+			capture.ID = status.ID
+			capture.Version = status.Version
+			capture.IsOwner = status.IsOwner
+			capture.Ready = true
 		}
+
+		ticdcCaptures[podName] = capture
 	}
-	if len(ticdcCaptures) == int(tc.TiCDCDeployDesiredReplicas()) {
-		tc.Status.TiCDC.Synced = true
-	}
+
+	tc.Status.TiCDC.Synced = len(ticdcCaptures) == int(tc.TiCDCDeployDesiredReplicas()) && allCapturesReady
 	tc.Status.TiCDC.Captures = ticdcCaptures
 
 	return nil
