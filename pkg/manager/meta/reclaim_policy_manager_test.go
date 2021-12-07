@@ -307,7 +307,7 @@ func newTiDBNGMonitoringForMeta() *v1alpha1.TiDBNGMonitoring {
 	pvp := corev1.PersistentVolumeReclaimDelete
 	return &v1alpha1.TiDBNGMonitoring{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "TiDBNGMonitoring",
+			Kind:       "TidbNGMonitoring",
 			APIVersion: "pingcap.com/v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{

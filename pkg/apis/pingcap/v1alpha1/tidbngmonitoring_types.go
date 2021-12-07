@@ -42,7 +42,7 @@ type TidbNGMonitoring struct {
 	Status TidbNGMonitoringStatus `json:"status,omitempty"`
 }
 
-// TiDBNGMonitoringList is TidbNGMonitoring list
+// TidbNGMonitoringList is TidbNGMonitoring list
 //
 // +k8s:openapi-gen=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

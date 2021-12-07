@@ -126,7 +126,7 @@ func (c *defaultTiDBNGMonitoringControl) Update(tngm *v1alpha1.TidbNGMonitoring)
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		var updateErr error
 
-		update, updateErr = c.deps.Clientset.PingcapV1alpha1().TiDBNGMonitorings(ns).Update(context.TODO(), tngm, metav1.UpdateOptions{})
+		update, updateErr = c.deps.Clientset.PingcapV1alpha1().TidbNGMonitorings(ns).Update(context.TODO(), tngm, metav1.UpdateOptions{})
 		if updateErr == nil {
 			klog.Infof("TidbNGMonitoring: [%s/%s] updated successfully", ns, name)
 			return nil
@@ -134,7 +134,7 @@ func (c *defaultTiDBNGMonitoringControl) Update(tngm *v1alpha1.TidbNGMonitoring)
 
 		klog.V(4).Infof("failed to update TidbNGMonitoring: [%s/%s], error: %v", ns, name, updateErr)
 
-		if updated, err := c.deps.TiDBNGMonitoringLister.TiDBNGMonitorings(ns).Get(name); err == nil {
+		if updated, err := c.deps.TiDBNGMonitoringLister.TidbNGMonitorings(ns).Get(name); err == nil {
 			// make a copy so we don't mutate the shared cache
 			tngm = updated.DeepCopy()
 			tngm.Status = *status

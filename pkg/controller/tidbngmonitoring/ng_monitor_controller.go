@@ -54,14 +54,14 @@ func NewController(deps *controller.Dependencies) *Controller {
 		),
 	}
 
-	tnmInformer := deps.InformerFactory.Pingcap().V1alpha1().TiDBNGMonitorings()
+	tnmInformer := deps.InformerFactory.Pingcap().V1alpha1().TidbNGMonitorings()
 	stsInformer := deps.KubeInformerFactory.Apps().V1().StatefulSets()
 	controller.WatchForObject(tnmInformer.Informer(), c.queue)
 	controller.WatchForController(
 		stsInformer.Informer(),
 		c.queue,
 		func(ns, name string) (runtime.Object, error) {
-			return c.deps.TiDBNGMonitoringLister.TiDBNGMonitorings(ns).Get(name)
+			return c.deps.TiDBNGMonitoringLister.TidbNGMonitorings(ns).Get(name)
 		},
 		nil,
 	)
@@ -122,7 +122,7 @@ func (c *Controller) sync(key string) error {
 		return err
 	}
 
-	tngm, err := c.deps.TiDBNGMonitoringLister.TiDBNGMonitorings(ns).Get(name)
+	tngm, err := c.deps.TiDBNGMonitoringLister.TidbNGMonitorings(ns).Get(name)
 	if errors.IsNotFound(err) {
 		klog.Infof("TidbNGMonitoring %s has been deleted", key)
 		return nil

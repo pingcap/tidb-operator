@@ -58,8 +58,8 @@ var (
 	// tidbClusterAutoScalerKind cotnains the schema.GroupVersionKind for TidbClusterAutoScaler controller type.
 	tidbClusterAutoScalerKind = v1alpha1.SchemeGroupVersion.WithKind("TidbClusterAutoScaler")
 
-	// tidbNGMonitoringKind cotnains the schema.GroupVersionKind for TiDBNGMonitoring controller type.
-	tidbNGMonitoringKind = v1alpha1.SchemeGroupVersion.WithKind("TiDBNGMonitoring")
+	// tidbNGMonitoringKind cotnains the schema.GroupVersionKind for TidbNGMonitoring controller type.
+	tidbNGMonitoringKind = v1alpha1.SchemeGroupVersion.WithKind("TidbNGMonitoring")
 )
 
 // RequeueError is used to requeue the item, this error type should't be considered as a real error
@@ -198,7 +198,7 @@ func GetTiDBClusterAutoScalerOwnerRef(tac *v1alpha1.TidbClusterAutoScaler) metav
 	}
 }
 
-func GetTiDBNGMonitoringOwnerRef(tngm *v1alpha1.TiDBNGMonitoring) metav1.OwnerReference {
+func GetTiDBNGMonitoringOwnerRef(tngm *v1alpha1.TidbNGMonitoring) metav1.OwnerReference {
 	controller := true
 	blockOwnerDeletion := true
 	return metav1.OwnerReference{
