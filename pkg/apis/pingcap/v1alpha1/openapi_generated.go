@@ -12442,7 +12442,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbNGMonitoringList(ref common.ReferenceC
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "TiDBNGMonitoringList is TidbNGMonitoring list",
+				Description: "TidbNGMonitoringList is TidbNGMonitoring list",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"kind": {
