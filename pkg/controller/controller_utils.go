@@ -345,10 +345,6 @@ func DMWorkerPeerMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-dm-worker-peer", clusterName)
 }
 
-func NGMonitoringName(monitorName string) string {
-	return fmt.Sprintf("%s-ng-monitoring", monitorName)
-}
-
 // AnnProm adds annotations for prometheus scraping metrics
 func AnnProm(port int32) map[string]string {
 	return map[string]string{

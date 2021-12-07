@@ -15,7 +15,14 @@ package tidbngmonitoring
 
 import "fmt"
 
+// NGMonitoringName return ng monitoring name
+func NGMonitoringName(monitorName string) string {
+	return fmt.Sprintf("%s-ng-monitoring", monitorName)
+}
+
 // NGMonitoringHeadlessServiceName return headless service name
 func NGMonitoringHeadlessServiceName(tngm string) string {
 	return fmt.Sprintf("%s-ng-monitoring", tngm)
 }
+
+

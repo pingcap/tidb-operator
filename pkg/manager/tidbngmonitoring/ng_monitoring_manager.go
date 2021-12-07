@@ -117,7 +117,7 @@ func (m *ngMonitoringManager) syncCore(tngm *v1alpha1.TidbNGMonitoring) error {
 	ns := tngm.GetNamespace()
 	name := tngm.GetName()
 
-	stsName := controller.NGMonitoringName(name)
+	stsName := NGMonitoringName(name)
 	oldStsTemp, err := m.deps.StatefulSetLister.StatefulSets(ns).Get(stsName)
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("populateStatus: failed to get sts %s for tidb ng monitor %s/%s, error: %s", stsName, ns, name, err)
@@ -174,7 +174,7 @@ func (m *ngMonitoringManager) syncConfigMap(tngm *v1alpha1.TidbNGMonitoring, sts
 	var inUseName string
 	if sts != nil {
 		inUseName = mngerutils.FindConfigMapVolume(&sts.Spec.Template.Spec, func(name string) bool {
-			return strings.HasPrefix(name, controller.NGMonitoringName(tngm.Name))
+			return strings.HasPrefix(name, NGMonitoringName(tngm.Name))
 		})
 	}
 
@@ -244,7 +244,7 @@ func GenerateNGMonitoringStatefulSet(tngm *v1alpha1.TidbNGMonitoring, cm *corev1
 	name := tngm.GetName()
 
 	spec := tngm.BaseNGMonitoringSpec()
-	meta, stsLabels := GenerateNGMonitoringMeta(tngm, controller.NGMonitoringName)
+	meta, stsLabels := GenerateNGMonitoringMeta(tngm, NGMonitoringName)
 	headlessServiceName := NGMonitoringHeadlessServiceName(name)
 	replicas := int32(1) // only support one replica now
 
@@ -394,7 +394,7 @@ func GenerateNGMonitoringStatefulSet(tngm *v1alpha1.TidbNGMonitoring, cm *corev1
 // GenerateNGMonitoringConfigMap generate ConfigMap from tidb ng monitoring
 func GenerateNGMonitoringConfigMap(tngm *v1alpha1.TidbNGMonitoring) (*corev1.ConfigMap, error) {
 	config := tngm.Spec.NGMonitoring.Config
-	meta, _ := GenerateNGMonitoringMeta(tngm, controller.NGMonitoringName)
+	meta, _ := GenerateNGMonitoringMeta(tngm, NGMonitoringName)
 
 	// TODO: TLS
 
@@ -403,7 +403,7 @@ func GenerateNGMonitoringConfigMap(tngm *v1alpha1.TidbNGMonitoring) (*corev1.Con
 		return nil, err
 	}
 
-	name := controller.NGMonitoringName(tngm.Name)
+	name := NGMonitoringName(tngm.Name)
 	confTextStr := string(confText)
 
 	data := map[string]string{

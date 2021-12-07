@@ -43,6 +43,7 @@ func NewController(deps *controller.Dependencies) *Controller {
 		deps,
 		tidbngmonitoring.NewNGMonitorManager(deps),
 		meta.NewReclaimPolicyManager(deps),
+		deps.Recorder,
 	)
 
 	c := &Controller{

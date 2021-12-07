@@ -18,21 +18,18 @@ import (
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	v1alpha1validation "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/validation"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 
+	v1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
-)
-
-const (
-	// Event Type
-	EventTypeFailedSync  = "FailedSync"
-	EventTypeSuccessSync = "SuccessSync"
 )
 
 type ReclaimPolicyManager interface {
@@ -52,24 +49,29 @@ func NewDefaultTiDBNGMonitoringControl(
 	deps *controller.Dependencies,
 	ngmMnger manager.TiDBNGMonitoringManager,
 	reclaimPolicyManager ReclaimPolicyManager,
+	recorder record.EventRecorder,
 ) ControlInterface {
 
 	return &defaultTiDBNGMonitoringControl{
 		deps:                 deps,
+		recorder:             recorder,
 		ngmMnger:             ngmMnger,
 		reclaimPolicyManager: reclaimPolicyManager,
 	}
 }
 
 type defaultTiDBNGMonitoringControl struct {
-	deps *controller.Dependencies
+	deps     *controller.Dependencies
+	recorder record.EventRecorder
 
 	ngmMnger             manager.TiDBNGMonitoringManager
 	reclaimPolicyManager ReclaimPolicyManager
 }
 
 func (c *defaultTiDBNGMonitoringControl) Reconcile(tngm *v1alpha1.TidbNGMonitoring) error {
-	// TODO: default and validate
+	if !c.validate(tngm) {
+		return nil // fatal error, no need to retry on invalid object
+	}
 
 	var errs []error
 
@@ -148,4 +150,15 @@ func (c *defaultTiDBNGMonitoringControl) Update(tngm *v1alpha1.TidbNGMonitoring)
 		klog.Errorf("failed to update TidbMonTiDBNGMonitoringitor: [%s/%s], error: %v", ns, name, err)
 	}
 	return update, err
+}
+
+func (c *defaultTiDBNGMonitoringControl) validate(tngm *v1alpha1.TidbNGMonitoring) bool {
+	errs := v1alpha1validation.ValidateTiDBNGMonitoring(tngm)
+	if len(errs) > 0 {
+		aggregatedErr := errs.ToAggregate()
+		klog.Errorf("tidb ng monitoring %s/%s is not valid and must be fixed first, aggregated error: %v", tngm.GetNamespace(), tngm.GetName(), aggregatedErr)
+		c.recorder.Event(tngm, v1.EventTypeWarning, "FailedValidation", aggregatedErr.Error())
+		return false
+	}
+	return true
 }
