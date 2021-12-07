@@ -3600,13 +3600,6 @@ func (oa *OperatorActions) cdcMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, er
 		return false, nil
 	}
 
-	for _, capture := range tc.Status.TiCDC.Captures {
-		if !capture.Ready {
-			log.Logf("capture %d of cdc %s isn't ready", capture.ID, cdcStsID)
-			return false, nil
-		}
-	}
-
 	log.Logf("cdc members are ready for tc %q", tcID)
 	return true, nil
 }
