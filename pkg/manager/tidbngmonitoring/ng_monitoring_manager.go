@@ -52,7 +52,7 @@ func NewNGMonitorManager(deps *controller.Dependencies) manager.TiDBNGMonitoring
 	}
 }
 
-func (m *ngMonitoringManager) Sync(tngm *v1alpha1.TiDBNGMonitoring) error {
+func (m *ngMonitoringManager) Sync(tngm *v1alpha1.TidbNGMonitoring) error {
 	var err error
 
 	err = m.syncService(tngm)
@@ -68,7 +68,7 @@ func (m *ngMonitoringManager) Sync(tngm *v1alpha1.TiDBNGMonitoring) error {
 	return nil
 }
 
-func (m *ngMonitoringManager) syncService(tngm *v1alpha1.TiDBNGMonitoring) error {
+func (m *ngMonitoringManager) syncService(tngm *v1alpha1.TidbNGMonitoring) error {
 	ns := tngm.GetNamespace()
 	name := tngm.GetName()
 
@@ -113,7 +113,7 @@ func (m *ngMonitoringManager) syncService(tngm *v1alpha1.TiDBNGMonitoring) error
 	return nil
 }
 
-func (m *ngMonitoringManager) syncCore(tngm *v1alpha1.TiDBNGMonitoring) error {
+func (m *ngMonitoringManager) syncCore(tngm *v1alpha1.TidbNGMonitoring) error {
 	ns := tngm.GetNamespace()
 	name := tngm.GetName()
 
@@ -163,7 +163,7 @@ func (m *ngMonitoringManager) syncCore(tngm *v1alpha1.TiDBNGMonitoring) error {
 	return mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tngm, newSts, oldSts)
 }
 
-func (m *ngMonitoringManager) syncConfigMap(tngm *v1alpha1.TiDBNGMonitoring, sts *apps.StatefulSet) (*corev1.ConfigMap, error) {
+func (m *ngMonitoringManager) syncConfigMap(tngm *v1alpha1.TidbNGMonitoring, sts *apps.StatefulSet) (*corev1.ConfigMap, error) {
 	spec := tngm.BaseNGMonitoringSpec()
 
 	newCM, err := GenerateNGMonitoringConfigMap(tngm)
@@ -186,7 +186,7 @@ func (m *ngMonitoringManager) syncConfigMap(tngm *v1alpha1.TiDBNGMonitoring, sts
 	return m.deps.TypedControl.CreateOrUpdateConfigMap(tngm, newCM)
 }
 
-func (m *ngMonitoringManager) populateStatus(tngm *v1alpha1.TiDBNGMonitoring, sts *apps.StatefulSet) error {
+func (m *ngMonitoringManager) populateStatus(tngm *v1alpha1.TidbNGMonitoring, sts *apps.StatefulSet) error {
 	if sts == nil {
 		return nil // skip if not created yet
 	}
@@ -209,7 +209,7 @@ func (m *ngMonitoringManager) populateStatus(tngm *v1alpha1.TiDBNGMonitoring, st
 	return nil
 }
 
-func (m *ngMonitoringManager) confirmStatefulSetIsUpgrading(tngm *v1alpha1.TiDBNGMonitoring, oldSts *apps.StatefulSet) (bool, error) {
+func (m *ngMonitoringManager) confirmStatefulSetIsUpgrading(tngm *v1alpha1.TidbNGMonitoring, oldSts *apps.StatefulSet) (bool, error) {
 	if mngerutils.StatefulSetIsUpgrading(oldSts) {
 		return true, nil
 	}
@@ -239,7 +239,7 @@ func (m *ngMonitoringManager) confirmStatefulSetIsUpgrading(tngm *v1alpha1.TiDBN
 	return false, nil
 }
 
-func GenerateNGMonitoringStatefulSet(tngm *v1alpha1.TiDBNGMonitoring, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
+func GenerateNGMonitoringStatefulSet(tngm *v1alpha1.TidbNGMonitoring, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
 	ns := tngm.GetNamespace()
 	name := tngm.GetName()
 
@@ -392,7 +392,7 @@ func GenerateNGMonitoringStatefulSet(tngm *v1alpha1.TiDBNGMonitoring, cm *corev1
 }
 
 // GenerateNGMonitoringConfigMap generate ConfigMap from tidb ng monitoring
-func GenerateNGMonitoringConfigMap(tngm *v1alpha1.TiDBNGMonitoring) (*corev1.ConfigMap, error) {
+func GenerateNGMonitoringConfigMap(tngm *v1alpha1.TidbNGMonitoring) (*corev1.ConfigMap, error) {
 	config := tngm.Spec.NGMonitoring.Config
 	meta, _ := GenerateNGMonitoringMeta(tngm, controller.NGMonitoringName)
 
@@ -419,7 +419,7 @@ func GenerateNGMonitoringConfigMap(tngm *v1alpha1.TiDBNGMonitoring) (*corev1.Con
 }
 
 // GenerateNGMonitoringMeta build ObjectMeta and Label for ng monitoring
-func GenerateNGMonitoringMeta(tngm *v1alpha1.TiDBNGMonitoring, nameFunc func(string) string) (metav1.ObjectMeta, label.Label) {
+func GenerateNGMonitoringMeta(tngm *v1alpha1.TidbNGMonitoring, nameFunc func(string) string) (metav1.ObjectMeta, label.Label) {
 	instanceName := tngm.GetInstanceName()
 	label := label.NewTiDBNGMonitoring().Instance(instanceName).NGMonitoring()
 
@@ -433,7 +433,7 @@ func GenerateNGMonitoringMeta(tngm *v1alpha1.TiDBNGMonitoring, nameFunc func(str
 }
 
 // GenerateNGMonitoringHeadlessService build headless service for ng monitoring
-func GenerateNGMonitoringHeadlessService(tngm *v1alpha1.TiDBNGMonitoring) *corev1.Service {
+func GenerateNGMonitoringHeadlessService(tngm *v1alpha1.TidbNGMonitoring) *corev1.Service {
 	meta, labels := GenerateNGMonitoringMeta(tngm, NGMonitoringHeadlessServiceName)
 
 	return &corev1.Service{
@@ -454,7 +454,7 @@ func GenerateNGMonitoringHeadlessService(tngm *v1alpha1.TiDBNGMonitoring) *corev
 	}
 }
 
-func GenerateNGMonitoringStartScript(tngm *v1alpha1.TiDBNGMonitoring) (string, error) {
+func GenerateNGMonitoringStartScript(tngm *v1alpha1.TidbNGMonitoring) (string, error) {
 	if len(tngm.Spec.Clusters) < 1 {
 		return "", fmt.Errorf("tidb cluster ref is empty")
 	}

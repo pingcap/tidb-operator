@@ -54,7 +54,7 @@ const (
 	TidbClusterAutoScalerKindKey = "tidbclusterautoscaler"
 
 	TiDBNGMonitoringName    = "tidbngmonitorings"
-	TiDBNGMonitoringKind    = "TiDBNGMonitoring"
+	TiDBNGMonitoringKind    = "TidbNGMonitoring"
 	TiDBNGMonitoringKindKey = "tidbngmonitoring"
 
 	SpecPath = "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1."

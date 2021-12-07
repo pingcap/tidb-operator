@@ -31,7 +31,7 @@ import (
 	"k8s.io/klog"
 )
 
-// Controller sync TiDBNGMonitoring
+// Controller sync TidbNGMonitoring
 type Controller struct {
 	deps    *controller.Dependencies
 	control ControlInterface
@@ -99,9 +99,9 @@ func (c *Controller) processNextWorkItem() bool {
 	err := c.sync(key)
 	if err != nil {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
-			klog.Infof("TiDBNGMonitoring %v still need sync: %v, requeuing", key, err)
+			klog.Infof("TidbNGMonitoring %v still need sync: %v, requeuing", key, err)
 		} else {
-			utilruntime.HandleError(fmt.Errorf("TiDBNGMonitoring %v sync failed, err: %v", key, err))
+			utilruntime.HandleError(fmt.Errorf("TidbNGMonitoring %v sync failed, err: %v", key, err))
 		}
 		c.queue.AddRateLimited(key)
 	} else {
@@ -114,7 +114,7 @@ func (c *Controller) processNextWorkItem() bool {
 func (c *Controller) sync(key string) error {
 	startTime := time.Now()
 	defer func() {
-		klog.V(4).Infof("Finished syncing TiDBNGMonitoring %s (%v)", key, time.Since(startTime))
+		klog.V(4).Infof("Finished syncing TidbNGMonitoring %s (%v)", key, time.Since(startTime))
 	}()
 
 	ns, name, err := cache.SplitMetaNamespaceKey(key)
@@ -124,7 +124,7 @@ func (c *Controller) sync(key string) error {
 
 	tngm, err := c.deps.TiDBNGMonitoringLister.TiDBNGMonitorings(ns).Get(name)
 	if errors.IsNotFound(err) {
-		klog.Infof("TiDBNGMonitoring %s has been deleted", key)
+		klog.Infof("TidbNGMonitoring %s has been deleted", key)
 		return nil
 	}
 	if err != nil {

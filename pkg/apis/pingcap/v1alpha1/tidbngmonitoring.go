@@ -15,12 +15,12 @@ package v1alpha1
 
 import "fmt"
 
-func (tngm *TiDBNGMonitoring) GetInstanceName() string {
+func (tngm *TidbNGMonitoring) GetInstanceName() string {
 	return tngm.Name
 }
 
 // NGMonitoringImage return the image used by NGMonitoring.
-func (tngm *TiDBNGMonitoring) NGMonitoringImage() string {
+func (tngm *TidbNGMonitoring) NGMonitoringImage() string {
 	image := tngm.Spec.NGMonitoring.Image
 	baseImage := tngm.Spec.NGMonitoring.BaseImage
 	// base image takes higher priority

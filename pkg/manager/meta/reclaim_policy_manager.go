@@ -46,7 +46,7 @@ func (m *reclaimPolicyManager) SyncMonitor(tm *v1alpha1.TidbMonitor) error {
 	return m.sync(v1alpha1.TiDBMonitorKind, tm, false, *tm.Spec.PVReclaimPolicy)
 }
 
-func (m *reclaimPolicyManager) SyncTiDBNGMonitoring(tngm *v1alpha1.TiDBNGMonitoring) error {
+func (m *reclaimPolicyManager) SyncTiDBNGMonitoring(tngm *v1alpha1.TidbNGMonitoring) error {
 	return m.sync(v1alpha1.TiDBNGMonitoringKind, tngm, false, *tngm.Spec.PVReclaimPolicy)
 }
 

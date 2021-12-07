@@ -29,5 +29,5 @@ type DMManager interface {
 }
 
 type TiDBNGMonitoringManager interface {
-	Sync(*v1alpha1.TiDBNGMonitoring) error
+	Sync(*v1alpha1.TidbNGMonitoring) error
 }

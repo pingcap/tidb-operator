@@ -13,11 +13,11 @@
 
 package v1alpha1
 
-func (tngm *TiDBNGMonitoring) BaseNGMonitoringSpec() ComponentAccessor {
+func (tngm *TidbNGMonitoring) BaseNGMonitoringSpec() ComponentAccessor {
 	return buildTiDBNGMonitoringComponentAccessor(ComponentNGMonitoring, tngm, &tngm.Spec.NGMonitoring.ComponentSpec)
 }
 
-func buildTiDBNGMonitoringComponentAccessor(c Component, tngm *TiDBNGMonitoring, componentSpec *ComponentSpec) ComponentAccessor {
+func buildTiDBNGMonitoringComponentAccessor(c Component, tngm *TidbNGMonitoring, componentSpec *ComponentSpec) ComponentAccessor {
 	commonSpec := tngm.Spec.ComponentSpec
 	impl := &componentAccessorImpl{
 		name:                      tngm.GetName(),

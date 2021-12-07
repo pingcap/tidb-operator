@@ -20,45 +20,45 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// TiDBNGMonitoring contains the spec and status of tidb ng monitor
+// TidbNGMonitoring contains the spec and status of tidb ng monitor
 //
 // +genclient
 // +genclient:noStatus
 // +k8s:openapi-gen=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:resource:shortName="tngm"
-type TiDBNGMonitoring struct {
+type TidbNGMonitoring struct {
 	metav1.TypeMeta `json:",inline"`
 
 	// +k8s:openapi-gen=false
 	metav1.ObjectMeta `json:"metadata"`
 
 	// Spec contains all spec about tidb ng monitor
-	Spec TiDBNGMonitoringSpec `json:"spec"`
+	Spec TidbNGMonitoringSpec `json:"spec"`
 
 	// Status is most recently observed status of tidb ng monitor
 	//
 	// +k8s:openapi-gen=false
-	Status TiDBNGMonitoringStatus `json:"status,omitempty"`
+	Status TidbNGMonitoringStatus `json:"status,omitempty"`
 }
 
-// TiDBNGMonitoringList is TiDBNGMonitoring list
+// TiDBNGMonitoringList is TidbNGMonitoring list
 //
 // +k8s:openapi-gen=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type TiDBNGMonitoringList struct {
+type TidbNGMonitoringList struct {
 	metav1.TypeMeta `json:",inline"`
 
 	// +k8s:openapi-gen=false
 	metav1.ListMeta `json:"metadata"`
 
-	Items []TiDBNGMonitoring `json:"items"`
+	Items []TidbNGMonitoring `json:"items"`
 }
 
-// TiDBNGMonitoringSpec is spec of tidb ng monitoring
+// TidbNGMonitoringSpec is spec of tidb ng monitoring
 //
 // +k8s:openapi-gen=true
-type TiDBNGMonitoringSpec struct {
+type TidbNGMonitoringSpec struct {
 	// ComponentSpec is common spec.
 	// NOTE: the same field will be overridden by component's spec.
 	ComponentSpec `json:",inline"`
@@ -84,8 +84,8 @@ type TiDBNGMonitoringSpec struct {
 	NGMonitoring NGMonitoringSpec `json:"ngMonitoring"`
 }
 
-// TiDBNGMonitoringStatus is status of tidb ng monitoring
-type TiDBNGMonitoringStatus struct {
+// TidbNGMonitoringStatus is status of tidb ng monitoring
+type TidbNGMonitoringStatus struct {
 	// NGMonitoring is status of ng monitoring
 	NGMonitoring NGMonitoringStatus `json:"ngMonitoring,omitempty"`
 }

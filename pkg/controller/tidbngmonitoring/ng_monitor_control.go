@@ -30,23 +30,22 @@ import (
 )
 
 const (
-
 	// Event Type
 	EventTypeFailedSync  = "FailedSync"
 	EventTypeSuccessSync = "SuccessSync"
 )
 
 type ReclaimPolicyManager interface {
-	SyncTiDBNGMonitoring(monitor *v1alpha1.TiDBNGMonitoring) error
+	SyncTiDBNGMonitoring(monitor *v1alpha1.TidbNGMonitoring) error
 }
 
-// ControlInterface provide function about control TiDBNGMonitoring
+// ControlInterface provide function about control TidbNGMonitoring
 type ControlInterface interface {
-	// Reconcile a TiDBNGMonitoring
-	Reconcile(*v1alpha1.TiDBNGMonitoring) error
+	// Reconcile a TidbNGMonitoring
+	Reconcile(*v1alpha1.TidbNGMonitoring) error
 
-	// Update a TiDBNGMonitoring
-	Update(*v1alpha1.TiDBNGMonitoring) (*v1alpha1.TiDBNGMonitoring, error)
+	// Update a TidbNGMonitoring
+	Update(*v1alpha1.TidbNGMonitoring) (*v1alpha1.TidbNGMonitoring, error)
 }
 
 func NewDefaultTiDBNGMonitoringControl(
@@ -69,7 +68,7 @@ type defaultTiDBNGMonitoringControl struct {
 	reclaimPolicyManager ReclaimPolicyManager
 }
 
-func (c *defaultTiDBNGMonitoringControl) Reconcile(tngm *v1alpha1.TiDBNGMonitoring) error {
+func (c *defaultTiDBNGMonitoringControl) Reconcile(tngm *v1alpha1.TidbNGMonitoring) error {
 	// TODO: default and validate
 
 	var errs []error
@@ -95,7 +94,7 @@ func (c *defaultTiDBNGMonitoringControl) Reconcile(tngm *v1alpha1.TiDBNGMonitori
 	return errorutils.NewAggregate(errs)
 }
 
-func (c *defaultTiDBNGMonitoringControl) reconcile(tngm *v1alpha1.TiDBNGMonitoring) error {
+func (c *defaultTiDBNGMonitoringControl) reconcile(tngm *v1alpha1.TidbNGMonitoring) error {
 	if tngm.DeletionTimestamp != nil {
 		return nil
 	}
@@ -115,12 +114,12 @@ func (c *defaultTiDBNGMonitoringControl) reconcile(tngm *v1alpha1.TiDBNGMonitori
 	return nil
 }
 
-func (c *defaultTiDBNGMonitoringControl) Update(tngm *v1alpha1.TiDBNGMonitoring) (*v1alpha1.TiDBNGMonitoring, error) {
+func (c *defaultTiDBNGMonitoringControl) Update(tngm *v1alpha1.TidbNGMonitoring) (*v1alpha1.TidbNGMonitoring, error) {
 	var (
 		ns     string                           = tngm.GetNamespace()
 		name   string                           = tngm.GetName()
-		status *v1alpha1.TiDBNGMonitoringStatus = tngm.Status.DeepCopy()
-		update *v1alpha1.TiDBNGMonitoring
+		status *v1alpha1.TidbNGMonitoringStatus = tngm.Status.DeepCopy()
+		update *v1alpha1.TidbNGMonitoring
 	)
 
 	// don't wait due to limited number of clients, but backoff after the default number of steps
@@ -129,18 +128,18 @@ func (c *defaultTiDBNGMonitoringControl) Update(tngm *v1alpha1.TiDBNGMonitoring)
 
 		update, updateErr = c.deps.Clientset.PingcapV1alpha1().TiDBNGMonitorings(ns).Update(context.TODO(), tngm, metav1.UpdateOptions{})
 		if updateErr == nil {
-			klog.Infof("TiDBNGMonitoring: [%s/%s] updated successfully", ns, name)
+			klog.Infof("TidbNGMonitoring: [%s/%s] updated successfully", ns, name)
 			return nil
 		}
 
-		klog.V(4).Infof("failed to update TiDBNGMonitoring: [%s/%s], error: %v", ns, name, updateErr)
+		klog.V(4).Infof("failed to update TidbNGMonitoring: [%s/%s], error: %v", ns, name, updateErr)
 
 		if updated, err := c.deps.TiDBNGMonitoringLister.TiDBNGMonitorings(ns).Get(name); err == nil {
 			// make a copy so we don't mutate the shared cache
 			tngm = updated.DeepCopy()
 			tngm.Status = *status
 		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated TiDBNGMonitoring %s/%s from lister: %v", ns, name, err))
+			utilruntime.HandleError(fmt.Errorf("error getting updated TidbNGMonitoring %s/%s from lister: %v", ns, name, err))
 		}
 
 		return updateErr
