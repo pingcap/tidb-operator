@@ -264,6 +264,10 @@ All the instances except ACK mandatory workers are deployed across availability 
     kubectl --kubeconfig credentials/kubeconfig create -f db-monitor.yaml -n ${namespace}
     ```
 
+> **Note:**
+>
+> If you need to deploy a TiDB cluster on ARM64 machines, refer to [Deploy a TiDB Cluster on ARM64 Machines](deploy-cluster-on-arm64.md).
+
 ## Access the database
 
 You can connect the TiDB cluster via the bastion instance. All necessary information is in the output printed after installation is finished (replace the `${}` parts with values from the output):

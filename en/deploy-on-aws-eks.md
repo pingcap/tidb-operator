@@ -196,6 +196,10 @@ kubectl apply -f tidb-monitor.yaml -n tidb-cluster
 
 After the yaml file above is applied to the Kubernetes cluster, TiDB Operator creates the desired TiDB cluster and its monitoring component according to the yaml file.
 
+> **Note:**
+>
+> If you need to deploy a TiDB cluster on ARM64 machines, refer to [Deploy a TiDB Cluster on ARM64 Machines](deploy-cluster-on-arm64.md).
+
 ### View the cluster status
 
 To view the status of the starting TiDB cluster, run the following command:

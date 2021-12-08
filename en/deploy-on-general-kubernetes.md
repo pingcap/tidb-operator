@@ -118,6 +118,10 @@ You can use TiDB Operator to deploy and manage multiple TiDB clusters in a singl
 
 Different clusters can be in the same or different `namespace`, which is based on your actual needs.
 
+> **Note:**
+>
+> If you need to deploy a TiDB cluster on ARM64 machines, refer to [Deploy a TiDB Cluster on ARM64 Machines](deploy-cluster-on-arm64.md).
+
 ## Initialize the TiDB cluster
 
 If you want to initialize your cluster after deployment, refer to [Initialize a TiDB Cluster in Kubernetes](initialize-a-cluster.md).
