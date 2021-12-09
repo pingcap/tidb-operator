@@ -10,6 +10,8 @@ spec:
   timezone: UTC
   pvReclaimPolicy: Delete
   discovery: {}
+  helper:
+    image: busybox:1.34.1
   pd:
     baseImage: pingcap/pd
     replicas: 1
