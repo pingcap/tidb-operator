@@ -99,6 +99,18 @@ func (c *FakeTidbNGMonitorings) Update(ctx context.Context, tidbNGMonitoring *v1
 	return obj.(*v1alpha1.TidbNGMonitoring), err
 }
 
+// UpdateStatus was generated because the type contains a Status member.
+// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+func (c *FakeTidbNGMonitorings) UpdateStatus(ctx context.Context, tidbNGMonitoring *v1alpha1.TidbNGMonitoring, opts v1.UpdateOptions) (*v1alpha1.TidbNGMonitoring, error) {
+	obj, err := c.Fake.
+		Invokes(testing.NewUpdateSubresourceAction(tidbngmonitoringsResource, "status", c.ns, tidbNGMonitoring), &v1alpha1.TidbNGMonitoring{})
+
+	if obj == nil {
+		return nil, err
+	}
+	return obj.(*v1alpha1.TidbNGMonitoring), err
+}
+
 // Delete takes name of the tidbNGMonitoring and deletes it. Returns an error if one occurs.
 func (c *FakeTidbNGMonitorings) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.

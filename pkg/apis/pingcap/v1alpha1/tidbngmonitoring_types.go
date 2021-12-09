@@ -23,10 +23,10 @@ import (
 // TidbNGMonitoring contains the spec and status of tidb ng monitor
 //
 // +genclient
-// +genclient:noStatus
 // +k8s:openapi-gen=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:resource:shortName="tngm"
+// +kubebuilder:subresource:status
 type TidbNGMonitoring struct {
 	metav1.TypeMeta `json:",inline"`
 

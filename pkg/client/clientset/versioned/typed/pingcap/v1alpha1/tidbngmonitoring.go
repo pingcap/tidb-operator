@@ -37,6 +37,7 @@ type TidbNGMonitoringsGetter interface {
 type TidbNGMonitoringInterface interface {
 	Create(ctx context.Context, tidbNGMonitoring *v1alpha1.TidbNGMonitoring, opts v1.CreateOptions) (*v1alpha1.TidbNGMonitoring, error)
 	Update(ctx context.Context, tidbNGMonitoring *v1alpha1.TidbNGMonitoring, opts v1.UpdateOptions) (*v1alpha1.TidbNGMonitoring, error)
+	UpdateStatus(ctx context.Context, tidbNGMonitoring *v1alpha1.TidbNGMonitoring, opts v1.UpdateOptions) (*v1alpha1.TidbNGMonitoring, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
 	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.TidbNGMonitoring, error)
@@ -125,6 +126,22 @@ func (c *tidbNGMonitorings) Update(ctx context.Context, tidbNGMonitoring *v1alph
 		Namespace(c.ns).
 		Resource("tidbngmonitorings").
 		Name(tidbNGMonitoring.Name).
+		VersionedParams(&opts, scheme.ParameterCodec).
+		Body(tidbNGMonitoring).
+		Do(ctx).
+		Into(result)
+	return
+}
+
+// UpdateStatus was generated because the type contains a Status member.
+// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+func (c *tidbNGMonitorings) UpdateStatus(ctx context.Context, tidbNGMonitoring *v1alpha1.TidbNGMonitoring, opts v1.UpdateOptions) (result *v1alpha1.TidbNGMonitoring, err error) {
+	result = &v1alpha1.TidbNGMonitoring{}
+	err = c.client.Put().
+		Namespace(c.ns).
+		Resource("tidbngmonitorings").
+		Name(tidbNGMonitoring.Name).
+		SubResource("status").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(tidbNGMonitoring).
 		Do(ctx).
