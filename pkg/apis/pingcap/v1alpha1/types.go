@@ -198,7 +198,6 @@ type TidbClusterSpec struct {
 	// TODO: remove optional after defaulting logic introduced
 
 	// SchedulerName of TiDB cluster Pods
-	// +kubebuilder:default=tidb-scheduler
 	SchedulerName string `json:"schedulerName,omitempty"`
 
 	// Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster
@@ -218,8 +217,6 @@ type TidbClusterSpec struct {
 	// cluster component is needed to reload the configuration change.
 	// UpdateStrategyRollingUpdate will create a new ConfigMap with the new configuration and rolling-update the
 	// related components to use the new ConfigMap, that is, the new configuration will be applied automatically.
-	// +kubebuilder:validation:Enum=InPlace;RollingUpdate
-	// +kubebuilder:default=InPlace
 	ConfigUpdateStrategy ConfigUpdateStrategy `json:"configUpdateStrategy,omitempty"`
 
 	// Whether enable PVC reclaim for orphan PVC left by statefulset scale-in
@@ -1988,7 +1985,6 @@ type DMClusterSpec struct {
 	// TODO: remove optional after defaulting logic introduced
 
 	// SchedulerName of DM cluster Pods
-	// +kubebuilder:default=tidb-scheduler
 	SchedulerName string `json:"schedulerName,omitempty"`
 
 	// Persistent volume reclaim policy applied to the PVs that consumed by DM cluster
