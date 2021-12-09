@@ -128,7 +128,7 @@ func (c *defaultTiDBNGMonitoringControl) Update(tngm *v1alpha1.TidbNGMonitoring)
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		var updateErr error
 
-		update, updateErr = c.deps.Clientset.PingcapV1alpha1().TidbNGMonitorings(ns).Update(context.TODO(), tngm, metav1.UpdateOptions{})
+		update, updateErr = c.deps.Clientset.PingcapV1alpha1().TidbNGMonitorings(ns).UpdateStatus(context.TODO(), tngm, metav1.UpdateOptions{})
 		if updateErr == nil {
 			klog.Infof("TidbNGMonitoring: [%s/%s] updated successfully", ns, name)
 			return nil

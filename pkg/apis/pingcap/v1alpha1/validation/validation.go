@@ -66,11 +66,8 @@ func ValidateDMCluster(dc *v1alpha1.DMCluster) field.ErrorList {
 func ValidateTiDBNGMonitoring(tngm *v1alpha1.TidbNGMonitoring) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	// medata
-	fldPath := field.NewPath("metadata")
-	allErrs = append(allErrs, validateAnnotations(tngm.ObjectMeta.Annotations, fldPath.Child("annotations"))...)
 	// spec
-	fldPath = field.NewPath("spec")
+	fldPath := field.NewPath("spec")
 	allErrs = append(allErrs, validateComponentSpec(&tngm.Spec.ComponentSpec, fldPath)...)
 	allErrs = append(allErrs, validateNGMonitoringSpec(&tngm.Spec.NGMonitoring, fldPath.Child("ngMonitoring"))...)
 
