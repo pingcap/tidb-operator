@@ -2779,7 +2779,7 @@ func schema_pkg_apis_pingcap_v1alpha1_HelperSpec(ref common.ReferenceCallback) c
 				Properties: map[string]spec.Schema{
 					"image": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Image used to tail slow log and set kernel parameters if necessary, must have `tail` and `sysctl` installed Optional: Defaults to busybox:1.26.2",
+							Description: "Image used to tail slow log and set kernel parameters if necessary, must have `tail` and `sysctl` installed Optional: Defaults to busybox:1.26.2. Recommended to set to 1.34.1 for new installations.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
