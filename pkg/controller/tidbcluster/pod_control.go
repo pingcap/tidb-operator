@@ -31,6 +31,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
@@ -285,8 +286,22 @@ func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1
 				return perrors.Annotatef(err, "failed to remove evict leader scheduler for store %d, pod %s/%s", storeID, pod.Namespace, pod.Name)
 			}
 
-			delete(tc.Status.TiKV.EvictLeader, pod.Name)
-			tc, err = c.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Update(ctx, tc, metav1.UpdateOptions{})
+			err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+				delete(tc.Status.TiKV.EvictLeader, pod.Name)
+				_, updateErr := c.deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Update(ctx, tc, metav1.UpdateOptions{})
+				if updateErr == nil {
+					return nil
+				}
+
+				if updated, err := c.deps.TiDBClusterLister.TidbClusters(tc.Namespace).Get(tc.Name); err == nil {
+					// // make a copy so we don't mutate the shared cache
+					tc = updated.DeepCopy()
+				} else {
+					utilruntime.HandleError(fmt.Errorf("error getting updated tc %s/%s from lister: %v", tc.Namespace, tc.Name, err))
+				}
+
+				return updateErr
+			})
 			if err != nil {
 				return perrors.Annotate(err, "failed to update status")
 			}
