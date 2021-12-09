@@ -157,7 +157,7 @@ func (c *PodController) sync(key string) (reconcile.Result, error) {
 
 	pod, err := c.deps.PodLister.Pods(ns).Get(name)
 	if errors.IsNotFound(err) {
-		klog.Infof("pod has been deleted %v", key)
+		klog.Infof("Pod %v has been deleted", key)
 		return reconcile.Result{}, nil
 	}
 	if err != nil {
@@ -165,8 +165,9 @@ func (c *PodController) sync(key string) (reconcile.Result, error) {
 	}
 	pod = pod.DeepCopy()
 
-	// labels of tikv:
-	// app.kubernetes.io/component=tikv,app.kubernetes.io/instance=db1369682775200135879,app.kubernetes.io/managed-by=tidb-operator ...
+	// labels of TiKV:
+	// app.kubernetes.io/component=tikv,app.kubernetes.io/instance=db1369682775200135879,
+	// app.kubernetes.io/managed-by=tidb-operator ...
 	managedBy := pod.Labels[label.ManagedByLabelKey]
 	if managedBy != label.TiDBOperator {
 		return reconcile.Result{}, nil
@@ -211,7 +212,7 @@ func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1
 		case v1alpha1.EvictLeaderValueNone:
 		case v1alpha1.EvictLeaderValueDeletePod:
 		default:
-			klog.Warningf("ignore unknown value %q of annotation %q", value, v1alpha1.EvictLeaderAnnKey)
+			klog.Warningf("Ignore unknown value %q of annotation %q for Pod %s/%s", value, v1alpha1.EvictLeaderAnnKey, pod.Namespace, pod.Name)
 			return reconcile.Result{}, nil
 		}
 	}
@@ -242,11 +243,11 @@ func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1
 		pdClient := c.getPDClient(tc)
 		storeID, err := member.TiKVStoreIDFromStatus(tc, pod.Name)
 		if err != nil {
-			return reconcile.Result{}, perrors.Annotatef(err, "failed to get tikv store id from status for pod %q", pod.Name)
+			return reconcile.Result{}, perrors.Annotatef(err, "failed to get tikv store id from status for pod %s/%s", pod.Namespace, pod.Name)
 		}
 		err = pdClient.BeginEvictLeader(storeID)
 		if err != nil {
-			return reconcile.Result{}, perrors.Annotatef(err, "failed to evict leader for store %d", storeID)
+			return reconcile.Result{}, perrors.Annotatef(err, "failed to evict leader for store %d (Pod %s/%s)", storeID, pod.Namespace, pod.Name)
 		}
 
 		if value == v1alpha1.EvictLeaderValueDeletePod {
