@@ -8,5 +8,6 @@
 out
 gen
 .DS_Store
+.vscode/
 
 /node_modules/
