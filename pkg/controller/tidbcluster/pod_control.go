@@ -255,7 +255,7 @@ func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1
 			kvClient := c.deps.TiKVControl.GetTiKVPodClient(tc.Namespace, tc.Name, pod.Name, tlsEnabled)
 			leaderCount, err := kvClient.GetLeaderCount()
 			if err != nil {
-				return reconcile.Result{}, perrors.Annotatef(err, "failed to get leader count for pod %q", pod.Name)
+				return reconcile.Result{}, perrors.Annotatef(err, "failed to get leader count for pod %s/%s", pod.Namespace, pod.Name)
 			}
 
 			klog.Infof("Region leader count is %d for Pod %s/%s", leaderCount, pod.Namespace, pod.Name)
@@ -277,12 +277,12 @@ func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1
 			pdClient := c.getPDClient(tc)
 			storeID, err := member.TiKVStoreIDFromStatus(tc, pod.Name)
 			if err != nil {
-				return perrors.Annotatef(err, "failed to get tikv store id from status for pod %q", pod.Name)
+				return perrors.Annotatef(err, "failed to get tikv store id from status for pod %s/%s", pod.Namespace, pod.Name)
 			}
 
 			err = pdClient.EndEvictLeader(storeID)
 			if err != nil {
-				return perrors.Annotatef(err, "failed to remove evict leader scheduler for store %d", storeID)
+				return perrors.Annotatef(err, "failed to remove evict leader scheduler for store %d, pod %s/%s", storeID, pod.Namespace, pod.Name)
 			}
 
 			delete(tc.Status.TiKV.EvictLeader, pod.Name)
