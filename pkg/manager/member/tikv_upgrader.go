@@ -159,22 +159,6 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 	return nil
 }
 
-var ErrNotFoundStoreID = fmt.Errorf("not found")
-
-func TiKVStoreIDFromStatus(tc *v1alpha1.TidbCluster, podName string) (uint64, error) {
-	for _, store := range tc.Status.TiKV.Stores {
-		if store.PodName == podName {
-			storeID, err := strconv.ParseUint(store.ID, 10, 64)
-			if err != nil {
-				return 0, err
-			}
-
-			return storeID, nil
-		}
-	}
-	return 0, ErrNotFoundStoreID
-}
-
 func (u *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32, newSet *apps.StatefulSet) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
