@@ -3,6 +3,8 @@ kind: TidbCluster
 metadata:
   name: CLUSTER_NAME
 spec:
+  helper:
+    image: busybox:1.34.1
   version: v5.2.1
   timezone: UTC
   pvReclaimPolicy: Retain

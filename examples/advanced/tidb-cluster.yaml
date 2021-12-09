@@ -40,8 +40,8 @@ spec:
   ## - execute sysctls when PodSecurityContext is set for some components, requires `sysctl` installed
   ## - tail slow log for tidb, requires `tail` installed
   ## - fill tiflash config template file based on pod ordinal
-  # helper:
-  #   image: busybox:latest
+  helper:
+    image: busybox:1.34.1
   #   imagePullPolicy: IfNotPresent
 
   ## Enable PVC/PV reclaim for orphan PVC/PV left by statefulset scale-in.
