@@ -148,7 +148,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2)
 			dc.Spec.Master.Replicas = 1
 			// test open openapi feature
-			dc.Spec.Master.Config = &v1alpha1.MasterConfig{DMExperimental: &v1alpha1.DMExperimental{OpenAPI: true}}
+			dc.Spec.Master.Config = &v1alpha1.MasterConfig{Experimental: &v1alpha1.DMExperimental{OpenAPI: true}}
 			dc.Spec.Worker.Replicas = 1 // current versions of DM can always bind the first source to this only DM-worker instance.
 			dc.Spec.PodSecurityContext = &corev1.PodSecurityContext{
 				RunAsUser:  &userID,
