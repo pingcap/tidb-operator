@@ -460,10 +460,6 @@ func GenerateNGMonitoringHeadlessService(tngm *v1alpha1.TidbNGMonitoring) *corev
 }
 
 func GenerateNGMonitoringStartScript(tngm *v1alpha1.TidbNGMonitoring) (string, error) {
-	if len(tngm.Spec.Clusters) < 1 {
-		return "", fmt.Errorf("tidb cluster ref is empty")
-	}
-
 	tcRef := tngm.Spec.Clusters[0]
 
 	model := &NGMonitoringStartScriptModel{

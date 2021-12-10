@@ -98,18 +98,6 @@ func (b *PodTemplateSpecBuilder) AddAnnotations(annos map[string]string) {
 func (b *PodTemplateSpecBuilder) RunInHostNetwork() {
 	b.prototype.Spec.HostNetwork = true
 	b.prototype.Spec.DNSPolicy = corev1.DNSClusterFirstWithHostNet
-	for _, container := range b.prototype.Spec.Containers {
-		container.Env = util.AppendEnv(container.Env, []corev1.EnvVar{
-			{
-				Name: "POD_NAME",
-				ValueFrom: &corev1.EnvVarSource{
-					FieldRef: &corev1.ObjectFieldSelector{
-						FieldPath: "metadata.name",
-					},
-				},
-			},
-		})
-	}
 }
 
 type StatefulSetBuilder struct {

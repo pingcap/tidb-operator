@@ -66,10 +66,7 @@ func ValidateDMCluster(dc *v1alpha1.DMCluster) field.ErrorList {
 func ValidateTiDBNGMonitoring(tngm *v1alpha1.TidbNGMonitoring) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	// spec
-	fldPath := field.NewPath("spec")
-	allErrs = append(allErrs, validateComponentSpec(&tngm.Spec.ComponentSpec, fldPath)...)
-	allErrs = append(allErrs, validateNGMonitoringSpec(&tngm.Spec.NGMonitoring, fldPath.Child("ngMonitoring"))...)
+	allErrs = append(allErrs, validateTidbNGMonitorinSpec(&tngm.Spec, field.NewPath("spec"))...)
 
 	return allErrs
 }
@@ -318,6 +315,18 @@ func validateMasterSpec(spec *v1alpha1.MasterSpec, fldPath *field.Path) field.Er
 func validateWorkerSpec(spec *v1alpha1.WorkerSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
+	return allErrs
+}
+
+func validateTidbNGMonitorinSpec(spec *v1alpha1.TidbNGMonitoringSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if len(spec.Clusters) < 1 {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("clusters"), len(spec.Clusters), "must have at least one item"))
+	}
+	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
+	allErrs = append(allErrs, validateNGMonitoringSpec(&spec.NGMonitoring, fldPath.Child("ngMonitoring"))...)
+
 	return allErrs
 }
 
