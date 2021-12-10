@@ -2589,6 +2589,19 @@ bool
 if <code>AlertmanagerURL</code> is not configured.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>timezone</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Time zone of TidbMonitor
+Optional: Defaults to UTC</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -21601,6 +21614,19 @@ bool
 <em>(Optional)</em>
 <p>EnableAlertRules adds alert rules to the Prometheus config even
 if <code>AlertmanagerURL</code> is not configured.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timezone</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Time zone of TidbMonitor
+Optional: Defaults to UTC</p>
 </td>
 </tr>
 </tbody>
