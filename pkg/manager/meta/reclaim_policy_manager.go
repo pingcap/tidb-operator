@@ -137,3 +137,7 @@ func (m *FakeReclaimPolicyManager) Sync(_ *v1alpha1.TidbCluster) error {
 func (m *FakeReclaimPolicyManager) SyncDM(_ *v1alpha1.DMCluster) error {
 	return m.err
 }
+
+func (m *FakeReclaimPolicyManager) SyncTiDBNGMonitoring(_ *v1alpha1.TidbNGMonitoring) error {
+	return m.err
+}
