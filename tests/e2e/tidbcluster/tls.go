@@ -89,9 +89,9 @@ spec:
     - "{{ .ClusterName }}-tidb"
     - "{{ .ClusterName }}-tidb.{{ .Namespace }}"
     - "*.{{ .ClusterName }}-tidb"
-    - "{{ .ClusterName }}-tidb.{{ .Namespace }}.svc"
+    - "{{ .ClusterName }}-tidb.{{ .Namespace }}.svc{{ .ClusterDomain }}"
     - "*.{{ .ClusterName }}-tidb.{{ .Namespace }}"
-    - "*.{{ .ClusterName }}-tidb.{{ .Namespace }}.svc"
+    - "*.{{ .ClusterName }}-tidb.{{ .Namespace }}.svc{{ .ClusterDomain }}"
   ipAddresses:
     - 127.0.0.1
     - ::1
@@ -139,13 +139,13 @@ spec:
   dnsNames:
   - "{{ .ClusterName }}-pd"
   - "{{ .ClusterName }}-pd.{{ .Namespace }}"
-  - "{{ .ClusterName }}-pd.{{ .Namespace }}.svc"
+  - "{{ .ClusterName }}-pd.{{ .Namespace }}.svc{{ .ClusterDomain }}"
   - "{{ .ClusterName }}-pd-peer"
   - "{{ .ClusterName }}-pd-peer.{{ .Namespace }}"
-  - "{{ .ClusterName }}-pd-peer.{{ .Namespace }}.svc"
+  - "{{ .ClusterName }}-pd-peer.{{ .Namespace }}.svc{{ .ClusterDomain }}"
   - "*.{{ .ClusterName }}-pd-peer"
   - "*.{{ .ClusterName }}-pd-peer.{{ .Namespace }}"
-  - "*.{{ .ClusterName }}-pd-peer.{{ .Namespace }}.svc"
+  - "*.{{ .ClusterName }}-pd-peer.{{ .Namespace }}.svc{{ .ClusterDomain }}"
   ipAddresses:
   - 127.0.0.1
   - ::1
@@ -172,13 +172,13 @@ spec:
   dnsNames:
   - "{{ .ClusterName }}-tikv"
   - "{{ .ClusterName }}-tikv.{{ .Namespace }}"
-  - "{{ .ClusterName }}-tikv.{{ .Namespace }}.svc"
+  - "{{ .ClusterName }}-tikv.{{ .Namespace }}.svc{{ .ClusterDomain }}"
   - "{{ .ClusterName }}-tikv-peer"
   - "{{ .ClusterName }}-tikv-peer.{{ .Namespace }}"
-  - "{{ .ClusterName }}-tikv-peer.{{ .Namespace }}.svc"
+  - "{{ .ClusterName }}-tikv-peer.{{ .Namespace }}.svc{{ .ClusterDomain }}"
   - "*.{{ .ClusterName }}-tikv-peer"
   - "*.{{ .ClusterName }}-tikv-peer.{{ .Namespace }}"
-  - "*.{{ .ClusterName }}-tikv-peer.{{ .Namespace }}.svc"
+  - "*.{{ .ClusterName }}-tikv-peer.{{ .Namespace }}.svc{{ .ClusterDomain }}"
   ipAddresses:
   - 127.0.0.1
   - ::1
@@ -205,13 +205,13 @@ spec:
   dnsNames:
   - "{{ .ClusterName }}-tidb"
   - "{{ .ClusterName }}-tidb.{{ .Namespace }}"
-  - "{{ .ClusterName }}-tidb.{{ .Namespace }}.svc"
+  - "{{ .ClusterName }}-tidb.{{ .Namespace }}.svc{{ .ClusterDomain }}"
   - "{{ .ClusterName }}-tidb-peer"
   - "{{ .ClusterName }}-tidb-peer.{{ .Namespace }}"
-  - "{{ .ClusterName }}-tidb-peer.{{ .Namespace }}.svc"
+  - "{{ .ClusterName }}-tidb-peer.{{ .Namespace }}.svc{{ .ClusterDomain }}"
   - "*.{{ .ClusterName }}-tidb-peer"
   - "*.{{ .ClusterName }}-tidb-peer.{{ .Namespace }}"
-  - "*.{{ .ClusterName }}-tidb-peer.{{ .Namespace }}.svc"
+  - "*.{{ .ClusterName }}-tidb-peer.{{ .Namespace }}.svc{{ .ClusterDomain }}"
   ipAddresses:
   - 127.0.0.1
   - ::1
@@ -257,7 +257,7 @@ spec:
   dnsNames:
   - "*.{{ .ClusterName }}-pump"
   - "*.{{ .ClusterName }}-pump.{{ .Namespace }}"
-  - "*.{{ .ClusterName }}-pump.{{ .Namespace }}.svc"
+  - "*.{{ .ClusterName }}-pump.{{ .Namespace }}.svc{{ .ClusterDomain }}"
   ipAddresses:
   - 127.0.0.1
   - ::1
@@ -284,7 +284,7 @@ spec:
   dnsNames:
   - "*.{{ .ClusterName }}-{{ .ClusterName }}-drainer"
   - "*.{{ .ClusterName }}-{{ .ClusterName }}-drainer.{{ .Namespace }}"
-  - "*.{{ .ClusterName }}-{{ .ClusterName }}-drainer.{{ .Namespace }}.svc"
+  - "*.{{ .ClusterName }}-{{ .ClusterName }}-drainer.{{ .Namespace }}.svc{{ .ClusterDomain }}"
   ipAddresses:
   - 127.0.0.1
   - ::1
@@ -311,13 +311,13 @@ spec:
   dnsNames:
   - "{{ .ClusterName }}-tiflash"
   - "{{ .ClusterName }}-tiflash.{{ .Namespace }}"
-  - "{{ .ClusterName }}-tiflash.{{ .Namespace }}.svc"
+  - "{{ .ClusterName }}-tiflash.{{ .Namespace }}.svc{{ .ClusterDomain }}"
   - "{{ .ClusterName }}-tiflash-peer"
   - "{{ .ClusterName }}-tiflash-peer.{{ .Namespace }}"
-  - "{{ .ClusterName }}-tiflash-peer.{{ .Namespace }}.svc"
+  - "{{ .ClusterName }}-tiflash-peer.{{ .Namespace }}.svc{{ .ClusterDomain }}"
   - "*.{{ .ClusterName }}-tiflash-peer"
   - "*.{{ .ClusterName }}-tiflash-peer.{{ .Namespace }}"
-  - "*.{{ .ClusterName }}-tiflash-peer.{{ .Namespace }}.svc"
+  - "*.{{ .ClusterName }}-tiflash-peer.{{ .Namespace }}.svc{{ .ClusterDomain }}"
   ipAddresses:
   - 127.0.0.1
   - ::1
@@ -462,6 +462,17 @@ spec:
     group: cert-manager.io
 `
 
+var xK8sTidbIssuerTmpl = `
+apiVersion: cert-manager.io/v1alpha2
+kind: Issuer
+metadata:
+  name: {{ .ClusterName }}-tidb-issuer
+  namespace: {{ .Namespace }}
+spec:
+  ca:
+    secretName: {{ .ClusterRef }}-ca-secret
+`
+
 type tcTmplMeta struct {
 	Namespace   string
 	ClusterName string
@@ -471,6 +482,11 @@ type tcTmplMeta struct {
 type tcCliTmplMeta struct {
 	tcTmplMeta
 	Component string
+}
+
+type tcCertTmplMeta struct {
+	tcTmplMeta
+	ClusterDomain string
 }
 
 func InstallCertManager(cli clientset.Interface) error {
@@ -516,20 +532,32 @@ func InstallTiDBIssuer(ns, tcName string) error {
 	return installCert(tidbIssuerTmpl, tcTmplMeta{ns, tcName, tcName})
 }
 
+func InstallXK8sTiDBIssuer(ns, tcName1, tcName2 string) error {
+	return installCert(xK8sTidbIssuerTmpl, tcTmplMeta{ns, tcName2, tcName1})
+}
+
 func InstallTiDBCertificates(ns, tcName string) error {
-	return installCert(tidbCertificatesTmpl, tcTmplMeta{ns, tcName, tcName})
+	return installCert(tidbCertificatesTmpl, tcCertTmplMeta{tcTmplMeta{ns, tcName, tcName}, ""})
 }
 
 func installHeterogeneousTiDBCertificates(ns, tcName string, clusterRef string) error {
-	return installCert(tidbCertificatesTmpl, tcTmplMeta{ns, tcName, clusterRef})
+	return installCert(tidbCertificatesTmpl, tcCertTmplMeta{tcTmplMeta{ns, tcName, tcName}, ""})
+}
+
+func InstallXK8sTiDBCertificates(ns, tcName, clusterDomain string) error {
+	return installCert(tidbCertificatesTmpl, tcCertTmplMeta{tcTmplMeta{ns, tcName, tcName}, clusterDomain})
 }
 
 func installTiDBComponentsCertificates(ns, tcName string) error {
-	return installCert(tidbComponentsCertificatesTmpl, tcTmplMeta{ns, tcName, tcName})
+	return installCert(tidbComponentsCertificatesTmpl, tcCertTmplMeta{tcTmplMeta{ns, tcName, tcName}, ""})
 }
 
 func installHeterogeneousTiDBComponentsCertificates(ns, tcName string, clusterRef string) error {
-	return installCert(tidbComponentsCertificatesTmpl, tcTmplMeta{ns, tcName, clusterRef})
+	return installCert(tidbComponentsCertificatesTmpl, tcCertTmplMeta{tcTmplMeta{ns, tcName, tcName}, ""})
+}
+
+func InstallXK8sTiDBComponentsCertificates(ns, tcName, clusterDomain string) error {
+	return installCert(tidbComponentsCertificatesTmpl, tcCertTmplMeta{tcTmplMeta{ns, tcName, tcName}, clusterDomain})
 }
 
 func installTiDBInitializerCertificates(ns, tcName string) error {
