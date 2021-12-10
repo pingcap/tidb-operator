@@ -304,7 +304,7 @@ func getMonitorRoleBinding(sa *core.ServiceAccount, role *rbac.Role, monitor *v1
 	}
 }
 
-func getMonitorInitContainer(monitor *v1alpha1.TidbMonitor) core.Container {
+func getMonitorInitContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) core.Container {
 	command := getInitCommand(monitor)
 	container := core.Container{
 		Name:  "monitor-initializer",
@@ -345,6 +345,26 @@ func getMonitorInitContainer(monitor *v1alpha1.TidbMonitor) core.Container {
 		},
 		Resources: controller.ContainerResource(monitor.Spec.Initializer.ResourceRequirements),
 	}
+	if tc != nil {
+		container.Env = append(container.Env, []core.EnvVar{
+			{
+				Name:  "TZ",
+				Value: tc.Timezone(),
+			},
+			{
+				Name:  "TIDB_ENABLE_BINLOG",
+				Value: strconv.FormatBool(tc.IsTiDBBinlogEnabled()),
+			},
+			{
+				Name:  "TIDB_CLUSTER_NAME",
+				Value: tc.Name,
+			},
+			{
+				Name:  "TIDB_CLUSTER_NAMESPACE",
+				Value: tc.Namespace,
+			},
+		}...)
+	}
 
 	if monitor.Spec.Initializer.ImagePullPolicy != nil {
 		container.ImagePullPolicy = *monitor.Spec.Initializer.ImagePullPolicy
@@ -373,13 +393,17 @@ func getMonitorInitContainer(monitor *v1alpha1.TidbMonitor) core.Container {
 	return container
 }
 
-func getMonitorDMInitContainer(monitor *v1alpha1.TidbMonitor) core.Container {
+func getMonitorDMInitContainer(monitor *v1alpha1.TidbMonitor, dc *v1alpha1.DMCluster) core.Container {
 	// TODO: Support dm in reloader. Currently dm cluster shares the same persistent rules dir with tidb cluster
 	command := getInitCommand(monitor)
 	container := core.Container{
 		Name:  "dm-initializer",
 		Image: fmt.Sprintf("%s:%s", monitor.Spec.DM.Initializer.BaseImage, monitor.Spec.DM.Initializer.Version),
 		Env: []core.EnvVar{
+			{
+				Name:  "DM_CLUSTER_NAME",
+				Value: dc.Name,
+			},
 			{
 				Name:  "PROM_CONFIG_PATH",
 				Value: "/prometheus-rules",
@@ -395,6 +419,10 @@ func getMonitorDMInitContainer(monitor *v1alpha1.TidbMonitor) core.Container {
 			{
 				Name:  "GF_DM_PROMETHEUS_URL",
 				Value: "http://127.0.0.1:9090",
+			},
+			{
+				Name:  "DM_CLUSTER_NAMESPACE",
+				Value: dc.Namespace,
 			},
 			{
 				Name:  "TZ",
@@ -1180,12 +1208,12 @@ func defaultTidbMonitor(monitor *v1alpha1.TidbMonitor) {
 
 }
 
-func getMonitorStatefulSet(sa *core.ServiceAccount, secret *core.Secret, monitor *v1alpha1.TidbMonitor, shard int32) (*apps.StatefulSet, error) {
+func getMonitorStatefulSet(sa *core.ServiceAccount, secret *core.Secret, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, shard int32) (*apps.StatefulSet, error) {
 	statefulSet := getMonitorStatefulSetSkeleton(sa, monitor, shard)
-	initContainer := getMonitorInitContainer(monitor)
+	initContainer := getMonitorInitContainer(monitor, tc)
 	statefulSet.Spec.Template.Spec.InitContainers = append(statefulSet.Spec.Template.Spec.InitContainers, initContainer)
 	if monitor.Spec.DM != nil && len(monitor.Spec.DM.Clusters) > 0 {
-		dmInitContainer := getMonitorDMInitContainer(monitor)
+		dmInitContainer := getMonitorDMInitContainer(monitor, dc)
 		statefulSet.Spec.Template.Spec.InitContainers = append(statefulSet.Spec.Template.Spec.InitContainers, dmInitContainer)
 	}
 	prometheusContainer := getMonitorPrometheusContainer(monitor, shard)

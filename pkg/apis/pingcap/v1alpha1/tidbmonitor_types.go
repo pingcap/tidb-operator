@@ -184,7 +184,7 @@ type TidbMonitorSpec struct {
 	// Time zone of TidbMonitor
 	// Optional: Defaults to UTC
 	// +optional
-	Timezone *string `toml:"tz,omitempty" json:"timezone,omitempty"`
+	Timezone string `json:"timezone,omitempty"`
 }
 
 // PrometheusReloaderSpec is the desired state of prometheus configuration reloader
@@ -531,8 +531,8 @@ func (tm *TidbMonitor) GetShards() int32 {
 
 func (tm *TidbMonitor) Timezone() string {
 	tz := tm.Spec.Timezone
-	if tz == nil {
+	if len(tz) <= 0 {
 		return defaultTimeZone
 	}
-	return *tz
+	return tz
 }
