@@ -303,7 +303,7 @@ func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1
 				return updateErr
 			})
 			if err != nil {
-				return perrors.Annotate(err, "failed to update status for tc %s/%s", tc.Namespace, tc.Name)
+				return perrors.Annotatef(err, "failed to update status for tc %s/%s", tc.Namespace, tc.Name)
 			}
 
 			return nil
