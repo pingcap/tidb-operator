@@ -511,7 +511,7 @@ func CreateOrUpdateConfigMap(configMapLister corelisters.ConfigMapLister, contro
 		return nil, fmt.Errorf("CreateOrUpdateConfigMap error: failed to get configMap %s/%s, error: %s", newCm.Namespace, newCm.Name, err)
 	}
 	if errors.IsNotFound(err) {
-		cm, err := controller.CreateConfigMap(owner, newCm)
+		cm, err := controller.CreateConfigMap(owner, newCm, true)
 		if err == nil {
 			return cm, nil
 		}
@@ -530,7 +530,7 @@ func CreateOrUpdateConfigMap(configMapLister corelisters.ConfigMapLister, contro
 		for k, v := range newCm.Annotations {
 			mutateCm.Annotations[k] = v
 		}
-		return controller.UpdateConfigMap(owner, mutateCm)
+		return controller.UpdateConfigMap(owner, mutateCm, true)
 	}
 	return newCm, nil
 }

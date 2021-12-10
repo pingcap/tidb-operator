@@ -38,7 +38,7 @@ func TestConfigMapControlCreatesConfigMaps(t *testing.T) {
 		create := action.(core.CreateAction)
 		return true, create.GetObject(), nil
 	})
-	_, err := control.CreateConfigMap(tc, cm)
+	_, err := control.CreateConfigMap(tc, cm, true)
 	g.Expect(err).To(Succeed())
 
 	events := collectEvents(recorder.Events)
@@ -56,7 +56,7 @@ func TestConfigMapControlCreatesConfigMapFailed(t *testing.T) {
 	fakeClient.AddReactor("create", "configmaps", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, apierrors.NewInternalError(errors.New("API server down"))
 	})
-	_, err := control.CreateConfigMap(tc, cm)
+	_, err := control.CreateConfigMap(tc, cm, true)
 	g.Expect(err).To(HaveOccurred())
 
 	events := collectEvents(recorder.Events)
@@ -76,7 +76,7 @@ func TestConfigMapControlUpdateConfigMap(t *testing.T) {
 		update := action.(core.UpdateAction)
 		return true, update.GetObject(), nil
 	})
-	updatecm, err := control.UpdateConfigMap(tc, cm)
+	updatecm, err := control.UpdateConfigMap(tc, cm, true)
 	g.Expect(err).To(Succeed())
 	g.Expect(updatecm.Data["file"]).To(Equal("test"))
 }
@@ -100,7 +100,7 @@ func TestConfigMapControlUpdateConfigMapConflictSuccess(t *testing.T) {
 		}
 		return true, update.GetObject(), nil
 	})
-	updatecm, err := control.UpdateConfigMap(tc, cm)
+	updatecm, err := control.UpdateConfigMap(tc, cm, true)
 	g.Expect(err).To(Succeed())
 	g.Expect(updatecm.Data["file"]).To(Equal("test"))
 }

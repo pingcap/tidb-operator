@@ -33,9 +33,9 @@ import (
 // ConfigMapControlInterface manages configmaps used by TiDB clusters
 type ConfigMapControlInterface interface {
 	// CreateConfigMap create the given ConfigMap owned by the controller object
-	CreateConfigMap(controller runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error)
+	CreateConfigMap(controller runtime.Object, cm *corev1.ConfigMap, setOwnerFlag bool) (*corev1.ConfigMap, error)
 	// UpdateConfigMap continuously tries to update ConfigMap to the given state owned by the controller obejct
-	UpdateConfigMap(controller runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error)
+	UpdateConfigMap(controller runtime.Object, cm *corev1.ConfigMap, setOwnerFlag bool) (*corev1.ConfigMap, error)
 	// DeleteConfigMap delete the given ConfigMap owned by the controller object
 	DeleteConfigMap(controller runtime.Object, cm *corev1.ConfigMap) error
 	// GetConfigMap get the ConfigMap by configMap name
@@ -58,17 +58,26 @@ func NewRealConfigMapControl(
 	}
 }
 
-func (c *realConfigMapControl) CreateConfigMap(owner runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
+func (c *realConfigMapControl) CreateConfigMap(owner runtime.Object, cm *corev1.ConfigMap, setOwnerFlag bool) (*corev1.ConfigMap, error) {
+	if setOwnerFlag {
+		if err := setControllerReference(owner, cm); err != nil {
+			return cm, err
+		}
+	}
 	created, err := c.kubeCli.CoreV1().ConfigMaps(cm.Namespace).Create(context.Background(), cm, metav1.CreateOptions{})
 	c.recordConfigMapEvent("create", owner, cm, err)
 	return created, err
 }
 
-func (c *realConfigMapControl) UpdateConfigMap(owner runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
+func (c *realConfigMapControl) UpdateConfigMap(owner runtime.Object, cm *corev1.ConfigMap, setOwnerFlag bool) (*corev1.ConfigMap, error) {
 	ns := cm.GetNamespace()
 	cmName := cm.GetName()
 	cmData := cm.Data
-
+	if setOwnerFlag {
+		if err := setControllerReference(owner, cm); err != nil {
+			return cm, err
+		}
+	}
 	var updatedCm *corev1.ConfigMap
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		var updateErr error
@@ -159,7 +168,7 @@ func (c *FakeConfigMapControl) SetDeleteConfigMapError(err error, after int) {
 }
 
 // CreateConfigMap adds the ConfigMap to ConfigMapIndexer
-func (c *FakeConfigMapControl) CreateConfigMap(_ runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
+func (c *FakeConfigMapControl) CreateConfigMap(_ runtime.Object, cm *corev1.ConfigMap, setOwnerFlag bool) (*corev1.ConfigMap, error) {
 	defer c.createConfigMapTracker.Inc()
 	if c.createConfigMapTracker.ErrorReady() {
 		defer c.createConfigMapTracker.Reset()
@@ -174,7 +183,7 @@ func (c *FakeConfigMapControl) CreateConfigMap(_ runtime.Object, cm *corev1.Conf
 }
 
 // UpdateConfigMap updates the ConfigMap of CmIndexer
-func (c *FakeConfigMapControl) UpdateConfigMap(_ runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
+func (c *FakeConfigMapControl) UpdateConfigMap(_ runtime.Object, cm *corev1.ConfigMap, setOwnerFlag bool) (*corev1.ConfigMap, error) {
 	defer c.updateConfigMapTracker.Inc()
 	if c.updateConfigMapTracker.ErrorReady() {
 		defer c.updateConfigMapTracker.Reset()
