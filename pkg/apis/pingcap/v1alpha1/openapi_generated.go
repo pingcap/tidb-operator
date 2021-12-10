@@ -12081,6 +12081,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 							Format:      "",
 						},
 					},
+					"timezone": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Time zone of TidbMonitor Optional: Defaults to UTC",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"prometheus", "reloader", "initializer"},
 			},
