@@ -174,6 +174,11 @@ func (c *PodController) sync(key string) (reconcile.Result, error) {
 		return reconcile.Result{}, nil
 	}
 
+	tcName := pod.Labels[label.InstanceLabelKey]
+	if tcName == "" {
+		return reconcile.Result{}, nil
+	}
+
 	startTime := time.Now()
 	defer func() {
 		klog.V(4).Infof("Finished syncing TidbCluster pod %q (%v)", key, time.Since(startTime))
@@ -183,7 +188,6 @@ func (c *PodController) sync(key string) (reconcile.Result, error) {
 	ctx := context.Background()
 	switch component {
 	case label.TiKVLabelVal:
-		tcName := pod.Labels[label.InstanceLabelKey]
 		tc, err := c.deps.TiDBClusterLister.TidbClusters(ns).Get(tcName)
 		if err != nil {
 			return reconcile.Result{}, perrors.Annotatef(err, "failed to get tc %q", ns+"/"+tcName)
