@@ -5344,6 +5344,7 @@ bool
 </em>
 </td>
 <td>
+<p>OpenAPI was introduced in DM V5.3.0</p>
 </td>
 </tr>
 </tbody>

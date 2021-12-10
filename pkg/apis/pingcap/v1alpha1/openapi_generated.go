@@ -1994,8 +1994,9 @@ func schema_pkg_apis_pingcap_v1alpha1_DMExperimental(ref common.ReferenceCallbac
 				Properties: map[string]spec.Schema{
 					"openapi": {
 						SchemaProps: spec.SchemaProps{
-							Type:   []string{"boolean"},
-							Format: "",
+							Description: "OpenAPI was introduced in DM V5.3.0",
+							Type:        []string{"boolean"},
+							Format:      "",
 						},
 					},
 				},
