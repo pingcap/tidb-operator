@@ -79,6 +79,7 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		return nil // fatal error, no need to retry on invalid object
 	}
 
+	var firstTc *v1alpha1.TidbCluster
 	assetStore := NewStore(m.deps.SecretLister)
 
 	for _, tcRef := range monitor.Spec.Clusters {
@@ -97,6 +98,9 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 			}
 		}
 
+		if firstTc == nil && !tc.HeterogeneousWithoutLocalPD() {
+			firstTc = tc
+		}
 		err = m.syncDashboardMetricStorage(tc, monitor)
 		if err != nil {
 			klog.Errorf("Fail to sync TiDB Dashboard metrics config for TiDB cluster [%s/%s], error: %v", tc.Namespace, tc.Name, err)
@@ -104,12 +108,16 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		}
 	}
 
+	var firstDc *v1alpha1.DMCluster
 	if monitor.Spec.DM != nil {
 		for _, dcRef := range monitor.Spec.DM.Clusters {
 			dc, err := m.deps.DMClusterLister.DMClusters(dcRef.Namespace).Get(dcRef.Name)
 			if err != nil {
 				rerr := fmt.Errorf("get tm[%s/%s]'s target dc[%s/%s] failed, err: %v", monitor.Namespace, monitor.Name, dcRef.Namespace, dcRef.Name, err)
 				return rerr
+			}
+			if firstDc == nil {
+				firstDc = dc
 			}
 			// If cluster enable tls
 			if dc.IsTLSClusterEnabled() {
@@ -137,7 +145,7 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	klog.V(4).Infof("tm[%s/%s]'s service synced", monitor.Namespace, monitor.Name)
 
 	// Sync Statefulset
-	if err := m.syncTidbMonitorStatefulset(monitor); err != nil {
+	if err := m.syncTidbMonitorStatefulset(firstTc, firstDc, monitor); err != nil {
 		message := fmt.Sprintf("Sync TidbMonitor[%s/%s] Statefulset failed, err:%v", monitor.Namespace, monitor.Name, err)
 		m.deps.Recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
 		return err
@@ -196,7 +204,7 @@ func (m *MonitorManager) syncTidbMonitorService(monitor *v1alpha1.TidbMonitor) e
 	return nil
 }
 
-func (m *MonitorManager) syncTidbMonitorStatefulset(monitor *v1alpha1.TidbMonitor) error {
+func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monitor *v1alpha1.TidbMonitor) error {
 	ns := monitor.Namespace
 	name := monitor.Name
 	err := m.syncTidbMonitorConfig(monitor)
@@ -228,7 +236,7 @@ func (m *MonitorManager) syncTidbMonitorStatefulset(monitor *v1alpha1.TidbMonito
 	shards := monitor.GetShards()
 	var isAllCreated = true
 	for shard := int32(0); shard < shards; shard++ {
-		newMonitorSts, err := getMonitorStatefulSet(sa, secret, monitor, shard)
+		newMonitorSts, err := getMonitorStatefulSet(sa, secret, monitor, tc, dc, shard)
 		if err != nil {
 			klog.Errorf("Fail to generate statefulset for tm [%s/%s], err: %v", ns, name, err)
 			return err
