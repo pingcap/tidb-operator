@@ -33,7 +33,7 @@ func TestDMMasterConfig(t *testing.T) {
 			SSLCert: pointer.StringPtr("/var/lib/dm-master-tls/tls.crt"),
 			SSLKey:  pointer.StringPtr("/var/lib/dm-master-tls/tls.key"),
 		},
-		DMExperimental: &DMExperimental{OpenAPI: true},
+		Experimental: &DMExperimental{OpenAPI: true},
 	}
 	jsonStr, err := json.Marshal(c)
 	g.Expect(err).To(Succeed())

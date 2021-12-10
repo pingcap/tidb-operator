@@ -2342,8 +2342,8 @@ func (in *MasterConfig) DeepCopyInto(out *MasterConfig) {
 		**out = **in
 	}
 	in.DMSecurityConfig.DeepCopyInto(&out.DMSecurityConfig)
-	if in.DMExperimental != nil {
-		in, out := &in.DMExperimental, &out.DMExperimental
+	if in.Experimental != nil {
+		in, out := &in.Experimental, &out.Experimental
 		*out = new(DMExperimental)
 		**out = **in
 	}
