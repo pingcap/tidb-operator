@@ -189,9 +189,8 @@ var _ = ginkgo.Describe("DMCluster", func() {
 				fmt.Sprintf("/dmctl --master-addr=127.0.0.1:8261 start-relay -s %s %s", sourceID, workerName))
 			framework.ExpectNoError(err, "failed to enable relay log for DmCluster %q", dcName)
 
-			// test get dm openapi swagger spec in json format
-			_, err = framework.RunHostCmd(ns, podName, "curl --fail -v http://127.0.0.1:8261/api/v1/dm.json")
-			framework.ExpectNoError(err, "failed to get dm openapi swagger spec in json format %q", podName)
+			ginkgo.By("try get dm openapi spec")
+			framework.ExpectNoError(tests.GetDMOpenAPISpec(fw, dc.Namespace, controller.DMMasterMemberName(dcName), tests.DMSingleTask, ""), "failed to try get dm openapi spec")
 
 			ginkgo.By("Generate full stage data in upstream")
 			framework.ExpectNoError(tests.GenDMFullData(fw, dc.Namespace), "failed to generate full stage data in upstream")

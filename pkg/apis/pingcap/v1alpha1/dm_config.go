@@ -103,5 +103,6 @@ type DMSecurityConfig struct {
 // DM experimental config
 // +k8s:openapi-gen=true
 type DMExperimental struct {
+	// OpenAPI was introduced in DM V5.3.0
 	OpenAPI bool `toml:"openapi,omitempty" json:"openapi,omitempty" yaml:"openapi,omitempty"`
 }
