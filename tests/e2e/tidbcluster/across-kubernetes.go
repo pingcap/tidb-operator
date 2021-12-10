@@ -172,11 +172,11 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectNoError(err, "failed to install CA certificate")
 
 			ginkgo.By("Installing tidb cluster-1 server and client certificate")
-			err = InstallTiDBCertificates(ns1, tcName1)
+			err = InstallXK8sTiDBCertificates(ns1, tcName1, clusterDomain)
 			framework.ExpectNoError(err, "failed to install tidb server and client certificate")
 
 			ginkgo.By("Installing tidb cluster-1 components certificates")
-			err = installTiDBComponentsCertificates(ns1, tcName1)
+			err = InstallXK8sTiDBComponentsCertificates(ns1, tcName1, clusterDomain)
 			framework.ExpectNoError(err, "failed to install tidb components certificates")
 
 			ginkgo.By("Export initial CA secret and deploy to other tidb clusters")
@@ -189,11 +189,11 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectNoError(err, "failed to install tidb issuer")
 
 			ginkgo.By("Installing tidb cluster-2 server and client certificate")
-			err = InstallTiDBCertificates(ns2, tcName2)
+			err = InstallXK8sTiDBCertificates(ns2, tcName2, clusterDomain)
 			framework.ExpectNoError(err, "failed to install tidb server and client certificate")
 
 			ginkgo.By("Installing tidb cluster-2 components certificates")
-			err = installTiDBComponentsCertificates(ns2, tcName2)
+			err = InstallXK8sTiDBComponentsCertificates(ns2, tcName2, clusterDomain)
 			framework.ExpectNoError(err, "failed to install tidb components certificates")
 
 			ginkgo.By("Creating tidb cluster-1 with TLS enabled")
