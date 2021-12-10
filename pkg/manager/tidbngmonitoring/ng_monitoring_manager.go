@@ -20,7 +20,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/manager"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
 
@@ -46,7 +45,7 @@ type ngMonitoringManager struct {
 	deps *controller.Dependencies
 }
 
-func NewNGMonitorManager(deps *controller.Dependencies) manager.TiDBNGMonitoringManager {
+func NewNGMonitorManager(deps *controller.Dependencies) *ngMonitoringManager {
 	return &ngMonitoringManager{
 		deps: deps,
 	}
@@ -243,6 +242,10 @@ func GenerateNGMonitoringStatefulSet(tngm *v1alpha1.TidbNGMonitoring, cm *corev1
 	ns := tngm.GetNamespace()
 	name := tngm.GetName()
 
+	if cm == nil {
+		return nil, fmt.Errorf("config map is nil for tidb ng monitoring %s/%s", ns, name)
+	}
+
 	spec := tngm.BaseNGMonitoringSpec()
 	meta, stsLabels := GenerateNGMonitoringMeta(tngm, NGMonitoringName)
 	headlessServiceName := NGMonitoringHeadlessServiceName(name)
@@ -378,7 +381,7 @@ func GenerateNGMonitoringStatefulSet(tngm *v1alpha1.TidbNGMonitoring, cm *corev1
 	// downward
 	builder.PodTemplateSpecBuilder().ContainerBuilder(nmContainerName).AddEnvs(spec.Env()...)
 	builder.PodTemplateSpecBuilder().AddLabels(spec.Labels())
-	builder.PodTemplateSpecBuilder().AddLabels(spec.Annotations())
+	builder.PodTemplateSpecBuilder().AddAnnotations(spec.Annotations())
 	// additional storage volumes
 	storageVolMounts, additionalPVCs := util.BuildStorageVolumeAndVolumeMount(tngm.Spec.NGMonitoring.StorageVolumes, tngm.Spec.NGMonitoring.StorageClassName, v1alpha1.NGMonitoringMemberType)
 	builder.PodTemplateSpecBuilder().ContainerBuilder(nmContainerName).AddVolumeMounts(storageVolMounts...)
@@ -386,6 +389,8 @@ func GenerateNGMonitoringStatefulSet(tngm *v1alpha1.TidbNGMonitoring, cm *corev1
 	// additional volumes and mounts
 	builder.PodTemplateSpecBuilder().ContainerBuilder(nmContainerName).AddVolumeMounts(spec.AdditionalVolumeMounts()...)
 	builder.PodTemplateSpecBuilder().AddVolumes(spec.AdditionalVolumes()...)
+	// additional containers
+	builder.PodTemplateSpecBuilder().AddContainers(spec.AdditionalContainers()...)
 	// TODO: TLS
 
 	return builder.Get(), nil
@@ -476,4 +481,23 @@ func GenerateNGMonitoringStartScript(tngm *v1alpha1.TidbNGMonitoring) (string, e
 	}
 
 	return script, nil
+}
+
+type FakeNGMonitoringManager struct {
+	sync func(tngm *v1alpha1.TidbNGMonitoring) error
+}
+
+func NewFakeNGMonitoringManager() *FakeNGMonitoringManager {
+	return &FakeNGMonitoringManager{}
+}
+
+func (m *FakeNGMonitoringManager) MockSync(sync func(tngm *v1alpha1.TidbNGMonitoring) error) {
+	m.sync = sync
+}
+
+func (m *FakeNGMonitoringManager) Sync(tngm *v1alpha1.TidbNGMonitoring) error {
+	if m.sync == nil {
+		return nil
+	}
+	return m.sync(tngm)
 }

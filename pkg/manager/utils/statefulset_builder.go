@@ -64,6 +64,9 @@ func (pb *PodTemplateSpecBuilder) Clone() *corev1.PodTemplateSpec {
 	return pb.prototype.DeepCopy()
 }
 
+// ContainerBuilder return the specified container builder
+//
+// NOTE: don't save the builder, it will be outdated if container slice expand
 func (pb *PodTemplateSpecBuilder) ContainerBuilder(name string) *ContainerBuilder {
 	for i := range pb.prototype.Spec.Containers {
 		if pb.prototype.Spec.Containers[i].Name == name {
@@ -71,6 +74,13 @@ func (pb *PodTemplateSpecBuilder) ContainerBuilder(name string) *ContainerBuilde
 		}
 	}
 	return nil
+}
+
+// AddContainers add container to pod's spec
+//
+// NOTE: if container slice expand, old ContainerBuilder reference will be outdated.
+func (pb *PodTemplateSpecBuilder) AddContainers(containers ...corev1.Container) {
+	pb.prototype.Spec.Containers = append(pb.prototype.Spec.Containers, containers...)
 }
 
 func (b *PodTemplateSpecBuilder) AddVolumes(volumes ...corev1.Volume) {
@@ -82,10 +92,11 @@ func (b *PodTemplateSpecBuilder) AddLabels(labels map[string]string) {
 }
 
 func (b *PodTemplateSpecBuilder) AddAnnotations(annos map[string]string) {
-	b.prototype.Labels = util.CombineStringMap(b.prototype.Annotations, annos)
+	b.prototype.Annotations = util.CombineStringMap(b.prototype.Annotations, annos)
 }
 
 func (b *PodTemplateSpecBuilder) RunInHostNetwork() {
+	b.prototype.Spec.HostNetwork = true
 	b.prototype.Spec.DNSPolicy = corev1.DNSClusterFirstWithHostNet
 	for _, container := range b.prototype.Spec.Containers {
 		container.Env = util.AppendEnv(container.Env, []corev1.EnvVar{
