@@ -58,8 +58,7 @@ type MasterConfig struct {
 
 	// dm-master's experimental config
 	// +optional
-	// +k8s:openapi-gen=false
-	DMExperimental *DMExperimental `toml:"experimental,omitempty" json:"experimental,omitempty"`
+	Experimental *DMExperimental `toml:"experimental,omitempty" json:"experimental,omitempty"`
 }
 
 // WorkerConfig is the configuration of dm-worker-server
@@ -102,6 +101,7 @@ type DMSecurityConfig struct {
 }
 
 // DM experimental config
+// +k8s:openapi-gen=true
 type DMExperimental struct {
 	OpenAPI bool `toml:"openapi,omitempty" json:"openapi,omitempty" yaml:"openapi,omitempty"`
 }
