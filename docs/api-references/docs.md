@@ -5320,6 +5320,34 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="dmexperimental">DMExperimental</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#masterconfig">MasterConfig</a>)
+</p>
+<p>
+<p>DM experimental config</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>openapi</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="dmmonitorspec">DMMonitorSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -7233,6 +7261,20 @@ DMSecurityConfig
 </p>
 <em>(Optional)</em>
 <p>dm-master&rsquo;s security config</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>experimental</code></br>
+<em>
+<a href="#dmexperimental">
+DMExperimental
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>dm-master&rsquo;s experimental config</p>
 </td>
 </tr>
 </tbody>

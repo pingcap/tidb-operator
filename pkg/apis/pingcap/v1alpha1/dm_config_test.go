@@ -33,12 +33,14 @@ func TestDMMasterConfig(t *testing.T) {
 			SSLCert: pointer.StringPtr("/var/lib/dm-master-tls/tls.crt"),
 			SSLKey:  pointer.StringPtr("/var/lib/dm-master-tls/tls.key"),
 		},
+		DMExperimental: &DMExperimental{OpenAPI: true},
 	}
 	jsonStr, err := json.Marshal(c)
 	g.Expect(err).To(Succeed())
 	g.Expect(jsonStr).To(ContainSubstring("rpc-rate-limit"))
 	g.Expect(jsonStr).To(ContainSubstring("40s"))
 	g.Expect(jsonStr).NotTo(ContainSubstring("rpc-rate-burst"), "Expected empty fields to be omitted")
+	g.Expect(jsonStr).To(ContainSubstring("openapi"))
 	var jsonUnmarshaled MasterConfig
 	err = json.Unmarshal(jsonStr, &jsonUnmarshaled)
 	g.Expect(err).To(Succeed())
@@ -54,6 +56,9 @@ rpc-rate-limit = 15.0
 ssl-ca = "/var/lib/dm-master-tls/ca.crt"
 ssl-cert = "/var/lib/dm-master-tls/tls.crt"
 ssl-key = "/var/lib/dm-master-tls/tls.key"
+
+[experimental]
+  openapi = true
 `)))
 
 	var tUnmarshaled MasterConfig
