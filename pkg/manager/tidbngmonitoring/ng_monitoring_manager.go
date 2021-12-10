@@ -36,7 +36,7 @@ const (
 	ngmPodConfigVolumeMountDir = "/etc/ng-monitoring"     // the dir for ng monitoring config
 	ngmPodConfigFilename       = "ng-monitoring.toml"     // the filename of config file
 
-	ngmConfigMapConfigKey = "ng-monitoring-config" // the key for config data in config map
+	ngmConfigMapConfigKey = "config-file" // the key for config data in config map
 
 	ngmServicePort = 12020
 )
