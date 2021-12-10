@@ -16,10 +16,9 @@ package member
 import (
 	"fmt"
 
-	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
-
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/tiflashapi"
 
 	"github.com/Masterminds/semver"

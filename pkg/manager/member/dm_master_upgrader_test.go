@@ -18,18 +18,17 @@ import (
 	"testing"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
-	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-
-	"github.com/pingcap/tidb-operator/pkg/dmapi"
-	podinformers "k8s.io/client-go/informers/core/v1"
-
-	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/dmapi"
+	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+
+	. "github.com/onsi/gomega"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	podinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/utils/pointer"
 )
 

@@ -20,15 +20,13 @@ import (
 	"testing"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
-	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
-
-	"github.com/google/go-cmp/cmp"
-	"k8s.io/apimachinery/pkg/util/intstr"
-
-	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
+	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+
+	"github.com/google/go-cmp/cmp"
+	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -36,6 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
