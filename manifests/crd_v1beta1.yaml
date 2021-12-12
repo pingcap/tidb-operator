@@ -6896,6 +6896,11 @@ spec:
                       items:
                         type: string
                       type: array
+                    experimental:
+                      properties:
+                        openapi:
+                          type: boolean
+                      type: object
                     log-file:
                       type: string
                     log-format:

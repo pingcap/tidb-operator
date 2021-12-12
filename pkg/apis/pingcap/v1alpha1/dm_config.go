@@ -55,6 +55,10 @@ type MasterConfig struct {
 	// +optional
 	// +k8s:openapi-gen=false
 	DMSecurityConfig `toml:",inline" json:",inline"`
+
+	// dm-master's experimental config
+	// +optional
+	Experimental *DMExperimental `toml:"experimental,omitempty" json:"experimental,omitempty"`
 }
 
 // WorkerConfig is the configuration of dm-worker-server
@@ -94,4 +98,11 @@ type DMSecurityConfig struct {
 	// CertAllowedCN is the Common Name that allowed
 	// +optional
 	CertAllowedCN []string `toml:"cert-allowed-cn,omitempty" json:"cert-allowed-cn,omitempty" yaml:"cert-allowed-cn,omitempty"`
+}
+
+// DM experimental config
+// +k8s:openapi-gen=true
+type DMExperimental struct {
+	// OpenAPI was introduced in DM V5.3.0
+	OpenAPI bool `toml:"openapi,omitempty" json:"openapi,omitempty" yaml:"openapi,omitempty"`
 }
