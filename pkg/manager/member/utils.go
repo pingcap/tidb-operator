@@ -266,7 +266,7 @@ func MapContainers(podSpec *corev1.PodSpec) map[string]corev1.Container {
 	return m
 }
 
-// MapContainers index init containers of Pod by container name in favor of looking up
+// MapInitContainers index init containers of Pod by container name in favor of looking up
 func MapInitContainers(podSpec *corev1.PodSpec) map[string]corev1.Container {
 	m := map[string]corev1.Container{}
 	for _, c := range podSpec.InitContainers {
