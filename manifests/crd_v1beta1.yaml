@@ -6896,6 +6896,11 @@ spec:
                       items:
                         type: string
                       type: array
+                    experimental:
+                      properties:
+                        openapi:
+                          type: boolean
+                      type: object
                     log-file:
                       type: string
                     log-format:
@@ -29341,6 +29346,16 @@ spec:
               properties:
                 bootStrapped:
                   type: boolean
+                evictLeader:
+                  additionalProperties:
+                    properties:
+                      podCreateTime:
+                        format: date-time
+                        type: string
+                      value:
+                        type: string
+                    type: object
+                  type: object
                 failureStores:
                   additionalProperties:
                     properties:
@@ -31793,6 +31808,8 @@ spec:
                 version:
                   type: string
               type: object
+            timezone:
+              type: string
             tolerations:
               items:
                 properties:
