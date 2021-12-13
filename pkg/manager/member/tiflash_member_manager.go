@@ -424,7 +424,7 @@ sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
 		script += fmt.Sprintf(str, pdAddr, tc.GetName(), tc.GetNamespace())
 	}
 
-	initContainers = append(initContainers, corev1.Container{
+	initializer := corev1.Container{
 		Name:  "init",
 		Image: tc.HelperImage(),
 		Command: []string{
@@ -434,7 +434,11 @@ sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
 		},
 		Env:          initEnv,
 		VolumeMounts: initVolMounts,
-	})
+	}
+	if spec.Initializer != nil {
+		initializer.Resources = controller.ContainerResource(spec.Initializer.ResourceRequirements)
+	}
+	initContainers = append(initContainers, initializer)
 
 	stsLabels := labelTiFlash(tc)
 	setName := controller.TiFlashMemberName(tcName)
