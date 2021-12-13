@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/manager/meta"
+	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/monitor"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -248,7 +249,7 @@ func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, dc
 		}
 		setNotExist := errors.IsNotFound(err)
 		if setNotExist {
-			err = member.SetStatefulSetLastAppliedConfigAnnotation(newMonitorSts)
+			err = mngerutils.SetStatefulSetLastAppliedConfigAnnotation(newMonitorSts)
 			if err != nil {
 				return err
 			}
@@ -258,7 +259,7 @@ func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, dc
 			isAllCreated = false
 			continue
 		}
-		err = member.UpdateStatefulSet(m.deps.StatefulSetControl, monitor, newMonitorSts, oldMonitorSetTmp)
+		err = mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, monitor, newMonitorSts, oldMonitorSetTmp)
 		if err != nil {
 			klog.Errorf("Fail to update statefulset[%s/%s] for tm [%s/%s], err: %v", ns, stsName, ns, name, err)
 			return err
