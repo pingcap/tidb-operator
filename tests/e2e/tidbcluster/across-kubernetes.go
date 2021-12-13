@@ -29,7 +29,6 @@ import (
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	nsutil "github.com/pingcap/tidb-operator/tests/e2e/util/ns"
-	pdutil "github.com/pingcap/tidb-operator/tests/e2e/util/pd"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
@@ -159,11 +158,8 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 		})
 
 		ginkgo.It("Deploy cluster with TLS-enabled across kubernetes", func() {
-			ns1 := namespaces[0]
-			ns2 := namespaces[1]
-
-			tcName1 := "tls-cluster-1"
-			tcName2 := "tls-cluster-2"
+			ns1, ns2 := namespaces[0], namespaces[1]
+			tcName1, tcName2 := "tls-cluster-1", "tls-cluster-2"
 			tc1 := GetTCForAcrossKubernetes(ns1, tcName1, version, clusterDomain, nil)
 			tc2 := GetTCForAcrossKubernetes(ns2, tcName2, version, clusterDomain, tc1)
 
@@ -186,9 +182,9 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			err = genericCli.Create(context.TODO(), caSecret)
 			framework.ExpectNoError(err, "error installing CA secert into cluster %q", tcName2)
 
-			ginkgo.By("Installing tidb cluster-2 issuer")
-			err = InstallXK8sTiDBIssuer(ns2, tcName1, tcName2)
-			framework.ExpectNoError(err, "failed to install tidb issuer")
+			ginkgo.By("Installing tidb cluster issuer with initial ca")
+			err = InstallXK8sTiDBIssuer(ns2, tcName2, tcName1)
+			framework.ExpectNoError(err, "failed to install tidb issuer for cluster %q", tcName2)
 
 			ginkgo.By("Installing tidb server and client certificate")
 			err = InstallXK8sTiDBCertificates(ns1, tcName1, clusterDomain)
@@ -241,72 +237,6 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			err = wait.PollImmediate(time.Second*5, time.Minute*5, tidbIsTLSEnabled(fw, c, ns2, tcName2, ""))
 			framework.ExpectNoError(err, "connect to TLS tidb %s timeout", tcName2)
 		})
-	})
-
-	ginkgo.Describe("[Advanced]", func() {
-
-		// create three namespace
-		ginkgo.BeforeEach(func() {
-			ns1 := namespaces[0]
-			namespaces = append(namespaces, ns1+"-1", ns1+"-2")
-		})
-
-		version := utilimage.TiDBLatest
-		clusterDomain := defaultClusterDomain
-
-		ginkgo.It("Deploy cluster with existing data across kubernetes", func() {
-			ns1 := namespaces[0]
-			ns2 := namespaces[1]
-			ns3 := namespaces[2]
-
-			tc1 := GetTCForAcrossKubernetes(ns1, "update-1", version, clusterDomain, nil)
-			tc2 := GetTCForAcrossKubernetes(ns2, "update-2", version, clusterDomain, tc1)
-			tc3 := GetTCForAcrossKubernetes(ns3, "update-3", version, clusterDomain, tc2)
-
-			ginkgo.By("Deploy the basic cluster-1 with empty cluster domain")
-			tc1.Spec.ClusterDomain = ""
-			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc1, 5*time.Minute, 10*time.Second)
-
-			ginkgo.By("Update cluster domain of cluster-1")
-			err := controller.GuaranteedUpdate(genericCli, tc1, func() error {
-				tc1.Spec.ClusterDomain = defaultClusterDomain
-				return nil
-			})
-			framework.ExpectNoError(err, "failed to update cluster domain of cluster-1 %s/%s", tc1.Namespace, tc1.Name)
-			err = oa.WaitForTidbClusterReady(tc1, 30*time.Minute, 5*time.Second)
-			framework.ExpectNoError(err, "failed to wait for cluster-1 ready: %s/%s", tc1.Namespace, tc1.Name)
-
-			localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, tc1.Namespace, fmt.Sprintf("svc/%s-pd", tc1.Name), 2379)
-			framework.ExpectNoError(err, "failed to port-forward pd server of cluster-1 %s/%s", tc1.Namespace, tc1.Name)
-			defer cancel()
-
-			ginkgo.By("Update pd's peerURL of cluster-1")
-			pdAddr := fmt.Sprintf("%s:%d", localHost, localPort)
-			resp, err := pdutil.GetMembersV2(pdAddr)
-			framework.ExpectNoError(err, " failed to get pd members of cluster-1 %s/%s", tc1.Namespace, tc1.Name)
-			for _, member := range resp.Members {
-				peerURLs := []string{}
-				for _, url := range member.PeerURLs {
-					// url ex: http://cluster-1-pd-0.cluster-1-pd-peer.default.svc:2380
-					fields := strings.Split(url, ":")
-					fields[1] = fmt.Sprintf("%s.%s", fields[1], clusterDomain)
-					peerURLs = append(peerURLs, strings.Join(fields, ":"))
-				}
-				err := pdutil.UpdateMembePeerURLs(pdAddr, member.ID, peerURLs)
-				framework.ExpectNoError(err, " failed to update peerURLs of pd members of cluster-1 %s/%s", tc1.Namespace, tc1.Name)
-			}
-
-			ginkgo.By("Deploy the basic cluster-2")
-			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc2, 5*time.Minute, 10*time.Second)
-
-			ginkgo.By("Deploy the basic cluster-3")
-			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc3, 5*time.Minute, 10*time.Second)
-
-			ginkgo.By("Deploy status of all clusters")
-			err = CheckClusterDomainEffect(cli, []*v1alpha1.TidbCluster{tc1, tc2, tc3})
-			framework.ExpectNoError(err, "failed to check status")
-		})
-
 	})
 })
 

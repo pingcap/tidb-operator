@@ -355,7 +355,7 @@ spec:
   - 127.0.0.1
   - ::1
   issuerRef:
-    name: {{ .ClusterName }}-tidb-issuer
+    name: {{ .ClusterRef }}-tidb-issuer
     kind: Issuer
     group: cert-manager.io
 `
@@ -565,8 +565,8 @@ func InstallTiDBIssuer(ns, tcName string) error {
 	return installCert(tidbIssuerTmpl, tcTmplMeta{ns, tcName, tcName})
 }
 
-func InstallXK8sTiDBIssuer(ns, tcName1, tcName2 string) error {
-	return installCert(xK8sTidbIssuerTmpl, tcTmplMeta{ns, tcName2, tcName1})
+func InstallXK8sTiDBIssuer(ns, tcName, clusterRef string) error {
+	return installCert(xK8sTidbIssuerTmpl, tcTmplMeta{ns, tcName, clusterRef})
 }
 
 func InstallTiDBCertificates(ns, tcName string) error {
