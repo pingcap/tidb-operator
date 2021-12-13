@@ -6778,6 +6778,39 @@ ingress supports SNI.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="initcontainerspec">InitContainerSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tiflashspec">TiFlashSpec</a>)
+</p>
+<p>
+<p>InitContainerSpec contains basic spec about a init container</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ResourceRequirements</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ResourceRequirements</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="initializephase">InitializePhase</h3>
 <p>
 (<em>Appears on:</em>
@@ -15201,6 +15234,20 @@ TiFlashConfigWraper
 <td>
 <em>(Optional)</em>
 <p>Config is the Configuration of TiFlash</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>initializer</code></br>
+<em>
+<a href="#initcontainerspec">
+InitContainerSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Initializer is the configurations of the init container for TiFlash</p>
 </td>
 </tr>
 <tr>
