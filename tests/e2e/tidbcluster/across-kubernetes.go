@@ -184,7 +184,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			caSecret.Namespace = ns2
 			caSecret.ObjectMeta.ResourceVersion = ""
 			err = genericCli.Create(context.TODO(), caSecret)
-			framework.ExpectNoError(err, fmt.Sprintf("error installing CA secert into cluster %s", ns2))
+			framework.ExpectNoError(err, "error installing CA secert into cluster %q", tcName2)
 
 			ginkgo.By("Installing tidb cluster-2 issuer")
 			err = InstallXK8sTiDBIssuer(ns2, tcName1, tcName2)
@@ -192,21 +192,21 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 
 			ginkgo.By("Installing tidb server and client certificate")
 			err = InstallXK8sTiDBCertificates(ns1, tcName1, clusterDomain)
-			framework.ExpectNoError(err, fmt.Sprintf("failed to install tidb server and client certificate for cluster: %s", tcName1))
+			framework.ExpectNoError(err, "failed to install tidb server and client certificate for cluster: %q", tcName1)
 			err = InstallXK8sTiDBCertificates(ns2, tcName2, clusterDomain)
-			framework.ExpectNoError(err, fmt.Sprintf("failed to install tidb server and client certificate for cluster: %s", tcName2))
+			framework.ExpectNoError(err, "failed to install tidb server and client certificate for cluster: %q", tcName2)
 
 			ginkgo.By("Installing tidb components certificates")
 			err = InstallXK8sTiDBComponentsCertificates(ns1, tcName1, clusterDomain)
-			framework.ExpectNoError(err, fmt.Sprintf("failed to install tidb components certificates for cluster: %s", tcName1))
+			framework.ExpectNoError(err, "failed to install tidb components certificates for cluster: %q", tcName1)
 			err = InstallXK8sTiDBComponentsCertificates(ns2, tcName2, clusterDomain)
-			framework.ExpectNoError(err, fmt.Sprintf("failed to install tidb components certificates for cluster: %s", tcName2))
+			framework.ExpectNoError(err, "failed to install tidb components certificates for cluster: %q", tcName2)
 
 			ginkgo.By("Installing separate dashboard client certificate")
 			err = installPDDashboardCertificates(ns1, tcName1)
-			framework.ExpectNoError(err, fmt.Sprintf("failed to install separate dashboard client certificate for cluster: %s", tcName1))
+			framework.ExpectNoError(err, "failed to install separate dashboard client certificate for cluster: %q", tcName1)
 			err = installPDDashboardCertificates(ns2, tcName2)
-			framework.ExpectNoError(err, fmt.Sprintf("failed to install separate dashboard client certificate for cluster: %s", tcName2))
+			framework.ExpectNoError(err, "failed to install separate dashboard client certificate for cluster: %q", tcName2)
 
 			ginkgo.By("Creating tidb cluster-1 with TLS enabled")
 			tc1DashTLSName := fmt.Sprintf("%s-dashboard-tls", tcName1)
@@ -240,9 +240,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectNoError(err, "connect to TLS tidb %s timeout", tcName1)
 			err = wait.PollImmediate(time.Second*5, time.Minute*5, tidbIsTLSEnabled(fw, c, ns2, tcName2, ""))
 			framework.ExpectNoError(err, "connect to TLS tidb %s timeout", tcName2)
-
 		})
-
 	})
 
 	ginkgo.Describe("[Advanced]", func() {
@@ -310,7 +308,6 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 		})
 
 	})
-
 })
 
 func GetTCForAcrossKubernetes(ns, name, version, clusterDomain string, joinTC *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
