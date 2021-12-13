@@ -2589,6 +2589,19 @@ bool
 if <code>AlertmanagerURL</code> is not configured.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>timezone</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Time zone of TidbMonitor
+Optional: Defaults to UTC</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -5320,6 +5333,35 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="dmexperimental">DMExperimental</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#masterconfig">MasterConfig</a>)
+</p>
+<p>
+<p>DM experimental config</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>openapi</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>OpenAPI was introduced in DM V5.3.0</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="dmmonitorspec">DMMonitorSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -5670,6 +5712,41 @@ Kubernetes core/v1.ResourceRequirements
 <p>EmptyStruct is defined to delight controller-gen tools
 Only named struct is allowed by controller-gen</p>
 </p>
+<h3 id="evictleaderstatus">EvictLeaderStatus</h3>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>podCreateTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>value</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="experimental">Experimental</h3>
 <p>
 (<em>Appears on:</em>
@@ -6621,7 +6698,7 @@ string
 <td>
 <em>(Optional)</em>
 <p>Image used to tail slow log and set kernel parameters if necessary, must have <code>tail</code> and <code>sysctl</code> installed
-Optional: Defaults to busybox:1.26.2</p>
+Optional: Defaults to busybox:1.26.2. Recommended to set to 1.34.1 for new installations.</p>
 </td>
 </tr>
 <tr>
@@ -7233,6 +7310,20 @@ DMSecurityConfig
 </p>
 <em>(Optional)</em>
 <p>dm-master&rsquo;s security config</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>experimental</code></br>
+<em>
+<a href="#dmexperimental">
+DMExperimental
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>dm-master&rsquo;s experimental config</p>
 </td>
 </tr>
 </tbody>
@@ -19319,6 +19410,18 @@ string
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>evictLeader</code></br>
+<em>
+<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.evictleaderstatus">
+map[string]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.EvictLeaderStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tikvstorageconfig">TiKVStorageConfig</h3>
@@ -21558,6 +21661,19 @@ bool
 <em>(Optional)</em>
 <p>EnableAlertRules adds alert rules to the Prometheus config even
 if <code>AlertmanagerURL</code> is not configured.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timezone</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Time zone of TidbMonitor
+Optional: Defaults to UTC</p>
 </td>
 </tr>
 </tbody>
