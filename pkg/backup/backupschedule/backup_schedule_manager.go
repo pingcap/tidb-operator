@@ -300,7 +300,7 @@ func (bm *backupScheduleManager) backupGCByMaxReservedTime(bs *v1alpha1.BackupSc
 		klog.Infof("backup schedule %s/%s gc backup %s success", ns, bsName, backup.GetName())
 	}
 
-	if deleteCount == len(backupsList) {
+	if deleteCount == len(backupsList) && deleteCount > 0 {
 		// All backups have been deleted, so the last backup information in the backupSchedule should be reset
 		bm.resetLastBackup(bs)
 	}
@@ -332,7 +332,7 @@ func (bm *backupScheduleManager) backupGCByMaxBackups(bs *v1alpha1.BackupSchedul
 		klog.Infof("backup schedule %s/%s gc backup %s success", ns, bsName, backup.GetName())
 	}
 
-	if deleteCount == len(backupsList) {
+	if deleteCount == len(backupsList) && deleteCount > 0 {
 		// All backups have been deleted, so the last backup information in the backupSchedule should be reset
 		bm.resetLastBackup(bs)
 	}
