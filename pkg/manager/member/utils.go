@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -452,4 +453,20 @@ func parseImage(image string) (string, string) {
 		name = image
 	}
 	return name, tag
+}
+
+var ErrNotFoundStoreID = fmt.Errorf("not found")
+
+func TiKVStoreIDFromStatus(tc *v1alpha1.TidbCluster, podName string) (uint64, error) {
+	for _, store := range tc.Status.TiKV.Stores {
+		if store.PodName == podName {
+			storeID, err := strconv.ParseUint(store.ID, 10, 64)
+			if err != nil {
+				return 0, err
+			}
+
+			return storeID, nil
+		}
+	}
+	return 0, ErrNotFoundStoreID
 }
