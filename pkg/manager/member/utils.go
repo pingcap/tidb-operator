@@ -505,6 +505,37 @@ func CreateOrUpdateService(serviceLister corelisters.ServiceLister, serviceContr
 	return nil
 }
 
+// CreateOrUpdateConfigMap check configmap before create or update the new configmap
+func CreateOrUpdateConfigMap(configMapLister corelisters.ConfigMapLister, controller controller.ConfigMapControlInterface, newCm *corev1.ConfigMap, owner runtime.Object) (*corev1.ConfigMap, error) {
+	oldCm, err := configMapLister.ConfigMaps(newCm.Namespace).Get(newCm.Name)
+	if err != nil && !errors.IsNotFound(err) {
+		return nil, fmt.Errorf("CreateOrUpdateConfigMap error: failed to get configMap %s/%s, error: %s", newCm.Namespace, newCm.Name, err)
+	}
+	if errors.IsNotFound(err) {
+		cm, err := controller.CreateConfigMap(owner, newCm)
+		if err == nil {
+			return cm, nil
+		}
+		if !errors.IsAlreadyExists(err) {
+			return nil, err
+		}
+	}
+	equal, err := updateConfigMap(oldCm, newCm)
+	if err != nil {
+		return nil, err
+	}
+	if !equal {
+		mutateCm := oldCm.DeepCopyObject().(*corev1.ConfigMap)
+		mutateCm.Data = newCm.Data
+		mutateCm.Labels = newCm.Labels
+		for k, v := range newCm.Annotations {
+			mutateCm.Annotations[k] = v
+		}
+		return controller.UpdateConfigMap(owner, mutateCm)
+	}
+	return newCm, nil
+}
+
 // addDeferDeletingAnnoToPVC set the label
 func addDeferDeletingAnnoToPVC(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim, pvcControl controller.PVCControlInterface) error {
 	if pvc.Annotations == nil {

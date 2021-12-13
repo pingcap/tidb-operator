@@ -395,12 +395,12 @@ func NewDependencies(ns string, cliCfg *CLIConfig, clientset versioned.Interface
 	return deps, nil
 }
 
-func newFakeControl(kubeClientset kubernetes.Interface, informerFactory informers.SharedInformerFactory, kubeInformerFactory kubeinformers.SharedInformerFactory) Controls {
+func newFakeControl(kubeClientset kubernetes.Interface, informerFactory informers.SharedInformerFactory, kubeInformerFactory kubeinformers.SharedInformerFactory, labelFilterKubeInformerFactory kubeinformers.SharedInformerFactory) Controls {
 	genericCtrl := NewFakeGenericControl()
 	// Shared variables to construct `Dependencies` and some of its fields
 	return Controls{
 		JobControl:         NewFakeJobControl(kubeInformerFactory.Batch().V1().Jobs()),
-		ConfigMapControl:   NewFakeConfigMapControl(kubeInformerFactory.Core().V1().ConfigMaps()),
+		ConfigMapControl:   NewFakeConfigMapControl(labelFilterKubeInformerFactory.Core().V1().ConfigMaps()),
 		StatefulSetControl: NewFakeStatefulSetControl(kubeInformerFactory.Apps().V1().StatefulSets()),
 		ServiceControl:     NewFakeServiceControl(kubeInformerFactory.Core().V1().Services(), kubeInformerFactory.Core().V1().Endpoints()),
 		PVControl:          NewFakePVControl(kubeInformerFactory.Core().V1().PersistentVolumes(), kubeInformerFactory.Core().V1().PersistentVolumeClaims()),
@@ -454,6 +454,6 @@ func NewFakeDependencies() *Dependencies {
 	if err != nil {
 		klog.Fatalf("failed to create Dependencies: %s", err)
 	}
-	deps.Controls = newFakeControl(kubeCli, informerFactory, kubeInformerFactory)
+	deps.Controls = newFakeControl(kubeCli, informerFactory, kubeInformerFactory, labelFilterKubeInformerFactory)
 	return deps
 }
