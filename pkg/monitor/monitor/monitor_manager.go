@@ -813,13 +813,10 @@ func buildEtcdValue(host string, port int) (string, error) {
 }
 
 func (m *MonitorManager) syncBasicAuth(monitor *v1alpha1.TidbMonitor, store *Store) error {
-
 	for i, remoteWrite := range monitor.Spec.Prometheus.RemoteWrite {
 		if err := store.AddBasicAuth(monitor.Namespace, remoteWrite.BasicAuth, fmt.Sprintf("remoteRead/%d", i)); err != nil {
 			return err
 		}
-
 	}
-
 	return nil
 }
