@@ -39,6 +39,8 @@ type Interface interface {
 	TidbInitializers() TidbInitializerInformer
 	// TidbMonitors returns a TidbMonitorInformer.
 	TidbMonitors() TidbMonitorInformer
+	// TidbNGMonitorings returns a TidbNGMonitoringInformer.
+	TidbNGMonitorings() TidbNGMonitoringInformer
 }
 
 type version struct {
@@ -95,4 +97,9 @@ func (v *version) TidbInitializers() TidbInitializerInformer {
 // TidbMonitors returns a TidbMonitorInformer.
 func (v *version) TidbMonitors() TidbMonitorInformer {
 	return &tidbMonitorInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// TidbNGMonitorings returns a TidbNGMonitoringInformer.
+func (v *version) TidbNGMonitorings() TidbNGMonitoringInformer {
+	return &tidbNGMonitoringInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

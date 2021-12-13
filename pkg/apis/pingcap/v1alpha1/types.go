@@ -74,6 +74,8 @@ const (
 	RaftLogTailerMemberType MemberType = "raftlog"
 	// TidbMonitorMemberType is tidbmonitor type
 	TidbMonitorMemberType MemberType = "tidbmonitor"
+	// NGMonitoringMemberType is ng monitoring type
+	NGMonitoringMemberType MemberType = "ng-monitoring"
 	// UnknownMemberType is unknown container type
 	UnknownMemberType MemberType = "unknown"
 )

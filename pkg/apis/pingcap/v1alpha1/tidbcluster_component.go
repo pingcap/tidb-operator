@@ -66,6 +66,7 @@ const (
 	ComponentDMDiscovery
 	ComponentDMMaster
 	ComponentDMWorker
+	ComponentNGMonitoring
 )
 
 type componentAccessorImpl struct {
