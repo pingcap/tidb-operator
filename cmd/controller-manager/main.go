@@ -159,6 +159,7 @@ func main() {
 		// Initialize all controllers
 		controllers := []Controller{
 			tidbcluster.NewController(deps),
+			tidbcluster.NewPodController(deps),
 			dmcluster.NewController(deps),
 			backup.NewController(deps),
 			restore.NewController(deps),
