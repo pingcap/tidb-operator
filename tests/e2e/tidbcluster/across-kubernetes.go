@@ -158,7 +158,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectNoError(err, "failed to check status")
 		})
 
-		ginkgo.It("Deploy cluster with TLS enabled across kubernetes", func() {
+		ginkgo.It("Deploy cluster with TLS-enabled across kubernetes", func() {
 			ns1 := namespaces[0]
 			ns2 := namespaces[1]
 
@@ -180,6 +180,13 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectNoError(err, "failed to install tidb components certificates")
 
 			ginkgo.By("Export initial CA secret and deploy to other tidb clusters")
+			wait.PollImmediate(5*time.Second, 1*time.Minute, func() (bool, error) {
+				_, err := c.CoreV1().Secrets(ns1).Get(context.TODO(), fmt.Sprintf("%s-ca-secret", tcName1), metav1.GetOptions{})
+				if err != nil {
+					return false, nil
+				}
+				return true, nil
+			})
 			caSecret, err := c.CoreV1().Secrets(ns1).Get(context.TODO(), fmt.Sprintf("%s-ca-secret", tcName1), metav1.GetOptions{})
 			framework.ExpectNoError(err, "error export initial CA secert")
 			c.CoreV1().Secrets(ns2).Create(context.TODO(), caSecret, metav1.CreateOptions{})
@@ -199,15 +206,11 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			ginkgo.By("Creating tidb cluster-1 with TLS enabled")
 			tc1.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
 			tc1.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
-			err = genericCli.Create(context.TODO(), tc1)
-			framework.ExpectNoError(err, "failed to create TidbCluster: %q", tcName1)
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc1, 5*time.Minute, 10*time.Second)
 
 			ginkgo.By("Creating tidb cluster-2 with TLS enabled")
 			tc1.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
 			tc1.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
-			err = genericCli.Create(context.TODO(), tc2)
-			framework.ExpectNoError(err, "failed to create TidbCluster: %q", tcName2)
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc2, 5*time.Minute, 10*time.Second)
 
 			ginkgo.By("Connecting to tidb server to verify the connection is TLS enabled")

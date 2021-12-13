@@ -541,7 +541,7 @@ func InstallTiDBCertificates(ns, tcName string) error {
 }
 
 func installHeterogeneousTiDBCertificates(ns, tcName string, clusterRef string) error {
-	return installCert(tidbCertificatesTmpl, tcCertTmplMeta{tcTmplMeta{ns, tcName, tcName}, ""})
+	return installCert(tidbCertificatesTmpl, tcCertTmplMeta{tcTmplMeta{ns, tcName, clusterRef}, ""})
 }
 
 func InstallXK8sTiDBCertificates(ns, tcName, clusterDomain string) error {
@@ -553,7 +553,7 @@ func installTiDBComponentsCertificates(ns, tcName string) error {
 }
 
 func installHeterogeneousTiDBComponentsCertificates(ns, tcName string, clusterRef string) error {
-	return installCert(tidbComponentsCertificatesTmpl, tcCertTmplMeta{tcTmplMeta{ns, tcName, tcName}, ""})
+	return installCert(tidbComponentsCertificatesTmpl, tcCertTmplMeta{tcTmplMeta{ns, tcName, clusterRef}, ""})
 }
 
 func InstallXK8sTiDBComponentsCertificates(ns, tcName, clusterDomain string) error {
