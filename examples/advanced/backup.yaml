@@ -34,15 +34,16 @@ spec:
   # env: []
 
   ## From is the TidbCluster to be backed up.
-  from:
-    ## Host is the address of the TidbCluster to be backed up, which is the service name of the TiDB cluster to be exported, such as `basic-tidb`.
-    host: advanced-tidb-tidb
+  ## It takes high precedence than spec in BR. If `from` not set, cluster in BR may be backed up.
+  # from:
+    ## Host is the address of the TidbCluster to be backed up, which is the service name of the TidbCluster, such as `basic-tidb`.
+    # host: advanced-tidb-tidb
     ## Port is the port of the TidbCluster to be backed up.
-    port: 4000
+    # port: 4000
     ## User is the accessing user of the TidbCluster to be backed up.
-    user: backup
+    # user: backup
     ## SecretName is the secret that contains the password of the accessing user of the TidbCluster to be backed up.
-    secretName: backup-secret
+    # secretName: backup-secret
     ## TLSClientSecretName is the name of secret which stores tidb server client certificate.
     ## Defaults to nil.
     # tlsClientSecretName: ""
@@ -156,6 +157,7 @@ spec:
 
 
   ## BR configuration.
+  ## Ref: https://docs.pingcap.com/tidb/stable/backup-and-restore-tool
   br:
     ## Cluster specifies name of TidbCluster to be backed up.
     cluster: "advanced-tidb"
@@ -191,6 +193,7 @@ spec:
     # options: []
 
   ## DumplingConfig is the configs for dumpling
+  ## Ref: https://docs.pingcap.com/tidb/stable/dumpling-overview
   # dumpling:
     ## Options means extra arguments that BR supports dumpling supports.
     # options: []

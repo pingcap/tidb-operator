@@ -35,7 +35,7 @@ spec:
 
   ## To is the TidbCluster to be restored.
   to:
-    ## Host is the address of the TidbCluster to be restored, which is the service name of the TiDB cluster to be exported, such as `basic-tidb`.
+    ## Host is the address of the TidbCluster to be restored, which is the service name of the TidbCluster, such as `basic-tidb`.
     host: advanced-tidb-tidb
     ## Port is the port of the TidbCluster to be restored.
     port: 4000
@@ -151,6 +151,7 @@ spec:
   storageSize: "100Gi"
   
   ## BR configuration.
+  ## Ref: https://docs.pingcap.com/tidb/stable/backup-and-restore-tool
   br:
     ## Cluster specifies name of TidbCluster to be backed up.
     cluster: "advanced-tidb"
