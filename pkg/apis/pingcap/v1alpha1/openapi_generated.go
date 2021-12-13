@@ -50,6 +50,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DMClusterList":                 schema_pkg_apis_pingcap_v1alpha1_DMClusterList(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DMClusterSpec":                 schema_pkg_apis_pingcap_v1alpha1_DMClusterSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DMDiscoverySpec":               schema_pkg_apis_pingcap_v1alpha1_DMDiscoverySpec(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DMExperimental":                schema_pkg_apis_pingcap_v1alpha1_DMExperimental(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DashboardConfig":               schema_pkg_apis_pingcap_v1alpha1_DashboardConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DiscoverySpec":                 schema_pkg_apis_pingcap_v1alpha1_DiscoverySpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DumplingConfig":                schema_pkg_apis_pingcap_v1alpha1_DumplingConfig(ref),
@@ -1985,6 +1986,26 @@ func schema_pkg_apis_pingcap_v1alpha1_DMDiscoverySpec(ref common.ReferenceCallba
 	}
 }
 
+func schema_pkg_apis_pingcap_v1alpha1_DMExperimental(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "DM experimental config",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"openapi": {
+						SchemaProps: spec.SchemaProps{
+							Description: "OpenAPI was introduced in DM V5.3.0",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_pingcap_v1alpha1_DashboardConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -3070,9 +3091,17 @@ func schema_pkg_apis_pingcap_v1alpha1_MasterConfig(ref common.ReferenceCallback)
 							Format:      "int32",
 						},
 					},
+					"experimental": {
+						SchemaProps: spec.SchemaProps{
+							Description: "dm-master's experimental config",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DMExperimental"),
+						},
+					},
 				},
 			},
 		},
+		Dependencies: []string{
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DMExperimental"},
 	}
 }
 
@@ -12142,6 +12171,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 						SchemaProps: spec.SchemaProps{
 							Description: "EnableAlertRules adds alert rules to the Prometheus config even if `AlertmanagerURL` is not configured.",
 							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"timezone": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Time zone of TidbMonitor Optional: Defaults to UTC",
+							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
