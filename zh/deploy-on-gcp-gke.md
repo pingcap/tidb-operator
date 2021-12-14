@@ -186,7 +186,7 @@ gcloud compute instances create bastion \
     {{< copyable "shell-regular" >}}
 
     ```shell
-    mysql -h ${tidb-nlb-dnsname} -P 4000 -u root
+    mysql --comments -h ${tidb-nlb-dnsname} -P 4000 -u root
     ```
 
     `${tidb-nlb-dnsname}` 为 TiDB Service 的 LoadBalancer IP，可以通过 `kubectl get svc basic-tidb -n tidb-cluster` 输出中的 `EXTERNAL-IP` 字段查看。
@@ -194,7 +194,7 @@ gcloud compute instances create bastion \
     示例：
 
     ```shell
-    $ mysql -h 10.128.15.243 -P 4000 -u root
+    $ mysql --comments -h 10.128.15.243 -P 4000 -u root
     Welcome to the MariaDB monitor.  Commands end with ; or \g.
     Your MySQL connection id is 7823
     Server version: 5.7.25-TiDB-v5.2.1 TiDB Server (Apache License 2.0) Community Edition, MySQL 5.7 compatible

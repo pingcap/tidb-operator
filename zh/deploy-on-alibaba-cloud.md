@@ -276,7 +276,7 @@ ssh -i credentials/${cluster_name}-key.pem root@${bastion_ip}
 {{< copyable "shell-regular" >}}
 
 ```shell
-mysql -h ${tidb_lb_ip} -P 4000 -u root
+mysql --comments -h ${tidb_lb_ip} -P 4000 -u root
 ```
 
 `tidb_lb_ip` 为 TiDB Service 的 LoadBalancer IP。

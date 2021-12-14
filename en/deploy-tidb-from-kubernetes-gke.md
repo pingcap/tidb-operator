@@ -157,7 +157,7 @@ From your Cloud Shell:
 
 ```shell
 sudo apt-get install -y mysql-client && \
-mysql -h 127.0.0.1 -u root -P 4000
+mysql --comments -h 127.0.0.1 -u root -P 4000
 ```
 
 Try out a MySQL command inside your MySQL terminal:

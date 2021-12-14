@@ -413,7 +413,7 @@ sudo yum install mysql -y
 {{< copyable "shell-regular" >}}
 
 ```shell
-mysql -h ${tidb-nlb-dnsname} -P 4000 -u root
+mysql --comments -h ${tidb-nlb-dnsname} -P 4000 -u root
 ```
 
 其中 `${tidb-nlb-dnsname}` 为 TiDB Service 的 LoadBalancer 域名，可以通过命令 `kubectl get svc basic-tidb -n tidb-cluster` 输出中的 `EXTERNAL-IP` 字段查看。
@@ -421,7 +421,7 @@ mysql -h ${tidb-nlb-dnsname} -P 4000 -u root
 以下为一个连接 TiDB 集群的示例：
 
 ```shell
-$ mysql -h abfc623004ccb4cc3b363f3f37475af1-9774d22c27310bc1.elb.us-west-2.amazonaws.com -P 4000 -u root
+$ mysql --comments -h abfc623004ccb4cc3b363f3f37475af1-9774d22c27310bc1.elb.us-west-2.amazonaws.com -P 4000 -u root
 Welcome to the MariaDB monitor.  Commands end with ; or \g.
 Your MySQL connection id is 1189
 Server version: 5.7.25-TiDB-v4.0.2 TiDB Server (Apache License 2.0) Community Edition, MySQL 5.7 compatible

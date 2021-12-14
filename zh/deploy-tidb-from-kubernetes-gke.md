@@ -154,7 +154,7 @@ kubectl -n demo port-forward svc/basic-tidb 4000:4000 &>/tmp/pf4000.log &
 
 ``` shell
 sudo apt-get install -y mysql-client && \
-mysql -h 127.0.0.1 -u root -P 4000
+mysql --comments -h 127.0.0.1 -u root -P 4000
 ```
 
 在 MySQL 终端中输入一条 MySQL 命令：
