@@ -51,7 +51,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/component-base/logs"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	aggregatorclientset "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	storageutil "k8s.io/kubernetes/pkg/apis/storage/v1/util"
 	"k8s.io/kubernetes/test/e2e/framework"

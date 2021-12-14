@@ -17,7 +17,7 @@ import (
 	"context"
 	"fmt"
 
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"

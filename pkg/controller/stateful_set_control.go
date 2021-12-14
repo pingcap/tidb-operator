@@ -30,7 +30,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 // StatefulSetControlInterface defines the interface that uses to create, update, and delete StatefulSets,
