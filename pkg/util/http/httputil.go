@@ -19,7 +19,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 // DeferClose captures and prints the error from closing (if an error occurs).

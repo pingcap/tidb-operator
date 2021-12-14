@@ -27,7 +27,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/discovery"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 type server struct {
