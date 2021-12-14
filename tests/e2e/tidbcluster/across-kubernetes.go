@@ -29,6 +29,7 @@ import (
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	nsutil "github.com/pingcap/tidb-operator/tests/e2e/util/ns"
+	pdutil "github.com/pingcap/tidb-operator/tests/e2e/util/pd"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	utiltidb "github.com/pingcap/tidb-operator/tests/e2e/util/tidb"
 	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
@@ -40,7 +41,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
@@ -251,8 +251,8 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 		ginkgo.It("Deploy cluster with TLS-enabled across kubernetes", func() {
 			ns1, ns2 := namespaces[0], namespaces[1]
 			tcName1, tcName2 := "tls-cluster-1", "tls-cluster-2"
-			tc1 := GetTCForAcrossKubernetes(ns1, tcName1, version, clusterDomain, nil)
-			tc2 := GetTCForAcrossKubernetes(ns2, tcName2, version, clusterDomain, tc1)
+			tc1 := GetTCForAcrossKubernetes(ns1, tcName1, version, cluster1Domain, nil)
+			tc2 := GetTCForAcrossKubernetes(ns2, tcName2, version, cluster2Domain, tc1)
 
 			ginkgo.By("Installing initial tidb CA certificate")
 			err := InstallTiDBIssuer(ns1, tcName1)
@@ -278,15 +278,15 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectNoError(err, "failed to install tidb issuer for cluster %q", tcName2)
 
 			ginkgo.By("Installing tidb server and client certificate")
-			err = InstallXK8sTiDBCertificates(ns1, tcName1, clusterDomain)
+			err = InstallXK8sTiDBCertificates(ns1, tcName1, cluster1Domain)
 			framework.ExpectNoError(err, "failed to install tidb server and client certificate for cluster: %q", tcName1)
-			err = InstallXK8sTiDBCertificates(ns2, tcName2, clusterDomain)
+			err = InstallXK8sTiDBCertificates(ns2, tcName2, cluster2Domain)
 			framework.ExpectNoError(err, "failed to install tidb server and client certificate for cluster: %q", tcName2)
 
 			ginkgo.By("Installing tidb components certificates")
-			err = InstallXK8sTiDBComponentsCertificates(ns1, tcName1, clusterDomain)
+			err = InstallXK8sTiDBComponentsCertificates(ns1, tcName1, cluster1Domain)
 			framework.ExpectNoError(err, "failed to install tidb components certificates for cluster: %q", tcName1)
-			err = InstallXK8sTiDBComponentsCertificates(ns2, tcName2, clusterDomain)
+			err = InstallXK8sTiDBComponentsCertificates(ns2, tcName2, cluster2Domain)
 			framework.ExpectNoError(err, "failed to install tidb components certificates for cluster: %q", tcName2)
 
 			ginkgo.By("Installing separate dashboard client certificate")
