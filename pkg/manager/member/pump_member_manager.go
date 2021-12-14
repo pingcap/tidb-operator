@@ -302,10 +302,6 @@ func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		cfg.Set("security.ssl-key", path.Join(pumpCertPath, corev1.TLSPrivateKeyKey))
 	}
 
-	if cfg == nil {
-		return nil, nil
-	}
-
 	confText, err := cfg.MarshalTOML()
 	if err != nil {
 		return nil, err
