@@ -16,10 +16,12 @@ package member
 import (
 	"testing"
 
-	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+
+	. "github.com/onsi/gomega"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -64,7 +66,7 @@ func TestTiCDCUpgrader_Upgrade(t *testing.T) {
 		if test.changeOldSet != nil {
 			test.changeOldSet(oldSet)
 		}
-		SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+		mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 
 		err := upgrader.Upgrade(tc, oldSet, newSet)
 		if test.errorExpect {
@@ -179,7 +181,7 @@ func TestTiCDCUpgrader_Upgrade(t *testing.T) {
 				tc.Status.TiCDC.Synced = true
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
-				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+				mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 			},
 			errorExpect: false,
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
@@ -198,7 +200,7 @@ func TestTiCDCUpgrader_Upgrade(t *testing.T) {
 				tc.Status.TiCDC.Synced = true
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
-				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+				mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 			},
 			errorExpect: false,
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
@@ -217,7 +219,7 @@ func TestTiCDCUpgrader_Upgrade(t *testing.T) {
 				tc.Status.TiCDC.Synced = true
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
-				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+				mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 			},
 			errorExpect: false,
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
@@ -236,7 +238,7 @@ func TestTiCDCUpgrader_Upgrade(t *testing.T) {
 				tc.Status.TiCDC.Synced = true
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
-				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+				mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 			},
 			errorExpect: false,
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
@@ -255,7 +257,7 @@ func TestTiCDCUpgrader_Upgrade(t *testing.T) {
 				tc.Status.TiCDC.Synced = true
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
-				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+				mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 			},
 			errorExpect: false,
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {

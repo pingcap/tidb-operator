@@ -32,6 +32,7 @@ type PingcapV1alpha1Interface interface {
 	TidbClusterAutoScalersGetter
 	TidbInitializersGetter
 	TidbMonitorsGetter
+	TidbNGMonitoringsGetter
 }
 
 // PingcapV1alpha1Client is used to interact with features provided by the pingcap.com group.
@@ -73,6 +74,10 @@ func (c *PingcapV1alpha1Client) TidbInitializers(namespace string) TidbInitializ
 
 func (c *PingcapV1alpha1Client) TidbMonitors(namespace string) TidbMonitorInterface {
 	return newTidbMonitors(c, namespace)
+}
+
+func (c *PingcapV1alpha1Client) TidbNGMonitorings(namespace string) TidbNGMonitoringInterface {
+	return newTidbNGMonitorings(c, namespace)
 }
 
 // NewForConfig creates a new PingcapV1alpha1Client for the given config.

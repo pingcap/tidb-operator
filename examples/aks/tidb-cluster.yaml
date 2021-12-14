@@ -9,6 +9,8 @@ spec:
   pvReclaimPolicy: Retain
   schedulerName: tidb-scheduler
   enableDynamicConfiguration: true
+  helper:
+    image: busybox:1.34.1
   pd:
     baseImage: pingcap/pd
     replicas: 3

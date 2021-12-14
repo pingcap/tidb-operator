@@ -19,11 +19,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
-	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+
+	"github.com/google/go-cmp/cmp"
+	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -395,7 +397,7 @@ func TestSyncConfigUpdate(t *testing.T) {
 				g.Expect(r.listCm).To(Succeed())
 				g.Expect(r.cms).To(HaveLen(2))
 				g.Expect(r.getSet).To(Succeed())
-				using := FindConfigMapVolume(&r.set.Spec.Template.Spec, func(name string) bool {
+				using := mngerutils.FindConfigMapVolume(&r.set.Spec.Template.Spec, func(name string) bool {
 					return strings.HasPrefix(name, controller.PumpMemberName("test"))
 				})
 				g.Expect(using).NotTo(BeEmpty())
