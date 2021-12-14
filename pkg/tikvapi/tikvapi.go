@@ -23,7 +23,7 @@ import (
 
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prom2json"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 const (
