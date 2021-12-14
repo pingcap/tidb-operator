@@ -34,6 +34,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 
 	"github.com/onsi/ginkgo"
+	v1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -168,14 +169,14 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectNoError(err, "failed to install CA certificate")
 
 			ginkgo.By("Export initial CA secret and install into other tidb clusters")
-			wait.PollImmediate(5*time.Second, 1*time.Minute, func() (bool, error) {
-				_, err := c.CoreV1().Secrets(ns1).Get(context.TODO(), fmt.Sprintf("%s-ca-secret", tcName1), metav1.GetOptions{})
+			var caSecret *v1.Secret
+			err = wait.PollImmediate(5*time.Second, 1*time.Minute, func() (bool, error) {
+				caSecret, err = c.CoreV1().Secrets(ns1).Get(context.TODO(), fmt.Sprintf("%s-ca-secret", tcName1), metav1.GetOptions{})
 				if err != nil {
 					return false, nil
 				}
 				return true, nil
 			})
-			caSecret, err := c.CoreV1().Secrets(ns1).Get(context.TODO(), fmt.Sprintf("%s-ca-secret", tcName1), metav1.GetOptions{})
 			framework.ExpectNoError(err, "error export initial CA secert")
 			caSecret.Namespace = ns2
 			caSecret.ObjectMeta.ResourceVersion = ""
@@ -227,6 +228,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 				if vol.Name == "tidb-client-tls" {
 					foundSecretName = true
 					framework.ExpectEqual(vol.Secret.SecretName, tc2DashTLSName)
+					break
 				}
 			}
 			framework.ExpectEqual(foundSecretName, true)
