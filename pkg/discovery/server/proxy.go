@@ -24,7 +24,7 @@ import (
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 func buildUrl(tcName string, tlsEnabled bool) *url.URL {
