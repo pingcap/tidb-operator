@@ -86,3 +86,11 @@ type TidbMonitorListerExpansion interface{}
 // TidbMonitorNamespaceListerExpansion allows custom methods to be added to
 // TidbMonitorNamespaceLister.
 type TidbMonitorNamespaceListerExpansion interface{}
+
+// TidbNGMonitoringListerExpansion allows custom methods to be added to
+// TidbNGMonitoringLister.
+type TidbNGMonitoringListerExpansion interface{}
+
+// TidbNGMonitoringNamespaceListerExpansion allows custom methods to be added to
+// TidbNGMonitoringNamespaceLister.
+type TidbNGMonitoringNamespaceListerExpansion interface{}
