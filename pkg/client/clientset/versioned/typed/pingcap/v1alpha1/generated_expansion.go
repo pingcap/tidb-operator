@@ -32,3 +32,5 @@ type TidbClusterAutoScalerExpansion interface{}
 type TidbInitializerExpansion interface{}
 
 type TidbMonitorExpansion interface{}
+
+type TidbNGMonitoringExpansion interface{}

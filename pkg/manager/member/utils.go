@@ -14,7 +14,6 @@
 package member
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"path"
@@ -75,30 +74,6 @@ func annotationsMountVolume() (corev1.VolumeMount, corev1.Volume) {
 	return m, v
 }
 
-// statefulSetIsUpgrading confirms whether the statefulSet is upgrading phase
-func statefulSetIsUpgrading(set *apps.StatefulSet) bool {
-	if set.Status.CurrentRevision != set.Status.UpdateRevision {
-		return true
-	}
-	if set.Generation > set.Status.ObservedGeneration && *set.Spec.Replicas == set.Status.Replicas {
-		return true
-	}
-	return false
-}
-
-// SetStatefulSetLastAppliedConfigAnnotation set last applied config to Statefulset's annotation
-func SetStatefulSetLastAppliedConfigAnnotation(set *apps.StatefulSet) error {
-	setApply, err := util.Encode(set.Spec)
-	if err != nil {
-		return err
-	}
-	if set.Annotations == nil {
-		set.Annotations = map[string]string{}
-	}
-	set.Annotations[LastAppliedConfigAnnotation] = setApply
-	return nil
-}
-
 // GetLastAppliedConfig get last applied config info from Statefulset's annotation and the podTemplate's annotation
 func GetLastAppliedConfig(set *apps.StatefulSet) (*apps.StatefulSetSpec, *corev1.PodSpec, error) {
 	specAppliedConfig, ok := set.Annotations[LastAppliedConfigAnnotation]
@@ -127,12 +102,6 @@ func templateEqual(new *apps.StatefulSet, old *apps.StatefulSet) bool {
 		return apiequality.Semantic.DeepEqual(oldStsSpec.Template.Spec, new.Spec.Template.Spec)
 	}
 	return false
-}
-
-// setUpgradePartition set statefulSet's rolling update partition
-func setUpgradePartition(set *apps.StatefulSet, upgradeOrdinal int32) {
-	set.Spec.UpdateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{Partition: &upgradeOrdinal}
-	klog.Infof("set %s/%s partition to %d", set.GetNamespace(), set.GetName(), upgradeOrdinal)
 }
 
 func MemberPodName(controllerName, controllerKind string, ordinal int32, memberType v1alpha1.MemberType) (string, error) {
@@ -187,16 +156,6 @@ func NeedForceUpgrade(ann map[string]string) bool {
 	return false
 }
 
-// FindConfigMapVolume returns the configmap which's name matches the predicate in a PodSpec, empty indicates not found
-func FindConfigMapVolume(podSpec *corev1.PodSpec, pred func(string) bool) string {
-	for _, vol := range podSpec.Volumes {
-		if vol.ConfigMap != nil && pred(vol.ConfigMap.LocalObjectReference.Name) {
-			return vol.ConfigMap.LocalObjectReference.Name
-		}
-	}
-	return ""
-}
-
 // MarshalTOML is a template function that try to marshal a go value to toml
 func MarshalTOML(v interface{}) ([]byte, error) {
 	return toml.Marshal(v)
@@ -204,25 +163,6 @@ func MarshalTOML(v interface{}) ([]byte, error) {
 
 func UnmarshalTOML(b []byte, obj interface{}) error {
 	return toml.Unmarshal(b, obj)
-}
-
-func Sha256Sum(v interface{}) (string, error) {
-	data, err := json.Marshal(v)
-	if err != nil {
-		return "", err
-	}
-	sum := sha256.Sum256(data)
-	return fmt.Sprintf("%x", sum), nil
-}
-
-func AddConfigMapDigestSuffix(cm *corev1.ConfigMap) error {
-	sum, err := Sha256Sum(cm.Data)
-	if err != nil {
-		return err
-	}
-	suffix := fmt.Sprintf("%x", sum)[0:7]
-	cm.Name = fmt.Sprintf("%s-%s", cm.Name, suffix)
-	return nil
 }
 
 // getStsAnnotations gets annotations for statefulset of given component.
@@ -264,60 +204,6 @@ func MapContainers(podSpec *corev1.PodSpec) map[string]corev1.Container {
 		m[c.Name] = c
 	}
 	return m
-}
-
-// UpdateStatefulSet is a template function to update the statefulset of components
-func UpdateStatefulSet(setCtl controller.StatefulSetControlInterface, object runtime.Object, newSet, oldSet *apps.StatefulSet) error {
-	isOrphan := metav1.GetControllerOf(oldSet) == nil
-	if newSet.Annotations == nil {
-		newSet.Annotations = map[string]string{}
-	}
-	if oldSet.Annotations == nil {
-		oldSet.Annotations = map[string]string{}
-	}
-
-	// Check if an upgrade is needed.
-	// If not, early return.
-	if util.StatefulSetEqual(*newSet, *oldSet) && !isOrphan {
-		return nil
-	}
-
-	set := *oldSet
-
-	// update specs for sts
-	*set.Spec.Replicas = *newSet.Spec.Replicas
-	set.Spec.UpdateStrategy = newSet.Spec.UpdateStrategy
-	set.Labels = newSet.Labels
-	set.Annotations = newSet.Annotations
-	set.Spec.Template = newSet.Spec.Template
-	if isOrphan {
-		set.OwnerReferences = newSet.OwnerReferences
-	}
-
-	var podConfig string
-	var hasPodConfig bool
-	if oldSet.Spec.Template.Annotations != nil {
-		podConfig, hasPodConfig = oldSet.Spec.Template.Annotations[LastAppliedConfigAnnotation]
-	}
-	if hasPodConfig {
-		if set.Spec.Template.Annotations == nil {
-			set.Spec.Template.Annotations = map[string]string{}
-		}
-		set.Spec.Template.Annotations[LastAppliedConfigAnnotation] = podConfig
-	}
-	v, ok := oldSet.Annotations[label.AnnStsLastSyncTimestamp]
-	if ok {
-		set.Annotations[label.AnnStsLastSyncTimestamp] = v
-	}
-
-	err := SetStatefulSetLastAppliedConfigAnnotation(&set)
-	if err != nil {
-		return err
-	}
-
-	// commit to k8s
-	_, err = setCtl.UpdateStatefulSet(object, &set)
-	return err
 }
 
 // findContainerByName finds targetContainer by containerName, If not find, then return nil

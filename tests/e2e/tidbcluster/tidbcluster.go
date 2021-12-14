@@ -53,6 +53,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
+	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/monitor/monitor"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/tests"
@@ -639,7 +640,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					return false, nil
 				}
 
-				cmName := member.FindConfigMapVolume(&pumpSet.Spec.Template.Spec, func(name string) bool {
+				cmName := mngerutils.FindConfigMapVolume(&pumpSet.Spec.Template.Spec, func(name string) bool {
 					return strings.HasPrefix(name, controller.PumpMemberName(tc.Name))
 				})
 				if cmName == "" {
@@ -768,7 +769,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					if err != nil {
 						return false, err
 					}
-					cmName := member.FindConfigMapVolume(&newSet.Spec.Template.Spec, func(name string) bool {
+					cmName := mngerutils.FindConfigMapVolume(&newSet.Spec.Template.Spec, func(name string) bool {
 						return strings.HasPrefix(name, setName)
 					})
 					if cmName == "" {
@@ -1644,7 +1645,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					return false, err
 				}
 
-				cdcCmName = member.FindConfigMapVolume(&cdcSts.Spec.Template.Spec, func(name string) bool {
+				cdcCmName = mngerutils.FindConfigMapVolume(&cdcSts.Spec.Template.Spec, func(name string) bool {
 					return strings.HasPrefix(name, controller.TiCDCMemberName(fromTc.Name))
 				})
 
@@ -2004,7 +2005,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			pdMemberName := controller.PDMemberName(tc.Name)
 			pdSts, err := stsGetter.StatefulSets(ns).Get(context.TODO(), pdMemberName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, pdMemberName)
-			pdCmName := member.FindConfigMapVolume(&pdSts.Spec.Template.Spec, func(name string) bool {
+			pdCmName := mngerutils.FindConfigMapVolume(&pdSts.Spec.Template.Spec, func(name string) bool {
 				return strings.HasPrefix(name, controller.PDMemberName(tc.Name))
 			})
 			pdCm, err := c.CoreV1().ConfigMaps(ns).Get(context.TODO(), pdCmName, metav1.GetOptions{})
@@ -2024,7 +2025,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tikvMemberName := controller.TiKVMemberName(tc.Name)
 			tikvSts, err := stsGetter.StatefulSets(ns).Get(context.TODO(), tikvMemberName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, tikvMemberName)
-			tikvCmName := member.FindConfigMapVolume(&tikvSts.Spec.Template.Spec, func(name string) bool {
+			tikvCmName := mngerutils.FindConfigMapVolume(&tikvSts.Spec.Template.Spec, func(name string) bool {
 				return strings.HasPrefix(name, controller.TiKVMemberName(tc.Name))
 			})
 			tikvCm, err := c.CoreV1().ConfigMaps(ns).Get(context.TODO(), tikvCmName, metav1.GetOptions{})
@@ -2044,7 +2045,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tidbMemberName := controller.TiDBMemberName(tc.Name)
 			tidbSts, err := stsGetter.StatefulSets(ns).Get(context.TODO(), tidbMemberName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, tidbMemberName)
-			tidbCmName := member.FindConfigMapVolume(&tidbSts.Spec.Template.Spec, func(name string) bool {
+			tidbCmName := mngerutils.FindConfigMapVolume(&tidbSts.Spec.Template.Spec, func(name string) bool {
 				return strings.HasPrefix(name, controller.TiDBMemberName(tc.Name))
 			})
 			tidbCm, err := c.CoreV1().ConfigMaps(ns).Get(context.TODO(), tidbCmName, metav1.GetOptions{})

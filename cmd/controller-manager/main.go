@@ -36,6 +36,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbcluster"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbinitializer"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbmonitor"
+	"github.com/pingcap/tidb-operator/pkg/controller/tidbngmonitoring"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/metrics"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
@@ -166,6 +167,7 @@ func main() {
 			backupschedule.NewController(deps),
 			tidbinitializer.NewController(deps),
 			tidbmonitor.NewController(deps),
+			tidbngmonitoring.NewController(deps),
 		}
 		if cliCfg.PodWebhookEnabled {
 			controllers = append(controllers, periodicity.NewController(deps))

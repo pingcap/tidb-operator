@@ -46,6 +46,10 @@ func (m *reclaimPolicyManager) SyncMonitor(tm *v1alpha1.TidbMonitor) error {
 	return m.sync(v1alpha1.TiDBMonitorKind, tm, false, *tm.Spec.PVReclaimPolicy)
 }
 
+func (m *reclaimPolicyManager) SyncTiDBNGMonitoring(tngm *v1alpha1.TidbNGMonitoring) error {
+	return m.sync(v1alpha1.TiDBNGMonitoringKind, tngm, false, *tngm.Spec.PVReclaimPolicy)
+}
+
 func (m *reclaimPolicyManager) SyncDM(dc *v1alpha1.DMCluster) error {
 	return m.sync(v1alpha1.DMClusterKind, dc, dc.IsPVReclaimEnabled(), *dc.Spec.PVReclaimPolicy)
 }
@@ -71,6 +75,8 @@ func (m *reclaimPolicyManager) sync(kind string, obj runtime.Object, isPVReclaim
 		selector, err = label.NewMonitor().Instance(instanceName).Monitor().Selector()
 	case v1alpha1.DMClusterKind:
 		selector, err = label.NewDM().Instance(instanceName).Selector()
+	case v1alpha1.TiDBNGMonitoringKind:
+		selector, err = label.NewTiDBNGMonitoring().Instance(instanceName).Selector()
 	default:
 		return fmt.Errorf("unsupported kind %s", kind)
 	}
