@@ -21,7 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 // TiKVControlInterface is an interface that knows how to manage and get client for TiKV
