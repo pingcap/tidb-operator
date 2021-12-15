@@ -23,7 +23,7 @@ Some common open source monitoring systems that can be used to monitor server re
 
 - [CollectD](https://collectd.org/)
 - [Nagios](https://www.nagios.org/)
-- [Prometheus](http://prometheus.io/) & [node_exporter](https://github.com/prometheus/node_exporter)
+- [Prometheus](https://prometheus.io/) & [node_exporter](https://github.com/prometheus/node_exporter)
 - [Zabbix](https://www.zabbix.com/)
 
 Some cloud service providers or specialized performance monitoring service providers also have their own free or chargeable monitoring solutions that you can choose from.

@@ -23,7 +23,7 @@ summary: 介绍如何监控 Kubernetes。
 
 - [CollectD](https://collectd.org/)
 - [Nagios](https://www.nagios.org/)
-- [Prometheus](http://prometheus.io/) & [node_exporter](https://github.com/prometheus/node_exporter)
+- [Prometheus](https://prometheus.io/) & [node_exporter](https://github.com/prometheus/node_exporter)
 - [Zabbix](https://www.zabbix.com/)
 
 一些云服务商或专门的性能监控服务提供商也有各自的免费或收费的监控解决方案可以选择。
