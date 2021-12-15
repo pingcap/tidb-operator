@@ -165,10 +165,13 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			// connectable test
 			_, err = utiltidb.TiDBIsConnectable(fw, tc1.Namespace, tc1.Name, "root", "")()
 			framework.ExpectNoError(err, "tc1 are not connectable")
+			_, err = utiltidb.TiDBIsConnectable(fw, tc2.Namespace, tc2.Name, "root", "")()
+			framework.ExpectNoError(err, "tc1 are not connectable")
+			_, err = utiltidb.TiDBIsConnectable(fw, tc3.Namespace, tc3.Name, "root", "")()
+			framework.ExpectNoError(err, "tc1 are not connectable")
 
 			ginkgo.By("Scale in cluster-3, and delete the cluster-3")
 
-			_ = genericCli.Get(context.TODO(), types.NamespacedName{Namespace: tc3.Namespace, Name: tc3.Name}, tc3)
 			framework.ExpectNoError(controller.GuaranteedUpdate(genericCli, tc3, func() error {
 				tc3.Spec.PD.Replicas = 0
 				tc3.Spec.TiDB.Replicas = 0
