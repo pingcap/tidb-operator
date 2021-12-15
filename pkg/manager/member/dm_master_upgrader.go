@@ -19,8 +19,10 @@ import (
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+
 	apps "k8s.io/api/apps/v1"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 type masterUpgrader struct {
@@ -73,7 +75,7 @@ func (u *masterUpgrader) gracefulUpgrade(dc *v1alpha1.DMCluster, oldSet *apps.St
 		return nil
 	}
 
-	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
+	mngerutils.SetUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
 	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
 		i := podOrdinals[_i]
@@ -115,7 +117,7 @@ func (u *masterUpgrader) upgradeMasterPod(dc *v1alpha1.DMCluster, ordinal int32,
 		return controller.RequeueErrorf("dmcluster: [%s/%s]'s dm-master member: evicting [%s]'s leader", ns, dcName, upgradePodName)
 	}
 
-	setUpgradePartition(newSet, ordinal)
+	mngerutils.SetUpgradePartition(newSet, ordinal)
 	return nil
 }
 

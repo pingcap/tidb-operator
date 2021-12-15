@@ -20,12 +20,14 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
+
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -34,7 +36,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/utils/pointer"
 )
@@ -203,7 +205,7 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 	}
 
 	if setNotExist {
-		err = SetStatefulSetLastAppliedConfigAnnotation(newTiDBSet)
+		err = mngerutils.SetStatefulSetLastAppliedConfigAnnotation(newTiDBSet)
 		if err != nil {
 			return err
 		}
@@ -240,7 +242,7 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 		}
 	}
 
-	return UpdateStatefulSet(m.deps.StatefulSetControl, tc, newTiDBSet, oldTiDBSet)
+	return mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tc, newTiDBSet, oldTiDBSet)
 }
 
 func (m *tidbMemberManager) shouldRecover(tc *v1alpha1.TidbCluster) bool {
@@ -357,14 +359,14 @@ func (m *tidbMemberManager) syncTiDBConfigMap(tc *v1alpha1.TidbCluster, set *app
 
 	var inUseName string
 	if set != nil {
-		inUseName = FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
+		inUseName = mngerutils.FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
 			return strings.HasPrefix(name, controller.TiDBMemberName(tc.Name))
 		})
 	}
 
 	klog.V(3).Info("get tidb in use config map name: ", inUseName)
 
-	err = updateConfigMapIfNeed(m.deps.ConfigMapLister, tc.BaseTiDBSpec().ConfigUpdateStrategy(), inUseName, newCm)
+	err = mngerutils.UpdateConfigMapIfNeed(m.deps.ConfigMapLister, tc.BaseTiDBSpec().ConfigUpdateStrategy(), inUseName, newCm)
 	if err != nil {
 		return nil, err
 	}
@@ -897,7 +899,7 @@ func (m *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 }
 
 func tidbStatefulSetIsUpgrading(podLister corelisters.PodLister, set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
-	if statefulSetIsUpgrading(set) {
+	if mngerutils.StatefulSetIsUpgrading(set) {
 		return true, nil
 	}
 	selector, err := label.New().

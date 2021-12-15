@@ -35,6 +35,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbcluster"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbinitializer"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbmonitor"
+	"github.com/pingcap/tidb-operator/pkg/controller/tidbngmonitoring"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/metrics"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
@@ -50,7 +51,7 @@ import (
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/component-base/logs"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -158,12 +159,14 @@ func main() {
 		// Initialize all controllers
 		controllers := []Controller{
 			tidbcluster.NewController(deps),
+			tidbcluster.NewPodController(deps),
 			dmcluster.NewController(deps),
 			backup.NewController(deps),
 			restore.NewController(deps),
 			backupschedule.NewController(deps),
 			tidbinitializer.NewController(deps),
 			tidbmonitor.NewController(deps),
+			tidbngmonitoring.NewController(deps),
 		}
 		if features.DefaultFeatureGate.Enabled(features.AutoScaling) {
 			controllers = append(controllers, autoscaler.NewController(deps))

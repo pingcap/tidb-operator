@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -31,7 +32,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/utils/pointer"
 )
@@ -193,7 +194,7 @@ func (m *masterMemberManager) syncMasterStatefulSetForDMCluster(dc *v1alpha1.DMC
 		return err
 	}
 	if setNotExist {
-		err = SetStatefulSetLastAppliedConfigAnnotation(newMasterSet)
+		err = mngerutils.SetStatefulSetLastAppliedConfigAnnotation(newMasterSet)
 		if err != nil {
 			return err
 		}
@@ -207,8 +208,8 @@ func (m *masterMemberManager) syncMasterStatefulSetForDMCluster(dc *v1alpha1.DMC
 	// Force update takes precedence over scaling because force upgrade won't take effect when cluster gets stuck at scaling
 	if !dc.Status.Master.Synced && NeedForceUpgrade(dc.Annotations) {
 		dc.Status.Master.Phase = v1alpha1.UpgradePhase
-		setUpgradePartition(newMasterSet, 0)
-		errSTS := UpdateStatefulSet(m.deps.StatefulSetControl, dc, newMasterSet, oldMasterSet)
+		mngerutils.SetUpgradePartition(newMasterSet, 0)
+		errSTS := mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, dc, newMasterSet, oldMasterSet)
 		return controller.RequeueErrorf("dmcluster: [%s/%s]'s dm-master needs force upgrade, %v", ns, dcName, errSTS)
 	}
 
@@ -240,7 +241,7 @@ func (m *masterMemberManager) syncMasterStatefulSetForDMCluster(dc *v1alpha1.DMC
 		}
 	}
 
-	return UpdateStatefulSet(m.deps.StatefulSetControl, dc, newMasterSet, oldMasterSet)
+	return mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, dc, newMasterSet, oldMasterSet)
 }
 
 // shouldRecover checks whether we should perform recovery operation.
@@ -466,7 +467,7 @@ func getNewMasterHeadlessServiceForDMCluster(dc *v1alpha1.DMCluster) *corev1.Ser
 }
 
 func (m *masterMemberManager) masterStatefulSetIsUpgrading(set *apps.StatefulSet, dc *v1alpha1.DMCluster) (bool, error) {
-	if statefulSetIsUpgrading(set) {
+	if mngerutils.StatefulSetIsUpgrading(set) {
 		return true, nil
 	}
 	instanceName := dc.GetInstanceName()
@@ -749,7 +750,7 @@ func getMasterConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
 		},
 	}
 
-	if err := AddConfigMapDigestSuffix(cm); err != nil {
+	if err := mngerutils.AddConfigMapDigestSuffix(cm); err != nil {
 		return nil, err
 	}
 	return cm, nil

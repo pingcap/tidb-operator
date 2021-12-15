@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
 
 	apps "k8s.io/api/apps/v1"
@@ -30,7 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
 )
 
@@ -191,7 +192,7 @@ func (m *workerMemberManager) syncWorkerStatefulSetForDMCluster(dc *v1alpha1.DMC
 	}
 
 	if stsNotExist {
-		err = SetStatefulSetLastAppliedConfigAnnotation(newSts)
+		err = mngerutils.SetStatefulSetLastAppliedConfigAnnotation(newSts)
 		if err != nil {
 			return err
 		}
@@ -217,7 +218,7 @@ func (m *workerMemberManager) syncWorkerStatefulSetForDMCluster(dc *v1alpha1.DMC
 		}
 	}
 
-	return UpdateStatefulSet(m.deps.StatefulSetControl, dc, newSts, oldSts)
+	return mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, dc, newSts, oldSts)
 }
 
 func (m *workerMemberManager) syncDMClusterStatus(dc *v1alpha1.DMCluster, set *apps.StatefulSet) error {
@@ -288,7 +289,7 @@ func (m *workerMemberManager) syncDMClusterStatus(dc *v1alpha1.DMCluster, set *a
 }
 
 func (m *workerMemberManager) workerStatefulSetIsUpgrading(set *apps.StatefulSet, dc *v1alpha1.DMCluster) (bool, error) {
-	if statefulSetIsUpgrading(set) {
+	if mngerutils.StatefulSetIsUpgrading(set) {
 		return true, nil
 	}
 	instanceName := dc.GetInstanceName()
@@ -556,7 +557,7 @@ func getWorkerConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
 		},
 	}
 
-	if err := AddConfigMapDigestSuffix(cm); err != nil {
+	if err := mngerutils.AddConfigMapDigestSuffix(cm); err != nil {
 		return nil, err
 	}
 	return cm, nil

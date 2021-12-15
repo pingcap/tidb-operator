@@ -42,7 +42,7 @@ import (
 	networklister "k8s.io/client-go/listers/networking/v1"
 	storagelister "k8s.io/client-go/listers/storage/v1"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	controllerfake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -212,6 +212,7 @@ type Dependencies struct {
 	BackupScheduleLister        listers.BackupScheduleLister
 	TiDBInitializerLister       listers.TidbInitializerLister
 	TiDBMonitorLister           listers.TidbMonitorLister
+	TiDBNGMonitoringLister      listers.TidbNGMonitoringLister
 
 	// Controls
 	Controls
@@ -344,6 +345,7 @@ func newDependencies(
 		BackupScheduleLister:        informerFactory.Pingcap().V1alpha1().BackupSchedules().Lister(),
 		TiDBInitializerLister:       informerFactory.Pingcap().V1alpha1().TidbInitializers().Lister(),
 		TiDBMonitorLister:           informerFactory.Pingcap().V1alpha1().TidbMonitors().Lister(),
+		TiDBNGMonitoringLister:      informerFactory.Pingcap().V1alpha1().TidbNGMonitorings().Lister(),
 	}, nil
 }
 
@@ -410,7 +412,7 @@ func newFakeControl(kubeClientset kubernetes.Interface, informerFactory informer
 		DMMasterControl:    dmapi.NewFakeMasterControl(kubeInformerFactory.Core().V1().Secrets().Lister()),
 		TiFlashControl:     tiflashapi.NewFakeTiFlashControl(kubeInformerFactory.Core().V1().Secrets().Lister()),
 		TiDBClusterControl: NewFakeTidbClusterControl(informerFactory.Pingcap().V1alpha1().TidbClusters()),
-		CDCControl:         NewDefaultTiCDCControl(kubeInformerFactory.Core().V1().Secrets().Lister()), // TODO: no fake control?
+		CDCControl:         NewFakeTiCDCControl(),
 		TiDBControl:        NewFakeTiDBControl(kubeInformerFactory.Core().V1().Secrets().Lister()),
 		BackupControl:      NewFakeBackupControl(informerFactory.Pingcap().V1alpha1().Backups()),
 	}

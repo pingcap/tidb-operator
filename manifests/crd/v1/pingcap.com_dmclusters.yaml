@@ -4129,6 +4129,11 @@ spec:
                         items:
                           type: string
                         type: array
+                      experimental:
+                        properties:
+                          openapi:
+                            type: boolean
+                        type: object
                       log-file:
                         type: string
                       log-format:
@@ -4859,7 +4864,7 @@ spec:
                     type: string
                   replicas:
                     format: int32
-                    minimum: 1
+                    minimum: 0
                     type: integer
                   requests:
                     additionalProperties:
@@ -7301,7 +7306,7 @@ spec:
                     type: boolean
                   replicas:
                     format: int32
-                    minimum: 1
+                    minimum: 0
                     type: integer
                   requests:
                     additionalProperties:

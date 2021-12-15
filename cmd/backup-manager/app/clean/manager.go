@@ -23,7 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 // Manager mainly used to manage backup related work

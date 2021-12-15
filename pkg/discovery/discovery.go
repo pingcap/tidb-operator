@@ -25,7 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 // TiDBDiscovery helps new PD and dm-master member to discover all other members in cluster bootstrap phase.

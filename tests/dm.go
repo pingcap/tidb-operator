@@ -606,6 +606,29 @@ func StartDMTask(fw portforward.PortForward, ns, masterSvcName, taskConf, errSub
 	})
 }
 
+// GetDMOpenAPISpec get openapi Spec from dm-master pod.
+func GetDMOpenAPISpec(fw portforward.PortForward, ns, masterSvcName, taskConf, errSubStr string) error {
+	apiPath := "/api/v1/dm.json"
+	return wait.Poll(5*time.Second, time.Minute, func() (bool, error) {
+		localHost, localPort, cancel, err := portforward.ForwardOnePort(
+			fw, ns, fmt.Sprintf("svc/%s", masterSvcName), dmMasterSvcPort)
+		if err != nil {
+			log.Logf("failed to forward dm-master svc: %v", err)
+			return false, nil
+		}
+		defer cancel()
+
+		_, err = httputil.GetBodyOK(
+			&http.Client{Transport: &http.Transport{}},
+			fmt.Sprintf("http://%s:%d%s", localHost, localPort, apiPath))
+		if err != nil {
+			log.Logf("failed to get DM o: %v", err)
+			return false, nil
+		}
+		return true, nil
+	})
+}
+
 // CheckDMData checks data between downstream TiDB cluster and upstream MySQL are equal.
 // NOTE: for simplicity, we only check rows count now.
 func CheckDMData(fw portforward.PortForward, ns string, sourceCount int) error {
