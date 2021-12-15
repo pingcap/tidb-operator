@@ -34,15 +34,16 @@ spec:
   # env: []
 
   ## To is the TidbCluster to be restored.
-  to:
+  ## It takes high precedence than spec in BR. If `to` not set, cluster in BR will be restored.
+  # to:
     ## Host is the address of the TidbCluster to be restored, which is the service name of the TidbCluster, such as `basic-tidb`.
-    host: advanced-tidb-tidb
+    # host: advanced-tidb-tidb
     ## Port is the port of the TidbCluster to be restored.
-    port: 4000
+    # port: 4000
     ## User is the accessing user of the TidbCluster to be restored.
-    user: backup
+    # user: backup
     ## SecretName is the secret that contains the password of the accessing user of the TidbCluster to be restored.
-    secretName: backup-secret
+    # secretName: backup-secret
     ## TLSClientSecretName is the name of secret which stores tidb server client certificate.
     ## Defaults to nil.
     # tlsClientSecretName: ""
@@ -142,7 +143,6 @@ spec:
   ## `raw` represents the raw backup of TidbCluster.
   ## `db` represents the backup of one DB of TidbCluster.
   ## `table` represents the backup of one table of TidbCluster.
-  ## `tiflash-replica` represents restoring the tiflash replica removed by a failed restore of the older version BR.
   backupType: full
 
   ## StorageSize is the PV size specified for the backup operation.

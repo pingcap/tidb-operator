@@ -34,7 +34,7 @@ spec:
   # env: []
 
   ## From is the TidbCluster to be backed up.
-  ## It takes high precedence than spec in BR. If `from` not set, cluster in BR may be backed up.
+  ## It takes high precedence than spec in BR. If `from` not set, cluster in BR will be backed up.
   # from:
     ## Host is the address of the TidbCluster to be backed up, which is the service name of the TidbCluster, such as `basic-tidb`.
     # host: advanced-tidb-tidb
@@ -53,7 +53,6 @@ spec:
   ## `raw` represents the raw backup of TidbCluster.
   ## `db` represents the backup of one DB of TidbCluster.
   ## `table` represents the backup of one table of TidbCluster.
-  ## `tiflash-replica` represents restoring the tiflash replica removed by a failed restore of the older version BR.
   backupType: full
 
   ## TikvGCLifeTime specifies the safe gc life time for Backup.
@@ -242,18 +241,18 @@ spec:
   cleanPolicy: Retain
   
   ## CleanOption controls the behavior of clean.
-  cleanOption: 
+  # cleanOption: 
     ## PageSize specifies the number of files to be deleted in each batch at a time.
     ## Defaults to 10000.
-    pageSize: 10000
+    # pageSize: 10000
     ## DisableBatchConcurrency specifies whether to disable the concurrent batch deletion method and uses the concurrent deletion method or not.
-    disableBatchConcurrency: false
+    # disableBatchConcurrency: false
     ## BatchConcurrency specifies the number of goroutines to start for the concurrent batch deletion method.
     ## Defaults to 10.
-    batchConcurrency: 10
+    # batchConcurrency: 10
     ## RoutineConcurrency specifies the number of goroutines to start for the concurrent deletion method.
     ## Defaults to 100.
-    routineConcurrency: 100
+    # routineConcurrency: 100
 
   ## PodSecurityContext holds pod-level security attributes and common container settings.
   ## Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
