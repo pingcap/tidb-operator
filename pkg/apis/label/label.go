@@ -95,6 +95,8 @@ const (
 	AnnSysctlInit = "tidb.pingcap.com/sysctl-init"
 	// AnnEvictLeaderBeginTime is pod annotation key to indicate the begin time for evicting region leader
 	AnnEvictLeaderBeginTime = "tidb.pingcap.com/evictLeaderBeginTime"
+	// AnnStsLastSyncTimestamp is sts annotation key to indicate the last timestamp the operator sync the sts
+	AnnStsLastSyncTimestamp = "tidb.pingcap.com/sync-timestamp"
 
 	// AnnForceUpgradeVal is tc annotation value to indicate whether force upgrade should be done
 	AnnForceUpgradeVal = "true"
