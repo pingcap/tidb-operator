@@ -6,76 +6,81 @@
   - [What's New in v1.2](whats-new-in-v1.2.md)
 - [Get Started](get-started.md)
 - Deploy
-  - Deploy TiDB Cluster
-    - [On AWS EKS](deploy-on-aws-eks.md)
-    - [On GCP GKE](deploy-on-gcp-gke.md)
-    - [On Azure AKS](deploy-on-azure-aks.md)
-    - [On Alibaba Cloud ACK](deploy-on-alibaba-cloud.md)
-    - In Self-managed Kubernetes
-      - [Prerequisites](prerequisites.md)
-      - [Configure Storage Class](configure-storage-class.md)
-      - [Deploy TiDB Operator](deploy-tidb-operator.md)
-      - [Configure TiDB Cluster](configure-a-tidb-cluster.md)
-      - [Deploy TiDB Cluster](deploy-on-general-kubernetes.md)
-      - [Initialize TiDB Cluster](initialize-a-cluster.md)
-      - [Access TiDB Cluster](access-tidb.md)
-    - [Deploy TiDB Cluster on ARM64 Machines](deploy-cluster-on-arm64.md)
-  - [Deploy a TiDB Cluster across Multiple Kubernetes Clusters](deploy-tidb-cluster-across-multiple-kubernetes.md)
-  - [Deploy Heterogeneous Cluster](deploy-heterogeneous-tidb-cluster.md)
-  - [Deploy TiFlash](deploy-tiflash.md)
-  - [Deploy DM](deploy-tidb-dm.md)
+  - In Self-Managed Kubernetes
+    - [Prerequisites](prerequisites.md)
+    - [Configure Storage Class](configure-storage-class.md)
+    - [Deploy TiDB Operator](deploy-tidb-operator.md)
+    - [Configure a TiDB Cluster](configure-a-tidb-cluster.md)
+    - [Deploy a TiDB Cluster](deploy-on-general-kubernetes.md)
+    - [Initialize a TiDB Cluster](initialize-a-cluster.md)
+    - [Access a TiDB Cluster](access-tidb.md)
+  - In Public Cloud Kubernetes
+    - [Amazon EKS](deploy-on-aws-eks.md)
+    - [GCP GKE](deploy-on-gcp-gke.md)
+    - [Azure AKS](deploy-on-azure-aks.md)
+    - [Alibaba Cloud ACK](deploy-on-alibaba-cloud.md)
+  - [Deploy TiDB on ARM64 Machines](deploy-cluster-on-arm64.md)
+  - [Deploy TiFlash to Explore TiDB HTAP](deploy-tiflash.md)
+  - [Across Multiple Kubernetes Clusters](deploy-tidb-cluster-across-multiple-kubernetes.md)
+  - [Heterogeneous TiDB Cluster](deploy-heterogeneous-tidb-cluster.md)
+  - [TiDB Enterprise Edition](deploy-tidb-enterprise-edition.md)
   - [Deploy TiCDC](deploy-ticdc.md)
   - [Deploy TiDB Binlog](deploy-tidb-binlog.md)
-  - [Deploy TiDB Enterprise Edition](deploy-tidb-enterprise-edition.md)
-  - [Deploy Multiple Sets of TiDB Operator](deploy-multiple-tidb-operator.md)
-  - Deploy Monitoring
-    - [Deploy Monitoring and Alerts for TiDB](monitor-a-tidb-cluster.md)
-    - [Access TiDB Dashboard](access-dashboard.md)
-    - [Aggregate Monitoring Data of Multiple TiDB Clusters](aggregate-multiple-cluster-monitor-data.md)
-    - [Enable Dynamic Configuration for TidbMonitor](enable-dynamic-configuration-for-tidbmonitor.md)
-- Secure
-  - [Enable TLS for the MySQL Client](enable-tls-for-mysql-client.md)
-  - [Enable TLS between TiDB Components](enable-tls-between-components.md)
-  - [Enable TLS for DM](enable-tls-for-dm.md)
-  - [Replicate Data to TLS-enabled Downstream Services Using TiCDC Components](enable-tls-for-ticdc-sink.md)
-  - [Renew and Replace TLS Certificate](renew-tls-certificate.md)
-  - [Run TiDB Operator and TiDB Clusters as a Non-root User](containers-run-as-non-root-user.md)
-- Operate
+- Migrate
+  - [Import Data](restore-data-using-tidb-lightning.md)
+  - Migrate from MySQL
+    - [Deploy DM](deploy-tidb-dm.md)
+    - [Migrate to TiDB Using DM](use-tidb-dm.md)
   - [Migrate TiDB to Kubernetes](migrate-tidb-to-kubernetes.md)
-  - [Upgrade TiDB Cluster](upgrade-a-tidb-cluster.md)
-  - [Upgrade TiDB Operator](upgrade-tidb-operator.md)
-  - [Perform a Canary Upgrade](canary-upgrade-tidb-operator.md)
-  - [Pause Sync of TiDB Cluster](pause-sync-of-tidb-cluster.md)
-  - Scale TiDB Cluster
+- Manage
+  - Secure
+    - [Enable TLS for the MySQL Client](enable-tls-for-mysql-client.md)
+    - [Enable TLS between TiDB Components](enable-tls-between-components.md)
+    - [Enable TLS for DM](enable-tls-for-dm.md)
+    - [Replicate Data to TLS-enabled Downstream Services](enable-tls-for-ticdc-sink.md)
+    - [Renew and Replace TLS Certificate](renew-tls-certificate.md)
+    - [Run Containers as a Non-root User](containers-run-as-non-root-user.md)
+  - Scale
     - [Manually Scale](scale-a-tidb-cluster.md)
     - [Automatically Scale](enable-tidb-cluster-auto-scaling.md)
-  - [Migrate MySQL Data to TiDB Cluster Using DM](use-tidb-dm.md)
+  - Upgrade
+    - [Upgrade a TiDB Cluster](upgrade-a-tidb-cluster.md)
+    - Upgrade TiDB Operator
+      - [Normal Upgrade](upgrade-tidb-operator.md)
+      - [Canary Upgrade](canary-upgrade-tidb-operator.md)
   - Backup and Restore
     - [Overview](backup-restore-overview.md)
     - [Grant Permissions to Remote Storage](grant-permissions-to-remote-storage.md)
-    - Backup and Restore with S3-Compatible Storage
-      - [Back up Data Using BR](backup-to-aws-s3-using-br.md)
+    - Amazon S3 Compatible Storage
+      - [Back Up Data Using BR](backup-to-aws-s3-using-br.md)
       - [Restore Data Using BR](restore-from-aws-s3-using-br.md)
-      - [Back up Data Using Dumpling](backup-to-s3.md)
+      - [Back Up Data Using Dumpling](backup-to-s3.md)
       - [Restore Data Using TiDB Lightning](restore-from-s3.md)
-    - Backup and Restore with GCS
-      - [Back up Data Using BR](backup-to-gcs-using-br.md)
+    - Google Cloud Storage
+      - [Back Up Data Using BR](backup-to-gcs-using-br.md)
       - [Restore Data Using BR](restore-from-gcs-using-br.md)
-      - [Back up Data Using Dumpling](backup-to-gcs.md)
+      - [Back Up Data Using Dumpling](backup-to-gcs.md)
       - [Restore Data Using TiDB Lightning](restore-from-gcs.md)
-    - Backup and Restore with Persistent Volumes
-      - [Back up Data Using BR](backup-to-pv-using-br.md)
-      - [Restore Data Using BR](restore-from-pv-using-br.md)
-  - [Restart a TiDB Cluster](restart-a-tidb-cluster.md)
-  - [Maintain a Kubernetes Node](maintain-a-kubernetes-node.md)
-  - [View TiDB Logs](view-logs.md)
-  - [Configure Automatic Failover](use-auto-failover.md)
-  - [Destroy a TiDB Cluster](destroy-a-tidb-cluster.md)
-  - [Migrate from Helm 2 to Helm 3](migrate-to-helm3.md)
-- Disaster Recovery
-  - [Recover PD Cluster](pd-recover.md)
-  - [Recover Deleted Cluster](recover-deleted-cluster.md)
-- [Import Data](restore-data-using-tidb-lightning.md)
+    - Persistent Volumes
+      - [Back Up Data](backup-to-pv-using-br.md)
+      - [Restore Data](restore-from-pv-using-br.md)
+  - Maintain
+    - [Restart a TiDB Cluster](restart-a-tidb-cluster.md)
+    - [Destroy a TiDB Cluster](destroy-a-tidb-cluster.md)
+    - [View TiDB Logs](view-logs.md)
+    - [Configure Automatic Failover](use-auto-failover.md)
+    - [Pause Sync of TiDB Cluster](pause-sync-of-tidb-cluster.md)
+    - [Maintain Multiple TiDB Clusters Using Multiple TiDB Operator](deploy-multiple-tidb-operator.md)
+    - [Maintain Kubernetes Nodes](maintain-a-kubernetes-node.md)
+    - [Migrate from Helm 2 to Helm 3](migrate-to-helm3.md)
+  - Monitor and Alert
+    - [Deploy Monitoring and Alerts for TiDB](monitor-a-tidb-cluster.md)
+    - [Monitor and Diagnose TiDB Using TiDB Dashboard](access-dashboard.md)
+    - [Aggregate Monitoring Data of Multiple TiDB Clusters](aggregate-multiple-cluster-monitor-data.md)
+    - [Enable Dynamic Configuration for TidbMonitor](enable-dynamic-configuration-for-tidbmonitor.md)
+  - Disaster Recovery
+    - [Recover a Deleted TiDB Cluster](recover-deleted-cluster.md)
+    - [Recover a PD Cluster](pd-recover.md)
 - Troubleshoot
   - [Troubleshooting Tips](tips.md)
   - [Deployment Failures](deploy-failures.md)
@@ -91,6 +96,7 @@
   - [Sysbench Performance Test](benchmark-sysbench.md)
   - [API References](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.md)
   - [Cheat Sheet](cheat-sheet.md)
+  - [Required RBAC Rules](tidb-operator-rbac.md)
   - Tools
     - [tkctl](use-tkctl.md)
     - [TiDB Toolkit](tidb-toolkit.md)
